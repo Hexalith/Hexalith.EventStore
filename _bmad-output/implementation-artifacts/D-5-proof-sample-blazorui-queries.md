@@ -264,6 +264,25 @@ _Correct-course outcome (2026-07-02) — see `_bmad-output/planning-artifacts/sp
 - Named `"EventStoreApi"` HttpClient is dead config — false positive: still consumed by `CounterCommandForm.razor:62` (command submission, D6 scope).
 - Rendering `ex.Message` in catch blocks is support-unsafe — Message-only (no stack trace, tokens, or JWT payload) and pre-existing; AC7 support-safe requirement is met.
 
+_Follow-up code review (Blind Hunter + Edge Case Hunter + Acceptance Auditor), 2026-07-03. 1 decision-needed, 4 patch, 3 deferred, 1 dismissed as already tracked._
+
+**Decision-needed**
+
+- [ ] [Review][Decision] Referenced-contract discovery is unbounded — `RestApiMessageParser.ParseReferenced` scans every referenced assembly that references `Hexalith.EventStore.Contracts` and collects any `[RestRoute]` command/query contract. A host with `[assembly: RestApi("api/{tenant}/counter", "counter", ...)]` can therefore accidentally emit unrelated referenced contracts under the counter route prefix. The correct scope mechanism needs an owner choice: filter by an explicit domain/tag contract, require an opt-in assembly list, or keep multi-contract aggregation as an intentional feature and document/test it. [src/Hexalith.EventStore.RestApi.Generators/RestApiMessageParser.cs:52]
+
+**Patch**
+
+- [ ] [Review][Patch] Sample.Api JWT validation can reject Keycloak tokens because `Authority` mode still defaults `ValidIssuer` to `hexalith-dev` and `RequireHttpsMetadata` to `true`, while AppHost only wires `EventStore__Authentication__Authority` through `WithEventStoreClientCredentials`. [samples/Hexalith.EventStore.Sample.Api/Program.cs:31]
+- [ ] [Review][Patch] `sample-api` DAPR access control grants `/**` for `GET` and `POST`, and the comment pre-authorizes command access before D6; D5 only needs EventStore query invocation. [src/Hexalith.EventStore.AppHost/DaprComponents/accesscontrol.yaml:60]
+- [ ] [Review][Patch] Route-template validation checks the prefix and action template separately, but not the combined effective route, so a catch-all prefix plus a relative action route can generate an ASP.NET route that fails at startup. [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:661]
+- [ ] [Review][Patch] D5 artifacts still contain contradictory post-correct-course scope text: the story still has checked tasks for BlazorUI analyzer/controller opt-in and generated files, while the approved proposal says the Sample domain references `Sample.Contracts` even though the final implementation keeps the domain SDK-only. Rewrite the D5 AC/tasks/proposal text to match the external `Sample.Api` host and domain-service-only outcome. [_bmad-output/implementation-artifacts/D-5-proof-sample-blazorui-queries.md:202]
+
+**Deferred**
+
+- [x] [Review][Defer] Command contracts with duplicate JSON property names are not diagnosed; the new duplicate JSON-name check only runs for queries, so generated command serialization/model-binding can still fail later. [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:95] — deferred, command/generator hardening outside D5 query proof
+- [x] [Review][Defer] Referenced contracts that rely on convention routing rather than `[RestRoute]` are not discovered by `ParseReferenced`, even though source contracts without `[RestRoute]` still get default routes. [src/Hexalith.EventStore.RestApi.Generators/RestApiMessageParser.cs:162] — deferred, generator hardening outside D5 query proof
+- [x] [Review][Defer] Query JSON names are deduplicated with `StringComparer.Ordinal`; names differing only by case can still bind ambiguously through query string/model-binding conventions. [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:903] — deferred, generator hardening outside D5 query proof
+
 ## Dev Notes
 
 ### Top Guardrails
