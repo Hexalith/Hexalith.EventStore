@@ -2,22 +2,27 @@
 
 # NuGet Packages Guide
 
-Guide to the 8 published Hexalith.EventStore NuGet packages — their purposes, dependency relationships, and which ones to install for your use case. This page is for .NET developers integrating Hexalith.EventStore into their projects.
+Guide to the manifest-driven Hexalith.EventStore NuGet package set — their purposes, dependency relationships, and which ones to install for your use case. This page is for .NET developers integrating Hexalith.EventStore into their projects.
 
 > **Prerequisites:** [Architecture Overview](../concepts/architecture-overview.md) — you should understand the system topology before choosing packages.
 
 ## Package Overview
 
-| Package                       | Description                                                                     | Primary Use Case                                                              | When to Install                                                   |
-| ----------------------------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| Hexalith.EventStore.Contracts | Domain types plus public gateway wire DTOs and ProblemDetails extension names   | Define shared command/event contracts and build HTTP gateway request bodies   | Always required — foundational types for any Hexalith integration |
-| Hexalith.EventStore.Client    | Client abstractions, domain processor registration, and HTTP gateway client     | Register domain processors or call the public command/query HTTP gateway      | In domain services and downstream gateway caller projects         |
-| Hexalith.EventStore.Server    | Server-side domain processors, aggregate actors, DAPR state/pub-sub integration | Host command processing, state rehydration, persistence, and event publishing | In the hosting project that runs the event store server           |
-| Hexalith.EventStore.SignalR   | SignalR client helper for projection change notifications                       | React to read-model invalidation signals in web or desktop clients            | In UI or integration clients that need live projection refresh    |
-| Hexalith.EventStore.Testing   | In-memory fakes, gateway doubles, builders, and test helpers                    | Build deterministic tests for command/event and public gateway flows          | In your test projects                                             |
-| Hexalith.EventStore.Aspire    | .NET Aspire hosting extensions for DAPR topology orchestration                  | Compose the local distributed topology in an Aspire AppHost                   | In your AppHost project for local development orchestration       |
-| Hexalith.EventStore.ServiceDefaults | Shared OpenTelemetry, health-check, HTTP-resilience, and service-discovery defaults | Apply the platform's observability/resilience defaults to a domain service | Transitively, via the DomainService SDK (rarely referenced directly) |
-| Hexalith.EventStore.DomainService | Domain-service host SDK — convention discovery, DAPR endpoints, query/projection seams, telemetry, health | Author a domain module with only domain code plus a two-line host | The single platform reference a new domain module needs           |
+| Package | Description | Primary Use Case | When to Install |
+| --- | --- | --- | --- |
+| Hexalith.EventStore.Contracts | Domain types plus public gateway wire DTOs, REST contract metadata, and ProblemDetails extension names | Define shared command/event/query contracts and build HTTP gateway request bodies | Foundational contract package for Hexalith integrations |
+| Hexalith.EventStore.Client | Client abstractions, domain processor registration, read-model seams, and HTTP gateway client | Register domain processors or call the public command/query HTTP gateway | In UI, integration, external API host, or domain SDK consumer projects |
+| Hexalith.EventStore.Server | Server-side domain processors, aggregate actors, DAPR state/pub-sub integration | Host command processing, state rehydration, persistence, and event publishing | In the hosting project that runs the event store server |
+| Hexalith.EventStore.SignalR | SignalR client helper for projection change notifications | React to read-model invalidation signals in web or desktop clients | In clients that need live projection refresh |
+| Hexalith.EventStore.Testing | In-memory fakes, gateway doubles, builders, and test helpers | Build deterministic tests for command/event and public gateway flows | In unit or integration test projects |
+| Hexalith.EventStore.Testing.Integration | DAPR/Aspire integration-test harness for domain modules | Run repeatable topology-backed domain-service tests | In Docker/Aspire integration test projects |
+| Hexalith.EventStore.Aspire | .NET Aspire hosting extensions for DAPR topology orchestration | Compose the local distributed topology in an Aspire AppHost | In your AppHost project for local development orchestration |
+| Hexalith.EventStore.ServiceDefaults | Shared OpenTelemetry, health-check, HTTP-resilience, and service-discovery defaults | Apply the platform's observability/resilience defaults to a domain service or API host | Transitively via DomainService, or directly in dedicated API hosts |
+| Hexalith.EventStore.DomainService | Domain-service host SDK — convention discovery, DAPR endpoints, query/projection seams, telemetry, health | Author a domain module with only domain code plus a two-line host | The single platform reference a new domain module needs |
+| Hexalith.EventStore.RestApi.Generators | Roslyn source-generator/analyzer package distributed under `analyzers/dotnet/cs` | Generate typed REST controllers from `ICommandContract` and `IQueryContract` messages | As an analyzer reference in dedicated external API host projects |
+| Hexalith.EventStore.Admin.Abstractions | Admin service DTOs and interfaces shared by admin clients and services | Build admin UI, CLI, MCP, or server integrations against the admin contract | In admin-facing clients or implementations |
+| Hexalith.EventStore.Admin.Cli | Packaged `eventstore-admin` .NET tool | Manage streams, projections, snapshots, backups, tenants, and health from the terminal | Install as a .NET tool for operators or CI/CD |
+| Hexalith.EventStore.Admin.Server | DAPR-backed admin service implementations | Host reusable admin backend services for UI, CLI, and MCP surfaces | In the admin server host |
 
 ## Dependency Graph
 
@@ -31,6 +36,11 @@ graph TD
     Aspire[Hexalith.EventStore.Aspire]
     ServiceDefaults[Hexalith.EventStore.ServiceDefaults]
     DomainService[Hexalith.EventStore.DomainService]
+    TestingIntegration[Hexalith.EventStore.Testing.Integration]
+    RestApiGenerators[Hexalith.EventStore.RestApi.Generators]
+    AdminAbstractions[Hexalith.EventStore.Admin.Abstractions]
+    AdminCli[Hexalith.EventStore.Admin.Cli]
+    AdminServer[Hexalith.EventStore.Admin.Server]
 
     Client --> Contracts
     Server --> Client
@@ -39,8 +49,16 @@ graph TD
     Testing --> Client
     Testing --> Contracts
     Testing --> Server
+    TestingIntegration --> Testing
+    TestingIntegration --> Client
+    TestingIntegration --> Server
+    TestingIntegration --> DomainService
     DomainService --> Client
     DomainService --> ServiceDefaults
+    AdminAbstractions --> Contracts
+    AdminCli --> AdminAbstractions
+    AdminServer --> AdminAbstractions
+    AdminServer --> Contracts
 ```
 
 <details>
@@ -51,13 +69,18 @@ graph TD
 - **Server** depends on both Client and Contracts.
 - **SignalR** depends on Contracts and adds a lightweight helper over `Microsoft.AspNetCore.SignalR.Client`.
 - **Testing** depends on Client, Contracts, and Server (it provides gateway doubles plus fake implementations of server-side components for integration testing).
+- **Testing.Integration** builds on Testing, Client, Server, and DomainService for DAPR/Aspire-backed integration fixtures.
 - **Aspire** is fully independent — it has no dependency on any other Hexalith.EventStore package. It only depends on Aspire hosting libraries.
 - **ServiceDefaults** is a shared service-configuration package (OpenTelemetry, health checks, HTTP resilience, service discovery). It is consumed transitively by the DomainService SDK.
 - **DomainService** is the domain-service host SDK. It depends on Client and ServiceDefaults and bundles all hosting/DAPR-endpoint/discovery boilerplate so a domain module references only this one package.
+- **RestApi.Generators** is an analyzer/source-generator package. It is consumed as an analyzer reference and does not expose runtime `lib/` assets.
+- **Admin.Abstractions** depends on Contracts.
+- **Admin.Cli** depends on Admin.Abstractions and is packed as the `eventstore-admin` tool.
+- **Admin.Server** depends on Admin.Abstractions and Contracts and provides DAPR-backed admin service implementations.
 
 </details>
 
-> **Note:** All 8 packages always ship at the same semantic version. Install matching versions to avoid compatibility issues.
+> **Note:** Every package listed in `tools/release-packages.json` ships at the same semantic version. Install matching versions to avoid compatibility issues.
 
 ## Source vs Package Dependencies
 
@@ -74,13 +97,12 @@ as source project edges.
 
 ### Building a domain service
 
-Install **Contracts** + **Client**.
+Install **DomainService**.
 
-Contracts gives you the domain types (commands, events, results). Client gives you the `AddEventStore` DI registration and the domain processor contract for wiring your domain logic into the event store pipeline.
+DomainService gives a domain module the SDK surface for convention discovery, DAPR endpoints, telemetry, health checks, query handlers, projections, read-model storage, and cursor seams. Domain modules should stay domain-centric and not re-implement hosting boilerplate.
 
 ```bash
-$ dotnet add package Hexalith.EventStore.Contracts
-$ dotnet add package Hexalith.EventStore.Client
+$ dotnet add package Hexalith.EventStore.DomainService
 ```
 
 ### Running the event store server
@@ -106,6 +128,27 @@ $ dotnet add package Hexalith.EventStore.Client
 ```
 
 Do not reference `Hexalith.EventStore` or `Hexalith.EventStore.Server` just to call the gateway. Those assemblies are runtime/internal boundaries for hosting EventStore. The command wrappers under `Hexalith.EventStore.Models` are compatibility-only delegates to the Contracts DTOs and are not the preferred downstream integration surface.
+
+### Generating typed REST controllers for a domain
+
+Create a dedicated external API host. Reference **Contracts** for message metadata, **Client** for `IEventStoreGatewayClient`, **ServiceDefaults** for host defaults, and **RestApi.Generators** as an analyzer package.
+
+REST controllers are generated from `ICommandContract` and `IQueryContract` messages into dedicated external-facing API hosts. Interactive UI hosts consume EventStore Client libraries and must not host generated or hand-written per-message MVC command/query controllers.
+
+```bash
+$ dotnet add package Hexalith.EventStore.Contracts
+$ dotnet add package Hexalith.EventStore.Client
+$ dotnet add package Hexalith.EventStore.ServiceDefaults
+$ dotnet add package Hexalith.EventStore.RestApi.Generators
+```
+
+When using a project reference during local development, reference the generator with analyzer metadata:
+
+```xml
+<ProjectReference Include="..\..\src\Hexalith.EventStore.RestApi.Generators\Hexalith.EventStore.RestApi.Generators.csproj"
+                  OutputItemType="Analyzer"
+                  ReferenceOutputAssembly="false" />
+```
 
 ### Serving projection queries
 
@@ -180,11 +223,13 @@ Install packages across your projects based on their role:
 
 | Project                        | Packages          |
 | ------------------------------ | ----------------- |
-| Domain service library         | Contracts, Client |
+| Domain service host            | DomainService     |
 | Downstream projection actor    | Contracts         |
 | Event store host               | Contracts, Server |
 | UI or integration client       | SignalR           |
+| Dedicated external API host    | Contracts, Client, ServiceDefaults, RestApi.Generators (analyzer) |
 | Test project                   | Testing           |
+| Topology integration tests     | Testing.Integration |
 | Aspire AppHost                 | Aspire            |
 
 ## Package Details
@@ -317,6 +362,16 @@ Test helpers, in-memory fakes, deterministic gateway doubles, and builders for u
 $ dotnet add package Hexalith.EventStore.Testing
 ```
 
+### Hexalith.EventStore.Testing.Integration
+
+DAPR/Aspire integration-test harness for EventStore-backed domain modules. It provides reusable sidecar/bootstrap helpers, Aspire topology fixtures, and support-safe diagnostics for tests that must verify real topology behavior.
+
+Use it for Docker/Aspire-backed tests where a simple unit-test fake is insufficient.
+
+```bash
+$ dotnet add package Hexalith.EventStore.Testing.Integration
+```
+
 ### Hexalith.EventStore.Aspire
 
 .NET Aspire hosting extensions for DAPR topology orchestration. Fully independent — no dependency on any other Hexalith.EventStore package.
@@ -365,9 +420,45 @@ Domain-service host SDK. A domain module references only this package, writes it
 $ dotnet add package Hexalith.EventStore.DomainService
 ```
 
+### Hexalith.EventStore.RestApi.Generators
+
+Roslyn source-generator/analyzer package for typed REST controller generation. It discovers `[assembly: RestApi(...)]` plus `ICommandContract` and `IQueryContract` messages annotated with `[RestRoute]`, then emits gateway-backed ASP.NET Core controllers.
+
+Generated controllers inject `IEventStoreGatewayClient` and call the EventStore gateway. They must not call MediatR, domain services, DAPR actors, state stores, projection actors, or domain query dispatchers directly.
+
+The package is analyzer-only: the generator DLL is distributed under `analyzers/dotnet/cs`, and the NuGet package does not expose runtime `lib/` assets.
+
+```bash
+$ dotnet add package Hexalith.EventStore.RestApi.Generators
+```
+
+### Hexalith.EventStore.Admin.Abstractions
+
+Admin service interfaces and DTOs shared by the admin Web UI, CLI, MCP surface, and server implementations.
+
+```bash
+$ dotnet add package Hexalith.EventStore.Admin.Abstractions
+```
+
+### Hexalith.EventStore.Admin.Cli
+
+Packaged .NET tool for operating EventStore from the terminal. It supports stream, projection, snapshot, backup, tenant, and health operations with JSON/CSV/table output for humans and CI/CD.
+
+```bash
+$ dotnet tool install --global Hexalith.EventStore.Admin.Cli
+```
+
+### Hexalith.EventStore.Admin.Server
+
+DAPR-backed admin service implementations shared by the admin server host and higher-level admin surfaces.
+
+```bash
+$ dotnet add package Hexalith.EventStore.Admin.Server
+```
+
 ## Versioning
 
-All 8 packages use automated semantic versioning via semantic-release. Release versions are derived from Conventional Commit history on `main`, then published under `v`-prefixed Git tags (for example, release `1.2.0` is tagged as `v1.2.0`).
+The release package inventory is manifest-driven by `tools/release-packages.json`. Every package in that manifest uses automated semantic versioning via semantic-release. Release versions are derived from Conventional Commit history on `main`, then published under `v`-prefixed Git tags (for example, release `1.2.0` is tagged as `v1.2.0`).
 
 All package versions are centralized in `Directory.Packages.props` at the repository root. Every package always ships at the same version — there is no mix-and-match between package versions.
 

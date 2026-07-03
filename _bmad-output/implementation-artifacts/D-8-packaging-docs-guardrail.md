@@ -2,11 +2,12 @@
 created: 2026-07-02
 source_story_key: D-8-packaging-docs-guardrail
 supersedes_scope_note: sprint-change-proposal-2026-07-02-rest-api-external-host
+baseline_commit: 84712c4957155b983f98072afc641a9eeab2f6e3
 ---
 
 # Story D.8: Packaging, Docs, and Guardrails for RestApi.Generators
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -146,41 +147,41 @@ Source of truth: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Preflight current Epic D and release state** (AC: 1, 8)
-  - [ ] Read D5, D6, and D7 story records.
-  - [ ] Confirm whether D6 and D7 are complete, in progress, or not started.
-  - [ ] Count `tools/release-packages.json` entries and confirm generator omission.
-  - [ ] Inspect `src/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.csproj` package shape.
+- [x] **Task 1: Preflight current Epic D and release state** (AC: 1, 8)
+  - [x] Read D5, D6, and D7 story records.
+  - [x] Confirm whether D6 and D7 are complete, in progress, or not started.
+  - [x] Count `tools/release-packages.json` entries and confirm generator omission.
+  - [x] Inspect `src/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.csproj` package shape.
 
-- [ ] **Task 2: Register the analyzer package for release** (AC: 2, 3)
-  - [ ] Add `Hexalith.EventStore.RestApi.Generators` to `tools/release-packages.json`.
-  - [ ] Add manifest/package governance tests.
-  - [ ] Preserve `.releaserc.json` script delegation.
-  - [ ] Verify analyzer package contents with local package output.
+- [x] **Task 2: Register the analyzer package for release** (AC: 2, 3)
+  - [x] Add `Hexalith.EventStore.RestApi.Generators` to `tools/release-packages.json`.
+  - [x] Add manifest/package governance tests.
+  - [x] Preserve `.releaserc.json` script delegation.
+  - [x] Verify analyzer package contents with local package output.
 
-- [ ] **Task 3: Update repository instructions and package docs** (AC: 5, 7)
-  - [ ] Update `CLAUDE.md` and `AGENTS.md`.
-  - [ ] Update `docs/reference/nuget-packages.md`.
-  - [ ] Update stale count docs: brownfield overview/index, upgrade path, and CI secrets checklist.
-  - [ ] Search active docs/instructions for obsolete package counts and UI-host generator wording.
+- [x] **Task 3: Update repository instructions and package docs** (AC: 5, 7)
+  - [x] Update `CLAUDE.md` and `AGENTS.md`.
+  - [x] Update `docs/reference/nuget-packages.md`.
+  - [x] Update stale count docs: brownfield overview/index, upgrade path, and CI secrets checklist.
+  - [x] Search active docs/instructions for obsolete package counts and UI-host generator wording.
 
-- [ ] **Task 4: Update architecture/integration docs** (AC: 6, 7)
-  - [ ] Add the generator package to `docs/brownfield/architecture.md`.
-  - [ ] Document external API hosts and UI client-library consumption in architecture rules.
-  - [ ] Update `docs/brownfield/integration-architecture.md` topology/integration tables.
-  - [ ] Preserve gateway-backed generated-controller semantics.
+- [x] **Task 4: Update architecture/integration docs** (AC: 6, 7)
+  - [x] Add the generator package to `docs/brownfield/architecture.md`.
+  - [x] Document external API hosts and UI client-library consumption in architecture rules.
+  - [x] Update `docs/brownfield/integration-architecture.md` topology/integration tables.
+  - [x] Preserve gateway-backed generated-controller semantics.
 
-- [ ] **Task 5: Extend domain-authoring guardrails** (AC: 4)
-  - [ ] Fix domain module root discovery so Tenants uses `references/Hexalith.Tenants/src/Hexalith.Tenants` when initialized.
-  - [ ] Add interactive UI host controller/generator opt-in guard.
-  - [ ] Keep external API hosts out of the UI guard.
-  - [ ] Add clear failure messages pointing to the external API host rule.
+- [x] **Task 5: Extend domain-authoring guardrails** (AC: 4)
+  - [x] Fix domain module root discovery so Tenants uses `references/Hexalith.Tenants/src/Hexalith.Tenants` when initialized.
+  - [x] Add interactive UI host controller/generator opt-in guard.
+  - [x] Keep external API hosts out of the UI guard.
+  - [x] Add clear failure messages pointing to the external API host rule.
 
-- [ ] **Task 6: Verify and record evidence** (AC: 9)
-  - [ ] Run focused tests and Release build.
-  - [ ] Run package manifest pack/validate commands.
-  - [ ] Record `.nupkg` analyzer-path evidence.
-  - [ ] Confirm `git status --short` contains only intended D8 changes plus pre-existing unrelated workspace changes.
+- [x] **Task 6: Verify and record evidence** (AC: 9)
+  - [x] Run focused tests and Release build.
+  - [x] Run package manifest pack/validate commands.
+  - [x] Record `.nupkg` analyzer-path evidence.
+  - [x] Confirm `git status --short` contains only intended D8 changes plus pre-existing unrelated workspace changes.
 
 ## Dev Notes
 
@@ -345,18 +346,76 @@ Do not revert or fold those D6 changes into D8.
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Codex GPT-5
 
 ### Debug Log References
+
+- Activation: loaded `bmad-dev-story`, resolved workflow customization, loaded `_bmad/bmm/config.yaml`, and loaded all `project-context.md` persistent fact files.
+- Baseline: captured commit `84712c4957155b983f98072afc641a9eeab2f6e3`, moved `D-8-packaging-docs-guardrail` to `in-progress` in sprint status, and started from a clean root worktree.
+- Preflight: read complete D5, D6, and D7 story records. D5, D6, and D7 are all implemented and currently in `review`; they are not yet `done`.
+- Preflight: confirmed the accepted July 2 architecture is generated controllers in dedicated external API hosts while interactive UI hosts consume EventStore Client libraries.
+- Preflight: `tools/release-packages.json` contained 12 packages and did not include `Hexalith.EventStore.RestApi.Generators`.
+- Preflight: inspected `src/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.csproj`; it is analyzer-only (`IncludeBuildOutput=false`, `SuppressDependenciesWhenPacking=true`) and packs the generator DLL under `analyzers/dotnet/cs`.
+- Red: `dotnet test tests/Hexalith.EventStore.Contracts.Tests/ --filter FullyQualifiedName~ReleasePackageManifestTests` failed because `tools/release-packages.json` did not include `Hexalith.EventStore.RestApi.Generators`.
+- Green: `dotnet test tests/Hexalith.EventStore.Contracts.Tests/ --filter FullyQualifiedName~ReleasePackageManifestTests` passed: 4/4 after adding the generator manifest entry and packaging guard tests.
+- Package evidence: direct `dotnet pack src/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.csproj --configuration Release --output /tmp/hexalith-eventstore-d8-generator-pack -p:Version=0.0.0-d8 -p:GeneratePackageOnBuild=false -p:UseHexalithProjectReferences=false` succeeded.
+- Package evidence: `unzip` is not installed in the VM (`/bin/bash: unzip: command not found`), so `python3 -m zipfile -l /tmp/hexalith-eventstore-d8-generator-pack/Hexalith.EventStore.RestApi.Generators.0.0.0-d8.nupkg` was used for local listing evidence. It showed `analyzers/dotnet/cs/Hexalith.EventStore.RestApi.Generators.dll` and no `lib/` asset.
+- Red: `dotnet test tests/Hexalith.EventStore.Contracts.Tests/ --filter FullyQualifiedName~ReleasePackageManifestTests` failed after adding docs guard tests because active docs still contained stale 6/8-package release counts.
+- Docs scan: `rg` over `AGENTS.md`, `CLAUDE.md`, and `docs` excluding `docs/reference/api/**` found no prohibited stale package-count wording or superseded UI-host generator phrases after the docs update.
+- Green: `dotnet test tests/Hexalith.EventStore.Contracts.Tests/ --filter FullyQualifiedName~ReleasePackageManifestTests` passed: 6/6 after repository instructions and package docs were updated.
+- Architecture update: added `RestApi.Generators`, external API host topology, UI client-library consumption, and generated-controller gateway semantics to `docs/brownfield/architecture.md` and `docs/brownfield/integration-architecture.md`.
+- Active-doc scan: `rg` found no stale package-count wording, obsolete unpublished DomainService wording, or superseded UI-host generator phrases after architecture and component inventory cleanup.
+- Green: `dotnet test tests/Hexalith.EventStore.Contracts.Tests/ --filter FullyQualifiedName~ReleasePackageManifestTests` passed: 6/6 after architecture docs update.
+- Red: `dotnet test tests/Hexalith.EventStore.DomainService.Tests/ --filter FullyQualifiedName~DomainModuleAuthoringGuardrailTests` failed on the new Tenants-root assertion, proving the old guard skipped the initialized `references/Hexalith.Tenants/src/Hexalith.Tenants` domain root. The same run also exposed a stale Sample-only-DomainService reference assumption after the D5/D6 contracts-library split.
+- Green: `dotnet test tests/Hexalith.EventStore.DomainService.Tests/ --filter FullyQualifiedName~DomainModuleAuthoringGuardrailTests` passed: 5/5 after scoping Tenants to the domain-service root, allowing the Sample domain-owned contracts library, and adding the interactive UI host controller/generator guard.
+- Green: `dotnet test tests/Hexalith.EventStore.Contracts.Tests/` passed: 556/556.
+- Green: `dotnet test tests/Hexalith.EventStore.DomainService.Tests/` passed: 39/39.
+- Green: `dotnet test tests/Hexalith.EventStore.RestApi.Generators.Tests/` passed: 45/45.
+- Green: `dotnet build Hexalith.EventStore.slnx --configuration Release -p:UseHexalithProjectReferences=false` passed with 0 warnings/errors.
+- Green: `python3 tools/pack-release-packages.py /tmp/hexalith-eventstore-d8-nupkgs 0.0.0-d8` packed 13 manifest packages.
+- Green: `python3 tools/validate-release-packages.py /tmp/hexalith-eventstore-d8-nupkgs 0.0.0-d8` validated 13 release packages.
+- Package evidence: `python3 -m zipfile -l /tmp/hexalith-eventstore-d8-nupkgs/Hexalith.EventStore.RestApi.Generators.0.0.0-d8.nupkg` showed `analyzers/dotnet/cs/Hexalith.EventStore.RestApi.Generators.dll` and no `lib/` asset. `unzip` remains unavailable in this VM, so zipfile listing was used as equivalent archive evidence.
+- Baseline unit regression: `dotnet test tests/Hexalith.EventStore.Client.Tests/` passed 483/483; `dotnet test tests/Hexalith.EventStore.Sample.Tests/` passed 91/91; `dotnet test tests/Hexalith.EventStore.SignalR.Tests/` passed 35/35; `dotnet test tests/Hexalith.EventStore.Testing.Tests/` passed 144/144. The parallel run emitted a package-assets-cache I/O warning on one project, but all builds/tests completed successfully.
+- Green: `git diff --check` passed with no whitespace errors.
+- Final status check before completion: `git status --short` showed D8 story/sprint tracking, docs, release manifest, packaging tests, DomainService guardrail tests, and two package-governance files (`Directory.Packages.props`, `ContractsPackageDependencyTests.cs`) present in the workspace diff and included in this file list.
 
 ### Completion Notes List
 
 - Ultimate context engine analysis completed - comprehensive developer guide created.
+- Completed D8 preflight against D5/D6/D7, current release tooling, and generator package shape. D5/D6/D7 are in review; D8 may document them as implemented proofs but not as done/released closeout.
+- Registered `Hexalith.EventStore.RestApi.Generators` in the manifest-driven release package inventory, added blocking manifest/package governance tests, preserved semantic-release delegation to `tools/pack-release-packages.py` and `tools/validate-release-packages.py`, and verified the generator package is analyzer-only in local package output.
+- Updated root instructions and package docs to the manifest-driven 13-package release set, documented `RestApi.Generators` as an analyzer package, added external API host package guidance, and replaced stale package-count wording in active docs.
+- Updated architecture and integration docs so generated controllers are described as dedicated external API host facades backed by `IEventStoreGatewayClient`; interactive UI hosts consume EventStore Client libraries and do not own per-message MVC controllers.
+- Extended domain-authoring guardrails so Tenants scans the initialized submodule domain-service root only, interactive UI hosts fail on generated-controller opt-in or MVC command/query controller hosting, and external API hosts are not broad-allowlisted into the UI guard.
+- Completed D8 verification: focused D8 tests, baseline unit projects, Release package-mode solution build, full manifest pack/validate, generator analyzer package-content evidence, and whitespace/status checks all passed or were recorded with exact local-tooling context.
 
 ### File List
+
+- `_bmad-output/implementation-artifacts/D-8-packaging-docs-guardrail.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `tools/release-packages.json`
+- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs` (new)
+- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContractsPackageDependencyTests.cs`
+- `AGENTS.md`
+- `CLAUDE.md`
+- `Directory.Packages.props`
+- `docs/reference/nuget-packages.md`
+- `docs/brownfield/project-overview.md`
+- `docs/brownfield/index.md`
+- `docs/guides/upgrade-path.md`
+- `docs/ci-secrets-checklist.md`
+- `docs/brownfield/architecture.md`
+- `docs/brownfield/integration-architecture.md`
+- `docs/brownfield/component-inventory.md`
+- `tests/Hexalith.EventStore.DomainService.Tests/DomainModuleAuthoringGuardrailTests.cs`
 
 ## Change Log
 
 | Date | Change |
 |---|---|
 | 2026-07-02 | Story D8 created with manifest-driven analyzer package release scope, corrected external API host documentation requirements, current package-count guardrails, DomainModuleAuthoringGuardrail path/UI-host checks, stale-doc cleanup, and verification plan. Status ready-for-dev. |
+| 2026-07-03 | Completed preflight and registered `Hexalith.EventStore.RestApi.Generators` in the manifest-driven release package inventory with focused packaging guard tests and analyzer package output evidence. |
+| 2026-07-03 | Updated repository instructions and package docs to the manifest-driven package set, added generator analyzer package guidance, and added stale package-count/UI-host wording guard tests. |
+| 2026-07-03 | Updated brownfield architecture docs for external API hosts, UI client-library consumption, and gateway-backed generated-controller semantics. |
+| 2026-07-03 | Extended domain-authoring guardrails for the Tenants submodule root and interactive UI host controller/generator prohibition. |
+| 2026-07-03 | Completed D8 verification with required tests, baseline unit tests, Release package-mode build, manifest pack/validate, and generator analyzer package-content evidence. |

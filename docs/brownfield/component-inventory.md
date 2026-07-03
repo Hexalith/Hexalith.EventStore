@@ -82,9 +82,8 @@ The **domain-service SDK** a domain module hosts itself with. It builds on the c
 `AddEventStoreDomainService()` / `UseEventStoreDomainService()` / `MapEventStoreDomainService()`, which
 reduce the host to ~2 lines and map `/`, `/process`, `/replay-state`, `/admin/operational-index-metadata`.
 A domain module references **only** this SDK (Client/ServiceDefaults/Contracts flow transitively) and maps
-its own `/project` until that is generalized (Epic A3). The SDK is not yet NuGet-published (it depends on
-the unpackaged ServiceDefaults; see the Epic A6 packaging decision in
-`_bmad-output/planning-artifacts/sprint-change-proposal-2026-06-02.md`).
+its own `/project` until that is generalized (Epic A3). The SDK and ServiceDefaults are part of the
+manifest-driven NuGet package set in `tools/release-packages.json`.
 
 ## Testing components (`src/Hexalith.EventStore.Testing`)
 

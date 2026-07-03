@@ -57,7 +57,7 @@ URL: `https://github.com/Hexalith/Hexalith.EventStore/settings/secrets/actions`
 To get CI green on a fork that wants to publish:
 
 1. **Mandatory** — none. Public PR CI works with only the auto-provisioned `GITHUB_TOKEN`.
-2. **For releases** — set `NUGET_API_KEY` to a NuGet.org API key with push rights to all 6 packages (`Hexalith.EventStore.Contracts/Client/Server/SignalR/Testing/Aspire`).
+2. **For releases** — set `NUGET_API_KEY` to a NuGet.org API key with push rights to every package listed in `tools/release-packages.json`.
 3. **For staging deploys** — set the 5 deploy-staging secrets (`REGISTRY_USERNAME`, `REGISTRY_PASSWORD`, `STAGING_SSH_HOST`, `STAGING_SSH_USER`, `STAGING_SSH_KEY`).
 4. Confirm by opening a PR — `commitlint`, `secret-scan`, `build-and-test` should pass.
 

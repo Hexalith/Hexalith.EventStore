@@ -4,6 +4,8 @@ namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 
 public sealed class ContractsPackageDependencyTests
 {
+    private const string MsBuildThisFileDirectory = "$(MSBuildThisFileDirectory)";
+
     [Fact]
     public void Contracts_package_pins_commons_unique_ids_to_published_commons_version()
     {
@@ -30,6 +32,39 @@ public sealed class ContractsPackageDependencyTests
             .Value;
 
         packageVersionReference.ShouldBe("2.24.2");
+    }
+
+    [Fact]
+    public void Root_package_props_resolves_hexalith_builds_from_references_layouts()
+    {
+        string root = FindRepositoryRoot();
+        XDocument packageVersions = XDocument.Load(Path.Combine(root, "Directory.Packages.props"));
+
+        string rootBuildsProps = GetProperty(packageVersions, "Hexalith1BuildPackageProps");
+        string parentBuildsProps = GetProperty(packageVersions, "Hexalith2BuildPackageProps");
+        string grandparentBuildsProps = GetProperty(packageVersions, "Hexalith3BuildPackageProps");
+
+        rootBuildsProps.ShouldBe(
+            MsBuildThisFileDirectory + "references/Hexalith.Builds/Props/Directory.Packages.props");
+        parentBuildsProps.ShouldBe(
+            MsBuildThisFileDirectory + "../references/Hexalith.Builds/Props/Directory.Packages.props");
+        grandparentBuildsProps.ShouldBe(
+            MsBuildThisFileDirectory + "../../references/Hexalith.Builds/Props/Directory.Packages.props");
+
+        string eventStoreSubmoduleDirectory = Path.Combine(
+            Path.GetTempPath(),
+            "parent",
+            "references",
+            "Hexalith.EventStore") + Path.DirectorySeparatorChar;
+
+        ResolveMsBuildPath(eventStoreSubmoduleDirectory, grandparentBuildsProps)
+            .ShouldBe(Path.GetFullPath(Path.Combine(
+                Path.GetTempPath(),
+                "parent",
+                "references",
+                "Hexalith.Builds",
+                "Props",
+                "Directory.Packages.props")));
     }
 
     [Fact]
@@ -70,6 +105,14 @@ public sealed class ContractsPackageDependencyTests
         throw new DirectoryNotFoundException("Could not locate repository root from the test working directory.");
     }
 
+    private static string GetProperty(XDocument document, string name)
+    {
+        return document
+            .Descendants(name)
+            .Single()
+            .Value;
+    }
+
     private static XDocument LoadSharedPackageVersions(string root, XDocument packageVersions)
     {
         string importPath = packageVersions
@@ -79,5 +122,13 @@ public sealed class ContractsPackageDependencyTests
             .Replace("$(MSBuildThisFileDirectory)", root + Path.DirectorySeparatorChar, StringComparison.Ordinal);
 
         return XDocument.Load(importPath);
+    }
+
+    private static string ResolveMsBuildPath(string msBuildThisFileDirectory, string path)
+    {
+        return Path.GetFullPath(path.Replace(
+            MsBuildThisFileDirectory,
+            msBuildThisFileDirectory,
+            StringComparison.Ordinal));
     }
 }

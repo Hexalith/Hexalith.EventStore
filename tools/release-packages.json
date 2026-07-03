@@ -37,6 +37,10 @@
       "project": "src/Hexalith.EventStore.DomainService/Hexalith.EventStore.DomainService.csproj"
     },
     {
+      "id": "Hexalith.EventStore.RestApi.Generators",
+      "project": "src/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.csproj"
+    },
+    {
       "id": "Hexalith.EventStore.Admin.Abstractions",
       "project": "src/Hexalith.EventStore.Admin.Abstractions/Hexalith.EventStore.Admin.Abstractions.csproj"
     },

@@ -117,16 +117,23 @@ For major upgrades, review these areas of your codebase for compatibility:
 
 ## NuGet Package Updates
 
-Hexalith.EventStore publishes 6 NuGet packages, all versioned as a single unit via semantic-release using Conventional Commits. Each release is published under a `v`-prefixed Git tag:
+Hexalith.EventStore publishes the NuGet packages listed in `tools/release-packages.json`, all versioned as a single unit via semantic-release using Conventional Commits. Each release is published under a `v`-prefixed Git tag:
 
-| Package                         | Purpose                                             |
-| ------------------------------- | --------------------------------------------------- |
-| `Hexalith.EventStore.Contracts` | Domain types: commands, events, results, identities |
-| `Hexalith.EventStore.Client`    | Client abstractions and DI registration             |
-| `Hexalith.EventStore.Server`    | Server-side domain processors, DAPR integration     |
-| `Hexalith.EventStore.SignalR`   | SignalR client helper for projection change signals |
-| `Hexalith.EventStore.Testing`   | Testing utilities and helpers                       |
-| `Hexalith.EventStore.Aspire`    | .NET Aspire hosting extensions                      |
+| Package | Purpose |
+| --- | --- |
+| `Hexalith.EventStore.Contracts` | Domain types, gateway DTOs, REST contract metadata |
+| `Hexalith.EventStore.Client` | Client abstractions, DI registration, gateway client |
+| `Hexalith.EventStore.Server` | Server-side domain processors, DAPR integration |
+| `Hexalith.EventStore.SignalR` | SignalR client helper for projection change signals |
+| `Hexalith.EventStore.Testing` | Testing utilities and helpers |
+| `Hexalith.EventStore.Testing.Integration` | DAPR/Aspire integration-test harness |
+| `Hexalith.EventStore.Aspire` | .NET Aspire hosting extensions |
+| `Hexalith.EventStore.ServiceDefaults` | Shared observability, resilience, and health defaults |
+| `Hexalith.EventStore.DomainService` | Domain-service host SDK |
+| `Hexalith.EventStore.RestApi.Generators` | Roslyn source-generator/analyzer for external typed REST API hosts |
+| `Hexalith.EventStore.Admin.Abstractions` | Admin service DTOs and interfaces |
+| `Hexalith.EventStore.Admin.Cli` | `eventstore-admin` .NET tool |
+| `Hexalith.EventStore.Admin.Server` | DAPR-backed admin service implementations |
 
 All packages use centralized version management via [`Directory.Packages.props`](../../Directory.Packages.props). To update, change the version in that single file.
 

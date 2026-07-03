@@ -34,6 +34,16 @@ public sealed class DomainModuleAuthoringGuardrailTests
         ": EventReplayProjectionActor",
     ];
 
+    private static readonly string[] InteractiveUiHostForbiddenMarkers =
+    [
+        "[assembly: RestApi(",
+        "AddControllers(",
+        "MapControllers(",
+        "ControllerBase",
+        "[ApiController]",
+        "Hexalith.EventStore.RestApi.Generators",
+    ];
+
     [Fact]
     public void DomainModules_DoNotShipOwnAspireOrServiceDefaultsProject()
     {
@@ -82,7 +92,7 @@ public sealed class DomainModuleAuthoringGuardrailTests
     }
 
     [Fact]
-    public void SampleReferenceModule_ReferencesOnlyTheDomainServiceSdk()
+    public void SampleReferenceModule_ReferencesOnlyTheDomainServiceSdkAndDomainContracts()
     {
         string csproj = Path.Combine(
             FindRepositoryRoot(), "samples", "Hexalith.EventStore.Sample", "Hexalith.EventStore.Sample.csproj");
@@ -93,12 +103,65 @@ public sealed class DomainModuleAuthoringGuardrailTests
             .Select(m => Path.GetFileName(m.Groups[1].Value.Replace('\\', '/')))
             .ToArray();
 
-        references.ShouldNotBeEmpty("The Sample must reference the domain-service SDK.");
-        references.ShouldAllBe(
-            r => r == "Hexalith.EventStore.DomainService.csproj",
-            "The reference Sample domain module must reference ONLY Hexalith.EventStore.DomainService "
-            + "(Client/ServiceDefaults/Contracts flow transitively) — proving the zero-boilerplate authoring "
-            + "model. Found references: " + string.Join(", ", references));
+        references.ShouldContain("Hexalith.EventStore.DomainService.csproj", "The Sample must reference the domain-service SDK.");
+
+        string[] unexpectedReferences = references
+            .Where(r => r != "Hexalith.EventStore.DomainService.csproj"
+                     && r != "Hexalith.EventStore.Sample.Contracts.csproj")
+            .ToArray();
+
+        unexpectedReferences.ShouldBeEmpty(
+            "The reference Sample domain module may reference only Hexalith.EventStore.DomainService and "
+            + "its own domain contracts library. Client/ServiceDefaults/platform Contracts flow through the "
+            + "SDK, and external API/UI hosts own REST or UI wiring. Found unexpected references: "
+            + string.Join(", ", unexpectedReferences));
+    }
+
+    [Fact]
+    public void DomainModuleRoots_UsesInitializedTenantsDomainServiceRoot()
+    {
+        string root = FindRepositoryRoot();
+        string tenantsDomainRoot = Path.Combine(root, "references", "Hexalith.Tenants", "src", "Hexalith.Tenants");
+        if (!Directory.Exists(tenantsDomainRoot))
+        {
+            return;
+        }
+
+        DomainModuleRoots()
+            .ShouldContain(
+                rootInfo => rootInfo.Name == "Tenants"
+                         && string.Equals(rootInfo.Path, tenantsDomainRoot, StringComparison.Ordinal),
+                "When the Tenants submodule is initialized, guardrails must scan only the Tenants domain-service root under references/Hexalith.Tenants/src/Hexalith.Tenants.");
+    }
+
+    [Fact]
+    public void InteractiveUiHosts_DoNotHostGeneratedOrHandWrittenCommandQueryControllers()
+    {
+        List<string> offenders = [];
+        foreach ((string name, string path) in InteractiveUiHostRoots())
+        {
+            foreach (string file in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
+            {
+                if (IsBuildArtifact(file) || !IsSourceOrProjectFile(file))
+                {
+                    continue;
+                }
+
+                string text = File.ReadAllText(file);
+                foreach (string marker in InteractiveUiHostForbiddenMarkers)
+                {
+                    if (text.Contains(marker, StringComparison.Ordinal))
+                    {
+                        offenders.Add($"{name}: {Path.GetRelativePath(path, file)} contains '{marker}'");
+                    }
+                }
+            }
+        }
+
+        offenders.ShouldBeEmpty(
+            "Interactive UI hosts must consume EventStore Client libraries and must not host generated or "
+            + "hand-written per-message MVC command/query controllers. Put generated REST controllers in a "
+            + "dedicated external API host instead. Offending files: " + string.Join(", ", offenders));
     }
 
     /// <summary>
@@ -111,10 +174,27 @@ public sealed class DomainModuleAuthoringGuardrailTests
 
         yield return ("Sample", Path.Combine(root, "samples", "Hexalith.EventStore.Sample"));
 
-        string tenants = Path.Combine(root, "Hexalith.Tenants");
-        if (Directory.Exists(Path.Combine(tenants, "src")))
+        string tenants = Path.Combine(root, "references", "Hexalith.Tenants", "src", "Hexalith.Tenants");
+        if (Directory.Exists(tenants))
         {
             yield return ("Tenants", tenants);
+        }
+    }
+
+    private static IEnumerable<(string Name, string Path)> InteractiveUiHostRoots()
+    {
+        string root = FindRepositoryRoot();
+
+        string[] roots =
+        [
+            Path.Combine(root, "samples", "Hexalith.EventStore.Sample.BlazorUI"),
+            Path.Combine(root, "src", "Hexalith.EventStore.Admin.UI"),
+            Path.Combine(root, "references", "Hexalith.Tenants", "src", "Hexalith.Tenants.UI"),
+        ];
+
+        foreach (string path in roots.Where(Directory.Exists))
+        {
+            yield return (Path.GetFileName(path), path);
         }
     }
 
@@ -124,6 +204,14 @@ public sealed class DomainModuleAuthoringGuardrailTests
 
     private static bool IsTestSource(string path)
         => path.Contains(".Tests", StringComparison.Ordinal);
+
+    private static bool IsSourceOrProjectFile(string path)
+    {
+        string extension = Path.GetExtension(path);
+        return string.Equals(extension, ".cs", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(extension, ".csproj", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(extension, ".razor", StringComparison.OrdinalIgnoreCase);
+    }
 
     private static string FindRepositoryRoot()
     {

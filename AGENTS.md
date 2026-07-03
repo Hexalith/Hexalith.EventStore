@@ -152,11 +152,15 @@ samples/
   Hexalith.EventStore.Sample         # Counter domain example
 ```
 
-## NuGet Packages (8 published)
+## NuGet Packages (manifest-driven release set)
 
-Hexalith.EventStore.Contracts, Client, Server, SignalR, Testing, Aspire, ServiceDefaults, DomainService
+The release inventory is defined by `tools/release-packages.json` and currently contains 13 packages:
+
+Hexalith.EventStore.Contracts, Client, Server, SignalR, Testing, Testing.Integration, Aspire, ServiceDefaults, DomainService, RestApi.Generators, Admin.Abstractions, Admin.Cli, Admin.Server.
 
 `ServiceDefaults` and `DomainService` are the domain-service SDK packages (Epic A6): a domain module references only `DomainService` (which pulls in `Client` + `ServiceDefaults` transitively) and writes its domain code plus a two-line host. Both are packable; the active publish list is governed by the release pipeline.
+
+`RestApi.Generators` is a Roslyn source-generator/analyzer package. It is distributed under `analyzers/dotnet/cs` and is referenced as an analyzer by dedicated external API host projects that generate typed REST controllers from `ICommandContract` and `IQueryContract` messages.
 
 Versioning: semantic-release (Conventional Commits, automated on merge to main). Centralized package management via `Directory.Packages.props`.
 
@@ -183,6 +187,7 @@ Domain modules built on Hexalith.EventStore (e.g. the Counter sample, the `Hexal
 - **Persisted read models** — use `IReadModelStore` + `ReadModelWritePolicy` (Client); **pagination cursors** — use `IQueryCursorCodec` / `QueryCursorScope` (Client). Do not hand-roll a state store or cursor codec.
 - **Aspire** — the EventStore AppHost adds the module via `project.AddEventStoreDomainModule(eventStoreResources, appId, …)`; domains don't orchestrate themselves.
 - **Telemetry / health** — use `AddEventStoreDomainTelemetry(domain)` and `AddEventStoreDomainStateStoreHealthCheck(domain)`; do not declare per-domain `ActivitySource`/`Meter`/health-check classes.
+- **Generated REST APIs** — REST controllers are generated from `ICommandContract`/`IQueryContract` messages into dedicated external-facing API hosts. Interactive UI hosts consume EventStore Client libraries and must not host generated or hand-written per-message MVC command/query controllers.
 
 `samples/Hexalith.EventStore.Sample` is the reference domain module. See `_bmad-output/planning-artifacts/sprint-change-proposal-2026-06-02.md` for the rationale.
 
@@ -263,7 +268,7 @@ feat!: rename EventEnvelope.StreamId to AggregateId
 ## CI/CD
 
 - **CI:** GitHub Actions on push/PR to main — restore, build (Release), configured unit/integration test suites, optional Aspire end-to-end tests
-- **Release:** Triggered on merge to main via semantic-release — determines version from Conventional Commits, tests, pack, publish 6 NuGet packages, creates GitHub Release, updates CHANGELOG.md
+- **Release:** Triggered on merge to main via semantic-release — determines version from Conventional Commits, tests, packs and publishes the manifest-driven NuGet package set from `tools/release-packages.json`, creates GitHub Release, updates CHANGELOG.md
 
 ## Key Dependencies
 

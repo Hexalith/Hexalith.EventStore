@@ -8,13 +8,16 @@
 ```mermaid
 flowchart LR
     subgraph Clients
+      ExternalApp[External app]
       UIc[Sample Blazor UI]
       AdminUI[Admin.UI Blazor]
       CLI[Admin.Cli]
       MCP[Admin.Mcp]
     end
 
-    UIc -->|DAPR service invocation| ES[eventstore gateway]
+    ExternalApp -->|typed REST| DomainApi[Generated external API host]
+    DomainApi -->|IEventStoreGatewayClient<br/>DAPR service invocation| ES[eventstore gateway]
+    UIc -->|EventStore Client libraries<br/>DAPR service invocation| ES
     AdminUI -->|REST| AdminSrv[eventstore-admin]
     CLI -->|REST| AdminSrv
     MCP -->|REST| AdminSrv
@@ -32,7 +35,9 @@ flowchart LR
 
 | From | To | Transport | Details |
 |------|----|-----------|---------|
-| Client / Sample UI | `eventstore` gateway | DAPR service invocation (or REST) | Submit commands/queries; receive SignalR projection-changed |
+| External clients | Dedicated generated API hosts (`sample-api`, `tenants-api`, custom) | REST (JWT) | Call typed per-domain REST endpoints generated from `ICommandContract`/`IQueryContract` messages |
+| Dedicated generated API hosts | `eventstore` gateway | DAPR service invocation through `IEventStoreGatewayClient` | Generated controllers submit command/query gateway requests; no MediatR/domain-service/actor/state-store bypass |
+| Interactive UI hosts | `eventstore` gateway | EventStore Client libraries over DAPR service invocation | Submit commands/queries; receive SignalR projection-changed; no generated or hand-written per-message MVC command/query controllers |
 | `eventstore` | Domain services (`sample`, `tenants`, custom) | **DAPR service invocation** | `DaprDomainServiceInvoker` resolves (AppId, MethodName) via `IDomainServiceResolver` from `EventStore:DomainServices`; version from command extensions (`v{n}`) |
 | `eventstore` | State store | DAPR state (actor-scoped) | Events (write-once), metadata, snapshots, ETags, projection state, command status/archive |
 | `eventstore` | Pub/Sub | DAPR pub/sub | Events as CloudEvents 1.0; topic `{tenant}.{domain}.events`; dead-letter `deadletter.*` |
@@ -49,6 +54,7 @@ flowchart LR
 | `eventstore` | `eventstore` | ✅ | ✅ | Fixed `DaprHttpPort=3501` for admin metadata queries |
 | `eventstore-admin` | `eventstore-admin` | ✅ (reads) | ❌ | No pub/sub; reads only; resiliency path injected (run-mode) |
 | `eventstore-admin-ui` | `eventstore-admin-ui` | ❌ | ❌ | Service invocation to admin only |
+| `sample-api` / `tenants-api` | `sample-api` / `tenants-api` | ❌ | ❌ | Dedicated generated REST facades; invoke `eventstore` through gateway client |
 | `sample` / `tenants` | `sample` / `tenants` | ❌ | ❌ | **Zero infrastructure access** (D4); invoked by eventstore |
 
 ## Domain modules are domain-centric
@@ -63,15 +69,20 @@ and event-subscription/projection-consumer plumbing.
 
 A conforming domain module therefore does **not** ship its own `*.AppHost`, `*.Aspire`, or `*.ServiceDefaults`
 projects, and does **not** re-implement projection/query actors or DAPR sidecar wiring. The reference shape is
-`samples/Hexalith.EventStore.Sample` (≈ domain code + a 2-line host). The `Hexalith.Tenants` submodule
-currently diverges from this and is being aligned — see
-`_bmad-output/planning-artifacts/sprint-change-proposal-2026-06-02.md`.
+`samples/Hexalith.EventStore.Sample` (≈ domain code + a 2-line host). Tenants uses the same split: domain
+service stays headless/domain-centric, and public typed REST is hosted by a dedicated external API host.
+
+Generated public REST is outside the domain service and outside interactive UI hosts. External API hosts
+reference `Hexalith.EventStore.RestApi.Generators` as an analyzer and expose typed REST routes, but generated
+controllers still call the EventStore gateway through `IEventStoreGatewayClient`. They do not call MediatR,
+domain services, DAPR actors, state stores, projection actors, or query dispatchers directly.
 
 ## Access control (D4 / FR34)
 
 Each receiving service has its own DAPR Configuration CRD (`accesscontrol*.yaml`):
 
-- `eventstore` allows `eventstore-admin` (delegation) and `sample-blazor-ui` (queries).
+- `eventstore` allows `eventstore-admin` (delegation), interactive UI hosts that use EventStore Client
+  libraries, and generated external API hosts such as `sample-api` / `tenants-api`.
 - `eventstore-admin` allows `eventstore-admin-ui` (D13).
 - `sample` / `tenants` allow `eventstore` POST-only (command invocation).
 - Self-hosted/dev: allow-by-default + public trust domain. **Production: deny-by-default + mTLS.**

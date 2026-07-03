@@ -21,7 +21,7 @@
 | **Gateway entry** | `src/Hexalith.EventStore/Program.cs` (CommandApi, `http://localhost:8080`) |
 | **Local topology** | `aspire run` from `src/Hexalith.EventStore.AppHost` (dashboard `https://localhost:17017`) |
 | **Infra abstraction** | DAPR sidecars; swap state store / pub/sub via YAML, zero code change |
-| **Published packages** | Contracts, Client, Server, SignalR, Testing, Aspire (6 NuGet) |
+| **Published packages** | Manifest-driven package set in `tools/release-packages.json` (core, domain-service, REST generator, admin, and testing packages) |
 | **Container images** | eventstore, eventstore-admin, eventstore-admin-ui, sample, sample-blazor-ui, tenants (6) |
 
 ## Generated Documentation

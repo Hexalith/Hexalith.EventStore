@@ -74,10 +74,9 @@ state.Apply(Event)                          // fold events back into state
 - **Samples** — a Counter domain (fluent aggregate + legacy processor) and a Blazor sample UI showing
   three real-time refresh patterns.
 
-## Published NuGet Packages (6)
+## Published NuGet Packages
 
-`Hexalith.EventStore.Contracts`, `.Client`, `.Server`, `.SignalR`, `.Testing`, `.Aspire`
-(versioned by semantic-release on merge to `main`).
+The NuGet release inventory is manifest-driven by `tools/release-packages.json` and versioned by semantic-release on merge to `main`. It includes the core packages (`Contracts`, `Client`, `Server`, `SignalR`, `Testing`, `Aspire`), domain-service packages (`ServiceDefaults`, `DomainService`), integration-test support (`Testing.Integration`), the REST source-generator/analyzer package (`RestApi.Generators`), and admin packages (`Admin.Abstractions`, `Admin.Cli`, `Admin.Server`).
 
 ## Container Images (6)
 
