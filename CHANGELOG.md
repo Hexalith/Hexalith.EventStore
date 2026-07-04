@@ -1,3 +1,11 @@
+## [3.33.6](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.33.5...v3.33.6) (2026-07-04)
+
+
+### Bug Fixes
+
+* update sprint status to 'review' for D-7-proof-tenants-ui-host-submodule; adjust last updated timestamps in sprint-status.yaml; update subproject references for Hexalith.Tenants and Hexalith.FrontComposer; add investigation document for Hexalith.EventStore.Client 3.33.5 NuGet availability ([04c04f6](https://github.com/Hexalith/Hexalith.EventStore/commit/04c04f65c422d3601bae10069375cb90cff28705))
+* update subproject reference for Hexalith.Tenants to indicate a dirty state ([6645dd6](https://github.com/Hexalith/Hexalith.EventStore/commit/6645dd695b659d4808c6be4a9cd88108d9d57044))
+
 ## [3.33.5](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.33.4...v3.33.5) (2026-07-04)
 
 
