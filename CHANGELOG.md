@@ -1,3 +1,10 @@
+## [3.33.2](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.33.1...v3.33.2) (2026-07-04)
+
+
+### Bug Fixes
+
+* trim whitespace from ApiScope values in RestRouteAttribute and RestApiRouteDescriptor ([90b352d](https://github.com/Hexalith/Hexalith.EventStore/commit/90b352d62344c797fade0ce008672d8f7d07abb7))
+
 ## [3.33.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.33.0...v3.33.1) (2026-07-04)
 
 
