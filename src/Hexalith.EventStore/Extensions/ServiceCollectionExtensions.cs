@@ -111,6 +111,7 @@ public static class EventStoreServiceCollectionExtensions {
         // Register concrete actor-based implementations (always available for DI)
         _ = services.AddScoped<ActorTenantValidator>();
         _ = services.AddScoped<ActorRbacValidator>();
+        _ = services.AddScoped<AdminTenantAuthorizationFilter>();
 
         // Factory delegate selects implementation at resolve-time based on configuration
         _ = services.AddScoped<ITenantValidator>(sp => {

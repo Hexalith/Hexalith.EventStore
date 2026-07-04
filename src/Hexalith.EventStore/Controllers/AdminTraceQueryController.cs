@@ -2,6 +2,7 @@ using Dapr.Actors;
 using Dapr.Actors.Client;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
+using Hexalith.EventStore.Authorization;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Actors;
@@ -21,6 +22,7 @@ namespace Hexalith.EventStore.Controllers;
 /// </summary>
 [ApiController]
 [Authorize]
+[ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
 [Route("api/v1/admin/traces")]
 [Tags("Admin - Trace Queries")]
 public class AdminTraceQueryController(

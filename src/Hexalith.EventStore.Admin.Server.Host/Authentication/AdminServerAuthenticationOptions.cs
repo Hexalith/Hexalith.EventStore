@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.Admin.Server.Host.Authentication;
@@ -15,18 +16,35 @@ public record AdminServerAuthenticationOptions {
     public string? SigningKey { get; init; }
 
     public bool RequireHttpsMetadata { get; init; } = true;
+
+    /// <summary>
+    /// Gets a value indicating whether symmetric-key JWT validation is permitted outside Development.
+    /// </summary>
+    public bool AllowInsecureSymmetricKey { get; init; }
 }
 
 /// <summary>
 /// Validates Admin.Server host authentication configuration at startup.
 /// </summary>
-public class ValidateAdminServerAuthenticationOptions : IValidateOptions<AdminServerAuthenticationOptions> {
+public class ValidateAdminServerAuthenticationOptions(IHostEnvironment environment) : IValidateOptions<AdminServerAuthenticationOptions> {
+    private readonly IHostEnvironment _environment = environment;
+
     public ValidateOptionsResult Validate(string? name, AdminServerAuthenticationOptions options) {
         ArgumentNullException.ThrowIfNull(options);
 
         if (string.IsNullOrEmpty(options.Authority) && string.IsNullOrEmpty(options.SigningKey)) {
             return ValidateOptionsResult.Fail(
                 "Authentication:JwtBearer requires either 'Authority' (production OIDC) or 'SigningKey' (development symmetric key) to be configured.");
+        }
+
+        if (!_environment.IsDevelopment()
+            && string.IsNullOrEmpty(options.Authority)
+            && !options.AllowInsecureSymmetricKey) {
+            return ValidateOptionsResult.Fail(
+                "Authentication:JwtBearer:Authority (OIDC) is required outside the Development environment. "
+                + "The symmetric 'SigningKey' path is Development-only; set "
+                + "'Authentication:JwtBearer:AllowInsecureSymmetricKey' to true to knowingly override for a "
+                + "trusted non-production deployment.");
         }
 
         if (string.IsNullOrEmpty(options.Issuer)) {
