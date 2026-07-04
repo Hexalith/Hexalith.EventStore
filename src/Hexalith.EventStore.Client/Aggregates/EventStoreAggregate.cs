@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Text.Json;
 
 using Hexalith.EventStore.Client.Configuration;
+using Hexalith.EventStore.Client.Conventions;
 using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Contracts.Aggregates;
 using Hexalith.EventStore.Contracts.Commands;
@@ -150,8 +151,8 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregate
     }
 
     /// <summary>
-    /// Attempts to read the kebab-case <see cref="ICommandContract.CommandType"/> discriminator declared by a
-    /// command type that implements <see cref="ICommandContract"/>. Returns <see langword="false"/> for commands
+    /// Attempts to read and validate the kebab-case <see cref="ICommandContract.CommandType"/> discriminator declared
+    /// by a command type that implements <see cref="ICommandContract"/>. Returns <see langword="false"/> for commands
     /// that do not implement the contract, so they keep their CLR short-name dispatch only.
     /// </summary>
     private static bool TryGetContractCommandType(Type commandType, out string? commandTypeValue) {
@@ -163,8 +164,16 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregate
         PropertyInfo? property = commandType.GetProperty(
             nameof(ICommandContract.CommandType),
             BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);
-        commandTypeValue = property?.GetValue(null) as string;
-        return !string.IsNullOrWhiteSpace(commandTypeValue);
+        if (property is null) {
+            throw new InvalidOperationException(
+                $"Command contract '{commandType.FullName}' does not declare a public static {nameof(ICommandContract.CommandType)} property.");
+        }
+
+        commandTypeValue = property.GetValue(null) as string
+            ?? throw new InvalidOperationException(
+                $"Command contract '{commandType.FullName}' returned a null {nameof(ICommandContract.CommandType)} value.");
+        NamingConventionEngine.ValidateKebabCase(commandTypeValue, nameof(ICommandContract.CommandType));
+        return true;
     }
 
     private static TState? RehydrateState(object? currentState, AggregateMetadata metadata) =>

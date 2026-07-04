@@ -6,7 +6,7 @@ baseline_commit: 5db0bfd9c4c846d059710133ea017a13e82a9c07
 
 # Story D.6: Proof - Counter Commands
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -142,6 +142,16 @@ Source of truth: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-06
   - [x] Run required tests/builds individually.
   - [x] Run Aspire smoke if feasible; otherwise record exact blocker.
   - [x] Confirm `git status --short` contains only intended D6 changes plus known pre-existing unrelated worktree changes.
+
+### Review Findings
+
+- [x] [Review][Patch] Referenced Counter command routes lack `ApiScope = "counter"`, so `Sample.Api` filters them out instead of generating command actions [samples/Hexalith.EventStore.Sample.Contracts/Counter/Commands/IncrementCounter.cs:13]
+- [x] [Review][Patch] Generated command proof should assert all four real Sample command actions, not only one synthetic referenced command fixture [tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiControllerGenerationTests.cs:596]
+- [x] [Review][Patch] `sample-api` DAPR access control still allows only `POST /api/v1/queries`; generated command endpoints need `POST /api/v1/commands` [src/Hexalith.EventStore.AppHost/DaprComponents/accesscontrol.yaml:61]
+- [x] [Review][Patch] D8 story and sprint-status changes are included in the D6 review diff despite D6 AC7 scope limits [_bmad-output/implementation-artifacts/D-8-packaging-docs-guardrail.md:1]
+- [x] [Review][Patch] `ICommandContract.CommandType` alias registration silently ignores blank or invalid contract metadata instead of failing fast [src/Hexalith.EventStore.Client/Aggregates/EventStoreAggregate.cs:163]
+- [x] [Review][Patch] `CounterCommandForm` has no early `_isSending` guard, so rapid duplicate click events can submit multiple commands before disabled state renders [samples/Hexalith.EventStore.Sample.BlazorUI/Components/CounterCommandForm.razor:59]
+- [x] [Review][Patch] New aggregate dispatch tests use raw xUnit assertions instead of the repo-required Shouldly assertions [tests/Hexalith.EventStore.Client.Tests/Aggregates/EventStoreAggregateTests.cs:391]
 
 ## Dev Notes
 

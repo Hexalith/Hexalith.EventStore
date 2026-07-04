@@ -9,6 +9,8 @@ using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Results;
 
+using Shouldly;
+
 namespace Hexalith.EventStore.Client.Tests.Aggregates;
 
 public class EventStoreAggregateTests : IDisposable {
@@ -140,6 +142,19 @@ public class EventStoreAggregateTests : IDisposable {
 
     private sealed class ContractAggregate : EventStoreAggregate<CounterState> {
         public static DomainResult Handle(ContractIncrement command, CounterState? state)
+            => DomainResult.Success(new IEventPayload[] { new CounterIncremented() });
+    }
+
+    private sealed record InvalidContractIncrement(string CounterId = "c-1") : ICommandContract {
+        public static string Domain => "test";
+
+        public static string CommandType => "Invalid Command";
+
+        public string AggregateId => CounterId;
+    }
+
+    private sealed class InvalidContractAggregate : EventStoreAggregate<CounterState> {
+        public static DomainResult Handle(InvalidContractIncrement command, CounterState? state)
             => DomainResult.Success(new IEventPayload[] { new CounterIncremented() });
     }
 
@@ -388,8 +403,8 @@ public class EventStoreAggregateTests : IDisposable {
 
         DomainResult result = await aggregate.ProcessAsync(command, null);
 
-        Assert.True(result.IsSuccess);
-        _ = Assert.IsType<CounterIncremented>(result.Events[0]);
+        result.IsSuccess.ShouldBeTrue();
+        result.Events[0].ShouldBeOfType<CounterIncremented>();
     }
 
     [Fact]
@@ -400,8 +415,8 @@ public class EventStoreAggregateTests : IDisposable {
 
         DomainResult result = await aggregate.ProcessAsync(command, null);
 
-        Assert.True(result.IsSuccess);
-        _ = Assert.IsType<CounterIncremented>(result.Events[0]);
+        result.IsSuccess.ShouldBeTrue();
+        result.Events[0].ShouldBeOfType<CounterIncremented>();
     }
 
     [Fact]
@@ -415,8 +430,19 @@ public class EventStoreAggregateTests : IDisposable {
 
         DomainResult result = await aggregate.ProcessAsync(command, null);
 
-        Assert.True(result.IsSuccess);
-        _ = Assert.IsType<CounterIncremented>(result.Events[0]);
+        result.IsSuccess.ShouldBeTrue();
+        result.Events[0].ShouldBeOfType<CounterIncremented>();
+    }
+
+    [Fact]
+    public async Task ProcessAsync_ContractCommand_InvalidCommandType_ThrowsArgumentException() {
+        var aggregate = new InvalidContractAggregate();
+        CommandEnvelope command = CreateCommandWithType(new InvalidContractIncrement(), nameof(InvalidContractIncrement));
+
+        ArgumentException ex = await Should.ThrowAsync<ArgumentException>(
+            () => aggregate.ProcessAsync(command, null));
+
+        ex.Message.ShouldContain(nameof(ICommandContract.CommandType));
     }
 
     // --- State rehydration tests ---

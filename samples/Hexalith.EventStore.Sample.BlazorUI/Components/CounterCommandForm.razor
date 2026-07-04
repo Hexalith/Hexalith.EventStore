@@ -59,6 +59,11 @@
     private async Task SendCommandAsync<TCommand>(TCommand command)
         where TCommand : ICommandContract
     {
+        if (_isSending)
+        {
+            return;
+        }
+
         _isSending = true;
         _error = null;
         StateHasChanged();

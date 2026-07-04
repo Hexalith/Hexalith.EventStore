@@ -350,21 +350,32 @@ public sealed class RestApiControllerGenerationTests
         string source = RestApiGeneratorTestHarness.GetGeneratedSource(runResult, ".Controller.g.cs");
 
         source.ShouldContain("[Route(\"api/{tenant}/counter\")]");
-        source.ShouldContain("[HttpPost(\"{counterId}/increment\")]");
         source.ShouldContain("[FromRoute(Name = \"tenant\")] string tenant");
         source.ShouldContain("[FromRoute(Name = \"counterId\")] string counterId");
-        source.ShouldContain("[FromBody] global::Hexalith.EventStore.Sample.Counter.Commands.IncrementCounter? body");
         source.ShouldContain("Route value 'counterId' does not match the command body.");
         source.ShouldContain("new SubmitCommandRequest(");
         source.ShouldContain("UniqueIdHelper.GenerateSortableUniqueStringId()");
-        source.ShouldContain("global::Hexalith.EventStore.Sample.Counter.Commands.IncrementCounter.Domain");
-        source.ShouldContain("global::Hexalith.EventStore.Sample.Counter.Commands.IncrementCounter.CommandType");
         source.ShouldContain("body.AggregateId");
         source.ShouldContain(".SubmitCommandAsync(__hexalithRequest, cancellationToken)");
         source.ShouldContain("Response.Headers[\"Retry-After\"] = \"1\";");
         source.ShouldContain("Response.Headers[\"Location\"]");
         source.ShouldContain("StatusCodes.Status202Accepted");
         source.ShouldContain("ConfigureAwait(false)");
+
+        foreach ((string typeName, string verb) in new[]
+        {
+            ("IncrementCounter", "increment"),
+            ("DecrementCounter", "decrement"),
+            ("ResetCounter", "reset"),
+            ("CloseCounter", "close"),
+        })
+        {
+            string fullName = $"global::Hexalith.EventStore.Sample.Counter.Commands.{typeName}";
+            source.ShouldContain($"[HttpPost(\"{{counterId}}/{verb}\")]");
+            source.ShouldContain($"[FromBody] {fullName}? body");
+            source.ShouldContain($"{fullName}.Domain");
+            source.ShouldContain($"{fullName}.CommandType");
+        }
 
         source.ShouldNotContain("DomainQueryDispatcher");
         source.ShouldNotContain("Dapr");
@@ -681,6 +692,30 @@ public sealed class RestApiControllerGenerationTests
         {
             public static string Domain => "counter";
             public static string CommandType => "increment-counter";
+            public string AggregateId => CounterId;
+        }
+
+        [RestRoute(RestVerb.Post, "{counterId}/decrement", ApiScope = "counter")]
+        public sealed record DecrementCounter(string CounterId = "counter-1") : ICommandContract
+        {
+            public static string Domain => "counter";
+            public static string CommandType => "decrement-counter";
+            public string AggregateId => CounterId;
+        }
+
+        [RestRoute(RestVerb.Post, "{counterId}/reset", ApiScope = "counter")]
+        public sealed record ResetCounter(string CounterId = "counter-1") : ICommandContract
+        {
+            public static string Domain => "counter";
+            public static string CommandType => "reset-counter";
+            public string AggregateId => CounterId;
+        }
+
+        [RestRoute(RestVerb.Post, "{counterId}/close", ApiScope = "counter")]
+        public sealed record CloseCounter(string CounterId = "counter-1") : ICommandContract
+        {
+            public static string Domain => "counter";
+            public static string CommandType => "close-counter";
             public string AggregateId => CounterId;
         }
         """;
