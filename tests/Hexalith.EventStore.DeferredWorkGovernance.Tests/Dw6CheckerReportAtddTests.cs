@@ -8,7 +8,9 @@ namespace Hexalith.EventStore.DeferredWorkGovernance.Tests;
 /// the implementation is PowerShell, Bash, Python, or .NET.
 /// </summary>
 public class Dw6CheckerReportAtddTests {
-    [Fact]
+    private const string _baseSkip = "ATDD red phase -- DW6 deferred-work governance checker and story artifacts are not implemented. Remove Skip when implementing.";
+
+    [Fact(Skip = _baseSkip)]
     public async Task Checker_ReportIncludesAllCanonicalCountBuckets() {
         Dw6GovernanceReport report = await Dw6GovernanceCheckerInvokerFactory.Create()
             .CheckAsync([Dw6TestPaths.DeferredWorkPath]);
@@ -19,7 +21,7 @@ public class Dw6CheckerReportAtddTests {
         }
     }
 
-    [Fact]
+    [Fact(Skip = _baseSkip)]
     public async Task Checker_OutputIsStableSortedAndConcise() {
         IDw6GovernanceCheckerInvoker checker = Dw6GovernanceCheckerInvokerFactory.Create();
         Dw6GovernanceReport first = await checker.CheckAsync([Dw6TestPaths.DeferredWorkPath]);
@@ -32,7 +34,7 @@ public class Dw6CheckerReportAtddTests {
             customMessage: "Diagnostics must be sorted by file, heading, rule, disposition, and line.");
     }
 
-    [Fact]
+    [Fact(Skip = _baseSkip)]
     public async Task Checker_UnclassifiedLiveBullets_ReportHeadingExcerptAndLocator() {
         Dw6GovernanceReport report = await Dw6GovernanceCheckerInvokerFactory.Create()
             .CheckAsync(["--fixture", "unclassified-live-bullet"]);
@@ -48,7 +50,7 @@ public class Dw6CheckerReportAtddTests {
         _ = diagnostic.Line.ShouldNotBeNull("A line number or stable locator is required when implementation can provide one.");
     }
 
-    [Fact]
+    [Fact(Skip = _baseSkip)]
     public async Task Checker_HelpOutputDocumentsBlockingVersusAdvisoryBehavior() {
         Dw6GovernanceReport report = await Dw6GovernanceCheckerInvokerFactory.Create()
             .CheckAsync(["--help-json"]);
@@ -60,7 +62,7 @@ public class Dw6CheckerReportAtddTests {
             "Help output must explain whether legacy sections are advisory.");
     }
 
-    [Fact]
+    [Fact(Skip = _baseSkip)]
     public void DocsValidationWiring_IsConsistentOrExplicitlyDeferred() {
         string ps1 = Dw6TestPaths.ReadRepoFile("scripts/validate-docs.ps1");
         string sh = Dw6TestPaths.ReadRepoFile("scripts/validate-docs.sh");

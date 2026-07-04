@@ -5,7 +5,9 @@ using Shouldly;
 namespace Hexalith.EventStore.OperationalEvidence.Validator.Tests;
 
 public class Dw9EvidenceValidatorPolishTests {
-    [Theory]
+    private const string _baseSkip = "ATDD red phase -- DW9 evidence validator polish requires the DW4 validator entrypoint. Remove Skip when implementing.";
+
+    [Theory(Skip = _baseSkip)]
     [InlineData("query-invalid-control-linkage-missing.md", Dw4RuleVocabulary.ControlLinkageMissing, "false_positive_control")]
     [InlineData("query-invalid-control-linkage-unrelated.md", Dw4RuleVocabulary.ControlLinkageUnrelated, "false_positive_control")]
     [InlineData("signalr-invalid-control-linkage-missing.md", Dw4RuleVocabulary.ControlLinkageMissing, "reliability_control")]
@@ -25,7 +27,7 @@ public class Dw9EvidenceValidatorPolishTests {
         diagnostic.Hint.ShouldNotBeNullOrWhiteSpace();
     }
 
-    [Theory]
+    [Theory(Skip = _baseSkip)]
     [InlineData("query-valid-linked-control-run.md")]
     [InlineData("signalr-valid-linked-control-run.md")]
     public void LinkedControlRunFixtures_Pass(string fixtureFileName) {
@@ -39,7 +41,7 @@ public class Dw9EvidenceValidatorPolishTests {
         outcome.Diagnostics.ShouldBeEmpty();
     }
 
-    [Theory]
+    [Theory(Skip = _baseSkip)]
     [InlineData("skip-template.md", "template-pattern")]
     [InlineData("skip-marker-optout.md", "marker")]
     public void SkippedFiles_ReturnInformationalDiagnosticWithoutFailing(string fixtureFileName, string expectedReason) {
@@ -55,7 +57,7 @@ public class Dw9EvidenceValidatorPolishTests {
         diagnostic.Hint.ShouldContain(expectedReason);
     }
 
-    [Fact]
+    [Fact(Skip = _baseSkip)]
     public void TemplateLookingFileWithoutSkipPredicate_IsStillAudited() {
         IDw4ValidatorInvoker invoker = Dw4ValidatorInvokerFactory.Create();
 

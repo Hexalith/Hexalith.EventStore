@@ -21,9 +21,9 @@ public class OpenApiSpecTests : IClassFixture<OpenApiWebApplicationFactory> {
         HttpClient client = _factory.CreateClient();
 
         HttpResponseMessage response = await client.GetAsync("/openapi/v1.json").ConfigureAwait(false);
-        response.StatusCode.ShouldBe(HttpStatusCode.OK);
-
         string content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK, content);
+
         return JsonSerializer.Deserialize<JsonElement>(content);
     }
 
@@ -97,8 +97,12 @@ public class OpenApiSpecTests : IClassFixture<OpenApiWebApplicationFactory> {
         JsonElement submitOperation = paths.GetProperty("/api/v1/commands").GetProperty("post");
         JsonElement statusOperation = paths.GetProperty("/api/v1/commands/status/{correlationId}").GetProperty("get");
 
-        string? submitDescription = submitOperation.GetProperty("description").GetString();
-        string? statusDescription = statusOperation.GetProperty("description").GetString();
+        submitOperation.TryGetProperty("description", out JsonElement submitDescriptionElement)
+            .ShouldBeTrue(submitOperation.GetRawText());
+        statusOperation.TryGetProperty("description", out JsonElement statusDescriptionElement)
+            .ShouldBeTrue(statusOperation.GetRawText());
+        string? submitDescription = submitDescriptionElement.GetString();
+        string? statusDescription = statusDescriptionElement.GetString();
 
         submitOperation.GetProperty("summary").GetString().ShouldBe("Submits a command for asynchronous processing.");
         _ = submitDescription.ShouldNotBeNull();

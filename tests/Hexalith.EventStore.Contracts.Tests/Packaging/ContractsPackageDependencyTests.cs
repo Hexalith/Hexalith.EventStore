@@ -31,7 +31,7 @@ public sealed class ContractsPackageDependencyTests
             .ShouldNotBeNull()
             .Value;
 
-        packageVersionReference.ShouldBe("2.24.2");
+        packageVersionReference.ShouldBe("2.26.0");
     }
 
     [Fact]

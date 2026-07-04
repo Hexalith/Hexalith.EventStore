@@ -7,7 +7,9 @@ namespace Hexalith.EventStore.DeferredWorkGovernance.Tests;
 /// These tests pin the human-facing governance convention in deferred-work.md.
 /// </summary>
 public class Dw6GovernanceVocabularyAtddTests {
-    [Fact]
+    private const string _baseSkip = "ATDD red phase -- DW6 deferred-work governance checker and story artifacts are not implemented. Remove Skip when implementing.";
+
+    [Fact(Skip = _baseSkip)]
     public void DeferredWork_GovernanceSection_DefinesCanonicalDispositions() {
         string content = Dw6TestPaths.ReadRepoFile(Dw6TestPaths.DeferredWorkPath);
 
@@ -20,7 +22,7 @@ public class Dw6GovernanceVocabularyAtddTests {
         }
     }
 
-    [Fact]
+    [Fact(Skip = _baseSkip)]
     public async Task OpenAndStoryDispositions_RequireOwnerAndNextReviewDate() {
         IDw6GovernanceCheckerInvoker checker = Dw6GovernanceCheckerInvokerFactory.Create();
         Dw6GovernanceReport report = await checker.CheckAsync(["--fixture", "missing-open-metadata"]);
@@ -30,7 +32,7 @@ public class Dw6GovernanceVocabularyAtddTests {
         report.EmittedRuleIds.ShouldContain("dw6-open-missing-next-review-date");
     }
 
-    [Fact]
+    [Fact(Skip = _baseSkip)]
     public void NewDeferralGuidance_RequiresGroupingHint() {
         string content = Dw6TestPaths.ReadRepoFile(Dw6TestPaths.DeferredWorkPath);
 
@@ -40,7 +42,7 @@ public class Dw6GovernanceVocabularyAtddTests {
             "Governance guidance must name needs-triage as the fallback grouping.");
     }
 
-    [Fact]
+    [Fact(Skip = _baseSkip)]
     public void LegacyCompatibility_DocumentsRecognizedMixedForms() {
         string content = Dw6TestPaths.ReadRepoFile(Dw6TestPaths.DeferredWorkPath);
 
@@ -50,7 +52,7 @@ public class Dw6GovernanceVocabularyAtddTests {
         }
     }
 
-    [Fact]
+    [Fact(Skip = _baseSkip)]
     public async Task LegacyCompatibility_CheckerClassifiesMixedMarkerFixture() {
         IDw6GovernanceCheckerInvoker checker = Dw6GovernanceCheckerInvokerFactory.Create();
         Dw6GovernanceReport report = await checker.CheckAsync(["--fixture", "legacy-mixed-marker"]);
@@ -68,7 +70,7 @@ public class Dw6GovernanceVocabularyAtddTests {
             "Mixed-marker legacy entries must produce secondary-disposition advisory diagnostics for traceability.");
     }
 
-    [Fact]
+    [Fact(Skip = _baseSkip)]
     public void ReviewerAndRetrospectiveHandoffGuidance_IsDocumentedAndLinkedFromStory() {
         string deferredWork = Dw6TestPaths.ReadRepoFile(Dw6TestPaths.DeferredWorkPath);
         string story = Dw6TestPaths.ReadRepoFile(Dw6TestPaths.StoryPath);

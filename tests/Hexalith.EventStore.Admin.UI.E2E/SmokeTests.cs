@@ -16,11 +16,15 @@ public class SmokeTests : IClassFixture<WebApplicationFactory<Program>>
         _factory = factory;
     }
 
+    private WebApplicationFactory<Program> CreateSidecarAwareFactory()
+        => _factory.WithWebHostBuilder(builder => builder.UseSetting("DAPR_HTTP_PORT", "3500"));
+
     [Fact]
     public async Task LandingPage_ReturnsSuccessAndContainsShell()
     {
         // Arrange
-        HttpClient client = _factory.CreateClient();
+        using WebApplicationFactory<Program> factory = CreateSidecarAwareFactory();
+        HttpClient client = factory.CreateClient();
 
         // Act
         HttpResponseMessage response = await client.GetAsync("/");
@@ -36,12 +40,15 @@ public class SmokeTests : IClassFixture<WebApplicationFactory<Program>>
     public async Task LandingPage_HasSkipToMainContentLink()
     {
         // Arrange
-        HttpClient client = _factory.CreateClient();
+        using WebApplicationFactory<Program> factory = CreateSidecarAwareFactory();
+        HttpClient client = factory.CreateClient();
 
         // Act
-        string content = await (await client.GetAsync("/")).Content.ReadAsStringAsync();
+        HttpResponseMessage response = await client.GetAsync("/");
+        string content = await response.Content.ReadAsStringAsync();
 
         // Assert — accessibility: skip-to-main-content link present
+        response.StatusCode.ShouldBe(System.Net.HttpStatusCode.OK);
         content.ShouldContain("Skip to main content");
     }
 
@@ -49,12 +56,15 @@ public class SmokeTests : IClassFixture<WebApplicationFactory<Program>>
     public async Task LandingPage_HasSemanticHtml()
     {
         // Arrange
-        HttpClient client = _factory.CreateClient();
+        using WebApplicationFactory<Program> factory = CreateSidecarAwareFactory();
+        HttpClient client = factory.CreateClient();
 
         // Act
-        string content = await (await client.GetAsync("/")).Content.ReadAsStringAsync();
+        HttpResponseMessage response = await client.GetAsync("/");
+        string content = await response.Content.ReadAsStringAsync();
 
         // Assert — semantic HTML structure
+        response.StatusCode.ShouldBe(System.Net.HttpStatusCode.OK);
         content.ShouldContain("<main");
         content.ShouldContain("role=\"main\"");
         content.ShouldContain("<nav");
@@ -64,7 +74,8 @@ public class SmokeTests : IClassFixture<WebApplicationFactory<Program>>
     public async Task ShellRendersOnColdFirstRequest()
     {
         // Arrange
-        HttpClient client = _factory.CreateClient();
+        using WebApplicationFactory<Program> factory = CreateSidecarAwareFactory();
+        HttpClient client = factory.CreateClient();
 
         // Act — the first request pays cold JIT + Razor / static-asset warmup (~15s
         // observed on a dev box).

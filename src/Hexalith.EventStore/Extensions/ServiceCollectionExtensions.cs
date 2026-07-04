@@ -387,6 +387,8 @@ public static class EventStoreServiceCollectionExtensions {
                 return Task.CompletedTask;
             });
 
+            _ = options.AddOperationTransformer<CommandDocumentationTransformer>();
+
             // Add pre-populated example payloads (Story 3.6, UX-DR13)
             _ = options.AddOperationTransformer<CommandExampleTransformer>();
         });

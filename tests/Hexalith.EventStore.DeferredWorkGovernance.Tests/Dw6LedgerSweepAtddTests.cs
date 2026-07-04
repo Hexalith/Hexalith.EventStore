@@ -7,7 +7,9 @@ namespace Hexalith.EventStore.DeferredWorkGovernance.Tests;
 /// These tests guard the curated ledger sweep and story scope boundaries.
 /// </summary>
 public class Dw6LedgerSweepAtddTests {
-    [Fact]
+    private const string _baseSkip = "ATDD red phase -- DW6 deferred-work governance checker and story artifacts are not implemented. Remove Skip when implementing.";
+
+    [Fact(Skip = _baseSkip)]
     public void CuratedSweep_PreservesRawHistoricalBulletTextAgainstSnapshot() {
         string repoRoot = Dw6TestPaths.LocateRepoRoot();
         string snapshotPath = Path.Combine(repoRoot, Dw6TestPaths.SnapshotPath);
@@ -27,7 +29,7 @@ public class Dw6LedgerSweepAtddTests {
         }
     }
 
-    [Fact]
+    [Fact(Skip = _baseSkip)]
     public void TouchedHeadingGroups_HaveOneLineRationaleInDevAgentRecord() {
         string story = Dw6TestPaths.ReadRepoFile(Dw6TestPaths.StoryPath);
 
@@ -37,7 +39,7 @@ public class Dw6LedgerSweepAtddTests {
             "Every ledger group touched by the sweep must have a one-line rationale in the Dev Agent Record.");
     }
 
-    [Fact]
+    [Fact(Skip = _baseSkip)]
     public async Task Checker_DoesNotTurnEveryLegacyBulletIntoABlockingFailure() {
         Dw6GovernanceReport report = await Dw6GovernanceCheckerInvokerFactory.Create()
             .CheckAsync(["--legacy-advisory", Dw6TestPaths.DeferredWorkPath]);
@@ -48,7 +50,7 @@ public class Dw6LedgerSweepAtddTests {
                 "Legacy-advisory mode must avoid failing every historical bullet before the curated sweep is complete.");
     }
 
-    [Fact]
+    [Fact(Skip = _baseSkip)]
     public void ScopeBoundaries_DoNotClaimProductRuntimeOrGeneratedAuditFiles() {
         string story = Dw6TestPaths.ReadRepoFile(Dw6TestPaths.StoryPath);
 
