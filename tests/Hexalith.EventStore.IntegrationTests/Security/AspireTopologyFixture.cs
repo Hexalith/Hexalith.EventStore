@@ -51,6 +51,7 @@ public class AspireTopologyFixture : IAsyncLifetime {
         // Program.cs allows disabling Keycloak via EnableKeycloak=false for standalone runs,
         // but this test suite depends on Keycloak being available.
         SnapshotAndSet("EnableKeycloak", "true");
+        SnapshotAndSet("EventStore__Actors__AggregateActorTypeName", $"AggregateActorIntegration{Guid.NewGuid():N}");
 
         // Opt-in container reuse for faster LOCAL test iteration (default OFF so CI stays
         // cold/clean). Set KEYCLOAK_TEST_REUSE=true to keep the Keycloak container warm

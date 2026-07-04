@@ -109,15 +109,15 @@ public class KeycloakAuthenticationTests {
     /// </summary>
     [Fact]
     public async Task SubmitCommand_TenantScopedUser_CanAccessOwnTenant() {
-        // Arrange: tenant-a-user has claims for tenant-a + domain "orders" only
-        // (hexalith-realm.json seeds this user with domains=["orders"]).
+        // Arrange: tenant-a-user has claims for tenant-a + domain "counter" only
+        // (hexalith-realm.json seeds this user with domains=["counter"]).
         string token = await KeycloakTokenHelper.AcquireTokenAsync(
             _fixture.KeycloakTokenEndpoint,
             ClientId,
             "tenant-a-user",
             "tenant-a-pass");
 
-        using HttpRequestMessage request = CreateCommandRequest(token, tenant: "tenant-a", domain: "orders");
+        using HttpRequestMessage request = CreateCommandRequest(token, tenant: "tenant-a", domain: "counter");
 
         // Act
         using HttpResponseMessage response = await _fixture.EventStoreClient.SendAsync(request);
@@ -190,9 +190,9 @@ public class KeycloakAuthenticationTests {
         string aggIdB = $"kc-iso-b-{Guid.NewGuid():N}";
 
         // Act: submit commands concurrently for different tenants. Domains are
-        // per-user in hexalith-realm.json (tenant-a-user=orders, tenant-b-user=inventory).
-        using HttpRequestMessage requestA = CreateCommandRequest(tokenA, tenant: "tenant-a", domain: "orders", aggregateId: aggIdA);
-        using HttpRequestMessage requestB = CreateCommandRequest(tokenB, tenant: "tenant-b", aggregateId: aggIdB, domain: "inventory");
+        // per-user in hexalith-realm.json (tenant-a-user=counter, tenant-b-user=counter).
+        using HttpRequestMessage requestA = CreateCommandRequest(tokenA, tenant: "tenant-a", domain: "counter", aggregateId: aggIdA);
+        using HttpRequestMessage requestB = CreateCommandRequest(tokenB, tenant: "tenant-b", aggregateId: aggIdB, domain: "counter");
 
         Task<HttpResponseMessage> taskA = _fixture.EventStoreClient.SendAsync(requestA);
         Task<HttpResponseMessage> taskB = _fixture.EventStoreClient.SendAsync(requestB);

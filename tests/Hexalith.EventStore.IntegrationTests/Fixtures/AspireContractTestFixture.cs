@@ -18,6 +18,7 @@ public class AspireContractTestFixture : IAsyncLifetime {
     private string? _previousEnableKeycloak;
     private string? _previousAspNetCoreEnvironment;
     private string? _previousDotNetEnvironment;
+    private string? _previousAggregateActorTypeName;
     private HttpClient? _eventStoreClient;
     private HttpClient? _adminServerClient;
 
@@ -52,6 +53,9 @@ public class AspireContractTestFixture : IAsyncLifetime {
         _previousDotNetEnvironment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT");
         Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
         Environment.SetEnvironmentVariable("DOTNET_ENVIRONMENT", "Development");
+
+        _previousAggregateActorTypeName = Environment.GetEnvironmentVariable("EventStore__Actors__AggregateActorTypeName");
+        Environment.SetEnvironmentVariable("EventStore__Actors__AggregateActorTypeName", $"AggregateActorIntegration{Guid.NewGuid():N}");
 
         // 3-minute timeout for Aspire topology startup (no Keycloak container to pull/start).
         using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
@@ -120,5 +124,6 @@ public class AspireContractTestFixture : IAsyncLifetime {
         Environment.SetEnvironmentVariable("EnableKeycloak", _previousEnableKeycloak);
         Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", _previousAspNetCoreEnvironment);
         Environment.SetEnvironmentVariable("DOTNET_ENVIRONMENT", _previousDotNetEnvironment);
+        Environment.SetEnvironmentVariable("EventStore__Actors__AggregateActorTypeName", _previousAggregateActorTypeName);
     }
 }

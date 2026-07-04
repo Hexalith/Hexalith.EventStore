@@ -35,10 +35,13 @@ public sealed class AspirePubSubProofTestFixture : IAsyncLifetime {
 
     public string SubscriberAuthSecret { get; } = Guid.NewGuid().ToString("N");
 
+    public string AggregateActorTypeName { get; } = $"AggregateActorIntegration{Guid.NewGuid():N}";
+
     public async ValueTask InitializeAsync() {
         SnapshotAndSet("EnableKeycloak", "false");
         SnapshotAndSet("ASPNETCORE_ENVIRONMENT", "Development");
         SnapshotAndSet("DOTNET_ENVIRONMENT", "Development");
+        SnapshotAndSet("EventStore__Actors__AggregateActorTypeName", AggregateActorTypeName);
         SnapshotAndSet("EnablePubSubTestSubscriber", "true");
         SnapshotAndSet("EVENTSTORE_TEST_SUBSCRIBER_AUTH_SECRET", SubscriberAuthSecret);
         SnapshotAndSet("EventStore__Publisher__TestPublishFaultFilePath", FaultFilePath);

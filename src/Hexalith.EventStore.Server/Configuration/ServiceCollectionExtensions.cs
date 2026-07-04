@@ -71,6 +71,10 @@ public static class EventStoreServerServiceCollectionExtensions {
         _ = services.AddOptions<CommandConcurrencyOptions>()
             .Bind(configuration.GetSection("EventStore:CommandConcurrency"))
             .ValidateOnStart();
+        _ = services.AddOptions<EventStoreActorOptions>()
+            .Bind(configuration.GetSection("EventStore:Actors"))
+            .Validate(o => !string.IsNullOrWhiteSpace(o.AggregateActorTypeName), "Aggregate actor type name must be configured.")
+            .ValidateOnStart();
         _ = services.AddOptions<SnapshotOptions>()
             .Bind(configuration.GetSection("EventStore:Snapshots"))
             .Validate(o => { o.Validate(); return true; }, "Snapshot configuration is invalid. All intervals must be >= 10.")
@@ -116,7 +120,11 @@ public static class EventStoreServerServiceCollectionExtensions {
                 options.HttpEndpoint = $"http://127.0.0.1:{daprHttpPort}";
             }
 
-            options.Actors.RegisterActor<AggregateActor>();
+            string? aggregateActorTypeName = configuration["EventStore:Actors:AggregateActorTypeName"];
+            options.Actors.RegisterActor<AggregateActor>(
+                string.IsNullOrWhiteSpace(aggregateActorTypeName)
+                    ? nameof(AggregateActor)
+                    : aggregateActorTypeName);
             options.Actors.RegisterActor<ETagActor>();
             options.Actors.RegisterActor<GlobalPositionActor>(GlobalPositionActor.ActorTypeName);
             options.Actors.RegisterActor<EventReplayProjectionActor>(QueryRouter.ProjectionActorTypeName);

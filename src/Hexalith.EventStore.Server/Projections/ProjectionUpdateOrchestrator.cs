@@ -40,12 +40,14 @@ public partial class ProjectionUpdateOrchestrator(
     IOptions<ProjectionOptions> projectionOptions,
     ILogger<ProjectionUpdateOrchestrator> logger,
     IProjectionRebuildCheckpointStore? rebuildCheckpointStore = null,
-    IEventPayloadProtectionService? payloadProtectionService = null) : IProjectionUpdateOrchestrator, IProjectionPollerDeliveryGateway, IProjectionRebuildOrchestrator {
+    IEventPayloadProtectionService? payloadProtectionService = null,
+    IOptions<EventStoreActorOptions>? actorOptions = null) : IProjectionUpdateOrchestrator, IProjectionPollerDeliveryGateway, IProjectionRebuildOrchestrator {
     // Per-aggregate serialization across orchestrator instances. Entries are evicted and the
     // underlying SemaphoreSlim disposed when the last holder releases, so a multi-tenant server
     // with many short-lived aggregates does not accumulate kernel handles indefinitely.
     internal static readonly KeyedSemaphore<string> ProjectionLocks = new(StringComparer.Ordinal);
     private readonly IEventPayloadProtectionService _payloadProtectionService = payloadProtectionService ?? new NoOpEventPayloadProtectionService();
+    private string AggregateActorTypeName => actorOptions?.Value.AggregateActorTypeName ?? nameof(AggregateActor);
 
     /// <inheritdoc/>
     public async Task UpdateProjectionAsync(AggregateIdentity identity, CancellationToken cancellationToken = default) {
@@ -98,7 +100,7 @@ public partial class ProjectionUpdateOrchestrator(
             // Step 2: Create aggregate actor proxy and read events
             IAggregateActor aggregateProxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
                 new ActorId(identity.ActorId),
-                "AggregateActor");
+                AggregateActorTypeName);
 
             // Full replay remains the safe immediate-delivery contract until
             // projection handlers receive prior state or become explicitly incremental-aware.
@@ -614,7 +616,7 @@ public partial class ProjectionUpdateOrchestrator(
 
             IAggregateActor aggregateProxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
                 new ActorId(identity.ActorId),
-                "AggregateActor");
+                AggregateActorTypeName);
 
             // D3-E: perAggregateProgress is provided by the caller (read from per-aggregate rebuild
             // checkpoint, NOT from the poller checkpoint tracker). Reset+Replay rewinds the

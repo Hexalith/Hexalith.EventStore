@@ -3,6 +3,7 @@ using Dapr.Actors.Client;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
+using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Sample.Counter;
 using Hexalith.EventStore.Sample.Counter.Commands;
@@ -30,30 +31,12 @@ namespace Hexalith.EventStore.Server.Tests.Actors;
 /// </summary>
 [Collection("DaprTestContainer")]
 [Trait("Category", "LiveSidecar")]
-public class TombstoningLifecycleTests : IDisposable {
+public class TombstoningLifecycleTests {
     private static readonly CounterAggregate _aggregate = new();
 
     private readonly DaprTestContainerFixture _fixture;
 
-    public TombstoningLifecycleTests(DaprTestContainerFixture fixture) {
-        _fixture = fixture;
-
-        // ADR R1A7-01: reset any leftover SetupResponse registrations from a sibling test class
-        // in the same [Collection]; without this, the SetupHandler calls below throw
-        // InvalidOperationException per the mutual-exclusion contract.
-        _fixture.ResetTestState();
-
-        Func<CommandEnvelope, object?, Task<DomainResult>> dispatch =
-            _aggregate.ProcessAsync;
-
-        _fixture.DomainServiceInvoker.SetupHandler(commandType: nameof(IncrementCounter), handler: dispatch);
-        _fixture.DomainServiceInvoker.SetupHandler(commandType: nameof(DecrementCounter), handler: dispatch);
-        _fixture.DomainServiceInvoker.SetupHandler(commandType: nameof(ResetCounter), handler: dispatch);
-        _fixture.DomainServiceInvoker.SetupHandler(commandType: nameof(CloseCounter), handler: dispatch);
-    }
-
-    /// <summary>Leaves the shared <see cref="Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker"/> clean for the next sibling test class.</summary>
-    public void Dispose() => _fixture.ResetTestState();
+    public TombstoningLifecycleTests(DaprTestContainerFixture fixture) => _fixture = fixture;
 
     /// <summary>
     /// Scenario 1: after CloseCounter, a follow-up IncrementCounter is rejected and persisted as
@@ -205,13 +188,17 @@ public class TombstoningLifecycleTests : IDisposable {
 
     private IAggregateActor CreateProxy(out string aggregateId) {
         aggregateId = $"close-test-{Guid.NewGuid():N}";
+        _fixture.DomainServiceInvoker.SetupAggregateHandler(
+            new AggregateIdentity("tenant-a", "counter", aggregateId),
+            _aggregate.ProcessAsync);
+
         var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 
         return actorProxyFactory.CreateActorProxy<IAggregateActor>(
             new ActorId($"tenant-a:counter:{aggregateId}"),
-            nameof(AggregateActor));
+            _fixture.AggregateActorTypeName);
     }
 
     private static async Task<CommandProcessingResult> SendAsync(IAggregateActor proxy, string aggregateId, string commandType) {

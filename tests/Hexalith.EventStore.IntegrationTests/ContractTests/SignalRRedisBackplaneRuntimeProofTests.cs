@@ -7,6 +7,8 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Channels;
 
+using Hexalith.EventStore.IntegrationTests.Helpers;
+
 using Microsoft.AspNetCore.SignalR.Client;
 
 using Shouldly;
@@ -58,8 +60,9 @@ public sealed class SignalRRedisBackplaneRuntimeProofTests {
             evidence.Topology = $"A={identityA.InstanceName} {instanceA.BaseUrl} pid={identityA.ProcessId}; B={identityB.InstanceName} {instanceB.BaseUrl} pid={identityB.ProcessId}; Redis={RedisEndpoint}";
 
             var received = Channel.CreateUnbounded<ReceivedSignal>();
+            string accessToken = CreateAccessToken(tenantId);
             await using HubConnection connection = new HubConnectionBuilder()
-                .WithUrl(instanceBHubUrl.ToString())
+                .WithUrl(instanceBHubUrl.ToString(), options => options.AccessTokenProvider = () => Task.FromResult<string?>(accessToken))
                 .Build();
             _ = connection.On<string, string>("ProjectionChanged", (actualProjectionType, actualTenantId) =>
                 received.Writer.TryWrite(new ReceivedSignal(actualProjectionType, actualTenantId, DateTimeOffset.UtcNow)));
@@ -100,8 +103,9 @@ public sealed class SignalRRedisBackplaneRuntimeProofTests {
             disabledIdentityB.BackplaneRedisConnectionString.ShouldBeNull();
 
             var controlReceived = Channel.CreateUnbounded<ReceivedSignal>();
+            string controlAccessToken = CreateAccessToken(tenantId);
             await using HubConnection controlConnection = new HubConnectionBuilder()
-                .WithUrl(new Uri(disabledB.BaseUrl, "hubs/projection-changes").ToString())
+                .WithUrl(new Uri(disabledB.BaseUrl, "hubs/projection-changes").ToString(), options => options.AccessTokenProvider = () => Task.FromResult<string?>(controlAccessToken))
                 .Build();
             _ = controlConnection.On<string, string>("ProjectionChanged", (actualProjectionType, actualTenantId) =>
                 controlReceived.Writer.TryWrite(new ReceivedSignal(actualProjectionType, actualTenantId, DateTimeOffset.UtcNow)));
@@ -167,6 +171,11 @@ public sealed class SignalRRedisBackplaneRuntimeProofTests {
             return null;
         }
     }
+
+    private static string CreateAccessToken(string tenantId)
+        => TestJwtTokenGenerator.GenerateToken(
+            tenants: [tenantId],
+            permissions: ["query:read"]);
 
     private sealed class EventStoreProofProcess : IAsyncDisposable {
         public static readonly string RepoRoot = FindRepositoryRoot();

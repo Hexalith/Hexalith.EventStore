@@ -54,6 +54,7 @@ public class KeycloakAuthFixture : IAsyncLifetime {
 
         SnapshotAndSet("ASPNETCORE_ENVIRONMENT", "Development");
         SnapshotAndSet("DOTNET_ENVIRONMENT", "Development");
+        SnapshotAndSet("EventStore__Actors__AggregateActorTypeName", $"AggregateActorIntegration{Guid.NewGuid():N}");
 
         try {
             // 5-minute timeout: Keycloak container pull + realm import takes longer than no-Keycloak.

@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Server.DomainServices;
 
@@ -13,6 +14,7 @@ namespace Hexalith.EventStore.Testing.Fakes;
 /// </summary>
 public sealed class FakeDomainServiceInvoker : IDomainServiceInvoker {
     private readonly ConcurrentQueue<(CommandEnvelope Command, object? CurrentState)> _invocations = new();
+    private readonly ConcurrentDictionary<string, Func<CommandEnvelope, object?, Task<DomainResult>>> _aggregateHandlers = new();
     private readonly ConcurrentDictionary<string, DomainResult> _commandTypeResponses = new();
     private readonly ConcurrentDictionary<string, Func<CommandEnvelope, object?, Task<DomainResult>>> _commandTypeHandlers = new();
     private readonly ConcurrentDictionary<string, DomainResult> _tenantDomainResponses = new();
@@ -78,6 +80,25 @@ public sealed class FakeDomainServiceInvoker : IDomainServiceInvoker {
     }
 
     /// <summary>
+    /// Configures a delegating handler for a specific aggregate identity.
+    /// </summary>
+    /// <remarks>
+    /// Aggregate-scoped handlers take precedence over command-type and tenant-domain registrations.
+    /// This lets shared live-sidecar fixtures run scenarios that need a real aggregate dispatcher
+    /// without replacing the global canned responses used by sibling tests.
+    /// </remarks>
+    /// <param name="identity">The aggregate identity to match.</param>
+    /// <param name="handler">The asynchronous handler invoked with the command and current state.</param>
+    public void SetupAggregateHandler(
+        AggregateIdentity identity,
+        Func<CommandEnvelope, object?, Task<DomainResult>> handler) {
+        ArgumentNullException.ThrowIfNull(identity);
+        ArgumentNullException.ThrowIfNull(handler);
+
+        _aggregateHandlers[identity.ActorId] = handler;
+    }
+
+    /// <summary>
     /// Configures a canned response for a specific tenant and domain combination.
     /// </summary>
     /// <param name="tenantId">The tenant identifier to match.</param>
@@ -112,6 +133,7 @@ public sealed class FakeDomainServiceInvoker : IDomainServiceInvoker {
     public void ClearAll() {
         _commandTypeResponses.Clear();
         _commandTypeHandlers.Clear();
+        _aggregateHandlers.Clear();
         _tenantDomainResponses.Clear();
         _invocations.Clear();
         _defaultResponse = null;
@@ -121,6 +143,10 @@ public sealed class FakeDomainServiceInvoker : IDomainServiceInvoker {
     public async Task<DomainResult> InvokeAsync(CommandEnvelope command, object? currentState, CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(command);
         _invocations.Enqueue((command, currentState));
+
+        if (_aggregateHandlers.TryGetValue(command.AggregateIdentity.ActorId, out Func<CommandEnvelope, object?, Task<DomainResult>>? aggregateHandler)) {
+            return await aggregateHandler(command, currentState).ConfigureAwait(false);
+        }
 
         if (_commandTypeHandlers.TryGetValue(command.CommandType, out Func<CommandEnvelope, object?, Task<DomainResult>>? handler)) {
             return await handler(command, currentState).ConfigureAwait(false);

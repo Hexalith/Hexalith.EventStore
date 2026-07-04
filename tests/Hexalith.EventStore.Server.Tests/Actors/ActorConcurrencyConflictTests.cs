@@ -43,7 +43,7 @@ public class ActorConcurrencyConflictTests {
         string aggregateId = $"concurrency-seq-{Guid.NewGuid():N}";
         IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
             new ActorId($"tenant-a:counter:{aggregateId}"),
-            nameof(AggregateActor));
+            _fixture.AggregateActorTypeName);
 
         // Act - send multiple commands sequentially
         for (int i = 0; i < 5; i++) {
@@ -77,7 +77,7 @@ public class ActorConcurrencyConflictTests {
         string aggregateId = $"concurrency-rapid-{Guid.NewGuid():N}";
         IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
             new ActorId($"tenant-a:counter:{aggregateId}"),
-            nameof(AggregateActor));
+            _fixture.AggregateActorTypeName);
 
         // Act - fire multiple commands as quickly as possible
         var tasks = new List<Task<CommandProcessingResult>>();
@@ -116,7 +116,7 @@ public class ActorConcurrencyConflictTests {
 
         IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
             new ActorId(identity.ActorId),
-            nameof(AggregateActor));
+            _fixture.AggregateActorTypeName);
 
         CommandEnvelope command = new CommandEnvelopeBuilder()
             .WithTenantId("tenant-a")

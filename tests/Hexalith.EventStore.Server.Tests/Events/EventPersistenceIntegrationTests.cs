@@ -13,8 +13,6 @@ using Hexalith.EventStore.Testing.Builders;
 
 using Shouldly;
 
-using StackExchange.Redis;
-
 namespace Hexalith.EventStore.Server.Tests.Events;
 /// <summary>
 /// Story 7.4 / AC #2, AC #6: Event persistence and Redis backend integration tests.
@@ -26,11 +24,6 @@ public class EventPersistenceIntegrationTests {
     private static readonly JsonSerializerOptions JsonOptions = new() {
         PropertyNameCaseInsensitive = true,
     };
-
-    private static readonly Lazy<Task<IConnectionMultiplexer>> RedisConnection =
-        new(async () => await ConnectionMultiplexer
-            .ConnectAsync("localhost:6379,abortConnect=false")
-            .ConfigureAwait(false));
 
     private readonly DaprTestContainerFixture _fixture;
 
@@ -54,7 +47,7 @@ public class EventPersistenceIntegrationTests {
         var identity = new AggregateIdentity("tenant-a", "counter", aggregateId);
         IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
             new ActorId(identity.ActorId),
-            nameof(AggregateActor));
+            _fixture.AggregateActorTypeName);
 
         _fixture.ThrowIfHostStopped();
 
@@ -137,7 +130,7 @@ public class EventPersistenceIntegrationTests {
 
         IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
             new ActorId(command.AggregateIdentity.ActorId),
-            nameof(AggregateActor));
+            _fixture.AggregateActorTypeName);
 
         _fixture.ThrowIfHostStopped();
 
@@ -166,7 +159,7 @@ public class EventPersistenceIntegrationTests {
         var identity = new AggregateIdentity("tenant-a", "counter", aggregateId);
         IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
             new ActorId(identity.ActorId),
-            nameof(AggregateActor));
+            _fixture.AggregateActorTypeName);
 
         _fixture.ThrowIfHostStopped();
 
@@ -220,7 +213,7 @@ public class EventPersistenceIntegrationTests {
         var identity = new AggregateIdentity("tenant-a", "counter", aggregateId);
         IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
             new ActorId($"tenant-a:counter:{aggregateId}"),
-            nameof(AggregateActor));
+            _fixture.AggregateActorTypeName);
 
         _fixture.ThrowIfHostStopped();
 
@@ -257,33 +250,16 @@ public class EventPersistenceIntegrationTests {
         _fixture.EventPublisher.GetEventsForTopic(expectedTopic).Count.ShouldBeGreaterThanOrEqualTo(21);
     }
 
-    private static async Task<T> GetStateAsync<T>(string key) {
+    private async Task<T> GetStateAsync<T>(string key) {
         string json = await GetStateJsonAsync(key).ConfigureAwait(true);
         T? value = JsonSerializer.Deserialize<T>(json, JsonOptions) ?? throw new ShouldAssertException($"State for key '{key}' could not be deserialized as {typeof(T).Name}.");
         return value;
     }
 
-    private static async Task<string> GetStateJsonAsync(string key) {
-        string[] segments = key.Split(':');
-        string actorId = $"{segments[0]}:{segments[1]}:{segments[2]}";
-        string redisKey = $"eventstore||AggregateActor||{actorId}||{key}";
+    private async Task<string> GetStateJsonAsync(string key)
+        => await _fixture.GetAggregateActorStateJsonAsync(key).ConfigureAwait(true);
 
-        IConnectionMultiplexer multiplexer = await RedisConnection.Value.ConfigureAwait(true);
-        IDatabase database = multiplexer.GetDatabase();
-
-        for (int attempt = 0; attempt < 10; attempt++) {
-            RedisValue json = await database.HashGetAsync(redisKey, "data").ConfigureAwait(true);
-            if (!json.IsNullOrEmpty) {
-                return json!;
-            }
-
-            await Task.Delay(50).ConfigureAwait(true);
-        }
-
-        throw new ShouldAssertException($"Redis actor state for key '{key}' did not become available after retries.");
-    }
-
-    private static async Task<long> GetCurrentSequenceAsync(string metadataKey) {
+    private async Task<long> GetCurrentSequenceAsync(string metadataKey) {
         AggregateMetadata metadata = await GetStateAsync<AggregateMetadata>(metadataKey).ConfigureAwait(true);
         return metadata.CurrentSequence;
     }

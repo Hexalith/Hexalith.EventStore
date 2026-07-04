@@ -60,6 +60,7 @@ ForwardEventStoreEnvironment("EventStore:Publisher:TestPublishFaultCorrelationId
 ForwardEventStoreEnvironment("EventStore:Drain:InitialDrainDelay", "EventStore__Drain__InitialDrainDelay");
 ForwardEventStoreEnvironment("EventStore:Drain:DrainPeriod", "EventStore__Drain__DrainPeriod");
 ForwardEventStoreEnvironment("EventStore:Drain:MaxDrainPeriod", "EventStore__Drain__MaxDrainPeriod");
+ForwardEventStoreEnvironment("EventStore:Actors:AggregateActorTypeName", "EventStore__Actors__AggregateActorTypeName");
 
 // Keycloak identity provider for E2E security testing (D11, Story 5.1 Task 8).
 // Enabled by default for local development with real OIDC token testing.

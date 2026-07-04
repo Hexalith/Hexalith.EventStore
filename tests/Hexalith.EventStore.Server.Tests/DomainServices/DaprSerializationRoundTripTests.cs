@@ -78,7 +78,7 @@ public class DaprSerializationRoundTripTests {
         string aggregateId = $"roundtrip-{Guid.NewGuid():N}";
         IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
             new ActorId($"tenant-a:counter:{aggregateId}"),
-            nameof(AggregateActor));
+            _fixture.AggregateActorTypeName);
 
         // Send 2 increment commands — this stores 2 EventEnvelope records in Redis
         for (int i = 0; i < 2; i++) {

@@ -4,9 +4,11 @@ using Dapr.Actors.Client;
 
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Actors;
+using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.Server.Commands;
 /// <summary>
@@ -17,7 +19,17 @@ namespace Hexalith.EventStore.Server.Commands;
 /// </summary>
 public partial class CommandRouter(
     IActorProxyFactory actorProxyFactory,
+    IOptions<EventStoreActorOptions> actorOptions,
     ILogger<CommandRouter> logger) : ICommandRouter {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="CommandRouter"/> class with the default actor type name.
+    /// </summary>
+    /// <param name="actorProxyFactory">The DAPR actor proxy factory.</param>
+    /// <param name="logger">The logger.</param>
+    public CommandRouter(IActorProxyFactory actorProxyFactory, ILogger<CommandRouter> logger)
+        : this(actorProxyFactory, Options.Create(new EventStoreActorOptions()), logger) {
+    }
+
     /// <inheritdoc/>
     public async Task<CommandProcessingResult> RouteCommandAsync(
         SubmitCommand command,
@@ -36,7 +48,7 @@ public partial class CommandRouter(
         try {
             IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
                 new ActorId(actorId),
-                nameof(AggregateActor));
+                actorOptions.Value.AggregateActorTypeName);
 
             return await proxy.ProcessCommandAsync(envelope).ConfigureAwait(false);
         }

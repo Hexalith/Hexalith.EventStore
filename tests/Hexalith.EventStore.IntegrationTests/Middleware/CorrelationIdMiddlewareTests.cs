@@ -21,7 +21,7 @@ public class CorrelationIdMiddlewareTests {
 
         // Assert
         capturedCorrelationId.ShouldNotBeNullOrEmpty();
-        Guid.TryParse(capturedCorrelationId, out _).ShouldBeTrue();
+        CorrelationIdMiddleware.IsValidIdentifier(capturedCorrelationId).ShouldBeTrue();
         context.Response.Headers[CorrelationIdMiddleware.HeaderName].ToString().ShouldBe(capturedCorrelationId);
     }
 
@@ -54,13 +54,13 @@ public class CorrelationIdMiddlewareTests {
             return Task.CompletedTask;
         });
         var context = new DefaultHttpContext();
-        context.Request.Headers[CorrelationIdMiddleware.HeaderName] = "not-a-guid";
+        context.Request.Headers[CorrelationIdMiddleware.HeaderName] = "not_a_valid_id";
 
         // Act
         await middleware.InvokeAsync(context);
 
         // Assert
-        capturedCorrelationId.ShouldNotBe("not-a-guid");
-        Guid.TryParse(capturedCorrelationId, out _).ShouldBeTrue();
+        capturedCorrelationId.ShouldNotBe("not_a_valid_id");
+        CorrelationIdMiddleware.IsValidIdentifier(capturedCorrelationId).ShouldBeTrue();
     }
 }

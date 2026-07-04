@@ -5,9 +5,11 @@ using Dapr.Actors.Client;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
+using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
@@ -42,7 +44,10 @@ public class CommandRouterTests {
         _ = proxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), Arg.Any<string>())
             .Returns(actorProxy);
 
-        var router = new CommandRouter(proxyFactory, NullLogger<CommandRouter>.Instance);
+        var router = new CommandRouter(
+            proxyFactory,
+            Options.Create(new EventStoreActorOptions()),
+            NullLogger<CommandRouter>.Instance);
         return (router, proxyFactory, actorProxy);
     }
 

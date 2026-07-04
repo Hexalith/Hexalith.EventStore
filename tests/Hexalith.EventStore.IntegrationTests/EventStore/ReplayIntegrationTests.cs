@@ -317,9 +317,9 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
     }
 
     [Fact]
-    public async Task PostReplay_ValidationRulesChanged_Returns400() {
-        // Arrange - seed an archived command with empty Payload (simulates data that
-        // would fail under tighter validation rules added after original submission)
+    public async Task PostReplay_CorruptedArchivedPayload_Returns500() {
+        // Arrange - seed an archived command with empty Payload. ArchivedCommandExtensions
+        // treats empty critical fields as corrupted archive data before MediatR validation.
         string correlationId = Guid.NewGuid().ToString();
         var archivedCommand = new ArchivedCommand(
             Tenant: "test-tenant",
@@ -339,8 +339,12 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
         HttpResponseMessage response = await client.PostAsync(
             $"/api/v1/commands/replay/{correlationId}", null);
 
-        // Assert - replay goes through ValidationBehavior in MediatR pipeline
-        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        // Assert - corrupted archived data is a server-side replay failure, not a client validation error.
+        response.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
+        response.Content.Headers.ContentType!.MediaType!.ShouldContain("problem+json");
+
+        JsonElement problemDetails = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problemDetails.GetProperty("detail").GetString()!.ShouldContain("invalid and cannot be replayed");
     }
 
     private HttpClient CreateAuthenticatedClient(string tenantId) {

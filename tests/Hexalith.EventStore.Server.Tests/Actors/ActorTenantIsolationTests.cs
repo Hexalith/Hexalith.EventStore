@@ -42,7 +42,7 @@ public class ActorTenantIsolationTests {
         // Tenant A: send 3 increments
         IAggregateActor tenantAProxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
             new ActorId($"tenant-a:counter:{aggregateId}"),
-            nameof(AggregateActor));
+            _fixture.AggregateActorTypeName);
 
         for (int i = 0; i < 3; i++) {
             CommandEnvelope command = new CommandEnvelopeBuilder()
@@ -59,7 +59,7 @@ public class ActorTenantIsolationTests {
         // Tenant B: send 1 increment (should start fresh, not see tenant A's state)
         IAggregateActor tenantBProxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
             new ActorId($"tenant-b:counter:{aggregateId}"),
-            nameof(AggregateActor));
+            _fixture.AggregateActorTypeName);
 
         CommandEnvelope tenantBCommand = new CommandEnvelopeBuilder()
             .WithTenantId("tenant-b")
@@ -96,7 +96,7 @@ public class ActorTenantIsolationTests {
         // Route to tenant-a's actor (mismatch)
         IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
             new ActorId("tenant-a:counter:tenant-mismatch-test"),
-            nameof(AggregateActor));
+            _fixture.AggregateActorTypeName);
 
         // Act
         CommandProcessingResult result = await proxy.ProcessCommandAsync(command);

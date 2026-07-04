@@ -36,7 +36,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
         using HttpRequestMessage request = CreateCommandRequest(
             token,
             tenant: "tenant-a",
-            domain: "orders",
+            domain: "counter",
             commandType: "IncrementCounter");
 
         // Act
@@ -54,7 +54,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
     }
 
     /// <summary>
-    /// AC #1, #2: tenant-a-user submits a command for tenant-a/orders.
+    /// AC #1, #2: tenant-a-user submits a command for tenant-a/counter.
     /// Verifies scoped user (single tenant, single domain) can operate within scope.
     /// </summary>
     [Fact]
@@ -64,7 +64,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
         using HttpRequestMessage request = CreateCommandRequest(
             token,
             tenant: "tenant-a",
-            domain: "orders",
+            domain: "counter",
             commandType: "IncrementCounter");
 
         using HttpResponseMessage response = await EventStoreClient
@@ -93,7 +93,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
         using HttpRequestMessage request = CreateCommandRequest(
             token,
             tenant: "tenant-b",
-            domain: "orders",
+            domain: "counter",
             commandType: "IncrementCounter");
 
         using HttpResponseMessage response = await EventStoreClient
@@ -113,7 +113,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
         using HttpRequestMessage request = CreateCommandRequest(
             token,
             tenant: "tenant-a",
-            domain: "inventory",
+            domain: "counter",
             commandType: "IncrementCounter");
 
         using HttpResponseMessage response = await EventStoreClient
@@ -138,7 +138,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
         using HttpRequestMessage request = CreateCommandRequest(
             token,
             tenant: "tenant-a",
-            domain: "orders",
+            domain: "counter",
             commandType: "IncrementCounter");
 
         using HttpResponseMessage response = await EventStoreClient
@@ -158,7 +158,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
         using HttpRequestMessage request = CreateCommandRequest(
             token,
             tenant: "tenant-a",
-            domain: "orders",
+            domain: "counter",
             commandType: "IncrementCounter");
 
         using HttpResponseMessage response = await EventStoreClient

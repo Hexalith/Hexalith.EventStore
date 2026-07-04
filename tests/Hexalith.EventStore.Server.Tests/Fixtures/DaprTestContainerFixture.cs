@@ -23,6 +23,10 @@ using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
 
+using RedisConnectionMultiplexer = StackExchange.Redis.IConnectionMultiplexer;
+using RedisDatabase = StackExchange.Redis.IDatabase;
+using RedisValue = StackExchange.Redis.RedisValue;
+
 namespace Hexalith.EventStore.Server.Tests.Fixtures;
 /// <summary>
 /// Integration test fixture that starts a local <c>daprd</c> process,
@@ -37,6 +41,10 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
     private const int RedisPort = 6379;
     private const int HealthTimeoutSeconds = 60;
     private const int WarmUpTimeoutSeconds = 45;
+    private static readonly Lazy<Task<RedisConnectionMultiplexer>> RedisConnection =
+        new(async () => await StackExchange.Redis.ConnectionMultiplexer
+            .ConnectAsync($"localhost:{RedisPort},abortConnect=false")
+            .ConfigureAwait(false));
 
     private Process? _daprProcess;
     private WebApplication? _testHost;
@@ -60,6 +68,9 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
 
     /// <summary>Gets the Dapr gRPC endpoint for test clients.</summary>
     public string DaprGrpcEndpoint => $"http://localhost:{_daprGrpcPort}";
+
+    /// <summary>Gets the isolated aggregate actor type name registered by this fixture run.</summary>
+    public string AggregateActorTypeName { get; } = $"AggregateActorTests{Guid.NewGuid():N}";
 
     /// <summary>Gets the fake domain service invoker for configuring test responses.</summary>
     public FakeDomainServiceInvoker DomainServiceInvoker { get; } = new();
@@ -196,7 +207,6 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
     /// Configures the domain service invoker with Counter domain responses for integration tests.
     /// </summary>
     public void SetupCounterDomain() {
-        ResetTestState();
         DomainServiceInvoker.SetupResponse(
             "IncrementCounter",
             DomainResult.Success(new IEventPayload[] { new Hexalith.EventStore.Sample.Counter.Events.CounterIncremented() }));
@@ -208,6 +218,31 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
         DomainServiceInvoker.SetupResponse(
             "ResetCounter",
             DomainResult.Success(new IEventPayload[] { new Hexalith.EventStore.Sample.Counter.Events.CounterReset() }));
+    }
+
+    /// <summary>
+    /// Reads aggregate actor state directly from Redis using the fixture's isolated actor type name.
+    /// </summary>
+    /// <param name="key">The aggregate state key, such as a metadata, snapshot, or event-stream key.</param>
+    /// <returns>The raw JSON value stored by Dapr for the actor state entry.</returns>
+    public async Task<string> GetAggregateActorStateJsonAsync(string key) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+
+        string redisKey = GetAggregateActorRedisKey(key);
+        RedisConnectionMultiplexer multiplexer = await RedisConnection.Value.ConfigureAwait(false);
+        RedisDatabase database = multiplexer.GetDatabase();
+
+        for (int attempt = 0; attempt < 10; attempt++) {
+            RedisValue json = await database.HashGetAsync(redisKey, "data").ConfigureAwait(false);
+            if (!json.IsNullOrEmpty) {
+                return json.ToString();
+            }
+
+            await Task.Delay(50).ConfigureAwait(false);
+        }
+
+        throw new InvalidOperationException(
+            $"Redis actor state for key '{key}' did not become available after retries. Redis key: '{redisKey}'.");
     }
 
     private async ValueTask DisposeTestResourcesAsync() {
@@ -431,6 +466,8 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
         _ = builder.WebHost.ConfigureKestrel(serverOptions => serverOptions.ListenLocalhost(_appPort, listenOptions => listenOptions.Protocols = HttpProtocols.Http1));
 
         _ = builder.Services.AddEventStoreServer(builder.Configuration);
+        builder.Services.AddActors(options =>
+            options.Actors.RegisterActor<AggregateActor>(AggregateActorTypeName));
 
         _ = builder.Services.AddSingleton<IDomainServiceInvoker>(DomainServiceInvoker);
         _ = builder.Services.AddSingleton<IEventPublisher>(EventPublisher);
@@ -457,6 +494,18 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
             throw new InvalidOperationException(
                 $"Kestrel did not bind to any addresses. Expected port {_appPort}.");
         }
+    }
+
+    private string GetAggregateActorRedisKey(string key) {
+        string[] segments = key.Split(':', 4);
+        if (segments.Length < 3) {
+            throw new ArgumentException(
+                "Aggregate actor state keys must begin with tenant, domain, and aggregate id segments.",
+                nameof(key));
+        }
+
+        string actorId = $"{segments[0]}:{segments[1]}:{segments[2]}";
+        return $"{AppId}||{AggregateActorTypeName}||{actorId}||{key}";
     }
 
     private static string CreateComponentFiles() {

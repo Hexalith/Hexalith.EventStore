@@ -43,7 +43,7 @@ public class SnapshotIntegrationTests {
         var identity = new AggregateIdentity("tenant-a", "counter", aggregateId);
         IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
             new ActorId($"tenant-a:counter:{aggregateId}"),
-            nameof(AggregateActor));
+            _fixture.AggregateActorTypeName);
 
         // Act - send 5 increments (event replay should work for subsequent commands)
         for (int i = 0; i < 5; i++) {

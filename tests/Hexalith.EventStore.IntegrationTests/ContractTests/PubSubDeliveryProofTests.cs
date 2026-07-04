@@ -54,7 +54,8 @@ public sealed class PubSubDeliveryProofTests {
         received.GetProperty("topic").GetString().ShouldBe("tenant-a.counter.events");
         received.GetProperty("type").GetString().ShouldEndWith(".CounterIncremented");
         received.GetProperty("source").GetString().ShouldBe("hexalith-eventstore/tenant-a/counter");
-        received.GetProperty("id").GetString().ShouldBe($"{correlationId}:1");
+        received.GetProperty("id").GetString().ShouldNotBeNullOrWhiteSpace(
+            "CloudEvent id carries the persisted event message id; correlation and sequence are separate payload fields.");
         received.GetProperty("correlationId").GetString().ShouldBe(correlationId);
         received.GetProperty("sequenceNumber").GetString().ShouldBe("1");
         received.GetProperty("tenantId").GetString().ShouldBe("tenant-a");
@@ -222,9 +223,9 @@ public sealed class PubSubDeliveryProofTests {
         }
     }
 
-    private static string BuildDrainKey(string aggregateId, string correlationId) {
+    private string BuildDrainKey(string aggregateId, string correlationId) {
         string actorId = $"tenant-a:counter:{aggregateId}";
-        return $"eventstore||AggregateActor||{actorId}||drain:{correlationId}";
+        return $"eventstore||{_fixture.AggregateActorTypeName}||{actorId}||drain:{correlationId}";
     }
 
     private void TryWriteFaultFile() {

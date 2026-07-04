@@ -52,11 +52,11 @@ public class CommandRoutingIntegrationTests {
 
         IAggregateActor proxyCounter = actorProxyFactory.CreateActorProxy<IAggregateActor>(
             new ActorId(commandCounter.AggregateIdentity.ActorId),
-            nameof(AggregateActor));
+            _fixture.AggregateActorTypeName);
 
         IAggregateActor proxyOther = actorProxyFactory.CreateActorProxy<IAggregateActor>(
             new ActorId(commandOther.AggregateIdentity.ActorId),
-            nameof(AggregateActor));
+            _fixture.AggregateActorTypeName);
 
         // Act
         CommandProcessingResult resultCounter = await proxyCounter.ProcessCommandAsync(commandCounter);
@@ -90,7 +90,7 @@ public class CommandRoutingIntegrationTests {
 
         IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
             new ActorId(command.AggregateIdentity.ActorId),
-            nameof(AggregateActor));
+            _fixture.AggregateActorTypeName);
 
         // Act
         CommandProcessingResult result = await proxy.ProcessCommandAsync(command);

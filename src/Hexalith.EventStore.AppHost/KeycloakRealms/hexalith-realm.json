@@ -229,7 +229,7 @@
       ],
       "attributes": {
         "tenants": ["tenant-a"],
-        "domains": ["orders"],
+        "domains": ["counter"],
         "permissions": ["command:submit", "command:query"]
       }
     },
@@ -251,7 +251,7 @@
       ],
       "attributes": {
         "tenants": ["tenant-b"],
-        "domains": ["inventory"],
+        "domains": ["counter"],
         "permissions": ["command:submit"]
       }
     },
@@ -273,7 +273,7 @@
       ],
       "attributes": {
         "tenants": ["tenant-a"],
-        "domains": ["orders"],
+        "domains": ["counter"],
         "permissions": ["command:query"]
       }
     },
@@ -295,7 +295,7 @@
       ],
       "attributes": {
         "tenants": [],
-        "domains": ["orders"],
+        "domains": ["counter"],
         "permissions": ["command:submit"]
       }
     }

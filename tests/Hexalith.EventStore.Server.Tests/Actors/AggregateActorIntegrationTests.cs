@@ -49,7 +49,7 @@ public class AggregateActorIntegrationTests {
         string actorId = command.AggregateIdentity.ActorId;
         IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
             new ActorId(actorId),
-            nameof(AggregateActor));
+            _fixture.AggregateActorTypeName);
 
         // Act
         CommandProcessingResult result = await proxy.ProcessCommandAsync(command);
@@ -88,11 +88,11 @@ public class AggregateActorIntegrationTests {
 
         IAggregateActor proxy1 = actorProxyFactory.CreateActorProxy<IAggregateActor>(
             new ActorId(command1.AggregateIdentity.ActorId),
-            nameof(AggregateActor));
+            _fixture.AggregateActorTypeName);
 
         IAggregateActor proxy2 = actorProxyFactory.CreateActorProxy<IAggregateActor>(
             new ActorId(command2.AggregateIdentity.ActorId),
-            nameof(AggregateActor));
+            _fixture.AggregateActorTypeName);
 
         // Act
         CommandProcessingResult result1 = await proxy1.ProcessCommandAsync(command1);
@@ -118,7 +118,7 @@ public class AggregateActorIntegrationTests {
         string aggregateId = $"persist-test-{Guid.NewGuid():N}";
         IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
             new ActorId($"tenant-a:counter:{aggregateId}"),
-            nameof(AggregateActor));
+            _fixture.AggregateActorTypeName);
 
         // Act - send 3 increment commands
         for (int i = 0; i < 3; i++) {
@@ -165,7 +165,7 @@ public class AggregateActorIntegrationTests {
 
         IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
             new ActorId(command.AggregateIdentity.ActorId),
-            nameof(AggregateActor));
+            _fixture.AggregateActorTypeName);
 
         // Act
         CommandProcessingResult result = await proxy.ProcessCommandAsync(command);
@@ -196,7 +196,7 @@ public class AggregateActorIntegrationTests {
 
         IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
             new ActorId(command.AggregateIdentity.ActorId),
-            nameof(AggregateActor));
+            _fixture.AggregateActorTypeName);
 
         // Act
         CommandProcessingResult result = await proxy.ProcessCommandAsync(command);
@@ -246,7 +246,7 @@ public class AggregateActorIntegrationTests {
 
         IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
             new ActorId(command.AggregateIdentity.ActorId),
-            nameof(AggregateActor));
+            _fixture.AggregateActorTypeName);
 
         // Act - submit same command twice (same correlationId = same causationId)
         CommandProcessingResult result1 = await proxy.ProcessCommandAsync(command);
@@ -282,7 +282,7 @@ public class AggregateActorIntegrationTests {
 
         IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
             new ActorId(command.AggregateIdentity.ActorId),
-            nameof(AggregateActor));
+            _fixture.AggregateActorTypeName);
 
         // Act -- run the full actor pipeline (persist + publish), then read events back from the state store.
         CommandProcessingResult result = await proxy.ProcessCommandAsync(command);
@@ -322,7 +322,7 @@ public class AggregateActorIntegrationTests {
 
         IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
             new ActorId(command.AggregateIdentity.ActorId),
-            nameof(AggregateActor));
+            _fixture.AggregateActorTypeName);
 
         // Act
         CommandProcessingResult result = await proxy.ProcessCommandAsync(command);

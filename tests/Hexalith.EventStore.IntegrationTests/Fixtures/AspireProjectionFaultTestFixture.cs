@@ -16,6 +16,7 @@ public sealed class AspireProjectionFaultTestFixture : IAsyncLifetime {
     private string? _previousEnableKeycloak;
     private string? _previousAspNetCoreEnvironment;
     private string? _previousDotNetEnvironment;
+    private string? _previousAggregateActorTypeName;
     private string? _previousProjectionFaultFlag;
     private HttpClient? _eventStoreClient;
 
@@ -33,6 +34,9 @@ public sealed class AspireProjectionFaultTestFixture : IAsyncLifetime {
         _previousDotNetEnvironment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT");
         Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
         Environment.SetEnvironmentVariable("DOTNET_ENVIRONMENT", "Development");
+
+        _previousAggregateActorTypeName = Environment.GetEnvironmentVariable("EventStore__Actors__AggregateActorTypeName");
+        Environment.SetEnvironmentVariable("EventStore__Actors__AggregateActorTypeName", $"AggregateActorIntegration{Guid.NewGuid():N}");
 
         _previousProjectionFaultFlag = Environment.GetEnvironmentVariable("EventStore__SampleFaults__MalformedProjectResponse");
         Environment.SetEnvironmentVariable("EventStore__SampleFaults__MalformedProjectResponse", "true");
@@ -86,6 +90,7 @@ public sealed class AspireProjectionFaultTestFixture : IAsyncLifetime {
         Environment.SetEnvironmentVariable("EnableKeycloak", _previousEnableKeycloak);
         Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", _previousAspNetCoreEnvironment);
         Environment.SetEnvironmentVariable("DOTNET_ENVIRONMENT", _previousDotNetEnvironment);
+        Environment.SetEnvironmentVariable("EventStore__Actors__AggregateActorTypeName", _previousAggregateActorTypeName);
         Environment.SetEnvironmentVariable("EventStore__SampleFaults__MalformedProjectResponse", _previousProjectionFaultFlag);
     }
 }

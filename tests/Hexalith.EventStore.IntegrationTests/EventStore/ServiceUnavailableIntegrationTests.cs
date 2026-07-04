@@ -81,10 +81,11 @@ public class ServiceUnavailableIntegrationTests(JwtAuthenticatedWebApplicationFa
         detail.ShouldNotContain("gRPC", Case.Insensitive);
         detail.ShouldNotContain("Unavailable", Case.Sensitive);
 
-        // UX-DR2: no correlationId on 503 (pre-pipeline rejection — the auth behavior throws
-        // before any correlation ID is allocated). tenantId likewise has no authenticated context
-        // to attach to and must not appear.
-        body.TryGetProperty("correlationId", out _).ShouldBeFalse();
+        // CorrelationIdMiddleware runs first, before authentication/authorization failures, so 503s
+        // include a request correlation ID for operator traceability. tenantId is still omitted
+        // because this path fails before controller-level request tenant context exists.
+        body.TryGetProperty("correlationId", out JsonElement correlationId).ShouldBeTrue();
+        correlationId.GetString().ShouldNotBeNullOrWhiteSpace();
         body.TryGetProperty("tenantId", out _).ShouldBeFalse();
 
         // No domain side effect — AuthorizationBehavior throws before SubmitCommandHandler runs,
