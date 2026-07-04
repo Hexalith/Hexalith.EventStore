@@ -10,7 +10,7 @@ namespace Hexalith.EventStore.Sample.Counter.Commands;
 /// The interactive Blazor UI submits this command through the platform gateway client.
 /// </summary>
 /// <param name="CounterId">The counter aggregate identifier this command targets.</param>
-[RestRoute(RestVerb.Post, "{counterId}/reset")]
+[RestRoute(RestVerb.Post, "{counterId}/reset", ApiScope = "counter")]
 public sealed record ResetCounter(string CounterId = "counter-1") : ICommandContract
 {
     /// <inheritdoc/>

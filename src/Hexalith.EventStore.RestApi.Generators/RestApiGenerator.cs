@@ -34,7 +34,11 @@ public sealed class RestApiGenerator : IIncrementalGenerator
             .WithTrackingName("RestApiMessageDeduplication");
 
         IncrementalValueProvider<ImmutableArray<RestApiMessageDescriptor>> referencedMessages = context.CompilationProvider
-            .Select(static (compilation, cancellationToken) => RestApiMessageParser.ParseReferenced(compilation, cancellationToken))
+            .Combine(restApiOptions)
+            .Select(static (source, cancellationToken) => RestApiMessageParser.ParseReferenced(
+                source.Left,
+                source.Right,
+                cancellationToken))
             .WithTrackingName("RestApiReferencedMessageDiscovery");
 
         IncrementalValueProvider<ImmutableArray<RestApiMessageDescriptor>> allMessages = collectedMessages

@@ -4,10 +4,11 @@ namespace Hexalith.EventStore.RestApi.Generators;
 
 internal readonly struct RestApiRouteDescriptor : IEquatable<RestApiRouteDescriptor>
 {
-    public RestApiRouteDescriptor(string verb, string template)
+    public RestApiRouteDescriptor(string verb, string template, string apiScope = "")
     {
         Verb = verb;
         Template = template;
+        ApiScope = string.IsNullOrWhiteSpace(apiScope) ? string.Empty : apiScope;
         IsAbsolute = template.StartsWith("~/", StringComparison.Ordinal);
         Parameters = RestApiRouteTemplateParser.ParseParameters(template);
         TemplateError = RestApiRouteTemplateParser.GetTemplateError(template);
@@ -16,6 +17,8 @@ internal readonly struct RestApiRouteDescriptor : IEquatable<RestApiRouteDescrip
     public string Verb { get; }
 
     public string Template { get; }
+
+    public string ApiScope { get; }
 
     public bool IsAbsolute { get; }
 
@@ -26,6 +29,7 @@ internal readonly struct RestApiRouteDescriptor : IEquatable<RestApiRouteDescrip
     public bool Equals(RestApiRouteDescriptor other)
         => string.Equals(Verb, other.Verb, StringComparison.Ordinal)
             && string.Equals(Template, other.Template, StringComparison.Ordinal)
+            && string.Equals(ApiScope, other.ApiScope, StringComparison.Ordinal)
             && IsAbsolute == other.IsAbsolute
             && Parameters.SequenceEqual(other.Parameters)
             && string.Equals(TemplateError, other.TemplateError, StringComparison.Ordinal);
@@ -38,6 +42,7 @@ internal readonly struct RestApiRouteDescriptor : IEquatable<RestApiRouteDescrip
         {
             int hash = (StringComparer.Ordinal.GetHashCode(Verb) * 397)
                 ^ StringComparer.Ordinal.GetHashCode(Template);
+            hash = (hash * 397) ^ StringComparer.Ordinal.GetHashCode(ApiScope);
             hash = (hash * 397) ^ IsAbsolute.GetHashCode();
             hash = (hash * 397) ^ (TemplateError is null
                 ? 0

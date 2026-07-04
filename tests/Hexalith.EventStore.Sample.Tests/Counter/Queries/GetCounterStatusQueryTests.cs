@@ -27,6 +27,7 @@ public sealed class GetCounterStatusQueryTests
         attribute.ShouldNotBeNull();
         attribute.Verb.ShouldBe(RestVerb.Get);
         attribute.Template.ShouldBe("{entityId}");
+        attribute.ApiScope.ShouldBe("counter");
     }
 
     [Fact]

@@ -60,6 +60,7 @@ public sealed class CounterCommandContractTests
         route.ShouldNotBeNull();
         route.Verb.ShouldBe(RestVerb.Post);
         route.Template.ShouldBe(expectedTemplate);
+        route.ApiScope.ShouldBe("counter");
 
         // The platform resolver reads and validates the same static metadata the generator emits.
         CommandContractMetadata metadata = CommandContractResolver.Resolve<TCommand>();

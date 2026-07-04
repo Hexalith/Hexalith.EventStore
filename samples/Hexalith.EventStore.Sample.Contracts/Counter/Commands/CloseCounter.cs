@@ -12,7 +12,7 @@ namespace Hexalith.EventStore.Sample.Counter.Commands;
 /// casual demo UI action.
 /// </summary>
 /// <param name="CounterId">The counter aggregate identifier this command targets.</param>
-[RestRoute(RestVerb.Post, "{counterId}/close")]
+[RestRoute(RestVerb.Post, "{counterId}/close", ApiScope = "counter")]
 public sealed record CloseCounter(string CounterId = "counter-1") : ICommandContract
 {
     /// <inheritdoc/>

@@ -9,6 +9,27 @@ public class RestRouteAttributeTests {
 
         attribute.Verb.ShouldBe(RestVerb.Post);
         attribute.Template.ShouldBe("{counterId}/increment");
+        attribute.ApiScope.ShouldBeNull();
+    }
+
+    [Fact]
+    public void ApiScope_SetToNonWhitespaceValue_ReturnsValue() {
+        var attribute = new RestRouteAttribute(RestVerb.Get, "{counterId}") {
+            ApiScope = "counter",
+        };
+
+        attribute.ApiScope.ShouldBe("counter");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("  ")]
+    public void ApiScope_EmptyOrWhitespaceValue_NormalizesToNull(string value) {
+        var attribute = new RestRouteAttribute(RestVerb.Get, "{counterId}") {
+            ApiScope = value,
+        };
+
+        attribute.ApiScope.ShouldBeNull();
     }
 
     [Theory]

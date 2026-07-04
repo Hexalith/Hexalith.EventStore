@@ -10,7 +10,7 @@ namespace Hexalith.EventStore.Sample.Counter.Queries;
 /// The interactive Blazor UI references this contract only for its static metadata and reaches
 /// the projection through the platform gateway client.
 /// </summary>
-[RestRoute(RestVerb.Get, "{entityId}")]
+[RestRoute(RestVerb.Get, "{entityId}", ApiScope = "counter")]
 public sealed record GetCounterStatusQuery : IQueryContract
 {
     /// <inheritdoc/>

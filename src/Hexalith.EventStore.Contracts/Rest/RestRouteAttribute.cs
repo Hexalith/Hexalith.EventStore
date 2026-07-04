@@ -33,16 +33,35 @@ public enum RestVerb {
 /// carries a body payload), where <c>{prefix}</c> is the assembly-level
 /// <see cref="RestApiAttribute.RoutePrefix"/>. The route template is structural; its shape is
 /// validated by the source generator, not here — only a null template is rejected.
+/// <see cref="ApiScope"/> is optional for source contracts in the API host compilation. It is required
+/// for referenced contracts that should be emitted by a host with a non-empty
+/// <see cref="RestApiAttribute.Tag"/> so the generator can fail closed instead of publishing unrelated
+/// referenced contracts under the host route prefix.
 /// Example templates: <c>"{tenantId}"</c>, <c>"{tenantId}/users"</c>,
 /// <c>"~/api/users/{userId}/tenants"</c>.
 /// </remarks>
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
 public sealed class RestRouteAttribute(RestVerb verb, string template) : Attribute {
+    private string? _apiScope;
+
     /// <summary>Gets the HTTP verb for the generated endpoint.</summary>
     public RestVerb Verb { get; } = verb;
 
     /// <summary>Gets the route template appended to the domain route prefix.</summary>
     public string Template { get; } = ValidateTemplate(template);
+
+    /// <summary>
+    /// Gets or sets the API scope used to filter referenced-contract discovery.
+    /// </summary>
+    /// <remarks>
+    /// When a contract is discovered from a referenced assembly, this value must match the consuming
+    /// host's <see cref="RestApiAttribute.Tag"/>. Leave it unset for contracts compiled directly into
+    /// the API host, where the host has already explicitly opted into generation.
+    /// </remarks>
+    public string? ApiScope {
+        get => _apiScope;
+        set => _apiScope = string.IsNullOrWhiteSpace(value) ? null : value;
+    }
 
     private static string ValidateTemplate(string template) {
         ArgumentNullException.ThrowIfNull(template);

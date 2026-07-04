@@ -374,6 +374,31 @@ public sealed class RestApiControllerGenerationTests
         source.ShouldNotContain("MediatR");
     }
 
+    [Fact]
+    public void Run_ReferencedContractsOutsideApiScope_AreExcluded()
+    {
+        CSharpCompilation contractCompilation = RestApiGeneratorTestHarness.CreateCompilation(ReferencedMixedApiScopeSource);
+        MetadataReference contractReference = RestApiGeneratorTestHarness.EmitToMetadataReference(contractCompilation);
+        CSharpCompilation hostCompilation = RestApiGeneratorTestHarness.CreateCompilation(
+            [contractReference],
+            ReferencedContractHostSource);
+
+        CSharpCompilation outputCompilation = RestApiGeneratorTestHarness.RunAndUpdateCompilation(
+            hostCompilation,
+            out GeneratorDriverRunResult runResult,
+            out ImmutableArray<Diagnostic> updateDiagnostics);
+
+        ShouldHaveNoErrors(updateDiagnostics);
+        ShouldHaveNoErrors(outputCompilation.GetDiagnostics(TestContext.Current.CancellationToken));
+
+        string source = RestApiGeneratorTestHarness.GetGeneratedSource(runResult, ".Controller.g.cs");
+
+        source.ShouldContain("[HttpGet(\"{entityId}\")]");
+        source.ShouldContain("global::Hexalith.EventStore.Sample.Counter.Queries.GetCounterStatusQuery.QueryType");
+        source.ShouldNotContain("~/api/users/{userId}/tenants");
+        source.ShouldNotContain("global::Hexalith.Tenants.Contracts.Queries.GetUserTenantsQuery.QueryType");
+    }
+
     private static void ShouldHaveNoErrors(IEnumerable<Diagnostic> diagnostics)
     {
         Diagnostic[] errors = diagnostics
@@ -611,7 +636,7 @@ public sealed class RestApiControllerGenerationTests
 
         namespace Hexalith.EventStore.Sample.Counter.Queries;
 
-        [RestRoute(RestVerb.Get, "{entityId}")]
+        [RestRoute(RestVerb.Get, "{entityId}", ApiScope = "counter")]
         public sealed record GetCounterStatusQuery : IQueryContract
         {
             public static string QueryType => "get-counter-status";
@@ -626,7 +651,7 @@ public sealed class RestApiControllerGenerationTests
 
         namespace Hexalith.Tenants.Contracts.Queries;
 
-        [RestRoute(RestVerb.Get, "~/api/global-administrators")]
+        [RestRoute(RestVerb.Get, "~/api/global-administrators", ApiScope = "tenants")]
         [RestQueryBinding(RestQueryBindingSource.Constant, "global-administrators", RestQueryBindingSource.Constant, "global-administrators")]
         public sealed record GetGlobalAdministratorsQuery(string? Cursor, int PageSize) : IQueryContract
         {
@@ -635,7 +660,7 @@ public sealed class RestApiControllerGenerationTests
             public static string ProjectionType => "global-administrators";
         }
 
-        [RestRoute(RestVerb.Get, "~/api/users/{userId}/tenants")]
+        [RestRoute(RestVerb.Get, "~/api/users/{userId}/tenants", ApiScope = "tenants")]
         [RestQueryBinding(RestQueryBindingSource.Constant, "index", RestQueryBindingSource.Route, "userId")]
         public sealed record GetUserTenantsQuery(string UserId, string? Cursor, int PageSize) : IQueryContract
         {
@@ -651,12 +676,39 @@ public sealed class RestApiControllerGenerationTests
 
         namespace Hexalith.EventStore.Sample.Counter.Commands;
 
-        [RestRoute(RestVerb.Post, "{counterId}/increment")]
+        [RestRoute(RestVerb.Post, "{counterId}/increment", ApiScope = "counter")]
         public sealed record IncrementCounter(string CounterId = "counter-1") : ICommandContract
         {
             public static string Domain => "counter";
             public static string CommandType => "increment-counter";
             public string AggregateId => CounterId;
+        }
+        """;
+
+    private const string ReferencedMixedApiScopeSource = """
+        using Hexalith.EventStore.Contracts.Queries;
+        using Hexalith.EventStore.Contracts.Rest;
+
+        namespace Hexalith.EventStore.Sample.Counter.Queries
+        {
+            [RestRoute(RestVerb.Get, "{entityId}", ApiScope = "counter")]
+            public sealed record GetCounterStatusQuery : IQueryContract
+            {
+                public static string QueryType => "get-counter-status";
+                public static string Domain => "counter";
+                public static string ProjectionType => "counter";
+            }
+        }
+
+        namespace Hexalith.Tenants.Contracts.Queries
+        {
+            [RestRoute(RestVerb.Get, "~/api/users/{userId}/tenants", ApiScope = "tenants")]
+            public sealed record GetUserTenantsQuery(string UserId) : IQueryContract
+            {
+                public static string QueryType => "get-user-tenants";
+                public static string Domain => "tenants";
+                public static string ProjectionType => "tenant";
+            }
         }
         """;
 

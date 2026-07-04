@@ -34,6 +34,7 @@ internal static class RestApiMessageParser
 
     public static ImmutableArray<RestApiMessageDescriptor> ParseReferenced(
         Compilation compilation,
+        RestApiOptions options,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -61,11 +62,16 @@ internal static class RestApiMessageParser
                 assembly.GlobalNamespace,
                 compilation,
                 restRouteAttribute,
+                options,
                 descriptors,
                 seenTypes,
                 cancellationToken);
         }
 
+        descriptors.Sort(static (left, right) => string.Compare(
+            left.FullyQualifiedTypeName,
+            right.FullyQualifiedTypeName,
+            StringComparison.Ordinal));
         return descriptors.ToImmutable();
     }
 
@@ -120,6 +126,7 @@ internal static class RestApiMessageParser
         INamespaceSymbol namespaceSymbol,
         Compilation compilation,
         INamedTypeSymbol restRouteAttribute,
+        RestApiOptions options,
         ImmutableArray<RestApiMessageDescriptor>.Builder descriptors,
         HashSet<string> seenTypes,
         CancellationToken cancellationToken)
@@ -132,6 +139,7 @@ internal static class RestApiMessageParser
                 childNamespace,
                 compilation,
                 restRouteAttribute,
+                options,
                 descriptors,
                 seenTypes,
                 cancellationToken);
@@ -143,6 +151,7 @@ internal static class RestApiMessageParser
                 typeSymbol,
                 compilation,
                 restRouteAttribute,
+                options,
                 descriptors,
                 seenTypes,
                 cancellationToken);
@@ -153,6 +162,7 @@ internal static class RestApiMessageParser
         INamedTypeSymbol typeSymbol,
         Compilation compilation,
         INamedTypeSymbol restRouteAttribute,
+        RestApiOptions options,
         ImmutableArray<RestApiMessageDescriptor>.Builder descriptors,
         HashSet<string> seenTypes,
         CancellationToken cancellationToken)
@@ -164,6 +174,7 @@ internal static class RestApiMessageParser
             RestApiMessageDescriptor? descriptor = ParseSymbol(typeSymbol, compilation, cancellationToken);
             if (descriptor.HasValue
                 && descriptor.Value.Route.HasValue
+                && IsInReferencedApiScope(descriptor.Value.Route.Value, options)
                 && seenTypes.Add(descriptor.Value.FullyQualifiedTypeName))
             {
                 descriptors.Add(descriptor.Value);
@@ -176,10 +187,26 @@ internal static class RestApiMessageParser
                 nestedType,
                 compilation,
                 restRouteAttribute,
+                options,
                 descriptors,
                 seenTypes,
                 cancellationToken);
         }
+    }
+
+    private static bool IsInReferencedApiScope(RestApiRouteDescriptor route, RestApiOptions options)
+    {
+        if (!options.Found)
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(options.Tag))
+        {
+            return string.IsNullOrWhiteSpace(route.ApiScope);
+        }
+
+        return string.Equals(route.ApiScope, options.Tag, StringComparison.Ordinal);
     }
 
     private static bool HasRestRoute(INamedTypeSymbol typeSymbol, INamedTypeSymbol restRouteAttribute)
@@ -244,8 +271,17 @@ internal static class RestApiMessageParser
             string template = attribute.ConstructorArguments.Length > 1
                 ? RoslynAttributeValueReader.GetString(attribute.ConstructorArguments[1])
                 : string.Empty;
+            string apiScope = string.Empty;
+            foreach (KeyValuePair<string, TypedConstant> namedArgument in attribute.NamedArguments)
+            {
+                if (string.Equals(namedArgument.Key, "ApiScope", StringComparison.Ordinal))
+                {
+                    apiScope = RoslynAttributeValueReader.GetString(namedArgument.Value);
+                    break;
+                }
+            }
 
-            return new RestApiRouteDescriptor(verb, template);
+            return new RestApiRouteDescriptor(verb, template, apiScope);
         }
 
         return null;
