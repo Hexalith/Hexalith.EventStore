@@ -1,3 +1,10 @@
+## [3.33.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.33.0...v3.33.1) (2026-07-04)
+
+
+### Bug Fixes
+
+* **security:** harden admin tenant scoping ([#278](https://github.com/Hexalith/Hexalith.EventStore/issues/278)) ([0794a4e](https://github.com/Hexalith/Hexalith.EventStore/commit/0794a4e9ae4c78f495d11c33f459b17a0a07cb7b))
+
 # [3.33.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.32.0...v3.33.0) (2026-07-04)
 
 
