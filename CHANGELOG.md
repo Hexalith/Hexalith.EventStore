@@ -1,3 +1,11 @@
+## [3.33.5](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.33.4...v3.33.5) (2026-07-04)
+
+
+### Bug Fixes
+
+* update sprint status to 'in-progress' for D-7-proof-tenants-ui-host-submodule; enhance error handling and validation in EventStoreGatewayClient ([b0006bf](https://github.com/Hexalith/Hexalith.EventStore/commit/b0006bf9bb5327bacd4aba676b555b9fdad585e4))
+* update subproject reference for Hexalith.Tenants to indicate a dirty state ([aaac942](https://github.com/Hexalith/Hexalith.EventStore/commit/aaac942b430d316c678bb2425232efa43b48ec9e))
+
 ## [3.33.4](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.33.3...v3.33.4) (2026-07-04)
 
 
