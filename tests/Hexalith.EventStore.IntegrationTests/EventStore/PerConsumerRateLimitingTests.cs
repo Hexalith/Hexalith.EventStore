@@ -5,8 +5,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 
-using eventstore::Hexalith.EventStore.Configuration;
-
+using Hexalith.EventStore.Configuration;
 using Hexalith.EventStore.IntegrationTests.Helpers;
 
 using Microsoft.AspNetCore.Mvc.Testing;

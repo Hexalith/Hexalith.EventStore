@@ -6,10 +6,9 @@ using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Json;
 
-using eventstore::Hexalith.EventStore.Authorization;
-using eventstore::Hexalith.EventStore.ErrorHandling;
-
+using Hexalith.EventStore.Authorization;
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.IntegrationTests.Helpers;
 
 using Microsoft.AspNetCore.Mvc.Testing;

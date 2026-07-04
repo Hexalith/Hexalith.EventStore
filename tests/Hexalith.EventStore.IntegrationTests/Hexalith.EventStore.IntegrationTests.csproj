@@ -4,6 +4,7 @@
     <ProjectReference Include="..\..\src\Hexalith.EventStore\Hexalith.EventStore.csproj">
       <Aliases>eventstore</Aliases>
     </ProjectReference>
+    <ProjectReference Include="..\..\src\Hexalith.EventStore.Gateway\Hexalith.EventStore.Gateway.csproj" />
     <ProjectReference Include="..\..\samples\Hexalith.EventStore.Sample\Hexalith.EventStore.Sample.csproj" />
     <ProjectReference Include="..\..\src\Hexalith.EventStore.Testing\Hexalith.EventStore.Testing.csproj" />
     <ProjectReference Include="..\..\src\Hexalith.EventStore.AppHost\Hexalith.EventStore.AppHost.csproj">

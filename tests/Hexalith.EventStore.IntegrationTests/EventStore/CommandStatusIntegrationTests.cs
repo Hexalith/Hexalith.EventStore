@@ -1,5 +1,3 @@
-extern alias eventstore;
-
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -11,7 +9,7 @@ using Hexalith.EventStore.Server.Commands;
 
 using Shouldly;
 
-using CommandStatusResponse = eventstore::Hexalith.EventStore.Models.CommandStatusResponse;
+using CommandStatusResponse = Hexalith.EventStore.Models.CommandStatusResponse;
 
 namespace Hexalith.EventStore.IntegrationTests.EventStore;
 

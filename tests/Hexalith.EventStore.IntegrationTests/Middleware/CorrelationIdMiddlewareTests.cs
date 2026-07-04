@@ -1,7 +1,4 @@
-extern alias eventstore;
-
-using eventstore::Hexalith.EventStore.Middleware;
-
+using Hexalith.EventStore.Middleware;
 using Microsoft.AspNetCore.Http;
 
 using Shouldly;

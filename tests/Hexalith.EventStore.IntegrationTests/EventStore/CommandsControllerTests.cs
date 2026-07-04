@@ -1,14 +1,11 @@
-extern alias eventstore;
-
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 
-using eventstore::Hexalith.EventStore.Models;
-
 using Hexalith.EventStore.IntegrationTests.Helpers;
+using Hexalith.EventStore.Models;
 
 using Shouldly;
 

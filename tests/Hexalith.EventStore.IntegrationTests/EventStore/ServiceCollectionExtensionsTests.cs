@@ -1,8 +1,5 @@
-extern alias eventstore;
-
-using eventstore::Hexalith.EventStore.ErrorHandling;
-using eventstore::Hexalith.EventStore.Extensions;
-
+using Hexalith.EventStore.ErrorHandling;
+using Hexalith.EventStore.Extensions;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Testing.Fakes;
 

@@ -3,9 +3,8 @@ extern alias eventstore;
 using System.Net;
 using System.Reflection;
 
-using eventstore::Hexalith.EventStore.ErrorHandling;
-using eventstore::Hexalith.EventStore.OpenApi;
-
+using Hexalith.EventStore.ErrorHandling;
+using Hexalith.EventStore.OpenApi;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 
