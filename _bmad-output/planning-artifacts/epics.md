@@ -1,0 +1,1536 @@
+---
+stepsCompleted:
+  - step-01-validate-prerequisites
+  - step-02-design-epics
+  - step-03-create-stories
+  - step-04-final-validation
+inputDocuments:
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-06-02.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-06-20-ai-response-progress-transport.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-06-21.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-06-22-ci-release-retier.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-06-26-submodule-references.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-06-26.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-06-29.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-02-global-event-ordering.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-02-rest-api-external-host.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-02.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-04.md
+---
+
+# eventstore - Epic Breakdown
+
+## Overview
+
+This document provides the complete epic and story breakdown for eventstore, decomposing the requirements from the approved sprint change proposals into implementable stories.
+
+Formal EventStore PRD and standalone architecture documents were not present in `_bmad-output/planning-artifacts`. Per user confirmation, the input set for this run is `_bmad-output/planning-artifacts/*.md`; therefore the requirements inventory below is extracted from the approved sprint change proposals in that folder.
+
+## Requirements Inventory
+
+### Functional Requirements
+
+FR1: Domain modules built on Hexalith.EventStore must be domain-centric, containing domain code such as aggregates, commands, events, projections, query handlers, validators, and contracts, while platform boilerplate is supplied by EventStore libraries.
+
+FR2: The platform must provide a domain-service SDK with `AddEventStoreDomainService`, `UseEventStoreDomainService`, and `MapEventStoreDomainService` so a domain service host can be reduced to the canonical SDK host shape.
+
+FR3: The domain-service SDK must expose the canonical DAPR-facing endpoints `/process`, `/replay-state`, `/query`, `/project`, and `/admin/operational-index-metadata`.
+
+FR4: The platform must provide a domain query-handler seam using `IDomainQueryHandler`, discovery, dispatch, operational metadata reporting, gateway-side query-type capture, and handler-aware routing to domain `/query` endpoints.
+
+FR5: The platform must provide a generic persisted read-model store and write policy with optimistic-concurrency merge-on-write, multi-key/index support, DAPR implementation, and in-memory testing support.
+
+FR6: The platform must provide a reusable DataProtection-backed query cursor codec with scope validation, payload limits, tamper/key-rotation handling, and caller-supplied purpose isolation.
+
+FR7: The platform must provide a generic projection-handler seam for `/project` dispatch and a generic domain-event subscription/consumer pipeline with deduplication and endpoint mapping.
+
+FR8: The platform must provide Aspire, telemetry, and health-check extensions for domain modules, including `AddEventStoreDomainModule`, convention telemetry, and DAPR state-store health checks.
+
+FR9: The Sample domain and Tenants domain must adopt platform SDK seams so duplicated request routers, projection actors, cursor codecs, state-store plumbing, telemetry, health checks, and per-domain Aspire wiring are removed or reduced to domain-specific logic.
+
+FR10: The EventStore package set must include the domain-service and service-default packages as publishable packages, and release packaging must publish only the manifest-governed EventStore package set.
+
+FR11: The platform must provide a REST API source-generator contract seam with `ICommandContract`, `IQueryContract`, optional `RestRouteAttribute`, and assembly-level `RestApiAttribute`.
+
+FR12: The REST API generator must discover command/query contracts and emit typed, OpenAPI-visible controllers that delegate to `IEventStoreGatewayClient`, with tests covering discovery, routing conventions, diagnostics, and generated output.
+
+FR13: Generated REST controllers must live in dedicated external-facing API hosts, not interactive UI hosts; interactive UI hosts must consume EventStore client libraries directly.
+
+FR14: The Sample proof must introduce a contracts-only Sample contracts library and an external Sample API host, move shared contracts there, and prove generated query and command controllers through that external API host.
+
+FR15: The Tenants proof must move generated Tenants controllers to an external Tenants API host, while Tenants UI consumes client libraries and no longer hosts hand-written per-message controllers.
+
+FR16: The projection-changed transport must add an additive metadata-rich detail path with optional group scope, bounded metadata, scoped SignalR groups, DAPR notification support where needed, and preserved signal-only compatibility.
+
+FR17: Live DAPR sidecar tests must be tagged and removed from the per-push release gate, then run in a dedicated integration workflow with sidecar warm-up and readiness retry.
+
+FR18: `DaprETagService` must allow an overridable actor request timeout while preserving the production default.
+
+FR19: Root-declared Git submodules must live under `references/`, and solution, project, documentation, Aspire metadata, and LLM instruction paths must resolve through the `references/` layout.
+
+FR20: The Aspire Keycloak resource must be named `security` while preserving Keycloak as the implementation technology and updating fixtures/resource lookups accordingly.
+
+FR21: Cross-repo Hexalith library dependencies must use Debug source project references when explicitly enabled and Release package references by default, with package versions pinned centrally.
+
+FR22: Release restore, build, test, pack, and semantic-release commands must assert package-reference mode and avoid packaging submodule projects.
+
+FR23: Persisted events must receive non-zero, actor-allocated global positions; CloudEvent ids must use the event `MessageId`; duplicate command replies must preserve the original command result fields.
+
+FR24: The global-position allocation strategy must be renegotiated toward sharding per tenant or domain, and the frozen global-ordering spec must be updated before implementation.
+
+FR25: EventStore workflows must use shared Hexalith.Builds security gates through `@main`, keep third-party actions SHA-pinned through shared workflows, and define NuGet package publish scope in `tools/release-packages.json`.
+
+FR26: Phase 0 architecture remediation must close immediate safe fixes: clear staged state on infrastructure failure, protect anonymous admin endpoints, strip committed admin secrets, enforce production auth guards, add tenant-filter parity, gate admin Swagger, require destructive CLI confirmation, use ULID-safe admin correlation middleware, and correct stale test-baseline documentation.
+
+FR27: Pipeline correctness remediation must make resume/idempotency matching use `MessageId`, `CausationId`, and `CommandType`; key command status/archive by message id; preserve retryability for transient failures; and validate tenant access before idempotency reads.
+
+FR28: Trust-boundary remediation must require app-layer credentials for internal, domain-service, projection-notification, and admin-computation endpoints, and must remove trust in wire-asserted administrator flags.
+
+FR29: Replay and dispatch remediation must make event apply-method resolution boundary-safe and ambiguity-detecting, and must use one shared `JsonSerializerOptions` path for command, rehydrate, project, and pub/sub payload serialization.
+
+FR30: Crash recovery remediation must detect events committed but not published and complete publication or drain/recover them without requiring resubmission with the same correlation id.
+
+FR31: Append durability remediation must start with a live-sidecar two-writer race test and DAPR conflict-exception spike before choosing an optimistic-concurrency fencing design.
+
+FR32: Runtime topology remediation must make the AppHost-loaded DAPR pub/sub, ACL, and key-prefix posture match the posture asserted by tests and production deploy templates.
+
+FR33: Cost and evolution remediation must introduce folded snapshots, reduce projection replay cost, add projection sequence guards, support event schema versioning/upcasting, validate event metadata identity components, and add cancellation-token seams to published processing/query/projection interfaces.
+
+FR34: Delivery, admin, and deployment remediation must document at-least-once unordered delivery, add poison/dead-letter handling, bound in-memory deduplication, normalize admin claims, audit every state-mutating admin action, hide deferred admin operations, add secret-store-backed configuration, add readiness/app-health checks, and restore meaningful IntegrationTests CI coverage.
+
+FR35: Backlog capabilities must be tracked for GDPR aggregate erasure/tombstoning, Admin interactive OIDC login, an aggregate test kit, and REST generator hardening.
+
+### NonFunctional Requirements
+
+NFR1: Security must fail closed for public, internal, domain-service, projection-notification, and admin surfaces; no endpoint may rely only on network posture or caller-supplied admin flags.
+
+NFR2: Tenant isolation must be preserved across state keys, actor IDs, topics, admin queries, generated REST APIs, SignalR groups, and deployment configuration.
+
+NFR3: Production authentication must reject insecure symmetric-key mode unless explicitly break-glassed, require HTTPS metadata where appropriate, and pin accepted JWT algorithms.
+
+NFR4: Committed configuration must not contain forgeable administrator signing keys, credentials, bearer tokens, decoded JWT payloads, or other operational secrets.
+
+NFR5: SignalR detail metadata must remain bounded and metadata-only; framework logs must not expose metadata values above Debug level.
+
+NFR6: Event delivery semantics are at-least-once and unordered; subscribers must deduplicate by `MessageId` and order only where domain semantics make `SequenceNumber` meaningful.
+
+NFR7: Event persistence and command processing must avoid silent data loss: staged-state flushes, stale pipeline records, append races, and committed-but-unpublished events must be explicitly guarded or recovered.
+
+NFR8: Snapshot and projection behavior must have a bounded cost model as streams grow and must avoid unnecessary full-stream replay when already current.
+
+NFR9: Release behavior must be reproducible and independent of local submodule checkout state; Release builds must use package references for external Hexalith libraries unless intentionally overridden.
+
+NFR10: CI/CD must separate deterministic release-gate tests from live-sidecar/integration tests while preserving live-sidecar coverage in a dedicated lane.
+
+NFR11: Package publishing must be manifest-driven and must not publish submodule packages or packages outside the EventStore release inventory.
+
+NFR12: Backward compatibility must be preserved for additive framework changes such as SignalR signal-only projection notifications and existing generic gateway APIs.
+
+NFR13: Generated code and source-generator packages must build cleanly under warnings-as-errors and must follow EventStore code style, nullable, ULID, and `ConfigureAwait(false)` rules.
+
+NFR14: Interactive UI hosts must not expose generated or hand-written per-message MVC command/query controllers; UI command/query flows consume client libraries.
+
+NFR15: Admin UX must not present deferred backup, restore, import, compaction, or other unavailable operations as functional; unavailable operations must be hidden/disabled or return 501.
+
+NFR16: Integration and higher-tier tests must assert persisted state-store/read-model/end-state evidence, not only HTTP status codes or mock call counts.
+
+NFR17: Operational hardening must support secret stores, DAPR app health checks, readiness-tagged health checks, resiliency targets, immutable image tags, and documented crypto-shred boundaries.
+
+NFR18: AOT/trimming is explicitly not a target while reflection conventions remain load-bearing, and that constraint must be documented.
+
+### Additional Requirements
+
+- No standalone PRD, architecture, or UX design contract was present in the selected planning-artifacts folder; the approved sprint change proposals are the active planning baseline for this extraction.
+- No greenfield starter template is mandated. A `dotnet new hexalith-domain` template is mentioned as an optional/deferred platform capability, not a required starting point.
+- Use `Hexalith.EventStore.slnx` only for restore/build; do not introduce or use `.sln` files.
+- Run unit tests per project; do not make solution-level `dotnet test` the default EventStore validation path.
+- Keep `.csproj` package references versionless; all package versions must remain in `Directory.Packages.props`.
+- Preserve the Debug-source/Release-package dependency policy through `UseHexalithProjectReferences`; rerun restore after changing dependency mode.
+- Use .NET SDK container support, not Dockerfiles, and keep container repository settings centralized.
+- Keep DAPR access-control YAML, sidecar app IDs, topics, and AppHost resource names aligned whenever topology changes.
+- Use ULIDs for message, correlation, causation, and aggregate identifiers where EventStore envelope semantics require sortable unique ids; do not use `Guid.TryParse` for these identifiers.
+- Apply `ConfigureAwait(false)` to awaited calls in production code and maintain warnings-as-errors cleanliness.
+- Generated REST controllers must delegate to the gateway rather than bypassing gateway auth, validation, status, archive, and observability behavior.
+- Domain services must not own reusable hosting, ServiceDefaults, Aspire wiring, query actors, cursor codecs, state-store wrappers, telemetry sources, or health-check classes when the platform supplies them.
+- AppHost changes require an Aspire restart because the app model is built at startup.
+- Release workflow changes must preserve semantic-release behavior and Conventional Commit driven versioning.
+- Shared Hexalith.Builds workflow/action references are intentionally `@main`; third-party action pinning policy remains enforced by the shared workflows.
+- Any global-ordering sharding implementation must update the frozen `_bmad-output/implementation-artifacts/spec-dapr-global-event-ordering.md` before code changes.
+- Specs are required before implementing folded snapshots, projection delivery cost changes, and event schema versioning/upcasting.
+- GDPR erasure, Admin OIDC login, and aggregate test-kit work are backlog epics and must not be hidden inside unrelated remediation stories.
+
+### UX Design Requirements
+
+No UX design contract was included in the selected input set. UI-related requirements extracted from the change proposals are represented as functional/non-functional requirements above, especially FR13, FR15, FR34, NFR14, and NFR15.
+
+### FR Coverage Map
+
+FR1: Epic 1 - Domain author self-service platform.
+
+FR2: Epic 1 - Domain-service SDK host shape.
+
+FR3: Epic 1 - Canonical domain-service DAPR endpoints.
+
+FR4: Epic 1 - Domain query-handler seam and gateway routing.
+
+FR5: Epic 1 - Generic persisted read-model store and write policy.
+
+FR6: Epic 1 - Reusable protected query cursor codec.
+
+FR7: Epic 1 - Generic projection-handler and domain-event consumer seams.
+
+FR8: Epic 1 - Aspire, telemetry, and health-check platform extensions.
+
+FR9: Epic 1 - Sample and Tenants adoption of platform SDK seams.
+
+FR10: Epic 1 - DomainService and ServiceDefaults packaging.
+
+FR11: Epic 2 - REST API source-generator contract seam.
+
+FR12: Epic 2 - Generated typed REST controllers and generator tests.
+
+FR13: Epic 2 - External API hosts for generated REST; UI uses client libraries.
+
+FR14: Epic 2 - Sample contracts library and external Sample API proof.
+
+FR15: Epic 2 - Tenants external API proof and UI client-library adoption.
+
+FR16: Epic 2 - Metadata-rich, scope-aware projection-changed transport.
+
+FR17: Epic 3 - Live-sidecar tests re-tiered off release gate.
+
+FR18: Epic 3 - Overridable DaprETagService actor timeout.
+
+FR19: Epic 3 - Submodules under references layout.
+
+FR20: Epic 3 - Aspire Keycloak resource renamed to security.
+
+FR21: Epic 3 - Debug source references and Release package references.
+
+FR22: Epic 3 - Release commands assert package mode and avoid submodule packaging.
+
+FR23: Epic 4 - Non-zero global positions, MessageId CloudEvent ids, duplicate result fidelity.
+
+FR24: Epic 4 - Global-position sharding spec renegotiation.
+
+FR25: Epic 3 - Shared Hexalith.Builds gates and manifest-driven package scope.
+
+FR26: Epic 5 - Phase 0 security and safe-remediation fixes.
+
+FR27: Epic 4 - Resume/idempotency integrity and command status re-keying.
+
+FR28: Epic 5 - Defense-in-depth trust boundary.
+
+FR29: Epic 4 - Replay and dispatch determinism.
+
+FR30: Epic 4 - Crash recovery for committed-but-unpublished events.
+
+FR31: Epic 4 - Append durability verify-first spike.
+
+FR32: Epic 5 - Runtime topology and deployment posture parity.
+
+FR33: Epic 6 - Bounded cost and event evolution.
+
+FR34: Epic 7 - Delivery, admin, deploy, and IntegrationTests recovery.
+
+FR35: Epic 7 - Backlog capability tracking.
+
+## Epic List
+
+### Epic 1: Domain Author Self-Service Platform
+
+**Epic type:** Platform Capability
+
+Domain authors can build and run EventStore-backed domain modules with minimal boilerplate and reusable platform seams, while the platform owns hosting, query, projection, read-model, cursor, telemetry, health, Aspire, and packaging concerns.
+
+**FRs covered:** FR1, FR2, FR3, FR4, FR5, FR6, FR7, FR8, FR9, FR10
+
+### Epic 2: External Integration Surfaces
+
+**Epic type:** External Integration Capability
+
+External application developers can consume typed, generated REST APIs, while interactive UI hosts use client libraries directly and real-time projection notifications remain scoped, metadata-only, and backward compatible.
+
+**FRs covered:** FR11, FR12, FR13, FR14, FR15, FR16
+
+### Epic 3: Release And Repository Reliability
+
+**Epic type:** Release Reliability
+
+Maintainers can release reproducibly with correct package/reference mode, aligned submodule and Aspire resource layout, deterministic release gates, live-sidecar integration coverage, shared supply-chain workflows, and manifest-governed package output.
+
+**FRs covered:** FR17, FR18, FR19, FR20, FR21, FR22, FR25
+
+### Epic 4: Event Correctness And Recovery
+
+**Epic type:** Correctness Remediation
+
+Operators and consumers can trust persisted event metadata, idempotency, command status, replay dispatch, append behavior, global-position allocation, and crash recovery semantics under duplicate, concurrent, and failure conditions.
+
+**Sequencing note:** Prioritize data-loss, idempotency, replay, and recovery slices before global-position sharding.
+
+**FRs covered:** FR23, FR24, FR27, FR29, FR30, FR31
+
+### Epic 5: Security And Tenant Isolation
+
+**Epic type:** Security Remediation
+
+Administrators, tenants, and domain services are protected by fail-closed authentication, scoped authorization, safe configuration, app-layer internal credentials, tenant-aware runtime topology, and removal of trusted wire assertions.
+
+**Sequencing note:** Prioritize Phase 0 safe fixes and trust-boundary closure before topology hardening.
+
+**FRs covered:** FR26, FR28, FR32
+
+### Epic 6: Bounded Cost And Event Evolution
+
+**Epic type:** Spec-Gated Cost And Evolution
+
+Platform users can operate long-lived streams with bounded snapshot and projection cost, sequence-safe projection updates, explicit global-position scaling, event schema versioning/upcasting, validated event metadata, and cancellation-aware processing seams.
+
+**Sequencing note:** Stories in this epic must begin with frozen specs before implementation.
+
+**FRs covered:** FR33
+
+### Epic 7: Operator Trust, Admin Honesty, And Future Capabilities
+
+**Epic type:** Operations And Backlog Capability
+
+Operators get honest admin UX, attributable admin actions, production deployment hardening, reliable higher-tier test evidence, and explicit backlog tracks for erasure, admin OIDC, aggregate test kits, and generator hardening.
+
+**FRs covered:** FR34, FR35
+
+## Epic 1: Domain Author Self-Service Platform
+
+Domain authors can build and run EventStore-backed domain modules with minimal boilerplate and reusable platform seams, while the platform owns hosting, query, projection, read-model, cursor, telemetry, health, Aspire, and packaging concerns.
+
+### Story 1.1: Canonical Domain-Service SDK Host
+
+**Requirements covered:** FR1, FR2, FR3
+
+As a domain author,
+I want a canonical EventStore domain-service SDK host,
+So that I can run a domain module with platform-provided hosting and DAPR endpoints instead of hand-written boilerplate.
+
+**Acceptance Criteria:**
+
+**Given** a domain module references the EventStore domain-service SDK
+**When** its host calls `builder.AddEventStoreDomainService()` and `app.UseEventStoreDomainService()`
+**Then** the host registers EventStore domain services, service defaults, and domain assembly discovery
+**And** the domain host does not require hand-written request router, default endpoint, or operational metadata wiring.
+
+**Given** a domain service uses the SDK host extensions
+**When** the application maps domain-service endpoints
+**Then** `/process`, `/replay-state`, `/project`, and `/admin/operational-index-metadata` are available through SDK-owned mappings
+**And** route mapping remains compatible with domains that already provide a bespoke `/project` route.
+
+**Given** the Sample domain host is used as the in-repository proof
+**When** its `Program.cs` is inspected
+**Then** the domain hosting surface is reduced to the canonical SDK calls
+**And** moved SDK infrastructure is deleted from the Sample project.
+
+**Given** the SDK host is built and tested
+**When** the relevant build and unit-test projects run
+**Then** the Release build is clean under warnings-as-errors
+**And** focused SDK and Sample tests verify endpoint mapping, assembly discovery, and compatibility behavior.
+
+### Story 1.2: Domain Query Handler Routing
+
+**Requirements covered:** FR4
+
+As a domain author,
+I want domain queries to be implemented as plain query handlers and routed by the platform,
+So that my domain can expose query behavior without hosting a custom projection/query actor.
+
+**Acceptance Criteria:**
+
+**Given** a domain module registers one or more `IDomainQueryHandler` implementations
+**When** `AddEventStoreDomainService()` runs
+**Then** the handlers are discovered and registered by domain and query type
+**And** duplicate or unsupported query routes fail predictably without manual switch-based dispatch.
+
+**Given** the domain-service SDK exposes operational index metadata
+**When** the gateway reads `/admin/operational-index-metadata`
+**Then** handler-served query types are advertised per domain
+**And** the gateway persists or caches that metadata for routing decisions.
+
+**Given** the gateway receives a query for a handler-served domain/query type
+**When** `HandlerAwareQueryRouter` resolves the route
+**Then** it invokes the target domain service `/query` endpoint
+**And** it falls back to the projection-actor router when no handler is declared.
+
+**Given** query routing is tested
+**When** focused unit tests execute
+**Then** domain-side dispatch, metadata capture, handler-aware routing, and fallback behavior are verified
+**And** the implementation remains backward compatible with projection-actor query routing.
+
+### Story 1.3: Generic Read Models And Query Cursors
+
+**Requirements covered:** FR5, FR6
+
+As a domain author,
+I want platform-provided persisted read-model storage and protected query cursors,
+So that I can implement domain-specific read behavior without reimplementing DAPR state access, optimistic concurrency, or cursor protection.
+
+**Acceptance Criteria:**
+
+**Given** a domain projection or query handler needs durable read-model state
+**When** it uses `IReadModelStore` and `ReadModelWritePolicy`
+**Then** it can read and write ETag-aware entries by key
+**And** it can apply events or merge singleton/index read models with bounded optimistic-concurrency retries.
+
+**Given** a domain needs deterministic tests for read-model behavior
+**When** it uses the platform testing fake
+**Then** the fake preserves first-write-wins and ETag conflict semantics
+**And** tests can inject conflicts without relying on live DAPR infrastructure.
+
+**Given** a domain query returns paged results
+**When** it creates a cursor with `IQueryCursorCodec` and `QueryCursorScope`
+**Then** the cursor is protected with a caller-supplied Data Protection purpose
+**And** decoding fails safely for wrong scope, wrong query type, malformed payload, tampering, oversize payload, or key rotation.
+
+**Given** the read-model and cursor seams are adopted by a non-trivial domain
+**When** existing Tenants-style read-model and cursor behavior is migrated
+**Then** domain-specific RBAC, index, audit, and pagination semantics are preserved
+**And** the hand-written state-store and cursor-codec infrastructure is removed.
+
+### Story 1.4: Projection And Domain Event Consumer Seams
+
+**Requirements covered:** FR7
+
+As a domain author,
+I want platform seams for projection dispatch and domain-event consumption,
+So that I can keep projection and subscription behavior domain-specific while reusing the platform plumbing.
+
+**Acceptance Criteria:**
+
+**Given** a domain implements `IDomainProjectionHandler`
+**When** the SDK maps `/project`
+**Then** the SDK dispatches projection requests to the matching handler
+**And** it yields when the application has already mapped a bespoke `/project` route.
+
+**Given** a domain consumes events from EventStore pub/sub
+**When** it registers platform domain-event handlers and maps domain-event endpoints
+**Then** the platform provides the event envelope, context, handler dispatch, marker-based deduplication, and endpoint mapping
+**And** domain code only implements the handler logic and domain-specific options.
+
+**Given** a domain requires payload integrity checks
+**When** `PayloadAggregateIdPropertyName` or equivalent options are configured
+**Then** the event consumer validates the payload aggregate identity before applying side effects
+**And** invalid or duplicate events are handled consistently with at-least-once delivery expectations.
+
+**Given** projection and subscription seams are tested
+**When** focused unit tests execute
+**Then** projection dispatch, custom-route yielding, event handler registration, deduplication, and endpoint mapping are verified
+**And** the Client library remains ASP.NET-free while endpoint mapping stays in the DomainService SDK.
+
+### Story 1.5: Domain Module Hosting Observability
+
+**Requirements covered:** FR8
+
+As a platform operator,
+I want domain modules to use shared Aspire, telemetry, and health-check conventions,
+So that local topology, diagnostics, and health behavior are consistent across every domain.
+
+**Acceptance Criteria:**
+
+**Given** an AppHost adds a domain module
+**When** it calls the EventStore Aspire domain-module extension
+**Then** the domain receives the expected DAPR sidecar, state-store, pub/sub, and app-id wiring
+**And** the extension supports shared or intentionally isolated DAPR resources.
+
+**Given** a domain module emits diagnostic telemetry
+**When** it registers platform domain telemetry conventions
+**Then** ActivitySource, Meter, and health-check names are derived consistently from the domain name
+**And** per-domain telemetry code does not recreate platform-owned sources or meters.
+
+**Given** a domain module depends on a DAPR state store
+**When** the platform DAPR state-store health check is registered
+**Then** health probes verify the configured state-store path
+**And** the health-check name follows the shared domain convention.
+
+**Given** the hosting and observability seams are adopted
+**When** the AppHost and related tests are updated
+**Then** duplicated sidecar, telemetry, and health-check wiring is removed from domain modules
+**And** Release builds remain clean under warnings-as-errors.
+
+### Story 1.6: Sample And Tenants Domain-Centric Adoption
+
+**Requirements covered:** FR9
+
+As a platform maintainer,
+I want the Sample and Tenants domains to prove the domain-centric model,
+So that future domain authors have working references that do not duplicate platform infrastructure.
+
+**Acceptance Criteria:**
+
+**Given** the Sample domain is the minimal reference implementation
+**When** it adopts the SDK host, projection handler, and event-consumer seams
+**Then** its host and supporting files contain only domain-specific behavior
+**And** moved request routing, projection, and operational metadata infrastructure is deleted from the Sample project.
+
+**Given** the Tenants domain is the non-trivial reference implementation
+**When** it adopts `IDomainQueryHandler`, `IReadModelStore`, `ReadModelWritePolicy`, `IQueryCursorCodec`, platform domain-event consumers, platform telemetry, and platform health checks
+**Then** tenant RBAC, audit, read-model, pagination, and projection semantics are preserved
+**And** per-domain query actors, cursor codecs, state-store wrappers, telemetry classes, health checks, and reusable Aspire/ServiceDefaults plumbing are removed.
+
+**Given** domain-module authoring rules are enforced
+**When** Sample and Tenants references are inspected by guardrail tests or governance checks
+**Then** domain modules do not reintroduce their own reusable hosting, Aspire, ServiceDefaults, projection actor, cursor, state-store, telemetry, or health-check infrastructure
+**And** any remaining AppHost/topology ownership follows the current root repository architecture rules.
+
+**Given** the adoption proofs are validated
+**When** the relevant EventStore and domain test projects run
+**Then** unit tiers remain green
+**And** any CI-gated DAPR/Aspire integration gaps are documented with exact blockers and follow-up work.
+
+### Story 1.7: DomainService Packaging And Guardrails
+
+**Requirements covered:** FR10
+
+As a release maintainer,
+I want the domain-service SDK, service defaults, documentation, and guardrails to be packaged and governed,
+So that the domain-centric model is reusable and hard to regress.
+
+**Acceptance Criteria:**
+
+**Given** EventStore packages are released
+**When** the release package manifest and pack scripts run
+**Then** `Hexalith.EventStore.DomainService` and `Hexalith.EventStore.ServiceDefaults` are included as intended
+**And** packages outside the EventStore release manifest are not produced or published.
+
+**Given** future agents or developers author a domain module
+**When** they read repository instructions and generated project context
+**Then** the domain-centric host shape, query/projection/read-model/cursor seams, Aspire extension, and anti-boilerplate rules are documented
+**And** instructions clearly state that generated REST APIs belong to external API hosts, not interactive UI hosts.
+
+**Given** a domain module attempts to reintroduce duplicated infrastructure
+**When** guardrail tests or governance checks run
+**Then** they flag own `*.Aspire`, `*.ServiceDefaults`, reusable projection/query actor, cursor codec, state-store wrapper, telemetry, or health-check anti-patterns where prohibited
+**And** the failure explains the platform seam that should be used instead.
+
+**Given** package metadata and governance are validated
+**When** Release build, pack, and focused package-governance tests run
+**Then** package dependencies are reproducible
+**And** the solution remains clean under warnings-as-errors.
+
+## Epic 2: External Integration Surfaces
+
+External application developers can consume typed, generated REST APIs, while interactive UI hosts use client libraries directly and real-time projection notifications remain scoped, metadata-only, and backward compatible.
+
+### Story 2.1: REST Contract Seam For Command And Query Messages
+
+**Requirements covered:** FR11
+
+As a domain contract author,
+I want command and query messages to declare their generated REST surface explicitly,
+So that external API hosts can generate typed endpoints without convention-only discovery or copied contract types.
+
+**Acceptance Criteria:**
+
+**Given** a command is intended for generated REST exposure
+**When** the command implements `ICommandContract`
+**Then** it exposes static `Domain` and `CommandType` values and an instance `AggregateId`
+**And** those values are used by generated controllers to build gateway command requests.
+
+**Given** a command or query needs a custom HTTP route
+**When** it is annotated with `RestRouteAttribute`
+**Then** the generator honors the configured verb and route template
+**And** route templates can include domain-specific path parameters without changing the generic gateway contract.
+
+**Given** an external API host opts in to generated REST controllers
+**When** it applies assembly-level `RestApiAttribute`
+**Then** route prefix, tag, and tenant-source behavior are available to the generator
+**And** the contract assembly remains reusable by the domain service, external API host, and interactive UI metadata consumers.
+
+**Given** the contract seam is tested
+**When** Contracts tests run
+**Then** command marker behavior, route metadata, tenant-source options, and invalid metadata cases are covered
+**And** existing `IQueryContract` behavior remains backward compatible.
+
+### Story 2.2: REST API Generator Discovery And Controller Emission
+
+**Requirements covered:** FR12
+
+As an external API host developer,
+I want a Roslyn generator to emit typed REST controllers from domain contracts,
+So that external applications get OpenAPI-visible endpoints without hand-written per-message controllers.
+
+**Acceptance Criteria:**
+
+**Given** an external API host references the REST API generator as an analyzer
+**When** the host compilation includes opted-in command and query contracts
+**Then** generated controllers are emitted into the host compilation
+**And** non-marker types are ignored.
+
+**Given** generated query actions execute
+**When** a request reaches the generated controller
+**Then** the controller delegates to `IEventStoreGatewayClient.SubmitQueryAsync`
+**And** it maps success, `304`, ETag, not-found, forbidden, and validation outcomes consistently with gateway query semantics.
+
+**Given** generated command actions execute
+**When** a request reaches the generated controller
+**Then** the controller generates ULID message/correlation identifiers where required and delegates to `IEventStoreGatewayClient.SubmitCommandAsync`
+**And** route/body aggregate mismatches return a safe `400` response without rewriting command payloads.
+
+**Given** generator misuse or unsupported declarations exist
+**When** generator tests run through `CSharpGeneratorDriver`
+**Then** diagnostics cover duplicate routes, unsupported route metadata, missing command contract members, and invalid tenant-source usage
+**And** generated code follows file-scoped namespaces, nullable, `ConfigureAwait(false)`, and warnings-as-errors rules.
+
+### Story 2.3: Sample External API Host Proof
+
+**Requirements covered:** FR13, FR14
+
+As an external application developer,
+I want the Sample domain to expose generated REST endpoints through a dedicated API host,
+So that I can see the intended integration pattern without coupling it to the interactive Sample UI.
+
+**Acceptance Criteria:**
+
+**Given** Sample query and command contracts are shared between hosts
+**When** they move into a contracts-only Sample contracts library
+**Then** the domain service, Sample API host, and Sample Blazor UI reference the same compiled contract identities
+**And** no contract file is compile-linked into the UI as a second type.
+
+**Given** the Sample API host is configured for generated REST
+**When** it references the contracts library and generator analyzer
+**Then** generated query and command controllers are available in the external API host
+**And** the host configures controllers, inbound auth, service defaults, and gateway-client access without Razor or interactive UI concerns.
+
+**Given** the Sample Blazor UI needs command and query behavior
+**When** it is updated for the corrected architecture
+**Then** it consumes EventStore client libraries directly
+**And** it hosts no generated or hand-written per-message MVC command/query controllers.
+
+**Given** the Sample external API proof is validated
+**When** Release build and focused Sample tests run
+**Then** generated query and command endpoints compile and behave as expected
+**And** any smoke tests verify ETag/`304` query behavior and accepted command behavior through the external API host.
+
+### Story 2.4: Tenants External API Host Adoption
+
+**Requirements covered:** FR15
+
+As an external tenant-management integrator,
+I want Tenants typed REST endpoints to be generated in an external API host,
+So that external applications can use stable tenant APIs while Tenants UI stays a client-library consumer.
+
+**Acceptance Criteria:**
+
+**Given** Tenants commands and queries are intended for external REST exposure
+**When** their contracts implement the required EventStore REST contract seam and route metadata
+**Then** rich routes such as tenant detail, tenant users, user tenants, global administrators, and tenant audit are declared in contracts
+**And** the declarations do not duplicate controller logic.
+
+**Given** an external Tenants API host references the Tenants contracts and generator
+**When** it builds
+**Then** generated controllers replace the former hand-written `TenantsQueryController` surface
+**And** all generated actions delegate through `IEventStoreGatewayClient` so gateway auth, validation, status, archive, and observability remain the front door.
+
+**Given** Tenants UI needs tenant command and query behavior
+**When** it is aligned with the corrected architecture
+**Then** it uses EventStore/Tenants client libraries instead of hosting MVC command/query controllers
+**And** UI-specific flows continue to preserve projection-confirmed success and support-safe states.
+
+**Given** Tenants external API adoption is validated
+**When** submodule unit and integration tests run in their appropriate lanes
+**Then** the generated REST surface preserves existing external behavior
+**And** any CI-gated DAPR/Aspire blockers are documented with exact commands and failure reasons.
+
+### Story 2.5: Scoped Metadata-Rich Projection Notifications
+
+**Requirements covered:** FR16
+
+As a real-time client developer,
+I want projection-changed notifications to carry bounded metadata and optional group scope,
+So that clients can filter stale or out-of-order updates before re-querying without receiving tenant-wide noise.
+
+**Acceptance Criteria:**
+
+**Given** an existing signal-only projection notification consumer
+**When** the projection-changed transport is extended
+**Then** the existing `ProjectionChanged(projectionType, tenantId)` path and group naming remain backward compatible
+**And** existing consumers build and pass unchanged.
+
+**Given** a producer needs to broadcast metadata-rich projection details
+**When** it calls the detail overload with projection type, tenant id, optional group scope, and metadata
+**Then** the broadcaster sends the detail payload only to the matching scoped group
+**And** tenant-wide groups do not receive scoped-only details.
+
+**Given** notification metadata is provided by a domain
+**When** metadata exceeds configured entry or byte limits
+**Then** the framework rejects or clips the metadata according to documented options
+**And** metadata values are not logged above Debug level.
+
+**Given** clients join or leave scoped projection groups
+**When** the hub receives group operations
+**Then** tenant authorization still runs before group membership changes
+**And** group names validate projection type, tenant id, and scope using safe character and reserved-separator rules.
+
+**Given** projection notification tests run
+**When** SignalR and optional DAPR notification paths are exercised
+**Then** scoped detail delivery, signal-only compatibility, auth rejection, metadata bounds, fail-open broadcast behavior, and Redis backplane fan-out are covered.
+
+## Epic 3: Release And Repository Reliability
+
+Maintainers can release reproducibly with correct package/reference mode, aligned submodule and Aspire resource layout, deterministic release gates, live-sidecar integration coverage, shared supply-chain workflows, and manifest-governed package output.
+
+### Story 3.1: Re-Tier Live-Sidecar Tests From Release Gate
+
+**Requirements covered:** FR17
+
+As a release maintainer,
+I want live DAPR sidecar tests to run outside the per-push release gate,
+So that releases are not blocked by cold-start sidecar flakiness while live-sidecar coverage remains preserved.
+
+**Acceptance Criteria:**
+
+**Given** tests require a live `daprd` sidecar
+**When** those test classes are categorized
+**Then** they are marked with a `LiveSidecar` trait
+**And** non-live-sidecar tests remain in the deterministic release gate.
+
+**Given** the release workflow runs
+**When** it executes Server.Tests
+**Then** it filters out `Category=LiveSidecar`
+**And** it does not install or initialize DAPR solely for the release gate.
+
+**Given** the dedicated integration workflow runs
+**When** it provisions DAPR and executes `Category=LiveSidecar`
+**Then** live-sidecar tests run in their own lane
+**And** failures are visible without blocking semantic-release publishing.
+
+**Given** live-sidecar tests start on a cold CI runner
+**When** the shared DAPR fixture initializes
+**Then** it performs readiness retry and warm-up actor round trips
+**And** placement, activation, and Redis state paths are hot before assertions depend on them.
+
+### Story 3.2: Harden DAPR ETag Timeout For Integration Conditions
+
+**Requirements covered:** FR18
+
+As a test maintainer,
+I want ETag actor request timeout to be overridable in tests,
+So that cold-start integration latency does not produce false fail-open results.
+
+**Acceptance Criteria:**
+
+**Given** production code constructs `DaprETagService` through normal DI
+**When** no custom request timeout is supplied
+**Then** the existing production default timeout is preserved
+**And** existing service registration remains compatible.
+
+**Given** a live-sidecar test needs longer actor activation tolerance
+**When** it constructs `DaprETagService` with an explicit timeout
+**Then** the service uses the supplied timeout for actor proxy calls
+**And** the test can assert persisted ETag behavior without relying on fail-open nulls.
+
+**Given** timeout behavior is validated
+**When** focused unit or integration tests run
+**Then** both default and override paths are covered
+**And** the change does not weaken fail-open behavior for genuine production actor failures.
+
+### Story 3.3: References-Based Submodule Layout
+
+**Requirements covered:** FR19
+
+As a repository maintainer,
+I want root-declared submodules to live under `references/`,
+So that external Hexalith module checkouts are separated from EventStore source and tooling paths are consistent.
+
+**Acceptance Criteria:**
+
+**Given** root-declared submodules are configured
+**When** `.gitmodules` is inspected
+**Then** every root-declared Hexalith submodule path is under `references/`
+**And** no root-level `Hexalith.*` submodule directory remains required.
+
+**Given** the solution and MSBuild props are evaluated
+**When** restore and Release build run against `Hexalith.EventStore.slnx`
+**Then** project references and source path properties resolve through `references/`
+**And** no stale root-level submodule path is required.
+
+**Given** documentation, generated API reference docs, Aspire metadata, and LLM instructions mention Hexalith submodules
+**When** repository-wide path scans run
+**Then** references point to `references/Hexalith.*`
+**And** nested submodules are not initialized or required.
+
+**Given** consuming AppHosts need EventStore project metadata
+**When** metadata helpers resolve EventStore project paths
+**Then** they use the shared `references/Hexalith.EventStore` convention
+**And** focused AppHost tests verify the updated paths.
+
+### Story 3.4: Aspire Security Resource Naming
+
+**Requirements covered:** FR20
+
+As an operator,
+I want the Aspire identity-provider resource to be named `security`,
+So that the topology exposes the service role instead of the Keycloak implementation name.
+
+**Acceptance Criteria:**
+
+**Given** Keycloak is used as the identity-provider implementation
+**When** the AppHost builds the Aspire model
+**Then** the resource name is `security`
+**And** Keycloak-specific realm import, ports, dependencies, and auth behavior remain unchanged.
+
+**Given** integration fixtures need the identity-provider resource
+**When** they resolve endpoints or create HTTP clients
+**Then** they use the `security` resource name
+**And** Keycloak-specific token and realm logic remains implementation-specific.
+
+**Given** the Aspire topology is started
+**When** `aspire describe` is inspected
+**Then** the resource display name and `OTEL_SERVICE_NAME` are `security`
+**And** dependent resources wait on `security`, not `keycloak`.
+
+### Story 3.5: Debug Source References And Release Package References
+
+**Requirements covered:** FR21
+
+As a package maintainer,
+I want external Hexalith dependencies selected by build intent,
+So that Debug builds can source-debug while Release builds depend on published packages.
+
+**Acceptance Criteria:**
+
+**Given** `UseHexalithProjectReferences` is not explicitly set
+**When** a Debug build evaluates project references
+**Then** external Hexalith project references are enabled when root-declared submodule source exists
+**And** developers can override the mode explicitly.
+
+**Given** `UseHexalithProjectReferences` is not explicitly set
+**When** a Release build evaluates project references
+**Then** external Hexalith package references are selected by default
+**And** package versions are pinned centrally in `Directory.Packages.props`.
+
+**Given** project files reference external Hexalith libraries
+**When** source and package modes are evaluated
+**Then** each dependency has exactly one active source per mode
+**And** host applications that are not library packages are not disguised as package dependencies.
+
+**Given** dependency mode changes between restores
+**When** validation commands run
+**Then** restore is rerun before build or test
+**And** stale project-reference assets cannot leak into package-mode validation.
+
+### Story 3.6: Manifest-Driven Release Packaging
+
+**Requirements covered:** FR22
+
+As a release maintainer,
+I want EventStore package scope declared in a manifest,
+So that release output is reviewable and cannot accidentally publish submodule packages.
+
+**Acceptance Criteria:**
+
+**Given** `tools/release-packages.json` declares the EventStore release inventory
+**When** release pack scripts run
+**Then** only manifest-listed EventStore packages are built and packed
+**And** `GeneratePackageOnBuild=false` prevents submodule package emission during dependent builds.
+
+**Given** package output is produced
+**When** release validation scripts inspect the package directory
+**Then** output exactly matches the manifest and release version
+**And** unexpected `Hexalith.Commons.*`, `Hexalith.Tenants.*`, or other submodule packages fail validation.
+
+**Given** semantic-release runs prepare and publish commands
+**When** it packs and publishes NuGet artifacts
+**Then** package-mode properties are asserted explicitly
+**And** publish commands are scoped to `Hexalith.EventStore.*.nupkg` artifacts.
+
+**Given** package metadata is validated
+**When** generated NuGet packages are inspected
+**Then** external Hexalith dependencies appear as package dependencies
+**And** local source project paths do not leak into release package metadata.
+
+### Story 3.7: Shared CI/CD Security Gates And Supply-Chain Backlog
+
+**Requirements covered:** FR25
+
+As a repository maintainer,
+I want EventStore CI/CD to reuse shared Hexalith.Builds security gates and document supply-chain hardening backlog,
+So that workflow policy is consistent, reproducible, and reviewable across Hexalith modules.
+
+**Acceptance Criteria:**
+
+**Given** EventStore uses CodeQL, dependency-review, and commitlint workflows
+**When** workflow files are inspected
+**Then** they are thin callers of shared Hexalith.Builds reusable workflows using `@main`
+**And** caller workflows retain only module-specific triggers, concurrency, and permissions.
+
+**Given** Hexalith.Builds actions and reusable workflows are referenced by root and submodule workflows
+**When** workflow references are scanned
+**Then** Hexalith.Builds references use `@main`
+**And** third-party action SHA-pinning remains enforced by the shared workflows.
+
+**Given** release tooling dependencies are installed
+**When** the release workflow runs `npm ci`
+**Then** package-lock based installs can use npm cache
+**And** known npm signature/provenance blockers are documented rather than added as failing gates.
+
+**Given** long-lived publish secrets remain in use
+**When** CI documentation and secrets checklists are updated
+**Then** `NUGET_API_KEY` remains documented until NuGet Trusted Publishing is configured
+**And** OIDC trusted publishing, attestations, SBOM, and related hardening work are tracked as follow-ups.
+
+## Epic 4: Event Correctness And Recovery
+
+Operators and consumers can trust persisted event metadata, idempotency, command status, replay dispatch, append behavior, global-position allocation, and crash recovery semantics under duplicate, concurrent, and failure conditions.
+
+### Story 4.1: Event Identity And Duplicate Result Fidelity
+
+**Requirements covered:** FR23
+
+As an event consumer,
+I want persisted event identity and duplicate command results to be stable and complete,
+So that subscribers can deduplicate reliably and retried commands receive semantically identical responses.
+
+**Acceptance Criteria:**
+
+**Given** events are persisted from a command
+**When** global position allocation is available
+**Then** each event receives a non-zero actor-allocated global position
+**And** local aggregate sequence numbers remain unchanged.
+
+**Given** a CloudEvent is published for a persisted event
+**When** the CloudEvent id is assigned
+**Then** it uses the persisted event `MessageId`
+**And** same-correlation, same-sequence events from different aggregates cannot collide.
+
+**Given** a duplicate command is resolved from idempotency state
+**When** the stored command result is returned
+**Then** event count, result payload, backpressure fields, accepted/error state, and correlation information match the original result
+**And** callers do not observe a degraded duplicate response.
+
+**Given** focused server tests run
+**When** event persistence, event publishing, idempotency record, and idempotency checker tests execute
+**Then** global position stamping, CloudEvent id selection, and result fidelity are verified.
+
+### Story 4.2: Resume And Idempotency Integrity
+
+**Requirements covered:** FR27
+
+As an operator,
+I want command pipeline resume and idempotency checks to match the exact command being processed,
+So that stale pipeline state cannot hijack a different command or prevent a valid retry.
+
+**Acceptance Criteria:**
+
+**Given** a pipeline record exists for an earlier command
+**When** a different command reuses the same correlation id
+**Then** resume logic compares `MessageId`, `CausationId`, and `CommandType`
+**And** the stale record is drained or ignored without skipping execution of the new command.
+
+**Given** idempotency state is checked for a command
+**When** the caller is not authorized for the tenant
+**Then** tenant validation happens before idempotency data is read
+**And** unauthorized callers cannot infer command status or duplicate state across tenants.
+
+**Given** a command previously failed because of transient infrastructure or persistence conflict
+**When** the same message id is retried
+**Then** retryable/transient records do not permanently block progress
+**And** terminal domain outcomes remain safely deduplicated.
+
+**Given** command status and archive records are written
+**When** they are keyed or queried
+**Then** primary lookup uses `{tenant}:{messageId}`
+**And** correlation id is treated as an indexed field rather than the command identity.
+
+### Story 4.3: Deterministic Replay Dispatch And Serialization
+
+**Requirements covered:** FR29
+
+As a domain maintainer,
+I want event replay and projection dispatch to resolve event types deterministically,
+So that rehydration cannot apply the wrong event or silently drop payload data.
+
+**Acceptance Criteria:**
+
+**Given** two event CLR type names share a suffix
+**When** apply-method resolution runs during aggregate or projection replay
+**Then** matching requires a `.` namespace boundary or exact full-name match
+**And** ambiguous candidates fail with a clear diagnostic instead of choosing the wrong handler.
+
+**Given** event dispatch dictionaries are built
+**When** event types are registered
+**Then** fully qualified event type names are registered as supported keys
+**And** legacy short-name resolution remains compatible where unambiguous.
+
+**Given** payloads are serialized and deserialized across command, rehydrate, project, and pub/sub paths
+**When** those paths process event payloads
+**Then** they use one shared `JsonSerializerOptions` definition
+**And** casing or converter drift cannot silently produce empty/default payloads in one path.
+
+**Given** replay and dispatch tests run
+**When** suffix collision, ambiguity, and serialization cases are exercised
+**Then** correct dispatch, clear failures, and shared serializer behavior are verified.
+
+### Story 4.4: Committed Event Publication Recovery
+
+**Requirements covered:** FR30
+
+As an operator,
+I want the system to recover events committed but not published,
+So that a crash after persistence does not permanently lose subscriber delivery.
+
+**Acceptance Criteria:**
+
+**Given** an aggregate actor persisted events and metadata but crashed before publish completed
+**When** the actor activates or a recovery sweep runs
+**Then** it detects the persisted pipeline state at the stored/published boundary
+**And** it resumes publication or converts the state into a drain/recovery record.
+
+**Given** recovery publishes previously committed events
+**When** the publish operation is retried
+**Then** CloudEvent ids remain stable because they use event `MessageId`
+**And** subscribers can deduplicate repeated delivery safely.
+
+**Given** recovery cannot complete publication after bounded attempts
+**When** the failure path is reached
+**Then** the command status exposes retryable/recoverable state
+**And** the system does not require resubmission with the identical correlation id to make progress.
+
+**Given** crash-recovery tests run
+**When** stored-but-unpublished pipeline states are simulated
+**Then** publication completion, duplicate-safe retry, and unrecoverable diagnostics are verified.
+
+### Story 4.5: Append Durability Race Evidence
+
+**Requirements covered:** FR31
+
+As an architect,
+I want real DAPR conflict behavior proven before changing append fencing,
+So that optimistic-concurrency design is based on observed state-store semantics instead of assumptions.
+
+**Acceptance Criteria:**
+
+**Given** two writers concurrently append to the same aggregate stream key
+**When** the LiveSidecar race test runs against real Redis through DAPR
+**Then** the resulting stream remains gapless and duplicate-free
+**And** the test records whether one writer fails, retries, or both writes serialize safely.
+
+**Given** DAPR actor-state transactions encounter a conflict
+**When** the spike captures the thrown exception
+**Then** the actual exception type and retry surface are documented
+**And** existing `InvalidOperationException` conflict handling is confirmed or flagged as dead code.
+
+**Given** the evidence is collected
+**When** architecture reviews the result
+**Then** the decision to add, change, or defer explicit ETag fencing is recorded
+**And** no fencing implementation starts before this verification is complete.
+
+**Given** the LiveSidecar test is added
+**When** CI lanes are evaluated
+**Then** the test is categorized correctly outside the deterministic release gate
+**And** its blocker or result is documented in the appropriate integration lane.
+
+### Story 4.6: Global Position Sharding Spec Renegotiation
+
+**Requirements covered:** FR24
+
+As a platform architect,
+I want the global-position allocation strategy renegotiated and specified before sharding,
+So that ordering metadata scales without violating the frozen global-ordering contract.
+
+**Acceptance Criteria:**
+
+**Given** the existing global-ordering spec is marked frozen after approval
+**When** sharding is proposed
+**Then** `_bmad-output/implementation-artifacts/spec-dapr-global-event-ordering.md` is updated through the required approval path
+**And** the change records that positions can be gappy and are not strictly commit-ordered.
+
+**Given** sharding options are evaluated
+**When** tenant-scoped and domain-scoped allocation are compared
+**Then** the selected option documents ordering guarantees, bottleneck reduction, failure modes, and migration impact
+**And** consumers know how to interpret positions across shards.
+
+**Given** implementation begins after spec approval
+**When** global-position allocation is changed
+**Then** existing per-event identity and CloudEvent id behavior remains stable
+**And** focused tests verify monotonicity within the selected shard boundary.
+
+## Epic 5: Security And Tenant Isolation
+
+Administrators, tenants, and domain services are protected by fail-closed authentication, scoped authorization, safe configuration, app-layer internal credentials, tenant-aware runtime topology, and removal of trusted wire assertions.
+
+### Story 5.1: Infrastructure Failure Cache Clear
+
+**Requirements covered:** FR26
+
+As an operator,
+I want infrastructure-failure rejection paths to clear staged actor state before committing,
+So that rejected outcomes cannot accidentally flush partially staged events.
+
+**Acceptance Criteria:**
+
+**Given** an aggregate actor has staged event or metadata state
+**When** an infrastructure failure path handles a rejection
+**Then** `StateManager.ClearCacheAsync()` runs before the rejection state is persisted
+**And** previously staged events cannot be committed with the rejection outcome.
+
+**Given** the concurrency-conflict path already clears cache
+**When** the infrastructure-failure path is updated
+**Then** both failure paths follow the same staged-state safety pattern
+**And** the implementation uses `ConfigureAwait(false)` on awaited calls.
+
+**Given** a test injects failure after events are staged
+**When** the rejection path completes
+**Then** stream metadata and event state remain unchanged
+**And** only the intended rejection/status state is observable.
+
+### Story 5.2: Admin Endpoint Authorization And Tenant Filters
+
+**Requirements covered:** FR26
+
+As a tenant administrator,
+I want admin query endpoints to require authorization and tenant scoping,
+So that cross-tenant event and command data is not exposed through anonymous or over-broad admin routes.
+
+**Acceptance Criteria:**
+
+**Given** public admin stream, trace, and command query controllers are called without credentials
+**When** the request reaches the gateway
+**Then** the response is unauthorized
+**And** no cross-tenant event, trace, or command data is returned.
+
+**Given** an authenticated caller lacks global administrator rights or tenant scope
+**When** it requests another tenant's admin data
+**Then** authorization denies the request
+**And** tenant-filter behavior matches the gateway's tenant isolation rules.
+
+**Given** `AdminCommandsQueryController` accepts a count or similar query limit
+**When** the caller supplies an excessive value
+**Then** the count is clamped to a safe maximum
+**And** tests cover both default and excessive-count behavior.
+
+**Given** admin write or sandbox endpoints accept request bodies
+**When** request-size limits are applied
+**Then** oversized requests fail safely
+**And** limits are tested or documented.
+
+### Story 5.3: Production Authentication Guards And Secret Stripping
+
+**Requirements covered:** FR26
+
+As a security operator,
+I want production authentication to fail closed and committed configs to contain no forgeable admin identity,
+So that insecure local-development authentication cannot leak into deployed environments.
+
+**Acceptance Criteria:**
+
+**Given** the Admin UI base configuration is committed
+**When** it is inspected
+**Then** it contains no signing key, username, password, or global-admin identity
+**And** development-only credentials live only in development configuration.
+
+**Given** the gateway or Admin.Server.Host starts outside Development
+**When** no authority is configured or symmetric-key mode would be used
+**Then** startup fails unless an explicit break-glass option is configured
+**And** the failure message identifies the unsafe authentication posture.
+
+**Given** production JWT validation is configured
+**When** options are validated
+**Then** HTTPS metadata is required where applicable
+**And** accepted token algorithms are pinned through token validation parameters.
+
+**Given** authentication guard tests run
+**When** Development and Production options are evaluated
+**Then** development fallback remains available
+**And** production insecure configurations fail deterministically.
+
+### Story 5.4: Admin Surface Safety Hygiene
+
+**Requirements covered:** FR26
+
+As an administrator,
+I want admin tooling and documentation to avoid unsafe defaults and misleading test guidance,
+So that operational workflows do not encourage accidental destructive or insecure behavior.
+
+**Acceptance Criteria:**
+
+**Given** admin Swagger is configured
+**When** the application runs outside Development
+**Then** admin Swagger is disabled or gated appropriately
+**And** tests verify the environment-specific behavior.
+
+**Given** CLI commands perform destructive admin operations
+**When** a caller invokes them without explicit `--confirm` or `--yes`
+**Then** the command refuses to proceed
+**And** the confirmation behavior is covered by focused CLI tests.
+
+**Given** Admin.Server.Host reads or propagates correlation identifiers
+**When** correlation middleware validates identifiers
+**Then** it uses ULID-safe parsing or accepted non-whitespace semantics rather than `Guid.TryParse`
+**And** tests cover valid ULID and invalid inputs.
+
+**Given** repository guidance describes test baselines
+**When** CLAUDE/project-context documentation is updated
+**Then** it no longer claims Server.Tests cannot build if that is stale
+**And** it documents the current release gate and integration-test lane accurately.
+
+### Story 5.5: Internal And Domain-Service Trust Boundary
+
+**Requirements covered:** FR28
+
+As a platform security maintainer,
+I want internal and domain-service endpoints to require app-layer credentials,
+So that sidecar, gateway, and domain-service calls cannot mint trust from headers or wire flags alone.
+
+**Acceptance Criteria:**
+
+**Given** the Dapr internal authentication handler receives a `dapr-caller-app-id` header
+**When** no DAPR app API token or equivalent internal credential proves sidecar origin
+**Then** the handler does not mint global administrator claims
+**And** forged plaintext headers are rejected.
+
+**Given** the domain-service SDK maps `/process`, `/query`, `/replay-state`, `/project`, and operational metadata endpoints
+**When** requests reach those endpoints
+**Then** an app-layer credential check is enforced
+**And** unauthenticated network-local callers cannot execute domain operations.
+
+**Given** command or query wire envelopes include administrator-related flags
+**When** the domain service evaluates authorization context
+**Then** it ignores or removes wire-asserted `IsGlobalAdmin` semantics
+**And** gateway-verified claims are the source of authorization truth.
+
+**Given** projection notification endpoints receive pub/sub callbacks
+**When** a caller posts projection-changed data
+**Then** sidecar/pubsub caller identity is verified
+**And** forged external requests cannot broadcast projection changes.
+
+### Story 5.6: Runtime Topology And Deploy Parity
+
+**Requirements covered:** FR32
+
+As an operator,
+I want the topology loaded at runtime to match the security posture tested and deployed,
+So that local AppHost, test, and production DAPR configurations enforce the same tenant isolation assumptions.
+
+**Acceptance Criteria:**
+
+**Given** the AppHost starts DAPR sidecars
+**When** pub/sub components are configured
+**Then** the scoped/dead-letter `pubsub.yaml` path is passed explicitly
+**And** daprd does not silently load an unscoped generated component instead.
+
+**Given** production DAPR component templates are used
+**When** state-store and pub/sub YAML are inspected
+**Then** key prefixes, tenant scopes, ACLs, and app-id rules match the posture asserted by tests
+**And** deny-by-default rules are preserved.
+
+**Given** AppHost topology tests run
+**When** they inspect the generated or configured sidecar arguments
+**Then** they assert the actual component paths and ACL posture loaded at runtime
+**And** stale config drift fails tests.
+
+**Given** topology, app-id, topic, or sidecar settings change
+**When** documentation and deployment manifests are updated
+**Then** DAPR access-control YAML, AppHost resource names, and route/topic wiring remain aligned.
+
+## Epic 6: Bounded Cost And Event Evolution
+
+Platform users can operate long-lived streams with bounded snapshot and projection cost, sequence-safe projection updates, explicit global-position scaling, event schema versioning/upcasting, validated event metadata, and cancellation-aware processing seams.
+
+### Story 6.1: Folded Snapshot Frozen Spec
+
+**Requirements covered:** FR33
+
+As a platform architect,
+I want folded snapshot behavior specified before implementation,
+So that snapshot cost is bounded without changing recovery semantics unexpectedly.
+
+**Acceptance Criteria:**
+
+**Given** automatic snapshots currently risk nesting event history
+**When** the folded snapshot spec is written
+**Then** it defines the target folded-state payload shape, keying, replay behavior, migration handling, and compatibility rules
+**And** it explains how the manual replay-state path is reused or aligned.
+
+**Given** snapshot storage affects recovery and retention
+**When** the spec is reviewed
+**Then** it documents broker/snapshot plaintext boundary, retention implications, and crypto-shred considerations
+**And** approval is recorded before implementation starts.
+
+### Story 6.2: Folded Snapshot Implementation
+
+**Requirements covered:** FR33
+
+As an operator,
+I want automatic snapshots to store folded aggregate state,
+So that snapshot payload size stays bounded as event streams grow.
+
+**Acceptance Criteria:**
+
+**Given** a stream reaches the automatic snapshot threshold
+**When** the snapshot is written
+**Then** the persisted snapshot contains folded state rather than nested full event history
+**And** snapshot keying remains compatible with the approved spec.
+
+**Given** an aggregate is rehydrated from events and snapshots
+**When** a folded snapshot exists
+**Then** replay reconstructs the same state as a full event replay
+**And** legacy or absent snapshots continue to work according to the migration plan.
+
+**Given** snapshot cost tests run
+**When** a stream grows across multiple snapshot intervals
+**Then** snapshot payload size remains bounded
+**And** Release build remains clean under warnings-as-errors.
+
+### Story 6.3: Projection Delivery Cost And Sequence Guard Spec
+
+**Requirements covered:** FR33
+
+As a platform architect,
+I want projection cost and ordering behavior specified before implementation,
+So that projection optimizations do not introduce out-of-order state regressions.
+
+**Acceptance Criteria:**
+
+**Given** projection delivery currently full-replays streams
+**When** the projection cost spec is written
+**Then** it defines checkpoint short-circuit behavior, tail delivery, incremental handler assumptions, and fallback paths
+**And** it orders source-sequence guards before cost-reduction changes.
+
+**Given** projections may be updated by multiple replicas
+**When** the sequence-guard design is specified
+**Then** it defines how stale or out-of-order source sequence writes are rejected or ignored
+**And** it documents actor-id and domain scoping assumptions.
+
+### Story 6.4: Projection Cost And Sequence Guard Implementation
+
+**Requirements covered:** FR33
+
+As an operator,
+I want projections to avoid unnecessary full-stream replay while preventing stale writes,
+So that projection updates remain correct and cheaper on long streams.
+
+**Acceptance Criteria:**
+
+**Given** a projection checkpoint already equals the stream head
+**When** projection delivery runs
+**Then** it can short-circuit after reading metadata
+**And** no unnecessary full-stream replay is performed.
+
+**Given** a projection checkpoint trails the stream head
+**When** incremental projection delivery is available
+**Then** only the required tail is delivered to the projection path
+**And** fallback behavior remains correct for handlers that require full replay.
+
+**Given** a projection update carries a stale source sequence
+**When** the projection actor or store attempts to write it
+**Then** the sequence guard prevents state regression
+**And** tests cover same-sequence, stale-sequence, and newer-sequence updates.
+
+**Given** projection cost tests run
+**When** long-stream projection scenarios are exercised
+**Then** reduced replay behavior and correctness guards are both verified.
+
+### Story 6.5: Event Versioning And Upcasting Spec
+
+**Requirements covered:** FR33
+
+As a domain maintainer,
+I want event schema evolution specified before contracts harden,
+So that domains can change event payloads without breaking replay.
+
+**Acceptance Criteria:**
+
+**Given** event metadata currently lacks an explicit payload-versioning path
+**When** the versioning spec is written
+**Then** it defines persisted event type, payload version, legacy fallback, and migration behavior
+**And** it identifies public contract changes before implementation starts.
+
+**Given** replay requires old events to become current domain payloads
+**When** upcasting is specified
+**Then** the spec defines `IEventUpcaster` chain ordering, failure behavior, telemetry, and test expectations
+**And** allow-list polymorphic deserialization remains intact.
+
+**Given** public seams such as `IDomainProcessor`, `/query`, and `/project` need cancellation support
+**When** the spec is finalized
+**Then** cancellation-token contract changes are included
+**And** the breaking-change or compatibility impact is documented.
+
+### Story 6.6: Event Versioning And Upcasting Implementation
+
+**Requirements covered:** FR33
+
+As a domain maintainer,
+I want replay to understand event contract type and payload version,
+So that old events can be safely upcast and processed by current domain code.
+
+**Acceptance Criteria:**
+
+**Given** new events are persisted
+**When** event metadata is written
+**Then** metadata includes the kebab event contract type and explicit payload version
+**And** CLR-name based resolution remains available only as documented legacy fallback.
+
+**Given** replay reads an older payload version
+**When** an applicable upcaster chain is registered
+**Then** the payload is transformed to the current version before applying domain logic
+**And** missing or failed upcasters produce clear diagnostics without silent data corruption.
+
+**Given** event metadata is constructed
+**When** tenant, domain, and aggregate identity components are supplied
+**Then** `AggregateIdentity` component validation is applied
+**And** invalid identity data is rejected at the boundary.
+
+**Given** processing, query, or projection operations are canceled
+**When** cancellation tokens are propagated through the updated public seams
+**Then** long-running operations observe cancellation
+**And** tests cover token propagation without breaking existing behavior.
+
+## Epic 7: Operator Trust, Admin Honesty, And Future Capabilities
+
+Operators get honest admin UX, attributable admin actions, production deployment hardening, reliable higher-tier test evidence, and explicit backlog tracks for erasure, admin OIDC, aggregate test kits, and generator hardening.
+
+### Story 7.1: Delivery Contract And Poison Handling
+
+**Requirements covered:** FR34
+
+As an event subscriber operator,
+I want delivery semantics and poison handling to be explicit and enforced,
+So that subscriber failures do not become infinite retry storms or hidden data-loss paths.
+
+**Acceptance Criteria:**
+
+**Given** EventStore publishes domain events to subscribers
+**When** delivery contracts are documented
+**Then** the contract states at-least-once and unordered delivery
+**And** subscribers are instructed to deduplicate by `MessageId` and use `SequenceNumber` only within the correct aggregate semantics.
+
+**Given** a drain or subscriber delivery repeatedly fails
+**When** retry limits or max age are exceeded
+**Then** the event is moved to a dead-letter or poison-handling path
+**And** diagnostics preserve enough metadata to investigate without exposing raw payload secrets.
+
+**Given** duplicate deliveries arrive while the first delivery is still in progress
+**When** deduplication state is checked
+**Then** in-progress duplicates are handled as retryable or deferred
+**And** the in-memory dedup set is bounded to prevent unbounded growth.
+
+**Given** delivery tests run
+**When** duplicate, late, out-of-order, retry-exhausted, and dead-letter scenarios are exercised
+**Then** delivery semantics and poison handling are verified.
+
+### Story 7.2: Admin Claims, Audit, And Honest Deferred Operations
+
+**Requirements covered:** FR34
+
+As an administrator,
+I want admin actions to be correctly authorized, attributable, and honest about unsupported operations,
+So that the admin plane is trustworthy for production operations.
+
+**Acceptance Criteria:**
+
+**Given** Admin.Server receives user claims
+**When** claims transformation runs
+**Then** `tenants` and `permissions` are normalized consistently with gateway rules
+**And** null or missing tenant scope denies access rather than granting all-tenant visibility.
+
+**Given** a state-mutating admin action executes
+**When** authorization succeeds
+**Then** a structured audit record includes the authenticated user id, tenant context, action, outcome, and correlation id
+**And** audit logging does not expose tokens, raw payloads, or stack traces.
+
+**Given** backup, restore, import, compaction, or other deferred operations are not implemented
+**When** an operator views the Admin UI or calls the corresponding server endpoint
+**Then** the UI hides or disables unavailable operations
+**And** any remaining endpoint returns `501` instead of presenting fake success.
+
+**Given** admin API clients are duplicated across hosts or tools
+**When** a shared typed client is introduced or planned
+**Then** behavior remains consistent
+**And** duplicated request/response mapping is reduced without changing authorization semantics.
+
+### Story 7.3: Production Deployment Hardening
+
+**Requirements covered:** FR34
+
+As a production operator,
+I want deployment configuration to use secret stores, health checks, resiliency policy, and immutable images,
+So that deployed EventStore environments have a defensible operational posture.
+
+**Acceptance Criteria:**
+
+**Given** production DAPR components require secrets
+**When** deploy manifests are generated or inspected
+**Then** secrets use secret-store components and `secretKeyRef`
+**And** plaintext `{env:...}` placeholders are removed where production posture requires secret indirection.
+
+**Given** services expose health checks
+**When** readiness probes are configured
+**Then** state-store health checks are tagged for readiness
+**And** DAPR app health checks are enabled where supported.
+
+**Given** DAPR resiliency policies are configured
+**When** domain service invocations are inspected
+**Then** the `apps` targets include the domain services the code assumes are covered
+**And** retries, timeouts, and circuit-breaker behavior are documented.
+
+**Given** container images are produced for release
+**When** deploy manifests reference image tags
+**Then** immutable git-SHA tags are supported or preferred
+**And** mutable tags are not the only production deployment option.
+
+### Story 7.4: Integration Test Recovery And State Evidence
+
+**Requirements covered:** FR34
+
+As a quality maintainer,
+I want integration tests to run in meaningful CI lanes and assert persisted state evidence,
+So that high-risk tenant, DAPR, and topology behavior is not validated only by local or smoke tests.
+
+**Acceptance Criteria:**
+
+**Given** IntegrationTests include infra-free or lightweight subsets
+**When** CI workflows are updated
+**Then** those subsets run in CI without requiring the full Aspire topology
+**And** full Aspire-dependent tests have a dedicated documented lane or blocker.
+
+**Given** integration tests currently assert only HTTP `202`, `200`, or mock call counts
+**When** they are refactored
+**Then** they assert Redis/state-store/read-model/CloudEvent end-state evidence where applicable
+**And** shared read-back helpers are extracted into `Hexalith.EventStore.Testing.Integration`.
+
+**Given** fake-simulated conflict tests are labeled as integration tests
+**When** the test suite is reviewed
+**Then** fake-only tests are moved to unit scope or rewritten against real infrastructure
+**And** integration labels reflect actual external dependency coverage.
+
+**Given** performance or advisory validation is needed
+**When** CI workflows are updated
+**Then** a `workflow_dispatch` perf-lab lane is available
+**And** permanently red advisory jobs or never-driven skips are either fixed, quarantined with rationale, or removed.
+
+### Story 7.5: Track Future Capability Backlog
+
+**Requirements covered:** FR35
+
+As a product owner,
+I want large deferred capabilities tracked as explicit backlog epics,
+So that GDPR erasure, admin OIDC, aggregate testing, and generator hardening are not hidden inside unrelated remediation work.
+
+**Acceptance Criteria:**
+
+**Given** GDPR aggregate erasure and tombstoning are deferred
+**When** backlog artifacts are updated
+**Then** GDPR-1 records crypto-shred, tombstone, broker, snapshot, retention, and verification scope
+**And** it is not implemented opportunistically inside unrelated cleanup stories.
+
+**Given** Admin interactive OIDC login is deferred
+**When** backlog artifacts are updated
+**Then** IAM-1 records authorization-code with PKCE, forwarded end-user tokens, and removal of ROPC/self-mint service identity
+**And** it remains separate from immediate secret-stripping/auth-guard fixes.
+
+**Given** an aggregate test kit is deferred
+**When** backlog artifacts are updated
+**Then** KIT-1 records `Given(events).When(command).Then(events)` style fixtures, replay determinism, Apply idempotency, and package dependency boundaries
+**And** it tracks the split needed for testing packages to avoid unnecessary Server dependencies.
+
+**Given** REST generator hardening remains after Epic 2
+**When** backlog artifacts are updated
+**Then** generator incrementality, generated-controller authz checks, and deferred-work items are traceable
+**And** they are not lost when Epic D proof stories complete.

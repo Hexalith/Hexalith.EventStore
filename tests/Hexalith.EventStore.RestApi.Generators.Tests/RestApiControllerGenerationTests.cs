@@ -153,6 +153,52 @@ public sealed class RestApiControllerGenerationTests
     }
 
     [Fact]
+    public void Run_SystemTenantSource_ValidatesTenantRouteParamAgainstBody()
+    {
+        CSharpCompilation compilation = RestApiGeneratorTestHarness.CreateCompilation(SystemTenantRouteParamSource);
+
+        CSharpCompilation outputCompilation = RestApiGeneratorTestHarness.RunAndUpdateCompilation(
+            compilation,
+            out GeneratorDriverRunResult runResult,
+            out ImmutableArray<Diagnostic> updateDiagnostics);
+
+        ShouldHaveNoErrors(updateDiagnostics);
+        ShouldHaveNoErrors(outputCompilation.GetDiagnostics(TestContext.Current.CancellationToken));
+
+        string source = RestApiGeneratorTestHarness.GetGeneratedSource(runResult, ".Controller.g.cs");
+
+        // Under System tenant source the partition tenant comes from the platform, not the route,
+        // so the {tenantId} segment is a plain aggregate identifier that MUST be reconciled with the
+        // command body — otherwise a route/body id mismatch would dispatch against the body id (AC2).
+        source.ShouldContain("ResolveTenant(null, null);");
+        source.ShouldContain("[FromRoute(Name = \"tenantId\")] string tenantId");
+        source.ShouldContain("CreateProblem(StatusCodes.Status400BadRequest, \"Bad Request\", \"Route value 'tenantId' does not match the command body.\")");
+    }
+
+    [Fact]
+    public void Run_RouteTenantSource_DoesNotReconcileTenantRouteParamWithBody()
+    {
+        CSharpCompilation compilation = RestApiGeneratorTestHarness.CreateCompilation(RouteTenantSourceWithTenantProperty);
+
+        CSharpCompilation outputCompilation = RestApiGeneratorTestHarness.RunAndUpdateCompilation(
+            compilation,
+            out GeneratorDriverRunResult runResult,
+            out ImmutableArray<Diagnostic> updateDiagnostics);
+
+        ShouldHaveNoErrors(updateDiagnostics);
+        ShouldHaveNoErrors(outputCompilation.GetDiagnostics(TestContext.Current.CancellationToken));
+
+        string source = RestApiGeneratorTestHarness.GetGeneratedSource(runResult, ".Controller.g.cs");
+
+        // Under Route tenant source the {tenantId} prefix is the partition tenant (validated by
+        // ResolveTenant), so it must NOT be body-reconciled even when the command exposes a matching
+        // TenantId property. The genuine aggregate route param is still reconciled.
+        source.ShouldContain("ResolveTenant(null, tenantId);");
+        source.ShouldNotContain("Route value 'tenantId' does not match the command body.");
+        source.ShouldContain("Route value 'counterId' does not match the command body.");
+    }
+
+    [Fact]
     public void Run_QueryPayload_UsesJsonContractNamesForPayloadKeys()
     {
         CSharpCompilation compilation = RestApiGeneratorTestHarness.CreateCompilation(JsonNamedQuerySource);
@@ -510,6 +556,40 @@ public sealed class RestApiControllerGenerationTests
 
         [RestRoute(RestVerb.Post, "{counterId}/increment")]
         public sealed record IncrementCounter(string CounterId, int Amount) : ICommandContract
+        {
+            public static string Domain => "counter";
+            public static string CommandType => "increment-counter";
+            public string AggregateId => CounterId;
+        }
+        """;
+
+    private const string SystemTenantRouteParamSource = """
+        using Hexalith.EventStore.Contracts.Commands;
+        using Hexalith.EventStore.Contracts.Rest;
+
+        [assembly: RestApi("api/tenants", "tenants", RestTenantSource.System)]
+
+        namespace Smoke;
+
+        [RestRoute(RestVerb.Post, "{tenantId}/disable")]
+        public sealed record DisableTenant(string TenantId) : ICommandContract
+        {
+            public static string Domain => "tenants";
+            public static string CommandType => "disable-tenant";
+            public string AggregateId => TenantId;
+        }
+        """;
+
+    private const string RouteTenantSourceWithTenantProperty = """
+        using Hexalith.EventStore.Contracts.Commands;
+        using Hexalith.EventStore.Contracts.Rest;
+
+        [assembly: RestApi("api/{tenantId}/counter", "counter", RestTenantSource.Route)]
+
+        namespace Smoke;
+
+        [RestRoute(RestVerb.Post, "{counterId}/increment")]
+        public sealed record IncrementCounter(string CounterId, string TenantId, int Amount) : ICommandContract
         {
             public static string Domain => "counter";
             public static string CommandType => "increment-counter";

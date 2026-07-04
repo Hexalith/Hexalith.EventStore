@@ -241,4 +241,63 @@ public class SubmitQueryHandlerTests {
         _ = await Should.ThrowAsync<InvalidOperationException>(
             () => handler.Handle(CreateTestQuery(), CancellationToken.None));
     }
+
+    [Theory]
+    [InlineData(QueryAdapterFailureReason.InvalidCursor)]
+    [InlineData(QueryAdapterFailureReason.InvalidEnvelope)]
+    public async Task Handle_ClientInputSentinel_ThrowsQueryExecutionFailedExceptionWith400(string failureReason) {
+        // Arrange
+        IQueryRouter router = Substitute.For<IQueryRouter>();
+        _ = router.RouteQueryAsync(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: failureReason));
+
+        var handler = new SubmitQueryHandler(router, NullLogger<SubmitQueryHandler>.Instance);
+
+        // Act & Assert
+        QueryExecutionFailedException ex = await Should.ThrowAsync<QueryExecutionFailedException>(
+            () => handler.Handle(CreateTestQuery(), CancellationToken.None));
+
+        ex.StatusCode.ShouldBe(400);
+        ex.Detail.ShouldBe(failureReason);
+    }
+
+    [Fact]
+    public async Task Handle_InvalidEnvelopeSentinelWithDetailContainingNotFound_MapsTo400NotNotFound() {
+        // Regression (review E1): a "sentinel: detail" message carries caller-supplied text (e.g. an
+        // invalid audit category value). A detail that happens to contain "not found" must NOT be
+        // hijacked by the fuzzy IsNotFound check into a 404 — the exact/prefix sentinel classification
+        // runs first and yields the intended 400.
+        IQueryRouter router = Substitute.For<IQueryRouter>();
+        string errorMessage = QueryAdapterFailureReason.InvalidEnvelope + ": Invalid audit category: not found";
+        _ = router.RouteQueryAsync(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: errorMessage));
+
+        var handler = new SubmitQueryHandler(router, NullLogger<SubmitQueryHandler>.Instance);
+
+        // Act & Assert
+        QueryExecutionFailedException ex = await Should.ThrowAsync<QueryExecutionFailedException>(
+            () => handler.Handle(CreateTestQuery(), CancellationToken.None));
+
+        ex.StatusCode.ShouldBe(400);
+        ex.Detail.ShouldBe(errorMessage);
+    }
+
+    [Fact]
+    public async Task Handle_InvalidCursorSentinelWithDetailContainingNotImplemented_MapsTo400NotNotImplemented() {
+        // Regression (review E1): same hijack class for the invalid-cursor sentinel vs. the fuzzy
+        // IsNotImplemented check.
+        IQueryRouter router = Substitute.For<IQueryRouter>();
+        string errorMessage = QueryAdapterFailureReason.InvalidCursor + ": cursor is not implemented for this stream";
+        _ = router.RouteQueryAsync(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: errorMessage));
+
+        var handler = new SubmitQueryHandler(router, NullLogger<SubmitQueryHandler>.Instance);
+
+        // Act & Assert
+        QueryExecutionFailedException ex = await Should.ThrowAsync<QueryExecutionFailedException>(
+            () => handler.Handle(CreateTestQuery(), CancellationToken.None));
+
+        ex.StatusCode.ShouldBe(400);
+        ex.Detail.ShouldBe(errorMessage);
+    }
 }

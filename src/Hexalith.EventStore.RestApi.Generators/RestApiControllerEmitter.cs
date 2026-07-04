@@ -233,7 +233,7 @@ internal static class RestApiControllerEmitter
         builder.AppendLine("            return CreateProblem(StatusCodes.Status400BadRequest, \"Bad Request\", \"Request body is required.\");");
         builder.AppendLine("        }");
         AppendTenantResolution(builder, options, routeParameters);
-        AppendCommandRouteMismatchChecks(builder, message, routeParameters);
+        AppendCommandRouteMismatchChecks(builder, message, routeParameters, options);
         builder.AppendLine();
         builder.AppendLine("        var __hexalithRequest = new SubmitCommandRequest(");
         builder.AppendLine("            UniqueIdHelper.GenerateSortableUniqueStringId(),");
@@ -508,10 +508,20 @@ internal static class RestApiControllerEmitter
     private static void AppendCommandRouteMismatchChecks(
         StringBuilder builder,
         RestApiMessageDescriptor message,
-        ImmutableArray<RestApiRouteParameterDescriptor> routeParameters)
+        ImmutableArray<RestApiRouteParameterDescriptor> routeParameters,
+        RestApiOptions options)
     {
-        ImmutableArray<RestApiRouteParameterDescriptor> nonTenantParameters = GetNonTenantParameters(routeParameters);
-        foreach (RestApiRouteParameterDescriptor parameter in nonTenantParameters)
+        // Under Route tenant source the {tenant}/{tenantId} segment is the partition tenant and is
+        // validated by ResolveTenant, so it is excluded from body reconciliation here. Under any
+        // non-Route source (e.g. System) the tenant-named segment is a plain domain identifier —
+        // typically the tenant aggregate id — and MUST be reconciled with the command body; otherwise
+        // a route/body id mismatch such as POST /api/tenants/acme/disable {"tenantId":"other"} would
+        // silently dispatch against the body id. AC2 requires a 400 problem detail on such a mismatch.
+        ImmutableArray<RestApiRouteParameterDescriptor> reconciledParameters =
+            RequiresRouteTenant(options)
+                ? GetNonTenantParameters(routeParameters)
+                : routeParameters;
+        foreach (RestApiRouteParameterDescriptor parameter in reconciledParameters)
         {
             string routeValue = "Convert.ToString(" + parameter.Identifier + ", CultureInfo.InvariantCulture)";
             if (string.Equals(parameter.Name, "aggregateId", StringComparison.OrdinalIgnoreCase))
@@ -539,7 +549,7 @@ internal static class RestApiControllerEmitter
                 continue;
             }
 
-            if (nonTenantParameters.Length == 1)
+            if (reconciledParameters.Length == 1)
             {
                 builder.AppendLine();
                 builder.Append("        if (!string.Equals(").Append(routeValue)

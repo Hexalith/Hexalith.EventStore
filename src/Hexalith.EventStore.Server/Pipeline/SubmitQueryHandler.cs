@@ -58,27 +58,15 @@ public partial class SubmitQueryHandler(
                 AuthorizationFailureReasonExtensions.InsufficientPermission);
         }
 
-        if (IsNotFound(errorMessage)) {
-            return new QueryNotFoundException(request.Tenant, request.Domain, request.AggregateId, request.QueryType);
-        }
-
-        if (IsNotImplemented(errorMessage)) {
-            return new QueryExecutionFailedException(
-                request.CorrelationId,
-                request.Tenant,
-                request.Domain,
-                request.AggregateId,
-                request.QueryType,
-                501,
-                errorMessage!,
-                QueryProblemReasonCodes.NotImplemented);
-        }
-
         // Client-input failures are 400, not 500. A projection adapter signals these with the
         // shared QueryAdapterFailureReason sentinels (the same mechanism as Forbidden above), either
-        // bare or as a "sentinel: detail" prefix so a descriptive message survives. The message is
-        // preserved as the ProblemDetails detail so consumers can react (e.g. the UI resets an
-        // invalid audit cursor to the first page when the detail carries "invalid-cursor").
+        // bare or as a "sentinel: detail" prefix so a descriptive message survives. These exact/prefix
+        // sentinel checks MUST run before the fuzzy IsNotFound/IsNotImplemented substring checks below:
+        // a "sentinel: detail" message carries caller-supplied text (e.g. an invalid audit category
+        // value), so a detail containing "not found" / "not implemented" would otherwise be
+        // misclassified as 404/501 instead of the intended 400. The message is preserved as the
+        // ProblemDetails detail so consumers can react (e.g. the UI resets an invalid audit cursor to
+        // the first page when the detail carries "invalid-cursor").
         if (IsSentinel(errorMessage, QueryAdapterFailureReason.InvalidCursor)) {
             return new QueryExecutionFailedException(
                 request.CorrelationId,
@@ -101,6 +89,22 @@ public partial class SubmitQueryHandler(
                 400,
                 errorMessage!,
                 QueryProblemReasonCodes.MalformedRequest);
+        }
+
+        if (IsNotFound(errorMessage)) {
+            return new QueryNotFoundException(request.Tenant, request.Domain, request.AggregateId, request.QueryType);
+        }
+
+        if (IsNotImplemented(errorMessage)) {
+            return new QueryExecutionFailedException(
+                request.CorrelationId,
+                request.Tenant,
+                request.Domain,
+                request.AggregateId,
+                request.QueryType,
+                501,
+                errorMessage!,
+                QueryProblemReasonCodes.NotImplemented);
         }
 
         return new QueryExecutionFailedException(
