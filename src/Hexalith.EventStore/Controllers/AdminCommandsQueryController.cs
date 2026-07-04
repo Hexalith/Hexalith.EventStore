@@ -12,7 +12,7 @@ namespace Hexalith.EventStore.Controllers;
 /// The admin server queries this endpoint via DAPR service invocation.
 /// </summary>
 [ApiController]
-[AllowAnonymous]
+[Authorize]
 [Route("api/v1/admin/streams")]
 [Tags("Admin - Command Queries")]
 public class AdminCommandsQueryController(
@@ -28,8 +28,9 @@ public class AdminCommandsQueryController(
         [FromQuery] string? commandType,
         [FromQuery] int count = 1000,
         CancellationToken ct = default) {
+        int safeCount = Math.Clamp(count, 1, 1000);
         PagedResult<CommandSummary> result = await activityReader
-            .GetRecentCommandsAsync(tenantId, status, commandType, count, ct)
+            .GetRecentCommandsAsync(tenantId, status, commandType, safeCount, ct)
             .ConfigureAwait(false);
         return Ok(result);
     }

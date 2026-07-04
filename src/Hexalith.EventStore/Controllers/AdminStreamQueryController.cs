@@ -32,7 +32,7 @@ namespace Hexalith.EventStore.Controllers;
 /// the Admin.Server AdminStreamsController provides the REST facade.
 /// </summary>
 [ApiController]
-[AllowAnonymous]
+[Authorize]
 [Route("api/v1/admin/streams")]
 [Tags("Admin - Stream Queries")]
 public class AdminStreamQueryController(

@@ -1909,6 +1909,11 @@ public partial class AggregateActor(
         Activity? processActivity,
         long startTicks,
         int? eventCount) {
+        // Discard any events/metadata staged by the failed persistence step before recording the
+        // rejection; otherwise the SaveStateAsync below would durably commit those staged events
+        // together with the Rejected result, leaving them persisted but never published. Mirrors the
+        // concurrency-conflict path, which already clears the cache before staging its outcome.
+        await StateManager.ClearCacheAsync().ConfigureAwait(false);
         string safeFailureReason = ProtectedDataDiagnosticRedactor.RedactException(exception, failureStage.ToString());
         Log.InfrastructureFailure(logger, command.CorrelationId, causationId, command.TenantId, command.Domain, command.AggregateId, command.CommandType, failureStage.ToString(), exception.GetType().Name, safeFailureReason);
 

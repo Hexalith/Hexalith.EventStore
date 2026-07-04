@@ -58,3 +58,18 @@ development_status:
   D-7-proof-tenants-ui-host-submodule: review
   D-8-packaging-docs-guardrail: review
   epic-D-retrospective: optional
+
+  # Added 2026-07-04 via sprint-change-proposal-2026-07-04 (architecture review remediation).
+  # Phased execution: Phase 0 (unblock) draws CPs across SEC-1/COR-1/OPS-1/TEST-1; see the proposal
+  # for the CP->epic mapping. Epics start 'backlog' until their first story file is created.
+  epic-SEC-1-trust-boundary-auth: backlog
+  epic-COR-1-append-pipeline-correctness: backlog
+  epic-COR-2-replay-dispatch-versioning: backlog
+  epic-PERF-1-snapshot-projection-cost: backlog
+  epic-REL-1-delivery-poison-handling: backlog
+  epic-OPS-1-admin-plane: backlog
+  epic-CFG-1-topology-deploy-hardening: backlog
+  epic-TEST-1-test-ci-recovery: backlog
+  epic-GDPR-1-aggregate-erasure: backlog
+  epic-IAM-1-admin-oidc-login: backlog
+  epic-KIT-1-aggregate-test-kit: backlog

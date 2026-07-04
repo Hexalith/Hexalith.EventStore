@@ -173,6 +173,7 @@ public class AdminTenantsController(
     /// Gets detailed tenant information.
     /// </summary>
     [HttpGet("{tenantId}")]
+    [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
     [Authorize(Policy = AdminAuthorizationPolicies.ReadOnly)]
     [ProducesResponseType(typeof(TenantDetail), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
@@ -208,6 +209,7 @@ public class AdminTenantsController(
     /// Gets users assigned to a tenant.
     /// </summary>
     [HttpGet("{tenantId}/users")]
+    [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
     [Authorize(Policy = AdminAuthorizationPolicies.ReadOnly)]
     [ProducesResponseType(typeof(IReadOnlyList<TenantUser>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
@@ -240,8 +242,10 @@ public class AdminTenantsController(
     /// <summary>
     /// Lists all tenants.
     /// </summary>
+    // Restricted to Admin: this endpoint has no route tenantId to scope on, so a tenant-scoped
+    // ReadOnly/Operator caller must not be able to enumerate every tenant in the platform.
     [HttpGet("ListTenants")]
-    [Authorize(Policy = AdminAuthorizationPolicies.ReadOnly)]
+    [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
     [ProducesResponseType(typeof(IReadOnlyList<TenantSummary>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]

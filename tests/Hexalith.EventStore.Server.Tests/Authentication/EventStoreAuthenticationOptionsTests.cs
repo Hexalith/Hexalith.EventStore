@@ -1,14 +1,23 @@
 
 using Hexalith.EventStore.Authentication;
 
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+
+using NSubstitute;
 
 using Shouldly;
 
 namespace Hexalith.EventStore.Server.Tests.Authentication;
 
 public class EventStoreAuthenticationOptionsTests {
-    private readonly ValidateEventStoreAuthenticationOptions _validator = new();
+    private readonly ValidateEventStoreAuthenticationOptions _validator = new(CreateEnvironment(Environments.Development));
+
+    private static IHostEnvironment CreateEnvironment(string environmentName) {
+        IHostEnvironment environment = Substitute.For<IHostEnvironment>();
+        environment.EnvironmentName = environmentName;
+        return environment;
+    }
 
     [Fact]
     public void DefaultValues_AreEmpty() {
@@ -21,6 +30,7 @@ public class EventStoreAuthenticationOptionsTests {
         options.Issuer.ShouldBe(string.Empty);
         options.Audience.ShouldBe(string.Empty);
         options.RequireHttpsMetadata.ShouldBeTrue();
+        options.AllowInsecureSymmetricKey.ShouldBeFalse();
     }
 
     [Fact]
@@ -75,7 +85,7 @@ public class EventStoreAuthenticationOptionsTests {
 
     [Fact]
     public void Validate_SigningKeyOnly_Succeeds() {
-        // Arrange (5.4.5 — accepts SigningKey-only config with valid length)
+        // Arrange (5.4.5 — accepts SigningKey-only config with valid length in Development)
         var options = new EventStoreAuthenticationOptions {
             SigningKey = "this-is-a-valid-signing-key-at-least-32-characters!!",
             Issuer = "test-issuer",
@@ -119,6 +129,59 @@ public class EventStoreAuthenticationOptionsTests {
         // Assert
         result.Failed.ShouldBeTrue();
         result.FailureMessage.ShouldContain("Audience");
+    }
+
+    [Fact]
+    public void Validate_SigningKeyOnly_OutsideDevelopment_Fails() {
+        // Arrange — the symmetric dev-key path must be rejected outside Development
+        var validator = new ValidateEventStoreAuthenticationOptions(CreateEnvironment(Environments.Production));
+        var options = new EventStoreAuthenticationOptions {
+            SigningKey = "this-is-a-valid-signing-key-at-least-32-characters!!",
+            Issuer = "test-issuer",
+            Audience = "test-audience",
+        };
+
+        // Act
+        ValidateOptionsResult result = validator.Validate(null, options);
+
+        // Assert
+        result.Failed.ShouldBeTrue();
+        result.FailureMessage.ShouldContain("Authority");
+    }
+
+    [Fact]
+    public void Validate_SigningKeyOnly_OutsideDevelopmentWithOverride_Succeeds() {
+        // Arrange — the explicit break-glass override permits symmetric keys outside Development
+        var validator = new ValidateEventStoreAuthenticationOptions(CreateEnvironment(Environments.Production));
+        var options = new EventStoreAuthenticationOptions {
+            SigningKey = "this-is-a-valid-signing-key-at-least-32-characters!!",
+            Issuer = "test-issuer",
+            Audience = "test-audience",
+            AllowInsecureSymmetricKey = true,
+        };
+
+        // Act
+        ValidateOptionsResult result = validator.Validate(null, options);
+
+        // Assert
+        result.Succeeded.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Validate_AuthorityOnly_OutsideDevelopment_Succeeds() {
+        // Arrange — OIDC Authority is the required production configuration
+        var validator = new ValidateEventStoreAuthenticationOptions(CreateEnvironment(Environments.Production));
+        var options = new EventStoreAuthenticationOptions {
+            Authority = "https://login.example.com",
+            Issuer = "test-issuer",
+            Audience = "test-audience",
+        };
+
+        // Act
+        ValidateOptionsResult result = validator.Validate(null, options);
+
+        // Assert
+        result.Succeeded.ShouldBeTrue();
     }
 
     [Fact]
