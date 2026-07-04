@@ -1,3 +1,10 @@
+# [3.33.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.32.0...v3.33.0) (2026-07-04)
+
+
+### Features
+
+* Implement architecture review remediation and enhance security measures ([b7823e4](https://github.com/Hexalith/Hexalith.EventStore/commit/b7823e4f05c16a263d2066e00f12eac1a45d4d2e))
+
 # [3.32.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.31.0...v3.32.0) (2026-07-04)
 
 
