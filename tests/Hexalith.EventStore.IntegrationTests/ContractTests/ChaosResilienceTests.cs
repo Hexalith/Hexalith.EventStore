@@ -1,5 +1,8 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 
@@ -12,7 +15,7 @@ namespace Hexalith.EventStore.IntegrationTests.ContractTests;
 
 /// <summary>
 /// Tier 3 chaos resilience tests verifying zero data loss under infrastructure failures (R-004).
-/// Uses Aspire resource lifecycle commands to stop/start Redis (state store + pub/sub)
+/// Stops/starts the external Dapr Redis container used by the AppHost's state store and pub/sub
 /// during command processing, validating checkpoint recovery (NFR22-NFR25).
 /// </summary>
 [Trait("Category", "E2E")]
@@ -22,6 +25,9 @@ namespace Hexalith.EventStore.IntegrationTests.ContractTests;
 [Collection("AspireContractTests")]
 public class ChaosResilienceTests {
     private static readonly TimeSpan s_resourceRecoveryTimeout = TimeSpan.FromSeconds(90);
+    private const string DaprRedisContainerName = "dapr_redis";
+    private const string RedisHost = "127.0.0.1";
+    private const int RedisPort = 6379;
 
     private readonly AspireContractTestFixture _fixture;
 
@@ -49,23 +55,19 @@ public class ChaosResilienceTests {
         status1.GetProperty("status").GetString().ShouldBe("Completed");
 
         // Phase 2: Stop Redis (state store + pub/sub).
-        _ = await _fixture.App.ResourceCommands
-            .ExecuteCommandAsync("redis", "resource-stop", ct);
+        await StopDaprRedisAsync(ct);
 
-        // Brief pause to let the system detect the outage.
-        await Task.Delay(TimeSpan.FromSeconds(3), ct);
-
-        // Phase 3: Restart Redis.
-        _ = await _fixture.App.ResourceCommands
-            .ExecuteCommandAsync("redis", "resource-start", ct);
-
-        // Wait for Redis to be healthy again.
-        _ = await _fixture.App.ResourceNotifications
-            .WaitForResourceHealthyAsync("redis", ct)
-            .WaitAsync(s_resourceRecoveryTimeout, ct);
+        try {
+            // Brief pause to let the system detect the outage.
+            await Task.Delay(TimeSpan.FromSeconds(3), ct);
+        }
+        finally {
+            // Phase 3: Restart Redis even if the test is interrupted while the state store is down.
+            await StartDaprRedisAsync(ct);
+        }
 
         // Allow DAPR sidecars to re-establish connections.
-        await Task.Delay(TimeSpan.FromSeconds(5), ct);
+        await Task.Delay(TimeSpan.FromSeconds(10), ct);
 
         // Phase 4: Submit command after recovery — should complete.
         string aggId2 = $"chaos-post-{Guid.NewGuid():N}";
@@ -105,17 +107,15 @@ public class ChaosResilienceTests {
         s2.GetProperty("status").GetString().ShouldBe("Completed");
 
         // Phase 2: Restart Redis (forces actor deactivation and state store reconnection).
-        _ = await _fixture.App.ResourceCommands
-            .ExecuteCommandAsync("redis", "resource-stop", ct);
-        await Task.Delay(TimeSpan.FromSeconds(3), ct);
-        _ = await _fixture.App.ResourceCommands
-            .ExecuteCommandAsync("redis", "resource-start", ct);
+        await StopDaprRedisAsync(ct);
+        try {
+            await Task.Delay(TimeSpan.FromSeconds(3), ct);
+        }
+        finally {
+            await StartDaprRedisAsync(ct);
+        }
 
-        _ = await _fixture.App.ResourceNotifications
-            .WaitForResourceHealthyAsync("redis", ct)
-            .WaitAsync(s_resourceRecoveryTimeout, ct);
-
-        await Task.Delay(TimeSpan.FromSeconds(5), ct);
+        await Task.Delay(TimeSpan.FromSeconds(10), ct);
 
         // Phase 3: Submit third command to same aggregate — actor must rehydrate from events.
         string corrId3 = await ContractTestHelpers.SubmitCommandAndGetCorrelationIdAsync(
@@ -142,50 +142,47 @@ public class ChaosResilienceTests {
         HttpClient client = _fixture.EventStoreClient;
 
         // Phase 1: Stop Redis to simulate state store outage.
-        _ = await _fixture.App.ResourceCommands
-            .ExecuteCommandAsync("redis", "resource-stop", ct);
-
-        await Task.Delay(TimeSpan.FromSeconds(3), ct);
-
-        // Phase 2: Submit command during outage — should either fail or queue.
-        string aggId = $"chaos-during-{Guid.NewGuid():N}";
-        string token = TestJwtTokenGenerator.GenerateToken(
-            tenants: ["tenant-a"],
-            domains: ["counter"],
-            permissions: ["command:submit", "command:query"]);
-
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/commands") {
-            Content = new StringContent(
-                JsonSerializer.Serialize(new {
-                    MessageId = Guid.NewGuid().ToString(),
-                    Tenant = "tenant-a",
-                    Domain = "counter",
-                    AggregateId = aggId,
-                    CommandType = "IncrementCounter",
-                    Payload = new { id = Guid.NewGuid().ToString() },
-                }),
-                Encoding.UTF8,
-                "application/json"),
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        await StopDaprRedisAsync(ct);
 
         HttpResponseMessage? response = null;
         try {
-            response = await client.SendAsync(request, ct);
+            await Task.Delay(TimeSpan.FromSeconds(3), ct);
+
+            // Phase 2: Submit command during outage — should either fail or queue.
+            string aggId = $"chaos-during-{Guid.NewGuid():N}";
+            string token = TestJwtTokenGenerator.GenerateToken(
+                tenants: ["tenant-a"],
+                domains: ["counter"],
+                permissions: ["command:submit", "command:query"]);
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/commands") {
+                Content = new StringContent(
+                    JsonSerializer.Serialize(new {
+                        MessageId = Guid.NewGuid().ToString(),
+                        Tenant = "tenant-a",
+                        Domain = "counter",
+                        AggregateId = aggId,
+                        CommandType = "IncrementCounter",
+                        Payload = new { CounterId = aggId },
+                    }),
+                    Encoding.UTF8,
+                    "application/json"),
+            };
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            try {
+                response = await client.SendAsync(request, ct);
+            }
+            catch (HttpRequestException) {
+                // Expected: infrastructure failure during outage
+            }
         }
-        catch (HttpRequestException) {
-            // Expected: infrastructure failure during outage
+        finally {
+            // Phase 3: Restore Redis.
+            await StartDaprRedisAsync(ct);
         }
 
-        // Phase 3: Restore Redis.
-        _ = await _fixture.App.ResourceCommands
-            .ExecuteCommandAsync("redis", "resource-start", ct);
-
-        _ = await _fixture.App.ResourceNotifications
-            .WaitForResourceHealthyAsync("redis", ct)
-            .WaitAsync(s_resourceRecoveryTimeout, ct);
-
-        await Task.Delay(TimeSpan.FromSeconds(5), ct);
+        await Task.Delay(TimeSpan.FromSeconds(10), ct);
 
         // Phase 4: Verify system is healthy — new command after recovery succeeds.
         string aggIdPost = $"chaos-after-{Guid.NewGuid():N}";
@@ -212,4 +209,96 @@ public class ChaosResilienceTests {
             response.Dispose();
         }
     }
+
+    private static async Task StopDaprRedisAsync(CancellationToken cancellationToken) {
+        await EnsureDockerRedisContainerAvailableAsync(cancellationToken);
+
+        ProcessResult result = await RunDockerAsync(cancellationToken, "stop", DaprRedisContainerName);
+        result.ExitCode.ShouldBe(
+            0,
+            $"Unable to stop {DaprRedisContainerName}. stdout: {result.StandardOutput}; stderr: {result.StandardError}");
+    }
+
+    private static async Task StartDaprRedisAsync(CancellationToken cancellationToken) {
+        await EnsureDockerRedisContainerAvailableAsync(cancellationToken);
+
+        ProcessResult result = await RunDockerAsync(cancellationToken, "start", DaprRedisContainerName);
+        result.ExitCode.ShouldBe(
+            0,
+            $"Unable to start {DaprRedisContainerName}. stdout: {result.StandardOutput}; stderr: {result.StandardError}");
+
+        await WaitForRedisPortAsync(cancellationToken);
+    }
+
+    private static async Task EnsureDockerRedisContainerAvailableAsync(CancellationToken cancellationToken) {
+        ProcessResult? result = await TryRunDockerAsync(cancellationToken, "inspect", DaprRedisContainerName);
+        if (result is null || result.ExitCode != 0) {
+            Assert.Skip(
+                $"Chaos tests require the Dapr Redis container '{DaprRedisContainerName}'. "
+                + "Run 'dapr init' or provide an equivalent local Dapr Redis container.");
+        }
+    }
+
+    private static async Task WaitForRedisPortAsync(CancellationToken cancellationToken) {
+        DateTimeOffset deadline = DateTimeOffset.UtcNow.Add(s_resourceRecoveryTimeout);
+        Exception? lastError = null;
+
+        while (DateTimeOffset.UtcNow < deadline) {
+            try {
+                using var client = new TcpClient();
+                await client.ConnectAsync(RedisHost, RedisPort, cancellationToken);
+                return;
+            }
+            catch (OperationCanceledException) {
+                throw;
+            }
+            catch (Exception ex) {
+                lastError = ex;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
+        }
+
+        throw new TimeoutException(
+            $"Redis did not accept TCP connections on {RedisHost}:{RedisPort} within {s_resourceRecoveryTimeout}.",
+            lastError);
+    }
+
+    private static async Task<ProcessResult?> TryRunDockerAsync(
+        CancellationToken cancellationToken,
+        params string[] arguments) {
+        try {
+            return await RunDockerAsync(cancellationToken, arguments);
+        }
+        catch (Win32Exception) {
+            return null;
+        }
+    }
+
+    private static async Task<ProcessResult> RunDockerAsync(
+        CancellationToken cancellationToken,
+        params string[] arguments) {
+        using var process = new Process {
+            StartInfo = new ProcessStartInfo("docker") {
+                RedirectStandardError = true,
+                RedirectStandardOutput = true,
+            },
+        };
+
+        foreach (string argument in arguments) {
+            process.StartInfo.ArgumentList.Add(argument);
+        }
+
+        _ = process.Start();
+        Task<string> outputTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
+        Task<string> errorTask = process.StandardError.ReadToEndAsync(cancellationToken);
+        await process.WaitForExitAsync(cancellationToken);
+
+        return new ProcessResult(
+            process.ExitCode,
+            await outputTask,
+            await errorTask);
+    }
+
+    private sealed record ProcessResult(int ExitCode, string StandardOutput, string StandardError);
 }

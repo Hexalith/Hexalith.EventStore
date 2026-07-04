@@ -1,14 +1,17 @@
 
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Pipeline;
 using Hexalith.EventStore.Server.Pipeline.Commands;
+using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Testing.Fakes;
 
 using Microsoft.Extensions.Logging.Abstractions;
 
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
 
@@ -44,6 +47,91 @@ public class SubmitCommandHandlerTests {
 
         // Assert
         result.CorrelationId.ShouldBe(expectedCorrelationId);
+    }
+
+    [Fact]
+    public async Task Handle_AcceptedCommandWithEvents_WaitsForProjectionUpdateAfterRouting() {
+        ICommandRouter router = Substitute.For<ICommandRouter>();
+        _ = router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new CommandProcessingResult(Accepted: true, EventCount: 1));
+        IProjectionUpdateOrchestrator projectionOrchestrator = Substitute.For<IProjectionUpdateOrchestrator>();
+        var projectionStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseProjection = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _ = projectionOrchestrator
+            .UpdateProjectionAsync(Arg.Any<AggregateIdentity>(), Arg.Any<CancellationToken>())
+            .Returns(_ => {
+                projectionStarted.TrySetResult(true);
+                return releaseProjection.Task;
+            });
+        var handler = new SubmitCommandHandler(
+            new InMemoryCommandStatusStore(),
+            new InMemoryCommandArchiveStore(),
+            router,
+            activityTracker: null,
+            streamActivityTracker: null,
+            projectionOrchestrator,
+            NullLogger<SubmitCommandHandler>.Instance);
+        SubmitCommand command = CreateCommand();
+
+        Task<SubmitCommandResult> handleTask = handler.Handle(command, CancellationToken.None);
+
+        _ = await projectionStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        handleTask.IsCompleted.ShouldBeFalse();
+
+        _ = releaseProjection.TrySetResult(true);
+        SubmitCommandResult result = await handleTask;
+
+        result.CorrelationId.ShouldBe(command.CorrelationId);
+        await projectionOrchestrator.Received(1).UpdateProjectionAsync(
+            Arg.Is<AggregateIdentity>(identity =>
+                identity.TenantId == command.Tenant
+                && identity.Domain == command.Domain
+                && identity.AggregateId == command.AggregateId),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ProjectionUpdateFailure_ReturnsCommandResult() {
+        ICommandRouter router = Substitute.For<ICommandRouter>();
+        _ = router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new CommandProcessingResult(Accepted: true, EventCount: 1));
+        IProjectionUpdateOrchestrator projectionOrchestrator = Substitute.For<IProjectionUpdateOrchestrator>();
+        _ = projectionOrchestrator
+            .UpdateProjectionAsync(Arg.Any<AggregateIdentity>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("projection unavailable"));
+        var handler = new SubmitCommandHandler(
+            new InMemoryCommandStatusStore(),
+            new InMemoryCommandArchiveStore(),
+            router,
+            activityTracker: null,
+            streamActivityTracker: null,
+            projectionOrchestrator,
+            NullLogger<SubmitCommandHandler>.Instance);
+        SubmitCommand command = CreateCommand();
+
+        SubmitCommandResult result = await handler.Handle(command, CancellationToken.None);
+
+        result.CorrelationId.ShouldBe(command.CorrelationId);
+    }
+
+    [Fact]
+    public async Task Handle_AcceptedNoOp_DoesNotUpdateProjection() {
+        ICommandRouter router = Substitute.For<ICommandRouter>();
+        _ = router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new CommandProcessingResult(Accepted: true, EventCount: 0));
+        IProjectionUpdateOrchestrator projectionOrchestrator = Substitute.For<IProjectionUpdateOrchestrator>();
+        var handler = new SubmitCommandHandler(
+            new InMemoryCommandStatusStore(),
+            new InMemoryCommandArchiveStore(),
+            router,
+            activityTracker: null,
+            streamActivityTracker: null,
+            projectionOrchestrator,
+            NullLogger<SubmitCommandHandler>.Instance);
+
+        _ = await handler.Handle(CreateCommand(), CancellationToken.None);
+
+        await projectionOrchestrator.DidNotReceiveWithAnyArgs().UpdateProjectionAsync(default!, default);
     }
 
     /// <summary>
@@ -182,4 +270,14 @@ public class SubmitCommandHandlerTests {
         ex.CorrelationId.ShouldBe(correlationId);
         ex.AggregateId.ShouldBe(command.AggregateId);
     }
+
+    private static SubmitCommand CreateCommand(string? correlationId = null) => new(
+        MessageId: "msg-1",
+        Tenant: "test-tenant",
+        Domain: "test-domain",
+        AggregateId: "agg-001",
+        CommandType: "CreateOrder",
+        Payload: [1, 2, 3],
+        CorrelationId: correlationId ?? Guid.NewGuid().ToString(),
+        UserId: "test-user");
 }

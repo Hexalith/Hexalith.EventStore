@@ -71,7 +71,7 @@ public partial class QueriesController(
         // Gate 1: ETag pre-check — decode projection type from self-routing ETag
         string? currentETag = null;
         bool gate1Skipped = false;
-        bool skipConditionalPreCheck = HasExplicitPolicyInputs(request) || HasNonEmptyPayload(request.Payload);
+        bool skipConditionalPreCheck = HasExplicitPolicyInputs(request) || HasUnsafeQueryPayload(request);
 
         if (skipConditionalPreCheck && !string.IsNullOrWhiteSpace(ifNoneMatch)) {
             gate1Skipped = true;
@@ -318,18 +318,41 @@ public partial class QueriesController(
         => freshness is not null
             && (freshness.RequireFresh is true || freshness.MaxStaleness.HasValue);
 
-    private static bool HasNonEmptyPayload(JsonElement? payload) {
-        if (payload is null) {
+    private static bool HasUnsafeQueryPayload(SubmitQueryRequest request) {
+        if (request.Payload is null) {
             return false;
         }
 
-        JsonElement value = payload.Value;
+        JsonElement value = request.Payload.Value;
         return value.ValueKind switch {
             JsonValueKind.Undefined or JsonValueKind.Null => false,
-            JsonValueKind.Object => value.EnumerateObject().Any(),
+            JsonValueKind.Object => HasUnsafeObjectPayload(value, request),
             JsonValueKind.Array => value.GetArrayLength() > 0,
             _ => true,
         };
+    }
+
+    private static bool HasUnsafeObjectPayload(JsonElement payload, SubmitQueryRequest request) {
+        using JsonElement.ObjectEnumerator properties = payload.EnumerateObject();
+        if (!properties.MoveNext()) {
+            return false;
+        }
+
+        JsonProperty property = properties.Current;
+        if (properties.MoveNext()) {
+            return true;
+        }
+
+        if (!string.Equals(property.Name, "id", StringComparison.OrdinalIgnoreCase)
+            || property.Value.ValueKind != JsonValueKind.String) {
+            return true;
+        }
+
+        string expectedId = string.IsNullOrWhiteSpace(request.EntityId)
+            ? request.AggregateId
+            : request.EntityId;
+
+        return !string.Equals(property.Value.GetString(), expectedId, StringComparison.Ordinal);
     }
 
     private static partial class Log {

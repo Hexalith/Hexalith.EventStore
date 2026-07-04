@@ -109,7 +109,8 @@ public class Dw8DrainReasonClassifierTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(Task.FromException<EventPublishResult>(new DaprException("pubsub unavailable")));
 
         Activity activity = await CaptureDrainActivityAsync(

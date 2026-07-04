@@ -239,6 +239,9 @@ public partial class ProjectionUpdateOrchestrator(
                 .UpdateProjectionAsync(ProjectionState.FromJsonElement(response.ProjectionType, identity.TenantId, response.State))
                 .ConfigureAwait(false);
 
+            await RegenerateProjectionETagAsync(identity, response.ProjectionType, cancellationToken)
+                .ConfigureAwait(false);
+
             long highestDeliveredSequence = highestAvailableSequence;
             try {
                 bool checkpointSaved = await checkpointTracker
@@ -805,6 +808,9 @@ public partial class ProjectionUpdateOrchestrator(
                 .UpdateProjectionAsync(ProjectionState.FromJsonElement(response.ProjectionType, identity.TenantId, response.State))
                 .ConfigureAwait(false);
 
+            await RegenerateProjectionETagAsync(identity, response.ProjectionType, cancellationToken)
+                .ConfigureAwait(false);
+
             long highestAppliedSequence = events.Max(e => e.SequenceNumber);
             // D3-A: write per-aggregate progress to per-aggregate scope, NOT operator scope.
             // P-DEC6-5P (pass-5): isPerAggregateProgress:true tells SaveAsync to bypass the
@@ -1074,6 +1080,36 @@ public partial class ProjectionUpdateOrchestrator(
         }
     }
 
+    private async Task RegenerateProjectionETagAsync(
+        AggregateIdentity identity,
+        string projectionType,
+        CancellationToken cancellationToken) {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        string actorId = $"{projectionType}:{identity.TenantId}";
+        try {
+            IETagActor eTagProxy = actorProxyFactory.CreateActorProxy<IETagActor>(
+                new ActorId(actorId),
+                ETagActor.ETagActorTypeName);
+
+            cancellationToken.ThrowIfCancellationRequested();
+            _ = await eTagProxy.RegenerateAsync().ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (Exception ex) {
+            Log.ProjectionETagRegenerationFailed(
+                logger,
+                ex,
+                identity.TenantId,
+                identity.Domain,
+                identity.AggregateId,
+                projectionType,
+                ex.GetType().Name);
+        }
+    }
+
     private async Task<ProjectionResponse?> ReadProjectResponseAsync(
         HttpResponseMessage httpResponse,
         string appId,
@@ -1204,6 +1240,12 @@ public partial class ProjectionUpdateOrchestrator(
             Level = LogLevel.Debug,
             Message = "Projection state updated: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, ProjectionType={ProjectionType}, ActorId={ActorId}, Stage=ProjectionStateUpdated")]
         public static partial void ProjectionStateUpdated(ILogger logger, string tenantId, string domain, string aggregateId, string projectionType, string actorId);
+
+        [LoggerMessage(
+            EventId = 1151,
+            Level = LogLevel.Warning,
+            Message = "Projection ETag regeneration failed after state update: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, ProjectionType={ProjectionType}, ExceptionType={ExceptionType}, Stage=ProjectionETagRegenerationFailed")]
+        public static partial void ProjectionETagRegenerationFailed(ILogger logger, Exception ex, string tenantId, string domain, string aggregateId, string projectionType, string exceptionType);
 
         [LoggerMessage(
             EventId = 1115,

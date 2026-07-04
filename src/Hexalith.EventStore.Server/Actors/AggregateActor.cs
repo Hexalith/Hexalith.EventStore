@@ -500,7 +500,11 @@ public partial class AggregateActor(
                 // Story 4.1: Publish events via DAPR pub/sub with CloudEvents 1.0
                 // Rejection events ARE published (D3: rejection events are normal events).
                 EventPublishResult publishResult = await eventPublisher
-                    .PublishEventsAsync(command.AggregateIdentity, persistResult.PersistedEnvelopes, command.CorrelationId)
+                    .PublishEventsAsync(
+                        command.AggregateIdentity,
+                        persistResult.PersistedEnvelopes,
+                        command.CorrelationId,
+                        triggerProjectionUpdate: false)
                     .ConfigureAwait(false);
 
                 if (publishResult.Success) {
@@ -1498,7 +1502,11 @@ public partial class AggregateActor(
             }
 
             EventPublishResult publishResult = await eventPublisher
-                .PublishEventsAsync(command.AggregateIdentity, persistedEvents, command.CorrelationId)
+                .PublishEventsAsync(
+                    command.AggregateIdentity,
+                    persistedEvents,
+                    command.CorrelationId,
+                    triggerProjectionUpdate: false)
                 .ConfigureAwait(false);
 
             if (!publishResult.Success) {

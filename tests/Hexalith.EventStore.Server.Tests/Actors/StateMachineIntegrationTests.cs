@@ -80,7 +80,8 @@ public class StateMachineIntegrationTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(callInfo => new EventPublishResult(true, callInfo.ArgAt<IReadOnlyList<EventEnvelope>>(1).Count, null));
 
         return (actor, stateManager, invoker, snapshotManager, statusStore, eventPublisher);
@@ -310,7 +311,8 @@ public class StateMachineIntegrationTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Is<IReadOnlyList<EventEnvelope>>(events => events.Count == 2),
             "corr-sm-test",
-            Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>());
 
         // No event writes (events already persisted)
         await stateManager.DidNotReceive().SetStateAsync(
@@ -412,7 +414,8 @@ public class StateMachineIntegrationTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Is<IReadOnlyList<EventEnvelope>>(events => events.Count == 2),
             "corr-sm-test",
-            Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>());
         await stateManager.DidNotReceive().SetStateAsync(
             Arg.Is<string>(s => s.Contains(":events:")),
             Arg.Any<EventEnvelope>(),
@@ -435,7 +438,8 @@ public class StateMachineIntegrationTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(false, 0, "Broker down"));
         _ = stateManager.SetStateAsync(
             Arg.Any<string>(),

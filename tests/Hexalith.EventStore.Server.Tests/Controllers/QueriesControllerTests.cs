@@ -329,6 +329,41 @@ public class QueriesControllerTests {
     }
 
     [Fact]
+    public async Task Submit_IfNoneMatchMatchesWithEntityIdentityPayload_Returns304() {
+        string testETag = GenerateTestETag();
+        IMediator mediator = Substitute.For<IMediator>();
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
+            .Returns(testETag);
+        QueriesController controller = CreateController(mediator, eTagService);
+        SubmitQueryRequest request = CreateTestRequest(JsonDocument.Parse("{\"id\":\"order-1\"}").RootElement);
+
+        IActionResult actionResult = await controller.Submit(request, $"\"{testETag}\"", CancellationToken.None);
+
+        actionResult.ShouldBeOfType<StatusCodeResult>().StatusCode.ShouldBe(304);
+        _ = await mediator.DidNotReceive().Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Submit_IfNoneMatchMatchesButNonIdentityPayloadPresent_SkipsPreCheckAndReturns200() {
+        string testETag = GenerateTestETag();
+        JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
+            .Returns(testETag);
+        QueriesController controller = CreateController(mediator, eTagService);
+        SubmitQueryRequest request = CreateTestRequest(JsonDocument.Parse("{\"filter\":\"active\"}").RootElement);
+
+        IActionResult actionResult = await controller.Submit(request, $"\"{testETag}\"", CancellationToken.None);
+
+        _ = actionResult.ShouldBeOfType<OkObjectResult>();
+        _ = await mediator.Received(1).Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Submit_IfNoneMatchMatchesButPolicyInputsPresent_SkipsPreCheckAndReturns200() {
         string testETag = GenerateTestETag();
         JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;

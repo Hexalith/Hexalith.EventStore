@@ -89,6 +89,7 @@ public class RouteRenderSmokeTests
         await using (context)
         {
             await page.GotoAsync("/");
+            await WaitForShortcutRegistrationAsync(page);
 
             // Default ThemeState.Mode is System, so the toggle offers "Switch to light theme".
             ILocator toggle = page.Locator("[aria-label='Switch to light theme']");
@@ -116,6 +117,7 @@ public class RouteRenderSmokeTests
             // Persistence contract: a reload restores Light from localStorage.
             await page.ReloadAsync();
             await page.WaitForSelectorAsync("main[role='main']");
+            await WaitForShortcutRegistrationAsync(page);
 
             string? restored = await page.EvaluateAsync<string?>(
                 "(args) => localStorage.getItem(args.key)",

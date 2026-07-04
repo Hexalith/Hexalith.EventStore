@@ -57,6 +57,13 @@ public class TenantBootstrapHealthTests {
     public async Task TenantBootstrap_FirstSixtySeconds_NoFailureEvents() {
         using var overallCts = new CancellationTokenSource(s_overallGuard);
 
+        if (!_fixture.App.ResourceNotifications.TryGetCurrentState("tenants", out _)) {
+            Assert.Skip(
+                "The tenants resource is only present when the AppHost is built with "
+                + "UseHexalithProjectReferences=true / HEXALITH_TENANTS_SOURCE. "
+                + "Package-mode E2E runs do not include the Tenants source host.");
+        }
+
         // Wait for tenants Healthy — bootstrap is deferred to ApplicationStarted so logs we
         // care about can only appear at or after this point.
         _ = await _fixture.App.ResourceNotifications

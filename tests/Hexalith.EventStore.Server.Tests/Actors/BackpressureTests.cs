@@ -65,7 +65,8 @@ public class BackpressureTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(callInfo => new EventPublishResult(true, callInfo.ArgAt<IReadOnlyList<EventEnvelope>>(1).Count, null));
 
         return (actor, stateManager, invoker, eventPublisher);
@@ -377,7 +378,8 @@ public class BackpressureTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(true, 2, null));
 
         await actor.ReceiveReminderAsync("drain-unpublished-corr-drain", [], TimeSpan.Zero, TimeSpan.Zero);

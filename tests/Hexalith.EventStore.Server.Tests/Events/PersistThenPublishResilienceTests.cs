@@ -98,7 +98,8 @@ public class PersistThenPublishResilienceTests {
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(false, 0, "Pub/sub unavailable"));
 
         // Act
@@ -128,7 +129,8 @@ public class PersistThenPublishResilienceTests {
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(false, 0, "unavailable"));
 
         // Act
@@ -154,7 +156,8 @@ public class PersistThenPublishResilienceTests {
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(false, 2, "Connection reset after event 2"));
 
         // Act
@@ -187,7 +190,8 @@ public class PersistThenPublishResilienceTests {
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(false, 0, "Pub/sub unavailable"));
 
         // Act
@@ -217,7 +221,8 @@ public class PersistThenPublishResilienceTests {
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(false, 0, "Pub/sub unavailable"));
 
         // Act
@@ -229,7 +234,8 @@ public class PersistThenPublishResilienceTests {
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>());
 
         // Assert -- reminder name is correct
         await timerManager.Received(1).RegisterReminderAsync(
@@ -265,7 +271,8 @@ public class PersistThenPublishResilienceTests {
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(false, 0, "Pub/sub unavailable"));
 
         // Act
@@ -297,7 +304,8 @@ public class PersistThenPublishResilienceTests {
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(false, 0, "Pub/sub unavailable"));
 
         // Act
@@ -330,7 +338,8 @@ public class PersistThenPublishResilienceTests {
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(false, 0, "Pub/sub unavailable"));
 
         // Act
@@ -356,7 +365,8 @@ public class PersistThenPublishResilienceTests {
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(false, 0, "unavailable"));
 
         // Act
@@ -381,7 +391,8 @@ public class PersistThenPublishResilienceTests {
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(callInfo => new EventPublishResult(true, callInfo.ArgAt<IReadOnlyList<EventEnvelope>>(1).Count, null));
 
         // Act
@@ -431,7 +442,8 @@ public class PersistThenPublishResilienceTests {
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(false, 0, "Pub/sub unavailable"));
 
         CommandEnvelope envelope = CreateTestEnvelope();
@@ -488,7 +500,8 @@ public class PersistThenPublishResilienceTests {
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(false, 0, "Pub/sub unavailable"));
 
         CommandEnvelope envelope = CreateTestEnvelope();
@@ -538,7 +551,8 @@ public class PersistThenPublishResilienceTests {
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(false, 0, "Pub/sub unavailable"));
 
         CommandEnvelope envelope = CreateTestEnvelope();
@@ -585,7 +599,8 @@ public class PersistThenPublishResilienceTests {
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>());
     }
 
     private sealed record TestEvent : IEventPayload;

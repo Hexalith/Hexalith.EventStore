@@ -81,7 +81,8 @@ public class EventPublicationIntegrationTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(callInfo => new EventPublishResult(true, callInfo.ArgAt<IReadOnlyList<EventEnvelope>>(1).Count, null));
 
         return (actor, stateManager, invoker, eventPublisher, statusStore);
@@ -144,7 +145,8 @@ public class EventPublicationIntegrationTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             "corr-pub-test",
-            Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>(),
+            Arg.Is(false));
 
         // Advisory status writes include EventsPublished
         await statusStore.Received().WriteStatusAsync(
@@ -166,7 +168,8 @@ public class EventPublicationIntegrationTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(false, 0, "Pub/sub unavailable"));
 
         CommandEnvelope envelope = CreateTestEnvelope();
@@ -326,7 +329,8 @@ public class EventPublicationIntegrationTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>());
     }
 
     // --- Task 7.4: Rejection events are published ---
@@ -351,7 +355,8 @@ public class EventPublicationIntegrationTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Is<IReadOnlyList<EventEnvelope>>(events => events.Count == 1),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>(),
+            Arg.Is(false));
     }
 
     // --- Task 7.5: PublishFailed pipeline cleanup ---
@@ -367,7 +372,8 @@ public class EventPublicationIntegrationTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(false, 0, "Timeout"));
 
         CommandEnvelope envelope = CreateTestEnvelope();
@@ -414,7 +420,8 @@ public class EventPublicationIntegrationTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(false, 0, "Broker down"));
 
         CommandEnvelope envelope = CreateTestEnvelope();

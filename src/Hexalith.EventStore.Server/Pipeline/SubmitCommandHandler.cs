@@ -1,7 +1,9 @@
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Pipeline.Commands;
+using Hexalith.EventStore.Server.Projections;
 
 using MediatR;
 
@@ -21,6 +23,7 @@ public partial class SubmitCommandHandler(
     ICommandRouter commandRouter,
     ICommandActivityTracker? activityTracker,
     IStreamActivityTracker? streamActivityTracker,
+    IProjectionUpdateOrchestrator projectionOrchestrator,
     ILogger<SubmitCommandHandler> logger) : IRequestHandler<SubmitCommand, SubmitCommandResult> {
 
     public SubmitCommandHandler(
@@ -28,7 +31,7 @@ public partial class SubmitCommandHandler(
         ICommandArchiveStore archiveStore,
         ICommandRouter commandRouter,
         ILogger<SubmitCommandHandler> logger)
-        : this(statusStore, archiveStore, commandRouter, null, null, logger) { }
+        : this(statusStore, archiveStore, commandRouter, null, null, new NoOpProjectionUpdateOrchestrator(), logger) { }
 
     public async Task<SubmitCommandResult> Handle(SubmitCommand request, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(request);
@@ -76,6 +79,10 @@ public partial class SubmitCommandHandler(
 
         CommandProcessingResult processingResult = await commandRouter.RouteCommandAsync(request, cancellationToken)
             .ConfigureAwait(false);
+
+        if (processingResult.Accepted && processingResult.EventCount > 0) {
+            await TriggerProjectionUpdateAsync(request).ConfigureAwait(false);
+        }
 
         // Read final status once for both activity trackers (advisory, rule #12)
         CommandStatusRecord? finalStatus = null;
@@ -198,6 +205,19 @@ public partial class SubmitCommandHandler(
         };
     }
 
+    private async Task TriggerProjectionUpdateAsync(SubmitCommand request) {
+        try {
+            await projectionOrchestrator
+                .UpdateProjectionAsync(
+                    new AggregateIdentity(request.Tenant, request.Domain, request.AggregateId),
+                    CancellationToken.None)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) {
+            Log.ProjectionUpdateFailed(logger, ex, request.CorrelationId, request.Tenant, request.Domain, request.AggregateId);
+        }
+    }
+
     private static partial class Log {
 
         [LoggerMessage(
@@ -241,6 +261,18 @@ public partial class SubmitCommandHandler(
         public static partial void CommandRouted(
             ILogger logger,
             string correlationId);
+
+        [LoggerMessage(
+            EventId = 1108,
+            Level = LogLevel.Warning,
+            Message = "Projection update failed after command routing: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Stage=ProjectionUpdateFailed")]
+        public static partial void ProjectionUpdateFailed(
+            ILogger logger,
+            Exception ex,
+            string correlationId,
+            string tenantId,
+            string domain,
+            string aggregateId);
 
         [LoggerMessage(
             EventId = 1107,

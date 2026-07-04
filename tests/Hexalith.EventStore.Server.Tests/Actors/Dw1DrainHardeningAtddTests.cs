@@ -125,7 +125,8 @@ public class Dw1DrainHardeningAtddTests {
                     Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
                     Arg.Any<IReadOnlyList<EventEnvelope>>(),
                     Arg.Any<string>(),
-                    Arg.Any<CancellationToken>())
+                    Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
                     .Returns(new EventPublishResult(false, 0, "pubsub component unavailable")));
 
         _ = captured.ShouldNotBeNull();
@@ -198,7 +199,8 @@ public class Dw1DrainHardeningAtddTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>());
     }
 
     // ---------- AC #9: Reminder re-entrancy idempotence ----------
@@ -233,7 +235,8 @@ public class Dw1DrainHardeningAtddTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(true, 2, null));
 
         await actor.ReceiveReminderAsync("drain-unpublished-corr-drain", [], TimeSpan.Zero, TimeSpan.Zero);
@@ -243,7 +246,8 @@ public class Dw1DrainHardeningAtddTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             "corr-drain",
-            Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>());
     }
 
     [Fact(Skip = SkipReasonAc9)]
@@ -274,7 +278,8 @@ public class Dw1DrainHardeningAtddTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(true, 2, null));
 
         await actor.ReceiveReminderAsync("drain-unpublished-corr-drain", [], TimeSpan.Zero, TimeSpan.Zero);
@@ -315,7 +320,8 @@ public class Dw1DrainHardeningAtddTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(true, 2, null));
 
         await actor.ReceiveReminderAsync("drain-unpublished-corr-drain", [], TimeSpan.Zero, TimeSpan.Zero);

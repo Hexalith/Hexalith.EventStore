@@ -943,6 +943,42 @@ public class ProjectionUpdateOrchestratorTests {
     }
 
     [Fact]
+    public async Task UpdateProjectionAsync_AfterProjectionWrite_RegeneratesProjectionETagDirectly() {
+        // Arrange
+        IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
+        _ = checkpointTracker.ReadLastDeliveredSequenceAsync(TestIdentity, Arg.Any<CancellationToken>())
+            .Returns(0);
+
+        IProjectionWriteActor writeActor = Substitute.For<IProjectionWriteActor>();
+        IETagActor eTagActor = Substitute.For<IETagActor>();
+        _ = eTagActor.RegenerateAsync().Returns("etag-after-write");
+
+        IHttpClientFactory httpClientFactory = CreateHttpClientFactory("""{"projectionType":"counter-summary","state":{"value":1}}""");
+        DaprClient daprClient = new DaprClientBuilder().Build();
+        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(checkpointTracker, daprClient, httpClientFactory);
+        _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new DomainServiceRegistration("counter-service", "project", TestIdentity.TenantId, TestIdentity.Domain, "v1"));
+
+        IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
+        _ = aggregateActor.GetEventsAsync(0).Returns([CreateTestEnvelope(1)]);
+        _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor")
+            .Returns(aggregateActor);
+        _ = actorProxyFactory.CreateActorProxy<IProjectionWriteActor>(Arg.Any<ActorId>(), QueryRouter.ProjectionActorTypeName)
+            .Returns(writeActor);
+        _ = actorProxyFactory.CreateActorProxy<IETagActor>(
+                Arg.Is<ActorId>(id => id.GetId() == "counter-summary:test-tenant"),
+                ETagActor.ETagActorTypeName)
+            .Returns(eTagActor);
+
+        // Act
+        await sut.UpdateProjectionAsync(TestIdentity);
+
+        // Assert
+        await writeActor.Received(1).UpdateProjectionAsync(Arg.Any<ProjectionState>());
+        _ = await eTagActor.Received(1).RegenerateAsync();
+    }
+
+    [Fact]
     public async Task UpdateProjectionAsync_CheckpointReadFails_ReplaysFromZeroWithoutThrowing() {
         // Arrange
         IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();

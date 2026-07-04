@@ -496,7 +496,8 @@ public class AggregateActorDomainResultTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>());
     }
 
     // === Code Review Fix: D3 -- Rejection events persisted ===

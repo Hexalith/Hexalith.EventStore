@@ -33,7 +33,8 @@ public partial class EventPublisher(
         AggregateIdentity identity,
         IReadOnlyList<EventEnvelope> events,
         string correlationId,
-        CancellationToken cancellationToken = default) {
+        CancellationToken cancellationToken = default,
+        bool triggerProjectionUpdate = true) {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(events);
         ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
@@ -216,18 +217,20 @@ public partial class EventPublisher(
 
             _ = (activity?.SetStatus(ActivityStatusCode.Ok));
 
-            // Fire-and-forget projection update (Mode B immediate trigger)
-            // NOTE: Unbounded concurrency -- high-throughput aggregates may spawn many concurrent tasks.
-            // Acceptable for current scope; checkpoint tracker + SemaphoreSlim would bound this in a follow-up.
-            _ = Task.Run(async () => {
-                try {
-                    await projectionOrchestrator.UpdateProjectionAsync(identity, CancellationToken.None)
-                        .ConfigureAwait(false);
-                }
-                catch (Exception ex) {
-                    Log.ProjectionUpdateFailed(logger, ex, identity.TenantId, identity.Domain, identity.AggregateId, correlationId);
-                }
-            }, CancellationToken.None);
+            if (triggerProjectionUpdate) {
+                // Fire-and-forget projection update for non-command callers such as drain recovery.
+                // The command submission path suppresses this and awaits projection delivery after
+                // the aggregate actor call returns, avoiding a same-actor reentrancy deadlock.
+                _ = Task.Run(async () => {
+                    try {
+                        await projectionOrchestrator.UpdateProjectionAsync(identity, CancellationToken.None)
+                            .ConfigureAwait(false);
+                    }
+                    catch (Exception ex) {
+                        Log.ProjectionUpdateFailed(logger, ex, identity.TenantId, identity.Domain, identity.AggregateId, correlationId);
+                    }
+                }, CancellationToken.None);
+            }
 
             return new EventPublishResult(true, publishedCount, null);
         }

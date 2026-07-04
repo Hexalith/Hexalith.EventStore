@@ -136,7 +136,8 @@ public class EventDrainRecoveryTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>());
 
         await stateManager.DidNotReceive().RemoveStateAsync(
             $"drain:{correlationId}", Arg.Any<CancellationToken>());
@@ -211,7 +212,8 @@ public class EventDrainRecoveryTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(true, 2, null));
 
         // Act
@@ -222,7 +224,8 @@ public class EventDrainRecoveryTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Is<IReadOnlyList<EventEnvelope>>(e => e.Count == 2),
             "corr-drain",
-            Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>());
     }
 
     // --- Task 7.3: Drain succeeds, reminder unregistered ---
@@ -243,7 +246,8 @@ public class EventDrainRecoveryTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(true, 2, null));
 
         // Act
@@ -273,7 +277,8 @@ public class EventDrainRecoveryTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(true, 2, null));
 
         // Act
@@ -302,7 +307,8 @@ public class EventDrainRecoveryTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(true, 2, null));
 
         // Act
@@ -334,7 +340,8 @@ public class EventDrainRecoveryTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(false, 0, "Still unavailable"));
 
         // Act
@@ -365,7 +372,8 @@ public class EventDrainRecoveryTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(false, 0, "unavailable"));
 
         // Act
@@ -400,7 +408,8 @@ public class EventDrainRecoveryTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(false, 0, "unavailable"));
 
         // Act
@@ -431,7 +440,8 @@ public class EventDrainRecoveryTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(false, 0, "unavailable"));
 
         // Act
@@ -454,7 +464,8 @@ public class EventDrainRecoveryTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(false, 0, "test-tenant:test-domain:agg-001 unavailable"));
 
         Activity activity = await CaptureDrainActivityAsync(() =>
@@ -611,7 +622,8 @@ public class EventDrainRecoveryTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             "corr-1",
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(true, 2, null));
 
         // Second drain fails
@@ -619,7 +631,8 @@ public class EventDrainRecoveryTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             "corr-2",
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(false, 0, "still down"));
 
         // Act -- drain first
@@ -684,7 +697,8 @@ public class EventDrainRecoveryTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(callInfo => {
                 string correlationId = callInfo.ArgAt<string>(2);
                 IReadOnlyList<EventEnvelope> events = callInfo.ArgAt<IReadOnlyList<EventEnvelope>>(1);
@@ -728,7 +742,8 @@ public class EventDrainRecoveryTests {
             Arg.Do<IReadOnlyList<EventEnvelope>>(events =>
                 publishedSequences = events.Select(e => e.SequenceNumber).ToArray()),
             "corr-partial",
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(callInfo => new EventPublishResult(true, callInfo.ArgAt<IReadOnlyList<EventEnvelope>>(1).Count, null));
 
         // Act
@@ -769,7 +784,8 @@ public class EventDrainRecoveryTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             "corr-overlap",
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(callInfo => {
                 publishCallCount++;
                 return new EventPublishResult(true, callInfo.ArgAt<IReadOnlyList<EventEnvelope>>(1).Count, null);
@@ -802,7 +818,8 @@ public class EventDrainRecoveryTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(true, 2, null));
 
         // Act
@@ -831,7 +848,8 @@ public class EventDrainRecoveryTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>());
 
         // Warning logged
         logger.Received().Log(
@@ -861,7 +879,8 @@ public class EventDrainRecoveryTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(true, 2, null));
 
         // Act
@@ -872,7 +891,8 @@ public class EventDrainRecoveryTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Is<IReadOnlyList<EventEnvelope>>(e => e.Count == 2),
             "corr-drain",
-            Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>());
 
         // Record removed
         await stateManager.Received(1).RemoveStateAsync(
@@ -897,7 +917,8 @@ public class EventDrainRecoveryTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(true, 2, null));
 
         // Act
@@ -927,7 +948,8 @@ public class EventDrainRecoveryTests {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Do<IReadOnlyList<EventEnvelope>>(e => publishedEvents = e),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(true, 2, null));
 
         // Act
@@ -961,7 +983,8 @@ public class EventDrainRecoveryTests {
             Arg.Do<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(id => publishedIdentity = id),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(true, 2, null));
 
         // Act

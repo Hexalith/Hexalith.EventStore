@@ -15,10 +15,12 @@ public interface IEventPublisher {
     /// <param name="events">The persisted event envelopes to publish.</param>
     /// <param name="correlationId">The correlation ID for tracing (rule #9).</param>
     /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="triggerProjectionUpdate">Whether to trigger projection delivery after publication.</param>
     /// <returns>The publication result indicating success/failure and count of published events.</returns>
     Task<EventPublishResult> PublishEventsAsync(
         AggregateIdentity identity,
         IReadOnlyList<EventEnvelope> events,
         string correlationId,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        bool triggerProjectionUpdate = true);
 }

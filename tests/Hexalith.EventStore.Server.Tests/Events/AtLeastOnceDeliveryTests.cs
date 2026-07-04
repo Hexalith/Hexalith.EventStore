@@ -166,7 +166,8 @@ public class AtLeastOnceDeliveryTests {
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(false, 0, "Pub/sub unavailable"));
 
         // Act
@@ -198,7 +199,8 @@ public class AtLeastOnceDeliveryTests {
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(false, 0, "Circuit breaker open"));
 
         // Act
@@ -234,7 +236,8 @@ public class AtLeastOnceDeliveryTests {
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(new EventPublishResult(false, 0, "Circuit breaker is open"));
 
         // Act
@@ -279,7 +282,8 @@ public class AtLeastOnceDeliveryTests {
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(callInfo => new EventPublishResult(true, callInfo.ArgAt<IReadOnlyList<EventEnvelope>>(1).Count, null));
 
         return (actor, stateManager, logger, invoker, eventPublisher);

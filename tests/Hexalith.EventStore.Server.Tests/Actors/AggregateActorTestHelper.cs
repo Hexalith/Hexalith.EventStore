@@ -93,7 +93,8 @@ internal static class AggregateActorTestHelper {
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),
             Arg.Any<string>(),
-            Arg.Any<CancellationToken>())
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
             .Returns(callInfo => new EventPublishResult(true, callInfo.ArgAt<IReadOnlyList<EventEnvelope>>(1).Count, null));
 
         return new ActorTestContext(actor, stateManager, logger, invoker, snapshotManager, aggregateTypeResolver, commandStatusStore, eventPublisher, deadLetterPublisher);

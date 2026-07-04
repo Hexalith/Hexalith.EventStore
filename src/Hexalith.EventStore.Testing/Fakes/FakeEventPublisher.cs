@@ -103,7 +103,8 @@ public sealed class FakeEventPublisher : IEventPublisher {
         AggregateIdentity identity,
         IReadOnlyList<EventEnvelope> events,
         string correlationId,
-        CancellationToken cancellationToken = default) {
+        CancellationToken cancellationToken = default,
+        bool triggerProjectionUpdate = true) {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(events);
         ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);

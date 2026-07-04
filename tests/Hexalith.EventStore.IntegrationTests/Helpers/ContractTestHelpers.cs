@@ -175,7 +175,7 @@ internal static class ContractTestHelpers {
             Domain = domain,
             AggregateId = aggregateId,
             CommandType = commandType,
-            Payload = new { id = Guid.NewGuid().ToString() },
+            Payload = new { CounterId = aggregateId },
         };
 
         var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/commands") {
