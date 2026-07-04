@@ -1,3 +1,12 @@
+# [3.34.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.33.6...v3.34.0) (2026-07-04)
+
+
+### Features
+
+* Add open-item triage results to PRD eventstore Phase 4 documentation ([ad34c4c](https://github.com/Hexalith/Hexalith.EventStore/commit/ad34c4cd821b84c1ee883d68bf35d97235c7169c))
+* Add PRD and supporting artifacts for eventstore Phase 4 implementation readiness recovery ([9bbf13a](https://github.com/Hexalith/Hexalith.EventStore/commit/9bbf13a9ab5731502cf4f4e29ad653452a72e8b0))
+* add sprint change proposal for implementation readiness recovery and update related documentation ([eaa742d](https://github.com/Hexalith/Hexalith.EventStore/commit/eaa742dbef9b913be5cda106f48b4d19fb1a5937))
+
 ## [3.33.6](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.33.5...v3.33.6) (2026-07-04)
 
 
