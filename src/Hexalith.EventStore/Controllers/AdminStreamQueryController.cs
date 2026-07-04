@@ -8,6 +8,7 @@ using Dapr.Actors.Client;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
+using Hexalith.EventStore.Authorization;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Identity;
@@ -33,6 +34,7 @@ namespace Hexalith.EventStore.Controllers;
 /// </summary>
 [ApiController]
 [Authorize]
+[ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
 [Route("api/v1/admin/streams")]
 [Tags("Admin - Stream Queries")]
 public class AdminStreamQueryController(

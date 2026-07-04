@@ -1,5 +1,6 @@
 using Hexalith.EventStore.Admin.Abstractions.Models.Commands;
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
+using Hexalith.EventStore.Authorization;
 using Hexalith.EventStore.Commands;
 
 using Microsoft.AspNetCore.Authorization;
@@ -13,6 +14,7 @@ namespace Hexalith.EventStore.Controllers;
 /// </summary>
 [ApiController]
 [Authorize]
+[ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
 [Route("api/v1/admin/streams")]
 [Tags("Admin - Command Queries")]
 public class AdminCommandsQueryController(
