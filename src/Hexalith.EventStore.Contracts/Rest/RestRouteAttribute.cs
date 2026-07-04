@@ -60,7 +60,7 @@ public sealed class RestRouteAttribute(RestVerb verb, string template) : Attribu
     /// </remarks>
     public string? ApiScope {
         get => _apiScope;
-        set => _apiScope = string.IsNullOrWhiteSpace(value) ? null : value;
+        set => _apiScope = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
     private static string ValidateTemplate(string template) {

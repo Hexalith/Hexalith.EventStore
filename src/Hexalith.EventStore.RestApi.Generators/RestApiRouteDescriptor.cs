@@ -8,7 +8,7 @@ internal readonly struct RestApiRouteDescriptor : IEquatable<RestApiRouteDescrip
     {
         Verb = verb;
         Template = template;
-        ApiScope = string.IsNullOrWhiteSpace(apiScope) ? string.Empty : apiScope;
+        ApiScope = string.IsNullOrWhiteSpace(apiScope) ? string.Empty : apiScope.Trim();
         IsAbsolute = template.StartsWith("~/", StringComparison.Ordinal);
         Parameters = RestApiRouteTemplateParser.ParseParameters(template);
         TemplateError = RestApiRouteTemplateParser.GetTemplateError(template);

@@ -13,9 +13,9 @@ public class RestRouteAttributeTests {
     }
 
     [Fact]
-    public void ApiScope_SetToNonWhitespaceValue_ReturnsValue() {
+    public void ApiScope_SetToNonWhitespaceValue_ReturnsTrimmedValue() {
         var attribute = new RestRouteAttribute(RestVerb.Get, "{counterId}") {
-            ApiScope = "counter",
+            ApiScope = " counter ",
         };
 
         attribute.ApiScope.ShouldBe("counter");

@@ -691,7 +691,7 @@ public sealed class RestApiControllerGenerationTests
 
         namespace Hexalith.EventStore.Sample.Counter.Queries
         {
-            [RestRoute(RestVerb.Get, "{entityId}", ApiScope = "counter")]
+            [RestRoute(RestVerb.Get, "{entityId}", ApiScope = " counter ")]
             public sealed record GetCounterStatusQuery : IQueryContract
             {
                 public static string QueryType => "get-counter-status";

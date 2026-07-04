@@ -6,7 +6,7 @@ baseline_commit: 4d1a207138baf70f5460ba755e2389cd7a52c22b
 
 # Story D.5: Proof - Sample BlazorUI Queries
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -227,6 +227,12 @@ Source of truth: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-06
   - [x] Confirm `git status --short` contains only intended source/story/sprint-status changes and no generated files.
 
 ### Review Findings
+
+_Follow-up D5 scoped code review (Blind Hunter + Edge Case Hunter + Acceptance Auditor), 2026-07-04. 0 decision-needed, 1 patch, 0 deferred, 19 dismissed as noise / already tracked / D6 scope._
+
+**Patch**
+
+- [x] [Review][Patch→Applied] `ApiScope` values with leading or trailing whitespace are not normalized before referenced-contract filtering, so a visually-correct scope can silently exclude an endpoint. [src/Hexalith.EventStore.RestApi.Generators/RestApiRouteDescriptor.cs:11]
 
 _Adversarial code review (Blind Hunter + Edge Case Hunter + Acceptance Auditor), 2026-07-02. 3 decision-needed, 2 patch, 6 deferred, 3 dismissed as noise._
 
@@ -523,6 +529,10 @@ Codex GPT-5
 - Redis end-state evidence after the final smoke showed event sequence `3` for `tenant-a:counter:counter-1`, projection state version `3` with decoded payload `{"count":3}`, completed command status for message `01KWHTQN02SMVYBD76XGA52MPG`, and persisted command metadata for tenant `tenant-a`, domain `counter`, aggregate `counter-1`.
 - `dotnet build samples/Hexalith.EventStore.Sample.Api/Hexalith.EventStore.Sample.Api.csproj --configuration Release --no-incremental -p:EmitCompilerGeneratedFiles=true -p:CompilerGeneratedFilesOutputPath=/tmp/hexalith-eventstore-d5-generated` passed with 0 warnings/errors.
 - `dotnet build Hexalith.EventStore.slnx --configuration Release -p:UseHexalithProjectReferences=false` passed with 0 warnings/errors.
+- 2026-07-04 D5 follow-up review patch: `ApiScope` now trims non-blank values in both `RestRouteAttribute` and `RestApiRouteDescriptor`.
+- `dotnet test tests/Hexalith.EventStore.Contracts.Tests/ --filter FullyQualifiedName~RestRouteAttributeTests` passed: 13/13.
+- `dotnet test tests/Hexalith.EventStore.RestApi.Generators.Tests/ --filter FullyQualifiedName~RestApiControllerGenerationTests.Run_ReferencedContractsOutsideApiScope_AreExcluded` passed: 1/1.
+- `dotnet test tests/Hexalith.EventStore.RestApi.Generators.Tests/` passed: 46/46.
 - Release test pass: `tests/Hexalith.EventStore.AppHost.Tests/` 35/35, `tests/Hexalith.EventStore.DomainService.Tests/` 37/37, `tests/Hexalith.EventStore.RestApi.Generators.Tests/` 43/43, `samples/Hexalith.EventStore.Sample.Tests/` 4/4, `tests/Hexalith.EventStore.Sample.Tests/` 76/76, `tests/Hexalith.EventStore.QueryRouting.Tests/` 3/3.
 - Release regression pass: `tests/Hexalith.EventStore.Contracts.Tests/` 549/549, `tests/Hexalith.EventStore.Client.Tests/` 480/480, `tests/Hexalith.EventStore.SignalR.Tests/` 35/35, `tests/Hexalith.EventStore.Testing.Tests/` 144/144, `tests/Hexalith.EventStore.Server.Tests/` 2209 passed / 25 skipped.
 - Release Admin pass: `tests/Hexalith.EventStore.Admin.Abstractions.Tests/` 423/423, `tests/Hexalith.EventStore.Admin.Cli.Tests/` 342/342, `tests/Hexalith.EventStore.Admin.Mcp.Tests/` 320 passed / 8 skipped, `tests/Hexalith.EventStore.Admin.Server.Host.Tests/` 15/15, `tests/Hexalith.EventStore.Admin.Server.Tests/` 717 passed / 18 skipped, `tests/Hexalith.EventStore.Admin.UI.Tests/` 840/840.
@@ -607,3 +617,4 @@ Codex GPT-5
 | 2026-07-02 | Closed D5 AppHost/live-smoke gap: added `Sample.Api` launch profile, preserved Sample domain SDK-only references, added launch-profile guard test, verified generated external API endpoint with 200/ETag/304 and Redis persisted end-state after increment, refreshed generated source evidence, and completed Release build/test regression. Status review. |
 | 2026-07-04 | Reconciled stale duplicate D5 review checkboxes with the latest verification-review outcomes. Story remains in-progress pending owner decisions for Sample domain contracts-library governance and the referenced-contract filtering discovery mechanism. |
 | 2026-07-04 | Resolved final D5 review decisions: owner approved the Sample domain-owned contracts library, and P5 was implemented with `RestRouteAttribute.ApiScope` plus referenced-contract filtering by host `RestApiAttribute.Tag`. Generator, Contracts, Sample, core regression, Admin regression, generated-source evidence, and Release package-mode build validated. Status review. |
+| 2026-07-04 | Follow-up code review patch applied: trimmed non-blank `ApiScope` values consistently in runtime and generator descriptors, added regression coverage, and re-ran focused Contracts plus full generator tests. Status done. |
