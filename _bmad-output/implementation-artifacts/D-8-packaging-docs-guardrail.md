@@ -7,7 +7,7 @@ baseline_commit: 84712c4957155b983f98072afc641a9eeab2f6e3
 
 # Story D.8: Packaging, Docs, and Guardrails for RestApi.Generators
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -185,11 +185,11 @@ Source of truth: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07
 
 ### Review Findings
 
-- [ ] [Review][Patch] Remove submodule pointer updates from D8 or record explicit approval [references/Hexalith.Builds:1]
-- [ ] [Review][Patch] Remove root build/package behavior changes from D8 scope [Directory.Build.props:39]
-- [ ] [Review][Patch] Correct package/distribution docs that still understate packaged components [docs/brownfield/architecture.md:69]
-- [ ] [Review][Patch] Fix UI package guidance so command/query UI clients include the EventStore Client package [docs/reference/nuget-packages.md:229]
-- [ ] [Review][Patch] Extend the UI-host guard to catch MVC controller-hosting variants beyond the current exact markers [tests/Hexalith.EventStore.DomainService.Tests/DomainModuleAuthoringGuardrailTests.cs:37]
+- [x] [Review][Patch] Remove submodule pointer updates from D8 or record explicit approval [references/Hexalith.Builds:1] — current workspace has no submodule pointer diff to carry in D8 follow-up
+- [x] [Review][Patch] Remove root build/package behavior changes from D8 scope [Directory.Build.props:39] — current workspace keeps `UseHexalithProjectReferences` package-safe by default
+- [x] [Review][Patch] Correct package/distribution docs that still understate packaged components [docs/brownfield/architecture.md:69]
+- [x] [Review][Patch] Fix UI package guidance so command/query UI clients include the EventStore Client package [docs/reference/nuget-packages.md:229]
+- [x] [Review][Patch] Extend the UI-host guard to catch MVC controller-hosting variants beyond the current exact markers [tests/Hexalith.EventStore.DomainService.Tests/DomainModuleAuthoringGuardrailTests.cs:37]
 
 ## Dev Notes
 

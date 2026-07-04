@@ -37,8 +37,14 @@ public sealed class DomainModuleAuthoringGuardrailTests
     private static readonly string[] InteractiveUiHostForbiddenMarkers =
     [
         "[assembly: RestApi(",
+        "AddMvc(",
+        "AddMvcCore(",
         "AddControllers(",
+        "AddControllersWithViews(",
         "MapControllers(",
+        "MapControllerRoute(",
+        ": Controller",
+        ", Controller",
         "ControllerBase",
         "[ApiController]",
         "Hexalith.EventStore.RestApi.Generators",

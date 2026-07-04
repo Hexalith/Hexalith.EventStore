@@ -55,7 +55,7 @@ flowchart TB
 
 ## 4. The Parts (deployable + libraries)
 
-| Part | Project | Role | Container |
+| Part | Project | Role | Distribution |
 |------|---------|------|-----------|
 | **Command/Query API gateway** | `src/Hexalith.EventStore` | REST gateway ("CommandApi"), auth, validation, rate limiting, ETag, error handling, hosts actors | `eventstore` |
 | **Server domain processing** | `src/Hexalith.EventStore.Server` | DAPR actors, command/query routing, event persistence, snapshots, pub/sub, projections | (in gateway) |
@@ -63,10 +63,13 @@ flowchart TB
 | **Client** | `src/Hexalith.EventStore.Client` | Aggregate/projection base classes, convention discovery, DI registration | NuGet |
 | **SignalR** | `src/Hexalith.EventStore.SignalR` | Real-time projection-changed client + hub contract | NuGet |
 | **Testing** | `src/Hexalith.EventStore.Testing` | Builders, fakes, in-memory stores, assertions, compliance helpers | NuGet |
+| **Testing.Integration** | `src/Hexalith.EventStore.Testing.Integration` | DAPR/Aspire integration-test harness for topology-backed tests | NuGet |
 | **Aspire** | `src/Hexalith.EventStore.Aspire` | Hosting extensions (`AddHexalithEventStore`) | NuGet |
+| **ServiceDefaults** | `src/Hexalith.EventStore.ServiceDefaults` | OpenTelemetry, health checks, service discovery, resilience | NuGet |
+| **DomainService** | `src/Hexalith.EventStore.DomainService` | Domain-service host SDK and canonical DAPR endpoints | NuGet |
 | **RestApi.Generators** | `src/Hexalith.EventStore.RestApi.Generators` | Roslyn source-generator/analyzer package that emits typed gateway-backed REST controllers | NuGet analyzer |
+| **Gateway** | `src/Hexalith.EventStore.Gateway` | Reusable command/query HTTP gateway components for host composition | NuGet |
 | **AppHost** | `src/Hexalith.EventStore.AppHost` | Aspire app model + DAPR components (local topology) | — |
-| **ServiceDefaults** | `src/Hexalith.EventStore.ServiceDefaults` | OpenTelemetry, health checks, service discovery, resilience | — |
 | **Admin.Abstractions** | `src/Hexalith.EventStore.Admin.Abstractions` | 16 admin service interfaces + DTOs + roles + redaction | NuGet |
 | **Admin.Server(.Host)** | `src/...Admin.Server`, `...Admin.Server.Host` | DAPR-backed admin REST API (10 controllers) | `eventstore-admin` |
 | **Admin.UI** | `src/Hexalith.EventStore.Admin.UI` | Blazor dashboard (22 pages, FluentUI) | `eventstore-admin-ui` |

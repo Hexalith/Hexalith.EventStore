@@ -1,5 +1,5 @@
 # generated: 2026-07-01T14:20:23+02:00
-# last_updated: 2026-07-05T00:00:00+02:00
+# last_updated: 2026-07-05T00:37:57+02:00
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-01T14:20:23+02:00
-last_updated: 2026-07-04T21:49:31+02:00
+last_updated: 2026-07-05T00:37:57+02:00
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -56,7 +56,7 @@ development_status:
   D-5-proof-sample-blazorui-queries: done
   D-6-proof-counter-commands: done
   D-7-proof-tenants-ui-host-submodule: done
-  D-8-packaging-docs-guardrail: review
+  D-8-packaging-docs-guardrail: done
   epic-D-retrospective: optional
 
   # Added 2026-07-04 via sprint-change-proposal-2026-07-04 (architecture review remediation).

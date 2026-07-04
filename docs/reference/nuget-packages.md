@@ -233,7 +233,7 @@ Install packages across your projects based on their role:
 | Domain service host            | DomainService     |
 | Downstream projection actor    | Contracts         |
 | Event store host               | Contracts, Server |
-| UI or integration client       | SignalR           |
+| UI or integration client       | Client; SignalR when live projection refresh is needed |
 | Dedicated external API host    | Contracts, Client, ServiceDefaults, RestApi.Generators (analyzer) |
 | Test project                   | Testing           |
 | Topology integration tests     | Testing.Integration |
