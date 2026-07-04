@@ -74,6 +74,35 @@ public partial class SubmitQueryHandler(
                 QueryProblemReasonCodes.NotImplemented);
         }
 
+        // Client-input failures are 400, not 500. A projection adapter signals these with the
+        // shared QueryAdapterFailureReason sentinels (the same mechanism as Forbidden above), either
+        // bare or as a "sentinel: detail" prefix so a descriptive message survives. The message is
+        // preserved as the ProblemDetails detail so consumers can react (e.g. the UI resets an
+        // invalid audit cursor to the first page when the detail carries "invalid-cursor").
+        if (IsSentinel(errorMessage, QueryAdapterFailureReason.InvalidCursor)) {
+            return new QueryExecutionFailedException(
+                request.CorrelationId,
+                request.Tenant,
+                request.Domain,
+                request.AggregateId,
+                request.QueryType,
+                400,
+                errorMessage!,
+                QueryProblemReasonCodes.InvalidPage);
+        }
+
+        if (IsSentinel(errorMessage, QueryAdapterFailureReason.InvalidEnvelope)) {
+            return new QueryExecutionFailedException(
+                request.CorrelationId,
+                request.Tenant,
+                request.Domain,
+                request.AggregateId,
+                request.QueryType,
+                400,
+                errorMessage!,
+                QueryProblemReasonCodes.MalformedRequest);
+        }
+
         return new QueryExecutionFailedException(
             request.CorrelationId,
             request.Tenant,
@@ -84,6 +113,14 @@ public partial class SubmitQueryHandler(
             errorMessage ?? "Projection query execution failed.",
             QueryProblemReasonCodes.InternalError);
     }
+
+    // Matches a shared failure sentinel either exactly or as a "sentinel: detail" prefix, so a
+    // descriptive adapter message still classifies without a fuzzy substring match that could
+    // misclassify an unrelated internal error.
+    private static bool IsSentinel(string? errorMessage, string sentinel)
+        => !string.IsNullOrEmpty(errorMessage)
+            && (string.Equals(errorMessage, sentinel, StringComparison.Ordinal)
+                || errorMessage.StartsWith(sentinel + ":", StringComparison.Ordinal));
 
     private static bool IsNotFound(string? errorMessage)
         => !string.IsNullOrWhiteSpace(errorMessage)

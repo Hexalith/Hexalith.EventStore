@@ -82,9 +82,9 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
         CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(request);
 
-        using HttpResponseMessage response = await _httpClient
-            .PostAsJsonAsync(CreateRelativeUri(_options.CommandPath), request, JsonOptions, cancellationToken)
-            .ConfigureAwait(false);
+        using HttpResponseMessage response = await SendTranslatingAsync(
+            () => _httpClient.PostAsJsonAsync(CreateRelativeUri(_options.CommandPath), request, JsonOptions, cancellationToken),
+            cancellationToken).ConfigureAwait(false);
 
         if (!response.IsSuccessStatusCode) {
             await ThrowGatewayExceptionAsync(response, cancellationToken).ConfigureAwait(false);
@@ -130,9 +130,9 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
             httpRequest.Headers.IfNoneMatch.ParseAdd(normalizedIfNoneMatch);
         }
 
-        using HttpResponseMessage response = await _httpClient
-            .SendAsync(httpRequest, cancellationToken)
-            .ConfigureAwait(false);
+        using HttpResponseMessage response = await SendTranslatingAsync(
+            () => _httpClient.SendAsync(httpRequest, cancellationToken),
+            cancellationToken).ConfigureAwait(false);
 
         // P2: check 304 and non-success BEFORE extracting ETag so a weak ETag on an error
         // response does not shadow the real ProblemDetails exception.
@@ -223,9 +223,9 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
         CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(request);
 
-        using HttpResponseMessage response = await _httpClient
-            .PostAsJsonAsync(CreateRelativeUri(_options.StreamReadPath), request, JsonOptions, cancellationToken)
-            .ConfigureAwait(false);
+        using HttpResponseMessage response = await SendTranslatingAsync(
+            () => _httpClient.PostAsJsonAsync(CreateRelativeUri(_options.StreamReadPath), request, JsonOptions, cancellationToken),
+            cancellationToken).ConfigureAwait(false);
 
         if (!response.IsSuccessStatusCode) {
             await ThrowGatewayExceptionAsync(response, cancellationToken).ConfigureAwait(false);
@@ -249,6 +249,34 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
                 innerException: ex);
         }
     }
+
+    // Translates transport-level faults (connection failure, DNS failure, HttpClient timeout) into
+    // an EventStoreGatewayException so a gateway outage surfaces as a handled 503 instead of a raw
+    // HttpRequestException/timeout escaping into the caller (e.g. a Blazor circuit). Genuine caller
+    // cancellation propagates unchanged.
+    private static async Task<HttpResponseMessage> SendTranslatingAsync(
+        Func<Task<HttpResponseMessage>> send,
+        CancellationToken cancellationToken) {
+        try {
+            return await send().ConfigureAwait(false);
+        }
+        catch (HttpRequestException ex) {
+            throw CreateTransportException(ex, timedOut: false);
+        }
+        catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested) {
+            throw CreateTransportException(ex, timedOut: true);
+        }
+    }
+
+    private static EventStoreGatewayException CreateTransportException(Exception inner, bool timedOut)
+        => new(
+            503,
+            "EventStore gateway unavailable",
+            detail: timedOut
+                ? "The EventStore gateway did not respond before the request timed out."
+                : "The EventStore gateway could not be reached.",
+            reason: timedOut ? "gateway-timeout" : "gateway-unreachable",
+            innerException: inner);
 
     private static QueryResponseMetadata NormalizeMetadata(
         QueryResponseMetadata? metadata,
@@ -289,13 +317,16 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
 
         string value = ifNoneMatch.Trim();
 
-        // P9: wildcard is not a weak ETag — give a distinct error message.
+        // The gateway only revalidates against a single strong ETag. RFC 9110 conditional forms
+        // this client cannot express — wildcard ("*"), weak validators (W/…), and tag lists — are
+        // degraded to an unconditional request (null) rather than raising, so a caching hint never
+        // turns a GET into a hard 400. The server responds with the full body, which is always safe.
         if (value == "*") {
-            throw new ArgumentException("Wildcard If-None-Match is not supported; provide a strong ETag token.", nameof(ifNoneMatch));
+            return null;
         }
 
         if (value.StartsWith("W/", StringComparison.OrdinalIgnoreCase)) {
-            throw new ArgumentException("If-None-Match must be a strong ETag token.", nameof(ifNoneMatch));
+            return null;
         }
 
         if (value.StartsWith('"')) {
@@ -303,14 +334,14 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
                 || parsed is null
                 || parsed.IsWeak
                 || parsed.Tag == "*") {
-                throw new ArgumentException("If-None-Match must be a strong ETag token.", nameof(ifNoneMatch));
+                return null;
             }
 
             return parsed.Tag;
         }
 
         if (value.Any(static c => char.IsWhiteSpace(c) || char.IsControl(c) || c is '"' or ',')) {
-            throw new ArgumentException("If-None-Match must be a strong ETag token.", nameof(ifNoneMatch));
+            return null;
         }
 
         return $"\"{value}\"";

@@ -20,6 +20,12 @@ public static class QueryAdapterFailureReason {
     public const string InvalidEnvelope = "invalid-envelope";
 
     /// <summary>
+    /// The supplied pagination cursor was malformed, expired, or scoped to a different query.
+    /// Maps to an HTTP 400 so clients can distinguish a bad cursor from an internal failure.
+    /// </summary>
+    public const string InvalidCursor = "invalid-cursor";
+
+    /// <summary>
     /// The actor response shape was null or otherwise incompatible.
     /// </summary>
     public const string ActorResponseMismatch = "actor-response-mismatch";

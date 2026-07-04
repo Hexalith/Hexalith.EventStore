@@ -245,12 +245,34 @@ public class EventStoreGatewayClientTests {
     [InlineData("W/\"etag-1\"")]
     [InlineData("\"unterminated")]
     [InlineData("*")]
-    public async Task SubmitQueryAsync_WithUnsupportedIfNoneMatch_ThrowsArgumentException(string ifNoneMatch) {
-        using HttpClient httpClient = CreateClient(_ => Task.FromResult(Json(HttpStatusCode.OK, "{\"correlationId\":\"corr-2\",\"payload\":{\"count\":3}}")));
+    [InlineData("\"a\", \"b\"")]
+    public async Task SubmitQueryAsync_WithUnsupportedIfNoneMatch_OmitsHeaderAndServesBody(string ifNoneMatch) {
+        // RFC 9110 conditional forms the gateway cannot express (wildcard, weak validators, tag
+        // lists) degrade to an unconditional request instead of failing the call.
+        HttpRequestMessage? observedRequest = null;
+        using HttpClient httpClient = CreateClient(request => {
+            observedRequest = request;
+            return Task.FromResult(Json(HttpStatusCode.OK, "{\"correlationId\":\"corr-2\",\"payload\":{\"count\":3}}"));
+        });
         var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
 
-        _ = await Assert.ThrowsAsync<ArgumentException>(
-            () => client.SubmitQueryAsync(CreateQueryRequest(), ifNoneMatch));
+        EventStoreQueryResult result = await client.SubmitQueryAsync(CreateQueryRequest(), ifNoneMatch);
+
+        _ = observedRequest.ShouldNotBeNull();
+        observedRequest.Headers.Contains("If-None-Match").ShouldBeFalse();
+        result.IsNotModified.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task SubmitQueryAsync_WhenTransportFails_ThrowsGatewayServiceUnavailable() {
+        using HttpClient httpClient = CreateClient(_ => throw new HttpRequestException("connection refused"));
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        EventStoreGatewayException ex = await Assert.ThrowsAsync<EventStoreGatewayException>(
+            () => client.SubmitQueryAsync(CreateQueryRequest()));
+
+        ex.StatusCode.ShouldBe(503);
+        _ = ex.InnerException.ShouldBeOfType<HttpRequestException>();
     }
 
     [Fact]
