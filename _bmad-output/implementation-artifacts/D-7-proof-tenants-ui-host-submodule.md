@@ -7,7 +7,7 @@ baseline_commit: 496395f27ab52b3b4372d4ca0cd5197d1a47eb19
 
 # Story D.7: Proof - Tenants External API Host and UI Client Split
 
-Status: in-progress
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -422,8 +422,18 @@ Codex GPT-5
 - Green: `dotnet build src/Hexalith.Tenants.AppHost/Hexalith.Tenants.AppHost.csproj --configuration Release -p:HexalithEventStoreFromSource=true -p:HexalithMemoriesFromSource=true` passed with 0 warnings/errors.
 - Green: `dotnet build src/Hexalith.Tenants.Api/Hexalith.Tenants.Api.csproj --configuration Release -p:HexalithEventStoreFromSource=true` passed with 0 warnings/errors.
 - Blocked-by-workspace-layout: `dotnet build Hexalith.Tenants.slnx --configuration Release` from the Tenants submodule failed with MSB3202 because the `.slnx` includes dependency projects under `references/Hexalith.Tenants/references/...`; this workspace intentionally keeps those dependencies as parent/sibling checkouts and repo instructions forbid initializing nested submodules.
-- Known remaining Contracts-suite blockers: `dotnet test tests/Hexalith.Tenants.Contracts.Tests/` now fails only on 4 pre-existing governance assertions after D7-specific classification/package-version fixes: CI DAPR version text, CI pack-release script text, Release DAPR version text, and broad package-version centralization import handling (44 remaining non-D7 violations).
+- Resolved governance drift: `DiffEngine_Disabled=true dotnet test tests/Hexalith.Tenants.Contracts.Tests/` passed 111/111 in the final validation pass.
 - Final stale-reference scan: `rg -n "TenantsQueryController|DomainQueryDispatcher|TenantsQueryApiClient|ITenantsQueryApiClient|TenantsQueryApiRequest|Tenants__BaseAddress|Tenants:BaseAddress" references/Hexalith.Tenants/src references/Hexalith.Tenants/tests -g '!test-summary.md'` found only negative assertions in tests.
+- Final root validation 2026-07-04: `dotnet build Hexalith.EventStore.slnx --configuration Release -p:UseHexalithProjectReferences=false` passed with 0 warnings/errors.
+- Final root tests 2026-07-04: Contracts 559/559, Client 486/486, Sample 91/91, SignalR 35/35, Testing 144/144, and RestApi.Generators 46/46 all passed.
+- Final Tenants validation 2026-07-04: Contracts 111/111 and UI 864/864 passed with `DiffEngine_Disabled=true`; Server passed 738/738 with `-p:HexalithEventStoreFromSource=true`.
+- Package-mode Tenants Server note: `DiffEngine_Disabled=true dotnet test tests/Hexalith.Tenants.Server.Tests/` failed to compile against the older package set because `QueryAdapterFailureReason.InvalidCursor` is unavailable there; the source-reference run passed.
+- Tenants solution build blocker remains workspace-layout specific: `dotnet build Hexalith.Tenants.slnx --configuration Release` failed with MSB3202 for dependency projects under `references/Hexalith.Tenants/references/...`; nested submodules were not initialized per repository rules.
+- Generated-source final evidence 2026-07-04: `dotnet build src/Hexalith.Tenants.Api/Hexalith.Tenants.Api.csproj --configuration Release -p:HexalithEventStoreFromSource=true -p:EmitCompilerGeneratedFiles=true -p:CompilerGeneratedFilesOutputPath=/tmp/hexalith-tenants-d7-generated` passed and produced `Hexalith.EventStore.RestApi.Hexalith.Tenants.Api.Generated.TenantsRestController.Controller.g.cs`.
+- Final Tenants AppHost validation 2026-07-04: `dotnet build src/Hexalith.Tenants.AppHost/Hexalith.Tenants.AppHost.csproj --configuration Release -p:HexalithEventStoreFromSource=true` passed with 0 warnings/errors.
+- Final Tenants integration validation 2026-07-04: focused pub/sub degradation test passed 1/1, then `DiffEngine_Disabled=true dotnet test tests/Hexalith.Tenants.IntegrationTests/ -p:HexalithEventStoreFromSource=true` passed 128/129 with 1 skipped snapshot performance test.
+- DAPR integration diagnosis: intermediate failures were traced to DAPR actor placement collisions with unrelated running sidecars advertising the shared `AggregateActor` type; Tenants integration fixtures now register a unique per-run aggregate actor type and all actor proxies/deactivation calls use it.
+- Runtime-test diagnostics hardening: DAPR E2E setup assertions now include support-safe command/status/dead-letter diagnostics, and pub/sub failure tests wait for drain recovery before moving to the next failure case.
 
 ### Completion Notes List
 
@@ -438,6 +448,7 @@ Codex GPT-5
 - Updated AppHost/configuration coverage so `tenants-api` resource wiring and local DAPR access-control policy are pinned, while the UI is guarded against reintroducing `Tenants__BaseAddress`.
 - Updated Tenants documentation/test helpers for the new public command/query adapter metadata and for parent/sibling EventStore checkout resolution without nested submodule initialization.
 - Emitted and inspected generated controller source under `/tmp/hexalith-tenants-d7-generated`.
+- Fixed final validation drift in Tenants tests: the UI composition assertion now expects `ApiScope = "tenants"`, integration test publisher matches the current platform `IEventPublisher` signature, and integration actor tests are isolated from other DAPR sidecars by using a unique fixture actor type.
 
 ### File List
 
@@ -494,6 +505,12 @@ Codex GPT-5
 - `references/Hexalith.Tenants/src/Hexalith.Tenants/Program.cs`
 - `references/Hexalith.Tenants/src/Hexalith.Tenants/Queries/Handlers/TenantQueryHandlerBase.cs`
 - `references/Hexalith.Tenants/tests/Hexalith.Tenants.IntegrationTests/Hexalith.Tenants.IntegrationTests.csproj`
+- `references/Hexalith.Tenants/tests/Hexalith.Tenants.IntegrationTests/DaprEndToEndTests.cs`
+- `references/Hexalith.Tenants/tests/Hexalith.Tenants.IntegrationTests/Fixtures/TenantsDaprTestFixture.cs`
+- `references/Hexalith.Tenants/tests/Hexalith.Tenants.IntegrationTests/Fixtures/TestEventPublisher.cs`
+- `references/Hexalith.Tenants/tests/Hexalith.Tenants.IntegrationTests/GracefulDegradationTests.cs`
+- `references/Hexalith.Tenants/tests/Hexalith.Tenants.IntegrationTests/SnapshotPerformanceTests.cs`
+- `references/Hexalith.Tenants/tests/Hexalith.Tenants.IntegrationTests/StatelessRestartTests.cs`
 - `references/Hexalith.Tenants/tests/Hexalith.Tenants.IntegrationTests/TenantsApiGeneratedControllerTests.cs`
 - `references/Hexalith.Tenants/tests/Hexalith.Tenants.IntegrationTests/TenantsQueryControllerIntegrationTests.cs` (deleted)
 - `references/Hexalith.Tenants/tests/Hexalith.Tenants.Server.Tests/Configuration/EventPublicationConfigurationTests.cs`
@@ -519,3 +536,4 @@ Codex GPT-5
 | 2026-07-03 | Added dedicated `Hexalith.Tenants.Api` generated-controller host, AppHost `tenants-api` resource, and DAPR access-control entry. |
 | 2026-07-03 | Migrated Tenants UI query gateway from app-local REST client to EventStore gateway client and removed `Tenants__BaseAddress` UI injection. |
 | 2026-07-03 | Retired the hand-written Tenants query controller, retargeted integration coverage to the generated API host, pinned AppHost topology tests, emitted generated-source evidence, completed validation, and moved story to review. |
+| 2026-07-04 | Completed final review-remediation validation, fixed Tenants test drift and DAPR actor-placement collisions in integration fixtures, recorded remaining package/workspace-layout blockers, and moved story to review. |
