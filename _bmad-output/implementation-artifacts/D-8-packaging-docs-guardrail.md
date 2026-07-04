@@ -183,6 +183,14 @@ Source of truth: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07
   - [x] Record `.nupkg` analyzer-path evidence.
   - [x] Confirm `git status --short` contains only intended D8 changes plus pre-existing unrelated workspace changes.
 
+### Review Findings
+
+- [ ] [Review][Patch] Remove submodule pointer updates from D8 or record explicit approval [references/Hexalith.Builds:1]
+- [ ] [Review][Patch] Remove root build/package behavior changes from D8 scope [Directory.Build.props:39]
+- [ ] [Review][Patch] Correct package/distribution docs that still understate packaged components [docs/brownfield/architecture.md:69]
+- [ ] [Review][Patch] Fix UI package guidance so command/query UI clients include the EventStore Client package [docs/reference/nuget-packages.md:229]
+- [ ] [Review][Patch] Extend the UI-host guard to catch MVC controller-hosting variants beyond the current exact markers [tests/Hexalith.EventStore.DomainService.Tests/DomainModuleAuthoringGuardrailTests.cs:37]
+
 ## Dev Notes
 
 ### Top Guardrails
