@@ -1,3 +1,15 @@
+# [3.32.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.31.0...v3.32.0) (2026-07-04)
+
+
+### Features
+
+* Add Hexalith.EventStore.Gateway project with reusable HTTP gateway components and update related references ([2ef05e6](https://github.com/Hexalith/Hexalith.EventStore/commit/2ef05e6904be04e62b55d889feb364cc2803f30f))
+* Enhance OpenAPI documentation with CommandDocumentationTransformer and update tests for improved validation ([88af8f2](https://github.com/Hexalith/Hexalith.EventStore/commit/88af8f279d5d3ea434c6e2141c58c9ec7f6d7f0e))
+* Remove OpenApi source generator targets and update package reference ([bb2b002](https://github.com/Hexalith/Hexalith.EventStore/commit/bb2b002543128cc59f2616ec4d1a1473d8445702))
+* Set default version to 3.31.0 in Directory.Build.props for consistent builds ([5c8f6c3](https://github.com/Hexalith/Hexalith.EventStore/commit/5c8f6c3c97ff1cd3d3c026ec558a403ef3ef1cf7))
+* Update D-5 proof sample BlazorUI queries status to in-progress and enhance acceptance criteria with shipped architecture details ([309aa28](https://github.com/Hexalith/Hexalith.EventStore/commit/309aa28f498c3392f73c8717b4fde621a6e882f4))
+* Update Hexalith dependency handling to use published NuGet packages by default for consistent builds ([9333405](https://github.com/Hexalith/Hexalith.EventStore/commit/9333405e227b9217ef1b62efb2caf8583fe569ab))
+
 # [3.31.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.30.0...v3.31.0) (2026-07-03)
 
 
