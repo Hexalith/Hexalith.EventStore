@@ -1,3 +1,10 @@
+## [3.33.3](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.33.2...v3.33.3) (2026-07-04)
+
+
+### Bug Fixes
+
+* update status to 'done' for D-6-proof-counter-commands and adjust sprint status; enhance command handling and validation in CounterCommandForm and EventStoreAggregate ([49a4561](https://github.com/Hexalith/Hexalith.EventStore/commit/49a4561b0160846758ec0dad198ea0e298196ac9))
+
 ## [3.33.2](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.33.1...v3.33.2) (2026-07-04)
 
 
