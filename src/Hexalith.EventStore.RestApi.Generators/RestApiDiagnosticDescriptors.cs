@@ -78,8 +78,8 @@ internal static class RestApiDiagnosticDescriptors
 
     public static readonly DiagnosticDescriptor DuplicateJsonName = new(
         "HESREST010",
-        "Query payload JSON name is duplicated",
-        "Query contract '{0}' has multiple properties that resolve to JSON name '{1}'",
+        "REST payload JSON name is duplicated",
+        "REST contract '{0}' has multiple properties that resolve to JSON name '{1}'",
         "Hexalith.EventStore.RestApi",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -88,6 +88,22 @@ internal static class RestApiDiagnosticDescriptors
         "HESREST011",
         "Query binding route parameter cannot be mapped",
         "Query contract '{0}' has query binding route parameter '{1}' that is not present in the generated REST route",
+        "Hexalith.EventStore.RestApi",
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor InvalidQueryBinding = new(
+        "HESREST012",
+        "Query binding metadata is invalid",
+        "Query contract '{0}' has invalid RestQueryBinding metadata: {1}",
+        "Hexalith.EventStore.RestApi",
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor AmbiguousRoutePropertyMatch = new(
+        "HESREST013",
+        "REST route parameter matches multiple properties",
+        "REST contract '{0}' has route parameter '{1}' that matches multiple public properties by CLR or JSON name",
         "Hexalith.EventStore.RestApi",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -124,4 +140,10 @@ internal static class RestApiDiagnosticDescriptors
 
     public static Diagnostic CreateUnmappedQueryBindingRouteParameter(RestApiMessageDescriptor message, string routeParameterName)
         => Diagnostic.Create(UnmappedQueryBindingRouteParameter, Location.None, message.TypeName, routeParameterName);
+
+    public static Diagnostic CreateInvalidQueryBinding(RestApiMessageDescriptor message, string reason)
+        => Diagnostic.Create(InvalidQueryBinding, Location.None, message.TypeName, reason);
+
+    public static Diagnostic CreateAmbiguousRoutePropertyMatch(RestApiMessageDescriptor message, string routeParameterName)
+        => Diagnostic.Create(AmbiguousRoutePropertyMatch, Location.None, message.TypeName, routeParameterName);
 }

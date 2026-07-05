@@ -128,7 +128,21 @@ flowchart LR
 
 - **Binds:** FR4-FR6, FR15, FR34, NFR8, NFR15
 - **Prevents:** domain handlers, gateway routing, generated APIs, and UI hosts disagreeing about freshness, projection version, paging, ETag, or projection-confirmed state.
-- **Rule:** Query/read-model evidence metadata is carried through platform result and HTTP-header contracts owned by the gateway, not ad hoc payload fields. Domain handlers and projection actors may produce freshness, projection version, paging, ETag, and stale/current/unknown state only through those contracts; UI hosts render confirmation and stale states from that evidence.
+- **Rule:** Query/read-model evidence metadata is carried through `QueryResponseMetadata` and HTTP response headers owned by the gateway, not ad hoc payload fields. The canonical flow is:
+
+Domain/projection query result -> `QueryResult.Metadata` -> `QueryRouterResult.Metadata` -> `SubmitQueryResult.Metadata` -> `SubmitQueryResponse.Metadata` -> `EventStoreQueryResult.Metadata` -> generated external API headers or UI client state.
+
+Merge rules are explicit:
+
+- Domain/projection metadata is authoritative for freshness, projection version, paging, degraded state, and warning codes.
+- The gateway is authoritative for the HTTP ETag header and may fill `QueryResponseMetadata.ETag` from the selected strong validator when the producer omitted it.
+- The gateway fills `ServedAt` only when absent.
+- `IsNotModified` is derived from the HTTP outcome.
+- Missing freshness is unknown, not current.
+- ETag and projection version are distinct unless a projection explicitly defines them as equivalent.
+- Paging metadata is evidence only when produced by the query handler/projection; request paging echoed by the gateway is not proof of total count, next cursor, or page completeness.
+
+Generated REST controllers may forward metadata through support-safe headers such as `ETag`, `X-Hexalith-Projection-Version`, `X-Hexalith-Served-At`, `X-Hexalith-Is-Stale`, `X-Hexalith-Is-Degraded`, `X-Hexalith-Warning-Codes`, `X-Hexalith-Page-Size`, `X-Hexalith-Page-Offset`, `X-Hexalith-Next-Cursor`, `X-Hexalith-Total-Count`, and `X-Hexalith-Has-More` only when those metadata values are present and bounded. Cursors and ETags remain opaque and must not be parsed, displayed as support text, or logged as diagnostic detail.
 
 ```mermaid
 flowchart TD

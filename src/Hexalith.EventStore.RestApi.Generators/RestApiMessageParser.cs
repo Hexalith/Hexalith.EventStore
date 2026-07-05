@@ -15,7 +15,9 @@ internal static class RestApiMessageParser
         cancellationToken.ThrowIfCancellationRequested();
 
         return node is TypeDeclarationSyntax { BaseList: not null } typeDeclaration
-            && (typeDeclaration is ClassDeclarationSyntax || typeDeclaration is RecordDeclarationSyntax);
+            && (typeDeclaration is ClassDeclarationSyntax
+                || typeDeclaration is RecordDeclarationSyntax
+                || typeDeclaration is StructDeclarationSyntax);
     }
 
     public static RestApiMessageDescriptor? Parse(GeneratorSyntaxContext context, CancellationToken cancellationToken)
@@ -24,7 +26,7 @@ internal static class RestApiMessageParser
 
         if (context.Node is not TypeDeclarationSyntax typeDeclaration
             || context.SemanticModel.GetDeclaredSymbol(typeDeclaration, cancellationToken) is not INamedTypeSymbol typeSymbol
-            || typeSymbol.TypeKind != TypeKind.Class)
+            || !IsSupportedCandidateTypeKind(typeSymbol.TypeKind))
         {
             return null;
         }
@@ -81,11 +83,6 @@ internal static class RestApiMessageParser
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-
-        if (typeSymbol.TypeKind != TypeKind.Class)
-        {
-            return null;
-        }
 
         INamedTypeSymbol? commandContract = compilation.GetTypeByMetadataName(RestApiMetadataNames.CommandContract);
         INamedTypeSymbol? queryContract = compilation.GetTypeByMetadataName(RestApiMetadataNames.QueryContract);
@@ -196,14 +193,9 @@ internal static class RestApiMessageParser
 
     private static bool IsInReferencedApiScope(RestApiRouteDescriptor route, RestApiOptions options)
     {
-        if (!options.Found)
+        if (!options.Found || string.IsNullOrWhiteSpace(options.Tag))
         {
             return false;
-        }
-
-        if (string.IsNullOrWhiteSpace(options.Tag))
-        {
-            return string.IsNullOrWhiteSpace(route.ApiScope);
         }
 
         return string.Equals(route.ApiScope, options.Tag, StringComparison.Ordinal);
@@ -331,6 +323,11 @@ internal static class RestApiMessageParser
 
     private static string? GetUnsupportedContractReason(INamedTypeSymbol typeSymbol)
     {
+        if (typeSymbol.TypeKind != TypeKind.Class)
+        {
+            return "it is a value type";
+        }
+
         if (typeSymbol.IsAbstract)
         {
             return "it is abstract";
@@ -359,6 +356,9 @@ internal static class RestApiMessageParser
 
         return null;
     }
+
+    private static bool IsSupportedCandidateTypeKind(TypeKind typeKind)
+        => typeKind is TypeKind.Class or TypeKind.Struct;
 
     private static ImmutableArray<RestApiBindablePropertyDescriptor> GetPublicProperties(
         INamedTypeSymbol typeSymbol,

@@ -31,6 +31,7 @@ public sealed class RestApiGenerator : IIncrementalGenerator
         IncrementalValueProvider<ImmutableArray<RestApiMessageDescriptor>> collectedMessages = messages
             .Collect()
             .Select(static (descriptors, _) => descriptors.Distinct().ToImmutableArray())
+            .WithComparer(RestApiMessageDescriptorArrayComparer.Instance)
             .WithTrackingName("RestApiMessageDeduplication");
 
         IncrementalValueProvider<ImmutableArray<RestApiMessageDescriptor>> referencedMessages = context.CompilationProvider
@@ -39,11 +40,13 @@ public sealed class RestApiGenerator : IIncrementalGenerator
                 source.Left,
                 source.Right,
                 cancellationToken))
+            .WithComparer(RestApiMessageDescriptorArrayComparer.Instance)
             .WithTrackingName("RestApiReferencedMessageDiscovery");
 
         IncrementalValueProvider<ImmutableArray<RestApiMessageDescriptor>> allMessages = collectedMessages
             .Combine(referencedMessages)
             .Select(static (source, _) => source.Left.AddRange(source.Right).Distinct().ToImmutableArray())
+            .WithComparer(RestApiMessageDescriptorArrayComparer.Instance)
             .WithTrackingName("RestApiAllMessageDeduplication");
 
         context.RegisterSourceOutput(

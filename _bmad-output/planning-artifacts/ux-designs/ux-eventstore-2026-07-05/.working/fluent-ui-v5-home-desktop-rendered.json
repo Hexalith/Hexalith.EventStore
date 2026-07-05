@@ -1,0 +1,624 @@
+{
+  "title": "- FluentUI Blazor Components",
+  "url": "https://fluentui-blazor-v5.azurewebsites.net/",
+  "bodyFont": "\"Segoe UI\", \"Segoe UI Web (West European)\", -apple-system, BlinkMacSystemFont, Roboto, \"Helvetica Neue\", sans-serif",
+  "bodyColor": "rgb(36, 36, 36)",
+  "background": "rgb(255, 255, 255)",
+  "bodyText": "New release available: Version RC4 is now available with many new components. Check out the GitHub changelog for all the details and breaking changes.\nHome\nGet Started\nInstallation\nMCP Server\nOverview\nGet Started\nHow to Install\nMCP Resources\nMCP Prompts\nMCP Tools\nUsage Examples\nVersion Compatibility\nSecurity\nAI Skills\nWhat's New\nMigration Guide V4 → V5\nGeneral\nDefault Values\nLocalization\nStyles\nSpacing\nThemes\nOverview\nTheme Designer\nCommon Styles\nLight-Dark\nSystem colors\nComponents\nAccordion\nAppBar\nAvatar\nBadge components\nOverview\nBadge\nCounterBadge\nPresence Badge\nButton components\nOverview\nButton\nAnchorButton\nCompoundButton\nMenuButton\nSplitButton\nToggleButton\nCard\nCharts\nOverview\nDonut Chart\nFunnel Chart\nGantt Chart\nHorizontal Bar Chart\nHorizontal Bar Chart With Axis\nCheckbox\nColorPicker\nDataGrid\nOverview\nGetting started\nTypical usage\nAuto fit columns\nAuto items per page\nCustom comparer for sorting\nCustom Paging\nCustom sort\nDynamic columns\nHeader generation\nHierarchical data\nManual grid\nMore template columns\nMulti line text\nMulti select\nPinned columns\nRemote data\nReorderable columns\nTable scrollbars\nTemplate columns\nUsing LoadingContent and EmptyContent\nVirtualize\nDate and Time pickers\nOverview\nCalendar\nDatePicker\nTimePicker\nExtensions\nDialog\nDivider\nDrag and Drop\nDrawer (Panel)\nEmoji\nError Boundary\nField\nForms\nGrid\nHighlighter\nIcon\nImage\nInputFile\nKeyCode\nLabel\nLabelInfo\nLayout\nLink\nList components\nOverview\nAutocomplete\nCombobox\nListbox\nSelect\nMenu\nMessageBar\nMessageBox\nNav\nNumber\nOverflow\nOverlay\nPaginator\nPopover\nProgressBar\nPullToRefresh\nRadio\nRatingDisplay\nSkeleton\nSlider\nSortableList\nSpacer\nSpinner\nSplitter\nStack\nSwitch\nTable\nTabs\nText\nTextArea\nTextInput\nToast\nTooltip\nTreeView\nWizard\nLabs\nMy Counter (Test)\nOverview\nMy Counter (Test)\nWelcome to the Fluent UI Blazor library documentation\n\nThe Fluent UI Blazor library provides a robust and extensive set of Blazor components. Some of those components are wrappers around Microsoft's official Fluent UI Web Components. Others are components that leverage the Fluent Design System or just make it easier to work with Fluent in general.\n\nTo get up and running with the Microsoft.FluentUI.AspNetCore.Components library, see the \"Getting Started\" section below.\n\nIntroduction and getting started video\nGetting Started\n\nBy far the easiest way to get started is by using our templates. Setting them up is quick and easy. See the templates page for instructions and usage.\n\nWhat's new?\n\nIf you are already up-and-running and upgrading from an earlier version of the library, please go to the What's New page for information on additions, fixes and (breaking) changes.\n\nComponents & render modes\n\nAs described in the Blazor documentation:\n\nBy default, components use Static Server-side rendering (SSR). The component renders to the response stream and there is no interactivity.\n\nA component inherits its render mode from its parent. So unless a render mode is specified on the app, page or component level, every component (including ours) is statically rendered on the server and will not be interactive. For the Fluent UI Blazor library this means most components will display correctly but will not offer complete, if any, functionality.\n\nVersion: 5.0.0-RC.4+b9bcfb9d\nPowered by .NET 10.0.9\n© Microsoft 2026. All rights reserved.",
+  "links": [
+    {
+      "tag": "fluent-button",
+      "text": "Dismiss",
+      "href": null
+    },
+    {
+      "tag": "fluent-button",
+      "text": "Menu",
+      "href": null
+    },
+    {
+      "tag": "fluent-button",
+      "text": "",
+      "href": null
+    },
+    {
+      "tag": "fluent-button",
+      "text": "See the Fluent UI Blazor GitHub repository",
+      "href": null
+    },
+    {
+      "tag": "fluent-button",
+      "text": "Switch to Light/Dark theme",
+      "href": null
+    },
+    {
+      "tag": "fluent-button",
+      "text": "Switch to LTR/RTL direction",
+      "href": null
+    },
+    {
+      "tag": "fluent-button",
+      "text": "",
+      "href": null
+    },
+    {
+      "tag": "fluent-button",
+      "text": "Open or hide the console",
+      "href": null
+    },
+    {
+      "tag": "a",
+      "text": "Home",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/"
+    },
+    {
+      "tag": "a",
+      "text": "Installation",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/installation"
+    },
+    {
+      "tag": "a",
+      "text": "Overview",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Mcp"
+    },
+    {
+      "tag": "a",
+      "text": "Get Started",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Mcp/GetStarted"
+    },
+    {
+      "tag": "a",
+      "text": "How to Install",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Mcp/Installation"
+    },
+    {
+      "tag": "a",
+      "text": "MCP Resources",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Mcp/Resources"
+    },
+    {
+      "tag": "a",
+      "text": "MCP Prompts",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Mcp/Prompts"
+    },
+    {
+      "tag": "a",
+      "text": "MCP Tools",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Mcp/Tools"
+    },
+    {
+      "tag": "a",
+      "text": "Usage Examples",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Mcp/Examples"
+    },
+    {
+      "tag": "a",
+      "text": "Version Compatibility",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Mcp/VersionCompatibility"
+    },
+    {
+      "tag": "a",
+      "text": "Security",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Mcp/Security"
+    },
+    {
+      "tag": "a",
+      "text": "AI Skills",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Mcp/AISkills"
+    },
+    {
+      "tag": "a",
+      "text": "What's New",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/WhatsNew"
+    },
+    {
+      "tag": "a",
+      "text": "Migration Guide V4 → V5",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Migration"
+    },
+    {
+      "tag": "a",
+      "text": "Default Values",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/default-values"
+    },
+    {
+      "tag": "a",
+      "text": "Localization",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/localization"
+    },
+    {
+      "tag": "a",
+      "text": "Styles",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Styles"
+    },
+    {
+      "tag": "a",
+      "text": "Spacing",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Spacing"
+    },
+    {
+      "tag": "a",
+      "text": "Overview",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Theme"
+    },
+    {
+      "tag": "a",
+      "text": "Theme Designer",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Theme/Designer"
+    },
+    {
+      "tag": "a",
+      "text": "Common Styles",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Theme/Common-Styles"
+    },
+    {
+      "tag": "a",
+      "text": "Light-Dark",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Theme/LightDark"
+    },
+    {
+      "tag": "a",
+      "text": "System colors",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Theme/Colors"
+    },
+    {
+      "tag": "a",
+      "text": "Accordion",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Accordion"
+    },
+    {
+      "tag": "a",
+      "text": "AppBar",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/AppBar"
+    },
+    {
+      "tag": "a",
+      "text": "Avatar",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Avatar"
+    },
+    {
+      "tag": "a",
+      "text": "Overview",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Badges"
+    },
+    {
+      "tag": "a",
+      "text": "Badge",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Badges/Badge"
+    },
+    {
+      "tag": "a",
+      "text": "CounterBadge",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Badges/CounterBadge"
+    },
+    {
+      "tag": "a",
+      "text": "Presence Badge",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Badges/PresenceBadge"
+    },
+    {
+      "tag": "a",
+      "text": "Overview",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Buttons"
+    },
+    {
+      "tag": "a",
+      "text": "Button",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Buttons/Button"
+    },
+    {
+      "tag": "a",
+      "text": "AnchorButton",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Buttons/AnchorButton"
+    },
+    {
+      "tag": "a",
+      "text": "CompoundButton",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Buttons/CompoundButton"
+    },
+    {
+      "tag": "a",
+      "text": "MenuButton",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Buttons/MenuButton"
+    },
+    {
+      "tag": "a",
+      "text": "SplitButton",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Buttons/SplitButton"
+    },
+    {
+      "tag": "a",
+      "text": "ToggleButton",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Buttons/ToggleButton"
+    },
+    {
+      "tag": "a",
+      "text": "Card",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Card"
+    },
+    {
+      "tag": "a",
+      "text": "Overview",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Charts"
+    },
+    {
+      "tag": "a",
+      "text": "Donut Chart",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Charts/DonutChart"
+    },
+    {
+      "tag": "a",
+      "text": "Funnel Chart",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Charts/FunnelChart"
+    },
+    {
+      "tag": "a",
+      "text": "Gantt Chart",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Charts/GanttChart"
+    },
+    {
+      "tag": "a",
+      "text": "Horizontal Bar Chart",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Charts/HorizontalBarChart"
+    },
+    {
+      "tag": "a",
+      "text": "Horizontal Bar Chart With Axis",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Charts/HorizontalBarChartWithAxis"
+    },
+    {
+      "tag": "a",
+      "text": "Checkbox",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Checkbox"
+    },
+    {
+      "tag": "a",
+      "text": "ColorPicker",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/ColorPicker"
+    },
+    {
+      "tag": "a",
+      "text": "Overview",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/DataGrid"
+    },
+    {
+      "tag": "a",
+      "text": "Getting started",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/DataGrid/GettingStarted"
+    },
+    {
+      "tag": "a",
+      "text": "Typical usage",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/DataGrid/Typical"
+    },
+    {
+      "tag": "a",
+      "text": "Auto fit columns",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/DataGrid/AutoFit"
+    },
+    {
+      "tag": "a",
+      "text": "Auto items per page",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/DataGrid/AutoItemsPerPage"
+    },
+    {
+      "tag": "a",
+      "text": "Custom comparer for sorting",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/DataGrid/CustomComparerSort"
+    },
+    {
+      "tag": "a",
+      "text": "Custom Paging",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/DataGrid/CustomPaging"
+    },
+    {
+      "tag": "a",
+      "text": "Custom sort",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/DataGrid/CustomSort"
+    },
+    {
+      "tag": "a",
+      "text": "Dynamic columns",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/DataGrid/DynamicColumns"
+    },
+    {
+      "tag": "a",
+      "text": "Header generation",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/DataGrid/HeaderGeneration"
+    },
+    {
+      "tag": "a",
+      "text": "Hierarchical data",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/DataGrid/Hierarchical"
+    },
+    {
+      "tag": "a",
+      "text": "Manual grid",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/DataGrid/ManualDataGrid"
+    },
+    {
+      "tag": "a",
+      "text": "More template columns",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/DataGrid/TemplateColumns2"
+    },
+    {
+      "tag": "a",
+      "text": "Multi line text",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/DataGrid/MultilineText"
+    },
+    {
+      "tag": "a",
+      "text": "Multi select",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/DataGrid/MultiSelect"
+    },
+    {
+      "tag": "a",
+      "text": "Pinned columns",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/DataGrid/PinnedColumns"
+    },
+    {
+      "tag": "a",
+      "text": "Remote data",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/DataGrid/RemoteData"
+    },
+    {
+      "tag": "a",
+      "text": "Reorderable columns",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/DataGrid/ReorderableColumns"
+    },
+    {
+      "tag": "a",
+      "text": "Table scrollbars",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/DataGrid/TableScrollbars"
+    },
+    {
+      "tag": "a",
+      "text": "Template columns",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/DataGrid/TemplateColumns"
+    },
+    {
+      "tag": "a",
+      "text": "Using LoadingContent and EmptyContent",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/DataGrid/LoadingAndEmptyContent"
+    },
+    {
+      "tag": "a",
+      "text": "Virtualize",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/DataGrid/Virtualize"
+    },
+    {
+      "tag": "a",
+      "text": "Overview",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/DateTime"
+    },
+    {
+      "tag": "a",
+      "text": "Calendar",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/DateTime/Calendar"
+    },
+    {
+      "tag": "a",
+      "text": "DatePicker",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/DateTime/DatePicker"
+    },
+    {
+      "tag": "a",
+      "text": "TimePicker",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/DateTime/TimePicker"
+    },
+    {
+      "tag": "a",
+      "text": "Extensions",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/DateTime/Extensions"
+    },
+    {
+      "tag": "a",
+      "text": "Dialog",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Dialog"
+    },
+    {
+      "tag": "a",
+      "text": "Divider",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Divider"
+    },
+    {
+      "tag": "a",
+      "text": "Drag and Drop",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Drag"
+    },
+    {
+      "tag": "a",
+      "text": "Drawer (Panel)",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Drawer"
+    },
+    {
+      "tag": "a",
+      "text": "Emoji",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Emoji"
+    },
+    {
+      "tag": "a",
+      "text": "Error Boundary",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/ErrorBoundary"
+    },
+    {
+      "tag": "a",
+      "text": "Field",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Field"
+    },
+    {
+      "tag": "a",
+      "text": "Forms",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Forms"
+    },
+    {
+      "tag": "a",
+      "text": "Grid",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Grid"
+    },
+    {
+      "tag": "a",
+      "text": "Highlighter",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Highlighter"
+    },
+    {
+      "tag": "a",
+      "text": "Icon",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Icon"
+    },
+    {
+      "tag": "a",
+      "text": "Image",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Image"
+    },
+    {
+      "tag": "a",
+      "text": "InputFile",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/InputFile"
+    },
+    {
+      "tag": "a",
+      "text": "KeyCode",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/KeyCode"
+    },
+    {
+      "tag": "a",
+      "text": "Label",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Label"
+    },
+    {
+      "tag": "a",
+      "text": "LabelInfo",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/LabelInfo"
+    },
+    {
+      "tag": "a",
+      "text": "Layout",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Layout"
+    },
+    {
+      "tag": "a",
+      "text": "Link",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/link"
+    },
+    {
+      "tag": "a",
+      "text": "Overview",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Lists"
+    },
+    {
+      "tag": "a",
+      "text": "Autocomplete",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Lists/Autocomplete"
+    },
+    {
+      "tag": "a",
+      "text": "Combobox",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Lists/Combobox"
+    },
+    {
+      "tag": "a",
+      "text": "Listbox",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Lists/Listbox"
+    },
+    {
+      "tag": "a",
+      "text": "Select",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Lists/Select"
+    },
+    {
+      "tag": "a",
+      "text": "Menu",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Menu"
+    },
+    {
+      "tag": "a",
+      "text": "MessageBar",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/MessageBar"
+    },
+    {
+      "tag": "a",
+      "text": "MessageBox",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/MessageBox"
+    },
+    {
+      "tag": "a",
+      "text": "Nav",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Nav"
+    },
+    {
+      "tag": "a",
+      "text": "Number",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Number"
+    },
+    {
+      "tag": "a",
+      "text": "Overflow",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Overflow"
+    },
+    {
+      "tag": "a",
+      "text": "Overlay",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Overlay"
+    },
+    {
+      "tag": "a",
+      "text": "Paginator",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Paginator"
+    },
+    {
+      "tag": "a",
+      "text": "Popover",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Popover"
+    },
+    {
+      "tag": "a",
+      "text": "ProgressBar",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/progress-bar"
+    },
+    {
+      "tag": "a",
+      "text": "PullToRefresh",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/PullToRefresh"
+    },
+    {
+      "tag": "a",
+      "text": "Radio",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Radio"
+    },
+    {
+      "tag": "a",
+      "text": "RatingDisplay",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/rating-display"
+    },
+    {
+      "tag": "a",
+      "text": "Skeleton",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Skeleton"
+    },
+    {
+      "tag": "a",
+      "text": "Slider",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/Slider"
+    },
+    {
+      "tag": "a",
+      "text": "SortableList",
+      "href": "https://fluentui-blazor-v5.azurewebsites.net/SortableList"
+    }
+  ],
+  "landmarks": [
+    {
+      "tag": "nav",
+      "text": "Home\nGet Started\nInstallation\nMCP Server\nOverview\nGet Started\nHow to Install\nMCP Resources\nMCP Prompts\nMCP Tools\nUsage Examples\nVersion Compatibility\nSecurity\nAI Skills\nWhat's New\nMigration Guide V4 → V5\nGeneral\nDefault Values\nLocalization\nStyles\nSpacing\nThemes\nOverview\nTheme Designer\nCommon Styles\nLight-Dark\nSystem colors\nComponents\nAccordion\nAppBar\nAvatar\nBadge components\nOverview\nBadge\nCounterBadge\nPresence Badge\nButton components\nOverview\nButton\nAnchorButton\nCompoundButton\nMenuButton\nSplitBu"
+    }
+  ],
+  "fluentTags": [
+    "fluent-button",
+    "fluent-drawer",
+    "fluent-drawer-body",
+    "fluent-message-bar",
+    "fluent-overlay",
+    "fluent-spinner"
+  ]
+}

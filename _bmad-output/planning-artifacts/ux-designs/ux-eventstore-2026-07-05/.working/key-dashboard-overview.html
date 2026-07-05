@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Event Store Admin - Dashboard Overview Mock</title>
+  <style>
+    /*
+      Governed by DESIGN.md: Brand & Style, Colors, Layout & Spacing, Components.
+      Governed by EXPERIENCE.md: Information Architecture, State Patterns, Responsive & Platform.
+      Reference only. Spines win on conflict.
+    */
+    :root {
+      --app-blue: #0078d4;
+      --canvas: #ffffff;
+      --nav: #f3f2f1;
+      --text: #242424;
+      --muted: #616161;
+      --border: #d1d1d1;
+      --subtle: #f5f5f5;
+      --info: #eaf4ff;
+      --warning: #fff4ce;
+      --danger: #fde7e9;
+      --success: #dff6dd;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Segoe UI Web (West European)", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif;
+      color: var(--text);
+      background: var(--canvas);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .notice {
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 16px;
+      border: 1px solid #107c10;
+      background: #f1faf1;
+    }
+
+    .appbar {
+      height: 44px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding: 0 20px;
+      color: #ffffff;
+      background: var(--app-blue);
+    }
+
+    .hamburger {
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .mark {
+      width: 24px;
+      height: 24px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+    }
+
+    .mark span:nth-child(1) { background: #f25022; }
+    .mark span:nth-child(2) { background: #7fba00; }
+    .mark span:nth-child(3) { background: #00a4ef; }
+    .mark span:nth-child(4) { background: #ffb900; }
+
+    .shell {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      min-height: calc(100vh - 84px);
+    }
+
+    .nav {
+      background: var(--nav);
+      border-right: 1px solid var(--border);
+      padding: 16px 0;
+    }
+
+    .nav-section {
+      padding: 8px 20px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 40px;
+      padding: 0 20px;
+      border-left: 4px solid transparent;
+    }
+
+    .nav-item.active {
+      border-left-color: var(--app-blue);
+      background: #ffffff;
+      font-weight: 600;
+    }
+
+    .content {
+      padding: 24px 28px 40px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 34px;
+      font-weight: 400;
+      line-height: 1.2;
+    }
+
+    .subtitle {
+      margin-bottom: 20px;
+      color: var(--muted);
+    }
+
+    .tabs {
+      display: flex;
+      gap: 2px;
+      border-bottom: 1px solid var(--border);
+      overflow: auto;
+      white-space: nowrap;
+    }
+
+    .tab {
+      padding: 10px 14px;
+      border-bottom: 3px solid transparent;
+      color: var(--text);
+    }
+
+    .tab.active {
+      border-bottom-color: var(--app-blue);
+      font-weight: 600;
+    }
+
+    .banner {
+      margin-top: 18px;
+      padding: 14px 16px;
+      border-left: 4px solid var(--app-blue);
+      background: var(--info);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(160px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .stat {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 14px;
+      background: #ffffff;
+    }
+
+    .label {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .value {
+      margin-top: 6px;
+      font-size: 24px;
+      font-weight: 600;
+    }
+
+    .grid-wrap {
+      margin-top: 24px;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .input,
+    .select {
+      min-height: 32px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 5px 8px;
+      background: #ffffff;
+      color: var(--text);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid var(--border);
+    }
+
+    th,
+    td {
+      padding: 9px 10px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--subtle);
+      font-weight: 600;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      border: 1px solid var(--border);
+    }
+
+    .success { background: var(--success); }
+    .warning { background: var(--warning); }
+    .danger { background: var(--danger); }
+    .mono {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 13px;
+    }
+
+    @media (max-width: 900px) {
+      .shell {
+        grid-template-columns: 1fr;
+      }
+
+      .nav {
+        display: none;
+      }
+
+      .content {
+        padding: 18px 16px 32px;
+      }
+
+      .stats {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="notice"><strong>Support-safe dashboard:</strong> stale values are labeled and raw payloads stay protected.</div>
+  <header class="appbar">
+    <div class="hamburger" aria-hidden="true">=</div>
+    <div class="brand"><span class="mark" aria-hidden="true"><span></span><span></span><span></span><span></span></span>Hexalith</div>
+  </header>
+  <div class="shell">
+    <aside class="nav" aria-label="Module navigation">
+      <div class="nav-section">Modules</div>
+      <div class="nav-item active">Event Store Admin</div>
+    </aside>
+    <main class="content">
+      <h1>Event Store Admin</h1>
+      <div class="subtitle">Production operations dashboard. Evidence current as of 08:24 UTC.</div>
+      <nav class="tabs" aria-label="Event Store Admin tabs">
+        <div class="tab active">Overview</div>
+        <div class="tab">Commands</div>
+        <div class="tab">Streams &amp; Events</div>
+        <div class="tab">Projections</div>
+        <div class="tab">Tenants &amp; Access</div>
+        <div class="tab">Topology</div>
+        <div class="tab">Storage &amp; Snapshots</div>
+        <div class="tab">Recovery</div>
+        <div class="tab">Deferred &amp; Backlog</div>
+      </nav>
+      <section class="banner">
+        SignalR disconnected. Polling is active; projection notifications are freshness nudges only.
+      </section>
+      <section class="stats" aria-label="Operational summary">
+        <div class="stat"><div class="label">Active Streams</div><div class="value">128</div><span class="badge success">current</span></div>
+        <div class="stat"><div class="label">Commands In Flight</div><div class="value">7</div><span class="badge warning">waiting for evidence</span></div>
+        <div class="stat"><div class="label">Dead Letters</div><div class="value">3</div><span class="badge danger">action required</span></div>
+        <div class="stat"><div class="label">Projection Lag</div><div class="value">12s</div><span class="badge warning">stale</span></div>
+      </section>
+      <section class="grid-wrap">
+        <div class="toolbar">
+          <div class="input">Search tenant, domain, aggregate...</div>
+          <div class="select">All Tenants</div>
+          <div class="select">All Domains</div>
+          <div class="select">Status: Active</div>
+        </div>
+        <table aria-label="Recent operational evidence">
+          <thead>
+            <tr><th>Status</th><th>Tenant</th><th>Domain</th><th>Aggregate</th><th>Evidence</th><th>Last Activity</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="badge success">active</span></td>
+              <td class="mono">contoso</td>
+              <td>orders</td>
+              <td class="mono">01JZ4...</td>
+              <td>Projection confirmed</td>
+              <td>08:24:12</td>
+            </tr>
+            <tr>
+              <td><span class="badge warning">pending</span></td>
+              <td class="mono">fabrikam</td>
+              <td>tenants</td>
+              <td class="mono">system</td>
+              <td>Command accepted; waiting for read model</td>
+              <td>08:23:59</td>
+            </tr>
+            <tr>
+              <td><span class="badge danger">dead letter</span></td>
+              <td class="mono">wingtip</td>
+              <td>billing</td>
+              <td class="mono">01JZ3...</td>
+              <td>Publish retry exhausted</td>
+              <td>08:18:40</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

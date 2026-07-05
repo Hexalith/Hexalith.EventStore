@@ -92,10 +92,22 @@ internal static class RestApiControllerEmitter
                 continue;
             }
 
-            if (message.IsQuery
-                && TryFindDuplicateJsonName(message, out string duplicateJsonName))
+            if (TryFindDuplicateJsonName(message, out string duplicateJsonName))
             {
                 reportDiagnostic(RestApiDiagnosticDescriptors.CreateDuplicateJsonName(message, duplicateJsonName));
+                continue;
+            }
+
+            if (TryFindAmbiguousRoutePropertyMatch(message, effectiveRouteParameters, out string ambiguousRouteParameter))
+            {
+                reportDiagnostic(RestApiDiagnosticDescriptors.CreateAmbiguousRoutePropertyMatch(message, ambiguousRouteParameter));
+                continue;
+            }
+
+            if (message.IsQuery
+                && TryFindInvalidQueryBinding(message, out string invalidQueryBindingReason))
+            {
+                reportDiagnostic(RestApiDiagnosticDescriptors.CreateInvalidQueryBinding(message, invalidQueryBindingReason));
                 continue;
             }
 
@@ -301,14 +313,12 @@ internal static class RestApiControllerEmitter
         builder.AppendLine("                Response.Headers[\"ETag\"] = FormatStrongETag(__hexalithResult.ETag);");
         builder.AppendLine("            }");
         builder.AppendLine();
-        builder.AppendLine("            QueryResponseMetadata? __hexalithMetadata = __hexalithResult.Metadata;");
-        builder.AppendLine("            string? __hexalithProjectionVersion = string.IsNullOrWhiteSpace(__hexalithMetadata?.ProjectionVersion)");
-        builder.AppendLine("                ? __hexalithResult.ETag");
-        builder.AppendLine("                : __hexalithMetadata.ProjectionVersion;");
-        builder.AppendLine("            if (!string.IsNullOrWhiteSpace(__hexalithProjectionVersion))");
-        builder.AppendLine("            {");
-        builder.AppendLine("                Response.Headers[\"X-Hexalith-Projection-Version\"] = __hexalithProjectionVersion;");
-        builder.AppendLine("            }");
+            builder.AppendLine("            QueryResponseMetadata? __hexalithMetadata = __hexalithResult.Metadata;");
+            builder.AppendLine("            string? __hexalithProjectionVersion = __hexalithMetadata?.ProjectionVersion;");
+            builder.AppendLine("            if (!string.IsNullOrWhiteSpace(__hexalithProjectionVersion))");
+            builder.AppendLine("            {");
+            builder.AppendLine("                Response.Headers[\"X-Hexalith-Projection-Version\"] = __hexalithProjectionVersion;");
+            builder.AppendLine("            }");
         builder.AppendLine();
         builder.AppendLine("            if (__hexalithMetadata?.ServedAt is not null)");
         builder.AppendLine("            {");
@@ -400,13 +410,14 @@ internal static class RestApiControllerEmitter
         builder.AppendLine("        AddExtension(problem, \"tenantId\", exception.TenantId);");
         builder.AppendLine("        AddExtension(problem, \"reason\", exception.Reason);");
         builder.AppendLine("        AddExtension(problem, \"reasonCode\", exception.ReasonCode);");
-        builder.AppendLine("        if (exception.Errors.Count > 0)");
-        builder.AppendLine("        {");
-        builder.AppendLine("            problem.Extensions[\"errors\"] = exception.Errors;");
-        builder.AppendLine("        }");
-        builder.AppendLine();
-        builder.AppendLine("        return new ObjectResult(problem)");
-        builder.AppendLine("        {");
+            builder.AppendLine("        IReadOnlyDictionary<string, string> __hexalithSafeErrors = FilterSafeErrors(exception.Errors);");
+            builder.AppendLine("        if (__hexalithSafeErrors.Count > 0)");
+            builder.AppendLine("        {");
+            builder.AppendLine("            problem.Extensions[\"errors\"] = __hexalithSafeErrors;");
+            builder.AppendLine("        }");
+            builder.AppendLine();
+            builder.AppendLine("        return new ObjectResult(problem)");
+            builder.AppendLine("        {");
         builder.AppendLine("            StatusCode = exception.StatusCode,");
         builder.AppendLine("            ContentTypes = { \"application/problem+json\" },");
         builder.AppendLine("        };");
@@ -435,6 +446,40 @@ internal static class RestApiControllerEmitter
         builder.AppendLine("        {");
         builder.AppendLine("            problem.Extensions[key] = value;");
         builder.AppendLine("        }");
+        builder.AppendLine("    }");
+        builder.AppendLine();
+        builder.AppendLine("    private static IReadOnlyDictionary<string, string> FilterSafeErrors(IReadOnlyDictionary<string, string> errors)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        var safeErrors = new Dictionary<string, string>(StringComparer.Ordinal);");
+        builder.AppendLine("        foreach (KeyValuePair<string, string> error in errors)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            if (IsSupportSafeProblemText(error.Key) && IsSupportSafeProblemText(error.Value))");
+        builder.AppendLine("            {");
+        builder.AppendLine("                safeErrors[error.Key] = error.Value;");
+        builder.AppendLine("            }");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        return safeErrors;");
+        builder.AppendLine("    }");
+        builder.AppendLine();
+        builder.AppendLine("    private static bool IsSupportSafeProblemText(string? value)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        if (string.IsNullOrWhiteSpace(value))");
+        builder.AppendLine("        {");
+        builder.AppendLine("            return false;");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        return value.IndexOf(\"authorization\", StringComparison.OrdinalIgnoreCase) < 0");
+        builder.AppendLine("            && value.IndexOf(\"bear\" + \"er\", StringComparison.OrdinalIgnoreCase) < 0");
+        builder.AppendLine("            && value.IndexOf(\"cursor\", StringComparison.OrdinalIgnoreCase) < 0");
+        builder.AppendLine("            && value.IndexOf(\"etag\", StringComparison.OrdinalIgnoreCase) < 0");
+        builder.AppendLine("            && value.IndexOf(\"jwt\", StringComparison.OrdinalIgnoreCase) < 0");
+        builder.AppendLine("            && value.IndexOf(\"password\", StringComparison.OrdinalIgnoreCase) < 0");
+        builder.AppendLine("            && value.IndexOf(\"payload\", StringComparison.OrdinalIgnoreCase) < 0");
+        builder.AppendLine("            && value.IndexOf(\"secret\", StringComparison.OrdinalIgnoreCase) < 0");
+        builder.AppendLine("            && value.IndexOf(\"stack\", StringComparison.OrdinalIgnoreCase) < 0");
+        builder.AppendLine("            && value.IndexOf(\"token\", StringComparison.OrdinalIgnoreCase) < 0");
+        builder.AppendLine("            && value.IndexOf(\"trace\", StringComparison.OrdinalIgnoreCase) < 0;");
         builder.AppendLine("    }");
         builder.AppendLine();
         builder.AppendLine("    private static string FormatStrongETag(string etag)");
@@ -826,7 +871,7 @@ internal static class RestApiControllerEmitter
                 continue;
             }
 
-            int close = value.IndexOf('}', open + 1);
+            int close = RestApiRouteTemplateParser.FindParameterClose(value, open);
             if (close < 0)
             {
                 builder.Append(value.Substring(open));
@@ -912,7 +957,7 @@ internal static class RestApiControllerEmitter
 
     private static bool TryFindDuplicateJsonName(RestApiMessageDescriptor message, out string duplicateJsonName)
     {
-        var jsonNames = new HashSet<string>(StringComparer.Ordinal);
+        var jsonNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (RestApiBindablePropertyDescriptor property in message.Properties)
         {
             if (!jsonNames.Add(property.JsonName))
@@ -925,6 +970,84 @@ internal static class RestApiControllerEmitter
         duplicateJsonName = string.Empty;
         return false;
     }
+
+    private static bool TryFindAmbiguousRoutePropertyMatch(
+        RestApiMessageDescriptor message,
+        ImmutableArray<RestApiRouteParameterDescriptor> routeParameters,
+        out string routeParameterName)
+    {
+        foreach (RestApiRouteParameterDescriptor parameter in routeParameters)
+        {
+            int matchCount = message.Properties.Count(property =>
+                RouteParameterMatchesProperty(parameter.Name, property));
+            if (matchCount > 1)
+            {
+                routeParameterName = parameter.Name;
+                return true;
+            }
+        }
+
+        routeParameterName = string.Empty;
+        return false;
+    }
+
+    private static bool TryFindInvalidQueryBinding(RestApiMessageDescriptor message, out string reason)
+    {
+        if (!message.QueryBinding.HasValue)
+        {
+            reason = string.Empty;
+            return false;
+        }
+
+        RestApiQueryBindingDescriptor binding = message.QueryBinding.Value;
+        if (!IsSupportedAggregateBindingSource(binding.AggregateSource))
+        {
+            reason = "aggregate source '" + binding.AggregateSource + "' is not supported.";
+            return true;
+        }
+
+        if (BindingValueIsMissing(binding.AggregateSource, binding.AggregateValue))
+        {
+            reason = "aggregate value is required when aggregate source is '" + binding.AggregateSource + "'.";
+            return true;
+        }
+
+        if (!IsSupportedEntityBindingSource(binding.EntitySource))
+        {
+            reason = "entity source '" + binding.EntitySource + "' is not supported.";
+            return true;
+        }
+
+        if (string.Equals(binding.EntitySource, "None", StringComparison.Ordinal)
+            && binding.EntityValue is not null)
+        {
+            reason = "entity value must be omitted when entity source is 'None'.";
+            return true;
+        }
+
+        if (BindingValueIsMissing(binding.EntitySource, binding.EntityValue ?? string.Empty))
+        {
+            reason = "entity value is required when entity source is '" + binding.EntitySource + "'.";
+            return true;
+        }
+
+        reason = string.Empty;
+        return false;
+    }
+
+    private static bool IsSupportedAggregateBindingSource(string source)
+        => string.Equals(source, "Constant", StringComparison.Ordinal)
+            || string.Equals(source, "Route", StringComparison.Ordinal);
+
+    private static bool IsSupportedEntityBindingSource(string source)
+        => string.Equals(source, "None", StringComparison.Ordinal)
+            || string.Equals(source, "Constant", StringComparison.Ordinal)
+            || string.Equals(source, "Route", StringComparison.Ordinal);
+
+    private static bool BindingValueIsMissing(string source, string value)
+        => (string.Equals(source, "Constant", StringComparison.Ordinal)
+                || string.Equals(source, "Route", StringComparison.Ordinal))
+            && string.IsNullOrWhiteSpace(value);
 
     private static bool TryFindUnmappedQueryBindingRouteParameter(
         RestApiMessageDescriptor message,
@@ -1125,7 +1248,7 @@ internal static class RestApiControllerEmitter
 
     private static bool RouteParameterMatchesProperty(string routeParameterName, RestApiBindablePropertyDescriptor property)
         => string.Equals(property.Name, routeParameterName, StringComparison.OrdinalIgnoreCase)
-            || string.Equals(property.JsonName, routeParameterName, StringComparison.Ordinal);
+            || string.Equals(property.JsonName, routeParameterName, StringComparison.OrdinalIgnoreCase);
 
     private static string? FindRouteParameterIdentifier(
         ImmutableArray<RestApiRouteParameterDescriptor> routeParameters,

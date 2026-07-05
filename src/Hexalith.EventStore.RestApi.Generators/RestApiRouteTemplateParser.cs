@@ -35,16 +35,21 @@ internal static class RestApiRouteTemplateParser
                     continue;
                 }
 
-                int close = template.IndexOf('}', index + 1);
+                int close = FindParameterClose(template, index);
                 if (close < 0)
                 {
                     return "Route template has an unclosed route parameter.";
                 }
 
                 string rawParameter = template.Substring(index + 1, close - index - 1);
-                if (rawParameter.IndexOf('{') >= 0)
+                if (HasUnescapedOpenBrace(rawParameter))
                 {
                     return "Route template has an unescaped brace inside a route parameter.";
+                }
+
+                if (HasBraceInParameterName(rawParameter))
+                {
+                    return "Route template has a brace inside a route parameter name.";
                 }
 
                 string name = CleanParameterName(rawParameter);
@@ -108,7 +113,7 @@ internal static class RestApiRouteTemplateParser
                 continue;
             }
 
-            int close = template.IndexOf('}', open + 1);
+            int close = FindParameterClose(template, open);
             if (close < 0)
             {
                 break;
@@ -128,7 +133,67 @@ internal static class RestApiRouteTemplateParser
         return parameters.ToImmutable();
     }
 
+    internal static int FindParameterClose(string template, int open)
+    {
+        int index = open + 1;
+        while (index < template.Length)
+        {
+            char current = template[index];
+            if (current == '{' && index + 1 < template.Length && template[index + 1] == '{')
+            {
+                index += 2;
+                continue;
+            }
+
+            if (current == '}' && index + 1 < template.Length && template[index + 1] == '}')
+            {
+                index += 2;
+                continue;
+            }
+
+            if (current == '}')
+            {
+                return index;
+            }
+
+            index++;
+        }
+
+        return -1;
+    }
+
+    private static bool HasUnescapedOpenBrace(string value)
+    {
+        int index = 0;
+        while (index < value.Length)
+        {
+            if (value[index] == '{')
+            {
+                if (index + 1 < value.Length && value[index + 1] == '{')
+                {
+                    index += 2;
+                    continue;
+                }
+
+                return true;
+            }
+
+            index++;
+        }
+
+        return false;
+    }
+
+    private static bool HasBraceInParameterName(string value)
+    {
+        string name = GetParameterNamePart(value);
+        return name.IndexOf('{') >= 0 || name.IndexOf('}') >= 0;
+    }
+
     private static string CleanParameterName(string value)
+        => GetParameterNamePart(value).Trim();
+
+    private static string GetParameterNamePart(string value)
     {
         string name = value.Trim();
         while (name.StartsWith("*", StringComparison.Ordinal))
@@ -142,7 +207,7 @@ internal static class RestApiRouteTemplateParser
             name = name.Substring(0, terminator);
         }
 
-        return name.Trim();
+        return name;
     }
 
     private static bool IsCatchAllParameter(string value)

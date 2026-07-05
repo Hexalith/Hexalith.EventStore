@@ -5,6 +5,9 @@ stepsCompleted:
   - step-03-create-stories
   - step-04-final-validation
 inputDocuments:
+  - _bmad-output/planning-artifacts/prd.md
+  - _bmad-output/planning-artifacts/architecture.md
+  - _bmad-output/planning-artifacts/ux.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-06-02.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-06-20-ai-response-progress-transport.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-06-21.md
@@ -16,15 +19,16 @@ inputDocuments:
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-02-rest-api-external-host.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-02.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-04.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05-query-metadata-propagation.md
 ---
 
 # eventstore - Epic Breakdown
 
 ## Overview
 
-This document provides the complete epic and story breakdown for eventstore, decomposing the requirements from the approved sprint change proposals into implementable stories.
+This document provides the complete epic and story breakdown for eventstore, decomposing the formal PRD, architecture, UX handoff, and approved sprint change proposals into implementable stories.
 
-Formal EventStore PRD and standalone architecture documents were not present in `_bmad-output/planning-artifacts`. Per user confirmation, the input set for this run is `_bmad-output/planning-artifacts/*.md`; therefore the requirements inventory below is extracted from the approved sprint change proposals in that folder.
+The current Phase 4 planning baseline is `_bmad-output/planning-artifacts/prd.md`, `_bmad-output/planning-artifacts/architecture.md`, `_bmad-output/planning-artifacts/ux.md`, and the approved sprint change proposals in `_bmad-output/planning-artifacts`. The PRD owns FR/NFR truth, the architecture artifact owns implementation invariants and decision gates, the UX handoff owns UI governance and journeys, and this epics document owns implementation slicing and story acceptance criteria.
 
 ## Requirements Inventory
 
@@ -36,7 +40,7 @@ FR2: The platform must provide a domain-service SDK with `AddEventStoreDomainSer
 
 FR3: The domain-service SDK must expose the canonical DAPR-facing endpoints `/process`, `/replay-state`, `/query`, `/project`, and `/admin/operational-index-metadata`.
 
-FR4: The platform must provide a domain query-handler seam using `IDomainQueryHandler`, discovery, dispatch, operational metadata reporting, gateway-side query-type capture, and handler-aware routing to domain `/query` endpoints.
+FR4: The platform must provide a domain query-handler seam using `IDomainQueryHandler`, discovery, dispatch, operational metadata reporting, gateway-side query-type capture, handler-aware routing to domain `/query` endpoints, and end-to-end `QueryResponseMetadata` propagation for freshness, projection version, ETag, served-at, degraded/warning state, and paging evidence.
 
 FR5: The platform must provide a generic persisted read-model store and write policy with optimistic-concurrency merge-on-write, multi-key/index support, DAPR implementation, and in-memory testing support.
 
@@ -52,13 +56,13 @@ FR10: The EventStore package set must include the domain-service and service-def
 
 FR11: The platform must provide a REST API source-generator contract seam with `ICommandContract`, `IQueryContract`, optional `RestRouteAttribute`, and assembly-level `RestApiAttribute`.
 
-FR12: The REST API generator must discover command/query contracts and emit typed, OpenAPI-visible controllers that delegate to `IEventStoreGatewayClient`, with tests covering discovery, routing conventions, diagnostics, and generated output.
+FR12: The REST API generator must discover command/query contracts and emit typed, OpenAPI-visible controllers that delegate to `IEventStoreGatewayClient`, forward canonical query metadata headers when supplied by the gateway, and include tests covering discovery, routing conventions, diagnostics, generated output, query metadata headers, `304`, and safe problem-detail behavior.
 
 FR13: Generated REST controllers must live in dedicated external-facing API hosts, not interactive UI hosts; interactive UI hosts must consume EventStore client libraries directly.
 
 FR14: The Sample proof must introduce a contracts-only Sample contracts library and an external Sample API host, move shared contracts there, and prove generated query and command controllers through that external API host.
 
-FR15: The Tenants proof must move generated Tenants controllers to an external Tenants API host, while Tenants UI consumes client libraries and no longer hosts hand-written per-message controllers.
+FR15: The Tenants proof must move generated Tenants controllers to an external Tenants API host, while Tenants UI consumes client libraries and no longer hosts hand-written per-message controllers; any Tenants freshness, projection-version, ETag, or paging evidence shown by generated APIs or UI must come from the platform query metadata path.
 
 FR16: The projection-changed transport must add an additive metadata-rich detail path with optional group scope, bounded metadata, scoped SignalR groups, DAPR notification support where needed, and preserved signal-only compatibility.
 
@@ -116,7 +120,7 @@ NFR6: Event delivery semantics are at-least-once and unordered; subscribers must
 
 NFR7: Event persistence and command processing must avoid silent data loss: staged-state flushes, stale pipeline records, append races, and committed-but-unpublished events must be explicitly guarded or recovered.
 
-NFR8: Snapshot and projection behavior must have a bounded cost model as streams grow and must avoid unnecessary full-stream replay when already current.
+NFR8: Snapshot and projection behavior must have a bounded cost model as streams grow, must avoid unnecessary full-stream replay when already current, and must expose projection freshness/version evidence through platform query metadata when callers depend on current/stale decisions.
 
 NFR9: Release behavior must be reproducible and independent of local submodule checkout state; Release builds must use package references for external Hexalith libraries unless intentionally overridden.
 
@@ -140,7 +144,7 @@ NFR18: AOT/trimming is explicitly not a target while reflection conventions rema
 
 ### Additional Requirements
 
-- No standalone PRD, architecture, or UX design contract was present in the selected planning-artifacts folder; the approved sprint change proposals are the active planning baseline for this extraction.
+- Standalone PRD, architecture, and UX design contracts are present under `_bmad-output/planning-artifacts`; this epics document must stay aligned with those artifacts and the approved sprint change proposals.
 - No greenfield starter template is mandated. A `dotnet new hexalith-domain` template is mentioned as an optional/deferred platform capability, not a required starting point.
 - Use `Hexalith.EventStore.slnx` only for restore/build; do not introduce or use `.sln` files.
 - Run unit tests per project; do not make solution-level `dotnet test` the default EventStore validation path.
@@ -161,7 +165,7 @@ NFR18: AOT/trimming is explicitly not a target while reflection conventions rema
 
 ### UX Design Requirements
 
-No UX design contract was included in the selected input set. UI-related requirements extracted from the change proposals are represented as functional/non-functional requirements above, especially FR13, FR15, FR34, NFR14, and NFR15.
+The UX design contract is `_bmad-output/planning-artifacts/ux.md`, with detailed supporting contracts in `_bmad-output/planning-artifacts/ux-designs/ux-eventstore-2026-07-05/DESIGN.md` and `_bmad-output/planning-artifacts/ux-designs/ux-eventstore-2026-07-05/EXPERIENCE.md`. UI-related requirements remain represented in the functional/non-functional requirements above, especially FR13, FR15, FR34, NFR14, and NFR15.
 
 ### FR Coverage Map
 
@@ -360,7 +364,7 @@ So that my domain can expose query behavior without hosting a custom projection/
 
 **Given** query routing is tested
 **When** focused unit tests execute
-**Then** domain-side dispatch, metadata capture, handler-aware routing, and fallback behavior are verified
+**Then** domain-side dispatch, operational metadata capture, handler-aware routing, fallback behavior, and `QueryResponseMetadata` propagation are verified
 **And** the implementation remains backward compatible with projection-actor query routing.
 
 ### Story 1.3: Generic Read Models And Query Cursors
@@ -386,7 +390,8 @@ So that I can implement domain-specific read behavior without reimplementing DAP
 **Given** a domain query returns paged results
 **When** it creates a cursor with `IQueryCursorCodec` and `QueryCursorScope`
 **Then** the cursor is protected with a caller-supplied Data Protection purpose
-**And** decoding fails safely for wrong scope, wrong query type, malformed payload, tampering, oversize payload, or key rotation.
+**And** decoding fails safely for wrong scope, wrong query type, malformed payload, tampering, oversize payload, or key rotation
+**And** successful paged responses can return `QueryPagingMetadata` with effective page size, offset or next cursor, total count when known, and has-more evidence without exposing cursor internals.
 
 **Given** the read-model and cursor seams are adopted by a non-trivial domain
 **When** existing Tenants-style read-model and cursor behavior is migrated
@@ -565,7 +570,7 @@ So that external applications get OpenAPI-visible endpoints without hand-written
 **Given** generated query actions execute
 **When** a request reaches the generated controller
 **Then** the controller delegates to `IEventStoreGatewayClient.SubmitQueryAsync`
-**And** it maps success, `304`, ETag, not-found, forbidden, and validation outcomes consistently with gateway query semantics.
+**And** it maps success, `304`, ETag, freshness, projection version, served-at, degraded/warning state, paging metadata, not-found, forbidden, and validation outcomes consistently with gateway query semantics.
 
 **Given** generated command actions execute
 **When** a request reaches the generated controller
@@ -605,7 +610,7 @@ So that I can see the intended integration pattern without coupling it to the in
 **Given** the Sample external API proof is validated
 **When** Release build and focused Sample tests run
 **Then** generated query and command endpoints compile and behave as expected
-**And** any smoke tests verify ETag/`304` query behavior and accepted command behavior through the external API host.
+**And** any smoke tests verify ETag/`304` query behavior, metadata header behavior when available, and accepted command behavior through the external API host.
 
 ### Story 2.4: Tenants External API Host Adoption
 
@@ -635,6 +640,7 @@ So that external applications can use stable tenant APIs while Tenants UI stays 
 **Given** Tenants external API adoption is validated
 **When** submodule unit and integration tests run in their appropriate lanes
 **Then** the generated REST surface preserves existing external behavior
+**And** freshness, projection-version, ETag, and paging evidence is backed by the real platform query metadata path rather than only mocked gateway-client metadata
 **And** any CI-gated DAPR/Aspire blockers are documented with exact commands and failure reasons.
 
 ### Story 2.5: Scoped Metadata-Rich Projection Notifications
@@ -1535,12 +1541,61 @@ So that GDPR erasure, admin OIDC, aggregate testing, and generator hardening are
 **Then** generator incrementality, generated-controller authz checks, and deferred-work items are traceable
 **And** they are not lost when Epic D proof stories complete.
 
-**Given** Epic D retrospective action items are recorded
+**Given** REST generator retrospective action items are recorded
 **When** REST generator hardening is prepared
 **Then** create a dedicated hardening story or backlog item that pulls from `_bmad-output/implementation-artifacts/deferred-work.md`
 **And** it explicitly covers unsupported contract-shape diagnostics, duplicate command JSON-name diagnostics, invalid `RestQueryBinding` source diagnostics, empty constant binding diagnostics, route-template constraint behavior, case-insensitive route/JSON-name matching, referenced-contract incrementality, and generated external API error-semantics coverage.
 
 **Given** generated query freshness metadata remains partial
-**When** downstream stories depend on stale/current state or projection version
-**Then** they must first specify the platform-owned query metadata contract that carries freshness, projection version, ETag, paging, and related evidence through the gateway
+**When** downstream stories depend on stale/current state, projection version, ETag, or paging evidence
+**Then** Story 7.6 must remain scheduled and must define and implement the platform-owned query metadata propagation contract before those downstream stories rely on it
 **And** UI or generated REST acceptance criteria must not rely on ad hoc payload fields for projection-confirmed state.
+
+### Story 7.6: Query Metadata Propagation Contract And Gateway Evidence
+
+**Requirements covered:** FR4, FR5, FR6, FR12, FR15, FR34, NFR8, NFR12, NFR14, NFR15, NFR16
+
+As a platform maintainer,
+I want query metadata to propagate through platform result and HTTP contracts,
+So that generated APIs, UI hosts, and operators can distinguish freshness, projection version, cache validation, and paging evidence without ad hoc payload fields.
+
+**Acceptance Criteria:**
+
+**Given** a domain query handler or projection actor returns query metadata
+**When** the result crosses `QueryResult`, `QueryRouterResult`, `SubmitQueryResult`, `SubmitQueryResponse`, and `EventStoreQueryResult`
+**Then** `QueryResponseMetadata` is preserved additively through each platform type
+**And** the gateway no longer drops domain-produced freshness, projection version, paging, warning, or degraded-state metadata.
+
+**Given** the gateway creates HTTP response metadata
+**When** domain metadata and gateway metadata both exist
+**Then** metadata is merged by explicit rules: domain/projection evidence wins for freshness, projection version, paging, degraded state, and warnings; gateway ETag header value wins for the HTTP validator; gateway fills `ServedAt` only when absent; `IsNotModified` is set by the HTTP outcome.
+
+**Given** freshness metadata is unavailable
+**When** a query response is returned
+**Then** the platform represents freshness as unknown, not current
+**And** UI/generated REST callers must not treat missing `IsStale` as projection-confirmed freshness.
+
+**Given** projection version metadata is unavailable
+**When** an ETag exists
+**Then** the platform may expose the ETag as cache metadata only
+**And** it must not label the ETag as `ProjectionVersion` unless the metadata producer explicitly supplies that value or the story documents that equivalence for the projection type.
+
+**Given** a query returns paged data
+**When** the handler can authoritatively describe the page
+**Then** `QueryPagingMetadata` includes effective page size, offset or next cursor, total count when known, and whether another page exists
+**And** cursors remain opaque and are not parsed, logged, displayed as support text, or treated as ordering proof.
+
+**Given** a generated external API action receives `EventStoreQueryResult.Metadata`
+**When** it returns `200` or `304`
+**Then** it forwards canonical support-safe headers for ETag, projection version, served-at, stale state, degraded state, warning codes, and bounded paging evidence
+**And** no generated controller relies on payload-specific fields to decide projection-confirmed state.
+
+**Given** query freshness policy requests `RequireFresh` or `MaxStaleness`
+**When** authoritative freshness metadata is present
+**Then** the gateway can enforce the policy consistently
+**And** when freshness is unknown it fails closed according to the existing `query_projection_stale` taxonomy rather than silently treating the response as current.
+
+**Given** the implementation is validated
+**When** focused tests run
+**Then** tests prove real domain-handler metadata reaches the gateway response, generated external API headers, `304` behavior, client typed results, invalid cursor/problem details, and paging evidence
+**And** higher-tier proof uses persisted read-model/end-state evidence where applicable, not only mocked gateway metadata.

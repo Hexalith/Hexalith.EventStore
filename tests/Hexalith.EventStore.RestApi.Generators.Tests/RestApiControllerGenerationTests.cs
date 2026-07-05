@@ -243,6 +243,48 @@ public sealed class RestApiControllerGenerationTests
     }
 
     [Fact]
+    public void Run_JsonNamedRouteParameter_MatchesJsonNameCaseInsensitively()
+    {
+        CSharpCompilation compilation = RestApiGeneratorTestHarness.CreateCompilation(JsonNamedRouteCaseInsensitiveQuerySource);
+
+        CSharpCompilation outputCompilation = RestApiGeneratorTestHarness.RunAndUpdateCompilation(
+            compilation,
+            out GeneratorDriverRunResult runResult,
+            out ImmutableArray<Diagnostic> updateDiagnostics);
+
+        ShouldHaveNoErrors(updateDiagnostics);
+        ShouldHaveNoErrors(outputCompilation.GetDiagnostics(TestContext.Current.CancellationToken));
+
+        string source = RestApiGeneratorTestHarness.GetGeneratedSource(runResult, ".Controller.g.cs");
+
+        source.ShouldContain("[FromRoute(Name = \"COUNTER_ID\")] string cOUNTER_ID");
+        source.ShouldContain("string __hexalithAggregateId = Convert.ToString(cOUNTER_ID, CultureInfo.InvariantCulture)");
+        source.ShouldContain("[FromQuery(Name = \"page_size\")]");
+        source.ShouldNotContain("[FromQuery(Name = \"counter_id\")]");
+        source.ShouldNotContain("[\"counter_id\"] = counterId,");
+    }
+
+    [Fact]
+    public void Run_RouteTemplateWithRegexConstraintContainingEscapedBraces_GeneratesController()
+    {
+        CSharpCompilation compilation = RestApiGeneratorTestHarness.CreateCompilation(RegexConstrainedRouteQuerySource);
+
+        CSharpCompilation outputCompilation = RestApiGeneratorTestHarness.RunAndUpdateCompilation(
+            compilation,
+            out GeneratorDriverRunResult runResult,
+            out ImmutableArray<Diagnostic> updateDiagnostics);
+
+        ShouldHaveNoErrors(updateDiagnostics);
+        ShouldHaveNoErrors(outputCompilation.GetDiagnostics(TestContext.Current.CancellationToken));
+
+        string source = RestApiGeneratorTestHarness.GetGeneratedSource(runResult, ".Controller.g.cs");
+
+        source.ShouldContain("[HttpGet(\"{counterId:regex(^\\\\d{{3}}$)}\")]");
+        source.ShouldContain("[FromRoute(Name = \"counterId\")] string counterId");
+        source.ShouldContain("string __hexalithAggregateId = Convert.ToString(counterId, CultureInfo.InvariantCulture)");
+    }
+
+    [Fact]
     public void Run_InheritedPublicProperties_GenerateBindingsAndMismatchChecks()
     {
         CSharpCompilation compilation = RestApiGeneratorTestHarness.CreateCompilation(InheritedPropertySource);
@@ -456,6 +498,31 @@ public sealed class RestApiControllerGenerationTests
         source.ShouldNotContain("global::Hexalith.Tenants.Contracts.Queries.GetUserTenantsQuery.QueryType");
     }
 
+    [Fact]
+    public void Run_TaglessHost_DoesNotPublishUnscopedReferencedContracts()
+    {
+        CSharpCompilation contractCompilation = RestApiGeneratorTestHarness.CreateCompilation(ReferencedUnscopedCounterQuerySource);
+        MetadataReference contractReference = RestApiGeneratorTestHarness.EmitToMetadataReference(contractCompilation);
+        CSharpCompilation hostCompilation = RestApiGeneratorTestHarness.CreateCompilation(
+            [contractReference],
+            TaglessReferencedContractHostSource);
+
+        CSharpCompilation outputCompilation = RestApiGeneratorTestHarness.RunAndUpdateCompilation(
+            hostCompilation,
+            out GeneratorDriverRunResult runResult,
+            out ImmutableArray<Diagnostic> updateDiagnostics);
+
+        ShouldHaveNoErrors(updateDiagnostics);
+        ShouldHaveNoErrors(outputCompilation.GetDiagnostics(TestContext.Current.CancellationToken));
+
+        string manifest = RestApiGeneratorTestHarness.GetGeneratedSource(
+            runResult,
+            "HexalithEventStoreRestApiGeneratorManifest.g.cs");
+
+        manifest.ShouldContain("internal const int QueryCount = 0;");
+        RestApiGeneratorTestHarness.ContainsGeneratedSource(runResult, ".Controller.g.cs").ShouldBeFalse();
+    }
+
     private static void ShouldHaveNoErrors(IEnumerable<Diagnostic> diagnostics)
     {
         Diagnostic[] errors = diagnostics
@@ -652,6 +719,44 @@ public sealed class RestApiControllerGenerationTests
         }
         """;
 
+    private const string JsonNamedRouteCaseInsensitiveQuerySource = """
+        using System.Text.Json.Serialization;
+
+        using Hexalith.EventStore.Contracts.Queries;
+        using Hexalith.EventStore.Contracts.Rest;
+
+        [assembly: RestApi("api/counter", "counter", RestTenantSource.System)]
+
+        namespace Smoke;
+
+        [RestRoute(RestVerb.Get, "{COUNTER_ID}/history")]
+        public sealed record GetCounterHistory(
+            [property: JsonPropertyName("counter_id")] string CounterId,
+            [property: JsonPropertyName("page_size")] int PageSize) : IQueryContract
+        {
+            public static string QueryType => "get-counter-history";
+            public static string Domain => "counter";
+            public static string ProjectionType => "counter-history";
+        }
+        """;
+
+    private const string RegexConstrainedRouteQuerySource = """
+        using Hexalith.EventStore.Contracts.Queries;
+        using Hexalith.EventStore.Contracts.Rest;
+
+        [assembly: RestApi("api/counter", "counter", RestTenantSource.System)]
+
+        namespace Smoke;
+
+        [RestRoute(RestVerb.Get, "{counterId:regex(^\\d{{3}}$)}")]
+        public sealed record GetCounterStatus(string CounterId) : IQueryContract
+        {
+            public static string QueryType => "get-counter-status";
+            public static string Domain => "counter";
+            public static string ProjectionType => "counter";
+        }
+        """;
+
     private const string InheritedPropertySource = """
         using Hexalith.EventStore.Contracts.Commands;
         using Hexalith.EventStore.Contracts.Queries;
@@ -827,10 +932,35 @@ public sealed class RestApiControllerGenerationTests
         }
         """;
 
+    private const string ReferencedUnscopedCounterQuerySource = """
+        using Hexalith.EventStore.Contracts.Queries;
+        using Hexalith.EventStore.Contracts.Rest;
+
+        namespace Hexalith.EventStore.Sample.Counter.Queries;
+
+        [RestRoute(RestVerb.Get, "{entityId}")]
+        public sealed record GetCounterStatusQuery : IQueryContract
+        {
+            public static string QueryType => "get-counter-status";
+            public static string Domain => "counter";
+            public static string ProjectionType => "counter";
+        }
+        """;
+
     private const string ReferencedContractHostSource = """
         using Hexalith.EventStore.Contracts.Rest;
 
         [assembly: RestApi("api/{tenant}/counter", "counter", RestTenantSource.Route)]
+
+        namespace Smoke.Host;
+
+        public sealed class HostMarker;
+        """;
+
+    private const string TaglessReferencedContractHostSource = """
+        using Hexalith.EventStore.Contracts.Rest;
+
+        [assembly: RestApi("api/counter")]
 
         namespace Smoke.Host;
 

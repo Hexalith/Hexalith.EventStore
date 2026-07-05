@@ -20,6 +20,20 @@ public sealed class RestApiIncrementalGenerationTests
     }
 
     [Fact]
+    public void Run_TracksReferencedMessageDiscoveryStep()
+    {
+        MetadataReference contractReference = CreateReferencedContractReference(ReferencedCommandSource);
+        CSharpCompilation compilation = RestApiGeneratorTestHarness.CreateCompilation(
+            [contractReference],
+            ReferencedContractHostSource);
+
+        GeneratorDriverRunResult result = RestApiGeneratorTestHarness.Run(compilation, out _);
+        GeneratorRunResult generatorResult = result.Results.Single();
+
+        generatorResult.TrackedSteps.ContainsKey("RestApiReferencedMessageDiscovery").ShouldBeTrue();
+    }
+
+    [Fact]
     public void Run_UnrelatedSyntaxTreeEdit_PreservesExistingMessageDiscoveryOutput()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -41,6 +55,55 @@ public sealed class RestApiIncrementalGenerationTests
             "RestApiMessageDiscovery",
             IncrementalStepRunReason.Cached,
             IncrementalStepRunReason.Unchanged).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Run_UnrelatedSyntaxTreeEdit_PreservesReferencedMessageDiscoveryOutput()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        MetadataReference contractReference = CreateReferencedContractReference(ReferencedCommandSource);
+        CSharpCompilation firstCompilation = RestApiGeneratorTestHarness.CreateCompilation(
+            [contractReference],
+            ReferencedContractHostSource);
+        _ = RestApiGeneratorTestHarness.Run(firstCompilation, out GeneratorDriver firstDriver);
+
+        SyntaxTree unrelatedTree = CreateSyntaxTree(
+            firstCompilation,
+            "namespace Smoke.Host; public sealed class Unrelated { }",
+            "Unrelated.cs",
+            cancellationToken);
+        CSharpCompilation secondCompilation = firstCompilation.AddSyntaxTrees(unrelatedTree);
+
+        GeneratorDriver secondDriver = firstDriver.RunGenerators(secondCompilation, cancellationToken);
+        GeneratorRunResult generatorResult = secondDriver.GetRunResult().Results.Single();
+        string manifest = RestApiGeneratorTestHarness.GetGeneratedSource(
+            secondDriver.GetRunResult(),
+            "HexalithEventStoreRestApiGeneratorManifest.g.cs");
+
+        manifest.ShouldContain("internal const int CommandCount = 1;");
+        HasStepReason(
+            generatorResult,
+            "RestApiReferencedMessageDiscovery",
+            IncrementalStepRunReason.Cached,
+            IncrementalStepRunReason.Unchanged).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Run_ReferencedContractWithoutRestRoute_IsNotDiscoveredByConvention()
+    {
+        MetadataReference contractReference = CreateReferencedContractReference(ReferencedConventionCommandSource);
+        CSharpCompilation compilation = RestApiGeneratorTestHarness.CreateCompilation(
+            [contractReference],
+            ReferencedContractHostSource);
+
+        GeneratorDriverRunResult result = RestApiGeneratorTestHarness.Run(compilation, out _);
+
+        string manifest = RestApiGeneratorTestHarness.GetGeneratedSource(
+            result,
+            "HexalithEventStoreRestApiGeneratorManifest.g.cs");
+
+        manifest.ShouldContain("internal const int CommandCount = 0;");
+        RestApiGeneratorTestHarness.ContainsGeneratedSource(result, ".Controller.g.cs").ShouldBeFalse();
     }
 
     [Fact]
@@ -92,6 +155,12 @@ public sealed class RestApiIncrementalGenerationTests
             path,
             cancellationToken: cancellationToken);
 
+    private static MetadataReference CreateReferencedContractReference(string source)
+    {
+        CSharpCompilation contractCompilation = RestApiGeneratorTestHarness.CreateCompilation(source);
+        return RestApiGeneratorTestHarness.EmitToMetadataReference(contractCompilation);
+    }
+
     private const string ExistingCommandSource = """
         using Hexalith.EventStore.Contracts.Commands;
         using Hexalith.EventStore.Contracts.Rest;
@@ -122,5 +191,43 @@ public sealed class RestApiIncrementalGenerationTests
             public static string CommandType => "decrement-counter";
             public string AggregateId => CounterId;
         }
+        """;
+
+    private const string ReferencedCommandSource = """
+        using Hexalith.EventStore.Contracts.Commands;
+        using Hexalith.EventStore.Contracts.Rest;
+
+        namespace Smoke.Contracts;
+
+        [RestRoute(RestVerb.Post, "{counterId}/increment", ApiScope = "counter")]
+        public sealed record IncrementCounter(string CounterId, int Amount) : ICommandContract
+        {
+            public static string Domain => "counter";
+            public static string CommandType => "increment-counter";
+            public string AggregateId => CounterId;
+        }
+        """;
+
+    private const string ReferencedConventionCommandSource = """
+        using Hexalith.EventStore.Contracts.Commands;
+
+        namespace Smoke.Contracts;
+
+        public sealed record IncrementCounter(string CounterId, int Amount) : ICommandContract
+        {
+            public static string Domain => "counter";
+            public static string CommandType => "increment-counter";
+            public string AggregateId => CounterId;
+        }
+        """;
+
+    private const string ReferencedContractHostSource = """
+        using Hexalith.EventStore.Contracts.Rest;
+
+        [assembly: RestApi("api/counter", "counter", RestTenantSource.System)]
+
+        namespace Smoke.Host;
+
+        public sealed class HostMarker;
         """;
 }

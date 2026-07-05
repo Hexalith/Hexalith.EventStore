@@ -1,5 +1,5 @@
 # generated: 2026-07-01T14:20:23+02:00
-# last_updated: 2026-07-05T08:08:43+02:00
+# last_updated: 2026-07-05T15:18:04+02:00
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-01T14:20:23+02:00
-last_updated: 2026-07-05T08:08:43+02:00
+last_updated: 2026-07-05T15:18:04+02:00
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -59,6 +59,10 @@ development_status:
   D-8-packaging-docs-guardrail: done
   epic-D-retrospective: done
 
+  # Added 2026-07-05 from Epic D retrospective follow-through.
+  7-5-rest-generator-hardening: done
+  7-6-query-metadata-propagation: ready-for-dev
+
   # Added 2026-07-04 via sprint-change-proposal-2026-07-04 (architecture review remediation).
   # Phased execution: Phase 0 (unblock) draws CPs across SEC-1/COR-1/OPS-1/TEST-1; see the proposal
   # for the CP->epic mapping. Epics start 'backlog' until their first story file is created.
@@ -69,7 +73,10 @@ development_status:
   epic-REL-1-delivery-poison-handling: backlog
   epic-OPS-1-admin-plane: backlog
   epic-CFG-1-topology-deploy-hardening: backlog
-  epic-TEST-1-test-ci-recovery: backlog
+  epic-TEST-1-test-ci-recovery: in-progress
+
+  # Added 2026-07-05 from Epic D retrospective follow-through.
+  TEST-1-1-generated-api-smoke-preflight: ready-for-dev
   epic-GDPR-1-aggregate-erasure: backlog
   epic-IAM-1-admin-oidc-login: backlog
   epic-KIT-1-aggregate-test-kit: backlog
@@ -78,15 +85,15 @@ action_items:
   - epic: D
     action: "Create a dedicated REST generator hardening story from deferred-work.md."
     owner: "John (Product Manager)"
-    status: open
+    status: done
   - epic: D
     action: "Specify query metadata propagation through the gateway for freshness, projection version, ETag, and paging evidence."
     owner: "Winston (System Architect)"
-    status: open
+    status: done
   - epic: D
     action: "Add external generated API error-semantics tests for RBAC, gateway failures, invalid cursor/envelope, ETag/304, and route/body mismatch behavior."
     owner: "Murat (Test Architect)"
-    status: open
+    status: done
   - epic: D
     action: "Add a local DAPR/Aspire smoke preflight for generated API proofs."
     owner: "Amelia (Developer)"

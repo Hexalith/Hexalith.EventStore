@@ -2,9 +2,11 @@ using Hexalith.EventStore.Contracts.Rest;
 
 namespace Hexalith.EventStore.Contracts.Tests.Rest;
 
-public class RestRouteAttributeTests {
+public class RestRouteAttributeTests
+{
     [Fact]
-    public void Constructor_ValidArguments_SetsProperties() {
+    public void Constructor_ValidArguments_SetsProperties()
+    {
         var attribute = new RestRouteAttribute(RestVerb.Post, "{counterId}/increment");
 
         attribute.Verb.ShouldBe(RestVerb.Post);
@@ -13,8 +15,10 @@ public class RestRouteAttributeTests {
     }
 
     [Fact]
-    public void ApiScope_SetToNonWhitespaceValue_ReturnsTrimmedValue() {
-        var attribute = new RestRouteAttribute(RestVerb.Get, "{counterId}") {
+    public void ApiScope_SetToNonWhitespaceValue_ReturnsTrimmedValue()
+    {
+        var attribute = new RestRouteAttribute(RestVerb.Get, "{counterId}")
+        {
             ApiScope = " counter ",
         };
 
@@ -24,8 +28,10 @@ public class RestRouteAttributeTests {
     [Theory]
     [InlineData("")]
     [InlineData("  ")]
-    public void ApiScope_EmptyOrWhitespaceValue_NormalizesToNull(string value) {
-        var attribute = new RestRouteAttribute(RestVerb.Get, "{counterId}") {
+    public void ApiScope_EmptyOrWhitespaceValue_NormalizesToNull(string value)
+    {
+        var attribute = new RestRouteAttribute(RestVerb.Get, "{counterId}")
+        {
             ApiScope = value,
         };
 
@@ -35,7 +41,8 @@ public class RestRouteAttributeTests {
     [Theory]
     [InlineData("")]
     [InlineData("  ")]
-    public void Constructor_EmptyOrWhitespaceTemplate_IsAllowed(string template) {
+    public void Constructor_EmptyOrWhitespaceTemplate_IsAllowed(string template)
+    {
         var attribute = new RestRouteAttribute(RestVerb.Put, template);
 
         attribute.Template.ShouldBe(template);
@@ -54,12 +61,13 @@ public class RestRouteAttributeTests {
     public void RestVerb_AllValues_AreDefined(RestVerb verb) => Enum.IsDefined(verb).ShouldBeTrue();
 
     [Fact]
-    public void AttributeUsage_AllowsClassOnly_NonMultiple_NonInherited() {
+    public void AttributeUsage_AllowsClassAndStruct_NonMultiple_NonInherited()
+    {
         var usage = (AttributeUsageAttribute?)Attribute.GetCustomAttribute(
             typeof(RestRouteAttribute), typeof(AttributeUsageAttribute));
 
         _ = usage.ShouldNotBeNull();
-        usage.ValidOn.ShouldBe(AttributeTargets.Class);
+        usage.ValidOn.ShouldBe(AttributeTargets.Class | AttributeTargets.Struct);
         usage.AllowMultiple.ShouldBeFalse();
         usage.Inherited.ShouldBeFalse();
     }

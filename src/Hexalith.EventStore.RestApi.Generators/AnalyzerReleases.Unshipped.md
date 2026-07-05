@@ -11,5 +11,7 @@ HESREST006 | Hexalith.EventStore.RestApi | Error | REST contract shape is not su
 HESREST007 | Hexalith.EventStore.RestApi | Error | REST route template is invalid for generated controller emission.
 HESREST008 | Hexalith.EventStore.RestApi | Error | REST route verb is not supported.
 HESREST009 | Hexalith.EventStore.RestApi | Error | Command route parameter cannot be mapped deterministically.
-HESREST010 | Hexalith.EventStore.RestApi | Error | Query payload JSON name is duplicated.
+HESREST010 | Hexalith.EventStore.RestApi | Error | REST payload JSON name is duplicated.
 HESREST011 | Hexalith.EventStore.RestApi | Error | Query binding route parameter cannot be mapped deterministically.
+HESREST012 | Hexalith.EventStore.RestApi | Error | Query binding metadata is invalid.
+HESREST013 | Hexalith.EventStore.RestApi | Error | REST route parameter matches multiple properties.

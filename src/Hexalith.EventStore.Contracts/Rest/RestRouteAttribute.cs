@@ -1,29 +1,9 @@
 namespace Hexalith.EventStore.Contracts.Rest;
 
 /// <summary>
-/// HTTP verb used by a generated REST endpoint.
-/// </summary>
-public enum RestVerb {
-    /// <summary>HTTP GET.</summary>
-    Get,
-
-    /// <summary>HTTP POST.</summary>
-    Post,
-
-    /// <summary>HTTP PUT.</summary>
-    Put,
-
-    /// <summary>HTTP PATCH.</summary>
-    Patch,
-
-    /// <summary>HTTP DELETE.</summary>
-    Delete,
-}
-
-/// <summary>
 /// Overrides the generated HTTP verb and route template for a command or query message.
 /// Applicable to both <see cref="Hexalith.EventStore.Contracts.Commands.ICommandContract"/> and
-/// <see cref="Hexalith.EventStore.Contracts.Queries.IQueryContract"/> classes.
+/// <see cref="Hexalith.EventStore.Contracts.Queries.IQueryContract"/> types.
 /// </summary>
 /// <param name="verb">The HTTP verb for the generated endpoint.</param>
 /// <param name="template">The route template appended to the domain route prefix (e.g. "{tenantId}/users" or "~/api/users/{userId}/tenants"). May be empty to route at the prefix root.</param>
@@ -40,8 +20,9 @@ public enum RestVerb {
 /// Example templates: <c>"{tenantId}"</c>, <c>"{tenantId}/users"</c>,
 /// <c>"~/api/users/{userId}/tenants"</c>.
 /// </remarks>
-[AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
-public sealed class RestRouteAttribute(RestVerb verb, string template) : Attribute {
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, AllowMultiple = false, Inherited = false)]
+public sealed class RestRouteAttribute(RestVerb verb, string template) : Attribute
+{
     private string? _apiScope;
 
     /// <summary>Gets the HTTP verb for the generated endpoint.</summary>
@@ -58,12 +39,14 @@ public sealed class RestRouteAttribute(RestVerb verb, string template) : Attribu
     /// host's <see cref="RestApiAttribute.Tag"/>. Leave it unset for contracts compiled directly into
     /// the API host, where the host has already explicitly opted into generation.
     /// </remarks>
-    public string? ApiScope {
+    public string? ApiScope
+    {
         get => _apiScope;
         set => _apiScope = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
-    private static string ValidateTemplate(string template) {
+    private static string ValidateTemplate(string template)
+    {
         ArgumentNullException.ThrowIfNull(template);
         return template;
     }
