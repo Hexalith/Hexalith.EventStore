@@ -1,3 +1,10 @@
+# [3.36.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.35.0...v3.36.0) (2026-07-05)
+
+
+### Features
+
+* **eventstore:** Add Phase 4 readiness recovery specifications and supporting documents ([b2acaa6](https://github.com/Hexalith/Hexalith.EventStore/commit/b2acaa6e3ca40b9f8095888e3bc4d635e70f7405)), closes [hi#risk](https://github.com/hi/issues/risk)
+
 # [3.35.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.34.0...v3.35.0) (2026-07-05)
 
 
