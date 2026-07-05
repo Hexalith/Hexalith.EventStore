@@ -1,3 +1,10 @@
+# [3.38.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.37.0...v3.38.0) (2026-07-05)
+
+
+### Features
+
+* Implement Correct-Course Story Rewrite Gate and Domain-Owned Contracts Library Guidance ([a897fb2](https://github.com/Hexalith/Hexalith.EventStore/commit/a897fb214be12249335a392ec18dee51159681e5))
+
 # [3.37.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.36.0...v3.37.0) (2026-07-05)
 
 
