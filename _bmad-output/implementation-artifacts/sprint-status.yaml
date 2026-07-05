@@ -1,5 +1,5 @@
 # generated: 2026-07-01T14:20:23+02:00
-# last_updated: 2026-07-05T00:37:57+02:00
+# last_updated: 2026-07-05T08:08:43+02:00
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,14 +41,14 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-01T14:20:23+02:00
-last_updated: 2026-07-05T00:37:57+02:00
+last_updated: 2026-07-05T08:08:43+02:00
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
 story_location: /home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts
 
 development_status:
-  epic-D: in-progress
+  epic-D: done
   D-1-contract-seam: done
   D-2-generator-skeleton-spike: done
   D-3-controller-emission: done
@@ -57,7 +57,7 @@ development_status:
   D-6-proof-counter-commands: done
   D-7-proof-tenants-ui-host-submodule: done
   D-8-packaging-docs-guardrail: done
-  epic-D-retrospective: optional
+  epic-D-retrospective: done
 
   # Added 2026-07-04 via sprint-change-proposal-2026-07-04 (architecture review remediation).
   # Phased execution: Phase 0 (unblock) draws CPs across SEC-1/COR-1/OPS-1/TEST-1; see the proposal
@@ -73,3 +73,33 @@ development_status:
   epic-GDPR-1-aggregate-erasure: backlog
   epic-IAM-1-admin-oidc-login: backlog
   epic-KIT-1-aggregate-test-kit: backlog
+
+action_items:
+  - epic: D
+    action: "Create a dedicated REST generator hardening story from deferred-work.md."
+    owner: "John (Product Manager)"
+    status: open
+  - epic: D
+    action: "Specify query metadata propagation through the gateway for freshness, projection version, ETag, and paging evidence."
+    owner: "Winston (System Architect)"
+    status: open
+  - epic: D
+    action: "Add external generated API error-semantics tests for RBAC, gateway failures, invalid cursor/envelope, ETag/304, and route/body mismatch behavior."
+    owner: "Murat (Test Architect)"
+    status: open
+  - epic: D
+    action: "Add a local DAPR/Aspire smoke preflight for generated API proofs."
+    owner: "Amelia (Developer)"
+    status: open
+  - epic: D
+    action: "Make correct-course story rewrites mandatory after architectural pivots."
+    owner: "John (Product Manager)"
+    status: open
+  - epic: D
+    action: "Document the domain-owned contracts-library exception in authoring guidance."
+    owner: "Paige (Technical Writer)"
+    status: done
+  - epic: D
+    action: "Resolve or explicitly track Tenants package-mode and Gateway dependency posture."
+    owner: "Winston (System Architect)"
+    status: open

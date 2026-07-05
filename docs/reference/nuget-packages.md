@@ -142,6 +142,10 @@ Create a dedicated external API host. Reference **Contracts** for message metada
 
 REST controllers are generated from `ICommandContract` and `IQueryContract` messages into dedicated external-facing API hosts. Interactive UI hosts consume EventStore Client libraries and must not host generated or hand-written per-message MVC command/query controllers.
 
+If the domain service, external API host, and UI metadata consumers need the same message types, put those types in a contracts-only project. That project may be owned by the domain, but it must contain contracts only. Do not use a domain-owned contracts library to carry hosting, DAPR, state-store, telemetry, query/projection actor, or UI code.
+
+When the generator discovers contracts from referenced assemblies, each generated route must be explicitly scoped. Set `RestRouteAttribute.ApiScope` to the external API scope and keep it aligned with the host's `RestApiAttribute.Tag`; otherwise the host can fail closed and omit the route.
+
 ```bash
 $ dotnet add package Hexalith.EventStore.Contracts
 $ dotnet add package Hexalith.EventStore.Client
@@ -432,6 +436,8 @@ $ dotnet add package Hexalith.EventStore.DomainService
 Roslyn source-generator/analyzer package for typed REST controller generation. It discovers `[assembly: RestApi(...)]` plus `ICommandContract` and `IQueryContract` messages annotated with `[RestRoute]`, then emits gateway-backed ASP.NET Core controllers.
 
 Generated controllers inject `IEventStoreGatewayClient` and call the EventStore gateway. They must not call MediatR, domain services, DAPR actors, state stores, projection actors, or domain query dispatchers directly.
+
+For referenced-contract discovery, `[RestRoute(ApiScope = "...")]` is the publication boundary. The value must match the consuming host's `RestApiAttribute.Tag`. Keep unscoped referenced contracts out of external API hosts unless the host intentionally has an empty tag and tests cover that behavior.
 
 The package is analyzer-only: the generator DLL is distributed under `analyzers/dotnet/cs`, and the NuGet package does not expose runtime `lib/` assets.
 

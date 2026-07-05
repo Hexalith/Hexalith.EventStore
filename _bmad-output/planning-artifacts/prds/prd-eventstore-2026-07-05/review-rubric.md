@@ -65,4 +65,4 @@ No critical or high findings.
 - FR IDs FR1-FR35 are present.
 - NFR IDs NFR1-NFR18 are present.
 - No `[ASSUMPTION]` tags are present, and the assumptions index correctly states none.
-- The PRD uses top-level `status: draft`; finalization should update it to `status: final` after polish.
+- At review time, the PRD used top-level `status: draft`; finalization updated it to `status: final` after polish.

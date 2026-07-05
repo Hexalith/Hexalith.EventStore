@@ -1534,3 +1534,13 @@ So that GDPR erasure, admin OIDC, aggregate testing, and generator hardening are
 **When** backlog artifacts are updated
 **Then** generator incrementality, generated-controller authz checks, and deferred-work items are traceable
 **And** they are not lost when Epic D proof stories complete.
+
+**Given** Epic D retrospective action items are recorded
+**When** REST generator hardening is prepared
+**Then** create a dedicated hardening story or backlog item that pulls from `_bmad-output/implementation-artifacts/deferred-work.md`
+**And** it explicitly covers unsupported contract-shape diagnostics, duplicate command JSON-name diagnostics, invalid `RestQueryBinding` source diagnostics, empty constant binding diagnostics, route-template constraint behavior, case-insensitive route/JSON-name matching, referenced-contract incrementality, and generated external API error-semantics coverage.
+
+**Given** generated query freshness metadata remains partial
+**When** downstream stories depend on stale/current state or projection version
+**Then** they must first specify the platform-owned query metadata contract that carries freshness, projection version, ETag, paging, and related evidence through the gateway
+**And** UI or generated REST acceptance criteria must not rely on ad hoc payload fields for projection-confirmed state.

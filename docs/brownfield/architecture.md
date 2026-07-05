@@ -98,6 +98,12 @@ controllers from `ICommandContract` and `IQueryContract` messages into dedicated
 Those generated controllers delegate to `IEventStoreGatewayClient`, so the EventStore gateway remains the
 authorization, validation, tenant, ETag, and problem-details boundary.
 
+External API hosts should reference a contracts-only project when contracts must be shared by the domain
+service, the generated API host, and UI metadata consumers. That contracts project is still domain-owned, but
+it must contain contract types only. It must not own hosting, DAPR wiring, telemetry, state-store wrappers,
+query/projection actors, or UI behavior. Referenced contracts intended for generated REST must set
+`RestRouteAttribute.ApiScope` to the API scope consumed by the host's `RestApiAttribute.Tag`.
+
 Interactive UI hosts consume EventStore Client libraries directly. They must not host generated MVC
 controllers or hand-written per-message command/query wrappers as a BFF layer. Hand-written per-message
 controllers are an anti-pattern unless they are replacing a missing platform capability and the capability is

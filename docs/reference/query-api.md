@@ -75,6 +75,10 @@ Execute a query against the current projection/read model.
 | Freshness  | `requireFresh = true` or `maxStaleness` is rejected as `query_projection_stale` until freshness metadata is available. |
 | Unknown top-level fields | Rejected as `query_malformed_request` through `JsonExtensionData` capture. |
 
+### Projection Evidence Metadata
+
+ETag metadata is available through the gateway response headers. Rich freshness and projection evidence, such as stale/current state and projection version, is not yet guaranteed end to end through the public gateway contract. Domain handlers may know those values, but clients and generated REST controllers must not treat stale indicators or projection-version headers as production-backed until the platform query result/header contract carries that metadata across the gateway.
+
 ### Example
 
 ```bash
