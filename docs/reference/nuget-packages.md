@@ -18,7 +18,7 @@ Guide to the manifest-driven Hexalith.EventStore NuGet package set — their pur
 | Hexalith.EventStore.Testing.Integration | DAPR/Aspire integration-test harness for domain modules | Run repeatable topology-backed domain-service tests | In Docker/Aspire integration test projects |
 | Hexalith.EventStore.Aspire | .NET Aspire hosting extensions for DAPR topology orchestration | Compose the local distributed topology in an Aspire AppHost | In your AppHost project for local development orchestration |
 | Hexalith.EventStore.ServiceDefaults | Shared OpenTelemetry, health-check, HTTP-resilience, and service-discovery defaults | Apply the platform's observability/resilience defaults to a domain service or API host | Transitively via DomainService, or directly in dedicated API hosts |
-| Hexalith.EventStore.DomainService | Domain-service host SDK — convention discovery, DAPR endpoints, query/projection seams, telemetry, health | Author a domain module with only domain code plus a two-line host | The single platform reference a new domain module needs |
+| Hexalith.EventStore.DomainService | Domain-service host SDK — convention discovery, DAPR endpoints, query/projection seams, telemetry, health | Author a domain module with domain code plus a two-line host | The platform hosting reference a new domain-service host needs |
 | Hexalith.EventStore.RestApi.Generators | Roslyn source-generator/analyzer package distributed under `analyzers/dotnet/cs` | Generate typed REST controllers from `ICommandContract` and `IQueryContract` messages | As an analyzer reference in dedicated external API host projects |
 | Hexalith.EventStore.Gateway | Reusable command/query HTTP gateway components: MVC controllers, auth/RBAC, validation, middleware, health checks, OpenAPI helpers, and host registration extensions | Compose the EventStore command/query gateway surface in a host without referencing the container app project | In host applications that need to expose the EventStore gateway endpoints |
 | Hexalith.EventStore.Admin.Abstractions | Admin service DTOs and interfaces shared by admin clients and services | Build admin UI, CLI, MCP, or server integrations against the admin contract | In admin-facing clients or implementations |
@@ -78,7 +78,7 @@ graph TD
 - **Testing.Integration** builds on Testing, Client, Server, and DomainService for DAPR/Aspire-backed integration fixtures.
 - **Aspire** is fully independent — it has no dependency on any other Hexalith.EventStore package. It only depends on Aspire hosting libraries.
 - **ServiceDefaults** is a shared service-configuration package (OpenTelemetry, health checks, HTTP resilience, service discovery). It is consumed transitively by the DomainService SDK.
-- **DomainService** is the domain-service host SDK. It depends on Client and ServiceDefaults and bundles all hosting/DAPR-endpoint/discovery boilerplate so a domain module references only this one package.
+- **DomainService** is the domain-service host SDK. It depends on Client and ServiceDefaults and bundles all hosting/DAPR-endpoint/discovery boilerplate so a domain-service host references this one package for platform hosting. A domain may also own a contracts-only library when shared command/query identities are needed by the domain service, a dedicated generated API host, and UI metadata consumers.
 - **RestApi.Generators** is an analyzer/source-generator package. It is consumed as an analyzer reference and does not expose runtime `lib/` assets.
 - **Gateway** is the reusable command/query HTTP gateway composition library. It owns the MVC controllers, authentication/authorization helpers, validation pipeline, exception handlers, middleware, health checks, OpenAPI helpers, SignalR hub wiring, and service-registration extensions previously compiled only by the container host project. It depends on Server, Contracts, ServiceDefaults, and Admin.Abstractions.
 - **Admin.Abstractions** depends on Contracts.
@@ -418,7 +418,7 @@ $ dotnet add package Hexalith.EventStore.ServiceDefaults
 
 ### Hexalith.EventStore.DomainService
 
-Domain-service host SDK. A domain module references only this package, writes its domain code (aggregates, commands, events, projections, query handlers, validators, contracts) and a two-line host, and gets all hosting, DAPR-endpoint, observability, discovery, and read-model/cursor seams from the platform. Depends on Client and ServiceDefaults.
+Domain-service host SDK. A domain-service host references this package for platform hosting, writes its domain code (aggregates, commands, events, projections, query handlers, validators, contracts) and a two-line host, and gets all hosting, DAPR-endpoint, observability, discovery, and read-model/cursor seams from the platform. A domain-owned contracts-only library is still allowed when shared command/query identities are needed by the domain service, a dedicated generated API host, and UI metadata consumers; keep that library free of hosting, DAPR, telemetry, state-store, query/projection actor, and UI code. Depends on Client and ServiceDefaults.
 
 **Key namespace and types:**
 

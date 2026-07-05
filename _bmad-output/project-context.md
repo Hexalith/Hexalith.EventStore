@@ -45,6 +45,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - **DAPR abstracts state/pubsub/config** via sidecars; access-control in `DaprComponents/accesscontrol.yaml` is **deny-by-default** (slim-mode without mTLS yields 403 on service-to-service calls)
 - **Multi-tenancy is at the contract level:** identity = Domain + AggregateId + TenantId
 - **AppHost changes require restarting `aspire run`** — the app model is built at startup
+- **Domain-owned contracts library exception:** a domain-service host references `Hexalith.EventStore.DomainService` for platform hosting, but the domain may also own a contracts-only library when command/query contract identities must be shared with a dedicated generated API host and UI metadata consumers. That library must contain contracts only — no hosting, DAPR, telemetry, state-store, query/projection actor, or UI code
 - `Hexalith.Tenants` source path is resolved by root `Directory.Build.props`; EventStore's own submodule path is `references/Hexalith.Tenants` — don't hardcode old root-level paths
 - **Cross-repo Hexalith libraries are Debug-source / Release-package** — Debug uses `ProjectReference` when root-declared submodule source is present; Release uses `PackageReference` pinned in `Directory.Packages.props`. Use `-p:UseHexalithProjectReferences=true` only for intentional source-debug sessions, never for package publication
 - **Rerun restore after switching dependency modes** — `--no-restore` can reuse stale project-reference assets from a previous Debug/source restore

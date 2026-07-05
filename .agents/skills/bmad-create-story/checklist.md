@@ -126,6 +126,14 @@ You will systematically re-do the entire story creation process, but with a crit
   - Performance improvements or deprecations
   - Best practices for current versions
 
+#### **2.6 Correct-Course and Architectural Pivot Reconciliation**
+
+- Load approved sprint change proposals, readiness reports, architecture updates, retrospectives, and sprint action items that could supersede this story.
+- Identify any architectural pivot, abandoned design, or approved proposal that changes the story's ACs, tasks, Dev Notes, project structure notes, or design assumptions.
+- Active story content must match the current approved PRD, architecture, UX, and epics baseline before the story is marked ready-for-dev.
+- Stale acceptance criteria or tasks must be removed from active scope, or placed under an explicit "Superseded Scope" / "Correct-Course Reconciliation" note with the proposal path and a statement that the old design is not implementation scope.
+- A story affected by a pivot fails validation if active ACs/tasks still instruct the abandoned design.
+
 ### **Step 3: Disaster Prevention Gap Analysis**
 
 **🚨 CRITICAL: Identify every mistake the original LLM missed that could cause DISASTERS!**
@@ -164,6 +172,7 @@ You will systematically re-do the entire story creation process, but with a crit
 - **Completion lies:** Missing acceptance criteria that could allow fake implementations
 - **Scope creep:** Missing boundaries that could cause unnecessary work
 - **Quality failures:** Missing quality requirements that could deliver broken features
+- **Stale pivot scope:** Acceptance criteria, tasks, or Dev Notes still describe an abandoned design after an approved correct-course or architecture pivot
 
 ### **Step 4: LLM-Dev-Agent Optimization Analysis**
 
@@ -195,6 +204,7 @@ You will systematically re-do the entire story creation process, but with a crit
 - Missing previous story context that could cause errors
 - Missing anti-pattern prevention that could lead to duplicate code
 - Missing security or performance requirements
+- Missing mandatory rewrite of story ACs/tasks after an approved architectural pivot or correct-course proposal
 
 #### **5.2 Enhancement Opportunities (Should Add)**
 

@@ -47,7 +47,7 @@ includedFiles:
 ### Epics & Stories Files Found
 
 **Whole Documents:**
-- `_bmad-output/planning-artifacts/epics.md` (94973 bytes, modified 2026-07-05 18:54)
+- `_bmad-output/planning-artifacts/epics.md` (96058 bytes, modified 2026-07-05 19:43)
 
 **Sharded Documents:**
 - None

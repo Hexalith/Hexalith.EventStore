@@ -72,6 +72,12 @@ projects, and does **not** re-implement projection/query actors or DAPR sidecar 
 `samples/Hexalith.EventStore.Sample` (≈ domain code + a 2-line host). Tenants uses the same split: domain
 service stays headless/domain-centric, and public typed REST is hosted by a dedicated external API host.
 
+The domain-service host references the DomainService SDK for platform hosting. A domain-owned contracts-only
+library is allowed when the same command/query contract identities must be shared by the domain service, the
+external generated API host, and UI metadata consumers. That library remains part of the domain boundary only
+for contracts: it must not carry hosting, DAPR wiring, telemetry, state-store wrappers, query/projection actors,
+or UI behavior.
+
 Generated public REST is outside the domain service and outside interactive UI hosts. External API hosts
 reference `Hexalith.EventStore.RestApi.Generators` as an analyzer and expose typed REST routes, but generated
 controllers still call the EventStore gateway through `IEventStoreGatewayClient`. They do not call MediatR,

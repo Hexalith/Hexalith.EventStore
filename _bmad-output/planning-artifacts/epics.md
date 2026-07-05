@@ -726,6 +726,7 @@ So that external applications can use stable tenant APIs while Tenants UI stays 
 **Then** the generated REST surface preserves existing external behavior
 **And** freshness, projection-version, ETag, and paging evidence is backed by the real platform query metadata path implemented by Stories 1.2, 1.3, and 2.2 rather than by mocked gateway-client metadata
 **And** Tenants UI and generated API evidence must not rely on ad hoc payload fields or missing freshness metadata to claim projection-confirmed success
+**And** the Tenants external API proof runs or records exact blockers for package-reference mode with `UseHexalithProjectReferences=false`, proving it does not depend on source-only EventStore project references or a mixed source `Hexalith.EventStore.Gateway` plus package `Hexalith.EventStore.DomainService` graph
 **And** any CI-gated DAPR/Aspire blockers are documented with exact commands and failure reasons.
 
 ### Story 2.5: Scoped Metadata-Rich Projection Notifications
@@ -901,6 +902,11 @@ So that Debug builds can source-debug while Release builds depend on published p
 **Then** each dependency has exactly one active source per mode
 **And** host applications that are not library packages are not disguised as package dependencies.
 
+**Given** cross-repo consumers such as Tenants depend on reusable EventStore gateway host components
+**When** `UseHexalithProjectReferences=false` or Release package mode is selected
+**Then** `Hexalith.EventStore.Gateway` is consumed through a centrally pinned `PackageReference` or explicitly documented as a deliberate source-only exception with validation coverage
+**And** the dependency graph does not mix a source `Hexalith.EventStore.Gateway` with package-mode EventStore dependencies such as `Hexalith.EventStore.DomainService`, `Client`, `Server`, or `ServiceDefaults`.
+
 **Given** dependency mode changes between restores
 **When** validation commands run
 **Then** restore is rerun before build or test
@@ -934,7 +940,8 @@ So that release output is reviewable and cannot accidentally publish submodule p
 **Given** package metadata is validated
 **When** generated NuGet packages are inspected
 **Then** external Hexalith dependencies appear as package dependencies
-**And** local source project paths do not leak into release package metadata.
+**And** local source project paths do not leak into release package metadata
+**And** `Hexalith.EventStore.Gateway` package metadata carries package dependencies, not source paths, so external package-mode consumers can restore without EventStore source checkout state.
 
 ### Story 3.7: Shared CI/CD Security Gates And Supply-Chain Backlog
 

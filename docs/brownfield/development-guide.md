@@ -126,8 +126,11 @@ assembly (reflection discovery of `Handle`/`Apply`, plus `IDomainQueryHandler`/`
 and `app.UseEventStoreDomainService()` activates domains with convention-derived kebab-case names and maps the
 canonical DAPR endpoints (`/process`, `/replay-state`, `/query`, `/project`,
 `/admin/operational-index-metadata`). Override the name with `[EventStoreDomain("...")]`. A domain module
-references only the `Hexalith.EventStore.DomainService` SDK — all hosting boilerplate lives there (these two
-calls wrap the lower-level `AddEventStore()`/`UseEventStore()` primitives). See
+references the `Hexalith.EventStore.DomainService` SDK for hosting — all hosting boilerplate lives there
+(these two calls wrap the lower-level `AddEventStore()`/`UseEventStore()` primitives). A domain-owned
+contracts-only library is allowed when command/query contract identities must be shared with a dedicated
+generated API host or UI metadata consumers; keep that library free of hosting, DAPR, telemetry, state-store,
+query/projection actor, and UI code. See
 `samples/Hexalith.EventStore.Sample/` (`Program.cs` + `Counter/`).
 
 ## Commits & branches

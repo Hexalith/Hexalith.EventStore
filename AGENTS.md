@@ -158,7 +158,7 @@ The release inventory is defined by `tools/release-packages.json` and currently 
 
 Hexalith.EventStore.Contracts, Client, Server, SignalR, Testing, Testing.Integration, Aspire, ServiceDefaults, DomainService, RestApi.Generators, Admin.Abstractions, Admin.Cli, Admin.Server.
 
-`ServiceDefaults` and `DomainService` are the domain-service SDK packages (Epic A6): a domain module references only `DomainService` (which pulls in `Client` + `ServiceDefaults` transitively) and writes its domain code plus a two-line host. Both are packable; the active publish list is governed by the release pipeline.
+`ServiceDefaults` and `DomainService` are the domain-service SDK packages (Epic A6): a domain-service host references `DomainService` for platform hosting (which pulls in `Client` + `ServiceDefaults` transitively) and writes its domain code plus a two-line host. A domain may also own a contracts-only library when those command/query contract identities must be shared by the domain service, an external generated API host, and UI metadata consumers. Both SDK packages are packable; the active publish list is governed by the release pipeline.
 
 `RestApi.Generators` is a Roslyn source-generator/analyzer package. It is distributed under `analyzers/dotnet/cs` and is referenced as an analyzer by dedicated external API host projects that generate typed REST controllers from `ICommandContract` and `IQueryContract` messages.
 
