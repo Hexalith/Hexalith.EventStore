@@ -6,6 +6,7 @@
 namespace Hexalith.EventStore.DomainService.Tests;
 
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 
 using Shouldly;
 
@@ -48,6 +49,23 @@ public sealed class DomainModuleAuthoringGuardrailTests
         "ControllerBase",
         "[ApiController]",
         "Hexalith.EventStore.RestApi.Generators",
+    ];
+
+    private static readonly string[] SampleProgramForbiddenNormalModeMarkers =
+    [
+        "DomainServiceRequestRouter",
+        "MapDefaultEndpoints(",
+        "MapHealthChecks(",
+        "MapEventStoreDomainService(",
+        "UseEventStore(",
+        "AdminOperationalIndexMetadata",
+        "MapPost(\"/process\"",
+        "MapPost(\"/replay-state\"",
+        "MapPost(\"/query\"",
+        "MapPost(\"/admin/operational-index-metadata\"",
+        "MapGet(\"/health\"",
+        "MapGet(\"/alive\"",
+        "MapGet(\"/ready\"",
     ];
 
     [Fact]
@@ -100,8 +118,7 @@ public sealed class DomainModuleAuthoringGuardrailTests
     [Fact]
     public void SampleReferenceModule_ReferencesOnlyTheDomainServiceSdkAndDomainContracts()
     {
-        string csproj = Path.Combine(
-            FindRepositoryRoot(), "samples", "Hexalith.EventStore.Sample", "Hexalith.EventStore.Sample.csproj");
+        string csproj = SampleDomainProjectPath();
         File.Exists(csproj).ShouldBeTrue($"Expected the reference Sample project at {csproj}.");
 
         string[] references = Regex
@@ -121,6 +138,48 @@ public sealed class DomainModuleAuthoringGuardrailTests
             + "its own domain contracts library. Client/ServiceDefaults/platform Contracts flow through the "
             + "SDK, and external API/UI hosts own REST or UI wiring. Found unexpected references: "
             + string.Join(", ", unexpectedReferences));
+    }
+
+    [Fact]
+    public void SampleReferenceModule_DoesNotReferenceDaprPackagesDirectly()
+    {
+        string csproj = SampleDomainProjectPath();
+        File.Exists(csproj).ShouldBeTrue($"Expected the reference Sample project at {csproj}.");
+
+        string[] daprReferences = XDocument
+            .Load(csproj)
+            .Descendants()
+            .Where(static element => string.Equals(element.Name.LocalName, "PackageReference", StringComparison.Ordinal))
+            .Select(static element => (string?)element.Attribute("Include"))
+            .OfType<string>()
+            .Where(package => package.StartsWith("Dapr.", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+        daprReferences.ShouldBeEmpty(
+            "The reference Sample domain module must not reference Dapr.* packages directly. DAPR hosting "
+            + "dependencies flow through Hexalith.EventStore.DomainService so domain authors do not own "
+            + "platform wiring. Found direct references: " + string.Join(", ", daprReferences));
+    }
+
+    [Fact]
+    public void SampleProgram_UsesCanonicalDomainServiceHostWithoutNormalModeBoilerplate()
+    {
+        string program = SampleDomainProgramPath();
+        File.Exists(program).ShouldBeTrue($"Expected the reference Sample host at {program}.");
+
+        string text = File.ReadAllText(program);
+        text.ShouldContain("builder.AddEventStoreDomainService();");
+        text.ShouldContain("app.UseEventStoreDomainService();");
+
+        string[] forbiddenMarkers = SampleProgramForbiddenNormalModeMarkers
+            .Where(marker => text.Contains(marker, StringComparison.Ordinal))
+            .ToArray();
+
+        forbiddenMarkers.ShouldBeEmpty(
+            "The reference Sample host must keep normal-mode platform wiring inside "
+            + "Hexalith.EventStore.DomainService. Program.cs may keep the opt-in malformed /project fault "
+            + "route, but must not hand-map routers, default endpoints, or operational metadata. Found: "
+            + string.Join(", ", forbiddenMarkers));
     }
 
     [Fact]
@@ -218,6 +277,12 @@ public sealed class DomainModuleAuthoringGuardrailTests
             || string.Equals(extension, ".csproj", StringComparison.OrdinalIgnoreCase)
             || string.Equals(extension, ".razor", StringComparison.OrdinalIgnoreCase);
     }
+
+    private static string SampleDomainProjectPath()
+        => Path.Combine(FindRepositoryRoot(), "samples", "Hexalith.EventStore.Sample", "Hexalith.EventStore.Sample.csproj");
+
+    private static string SampleDomainProgramPath()
+        => Path.Combine(FindRepositoryRoot(), "samples", "Hexalith.EventStore.Sample", "Program.cs");
 
     private static string FindRepositoryRoot()
     {

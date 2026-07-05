@@ -22,7 +22,8 @@ namespace Hexalith.EventStore.DomainService;
 /// code plus a two-line host. The SDK provides every piece of infrastructure boilerplate a domain service
 /// needs: Aspire service defaults (observability, health, resilience), convention-based discovery and
 /// registration of aggregates/projections, runtime activation, and the canonical DAPR-invoked HTTP
-/// endpoints (<c>/process</c>, <c>/replay-state</c>, <c>/admin/operational-index-metadata</c>).
+/// endpoints (<c>/process</c>, <c>/replay-state</c>, <c>/query</c>, <c>/project</c>, and
+/// <c>/admin/operational-index-metadata</c>).
 /// </summary>
 /// <remarks>
 /// A conforming domain service is:
@@ -151,7 +152,7 @@ public static class EventStoreDomainServiceExtensions {
         // IDomainProjectionHandler. Skipped when the app already mapped its own /project so a domain with
         // bespoke projection wire behavior (e.g. a Tier-3 fault injector) takes precedence — registering the
         // SDK route on top of an existing one would make the request matcher ambiguous.
-        if (!IsRouteMapped(app, "/project")) {
+        if (!IsRouteMapped(app, "/project", HttpMethods.Post)) {
             _ = app.MapPost(
                 "/project",
                 (ProjectionRequest request, IServiceProvider serviceProvider) => {
@@ -229,17 +230,24 @@ public static class EventStoreDomainServiceExtensions {
         }
     }
 
-    private static bool IsRouteMapped(IEndpointRouteBuilder endpoints, string route) {
+    private static bool IsRouteMapped(IEndpointRouteBuilder endpoints, string route, string httpMethod) {
         foreach (EndpointDataSource dataSource in endpoints.DataSources) {
             foreach (Endpoint endpoint in dataSource.Endpoints) {
                 if (endpoint is RouteEndpoint routeEndpoint
-                    && string.Equals(routeEndpoint.RoutePattern.RawText, route, StringComparison.OrdinalIgnoreCase)) {
+                    && string.Equals(routeEndpoint.RoutePattern.RawText, route, StringComparison.OrdinalIgnoreCase)
+                    && MatchesHttpMethod(routeEndpoint, httpMethod)) {
                     return true;
                 }
             }
         }
 
         return false;
+    }
+
+    private static bool MatchesHttpMethod(RouteEndpoint endpoint, string httpMethod) {
+        IHttpMethodMetadata? metadata = endpoint.Metadata.GetMetadata<IHttpMethodMetadata>();
+        return metadata is null
+            || metadata.HttpMethods.Contains(httpMethod, StringComparer.OrdinalIgnoreCase);
     }
 
     private static IEnumerable<Type> GetLoadableTypes(Assembly assembly) {
