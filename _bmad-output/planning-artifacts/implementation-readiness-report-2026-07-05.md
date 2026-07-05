@@ -8,7 +8,7 @@ stepsCompleted:
   - step-04-ux-alignment
   - step-05-epic-quality-review
   - step-06-final-assessment
-status: needs_work
+status: ready
 assessor: Codex using bmad-check-implementation-readiness
 includedFiles:
   prd:
@@ -19,13 +19,6 @@ includedFiles:
     - _bmad-output/planning-artifacts/epics.md
   ux:
     - _bmad-output/planning-artifacts/ux.md
-supportingArtifacts:
-  ux:
-    - _bmad-output/planning-artifacts/ux-designs/ux-eventstore-2026-07-05/DESIGN.md
-    - _bmad-output/planning-artifacts/ux-designs/ux-eventstore-2026-07-05/EXPERIENCE.md
-archivedDuplicates:
-  - _bmad-output/planning-artifacts/archive/2026-07-05-duplicate-document-exports/prd-eventstore-2026-07-05/prd.md
-  - _bmad-output/planning-artifacts/archive/2026-07-05-duplicate-document-exports/architecture-eventstore-2026-07-05/ARCHITECTURE-SPINE.md
 ---
 
 # Implementation Readiness Assessment Report
@@ -38,7 +31,7 @@ archivedDuplicates:
 ### PRD Files Found
 
 **Whole Documents:**
-- `_bmad-output/planning-artifacts/prd.md` (33137 bytes, modified 2026-07-05 12:43)
+- `_bmad-output/planning-artifacts/prd.md` (33566 bytes, modified 2026-07-05 17:01)
 
 **Sharded Documents:**
 - None
@@ -54,7 +47,7 @@ archivedDuplicates:
 ### Epics & Stories Files Found
 
 **Whole Documents:**
-- `_bmad-output/planning-artifacts/epics.md` (85057 bytes, modified 2026-07-05 12:44)
+- `_bmad-output/planning-artifacts/epics.md` (94973 bytes, modified 2026-07-05 18:54)
 
 **Sharded Documents:**
 - None
@@ -64,28 +57,22 @@ archivedDuplicates:
 **Whole Documents:**
 - `_bmad-output/planning-artifacts/ux.md` (6702 bytes, modified 2026-07-05 10:17)
 
-**Supporting Artifacts:**
-- `_bmad-output/planning-artifacts/ux-designs/ux-eventstore-2026-07-05/DESIGN.md`
-- `_bmad-output/planning-artifacts/ux-designs/ux-eventstore-2026-07-05/EXPERIENCE.md`
-- `_bmad-output/planning-artifacts/ux-designs/ux-eventstore-2026-07-05/validation-report.md`
-- `_bmad-output/planning-artifacts/ux-designs/ux-eventstore-2026-07-05/mockups/`
-- `_bmad-output/planning-artifacts/ux-designs/ux-eventstore-2026-07-05/imports/`
+**Sharded Documents:**
+- None
 
 ### Discovery Issues
 
-- Resolved duplicate PRD export by archiving `_bmad-output/planning-artifacts/prds/prd-eventstore-2026-07-05/prd.md`.
-- Resolved duplicate Architecture export by archiving `_bmad-output/planning-artifacts/architecture/architecture-eventstore-2026-07-05/ARCHITECTURE-SPINE.md`.
-- No merge was required for archived files because each was byte-identical to its retained root document.
-- UX detailed artifacts were retained in place because `_bmad-output/planning-artifacts/ux.md` is a canonical handoff that intentionally links to those implementation contracts.
+- No active whole-versus-sharded duplicate formats found for PRD, Architecture, Epics, or UX.
+- No required document type is missing.
 
 ### Confirmed Assessment Inputs
 
 - PRD: `_bmad-output/planning-artifacts/prd.md`
 - Architecture: `_bmad-output/planning-artifacts/architecture.md`
-- Epics and stories: `_bmad-output/planning-artifacts/epics.md`
+- Epics & Stories: `_bmad-output/planning-artifacts/epics.md`
 - UX: `_bmad-output/planning-artifacts/ux.md`
 
-## Step 2: PRD Analysis
+## PRD Analysis
 
 ### Functional Requirements
 
@@ -159,7 +146,7 @@ FR34: Delivery, admin, and deployment remediation must document at-least-once un
 
 FR35: Backlog capabilities must be tracked for GDPR aggregate erasure/tombstoning, Admin interactive OIDC login, an aggregate test kit, and REST generator hardening.
 
-**Total FRs:** 35
+Total FRs: 35
 
 ### Non-Functional Requirements
 
@@ -199,268 +186,291 @@ NFR17: Operational hardening must support secret stores, DAPR app health checks,
 
 NFR18: AOT/trimming is explicitly not a target while reflection conventions remain load-bearing, and that constraint must be documented.
 
-**Total NFRs:** 18
+Total NFRs: 18
 
 ### Additional Requirements
 
-- Repository/build guardrails require `Hexalith.EventStore.slnx` for restore/build, per-project unit test execution, centralized package versions, preserved Debug source-reference and Release package-reference behavior, .NET SDK container support, and root-declared-only submodules under `references/`.
-- Identity and authorization guardrails require ULID-safe handling for message/correlation/causation/EventStore aggregate identifiers, forbid `Guid.TryParse` for key identifiers, validate tenant access before disclosure, and require app-layer credentials for internal/domain/projection/admin-computation endpoints.
-- UI governance requires FrontComposer and Blazor Fluent UI V5, no raw interactive-control substitution where Fluent/FrontComposer exists, no theme redefinition, support-safe states, projection-confirmed Sample/Tenants behavior, and hidden/disabled or `501` Admin deferred operations.
-- MVP scope includes all seven Phase 4 epics, platform SDK seams, generated REST proofs, release/repository reliability corrections, event correctness/recovery, security/tenant isolation remediation, cost/evolution spec-first work, operator/admin/deployment/test recovery, and backlog artifacts.
-- MVP explicitly excludes implementation of GDPR erasure/tombstoning, Admin interactive OIDC login, aggregate test kit, REST generator hardening beyond Epic 2 proof scope, AOT/trimming support, generated REST controllers in interactive UI hosts, and treating HTTP `202`, SignalR, or command acceptance as projection-confirmed success.
-- Success metrics require readiness rerun to close missing-PRD blocker, every FR1-FR35 to map to epics/stories, high-risk NFRs to map to concrete story coverage, oversized stories to be split or explicitly accepted, and required architecture/UX artifacts to exist and be referenced.
-- Required follow-on readiness work remains: architecture artifact, UX artifact, epics references, story splits or coordinated-slice acceptance, Story 5.2 request-size tightening, Story 6.1/6.3/6.5 spec output paths and approval evidence, and Story 7.5 backlog/planning reclassification or exact artifact deliverables.
+- `prd.md` owns FR/NFR truth and readiness traceability; `architecture.md`, `ux.md`, and `epics.md` own separate downstream handoffs.
+- Implementation should not resume as a full Phase 4 package until the PRD, architecture artifact, UX artifact, story splits, and high-risk NFR traceability are reconciled and readiness is re-run.
+- Repository guardrails require `Hexalith.EventStore.slnx` for restore/build, per-project unit tests, centralized package versions, Debug source-reference and Release package-reference behavior, .NET SDK container support, and root-declared submodules only under `references/`.
+- Identity and authorization guardrails require ULID-safe handling for EventStore envelope identifiers, forbid `Guid.TryParse` for message/correlation/aggregate/causation ids, require tenant access validation before data disclosure, and require app-layer credentials for internal/domain-service/projection/admin-computation endpoints.
+- UI guardrails require FrontComposer and Blazor Fluent UI V5, no theme primitive redefinition, `FluentAccordion` for multi-section page-like surfaces, support-safe UI states, accepted-submission semantics for Sample UI, projection-confirmed success for Tenants UI, and hidden/disabled or `501` deferred Admin UI operations.
+- MVP scope includes all seven Phase 4 epics, domain-service platform seams, REST generator and external API proofs, release/repository corrections, event correctness and recovery remediation, security and topology remediation, spec-first cost/evolution work, operator/admin/deployment/test recovery, and backlog artifacts for deferred capability tracks.
+- MVP excludes GDPR aggregate erasure implementation, Admin interactive OIDC login implementation, aggregate test kit implementation, REST generator hardening beyond approved Epic 2 proof scope, AOT/trimming support while reflection remains load-bearing, generated REST controllers in interactive UI hosts, and treating HTTP `202`, SignalR notification, or command acceptance as projection-confirmed UI success.
+- Primary success metrics require readiness to no longer report missing PRD, every FR1-FR35 to map to at least one epic and story, and high-risk NFRs NFR1-NFR4, NFR7, NFR10-NFR11, and NFR14-NFR17 to map to concrete story coverage before Phase 4 implementation resumes.
 
 ### PRD Completeness Assessment
 
-The PRD is sufficiently complete for traceability analysis: it defines purpose, vision, target users, product concerns, 35 functional requirements, 18 non-functional requirements, constraints, scope, success metrics, traceability tables, follow-on readiness work, open questions, and assumptions. No PRD-level product-scope questions are open.
+The PRD is complete enough for traceability validation. It defines 35 functional requirements and 18 non-functional requirements, records MVP scope and non-goals, identifies high-risk NFR story coverage expectations, and separates PRD ownership from architecture, UX, and epics ownership. The remaining readiness question is whether `epics.md`, `architecture.md`, and `ux.md` now carry these requirements into executable, correctly sequenced story acceptance criteria.
 
-Planning-quality note: the FR table groups some requirements by product area rather than strict numeric order, but all FR1-FR35 identifiers are present exactly once as requirement definitions. Downstream validation should verify every FR and high-risk NFR mapping against `epics.md` rather than relying only on the PRD's own traceability table.
-
-## Step 3: Epic Coverage Validation
+## Epic Coverage Validation
 
 ### Epic FR Coverage Extracted
 
-- FR1, FR2, FR3: Story 1.1 - Canonical Domain-Service SDK Host
-- FR4: Story 1.2 - Domain Query Handler Routing; also Story 7.6 - Query Metadata Propagation Contract And Gateway Evidence
-- FR5, FR6: Story 1.3 - Generic Read Models And Query Cursors; also Story 7.6
-- FR7: Story 1.4 - Projection And Domain Event Consumer Seams
-- FR8: Story 1.5 - Domain Module Hosting Observability
-- FR9: Story 1.6 - Sample And Tenants Domain-Centric Adoption
-- FR10: Story 1.7 - DomainService Packaging And Guardrails
-- FR11: Story 2.1 - REST Contract Seam For Command And Query Messages
-- FR12: Story 2.2 - REST API Generator Discovery And Controller Emission; also Story 7.6
-- FR13, FR14: Story 2.3 - Sample External API Host Proof
-- FR15: Story 2.4 - Tenants External API Host Adoption; also Story 7.6
-- FR16: Story 2.5 - Scoped Metadata-Rich Projection Notifications
-- FR17: Story 3.1 - Re-Tier Live-Sidecar Tests From Release Gate
-- FR18: Story 3.2 - Harden DAPR ETag Timeout For Integration Conditions
-- FR19: Story 3.3 - References-Based Submodule Layout
-- FR20: Story 3.4 - Aspire Security Resource Naming
-- FR21: Story 3.5 - Debug Source References And Release Package References
-- FR22: Story 3.6 - Manifest-Driven Release Packaging
-- FR23: Story 4.1 - Event Identity And Duplicate Result Fidelity
-- FR24: Story 4.6 - Global Position Sharding Spec Renegotiation
-- FR25: Story 3.7 - Shared CI/CD Security Gates And Supply-Chain Backlog
-- FR26: Stories 5.1, 5.2, 5.3, and 5.4
-- FR27: Story 4.2 - Resume And Idempotency Integrity
-- FR28: Story 5.5 - Internal And Domain-Service Trust Boundary
-- FR29: Story 4.3 - Deterministic Replay Dispatch And Serialization
-- FR30: Story 4.4 - Committed Event Publication Recovery
-- FR31: Story 4.5 - Append Durability Race Evidence
-- FR32: Story 5.6 - Runtime Topology And Deploy Parity
-- FR33: Stories 6.1 through 6.6
-- FR34: Stories 7.1 through 7.4; also Story 7.6
-- FR35: Story 7.5 - Track Future Capability Backlog
+FR1: Covered in Epic 1, Story 1.1.
 
-**Total FRs in story coverage:** 35
+FR2: Covered in Epic 1, Story 1.1.
+
+FR3: Covered in Epic 1, Story 1.1.
+
+FR4: Covered in Epic 1, Story 1.2.
+
+FR5: Covered in Epic 1, Story 1.3.
+
+FR6: Covered in Epic 1, Story 1.3.
+
+FR7: Covered in Epic 1, Story 1.4.
+
+FR8: Covered in Epic 1, Story 1.5.
+
+FR9: Covered in Epic 1, Story 1.6.
+
+FR10: Covered in Epic 1, Story 1.7.
+
+FR11: Covered in Epic 2, Story 2.1.
+
+FR12: Covered in Epic 2, Story 2.2.
+
+FR13: Covered in Epic 2, Story 2.3.
+
+FR14: Covered in Epic 2, Story 2.3.
+
+FR15: Covered in Epic 2, Story 2.4.
+
+FR16: Covered in Epic 2, Story 2.5.
+
+FR17: Covered in Epic 3, Story 3.1.
+
+FR18: Covered in Epic 3, Story 3.2.
+
+FR19: Covered in Epic 3, Story 3.3.
+
+FR20: Covered in Epic 3, Story 3.4.
+
+FR21: Covered in Epic 3, Story 3.5.
+
+FR22: Covered in Epic 3, Story 3.6.
+
+FR23: Covered in Epic 4, Story 4.1.
+
+FR24: Covered in Epic 4, Story 4.6.
+
+FR25: Covered in Epic 3, Story 3.7.
+
+FR26: Covered in Epic 5, Stories 5.1, 5.2, 5.3, and 5.4.
+
+FR27: Covered in Epic 4, Story 4.2.
+
+FR28: Covered in Epic 5, Story 5.5.
+
+FR29: Covered in Epic 4, Story 4.3.
+
+FR30: Covered in Epic 4, Story 4.4.
+
+FR31: Covered in Epic 4, Story 4.5.
+
+FR32: Covered in Epic 5, Story 5.6.
+
+FR33: Covered in Epic 6, Stories 6.1 through 6.6.
+
+FR34: Covered in Epic 7, Stories 7.1, 7.2, 7.3, and 7.4.
+
+FR35: Covered in Epic 7, Story 7.5.
+
+Total FRs in epics: 35
 
 ### Coverage Matrix
 
-| FR Number | PRD Requirement Summary | Epic/Story Coverage | Status |
+| FR Number | PRD Requirement | Epic Coverage | Status |
 | --- | --- | --- | --- |
-| FR1 | Domain modules remain domain-centric while platform boilerplate is supplied by EventStore libraries. | Epic 1 / Story 1.1 | Covered |
-| FR2 | Provide domain-service SDK host APIs for canonical domain service host shape. | Epic 1 / Story 1.1 | Covered |
-| FR3 | Expose canonical domain-service DAPR endpoints. | Epic 1 / Story 1.1 | Covered |
-| FR4 | Provide domain query-handler seam, handler-aware routing, and metadata propagation. | Epic 1 / Story 1.2; Epic 7 / Story 7.6 | Covered |
-| FR5 | Provide generic persisted read-model store and write policy. | Epic 1 / Story 1.3; Epic 7 / Story 7.6 | Covered |
-| FR6 | Provide reusable protected query cursor codec. | Epic 1 / Story 1.3; Epic 7 / Story 7.6 | Covered |
-| FR7 | Provide generic projection-handler and domain-event consumer seams. | Epic 1 / Story 1.4 | Covered |
-| FR8 | Provide Aspire, telemetry, and health-check extensions for domain modules. | Epic 1 / Story 1.5 | Covered |
-| FR9 | Sample and Tenants adopt platform SDK seams and remove duplicate infrastructure. | Epic 1 / Story 1.6 | Covered |
-| FR10 | Include DomainService and ServiceDefaults in manifest-governed publishable package set. | Epic 1 / Story 1.7 | Covered |
-| FR11 | Provide REST API source-generator contract seam. | Epic 2 / Story 2.1 | Covered |
-| FR12 | Generator emits typed controllers delegating through gateway and forwarding metadata. | Epic 2 / Story 2.2; Epic 7 / Story 7.6 | Covered |
-| FR13 | Generated REST controllers live in external API hosts, not interactive UI hosts. | Epic 2 / Story 2.3 | Covered |
-| FR14 | Sample contracts library and external Sample API host prove generated endpoints. | Epic 2 / Story 2.3 | Covered |
-| FR15 | Tenants generated API moves external while UI consumes client libraries and metadata path. | Epic 2 / Story 2.4; Epic 7 / Story 7.6 | Covered |
-| FR16 | Add scoped metadata-rich projection-changed transport while preserving compatibility. | Epic 2 / Story 2.5 | Covered |
-| FR17 | Re-tier live DAPR sidecar tests into dedicated integration workflow. | Epic 3 / Story 3.1 | Covered |
-| FR18 | Make `DaprETagService` actor request timeout overridable. | Epic 3 / Story 3.2 | Covered |
-| FR19 | Move root-declared submodules under `references/` and update path resolution. | Epic 3 / Story 3.3 | Covered |
-| FR20 | Rename Aspire Keycloak resource to `security`. | Epic 3 / Story 3.4 | Covered |
-| FR21 | Preserve Debug source references and Release package references for Hexalith dependencies. | Epic 3 / Story 3.5 | Covered |
-| FR22 | Release commands assert package-reference mode and avoid submodule packaging. | Epic 3 / Story 3.6 | Covered |
-| FR23 | Non-zero global positions, CloudEvent `MessageId`, and duplicate result fidelity. | Epic 4 / Story 4.1 | Covered |
-| FR24 | Renegotiate global-position sharding strategy and frozen spec before implementation. | Epic 4 / Story 4.6 | Covered |
-| FR25 | Use shared Hexalith.Builds gates and manifest-driven package publish scope. | Epic 3 / Story 3.7 | Covered |
-| FR26 | Phase 0 safe fixes for staged state, admin endpoints, secrets, auth guards, tenant filters, Swagger, CLI, ULIDs, docs. | Epic 5 / Stories 5.1-5.4 | Covered |
-| FR27 | Resume/idempotency matching, message-id status keying, retryability, tenant validation. | Epic 4 / Story 4.2 | Covered |
-| FR28 | App-layer credentials for internal/domain/projection/admin endpoints and removal of wire admin trust. | Epic 5 / Story 5.5 | Covered |
-| FR29 | Boundary-safe replay dispatch and shared serializer options. | Epic 4 / Story 4.3 | Covered |
-| FR30 | Recover committed-but-unpublished events without same-correlation resubmission. | Epic 4 / Story 4.4 | Covered |
-| FR31 | Verify real DAPR append conflict behavior before fencing design. | Epic 4 / Story 4.5 | Covered |
-| FR32 | Align runtime DAPR topology, ACL, pub/sub, and key-prefix posture. | Epic 5 / Story 5.6 | Covered |
-| FR33 | Folded snapshots, projection cost/sequence guards, event versioning/upcasting, identity validation, cancellation seams. | Epic 6 / Stories 6.1-6.6 | Covered |
-| FR34 | Delivery semantics, poison handling, bounded dedup, admin audit/honesty, deploy hardening, integration evidence. | Epic 7 / Stories 7.1-7.4 and 7.6 | Covered |
-| FR35 | Track GDPR erasure, Admin OIDC, aggregate test kit, and REST generator hardening backlog. | Epic 7 / Story 7.5 | Covered |
+| FR1 | Domain-centric modules with platform boilerplate supplied by EventStore libraries. | Epic 1, Story 1.1 | Covered |
+| FR2 | Domain-service SDK host shape with `AddEventStoreDomainService`, `UseEventStoreDomainService`, and `MapEventStoreDomainService`. | Epic 1, Story 1.1 | Covered |
+| FR3 | Canonical DAPR-facing domain-service endpoints. | Epic 1, Story 1.1 | Covered |
+| FR4 | Domain query-handler seam, routing, metadata capture, and end-to-end `QueryResponseMetadata` propagation. | Epic 1, Story 1.2 | Covered |
+| FR5 | Generic persisted read-model store and write policy. | Epic 1, Story 1.3 | Covered |
+| FR6 | Reusable protected query cursor codec. | Epic 1, Story 1.3 | Covered |
+| FR7 | Generic projection-handler and domain-event consumer seams. | Epic 1, Story 1.4 | Covered |
+| FR8 | Aspire, telemetry, and health-check extensions for domain modules. | Epic 1, Story 1.5 | Covered |
+| FR9 | Sample and Tenants adoption of platform SDK seams. | Epic 1, Story 1.6 | Covered |
+| FR10 | DomainService and ServiceDefaults packages in manifest-governed release set. | Epic 1, Story 1.7 | Covered |
+| FR11 | REST API source-generator contract seam. | Epic 2, Story 2.1 | Covered |
+| FR12 | Generated typed REST controllers, query metadata headers, `304`, and generator tests. | Epic 2, Story 2.2 | Covered |
+| FR13 | Generated REST controllers live in external API hosts, not interactive UI hosts. | Epic 2, Story 2.3 | Covered |
+| FR14 | Sample contracts library and external Sample API host proof. | Epic 2, Story 2.3 | Covered |
+| FR15 | Tenants external API proof, UI client-library adoption, and platform query metadata evidence. | Epic 2, Story 2.4 | Covered |
+| FR16 | Metadata-rich, scope-aware projection-changed transport. | Epic 2, Story 2.5 | Covered |
+| FR17 | Live-sidecar tests re-tiered off release gate. | Epic 3, Story 3.1 | Covered |
+| FR18 | Overridable `DaprETagService` actor timeout. | Epic 3, Story 3.2 | Covered |
+| FR19 | Submodules under `references/` layout. | Epic 3, Story 3.3 | Covered |
+| FR20 | Aspire Keycloak resource renamed to `security`. | Epic 3, Story 3.4 | Covered |
+| FR21 | Debug source references and Release package references. | Epic 3, Story 3.5 | Covered |
+| FR22 | Release commands assert package mode and avoid submodule packaging. | Epic 3, Story 3.6 | Covered |
+| FR23 | Non-zero global positions, MessageId CloudEvent ids, duplicate result fidelity. | Epic 4, Story 4.1 | Covered |
+| FR24 | Global-position sharding spec renegotiation. | Epic 4, Story 4.6 | Covered |
+| FR25 | Shared Hexalith.Builds gates and manifest-driven package scope. | Epic 3, Story 3.7 | Covered |
+| FR26 | Phase 0 security and safe-remediation fixes. | Epic 5, Stories 5.1-5.4 | Covered |
+| FR27 | Resume/idempotency integrity and command status re-keying. | Epic 4, Story 4.2 | Covered |
+| FR28 | Defense-in-depth trust boundary. | Epic 5, Story 5.5 | Covered |
+| FR29 | Replay and dispatch determinism. | Epic 4, Story 4.3 | Covered |
+| FR30 | Crash recovery for committed-but-unpublished events. | Epic 4, Story 4.4 | Covered |
+| FR31 | Append durability verify-first spike. | Epic 4, Story 4.5 | Covered |
+| FR32 | Runtime topology and deployment posture parity. | Epic 5, Story 5.6 | Covered |
+| FR33 | Bounded cost and event evolution. | Epic 6, Stories 6.1-6.6 | Covered |
+| FR34 | Delivery, admin, deployment, and IntegrationTests recovery. | Epic 7, Stories 7.1-7.4 | Covered |
+| FR35 | Backlog capability tracking. | Epic 7, Story 7.5 | Covered |
 
 ### Missing Requirements
 
-No PRD functional requirements are missing from epic/story coverage.
+No PRD functional requirements are missing from the epics and stories document.
+
+### Extra FR References
+
+No FR references were found in `epics.md` outside the PRD range FR1-FR35.
 
 ### Coverage Statistics
 
 - Total PRD FRs: 35
-- FRs covered in epics/stories: 35
+- FRs covered in epics: 35
+- FRs missing from epics: 0
 - Coverage percentage: 100%
-- FRs claimed in epics but not present in PRD: 0
 
-### Coverage Notes
-
-- Story 7.6 adds cross-cutting coverage for FR4, FR5, FR6, FR12, FR15, and FR34, and also lists NFR coverage. The NFR entries are not counted as extra FRs.
-- `epics.md` contained stale overview text saying no standalone PRD, architecture, or UX contract was present in the selected planning-artifacts folder. This was corrected during the readiness pass so the epic plan now references `prd.md`, `architecture.md`, and `ux.md` directly.
-
-## Step 4: UX Alignment Assessment
+## UX Alignment Assessment
 
 ### UX Document Status
 
 Found.
 
-- Primary UX handoff: `_bmad-output/planning-artifacts/ux.md`
-- Detailed visual contract: `_bmad-output/planning-artifacts/ux-designs/ux-eventstore-2026-07-05/DESIGN.md`
+- Canonical UX handoff: `_bmad-output/planning-artifacts/ux.md`
+- Detailed design contract: `_bmad-output/planning-artifacts/ux-designs/ux-eventstore-2026-07-05/DESIGN.md`
 - Detailed experience contract: `_bmad-output/planning-artifacts/ux-designs/ux-eventstore-2026-07-05/EXPERIENCE.md`
-- Validation and visual references: `_bmad-output/planning-artifacts/ux-designs/ux-eventstore-2026-07-05/validation-report.md`, `mockups/`, and `imports/`
+- Retained validation artifact: `_bmad-output/planning-artifacts/ux-designs/ux-eventstore-2026-07-05/validation-report.md`
 
-### UX To PRD Alignment
+### PRD Alignment
 
-- PRD FR13 and NFR14 require interactive UI hosts to consume client libraries and avoid generated or hand-written per-message MVC controllers. UX Foundation, Source Traceability, and Sample/Tenants flows enforce the same boundary.
-- PRD FR15 requires Tenants UI to use client libraries and preserve query metadata/freshness evidence. UX Flow 6 and Projection freshness indicator rules align with that requirement.
-- PRD FR34 and NFR15 require honest deferred/unavailable admin operations. UX Deferred & Backlog IA, State Patterns, Flow 4, and Support-Safe Operations require hidden/disabled unavailable operations or server `501`.
-- PRD UI governance requires FrontComposer and Blazor Fluent UI V5, no theme redefinition, support-safe states, Sample accepted-submission behavior, Tenants projection-confirmed success, and admin deferred-operation honesty. UX `ux.md`, `DESIGN.md`, and `EXPERIENCE.md` cover each rule.
-- PRD success/counter-metrics reject HTTP `202`, SignalR, or command acceptance as proof of UI success. UX State Patterns and key flows consistently model accepted/evidence-pending separately from projection-confirmed success.
+- Aligned: PRD UI governance requires FrontComposer and Blazor Fluent UI V5; `ux.md`, `DESIGN.md`, and `EXPERIENCE.md` make that the mandatory UI system.
+- Aligned: PRD FR13/NFR14 require generated REST controllers to stay out of interactive UI hosts; UX requires UI hosts to consume EventStore client libraries and host no generated or hand-written per-message MVC command/query controllers.
+- Aligned: PRD FR15 requires Tenants UI projection-confirmed states backed by platform query metadata; UX Flow 6 and the projection freshness indicator require accepted/evidence-pending/projection-confirmed behavior and treat unknown freshness as unsafe for mutation.
+- Aligned: PRD FR34/NFR15 require honest deferred Admin operations; UX requires deferred backup, restore, import, compaction, GDPR erasure, OIDC login, aggregate test kit, and generator hardening to be hidden, disabled, or backed by `501`.
+- Aligned: PRD support-safe and tenant-isolation concerns are reflected in UX rules forbidding tokens, decoded JWTs, raw metadata, raw payloads, cursor/ETag internals, stack traces, secrets, and denied-resource disclosure.
+- Aligned: PRD Sample UI accepted-submission behavior is covered by UX Flow 5, which keeps HTTP acceptance separate from projection/read-model evidence.
 
-### UX To Architecture Alignment
+### Architecture Alignment
 
-- Architecture AD-4 supports the UX/client-host boundary by requiring generated REST controllers to live only in dedicated external API hosts.
-- Architecture AD-8 supports the UX state model by treating SignalR and projection notifications as freshness signals only; projection/read-model evidence confirms visible success.
-- Architecture AD-10 supports fail-closed, support-safe, and honest unavailable-operation UI behavior.
-- Architecture AD-14 supports UX freshness, projection-version, ETag, stale/current/unknown, and paging evidence through platform `QueryResponseMetadata` and gateway-owned headers.
-- Architecture Consistency Conventions explicitly require module UI to use FrontComposer and Fluent UI Blazor V5, projection-confirmed success, support-safe rendering, accessibility, and localization.
-- Architecture intentionally leaves detailed journeys, screen states, component-level patterns, accessibility, and localization evidence to `ux.md`; that is acceptable because the UX artifact now exists and is referenced by `epics.md`.
+- Aligned: Architecture AD-4 supports the generated REST boundary by requiring generated controllers only in dedicated external API hosts and requiring interactive UI hosts to use client libraries.
+- Aligned: Architecture AD-8 supports the UX state model by defining SignalR and DAPR notifications as freshness signals only, not projection-confirmed success.
+- Aligned: Architecture AD-10 supports UX fail-closed and deferred-operation behavior through app-layer credentials, tenant authorization, attributable admin mutations, and hidden/disabled/`501` unavailable operations.
+- Aligned: Architecture AD-14 supports projection-confirmed state through platform `QueryResponseMetadata`, explicit merge rules, support-safe headers, and opaque cursor/ETag handling.
+- Aligned: Architecture consistency conventions explicitly require module UI to use FrontComposer and Fluent UI Blazor V5 with projection-confirmed, support-safe, accessible, and localized behavior.
 
 ### Alignment Issues
 
-No blocking UX/PRD/Architecture alignment gaps remain after correcting stale `epics.md` references to the missing PRD/architecture/UX artifacts.
+No blocking UX/PRD/Architecture alignment gaps were found in the current `ux.md`, `DESIGN.md`, `EXPERIENCE.md`, `prd.md`, and `architecture.md` set.
 
 ### Warnings
 
-- UX has non-blocking assumptions that implementation must close or explicitly accept: EventStore UI service host integration point, final dashboard tab names, and desktop-first ergonomics for complex mutations.
-- UI stories must still produce component/governance evidence. Documentation alone is insufficient for PRD counter-metric SM-C3.
-- Story 7.6 is important for UI correctness because UX and architecture both rely on platform-owned query metadata for freshness, projection-confirmed success, stale/current/unknown state, and generated API headers.
-- The UX detailed artifact folder is supporting contract material, not a duplicate to archive. Keep `DESIGN.md`, `EXPERIENCE.md`, mockups, imports, and validation reports in place while using `ux.md` as the primary readiness input.
+- The retained UX `validation-report.md` predates the later UX handoff update and is retained for audit. Treat it as historical unless validation is rerun against the current final UX handoff.
+- Architecture intentionally defers detailed journeys and component-level interaction patterns to `ux.md` and its detailed contracts. UI-affecting implementation stories should cite the UX artifact directly, not only `architecture.md`.
 
-## Step 5: Epic Quality Review
+## Epic Quality Review
 
-### Epic Structure Validation
+### Scope Reviewed
 
-| Epic | User Value Assessment | Independence Assessment | Result |
+- Epics reviewed: 7
+- Stories reviewed: 42
+- Acceptance criteria format: broadly BDD-style, with explicit `Given`/`When`/`Then`/`And` clauses throughout.
+- Greenfield setup check: not applicable. The epics document explicitly treats this as brownfield remediation/platform hardening and does not mandate a greenfield starter template.
+- Database/entity creation timing check: not applicable in relational-table terms. The plan uses DAPR state, read-model stores, state keys, and topology resources rather than upfront relational table creation.
+
+### Epic Structure Assessment
+
+| Epic | User Value Focus | Independence | Quality Notes |
 | --- | --- | --- | --- |
-| Epic 1 - Domain Author Self-Service Platform | Clear developer-platform value for domain authors. | Can stand alone as platform SDK foundation. | Pass |
-| Epic 2 - External Integration Surfaces | Clear value for external API developers and UI maintainers. | Uses Epic 1/client/gateway seams but does not depend on later epics. | Pass |
-| Epic 3 - Release And Repository Reliability | Clear release-maintainer value despite technical implementation. | Independent of later hardening epics. | Pass |
-| Epic 4 - Event Correctness And Recovery | Clear operator/consumer trust value. | Independent of later security/deploy epics. | Pass |
-| Epic 5 - Security And Tenant Isolation | Clear admin/tenant/operator security value. | Can run after existing platform state; no future-epic dependency. | Pass |
-| Epic 6 - Bounded Cost And Event Evolution | Clear long-lived-stream/operator value, with explicit spec-first sequencing. | Depends on its own earlier spec stories only. | Pass with sequencing controls |
-| Epic 7 - Operator Trust, Admin Honesty, And Future Capabilities | Clear operator and product-owner value. | Mostly independent; Story 7.6 must precede UI/generated API work that relies on metadata evidence. | Pass with split/timing concerns |
+| Epic 1 - Domain Author Self-Service Platform | Pass: clear domain-author value. | Pass. | Query metadata ownership now lives in Story 1.2 before dependent query/read-model/API proofs. Story 1.3 remains a coordinated slice with explicit gate. |
+| Epic 2 - External Integration Surfaces | Pass: clear external API/UI host value. | Pass after sequencing correction. | Story 2.2 owns generated REST metadata/header behavior; Story 2.4 consumes earlier metadata work for Tenants proof. |
+| Epic 3 - Release And Repository Reliability | Pass for maintainer/release user. | Pass. | Story 3.7 remains broad but is covered by the coordinated-slice gate. |
+| Epic 4 - Event Correctness And Recovery | Pass for operator/consumer correctness. | Pass. | Sequencing note remains valid: data-loss and recovery work precedes global-position sharding. |
+| Epic 5 - Security And Tenant Isolation | Pass for administrators, tenants, and operators. | Pass. | Story 5.6 remains broad but is covered by the coordinated-slice gate. Story 5.2 has concrete size-limit criteria. |
+| Epic 6 - Bounded Cost And Event Evolution | Pass for operators/domain maintainers. | Pass within the epic. | Spec-first gates control Stories 6.2, 6.4, and 6.6. Story 6.6 may still need implementation split after Story 6.5 spec approval. |
+| Epic 7 - Operator Trust, Admin Honesty, And Future Capabilities | Pass for operators/product owners. | Pass after Story 7.6 deletion. | Story 7.5 is backlog-only. Stories 7.2, 7.3, and 7.4 remain coordinated slices with explicit gates. |
 
 ### Critical Violations
 
-No critical best-practice violations were found. No epic requires a future epic to function, and every PRD FR has a story-level implementation path.
+None found.
+
+The prior critical violation is resolved: Story 7.6 no longer exists as a late Epic 7 implementation story, and its acceptance criteria are redistributed into Stories 1.2, 1.3, 2.2, and 2.4 through the Query Metadata Sequencing Gate.
 
 ### Major Issues
 
-1. Oversized stories remain in the plan.
+None found.
 
-The PRD itself calls out required story splits or coordinated-slice acceptance for Stories 1.3, 1.6, 2.4, 3.7, 5.6, 7.2, 7.3, and 7.4. The quality review confirms those are still broad, multi-concern implementation slices:
-
-- Story 1.3 combines read-model store, optimistic-concurrency policy, testing fake, cursor codec, paging metadata, and Tenants migration.
-- Story 1.6 combines Sample adoption, Tenants adoption, governance tests, and DAPR/Aspire validation.
-- Story 2.4 combines Tenants contract changes, generated external API host, UI client-library migration, query metadata evidence, submodule tests, and CI blocker handling.
-- Story 3.7 combines shared workflow callers, action pinning policy, npm install/cache behavior, signature/provenance blockers, NuGet publishing secret posture, and supply-chain backlog.
-- Story 5.6 combines AppHost component paths, production component templates, topology tests, ACL posture, route/topic wiring, and deployment documentation.
-- Story 7.2 combines claims normalization, audit records, deferred-operation UI/server behavior, and shared typed client planning.
-- Story 7.3 combines secret stores, readiness/app-health, resiliency targets, and immutable image tag posture.
-- Story 7.4 combines CI lane recovery, persisted evidence assertions, integration helper extraction, fake-test relabeling, and perf/advisory lane cleanup.
-
-Recommendation: split these before implementation or add explicit coordinated-slice acceptance with named owners, validation commands, and review boundaries.
-
-2. Spec-gated stories lack exact spec output paths in the story text.
-
-Stories 6.1, 6.3, and 6.5 require approved specs before implementation, but the story acceptance criteria do not name exact artifact paths for the folded snapshot spec, projection delivery/sequence guard spec, and event versioning/upcasting/cancellation spec. The PRD explicitly requires named spec output paths and approval evidence before dependent implementation stories start.
-
-Recommendation: add exact paths and an approval/evidence condition to Stories 6.1, 6.3, and 6.5; require Stories 6.2, 6.4, and 6.6 to verify those approved paths before code changes.
-
-3. Story 5.2 request-size acceptance is too weak.
-
-Story 5.2 says oversized admin requests fail safely and that limits are "tested or documented." The PRD requires tightening this acceptance. "Tested or documented" is not a reliable implementation gate for a security boundary.
-
-Recommendation: replace with a concrete request-size limit, the affected endpoints/body types, expected response shape, and required tests. Documentation-only should require an explicit exception and owner.
-
-4. Story 7.5 is backlog/planning work but still reads like an implementation story.
-
-Story 7.5 covers GDPR-1, IAM-1, KIT-1, REST generator hardening, deferred-work ingestion, and query metadata scheduling. That is a backlog curation bundle, not one independently completable implementation story. It also lacks exact artifact paths for GDPR-1, IAM-1, and KIT-1.
-
-Recommendation: either reclassify Story 7.5 as backlog/planning work with exact deliverable paths, or split it into separate backlog-artifact stories. The stale "create or schedule Story 7.6" wording was corrected during this readiness pass because Story 7.6 now exists.
+Previously identified broad stories are now mitigated by explicit coordinated-slice gates, named owners/review boundaries, and validation commands. Those gates must be carried into implementation story files.
 
 ### Minor Concerns
 
-- Story 7.6 is cohesive around query metadata propagation, but it is cross-cutting across platform result types, HTTP metadata, generated APIs, client results, policy enforcement, and persisted evidence. If implementation estimate or review risk is high, split it into core metadata propagation, HTTP/generated API forwarding, and policy/test evidence slices.
-- Several acceptance criteria use broad validation phrases such as "relevant test projects run", "as intended", or "where available." These are acceptable at epic-planning altitude but should be made exact in implementation story files.
-- Epic 6 implementation stories correctly depend on earlier spec stories inside the same epic; this is not a forward dependency violation, but it must be enforced in sprint sequencing.
+#### MINOR-1: A Few Acceptance Criteria Retain Optional Or Exception Language
 
-### Dependency Analysis
+Examples:
 
-- No Epic N requires Epic N+1 to function.
-- No story requires a future story as an implementation blocker after the Story 7.5 reference to Story 7.6 was corrected.
-- The only intentional dependencies are backward dependencies within Epic 6: implementation stories depend on prior spec stories.
-- No database/table-front-loading issue applies. This is a DAPR/event-store brownfield platform, and state/persistence changes are introduced in the stories that need them.
-- No greenfield starter-template story is required. The PRD states no starter template is mandated.
+- Story 2.3: "metadata header behavior when available" is weaker than the stronger metadata ownership now in Stories 1.2, 1.3, and 2.2.
+- Story 7.3: "immutable git-SHA tags are supported or preferred" leaves exact production posture partly open.
+- Story 7.4: "full Aspire-dependent tests have a dedicated documented lane or blocker" can permit a blocker to substitute for restored coverage unless the blocker is owned and time-boxed.
 
-### Best Practices Compliance Summary
+Recommendation: when implementation story files are created, replace optional phrasing with explicit expected outcomes or a documented exception template that includes owner, blocker, review date, and follow-up story.
 
-- Epic user value: Pass
-- Epic independence: Pass
-- FR traceability: Pass
-- Story sizing: Fails for the oversized stories listed above
-- Forward dependencies: Pass after Story 7.5 wording correction
-- Acceptance criteria specificity: Needs remediation for request-size limits, spec output paths, and broad validation phrases
+#### MINOR-2: Story 6.6 Should Be Reassessed After Story 6.5 Spec Approval
 
-## Step 6: Summary and Recommendations
+Story 6.6 spans event contract type metadata, payload version metadata, upcaster chain behavior, diagnostics, aggregate identity component validation, and cancellation token propagation. The Story 6.5 spec gate is an acceptable control for planning readiness, but implementation readiness for Story 6.6 itself should be reassessed after the spec decides whether to split the implementation.
+
+Recommendation: require the Story 6.5 spec approval to explicitly state whether Story 6.6 proceeds as one coordinated slice or splits into version metadata, upcasting, identity validation, and cancellation propagation slices.
+
+### Best-Practices Checklist
+
+| Check | Result |
+| --- | --- |
+| Epics deliver user/platform/operator value | Pass |
+| Epic 1 stands alone | Pass |
+| Later epics avoid dependency on future epics | Pass |
+| Stories are independently completable or explicitly gated as coordinated slices | Pass |
+| Acceptance criteria are testable | Pass with minor wording warnings |
+| Acceptance criteria include error/degraded conditions | Pass |
+| No upfront database/entity creation anti-pattern | Pass / not applicable |
+| Starter template requirement handled | Pass / not applicable |
+| Brownfield integration/compatibility reflected | Pass |
+| FR traceability maintained | Pass |
+
+### Epic Quality Recommendation
+
+The epics plan is implementation-ready from a story-quality perspective, with minor wording warnings to carry into implementation story creation. The corrected plan no longer has the forward dependency that previously blocked readiness.
+
+## Summary and Recommendations
 
 ### Overall Readiness Status
 
-NEEDS WORK.
+READY
 
-The planning baseline is materially improved and no longer blocked by missing PRD/architecture/UX artifacts or unresolved duplicate document formats. PRD FR coverage is complete: all 35 PRD functional requirements have story-level coverage in `epics.md`.
-
-The remaining blocker is implementation quality, not requirements coverage. Several stories are still too large, some spec-gated work lacks exact output paths and approval gates, and a security-facing acceptance criterion remains too loose.
+The Phase 4 planning package is ready to proceed to sprint planning or implementation story creation. The previous blocking issue is resolved: query metadata propagation is no longer deferred to a later Epic 7 story, and the dependent Epic 1/Epic 2 stories now own the metadata behavior they require.
 
 ### Critical Issues Requiring Immediate Action
 
-No critical issue blocks traceability. The following major issues should be addressed before broad Phase 4 implementation begins:
+None.
 
-1. Split or explicitly coordinate oversized stories: 1.3, 1.6, 2.4, 3.7, 5.6, 7.2, 7.3, and 7.4.
-2. Add exact spec artifact paths and approval evidence to Stories 6.1, 6.3, and 6.5; require Stories 6.2, 6.4, and 6.6 to verify those specs before implementation.
-3. Tighten Story 5.2 request-size acceptance with concrete limits, response behavior, and tests.
-4. Reclassify or split Story 7.5 into exact backlog-artifact deliverables for GDPR-1, IAM-1, KIT-1, and REST generator hardening.
-5. Review broad validation wording such as "relevant tests", "as intended", and "where available" when creating implementation story files.
+### Findings Summary
 
-### Completed Corrections During This Assessment
-
-- Archived exact duplicate PRD and Architecture document exports under `_bmad-output/planning-artifacts/archive/2026-07-05-duplicate-document-exports/`.
-- Kept UX detailed artifacts in place because they are supporting contracts linked by canonical `ux.md`, not duplicate readiness inputs.
-- Updated `epics.md` to reference `prd.md`, `architecture.md`, and `ux.md` directly.
-- Corrected stale Story 7.5 wording that still said Story 7.6 had to be created or scheduled even though Story 7.6 now exists.
+- Required planning artifacts exist: PRD, architecture, epics, and UX handoff are all present as whole documents with no duplicate sharded versions.
+- PRD extraction found 35 functional requirements and 18 non-functional requirements.
+- Epic coverage remains complete: 35 of 35 PRD FRs are covered, for 100% FR coverage.
+- UX, PRD, and architecture align on FrontComposer/Fluent UI V5, generated REST boundaries, projection-confirmed success, support-safe state, tenant isolation, and deferred-operation honesty.
+- Epic quality review found no critical or major violations after the approved query metadata sequencing correction.
+- Remaining concerns are non-blocking implementation-story hygiene items: optional wording in a few ACs, Story 6.6 split decision after its spec, and historical UX validation report context.
 
 ### Recommended Next Steps
 
-1. Run story splitting against the eight oversized stories and update `epics.md` with smaller implementation slices or explicit coordinated-slice acceptance.
-2. Patch Epic 6 story criteria with named spec paths and approval checks.
-3. Patch Story 5.2 and Story 7.5 acceptance criteria so each has objective implementation evidence.
-4. Re-run this readiness check after the story-quality edits.
-5. After readiness returns READY, create implementation story files from the remediated epic plan.
+1. Proceed to sprint planning or implementation story creation.
+2. When creating implementation story files, carry forward the coordinated-slice gates for Stories 1.3, 1.6, 2.4, 3.7, 5.6, 7.2, 7.3, and 7.4.
+3. Tighten minor optional wording in Story 2.3, Story 7.3, and Story 7.4 during story-file creation or the next backlog refinement pass.
+4. Require Story 6.5 spec approval to state whether Story 6.6 proceeds as one coordinated slice or splits into smaller implementation stories.
+5. Treat the retained UX validation report as historical unless it is rerun against the current final UX handoff.
 
 ### Final Note
 
-This assessment identified 7 active issues requiring attention across story sizing, spec-gate readiness, and acceptance-criteria precision. It also fixed 4 document hygiene issues during the run. Proceeding as-is would preserve traceability, but it would hand implementers stories that are too broad for reliable review and validation.
+This assessment identified 0 critical issues, 0 major issues, and 3 minor story-quality concerns plus 2 UX/documentation warnings. None block implementation readiness. The planning package can move forward, provided the coordinated-slice gates and minor tightening recommendations are preserved during implementation story creation.

@@ -1,5 +1,5 @@
-# generated: 2026-07-01T14:20:23+02:00
-# last_updated: 2026-07-05T15:18:04+02:00
+# generated: 2026-07-05T18:59:22+02:00
+# last_updated: 2026-07-05T18:59:22+02:00
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -40,46 +40,76 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
-generated: 2026-07-01T14:20:23+02:00
-last_updated: 2026-07-05T15:18:04+02:00
+generated: 2026-07-05T18:59:22+02:00
+last_updated: 2026-07-05T18:59:22+02:00
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
 story_location: /home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts
 
 development_status:
-  epic-D: done
-  D-1-contract-seam: done
-  D-2-generator-skeleton-spike: done
-  D-3-controller-emission: done
-  D-4-generator-tests: done
-  D-5-proof-sample-blazorui-queries: done
-  D-6-proof-counter-commands: done
-  D-7-proof-tenants-ui-host-submodule: done
-  D-8-packaging-docs-guardrail: done
-  epic-D-retrospective: done
+  epic-1: backlog
+  1-1-canonical-domain-service-sdk-host: backlog
+  1-2-domain-query-handler-routing: backlog
+  1-3-generic-read-models-and-query-cursors: backlog
+  1-4-projection-and-domain-event-consumer-seams: backlog
+  1-5-domain-module-hosting-observability: backlog
+  1-6-sample-and-tenants-domain-centric-adoption: backlog
+  1-7-domainservice-packaging-and-guardrails: backlog
+  epic-1-retrospective: optional
 
-  # Added 2026-07-05 from Epic D retrospective follow-through.
-  7-5-rest-generator-hardening: done
-  7-6-query-metadata-propagation: ready-for-dev
+  epic-2: backlog
+  2-1-rest-contract-seam-for-command-and-query-messages: backlog
+  2-2-rest-api-generator-discovery-and-controller-emission: backlog
+  2-3-sample-external-api-host-proof: backlog
+  2-4-tenants-external-api-host-adoption: backlog
+  2-5-scoped-metadata-rich-projection-notifications: backlog
+  epic-2-retrospective: optional
 
-  # Added 2026-07-04 via sprint-change-proposal-2026-07-04 (architecture review remediation).
-  # Phased execution: Phase 0 (unblock) draws CPs across SEC-1/COR-1/OPS-1/TEST-1; see the proposal
-  # for the CP->epic mapping. Epics start 'backlog' until their first story file is created.
-  epic-SEC-1-trust-boundary-auth: backlog
-  epic-COR-1-append-pipeline-correctness: backlog
-  epic-COR-2-replay-dispatch-versioning: backlog
-  epic-PERF-1-snapshot-projection-cost: backlog
-  epic-REL-1-delivery-poison-handling: backlog
-  epic-OPS-1-admin-plane: backlog
-  epic-CFG-1-topology-deploy-hardening: backlog
-  epic-TEST-1-test-ci-recovery: in-progress
+  epic-3: backlog
+  3-1-re-tier-live-sidecar-tests-from-release-gate: backlog
+  3-2-harden-dapr-etag-timeout-for-integration-conditions: backlog
+  3-3-references-based-submodule-layout: backlog
+  3-4-aspire-security-resource-naming: backlog
+  3-5-debug-source-references-and-release-package-references: backlog
+  3-6-manifest-driven-release-packaging: backlog
+  3-7-shared-ci-cd-security-gates-and-supply-chain-backlog: backlog
+  epic-3-retrospective: optional
 
-  # Added 2026-07-05 from Epic D retrospective follow-through.
-  TEST-1-1-generated-api-smoke-preflight: ready-for-dev
-  epic-GDPR-1-aggregate-erasure: backlog
-  epic-IAM-1-admin-oidc-login: backlog
-  epic-KIT-1-aggregate-test-kit: backlog
+  epic-4: backlog
+  4-1-event-identity-and-duplicate-result-fidelity: backlog
+  4-2-resume-and-idempotency-integrity: backlog
+  4-3-deterministic-replay-dispatch-and-serialization: backlog
+  4-4-committed-event-publication-recovery: backlog
+  4-5-append-durability-race-evidence: backlog
+  4-6-global-position-sharding-spec-renegotiation: backlog
+  epic-4-retrospective: optional
+
+  epic-5: backlog
+  5-1-infrastructure-failure-cache-clear: backlog
+  5-2-admin-endpoint-authorization-and-tenant-filters: backlog
+  5-3-production-authentication-guards-and-secret-stripping: backlog
+  5-4-admin-surface-safety-hygiene: backlog
+  5-5-internal-and-domain-service-trust-boundary: backlog
+  5-6-runtime-topology-and-deploy-parity: backlog
+  epic-5-retrospective: optional
+
+  epic-6: backlog
+  6-1-folded-snapshot-frozen-spec: backlog
+  6-2-folded-snapshot-implementation: backlog
+  6-3-projection-delivery-cost-and-sequence-guard-spec: backlog
+  6-4-projection-cost-and-sequence-guard-implementation: backlog
+  6-5-event-versioning-and-upcasting-spec: backlog
+  6-6-event-versioning-and-upcasting-implementation: backlog
+  epic-6-retrospective: optional
+
+  epic-7: backlog
+  7-1-delivery-contract-and-poison-handling: backlog
+  7-2-admin-claims-audit-and-honest-deferred-operations: backlog
+  7-3-production-deployment-hardening: backlog
+  7-4-integration-test-recovery-and-state-evidence: backlog
+  7-5-track-future-capability-backlog: backlog
+  epic-7-retrospective: optional
 
 action_items:
   - epic: D

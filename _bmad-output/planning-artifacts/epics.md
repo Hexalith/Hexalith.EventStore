@@ -20,6 +20,7 @@ inputDocuments:
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-02.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-04.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05-query-metadata-propagation.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05-query-metadata-sequencing.md
 ---
 
 # eventstore - Epic Breakdown
@@ -33,6 +34,18 @@ The current Phase 4 planning baseline is `_bmad-output/planning-artifacts/prd.md
 ## Implementation Readiness Execution Gates
 
 The 2026-07-05 implementation readiness assessment found complete FR traceability but identified story-quality gates that must be closed before broad Phase 4 implementation starts.
+
+### Query Metadata Sequencing Gate
+
+The platform-owned query metadata propagation contract must be implemented by the earliest stories that depend on it, not by a later Epic 7 story.
+
+- Story 1.2 owns platform result metadata propagation, gateway merge rules, freshness policy enforcement, and typed client metadata exposure.
+- Story 1.3 owns authoritative paging metadata, cursor opacity, invalid cursor handling, and read-model/end-state evidence for paging.
+- Story 2.2 owns generated REST query metadata headers, `304` behavior, and safe problem-detail behavior.
+- Story 2.4 owns Tenants API/UI proof against the real platform query metadata path.
+- Story 7.5 remains backlog-artifact work only.
+
+Story 7.6 has been deleted; its acceptance criteria are redistributed into the owning earlier stories above.
 
 ### Coordinated-Slice Gates For Oversized Stories
 
@@ -405,10 +418,23 @@ So that my domain can expose query behavior without hosting a custom projection/
 **Then** it invokes the target domain service `/query` endpoint
 **And** it falls back to the projection-actor router when no handler is declared.
 
+**Given** a domain query handler or projection actor returns query metadata
+**When** the result crosses `QueryResult`, `QueryRouterResult`, `SubmitQueryResult`, `SubmitQueryResponse`, and `EventStoreQueryResult`
+**Then** `QueryResponseMetadata` is preserved additively through each platform type
+**And** the gateway no longer drops domain-produced freshness, projection version, paging, warning, or degraded-state metadata.
+
+**Given** the gateway creates HTTP response metadata
+**When** domain metadata and gateway metadata both exist
+**Then** metadata is merged by explicit rules: domain/projection evidence wins for freshness, projection version, paging, degraded state, and warnings; gateway ETag header value wins for the HTTP validator; gateway fills `ServedAt` only when absent; `IsNotModified` is set by the HTTP outcome.
+
+**Given** freshness metadata is unavailable
+**When** a query response is returned or `RequireFresh` / `MaxStaleness` is requested
+**Then** freshness is represented as unknown, not current
+**And** freshness-dependent requests fail closed according to the existing `query_projection_stale` taxonomy instead of silently treating unknown freshness as current.
+
 **Given** query routing is tested
 **When** focused unit tests execute
-**Then** domain-side dispatch, operational metadata capture, handler-aware routing, fallback behavior, and `QueryResponseMetadata` propagation are verified
-**And** the implementation remains backward compatible with projection-actor query routing.
+**Then** domain-side dispatch, operational metadata capture, handler-aware routing, fallback behavior, metadata propagation, gateway merge behavior, typed client metadata exposure, and backward-compatible projection-actor routing are verified.
 
 ### Story 1.3: Generic Read Models And Query Cursors
 
@@ -434,7 +460,13 @@ So that I can implement domain-specific read behavior without reimplementing DAP
 **When** it creates a cursor with `IQueryCursorCodec` and `QueryCursorScope`
 **Then** the cursor is protected with a caller-supplied Data Protection purpose
 **And** decoding fails safely for wrong scope, wrong query type, malformed payload, tampering, oversize payload, or key rotation
-**And** successful paged responses can return `QueryPagingMetadata` with effective page size, offset or next cursor, total count when known, and has-more evidence without exposing cursor internals.
+**And** successful paged responses can return authoritative `QueryPagingMetadata` with effective page size, offset or next cursor, total count when known, and has-more evidence without exposing cursor internals
+**And** request paging echoed by the gateway is not treated as proof of total count, next cursor, or page completeness unless the query handler or projection produced that metadata.
+
+**Given** cursor or paging inputs are invalid, malformed, wrong-scope, oversized, tampered, or expired after key rotation
+**When** the query path rejects them
+**Then** the response uses support-safe validation/problem details
+**And** tests prove cursors remain opaque and are not parsed, logged, displayed as support text, or treated as ordering proof.
 
 **Given** the read-model and cursor seams are adopted by a non-trivial domain
 **When** existing Tenants-style read-model and cursor behavior is migrated
@@ -615,6 +647,11 @@ So that external applications get OpenAPI-visible endpoints without hand-written
 **Then** the controller delegates to `IEventStoreGatewayClient.SubmitQueryAsync`
 **And** it maps success, `304`, ETag, freshness, projection version, served-at, degraded/warning state, paging metadata, not-found, forbidden, and validation outcomes consistently with gateway query semantics.
 
+**Given** a generated external API action receives `EventStoreQueryResult.Metadata`
+**When** it returns `200` or `304`
+**Then** it forwards canonical support-safe headers for ETag, projection version, served-at, stale state, degraded state, warning codes, and bounded paging evidence only when values are present and bounded
+**And** no generated controller relies on payload-specific fields to decide projection-confirmed state.
+
 **Given** generated command actions execute
 **When** a request reaches the generated controller
 **Then** the controller generates ULID message/correlation identifiers where required and delegates to `IEventStoreGatewayClient.SubmitCommandAsync`
@@ -624,6 +661,10 @@ So that external applications get OpenAPI-visible endpoints without hand-written
 **When** generator tests run through `CSharpGeneratorDriver`
 **Then** diagnostics cover duplicate routes, unsupported route metadata, missing command contract members, and invalid tenant-source usage
 **And** generated code follows file-scoped namespaces, nullable, `ConfigureAwait(false)`, and warnings-as-errors rules.
+
+**Given** generator tests validate query metadata behavior
+**When** generated query actions are exercised
+**Then** tests cover real gateway-client metadata, `304`, header omission for absent metadata, safe problem details, and no exposure of cursor or ETag internals as support text.
 
 ### Story 2.3: Sample External API Host Proof
 
@@ -683,7 +724,8 @@ So that external applications can use stable tenant APIs while Tenants UI stays 
 **Given** Tenants external API adoption is validated
 **When** submodule unit and integration tests run in their appropriate lanes
 **Then** the generated REST surface preserves existing external behavior
-**And** freshness, projection-version, ETag, and paging evidence is backed by the real platform query metadata path rather than only mocked gateway-client metadata
+**And** freshness, projection-version, ETag, and paging evidence is backed by the real platform query metadata path implemented by Stories 1.2, 1.3, and 2.2 rather than by mocked gateway-client metadata
+**And** Tenants UI and generated API evidence must not rely on ad hoc payload fields or missing freshness metadata to claim projection-confirmed success
 **And** any CI-gated DAPR/Aspire blockers are documented with exact commands and failure reasons.
 
 ### Story 2.5: Scoped Metadata-Rich Projection Notifications
@@ -1637,57 +1679,3 @@ So that GDPR erasure, admin OIDC, aggregate testing, and generator hardening are
 **When** REST generator hardening is prepared
 **Then** `_bmad-output/planning-artifacts/backlog/rest-generator-hardening.md` links the dedicated hardening story or backlog item that pulls from `_bmad-output/implementation-artifacts/deferred-work.md`
 **And** it explicitly covers unsupported contract-shape diagnostics, duplicate command JSON-name diagnostics, invalid `RestQueryBinding` source diagnostics, empty constant binding diagnostics, route-template constraint behavior, case-insensitive route/JSON-name matching, referenced-contract incrementality, and generated external API error-semantics coverage.
-
-**Given** generated query freshness metadata remains partial
-**When** downstream stories depend on stale/current state, projection version, ETag, or paging evidence
-**Then** Story 7.6 must remain scheduled and must define and implement the platform-owned query metadata propagation contract before those downstream stories rely on it
-**And** UI or generated REST acceptance criteria must not rely on ad hoc payload fields for projection-confirmed state.
-
-### Story 7.6: Query Metadata Propagation Contract And Gateway Evidence
-
-**Requirements covered:** FR4, FR5, FR6, FR12, FR15, FR34, NFR8, NFR12, NFR14, NFR15, NFR16
-
-As a platform maintainer,
-I want query metadata to propagate through platform result and HTTP contracts,
-So that generated APIs, UI hosts, and operators can distinguish freshness, projection version, cache validation, and paging evidence without ad hoc payload fields.
-
-**Acceptance Criteria:**
-
-**Given** a domain query handler or projection actor returns query metadata
-**When** the result crosses `QueryResult`, `QueryRouterResult`, `SubmitQueryResult`, `SubmitQueryResponse`, and `EventStoreQueryResult`
-**Then** `QueryResponseMetadata` is preserved additively through each platform type
-**And** the gateway no longer drops domain-produced freshness, projection version, paging, warning, or degraded-state metadata.
-
-**Given** the gateway creates HTTP response metadata
-**When** domain metadata and gateway metadata both exist
-**Then** metadata is merged by explicit rules: domain/projection evidence wins for freshness, projection version, paging, degraded state, and warnings; gateway ETag header value wins for the HTTP validator; gateway fills `ServedAt` only when absent; `IsNotModified` is set by the HTTP outcome.
-
-**Given** freshness metadata is unavailable
-**When** a query response is returned
-**Then** the platform represents freshness as unknown, not current
-**And** UI/generated REST callers must not treat missing `IsStale` as projection-confirmed freshness.
-
-**Given** projection version metadata is unavailable
-**When** an ETag exists
-**Then** the platform may expose the ETag as cache metadata only
-**And** it must not label the ETag as `ProjectionVersion` unless the metadata producer explicitly supplies that value or the story documents that equivalence for the projection type.
-
-**Given** a query returns paged data
-**When** the handler can authoritatively describe the page
-**Then** `QueryPagingMetadata` includes effective page size, offset or next cursor, total count when known, and whether another page exists
-**And** cursors remain opaque and are not parsed, logged, displayed as support text, or treated as ordering proof.
-
-**Given** a generated external API action receives `EventStoreQueryResult.Metadata`
-**When** it returns `200` or `304`
-**Then** it forwards canonical support-safe headers for ETag, projection version, served-at, stale state, degraded state, warning codes, and bounded paging evidence
-**And** no generated controller relies on payload-specific fields to decide projection-confirmed state.
-
-**Given** query freshness policy requests `RequireFresh` or `MaxStaleness`
-**When** authoritative freshness metadata is present
-**Then** the gateway can enforce the policy consistently
-**And** when freshness is unknown it fails closed according to the existing `query_projection_stale` taxonomy rather than silently treating the response as current.
-
-**Given** the implementation is validated
-**When** focused tests run
-**Then** tests prove real domain-handler metadata reaches the gateway response, generated external API headers, `304` behavior, client typed results, invalid cursor/problem details, and paging evidence
-**And** higher-tier proof uses persisted read-model/end-state evidence where applicable, not only mocked gateway metadata.
