@@ -30,6 +30,49 @@ This document provides the complete epic and story breakdown for eventstore, dec
 
 The current Phase 4 planning baseline is `_bmad-output/planning-artifacts/prd.md`, `_bmad-output/planning-artifacts/architecture.md`, `_bmad-output/planning-artifacts/ux.md`, and the approved sprint change proposals in `_bmad-output/planning-artifacts`. The PRD owns FR/NFR truth, the architecture artifact owns implementation invariants and decision gates, the UX handoff owns UI governance and journeys, and this epics document owns implementation slicing and story acceptance criteria.
 
+## Implementation Readiness Execution Gates
+
+The 2026-07-05 implementation readiness assessment found complete FR traceability but identified story-quality gates that must be closed before broad Phase 4 implementation starts.
+
+### Coordinated-Slice Gates For Oversized Stories
+
+The stories below may proceed in one of two ways:
+
+- Split the story into the named implementation slices before creating implementation story files.
+- Keep the story as a coordinated slice only if the named owner, review boundary, and validation commands are carried into the implementation story file.
+
+| Story | Required slices or coordinated boundary | Owner | Required validation commands |
+| --- | --- | --- | --- |
+| 1.3 | Read-model store/write policy; testing fake/conflict semantics; protected cursor codec. Tenants adoption moves to 1.6. | Amelia (Developer) with Murat (Test Architect) review | `dotnet build Hexalith.EventStore.slnx --configuration Release`; `dotnet test tests/Hexalith.EventStore.Client.Tests/`; `dotnet test tests/Hexalith.EventStore.Testing.Tests/`; `dotnet test tests/Hexalith.EventStore.DomainService.Tests/` |
+| 1.6 | Sample adoption; Tenants query/read-model adoption; Tenants projection/event-consumer adoption; governance guardrails. | Amelia (Developer) with Winston (Architect) review | `dotnet build Hexalith.EventStore.slnx --configuration Release`; `dotnet test tests/Hexalith.EventStore.Sample.Tests/`; `dotnet test tests/Hexalith.EventStore.DomainService.Tests/`; `dotnet test references/Hexalith.Tenants/tests/Hexalith.Tenants.Server.Tests/`; `dotnet test references/Hexalith.Tenants/tests/Hexalith.Tenants.Client.Tests/` |
+| 2.4 | Tenants REST contract metadata; external Tenants API host; Tenants UI client-library alignment; compatibility validation. | Amelia (Developer) with Sally (UX Designer) review for UI evidence | `dotnet build Hexalith.EventStore.slnx --configuration Release`; `dotnet test tests/Hexalith.EventStore.RestApi.Generators.Tests/`; `dotnet test references/Hexalith.Tenants/tests/Hexalith.Tenants.Contracts.Tests/`; `dotnet test references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/` |
+| 3.7 | Shared workflow caller migration; workflow reference/cache validation; supply-chain publishing backlog. | Paige (Technical Writer) and Amelia (Developer) | `dotnet build Hexalith.EventStore.slnx --configuration Release`; `rg -n "Hexalith.Builds/.+@" .github references -g "*.yml" -g "*.yaml"`; `rg -n "NUGET_API_KEY|trusted publishing|attestation|SBOM|provenance" docs .github _bmad-output -g "*.md" -g "*.yml" -g "*.yaml"` |
+| 5.6 | AppHost component loading parity; production DAPR component/ACL parity; topology drift tests; deployment documentation alignment. | Winston (Architect) with Amelia (Developer) | `dotnet build Hexalith.EventStore.slnx --configuration Release`; `dotnet test tests/Hexalith.EventStore.AppHost.Tests/`; `dotnet test tests/Hexalith.EventStore.IntegrationTests/` in the dedicated integration lane |
+| 7.2 | Claims normalization; audit logging; honest deferred admin operations; shared typed-client reduction. | Amelia (Developer) with Sally (UX Designer) review for UI honesty | `dotnet build Hexalith.EventStore.slnx --configuration Release`; `dotnet test tests/Hexalith.EventStore.Admin.Server.Tests/`; `dotnet test tests/Hexalith.EventStore.Admin.UI.Tests/`; `dotnet test tests/Hexalith.EventStore.Admin.Cli.Tests/` |
+| 7.3 | Secret-store deployment configuration; readiness/app-health checks; DAPR resiliency policy; immutable image tags. | Winston (Architect) with Paige (Technical Writer) | `dotnet build Hexalith.EventStore.slnx --configuration Release`; `dotnet test tests/Hexalith.EventStore.AppHost.Tests/`; `rg -n "secretKeyRef|app-health|resiliency|immutable|git-SHA" deploy docs _bmad-output src/Hexalith.EventStore.AppHost/DaprComponents samples/dapr-components -g "*.yaml" -g "*.yml" -g "*.md"` |
+| 7.4 | Integration CI lane recovery; persisted state evidence assertions; fake/integration reclassification; perf/advisory workflow hygiene. | Murat (Test Architect) with Amelia (Developer) | `dotnet build Hexalith.EventStore.slnx --configuration Release`; `dotnet test tests/Hexalith.EventStore.Testing.Integration.Tests/`; `dotnet test tests/Hexalith.EventStore.IntegrationTests/` in the dedicated integration lane |
+
+### Spec-Gated Story Outputs
+
+Epic 6 implementation stories are blocked until their paired specs exist and carry approval evidence.
+
+| Spec story | Required output path | Dependent implementation story |
+| --- | --- | --- |
+| 6.1 | `_bmad-output/implementation-artifacts/spec-folded-snapshot.md` | 6.2 |
+| 6.3 | `_bmad-output/implementation-artifacts/spec-projection-cost-sequence-guard.md` | 6.4 |
+| 6.5 | `_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md` | 6.6 |
+
+Approval evidence must include approver, date, accepted scope, rejected alternatives, open decisions, and explicit authorization for the dependent implementation story to start.
+
+### Backlog Artifact Outputs
+
+Story 7.5 is a planning/backlog artifact story, not an implementation story. It completes only when these exact artifacts exist:
+
+- `_bmad-output/planning-artifacts/backlog/gdpr-1-aggregate-erasure.md`
+- `_bmad-output/planning-artifacts/backlog/iam-1-admin-oidc-login.md`
+- `_bmad-output/planning-artifacts/backlog/kit-1-aggregate-test-kit.md`
+- `_bmad-output/planning-artifacts/backlog/rest-generator-hardening.md`
+
 ## Requirements Inventory
 
 ### Functional Requirements
@@ -1111,10 +1154,20 @@ So that cross-tenant event and command data is not exposed through anonymous or 
 **Then** the count is clamped to a safe maximum
 **And** tests cover both default and excessive-count behavior.
 
-**Given** admin write or sandbox endpoints accept request bodies
+**Given** admin write or sandbox JSON endpoints accept request bodies, including stream sandbox, projection reset/replay, consistency check, tenant command, dead-letter action, storage snapshot-policy, backup export/admission, and crypto-shredding workflow bodies
 **When** request-size limits are applied
-**Then** oversized requests fail safely
-**And** limits are tested or documented.
+**Then** the default maximum request body size is `1_048_576` bytes and oversized requests fail safely with a bounded `413` or safe ProblemDetails response before DAPR or admin command services are invoked
+**And** focused Admin.Server.Host or Admin.Server tests cover exact-limit accepted behavior, excessive-request rejection, and no upstream service invocation for at least one representative JSON write endpoint and the stream sandbox endpoint.
+
+**Given** `AdminBackupsController.ImportStream` accepts exported stream content
+**When** its endpoint-specific import limit is applied
+**Then** the maximum request body size is `10 * 1024 * 1024` bytes
+**And** focused tests cover accepted content at or below the limit, rejection above the limit, and bounded support-safe error output.
+
+**Given** an admin endpoint has no request body or an operation remains intentionally unavailable
+**When** request-size applicability is reviewed
+**Then** the implementation story records the exact endpoint, body type, and reason the limit is not applicable
+**And** documentation-only closure is forbidden unless an owner explicitly records a deferred implementation exception.
 
 ### Story 5.3: Production Authentication Guards And Secret Stripping
 
@@ -1259,6 +1312,11 @@ So that snapshot cost is bounded without changing recovery semantics unexpectedl
 **Then** it documents broker/snapshot plaintext boundary, retention implications, and crypto-shred considerations
 **And** approval is recorded before implementation starts.
 
+**Given** Story 6.1 is completed
+**When** the folded snapshot spec is produced
+**Then** the exact output path is `_bmad-output/implementation-artifacts/spec-folded-snapshot.md`
+**And** the artifact records approver, approval date, accepted scope, rejected alternatives, open decisions, migration posture, and explicit authorization for Story 6.2 to start.
+
 ### Story 6.2: Folded Snapshot Implementation
 
 **Requirements covered:** FR33
@@ -1273,6 +1331,11 @@ So that snapshot payload size stays bounded as event streams grow.
 **When** the snapshot is written
 **Then** the persisted snapshot contains folded state rather than nested full event history
 **And** snapshot keying remains compatible with the approved spec.
+
+**Given** Story 6.2 implementation starts
+**When** implementation preflight runs
+**Then** `_bmad-output/implementation-artifacts/spec-folded-snapshot.md` exists and contains approval evidence
+**And** implementation tasks cite the approved spec sections they satisfy.
 
 **Given** an aggregate is rehydrated from events and snapshots
 **When** a folded snapshot exists
@@ -1304,6 +1367,11 @@ So that projection optimizations do not introduce out-of-order state regressions
 **Then** it defines how stale or out-of-order source sequence writes are rejected or ignored
 **And** it documents actor-id and domain scoping assumptions.
 
+**Given** Story 6.3 is completed
+**When** the projection cost and sequence guard spec is produced
+**Then** the exact output path is `_bmad-output/implementation-artifacts/spec-projection-cost-sequence-guard.md`
+**And** the artifact records approver, approval date, accepted scope, rejected alternatives, open decisions, and explicit authorization for Story 6.4 to start.
+
 ### Story 6.4: Projection Cost And Sequence Guard Implementation
 
 **Requirements covered:** FR33
@@ -1318,6 +1386,11 @@ So that projection updates remain correct and cheaper on long streams.
 **When** projection delivery runs
 **Then** it can short-circuit after reading metadata
 **And** no unnecessary full-stream replay is performed.
+
+**Given** Story 6.4 implementation starts
+**When** implementation preflight runs
+**Then** `_bmad-output/implementation-artifacts/spec-projection-cost-sequence-guard.md` exists and contains approval evidence
+**And** implementation tasks cite the approved spec sections they satisfy.
 
 **Given** a projection checkpoint trails the stream head
 **When** incremental projection delivery is available
@@ -1358,6 +1431,11 @@ So that domains can change event payloads without breaking replay.
 **Then** cancellation-token contract changes are included
 **And** the breaking-change or compatibility impact is documented.
 
+**Given** Story 6.5 is completed
+**When** the event versioning and upcasting spec is produced
+**Then** the exact output path is `_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md`
+**And** the artifact records approver, approval date, accepted scope, rejected alternatives, open decisions, public contract impact, and explicit authorization for Story 6.6 to start.
+
 ### Story 6.6: Event Versioning And Upcasting Implementation
 
 **Requirements covered:** FR33
@@ -1372,6 +1450,11 @@ So that old events can be safely upcast and processed by current domain code.
 **When** event metadata is written
 **Then** metadata includes the kebab event contract type and explicit payload version
 **And** CLR-name based resolution remains available only as documented legacy fallback.
+
+**Given** Story 6.6 implementation starts
+**When** implementation preflight runs
+**Then** `_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md` exists and contains approval evidence
+**And** implementation tasks cite the approved spec sections they satisfy.
 
 **Given** replay reads an older payload version
 **When** an applicable upcaster chain is registered
@@ -1515,6 +1598,15 @@ So that high-risk tenant, DAPR, and topology behavior is not validated only by l
 
 **Requirements covered:** FR35
 
+**Classification:** Planning/backlog artifact. This story does not authorize implementation of GDPR erasure/tombstoning, Admin interactive OIDC login, aggregate test kit, or REST generator hardening. It completes by producing exact backlog artifacts with scope, non-goals, dependencies, risks, and validation expectations.
+
+**Required outputs:**
+
+- `_bmad-output/planning-artifacts/backlog/gdpr-1-aggregate-erasure.md`
+- `_bmad-output/planning-artifacts/backlog/iam-1-admin-oidc-login.md`
+- `_bmad-output/planning-artifacts/backlog/kit-1-aggregate-test-kit.md`
+- `_bmad-output/planning-artifacts/backlog/rest-generator-hardening.md`
+
 As a product owner,
 I want large deferred capabilities tracked as explicit backlog epics,
 So that GDPR erasure, admin OIDC, aggregate testing, and generator hardening are not hidden inside unrelated remediation work.
@@ -1523,27 +1615,27 @@ So that GDPR erasure, admin OIDC, aggregate testing, and generator hardening are
 
 **Given** GDPR aggregate erasure and tombstoning are deferred
 **When** backlog artifacts are updated
-**Then** GDPR-1 records crypto-shred, tombstone, broker, snapshot, retention, and verification scope
+**Then** `_bmad-output/planning-artifacts/backlog/gdpr-1-aggregate-erasure.md` records crypto-shred, tombstone, broker, snapshot, retention, and verification scope
 **And** it is not implemented opportunistically inside unrelated cleanup stories.
 
 **Given** Admin interactive OIDC login is deferred
 **When** backlog artifacts are updated
-**Then** IAM-1 records authorization-code with PKCE, forwarded end-user tokens, and removal of ROPC/self-mint service identity
+**Then** `_bmad-output/planning-artifacts/backlog/iam-1-admin-oidc-login.md` records authorization-code with PKCE, forwarded end-user tokens, and removal of ROPC/self-mint service identity
 **And** it remains separate from immediate secret-stripping/auth-guard fixes.
 
 **Given** an aggregate test kit is deferred
 **When** backlog artifacts are updated
-**Then** KIT-1 records `Given(events).When(command).Then(events)` style fixtures, replay determinism, Apply idempotency, and package dependency boundaries
+**Then** `_bmad-output/planning-artifacts/backlog/kit-1-aggregate-test-kit.md` records `Given(events).When(command).Then(events)` style fixtures, replay determinism, Apply idempotency, and package dependency boundaries
 **And** it tracks the split needed for testing packages to avoid unnecessary Server dependencies.
 
 **Given** REST generator hardening remains after Epic 2
 **When** backlog artifacts are updated
-**Then** generator incrementality, generated-controller authz checks, and deferred-work items are traceable
+**Then** `_bmad-output/planning-artifacts/backlog/rest-generator-hardening.md` records generator incrementality, generated-controller authz checks, and deferred-work items
 **And** they are not lost when Epic D proof stories complete.
 
 **Given** REST generator retrospective action items are recorded
 **When** REST generator hardening is prepared
-**Then** create a dedicated hardening story or backlog item that pulls from `_bmad-output/implementation-artifacts/deferred-work.md`
+**Then** `_bmad-output/planning-artifacts/backlog/rest-generator-hardening.md` links the dedicated hardening story or backlog item that pulls from `_bmad-output/implementation-artifacts/deferred-work.md`
 **And** it explicitly covers unsupported contract-shape diagnostics, duplicate command JSON-name diagnostics, invalid `RestQueryBinding` source diagnostics, empty constant binding diagnostics, route-template constraint behavior, case-insensitive route/JSON-name matching, referenced-contract incrementality, and generated external API error-semantics coverage.
 
 **Given** generated query freshness metadata remains partial

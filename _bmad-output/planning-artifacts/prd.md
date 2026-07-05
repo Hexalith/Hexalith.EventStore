@@ -346,15 +346,19 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 
 ### 11.3 Required Follow-On Readiness Work
 
-The PRD blocker is closed by this artifact, but the approved readiness-recovery proposal still requires:
+The PRD, architecture, UX, and epics artifacts now exist under `_bmad-output/planning-artifacts` and reference each other. The remaining readiness gate is verification: re-run implementation readiness after the story-quality corrections below are reviewed.
 
-- `architecture.md` under `_bmad-output/planning-artifacts`, including invariants and decision gates for folded snapshots, projection cost/sequence guards, event versioning/upcasting, cancellation seams, and global-position sharding.
-- `ux.md` under `_bmad-output/planning-artifacts`, including Sample UI accepted-submission behavior, Tenants UI projection-confirmed states, Admin unavailable-operation behavior, support-safe states, accessibility/localization evidence, and FrontComposer/Fluent UI V5 governance.
-- `epics.md` updates so it references this PRD plus the architecture and UX artifacts instead of carrying all planning roles itself.
-- Story splits or explicit coordinated-slice acceptance for Stories 1.3, 1.6, 2.4, 3.7, 5.6, 7.2, 7.3, and 7.4.
-- Story 5.2 acceptance tightening for request-size limits.
-- Stories 6.1, 6.3, and 6.5 named spec output paths and approval evidence before dependent implementation starts.
-- Story 7.5 reclassification as backlog/planning work or exact artifact deliverables.
+- `epics.md` contains coordinated-slice gates for Stories 1.3, 1.6, 2.4, 3.7, 5.6, 7.2, 7.3, and 7.4, including owners, review boundaries, and validation commands. Implementation story files must either split those stories or carry the coordinated-slice gate forward.
+- Story 5.2 now requires concrete request-size limits: `1_048_576` bytes for representative admin JSON write/sandbox bodies and `10 * 1024 * 1024` bytes for `AdminBackupsController.ImportStream`, with bounded rejection tests and no upstream service invocation on excessive requests.
+- Stories 6.1, 6.3, and 6.5 now name required spec output paths and approval evidence before Stories 6.2, 6.4, and 6.6 can start:
+  - `_bmad-output/implementation-artifacts/spec-folded-snapshot.md`
+  - `_bmad-output/implementation-artifacts/spec-projection-cost-sequence-guard.md`
+  - `_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md`
+- Story 7.5 is reclassified as a planning/backlog artifact story with exact deliverables:
+  - `_bmad-output/planning-artifacts/backlog/gdpr-1-aggregate-erasure.md`
+  - `_bmad-output/planning-artifacts/backlog/iam-1-admin-oidc-login.md`
+  - `_bmad-output/planning-artifacts/backlog/kit-1-aggregate-test-kit.md`
+  - `_bmad-output/planning-artifacts/backlog/rest-generator-hardening.md`
 
 ## 12. Open Questions
 
