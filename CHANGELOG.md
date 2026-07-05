@@ -1,3 +1,10 @@
+# [3.37.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.36.0...v3.37.0) (2026-07-05)
+
+
+### Features
+
+* **planning:** Update PRD and epics for Phase 4 readiness, add backlog artifacts for GDPR, OIDC login, aggregate test kit, and REST generator hardening ([46ba4a2](https://github.com/Hexalith/Hexalith.EventStore/commit/46ba4a24fed059ca3dec3920de9f1502aed61f64))
+
 # [3.36.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.35.0...v3.36.0) (2026-07-05)
 
 
