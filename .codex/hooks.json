@@ -5,9 +5,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "env PROJECT_ROOT=/home/administrator/projects/hexalith/eventstore /home/administrator/projects/hexalith/eventstore/.agents/skills/bmad-story-automator/scripts/story-automator stop-hook",
-            "timeout": 10,
-            "statusMessage": "Checking story automator state"
+            "command": "python3 /home/administrator/projects/hexalith/eventstore/.bmad-loop/bmad_loop_hook.py Stop"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /home/administrator/projects/hexalith/eventstore/.bmad-loop/bmad_loop_hook.py SessionStart"
           }
         ]
       }

@@ -466,3 +466,5 @@ _bmad-output/implementation-artifacts/*-current-review.diff
 _bmad-output/implementation-artifacts/*-fresh-review.diff
 
 .fake
+.bmad-loop/runs/
+.bmad-loop/cache/
