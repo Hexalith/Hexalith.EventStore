@@ -47,12 +47,30 @@ public static class EventStoreDomainEventsServiceCollectionExtensions {
 
         IReadOnlyDictionary<string, Type> registry = BuildEventTypeRegistry(eventContractsAssembly);
 
+        services.TryAddSingleton<IEventStoreDomainEventMarkerStore, InMemoryEventStoreDomainEventMarkerStore>();
         services.TryAddSingleton(sp => new EventStoreDomainEventProcessor(
             sp.GetRequiredService<IServiceScopeFactory>(),
             registry,
+            sp.GetRequiredService<IEventStoreDomainEventMarkerStore>(),
             sp.GetRequiredService<ILogger<EventStoreDomainEventProcessor>>(),
             sp.GetRequiredService<IOptions<EventStoreDomainEventsOptions>>().Value.PayloadAggregateIdPropertyName));
 
+        return services;
+    }
+
+    /// <summary>
+    /// Replaces the default in-memory consumed-message marker store with the DAPR state-store backed marker store.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The service collection for chaining.</returns>
+    /// <remarks>
+    /// Use this only when the consuming service's DAPR sidecar has access to the configured marker state
+    /// store. The default registration stays in-memory so generic consumers do not implicitly require
+    /// topology/state-store changes.
+    /// </remarks>
+    public static IServiceCollection AddDaprEventStoreDomainEventMarkerStore(this IServiceCollection services) {
+        ArgumentNullException.ThrowIfNull(services);
+        services.Replace(ServiceDescriptor.Singleton<IEventStoreDomainEventMarkerStore, DaprEventStoreDomainEventMarkerStore>());
         return services;
     }
 
@@ -82,8 +100,10 @@ public static class EventStoreDomainEventsServiceCollectionExtensions {
     }
 
     private static IReadOnlyDictionary<string, Type> BuildEventTypeRegistry(Assembly assembly)
-        => assembly
-            .GetTypes()
+        => GetLoadableTypes(assembly)
             .Where(t => t is { IsClass: true, IsAbstract: false } && typeof(IEventPayload).IsAssignableFrom(t))
             .ToDictionary(t => t.FullName!, t => t, StringComparer.Ordinal);
+
+    private static IEnumerable<Type> GetLoadableTypes(Assembly assembly)
+        => assembly.GetTypes();
 }

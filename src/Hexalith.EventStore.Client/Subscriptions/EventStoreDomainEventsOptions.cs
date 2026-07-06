@@ -18,6 +18,12 @@ public class EventStoreDomainEventsOptions {
     /// <summary>The HTTP route the subscription endpoint is mapped to.</summary>
     public string SubscriptionRoute { get; set; } = "/domain-events";
 
+    /// <summary>The DAPR state-store component used when the durable consumed-message marker store is explicitly registered.</summary>
+    public string MarkerStateStoreName { get; set; } = "statestore";
+
+    /// <summary>The key prefix used by the DAPR marker store before the topic, route, and EventStore message ID scope.</summary>
+    public string MarkerKeyPrefix { get; set; } = "eventstore:domain-events:markers:";
+
     /// <summary>
     /// When set, the processor reflects a payload property of this name and rejects the event when its
     /// value does not equal the envelope's <see cref="EventStoreDomainEventEnvelope.AggregateId"/>

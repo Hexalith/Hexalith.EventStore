@@ -26,4 +26,9 @@ public enum EventStoreDomainEventProcessingResult {
 
     /// <summary>The event payload could not be deserialized into the resolved event type, or failed an integrity check.</summary>
     FailedInvalidPayload,
+
+    /// <summary>
+    /// The message marker is currently owned by another processing attempt; delivery should remain retryable.
+    /// </summary>
+    RetryableInProgress,
 }

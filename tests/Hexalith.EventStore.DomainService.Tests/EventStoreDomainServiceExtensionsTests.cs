@@ -15,6 +15,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
+using NSubstitute;
+
 using Shouldly;
 
 namespace Hexalith.EventStore.DomainService.Tests;
@@ -92,6 +94,30 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         _ = app.MapPost("/project", () => "bespoke projection handler");
 
         _ = app.UseEventStoreDomainService();
+
+        RouteEndpoint[] projectEndpoints = GetRouteEndpoints(app)
+            .Where(static endpoint => string.Equals(endpoint.RoutePattern.RawText, "/project", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+        projectEndpoints.Length.ShouldBe(1);
+        EndpointSupportsHttpMethod(projectEndpoints[0], HttpMethods.Post).ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// Proves projection-handler validation is tied to the SDK-owned <c>/project</c> route. If an app maps
+    /// its own POST <c>/project</c>, the SDK yields and does not fail the host for handlers it will not route.
+    /// </summary>
+    [Fact]
+    public void UseEventStoreDomainService_PreMappedProjectRouteSkipsProjectionHandlerValidation() {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.AddEventStoreDomainService();
+        IDomainProjectionHandler duplicateProjection = CreateDuplicateWidgetProjectionHandler();
+        _ = builder.Services.AddSingleton(duplicateProjection);
+        WebApplication app = builder.Build();
+
+        _ = app.MapPost("/project", () => "bespoke projection handler");
+
+        Should.NotThrow(() => app.UseEventStoreDomainService());
 
         RouteEndpoint[] projectEndpoints = GetRouteEndpoints(app)
             .Where(static endpoint => string.Equals(endpoint.RoutePattern.RawText, "/project", StringComparison.OrdinalIgnoreCase))
@@ -383,6 +409,25 @@ public sealed class EventStoreDomainServiceExtensionsTests {
     }
 
     /// <summary>
+    /// Proves duplicate projection domains fail during SDK endpoint setup, before first-match dispatch can
+    /// hide one of the handlers.
+    /// </summary>
+    [Fact]
+    public void MapEventStoreDomainService_ThrowsWhenDuplicateProjectionHandlersAreRegistered() {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.AddEventStoreDomainService();
+        IDomainProjectionHandler duplicateProjection = CreateDuplicateWidgetProjectionHandler();
+        _ = builder.Services.AddSingleton(duplicateProjection);
+        WebApplication app = builder.Build();
+
+        InvalidOperationException ex = Should.Throw<InvalidOperationException>(() => app.MapEventStoreDomainService());
+
+        ex.Message.ShouldContain("Duplicate projection handlers are registered");
+        ex.Message.ShouldContain(nameof(WidgetProjection));
+        ex.Message.ShouldContain("widget");
+    }
+
+    /// <summary>
     /// Proves the <c>/query</c> dispatch path routes to the handler matching the envelope's domain + query type.
     /// </summary>
     [Fact]
@@ -512,6 +557,27 @@ public sealed class EventStoreDomainServiceExtensionsTests {
     }
 
     /// <summary>
+    /// Proves the projection dispatcher validates duplicate domains on direct dispatch as well as endpoint
+    /// setup, avoiding accidental first-match behavior in tests and bespoke hosts.
+    /// </summary>
+    [Fact]
+    public void DomainProjectionDispatcher_Project_ThrowsWhenDuplicateHandlersMatch() {
+        var services = new ServiceCollection();
+        _ = services.AddSingleton<IDomainProjectionHandler, WidgetProjection>();
+        IDomainProjectionHandler duplicateProjection = CreateDuplicateWidgetProjectionHandler();
+        _ = services.AddSingleton(duplicateProjection);
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        ProjectionRequest request = new("test-tenant", "WIDGET", "widget-1", []);
+
+        InvalidOperationException ex = Should.Throw<InvalidOperationException>(
+            () => DomainProjectionDispatcher.Project(provider, request));
+
+        ex.Message.ShouldContain("Duplicate projection handlers are registered");
+        ex.Message.ShouldContain(nameof(WidgetProjection));
+    }
+
+    /// <summary>
     /// Proves the canonical domain-service endpoint set stays unchanged when the admission hook is added.
     /// </summary>
     [Fact]
@@ -541,6 +607,14 @@ public sealed class EventStoreDomainServiceExtensionsTests {
             SequenceNumber: 1,
             Timestamp: DateTimeOffset.UnixEpoch,
             CorrelationId: "test-corr");
+
+    private static IDomainProjectionHandler CreateDuplicateWidgetProjectionHandler() {
+        IDomainProjectionHandler handler = Substitute.For<IDomainProjectionHandler>();
+        handler.Domain.Returns("WIDGET");
+        handler.Project(Arg.Any<ProjectionRequest>()).Returns(
+            new ProjectionResponse("duplicate-widget", JsonSerializer.SerializeToElement(new { duplicate = true })));
+        return handler;
+    }
 
     private static void AssertRouteSupports(IEndpointRouteBuilder endpoints, string route, string httpMethod)
         => GetRouteEndpoints(endpoints)

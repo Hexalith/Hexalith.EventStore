@@ -26,4 +26,16 @@ public record EventStoreDomainEventEnvelope(
     DateTimeOffset Timestamp,
     string CorrelationId,
     string SerializationFormat,
-    byte[] Payload);
+    byte[] Payload) {
+    /// <summary>Gets the EventStore domain that published the event, when present in the publisher envelope.</summary>
+    public string? Domain { get; init; }
+
+    /// <summary>Gets the global stream position, when present in the publisher envelope.</summary>
+    public long? GlobalPosition { get; init; }
+
+    /// <summary>Gets the causation identifier, when present in the publisher envelope.</summary>
+    public string? CausationId { get; init; }
+
+    /// <summary>Gets the user identifier that produced the event, when present in the publisher envelope.</summary>
+    public string? UserId { get; init; }
+}

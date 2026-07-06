@@ -24,8 +24,8 @@ public static class DomainProjectionDispatcher {
         ArgumentNullException.ThrowIfNull(serviceProvider);
         ArgumentNullException.ThrowIfNull(request);
 
-        IDomainProjectionHandler? handler = serviceProvider
-            .GetServices<IDomainProjectionHandler>()
+        IDomainProjectionHandler? handler = DomainProjectionHandlerRouteValidator
+            .MaterializeAndValidate(serviceProvider.GetServices<IDomainProjectionHandler>())
             .FirstOrDefault(h => string.Equals(h.Domain, request.Domain, StringComparison.OrdinalIgnoreCase));
 
         return handler?.Project(request);

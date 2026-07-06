@@ -20,4 +20,16 @@ public record EventStoreDomainEventContext(
     string MessageId,
     long SequenceNumber,
     DateTimeOffset Timestamp,
-    string CorrelationId);
+    string CorrelationId) {
+    /// <summary>Gets the EventStore domain that published the event, when present.</summary>
+    public string? Domain { get; init; }
+
+    /// <summary>Gets the global stream position, when present.</summary>
+    public long? GlobalPosition { get; init; }
+
+    /// <summary>Gets the causation identifier, when present.</summary>
+    public string? CausationId { get; init; }
+
+    /// <summary>Gets the user identifier that produced the event, when present.</summary>
+    public string? UserId { get; init; }
+}

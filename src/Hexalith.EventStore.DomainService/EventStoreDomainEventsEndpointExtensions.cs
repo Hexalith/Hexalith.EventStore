@@ -38,23 +38,26 @@ public static class EventStoreDomainEventsEndpointExtensions {
                 EventStoreDomainEventProcessingResult result = await processor
                     .ProcessAsync(envelope, cancellationToken)
                     .ConfigureAwait(false);
-                return result switch {
-                    EventStoreDomainEventProcessingResult.Processed => Results.Ok(),
-                    EventStoreDomainEventProcessingResult.Duplicate => Results.Ok(),
-                    EventStoreDomainEventProcessingResult.SkippedUnknownEventType => Results.Ok(),
-                    EventStoreDomainEventProcessingResult.SkippedNoHandlers => Results.Ok(),
-                    EventStoreDomainEventProcessingResult.SkippedAggregateMismatch => Results.Ok(),
-                    // A payload that cannot be deserialized into its resolved event type is permanently
-                    // invalid: redelivering the identical bytes can never succeed. Returning a non-2xx
-                    // status makes DAPR treat the failure as transient and redeliver indefinitely, wedging
-                    // the subscription in a poison-message loop. Acknowledge it so DAPR drops it — the
-                    // processor has already logged the failure. Attach a dead-letter topic to the
-                    // subscription if these payloads must be retained for inspection.
-                    EventStoreDomainEventProcessingResult.FailedInvalidPayload => Results.Ok(),
-                    _ => Results.Problem(statusCode: StatusCodes.Status500InternalServerError),
-                };
+                return MapProcessingResult(result);
             }).WithTopic(options.PubSubName, options.TopicName);
 
         return endpoints;
     }
+
+    internal static IResult MapProcessingResult(EventStoreDomainEventProcessingResult result)
+        => result switch {
+            EventStoreDomainEventProcessingResult.Processed => Results.Ok(),
+            EventStoreDomainEventProcessingResult.Duplicate => Results.Ok(),
+            EventStoreDomainEventProcessingResult.SkippedUnknownEventType => Results.Ok(),
+            EventStoreDomainEventProcessingResult.SkippedNoHandlers => Results.Ok(),
+            EventStoreDomainEventProcessingResult.SkippedAggregateMismatch => Results.Ok(),
+            // A payload that cannot be deserialized into its resolved event type is permanently invalid:
+            // redelivering the identical bytes can never succeed. Returning a non-2xx status makes DAPR
+            // treat the failure as transient and redeliver indefinitely, wedging the subscription in a
+            // poison-message loop. Acknowledge it so DAPR drops it — the processor has already logged the
+            // failure. Attach a dead-letter topic to the subscription if these payloads must be retained.
+            EventStoreDomainEventProcessingResult.FailedInvalidPayload => Results.Ok(),
+            EventStoreDomainEventProcessingResult.RetryableInProgress => Results.Problem(statusCode: StatusCodes.Status500InternalServerError),
+            _ => Results.Problem(statusCode: StatusCodes.Status500InternalServerError),
+        };
 }

@@ -132,6 +132,10 @@ public static class EventStoreDomainServiceExtensions {
         ArgumentNullException.ThrowIfNull(app);
 
         ValidateDomainQueryHandlerRoutes(app.Services);
+        bool mapProjectionEndpoint = !IsRouteMapped(app, "/project", HttpMethods.Post);
+        if (mapProjectionEndpoint) {
+            ValidateDomainProjectionHandlerRoutes(app.Services);
+        }
 
         _ = app.MapGet("/", () => "Hexalith EventStore domain service");
 
@@ -154,7 +158,7 @@ public static class EventStoreDomainServiceExtensions {
         // IDomainProjectionHandler. Skipped when the app already mapped its own /project so a domain with
         // bespoke projection wire behavior (e.g. a Tier-3 fault injector) takes precedence — registering the
         // SDK route on top of an existing one would make the request matcher ambiguous.
-        if (!IsRouteMapped(app, "/project", HttpMethods.Post)) {
+        if (mapProjectionEndpoint) {
             _ = app.MapPost(
                 "/project",
                 (ProjectionRequest request, IServiceProvider serviceProvider) => {
@@ -257,12 +261,11 @@ public static class EventStoreDomainServiceExtensions {
         _ = DomainQueryHandlerRouteValidator.MaterializeAndValidate(scope.ServiceProvider.GetServices<IDomainQueryHandler>());
     }
 
-    private static IEnumerable<Type> GetLoadableTypes(Assembly assembly) {
-        try {
-            return assembly.GetTypes();
-        }
-        catch (ReflectionTypeLoadException ex) {
-            return ex.Types.OfType<Type>();
-        }
+    private static void ValidateDomainProjectionHandlerRoutes(IServiceProvider serviceProvider) {
+        using IServiceScope scope = serviceProvider.CreateScope();
+        _ = DomainProjectionHandlerRouteValidator.MaterializeAndValidate(scope.ServiceProvider.GetServices<IDomainProjectionHandler>());
     }
+
+    private static IEnumerable<Type> GetLoadableTypes(Assembly assembly)
+        => assembly.GetTypes();
 }

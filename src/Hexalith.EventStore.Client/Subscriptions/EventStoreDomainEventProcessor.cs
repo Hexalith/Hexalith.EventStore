@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Reflection;
 using System.Text.Json;
 
+using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Contracts.Events;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -16,27 +17,22 @@ namespace Hexalith.EventStore.Client.Subscriptions;
 /// </summary>
 /// <remarks>
 /// This is the platform generalization of the per-domain event processors domain modules previously
-/// hand-wrote (e.g. <c>TenantEventProcessor</c>). The deduplication set grows unboundedly; consuming
-/// services are typically restarted periodically. Production deployments that cannot tolerate that should
-/// front this with a bounded/external deduplication store.
+/// hand-wrote (e.g. <c>TenantEventProcessor</c>). Deduplication is delegated to
+/// <see cref="IEventStoreDomainEventMarkerStore"/> and keyed by the EventStore event message ID.
 /// </remarks>
 public class EventStoreDomainEventProcessor {
-    private enum ProcessingState {
-        InProgress,
-        Completed,
-    }
+    private readonly record struct PayloadIdPropertyKey(Type EventType, string PropertyName);
 
     private static readonly MethodInfo s_dispatchMethod = typeof(EventStoreDomainEventProcessor)
         .GetMethod(nameof(DispatchAsync), BindingFlags.NonPublic | BindingFlags.Static)!;
 
-    private static readonly ConcurrentDictionary<Type, PropertyInfo?> s_payloadIdProperties = new();
+    private static readonly ConcurrentDictionary<PayloadIdPropertyKey, PropertyInfo?> s_payloadIdProperties = new();
 
     private readonly IReadOnlyDictionary<string, Type> _eventTypeRegistry;
     private readonly ILogger<EventStoreDomainEventProcessor> _logger;
+    private readonly IEventStoreDomainEventMarkerStore _markerStore;
     private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly string? _payloadAggregateIdPropertyName;
-
-    private readonly ConcurrentDictionary<string, ProcessingState> _processedMessageIds = new(StringComparer.Ordinal);
 
     /// <summary>
     /// Initializes a new instance of the <see cref="EventStoreDomainEventProcessor"/> class.
@@ -52,12 +48,39 @@ public class EventStoreDomainEventProcessor {
         IServiceScopeFactory serviceScopeFactory,
         IReadOnlyDictionary<string, Type> eventTypeRegistry,
         ILogger<EventStoreDomainEventProcessor> logger,
+        string? payloadAggregateIdPropertyName = null)
+        : this(
+            serviceScopeFactory,
+            eventTypeRegistry,
+            new InMemoryEventStoreDomainEventMarkerStore(),
+            logger,
+            payloadAggregateIdPropertyName) {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="EventStoreDomainEventProcessor"/> class.
+    /// </summary>
+    /// <param name="serviceScopeFactory">The service scope factory for resolving event handlers.</param>
+    /// <param name="eventTypeRegistry">The mapping of event type names to their CLR types.</param>
+    /// <param name="markerStore">The marker store used for consumed-message idempotency.</param>
+    /// <param name="logger">The logger.</param>
+    /// <param name="payloadAggregateIdPropertyName">
+    /// Optional payload property name whose value must equal the envelope's
+    /// <see cref="EventStoreDomainEventEnvelope.AggregateId"/>; <see langword="null"/> disables the check.
+    /// </param>
+    public EventStoreDomainEventProcessor(
+        IServiceScopeFactory serviceScopeFactory,
+        IReadOnlyDictionary<string, Type> eventTypeRegistry,
+        IEventStoreDomainEventMarkerStore markerStore,
+        ILogger<EventStoreDomainEventProcessor> logger,
         string? payloadAggregateIdPropertyName = null) {
         ArgumentNullException.ThrowIfNull(serviceScopeFactory);
         ArgumentNullException.ThrowIfNull(eventTypeRegistry);
+        ArgumentNullException.ThrowIfNull(markerStore);
         ArgumentNullException.ThrowIfNull(logger);
         _serviceScopeFactory = serviceScopeFactory;
         _eventTypeRegistry = eventTypeRegistry;
+        _markerStore = markerStore;
         _logger = logger;
         _payloadAggregateIdPropertyName = string.IsNullOrWhiteSpace(payloadAggregateIdPropertyName)
             ? null
@@ -76,15 +99,46 @@ public class EventStoreDomainEventProcessor {
         CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(envelope);
 
-        if (!_processedMessageIds.TryAdd(envelope.MessageId, ProcessingState.InProgress)) {
-            _logger.LogDebug("Skipping duplicate event {MessageId}", envelope.MessageId);
-            return EventStoreDomainEventProcessingResult.Duplicate;
+        if (!ValidateEnvelope(envelope)) {
+            _logger.LogWarning("Skipping invalid domain-event envelope with missing or unsupported metadata.");
+            return EventStoreDomainEventProcessingResult.FailedInvalidPayload;
         }
 
+        EventStoreDomainEventMarkerAcquisitionResult acquisition = await _markerStore
+            .TryAcquireAsync(envelope.MessageId, cancellationToken)
+            .ConfigureAwait(false);
+        switch (acquisition) {
+            case EventStoreDomainEventMarkerAcquisitionResult.Acquired:
+                break;
+            case EventStoreDomainEventMarkerAcquisitionResult.Completed:
+                _logger.LogDebug("Skipping duplicate event {MessageId}", envelope.MessageId);
+                return EventStoreDomainEventProcessingResult.Duplicate;
+            case EventStoreDomainEventMarkerAcquisitionResult.InProgress:
+                _logger.LogWarning("Event {MessageId} is already being processed; keeping delivery retryable.", envelope.MessageId);
+                return EventStoreDomainEventProcessingResult.RetryableInProgress;
+            default:
+                _logger.LogWarning(
+                    "Marker store returned unsupported acquisition result {AcquisitionResult} for event {MessageId}; keeping delivery retryable.",
+                    acquisition,
+                    envelope.MessageId);
+                return EventStoreDomainEventProcessingResult.RetryableInProgress;
+        }
+
+        bool releaseMarkerOnFailure = true;
+
         try {
+            if (!IsSupportedSerializationFormat(envelope.SerializationFormat)) {
+                _logger.LogWarning(
+                    "Skipping event {MessageId}: unsupported serialization format '{SerializationFormat}'",
+                    envelope.MessageId,
+                    envelope.SerializationFormat);
+                await MarkCompletedSafelyAsync(envelope.MessageId, cancellationToken).ConfigureAwait(false);
+                return EventStoreDomainEventProcessingResult.FailedInvalidPayload;
+            }
+
             if (!_eventTypeRegistry.TryGetValue(envelope.EventTypeName, out Type? eventType)) {
                 _logger.LogWarning("Unknown event type '{EventTypeName}' — skipping", envelope.EventTypeName);
-                _processedMessageIds[envelope.MessageId] = ProcessingState.Completed;
+                await MarkCompletedSafelyAsync(envelope.MessageId, cancellationToken).ConfigureAwait(false);
                 return EventStoreDomainEventProcessingResult.SkippedUnknownEventType;
             }
 
@@ -93,19 +147,27 @@ public class EventStoreDomainEventProcessor {
                 deserialized = JsonSerializer.Deserialize(envelope.Payload, eventType);
             }
             catch (JsonException exception) {
-                _logger.LogWarning(exception, "Failed to deserialize event {MessageId} as {EventTypeName}", envelope.MessageId, envelope.EventTypeName);
-                _ = _processedMessageIds.TryRemove(envelope.MessageId, out _);
+                _logger.LogWarning(
+                    "Failed to deserialize event {MessageId} as {EventTypeName}; ExceptionType={ExceptionType}",
+                    envelope.MessageId,
+                    envelope.EventTypeName,
+                    exception.GetType().Name);
+                await MarkCompletedSafelyAsync(envelope.MessageId, cancellationToken).ConfigureAwait(false);
                 return EventStoreDomainEventProcessingResult.FailedInvalidPayload;
             }
             catch (NotSupportedException exception) {
-                _logger.LogWarning(exception, "Failed to deserialize event {MessageId} as {EventTypeName}", envelope.MessageId, envelope.EventTypeName);
-                _ = _processedMessageIds.TryRemove(envelope.MessageId, out _);
+                _logger.LogWarning(
+                    "Failed to deserialize event {MessageId} as {EventTypeName}; ExceptionType={ExceptionType}",
+                    envelope.MessageId,
+                    envelope.EventTypeName,
+                    exception.GetType().Name);
+                await MarkCompletedSafelyAsync(envelope.MessageId, cancellationToken).ConfigureAwait(false);
                 return EventStoreDomainEventProcessingResult.FailedInvalidPayload;
             }
 
             if (deserialized is not IEventPayload @event) {
                 _logger.LogWarning("Failed to deserialize event {MessageId} as {EventTypeName}", envelope.MessageId, envelope.EventTypeName);
-                _ = _processedMessageIds.TryRemove(envelope.MessageId, out _);
+                await MarkCompletedSafelyAsync(envelope.MessageId, cancellationToken).ConfigureAwait(false);
                 return EventStoreDomainEventProcessingResult.FailedInvalidPayload;
             }
 
@@ -125,7 +187,7 @@ public class EventStoreDomainEventProcessor {
                     envelope.MessageId,
                     _payloadAggregateIdPropertyName,
                     envelope.AggregateId);
-                _processedMessageIds[envelope.MessageId] = ProcessingState.Completed;
+                await MarkCompletedSafelyAsync(envelope.MessageId, cancellationToken).ConfigureAwait(false);
                 return EventStoreDomainEventProcessingResult.SkippedAggregateMismatch;
             }
 
@@ -135,25 +197,62 @@ public class EventStoreDomainEventProcessor {
                 envelope.MessageId,
                 envelope.SequenceNumber,
                 envelope.Timestamp,
-                envelope.CorrelationId);
+                envelope.CorrelationId) {
+                Domain = envelope.Domain,
+                GlobalPosition = envelope.GlobalPosition,
+                CausationId = envelope.CausationId,
+                UserId = envelope.UserId,
+            };
 
             MethodInfo genericDispatch = s_dispatchMethod.MakeGenericMethod(eventType);
             using IServiceScope scope = _serviceScopeFactory.CreateScope();
             int handlerCount = await ((Task<int>)genericDispatch.Invoke(null, [scope.ServiceProvider, @event, context, cancellationToken])!).ConfigureAwait(false);
             if (handlerCount == 0) {
                 _logger.LogWarning("No handlers registered for event type '{EventTypeName}' — skipping", envelope.EventTypeName);
-                _processedMessageIds[envelope.MessageId] = ProcessingState.Completed;
+                await MarkCompletedSafelyAsync(envelope.MessageId, cancellationToken).ConfigureAwait(false);
                 return EventStoreDomainEventProcessingResult.SkippedNoHandlers;
             }
 
-            _processedMessageIds[envelope.MessageId] = ProcessingState.Completed;
+            // Once handlers have completed successfully, do not delete the marker if the completion write
+            // fails. Releasing here would let a redelivery run side effects a second time.
+            releaseMarkerOnFailure = false;
+            await MarkCompletedSafelyAsync(envelope.MessageId, CancellationToken.None).ConfigureAwait(false);
             return EventStoreDomainEventProcessingResult.Processed;
         }
         catch {
-            _ = _processedMessageIds.TryRemove(envelope.MessageId, out _);
+            if (releaseMarkerOnFailure) {
+                await ReleaseSafelyAsync(envelope.MessageId).ConfigureAwait(false);
+            }
+
             throw;
         }
     }
+
+    private static bool ValidateEnvelope(EventStoreDomainEventEnvelope envelope)
+        => !string.IsNullOrWhiteSpace(envelope.MessageId)
+        && IsValidUniqueId(envelope.MessageId)
+        && !string.IsNullOrWhiteSpace(envelope.AggregateId)
+        && !string.IsNullOrWhiteSpace(envelope.TenantId)
+        && !string.IsNullOrWhiteSpace(envelope.EventTypeName)
+        && !string.IsNullOrWhiteSpace(envelope.CorrelationId)
+        && !string.IsNullOrWhiteSpace(envelope.SerializationFormat)
+        && envelope.Payload is { Length: > 0 };
+
+    private static bool IsValidUniqueId(string value) {
+        try {
+            _ = UniqueIdHelper.ToGuid(value);
+            return true;
+        }
+        catch (ArgumentException) {
+            return false;
+        }
+        catch (FormatException) {
+            return false;
+        }
+    }
+
+    private static bool IsSupportedSerializationFormat(string serializationFormat)
+        => string.Equals(serializationFormat, "json", StringComparison.OrdinalIgnoreCase);
 
     private static async Task<int> DispatchAsync<TEvent>(
         IServiceProvider serviceProvider,
@@ -170,12 +269,36 @@ public class EventStoreDomainEventProcessor {
     }
 
     private static bool TryGetPayloadId(IEventPayload @event, string propertyName, out string? id) {
+        var key = new PayloadIdPropertyKey(@event.GetType(), propertyName);
         PropertyInfo? property = s_payloadIdProperties.GetOrAdd(
-            @event.GetType(),
-            static (eventType, name) => eventType.GetProperty(name, BindingFlags.Instance | BindingFlags.Public),
-            propertyName);
+            key,
+            static key => key.EventType.GetProperty(key.PropertyName, BindingFlags.Instance | BindingFlags.Public));
 
         id = property?.GetValue(@event) as string;
         return !string.IsNullOrWhiteSpace(id);
+    }
+
+    private async Task MarkCompletedSafelyAsync(string messageId, CancellationToken cancellationToken) {
+        try {
+            await _markerStore.MarkCompletedAsync(messageId, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception) {
+            _logger.LogWarning(
+                "Failed to mark domain event {MessageId} as completed; ExceptionType={ExceptionType}",
+                messageId,
+                exception.GetType().Name);
+        }
+    }
+
+    private async Task ReleaseSafelyAsync(string messageId) {
+        try {
+            await _markerStore.ReleaseAsync(messageId, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception exception) {
+            _logger.LogWarning(
+                "Failed to release domain event marker {MessageId}; ExceptionType={ExceptionType}",
+                messageId,
+                exception.GetType().Name);
+        }
     }
 }

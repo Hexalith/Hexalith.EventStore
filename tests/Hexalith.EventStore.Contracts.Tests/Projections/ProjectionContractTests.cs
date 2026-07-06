@@ -14,7 +14,9 @@ public class ProjectionContractTests {
             SerializationFormat: "json",
             SequenceNumber: 42,
             Timestamp: new DateTimeOffset(2026, 3, 20, 10, 0, 0, TimeSpan.Zero),
-            CorrelationId: "corr-001");
+            CorrelationId: "corr-001",
+            MessageId: "01JZC5P8Z6M8AJ6W0KVRJHW5QX",
+            UserId: "user-001");
 
         string json = JsonSerializer.Serialize(dto);
         ProjectionEventDto? deserialized = JsonSerializer.Deserialize<ProjectionEventDto>(json);
@@ -26,6 +28,8 @@ public class ProjectionContractTests {
         deserialized.SequenceNumber.ShouldBe(42);
         deserialized.Timestamp.ShouldBe(new DateTimeOffset(2026, 3, 20, 10, 0, 0, TimeSpan.Zero));
         deserialized.CorrelationId.ShouldBe("corr-001");
+        deserialized.MessageId.ShouldBe("01JZC5P8Z6M8AJ6W0KVRJHW5QX");
+        deserialized.UserId.ShouldBe("user-001");
     }
 
     [Fact]
