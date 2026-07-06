@@ -1,3 +1,10 @@
+# [3.41.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.40.0...v3.41.0) (2026-07-06)
+
+
+### Features
+
+* Implement paging support in query handling and validation ([e7e311c](https://github.com/Hexalith/Hexalith.EventStore/commit/e7e311c4c3b8c3ef45a105ec04b37f78a2c53c50))
+
 # [3.40.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.39.0...v3.40.0) (2026-07-06)
 
 
