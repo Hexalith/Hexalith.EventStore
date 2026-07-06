@@ -2,8 +2,9 @@
 title: '1.6 Sample And Tenants Domain-Centric Adoption'
 type: 'feature'
 created: '2026-07-06T00:00:00+02:00'
-status: 'in-review'
-baseline_revision: '2079f933f3fb1f3461ea1aa8a719243d46ca5a32'
+status: 'done'
+baseline_revision: 'cc72a56619edd776cc0177c47599d63db16ecfb6'
+final_revision: '968a54446687bc9a249fb0bd88f8afe47bfc0668'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
