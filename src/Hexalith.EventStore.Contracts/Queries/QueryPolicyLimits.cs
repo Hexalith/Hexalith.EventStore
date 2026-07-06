@@ -13,4 +13,9 @@ public static class QueryPolicyLimits {
     /// Maximum page size accepted by the gateway query policy contract.
     /// </summary>
     public const int MaxPageSize = 200;
+
+    /// <summary>
+    /// Maximum opaque cursor token length accepted by the gateway and cursor codec.
+    /// </summary>
+    public const int MaxCursorLength = 4096;
 }

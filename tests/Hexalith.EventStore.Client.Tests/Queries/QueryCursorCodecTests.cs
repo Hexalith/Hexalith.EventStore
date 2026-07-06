@@ -1,4 +1,5 @@
 using Hexalith.EventStore.Client.Queries;
+using Hexalith.EventStore.Contracts.Queries;
 
 using Microsoft.AspNetCore.DataProtection;
 
@@ -83,7 +84,7 @@ public class QueryCursorCodecTests {
     [Fact]
     public void TryDecode_rejects_cursor_above_length_cap() {
         IQueryCursorCodec codec = CreateCodec();
-        string oversized = new('A', 4097);
+        string oversized = new('A', QueryPolicyLimits.MaxCursorLength + 1);
 
         bool decoded = codec.TryDecode(oversized, "list-things", "user:user-1", out string? position, out string? failureReason);
 

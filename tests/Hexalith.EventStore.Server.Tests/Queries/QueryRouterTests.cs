@@ -119,6 +119,24 @@ public class QueryRouterTests {
     }
 
     [Fact]
+    public async Task RouteQueryAsync_InvalidCursorFailure_DoesNotLogRawCursorDetail() {
+        const string RawCursor = "protected.cursor.payload";
+        var logs = new List<LogEntry>();
+        IProjectionActorInvoker invoker = Substitute.For<IProjectionActorInvoker>();
+        _ = invoker.InvokeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>())
+            .Returns(QueryResult.Failure(QueryAdapterFailureReason.InvalidCursor + ": " + RawCursor));
+        var router = new QueryRouter(invoker, new TestLogger<QueryRouter>(logs));
+
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
+
+        result.Success.ShouldBeFalse();
+        result.ErrorMessage.ShouldContain(RawCursor);
+        LogEntry warning = logs.Single(e => e.Level == LogLevel.Warning);
+        warning.Message.ShouldContain(QueryAdapterFailureReason.InvalidCursor);
+        warning.Message.ShouldNotContain(RawCursor);
+    }
+
+    [Fact]
     public async Task RouteQueryAsync_RoutesToCorrectActor() {
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         (IProjectionActorInvoker invoker, QueryRouter router) = CreateRouterWithInvoker(QueryResult.FromPayload(resultPayload));
@@ -897,4 +915,20 @@ public class QueryRouterTests {
             Arg.Any<string>(),
             Arg.Any<ActorProxyOptions?>());
     }
+
+    private sealed class TestLogger<T>(List<LogEntry> entries) : ILogger<T> {
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter) =>
+            entries.Add(new LogEntry(logLevel, formatter(state, exception)));
+    }
+
+    private sealed record LogEntry(LogLevel Level, string Message);
 }

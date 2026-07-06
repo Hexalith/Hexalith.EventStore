@@ -978,6 +978,28 @@ public class QueriesControllerTests {
     }
 
     [Fact]
+    public async Task Submit_WhitespaceCursorWithOffset_ForwardsOffsetWithoutCursor() {
+        JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
+        QueriesController controller = CreateController(mediator);
+        SubmitQueryRequest request = CreateTestRequest() with {
+            Paging = new QueryPagingOptions(PageSize: 25, Offset: 50, Cursor: "   "),
+        };
+
+        _ = await controller.Submit(request, null, CancellationToken.None);
+
+        _ = await mediator.Received(1).Send(
+            Arg.Is<SubmitQuery>(q =>
+                q.Paging != null &&
+                q.Paging.PageSize == 25 &&
+                q.Paging.Offset == 50 &&
+                q.Paging.Cursor == null),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Submit_ProducerMetadata_MergesWithGatewayMetadataByExplicitRules() {
         string producerETag = GenerateTestETag("producer");
         string gatewayETag = GenerateTestETag("orders");

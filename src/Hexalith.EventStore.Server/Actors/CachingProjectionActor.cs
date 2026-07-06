@@ -73,8 +73,8 @@ public abstract partial class CachingProjectionActor(
             return new QueryResult(
                 true,
                 cached.PayloadBytes,
-                projectionType: _discoveredProjectionType,
-                metadata: NormalizeCachedMetadata(cached.Metadata));
+                ProjectionType: _discoveredProjectionType,
+                Metadata: NormalizeCachedMetadata(cached.Metadata));
         }
 
         // Cache miss: execute the actual query

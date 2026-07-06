@@ -2,10 +2,10 @@
 title: '1.3 Generic Read Models And Query Cursors'
 type: 'feature'
 created: '2026-07-06'
-status: 'in-review'
+status: 'done'
 baseline_revision: 'b044369533c59fafa5114961764220fbd73522fa'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/project-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-1-context.md'
@@ -81,6 +81,22 @@ warnings: ['oversized']
 
 ## Review Triage Log
 
+### 2026-07-06 — Review pass
+- intent_gap: 0
+- bad_spec: 0
+- patch: 8: (high 4, medium 3, low 1)
+- defer: 0
+- reject: 1
+- addressed_findings:
+  - `[high]` `[patch]` `QueryResult` had lost PascalCase named-argument source compatibility after moving from a positional record to a nominal record; restored the public constructor parameter names and added a compile-time regression test.
+  - `[high]` `[patch]` `QueryResult` had lost its positional deconstruction shape; added four-value and five-value `Deconstruct` overloads and regression coverage.
+  - `[high]` `[patch]` `QueryPagingMetadata` added `HasMore` without preserving the original four-argument constructor/deconstruction shape; added compatibility constructor/deconstruction overloads plus the required `JsonConstructor` annotation for the five-argument shape.
+  - `[medium]` `[patch]` Cursor-only requests could reach `EventReplayProjectionActor`, which ignored paging and returned persisted state; the default actor now rejects nonblank cursors with the shared `invalid-cursor` sentinel before reading state.
+  - `[medium]` `[patch]` Invalid-cursor ProblemDetails were support-safe but no longer exposed a safe cursor category for existing recovery code; added `reason=invalid-cursor` while preserving `reasonCode=query_invalid_page` and generic detail.
+  - `[high]` `[patch]` `QueryRouter` and `SubmitQueryHandler` logged raw `invalid-cursor: <detail>` adapter messages before response sanitization; both log paths now collapse invalid-cursor details to the sentinel only, with regression tests.
+  - `[medium]` `[patch]` The gateway validator allowed cursor strings larger than the codec's 4096-character cap to reach routing and actor checksum work; promoted the cursor limit to `QueryPolicyLimits.MaxCursorLength`, reused it in codec and validator, and documented it.
+  - `[low]` `[patch]` Whitespace cursor values could be forwarded with offset/page-size paging and trigger downstream cursor-branch checks; controller paging normalization now clears whitespace cursors while preserving meaningful page size/offset.
+
 ## Design Notes
 
 Do not auto-register `IQueryCursorCodec` from `AddEventStoreDomainService()` in this story: the codec requires a stable caller-supplied purpose, and choosing that automatically would be a cross-domain contract decision. Keep registration opt-in and tested.
@@ -97,3 +113,39 @@ Do not auto-register `IQueryCursorCodec` from `AddEventStoreDomainService()` in 
 - `dotnet test tests/Hexalith.EventStore.DomainService.Tests/` -- expected: DataProtection persistence tests pass.
 - `dotnet test tests/Hexalith.EventStore.Server.Tests/` -- expected: query validation, controller, and ProblemDetails tests pass.
 - `git diff --check` -- expected: no whitespace errors.
+
+## Auto Run Result
+
+Status: `done`
+
+Summary:
+- Hardened Story 1.3 review findings around public query contract compatibility, cursor validation bounds, invalid-cursor support-safe diagnostics, default projection actor cursor rejection, and log redaction.
+- Preserved `QueryResult` and `QueryPagingMetadata` source/binary compatibility shapes while keeping JSON/DataContract round trips stable.
+- Centralized the opaque cursor length cap and aligned gateway validation, codec behavior, tests, and docs.
+
+Files changed:
+- `src/Hexalith.EventStore.Contracts/Queries/QueryResult.cs` -- restored PascalCase constructor names and deconstruction compatibility.
+- `src/Hexalith.EventStore.Contracts/Queries/QueryPagingMetadata.cs` and `QueryPolicyLimits.cs` -- preserved the original paging metadata shape and added the shared cursor length limit.
+- `src/Hexalith.EventStore.Client/Queries/QueryCursorCodec.cs` -- reused the shared cursor length limit.
+- `src/Hexalith.EventStore/Validation/SubmitQueryRequestValidator.cs` and `Controllers/QueriesController.cs` -- reject oversized cursors and normalize whitespace cursor values.
+- `src/Hexalith.EventStore.Server/Actors/EventReplayProjectionActor.cs`, `Queries/QueryRouter.cs`, and `Pipeline/SubmitQueryHandler.cs` -- fail cursor requests safely on the default actor and sanitize invalid-cursor logs.
+- `src/Hexalith.EventStore/ErrorHandling/QueryExecutionFailedExceptionHandler.cs` -- added support-safe `reason=invalid-cursor`.
+- `tests/**` and `docs/reference/query-api.md` -- added regression coverage and updated cursor docs.
+
+Review Findings:
+- Patched 8 findings: 4 high, 3 medium, 1 low.
+- Deferred 0 findings.
+- Rejected 1 finding: non-cursor `query_invalid_page` detail was claimed to be misleading in `QueryExecutionFailedExceptionHandler`; validator-produced page-size/offset/cursor+offset errors do not flow through this exception handler, and query-execution `query_invalid_page` remains the downstream invalid-cursor path.
+
+Verification:
+- `dotnet test tests/Hexalith.EventStore.Contracts.Tests/ --no-restore` -- passed, 566 tests.
+- `dotnet test tests/Hexalith.EventStore.Client.Tests/ --no-restore` -- passed, 499 tests.
+- `dotnet test tests/Hexalith.EventStore.Testing.Tests/ --no-restore` -- passed, 144 tests.
+- `dotnet test tests/Hexalith.EventStore.DomainService.Tests/ --no-restore` -- passed, 47 tests.
+- `dotnet test tests/Hexalith.EventStore.QueryRouting.Tests/ --no-restore` -- passed, 6 tests.
+- `dotnet test tests/Hexalith.EventStore.Server.Tests/ --no-restore` -- passed, 2257 passed / 25 skipped.
+- `dotnet build Hexalith.EventStore.slnx --configuration Release --no-restore` -- passed with 0 warnings and 0 errors.
+- `git diff --check` -- passed.
+
+Residual Risks:
+- Follow-up review is recommended because the patched findings changed public contract compatibility surfaces, cursor failure semantics, ProblemDetails extensions, and security-sensitive logging.

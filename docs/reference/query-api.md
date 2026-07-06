@@ -68,7 +68,7 @@ Execute a query against the current projection/read model.
 
 | Policy     | Current behavior |
 | ---------- | ---------------- |
-| Paging     | `pageSize` defaults to `50`; maximum is `200`; `offset` must be `>= 0`; cursor-only requests are accepted; `cursor` and `offset` together are rejected as `query_invalid_page`. |
+| Paging     | `pageSize` defaults to `50`; maximum is `200`; `offset` must be `>= 0`; cursor-only requests are accepted; cursors are opaque and limited to `4096` characters; `cursor` and `offset` together are rejected as `query_invalid_page`. |
 | Search     | Blank search is normalized as omitted. Non-blank search is rejected as `query_unsupported_search`. |
 | Filters    | Any filter expression is rejected as `query_unsupported_filter`. Filter values are not echoed in validation errors or ProblemDetails. |
 | Ordering   | Any order expression is rejected as `query_unsupported_order`. Legacy projection ordering remains projection-defined. |

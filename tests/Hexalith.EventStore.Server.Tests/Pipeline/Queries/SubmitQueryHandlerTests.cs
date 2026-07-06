@@ -6,6 +6,7 @@ using Hexalith.EventStore.Server.Pipeline;
 using Hexalith.EventStore.Server.Pipeline.Queries;
 using Hexalith.EventStore.Server.Queries;
 
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using NSubstitute;
@@ -333,4 +334,43 @@ public class SubmitQueryHandlerTests {
         ex.Detail.ShouldBe("The supplied cursor is invalid.");
         ex.Detail.ShouldNotContain("not implemented");
     }
+
+    [Fact]
+    public async Task Handle_InvalidCursorSentinelWithRawCursor_DoesNotLogRawCursorDetail() {
+        List<LogEntry> logs = [];
+        var logger = new TestLogger<SubmitQueryHandler>(logs);
+        IQueryRouter router = Substitute.For<IQueryRouter>();
+        const string RawCursor = "protected.cursor.payload";
+        _ = router.RouteQueryAsync(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new QueryRouterResult(
+                Success: false,
+                Payload: null,
+                NotFound: false,
+                ErrorMessage: QueryAdapterFailureReason.InvalidCursor + ": " + RawCursor));
+
+        var handler = new SubmitQueryHandler(router, logger);
+
+        _ = await Should.ThrowAsync<QueryExecutionFailedException>(
+            () => handler.Handle(CreateTestQuery(), CancellationToken.None));
+
+        LogEntry warning = logs.Single(e => e.Level == LogLevel.Warning);
+        warning.Message.ShouldContain(QueryAdapterFailureReason.InvalidCursor);
+        warning.Message.ShouldNotContain(RawCursor);
+    }
+
+    private sealed class TestLogger<T>(List<LogEntry> entries) : ILogger<T> {
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter) =>
+            entries.Add(new LogEntry(logLevel, formatter(state, exception)));
+    }
+
+    private sealed record LogEntry(LogLevel Level, string Message);
 }

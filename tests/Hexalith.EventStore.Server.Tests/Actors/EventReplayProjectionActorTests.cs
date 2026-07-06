@@ -48,14 +48,17 @@ public class EventReplayProjectionActorTests {
             stateJson);
     }
 
-    private static QueryEnvelope CreateTestEnvelope() => new(
+    private static QueryEnvelope CreateTestEnvelope(QueryPagingOptions? paging = null) => new(
         tenantId: TestTenantId,
         domain: "counter",
         aggregateId: "counter-1",
         queryType: "GetCounterValue",
         payload: [1, 2, 3],
         correlationId: "corr-1",
-        userId: "user-1");
+        userId: "user-1",
+        entityId: null,
+        isGlobalAdmin: false,
+        paging: paging);
 
     [Fact]
     public async Task UpdateProjectionAsync_PersistsStateToActorState() {
@@ -239,6 +242,23 @@ public class EventReplayProjectionActorTests {
 
         result.Success.ShouldBeFalse();
         result.ErrorMessage.ShouldNotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public async Task ExecuteQueryAsync_CursorPaging_ReturnsInvalidCursorWithoutReadingState() {
+        (EventReplayProjectionActor actor, IActorStateManager stateManager, _, IETagService eTagService) = CreateActor();
+        QueryEnvelope envelope = CreateTestEnvelope(new QueryPagingOptions(Cursor: "opaque-cursor"));
+
+        _ = eTagService.GetCurrentETagAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((string?)null);
+
+        QueryResult result = await actor.QueryAsync(envelope);
+
+        result.Success.ShouldBeFalse();
+        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.InvalidCursor);
+        _ = await stateManager.DidNotReceive().TryGetStateAsync<ProjectionState>(
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]

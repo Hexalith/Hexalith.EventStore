@@ -2,6 +2,8 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
+using Hexalith.EventStore.Contracts.Queries;
+
 using Microsoft.AspNetCore.DataProtection;
 
 namespace Hexalith.EventStore.Client.Queries;
@@ -17,10 +19,6 @@ namespace Hexalith.EventStore.Client.Queries;
 /// </remarks>
 public sealed class QueryCursorCodec : IQueryCursorCodec {
     private const int CurrentVersion = 1;
-
-    // Protected tokens are short (a few hundred bytes for the expected payload shape). 4 KB is well
-    // above the realistic ceiling and bounds memory/CPU spent on Unprotect for attacker-supplied input.
-    private const int MaxCursorLength = 4096;
 
     private static readonly JsonSerializerOptions s_jsonOptions = new() {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -67,7 +65,7 @@ public sealed class QueryCursorCodec : IQueryCursorCodec {
             return true;
         }
 
-        if (cursor.Length > MaxCursorLength) {
+        if (cursor.Length > QueryPolicyLimits.MaxCursorLength) {
             failureReason = "too-large";
             return false;
         }

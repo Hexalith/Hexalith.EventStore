@@ -23,23 +23,23 @@ public record QueryResult {
     /// <summary>
     /// Initializes a new instance of the <see cref="QueryResult"/> record.
     /// </summary>
-    /// <param name="success">Whether the projection actor served the query successfully.</param>
-    /// <param name="payloadBytes">UTF-8 JSON payload bytes for successful responses.</param>
-    /// <param name="errorMessage">Coarse adapter-edge failure text for unsuccessful responses.</param>
-    /// <param name="projectionType">Optional projection type metadata used by EventStore cache/ETag behavior.</param>
-    /// <param name="metadata">Optional public cache, freshness, paging, and warning metadata.</param>
+    /// <param name="Success">Whether the projection actor served the query successfully.</param>
+    /// <param name="PayloadBytes">UTF-8 JSON payload bytes for successful responses.</param>
+    /// <param name="ErrorMessage">Coarse adapter-edge failure text for unsuccessful responses.</param>
+    /// <param name="ProjectionType">Optional projection type metadata used by EventStore cache/ETag behavior.</param>
+    /// <param name="Metadata">Optional public cache, freshness, paging, and warning metadata.</param>
     [JsonConstructor]
     public QueryResult(
-        bool success,
-        byte[]? payloadBytes = null,
-        string? errorMessage = null,
-        string? projectionType = null,
-        QueryResponseMetadata? metadata = null) {
-        Success = success;
-        PayloadBytes = payloadBytes;
-        ErrorMessage = errorMessage;
-        ProjectionType = projectionType;
-        Metadata = metadata;
+        bool Success,
+        byte[]? PayloadBytes = null,
+        string? ErrorMessage = null,
+        string? ProjectionType = null,
+        QueryResponseMetadata? Metadata = null) {
+        this.Success = Success;
+        this.PayloadBytes = PayloadBytes;
+        this.ErrorMessage = ErrorMessage;
+        this.ProjectionType = ProjectionType;
+        this.Metadata = Metadata;
     }
 
     /// <summary>
@@ -50,7 +50,7 @@ public record QueryResult {
     /// <param name="errorMessage">Coarse adapter-edge failure text for unsuccessful responses.</param>
     /// <param name="projectionType">Optional projection type metadata used by EventStore cache/ETag behavior.</param>
     public QueryResult(bool success, byte[]? payloadBytes, string? errorMessage, string? projectionType)
-        : this(success, payloadBytes, errorMessage, projectionType, metadata: null) {
+        : this(success, payloadBytes, errorMessage, projectionType, Metadata: null) {
     }
 
     /// <summary>Gets a value indicating whether the projection actor served the query successfully.</summary>
@@ -72,6 +72,45 @@ public record QueryResult {
     /// <summary>Gets the optional public cache, freshness, paging, and warning metadata.</summary>
     [DataMember]
     public QueryResponseMetadata? Metadata { get; init; }
+
+    /// <summary>
+    /// Deconstructs the original query result contract shape.
+    /// </summary>
+    /// <param name="Success">Whether the projection actor served the query successfully.</param>
+    /// <param name="PayloadBytes">UTF-8 JSON payload bytes for successful responses.</param>
+    /// <param name="ErrorMessage">Coarse adapter-edge failure text for unsuccessful responses.</param>
+    /// <param name="ProjectionType">Optional projection type metadata used by EventStore cache/ETag behavior.</param>
+    public void Deconstruct(
+        out bool Success,
+        out byte[]? PayloadBytes,
+        out string? ErrorMessage,
+        out string? ProjectionType) {
+        Success = this.Success;
+        PayloadBytes = this.PayloadBytes;
+        ErrorMessage = this.ErrorMessage;
+        ProjectionType = this.ProjectionType;
+    }
+
+    /// <summary>
+    /// Deconstructs the query result contract shape with producer metadata.
+    /// </summary>
+    /// <param name="Success">Whether the projection actor served the query successfully.</param>
+    /// <param name="PayloadBytes">UTF-8 JSON payload bytes for successful responses.</param>
+    /// <param name="ErrorMessage">Coarse adapter-edge failure text for unsuccessful responses.</param>
+    /// <param name="ProjectionType">Optional projection type metadata used by EventStore cache/ETag behavior.</param>
+    /// <param name="Metadata">Optional public cache, freshness, paging, and warning metadata.</param>
+    public void Deconstruct(
+        out bool Success,
+        out byte[]? PayloadBytes,
+        out string? ErrorMessage,
+        out string? ProjectionType,
+        out QueryResponseMetadata? Metadata) {
+        Success = this.Success;
+        PayloadBytes = this.PayloadBytes;
+        ErrorMessage = this.ErrorMessage;
+        ProjectionType = this.ProjectionType;
+        Metadata = this.Metadata;
+    }
 
     /// <summary>
     /// Deserializes <see cref="PayloadBytes"/> to a <see cref="JsonElement"/>.
@@ -109,7 +148,7 @@ public record QueryResult {
             throw new ArgumentException("Payload element must not be Undefined.", nameof(payload));
         }
 
-        return new(true, JsonSerializer.SerializeToUtf8Bytes(payload), projectionType: projectionType, metadata: metadata);
+        return new(true, JsonSerializer.SerializeToUtf8Bytes(payload), ProjectionType: projectionType, Metadata: metadata);
     }
 
     /// <summary>
@@ -128,6 +167,6 @@ public record QueryResult {
     /// <returns>An unsuccessful query result.</returns>
     public static QueryResult Failure(string errorMessage, QueryResponseMetadata? metadata) {
         ArgumentException.ThrowIfNullOrWhiteSpace(errorMessage);
-        return new(false, errorMessage: errorMessage, metadata: metadata);
+        return new(false, ErrorMessage: errorMessage, Metadata: metadata);
     }
 }

@@ -239,11 +239,57 @@ public class ProjectionAdapterContractTests {
             .GetConstructor([typeof(bool), typeof(byte[]), typeof(string), typeof(string)])
             .ShouldNotBeNull();
         typeof(QueryResult)
+            .GetConstructor([typeof(bool), typeof(byte[]), typeof(string), typeof(string), typeof(QueryResponseMetadata)])
+            .ShouldNotBeNull();
+        typeof(QueryResult)
             .GetMethod(nameof(QueryResult.FromPayload), [typeof(JsonElement), typeof(string)])
             .ShouldNotBeNull();
         typeof(QueryResult)
             .GetMethod(nameof(QueryResult.Failure), [typeof(string)])
             .ShouldNotBeNull();
+    }
+
+    [Fact]
+    public void QueryResult_PublicCompatibility_AllowsPascalCaseNamedArgumentsAndDeconstruction() {
+        var metadata = new QueryResponseMetadata(IsStale: false);
+        byte[] bytes = [1, 2, 3];
+
+        var sut = new QueryResult(
+            Success: true,
+            PayloadBytes: bytes,
+            ErrorMessage: null,
+            ProjectionType: "party",
+            Metadata: metadata);
+
+        var (success, payloadBytes, errorMessage, projectionType, restoredMetadata) = sut;
+        var (legacySuccess, legacyPayloadBytes, legacyErrorMessage, legacyProjectionType) = sut;
+
+        success.ShouldBeTrue();
+        payloadBytes.ShouldBe(bytes);
+        errorMessage.ShouldBeNull();
+        projectionType.ShouldBe("party");
+        restoredMetadata.ShouldBe(metadata);
+        legacySuccess.ShouldBe(success);
+        legacyPayloadBytes.ShouldBe(bytes);
+        legacyErrorMessage.ShouldBeNull();
+        legacyProjectionType.ShouldBe("party");
+    }
+
+    [Fact]
+    public void QueryPagingMetadata_PublicCompatibility_MaintainsOriginalConstructorAndDeconstruction() {
+        typeof(QueryPagingMetadata)
+            .GetConstructor([typeof(int), typeof(int?), typeof(string), typeof(long?)])
+            .ShouldNotBeNull();
+
+        var sut = new QueryPagingMetadata(PageSize: 25, Offset: 50, NextCursor: "next", TotalCount: 125);
+
+        var (pageSize, offset, nextCursor, totalCount) = sut;
+
+        pageSize.ShouldBe(25);
+        offset.ShouldBe(50);
+        nextCursor.ShouldBe("next");
+        totalCount.ShouldBe(125);
+        sut.HasMore.ShouldBeNull();
     }
 
     [Fact]

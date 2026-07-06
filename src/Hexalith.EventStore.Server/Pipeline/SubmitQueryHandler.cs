@@ -31,7 +31,7 @@ public partial class SubmitQueryHandler(
         }
 
         if (!routerResult.Success) {
-            Log.QueryFailed(logger, request.CorrelationId, request.QueryType, request.Tenant, request.Domain, request.AggregateId, routerResult.ErrorMessage);
+            Log.QueryFailed(logger, request.CorrelationId, request.QueryType, request.Tenant, request.Domain, request.AggregateId, GetSafeLogErrorMessage(routerResult.ErrorMessage));
             throw CreateQueryFailureException(request, routerResult.ErrorMessage);
         }
 
@@ -129,6 +129,11 @@ public partial class SubmitQueryHandler(
         => !string.IsNullOrEmpty(errorMessage)
             && (string.Equals(errorMessage, sentinel, StringComparison.Ordinal)
                 || errorMessage.StartsWith(sentinel + ":", StringComparison.Ordinal));
+
+    private static string? GetSafeLogErrorMessage(string? errorMessage)
+        => IsSentinel(errorMessage, QueryAdapterFailureReason.InvalidCursor)
+            ? QueryAdapterFailureReason.InvalidCursor
+            : errorMessage;
 
     private static bool IsNotFound(string? errorMessage)
         => !string.IsNullOrWhiteSpace(errorMessage)

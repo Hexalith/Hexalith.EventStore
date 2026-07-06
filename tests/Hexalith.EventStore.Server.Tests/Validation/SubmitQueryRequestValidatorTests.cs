@@ -88,6 +88,22 @@ public class SubmitQueryRequestValidatorTests {
     }
 
     [Fact]
+    public void SubmitQueryRequestValidator_CursorAboveMaximumLength_FailsWithInvalidPageReason() {
+        var request = new SubmitQueryRequest(
+            Tenant: "test-tenant",
+            Domain: "test-domain",
+            AggregateId: "agg-001",
+            QueryType: "GetCurrentState") {
+            Paging = new QueryPagingOptions(Cursor: new string('A', QueryPolicyLimits.MaxCursorLength + 1)),
+        };
+
+        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(e => e.PropertyName == "Paging.Cursor" && e.ErrorCode == QueryProblemReasonCodes.InvalidPage);
+    }
+
+    [Fact]
     public void SubmitQueryRequestValidator_BlankSearch_NormalizesAsOmittedAndPasses() {
         var request = new SubmitQueryRequest(
             Tenant: "test-tenant",

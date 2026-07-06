@@ -14,6 +14,7 @@ namespace Hexalith.EventStore.ErrorHandling;
 
 public class QueryExecutionFailedExceptionHandler(ILogger<QueryExecutionFailedExceptionHandler> logger) : IExceptionHandler {
     private const string ProblemJsonContentType = "application/problem+json";
+    private const string InvalidCursorDetail = "The supplied cursor is invalid.";
 
     public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(httpContext);
@@ -63,6 +64,10 @@ public class QueryExecutionFailedExceptionHandler(ILogger<QueryExecutionFailedEx
             problemDetails.Extensions[GatewayProblemDetailsExtensions.TenantId] = queryFailure.Tenant;
         }
 
+        if (IsInvalidCursorFailure(queryFailure)) {
+            problemDetails.Extensions[GatewayProblemDetailsExtensions.Reason] = QueryAdapterFailureReason.InvalidCursor;
+        }
+
         httpContext.Response.StatusCode = queryFailure.StatusCode;
         await httpContext.Response.WriteAsJsonAsync(problemDetails, (JsonSerializerOptions?)null, ProblemJsonContentType, cancellationToken).ConfigureAwait(false);
         return true;
@@ -79,10 +84,14 @@ public class QueryExecutionFailedExceptionHandler(ILogger<QueryExecutionFailedEx
     private static string GetSafeDetail(QueryExecutionFailedException queryFailure)
         => queryFailure.StatusCode switch {
             StatusCodes.Status400BadRequest when string.Equals(queryFailure.ReasonCode, QueryProblemReasonCodes.InvalidPage, StringComparison.Ordinal) =>
-                "The supplied cursor is invalid.",
+                InvalidCursorDetail,
             StatusCodes.Status403Forbidden => AuthorizationExceptionHandler.SanitizeForbiddenTerms(queryFailure.Detail),
             _ => queryFailure.Detail,
         };
+
+    private static bool IsInvalidCursorFailure(QueryExecutionFailedException queryFailure)
+        => queryFailure.StatusCode == StatusCodes.Status400BadRequest
+            && string.Equals(queryFailure.ReasonCode, QueryProblemReasonCodes.InvalidPage, StringComparison.Ordinal);
 
     private static string GetProblemTypeUri(int statusCode)
         => statusCode switch {

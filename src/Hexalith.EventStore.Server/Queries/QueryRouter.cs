@@ -94,7 +94,7 @@ public partial class QueryRouter : IQueryRouter {
             }
 
             if (!result.Success) {
-                Log.QueryExecutionFailed(_logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, result.ErrorMessage);
+                Log.QueryExecutionFailed(_logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, GetSafeLogErrorMessage(result.ErrorMessage));
                 return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: result.ErrorMessage, Metadata: result.Metadata);
             }
 
@@ -264,6 +264,16 @@ public partial class QueryRouter : IQueryRouter {
 
         return false;
     }
+
+    private static string? GetSafeLogErrorMessage(string? errorMessage)
+        => IsSentinel(errorMessage, QueryAdapterFailureReason.InvalidCursor)
+            ? QueryAdapterFailureReason.InvalidCursor
+            : errorMessage;
+
+    private static bool IsSentinel(string? errorMessage, string sentinel)
+        => !string.IsNullOrEmpty(errorMessage)
+            && (string.Equals(errorMessage, sentinel, StringComparison.Ordinal)
+                || errorMessage.StartsWith(sentinel + ":", StringComparison.Ordinal));
 
     private static void ThrowFirstCancellationException(Exception exception) {
         ArgumentNullException.ThrowIfNull(exception);

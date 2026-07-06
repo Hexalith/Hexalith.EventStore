@@ -85,6 +85,11 @@ public partial class EventReplayProjectionActor(
     /// <inheritdoc/>
     protected override async Task<QueryResult> ExecuteQueryAsync(QueryEnvelope envelope, CancellationToken cancellationToken) {
         cancellationToken.ThrowIfCancellationRequested();
+        ArgumentNullException.ThrowIfNull(envelope);
+
+        if (!string.IsNullOrWhiteSpace(envelope.Paging?.Cursor)) {
+            return QueryResult.Failure(QueryAdapterFailureReason.InvalidCursor);
+        }
 
         // Read last persisted state from DAPR actor state
         ConditionalValue<ProjectionState> result =

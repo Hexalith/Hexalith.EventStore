@@ -96,6 +96,12 @@ public partial class SubmitQueryRequestValidator : AbstractValidator<SubmitQuery
             .WithMessage("Cursor and offset paging cannot be used together.")
             .WithErrorCode(QueryProblemReasonCodes.InvalidPage);
 
+        _ = RuleFor(x => x.Paging!.Cursor)
+            .MaximumLength(QueryPolicyLimits.MaxCursorLength)
+            .WithMessage($"Cursor cannot exceed {QueryPolicyLimits.MaxCursorLength} characters.")
+            .WithErrorCode(QueryProblemReasonCodes.InvalidPage)
+            .When(x => x.Paging?.Cursor is not null);
+
         _ = RuleFor(x => x.Paging!.PageSize)
             .GreaterThan(0)
             .WithMessage("PageSize must be greater than zero.")

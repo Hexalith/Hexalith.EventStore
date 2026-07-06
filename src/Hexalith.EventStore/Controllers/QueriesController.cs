@@ -143,7 +143,7 @@ public partial class QueriesController(
                 : request.ProjectionType,
             ProjectionActorType: request.ProjectionActorType,
             IsGlobalAdmin: GlobalAdministratorHelper.IsGlobalAdministrator(User),
-            Paging: HasMeaningfulPaging(request.Paging) ? request.Paging : null);
+            Paging: NormalizePaging(request.Paging));
 
         SubmitQueryResult result = await mediator.Send(query, cancellationToken).ConfigureAwait(false);
 
@@ -364,6 +364,13 @@ public partial class QueriesController(
     private static bool HasMeaningfulPaging(QueryPagingOptions? paging)
         => paging is not null
             && (paging.PageSize.HasValue || paging.Offset.HasValue || !string.IsNullOrWhiteSpace(paging.Cursor));
+
+    private static QueryPagingOptions? NormalizePaging(QueryPagingOptions? paging)
+        => HasMeaningfulPaging(paging)
+            ? paging! with {
+                Cursor = string.IsNullOrWhiteSpace(paging.Cursor) ? null : paging.Cursor,
+            }
+            : null;
 
     private static bool HasMeaningfulFreshness(QueryFreshnessPolicy? freshness)
         => freshness is not null

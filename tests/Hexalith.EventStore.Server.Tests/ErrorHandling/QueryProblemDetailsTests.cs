@@ -101,6 +101,8 @@ public class QueryProblemDetailsTests {
         problem.Detail.ShouldNotContain(RawCursor);
         GetExtensionString(problem, GatewayProblemDetailsExtensions.ReasonCode)
             .ShouldBe(QueryProblemReasonCodes.InvalidPage);
+        GetExtensionString(problem, GatewayProblemDetailsExtensions.Reason)
+            .ShouldBe(QueryAdapterFailureReason.InvalidCursor);
     }
 
     [Fact]
