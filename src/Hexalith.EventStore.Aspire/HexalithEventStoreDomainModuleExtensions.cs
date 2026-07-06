@@ -63,6 +63,8 @@ public static class HexalithEventStoreDomainModuleExtensions {
             Config = daprConfigPath,
             ResourcesPaths = isolated ? [isolatedDaprResourcesPath!] : [],
             SharedComponents = isolated ? null : new AspireDaprSharedComponents(eventStore.StateStore, eventStore.PubSub),
+            EnableAppHealthCheck = true,
+            AppHealthCheckPath = "/ready",
             PlacementHostAddress = daprPlacementHostAddress,
             SchedulerHostAddress = daprSchedulerHostAddress,
         }).Project;

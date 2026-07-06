@@ -1,6 +1,8 @@
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Text.Json;
 
+using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Client.Discovery;
 using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Client.Registration;
@@ -53,6 +55,24 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         using ServiceProvider provider = builder.Services.BuildServiceProvider();
         DiscoveryResult discovery = provider.GetRequiredService<DiscoveryResult>();
         discovery.Aggregates.ShouldContain(a => a.DomainName == "widget");
+    }
+
+    /// <summary>
+    /// Proves the canonical host registers convention-named diagnostics for each distinct discovered domain.
+    /// </summary>
+    [Fact]
+    public void AddEventStoreDomainService_RegistersDiagnosticsForDiscoveredDomains() {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+
+        _ = builder.AddEventStoreDomainService();
+
+        using ServiceProvider provider = builder.Services.BuildServiceProvider();
+        EventStoreDomainDiagnosticsRegistry registry = provider.GetRequiredService<EventStoreDomainDiagnosticsRegistry>();
+
+        registry.Domains.OrderBy(static domain => domain, StringComparer.Ordinal).ShouldBe(["catalog", "gadget", "widget"]);
+        registry.GetDiagnostics("widget")!.ActivitySource.Name.ShouldBe(EventStoreDomainTelemetry.ActivitySourceName("widget"));
+        registry.GetDiagnostics("gadget")!.Meter.Name.ShouldBe(EventStoreDomainTelemetry.MeterName("gadget"));
+        registry.GetDiagnostics("catalog")!.Domain.ShouldBe("catalog");
     }
 
     /// <summary>
@@ -163,7 +183,7 @@ public sealed class EventStoreDomainServiceExtensionsTests {
 
         DomainServiceRequest request = new(
             new CommandEnvelope(
-                MessageId: Guid.NewGuid().ToString(),
+                MessageId: UniqueIdHelper.GenerateSortableUniqueStringId(),
                 TenantId: "test-tenant",
                 Domain: "widget",
                 AggregateId: "widget-1",
@@ -342,6 +362,85 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         activity.GetTagItem("eventstore.command.type").ShouldBe(nameof(CreateWidget));
         activity.GetTagItem("eventstore.admission.stage").ShouldBe("auth");
         activity.GetTagItem("eventstore.admission.accepted").ShouldBe(true);
+    }
+
+    /// <summary>
+    /// Proves multi-domain admission telemetry resolves diagnostics from the command domain.
+    /// </summary>
+    [Fact]
+    public async Task DomainServiceRequestRouter_Process_AdmissionTelemetry_UsesRequestDomainDiagnostics() {
+        var calls = new List<string>();
+        using var listener = new ActivityListener();
+        var activities = new List<Activity>();
+        listener.ShouldListenTo = source => source.Name.StartsWith(EventStoreDomainTelemetry.Prefix, StringComparison.Ordinal);
+        listener.Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded;
+        listener.ActivityStopped = activity => activities.Add(activity);
+        ActivitySource.AddActivityListener(listener);
+
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.AddEventStoreDomainService();
+        _ = builder.Services.AddSingleton<IList<string>>(calls);
+        _ = builder.Services.AddEventStoreDomainAdmissionStage(
+            serviceProvider => new RecordingAdmissionStage("auth", serviceProvider.GetRequiredService<IList<string>>()));
+        using ServiceProvider provider = builder.Services.BuildServiceProvider();
+        using IServiceScope scope = provider.CreateScope();
+
+        DomainServiceWireResult result = await DomainServiceRequestRouter.ProcessAsync(scope.ServiceProvider, CreateGadgetProcessRequest());
+
+        result.IsRejection.ShouldBeFalse();
+        result.Events.ShouldHaveSingleItem().EventTypeName.ShouldBe(typeof(GadgetCreated).FullName);
+        Activity activity = activities.ShouldHaveSingleItem();
+        activity.Source.Name.ShouldBe(EventStoreDomainTelemetry.ActivitySourceName("gadget"));
+        activity.GetTagItem("eventstore.domain").ShouldBe("gadget");
+        activity.GetTagItem("eventstore.command.type").ShouldBe(nameof(CreateGadget));
+    }
+
+    /// <summary>
+    /// Proves the admission histogram records a measurement tagged with the request domain, command
+    /// type, and acceptance result — locking the metric contract, not just the emitted span.
+    /// </summary>
+    [Fact]
+    public async Task DomainServiceRequestRouter_Process_AdmissionMetric_RecordsRequestDomainMeasurement() {
+        var measurements = new List<(string? Domain, string? CommandType, bool? Accepted)>();
+        using var meterListener = new MeterListener();
+        meterListener.InstrumentPublished = (instrument, listener) => {
+            if (instrument.Meter.Name == EventStoreDomainTelemetry.MeterName("gadget")
+                && instrument.Name == "eventstore.domain.admission.stage.duration") {
+                listener.EnableMeasurementEvents(instrument);
+            }
+        };
+        meterListener.SetMeasurementEventCallback<double>((_, _, tags, _) => {
+            string? domain = null;
+            string? commandType = null;
+            bool? accepted = null;
+            foreach (KeyValuePair<string, object?> tag in tags) {
+                switch (tag.Key) {
+                    case "eventstore.domain": domain = tag.Value as string; break;
+                    case "eventstore.command.type": commandType = tag.Value as string; break;
+                    case "eventstore.admission.accepted": accepted = tag.Value as bool?; break;
+                    default: break;
+                }
+            }
+
+            measurements.Add((domain, commandType, accepted));
+        });
+        meterListener.Start();
+
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.AddEventStoreDomainService();
+        var calls = new List<string>();
+        _ = builder.Services.AddSingleton<IList<string>>(calls);
+        _ = builder.Services.AddEventStoreDomainAdmissionStage(
+            serviceProvider => new RecordingAdmissionStage("auth", serviceProvider.GetRequiredService<IList<string>>()));
+        using ServiceProvider provider = builder.Services.BuildServiceProvider();
+        using IServiceScope scope = provider.CreateScope();
+
+        _ = await DomainServiceRequestRouter.ProcessAsync(scope.ServiceProvider, CreateGadgetProcessRequest());
+
+        (string? Domain, string? CommandType, bool? Accepted) measurement = measurements.ShouldHaveSingleItem();
+        measurement.Domain.ShouldBe("gadget");
+        measurement.CommandType.ShouldBe(nameof(CreateGadget));
+        measurement.Accepted.ShouldBe(true);
     }
 
     /// <summary>
@@ -646,12 +745,27 @@ public sealed class EventStoreDomainServiceExtensionsTests {
     private static DomainServiceRequest CreateProcessRequest()
         => new(
             new CommandEnvelope(
-                MessageId: Guid.NewGuid().ToString(),
+                MessageId: UniqueIdHelper.GenerateSortableUniqueStringId(),
                 TenantId: "test-tenant",
                 Domain: "widget",
                 AggregateId: "widget-1",
                 CommandType: nameof(CreateWidget),
                 Payload: JsonSerializer.SerializeToUtf8Bytes(new CreateWidget()),
+                CorrelationId: "corr-1",
+                CausationId: null,
+                UserId: "test-user",
+                Extensions: null),
+            CurrentState: null);
+
+    private static DomainServiceRequest CreateGadgetProcessRequest()
+        => new(
+            new CommandEnvelope(
+                MessageId: UniqueIdHelper.GenerateSortableUniqueStringId(),
+                TenantId: "test-tenant",
+                Domain: "gadget",
+                AggregateId: "gadget-1",
+                CommandType: nameof(CreateGadget),
+                Payload: JsonSerializer.SerializeToUtf8Bytes(new CreateGadget()),
                 CorrelationId: "corr-1",
                 CausationId: null,
                 UserId: "test-user",

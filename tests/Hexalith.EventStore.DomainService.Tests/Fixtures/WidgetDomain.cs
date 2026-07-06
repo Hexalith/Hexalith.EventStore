@@ -1,5 +1,6 @@
 using System.Text.Json;
 
+using Hexalith.EventStore.Client.Attributes;
 using Hexalith.EventStore.Client.Aggregates;
 using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Contracts.Commands;
@@ -13,8 +14,14 @@ namespace Hexalith.EventStore.DomainService.Tests.Fixtures;
 /// <summary>A minimal command used to exercise the domain-service SDK in this test assembly.</summary>
 public sealed record CreateWidget;
 
+/// <summary>A second minimal command used to exercise multi-domain discovery.</summary>
+public sealed record CreateGadget;
+
 /// <summary>A minimal event used to exercise the domain-service SDK in this test assembly.</summary>
 public sealed record WidgetCreated : IEventPayload;
+
+/// <summary>A second minimal event used to exercise multi-domain discovery.</summary>
+public sealed record GadgetCreated : IEventPayload;
 
 /// <summary>A minimal rejection event used to exercise the domain-service admission hook.</summary>
 public sealed record WidgetRejected(string Reason) : IRejectionEvent;
@@ -29,6 +36,16 @@ public sealed class WidgetState {
     public void Apply(WidgetCreated @event) => Count++;
 }
 
+/// <summary>Minimal aggregate state for the local <c>gadget</c> test domain.</summary>
+public sealed class GadgetState {
+    /// <summary>Gets the number of times the gadget was created.</summary>
+    public int Count { get; private set; }
+
+    /// <summary>Applies a <see cref="GadgetCreated"/> event.</summary>
+    /// <param name="event">The event to apply.</param>
+    public void Apply(GadgetCreated @event) => Count++;
+}
+
 /// <summary>
 /// A minimal aggregate that lives in the test assembly so discovery of the calling assembly can be
 /// verified. The convention derives the domain name <c>widget</c> from the <c>WidgetAggregate</c> class name.
@@ -40,6 +57,18 @@ public sealed class WidgetAggregate : EventStoreAggregate<WidgetState> {
     /// <returns>A successful domain result with one event.</returns>
     public static DomainResult Handle(CreateWidget command, WidgetState? state)
         => DomainResult.Success(new IEventPayload[] { new WidgetCreated() });
+}
+
+/// <summary>
+/// A second aggregate in the test assembly, used to verify multi-domain host diagnostics.
+/// </summary>
+public sealed class GadgetAggregate : EventStoreAggregate<GadgetState> {
+    /// <summary>Handles <see cref="CreateGadget"/> by emitting a <see cref="GadgetCreated"/> event.</summary>
+    /// <param name="command">The command.</param>
+    /// <param name="state">The current state, or <c>null</c> for a new aggregate.</param>
+    /// <returns>A successful domain result with one event.</returns>
+    public static DomainResult Handle(CreateGadget command, GadgetState? state)
+        => DomainResult.Success(new IEventPayload[] { new GadgetCreated() });
 }
 
 /// <summary>
@@ -63,6 +92,20 @@ public sealed class WidgetQueryHandler : IDomainQueryHandler {
             Paging: new QueryPagingMetadata(PageSize: 10, Offset: 0));
         return Task.FromResult(QueryResult.FromPayload(payload, projectionType: "widget", metadata));
     }
+}
+
+/// <summary>A query handler-only domain used to verify diagnostics registration without an aggregate.</summary>
+[EventStoreDomain("catalog")]
+public sealed class CatalogQueryHandler : IDomainQueryHandler {
+    /// <inheritdoc/>
+    public string Domain => "catalog";
+
+    /// <inheritdoc/>
+    public string QueryType => "list-catalog";
+
+    /// <inheritdoc/>
+    public Task<QueryResult> ExecuteAsync(QueryEnvelope query, CancellationToken cancellationToken)
+        => Task.FromResult(QueryResult.FromPayload(JsonSerializer.SerializeToElement(new { ok = true })));
 }
 
 /// <summary>

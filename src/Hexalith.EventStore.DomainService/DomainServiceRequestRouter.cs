@@ -30,9 +30,14 @@ public static class DomainServiceRequestRouter {
 
         DomainServiceAdmissionContext? admissionContext = null;
         EventStoreDomainDiagnostics? diagnostics = null;
+        bool diagnosticsResolved = false;
         foreach (IDomainServiceAdmissionStage stage in serviceProvider.GetServices<IDomainServiceAdmissionStage>()) {
             admissionContext ??= new DomainServiceAdmissionContext(request);
-            diagnostics ??= serviceProvider.GetService<EventStoreDomainDiagnostics>();
+            if (!diagnosticsResolved) {
+                diagnostics = ResolveDiagnostics(serviceProvider, request.Command.Domain);
+                diagnosticsResolved = true;
+            }
+
             DomainServiceAdmissionResult admissionResult = await EvaluateAdmissionStageAsync(
                 stage,
                 admissionContext,
@@ -49,6 +54,27 @@ public static class DomainServiceRequestRouter {
         DomainResult result = await processor.ProcessAsync(request.Command, request.CurrentState).ConfigureAwait(false);
 
         return DomainServiceWireResult.FromDomainResult(result);
+    }
+
+    private static EventStoreDomainDiagnostics? ResolveDiagnostics(IServiceProvider serviceProvider, string domain) {
+        // Telemetry is best-effort: never let diagnostics resolution throw on a malformed (missing) domain.
+        // The downstream keyed-processor lookup produces the canonical error for an unknown/blank domain.
+        if (string.IsNullOrWhiteSpace(domain)) {
+            return null;
+        }
+
+        EventStoreDomainDiagnosticsRegistry? registry = serviceProvider.GetService<EventStoreDomainDiagnosticsRegistry>();
+        if (registry is not null && registry.TryGetDiagnostics(domain, out EventStoreDomainDiagnostics? registered)) {
+            return registered;
+        }
+
+        if (registry is not null) {
+            return null;
+        }
+
+        string normalizedDomain = domain.Trim();
+        return serviceProvider.GetServices<EventStoreDomainDiagnostics>()
+            .FirstOrDefault(diagnostics => string.Equals(diagnostics.Domain, normalizedDomain, StringComparison.OrdinalIgnoreCase));
     }
 
     private static async Task<DomainServiceAdmissionResult> EvaluateAdmissionStageAsync(

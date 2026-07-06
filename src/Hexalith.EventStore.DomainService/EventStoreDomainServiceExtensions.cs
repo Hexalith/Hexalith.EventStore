@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
+using Hexalith.EventStore.Client.Attributes;
 using Hexalith.EventStore.Client.Configuration;
 using Hexalith.EventStore.Client.Discovery;
 using Hexalith.EventStore.Client.Registration;
@@ -201,7 +202,50 @@ public static class EventStoreDomainServiceExtensions {
         // Discover and register IDomainProjectionHandler implementations for the /project endpoint.
         AddDomainProjectionHandlers(builder.Services, domainAssemblies);
 
+        DiscoveryResult discovery = GetRegisteredDiscoveryResult(builder.Services);
+        _ = builder.Services.AddEventStoreDomainTelemetry(GetDiscoveredDomainNames(discovery, domainAssemblies));
+
         return builder;
+    }
+
+    private static DiscoveryResult GetRegisteredDiscoveryResult(IServiceCollection services)
+        => services.LastOrDefault(static descriptor => descriptor.ServiceType == typeof(DiscoveryResult))?.ImplementationInstance as DiscoveryResult
+            ?? throw new InvalidOperationException("AddEventStore did not register domain discovery results.");
+
+    private static IEnumerable<string> GetDiscoveredDomainNames(DiscoveryResult discovery, Assembly[] domainAssemblies)
+        => discovery.Aggregates
+            .Concat(discovery.Projections)
+            .Select(static domain => domain.DomainName)
+            .Concat(GetHandlerDomainNames<IDomainQueryHandler>(domainAssemblies))
+            .Concat(GetHandlerDomainNames<IDomainProjectionHandler>(domainAssemblies))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+
+    private static IEnumerable<string> GetHandlerDomainNames<THandler>(Assembly[] domainAssemblies) {
+        foreach (Assembly assembly in domainAssemblies) {
+            foreach (Type type in assembly.GetTypes()) {
+                if (type is not { IsClass: true, IsAbstract: false } || !typeof(THandler).IsAssignableFrom(type)) {
+                    continue;
+                }
+
+                EventStoreDomainAttribute? attribute = type.GetCustomAttribute<EventStoreDomainAttribute>();
+                if (attribute is not null) {
+                    yield return attribute.DomainName;
+                    continue;
+                }
+
+                if (type.GetConstructor(Type.EmptyTypes) is null) {
+                    continue;
+                }
+
+                if (Activator.CreateInstance(type) is THandler handler) {
+                    yield return handler switch {
+                        IDomainQueryHandler queryHandler => queryHandler.Domain,
+                        IDomainProjectionHandler projectionHandler => projectionHandler.Domain,
+                        _ => throw new InvalidOperationException($"Unsupported domain handler type '{typeof(THandler).FullName}'."),
+                    };
+                }
+            }
+        }
     }
 
     private static void AddDomainQueryHandlers(IServiceCollection services, Assembly[] domainAssemblies) {
