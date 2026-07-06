@@ -82,7 +82,8 @@ public partial class QueryRouter : IQueryRouter {
             query.CorrelationId,
             query.UserId,
             query.EntityId,
-            query.IsGlobalAdmin);
+            query.IsGlobalAdmin,
+            query.Paging);
 
         try {
             QueryResult? result = await _invoker.InvokeAsync(actorId, actorTypeName, envelope, cancellationToken).ConfigureAwait(false);

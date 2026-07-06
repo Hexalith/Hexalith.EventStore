@@ -41,6 +41,21 @@ public class SubmitQueryRequestValidatorTests {
     }
 
     [Fact]
+    public void SubmitQueryRequestValidator_CursorOnlyPaging_Passes() {
+        var request = new SubmitQueryRequest(
+            Tenant: "test-tenant",
+            Domain: "test-domain",
+            AggregateId: "agg-001",
+            QueryType: "GetCurrentState") {
+            Paging = new QueryPagingOptions(PageSize: QueryPolicyLimits.DefaultPageSize, Cursor: "opaque-cursor"),
+        };
+
+        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+
+        result.IsValid.ShouldBeTrue();
+    }
+
+    [Fact]
     public void SubmitQueryRequestValidator_PageSizeAboveMaximum_FailsWithInvalidPageReason() {
         var request = new SubmitQueryRequest(
             Tenant: "test-tenant",

@@ -111,12 +111,6 @@ public partial class SubmitQueryRequestValidator : AbstractValidator<SubmitQuery
             .WithErrorCode(QueryProblemReasonCodes.InvalidPage)
             .When(x => x.Paging?.Offset is not null);
 
-        _ = RuleFor(x => x.Paging!.Cursor)
-            .Must(string.IsNullOrWhiteSpace)
-            .WithMessage("Cursor paging is reserved and is not supported by this endpoint yet.")
-            .WithErrorCode(QueryProblemReasonCodes.InvalidPage)
-            .When(x => x.Paging?.Cursor is not null);
-
         _ = RuleFor(x => x.Search)
             .Must(string.IsNullOrWhiteSpace)
             .WithMessage("Search policy fields are reserved; use the query payload for domain-specific search parameters.")

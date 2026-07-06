@@ -951,6 +951,30 @@ public class QueriesControllerTests {
         _ = response.Metadata.ShouldNotBeNull();
         response.Metadata.Paging.ShouldBeNull();
         response.Metadata.IsStale.ShouldBeNull();
+        _ = await mediator.Received(1).Send(
+            Arg.Is<SubmitQuery>(q => q.Paging == null),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Submit_CursorOnlyPaging_ForwardsPagingToQueryPipeline() {
+        JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
+        QueriesController controller = CreateController(mediator);
+        SubmitQueryRequest request = CreateTestRequest() with {
+            Paging = new QueryPagingOptions(PageSize: 25, Cursor: "opaque-cursor"),
+        };
+
+        _ = await controller.Submit(request, null, CancellationToken.None);
+
+        _ = await mediator.Received(1).Send(
+            Arg.Is<SubmitQuery>(q =>
+                q.Paging != null &&
+                q.Paging.PageSize == 25 &&
+                q.Paging.Cursor == "opaque-cursor"),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -966,7 +990,7 @@ public class QueriesControllerTests {
             IsDegraded: true,
             ProjectionVersion: "orders-v9",
             ServedAt: servedAt,
-            Paging: new QueryPagingMetadata(PageSize: 10, Offset: 20, NextCursor: "next", TotalCount: 99),
+            Paging: new QueryPagingMetadata(PageSize: 10, Offset: 20, NextCursor: "next", TotalCount: 99, HasMore: true),
             WarningCodes: [QueryWarningCodes.DegradedSearch]);
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
@@ -992,6 +1016,7 @@ public class QueriesControllerTests {
         response.Metadata.Paging.Offset.ShouldBe(20);
         response.Metadata.Paging.NextCursor.ShouldBe("next");
         response.Metadata.Paging.TotalCount.ShouldBe(99);
+        response.Metadata.Paging.HasMore.ShouldBe(true);
         _ = response.Metadata.WarningCodes.ShouldNotBeNull();
         response.Metadata.WarningCodes.ShouldContain(QueryWarningCodes.DegradedSearch);
         controller.Response.Headers.ETag.ToString().ShouldBe($"\"{gatewayETag}\"");
@@ -1001,7 +1026,7 @@ public class QueriesControllerTests {
     public async Task Submit_ProducerPagingMetadata_IsPreservedWithoutInventingRequestPagingFields() {
         JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
         var producerMetadata = new QueryResponseMetadata(
-            Paging: new QueryPagingMetadata(PageSize: 25, Offset: 50, NextCursor: "producer-next", TotalCount: 250));
+            Paging: new QueryPagingMetadata(PageSize: 25, Offset: 50, NextCursor: "producer-next", TotalCount: 250, HasMore: false));
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
             .Returns(new SubmitQueryResult("corr-1", resultPayload, Metadata: producerMetadata));
@@ -1020,6 +1045,7 @@ public class QueriesControllerTests {
         response.Metadata.Paging.Offset.ShouldBe(50);
         response.Metadata.Paging.NextCursor.ShouldBe("producer-next");
         response.Metadata.Paging.TotalCount.ShouldBe(250);
+        response.Metadata.Paging.HasMore.ShouldBe(false);
     }
 
     [Fact]

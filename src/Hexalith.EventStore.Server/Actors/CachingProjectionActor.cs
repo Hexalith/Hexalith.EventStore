@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Contracts.Queries;
@@ -60,6 +62,7 @@ public abstract partial class CachingProjectionActor(
         var cacheKey = new CacheEntryKey(
             envelope.QueryType,
             QueryActorIdHelper.ComputeChecksum(envelope.Payload),
+            ComputePagingChecksum(envelope.Paging),
             envelope.UserId);
 
         // Cache hit: ETag is non-null AND we have an entry matching this (QueryType, Payload, UserId).
@@ -198,7 +201,12 @@ public abstract partial class CachingProjectionActor(
                 ServedAt = null,
             };
 
-    private readonly record struct CacheEntryKey(string QueryType, string PayloadChecksum, string UserId);
+    private static string? ComputePagingChecksum(QueryPagingOptions? paging)
+        => paging is null
+            ? null
+            : QueryActorIdHelper.ComputeChecksum(JsonSerializer.SerializeToUtf8Bytes(paging));
+
+    private readonly record struct CacheEntryKey(string QueryType, string PayloadChecksum, string? PagingChecksum, string UserId);
 
     private readonly record struct CacheEntry(byte[] PayloadBytes, QueryResponseMetadata? Metadata);
 

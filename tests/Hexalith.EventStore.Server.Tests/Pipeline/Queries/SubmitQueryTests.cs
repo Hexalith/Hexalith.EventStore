@@ -1,6 +1,7 @@
 
 using System.Text.Json;
 
+using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Server.Pipeline.Queries;
 
 using Shouldly;
@@ -29,6 +30,23 @@ public class SubmitQueryTests {
         sut.CorrelationId.ShouldBe("corr-1");
         sut.UserId.ShouldBe("user-1");
         sut.EntityId.ShouldBe("entity-1");
+    }
+
+    [Fact]
+    public void Constructor_WithPaging_SetsPagingPolicy() {
+        var sut = new SubmitQuery(
+            Tenant: "test-tenant",
+            Domain: "orders",
+            AggregateId: "order-1",
+            QueryType: "GetOrderStatus",
+            Payload: [],
+            CorrelationId: "corr-1",
+            UserId: "user-1",
+            Paging: new QueryPagingOptions(PageSize: 25, Cursor: "opaque-cursor"));
+
+        _ = sut.Paging.ShouldNotBeNull();
+        sut.Paging.PageSize.ShouldBe(25);
+        sut.Paging.Cursor.ShouldBe("opaque-cursor");
     }
 
     [Fact]

@@ -287,7 +287,10 @@ public class SubmitQueryHandlerTests {
             () => handler.Handle(CreateTestQuery(), CancellationToken.None));
 
         ex.StatusCode.ShouldBe(400);
-        ex.Detail.ShouldBe(failureReason);
+        ex.Detail.ShouldBe(
+            failureReason == QueryAdapterFailureReason.InvalidCursor
+                ? "The supplied cursor is invalid."
+                : failureReason);
     }
 
     [Fact]
@@ -312,7 +315,7 @@ public class SubmitQueryHandlerTests {
     }
 
     [Fact]
-    public async Task Handle_InvalidCursorSentinelWithDetailContainingNotImplemented_MapsTo400NotNotImplemented() {
+    public async Task Handle_InvalidCursorSentinelWithDetailContainingNotImplemented_MapsTo400NotNotImplementedAndDoesNotEchoDetail() {
         // Regression (review E1): same hijack class for the invalid-cursor sentinel vs. the fuzzy
         // IsNotImplemented check.
         IQueryRouter router = Substitute.For<IQueryRouter>();
@@ -327,6 +330,7 @@ public class SubmitQueryHandlerTests {
             () => handler.Handle(CreateTestQuery(), CancellationToken.None));
 
         ex.StatusCode.ShouldBe(400);
-        ex.Detail.ShouldBe(errorMessage);
+        ex.Detail.ShouldBe("The supplied cursor is invalid.");
+        ex.Detail.ShouldNotContain("not implemented");
     }
 }

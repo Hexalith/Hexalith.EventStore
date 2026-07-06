@@ -142,7 +142,8 @@ public partial class QueriesController(
                 ? request.Domain
                 : request.ProjectionType,
             ProjectionActorType: request.ProjectionActorType,
-            IsGlobalAdmin: GlobalAdministratorHelper.IsGlobalAdministrator(User));
+            IsGlobalAdmin: GlobalAdministratorHelper.IsGlobalAdministrator(User),
+            Paging: HasMeaningfulPaging(request.Paging) ? request.Paging : null);
 
         SubmitQueryResult result = await mediator.Send(query, cancellationToken).ConfigureAwait(false);
 

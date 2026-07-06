@@ -20,7 +20,38 @@ public record SubmitQuery(
     string? EntityId = null,
     string? ProjectionType = null,
     string? ProjectionActorType = null,
-    bool IsGlobalAdmin = false) : IRequest<SubmitQueryResult>;
+    bool IsGlobalAdmin = false,
+    QueryPagingOptions? Paging = null) : IRequest<SubmitQueryResult> {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SubmitQuery"/> record using the original query shape.
+    /// </summary>
+    public SubmitQuery(
+        string tenant,
+        string domain,
+        string aggregateId,
+        string queryType,
+        byte[] payload,
+        string correlationId,
+        string userId,
+        string? entityId,
+        string? projectionType,
+        string? projectionActorType,
+        bool isGlobalAdmin)
+        : this(
+            tenant,
+            domain,
+            aggregateId,
+            queryType,
+            payload,
+            correlationId,
+            userId,
+            entityId,
+            projectionType,
+            projectionActorType,
+            isGlobalAdmin,
+            Paging: null) {
+    }
+}
 
 /// <summary>
 /// Result of processing a <see cref="SubmitQuery"/>.

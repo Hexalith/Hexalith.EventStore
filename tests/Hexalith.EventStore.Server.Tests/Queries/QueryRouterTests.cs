@@ -34,7 +34,8 @@ public class QueryRouterTests {
         byte[]? payload = null,
         string? projectionType = null,
         string? projectionActorType = null,
-        string tenant = "test-tenant") =>
+        string tenant = "test-tenant",
+        QueryPagingOptions? paging = null) =>
         new(
             Tenant: tenant,
             Domain: domain,
@@ -45,7 +46,8 @@ public class QueryRouterTests {
             UserId: "user-1",
             EntityId: entityId,
             ProjectionType: projectionType,
-            ProjectionActorType: projectionActorType);
+            ProjectionActorType: projectionActorType,
+            Paging: paging);
 
     private static (IProjectionActorInvoker invoker, QueryRouter router) CreateRouterWithInvoker(QueryResult? result = null) {
         IProjectionActorInvoker invoker = Substitute.For<IProjectionActorInvoker>();
@@ -518,6 +520,23 @@ public class QueryRouterTests {
                 e.CorrelationId == "corr-1" &&
                 e.UserId == "user-1" &&
                 e.EntityId == null),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_ForwardsPagingToQueryEnvelope() {
+        JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
+        (IProjectionActorInvoker invoker, QueryRouter router) = CreateRouterWithInvoker(QueryResult.FromPayload(resultPayload));
+
+        _ = await router.RouteQueryAsync(CreateTestQuery(paging: new QueryPagingOptions(PageSize: 25, Cursor: "opaque-cursor")));
+
+        _ = await invoker.Received(1).InvokeAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Is<QueryEnvelope>(e =>
+                e.Paging != null &&
+                e.Paging.PageSize == 25 &&
+                e.Paging.Cursor == "opaque-cursor"),
             Arg.Any<CancellationToken>());
     }
 

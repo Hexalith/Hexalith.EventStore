@@ -23,8 +23,8 @@ namespace Hexalith.EventStore.QueryRouting.Tests;
 /// The DAPR registry/invoker adapters are faked; their end-to-end behavior is covered by integration tests.
 /// </summary>
 public sealed class HandlerAwareQueryRouterTests {
-    private static SubmitQuery Query(string domain, string queryType)
-        => new("test-tenant", domain, $"{domain}-1", queryType, [], "corr-1", "test-user");
+    private static SubmitQuery Query(string domain, string queryType, QueryPagingOptions? paging = null)
+        => new("test-tenant", domain, $"{domain}-1", queryType, [], "corr-1", "test-user", Paging: paging);
 
     [Fact]
     public async Task RouteQueryAsync_HandlerBased_InvokesDomainQueryEndpointAndDoesNotDelegate() {
@@ -46,6 +46,27 @@ public sealed class HandlerAwareQueryRouterTests {
         result.Metadata.ShouldBe(metadata);
         await invoker.Received(1).InvokeAsync(Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>());
         await inner.DidNotReceive().RouteQueryAsync(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_HandlerBased_ForwardsPagingToDomainQueryEndpoint() {
+        IDomainQueryHandlerRegistry registry = Substitute.For<IDomainQueryHandlerRegistry>();
+        _ = registry.SupportsQueryAsync("widget", "get-widget", Arg.Any<CancellationToken>()).Returns(true);
+        IQueryRouter inner = Substitute.For<IQueryRouter>();
+        IDomainQueryInvoker invoker = Substitute.For<IDomainQueryInvoker>();
+        JsonElement payload = JsonSerializer.SerializeToElement(new { value = 42 });
+        _ = invoker.InvokeAsync(Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>())
+            .Returns(QueryResult.FromPayload(payload, projectionType: "widget"));
+        var router = new HandlerAwareQueryRouter(inner, registry, invoker, NullLogger<HandlerAwareQueryRouter>.Instance);
+
+        _ = await router.RouteQueryAsync(Query("widget", "get-widget", new QueryPagingOptions(PageSize: 25, Cursor: "opaque-cursor")));
+
+        await invoker.Received(1).InvokeAsync(
+            Arg.Is<QueryEnvelope>(e =>
+                e.Paging != null &&
+                e.Paging.PageSize == 25 &&
+                e.Paging.Cursor == "opaque-cursor"),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]

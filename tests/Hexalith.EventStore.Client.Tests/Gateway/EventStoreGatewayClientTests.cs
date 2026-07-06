@@ -69,7 +69,7 @@ public class EventStoreGatewayClientTests {
         using HttpClient httpClient = CreateClient(_ => {
             HttpResponseMessage response = Json(
                 HttpStatusCode.OK,
-                "{\"correlationId\":\"corr-2\",\"payload\":{\"count\":3},\"metadata\":{\"isStale\":false,\"paging\":{\"pageSize\":25,\"offset\":50}}}");
+                "{\"correlationId\":\"corr-2\",\"payload\":{\"count\":3},\"metadata\":{\"isStale\":false,\"paging\":{\"pageSize\":25,\"offset\":50,\"hasMore\":true}}}");
             response.Headers.ETag = new EntityTagHeaderValue("\"etag-2\"");
             return Task.FromResult(response);
         });
@@ -89,6 +89,7 @@ public class EventStoreGatewayClientTests {
         _ = result.Metadata.Paging.ShouldNotBeNull();
         result.Metadata.Paging.PageSize.ShouldBe(25);
         result.Metadata.Paging.Offset.ShouldBe(50);
+        result.Metadata.Paging.HasMore.ShouldBe(true);
     }
 
     [Fact]
@@ -107,7 +108,8 @@ public class EventStoreGatewayClientTests {
                   "pageSize": 25,
                   "offset": 50,
                   "nextCursor": "next-page",
-                  "totalCount": 100
+                  "totalCount": 100,
+                  "hasMore": true
                 },
                 "warningCodes": [ "degraded_search" ]
               }
@@ -150,6 +152,7 @@ public class EventStoreGatewayClientTests {
         _ = untyped.Metadata.Paging.ShouldNotBeNull();
         untyped.Metadata.Paging.NextCursor.ShouldBe("next-page");
         untyped.Metadata.Paging.TotalCount.ShouldBe(100);
+        untyped.Metadata.Paging.HasMore.ShouldBe(true);
         _ = untyped.Metadata.WarningCodes.ShouldNotBeNull();
         untyped.Metadata.WarningCodes.ShouldContain(QueryWarningCodes.DegradedSearch);
     }

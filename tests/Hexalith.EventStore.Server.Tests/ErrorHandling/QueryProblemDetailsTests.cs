@@ -77,6 +77,33 @@ public class QueryProblemDetailsTests {
     }
 
     [Fact]
+    public async Task QueryExecutionFailedExceptionHandler_InvalidCursor_UsesBadRequestProblemTypeAndDoesNotEchoCursor() {
+        var handler = new QueryExecutionFailedExceptionHandler(NullLogger<QueryExecutionFailedExceptionHandler>.Instance);
+        DefaultHttpContext httpContext = CreateHttpContext();
+        const string RawCursor = "protected.cursor.payload";
+        var exception = new QueryExecutionFailedException(
+            "corr-1",
+            "tenant-a",
+            "party",
+            "party-1",
+            "SearchParties",
+            StatusCodes.Status400BadRequest,
+            "invalid-cursor: " + RawCursor,
+            QueryProblemReasonCodes.InvalidPage);
+
+        _ = await handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
+
+        ProblemDetails problem = await ReadProblemDetailsAsync(httpContext);
+
+        problem.Type.ShouldBe(ProblemTypeUris.BadRequest);
+        problem.Status.ShouldBe(StatusCodes.Status400BadRequest);
+        problem.Detail.ShouldBe("The supplied cursor is invalid.");
+        problem.Detail.ShouldNotContain(RawCursor);
+        GetExtensionString(problem, GatewayProblemDetailsExtensions.ReasonCode)
+            .ShouldBe(QueryProblemReasonCodes.InvalidPage);
+    }
+
+    [Fact]
     public async Task QueryExecutionFailedExceptionHandler_Forbidden_IncludesInsufficientPermissionReasonCode() {
         var handler = new QueryExecutionFailedExceptionHandler(NullLogger<QueryExecutionFailedExceptionHandler>.Instance);
         DefaultHttpContext httpContext = CreateHttpContext();

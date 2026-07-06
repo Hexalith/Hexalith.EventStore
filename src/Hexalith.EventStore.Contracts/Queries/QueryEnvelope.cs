@@ -1,4 +1,5 @@
 using System.Runtime.Serialization;
+using System.Text.Json.Serialization;
 
 using Hexalith.EventStore.Contracts.Identity;
 
@@ -37,7 +38,45 @@ public record QueryEnvelope {
         string correlationId,
         string userId,
         string? entityId = null,
-        bool isGlobalAdmin = false) {
+        bool isGlobalAdmin = false)
+        : this(
+            tenantId,
+            domain,
+            aggregateId,
+            queryType,
+            payload,
+            correlationId,
+            userId,
+            entityId,
+            isGlobalAdmin,
+            paging: null) {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="QueryEnvelope"/> record.
+    /// </summary>
+    /// <param name="tenantId">The tenant identifier used for isolation and routing.</param>
+    /// <param name="domain">The domain targeted by the query.</param>
+    /// <param name="aggregateId">The aggregate or projection aggregate identifier.</param>
+    /// <param name="queryType">The query type discriminator.</param>
+    /// <param name="payload">UTF-8 JSON query payload bytes; use an empty array for tenant-wide list queries.</param>
+    /// <param name="correlationId">The correlation identifier propagated from the gateway request.</param>
+    /// <param name="userId">The authenticated user identifier, normally the <c>sub</c> claim.</param>
+    /// <param name="entityId">Optional entity identifier for entity-scoped routing.</param>
+    /// <param name="isGlobalAdmin">Trusted server-populated flag indicating the authenticated user has global administrator privileges.</param>
+    /// <param name="paging">Optional public paging policy supplied by the gateway.</param>
+    [JsonConstructor]
+    public QueryEnvelope(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        string queryType,
+        byte[] payload,
+        string correlationId,
+        string userId,
+        string? entityId,
+        bool isGlobalAdmin,
+        QueryPagingOptions? paging) {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
         ArgumentException.ThrowIfNullOrWhiteSpace(domain);
         ArgumentException.ThrowIfNullOrWhiteSpace(aggregateId);
@@ -55,6 +94,7 @@ public record QueryEnvelope {
         UserId = userId;
         EntityId = entityId;
         IsGlobalAdmin = isGlobalAdmin;
+        Paging = paging;
     }
 
     /// <summary>
@@ -110,6 +150,12 @@ public record QueryEnvelope {
     /// </summary>
     [DataMember]
     public bool IsGlobalAdmin { get; init; }
+
+    /// <summary>
+    /// Gets the optional public paging policy supplied by the gateway.
+    /// </summary>
+    [DataMember]
+    public QueryPagingOptions? Paging { get; init; }
 
     /// <summary>
     /// Gets the aggregate identity represented by the tenant, domain, and aggregate ID.

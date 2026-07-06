@@ -52,7 +52,8 @@ public sealed class HandlerAwareQueryRouter(
             query.CorrelationId,
             query.UserId,
             query.EntityId,
-            query.IsGlobalAdmin);
+            query.IsGlobalAdmin,
+            query.Paging);
 
         QueryResult result = await invoker.InvokeAsync(envelope, cancellationToken).ConfigureAwait(false);
 

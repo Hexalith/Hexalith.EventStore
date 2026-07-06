@@ -57,6 +57,35 @@ public class InMemoryReadModelStoreTests {
     }
 
     [Fact]
+    public async Task TrySaveAsync_SuccessfulUpdate_AdvancesETag() {
+        var store = new InMemoryReadModelStore();
+        _ = await store.TrySaveAsync(StoreName, "k", new Model { Value = 1 }, etag: string.Empty);
+        ReadModelEntry<Model> first = await store.GetAsync<Model>(StoreName, "k");
+
+        bool saved = await store.TrySaveAsync(StoreName, "k", new Model { Value = 2 }, first.ETag!);
+        ReadModelEntry<Model> second = await store.GetAsync<Model>(StoreName, "k");
+
+        saved.ShouldBeTrue();
+        first.ETag.ShouldNotBeNull();
+        second.ETag.ShouldNotBeNull();
+        second.ETag.ShouldNotBe(first.ETag);
+    }
+
+    [Fact]
+    public async Task TrySaveAsync_ConcurrentWriteInjection_FailsHeldETagAndPreservesConcurrentValue() {
+        var store = new InMemoryReadModelStore();
+        store.ConcurrentWriteBeforeTrySave = () => {
+            store.SeedRaw(StoreName, "k", new Model { Value = 7 });
+            store.ConcurrentWriteBeforeTrySave = null;
+        };
+
+        bool saved = await store.TrySaveAsync(StoreName, "k", new Model { Value = 1 }, etag: string.Empty);
+
+        saved.ShouldBeFalse();
+        store.Snapshot<Model>(StoreName, "k")!.Value.ShouldBe(7);
+    }
+
+    [Fact]
     public async Task GetAsync_ReturnsClone_NotSharedReference() {
         var store = new InMemoryReadModelStore();
         await store.SaveAsync(StoreName, "k", new Model { Value = 1 });

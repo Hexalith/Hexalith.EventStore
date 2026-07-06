@@ -27,7 +27,8 @@ public class CachingProjectionActorTests {
         string tenant = "tenant1",
         string queryType = "GetCounter",
         byte[]? payload = null,
-        string userId = "user-1") =>
+        string userId = "user-1",
+        QueryPagingOptions? paging = null) =>
         new(
             tenantId: tenant,
             domain: domain,
@@ -35,7 +36,10 @@ public class CachingProjectionActorTests {
             queryType: queryType,
             payload: payload ?? [],
             correlationId: "corr-1",
-            userId: userId);
+            userId: userId,
+            entityId: null,
+            isGlobalAdmin: false,
+            paging: paging);
 
     [Fact]
     public async Task QueryAsync_CacheMiss_CallsExecuteQueryAsync() {
@@ -762,6 +766,32 @@ public class CachingProjectionActorTests {
         QueryResult cold2 = await actor.QueryAsync(CreateEnvelope(payload: [2]));
         QueryResult warm1 = await actor.QueryAsync(CreateEnvelope(payload: [1]));
         QueryResult warm2 = await actor.QueryAsync(CreateEnvelope(payload: [2]));
+
+        cold1.GetPayload().GetProperty("page").GetInt32().ShouldBe(1);
+        cold2.GetPayload().GetProperty("page").GetInt32().ShouldBe(2);
+        warm1.GetPayload().GetProperty("page").GetInt32().ShouldBe(1);
+        warm2.GetPayload().GetProperty("page").GetInt32().ShouldBe(2);
+        actor.ExecuteCallCount.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task QueryAsync_DifferentPagingPolicies_DoNotShareCache() {
+        string stableETag = GenerateTestETag();
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>())
+            .Returns(stableETag);
+
+        JsonElement page1 = JsonDocument.Parse("{\"page\":1}").RootElement;
+        JsonElement page2 = JsonDocument.Parse("{\"page\":2}").RootElement;
+
+        var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
+        var actor = new TestCachingProjectionActor(host, eTagService,
+            QueryResult.FromPayload(page1), QueryResult.FromPayload(page2));
+
+        QueryResult cold1 = await actor.QueryAsync(CreateEnvelope(paging: new QueryPagingOptions(PageSize: 10, Cursor: "cursor-1")));
+        QueryResult cold2 = await actor.QueryAsync(CreateEnvelope(paging: new QueryPagingOptions(PageSize: 10, Cursor: "cursor-2")));
+        QueryResult warm1 = await actor.QueryAsync(CreateEnvelope(paging: new QueryPagingOptions(PageSize: 10, Cursor: "cursor-1")));
+        QueryResult warm2 = await actor.QueryAsync(CreateEnvelope(paging: new QueryPagingOptions(PageSize: 10, Cursor: "cursor-2")));
 
         cold1.GetPayload().GetProperty("page").GetInt32().ShouldBe(1);
         cold2.GetPayload().GetProperty("page").GetInt32().ShouldBe(2);

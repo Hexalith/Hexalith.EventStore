@@ -56,7 +56,7 @@ Execute a query against the current projection/read model.
 | payload             | object | No       | Optional JSON payload for the query. Non-empty payloads route through the payload-checksum mode when `entityId` is absent.                         |
 | entityId            | string | No       | Optional entity identifier for query handlers that target a nested entity or alternate projection identity.                                        |
 | projectionActorType | string | No       | Optional DAPR actor type selector. Defaults to `ProjectionActor`. This is a routing selector only, not an authorization or tenant-selection field. Must not contain colons (`:`) or dangerous characters. Maximum 64 characters. |
-| paging              | object | No       | Public paging policy. `pageSize` defaults to `50`, cannot exceed `200`, and `offset` must be zero or greater. Cursor paging is reserved and currently rejected. |
+| paging              | object | No       | Public paging policy. `pageSize` defaults to `50`, cannot exceed `200`, and `offset` must be zero or greater. Cursor-only requests are accepted and passed downstream for handler/projection validation. |
 | search              | string | No       | Public search policy. Blank or whitespace search is treated as omitted. Non-blank search is reserved and currently rejected with a stable reason code. |
 | filters             | array  | No       | Public filter policy. Reserved for future query engines and currently rejected without echoing filter values.                                      |
 | orderBy             | array  | No       | Public ordering policy. Reserved for future query engines and currently rejected.                                                                  |
@@ -68,7 +68,7 @@ Execute a query against the current projection/read model.
 
 | Policy     | Current behavior |
 | ---------- | ---------------- |
-| Paging     | `pageSize` defaults to `50`; maximum is `200`; `offset` must be `>= 0`; `cursor` is reserved and rejected. |
+| Paging     | `pageSize` defaults to `50`; maximum is `200`; `offset` must be `>= 0`; cursor-only requests are accepted; `cursor` and `offset` together are rejected as `query_invalid_page`. |
 | Search     | Blank search is normalized as omitted. Non-blank search is rejected as `query_unsupported_search`. |
 | Filters    | Any filter expression is rejected as `query_unsupported_filter`. Filter values are not echoed in validation errors or ProblemDetails. |
 | Ordering   | Any order expression is rejected as `query_unsupported_order`. Legacy projection ordering remains projection-defined. |
@@ -80,6 +80,8 @@ Execute a query against the current projection/read model.
 Query responses carry additive projection evidence in `metadata` when a domain handler or projection actor produces it. The platform preserves freshness, projection version, paging evidence, degraded state, and warning codes from the producer through the domain/projection result, router, gateway response, and .NET client result.
 
 The gateway still owns HTTP validator behavior. A strong response `ETag` header wins for `metadata.eTag` when present, `metadata.isNotModified` reflects the HTTP outcome, and `metadata.servedAt` is filled only when the producer did not supply it. Missing freshness remains unknown (`isStale = null`) and is never treated as current. Request paging is only policy input; the response includes `metadata.paging` only when the producer supplies authoritative paging evidence.
+
+`metadata.paging` can carry `pageSize`, `offset`, `nextCursor`, `totalCount`, and nullable `hasMore`. `hasMore = true` means the producer determined another page exists; `hasMore = false` means the producer determined the current page is complete; omission means the producer did not provide page-completeness evidence. The gateway does not derive `hasMore` from the requested page size, offset, cursor, or total count.
 
 ### Example
 
@@ -164,7 +166,7 @@ Non-auth query ProblemDetails use these stable `reasonCode` values:
 | Reason code                           | Typical status | Meaning |
 | ------------------------------------- | -------------- | ------- |
 | `query_malformed_request`             | 400            | Unknown or malformed query policy input. |
-| `query_invalid_page`                  | 400            | Invalid page size, offset, or cursor/offset combination. |
+| `query_invalid_page`                  | 400            | Invalid page size, offset, cursor/offset combination, or downstream cursor validation failure. |
 | `query_unsupported_filter`            | 400            | Public filter policy was supplied before filter support is enabled. |
 | `query_unsupported_search`            | 400            | Non-blank public search policy was supplied before search support is enabled. |
 | `query_unsupported_order`             | 400            | Public ordering policy was supplied before order support is enabled. |
@@ -175,6 +177,8 @@ Non-auth query ProblemDetails use these stable `reasonCode` values:
 | `query_projection_timeout`            | 503            | A projection did not respond before the timeout. |
 | `query_not_implemented`               | 501            | The query type or projection behavior is not implemented. |
 | `query_internal_error`                | 500            | The query failed with an internal server error. |
+
+Invalid cursor responses use HTTP `400`, problem type `https://hexalith.io/problems/bad-request`, and reason code `query_invalid_page`. ProblemDetails are support-safe: the response does not echo the raw cursor, decoded scope, protected payload, or decoded position.
 
 ## Projection Query Actor Contract
 

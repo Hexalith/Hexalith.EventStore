@@ -13,7 +13,10 @@ public class ProjectionAdapterContractTests {
         "Google.Api.CommonProtos",
     ];
 
-    private static QueryEnvelope CreateEnvelope(byte[]? payload = null, string? entityId = "party-42")
+    private static QueryEnvelope CreateEnvelope(
+        byte[]? payload = null,
+        string? entityId = "party-42",
+        QueryPagingOptions? paging = null)
         => new(
             "tenant-a",
             "parties",
@@ -22,7 +25,9 @@ public class ProjectionAdapterContractTests {
             payload ?? JsonSerializer.SerializeToUtf8Bytes(new { id = "party-42" }),
             "corr-1",
             "user-1",
-            entityId);
+            entityId,
+            isGlobalAdmin: false,
+            paging);
 
     private static string FindRepositoryRoot() {
         DirectoryInfo? directory = new(Directory.GetCurrentDirectory());
@@ -70,7 +75,10 @@ public class ProjectionAdapterContractTests {
 
     [Fact]
     public void QueryEnvelope_DataContractRoundTrip_PreservesWireMembers() {
-        QueryEnvelope original = CreateEnvelope([1, 2, 3], "party-42");
+        QueryEnvelope original = CreateEnvelope(
+            [1, 2, 3],
+            "party-42",
+            new QueryPagingOptions(PageSize: 25, Cursor: "opaque-cursor"));
         var serializer = new DataContractSerializer(typeof(QueryEnvelope));
 
         using var stream = new MemoryStream();
@@ -88,6 +96,9 @@ public class ProjectionAdapterContractTests {
         restored.CorrelationId.ShouldBe(original.CorrelationId);
         restored.UserId.ShouldBe(original.UserId);
         restored.EntityId.ShouldBe(original.EntityId);
+        _ = restored.Paging.ShouldNotBeNull();
+        restored.Paging.PageSize.ShouldBe(25);
+        restored.Paging.Cursor.ShouldBe("opaque-cursor");
     }
 
     [Fact]
@@ -131,7 +142,7 @@ public class ProjectionAdapterContractTests {
                 IsDegraded: true,
                 ProjectionVersion: "party-v2",
                 ServedAt: servedAt,
-                Paging: new QueryPagingMetadata(PageSize: 25, Offset: 50, NextCursor: "next-page", TotalCount: 125),
+                Paging: new QueryPagingMetadata(PageSize: 25, Offset: 50, NextCursor: "next-page", TotalCount: 125, HasMore: true),
                 WarningCodes: [QueryWarningCodes.DegradedSearch]));
         var serializer = new DataContractSerializer(typeof(QueryResult));
 
@@ -154,6 +165,7 @@ public class ProjectionAdapterContractTests {
         restored.Metadata.Paging.Offset.ShouldBe(50);
         restored.Metadata.Paging.NextCursor.ShouldBe("next-page");
         restored.Metadata.Paging.TotalCount.ShouldBe(125);
+        restored.Metadata.Paging.HasMore.ShouldBe(true);
         _ = restored.Metadata.WarningCodes.ShouldNotBeNull();
         restored.Metadata.WarningCodes.ShouldContain(QueryWarningCodes.DegradedSearch);
     }

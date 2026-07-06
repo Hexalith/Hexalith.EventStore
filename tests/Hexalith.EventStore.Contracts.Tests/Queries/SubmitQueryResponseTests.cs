@@ -63,7 +63,7 @@ public class SubmitQueryResponseTests {
                 IsDegraded: true,
                 ProjectionVersion: "projection-v1",
                 ServedAt: servedAt,
-                Paging: new QueryPagingMetadata(PageSize: 25, Offset: 50, NextCursor: null, TotalCount: null),
+                Paging: new QueryPagingMetadata(PageSize: 25, Offset: 50, NextCursor: null, TotalCount: null, HasMore: false),
                 WarningCodes: [QueryWarningCodes.DegradedSearch]));
 
         string json = JsonSerializer.Serialize(response, options);
@@ -73,6 +73,7 @@ public class SubmitQueryResponseTests {
         json.ShouldContain("\"etag\":\"etag-1\"");
         json.ShouldContain("\"isDegraded\":true");
         json.ShouldContain("\"pageSize\":25");
+        json.ShouldContain("\"hasMore\":false");
         _ = roundTripped.ShouldNotBeNull();
         _ = roundTripped.Metadata.ShouldNotBeNull();
         roundTripped.Metadata.ETag.ShouldBe("etag-1");
@@ -80,6 +81,7 @@ public class SubmitQueryResponseTests {
         roundTripped.Metadata.ServedAt.ShouldBe(servedAt);
         _ = roundTripped.Metadata.Paging.ShouldNotBeNull();
         roundTripped.Metadata.Paging.Offset.ShouldBe(50);
+        roundTripped.Metadata.Paging.HasMore.ShouldBe(false);
         _ = roundTripped.Metadata.WarningCodes.ShouldNotBeNull();
         roundTripped.Metadata.WarningCodes.ShouldContain(QueryWarningCodes.DegradedSearch);
     }

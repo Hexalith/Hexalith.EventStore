@@ -20,8 +20,9 @@ public class QueryEnvelopeTests {
         string correlationId = "corr-1",
         string userId = "user-1",
         string? entityId = null,
-        bool isGlobalAdmin = false) =>
-        new(tenantId, domain, aggregateId, queryType, payload ?? [], correlationId, userId, entityId, isGlobalAdmin);
+        bool isGlobalAdmin = false,
+        QueryPagingOptions? paging = null) =>
+        new(tenantId, domain, aggregateId, queryType, payload ?? [], correlationId, userId, entityId, isGlobalAdmin, paging);
 
     [Fact]
     public void Constructor_ValidFields_SetsAllProperties() {
@@ -36,6 +37,17 @@ public class QueryEnvelopeTests {
         sut.CorrelationId.ShouldBe("corr-1");
         sut.UserId.ShouldBe("user-1");
         sut.EntityId.ShouldBe("entity-1");
+    }
+
+    [Fact]
+    public void Constructor_WithPaging_SetsPagingPolicy() {
+        var paging = new QueryPagingOptions(PageSize: 25, Cursor: "opaque-cursor");
+
+        QueryEnvelope sut = CreateValid(paging: paging);
+
+        _ = sut.Paging.ShouldNotBeNull();
+        sut.Paging.PageSize.ShouldBe(25);
+        sut.Paging.Cursor.ShouldBe("opaque-cursor");
     }
 
     [Theory]
@@ -114,7 +126,10 @@ public class QueryEnvelopeTests {
     [Fact]
     public void JsonRoundTrip_PreservesAllProperties() {
         byte[] payload = [0x01, 0x02, 0x03];
-        QueryEnvelope original = CreateValid(payload: payload, entityId: "entity-99");
+        QueryEnvelope original = CreateValid(
+            payload: payload,
+            entityId: "entity-99",
+            paging: new QueryPagingOptions(PageSize: 25, Cursor: "opaque-cursor"));
 
         string json = JsonSerializer.Serialize(original);
         QueryEnvelope? deserialized = JsonSerializer.Deserialize<QueryEnvelope>(json);
@@ -128,6 +143,9 @@ public class QueryEnvelopeTests {
         deserialized.CorrelationId.ShouldBe(original.CorrelationId);
         deserialized.UserId.ShouldBe(original.UserId);
         deserialized.EntityId.ShouldBe(original.EntityId);
+        _ = deserialized.Paging.ShouldNotBeNull();
+        deserialized.Paging.PageSize.ShouldBe(25);
+        deserialized.Paging.Cursor.ShouldBe("opaque-cursor");
     }
 
     [Fact]
@@ -235,6 +253,21 @@ public class QueryEnvelopeTests {
 
         _ = deserialized.ShouldNotBeNull();
         deserialized.IsGlobalAdmin.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void DataContractSerializer_PreservesPaging_AcrossActorBoundary() {
+        QueryEnvelope original = CreateValid(paging: new QueryPagingOptions(PageSize: 25, Cursor: "opaque-cursor"));
+        var serializer = new DataContractSerializer(typeof(QueryEnvelope));
+        using var ms = new MemoryStream();
+        serializer.WriteObject(ms, original);
+        ms.Position = 0;
+        var deserialized = (QueryEnvelope?)serializer.ReadObject(ms);
+
+        _ = deserialized.ShouldNotBeNull();
+        _ = deserialized.Paging.ShouldNotBeNull();
+        deserialized.Paging.PageSize.ShouldBe(25);
+        deserialized.Paging.Cursor.ShouldBe("opaque-cursor");
     }
 
     [Fact]

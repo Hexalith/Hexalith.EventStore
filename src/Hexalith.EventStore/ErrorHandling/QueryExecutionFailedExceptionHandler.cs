@@ -35,9 +35,7 @@ public class QueryExecutionFailedExceptionHandler(ILogger<QueryExecutionFailedEx
             queryFailure.QueryType,
             queryFailure.StatusCode);
 
-        string detail = queryFailure.StatusCode == StatusCodes.Status403Forbidden
-            ? AuthorizationExceptionHandler.SanitizeForbiddenTerms(queryFailure.Detail)
-            : queryFailure.Detail;
+        string detail = GetSafeDetail(queryFailure);
 
         var problemDetails = new ProblemDetails {
             Status = queryFailure.StatusCode,
@@ -72,13 +70,23 @@ public class QueryExecutionFailedExceptionHandler(ILogger<QueryExecutionFailedEx
 
     private static string GetTitle(int statusCode)
         => statusCode switch {
+            StatusCodes.Status400BadRequest => "Bad Request",
             StatusCodes.Status403Forbidden => "Forbidden",
             StatusCodes.Status501NotImplemented => "Not Implemented",
             _ => "Query Failed",
         };
 
+    private static string GetSafeDetail(QueryExecutionFailedException queryFailure)
+        => queryFailure.StatusCode switch {
+            StatusCodes.Status400BadRequest when string.Equals(queryFailure.ReasonCode, QueryProblemReasonCodes.InvalidPage, StringComparison.Ordinal) =>
+                "The supplied cursor is invalid.",
+            StatusCodes.Status403Forbidden => AuthorizationExceptionHandler.SanitizeForbiddenTerms(queryFailure.Detail),
+            _ => queryFailure.Detail,
+        };
+
     private static string GetProblemTypeUri(int statusCode)
         => statusCode switch {
+            StatusCodes.Status400BadRequest => ProblemTypeUris.BadRequest,
             StatusCodes.Status403Forbidden => ProblemTypeUris.Forbidden,
             StatusCodes.Status501NotImplemented => ProblemTypeUris.NotImplemented,
             _ => ProblemTypeUris.InternalServerError,
@@ -86,6 +94,7 @@ public class QueryExecutionFailedExceptionHandler(ILogger<QueryExecutionFailedEx
 
     private static string GetReasonCode(int statusCode)
         => statusCode switch {
+            StatusCodes.Status400BadRequest => QueryProblemReasonCodes.MalformedRequest,
             StatusCodes.Status403Forbidden => AuthorizationFailureReasonExtensions.InsufficientPermission,
             StatusCodes.Status501NotImplemented => QueryProblemReasonCodes.NotImplemented,
             _ => QueryProblemReasonCodes.InternalError,

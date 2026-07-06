@@ -69,8 +69,8 @@ public partial class SubmitQueryHandler(
         // a "sentinel: detail" message carries caller-supplied text (e.g. an invalid audit category
         // value), so a detail containing "not found" / "not implemented" would otherwise be
         // misclassified as 404/501 instead of the intended 400. The message is preserved as the
-        // ProblemDetails detail so consumers can react (e.g. the UI resets an invalid audit cursor to
-        // the first page when the detail carries "invalid-cursor").
+        // ProblemDetails detail so consumers can react. Invalid cursor failures are intentionally
+        // replaced with a generic detail below so a raw protected cursor is never echoed.
         if (IsSentinel(errorMessage, QueryAdapterFailureReason.InvalidCursor)) {
             return new QueryExecutionFailedException(
                 request.CorrelationId,
@@ -79,7 +79,7 @@ public partial class SubmitQueryHandler(
                 request.AggregateId,
                 request.QueryType,
                 400,
-                errorMessage!,
+                "The supplied cursor is invalid.",
                 QueryProblemReasonCodes.InvalidPage);
         }
 

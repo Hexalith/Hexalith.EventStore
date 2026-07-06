@@ -1,3 +1,5 @@
+using System.Runtime.Serialization;
+
 namespace Hexalith.EventStore.Contracts.Queries;
 
 /// <summary>
@@ -5,8 +7,9 @@ namespace Hexalith.EventStore.Contracts.Queries;
 /// </summary>
 /// <param name="PageSize">Optional requested page size. Omission uses <see cref="QueryPolicyLimits.DefaultPageSize"/>.</param>
 /// <param name="Offset">Optional zero-based offset for offset paging.</param>
-/// <param name="Cursor">Optional cursor token. Cursor paging is reserved and currently rejected by gateway validation.</param>
+/// <param name="Cursor">Optional opaque cursor token. Cursor-only requests pass gateway validation for downstream query validation.</param>
+[DataContract]
 public sealed record QueryPagingOptions(
-    int? PageSize = null,
-    int? Offset = null,
-    string? Cursor = null);
+    [property: DataMember] int? PageSize = null,
+    [property: DataMember] int? Offset = null,
+    [property: DataMember] string? Cursor = null);

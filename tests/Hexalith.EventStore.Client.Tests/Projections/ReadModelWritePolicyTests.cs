@@ -136,6 +136,41 @@ public class ReadModelWritePolicyTests {
         result.AppliedEvents.ShouldBe(["a", "b"]);
     }
 
+    [Fact]
+    public async Task AggregateAndIndexWrites_UpdateSeparateKeysAndMergeIndexAfterConflict() {
+        var store = new InMemoryReadModelStore();
+
+        AggregateReadModel aggregate = await ReadModelWritePolicy.UpdateAsync<AggregateReadModel>(
+            store,
+            StoreName,
+            "aggregate:order-1",
+            current => new AggregateReadModel {
+                Id = current?.Id ?? "order-1",
+                Status = "created",
+            });
+
+        store.ConcurrentWriteBeforeTrySave = () => {
+            store.SeedRaw(StoreName, "index:created", new AggregateIndexReadModel { AggregateIds = ["order-0"] });
+            store.ConcurrentWriteBeforeTrySave = null;
+        };
+
+        AggregateIndexReadModel index = await ReadModelWritePolicy.MergeAsync(
+            store,
+            StoreName,
+            "index:created",
+            new AggregateIndexReadModel { AggregateIds = ["order-1"] },
+            () => new AggregateIndexReadModel(),
+            (existing, incoming) => new AggregateIndexReadModel {
+                AggregateIds = [.. existing.AggregateIds.Concat(incoming.AggregateIds).Distinct(StringComparer.Ordinal)],
+            });
+
+        aggregate.Status.ShouldBe("created");
+        store.Snapshot<AggregateReadModel>(StoreName, "aggregate:order-1")!.Status.ShouldBe("created");
+        index.AggregateIds.ShouldBe(["order-0", "order-1"]);
+        store.Snapshot<AggregateIndexReadModel>(StoreName, "index:created")!.AggregateIds.ShouldBe(["order-0", "order-1"]);
+        store.Count.ShouldBe(2);
+    }
+
     private static ProjectionEventDto CreateEvent(string typeName, string correlationId) =>
         new(typeName, [], "json", 1, DateTimeOffset.UnixEpoch, correlationId);
 }
