@@ -1,3 +1,15 @@
+# [3.42.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.41.1...v3.42.0) (2026-07-06)
+
+
+### Bug Fixes
+
+* **client:** harden domain-event consumer markers, ULID validation, and cancellation ([7b16dc7](https://github.com/Hexalith/Hexalith.EventStore/commit/7b16dc72db284f7878dd3f57c668a0358857c978))
+
+
+### Features
+
+* **domain-service:** harden projection and event consumer seams ([3c158ba](https://github.com/Hexalith/Hexalith.EventStore/commit/3c158ba5f14998ddfd7cfa59284ae21ec565166f))
+
 ## [3.41.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.41.0...v3.41.1) (2026-07-06)
 
 
