@@ -1,3 +1,16 @@
+# [3.40.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.39.0...v3.40.0) (2026-07-06)
+
+
+### Bug Fixes
+
+* **security:** harden admin tenant scoping ([90988a1](https://github.com/Hexalith/Hexalith.EventStore/commit/90988a16817ae943315bd2fcfc37018477f49ea4))
+
+
+### Features
+
+* Enhance Counter Command Contracts and Tests ([26b2d73](https://github.com/Hexalith/Hexalith.EventStore/commit/26b2d734efb8a6ce077946b4c4586ad0cb08d96f))
+* remove counter command records for cleaner codebase ([fbcdd5d](https://github.com/Hexalith/Hexalith.EventStore/commit/fbcdd5d65e34334be44f8ee79d972c58c52ab121))
+
 # [3.39.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.38.0...v3.39.0) (2026-07-06)
 
 
