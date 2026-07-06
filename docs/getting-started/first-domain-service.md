@@ -37,7 +37,7 @@ samples/Hexalith.EventStore.Sample/
     State/
 ```
 
-The existing `Hexalith.EventStore.Sample.csproj` already has the correct project references (`Hexalith.EventStore.Client`, `Hexalith.EventStore.ServiceDefaults`, `Dapr.AspNetCore`). No `.csproj` changes are needed.
+The existing `Hexalith.EventStore.Sample.csproj` already has the correct project references: `Hexalith.EventStore.DomainService` for the canonical host SDK, plus the sample contracts library. Client, ServiceDefaults, platform Contracts, and DAPR hosting dependencies flow through the DomainService SDK. No `.csproj` changes are needed.
 
 ### Commands
 
@@ -191,11 +191,11 @@ The tutorial handlers also guard against invalid non-positive quantities (`<= 0`
 
 ## Register and Run
 
-No registration code is needed. `AddEventStore()` in `Program.cs` auto-discovers all `EventStoreAggregate<>` subclasses in the assembly at startup. The `InventoryAggregate` is found automatically by the assembly scanner. The sample project already references `Hexalith.EventStore.Client`, which contains the `EventStoreAggregate<T>` base class and the assembly scanner. Any public aggregate class in this project is discovered automatically — no `.csproj` changes, no `Program.cs` changes.
+No registration code is needed for the Inventory domain itself. The Sample host already references `Hexalith.EventStore.DomainService` and uses the canonical two-line host shape in `Program.cs`: `builder.AddEventStoreDomainService();` during registration and `app.UseEventStoreDomainService();` after building the app. The SDK wires service defaults, convention discovery, runtime activation, and the standard `/process`, `/replay-state`, `/query`, `/project`, and `/admin/operational-index-metadata` endpoints. Any public aggregate class in this project is discovered automatically — no `.csproj` changes, no `Program.cs` changes.
 
 The naming convention engine converts `InventoryAggregate` to domain name `inventory` (PascalCase to kebab-case, "Aggregate" suffix stripped).
 
-> **Note:** In this tutorial, you add the Inventory domain to the existing sample project for simplicity. In a real-world application, each domain service would typically be a separate .NET project referencing the `Hexalith.EventStore.Client` NuGet package. The same `AddEventStore()` call discovers aggregates from whichever assembly it scans.
+> **Note:** In this tutorial, you add the Inventory domain to the existing sample project for simplicity. In a real-world application, each domain service would typically be a separate .NET project referencing the `Hexalith.EventStore.DomainService` NuGet package and using the same `AddEventStoreDomainService()` / `UseEventStoreDomainService()` host calls.
 
 Restart the AppHost:
 
@@ -318,7 +318,7 @@ Here is what happened when you sent those commands:
 
 1. You sent an `AddStock` command with `{ "quantity": 10 }` to the CommandAPI via REST
 2. The CommandAPI validated the request and authenticated your JWT token
-3. DAPR activated an `InventoryAggregate` actor for `tenant-a:inventory:product-1` — `AddEventStore()` auto-discovered the aggregate at startup
+3. DAPR activated an `InventoryAggregate` actor for `tenant-a:inventory:product-1` — the DomainService SDK auto-discovered the aggregate at startup
 4. The actor loaded the current `InventoryState` (empty for a new aggregate, so `Quantity` defaults to 0) and called the typed `Handle` method
 5. The `InventoryAggregate` produced a `StockAdded` event with `Quantity = 10`
 6. The event was persisted to the state store and published to the event topic
@@ -362,7 +362,7 @@ This is the infrastructure portability that DAPR provides — your domain logic 
 ## What You Learned
 
 - **Pure function contract:** `Handle(Command, State?) → DomainResult` — the same pattern for every domain service
-- **Auto-discovery:** `AddEventStore()` scans the assembly and finds your aggregate automatically — no registration code
+- **Auto-discovery:** `AddEventStoreDomainService()` scans the domain assembly and finds your aggregate automatically — no per-domain registration code
 - **Naming conventions:** `InventoryAggregate` becomes domain name `inventory` via convention engine (strip suffix, lowercase)
 - **Three result types:** `DomainResult.Success` (events persisted and published), `DomainResult.Rejection` (rejection event returned, persisted, and published), `DomainResult.NoOp` (nothing happened)
 - **State reconstruction:** `Apply` methods on state replay persisted events to rebuild current state — rejection events are excluded
@@ -375,9 +375,9 @@ You wrote zero infrastructure code. No Redis imports, no DAPR SDK references, no
 Here is the transferable recipe:
 
 1. Create a new .NET project (or use an existing one)
-2. Add the `Hexalith.EventStore.Client` NuGet package
+2. Add the `Hexalith.EventStore.DomainService` NuGet package
 3. Define your commands (sealed records), events (sealed records implementing `IEventPayload` / `IRejectionEvent`), state (class with `Apply` methods), and aggregate (extending `EventStoreAggregate<TState>` with static `Handle` methods)
-4. Call `AddEventStore()` in your `Program.cs`
+4. Call `builder.AddEventStoreDomainService();` and `app.UseEventStoreDomainService();` in your `Program.cs`
 
 That is it. The convention engine discovers your aggregate, derives the domain name, and wires everything up.
 

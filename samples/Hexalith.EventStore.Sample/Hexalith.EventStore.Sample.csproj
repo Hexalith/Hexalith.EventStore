@@ -17,8 +17,4 @@
     <ProjectReference Include="..\Hexalith.EventStore.Sample.Contracts\Hexalith.EventStore.Sample.Contracts.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Dapr.AspNetCore" />
-  </ItemGroup>
-
 </Project>

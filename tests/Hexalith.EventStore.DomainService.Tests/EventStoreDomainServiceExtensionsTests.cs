@@ -3,6 +3,7 @@ using System.Text.Json;
 
 using Hexalith.EventStore.Client.Discovery;
 using Hexalith.EventStore.Client.Handlers;
+using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Contracts.Queries;
@@ -10,6 +11,7 @@ using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.DomainService.Tests.Fixtures;
 
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -49,6 +51,77 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         using ServiceProvider provider = builder.Services.BuildServiceProvider();
         DiscoveryResult discovery = provider.GetRequiredService<DiscoveryResult>();
         discovery.Aggregates.ShouldContain(a => a.DomainName == "widget");
+    }
+
+    /// <summary>
+    /// Proves the canonical two-line SDK host activates discovered domains and maps every default and
+    /// domain-service endpoint exposed by a conforming domain module.
+    /// </summary>
+    [Fact]
+    public void UseEventStoreDomainService_ActivatesDiscoveredDomainsAndMapsCanonicalEndpoints() {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.AddEventStoreDomainService();
+        WebApplication app = builder.Build();
+
+        _ = app.UseEventStoreDomainService();
+
+        EventStoreActivationContext activation = app.Services.GetRequiredService<EventStoreActivationContext>();
+        activation.Activations.ShouldContain(a => a.DomainName == "widget");
+
+        AssertRouteSupports(app, "/", HttpMethods.Get);
+        AssertRouteSupports(app, "/health", HttpMethods.Get);
+        AssertRouteSupports(app, "/alive", HttpMethods.Get);
+        AssertRouteSupports(app, "/ready", HttpMethods.Get);
+        AssertRouteSupports(app, "/process", HttpMethods.Post);
+        AssertRouteSupports(app, "/replay-state", HttpMethods.Post);
+        AssertRouteSupports(app, "/query", HttpMethods.Post);
+        AssertRouteSupports(app, "/project", HttpMethods.Post);
+        AssertRouteSupports(app, "/admin/operational-index-metadata", HttpMethods.Post);
+    }
+
+    /// <summary>
+    /// Proves the SDK yields when an app maps its own exact <c>/project</c> endpoint before the canonical
+    /// endpoint set, preserving bespoke projection wire behavior without creating ambiguous route matches.
+    /// </summary>
+    [Fact]
+    public void UseEventStoreDomainService_PreservesPreMappedProjectRouteWithoutDuplicate() {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.AddEventStoreDomainService();
+        WebApplication app = builder.Build();
+
+        _ = app.MapPost("/project", () => "bespoke projection handler");
+
+        _ = app.UseEventStoreDomainService();
+
+        RouteEndpoint[] projectEndpoints = GetRouteEndpoints(app)
+            .Where(static endpoint => string.Equals(endpoint.RoutePattern.RawText, "/project", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+        projectEndpoints.Length.ShouldBe(1);
+        EndpointSupportsHttpMethod(projectEndpoints[0], HttpMethods.Post).ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// Proves a non-POST <c>/project</c> route does not suppress the canonical projection endpoint needed by
+    /// DAPR service invocation.
+    /// </summary>
+    [Fact]
+    public void UseEventStoreDomainService_MapsProjectPostWhenOnlyNonPostProjectRouteExists() {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.AddEventStoreDomainService();
+        WebApplication app = builder.Build();
+
+        _ = app.MapGet("/project", () => "diagnostic view");
+
+        _ = app.UseEventStoreDomainService();
+
+        RouteEndpoint[] projectEndpoints = GetRouteEndpoints(app)
+            .Where(static endpoint => string.Equals(endpoint.RoutePattern.RawText, "/project", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+        projectEndpoints.Length.ShouldBe(2);
+        projectEndpoints.Any(endpoint => EndpointSupportsHttpMethod(endpoint, HttpMethods.Get)).ShouldBeTrue();
+        projectEndpoints.Any(endpoint => EndpointSupportsHttpMethod(endpoint, HttpMethods.Post)).ShouldBeTrue();
     }
 
     /// <summary>
@@ -389,14 +462,7 @@ public sealed class EventStoreDomainServiceExtensionsTests {
 
         _ = app.MapEventStoreDomainService();
 
-        string[] routes = ((IEndpointRouteBuilder)app).DataSources
-            .SelectMany(static source => source.Endpoints)
-            .OfType<RouteEndpoint>()
-            .Select(static endpoint => endpoint.RoutePattern.RawText)
-            .Where(static route => route is not null)
-            .Select(static route => route!)
-            .OrderBy(static route => route, StringComparer.Ordinal)
-            .ToArray();
+        string[] routes = GetMappedRoutes(app);
 
         routes.ShouldBe([
             "/",
@@ -415,6 +481,33 @@ public sealed class EventStoreDomainServiceExtensionsTests {
             SequenceNumber: 1,
             Timestamp: DateTimeOffset.UnixEpoch,
             CorrelationId: "test-corr");
+
+    private static void AssertRouteSupports(IEndpointRouteBuilder endpoints, string route, string httpMethod)
+        => GetRouteEndpoints(endpoints)
+            .ShouldContain(
+                endpoint => string.Equals(endpoint.RoutePattern.RawText, route, StringComparison.OrdinalIgnoreCase)
+                         && EndpointSupportsHttpMethod(endpoint, httpMethod),
+                $"Expected route '{route}' to support HTTP {httpMethod}.");
+
+    private static bool EndpointSupportsHttpMethod(RouteEndpoint endpoint, string httpMethod) {
+        IHttpMethodMetadata? metadata = endpoint.Metadata.GetMetadata<IHttpMethodMetadata>();
+        return metadata is null
+            || metadata.HttpMethods.Contains(httpMethod, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static RouteEndpoint[] GetRouteEndpoints(IEndpointRouteBuilder endpoints)
+        => endpoints.DataSources
+            .SelectMany(static source => source.Endpoints)
+            .OfType<RouteEndpoint>()
+            .ToArray();
+
+    private static string[] GetMappedRoutes(IEndpointRouteBuilder endpoints)
+        => GetRouteEndpoints(endpoints)
+            .Select(static endpoint => endpoint.RoutePattern.RawText)
+            .Where(static route => route is not null)
+            .Select(static route => route!)
+            .OrderBy(static route => route, StringComparer.Ordinal)
+            .ToArray();
 
     private static DomainServiceRequest CreateProcessRequest()
         => new(
