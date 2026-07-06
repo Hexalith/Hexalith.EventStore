@@ -2,8 +2,9 @@
 title: '1.4 Projection And Domain Event Consumer Seams'
 type: 'feature'
 created: '2026-07-06'
-status: 'in-review'
+status: 'done'
 baseline_revision: '62220cb913ef0abccb07039e18df885507385a23'
+final_revision: '3c158ba5f14998ddfd7cfa59284ae21ec565166f'
 review_loop_iteration: 1
 followup_review_recommended: true
 context:
@@ -103,7 +104,7 @@ The marker seam should be small and reusable rather than a full projection frame
 
 ## Auto Run Result
 
-Status: `in-review`
+Status: `done`
 
 Summary:
 - Added deterministic projection-handler route validation so duplicate projection domains fail during SDK endpoint setup and direct dispatch, while no-handler projection requests still return `null` for 404 mapping.
