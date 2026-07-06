@@ -4,9 +4,9 @@ type: 'feature'
 created: '2026-07-06'
 status: 'done'
 baseline_revision: 'b044369533c59fafa5114961764220fbd73522fa'
-final_revision: '3f9c889aaa9cb48728935e0c2cf01e7875a7ae61'
+final_revision: '518c9cee'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/project-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-1-context.md'
@@ -98,6 +98,15 @@ warnings: ['oversized']
   - `[medium]` `[patch]` The gateway validator allowed cursor strings larger than the codec's 4096-character cap to reach routing and actor checksum work; promoted the cursor limit to `QueryPolicyLimits.MaxCursorLength`, reused it in codec and validator, and documented it.
   - `[low]` `[patch]` Whitespace cursor values could be forwarded with offset/page-size paging and trigger downstream cursor-branch checks; controller paging normalization now clears whitespace cursors while preserving meaningful page size/offset.
 
+### 2026-07-06 — Review pass (follow-up)
+- intent_gap: 0
+- bad_spec: 0
+- patch: 1: (high 0, medium 0, low 1)
+- defer: 1
+- reject: 5
+- addressed_findings:
+  - `[low]` `[patch]` `CachingProjectionActor` cache-key comments still described the key as `(QueryType, Payload, UserId)` after `PagingChecksum` was added to `CacheEntryKey`; a maintainer reasoning about cache poisoning from these security-relevant comments would wrongly conclude paging is not part of the key. Updated both comments (class-level invariant and cache-hit comment) to `(QueryType, Payload, Paging, UserId)`.
+
 ## Design Notes
 
 Do not auto-register `IQueryCursorCodec` from `AddEventStoreDomainService()` in this story: the codec requires a stable caller-supplied purpose, and choosing that automatically would be a cross-domain contract decision. Keep registration opt-in and tested.
@@ -150,3 +159,28 @@ Verification:
 
 Residual Risks:
 - Follow-up review is recommended because the patched findings changed public contract compatibility surfaces, cursor failure semantics, ProblemDetails extensions, and security-sensitive logging.
+
+### Follow-up review pass (2026-07-06)
+
+Status: `done`
+
+Summary:
+- Independent follow-up adversarial + edge-case review of the full story diff (Blind Hunter + Edge Case Hunter, both at Opus capability, fresh context) against baseline `b044369`.
+- The high-risk surfaces the prior pass touched — public contract additivity, System.Text.Json / DataContract compatibility, cursor-text non-leakage, and cache-key correctness — were re-verified against source and confirmed sound and well-tested; no live defect found in them.
+- One low-severity documentation-accuracy patch applied; one low-severity platform-consistency observation deferred.
+
+Files changed:
+- `src/Hexalith.EventStore.Server/Actors/CachingProjectionActor.cs` -- corrected the class-level and cache-hit comments to describe the actual cache key `(QueryType, Payload, Paging, UserId)` after `PagingChecksum` was added to `CacheEntryKey`.
+
+Review Findings:
+- Patched 1 finding (low): stale cache-key comments misdescribed the security-relevant cache invariant.
+- Deferred 1 finding (low): the default full-replay actor forwards generic paging but only enforces cursors, silently ignoring `Offset`/`PageSize`, while the caching actor keys on paging that actor never honors — bounded per-actor cache fragmentation and cross-query eviction. Recorded in `deferred-work.md` as a new entry.
+- Rejected 5 findings: (1) `query_invalid_page`↔invalid-cursor coupling in `QueryExecutionFailedExceptionHandler` — re-raise of an already-rejected prior-pass finding, not reachable by validator errors; (2) validator max-length rule firing on >4096-char whitespace cursors while normalization treats whitespace as absent — deterministic safe 400, no leak/crash/wrong-data (both reviewers agreed handled); (3) duplicated `IsSentinel`/`GetSafeLogErrorMessage` guard and the generic-detail literal across files — correct and tested, no user consequence; (4) `ComputePagingChecksum` distinguishing `null` from an empty `QueryPagingOptions()` — pure cache-miss inefficiency, gateway normalizes to null; (5) handler-based path forwarding cursors to domain handlers without a platform guard — by-design per the intent contract ("passed downstream for handler/projection validation"), low-confidence per-domain discipline.
+
+Verification:
+- `dotnet build Hexalith.EventStore.slnx --configuration Release` -- passed with 0 warnings and 0 errors (comment-only change; behavior provably unchanged).
+- `dotnet test tests/Hexalith.EventStore.Server.Tests/ --filter FullyQualifiedName~CachingProjectionActor` -- passed, 33 tests.
+- `git diff --check` -- passed, no whitespace errors.
+
+Residual Risks:
+- None from this pass. Follow-up review is not recommended: the only change is a doc-accuracy comment with zero behavior, API, security, or data impact, and the substantive contract/leakage/compatibility concerns were checked and cleared.

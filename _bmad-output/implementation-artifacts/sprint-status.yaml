@@ -51,7 +51,7 @@ development_status:
   epic-1: backlog
   1-1-canonical-domain-service-sdk-host: done
   1-2-domain-query-handler-routing: done
-  1-3-generic-read-models-and-query-cursors: backlog
+  1-3-generic-read-models-and-query-cursors: done
   1-4-projection-and-domain-event-consumer-seams: backlog
   1-5-domain-module-hosting-observability: backlog
   1-6-sample-and-tenants-domain-centric-adoption: backlog

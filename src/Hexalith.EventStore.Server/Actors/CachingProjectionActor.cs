@@ -24,8 +24,8 @@ public abstract partial class CachingProjectionActor(
     : Actor(host), IDaprProjectionActor {
     // The actor instance is shared across QueryTypes for the same (projectionType, tenantId, entityId)
     // — see QueryActorIdHelper.DeriveActorId. The cache MUST therefore be keyed by (QueryType, Payload,
-    // UserId) too, otherwise the first query to populate the cache poisons the response of every other
-    // query type on the same actor.
+    // Paging, UserId) too, otherwise the first query to populate the cache poisons the response of every
+    // other query type, payload, or paging policy on the same actor.
     private const int MaxCacheEntries = 32;
 
     private readonly Dictionary<CacheEntryKey, CacheEntry> _payloadCache = [];
@@ -65,7 +65,7 @@ public abstract partial class CachingProjectionActor(
             ComputePagingChecksum(envelope.Paging),
             envelope.UserId);
 
-        // Cache hit: ETag is non-null AND we have an entry matching this (QueryType, Payload, UserId).
+        // Cache hit: ETag is non-null AND we have an entry matching this (QueryType, Payload, Paging, UserId).
         if (currentETag is not null
             && _payloadCache.TryGetValue(cacheKey, out CacheEntry cached)) {
             cancellationToken.ThrowIfCancellationRequested();
