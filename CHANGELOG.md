@@ -1,3 +1,10 @@
+# [3.39.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.38.0...v3.39.0) (2026-07-06)
+
+
+### Features
+
+* **domain-service:** add canonical SDK host ([385954e](https://github.com/Hexalith/Hexalith.EventStore/commit/385954ee0347b328e2a017c3bc44506a851f88c5))
+
 # [3.38.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.37.0...v3.38.0) (2026-07-05)
 
 
