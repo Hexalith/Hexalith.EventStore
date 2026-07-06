@@ -63,7 +63,6 @@ Counter/Commands/
  ResetCounter.cs
 Counter/
  CounterAggregate.cs
- CounterProcessor.cs
  Events/
   CounterCannotGoNegative.cs
   CounterClosed.cs

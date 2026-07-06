@@ -54,10 +54,18 @@ public sealed class DomainModuleAuthoringGuardrailTests
     private static readonly string[] SampleProgramForbiddenNormalModeMarkers =
     [
         "DomainServiceRequestRouter",
+        "AddDaprClient(",
+        "AddEventStore(",
+        "AddEventStoreDomainTelemetry(",
+        "AddServiceDefaults(",
+        "AddControllers(",
         "MapDefaultEndpoints(",
         "MapHealthChecks(",
         "MapEventStoreDomainService(",
+        "MapControllers(",
+        "MapSubscribeHandler(",
         "UseEventStore(",
+        "UseCloudEvents(",
         "AdminOperationalIndexMetadata",
         "MapPost(\"/process\"",
         "MapPost(\"/replay-state\"",
@@ -159,6 +167,25 @@ public sealed class DomainModuleAuthoringGuardrailTests
             "The reference Sample domain module must not reference Dapr.* packages directly. DAPR hosting "
             + "dependencies flow through Hexalith.EventStore.DomainService so domain authors do not own "
             + "platform wiring. Found direct references: " + string.Join(", ", daprReferences));
+    }
+
+    [Fact]
+    public void DomainModules_DoNotDeclareLegacyNonAggregateDomainProcessors()
+    {
+        Regex processorDeclaration = new(
+            @"\b(class|record)\s+\w+(?:\s*<[^>{}]*>)?\s*:[^{;]*\b(?:[\w.]+\.)?IDomainProcessor\b",
+            RegexOptions.Compiled | RegexOptions.Singleline);
+        string[] offenders = DomainModuleRoots()
+            .SelectMany(root => Directory
+                .EnumerateFiles(root.Path, "*.cs", SearchOption.AllDirectories)
+                .Where(file => !IsBuildArtifact(file) && !IsTestSource(file) && processorDeclaration.IsMatch(File.ReadAllText(file)))
+                .Select(file => $"{root.Name}: {Path.GetRelativePath(root.Path, file)}"))
+            .ToArray();
+
+        offenders.ShouldBeEmpty(
+            "Domain modules must prove convention-discovered EventStoreAggregate<TState> handlers, not "
+            + "legacy hand-written IDomainProcessor paths. Offending files: "
+            + string.Join(", ", offenders));
     }
 
     [Fact]

@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
@@ -150,6 +151,8 @@ public static class Extensions {
     public static WebApplication MapDefaultEndpoints(this WebApplication app) {
         ArgumentNullException.ThrowIfNull(app);
 
+        EventStoreServiceDefaultsOptions options = app.Services.GetService<IOptions<EventStoreServiceDefaultsOptions>>()?.Value
+            ?? new EventStoreServiceDefaultsOptions();
         IDictionary<HealthStatus, int> statusCodes = new Dictionary<HealthStatus, int> {
             [HealthStatus.Healthy] = StatusCodes.Status200OK,
             [HealthStatus.Degraded] = StatusCodes.Status200OK,
@@ -168,9 +171,9 @@ public static class Extensions {
             ResultStatusCodes = statusCodes,
         };
 
-        if (app.Environment.IsDevelopment()) {
-            healthOptions.ResponseWriter = WriteHealthCheckJsonResponse;
-            readinessOptions.ResponseWriter = WriteHealthCheckJsonResponse;
+        if (app.Environment.IsDevelopment() && options.DevelopmentHealthResponseWriter is not null) {
+            healthOptions.ResponseWriter = options.DevelopmentHealthResponseWriter;
+            readinessOptions.ResponseWriter = options.DevelopmentHealthResponseWriter;
         }
 
         _ = app.MapHealthChecks(HealthEndpointPath, healthOptions);

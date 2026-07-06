@@ -77,7 +77,7 @@ public sealed class MultiDomainRegistrationTests {
     }
 
     [Fact]
-    public async Task ProcessAsync_RequestForCounterDomain_UsesCounterProcessorRegistration() {
+    public async Task ProcessAsync_RequestForCounterDomain_UsesCounterAggregateRegistration() {
         using IHost host = Host.CreateDefaultBuilder()
             .ConfigureServices(s => s.AddEventStore(typeof(CounterAggregate).Assembly))
             .Build();
@@ -94,7 +94,7 @@ public sealed class MultiDomainRegistrationTests {
     }
 
     [Fact]
-    public async Task ProcessAsync_RequestForGreetingDomain_UsesGreetingProcessorRegistration() {
+    public async Task ProcessAsync_RequestForGreetingDomain_UsesGreetingAggregateRegistration() {
         using IHost host = Host.CreateDefaultBuilder()
             .ConfigureServices(s => s.AddEventStore(typeof(CounterAggregate).Assembly))
             .Build();

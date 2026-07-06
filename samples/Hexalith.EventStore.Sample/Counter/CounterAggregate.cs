@@ -9,7 +9,6 @@ using Hexalith.EventStore.Sample.Counter.State;
 namespace Hexalith.EventStore.Sample.Counter;
 /// <summary>
 /// Counter aggregate using the fluent EventStoreAggregate API.
-/// Replaces CounterProcessor as the primary domain implementation.
 /// </summary>
 public sealed class CounterAggregate : EventStoreAggregate<CounterState> {
     public static DomainResult Handle(IncrementCounter command, CounterState? state)

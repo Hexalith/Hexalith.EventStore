@@ -60,7 +60,6 @@ Compliance/ITerminatableSolutionComplianceTests.cs
 Counter/
  CounterAggregateReplayTests.cs
  CounterAggregateTests.cs
- CounterProcessorTests.cs
  Projections/CounterProjectionHandlerTests.cs
  Queries/GetCounterStatusQueryTests.cs
 Greeting/GreetingAggregateTests.cs

@@ -176,29 +176,6 @@ public sealed class FluentApiRegistrationIntegrationTests {
         Assert.Empty(result.Events);
     }
 
-    // ── AC8: Backward compatibility with CounterProcessor (independent host) ──
-
-    [Fact]
-    public async Task AddEventStoreClient_LegacyPath_RegistersFunctionalProcessorWithoutDiscovery() {
-        using IHost host = Host.CreateDefaultBuilder()
-            .ConfigureServices(services => services.AddEventStoreClient<CounterProcessor>())
-            .Build();
-
-        // DiscoveryResult should NOT be registered (fluent API was not used)
-        DiscoveryResult? discovery = host.Services.GetService<DiscoveryResult>();
-        Assert.Null(discovery);
-
-        // Legacy processor should be resolvable and functional
-        using IServiceScope scope = host.Services.CreateScope();
-        IDomainProcessor processor = scope.ServiceProvider.GetRequiredService<IDomainProcessor>();
-        _ = Assert.IsType<CounterProcessor>(processor);
-
-        DomainResult result = await processor.ProcessAsync(CreateCommand(new IncrementCounter()), currentState: null);
-        Assert.True(result.IsSuccess);
-        _ = Assert.Single(result.Events);
-        _ = Assert.IsType<CounterIncremented>(result.Events[0]);
-    }
-
     // ── AC10: UseEventStore without AddEventStore throws ──
 
     [Fact]
