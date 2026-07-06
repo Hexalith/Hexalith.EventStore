@@ -1,3 +1,10 @@
+## [3.41.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.41.0...v3.41.1) (2026-07-06)
+
+
+### Bug Fixes
+
+* **queries:** harden cursor contract compatibility ([3f9c889](https://github.com/Hexalith/Hexalith.EventStore/commit/3f9c889aaa9cb48728935e0c2cf01e7875a7ae61))
+
 # [3.41.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.40.0...v3.41.0) (2026-07-06)
 
 
