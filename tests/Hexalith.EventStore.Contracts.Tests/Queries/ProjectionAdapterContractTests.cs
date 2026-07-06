@@ -171,6 +171,47 @@ public class ProjectionAdapterContractTests {
     }
 
     [Fact]
+    public void QueryResult_SystemTextJsonRoundTrip_PreservesSuccessPayloadAndMetadata() {
+        // Regression guard: the projection actor wire path (DefaultProjectionActorInvoker ->
+        // ActorProxy.InvokeMethodAsync<QueryEnvelope, QueryResult>) uses System.Text.Json, NOT
+        // DataContractSerializer. A second public constructor made STJ throw NotSupportedException
+        // ("Deserialization of types without a parameterless constructor, a singular parameterized
+        // constructor, or a parameterized constructor annotated with 'JsonConstructorAttribute'")
+        // on every projection query response. QueryResult must keep exactly one deserialization
+        // constructor so the actor-remoting JSON path round-trips.
+        JsonElement payload = JsonDocument.Parse("{\"count\":42}").RootElement;
+        var original = QueryResult.FromPayload(
+            payload,
+            "counter",
+            new QueryResponseMetadata(ETag: "etag-1", IsStale: false, ProjectionVersion: "v1"));
+
+        string json = JsonSerializer.Serialize(original);
+        QueryResult? restored = JsonSerializer.Deserialize<QueryResult>(json);
+
+        _ = restored.ShouldNotBeNull();
+        restored.Success.ShouldBeTrue();
+        restored.ProjectionType.ShouldBe("counter");
+        restored.GetPayload().GetProperty("count").GetInt32().ShouldBe(42);
+        _ = restored.Metadata.ShouldNotBeNull();
+        restored.Metadata.ETag.ShouldBe("etag-1");
+        restored.Metadata.ProjectionVersion.ShouldBe("v1");
+    }
+
+    [Fact]
+    public void QueryResult_SystemTextJsonRoundTrip_PreservesFailureShape() {
+        // The nonexistent-projection 404 path relies on STJ deserializing a failure QueryResult.
+        var original = QueryResult.Failure("No projection state available for this aggregate");
+
+        string json = JsonSerializer.Serialize(original);
+        QueryResult? restored = JsonSerializer.Deserialize<QueryResult>(json);
+
+        _ = restored.ShouldNotBeNull();
+        restored.Success.ShouldBeFalse();
+        restored.PayloadBytes.ShouldBeNull();
+        restored.ErrorMessage.ShouldBe("No projection state available for this aggregate");
+    }
+
+    [Fact]
     public void QueryResult_DataContractRoundTrip_OldShapeWithoutMetadata_DeserializesWithNullMetadata() {
         JsonElement payload = JsonDocument.Parse("{\"name\":\"Ada\"}").RootElement;
         var original = QueryResult.FromPayload(payload, "party", new QueryResponseMetadata(IsStale: false));
