@@ -67,15 +67,17 @@ public static class RepositoryProjectPaths {
         //   1. dependency is the current repository                   (module src under this root)
         //   2. this repo nested directly inside the dependency repo   (module src one level up)
         //   3. this repo nested two levels inside the dependency repo
-        //   4. dependency under this repo's references/               (standalone dev — the common case)
-        //   5. dependency is a sibling of this repo                   (e.g. both under a parent's references/)
-        //   6. dependency under the parent's references/
+        //   4. dependency under this repo root                         (root-level sibling module checkout)
+        //   5. dependency under this repo's references/                (standalone dev)
+        //   6. dependency is a sibling of this repo                    (e.g. both under a parent's references/)
+        //   7. dependency under the parent's references/
         string standalone = Path.GetFullPath(Path.Combine(root, "references", moduleDirectory, relative));
         string[] candidates =
         [
             Path.GetFullPath(Path.Combine(root, relative)),
             Path.GetFullPath(Path.Combine(root, "..", relative)),
             Path.GetFullPath(Path.Combine(root, "..", "..", relative)),
+            Path.GetFullPath(Path.Combine(root, moduleDirectory, relative)),
             standalone,
             Path.GetFullPath(Path.Combine(root, "..", moduleDirectory, relative)),
             Path.GetFullPath(Path.Combine(root, "..", "references", moduleDirectory, relative)),
