@@ -100,10 +100,7 @@ public static class EventStoreDomainEventsServiceCollectionExtensions {
     }
 
     private static IReadOnlyDictionary<string, Type> BuildEventTypeRegistry(Assembly assembly)
-        => GetLoadableTypes(assembly)
+        => assembly.GetTypes()
             .Where(t => t is { IsClass: true, IsAbstract: false } && typeof(IEventPayload).IsAssignableFrom(t))
             .ToDictionary(t => t.FullName!, t => t, StringComparer.Ordinal);
-
-    private static IEnumerable<Type> GetLoadableTypes(Assembly assembly)
-        => assembly.GetTypes();
 }

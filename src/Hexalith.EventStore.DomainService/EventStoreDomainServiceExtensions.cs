@@ -211,7 +211,7 @@ public static class EventStoreDomainServiceExtensions {
         }
 
         foreach (Assembly assembly in domainAssemblies) {
-            foreach (Type type in GetLoadableTypes(assembly)) {
+            foreach (Type type in assembly.GetTypes()) {
                 if (type is { IsClass: true, IsAbstract: false } && typeof(IDomainQueryHandler).IsAssignableFrom(type)) {
                     _ = services.AddScoped(typeof(IDomainQueryHandler), type);
                 }
@@ -226,7 +226,7 @@ public static class EventStoreDomainServiceExtensions {
         }
 
         foreach (Assembly assembly in domainAssemblies) {
-            foreach (Type type in GetLoadableTypes(assembly)) {
+            foreach (Type type in assembly.GetTypes()) {
                 if (type is { IsClass: true, IsAbstract: false } && typeof(IDomainProjectionHandler).IsAssignableFrom(type)) {
                     // Full-replay projection handlers are stateless (Model a) — registered as singletons so the
                     // /project endpoint can resolve them without a request scope.
@@ -265,7 +265,4 @@ public static class EventStoreDomainServiceExtensions {
         using IServiceScope scope = serviceProvider.CreateScope();
         _ = DomainProjectionHandlerRouteValidator.MaterializeAndValidate(scope.ServiceProvider.GetServices<IDomainProjectionHandler>());
     }
-
-    private static IEnumerable<Type> GetLoadableTypes(Assembly assembly)
-        => assembly.GetTypes();
 }

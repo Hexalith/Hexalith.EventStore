@@ -2,10 +2,10 @@
 title: '1.4 Projection And Domain Event Consumer Seams'
 type: 'feature'
 created: '2026-07-06'
-status: 'done'
+status: 'in-review'
 baseline_revision: '62220cb913ef0abccb07039e18df885507385a23'
 final_revision: '3c158ba5f14998ddfd7cfa59284ae21ec565166f'
-review_loop_iteration: 1
+review_loop_iteration: 0
 followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/project-context.md'
@@ -89,6 +89,21 @@ warnings: ['oversized']
 - deferred (1): multiple independently side-effecting handlers share one message-level marker; a later handler failure can replay earlier successful handlers. Docs now require idempotent handlers and recommend a composite handler for side effects that must succeed or fail together.
 - rejected (0): no reviewer findings were rejected.
 
+### 2026-07-06 — Review pass 2
+
+- intent_gap: 0
+- bad_spec: 0
+- patch: 6: (high 1, medium 2, low 3)
+- defer: 1
+- reject: 2
+- addressed_findings:
+  - `[high]` `[patch]` DAPR marker store `ReleaseAsync` unconditionally deleted the marker key even though `TryAcquireAsync` never persists an in-progress lease, so under concurrent at-least-once delivery a failed sibling delivery could delete another delivery's durable `Completed` marker and let a later redelivery re-run side effects. Made `ReleaseAsync` a no-op and replaced the test that locked in the delete with a regression test asserting release issues no state mutation.
+  - `[medium]` `[patch]` `IsValidUniqueId` caught only `ArgumentException`/`FormatException`, diverging from the repo's own `ProjectionRebuildCheckpointStore.IsValidOperationId` (P17-8P) which also catches `OverflowException`; a packaged `UniqueIdHelper.ToGuid` overflow on a crafted 26-char message id could escape as a 500 and wedge the subscription in a poison-message loop. Added `OverflowException` to the catch filter.
+  - `[medium]` `[patch]` Terminal-skip completions passed the request cancellation token to `MarkCompletedSafelyAsync`, so a client/sidecar abort during a skip-path completion left the default in-memory marker stuck `InProgress`, making every redelivery return `RetryableInProgress`/500 — a poison loop for a message that should have been terminally acknowledged. Dropped the token parameter and always complete with `CancellationToken.None`, matching the already-hardened success path.
+  - `[low]` `[patch]` In-memory `TryAcquireAsync` `while(true)` acquire loop checked cancellation only before the loop; added `ThrowIfCancellationRequested()` inside the loop so the concurrent add/remove spin stays cancellation-cooperative.
+  - `[low]` `[patch]` The DAPR store's weaker in-flight semantics (no in-progress lease, so concurrent duplicates can both dispatch — weaker than the in-memory default) were undocumented; documented the durability-vs-in-flight-exclusion trade-off in `stream-replay-api.md`.
+  - `[low]` `[patch]` Two new `GetLoadableTypes` no-op wrappers (Client registration + DomainService) shared a name with the genuinely resilient `AssemblyScanner.GetLoadableTypes` but only call `assembly.GetTypes()`, implying fail-soft resilience they do not have; inlined `assembly.GetTypes()` at the three call sites and removed the misleading wrappers (fail-fast behavior is unchanged and intentional).
+
 ## Design Notes
 
 The marker seam should be small and reusable rather than a full projection framework. A completed marker means "this message ID was already handled or terminally skipped"; a handler exception must not leave a completed marker. The default store is in-memory; the DAPR store is explicit opt-in and persists completed markers only, avoiding a durable in-progress lease/TTL policy in this story. If a future durable processing lease becomes necessary, block instead of inventing one without explicit state-store semantics.
@@ -149,3 +164,41 @@ Verification:
 Residual Risks:
 - Message-level markers do not make multiple independently side-effecting handlers atomic; a later handler failure can replay earlier successful handlers. Deferred work records the need for a per-handler marker or transactional composite-handler contract if the platform needs stronger guarantees.
 - If an explicit DAPR completed-marker write fails after handlers already ran, the endpoint acknowledges the current delivery to avoid an immediate duplicate side-effect retry; a later duplicate delivery can still re-run unless handler logic is idempotent.
+
+### Follow-up review (2026-07-06, review pass 2)
+
+Independent Blind-Hunter + Edge-Case-Hunter review of the full baseline→HEAD diff. Six findings were patched, one deferred, two rejected; no intent gaps or spec defects were found (no loopback).
+
+Patches applied:
+- Made DAPR `DaprEventStoreDomainEventMarkerStore.ReleaseAsync` a no-op so a failed concurrent delivery can no longer delete another delivery's durable `Completed` marker (the store never persists an in-progress lease, so releasing has nothing of its own to remove). Replaced the release test that asserted the delete with a regression test asserting release issues no state mutation.
+- Added `OverflowException` to `EventStoreDomainEventProcessor.IsValidUniqueId`'s catch filter, matching `ProjectionRebuildCheckpointStore.IsValidOperationId` (P17-8P), so a crafted overflowing 26-char message id is acknowledged as invalid instead of escaping as a 500 poison loop.
+- Dropped the request cancellation token from `MarkCompletedSafelyAsync` and always complete terminal skips with `CancellationToken.None`, preventing a request/sidecar abort from leaving the in-memory marker stuck `InProgress` and wedging a terminal skip into a `RetryableInProgress`/500 loop.
+- Added an in-loop `ThrowIfCancellationRequested()` to `InMemoryEventStoreDomainEventMarkerStore.TryAcquireAsync`'s acquire spin loop.
+- Documented the DAPR store's weaker in-flight concurrency (durability across restarts/replicas, not stronger in-flight exclusion) in `stream-replay-api.md`.
+- Inlined `assembly.GetTypes()` at the three call sites and removed the two misleadingly-named `GetLoadableTypes` no-op wrappers (Client registration + DomainService) that shadowed the genuinely resilient `AssemblyScanner.GetLoadableTypes`.
+
+Deferred (appended to `deferred-work.md` as a new entry): a misconfigured/non-existent `PayloadAggregateIdPropertyName` silently drops every consumed event as an aggregate mismatch with no distinct diagnostic (pre-existing behavior; only the reflection cache key changed in this story).
+
+Rejected: per-request O(n²) duplicate-projection validation in `DomainProjectionDispatcher` (intentional and test-pinned defense for bespoke/direct-dispatch hosts; handler count is tiny); bespoke-`/project` hosts deferring duplicate-projection validation to request time (narrow, self-inflicted, acceptable throw-on-misconfiguration).
+
+Files changed in this pass:
+- `src/Hexalith.EventStore.Client/Subscriptions/DaprEventStoreDomainEventMarkerStore.cs`
+- `src/Hexalith.EventStore.Client/Subscriptions/EventStoreDomainEventProcessor.cs`
+- `src/Hexalith.EventStore.Client/Subscriptions/InMemoryEventStoreDomainEventMarkerStore.cs`
+- `src/Hexalith.EventStore.Client/Registration/EventStoreDomainEventsServiceCollectionExtensions.cs`
+- `src/Hexalith.EventStore.DomainService/EventStoreDomainServiceExtensions.cs`
+- `tests/Hexalith.EventStore.Client.Tests/Subscriptions/EventStoreDomainEventMarkerStoreTests.cs`
+- `docs/reference/stream-replay-api.md`
+- `_bmad-output/implementation-artifacts/deferred-work.md`
+
+Verification (pass 2):
+- `dotnet build Hexalith.EventStore.slnx --configuration Release` — passed, 0 warnings and 0 errors.
+- `dotnet test tests/Hexalith.EventStore.Contracts.Tests/` — passed, 566 tests.
+- `dotnet test tests/Hexalith.EventStore.Client.Tests/` — passed, 519 tests (+1 from splitting the DAPR release test).
+- `dotnet test tests/Hexalith.EventStore.DomainService.Tests/` — passed, 58 tests.
+- `git diff --check` — passed, no whitespace errors.
+
+Residual risks (pass 2):
+- The DAPR store still provides only terminal-completion dedup (no durable in-progress lease), so concurrent duplicate deliveries across replicas can both dispatch; handler idempotency remains required and is now documented.
+- The OverflowException hardening is defensive against packaged `UniqueIdHelper.ToGuid` builds; the current submodule source may already surface overflow as `FormatException`, so the added branch is latent under source-mode tests.
+- Follow-up review recommended: the pass patched a HIGH correctness defect in the durable dedup path plus two poison-loop MEDIUM fixes and changed release/completion behavior, so an independent confirmation pass is warranted.

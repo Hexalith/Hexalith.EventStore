@@ -13,9 +13,11 @@ public sealed class InMemoryEventStoreDomainEventMarkerStore : IEventStoreDomain
         string messageId,
         CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(messageId);
-        cancellationToken.ThrowIfCancellationRequested();
 
         while (true) {
+            // Re-check on every iteration: the loop only re-spins when a concurrent ReleaseAsync removes the
+            // key between TryAdd and TryGetValue, so an inner check keeps the spin cooperative with cancellation.
+            cancellationToken.ThrowIfCancellationRequested();
             if (_markers.TryAdd(messageId, EventStoreDomainEventMarkerState.InProgress)) {
                 return Task.FromResult(EventStoreDomainEventMarkerAcquisitionResult.Acquired);
             }

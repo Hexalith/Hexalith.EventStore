@@ -58,18 +58,16 @@ public sealed class DaprEventStoreDomainEventMarkerStore(
     }
 
     /// <inheritdoc/>
-    public async Task ReleaseAsync(string messageId, CancellationToken cancellationToken = default) {
+    public Task ReleaseAsync(string messageId, CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(messageId);
 
-        EventStoreDomainEventsOptions value = _options.Value;
-        await _daprClient
-            .DeleteStateAsync(
-                value.MarkerStateStoreName,
-                BuildMarkerKey(value, messageId),
-                new StateOptions(),
-                s_emptyMetadata,
-                cancellationToken)
-            .ConfigureAwait(false);
+        // Releasing is intentionally a no-op for the DAPR store. TryAcquireAsync only reads state and never
+        // persists an in-progress lease, so a failing delivery owns no marker of its own to release. Deleting
+        // the key unconditionally would race a concurrent sibling delivery that already wrote a durable
+        // Completed marker and wipe it, letting a later redelivery re-run side effects. A failed delivery
+        // simply leaves no marker behind and is re-acquired on redelivery.
+        _ = cancellationToken;
+        return Task.CompletedTask;
     }
 
     private static string BuildMarkerKey(EventStoreDomainEventsOptions options, string messageId) {

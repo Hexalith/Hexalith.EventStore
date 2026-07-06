@@ -85,7 +85,7 @@ public sealed class EventStoreDomainEventMarkerStoreTests {
     }
 
     [Fact]
-    public async Task DaprMarkerStore_CompleteAndRelease_UseConfiguredScopedMarkerKey() {
+    public async Task DaprMarkerStore_MarkCompleted_UsesConfiguredScopedMarkerKeyWithFirstWrite() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var store = new DaprEventStoreDomainEventMarkerStore(
             daprClient,
@@ -97,7 +97,6 @@ public sealed class EventStoreDomainEventMarkerStoreTests {
             }));
 
         await store.MarkCompletedAsync("message-1");
-        await store.ReleaseAsync("message-1");
 
         _ = await daprClient.Received(1).TrySaveStateAsync(
             "markers",
@@ -107,9 +106,29 @@ public sealed class EventStoreDomainEventMarkerStoreTests {
             Arg.Is<StateOptions>(options => options.Concurrency == ConcurrencyMode.FirstWrite),
             Arg.Any<IReadOnlyDictionary<string, string>>(),
             Arg.Any<CancellationToken>());
-        await daprClient.Received(1).DeleteStateAsync(
-            "markers",
-            "domain-event:my-domain.events:%2Fmy-domain%2Fevents:message-1",
+    }
+
+    [Fact]
+    public async Task DaprMarkerStore_Release_IsNoOpAndDoesNotDeleteCompletedMarker() {
+        // The DAPR store never persists an in-progress lease, so a failing delivery owns no marker to
+        // release. An unconditional delete would race a concurrent sibling's durable Completed marker and
+        // wipe it, letting a later redelivery re-run side effects. Release must therefore issue no state
+        // mutation at all — this is the regression guard for that concurrency defect.
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        var store = new DaprEventStoreDomainEventMarkerStore(
+            daprClient,
+            Options.Create(new EventStoreDomainEventsOptions {
+                MarkerStateStoreName = "markers",
+                MarkerKeyPrefix = "domain-event:",
+                TopicName = "my-domain.events",
+                SubscriptionRoute = "/my-domain/events",
+            }));
+
+        await store.ReleaseAsync("message-1");
+
+        await daprClient.DidNotReceiveWithAnyArgs().DeleteStateAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
             Arg.Any<StateOptions>(),
             Arg.Any<IReadOnlyDictionary<string, string>>(),
             Arg.Any<CancellationToken>());

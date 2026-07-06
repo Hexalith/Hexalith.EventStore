@@ -132,13 +132,13 @@ public class EventStoreDomainEventProcessor {
                     "Skipping event {MessageId}: unsupported serialization format '{SerializationFormat}'",
                     envelope.MessageId,
                     envelope.SerializationFormat);
-                await MarkCompletedSafelyAsync(envelope.MessageId, cancellationToken).ConfigureAwait(false);
+                await MarkCompletedSafelyAsync(envelope.MessageId).ConfigureAwait(false);
                 return EventStoreDomainEventProcessingResult.FailedInvalidPayload;
             }
 
             if (!_eventTypeRegistry.TryGetValue(envelope.EventTypeName, out Type? eventType)) {
                 _logger.LogWarning("Unknown event type '{EventTypeName}' — skipping", envelope.EventTypeName);
-                await MarkCompletedSafelyAsync(envelope.MessageId, cancellationToken).ConfigureAwait(false);
+                await MarkCompletedSafelyAsync(envelope.MessageId).ConfigureAwait(false);
                 return EventStoreDomainEventProcessingResult.SkippedUnknownEventType;
             }
 
@@ -152,7 +152,7 @@ public class EventStoreDomainEventProcessor {
                     envelope.MessageId,
                     envelope.EventTypeName,
                     exception.GetType().Name);
-                await MarkCompletedSafelyAsync(envelope.MessageId, cancellationToken).ConfigureAwait(false);
+                await MarkCompletedSafelyAsync(envelope.MessageId).ConfigureAwait(false);
                 return EventStoreDomainEventProcessingResult.FailedInvalidPayload;
             }
             catch (NotSupportedException exception) {
@@ -161,13 +161,13 @@ public class EventStoreDomainEventProcessor {
                     envelope.MessageId,
                     envelope.EventTypeName,
                     exception.GetType().Name);
-                await MarkCompletedSafelyAsync(envelope.MessageId, cancellationToken).ConfigureAwait(false);
+                await MarkCompletedSafelyAsync(envelope.MessageId).ConfigureAwait(false);
                 return EventStoreDomainEventProcessingResult.FailedInvalidPayload;
             }
 
             if (deserialized is not IEventPayload @event) {
                 _logger.LogWarning("Failed to deserialize event {MessageId} as {EventTypeName}", envelope.MessageId, envelope.EventTypeName);
-                await MarkCompletedSafelyAsync(envelope.MessageId, cancellationToken).ConfigureAwait(false);
+                await MarkCompletedSafelyAsync(envelope.MessageId).ConfigureAwait(false);
                 return EventStoreDomainEventProcessingResult.FailedInvalidPayload;
             }
 
@@ -187,7 +187,7 @@ public class EventStoreDomainEventProcessor {
                     envelope.MessageId,
                     _payloadAggregateIdPropertyName,
                     envelope.AggregateId);
-                await MarkCompletedSafelyAsync(envelope.MessageId, cancellationToken).ConfigureAwait(false);
+                await MarkCompletedSafelyAsync(envelope.MessageId).ConfigureAwait(false);
                 return EventStoreDomainEventProcessingResult.SkippedAggregateMismatch;
             }
 
@@ -209,14 +209,14 @@ public class EventStoreDomainEventProcessor {
             int handlerCount = await ((Task<int>)genericDispatch.Invoke(null, [scope.ServiceProvider, @event, context, cancellationToken])!).ConfigureAwait(false);
             if (handlerCount == 0) {
                 _logger.LogWarning("No handlers registered for event type '{EventTypeName}' — skipping", envelope.EventTypeName);
-                await MarkCompletedSafelyAsync(envelope.MessageId, cancellationToken).ConfigureAwait(false);
+                await MarkCompletedSafelyAsync(envelope.MessageId).ConfigureAwait(false);
                 return EventStoreDomainEventProcessingResult.SkippedNoHandlers;
             }
 
             // Once handlers have completed successfully, do not delete the marker if the completion write
             // fails. Releasing here would let a redelivery run side effects a second time.
             releaseMarkerOnFailure = false;
-            await MarkCompletedSafelyAsync(envelope.MessageId, CancellationToken.None).ConfigureAwait(false);
+            await MarkCompletedSafelyAsync(envelope.MessageId).ConfigureAwait(false);
             return EventStoreDomainEventProcessingResult.Processed;
         }
         catch {
@@ -243,10 +243,12 @@ public class EventStoreDomainEventProcessor {
             _ = UniqueIdHelper.ToGuid(value);
             return true;
         }
-        catch (ArgumentException) {
-            return false;
-        }
-        catch (FormatException) {
+        catch (Exception ex) when (ex is FormatException or ArgumentException or OverflowException) {
+            // Match ProjectionRebuildCheckpointStore.IsValidOperationId (P17-8P): UniqueIdHelper.ToGuid
+            // performs fixed-width Crockford-base32 parsing whose overflow path can throw OverflowException
+            // for 26-char inputs that satisfy a shape check but exceed 128 bits. Treating all three as "not a
+            // ULID" acknowledges a malformed message id as invalid instead of letting it escape as a 500 that
+            // wedges the subscription in a poison-message loop.
             return false;
         }
     }
@@ -278,9 +280,14 @@ public class EventStoreDomainEventProcessor {
         return !string.IsNullOrWhiteSpace(id);
     }
 
-    private async Task MarkCompletedSafelyAsync(string messageId, CancellationToken cancellationToken) {
+    private async Task MarkCompletedSafelyAsync(string messageId) {
         try {
-            await _markerStore.MarkCompletedAsync(messageId, cancellationToken).ConfigureAwait(false);
+            // Terminal completions acknowledge the message regardless of the current delivery's cancellation.
+            // Tying the completion write to the request token could leave the marker un-completed after a
+            // client/sidecar abort — on the in-memory store the key stays InProgress, so every redelivery
+            // returns RetryableInProgress (500) and wedges a terminal skip into a poison loop. Always
+            // complete with CancellationToken.None, matching the successful-dispatch path.
+            await _markerStore.MarkCompletedAsync(messageId, CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception exception) {
             _logger.LogWarning(
