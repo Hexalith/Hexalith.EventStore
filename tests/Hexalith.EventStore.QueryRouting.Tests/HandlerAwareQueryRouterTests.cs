@@ -1,13 +1,18 @@
 using System.Text.Json;
 
+using Dapr.Client;
+
 using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Queries;
+using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Pipeline.Queries;
 using Hexalith.EventStore.Server.Queries;
 
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
 
@@ -28,8 +33,9 @@ public sealed class HandlerAwareQueryRouterTests {
         IQueryRouter inner = Substitute.For<IQueryRouter>();
         IDomainQueryInvoker invoker = Substitute.For<IDomainQueryInvoker>();
         JsonElement payload = JsonSerializer.SerializeToElement(new { value = 42 });
+        var metadata = new QueryResponseMetadata(IsStale: false, ProjectionVersion: "widget-v1");
         _ = invoker.InvokeAsync(Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>())
-            .Returns(QueryResult.FromPayload(payload, projectionType: "widget"));
+            .Returns(QueryResult.FromPayload(payload, projectionType: "widget", metadata));
 
         var router = new HandlerAwareQueryRouter(inner, registry, invoker, NullLogger<HandlerAwareQueryRouter>.Instance);
 
@@ -37,6 +43,7 @@ public sealed class HandlerAwareQueryRouterTests {
 
         result.Success.ShouldBeTrue();
         result.ProjectionType.ShouldBe("widget");
+        result.Metadata.ShouldBe(metadata);
         await invoker.Received(1).InvokeAsync(Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>());
         await inner.DidNotReceive().RouteQueryAsync(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
     }
@@ -46,7 +53,13 @@ public sealed class HandlerAwareQueryRouterTests {
         IDomainQueryHandlerRegistry registry = Substitute.For<IDomainQueryHandlerRegistry>();
         _ = registry.SupportsQueryAsync("counter", "get-counter", Arg.Any<CancellationToken>()).Returns(false);
         IQueryRouter inner = Substitute.For<IQueryRouter>();
-        var expected = new QueryRouterResult(Success: true, Payload: JsonSerializer.SerializeToElement(new { count = 1 }), NotFound: false, ProjectionType: "counter");
+        var metadata = new QueryResponseMetadata(IsStale: true, ProjectionVersion: "counter-v3");
+        var expected = new QueryRouterResult(
+            Success: true,
+            Payload: JsonSerializer.SerializeToElement(new { count = 1 }),
+            NotFound: false,
+            ProjectionType: "counter",
+            Metadata: metadata);
         SubmitQuery query = Query("counter", "get-counter");
         _ = inner.RouteQueryAsync(query, Arg.Any<CancellationToken>()).Returns(expected);
         IDomainQueryInvoker invoker = Substitute.For<IDomainQueryInvoker>();
@@ -56,6 +69,7 @@ public sealed class HandlerAwareQueryRouterTests {
         QueryRouterResult result = await router.RouteQueryAsync(query);
 
         result.ShouldBe(expected);
+        result.Metadata.ShouldBe(metadata);
         await inner.Received(1).RouteQueryAsync(query, Arg.Any<CancellationToken>());
         await invoker.DidNotReceive().InvokeAsync(Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>());
     }
@@ -65,8 +79,9 @@ public sealed class HandlerAwareQueryRouterTests {
         IDomainQueryHandlerRegistry registry = Substitute.For<IDomainQueryHandlerRegistry>();
         _ = registry.SupportsQueryAsync("widget", "get-widget", Arg.Any<CancellationToken>()).Returns(true);
         IDomainQueryInvoker invoker = Substitute.For<IDomainQueryInvoker>();
+        var metadata = new QueryResponseMetadata(IsDegraded: true, WarningCodes: [QueryWarningCodes.DegradedSearch]);
         _ = invoker.InvokeAsync(Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>())
-            .Returns(QueryResult.Failure("domain unavailable"));
+            .Returns(QueryResult.Failure("domain unavailable", metadata));
 
         var router = new HandlerAwareQueryRouter(Substitute.For<IQueryRouter>(), registry, invoker, NullLogger<HandlerAwareQueryRouter>.Instance);
 
@@ -74,5 +89,48 @@ public sealed class HandlerAwareQueryRouterTests {
 
         result.Success.ShouldBeFalse();
         result.ErrorMessage.ShouldBe("domain unavailable");
+        result.Metadata.ShouldBe(metadata);
+    }
+
+    [Fact]
+    public async Task SupportsQueryAsync_ReadsStateStoreAndCachesQueryTypes() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetStateAsync<List<string>>(
+                "statestore",
+                "admin:query-types:widget",
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(["get-widget"]);
+        var registry = new DaprDomainQueryHandlerRegistry(
+            daprClient,
+            Options.Create(new CommandStatusOptions { StateStoreName = "statestore" }),
+            NullLogger<DaprDomainQueryHandlerRegistry>.Instance);
+
+        bool first = await registry.SupportsQueryAsync("widget", "get-widget");
+        bool second = await registry.SupportsQueryAsync("widget", "GET-WIDGET");
+
+        first.ShouldBeTrue();
+        second.ShouldBeTrue();
+        _ = await daprClient.Received(1).GetStateAsync<List<string>>(
+            "statestore",
+            "admin:query-types:widget",
+            cancellationToken: Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SupportsQueryAsync_StateStoreReadFailure_FailsSafeToProjectionRouter() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetStateAsync<List<string>>(
+                "statestore",
+                "admin:query-types:widget",
+                cancellationToken: Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("state unavailable"));
+        var registry = new DaprDomainQueryHandlerRegistry(
+            daprClient,
+            Options.Create(new CommandStatusOptions { StateStoreName = "statestore" }),
+            NullLogger<DaprDomainQueryHandlerRegistry>.Instance);
+
+        bool supported = await registry.SupportsQueryAsync("widget", "get-widget");
+
+        supported.ShouldBeFalse();
     }
 }

@@ -28,7 +28,7 @@ public sealed class DaprDomainQueryHandlerRegistry(
         ArgumentException.ThrowIfNullOrWhiteSpace(queryType);
 
         IReadOnlyCollection<string> queryTypes = await GetQueryTypesAsync(domain, cancellationToken).ConfigureAwait(false);
-        return queryTypes.Contains(queryType, StringComparer.Ordinal);
+        return queryTypes.Contains(queryType, StringComparer.OrdinalIgnoreCase);
     }
 
     private async Task<IReadOnlyCollection<string>> GetQueryTypesAsync(string domain, CancellationToken cancellationToken) {
@@ -41,7 +41,7 @@ public sealed class DaprDomainQueryHandlerRegistry(
             List<string>? stored = await daprClient
                 .GetStateAsync<List<string>>(_stateStoreName, $"admin:query-types:{domain}", cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
-            queryTypes = stored is null ? [] : new HashSet<string>(stored, StringComparer.Ordinal);
+            queryTypes = stored is null ? [] : new HashSet<string>(stored, StringComparer.OrdinalIgnoreCase);
         }
         catch (OperationCanceledException) {
             throw;

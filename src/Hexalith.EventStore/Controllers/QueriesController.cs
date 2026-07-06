@@ -162,21 +162,71 @@ public partial class QueriesController(
             }
         }
 
+        DateTimeOffset servedAt = DateTimeOffset.UtcNow;
+        QueryResponseMetadata metadata = MergeQueryMetadata(
+            result.Metadata,
+            currentETag,
+            isNotModified: false,
+            servedAt);
+        EnforceFreshnessPolicy(request, correlationId, result.Metadata, metadata, servedAt);
+
         if (currentETag is not null) {
             Response.Headers.ETag = $"\"{currentETag}\"";
         }
 
-        var metadata = new QueryResponseMetadata(
-            ETag: currentETag,
-            IsNotModified: false,
-            ServedAt: DateTimeOffset.UtcNow,
-            Paging: request.Paging is null
-                ? null
-                : new QueryPagingMetadata(
-                    request.Paging.PageSize ?? QueryPolicyLimits.DefaultPageSize,
-                    request.Paging.Offset));
-
         return Ok(new SubmitQueryResponse(result.CorrelationId, result.Payload, Metadata: metadata));
+    }
+
+    private static QueryResponseMetadata MergeQueryMetadata(
+        QueryResponseMetadata? producerMetadata,
+        string? gatewayETag,
+        bool isNotModified,
+        DateTimeOffset servedAt)
+        => new(
+            ETag: gatewayETag ?? producerMetadata?.ETag,
+            IsNotModified: isNotModified,
+            IsStale: producerMetadata?.IsStale,
+            IsDegraded: producerMetadata?.IsDegraded,
+            ProjectionVersion: producerMetadata?.ProjectionVersion,
+            ServedAt: producerMetadata?.ServedAt ?? servedAt,
+            Paging: producerMetadata?.Paging,
+            WarningCodes: producerMetadata?.WarningCodes);
+
+    private static void EnforceFreshnessPolicy(
+        SubmitQueryRequest request,
+        string correlationId,
+        QueryResponseMetadata? producerMetadata,
+        QueryResponseMetadata metadata,
+        DateTimeOffset servedAt) {
+        if (!HasMeaningfulFreshness(request.Freshness)) {
+            return;
+        }
+
+        if (metadata.IsStale == false
+            && request.Freshness?.MaxStaleness is null) {
+            return;
+        }
+
+        if (metadata.IsStale == false
+            && request.Freshness?.MaxStaleness is { } maxStaleness
+            && producerMetadata?.ServedAt is { } producerServedAt
+            && servedAt - producerServedAt <= maxStaleness) {
+            // Compare the age as a bounded TimeSpan difference rather than subtracting MaxStaleness
+            // from the served-at timestamp: a caller-supplied MaxStaleness large enough to push the
+            // timestamp below DateTimeOffset.MinValue would otherwise throw ArgumentOutOfRangeException
+            // (an unhandled 500) instead of satisfying the policy.
+            return;
+        }
+
+        throw new QueryExecutionFailedException(
+            correlationId,
+            request.Tenant,
+            request.Domain,
+            request.AggregateId,
+            request.QueryType,
+            StatusCodes.Status400BadRequest,
+            "Projection freshness could not be verified for this query response.",
+            QueryProblemReasonCodes.ProjectionStale);
     }
 
     private async Task ValidateAuthorizationBeforeLookupAsync(

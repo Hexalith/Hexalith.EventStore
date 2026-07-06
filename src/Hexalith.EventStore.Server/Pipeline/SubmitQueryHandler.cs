@@ -40,7 +40,11 @@ public partial class SubmitQueryHandler(
             throw new InvalidOperationException("Projection query completed without a payload.");
         }
 
-        return new SubmitQueryResult(request.CorrelationId, routerResult.Payload.Value, routerResult.ProjectionType);
+        return new SubmitQueryResult(
+            request.CorrelationId,
+            routerResult.Payload.Value,
+            routerResult.ProjectionType,
+            routerResult.Metadata);
     }
 
     private static Exception CreateQueryFailureException(SubmitQuery request, string? errorMessage) {

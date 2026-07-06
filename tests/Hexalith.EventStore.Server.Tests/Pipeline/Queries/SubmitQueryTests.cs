@@ -47,4 +47,11 @@ public class SubmitQueryResultTests {
         sut.CorrelationId.ShouldBe("corr-1");
         sut.Payload.GetProperty("count").GetInt32().ShouldBe(42);
     }
+
+    [Fact]
+    public void PublicCompatibility_MaintainsOriginalConstructorShape() {
+        typeof(SubmitQueryResult)
+            .GetConstructor([typeof(string), typeof(JsonElement), typeof(string)])
+            .ShouldNotBeNull();
+    }
 }

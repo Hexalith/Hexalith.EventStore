@@ -1,3 +1,5 @@
+using System.Reflection;
+
 using Hexalith.EventStore.Indexes;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
@@ -57,6 +59,47 @@ public class AdminOperationalIndexHostedServiceTests {
     }
 
     [Fact]
+    public void BuildSnapshot_MergesQueryTypesWithoutLosingCatalogData() {
+        var first = new AdminOperationalIndexDomainMetadata(
+            "tenants",
+            ["Hexalith.Tenants.Contracts.Events.TenantCreated"],
+            [],
+            ["Hexalith.Tenants.Contracts.Commands.CreateTenant"],
+            ["Hexalith.Tenants.TenantAggregate"],
+            ["tenants"],
+            ["get-tenant"]);
+        var second = new AdminOperationalIndexDomainMetadata(
+            "tenants",
+            ["Hexalith.Tenants.Contracts.Events.TenantRenamed"],
+            [],
+            ["Hexalith.Tenants.Contracts.Commands.RenameTenant"],
+            ["Hexalith.Tenants.TenantAggregate"],
+            ["tenant-search"],
+            ["list-tenants", "get-tenant"]);
+        var registration = new DomainServiceRegistration("tenants", "process", "*", "tenants", "v1");
+
+        AdminOperationalIndexDomainMetadata merged = MergeDomainMetadata("tenants", [first, second]);
+
+        AdminOperationalIndexSnapshot snapshot = AdminOperationalIndexHostedService.BuildSnapshot(
+            [merged],
+            [registration],
+            new ProjectionOptions());
+
+        snapshot.EventTypes.Select(e => e.TypeName).ShouldBe([
+            "Hexalith.Tenants.Contracts.Events.TenantCreated",
+            "Hexalith.Tenants.Contracts.Events.TenantRenamed",
+        ]);
+        snapshot.CommandTypes.Select(c => c.TypeName).ShouldBe([
+            "Hexalith.Tenants.Contracts.Commands.CreateTenant",
+            "Hexalith.Tenants.Contracts.Commands.RenameTenant",
+        ]);
+        snapshot.AggregateTypes.ShouldContain(a => a.TypeName == "Hexalith.Tenants.TenantAggregate");
+        snapshot.Projections.Select(p => p.Name).ShouldBe(["tenant-search", "tenants"]);
+        _ = snapshot.QueryTypesByDomain.ShouldNotBeNull();
+        snapshot.QueryTypesByDomain!["tenants"].ShouldBe(["get-tenant", "list-tenants"]);
+    }
+
+    [Fact]
     public void BuildSnapshot_DoesNotInventProjection_WhenMetadataMissing() {
         var registration = new DomainServiceRegistration("sample", "process", "tenant-a", "orders", "v1");
 
@@ -67,5 +110,14 @@ public class AdminOperationalIndexHostedServiceTests {
 
         snapshot.Projections.ShouldBeEmpty();
         snapshot.TenantProjections.ShouldBeEmpty();
+    }
+
+    private static AdminOperationalIndexDomainMetadata MergeDomainMetadata(
+        string domain,
+        IEnumerable<AdminOperationalIndexDomainMetadata> metadata) {
+        MethodInfo method = typeof(AdminOperationalIndexHostedService).GetMethod(
+            "MergeDomainMetadata",
+            BindingFlags.Static | BindingFlags.NonPublic)!;
+        return (AdminOperationalIndexDomainMetadata)method.Invoke(null, [domain, metadata])!;
     }
 }

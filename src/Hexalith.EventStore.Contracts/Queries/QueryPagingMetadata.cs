@@ -1,3 +1,5 @@
+using System.Runtime.Serialization;
+
 namespace Hexalith.EventStore.Contracts.Queries;
 
 /// <summary>
@@ -7,8 +9,9 @@ namespace Hexalith.EventStore.Contracts.Queries;
 /// <param name="Offset">The effective offset when offset paging applies.</param>
 /// <param name="NextCursor">The next cursor when cursor paging applies and a next page exists.</param>
 /// <param name="TotalCount">The total count when the projection can provide it authoritatively.</param>
+[DataContract]
 public sealed record QueryPagingMetadata(
-    int PageSize,
-    int? Offset = null,
-    string? NextCursor = null,
-    long? TotalCount = null);
+    [property: DataMember] int PageSize,
+    [property: DataMember] int? Offset = null,
+    [property: DataMember] string? NextCursor = null,
+    [property: DataMember] long? TotalCount = null);

@@ -4,6 +4,9 @@
 - 2026-07-05: Query freshness/projection metadata needs a platform-owned gateway contract before UI or generated REST stories can treat stale/current state or projection version as production-backed evidence. Until then, generated freshness headers are conditional evidence only.
 - 2026-07-05: Generated API proof stories need a reusable DAPR/Aspire smoke preflight that reports placement/scheduler availability, generated API endpoint URLs, DAPR sidecar state, and support-safe failure details before accepting a live-smoke blocker.
 - 2026-07-01: Packaging governance tests hard-code external dependency patch versions. Consider a lower-maintenance guard that still proves central version pins and emitted package metadata stay aligned, so routine published package bumps do not require brittle test-only edits.
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-2-domain-query-handler-routing.md`
+  summary: Handler-backed query routes need explicit provenance so the gateway can decide whether projection ETags are valid for the response.
+  evidence: `HandlerAwareQueryRouter` already used the same `QueryRouterResult` shape as projection routes before this story, and `QueriesController` falls back to request/domain projection ETag lookup when no projection type is supplied; changing that safely needs a separate route-provenance contract rather than metadata passthrough alone.
 
 ## Deferred from: code review of D-5-proof-sample-blazorui-queries (2026-07-02)
 

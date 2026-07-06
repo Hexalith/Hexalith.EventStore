@@ -285,7 +285,7 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
         => metadata is null
             ? new QueryResponseMetadata(ETag: eTag, IsNotModified: isNotModified)
             : metadata with {
-                ETag = metadata.ETag ?? eTag,
+                ETag = eTag ?? metadata.ETag,
                 IsNotModified = metadata.IsNotModified ?? isNotModified,
             };
 

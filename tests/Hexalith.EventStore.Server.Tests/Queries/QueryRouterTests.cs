@@ -91,6 +91,32 @@ public class QueryRouterTests {
     }
 
     [Fact]
+    public void QueryRouterResult_PublicCompatibility_MaintainsOriginalConstructorShape() {
+        typeof(QueryRouterResult)
+            .GetConstructor([typeof(bool), typeof(JsonElement?), typeof(bool), typeof(string), typeof(string)])
+            .ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_SuccessfulQuery_ReturnsResultWithMetadata() {
+        JsonElement resultPayload = JsonDocument.Parse("{\"status\":\"shipped\"}").RootElement;
+        var metadata = new QueryResponseMetadata(
+            IsStale: false,
+            ProjectionVersion: "orders-v2",
+            WarningCodes: [QueryWarningCodes.DegradedSearch]);
+        (IProjectionActorInvoker _, QueryRouter router) = CreateRouterWithInvoker(
+            QueryResult.FromPayload(resultPayload, "orders", metadata));
+
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
+
+        result.Success.ShouldBeTrue();
+        result.Metadata.ShouldBe(metadata);
+        result.Metadata!.ProjectionVersion.ShouldBe("orders-v2");
+        _ = result.Metadata.WarningCodes.ShouldNotBeNull();
+        result.Metadata.WarningCodes.ShouldContain(QueryWarningCodes.DegradedSearch);
+    }
+
+    [Fact]
     public async Task RouteQueryAsync_RoutesToCorrectActor() {
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         (IProjectionActorInvoker invoker, QueryRouter router) = CreateRouterWithInvoker(QueryResult.FromPayload(resultPayload));
@@ -384,7 +410,8 @@ public class QueryRouterTests {
 
     [Fact]
     public async Task RouteQueryAsync_ProjectionActorReturnsFailure_ReturnsFailedResult() {
-        (IProjectionActorInvoker _, QueryRouter router) = CreateRouterWithInvoker(QueryResult.Failure("projection unavailable"));
+        var metadata = new QueryResponseMetadata(IsDegraded: true, WarningCodes: [QueryWarningCodes.DegradedSearch]);
+        (IProjectionActorInvoker _, QueryRouter router) = CreateRouterWithInvoker(QueryResult.Failure("projection unavailable", metadata));
 
         QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
 
@@ -392,6 +419,7 @@ public class QueryRouterTests {
         result.NotFound.ShouldBeFalse();
         result.Payload.ShouldBeNull();
         result.ErrorMessage.ShouldBe("projection unavailable");
+        result.Metadata.ShouldBe(metadata);
     }
 
     [Fact]

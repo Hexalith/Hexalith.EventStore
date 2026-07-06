@@ -131,6 +131,8 @@ public static class EventStoreDomainServiceExtensions {
     public static WebApplication MapEventStoreDomainService(this WebApplication app) {
         ArgumentNullException.ThrowIfNull(app);
 
+        ValidateDomainQueryHandlerRoutes(app.Services);
+
         _ = app.MapGet("/", () => "Hexalith EventStore domain service");
 
         _ = app.MapPost(
@@ -248,6 +250,11 @@ public static class EventStoreDomainServiceExtensions {
         IHttpMethodMetadata? metadata = endpoint.Metadata.GetMetadata<IHttpMethodMetadata>();
         return metadata is null
             || metadata.HttpMethods.Contains(httpMethod, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static void ValidateDomainQueryHandlerRoutes(IServiceProvider serviceProvider) {
+        using IServiceScope scope = serviceProvider.CreateScope();
+        _ = DomainQueryHandlerRouteValidator.MaterializeAndValidate(scope.ServiceProvider.GetServices<IDomainQueryHandler>());
     }
 
     private static IEnumerable<Type> GetLoadableTypes(Assembly assembly) {

@@ -94,7 +94,7 @@ public partial class QueryRouter : IQueryRouter {
 
             if (!result.Success) {
                 Log.QueryExecutionFailed(_logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, result.ErrorMessage);
-                return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: result.ErrorMessage);
+                return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: result.ErrorMessage, Metadata: result.Metadata);
             }
 
             if (result.PayloadBytes is not { Length: > 0 }) {
@@ -105,7 +105,12 @@ public partial class QueryRouter : IQueryRouter {
             try {
                 JsonElement payload = result.GetPayload();
                 Log.QueryRouted(_logger, query.CorrelationId, actorId);
-                return new QueryRouterResult(Success: true, Payload: payload, NotFound: false, ProjectionType: result.ProjectionType);
+                return new QueryRouterResult(
+                    Success: true,
+                    Payload: payload,
+                    NotFound: false,
+                    ProjectionType: result.ProjectionType,
+                    Metadata: result.Metadata);
             }
             catch (JsonException) {
                 Log.QueryExecutionFailed(_logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, QueryAdapterFailureReason.SerializationFailure);

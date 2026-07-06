@@ -92,6 +92,89 @@ public class EventStoreGatewayClientTests {
     }
 
     [Fact]
+    public async Task SubmitQueryAsync_TypedAndUntypedResultsExposeEquivalentMetadata() {
+        const string QueryJson = """
+            {
+              "correlationId": "corr-2",
+              "payload": { "count": 3 },
+              "metadata": {
+                "etag": "body-etag",
+                "isStale": true,
+                "isDegraded": true,
+                "projectionVersion": "party-v3",
+                "servedAt": "2026-07-06T08:45:00Z",
+                "paging": {
+                  "pageSize": 25,
+                  "offset": 50,
+                  "nextCursor": "next-page",
+                  "totalCount": 100
+                },
+                "warningCodes": [ "degraded_search" ]
+              }
+            }
+            """;
+        using HttpClient untypedHttpClient = CreateClient(_ => {
+            HttpResponseMessage response = Json(HttpStatusCode.OK, QueryJson);
+            response.Headers.ETag = new EntityTagHeaderValue("\"gateway-etag\"");
+            return Task.FromResult(response);
+        });
+        using HttpClient typedHttpClient = CreateClient(_ => {
+            HttpResponseMessage response = Json(HttpStatusCode.OK, QueryJson);
+            response.Headers.ETag = new EntityTagHeaderValue("\"gateway-etag\"");
+            return Task.FromResult(response);
+        });
+
+        var untypedClient = new EventStoreGatewayClient(untypedHttpClient, Options.Create(new EventStoreGatewayClientOptions()));
+        var typedClient = new EventStoreGatewayClient(typedHttpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        EventStoreQueryResult untyped = await untypedClient.SubmitQueryAsync(CreateQueryRequest());
+        EventStoreQueryResult<CounterDto> typed = await typedClient.SubmitQueryAsync<CounterDto>(CreateQueryRequest());
+
+        _ = untyped.Metadata.ShouldNotBeNull();
+        _ = typed.Metadata.ShouldNotBeNull();
+        typed.Metadata.ETag.ShouldBe(untyped.Metadata.ETag);
+        typed.Metadata.IsNotModified.ShouldBe(untyped.Metadata.IsNotModified);
+        typed.Metadata.IsStale.ShouldBe(untyped.Metadata.IsStale);
+        typed.Metadata.IsDegraded.ShouldBe(untyped.Metadata.IsDegraded);
+        typed.Metadata.ProjectionVersion.ShouldBe(untyped.Metadata.ProjectionVersion);
+        typed.Metadata.ServedAt.ShouldBe(untyped.Metadata.ServedAt);
+        typed.Metadata.Paging.ShouldBe(untyped.Metadata.Paging);
+        _ = typed.Metadata.WarningCodes.ShouldNotBeNull();
+        _ = untyped.Metadata.WarningCodes.ShouldNotBeNull();
+        typed.Metadata.WarningCodes.ToArray().ShouldBe(untyped.Metadata.WarningCodes.ToArray());
+        untyped.Metadata.ETag.ShouldBe("gateway-etag");
+        untyped.Metadata.IsNotModified.ShouldBe(false);
+        untyped.Metadata.IsStale.ShouldBe(true);
+        untyped.Metadata.IsDegraded.ShouldBe(true);
+        untyped.Metadata.ProjectionVersion.ShouldBe("party-v3");
+        _ = untyped.Metadata.Paging.ShouldNotBeNull();
+        untyped.Metadata.Paging.NextCursor.ShouldBe("next-page");
+        untyped.Metadata.Paging.TotalCount.ShouldBe(100);
+        _ = untyped.Metadata.WarningCodes.ShouldNotBeNull();
+        untyped.Metadata.WarningCodes.ShouldContain(QueryWarningCodes.DegradedSearch);
+    }
+
+    [Fact]
+    public async Task SubmitQueryAsyncTyped_WithNotModified_ReturnsMetadataWithNormalizedETag() {
+        using HttpClient httpClient = CreateClient(_ => {
+            var response = new HttpResponseMessage(HttpStatusCode.NotModified);
+            response.Headers.ETag = new EntityTagHeaderValue("\"etag-typed\"");
+            return Task.FromResult(response);
+        });
+
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        EventStoreQueryResult<CounterDto> result = await client.SubmitQueryAsync<CounterDto>(CreateQueryRequest(), "etag-typed");
+
+        result.IsNotModified.ShouldBeTrue();
+        result.ETag.ShouldBe("etag-typed");
+        result.Payload.ShouldBeNull();
+        _ = result.Metadata.ShouldNotBeNull();
+        result.Metadata.ETag.ShouldBe("etag-typed");
+        result.Metadata.IsNotModified.ShouldBe(true);
+    }
+
+    [Fact]
     public async Task SubmitCommandAsync_WithProblemDetails_ThrowsGatewayException() {
         const string ProblemJson = """
             {

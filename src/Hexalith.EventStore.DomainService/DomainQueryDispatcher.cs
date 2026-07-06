@@ -27,11 +27,16 @@ public static class DomainQueryDispatcher {
         ArgumentNullException.ThrowIfNull(serviceProvider);
         ArgumentNullException.ThrowIfNull(query);
 
-        IDomainQueryHandler? handler = serviceProvider
+        IDomainQueryHandler[] handlers = [.. serviceProvider
             .GetServices<IDomainQueryHandler>()
-            .FirstOrDefault(h =>
+            .Where(h =>
                 string.Equals(h.Domain, query.Domain, StringComparison.OrdinalIgnoreCase)
-                && string.Equals(h.QueryType, query.QueryType, StringComparison.OrdinalIgnoreCase));
+                && string.Equals(h.QueryType, query.QueryType, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(h => h.GetType().FullName ?? h.GetType().Name, StringComparer.Ordinal)];
+
+        DomainQueryHandlerRouteValidator.ThrowIfDuplicateRoutes(handlers);
+
+        IDomainQueryHandler? handler = handlers.SingleOrDefault();
 
         return handler is null
             ? QueryResult.Failure($"No query handler is registered for domain '{query.Domain}' query type '{query.QueryType}'.")

@@ -119,6 +119,81 @@ public class ProjectionAdapterContractTests {
     }
 
     [Fact]
+    public void QueryResult_DataContractRoundTrip_PreservesMetadata() {
+        JsonElement payload = JsonDocument.Parse("{\"name\":\"Ada\"}").RootElement;
+        var servedAt = new DateTimeOffset(2026, 7, 6, 8, 0, 0, TimeSpan.Zero);
+        var original = QueryResult.FromPayload(
+            payload,
+            "party",
+            new QueryResponseMetadata(
+                ETag: "producer-etag",
+                IsStale: false,
+                IsDegraded: true,
+                ProjectionVersion: "party-v2",
+                ServedAt: servedAt,
+                Paging: new QueryPagingMetadata(PageSize: 25, Offset: 50, NextCursor: "next-page", TotalCount: 125),
+                WarningCodes: [QueryWarningCodes.DegradedSearch]));
+        var serializer = new DataContractSerializer(typeof(QueryResult));
+
+        using var stream = new MemoryStream();
+        serializer.WriteObject(stream, original);
+        stream.Position = 0;
+
+        var restored = (QueryResult?)serializer.ReadObject(stream);
+
+        _ = restored.ShouldNotBeNull();
+        restored.Success.ShouldBeTrue();
+        _ = restored.Metadata.ShouldNotBeNull();
+        restored.Metadata.ETag.ShouldBe("producer-etag");
+        restored.Metadata.IsStale.ShouldBe(false);
+        restored.Metadata.IsDegraded.ShouldBe(true);
+        restored.Metadata.ProjectionVersion.ShouldBe("party-v2");
+        restored.Metadata.ServedAt.ShouldBe(servedAt);
+        _ = restored.Metadata.Paging.ShouldNotBeNull();
+        restored.Metadata.Paging.PageSize.ShouldBe(25);
+        restored.Metadata.Paging.Offset.ShouldBe(50);
+        restored.Metadata.Paging.NextCursor.ShouldBe("next-page");
+        restored.Metadata.Paging.TotalCount.ShouldBe(125);
+        _ = restored.Metadata.WarningCodes.ShouldNotBeNull();
+        restored.Metadata.WarningCodes.ShouldContain(QueryWarningCodes.DegradedSearch);
+    }
+
+    [Fact]
+    public void QueryResult_DataContractRoundTrip_OldShapeWithoutMetadata_DeserializesWithNullMetadata() {
+        JsonElement payload = JsonDocument.Parse("{\"name\":\"Ada\"}").RootElement;
+        var original = QueryResult.FromPayload(payload, "party", new QueryResponseMetadata(IsStale: false));
+        var serializer = new DataContractSerializer(typeof(QueryResult));
+        using var stream = new MemoryStream();
+        serializer.WriteObject(stream, original);
+        stream.Position = 0;
+        string xml = Encoding.UTF8.GetString(stream.ToArray());
+        var document = XDocument.Parse(xml);
+        document.Descendants().Where(e => e.Name.LocalName == "Metadata").Remove();
+        string oldShapeXml = document.ToString(SaveOptions.DisableFormatting);
+
+        using var oldShapeStream = new MemoryStream(Encoding.UTF8.GetBytes(oldShapeXml));
+        var restored = (QueryResult?)serializer.ReadObject(oldShapeStream);
+
+        _ = restored.ShouldNotBeNull();
+        restored.Success.ShouldBeTrue();
+        restored.Metadata.ShouldBeNull();
+        restored.GetPayload().GetProperty("name").GetString().ShouldBe("Ada");
+    }
+
+    [Fact]
+    public void QueryResult_PublicCompatibility_MaintainsOriginalConstructorAndFactoryShapes() {
+        typeof(QueryResult)
+            .GetConstructor([typeof(bool), typeof(byte[]), typeof(string), typeof(string)])
+            .ShouldNotBeNull();
+        typeof(QueryResult)
+            .GetMethod(nameof(QueryResult.FromPayload), [typeof(JsonElement), typeof(string)])
+            .ShouldNotBeNull();
+        typeof(QueryResult)
+            .GetMethod(nameof(QueryResult.Failure), [typeof(string)])
+            .ShouldNotBeNull();
+    }
+
+    [Fact]
     public void IProjectionActor_IsImplementationNeutralProjectionQueryContract() {
         typeof(IProjectionActor)
             .GetInterfaces()

@@ -133,10 +133,11 @@ public partial class SubmitQueryRequestValidator : AbstractValidator<SubmitQuery
             .WithMessage("Order policy fields are reserved and are not supported by this endpoint yet.")
             .WithErrorCode(QueryProblemReasonCodes.UnsupportedOrder);
 
-        _ = RuleFor(x => x.Freshness)
-            .Must(f => f is null || (f.RequireFresh is not true && f.MaxStaleness is null))
-            .WithMessage("Freshness policy fields are reserved and are not supported by this endpoint yet.")
-            .WithErrorCode(QueryProblemReasonCodes.ProjectionStale);
+        _ = RuleFor(x => x.Freshness!.MaxStaleness)
+            .GreaterThanOrEqualTo(TimeSpan.Zero)
+            .WithMessage("MaxStaleness must be greater than or equal to zero.")
+            .WithErrorCode(QueryProblemReasonCodes.MalformedRequest)
+            .When(x => x.Freshness?.MaxStaleness is not null);
 
         _ = RuleFor(x => x.AdditionalProperties)
             .Must(properties => properties is null || properties.Count == 0)

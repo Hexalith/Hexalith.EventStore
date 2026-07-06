@@ -104,6 +104,37 @@ public class SubmitQueryRequestValidatorTests {
     }
 
     [Fact]
+    public void SubmitQueryRequestValidator_FreshnessPolicy_PassesForControllerEnforcement() {
+        var request = new SubmitQueryRequest(
+            Tenant: "test-tenant",
+            Domain: "test-domain",
+            AggregateId: "agg-001",
+            QueryType: "GetCurrentState") {
+            Freshness = new QueryFreshnessPolicy(RequireFresh: true, MaxStaleness: TimeSpan.Zero),
+        };
+
+        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+
+        result.IsValid.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void SubmitQueryRequestValidator_NegativeMaxStaleness_FailsWithMalformedRequestReason() {
+        var request = new SubmitQueryRequest(
+            Tenant: "test-tenant",
+            Domain: "test-domain",
+            AggregateId: "agg-001",
+            QueryType: "GetCurrentState") {
+            Freshness = new QueryFreshnessPolicy(MaxStaleness: TimeSpan.FromSeconds(-1)),
+        };
+
+        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(e => e.PropertyName == "Freshness.MaxStaleness" && e.ErrorCode == QueryProblemReasonCodes.MalformedRequest);
+    }
+
+    [Fact]
     public void SubmitQueryRequestValidator_ExplicitFilter_FailsWithUnsupportedFilterReasonWithoutEchoingValue() {
         JsonElement value = JsonSerializer.SerializeToElement("secret-filter-value");
         var request = new SubmitQueryRequest(

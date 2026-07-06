@@ -934,7 +934,7 @@ public class QueriesControllerTests {
     }
 
     [Fact]
-    public async Task Submit_NullPageSize_ResponseMetadataUsesDefaultPageSize() {
+    public async Task Submit_RequestPagingWithoutProducerMetadata_DoesNotCreatePagingEvidence() {
         JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
@@ -949,9 +949,215 @@ public class QueriesControllerTests {
         OkObjectResult okResult = actionResult.ShouldBeOfType<OkObjectResult>();
         SubmitQueryResponse response = okResult.Value.ShouldBeOfType<SubmitQueryResponse>();
         _ = response.Metadata.ShouldNotBeNull();
+        response.Metadata.Paging.ShouldBeNull();
+        response.Metadata.IsStale.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Submit_ProducerMetadata_MergesWithGatewayMetadataByExplicitRules() {
+        string producerETag = GenerateTestETag("producer");
+        string gatewayETag = GenerateTestETag("orders");
+        JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
+        var servedAt = new DateTimeOffset(2026, 7, 6, 8, 15, 0, TimeSpan.Zero);
+        var producerMetadata = new QueryResponseMetadata(
+            ETag: producerETag,
+            IsNotModified: true,
+            IsStale: true,
+            IsDegraded: true,
+            ProjectionVersion: "orders-v9",
+            ServedAt: servedAt,
+            Paging: new QueryPagingMetadata(PageSize: 10, Offset: 20, NextCursor: "next", TotalCount: 99),
+            WarningCodes: [QueryWarningCodes.DegradedSearch]);
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new SubmitQueryResult("corr-1", resultPayload, "orders", producerMetadata));
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
+            .Returns(gatewayETag);
+        QueriesController controller = CreateController(mediator, eTagService);
+
+        IActionResult actionResult = await controller.Submit(CreateTestRequest(), null, CancellationToken.None);
+
+        OkObjectResult okResult = actionResult.ShouldBeOfType<OkObjectResult>();
+        SubmitQueryResponse response = okResult.Value.ShouldBeOfType<SubmitQueryResponse>();
+        _ = response.Metadata.ShouldNotBeNull();
+        response.Metadata.ETag.ShouldBe(gatewayETag);
+        response.Metadata.IsNotModified.ShouldBe(false);
+        response.Metadata.IsStale.ShouldBe(true);
+        response.Metadata.IsDegraded.ShouldBe(true);
+        response.Metadata.ProjectionVersion.ShouldBe("orders-v9");
+        response.Metadata.ServedAt.ShouldBe(servedAt);
         _ = response.Metadata.Paging.ShouldNotBeNull();
-        response.Metadata.Paging.PageSize.ShouldBe(QueryPolicyLimits.DefaultPageSize);
-        response.Metadata.Paging.Offset.ShouldBeNull();
+        response.Metadata.Paging.PageSize.ShouldBe(10);
+        response.Metadata.Paging.Offset.ShouldBe(20);
+        response.Metadata.Paging.NextCursor.ShouldBe("next");
+        response.Metadata.Paging.TotalCount.ShouldBe(99);
+        _ = response.Metadata.WarningCodes.ShouldNotBeNull();
+        response.Metadata.WarningCodes.ShouldContain(QueryWarningCodes.DegradedSearch);
+        controller.Response.Headers.ETag.ToString().ShouldBe($"\"{gatewayETag}\"");
+    }
+
+    [Fact]
+    public async Task Submit_ProducerPagingMetadata_IsPreservedWithoutInventingRequestPagingFields() {
+        JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
+        var producerMetadata = new QueryResponseMetadata(
+            Paging: new QueryPagingMetadata(PageSize: 25, Offset: 50, NextCursor: "producer-next", TotalCount: 250));
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new SubmitQueryResult("corr-1", resultPayload, Metadata: producerMetadata));
+        QueriesController controller = CreateController(mediator);
+        SubmitQueryRequest request = CreateTestRequest() with {
+            Paging = new QueryPagingOptions(PageSize: 10, Offset: 20),
+        };
+
+        IActionResult actionResult = await controller.Submit(request, null, CancellationToken.None);
+
+        OkObjectResult okResult = actionResult.ShouldBeOfType<OkObjectResult>();
+        SubmitQueryResponse response = okResult.Value.ShouldBeOfType<SubmitQueryResponse>();
+        _ = response.Metadata.ShouldNotBeNull();
+        _ = response.Metadata.Paging.ShouldNotBeNull();
+        response.Metadata.Paging.PageSize.ShouldBe(25);
+        response.Metadata.Paging.Offset.ShouldBe(50);
+        response.Metadata.Paging.NextCursor.ShouldBe("producer-next");
+        response.Metadata.Paging.TotalCount.ShouldBe(250);
+    }
+
+    [Fact]
+    public async Task Submit_FreshnessPolicyWithUnknownFreshness_FailsClosed() {
+        JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
+        QueriesController controller = CreateController(mediator);
+        SubmitQueryRequest request = CreateTestRequest() with {
+            Freshness = new QueryFreshnessPolicy(RequireFresh: true),
+        };
+
+        QueryExecutionFailedException ex = await Should.ThrowAsync<QueryExecutionFailedException>(
+            () => controller.Submit(request, null, CancellationToken.None));
+
+        ex.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
+        ex.ReasonCode.ShouldBe(QueryProblemReasonCodes.ProjectionStale);
+    }
+
+    [Fact]
+    public async Task Submit_FreshnessPolicyWithStaleMetadata_FailsClosed() {
+        JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new SubmitQueryResult(
+                "corr-1",
+                resultPayload,
+                Metadata: new QueryResponseMetadata(IsStale: true)));
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("test-domain", "test-tenant", Arg.Any<CancellationToken>())
+            .Returns(GenerateTestETag("test-domain"));
+        QueriesController controller = CreateController(mediator, eTagService);
+        SubmitQueryRequest request = CreateTestRequest() with {
+            Freshness = new QueryFreshnessPolicy(MaxStaleness: TimeSpan.FromSeconds(5)),
+        };
+
+        QueryExecutionFailedException ex = await Should.ThrowAsync<QueryExecutionFailedException>(
+            () => controller.Submit(request, null, CancellationToken.None));
+
+        ex.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
+        ex.ReasonCode.ShouldBe(QueryProblemReasonCodes.ProjectionStale);
+        controller.Response.Headers.ETag.ToString().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Submit_MaxStalenessWithOldProducerServedAt_FailsClosed() {
+        JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new SubmitQueryResult(
+                "corr-1",
+                resultPayload,
+                Metadata: new QueryResponseMetadata(
+                    IsStale: false,
+                    ServedAt: DateTimeOffset.UtcNow.AddMinutes(-10))));
+        QueriesController controller = CreateController(mediator);
+        SubmitQueryRequest request = CreateTestRequest() with {
+            Freshness = new QueryFreshnessPolicy(MaxStaleness: TimeSpan.FromSeconds(5)),
+        };
+
+        QueryExecutionFailedException ex = await Should.ThrowAsync<QueryExecutionFailedException>(
+            () => controller.Submit(request, null, CancellationToken.None));
+
+        ex.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
+        ex.ReasonCode.ShouldBe(QueryProblemReasonCodes.ProjectionStale);
+    }
+
+    [Fact]
+    public async Task Submit_MaxStalenessWithRecentProducerServedAt_ReturnsResponse() {
+        JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new SubmitQueryResult(
+                "corr-1",
+                resultPayload,
+                Metadata: new QueryResponseMetadata(
+                    IsStale: false,
+                    ServedAt: DateTimeOffset.UtcNow.AddSeconds(-1))));
+        QueriesController controller = CreateController(mediator);
+        SubmitQueryRequest request = CreateTestRequest() with {
+            Freshness = new QueryFreshnessPolicy(MaxStaleness: TimeSpan.FromMinutes(1)),
+        };
+
+        IActionResult actionResult = await controller.Submit(request, null, CancellationToken.None);
+
+        OkObjectResult okResult = actionResult.ShouldBeOfType<OkObjectResult>();
+        SubmitQueryResponse response = okResult.Value.ShouldBeOfType<SubmitQueryResponse>();
+        _ = response.Metadata.ShouldNotBeNull();
+        response.Metadata.IsStale.ShouldBe(false);
+    }
+
+    [Fact]
+    public async Task Submit_MaxStalenessExtremelyLarge_DoesNotOverflow_ReturnsResponse() {
+        // A caller-supplied MaxStaleness large enough to underflow DateTimeOffset when subtracted from
+        // the served-at timestamp must not throw; the freshness age is compared as a bounded TimeSpan.
+        JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new SubmitQueryResult(
+                "corr-1",
+                resultPayload,
+                Metadata: new QueryResponseMetadata(
+                    IsStale: false,
+                    ServedAt: DateTimeOffset.UtcNow.AddSeconds(-1))));
+        QueriesController controller = CreateController(mediator);
+        SubmitQueryRequest request = CreateTestRequest() with {
+            Freshness = new QueryFreshnessPolicy(MaxStaleness: TimeSpan.MaxValue),
+        };
+
+        IActionResult actionResult = await controller.Submit(request, null, CancellationToken.None);
+
+        OkObjectResult okResult = actionResult.ShouldBeOfType<OkObjectResult>();
+        SubmitQueryResponse response = okResult.Value.ShouldBeOfType<SubmitQueryResponse>();
+        _ = response.Metadata.ShouldNotBeNull();
+        response.Metadata.IsStale.ShouldBe(false);
+    }
+
+    [Fact]
+    public async Task Submit_FreshnessPolicyWithFreshMetadata_ReturnsResponse() {
+        JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new SubmitQueryResult(
+                "corr-1",
+                resultPayload,
+                Metadata: new QueryResponseMetadata(IsStale: false)));
+        QueriesController controller = CreateController(mediator);
+        SubmitQueryRequest request = CreateTestRequest() with {
+            Freshness = new QueryFreshnessPolicy(RequireFresh: true),
+        };
+
+        IActionResult actionResult = await controller.Submit(request, null, CancellationToken.None);
+
+        OkObjectResult okResult = actionResult.ShouldBeOfType<OkObjectResult>();
+        SubmitQueryResponse response = okResult.Value.ShouldBeOfType<SubmitQueryResponse>();
+        _ = response.Metadata.ShouldNotBeNull();
+        response.Metadata.IsStale.ShouldBe(false);
     }
 
     [Fact]

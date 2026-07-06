@@ -26,7 +26,7 @@ public abstract partial class CachingProjectionActor(
     // query type on the same actor.
     private const int MaxCacheEntries = 32;
 
-    private readonly Dictionary<CacheEntryKey, byte[]> _payloadCache = [];
+    private readonly Dictionary<CacheEntryKey, CacheEntry> _payloadCache = [];
     private string? _cachedETag;
     private string? _discoveredProjectionType;
 
@@ -64,10 +64,14 @@ public abstract partial class CachingProjectionActor(
 
         // Cache hit: ETag is non-null AND we have an entry matching this (QueryType, Payload, UserId).
         if (currentETag is not null
-            && _payloadCache.TryGetValue(cacheKey, out byte[]? cachedBytes)) {
+            && _payloadCache.TryGetValue(cacheKey, out CacheEntry cached)) {
             cancellationToken.ThrowIfCancellationRequested();
             Log.CacheHit(logger, envelope.CorrelationId, Id.GetId(), currentETag[..Math.Min(8, currentETag.Length)]);
-            return new QueryResult(true, cachedBytes, ProjectionType: _discoveredProjectionType);
+            return new QueryResult(
+                true,
+                cached.PayloadBytes,
+                ProjectionType: _discoveredProjectionType,
+                Metadata: NormalizeCachedMetadata(cached.Metadata));
         }
 
         // Cache miss: execute the actual query
@@ -114,7 +118,7 @@ public abstract partial class CachingProjectionActor(
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            _payloadCache[cacheKey] = result.PayloadBytes!;
+            _payloadCache[cacheKey] = new CacheEntry(result.PayloadBytes!, result.Metadata);
             Log.CacheMiss(logger, envelope.CorrelationId, Id.GetId(), currentETag[..Math.Min(8, currentETag.Length)]);
         }
         else if (currentETag is null) {
@@ -186,7 +190,17 @@ public abstract partial class CachingProjectionActor(
     private static bool IsValidProjectionType(string projectionType)
         => projectionType.Length <= 100 && !projectionType.Contains(':');
 
+    private static QueryResponseMetadata? NormalizeCachedMetadata(QueryResponseMetadata? metadata)
+        => metadata is null
+            ? null
+            : metadata with {
+                IsStale = null,
+                ServedAt = null,
+            };
+
     private readonly record struct CacheEntryKey(string QueryType, string PayloadChecksum, string UserId);
+
+    private readonly record struct CacheEntry(byte[] PayloadBytes, QueryResponseMetadata? Metadata);
 
     private static partial class Log {
         [LoggerMessage(

@@ -60,7 +60,7 @@ Execute a query against the current projection/read model.
 | search              | string | No       | Public search policy. Blank or whitespace search is treated as omitted. Non-blank search is reserved and currently rejected with a stable reason code. |
 | filters             | array  | No       | Public filter policy. Reserved for future query engines and currently rejected without echoing filter values.                                      |
 | orderBy             | array  | No       | Public ordering policy. Reserved for future query engines and currently rejected.                                                                  |
-| freshness           | object | No       | Public freshness policy. Freshness enforcement is reserved until projection freshness metadata is available.                                       |
+| freshness           | object | No       | Public freshness policy. Requests that require freshness fail closed as `query_projection_stale` when authoritative freshness evidence is unavailable or stale. |
 
 ### Query Policy
 
@@ -72,12 +72,14 @@ Execute a query against the current projection/read model.
 | Search     | Blank search is normalized as omitted. Non-blank search is rejected as `query_unsupported_search`. |
 | Filters    | Any filter expression is rejected as `query_unsupported_filter`. Filter values are not echoed in validation errors or ProblemDetails. |
 | Ordering   | Any order expression is rejected as `query_unsupported_order`. Legacy projection ordering remains projection-defined. |
-| Freshness  | `requireFresh = true` or `maxStaleness` is rejected as `query_projection_stale` until freshness metadata is available. |
+| Freshness  | `requireFresh = true` or `maxStaleness` requires authoritative producer freshness metadata. Unknown or stale freshness fails closed as `query_projection_stale`. |
 | Unknown top-level fields | Rejected as `query_malformed_request` through `JsonExtensionData` capture. |
 
 ### Projection Evidence Metadata
 
-ETag metadata is available through the gateway response headers. Rich freshness and projection evidence, such as stale/current state and projection version, is not yet guaranteed end to end through the public gateway contract. Domain handlers may know those values, but clients and generated REST controllers must not treat stale indicators or projection-version headers as production-backed until the platform query result/header contract carries that metadata across the gateway.
+Query responses carry additive projection evidence in `metadata` when a domain handler or projection actor produces it. The platform preserves freshness, projection version, paging evidence, degraded state, and warning codes from the producer through the domain/projection result, router, gateway response, and .NET client result.
+
+The gateway still owns HTTP validator behavior. A strong response `ETag` header wins for `metadata.eTag` when present, `metadata.isNotModified` reflects the HTTP outcome, and `metadata.servedAt` is filled only when the producer did not supply it. Missing freshness remains unknown (`isStale = null`) and is never treated as current. Request paging is only policy input; the response includes `metadata.paging` only when the producer supplies authoritative paging evidence.
 
 ### Example
 
@@ -105,16 +107,13 @@ $ curl -X POST https://localhost:5001/api/v1/queries \
     "metadata": {
         "eTag": "etag-value-from-response-header",
         "isNotModified": false,
-        "servedAt": "2026-05-14T09:20:00Z",
-        "paging": {
-            "pageSize": 50,
-            "offset": 0
-        }
+        "isStale": null,
+        "servedAt": "2026-05-14T09:20:00Z"
     }
 }
 ```
 
-The exact shape of `payload` depends on the query handler and projection type. `metadata` is additive. The gateway includes normalized cache metadata when available and includes paging metadata when the request supplied `paging`.
+The exact shape of `payload` depends on the query handler and projection type. `metadata` is additive. The gateway includes normalized cache metadata when available. Producer-supplied metadata may also include `isStale`, `projectionVersion`, `isDegraded`, `warningCodes`, and `paging`; the gateway does not infer those fields from the request or from ETag values.
 
 If the query pipeline returns a `200 OK` envelope with `"success": false`, the .NET gateway client treats it as a semantic gateway failure and throws `EventStoreGatewayException` with status code `200`, title `Query semantic failure`, the envelope `correlationId`, and the envelope `errorMessage` as detail. Callers should not deserialize `payload` from a failed semantic envelope.
 
@@ -144,7 +143,7 @@ HTTP/1.1 304 Not Modified
 ETag: "etag-value-from-previous-response"
 ```
 
-If the projection changed, the API returns `200 OK` with a new response body and an updated `ETag` header. Conditional pre-checks are skipped for requests that carry explicit query policy inputs or a non-empty `payload`, so a cached validator for one query shape cannot produce a false `304` for a different filter/search/order/page/freshness or payload identity. ETag lookup failures fail open and the query still executes.
+If the projection changed, the API returns `200 OK` with a new response body and an updated `ETag` header. Conditional pre-checks are skipped for requests that carry explicit query policy inputs or a non-empty `payload`, so a cached validator for one query shape cannot produce a false `304` for a different filter/search/order/page/freshness or payload identity. ETag lookup failures fail open and the query still executes. If producer freshness is unknown and the request explicitly requires freshness, the response fails closed with `query_projection_stale`.
 
 ### Error Responses
 
@@ -201,7 +200,7 @@ public sealed class PartyProjectionActor : Actor, IPartyProjectionActor
 
 `QueryEnvelope` is the projection query wire envelope. Its fields are `TenantId`, `Domain`, `AggregateId`, `QueryType`, UTF-8 JSON `Payload` bytes, `CorrelationId`, `UserId`, and optional `EntityId`. `ToString()` redacts payload bytes and should be used instead of logging raw query payloads.
 
-`QueryResult` is the actor response. Successful results carry UTF-8 JSON `PayloadBytes` and optional `ProjectionType`; failures set `Success = false` and a coarse adapter-edge `ErrorMessage`. Use the public `QueryAdapterFailureReason` constants for stable adapter-edge categories:
+`QueryResult` is the actor response. Successful results carry UTF-8 JSON `PayloadBytes`, optional `ProjectionType`, and optional `QueryResponseMetadata`; failures set `Success = false` and a coarse adapter-edge `ErrorMessage`. Use the public `QueryAdapterFailureReason` constants for stable adapter-edge categories:
 
 | Category                         | Meaning                                                                  |
 | -------------------------------- | ------------------------------------------------------------------------ |
@@ -214,7 +213,7 @@ public sealed class PartyProjectionActor : Actor, IPartyProjectionActor
 | `unknown-query-type`             | Query type is unknown to the projection adapter.                         |
 | `actor-not-found-infrastructure` | DAPR actor runtime reported missing actor registration or actor address. |
 
-Story 22.4 owns non-auth query taxonomy, paging/filter/freshness policy, and detailed query behavior. Story 22.3 owns tenant/RBAC enforcement before query actor invocation, ETag comparison, cache lookup, projection freshness checks, or any not-found/missing-projection response.
+Story 22.4 owns non-auth query taxonomy, paging/filter/freshness policy, and detailed query behavior. Story 22.3 owns tenant/RBAC enforcement before query actor invocation, ETag comparison, cache lookup, and any not-found/missing-projection response.
 
 ### Actor Type and ID Routing
 

@@ -32,7 +32,9 @@ public static class AdminOperationalIndexMetadata {
             ? new HashSet<string>(requestedDomains, StringComparer.OrdinalIgnoreCase)
             : new HashSet<string>(discovery.Aggregates.Select(a => a.DomainName), StringComparer.OrdinalIgnoreCase);
 
-        ILookup<string, string> queryTypesByDomain = (queryHandlers ?? [])
+        IDomainQueryHandler[] materializedQueryHandlers = DomainQueryHandlerRouteValidator.MaterializeAndValidate(queryHandlers);
+
+        ILookup<string, string> queryTypesByDomain = materializedQueryHandlers
             .ToLookup(h => h.Domain, h => h.QueryType, StringComparer.OrdinalIgnoreCase);
 
         List<DomainMetadata> domains = [.. discovery.Aggregates

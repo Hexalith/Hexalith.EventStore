@@ -1,6 +1,8 @@
 
 using System.Text.Json;
 
+using Hexalith.EventStore.Contracts.Queries;
+
 using MediatR;
 
 namespace Hexalith.EventStore.Server.Pipeline.Queries;
@@ -23,4 +25,18 @@ public record SubmitQuery(
 /// <summary>
 /// Result of processing a <see cref="SubmitQuery"/>.
 /// </summary>
-public record SubmitQueryResult(string CorrelationId, JsonElement Payload, string? ProjectionType = null);
+public record SubmitQueryResult(
+    string CorrelationId,
+    JsonElement Payload,
+    string? ProjectionType = null,
+    QueryResponseMetadata? Metadata = null) {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SubmitQueryResult"/> class using the original query result shape.
+    /// </summary>
+    /// <param name="correlationId">The correlation identifier for the query.</param>
+    /// <param name="payload">The query payload.</param>
+    /// <param name="projectionType">Optional projection type metadata.</param>
+    public SubmitQueryResult(string correlationId, JsonElement payload, string? projectionType)
+        : this(correlationId, payload, projectionType, Metadata: null) {
+    }
+}

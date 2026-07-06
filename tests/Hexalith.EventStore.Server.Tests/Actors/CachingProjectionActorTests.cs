@@ -87,6 +87,40 @@ public class CachingProjectionActorTests {
     }
 
     [Fact]
+    public async Task QueryAsync_CacheHit_PreservesStableMetadataAndClearsFreshnessEvidence() {
+        // Arrange
+        string currentETag = GenerateTestETag();
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>())
+            .Returns(currentETag);
+
+        JsonElement payload = JsonDocument.Parse("{\"count\":42}").RootElement;
+        var metadata = new QueryResponseMetadata(
+            IsStale: false,
+            ProjectionVersion: "counter-v4",
+            ServedAt: DateTimeOffset.UtcNow.AddMinutes(-10),
+            Paging: new QueryPagingMetadata(PageSize: 10, Offset: 20));
+        var expected = QueryResult.FromPayload(payload, "counter", metadata);
+
+        var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
+        var actor = new TestCachingProjectionActor(host, eTagService, expected);
+
+        _ = await actor.QueryAsync(CreateEnvelope());
+
+        // Act
+        QueryResult cached = await actor.QueryAsync(CreateEnvelope());
+
+        // Assert
+        actor.ExecuteCallCount.ShouldBe(1);
+        _ = cached.Metadata.ShouldNotBeNull();
+        cached.Metadata.IsStale.ShouldBeNull();
+        cached.Metadata.ServedAt.ShouldBeNull();
+        cached.Metadata.ProjectionVersion.ShouldBe("counter-v4");
+        _ = cached.Metadata.Paging.ShouldNotBeNull();
+        cached.Metadata.Paging.Offset.ShouldBe(20);
+    }
+
+    [Fact]
     public async Task QueryAsync_ETagChanges_RefreshesCache() {
         // Arrange
         string initialETag = GenerateTestETag();

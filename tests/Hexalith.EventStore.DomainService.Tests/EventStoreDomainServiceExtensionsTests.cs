@@ -367,6 +367,22 @@ public sealed class EventStoreDomainServiceExtensionsTests {
     }
 
     /// <summary>
+    /// Proves duplicate query routes fail during SDK endpoint setup, before the first routed query.
+    /// </summary>
+    [Fact]
+    public void MapEventStoreDomainService_ThrowsWhenDuplicateQueryHandlersAreRegistered() {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.AddEventStoreDomainService();
+        _ = builder.Services.AddScoped<IDomainQueryHandler, WidgetQueryHandler>();
+        WebApplication app = builder.Build();
+
+        InvalidOperationException ex = Should.Throw<InvalidOperationException>(() => app.MapEventStoreDomainService());
+
+        ex.Message.ShouldContain("Duplicate query handlers are registered");
+        ex.Message.ShouldContain(nameof(WidgetQueryHandler));
+    }
+
+    /// <summary>
     /// Proves the <c>/query</c> dispatch path routes to the handler matching the envelope's domain + query type.
     /// </summary>
     [Fact]
@@ -382,6 +398,11 @@ public sealed class EventStoreDomainServiceExtensionsTests {
 
         result.Success.ShouldBeTrue();
         result.GetPayload().GetProperty("aggregateId").GetString().ShouldBe("widget-1");
+        _ = result.Metadata.ShouldNotBeNull();
+        result.Metadata.IsStale.ShouldBe(false);
+        result.Metadata.ProjectionVersion.ShouldBe("widget-projection-v1");
+        _ = result.Metadata.Paging.ShouldNotBeNull();
+        result.Metadata.Paging.PageSize.ShouldBe(10);
     }
 
     /// <summary>
@@ -399,6 +420,45 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         QueryResult result = await DomainQueryDispatcher.ExecuteAsync(scope.ServiceProvider, query);
 
         result.Success.ShouldBeFalse();
+        result.ErrorMessage.ShouldContain("No query handler is registered");
+    }
+
+    /// <summary>
+    /// Proves duplicate query routes are rejected deterministically instead of first-match dispatching.
+    /// </summary>
+    [Fact]
+    public async Task DomainQueryDispatcher_Execute_ThrowsWhenDuplicateHandlersMatch() {
+        var services = new ServiceCollection();
+        _ = services.AddScoped<IDomainQueryHandler, WidgetQueryHandler>();
+        _ = services.AddScoped<IDomainQueryHandler, WidgetQueryHandler>();
+        using ServiceProvider provider = services.BuildServiceProvider();
+        using IServiceScope scope = provider.CreateScope();
+        QueryEnvelope query = new("test-tenant", "widget", "widget-1", "get-widget", [], "corr-1", "test-user");
+
+        InvalidOperationException ex = await Should.ThrowAsync<InvalidOperationException>(
+            () => DomainQueryDispatcher.ExecuteAsync(scope.ServiceProvider, query));
+
+        ex.Message.ShouldContain("Duplicate query handlers are registered");
+        ex.Message.ShouldContain(nameof(WidgetQueryHandler));
+    }
+
+    /// <summary>
+    /// Proves operational metadata rejects ambiguous handler routes before the gateway materializes indexes.
+    /// </summary>
+    [Fact]
+    public void AdminOperationalIndexMetadata_Create_ThrowsWhenDuplicateQueryHandlersMatch() {
+        DiscoveryResult discovery = new(
+            [new DiscoveredDomain(typeof(WidgetAggregate), "widget", typeof(WidgetState), DomainKind.Aggregate)],
+            []);
+
+        InvalidOperationException ex = Should.Throw<InvalidOperationException>(
+            () => AdminOperationalIndexMetadata.Create(
+                discovery,
+                ["widget"],
+                [new WidgetQueryHandler(), new WidgetQueryHandler()]));
+
+        ex.Message.ShouldContain("Duplicate query handlers are registered");
+        ex.Message.ShouldContain(nameof(WidgetQueryHandler));
     }
 
     /// <summary>

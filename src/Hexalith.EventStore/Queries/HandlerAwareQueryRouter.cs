@@ -57,7 +57,7 @@ public sealed class HandlerAwareQueryRouter(
         QueryResult result = await invoker.InvokeAsync(envelope, cancellationToken).ConfigureAwait(false);
 
         if (!result.Success) {
-            return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: result.ErrorMessage);
+            return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: result.ErrorMessage, Metadata: result.Metadata);
         }
 
         if (result.PayloadBytes is not { Length: > 0 }) {
@@ -66,7 +66,12 @@ public sealed class HandlerAwareQueryRouter(
 
         try {
             JsonElement payload = result.GetPayload();
-            return new QueryRouterResult(Success: true, Payload: payload, NotFound: false, ProjectionType: result.ProjectionType);
+            return new QueryRouterResult(
+                Success: true,
+                Payload: payload,
+                NotFound: false,
+                ProjectionType: result.ProjectionType,
+                Metadata: result.Metadata);
         }
         catch (JsonException) {
             return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: "Domain query handler returned a malformed payload.");

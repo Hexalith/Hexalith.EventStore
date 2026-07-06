@@ -1,3 +1,5 @@
+using System.Runtime.Serialization;
+
 namespace Hexalith.EventStore.Contracts.Queries;
 
 /// <summary>
@@ -11,12 +13,25 @@ namespace Hexalith.EventStore.Contracts.Queries;
 /// <param name="ServedAt">The time the gateway served the response.</param>
 /// <param name="Paging">Paging metadata when paging policy applies.</param>
 /// <param name="WarningCodes">Stable warning codes associated with the query result.</param>
+[DataContract]
+[KnownType(typeof(string[]))]
 public sealed record QueryResponseMetadata(
-    string? ETag = null,
-    bool? IsNotModified = null,
-    bool? IsStale = null,
-    bool? IsDegraded = null,
-    string? ProjectionVersion = null,
-    DateTimeOffset? ServedAt = null,
-    QueryPagingMetadata? Paging = null,
-    IReadOnlyList<string>? WarningCodes = null);
+    [property: DataMember] string? ETag = null,
+    [property: DataMember] bool? IsNotModified = null,
+    [property: DataMember] bool? IsStale = null,
+    [property: DataMember] bool? IsDegraded = null,
+    [property: DataMember] string? ProjectionVersion = null,
+    [property: DataMember] DateTimeOffset? ServedAt = null,
+    [property: DataMember] QueryPagingMetadata? Paging = null,
+    IReadOnlyList<string>? WarningCodes = null) {
+    private string[]? _warningCodes = WarningCodes?.ToArray();
+
+    /// <summary>
+    /// Gets stable warning codes associated with the query result.
+    /// </summary>
+    [DataMember]
+    public IReadOnlyList<string>? WarningCodes {
+        get => _warningCodes;
+        init => _warningCodes = value?.ToArray();
+    }
+}

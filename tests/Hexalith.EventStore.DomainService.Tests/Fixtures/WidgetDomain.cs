@@ -57,7 +57,11 @@ public sealed class WidgetQueryHandler : IDomainQueryHandler {
     public Task<QueryResult> ExecuteAsync(QueryEnvelope query, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(query);
         JsonElement payload = JsonSerializer.SerializeToElement(new { domain = query.Domain, aggregateId = query.AggregateId });
-        return Task.FromResult(QueryResult.FromPayload(payload, projectionType: "widget"));
+        var metadata = new QueryResponseMetadata(
+            IsStale: false,
+            ProjectionVersion: "widget-projection-v1",
+            Paging: new QueryPagingMetadata(PageSize: 10, Offset: 0));
+        return Task.FromResult(QueryResult.FromPayload(payload, projectionType: "widget", metadata));
     }
 }
 

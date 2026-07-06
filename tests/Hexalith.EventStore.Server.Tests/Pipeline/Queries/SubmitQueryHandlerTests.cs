@@ -64,6 +64,35 @@ public class SubmitQueryHandlerTests {
     }
 
     [Fact]
+    public async Task Handle_SuccessfulQuery_PassesThroughMetadata() {
+        // Arrange
+        JsonElement payload = JsonDocument.Parse("{\"data\":1}").RootElement;
+        var metadata = new QueryResponseMetadata(
+            IsStale: false,
+            ProjectionVersion: "orders-v7",
+            Paging: new QueryPagingMetadata(PageSize: 25, Offset: 50));
+        IQueryRouter router = Substitute.For<IQueryRouter>();
+        _ = router.RouteQueryAsync(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new QueryRouterResult(
+                Success: true,
+                Payload: payload,
+                NotFound: false,
+                ProjectionType: "order-list",
+                Metadata: metadata));
+
+        var handler = new SubmitQueryHandler(router, NullLogger<SubmitQueryHandler>.Instance);
+
+        // Act
+        SubmitQueryResult result = await handler.Handle(CreateTestQuery(), CancellationToken.None);
+
+        // Assert
+        result.Metadata.ShouldBe(metadata);
+        result.Metadata!.ProjectionVersion.ShouldBe("orders-v7");
+        _ = result.Metadata.Paging.ShouldNotBeNull();
+        result.Metadata.Paging.Offset.ShouldBe(50);
+    }
+
+    [Fact]
     public async Task Handle_NullProjectionType_PassesThroughNull() {
         // Arrange
         JsonElement payload = JsonDocument.Parse("{\"data\":1}").RootElement;
