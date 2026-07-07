@@ -6,7 +6,7 @@ status: 'done'
 baseline_revision: '2dc7d5a84bb9b5db57e10ed695f7c5d8f0e7704c'
 final_revision: '318c4faa75093af85bb23450417592d1dea35c42'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-1-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-1-6-sample-and-tenants-domain-centric-adoption-2.md'
@@ -149,6 +149,16 @@ warnings: []
   - `[medium]` `[patch]` Grouped canonical endpoint detection missed multiline assignments, assigned nested groups, inline nested `MapGroup` chains, and empty child routes; added group-prefix composition with focused route-shape tests.
   - `[medium]` `[patch]` Raw string literal handling only recognized exactly triple-quoted strings and trimmed raw contents; expanded raw literal matching to 3+ quotes and decoded contents without trimming.
   - `[medium]` `[patch]` The Tenants `/project` allowance could be satisfied by `ProjectionDispatcher` inside a string literal; now the allowance checks the comment/string-stripped mapping snippet.
+
+### 2026-07-07 — Terminating follow-up review pass (correct-course)
+- intent_gap: 0
+- bad_spec: 0
+- patch: 0
+- defer: 0 new (findings consolidated into the two existing Story 1.7 deferred entries)
+- reject: 0
+- disposition: follow-up review **not** recommended; `followup_review_recommended` cleared; `deferred-work.md` DW-1 closed as accepted.
+- rationale: Ran the review pass requested via the `bmad-correct-course` workflow (sprint-change-proposal-2026-07-07-story-1-7-followup-review-disposition). Focused suites green — `DomainModuleAuthoringGuardrailTests` 25/25, `ReleasePackageManifestTests` 8/8. Every finding surfaced is one class — regex-scan completeness/soundness on arbitrary C#: (1) cross-file/computed canonical route indirection (already deferred), (2) `ContainsInvocationOnCallResult` matches `).<marker>(` on any call result with generic state-method names → false-positive risk (folded into the route-resolution deferred entry evidence), (3) name-based `StateStoreWrapperDeclaration` broad net (accepted). None is a defect in the story deliverable (14-package manifest governance + domain-centric enforcement), which is green. Applying a fifth regex patch would re-arm the non-converging review loop and violate the Epic 1 retro completion criterion ("deferred-work.md no longer has an open follow-up-review-only item for Story 1.7"). Complete closure of this finding class is a scoped Roslyn/convention-level guardrail story, not another follow-up review.
+- verification: `dotnet test tests/Hexalith.EventStore.DomainService.Tests/ --filter FullyQualifiedName~DomainModuleAuthoringGuardrailTests` — passed 25/25; `dotnet test tests/Hexalith.EventStore.Contracts.Tests/ --filter FullyQualifiedName~ReleasePackageManifestTests` — passed 8/8.
 
 ## Design Notes
 

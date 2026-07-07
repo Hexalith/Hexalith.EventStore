@@ -196,7 +196,7 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 
 | ID | Requirement |
 | --- | --- |
-| NFR1 | Security must fail closed for public, internal, domain-service, projection-notification, and admin surfaces; no endpoint may rely only on network posture or caller-supplied admin flags. |
+| NFR1 | Security must fail closed for public, internal, domain-service, projection-notification, and admin surfaces; no endpoint may rely only on network posture or caller-supplied admin flags. The only anonymous exception is the health/liveness/readiness probe endpoints (`/health`, `/alive`, `/ready`), which are explicitly pinned `AllowAnonymous` and support-safe (AD-16); the fail-closed default is never weakened to reach probes. |
 | NFR2 | Tenant isolation must be preserved across state keys, actor IDs, topics, admin queries, generated REST APIs, SignalR groups, and deployment configuration. |
 | NFR3 | Production authentication must reject insecure symmetric-key mode unless explicitly break-glassed, require HTTPS metadata where appropriate, and pin accepted JWT algorithms. |
 | NFR4 | Committed configuration must not contain forgeable administrator signing keys, credentials, bearer tokens, decoded JWT payloads, or other operational secrets. |
@@ -332,7 +332,7 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 
 | NFR | Primary story coverage |
 | --- | --- |
-| NFR1 | 5.2, 5.3, 5.5, 7.2 |
+| NFR1 | 5.2, 5.3, 5.5, 7.2, 7.3 |
 | NFR2 | 2.4, 5.2, 5.5, 5.6 |
 | NFR3 | 5.3 |
 | NFR4 | 5.3, 7.3 |

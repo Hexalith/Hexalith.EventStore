@@ -90,6 +90,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-6-sample-and-tenants-domain-centric-adoption-2.md`
   summary: Health endpoints do not declare an explicit anonymous-access contract, so a future global fallback authorization policy could block DAPR app-health probes even when the probe targets `/alive`.
   evidence: Story 1.6 follow-up switches the public Aspire domain-module sidecar app-health default from `/ready` to `/alive`, resolving the sidecar-dependent readiness feedback loop, but `MapDefaultEndpoints` still maps `/health`, `/alive`, and `/ready` without explicit `AllowAnonymous()` metadata. Current EventStore tests show unauthenticated health calls succeed under today's auth setup, but adding a global fallback policy later could make DAPR mark modules unhealthy unless health endpoint anonymity is made an intentional contract.
+  resolution: Contract defined as architecture invariant AD-16 (health/liveness/readiness endpoints `/health`, `/alive`, `/ready` are explicitly `AllowAnonymous` + support-safe; any global fallback authorization policy lands in the same-or-earlier slice and is never weakened to reach probes) via `sprint-change-proposal-2026-07-07-health-endpoint-anonymous-access-contract.md`. Enforcement carried by Stories 5.3, 5.5, and 7.3 (AD-16 acceptance criteria + positive-probe/negative-protected-endpoint test). status: RESOLVED 2026-07-07 (correct-course).
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-5-domain-module-hosting-observability.md`
   summary: A single `EventStoreDomainDiagnostics` instance is owned and disposed by the registry yet also returned from the keyed and single-domain DI factories, so the container double/triple-disposes it at teardown — harmless today only because `ActivitySource`/`Meter` disposal is idempotent.
@@ -101,14 +102,15 @@
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-7-domainservice-packaging-and-guardrails.md`
   summary: Domain-module endpoint guardrails still rely on lightweight same-file route resolution and do not prove canonical route values passed through cross-file constants or variables.
-  evidence: The follow-up review hardened direct literal, same-file constant, repeated-constant, and simple `MapGroup` route detection in `tests/Hexalith.EventStore.DomainService.Tests/DomainModuleAuthoringGuardrailTests.cs`, but a domain module could still hide `/process`, `/replay-state`, `/query`, `/project`, or `/admin/operational-index-metadata` behind a route value imported from another type or computed variable. Closing this completely needs a Roslyn-level syntax/semantic guardrail or an explicit convention that forbids indirect canonical endpoint route values in scanned domain roots.
+  evidence: The follow-up review hardened direct literal, same-file constant, repeated-constant, and simple `MapGroup` route detection in `tests/Hexalith.EventStore.DomainService.Tests/DomainModuleAuthoringGuardrailTests.cs`, but a domain module could still hide `/process`, `/replay-state`, `/query`, `/project`, or `/admin/operational-index-metadata` behind a route value imported from another type or computed variable. Closing this completely needs a Roslyn-level syntax/semantic guardrail or an explicit convention that forbids indirect canonical endpoint route values in scanned domain roots. The same "lightweight scan cannot be complete or sound on arbitrary C#" class also covers the receiver-agnostic state-access soundness gap surfaced by the 2026-07-07 correct-course review: `ContainsInvocationOnCallResult` (`DomainModuleAuthoringGuardrailTests.cs:806-820`) matches `).<marker>(` on any call result with generic state-method names (`GetStateAsync`/`SaveStateAsync`/`SetStateAsync`/`ClearCacheAsync`), a potential false-positive on unrelated domain method chains. Both directions (false-negative indirection and false-positive over-match) are closed only by a Roslyn/convention-level guardrail, not further regex refinement — see accepted entry DW-1.
 
 ### DW-1: Follow-up review still recommended for 1-7-domainservice-packaging-and-guardrails after the review budget was exhausted
 origin: review-budget-followup
 source_spec: `spec-1-7-domainservice-packaging-and-guardrails.md`
 severity: low
 reason: Review budget (3 cycles) was exhausted with the story finalized (status: done, verify green) while the review pass kept recommending an independent follow-up. The work was committed by bmad-loop run 20260707-071516-abab; this entry preserves the lingering follow-up recommendation for a deliberate later review.
-status: open
+status: accepted 2026-07-07 (correct-course, sprint-change-proposal-2026-07-07-story-1-7-followup-review-disposition)
+resolution: A terminating follow-up review pass was run per the Epic 1 retro action item. Deliverable green — `DomainModuleAuthoringGuardrailTests` 25/25, `ReleasePackageManifestTests` 8/8. All remaining findings are the regex-scan-completeness/soundness class already captured by the two substantive Story 1.7 deferred entries above (broad DAPR/host-wiring ban; cross-file/computed canonical route resolution). A fifth regex patch would re-arm the non-converging loop and fail the retro completion criterion ("no open follow-up-review-only item for Story 1.7"). Future closure of the finding class = a scoped Roslyn/convention-level guardrail story, not another follow-up review. `spec-1-7` `followup_review_recommended` cleared to false.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-1-rest-contract-seam-for-command-and-query-messages.md`
   summary: `RestQueryBindingAttribute` runtime construction permits `EntitySource = None` with a non-null entity value even though the generator rejects that shape.
@@ -133,6 +135,7 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-2-rest-api-generator-discovery-and-controller-emission.md`
   summary: Generated command success responses hard-code `/api/v1/commands/status/{id}` as a relative status `Location`.
   evidence: `RestApiControllerEmitter.AppendCommandAction` writes `Response.Headers["Location"] = "/api/v1/commands/status/" + Uri.EscapeDataString(...)`, while the platform `CommandsController.Submit` builds an absolute URI from the current request host. Dedicated generated API hosts may not expose that relative status route, so status-location policy needs a focused generated-host design.
+  resolution: Policy defined as architecture invariant AD-17 (absolute-to-gateway, fail-closed when unconfigured, single-sourced gateway status key) via `sprint-change-proposal-2026-07-07-generated-api-command-status-location-policy.md`; enforcement scheduled as Story 2.6. status: scheduled (2026-07-07).
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-2-rest-api-generator-discovery-and-controller-emission.md`
   summary: Generated query actions map caught `ArgumentException` messages directly into client-facing ProblemDetails.
@@ -143,22 +146,26 @@ origin: review-budget-followup
 source_spec: `spec-2-2-rest-api-generator-discovery-and-controller-emission.md`
 severity: low
 reason: Review budget (3 cycles) was exhausted with the story finalized (status: done, verify green) while the review pass kept recommending an independent follow-up. The work was committed by bmad-loop run 20260707-112402-3779; this entry preserves the lingering follow-up recommendation for a deliberate later review.
-status: open
+status: accepted (deliberate acceptance 2026-07-07)
+disposition: Correct-Course deliberate acceptance — no further blocking review required. Reviews converged to 0 HIGH; all substantive residuals are separately tracked (generated command request-size limit, command-rejection extension forwarding, status Location policy, query ArgumentException sanitization) under the REST generator hardening and command-status Location action items (owner: Winston). Evidence: `dotnet test tests/Hexalith.EventStore.RestApi.Generators.Tests/` → 108/108 passed on 2026-07-07 at HEAD fc0f1de8. See `sprint-change-proposal-2026-07-07-followup-review-disposition-2-2-2-3.md`.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-3-sample-external-api-host-proof.md`
   summary: Generated Sample API command success responses expose the generator's relative `/api/v1/commands/status/{id}` status location even though the external API host does not itself map that status route.
   evidence: `SampleApiGeneratedControllerRuntimeTests` proves the compiled Sample API generated command action emits the existing generated `Location` header; `Sample.Api` maps only generated controllers and default endpoints, so polling that relative status URL depends on an external routing/proxy policy not owned by this proof story.
+  resolution: Policy defined as architecture invariant AD-17 (absolute-to-gateway, fail-closed when unconfigured, single-sourced gateway status key) via `sprint-change-proposal-2026-07-07-generated-api-command-status-location-policy.md`; enforcement scheduled as Story 2.6. status: scheduled (2026-07-07).
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-3-sample-external-api-host-proof.md`
   summary: Sample DAPR app-id handlers append `dapr-app-id` and `dapr-api-token` headers without replacing preexisting values.
   evidence: `samples/Hexalith.EventStore.Sample.Api/Services/DaprAppIdHandler.cs` and `samples/Hexalith.EventStore.Sample.BlazorUI/Services/DaprAppIdHandler.cs` call `TryAddWithoutValidation` for DAPR routing headers, so a caller-provided conflicting value could produce duplicate sidecar routing/token headers; this handler behavior predates the generated Sample API host proof and needs a focused outbound-DAPR-header policy fix.
+  status: reconciled 2026-07-07 (sprint-change-proposal-2026-07-07-outbound-dapr-routing-header-policy). Policy decided and formalized as architecture invariant **AD-18** (Outbound Sidecar Control-Plane Headers Are Handler-Owned): replace-not-append, handler-owned, innermost handler, caller/inbound values never routed. Scope is wider than the two files named here — the byte-identical defect also lives in `src/Hexalith.EventStore.Admin.UI/Services/DaprAppIdHandler.cs`. Enforcement owned by **Story 2.7** (centralize a single handler in `Hexalith.EventStore.Client` via `AddEventStoreGatewayClient(appId, apiToken?)`, delete the 3 in-repo copies, add pre-existing-header replacement test + a guardrail structural test). The identical `references/Hexalith.Tenants/src/Hexalith.Tenants.Api/Services/DaprAppIdHandler.cs` copy is a **coordinated submodule follow-up requiring maintainer approval** (Story 2.4 lineage), not modified under Story 2.7.
 
 ### DW-3: Follow-up review still recommended for 2-3-sample-external-api-host-proof after the review budget was exhausted
 origin: review-budget-followup
 source_spec: `spec-2-3-sample-external-api-host-proof.md`
 severity: low
 reason: Review budget (3 cycles) was exhausted with the story finalized (status: done, verify green) while the review pass kept recommending an independent follow-up. The work was committed by bmad-loop run 20260707-112402-3779; this entry preserves the lingering follow-up recommendation for a deliberate later review.
-status: open
+status: accepted (deliberate acceptance 2026-07-07)
+disposition: Correct-Course deliberate acceptance — no further blocking review required. Reviews converged to 0 HIGH; the substantive residuals (status Location dependency, Sample DAPR app-id header append-vs-replace) are separately tracked under the command-status Location policy (owner: Winston) and outbound DAPR routing-header policy (owner: Amelia) action items. Evidence: `dotnet test tests/Hexalith.EventStore.Sample.Tests/` → 115/115 passed on 2026-07-07 at HEAD fc0f1de8. See `sprint-change-proposal-2026-07-07-followup-review-disposition-2-2-2-3.md`.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-5-scoped-metadata-rich-projection-notifications.md`
   summary: Raw SignalR hub leave calls do not validate projection type or tenant id before building and removing malformed group names.

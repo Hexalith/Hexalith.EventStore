@@ -74,6 +74,12 @@ FINDINGS_JSON=()
 # Highest-precedence terminal state observed so far.
 WORST_EXIT="${EX_OK}"
 WORST_STATUS="ok"
+# Set when a control-plane condition (placement/scheduler/actor host not ready) is detected during
+# DAPR diagnostics. Forces a blocked-environment verdict and skips the product smoke so an
+# environment failure is never reported as a generated-API product defect (AC2).
+CONTROL_PLANE_BLOCKED=0
+# Temp files created during the run; removed by cleanup() on EXIT/INT/TERM.
+TMP_FILES=()
 
 # --- Small helpers ---------------------------------------------------------------------------
 
@@ -82,6 +88,15 @@ usage() {
 }
 
 have() { command -v "$1" >/dev/null 2>&1; }
+
+# Remove any temp files registered in TMP_FILES. Installed by main as an EXIT/INT/TERM trap so an
+# interrupted smoke (multi-second curls) does not leak /tmp files.
+cleanup() {
+  local f
+  for f in "${TMP_FILES[@]:-}"; do
+    [[ -n "${f}" ]] && rm -f "${f}"
+  done
+}
 
 # Redact secrets from any externally-sourced text before it is surfaced. Mirrors the C# contract
 # DaprDiagnostics.ToSupportSafeDiagnostic so script output and integration-test evidence scrub the
@@ -96,9 +111,9 @@ redact() {
     -e 's/([Rr]edis[Pp]assword[^[:space:]:=]*[:=][[:space:]]*)[^{}[:space:]]+/\1{redacted-secret}/g' \
     -e 's#(redis://|amqp://|Endpoint=sb://)[^[:space:]]+#[redacted-connection]#g' \
     -e 's/\b(10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}|172\.(1[6-9]|2[0-9]|3[01])\.[0-9]{1,3}\.[0-9]{1,3}|192\.168\.[0-9]{1,3}\.[0-9]{1,3})\b/[redacted-private-address]/g' \
-    -e 's#https?://(localhost|127\.0\.0\.1)([:/][^[:space:]]*)?#__LOCALSAFE__\1\2#g' \
+    -e 's#(https?)://(localhost|127\.0\.0\.1)([:/][^[:space:]]*)?#__LOCALSAFE__\1__\2\3#g' \
     -e 's#https?://[^[:space:]]+#[redacted-url]#g' \
-    -e 's#__LOCALSAFE__#http://#g' \
+    -e 's#__LOCALSAFE__(https?)__#\1://#g' \
     -e 's/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/[redacted-email]/g' \
     -e "s/\\b([Tt]enant[Ii]d|[Tt]enant|[Uu]ser[Ii]d|[Uu]ser|sub|subject)([[:space:]]*[:=][[:space:]]*)['\"]?[A-Za-z0-9._@%+-]{3,}['\"]?/\\1=[redacted-id]/g"
 }
@@ -159,6 +174,16 @@ escalate() {
 
 # --- Argument parsing ------------------------------------------------------------------------
 
+# Guard a value-taking option. The script runs without `set -e`, so a `shift 2` with only one
+# positional left is a no-op and would spin the parse loop forever on a trailing value flag.
+# args: flag remainingCount($#)
+need_value() {
+  if [[ "$2" -lt 2 ]]; then
+    printf 'ERROR: option "%s" requires a value. Use --help for usage.\n' "$1" >&2
+    return 1
+  fi
+}
+
 parse_args() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -166,10 +191,10 @@ parse_args() {
       --json) JSON_MODE=1; shift ;;
       --tenants) CHECK_TENANTS=1; shift ;;
       --start-control-plane) START_CONTROL_PLANE=1; shift ;;
-      --sample-api-url) SAMPLE_API_URL="${2:-}"; shift 2 ;;
-      --eventstore-dapr-port) EVENTSTORE_DAPR_PORT="${2:-}"; EVENTSTORE_DAPR_PORT_EXPLICIT=1; shift 2 ;;
-      --sample-api-dapr-port) SAMPLE_API_DAPR_PORT="${2:-}"; shift 2 ;;
-      --apphost) APPHOST="${2:-}"; shift 2 ;;
+      --sample-api-url) need_value "$1" "$#" || return "${EX_USAGE}"; SAMPLE_API_URL="$2"; shift 2 ;;
+      --eventstore-dapr-port) need_value "$1" "$#" || return "${EX_USAGE}"; EVENTSTORE_DAPR_PORT="$2"; EVENTSTORE_DAPR_PORT_EXPLICIT=1; shift 2 ;;
+      --sample-api-dapr-port) need_value "$1" "$#" || return "${EX_USAGE}"; SAMPLE_API_DAPR_PORT="$2"; shift 2 ;;
+      --apphost) need_value "$1" "$#" || return "${EX_USAGE}"; APPHOST="$2"; shift 2 ;;
       -h|--help) usage; exit "${EX_OK}" ;;
       *)
         printf 'ERROR: unknown argument "%s". Use --help for usage.\n' "$1" >&2
@@ -183,9 +208,12 @@ parse_args() {
 # --- Environment checks (AC2) ----------------------------------------------------------------
 
 # Returns non-zero (blocked) when a required infrastructure prerequisite is missing.
+# Tracks placement/scheduler ("control plane") blockers separately from the others so that
+# --start-control-plane can clear ONLY the control-plane blocker it actually started, never a
+# co-existing Docker/Aspire/daprd blocker.
 check_environment() {
   section environment
-  local blocked=0
+  local other_blocked=0 cp_blocked=0
 
   # Docker daemon.
   if have docker && timeout 15 docker version --format '{{.Server.Version}}' >/dev/null 2>&1; then
@@ -193,7 +221,7 @@ check_environment() {
     record environment docker-daemon ok "Docker engine reachable (v${dv})"
   else
     record environment docker-daemon blocked "Docker daemon not reachable. Start Docker, then retry. See https://docs.docker.com/get-docker/"
-    blocked=1
+    other_blocked=1
   fi
 
   # Aspire CLI.
@@ -201,7 +229,7 @@ check_environment() {
     record environment aspire-cli ok "aspire CLI on PATH"
   else
     record environment aspire-cli blocked "aspire CLI missing. Install from https://aspire.dev, then retry."
-    blocked=1
+    other_blocked=1
   fi
 
   # DAPR CLI + runtime.
@@ -211,11 +239,11 @@ check_environment() {
       record environment dapr-runtime ok "DAPR CLI and runtime initialized"
     else
       record environment dapr-runtime blocked "DAPR runtime not initialized. Run 'dapr init' (or 'dapr init --slim'), then retry."
-      blocked=1
+      other_blocked=1
     fi
   else
     record environment dapr-cli blocked "DAPR CLI missing. Install from https://docs.dapr.io/getting-started/install-dapr-cli/, then 'dapr init'."
-    blocked=1
+    other_blocked=1
   fi
 
   # daprd binary (Aspire launches sidecars from this). Look on PATH and in ~/.dapr/bin.
@@ -225,7 +253,7 @@ check_environment() {
     record environment daprd-binary ok "daprd present (${daprd_bin})"
   else
     record environment daprd-binary blocked "daprd binary not found on PATH or in ~/.dapr/bin. Run 'dapr init', then retry."
-    blocked=1
+    other_blocked=1
   fi
 
   # Placement / scheduler reachability. Port-reachability is authoritative (they may run as
@@ -238,24 +266,27 @@ check_environment() {
     record environment placement ok "DAPR placement reachable on localhost:${placement_port}"
   else
     record environment placement blocked "DAPR placement NOT reachable on localhost:${placement_port}. Start it: '\$HOME/.dapr/bin/placement --port 50005 &' (or 'dapr init')."
-    blocked=1
+    cp_blocked=1
   fi
 
   if port_reachable localhost "${scheduler_port}"; then
     record environment scheduler ok "DAPR scheduler reachable on localhost:${scheduler_port}"
   else
     record environment scheduler blocked "DAPR scheduler NOT reachable on localhost:${scheduler_port}. Start it: '\$HOME/.dapr/bin/scheduler --port 50006 --etcd-data-dir /tmp/dapr-scheduler-data &' (or 'dapr init')."
-    blocked=1
+    cp_blocked=1
   fi
 
-  # Optional, explicitly-gated control-plane bootstrap.
-  if [[ "${blocked}" -ne 0 && "${START_CONTROL_PLANE}" -eq 1 ]]; then
+  # Optional, explicitly-gated control-plane bootstrap. Only clears the control-plane blocker; a
+  # co-existing Docker/Aspire/daprd blocker (other_blocked) still blocks the run.
+  if [[ "${cp_blocked}" -ne 0 && "${START_CONTROL_PLANE}" -eq 1 ]]; then
     start_control_plane "${placement_port}" "${scheduler_port}"
     # Re-probe after starting.
-    port_reachable localhost "${placement_port}" && port_reachable localhost "${scheduler_port}" && blocked=0
+    if port_reachable localhost "${placement_port}" && port_reachable localhost "${scheduler_port}"; then
+      cp_blocked=0
+    fi
   fi
 
-  return "${blocked}"
+  return "$(( other_blocked || cp_blocked ))"
 }
 
 start_control_plane() {
@@ -308,21 +339,23 @@ discover_topology() {
 
   # eventstore + sample + sample-api are required for the generated-API proof; a missing one is a
   # real topology gap (exit 3), not a warning — otherwise a partial topology reads as "clean".
-  local r
+  local r topo_broken=0
   for r in eventstore sample sample-api; do
     if printf '%s\n' "${names}" | grep -qx "${r}"; then
       local url; url="$(topology_http_url "${r}")"
       if [[ -n "${url}" ]]; then
         record aspire "resource:${r}" ok "running, http ${url}"
       elif [[ "${r}" == "sample-api" ]]; then
-        record aspire "resource:${r}" fail "running but no published HTTP endpoint (generated API cannot be reached)"
+        record aspire "resource:${r}" fail "running but no published HTTP endpoint (generated API cannot be reached over HTTP)"
         escalate "${EX_NO_TOPOLOGY}" topology-not-running
+        topo_broken=1
       else
         record aspire "resource:${r}" ok "running (no HTTP endpoint published)"
       fi
     else
       record aspire "resource:${r}" fail "expected resource not found in the running topology"
       escalate "${EX_NO_TOPOLOGY}" topology-not-running
+      topo_broken=1
     fi
   done
 
@@ -335,7 +368,10 @@ discover_topology() {
       record aspire "resource:tenants-api" not-applicable "Tenants generated API host not present"
     fi
   fi
-  return 0
+
+  # A required resource missing / with no HTTP endpoint is a topology gap: return non-zero so main
+  # finalizes with the tailored "start the topology" next-action and skips probing a broken topology.
+  return "$(( topo_broken ))"
 }
 
 # Prints one resource logical name per line. `aspire describe --format Json` returns
@@ -346,15 +382,14 @@ topology_resource_names() {
   printf '%s' "${TOPOLOGY_JSON}" | jq -r '.resources[]?.displayName // empty' 2>/dev/null | sort -u
 }
 
-# Prints the endpoint URL for a resource, preferring the `http` URL over `https` (AC3: prefer HTTP
-# for local VM smoke calls), or empty.
+# Prints the resource's published `http` endpoint URL, or empty. HTTP only, by design: AC3 requires
+# HTTP for local VM smoke calls and requires a required resource with no published HTTP endpoint to
+# fail closed — so an https-only resource must return empty here, not silently downgrade to https.
 topology_http_url() {
   local name="$1"
   printf '%s' "${TOPOLOGY_JSON}" | jq -r --arg n "${name}" '
     .resources[]? | select((.displayName // "") == $n)
-    | ( [ .urls[]? | select(.name=="http")  | .url ]
-      + [ .urls[]? | select(.name=="https") | .url ] )
-    | .[0] // empty' 2>/dev/null | head -n1
+    | ( [ .urls[]? | select(.name=="http") | .url ] | .[0] // empty )' 2>/dev/null | head -n1
 }
 
 # Prints a resource's DAPR sidecar HTTP port from its Aspire environment, or empty.
@@ -383,12 +418,23 @@ check_sidecars() {
 # args: appId daprHttpPort expectActorHost(1|0)
 sidecar_metadata() {
   local app_id="$1" port="$2" expect_actor="$3"
-  local meta
+  local meta http_code meta_file
   if ! port_reachable localhost "${port}"; then
     record dapr "sidecar:${app_id}" fail "DAPR sidecar not reachable on localhost:${port} (sidecar missing or not started)"
     return
   fi
-  meta="$(curl -sS -m 10 -H 'Accept: application/json' "http://localhost:${port}/v1.0/metadata" 2>/dev/null)"
+  meta_file="$(mktemp)"; TMP_FILES+=("${meta_file}")
+  http_code="$(curl -sS -m 10 -o "${meta_file}" -w '%{http_code}' -H 'Accept: application/json' "http://localhost:${port}/v1.0/metadata" 2>/dev/null)"
+  meta="$(cat "${meta_file}" 2>/dev/null)"
+  rm -f "${meta_file}"
+
+  # Access-control denial is an environment condition (DAPR access control / API token), not a
+  # product defect — distinguish it from an unhealthy sidecar (AC4).
+  if [[ "${http_code}" == "401" || "${http_code}" == "403" ]]; then
+    record dapr "sidecar:${app_id}" fail "sidecar metadata access-control denied (${http_code}) on :${port} — DAPR access control / API token (environment condition, not a product defect)"
+    escalate "${EX_BLOCKED}" blocked-environment
+    return
+  fi
   if [[ -z "${meta}" ]] || ! printf '%s' "${meta}" | jq -e . >/dev/null 2>&1; then
     record dapr "sidecar:${app_id}" fail "sidecar HTTP reachable on :${port} but /v1.0/metadata unavailable or unhealthy"
     return
@@ -396,7 +442,10 @@ sidecar_metadata() {
 
   local reported_id host_ready placement
   reported_id="$(printf '%s' "${meta}" | jq -r '.id // "unknown"')"
-  host_ready="$(printf '%s' "${meta}" | jq -r '.actorRuntime.hostReady // .actorRuntime.placement // "unknown"')"
+  # hostReady is a JSON boolean; `// "unknown"` (or folding into placement) would swallow a genuine
+  # `false` because jq treats false as empty for //. Read it explicitly as true/false so a
+  # not-ready actor host is surfaced instead of masquerading as the placement string.
+  host_ready="$(printf '%s' "${meta}" | jq -r '(.actorRuntime.hostReady // false) | tostring' 2>/dev/null)"
   placement="$(printf '%s' "${meta}" | jq -r '.actorRuntime.placement // "unknown"')"
 
   if [[ "${expect_actor}" -eq 1 ]]; then
@@ -404,9 +453,14 @@ sidecar_metadata() {
       record dapr "sidecar:${app_id}" ok "app id ${reported_id}, metadata ok, actor hostReady=true, placement connected"
     elif printf '%s' "${placement}" | grep -qi 'disconnected'; then
       record dapr "sidecar:${app_id}" fail "actor host not ready: placement disconnected (actor calls will hang ~60s). See docs/guides/troubleshooting-dapr-actor-placement.md"
+      CONTROL_PLANE_BLOCKED=1
       escalate "${EX_BLOCKED}" blocked-environment
     else
-      record dapr "sidecar:${app_id}" warn "app id ${reported_id}, metadata ok, actor hostReady=${host_ready}, placement=${placement}"
+      # hostReady=false (or otherwise not ready) with placement not explicitly disconnected: actor
+      # calls may still hang, so treat it as a control-plane blocker, not a silent exit-0 warn.
+      record dapr "sidecar:${app_id}" fail "actor host not ready: hostReady=${host_ready}, placement=${placement} (actor calls may hang). See docs/guides/troubleshooting-dapr-actor-placement.md"
+      CONTROL_PLANE_BLOCKED=1
+      escalate "${EX_BLOCKED}" blocked-environment
     fi
   else
     record dapr "sidecar:${app_id}" ok "app id ${reported_id}, metadata ok (service-invocation sidecar; no actor host)"
@@ -434,6 +488,29 @@ mint_dev_jwt() {
   printf '%s.%s.%s' "${h}" "${p}" "${sig}"
 }
 
+# Classify a non-success HTTP status from the generated-API smoke as environment/auth vs product,
+# so an environment condition is never reported as a generated-API product defect (AC4/AC5). A 404
+# (route not served) and other unexpected served responses are product defects; 401/403 and an
+# unreachable host are environment/auth conditions.
+# args: label expectedStatus actualStatus
+classify_smoke_failure() {
+  local label="$1" expected="$2" status="$3"
+  case "${status}" in
+    401|403)
+      record generated-api "${label}" fail "${label} -> ${status} (auth/access-control denied — environment/auth condition, e.g. slim-mode access control or EnableKeycloak; not a product defect)"
+      escalate "${EX_BLOCKED}" blocked-environment ;;
+    ""|000)
+      record generated-api "${label}" fail "${label} -> no response (connection refused/timeout — generated API host unreachable; environment, not a product defect)"
+      escalate "${EX_BLOCKED}" blocked-environment ;;
+    404)
+      record generated-api "${label}" fail "${label} -> 404 (generated route not served — product defect, not an environment blocker)"
+      escalate "${EX_API_FAIL}" generated-api-failure ;;
+    *)
+      record generated-api "${label}" fail "${label} -> ${status} (expected ${expected}; product/gateway defect — if the sidecar/domain service is unhealthy, see the [dapr] findings above)"
+      escalate "${EX_API_FAIL}" generated-api-failure ;;
+  esac
+}
+
 run_sample_smoke() {
   section generated-api
   local base="${SAMPLE_API_URL}"
@@ -457,8 +534,8 @@ run_sample_smoke() {
   local -a curlopts=(-sS -k -L --location-trusted -m 20)
 
   # --- Command: POST increment -> expect 202 + Location + Retry-After ---
-  local hdr_file body_code status location retry_after
-  hdr_file="$(mktemp)"
+  local hdr_file status location retry_after
+  hdr_file="$(mktemp)"; TMP_FILES+=("${hdr_file}")
   status="$(curl "${curlopts[@]}" -o /dev/null -D "${hdr_file}" -w '%{http_code}' \
     -X POST -H "Authorization: Bearer ${jwt}" -H 'Content-Type: application/json' \
     --data "{\"counterId\":\"${SMOKE_COUNTER}\"}" "${cmd_url}" 2>/dev/null)"
@@ -470,18 +547,14 @@ run_sample_smoke() {
     record generated-api command-increment ok "POST .../increment -> 202, Location present, Retry-After=${retry_after}"
   elif [[ "${status}" == "202" ]]; then
     record generated-api command-increment warn "POST .../increment -> 202 but missing Location/Retry-After header"
-  elif [[ "${status}" == "404" ]]; then
-    record generated-api command-increment fail "POST .../increment -> 404 (generated command route not served — product defect, not an environment blocker)"
-    escalate "${EX_API_FAIL}" generated-api-failure
   else
-    record generated-api command-increment fail "POST .../increment -> ${status:-<no-response>} (expected 202)"
-    escalate "${EX_API_FAIL}" generated-api-failure
+    classify_smoke_failure command-increment 202 "${status}"
   fi
 
   # --- Query: GET -> expect 200 + ETag (poll briefly; the projection settles asynchronously after
   #     the accepted command) ---
   local q_hdr q_status etag attempt
-  q_hdr="$(mktemp)"
+  q_hdr="$(mktemp)"; TMP_FILES+=("${q_hdr}")
   q_status=""
   for attempt in 1 2 3 4 5 6; do
     q_status="$(curl "${curlopts[@]}" -o /dev/null -D "${q_hdr}" -w '%{http_code}' \
@@ -499,8 +572,7 @@ run_sample_smoke() {
       record generated-api query-get warn "GET . -> 200 but no ETag (projection returned none; 304 revalidation not exercisable)"
     fi
   else
-    record generated-api query-get fail "GET . -> ${q_status:-<no-response>} (expected 200)"
-    escalate "${EX_API_FAIL}" generated-api-failure
+    classify_smoke_failure query-get 200 "${q_status}"
   fi
 
   # --- Query revalidation: If-None-Match -> expect 304 ---
@@ -519,26 +591,38 @@ run_sample_smoke() {
 }
 
 # Case-insensitive HTTP header value lookup from a curl -D dump; trims CR/whitespace.
+# curl -D appends every response's headers across a redirect chain, so inspect ONLY the final
+# response's block (blocks are blank-line separated). Otherwise a 3xx redirect's headers leak in —
+# e.g. the HTTP->HTTPS 307's `Location` would mask a genuine "202 with no Location" regression.
 header_value() {
   local file="$1" name="$2"
-  grep -iE "^${name}:" "${file}" 2>/dev/null | tail -n1 | sed -E "s/^[^:]+:[[:space:]]*//" | tr -d '\r'
+  tr -d '\r' <"${file}" 2>/dev/null \
+    | awk 'BEGIN{RS=""} {block=$0} END{print block}' \
+    | grep -iE "^${name}:" | tail -n1 | sed -E "s/^[^:]+:[[:space:]]*//"
 }
 
 # --- Persisted / read-model evidence (AC6) ---------------------------------------------------
 
 # Count state-store keys matching a pattern, without printing any values. Prefers a host redis-cli,
 # else falls back to `docker exec` into a running `dapr init` redis container. Echoes a count, or the
-# literal "NA" when no redis-cli is reachable.
+# literal "NA" when no redis-cli is reachable OR the scan itself errors (auth/protected-mode/timeout)
+# — a read failure must never be miscounted as "0 keys" (which would be a false state-evidence
+# failure). The scan command's own exit status is authoritative; empty output with exit 0 is a
+# genuine zero.
 redis_scan_count() {
-  local pattern="$1"
+  local pattern="$1" out rc
   if have redis-cli; then
-    timeout 10 redis-cli -h localhost -p "${REDIS_PORT}" --scan --pattern "${pattern}" 2>/dev/null | wc -l | tr -d ' '
+    out="$(timeout 10 redis-cli -h localhost -p "${REDIS_PORT}" --scan --pattern "${pattern}" 2>/dev/null)"; rc=$?
+    if [[ "${rc}" -ne 0 ]]; then printf 'NA'; return; fi
+    printf '%s' "${out}" | grep -c . | tr -d ' '
     return
   fi
   if have docker; then
-    local rc; rc="$(docker ps --format '{{.Names}}' 2>/dev/null | grep -i redis | head -n1)"
-    if [[ -n "${rc}" ]]; then
-      timeout 10 docker exec "${rc}" redis-cli --scan --pattern "${pattern}" 2>/dev/null | wc -l | tr -d ' '
+    local rc_name; rc_name="$(docker ps --format '{{.Names}}' 2>/dev/null | grep -i redis | head -n1)"
+    if [[ -n "${rc_name}" ]]; then
+      out="$(timeout 10 docker exec "${rc_name}" redis-cli --scan --pattern "${pattern}" 2>/dev/null)"; rc=$?
+      if [[ "${rc}" -ne 0 ]]; then printf 'NA'; return; fi
+      printf '%s' "${out}" | grep -c . | tr -d ' '
       return
     fi
   fi
@@ -556,6 +640,10 @@ check_state_evidence() {
   fi
 
   # Bounded: count state-store keys referencing the smoke counter. No values are read/printed.
+  # Caveat: this proves the counter is PRESENT in the state store, consistent with a 200 (AC6's
+  # "remained consistent" clause); it does NOT prove THIS run persisted. The reusable `counter-1`
+  # fixture means keys from a prior smoke can satisfy it, and the key count is stable across
+  # increments (only the value/sequence changes). Accepted per code-review decision 2026-07-07.
   local key_count; key_count="$(redis_scan_count "*${SMOKE_COUNTER}*")"
   if [[ "${key_count}" == "NA" ]]; then
     record state-evidence counter-state unavailable "no redis-cli on host or in a running redis container; state-evidence-unavailable (smoke not full evidence)"
@@ -605,6 +693,9 @@ finalize() {
 # --- Main ------------------------------------------------------------------------------------
 
 main() {
+  # Clean up temp files even on Ctrl-C during the multi-second smoke.
+  trap cleanup EXIT INT TERM
+
   if ! parse_args "$@"; then
     exit "${EX_USAGE}"
   fi
@@ -635,6 +726,15 @@ main() {
   # 3) DAPR sidecar diagnostics.
   check_sidecars
 
+  # A control-plane blocker detected during sidecar diagnostics (placement disconnected / actor host
+  # not ready) would make the actor-backed smoke hang and be misread as a product defect — skip it so
+  # the environment condition stays the verdict (AC2).
+  if [[ "${CONTROL_PLANE_BLOCKED}" -eq 1 ]]; then
+    section generated-api
+    record generated-api smoke skipped "control-plane blocker detected during DAPR diagnostics; skipping the generated-API smoke to avoid misattributing an environment failure to the product"
+    finalize "A control-plane condition was detected during diagnostics (placement/scheduler/actor host); restore it (see docs/guides/troubleshooting-dapr-actor-placement.md) and re-run. The generated-API smoke was skipped."
+  fi
+
   # 4) Optional generated Sample API smoke + persisted evidence.
   if [[ "${RUN_SMOKE}" -eq 1 ]]; then
     run_sample_smoke
@@ -648,7 +748,8 @@ main() {
     ok)                     finalize "Preflight clean. Safe to treat any remaining generated-API failure as a genuine product defect." ;;
     generated-api-failure)  finalize "Generated API returned a product failure above — investigate the generated controllers/gateway, not the environment." ;;
     state-evidence-failure) finalize "Smoke responses were accepted but persisted state contradicts them — investigate the domain-service write path." ;;
-    blocked-environment)    finalize "A control-plane condition was detected during diagnostics (see docs/guides/troubleshooting-dapr-actor-placement.md); restore it and re-run." ;;
+    topology-not-running)   finalize "Start the local topology: 'EnableKeycloak=false aspire run --project ${DEFAULT_APPHOST}', wait for resources to be healthy, then re-run." ;;
+    blocked-environment)    finalize "An environment/auth condition was detected during diagnostics (control plane, access control, or unreachable host) — resolve it and re-run; the failure is not a generated-API product defect. See docs/guides/troubleshooting-dapr-actor-placement.md and docs/brownfield/development-guide.md." ;;
     *)                      finalize "Review the findings above." ;;
   esac
 }

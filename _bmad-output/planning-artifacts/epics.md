@@ -767,6 +767,83 @@ So that clients can filter stale or out-of-order updates before re-querying with
 **When** SignalR and optional DAPR notification paths are exercised
 **Then** scoped detail delivery, signal-only compatibility, auth rejection, metadata bounds, fail-open broadcast behavior, and Redis backplane fan-out are covered.
 
+### Story 2.6: Generated Command-Status Location Policy
+
+**Requirements covered:** FR12 (generated controller emission); governed by AD-3, AD-4, AD-17; forward-compatible with FR27.
+
+As an external API consumer,
+I want a generated command's `202 Accepted` to point me at a status resource I can actually reach — or at nothing — never at a dangling URL,
+So that I never poll a 404 status link and my client's base authority stays correct.
+
+**Acceptance Criteria:**
+
+**Given** an external API host configured with a gateway command-status base URI
+**When** a generated command controller returns `202 Accepted`
+**Then** it emits an absolute `Location` of the form `{gatewayStatusBase}/api/v1/commands/status/{statusKey}` resolved at request time from a runtime option
+**And** `statusKey` is the single command-status tracking field on `SubmitCommandResponse` (today `CorrelationId`), with no hard-coded assumption that `CorrelationId == MessageId`.
+
+**Given** an external API host with no configured gateway command-status base
+**When** a generated command controller returns `202 Accepted`
+**Then** it emits `Retry-After` and no `Location` header
+**And** no relative `/api/v1/commands/status/...` URL is ever emitted (fail-closed, AD-17).
+
+**Given** a generated command that fails at the gateway
+**When** the controller maps the gateway problem response
+**Then** no `Location` header is emitted (behavior unchanged).
+
+**Given** the generator and a compiled external API host under test
+**When** generator-output and runtime tests run
+**Then** absolute-when-configured, absent-when-unconfigured, and no-relative-URL behaviors are asserted
+**And** the pre-existing assertions of the relative `/api/v1/commands/status/{CorrelationId}` string are replaced by the new policy assertions (`RestApiControllerGenerationTests`, `RestApiGeneratedControllerErrorSemanticsTests`).
+
+**Given** the Sample external API host is the reference generated host
+**When** the policy lands
+**Then** the Sample host demonstrates configured (absolute `Location`) and fail-closed (no `Location`) behavior
+**And** the spec-2-2 and spec-2-3 command-status `Location` deferred-work entries are closed.
+
+**Sequencing note:** Independent of FR27 command-status re-keying — implementable now against the current `CorrelationId` key; the identifier value migrates transparently when Epic 4 re-keys.
+**Placement note:** Epic 2 shipped its original five stories; Story 2.6 is a post-retro hardening follow-on, tracked `backlog`.
+
+### Story 2.7: Outbound DAPR Routing-Header Ownership
+
+**Requirements covered:** FR13, FR14 (hardening); security posture FR26/FR28. Trigger: Epic 2 retro open action; defect from Story 2.3 review (deferred-work, spec-2-3). Governed by AD-18.
+
+As a platform maintainer,
+I want outbound DAPR service-invocation clients to own and replace the sidecar routing headers,
+So that a caller- or inbound-supplied `dapr-app-id` / `dapr-api-token` can never duplicate or hijack sidecar routing or leak a token.
+
+**Acceptance Criteria:**
+
+**Given** a platform-owned outbound DAPR service-invocation handler in `Hexalith.EventStore.Client`
+**When** it processes an outbound gateway request
+**Then** it removes any pre-existing `dapr-app-id` and sets the configured app id as the single value, removes any pre-existing `dapr-api-token` and sets the configured token only when present (else leaves none)
+**And** it runs as the innermost handler in the gateway-client chain.
+
+**Given** the handler is wired through `AddEventStoreGatewayClient(appId, apiToken?)`
+**When** Sample.Api, Sample.BlazorUI, and Admin.UI build
+**Then** their three local `DaprAppIdHandler` copies are deleted
+**And** each host wires only the platform extension.
+
+**Given** a request already carries a conflicting `dapr-app-id` / `dapr-api-token`
+**When** the outbound handler runs
+**Then** the sidecar receives exactly one authoritative value and the injected value is discarded
+**And** this is proven by a unit test that seeds pre-existing headers (single-value assertion), not only the happy path.
+
+**Given** the guardrail runs
+**When** a host declares a local DAPR routing-header handler or uses `TryAddWithoutValidation` for `dapr-app-id` / `dapr-api-token`
+**Then** a structural test fails with a support-safe message.
+
+**Given** the Tenants submodule carries an identical `DaprAppIdHandler`
+**When** this story completes
+**Then** the equivalent submodule change is recorded as a coordinated follow-up requiring maintainer approval (Story 2.4 lineage)
+**And** it is not silently modified here.
+
+**Given** Release build and focused tests run
+**When** the change lands
+**Then** all configured tests pass, including the new replacement and guardrail tests.
+
+**Placement note:** Post-retro hardening follow-on; Epic 2 reopened to `in-progress`. Correct-course rationale in `sprint-change-proposal-2026-07-07-outbound-dapr-routing-header-policy.md`.
+
 ## Epic 3: Release And Repository Reliability
 
 Maintainers can release reproducibly with correct package/reference mode, aligned submodule and Aspire resource layout, deterministic release gates, live-sidecar integration coverage, shared supply-chain workflows, and manifest-governed package output.
@@ -1293,6 +1370,8 @@ So that cross-tenant event and command data is not exposed through anonymous or 
 
 **Requirements covered:** FR26
 
+**Architecture gate:** AD-16 (health/probe anonymous-access contract). If this story or any host introduces a global fallback authorization policy or default-deny endpoint convention, the explicit probe-anonymity contract lands in the same or an earlier slice — never after.
+
 As a security operator,
 I want production authentication to fail closed and committed configs to contain no forgeable admin identity,
 So that insecure local-development authentication cannot leak into deployed environments.
@@ -1313,6 +1392,17 @@ So that insecure local-development authentication cannot leak into deployed envi
 **When** options are validated
 **Then** HTTPS metadata is required where applicable
 **And** accepted token algorithms are pinned through token validation parameters.
+
+**Given** a host introduces a global fallback authorization policy or a default-deny endpoint convention as part of fail-closed hardening
+**When** that policy is applied
+**Then** the health, liveness, and readiness endpoints `/health`, `/alive`, and `/ready` are explicitly pinned `AllowAnonymous` (or an equivalent auth-exempt convention) in the same or an earlier slice
+**And** the fallback policy or deny-by-default posture is not weakened, scoped down, or removed to make probes reachable (AD-16).
+
+**Given** the fail-closed default is active on a host
+**When** health-endpoint authorization is exercised on the real host pipeline
+**Then** `/health`, `/alive`, and `/ready` return their health status to an unauthenticated caller
+**And** a representative protected endpoint on the same host denies an unauthenticated caller
+**And** anonymous probe responses remain support-safe, disclosing no component names, dependency detail, versions, tenant data, or exception text outside Development.
 
 **Given** authentication guard tests run
 **When** Development and Production options are evaluated
@@ -1353,6 +1443,8 @@ So that operational workflows do not encourage accidental destructive or insecur
 
 **Requirements covered:** FR28
 
+**Architecture gate:** AD-16 (health/probe anonymous-access contract). The domain-service credential enforcement covers only the canonical DAPR endpoints; the probe endpoints stay explicitly anonymous and support-safe.
+
 As a platform security maintainer,
 I want internal and domain-service endpoints to require app-layer credentials,
 So that sidecar, gateway, and domain-service calls cannot mint trust from headers or wire flags alone.
@@ -1368,6 +1460,11 @@ So that sidecar, gateway, and domain-service calls cannot mint trust from header
 **When** requests reach those endpoints
 **Then** an app-layer credential check is enforced
 **And** unauthenticated network-local callers cannot execute domain operations.
+
+**Given** the domain-service SDK enforces app-layer credentials on its canonical endpoints
+**When** the credential requirement is applied, including any fallback or default-deny policy on the host
+**Then** the requirement covers `/process`, `/replay-state`, `/query`, `/project`, and `/admin/operational-index-metadata`
+**And** the health, liveness, and readiness endpoints `/health`, `/alive`, and `/ready` remain explicitly `AllowAnonymous` and support-safe so DAPR app-health and orchestration probes are not blocked (AD-16).
 
 **Given** command or query wire envelopes include administrator-related flags
 **When** the domain service evaluates authorization context
@@ -1658,6 +1755,8 @@ So that the admin plane is trustworthy for production operations.
 
 **Requirements covered:** FR34
 
+**Architecture gate:** AD-16 (health/probe anonymous-access contract). Enabling DAPR app-health/readiness probes assumes the probe endpoints are reachable anonymously; if a fail-closed policy is present, the AD-16 exemption must already be in place.
+
 As a production operator,
 I want deployment configuration to use secret stores, health checks, resiliency policy, and immutable images,
 So that deployed EventStore environments have a defensible operational posture.
@@ -1672,7 +1771,8 @@ So that deployed EventStore environments have a defensible operational posture.
 **Given** services expose health checks
 **When** readiness probes are configured
 **Then** state-store health checks are tagged for readiness
-**And** DAPR app health checks are enabled where supported.
+**And** DAPR app health checks are enabled where supported
+**And** the probe endpoints `/health`, `/alive`, and `/ready` are reachable anonymously per the AD-16 contract even when a fail-closed authorization policy is active.
 
 **Given** DAPR resiliency policies are configured
 **When** domain service invocations are inspected

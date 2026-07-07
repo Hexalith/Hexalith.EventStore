@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-07-07T21:12:01+02:00
+# last_updated: 2026-07-07T23:10:00+02:00
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T20:01:46+02:00
-last_updated: 2026-07-07T21:12:01+02:00
+last_updated: 2026-07-07T23:10:00+02:00
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -58,16 +58,21 @@ development_status:
   1-7-domainservice-packaging-and-guardrails: done
   epic-1-retrospective: done
 
-  epic-2: done
+  epic-2: in-progress
   2-1-rest-contract-seam-for-command-and-query-messages: done
   2-2-rest-api-generator-discovery-and-controller-emission: done
   2-3-sample-external-api-host-proof: done
   2-4-tenants-external-api-host-adoption: done
   2-5-scoped-metadata-rich-projection-notifications: done
+  # Post-retro hardening follow-on: enforces AD-17 generated command-status Location policy;
+  # absorbs rest-generator-hardening Second-Wave item S2 and closes the spec-2-2/spec-2-3
+  # command-status Location deferred entries. Epic 2 shipped its original five stories; 2.6 tracked as backlog.
+  2-6-generated-command-status-location-policy: backlog
+  2-7-outbound-dapr-routing-header-ownership: ready-for-dev
   epic-2-retrospective: done
 
-  epic-3: backlog
-  3-1-re-tier-live-sidecar-tests-from-release-gate: backlog
+  epic-3: in-progress
+  3-1-re-tier-live-sidecar-tests-from-release-gate: ready-for-dev
   3-2-harden-dapr-etag-timeout-for-integration-conditions: backlog
   3-3-references-based-submodule-layout: backlog
   3-4-aspire-security-resource-naming: backlog
@@ -76,7 +81,10 @@ development_status:
   3-7-shared-ci-cd-security-gates-and-supply-chain-backlog: backlog
   # Pulled forward out of Epic 3 sequence: evidence-gate companion to Story 3.1,
   # closes the preflight action carried open through the Epic D/1/2 retros
-  # (re-homed from TEST-1.1 on 2026-07-07). Epic 3 stays backlog by design.
+  # (re-homed from TEST-1.1 on 2026-07-07). Epic 3 opened 2026-07-07 by Story 3.1
+  # (verify-and-reconcile: FR17 shipped in PR #271 / commit 13320952; the story
+  # reconciles the shipped two-lane design + stale CLAUDE.md/status against the
+  # post-consolidation ci.yml/release.yml/integration.yml topology).
   3-8-generated-api-dapr-aspire-smoke-preflight: review
   epic-3-retrospective: optional
 
@@ -154,7 +162,8 @@ action_items:
   - epic: 1
     action: "Resolve the open follow-up review recommendation for Story 1.7 guardrails or record a deliberate acceptance decision."
     owner: "Amelia (Developer)"
-    status: open
+    status: done
+    note: "Terminating correct-course review pass 2026-07-07 (sprint-change-proposal-2026-07-07-story-1-7-followup-review-disposition). Suites green — guardrail 25/25, manifest 8/8; deferred-work DW-1 accepted and spec-1-7 followup_review_recommended cleared. Residual regex-scan-completeness risk consolidated under the two substantive 1.7 deferred entries; future closure = scoped Roslyn/convention guardrail story, not another follow-up review."
   - epic: 1
     action: "Convert the Story 1.4 domain-event marker atomicity and payload-identity misconfiguration findings into scoped backlog or implementation items."
     owner: "Amelia (Developer)"
@@ -162,7 +171,8 @@ action_items:
   - epic: 1
     action: "Define the health endpoint anonymous-access contract before any global fallback authorization policy is introduced."
     owner: "Winston (System Architect)"
-    status: open
+    status: done
+    note: "Contract authored as architecture invariant AD-16 via sprint-change-proposal-2026-07-07-health-endpoint-anonymous-access-contract.md. Probe endpoints (/health, /alive, /ready) pinned AllowAnonymous + support-safe; fail-closed policy never weakened to reach them. Enforcement gated into Stories 5.3, 5.5, and 7.3."
   - epic: 1
     action: "Close the existing generated API DAPR/Aspire smoke preflight action before accepting Sample or Tenants generated API live proof blockers. → tracked as Story 3.8."
     owner: "Amelia (Developer)"
@@ -175,15 +185,18 @@ action_items:
   - epic: 2
     action: "Resolve the open follow-up review recommendations for Story 2.2 and Story 2.3 or record deliberate acceptance decisions."
     owner: "Amelia (Developer)"
-    status: open
+    status: done
+    note: "Deliberate acceptance recorded 2026-07-07 (sprint-change-proposal-2026-07-07-followup-review-disposition-2-2-2-3). DW-2/DW-3 closed as accepted; reviews converged to 0 HIGH, all substantive residuals tracked under REST-generator-hardening, command-status-Location, and outbound-DAPR-routing-header action items. Evidence: RestApi.Generators.Tests 108/108 + Sample.Tests 115/115 green at HEAD fc0f1de8."
   - epic: 2
     action: "Scope REST generator hardening from the Epic 2 deferred entries into a backlog item or implementation story."
     owner: "Winston (System Architect)"
-    status: open
+    status: done
+    note: "Scoped into _bmad-output/planning-artifacts/backlog/rest-generator-hardening.md (Second Wave section, 2026-07-07) per sprint-change-proposal-2026-07-07-rest-generator-hardening.md. Each gate item has a named target source+test artifact: request-size limit (S1), command-status Location (S2, policy owned by action item 3), safe query ArgumentException text (S3), command-rejection extension allowlist (S4), invalid tenant-source handling (S5), and invalid RestQueryBinding None/padded-value reconciliation (S6). First-wave items were already resolved by 7-5-rest-generator-hardening.md (done); no completed story reopened."
   - epic: 2
     action: "Define the external generated API command-status Location policy."
     owner: "Winston (System Architect)"
-    status: open
+    status: done
+    note: "Policy defined as architecture invariant AD-17 (absolute-to-gateway status Location; fail-closed with no header when the gateway status base is unconfigured; single-sourced gateway status key with FR27 re-keying transparent) via sprint-change-proposal-2026-07-07-generated-api-command-status-location-policy.md. Enforcement scheduled as Story 2.6, which absorbs the rest-generator-hardening Second-Wave item S2 (command-status Location) — the S2 gate item was blocked on this policy; point it at Story 2.6. Closes the spec-2-2 and spec-2-3 command-status Location deferred-work entries."
   - epic: 2
     action: "Close the reusable DAPR/Aspire generated API smoke preflight action. → tracked as Story 3.8; completion gate = preflight reports generated API endpoints, DAPR sidecar readiness, placement/scheduler readiness, and support-safe failure details."
     owner: "Amelia (Developer)"
@@ -192,7 +205,8 @@ action_items:
   - epic: 2
     action: "Decide and enforce the outbound DAPR routing-header replacement policy for generated API host clients."
     owner: "Amelia (Developer)"
-    status: open
+    status: in-progress
+    note: "Policy DECIDED 2026-07-07 (sprint-change-proposal-2026-07-07-outbound-dapr-routing-header-policy): outbound dapr-app-id / dapr-api-token are handler-owned and REPLACED not appended, set authoritatively from config by a single platform handler in Hexalith.EventStore.Client (wired by AddEventStoreGatewayClient), innermost in the chain; caller/inbound-forwarded values never routed. Formalized as architecture invariant AD-18. Enforcement tracked as Story 2.7 (delete 3 in-repo DaprAppIdHandler copies, add replacement + guardrail tests; Tenants submodule copy = coordinated maintainer-approval follow-on). Closes to done when Story 2.7 ships."
   - epic: 2
     action: "Patch or explicitly schedule the raw SignalR hub leave validation gap."
     owner: "Amelia (Developer)"

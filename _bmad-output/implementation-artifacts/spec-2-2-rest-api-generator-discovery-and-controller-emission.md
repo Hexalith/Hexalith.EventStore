@@ -4,7 +4,8 @@ type: 'feature'
 created: '2026-07-07'
 status: 'done'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
+followup_review_disposition: 'accepted 2026-07-07 — deliberate acceptance via Correct-Course; see deferred-work.md DW-2 and sprint-change-proposal-2026-07-07-followup-review-disposition-2-2-2-3.md'
 baseline_revision: '9f8b54dc161a4d5a9b2e6b1deacf331d1b80f1e0'
 final_revision: '3326221fc859847ca04d1cc7be35dc0314f24043'
 context:
@@ -70,6 +71,9 @@ warnings: []
 - Given the gateway throws safe and unsafe failure details, when a generated action maps the exception, then the response is `application/problem+json` with allowed fields only and no token, payload, cursor, ETag-internal, or stack-trace leakage.
 
 ## Spec Change Log
+
+### 2026-07-07 — Follow-up-review disposition (Correct-Course)
+- The `followup_review_recommended` flag (DW-2, `origin: review-budget-followup`) is dispositioned as **deliberate acceptance**: no further blocking review is required. The four logged review passes converged to 0 HIGH findings; every substantive residual is separately tracked as its own deferred-work entry and owned by a named-owner sprint-status action item (REST generator hardening + command-status Location policy — Winston). Acceptance evidence: `dotnet test tests/Hexalith.EventStore.RestApi.Generators.Tests/` → 108/108 passed at HEAD fc0f1de8. DW-2 closed as `accepted`. See `sprint-change-proposal-2026-07-07-followup-review-disposition-2-2-2-3.md`.
 
 ## Review Triage Log
 

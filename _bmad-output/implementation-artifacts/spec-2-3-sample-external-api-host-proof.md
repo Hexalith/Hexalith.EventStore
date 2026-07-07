@@ -4,7 +4,8 @@ type: 'feature'
 created: '2026-07-07'
 status: 'done'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
+followup_review_disposition: 'accepted 2026-07-07 — deliberate acceptance via Correct-Course; see deferred-work.md DW-3 and sprint-change-proposal-2026-07-07-followup-review-disposition-2-2-2-3.md'
 baseline_revision: '86c2f7b9554e9b10a7d374d8ff2862dc57eb13b0'
 final_revision: '52653b90966a4fa37083f0366535bf3060022103'
 context:
@@ -68,6 +69,9 @@ warnings: []
 - Given Release build and focused tests run, when no live Aspire smoke is available, then the result records the exact blocker and still proves compile/runtime generated-host behavior through unit-level controller invocation.
 
 ## Spec Change Log
+
+### 2026-07-07 — Follow-up-review disposition (Correct-Course)
+- The `followup_review_recommended` flag (DW-3, `origin: review-budget-followup`) is dispositioned as **deliberate acceptance**: no further blocking review is required. The four logged review passes converged to 0 HIGH findings; the substantive residuals (status Location dependency, Sample DAPR app-id header append-vs-replace) are separately tracked and owned by named-owner sprint-status action items (command-status Location policy — Winston; outbound DAPR routing-header policy — Amelia). Acceptance evidence: `dotnet test tests/Hexalith.EventStore.Sample.Tests/` → 115/115 passed at HEAD fc0f1de8. DW-3 closed as `accepted`. See `sprint-change-proposal-2026-07-07-followup-review-disposition-2-2-2-3.md`.
 
 ## Review Triage Log
 

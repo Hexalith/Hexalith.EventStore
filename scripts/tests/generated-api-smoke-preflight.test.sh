@@ -123,5 +123,44 @@ assert_eq "$(header_value "${hf}" location)" "/api/v1/commands/status/ABC" "case
 assert_eq "$(header_value "${hf}" retry-after)" "1" "Retry-After header parsed"
 rm -f "${hf}"
 
+printf '## header_value ignores redirect (3xx) headers\n'
+# A curl -D dump across an HTTP->HTTPS 307 contains BOTH responses' headers. header_value must read
+# only the final (202) block, so the 307's Location does not mask a genuine "202 with no Location".
+hf_redirect="$(mktemp)"
+printf 'HTTP/1.1 307 Temporary Redirect\r\nLocation: https://localhost:7443/api/x\r\n\r\nHTTP/1.1 202 Accepted\r\nRetry-After: 1\r\n\r\n' >"${hf_redirect}"
+assert_eq "$(header_value "${hf_redirect}" location)" "" "a 202 with no Location is not masked by the 307 redirect's Location"
+assert_eq "$(header_value "${hf_redirect}" retry-after)" "1" "final-response Retry-After parsed across a redirect"
+rm -f "${hf_redirect}"
+
+printf '## parse_args rejects a trailing value flag with no value (no infinite loop)\n'
+( parse_args --sample-api-url ) 2>/dev/null; assert_eq "$?" "1" "trailing --sample-api-url with no value is a usage error"
+( parse_args --apphost ) 2>/dev/null;        assert_eq "$?" "1" "trailing --apphost with no value is a usage error"
+
+printf '## redaction preserves URL scheme for localhost\n'
+assert_eq "$(printf 'see https://localhost:17017/dashboard' | redact)" "see https://localhost:17017/dashboard" "https://localhost keeps its scheme (not downgraded to http)"
+assert_eq "$(printf 'api http://localhost:8080/x' | redact)" "api http://localhost:8080/x" "http://localhost is preserved as-is"
+
+# The escalation/classification contract is the tool's core value (env-vs-product). Exercise it
+# directly — the isolated-helper tests above would pass even if this routing were broken.
+reset_verdict() { WORST_EXIT="${EX_OK}"; WORST_STATUS="ok"; CONTROL_PLANE_BLOCKED=0; FINDINGS_JSON=(); JSON_MODE=1; }
+
+printf '## smoke failure classification (environment/auth vs product)\n'
+reset_verdict; classify_smoke_failure command-increment 202 404
+assert_eq "${WORST_STATUS}" "generated-api-failure" "404 route-not-served is a product defect"
+assert_eq "${WORST_EXIT}" "4" "404 maps to exit 4"
+reset_verdict; classify_smoke_failure command-increment 202 403
+assert_eq "${WORST_STATUS}" "blocked-environment" "403 is an auth/access-control (environment) condition, not a product defect"
+assert_eq "${WORST_EXIT}" "2" "403 maps to exit 2 (blocked environment)"
+reset_verdict; classify_smoke_failure command-increment 202 000
+assert_eq "${WORST_STATUS}" "blocked-environment" "an unreachable host (000) is an environment condition"
+reset_verdict; classify_smoke_failure query-get 200 500
+assert_eq "${WORST_STATUS}" "generated-api-failure" "an unexpected served 5xx is a product/gateway defect"
+
+printf '## escalation precedence: an environment blocker is not out-precedenced by a later env-classified smoke failure\n'
+reset_verdict; escalate "${EX_BLOCKED}" blocked-environment; classify_smoke_failure command-increment 202 000
+assert_eq "${WORST_STATUS}" "blocked-environment" "environment blocker stays the verdict when the smoke also fails for an environment reason"
+assert_eq "${WORST_EXIT}" "2" "verdict exit stays 2, not overridden to a product-failure code"
+JSON_MODE=0
+
 printf '\n# summary: %d passed, %d failed\n' "${PASS}" "${FAIL}"
 [[ "${FAIL}" -eq 0 ]]
