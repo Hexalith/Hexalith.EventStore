@@ -26,9 +26,10 @@ public class RestRouteAttributeTests
     }
 
     [Theory]
+    [InlineData(null)]
     [InlineData("")]
     [InlineData("  ")]
-    public void ApiScope_EmptyOrWhitespaceValue_NormalizesToNull(string value)
+    public void ApiScope_NullEmptyOrWhitespaceValue_NormalizesToNull(string? value)
     {
         var attribute = new RestRouteAttribute(RestVerb.Get, "{counterId}")
         {

@@ -2,9 +2,11 @@ using Hexalith.EventStore.Contracts.Rest;
 
 namespace Hexalith.EventStore.Contracts.Tests.Rest;
 
-public class RestApiAttributeTests {
+public class RestApiAttributeTests
+{
     [Fact]
-    public void Constructor_AllArguments_SetsProperties() {
+    public void Constructor_AllArguments_SetsProperties()
+    {
         var attribute = new RestApiAttribute("api/tenants", "tenants", RestTenantSource.Route);
 
         attribute.RoutePrefix.ShouldBe("api/tenants");
@@ -13,12 +15,25 @@ public class RestApiAttributeTests {
     }
 
     [Fact]
-    public void Constructor_OnlyRoutePrefix_AppliesDefaults() {
+    public void Constructor_OnlyRoutePrefix_AppliesDefaults()
+    {
         var attribute = new RestApiAttribute("api/counters");
 
         attribute.RoutePrefix.ShouldBe("api/counters");
         attribute.Tag.ShouldBeNull();
         attribute.TenantSource.ShouldBe(RestTenantSource.Claims);
+    }
+
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData("", null)]
+    [InlineData("  ", null)]
+    [InlineData(" tenants ", "tenants")]
+    public void Constructor_OptionalTag_NormalizesValue(string? tag, string? expected)
+    {
+        var attribute = new RestApiAttribute("api/tenants", tag);
+
+        attribute.Tag.ShouldBe(expected);
     }
 
     [Fact]
@@ -32,7 +47,8 @@ public class RestApiAttributeTests {
     public void RestTenantSource_AllValues_AreDefined(RestTenantSource source) => Enum.IsDefined(source).ShouldBeTrue();
 
     [Fact]
-    public void AttributeUsage_AllowsAssemblyOnly_NonMultiple() {
+    public void AttributeUsage_AllowsAssemblyOnly_NonMultiple()
+    {
         var usage = (AttributeUsageAttribute?)Attribute.GetCustomAttribute(
             typeof(RestApiAttribute), typeof(AttributeUsageAttribute));
 

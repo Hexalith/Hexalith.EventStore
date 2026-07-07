@@ -5,7 +5,8 @@ namespace Hexalith.EventStore.Contracts.Commands;
 /// mandatory routing metadata as typed members.
 /// Mirrors <see cref="Hexalith.EventStore.Contracts.Queries.IQueryContract"/> for commands.
 /// </summary>
-public interface ICommandContract {
+public interface ICommandContract
+{
     /// <summary>
     /// Gets the command type discriminator used for routing and the command envelope.
     /// Must be kebab-case, no colons (reserved as actor ID separator).

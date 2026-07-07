@@ -1,20 +1,6 @@
 namespace Hexalith.EventStore.Contracts.Rest;
 
 /// <summary>
-/// Identifies the source used to resolve the tenant for a generated REST endpoint.
-/// </summary>
-public enum RestTenantSource {
-    /// <summary>Resolve the tenant from the authenticated caller's claims.</summary>
-    Claims,
-
-    /// <summary>Resolve the tenant from a route parameter.</summary>
-    Route,
-
-    /// <summary>Use the fixed "system" tenant (no per-request resolution).</summary>
-    System,
-}
-
-/// <summary>
 /// Opts a domain assembly into REST controller generation and sets shared options for the
 /// generated controllers.
 /// </summary>
@@ -30,17 +16,24 @@ public enum RestTenantSource {
 public sealed class RestApiAttribute(
     string routePrefix,
     string? tag = null,
-    RestTenantSource tenantSource = RestTenantSource.Claims) : Attribute {
+    RestTenantSource tenantSource = RestTenantSource.Claims) : Attribute
+{
     /// <summary>Gets the shared route prefix for the domain's generated controllers.</summary>
     public string RoutePrefix { get; } = ValidateRoutePrefix(routePrefix);
 
     /// <summary>Gets the optional OpenAPI tag for the generated controllers.</summary>
-    public string? Tag { get; } = tag;
+    public string? Tag { get; } = NormalizeTag(tag);
 
     /// <summary>Gets the source used to resolve the tenant for the generated endpoints.</summary>
     public RestTenantSource TenantSource { get; } = tenantSource;
 
-    private static string ValidateRoutePrefix(string routePrefix) {
+    private static string? NormalizeTag(string? tag)
+    {
+        return string.IsNullOrWhiteSpace(tag) ? null : tag.Trim();
+    }
+
+    private static string ValidateRoutePrefix(string routePrefix)
+    {
         ArgumentNullException.ThrowIfNull(routePrefix);
         return routePrefix;
     }

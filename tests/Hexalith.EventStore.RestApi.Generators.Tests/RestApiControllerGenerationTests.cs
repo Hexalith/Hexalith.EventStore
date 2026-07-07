@@ -950,7 +950,7 @@ public sealed class RestApiControllerGenerationTests
     private const string ReferencedContractHostSource = """
         using Hexalith.EventStore.Contracts.Rest;
 
-        [assembly: RestApi("api/{tenant}/counter", "counter", RestTenantSource.Route)]
+        [assembly: RestApi("api/{tenant}/counter", " counter ", RestTenantSource.Route)]
 
         namespace Smoke.Host;
 

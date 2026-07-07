@@ -101,3 +101,15 @@ source_spec: `spec-1-7-domainservice-packaging-and-guardrails.md`
 severity: low
 reason: Review budget (3 cycles) was exhausted with the story finalized (status: done, verify green) while the review pass kept recommending an independent follow-up. The work was committed by bmad-loop run 20260707-071516-abab; this entry preserves the lingering follow-up recommendation for a deliberate later review.
 status: open
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-1-rest-contract-seam-for-command-and-query-messages.md`
+  summary: `RestQueryBindingAttribute` runtime construction permits `EntitySource = None` with a non-null entity value even though the generator rejects that shape.
+  evidence: The attribute stores `EntityValue` unchanged when `entitySource == RestQueryBindingSource.None`, while `RestApiControllerEmitter` treats a value with `None` as invalid metadata; the mismatch pre-dates Story 2.1 and needs generator/contract hardening rather than a contract-seam patch.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-1-rest-contract-seam-for-command-and-query-messages.md`
+  summary: `RestQueryBindingAttribute` preserves padded route/constant binding values that can fail generator route-parameter lookup later.
+  evidence: `ValidateValue` accepts and preserves values such as `" tenantId "`, while the generator route lookup compares binding route names to parsed route parameters without trimming; the issue is real but existed before this story and belongs with REST generator binding hardening.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-1-rest-contract-seam-for-command-and-query-messages.md`
+  summary: Undefined `RestTenantSource` values can flow through the generator as non-standard tenant-source text.
+  evidence: `RoslynAttributeValueReader.GetEnumName` returns the numeric text for an out-of-range enum value, and generated `ResolveTenant` only handles `System` and `Route` specially before falling back to claims behavior; robust handling needs a generator diagnostic or explicit invalid-enum policy outside this contract-seam pass.

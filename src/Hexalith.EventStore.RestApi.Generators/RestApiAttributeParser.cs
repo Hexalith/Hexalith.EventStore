@@ -25,7 +25,7 @@ internal static class RestApiAttributeParser
                 ? RoslynAttributeValueReader.GetString(attribute.ConstructorArguments[0])
                 : string.Empty;
             string tag = attribute.ConstructorArguments.Length > 1
-                ? RoslynAttributeValueReader.GetString(attribute.ConstructorArguments[1])
+                ? NormalizeOptionalText(RoslynAttributeValueReader.GetString(attribute.ConstructorArguments[1]))
                 : string.Empty;
             string tenantSource = attribute.ConstructorArguments.Length > 2
                 ? RoslynAttributeValueReader.GetEnumName(attribute.ConstructorArguments[2], "Claims")
@@ -36,4 +36,7 @@ internal static class RestApiAttributeParser
 
         return new RestApiOptions(false, string.Empty, string.Empty, "Claims");
     }
+
+    private static string NormalizeOptionalText(string value)
+        => string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
 }

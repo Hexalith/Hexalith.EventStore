@@ -43,6 +43,20 @@ public sealed partial class RestApiManifestGenerationTests
     }
 
     [Fact]
+    public void Run_PaddedRestApiTag_NormalizesManifestTag()
+    {
+        GeneratorDriverRunResult result = RestApiGeneratorTestHarness.Run(PaddedTagSource);
+
+        ShouldHaveNoGeneratorDiagnostics(result);
+        string manifest = RestApiGeneratorTestHarness.GetGeneratedSource(
+            result,
+            "HexalithEventStoreRestApiGeneratorManifest.g.cs");
+
+        manifest.ShouldContain("internal const string Tag = \"counter\";");
+        manifest.ShouldNotContain("internal const string Tag = \" counter \";");
+    }
+
+    [Fact]
     public void Run_NonMarkerClassWithRoute_IsIgnored()
     {
         GeneratorDriverRunResult result = RestApiGeneratorTestHarness.Run(NonMarkerRouteSource);
@@ -217,6 +231,23 @@ public sealed partial class RestApiManifestGenerationTests
             public static string QueryType => "get-counter-status";
             public static string Domain => "counter";
             public static string ProjectionType => "counter-status";
+        }
+        """;
+
+    private const string PaddedTagSource = """
+        using Hexalith.EventStore.Contracts.Commands;
+        using Hexalith.EventStore.Contracts.Rest;
+
+        [assembly: RestApi("api/counter", " counter ", RestTenantSource.System)]
+
+        namespace Smoke;
+
+        [RestRoute(RestVerb.Post, "{counterId}/increment")]
+        public sealed record IncrementCounter(string CounterId, int Amount) : ICommandContract
+        {
+            public static string Domain => "counter";
+            public static string CommandType => "increment-counter";
+            public string AggregateId => CounterId;
         }
         """;
 

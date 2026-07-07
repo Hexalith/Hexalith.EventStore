@@ -1,32 +1,28 @@
-
 using Hexalith.EventStore.Contracts.Queries;
 
 namespace Hexalith.EventStore.Contracts.Tests.Queries;
 
-// --- Test stub types implementing IQueryContract ---
-
-internal class GetCounterStatusQuery : IQueryContract {
-    public static string QueryType => "get-counter-status";
-    public static string Domain => "counter";
-    public static string ProjectionType => "counter";
-}
-
-internal class GetOrderSummaryQuery : IQueryContract {
-    public static string QueryType => "get-order-summary";
-    public static string Domain => "reporting";
-    public static string ProjectionType => "order-summary";
-}
-
-public class IQueryContractTests {
+public class IQueryContractTests
+{
     [Fact]
-    public void IQueryContract_StaticMembers_AreAccessible() {
+    public void IQueryContract_StaticMembers_AreAccessible()
+    {
         GetCounterStatusQuery.QueryType.ShouldBe("get-counter-status");
         GetCounterStatusQuery.Domain.ShouldBe("counter");
         GetCounterStatusQuery.ProjectionType.ShouldBe("counter");
     }
 
     [Fact]
-    public void IQueryContract_CrossDomainQuery_DomainDiffersFromProjectionType() {
+    public void IQueryContract_StaticMembers_AreAccessibleThroughGenericConstraint()
+    {
+        GetQueryType<GetCounterStatusQuery>().ShouldBe("get-counter-status");
+        GetDomain<GetCounterStatusQuery>().ShouldBe("counter");
+        GetProjectionType<GetCounterStatusQuery>().ShouldBe("counter");
+    }
+
+    [Fact]
+    public void IQueryContract_CrossDomainQuery_DomainDiffersFromProjectionType()
+    {
         GetOrderSummaryQuery.QueryType.ShouldBe("get-order-summary");
         GetOrderSummaryQuery.Domain.ShouldBe("reporting");
         GetOrderSummaryQuery.ProjectionType.ShouldBe("order-summary");
@@ -34,7 +30,8 @@ public class IQueryContractTests {
     }
 
     [Fact]
-    public void QueryContractMetadata_RecordEquality_WorksCorrectly() {
+    public void QueryContractMetadata_RecordEquality_WorksCorrectly()
+    {
         var meta1 = new QueryContractMetadata("get-counter-status", "counter", "counter");
         var meta2 = new QueryContractMetadata("get-counter-status", "counter", "counter");
 
@@ -42,7 +39,8 @@ public class IQueryContractTests {
     }
 
     [Fact]
-    public void QueryContractMetadata_DifferentValues_AreNotEqual() {
+    public void QueryContractMetadata_DifferentValues_AreNotEqual()
+    {
         var meta1 = new QueryContractMetadata("get-counter-status", "counter", "counter");
         var meta2 = new QueryContractMetadata("get-order-summary", "reporting", "order-summary");
 
@@ -50,11 +48,24 @@ public class IQueryContractTests {
     }
 
     [Fact]
-    public void QueryContractMetadata_IsImmutable() {
+    public void QueryContractMetadata_IsImmutable()
+    {
         var meta = new QueryContractMetadata("get-counter-status", "counter", "counter");
 
         meta.QueryType.ShouldBe("get-counter-status");
         meta.Domain.ShouldBe("counter");
         meta.ProjectionType.ShouldBe("counter");
     }
+
+    private static string GetQueryType<TQuery>()
+        where TQuery : IQueryContract
+        => TQuery.QueryType;
+
+    private static string GetDomain<TQuery>()
+        where TQuery : IQueryContract
+        => TQuery.Domain;
+
+    private static string GetProjectionType<TQuery>()
+        where TQuery : IQueryContract
+        => TQuery.ProjectionType;
 }
