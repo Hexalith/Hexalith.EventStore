@@ -132,8 +132,11 @@ public sealed class SampleApiStructuralTests
         controller.GetCustomAttribute<RouteAttribute>().ShouldNotBeNull().Template.ShouldBe("api/{tenant}/counter");
 
         ConstructorInfo constructor = controller.GetConstructors().Single();
-        ParameterInfo parameter = constructor.GetParameters().Single();
-        parameter.ParameterType.ShouldBe(typeof(IEventStoreGatewayClient));
+        constructor.GetParameters()
+            .Select(static parameter => parameter.ParameterType)
+            .ShouldBe(
+                [typeof(IEventStoreGatewayClient), typeof(ICommandStatusLocationBuilder)],
+                ignoreOrder: true);
 
         AssertQueryAction(controller);
         AssertCommandAction(controller, "IncrementCounterCommandAsync", "{counterId}/increment");

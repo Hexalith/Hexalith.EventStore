@@ -1,5 +1,6 @@
 extern alias SampleApi;
 
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Text.Json;
 
@@ -148,7 +149,8 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
     [Fact]
     public async Task IncrementCounter_WhenBodyMatchesRoute_SubmitsGatewayCommandAndReturnsAccepted()
     {
-        GeneratedController controller = CreateController();
+        GeneratedController controller = CreateController(
+            new FakeCommandStatusLocationBuilder("https://gateway.example"));
         string statusId = UniqueIdHelper.GenerateSortableUniqueStringId();
         controller.Gateway.CommandHandler = (_, _) =>
             Task.FromResult(new SubmitCommandResponse(statusId));
@@ -176,7 +178,31 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
 
         IHeaderDictionary headers = controller.Controller.HttpContext.Response.Headers;
         headers[HeaderNames.RetryAfter].ToString().ShouldBe("1");
-        headers[HeaderNames.Location].ToString().ShouldBe($"/api/v1/commands/status/{statusId}");
+        headers[HeaderNames.Location].ToString().ShouldBe($"https://gateway.example/api/v1/commands/status/{statusId}");
+        headers[HeaderNames.Location].ToString().ShouldNotStartWith("/");
+    }
+
+    [Fact]
+    public async Task IncrementCounter_WhenStatusBaseUnconfigured_SubmitsGatewayCommandAndOmitsLocation()
+    {
+        GeneratedController controller = CreateController();
+        string statusId = UniqueIdHelper.GenerateSortableUniqueStringId();
+        controller.Gateway.CommandHandler = (_, _) =>
+            Task.FromResult(new SubmitCommandResponse(statusId));
+
+        IActionResult result = await InvokeIncrementCounterAsync(
+            controller,
+            "counter-1",
+            new IncrementCounter("counter-1"));
+
+        AcceptedResult accepted = result.ShouldBeOfType<AcceptedResult>();
+        SubmitCommandResponse response = accepted.Value.ShouldBeOfType<SubmitCommandResponse>();
+        response.CorrelationId.ShouldBe(statusId);
+        controller.Gateway.CommandCallCount.ShouldBe(1);
+
+        IHeaderDictionary headers = controller.Controller.HttpContext.Response.Headers;
+        headers[HeaderNames.RetryAfter].ToString().ShouldBe("1");
+        headers.ContainsKey(HeaderNames.Location).ShouldBeFalse();
     }
 
     [Fact]
@@ -184,7 +210,8 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
     {
         foreach (CommandCase commandCase in CommandCases())
         {
-            GeneratedController controller = CreateController();
+            GeneratedController controller = CreateController(
+                new FakeCommandStatusLocationBuilder("https://gateway.example"));
             string statusId = UniqueIdHelper.GenerateSortableUniqueStringId();
             controller.Gateway.CommandHandler = (_, _) =>
                 Task.FromResult(new SubmitCommandResponse(statusId));
@@ -212,7 +239,9 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
             controller.Gateway.LastCommandCancellationToken.ShouldBe(TestContext.Current.CancellationToken);
             controller.Controller.HttpContext.Response.Headers[HeaderNames.RetryAfter].ToString().ShouldBe("1");
             controller.Controller.HttpContext.Response.Headers[HeaderNames.Location].ToString()
-                .ShouldBe($"/api/v1/commands/status/{statusId}");
+                .ShouldBe($"https://gateway.example/api/v1/commands/status/{statusId}");
+            controller.Controller.HttpContext.Response.Headers[HeaderNames.Location].ToString()
+                .ShouldNotStartWith("/");
         }
     }
 
@@ -372,13 +401,16 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
                 "close-counter"),
         ];
 
-    private static GeneratedController CreateController()
+    private static GeneratedController CreateController(ICommandStatusLocationBuilder? statusLocationBuilder = null)
     {
         Type controllerType = typeof(DaprAppIdHandler).Assembly.GetType(
             "Hexalith.EventStore.Sample.Api.Generated.CounterRestController",
             throwOnError: true)!;
         var gateway = new FakeEventStoreGatewayClient();
-        var controller = (ControllerBase)Activator.CreateInstance(controllerType, gateway)!;
+        var controller = (ControllerBase)Activator.CreateInstance(
+            controllerType,
+            gateway,
+            statusLocationBuilder ?? new FakeCommandStatusLocationBuilder(gatewayStatusBase: null))!;
         controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext(),
@@ -432,6 +464,24 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
         headers.ContainsKey("X-Hexalith-Page-Total-Count").ShouldBeFalse();
         headers.ContainsKey("X-Hexalith-Page-Has-More").ShouldBeFalse();
         headers.ContainsKey("X-Hexalith-Next-Cursor").ShouldBeFalse();
+    }
+
+    // Fake of the PUBLIC ICommandStatusLocationBuilder — Sample.Tests references Client as a project but has
+    // no InternalsVisibleTo access to the real internal CommandStatusLocationBuilder. A null base is
+    // fail-closed; a configured base mirrors the real absolute composition against the real compiled controller.
+    private sealed class FakeCommandStatusLocationBuilder(string? gatewayStatusBase) : ICommandStatusLocationBuilder
+    {
+        public bool TryBuild(string statusKey, [NotNullWhen(true)] out string? location)
+        {
+            if (string.IsNullOrWhiteSpace(gatewayStatusBase))
+            {
+                location = null;
+                return false;
+            }
+
+            location = gatewayStatusBase.TrimEnd('/') + "/api/v1/commands/status/" + Uri.EscapeDataString(statusKey);
+            return true;
+        }
     }
 
     private sealed record GeneratedController(ControllerBase Controller, FakeEventStoreGatewayClient Gateway);

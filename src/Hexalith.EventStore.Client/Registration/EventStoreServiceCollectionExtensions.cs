@@ -11,6 +11,7 @@ using Hexalith.EventStore.Client.Projections;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 
 namespace Hexalith.EventStore.Client.Registration;
@@ -34,12 +35,44 @@ public static class EventStoreServiceCollectionExtensions {
             _ = services.Configure(configureOptions);
         }
 
+        // Fail-closed command-status Location default (AD-17): generated command controllers always resolve
+        // ICommandStatusLocationBuilder. Without an explicit gateway status base it emits no Location header;
+        // opt into absolute mode with AddEventStoreCommandStatusLocation.
+        services.TryAddSingleton<ICommandStatusLocationBuilder, CommandStatusLocationBuilder>();
+
         return services.AddHttpClient<IEventStoreGatewayClient, EventStoreGatewayClient>((serviceProvider, httpClient) => {
             EventStoreGatewayClientOptions options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<EventStoreGatewayClientOptions>>().Value;
             if (options.BaseAddress is not null) {
                 httpClient.BaseAddress = options.BaseAddress;
             }
         });
+    }
+
+    /// <summary>
+    /// Configures the absolute browser-facing gateway origin used to emit the command-status <c>Location</c>
+    /// header on generated command controllers' <c>202 Accepted</c> responses (architecture invariant AD-17).
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="gatewayStatusBase">The absolute HTTP or HTTPS gateway origin clients poll for command status.</param>
+    /// <returns>The service collection for chaining.</returns>
+    /// <exception cref="ArgumentException">Thrown when the base is not an absolute HTTP/HTTPS origin URI.</exception>
+    public static IServiceCollection AddEventStoreCommandStatusLocation(
+        this IServiceCollection services,
+        Uri gatewayStatusBase) {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(gatewayStatusBase);
+
+        if (!gatewayStatusBase.IsAbsoluteUri
+            || (gatewayStatusBase.Scheme != Uri.UriSchemeHttp && gatewayStatusBase.Scheme != Uri.UriSchemeHttps)
+            || !string.IsNullOrEmpty(gatewayStatusBase.UserInfo)) {
+            throw new ArgumentException(
+                "The gateway status base must be an absolute HTTP or HTTPS origin URI.",
+                nameof(gatewayStatusBase));
+        }
+
+        _ = services.Configure<CommandStatusLocationOptions>(options => options.GatewayStatusBase = gatewayStatusBase);
+        services.TryAddSingleton<ICommandStatusLocationBuilder, CommandStatusLocationBuilder>();
+        return services;
     }
 
     /// <summary>

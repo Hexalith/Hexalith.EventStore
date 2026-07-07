@@ -29,7 +29,7 @@ public sealed class RestApiControllerGenerationTests
         source.ShouldContain("    [Consumes(\"application/json\")]");
         source.ShouldContain("using Hexalith.EventStore.Client.Gateway;");
         source.ShouldContain("IEventStoreGatewayClient");
-        source.ShouldContain("public sealed partial class CounterRestController(IEventStoreGatewayClient gateway) : ControllerBase");
+        source.ShouldContain("public sealed partial class CounterRestController(IEventStoreGatewayClient gateway, ICommandStatusLocationBuilder statusLocationBuilder) : ControllerBase");
         source.ShouldContain(".SubmitCommandAsync(__hexalithRequest, cancellationToken)");
         source.ShouldContain(".SubmitQueryAsync(__hexalithRequest, ifNoneMatch, cancellationToken)");
         source.ShouldContain(".ConfigureAwait(false)");
@@ -62,7 +62,9 @@ public sealed class RestApiControllerGenerationTests
         source.ShouldContain("Route value 'counterId' does not match the command body.");
         source.ShouldContain("new SubmitCommandRequest(");
         source.ShouldContain("Response.Headers[\"Retry-After\"] = \"1\";");
-        source.ShouldContain("Response.Headers[\"Location\"] = \"/api/v1/commands/status/\" + Uri.EscapeDataString(__hexalithResponse.CorrelationId);");
+        source.ShouldContain("statusLocationBuilder.TryBuild(__hexalithResponse.CorrelationId, out string? __hexalithStatusLocation)");
+        source.ShouldContain("Response.Headers[\"Location\"] = __hexalithStatusLocation;");
+        source.ShouldNotContain("\"/api/v1/commands/status/\"");
         source.ShouldContain("[FromQuery(Name = \"page\")]");
         source.ShouldContain(" page,");
         source.ShouldContain("[\"page\"] = page,");
@@ -254,6 +256,29 @@ public sealed class RestApiControllerGenerationTests
         source.ShouldContain("[FromQuery(Name = \"pageSize\")]");
         source.ShouldContain("[\"cursor_token\"] = cursorToken,");
         source.ShouldContain("[\"pageSize\"] = pageSize,");
+    }
+
+    [Fact]
+    public void Run_QueryOnlyController_OmitsCommandStatusLocationBuilderConstructorParameter()
+    {
+        CSharpCompilation compilation = RestApiGeneratorTestHarness.CreateCompilation(JsonNamedQuerySource);
+
+        CSharpCompilation outputCompilation = RestApiGeneratorTestHarness.RunAndUpdateCompilation(
+            compilation,
+            out GeneratorDriverRunResult runResult,
+            out ImmutableArray<Diagnostic> updateDiagnostics);
+
+        // A query-only controller must NOT gain an unread ICommandStatusLocationBuilder primary-ctor
+        // parameter: CS9113 (unread parameter) is promoted to an error under TreatWarningsAsErrors=true.
+        // Green diagnostics here are the CS9113 build-break guard for AC 5.
+        ShouldHaveNoErrors(updateDiagnostics);
+        ShouldHaveNoErrors(outputCompilation.GetDiagnostics(TestContext.Current.CancellationToken));
+
+        string source = RestApiGeneratorTestHarness.GetGeneratedSource(runResult, ".Controller.g.cs");
+
+        source.ShouldContain("(IEventStoreGatewayClient gateway) : ControllerBase");
+        source.ShouldNotContain("ICommandStatusLocationBuilder");
+        source.ShouldNotContain("statusLocationBuilder");
     }
 
     [Fact]
@@ -484,7 +509,8 @@ public sealed class RestApiControllerGenerationTests
         source.ShouldContain("body.AggregateId");
         source.ShouldContain(".SubmitCommandAsync(__hexalithRequest, cancellationToken)");
         source.ShouldContain("Response.Headers[\"Retry-After\"] = \"1\";");
-        source.ShouldContain("Response.Headers[\"Location\"]");
+        source.ShouldContain("statusLocationBuilder.TryBuild(__hexalithResponse.CorrelationId, out");
+        source.ShouldNotContain("\"/api/v1/commands/status/\"");
         source.ShouldContain("StatusCodes.Status202Accepted");
         source.ShouldContain("ConfigureAwait(false)");
 

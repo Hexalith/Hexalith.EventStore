@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Text.Json;
 
@@ -766,9 +767,10 @@ public sealed class RestApiGeneratedControllerErrorSemanticsTests
     }
 
     [Fact]
-    public async Task CommandAction_ValidBody_SubmitsGatewayCommandAndReturnsAccepted()
+    public async Task CommandAction_ValidBody_WithConfiguredStatusBase_SubmitsGatewayCommandAndReturnsAbsoluteLocation()
     {
-        RestApiGeneratedController controller = CreateController();
+        RestApiGeneratedController controller = CreateController(
+            new FakeCommandStatusLocationBuilder("https://gateway.example"));
         SubmitCommandRequest? capturedRequest = null;
         controller.Gateway.CommandHandler = (request, _) =>
         {
@@ -796,10 +798,33 @@ public sealed class RestApiGeneratedControllerErrorSemanticsTests
         request.Payload.GetProperty("amount").GetInt32().ShouldBe(5);
         IHeaderDictionary headers = controller.HttpContext.Response.Headers;
         headers["Retry-After"].ToString().ShouldBe("1");
-        headers["Location"].ToString().ShouldBe("/api/v1/commands/status/01KTESTCOMMANDSTATUS000000");
+        headers["Location"].ToString().ShouldBe("https://gateway.example/api/v1/commands/status/01KTESTCOMMANDSTATUS000000");
+        headers["Location"].ToString().ShouldNotStartWith("/");
     }
 
-    private static RestApiGeneratedController CreateController()
+    [Fact]
+    public async Task CommandAction_ValidBody_WithoutConfiguredStatusBase_ReturnsAcceptedAndOmitsLocation()
+    {
+        RestApiGeneratedController controller = CreateController();
+        controller.Gateway.CommandHandler = (_, _) =>
+            Task.FromResult(new SubmitCommandResponse("01KTESTCOMMANDSTATUS000000"));
+        object body = Activator.CreateInstance(
+            controller.Assembly.GetType("Smoke.IncrementCounter", throwOnError: true)!,
+            "counter-1",
+            5)!;
+
+        IActionResult result = await InvokeCommandAsync(controller, "counter-1", body);
+
+        AcceptedResult accepted = result.ShouldBeOfType<AcceptedResult>();
+        SubmitCommandResponse response = accepted.Value.ShouldBeOfType<SubmitCommandResponse>();
+        response.CorrelationId.ShouldBe("01KTESTCOMMANDSTATUS000000");
+        controller.Gateway.CommandCallCount.ShouldBe(1);
+        IHeaderDictionary headers = controller.HttpContext.Response.Headers;
+        headers["Retry-After"].ToString().ShouldBe("1");
+        headers.ContainsKey("Location").ShouldBeFalse();
+    }
+
+    private static RestApiGeneratedController CreateController(ICommandStatusLocationBuilder? statusLocationBuilder = null)
     {
         CSharpCompilation compilation = RestApiGeneratorTestHarness.CreateCompilation(ControllerExerciseSource);
         CSharpCompilation outputCompilation = RestApiGeneratorTestHarness.RunAndUpdateCompilation(
@@ -814,7 +839,10 @@ public sealed class RestApiGeneratedControllerErrorSemanticsTests
             .GetTypes()
             .Single(static type => string.Equals(type.Name, "CounterRestController", StringComparison.Ordinal));
         var gateway = new FakeEventStoreGatewayClient();
-        var controller = (ControllerBase)Activator.CreateInstance(controllerType, gateway)!;
+        var controller = (ControllerBase)Activator.CreateInstance(
+            controllerType,
+            gateway,
+            statusLocationBuilder ?? new FakeCommandStatusLocationBuilder(gatewayStatusBase: null))!;
         controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext(),
@@ -880,6 +908,24 @@ public sealed class RestApiGeneratedControllerErrorSemanticsTests
             .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
             .ToArray();
         errors.ShouldBeEmpty(string.Join(Environment.NewLine, errors.Select(static diagnostic => diagnostic.ToString())));
+    }
+
+    // Fake of the PUBLIC ICommandStatusLocationBuilder — this project references Client as a project but
+    // has no InternalsVisibleTo access to the real internal CommandStatusLocationBuilder. A null base is
+    // fail-closed; a configured base mirrors the real absolute composition.
+    private sealed class FakeCommandStatusLocationBuilder(string? gatewayStatusBase) : ICommandStatusLocationBuilder
+    {
+        public bool TryBuild(string statusKey, [NotNullWhen(true)] out string? location)
+        {
+            if (string.IsNullOrWhiteSpace(gatewayStatusBase))
+            {
+                location = null;
+                return false;
+            }
+
+            location = gatewayStatusBase.TrimEnd('/') + "/api/v1/commands/status/" + Uri.EscapeDataString(statusKey);
+            return true;
+        }
     }
 
     private const string ControllerExerciseSource = """

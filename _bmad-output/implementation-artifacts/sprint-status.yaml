@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T20:01:46+02:00
-last_updated: 2026-07-07T23:26:29+02:00
+last_updated: 2026-07-07
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -67,7 +67,7 @@ development_status:
   # Post-retro hardening follow-on: enforces AD-17 generated command-status Location policy;
   # absorbs rest-generator-hardening Second-Wave item S2 and closes the spec-2-2/spec-2-3
   # command-status Location deferred entries. Epic 2 shipped its original five stories; 2.6 tracked as backlog.
-  2-6-generated-command-status-location-policy: ready-for-dev
+  2-6-generated-command-status-location-policy: review
   2-7-outbound-dapr-routing-header-ownership: ready-for-dev
   epic-2-retrospective: done
 

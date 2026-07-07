@@ -17,6 +17,7 @@ internal static class RestApiControllerEmitter
         "__hexalithRequest",
         "__hexalithResponse",
         "__hexalithResult",
+        "__hexalithStatusLocation",
         "__hexalithTenant",
         "__hexalithTenantResult",
         "body",
@@ -24,6 +25,7 @@ internal static class RestApiControllerEmitter
         "ex",
         "gateway",
         "ifNoneMatch",
+        "statusLocationBuilder",
     ];
 
     public static RestApiGeneratedSource? Emit(
@@ -160,9 +162,11 @@ internal static class RestApiControllerEmitter
         string hintScope = RestApiNameSanitizer.ToHintPart(controllerNamespace + "." + controllerName, "RestApi");
         string hintName = "Hexalith.EventStore.RestApi." + hintScope + ".Controller.g.cs";
 
+        bool hasCommandActions = emittedMessages.Any(static message => message.IsCommand);
+
         var builder = new StringBuilder();
         AppendHeader(builder, controllerNamespace);
-        AppendControllerStart(builder, options, controllerName);
+        AppendControllerStart(builder, options, controllerName, hasCommandActions);
         foreach (RestApiMessageDescriptor message in emittedMessages)
         {
             if (message.IsCommand)
@@ -211,14 +215,18 @@ internal static class RestApiControllerEmitter
         builder.AppendLine();
     }
 
-    private static void AppendControllerStart(StringBuilder builder, RestApiOptions options, string controllerName)
+    private static void AppendControllerStart(StringBuilder builder, RestApiOptions options, string controllerName, bool hasCommandActions)
     {
         builder.AppendLine("[ApiController]");
         builder.AppendLine("[Authorize]");
         builder.Append("[Route(").Append(Literal(options.RoutePrefix)).AppendLine(")]");
         builder.Append("[Tags(").Append(Literal(GetTag(options))).AppendLine(")]");
+        // Inject ICommandStatusLocationBuilder only when a command action reads it; a query-only controller
+        // must not gain an unread primary-ctor parameter (CS9113 → build break under TreatWarningsAsErrors).
         builder.Append("public sealed partial class ").Append(controllerName)
-            .AppendLine("(IEventStoreGatewayClient gateway) : ControllerBase");
+            .AppendLine(hasCommandActions
+                ? "(IEventStoreGatewayClient gateway, ICommandStatusLocationBuilder statusLocationBuilder) : ControllerBase"
+                : "(IEventStoreGatewayClient gateway) : ControllerBase");
         builder.AppendLine("{");
         builder.AppendLine("    private const int MaxHeaderValueLength = QueryPolicyLimits.MaxCursorLength;");
         builder.AppendLine("    private const int MaxProblemErrorCount = 16;");
@@ -270,7 +278,10 @@ internal static class RestApiControllerEmitter
         builder.AppendLine("                .ConfigureAwait(false);");
         builder.AppendLine();
         builder.AppendLine("            Response.Headers[\"Retry-After\"] = \"1\";");
-        builder.AppendLine("            Response.Headers[\"Location\"] = \"/api/v1/commands/status/\" + Uri.EscapeDataString(__hexalithResponse.CorrelationId);");
+        builder.AppendLine("            if (statusLocationBuilder.TryBuild(__hexalithResponse.CorrelationId, out string? __hexalithStatusLocation))");
+        builder.AppendLine("            {");
+        builder.AppendLine("                Response.Headers[\"Location\"] = __hexalithStatusLocation;");
+        builder.AppendLine("            }");
         builder.AppendLine("            return Accepted(__hexalithResponse);");
         builder.AppendLine("        }");
         builder.AppendLine("        catch (EventStoreGatewayException ex)");

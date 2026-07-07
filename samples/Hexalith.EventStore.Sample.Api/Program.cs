@@ -75,6 +75,16 @@ builder.Services.AddEventStoreGatewayClient(options => options.BaseAddress = new
     .AddHttpMessageHandler<InboundBearerForwardingHandler>()
     .AddHttpMessageHandler(() => new DaprAppIdHandler("eventstore", daprApiToken));
 
+// AD-17: opt into the absolute command-status Location header when a browser-facing gateway origin is
+// configured. When the value is absent or malformed the AddEventStoreGatewayClient fail-closed default
+// applies (generated command 202 responses emit no Location header).
+string? gatewayStatusBase = builder.Configuration["EventStore:GatewayStatusBase"]?.Trim();
+if (!string.IsNullOrWhiteSpace(gatewayStatusBase)
+    && Uri.TryCreate(gatewayStatusBase, UriKind.Absolute, out Uri? gatewayStatusBaseUri)
+    && (gatewayStatusBaseUri.Scheme == Uri.UriSchemeHttp || gatewayStatusBaseUri.Scheme == Uri.UriSchemeHttps)) {
+    builder.Services.AddEventStoreCommandStatusLocation(gatewayStatusBaseUri);
+}
+
 WebApplication app = builder.Build();
 
 if (!app.Environment.IsDevelopment()) {
