@@ -1,3 +1,15 @@
+# [3.44.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.43.1...v3.44.0) (2026-07-07)
+
+
+### Bug Fixes
+
+* **signalr:** validate projectionType/tenantId on hub leave path ([a9fff8d](https://github.com/Hexalith/Hexalith.EventStore/commit/a9fff8d7fd59150573d2bb13c053073c2c72129e))
+
+
+### Features
+
+* Add sprint change proposals for DAPR routing-header policy, REST generator hardening, and Story 1.7 follow-up review disposition ([1f4e925](https://github.com/Hexalith/Hexalith.EventStore/commit/1f4e9253e9db976bb72c7ccb90ff7a5326d28a8e))
+
 ## [3.43.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.43.0...v3.43.1) (2026-07-07)
 
 
