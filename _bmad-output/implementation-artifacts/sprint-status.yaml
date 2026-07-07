@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-07-06T08:01:20+02:00
+# last_updated: 2026-07-07T11:10:46+02:00
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,14 +41,14 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T20:01:46+02:00
-last_updated: 2026-07-06T08:01:20+02:00
+last_updated: 2026-07-07T11:10:46+02:00
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
 story_location: /home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts
 
 development_status:
-  epic-1: backlog
+  epic-1: done
   1-1-canonical-domain-service-sdk-host: done
   1-2-domain-query-handler-routing: done
   1-3-generic-read-models-and-query-cursors: done
@@ -56,7 +56,7 @@ development_status:
   1-5-domain-module-hosting-observability: done
   1-6-sample-and-tenants-domain-centric-adoption: done
   1-7-domainservice-packaging-and-guardrails: done
-  epic-1-retrospective: optional
+  epic-1-retrospective: done
 
   epic-2: backlog
   2-1-rest-contract-seam-for-command-and-query-messages: backlog
@@ -140,3 +140,27 @@ action_items:
     action: "Resolve or explicitly track Tenants package-mode and Gateway dependency posture."
     owner: "Winston (System Architect)"
     status: done
+  - epic: 1
+    action: "Write an explicit handler/projection route-provenance contract before generated REST or UI code treats gateway ETags as projection-backed evidence."
+    owner: "Winston (System Architect)"
+    status: open
+  - epic: 1
+    action: "Resolve the open follow-up review recommendation for Story 1.7 guardrails or record a deliberate acceptance decision."
+    owner: "Amelia (Developer)"
+    status: open
+  - epic: 1
+    action: "Convert the Story 1.4 domain-event marker atomicity and payload-identity misconfiguration findings into scoped backlog or implementation items."
+    owner: "Amelia (Developer)"
+    status: open
+  - epic: 1
+    action: "Define the health endpoint anonymous-access contract before any global fallback authorization policy is introduced."
+    owner: "Winston (System Architect)"
+    status: open
+  - epic: 1
+    action: "Close the existing generated API DAPR/Aspire smoke preflight action before accepting Sample or Tenants generated API live proof blockers."
+    owner: "Amelia (Developer)"
+    status: open
+  - epic: 1
+    action: "Carry Tenants transitional host composition and package/source-mode validation into Epic 2 story specs."
+    owner: "John (Product Manager)"
+    status: open
