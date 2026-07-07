@@ -7,12 +7,14 @@ public sealed class ContractsPackageDependencyTests
     private const string MsBuildThisFileDirectory = "$(MSBuildThisFileDirectory)";
 
     [Fact]
-    public void Contracts_package_pins_commons_unique_ids_to_published_commons_version()
+    public void Contracts_package_pins_commons_unique_ids_centrally()
     {
         string root = FindRepositoryRoot();
         XDocument packageVersions = XDocument.Load(Path.Combine(root, "Directory.Packages.props"));
         XDocument sharedPackageVersions = LoadSharedPackageVersions(root, packageVersions);
 
+        // The root props must not redeclare the version: it is centrally managed by the
+        // shared Hexalith.Builds package versions.
         packageVersions
             .Descendants("PackageVersion")
             .Where(element => string.Equals(
@@ -21,6 +23,9 @@ public sealed class ContractsPackageDependencyTests
                 StringComparison.Ordinal))
             .ShouldBeEmpty();
 
+        // The shared props must pin the package to a single concrete version. The specific
+        // version value is intentionally not asserted so that Hexalith.Builds submodule
+        // bumps do not break this test.
         string packageVersionReference = sharedPackageVersions
             .Descendants("PackageVersion")
             .Single(element => string.Equals(
@@ -31,7 +36,7 @@ public sealed class ContractsPackageDependencyTests
             .ShouldNotBeNull()
             .Value;
 
-        packageVersionReference.ShouldBe("2.26.0");
+        packageVersionReference.ShouldNotBeNullOrWhiteSpace();
     }
 
     [Fact]

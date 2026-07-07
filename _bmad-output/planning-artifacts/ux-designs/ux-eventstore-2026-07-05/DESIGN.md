@@ -222,7 +222,7 @@ The canonical component names below must match `EXPERIENCE.md.Component Patterns
 - **Detail panel** - `FluentDrawer`, `FluentDialog`, or FrontComposer panel primitive for drill-in evidence. Use `FluentAccordion` if it has multiple titled sections.
 - **Multi-section panel** - `FluentAccordion` when a page, dialog, or detail panel has two or more titled sibling sections. Primary section expands by default.
 - **Command lifecycle tracker** - Compact ordered state tracker for command progress and terminal states. It uses status colors only with text labels.
-- **Projection freshness indicator** - Badge or compact status row for current, stale, and unknown evidence.
+- **Projection freshness indicator** - Badge or compact status row for current, stale, and unknown evidence — current/stale shown only for projection-backed provenance (AD-15); otherwise unknown.
 - **Deferred operation placeholder** - Disabled or read-only state for intentionally unavailable work. It must not look like a runnable form.
 - **Command palette** - Optional power-user accelerator inside the EventStore dashboard. It must not replace visible tabs and controls.
 

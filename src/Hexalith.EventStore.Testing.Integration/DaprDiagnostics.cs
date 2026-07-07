@@ -84,6 +84,11 @@ public static class DaprDiagnostics {
             RegexOptions.IgnoreCase);
         result = Regex.Replace(
             result,
+            @"(dapr[_-]?api[_-]?token\s*[:=]\s*)\S+",
+            "$1[redacted-token]",
+            RegexOptions.IgnoreCase);
+        result = Regex.Replace(
+            result,
             @"(?:AccountKey|SharedAccessKey|Password)\s*=\s*[^;\s\r\n]+",
             "[redacted-secret]",
             RegexOptions.IgnoreCase);

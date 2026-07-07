@@ -63,6 +63,7 @@ IA closure rule: every legacy Admin.UI feature has a target EventStore tab, ever
 | NFR15 / FR34 / AD-10 | Deferred & Backlog tab, State Patterns, Flow 4 | Deferred operations are hidden, disabled, or backed by `501`; no fake functional forms |
 | AD-8 | State Patterns, Interaction Primitives, Flow 3 | SignalR is a freshness nudge only; polling/query evidence confirms visible success |
 | AD-14 | Projection freshness indicator, State Patterns | Fresh/current/stale/unknown evidence comes through gateway metadata, not ad hoc payload fields |
+| AD-15 | Projection freshness indicator, State Patterns, Source Traceability | Current/stale rendered only for projection-backed route provenance; the gateway ETag is an opaque validator, never projection evidence; handler-computed/unknown render `unknown` |
 | FrontComposer / Fluent UI V5 governance | DESIGN.md, Component Patterns | Components use FrontComposer and Blazor Fluent UI V5 primitives before custom HTML/CSS |
 | Accessibility/localization evidence | Accessibility Floor, Voice and Tone | WCAG 2.2 AA behavior, localized strings, no runtime sentence fragments |
 
@@ -100,7 +101,7 @@ Behavioral rules. Visual specs live in `DESIGN.md.Components`; token-dependent s
 | Detail panel | Commands, streams, events, projections | Multi-section details use `FluentAccordion`; primary evidence section expanded by default. |
 | Multi-section panel | Pages, dialogs, details | Use `FluentAccordion` when two or more titled sibling sections exist. Do not hide a page's primary grid inside the accordion. |
 | Command lifecycle tracker | Commands | Separates Received, Processing, EventsStored, EventsPublished, Completed, Rejected, PublishFailed, TimedOut. Uses text and status tokens. |
-| Projection freshness indicator | Projections, Tenants, command results | Renders current/stale/unknown from gateway metadata. Unknown/stale generally disables mutation actions unless an exception is explicitly documented. |
+| Projection freshness indicator | Projections, Tenants, command results | Renders current/stale/unknown from gateway metadata, and renders `current`/`stale` only for projection-backed route provenance (AD-15); handler-computed or unknown-provenance responses render `unknown`. Unknown/stale generally disables mutation actions unless an exception is explicitly documented. |
 | Deferred operation placeholder | Deferred & Backlog tab or hidden action | If visible, disabled with reason and tracking title only. No fake forms for unavailable backup, restore, import, compaction, GDPR erasure, OIDC login, aggregate test kit, or generator hardening. |
 | Command palette | Optional accelerator | Search/navigate/act across dashboard tabs. It must obey role/tenant filtering and never reveal hidden resources. |
 

@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using System.Text.RegularExpressions;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Results;
@@ -253,11 +252,10 @@ public abstract class DaprDomainServiceTestFixtureBase : IAsyncLifetime {
     /// </summary>
     /// <param name="failures">The individual dependency failure descriptions.</param>
     /// <returns>A combined, support-safe failure message.</returns>
-    public static string BuildPrerequisiteFailureMessage(IReadOnlyList<string> failures) {
-        ArgumentNullException.ThrowIfNull(failures);
-        return "Dapr infrastructure pre-flight check failed. Have you run 'dapr init'?" + Environment.NewLine
-            + string.Join(Environment.NewLine, failures.Select(f => $"  - {f}"));
-    }
+    /// <remarks>Delegates to the shared <see cref="DaprDiagnostics"/> contract so the fixture and the
+    /// generated-API smoke preflight share one support-safe implementation.</remarks>
+    public static string BuildPrerequisiteFailureMessage(IReadOnlyList<string> failures)
+        => DaprDiagnostics.BuildPrerequisiteFailureMessage(failures);
 
     private static async Task<bool> IsPortReachableAsync(string host, int port) {
         try {
@@ -306,19 +304,9 @@ public abstract class DaprDomainServiceTestFixtureBase : IAsyncLifetime {
     /// </summary>
     /// <param name="exception">The exception to classify.</param>
     /// <returns><see langword="true"/> when the failure is a DAPR infrastructure-startup signature.</returns>
-    public static bool IsDaprInfrastructureStartupFailure(InvalidOperationException exception) {
-        ArgumentNullException.ThrowIfNull(exception);
-
-        // Match infrastructure-startup signatures specifically — broad substrings like
-        // "statestore" alone over-match and would silently turn unrelated test failures
-        // into prerequisite skips.
-        string message = exception.Message;
-        return message.Contains("daprd exited", StringComparison.OrdinalIgnoreCase)
-            || message.Contains("Dapr sidecar did not become healthy", StringComparison.OrdinalIgnoreCase)
-            || message.Contains("state.redis", StringComparison.OrdinalIgnoreCase)
-            || (message.Contains("statestore", StringComparison.OrdinalIgnoreCase)
-                && message.Contains("init timeout", StringComparison.OrdinalIgnoreCase));
-    }
+    /// <remarks>Delegates to the shared <see cref="DaprDiagnostics"/> contract.</remarks>
+    public static bool IsDaprInfrastructureStartupFailure(InvalidOperationException exception)
+        => DaprDiagnostics.IsDaprInfrastructureStartupFailure(exception);
 
     /// <summary>
     /// Redacts secrets, tokens, connection strings, private addresses, URLs, e-mails, and concrete
@@ -326,55 +314,10 @@ public abstract class DaprDomainServiceTestFixtureBase : IAsyncLifetime {
     /// </summary>
     /// <param name="value">The raw diagnostic text.</param>
     /// <returns>The support-safe diagnostic text.</returns>
-    public static string ToSupportSafeDiagnostic(string value) {
-        ArgumentNullException.ThrowIfNull(value);
-
-        string result = value;
-        result = Regex.Replace(
-            result,
-            @"eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+",
-            "[redacted-jwt]");
-        result = Regex.Replace(
-            result,
-            @"Bearer\s+[A-Za-z0-9._~+/=-]{20,}",
-            "Bearer [redacted-token]",
-            RegexOptions.IgnoreCase);
-        result = Regex.Replace(
-            result,
-            @"(?:AccountKey|SharedAccessKey|Password)\s*=\s*[^;\s\r\n]+",
-            "[redacted-secret]",
-            RegexOptions.IgnoreCase);
-        result = Regex.Replace(
-            result,
-            @"(redisPassword[^\r\n:=]*[:=]\s*)([^{}\s\r\n]+)",
-            "$1{redacted-secret}",
-            RegexOptions.IgnoreCase);
-        result = Regex.Replace(
-            result,
-            @"(redis://|amqp://|Endpoint=sb://)[^\s\r\n]+",
-            "[redacted-connection]",
-            RegexOptions.IgnoreCase);
-        result = Regex.Replace(
-            result,
-            @"(?<!localhost:)(?<!127\.0\.0\.1:)\b(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3})\b",
-            "[redacted-private-address]");
-        result = Regex.Replace(
-            result,
-            @"https?://(?!(?:localhost|127\.0\.0\.1)(?::|/|\b))[^\s\r\n]+",
-            "[redacted-url]",
-            RegexOptions.IgnoreCase);
-        result = Regex.Replace(
-            result,
-            @"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}",
-            "[redacted-email]",
-            RegexOptions.IgnoreCase);
-        result = Regex.Replace(
-            result,
-            @"\b(tenantId|tenant|userId|user|sub|subject)\s*[:=]\s*['""]?[A-Za-z0-9._@%+-]{3,}['""]?",
-            "$1=[redacted-id]",
-            RegexOptions.IgnoreCase);
-        return result;
-    }
+    /// <remarks>Delegates to the shared <see cref="DaprDiagnostics"/> contract so the fixture and the
+    /// generated-API smoke preflight redact the same categories from one implementation.</remarks>
+    public static string ToSupportSafeDiagnostic(string value)
+        => DaprDiagnostics.ToSupportSafeDiagnostic(value);
 
     private async Task StartTestHostAsync() {
         WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions());

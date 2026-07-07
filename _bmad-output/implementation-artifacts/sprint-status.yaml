@@ -87,6 +87,7 @@ development_status:
   4-4-committed-event-publication-recovery: backlog
   4-5-append-durability-race-evidence: backlog
   4-6-global-position-sharding-spec-renegotiation: backlog
+  4-7-query-response-provenance-contract-and-route-aware-gateway-etag: backlog
   epic-4-retrospective: optional
 
   epic-5: backlog
@@ -131,7 +132,8 @@ action_items:
   - epic: D
     action: "Add a local DAPR/Aspire smoke preflight for generated API proofs. → tracked as Story 3.8 (Epic 3, companion to 3.1)."
     owner: "Amelia (Developer)"
-    status: open
+    status: done
+    note: "Closed by Story 3.8: scripts/generated-api-smoke-preflight.sh. AC10 gate met against a live topology (2026-07-07) — generated API endpoints, DAPR sidecar readiness, placement/scheduler readiness, and support-safe failure details all reported."
   - epic: D
     action: "Make correct-course story rewrites mandatory after architectural pivots."
     owner: "John (Product Manager)"
@@ -147,7 +149,8 @@ action_items:
   - epic: 1
     action: "Write an explicit handler/projection route-provenance contract before generated REST or UI code treats gateway ETags as projection-backed evidence."
     owner: "Winston (System Architect)"
-    status: open
+    status: done
+    note: "Contract authored as architecture invariant AD-15 via sprint-change-proposal-2026-07-07-route-provenance-contract.md. Route-aware gateway enforcement scheduled as Story 4.7; forward UI/generated-API stories gated by the Query Response Provenance Gate."
   - epic: 1
     action: "Resolve the open follow-up review recommendation for Story 1.7 guardrails or record a deliberate acceptance decision."
     owner: "Amelia (Developer)"
@@ -163,7 +166,8 @@ action_items:
   - epic: 1
     action: "Close the existing generated API DAPR/Aspire smoke preflight action before accepting Sample or Tenants generated API live proof blockers. → tracked as Story 3.8."
     owner: "Amelia (Developer)"
-    status: open
+    status: done
+    note: "Closed by Story 3.8: scripts/generated-api-smoke-preflight.sh. The reusable local preflight classifies environment/topology/sidecar readiness and runs the generated Sample API smoke before any live-proof blocker is accepted."
   - epic: 1
     action: "Carry Tenants transitional host composition and package/source-mode validation into Epic 2 story specs."
     owner: "John (Product Manager)"
@@ -183,7 +187,8 @@ action_items:
   - epic: 2
     action: "Close the reusable DAPR/Aspire generated API smoke preflight action. → tracked as Story 3.8; completion gate = preflight reports generated API endpoints, DAPR sidecar readiness, placement/scheduler readiness, and support-safe failure details."
     owner: "Amelia (Developer)"
-    status: open
+    status: done
+    note: "Closed by Story 3.8 (2026-07-07). Live-topology gate satisfied: generated Sample API 202/Location/Retry-After + 200/ETag + 304, eventstore sidecar hostReady=true/placement connected, placement:50005 + scheduler:50006 reachable, persisted Redis state confirmed, all output support-safe."
   - epic: 2
     action: "Decide and enforce the outbound DAPR routing-header replacement policy for generated API host clients."
     owner: "Amelia (Developer)"
@@ -195,4 +200,5 @@ action_items:
   - epic: 2
     action: "Reconcile gateway metadata provenance before any UI or generated API claims production-backed current/stale projection evidence."
     owner: "Winston (System Architect)"
-    status: open
+    status: done
+    note: "Reconciled by the same route-provenance contract (AD-15) and Story 4.7; deferred-work ledger and the D6 read-model-freshness handoff updated on 2026-07-07."

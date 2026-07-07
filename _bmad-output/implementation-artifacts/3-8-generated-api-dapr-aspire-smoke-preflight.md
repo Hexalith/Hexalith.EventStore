@@ -138,28 +138,28 @@ Source of truth:
   - [x] Decide whether shell-only implementation is enough or whether reusable C# diagnostics belong in `Hexalith.EventStore.Testing.Integration`.
   - [x] Keep the default mode read-only and avoid persistent containers by default.
 
-- [ ] **Task 2: Implement environment and topology checks** (AC: 2, 3)
-  - [ ] Check Docker, Aspire CLI, DAPR CLI/runtime, `daprd`, `placement`, and `scheduler`.
-  - [ ] Detect placement/scheduler reachability on configured/default local ports.
-  - [ ] Parse Aspire resource state and endpoint data.
-  - [ ] Classify missing prerequisites separately from generated API failures.
+- [x] **Task 2: Implement environment and topology checks** (AC: 2, 3)
+  - [x] Check Docker, Aspire CLI, DAPR CLI/runtime, `daprd`, `placement`, and `scheduler`.
+  - [x] Detect placement/scheduler reachability on configured/default local ports.
+  - [x] Parse Aspire resource state and endpoint data.
+  - [x] Classify missing prerequisites separately from generated API failures.
 
-- [ ] **Task 3: Implement DAPR sidecar diagnostics** (AC: 4)
-  - [ ] Query sidecar metadata where endpoints are available.
-  - [ ] Report app id, DAPR HTTP endpoint/port, metadata availability, and EventStore actor placement readiness.
-  - [ ] Distinguish missing sidecar, unhealthy sidecar, placement disconnected, scheduler unavailable, and access-control denial.
+- [x] **Task 3: Implement DAPR sidecar diagnostics** (AC: 4)
+  - [x] Query sidecar metadata where endpoints are available.
+  - [x] Report app id, DAPR HTTP endpoint/port, metadata availability, and EventStore actor placement readiness.
+  - [x] Distinguish missing sidecar, unhealthy sidecar, placement disconnected, scheduler unavailable, and access-control denial.
 
-- [ ] **Task 4: Implement optional Sample generated API smoke** (AC: 5, 6)
-  - [ ] Generate or obtain a local dev JWT without printing it.
-  - [ ] Call the generated Sample command endpoint and query endpoint.
-  - [ ] Verify `202`, `Location`, `Retry-After`, `200` with ETag, and `304`.
-  - [ ] Read persisted/read-model evidence when Redis/statestore is discoverable.
+- [x] **Task 4: Implement optional Sample generated API smoke** (AC: 5, 6)
+  - [x] Generate or obtain a local dev JWT without printing it.
+  - [x] Call the generated Sample command endpoint and query endpoint.
+  - [x] Verify `202`, `Location`, `Retry-After`, `200` with ETag, and `304`.
+  - [x] Read persisted/read-model evidence when Redis/statestore is discoverable.
 
-- [ ] **Task 5: Make diagnostics support-safe and scriptable** (AC: 7, 8)
-  - [ ] Add human output and optional JSON output.
-  - [ ] Add redaction for tokens, JWTs, secrets, private addresses, URLs, emails, IDs, and raw traces.
-  - [ ] Add focused tests for redaction and classification.
-  - [ ] Add script argument/dry-run validation.
+- [x] **Task 5: Make diagnostics support-safe and scriptable** (AC: 7, 8)
+  - [x] Add human output and optional JSON output.
+  - [x] Add redaction for tokens, JWTs, secrets, private addresses, URLs, emails, IDs, and raw traces.
+  - [x] Add focused tests for redaction and classification.
+  - [x] Add script argument/dry-run validation.
 
 - [ ] **Task 6: Document usage and verify** (AC: 9, 10)
   - [ ] Update local development or troubleshooting docs with the new preflight command.
@@ -227,8 +227,39 @@ claude-opus-4-8[1m] (bmad-dev-story workflow)
 
 ### Debug Log References
 
+AC9 verification (run 2026-07-07):
+
+- `bash -n scripts/generated-api-smoke-preflight.sh` → SYNTAX OK.
+- `bash scripts/tests/generated-api-smoke-preflight.test.sh` → 39 passed, 0 failed (arg parsing, read-only defaults, redaction, dev-JWT minting, port resolution, header parsing).
+- `dotnet test tests/Hexalith.EventStore.Testing.Integration.Tests/` (Debug and Release) → 34 passed, 0 failed.
+- `dotnet test tests/Hexalith.EventStore.AppHost.Tests/` (Release) → 48 passed, 0 failed (regression gate; no new AppHost tests were required — the script discovers resource names/endpoints from `aspire describe` and encodes no AppHost/launch-profile assumptions).
+- `dotnet build Hexalith.EventStore.slnx --configuration Release -p:UseHexalithProjectReferences=false` → Build succeeded, 0 Warning(s), 0 Error(s).
+
+Behavioral checks against this environment (docker up; containerized `dapr init` with placement 50005 / scheduler 50006 / redis 6379; `daprd` at `~/.dapr/bin`):
+
+- Default read-only run → environment all `ok`, then `topology-not-running` (exit 3) with the exact `EnableKeycloak=false aspire run …` next-action (no AppHost running).
+- `HEXALITH_EVENTSTORE_TEST_PLACEMENT_PORT=59999` (simulated missing placement) → `blocked-environment` (exit 2) and **zero** aspire/product checks ran, proving the AC2 short-circuit.
+
 ### Completion Notes List
 
 - **Task 1 (AC 1, 2, 7):** Read the preflight deferred-work entry (`deferred-work.md:5`), Epic 2 retro action item 4 + completion gate (`epic-2-retro-2026-07-07.md:152-154`), Epic D retro evidence, the Sample/Tenants generated-API proofs (Stories 2.3/2.4), and local topology docs. Decided on a Bash front end reusing the existing `Testing.Integration` support-safe contract (see Implementation Plan). Default mode is read-only; no persistent containers by default.
+- **Task 2 (AC 2, 3):** `check_environment` probes Docker daemon, Aspire CLI, DAPR CLI+runtime, the `daprd` binary (PATH or `~/.dapr/bin`), and placement/scheduler port reachability (candidate ports `6050/50005`, `6060/50006`, mirroring `DaprLocalEndpoints`; env overrides honored). A required infrastructure blocker finalizes with exit 2 **before** any generated-API check (AC2). `discover_topology` runs `aspire describe --format Json --non-interactive --nologo` and reports `eventstore`, `sample`, `sample-api` (and, with `--tenants`, `tenants-api` as `not-applicable` when absent), preferring HTTP endpoints and failing support-safely when a required resource is running without a published HTTP endpoint.
+- **Task 3 (AC 4):** `sidecar_metadata` queries `/v1.0/metadata`, reports app id + DAPR HTTP port + metadata availability, and classifies actor-runtime readiness (`hostReady`/`placement`) for the eventstore sidecar (fixed port 3501). It distinguishes sidecar-missing, sidecar-unhealthy, and placement-disconnected (the last escalates to a control-plane blocker and points at `troubleshooting-dapr-actor-placement.md`).
+- **Task 4 (AC 5, 6):** `--sample-api-smoke` mints an HS256 dev JWT (issuer `hexalith-dev`, audience `hexalith-eventstore`, `tenants`/`permissions` as single JSON-array-string claims with `commands:*`+`queries:*`; the token is captured into a variable and never printed). It POSTs `.../counter/counter-1/increment` (asserts `202` + `Location` + `Retry-After`), GETs the counter (asserts `200` + `ETag`), revalidates with `If-None-Match` (asserts `304`), and treats a `404` as a **generated-API product failure** (exit 4), not an environment blocker. `check_state_evidence` reads bounded Redis key counts for the smoke counter (no payloads); a `200` with zero persisted keys is a state-evidence failure (exit 5), and an unreadable state store reports `state-evidence-unavailable` rather than claiming full evidence.
+- **Task 5 (AC 7, 8):** Human output streams categorized findings (`environment`/`aspire`/`dapr`/`generated-api`/`state-evidence`/`next-action`); `--json` emits an assembled object with distinct `status`/`exitCode`. Every emitted line passes through `redact()` (jwt/bearer/dapr-api-token/secrets/private-address/non-local-URL/email/concrete-id), mirroring the shared C# contract; the shared `DaprDiagnostics.ToSupportSafeDiagnostic` gained a `dapr-api-token` rule and the duplicated regex block in `DaprDomainServiceTestFixtureBase` now delegates to it (one source of truth). Tests: `GeneratedApiSmokePreflightDiagnosticsTests` (C#) + `generated-api-smoke-preflight.test.sh` (shell).
+- **Task 6 (AC 9, 10):** Documented the preflight in `docs/brownfield/development-guide.md`. AC9 commands all pass (see Debug Log). AC10 live-topology gate: _pending live run result (recorded below)._
 
 ### File List
+
+- `scripts/generated-api-smoke-preflight.sh` (new) — the read-only, support-safe preflight.
+- `scripts/tests/generated-api-smoke-preflight.test.sh` (new) — shell validation harness.
+- `tests/Hexalith.EventStore.Testing.Integration.Tests/GeneratedApiSmokePreflightDiagnosticsTests.cs` (new) — C# support-safe/classification contract tests.
+- `src/Hexalith.EventStore.Testing.Integration/DaprDiagnostics.cs` (modified) — added the `dapr-api-token` / `DAPR_API_TOKEN` redaction rule.
+- `src/Hexalith.EventStore.Testing.Integration/DaprDomainServiceTestFixtureBase.cs` (modified) — three static support-safe helpers now delegate to `DaprDiagnostics` (removed duplicated regex + unused `System.Text.RegularExpressions` import).
+- `docs/brownfield/development-guide.md` (modified) — added the "Generated API smoke preflight" section.
+- `_bmad-output/implementation-artifacts/3-8-generated-api-dapr-aspire-smoke-preflight.md` (modified) — story tracking (this file).
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (modified) — story status → in-progress → review.
+
+### Change Log
+
+- 2026-07-07: Implemented the generated-API DAPR/Aspire smoke preflight (Story 3.8): read-only environment/topology/sidecar diagnostics, optional support-safe Sample generated-API HTTP smoke with persisted Redis evidence, human + `--json` output with distinct exit categories, shell + C# tests, and dev-guide documentation. Centralized the support-safe redaction contract (added DAPR API token redaction; collapsed the duplicated fixture-base copy).

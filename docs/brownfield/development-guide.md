@@ -106,6 +106,32 @@ Use Aspire MCP tools: `list resources`, `list structured logs`, `list console lo
 `list trace structured logs`, `select apphost`/`list apphosts`. Inspect runtime state **before**
 changing code. Use Playwright MCP for functional investigation (get endpoints from `list resources`).
 
+### Generated API smoke preflight
+
+Before you record an "Aspire smoke blocked" note or treat a generated-API endpoint failure as a
+product defect, run the local preflight. It classifies environment readiness, Aspire topology
+state, DAPR sidecar health, and (optionally) the generated Sample REST API — so a missing local
+control plane is not mistaken for a product bug. It is **read-only by default** (starts no Docker
+containers, placement, scheduler, or Aspire) and **support-safe** (never prints tokens, JWTs, DAPR
+API tokens, raw payloads, or stack traces).
+
+```bash
+scripts/generated-api-smoke-preflight.sh                 # read-only preflight (default)
+scripts/generated-api-smoke-preflight.sh --json          # machine-readable output for story records
+scripts/generated-api-smoke-preflight.sh --sample-api-smoke   # + HTTP smoke of the generated Sample API
+scripts/generated-api-smoke-preflight.sh --help          # all flags and exit categories
+```
+
+Exit categories: `0` success · `1` usage · `2` blocked environment · `3` topology not running ·
+`4` generated-API product failure · `5` state-evidence failure. When it reports a `blocked`
+environment it prints the minimal bootstrap command (see the VM bootstrap above); a required
+infrastructure blocker stops the run before any generated-API check. The `--sample-api-smoke` path
+mints a dev JWT (never printed), exercises `POST .../increment` (expects `202` + `Location` +
+`Retry-After`) and `GET` (expects `200` + `ETag`, then `304`), and confirms bounded persisted
+state in Redis. Shell validation lives in `scripts/tests/generated-api-smoke-preflight.test.sh`;
+the shared support-safe redaction/classification contract is tested in
+`tests/Hexalith.EventStore.Testing.Integration.Tests/GeneratedApiSmokePreflightDiagnosticsTests.cs`.
+
 ## Building your own domain (the programming model)
 
 ```csharp

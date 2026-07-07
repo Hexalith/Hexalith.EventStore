@@ -47,6 +47,10 @@ The platform-owned query metadata propagation contract must be implemented by th
 
 Story 7.6 has been deleted; its acceptance criteria are redistributed into the owning earlier stories above.
 
+### Query Response Provenance Gate
+
+Query-response provenance is governed by architecture invariant AD-15. No new UI or generated-API story that renders current/stale state or projection version may proceed until it cites AD-15 or explicitly avoids projection-backed evidence claims for handler-computed routes. Story 4.7 owns the platform contract and route-aware gateway enforcement; the shipped Epic 2 stories (2.2, 2.4) are reconciled by Story 4.7 guardrails.
+
 ### Coordinated-Slice Gates For Oversized Stories
 
 The stories below may proceed in one of two ways:
@@ -96,7 +100,7 @@ FR2: The platform must provide a domain-service SDK with `AddEventStoreDomainSer
 
 FR3: The domain-service SDK must expose the canonical DAPR-facing endpoints `/process`, `/replay-state`, `/query`, `/project`, and `/admin/operational-index-metadata`.
 
-FR4: The platform must provide a domain query-handler seam using `IDomainQueryHandler`, discovery, dispatch, operational metadata reporting, gateway-side query-type capture, handler-aware routing to domain `/query` endpoints, and end-to-end `QueryResponseMetadata` propagation for freshness, projection version, ETag, served-at, degraded/warning state, and paging evidence.
+FR4: The platform must provide a domain query-handler seam using `IDomainQueryHandler`, discovery, dispatch, operational metadata reporting, gateway-side query-type capture, handler-aware routing to domain `/query` endpoints, and end-to-end `QueryResponseMetadata` propagation for freshness, projection version, ETag, served-at, degraded/warning state, and paging evidence, carrying an explicit query-response provenance classification (projection-backed, handler-computed, or unknown) that governs whether that evidence is projection-backed.
 
 FR5: The platform must provide a generic persisted read-model store and write policy with optimistic-concurrency merge-on-write, multi-key/index support, DAPR implementation, and in-memory testing support.
 
@@ -176,7 +180,7 @@ NFR6: Event delivery semantics are at-least-once and unordered; subscribers must
 
 NFR7: Event persistence and command processing must avoid silent data loss: staged-state flushes, stale pipeline records, append races, and committed-but-unpublished events must be explicitly guarded or recovered.
 
-NFR8: Snapshot and projection behavior must have a bounded cost model as streams grow, must avoid unnecessary full-stream replay when already current, and must expose projection freshness/version evidence through platform query metadata when callers depend on current/stale decisions.
+NFR8: Snapshot and projection behavior must have a bounded cost model as streams grow, must avoid unnecessary full-stream replay when already current, and must expose projection freshness/version evidence through platform query metadata when callers depend on current/stale decisions; freshness/version evidence is authoritative only for query responses whose route provenance is projection-backed, and handler-computed or unknown-provenance responses must not be presented as current or stale.
 
 NFR9: Release behavior must be reproducible and independent of local submodule checkout state; Release builds must use package references for external Hexalith libraries unless intentionally overridden.
 
@@ -1181,6 +1185,40 @@ So that ordering metadata scales without violating the frozen global-ordering co
 **When** global-position allocation is changed
 **Then** existing per-event identity and CloudEvent id behavior remains stable
 **And** focused tests verify monotonicity within the selected shard boundary.
+
+### Story 4.7: Query Response Provenance Contract And Route-Aware Gateway ETag
+
+**Requirements covered:** FR4, FR15, FR34, NFR8, NFR16 (query-response provenance slice); governed by AD-14, AD-15.
+
+As a consumer of platform query metadata,
+I want every query response to declare explicit route provenance and the gateway to stop attaching projection ETags to handler-computed responses,
+So that generated REST and UI code never present a gateway ETag or fabricated version as projection-backed current/stale evidence.
+
+**Acceptance Criteria:**
+
+**Given** a response from a domain query handler (`HandlerAwareQueryRouter`, `ProjectionType` null)
+**When** the gateway builds `QueryResponseMetadata`
+**Then** provenance is `HandlerComputed`
+**And** the gateway attaches no projection-actor ETag, projection version, or `IsStale` derived from `request.Domain`/`request.ProjectionType`
+**And** a Tier 2/3 test asserts on the real gateway path that no projection ETag and no `X-Hexalith-Projection-Version`/`X-Hexalith-Is-Stale` header is emitted for the handler route.
+
+**Given** a response from a projection actor / read model with persisted `IReadModelFreshness`
+**When** the gateway builds `QueryResponseMetadata`
+**Then** provenance is `ProjectionBacked`
+**And** `ProjectionVersion`/`IsStale` are sourced from the persisted read model (never aliased from the ETag)
+**And** a Tier 2/3 test asserts the genuine version/freshness values traverse the gateway.
+
+**Given** a producer that aliases `ProjectionVersion := ETag` (current Tenants `TenantQueryResult`)
+**When** the contract is enforced
+**Then** the aliasing is removed or the route is classified `HandlerComputed`/`Unknown`
+**And** guardrail coverage prevents reintroduction.
+**Note:** the Tenants change is a submodule edit and requires explicit maintainer approval before it lands.
+
+**Given** a consumer (generated REST header set or UI freshness indicator)
+**When** provenance is `HandlerComputed` or `Unknown`
+**Then** it renders `Unknown`, never `Current`/`Stale`, and does not claim projection-confirmed success.
+
+**Sequencing note:** Prioritize the provenance label + gateway route-awareness before the Tenants conformance fix; keep the D6 read-model-freshness handoff out of scope (a route stays `HandlerComputed`/`Unknown` until it sources genuine freshness).
 
 ## Epic 5: Security And Tenant Isolation
 

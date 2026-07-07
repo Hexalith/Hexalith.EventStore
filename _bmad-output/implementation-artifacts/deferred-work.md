@@ -7,6 +7,14 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-2-domain-query-handler-routing.md`
   summary: Handler-backed query routes need explicit provenance so the gateway can decide whether projection ETags are valid for the response.
   evidence: `HandlerAwareQueryRouter` already used the same `QueryRouterResult` shape as projection routes before this story, and `QueriesController` falls back to request/domain projection ETag lookup when no projection type is supplied; changing that safely needs a separate route-provenance contract rather than metadata passthrough alone.
+  status: reconciled 2026-07-07 — see the reconciliation section below.
+
+## Route-provenance contract reconciliation (2026-07-07, sprint-change-proposal-2026-07-07-route-provenance-contract)
+
+- The 2026-07-06 route-provenance entry (Story 1.2, above) is now owned by architecture invariant **AD-15** (Query Response Provenance Is Explicit And Route-Bound) and **Story 4.7** (Epic 4). Status: contract written; implementation scheduled in Epic 4.
+- The 2026-07-05 gateway-contract prerequisite (line 4) is superseded for the metadata-propagation half by **AD-14** + Stories 1.2/1.3/2.2 (landed); the provenance half is now **AD-15** + Story 4.7.
+- The 2026-07-04 HIGH freshness-header note (D7 review, "QueryRouterResult has no metadata field") is partially superseded: `QueryRouterResult.Metadata` now exists (Story 1.2), so producer freshness can traverse the gateway. The remaining defect — the gateway attaching a projection ETag to handler-computed responses, and Tenants aliasing `ProjectionVersion := ETag` (`references/Hexalith.Tenants/.../TenantQueryResult.cs`) — is owned by Story 4.7 / AD-15. The Tenants change is a submodule edit requiring explicit maintainer approval.
+- The **D6 read-model-freshness handoff** remains a separate deferred platform item (persisted projection-age metadata). Until a route sources genuine freshness it is `HandlerComputed`/`Unknown` under AD-15 and consumers render `unknown`.
 
 ## Deferred from: code review of D-5-proof-sample-blazorui-queries (2026-07-02)
 
