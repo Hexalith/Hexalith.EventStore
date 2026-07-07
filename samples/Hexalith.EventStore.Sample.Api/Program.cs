@@ -67,8 +67,7 @@ builder.Services.AddAuthorization();
 // Outbound path to the EventStore gateway via this app's DAPR sidecar. The caller's validated bearer is
 // forwarded unchanged so EventStore's JWT/RBAC/tenant enforcement stays authoritative. A literal
 // localhost base address keeps the global AddServiceDiscovery() default a no-op.
-string daprHttpEndpoint = builder.Configuration["DAPR_HTTP_ENDPOINT"]
-    ?? $"http://localhost:{builder.Configuration["DAPR_HTTP_PORT"] ?? "3500"}";
+string daprHttpEndpoint = DaprHttpEndpointResolver.Resolve(builder.Configuration);
 string? daprApiToken = builder.Configuration["DAPR_API_TOKEN"];
 
 builder.Services.AddTransient<InboundBearerForwardingHandler>();
@@ -90,3 +89,8 @@ app.MapControllers();
 app.MapDefaultEndpoints();
 
 app.Run();
+
+/// <summary>
+/// Entry point class, made partial for WebApplicationFactory test access.
+/// </summary>
+public partial class Program;

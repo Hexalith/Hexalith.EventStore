@@ -101,17 +101,35 @@ public sealed class DomainModuleAuthoringGuardrailTests
     private static readonly string[] InteractiveUiHostForbiddenMarkers =
     [
         "[assembly: RestApi(",
+        "[assembly: RestApiAttribute(",
         "AddMvc(",
         "AddMvcCore(",
         "AddControllers(",
         "AddControllersWithViews(",
         "MapControllers(",
         "MapControllerRoute(",
+        "MapDefaultControllerRoute(",
         ": Controller",
         ", Controller",
         "ControllerBase",
         "[ApiController]",
         "Hexalith.EventStore.RestApi.Generators",
+    ];
+
+    private static readonly Regex[] GeneratedApiHostForbiddenPatterns =
+    [
+        new(@"\[\s*assembly\s*:\s*(?:global::)?(?:[\w.]+\.)?RestApi(?:Attribute)?\s*\(", RegexOptions.Compiled),
+        new(@"\b(?:[\w.]+\.)?AddMvc\s*\(", RegexOptions.Compiled),
+        new(@"\b(?:[\w.]+\.)?AddMvcCore\s*\(", RegexOptions.Compiled),
+        new(@"\b(?:[\w.]+\.)?AddControllers\s*\(", RegexOptions.Compiled),
+        new(@"\b(?:[\w.]+\.)?AddControllersWithViews\s*\(", RegexOptions.Compiled),
+        new(@"\b(?:[\w.]+\.)?MapControllers\s*\(", RegexOptions.Compiled),
+        new(@"\b(?:[\w.]+\.)?MapControllerRoute\s*\(", RegexOptions.Compiled),
+        new(@"\b(?:[\w.]+\.)?MapDefaultControllerRoute\s*\(", RegexOptions.Compiled),
+        new(@"\[\s*(?:[\w.]+\.)?ApiController\s*\]", RegexOptions.Compiled),
+        new(@"\b(?:[\w.]+\.)?ControllerBase\b", RegexOptions.Compiled),
+        new(@":\s*(?:[\w.]+\.)?Controller\b", RegexOptions.Compiled),
+        new(@",\s*(?:[\w.]+\.)?Controller\b", RegexOptions.Compiled),
     ];
 
     private static readonly string[] SampleProgramForbiddenNormalModeMarkers =
@@ -311,6 +329,54 @@ public sealed class DomainModuleAuthoringGuardrailTests
     }
 
     [Fact]
+    public void SampleReferenceModule_UsesCompiledContractsLibraryWithoutGeneratedApiHostLeakage()
+    {
+        string csproj = SampleDomainProjectPath();
+        File.Exists(csproj).ShouldBeTrue($"Expected the reference Sample project at {csproj}.");
+
+        XDocument project = XDocument.Load(csproj);
+        string[] references = project
+            .Descendants()
+            .Where(static element => string.Equals(element.Name.LocalName, "ProjectReference", StringComparison.Ordinal))
+            .Select(static element => Path.GetFileName(((string?)element.Attribute("Include"))?.Replace('\\', '/') ?? string.Empty))
+            .ToArray();
+
+        references.ShouldContain(
+            "Hexalith.EventStore.Sample.Contracts.csproj",
+            "The Sample domain service should share the compiled contracts library with Sample.Api and BlazorUI.");
+        references.ShouldNotContain(
+            "Hexalith.EventStore.RestApi.Generators.csproj",
+            "Generated REST controller analyzers belong only in dedicated external API hosts.");
+        string projectText = File.ReadAllText(csproj);
+        projectText
+            .Contains("Hexalith.EventStore.RestApi.Generators", StringComparison.Ordinal)
+            .ShouldBeFalse("Generated REST controller analyzers belong only in dedicated external API hosts.");
+
+        string[] linkedContracts = project
+            .Descendants()
+            .Where(static element => string.Equals(element.Name.LocalName, "Compile", StringComparison.Ordinal))
+            .Select(static element => ((string?)element.Attribute("Include"))?.Replace('\\', '/') ?? string.Empty)
+            .Where(static include => include.Contains("Hexalith.EventStore.Sample.Contracts", StringComparison.Ordinal)
+                || include.Contains("/Counter/Commands/", StringComparison.Ordinal)
+                || include.Contains("/Counter/Queries/", StringComparison.Ordinal))
+            .ToArray();
+
+        linkedContracts.ShouldBeEmpty(
+            "The Sample domain service must not compile-link duplicate contract source files; use the "
+            + "contracts project reference so aggregate handlers, UI metadata, and generated API routes "
+            + "share one contract identity.");
+
+        string source = string.Join(
+            Environment.NewLine,
+            Directory.EnumerateFiles(Path.GetDirectoryName(csproj)!, "*.*", SearchOption.AllDirectories)
+                .Where(static file => !IsBuildArtifact(file)
+                    && (file.EndsWith(".cs", StringComparison.Ordinal) || file.EndsWith(".csproj", StringComparison.Ordinal)))
+                .Select(File.ReadAllText));
+
+        AssertSourceDoesNotContainGeneratedApiHostSurface(source);
+    }
+
+    [Fact]
     public void SampleReferenceModule_DoesNotReferenceDaprPackagesDirectly()
     {
         string csproj = SampleDomainProjectPath();
@@ -432,6 +498,14 @@ public sealed class DomainModuleAuthoringGuardrailTests
         if (Directory.Exists(tenants))
         {
             yield return ("Tenants", tenants);
+        }
+    }
+
+    private static void AssertSourceDoesNotContainGeneratedApiHostSurface(string source)
+    {
+        foreach (Regex pattern in GeneratedApiHostForbiddenPatterns)
+        {
+            pattern.IsMatch(source).ShouldBeFalse($"Source must not contain generated or hand-written MVC API host marker matching {pattern}.");
         }
     }
 

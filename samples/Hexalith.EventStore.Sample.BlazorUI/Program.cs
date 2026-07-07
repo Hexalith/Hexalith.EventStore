@@ -56,8 +56,7 @@ builder.Services.AddHostedService<SignalRClientStartup>();
 // AddServiceDiscovery() default a no-op. DAPR forwards the Authorization bearer header unchanged,
 // so EventStore JWT/RBAC/tenant enforcement is preserved. Both projection queries and command
 // submissions flow through this single typed gateway client — the UI hosts no generic command path.
-string daprHttpEndpoint = builder.Configuration["DAPR_HTTP_ENDPOINT"]
-    ?? $"http://localhost:{builder.Configuration["DAPR_HTTP_PORT"] ?? "3500"}";
+string daprHttpEndpoint = DaprHttpEndpointResolver.Resolve(builder.Configuration);
 string? daprApiToken = builder.Configuration["DAPR_API_TOKEN"];
 
 builder.Services.AddEventStoreGatewayClient(options => options.BaseAddress = new Uri(daprHttpEndpoint))
