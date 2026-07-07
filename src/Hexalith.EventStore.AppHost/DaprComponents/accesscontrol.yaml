@@ -8,6 +8,8 @@
 #     admin reads and writes to EventStore (ADR-P4).
 #   - sample-blazor-ui: sample query UI. Invokes EventStore /api/v1/queries (GET/POST)
 #     via DAPR service invocation (mirrors the Admin.UI D13 pattern).
+#   - sample-api / tenants-api: external REST API hosts. Invoke only gateway command/query
+#     POST operations and forward the validated caller bearer.
 #
 # Security Posture (D4, FR34, NFR15):
 #   defaultAction: allow (self-hosted mode without mTLS).
@@ -53,6 +55,19 @@ spec:
       # sample-api: external-facing REST API host -- generated controllers invoke eventstore
       # POST /api/v1/queries and POST /api/v1/commands, forwarding the caller's validated bearer.
       - appId: sample-api
+        defaultAction: deny
+        trustDomain: "public"
+        namespace: "default"
+        operations:
+          - name: /api/v1/queries
+            httpVerb: ['POST']
+            action: allow
+          - name: /api/v1/commands
+            httpVerb: ['POST']
+            action: allow
+      # tenants-api: external-facing REST API host -- generated controllers invoke eventstore
+      # POST /api/v1/queries and POST /api/v1/commands, forwarding the caller's validated bearer.
+      - appId: tenants-api
         defaultAction: deny
         trustDomain: "public"
         namespace: "default"

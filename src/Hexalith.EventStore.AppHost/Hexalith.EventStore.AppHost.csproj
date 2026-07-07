@@ -21,6 +21,7 @@
     <ProjectReference Include="..\..\tests\Hexalith.EventStore.TestSubscriber\Hexalith.EventStore.TestSubscriber.csproj" />
     <ProjectReference Include="..\Hexalith.EventStore.Aspire\Hexalith.EventStore.Aspire.csproj" IsAspireProjectResource="false" />
     <ProjectReference Include="$(HexalithTenantsBasePath)\Hexalith.Tenants\Hexalith.Tenants.csproj" Condition="'$(HexalithTenantsFromSource)' == 'true'" />
+    <ProjectReference Include="$(HexalithTenantsBasePath)\Hexalith.Tenants.Api\Hexalith.Tenants.Api.csproj" Condition="'$(HexalithTenantsFromSource)' == 'true'" />
   </ItemGroup>
 
   <ItemGroup>

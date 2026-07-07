@@ -47,9 +47,33 @@ public class HexalithEventStoreSecurityExtensionsTests {
         management.IsExplicitlyProxied.ShouldBe(false);
     }
 
+    [Fact]
+    public void WithEventStoreClientCredentials_ForwardsAuthenticationValidationSettings() {
+        string source = File.ReadAllText(Path.Combine(
+            RepositoryProjectPaths.GetRepositoryRoot(),
+            "src",
+            "Hexalith.EventStore.Aspire",
+            "HexalithEventStoreSecurityExtensions.cs"));
+
+        string method = ExtractMethod(source, "public static IResourceBuilder<ProjectResource> WithEventStoreClientCredentials");
+
+        method.ShouldContain(".WithEnvironment(\"EventStore__Authentication__Authority\", security.RealmUrl)");
+        method.ShouldContain(".WithEnvironment(\"EventStore__Authentication__Audience\", security.Audience)");
+        method.ShouldContain(".WithEnvironment(\"EventStore__Authentication__RequireHttpsMetadata\", ToConfigurationValue(security.RequireHttpsMetadata))");
+        method.ShouldContain(".WithEnvironment(\"EventStore__Authentication__ClientId\", clientId)");
+    }
+
     private static EndpointAnnotation GetEndpoint(HexalithEventStoreSecurityResources security, string name) {
         return security.Keycloak.Resource.Annotations
             .OfType<EndpointAnnotation>()
             .Single(e => e.Name == name);
+    }
+
+    private static string ExtractMethod(string source, string marker) {
+        int start = source.IndexOf(marker, StringComparison.Ordinal);
+        start.ShouldBeGreaterThanOrEqualTo(0, $"Expected source to contain {marker}.");
+        int end = source.IndexOf("    /// <summary>", start + marker.Length, StringComparison.Ordinal);
+        end.ShouldBeGreaterThan(start, "Expected the next XML documentation block after the method.");
+        return source[start..end];
     }
 }

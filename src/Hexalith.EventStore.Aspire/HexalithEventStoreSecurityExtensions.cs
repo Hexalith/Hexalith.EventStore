@@ -168,6 +168,8 @@ public static class HexalithEventStoreSecurityExtensions
         return resource
             .WithSecurityDependency(security)
             .WithEnvironment("EventStore__Authentication__Authority", security.RealmUrl)
+            .WithEnvironment("EventStore__Authentication__Audience", security.Audience)
+            .WithEnvironment("EventStore__Authentication__RequireHttpsMetadata", ToConfigurationValue(security.RequireHttpsMetadata))
             .WithEnvironment("EventStore__Authentication__ClientId", clientId)
             .WithEnvironment("EventStore__Authentication__Username", username)
             .WithEnvironment("EventStore__Authentication__Password", password);

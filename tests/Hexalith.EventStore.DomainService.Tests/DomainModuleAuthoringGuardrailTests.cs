@@ -132,6 +132,20 @@ public sealed class DomainModuleAuthoringGuardrailTests
         new(@",\s*(?:[\w.]+\.)?Controller\b", RegexOptions.Compiled),
     ];
 
+    private static readonly Regex[] DomainServiceGeneratedApiForbiddenPatterns =
+    [
+        GeneratedApiHostForbiddenPatterns[0],
+        GeneratedApiHostForbiddenPatterns[1],
+        GeneratedApiHostForbiddenPatterns[2],
+        GeneratedApiHostForbiddenPatterns[4],
+        GeneratedApiHostForbiddenPatterns[6],
+        GeneratedApiHostForbiddenPatterns[7],
+        GeneratedApiHostForbiddenPatterns[8],
+        GeneratedApiHostForbiddenPatterns[9],
+        GeneratedApiHostForbiddenPatterns[10],
+        GeneratedApiHostForbiddenPatterns[11],
+    ];
+
     private static readonly string[] SampleProgramForbiddenNormalModeMarkers =
     [
         "DomainServiceRequestRouter",
@@ -374,6 +388,62 @@ public sealed class DomainModuleAuthoringGuardrailTests
                 .Select(File.ReadAllText));
 
         AssertSourceDoesNotContainGeneratedApiHostSurface(source);
+    }
+
+    [Fact]
+    public void TenantsDomainService_DoesNotReferenceGeneratedApiHostOrDeclarePerMessageControllers()
+    {
+        string root = FindRepositoryRoot();
+        string tenantsDomainRoot = Path.Combine(root, "references", "Hexalith.Tenants", "src", "Hexalith.Tenants");
+        string csproj = Path.Combine(tenantsDomainRoot, "Hexalith.Tenants.csproj");
+        if (!File.Exists(csproj))
+        {
+            return;
+        }
+
+        XDocument project = XDocument.Load(csproj);
+        string[] dependencies = project
+            .Descendants()
+            .Where(static element => string.Equals(element.Name.LocalName, "ProjectReference", StringComparison.Ordinal)
+                || string.Equals(element.Name.LocalName, "PackageReference", StringComparison.Ordinal)
+                || string.Equals(element.Name.LocalName, "Reference", StringComparison.Ordinal)
+                || string.Equals(element.Name.LocalName, "Analyzer", StringComparison.Ordinal))
+            .Select(static element => ((string?)element.Attribute("Include"))?.Replace('\\', '/') ?? string.Empty)
+            .ToArray();
+
+        dependencies.Any(static dependency => dependency.Contains("Hexalith.Tenants.Api", StringComparison.Ordinal))
+            .ShouldBeFalse("The Tenants domain-service host must not reference the dedicated generated API host.");
+        dependencies.Any(static dependency => dependency.Contains("Hexalith.EventStore.RestApi.Generators", StringComparison.Ordinal))
+            .ShouldBeFalse("Generated REST controller analyzers belong only in dedicated external API hosts.");
+
+        string source = string.Join(
+            Environment.NewLine,
+            Directory.EnumerateFiles(tenantsDomainRoot, "*.*", SearchOption.AllDirectories)
+                .Where(static file => !IsBuildArtifact(file)
+                    && (file.EndsWith(".cs", StringComparison.Ordinal) || file.EndsWith(".csproj", StringComparison.Ordinal)))
+                .Select(File.ReadAllText));
+
+        foreach (Regex pattern in DomainServiceGeneratedApiForbiddenPatterns)
+        {
+            pattern.IsMatch(source)
+                .ShouldBeFalse($"The Tenants domain-service host must not declare generated/per-message API host marker matching {pattern}.");
+        }
+
+        source.Contains("Hexalith.EventStore.RestApi.Generators", StringComparison.Ordinal)
+            .ShouldBeFalse("Generated REST controller analyzers belong only in dedicated external API hosts.");
+
+        Regex[] perMessageControllerPatterns =
+        [
+            new(@"\[\s*(?:[\w.]+\.)?ApiController\s*\]", RegexOptions.Compiled),
+            new(@"\b(?:[\w.]+\.)?ControllerBase\b", RegexOptions.Compiled),
+            new(@":\s*(?:[\w.]+\.)?Controller\b", RegexOptions.Compiled),
+            new(@",\s*(?:[\w.]+\.)?Controller\b", RegexOptions.Compiled),
+        ];
+
+        foreach (Regex pattern in perMessageControllerPatterns)
+        {
+            pattern.IsMatch(source).ShouldBeFalse($"The Tenants domain-service host must not declare per-message MVC controllers matching {pattern}.");
+        }
     }
 
     [Fact]

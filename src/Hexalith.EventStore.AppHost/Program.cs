@@ -84,6 +84,21 @@ IResourceBuilder<ProjectResource> tenants = builder.AddProject<Projects.Hexalith
         daprPlacementHostAddress: daprPlacementHostAddress,
         daprSchedulerHostAddress: daprSchedulerHostAddress)
     .WithEnvironment("Tenants__BootstrapGlobalAdminUserId", "admin-user");
+
+// Add the external-facing Tenants REST API host only in source-debug mode. It hosts the
+// source-generated tenant-management controllers and reaches EventStore through DAPR service
+// invocation, forwarding the validated caller bearer. Like the Sample API host it references no
+// state store or pub/sub component, so its sidecar is service-invocation only.
+IResourceBuilder<ProjectResource> tenantsApi = builder.AddProject<Projects.Hexalith_Tenants_Api>("tenants-api")
+    .WithReference(eventStore)
+    .WaitFor(eventStore)
+    .WithExternalHttpEndpoints()
+    .WithDaprSidecar(sidecar => sidecar
+        .WithOptions(new DaprSidecarOptions {
+            AppId = "tenants-api",
+            PlacementHostAddress = daprPlacementHostAddress,
+            SchedulerHostAddress = daprSchedulerHostAddress,
+        }));
 #endif
 
 // Add sample domain service with DAPR sidecar via the platform domain-module extension (A4).
@@ -141,6 +156,7 @@ IResourceBuilder<ProjectResource> sampleApi = builder.AddProject<Projects.Hexali
 if (security is not null) {
 #if HEXALITH_TENANTS_SOURCE
     _ = tenants.WithJwtBearerSecurity(security);
+    _ = tenantsApi.WithEventStoreClientCredentials(security);
 #endif
 
     _ = adminServer.WithJwtBearerSecurity(security);
