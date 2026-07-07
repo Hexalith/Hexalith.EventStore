@@ -107,11 +107,28 @@ public sealed class DomainModuleAuthoringGuardrailTests
         "AddControllersWithViews(",
         "MapControllers(",
         "MapControllerRoute(",
+        "MapDefaultControllerRoute(",
         ": Controller",
         ", Controller",
         "ControllerBase",
         "[ApiController]",
         "Hexalith.EventStore.RestApi.Generators",
+    ];
+
+    private static readonly Regex[] GeneratedApiHostForbiddenPatterns =
+    [
+        new(@"\[\s*assembly\s*:\s*(?:[\w.]+\.)?RestApi\s*\(", RegexOptions.Compiled),
+        new(@"\b(?:[\w.]+\.)?AddMvc\s*\(", RegexOptions.Compiled),
+        new(@"\b(?:[\w.]+\.)?AddMvcCore\s*\(", RegexOptions.Compiled),
+        new(@"\b(?:[\w.]+\.)?AddControllers\s*\(", RegexOptions.Compiled),
+        new(@"\b(?:[\w.]+\.)?AddControllersWithViews\s*\(", RegexOptions.Compiled),
+        new(@"\b(?:[\w.]+\.)?MapControllers\s*\(", RegexOptions.Compiled),
+        new(@"\b(?:[\w.]+\.)?MapControllerRoute\s*\(", RegexOptions.Compiled),
+        new(@"\b(?:[\w.]+\.)?MapDefaultControllerRoute\s*\(", RegexOptions.Compiled),
+        new(@"\[\s*(?:[\w.]+\.)?ApiController\s*\]", RegexOptions.Compiled),
+        new(@"\b(?:[\w.]+\.)?ControllerBase\b", RegexOptions.Compiled),
+        new(@":\s*(?:[\w.]+\.)?Controller\b", RegexOptions.Compiled),
+        new(@",\s*(?:[\w.]+\.)?Controller\b", RegexOptions.Compiled),
     ];
 
     private static readonly string[] SampleProgramForbiddenNormalModeMarkers =
@@ -355,11 +372,7 @@ public sealed class DomainModuleAuthoringGuardrailTests
                     && (file.EndsWith(".cs", StringComparison.Ordinal) || file.EndsWith(".csproj", StringComparison.Ordinal)))
                 .Select(File.ReadAllText));
 
-        source.ShouldNotContain("[assembly: RestApi(");
-        source.ShouldNotContain("AddControllers(");
-        source.ShouldNotContain("MapControllers(");
-        source.ShouldNotContain("ControllerBase");
-        source.ShouldNotContain("[ApiController]");
+        AssertSourceDoesNotContainGeneratedApiHostSurface(source);
     }
 
     [Fact]
@@ -484,6 +497,14 @@ public sealed class DomainModuleAuthoringGuardrailTests
         if (Directory.Exists(tenants))
         {
             yield return ("Tenants", tenants);
+        }
+    }
+
+    private static void AssertSourceDoesNotContainGeneratedApiHostSurface(string source)
+    {
+        foreach (Regex pattern in GeneratedApiHostForbiddenPatterns)
+        {
+            pattern.IsMatch(source).ShouldBeFalse($"Source must not contain generated or hand-written MVC API host marker matching {pattern}.");
         }
     }
 

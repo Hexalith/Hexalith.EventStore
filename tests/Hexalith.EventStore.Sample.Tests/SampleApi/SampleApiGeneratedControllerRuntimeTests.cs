@@ -88,6 +88,30 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
     }
 
     [Fact]
+    public async Task CounterQuery_WhenGatewayReturnsSuccessWithoutMetadata_OmitsFreshnessAndPagingHeaders()
+    {
+        GeneratedController controller = CreateController();
+        controller.Gateway.QueryHandler = static (_, _, _) =>
+        {
+            JsonElement payload = JsonSerializer.SerializeToElement(new
+            {
+                counterId = "counter-1",
+            });
+
+            return Task.FromResult(new EventStoreQueryResult(
+                "01KTESTQUERY200000000000",
+                payload,
+                IsNotModified: false,
+                ETag: null));
+        };
+
+        IActionResult result = await InvokeQueryAsync(controller);
+
+        _ = result.ShouldBeOfType<OkObjectResult>();
+        AssertMetadataHeadersAbsent(controller.Controller.HttpContext.Response.Headers);
+    }
+
+    [Fact]
     public async Task CounterQuery_WhenGatewayReturnsNotModified_ForwardsIfNoneMatchAndStrongETag()
     {
         GeneratedController controller = CreateController();
@@ -111,11 +135,39 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
     }
 
     [Fact]
+    public async Task CounterQuery_WhenGatewayReturnsNotModifiedWithoutStrongETag_ReturnsBadGatewayProblem()
+    {
+        GeneratedController controller = CreateController();
+        controller.Gateway.QueryHandler = static (_, _, _) =>
+            Task.FromResult(new EventStoreQueryResult(
+                CorrelationId: null,
+                Payload: null,
+                IsNotModified: true,
+                ETag: "W/\"counter-version\"")
+            {
+                Metadata = new QueryResponseMetadata(
+                    IsStale: false,
+                    ProjectionVersion: "42",
+                    ServedAt: new DateTimeOffset(2026, 7, 7, 10, 30, 0, TimeSpan.Zero)),
+            });
+
+        IActionResult result = await InvokeQueryAsync(controller, "\"counter-version\"");
+
+        ObjectResult badGateway = result.ShouldBeOfType<ObjectResult>();
+        badGateway.StatusCode.ShouldBe(StatusCodes.Status502BadGateway);
+        badGateway.ContentTypes.ShouldContain("application/problem+json");
+        ProblemDetails problem = badGateway.Value.ShouldBeOfType<ProblemDetails>();
+        problem.Detail.ShouldBe("Not-modified query response requires a strong ETag.");
+        AssertMetadataHeadersAbsent(controller.Controller.HttpContext.Response.Headers);
+    }
+
+    [Fact]
     public async Task IncrementCounter_WhenBodyMatchesRoute_SubmitsGatewayCommandAndReturnsAccepted()
     {
         GeneratedController controller = CreateController();
-        controller.Gateway.CommandHandler = static (_, _) =>
-            Task.FromResult(new SubmitCommandResponse("01KTESTCOMMANDSTATUS000000"));
+        string statusId = UniqueIdHelper.GenerateSortableUniqueStringId();
+        controller.Gateway.CommandHandler = (_, _) =>
+            Task.FromResult(new SubmitCommandResponse(statusId));
 
         IActionResult result = await InvokeIncrementCounterAsync(
             controller,
@@ -124,7 +176,8 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
 
         AcceptedResult accepted = result.ShouldBeOfType<AcceptedResult>();
         SubmitCommandResponse response = accepted.Value.ShouldBeOfType<SubmitCommandResponse>();
-        response.CorrelationId.ShouldBe("01KTESTCOMMANDSTATUS000000");
+        response.CorrelationId.ShouldBe(statusId);
+        _ = UniqueIdHelper.ExtractTimestamp(response.CorrelationId);
 
         controller.Gateway.CommandCallCount.ShouldBe(1);
         SubmitCommandRequest request = controller.Gateway.LastCommandRequest.ShouldNotBeNull();
@@ -138,7 +191,43 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
 
         IHeaderDictionary headers = controller.Controller.HttpContext.Response.Headers;
         headers[HeaderNames.RetryAfter].ToString().ShouldBe("1");
-        headers[HeaderNames.Location].ToString().ShouldBe("/api/v1/commands/status/01KTESTCOMMANDSTATUS000000");
+        headers[HeaderNames.Location].ToString().ShouldBe($"/api/v1/commands/status/{statusId}");
+    }
+
+    [Fact]
+    public async Task CounterCommands_WhenBodiesMatchRoute_SubmitExpectedGatewayCommands()
+    {
+        (string MethodName, object Body, string CommandType)[] cases =
+        [
+            ("DecrementCounterCommandAsync", new DecrementCounter("counter-1"), "decrement-counter"),
+            ("ResetCounterCommandAsync", new ResetCounter("counter-1"), "reset-counter"),
+            ("CloseCounterCommandAsync", new CloseCounter("counter-1"), "close-counter"),
+        ];
+
+        foreach ((string methodName, object body, string commandType) in cases)
+        {
+            GeneratedController controller = CreateController();
+            string statusId = UniqueIdHelper.GenerateSortableUniqueStringId();
+            controller.Gateway.CommandHandler = (_, _) =>
+                Task.FromResult(new SubmitCommandResponse(statusId));
+
+            IActionResult result = await InvokeCommandAsync(controller, methodName, "counter-1", body);
+
+            AcceptedResult accepted = result.ShouldBeOfType<AcceptedResult>();
+            SubmitCommandResponse response = accepted.Value.ShouldBeOfType<SubmitCommandResponse>();
+            response.CorrelationId.ShouldBe(statusId);
+            _ = UniqueIdHelper.ExtractTimestamp(response.CorrelationId);
+
+            controller.Gateway.CommandCallCount.ShouldBe(1);
+            SubmitCommandRequest request = controller.Gateway.LastCommandRequest.ShouldNotBeNull();
+            request.Tenant.ShouldBe("tenant-a");
+            request.Domain.ShouldBe("counter");
+            request.AggregateId.ShouldBe("counter-1");
+            request.CommandType.ShouldBe(commandType);
+            request.Payload.GetProperty("counterId").GetString().ShouldBe("counter-1");
+            controller.Controller.HttpContext.Response.Headers[HeaderNames.Location].ToString()
+                .ShouldBe($"/api/v1/commands/status/{statusId}");
+        }
     }
 
     [Fact]
@@ -220,9 +309,16 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
         GeneratedController controller,
         string counterId,
         IncrementCounter? body)
+        => await InvokeCommandAsync(controller, "IncrementCounterCommandAsync", counterId, body).ConfigureAwait(false);
+
+    private static async Task<IActionResult> InvokeCommandAsync(
+        GeneratedController controller,
+        string methodName,
+        string counterId,
+        object? body)
     {
-        MethodInfo method = controller.Controller.GetType().GetMethod("IncrementCounterCommandAsync")
-            ?? throw new MissingMethodException(controller.Controller.GetType().FullName, "IncrementCounterCommandAsync");
+        MethodInfo method = controller.Controller.GetType().GetMethod(methodName)
+            ?? throw new MissingMethodException(controller.Controller.GetType().FullName, methodName);
         var task = (Task<IActionResult>)method.Invoke(
             controller.Controller,
             ["tenant-a", counterId, body, TestContext.Current.CancellationToken])!;
@@ -239,6 +335,21 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
             controller.Controller,
             ["tenant-a", "counter-1", ifNoneMatch, TestContext.Current.CancellationToken])!;
         return await task.ConfigureAwait(false);
+    }
+
+    private static void AssertMetadataHeadersAbsent(IHeaderDictionary headers)
+    {
+        headers.ContainsKey(HeaderNames.ETag).ShouldBeFalse();
+        headers.ContainsKey("X-Hexalith-Projection-Version").ShouldBeFalse();
+        headers.ContainsKey("X-Hexalith-Served-At").ShouldBeFalse();
+        headers.ContainsKey("X-Hexalith-Is-Stale").ShouldBeFalse();
+        headers.ContainsKey("X-Hexalith-Is-Degraded").ShouldBeFalse();
+        headers.ContainsKey("X-Hexalith-Warning-Codes").ShouldBeFalse();
+        headers.ContainsKey("X-Hexalith-Page-Size").ShouldBeFalse();
+        headers.ContainsKey("X-Hexalith-Page-Offset").ShouldBeFalse();
+        headers.ContainsKey("X-Hexalith-Page-Total-Count").ShouldBeFalse();
+        headers.ContainsKey("X-Hexalith-Page-Has-More").ShouldBeFalse();
+        headers.ContainsKey("X-Hexalith-Next-Cursor").ShouldBeFalse();
     }
 
     private sealed record GeneratedController(ControllerBase Controller, FakeEventStoreGatewayClient Gateway);

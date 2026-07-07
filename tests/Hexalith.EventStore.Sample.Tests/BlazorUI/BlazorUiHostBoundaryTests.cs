@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
 using Shouldly;
@@ -6,6 +7,22 @@ namespace Hexalith.EventStore.Sample.Tests.BlazorUI;
 
 public sealed class BlazorUiHostBoundaryTests
 {
+    private static readonly Regex[] GeneratedApiHostForbiddenPatterns =
+    [
+        new(@"\[\s*assembly\s*:\s*(?:[\w.]+\.)?RestApi\s*\(", RegexOptions.Compiled),
+        new(@"\b(?:[\w.]+\.)?AddMvc\s*\(", RegexOptions.Compiled),
+        new(@"\b(?:[\w.]+\.)?AddMvcCore\s*\(", RegexOptions.Compiled),
+        new(@"\b(?:[\w.]+\.)?AddControllers\s*\(", RegexOptions.Compiled),
+        new(@"\b(?:[\w.]+\.)?AddControllersWithViews\s*\(", RegexOptions.Compiled),
+        new(@"\b(?:[\w.]+\.)?MapControllers\s*\(", RegexOptions.Compiled),
+        new(@"\b(?:[\w.]+\.)?MapControllerRoute\s*\(", RegexOptions.Compiled),
+        new(@"\b(?:[\w.]+\.)?MapDefaultControllerRoute\s*\(", RegexOptions.Compiled),
+        new(@"\[\s*(?:[\w.]+\.)?ApiController\s*\]", RegexOptions.Compiled),
+        new(@"\b(?:[\w.]+\.)?ControllerBase\b", RegexOptions.Compiled),
+        new(@":\s*(?:[\w.]+\.)?Controller\b", RegexOptions.Compiled),
+        new(@",\s*(?:[\w.]+\.)?Controller\b", RegexOptions.Compiled),
+    ];
+
     [Fact]
     public void BlazorUiProject_ReferencesCompiledContractsLibraryWithoutLinkedContractSources()
     {
@@ -40,7 +57,8 @@ public sealed class BlazorUiHostBoundaryTests
         string[] restGeneratorReferences = project
             .Descendants()
             .Where(static element => string.Equals(element.Name.LocalName, "ProjectReference", StringComparison.Ordinal)
-                || string.Equals(element.Name.LocalName, "PackageReference", StringComparison.Ordinal))
+                || string.Equals(element.Name.LocalName, "PackageReference", StringComparison.Ordinal)
+                || string.Equals(element.Name.LocalName, "Analyzer", StringComparison.Ordinal))
             .Select(static element => string.Join(
                 "|",
                 ((string?)element.Attribute("Include")) ?? string.Empty,
@@ -57,18 +75,10 @@ public sealed class BlazorUiHostBoundaryTests
     {
         string source = ReadBlazorUiSourceAndProject();
 
-        source.ShouldNotContain("[assembly: RestApi(");
-        source.ShouldNotContain("AddMvc(");
-        source.ShouldNotContain("AddMvcCore(");
-        source.ShouldNotContain("AddControllers(");
-        source.ShouldNotContain("AddControllersWithViews(");
-        source.ShouldNotContain("MapControllers(");
-        source.ShouldNotContain("MapControllerRoute(");
-        source.ShouldNotContain("MapDefaultControllerRoute(");
-        source.ShouldNotContain("[ApiController]");
-        source.ShouldNotContain("ControllerBase");
-        source.ShouldNotContain(": Controller");
-        source.ShouldNotContain(", Controller");
+        foreach (Regex pattern in GeneratedApiHostForbiddenPatterns)
+        {
+            pattern.IsMatch(source).ShouldBeFalse($"The UI source must not contain generated or hand-written MVC API host marker matching {pattern}.");
+        }
     }
 
     private static string BlazorUiProjectPath()

@@ -68,22 +68,29 @@ public sealed class SampleApiStructuralTests
         projectText.ShouldNotContain("Hexalith.EventStore.SignalR");
 
         string programText = File.ReadAllText(Path.Combine(sampleApiRoot, "Program.cs"));
+        programText.ShouldContain("builder.Services.AddControllers();");
         programText.ShouldContain("builder.Services.AddHttpContextAccessor();");
         programText.ShouldContain("builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)");
         programText.ShouldContain("builder.Services.AddAuthorization();");
         programText.ShouldContain(".AddHttpMessageHandler<InboundBearerForwardingHandler>()");
         programText.ShouldContain(".AddHttpMessageHandler(() => new DaprAppIdHandler(\"eventstore\", daprApiToken))");
+        programText.ShouldContain("app.MapControllers();");
+        programText.ShouldContain("DAPR_HTTP_ENDPOINT\"]?.Trim()");
+        programText.ShouldContain("UriPartial.Authority");
+        programText.ShouldContain("NumberStyles.None");
     }
 
     [Fact]
     public void CounterRestController_IsOnlyGeneratedControllerAndUsesGatewayBoundary()
     {
-        Type[] generatedControllers = typeof(DaprAppIdHandler).Assembly
+        Type[] controllers = typeof(DaprAppIdHandler).Assembly
             .GetTypes()
-            .Where(static type => string.Equals(type.Namespace, "Hexalith.EventStore.Sample.Api.Generated", StringComparison.Ordinal)
-                && typeof(ControllerBase).IsAssignableFrom(type))
+            .Where(static type => typeof(ControllerBase).IsAssignableFrom(type)
+                || type.GetCustomAttribute<ApiControllerAttribute>() is not null)
             .ToArray();
-        generatedControllers.Select(static type => type.Name).ShouldBe(["CounterRestController"]);
+        controllers.Select(static type => type.FullName).ShouldBe(
+            ["Hexalith.EventStore.Sample.Api.Generated.CounterRestController"],
+            ignoreOrder: true);
 
         Type controller = typeof(DaprAppIdHandler).Assembly.GetType(
             "Hexalith.EventStore.Sample.Api.Generated.CounterRestController",

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 
 using Hexalith.EventStore.Client.Registration;
@@ -92,24 +93,33 @@ app.Run();
 
 static string ResolveDaprHttpEndpoint(IConfiguration configuration)
 {
-    string? endpoint = configuration["DAPR_HTTP_ENDPOINT"];
+    string? endpoint = configuration["DAPR_HTTP_ENDPOINT"]?.Trim();
     if (!string.IsNullOrWhiteSpace(endpoint))
     {
         if (!Uri.TryCreate(endpoint, UriKind.Absolute, out Uri? uri)
-            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+            || !string.Equals(uri.AbsolutePath, "/", StringComparison.Ordinal)
+            || !string.IsNullOrEmpty(uri.Query)
+            || !string.IsNullOrEmpty(uri.Fragment))
         {
-            throw new InvalidOperationException("DAPR_HTTP_ENDPOINT must be an absolute HTTP or HTTPS URI.");
+            throw new InvalidOperationException("DAPR_HTTP_ENDPOINT must be an absolute HTTP or HTTPS origin URI.");
         }
 
-        return endpoint;
+        return uri.GetLeftPart(UriPartial.Authority);
     }
 
-    string? port = configuration["DAPR_HTTP_PORT"];
-    if (!string.IsNullOrWhiteSpace(port)
-        && (!int.TryParse(port, out int parsedPort) || parsedPort <= 0 || parsedPort > 65535))
+    string? port = configuration["DAPR_HTTP_PORT"]?.Trim();
+    if (string.IsNullOrWhiteSpace(port))
+    {
+        return "http://localhost:3500";
+    }
+
+    if (!int.TryParse(port, NumberStyles.None, CultureInfo.InvariantCulture, out int parsedPort)
+        || parsedPort <= 0
+        || parsedPort > 65535)
     {
         throw new InvalidOperationException("DAPR_HTTP_PORT must be a TCP port number between 1 and 65535.");
     }
 
-    return $"http://localhost:{(string.IsNullOrWhiteSpace(port) ? "3500" : port)}";
+    return $"http://localhost:{parsedPort.ToString(CultureInfo.InvariantCulture)}";
 }

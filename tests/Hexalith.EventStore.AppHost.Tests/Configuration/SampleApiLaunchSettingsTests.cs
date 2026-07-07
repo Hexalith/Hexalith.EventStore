@@ -56,6 +56,8 @@ public class SampleApiLaunchSettingsTests
         sampleApiBlock.ShouldNotContain("eventStoreResources.StateStore");
         sampleApiBlock.ShouldNotContain("eventStoreResources.PubSub");
         sampleApiBlock.ShouldNotContain(".WithReference(eventStoreResources");
+
+        program.ShouldContain("_ = sampleApi.WithEventStoreClientCredentials(security);");
     }
 
     [Fact]
@@ -68,7 +70,9 @@ public class SampleApiLaunchSettingsTests
             "DaprComponents",
             "accesscontrol.yaml"));
 
-        string sampleApiPolicy = ExtractYamlPolicy(accessControl, "sample-api");
+        string[] sampleApiPolicies = ExtractYamlPolicies(accessControl, "sample-api");
+        sampleApiPolicies.Length.ShouldBe(1, "Expected exactly one DAPR access-control policy for sample-api.");
+        string sampleApiPolicy = sampleApiPolicies[0];
 
         sampleApiPolicy.ShouldContain("defaultAction: deny");
         sampleApiPolicy.ShouldNotContain("name: /**");
@@ -76,11 +80,11 @@ public class SampleApiLaunchSettingsTests
         sampleApiPolicy.ShouldNotContain("'PUT'");
         sampleApiPolicy.ShouldNotContain("'DELETE'");
 
-        Dictionary<string, string> operations = ExtractOperationVerbs(sampleApiPolicy);
-        operations.ShouldBe(new Dictionary<string, string>(StringComparer.Ordinal)
+        Dictionary<string, AccessControlOperation> operations = ExtractOperations(sampleApiPolicy);
+        operations.ShouldBe(new Dictionary<string, AccessControlOperation>(StringComparer.Ordinal)
         {
-            ["/api/v1/queries"] = "['POST']",
-            ["/api/v1/commands"] = "['POST']",
+            ["/api/v1/queries"] = new("['POST']", "allow"),
+            ["/api/v1/commands"] = new("['POST']", "allow"),
         });
     }
 
@@ -94,37 +98,63 @@ public class SampleApiLaunchSettingsTests
         return text[start..end];
     }
 
-    private static string ExtractYamlPolicy(string yaml, string appId)
+    private static string[] ExtractYamlPolicies(string yaml, string appId)
     {
         string marker = $"- appId: {appId}";
-        int start = yaml.IndexOf(marker, StringComparison.Ordinal);
-        start.ShouldBeGreaterThanOrEqualTo(0, $"Expected DAPR access control policy for {appId}.");
-        int end = yaml.IndexOf("\n      - appId:", start + marker.Length, StringComparison.Ordinal);
-        return end < 0 ? yaml[start..] : yaml[start..end];
+        var policies = new List<string>();
+        int searchFrom = 0;
+        while (true)
+        {
+            int start = yaml.IndexOf(marker, searchFrom, StringComparison.Ordinal);
+            if (start < 0)
+            {
+                break;
+            }
+
+            int end = yaml.IndexOf("\n      - appId:", start + marker.Length, StringComparison.Ordinal);
+            policies.Add(end < 0 ? yaml[start..] : yaml[start..end]);
+            searchFrom = start + marker.Length;
+        }
+
+        return [.. policies];
     }
 
-    private static Dictionary<string, string> ExtractOperationVerbs(string policy)
+    private static Dictionary<string, AccessControlOperation> ExtractOperations(string policy)
     {
-        var operations = new Dictionary<string, string>(StringComparer.Ordinal);
+        var operations = new Dictionary<string, AccessControlOperation>(StringComparer.Ordinal);
         string? currentName = null;
+        string? currentVerb = null;
         foreach (string rawLine in policy.Split('\n'))
         {
             string line = rawLine.Trim();
             const string NamePrefix = "- name: ";
             const string VerbPrefix = "httpVerb: ";
+            const string ActionPrefix = "action: ";
             if (line.StartsWith(NamePrefix, StringComparison.Ordinal))
             {
                 currentName = line[NamePrefix.Length..];
+                currentVerb = null;
                 continue;
             }
 
             if (line.StartsWith(VerbPrefix, StringComparison.Ordinal) && currentName is not null)
             {
-                operations[currentName] = line[VerbPrefix.Length..];
+                currentVerb = line[VerbPrefix.Length..];
+                continue;
+            }
+
+            if (line.StartsWith(ActionPrefix, StringComparison.Ordinal)
+                && currentName is not null
+                && currentVerb is not null)
+            {
+                operations[currentName] = new AccessControlOperation(currentVerb, line[ActionPrefix.Length..]);
                 currentName = null;
+                currentVerb = null;
             }
         }
 
         return operations;
     }
+
+    private sealed record AccessControlOperation(string HttpVerb, string Action);
 }

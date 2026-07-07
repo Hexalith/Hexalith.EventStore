@@ -6,6 +6,7 @@ status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: true
 baseline_revision: '86c2f7b9554e9b10a7d374d8ff2862dc57eb13b0'
+final_revision: 'd06d16a638b3c0baa9327ccf2a81993f8b52427d'
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-2-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-2-2-rest-api-generator-discovery-and-controller-emission.md'
@@ -88,6 +89,28 @@ warnings: []
   - `[low]` `[patch]` Blazor UI analyzer guardrail rejected any analyzer-shaped project reference instead of only the REST generator. Patched it to inspect project/package references specifically for `Hexalith.EventStore.RestApi.Generators`.
   - `[low]` `[patch]` Blazor UI controller-surface guardrail missed alternate MVC/controller mapping markers. Patched it to cover `AddMvc`, `AddMvcCore`, controller-route mapping, and controller inheritance variants.
 
+### 2026-07-07 — Follow-up review pass
+- intent_gap: 0
+- bad_spec: 0
+- patch: 14: (high 0, medium 9, low 5)
+- defer: 0
+- reject: 3: (high 0, medium 0, low 3)
+- addressed_findings:
+  - `[low]` `[patch]` DAPR HTTP port validation accepted padded or signed values but returned the raw string. Patched Sample API and Blazor UI endpoint resolution to trim, parse with invariant digits-only rules, and emit a normalized port.
+  - `[medium]` `[patch]` DAPR HTTP endpoint validation allowed origin values with path, query, or fragment. Patched Sample API and Blazor UI endpoint resolution to require an HTTP/HTTPS origin URI and return the normalized authority.
+  - `[medium]` `[patch]` Runtime controller proof could pass even if `Sample.Api` stopped registering or mapping MVC controllers. Patched structural tests to assert `AddControllers` and `MapControllers` remain present in the external API host.
+  - `[medium]` `[patch]` AppHost guardrail stopped before the security branch and did not protect `sampleApi.WithEventStoreClientCredentials(security)`. Patched the test to assert the credential wiring.
+  - `[medium]` `[patch]` DAPR access-control proof ignored operation `action`, so denied operations could pass. Patched the parser to assert exact `POST` operations with `action: allow`.
+  - `[medium]` `[patch]` DAPR access-control proof allowed duplicate `sample-api` policy blocks to broaden access. Patched it to require exactly one `sample-api` policy.
+  - `[medium]` `[patch]` Sample domain-service guardrail missed alternate MVC/controller mapping markers. Patched it to reuse the broader generated-API host marker set.
+  - `[low]` `[patch]` Blazor UI REST generator guard missed direct `<Analyzer>` items. Patched it to inspect analyzer items in addition to project/package references.
+  - `[medium]` `[patch]` Sample API structural proof counted only generated-namespace controllers, so a hand-written controller elsewhere in the API assembly could escape. Patched it to assert the complete API controller set is only the generated `CounterRestController`.
+  - `[low]` `[patch]` Generated command runtime proof used non-ULID-like fake status IDs. Patched it to use generated ULIDs and parse the returned correlation/status ID.
+  - `[medium]` `[patch]` Runtime proof exercised only the increment command path. Added runtime coverage for decrement, reset, and close command actions through the compiled generated controller.
+  - `[medium]` `[patch]` Runtime query proof did not cover success without gateway metadata. Added a real-controller test proving freshness, paging, warning, and ETag headers are omitted rather than fabricated.
+  - `[medium]` `[patch]` Runtime query proof did not cover not-modified responses without a strong ETag. Added a real-controller test proving the generated action returns safe `502` problem details and no stale metadata headers.
+  - `[low]` `[patch]` Domain/UI controller-surface scans could miss whitespace-qualified syntax. Patched Sample domain/UI guardrails to use regex marker checks for REST API attributes, MVC registration, controller mapping, and controller inheritance.
+
 ## Design Notes
 
 The main implementation risk is treating this as a new scaffold story. The scaffold exists; the remaining proof should exercise the compiled `Sample.Api` generated controller directly so the story validates real host wiring while staying Tier 1 and independent of Docker/Aspire availability. Live state-store smoke remains valuable, but it is not required to replace the unit-level generated-host proof in this run.
@@ -107,10 +130,11 @@ Status: done
 
 Summary:
 - Proved the real compiled `Hexalith.EventStore.Sample.Api` generated `CounterRestController` through runtime invocation tests for query success metadata, query `304`, command acceptance, local bad requests, and gateway failure mapping.
+- Follow-up review hardened DAPR endpoint normalization, host-mapping/security/topology guardrails, complete generated command coverage, and Sample API/UI/domain controller-surface scans.
 - Added Sample API structural guardrails for contracts/client/service-defaults/generator references, REST API assembly opt-in, generated controller metadata, all Counter command routes, route/header/body binding metadata, gateway-only construction, and handler registration.
 - Strengthened Sample Blazor UI and Sample domain-service boundary checks so generated REST analyzers/controllers cannot move back into interactive UI or domain-host projects.
 - Hardened Sample API and Blazor UI DAPR sidecar endpoint resolution so blank values fall back to port `3500` and malformed nonblank values fail with explicit configuration errors.
-- Added AppHost/DAPR access-control guardrails for the `sample-api` resource and appended one deferred generated-status-location policy item.
+- Added AppHost/DAPR access-control guardrails for the `sample-api` resource. No new deferred-work entries were appended in the follow-up review.
 
 Files changed:
 - `samples/Hexalith.EventStore.Sample.Api/Program.cs` -- DAPR endpoint fallback and validation helper.
@@ -124,14 +148,15 @@ Files changed:
 - `_bmad-output/implementation-artifacts/spec-2-3-sample-external-api-host-proof.md` -- story spec, task completion, review triage, and run result.
 
 Review findings breakdown:
-- Patches applied: 10 total in the review pass (0 high, 6 medium, 4 low).
-- Deferred: 1 medium generated command-status `Location` policy item.
-- Rejected: 3 findings where the requested broader proof was outside this Tier 1 story or contradicted documented local DAPR self-hosted posture.
+- Initial review pass patches applied: 10 total (0 high, 6 medium, 4 low).
+- Follow-up review pass patches applied: 14 total (0 high, 9 medium, 5 low).
+- Deferred in follow-up review: 0. Existing ledger entries were not modified or re-opened.
+- Rejected in follow-up review: 3 low findings for documented self-hosted DAPR access-control posture, workflow-forbidden ledger rewriting, and transient in-review frontmatter state.
 
 Follow-up review recommendation: true. The review pass materially expanded the proof surface across generated action metadata, gateway handler behavior, identifier validation, and DAPR configuration robustness.
 
 Verification performed:
-- `dotnet test tests/Hexalith.EventStore.Sample.Tests/` -- passed, 97 tests.
+- `dotnet test tests/Hexalith.EventStore.Sample.Tests/` -- passed, 100 tests.
 - `dotnet test tests/Hexalith.EventStore.AppHost.Tests/` -- passed, 44 tests.
 - `dotnet test tests/Hexalith.EventStore.DomainService.Tests/` -- passed, 84 tests.
 - `dotnet build Hexalith.EventStore.slnx --configuration Release -p:UseHexalithProjectReferences=false` -- passed with 0 warnings and 0 errors.
