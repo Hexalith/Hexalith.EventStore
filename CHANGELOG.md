@@ -1,3 +1,10 @@
+# [3.46.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.45.0...v3.46.0) (2026-07-07)
+
+
+### Features
+
+* Implement absolute command-status Location header support ([87ac445](https://github.com/Hexalith/Hexalith.EventStore/commit/87ac445074a8302f39325262eb72738fbbc17647))
+
 # [3.45.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.44.0...v3.45.0) (2026-07-07)
 
 
