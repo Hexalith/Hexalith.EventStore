@@ -20,13 +20,8 @@ namespace Hexalith.EventStore.IntegrationTests.ContractTests;
 [Trait("Category", "E2E")]
 [Trait("Tier", "3")]
 [Trait("Feature", "HotReload")]
-[Collection("AspireContractTests")]
 public class HotReloadTests {
     private static readonly TimeSpan s_resourceRecoveryTimeout = TimeSpan.FromSeconds(60);
-
-    private readonly AspireContractTestFixture _fixture;
-
-    public HotReloadTests(AspireContractTestFixture fixture) => _fixture = fixture;
 
     // ------------------------------------------------------------------
     // Task 2: Independent restart test (AC #1, #2)
@@ -39,63 +34,65 @@ public class HotReloadTests {
     /// </summary>
     [Fact]
     public async Task ProcessCommand_AfterDomainServiceRestart_CompletesSuccessfully() {
-        using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
-        CancellationToken ct = cts.Token;
-        HttpClient client = _fixture.EventStoreClient;
+        await WithIsolatedFixtureAsync(async fixture => {
+            using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
+            CancellationToken ct = cts.Token;
+            HttpClient client = fixture.EventStoreClient;
 
-        // Phase 1 (baseline): Send IncrementCounter command, verify Completed with events
-        string aggregateId = $"counter-hotreload-{Guid.NewGuid():N}";
-        string correlationId1 = await ContractTestHelpers.SubmitCommandAndGetCorrelationIdAsync(
-            client, tenant: "tenant-a", domain: "counter",
-            aggregateId: aggregateId, commandType: "IncrementCounter");
+            // Phase 1 (baseline): Send IncrementCounter command, verify Completed with events
+            string aggregateId = $"counter-hotreload-{Guid.NewGuid():N}";
+            string correlationId1 = await ContractTestHelpers.SubmitCommandAndGetCorrelationIdAsync(
+                client, tenant: "tenant-a", domain: "counter",
+                aggregateId: aggregateId, commandType: "IncrementCounter");
 
-        JsonElement status1 = await ContractTestHelpers.PollUntilTerminalStatusAsync(
-            client, correlationId1, "tenant-a");
-        status1.GetProperty("status").GetString().ShouldBe("Completed",
-            "Baseline command should complete before restart");
-        status1.TryGetProperty("eventCount", out JsonElement ec1).ShouldBeTrue();
-        ec1.GetInt32().ShouldBeGreaterThan(0, "Baseline command should produce events");
+            JsonElement status1 = await ContractTestHelpers.PollUntilTerminalStatusAsync(
+                client, correlationId1, "tenant-a");
+            status1.GetProperty("status").GetString().ShouldBe("Completed",
+                "Baseline command should complete before restart");
+            status1.TryGetProperty("eventCount", out JsonElement ec1).ShouldBeTrue();
+            ec1.GetInt32().ShouldBeGreaterThan(0, "Baseline command should produce events");
 
-        // AC #5: Verify EventStore is responsive before restart
-        await ContractTestHelpers.AssertEventStoreResponsiveAsync(client);
-
-        // Phase 2 (restart): Stop sample domain service, then restart it
-        await StopSampleAsync(ct);
-
-        try {
-            // AC #5: EventStore should remain responsive while domain service is stopped
+            // AC #5: Verify EventStore is responsive before restart
             await ContractTestHelpers.AssertEventStoreResponsiveAsync(client);
 
-            await StartSampleAndWaitHealthyAsync(ct);
-        }
-        finally {
-            await EnsureSampleStartedAsync();
-        }
+            try {
+                // Phase 2 (restart): Stop sample domain service, then restart it
+                await StopSampleAsync(fixture, ct);
 
-        // Phase 3 (verify): Send another command after restart, verify Completed
-        string correlationId2 = await ContractTestHelpers.SubmitCommandAndGetCorrelationIdAsync(
-            client, tenant: "tenant-a", domain: "counter",
-            aggregateId: aggregateId, commandType: "IncrementCounter");
+                // AC #5: EventStore should remain responsive while domain service is stopped
+                await ContractTestHelpers.AssertEventStoreResponsiveAsync(client);
 
-        JsonElement status2 = await ContractTestHelpers.PollUntilTerminalStatusAsync(
-            client, correlationId2, "tenant-a");
-        status2.GetProperty("status").GetString().ShouldBe("Completed",
-            "Post-restart command should complete successfully (AC #1, #2)");
-        status2.TryGetProperty("eventCount", out JsonElement ec2).ShouldBeTrue();
-        ec2.GetInt32().ShouldBeGreaterThan(0, "Post-restart command should produce events");
+                await StartSampleAndWaitHealthyAsync(fixture, ct);
+            }
+            finally {
+                await EnsureSampleStartedAsync(fixture);
+            }
 
-        // Stronger continuity assertion: state updated by IncrementCounter should allow a DecrementCounter.
-        string correlationId3 = await ContractTestHelpers.SubmitCommandAndGetCorrelationIdAsync(
-            client, tenant: "tenant-a", domain: "counter",
-            aggregateId: aggregateId, commandType: "DecrementCounter");
+            // Phase 3 (verify): Send another command after restart, verify Completed
+            string correlationId2 = await ContractTestHelpers.SubmitCommandAndGetCorrelationIdAsync(
+                client, tenant: "tenant-a", domain: "counter",
+                aggregateId: aggregateId, commandType: "IncrementCounter");
 
-        JsonElement status3 = await ContractTestHelpers.PollUntilTerminalStatusAsync(
-            client, correlationId3, "tenant-a");
-        status3.GetProperty("status").GetString().ShouldBe("Completed",
-            "Decrement after post-restart increment should complete, proving command flow continuity across restart");
+            JsonElement status2 = await ContractTestHelpers.PollUntilTerminalStatusAsync(
+                client, correlationId2, "tenant-a");
+            status2.GetProperty("status").GetString().ShouldBe("Completed",
+                "Post-restart command should complete successfully (AC #1, #2)");
+            status2.TryGetProperty("eventCount", out JsonElement ec2).ShouldBeTrue();
+            ec2.GetInt32().ShouldBeGreaterThan(0, "Post-restart command should produce events");
 
-        // AC #5: EventStore should still be responsive after restart cycle
-        await ContractTestHelpers.AssertEventStoreResponsiveAsync(client);
+            // Stronger continuity assertion: state updated by IncrementCounter should allow a DecrementCounter.
+            string correlationId3 = await ContractTestHelpers.SubmitCommandAndGetCorrelationIdAsync(
+                client, tenant: "tenant-a", domain: "counter",
+                aggregateId: aggregateId, commandType: "DecrementCounter");
+
+            JsonElement status3 = await ContractTestHelpers.PollUntilTerminalStatusAsync(
+                client, correlationId3, "tenant-a");
+            status3.GetProperty("status").GetString().ShouldBe("Completed",
+                "Decrement after post-restart increment should complete, proving command flow continuity across restart");
+
+            // AC #5: EventStore should still be responsive after restart cycle
+            await ContractTestHelpers.AssertEventStoreResponsiveAsync(client);
+        });
     }
 
     // ------------------------------------------------------------------
@@ -110,40 +107,42 @@ public class HotReloadTests {
     /// </summary>
     [Fact]
     public async Task ProcessCommand_DuringDomainServiceRestart_HandledByResiliency() {
-        using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
-        CancellationToken ct = cts.Token;
-        HttpClient client = _fixture.EventStoreClient;
+        await WithIsolatedFixtureAsync(async fixture => {
+            using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
+            CancellationToken ct = cts.Token;
+            HttpClient client = fixture.EventStoreClient;
 
-        // Stop sample domain service
-        await StopSampleAsync(ct);
+            string correlationId;
+            try {
+                // Stop sample domain service
+                await StopSampleAsync(fixture, ct);
 
-        string correlationId;
-        try {
-            // Submit while restart is in-flight (retry through transient transport windows).
-            string aggregateId = $"counter-resiliency-{Guid.NewGuid():N}";
-            Task<string> submitTask = ContractTestHelpers.SubmitCommandAndGetCorrelationIdWithRetryAsync(
-                client, tenant: "tenant-a", domain: "counter",
-                aggregateId: aggregateId, commandType: "IncrementCounter");
+                // Submit while restart is in-flight (retry through transient transport windows).
+                string aggregateId = $"counter-resiliency-{Guid.NewGuid():N}";
+                Task<string> submitTask = ContractTestHelpers.SubmitCommandAndGetCorrelationIdWithRetryAsync(
+                    client, tenant: "tenant-a", domain: "counter",
+                    aggregateId: aggregateId, commandType: "IncrementCounter");
 
-            // Restart sample domain service
-            await StartSampleAndWaitHealthyAsync(ct);
+                // Restart sample domain service
+                await StartSampleAndWaitHealthyAsync(fixture, ct);
 
-            correlationId = await submitTask.ConfigureAwait(true);
-        }
-        finally {
-            await EnsureSampleStartedAsync();
-        }
+                correlationId = await submitTask.ConfigureAwait(true);
+            }
+            finally {
+                await EnsureSampleStartedAsync(fixture);
+            }
 
-        // Poll the in-flight command with extended timeout (DAPR retries may take time)
-        JsonElement status = await ContractTestHelpers.PollUntilTerminalStatusAsync(
-            client, correlationId, "tenant-a", timeout: s_resourceRecoveryTimeout);
+            // Poll the in-flight command with extended timeout (DAPR retries may take time)
+            JsonElement status = await ContractTestHelpers.PollUntilTerminalStatusAsync(
+                client, correlationId, "tenant-a", timeout: s_resourceRecoveryTimeout);
 
-        // AC #4: Command should reach a terminal state -- either Completed (DAPR retried)
-        // or a terminal failure (PublishFailed/TimedOut). No hung commands.
-        string statusValue = status.GetProperty("status").GetString()!;
-        statusValue.ShouldBeOneOf(
-            ["Completed", "PublishFailed", "TimedOut"],
-            $"Command submitted during restart must reach terminal state, got: {statusValue}");
+            // AC #4: Command should reach a terminal state -- either Completed (DAPR retried)
+            // or a terminal failure (PublishFailed/TimedOut). No hung commands.
+            string statusValue = status.GetProperty("status").GetString()!;
+            statusValue.ShouldBeOneOf(
+                ["Completed", "PublishFailed", "TimedOut"],
+                $"Command submitted during restart must reach terminal state, got: {statusValue}");
+        });
     }
 
     // ------------------------------------------------------------------
@@ -156,59 +155,80 @@ public class HotReloadTests {
     /// </summary>
     [Fact]
     public async Task EventStore_DuringDomainServiceRestart_RemainsResponsive() {
-        using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
-        CancellationToken ct = cts.Token;
-        HttpClient client = _fixture.EventStoreClient;
+        await WithIsolatedFixtureAsync(async fixture => {
+            using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
+            CancellationToken ct = cts.Token;
+            HttpClient client = fixture.EventStoreClient;
 
-        // Stop sample domain service
-        await StopSampleAsync(ct);
+            try {
+                // Stop sample domain service
+                await StopSampleAsync(fixture, ct);
 
-        try {
-            // AC #5 (Task 4.3): Assert EventStore remains reachable while domain service is stopped.
-            await ContractTestHelpers.AssertEventStoreResponsiveAsync(client);
+                // AC #5 (Task 4.3): Assert EventStore remains reachable while domain service is stopped.
+                await ContractTestHelpers.AssertEventStoreResponsiveAsync(client);
 
-            // Command submission may be rejected while the synchronous domain handler is unavailable.
-            // The invariant here is that EventStore remains reachable and returns a controlled API response.
-            await AssertCommandDuringDomainOutageReturnsControlledResponseAsync(client);
+                // Command submission may be rejected while the synchronous domain handler is unavailable.
+                // The invariant here is that EventStore remains reachable and returns a controlled API response.
+                await AssertCommandDuringDomainOutageReturnsControlledResponseAsync(client);
 
-            // Restart sample domain service
-            await StartSampleAndWaitHealthyAsync(ct);
-        }
-        finally {
-            await EnsureSampleStartedAsync();
-        }
+                // Restart sample domain service
+                await StartSampleAndWaitHealthyAsync(fixture, ct);
+            }
+            finally {
+                await EnsureSampleStartedAsync(fixture);
+            }
 
-        // Verify command acceptance also works post-restart.
-        string aggregateId = $"counter-apicheck-{Guid.NewGuid():N}";
-        string correlationId = await ContractTestHelpers.SubmitCommandAndGetCorrelationIdWithRetryAsync(
-            client, tenant: "tenant-a", domain: "counter",
-            aggregateId: aggregateId, commandType: "IncrementCounter");
-        correlationId.ShouldNotBeNullOrWhiteSpace(
-            "EventStore should return a tracking correlationId after restart");
+            // Verify command acceptance also works post-restart.
+            string aggregateId = $"counter-apicheck-{Guid.NewGuid():N}";
+            string correlationId = await ContractTestHelpers.SubmitCommandAndGetCorrelationIdWithRetryAsync(
+                client, tenant: "tenant-a", domain: "counter",
+                aggregateId: aggregateId, commandType: "IncrementCounter");
+            correlationId.ShouldNotBeNullOrWhiteSpace(
+                "EventStore should return a tracking correlationId after restart");
+        });
     }
 
-    private async Task StopSampleAsync(CancellationToken cancellationToken) {
-        ExecuteCommandResult result = await _fixture.App.ResourceCommands
+    private static async Task WithIsolatedFixtureAsync(Func<AspireContractTestFixture, Task> test) {
+        AspireContractTestFixture fixture = new();
+
+        try {
+            await fixture.InitializeAsync();
+            await test(fixture);
+        }
+        finally {
+            await fixture.DisposeAsync();
+        }
+    }
+
+    private static async Task StopSampleAsync(AspireContractTestFixture fixture, CancellationToken cancellationToken) {
+        ExecuteCommandResult result = await fixture.App.ResourceCommands
             .ExecuteCommandAsync("sample", KnownResourceCommands.StopCommand, cancellationToken);
         result.Success.ShouldBeTrue(
             $"Unable to stop sample. Message: {result.Message}; Error: {result.ErrorMessage}");
     }
 
-    private async Task StartSampleAndWaitHealthyAsync(CancellationToken cancellationToken) {
-        ExecuteCommandResult result = await _fixture.App.ResourceCommands
+    private static async Task StartSampleAndWaitHealthyAsync(
+        AspireContractTestFixture fixture,
+        CancellationToken cancellationToken) {
+        ExecuteCommandResult result = await fixture.App.ResourceCommands
             .ExecuteCommandAsync("sample", KnownResourceCommands.StartCommand, cancellationToken);
         result.Success.ShouldBeTrue(
             $"Unable to start sample. Message: {result.Message}; Error: {result.ErrorMessage}");
 
-        _ = await _fixture.App.ResourceNotifications
+        _ = await fixture.App.ResourceNotifications
             .WaitForResourceHealthyAsync("sample", cancellationToken)
             .WaitAsync(s_resourceRecoveryTimeout, cancellationToken);
     }
 
-    private async Task EnsureSampleStartedAsync() {
+    private static async Task EnsureSampleStartedAsync(AspireContractTestFixture fixture) {
         using var restoreCts = new CancellationTokenSource(s_resourceRecoveryTimeout);
         try {
-            await StartSampleAndWaitHealthyAsync(restoreCts.Token);
+            if (fixture.App.ResourceNotifications.TryGetCurrentState("sample", out ResourceEvent? current)
+                && string.Equals(current.Snapshot.State?.Text, KnownResourceStates.Running, StringComparison.Ordinal)) {
+                return;
+            }
+
+            await StartSampleAndWaitHealthyAsync(fixture, restoreCts.Token);
         }
         catch {
             // Preserve the original assertion failure. The next test/fixture disposal will surface
