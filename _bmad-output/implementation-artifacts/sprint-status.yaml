@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-07-07T11:10:46+02:00
+# last_updated: 2026-07-07T18:57:57+02:00
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T20:01:46+02:00
-last_updated: 2026-07-07T11:10:46+02:00
+last_updated: 2026-07-07T18:57:57+02:00
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -58,13 +58,13 @@ development_status:
   1-7-domainservice-packaging-and-guardrails: done
   epic-1-retrospective: done
 
-  epic-2: backlog
+  epic-2: done
   2-1-rest-contract-seam-for-command-and-query-messages: done
   2-2-rest-api-generator-discovery-and-controller-emission: done
   2-3-sample-external-api-host-proof: done
   2-4-tenants-external-api-host-adoption: done
   2-5-scoped-metadata-rich-projection-notifications: done
-  epic-2-retrospective: optional
+  epic-2-retrospective: done
 
   epic-3: backlog
   3-1-re-tier-live-sidecar-tests-from-release-gate: backlog
@@ -151,7 +151,7 @@ action_items:
   - epic: 1
     action: "Convert the Story 1.4 domain-event marker atomicity and payload-identity misconfiguration findings into scoped backlog or implementation items."
     owner: "Amelia (Developer)"
-    status: open
+    status: done
   - epic: 1
     action: "Define the health endpoint anonymous-access contract before any global fallback authorization policy is introduced."
     owner: "Winston (System Architect)"
@@ -163,4 +163,32 @@ action_items:
   - epic: 1
     action: "Carry Tenants transitional host composition and package/source-mode validation into Epic 2 story specs."
     owner: "John (Product Manager)"
+    status: done
+  - epic: 2
+    action: "Resolve the open follow-up review recommendations for Story 2.2 and Story 2.3 or record deliberate acceptance decisions."
+    owner: "Amelia (Developer)"
+    status: open
+  - epic: 2
+    action: "Scope REST generator hardening from the Epic 2 deferred entries into a backlog item or implementation story."
+    owner: "Winston (System Architect)"
+    status: open
+  - epic: 2
+    action: "Define the external generated API command-status Location policy."
+    owner: "Winston (System Architect)"
+    status: open
+  - epic: 2
+    action: "Close the reusable DAPR/Aspire generated API smoke preflight action."
+    owner: "Amelia (Developer)"
+    status: open
+  - epic: 2
+    action: "Decide and enforce the outbound DAPR routing-header replacement policy for generated API host clients."
+    owner: "Amelia (Developer)"
+    status: open
+  - epic: 2
+    action: "Patch or explicitly schedule the raw SignalR hub leave validation gap."
+    owner: "Amelia (Developer)"
+    status: open
+  - epic: 2
+    action: "Reconcile gateway metadata provenance before any UI or generated API claims production-backed current/stale projection evidence."
+    owner: "Winston (System Architect)"
     status: open
