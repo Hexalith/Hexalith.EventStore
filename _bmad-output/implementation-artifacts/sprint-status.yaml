@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-07-07T18:57:57+02:00
+# last_updated: 2026-07-07T20:23:23+02:00
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T20:01:46+02:00
-last_updated: 2026-07-07T18:57:57+02:00
+last_updated: 2026-07-07T20:23:23+02:00
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -74,6 +74,10 @@ development_status:
   3-5-debug-source-references-and-release-package-references: backlog
   3-6-manifest-driven-release-packaging: backlog
   3-7-shared-ci-cd-security-gates-and-supply-chain-backlog: backlog
+  # Pulled forward out of Epic 3 sequence: evidence-gate companion to Story 3.1,
+  # closes the preflight action carried open through the Epic D/1/2 retros
+  # (re-homed from TEST-1.1 on 2026-07-07). Epic 3 stays backlog by design.
+  3-8-generated-api-dapr-aspire-smoke-preflight: in-progress
   epic-3-retrospective: optional
 
   epic-4: backlog
@@ -125,7 +129,7 @@ action_items:
     owner: "Murat (Test Architect)"
     status: done
   - epic: D
-    action: "Add a local DAPR/Aspire smoke preflight for generated API proofs."
+    action: "Add a local DAPR/Aspire smoke preflight for generated API proofs. → tracked as Story 3.8 (Epic 3, companion to 3.1)."
     owner: "Amelia (Developer)"
     status: open
   - epic: D
@@ -157,7 +161,7 @@ action_items:
     owner: "Winston (System Architect)"
     status: open
   - epic: 1
-    action: "Close the existing generated API DAPR/Aspire smoke preflight action before accepting Sample or Tenants generated API live proof blockers."
+    action: "Close the existing generated API DAPR/Aspire smoke preflight action before accepting Sample or Tenants generated API live proof blockers. → tracked as Story 3.8."
     owner: "Amelia (Developer)"
     status: open
   - epic: 1
@@ -177,7 +181,7 @@ action_items:
     owner: "Winston (System Architect)"
     status: open
   - epic: 2
-    action: "Close the reusable DAPR/Aspire generated API smoke preflight action."
+    action: "Close the reusable DAPR/Aspire generated API smoke preflight action. → tracked as Story 3.8; completion gate = preflight reports generated API endpoints, DAPR sidecar readiness, placement/scheduler readiness, and support-safe failure details."
     owner: "Amelia (Developer)"
     status: open
   - epic: 2

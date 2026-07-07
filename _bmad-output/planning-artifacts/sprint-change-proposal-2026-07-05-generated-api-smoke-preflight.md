@@ -2,9 +2,16 @@
 title: Sprint Change Proposal - Generated API Smoke Preflight
 date: 2026-07-05
 project: eventstore
-status: approved
+status: superseded
 approved_by: Administrator
 approved_on: 2026-07-05
+superseded_by: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-07-generated-api-smoke-preflight-rehome.md
+superseded_on: 2026-07-07
+superseded_reason: >
+  The TEST-1 "Test And CI Recovery" epic was absorbed into the Epic 1-7 structure.
+  This proposal's story (TEST-1.1) is re-homed as Epic 3 Story 3.8 (companion to
+  Story 3.1) and reconciled to the delivered Epic 2 hosts
+  (Hexalith.EventStore.Sample.Api, Hexalith.Tenants.Api).
 source:
   - _bmad-output/implementation-artifacts/deferred-work.md
   - _bmad-output/implementation-artifacts/epic-D-retro-2026-07-05.md
@@ -19,6 +26,11 @@ source:
 ---
 
 # Sprint Change Proposal: Generated API Smoke Preflight
+
+> **SUPERSEDED 2026-07-07** — see `sprint-change-proposal-2026-07-07-generated-api-smoke-preflight-rehome.md`.
+> Story re-homed from TEST-1.1 to Epic 3 Story 3.8 (companion to Story 3.1) and reconciled to
+> the delivered Epic 2 hosts (`Hexalith.EventStore.Sample.Api`, `Hexalith.Tenants.Api`). The
+> analysis below remains valid; only the epic/story home and endpoint names changed.
 
 ## 1. Issue Summary
 

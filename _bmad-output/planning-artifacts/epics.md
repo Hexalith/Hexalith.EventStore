@@ -797,6 +797,9 @@ So that releases are not blocked by cold-start sidecar flakiness while live-side
 **Then** it performs readiness retry and warm-up actor round trips
 **And** placement, activation, and Redis state paths are hot before assertions depend on them.
 
+> Companion: **Story 3.8** provides the local DAPR/Aspire generated-API smoke preflight
+> that classifies environment blockers before live-sidecar evidence is trusted.
+
 ### Story 3.2: Harden DAPR ETag Timeout For Integration Conditions
 
 **Requirements covered:** FR18
@@ -972,6 +975,36 @@ So that workflow policy is consistent, reproducible, and reviewable across Hexal
 **When** CI documentation and secrets checklists are updated
 **Then** `NUGET_API_KEY` remains documented until NuGet Trusted Publishing is configured
 **And** OIDC trusted publishing, attestations, SBOM, and related hardening work are tracked as follow-ups.
+
+### Story 3.8: Generated API DAPR/Aspire Smoke Preflight
+
+**Requirements covered:** none directly (retro-driven developer tooling; safeguards FR17 live-sidecar and FR34 integration-evidence quality). Companion to Story 3.1. Re-homed 2026-07-07 from the defunct TEST-1.1.
+
+As a developer validating generated API proofs,
+I want a local DAPR/Aspire smoke preflight that reports environment readiness, sidecar state, and generated API endpoints,
+So that runtime blockers are classified support-safely before they are accepted as evidence against generated REST behavior.
+
+**Acceptance Criteria:**
+
+**Given** a developer is about to record an "Aspire smoke blocked" note or treat a generated-API endpoint failure as a product defect
+**When** the preflight runs read-only by default
+**Then** it classifies environment prerequisites (Docker, Aspire CLI, DAPR CLI/runtime, `daprd`/`placement`/`scheduler`, placement/scheduler reachability) as `blocked` separately from generated-API product failures
+**And** starting placement, scheduler, or Aspire requires an explicit flag.
+
+**Given** a live local topology is running
+**When** the preflight discovers resources via `aspire describe`
+**Then** it reports the generated Sample API host (`Hexalith.EventStore.Sample.Api`), EventStore, Redis/statestore, and their DAPR sidecars, with Tenants (`Hexalith.Tenants.Api`) reported only when present (`not-applicable` otherwise)
+**And** it prefers HTTP endpoints for local VM smoke calls.
+
+**Given** the optional Sample generated-API smoke is requested
+**When** it exercises the generated command and query endpoints
+**Then** it verifies accepted-command and ETag/`304` behavior plus persisted/read-model end-state where available, never relying on status codes alone
+**And** all output is support-safe (no tokens, JWTs, connection strings, private addresses, raw payloads, or stack traces).
+
+**Given** the preflight completes
+**When** it reports its result
+**Then** it emits generated API endpoints, DAPR sidecar readiness, placement/scheduler readiness, and support-safe failure details (Epic 2 retro item 4 completion gate)
+**And** it exits with distinct status categories for success, blocked environment, topology-not-running, generated-API failure, and state-evidence failure.
 
 ## Epic 4: Event Correctness And Recovery
 
