@@ -1,3 +1,13 @@
+## [3.43.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.43.0...v3.43.1) (2026-07-07)
+
+
+### Bug Fixes
+
+* Add integration tests and shell validation for generated API smoke preflight ([47b255b](https://github.com/Hexalith/Hexalith.EventStore/commit/47b255b6019aaf375a23a7c5904bf906b2c9e8a5))
+* apdate builds ([963402c](https://github.com/Hexalith/Hexalith.EventStore/commit/963402c5ae09cb34f3dff560d2373d44f320a4a2))
+* remove generated API smoke preflight documentation ([e4cc7d7](https://github.com/Hexalith/Hexalith.EventStore/commit/e4cc7d782d8fba9d7a8b738e9bfe2233782a4d04))
+* Update status to review for generated API DAPR/Aspire smoke preflight and resolve deferred work entry ([fc0f1de](https://github.com/Hexalith/Hexalith.EventStore/commit/fc0f1de8bd3ed30a2b949d04eea56bde9b49e645))
+
 # [3.43.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.42.0...v3.43.0) (2026-07-07)
 
 
