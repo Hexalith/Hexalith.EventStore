@@ -11,6 +11,8 @@ namespace Hexalith.EventStore.Aspire;
 /// configured DAPR sidecar (Epic A4).
 /// </summary>
 public static class HexalithEventStoreDomainModuleExtensions {
+    private const string DaprAppHealthCheckPath = "/alive";
+
     /// <summary>
     /// Attaches a DAPR sidecar to a domain-module project so it can run on the Hexalith.EventStore platform.
     /// </summary>
@@ -57,6 +59,8 @@ public static class HexalithEventStoreDomainModuleExtensions {
 
         bool isolated = !string.IsNullOrWhiteSpace(isolatedDaprResourcesPath);
 
+        // DAPR app health gates service invocation/pub-sub traffic into the app. Use liveness here, not
+        // readiness, so sidecar-dependent readiness checks cannot feed back into DAPR traffic eligibility.
         return domainModule.AddAspireDaprDomainModule(new AspireDaprDomainModuleOptions(
             appId,
             isolated ? AspireDaprInfrastructureMode.Isolated : AspireDaprInfrastructureMode.Shared) {
@@ -64,7 +68,7 @@ public static class HexalithEventStoreDomainModuleExtensions {
             ResourcesPaths = isolated ? [isolatedDaprResourcesPath!] : [],
             SharedComponents = isolated ? null : new AspireDaprSharedComponents(eventStore.StateStore, eventStore.PubSub),
             EnableAppHealthCheck = true,
-            AppHealthCheckPath = "/ready",
+            AppHealthCheckPath = DaprAppHealthCheckPath,
             PlacementHostAddress = daprPlacementHostAddress,
             SchedulerHostAddress = daprSchedulerHostAddress,
         }).Project;

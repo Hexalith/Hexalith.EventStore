@@ -9,7 +9,7 @@ using Hexalith.EventStore.Aspire;
 
 public class DomainModuleAspireExtensionTests {
     [Fact]
-    public void AddEventStoreDomainModule_WhenShared_EnablesReadyAppHealthAndReferencesSharedComponents() {
+    public void AddEventStoreDomainModule_WhenShared_EnablesAliveAppHealthAndReferencesSharedComponents() {
         IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder();
         HexalithEventStoreResources eventStoreResources = CreateEventStoreResources(builder);
         IResourceBuilder<ProjectResource> domainModule = builder.AddProject<EventStoreProjectMetadata>("shared-domain");
@@ -19,12 +19,12 @@ public class DomainModuleAspireExtensionTests {
         IDaprSidecarResource sidecar = GetSidecar(domainModule);
         DaprSidecarOptions options = GetOptions(sidecar);
         options.EnableAppHealthCheck.ShouldBe(true);
-        options.AppHealthCheckPath.ShouldBe("/ready");
+        options.AppHealthCheckPath.ShouldBe("/alive");
         GetReferencedComponentNames(sidecar).ShouldBe(["pubsub", "statestore"]);
     }
 
     [Fact]
-    public void AddEventStoreDomainModule_WhenIsolated_EnablesReadyAppHealthWithoutSharedComponents() {
+    public void AddEventStoreDomainModule_WhenIsolated_EnablesAliveAppHealthWithoutSharedComponents() {
         IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder();
         HexalithEventStoreResources eventStoreResources = CreateEventStoreResources(builder);
         IResourceBuilder<ProjectResource> domainModule = builder.AddProject<EventStoreProjectMetadata>("isolated-domain");
@@ -38,9 +38,32 @@ public class DomainModuleAspireExtensionTests {
         IDaprSidecarResource sidecar = GetSidecar(domainModule);
         DaprSidecarOptions options = GetOptions(sidecar);
         options.EnableAppHealthCheck.ShouldBe(true);
-        options.AppHealthCheckPath.ShouldBe("/ready");
+        options.AppHealthCheckPath.ShouldBe("/alive");
         options.ResourcesPaths.ShouldContain(IsolatedResourcesPath);
         GetReferencedComponentNames(sidecar).ShouldBe([]);
+    }
+
+    [Theory]
+    [InlineData("/ready")]
+    [InlineData("/custom-health")]
+    public void AddAspireDaprDomainModule_WhenAppHealthPathIsExplicit_PreservesPath(string appHealthPath) {
+        IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder();
+        HexalithEventStoreResources eventStoreResources = CreateEventStoreResources(builder);
+        IResourceBuilder<ProjectResource> domainModule = builder.AddProject<EventStoreProjectMetadata>("explicit-domain");
+
+        _ = domainModule.AddAspireDaprDomainModule(new AspireDaprDomainModuleOptions(
+            "explicit-domain",
+            AspireDaprInfrastructureMode.Shared) {
+            SharedComponents = new AspireDaprSharedComponents(eventStoreResources.StateStore, eventStoreResources.PubSub),
+            EnableAppHealthCheck = true,
+            AppHealthCheckPath = appHealthPath,
+        });
+
+        IDaprSidecarResource sidecar = GetSidecar(domainModule);
+        DaprSidecarOptions options = GetOptions(sidecar);
+        options.EnableAppHealthCheck.ShouldBe(true);
+        options.AppHealthCheckPath.ShouldBe(appHealthPath);
+        GetReferencedComponentNames(sidecar).ShouldBe(["pubsub", "statestore"]);
     }
 
     private static HexalithEventStoreResources CreateEventStoreResources(IDistributedApplicationBuilder builder) {
@@ -51,8 +74,11 @@ public class DomainModuleAspireExtensionTests {
     }
 
     private static IDaprSidecarResource GetSidecar(IResourceBuilder<ProjectResource> project) {
-        project.Resource.TryGetLastAnnotation<DaprSidecarAnnotation>(out DaprSidecarAnnotation? annotation).ShouldBeTrue();
-        return annotation!.Sidecar;
+        project.Resource.TryGetAnnotationsOfType<DaprSidecarAnnotation>(out IEnumerable<DaprSidecarAnnotation>? annotations)
+            .ShouldBeTrue();
+        DaprSidecarAnnotation[] sidecarAnnotations = annotations!.ToArray();
+        sidecarAnnotations.Length.ShouldBe(1);
+        return sidecarAnnotations[0].Sidecar;
     }
 
     private static DaprSidecarOptions GetOptions(IDaprSidecarResource sidecar) {
