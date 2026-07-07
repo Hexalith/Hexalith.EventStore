@@ -1,4 +1,6 @@
 
+using System.Collections.ObjectModel;
+
 using Dapr;
 using Dapr.Actors;
 using Dapr.Actors.Client;
@@ -23,6 +25,9 @@ public partial class ProjectionNotificationController(
     IActorProxyFactory actorProxyFactory,
     IProjectionChangedBroadcaster broadcaster,
     ILogger<ProjectionNotificationController> logger) : ControllerBase {
+    private static readonly IReadOnlyDictionary<string, string> EmptyMetadata =
+        new ReadOnlyDictionary<string, string>(new Dictionary<string, string>(StringComparer.Ordinal));
+
     /// <summary>
     /// Receives a projection change notification from DAPR pub/sub and triggers ETag regeneration.
     /// Returns non-200 on actor failure to trigger DAPR retry (CM-1).
@@ -56,9 +61,21 @@ public partial class ProjectionNotificationController(
 
             // Broadcast to SignalR clients (fail-open — ADR-18.5a)
             try {
-                await broadcaster.BroadcastChangedAsync(
-                    notification.ProjectionType, notification.TenantId, cancellationToken)
-                    .ConfigureAwait(false);
+                if (HasDetail(notification)) {
+                    var detail = new ProjectionChangedDetail(
+                        notification.ProjectionType,
+                        notification.TenantId,
+                        string.IsNullOrWhiteSpace(notification.GroupScope) ? null : notification.GroupScope,
+                        notification.Metadata ?? EmptyMetadata);
+
+                    await broadcaster.BroadcastChangedAsync(detail, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                else {
+                    await broadcaster.BroadcastChangedAsync(
+                        notification.ProjectionType, notification.TenantId, cancellationToken)
+                        .ConfigureAwait(false);
+                }
             }
             catch (Exception ex) {
                 Log.BroadcastFailed(logger, notification.ProjectionType, notification.TenantId, ex.GetType().Name);
@@ -72,6 +89,10 @@ public partial class ProjectionNotificationController(
             return StatusCode(StatusCodes.Status500InternalServerError);
         }
     }
+
+    private static bool HasDetail(ProjectionChangedNotification notification)
+        => !string.IsNullOrWhiteSpace(notification.GroupScope)
+            || notification.Metadata is not null;
 
     private static partial class Log {
         [LoggerMessage(

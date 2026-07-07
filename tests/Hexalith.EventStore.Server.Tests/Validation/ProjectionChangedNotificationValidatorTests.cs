@@ -1,6 +1,9 @@
 
 using Hexalith.EventStore.Contracts.Projections;
+using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Validation;
+
+using Microsoft.Extensions.Options;
 
 using Shouldly;
 
@@ -21,6 +24,21 @@ public class ProjectionChangedNotificationValidatorTests {
     [Fact]
     public void ValidNotificationWithEntityId_Passes() {
         var notification = new ProjectionChangedNotification("order-list", "acme", "order-123");
+
+        FluentValidation.Results.ValidationResult result = _validator.Validate(notification);
+
+        result.IsValid.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void ValidNotificationWithScopeAndMetadata_Passes() {
+        var notification = new ProjectionChangedNotification(
+            "order-list",
+            "acme",
+            GroupScope: "order-123",
+            Metadata: new Dictionary<string, string>(StringComparer.Ordinal) {
+                ["freshness"] = "changed",
+            });
 
         FluentValidation.Results.ValidationResult result = _validator.Validate(notification);
 
@@ -97,5 +115,73 @@ public class ProjectionChangedNotificationValidatorTests {
         FluentValidation.Results.ValidationResult result = _validator.Validate(notification);
 
         result.IsValid.ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("order:123")]
+    public void InvalidGroupScope_Fails(string groupScope) {
+        var notification = new ProjectionChangedNotification("order-list", "acme", GroupScope: groupScope);
+
+        FluentValidation.Results.ValidationResult result = _validator.Validate(notification);
+
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(e => e.PropertyName == "GroupScope");
+    }
+
+    [Fact]
+    public void GroupScopeExceeds64Chars_Fails() {
+        string longScope = new('a', 65);
+        var notification = new ProjectionChangedNotification("order-list", "acme", GroupScope: longScope);
+
+        FluentValidation.Results.ValidationResult result = _validator.Validate(notification);
+
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(e => e.PropertyName == "GroupScope");
+    }
+
+    [Fact]
+    public void MetadataExceedsEntryLimit_Fails() {
+        Dictionary<string, string> metadata = Enumerable
+            .Range(0, 17)
+            .ToDictionary(i => $"k{i}", i => "v", StringComparer.Ordinal);
+        var notification = new ProjectionChangedNotification("order-list", "acme", Metadata: metadata);
+
+        FluentValidation.Results.ValidationResult result = _validator.Validate(notification);
+
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(e => e.PropertyName == "Metadata");
+    }
+
+    [Fact]
+    public void MetadataEntryLimit_UsesConfiguredProjectionChangeNotifierOptions() {
+        var validator = new ProjectionChangedNotificationValidator(Options.Create(new ProjectionChangeNotifierOptions {
+            MaxDetailMetadataEntries = 1,
+            MaxDetailMetadataBytes = 2_048,
+        }));
+        var metadata = new Dictionary<string, string>(StringComparer.Ordinal) {
+            ["a"] = "1",
+            ["b"] = "2",
+        };
+        var notification = new ProjectionChangedNotification("order-list", "acme", Metadata: metadata);
+
+        FluentValidation.Results.ValidationResult result = validator.Validate(notification);
+
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(e => e.PropertyName == "Metadata");
+    }
+
+    [Fact]
+    public void MetadataExceedsByteLimit_Fails() {
+        var metadata = new Dictionary<string, string>(StringComparer.Ordinal) {
+            ["too-large"] = new('x', 2_048),
+        };
+        var notification = new ProjectionChangedNotification("order-list", "acme", Metadata: metadata);
+
+        FluentValidation.Results.ValidationResult result = _validator.Validate(notification);
+
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(e => e.PropertyName == "Metadata");
     }
 }

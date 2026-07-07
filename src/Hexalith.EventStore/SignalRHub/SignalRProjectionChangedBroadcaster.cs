@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Text;
 
@@ -221,7 +222,7 @@ public partial class SignalRProjectionChangedBroadcaster : IProjectionChangedBro
     }
 
     private static readonly IReadOnlyDictionary<string, string> EmptyMetadata =
-        new Dictionary<string, string>(StringComparer.Ordinal);
+        new ReadOnlyDictionary<string, string>(new Dictionary<string, string>(StringComparer.Ordinal));
 
     private static partial class Log {
         [LoggerMessage(EventId = 1090, Level = LogLevel.Information,

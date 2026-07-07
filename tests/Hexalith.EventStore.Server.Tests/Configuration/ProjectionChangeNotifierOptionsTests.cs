@@ -15,6 +15,8 @@ public class ProjectionChangeNotifierOptionsTests {
 
         options.PubSubName.ShouldBe(ProjectionChangeNotifierOptions.DefaultPubSubName);
         options.Transport.ShouldBe(ProjectionChangeTransport.PubSub);
+        options.MaxDetailMetadataEntries.ShouldBe(ProjectionChangeNotifierOptions.DefaultMaxDetailMetadataEntries);
+        options.MaxDetailMetadataBytes.ShouldBe(ProjectionChangeNotifierOptions.DefaultMaxDetailMetadataBytes);
     }
 
     [Fact]
@@ -49,5 +51,45 @@ public class ProjectionChangeNotifierOptionsTests {
         ValidateOptionsResult result = _validator.Validate(null, options);
 
         result.Succeeded.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Validation_UndefinedTransport_Fails() {
+        var options = new ProjectionChangeNotifierOptions {
+            Transport = (ProjectionChangeTransport)999,
+        };
+
+        ValidateOptionsResult result = _validator.Validate(null, options);
+
+        result.Failed.ShouldBeTrue();
+        result.FailureMessage.ShouldContain("transport");
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Validation_InvalidMetadataEntryLimit_Fails(int maxEntries) {
+        var options = new ProjectionChangeNotifierOptions {
+            MaxDetailMetadataEntries = maxEntries,
+        };
+
+        ValidateOptionsResult result = _validator.Validate(null, options);
+
+        result.Failed.ShouldBeTrue();
+        result.FailureMessage.ShouldContain("MaxDetailMetadataEntries");
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Validation_InvalidMetadataByteLimit_Fails(int maxBytes) {
+        var options = new ProjectionChangeNotifierOptions {
+            MaxDetailMetadataBytes = maxBytes,
+        };
+
+        ValidateOptionsResult result = _validator.Validate(null, options);
+
+        result.Failed.ShouldBeTrue();
+        result.FailureMessage.ShouldContain("MaxDetailMetadataBytes");
     }
 }

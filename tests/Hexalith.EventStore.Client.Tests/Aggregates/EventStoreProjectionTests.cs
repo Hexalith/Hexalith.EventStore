@@ -365,5 +365,15 @@ public class EventStoreProjectionTests : IDisposable {
             LastEntityId = entityId;
             return Task.CompletedTask;
         }
+
+        public Task NotifyProjectionChangedAsync(
+            ProjectionChangedDetail detail,
+            CancellationToken cancellationToken = default) {
+            CallCount++;
+            LastProjectionType = detail.ProjectionType;
+            LastTenantId = detail.TenantId;
+            LastEntityId = null;
+            return Task.CompletedTask;
+        }
     }
 }

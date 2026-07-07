@@ -151,3 +151,7 @@ source_spec: `spec-2-3-sample-external-api-host-proof.md`
 severity: low
 reason: Review budget (3 cycles) was exhausted with the story finalized (status: done, verify green) while the review pass kept recommending an independent follow-up. The work was committed by bmad-loop run 20260707-112402-3779; this entry preserves the lingering follow-up recommendation for a deliberate later review.
 status: open
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-5-scoped-metadata-rich-projection-notifications.md`
+  summary: Raw SignalR hub leave calls do not validate projection type or tenant id before building and removing malformed group names.
+  evidence: `ProjectionChangedHub.LeaveGroupCoreAsync` validates scoped suffixes added by Story 2.5 but still lacks the projection/tenant null, blank, and colon guards that `JoinGroupCoreAsync` applies; malformed raw `LeaveGroup` or `LeaveGroupScoped` calls can reach `RemoveFromGroupAsync` and debug logs with invalid group names. The leave path and its projection/tenant validation gap pre-date this story, while the scoped-suffix validation was the only changed behavior here.

@@ -276,6 +276,212 @@ public class EventStoreSignalRClientTests {
     }
 
     [Fact]
+    public async Task SubscribeDetailAsync_WithScopedGroup_InvokesMatchingDetailCallback() {
+        var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
+        var sut = new EventStoreSignalRClient(options);
+        try {
+            ProjectionChangedDetail? received = null;
+            var metadata = new Dictionary<string, string>(StringComparer.Ordinal) {
+                ["freshness"] = "changed",
+            };
+
+            await sut.SubscribeDetailAsync("counter", "acme", "counter-1", detail => received = detail).ConfigureAwait(true);
+
+            InvokeProjectionChangedDetail(sut, "counter", "acme", "counter-1", metadata);
+
+            _ = received.ShouldNotBeNull();
+            received.ProjectionType.ShouldBe("counter");
+            received.TenantId.ShouldBe("acme");
+            received.GroupScope.ShouldBe("counter-1");
+            received.Metadata.ShouldNotBeSameAs(metadata);
+            received.Metadata["freshness"].ShouldBe("changed");
+        }
+        finally {
+            await sut.DisposeAsync().ConfigureAwait(true);
+        }
+    }
+
+    [Fact]
+    public async Task SubscribeDetailAsync_NullScope_FallsBackToTenantWideDetailGroup() {
+        var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
+        var sut = new EventStoreSignalRClient(options);
+        try {
+            int callbackCount = 0;
+
+            await sut.SubscribeDetailAsync("counter", "acme", null, _ => callbackCount++).ConfigureAwait(true);
+
+            InvokeProjectionChangedDetail(
+                sut,
+                "counter",
+                "acme",
+                null,
+                new Dictionary<string, string>(StringComparer.Ordinal));
+
+            callbackCount.ShouldBe(1);
+        }
+        finally {
+            await sut.DisposeAsync().ConfigureAwait(true);
+        }
+    }
+
+    [Fact]
+    public async Task OnProjectionChangedDetail_WithWrongScope_DoesNotLogReceiptOrInvokeCallbacks() {
+        var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
+        var logEntries = new List<LogEntry>();
+        var sut = new EventStoreSignalRClient(options, new TestLogger<EventStoreSignalRClient>(logEntries));
+        try {
+            int callbackCount = 0;
+            await sut.SubscribeDetailAsync("counter", "acme", "counter-2", _ => callbackCount++).ConfigureAwait(true);
+
+            InvokeProjectionChangedDetail(
+                sut,
+                "counter",
+                "acme",
+                "counter-1",
+                new Dictionary<string, string>(StringComparer.Ordinal));
+
+            callbackCount.ShouldBe(0);
+            logEntries.ShouldBeEmpty();
+        }
+        finally {
+            await sut.DisposeAsync().ConfigureAwait(true);
+        }
+    }
+
+    [Fact]
+    public async Task UnsubscribeDetailAsync_CallbackOverload_RemovesOnlySpecifiedCallback() {
+        var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
+        var sut = new EventStoreSignalRClient(options);
+        try {
+            int callback1Count = 0;
+            int callback2Count = 0;
+
+            void callback1(ProjectionChangedDetail _) => callback1Count++;
+            void callback2(ProjectionChangedDetail _) => callback2Count++;
+
+            await sut.SubscribeDetailAsync("counter", "acme", "counter-1", callback1).ConfigureAwait(true);
+            await sut.SubscribeDetailAsync("counter", "acme", "counter-1", callback2).ConfigureAwait(true);
+            await sut.UnsubscribeDetailAsync("counter", "acme", "counter-1", callback1).ConfigureAwait(true);
+
+            InvokeProjectionChangedDetail(
+                sut,
+                "counter",
+                "acme",
+                "counter-1",
+                new Dictionary<string, string>(StringComparer.Ordinal));
+
+            callback1Count.ShouldBe(0);
+            callback2Count.ShouldBe(1);
+        }
+        finally {
+            await sut.DisposeAsync().ConfigureAwait(true);
+        }
+    }
+
+    [Fact]
+    public async Task SubscribeDetailAsync_ScopeContainsColon_ThrowsArgumentException() {
+        var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
+        var sut = new EventStoreSignalRClient(options);
+        try {
+            _ = await Should.ThrowAsync<ArgumentException>(() =>
+                sut.SubscribeDetailAsync("counter", "acme", "counter:1", _ => { })).ConfigureAwait(true);
+        }
+        finally {
+            await sut.DisposeAsync().ConfigureAwait(true);
+        }
+    }
+
+    [Fact]
+    public async Task SubscribeDetailAsync_ScopeExceeds64Characters_ThrowsArgumentException() {
+        var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
+        var sut = new EventStoreSignalRClient(options);
+        try {
+            _ = await Should.ThrowAsync<ArgumentException>(() =>
+                sut.SubscribeDetailAsync("counter", "acme", new string('a', 65), _ => { })).ConfigureAwait(true);
+        }
+        finally {
+            await sut.DisposeAsync().ConfigureAwait(true);
+        }
+    }
+
+    [Fact]
+    public async Task OnReconnectedAsync_WithScopedDetailSubscription_PreservesCallbackDispatch() {
+        var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
+        var sut = new EventStoreSignalRClient(options);
+        try {
+            int callbackCount = 0;
+            await sut.SubscribeDetailAsync("counter", "acme", "counter-1", _ => callbackCount++).ConfigureAwait(true);
+
+            await InvokeOnReconnectedAsync(sut, "new-connection-id").ConfigureAwait(true);
+            InvokeProjectionChangedDetail(
+                sut,
+                "counter",
+                "acme",
+                "counter-1",
+                new Dictionary<string, string>(StringComparer.Ordinal));
+
+            callbackCount.ShouldBe(1);
+        }
+        finally {
+            await sut.DisposeAsync().ConfigureAwait(true);
+        }
+    }
+
+    [Fact]
+    public async Task OnProjectionChangedDetail_CopiesMetadataBeforeCallbacks() {
+        var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
+        var sut = new EventStoreSignalRClient(options);
+        try {
+            ProjectionChangedDetail? received = null;
+            var metadata = new Dictionary<string, string>(StringComparer.Ordinal) {
+                ["freshness"] = "changed",
+            };
+            await sut.SubscribeDetailAsync("counter", "acme", "counter-1", detail => received = detail).ConfigureAwait(true);
+
+            InvokeProjectionChangedDetail(sut, "counter", "acme", "counter-1", metadata);
+            metadata["freshness"] = "mutated";
+
+            _ = received.ShouldNotBeNull();
+            received.Metadata.ShouldNotBeSameAs(metadata);
+            received.Metadata["freshness"].ShouldBe("changed");
+            if (received.Metadata is IDictionary<string, string> mutableMetadata) {
+                _ = Should.Throw<NotSupportedException>(() => mutableMetadata["freshness"] = "callback-mutation");
+            }
+        }
+        finally {
+            await sut.DisposeAsync().ConfigureAwait(true);
+        }
+    }
+
+    [Fact]
+    public async Task OnProjectionChangedDetail_DoesNotLogMetadataValuesAboveDebug() {
+        var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
+        var logEntries = new List<LogEntry>();
+        var sut = new EventStoreSignalRClient(options, new TestLogger<EventStoreSignalRClient>(logEntries));
+        try {
+            const string secretValue = "secret-value-that-must-not-appear";
+            await sut.SubscribeDetailAsync("counter", "acme", "counter-1", _ => { }).ConfigureAwait(true);
+
+            InvokeProjectionChangedDetail(
+                sut,
+                "counter",
+                "acme",
+                "counter-1",
+                new Dictionary<string, string>(StringComparer.Ordinal) {
+                    ["support-safe-key"] = secretValue,
+                });
+
+            LogEntry receipt = logEntries.Single(e => e.EventId.Id == 2091);
+            receipt.Level.ShouldBe(LogLevel.Information);
+            receipt.Message.ShouldContain("MetadataCount: 1");
+            receipt.Message.ShouldNotContain(secretValue);
+        }
+        finally {
+            await sut.DisposeAsync().ConfigureAwait(true);
+        }
+    }
+
+    [Fact]
     public async Task UnsubscribeAsync_CallbackOverload_RemovesOnlySpecifiedCallback() {
         var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
         var sut = new EventStoreSignalRClient(options);
@@ -590,6 +796,19 @@ public class EventStoreSignalRClientTests {
             ?? throw new InvalidOperationException("OnProjectionChanged method not found.");
 
         _ = method.Invoke(client, [projectionType, tenantId]);
+    }
+
+    private static void InvokeProjectionChangedDetail(
+        EventStoreSignalRClient client,
+        string projectionType,
+        string tenantId,
+        string? groupScope,
+        IReadOnlyDictionary<string, string> metadata) {
+        MethodInfo method = typeof(EventStoreSignalRClient)
+            .GetMethod("OnProjectionChangedDetail", BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("OnProjectionChangedDetail method not found.");
+
+        _ = method.Invoke(client, [projectionType, tenantId, groupScope, metadata]);
     }
 
     private static async Task InvokeOnReconnectedAsync(EventStoreSignalRClient client, string? connectionId) {

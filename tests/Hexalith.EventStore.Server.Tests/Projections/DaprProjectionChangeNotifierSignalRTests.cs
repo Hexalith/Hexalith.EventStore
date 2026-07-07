@@ -96,6 +96,61 @@ public class DaprProjectionChangeNotifierSignalRTests {
     }
 
     [Fact]
+    public async Task NotifyProjectionChangedAsync_DetailDirectTransport_RegenerateCompletesBeforeBroadcast() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
+        IETagActor actor = Substitute.For<IETagActor>();
+        IProjectionChangedBroadcaster broadcaster = Substitute.For<IProjectionChangedBroadcaster>();
+        ILogger<DaprProjectionChangeNotifier> logger = Substitute.For<ILogger<DaprProjectionChangeNotifier>>();
+        IOptions<ProjectionChangeNotifierOptions> options = Options.Create(
+            new ProjectionChangeNotifierOptions { Transport = ProjectionChangeTransport.Direct });
+        var sut = new DaprProjectionChangeNotifier(daprClient, actorProxyFactory, broadcaster, options, logger);
+        var detail = new ProjectionChangedDetail(
+            "order-list",
+            "acme",
+            "conv-1",
+            new Dictionary<string, string>(StringComparer.Ordinal));
+
+        _ = actorProxyFactory.CreateActorProxy<IETagActor>(Arg.Any<ActorId>(), Arg.Is(ETagActor.ETagActorTypeName))
+            .Returns(actor);
+
+        await sut.NotifyProjectionChangedAsync(detail).ConfigureAwait(true);
+
+        Received.InOrder(() => {
+            _ = actor.RegenerateAsync();
+            _ = broadcaster.BroadcastChangedAsync(
+                Arg.Is<ProjectionChangedDetail>(d => d.GroupScope == "conv-1"),
+                Arg.Any<CancellationToken>());
+        });
+    }
+
+    [Fact]
+    public async Task NotifyProjectionChangedAsync_DetailDirectTransport_BroadcasterFailure_StillSucceeds() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
+        IETagActor actor = Substitute.For<IETagActor>();
+        IProjectionChangedBroadcaster broadcaster = Substitute.For<IProjectionChangedBroadcaster>();
+        ILogger<DaprProjectionChangeNotifier> logger = Substitute.For<ILogger<DaprProjectionChangeNotifier>>();
+        IOptions<ProjectionChangeNotifierOptions> options = Options.Create(
+            new ProjectionChangeNotifierOptions { Transport = ProjectionChangeTransport.Direct });
+        var sut = new DaprProjectionChangeNotifier(daprClient, actorProxyFactory, broadcaster, options, logger);
+        var detail = new ProjectionChangedDetail(
+            "order-list",
+            "acme",
+            "conv-1",
+            new Dictionary<string, string>(StringComparer.Ordinal));
+
+        _ = actorProxyFactory.CreateActorProxy<IETagActor>(Arg.Any<ActorId>(), Arg.Is(ETagActor.ETagActorTypeName))
+            .Returns(actor);
+
+        _ = broadcaster.BroadcastChangedAsync(Arg.Any<ProjectionChangedDetail>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("SignalR down"));
+
+        await Should.NotThrowAsync(() =>
+            sut.NotifyProjectionChangedAsync(detail)).ConfigureAwait(true);
+    }
+
+    [Fact]
     public async Task NotifyProjectionChangedAsync_DirectTransport_WithNoOpBroadcaster_RegeneratesETagSuccessfully() {
         // Simulates disabled-state: NoOpProjectionChangedBroadcaster is injected (as when SignalR Enabled=false)
         DaprClient daprClient = Substitute.For<DaprClient>();

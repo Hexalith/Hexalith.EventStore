@@ -8,6 +8,7 @@ using Dapr.Actors;
 using Dapr.Actors.Client;
 using Dapr.Actors.Runtime;
 
+using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Configuration;
@@ -19,6 +20,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -84,6 +86,123 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
     [Fact]
     [Trait("Category", "Integration")]
     [Trait("Tier", "2")]
+    public async Task CrossProcessPath_WithDetail_RegeneratesBeforeDetailBroadcast() {
+        // Arrange
+        var metadata = new Dictionary<string, string>(StringComparer.Ordinal) {
+            ["freshness"] = "changed",
+        };
+        var notification = new ProjectionChangedNotification(
+            "order-list",
+            "acme",
+            GroupScope: "order-123",
+            Metadata: metadata);
+        _factory.Broadcaster
+            .When(x => x.BroadcastChangedAsync(Arg.Any<ProjectionChangedDetail>(), Arg.Any<CancellationToken>()))
+            .Do(_ => _factory.FakeETagActor.RegenerateCount.ShouldBe(1));
+
+        // Act
+        HttpResponseMessage response = await _client.PostAsJsonAsync(
+            "/projections/changed", notification).ConfigureAwait(true);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        _factory.FakeETagActor.RegenerateCount.ShouldBe(1);
+        await _factory.Broadcaster.Received(1).BroadcastChangedAsync(
+            Arg.Is<ProjectionChangedDetail>(d =>
+                d.ProjectionType == "order-list"
+                && d.TenantId == "acme"
+                && d.GroupScope == "order-123"
+                && d.Metadata.Count == 1
+                && d.Metadata["freshness"] == "changed"),
+            Arg.Any<CancellationToken>()).ConfigureAwait(true);
+        await _factory.Broadcaster.DidNotReceiveWithAnyArgs()
+            .BroadcastChangedAsync(default!, default!, default).ConfigureAwait(true);
+    }
+
+    [Fact]
+    [Trait("Category", "Integration")]
+    [Trait("Tier", "2")]
+    public async Task CrossProcessPath_WithTenantWideEmptyDetail_BroadcastsDetail() {
+        // Arrange
+        var notification = new ProjectionChangedNotification(
+            "order-list",
+            "acme",
+            Metadata: new Dictionary<string, string>(StringComparer.Ordinal));
+
+        // Act
+        HttpResponseMessage response = await _client.PostAsJsonAsync(
+            "/projections/changed", notification).ConfigureAwait(true);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        _factory.FakeETagActor.RegenerateCount.ShouldBe(1);
+        await _factory.Broadcaster.Received(1).BroadcastChangedAsync(
+            Arg.Is<ProjectionChangedDetail>(d =>
+                d.ProjectionType == "order-list"
+                && d.TenantId == "acme"
+                && d.GroupScope == null
+                && d.Metadata.Count == 0),
+            Arg.Any<CancellationToken>()).ConfigureAwait(true);
+        await _factory.Broadcaster.DidNotReceiveWithAnyArgs()
+            .BroadcastChangedAsync(default!, default!, default).ConfigureAwait(true);
+    }
+
+    [Fact]
+    [Trait("Category", "Integration")]
+    [Trait("Tier", "2")]
+    public async Task CrossProcessPath_DetailInvalidScope_ReturnsBadRequestWithoutActorOrBroadcast() {
+        // Arrange
+        var notification = new ProjectionChangedNotification(
+            "order-list",
+            "acme",
+            GroupScope: "order:123",
+            Metadata: new Dictionary<string, string>(StringComparer.Ordinal) {
+                ["freshness"] = "changed",
+            });
+
+        // Act
+        HttpResponseMessage response = await _client.PostAsJsonAsync(
+            "/projections/changed", notification).ConfigureAwait(true);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        _factory.FakeETagActor.RegenerateCount.ShouldBe(0);
+        await _factory.Broadcaster.DidNotReceiveWithAnyArgs()
+            .BroadcastChangedAsync(default(ProjectionChangedDetail)!, default).ConfigureAwait(true);
+        await _factory.Broadcaster.DidNotReceiveWithAnyArgs()
+            .BroadcastChangedAsync(default!, default!, default).ConfigureAwait(true);
+    }
+
+    [Fact]
+    [Trait("Category", "Integration")]
+    [Trait("Tier", "2")]
+    public async Task CrossProcessPath_DetailMetadataExceedsEntryLimit_ReturnsBadRequestWithoutActorOrBroadcast() {
+        // Arrange
+        Dictionary<string, string> metadata = Enumerable
+            .Range(0, 17)
+            .ToDictionary(i => $"k{i}", i => "v", StringComparer.Ordinal);
+        var notification = new ProjectionChangedNotification(
+            "order-list",
+            "acme",
+            GroupScope: "order-123",
+            Metadata: metadata);
+
+        // Act
+        HttpResponseMessage response = await _client.PostAsJsonAsync(
+            "/projections/changed", notification).ConfigureAwait(true);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        _factory.FakeETagActor.RegenerateCount.ShouldBe(0);
+        await _factory.Broadcaster.DidNotReceiveWithAnyArgs()
+            .BroadcastChangedAsync(default(ProjectionChangedDetail)!, default).ConfigureAwait(true);
+        await _factory.Broadcaster.DidNotReceiveWithAnyArgs()
+            .BroadcastChangedAsync(default!, default!, default).ConfigureAwait(true);
+    }
+
+    [Fact]
+    [Trait("Category", "Integration")]
+    [Trait("Tier", "2")]
     public async Task CrossProcessPath_ActorFailure_ReturnsNon200ForDaprRetry() {
         // Arrange
         _factory.FakeETagActor.ConfiguredException = new InvalidOperationException("actor failure");
@@ -95,6 +214,32 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
 
         // Assert — CM-1: non-200 triggers DAPR retry
         response.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
+    }
+
+    [Fact]
+    [Trait("Category", "Integration")]
+    [Trait("Tier", "2")]
+    public async Task CrossProcessPath_DetailActorFailure_DoesNotBroadcast() {
+        // Arrange
+        _factory.FakeETagActor.ConfiguredException = new InvalidOperationException("actor failure");
+        var notification = new ProjectionChangedNotification(
+            "order-list",
+            "acme",
+            GroupScope: "order-123",
+            Metadata: new Dictionary<string, string>(StringComparer.Ordinal) {
+                ["freshness"] = "changed",
+            });
+
+        // Act
+        HttpResponseMessage response = await _client.PostAsJsonAsync(
+            "/projections/changed", notification).ConfigureAwait(true);
+
+        // Assert — CM-1: non-200 triggers DAPR retry and no SignalR broadcast is attempted
+        response.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
+        await _factory.Broadcaster.DidNotReceiveWithAnyArgs()
+            .BroadcastChangedAsync(default(ProjectionChangedDetail)!, default).ConfigureAwait(true);
+        await _factory.Broadcaster.DidNotReceiveWithAnyArgs()
+            .BroadcastChangedAsync(default!, default!, default).ConfigureAwait(true);
     }
 
     [Fact]
@@ -347,20 +492,21 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
     public class ETagTestFactory : WebApplicationFactory<EventStoreProgram> {
         public FakeETagActor FakeETagActor { get; } = new();
         public IActorProxyFactory MockProxyFactory { get; } = Substitute.For<IActorProxyFactory>();
+        public IProjectionChangedBroadcaster Broadcaster { get; } = Substitute.For<IProjectionChangedBroadcaster>();
 
-        public void ResetActors() => FakeETagActor.Reset();
+        public void ResetActors() {
+            FakeETagActor.Reset();
+            Broadcaster.ClearReceivedCalls();
+        }
 
         protected override void ConfigureWebHost(IWebHostBuilder builder) {
             ArgumentNullException.ThrowIfNull(builder);
             _ = builder.UseEnvironment("Development");
 
             _ = builder.ConfigureTestServices(services => {
-                // Remove existing IActorProxyFactory and replace with mock
-                ServiceDescriptor? existingFactory = services.FirstOrDefault(
-                    d => d.ServiceType == typeof(IActorProxyFactory));
-                if (existingFactory is not null) {
-                    _ = services.Remove(existingFactory);
-                }
+                // Remove existing registrations and replace with mocks.
+                services.RemoveAll<IActorProxyFactory>();
+                services.RemoveAll<IProjectionChangedBroadcaster>();
 
                 // Configure mock to return fake ETag actor for any actor ID
                 _ = MockProxyFactory
@@ -373,6 +519,7 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
                             Transport = ProjectionChangeTransport.Direct,
                         }));
                 _ = services.AddSingleton(MockProxyFactory);
+                _ = services.AddSingleton(Broadcaster);
             });
         }
     }

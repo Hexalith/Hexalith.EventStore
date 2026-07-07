@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading.Channels;
 
 using Hexalith.EventStore.IntegrationTests.Helpers;
+using Hexalith.EventStore.SignalR;
 
 using Microsoft.AspNetCore.SignalR.Client;
 
@@ -55,20 +56,49 @@ public sealed class SignalRRedisBackplaneRuntimeProofTests {
             identityB.SignalREnabled.ShouldBeTrue();
             identityA.BackplaneRedisConnectionString.ShouldBe(RedisEndpoint);
             identityB.BackplaneRedisConnectionString.ShouldBe(RedisEndpoint);
+            HttpStatusCode malformedMetadataStatus = await instanceA
+                .BroadcastMalformedMetadataAsync(projectionType, tenantId)
+                .ConfigureAwait(true);
+            malformedMetadataStatus.ShouldBe(HttpStatusCode.BadRequest);
+            HttpStatusCode overlongScopeStatus = await instanceA
+                .BroadcastDetailStatusAsync(
+                    projectionType,
+                    tenantId,
+                    new string('a', 65),
+                    new Dictionary<string, string>(StringComparer.Ordinal))
+                .ConfigureAwait(true);
+            overlongScopeStatus.ShouldBe(HttpStatusCode.BadRequest);
 
             Uri instanceBHubUrl = new(instanceB.BaseUrl, "hubs/projection-changes");
             evidence.Topology = $"A={identityA.InstanceName} {instanceA.BaseUrl} pid={identityA.ProcessId}; B={identityB.InstanceName} {instanceB.BaseUrl} pid={identityB.ProcessId}; Redis={RedisEndpoint}";
 
             var received = Channel.CreateUnbounded<ReceivedSignal>();
+            var detailReceived = Channel.CreateUnbounded<ReceivedDetailSignal>();
+            var reusableClientDetailReceived = Channel.CreateUnbounded<ProjectionChangedDetail>();
             string accessToken = CreateAccessToken(tenantId);
             await using HubConnection connection = new HubConnectionBuilder()
                 .WithUrl(instanceBHubUrl.ToString(), options => options.AccessTokenProvider = () => Task.FromResult<string?>(accessToken))
                 .Build();
+            await using var reusableClient = new EventStoreSignalRClient(
+                new EventStoreSignalRClientOptions {
+                    HubUrl = instanceBHubUrl.ToString(),
+                    AccessTokenProvider = () => Task.FromResult<string?>(accessToken),
+                });
             _ = connection.On<string, string>("ProjectionChanged", (actualProjectionType, actualTenantId) =>
                 received.Writer.TryWrite(new ReceivedSignal(actualProjectionType, actualTenantId, DateTimeOffset.UtcNow)));
+            _ = connection.On<string, string, string?, IReadOnlyDictionary<string, string>>(
+                "ProjectionChangedDetail",
+                (actualProjectionType, actualTenantId, actualGroupScope, actualMetadata) =>
+                    detailReceived.Writer.TryWrite(new ReceivedDetailSignal(
+                        actualProjectionType,
+                        actualTenantId,
+                        actualGroupScope,
+                        actualMetadata,
+                        DateTimeOffset.UtcNow)));
 
             await connection.StartAsync().ConfigureAwait(true);
             await connection.InvokeAsync("JoinGroup", projectionType, tenantId).ConfigureAwait(true);
+            await reusableClient.StartAsync().ConfigureAwait(true);
 
             bool staleMessageReceived = await TryReadSignalAsync(received.Reader, TimeSpan.FromMilliseconds(750)).ConfigureAwait(true) is not null;
             staleMessageReceived.ShouldBeFalse("the client receive buffer must be empty before the instance-A trigger.");
@@ -84,6 +114,84 @@ public sealed class SignalRRedisBackplaneRuntimeProofTests {
             identityB.ProcessId.ShouldNotBe(broadcast.ProcessId);
 
             evidence.PositiveResult = $"Client target={instanceBHubUrl}; origin={identityA.InstanceName} pid={broadcast.ProcessId}; target={identityB.InstanceName} pid={identityB.ProcessId}; received ProjectionChanged({signal.ProjectionType}, {signal.TenantId}) at {signal.ReceivedAt:O} after {waitDuration.TotalMilliseconds:N0} ms.";
+
+            string groupScope = $"scope-{runId}";
+            string scopedGroupName = $"{projectionType}:{tenantId}:{groupScope}";
+            string reusableClientScope = $"client-{runId}";
+            string reusableClientGroupName = $"{projectionType}:{tenantId}:{reusableClientScope}";
+            var detailMetadata = new Dictionary<string, string>(StringComparer.Ordinal) {
+                ["freshness"] = "changed",
+            };
+            await reusableClient
+                .SubscribeDetailAsync(
+                    projectionType,
+                    tenantId,
+                    reusableClientScope,
+                    detail => reusableClientDetailReceived.Writer.TryWrite(detail))
+                .ConfigureAwait(true);
+            await connection.InvokeAsync("JoinGroupScoped", projectionType, tenantId, groupScope).ConfigureAwait(true);
+            RuntimeProofBroadcastResult reusableClientDetailBroadcast = await instanceA
+                .BroadcastDetailAsync(projectionType, tenantId, reusableClientScope, detailMetadata)
+                .ConfigureAwait(true);
+            ProjectionChangedDetail reusableClientDetailSignal = await WaitForReusableClientDetailSignalAsync(
+                reusableClientDetailReceived.Reader,
+                PositiveWait).ConfigureAwait(true);
+            RuntimeProofBroadcastResult detailBroadcast = await instanceA
+                .BroadcastDetailAsync(projectionType, tenantId, groupScope, detailMetadata)
+                .ConfigureAwait(true);
+            ReceivedDetailSignal detailSignal = await WaitForDetailSignalAsync(detailReceived.Reader, PositiveWait).ConfigureAwait(true);
+
+            reusableClientDetailSignal.ProjectionType.ShouldBe(projectionType);
+            reusableClientDetailSignal.TenantId.ShouldBe(tenantId);
+            reusableClientDetailSignal.GroupScope.ShouldBe(reusableClientScope);
+            reusableClientDetailSignal.Metadata["freshness"].ShouldBe("changed");
+            reusableClientDetailBroadcast.ProcessId.ShouldBe(identityA.ProcessId);
+            reusableClientDetailBroadcast.GroupName.ShouldBe(reusableClientGroupName);
+            reusableClientDetailBroadcast.GroupScope.ShouldBe(reusableClientScope);
+            reusableClientDetailBroadcast.MetadataCount.ShouldBe(1);
+            detailSignal.ProjectionType.ShouldBe(projectionType);
+            detailSignal.TenantId.ShouldBe(tenantId);
+            detailSignal.GroupScope.ShouldBe(groupScope);
+            detailSignal.Metadata["freshness"].ShouldBe("changed");
+            detailBroadcast.ProcessId.ShouldBe(identityA.ProcessId);
+            detailBroadcast.GroupName.ShouldBe(scopedGroupName);
+            detailBroadcast.GroupScope.ShouldBe(groupScope);
+            detailBroadcast.MetadataCount.ShouldBe(1);
+
+            evidence.PositiveResult += $" Reusable EventStoreSignalRClient scoped detail group={reusableClientGroupName}; received ProjectionChangedDetail({reusableClientDetailSignal.ProjectionType}, {reusableClientDetailSignal.TenantId}, {reusableClientDetailSignal.GroupScope}, metadata={reusableClientDetailSignal.Metadata.Count}). Scoped detail group={scopedGroupName}; received ProjectionChangedDetail({detailSignal.ProjectionType}, {detailSignal.TenantId}, {detailSignal.GroupScope}, metadata={detailSignal.Metadata.Count}) at {detailSignal.ReceivedAt:O}.";
+
+            Dictionary<string, string> oversizedMetadata = Enumerable
+                .Range(0, 17)
+                .ToDictionary(i => $"k{i:D2}", i => "v", StringComparer.Ordinal);
+            RuntimeProofBroadcastResult clippedDetailBroadcast = await instanceA
+                .BroadcastDetailAsync(projectionType, tenantId, groupScope, oversizedMetadata)
+                .ConfigureAwait(true);
+            ReceivedDetailSignal clippedDetailSignal = await WaitForDetailSignalAsync(detailReceived.Reader, PositiveWait).ConfigureAwait(true);
+
+            clippedDetailBroadcast.MetadataCount.ShouldBe(16);
+            clippedDetailSignal.GroupScope.ShouldBe(groupScope);
+            clippedDetailSignal.Metadata.Count.ShouldBe(16);
+
+            evidence.PositiveResult += $" Oversized detail metadata was clipped before proof result and delivery; reported metadata={clippedDetailBroadcast.MetadataCount}, received metadata={clippedDetailSignal.Metadata.Count}.";
+
+            RuntimeProofBroadcastResult emptyMetadataDetailBroadcast = await instanceA
+                .BroadcastDetailAsync(
+                    projectionType,
+                    tenantId,
+                    groupScope: null,
+                    new Dictionary<string, string>(StringComparer.Ordinal))
+                .ConfigureAwait(true);
+            ReceivedDetailSignal emptyMetadataDetailSignal = await WaitForDetailSignalAsync(detailReceived.Reader, PositiveWait).ConfigureAwait(true);
+
+            emptyMetadataDetailSignal.ProjectionType.ShouldBe(projectionType);
+            emptyMetadataDetailSignal.TenantId.ShouldBe(tenantId);
+            emptyMetadataDetailSignal.GroupScope.ShouldBeNull();
+            emptyMetadataDetailSignal.Metadata.Count.ShouldBe(0);
+            emptyMetadataDetailBroadcast.GroupName.ShouldBe(groupName);
+            emptyMetadataDetailBroadcast.GroupScope.ShouldBeNull();
+            emptyMetadataDetailBroadcast.MetadataCount.ShouldBe(0);
+
+            evidence.PositiveResult += $" Tenant-wide empty-metadata detail group={groupName}; received ProjectionChangedDetail({emptyMetadataDetailSignal.ProjectionType}, {emptyMetadataDetailSignal.TenantId}, <tenant-wide>, metadata={emptyMetadataDetailSignal.Metadata.Count}) at {emptyMetadataDetailSignal.ReceivedAt:O}.";
 
             await using EventStoreProofProcess disabledA = await EventStoreProofProcess.StartAsync(
                 "eventstore-control-a",
@@ -162,7 +270,41 @@ public sealed class SignalRRedisBackplaneRuntimeProofTests {
         return signal ?? throw new TimeoutException($"No ProjectionChanged signal received within {timeout}.");
     }
 
+    private static async Task<ReceivedDetailSignal> WaitForDetailSignalAsync(ChannelReader<ReceivedDetailSignal> reader, TimeSpan timeout) {
+        ReceivedDetailSignal? signal = await TryReadDetailSignalAsync(reader, timeout).ConfigureAwait(false);
+        return signal ?? throw new TimeoutException($"No ProjectionChangedDetail signal received within {timeout}.");
+    }
+
+    private static async Task<ProjectionChangedDetail> WaitForReusableClientDetailSignalAsync(
+        ChannelReader<ProjectionChangedDetail> reader,
+        TimeSpan timeout) {
+        ProjectionChangedDetail? signal = await TryReadReusableClientDetailSignalAsync(reader, timeout).ConfigureAwait(false);
+        return signal ?? throw new TimeoutException($"No reusable EventStoreSignalRClient detail signal received within {timeout}.");
+    }
+
     private static async Task<ReceivedSignal?> TryReadSignalAsync(ChannelReader<ReceivedSignal> reader, TimeSpan timeout) {
+        using var cts = new CancellationTokenSource(timeout);
+        try {
+            return await reader.ReadAsync(cts.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) {
+            return null;
+        }
+    }
+
+    private static async Task<ReceivedDetailSignal?> TryReadDetailSignalAsync(ChannelReader<ReceivedDetailSignal> reader, TimeSpan timeout) {
+        using var cts = new CancellationTokenSource(timeout);
+        try {
+            return await reader.ReadAsync(cts.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) {
+            return null;
+        }
+    }
+
+    private static async Task<ProjectionChangedDetail?> TryReadReusableClientDetailSignalAsync(
+        ChannelReader<ProjectionChangedDetail> reader,
+        TimeSpan timeout) {
         using var cts = new CancellationTokenSource(timeout);
         try {
             return await reader.ReadAsync(cts.Token).ConfigureAwait(false);
@@ -286,6 +428,50 @@ public sealed class SignalRRedisBackplaneRuntimeProofTests {
             return result ?? throw new InvalidOperationException($"{Name} returned an empty runtime-proof broadcast response.");
         }
 
+        public async Task<RuntimeProofBroadcastResult> BroadcastDetailAsync(
+            string projectionType,
+            string tenantId,
+            string? groupScope,
+            IReadOnlyDictionary<string, string> metadata) {
+            using HttpResponseMessage response = await _client
+                .PostAsJsonAsync(
+                    "/_test/signalr/runtime-proof/broadcast",
+                    new RuntimeProofBroadcastRequest(projectionType, tenantId, groupScope, metadata))
+                .ConfigureAwait(false);
+            _ = response.EnsureSuccessStatusCode();
+            RuntimeProofBroadcastResult? result = await response.Content
+                .ReadFromJsonAsync<RuntimeProofBroadcastResult>()
+                .ConfigureAwait(false);
+            return result ?? throw new InvalidOperationException($"{Name} returned an empty runtime-proof detail broadcast response.");
+        }
+
+        public async Task<HttpStatusCode> BroadcastDetailStatusAsync(
+            string projectionType,
+            string tenantId,
+            string? groupScope,
+            IReadOnlyDictionary<string, string> metadata) {
+            using HttpResponseMessage response = await _client
+                .PostAsJsonAsync(
+                    "/_test/signalr/runtime-proof/broadcast",
+                    new RuntimeProofBroadcastRequest(projectionType, tenantId, groupScope, metadata))
+                .ConfigureAwait(false);
+            return response.StatusCode;
+        }
+
+        public async Task<HttpStatusCode> BroadcastMalformedMetadataAsync(string projectionType, string tenantId) {
+            var request = new {
+                ProjectionType = projectionType,
+                TenantId = tenantId,
+                Metadata = new Dictionary<string, string?>(StringComparer.Ordinal) {
+                    ["malformed"] = null,
+                },
+            };
+            using HttpResponseMessage response = await _client
+                .PostAsJsonAsync("/_test/signalr/runtime-proof/broadcast", request)
+                .ConfigureAwait(false);
+            return response.StatusCode;
+        }
+
         public string SnapshotLogs() => ReadLogs();
 
         private static int GetFreeTcpPort() {
@@ -354,7 +540,18 @@ public sealed class SignalRRedisBackplaneRuntimeProofTests {
 
     private sealed record ReceivedSignal(string ProjectionType, string TenantId, DateTimeOffset ReceivedAt);
 
-    private sealed record RuntimeProofBroadcastRequest(string ProjectionType, string TenantId);
+    private sealed record ReceivedDetailSignal(
+        string ProjectionType,
+        string TenantId,
+        string? GroupScope,
+        IReadOnlyDictionary<string, string> Metadata,
+        DateTimeOffset ReceivedAt);
+
+    private sealed record RuntimeProofBroadcastRequest(
+        string ProjectionType,
+        string TenantId,
+        string? GroupScope = null,
+        IReadOnlyDictionary<string, string>? Metadata = null);
 
     private sealed record RuntimeProofIdentity(
         string InstanceName,
@@ -368,7 +565,9 @@ public sealed class SignalRRedisBackplaneRuntimeProofTests {
     private sealed record RuntimeProofBroadcastResult(
         string ProjectionType,
         string TenantId,
+        string? GroupScope,
         string GroupName,
+        int MetadataCount,
         int ProcessId,
         DateTimeOffset Timestamp);
 

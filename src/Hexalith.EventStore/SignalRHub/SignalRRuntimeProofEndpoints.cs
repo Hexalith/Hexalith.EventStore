@@ -1,4 +1,9 @@
+using System.Collections.ObjectModel;
+using System.Text;
+
 using Hexalith.EventStore.Client.Projections;
+
+using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.SignalRHub;
 
@@ -7,6 +12,10 @@ namespace Hexalith.EventStore.SignalRHub;
 /// </summary>
 public static class SignalRRuntimeProofEndpoints {
     private const string ConfigurationKey = "EventStore:SignalR:RuntimeProof:Enabled";
+    private const int MaxGroupScopeLength = 64;
+
+    private static readonly IReadOnlyDictionary<string, string> EmptyMetadata =
+        new ReadOnlyDictionary<string, string>(new Dictionary<string, string>(StringComparer.Ordinal));
 
     /// <summary>
     /// Maps test-only SignalR runtime proof endpoints when explicitly enabled in Development.
@@ -44,6 +53,7 @@ public static class SignalRRuntimeProofEndpoints {
             async (
                 SignalRRuntimeProofBroadcastRequest? request,
                 IProjectionChangedBroadcaster broadcaster,
+                IOptions<SignalROptions> options,
                 CancellationToken cancellationToken) => {
                     if (request is null) {
                         return Results.BadRequest("request body is required.");
@@ -59,14 +69,45 @@ public static class SignalRRuntimeProofEndpoints {
                         return Results.BadRequest("projectionType and tenantId must not contain colons.");
                     }
 
-                    await broadcaster
-                        .BroadcastChangedAsync(request.ProjectionType, request.TenantId, cancellationToken)
-                        .ConfigureAwait(false);
+                    string? groupScope = string.IsNullOrWhiteSpace(request.GroupScope) ? null : request.GroupScope;
+                    if (groupScope is not null && groupScope.Contains(':', StringComparison.Ordinal)) {
+                        return Results.BadRequest("groupScope must not contain colons.");
+                    }
+
+                    if (groupScope is not null && groupScope.Length > MaxGroupScopeLength) {
+                        return Results.BadRequest($"groupScope must not exceed {MaxGroupScopeLength} characters.");
+                    }
+
+                    if (request.Metadata?.Any(entry => entry.Key is null || entry.Value is null) == true) {
+                        return Results.BadRequest("metadata keys and values are required.");
+                    }
+
+                    IReadOnlyDictionary<string, string> metadata = BoundMetadata(request.Metadata, options.Value);
+                    bool hasDetail = groupScope is not null || request.Metadata is not null;
+                    string groupName = ProjectionChangedHub.BuildGroupName(request.ProjectionType, request.TenantId, groupScope);
+
+                    if (hasDetail) {
+                        var detail = new ProjectionChangedDetail(
+                            request.ProjectionType,
+                            request.TenantId,
+                            groupScope,
+                            metadata);
+
+                        await broadcaster.BroadcastChangedAsync(detail, cancellationToken)
+                            .ConfigureAwait(false);
+                    }
+                    else {
+                        await broadcaster
+                            .BroadcastChangedAsync(request.ProjectionType, request.TenantId, cancellationToken)
+                            .ConfigureAwait(false);
+                    }
 
                     return Results.Ok(new SignalRRuntimeProofBroadcastResult(
                         ProjectionType: request.ProjectionType,
                         TenantId: request.TenantId,
-                        GroupName: $"{request.ProjectionType}:{request.TenantId}",
+                        GroupScope: groupScope,
+                        GroupName: groupName,
+                        MetadataCount: metadata.Count,
                         ProcessId: Environment.ProcessId,
                         Timestamp: DateTimeOffset.UtcNow));
                 });
@@ -105,6 +146,33 @@ public static class SignalRRuntimeProofEndpoints {
 
         return string.Join(',', segments);
     }
+
+    private static IReadOnlyDictionary<string, string> BoundMetadata(
+        IReadOnlyDictionary<string, string>? metadata,
+        SignalROptions options) {
+        if (metadata is null || metadata.Count == 0) {
+            return EmptyMetadata;
+        }
+
+        var bounded = new Dictionary<string, string>(StringComparer.Ordinal);
+        int totalBytes = 0;
+
+        foreach (KeyValuePair<string, string> entry in metadata.OrderBy(e => e.Key, StringComparer.Ordinal)) {
+            if (bounded.Count >= options.MaxDetailMetadataEntries) {
+                break;
+            }
+
+            int entryBytes = Encoding.UTF8.GetByteCount(entry.Key) + Encoding.UTF8.GetByteCount(entry.Value);
+            if (totalBytes + entryBytes > options.MaxDetailMetadataBytes) {
+                break;
+            }
+
+            totalBytes += entryBytes;
+            bounded[entry.Key] = entry.Value;
+        }
+
+        return new ReadOnlyDictionary<string, string>(bounded);
+    }
 }
 
 /// <summary>
@@ -131,20 +199,29 @@ public sealed record SignalRRuntimeProofIdentity(
 /// </summary>
 /// <param name="ProjectionType">Projection type to broadcast.</param>
 /// <param name="TenantId">Tenant id to broadcast.</param>
-public sealed record SignalRRuntimeProofBroadcastRequest(string ProjectionType, string TenantId);
+/// <param name="GroupScope">Optional sub-tenant SignalR group scope.</param>
+/// <param name="Metadata">Optional opaque metadata for a detail broadcast.</param>
+public sealed record SignalRRuntimeProofBroadcastRequest(
+    string ProjectionType,
+    string TenantId,
+    string? GroupScope = null,
+    IReadOnlyDictionary<string, string>? Metadata = null);
 
 /// <summary>
 /// Broadcast result emitted by Development-only SignalR proof endpoints.
 /// </summary>
 /// <param name="ProjectionType">Projection type broadcast.</param>
 /// <param name="TenantId">Tenant id broadcast.</param>
+/// <param name="GroupScope">Optional sub-tenant SignalR group scope.</param>
 /// <param name="GroupName">SignalR group name.</param>
+/// <param name="MetadataCount">Number of metadata entries supplied to the broadcast.</param>
 /// <param name="ProcessId">Origin process id.</param>
 /// <param name="Timestamp">UTC timestamp after the broadcast call completed.</param>
 public sealed record SignalRRuntimeProofBroadcastResult(
     string ProjectionType,
     string TenantId,
+    string? GroupScope,
     string GroupName,
+    int MetadataCount,
     int ProcessId,
     DateTimeOffset Timestamp);
-

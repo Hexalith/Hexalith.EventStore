@@ -27,6 +27,8 @@ public partial class ProjectionChangedHub(
     ITenantValidator tenantValidator,
     IOptions<SignalROptions> options,
     ILogger<ProjectionChangedHub> logger) : Hub<IProjectionChangedClient> {
+    private const int MaxGroupScopeLength = 64;
+
     private static readonly ConcurrentDictionary<string, HashSet<string>> _connectionGroups = new();
 
     /// <summary>
@@ -95,6 +97,10 @@ public partial class ProjectionChangedHub(
             throw new HubException("scope must not contain colons.");
         }
 
+        if (normalizedScope is not null && normalizedScope.Length > MaxGroupScopeLength) {
+            throw new HubException($"scope must not exceed {MaxGroupScopeLength} characters.");
+        }
+
         if (Context.User?.Identity?.IsAuthenticated != true) {
             throw new HubException("Authentication is required to join projection change groups.");
         }
@@ -153,6 +159,14 @@ public partial class ProjectionChangedHub(
 
     private async Task LeaveGroupCoreAsync(string projectionType, string tenantId, string? scope) {
         string? normalizedScope = string.IsNullOrWhiteSpace(scope) ? null : scope;
+        if (normalizedScope is not null && normalizedScope.Contains(':')) {
+            throw new HubException("scope must not contain colons.");
+        }
+
+        if (normalizedScope is not null && normalizedScope.Length > MaxGroupScopeLength) {
+            throw new HubException($"scope must not exceed {MaxGroupScopeLength} characters.");
+        }
+
         string groupName = BuildGroupName(projectionType, tenantId, normalizedScope);
 
         if (_connectionGroups.TryGetValue(Context.ConnectionId, out HashSet<string>? groups)) {

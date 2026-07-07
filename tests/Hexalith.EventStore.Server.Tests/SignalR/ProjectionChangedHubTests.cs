@@ -295,6 +295,19 @@ public class ProjectionChangedHubTests {
     }
 
     [Fact]
+    public async Task JoinGroupScoped_ScopeExceeds64Characters_ThrowsHubExceptionBeforeAddingGroup() {
+        IGroupManager groups = Substitute.For<IGroupManager>();
+        ProjectionChangedHub sut = CreateHub("conn-scoped-long", groups, user: CreateUser("acme"));
+
+        HubException ex = await Should.ThrowAsync<HubException>(() =>
+            sut.JoinGroupScoped("order-list", "acme", new string('a', 65)));
+
+        ex.Message.ShouldContain("scope must not exceed 64 characters");
+        await groups.DidNotReceive().AddToGroupAsync(
+            "conn-scoped-long", Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task JoinGroupScoped_ScopeContainsColon_RejectsBeforeAuthorization() {
         IGroupManager groups = Substitute.For<IGroupManager>();
         ITenantValidator tenantValidator = Substitute.For<ITenantValidator>();
@@ -338,6 +351,32 @@ public class ProjectionChangedHubTests {
         await sut.LeaveGroupScoped("order-list", "acme", "conv-1");
 
         await groups.Received(1).RemoveFromGroupAsync("conn-scoped-leave", "order-list:acme:conv-1", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task LeaveGroupScoped_ScopeContainsColon_ThrowsHubExceptionBeforeRemovingGroup() {
+        IGroupManager groups = Substitute.For<IGroupManager>();
+        ProjectionChangedHub sut = CreateHub("conn-scoped-leave-colon", groups, user: CreateUser("acme"));
+
+        HubException ex = await Should.ThrowAsync<HubException>(() =>
+            sut.LeaveGroupScoped("order-list", "acme", "conv:1"));
+
+        ex.Message.ShouldContain("scope must not contain colons");
+        await groups.DidNotReceive().RemoveFromGroupAsync(
+            "conn-scoped-leave-colon", Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task LeaveGroupScoped_ScopeExceeds64Characters_ThrowsHubExceptionBeforeRemovingGroup() {
+        IGroupManager groups = Substitute.For<IGroupManager>();
+        ProjectionChangedHub sut = CreateHub("conn-scoped-leave-long", groups, user: CreateUser("acme"));
+
+        HubException ex = await Should.ThrowAsync<HubException>(() =>
+            sut.LeaveGroupScoped("order-list", "acme", new string('a', 65)));
+
+        ex.Message.ShouldContain("scope must not exceed 64 characters");
+        await groups.DidNotReceive().RemoveFromGroupAsync(
+            "conn-scoped-leave-long", Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

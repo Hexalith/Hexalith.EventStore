@@ -22,4 +22,18 @@ public interface IProjectionChangeNotifier {
         string tenantId,
         string? entityId = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Notifies that a projection has changed using optional scoped detail metadata.
+    /// </summary>
+    /// <param name="detail">The projection change detail.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task NotifyProjectionChangedAsync(
+        ProjectionChangedDetail detail,
+        CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(detail);
+        throw new NotSupportedException(
+            "This projection change notifier implementation does not support metadata-rich detail notifications. " +
+            "Override NotifyProjectionChangedAsync(ProjectionChangedDetail, CancellationToken) to preserve group scope and metadata.");
+    }
 }

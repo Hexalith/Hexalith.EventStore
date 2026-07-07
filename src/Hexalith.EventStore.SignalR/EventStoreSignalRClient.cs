@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 
 using Microsoft.AspNetCore.SignalR;
@@ -14,6 +15,7 @@ namespace Hexalith.EventStore.SignalR;
 /// </summary>
 public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
     private const string CategoryName = "Hexalith.EventStore.SignalR.EventStoreSignalRClient";
+    private const int MaxGroupScopeLength = 64;
 
     private delegate void ReconnectConfigurator(HubConnectionBuilder builder, IRetryPolicy? retryPolicy);
 
@@ -24,6 +26,9 @@ public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
     private readonly ILogger<EventStoreSignalRClient>? _logger;
 
     private readonly ConcurrentDictionary<string, GroupSubscription> _subscribedGroups = new();
+
+    private static readonly IReadOnlyDictionary<string, string> EmptyMetadata =
+        new ReadOnlyDictionary<string, string>(new Dictionary<string, string>(StringComparer.Ordinal));
 
     /// <summary>
     /// Initializes a new instance of the <see cref="EventStoreSignalRClient"/> class.
@@ -61,6 +66,9 @@ public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
         _connection.Reconnected += OnReconnectedAsync;
         _connection.Closed += OnClosedAsync;
         _ = _connection.On<string, string>("ProjectionChanged", OnProjectionChanged);
+        _ = _connection.On<string, string, string?, IReadOnlyDictionary<string, string>>(
+            "ProjectionChangedDetail",
+            OnProjectionChangedDetail);
     }
 
     /// <summary>
@@ -106,11 +114,67 @@ public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
         ArgumentNullException.ThrowIfNull(onChanged);
 
         string groupName = $"{projectionType}:{tenantId}";
-        GroupSubscription subscription = _subscribedGroups.GetOrAdd(groupName, static _ => new GroupSubscription());
-        _ = subscription.Callbacks.TryAdd(Guid.NewGuid(), onChanged);
+        GroupSubscription subscription = _subscribedGroups.GetOrAdd(
+            groupName,
+            _ => new GroupSubscription(projectionType, tenantId, groupScope: null));
+        Guid callbackId = Guid.NewGuid();
+        _ = subscription.Callbacks.TryAdd(callbackId, onChanged);
 
         if (_connection.State == HubConnectionState.Connected) {
-            await _connection.InvokeAsync("JoinGroup", projectionType, tenantId).ConfigureAwait(false);
+            try {
+                await _connection.InvokeAsync("JoinGroup", projectionType, tenantId).ConfigureAwait(false);
+            }
+            catch {
+                RollBackSignalCallback(groupName, subscription, callbackId);
+                throw;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Subscribes to tenant-wide metadata-rich projection change detail signals.
+    /// </summary>
+    /// <param name="projectionType">The projection type name (kebab-case).</param>
+    /// <param name="tenantId">The tenant identifier.</param>
+    /// <param name="onChanged">Callback invoked on projection change detail signal.</param>
+    public Task SubscribeDetailAsync(
+        string projectionType,
+        string tenantId,
+        Action<ProjectionChangedDetail> onChanged)
+        => SubscribeDetailAsync(projectionType, tenantId, groupScope: null, onChanged);
+
+    /// <summary>
+    /// Subscribes to metadata-rich projection change detail signals for an optional scoped group.
+    /// </summary>
+    /// <param name="projectionType">The projection type name (kebab-case).</param>
+    /// <param name="tenantId">The tenant identifier.</param>
+    /// <param name="groupScope">Optional sub-tenant group scope. Null/empty/whitespace targets the tenant-wide group.</param>
+    /// <param name="onChanged">Callback invoked on projection change detail signal.</param>
+    public async Task SubscribeDetailAsync(
+        string projectionType,
+        string tenantId,
+        string? groupScope,
+        Action<ProjectionChangedDetail> onChanged) {
+        ValidateGroupPart(projectionType, nameof(projectionType));
+        ValidateGroupPart(tenantId, nameof(tenantId));
+        string? normalizedScope = NormalizeScope(groupScope, nameof(groupScope));
+        ArgumentNullException.ThrowIfNull(onChanged);
+
+        string groupName = BuildGroupName(projectionType, tenantId, normalizedScope);
+        GroupSubscription subscription = _subscribedGroups.GetOrAdd(
+            groupName,
+            _ => new GroupSubscription(projectionType, tenantId, normalizedScope));
+        Guid callbackId = Guid.NewGuid();
+        _ = subscription.DetailCallbacks.TryAdd(callbackId, onChanged);
+
+        if (_connection.State == HubConnectionState.Connected) {
+            try {
+                await _connection.InvokeAsync("JoinGroupScoped", projectionType, tenantId, normalizedScope).ConfigureAwait(false);
+            }
+            catch {
+                RollBackDetailCallback(groupName, subscription, callbackId);
+                throw;
+            }
         }
     }
 
@@ -137,7 +201,7 @@ public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
             }
         }
 
-        if (subscription.Callbacks.IsEmpty) {
+        if (subscription.Callbacks.IsEmpty && subscription.DetailCallbacks.IsEmpty) {
             _ = _subscribedGroups.TryRemove(groupName, out _);
 
             if (_connection.State == HubConnectionState.Connected) {
@@ -156,17 +220,170 @@ public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
         ValidateGroupPart(tenantId, nameof(tenantId));
 
         string groupName = $"{projectionType}:{tenantId}";
-        _ = _subscribedGroups.TryRemove(groupName, out _);
+        if (!_subscribedGroups.TryGetValue(groupName, out GroupSubscription? subscription)) {
+            return;
+        }
 
-        if (_connection.State == HubConnectionState.Connected) {
-            await _connection.InvokeAsync("LeaveGroup", projectionType, tenantId).ConfigureAwait(false);
+        subscription.Callbacks.Clear();
+
+        if (subscription.DetailCallbacks.IsEmpty) {
+            _ = _subscribedGroups.TryRemove(groupName, out _);
+
+            if (_connection.State == HubConnectionState.Connected) {
+                await _connection.InvokeAsync("LeaveGroup", projectionType, tenantId).ConfigureAwait(false);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Unsubscribes a specific callback from tenant-wide metadata-rich projection change detail signals.
+    /// </summary>
+    /// <param name="projectionType">The projection type name (kebab-case).</param>
+    /// <param name="tenantId">The tenant identifier.</param>
+    /// <param name="onChanged">The callback previously registered via <see cref="SubscribeDetailAsync(string, string, Action{ProjectionChangedDetail})"/>.</param>
+    public Task UnsubscribeDetailAsync(
+        string projectionType,
+        string tenantId,
+        Action<ProjectionChangedDetail> onChanged)
+        => UnsubscribeDetailAsync(projectionType, tenantId, groupScope: null, onChanged);
+
+    /// <summary>
+    /// Unsubscribes a specific callback from metadata-rich projection change detail signals.
+    /// </summary>
+    /// <param name="projectionType">The projection type name (kebab-case).</param>
+    /// <param name="tenantId">The tenant identifier.</param>
+    /// <param name="groupScope">Optional sub-tenant group scope. Null/empty/whitespace targets the tenant-wide group.</param>
+    /// <param name="onChanged">The callback previously registered via <see cref="SubscribeDetailAsync(string, string, string?, Action{ProjectionChangedDetail})"/>.</param>
+    public async Task UnsubscribeDetailAsync(
+        string projectionType,
+        string tenantId,
+        string? groupScope,
+        Action<ProjectionChangedDetail> onChanged) {
+        ValidateGroupPart(projectionType, nameof(projectionType));
+        ValidateGroupPart(tenantId, nameof(tenantId));
+        string? normalizedScope = NormalizeScope(groupScope, nameof(groupScope));
+        ArgumentNullException.ThrowIfNull(onChanged);
+
+        string groupName = BuildGroupName(projectionType, tenantId, normalizedScope);
+        if (!_subscribedGroups.TryGetValue(groupName, out GroupSubscription? subscription)) {
+            return;
+        }
+
+        foreach ((Guid key, Action<ProjectionChangedDetail> callback) in subscription.DetailCallbacks.ToArray()) {
+            if (callback == onChanged) {
+                _ = subscription.DetailCallbacks.TryRemove(key, out _);
+            }
+        }
+
+        if (subscription.Callbacks.IsEmpty && subscription.DetailCallbacks.IsEmpty) {
+            _ = _subscribedGroups.TryRemove(groupName, out _);
+
+            if (_connection.State == HubConnectionState.Connected) {
+                await _connection.InvokeAsync("LeaveGroupScoped", projectionType, tenantId, normalizedScope).ConfigureAwait(false);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Unsubscribes from tenant-wide metadata-rich projection change detail signals.
+    /// </summary>
+    /// <param name="projectionType">The projection type name (kebab-case).</param>
+    /// <param name="tenantId">The tenant identifier.</param>
+    public Task UnsubscribeDetailAsync(string projectionType, string tenantId)
+        => UnsubscribeDetailAsync(projectionType, tenantId, groupScope: null);
+
+    /// <summary>
+    /// Unsubscribes from metadata-rich projection change detail signals for an optional scoped group.
+    /// </summary>
+    /// <param name="projectionType">The projection type name (kebab-case).</param>
+    /// <param name="tenantId">The tenant identifier.</param>
+    /// <param name="groupScope">Optional sub-tenant group scope. Null/empty/whitespace targets the tenant-wide group.</param>
+    public async Task UnsubscribeDetailAsync(string projectionType, string tenantId, string? groupScope) {
+        ValidateGroupPart(projectionType, nameof(projectionType));
+        ValidateGroupPart(tenantId, nameof(tenantId));
+        string? normalizedScope = NormalizeScope(groupScope, nameof(groupScope));
+
+        string groupName = BuildGroupName(projectionType, tenantId, normalizedScope);
+        if (!_subscribedGroups.TryGetValue(groupName, out GroupSubscription? subscription)) {
+            return;
+        }
+
+        subscription.DetailCallbacks.Clear();
+
+        if (subscription.Callbacks.IsEmpty) {
+            _ = _subscribedGroups.TryRemove(groupName, out _);
+
+            if (_connection.State == HubConnectionState.Connected) {
+                await _connection.InvokeAsync("LeaveGroupScoped", projectionType, tenantId, normalizedScope).ConfigureAwait(false);
+            }
+        }
+    }
+
+    private static string BuildGroupName(string projectionType, string tenantId, string? groupScope)
+        => string.IsNullOrWhiteSpace(groupScope)
+            ? $"{projectionType}:{tenantId}"
+            : $"{projectionType}:{tenantId}:{groupScope}";
+
+    private static string? NormalizeScope(string? groupScope, string paramName) {
+        if (string.IsNullOrWhiteSpace(groupScope)) {
+            return null;
+        }
+
+        if (groupScope.Contains(':', StringComparison.Ordinal)) {
+            throw new ArgumentException($"{paramName} must not contain ':'.", paramName);
+        }
+
+        if (groupScope.Length > MaxGroupScopeLength) {
+            throw new ArgumentException($"{paramName} must not exceed {MaxGroupScopeLength} characters.", paramName);
+        }
+
+        return groupScope;
+    }
+
+    private static IReadOnlyDictionary<string, string> CopyMetadata(IReadOnlyDictionary<string, string>? metadata)
+        => metadata is null || metadata.Count == 0
+            ? EmptyMetadata
+            : new ReadOnlyDictionary<string, string>(
+                new Dictionary<string, string>(metadata, StringComparer.Ordinal));
+
+    private static Task JoinSubscriptionAsync(HubConnection connection, GroupSubscription subscription, CancellationToken cancellationToken) {
+        if (subscription.GroupScope is not null) {
+            return connection.InvokeAsync(
+                "JoinGroupScoped",
+                subscription.ProjectionType,
+                subscription.TenantId,
+                subscription.GroupScope,
+                cancellationToken);
+        }
+
+        return connection.InvokeAsync(
+            "JoinGroup",
+            subscription.ProjectionType,
+            subscription.TenantId,
+            cancellationToken);
+    }
+
+    private void RollBackSignalCallback(string groupName, GroupSubscription subscription, Guid callbackId) {
+        _ = subscription.Callbacks.TryRemove(callbackId, out _);
+        RemoveSubscriptionIfEmpty(groupName, subscription);
+    }
+
+    private void RollBackDetailCallback(string groupName, GroupSubscription subscription, Guid callbackId) {
+        _ = subscription.DetailCallbacks.TryRemove(callbackId, out _);
+
+        RemoveSubscriptionIfEmpty(groupName, subscription);
+    }
+
+    private void RemoveSubscriptionIfEmpty(string groupName, GroupSubscription subscription) {
+        if (subscription.Callbacks.IsEmpty && subscription.DetailCallbacks.IsEmpty) {
+            _ = _subscribedGroups.TryRemove(groupName, out _);
         }
     }
 
     private static void ValidateGroupPart(string value, string paramName) {
         ArgumentException.ThrowIfNullOrWhiteSpace(value, paramName);
 
-        if (value.Contains(':')) {
+        if (value.Contains(':', StringComparison.Ordinal)) {
             throw new ArgumentException($"{paramName} must not contain ':'.", paramName);
         }
     }
@@ -176,35 +393,26 @@ public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
     /// <see cref="OnReconnectedAsync"/> (reconnect). Respects dispose cancellation.
     /// </summary>
     private async Task JoinAllGroupsAsync() {
-        foreach (string groupName in _subscribedGroups.Keys) {
+        foreach (KeyValuePair<string, GroupSubscription> item in _subscribedGroups.ToArray()) {
             if (_disposeCts.IsCancellationRequested) {
                 break;
             }
 
-            // Parse "projectionType:tenantId" back to components
-            int separatorIndex = groupName.IndexOf(':');
-            if (separatorIndex > 0 && separatorIndex < groupName.Length - 1) {
-                string projectionType = groupName[..separatorIndex];
-                string tenantId = groupName[(separatorIndex + 1)..];
-
-                try {
-                    await _connection.InvokeAsync(
-                        "JoinGroup", projectionType, tenantId,
-                        _disposeCts.Token).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException) {
-                    break; // Client is disposing
-                }
-                catch (HubException ex) {
-                    // Server actively rejected the rejoin (e.g., tenant authorization denied).
-                    // Prune the subscription so we do not retry forever and do not leave the
-                    // consumer with the impression the group is still authorized.
-                    _ = _subscribedGroups.TryRemove(groupName, out _);
-                    _logger?.LogError(ex, "Server rejected rejoin for group {GroupName}; subscription pruned.", groupName);
-                }
-                catch (Exception ex) {
-                    _logger?.LogWarning(ex, "Failed to rejoin group {GroupName}", groupName);
-                }
+            try {
+                await JoinSubscriptionAsync(_connection, item.Value, _disposeCts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) {
+                break; // Client is disposing
+            }
+            catch (HubException ex) {
+                // Server actively rejected the rejoin (e.g., tenant authorization denied).
+                // Prune the subscription so we do not retry forever and do not leave the
+                // consumer with the impression the group is still authorized.
+                _ = _subscribedGroups.TryRemove(item.Key, out _);
+                _logger?.LogError(ex, "Server rejected rejoin for group {GroupName}; subscription pruned.", item.Key);
+            }
+            catch (Exception ex) {
+                _logger?.LogWarning(ex, "Failed to rejoin group {GroupName}", item.Key);
             }
         }
     }
@@ -215,7 +423,8 @@ public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
 
     private void OnProjectionChanged(string projectionType, string tenantId) {
         string groupName = $"{projectionType}:{tenantId}";
-        if (_subscribedGroups.TryGetValue(groupName, out GroupSubscription? subscription)) {
+        if (_subscribedGroups.TryGetValue(groupName, out GroupSubscription? subscription)
+            && !subscription.Callbacks.IsEmpty) {
             Action[] callbacks = [.. subscription.Callbacks.Values];
             if (_logger is not null) {
                 Log.ProjectionChangedReceived(
@@ -237,6 +446,41 @@ public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
         }
     }
 
+    private void OnProjectionChangedDetail(
+        string projectionType,
+        string tenantId,
+        string? groupScope,
+        IReadOnlyDictionary<string, string>? metadata) {
+        string? normalizedScope = string.IsNullOrWhiteSpace(groupScope) ? null : groupScope;
+        string groupName = BuildGroupName(projectionType, tenantId, normalizedScope);
+        if (_subscribedGroups.TryGetValue(groupName, out GroupSubscription? subscription)
+            && !subscription.DetailCallbacks.IsEmpty) {
+            Action<ProjectionChangedDetail>[] callbacks = [.. subscription.DetailCallbacks.Values];
+            IReadOnlyDictionary<string, string> safeMetadata = CopyMetadata(metadata);
+            var detail = new ProjectionChangedDetail(projectionType, tenantId, normalizedScope, safeMetadata);
+
+            if (_logger is not null) {
+                Log.ProjectionChangedDetailReceived(
+                    _logger,
+                    projectionType,
+                    tenantId,
+                    normalizedScope,
+                    groupName,
+                    safeMetadata.Count,
+                    DateTimeOffset.UtcNow,
+                    _connection.State.ToString(),
+                    callbacks.Length,
+                    Activity.Current?.TraceId.ToString(),
+                    Activity.Current?.SpanId.ToString(),
+                    CategoryName);
+            }
+
+            foreach (Action<ProjectionChangedDetail> callback in callbacks) {
+                callback(detail);
+            }
+        }
+    }
+
     /// <summary>
     /// Logs a warning when the connection closes unexpectedly.
     /// Consumers decide whether to restart the connection.
@@ -254,13 +498,25 @@ public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
     /// </summary>
     private Task OnReconnectedAsync(string? connectionId) => JoinAllGroupsAsync();
 
-    private sealed class GroupSubscription {
+    private sealed class GroupSubscription(string projectionType, string tenantId, string? groupScope) {
+        public string ProjectionType { get; } = projectionType;
+
+        public string TenantId { get; } = tenantId;
+
+        public string? GroupScope { get; } = groupScope;
+
         public ConcurrentDictionary<Guid, Action> Callbacks { get; } = new();
+
+        public ConcurrentDictionary<Guid, Action<ProjectionChangedDetail>> DetailCallbacks { get; } = new();
     }
 
     private static partial class Log {
         [LoggerMessage(EventId = 2090, Level = LogLevel.Information,
             Message = "SignalR client received projection change. ProjectionType: {ProjectionType}, TenantId: {TenantId}, Group: {GroupName}, ReceiptUtc: {ReceiptUtc}, ConnectionState: {ConnectionState}, CallbackCount: {CallbackCount}, TraceId: {TraceId}, SpanId: {SpanId}, CategoryName: {CategoryName}")]
         public static partial void ProjectionChangedReceived(ILogger logger, string projectionType, string tenantId, string groupName, DateTimeOffset receiptUtc, string connectionState, int callbackCount, string? traceId, string? spanId, string categoryName);
+
+        [LoggerMessage(EventId = 2091, Level = LogLevel.Information,
+            Message = "SignalR client received projection change detail. ProjectionType: {ProjectionType}, TenantId: {TenantId}, GroupScope: {GroupScope}, Group: {GroupName}, MetadataCount: {MetadataCount}, ReceiptUtc: {ReceiptUtc}, ConnectionState: {ConnectionState}, CallbackCount: {CallbackCount}, TraceId: {TraceId}, SpanId: {SpanId}, CategoryName: {CategoryName}")]
+        public static partial void ProjectionChangedDetailReceived(ILogger logger, string projectionType, string tenantId, string? groupScope, string groupName, int metadataCount, DateTimeOffset receiptUtc, string connectionState, int callbackCount, string? traceId, string? spanId, string categoryName);
     }
 }

@@ -1,3 +1,5 @@
+using Hexalith.EventStore.Server.Configuration;
+
 using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.SignalRHub;
@@ -31,7 +33,7 @@ public class SignalROptions {
     /// projection-changed detail broadcast. Entries beyond this cap are clipped (the
     /// broadcast still fires). Keeps the channel metadata-only and bounded. Default: 16.
     /// </summary>
-    public int MaxDetailMetadataEntries { get; init; } = 16;
+    public int MaxDetailMetadataEntries { get; init; } = ProjectionChangeNotifierOptions.DefaultMaxDetailMetadataEntries;
 
     /// <summary>
     /// Gets the maximum total UTF-8 byte size (sum of all keys and values) carried in a
@@ -39,7 +41,7 @@ public class SignalROptions {
     /// are clipped (the broadcast still fires). Keeps the channel metadata-only and bounded.
     /// Default: 2048.
     /// </summary>
-    public int MaxDetailMetadataBytes { get; init; } = 2048;
+    public int MaxDetailMetadataBytes { get; init; } = ProjectionChangeNotifierOptions.DefaultMaxDetailMetadataBytes;
 }
 
 /// <summary>

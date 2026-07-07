@@ -229,6 +229,25 @@ public class AddEventStoreTests : IDisposable {
         Assert.NotNull(projection.Logger);
     }
 
+    [Fact]
+    public async Task ProjectionChangeNotifier_DefaultDetailOverload_ThrowsForLegacyImplementation() {
+        var notifier = new LegacyProjectionChangeNotifier();
+        IProjectionChangeNotifier sut = notifier;
+
+        NotSupportedException ex = await Assert.ThrowsAsync<NotSupportedException>(() => sut.NotifyProjectionChangedAsync(new ProjectionChangedDetail(
+            "order-list",
+            "acme",
+            "order-123",
+            new Dictionary<string, string>(StringComparer.Ordinal) {
+                ["freshness"] = "changed",
+            }))).ConfigureAwait(true);
+
+        Assert.Contains("metadata-rich detail notifications", ex.Message, StringComparison.Ordinal);
+        Assert.Null(notifier.LastProjectionType);
+        Assert.Null(notifier.LastTenantId);
+        Assert.Null(notifier.LastEntityId);
+    }
+
     // --- Story 16-8: DiscoveryResult singleton resolution from ServiceProvider (AC#7: 7.1) ---
 
     [Fact]
@@ -300,5 +319,27 @@ public class AddEventStoreTests : IDisposable {
     private sealed class TestProjectionChangeNotifier : IProjectionChangeNotifier {
         public Task NotifyProjectionChangedAsync(string projectionType, string tenantId, string? entityId = null, CancellationToken cancellationToken = default)
             => Task.CompletedTask;
+
+        public Task NotifyProjectionChangedAsync(ProjectionChangedDetail detail, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+    }
+
+    private sealed class LegacyProjectionChangeNotifier : IProjectionChangeNotifier {
+        public string? LastProjectionType { get; private set; }
+
+        public string? LastTenantId { get; private set; }
+
+        public string? LastEntityId { get; private set; }
+
+        public Task NotifyProjectionChangedAsync(
+            string projectionType,
+            string tenantId,
+            string? entityId = null,
+            CancellationToken cancellationToken = default) {
+            LastProjectionType = projectionType;
+            LastTenantId = tenantId;
+            LastEntityId = entityId;
+            return Task.CompletedTask;
+        }
     }
 }

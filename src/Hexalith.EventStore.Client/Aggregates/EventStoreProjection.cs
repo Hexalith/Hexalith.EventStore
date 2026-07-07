@@ -25,7 +25,7 @@ public abstract class EventStoreProjection<TReadModel> : IEventStoreProjection
 
     /// <summary>
     /// Gets or sets the projection change notifier. Set post-construction by DI registration.
-    /// When set, <see cref="Project(System.Collections.IEnumerable)"/> auto-calls <see cref="IProjectionChangeNotifier.NotifyProjectionChangedAsync"/>
+    /// When set, <see cref="Project(System.Collections.IEnumerable)"/> auto-calls <see cref="IProjectionChangeNotifier"/>
     /// after successful projection. When null, a warning is logged (FM-5).
     /// </summary>
     public IProjectionChangeNotifier? Notifier { get; set; }
