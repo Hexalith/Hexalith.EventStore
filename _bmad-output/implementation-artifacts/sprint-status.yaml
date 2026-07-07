@@ -60,7 +60,7 @@ development_status:
 
   epic-2: backlog
   2-1-rest-contract-seam-for-command-and-query-messages: done
-  2-2-rest-api-generator-discovery-and-controller-emission: backlog
+  2-2-rest-api-generator-discovery-and-controller-emission: done
   2-3-sample-external-api-host-proof: backlog
   2-4-tenants-external-api-host-adoption: backlog
   2-5-scoped-metadata-rich-projection-notifications: backlog

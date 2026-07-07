@@ -57,6 +57,51 @@ public sealed partial class RestApiManifestGenerationTests
     }
 
     [Fact]
+    public void Run_ReferencedContracts_FiltersManifestByMatchingApiScope()
+    {
+        var contractCompilation = RestApiGeneratorTestHarness.CreateCompilation(ReferencedMixedApiScopeSource);
+        MetadataReference contractReference = RestApiGeneratorTestHarness.EmitToMetadataReference(contractCompilation);
+        var hostCompilation = RestApiGeneratorTestHarness.CreateCompilation(
+            [contractReference],
+            ReferencedContractHostSource);
+
+        GeneratorDriverRunResult result = RestApiGeneratorTestHarness.Run(hostCompilation, out _);
+
+        ShouldHaveNoGeneratorDiagnostics(result);
+        string manifest = RestApiGeneratorTestHarness.GetGeneratedSource(
+            result,
+            "HexalithEventStoreRestApiGeneratorManifest.g.cs");
+
+        manifest.ShouldContain("internal const int CommandCount = 1;");
+        manifest.ShouldContain("internal const int QueryCount = 0;");
+        manifest.ShouldContain("internal const int RouteOverrideCount = 1;");
+        manifest.ShouldContain("\"Smoke.Contracts.IncrementCounter\"");
+        manifest.ShouldNotContain("GetUserTenantsQuery");
+    }
+
+    [Fact]
+    public void Run_TaglessHost_ExcludesReferencedContractsFromManifest()
+    {
+        var contractCompilation = RestApiGeneratorTestHarness.CreateCompilation(ReferencedMixedApiScopeSource);
+        MetadataReference contractReference = RestApiGeneratorTestHarness.EmitToMetadataReference(contractCompilation);
+        var hostCompilation = RestApiGeneratorTestHarness.CreateCompilation(
+            [contractReference],
+            TaglessReferencedContractHostSource);
+
+        GeneratorDriverRunResult result = RestApiGeneratorTestHarness.Run(hostCompilation, out _);
+
+        ShouldHaveNoGeneratorDiagnostics(result);
+        string manifest = RestApiGeneratorTestHarness.GetGeneratedSource(
+            result,
+            "HexalithEventStoreRestApiGeneratorManifest.g.cs");
+
+        manifest.ShouldContain("internal const int CommandCount = 0;");
+        manifest.ShouldContain("internal const int QueryCount = 0;");
+        manifest.ShouldContain("internal const int RouteOverrideCount = 0;");
+        RestApiGeneratorTestHarness.ContainsGeneratedSource(result, ".Controller.g.cs").ShouldBeFalse();
+    }
+
+    [Fact]
     public void Run_NonMarkerClassWithRoute_IsIgnored()
     {
         GeneratorDriverRunResult result = RestApiGeneratorTestHarness.Run(NonMarkerRouteSource);
@@ -249,6 +294,50 @@ public sealed partial class RestApiManifestGenerationTests
             public static string CommandType => "increment-counter";
             public string AggregateId => CounterId;
         }
+        """;
+
+    private const string ReferencedMixedApiScopeSource = """
+        using Hexalith.EventStore.Contracts.Commands;
+        using Hexalith.EventStore.Contracts.Queries;
+        using Hexalith.EventStore.Contracts.Rest;
+
+        namespace Smoke.Contracts;
+
+        [RestRoute(RestVerb.Post, "{counterId}/increment", ApiScope = "counter")]
+        public sealed record IncrementCounter(string CounterId, int Amount) : ICommandContract
+        {
+            public static string Domain => "counter";
+            public static string CommandType => "increment-counter";
+            public string AggregateId => CounterId;
+        }
+
+        [RestRoute(RestVerb.Get, "~/api/users/{userId}/tenants", ApiScope = "tenants")]
+        public sealed record GetUserTenantsQuery(string UserId) : IQueryContract
+        {
+            public static string QueryType => "get-user-tenants";
+            public static string Domain => "tenants";
+            public static string ProjectionType => "tenant-user-list";
+        }
+        """;
+
+    private const string ReferencedContractHostSource = """
+        using Hexalith.EventStore.Contracts.Rest;
+
+        [assembly: RestApi("api/counter", "counter", RestTenantSource.System)]
+
+        namespace Smoke.Host;
+
+        public sealed class HostMarker;
+        """;
+
+    private const string TaglessReferencedContractHostSource = """
+        using Hexalith.EventStore.Contracts.Rest;
+
+        [assembly: RestApi("api/counter", null, RestTenantSource.System)]
+
+        namespace Smoke.Host;
+
+        public sealed class HostMarker;
         """;
 
     private const string NonMarkerRouteSource = """

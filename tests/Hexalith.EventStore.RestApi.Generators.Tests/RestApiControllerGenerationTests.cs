@@ -27,11 +27,26 @@ public sealed class RestApiControllerGenerationTests
         source.ShouldContain("[Route(\"api/counter\")]");
         source.ShouldContain("[Tags(\"counter\")]");
         source.ShouldContain("    [Consumes(\"application/json\")]");
+        source.ShouldContain("using Hexalith.EventStore.Client.Gateway;");
         source.ShouldContain("IEventStoreGatewayClient");
+        source.ShouldContain("public sealed partial class CounterRestController(IEventStoreGatewayClient gateway) : ControllerBase");
         source.ShouldContain(".SubmitCommandAsync(__hexalithRequest, cancellationToken)");
         source.ShouldContain(".SubmitQueryAsync(__hexalithRequest, ifNoneMatch, cancellationToken)");
         source.ShouldContain(".ConfigureAwait(false)");
         source.ShouldContain("UniqueIdHelper.GenerateSortableUniqueStringId()");
+        source.ShouldContain("[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized, \"application/problem+json\")]");
+        source.ShouldContain("[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest, \"application/problem+json\")]");
+        source.ShouldContain("[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden, \"application/problem+json\")]");
+        source.ShouldContain("[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound, \"application/problem+json\")]");
+        source.ShouldContain("[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict, \"application/problem+json\")]");
+        source.ShouldContain("[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity, \"application/problem+json\")]");
+        source.ShouldContain("[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests, \"application/problem+json\")]");
+        source.ShouldContain("[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status502BadGateway, \"application/problem+json\")]");
+        source.ShouldContain("[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError, \"application/problem+json\")]");
+        source.ShouldContain("[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status501NotImplemented, \"application/problem+json\")]");
+        source.ShouldContain("[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable, \"application/problem+json\")]");
+        CountOccurrences(source, "[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict").ShouldBe(2);
+        CountOccurrences(source, "[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity").ShouldBe(2);
         source.ShouldContain("[HttpPost(\"{counterId}/increment\")]");
         source.ShouldContain("[HttpPost(\"~/api/counter/{counterId}/reset\")]");
         source.ShouldContain("[HttpGet(\"{counterId}\")]");
@@ -54,16 +69,38 @@ public sealed class RestApiControllerGenerationTests
         source.ShouldContain("[FromHeader(Name = \"If-None-Match\")] string? ifNoneMatch");
         source.ShouldContain("new SubmitQueryRequest(");
         source.ShouldContain("StatusCodes.Status304NotModified");
-        source.ShouldContain("Response.Headers[\"ETag\"] = FormatStrongETag(__hexalithResult.ETag);");
-        source.ShouldContain("value.StartsWith(\"W/\", StringComparison.Ordinal)");
-        source.ShouldContain("value = value.Substring(2).Trim();");
+        source.ShouldContain("string? __hexalithETag = __hexalithResult.ETag ?? __hexalithResult.Metadata?.ETag;");
+        source.ShouldContain("TryFormatStrongETag(__hexalithETag, out string? __hexalithBoundedETag)");
+        source.ShouldContain("Response.Headers[\"ETag\"] = __hexalithBoundedETag;");
+        source.ShouldContain("Not-modified query response requires a strong ETag.");
+        source.ShouldContain("EntityTagHeaderValue.TryParse(candidate, out EntityTagHeaderValue? parsed)");
+        source.ShouldContain("parsed.IsWeak");
+        source.ShouldContain("MapGatewayException(ex, includeCommandOnlyStatusCodes: true)");
+        source.ShouldContain("MapGatewayException(ex, includeCommandOnlyStatusCodes: false)");
+        source.ShouldContain("NormalizeGatewayExceptionStatusCode(exception.StatusCode, includeCommandOnlyStatusCodes)");
+        source.ShouldContain("IsRetryableGatewayStatusCode(statusCode)");
+        source.ShouldContain("MaxProblemErrorCount");
+        source.ShouldContain("MaxRetryAfterSeconds");
+        source.ShouldContain("TryGetSafeRetryAfterHeaderValue(exception.RetryAfter, out string? retryAfter)");
+        source.ShouldContain("Response.Headers[\"X-Hexalith-Is-Degraded\"]");
+        source.ShouldContain("Response.Headers[\"X-Hexalith-Warning-Codes\"]");
+        source.ShouldContain("Response.Headers[\"X-Hexalith-Page-Size\"]");
+        source.ShouldContain("Response.Headers[\"X-Hexalith-Page-Offset\"]");
+        source.ShouldContain("Response.Headers[\"X-Hexalith-Page-Total-Count\"]");
+        source.ShouldContain("Response.Headers[\"X-Hexalith-Page-Has-More\"]");
+        source.ShouldContain("Response.Headers[\"X-Hexalith-Next-Cursor\"]");
         source.ShouldContain("return Ok(__hexalithResult.Payload);");
 
         source.ShouldNotContain("Type.GetType");
         source.ShouldNotContain("Assembly.Load");
         source.ShouldNotContain("Activator.CreateInstance");
+        source.ShouldNotContain("Hexalith.EventStore.DomainService");
+        source.ShouldNotContain("Hexalith.EventStore.Server");
+        source.ShouldNotContain("AddEventStoreDomainService");
+        source.ShouldNotContain("UseEventStoreDomainService");
         source.ShouldNotContain("DomainQueryDispatcher");
         source.ShouldNotContain("Dapr");
+        source.ShouldNotContain("DaprClient");
         source.ShouldNotContain("ProjectionActor");
         source.ShouldNotContain("StateStore");
         source.ShouldNotContain("IMediator");
@@ -374,7 +411,8 @@ public sealed class RestApiControllerGenerationTests
         source.ShouldContain("global::Hexalith.EventStore.Sample.Counter.Queries.GetCounterStatusQuery.ProjectionType");
         source.ShouldContain(".SubmitQueryAsync(__hexalithRequest, ifNoneMatch, cancellationToken)");
         source.ShouldContain("StatusCodes.Status304NotModified");
-        source.ShouldContain("Response.Headers[\"ETag\"] = FormatStrongETag(__hexalithResult.ETag);");
+        source.ShouldContain("TryFormatStrongETag(__hexalithETag, out string? __hexalithBoundedETag)");
+        source.ShouldContain("Response.Headers[\"ETag\"] = __hexalithBoundedETag;");
         source.ShouldContain("return Ok(__hexalithResult.Payload);");
 
         source.ShouldNotContain("DomainQueryDispatcher");
@@ -529,6 +567,19 @@ public sealed class RestApiControllerGenerationTests
             .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
             .ToArray();
         errors.ShouldBeEmpty(string.Join(Environment.NewLine, errors.Select(static diagnostic => diagnostic.ToString())));
+    }
+
+    private static int CountOccurrences(string value, string search)
+    {
+        int count = 0;
+        int index = 0;
+        while ((index = value.IndexOf(search, index, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            index += search.Length;
+        }
+
+        return count;
     }
 
     private const string HappyPathControllerSource = """

@@ -107,6 +107,24 @@ public sealed class RestApiIncrementalGenerationTests
     }
 
     [Fact]
+    public void Run_TaglessHost_DoesNotDiscoverReferencedContractsByApiScope()
+    {
+        MetadataReference contractReference = CreateReferencedContractReference(ReferencedCommandSource);
+        CSharpCompilation compilation = RestApiGeneratorTestHarness.CreateCompilation(
+            [contractReference],
+            TaglessReferencedContractHostSource);
+
+        GeneratorDriverRunResult result = RestApiGeneratorTestHarness.Run(compilation, out _);
+
+        string manifest = RestApiGeneratorTestHarness.GetGeneratedSource(
+            result,
+            "HexalithEventStoreRestApiGeneratorManifest.g.cs");
+
+        manifest.ShouldContain("internal const int CommandCount = 0;");
+        RestApiGeneratorTestHarness.ContainsGeneratedSource(result, ".Controller.g.cs").ShouldBeFalse();
+    }
+
+    [Fact]
     public void Run_AddingNewCommandMarker_ProducesNewOutputAndPreservesExistingOutput()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
@@ -225,6 +243,16 @@ public sealed class RestApiIncrementalGenerationTests
         using Hexalith.EventStore.Contracts.Rest;
 
         [assembly: RestApi("api/counter", "counter", RestTenantSource.System)]
+
+        namespace Smoke.Host;
+
+        public sealed class HostMarker;
+        """;
+
+    private const string TaglessReferencedContractHostSource = """
+        using Hexalith.EventStore.Contracts.Rest;
+
+        [assembly: RestApi("api/counter", null, RestTenantSource.System)]
 
         namespace Smoke.Host;
 

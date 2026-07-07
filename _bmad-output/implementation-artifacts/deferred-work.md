@@ -113,3 +113,26 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-1-rest-contract-seam-for-command-and-query-messages.md`
   summary: Undefined `RestTenantSource` values can flow through the generator as non-standard tenant-source text.
   evidence: `RoslynAttributeValueReader.GetEnumName` returns the numeric text for an out-of-range enum value, and generated `ResolveTenant` only handles `System` and `Route` specially before falling back to claims behavior; robust handling needs a generator diagnostic or explicit invalid-enum policy outside this contract-seam pass.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-2-rest-api-generator-discovery-and-controller-emission.md`
+  summary: Generated command endpoints do not emit the canonical 1 MiB request-body limit used by platform gateway command and query controllers.
+  evidence: `CommandsController.Submit`, `QueriesController.Submit`, validation controllers, replay, and stream endpoints declare `[RequestSizeLimit(1_048_576)]`, but generated command actions in `RestApiControllerEmitter.AppendCommandAction` accept `[FromBody]` contract payloads without a generated `RequestSizeLimit` attribute. The gap existed in the prior generator and was surfaced incidentally during the Story 2.2 follow-up review; fixing it needs a deliberate generated API-host payload-size policy.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-2-rest-api-generator-discovery-and-controller-emission.md`
+  summary: Generated command problem mapping drops safe domain-rejection extensions such as `rejectionType` and `correctiveAction`.
+  evidence: `DomainCommandRejectedExceptionHandler` emits `GatewayProblemDetailsExtensions.RejectionType` and `CorrectiveAction`, and `EventStoreGatewayClient` captures arbitrary non-standard ProblemDetails extensions in `EventStoreGatewayException.Extensions`, but generated controllers currently forward only correlation, tenant, reason, reasonCode, and filtered validation errors. The omission pre-dates this review pass and needs a deliberate generated API extension allowlist.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-2-rest-api-generator-discovery-and-controller-emission.md`
+  summary: Generated command success responses hard-code `/api/v1/commands/status/{id}` as a relative status `Location`.
+  evidence: `RestApiControllerEmitter.AppendCommandAction` writes `Response.Headers["Location"] = "/api/v1/commands/status/" + Uri.EscapeDataString(...)`, while the platform `CommandsController.Submit` builds an absolute URI from the current request host. Dedicated generated API hosts may not expose that relative status route, so status-location policy needs a focused generated-host design.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-2-rest-api-generator-discovery-and-controller-emission.md`
+  summary: Generated query actions map caught `ArgumentException` messages directly into client-facing ProblemDetails.
+  evidence: `RestApiControllerEmitter.AppendQueryAction` catches `ArgumentException` and calls `CreateProblem(..., ex.Message)`, bypassing the support-safe display-text filtering used for gateway exceptions. The catch existed before Story 2.2 and should be hardened separately with a fixed safe message or shared sanitizer.
+
+### DW-2: Follow-up review still recommended for 2-2-rest-api-generator-discovery-and-controller-emission after the review budget was exhausted
+origin: review-budget-followup
+source_spec: `spec-2-2-rest-api-generator-discovery-and-controller-emission.md`
+severity: low
+reason: Review budget (3 cycles) was exhausted with the story finalized (status: done, verify green) while the review pass kept recommending an independent follow-up. The work was committed by bmad-loop run 20260707-112402-3779; this entry preserves the lingering follow-up recommendation for a deliberate later review.
+status: open
