@@ -21,7 +21,7 @@ source_files:
 
 # Story 3.8: Generated API DAPR/Aspire Smoke Preflight
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -161,11 +161,11 @@ Source of truth:
   - [x] Add focused tests for redaction and classification.
   - [x] Add script argument/dry-run validation.
 
-- [ ] **Task 6: Document usage and verify** (AC: 9, 10)
-  - [ ] Update local development or troubleshooting docs with the new preflight command.
-  - [ ] Run focused tests and Release build.
-  - [ ] Run live smoke when prerequisites exist, or record exact support-safe blockers.
-  - [ ] Update the Dev Agent Record with evidence and the AC10 completion-gate status; on a clean live run, flip the three carried action items to `done`.
+- [x] **Task 6: Document usage and verify** (AC: 9, 10)
+  - [x] Update local development or troubleshooting docs with the new preflight command.
+  - [x] Run focused tests and Release build.
+  - [x] Run live smoke when prerequisites exist, or record exact support-safe blockers.
+  - [x] Update the Dev Agent Record with evidence and the AC10 completion-gate status; on a clean live run, flip the three carried action items to `done`.
 
 ## Dev Notes
 
@@ -240,6 +240,13 @@ Behavioral checks against this environment (docker up; containerized `dapr init`
 - Default read-only run → environment all `ok`, then `topology-not-running` (exit 3) with the exact `EnableKeycloak=false aspire run …` next-action (no AppHost running).
 - `HEXALITH_EVENTSTORE_TEST_PLACEMENT_PORT=59999` (simulated missing placement) → `blocked-environment` (exit 2) and **zero** aspire/product checks ran, proving the AC2 short-circuit.
 
+AC10 live-topology gate (run 2026-07-07 against `EnableKeycloak=false aspire run`; topology torn down cleanly afterward with the shared dapr control plane left running):
+
+- Read-only `--json` → `status: ok`, exit 0. `aspire`: `resource:eventstore`/`sample`/`sample-api` all `ok` with HTTP endpoints (`:8080`/`:5189`/`:5016`). `dapr`: `sidecar:eventstore` ok "hostReady=true, placement connected"; `sidecar:sample-api` ok (own sidecar at discovered port 32873, service-invocation).
+- `--sample-api-smoke --json` → `status: ok`, exit 0. `generatedApi`: `command-increment` ok "202, Location present, Retry-After=1"; `query-get` ok "200 with ETag"; `query-revalidate` ok "304". `stateEvidence`: `counter-state` ok "state store holds N key(s) for the smoke counter, consistent with the accepted command".
+- `environment`: docker v29.4.3, aspire CLI, dapr runtime, `daprd` at `~/.dapr/bin`, placement:50005, scheduler:50006 all `ok`.
+- Teardown: `aspire stop` → stopped successfully; ports 8080/17017/5015/5016/5189/3501 no longer listening; `dapr_placement`/`dapr_scheduler`/`dapr_redis` left running.
+
 ### Completion Notes List
 
 - **Task 1 (AC 1, 2, 7):** Read the preflight deferred-work entry (`deferred-work.md:5`), Epic 2 retro action item 4 + completion gate (`epic-2-retro-2026-07-07.md:152-154`), Epic D retro evidence, the Sample/Tenants generated-API proofs (Stories 2.3/2.4), and local topology docs. Decided on a Bash front end reusing the existing `Testing.Integration` support-safe contract (see Implementation Plan). Default mode is read-only; no persistent containers by default.
@@ -247,7 +254,7 @@ Behavioral checks against this environment (docker up; containerized `dapr init`
 - **Task 3 (AC 4):** `sidecar_metadata` queries `/v1.0/metadata`, reports app id + DAPR HTTP port + metadata availability, and classifies actor-runtime readiness (`hostReady`/`placement`) for the eventstore sidecar (fixed port 3501). It distinguishes sidecar-missing, sidecar-unhealthy, and placement-disconnected (the last escalates to a control-plane blocker and points at `troubleshooting-dapr-actor-placement.md`).
 - **Task 4 (AC 5, 6):** `--sample-api-smoke` mints an HS256 dev JWT (issuer `hexalith-dev`, audience `hexalith-eventstore`, `tenants`/`permissions` as single JSON-array-string claims with `commands:*`+`queries:*`; the token is captured into a variable and never printed). It POSTs `.../counter/counter-1/increment` (asserts `202` + `Location` + `Retry-After`), GETs the counter (asserts `200` + `ETag`), revalidates with `If-None-Match` (asserts `304`), and treats a `404` as a **generated-API product failure** (exit 4), not an environment blocker. `check_state_evidence` reads bounded Redis key counts for the smoke counter (no payloads); a `200` with zero persisted keys is a state-evidence failure (exit 5), and an unreadable state store reports `state-evidence-unavailable` rather than claiming full evidence.
 - **Task 5 (AC 7, 8):** Human output streams categorized findings (`environment`/`aspire`/`dapr`/`generated-api`/`state-evidence`/`next-action`); `--json` emits an assembled object with distinct `status`/`exitCode`. Every emitted line passes through `redact()` (jwt/bearer/dapr-api-token/secrets/private-address/non-local-URL/email/concrete-id), mirroring the shared C# contract; the shared `DaprDiagnostics.ToSupportSafeDiagnostic` gained a `dapr-api-token` rule and the duplicated regex block in `DaprDomainServiceTestFixtureBase` now delegates to it (one source of truth). Tests: `GeneratedApiSmokePreflightDiagnosticsTests` (C#) + `generated-api-smoke-preflight.test.sh` (shell).
-- **Task 6 (AC 9, 10):** Documented the preflight in `docs/brownfield/development-guide.md`. AC9 commands all pass (see Debug Log). AC10 live-topology gate: _pending live run result (recorded below)._
+- **Task 6 (AC 9, 10):** Documented the preflight in `docs/brownfield/development-guide.md`. AC9 commands all pass (see Debug Log). **AC10 completion gate MET** against a live local topology (`EnableKeycloak=false aspire run`, 2026-07-07): the read-only preflight reported `eventstore`/`sample`/`sample-api` running with HTTP endpoints and both DAPR sidecars healthy (eventstore `hostReady=true, placement connected`; sample-api service-invocation sidecar), and `--sample-api-smoke` reported `POST .../increment → 202 (+Location, Retry-After=1)`, `GET → 200 (+ETag)`, `GET (If-None-Match) → 304`, plus persisted Redis state (bounded key count), with placement:50005 + scheduler:50006 reachable and all output support-safe. The three carried action items (Epic D item 4, Epic 1 preflight gate, Epic 2 item 4) are flipped to `done` in `sprint-status.yaml`, and the `deferred-work.md` preflight entry is marked RESOLVED. Live-run finding: the initial discovery jq keyed on the suffixed `.name` and the smoke misread the sample-api's HTTP→HTTPS 307; both were fixed (discovery now keys on `.displayName` + `.urls[]|select(.name=="http")` and auto-discovers each sidecar's `.environment.DAPR_HTTP_PORT`; the smoke follows the redirect with `-L --location-trusted -k`) and re-validated on the live topology.
 
 ### File List
 
@@ -263,3 +270,4 @@ Behavioral checks against this environment (docker up; containerized `dapr init`
 ### Change Log
 
 - 2026-07-07: Implemented the generated-API DAPR/Aspire smoke preflight (Story 3.8): read-only environment/topology/sidecar diagnostics, optional support-safe Sample generated-API HTTP smoke with persisted Redis evidence, human + `--json` output with distinct exit categories, shell + C# tests, and dev-guide documentation. Centralized the support-safe redaction contract (added DAPR API token redaction; collapsed the duplicated fixture-base copy).
+- 2026-07-07: AC10 completion gate met on a live topology; corrected against real `aspire describe` output — discovery keys on `.displayName` and per-resource `.environment.DAPR_HTTP_PORT`, missing core resources now fail (not warn), and the smoke follows the sample-api HTTP→HTTPS 307 with `-L --location-trusted -k`. Flipped the three carried preflight action items to `done` and marked the deferred-work entry RESOLVED.

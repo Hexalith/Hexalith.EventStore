@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-07-07T20:23:23+02:00
+# last_updated: 2026-07-07T21:12:01+02:00
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T20:01:46+02:00
-last_updated: 2026-07-07T20:23:23+02:00
+last_updated: 2026-07-07T21:12:01+02:00
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -77,7 +77,7 @@ development_status:
   # Pulled forward out of Epic 3 sequence: evidence-gate companion to Story 3.1,
   # closes the preflight action carried open through the Epic D/1/2 retros
   # (re-homed from TEST-1.1 on 2026-07-07). Epic 3 stays backlog by design.
-  3-8-generated-api-dapr-aspire-smoke-preflight: in-progress
+  3-8-generated-api-dapr-aspire-smoke-preflight: review
   epic-3-retrospective: optional
 
   epic-4: backlog
