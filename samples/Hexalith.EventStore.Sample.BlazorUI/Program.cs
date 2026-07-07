@@ -56,8 +56,7 @@ builder.Services.AddHostedService<SignalRClientStartup>();
 // AddServiceDiscovery() default a no-op. DAPR forwards the Authorization bearer header unchanged,
 // so EventStore JWT/RBAC/tenant enforcement is preserved. Both projection queries and command
 // submissions flow through this single typed gateway client — the UI hosts no generic command path.
-string daprHttpEndpoint = builder.Configuration["DAPR_HTTP_ENDPOINT"]
-    ?? $"http://localhost:{builder.Configuration["DAPR_HTTP_PORT"] ?? "3500"}";
+string daprHttpEndpoint = ResolveDaprHttpEndpoint(builder.Configuration);
 string? daprApiToken = builder.Configuration["DAPR_API_TOKEN"];
 
 builder.Services.AddEventStoreGatewayClient(options => options.BaseAddress = new Uri(daprHttpEndpoint))
@@ -81,3 +80,27 @@ app.MapRazorComponents<Hexalith.EventStore.Sample.BlazorUI.Components.App>()
 app.MapDefaultEndpoints();
 
 app.Run();
+
+static string ResolveDaprHttpEndpoint(IConfiguration configuration)
+{
+    string? endpoint = configuration["DAPR_HTTP_ENDPOINT"];
+    if (!string.IsNullOrWhiteSpace(endpoint))
+    {
+        if (!Uri.TryCreate(endpoint, UriKind.Absolute, out Uri? uri)
+            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+        {
+            throw new InvalidOperationException("DAPR_HTTP_ENDPOINT must be an absolute HTTP or HTTPS URI.");
+        }
+
+        return endpoint;
+    }
+
+    string? port = configuration["DAPR_HTTP_PORT"];
+    if (!string.IsNullOrWhiteSpace(port)
+        && (!int.TryParse(port, out int parsedPort) || parsedPort <= 0 || parsedPort > 65535))
+    {
+        throw new InvalidOperationException("DAPR_HTTP_PORT must be a TCP port number between 1 and 65535.");
+    }
+
+    return $"http://localhost:{(string.IsNullOrWhiteSpace(port) ? "3500" : port)}";
+}

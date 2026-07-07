@@ -67,8 +67,7 @@ builder.Services.AddAuthorization();
 // Outbound path to the EventStore gateway via this app's DAPR sidecar. The caller's validated bearer is
 // forwarded unchanged so EventStore's JWT/RBAC/tenant enforcement stays authoritative. A literal
 // localhost base address keeps the global AddServiceDiscovery() default a no-op.
-string daprHttpEndpoint = builder.Configuration["DAPR_HTTP_ENDPOINT"]
-    ?? $"http://localhost:{builder.Configuration["DAPR_HTTP_PORT"] ?? "3500"}";
+string daprHttpEndpoint = ResolveDaprHttpEndpoint(builder.Configuration);
 string? daprApiToken = builder.Configuration["DAPR_API_TOKEN"];
 
 builder.Services.AddTransient<InboundBearerForwardingHandler>();
@@ -90,3 +89,27 @@ app.MapControllers();
 app.MapDefaultEndpoints();
 
 app.Run();
+
+static string ResolveDaprHttpEndpoint(IConfiguration configuration)
+{
+    string? endpoint = configuration["DAPR_HTTP_ENDPOINT"];
+    if (!string.IsNullOrWhiteSpace(endpoint))
+    {
+        if (!Uri.TryCreate(endpoint, UriKind.Absolute, out Uri? uri)
+            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+        {
+            throw new InvalidOperationException("DAPR_HTTP_ENDPOINT must be an absolute HTTP or HTTPS URI.");
+        }
+
+        return endpoint;
+    }
+
+    string? port = configuration["DAPR_HTTP_PORT"];
+    if (!string.IsNullOrWhiteSpace(port)
+        && (!int.TryParse(port, out int parsedPort) || parsedPort <= 0 || parsedPort > 65535))
+    {
+        throw new InvalidOperationException("DAPR_HTTP_PORT must be a TCP port number between 1 and 65535.");
+    }
+
+    return $"http://localhost:{(string.IsNullOrWhiteSpace(port) ? "3500" : port)}";
+}
