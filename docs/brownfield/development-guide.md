@@ -133,6 +133,14 @@ generated API host or UI metadata consumers; keep that library free of hosting, 
 query/projection actor, and UI code. See
 `samples/Hexalith.EventStore.Sample/` (`Program.cs` + `Counter/`).
 
+Do not add domain-owned `*.AppHost`, `*.Aspire`, or `*.ServiceDefaults` projects. Domain modules should use
+the platform seams (`IReadModelStore`, `ReadModelWritePolicy`, `IQueryCursorCodec`, `QueryCursorScope`,
+`EventStoreDomainDiagnostics`, `AddEventStoreDomainStateStoreHealthCheck`, and the SDK endpoint mapping)
+instead of custom state-store wrappers, cursor codecs, telemetry sources/meters, health checks, or hand-mapped
+canonical endpoints. Generated REST controllers belong in dedicated external API hosts; interactive UI hosts
+consume EventStore Client libraries and do not host generated or hand-written per-message MVC command/query
+controllers.
+
 ## Commits & branches
 
 - **Conventional Commits** required (semantic-release): `feat:` (minor), `fix:` (patch),
@@ -144,5 +152,6 @@ query/projection actor, and UI code. See
 ## CI/CD note
 
 GitHub Actions restore `Hexalith.EventStore.slnx` and force `UseHexalithProjectReferences=false` in Release
-lanes. Semantic-release packs with the same property so published `Hexalith.EventStore.*` packages depend on
-published external Hexalith packages instead of checked-out submodule source.
+lanes. Semantic-release packs the 14 packages listed in `tools/release-packages.json` with the same property
+so published `Hexalith.EventStore.*` packages depend on published external Hexalith packages instead of
+checked-out submodule source, and validation rejects missing or extra `.nupkg` files outside that manifest.

@@ -86,3 +86,18 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-5-domain-module-hosting-observability.md`
   summary: A single `EventStoreDomainDiagnostics` instance is owned and disposed by the registry yet also returned from the keyed and single-domain DI factories, so the container double/triple-disposes it at teardown — harmless today only because `ActivitySource`/`Meter` disposal is idempotent.
   evidence: `EventStoreDomainDiagnosticsRegistry` constructs each `EventStoreDomainDiagnostics` with `new` and disposes them in its own `Dispose()` (`src/Hexalith.EventStore.DomainService/EventStoreDomainDiagnosticsRegistry.cs`), while the keyed factory and the single-domain non-keyed factory (`src/Hexalith.EventStore.DomainService/EventStoreDomainTelemetryExtensions.cs`) both return the registry-owned instance. MS.DI tracks any `IDisposable` returned from a singleton factory and disposes it at container teardown, so the same instance is disposed by the registry plus once per resolved factory. It is benign today only because `ActivitySource.Dispose()`/`Meter.Dispose()` are idempotent and the type holds no other disposable state — an incidental guarantee, not a guarded one. Resolve by clarifying ownership: either the registry does not dispose instances it hands out through DI, or the factories return non-owned wrappers / the type gets an idempotent dispose guard. Both reviewers independently flagged this; low current severity.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-7-domainservice-packaging-and-guardrails.md`
+  summary: Domain-module guardrails still cannot broadly ban all direct DAPR/host wiring while the initialized Tenants domain-service host carries transitional `AddDaprClient`, `UseCloudEvents`, controller, MediatR, and router composition.
+  evidence: Story 1.7 strengthens the clean Sample reference and platform-owned state/cursor/telemetry/health/endpoint checks, but a broad scan for all DAPR/host wiring markers would fail current `references/Hexalith.Tenants/src/Hexalith.Tenants/Program.cs`. Enforce the broader rule after the remaining Tenants host composition has moved behind EventStore platform seams or has an explicit permanent exception.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-7-domainservice-packaging-and-guardrails.md`
+  summary: Domain-module endpoint guardrails still rely on lightweight same-file route resolution and do not prove canonical route values passed through cross-file constants or variables.
+  evidence: The follow-up review hardened direct literal, same-file constant, repeated-constant, and simple `MapGroup` route detection in `tests/Hexalith.EventStore.DomainService.Tests/DomainModuleAuthoringGuardrailTests.cs`, but a domain module could still hide `/process`, `/replay-state`, `/query`, `/project`, or `/admin/operational-index-metadata` behind a route value imported from another type or computed variable. Closing this completely needs a Roslyn-level syntax/semantic guardrail or an explicit convention that forbids indirect canonical endpoint route values in scanned domain roots.
+
+### DW-1: Follow-up review still recommended for 1-7-domainservice-packaging-and-guardrails after the review budget was exhausted
+origin: review-budget-followup
+source_spec: `spec-1-7-domainservice-packaging-and-guardrails.md`
+severity: low
+reason: Review budget (3 cycles) was exhausted with the story finalized (status: done, verify green) while the review pass kept recommending an independent follow-up. The work was committed by bmad-loop run 20260707-071516-abab; this entry preserves the lingering follow-up recommendation for a deliberate later review.
+status: open

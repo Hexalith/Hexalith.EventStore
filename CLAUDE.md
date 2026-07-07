@@ -165,13 +165,15 @@ samples/
 
 ## NuGet Packages (manifest-driven release set)
 
-The release inventory is defined by `tools/release-packages.json` and currently contains 13 packages:
+The release inventory is defined by `tools/release-packages.json` and currently contains 14 packages:
 
-Hexalith.EventStore.Contracts, Client, Server, SignalR, Testing, Testing.Integration, Aspire, ServiceDefaults, DomainService, RestApi.Generators, Admin.Abstractions, Admin.Cli, Admin.Server.
+`Hexalith.EventStore.Contracts`, `Hexalith.EventStore.Client`, `Hexalith.EventStore.Server`, `Hexalith.EventStore.SignalR`, `Hexalith.EventStore.Testing`, `Hexalith.EventStore.Testing.Integration`, `Hexalith.EventStore.Aspire`, `Hexalith.EventStore.ServiceDefaults`, `Hexalith.EventStore.DomainService`, `Hexalith.EventStore.RestApi.Generators`, `Hexalith.EventStore.Gateway`, `Hexalith.EventStore.Admin.Abstractions`, `Hexalith.EventStore.Admin.Cli`, `Hexalith.EventStore.Admin.Server`.
 
 `ServiceDefaults` and `DomainService` are the domain-service SDK packages (Epic A6): a domain-service host references `DomainService` for platform hosting (which pulls in `Client` + `ServiceDefaults` transitively) and writes its domain code plus a two-line host. A domain may also own a contracts-only library when those command/query contract identities must be shared by the domain service, an external generated API host, and UI metadata consumers. Both SDK packages are packable; the active publish list is governed by the release pipeline.
 
 `RestApi.Generators` is a Roslyn source-generator/analyzer package. It is distributed under `analyzers/dotnet/cs` and is referenced as an analyzer by dedicated external API host projects that generate typed REST controllers from `ICommandContract` and `IQueryContract` messages.
+
+`Gateway` is the reusable command/query HTTP gateway composition package for host applications. It is part of the manifest-governed release set; do not publish it or any other package outside `tools/release-packages.json`.
 
 Versioning: semantic-release (Conventional Commits, automated on merge to main). Centralized package management via `Directory.Packages.props`.
 

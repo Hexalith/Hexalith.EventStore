@@ -5,6 +5,7 @@
 
 namespace Hexalith.EventStore.DomainService.Tests;
 
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
@@ -15,24 +16,86 @@ using Shouldly;
 /// <c>CLAUDE.md</c> ("Domain-Module Authoring"). A domain module must contain only domain code; all platform
 /// boilerplate is supplied by the EventStore domain-service SDK. Concretely a domain module must <b>not</b>:
 /// <list type="bullet">
-///   <item>ship its own <c>*.Aspire</c> or <c>*.ServiceDefaults</c> project (DAPR wiring / shared service config
-///   belong to the platform), or</item>
+///   <item>ship its own <c>*.AppHost</c>, <c>*.Aspire</c>, or <c>*.ServiceDefaults</c> project (orchestration /
+///   DAPR wiring / shared service config belong to the platform), or</item>
 ///   <item>re-declare a projection/query actor (the platform owns
 ///   <c>EventReplayProjectionActor</c>/<c>CachingProjectionActor</c>/<c>IProjectionActor</c>; a domain serves
 ///   queries via <c>IDomainQueryHandler</c>, A7).</item>
 /// </list>
-/// Per the B4 direction change, a domain module MAY keep a thin <c>*.AppHost</c> that consumes the platform
-/// Aspire extensions (<c>AddHexalithEventStore</c> + <c>AddEventStoreDomainModule</c>), so AppHost ownership is
-/// intentionally not flagged here.
 /// </summary>
 public sealed class DomainModuleAuthoringGuardrailTests
 {
+    private const string CSharpStringLiteralPattern = "[$@]*\"{3,}[\\s\\S]*?\"{3,}|[$@]*\"(?:\\\\.|[^\"]|\"\")*\"";
+    private const string CSharpStringExpressionPattern = "(?:" + CSharpStringLiteralPattern + "|@?\\w+(?:\\s*\\+\\s*(?:" + CSharpStringLiteralPattern + "|@?\\w+))*)";
+
+    private static readonly string[] CanonicalDomainServiceEndpointRoutes =
+    [
+        "/process",
+        "/replay-state",
+        "/query",
+        "/project",
+        "/admin/operational-index-metadata",
+    ];
+
+    private static readonly Regex CustomCursorCodecDeclaration = new(
+        @"\b(?:record\s+struct|class|struct|record)\s+\w+(?:\s*<[^>{}]*>)?(?:\s*\([^;{}]*\))?\s*:\s*[^{;]*\b(?:[\w.]+\.)?IQueryCursorCodec\b",
+        RegexOptions.Compiled | RegexOptions.Singleline);
+
+    private static readonly Regex CustomHealthCheckDeclaration = new(
+        @"\b(?:record\s+struct|class|struct|record)\s+\w+(?:\s*<[^>{}]*>)?(?:\s*\([^;{}]*\))?\s*:\s*[^{;]*\b(?:[\w.]+\.)?IHealthCheck\b",
+        RegexOptions.Compiled | RegexOptions.Singleline);
+
+    private static readonly Regex CustomReadModelStoreDeclaration = new(
+        @"\b(?:record\s+struct|class|struct|record)\s+\w+(?:\s*<[^>{}]*>)?(?:\s*\([^;{}]*\))?\s*:\s*[^{;]*\b(?:[\w.]+\.)?IReadModelStore\b",
+        RegexOptions.Compiled | RegexOptions.Singleline);
+
+    private static readonly Regex NewActivitySourceDeclaration = new(
+        @"\bnew\s+(?:[\w.]+\.)?ActivitySource\s*\(|\bActivitySource\b[^;\r\n=]*=\s*new\s*(?:\(|(?:[\w.]+\.)?ActivitySource\s*\()",
+        RegexOptions.Compiled);
+
+    private static readonly Regex NewMeterDeclaration = new(
+        @"\bnew\s+(?:[\w.]+\.)?Meter\s*\(|\bMeter\b[^;\r\n=]*=\s*new\s*(?:\(|(?:[\w.]+\.)?Meter\s*\()",
+        RegexOptions.Compiled);
+
     private static readonly string[] ProjectionActorInheritanceMarkers =
     [
         ": IProjectionActor",
         ", IProjectionActor",
         ": CachingProjectionActor",
         ": EventReplayProjectionActor",
+    ];
+
+    private static readonly Regex StateStoreWrapperDeclaration = new(
+        @"\b(?:record\s+struct|class|struct|record)\s+\w*(?:ReadModelStore|Repository|StateStore|ProjectionStore|Persistence|Gateway)\w*(?:\s*<[^>{}]*>)?(?:\s*\([^;{}]*\))?",
+        RegexOptions.Compiled);
+
+    private static readonly string[] DaprStateAccessMarkers =
+    [
+        "GetStateAsync",
+        "GetStateAndETagAsync",
+        "GetStateEntryAsync",
+        "GetBulkStateAsync",
+        "QueryStateAsync",
+        "SaveStateAsync",
+        "SaveBulkStateAsync",
+        "TryGetStateAsync",
+        "TrySaveStateAsync",
+        "DeleteStateAsync",
+        "ExecuteStateTransactionAsync",
+    ];
+
+    private static readonly string[] ActorStateAccessMarkers =
+    [
+        "AddStateAsync",
+        "ClearCacheAsync",
+        "ContainsStateAsync",
+        "GetOrAddStateAsync",
+        "GetStateAsync",
+        "RemoveStateAsync",
+        "SaveStateAsync",
+        "SetStateAsync",
+        "TryAddStateAsync",
+        "TryGetStateAsync",
     ];
 
     private static readonly string[] InteractiveUiHostForbiddenMarkers =
@@ -77,22 +140,22 @@ public sealed class DomainModuleAuthoringGuardrailTests
     ];
 
     [Fact]
-    public void DomainModules_DoNotShipOwnAspireOrServiceDefaultsProject()
+    public void DomainModules_DoNotShipOwnAppHostAspireOrServiceDefaultsProject()
     {
         foreach ((string name, string path) in DomainModuleRoots())
         {
             string[] violations = Directory
                 .EnumerateFiles(path, "*.csproj", SearchOption.AllDirectories)
                 .Where(p => !IsBuildArtifact(p))
-                .Select(p => Path.GetFileNameWithoutExtension(p) ?? string.Empty)
-                .Where(n => n.EndsWith(".Aspire", StringComparison.Ordinal)
-                         || n.EndsWith(".ServiceDefaults", StringComparison.Ordinal))
+                .Select(p => (RelativePath: Path.GetRelativePath(path, p), Reason: ProhibitedDomainPlatformProjectReason(p)))
+                .Where(p => p.Reason is not null)
+                .Select(p => $"{p.RelativePath} ({p.Reason})")
                 .ToArray();
 
             violations.ShouldBeEmpty(
-                $"Domain module '{name}' must not ship its own *.Aspire or *.ServiceDefaults project — that "
-                + "boilerplate is provided by the EventStore platform (CLAUDE.md domain-centric rule). Found: "
-                + string.Join(", ", violations));
+                $"Domain module '{name}' must not ship its own *.AppHost, *.Aspire, or *.ServiceDefaults "
+                + "project — orchestration, Aspire/DAPR wiring, and service defaults are provided by the "
+                + "EventStore platform (CLAUDE.md domain-centric rule). Found: " + string.Join(", ", violations));
         }
     }
 
@@ -121,6 +184,105 @@ public sealed class DomainModuleAuthoringGuardrailTests
             "Domain modules must not re-declare a projection/query actor — the platform owns "
             + "EventReplayProjectionActor/CachingProjectionActor/IProjectionActor; serve queries via "
             + "IDomainQueryHandler (A7). Offending files: " + string.Join(", ", offenders));
+    }
+
+    [Fact]
+    public void DomainModules_DoNotReImplementPlatformOwnedStateCursorTelemetryHealthOrEndpointSeams()
+    {
+        List<string> offenders = [];
+        foreach ((string name, string path) in DomainModuleRoots())
+        {
+            foreach (string file in Directory.EnumerateFiles(path, "*.cs", SearchOption.AllDirectories))
+            {
+                if (IsBuildArtifact(file) || IsTestSource(file))
+                {
+                    continue;
+                }
+
+                string text = File.ReadAllText(file);
+                string codeWithoutComments = RemoveCSharpComments(text);
+                string codeWithoutCommentsOrStrings = RemoveCSharpCommentsAndStringLiterals(text);
+                AddPlatformBoilerplateViolations(
+                    offenders,
+                    name,
+                    path,
+                    file,
+                    codeWithoutComments,
+                    codeWithoutCommentsOrStrings);
+            }
+        }
+
+        offenders.ShouldBeEmpty(
+            "Domain modules must use EventStore platform seams instead of re-implementing hosting "
+            + "boilerplate: use AddEventStoreDomainService/UseEventStoreDomainService for canonical "
+            + "endpoints, IReadModelStore + ReadModelWritePolicy for persisted read models, "
+            + "IQueryCursorCodec/QueryCursorScope via AddEventStoreQueryCursorCodec for cursors, "
+            + "EventStoreDomainDiagnostics/AddEventStoreDomainTelemetry for telemetry, and "
+            + "AddEventStoreDomainStateStoreHealthCheck for health. Offending files: "
+            + string.Join(", ", offenders));
+    }
+
+    [Theory]
+    [InlineData("DaprClient client = default!; _ = client.QueryStateAsync<object>(\"store\", \"query\");")]
+    [InlineData("DaprClient client = default!; _ = client?.SaveStateAsync(\"store\", \"key\", state);")]
+    [InlineData("DaprClient client = default!; _ = client!.SaveStateAsync(\"store\", \"key\", state);")]
+    [InlineData("_ = services.GetRequiredService<DaprClient>().SaveStateAsync(\"store\", \"key\", state);")]
+    [InlineData("_ = CreateDaprClient().SaveStateAsync(\"store\", \"key\", state);")]
+    public void GuardrailHelpers_DetectDaprStateAccessByReceiverShape(string source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        ContainsDaprStateAccess(source).ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData("IActorStateManager stateManager = default!; _ = stateManager?.GetStateAsync<object>(\"key\");")]
+    [InlineData("IStateManager stateManager = default!; _ = stateManager!.SaveStateAsync();")]
+    [InlineData("_ = services.GetRequiredService<IActorStateManager>().GetOrAddStateAsync(\"key\", state);")]
+    public void GuardrailHelpers_DetectActorStateAccessByReceiverShape(string source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        ContainsActorStateAccess(source).ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData("app.MapPost(pattern: \"/process\", () => Results.Ok());", "/process")]
+    [InlineData("const string Process = \"/process\", Query = \"/query\"; app.MapPost(pattern: Query, () => Results.Ok());", "/query")]
+    [InlineData("const string Project = \"\"\"/project\"\"\"; app.MapPost(Project, () => Results.Ok());", "/project")]
+    [InlineData("var admin = app.MapGroup(\"/admin\"); var operational = admin.MapGroup(\"/operational-index-metadata\"); operational.MapGet(\"\", () => Results.Ok());", "/admin/operational-index-metadata")]
+    [InlineData("app.MapGroup(\"/admin\").MapGroup(\"/operational-index-metadata\").MapGet(\"\", () => Results.Ok());", "/admin/operational-index-metadata")]
+    public void GuardrailHelpers_DetectCanonicalEndpointRouteShapes(string source, string route)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(route);
+
+        RouteMappingSnippets(source, route).ShouldNotBeEmpty($"Expected route {route} to be detected in snippet: {source}");
+    }
+
+    [Fact]
+    public void GuardrailHelpers_TenantsProjectAllowanceRequiresDispatcherCodeReference()
+    {
+        const string root = "/repo/references/Hexalith.Tenants/src/Hexalith.Tenants";
+        string file = Path.Combine(root, "Program.cs");
+
+        IsAllowedProjectPreMap(
+            "Tenants",
+            root,
+            file,
+            "/project",
+            "app.MapPost(\"/project\", () => \"ProjectionDispatcher\");",
+            0,
+            "app.MapPost(\"/project\", () => \"ProjectionDispatcher\");").ShouldBeFalse();
+
+        IsAllowedProjectPreMap(
+            "Tenants",
+            root,
+            file,
+            "/project",
+            "app.MapPost(\"/project\", () => new ProjectionDispatcher().DispatchAsync(request));",
+            0,
+            "app.MapPost(\"/project\", () => new ProjectionDispatcher().DispatchAsync(request));").ShouldBeTrue();
     }
 
     [Fact]
@@ -290,6 +452,140 @@ public sealed class DomainModuleAuthoringGuardrailTests
         }
     }
 
+    private static void AddPlatformBoilerplateViolations(
+        List<string> offenders,
+        string name,
+        string rootPath,
+        string file,
+        string codeWithStrings,
+        string code)
+    {
+        AddViolationIf(offenders, CustomCursorCodecDeclaration.IsMatch(code), name, rootPath, file, "implements IQueryCursorCodec");
+        AddViolationIf(offenders, CustomReadModelStoreDeclaration.IsMatch(code), name, rootPath, file, "implements IReadModelStore");
+        AddViolationIf(offenders, CustomHealthCheckDeclaration.IsMatch(code), name, rootPath, file, "implements IHealthCheck");
+        AddViolationIf(offenders, NewActivitySourceDeclaration.IsMatch(code), name, rootPath, file, "declares a new ActivitySource");
+        AddViolationIf(offenders, NewMeterDeclaration.IsMatch(code), name, rootPath, file, "declares a new Meter");
+
+        bool usesDaprStateAccess = ContainsDaprStateAccess(code);
+        bool usesActorStateAccess = ContainsActorStateAccess(code);
+        AddViolationIf(
+            offenders,
+            StateStoreWrapperDeclaration.IsMatch(code)
+            && (usesDaprStateAccess || usesActorStateAccess),
+            name,
+            rootPath,
+            file,
+            "declares a custom read-model/state-store wrapper");
+        AddViolationIf(
+            offenders,
+            usesDaprStateAccess,
+            name,
+            rootPath,
+            file,
+            "uses custom DAPR state access");
+        AddViolationIf(
+            offenders,
+            usesActorStateAccess,
+            name,
+            rootPath,
+            file,
+            "uses custom actor state access");
+
+        foreach (string route in CanonicalDomainServiceEndpointRoutes)
+        {
+            foreach ((int index, string snippet) in RouteMappingSnippets(codeWithStrings, route))
+            {
+                if (!IsAllowedProjectPreMap(name, rootPath, file, route, codeWithStrings, index, snippet))
+                {
+                    AddViolation(offenders, name, rootPath, file, $"hand-maps canonical SDK endpoint {route}");
+                }
+            }
+        }
+
+        AddViolationIf(offenders, code.Contains("MapEventStoreDomainService(", StringComparison.Ordinal), name, rootPath, file, "calls lower-level MapEventStoreDomainService");
+        AddViolationIf(offenders, code.Contains("MapDefaultEndpoints(", StringComparison.Ordinal), name, rootPath, file, "maps service-default endpoints");
+        AddViolationIf(offenders, code.Contains("MapHealthChecks(", StringComparison.Ordinal), name, rootPath, file, "maps health checks");
+    }
+
+    private static void AddViolationIf(
+        List<string> offenders,
+        bool condition,
+        string name,
+        string rootPath,
+        string file,
+        string reason)
+    {
+        if (condition)
+        {
+            AddViolation(offenders, name, rootPath, file, reason);
+        }
+    }
+
+    private static void AddViolation(
+        List<string> offenders,
+        string name,
+        string rootPath,
+        string file,
+        string reason)
+        => offenders.Add($"{name}: {Path.GetRelativePath(rootPath, file)} ({reason})");
+
+    private static bool IsAllowedProjectPreMap(
+        string name,
+        string rootPath,
+        string file,
+        string route,
+        string text,
+        int mappingIndex,
+        string snippet)
+    {
+        if (!string.Equals(route, "/project", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        string relativePath = Path.GetRelativePath(rootPath, file).Replace('\\', '/');
+        return (string.Equals(name, "Tenants", StringComparison.Ordinal)
+                && string.Equals(relativePath, "Program.cs", StringComparison.Ordinal)
+                && RemoveCSharpCommentsAndStringLiterals(snippet).Contains("ProjectionDispatcher", StringComparison.Ordinal))
+            || (string.Equals(name, "Sample", StringComparison.Ordinal)
+                && string.Equals(relativePath, "Program.cs", StringComparison.Ordinal)
+                && IsInsideIfBlock(text, mappingIndex, "malformedProjectionResponse"));
+    }
+
+    private static string? ProhibitedDomainPlatformProjectReason(string projectPath)
+    {
+        string projectName = Path.GetFileNameWithoutExtension(projectPath) ?? string.Empty;
+        if (projectName.EndsWith(".AppHost", StringComparison.Ordinal))
+        {
+            return "own *.AppHost project";
+        }
+
+        if (projectName.EndsWith(".Aspire", StringComparison.Ordinal))
+        {
+            return "own *.Aspire project";
+        }
+
+        if (projectName.EndsWith(".ServiceDefaults", StringComparison.Ordinal))
+        {
+            return "own *.ServiceDefaults project";
+        }
+
+        string text = File.ReadAllText(projectPath);
+        if (text.Contains("Aspire.AppHost.Sdk", StringComparison.Ordinal)
+            || text.Contains("Aspire.Hosting.AppHost", StringComparison.Ordinal))
+        {
+            return "AppHost-style Aspire SDK/project content";
+        }
+
+        if (text.Contains("<PackageReference Include=\"Aspire.Hosting", StringComparison.Ordinal)
+            || text.Contains("<PackageReference Include=\"CommunityToolkit.Aspire.Hosting", StringComparison.Ordinal))
+        {
+            return "Aspire orchestration package reference";
+        }
+
+        return null;
+    }
+
     private static bool IsBuildArtifact(string path)
         => path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
         || path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal);
@@ -303,6 +599,612 @@ public sealed class DomainModuleAuthoringGuardrailTests
         return string.Equals(extension, ".cs", StringComparison.OrdinalIgnoreCase)
             || string.Equals(extension, ".csproj", StringComparison.OrdinalIgnoreCase)
             || string.Equals(extension, ".razor", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool ContainsActorStateAccess(string text)
+    {
+        string[] receivers = TypedIdentifiers(text, @"(?:[\w.]+\.)?(?:IActorStateManager|IStateManager)")
+            .Concat(["StateManager"])
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        return ContainsInvocationOnAnyReceiver(text, receivers, ActorStateAccessMarkers)
+            || ContainsGenericServiceInvocation(text, @"(?:[\w.]+\.)?(?:IActorStateManager|IStateManager)", ActorStateAccessMarkers)
+            || ContainsInvocationOnCallResult(text, ActorStateAccessMarkers);
+    }
+
+    private static bool ContainsDaprStateAccess(string text)
+    {
+        string[] receivers = TypedIdentifiers(text, @"(?:[\w.]+\.)?DaprClient")
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        return ContainsInvocationOnAnyReceiver(text, receivers, DaprStateAccessMarkers)
+            || ContainsGenericServiceInvocation(text, @"(?:[\w.]+\.)?DaprClient", DaprStateAccessMarkers)
+            || ContainsInvocationOnCallResult(text, DaprStateAccessMarkers);
+    }
+
+    private static bool ContainsGenericServiceInvocation(string text, string typePattern, IEnumerable<string> methodNames)
+    {
+        foreach (string methodName in methodNames)
+        {
+            if (Regex.IsMatch(
+                text,
+                $@"\b(?:GetRequiredService|GetService)<\s*{typePattern}\s*>\s*\([^)]*\)\s*(?:!\s*|\?\s*)?\.\s*{Regex.Escape(methodName)}(?:\s*<[^>()]+>)?\s*\(",
+                RegexOptions.CultureInvariant))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool ContainsInvocationOnAnyReceiver(string text, IEnumerable<string> receivers, IEnumerable<string> methodNames)
+    {
+        foreach (string receiver in receivers)
+        {
+            foreach (string methodName in methodNames)
+            {
+                if (Regex.IsMatch(
+                    text,
+                    $@"\b{Regex.Escape(receiver)}\s*(?:!\s*|\?\s*)?\.\s*{Regex.Escape(methodName)}(?:\s*<[^>()]+>)?\s*\(",
+                    RegexOptions.CultureInvariant))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static bool ContainsInvocationOnCallResult(string text, IEnumerable<string> methodNames)
+    {
+        foreach (string methodName in methodNames)
+        {
+            if (Regex.IsMatch(
+                text,
+                $@"\)\s*(?:!\s*|\?\s*)?\.\s*{Regex.Escape(methodName)}(?:\s*<[^>()]+>)?\s*\(",
+                RegexOptions.CultureInvariant))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static string? DecodeStringLiteral(string literal)
+    {
+        string trimmed = literal.Trim();
+        int quoteIndex = trimmed.IndexOf('"', StringComparison.Ordinal);
+        if (quoteIndex < 0)
+        {
+            return null;
+        }
+
+        string prefix = trimmed[..quoteIndex];
+        string quoted = trimmed[quoteIndex..];
+        int openingQuoteCount = CountConsecutiveQuotes(quoted, 0);
+        if (openingQuoteCount >= 3)
+        {
+            int closingQuoteCount = CountTrailingQuotes(quoted);
+            int delimiterLength = Math.Min(openingQuoteCount, closingQuoteCount);
+            if (delimiterLength < 3 || quoted.Length < delimiterLength * 2)
+            {
+                return null;
+            }
+
+            string rawContent = quoted[delimiterLength..^delimiterLength];
+            return prefix.Contains('$', StringComparison.Ordinal) && rawContent.Contains('{', StringComparison.Ordinal)
+                ? null
+                : rawContent;
+        }
+
+        if (quoted.Length < 2)
+        {
+            return null;
+        }
+
+        string content = quoted[1..^1];
+        if (prefix.Contains('$', StringComparison.Ordinal) && content.Contains('{', StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        return prefix.Contains('@', StringComparison.Ordinal)
+            ? content.Replace("\"\"", "\"", StringComparison.Ordinal)
+            : Regex.Unescape(content);
+    }
+
+    private static int CountConsecutiveQuotes(string text, int startIndex)
+    {
+        int count = 0;
+        while (startIndex + count < text.Length && text[startIndex + count] == '"')
+        {
+            count++;
+        }
+
+        return count;
+    }
+
+    private static int CountTrailingQuotes(string text)
+    {
+        int count = 0;
+        for (int i = text.Length - 1; i >= 0 && text[i] == '"'; i--)
+        {
+            count++;
+        }
+
+        return count;
+    }
+
+    private static string ExtractStatementSnippet(string text, int startIndex)
+    {
+        int semicolonIndex = text.IndexOf(';', startIndex);
+        int length = semicolonIndex < 0
+            ? Math.Min(320, text.Length - startIndex)
+            : semicolonIndex - startIndex + 1;
+        return text.Substring(startIndex, length);
+    }
+
+    private static int FindMatchingBrace(string text, int openBraceIndex)
+    {
+        int depth = 0;
+        for (int i = openBraceIndex; i < text.Length; i++)
+        {
+            if (text[i] == '{')
+            {
+                depth++;
+            }
+            else if (text[i] == '}')
+            {
+                depth--;
+                if (depth == 0)
+                {
+                    return i;
+                }
+            }
+        }
+
+        return -1;
+    }
+
+    private static IEnumerable<(int Index, string Snippet, string Route)> FirstRouteArgumentCalls(
+        string text,
+        string methodPattern,
+        IReadOnlyDictionary<string, string> stringValues,
+        bool allowEmpty)
+    {
+        foreach ((int index, _, string route) in RouteCalls(text, methodPattern, stringValues))
+        {
+            if (allowEmpty || !string.IsNullOrWhiteSpace(route))
+            {
+                yield return (index, ExtractStatementSnippet(text, index), route);
+            }
+        }
+    }
+
+    private static IEnumerable<(int Index, string Snippet)> FirstRouteArgumentCallsForRoute(
+        string text,
+        string methodPattern,
+        string route,
+        IReadOnlyDictionary<string, string> stringValues)
+    {
+        foreach ((int index, string snippet, string value) in FirstRouteArgumentCalls(text, methodPattern, stringValues, allowEmpty: true))
+        {
+            if (string.Equals(value, route, StringComparison.Ordinal))
+            {
+                yield return (index, snippet);
+            }
+        }
+    }
+
+    private static IEnumerable<(string Name, string Prefix)> GroupRouteAssignments(
+        string text,
+        IReadOnlyDictionary<string, string> stringValues)
+    {
+        Match[] assignments = Regex
+            .Matches(
+                text,
+                $@"\b(?<name>@?\w+)\s*=\s*(?:(?<receiver>@?\w+)\s*\.\s*)?MapGroup\s*\(\s*(?:(?:@?\w+)\s*:\s*)?(?<argument>{CSharpStringExpressionPattern})",
+                RegexOptions.CultureInvariant | RegexOptions.Singleline)
+            .Cast<Match>()
+            .ToArray();
+        Dictionary<string, string> groupPrefixes = new(StringComparer.Ordinal);
+
+        for (int pass = 0; pass < assignments.Length; pass++)
+        {
+            foreach (Match match in assignments)
+            {
+                string name = match.Groups["name"].Value;
+                if (groupPrefixes.ContainsKey(name))
+                {
+                    continue;
+                }
+
+                string? prefix = ResolveStringExpression(match.Groups["argument"].Value, stringValues);
+                if (prefix is null)
+                {
+                    continue;
+                }
+
+                string receiver = match.Groups["receiver"].Value;
+                if (!string.IsNullOrWhiteSpace(receiver) && groupPrefixes.TryGetValue(receiver, out string? receiverPrefix))
+                {
+                    prefix = CombineRoutes(receiverPrefix, prefix);
+                }
+                else
+                {
+                    prefix = NormalizeRoute(prefix);
+                }
+
+                groupPrefixes.Add(name, prefix);
+            }
+        }
+
+        return groupPrefixes.Select(static pair => (pair.Key, pair.Value));
+    }
+
+    private static IEnumerable<(int Index, string Method, string Route)> RouteCalls(
+        string text,
+        string methodPattern,
+        IReadOnlyDictionary<string, string> stringValues)
+    {
+        Regex callPattern = new(
+            $@"\b(?<method>{methodPattern})\s*\(\s*(?:(?:@?\w+)\s*:\s*)?(?<argument>{CSharpStringExpressionPattern})",
+            RegexOptions.CultureInvariant | RegexOptions.Singleline);
+
+        foreach (Match match in callPattern.Matches(text).Cast<Match>())
+        {
+            string? route = ResolveStringExpression(match.Groups["argument"].Value, stringValues);
+            if (route is not null)
+            {
+                yield return (match.Index, match.Groups["method"].Value, route);
+            }
+        }
+    }
+
+    private static bool IsInsideIfBlock(string text, int index, string conditionIdentifier)
+    {
+        string syntaxText = ReplaceCSharpStringLiteralsWithSpaces(text);
+        int ifIndex = syntaxText.LastIndexOf($"if ({conditionIdentifier})", index, StringComparison.Ordinal);
+        if (ifIndex < 0)
+        {
+            return false;
+        }
+
+        int openBraceIndex = syntaxText.IndexOf('{', ifIndex);
+        if (openBraceIndex < 0 || openBraceIndex > index)
+        {
+            return false;
+        }
+
+        int closeBraceIndex = FindMatchingBrace(syntaxText, openBraceIndex);
+        return closeBraceIndex > index;
+    }
+
+    private static string NormalizeRoute(string route)
+        => CombineRoutes(route);
+
+    private static string CombineRoutes(params string[] routeParts)
+    {
+        string[] segments = routeParts
+            .Select(static part => part.Trim().Trim('/').Trim())
+            .Where(static part => !string.IsNullOrWhiteSpace(part))
+            .ToArray();
+
+        return "/" + string.Join("/", segments);
+    }
+
+    private static string RemoveCSharpComments(string text)
+    {
+        StringBuilder builder = new(text.Length);
+        int currentIndex = 0;
+        foreach (Match stringLiteral in Regex.Matches(
+            text,
+            CSharpStringLiteralPattern,
+            RegexOptions.CultureInvariant | RegexOptions.Singleline).Cast<Match>())
+        {
+            builder.Append(RemoveCommentsFromNonStringText(text[currentIndex..stringLiteral.Index]));
+            builder.Append(stringLiteral.Value);
+            currentIndex = stringLiteral.Index + stringLiteral.Length;
+        }
+
+        builder.Append(RemoveCommentsFromNonStringText(text[currentIndex..]));
+        return builder.ToString();
+    }
+
+    private static string RemoveCSharpCommentsAndStringLiterals(string text)
+        => Regex.Replace(
+            RemoveCSharpComments(text),
+            CSharpStringLiteralPattern,
+            "\"\"",
+            RegexOptions.CultureInvariant | RegexOptions.Singleline);
+
+    private static string RemoveCommentsFromNonStringText(string text)
+        => Regex.Replace(
+            text,
+            @"//.*?$|/\*.*?\*/",
+            string.Empty,
+            RegexOptions.CultureInvariant | RegexOptions.Multiline | RegexOptions.Singleline);
+
+    private static string ReplaceCSharpStringLiteralsWithSpaces(string text)
+        => Regex.Replace(
+            text,
+            CSharpStringLiteralPattern,
+            match => new string(' ', match.Length),
+            RegexOptions.CultureInvariant | RegexOptions.Singleline);
+
+    private static IEnumerable<(int Index, string Snippet)> RouteMappingSnippets(string text, string route)
+    {
+        IReadOnlyDictionary<string, string> stringValues = StringAssignments(text);
+        HashSet<int> emittedIndexes = [];
+
+        foreach ((int index, string snippet) in FirstRouteArgumentCallsForRoute(text, "Map(?!Group\\b)\\w*", route, stringValues))
+        {
+            if (emittedIndexes.Add(index))
+            {
+                yield return (index, snippet);
+            }
+        }
+
+        foreach ((int index, string snippet) in ChainedGroupRouteMappingSnippets(text, route, stringValues))
+        {
+            if (emittedIndexes.Add(index))
+            {
+                yield return (index, snippet);
+            }
+        }
+
+        foreach ((int index, string snippet) in OrderedInlineGroupRouteMappingSnippets(text, route, stringValues))
+        {
+            if (emittedIndexes.Add(index))
+            {
+                yield return (index, snippet);
+            }
+        }
+    }
+
+    private static IEnumerable<(int Index, string Snippet)> ChainedGroupRouteMappingSnippets(
+        string text,
+        string route,
+        IReadOnlyDictionary<string, string> stringValues)
+    {
+        foreach ((int index, string snippet) in InlineGroupRouteMappingSnippets(text, route, stringValues))
+        {
+            yield return (index, snippet);
+        }
+
+        foreach ((int index, string snippet, string prefix) in FirstRouteArgumentCalls(text, "MapGroup", stringValues, allowEmpty: true))
+        {
+            foreach ((int childIndex, string childSnippet, string childRoute) in FirstRouteArgumentCalls(snippet, "Map(?!Group\\b)\\w*", stringValues, allowEmpty: true))
+            {
+                if (childIndex == 0)
+                {
+                    continue;
+                }
+
+                if (string.Equals(CombineRoutes(prefix, childRoute), route, StringComparison.Ordinal))
+                {
+                    yield return (index + childIndex, childSnippet);
+                }
+            }
+        }
+
+        foreach ((string name, string prefix) in GroupRouteAssignments(text, stringValues))
+        {
+            foreach ((int index, string snippet, string childRoute) in AssignedGroupChildRouteCalls(text, name, stringValues))
+            {
+                if (string.Equals(CombineRoutes(prefix, childRoute), route, StringComparison.Ordinal))
+                {
+                    yield return (index, snippet);
+                }
+            }
+        }
+    }
+
+    private static IEnumerable<(int Index, string Snippet, string Route)> AssignedGroupChildRouteCalls(
+        string text,
+        string groupName,
+        IReadOnlyDictionary<string, string> stringValues)
+    {
+        Regex callPattern = new(
+            $@"\b{Regex.Escape(groupName)}\s*\.\s*Map(?!Group\b)\w*\s*\(\s*(?:(?:@?\w+)\s*:\s*)?(?<argument>{CSharpStringExpressionPattern})",
+            RegexOptions.CultureInvariant | RegexOptions.Singleline);
+
+        foreach (Match match in callPattern.Matches(text).Cast<Match>())
+        {
+            string? route = ResolveStringExpression(match.Groups["argument"].Value, stringValues);
+            if (route is not null)
+            {
+                yield return (match.Index, ExtractStatementSnippet(text, match.Index), route);
+            }
+        }
+    }
+
+    private static IEnumerable<(int Index, string Snippet)> InlineGroupRouteMappingSnippets(
+        string text,
+        string route,
+        IReadOnlyDictionary<string, string> stringValues)
+    {
+        foreach ((int index, string snippet, _) in FirstRouteArgumentCalls(text, "MapGroup", stringValues, allowEmpty: true))
+        {
+            string prefix = string.Empty;
+            foreach ((int callIndex, string method, string routePart) in RouteCalls(snippet, "Map\\w*", stringValues))
+            {
+                if (method.EndsWith("MapGroup", StringComparison.Ordinal))
+                {
+                    prefix = CombineRoutes(prefix, routePart);
+                    continue;
+                }
+
+                if (string.Equals(CombineRoutes(prefix, routePart), route, StringComparison.Ordinal))
+                {
+                    yield return (index + callIndex, ExtractStatementSnippet(snippet, callIndex));
+                }
+            }
+        }
+    }
+
+    private static IEnumerable<(int Index, string Snippet)> OrderedInlineGroupRouteMappingSnippets(
+        string text,
+        string route,
+        IReadOnlyDictionary<string, string> stringValues)
+    {
+        (int Index, string Method, string Route)[] calls = RouteCalls(text, "Map\\w*", stringValues)
+            .OrderBy(static call => call.Index)
+            .ToArray();
+
+        for (int start = 0; start < calls.Length; start++)
+        {
+            if (!calls[start].Method.EndsWith("MapGroup", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            int statementEnd = text.IndexOf(';', calls[start].Index);
+            if (statementEnd < 0)
+            {
+                statementEnd = text.Length - 1;
+            }
+
+            string prefix = string.Empty;
+            for (int current = start; current < calls.Length && calls[current].Index <= statementEnd; current++)
+            {
+                if (calls[current].Method.EndsWith("MapGroup", StringComparison.Ordinal))
+                {
+                    prefix = CombineRoutes(prefix, calls[current].Route);
+                    continue;
+                }
+
+                if (string.Equals(CombineRoutes(prefix, calls[current].Route), route, StringComparison.Ordinal))
+                {
+                    yield return (calls[current].Index, ExtractStatementSnippet(text, calls[current].Index));
+                }
+            }
+        }
+    }
+
+    private static string? ResolveStringExpression(string expression, IReadOnlyDictionary<string, string> stringValues)
+    {
+        StringBuilder builder = new();
+        bool expectValue = true;
+        int index = 0;
+        while (index < expression.Length)
+        {
+            while (index < expression.Length && char.IsWhiteSpace(expression[index]))
+            {
+                index++;
+            }
+
+            if (index >= expression.Length)
+            {
+                break;
+            }
+
+            if (!expectValue)
+            {
+                if (expression[index] != '+')
+                {
+                    return null;
+                }
+
+                expectValue = true;
+                index++;
+                continue;
+            }
+
+            Match literal = Regex.Match(
+                expression[index..],
+                $"^{CSharpStringLiteralPattern}",
+                RegexOptions.CultureInvariant | RegexOptions.Singleline);
+            if (literal.Success)
+            {
+                string? value = DecodeStringLiteral(literal.Value);
+                if (value is null)
+                {
+                    return null;
+                }
+
+                builder.Append(value);
+                index += literal.Length;
+                expectValue = false;
+                continue;
+            }
+
+            Match identifier = Regex.Match(expression[index..], "^@?\\w+", RegexOptions.CultureInvariant);
+            if (identifier.Success && stringValues.TryGetValue(identifier.Value, out string? identifierValue))
+            {
+                builder.Append(identifierValue);
+                index += identifier.Length;
+                expectValue = false;
+                continue;
+            }
+
+            return null;
+        }
+
+        return expectValue ? null : builder.ToString();
+    }
+
+    private static IReadOnlyDictionary<string, string> StringAssignments(string text)
+    {
+        Match[] declarations = Regex
+            .Matches(
+                text,
+                @"\b(?:(?:private|protected|internal|public|static|readonly|const)\s+)*(?:string|var)\s+(?<declarators>[^;]+);",
+                RegexOptions.CultureInvariant | RegexOptions.Singleline)
+            .Cast<Match>()
+            .ToArray();
+        Dictionary<string, string> values = new(StringComparer.Ordinal);
+
+        for (int pass = 0; pass < declarations.Length; pass++)
+        {
+            foreach (Match declaration in declarations)
+            {
+                foreach ((string name, string expression) in StringDeclarators(declaration.Groups["declarators"].Value))
+                {
+                    if (values.ContainsKey(name))
+                    {
+                        continue;
+                    }
+
+                    string? value = ResolveStringExpression(expression, values);
+                    if (value is not null)
+                    {
+                        values.Add(name, value);
+                    }
+                }
+            }
+        }
+
+        return values;
+    }
+
+    private static IEnumerable<(string Name, string Expression)> StringDeclarators(string declarators)
+    {
+        Regex declaratorPattern = new(
+            $@"(?:^|,)\s*(?<name>@?\w+)\s*=\s*(?<expression>(?:{CSharpStringLiteralPattern}|[^,;])+)",
+            RegexOptions.CultureInvariant | RegexOptions.Singleline);
+
+        return declaratorPattern
+            .Matches(declarators)
+            .Cast<Match>()
+            .Select(static match => (match.Groups["name"].Value, match.Groups["expression"].Value.Trim()));
+    }
+
+    private static IEnumerable<string> TypedIdentifiers(string text, string typePattern)
+    {
+        Regex declarationPattern = new(
+            $@"\b{typePattern}(?:\s*\?)?\s+(?<name>@?\w+)\b",
+            RegexOptions.CultureInvariant);
+
+        return declarationPattern
+            .Matches(text)
+            .Cast<Match>()
+            .Select(match => match.Groups["name"].Value);
     }
 
     private static string SampleDomainProjectPath()

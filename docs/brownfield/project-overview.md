@@ -76,7 +76,9 @@ state.Apply(Event)                          // fold events back into state
 
 ## Published NuGet Packages
 
-The NuGet release inventory is manifest-driven by `tools/release-packages.json` and versioned by semantic-release on merge to `main`. It includes the core packages (`Contracts`, `Client`, `Server`, `SignalR`, `Testing`, `Aspire`), domain-service packages (`ServiceDefaults`, `DomainService`), integration-test support (`Testing.Integration`), the REST source-generator/analyzer package (`RestApi.Generators`), and admin packages (`Admin.Abstractions`, `Admin.Cli`, `Admin.Server`).
+The NuGet release inventory is manifest-driven by `tools/release-packages.json` and versioned by semantic-release on merge to `main`. It currently contains 14 packages: `Hexalith.EventStore.Contracts`, `Hexalith.EventStore.Client`, `Hexalith.EventStore.Server`, `Hexalith.EventStore.SignalR`, `Hexalith.EventStore.Testing`, `Hexalith.EventStore.Testing.Integration`, `Hexalith.EventStore.Aspire`, `Hexalith.EventStore.ServiceDefaults`, `Hexalith.EventStore.DomainService`, `Hexalith.EventStore.RestApi.Generators`, `Hexalith.EventStore.Gateway`, `Hexalith.EventStore.Admin.Abstractions`, `Hexalith.EventStore.Admin.Cli`, and `Hexalith.EventStore.Admin.Server`.
+
+`Hexalith.EventStore.DomainService` and `Hexalith.EventStore.ServiceDefaults` are the domain-service SDK packages: a domain-service host references DomainService for platform hosting, ServiceDefaults flows transitively, and generated REST/API hosts remain separate from interactive UI hosts. `Hexalith.EventStore.Gateway` is the reusable command/query HTTP gateway composition package for host applications.
 
 ## Container Images (6)
 

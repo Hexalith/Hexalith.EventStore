@@ -8,6 +8,8 @@ Guide to the manifest-driven Hexalith.EventStore NuGet package set — their pur
 
 ## Package Overview
 
+The current `tools/release-packages.json` manifest contains 14 packages, all versioned and validated as one release inventory. The package IDs are the rows in this table; packages outside this manifest are not release outputs.
+
 | Package | Description | Primary Use Case | When to Install |
 | --- | --- | --- | --- |
 | Hexalith.EventStore.Contracts | Domain types plus public gateway wire DTOs, REST contract metadata, and ProblemDetails extension names | Define shared command/event/query contracts and build HTTP gateway request bodies | Foundational contract package for Hexalith integrations |
@@ -106,7 +108,7 @@ as source project edges.
 
 Install **DomainService**.
 
-DomainService gives a domain module the SDK surface for convention discovery, DAPR endpoints, telemetry, health checks, query handlers, projections, read-model storage, cursor seams, and domain-event subscription endpoints. Domain modules should stay domain-centric and not re-implement hosting boilerplate.
+DomainService gives a domain module the SDK surface for convention discovery, DAPR endpoints, telemetry, health checks, query handlers, projections, read-model storage, cursor seams, and domain-event subscription endpoints. Domain modules should stay domain-centric and not re-implement hosting boilerplate: no domain-owned `*.AppHost`, `*.Aspire`, or `*.ServiceDefaults` projects, no custom projection/query actor, no custom read-model store or cursor codec, no custom health-check class, and no per-domain `ActivitySource` or `Meter`.
 
 ```bash
 $ dotnet add package Hexalith.EventStore.DomainService
@@ -448,7 +450,7 @@ $ dotnet add package Hexalith.EventStore.ServiceDefaults
 
 ### Hexalith.EventStore.DomainService
 
-Domain-service host SDK. A domain-service host references this package for platform hosting, writes its domain code (aggregates, commands, events, projections, query handlers, validators, contracts, and domain-event handlers) and a two-line host, and gets all hosting, DAPR-endpoint, observability, discovery, read-model/cursor, projection, and domain-event consumer seams from the platform. A domain-owned contracts-only library is still allowed when shared command/query identities are needed by the domain service, a dedicated generated API host, and UI metadata consumers; keep that library free of hosting, DAPR, telemetry, state-store, query/projection actor, and UI code. Depends on Client and ServiceDefaults.
+Domain-service host SDK. A domain-service host references this package for platform hosting, writes its domain code (aggregates, commands, events, projections, query handlers, validators, contracts, and domain-event handlers) and a two-line host, and gets all hosting, DAPR-endpoint, observability, discovery, read-model/cursor, projection, and domain-event consumer seams from the platform. A domain-owned contracts-only library is still allowed when shared command/query identities are needed by the domain service, a dedicated generated API host, and UI metadata consumers; keep that library free of hosting, DAPR, telemetry, state-store, cursor, query/projection actor, and UI code. Depends on Client and ServiceDefaults.
 
 **Key namespace and types:**
 
@@ -473,6 +475,20 @@ The package is analyzer-only: the generator DLL is distributed under `analyzers/
 
 ```bash
 $ dotnet add package Hexalith.EventStore.RestApi.Generators
+```
+
+### Hexalith.EventStore.Gateway
+
+Reusable command/query HTTP gateway composition package for host applications. It packages the EventStore
+gateway controllers, authentication, authorization, validation, middleware, health checks, OpenAPI helpers,
+SignalR wiring, and host registration extensions so an application can host the EventStore gateway surface
+without publishing packages outside the manifest-governed release inventory.
+
+Use this package when building a gateway host. Use `Hexalith.EventStore.Client` from interactive UI hosts or
+generated external API hosts that only need to call an existing gateway.
+
+```bash
+$ dotnet add package Hexalith.EventStore.Gateway
 ```
 
 ### Hexalith.EventStore.Admin.Abstractions

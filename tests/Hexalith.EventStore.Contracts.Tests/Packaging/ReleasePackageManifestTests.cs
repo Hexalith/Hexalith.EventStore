@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
@@ -6,8 +7,14 @@ namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 
 public sealed class ReleasePackageManifestTests
 {
+    private const string DomainServicePackageId = "Hexalith.EventStore.DomainService";
+    private const string DomainServiceProjectPath = "src/Hexalith.EventStore.DomainService/Hexalith.EventStore.DomainService.csproj";
+    private const int ExpectedManifestPackageCount = 14;
     private const string GeneratorPackageId = "Hexalith.EventStore.RestApi.Generators";
     private const string GeneratorProjectPath = "src/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.csproj";
+    private const string ServiceDefaultsPackageId = "Hexalith.EventStore.ServiceDefaults";
+    private const string ServiceDefaultsProjectPath = "src/Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj";
+    private static readonly TimeSpan MsBuildPropertyTimeout = TimeSpan.FromSeconds(60);
 
     [Fact]
     public void Release_manifest_includes_rest_api_generator_package()
@@ -19,6 +26,45 @@ public sealed class ReleasePackageManifestTests
             .ShouldNotBeNull($"Release manifest must include {GeneratorPackageId}.");
 
         generator.Project.ShouldBe(GeneratorProjectPath);
+    }
+
+    [Fact]
+    public void Release_manifest_includes_domain_service_sdk_packages()
+    {
+        string root = FindRepositoryRoot();
+        ReleasePackage[] packages = LoadReleasePackages();
+
+        packages.Length.ShouldBe(
+            ExpectedManifestPackageCount,
+            "Story 1.7 pins the manifest-governed EventStore release inventory at 14 packages; package additions/removals must update the release governance tests and docs together.");
+
+        ReleasePackage domainService = packages
+            .SingleOrDefault(p => p.Id == DomainServicePackageId)
+            .ShouldNotBeNull($"Release manifest must include the domain-service SDK package {DomainServicePackageId}.");
+
+        ReleasePackage serviceDefaults = packages
+            .SingleOrDefault(p => p.Id == ServiceDefaultsPackageId)
+            .ShouldNotBeNull($"Release manifest must include the shared service defaults SDK package {ServiceDefaultsPackageId}.");
+
+        domainService.Project.ShouldBe(DomainServiceProjectPath);
+        serviceDefaults.Project.ShouldBe(ServiceDefaultsProjectPath);
+
+        string domainServiceProjectPath = Path.Combine(root, domainService.Project);
+        string serviceDefaultsProjectPath = Path.Combine(root, serviceDefaults.Project);
+
+        EvaluatedProjectProperty(domainServiceProjectPath, "IsPackable").ShouldBe(
+            "true",
+            $"{DomainServicePackageId} must evaluate as packable in Release, including imported props/targets.");
+        EvaluatedProjectProperty(serviceDefaultsProjectPath, "IsPackable").ShouldBe(
+            "true",
+            $"{ServiceDefaultsPackageId} must evaluate as packable in Release, including imported props/targets.");
+
+        EvaluatedProjectProperty(domainServiceProjectPath, "PackageId").ShouldBe(
+            DomainServicePackageId,
+            $"{DomainServicePackageId} must produce the package identity declared by the manifest.");
+        EvaluatedProjectProperty(serviceDefaultsProjectPath, "PackageId").ShouldBe(
+            ServiceDefaultsPackageId,
+            $"{ServiceDefaultsPackageId} must produce the package identity declared by the manifest.");
     }
 
     [Fact]
@@ -105,28 +151,47 @@ public sealed class ReleasePackageManifestTests
     {
         string root = FindRepositoryRoot();
         int manifestPackageCount = LoadReleasePackages().Length;
-        manifestPackageCount.ShouldBeGreaterThan(8);
+        manifestPackageCount.ShouldBe(ExpectedManifestPackageCount);
 
+        Regex obsoleteCountPattern = new(
+            @"\b(?:all[-\s]+)?(?:6|8|13|six|eight|thirteen)[-\s]+(?:published[-\s]+)?(?:Hexalith\.EventStore[-\s]+)?(?:NuGet[-\s]+)?packages?\b|\bpublish[-\s]+(?:6|8|13|six|eight|thirteen)[-\s]+NuGet[-\s]+packages?\b",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+        foreach (string docPath in ActivePackageDocumentationPaths(root))
+        {
+            string text = File.ReadAllText(Path.Combine(root, docPath));
+            obsoleteCountPattern.IsMatch(text).ShouldBeFalse(
+                $"{docPath} must describe the manifest-driven package set instead of stale release package counts.");
+        }
+    }
+
+    [Fact]
+    public void Active_package_inventory_docs_match_manifest_package_set()
+    {
+        string root = FindRepositoryRoot();
+        ReleasePackage[] packages = LoadReleasePackages();
         string[] docPaths =
         [
             "AGENTS.md",
             "CLAUDE.md",
             "docs/reference/nuget-packages.md",
             "docs/brownfield/project-overview.md",
-            "docs/brownfield/index.md",
-            "docs/guides/upgrade-path.md",
-            "docs/ci-secrets-checklist.md",
+            "docs/brownfield/architecture.md",
+            "_bmad-output/project-context.md",
         ];
-
-        Regex obsoleteCountPattern = new(
-            @"\b(?:all\s+)?(?:6|8)\s+(?:published\s+)?(?:Hexalith\.EventStore\s+)?(?:NuGet\s+)?packages\b|\bpublish\s+6\s+NuGet\s+packages\b",
-            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
         foreach (string docPath in docPaths)
         {
             string text = File.ReadAllText(Path.Combine(root, docPath));
-            obsoleteCountPattern.IsMatch(text).ShouldBeFalse(
-                $"{docPath} must describe the manifest-driven package set instead of stale 6/8-package counts.");
+
+            text.Contains($"{packages.Length} packages", StringComparison.Ordinal).ShouldBeTrue(
+                $"{docPath} must state the current manifest package count.");
+
+            foreach (ReleasePackage package in packages)
+            {
+                text.Contains(package.Id, StringComparison.Ordinal).ShouldBeTrue(
+                    $"{docPath} must name every manifest package, including {package.Id}.");
+            }
         }
     }
 
@@ -179,6 +244,62 @@ public sealed class ReleasePackageManifestTests
                 package.GetProperty("project").GetString().ShouldNotBeNull()))
             .ToArray();
     }
+
+    private static string EvaluatedProjectProperty(string projectPath, string propertyName)
+    {
+        using Process process = new()
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = "dotnet",
+                RedirectStandardError = true,
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+            },
+        };
+
+        process.StartInfo.ArgumentList.Add("msbuild");
+        process.StartInfo.ArgumentList.Add(projectPath);
+        process.StartInfo.ArgumentList.Add($"-getProperty:{propertyName}");
+        process.StartInfo.ArgumentList.Add("-p:Configuration=Release");
+        process.StartInfo.ArgumentList.Add("-p:UseHexalithProjectReferences=false");
+
+        process.StartInfo.WorkingDirectory = FindRepositoryRoot();
+
+        process.Start().ShouldBeTrue($"Could not start dotnet msbuild for {projectPath}.");
+        Task<string> outputTask = process.StandardOutput.ReadToEndAsync();
+        Task<string> errorTask = process.StandardError.ReadToEndAsync();
+
+        if (!process.WaitForExit((int)MsBuildPropertyTimeout.TotalMilliseconds))
+        {
+            process.Kill(entireProcessTree: true);
+            throw new TimeoutException(
+                $"dotnet msbuild -getProperty:{propertyName} timed out after {MsBuildPropertyTimeout} for {projectPath}.");
+        }
+
+        string output = outputTask.GetAwaiter().GetResult();
+        string error = errorTask.GetAwaiter().GetResult();
+
+        process.ExitCode.ShouldBe(
+            0,
+            $"dotnet msbuild -getProperty:{propertyName} failed for {projectPath}: {error}");
+
+        return output.Trim();
+    }
+
+    private static string[] ActivePackageDocumentationPaths(string root)
+        => Directory
+            .EnumerateFiles(Path.Combine(root, "docs"), "*.md", SearchOption.AllDirectories)
+            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}reference{Path.DirectorySeparatorChar}api{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            .Concat(
+            [
+                Path.Combine(root, "AGENTS.md"),
+                Path.Combine(root, "CLAUDE.md"),
+                Path.Combine(root, "_bmad-output", "project-context.md"),
+            ])
+            .Select(path => Path.GetRelativePath(root, path))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
 
     private static string FindRepositoryRoot()
     {

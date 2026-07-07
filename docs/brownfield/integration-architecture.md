@@ -55,22 +55,26 @@ flowchart LR
 | `eventstore-admin` | `eventstore-admin` | ✅ (reads) | ❌ | No pub/sub; reads only; resiliency path injected (run-mode) |
 | `eventstore-admin-ui` | `eventstore-admin-ui` | ❌ | ❌ | Service invocation to admin only |
 | `sample-api` / `tenants-api` | `sample-api` / `tenants-api` | ❌ | ❌ | Dedicated generated REST facades; invoke `eventstore` through gateway client |
-| `sample` / `tenants` | `sample` / `tenants` | ❌ | ❌ | **Zero infrastructure access** (D4); invoked by eventstore |
+| `sample` | `sample` | ❌ | ❌ | Isolated resources path; invoked by eventstore through the domain-service SDK |
+| `tenants` | `tenants` | ✅ (platform read models) | ✅ (shared platform components) | Source-enabled non-trivial domain module; domain code uses EventStore SDK abstractions, not custom DAPR wrappers |
 
 ## Domain modules are domain-centric
 
 Domain services (`sample`, `tenants`, and any custom domain) own **only domain logic** — aggregates,
 commands, events, projections, validators, queries, contracts. Everything needed to run on Hexalith.EventStore
 is supplied by the **`Hexalith.EventStore.DomainService` SDK** (which builds on the client libraries):
-hosting, the DAPR-invoked domain-service endpoints (`/process`, `/replay-state`,
-`/admin/operational-index-metadata` today; `/project` generalization is Epic A3), convention
-discovery/registration, ServiceDefaults, and — as the platform last-mile lands — telemetry, health checks,
-and event-subscription/projection-consumer plumbing.
+hosting, the DAPR-invoked domain-service endpoints (`/process`, `/replay-state`, `/query`, `/project`,
+`/admin/operational-index-metadata`), convention discovery/registration, ServiceDefaults, telemetry, health
+checks, read-model/cursor seams, and event-subscription/projection-consumer plumbing.
 
 A conforming domain module therefore does **not** ship its own `*.AppHost`, `*.Aspire`, or `*.ServiceDefaults`
-projects, and does **not** re-implement projection/query actors or DAPR sidecar wiring. The reference shape is
-`samples/Hexalith.EventStore.Sample` (≈ domain code + a 2-line host). Tenants uses the same split: domain
-service stays headless/domain-centric, and public typed REST is hosted by a dedicated external API host.
+projects, and does **not** re-implement projection/query actors, DAPR sidecar wiring, read-model state-store
+wrappers, cursor codecs, telemetry sources/meters, health checks, canonical SDK endpoint mapping, or
+event-subscription routers. The reference shape is `samples/Hexalith.EventStore.Sample` (domain code + a
+2-line host). Tenants uses the same external-REST/domain-service split, but its domain-service host still has
+documented transitional composition: DAPR client registration, controller/query routing, CloudEvents and
+subscription mapping, plus the bespoke `/project` pre-map for persisted multi-read-model projection behavior.
+Those exceptions are tracked separately from the clean Sample reference.
 
 The domain-service host references the DomainService SDK for platform hosting. A domain-owned contracts-only
 library is allowed when the same command/query contract identities must be shared by the domain service, the
@@ -90,7 +94,9 @@ Each receiving service has its own DAPR Configuration CRD (`accesscontrol*.yaml`
 - `eventstore` allows `eventstore-admin` (delegation), interactive UI hosts that use EventStore Client
   libraries, and generated external API hosts such as `sample-api` / `tenants-api`.
 - `eventstore-admin` allows `eventstore-admin-ui` (D13).
-- `sample` / `tenants` allow `eventstore` POST-only (command invocation).
+- `sample` allows `eventstore` POST-only domain-service invocation. `tenants` allows EventStore domain-service
+  invocation and currently carries transitional subscription/controller endpoints until the remaining host
+  composition moves behind platform seams or receives permanent exception coverage.
 - Self-hosted/dev: allow-by-default + public trust domain. **Production: deny-by-default + mTLS.**
 
 ## Topic & resource naming conventions (`NamingConventionEngine`)

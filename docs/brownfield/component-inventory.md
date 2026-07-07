@@ -80,10 +80,12 @@ The **domain-service SDK** a domain module hosts itself with. It builds on the c
 `NamingConventionEngine`), `UseEventStore()` (5-layer per-domain config cascade), and `AddServiceDefaults()`
 / `MapDefaultEndpoints()` from `Hexalith.EventStore.ServiceDefaults` — and wraps them in
 `AddEventStoreDomainService()` / `UseEventStoreDomainService()` / `MapEventStoreDomainService()`, which
-reduce the host to ~2 lines and map `/`, `/process`, `/replay-state`, `/admin/operational-index-metadata`.
-A domain module references **only** this SDK (Client/ServiceDefaults/Contracts flow transitively) and maps
-its own `/project` until that is generalized (Epic A3). The SDK and ServiceDefaults are part of the
-manifest-driven NuGet package set in `tools/release-packages.json`.
+reduce the host to ~2 lines and map `/`, `/process`, `/replay-state`, `/query`, `/project`, and
+`/admin/operational-index-metadata`. A domain module references **only** this SDK
+(Client/ServiceDefaults/Contracts flow transitively) and implements `IDomainQueryHandler` /
+`IDomainProjectionHandler` instead of hand-mapping canonical endpoints. The initialized Tenants host keeps a
+documented transitional `/project` pre-map for persisted multi-read-model projection behavior. The SDK and
+ServiceDefaults are part of the manifest-driven NuGet package set in `tools/release-packages.json`.
 
 ## Testing components (`src/Hexalith.EventStore.Testing`)
 

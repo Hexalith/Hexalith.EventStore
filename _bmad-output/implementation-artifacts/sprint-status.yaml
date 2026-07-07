@@ -55,7 +55,7 @@ development_status:
   1-4-projection-and-domain-event-consumer-seams: done
   1-5-domain-module-hosting-observability: done
   1-6-sample-and-tenants-domain-centric-adoption: done
-  1-7-domainservice-packaging-and-guardrails: backlog
+  1-7-domainservice-packaging-and-guardrails: done
   epic-1-retrospective: optional
 
   epic-2: backlog

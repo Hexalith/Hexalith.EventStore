@@ -38,7 +38,7 @@ flowchart TB
     Realtime[Realtime UI] <-.->|SignalR projection-changed| API
     API -->|Route command| AA[AggregateActor]
     API -->|Route query| PA[ProjectionActor + ETagActor]
-    AA -->|Invoke| DS[Domain Service<br/>IDomainProcessor via DAPR invocation]
+    AA -->|Invoke| DS[Domain Service<br/>DomainService SDK via DAPR invocation]
     DS -->|DomainResult events| AA
     AA -->|Persist events / snapshot| SS[(State Store)]
     AA -->|Publish CloudEvents| PS{{Pub/Sub}}
@@ -77,21 +77,30 @@ flowchart TB
 | **Admin.Mcp** | `src/Hexalith.EventStore.Admin.Mcp` | MCP server, AI-callable admin tools | exe |
 | **External API hosts** | `samples/Hexalith.EventStore.Sample.Api`, `references/Hexalith.Tenants/src/Hexalith.Tenants.Api` | Dedicated public per-domain REST facades generated from contract messages | host/container |
 
+The manifest-governed NuGet release inventory contains 14 packages: `Hexalith.EventStore.Contracts`, `Hexalith.EventStore.Client`, `Hexalith.EventStore.Server`, `Hexalith.EventStore.SignalR`, `Hexalith.EventStore.Testing`, `Hexalith.EventStore.Testing.Integration`, `Hexalith.EventStore.Aspire`, `Hexalith.EventStore.ServiceDefaults`, `Hexalith.EventStore.DomainService`, `Hexalith.EventStore.RestApi.Generators`, `Hexalith.EventStore.Gateway`, `Hexalith.EventStore.Admin.Abstractions`, `Hexalith.EventStore.Admin.Cli`, and `Hexalith.EventStore.Admin.Server`.
+
 ### 4a. Domain-service authoring model (domain-centric)
 
 Domain modules that run on this platform (the `Sample`, the `Hexalith.Tenants` submodule, and any custom
 domain) are **domain-centric**: they contain only aggregates, commands, events, projections, validators,
-queries, and contracts. **All hosting/infrastructure boilerplate is provided by the EventStore client
-libraries** — a domain module must not ship its own `*.AppHost`, `*.Aspire`, or `*.ServiceDefaults`, nor
-re-implement projection/query actors, DAPR wiring, telemetry, health checks, or event-subscription plumbing.
+queries, and contracts. **All hosting/infrastructure boilerplate is provided by the DomainService SDK and
+EventStore client libraries** — a domain module must not ship its own `*.AppHost`, `*.Aspire`, or
+`*.ServiceDefaults`, nor re-implement projection/query actors, DAPR wiring, read-model state-store wrappers,
+cursor codecs, telemetry sources/meters, health checks, canonical SDK endpoint mapping, or event-subscription
+plumbing.
 
-The seam is convention discovery (`AssemblyScanner` + `NamingConventionEngine`) over the
-`IDomainProcessor` / `EventStoreAggregate<TState>` base classes: a domain author inherits the base class and
-the platform discovers, registers (keyed by kebab-case domain name), hosts, routes, persists, and publishes.
-A conforming domain service is ≈ domain code + a 2-line host (`AddEventStoreDomainService()` /
+The seam is convention discovery (`AssemblyScanner` + `NamingConventionEngine`) over aggregates with
+`Handle`/`Apply` methods plus `IDomainQueryHandler` and `IDomainProjectionHandler` implementations. The
+platform discovers, registers (keyed by kebab-case domain name), hosts, routes, persists, and publishes
+without per-domain infrastructure projects.
+A conforming domain service is domain code + a 2-line host (`AddEventStoreDomainService()` /
 `UseEventStoreDomainService()`), provided by the `Hexalith.EventStore.DomainService` SDK (references the
-client libraries). The `Sample` is the reference shape, and Tenants follows the same domain-service boundary
-with external REST hosted separately.
+client libraries). The `Sample` is the clean reference shape. The initialized Tenants submodule is aligned
+with the same external-REST/domain-service split, but still carries transitional host composition in its
+domain-service host: DAPR client registration, controller/query routing, CloudEvents/subscription mapping,
+and a bespoke `/project` pre-map for persisted multi-read-model projection behavior. Those are documented
+exceptions until the remaining behavior moves fully behind EventStore platform seams or receives permanent
+exception coverage.
 
 Typed public per-domain REST is a separate host concern. `Hexalith.EventStore.RestApi.Generators` emits
 controllers from `ICommandContract` and `IQueryContract` messages into dedicated external-facing API hosts.
@@ -206,12 +215,13 @@ orchestrator over a checkpointed 5-step pipeline — `PipelineState` persisted f
 - Tenant/domain/aggregate-id components forbid colons → structurally disjoint key spaces (FR15/FR28).
 - `Hexalith.EventStore.Server.Tests` is excluded from the baseline due to a pre-existing CA2007
   warnings-as-errors build failure (see development-guide.md).
-- **Domain modules are domain-centric (boilerplate lives in the client libraries).** A domain module must
+- **Domain modules are domain-centric (boilerplate lives in DomainService and the client libraries).** A domain module must
   not re-implement platform infrastructure — no own `*.AppHost`/`*.Aspire`/`*.ServiceDefaults`, no custom
-  projection/query actor, no hand-rolled DAPR wiring, telemetry, health checks, or event-subscription
-  plumbing. It references the EventStore client libraries (the domain-service SDK) and writes only domain
-  code plus a 2-line host. See §4a. The `Sample` is the conforming reference; the `Hexalith.Tenants`
-  submodule is being aligned to it (see `_bmad-output/planning-artifacts/sprint-change-proposal-2026-06-02.md`).
+  projection/query actor, no hand-rolled DAPR wiring, read-model store, cursor codec, telemetry source/meter,
+  health check, canonical endpoint mapping, or event-subscription plumbing. It references the DomainService
+  SDK and writes only domain code plus a 2-line host. See §4a. The `Sample` is the clean conforming reference;
+  the initialized `Hexalith.Tenants` submodule is non-trivial evidence and keeps a documented bespoke
+  `/project` pre-map until that wire behavior can move fully behind the platform seam.
 - **Generated REST belongs in external API hosts.** Controllers generated by `RestApi.Generators` call
   `IEventStoreGatewayClient` and must not call MediatR, domain services, DAPR actors, state stores,
   projection actors, or domain query dispatchers directly. Interactive UI hosts use EventStore Client
