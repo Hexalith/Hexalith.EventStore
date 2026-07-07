@@ -61,7 +61,7 @@ public class SampleApiLaunchSettingsTests
     }
 
     [Fact]
-    public void EventStoreAccessControl_SampleApiPolicyNarrowsGatewayPostOperations()
+    public void EventStoreAccessControl_SampleApiPolicyDocumentsGatewayPostOperations()
     {
         string accessControl = File.ReadAllText(Path.Combine(
             RepositoryProjectPaths.GetRepositoryRoot(),
@@ -76,15 +76,11 @@ public class SampleApiLaunchSettingsTests
 
         sampleApiPolicy.ShouldContain("defaultAction: deny");
         sampleApiPolicy.ShouldNotContain("name: /**");
-        sampleApiPolicy.ShouldNotContain("'GET'");
-        sampleApiPolicy.ShouldNotContain("'PUT'");
-        sampleApiPolicy.ShouldNotContain("'DELETE'");
-
         Dictionary<string, AccessControlOperation> operations = ExtractOperations(sampleApiPolicy);
         operations.ShouldBe(new Dictionary<string, AccessControlOperation>(StringComparer.Ordinal)
         {
-            ["/api/v1/queries"] = new("['POST']", "allow"),
-            ["/api/v1/commands"] = new("['POST']", "allow"),
+            ["/api/v1/queries"] = new("POST", "allow"),
+            ["/api/v1/commands"] = new("POST", "allow"),
         });
     }
 
@@ -147,13 +143,28 @@ public class SampleApiLaunchSettingsTests
                 && currentName is not null
                 && currentVerb is not null)
             {
-                operations[currentName] = new AccessControlOperation(currentVerb, line[ActionPrefix.Length..]);
+                operations
+                    .TryAdd(currentName, new AccessControlOperation(NormalizeHttpVerb(currentVerb), line[ActionPrefix.Length..]))
+                    .ShouldBeTrue($"Duplicate DAPR ACL operation '{currentName}' must not be allowed to mask a broader rule.");
                 currentName = null;
                 currentVerb = null;
             }
         }
 
         return operations;
+    }
+
+    private static string NormalizeHttpVerb(string httpVerb)
+    {
+        string[] verbs = httpVerb
+            .Trim()
+            .Trim('[', ']')
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(static verb => verb.Trim('\'', '"'))
+            .ToArray();
+
+        verbs.ShouldBe(["POST"], "sample-api may document only POST service-invocation operations.");
+        return verbs.Single();
     }
 
     private sealed record AccessControlOperation(string HttpVerb, string Action);

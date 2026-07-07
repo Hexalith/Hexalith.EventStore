@@ -15,6 +15,10 @@ internal sealed class FakeEventStoreGatewayClient : IEventStoreGatewayClient
 
     public string? LastIfNoneMatch { get; private set; }
 
+    public CancellationToken LastCommandCancellationToken { get; private set; }
+
+    public CancellationToken LastQueryCancellationToken { get; private set; }
+
     public SubmitCommandRequest? LastCommandRequest { get; private set; }
 
     public SubmitQueryRequest? LastQueryRequest { get; private set; }
@@ -29,8 +33,9 @@ internal sealed class FakeEventStoreGatewayClient : IEventStoreGatewayClient
 
         CommandCallCount++;
         LastCommandRequest = request;
+        LastCommandCancellationToken = cancellationToken;
         return CommandHandler is null
-            ? Task.FromResult(new SubmitCommandResponse("01KTESTCOMMANDSTATUS000000"))
+            ? Task.FromResult(new SubmitCommandResponse(Hexalith.Commons.UniqueIds.UniqueIdHelper.GenerateSortableUniqueStringId()))
             : CommandHandler(request, cancellationToken);
     }
 
@@ -44,6 +49,7 @@ internal sealed class FakeEventStoreGatewayClient : IEventStoreGatewayClient
         QueryCallCount++;
         LastQueryRequest = request;
         LastIfNoneMatch = ifNoneMatch;
+        LastQueryCancellationToken = cancellationToken;
         return QueryHandler is null
             ? Task.FromResult(new EventStoreQueryResult("01KTESTQUERY0000000000000", null, IsNotModified: false, ETag: null))
             : QueryHandler(request, ifNoneMatch, cancellationToken);

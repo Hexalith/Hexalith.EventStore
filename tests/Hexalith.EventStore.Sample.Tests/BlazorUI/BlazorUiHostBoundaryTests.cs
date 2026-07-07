@@ -9,7 +9,7 @@ public sealed class BlazorUiHostBoundaryTests
 {
     private static readonly Regex[] GeneratedApiHostForbiddenPatterns =
     [
-        new(@"\[\s*assembly\s*:\s*(?:[\w.]+\.)?RestApi\s*\(", RegexOptions.Compiled),
+        new(@"\[\s*assembly\s*:\s*(?:global::)?(?:[\w.]+\.)?RestApi(?:Attribute)?\s*\(", RegexOptions.Compiled),
         new(@"\b(?:[\w.]+\.)?AddMvc\s*\(", RegexOptions.Compiled),
         new(@"\b(?:[\w.]+\.)?AddMvcCore\s*\(", RegexOptions.Compiled),
         new(@"\b(?:[\w.]+\.)?AddControllers\s*\(", RegexOptions.Compiled),

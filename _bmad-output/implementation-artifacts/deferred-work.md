@@ -140,3 +140,7 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-3-sample-external-api-host-proof.md`
   summary: Generated Sample API command success responses expose the generator's relative `/api/v1/commands/status/{id}` status location even though the external API host does not itself map that status route.
   evidence: `SampleApiGeneratedControllerRuntimeTests` proves the compiled Sample API generated command action emits the existing generated `Location` header; `Sample.Api` maps only generated controllers and default endpoints, so polling that relative status URL depends on an external routing/proxy policy not owned by this proof story.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-3-sample-external-api-host-proof.md`
+  summary: Sample DAPR app-id handlers append `dapr-app-id` and `dapr-api-token` headers without replacing preexisting values.
+  evidence: `samples/Hexalith.EventStore.Sample.Api/Services/DaprAppIdHandler.cs` and `samples/Hexalith.EventStore.Sample.BlazorUI/Services/DaprAppIdHandler.cs` call `TryAddWithoutValidation` for DAPR routing headers, so a caller-provided conflicting value could produce duplicate sidecar routing/token headers; this handler behavior predates the generated Sample API host proof and needs a focused outbound-DAPR-header policy fix.

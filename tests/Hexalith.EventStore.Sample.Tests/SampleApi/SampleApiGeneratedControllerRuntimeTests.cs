@@ -1,3 +1,5 @@
+extern alias SampleApi;
+
 using System.Reflection;
 using System.Text.Json;
 
@@ -5,8 +7,8 @@ using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Client.Gateway;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Queries;
-using Hexalith.EventStore.Sample.Api.Services;
 using Hexalith.EventStore.Sample.Counter.Commands;
+using DaprAppIdHandler = SampleApi::Hexalith.EventStore.Sample.Api.Services.DaprAppIdHandler;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -72,6 +74,7 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
         request.QueryType.ShouldBe("get-counter-status");
         request.ProjectionType.ShouldBe("counter");
         controller.Gateway.LastIfNoneMatch.ShouldBeNull();
+        controller.Gateway.LastQueryCancellationToken.ShouldBe(TestContext.Current.CancellationToken);
 
         IHeaderDictionary headers = controller.Controller.HttpContext.Response.Headers;
         headers[HeaderNames.ETag].ToString().ShouldBe("\"counter-version\"");
@@ -136,30 +139,11 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
 
     [Fact]
     public async Task CounterQuery_WhenGatewayReturnsNotModifiedWithoutStrongETag_ReturnsBadGatewayProblem()
-    {
-        GeneratedController controller = CreateController();
-        controller.Gateway.QueryHandler = static (_, _, _) =>
-            Task.FromResult(new EventStoreQueryResult(
-                CorrelationId: null,
-                Payload: null,
-                IsNotModified: true,
-                ETag: "W/\"counter-version\"")
-            {
-                Metadata = new QueryResponseMetadata(
-                    IsStale: false,
-                    ProjectionVersion: "42",
-                    ServedAt: new DateTimeOffset(2026, 7, 7, 10, 30, 0, TimeSpan.Zero)),
-            });
+        => await AssertNotModifiedWithoutStrongETagAsync("W/\"counter-version\"");
 
-        IActionResult result = await InvokeQueryAsync(controller, "\"counter-version\"");
-
-        ObjectResult badGateway = result.ShouldBeOfType<ObjectResult>();
-        badGateway.StatusCode.ShouldBe(StatusCodes.Status502BadGateway);
-        badGateway.ContentTypes.ShouldContain("application/problem+json");
-        ProblemDetails problem = badGateway.Value.ShouldBeOfType<ProblemDetails>();
-        problem.Detail.ShouldBe("Not-modified query response requires a strong ETag.");
-        AssertMetadataHeadersAbsent(controller.Controller.HttpContext.Response.Headers);
-    }
+    [Fact]
+    public async Task CounterQuery_WhenGatewayReturnsNotModifiedWithoutETag_ReturnsBadGatewayProblem()
+        => await AssertNotModifiedWithoutStrongETagAsync(null);
 
     [Fact]
     public async Task IncrementCounter_WhenBodyMatchesRoute_SubmitsGatewayCommandAndReturnsAccepted()
@@ -188,6 +172,7 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
         request.AggregateId.ShouldBe("counter-1");
         request.CommandType.ShouldBe("increment-counter");
         request.Payload.GetProperty("counterId").GetString().ShouldBe("counter-1");
+        controller.Gateway.LastCommandCancellationToken.ShouldBe(TestContext.Current.CancellationToken);
 
         IHeaderDictionary headers = controller.Controller.HttpContext.Response.Headers;
         headers[HeaderNames.RetryAfter].ToString().ShouldBe("1");
@@ -197,21 +182,18 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
     [Fact]
     public async Task CounterCommands_WhenBodiesMatchRoute_SubmitExpectedGatewayCommands()
     {
-        (string MethodName, object Body, string CommandType)[] cases =
-        [
-            ("DecrementCounterCommandAsync", new DecrementCounter("counter-1"), "decrement-counter"),
-            ("ResetCounterCommandAsync", new ResetCounter("counter-1"), "reset-counter"),
-            ("CloseCounterCommandAsync", new CloseCounter("counter-1"), "close-counter"),
-        ];
-
-        foreach ((string methodName, object body, string commandType) in cases)
+        foreach (CommandCase commandCase in CommandCases())
         {
             GeneratedController controller = CreateController();
             string statusId = UniqueIdHelper.GenerateSortableUniqueStringId();
             controller.Gateway.CommandHandler = (_, _) =>
                 Task.FromResult(new SubmitCommandResponse(statusId));
 
-            IActionResult result = await InvokeCommandAsync(controller, methodName, "counter-1", body);
+            IActionResult result = await InvokeCommandAsync(
+                controller,
+                commandCase.MethodName,
+                "counter-1",
+                commandCase.MatchingBody);
 
             AcceptedResult accepted = result.ShouldBeOfType<AcceptedResult>();
             SubmitCommandResponse response = accepted.Value.ShouldBeOfType<SubmitCommandResponse>();
@@ -223,44 +205,56 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
             request.Tenant.ShouldBe("tenant-a");
             request.Domain.ShouldBe("counter");
             request.AggregateId.ShouldBe("counter-1");
-            request.CommandType.ShouldBe(commandType);
+            request.CommandType.ShouldBe(commandCase.CommandType);
             request.Payload.GetProperty("counterId").GetString().ShouldBe("counter-1");
+            controller.Gateway.LastCommandCancellationToken.ShouldBe(TestContext.Current.CancellationToken);
             controller.Controller.HttpContext.Response.Headers[HeaderNames.Location].ToString()
                 .ShouldBe($"/api/v1/commands/status/{statusId}");
         }
     }
 
     [Fact]
-    public async Task IncrementCounter_WhenBodyIsNull_ReturnsBadRequestBeforeGatewayCall()
+    public async Task CounterCommands_WhenBodyIsNull_ReturnBadRequestBeforeGatewayCall()
     {
-        GeneratedController controller = CreateController();
+        foreach (CommandCase commandCase in CommandCases())
+        {
+            GeneratedController controller = CreateController();
 
-        IActionResult result = await InvokeIncrementCounterAsync(controller, "counter-1", body: null);
+            IActionResult result = await InvokeCommandAsync(
+                controller,
+                commandCase.MethodName,
+                "counter-1",
+                body: null);
 
-        ObjectResult badRequest = result.ShouldBeOfType<ObjectResult>();
-        badRequest.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
-        badRequest.ContentTypes.ShouldContain("application/problem+json");
-        ProblemDetails problem = badRequest.Value.ShouldBeOfType<ProblemDetails>();
-        problem.Detail.ShouldBe("Request body is required.");
-        controller.Gateway.CommandCallCount.ShouldBe(0);
+            ObjectResult badRequest = result.ShouldBeOfType<ObjectResult>();
+            badRequest.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
+            badRequest.ContentTypes.ShouldContain("application/problem+json");
+            ProblemDetails problem = badRequest.Value.ShouldBeOfType<ProblemDetails>();
+            problem.Detail.ShouldBe("Request body is required.");
+            controller.Gateway.CommandCallCount.ShouldBe(0);
+        }
     }
 
     [Fact]
-    public async Task IncrementCounter_WhenRouteAndBodyAggregateMismatch_ReturnsBadRequestBeforeGatewayCall()
+    public async Task CounterCommands_WhenRouteAndBodyAggregateMismatch_ReturnBadRequestBeforeGatewayCall()
     {
-        GeneratedController controller = CreateController();
+        foreach (CommandCase commandCase in CommandCases())
+        {
+            GeneratedController controller = CreateController();
 
-        IActionResult result = await InvokeIncrementCounterAsync(
-            controller,
-            "counter-1",
-            new IncrementCounter("counter-2"));
+            IActionResult result = await InvokeCommandAsync(
+                controller,
+                commandCase.MethodName,
+                "counter-1",
+                commandCase.MismatchedBody);
 
-        ObjectResult badRequest = result.ShouldBeOfType<ObjectResult>();
-        badRequest.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
-        badRequest.ContentTypes.ShouldContain("application/problem+json");
-        ProblemDetails problem = badRequest.Value.ShouldBeOfType<ProblemDetails>();
-        problem.Detail.ShouldContain("does not match");
-        controller.Gateway.CommandCallCount.ShouldBe(0);
+            ObjectResult badRequest = result.ShouldBeOfType<ObjectResult>();
+            badRequest.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
+            badRequest.ContentTypes.ShouldContain("application/problem+json");
+            ProblemDetails problem = badRequest.Value.ShouldBeOfType<ProblemDetails>();
+            problem.Detail.ShouldContain("does not match");
+            controller.Gateway.CommandCallCount.ShouldBe(0);
+        }
     }
 
     [Fact]
@@ -289,6 +283,87 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
         problem.Extensions["reasonCode"].ShouldBe("tenant-forbidden");
         controller.Gateway.QueryCallCount.ShouldBe(1);
     }
+
+    [Fact]
+    public async Task CounterCommand_WhenGatewayThrowsForbidden_ReturnsSafeProblemDetails()
+    {
+        GeneratedController controller = CreateController();
+        controller.Gateway.CommandHandler = static (_, _) =>
+            throw new EventStoreGatewayException(
+                StatusCodes.Status403Forbidden,
+                "Forbidden",
+                detail: "Access denied.",
+                correlationId: "01KTESTCORRELATION00000",
+                tenantId: "tenant-a",
+                reasonCode: "tenant-forbidden");
+
+        IActionResult result = await InvokeIncrementCounterAsync(
+            controller,
+            "counter-1",
+            new IncrementCounter("counter-1"));
+
+        ObjectResult forbidden = result.ShouldBeOfType<ObjectResult>();
+        forbidden.StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
+        forbidden.ContentTypes.ShouldContain("application/problem+json");
+        ProblemDetails problem = forbidden.Value.ShouldBeOfType<ProblemDetails>();
+        problem.Status.ShouldBe(StatusCodes.Status403Forbidden);
+        problem.Title.ShouldBe("Forbidden");
+        problem.Extensions["correlationId"].ShouldBe("01KTESTCORRELATION00000");
+        problem.Extensions["tenantId"].ShouldBe("tenant-a");
+        problem.Extensions["reasonCode"].ShouldBe("tenant-forbidden");
+        controller.Gateway.CommandCallCount.ShouldBe(1);
+    }
+
+    private static async Task AssertNotModifiedWithoutStrongETagAsync(string? etag)
+    {
+        GeneratedController controller = CreateController();
+        controller.Gateway.QueryHandler = (_, _, _) =>
+            Task.FromResult(new EventStoreQueryResult(
+                CorrelationId: null,
+                Payload: null,
+                IsNotModified: true,
+                ETag: etag)
+            {
+                Metadata = new QueryResponseMetadata(
+                    IsStale: false,
+                    ProjectionVersion: "42",
+                    ServedAt: new DateTimeOffset(2026, 7, 7, 10, 30, 0, TimeSpan.Zero)),
+            });
+
+        IActionResult result = await InvokeQueryAsync(controller, "\"counter-version\"").ConfigureAwait(false);
+
+        ObjectResult badGateway = result.ShouldBeOfType<ObjectResult>();
+        badGateway.StatusCode.ShouldBe(StatusCodes.Status502BadGateway);
+        badGateway.ContentTypes.ShouldContain("application/problem+json");
+        ProblemDetails problem = badGateway.Value.ShouldBeOfType<ProblemDetails>();
+        problem.Detail.ShouldBe("Not-modified query response requires a strong ETag.");
+        AssertMetadataHeadersAbsent(controller.Controller.HttpContext.Response.Headers);
+    }
+
+    private static CommandCase[] CommandCases()
+        =>
+        [
+            new(
+                "IncrementCounterCommandAsync",
+                new IncrementCounter("counter-1"),
+                new IncrementCounter("counter-2"),
+                "increment-counter"),
+            new(
+                "DecrementCounterCommandAsync",
+                new DecrementCounter("counter-1"),
+                new DecrementCounter("counter-2"),
+                "decrement-counter"),
+            new(
+                "ResetCounterCommandAsync",
+                new ResetCounter("counter-1"),
+                new ResetCounter("counter-2"),
+                "reset-counter"),
+            new(
+                "CloseCounterCommandAsync",
+                new CloseCounter("counter-1"),
+                new CloseCounter("counter-2"),
+                "close-counter"),
+        ];
 
     private static GeneratedController CreateController()
     {
@@ -353,4 +428,10 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
     }
 
     private sealed record GeneratedController(ControllerBase Controller, FakeEventStoreGatewayClient Gateway);
+
+    private sealed record CommandCase(
+        string MethodName,
+        object MatchingBody,
+        object MismatchedBody,
+        string CommandType);
 }

@@ -1,9 +1,12 @@
+extern alias SampleApi;
+
 using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
 using Hexalith.EventStore.Client.Gateway;
 using Hexalith.EventStore.Contracts.Rest;
-using Hexalith.EventStore.Sample.Api.Services;
+using DaprAppIdHandler = SampleApi::Hexalith.EventStore.Sample.Api.Services.DaprAppIdHandler;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -14,6 +17,10 @@ namespace Hexalith.EventStore.Sample.Tests.SampleApi;
 
 public sealed class SampleApiStructuralTests
 {
+    private static readonly Regex MinimalEndpointMappingPattern = new(
+        @"\bapp\s*\.\s*Map(?:Get|Post|Put|Delete|Patch|Group|Methods)\s*\(",
+        RegexOptions.Compiled);
+
     [Fact]
     public void SampleApiProject_UsesContractsClientServiceDefaultsAndGeneratorAnalyzerOnly()
     {
@@ -39,6 +46,20 @@ public sealed class SampleApiStructuralTests
 
         ProjectReferenceFileNames(projectReferences).ShouldNotContain("Hexalith.EventStore.Sample.csproj");
         ProjectReferenceFileNames(projectReferences).ShouldNotContain("Hexalith.EventStore.Sample.BlazorUI.csproj");
+
+        string[] forbiddenDependencies = project
+            .Descendants()
+            .Where(static element => string.Equals(element.Name.LocalName, "ProjectReference", StringComparison.Ordinal)
+                || string.Equals(element.Name.LocalName, "PackageReference", StringComparison.Ordinal)
+                || string.Equals(element.Name.LocalName, "Reference", StringComparison.Ordinal))
+            .Select(DependencyIdentity)
+            .Where(static identity => string.Equals(identity, "Hexalith.EventStore.Sample", StringComparison.Ordinal)
+                || string.Equals(identity, "Hexalith.EventStore.Sample.BlazorUI", StringComparison.Ordinal)
+                || string.Equals(identity, "Hexalith.EventStore.Sample.csproj", StringComparison.Ordinal)
+                || string.Equals(identity, "Hexalith.EventStore.Sample.BlazorUI.csproj", StringComparison.Ordinal))
+            .ToArray();
+
+        forbiddenDependencies.ShouldBeEmpty("The external API host must not reference the domain implementation or UI host by project, package, or assembly reference.");
     }
 
     [Fact]
@@ -72,12 +93,20 @@ public sealed class SampleApiStructuralTests
         programText.ShouldContain("builder.Services.AddHttpContextAccessor();");
         programText.ShouldContain("builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)");
         programText.ShouldContain("builder.Services.AddAuthorization();");
+        programText.ShouldContain("options.BaseAddress = new Uri(daprHttpEndpoint)");
         programText.ShouldContain(".AddHttpMessageHandler<InboundBearerForwardingHandler>()");
         programText.ShouldContain(".AddHttpMessageHandler(() => new DaprAppIdHandler(\"eventstore\", daprApiToken))");
+        programText.ShouldContain("app.UseAuthentication();");
+        programText.ShouldContain("app.UseAuthorization();");
         programText.ShouldContain("app.MapControllers();");
-        programText.ShouldContain("DAPR_HTTP_ENDPOINT\"]?.Trim()");
-        programText.ShouldContain("UriPartial.Authority");
-        programText.ShouldContain("NumberStyles.None");
+        programText.ShouldContain("DaprHttpEndpointResolver.Resolve(builder.Configuration)");
+
+        programText.IndexOf("app.UseAuthentication();", StringComparison.Ordinal)
+            .ShouldBeLessThan(programText.IndexOf("app.UseAuthorization();", StringComparison.Ordinal));
+        programText.IndexOf("app.UseAuthorization();", StringComparison.Ordinal)
+            .ShouldBeLessThan(programText.IndexOf("app.MapControllers();", StringComparison.Ordinal));
+        MinimalEndpointMappingPattern.IsMatch(programText)
+            .ShouldBeFalse("Sample.Api must expose typed generated controllers only, not hand-written minimal API endpoints.");
     }
 
     [Fact]
@@ -146,6 +175,14 @@ public sealed class SampleApiStructuralTests
     private static bool IsBuildArtifact(string path)
         => path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
         || path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal);
+
+    private static string DependencyIdentity(XElement reference)
+    {
+        string include = ((string?)reference.Attribute("Include"))?.Replace('\\', '/') ?? string.Empty;
+        return string.Equals(reference.Name.LocalName, "ProjectReference", StringComparison.Ordinal)
+            ? Path.GetFileName(include)
+            : include;
+    }
 
     private static string[] ProjectReferenceFileNames(IEnumerable<XElement> references)
         => references
