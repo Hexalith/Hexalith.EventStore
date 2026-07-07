@@ -161,10 +161,12 @@ public partial class ProjectionChangedHub(
         ArgumentException.ThrowIfNullOrWhiteSpace(projectionType);
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
 
-        // Defense-in-depth: colons are reserved as group name separator. Applied on the leave
-        // path too so a malformed raw LeaveGroup/LeaveGroupScoped call cannot build and remove
-        // an invalid group name or emit one to the debug log. Leaving stays authorization-free
-        // by design — removing a connection from a group it is not in is idempotent and harmless.
+        // Defense-in-depth: colons are reserved as the group name separator, so reject them (and
+        // null/blank) on the leave path too, mirroring the JoinGroupCoreAsync guards — a malformed
+        // raw LeaveGroup/LeaveGroupScoped call then cannot build or remove a colon-ambiguous group
+        // name. Structure only: length and other control characters are not bounded here. Leaving
+        // stays authorization-free by design — removing a connection from a group it is not in is
+        // idempotent and harmless.
         if (projectionType.Contains(':') || tenantId.Contains(':')) {
             throw new HubException("projectionType and tenantId must not contain colons.");
         }
