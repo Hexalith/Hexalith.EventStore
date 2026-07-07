@@ -1,3 +1,17 @@
+# [3.43.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.42.0...v3.43.0) (2026-07-07)
+
+
+### Bug Fixes
+
+* **paths:** update project path resolutions for Hexalith packages ([ae3245b](https://github.com/Hexalith/Hexalith.EventStore/commit/ae3245b39a0bf06bbf6a684a86c63e0fb038f714))
+* update Hexalith dependency handling and version to 3.42.0 ([a592bbd](https://github.com/Hexalith/Hexalith.EventStore/commit/a592bbdbfd093acb812a994cc3f2ade916a697c8))
+* update PackageVersion elements to use Update attribute for consistency ([73f6115](https://github.com/Hexalith/Hexalith.EventStore/commit/73f611586f49f6c9b708784082a2ba8cb5f4ff5a))
+
+
+### Features
+
+* **domain-service:** add hosting observability seams ([cc72a56](https://github.com/Hexalith/Hexalith.EventStore/commit/cc72a56619edd776cc0177c47599d63db16ecfb6))
+
 # [3.42.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.41.1...v3.42.0) (2026-07-06)
 
 
