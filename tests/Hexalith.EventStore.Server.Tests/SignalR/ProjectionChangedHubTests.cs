@@ -380,6 +380,75 @@ public class ProjectionChangedHubTests {
     }
 
     [Fact]
+    public async Task LeaveGroup_ProjectionTypeContainsColon_ThrowsHubExceptionBeforeRemovingGroup() {
+        IGroupManager groups = Substitute.For<IGroupManager>();
+        ProjectionChangedHub sut = CreateHub("conn-leave-colon", groups, user: CreateUser("acme"));
+
+        HubException ex = await Should.ThrowAsync<HubException>(() =>
+            sut.LeaveGroup("order:list", "acme"));
+
+        ex.Message.ShouldContain("must not contain colons");
+        await groups.DidNotReceive().RemoveFromGroupAsync(
+            "conn-leave-colon", Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task LeaveGroup_TenantIdContainsColon_ThrowsHubExceptionBeforeRemovingGroup() {
+        IGroupManager groups = Substitute.For<IGroupManager>();
+        ProjectionChangedHub sut = CreateHub("conn-leave-tenant-colon", groups, user: CreateUser("acme"));
+
+        HubException ex = await Should.ThrowAsync<HubException>(() =>
+            sut.LeaveGroup("order-list", "ac:me"));
+
+        ex.Message.ShouldContain("must not contain colons");
+        await groups.DidNotReceive().RemoveFromGroupAsync(
+            "conn-leave-tenant-colon", Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task LeaveGroup_NullOrWhitespaceProjectionType_ThrowsBeforeRemovingGroup(string? projectionType) {
+        IGroupManager groups = Substitute.For<IGroupManager>();
+        ProjectionChangedHub sut = CreateHub("conn-leave-null-projection", groups, user: CreateUser("acme"));
+
+        _ = await Should.ThrowAsync<ArgumentException>(() =>
+            sut.LeaveGroup(projectionType!, "acme"));
+
+        await groups.DidNotReceive().RemoveFromGroupAsync(
+            "conn-leave-null-projection", Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task LeaveGroup_NullOrWhitespaceTenantId_ThrowsBeforeRemovingGroup(string? tenantId) {
+        IGroupManager groups = Substitute.For<IGroupManager>();
+        ProjectionChangedHub sut = CreateHub("conn-leave-null-tenant", groups, user: CreateUser("acme"));
+
+        _ = await Should.ThrowAsync<ArgumentException>(() =>
+            sut.LeaveGroup("order-list", tenantId!));
+
+        await groups.DidNotReceive().RemoveFromGroupAsync(
+            "conn-leave-null-tenant", Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task LeaveGroupScoped_ProjectionTypeContainsColon_ThrowsHubExceptionBeforeRemovingGroup() {
+        IGroupManager groups = Substitute.For<IGroupManager>();
+        ProjectionChangedHub sut = CreateHub("conn-scoped-leave-projection-colon", groups, user: CreateUser("acme"));
+
+        HubException ex = await Should.ThrowAsync<HubException>(() =>
+            sut.LeaveGroupScoped("order:list", "acme", "conv-1"));
+
+        ex.Message.ShouldContain("must not contain colons");
+        await groups.DidNotReceive().RemoveFromGroupAsync(
+            "conn-scoped-leave-projection-colon", Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task JoinGroupScoped_CountsAgainstPerConnectionQuota() {
         // Scoped groups count against the per-connection cap (proposal §4.3).
         IGroupManager groups = Substitute.For<IGroupManager>();

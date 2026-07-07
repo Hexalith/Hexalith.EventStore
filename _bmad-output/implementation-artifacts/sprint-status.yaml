@@ -196,7 +196,8 @@ action_items:
   - epic: 2
     action: "Patch or explicitly schedule the raw SignalR hub leave validation gap."
     owner: "Amelia (Developer)"
-    status: open
+    status: done
+    note: "Patched 2026-07-07 (sprint-change-proposal-2026-07-07-signalr-hub-leave-validation). ProjectionChangedHub.LeaveGroupCoreAsync now applies the same projectionType/tenantId null-blank + colon guards as JoinGroupCoreAsync (leave stays authorization-free by design). 5 new ProjectionChangedHubTests; Server.Tests green (34/34); Release build clean. Deferred-work entry marked RESOLVED. Completion gate met: raw leave calls validate projection type and tenant id using the same safe group rules as join calls."
   - epic: 2
     action: "Reconcile gateway metadata provenance before any UI or generated API claims production-backed current/stale projection evidence."
     owner: "Winston (System Architect)"
