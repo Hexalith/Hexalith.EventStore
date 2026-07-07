@@ -1,3 +1,10 @@
+# [3.45.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.44.0...v3.45.0) (2026-07-07)
+
+
+### Features
+
+* Update sprint status and implement command-status location policy ([2d786b2](https://github.com/Hexalith/Hexalith.EventStore/commit/2d786b26f7139303d8564b36d0dec0d335f59436))
+
 # [3.44.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.43.1...v3.44.0) (2026-07-07)
 
 
