@@ -62,11 +62,17 @@ public static class EventStoreServiceCollectionExtensions {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(gatewayStatusBase);
 
+        // Reject anything that is not an absolute http(s) origin. A query or fragment is rejected because the
+        // builder appends the status path onto the base; a base like "https://gw/?x=1" would swallow the path
+        // into the query and compose a dangling 404 Location. A path prefix is intentionally allowed (it
+        // composes correctly for a gateway hosted behind a reverse-proxy path).
         if (!gatewayStatusBase.IsAbsoluteUri
             || (gatewayStatusBase.Scheme != Uri.UriSchemeHttp && gatewayStatusBase.Scheme != Uri.UriSchemeHttps)
-            || !string.IsNullOrEmpty(gatewayStatusBase.UserInfo)) {
+            || !string.IsNullOrEmpty(gatewayStatusBase.UserInfo)
+            || !string.IsNullOrEmpty(gatewayStatusBase.Query)
+            || !string.IsNullOrEmpty(gatewayStatusBase.Fragment)) {
             throw new ArgumentException(
-                "The gateway status base must be an absolute HTTP or HTTPS origin URI.",
+                "The gateway status base must be an absolute HTTP or HTTPS origin URI without user info, query, or fragment.",
                 nameof(gatewayStatusBase));
         }
 

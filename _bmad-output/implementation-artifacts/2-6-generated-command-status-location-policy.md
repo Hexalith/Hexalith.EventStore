@@ -4,7 +4,7 @@ baseline_commit: 1f3ae82282e177423afb523d2c3b49d9cc33f837
 
 # Story 2.6: Generated Command-Status Location Policy
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -210,3 +210,30 @@ Implements architecture invariant **AD-17** (Generated Command-Status Location I
 ### Change Log
 
 - 2026-07-07: Implemented AD-17 generated command-status Location policy (Story 2.6). Added Client `ICommandStatusLocationBuilder`/`CommandStatusLocationOptions` seam (fail-closed default + `AddEventStoreCommandStatusLocation`); changed `RestApiControllerEmitter` to resolve an absolute `Location` at request time (conditional ctor param, no relative literal); replaced generator-output + runtime tests with configured/unconfigured/never-relative policy assertions; wired Sample host; closed spec-2-2/spec-2-3 deferred entries. Absorbs rest-generator-hardening S2. Gates green: Release build 0/0; Client.Tests 527, RestApi.Generators.Tests 110, Sample.Tests 116.
+
+## Review Findings
+
+_Senior code review (bmad-code-review, 3-layer adversarial: Blind Hunter · Edge Case Hunter · Acceptance Auditor), 2026-07-08. Diff baseline `1f3ae822`..`87ac4450`. Acceptance Auditor confirmed all 8 ACs satisfied and cleared the CA2007/Server.Tests concern. 4 findings survived triage (1 decision, 3 patch); 5 dismissed as noise/by-design._
+
+**Decision-needed**
+
+- [x] [Review][Decision] **Accepted as-is (kept strict throw) — 2026-07-08.** Blank/whitespace `CorrelationId` fails open (500) instead of fail-closed [src/Hexalith.EventStore.Client/Gateway/CommandStatusLocationBuilder.cs:15] — Resolution: keep the spec-mandated, test-asserted throw; the path is unreachable in the integrated system (gateway defaults `CorrelationId` to the always-present ULID `MessageId`), so no code/spec/test change. The generated command action calls `statusLocationBuilder.TryBuild(__hexalithResponse.CorrelationId, …)` inside `try { … } catch (EventStoreGatewayException ex)` (`RestApiControllerEmitter.cs:281`, catch at `:287`). A blank/whitespace key makes `ArgumentException.ThrowIfNullOrWhiteSpace` throw an `ArgumentException` — not an `EventStoreGatewayException` — so it escapes the catch → HTTP 500 *after the command was already submitted*: the one spot where the component's fail-closed thesis inverts to fail-open. **Tension:** the throw is spec-mandated (Task 1) and test-asserted (`CommandStatusLocationBuilderTests.TryBuild_WithBlankStatusKey_Throws`), and reachability is ~nil (the platform gateway defaults `CorrelationId` to the always-present ULID `MessageId`). Options — (a) **Keep** the strict throw: a blank key is an upstream contract violation that should surface loudly (accept/dismiss); (b) **Harden to fail-closed**: builder returns `false` (no `Location`, still `202`) on a blank key, updating the spec + the `_Throws` test accordingly. (blind+edge)
+
+**Patch**
+
+- [x] [Review][Patch] **Applied 2026-07-08.** Base-URI robustness — query/fragment base composes a broken 404 `Location`; relative/invalid base via direct `Configure` throws at request time (500) [src/Hexalith.EventStore.Client/Registration/EventStoreServiceCollectionExtensions.cs:65; src/Hexalith.EventStore.Client/Gateway/CommandStatusLocationBuilder.cs:23] — (a) `AddEventStoreCommandStatusLocation` rejects only non-absolute / non-http(s) / userinfo; a base carrying a query or fragment (e.g. `https://gw.example/?x=1`) passes, and the builder's `AbsoluteUri.TrimEnd('/') + "/api/v1/commands/status/" + key` swallows the path into the query/fragment → client polls a 404 (defeats AD-17's whole purpose). (b) The builder null-checks the base then calls `.AbsoluteUri` unconditionally; a relative/invalid `Uri` set directly via `services.Configure<CommandStatusLocationOptions>` (bypassing the validating helper) throws `InvalidOperationException` at request time → 500 (fail-open). Fix: validator also rejects non-empty `Query`/`Fragment` (keep a path prefix — it composes correctly for proxy-hosted gateways); builder guards `!gatewayStatusBase.IsAbsoluteUri` → fail-closed (`location = null; return false`). (blind+edge)
+
+- [x] [Review][Patch] **Applied 2026-07-08.** New published public surface has no tests — `AddEventStoreCommandStatusLocation` validation branches + fail-closed DI default unexercised [src/Hexalith.EventStore.Client/Registration/EventStoreServiceCollectionExtensions.cs:59] — `Hexalith.EventStore.Client` ships as a NuGet package; the extension's three throw conditions and the "always resolvable, fail-closed by default" DI guarantee (`AddEventStoreGatewayClient` `TryAddSingleton`) have zero coverage — a refactor that drops the `TryAddSingleton` or inverts a validation predicate stays green. Fix: add `Client.Tests` cases asserting (i) each `AddEventStoreCommandStatusLocation` rejection (non-absolute, non-http(s), userinfo) throws `ArgumentException`; (ii) after `AddEventStoreGatewayClient`, `BuildServiceProvider().GetRequiredService<ICommandStatusLocationBuilder>().TryBuild(...)` resolves and fails closed. (blind)
+
+- [x] [Review][Patch] **Applied 2026-07-08.** Sample host config gate disagrees with the extension validator → userinfo/malformed value crashes startup instead of failing closed [samples/Hexalith.EventStore.Sample.Api/Program.cs:82] — The inline guard checks absolute + http/https but not userinfo (nor query/fragment); a value like `https://u:p@gw.example` passes it, reaches `AddEventStoreCommandStatusLocation`, which throws → unhandled at `builder.Build()`/startup, contradicting the adjacent comment "When the value is absent or malformed the … fail-closed default applies." Fix: mirror the extension's checks in the gate (skip → fail-closed), or wrap the call in try/catch and fall back to the fail-closed default. (blind+edge+auditor)
+
+**Dismissed (5):** query-only reserved-name "false positive" — the reserved list is intentionally global (already mixes command-only `__hexalithRequest`/`__hexalithResponse` with query-only `ifNoneMatch`; new entries follow the same conservative pattern); double `AddEventStoreCommandStatusLocation` last-wins — standard additive `IServiceCollection.Configure` semantics; unbounded `Location` length — value = bounded config base + fixed path + ULID key; `AbsoluteUri` host/port/IDN normalization — standard and correct for a browser-facing origin; builder-vs-platform escaping asymmetry — identical for ULIDs, the only key type.
+
+**Housekeeping (not a diff finding):** the Acceptance Auditor found the CLAUDE.md "known pre-existing build failure: `Server.Tests` does not build (CA2007)" note is likely **stale** — `tests/Directory.Build.props:10` `NoWarn`s `CA2007` for all test projects (the full-solution Release build below is clean with `Server.Tests` included). Worth reconciling separately.
+
+**Review resolution — 2026-07-08.** Decision accepted as-is (kept strict throw). All 3 patch findings applied:
+- Base-URI robustness — `AddEventStoreCommandStatusLocation` now also rejects a base with a query or fragment (`EventStoreServiceCollectionExtensions.cs`); `CommandStatusLocationBuilder.TryBuild` now fails closed on a non-absolute base instead of throwing `.AbsoluteUri` at request time.
+- Test coverage — added `ServiceCollectionExtensionsTests` cases: fail-closed DI default resolves via `AddEventStoreGatewayClient`; configured base resolves an absolute builder; `AddEventStoreCommandStatusLocation` rejects non-origin (ftp / userinfo / query / fragment), relative, and null-services inputs (+8 tests).
+- Sample host — `Sample.Api/Program.cs` config gate now mirrors the extension's userinfo/query/fragment checks so a malformed value is skipped (fail-closed) rather than crashing startup.
+
+Gates re-run green: `dotnet build Hexalith.EventStore.slnx -c Release` → **0 Warning(s), 0 Error(s)**; `Client.Tests` **535/535** (was 527); `Sample.Tests` **116/116**; `RestApi.Generators.Tests` **110/110**.

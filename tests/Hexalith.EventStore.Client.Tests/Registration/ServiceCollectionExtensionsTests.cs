@@ -131,4 +131,63 @@ public class ServiceCollectionExtensionsTests : IDisposable {
         DomainResult result = await processor.ProcessAsync(command, new TestState());
         Assert.True(result.IsSuccess);
     }
+
+    [Fact]
+    public void AddEventStoreGatewayClient_RegistersFailClosedCommandStatusLocationBuilderByDefault() {
+        var services = new ServiceCollection();
+
+        _ = services.AddEventStoreGatewayClient(options => options.BaseAddress = new Uri("https://eventstore.local/"));
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        ICommandStatusLocationBuilder builder = provider.GetRequiredService<ICommandStatusLocationBuilder>();
+
+        bool built = builder.TryBuild("01KTESTCOMMANDSTATUS000000", out string? location);
+
+        built.ShouldBeFalse();
+        location.ShouldBeNull();
+    }
+
+    [Fact]
+    public void AddEventStoreCommandStatusLocation_WithConfiguredBase_ResolvesAbsoluteLocationBuilder() {
+        var services = new ServiceCollection();
+
+        _ = services.AddEventStoreGatewayClient(options => options.BaseAddress = new Uri("https://eventstore.local/"));
+        _ = services.AddEventStoreCommandStatusLocation(new Uri("https://gateway.example"));
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        ICommandStatusLocationBuilder builder = provider.GetRequiredService<ICommandStatusLocationBuilder>();
+
+        bool built = builder.TryBuild("01KTESTCOMMANDSTATUS000000", out string? location);
+
+        built.ShouldBeTrue();
+        location.ShouldBe("https://gateway.example/api/v1/commands/status/01KTESTCOMMANDSTATUS000000");
+    }
+
+    [Theory]
+    [InlineData("ftp://gateway.example")]              // non-http(s) scheme
+    [InlineData("https://user:pass@gateway.example")]  // user info
+    [InlineData("https://gateway.example/?token=abc")] // query
+    [InlineData("https://gateway.example/#fragment")]  // fragment
+    public void AddEventStoreCommandStatusLocation_WithNonOriginBase_ThrowsArgumentException(string uri) {
+        var services = new ServiceCollection();
+
+        _ = Should.Throw<ArgumentException>(
+            () => services.AddEventStoreCommandStatusLocation(new Uri(uri, UriKind.Absolute)));
+    }
+
+    [Fact]
+    public void AddEventStoreCommandStatusLocation_WithRelativeBase_ThrowsArgumentException() {
+        var services = new ServiceCollection();
+
+        _ = Should.Throw<ArgumentException>(
+            () => services.AddEventStoreCommandStatusLocation(new Uri("gateway/status", UriKind.Relative)));
+    }
+
+    [Fact]
+    public void AddEventStoreCommandStatusLocation_WithNullServices_ThrowsArgumentNullException() {
+        IServiceCollection services = null!;
+
+        _ = Should.Throw<ArgumentNullException>(
+            () => services.AddEventStoreCommandStatusLocation(new Uri("https://gateway.example")));
+    }
 }

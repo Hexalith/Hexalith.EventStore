@@ -78,10 +78,16 @@ builder.Services.AddEventStoreGatewayClient(options => options.BaseAddress = new
 // AD-17: opt into the absolute command-status Location header when a browser-facing gateway origin is
 // configured. When the value is absent or malformed the AddEventStoreGatewayClient fail-closed default
 // applies (generated command 202 responses emit no Location header).
+// The guard mirrors AddEventStoreCommandStatusLocation's own validation (absolute http(s) origin, no user
+// info / query / fragment) so a malformed config value is skipped (fail-closed default applies) rather than
+// throwing inside the extension and crashing host startup.
 string? gatewayStatusBase = builder.Configuration["EventStore:GatewayStatusBase"]?.Trim();
 if (!string.IsNullOrWhiteSpace(gatewayStatusBase)
     && Uri.TryCreate(gatewayStatusBase, UriKind.Absolute, out Uri? gatewayStatusBaseUri)
-    && (gatewayStatusBaseUri.Scheme == Uri.UriSchemeHttp || gatewayStatusBaseUri.Scheme == Uri.UriSchemeHttps)) {
+    && (gatewayStatusBaseUri.Scheme == Uri.UriSchemeHttp || gatewayStatusBaseUri.Scheme == Uri.UriSchemeHttps)
+    && string.IsNullOrEmpty(gatewayStatusBaseUri.UserInfo)
+    && string.IsNullOrEmpty(gatewayStatusBaseUri.Query)
+    && string.IsNullOrEmpty(gatewayStatusBaseUri.Fragment)) {
     builder.Services.AddEventStoreCommandStatusLocation(gatewayStatusBaseUri);
 }
 

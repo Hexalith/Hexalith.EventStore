@@ -15,7 +15,12 @@ internal sealed class CommandStatusLocationBuilder(IOptions<CommandStatusLocatio
         ArgumentException.ThrowIfNullOrWhiteSpace(statusKey);
 
         Uri? gatewayStatusBase = options.Value.GatewayStatusBase;
-        if (gatewayStatusBase is null) {
+
+        // Fail closed if the configured base is absent or not an absolute URI. Guards the public settable
+        // CommandStatusLocationOptions.GatewayStatusBase against a value wired directly via services.Configure
+        // (bypassing the validating AddEventStoreCommandStatusLocation helper): calling AbsoluteUri on a
+        // relative Uri would throw at request time and turn an already-submitted command's 202 into a 500.
+        if (gatewayStatusBase is null || !gatewayStatusBase.IsAbsoluteUri) {
             location = null;
             return false;
         }
