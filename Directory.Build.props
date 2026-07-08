@@ -1,6 +1,15 @@
 <Project>
 
     <PropertyGroup>
+        <HexalithBuildPackageVersions1>$(MSBuildThisFileDirectory)references/Hexalith.Builds/Props/Directory.Packages.props</HexalithBuildPackageVersions1>
+        <HexalithBuildPackageVersions2>$(MSBuildThisFileDirectory)../references/Hexalith.Builds/Props/Directory.Packages.props</HexalithBuildPackageVersions2>
+        <HexalithBuildPackageVersions3>$(MSBuildThisFileDirectory)../../references/Hexalith.Builds/Props/Directory.Packages.props</HexalithBuildPackageVersions3>
+    </PropertyGroup>
+    <Import Project="$(HexalithBuildPackageVersions1)" Condition="Exists('$(HexalithBuildPackageVersions1)') And '$(HexalithVersionsLoaded)' != 'true'" />
+    <Import Project="$(HexalithBuildPackageVersions2)" Condition="Exists('$(HexalithBuildPackageVersions2)') And '$(HexalithVersionsLoaded)' != 'true'" />
+    <Import Project="$(HexalithBuildPackageVersions3)" Condition="Exists('$(HexalithBuildPackageVersions3)') And '$(HexalithVersionsLoaded)' != 'true'" />
+
+    <PropertyGroup>
         <!-- Resolve Hexalith.Tenants source path for supported layouts:
          1. EventStore as a submodule inside the Hexalith.Tenants repository (beside src/).
          1b. EventStore as a submodule under the Hexalith.Tenants repository's references/ folder.
@@ -49,7 +58,7 @@
 
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
-        <Version Condition="'$(Version)' == ''">3.42.0</Version>
+        <Version Condition="'$(Version)' == '' and '$(HexalithEventStoreVersion)' != ''">$(HexalithEventStoreVersion)</Version>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>

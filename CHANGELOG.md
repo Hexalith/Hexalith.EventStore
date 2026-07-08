@@ -41,31 +41,19 @@
 * remove generated API smoke preflight documentation ([e4cc7d7](https://github.com/Hexalith/Hexalith.EventStore/commit/e4cc7d782d8fba9d7a8b738e9bfe2233782a4d04))
 * Update status to review for generated API DAPR/Aspire smoke preflight and resolve deferred work entry ([fc0f1de](https://github.com/Hexalith/Hexalith.EventStore/commit/fc0f1de8bd3ed30a2b949d04eea56bde9b49e645))
 
-# [3.43.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.42.0...v3.43.0) (2026-07-07)
+# [3.43.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.41.1...v3.43.0) (2026-07-07)
 
 
 ### Bug Fixes
 
 * **paths:** update project path resolutions for Hexalith packages ([ae3245b](https://github.com/Hexalith/Hexalith.EventStore/commit/ae3245b39a0bf06bbf6a684a86c63e0fb038f714))
-* update Hexalith dependency handling and version to 3.42.0 ([a592bbd](https://github.com/Hexalith/Hexalith.EventStore/commit/a592bbdbfd093acb812a994cc3f2ade916a697c8))
+* update Hexalith dependency handling and version alignment ([a592bbd](https://github.com/Hexalith/Hexalith.EventStore/commit/a592bbdbfd093acb812a994cc3f2ade916a697c8))
 * update PackageVersion elements to use Update attribute for consistency ([73f6115](https://github.com/Hexalith/Hexalith.EventStore/commit/73f611586f49f6c9b708784082a2ba8cb5f4ff5a))
 
 
 ### Features
 
 * **domain-service:** add hosting observability seams ([cc72a56](https://github.com/Hexalith/Hexalith.EventStore/commit/cc72a56619edd776cc0177c47599d63db16ecfb6))
-
-# [3.42.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.41.1...v3.42.0) (2026-07-06)
-
-
-### Bug Fixes
-
-* **client:** harden domain-event consumer markers, ULID validation, and cancellation ([7b16dc7](https://github.com/Hexalith/Hexalith.EventStore/commit/7b16dc72db284f7878dd3f57c668a0358857c978))
-
-
-### Features
-
-* **domain-service:** harden projection and event consumer seams ([3c158ba](https://github.com/Hexalith/Hexalith.EventStore/commit/3c158ba5f14998ddfd7cfa59284ae21ec565166f))
 
 ## [3.41.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.41.0...v3.41.1) (2026-07-06)
 
