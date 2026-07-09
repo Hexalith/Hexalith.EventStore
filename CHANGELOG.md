@@ -1,3 +1,11 @@
+# [3.48.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.47.0...v3.48.0) (2026-07-09)
+
+
+### Features
+
+* Add UX handoff and implementation readiness documents for Hexalith.EventStore ([0758009](https://github.com/Hexalith/Hexalith.EventStore/commit/07580097238462d0363b27ccdfa2bd31df18077d))
+* enhance Hexalith build package version handling and update version condition ([0f428d0](https://github.com/Hexalith/Hexalith.EventStore/commit/0f428d0c914f2151aab15bb262f956a9630041dc))
+
 # [3.47.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.46.0...v3.47.0) (2026-07-08)
 
 
