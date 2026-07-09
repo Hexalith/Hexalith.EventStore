@@ -72,6 +72,22 @@ context:
 - Given semantic-release runs through shared `domain-release`, when artifacts are prepared, then NuGet publish remains scoped to the 14 manifest packages and container publish is limited to the approved `eventstore` mapping.
 - Given docs and governance tests are run, when workflow/package references are scanned, then they describe the reusable workflow pattern and fail on stale custom workflow or manifest-bypass assumptions.
 
+### Review Findings
+
+- [x] [Review][Decision] Broad submodule reference bumps are bundled into Story 3.7 — resolved: Administrator chose to keep the broad submodule reference bumps in this story.
+- [ ] [Review][Patch] Hexalith.Builds submodule pin breaks package restore [references/Hexalith.Builds/Props/Directory.Packages.props:7]
+- [ ] [Review][Patch] Release can partially publish NuGet before container credential failure [.releaserc.json:12]
+- [ ] [Review][Patch] Planning epics still contain stale Story 3.7 scope [_bmad-output/planning-artifacts/epics.md:1030]
+- [ ] [Review][Patch] Advisory workflow runs Playwright E2E tests without browser installation [.github/workflows/advisory-tests.yml:22]
+- [ ] [Review][Patch] Shared CI uses default 15-minute build timeout for a larger restore/build/package/test lane [.github/workflows/ci.yml:18]
+- [ ] [Review][Patch] No durable guard keeps LiveSidecar tests out of Server.Tests [tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs:163]
+- [ ] [Review][Patch] Test-lane classification passes on any docs mention instead of explicit workflow/deferred ownership [tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs:241]
+- [ ] [Review][Patch] Package validators accept prefix-collision package IDs [scripts/validate-nuget-packages.py:35]
+- [ ] [Review][Patch] `git diff --check` fails on sprint change proposal EOF whitespace [_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-09.md:430]
+- [ ] [Review][Patch] Sprint change proposal checklist still says approval is pending [_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-09.md:412]
+- [ ] [Review][Patch] Moved live-sidecar tests retain same-line braces instead of Allman style [tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/ActorTenantIsolationTests.cs:20]
+- [ ] [Review][Patch] Dapr serialization live-sidecar test keeps extra support types in one file [tests/Hexalith.EventStore.Server.LiveSidecar.Tests/DomainServices/DaprSerializationRoundTripTests.cs:39]
+
 ## Spec Change Log
 
 ## Review Triage Log
