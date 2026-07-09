@@ -1,0 +1,28 @@
+name: Advisory Tests
+
+# Visible non-release-blocking suites. Release only listens to the CI workflow,
+# so failures here preserve signal without making semantic-release depend on
+# browser/governance/evidence scaffolding readiness.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: advisory-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  advisory:
+    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@main
+    with:
+      solution: Hexalith.EventStore.slnx
+      unit-test-projects: |
+        tests/Hexalith.EventStore.Admin.UI.E2E
+        tests/Hexalith.EventStore.DeferredWorkGovernance.Tests
+        tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests

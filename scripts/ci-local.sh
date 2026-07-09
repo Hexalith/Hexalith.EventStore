@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Local CI mirror — reproduces the test sequence run by .github/workflows/ci.yml.
+# Local CI mirror — approximates the shared domain-ci caller plus the separate live-sidecar lane.
 # Usage:
 #   ./scripts/ci-local.sh                  # Tier 1 only (default, no DAPR required)
 #   ./scripts/ci-local.sh --tier 1+2       # Tier 1 + Tier 2 (requires `dapr init`)
@@ -81,14 +81,20 @@ TIER1_PROJECTS=(
   "tests/Hexalith.EventStore.Contracts.Tests"
   "tests/Hexalith.EventStore.Client.Tests"
   "tests/Hexalith.EventStore.Testing.Tests"
-  "tests/Hexalith.EventStore.Sample.Tests"
   "tests/Hexalith.EventStore.SignalR.Tests"
+  "tests/Hexalith.EventStore.Admin.Abstractions.Tests"
   "tests/Hexalith.EventStore.Admin.Cli.Tests"
   "tests/Hexalith.EventStore.Admin.Mcp.Tests"
-  "tests/Hexalith.EventStore.Admin.Abstractions.Tests"
   "tests/Hexalith.EventStore.Admin.Server.Tests"
   "tests/Hexalith.EventStore.Admin.Server.Host.Tests"
   "tests/Hexalith.EventStore.Admin.UI.Tests"
+  "tests/Hexalith.EventStore.AppHost.Tests"
+  "tests/Hexalith.EventStore.DomainService.Tests"
+  "tests/Hexalith.EventStore.QueryRouting.Tests"
+  "tests/Hexalith.EventStore.RestApi.Generators.Tests"
+  "tests/Hexalith.EventStore.Sample.Tests"
+  "tests/Hexalith.EventStore.Testing.Integration.Tests"
+  "tests/Hexalith.EventStore.Server.Tests"
 )
 
 run_test_project() {
@@ -115,9 +121,9 @@ fi
 # --- Tier 2 ---
 if want_tier 2; then
   echo ""
-  echo "=== Tier 2 — Integration Tests ==="
-  CURRENT_STAGE="Tier 2 integration tests"
-  run_test_project "tests/Hexalith.EventStore.Server.Tests" "integration-results.trx"
+  echo "=== Tier 2 — Live-Sidecar Integration Tests ==="
+  CURRENT_STAGE="Tier 2 live-sidecar tests"
+  run_test_project "tests/Hexalith.EventStore.Server.LiveSidecar.Tests" "live-sidecar-results.trx"
 fi
 
 # --- Tier 3 ---

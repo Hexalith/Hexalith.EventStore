@@ -144,6 +144,156 @@ public sealed class ReleasePackageManifestTests
         prepareCommand.ShouldContain("tools/pack-release-packages.py");
         prepareCommand.ShouldContain("tools/validate-release-packages.py");
         prepareCommand.ShouldNotContain("dotnet pack");
+
+        string publishCommand = releaseConfig
+            .RootElement
+            .GetProperty("plugins")
+            .EnumerateArray()
+            .Where(plugin => plugin.ValueKind == JsonValueKind.Array)
+            .Select(plugin => plugin[1])
+            .Where(pluginConfig => pluginConfig.TryGetProperty("publishCmd", out _))
+            .Select(pluginConfig => pluginConfig.GetProperty("publishCmd").GetString())
+            .Single()
+            .ShouldNotBeNull();
+
+        publishCommand.ShouldContain("dotnet nuget push");
+        publishCommand.ShouldContain("./.hexalith/release/publish-containers.sh ${nextRelease.version}");
+    }
+
+    [Fact]
+    public void Shared_ci_workflow_uses_domain_ci_with_deterministic_server_tests()
+    {
+        string root = FindRepositoryRoot();
+        string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "ci.yml"));
+
+        workflow.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@main");
+        workflow.ShouldContain("run-consumer-validation: true");
+        workflow.ShouldContain("tests/Hexalith.EventStore.Server.Tests");
+        workflow.ShouldNotContain("tests/Hexalith.EventStore.Server.LiveSidecar.Tests");
+        workflow.ShouldNotContain("run-coverage-gate:");
+        workflow.ShouldNotContain("Category!=LiveSidecar");
+        workflow.ShouldNotContain("runs-on:");
+        workflow.ShouldNotContain("steps:");
+    }
+
+    [Fact]
+    public void Live_sidecar_workflow_targets_live_project_outside_release_gate()
+    {
+        string root = FindRepositoryRoot();
+        string integration = File.ReadAllText(Path.Combine(root, ".github", "workflows", "integration.yml"));
+        string release = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
+
+        integration.ShouldContain("dotnet test tests/Hexalith.EventStore.Server.LiveSidecar.Tests/");
+        integration.ShouldNotContain("tests/Hexalith.EventStore.Server.Tests/");
+        integration.ShouldNotContain("--filter \"Category=LiveSidecar\"");
+        release.ShouldNotContain("integration.yml");
+        release.ShouldNotContain("Hexalith.EventStore.Server.LiveSidecar.Tests");
+    }
+
+    [Fact]
+    public void Release_workflow_uses_domain_release_with_approved_eventstore_container_only()
+    {
+        string root = FindRepositoryRoot();
+        string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
+
+        workflow.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@main");
+        workflow.ShouldContain("github.sha == github.event.workflow_run.head_sha");
+        workflow.ShouldContain("publish-containers: true");
+        workflow.ShouldContain("src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore");
+        workflow.ShouldContain("NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}");
+        workflow.ShouldNotContain("src/Hexalith.EventStore.Admin");
+        workflow.ShouldNotContain("samples/");
+        workflow.ShouldNotContain("runs-on:");
+        workflow.ShouldNotContain("steps:");
+    }
+
+    [Fact]
+    public void Security_gate_workflows_remain_shared_callers()
+    {
+        string root = FindRepositoryRoot();
+
+        string codeQl = File.ReadAllText(Path.Combine(root, ".github", "workflows", "codeql.yml"));
+        string dependencyReview = File.ReadAllText(Path.Combine(root, ".github", "workflows", "dependency-review.yml"));
+        string commitlint = File.ReadAllText(Path.Combine(root, ".github", "workflows", "commitlint.yml"));
+
+        codeQl.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/codeql.yml@main");
+        dependencyReview.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/dependency-review.yml@main");
+        commitlint.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/commitlint.yml@main");
+        commitlint.ShouldContain("pull_request:");
+        commitlint.ShouldContain("push:");
+    }
+
+    [Fact]
+    public void Advisory_tests_workflow_preserves_non_release_blocking_suites()
+    {
+        string root = FindRepositoryRoot();
+        string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "advisory-tests.yml"));
+        string release = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
+
+        workflow.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@main");
+        workflow.ShouldContain("tests/Hexalith.EventStore.Admin.UI.E2E");
+        workflow.ShouldContain("tests/Hexalith.EventStore.DeferredWorkGovernance.Tests");
+        workflow.ShouldContain("tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests");
+        release.ShouldNotContain("Advisory Tests");
+        release.ShouldNotContain("advisory-tests");
+    }
+
+    [Fact]
+    public void Test_projects_are_classified_into_release_live_advisory_or_deferred_lanes()
+    {
+        string root = FindRepositoryRoot();
+        string ci = File.ReadAllText(Path.Combine(root, ".github", "workflows", "ci.yml"));
+        string integration = File.ReadAllText(Path.Combine(root, ".github", "workflows", "integration.yml"));
+        string advisory = File.ReadAllText(Path.Combine(root, ".github", "workflows", "advisory-tests.yml"));
+        string docs = File.ReadAllText(Path.Combine(root, "docs", "ci.md"));
+
+        string[] ignoredProjects = ["tests/Hexalith.EventStore.TestSubscriber"];
+        string[] discovered = Directory
+            .EnumerateFiles(Path.Combine(root, "tests"), "*.csproj", SearchOption.AllDirectories)
+            .Select(path => Path.GetDirectoryName(Path.GetRelativePath(root, path))!.Replace('\\', '/'))
+            .Where(project => !ignoredProjects.Contains(project, StringComparer.Ordinal))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        List<string> unclassified = [];
+        foreach (string project in discovered)
+        {
+            bool classified = ci.Contains(project, StringComparison.Ordinal)
+                || integration.Contains(project, StringComparison.Ordinal)
+                || advisory.Contains(project, StringComparison.Ordinal)
+                || docs.Contains(project, StringComparison.Ordinal);
+            if (!classified)
+            {
+                unclassified.Add(project);
+            }
+        }
+
+        unclassified.ShouldBeEmpty("Every test project must be explicitly assigned to a workflow lane or a documented deferred/advisory category.");
+    }
+
+    [Fact]
+    public void Shared_ci_package_scripts_exist_and_remain_manifest_backed()
+    {
+        string root = FindRepositoryRoot();
+        string[] scripts =
+        [
+            "scripts/pack-release-packages.py",
+            "scripts/validate-nuget-packages.py",
+            "scripts/validate-consumer-package-references.py",
+        ];
+
+        foreach (string script in scripts)
+        {
+            string path = Path.Combine(root, script);
+            File.Exists(path).ShouldBeTrue($"{script} must exist for shared domain-ci consumer validation.");
+
+            string text = File.ReadAllText(path);
+            text.ShouldContain("tools");
+            text.ShouldContain("release-packages.json");
+            text.ShouldNotContain("references/Hexalith.");
+            text.Contains("NU1605", StringComparison.Ordinal).ShouldBeFalse(
+                "Package-consumer validation must not suppress package downgrade conflicts.");
+        }
     }
 
     [Fact]

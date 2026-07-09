@@ -4,12 +4,12 @@ using Dapr.Actors.Client;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Actors;
-using Hexalith.EventStore.Server.Tests.Fixtures;
+using Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures;
 using Hexalith.EventStore.Testing.Builders;
 
 using Shouldly;
 
-namespace Hexalith.EventStore.Server.Tests.Commands;
+namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Commands;
 /// <summary>
 /// Story 7.4 / AC #2: Command routing integration tests.
 /// Validates command routing to correct aggregate actors via Dapr.

@@ -8,17 +8,15 @@ using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Sample.Counter;
 using Hexalith.EventStore.Sample.Counter.Commands;
 using Hexalith.EventStore.Sample.Counter.Events;
-using Hexalith.EventStore.Sample.Counter.State;
 using Hexalith.EventStore.Server.Actors;
-using Hexalith.EventStore.Server.Tests.Fixtures;
+using Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures;
 using Hexalith.EventStore.Testing.Builders;
-using Hexalith.EventStore.Testing.Compliance;
 
 using Shouldly;
 
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 
-namespace Hexalith.EventStore.Server.Tests.Actors;
+namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Actors;
 
 /// <summary>
 /// Tier 2 actor-lifecycle tombstoning coverage. Closes Epic 1 retro action item R1-A7.
@@ -211,17 +209,4 @@ public class TombstoningLifecycleTests {
 
         return await proxy.ProcessCommandAsync(command);
     }
-}
-
-/// <summary>
-/// Story R1-A7 / ADR R1A7-02: paired R1-A2 sentinel pin in Server.Tests. Lives in a NON-collection
-/// class deliberately so it does NOT pay the live <c>daprd</c> startup cost — the assertion is a
-/// pure Tier 1 reflection check. Geographic colocation in the same file as
-/// <see cref="TombstoningLifecycleTests"/> preserves the paired-sentinel intent: a future deleter
-/// of <c>CounterState.Apply(AggregateTerminated)</c> sees both pins together when grepping.
-/// </summary>
-public class TombstoningLifecycleSentinelTests {
-    [Fact]
-    public void Counter_TerminatableComplianceMatchesRuntime()
-        => TerminatableComplianceAssertions.AssertTerminatableCompliance<CounterState>();
 }

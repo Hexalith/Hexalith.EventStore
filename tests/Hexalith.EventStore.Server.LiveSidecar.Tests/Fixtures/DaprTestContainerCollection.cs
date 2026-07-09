@@ -1,4 +1,4 @@
-namespace Hexalith.EventStore.Server.Tests.Fixtures;
+namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures;
 
 /// <summary>
 /// xUnit collection definition for sharing the Dapr test fixture across integration tests.

@@ -6,14 +6,14 @@ using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Server.Actors;
-using Hexalith.EventStore.Server.Tests.Fixtures;
+using Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures;
 using Hexalith.EventStore.Testing.Builders;
 
 using Shouldly;
 
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 
-namespace Hexalith.EventStore.Server.Tests.Actors;
+namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Actors;
 /// <summary>
 /// Story 7.4 / AC #2: Actor processing pipeline integration tests.
 /// Validates the full pipeline with real Dapr sidecar and Redis state store.

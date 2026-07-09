@@ -9,12 +9,12 @@ using Dapr.Actors.Client;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Actors;
-using Hexalith.EventStore.Server.Tests.Fixtures;
+using Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures;
 using Hexalith.EventStore.Testing.Builders;
 
 using Shouldly;
 
-namespace Hexalith.EventStore.Server.Tests.Actors;
+namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Actors;
 /// <summary>
 /// Story 7.4 / AC #3: Optimistic concurrency conflict detection tests.
 /// Validates ETag-based concurrency conflict detection on aggregate metadata key.

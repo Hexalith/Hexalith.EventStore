@@ -1,5 +1,10 @@
 name: Release
 
+# Runs after CI succeeds on main (workflow_run) so the release never duplicates
+# the CI gate and can never publish from a commit whose CI failed. The
+# event == 'push' guard keeps pull requests from starting releases.
+# semantic-release still decides from the commit history whether a release is
+# warranted.
 on:
   workflow_run:
     workflows: [CI]
@@ -7,7 +12,7 @@ on:
     branches: [main]
 
 concurrency:
-  group: release
+  group: release-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -15,54 +20,21 @@ permissions:
 
 jobs:
   release:
-    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' }}
-    name: release
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.sha == github.event.workflow_run.head_sha
     permissions:
       contents: write
       issues: write
       pull-requests: write
-    env:
-      UseHexalithProjectReferences: 'false'
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-          fetch-depth: 0
-          submodules: false
-          persist-credentials: true
-
-      - name: Attach CI commit to release branch
-        run: git checkout -B main "${{ github.event.workflow_run.head_sha }}"
-
-      - name: Initialize Hexalith.Builds submodule
-        run: git -c submodule.recurse=false submodule update --init references/Hexalith.Builds
-
-      - name: Initialize .NET
-        uses: ./references/Hexalith.Builds/Github/initialize-dotnet
-        with:
-          global-json-file: global.json
-
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: lts/*
-          cache: npm
-
-      - name: Cache NuGet packages
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.nuget/packages
-          key: nuget-${{ runner.os }}-${{ hashFiles('global.json', 'nuget.config', 'Directory.Packages.props', 'references/Hexalith.Builds/Props/Directory.Packages.props', '**/*.csproj') }}
-          restore-keys: |
-            nuget-${{ runner.os }}-
-
-      - name: Install npm dependencies
-        run: npm ci
-
-      - name: Semantic Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-        run: npx semantic-release
+    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@main
+    with:
+      solution: Hexalith.EventStore.slnx
+      publish-containers: true
+      container-projects: |
+        src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore
+    secrets:
+      NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+      HEXALITH_ZOT_USERNAME: ${{ secrets.HEXALITH_ZOT_USERNAME }}
+      HEXALITH_ZOT_API_KEY: ${{ secrets.HEXALITH_ZOT_API_KEY }}

@@ -57,9 +57,9 @@ jobs:
         with:
           version: ${{ env.DAPR_VERSION }}
 
-      - name: Run Live-Sidecar Integration Tests (Tier 2)
+      - name: Run Live-Sidecar Integration Tests
         run: |
-          dotnet test tests/Hexalith.EventStore.Server.Tests/ --configuration Release --no-restore -p:UseHexalithProjectReferences=false --filter "Category=LiveSidecar" --logger "trx;LogFileName=live-sidecar-results.trx" --results-directory TestResults/live-sidecar --collect:"XPlat Code Coverage"
+          dotnet test tests/Hexalith.EventStore.Server.LiveSidecar.Tests/ --configuration Release --no-restore -p:UseHexalithProjectReferences=false --logger "trx;LogFileName=live-sidecar-results.trx" --results-directory TestResults/live-sidecar --collect:"XPlat Code Coverage"
 
       - name: Upload live-sidecar test results
         if: always()

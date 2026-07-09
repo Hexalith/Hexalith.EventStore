@@ -8,12 +8,12 @@ using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Events;
-using Hexalith.EventStore.Server.Tests.Fixtures;
+using Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures;
 using Hexalith.EventStore.Testing.Builders;
 
 using Shouldly;
 
-namespace Hexalith.EventStore.Server.Tests.Events;
+namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Events;
 /// <summary>
 /// Story 7.4 / AC #2, AC #6: Event persistence and Redis backend integration tests.
 /// Validates event persistence atomicity and Redis state store behavior.

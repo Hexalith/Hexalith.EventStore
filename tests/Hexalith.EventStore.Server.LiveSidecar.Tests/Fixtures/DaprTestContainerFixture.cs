@@ -27,7 +27,7 @@ using RedisConnectionMultiplexer = StackExchange.Redis.IConnectionMultiplexer;
 using RedisDatabase = StackExchange.Redis.IDatabase;
 using RedisValue = StackExchange.Redis.RedisValue;
 
-namespace Hexalith.EventStore.Server.Tests.Fixtures;
+namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures;
 /// <summary>
 /// Integration test fixture that starts a local <c>daprd</c> process,
 /// reusing the existing Dapr infrastructure (Redis, placement, scheduler) from <c>dapr init</c>.

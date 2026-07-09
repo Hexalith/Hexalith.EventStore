@@ -59,6 +59,7 @@
     <Project Path="tests/Hexalith.EventStore.QueryRouting.Tests/Hexalith.EventStore.QueryRouting.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.RestApi.Generators.Tests/Hexalith.EventStore.RestApi.Generators.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj" />
+    <Project Path="tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.SignalR.Tests/Hexalith.EventStore.SignalR.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.Testing.Integration.Tests/Hexalith.EventStore.Testing.Integration.Tests.csproj" />

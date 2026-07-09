@@ -4,13 +4,13 @@ using Dapr.Actors.Client;
 
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Queries;
-using Hexalith.EventStore.Server.Tests.Fixtures;
+using Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures;
 
 using Microsoft.Extensions.Logging.Abstractions;
 
 using Shouldly;
 
-namespace Hexalith.EventStore.Server.Tests.Integration;
+namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Integration;
 
 /// <summary>
 /// Tier 2 live-sidecar integration tests for <see cref="DaprETagService"/>.
