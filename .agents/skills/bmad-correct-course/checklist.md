@@ -130,14 +130,6 @@
 <status>[ ] Done / [ ] N/A / [ ] Action-needed</status>
 </check-item>
 
-<check-item id="3.5">
-<prompt>Identify affected implementation story files after architectural pivots</prompt>
-<action>If the change is an architectural pivot, or if an approved proposal supersedes story ACs, tasks, Dev Notes, or design assumptions, scan implementation artifacts and sprint status entries for affected story files.</action>
-<action>Document each affected story file, stale section, replacement direction, and whether stale text must be removed or marked superseded.</action>
-<action>Mark N/A only when no implementation story file exists or no active story assumption is superseded.</action>
-<status>[ ] Done / [ ] N/A / [ ] Action-needed</status>
-</check-item>
-
 </section>
 
 <section n="4" title="Path Forward Evaluation">
@@ -232,14 +224,6 @@
 <status>[ ] Done / [ ] N/A / [ ] Action-needed</status>
 </check-item>
 
-<check-item id="5.6">
-<prompt>Define mandatory story rewrite gate for architectural pivots</prompt>
-<action>For every affected implementation story file, specify the required old-to-new rewrite before dev-story or code-review may continue.</action>
-<action>Require active ACs/tasks/Dev Notes to match the approved architecture; stale requirements must be removed or clearly marked superseded with the proposal path.</action>
-<action>Document the owner responsible for applying the rewrite and the validation evidence that the story file is current.</action>
-<status>[ ] Done / [ ] N/A / [ ] Action-needed</status>
-</check-item>
-
 </section>
 
 <section n="6" title="Final Review and Handoff">
@@ -287,7 +271,6 @@
 
 <halt-condition>
 <action if="any critical section cannot be completed">HALT: "Cannot proceed to proposal without complete impact analysis"</action>
-<action if="architectural pivot supersedes stories and rewrite gate is missing">HALT: "Architectural pivots require explicit affected-story rewrites before implementation or review can continue"</action>
 <action if="user approval not obtained">HALT: "Must have explicit approval before implementing changes"</action>
 <action if="handoff responsibilities unclear">HALT: "Must clearly define who will execute the proposed changes"</action>
 </halt-condition>

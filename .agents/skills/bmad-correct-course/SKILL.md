@@ -144,12 +144,6 @@ Activation is complete. If `activation_steps_prepend` or `activation_steps_appen
 
 <action>For Story changes:</action>
 
-- If the change is an architectural pivot, or if an approved proposal supersedes story acceptance criteria, tasks, Dev Notes, or design assumptions, story rewrites are mandatory.
-- Name every affected implementation story file and section.
-- Require active story content to contain the current acceptance criteria before implementation or review continues.
-- Remove stale active requirements, or mark them clearly as superseded with a pointer to the approved proposal.
-- Do not leave a superseded-scope banner as the only correction when active ACs/tasks still instruct the abandoned design.
-
 - Show old → new text format
 - Include story ID and section being modified
 - Provide rationale for each change
@@ -227,7 +221,6 @@ Activation is complete. If `activation_steps_prepend` or `activation_steps_appen
 - Include all refined edit proposals from Step 3
 - Group by artifact type (Stories, PRD, Architecture, UI/UX)
 - Ensure each change includes before/after and justification
-- For architectural pivots, include a mandatory story-rewrite gate naming affected story files, exact stale sections, replacement direction, and the blocking condition that dev-story/code-review cannot proceed until the active story content is current.
 
 <action>Section 5: Implementation Handoff</action>
 
@@ -257,7 +250,6 @@ Activation is complete. If `activation_steps_prepend` or `activation_steps_appen
 
 <check if="yes the proposal is approved by the user">
   <action>Finalize Sprint Change Proposal document</action>
-  <action>If the proposal is an architectural pivot or supersedes active story assumptions, enforce the story-rewrite gate before any affected implementation or review workflow continues</action>
   <action>Determine change scope classification:</action>
 
 - **Minor**: Can be implemented directly by Developer agent

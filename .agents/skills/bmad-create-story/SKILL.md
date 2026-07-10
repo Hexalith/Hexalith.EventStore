@@ -263,11 +263,6 @@ Activation is complete. If `activation_steps_prepend` or `activation_steps_appen
   <action>Extract our story ({{epic_num}}-{{story_num}}) details:</action> **STORY FOUNDATION:** - User story statement
   (As a, I want, so that) - Detailed acceptance criteria (already BDD formatted) - Technical requirements specific to this story -
   Business context and value - Success criteria <!-- Previous story analysis for context continuity -->
-  <critical>CORRECT-COURSE REWRITE GATE - If an approved sprint change proposal, readiness report, retrospective action, or architecture artifact supersedes this story's ACs, tasks, Dev Notes, project structure notes, or design assumptions, rewrite the active story content to the current approved direction before marking the story ready-for-dev.</critical>
-  <action>Scan approved sprint change proposals, architecture, readiness reports, previous story files, and sprint action items for superseded scope, architectural pivots, abandoned designs, corrected architecture, or proposal language that changes this story.</action>
-  <action>For any affected story, reconcile active ACs/tasks/Dev Notes to the latest approved PRD, architecture, UX, and epics baseline.</action>
-  <action>Do not preserve stale acceptance criteria as active requirements. If historical text must remain, place it under an explicitly named "Superseded Scope" or "Correct-Course Reconciliation" note that cites the proposal path and states that the stale design is not implementation scope.</action>
-  <action>A story affected by an architectural pivot cannot be created, validated, or marked ready-for-dev while active ACs/tasks contradict the approved architecture.</action>
   <check if="story_num > 1">
     <action>Find {{previous_story_num}}: scan {implementation_artifacts} for the story file in epic {{epic_num}} with the highest story number less than {{story_num}}</action>
     <action>Load previous story file: {implementation_artifacts}/{{epic_num}}-{{previous_story_num}}-*.md</action> **PREVIOUS STORY INTELLIGENCE:** -
@@ -356,7 +351,6 @@ Activation is complete. If `activation_steps_prepend` or `activation_steps_appen
   <!-- Story foundation from epics analysis -->
   <template-output
     file="{default_output_file}">story_requirements</template-output>
-  <action>Apply the Correct-Course Rewrite Gate before finalizing story requirements: active acceptance criteria and tasks must reflect the current approved architecture, and superseded assumptions must be removed from active scope or clearly marked historical.</action>
 
   <!-- Developer context section - MOST IMPORTANT PART -->
   <template-output file="{default_output_file}">
@@ -401,7 +395,7 @@ Activation is complete. If `activation_steps_prepend` or `activation_steps_appen
 </step>
 
 <step n="6" goal="Update sprint status and finalize">
-  <action>Validate the newly created story file {default_output_file} against `./checklist.md`, including the Correct-Course Rewrite Gate, and apply any required fixes before finalizing</action>
+  <action>Validate the newly created story file {default_output_file} against `./checklist.md` and apply any required fixes before finalizing</action>
   <action>Save story document unconditionally</action>
 
   <!-- Update sprint status -->
