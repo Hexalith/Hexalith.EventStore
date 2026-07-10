@@ -1,3 +1,10 @@
+## [3.50.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.50.0...v3.50.1) (2026-07-10)
+
+
+### Bug Fixes
+
+* Update subproject commit for Hexalith.AI.Tools ([8623e45](https://github.com/Hexalith/Hexalith.EventStore/commit/8623e45316dd17b0d53965fba8919ea908d1672b))
+
 # [3.50.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.49.0...v3.50.0) (2026-07-10)
 
 
