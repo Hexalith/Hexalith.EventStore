@@ -6,7 +6,6 @@ using Dapr.Actors.Client;
 
 using Hexalith.EventStore.Client.Aggregates;
 using Hexalith.EventStore.Contracts.Commands;
-using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures;
@@ -27,35 +26,14 @@ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.DomainServices;
 /// </summary>
 [Collection("DaprTestContainer")]
 [Trait("Category", "LiveSidecar")]
-public class DaprSerializationRoundTripTests {
+public class DaprSerializationRoundTripTests
+{
     private readonly DaprTestContainerFixture _fixture;
 
-    public DaprSerializationRoundTripTests(DaprTestContainerFixture fixture) {
+    public DaprSerializationRoundTripTests(DaprTestContainerFixture fixture)
+    {
         _fixture = fixture;
         _fixture.SetupCounterDomain();
-    }
-
-    // --- Test aggregate using actual sample event types to match stored eventTypeName ---
-    private sealed record TestDecrementCounter;
-
-    private sealed class RoundTripCounterState {
-        public int Count { get; private set; }
-
-        public void Apply(Hexalith.EventStore.Sample.Counter.Events.CounterIncremented e) => Count++;
-
-        public void Apply(Hexalith.EventStore.Sample.Counter.Events.CounterDecremented e) => Count--;
-
-        public void Apply(Hexalith.EventStore.Sample.Counter.Events.CounterReset e) => Count = 0;
-    }
-
-    private sealed class RoundTripCounterAggregate : EventStoreAggregate<RoundTripCounterState> {
-        public static DomainResult Handle(TestDecrementCounter command, RoundTripCounterState? state) {
-            if ((state?.Count ?? 0) == 0) {
-                return DomainResult.Rejection(System.Array.Empty<IRejectionEvent>());
-            }
-
-            return DomainResult.Success(new IEventPayload[] { new Hexalith.EventStore.Sample.Counter.Events.CounterDecremented() });
-        }
     }
 
     /// <summary>
@@ -65,11 +43,13 @@ public class DaprSerializationRoundTripTests {
     /// serialized as Base64, and the receiving EventStoreAggregate must decode it.
     /// </summary>
     [Fact]
-    public async Task StoredEvents_SurviveDaprSerializationRoundTrip_WhenPassedToDomainService() {
+    public async Task StoredEvents_SurviveDaprSerializationRoundTrip_WhenPassedToDomainService()
+    {
         // Arrange: Send two commands to store events in Redis via the real Dapr actor
         _fixture.ThrowIfHostStopped();
 
-        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
+        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions
+        {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 
@@ -79,7 +59,8 @@ public class DaprSerializationRoundTripTests {
             _fixture.AggregateActorTypeName);
 
         // Send 2 increment commands — this stores 2 EventEnvelope records in Redis
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < 2; i++)
+        {
             CommandEnvelope command = new CommandEnvelopeBuilder()
                 .WithTenantId("tenant-a")
                 .WithDomain("counter")

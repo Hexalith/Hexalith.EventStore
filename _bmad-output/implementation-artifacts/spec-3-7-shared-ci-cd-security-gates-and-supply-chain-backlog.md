@@ -9,6 +9,7 @@ baseline_commit: '0f428d0c914f2151aab15bb262f956a9630041dc'
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-3-context.md'
   - '{project-root}/_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-09.md'
+  - '{project-root}/_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-09-implementation-readiness-corrections.md'
 ---
 
 <frozen-after-approval reason="human-owned intent - do not modify unless human renegotiates">
@@ -26,6 +27,8 @@ context:
 **Ask First:** Changing `references/Hexalith.Builds` reusable workflows, deleting `integration.yml`, making live-sidecar failures block release, enabling additional EventStore container publications beyond `src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore`, or adding a coverage gate that requires new shared-script contracts.
 
 **Never:** Do not run solution-level `dotnet test` as the validation default. Do not put package versions in project files. Do not publish sample/admin containers accidentally. Do not hide live-sidecar coverage by simply omitting it from CI. Do not initialize nested submodules.
+
+**Coordinated-slice handoff gate:** This story proceeds as the approved coordinated slice from `epics.md`: shared workflow caller migration, workflow reference/cache validation, and supply-chain publishing backlog. Owner/review boundary: Paige (Technical Writer) and Amelia (Developer). Required validation evidence remains: `dotnet build Hexalith.EventStore.slnx --configuration Release`; `rg -n "Hexalith.Builds/.+@" .github references -g "*.yml" -g "*.yaml"`; and `rg -n "NUGET_API_KEY|trusted publishing|attestation|SBOM|provenance" docs .github _bmad-output -g "*.md" -g "*.yml" -g "*.yaml"`. Code review must halt if active acceptance criteria or tasks drift from this boundary.
 
 ## I/O & Edge-Case Matrix
 
@@ -75,18 +78,18 @@ context:
 ### Review Findings
 
 - [x] [Review][Decision] Broad submodule reference bumps are bundled into Story 3.7 — resolved: Administrator chose to keep the broad submodule reference bumps in this story.
-- [ ] [Review][Patch] Hexalith.Builds submodule pin breaks package restore [references/Hexalith.Builds/Props/Directory.Packages.props:7]
-- [ ] [Review][Patch] Release can partially publish NuGet before container credential failure [.releaserc.json:12]
-- [ ] [Review][Patch] Planning epics still contain stale Story 3.7 scope [_bmad-output/planning-artifacts/epics.md:1030]
-- [ ] [Review][Patch] Advisory workflow runs Playwright E2E tests without browser installation [.github/workflows/advisory-tests.yml:22]
-- [ ] [Review][Patch] Shared CI uses default 15-minute build timeout for a larger restore/build/package/test lane [.github/workflows/ci.yml:18]
-- [ ] [Review][Patch] No durable guard keeps LiveSidecar tests out of Server.Tests [tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs:163]
-- [ ] [Review][Patch] Test-lane classification passes on any docs mention instead of explicit workflow/deferred ownership [tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs:241]
-- [ ] [Review][Patch] Package validators accept prefix-collision package IDs [scripts/validate-nuget-packages.py:35]
-- [ ] [Review][Patch] `git diff --check` fails on sprint change proposal EOF whitespace [_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-09.md:430]
-- [ ] [Review][Patch] Sprint change proposal checklist still says approval is pending [_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-09.md:412]
-- [ ] [Review][Patch] Moved live-sidecar tests retain same-line braces instead of Allman style [tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/ActorTenantIsolationTests.cs:20]
-- [ ] [Review][Patch] Dapr serialization live-sidecar test keeps extra support types in one file [tests/Hexalith.EventStore.Server.LiveSidecar.Tests/DomainServices/DaprSerializationRoundTripTests.cs:39]
+- [x] [Review][Patch] Hexalith.Builds submodule pin breaks package restore [references/Hexalith.Builds/Props/Directory.Packages.props:7]
+- [x] [Review][Patch] Release can partially publish NuGet before container credential failure [.releaserc.json:12]
+- [x] [Review][Patch] Planning epics still contain stale Story 3.7 scope [_bmad-output/planning-artifacts/epics.md:1030]
+- [x] [Review][Patch] Advisory workflow runs Playwright E2E tests without browser installation [.github/workflows/advisory-tests.yml:22]
+- [x] [Review][Patch] Shared CI uses default 15-minute build timeout for a larger restore/build/package/test lane [.github/workflows/ci.yml:18]
+- [x] [Review][Patch] No durable guard keeps LiveSidecar tests out of Server.Tests [tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs:163]
+- [x] [Review][Patch] Test-lane classification passes on any docs mention instead of explicit workflow/deferred ownership [tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs:241]
+- [x] [Review][Patch] Package validators accept prefix-collision package IDs [scripts/validate-nuget-packages.py:35]
+- [x] [Review][Patch] `git diff --check` fails on sprint change proposal EOF whitespace [_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-09.md:430]
+- [x] [Review][Patch] Sprint change proposal checklist still says approval is pending [_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-09.md:412]
+- [x] [Review][Patch] Moved live-sidecar tests retain same-line braces instead of Allman style [tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/ActorTenantIsolationTests.cs:20]
+- [x] [Review][Patch] Dapr serialization live-sidecar test keeps extra support types in one file [tests/Hexalith.EventStore.Server.LiveSidecar.Tests/DomainServices/DaprSerializationRoundTripTests.cs:39]
 
 ## Spec Change Log
 
@@ -104,6 +107,21 @@ context:
   - `[patch]` Added a separate advisory workflow for the non-release-blocking browser/governance/evidence suites and governance coverage that classifies every test project into a workflow or documented deferred lane.
   - `[patch]` Removed package-consumer downgrade suppression by normalizing the shared CI synthetic package version to `999.0.0-ci-test` in the `scripts/pack-release-packages.py` wrapper.
   - `[patch]` Added governance assertions for the release helper, head-SHA guard, advisory workflow, lane classification, and no `NU1605` suppression.
+
+### 2026-07-09 — Full review patch pass
+- intent_gap: 0
+- bad_spec: 0
+- patch: 12
+- defer: 0
+- reject: 0
+- decision: 1 (kept broad submodule reference bumps per Administrator)
+- addressed_findings:
+  - `[patch]` Added a local release secret preflight before NuGet publish, including container helper and Zot credential checks.
+  - `[patch]` Added the HexalithCommonsVersion compatibility fallback needed by the current Hexalith.Builds pin.
+  - `[patch]` Made advisory tests install Playwright Chromium and run non-release-blocking with `continue-on-error`.
+  - `[patch]` Raised shared CI timeout to 40 minutes.
+  - `[patch]` Hardened release governance tests for live-sidecar separation, explicit deferred lane ownership, release-secret ordering, and package-id prefix collisions.
+  - `[patch]` Split DAPR serialization support types into dedicated files and normalized live-sidecar tests to Allman braces.
 
 ## Design Notes
 
@@ -146,6 +164,14 @@ The shared `domain-ci.yml` currently has no per-project trait filter or advisory
 - `python3 scripts/validate-nuget-packages.py /tmp/hexalith-eventstore-ci-packages-review` -- passed; validated 14 EventStore packages at `999.0.0-ci-test`.
 - `python3 scripts/validate-consumer-package-references.py /tmp/hexalith-eventstore-ci-packages-review` -- passed; validated 13 library packages and 1 tool package with no downgrade suppression.
 - `dotnet test tests/Hexalith.EventStore.Contracts.Tests/ --filter FullyQualifiedName~ReleasePackageManifestTests` -- passed after review patches; 15/15.
+
+**Full Review Patch Results (2026-07-09):**
+- `git diff --check` -- passed.
+- `python3 -m py_compile scripts/pack-release-packages.py scripts/validate-nuget-packages.py scripts/validate-consumer-package-references.py tools/pack-release-packages.py tools/validate-release-packages.py` -- passed.
+- `bash -n scripts/validate-release-secrets.sh` -- passed.
+- `dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release --filter FullyQualifiedName~ReleasePackageManifestTests` -- passed; 16/16.
+- `dotnet test tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj --configuration Release --list-tests` -- passed; listed 26 live-sidecar tests.
+- `dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --configuration Release --list-tests` -- passed; deterministic server test project compiled and listed tests.
 
 ## Suggested Review Order
 

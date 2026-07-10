@@ -3,10 +3,12 @@ project: eventstore
 date: 2026-07-09
 workflow: bmad-correct-course
 mode: batch
-status: draft-pending-approval
+status: approved
 trigger: Implementation readiness assessment reported NOT READY for broad Phase 4 implementation.
 scope_classification: moderate
 recommended_path: direct-adjustment
+approved_by: Administrator
+approved_at: 2026-07-09T22:07:55+02:00
 artifacts_reviewed:
   - _bmad-output/planning-artifacts/implementation-readiness-report-2026-07-09.md
   - _bmad-output/planning-artifacts/prd.md
@@ -54,7 +56,7 @@ This proposal keeps the Phase 4 MVP scope intact and changes sequencing, classif
 | 2.3 Remaining epics | [x] Done | All future epics remain in scope; execution gates change before broad implementation. |
 | 2.4 New/obsolete epics | [N/A] Skip | No new epic is required; story-level reorganization is enough. |
 | 2.5 Epic order | [x] Done | Query provenance enforcement must move before dependent UI/generated API work is considered complete. |
-| 3.1 PRD conflict | [x] Done | No FR/NFR scope change. PRD follow-on readiness section should reference the approved course correction after approval. |
+| 3.1 PRD conflict | [x] Done | No FR/NFR scope change. PRD remains authoritative and no PRD edit was required. |
 | 3.2 Architecture conflict | [x] Done | AD-15 remains valid; ownership moves earlier. AD-14/AD-15 rules still govern metadata/provenance. |
 | 3.3 UX conflict | [x] Done | Create the top-level UX handoff path expected by PRD, architecture, and epics. |
 | 3.4 Other artifacts | [x] Done | `sprint-status.yaml` needs story status/ID changes after approval. |
@@ -70,9 +72,9 @@ This proposal keeps the Phase 4 MVP scope intact and changes sequencing, classif
 | 5.5 Handoff plan | [x] Done | Moderate scope: Product Owner plus Developer, with Architect/UX review where noted. |
 | 5.6 Story rewrite gate | [x] Done | Mandatory gate is defined in Section 4. |
 | 6.1 Checklist review | [x] Done | Remaining action is explicit approval. |
-| 6.2 Proposal accuracy | [x] Done | Draft pending user review. |
-| 6.3 User approval | [!] Action-needed | Required before editing PRD, epics, sprint-status, or UX handoff. |
-| 6.4 Sprint-status update | [!] Action-needed | Apply only after approval. |
+| 6.2 Proposal accuracy | [x] Done | Approved and applied to the planning artifacts listed in the handoff. |
+| 6.3 User approval | [x] Done | Approved by Administrator on 2026-07-09. |
+| 6.4 Sprint-status update | [x] Done | Updated after approval. |
 | 6.5 Handoff plan | [x] Done | See Section 5. |
 
 ## 3. Impact Analysis
@@ -491,8 +493,10 @@ Success criteria:
 
 ## 8. Approval
 
-This proposal is **pending approval**.
+This proposal is **approved**.
 
-Approval question:
+Approval record:
 
-Do you approve this Sprint Change Proposal for implementation? Accepted responses: `yes`, `no`, or `revise`.
+- Approved by: Administrator
+- Approved at: 2026-07-09T22:07:55+02:00
+- Response: `yes`

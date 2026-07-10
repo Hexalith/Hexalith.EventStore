@@ -20,10 +20,12 @@ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Events;
 /// </summary>
 [Collection("DaprTestContainer")]
 [Trait("Category", "LiveSidecar")]
-public class SnapshotIntegrationTests {
+public class SnapshotIntegrationTests
+{
     private readonly DaprTestContainerFixture _fixture;
 
-    public SnapshotIntegrationTests(DaprTestContainerFixture fixture) {
+    public SnapshotIntegrationTests(DaprTestContainerFixture fixture)
+    {
         _fixture = fixture;
         _fixture.SetupCounterDomain();
     }
@@ -33,9 +35,11 @@ public class SnapshotIntegrationTests {
     /// After persisting events, the actor should rehydrate state correctly on the next command.
     /// </summary>
     [Fact]
-    public async Task ProcessCommandAsync_AfterMultipleEvents_RehydratesStateCorrectly() {
+    public async Task ProcessCommandAsync_AfterMultipleEvents_RehydratesStateCorrectly()
+    {
         // Arrange
-        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
+        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions
+        {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 
@@ -46,7 +50,8 @@ public class SnapshotIntegrationTests {
             _fixture.AggregateActorTypeName);
 
         // Act - send 5 increments (event replay should work for subsequent commands)
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 5; i++)
+        {
             CommandEnvelope command = new CommandEnvelopeBuilder()
                 .WithTenantId("tenant-a")
                 .WithDomain("counter")
@@ -59,7 +64,8 @@ public class SnapshotIntegrationTests {
         }
 
         // Build enough history to cross snapshot interval and force snapshot + tail scenario
-        for (int i = 0; i < 15; i++) {
+        for (int i = 0; i < 15; i++)
+        {
             CommandEnvelope command = new CommandEnvelopeBuilder()
                 .WithTenantId("tenant-a")
                 .WithDomain("counter")
@@ -90,17 +96,21 @@ public class SnapshotIntegrationTests {
         _fixture.EventPublisher.GetEventsForTopic(expectedTopic).Count.ShouldBeGreaterThanOrEqualTo(21);
     }
 
-    private async Task<string> GetStateJsonAsync(string key) {
+    private async Task<string> GetStateJsonAsync(string key)
+    {
         using var http = new HttpClient();
         string url = $"{_fixture.DaprHttpEndpoint}/v1.0/state/statestore/{Uri.EscapeDataString(key)}";
 
-        for (int attempt = 0; attempt < 10; attempt++) {
+        for (int attempt = 0; attempt < 10; attempt++)
+        {
             using HttpResponseMessage response = await http.GetAsync(url).ConfigureAwait(true);
             response.StatusCode.ShouldBeOneOf(HttpStatusCode.OK, HttpStatusCode.NoContent);
 
-            if (response.StatusCode == HttpStatusCode.OK) {
+            if (response.StatusCode == HttpStatusCode.OK)
+            {
                 string json = await response.Content.ReadAsStringAsync().ConfigureAwait(true);
-                if (!string.IsNullOrWhiteSpace(json)) {
+                if (!string.IsNullOrWhiteSpace(json))
+                {
                     return json;
                 }
             }
@@ -111,7 +121,8 @@ public class SnapshotIntegrationTests {
         throw new ShouldAssertException($"State for key '{key}' did not become available after retries.");
     }
 
-    private async Task<long> GetCurrentSequenceAsync(string metadataKey) {
+    private async Task<long> GetCurrentSequenceAsync(string metadataKey)
+    {
         string metadataJson = await GetStateJsonAsync(metadataKey).ConfigureAwait(true);
         using var doc = JsonDocument.Parse(metadataJson);
         return doc.RootElement.GetProperty("CurrentSequence").GetInt64();

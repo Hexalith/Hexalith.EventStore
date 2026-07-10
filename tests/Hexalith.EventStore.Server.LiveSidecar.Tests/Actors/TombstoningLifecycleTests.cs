@@ -29,7 +29,8 @@ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Actors;
 /// </summary>
 [Collection("DaprTestContainer")]
 [Trait("Category", "LiveSidecar")]
-public class TombstoningLifecycleTests {
+public class TombstoningLifecycleTests
+{
     private static readonly CounterAggregate _aggregate = new();
 
     private readonly DaprTestContainerFixture _fixture;
@@ -43,7 +44,8 @@ public class TombstoningLifecycleTests {
     /// survives the ITerminatable terminal state without throwing on Apply lookup.
     /// </summary>
     [Fact]
-    public async Task Lifecycle_TerminateThenReactivate_RehydratesAsTerminated() {
+    public async Task Lifecycle_TerminateThenReactivate_RehydratesAsTerminated()
+    {
         IAggregateActor proxy = CreateProxy(out string aggregateId);
 
         CommandProcessingResult inc = await SendAsync(proxy, aggregateId, nameof(IncrementCounter));
@@ -84,7 +86,8 @@ public class TombstoningLifecycleTests {
     /// CounterState.Apply(AggregateTerminated) (the no-op) without throwing MissingApplyMethodException.
     /// </summary>
     [Fact]
-    public async Task Lifecycle_RepeatedRejectionsAfterTerminate_AppendIdempotently() {
+    public async Task Lifecycle_RepeatedRejectionsAfterTerminate_AppendIdempotently()
+    {
         IAggregateActor proxy = CreateProxy(out string aggregateId);
 
         (await SendAsync(proxy, aggregateId, nameof(IncrementCounter))).Accepted.ShouldBeTrue();
@@ -140,10 +143,12 @@ public class TombstoningLifecycleTests {
     /// Order-from-end semantics tolerate a single-step shift in the snapshot trigger boundary.
     /// </summary>
     [Fact]
-    public async Task Lifecycle_TerminateAfterSnapshotInterval_RehydratesAsTerminated() {
+    public async Task Lifecycle_TerminateAfterSnapshotInterval_RehydratesAsTerminated()
+    {
         IAggregateActor proxy = CreateProxy(out string aggregateId);
 
-        for (int i = 0; i < 16; i++) {
+        for (int i = 0; i < 16; i++)
+        {
             CommandProcessingResult inc = await SendAsync(proxy, aggregateId, nameof(IncrementCounter));
             inc.Accepted.ShouldBeTrue($"Increment command #{i + 1} should be accepted");
         }
@@ -184,13 +189,15 @@ public class TombstoningLifecycleTests {
         captured.Events.Select(e => e.Metadata.EventTypeName).ShouldContain(typeof(CounterClosed).FullName!);
     }
 
-    private IAggregateActor CreateProxy(out string aggregateId) {
+    private IAggregateActor CreateProxy(out string aggregateId)
+    {
         aggregateId = $"close-test-{Guid.NewGuid():N}";
         _fixture.DomainServiceInvoker.SetupAggregateHandler(
             new AggregateIdentity("tenant-a", "counter", aggregateId),
             _aggregate.ProcessAsync);
 
-        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
+        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions
+        {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 
@@ -199,7 +206,8 @@ public class TombstoningLifecycleTests {
             _fixture.AggregateActorTypeName);
     }
 
-    private static async Task<CommandProcessingResult> SendAsync(IAggregateActor proxy, string aggregateId, string commandType) {
+    private static async Task<CommandProcessingResult> SendAsync(IAggregateActor proxy, string aggregateId, string commandType)
+    {
         CommandEnvelope command = new CommandEnvelopeBuilder()
             .WithTenantId("tenant-a")
             .WithDomain("counter")

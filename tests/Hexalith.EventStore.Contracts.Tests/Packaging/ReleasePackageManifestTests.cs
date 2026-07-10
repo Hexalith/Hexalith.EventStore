@@ -156,8 +156,12 @@ public sealed class ReleasePackageManifestTests
             .Single()
             .ShouldNotBeNull();
 
+        publishCommand.ShouldContain("scripts/validate-release-secrets.sh");
         publishCommand.ShouldContain("dotnet nuget push");
         publishCommand.ShouldContain("./.hexalith/release/publish-containers.sh ${nextRelease.version}");
+        publishCommand.IndexOf("scripts/validate-release-secrets.sh", StringComparison.Ordinal).ShouldBeLessThan(
+            publishCommand.IndexOf("dotnet nuget push", StringComparison.Ordinal),
+            "Release secrets must be validated before any irreversible NuGet publish command runs.");
     }
 
     [Fact]
@@ -167,6 +171,7 @@ public sealed class ReleasePackageManifestTests
         string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "ci.yml"));
 
         workflow.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@main");
+        workflow.ShouldContain("build-timeout-minutes: 40");
         workflow.ShouldContain("run-consumer-validation: true");
         workflow.ShouldContain("tests/Hexalith.EventStore.Server.Tests");
         workflow.ShouldNotContain("tests/Hexalith.EventStore.Server.LiveSidecar.Tests");
@@ -230,7 +235,8 @@ public sealed class ReleasePackageManifestTests
         string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "advisory-tests.yml"));
         string release = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
 
-        workflow.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@main");
+        workflow.ShouldContain("continue-on-error: true");
+        workflow.ShouldContain("playwright.ps1 install --with-deps chromium");
         workflow.ShouldContain("tests/Hexalith.EventStore.Admin.UI.E2E");
         workflow.ShouldContain("tests/Hexalith.EventStore.DeferredWorkGovernance.Tests");
         workflow.ShouldContain("tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests");
@@ -246,6 +252,7 @@ public sealed class ReleasePackageManifestTests
         string integration = File.ReadAllText(Path.Combine(root, ".github", "workflows", "integration.yml"));
         string advisory = File.ReadAllText(Path.Combine(root, ".github", "workflows", "advisory-tests.yml"));
         string docs = File.ReadAllText(Path.Combine(root, "docs", "ci.md"));
+        string[] deferredProjects = DeferredTestLaneProjects(docs);
 
         string[] ignoredProjects = ["tests/Hexalith.EventStore.TestSubscriber"];
         string[] discovered = Directory
@@ -261,7 +268,7 @@ public sealed class ReleasePackageManifestTests
             bool classified = ci.Contains(project, StringComparison.Ordinal)
                 || integration.Contains(project, StringComparison.Ordinal)
                 || advisory.Contains(project, StringComparison.Ordinal)
-                || docs.Contains(project, StringComparison.Ordinal);
+                || deferredProjects.Contains(project, StringComparer.Ordinal);
             if (!classified)
             {
                 unclassified.Add(project);
@@ -269,6 +276,29 @@ public sealed class ReleasePackageManifestTests
         }
 
         unclassified.ShouldBeEmpty("Every test project must be explicitly assigned to a workflow lane or a documented deferred/advisory category.");
+    }
+
+    [Fact]
+    public void Server_tests_do_not_contain_live_sidecar_markers()
+    {
+        string root = FindRepositoryRoot();
+        string serverTestsRoot = Path.Combine(root, "tests", "Hexalith.EventStore.Server.Tests");
+
+        string[] offenders = Directory
+            .EnumerateFiles(serverTestsRoot, "*.*", SearchOption.AllDirectories)
+            .Where(path => path.EndsWith(".cs", StringComparison.Ordinal) || path.EndsWith(".csproj", StringComparison.Ordinal))
+            .Where(path =>
+            {
+                string text = File.ReadAllText(path);
+                return text.Contains("Category\", \"LiveSidecar", StringComparison.Ordinal)
+                    || text.Contains("DaprTestContainer", StringComparison.Ordinal);
+            })
+            .Select(path => Path.GetRelativePath(root, path))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        offenders.ShouldBeEmpty(
+            "Live-sidecar tests and fixtures must stay in Hexalith.EventStore.Server.LiveSidecar.Tests so Server.Tests can run unfiltered in the release gate.");
     }
 
     [Fact]
@@ -290,6 +320,11 @@ public sealed class ReleasePackageManifestTests
             string text = File.ReadAllText(path);
             text.ShouldContain("tools");
             text.ShouldContain("release-packages.json");
+            if (script.Contains("validate", StringComparison.Ordinal))
+            {
+                text.ShouldContain("package_id == \"Hexalith.EventStore\" or package_id.startswith(\"Hexalith.EventStore.\")");
+            }
+
             text.ShouldNotContain("references/Hexalith.");
             text.Contains("NU1605", StringComparison.Ordinal).ShouldBeFalse(
                 "Package-consumer validation must not suppress package downgrade conflicts.");
@@ -448,6 +483,18 @@ public sealed class ReleasePackageManifestTests
                 Path.Combine(root, "_bmad-output", "project-context.md"),
             ])
             .Select(path => Path.GetRelativePath(root, path))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+    private static string[] DeferredTestLaneProjects(string docs)
+        => docs
+            .Split('\n')
+            .Where(line => line.Contains('|', StringComparison.Ordinal)
+                && line.Contains("Deferred", StringComparison.OrdinalIgnoreCase))
+            .SelectMany(line => Regex
+                .Matches(line, "`(?<project>tests/[^`]+)`")
+                .Select(match => match.Groups["project"].Value))
+            .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)
             .ToArray();
 

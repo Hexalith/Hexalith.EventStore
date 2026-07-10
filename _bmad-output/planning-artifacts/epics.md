@@ -21,6 +21,8 @@ inputDocuments:
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-04.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05-query-metadata-propagation.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05-query-metadata-sequencing.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-09.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-09-implementation-readiness-corrections.md
 ---
 
 # eventstore - Epic Breakdown
@@ -49,7 +51,9 @@ Story 7.6 has been deleted; its acceptance criteria are redistributed into the o
 
 ### Query Response Provenance Gate
 
-Query-response provenance is governed by architecture invariant AD-15. No new UI or generated-API story that renders current/stale state or projection version may proceed until it cites AD-15 or explicitly avoids projection-backed evidence claims for handler-computed routes. Story 4.7 owns the platform contract and route-aware gateway enforcement; the shipped Epic 2 stories (2.2, 2.4) are reconciled by Story 4.7 guardrails.
+Query-response provenance is governed by architecture invariant AD-15. Story 2.8 owns the EventStore platform contract and route-aware gateway enforcement before generated REST or UI consumers may claim current/stale projection evidence. No UI or generated-API story that renders current/stale state or projection version may proceed unless Story 2.8 is done, or the story explicitly renders handler-computed and unknown provenance as Unknown and avoids projection-backed evidence claims.
+
+Story 4.7 no longer owns the EventStore platform prerequisite. Any Tenants producer aliasing fix that requires submodule maintainer approval is tracked as a non-blocking Tenants follow-up; until approved, affected Tenants routes must render Unknown rather than Current/Stale unless they source genuine projection-backed freshness.
 
 ### Coordinated-Slice Gates For Oversized Stories
 
@@ -57,6 +61,8 @@ The stories below may proceed in one of two ways:
 
 - Split the story into the named implementation slices before creating implementation story files.
 - Keep the story as a coordinated slice only if the named owner, review boundary, and validation commands are carried into the implementation story file.
+
+Implementation handoff gate: a story file for any row in this table is not ready-for-dev or ready-for-review unless its active content includes the row's required slices/coordinated boundary, owner/review boundary, and validation commands. A superseded-scope note is insufficient if active acceptance criteria or tasks still instruct the abandoned design.
 
 | Story | Required slices or coordinated boundary | Owner | Required validation commands |
 | --- | --- | --- | --- |
@@ -472,10 +478,10 @@ So that I can implement domain-specific read behavior without reimplementing DAP
 **Then** the response uses support-safe validation/problem details
 **And** tests prove cursors remain opaque and are not parsed, logged, displayed as support text, or treated as ordering proof.
 
-**Given** the read-model and cursor seams are adopted by a non-trivial domain
-**When** existing Tenants-style read-model and cursor behavior is migrated
-**Then** domain-specific RBAC, index, audit, and pagination semantics are preserved
-**And** the hand-written state-store and cursor-codec infrastructure is removed.
+**Given** the read-model and cursor seams are proven against non-trivial platform scenarios
+**When** the implementation validates ETag-aware reads/writes, merge-on-write behavior, deterministic conflict injection, protected cursor encoding/decoding, invalid cursor rejection, and paging metadata propagation
+**Then** the platform read-model and cursor contracts are proven without modifying the Tenants submodule
+**And** production Tenants read-model/cursor adoption remains out of Story 1.3 and is owned by Story 1.6.
 
 ### Story 1.4: Projection And Domain Event Consumer Seams
 
@@ -844,6 +850,39 @@ So that a caller- or inbound-supplied `dapr-app-id` / `dapr-api-token` can never
 
 **Placement note:** Post-retro hardening follow-on; Epic 2 reopened to `in-progress`. Correct-course rationale in `sprint-change-proposal-2026-07-07-outbound-dapr-routing-header-policy.md`.
 
+### Story 2.8: Query Response Provenance Contract And Route-Aware Gateway ETag
+
+**Requirements covered:** FR4, FR12, FR15, FR34, NFR8, NFR16 (EventStore-owned query-response provenance slice); governed by AD-14 and AD-15.
+
+As a consumer of platform query metadata,
+I want every query response to declare explicit route provenance and the gateway to stop attaching projection ETags to handler-computed responses,
+So that generated REST and UI code never present a gateway ETag or fabricated version as projection-backed current/stale evidence.
+
+**Acceptance Criteria:**
+
+**Given** a response from a domain query handler (`HandlerAwareQueryRouter`, `ProjectionType` null)
+**When** the gateway builds `QueryResponseMetadata`
+**Then** provenance is `HandlerComputed`
+**And** the gateway attaches no projection-actor ETag, projection version, or `IsStale` derived from `request.Domain`/`request.ProjectionType`
+**And** a Tier 2/3 test asserts on the real gateway path that no projection ETag and no `X-Hexalith-Projection-Version`/`X-Hexalith-Is-Stale` header is emitted for the handler route.
+
+**Given** a response from a projection actor / read model with persisted `IReadModelFreshness`
+**When** the gateway builds `QueryResponseMetadata`
+**Then** provenance is `ProjectionBacked`
+**And** `ProjectionVersion`/`IsStale` are sourced from the persisted read model, never aliased from the ETag
+**And** a Tier 2/3 test asserts the genuine version/freshness values traverse the gateway.
+
+**Given** a consumer, including generated REST headers or UI freshness indicators
+**When** provenance is `HandlerComputed` or `Unknown`
+**Then** it renders `Unknown`, never `Current`/`Stale`, and does not claim projection-confirmed success.
+
+**Given** a Tenants producer still aliases `ProjectionVersion := ETag`
+**When** the EventStore-owned platform enforcement lands without submodule maintainer approval for the producer fix
+**Then** the affected route is classified `HandlerComputed` or `Unknown`
+**And** the Tenants producer aliasing fix is tracked as a separate maintainer-approved follow-up, not as a blocker for EventStore platform provenance enforcement.
+
+**Sequencing note:** This story is a Phase 4 readiness blocker for generated REST/UI current/stale evidence. Implement before any new generated API or UI story claims projection-backed freshness.
+
 ## Epic 3: Release And Repository Reliability
 
 Maintainers can release reproducibly with correct package/reference mode, aligned submodule and Aspire resource layout, deterministic release gates, live-sidecar integration coverage, shared supply-chain workflows, and manifest-governed package output.
@@ -1032,34 +1071,44 @@ So that release output is reviewable and cannot accidentally publish submodule p
 **Requirements covered:** FR25
 
 As a repository maintainer,
-I want EventStore CI/CD to reuse shared Hexalith.Builds security gates and document supply-chain hardening backlog,
-So that workflow policy is consistent, reproducible, and reviewable across Hexalith modules.
+I want EventStore CI/CD to follow the same reusable workflow pattern as Hexalith.Tenants,
+So that CI, release, security gates, package validation, and container publishing are governed through Hexalith.Builds with only module-specific inputs in EventStore.
 
 **Acceptance Criteria:**
 
-**Given** EventStore uses CodeQL, dependency-review, and commitlint workflows
+**Given** EventStore uses GitHub Actions for CI, release, CodeQL, dependency review, and commitlint
 **When** workflow files are inspected
-**Then** they are thin callers of shared Hexalith.Builds reusable workflows using `@main`
-**And** caller workflows retain only module-specific triggers, concurrency, and permissions.
+**Then** `.github/workflows/ci.yml` is a thin caller of `Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@main`
+**And** `.github/workflows/release.yml` is a thin caller of `Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@main`
+**And** CodeQL, dependency-review, and commitlint remain thin shared workflow callers using `@main`
+**And** caller workflows retain only module-specific triggers, concurrency, permissions, secrets, and workflow inputs.
 
-**Given** Hexalith.Builds actions and reusable workflows are referenced by root and submodule workflows
-**When** workflow references are scanned
-**Then** Hexalith.Builds references use `@main`
-**And** third-party action SHA-pinning remains enforced by the shared workflows.
+**Given** EventStore Server.Tests previously contained both deterministic in-process tests and `Category=LiveSidecar` tests
+**When** CI is migrated to the shared reusable workflow pattern
+**Then** deterministic server tests still run in the blocking release gate without a `Category!=LiveSidecar` filter
+**And** live-sidecar tests still run in a dedicated non-release-blocking lane with DAPR initialized
+**And** the migration does not make live-sidecar failures block semantic-release publishing.
 
-**Given** release tooling dependencies are installed
-**When** the release workflow runs `npm ci`
-**Then** package-lock based installs can use npm cache
-**And** known npm signature/provenance blockers are documented rather than added as failing gates.
+**Given** EventStore package release is manifest-governed
+**When** shared CI runs consumer/package validation
+**Then** EventStore provides compatible `scripts/pack-release-packages.py`, `scripts/validate-nuget-packages.py`, and `scripts/validate-consumer-package-references.py` entry points
+**And** those scripts preserve `tools/release-packages.json` as the package inventory
+**And** validation rejects submodule packages or package outputs outside the EventStore manifest.
 
-**Given** long-lived publish secrets remain in use
-**When** CI documentation and secrets checklists are updated
-**Then** `NUGET_API_KEY` remains documented until NuGet Trusted Publishing is configured
-**And** OIDC trusted publishing, attestations, SBOM, and related hardening work are tracked as follow-ups.
+**Given** EventStore release runs through `domain-release.yml@main`
+**When** semantic-release publishes artifacts
+**Then** NuGet publishing remains scoped to manifest-listed `Hexalith.EventStore.*` packages
+**And** container publishing uses explicit EventStore project-to-repository mappings approved for release
+**And** no sample or admin container is published accidentally
+**And** release secrets are validated before any irreversible NuGet or container publish command runs.
+
+**Given** the migration completes
+**When** docs and workflow references are scanned
+**Then** `docs/ci.md`, `.releaserc.json`, package-governance tests, and CI documentation describe the Tenants-style reusable workflow pattern accurately.
 
 ### Story 3.8: Generated API DAPR/Aspire Smoke Preflight
 
-**Requirements covered:** none directly (retro-driven developer tooling; safeguards FR17 live-sidecar and FR34 integration-evidence quality). Companion to Story 3.1. Re-homed 2026-07-07 from the defunct TEST-1.1.
+**Requirements covered:** FR17 and FR34 validation enablement; governs NFR16 evidence quality. This is a validation/tooling story, not a runtime product capability. Companion to Story 3.1. Re-homed 2026-07-07 from the defunct TEST-1.1.
 
 As a developer validating generated API proofs,
 I want a local DAPR/Aspire smoke preflight that reports environment readiness, sidecar state, and generated API endpoints,
@@ -1263,39 +1312,25 @@ So that ordering metadata scales without violating the frozen global-ordering co
 **Then** existing per-event identity and CloudEvent id behavior remains stable
 **And** focused tests verify monotonicity within the selected shard boundary.
 
-### Story 4.7: Query Response Provenance Contract And Route-Aware Gateway ETag
+### Story 4.7: Tenants Query Provenance Follow-Up
 
-**Requirements covered:** FR4, FR15, FR34, NFR8, NFR16 (query-response provenance slice); governed by AD-14, AD-15.
+**Classification:** Coordinated follow-up requiring Tenants submodule maintainer approval. This story is not the EventStore platform provenance prerequisite; that work is owned by Story 2.8.
 
-As a consumer of platform query metadata,
-I want every query response to declare explicit route provenance and the gateway to stop attaching projection ETags to handler-computed responses,
-So that generated REST and UI code never present a gateway ETag or fabricated version as projection-backed current/stale evidence.
+As a platform maintainer coordinating with Tenants maintainers,
+I want Tenants producer-side query freshness aliases removed or explicitly classified as non-projection-backed,
+So that Tenants never presents an opaque ETag as projection version or current/stale evidence.
 
 **Acceptance Criteria:**
 
-**Given** a response from a domain query handler (`HandlerAwareQueryRouter`, `ProjectionType` null)
-**When** the gateway builds `QueryResponseMetadata`
-**Then** provenance is `HandlerComputed`
-**And** the gateway attaches no projection-actor ETag, projection version, or `IsStale` derived from `request.Domain`/`request.ProjectionType`
-**And** a Tier 2/3 test asserts on the real gateway path that no projection ETag and no `X-Hexalith-Projection-Version`/`X-Hexalith-Is-Stale` header is emitted for the handler route.
+**Given** Tenants producer code aliases `ProjectionVersion := ETag`
+**When** maintainer-approved submodule work is scheduled
+**Then** the aliasing is removed and genuine projection-backed freshness is sourced from persisted read-model evidence
+**Or** the route is explicitly classified `HandlerComputed` or `Unknown` and consumers render Unknown.
 
-**Given** a response from a projection actor / read model with persisted `IReadModelFreshness`
-**When** the gateway builds `QueryResponseMetadata`
-**Then** provenance is `ProjectionBacked`
-**And** `ProjectionVersion`/`IsStale` are sourced from the persisted read model (never aliased from the ETag)
-**And** a Tier 2/3 test asserts the genuine version/freshness values traverse the gateway.
-
-**Given** a producer that aliases `ProjectionVersion := ETag` (current Tenants `TenantQueryResult`)
-**When** the contract is enforced
-**Then** the aliasing is removed or the route is classified `HandlerComputed`/`Unknown`
-**And** guardrail coverage prevents reintroduction.
-**Note:** the Tenants change is a submodule edit and requires explicit maintainer approval before it lands.
-
-**Given** a consumer (generated REST header set or UI freshness indicator)
-**When** provenance is `HandlerComputed` or `Unknown`
-**Then** it renders `Unknown`, never `Current`/`Stale`, and does not claim projection-confirmed success.
-
-**Sequencing note:** Prioritize the provenance label + gateway route-awareness before the Tenants conformance fix; keep the D6 read-model-freshness handoff out of scope (a route stays `HandlerComputed`/`Unknown` until it sources genuine freshness).
+**Given** maintainer approval is not yet available
+**When** EventStore platform provenance enforcement ships through Story 2.8
+**Then** EventStore blocks fabricated Current/Stale claims by route classification
+**And** this Tenants follow-up remains visible without blocking the EventStore-owned platform story.
 
 ## Epic 5: Security And Tenant Isolation
 
@@ -1512,6 +1547,7 @@ Platform users can operate long-lived streams with bounded snapshot and projecti
 ### Story 6.1: Folded Snapshot Frozen Spec
 
 **Requirements covered:** FR33
+**Classification:** Architecture/readiness gate. Completion authorizes Story 6.2 to start but does not count as runtime implementation progress.
 
 As a platform architect,
 I want folded snapshot behavior specified before implementation,
@@ -1567,6 +1603,7 @@ So that snapshot payload size stays bounded as event streams grow.
 ### Story 6.3: Projection Delivery Cost And Sequence Guard Spec
 
 **Requirements covered:** FR33
+**Classification:** Architecture/readiness gate. Completion authorizes Story 6.4 to start but does not count as runtime implementation progress.
 
 As a platform architect,
 I want projection cost and ordering behavior specified before implementation,
@@ -1626,6 +1663,7 @@ So that projection updates remain correct and cheaper on long streams.
 ### Story 6.5: Event Versioning And Upcasting Spec
 
 **Requirements covered:** FR33
+**Classification:** Architecture/readiness gate. Completion authorizes Story 6.6 to start but does not count as runtime implementation progress.
 
 As a domain maintainer,
 I want event schema evolution specified before contracts harden,
