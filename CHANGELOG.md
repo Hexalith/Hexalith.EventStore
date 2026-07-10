@@ -1,3 +1,10 @@
+## [3.50.3](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.50.2...v3.50.3) (2026-07-10)
+
+
+### Bug Fixes
+
+* Update status to 'done' for Projection/Query SDK Owner Parity Proof and adjust last updated timestamp ([92b71bf](https://github.com/Hexalith/Hexalith.EventStore/commit/92b71bfbbc89adf7486afcdc691a2571fb1c552a))
+
 ## [3.50.2](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.50.1...v3.50.2) (2026-07-10)
 
 
