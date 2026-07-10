@@ -468,3 +468,4 @@ _bmad-output/implementation-artifacts/*-fresh-review.diff
 .fake
 .bmad-loop/runs/
 .bmad-loop/cache/
+.bmad-loop/policy.toml
