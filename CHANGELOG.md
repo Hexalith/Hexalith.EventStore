@@ -1,3 +1,10 @@
+# [3.50.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.49.0...v3.50.0) (2026-07-10)
+
+
+### Features
+
+* Add owner proof follow-up story for Projection/Query SDK and update sprint status ([f9ce5aa](https://github.com/Hexalith/Hexalith.EventStore/commit/f9ce5aa1a269f363cf1db24f5ffa7ca3a7abd7a0))
+
 # [3.49.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.48.0...v3.49.0) (2026-07-10)
 
 
