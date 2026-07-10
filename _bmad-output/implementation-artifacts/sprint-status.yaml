@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-07-10T14:12:35+02:00
+# last_updated: 2026-07-10T15:42:40+02:00
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T20:01:46+02:00
-last_updated: 2026-07-10T14:12:35+02:00
+last_updated: 2026-07-10T15:42:40+02:00
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -57,7 +57,7 @@ development_status:
   1-6-sample-and-tenants-domain-centric-adoption: done
   1-7-domainservice-packaging-and-guardrails: done
   # Cross-repo owner-proof follow-up for Parties Story 8.6 AC1.
-  1-8-projection-query-sdk-owner-parity-proof: review
+  1-8-projection-query-sdk-owner-parity-proof: done
   epic-1-retrospective: done
 
   epic-2: in-progress

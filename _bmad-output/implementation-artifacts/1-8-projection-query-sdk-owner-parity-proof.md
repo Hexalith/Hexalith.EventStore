@@ -2,7 +2,7 @@
 title: "1.8 Projection/Query SDK Owner Parity Proof"
 type: "proof"
 created: "2026-07-10"
-status: "review"
+status: "done"
 baseline_commit: "f31777ae8dd3902f65a27777a04ee49d790a6e8f"
 source_proposal: "_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-10.md"
 trigger_artifact: "../parties/_bmad-output/implementation-artifacts/8-6-ac1-llm-instructions.md"
@@ -59,6 +59,18 @@ so that consuming modules can delete local rollback code only after EventStore o
   - [x] Include rollback note and known limitations.
   - [x] Set final decision to `available` only when every item is satisfied; otherwise set `still blocked`.
 
+### Review Findings
+
+- [x] [Review][Patch] Classify the intended EventStore pin as a required proof item [_bmad-output/implementation-artifacts/1-8-projection-query-sdk-owner-proof-packet.md:28]
+- [x] [Review][Patch] Reclassify G10 because sequential single-key writes do not prove batching or an approved equivalent [_bmad-output/implementation-artifacts/1-8-projection-query-sdk-owner-proof-packet.md:60]
+- [x] [Review][Patch] Reclassify duplicate/out-of-order replay because the cited evidence does not prove projection-path idempotency [_bmad-output/implementation-artifacts/1-8-projection-query-sdk-owner-proof-packet.md:99]
+- [x] [Review][Patch] Name the paged rebuild overwrite defect as a concrete full-rebuild blocker [_bmad-output/implementation-artifacts/1-8-projection-query-sdk-owner-proof-packet.md:121]
+- [x] [Review][Patch] Record that the synchronous projection handler cannot call the asynchronous read-model persistence seam [_bmad-output/implementation-artifacts/1-8-projection-query-sdk-owner-proof-packet.md:169]
+- [x] [Review][Patch] Record that domain-only routing and a single response cannot express both Parties projection handlers [_bmad-output/implementation-artifacts/1-8-projection-query-sdk-owner-proof-packet.md:180]
+- [x] [Review][Patch] Expand the G3 blocker to include companion sequence/checkpoint erasure [_bmad-output/implementation-artifacts/1-8-projection-query-sdk-owner-proof-packet.md:41]
+- [x] [Review][Patch] Mark proof-result owner approval as pending instead of reusing proposal authorization [_bmad-output/implementation-artifacts/1-8-projection-query-sdk-owner-proof-packet.md:4]
+- [x] [Review][Patch] Correct the cursor evidence because unrelated key rings model key loss, not normal key rotation [_bmad-output/implementation-artifacts/1-8-projection-query-sdk-owner-proof-packet.md:144]
+
 ## Proof Packet Template
 
 ```markdown
@@ -71,6 +83,13 @@ so that consuming modules can delete local rollback code only after EventStore o
   - approval date:
 
 ## Evidence by Requirement
+
+### Intended EventStore pin
+- classification:
+- source paths:
+- test paths:
+- validation command:
+- result:
 
 ### G3 read-model erasure hooks
 - classification:
@@ -188,13 +207,15 @@ GPT-5 Codex
 - 2026-07-10T14:03:47+02:00 - Inspected SDK source surfaces for projection/query handlers, read-model store/write policy, cursor codec/scope, registration APIs, freshness metadata, replay, and rebuild orchestration.
 - 2026-07-10T14:03:47+02:00 - Ran focused validation and Release build; all executed lanes passed.
 - 2026-07-10T14:03:47+02:00 - Produced `_bmad-output/implementation-artifacts/1-8-projection-query-sdk-owner-proof-packet.md` with final decision `still blocked`.
+- 2026-07-10T15:41:22+02:00 - Applied code-review corrections: reclassified unsupported G10 and replay claims, recorded additional projection-seam blockers, made rebuild paging risk explicit, and corrected approval, pin, erasure, and cursor evidence.
 
 ### Completion Notes
 
 - Recorded the intended EventStore consuming SHA: `f31777ae8dd3902f65a27777a04ee49d790a6e8f`.
 - Cited all required SDK source surfaces, including `IDomainProjectionHandler`, `IDomainQueryHandler`, `IReadModelStore`, `ReadModelWritePolicy`, `IQueryCursorCodec`, `QueryCursorScope`, and domain-service registration/dispatch APIs.
-- Classified proof items as follows: G10 index batching/equivalent, duplicate/out-of-order replay, and cursor scope compatibility are already available; G3 read-model erasure hooks, G6 full Parties freshness mapping, and full rebuild verification against aggregate replay remain blocked.
-- No additive SDK code was implemented; blocked items were named precisely per AC4, and the proof packet explicitly does not authorize consuming repos to mark the prerequisite row `available`.
+- Classified the intended EventStore pin and cursor scope compatibility as already available. G3 read-model erasure, G10 batching/equivalent, G6 freshness mapping, duplicate/out-of-order projection replay, and full rebuild verification remain blocked.
+- Recorded additional blocking constraints: the synchronous projection handler cannot safely use the asynchronous read-model store, domain-only routing cannot register both Parties projection handlers, and paged rebuild delivery can overwrite full-replay state with a partial page.
+- No additive SDK code was implemented; all identified blockers are named precisely per AC4, and the proof packet explicitly does not authorize consuming repos to mark the prerequisite row `available`.
 
 ### File List
 
@@ -210,3 +231,4 @@ GPT-5 Codex
 | Date | Version | Description | Author |
 | --- | --- | --- | --- |
 | 2026-07-10 | 0.1 | Produced the EventStore projection/query SDK owner proof packet and recorded final decision `still blocked` because G3 erasure hooks, G6 full freshness mapping, and full rebuild verification against aggregate replay are not fully satisfied. | GPT-5 Codex |
+| 2026-07-10 | 0.2 | Applied adversarial review corrections and expanded the `still blocked` decision with unsupported G10/replay classifications and concrete projection-seam limitations. | GPT-5 Codex |
