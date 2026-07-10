@@ -17,10 +17,12 @@ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Actors;
 /// </summary>
 [Collection("DaprTestContainer")]
 [Trait("Category", "LiveSidecar")]
-public class ActorTenantIsolationTests {
+public class ActorTenantIsolationTests
+{
     private readonly DaprTestContainerFixture _fixture;
 
-    public ActorTenantIsolationTests(DaprTestContainerFixture fixture) {
+    public ActorTenantIsolationTests(DaprTestContainerFixture fixture)
+    {
         _fixture = fixture;
         _fixture.SetupCounterDomain();
     }
@@ -30,9 +32,11 @@ public class ActorTenantIsolationTests {
     /// Commands for different tenants use different actor IDs, ensuring state isolation.
     /// </summary>
     [Fact]
-    public async Task ProcessCommandAsync_DifferentTenants_HaveIsolatedState() {
+    public async Task ProcessCommandAsync_DifferentTenants_HaveIsolatedState()
+    {
         // Arrange
-        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
+        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions
+        {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 
@@ -43,7 +47,8 @@ public class ActorTenantIsolationTests {
             new ActorId($"tenant-a:counter:{aggregateId}"),
             _fixture.AggregateActorTypeName);
 
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 3; i++)
+        {
             CommandEnvelope command = new CommandEnvelopeBuilder()
                 .WithTenantId("tenant-a")
                 .WithDomain("counter")
@@ -79,9 +84,11 @@ public class ActorTenantIsolationTests {
     /// A command with wrong tenant sent to an actor should be rejected before any state access.
     /// </summary>
     [Fact]
-    public async Task ProcessCommandAsync_TenantMismatch_RejectedBeforeStateAccess() {
+    public async Task ProcessCommandAsync_TenantMismatch_RejectedBeforeStateAccess()
+    {
         // Arrange - create a command for tenant-b but route to tenant-a's actor
-        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
+        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions
+        {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 

@@ -15,6 +15,10 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "tools" / "release-packages.json"
 
 
+def is_eventstore_package_id(package_id: str) -> bool:
+    return package_id == "Hexalith.EventStore" or package_id.startswith("Hexalith.EventStore.")
+
+
 def load_expected_package_ids() -> list[str]:
     with MANIFEST.open("r", encoding="utf-8") as handle:
         data = json.load(handle)
@@ -32,7 +36,7 @@ def load_expected_package_ids() -> list[str]:
         package_id = str(package.get("id", "")).strip()
         if not package_id:
             raise ValueError(f"Package entry #{index} must define 'id'.")
-        if not package_id.startswith("Hexalith.EventStore"):
+        if not is_eventstore_package_id(package_id):
             raise ValueError(f"Manifest package id is outside EventStore scope: {package_id}")
         if package_id in seen:
             raise ValueError(f"Duplicate package id in {MANIFEST}: {package_id}")

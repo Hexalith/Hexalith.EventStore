@@ -34,7 +34,8 @@ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures;
 /// Provides a running Dapr environment with actor support for Tier 2 integration tests.
 /// Implements <see cref="IAsyncLifetime"/> for xUnit lifecycle management.
 /// </summary>
-public sealed class DaprTestContainerFixture : IAsyncLifetime {
+public sealed class DaprTestContainerFixture : IAsyncLifetime
+{
     private const string AppId = "eventstore";
     private static readonly int PlacementPort = OperatingSystem.IsWindows() ? 6050 : 50005;
     private static readonly int SchedulerPort = OperatingSystem.IsWindows() ? 6060 : 50006;
@@ -85,7 +86,8 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
     public InMemoryCommandStatusStore CommandStatusStore { get; } = new();
 
     /// <inheritdoc/>
-    public async ValueTask InitializeAsync() {
+    public async ValueTask InitializeAsync()
+    {
         KillOrphanedDaprdProcesses();
 
         int[] ports = GetAvailablePorts(6);
@@ -103,7 +105,8 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
         Environment.SetEnvironmentVariable("DAPR_HTTP_PORT", _daprHttpPort.ToString());
         Environment.SetEnvironmentVariable("DAPR_GRPC_PORT", _daprGrpcPort.ToString());
 
-        try {
+        try
+        {
             await VerifyPrerequisitesAsync().ConfigureAwait(false);
 
             _componentsDir = CreateComponentFiles();
@@ -128,7 +131,8 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
             // sprint-change-proposal-2026-06-22-ci-release-retier.md.
             await WarmUpActorRuntimeAsync().ConfigureAwait(false);
         }
-        catch {
+        catch
+        {
             await DisposeTestResourcesAsync().ConfigureAwait(false);
             RestoreDaprPortEnvironment();
             throw;
@@ -141,8 +145,10 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
     /// asserts. This absorbs the cold-start latency that otherwise makes the first real actor call
     /// fail open (return null) on slower CI runners.
     /// </summary>
-    private async Task WarmUpActorRuntimeAsync() {
-        var factory = new ActorProxyFactory(new ActorProxyOptions {
+    private async Task WarmUpActorRuntimeAsync()
+    {
+        var factory = new ActorProxyFactory(new ActorProxyOptions
+        {
             HttpEndpoint = DaprHttpEndpoint,
             RequestTimeout = TimeSpan.FromSeconds(15),
         });
@@ -153,15 +159,19 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
 
         var stopwatch = Stopwatch.StartNew();
         Exception? lastError = null;
-        while (stopwatch.Elapsed < TimeSpan.FromSeconds(WarmUpTimeoutSeconds)) {
-            try {
+        while (stopwatch.Elapsed < TimeSpan.FromSeconds(WarmUpTimeoutSeconds))
+        {
+            try
+            {
                 string seeded = await proxy.RegenerateAsync().ConfigureAwait(false);
                 string? readBack = await proxy.GetCurrentETagAsync().ConfigureAwait(false);
-                if (!string.IsNullOrEmpty(readBack) && string.Equals(readBack, seeded, StringComparison.Ordinal)) {
+                if (!string.IsNullOrEmpty(readBack) && string.Equals(readBack, seeded, StringComparison.Ordinal))
+                {
                     return;
                 }
             }
-            catch (Exception ex) {
+            catch (Exception ex)
+            {
                 lastError = ex;
             }
 
@@ -179,8 +189,10 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
     /// Throws if the test host has begun shutting down. Call from tests to get a clear
     /// diagnostic instead of a generic "connection refused" from the sidecar.
     /// </summary>
-    public void ThrowIfHostStopped() {
-        if (_hostStopping) {
+    public void ThrowIfHostStopped()
+    {
+        if (_hostStopping)
+        {
             throw new InvalidOperationException(
                 $"Test host shut down unexpectedly.\n" +
                 $"Stop stack trace:\n{_hostStopStackTrace}");
@@ -188,7 +200,8 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
     }
 
     /// <inheritdoc/>
-    public async ValueTask DisposeAsync() {
+    public async ValueTask DisposeAsync()
+    {
         await DisposeTestResourcesAsync().ConfigureAwait(false);
         RestoreDaprPortEnvironment();
     }
@@ -196,7 +209,8 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
     /// <summary>
     /// Clears shared fake state before a test class configures its scenario.
     /// </summary>
-    public void ResetTestState() {
+    public void ResetTestState()
+    {
         DomainServiceInvoker.ClearAll();
         EventPublisher.Reset();
         DeadLetterPublisher.Reset();
@@ -206,18 +220,28 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
     /// <summary>
     /// Configures the domain service invoker with Counter domain responses for integration tests.
     /// </summary>
-    public void SetupCounterDomain() {
+    public void SetupCounterDomain()
+    {
         DomainServiceInvoker.SetupResponse(
             "IncrementCounter",
-            DomainResult.Success(new IEventPayload[] { new Hexalith.EventStore.Sample.Counter.Events.CounterIncremented() }));
+            DomainResult.Success(new IEventPayload[]
+            {
+                new Hexalith.EventStore.Sample.Counter.Events.CounterIncremented(),
+            }));
 
         DomainServiceInvoker.SetupResponse(
             "DecrementCounter",
-            DomainResult.Success(new IEventPayload[] { new Hexalith.EventStore.Sample.Counter.Events.CounterDecremented() }));
+            DomainResult.Success(new IEventPayload[]
+            {
+                new Hexalith.EventStore.Sample.Counter.Events.CounterDecremented(),
+            }));
 
         DomainServiceInvoker.SetupResponse(
             "ResetCounter",
-            DomainResult.Success(new IEventPayload[] { new Hexalith.EventStore.Sample.Counter.Events.CounterReset() }));
+            DomainResult.Success(new IEventPayload[]
+            {
+                new Hexalith.EventStore.Sample.Counter.Events.CounterReset(),
+            }));
     }
 
     /// <summary>
@@ -225,16 +249,19 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
     /// </summary>
     /// <param name="key">The aggregate state key, such as a metadata, snapshot, or event-stream key.</param>
     /// <returns>The raw JSON value stored by Dapr for the actor state entry.</returns>
-    public async Task<string> GetAggregateActorStateJsonAsync(string key) {
+    public async Task<string> GetAggregateActorStateJsonAsync(string key)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
 
         string redisKey = GetAggregateActorRedisKey(key);
         RedisConnectionMultiplexer multiplexer = await RedisConnection.Value.ConfigureAwait(false);
         RedisDatabase database = multiplexer.GetDatabase();
 
-        for (int attempt = 0; attempt < 10; attempt++) {
+        for (int attempt = 0; attempt < 10; attempt++)
+        {
             RedisValue json = await database.HashGetAsync(redisKey, "data").ConfigureAwait(false);
-            if (!json.IsNullOrEmpty) {
+            if (!json.IsNullOrEmpty)
+            {
                 return json.ToString();
             }
 
@@ -245,14 +272,17 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
             $"Redis actor state for key '{key}' did not become available after retries. Redis key: '{redisKey}'.");
     }
 
-    private async ValueTask DisposeTestResourcesAsync() {
-        if (_testHost is not null) {
+    private async ValueTask DisposeTestResourcesAsync()
+    {
+        if (_testHost is not null)
+        {
             await _testHost.StopAsync().ConfigureAwait(false);
             await _testHost.DisposeAsync().ConfigureAwait(false);
             _testHost = null;
         }
 
-        if (_daprProcess is not null && !_daprProcess.HasExited) {
+        if (_daprProcess is not null && !_daprProcess.HasExited)
+        {
             _daprProcess.Kill(entireProcessTree: true);
             await _daprProcess.WaitForExitAsync().ConfigureAwait(false);
         }
@@ -260,11 +290,14 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
         _daprProcess?.Dispose();
         _daprProcess = null;
 
-        if (_componentsDir is not null && Directory.Exists(_componentsDir)) {
-            try {
+        if (_componentsDir is not null && Directory.Exists(_componentsDir))
+        {
+            try
+            {
                 Directory.Delete(_componentsDir, recursive: true);
             }
-            catch {
+            catch
+            {
                 // Best-effort cleanup of temp files
             }
         }
@@ -272,50 +305,62 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
         _componentsDir = null;
     }
 
-    private void RestoreDaprPortEnvironment() {
+    private void RestoreDaprPortEnvironment()
+    {
         Environment.SetEnvironmentVariable("DAPR_HTTP_PORT", _previousDaprHttpPort);
         Environment.SetEnvironmentVariable("DAPR_GRPC_PORT", _previousDaprGrpcPort);
     }
 
-    private static async Task VerifyPrerequisitesAsync() {
+    private static async Task VerifyPrerequisitesAsync()
+    {
         var failures = new List<string>();
 
-        if (!await IsPortReachableAsync("localhost", RedisPort, "Redis").ConfigureAwait(false)) {
+        if (!await IsPortReachableAsync("localhost", RedisPort, "Redis").ConfigureAwait(false))
+        {
             failures.Add($"Redis is not reachable on localhost:{RedisPort}");
         }
 
-        if (!await IsPortReachableAsync("localhost", PlacementPort, "Placement").ConfigureAwait(false)) {
+        if (!await IsPortReachableAsync("localhost", PlacementPort, "Placement").ConfigureAwait(false))
+        {
             failures.Add($"Dapr placement service is not reachable on localhost:{PlacementPort}");
         }
 
-        if (!await IsPortReachableAsync("localhost", SchedulerPort, "Scheduler").ConfigureAwait(false)) {
+        if (!await IsPortReachableAsync("localhost", SchedulerPort, "Scheduler").ConfigureAwait(false))
+        {
             failures.Add($"Dapr scheduler service is not reachable on localhost:{SchedulerPort}");
         }
 
-        if (failures.Count > 0) {
+        if (failures.Count > 0)
+        {
             throw new InvalidOperationException(
                 $"Dapr infrastructure pre-flight check failed. Have you run 'dapr init'?\n" +
                 string.Join("\n", failures.Select(f => $"  - {f}")));
         }
     }
 
-    private static async Task<bool> IsPortReachableAsync(string host, int port, string serviceName) {
-        try {
+    private static async Task<bool> IsPortReachableAsync(string host, int port, string serviceName)
+    {
+        try
+        {
             using var client = new TcpClient();
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
             await client.ConnectAsync(host, port, cts.Token).ConfigureAwait(false);
             return true;
         }
-        catch (Exception) {
+        catch (Exception)
+        {
             return false;
         }
     }
 
-    private void StartDaprSidecar() {
+    private void StartDaprSidecar()
+    {
         string daprdPath = ResolveDaprdPath();
 
-        _daprProcess = new Process {
-            StartInfo = new ProcessStartInfo {
+        _daprProcess = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
                 FileName = daprdPath,
                 Arguments = string.Join(' ',
                     "--app-id", AppId,
@@ -339,17 +384,23 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
             EnableRaisingEvents = true,
         };
 
-        _daprProcess.OutputDataReceived += (_, e) => {
-            if (e.Data is not null) {
-                lock (_daprStdout) {
+        _daprProcess.OutputDataReceived += (_, e) =>
+        {
+            if (e.Data is not null)
+            {
+                lock (_daprStdout)
+                {
                     _ = _daprStdout.AppendLine(e.Data);
                 }
             }
         };
 
-        _daprProcess.ErrorDataReceived += (_, e) => {
-            if (e.Data is not null) {
-                lock (_daprStderr) {
+        _daprProcess.ErrorDataReceived += (_, e) =>
+        {
+            if (e.Data is not null)
+            {
+                lock (_daprStderr)
+                {
                     _ = _daprStderr.AppendLine(e.Data);
                 }
             }
@@ -359,7 +410,8 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
         _daprProcess.BeginOutputReadLine();
         _daprProcess.BeginErrorReadLine();
 
-        if (_daprProcess.HasExited) {
+        if (_daprProcess.HasExited)
+        {
             throw new InvalidOperationException(
                 $"daprd exited immediately with code {_daprProcess.ExitCode}.\nstderr: {GetCapturedStderr()}");
         }
@@ -376,18 +428,24 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
     /// app ID ("<see cref="AppId"/>"). Set environment variable <c>DAPR_TEST_PRESERVE_SIDECARS=1</c>
     /// to skip cleanup entirely (useful when running a local Dapr sidecar for other projects).</para>
     /// </remarks>
-    private static void KillOrphanedDaprdProcesses() {
-        if (Environment.GetEnvironmentVariable("DAPR_TEST_PRESERVE_SIDECARS") == "1") {
+    private static void KillOrphanedDaprdProcesses()
+    {
+        if (Environment.GetEnvironmentVariable("DAPR_TEST_PRESERVE_SIDECARS") == "1")
+        {
             return;
         }
 
-        try {
-            foreach (Process process in Process.GetProcessesByName("daprd")) {
-                try {
+        try
+        {
+            foreach (Process process in Process.GetProcessesByName("daprd"))
+            {
+                try
+                {
                     // Only kill sidecars started with our test app-id to avoid
                     // disrupting other local Dapr workloads.
                     string? cmdLine = GetProcessCommandLine(process);
-                    if (cmdLine is null || !cmdLine.Contains(AppId, StringComparison.OrdinalIgnoreCase)) {
+                    if (cmdLine is null || !cmdLine.Contains(AppId, StringComparison.OrdinalIgnoreCase))
+                    {
                         process.Dispose();
                         continue;
                     }
@@ -395,15 +453,18 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
                     process.Kill(entireProcessTree: true);
                     _ = process.WaitForExit(5000);
                 }
-                catch (Exception) {
+                catch (Exception)
+                {
                     // Best-effort: process may have already exited
                 }
-                finally {
+                finally
+                {
                     process.Dispose();
                 }
             }
         }
-        catch (Exception) {
+        catch (Exception)
+        {
             // Best-effort cleanup
         }
     }
@@ -411,13 +472,18 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
     /// <summary>
     /// Attempts to read the command line of a process. Returns null if inaccessible.
     /// </summary>
-    private static string? GetProcessCommandLine(Process process) {
-        try {
+    private static string? GetProcessCommandLine(Process process)
+    {
+        try
+        {
             // On Windows, MainModule.FileName + StartInfo are not available for other processes.
             // Fall back to reading /proc on Linux or wmic on Windows.
-            if (OperatingSystem.IsWindows()) {
-                using var searcher = new Process {
-                    StartInfo = new ProcessStartInfo {
+            if (OperatingSystem.IsWindows())
+            {
+                using var searcher = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
                         FileName = "wmic",
                         Arguments = $"process where processid={process.Id} get CommandLine /format:list",
                         UseShellExecute = false,
@@ -433,29 +499,34 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
 
             // On Linux/macOS, read /proc/{pid}/cmdline
             string cmdlinePath = $"/proc/{process.Id}/cmdline";
-            if (File.Exists(cmdlinePath)) {
+            if (File.Exists(cmdlinePath))
+            {
                 return File.ReadAllText(cmdlinePath).Replace('\0', ' ');
             }
         }
-        catch {
+        catch
+        {
             // Best-effort: access denied or process exited
         }
 
         return null;
     }
 
-    private static string ResolveDaprdPath() {
+    private static string ResolveDaprdPath()
+    {
         string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         string candidate = Path.Combine(home, ".dapr", "bin", "daprd" + (OperatingSystem.IsWindows() ? ".exe" : string.Empty));
 
-        if (File.Exists(candidate)) {
+        if (File.Exists(candidate))
+        {
             return candidate;
         }
 
         return OperatingSystem.IsWindows() ? "daprd.exe" : "daprd";
     }
 
-    private async Task StartTestHostAsync() {
+    private async Task StartTestHostAsync()
+    {
         WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions());
 
         builder.Configuration["DAPR_HTTP_PORT"] = _daprHttpPort.ToString();
@@ -478,7 +549,8 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
 
         _testHost = builder.Build();
 
-        _ = _testHost.Lifetime.ApplicationStopping.Register(() => {
+        _ = _testHost.Lifetime.ApplicationStopping.Register(() =>
+        {
             _hostStopping = true;
             _hostStopStackTrace = Environment.StackTrace;
         });
@@ -490,15 +562,18 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
 
         IServer server = _testHost.Services.GetRequiredService<IServer>();
         ICollection<string>? addresses = server.Features.Get<IServerAddressesFeature>()?.Addresses;
-        if (addresses is null || addresses.Count == 0) {
+        if (addresses is null || addresses.Count == 0)
+        {
             throw new InvalidOperationException(
                 $"Kestrel did not bind to any addresses. Expected port {_appPort}.");
         }
     }
 
-    private string GetAggregateActorRedisKey(string key) {
+    private string GetAggregateActorRedisKey(string key)
+    {
         string[] segments = key.Split(':', 4);
-        if (segments.Length < 3) {
+        if (segments.Length < 3)
+        {
             throw new ArgumentException(
                 "Aggregate actor state keys must begin with tenant, domain, and aggregate id segments.",
                 nameof(key));
@@ -508,7 +583,8 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
         return $"{AppId}||{AggregateActorTypeName}||{actorId}||{key}";
     }
 
-    private static string CreateComponentFiles() {
+    private static string CreateComponentFiles()
+    {
         string tempDir = Path.Combine(Path.GetTempPath(), $"dapr-components-{Guid.NewGuid():N}");
         _ = Directory.CreateDirectory(tempDir);
 
@@ -560,29 +636,35 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
     /// Waits for daprd to become healthy using the outbound healthcheck,
     /// which verifies placement connectivity required for actors.
     /// </summary>
-    private async Task WaitForDaprHealthAsync() {
+    private async Task WaitForDaprHealthAsync()
+    {
         using var httpClient = new HttpClient();
         string healthUrl = $"{DaprHttpEndpoint}/v1.0/healthz/outbound";
 
         HttpStatusCode lastStatus = default;
         string? lastError = null;
 
-        for (int i = 0; i < HealthTimeoutSeconds; i++) {
-            if (_daprProcess?.HasExited == true) {
+        for (int i = 0; i < HealthTimeoutSeconds; i++)
+        {
+            if (_daprProcess?.HasExited == true)
+            {
                 throw new InvalidOperationException(
                     $"daprd exited with code {_daprProcess.ExitCode} during health check.\n" +
                     $"stdout:\n{GetCapturedStdout()}\n" +
                     $"stderr:\n{GetCapturedStderr()}");
             }
 
-            try {
+            try
+            {
                 HttpResponseMessage response = await httpClient.GetAsync(healthUrl).ConfigureAwait(false);
                 lastStatus = response.StatusCode;
-                if (response.IsSuccessStatusCode) {
+                if (response.IsSuccessStatusCode)
+                {
                     return;
                 }
             }
-            catch (HttpRequestException ex) {
+            catch (HttpRequestException ex)
+            {
                 lastError = ex.Message;
             }
 
@@ -601,20 +683,26 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
         throw new InvalidOperationException(diagnostics);
     }
 
-    private string GetCapturedStdout() {
-        lock (_daprStdout) {
+    private string GetCapturedStdout()
+    {
+        lock (_daprStdout)
+        {
             return _daprStdout.ToString();
         }
     }
 
-    private string GetCapturedStderr() {
-        lock (_daprStderr) {
+    private string GetCapturedStderr()
+    {
+        lock (_daprStderr)
+        {
             return _daprStderr.ToString();
         }
     }
 
-    private static string TailString(string value, int maxChars) {
-        if (string.IsNullOrEmpty(value) || value.Length <= maxChars) {
+    private static string TailString(string value, int maxChars)
+    {
+        if (string.IsNullOrEmpty(value) || value.Length <= maxChars)
+        {
             return value;
         }
 
@@ -625,17 +713,20 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
     /// Allocates multiple unique ports simultaneously, eliminating the TOCTOU race
     /// where sequential allocations can return the same port after the listener closes.
     /// </summary>
-    private static int[] GetAvailablePorts(int count) {
+    private static int[] GetAvailablePorts(int count)
+    {
         var listeners = new TcpListener[count];
         int[] ports = new int[count];
 
-        for (int i = 0; i < count; i++) {
+        for (int i = 0; i < count; i++)
+        {
             listeners[i] = new TcpListener(IPAddress.Loopback, 0);
             listeners[i].Start();
             ports[i] = ((IPEndPoint)listeners[i].LocalEndpoint).Port;
         }
 
-        for (int i = 0; i < count; i++) {
+        for (int i = 0; i < count; i++)
+        {
             listeners[i].Stop();
         }
 
@@ -647,32 +738,42 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
     /// Uses actual HTTP GET (not just TCP connect) to confirm the full request pipeline is alive.
     /// Also detects if the host has started shutting down.
     /// </summary>
-    private async Task VerifyAppListeningAsync() {
-        if (_hostStopping) {
+    private async Task VerifyAppListeningAsync()
+    {
+        if (_hostStopping)
+        {
             throw new InvalidOperationException(
                 $"Test host is shutting down before verification.\n" +
                 $"Stop stack trace:\n{_hostStopStackTrace}");
         }
 
-        using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(3) };
+        using var httpClient = new HttpClient
+        {
+            Timeout = TimeSpan.FromSeconds(3),
+        };
         string healthUrl = $"http://127.0.0.1:{_appPort}/healthz";
         string? lastError = null;
 
-        for (int i = 0; i < 30; i++) {
-            if (_hostStopping) {
+        for (int i = 0; i < 30; i++)
+        {
+            if (_hostStopping)
+            {
                 throw new InvalidOperationException(
                     $"Test host began shutting down during verification (attempt {i + 1}).\n" +
                     $"Stop stack trace:\n{_hostStopStackTrace}");
             }
 
-            try {
+            try
+            {
                 _ = await httpClient.GetAsync(healthUrl).ConfigureAwait(false);
                 return;
             }
-            catch (HttpRequestException ex) {
+            catch (HttpRequestException ex)
+            {
                 lastError = ex.Message;
             }
-            catch (TaskCanceledException) {
+            catch (TaskCanceledException)
+            {
                 lastError = "Request timed out";
             }
 

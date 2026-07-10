@@ -17,12 +17,73 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  UseHexalithProjectReferences: 'false'
+  ADVISORY_TEST_PROJECTS: |
+    tests/Hexalith.EventStore.Admin.UI.E2E
+    tests/Hexalith.EventStore.DeferredWorkGovernance.Tests
+    tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests
+
 jobs:
   advisory:
-    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@main
-    with:
-      solution: Hexalith.EventStore.slnx
-      unit-test-projects: |
-        tests/Hexalith.EventStore.Admin.UI.E2E
-        tests/Hexalith.EventStore.DeferredWorkGovernance.Tests
-        tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          submodules: false
+
+      - name: Initialize root-declared submodules
+        uses: Hexalith/Hexalith.Builds/Github/initialize-build@main
+
+      - name: Initialize .NET
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ hashFiles('Directory.Packages.props', 'global.json', 'references/Hexalith.Builds/Props/Directory.Packages.props') }}
+          restore-keys: nuget-
+
+      - name: Restore
+        run: dotnet restore Hexalith.EventStore.slnx -p:UseHexalithProjectReferences=false
+
+      - name: Build
+        run: dotnet build Hexalith.EventStore.slnx --no-restore --configuration Release -warnaserror -p:UseHexalithProjectReferences=false
+
+      - name: Install Playwright browsers
+        shell: bash
+        run: pwsh tests/Hexalith.EventStore.Admin.UI.E2E/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+
+      - name: Advisory test suites
+        shell: bash
+        run: |
+          set -uo pipefail
+          status=0
+          while IFS= read -r proj; do
+            [ -z "$proj" ] && continue
+            name=$(basename "$proj")
+            echo "::group::$name"
+            dotnet test "$proj" --no-build --configuration Release \
+              --logger "trx;LogFileName=${name}.trx" \
+              --results-directory "TestResults/${name}" \
+              --collect:"XPlat Code Coverage" || status=1
+            echo "::endgroup::"
+          done <<< "$ADVISORY_TEST_PROJECTS"
+          exit $status
+
+      - name: Upload advisory test results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: advisory-test-results
+          path: |
+            TestResults/**/*.trx
+            TestResults/**/coverage.cobertura.xml
+          if-no-files-found: warn
+          retention-days: 7

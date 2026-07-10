@@ -34,7 +34,8 @@ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Integration;
 /// </summary>
 [Collection("DaprTestContainer")]
 [Trait("Category", "LiveSidecar")]
-public class DaprETagServiceLiveSidecarTests {
+public class DaprETagServiceLiveSidecarTests
+{
     private readonly DaprTestContainerFixture _fixture;
 
     public DaprETagServiceLiveSidecarTests(DaprTestContainerFixture fixture) => _fixture = fixture;
@@ -42,10 +43,12 @@ public class DaprETagServiceLiveSidecarTests {
     [Fact]
     [Trait("Category", "Integration")]
     [Trait("Tier", "2")]
-    public async Task GetCurrentETagAsync_AfterRegenerate_ReturnsPersistedETag_NotFailOpenNull() {
+    public async Task GetCurrentETagAsync_AfterRegenerate_ReturnsPersistedETag_NotFailOpenNull()
+    {
         _fixture.ThrowIfHostStopped();
 
-        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
+        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions
+        {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 
@@ -76,10 +79,12 @@ public class DaprETagServiceLiveSidecarTests {
     [Fact]
     [Trait("Category", "Integration")]
     [Trait("Tier", "2")]
-    public async Task GetCurrentETagAsync_ColdActor_ReturnsNull_WithoutThrowing() {
+    public async Task GetCurrentETagAsync_ColdActor_ReturnsNull_WithoutThrowing()
+    {
         _fixture.ThrowIfHostStopped();
 
-        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
+        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions
+        {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 

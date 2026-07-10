@@ -396,7 +396,7 @@ Success criteria:
 | 3.2 Architecture conflicts | Done | AD-11 and AD-12 remain aligned. |
 | 3.3 UX conflicts | N/A | No UI impact. |
 | 3.4 Other artifacts | Done | Workflow files, release scripts, docs, package tests affected. |
-| 3.5 Affected story files | N/A | No active Story 3.7 implementation file exists. |
+| 3.5 Affected story files | Done | Story 3.7 implementation file now exists and carries the approved coordinated-slice gate. |
 | 4.1 Direct adjustment | Viable | Selected, with prerequisite shared workflow/test split. |
 | 4.2 Rollback | Not viable | No rollback needed. |
 | 4.3 MVP review | Not viable | MVP scope unchanged. |
@@ -406,11 +406,11 @@ Success criteria:
 | 5.3 Recommendation | Done | Included. |
 | 5.4 MVP impact | Done | No MVP change. |
 | 5.5 Handoff | Done | Developer, Build maintainer, Release owner, Test Architect. |
-| 5.6 Story rewrite gate | N/A | No active affected story file; update planning story before story creation. |
+| 5.6 Story rewrite gate | Done | Active Story 3.7 content was reconciled with the approved planning story and coordinated-slice gate. |
 | 6.1 Checklist completion | Done | All applicable items addressed. |
 | 6.2 Proposal accuracy | Done | Based on loaded artifacts and workflow comparison. |
-| 6.3 User approval | Action-needed | Awaiting Administrator approval. |
-| 6.4 Sprint status update | Action-needed | Update only after approval and story creation. |
+| 6.3 User approval | Done | Approved by Administrator at 2026-07-09T12:53:52+02:00. |
+| 6.4 Sprint status update | Done | Story 3.7 is tracked in sprint status and the implementation story file exists. |
 | 6.5 Next steps | Done | Handoff and success criteria defined. |
 
 ## 7. Approval
@@ -427,4 +427,3 @@ Decision:
 | Time | Route | Notes |
 | --- | --- | --- |
 | 2026-07-09T12:53:52+02:00 | Developer agent + Hexalith.Builds maintainer + Release owner + Test Architect | Implement Tenants-style reusable CI/release callers only after filtered Server.Tests support or an equivalent test-project split preserves the deterministic/non-live and live-sidecar lane separation. |
-

@@ -20,14 +20,17 @@ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Events;
 /// </summary>
 [Collection("DaprTestContainer")]
 [Trait("Category", "LiveSidecar")]
-public class EventPersistenceIntegrationTests {
-    private static readonly JsonSerializerOptions JsonOptions = new() {
+public class EventPersistenceIntegrationTests
+{
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
         PropertyNameCaseInsensitive = true,
     };
 
     private readonly DaprTestContainerFixture _fixture;
 
-    public EventPersistenceIntegrationTests(DaprTestContainerFixture fixture) {
+    public EventPersistenceIntegrationTests(DaprTestContainerFixture fixture)
+    {
         _fixture = fixture;
         _fixture.SetupCounterDomain();
     }
@@ -37,9 +40,11 @@ public class EventPersistenceIntegrationTests {
     /// Multiple sequential commands to the same aggregate should all persist successfully.
     /// </summary>
     [Fact]
-    public async Task RedisStateStore_SequentialCommands_PersistsAllEvents() {
+    public async Task RedisStateStore_SequentialCommands_PersistsAllEvents()
+    {
         // Arrange
-        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
+        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions
+        {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 
@@ -52,7 +57,8 @@ public class EventPersistenceIntegrationTests {
         _fixture.ThrowIfHostStopped();
 
         // Act - persist 10 events
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 10; i++)
+        {
             CommandEnvelope command = new CommandEnvelopeBuilder()
                 .WithTenantId("tenant-a")
                 .WithDomain("counter")
@@ -111,9 +117,11 @@ public class EventPersistenceIntegrationTests {
     /// Idempotency records (actor state) should survive across multiple calls.
     /// </summary>
     [Fact]
-    public async Task RedisActorStateStore_IdempotencyRecords_PersistAcrossCalls() {
+    public async Task RedisActorStateStore_IdempotencyRecords_PersistAcrossCalls()
+    {
         // Arrange
-        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
+        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions
+        {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 
@@ -149,9 +157,11 @@ public class EventPersistenceIntegrationTests {
     /// and leave a gapless persisted event stream in Redis actor state.
     /// </summary>
     [Fact]
-    public async Task RedisActorStateStore_ConcurrentSameAggregateCommands_PersistsGaplessEventStream() {
+    public async Task RedisActorStateStore_ConcurrentSameAggregateCommands_PersistsGaplessEventStream()
+    {
         // Arrange
-        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
+        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions
+        {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 
@@ -180,7 +190,8 @@ public class EventPersistenceIntegrationTests {
         results.ShouldAllBe(result => result.Accepted);
         (await GetCurrentSequenceAsync(identity.MetadataKey).ConfigureAwait(true)).ShouldBe(commands.Length);
 
-        for (int sequence = 1; sequence <= commands.Length; sequence++) {
+        for (int sequence = 1; sequence <= commands.Length; sequence++)
+        {
             EventEnvelope persisted = await GetStateAsync<EventEnvelope>($"{identity.EventStreamKeyPrefix}{sequence}")
                 .ConfigureAwait(true);
 
@@ -203,9 +214,11 @@ public class EventPersistenceIntegrationTests {
     /// verify state rehydration from snapshot + tail events (FR12, FR14).
     /// </summary>
     [Fact]
-    public async Task ProcessCommandAsync_ExceedsSnapshotInterval_CreatesSnapshot() {
+    public async Task ProcessCommandAsync_ExceedsSnapshotInterval_CreatesSnapshot()
+    {
         // Arrange
-        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
+        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions
+        {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 
@@ -218,7 +231,8 @@ public class EventPersistenceIntegrationTests {
         _fixture.ThrowIfHostStopped();
 
         // Act - send 20 commands (exceeds snapshot interval of 15)
-        for (int i = 0; i < 20; i++) {
+        for (int i = 0; i < 20; i++)
+        {
             CommandEnvelope command = new CommandEnvelopeBuilder()
                 .WithTenantId("tenant-a")
                 .WithDomain("counter")
@@ -250,7 +264,8 @@ public class EventPersistenceIntegrationTests {
         _fixture.EventPublisher.GetEventsForTopic(expectedTopic).Count.ShouldBeGreaterThanOrEqualTo(21);
     }
 
-    private async Task<T> GetStateAsync<T>(string key) {
+    private async Task<T> GetStateAsync<T>(string key)
+    {
         string json = await GetStateJsonAsync(key).ConfigureAwait(true);
         T? value = JsonSerializer.Deserialize<T>(json, JsonOptions) ?? throw new ShouldAssertException($"State for key '{key}' could not be deserialized as {typeof(T).Name}.");
         return value;
@@ -259,7 +274,8 @@ public class EventPersistenceIntegrationTests {
     private async Task<string> GetStateJsonAsync(string key)
         => await _fixture.GetAggregateActorStateJsonAsync(key).ConfigureAwait(true);
 
-    private async Task<long> GetCurrentSequenceAsync(string metadataKey) {
+    private async Task<long> GetCurrentSequenceAsync(string metadataKey)
+    {
         AggregateMetadata metadata = await GetStateAsync<AggregateMetadata>(metadataKey).ConfigureAwait(true);
         return metadata.CurrentSequence;
     }

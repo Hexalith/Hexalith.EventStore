@@ -21,10 +21,12 @@ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Actors;
 /// </summary>
 [Collection("DaprTestContainer")]
 [Trait("Category", "LiveSidecar")]
-public class ActorConcurrencyConflictTests {
+public class ActorConcurrencyConflictTests
+{
     private readonly DaprTestContainerFixture _fixture;
 
-    public ActorConcurrencyConflictTests(DaprTestContainerFixture fixture) {
+    public ActorConcurrencyConflictTests(DaprTestContainerFixture fixture)
+    {
         _fixture = fixture;
         _fixture.SetupCounterDomain();
     }
@@ -34,9 +36,11 @@ public class ActorConcurrencyConflictTests {
     /// Sequential commands to the same aggregate should succeed (no conflict).
     /// </summary>
     [Fact]
-    public async Task ProcessCommandAsync_SequentialCommands_NoConflict() {
+    public async Task ProcessCommandAsync_SequentialCommands_NoConflict()
+    {
         // Arrange
-        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
+        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions
+        {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 
@@ -46,7 +50,8 @@ public class ActorConcurrencyConflictTests {
             _fixture.AggregateActorTypeName);
 
         // Act - send multiple commands sequentially
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 5; i++)
+        {
             CommandEnvelope command = new CommandEnvelopeBuilder()
                 .WithTenantId("tenant-a")
                 .WithDomain("counter")
@@ -68,9 +73,11 @@ public class ActorConcurrencyConflictTests {
     /// (Dapr's turn-based concurrency model prevents conflicts at the actor level).
     /// </summary>
     [Fact]
-    public async Task ProcessCommandAsync_RapidSequentialCommands_AllSucceed() {
+    public async Task ProcessCommandAsync_RapidSequentialCommands_AllSucceed()
+    {
         // Arrange
-        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
+        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions
+        {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 
@@ -81,7 +88,8 @@ public class ActorConcurrencyConflictTests {
 
         // Act - fire multiple commands as quickly as possible
         var tasks = new List<Task<CommandProcessingResult>>();
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 3; i++)
+        {
             CommandEnvelope command = new CommandEnvelopeBuilder()
                 .WithTenantId("tenant-a")
                 .WithDomain("counter")
@@ -95,7 +103,8 @@ public class ActorConcurrencyConflictTests {
         CommandProcessingResult[] results = await Task.WhenAll(tasks).ConfigureAwait(true);
 
         // Assert - all should succeed (Dapr serializes calls to the same actor)
-        foreach (CommandProcessingResult result in results) {
+        foreach (CommandProcessingResult result in results)
+        {
             result.Accepted.ShouldBeTrue("All commands to same actor should succeed (turn-based concurrency)");
         }
     }
@@ -105,9 +114,11 @@ public class ActorConcurrencyConflictTests {
     /// This validates optimistic concurrency at the state-store boundary.
     /// </summary>
     [Fact]
-    public async Task MetadataKey_StaleEtagUpdate_IsRejected() {
+    public async Task MetadataKey_StaleEtagUpdate_IsRejected()
+    {
         // Arrange
-        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
+        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions
+        {
             HttpEndpoint = _fixture.DaprHttpEndpoint,
         });
 
@@ -130,7 +141,8 @@ public class ActorConcurrencyConflictTests {
 
         // Capture current metadata value and ETag
         (string metadataJson, string etag)? metadata = await GetStateWithEtagAsync(identity.MetadataKey).ConfigureAwait(true);
-        if (metadata is null) {
+        if (metadata is null)
+        {
             true.ShouldBeTrue("Metadata state is not externally readable in this runtime profile; skipping stale-ETag validation path.");
             return;
         }
@@ -144,23 +156,28 @@ public class ActorConcurrencyConflictTests {
         second.IsSuccessStatusCode.ShouldBeFalse();
     }
 
-    private async Task<(string Json, string ETag)?> GetStateWithEtagAsync(string key) {
+    private async Task<(string Json, string ETag)?> GetStateWithEtagAsync(string key)
+    {
         using var http = new HttpClient();
         string url = $"{_fixture.DaprHttpEndpoint}/v1.0/state/statestore/{Uri.EscapeDataString(key)}";
 
-        for (int attempt = 0; attempt < 10; attempt++) {
+        for (int attempt = 0; attempt < 10; attempt++)
+        {
             using HttpResponseMessage response = await http.GetAsync(url).ConfigureAwait(true);
 
-            if (response.StatusCode == HttpStatusCode.OK) {
+            if (response.StatusCode == HttpStatusCode.OK)
+            {
                 string json = await response.Content.ReadAsStringAsync().ConfigureAwait(true);
                 string? etagHeader = response.Headers.ETag?.Tag;
                 if (string.IsNullOrWhiteSpace(etagHeader)
-                    && response.Headers.TryGetValues("ETag", out IEnumerable<string>? values)) {
+                    && response.Headers.TryGetValues("ETag", out IEnumerable<string>? values))
+                    {
                     etagHeader = values.FirstOrDefault();
                 }
 
                 string etag = (etagHeader ?? string.Empty).Trim().Trim('"');
-                if (!string.IsNullOrWhiteSpace(json) && !string.IsNullOrWhiteSpace(etag)) {
+                if (!string.IsNullOrWhiteSpace(json) && !string.IsNullOrWhiteSpace(etag))
+                {
                     return (json, etag);
                 }
             }
@@ -172,7 +189,8 @@ public class ActorConcurrencyConflictTests {
         return null;
     }
 
-    private async Task<HttpResponseMessage> SaveStateWithEtagAsync(string key, string valueJson, string etag) {
+    private async Task<HttpResponseMessage> SaveStateWithEtagAsync(string key, string valueJson, string etag)
+    {
         using var http = new HttpClient();
 
         string escapedKey = JsonSerializer.Serialize(key);

@@ -9,7 +9,7 @@ Hexalith CI/CD standards and reusable workflow guidance live in
 | Workflow | File | Triggers | Purpose |
 |----------|------|----------|---------|
 | **CI** | `.github/workflows/ci.yml` | `push` and `pull_request` to `main` | Thin caller to `Hexalith.Builds` `domain-ci.yml@main`. Restores/builds `Hexalith.EventStore.slnx`, runs package consumer validation, and runs deterministic test projects including unfiltered `Server.Tests`. |
-| **Advisory Tests** | `.github/workflows/advisory-tests.yml` | `push`, `pull_request` to `main`, manual dispatch | Thin caller to `domain-ci.yml@main` for visible non-release-blocking browser/governance/evidence scaffolding suites. Release does not listen to this workflow. |
+| **Advisory Tests** | `.github/workflows/advisory-tests.yml` | `push`, `pull_request` to `main`, manual dispatch | Visible non-release-blocking browser/governance/evidence scaffolding suites. It installs Chromium before Playwright E2E tests, runs with `continue-on-error`, and release does not listen to this workflow. |
 | **Integration Tests** | `.github/workflows/integration.yml` | `push`, `pull_request` to `main`, manual dispatch | Dedicated DAPR lane for `tests/Hexalith.EventStore.Server.LiveSidecar.Tests`. It is intentionally separate from the release trigger. |
 | **CodeQL** | `.github/workflows/codeql.yml` | `push`, `pull_request` to `main`, weekly schedule | Thin caller to the shared CodeQL reusable workflow using `@main`. |
 | **Dependency Review** | `.github/workflows/dependency-review.yml` | `pull_request` to `main` | Thin caller to the shared dependency-review gate using `@main`. |
@@ -31,8 +31,8 @@ EventStore keeps only module-specific wiring here:
 
 - `Hexalith.EventStore.slnx`.
 - The deterministic test project list passed to `domain-ci.yml@main`.
-- The advisory test project list passed to a separate `domain-ci.yml@main`
-  caller that release does not consume.
+- The advisory test project list and Playwright browser install needed by the
+  Admin UI E2E suite.
 - Manifest-backed package validation scripts under `scripts/`.
 - The separate live-sidecar workflow while shared CI has no advisory filtered
   project lane.
@@ -48,7 +48,7 @@ policy. Third-party action pinning is enforced by shared workflows.
 |------|----------|-------------------|
 | Deterministic release gate | Contracts, Client, Testing, SignalR, Admin, AppHost, DomainService, QueryRouting, Sample, Testing.Integration, RestApi.Generators, and `tests/Hexalith.EventStore.Server.Tests` | Blocking in shared `domain-ci.yml@main` through `unit-test-projects`. `Server.Tests` runs unfiltered because live-sidecar tests moved out. |
 | Live-sidecar DAPR lane | `tests/Hexalith.EventStore.Server.LiveSidecar.Tests` | Dedicated `Integration Tests` workflow after `dapr init`. This lane is visible but not part of the semantic-release gate. |
-| Advisory browser/governance/evidence scaffolds | `tests/Hexalith.EventStore.Admin.UI.E2E`, `tests/Hexalith.EventStore.DeferredWorkGovernance.Tests`, `tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests` | Separate `Advisory Tests` workflow. It preserves push/PR signal but is not consumed by semantic-release. |
+| Advisory browser/governance/evidence scaffolds | `tests/Hexalith.EventStore.Admin.UI.E2E`, `tests/Hexalith.EventStore.DeferredWorkGovernance.Tests`, `tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests` | Separate `Advisory Tests` workflow. It installs Playwright Chromium for the browser suite and runs with `continue-on-error`, preserving push/PR signal without making semantic-release depend on these suites. |
 | Full Aspire E2E | `tests/Hexalith.EventStore.IntegrationTests` | Deferred until a reliable Aspire-in-CI topology exists. |
 
 Do not reintroduce a `Category!=LiveSidecar` filter to make `Server.Tests`
@@ -98,9 +98,12 @@ tip than the commit whose CI passed. It delegates to
 Semantic-release still decides from commit history whether a release is
 warranted. NuGet publishing remains scoped to the 14 packages listed in
 [`tools/release-packages.json`](../tools/release-packages.json). Container
-publishing is enabled only for the approved EventStore host mapping, and the
-semantic-release `publishCmd` calls the helper installed by the shared
-`publish-containers` action:
+publishing is enabled only for the approved EventStore host mapping. Before any
+NuGet package is pushed, semantic-release validates `NUGET_API_KEY`, the
+container publisher helper, and the required Zot registry credentials so a
+missing container secret cannot create a partial NuGet-only release. The
+`publishCmd` then calls the helper installed by the shared `publish-containers`
+action:
 
 ```text
 src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore

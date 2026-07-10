@@ -1,0 +1,167 @@
+---
+title: "1.8 Projection/Query SDK Owner Parity Proof"
+type: "proof"
+created: "2026-07-10"
+status: "ready-for-dev"
+source_proposal: "_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-10.md"
+trigger_artifact: "../parties/_bmad-output/implementation-artifacts/8-6-ac1-llm-instructions.md"
+---
+
+# Story 1.8: Projection/Query SDK Owner Parity Proof
+
+## Story
+
+As an EventStore platform owner,
+I want reviewed proof that the projection/query SDK can replace a non-trivial domain's local projection/query mechanics,
+so that consuming modules can delete local rollback code only after EventStore owner evidence proves parity.
+
+## Acceptance Criteria
+
+1. Given the proof story starts, when repository context is loaded, then the current EventStore commit SHA intended for consuming modules is recorded.
+2. Given the SDK proof is prepared, when source surfaces are inspected, then `IDomainProjectionHandler`, `IDomainQueryHandler`, `IReadModelStore`, `ReadModelWritePolicy`, `IQueryCursorCodec`, `QueryCursorScope`, and domain-service projection/query registration APIs are cited by source path.
+3. Given Parties Story 8.6 AC1 lists required proof items, when each item is evaluated, then G3 read-model erasure hooks, G10 index batching or approved equivalent, G6 freshness mapping, duplicate/out-of-order replay behavior, full rebuild verification, cursor scope compatibility, and the intended EventStore pin are each classified as `already available`, `additive API/test added`, or `blocked`.
+4. Given any required proof item is not satisfied, when the proof packet is produced, then the final decision is `still blocked`, the missing API or behavior is named precisely, and no consuming story is authorized to mark the projection/query SDK row `available`.
+5. Given additive code is needed, when implementation changes are made, then they remain generic EventStore SDK capabilities and do not add Parties-specific domain logic to EventStore.
+6. Given a required proof item is satisfied, when validation evidence is recorded, then source paths, test paths, validation commands, and validation results are cited for that item.
+7. Given every required item is satisfied, when the proof packet is finalized, then it records owner approval source, rollback note, known limitations, EventStore commit SHA, and final decision `available`.
+8. Given the owner proof is available, when a consuming repo records it in its prerequisite matrix, then the consuming repo must still verify its checked-out EventStore pin matches the approved SHA before source migration or local rollback deletion starts.
+
+## Required Proof Items
+
+- G3 read-model erasure hooks.
+- G10 index batching or approved SDK equivalent.
+- G6 freshness mapping for `Current`, `Stale`, `Rebuilding`, `Degraded`, `Unavailable`, and `LocalOnly`.
+- Duplicate and out-of-order replay behavior.
+- Full rebuild verification against aggregate replay.
+- Cursor scope compatibility through `IQueryCursorCodec` and `QueryCursorScope`.
+- Current EventStore commit SHA intended for consuming modules.
+
+## Tasks
+
+- [ ] Record repository and proof context.
+  - [ ] Run `git rev-parse HEAD`.
+  - [ ] Read the EventStore project instructions and this story before source inspection.
+  - [ ] Preserve root-declared submodule discipline; do not run recursive submodule commands.
+- [ ] Inspect the SDK surfaces and classify each required proof item.
+  - [ ] Inspect projection/query handler seams and domain-service endpoint registration.
+  - [ ] Inspect read-model store, write policy, DAPR implementation, and in-memory testing fake.
+  - [ ] Inspect cursor codec/scope implementation and tests.
+  - [ ] Inspect projection update, rebuild, duplicate, out-of-order, and freshness-related tests.
+- [ ] Add or identify evidence.
+  - [ ] If already available, cite source paths, test paths, and validation commands.
+  - [ ] If additive code is required, implement only generic EventStore SDK capability and add focused tests.
+  - [ ] If blocked, stop and name the missing API or behavior precisely.
+- [ ] Produce the proof packet at `_bmad-output/implementation-artifacts/1-8-projection-query-sdk-owner-proof-packet.md`.
+  - [ ] Include EventStore commit SHA.
+  - [ ] Include owner approval source.
+  - [ ] Include evidence by required proof item.
+  - [ ] Include rollback note and known limitations.
+  - [ ] Set final decision to `available` only when every item is satisfied; otherwise set `still blocked`.
+
+## Proof Packet Template
+
+```markdown
+# EventStore Projection/Query SDK Owner Proof Packet
+
+- EventStore commit SHA:
+- Owner approval source:
+  - PR:
+  - reviewer:
+  - approval date:
+
+## Evidence by Requirement
+
+### G3 read-model erasure hooks
+- classification:
+- source paths:
+- test paths:
+- validation command:
+- result:
+
+### G10 index batching or approved equivalent
+- classification:
+- source paths:
+- test paths:
+- validation command:
+- result:
+
+### G6 freshness mapping
+- classification:
+- source paths:
+- test paths:
+- validation command:
+- result:
+
+### Duplicate and out-of-order replay
+- classification:
+- source paths:
+- test paths:
+- validation command:
+- result:
+
+### Full rebuild verification
+- classification:
+- source paths:
+- test paths:
+- validation command:
+- result:
+
+### Cursor scope compatibility
+- classification:
+- source paths:
+- test paths:
+- validation command:
+- result:
+
+## Rollback Note
+
+## Known Limitations
+
+## Final Decision
+
+`available` or `still blocked`
+```
+
+## Dev Notes
+
+This story exists because checked-out EventStore source files alone are not enough to unblock Parties Story 8.6 AC1. The consuming matrix row may become `available` only after the owner proof packet exists, every AC1 proof item is covered, and the consuming repo verifies the checked-out `references/Hexalith.EventStore` pin matches the approved EventStore SHA.
+
+Initial correct-course inspection found these likely gaps or classifications to verify:
+
+- `IReadModelStore` exposes `GetAsync`, `SaveAsync`, and `TrySaveAsync`; no public delete/erase hook was identified.
+- `ReadModelWritePolicy` supports optimistic retry, `ApplyEventsAsync`, and `MergeAsync`, including multi-key aggregate/index write patterns in tests; no explicit public batch API was identified.
+- `ReadModelFreshnessState` covers `Unknown`, `Current`, `Aging`, and `Stale`; it does not directly model all Parties states `Current`, `Stale`, `Rebuilding`, `Degraded`, `Unavailable`, and `LocalOnly`.
+- `QueryCursorCodecTests` and `QueryCursorScopeTests` strongly cover cursor opacity, wrong scope, wrong query type, tamper/key rotation, size limit, and purpose isolation.
+
+Do not add Parties-specific domain logic to EventStore. If a proof item needs a domain adapter, either prove the adapter as consumer-owned or mark the owner proof `still blocked` with the exact missing EventStore API.
+
+## Validation
+
+Run focused validation first, then the broadest practical EventStore validation lane:
+
+```bash
+dotnet test tests/Hexalith.EventStore.Client.Tests/
+dotnet test tests/Hexalith.EventStore.Testing.Tests/
+dotnet test tests/Hexalith.EventStore.DomainService.Tests/
+dotnet test tests/Hexalith.EventStore.Server.Tests/
+dotnet build Hexalith.EventStore.slnx --configuration Release
+git diff --check
+```
+
+If a broad lane is environment-blocked, record the exact blocker separately from the focused evidence that ran.
+
+## References
+
+- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-10.md`
+- `_bmad-output/planning-artifacts/epics.md`
+- `_bmad-output/planning-artifacts/prd.md`
+- `_bmad-output/planning-artifacts/architecture.md`
+- `src/Hexalith.EventStore.DomainService/IDomainProjectionHandler.cs`
+- `src/Hexalith.EventStore.DomainService/IDomainQueryHandler.cs`
+- `src/Hexalith.EventStore.Client/Projections/IReadModelStore.cs`
+- `src/Hexalith.EventStore.Client/Projections/ReadModelWritePolicy.cs`
+- `src/Hexalith.EventStore.Client/Queries/IQueryCursorCodec.cs`
+- `src/Hexalith.EventStore.Client/Queries/QueryCursorScope.cs`
+- `../parties/_bmad-output/implementation-artifacts/8-6-ac1-llm-instructions.md`
+- `../parties/_bmad-output/implementation-artifacts/8-6-projection-and-query-sdk-migration.md`
+- `../parties/_bmad-output/implementation-artifacts/story-8-3-platform-api-prerequisite-matrix.md`

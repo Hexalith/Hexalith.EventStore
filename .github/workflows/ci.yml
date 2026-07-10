@@ -18,6 +18,7 @@ jobs:
     uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@main
     with:
       solution: Hexalith.EventStore.slnx
+      build-timeout-minutes: 40
       run-consumer-validation: true
       unit-test-projects: |
         tests/Hexalith.EventStore.Contracts.Tests
