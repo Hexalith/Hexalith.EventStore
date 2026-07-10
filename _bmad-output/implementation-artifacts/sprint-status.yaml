@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-07-09T22:18:15+02:00
+# last_updated: 2026-07-10T09:14:03+02:00
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,14 +41,14 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T20:01:46+02:00
-last_updated: 2026-07-09T22:18:15+02:00
+last_updated: 2026-07-10T09:14:03+02:00
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
 story_location: /home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts
 
 development_status:
-  epic-1: done
+  epic-1: in-progress
   1-1-canonical-domain-service-sdk-host: done
   1-2-domain-query-handler-routing: done
   1-3-generic-read-models-and-query-cursors: done
@@ -56,6 +56,8 @@ development_status:
   1-5-domain-module-hosting-observability: done
   1-6-sample-and-tenants-domain-centric-adoption: done
   1-7-domainservice-packaging-and-guardrails: done
+  # Cross-repo owner-proof follow-up for Parties Story 8.6 AC1.
+  1-8-projection-query-sdk-owner-parity-proof: ready-for-dev
   epic-1-retrospective: done
 
   epic-2: in-progress

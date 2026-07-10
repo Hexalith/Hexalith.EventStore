@@ -603,6 +603,41 @@ So that the domain-centric model is reusable and hard to regress.
 **Then** package dependencies are reproducible
 **And** the solution remains clean under warnings-as-errors.
 
+### Story 1.8: Projection/Query SDK Owner Parity Proof
+
+**Requirements covered:** FR4, FR5, FR6, FR7, FR9, NFR8, NFR16
+**Classification:** Post-completion owner-proof follow-up for cross-repo domain migration.
+
+As an EventStore platform owner,
+I want reviewed proof that the projection/query SDK can replace a non-trivial domain's local projection/query mechanics,
+So that consuming modules can delete local rollback code only after EventStore owner evidence proves parity.
+
+**Acceptance Criteria:**
+
+**Given** a consuming domain requires projection/query SDK replacement proof
+**When** the owner proof story starts
+**Then** it records the current EventStore commit SHA and inspects `IDomainProjectionHandler`, `IDomainQueryHandler`, `IReadModelStore`, `ReadModelWritePolicy`, `IQueryCursorCodec`, `QueryCursorScope`, and domain-service registration APIs.
+
+**Given** the proof is built for Parties Story 8.6 AC1
+**When** each required item is evaluated
+**Then** G3 read-model erasure hooks, G10 index batching or approved equivalent, G6 freshness mapping, duplicate/out-of-order replay behavior, full rebuild verification, cursor scope compatibility, and the intended EventStore pin are each classified as `already available`, `additive API/test added`, or `blocked`.
+
+**Given** any required proof item is not satisfied
+**When** the proof packet is produced
+**Then** the final decision is `still blocked`, the missing API or behavior is named precisely, and no consuming story is authorized to mark the projection/query SDK row `available`.
+
+**Given** additive code is needed
+**When** implementation changes are made
+**Then** they remain generic EventStore SDK capabilities and do not add Parties-specific domain logic to EventStore.
+
+**Given** every required item is satisfied
+**When** validation completes
+**Then** the proof packet records source paths, test paths, validation commands/results, owner approval source, rollback note, known limitations, and final decision `available`.
+
+**Given** the owner proof is available
+**When** a consuming repo records it in its prerequisite matrix
+**Then** the consuming repo must still verify its checked-out EventStore pin matches the approved SHA before source migration or local rollback deletion starts.
+
 ## Epic 2: External Integration Surfaces
 
 External application developers can consume typed, generated REST APIs, while interactive UI hosts use client libraries directly and real-time projection notifications remain scoped, metadata-only, and backward compatible.
