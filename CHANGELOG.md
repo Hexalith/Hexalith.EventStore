@@ -1,3 +1,10 @@
+## [3.50.4](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.50.3...v3.50.4) (2026-07-10)
+
+
+### Bug Fixes
+
+* **tooling:** enforce Copilot commit messages ([#280](https://github.com/Hexalith/Hexalith.EventStore/issues/280)) ([25def99](https://github.com/Hexalith/Hexalith.EventStore/commit/25def99ef1f62a3fe049b02201d16836a835dc4a))
+
 ## [3.50.3](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.50.2...v3.50.3) (2026-07-10)
 
 
