@@ -8,7 +8,6 @@ using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Client.Gateway;
 using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Contracts.Commands;
-using DaprAppIdHandler = SampleApi::Hexalith.EventStore.Sample.Api.Services.DaprAppIdHandler;
 using InboundBearerForwardingHandler = SampleApi::Hexalith.EventStore.Sample.Api.Services.InboundBearerForwardingHandler;
 
 using Microsoft.AspNetCore.Http;
@@ -46,17 +45,20 @@ public sealed class SampleApiGatewayHandlerTests
     }
 
     [Fact]
-    public async Task DaprAppIdHandler_AddsEventStoreRoutingHeaders()
+    public async Task DaprServiceInvocationExtension_AddsEventStoreRoutingHeaders()
     {
         var terminal = new CaptureHandler();
-        using var handler = new DaprAppIdHandler("eventstore", "secret-token")
-        {
-            InnerHandler = terminal,
-        };
-        using var invoker = new HttpMessageInvoker(handler);
+        var services = new ServiceCollection();
+        _ = services.AddHttpClient("dapr", client => client.BaseAddress = new Uri("http://localhost:3500"))
+            .AddEventStoreDaprServiceInvocation("eventstore", "secret-token")
+            .ConfigurePrimaryHttpMessageHandler(() => terminal);
 
-        using HttpResponseMessage response = await invoker.SendAsync(
-            new HttpRequestMessage(HttpMethod.Post, "http://localhost:3500/api/v1/queries"),
+        using ServiceProvider provider = services.BuildServiceProvider();
+        using HttpClient client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("dapr");
+
+        using HttpResponseMessage response = await client.PostAsync(
+            "/api/v1/queries",
+            content: null,
             TestContext.Current.CancellationToken);
 
         HttpRequestMessage request = terminal.Request.ShouldNotBeNull();
@@ -86,7 +88,7 @@ public sealed class SampleApiGatewayHandlerTests
         _ = services.AddTransient<InboundBearerForwardingHandler>();
         _ = services.AddEventStoreGatewayClient(options => options.BaseAddress = new Uri("http://localhost:3500"))
             .AddHttpMessageHandler<InboundBearerForwardingHandler>()
-            .AddHttpMessageHandler(() => new DaprAppIdHandler("eventstore", "secret-token"))
+            .AddEventStoreDaprServiceInvocation("eventstore", "secret-token")
             .ConfigurePrimaryHttpMessageHandler(() => terminal);
 
         using ServiceProvider provider = services.BuildServiceProvider();

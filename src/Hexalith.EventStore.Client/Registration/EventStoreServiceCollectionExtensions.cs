@@ -49,6 +49,28 @@ public static class EventStoreServiceCollectionExtensions {
     }
 
     /// <summary>
+    /// Adds the platform-owned DAPR service-invocation routing handler to an HTTP client.
+    /// </summary>
+    /// <remarks>
+    /// Architecture invariant AD-18 requires this extension to be called after authentication and
+    /// forwarding handlers so it is the innermost delegating handler and has final ownership of the
+    /// <c>dapr-app-id</c> and <c>dapr-api-token</c> headers.
+    /// </remarks>
+    /// <param name="builder">The HTTP client builder.</param>
+    /// <param name="appId">The authoritative DAPR application id.</param>
+    /// <param name="apiToken">The optional authoritative DAPR API token.</param>
+    /// <returns>The HTTP client builder for additional configuration.</returns>
+    public static IHttpClientBuilder AddEventStoreDaprServiceInvocation(
+        this IHttpClientBuilder builder,
+        string appId,
+        string? apiToken = null) {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentException.ThrowIfNullOrWhiteSpace(appId);
+
+        return builder.AddHttpMessageHandler(() => new DaprServiceInvocationHandler(appId, apiToken));
+    }
+
+    /// <summary>
     /// Configures the absolute browser-facing gateway origin used to emit the command-status <c>Location</c>
     /// header on generated command controllers' <c>202 Accepted</c> responses (architecture invariant AD-17).
     /// </summary>

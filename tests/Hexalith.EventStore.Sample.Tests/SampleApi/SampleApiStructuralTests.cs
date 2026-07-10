@@ -1,3 +1,4 @@
+extern alias BlazorUI;
 extern alias SampleApi;
 
 using System.Reflection;
@@ -6,7 +7,8 @@ using System.Xml.Linq;
 
 using Hexalith.EventStore.Client.Gateway;
 using Hexalith.EventStore.Contracts.Rest;
-using DaprAppIdHandler = SampleApi::Hexalith.EventStore.Sample.Api.Services.DaprAppIdHandler;
+using BlazorUiAssemblyMarker = BlazorUI::Hexalith.EventStore.Sample.BlazorUI.Services.EventStoreApiAuthorizationHandler;
+using SampleApiAssemblyMarker = SampleApi::Hexalith.EventStore.Sample.Api.Services.InboundBearerForwardingHandler;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -21,6 +23,23 @@ public sealed class SampleApiStructuralTests
     private static readonly Regex MinimalEndpointMappingPattern = new(
         @"\bapp\s*\.\s*Map(?:Get|Post|Put|Delete|Patch|Group|Methods)\s*\(",
         RegexOptions.Compiled);
+
+    [Fact]
+    public void SampleHostAssemblies_DeclareNoLocalDaprRoutingHandler()
+    {
+        Type[] localDaprHandlers = new[]
+        {
+            typeof(SampleApiAssemblyMarker).Assembly,
+            typeof(BlazorUiAssemblyMarker).Assembly,
+        }
+            .SelectMany(static assembly => assembly.GetTypes())
+            .Where(static type => typeof(DelegatingHandler).IsAssignableFrom(type)
+                && type.Name.Contains("Dapr", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+        localDaprHandlers.ShouldBeEmpty(
+            "AD-18 requires Sample hosts to register the platform DAPR routing handler instead of declaring a host-local DelegatingHandler.");
+    }
 
     [Fact]
     public void SampleApiProject_UsesContractsClientServiceDefaultsAndGeneratorAnalyzerOnly()
@@ -66,7 +85,7 @@ public sealed class SampleApiStructuralTests
     [Fact]
     public void SampleApiAssembly_OptsIntoCounterRestApiScope()
     {
-        RestApiAttribute attribute = typeof(DaprAppIdHandler).Assembly
+        RestApiAttribute attribute = typeof(SampleApiAssemblyMarker).Assembly
             .GetCustomAttributes<RestApiAttribute>()
             .Single();
 
@@ -96,7 +115,8 @@ public sealed class SampleApiStructuralTests
         programText.ShouldContain("builder.Services.AddAuthorization();");
         programText.ShouldContain("options.BaseAddress = new Uri(daprHttpEndpoint)");
         programText.ShouldContain(".AddHttpMessageHandler<InboundBearerForwardingHandler>()");
-        programText.ShouldContain(".AddHttpMessageHandler(() => new DaprAppIdHandler(\"eventstore\", daprApiToken))");
+        programText.ShouldContain(".AddEventStoreDaprServiceInvocation(\"eventstore\", daprApiToken)");
+        programText.ShouldNotContain("DaprAppIdHandler");
         programText.ShouldContain("app.UseAuthentication();");
         programText.ShouldContain("app.UseAuthorization();");
         programText.ShouldContain("app.MapControllers();");
@@ -114,7 +134,7 @@ public sealed class SampleApiStructuralTests
     [Fact]
     public void CounterRestController_IsOnlyGeneratedControllerAndUsesGatewayBoundary()
     {
-        Type[] controllers = typeof(DaprAppIdHandler).Assembly
+        Type[] controllers = typeof(SampleApiAssemblyMarker).Assembly
             .GetTypes()
             .Where(static type => typeof(ControllerBase).IsAssignableFrom(type)
                 || type.GetCustomAttribute<ApiControllerAttribute>() is not null)
@@ -123,7 +143,7 @@ public sealed class SampleApiStructuralTests
             ["Hexalith.EventStore.Sample.Api.Generated.CounterRestController"],
             ignoreOrder: true);
 
-        Type controller = typeof(DaprAppIdHandler).Assembly.GetType(
+        Type controller = typeof(SampleApiAssemblyMarker).Assembly.GetType(
             "Hexalith.EventStore.Sample.Api.Generated.CounterRestController",
             throwOnError: true)!;
 

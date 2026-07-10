@@ -122,7 +122,7 @@ EndpointReference adminServerHttps = adminServer.GetEndpoint("https");
 
 // The BlazorUI sidecar references no state store / pub/sub component — service invocation
 // only, so it has zero direct infrastructure access (same isolation rationale as the sample
-// and admin-ui sidecars). DaprAppIdHandler tags outbound query calls with
+// and admin-ui sidecars). The platform invocation handler owns outbound query calls' final
 // `dapr-app-id: eventstore`. WaitFor(eventStore) is retained so the UI starts after its target.
 IResourceBuilder<ProjectResource> blazorUi = builder.AddProject<Projects.Hexalith_EventStore_Sample_BlazorUI>("sample-blazor-ui")
     .WithReference(eventStore)

@@ -1,3 +1,4 @@
+using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Admin.UI.Services;
 using Hexalith.EventStore.SignalR;
 
@@ -99,7 +100,7 @@ public static class AdminUIServiceExtensions {
 
         // HttpClient for invoking Admin.Server via DAPR service invocation (D13,
         // supersedes the ADR-P4 HTTP deviation). The BaseAddress targets THIS app's
-        // DAPR sidecar; DaprAppIdHandler tags the request with the target app-id so
+        // DAPR sidecar; the platform invocation handler owns the target app-id so
         // DAPR routes it to eventstore-admin. A literal localhost base address keeps
         // the global AddServiceDiscovery() default a no-op (no handler-ordering
         // conflict). DAPR forwards the Authorization bearer header unchanged, so
@@ -112,7 +113,7 @@ public static class AdminUIServiceExtensions {
             client.Timeout = TimeSpan.FromSeconds(30);
         })
             .AddHttpMessageHandler<AdminApiAuthorizationHandler>()
-            .AddHttpMessageHandler(() => new DaprAppIdHandler("eventstore-admin", daprApiToken));
+            .AddEventStoreDaprServiceInvocation("eventstore-admin", daprApiToken);
 
         return builder;
     }

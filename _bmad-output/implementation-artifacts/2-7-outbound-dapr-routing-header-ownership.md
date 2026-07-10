@@ -1,6 +1,10 @@
+---
+baseline_commit: 25def99ef1f62a3fe049b02201d16836a835dc4a
+---
+
 # Story 2.7: Outbound DAPR Routing-Header Ownership
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -25,26 +29,26 @@ so that a caller- or inbound-supplied `dapr-app-id` / `dapr-api-token` can never
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 — Canonical platform handler** (AC: 1, 2)
-  - [ ] Add `src/Hexalith.EventStore.Client/Handlers/DaprServiceInvocationHandler.cs` — `internal sealed class DaprServiceInvocationHandler(string appId, string? apiToken) : DelegatingHandler`. In `SendAsync`: `ArgumentNullException.ThrowIfNull(request)`; `Headers.Remove("dapr-app-id")` then `TryAddWithoutValidation("dapr-app-id", appId)`; `Headers.Remove("dapr-api-token")` then, only when `apiToken is { Length: > 0 }`, `TryAddWithoutValidation("dapr-api-token", apiToken)`.
-  - [ ] Keep it `internal` — publicly exposed only via the extension in Task 2 (minimizes the published Client package's public surface). Match the existing `Hexalith.EventStore.Client` file style (see `Registration/EventStoreServiceCollectionExtensions.cs`).
-- [ ] **Task 2 — Reusable wiring extension** (AC: 3)
-  - [ ] Add `public static IHttpClientBuilder AddEventStoreDaprServiceInvocation(this IHttpClientBuilder builder, string appId, string? apiToken = null)` in `Client/Registration/EventStoreServiceCollectionExtensions.cs` that appends the handler via `builder.AddHttpMessageHandler(() => new DaprServiceInvocationHandler(appId, apiToken))`. Ensure it appends **last** so it stays innermost (call it after the auth/forwarding handler registration — document the ordering requirement in XML docs, referencing AD-18).
-  - [ ] Validate args (`ThrowIfNullOrWhiteSpace(appId)`).
-- [ ] **Task 3 — Migrate the three in-repo hosts** (AC: 3)
-  - [ ] `samples/Hexalith.EventStore.Sample.Api/Program.cs:76` → replace `.AddHttpMessageHandler(() => new DaprAppIdHandler("eventstore", daprApiToken))` with `.AddEventStoreDaprServiceInvocation("eventstore", daprApiToken)`. Delete `samples/Hexalith.EventStore.Sample.Api/Services/DaprAppIdHandler.cs`.
-  - [ ] `samples/Hexalith.EventStore.Sample.BlazorUI/Program.cs:64` → same replacement (`"eventstore"`). Delete `samples/Hexalith.EventStore.Sample.BlazorUI/Services/DaprAppIdHandler.cs`.
-  - [ ] `src/Hexalith.EventStore.Admin.UI/AdminUIServiceExtensions.cs:115` → replace `.AddHttpMessageHandler(() => new DaprAppIdHandler("eventstore-admin", daprApiToken))` with `.AddEventStoreDaprServiceInvocation("eventstore-admin", daprApiToken)` on the `"AdminApi"` `IHttpClientBuilder`. Delete `src/Hexalith.EventStore.Admin.UI/Services/DaprAppIdHandler.cs`.
-  - [ ] Grep for any remaining `DaprAppIdHandler` references in this repo (usings, tests) and update them.
-- [ ] **Task 4 — Replacement unit tests** (AC: 1, 4)
-  - [ ] Add tests in `tests/Hexalith.EventStore.Client.Tests` (Tier 1) using a capturing `HttpMessageHandler` (mirror the `CaptureHandler` pattern in `tests/Hexalith.EventStore.Sample.Tests/SampleApi/SampleApiGatewayHandlerTests.cs`): (a) seed conflicting `dapr-app-id`+`dapr-api-token` → assert `GetValues(...).ShouldBe(["eventstore"])` / `["secret-token"]` (single authoritative value); (b) no token configured + seeded token → `request.Headers.Contains("dapr-api-token").ShouldBeFalse()`; (c) clean request happy path unchanged.
-  - [ ] Update `SampleApiGatewayHandlerTests` so it exercises the platform extension (not a deleted local handler); keep its 202/ETag/304 assertions intact.
-- [ ] **Task 5 — Guardrail structural test** (AC: 5)
-  - [ ] Add a structural/guardrail test (extend `tests/Hexalith.EventStore.Sample.Tests/SampleApi/SampleApiStructuralTests.cs` and/or add one in `Client.Tests` / `Admin.UI.Tests`) that fails if a host assembly declares a `DelegatingHandler` type setting `dapr-app-id`, or if host source under `**/Services/` contains `DaprAppIdHandler` or `TryAddWithoutValidation("dapr-app-id"` / `"dapr-api-token"`. Prefer a source-scan for the `TryAddWithoutValidation` clause (reflection can't see the call); assembly-reflection for the "no host-local handler type" clause. Emit a support-safe failure message naming the offending host + the AD-18 rule.
-  - [ ] Confirm `SampleApiStructuralTests` does not still assert the *existence* of the now-deleted local handler; update those assertions to point at the platform handler.
-- [ ] **Task 6 — Tenants follow-up + gates** (AC: 6, 7)
-  - [ ] Do **not** edit the Tenants submodule. Confirm the coordinated follow-up is recorded (deferred-work.md already annotated; leave a `File List` note).
-  - [ ] Run: `dotnet build Hexalith.EventStore.slnx -c Release`; `dotnet test tests/Hexalith.EventStore.Client.Tests/`; `dotnet test tests/Hexalith.EventStore.Sample.Tests/`; `dotnet test tests/Hexalith.EventStore.Admin.UI.Tests/`. All green, no CA2007 regressions.
+- [x] **Task 1 — Canonical platform handler** (AC: 1, 2)
+  - [x] Add `src/Hexalith.EventStore.Client/Handlers/DaprServiceInvocationHandler.cs` — `internal sealed class DaprServiceInvocationHandler(string appId, string? apiToken) : DelegatingHandler`. In `SendAsync`: `ArgumentNullException.ThrowIfNull(request)`; `Headers.Remove("dapr-app-id")` then `TryAddWithoutValidation("dapr-app-id", appId)`; `Headers.Remove("dapr-api-token")` then, only when `apiToken is { Length: > 0 }`, `TryAddWithoutValidation("dapr-api-token", apiToken)`.
+  - [x] Keep it `internal` — publicly exposed only via the extension in Task 2 (minimizes the published Client package's public surface). Match the existing `Hexalith.EventStore.Client` file style (see `Registration/EventStoreServiceCollectionExtensions.cs`).
+- [x] **Task 2 — Reusable wiring extension** (AC: 3)
+  - [x] Add `public static IHttpClientBuilder AddEventStoreDaprServiceInvocation(this IHttpClientBuilder builder, string appId, string? apiToken = null)` in `Client/Registration/EventStoreServiceCollectionExtensions.cs` that appends the handler via `builder.AddHttpMessageHandler(() => new DaprServiceInvocationHandler(appId, apiToken))`. Ensure it appends **last** so it stays innermost (call it after the auth/forwarding handler registration — document the ordering requirement in XML docs, referencing AD-18).
+  - [x] Validate args (`ThrowIfNullOrWhiteSpace(appId)`).
+- [x] **Task 3 — Migrate the three in-repo hosts** (AC: 3)
+  - [x] `samples/Hexalith.EventStore.Sample.Api/Program.cs:76` → replace `.AddHttpMessageHandler(() => new DaprAppIdHandler("eventstore", daprApiToken))` with `.AddEventStoreDaprServiceInvocation("eventstore", daprApiToken)`. Delete `samples/Hexalith.EventStore.Sample.Api/Services/DaprAppIdHandler.cs`.
+  - [x] `samples/Hexalith.EventStore.Sample.BlazorUI/Program.cs:64` → same replacement (`"eventstore"`). Delete `samples/Hexalith.EventStore.Sample.BlazorUI/Services/DaprAppIdHandler.cs`.
+  - [x] `src/Hexalith.EventStore.Admin.UI/AdminUIServiceExtensions.cs:115` → replace `.AddHttpMessageHandler(() => new DaprAppIdHandler("eventstore-admin", daprApiToken))` with `.AddEventStoreDaprServiceInvocation("eventstore-admin", daprApiToken)` on the `"AdminApi"` `IHttpClientBuilder`. Delete `src/Hexalith.EventStore.Admin.UI/Services/DaprAppIdHandler.cs`.
+  - [x] Grep for any remaining `DaprAppIdHandler` references in this repo (usings, tests) and update them.
+- [x] **Task 4 — Replacement unit tests** (AC: 1, 4)
+  - [x] Add tests in `tests/Hexalith.EventStore.Client.Tests` (Tier 1) using a capturing `HttpMessageHandler` (mirror the `CaptureHandler` pattern in `tests/Hexalith.EventStore.Sample.Tests/SampleApi/SampleApiGatewayHandlerTests.cs`): (a) seed conflicting `dapr-app-id`+`dapr-api-token` → assert `GetValues(...).ShouldBe(["eventstore"])` / `["secret-token"]` (single authoritative value); (b) no token configured + seeded token → `request.Headers.Contains("dapr-api-token").ShouldBeFalse()`; (c) clean request happy path unchanged.
+  - [x] Update `SampleApiGatewayHandlerTests` so it exercises the platform extension (not a deleted local handler); keep its 202/ETag/304 assertions intact.
+- [x] **Task 5 — Guardrail structural test** (AC: 5)
+  - [x] Add a structural/guardrail test (extend `tests/Hexalith.EventStore.Sample.Tests/SampleApi/SampleApiStructuralTests.cs` and/or add one in `Client.Tests` / `Admin.UI.Tests`) that fails if a host assembly declares a `DelegatingHandler` type setting `dapr-app-id`, or if host source under `**/Services/` contains `DaprAppIdHandler` or `TryAddWithoutValidation("dapr-app-id"` / `"dapr-api-token"`. Prefer a source-scan for the `TryAddWithoutValidation` clause (reflection can't see the call); assembly-reflection for the "no host-local handler type" clause. Emit a support-safe failure message naming the offending host + the AD-18 rule.
+  - [x] Confirm `SampleApiStructuralTests` does not still assert the *existence* of the now-deleted local handler; update those assertions to point at the platform handler.
+- [x] **Task 6 — Tenants follow-up + gates** (AC: 6, 7)
+  - [x] Do **not** edit the Tenants submodule. Confirm the coordinated follow-up is recorded (deferred-work.md already annotated; leave a `File List` note).
+  - [x] Run: `dotnet build Hexalith.EventStore.slnx -c Release`; `dotnet test tests/Hexalith.EventStore.Client.Tests/`; `dotnet test tests/Hexalith.EventStore.Sample.Tests/`; `dotnet test tests/Hexalith.EventStore.Admin.UI.Tests/`. All green, no CA2007 regressions.
 
 ## Dev Notes
 
@@ -108,8 +112,75 @@ Four byte-identical `DaprAppIdHandler` copies each do `request.Headers.TryAddWit
 
 ### Debug Log References
 
+- 2026-07-10 — Task 1 red/green: added replacement/clear/happy-path tests; confirmed CS0246 red before the handler existed, then `dotnet test tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj -c Release --no-restore` passed 538/538.
+- 2026-07-10 — Task 2 red/green: ordering and argument tests confirmed the missing extension as CS1061, then the Client test project passed 541/541 after implementation.
+- 2026-07-10 — Task 3 red/green: the Sample structural expectation failed against local-handler wiring, then Sample tests passed 116/116 and Admin UI tests passed 840/840 after all three host migrations and local-handler deletions.
+- 2026-07-10 — Task 4 validation: replacement, token-clearing, clean-request, and Sample extension coverage passed in Client 541/541 and Sample 116/116.
+- 2026-07-10 — Task 5 red/green: the new guard scanner initially failed on missing detection helpers, then Client 543/543, Sample 117/117, and Admin UI 841/841 passed with source and assembly guardrails active.
+- 2026-07-10 — Task 6 gates: Release solution build succeeded with 0 warnings/errors; required Release test projects passed Client 543/543, Sample 117/117, and Admin UI 841/841; Tenants submodule diff remained empty.
+- 2026-07-10 — Completion regression: `bash scripts/ci-local.sh --tier 1 --skip-build` passed all 17 configured projects (6,670 passed, 51 intentionally skipped, 0 failed); direct execution was unavailable because the checked-in script lacks execute permission.
+- 2026-07-10 — Runtime topology: rebuilt and restarted Aspire with `EnableKeycloak=false`; EventStore, Admin, Admin UI, Sample API, Sample Blazor UI, and all DAPR sidecars reported Running/Healthy.
+
 ### Completion Notes List
 
 Ultimate context engine analysis completed - comprehensive developer guide created.
+- Task 1: added the internal canonical DAPR service-invocation handler with remove-then-set semantics for app id and API token headers; Client tests pass 538/538.
+- Task 2: exposed the handler only through a reusable `IHttpClientBuilder` extension with AD-18 ordering documentation and app-id validation; Client tests pass 541/541.
+- Task 3: migrated Sample.Api, Sample.BlazorUI, and Admin.UI to the platform extension, deleted their local handlers, updated assembly markers/comments, and added Admin.UI's direct Client reference.
+- Task 4: added capturing-handler regression proof for authoritative single-value replacement and seeded-token clearing; Sample gateway registration now exercises the platform extension.
+- Task 5: locked AD-18 with a production-source setter scan, host-local handler detection, and Sample/Admin assembly reflection; only the platform handler may set DAPR routing headers.
+- Task 6: confirmed the coordinated Tenants follow-up without modifying the submodule and passed the clean Release build plus all three required focused suites.
+- Story complete: every acceptance criterion is implemented, all 17 CI-configured Tier 1 projects are green, and the rebuilt local topology is healthy; ready for code review.
 
 ### File List
+
+- `_bmad-output/implementation-artifacts/2-7-outbound-dapr-routing-header-ownership.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `samples/Hexalith.EventStore.Sample.Api/Program.cs`
+- `samples/Hexalith.EventStore.Sample.Api/Services/DaprAppIdHandler.cs` (deleted)
+- `samples/Hexalith.EventStore.Sample.BlazorUI/Program.cs`
+- `samples/Hexalith.EventStore.Sample.BlazorUI/Services/DaprAppIdHandler.cs` (deleted)
+- `src/Hexalith.EventStore.Admin.UI/AdminUIServiceExtensions.cs`
+- `src/Hexalith.EventStore.Admin.UI/Hexalith.EventStore.Admin.UI.csproj`
+- `src/Hexalith.EventStore.Admin.UI/Services/DaprAppIdHandler.cs` (deleted)
+- `src/Hexalith.EventStore.AppHost/Program.cs`
+- `src/Hexalith.EventStore.Client/Handlers/DaprServiceInvocationHandler.cs`
+- `src/Hexalith.EventStore.Client/Registration/EventStoreServiceCollectionExtensions.cs`
+- `tests/Hexalith.EventStore.Client.Tests/Handlers/DaprServiceInvocationHandlerTests.cs`
+- `tests/Hexalith.EventStore.Client.Tests/Registration/DaprServiceInvocationRegistrationTests.cs`
+- `tests/Hexalith.EventStore.Client.Tests/Registration/DaprRoutingHeaderOwnershipGuardTests.cs`
+- `tests/Hexalith.EventStore.Admin.UI.Tests/Services/DaprRoutingHeaderOwnershipTests.cs`
+- `tests/Hexalith.EventStore.Sample.Tests/SampleApi/SampleApiGatewayHandlerTests.cs`
+- `tests/Hexalith.EventStore.Sample.Tests/SampleApi/SampleApiGeneratedControllerRuntimeTests.cs`
+- `tests/Hexalith.EventStore.Sample.Tests/SampleApi/SampleApiStructuralTests.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.Api/Services/DaprAppIdHandler.cs` (not modified; coordinated maintainer-approval follow-up remains recorded in `deferred-work.md`)
+
+## Change Log
+
+- 2026-07-10 — Centralized outbound DAPR routing-header ownership in `Hexalith.EventStore.Client`, migrated three in-repo hosts, deleted local handlers, and added replacement plus AD-18 guardrail coverage.
+
+## Review Findings
+
+_Code review 2026-07-10 (bmad-code-review; 3 adversarial layers — Blind Hunter, Edge Case Hunter, Acceptance Auditor — at Opus 4.8). **Outcome: ACCEPT.** All AC1–AC7 verified met; replace semantics correct and covered by tests; Release build re-verified clean via a forced non-incremental Admin.UI rebuild (0 warnings / 0 errors). Triage: 0 decision-needed, 0 patch, 6 deferred (LOW), 4 dismissed._
+
+**Verified false positive (dismissed):** a HIGH claim that the reordered `using` block in `AdminUIServiceExtensions.cs` triggers an SA1210 build break was disproven — a forced `dotnet build -c Release --no-incremental` ran the analyzers against the current source and produced 0 warnings / 0 errors. SA1210 is not error-effective for this host; the Dev Record's clean-build claim holds.
+
+### Decision-needed
+- (none)
+
+### Patch
+- (none)
+
+### Deferred (LOW — non-blocking defense-in-depth hardening; not a defect in the delivered change)
+- [x] [Review][Defer] Guardrail evadable by a non-`*Dapr*`-named handler or a `.Add(...)`/`const`/mixed-case setter [tests/Hexalith.EventStore.Client.Tests/Registration/DaprRoutingHeaderOwnershipGuardTests.cs:526] — the regex + reflection guards catch the realistic regression (a verbatim copy of the deleted `DaprAppIdHandler`) but not every theoretical evasion. Per the standing regex-guardrail disposition, do NOT extend the regex; consolidate under a future scoped Roslyn/convention guardrail story.
+- [x] [Review][Defer] Guard `hostRoots` per-host scan is a hardcoded 3-entry list [tests/Hexalith.EventStore.Client.Tests/Registration/DaprRoutingHeaderOwnershipGuardTests.cs:543] — a future host directory is only backstopped by the repo-wide literal-`TryAddWithoutValidation` scan; same Roslyn-guardrail consolidation.
+- [x] [Review][Defer] Source-scan guard enumerates `*.cs` only, missing `.razor` `@code` blocks [tests/Hexalith.EventStore.Client.Tests/Registration/DaprRoutingHeaderOwnershipGuardTests.cs:551] — theoretical; DAPR routing handlers are not authored in razor markup.
+- [x] [Review][Defer] Guard tests couple to source-tree layout and use unguarded `Assembly.GetTypes()` [tests/Hexalith.EventStore.Client.Tests/Registration/DaprRoutingHeaderOwnershipGuardTests.cs:599; tests/Hexalith.EventStore.Sample.Tests/SampleApi/SampleApiStructuralTests.cs:33] — `RepositoryRoot()` throws (rather than skips) if run detached from the source tree; `GetTypes()` can throw `ReflectionTypeLoadException`. Minor test robustness.
+- [x] [Review][Defer] New public `AddEventStoreDaprServiceInvocation` does not format-validate `appId` [src/Hexalith.EventStore.Client/Registration/EventStoreServiceCollectionExtensions.cs:68] — only `ThrowIfNullOrWhiteSpace`; a whitespace/control-char `appId` from an external package consumer yields fail-fast broken routing. In-repo callers pass safe literals (`"eventstore"`/`"eventstore-admin"`); optional public-API input hardening.
+- [x] [Review][Defer] `apiToken` whitespace handling inconsistent with `appId` [src/Hexalith.EventStore.Client/Handlers/DaprServiceInvocationHandler.cs:16] — `apiToken is { Length: > 0 }` forwards a whitespace-only token as authoritative; matches the prior handlers' behavior (no regression). Optional consistency nit.
+
+### Dismissed (4)
+- SA1210 build break — verified false positive (see above).
+- `setterFiles.ShouldBe([single path])` "brittleness" — by design; a deliberate allow-list tripwire that SHOULD force a conscious update if a second legitimate platform setter is ever added.
+- Remove/set not applied to `request.Content.Headers` — non-issue; these are request-level control headers, nothing places them on content headers, and .NET rejects them as content headers.
+- AppHost `Program.cs` comment phrasing — cosmetic; comment is accurate, behavior unchanged (comment-only edit, AD-9 not triggered).

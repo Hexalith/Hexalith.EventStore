@@ -73,7 +73,7 @@ string? daprApiToken = builder.Configuration["DAPR_API_TOKEN"];
 builder.Services.AddTransient<InboundBearerForwardingHandler>();
 builder.Services.AddEventStoreGatewayClient(options => options.BaseAddress = new Uri(daprHttpEndpoint))
     .AddHttpMessageHandler<InboundBearerForwardingHandler>()
-    .AddHttpMessageHandler(() => new DaprAppIdHandler("eventstore", daprApiToken));
+    .AddEventStoreDaprServiceInvocation("eventstore", daprApiToken);
 
 // AD-17: opt into the absolute command-status Location header when a browser-facing gateway origin is
 // configured. When the value is absent or malformed the AddEventStoreGatewayClient fail-closed default

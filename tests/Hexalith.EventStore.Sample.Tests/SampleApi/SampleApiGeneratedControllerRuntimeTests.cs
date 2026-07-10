@@ -9,7 +9,7 @@ using Hexalith.EventStore.Client.Gateway;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Sample.Counter.Commands;
-using DaprAppIdHandler = SampleApi::Hexalith.EventStore.Sample.Api.Services.DaprAppIdHandler;
+using SampleApiAssemblyMarker = SampleApi::Hexalith.EventStore.Sample.Api.Services.InboundBearerForwardingHandler;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -403,7 +403,7 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
 
     private static GeneratedController CreateController(ICommandStatusLocationBuilder? statusLocationBuilder = null)
     {
-        Type controllerType = typeof(DaprAppIdHandler).Assembly.GetType(
+        Type controllerType = typeof(SampleApiAssemblyMarker).Assembly.GetType(
             "Hexalith.EventStore.Sample.Api.Generated.CounterRestController",
             throwOnError: true)!;
         var gateway = new FakeEventStoreGatewayClient();

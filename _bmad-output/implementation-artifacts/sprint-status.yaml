@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-07-10T15:42:40+02:00
+# last_updated: 2026-07-10T20:57:50+02:00
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T20:01:46+02:00
-last_updated: 2026-07-10T15:42:40+02:00
+last_updated: 2026-07-10T20:57:50+02:00
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -70,10 +70,10 @@ development_status:
   # absorbs rest-generator-hardening Second-Wave item S2 and closes the spec-2-2/spec-2-3
   # command-status Location deferred entries. Epic 2 shipped its original five stories; 2.6 tracked as backlog.
   2-6-generated-command-status-location-policy: done
-  2-7-outbound-dapr-routing-header-ownership: ready-for-dev
+  2-7-outbound-dapr-routing-header-ownership: done
   # Phase 4 readiness correction: EventStore-owned query provenance enforcement
   # moved earlier to remove the Epic 2 -> Epic 4 forward dependency.
-  2-8-query-response-provenance-contract-and-route-aware-gateway-etag: backlog
+  2-8-query-response-provenance-contract-and-route-aware-gateway-etag: ready-for-dev
   epic-2-retrospective: done
 
   epic-3: in-progress
