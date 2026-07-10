@@ -26,9 +26,49 @@ Thank you for your interest in contributing to Hexalith.EventStore! Whether you'
     git checkout -b feat/my-new-feature
     ```
 
+### Commit Messages
+
+Install the repository-pinned Node.js tools after cloning. `npm ci` runs the
+Husky `prepare` script and installs the tracked `commit-msg` hook:
+
+```bash
+npm ci
+```
+
+Every commit header must follow Conventional Commits because semantic-release
+uses the type to determine release impact:
+
+```text
+<type>[optional scope][!]: <description>
+```
+
+Start the description with a lowercase letter and omit a trailing period. Use
+imperative mood as a repository authoring convention. Keep the entire header at
+100 characters or fewer and prefer a concise header near 50 characters. Use
+`feat` for a minor release, `fix` or `perf` for a patch release, and `docs`,
+`test`, `refactor`, `build`, `ci`, `chore`, `revert`, or `style` when product
+behavior does not change. Use `!` or a `BREAKING CHANGE:` footer for a major
+release.
+
+Commitlint mechanically enforces the header format, allowed types, description
+case, trailing punctuation, and length. Imperative mood and choosing the type
+that accurately reflects release impact remain author and reviewer
+responsibilities.
+
+The hook validates the message automatically before Git creates a commit. You
+can also validate a prepared message or the latest commit explicitly:
+
+```bash
+npx commitlint --edit <message-file> --verbose
+npx commitlint --last --verbose
+```
+
+Do not bypass the hook with `--no-verify`. For example, a valid documentation
+commit is `docs: complete projection/query parity proof`.
+
 ### Submit a Pull Request
 
-1. Commit your changes with a clear, descriptive commit message.
+1. Commit your changes with a Conventional Commit message.
 2. Push your branch to your fork:
 
     ```bash
@@ -46,6 +86,8 @@ For detailed installation instructions for each tool, see the [Prerequisites](do
 ### Required Tools
 
 - **.NET 10 SDK** (10.0.300 or later patch in the same feature band)
+- **Node.js** (`^22.14.0` or `>=24.10.0`) and **npm** (for repository tooling
+  and Git hook installation)
 - **Docker Desktop** (for local DAPR infrastructure)
 - **DAPR CLI** (1.18.x or later)
 
