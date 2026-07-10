@@ -1,3 +1,12 @@
+# [3.51.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.50.4...v3.51.0) (2026-07-10)
+
+
+### Features
+
+* **bmad-loop-setup:** consolidate legacy config handling and improve cleanup scripts ([182624f](https://github.com/Hexalith/Hexalith.EventStore/commit/182624fdf1ad9f87704451f608683ed2cdad4be0))
+* **cleanup:** enhance legacy directory cleanup and config management ([145514a](https://github.com/Hexalith/Hexalith.EventStore/commit/145514a519d4a36f6683ef218c27e29ee5ccd36c))
+* **client:** add DAPR service invocation handler for HTTP clients ([22b10d6](https://github.com/Hexalith/Hexalith.EventStore/commit/22b10d6a7181f5d3e01ddaae30934c4e31739201))
+
 ## [3.50.4](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.50.3...v3.50.4) (2026-07-10)
 
 
