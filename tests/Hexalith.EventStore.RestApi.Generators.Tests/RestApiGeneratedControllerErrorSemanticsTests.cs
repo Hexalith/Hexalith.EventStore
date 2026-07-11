@@ -53,10 +53,7 @@ public sealed class RestApiGeneratedControllerErrorSemanticsTests
                     [
                         QueryWarningCodes.DegradedSearch,
                         QueryWarningCodes.ETagUnavailable,
-                    ])
-                {
-                    Provenance = QueryResponseProvenance.ProjectionBacked,
-                },
+                    ]),
             });
         };
 
@@ -69,7 +66,6 @@ public sealed class RestApiGeneratedControllerErrorSemanticsTests
         controller.Gateway.LastIfNoneMatch.ShouldBeNull();
         IHeaderDictionary headers = controller.HttpContext.Response.Headers;
         headers["ETag"].ToString().ShouldBe("\"strong-version\"");
-        headers["X-Hexalith-Query-Provenance"].ToString().ShouldBe("ProjectionBacked");
         headers["X-Hexalith-Projection-Version"].ToString().ShouldBe("42");
         headers["X-Hexalith-Served-At"].ToString().ShouldBe(servedAt.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
         headers["X-Hexalith-Is-Stale"].ToString().ShouldBe("false");
@@ -117,10 +113,7 @@ public sealed class RestApiGeneratedControllerErrorSemanticsTests
                 IsNotModified: false,
                 ETag: null)
             {
-                Metadata = new QueryResponseMetadata(ETag: "metadata-version")
-                {
-                    Provenance = QueryResponseProvenance.ProjectionBacked,
-                },
+                Metadata = new QueryResponseMetadata(ETag: "metadata-version"),
             });
         };
 
@@ -128,54 +121,6 @@ public sealed class RestApiGeneratedControllerErrorSemanticsTests
 
         _ = result.ShouldBeOfType<OkObjectResult>();
         controller.HttpContext.Response.Headers["ETag"].ToString().ShouldBe("\"metadata-version\"");
-    }
-
-    [Theory]
-    [InlineData(QueryResponseProvenance.HandlerComputed, "HandlerComputed")]
-    [InlineData(QueryResponseProvenance.Unknown, "Unknown")]
-    public async Task QueryAction_NonProjectionProvenance_OmitsProjectionEvidenceAndPreservesSafeMetadata(
-        QueryResponseProvenance provenance,
-        string expectedHeader)
-    {
-        RestApiGeneratedController controller = CreateController();
-        DateTimeOffset servedAt = new(2026, 7, 11, 10, 0, 0, TimeSpan.Zero);
-        controller.Gateway.QueryHandler = (_, _, _) =>
-        {
-            JsonElement payload = JsonSerializer.SerializeToElement(new { counterId = "counter-1" });
-            return Task.FromResult(new EventStoreQueryResult(
-                "01KTESTQUERY200000000000",
-                payload,
-                IsNotModified: false,
-                ETag: "contradictory-etag")
-            {
-                Metadata = new QueryResponseMetadata(
-                    ETag: "metadata-etag",
-                    IsNotModified: true,
-                    IsStale: false,
-                    IsDegraded: true,
-                    ProjectionVersion: "v9",
-                    ServedAt: servedAt,
-                    Paging: new QueryPagingMetadata(PageSize: 25, HasMore: false),
-                    WarningCodes: [QueryWarningCodes.DegradedSearch])
-                {
-                    Provenance = provenance,
-                },
-            });
-        };
-
-        IActionResult result = await InvokeQueryAsync(controller);
-
-        _ = result.ShouldBeOfType<OkObjectResult>();
-        IHeaderDictionary headers = controller.HttpContext.Response.Headers;
-        headers["X-Hexalith-Query-Provenance"].ToString().ShouldBe(expectedHeader);
-        headers.ContainsKey("ETag").ShouldBeFalse();
-        headers.ContainsKey("X-Hexalith-Projection-Version").ShouldBeFalse();
-        headers.ContainsKey("X-Hexalith-Is-Stale").ShouldBeFalse();
-        headers["X-Hexalith-Served-At"].ToString().ShouldBe(servedAt.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
-        headers["X-Hexalith-Is-Degraded"].ToString().ShouldBe("true");
-        headers["X-Hexalith-Warning-Codes"].ToString().ShouldBe(QueryWarningCodes.DegradedSearch);
-        headers["X-Hexalith-Page-Size"].ToString().ShouldBe("25");
-        headers["X-Hexalith-Page-Has-More"].ToString().ShouldBe("false");
     }
 
     [Fact]
@@ -240,10 +185,7 @@ public sealed class RestApiGeneratedControllerErrorSemanticsTests
                     [
                         QueryWarningCodes.DegradedSearch,
                         "dégradé",
-                    ])
-                {
-                    Provenance = QueryResponseProvenance.ProjectionBacked,
-                },
+                    ]),
             });
         };
 
@@ -650,10 +592,7 @@ public sealed class RestApiGeneratedControllerErrorSemanticsTests
                         NextCursor: "opaque-next",
                         TotalCount: 125,
                         HasMore: true),
-                    WarningCodes: [QueryWarningCodes.DegradedSearch])
-                {
-                    Provenance = QueryResponseProvenance.ProjectionBacked,
-                },
+                    WarningCodes: [QueryWarningCodes.DegradedSearch]),
             });
         };
 
@@ -668,7 +607,6 @@ public sealed class RestApiGeneratedControllerErrorSemanticsTests
         controller.Gateway.LastQueryRequest.EntityId.ShouldBe("counter-1");
         IHeaderDictionary headers = controller.HttpContext.Response.Headers;
         headers["ETag"].ToString().ShouldBe("\"strong-version\"");
-        headers["X-Hexalith-Query-Provenance"].ToString().ShouldBe("ProjectionBacked");
         headers["X-Hexalith-Projection-Version"].ToString().ShouldBe("42");
         headers["X-Hexalith-Served-At"].ToString().ShouldBe(servedAt.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
         headers["X-Hexalith-Is-Stale"].ToString().ShouldBe("false");
@@ -682,7 +620,7 @@ public sealed class RestApiGeneratedControllerErrorSemanticsTests
     }
 
     [Fact]
-    public async Task QueryAction_NotModifiedWithoutMetadata_FailsClosed()
+    public async Task QueryAction_NotModifiedWithoutMetadata_DoesNotSynthesizeMetadataHeaders()
     {
         RestApiGeneratedController controller = CreateController();
         controller.Gateway.QueryHandler = static (request, ifNoneMatch, gateway) =>
@@ -698,11 +636,11 @@ public sealed class RestApiGeneratedControllerErrorSemanticsTests
 
         IActionResult result = await InvokeQueryAsync(controller, "\"strong-version\"");
 
-        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
-        objectResult.StatusCode.ShouldBe(StatusCodes.Status502BadGateway);
+        StatusCodeResult statusCodeResult = result.ShouldBeOfType<StatusCodeResult>();
+        statusCodeResult.StatusCode.ShouldBe(StatusCodes.Status304NotModified);
         controller.Gateway.LastIfNoneMatch.ShouldBe("\"strong-version\"");
         IHeaderDictionary headers = controller.HttpContext.Response.Headers;
-        headers.ContainsKey("ETag").ShouldBeFalse();
+        headers["ETag"].ToString().ShouldBe("\"strong-version\"");
         headers.ContainsKey("X-Hexalith-Projection-Version").ShouldBeFalse();
         headers.ContainsKey("X-Hexalith-Served-At").ShouldBeFalse();
         headers.ContainsKey("X-Hexalith-Is-Stale").ShouldBeFalse();
@@ -726,10 +664,7 @@ public sealed class RestApiGeneratedControllerErrorSemanticsTests
                 IsNotModified: true,
                 ETag: null)
             {
-                Metadata = new QueryResponseMetadata(ETag: "metadata-version")
-                {
-                    Provenance = QueryResponseProvenance.ProjectionBacked,
-                },
+                Metadata = new QueryResponseMetadata(ETag: "metadata-version"),
             });
 
         IActionResult result = await InvokeQueryAsync(controller, "\"metadata-version\"");
@@ -753,10 +688,7 @@ public sealed class RestApiGeneratedControllerErrorSemanticsTests
                 Metadata = new QueryResponseMetadata(
                     IsStale: false,
                     ProjectionVersion: "42",
-                    ServedAt: new DateTimeOffset(2026, 7, 5, 10, 30, 0, TimeSpan.Zero))
-                {
-                    Provenance = QueryResponseProvenance.ProjectionBacked,
-                },
+                    ServedAt: new DateTimeOffset(2026, 7, 5, 10, 30, 0, TimeSpan.Zero)),
             });
 
         IActionResult result = await InvokeQueryAsync(controller, "\"weak-version\"");

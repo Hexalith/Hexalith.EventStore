@@ -55,10 +55,7 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
                     [
                         QueryWarningCodes.DegradedSearch,
                         QueryWarningCodes.ETagUnavailable,
-                    ])
-                {
-                    Provenance = QueryResponseProvenance.ProjectionBacked,
-                },
+                    ]),
             });
         };
 
@@ -82,7 +79,6 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
 
         IHeaderDictionary headers = controller.Controller.HttpContext.Response.Headers;
         headers[HeaderNames.ETag].ToString().ShouldBe("\"counter-version\"");
-        headers["X-Hexalith-Query-Provenance"].ToString().ShouldBe("ProjectionBacked");
         headers["X-Hexalith-Projection-Version"].ToString().ShouldBe("42");
         headers["X-Hexalith-Served-At"].ToString().ShouldBe(servedAt.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
         headers["X-Hexalith-Is-Stale"].ToString().ShouldBe("false");
@@ -130,10 +126,7 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
                 IsNotModified: true,
                 ETag: "counter-version")
             {
-                Metadata = new QueryResponseMetadata(ETag: "counter-version", IsNotModified: true)
-                {
-                    Provenance = QueryResponseProvenance.ProjectionBacked,
-                },
+                Metadata = new QueryResponseMetadata(ETag: "counter-version", IsNotModified: true),
             });
 
         IActionResult result = await InvokeQueryAsync(controller, "\"counter-version\"");
@@ -370,10 +363,7 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
                 Metadata = new QueryResponseMetadata(
                     IsStale: false,
                     ProjectionVersion: "42",
-                    ServedAt: new DateTimeOffset(2026, 7, 7, 10, 30, 0, TimeSpan.Zero))
-                {
-                    Provenance = QueryResponseProvenance.ProjectionBacked,
-                },
+                    ServedAt: new DateTimeOffset(2026, 7, 7, 10, 30, 0, TimeSpan.Zero)),
             });
 
         IActionResult result = await InvokeQueryAsync(controller, "\"counter-version\"").ConfigureAwait(false);

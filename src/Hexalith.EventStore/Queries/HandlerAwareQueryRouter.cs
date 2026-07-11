@@ -71,17 +71,11 @@ public sealed class HandlerAwareQueryRouter(
                 Success: true,
                 Payload: payload,
                 NotFound: false,
-                ProjectionType: null,
-                Metadata: StampHandlerComputed(result.Metadata));
+                ProjectionType: result.ProjectionType,
+                Metadata: result.Metadata);
         }
         catch (JsonException) {
             return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: "Domain query handler returned a malformed payload.");
         }
     }
-
-    private static QueryResponseMetadata StampHandlerComputed(QueryResponseMetadata? metadata)
-        => (metadata ?? new QueryResponseMetadata()) with
-        {
-            Provenance = QueryResponseProvenance.HandlerComputed,
-        };
 }

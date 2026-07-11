@@ -71,12 +71,10 @@ public sealed class RestApiControllerGenerationTests
         source.ShouldContain("[FromHeader(Name = \"If-None-Match\")] string? ifNoneMatch");
         source.ShouldContain("new SubmitQueryRequest(");
         source.ShouldContain("StatusCodes.Status304NotModified");
-        source.ShouldContain("QueryResponseProvenance __hexalithProvenance = __hexalithResult.Metadata?.Provenance ?? QueryResponseProvenance.Unknown;");
-        source.ShouldContain("? __hexalithResult.ETag ?? __hexalithResult.Metadata?.ETag");
+        source.ShouldContain("string? __hexalithETag = __hexalithResult.ETag ?? __hexalithResult.Metadata?.ETag;");
         source.ShouldContain("TryFormatStrongETag(__hexalithETag, out string? __hexalithBoundedETag)");
         source.ShouldContain("Response.Headers[\"ETag\"] = __hexalithBoundedETag;");
-        source.ShouldContain("Not-modified query response requires projection-backed provenance.");
-        source.ShouldContain("Response.Headers[\"X-Hexalith-Query-Provenance\"]");
+        source.ShouldContain("Not-modified query response requires a strong ETag.");
         source.ShouldContain("EntityTagHeaderValue.TryParse(candidate, out EntityTagHeaderValue? parsed)");
         source.ShouldContain("parsed.IsWeak");
         source.ShouldContain("MapGatewayException(ex, includeCommandOnlyStatusCodes: true)");

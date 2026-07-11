@@ -71,9 +71,7 @@ public class SubmitQueryHandlerTests {
         var metadata = new QueryResponseMetadata(
             IsStale: false,
             ProjectionVersion: "orders-v7",
-            Paging: new QueryPagingMetadata(PageSize: 25, Offset: 50)) {
-            Provenance = QueryResponseProvenance.ProjectionBacked,
-        };
+            Paging: new QueryPagingMetadata(PageSize: 25, Offset: 50));
         IQueryRouter router = Substitute.For<IQueryRouter>();
         _ = router.RouteQueryAsync(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
             .Returns(new QueryRouterResult(
@@ -90,8 +88,7 @@ public class SubmitQueryHandlerTests {
 
         // Assert
         result.Metadata.ShouldBe(metadata);
-        result.Metadata!.Provenance.ShouldBe(QueryResponseProvenance.ProjectionBacked);
-        result.Metadata.ProjectionVersion.ShouldBe("orders-v7");
+        result.Metadata!.ProjectionVersion.ShouldBe("orders-v7");
         _ = result.Metadata.Paging.ShouldNotBeNull();
         result.Metadata.Paging.Offset.ShouldBe(50);
     }

@@ -143,9 +143,7 @@ public class ProjectionAdapterContractTests {
                 ProjectionVersion: "party-v2",
                 ServedAt: servedAt,
                 Paging: new QueryPagingMetadata(PageSize: 25, Offset: 50, NextCursor: "next-page", TotalCount: 125, HasMore: true),
-                WarningCodes: [QueryWarningCodes.DegradedSearch]) {
-                Provenance = QueryResponseProvenance.ProjectionBacked,
-            });
+                WarningCodes: [QueryWarningCodes.DegradedSearch]));
         var serializer = new DataContractSerializer(typeof(QueryResult));
 
         using var stream = new MemoryStream();
@@ -161,7 +159,6 @@ public class ProjectionAdapterContractTests {
         restored.Metadata.IsStale.ShouldBe(false);
         restored.Metadata.IsDegraded.ShouldBe(true);
         restored.Metadata.ProjectionVersion.ShouldBe("party-v2");
-        restored.Metadata.Provenance.ShouldBe(QueryResponseProvenance.ProjectionBacked);
         restored.Metadata.ServedAt.ShouldBe(servedAt);
         _ = restored.Metadata.Paging.ShouldNotBeNull();
         restored.Metadata.Paging.PageSize.ShouldBe(25);
@@ -171,98 +168,6 @@ public class ProjectionAdapterContractTests {
         restored.Metadata.Paging.HasMore.ShouldBe(true);
         _ = restored.Metadata.WarningCodes.ShouldNotBeNull();
         restored.Metadata.WarningCodes.ShouldContain(QueryWarningCodes.DegradedSearch);
-    }
-
-    [Fact]
-    public void QueryResponseMetadata_PublicCompatibility_PreservesConstructorAndDefaultsLegacyProvenance() {
-        typeof(QueryResponseMetadata)
-            .GetConstructor([
-                typeof(string),
-                typeof(bool?),
-                typeof(bool?),
-                typeof(bool?),
-                typeof(string),
-                typeof(DateTimeOffset?),
-                typeof(QueryPagingMetadata),
-                typeof(IReadOnlyList<string>),
-            ])
-            .ShouldNotBeNull();
-
-        var warnings = new List<string> { "warning" };
-        var metadata = new QueryResponseMetadata(WarningCodes: warnings);
-        warnings[0] = "changed";
-
-        metadata.Provenance.ShouldBe(QueryResponseProvenance.Unknown);
-        metadata.WarningCodes.ShouldBe(["warning"]);
-    }
-
-    [Fact]
-    public void QueryResponseProvenance_PublicValues_AreExplicitAndStable() {
-        Enum.GetNames<QueryResponseProvenance>()
-            .ShouldBe(["Unknown", "ProjectionBacked", "HandlerComputed"]);
-        ((int)QueryResponseProvenance.Unknown).ShouldBe(0);
-        ((int)QueryResponseProvenance.ProjectionBacked).ShouldBe(1);
-        ((int)QueryResponseProvenance.HandlerComputed).ShouldBe(2);
-    }
-
-    [Theory]
-    [InlineData(QueryResponseProvenance.Unknown)]
-    [InlineData(QueryResponseProvenance.ProjectionBacked)]
-    [InlineData(QueryResponseProvenance.HandlerComputed)]
-    public void QueryResponseProvenance_DataContractRoundTrip_PreservesValue(
-        QueryResponseProvenance provenance) {
-        var serializer = new DataContractSerializer(typeof(QueryResponseProvenance));
-        using var stream = new MemoryStream();
-        serializer.WriteObject(stream, provenance);
-        stream.Position = 0;
-
-        var restored = (QueryResponseProvenance?)serializer.ReadObject(stream);
-
-        restored.ShouldBe(provenance);
-    }
-
-    [Fact]
-    public void QueryResponseMetadata_DataContractLegacyShape_DefaultsProvenanceToUnknown() {
-        var original = new QueryResponseMetadata(IsStale: false) {
-            Provenance = QueryResponseProvenance.ProjectionBacked,
-        };
-        var serializer = new DataContractSerializer(typeof(QueryResponseMetadata));
-        using var stream = new MemoryStream();
-        serializer.WriteObject(stream, original);
-        stream.Position = 0;
-        var document = XDocument.Parse(Encoding.UTF8.GetString(stream.ToArray()));
-        document.Descendants().Where(element => element.Name.LocalName == "Provenance").Remove();
-
-        using var legacyStream = new MemoryStream(Encoding.UTF8.GetBytes(document.ToString(SaveOptions.DisableFormatting)));
-        var restored = (QueryResponseMetadata?)serializer.ReadObject(legacyStream);
-
-        _ = restored.ShouldNotBeNull();
-        restored.Provenance.ShouldBe(QueryResponseProvenance.Unknown);
-    }
-
-    [Theory]
-    [InlineData(QueryResponseProvenance.Unknown, "\"Unknown\"")]
-    [InlineData(QueryResponseProvenance.ProjectionBacked, "\"ProjectionBacked\"")]
-    [InlineData(QueryResponseProvenance.HandlerComputed, "\"HandlerComputed\"")]
-    public void QueryResponseProvenance_JsonRoundTrip_UsesCanonicalNames(
-        QueryResponseProvenance provenance,
-        string expectedJson) {
-        string json = JsonSerializer.Serialize(provenance);
-
-        json.ShouldBe(expectedJson);
-        JsonSerializer.Deserialize<QueryResponseProvenance>(json).ShouldBe(provenance);
-    }
-
-    [Theory]
-    [InlineData("null")]
-    [InlineData("1")]
-    [InlineData("{}")]
-    [InlineData("[]")]
-    [InlineData("\"projectionbacked\"")]
-    [InlineData("\"Unexpected\"")]
-    public void QueryResponseProvenance_InvalidJson_DefaultsToUnknown(string json) {
-        JsonSerializer.Deserialize<QueryResponseProvenance>(json)
-            .ShouldBe(QueryResponseProvenance.Unknown);
     }
 
     [Fact]

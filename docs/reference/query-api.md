@@ -75,13 +75,11 @@ Execute a query against the current projection/read model.
 | Freshness  | `requireFresh = true` or `maxStaleness` requires authoritative producer freshness metadata. Unknown or stale freshness fails closed as `query_projection_stale`. |
 | Unknown top-level fields | Rejected as `query_malformed_request` through `JsonExtensionData` capture. |
 
-### Route Provenance and Projection Evidence Metadata
+### Projection Evidence Metadata
 
-Every successful query response carries `metadata.provenance` and the matching `X-Hexalith-Query-Provenance` header. The stable values are `ProjectionBacked`, `HandlerComputed`, and `Unknown`. The selected platform route stamps this value authoritatively; clients must not infer it from `projectionType`, an ETag, request fields, or payload content. Missing, invalid, or legacy provenance is `Unknown`.
+Query responses carry additive projection evidence in `metadata` when a domain handler or projection actor produces it. The platform preserves freshness, projection version, paging evidence, degraded state, and warning codes from the producer through the domain/projection result, router, gateway response, and .NET client result.
 
-Only `ProjectionBacked` responses may carry projection freshness/version evidence or an HTTP ETag. `metadata.projectionVersion` is producer evidence about the persisted read model, while the strong HTTP `ETag` is an opaque validator for the selected representation; neither value is derived from or copied into the other. `HandlerComputed` and `Unknown` responses clear ETag, `isNotModified`, `projectionVersion`, and `isStale`, while preserving served-at, degraded state, warnings, and authoritative paging.
-
-The gateway owns HTTP validator behavior. A strong response `ETag` header wins for `metadata.eTag` only on a projection-backed response, `metadata.isNotModified` reflects the HTTP outcome, and `metadata.servedAt` is filled only when the producer did not supply it. Missing freshness remains unknown (`isStale = null`) and is never treated as current. Request paging is only policy input; the response includes `metadata.paging` only when the producer supplies authoritative paging evidence.
+The gateway still owns HTTP validator behavior. A strong response `ETag` header wins for `metadata.eTag` when present, `metadata.isNotModified` reflects the HTTP outcome, and `metadata.servedAt` is filled only when the producer did not supply it. Missing freshness remains unknown (`isStale = null`) and is never treated as current. Request paging is only policy input; the response includes `metadata.paging` only when the producer supplies authoritative paging evidence.
 
 `metadata.paging` can carry `pageSize`, `offset`, `nextCursor`, `totalCount`, and nullable `hasMore`. `hasMore = true` means the producer determined another page exists; `hasMore = false` means the producer determined the current page is complete; omission means the producer did not provide page-completeness evidence. The gateway does not derive `hasMore` from the requested page size, offset, cursor, or total count.
 
@@ -109,10 +107,9 @@ $ curl -X POST https://localhost:5001/api/v1/queries \
         "count": 1
     },
     "metadata": {
-        "provenance": "ProjectionBacked",
         "eTag": "etag-value-from-response-header",
         "isNotModified": false,
-        "isStale": false,
+        "isStale": null,
         "servedAt": "2026-05-14T09:20:00Z"
     }
 }
@@ -124,7 +121,7 @@ If the query pipeline returns a `200 OK` envelope with `"success": false`, the .
 
 ### Conditional Requests with ETag
 
-`POST /api/v1/queries` supports the `If-None-Match` header. The query is routed first. Only when the selected route is `ProjectionBacked` does the gateway fetch and compare the current representation ETag; a match may then return `304 Not Modified`. A matching projection validator on a handler-computed or unknown route never short-circuits execution and is never returned on that response.
+`POST /api/v1/queries` supports the `If-None-Match` header. When the supplied validator already matches the current projection version, the API returns `304 Not Modified` instead of recomputing the full payload.
 
 HTTP examples show quoted ETags because HTTP headers require quoted entity tags. The .NET gateway client exposes response ETags as normalized unquoted strong tokens. When calling `SubmitQueryAsync`, pass either the normalized token (`etag-value-from-previous-response`) or the quoted header form (`"etag-value-from-previous-response"`); the client sends the quoted HTTP header. Empty values omit the header. Weak or malformed ETags are unsupported and rejected before the request is sent.
 
@@ -146,16 +143,15 @@ If the projection did not change, the response is:
 ```http
 HTTP/1.1 304 Not Modified
 ETag: "etag-value-from-previous-response"
-X-Hexalith-Query-Provenance: ProjectionBacked
 ```
 
-If the projection changed, the API returns `200 OK` with a new response body and an updated opaque `ETag` header. Conditional comparison is skipped for requests that carry explicit query policy inputs or a non-empty `payload`, so a cached validator for one query shape cannot produce a false `304` for a different filter/search/order/page/freshness or payload identity. ETag lookup failures fail open and the query still executes. If provenance is not `ProjectionBacked`, or producer freshness is otherwise unknown and the request explicitly requires freshness, the response fails closed with `query_projection_stale`.
+If the projection changed, the API returns `200 OK` with a new response body and an updated `ETag` header. Conditional pre-checks are skipped for requests that carry explicit query policy inputs or a non-empty `payload`, so a cached validator for one query shape cannot produce a false `304` for a different filter/search/order/page/freshness or payload identity. ETag lookup failures fail open and the query still executes. If producer freshness is unknown and the request explicitly requires freshness, the response fails closed with `query_projection_stale`.
 
 ### Error Responses
 
 | Status                  | Condition                                           | Body                                              |
 | ----------------------- | --------------------------------------------------- | ------------------------------------------------- |
-| 304 Not Modified        | A route-selected `ProjectionBacked` representation matches `If-None-Match` | Empty body; provenance header remains present |
+| 304 Not Modified        | `If-None-Match` matches the current projection ETag | Empty body                                        |
 | 400 Bad Request         | Validation failure or malformed request             | RFC 7807 ProblemDetails with `errors` dictionary  |
 | 401 Unauthorized        | Missing or invalid JWT token                        | —                                                 |
 | 403 Forbidden           | User lacks tenant or query permission               | RFC 7807 ProblemDetails                           |

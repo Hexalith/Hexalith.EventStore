@@ -138,19 +138,8 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
         // response does not shadow the real ProblemDetails exception.
         if (response.StatusCode == HttpStatusCode.NotModified) {
             string? notModifiedETag = GetETag(response);
-            QueryResponseProvenance provenance = GetProvenanceHeader(response);
-            if (provenance != QueryResponseProvenance.ProjectionBacked
-                || string.IsNullOrWhiteSpace(notModifiedETag)) {
-                throw new EventStoreGatewayException(
-                    StatusCodes.BadGateway,
-                    "Bad Gateway",
-                    detail: "Not-modified query response requires projection-backed provenance and a strong ETag.");
-            }
-
             return new EventStoreQueryResult(null, null, IsNotModified: true, notModifiedETag) {
-                Metadata = new QueryResponseMetadata(ETag: notModifiedETag, IsNotModified: true) {
-                    Provenance = QueryResponseProvenance.ProjectionBacked,
-                },
+                Metadata = new QueryResponseMetadata(ETag: notModifiedETag, IsNotModified: true),
             };
         }
 
@@ -178,17 +167,8 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
                 correlationId: result.CorrelationId);
         }
 
-        QueryResponseMetadata metadata = NormalizeMetadata(
-            result.Metadata,
-            GetProvenanceHeader(response),
-            eTag,
-            isNotModified: false);
-
-        string? normalizedETag = metadata.Provenance == QueryResponseProvenance.ProjectionBacked
-            ? metadata.ETag
-            : null;
-        return new EventStoreQueryResult(result.CorrelationId, result.Payload, IsNotModified: false, normalizedETag) {
-            Metadata = metadata,
+        return new EventStoreQueryResult(result.CorrelationId, result.Payload, IsNotModified: false, eTag) {
+            Metadata = NormalizeMetadata(result.Metadata, eTag, isNotModified: false),
         };
     }
 
@@ -300,46 +280,14 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
 
     private static QueryResponseMetadata NormalizeMetadata(
         QueryResponseMetadata? metadata,
-        QueryResponseProvenance headerProvenance,
         string? eTag,
-        bool isNotModified) {
-        QueryResponseProvenance bodyProvenance = metadata?.Provenance ?? QueryResponseProvenance.Unknown;
-        QueryResponseProvenance provenance = bodyProvenance == headerProvenance
-            ? bodyProvenance
-            : QueryResponseProvenance.Unknown;
-        QueryResponseMetadata normalized = (metadata ?? new QueryResponseMetadata()) with {
-            Provenance = provenance,
-        };
-
-        return provenance == QueryResponseProvenance.ProjectionBacked
-            ? normalized with {
-                ETag = eTag ?? normalized.ETag,
-                IsNotModified = isNotModified,
-            }
-            : normalized with {
-                ETag = null,
-                IsNotModified = null,
-                IsStale = null,
-                ProjectionVersion = null,
+        bool isNotModified)
+        => metadata is null
+            ? new QueryResponseMetadata(ETag: eTag, IsNotModified: isNotModified)
+            : metadata with {
+                ETag = eTag ?? metadata.ETag,
+                IsNotModified = metadata.IsNotModified ?? isNotModified,
             };
-    }
-
-    private static QueryResponseProvenance GetProvenanceHeader(HttpResponseMessage response) {
-        if (!response.Headers.TryGetValues("X-Hexalith-Query-Provenance", out IEnumerable<string>? values)) {
-            return QueryResponseProvenance.Unknown;
-        }
-
-        string[] provenanceValues = values.ToArray();
-        if (provenanceValues.Length != 1) {
-            return QueryResponseProvenance.Unknown;
-        }
-
-        return provenanceValues[0] switch {
-            nameof(QueryResponseProvenance.ProjectionBacked) => QueryResponseProvenance.ProjectionBacked,
-            nameof(QueryResponseProvenance.HandlerComputed) => QueryResponseProvenance.HandlerComputed,
-            _ => QueryResponseProvenance.Unknown,
-        };
-    }
 
     private static Uri CreateRelativeUri(string path) {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
@@ -548,6 +496,5 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
 
     private static class StatusCodes {
         public const int Ok = 200;
-        public const int BadGateway = 502;
     }
 }

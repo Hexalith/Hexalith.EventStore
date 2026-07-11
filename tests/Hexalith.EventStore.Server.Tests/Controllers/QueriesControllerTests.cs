@@ -40,19 +40,6 @@ public class QueriesControllerTests {
             QueryType: "GetOrderStatus",
             Payload: payload);
 
-    private static SubmitQueryResult CreateProjectionResult(
-        JsonElement? payload = null,
-        string projectionType = "orders",
-        QueryResponseMetadata? metadata = null)
-        => new(
-            "corr-1",
-            payload ?? JsonSerializer.SerializeToElement(new { }),
-            projectionType,
-            (metadata ?? new QueryResponseMetadata()) with
-            {
-                Provenance = QueryResponseProvenance.ProjectionBacked,
-            });
-
     private static QueriesController CreateController(
         IMediator mediator,
         IETagService? eTagService = null,
@@ -103,7 +90,7 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{\"status\":\"shipped\"}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(resultPayload));
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
 
         QueriesController controller = CreateController(mediator);
         SubmitQueryRequest request = CreateTestRequest();
@@ -125,7 +112,7 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(resultPayload));
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
 
         QueriesController controller = CreateController(mediator);
 
@@ -144,7 +131,7 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(resultPayload));
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
 
         QueriesController controller = CreateController(mediator);
 
@@ -161,7 +148,7 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(resultPayload));
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
 
         var principal = new ClaimsPrincipal(new ClaimsIdentity(
             [new Claim("sub", "jwt-user-id")], "test"));
@@ -182,7 +169,7 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(resultPayload));
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
 
         var principal = new ClaimsPrincipal(new ClaimsIdentity(
             [new Claim("sub", "admin-user"), new Claim(ClaimTypes.Role, "GlobalAdministrator")], "test"));
@@ -203,7 +190,7 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(resultPayload));
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
 
         var principal = new ClaimsPrincipal(new ClaimsIdentity(
             [new Claim("sub", "plain-user")], "test"));
@@ -239,7 +226,7 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(resultPayload));
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
 
         QueriesController controller = CreateController(mediator);
         SubmitQueryRequest request = CreateTestRequest(payload: null);
@@ -259,7 +246,7 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(resultPayload));
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
 
         QueriesController controller = CreateController(mediator);
         var request = new SubmitQueryRequest(
@@ -284,7 +271,7 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(resultPayload));
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
 
         QueriesController controller = CreateController(mediator);
 
@@ -303,7 +290,7 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(resultPayload));
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
 
         QueriesController controller = CreateController(mediator);
         JsonElement requestPayload = JsonDocument.Parse("{\"filter\":\"active\"}").RootElement;
@@ -325,8 +312,6 @@ public class QueriesControllerTests {
         // Arrange — use self-routing ETag so decode succeeds
         string testETag = GenerateTestETag();
         IMediator mediator = Substitute.For<IMediator>();
-        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult());
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
             .Returns(testETag);
@@ -340,15 +325,13 @@ public class QueriesControllerTests {
         StatusCodeResult statusResult = actionResult.ShouldBeOfType<StatusCodeResult>();
         statusResult.StatusCode.ShouldBe(304);
         controller.Response.Headers.ETag.ToString().ShouldBe($"\"{testETag}\"");
-        _ = await mediator.Received(1).Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
+        _ = await mediator.DidNotReceive().Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task Submit_IfNoneMatchMatchesWithEntityIdentityPayload_Returns304() {
         string testETag = GenerateTestETag();
         IMediator mediator = Substitute.For<IMediator>();
-        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult());
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
             .Returns(testETag);
@@ -358,87 +341,7 @@ public class QueriesControllerTests {
         IActionResult actionResult = await controller.Submit(request, $"\"{testETag}\"", CancellationToken.None);
 
         actionResult.ShouldBeOfType<StatusCodeResult>().StatusCode.ShouldBe(304);
-        _ = await mediator.Received(1).Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
-    }
-
-    [Fact]
-    public async Task Submit_MatchingProjectionValidatorForHandlerRoute_ExecutesAndSanitizesProjectionEvidence() {
-        string matchingETag = GenerateTestETag();
-        JsonElement resultPayload = JsonSerializer.SerializeToElement(new { data = 1 });
-        IMediator mediator = Substitute.For<IMediator>();
-        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(new SubmitQueryResult(
-                "corr-1",
-                resultPayload,
-                ProjectionType: null,
-                Metadata: new QueryResponseMetadata(
-                    ETag: matchingETag,
-                    IsNotModified: true,
-                    IsStale: false,
-                    IsDegraded: true,
-                    ProjectionVersion: "projection-v9",
-                    WarningCodes: [QueryWarningCodes.DegradedSearch])
-                {
-                    Provenance = QueryResponseProvenance.HandlerComputed,
-                }));
-        IETagService eTagService = Substitute.For<IETagService>();
-        _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
-            .Returns(matchingETag);
-        QueriesController controller = CreateController(mediator, eTagService);
-
-        IActionResult actionResult = await controller.Submit(
-            CreateTestRequest(),
-            $"\"{matchingETag}\"",
-            CancellationToken.None);
-
-        OkObjectResult okResult = actionResult.ShouldBeOfType<OkObjectResult>();
-        SubmitQueryResponse response = okResult.Value.ShouldBeOfType<SubmitQueryResponse>();
-        _ = await mediator.Received(1).Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
-        _ = await eTagService.DidNotReceive().GetCurrentETagAsync(
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<CancellationToken>());
-        controller.Response.Headers.ETag.ToString().ShouldBeEmpty();
-        controller.Response.Headers["X-Hexalith-Query-Provenance"].ToString().ShouldBe("HandlerComputed");
-        _ = response.Metadata.ShouldNotBeNull();
-        response.Metadata.Provenance.ShouldBe(QueryResponseProvenance.HandlerComputed);
-        response.Metadata.ETag.ShouldBeNull();
-        response.Metadata.IsNotModified.ShouldBe(false);
-        response.Metadata.IsStale.ShouldBeNull();
-        response.Metadata.ProjectionVersion.ShouldBeNull();
-        response.Metadata.IsDegraded.ShouldBe(true);
-        response.Metadata.WarningCodes.ShouldBe([QueryWarningCodes.DegradedSearch]);
-    }
-
-    [Fact]
-    public async Task Submit_UnrecognizedProvenance_NormalizesToUnknownAndDoesNotFetchETag() {
-        JsonElement resultPayload = JsonSerializer.SerializeToElement(new { data = 1 });
-        IMediator mediator = Substitute.For<IMediator>();
-        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(new SubmitQueryResult(
-                "corr-1",
-                resultPayload,
-                ProjectionType: "orders",
-                Metadata: new QueryResponseMetadata(IsStale: false, ProjectionVersion: "v9")
-                {
-                    Provenance = (QueryResponseProvenance)99,
-                }));
-        IETagService eTagService = Substitute.For<IETagService>();
-        QueriesController controller = CreateController(mediator, eTagService);
-
-        IActionResult actionResult = await controller.Submit(CreateTestRequest(), null, CancellationToken.None);
-
-        OkObjectResult okResult = actionResult.ShouldBeOfType<OkObjectResult>();
-        SubmitQueryResponse response = okResult.Value.ShouldBeOfType<SubmitQueryResponse>();
-        controller.Response.Headers["X-Hexalith-Query-Provenance"].ToString().ShouldBe("Unknown");
-        _ = await eTagService.DidNotReceive().GetCurrentETagAsync(
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<CancellationToken>());
-        _ = response.Metadata.ShouldNotBeNull();
-        response.Metadata.Provenance.ShouldBe(QueryResponseProvenance.Unknown);
-        response.Metadata.ProjectionVersion.ShouldBeNull();
-        response.Metadata.IsStale.ShouldBeNull();
+        _ = await mediator.DidNotReceive().Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -447,7 +350,7 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(resultPayload));
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
             .Returns(testETag);
@@ -466,7 +369,7 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(resultPayload));
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
             .Returns(testETag);
@@ -544,7 +447,7 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(resultPayload));
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
             .Returns(serverETag);
@@ -567,7 +470,7 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(resultPayload));
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
             .Returns(serverETag);
@@ -588,7 +491,7 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(resultPayload));
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
             .Returns((string?)null);
@@ -610,8 +513,6 @@ public class QueriesControllerTests {
         string otherETag1 = GenerateTestETag();
         string otherETag2 = GenerateTestETag();
         IMediator mediator = Substitute.For<IMediator>();
-        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult());
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
             .Returns(matchingETag);
@@ -636,7 +537,7 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(resultPayload));
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
             .Returns(responseETag);
@@ -662,7 +563,7 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(resultPayload));
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
             .Returns(serverETag);
@@ -685,7 +586,7 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(resultPayload));
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
             .Returns("some-etag");
@@ -707,7 +608,7 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(resultPayload));
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
             .Returns((string?)null);
@@ -729,7 +630,7 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(resultPayload));
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("boom"));
@@ -752,7 +653,7 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(resultPayload));
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
             .Returns(serverETag);
@@ -776,7 +677,7 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(resultPayload));
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
             .Returns(serverETag);
@@ -806,7 +707,7 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(resultPayload));
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
             .Returns(serverETag);
@@ -828,7 +729,7 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(resultPayload));
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
         IETagService eTagService = Substitute.For<IETagService>();
 
         QueriesController controller = CreateController(mediator, eTagService);
@@ -859,12 +760,11 @@ public class QueriesControllerTests {
     }
 
     [Fact]
-    public async Task Submit_NonAsciiProjectionType_UsesAuthoritativeSelectedRouteProjectionType() {
+    public async Task Submit_NonAsciiProjectionTypeInIfNoneMatch_RoutesUsingDecodedProjectionType() {
+        // Arrange — routing should follow decoded projection type, not request.Domain
         string projectionType = "données";
         string nonAsciiETag = GenerateTestETag(projectionType);
         IMediator mediator = Substitute.For<IMediator>();
-        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(projectionType: projectionType));
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync(projectionType, "test-tenant", Arg.Any<CancellationToken>())
             .Returns(nonAsciiETag);
@@ -875,11 +775,11 @@ public class QueriesControllerTests {
         IActionResult actionResult = await controller.Submit(
             CreateTestRequest(), $"\"{nonAsciiETag}\"", CancellationToken.None);
 
-        // Assert — the selected route is authoritative and conditional evaluation occurs afterward.
+        // Assert — Gate 1 uses decoded non-ASCII projection and returns 304 on match
         StatusCodeResult statusResult = actionResult.ShouldBeOfType<StatusCodeResult>();
         statusResult.StatusCode.ShouldBe(304);
         _ = await eTagService.Received(1).GetCurrentETagAsync(projectionType, "test-tenant", Arg.Any<CancellationToken>());
-        _ = await mediator.Received(1).Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
+        _ = await mediator.DidNotReceive().Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -889,7 +789,7 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(resultPayload));
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
             .Returns(serverETag);
@@ -936,8 +836,6 @@ public class QueriesControllerTests {
         // Arrange — in-memory warm actor equivalent: matching self-routing ETag with constant service response
         string testETag = GenerateTestETag();
         IMediator mediator = Substitute.For<IMediator>();
-        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult());
         IETagService eTagService = new ConstantETagService(testETag);
         QueriesController controller = CreateController(mediator, eTagService);
         SubmitQueryRequest request = CreateTestRequest();
@@ -972,7 +870,7 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(resultPayload, "order-list"));
+            .Returns(new SubmitQueryResult("corr-1", resultPayload, "order-list"));
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("order-list", "test-tenant", Arg.Any<CancellationToken>())
             .Returns(orderListETag);
@@ -990,44 +888,39 @@ public class QueriesControllerTests {
     }
 
     [Fact]
-    public async Task Submit_NullProjectionType_DoesNotFallbackToRequestDomain() {
+    public async Task Submit_NullProjectionType_ETagFetchUsesRequestDomain() {
+        // Arrange — SubmitQueryResult has ProjectionType=null → fallback to request.Domain
+        string ordersETag = GenerateTestETag();
         JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(new SubmitQueryResult(
-                "corr-1",
-                resultPayload,
-                ProjectionType: null,
-                Metadata: new QueryResponseMetadata
-                {
-                    Provenance = QueryResponseProvenance.ProjectionBacked,
-                }));
+            .Returns(new SubmitQueryResult("corr-1", resultPayload, null));
         IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
+            .Returns(ordersETag);
 
         QueriesController controller = CreateController(mediator, eTagService);
 
         // Act
         IActionResult actionResult = await controller.Submit(CreateTestRequest(), null, CancellationToken.None);
 
+        // Assert — fallback to "orders" (request.Domain)
         _ = actionResult.ShouldBeOfType<OkObjectResult>();
-        controller.Response.Headers.ETag.ToString().ShouldBeEmpty();
-        _ = await eTagService.DidNotReceive().GetCurrentETagAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        controller.Response.Headers.ETag.ToString().ShouldBe($"\"{ordersETag}\"");
+        _ = await eTagService.Received(1).GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task Submit_EmptyProjectionType_DoesNotFallbackToRequestDomain() {
+    public async Task Submit_EmptyProjectionType_ETagFetchUsesRequestDomain() {
+        // Arrange — empty ProjectionType should fall back to request.Domain
+        string ordersETag = GenerateTestETag();
         JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(new SubmitQueryResult(
-                "corr-1",
-                resultPayload,
-                ProjectionType: string.Empty,
-                Metadata: new QueryResponseMetadata
-                {
-                    Provenance = QueryResponseProvenance.ProjectionBacked,
-                }));
+            .Returns(new SubmitQueryResult("corr-1", resultPayload, string.Empty));
         IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
+            .Returns(ordersETag);
 
         QueriesController controller = CreateController(mediator, eTagService);
 
@@ -1036,8 +929,8 @@ public class QueriesControllerTests {
 
         // Assert
         _ = actionResult.ShouldBeOfType<OkObjectResult>();
-        controller.Response.Headers.ETag.ToString().ShouldBeEmpty();
-        _ = await eTagService.DidNotReceive().GetCurrentETagAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        controller.Response.Headers.ETag.ToString().ShouldBe($"\"{ordersETag}\"");
+        _ = await eTagService.Received(1).GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -1045,7 +938,7 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(resultPayload));
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
         QueriesController controller = CreateController(mediator);
         SubmitQueryRequest request = CreateTestRequest() with {
             Paging = new QueryPagingOptions(),
@@ -1068,7 +961,7 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(resultPayload));
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
         QueriesController controller = CreateController(mediator);
         SubmitQueryRequest request = CreateTestRequest() with {
             Paging = new QueryPagingOptions(PageSize: 25, Cursor: "opaque-cursor"),
@@ -1089,7 +982,7 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(resultPayload));
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
         QueriesController controller = CreateController(mediator);
         SubmitQueryRequest request = CreateTestRequest() with {
             Paging = new QueryPagingOptions(PageSize: 25, Offset: 50, Cursor: "   "),
@@ -1120,10 +1013,7 @@ public class QueriesControllerTests {
             ProjectionVersion: "orders-v9",
             ServedAt: servedAt,
             Paging: new QueryPagingMetadata(PageSize: 10, Offset: 20, NextCursor: "next", TotalCount: 99, HasMore: true),
-            WarningCodes: [QueryWarningCodes.DegradedSearch])
-        {
-            Provenance = QueryResponseProvenance.ProjectionBacked,
-        };
+            WarningCodes: [QueryWarningCodes.DegradedSearch]);
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
             .Returns(new SubmitQueryResult("corr-1", resultPayload, "orders", producerMetadata));
@@ -1185,7 +1075,7 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(resultPayload));
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
         QueriesController controller = CreateController(mediator);
         SubmitQueryRequest request = CreateTestRequest() with {
             Freshness = new QueryFreshnessPolicy(RequireFresh: true),
@@ -1203,9 +1093,10 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(
+            .Returns(new SubmitQueryResult(
+                "corr-1",
                 resultPayload,
-                metadata: new QueryResponseMetadata(IsStale: true)));
+                Metadata: new QueryResponseMetadata(IsStale: true)));
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("test-domain", "test-tenant", Arg.Any<CancellationToken>())
             .Returns(GenerateTestETag("test-domain"));
@@ -1227,9 +1118,10 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(
+            .Returns(new SubmitQueryResult(
+                "corr-1",
                 resultPayload,
-                metadata: new QueryResponseMetadata(
+                Metadata: new QueryResponseMetadata(
                     IsStale: false,
                     ServedAt: DateTimeOffset.UtcNow.AddMinutes(-10))));
         QueriesController controller = CreateController(mediator);
@@ -1249,9 +1141,10 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(
+            .Returns(new SubmitQueryResult(
+                "corr-1",
                 resultPayload,
-                metadata: new QueryResponseMetadata(
+                Metadata: new QueryResponseMetadata(
                     IsStale: false,
                     ServedAt: DateTimeOffset.UtcNow.AddSeconds(-1))));
         QueriesController controller = CreateController(mediator);
@@ -1274,9 +1167,10 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(
+            .Returns(new SubmitQueryResult(
+                "corr-1",
                 resultPayload,
-                metadata: new QueryResponseMetadata(
+                Metadata: new QueryResponseMetadata(
                     IsStale: false,
                     ServedAt: DateTimeOffset.UtcNow.AddSeconds(-1))));
         QueriesController controller = CreateController(mediator);
@@ -1297,9 +1191,10 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(
+            .Returns(new SubmitQueryResult(
+                "corr-1",
                 resultPayload,
-                metadata: new QueryResponseMetadata(IsStale: false)));
+                Metadata: new QueryResponseMetadata(IsStale: false)));
         QueriesController controller = CreateController(mediator);
         SubmitQueryRequest request = CreateTestRequest() with {
             Freshness = new QueryFreshnessPolicy(RequireFresh: true),
@@ -1319,7 +1214,7 @@ public class QueriesControllerTests {
         JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(resultPayload));
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(firstETag);
@@ -1341,8 +1236,6 @@ public class QueriesControllerTests {
     public async Task Submit_EmptyPagingObject_DoesNotSkipETagPreCheck() {
         string testETag = GenerateTestETag();
         IMediator mediator = Substitute.For<IMediator>();
-        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult());
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
             .Returns(testETag);
@@ -1356,7 +1249,7 @@ public class QueriesControllerTests {
 
         // ETag matches → pre-check must fire and return 304, not skip and invoke mediator
         actionResult.ShouldBeOfType<StatusCodeResult>().StatusCode.ShouldBe(304);
-        _ = await mediator.Received(1).Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
+        _ = await mediator.DidNotReceive().Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
     }
 
     private sealed class ConstantETagService(string etag) : IETagService {
