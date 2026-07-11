@@ -1,3 +1,10 @@
+# [3.58.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.57.0...v3.58.0) (2026-07-11)
+
+
+### Features
+
+* **queries:** implement projection lifecycle management in response metadata ([6aa29af](https://github.com/Hexalith/Hexalith.EventStore/commit/6aa29af6af13c76631c4122a96ddef8b3da47fb7))
+
 # [3.57.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.56.0...v3.57.0) (2026-07-11)
 
 
