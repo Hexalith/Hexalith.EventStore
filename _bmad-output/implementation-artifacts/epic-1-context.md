@@ -4,7 +4,7 @@
 
 ## Goal
 
-Epic 1 makes EventStore domain modules domain-centric and reusable: domain authors should write aggregates, commands, events, projections, query handlers, validators, options, and contracts while the platform supplies hosting, DAPR endpoints, query routing, projection dispatch, read-model storage, cursor protection, telemetry, health checks, Aspire wiring, and packaging. The value is lower boilerplate for new domains, consistent runtime behavior across Sample/Tenants/future modules, and fewer opportunities for each domain to reinvent incompatible infrastructure.
+Enable domain authors to build and run EventStore-backed modules using only domain behavior and contracts while EventStore supplies the reusable hosting, DAPR endpoints, query and projection seams, read-model persistence, cursor protection, telemetry, health, Aspire wiring, and packaging. This reduces per-domain boilerplate, keeps Sample, Tenants, and future modules consistent, and permits consumers to remove local projection/query infrastructure only after the platform replacement is proven and pinned.
 
 ## Stories
 
@@ -15,53 +15,43 @@ Epic 1 makes EventStore domain modules domain-centric and reusable: domain autho
 - Story 1.5: Domain Module Hosting Observability
 - Story 1.6: Sample And Tenants Domain-Centric Adoption
 - Story 1.7: DomainService Packaging And Guardrails
+- Story 1.8: Projection/Query SDK Owner Parity Proof
+- Story 1.9: Read-Model And Projection Checkpoint Erasure
+- Story 1.10: Coordinated Read-Model Batch Writes
+- Story 1.11: Complete Projection Freshness Lifecycle
+- Story 1.12: Asynchronous Multi-Projection Dispatch
+- Story 1.13: Projection-Handler Delivery Idempotency
+- Story 1.14: Correct Paged Rebuild And Replay Equivalence
+- Story 1.15: Owner-Approved Parity Closure And Runtime Pin
 
 ## Requirements & Constraints
 
-Domain modules must stay focused on domain behavior and must not own reusable hosting, request routing, ServiceDefaults, Aspire wiring, projection/query actors, cursor codecs, DAPR state-store wrappers, telemetry sources, or health-check infrastructure when the EventStore platform supplies those seams.
-
-The domain-service SDK must provide the canonical host extension shape and own the standard DAPR-facing endpoints for command processing, state replay, query dispatch, projection dispatch, and operational index metadata. The SDK must allow an application-owned projection route to remain in place where a domain already has bespoke `/project` behavior.
-
-Query behavior must be implementable through discovered domain query handlers. The gateway must use operational metadata to route handler-served queries to domain services and preserve domain-produced query metadata end to end, including freshness, projection version, ETag, served-at, degraded or warning state, and paging evidence. Unknown freshness must stay unknown, and freshness-dependent requests must fail closed instead of assuming current data.
-
-Persisted read models must use platform storage and write-policy abstractions with ETag-aware operations, optimistic-concurrency retry behavior, multi-key or index support, DAPR-backed implementation, and deterministic in-memory test support. Paging cursors must be protected, scoped, bounded, opaque, and safe on malformed input, tampering, wrong scope, wrong query type, oversize payloads, and key rotation.
-
-Projection and event-consumer behavior must reuse platform dispatch, endpoint mapping, envelope/context handling, marker-based deduplication, and payload identity validation while keeping domain-specific logic in the domain. Event delivery remains at-least-once and unordered, so consumers must deduplicate by EventStore message identity.
-
-Sample and Tenants must prove the model without losing existing domain semantics. Sample is the minimal reference; Tenants is the non-trivial reference that must preserve tenant RBAC, audit, read-model, pagination, and projection behavior while removing duplicated infrastructure.
-
-Release packaging must include the DomainService and ServiceDefaults packages only through the EventStore release manifest. Package output must not depend on local submodule checkout state or publish packages outside the manifest-governed EventStore inventory.
-
-Higher-risk tests must assert persisted state-store, read-model, CloudEvent, topology, or package-output evidence where applicable; HTTP success codes and mock calls are not enough for integration-quality proof.
+- Domain modules contain aggregates, commands, events, projections, query handlers, validators, options, and contracts; reusable request routing, projection/query actors, cursor codecs, state-store wrappers, telemetry, health checks, ServiceDefaults, and Aspire plumbing belong to EventStore platform packages.
+- The domain-service SDK supplies the canonical host extension shape and owns `/process`, `/replay-state`, `/query`, `/project`, and `/admin/operational-index-metadata`, while yielding safely to an existing bespoke projection route.
+- Discovered domain query handlers and operational metadata drive handler-aware gateway routing. `QueryResponseMetadata` must preserve producer evidence for lifecycle, projection version, paging, degraded state, and warnings; missing or non-authoritative evidence remains unknown. Producer paging evidence is authoritative, but gateway-echoed request paging is not.
+- Read models require ETag-aware reads/writes, bounded optimistic-concurrency behavior, deterministic DAPR and in-memory semantics, coordinated detail/index writes, and tenant/domain/aggregate/projection-scoped erasure of read-model plus delivery/rebuild checkpoint state. Erasure does not include event streams, snapshots, broker history, backups, audit evidence, or cryptographic keys.
+- Cursors are DataProtection-backed, purpose-isolated, scoped, bounded, opaque, and fail safely for malformed or oversized payloads, tampering, wrong scope/query type, and key rotation.
+- Projection dispatch and persistence are asynchronous and cancellation-aware, support multiple named projections per domain, and expose distinguishable outcomes. At-least-once unordered delivery must be idempotent through the production handler path: deduplicate by EventStore `MessageId`, never treat sequence as globally ordered, and advance checkpoints only after required durable writes.
+- Paged rebuilds must equal canonical replay for the same event prefix. Page boundaries cannot become semantic stream boundaries; incomplete work stays staged, preserves the last complete live model, and resumes safely without reporting success.
+- Sample and Tenants adoption must preserve existing domain behavior while removing duplicated infrastructure. Release builds remain warnings-as-errors clean, package versions stay centralized, and DomainService/ServiceDefaults release output is governed only by `tools/release-packages.json`.
+- Readiness-critical verification must inspect persisted detail, index, marker, lifecycle, checkpoint, state-store, topology, or package evidence as applicable; status codes and mock calls alone are insufficient.
 
 ## Technical Decisions
 
-EventStore remains a DAPR-backed CQRS, DDD, and event-sourcing platform. The gateway is the command/query policy boundary, DAPR actors own durable aggregate mutation, and domain services are pure domain adapters that return domain results rather than writing EventStore state directly.
-
-Domain-service hosts conform by calling the SDK host extensions. Reusable platform code belongs in EventStore Client, DomainService, ServiceDefaults, Aspire, and related platform packages, not in individual domains.
-
-Read-model and cursor work must use `IReadModelStore`, `ReadModelWritePolicy`, `IQueryCursorCodec`, and `QueryCursorScope`. Cursors are DataProtection-backed and must remain implementation details: do not parse, log, render, or treat cursor contents as ordering proof.
-
-Query evidence crosses the platform as `QueryResponseMetadata`; it must not be re-created as ad hoc payload fields. Domain/projection metadata is authoritative for freshness, projection version, paging, degraded state, and warnings. The gateway owns HTTP validator behavior, fills served-at only when absent, derives not-modified status from the HTTP outcome, and treats paging metadata as evidence only when produced by the query handler or projection.
-
-Runtime topology changes must keep AppHost resources, DAPR component/configuration YAML, app IDs, state-store scopes, pub/sub scopes, ACL posture, resiliency paths, and topology tests aligned. Aspire-related host model changes require restarting the Aspire application.
-
-Release and package validation run in package-reference mode by default. Source project references require an explicit opt-in and are not used for package publication. `tools/release-packages.json` is the release inventory.
-
-AOT/trimming is not a target while reflection-based discovery remains load-bearing; implementation should keep that constraint explicit rather than trying to optimize around it.
+- The platform remains CQRS, DDD, and event sourcing over DAPR, with Aspire as the local topology seed. Domain code returns domain results and does not write EventStore state directly.
+- Query evidence travels through platform metadata rather than ad hoc payload fields. Domain/projection evidence owns lifecycle, version, paging, degraded state, and warnings; the gateway owns the opaque HTTP ETag, fills served-at only when absent, and derives not-modified from the HTTP outcome. ETags never prove freshness or projection version.
+- Query provenance is route-bound. Only `ProjectionBacked` responses may carry authoritative `Current`, `Stale`, `Rebuilding`, `Degraded`, `Unavailable`, or `LocalOnly`; handler-computed, missing, or invalid provenance resolves to `Unknown`.
+- Read-model/cursor implementations use the platform `IReadModelStore`, `ReadModelWritePolicy`, `IQueryCursorCodec`, and `QueryCursorScope` seams. Same-store batches use a transaction or a documented resumable equivalent with truthful partial-failure, idempotency, ordering, concurrency, and flush-completion semantics.
+- Projection handlers are identified by `(Domain, ProjectionType)`. Rebuild handlers declare full-replay or incremental semantics, use non-live staging, and promote only after all required projections durably complete. Compatibility requires an additive adapter or an explicitly approved breaking-version migration plan.
+- Runtime changes keep AppHost resources, DAPR component/configuration YAML, app IDs, scopes, ACLs, topics, sidecar options, and topology tests aligned. Release validation defaults to package-reference mode; source references are explicit opt-in and never used for publication.
 
 ## UX & Interaction Patterns
 
-Interactive UI hosts must consume EventStore client libraries and must not host generated or hand-written per-message MVC command/query controllers. Any Sample or Tenants UI work that touches Epic 1 metadata must treat HTTP 202, command acceptance, and SignalR notifications as accepted/evidence-pending states, not success.
-
-User-visible success requires read-model or projection evidence carried through platform metadata. Fresh, stale, unknown, paging, projection-version, and ETag evidence must remain support-safe; UIs must not render raw metadata, payloads, cursor internals, ETag internals, stack traces, tokens, or secrets. UI-affecting work uses FrontComposer and Blazor Fluent UI V5 conventions.
+UI consumers use FrontComposer and Blazor Fluent UI V5 and obtain lifecycle evidence through client metadata. Command acceptance, HTTP `202`, and SignalR are evidence-pending signals, not success. Only projection-backed `Current` may enable otherwise-authorized mutations by default; all other lifecycle states disable mutation unless an explicit consumer exception exists, and `LocalOnly` never counts as projection-confirmed success. Render lifecycle with text as well as styling, fall back to `Unknown`, and never expose raw metadata, payloads, cursors, ETags, tokens, stack traces, or secrets.
 
 ## Cross-Story Dependencies
 
-Story 1.2 is the platform metadata foundation for Story 1.3 paging evidence and for later generated REST/UI metadata behavior outside this epic.
-
-Story 1.3 provides the reusable read-model and cursor seams that the Tenants adoption proof in Story 1.6 depends on.
-
-Story 1.4 and Story 1.5 provide projection/event-consumer, hosting, telemetry, health, and Aspire seams that Sample and Tenants adoption in Story 1.6 must consume rather than duplicate.
-
-Story 1.7 should package and guardrail the seams after the SDK host, query, read-model, cursor, projection, observability, and adoption proofs have stabilized.
+- Stories 1.1-1.5 establish the SDK, metadata, persistence, projection, event-consumer, observability, and Aspire seams consumed by the Sample/Tenants adoption and packaging guardrails in Stories 1.6-1.7.
+- Story 1.2 establishes metadata propagation; Story 1.3 adds authoritative paging and cursor evidence. Story 2.8 must complete route-aware provenance enforcement before Story 1.11 evidence or any consumer may claim authoritative current/stale state.
+- Story 1.8's completed investigation remains a `still blocked` parity result. Stories 1.9-1.14 close its identified gaps; Story 1.15 can declare availability only after those stories are complete and reviewed, all parity items have production-path evidence, and EventStore owner approval names one exact runtime commit.
+- Parties Story 8.6 remains blocked until its EventStore submodule matches the Story 1.15 approved SHA. Later projection-cost work in Stories 6.3-6.4 may optimize, but cannot weaken the idempotency and replay-equivalence baseline established by Stories 1.13-1.14.
