@@ -1,3 +1,10 @@
+# [3.54.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.53.0...v3.54.0) (2026-07-11)
+
+
+### Features
+
+* **planning-artifacts:** update UX designs and add sprint change proposal ([83142b1](https://github.com/Hexalith/Hexalith.EventStore/commit/83142b144a44bc3390d38f9b1b729ecda22cead8))
+
 # [3.53.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.52.0...v3.53.0) (2026-07-11)
 
 
