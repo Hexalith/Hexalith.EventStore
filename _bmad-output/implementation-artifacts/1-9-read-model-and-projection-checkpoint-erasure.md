@@ -1,6 +1,10 @@
+---
+baseline_commit: 19e0c1997cd26b03d2fd780b31455e0a29dc175a
+---
+
 # Story 1.9: Read-Model And Projection Checkpoint Erasure
 
-Status: ready-for-dev
+Status: review
 
 **Requirements covered:** FR5, FR36, NFR2, NFR16
 **Governed by:** AD-7 (Read Models And Cursors Use Platform Seams), AD-12 (High-Risk Verification Requires Persisted Evidence), AD-2 (Domain Modules Stay Domain-Centric)
@@ -40,35 +44,35 @@ If an aggregate is deleted and recreated with the **same identifier** but the ch
 
 ## Tasks / Subtasks
 
-- [ ] Task 1 — `IReadModelStore` single-key erase (AC: 1, 2)
-  - [ ] Add an ETag-aware erase method to `IReadModelStore` (`src/Hexalith.EventStore.Client/Projections/IReadModelStore.cs`), documented with the same `<param>`/`<returns>` style as `TrySaveAsync`. Absent-key ⇒ returns success/true idempotently; ETag-mismatch on a present key ⇒ returns false (conflict), never throws.
-  - [ ] Implement in `DaprReadModelStore` (`src/Hexalith.EventStore.Client/Projections/DaprReadModelStore.cs`) using `DaprClient.TryDeleteStateAsync(storeName, key, etag, stateOptions, metadata, cancellationToken)` (already referenced by `RecordingDaprClient.cs:142` as a real `DaprClient` override point — not yet used in production code). Validate args the same way as the existing three methods (`ArgumentException.ThrowIfNullOrWhiteSpace` / `ArgumentNullException.ThrowIfNull`).
-  - [ ] Implement in `InMemoryReadModelStore` (`src/Hexalith.EventStore.Testing/Fakes/InMemoryReadModelStore.cs`): mirror `TrySaveAsync`'s ETag-matching logic (`bool matches = exists ? etag == current.ETag : ...`), but for erase, absent-key must be `true` regardless of the supplied ETag (idempotent), and a present key requires the ETag to match or returns `false`. Add a deterministic failure-injection hook analogous to `ConcurrentWriteBeforeTrySave`.
-  - [ ] Extend `tests/Hexalith.EventStore.Client.Tests/Projections/RecordingDaprClient.cs`: replace the `NotSupportedException` stub for `TryDeleteStateAsync` (line ~142) with a real override that captures `storeName`/`key`/`etag`/`stateOptions`, mirroring the existing `TrySaveStateAsync` override (lines 27-42).
-  - [ ] Add/extend tests in `tests/Hexalith.EventStore.Client.Tests/Projections/DaprReadModelStoreTests.cs` and `InMemoryReadModelStoreTests.cs` covering success, absent-key idempotency, ETag conflict, and cancellation — follow the existing `[Fact]`/`[Theory]` + Shouldly style already in those files.
+- [x] Task 1 — `IReadModelStore` single-key erase (AC: 1, 2)
+  - [x] Add an ETag-aware erase method to `IReadModelStore` (`src/Hexalith.EventStore.Client/Projections/IReadModelStore.cs`), documented with the same `<param>`/`<returns>` style as `TrySaveAsync`. Absent-key ⇒ returns success/true idempotently; ETag-mismatch on a present key ⇒ returns false (conflict), never throws.
+  - [x] Implement in `DaprReadModelStore` (`src/Hexalith.EventStore.Client/Projections/DaprReadModelStore.cs`) using `DaprClient.TryDeleteStateAsync(storeName, key, etag, stateOptions, metadata, cancellationToken)` (already referenced by `RecordingDaprClient.cs:142` as a real `DaprClient` override point — not yet used in production code). Validate args the same way as the existing three methods (`ArgumentException.ThrowIfNullOrWhiteSpace` / `ArgumentNullException.ThrowIfNull`).
+  - [x] Implement in `InMemoryReadModelStore` (`src/Hexalith.EventStore.Testing/Fakes/InMemoryReadModelStore.cs`): mirror `TrySaveAsync`'s ETag-matching logic (`bool matches = exists ? etag == current.ETag : ...`), but for erase, absent-key must be `true` regardless of the supplied ETag (idempotent), and a present key requires the ETag to match or returns `false`. Add a deterministic failure-injection hook analogous to `ConcurrentWriteBeforeTrySave`.
+  - [x] Extend `tests/Hexalith.EventStore.Client.Tests/Projections/RecordingDaprClient.cs`: replace the `NotSupportedException` stub for `TryDeleteStateAsync` (line ~142) with a real override that captures `storeName`/`key`/`etag`/`stateOptions`, mirroring the existing `TrySaveStateAsync` override (lines 27-42).
+  - [x] Add/extend tests in `tests/Hexalith.EventStore.Client.Tests/Projections/DaprReadModelStoreTests.cs` and `InMemoryReadModelStoreTests.cs` covering success, absent-key idempotency, ETag conflict, and cancellation — follow the existing `[Fact]`/`[Theory]` + Shouldly style already in those files.
 
-- [ ] Task 2 — `IProjectionCheckpointTracker` erase (AC: 3, 4, 5)
-  - [ ] Add an erase method to `IProjectionCheckpointTracker` (`src/Hexalith.EventStore.Server/Projections/IProjectionCheckpointTracker.cs`) for the per-aggregate delivery checkpoint, keyed the same way as `ReadLastDeliveredSequenceAsync`/`SaveDeliveredSequenceAsync` (`GetStateKey(identity) = "projection-checkpoints:" + identity.ActorId` in `options.Value.CheckpointStateStoreName`). Same idempotent-absent / ETag-aware contract as Task 1. Do **not** touch `TrackIdentityAsync`'s scope/identity index — erasing a checkpoint value does not need to remove the aggregate from the enumeration index (leaving a stale index entry pointing at an absent checkpoint is already a state the poller must tolerate; do not expand this story into index-pruning unless a test proves the poller mishandles it).
-  - [ ] Implement in `ProjectionCheckpointTracker` (`src/Hexalith.EventStore.Server/Projections/ProjectionCheckpointTracker.cs`), consistent with its existing raw-`DaprClient` style (it does not use `IReadModelStore`).
-  - [ ] Build the coordinated multi-target erase entry point required by AC3/AC4: given the caller's read-model `(storeName, key, etag)` targets plus the checkpoint's own `(CheckpointStateStoreName, GetStateKey(identity), checkpointEtag)`, execute one `DaprClient.ExecuteStateTransactionAsync` when every target shares one `storeName` (DAPR transactions are single-store only — confirmed, no cross-store transaction exists in the SDK), else fall back to sequential per-key erase calls using the Task 1 idempotent-absent primitive (safe to retry because each individual erase is itself idempotent). Recommended home for this coordinating logic: a new small Server-project type composing `IReadModelStore` + `IProjectionCheckpointTracker` (Server already depends on Client per the architecture stack diagram), rather than adding checkpoint-shaped knowledge to the Client project. Confirm this placement against `AD-2`/`AD-7` intent before finalizing; the acceptance criteria are the fixed contract, this specific composition is a recommendation.
-  - [ ] Add a persisted-path test proving AC5 end-to-end: erase an aggregate's checkpoint (and read-model key), post a fresh sequence-1 event under the same `AggregateIdentity`, and assert `ProjectionUpdateOrchestrator` delivers it instead of hitting `CheckpointDriftDetected` (existing precedent for asserting that log path: `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorTests.cs:1436` and `:1469`).
+- [x] Task 2 — `IProjectionCheckpointTracker` erase (AC: 3, 4, 5)
+  - [x] Add an erase method to `IProjectionCheckpointTracker` (`src/Hexalith.EventStore.Server/Projections/IProjectionCheckpointTracker.cs`) for the per-aggregate delivery checkpoint, keyed the same way as `ReadLastDeliveredSequenceAsync`/`SaveDeliveredSequenceAsync` (`GetStateKey(identity) = "projection-checkpoints:" + identity.ActorId` in `options.Value.CheckpointStateStoreName`). Same idempotent-absent / ETag-aware contract as Task 1. Do **not** touch `TrackIdentityAsync`'s scope/identity index — erasing a checkpoint value does not need to remove the aggregate from the enumeration index (leaving a stale index entry pointing at an absent checkpoint is already a state the poller must tolerate; do not expand this story into index-pruning unless a test proves the poller mishandles it).
+  - [x] Implement in `ProjectionCheckpointTracker` (`src/Hexalith.EventStore.Server/Projections/ProjectionCheckpointTracker.cs`), consistent with its existing raw-`DaprClient` style (it does not use `IReadModelStore`).
+  - [x] Build the coordinated multi-target erase entry point required by AC3/AC4: given the caller's read-model `(storeName, key, etag)` targets plus the checkpoint's own `(CheckpointStateStoreName, GetStateKey(identity), checkpointEtag)`, execute one `DaprClient.ExecuteStateTransactionAsync` when every target shares one `storeName` (DAPR transactions are single-store only — confirmed, no cross-store transaction exists in the SDK), else fall back to sequential per-key erase calls using the Task 1 idempotent-absent primitive (safe to retry because each individual erase is itself idempotent). Recommended home for this coordinating logic: a new small Server-project type composing `IReadModelStore` + `IProjectionCheckpointTracker` (Server already depends on Client per the architecture stack diagram), rather than adding checkpoint-shaped knowledge to the Client project. Confirm this placement against `AD-2`/`AD-7` intent before finalizing; the acceptance criteria are the fixed contract, this specific composition is a recommendation.
+  - [x] Add a persisted-path test proving AC5 end-to-end: erase an aggregate's checkpoint (and read-model key), post a fresh sequence-1 event under the same `AggregateIdentity`, and assert `ProjectionUpdateOrchestrator` delivers it instead of hitting `CheckpointDriftDetected` (existing precedent for asserting that log path: `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorTests.cs:1436` and `:1469`).
 
-- [ ] Task 3 — Same-store transaction path (AC: 4)
-  - [ ] Extend `RecordingDaprClient.cs`'s `ExecuteStateTransactionAsync` override (currently `throw new NotSupportedException()` at line ~74) to capture `storeName`/`operations` and return a configurable result, following the `TrySaveStateAsync` capture pattern.
-  - [ ] Reference pattern for building `StateTransactionRequest[]` (fetch-ETag → build requests → `ExecuteStateTransactionAsync` → catch `Dapr.DaprException` → bounded retry) is demonstrated in the sibling reference project `references/Hexalith.Memories/src/Hexalith.Memories.Server/Tenants/TenantRegistryService.cs` (read-only reference — do not modify that submodule). No such pattern exists yet inside this repo's own `src/`.
-  - [ ] Test: all-targets-same-store erase issues exactly one `ExecuteStateTransactionAsync` call with the expected `StateOperationType.Delete` requests.
+- [x] Task 3 — Same-store transaction path (AC: 4)
+  - [x] Extend `RecordingDaprClient.cs`'s `ExecuteStateTransactionAsync` override (currently `throw new NotSupportedException()` at line ~74) to capture `storeName`/`operations` and return a configurable result, following the `TrySaveStateAsync` capture pattern.
+  - [x] Reference pattern for building `StateTransactionRequest[]` (fetch-ETag → build requests → `ExecuteStateTransactionAsync` → catch `Dapr.DaprException` → bounded retry) is demonstrated in the sibling reference project `references/Hexalith.Memories/src/Hexalith.Memories.Server/Tenants/TenantRegistryService.cs` (read-only reference — do not modify that submodule). No such pattern exists yet inside this repo's own `src/`.
+  - [x] Test: all-targets-same-store erase issues exactly one `ExecuteStateTransactionAsync` call with the expected `StateOperationType.Delete` requests.
 
-- [ ] Task 4 — Resumable cross-store protocol (AC: 4)
-  - [ ] Document (XML doc + Dev Notes reference) the exact resumable protocol: order of operations, what "partial completion" state looks like, and why retrying it is safe (every underlying erase is independently idempotent-absent, so re-issuing the same coordinated erase after a partial failure converges without re-deleting already-erased keys or reporting false success).
-  - [ ] Test: inject a failure between the read-model erase and the checkpoint erase (via the Task 1 failure-injection hook) and assert (a) the operation does not report success, and (b) retrying it completes and reaches the fully-erased end state.
+- [x] Task 4 — Resumable cross-store protocol (AC: 4)
+  - [x] Document (XML doc + Dev Notes reference) the exact resumable protocol: order of operations, what "partial completion" state looks like, and why retrying it is safe (every underlying erase is independently idempotent-absent, so re-issuing the same coordinated erase after a partial failure converges without re-deleting already-erased keys or reporting false success).
+  - [x] Test: inject a failure between the read-model erase and the checkpoint erase (via the Task 1 failure-injection hook) and assert (a) the operation does not report success, and (b) retrying it completes and reaches the fully-erased end state.
 
-- [ ] Task 5 — Tenant isolation proof (AC: 6)
-  - [ ] Add a persisted-state test (pattern: `tests/Hexalith.EventStore.Server.Tests/Security/StorageKeyIsolationTests.cs`) that erases tenant A's scope and asserts tenant B's read-model and checkpoint state is untouched, using `StorageKeyIsolationAssertions.AssertKeyBelongsToTenant`.
+- [x] Task 5 — Tenant isolation proof (AC: 6)
+  - [x] Add a persisted-state test (pattern: `tests/Hexalith.EventStore.Server.Tests/Security/StorageKeyIsolationTests.cs`) that erases tenant A's scope and asserts tenant B's read-model and checkpoint state is untouched, using `StorageKeyIsolationAssertions.AssertKeyBelongsToTenant`.
 
-- [ ] Task 6 — Scope guardrails (AC: 7, 8)
-  - [ ] Do not add any method to `IProjectionRebuildCheckpointStore` / `ProjectionRebuildCheckpointStore.cs` in this story.
-  - [ ] Do not add event-stream, snapshot, broker-history, backup, audit, or crypto-key deletion anywhere.
-  - [ ] Run `tests/Hexalith.EventStore.DomainService.Tests/DomainModuleAuthoringGuardrailTests.cs` unmodified and confirm it still passes (proves the new logic didn't leak a raw-DAPR-state-access pattern into a domain module).
+- [x] Task 6 — Scope guardrails (AC: 7, 8)
+  - [x] Do not add any method to `IProjectionRebuildCheckpointStore` / `ProjectionRebuildCheckpointStore.cs` in this story.
+  - [x] Do not add event-stream, snapshot, broker-history, backup, audit, or crypto-key deletion anywhere.
+  - [x] Run `tests/Hexalith.EventStore.DomainService.Tests/DomainModuleAuthoringGuardrailTests.cs` unmodified and confirm it still passes (proves the new logic didn't leak a raw-DAPR-state-access pattern into a domain module).
 
 ## Dev Notes
 
@@ -166,8 +170,55 @@ All configured tests must pass before this story is marked complete (per project
 
 ### Agent Model Used
 
+GPT-5 Codex
+
 ### Debug Log References
+
+- 2026-07-11: Task 1 RED — Client tests failed to compile because `TryEraseAsync` and the erase injection hook did not exist.
+- 2026-07-11: Task 1 GREEN — Client 563/563, Testing 144/144, Server 2272 passed (25 skipped), DomainService 85/85.
+- 2026-07-11: Task 2 RED — Server focused build failed because checkpoint erase and coordinated eraser types did not exist.
+- 2026-07-11: Task 2 GREEN — focused tracker 27/27 and orchestrator 55/55; regression Client 563/563, Testing 144/144, Server 2276 passed (25 skipped), DomainService 85/85.
+- 2026-07-11: Task 3 RED — recorder-backed same-store test failed on the transaction override's `NotSupportedException`.
+- 2026-07-11: Task 3 GREEN — atomic-path test 1/1; regression Client 564/564, Testing 144/144, Server 2276 passed (25 skipped), DomainService 85/85.
+- 2026-07-11: Task 4 GREEN — resumable-protocol tests 2/2; regression Client 565/565, Testing 144/144, Server 2276 passed (25 skipped), DomainService 85/85.
+- 2026-07-11: Task 5 GREEN — storage-isolation tests 33/33; regression Client 565/565, Testing 144/144, Server 2277 passed (25 skipped), DomainService 85/85.
+- 2026-07-11: Task 5 final audit RED/GREEN — forged tenant label initially bypassed ownership; physical tenant-prefix validation added, then isolation 33/33, orchestrator 55/55, and coordinated-erasure 2/2 passed.
+- 2026-07-11: Task 6 GREEN — scope diff excludes rebuild/write-model surfaces and the unmodified domain-module authoring guardrails pass 25/25.
+- 2026-07-11: Final gate GREEN — Client 565/565, Testing 144/144, Server 2277 passed (25 skipped), DomainService 85/85; Release solution build 0 warnings/errors; `git diff --check` clean.
 
 ### Completion Notes List
 
+- Implemented Task 1 with ETag-aware, cancellation-aware erase behavior in the public store seam and both DAPR/in-memory implementations; absent keys are idempotent and present-key conflicts preserve state.
+- Implemented Task 2 with an ETag-aware checkpoint erase seam and a Server-owned coordinated eraser. Persisted fake-store proof confirms stale read-model/checkpoint removal, fresh sequence-1 projection delivery, no drift signal, and a new sequence-1 checkpoint.
+- Implemented Task 3 recorder support and exact atomic-batch verification: one DAPR transaction contains every read-model delete plus the checkpoint delete with caller ETags and first-write concurrency.
+- Implemented Task 4 documentation and persisted partial-failure proof: read models erase in request order, checkpoint last, partial completion returns false, and retry converges safely through absent-key idempotency.
+- Implemented Task 5 fail-closed target ownership: both the declared owner and physical tenant-prefixed key must match the operation identity; forged labels return false before DAPR mutation, with both tenants' persisted end state unchanged.
+- Completed Task 6 scope audit: only Client/Server projection state and test infrastructure changed; rebuild checkpoints and write-model/event-history deletion remain untouched.
+- Story complete: all acceptance criteria and tasks are satisfied, all configured validation lanes pass, and the implementation is ready for review.
+
 ### File List
+
+- _bmad-output/implementation-artifacts/1-9-read-model-and-projection-checkpoint-erasure.md
+- _bmad-output/implementation-artifacts/sprint-status.yaml
+- src/Hexalith.EventStore.Client/Projections/DaprReadModelStore.cs
+- src/Hexalith.EventStore.Client/Projections/IReadModelStore.cs
+- src/Hexalith.EventStore.Testing/Fakes/InMemoryReadModelStore.cs
+- src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs
+- src/Hexalith.EventStore.Server/Projections/IProjectionCheckpointTracker.cs
+- src/Hexalith.EventStore.Server/Projections/IProjectionStateEraser.cs
+- src/Hexalith.EventStore.Server/Projections/ProjectionCheckpointTracker.cs
+- src/Hexalith.EventStore.Server/Projections/ProjectionStateEraser.cs
+- src/Hexalith.EventStore.Server/Projections/ReadModelEraseTarget.cs
+- tests/Hexalith.EventStore.Client.Tests/Projections/DaprReadModelStoreTests.cs
+- tests/Hexalith.EventStore.Client.Tests/Projections/InMemoryReadModelStoreTests.cs
+- tests/Hexalith.EventStore.Client.Tests/Projections/ProjectionStateEraserTests.cs
+- tests/Hexalith.EventStore.Client.Tests/Projections/RecordingDaprClient.cs
+- tests/Hexalith.EventStore.Server.Tests/Projections/Dw1PollerCorruptionAtddTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionCheckpointTrackerTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionPollerServiceTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Security/StorageKeyIsolationTests.cs
+
+## Change Log
+
+- 2026-07-11: Added ETag-aware single-key erasure, atomic same-store and resumable cross-store coordinated projection erasure, tenant-key isolation guards, persisted recreation proof, and comprehensive tests.

@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-07-11T12:56:00+02:00
+# last_updated: 2026-07-11T18:29:13+02:00
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T20:01:46+02:00
-last_updated: 2026-07-11T12:56:00+02:00
+last_updated: 2026-07-11T18:29:13+02:00
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -60,7 +60,7 @@ development_status:
   # Done means the investigation and `still blocked` packet were completed; it does not mean parity is available.
   1-8-projection-query-sdk-owner-parity-proof: done
   # Parties parity implementation follow-ups discovered by Story 1.8.
-  1-9-read-model-and-projection-checkpoint-erasure: ready-for-dev
+  1-9-read-model-and-projection-checkpoint-erasure: review
   1-10-coordinated-read-model-batch-writes: backlog
   1-11-complete-projection-freshness-lifecycle: backlog
   1-12-asynchronous-multi-projection-dispatch: backlog

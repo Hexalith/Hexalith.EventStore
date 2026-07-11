@@ -49,6 +49,52 @@ public class ProjectionCheckpointTrackerTests {
         result.ShouldBe(42);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task TryEraseAsync_UsesCheckpointStoreKeyAndEtag(bool daprResult) {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.TryDeleteStateAsync(
+                "custom-store",
+                ProjectionCheckpointTracker.GetStateKey(TestIdentity),
+                "etag-1",
+                stateOptions: Arg.Any<StateOptions?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(daprResult);
+        ProjectionCheckpointTracker tracker = CreateTracker(daprClient, "custom-store");
+
+        bool erased = await tracker.TryEraseAsync(TestIdentity, "etag-1");
+
+        erased.ShouldBe(daprResult);
+        _ = await daprClient.Received(1).TryDeleteStateAsync(
+            "custom-store",
+            ProjectionCheckpointTracker.GetStateKey(TestIdentity),
+            "etag-1",
+            Arg.Is<StateOptions?>(value => value != null && value.Concurrency == ConcurrencyMode.FirstWrite),
+            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task TryEraseAsync_Cancelled_PropagatesOperationCanceledException() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.TryDeleteStateAsync(
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                stateOptions: Arg.Any<StateOptions?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromCanceled<bool>(call.ArgAt<CancellationToken>(5)));
+        ProjectionCheckpointTracker tracker = CreateTracker(daprClient);
+        using var source = new CancellationTokenSource();
+        await source.CancelAsync();
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(
+            () => tracker.TryEraseAsync(TestIdentity, "etag-1", source.Token));
+    }
+
     [Fact]
     public async Task SaveDeliveredSequenceAsync_MissingCheckpoint_SavesDeliveredSequence() {
         // Arrange

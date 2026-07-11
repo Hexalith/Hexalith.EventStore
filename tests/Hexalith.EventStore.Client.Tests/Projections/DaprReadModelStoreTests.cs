@@ -27,4 +27,32 @@ public class DaprReadModelStoreTests {
         StateOptions options = daprClient.StateOptions.ShouldNotBeNull();
         options.Concurrency.ShouldBe(ConcurrencyMode.FirstWrite);
     }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task TryEraseAsync_UsesFirstWriteConcurrencyPassesETagAndReturnsDaprResult(bool daprResult) {
+        var daprClient = new RecordingDaprClient { TryDeleteResult = daprResult };
+        var store = new DaprReadModelStore(daprClient);
+
+        bool erased = await store.TryEraseAsync(StoreName, "read-model:1", "etag-1");
+
+        erased.ShouldBe(daprResult);
+        daprClient.StoreName.ShouldBe(StoreName);
+        daprClient.Key.ShouldBe("read-model:1");
+        daprClient.ETag.ShouldBe("etag-1");
+        StateOptions options = daprClient.StateOptions.ShouldNotBeNull();
+        options.Concurrency.ShouldBe(ConcurrencyMode.FirstWrite);
+    }
+
+    [Fact]
+    public async Task TryEraseAsync_Cancelled_ThrowsOperationCanceledException() {
+        var daprClient = new RecordingDaprClient { TryDeleteResult = true };
+        var store = new DaprReadModelStore(daprClient);
+        using var source = new CancellationTokenSource();
+        await source.CancelAsync();
+
+        await Should.ThrowAsync<OperationCanceledException>(
+            () => store.TryEraseAsync(StoreName, "read-model:1", "etag-1", source.Token));
+    }
 }

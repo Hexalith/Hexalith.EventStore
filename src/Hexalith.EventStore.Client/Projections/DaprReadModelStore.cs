@@ -66,4 +66,24 @@ public sealed class DaprReadModelStore(DaprClient daprClient) : IReadModelStore 
                 cancellationToken: cancellationToken)
             .ConfigureAwait(false);
     }
+
+    /// <inheritdoc/>
+    public async Task<bool> TryEraseAsync(
+        string storeName,
+        string key,
+        string etag,
+        CancellationToken cancellationToken = default) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(storeName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        ArgumentNullException.ThrowIfNull(etag);
+
+        return await daprClient
+            .TryDeleteStateAsync(
+                storeName,
+                key,
+                etag,
+                new StateOptions { Concurrency = ConcurrencyMode.FirstWrite },
+                cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+    }
 }

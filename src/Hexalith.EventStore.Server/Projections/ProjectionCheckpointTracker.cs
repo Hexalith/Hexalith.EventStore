@@ -130,6 +130,24 @@ public sealed partial class ProjectionCheckpointTracker(
     }
 
     /// <inheritdoc/>
+    public async Task<bool> TryEraseAsync(
+        AggregateIdentity identity,
+        string etag,
+        CancellationToken cancellationToken = default) {
+        ValidateIdentity(identity);
+        ArgumentNullException.ThrowIfNull(etag);
+
+        return await daprClient
+            .TryDeleteStateAsync(
+                options.Value.CheckpointStateStoreName,
+                GetStateKey(identity),
+                etag,
+                new StateOptions { Concurrency = ConcurrencyMode.FirstWrite },
+                cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
     public async Task TrackIdentityAsync(AggregateIdentity identity, CancellationToken cancellationToken = default) {
         ValidateIdentity(identity);
 

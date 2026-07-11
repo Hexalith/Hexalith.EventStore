@@ -96,4 +96,65 @@ public class InMemoryReadModelStoreTests {
 
         second.Value.ShouldBe(1);
     }
+
+    [Fact]
+    public async Task TryEraseAsync_MatchingEtag_RemovesValue() {
+        var store = new InMemoryReadModelStore();
+        await store.SaveAsync(StoreName, "k", new Model { Value = 1 });
+        ReadModelEntry<Model> entry = await store.GetAsync<Model>(StoreName, "k");
+
+        bool erased = await store.TryEraseAsync(StoreName, "k", entry.ETag!);
+
+        erased.ShouldBeTrue();
+        store.Snapshot<Model>(StoreName, "k").ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("stale-etag")]
+    public async Task TryEraseAsync_AbsentKey_IsIdempotentRegardlessOfEtag(string etag) {
+        var store = new InMemoryReadModelStore();
+
+        bool erased = await store.TryEraseAsync(StoreName, "missing", etag);
+
+        erased.ShouldBeTrue();
+        store.Count.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task TryEraseAsync_StaleEtag_ReturnsConflictAndPreservesValue() {
+        var store = new InMemoryReadModelStore();
+        await store.SaveAsync(StoreName, "k", new Model { Value = 1 });
+
+        bool erased = await store.TryEraseAsync(StoreName, "k", "stale-etag");
+
+        erased.ShouldBeFalse();
+        store.Snapshot<Model>(StoreName, "k")!.Value.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task TryEraseAsync_ConcurrentWriteInjection_ReturnsConflictAndPreservesConcurrentValue() {
+        var store = new InMemoryReadModelStore();
+        await store.SaveAsync(StoreName, "k", new Model { Value = 1 });
+        ReadModelEntry<Model> entry = await store.GetAsync<Model>(StoreName, "k");
+        store.ConcurrentWriteBeforeTryErase = () => {
+            store.SeedRaw(StoreName, "k", new Model { Value = 7 });
+            store.ConcurrentWriteBeforeTryErase = null;
+        };
+
+        bool erased = await store.TryEraseAsync(StoreName, "k", entry.ETag!);
+
+        erased.ShouldBeFalse();
+        store.Snapshot<Model>(StoreName, "k")!.Value.ShouldBe(7);
+    }
+
+    [Fact]
+    public async Task TryEraseAsync_Cancelled_ThrowsOperationCanceledException() {
+        var store = new InMemoryReadModelStore();
+        using var source = new CancellationTokenSource();
+        await source.CancelAsync();
+
+        await Should.ThrowAsync<OperationCanceledException>(
+            () => store.TryEraseAsync(StoreName, "k", string.Empty, source.Token));
+    }
 }

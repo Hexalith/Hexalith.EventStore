@@ -2,6 +2,7 @@
 using Dapr.Client;
 
 using Hexalith.EventStore.Client.Projections;
+using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
@@ -32,6 +33,7 @@ public static class EventStoreServerServiceCollectionExtensions {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
+        _ = services.AddEventStoreReadModelStore();
         services.TryAddSingleton<ICommandRouter, CommandRouter>();
         services.TryAddScoped<IQueryRouter, QueryRouter>();
         services.TryAddScoped<IETagService, DaprETagService>();
@@ -51,6 +53,7 @@ public static class EventStoreServerServiceCollectionExtensions {
         services.TryAddSingleton<IProjectionChangeNotifier, DaprProjectionChangeNotifier>();
         services.TryAddSingleton<IProjectionChangedBroadcaster, NoOpProjectionChangedBroadcaster>();
         services.TryAddSingleton<IProjectionCheckpointTracker, ProjectionCheckpointTracker>();
+        services.TryAddSingleton<IProjectionStateEraser, ProjectionStateEraser>();
         services.TryAddSingleton<IProjectionRebuildCheckpointStore, ProjectionRebuildCheckpointStore>();
         services.TryAddSingleton<IProjectionPollerTickSource, PeriodicProjectionPollerTickSource>();
         services.TryAddSingleton(TimeProvider.System);

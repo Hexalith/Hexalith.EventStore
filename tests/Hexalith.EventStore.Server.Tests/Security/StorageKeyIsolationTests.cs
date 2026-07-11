@@ -2,16 +2,21 @@
 using Dapr.Actors;
 using Dapr.Actors.Client;
 using Dapr.Actors.Runtime;
+using Dapr.Client;
 
+using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
+using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Pipeline.Commands;
+using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Testing.Assertions;
 using Hexalith.EventStore.Testing.Fakes;
 
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 using NSubstitute;
 
@@ -22,6 +27,48 @@ namespace Hexalith.EventStore.Server.Tests.Security;
 /// Story 5.3 verification tests for tenant-scoped storage keys and related key-derivation invariants.
 /// </summary>
 public class StorageKeyIsolationTests {
+    [Fact]
+    public async Task ProjectionErase_ForgedTenantLabel_IsDeniedAndPreservesBothTenantsPersistedState() {
+        var identityA = new AggregateIdentity("tenant-a", "orders", "order-001");
+        var identityB = new AggregateIdentity("tenant-b", "orders", "order-001");
+        string readModelKeyA = identityA.ActorId + ":projection:summary";
+        string readModelKeyB = identityB.ActorId + ":projection:summary";
+        StorageKeyIsolationAssertions.AssertKeyBelongsToTenant(readModelKeyA, identityA.TenantId);
+        StorageKeyIsolationAssertions.AssertKeyBelongsToTenant(readModelKeyB, identityB.TenantId);
+        string checkpointKeyA = ProjectionCheckpointTracker.GetStateKey(identityA);
+        string checkpointKeyB = ProjectionCheckpointTracker.GetStateKey(identityB);
+        StorageKeyIsolationAssertions.AssertKeyBelongsToTenant(checkpointKeyA["projection-checkpoints:".Length..], identityA.TenantId);
+        StorageKeyIsolationAssertions.AssertKeyBelongsToTenant(checkpointKeyB["projection-checkpoints:".Length..], identityB.TenantId);
+
+        var readModelStore = new InMemoryReadModelStore();
+        ProjectionCheckpoint checkpointA = new(identityA.TenantId, identityA.Domain, identityA.AggregateId, 5, DateTimeOffset.UtcNow);
+        ProjectionCheckpoint checkpointB = new(identityB.TenantId, identityB.Domain, identityB.AggregateId, 6, DateTimeOffset.UtcNow);
+        var persistedCheckpoints = new Dictionary<string, ProjectionCheckpoint>(StringComparer.Ordinal) {
+            [checkpointKeyA] = checkpointA,
+            [checkpointKeyB] = checkpointB,
+        };
+        await readModelStore.SaveAsync("statestore", readModelKeyA, checkpointA);
+        await readModelStore.SaveAsync("statestore", readModelKeyB, checkpointB);
+        ReadModelEntry<ProjectionCheckpoint> tenantBEntry = await readModelStore.GetAsync<ProjectionCheckpoint>("statestore", readModelKeyB);
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        IOptions<ProjectionOptions> options = Options.Create(new ProjectionOptions());
+        var tracker = new ProjectionCheckpointTracker(daprClient, options, NullLogger<ProjectionCheckpointTracker>.Instance);
+        var eraser = new ProjectionStateEraser(daprClient, readModelStore, tracker, options);
+
+        bool erased = await eraser.TryEraseAsync(
+            identityA,
+            [new ReadModelEraseTarget(identityA.TenantId, "statestore", readModelKeyB, tenantBEntry.ETag!)],
+            "tenant-a-checkpoint-etag");
+
+        erased.ShouldBeFalse();
+        readModelStore.Snapshot<ProjectionCheckpoint>("statestore", readModelKeyA)!.TenantId.ShouldBe("tenant-a");
+        readModelStore.Snapshot<ProjectionCheckpoint>("statestore", readModelKeyB)!.TenantId.ShouldBe("tenant-b");
+        persistedCheckpoints[checkpointKeyA].LastDeliveredSequence.ShouldBe(5);
+        persistedCheckpoints[checkpointKeyB].LastDeliveredSequence.ShouldBe(6);
+        await daprClient.DidNotReceiveWithAnyArgs().ExecuteStateTransactionAsync(default!, default!);
+        _ = await daprClient.DidNotReceiveWithAnyArgs().TryDeleteStateAsync(default!, default!, default!);
+    }
+
     // --- 2.2: Two different tenants produce structurally disjoint event stream key prefixes ---
 
     [Fact]

@@ -14,6 +14,14 @@ internal sealed class RecordingDaprClient : DaprClient
 
     public bool TrySaveResult { get; init; }
 
+    public bool TryDeleteResult { get; init; }
+
+    public Exception ExecuteStateTransactionException { get; init; }
+
+    public int ExecuteStateTransactionCallCount { get; private set; }
+
+    public IReadOnlyList<StateTransactionRequest> TransactionOperations { get; private set; }
+
     public string StoreName { get; private set; }
 
     public string Key { get; private set; }
@@ -71,7 +79,20 @@ internal sealed class RecordingDaprClient : DaprClient
 
     public override IAsyncEnumerable<ReadOnlyMemory<byte>> EncryptAsync(string vaultResourceName, Stream plaintextStream, string keyName, EncryptionOptions encryptionOptions, CancellationToken cancellationToken) => throw new NotSupportedException();
 
-    public override Task ExecuteStateTransactionAsync(string storeName, IReadOnlyList<StateTransactionRequest> operations, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken) => throw new NotSupportedException();
+    public override Task ExecuteStateTransactionAsync(
+        string storeName,
+        IReadOnlyList<StateTransactionRequest> operations,
+        IReadOnlyDictionary<string, string> metadata,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        StoreName = storeName;
+        TransactionOperations = operations.ToArray();
+        ExecuteStateTransactionCallCount++;
+        return ExecuteStateTransactionException is null
+            ? Task.CompletedTask
+            : Task.FromException(ExecuteStateTransactionException);
+    }
 
     public override Task<Dictionary<string, Dictionary<string, string>>> GetBulkSecretAsync(string storeName, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken) => throw new NotSupportedException();
 
@@ -139,7 +160,21 @@ internal sealed class RecordingDaprClient : DaprClient
 
     public override Task<SubscribeConfigurationResponse> SubscribeConfiguration(string storeName, IReadOnlyList<string> keys, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken) => throw new NotSupportedException();
 
-    public override Task<bool> TryDeleteStateAsync(string storeName, string key, string etag, StateOptions stateOptions, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken) => throw new NotSupportedException();
+    public override Task<bool> TryDeleteStateAsync(
+        string storeName,
+        string key,
+        string etag,
+        StateOptions stateOptions,
+        IReadOnlyDictionary<string, string> metadata,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        StoreName = storeName;
+        Key = key;
+        ETag = etag;
+        StateOptions = stateOptions;
+        return Task.FromResult(TryDeleteResult);
+    }
 
     public override Task<bool> TrySaveByteStateAsync(string storeName, string key, ReadOnlyMemory<byte> binaryValue, string etag, StateOptions stateOptions, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken) => throw new NotSupportedException();
 
