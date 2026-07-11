@@ -1,3 +1,10 @@
+# [3.52.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.51.0...v3.52.0) (2026-07-11)
+
+
+### Features
+
+* **queries:** add provenance tracking for query responses ([404201a](https://github.com/Hexalith/Hexalith.EventStore/commit/404201a9363c1b80121ecbf5e72ca4fb71f6ac79))
+
 # [3.51.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.50.4...v3.51.0) (2026-07-10)
 
 
