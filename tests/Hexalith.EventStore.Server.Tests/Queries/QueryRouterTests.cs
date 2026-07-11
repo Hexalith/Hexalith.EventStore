@@ -107,6 +107,7 @@ public class QueryRouterTests {
             ProjectionVersion: "orders-v2",
             WarningCodes: [QueryWarningCodes.DegradedSearch]) {
             Provenance = QueryResponseProvenance.HandlerComputed,
+            Lifecycle = ProjectionLifecycleState.Rebuilding,
         };
         (IProjectionActorInvoker _, QueryRouter router) = CreateRouterWithInvoker(
             QueryResult.FromPayload(resultPayload, "orders", metadata));
@@ -116,9 +117,31 @@ public class QueryRouterTests {
         result.Success.ShouldBeTrue();
         _ = result.Metadata.ShouldNotBeNull();
         result.Metadata.Provenance.ShouldBe(QueryResponseProvenance.ProjectionBacked);
+        result.Metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Rebuilding);
+        result.Metadata.IsStale.ShouldBeNull();
         result.Metadata!.ProjectionVersion.ShouldBe("orders-v2");
         _ = result.Metadata.WarningCodes.ShouldNotBeNull();
         result.Metadata.WarningCodes.ShouldContain(QueryWarningCodes.DegradedSearch);
+    }
+
+    [Theory]
+    [InlineData(ProjectionLifecycleState.Rebuilding)]
+    [InlineData(ProjectionLifecycleState.Degraded)]
+    [InlineData(ProjectionLifecycleState.Unavailable)]
+    [InlineData(ProjectionLifecycleState.LocalOnly)]
+    public async Task RouteQueryAsync_OperationalLifecycle_PreservesExactValue(
+        ProjectionLifecycleState lifecycle) {
+        JsonElement payload = JsonSerializer.SerializeToElement(new { value = 42 });
+        var metadata = new QueryResponseMetadata {
+            Provenance = QueryResponseProvenance.ProjectionBacked,
+            Lifecycle = lifecycle,
+        };
+        (IProjectionActorInvoker _, QueryRouter router) = CreateRouterWithInvoker(
+            QueryResult.FromPayload(payload, "counter", metadata));
+
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
+
+        result.Metadata.ShouldNotBeNull().Lifecycle.ShouldBe(lifecycle);
     }
 
     [Fact]

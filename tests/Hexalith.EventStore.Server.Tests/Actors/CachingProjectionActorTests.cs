@@ -103,7 +103,9 @@ public class CachingProjectionActorTests {
             IsStale: false,
             ProjectionVersion: "counter-v4",
             ServedAt: DateTimeOffset.UtcNow.AddMinutes(-10),
-            Paging: new QueryPagingMetadata(PageSize: 10, Offset: 20));
+            Paging: new QueryPagingMetadata(PageSize: 10, Offset: 20)) {
+            Lifecycle = ProjectionLifecycleState.Current,
+        };
         var expected = QueryResult.FromPayload(payload, "counter", metadata);
 
         var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
@@ -118,6 +120,7 @@ public class CachingProjectionActorTests {
         actor.ExecuteCallCount.ShouldBe(1);
         _ = cached.Metadata.ShouldNotBeNull();
         cached.Metadata.IsStale.ShouldBeNull();
+        cached.Metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Unknown);
         cached.Metadata.ServedAt.ShouldBeNull();
         cached.Metadata.ProjectionVersion.ShouldBe("counter-v4");
         _ = cached.Metadata.Paging.ShouldNotBeNull();

@@ -79,9 +79,16 @@ public sealed class HandlerAwareQueryRouter(
         }
     }
 
-    private static QueryResponseMetadata StampHandlerComputed(QueryResponseMetadata? metadata)
-        => (metadata ?? new QueryResponseMetadata()) with
-        {
+    private static QueryResponseMetadata StampHandlerComputed(QueryResponseMetadata? metadata) {
+        QueryResponseMetadata source = metadata ?? new QueryResponseMetadata();
+        ProjectionLifecycleState lifecycle = ProjectionLifecyclePolicy.Normalize(
+            source.Lifecycle,
+            QueryResponseProvenance.HandlerComputed);
+        return source with {
             Provenance = QueryResponseProvenance.HandlerComputed,
+            Lifecycle = lifecycle,
+            IsStale = ProjectionLifecyclePolicy.ProjectIsStale(lifecycle, source.IsStale),
+            IsDegraded = ProjectionLifecyclePolicy.ProjectIsDegraded(lifecycle, source.IsDegraded),
         };
+    }
 }

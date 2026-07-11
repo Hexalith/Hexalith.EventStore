@@ -77,6 +77,10 @@ public sealed class RestApiControllerGenerationTests
         source.ShouldContain("Response.Headers[\"ETag\"] = __hexalithBoundedETag;");
         source.ShouldContain("Not-modified query response requires projection-backed provenance.");
         source.ShouldContain("Response.Headers[\"X-Hexalith-Query-Provenance\"]");
+        source.ShouldContain("Response.Headers[ProjectionLifecyclePolicy.HeaderName]");
+        source.ShouldContain("Response.Headers.Remove(ProjectionLifecyclePolicy.HeaderName)");
+        source.ShouldContain("ProjectionLifecyclePolicy.ProjectIsStale(lifecycle, metadata.IsStale)");
+        source.ShouldContain("ProjectionLifecyclePolicy.ProjectIsDegraded(lifecycle, metadata.IsDegraded)");
         source.ShouldContain("EntityTagHeaderValue.TryParse(candidate, out EntityTagHeaderValue? parsed)");
         source.ShouldContain("parsed.IsWeak");
         source.ShouldContain("MapGatewayException(ex, includeCommandOnlyStatusCodes: true)");

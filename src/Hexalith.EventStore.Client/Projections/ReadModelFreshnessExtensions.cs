@@ -40,9 +40,9 @@ public static class ReadModelFreshnessExtensions {
 
     /// <summary>
     /// Projects a persisted read model's freshness metadata into the public
-    /// <see cref="QueryResponseMetadata"/> contract, filling <see cref="QueryResponseMetadata.IsStale"/>,
-    /// <see cref="QueryResponseMetadata.ProjectionVersion"/>, and <see cref="QueryResponseMetadata.ServedAt"/>
-    /// from a real persisted projection timestamp/version.
+    /// <see cref="QueryResponseMetadata"/> contract, filling <see cref="QueryResponseMetadata.Lifecycle"/>,
+    /// <see cref="QueryResponseMetadata.IsStale"/>, <see cref="QueryResponseMetadata.ProjectionVersion"/>,
+    /// and <see cref="QueryResponseMetadata.ServedAt"/> from a real persisted projection timestamp/version.
     /// </summary>
     /// <param name="readModel">
     /// The persisted read model, or <see langword="null"/> when the key is absent (treated as
@@ -52,10 +52,12 @@ public static class ReadModelFreshnessExtensions {
     /// <param name="now">The current instant, also used as <see cref="QueryResponseMetadata.ServedAt"/>.</param>
     /// <param name="eTag">The optional ETag to carry on the metadata.</param>
     /// <returns>
-    /// Query response metadata whose <see cref="QueryResponseMetadata.IsStale"/> is <see langword="true"/>
-    /// only when the freshness state is <see cref="ReadModelFreshnessState.Stale"/>,
-    /// <see langword="false"/> when authoritatively current/aging, and <see langword="null"/> when the
-    /// freshness is unknown.
+    /// Query response metadata whose <see cref="QueryResponseMetadata.Lifecycle"/> is
+    /// <see cref="ProjectionLifecycleState.Current"/> for current or aging evidence,
+    /// <see cref="ProjectionLifecycleState.Stale"/> for stale evidence, and
+    /// <see cref="ProjectionLifecycleState.Unknown"/> when freshness evidence is absent. The compatible
+    /// <see cref="QueryResponseMetadata.IsStale"/> value is <see langword="true"/> only for stale evidence,
+    /// <see langword="false"/> for current or aging evidence, and <see langword="null"/> when unknown.
     /// </returns>
     public static QueryResponseMetadata ToQueryResponseMetadata(
         this IReadModelFreshness? readModel,
@@ -68,24 +70,18 @@ public static class ReadModelFreshnessExtensions {
             ReadModelFreshnessState.Unknown => null,
             _ => false,
         };
+        ProjectionLifecycleState lifecycle = state switch {
+            ReadModelFreshnessState.Current or ReadModelFreshnessState.Aging => ProjectionLifecycleState.Current,
+            ReadModelFreshnessState.Stale => ProjectionLifecycleState.Stale,
+            _ => ProjectionLifecycleState.Unknown,
+        };
 
         return new QueryResponseMetadata(
             ETag: eTag,
             IsStale: isStale,
             ProjectionVersion: readModel?.ProjectionVersion,
-            ServedAt: now);
+            ServedAt: now) {
+            Lifecycle = lifecycle,
+        };
     }
 }
-
-/// <summary>
-/// A freshness-aware read of a persisted read model: the value, its ETag, and its classified freshness.
-/// </summary>
-/// <typeparam name="TValue">The read-model type.</typeparam>
-/// <param name="Value">The persisted value, or <see langword="null"/> when the key is absent.</param>
-/// <param name="ETag">The ETag of the read, or <see langword="null"/> when the key is absent.</param>
-/// <param name="Freshness">The classified freshness state of the read model.</param>
-public sealed record ReadModelFreshnessResult<TValue>(
-    TValue? Value,
-    string? ETag,
-    ReadModelFreshnessState Freshness)
-    where TValue : class, IReadModelFreshness;

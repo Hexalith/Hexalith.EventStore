@@ -180,6 +180,7 @@ public class ReadModelFreshnessTests {
         QueryResponseMetadata metadata = model.ToQueryResponseMetadata(Thresholds, Now, eTag: "\"abc\"");
 
         metadata.IsStale.ShouldBe(true);
+        metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Stale);
         metadata.ProjectionVersion.ShouldBe("v99");
         metadata.ETag.ShouldBe("\"abc\"");
         metadata.ServedAt.ShouldBe(Now);
@@ -192,6 +193,7 @@ public class ReadModelFreshnessTests {
         QueryResponseMetadata metadata = model.ToQueryResponseMetadata(Thresholds, Now);
 
         metadata.IsStale.ShouldBe(false);
+        metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Current);
     }
 
     [Fact]
@@ -201,6 +203,7 @@ public class ReadModelFreshnessTests {
         QueryResponseMetadata metadata = model.ToQueryResponseMetadata(Thresholds, Now);
 
         metadata.IsStale.ShouldBe(false);
+        metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Current);
     }
 
     [Fact]
@@ -209,6 +212,15 @@ public class ReadModelFreshnessTests {
             ((IReadModelFreshness?)null).ToQueryResponseMetadata(Thresholds, Now);
 
         metadata.IsStale.ShouldBeNull();
+        metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Unknown);
         metadata.ProjectionVersion.ShouldBeNull();
+    }
+
+    [Fact]
+    public void ReadModelFreshnessState_PublicValues_PreserveLegacyAgingValue() {
+        ((int)ReadModelFreshnessState.Unknown).ShouldBe(0);
+        ((int)ReadModelFreshnessState.Current).ShouldBe(1);
+        ((int)ReadModelFreshnessState.Aging).ShouldBe(2);
+        ((int)ReadModelFreshnessState.Stale).ShouldBe(3);
     }
 }

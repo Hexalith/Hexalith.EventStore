@@ -58,6 +58,7 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
                     ])
                 {
                     Provenance = QueryResponseProvenance.ProjectionBacked,
+                    Lifecycle = ProjectionLifecycleState.Current,
                 },
             });
         };
@@ -83,6 +84,7 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
         IHeaderDictionary headers = controller.Controller.HttpContext.Response.Headers;
         headers[HeaderNames.ETag].ToString().ShouldBe("\"counter-version\"");
         headers["X-Hexalith-Query-Provenance"].ToString().ShouldBe("ProjectionBacked");
+        headers[ProjectionLifecyclePolicy.HeaderName].ToString().ShouldBe("Current");
         headers["X-Hexalith-Projection-Version"].ToString().ShouldBe("42");
         headers["X-Hexalith-Served-At"].ToString().ShouldBe(servedAt.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
         headers["X-Hexalith-Is-Stale"].ToString().ShouldBe("false");
@@ -133,6 +135,7 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
                 Metadata = new QueryResponseMetadata(ETag: "counter-version", IsNotModified: true)
                 {
                     Provenance = QueryResponseProvenance.ProjectionBacked,
+                    Lifecycle = ProjectionLifecycleState.Current,
                 },
             });
 
@@ -143,6 +146,7 @@ public sealed class SampleApiGeneratedControllerRuntimeTests
         controller.Gateway.QueryCallCount.ShouldBe(1);
         controller.Gateway.LastIfNoneMatch.ShouldBe("\"counter-version\"");
         controller.Controller.HttpContext.Response.Headers[HeaderNames.ETag].ToString().ShouldBe("\"counter-version\"");
+        controller.Controller.HttpContext.Response.Headers[ProjectionLifecyclePolicy.HeaderName].ToString().ShouldBe("Current");
     }
 
     [Fact]

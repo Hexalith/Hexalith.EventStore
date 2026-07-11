@@ -66,6 +66,7 @@ public class SubmitQueryResponseTests {
                 Paging: new QueryPagingMetadata(PageSize: 25, Offset: 50, NextCursor: null, TotalCount: null, HasMore: false),
                 WarningCodes: [QueryWarningCodes.DegradedSearch]) {
                 Provenance = QueryResponseProvenance.ProjectionBacked,
+                Lifecycle = ProjectionLifecycleState.Degraded,
             });
 
         string json = JsonSerializer.Serialize(response, options);
@@ -80,6 +81,7 @@ public class SubmitQueryResponseTests {
         _ = roundTripped.Metadata.ShouldNotBeNull();
         roundTripped.Metadata.ETag.ShouldBe("etag-1");
         roundTripped.Metadata.Provenance.ShouldBe(QueryResponseProvenance.ProjectionBacked);
+        roundTripped.Metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Degraded);
         roundTripped.Metadata.IsDegraded.ShouldBe(true);
         roundTripped.Metadata.ServedAt.ShouldBe(servedAt);
         _ = roundTripped.Metadata.Paging.ShouldNotBeNull();
@@ -87,5 +89,29 @@ public class SubmitQueryResponseTests {
         roundTripped.Metadata.Paging.HasMore.ShouldBe(false);
         _ = roundTripped.Metadata.WarningCodes.ShouldNotBeNull();
         roundTripped.Metadata.WarningCodes.ShouldContain(QueryWarningCodes.DegradedSearch);
+    }
+
+    [Theory]
+    [InlineData(ProjectionLifecycleState.Rebuilding)]
+    [InlineData(ProjectionLifecycleState.Degraded)]
+    [InlineData(ProjectionLifecycleState.Unavailable)]
+    [InlineData(ProjectionLifecycleState.LocalOnly)]
+    public void JsonRoundTrip_OperationalLifecycle_PreservesExactValue(
+        ProjectionLifecycleState lifecycle) {
+        var response = new SubmitQueryResponse(
+            "corr-operational",
+            JsonSerializer.SerializeToElement(new { value = 42 }),
+            Metadata: new QueryResponseMetadata {
+                Provenance = QueryResponseProvenance.ProjectionBacked,
+                Lifecycle = lifecycle,
+            });
+        JsonSerializerOptions options = new(JsonSerializerDefaults.Web);
+
+        string json = JsonSerializer.Serialize(response, options);
+        SubmitQueryResponse restored = JsonSerializer
+            .Deserialize<SubmitQueryResponse>(json, options)
+            .ShouldNotBeNull();
+
+        restored.Metadata.ShouldNotBeNull().Lifecycle.ShouldBe(lifecycle);
     }
 }

@@ -81,6 +81,10 @@ Every successful query response carries `metadata.provenance` and the matching `
 
 Only `ProjectionBacked` responses may carry projection freshness/version evidence or an HTTP ETag. `metadata.projectionVersion` is producer evidence about the persisted read model, while the strong HTTP `ETag` is an opaque validator for the selected representation; neither value is derived from or copied into the other. `HandlerComputed` and `Unknown` responses clear ETag, `isNotModified`, `projectionVersion`, and `isStale`, while preserving served-at, degraded state, warnings, and authoritative paging.
 
+Projection-backed responses may also carry `metadata.lifecycle` and the exact canonical `X-Hexalith-Projection-Lifecycle` header. The stable values are `Current`, `Stale`, `Rebuilding`, `Degraded`, `Unavailable`, and `LocalOnly`; `Unknown` is the safe default and is omitted from the lifecycle header. Missing, numeric, case-variant, unknown, non-projection, cached, or body/header-contradictory lifecycle evidence becomes `Unknown`. The gateway never derives lifecycle from an ETag, HTTP `200`/`304`, payload fields, SignalR, `isStale`, or `isDegraded`.
+
+Persisted projection timestamps classify as `Current` (including the legacy `Aging` age band) or `Stale`. Operational producers may explicitly report `Rebuilding`, `Degraded`, `Unavailable`, or `LocalOnly` only from direct authoritative evidence. Lifecycle projects one-way into legacy compatibility fields: `Current` yields `isStale = false`, `Stale` yields `isStale = true`, and states that cannot safely mean stale/current leave it null. Legacy Booleans never create a lifecycle value.
+
 The gateway owns HTTP validator behavior. A strong response `ETag` header wins for `metadata.eTag` only on a projection-backed response; for that route, `metadata.isNotModified` reflects the HTTP outcome. Non-projection routes leave both fields null. `metadata.servedAt` is filled only when the producer did not supply it. Missing freshness remains unknown (`isStale = null`) and is never treated as current. Request paging is only policy input; the response includes `metadata.paging` only when the producer supplies authoritative paging evidence.
 
 `metadata.paging` can carry `pageSize`, `offset`, `nextCursor`, `totalCount`, and nullable `hasMore`. `hasMore = true` means the producer determined another page exists; `hasMore = false` means the producer determined the current page is complete; omission means the producer did not provide page-completeness evidence. The gateway does not derive `hasMore` from the requested page size, offset, cursor, or total count.
@@ -110,6 +114,7 @@ $ curl -X POST https://localhost:5001/api/v1/queries \
     },
     "metadata": {
         "provenance": "ProjectionBacked",
+        "lifecycle": "Current",
         "eTag": "etag-value-from-response-header",
         "isNotModified": false,
         "isStale": false,
@@ -147,6 +152,7 @@ If the projection did not change, the response is:
 HTTP/1.1 304 Not Modified
 ETag: "etag-value-from-previous-response"
 X-Hexalith-Query-Provenance: ProjectionBacked
+X-Hexalith-Projection-Lifecycle: Current
 ```
 
 If the projection changed, the API returns `200 OK` with a new response body and an updated opaque `ETag` header. Conditional comparison is skipped for requests that carry explicit query policy inputs or a non-empty `payload`, so a cached validator for one query shape cannot produce a false `304` for a different filter/search/order/page/freshness or payload identity. ETag lookup failures fail open and the query still executes. If provenance is not `ProjectionBacked`, or producer freshness is otherwise unknown and the request explicitly requires freshness, the response fails closed with `query_projection_stale`.

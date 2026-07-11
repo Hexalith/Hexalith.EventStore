@@ -22,6 +22,7 @@ This page is for .NET developers integrating Hexalith.EventStore. Documentation 
 - [Event Envelope](concepts/event-envelope.md) — the 14-field metadata structure wrapping every domain event
 - [Event Versioning](concepts/event-versioning.md) — safely evolving event schemas over time
 - [Identity Scheme](concepts/identity-scheme.md) — the tenant:domain:aggregate-id addressing model
+- [Projection Lifecycle](concepts/projection-lifecycle.md) — authoritative projection operation states, transport rules, and default consumer policy
 
 ## Guides
 

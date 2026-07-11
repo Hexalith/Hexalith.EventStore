@@ -34,8 +34,13 @@ namespace Hexalith.EventStore.Server.Tests.Integration;
 public sealed class QueryResponseProvenancePersistenceTests(
     ActorBasedAuthWebApplicationFactory factory) : IClassFixture<ActorBasedAuthWebApplicationFactory>
 {
-    [Fact]
-    public async Task PersistedFreshness_TraversesRouterHandlerControllerAndGatewayClient()
+    [Theory]
+    [InlineData(-1, ProjectionLifecycleState.Current, false)]
+    [InlineData(-10, ProjectionLifecycleState.Stale, true)]
+    public async Task PersistedFreshness_TraversesRouterHandlerControllerAndGatewayClient(
+        int projectedMinutes,
+        ProjectionLifecycleState expectedLifecycle,
+        bool expectedIsStale)
     {
         const string StoreName = "test-readmodels";
         const string Key = "freshness:index";
@@ -47,7 +52,7 @@ public sealed class QueryResponseProvenancePersistenceTests(
         var store = new InMemoryReadModelStore();
         var persistedModel = new PersistedFreshnessReadModel(
             Value: 42,
-            ProjectedAt: now.AddMinutes(-10),
+            ProjectedAt: now.AddMinutes(projectedMinutes),
             ProjectionVersion: ExpectedVersion);
         await store.SaveAsync(StoreName, Key, persistedModel, TestContext.Current.CancellationToken);
 
@@ -123,8 +128,34 @@ public sealed class QueryResponseProvenancePersistenceTests(
         _ = result.Metadata.ShouldNotBeNull();
         result.Metadata.Provenance.ShouldBe(QueryResponseProvenance.ProjectionBacked);
         result.Metadata.ProjectionVersion.ShouldBe(ExpectedVersion);
-        result.Metadata.IsStale.ShouldBe(true);
+        result.Metadata.Lifecycle.ShouldBe(expectedLifecycle);
+        result.Metadata.IsStale.ShouldBe(expectedIsStale);
         JsonElement payload = result.Payload.ShouldNotBeNull();
         payload.GetProperty("Value").GetInt32().ShouldBe(42);
+
+        ReadModelEntry<PersistedFreshnessReadModel> persistedAfterUntypedQuery = await store
+            .GetAsync<PersistedFreshnessReadModel>(StoreName, Key, TestContext.Current.CancellationToken);
+        PersistedFreshnessReadModel modelAfterUntypedQuery = persistedAfterUntypedQuery.Value.ShouldNotBeNull();
+        modelAfterUntypedQuery.ProjectedAt.ShouldBe(persistedModel.ProjectedAt);
+        modelAfterUntypedQuery.ProjectionVersion.ShouldBe(ExpectedVersion);
+
+        EventStoreQueryResult<PersistedPayload> typedResult = await client.SubmitQueryAsync<PersistedPayload>(
+            request,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        _ = typedResult.Metadata.ShouldNotBeNull();
+        typedResult.Metadata.Provenance.ShouldBe(QueryResponseProvenance.ProjectionBacked);
+        typedResult.Metadata.Lifecycle.ShouldBe(expectedLifecycle);
+        typedResult.Metadata.ProjectionVersion.ShouldBe(ExpectedVersion);
+        typedResult.Metadata.IsStale.ShouldBe(expectedIsStale);
+        typedResult.Payload.ShouldNotBeNull().Value.ShouldBe(42);
+
+        ReadModelEntry<PersistedFreshnessReadModel> persistedAfterTypedQuery = await store
+            .GetAsync<PersistedFreshnessReadModel>(StoreName, Key, TestContext.Current.CancellationToken);
+        PersistedFreshnessReadModel modelAfterTypedQuery = persistedAfterTypedQuery.Value.ShouldNotBeNull();
+        modelAfterTypedQuery.ProjectedAt.ShouldBe(persistedModel.ProjectedAt);
+        modelAfterTypedQuery.ProjectionVersion.ShouldBe(ExpectedVersion);
     }
+
+    private sealed record PersistedPayload(int Value);
 }

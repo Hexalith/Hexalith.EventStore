@@ -46,6 +46,7 @@ public class EventStoreGatewayClientTests {
             var response = new HttpResponseMessage(HttpStatusCode.NotModified);
             response.Headers.ETag = new EntityTagHeaderValue("\"etag-1\"");
             response.Headers.Add("X-Hexalith-Query-Provenance", "ProjectionBacked");
+            response.Headers.Add(ProjectionLifecyclePolicy.HeaderName, "Current");
             return Task.FromResult(response);
         });
 
@@ -59,6 +60,7 @@ public class EventStoreGatewayClientTests {
         _ = result.Metadata.ShouldNotBeNull();
         result.Metadata.ETag.ShouldBe("etag-1");
         result.Metadata.IsNotModified.ShouldBe(true);
+        result.Metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Current);
         _ = observedRequest.ShouldNotBeNull();
         observedRequest.Headers.TryGetValues("If-None-Match", out IEnumerable<string>? values).ShouldBeTrue();
         _ = values.ShouldNotBeNull();
@@ -102,6 +104,7 @@ public class EventStoreGatewayClientTests {
               "payload": { "count": 3 },
               "metadata": {
                 "provenance": "ProjectionBacked",
+                "lifecycle": "Degraded",
                 "etag": "body-etag",
                 "isStale": true,
                 "isDegraded": true,
@@ -122,12 +125,14 @@ public class EventStoreGatewayClientTests {
             HttpResponseMessage response = Json(HttpStatusCode.OK, QueryJson);
             response.Headers.ETag = new EntityTagHeaderValue("\"gateway-etag\"");
             response.Headers.Add("X-Hexalith-Query-Provenance", "ProjectionBacked");
+            response.Headers.Add(ProjectionLifecyclePolicy.HeaderName, "Degraded");
             return Task.FromResult(response);
         });
         using HttpClient typedHttpClient = CreateClient(_ => {
             HttpResponseMessage response = Json(HttpStatusCode.OK, QueryJson);
             response.Headers.ETag = new EntityTagHeaderValue("\"gateway-etag\"");
             response.Headers.Add("X-Hexalith-Query-Provenance", "ProjectionBacked");
+            response.Headers.Add(ProjectionLifecyclePolicy.HeaderName, "Degraded");
             return Task.FromResult(response);
         });
 
@@ -145,6 +150,7 @@ public class EventStoreGatewayClientTests {
         typed.Metadata.IsDegraded.ShouldBe(untyped.Metadata.IsDegraded);
         typed.Metadata.ProjectionVersion.ShouldBe(untyped.Metadata.ProjectionVersion);
         typed.Metadata.Provenance.ShouldBe(untyped.Metadata.Provenance);
+        typed.Metadata.Lifecycle.ShouldBe(untyped.Metadata.Lifecycle);
         typed.Metadata.ServedAt.ShouldBe(untyped.Metadata.ServedAt);
         typed.Metadata.Paging.ShouldBe(untyped.Metadata.Paging);
         _ = typed.Metadata.WarningCodes.ShouldNotBeNull();
@@ -152,10 +158,11 @@ public class EventStoreGatewayClientTests {
         typed.Metadata.WarningCodes.ToArray().ShouldBe(untyped.Metadata.WarningCodes.ToArray());
         untyped.Metadata.ETag.ShouldBe("gateway-etag");
         untyped.Metadata.IsNotModified.ShouldBe(false);
-        untyped.Metadata.IsStale.ShouldBe(true);
+        untyped.Metadata.IsStale.ShouldBeNull();
         untyped.Metadata.IsDegraded.ShouldBe(true);
         untyped.Metadata.ProjectionVersion.ShouldBe("party-v3");
         untyped.Metadata.Provenance.ShouldBe(QueryResponseProvenance.ProjectionBacked);
+        untyped.Metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Degraded);
         _ = untyped.Metadata.Paging.ShouldNotBeNull();
         untyped.Metadata.Paging.NextCursor.ShouldBe("next-page");
         untyped.Metadata.Paging.TotalCount.ShouldBe(100);
@@ -170,6 +177,7 @@ public class EventStoreGatewayClientTests {
             var response = new HttpResponseMessage(HttpStatusCode.NotModified);
             response.Headers.ETag = new EntityTagHeaderValue("\"etag-typed\"");
             response.Headers.Add("X-Hexalith-Query-Provenance", "ProjectionBacked");
+            response.Headers.Add(ProjectionLifecyclePolicy.HeaderName, "Current");
             return Task.FromResult(response);
         });
 
@@ -184,6 +192,177 @@ public class EventStoreGatewayClientTests {
         result.Metadata.ETag.ShouldBe("etag-typed");
         result.Metadata.IsNotModified.ShouldBe(true);
         result.Metadata.Provenance.ShouldBe(QueryResponseProvenance.ProjectionBacked);
+        result.Metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Current);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("Unexpected")]
+    [InlineData("current")]
+    public async Task SubmitQueryAsync_WithUnsafeNotModifiedLifecycle_DefaultsUnknown(string? lifecycle) {
+        using HttpClient httpClient = CreateClient(_ => {
+            var response = new HttpResponseMessage(HttpStatusCode.NotModified);
+            response.Headers.ETag = new EntityTagHeaderValue("\"etag-lifecycle\"");
+            response.Headers.Add("X-Hexalith-Query-Provenance", "ProjectionBacked");
+            if (lifecycle is not null) {
+                response.Headers.Add(ProjectionLifecyclePolicy.HeaderName, lifecycle);
+            }
+
+            return Task.FromResult(response);
+        });
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        EventStoreQueryResult result = await client.SubmitQueryAsync(CreateQueryRequest(), "etag-lifecycle");
+
+        result.IsNotModified.ShouldBeTrue();
+        _ = result.Metadata.ShouldNotBeNull();
+        result.Metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Unknown);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SubmitQueryAsync_WithDuplicateNotModifiedLifecycle_DefaultsUnknown(bool conflicting) {
+        using HttpClient httpClient = CreateClient(_ => {
+            var response = new HttpResponseMessage(HttpStatusCode.NotModified);
+            response.Headers.ETag = new EntityTagHeaderValue("\"etag-lifecycle\"");
+            response.Headers.Add("X-Hexalith-Query-Provenance", "ProjectionBacked");
+            response.Headers.Add(
+                ProjectionLifecyclePolicy.HeaderName,
+                conflicting ? ["Current", "Stale"] : ["Current", "Current"]);
+            return Task.FromResult(response);
+        });
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        EventStoreQueryResult result = await client.SubmitQueryAsync(CreateQueryRequest(), "etag-lifecycle");
+
+        _ = result.Metadata.ShouldNotBeNull();
+        result.Metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Unknown);
+        result.Metadata.IsStale.ShouldBeNull();
+        result.Metadata.IsDegraded.ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData("Current", ProjectionLifecycleState.Current, false, null)]
+    [InlineData("Stale", ProjectionLifecycleState.Stale, true, null)]
+    [InlineData("Rebuilding", ProjectionLifecycleState.Rebuilding, null, null)]
+    [InlineData("Degraded", ProjectionLifecycleState.Degraded, null, true)]
+    [InlineData("Unavailable", ProjectionLifecycleState.Unavailable, null, null)]
+    [InlineData("LocalOnly", ProjectionLifecycleState.LocalOnly, null, null)]
+    public async Task SubmitQueryAsync_WithCanonicalNotModifiedLifecycle_ProjectsCompatibilityFields(
+        string lifecycle,
+        ProjectionLifecycleState expected,
+        bool? expectedIsStale,
+        bool? expectedIsDegraded) {
+        using HttpClient httpClient = CreateClient(_ => {
+            var response = new HttpResponseMessage(HttpStatusCode.NotModified);
+            response.Headers.ETag = new EntityTagHeaderValue("\"etag-lifecycle\"");
+            response.Headers.Add("X-Hexalith-Query-Provenance", "ProjectionBacked");
+            response.Headers.Add(ProjectionLifecyclePolicy.HeaderName, lifecycle);
+            return Task.FromResult(response);
+        });
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        EventStoreQueryResult result = await client.SubmitQueryAsync(CreateQueryRequest(), "etag-lifecycle");
+
+        _ = result.Metadata.ShouldNotBeNull();
+        result.Metadata.Lifecycle.ShouldBe(expected);
+        result.Metadata.IsStale.ShouldBe(expectedIsStale);
+        result.Metadata.IsDegraded.ShouldBe(expectedIsDegraded);
+    }
+
+    [Theory]
+    [InlineData("Current")]
+    [InlineData("Stale")]
+    [InlineData("Rebuilding")]
+    [InlineData("Degraded")]
+    [InlineData("Unavailable")]
+    [InlineData("LocalOnly")]
+    public async Task SubmitQueryAsync_WithAuthoritativeLifecycle_PreservesExactValue(string lifecycle) {
+        using HttpClient httpClient = CreateClient(_ => {
+            HttpResponseMessage response = Json(
+                HttpStatusCode.OK,
+                $$$"""{"correlationId":"corr-lifecycle","payload":{"count":3},"metadata":{"provenance":"ProjectionBacked","lifecycle":"{{{lifecycle}}}"}}""");
+            response.Headers.Add("X-Hexalith-Query-Provenance", "ProjectionBacked");
+            response.Headers.Add(ProjectionLifecyclePolicy.HeaderName, lifecycle);
+            return Task.FromResult(response);
+        });
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        EventStoreQueryResult result = await client.SubmitQueryAsync(CreateQueryRequest());
+
+        _ = result.Metadata.ShouldNotBeNull();
+        result.Metadata.Lifecycle.ShouldBe(Enum.Parse<ProjectionLifecycleState>(lifecycle));
+    }
+
+    [Fact]
+    public async Task SubmitQueryAsync_WithMismatchedLifecycle_DefaultsUnknown() {
+        using HttpClient httpClient = CreateClient(_ => {
+            HttpResponseMessage response = Json(
+                HttpStatusCode.OK,
+                "{\"correlationId\":\"corr-lifecycle\",\"payload\":{\"count\":3},\"metadata\":{\"provenance\":\"ProjectionBacked\",\"lifecycle\":\"Current\",\"isStale\":false}}");
+            response.Headers.Add("X-Hexalith-Query-Provenance", "ProjectionBacked");
+            response.Headers.Add(ProjectionLifecyclePolicy.HeaderName, "Stale");
+            return Task.FromResult(response);
+        });
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        EventStoreQueryResult result = await client.SubmitQueryAsync(CreateQueryRequest());
+
+        _ = result.Metadata.ShouldNotBeNull();
+        result.Metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Unknown);
+        result.Metadata.IsStale.ShouldBe(false);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SubmitQueryAsync_WithDuplicateSuccessLifecycle_DefaultsUnknown(bool conflicting) {
+        using HttpClient httpClient = CreateClient(_ => {
+            HttpResponseMessage response = Json(
+                HttpStatusCode.OK,
+                "{\"correlationId\":\"corr-lifecycle\",\"payload\":{\"count\":3},\"metadata\":{\"provenance\":\"ProjectionBacked\",\"lifecycle\":\"Current\",\"isStale\":false}}");
+            response.Headers.Add("X-Hexalith-Query-Provenance", "ProjectionBacked");
+            response.Headers.Add(
+                ProjectionLifecyclePolicy.HeaderName,
+                conflicting ? ["Current", "Stale"] : ["Current", "Current"]);
+            return Task.FromResult(response);
+        });
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        EventStoreQueryResult result = await client.SubmitQueryAsync(CreateQueryRequest());
+
+        _ = result.Metadata.ShouldNotBeNull();
+        result.Metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Unknown);
+        result.Metadata.IsStale.ShouldBe(false);
+    }
+
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData("\"current\"", "current")]
+    [InlineData("1", "1")]
+    [InlineData("\"Unexpected\"", "Unexpected")]
+    public async Task SubmitQueryAsync_WithUnsafeSuccessLifecycle_DefaultsUnknown(
+        string? bodyLifecycle,
+        string? headerLifecycle) {
+        string lifecycleProperty = bodyLifecycle is null ? string.Empty : $",\"lifecycle\":{bodyLifecycle}";
+        using HttpClient httpClient = CreateClient(_ => {
+            HttpResponseMessage response = Json(
+                HttpStatusCode.OK,
+                $"{{\"correlationId\":\"corr-lifecycle\",\"payload\":{{\"count\":3}},\"metadata\":{{\"provenance\":\"ProjectionBacked\"{lifecycleProperty}}}}}");
+            response.Headers.Add("X-Hexalith-Query-Provenance", "ProjectionBacked");
+            if (headerLifecycle is not null) {
+                response.Headers.Add(ProjectionLifecyclePolicy.HeaderName, headerLifecycle);
+            }
+
+            return Task.FromResult(response);
+        });
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        EventStoreQueryResult result = await client.SubmitQueryAsync(CreateQueryRequest());
+
+        _ = result.Metadata.ShouldNotBeNull();
+        result.Metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Unknown);
     }
 
     [Theory]

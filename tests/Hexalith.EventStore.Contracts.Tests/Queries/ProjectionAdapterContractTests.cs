@@ -266,6 +266,176 @@ public class ProjectionAdapterContractTests {
     }
 
     [Fact]
+    public void ProjectionLifecycleState_PublicValues_AreExplicitAndStable() {
+        Enum.GetNames<ProjectionLifecycleState>()
+            .ShouldBe(["Unknown", "Current", "Stale", "Rebuilding", "Degraded", "Unavailable", "LocalOnly"]);
+        ((int)ProjectionLifecycleState.Unknown).ShouldBe(0);
+        ((int)ProjectionLifecycleState.Current).ShouldBe(1);
+        ((int)ProjectionLifecycleState.Stale).ShouldBe(2);
+        ((int)ProjectionLifecycleState.Rebuilding).ShouldBe(3);
+        ((int)ProjectionLifecycleState.Degraded).ShouldBe(4);
+        ((int)ProjectionLifecycleState.Unavailable).ShouldBe(5);
+        ((int)ProjectionLifecycleState.LocalOnly).ShouldBe(6);
+    }
+
+    [Theory]
+    [InlineData(ProjectionLifecycleState.Unknown, "\"Unknown\"")]
+    [InlineData(ProjectionLifecycleState.Current, "\"Current\"")]
+    [InlineData(ProjectionLifecycleState.Stale, "\"Stale\"")]
+    [InlineData(ProjectionLifecycleState.Rebuilding, "\"Rebuilding\"")]
+    [InlineData(ProjectionLifecycleState.Degraded, "\"Degraded\"")]
+    [InlineData(ProjectionLifecycleState.Unavailable, "\"Unavailable\"")]
+    [InlineData(ProjectionLifecycleState.LocalOnly, "\"LocalOnly\"")]
+    public void ProjectionLifecycleState_JsonRoundTrip_UsesCanonicalNames(
+        ProjectionLifecycleState lifecycle,
+        string expectedJson) {
+        string json = JsonSerializer.Serialize(lifecycle);
+
+        json.ShouldBe(expectedJson);
+        JsonSerializer.Deserialize<ProjectionLifecycleState>(json).ShouldBe(lifecycle);
+    }
+
+    [Theory]
+    [InlineData("null")]
+    [InlineData("1")]
+    [InlineData("{}")]
+    [InlineData("[]")]
+    [InlineData("\"current\"")]
+    [InlineData("\"Unexpected\"")]
+    public void ProjectionLifecycleState_InvalidJson_DefaultsToUnknown(string json) {
+        JsonSerializer.Deserialize<ProjectionLifecycleState>(json)
+            .ShouldBe(ProjectionLifecycleState.Unknown);
+    }
+
+    [Fact]
+    public void ProjectionLifecycleState_InvalidValueWrite_UsesUnknown() {
+        JsonSerializer.Serialize((ProjectionLifecycleState)999).ShouldBe("\"Unknown\"");
+    }
+
+    [Theory]
+    [InlineData(ProjectionLifecycleState.Unknown)]
+    [InlineData(ProjectionLifecycleState.Current)]
+    [InlineData(ProjectionLifecycleState.Stale)]
+    [InlineData(ProjectionLifecycleState.Rebuilding)]
+    [InlineData(ProjectionLifecycleState.Degraded)]
+    [InlineData(ProjectionLifecycleState.Unavailable)]
+    [InlineData(ProjectionLifecycleState.LocalOnly)]
+    public void ProjectionLifecycleState_DataContractRoundTrip_PreservesValue(
+        ProjectionLifecycleState lifecycle) {
+        var serializer = new DataContractSerializer(typeof(ProjectionLifecycleState));
+        using var stream = new MemoryStream();
+        serializer.WriteObject(stream, lifecycle);
+        stream.Position = 0;
+
+        var restored = (ProjectionLifecycleState?)serializer.ReadObject(stream);
+
+        restored.ShouldBe(lifecycle);
+    }
+
+    [Fact]
+    public void QueryResponseMetadata_DataContractLegacyShape_DefaultsLifecycleToUnknown() {
+        var original = new QueryResponseMetadata(IsStale: false) {
+            Lifecycle = ProjectionLifecycleState.Current,
+        };
+        var serializer = new DataContractSerializer(typeof(QueryResponseMetadata));
+        using var stream = new MemoryStream();
+        serializer.WriteObject(stream, original);
+        stream.Position = 0;
+        var document = XDocument.Parse(Encoding.UTF8.GetString(stream.ToArray()));
+        document.Descendants().Where(element => element.Name.LocalName == "Lifecycle").Remove();
+
+        using var legacyStream = new MemoryStream(Encoding.UTF8.GetBytes(document.ToString(SaveOptions.DisableFormatting)));
+        var restored = (QueryResponseMetadata?)serializer.ReadObject(legacyStream);
+
+        _ = restored.ShouldNotBeNull();
+        restored.Lifecycle.ShouldBe(ProjectionLifecycleState.Unknown);
+    }
+
+    [Theory]
+    [InlineData(QueryResponseProvenance.Unknown, ProjectionLifecycleState.Current, ProjectionLifecycleState.Unknown)]
+    [InlineData(QueryResponseProvenance.HandlerComputed, ProjectionLifecycleState.Current, ProjectionLifecycleState.Unknown)]
+    [InlineData(QueryResponseProvenance.ProjectionBacked, ProjectionLifecycleState.Current, ProjectionLifecycleState.Current)]
+    [InlineData(QueryResponseProvenance.ProjectionBacked, (ProjectionLifecycleState)999, ProjectionLifecycleState.Unknown)]
+    public void ProjectionLifecyclePolicy_Normalize_FailsClosed(
+        QueryResponseProvenance provenance,
+        ProjectionLifecycleState lifecycle,
+        ProjectionLifecycleState expected) {
+        ProjectionLifecyclePolicy.Normalize(lifecycle, provenance).ShouldBe(expected);
+    }
+
+    [Theory]
+    [InlineData(ProjectionLifecycleState.Unknown, true, true)]
+    [InlineData(ProjectionLifecycleState.Unknown, false, false)]
+    [InlineData(ProjectionLifecycleState.Current, true, false)]
+    [InlineData(ProjectionLifecycleState.Stale, false, true)]
+    [InlineData(ProjectionLifecycleState.Rebuilding, true, null)]
+    [InlineData(ProjectionLifecycleState.Degraded, true, null)]
+    [InlineData(ProjectionLifecycleState.Unavailable, true, null)]
+    [InlineData(ProjectionLifecycleState.LocalOnly, true, null)]
+    public void ProjectionLifecyclePolicy_ProjectIsStale_IsOneWay(
+        ProjectionLifecycleState lifecycle,
+        bool? fallback,
+        bool? expected) {
+        ProjectionLifecyclePolicy.ProjectIsStale(lifecycle, fallback).ShouldBe(expected);
+    }
+
+    public static TheoryData<ProjectionLifecycleState, bool?, bool?> ProjectIsDegradedCases {
+        get {
+            var data = new TheoryData<ProjectionLifecycleState, bool?, bool?>();
+            foreach (ProjectionLifecycleState lifecycle in Enum.GetValues<ProjectionLifecycleState>()) {
+                data.Add(lifecycle, false, lifecycle == ProjectionLifecycleState.Degraded ? true : false);
+                data.Add(lifecycle, true, true);
+            }
+
+            return data;
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(ProjectIsDegradedCases))]
+    public void ProjectionLifecyclePolicy_ProjectIsDegraded_PreservesAdditiveFallbackExceptDegraded(
+        ProjectionLifecycleState lifecycle,
+        bool? fallback,
+        bool? expected) {
+        ProjectionLifecyclePolicy.ProjectIsDegraded(lifecycle, fallback).ShouldBe(expected);
+    }
+
+    [Theory]
+    [InlineData(QueryResponseProvenance.ProjectionBacked, ProjectionLifecycleState.Current, true, true)]
+    [InlineData(QueryResponseProvenance.ProjectionBacked, ProjectionLifecycleState.Current, false, false)]
+    [InlineData(QueryResponseProvenance.Unknown, ProjectionLifecycleState.Current, true, false)]
+    [InlineData(QueryResponseProvenance.HandlerComputed, ProjectionLifecycleState.Current, true, false)]
+    [InlineData(QueryResponseProvenance.ProjectionBacked, ProjectionLifecycleState.Stale, true, false)]
+    [InlineData(QueryResponseProvenance.ProjectionBacked, ProjectionLifecycleState.LocalOnly, true, false)]
+    public void ProjectionLifecyclePolicy_CanMutate_DefaultsFailClosed(
+        QueryResponseProvenance provenance,
+        ProjectionLifecycleState lifecycle,
+        bool isAuthorized,
+        bool expected) {
+        ProjectionLifecyclePolicy.CanMutate(isAuthorized, provenance, lifecycle).ShouldBe(expected);
+    }
+
+    [Theory]
+    [InlineData(ProjectionLifecycleState.Unknown, false)]
+    [InlineData(ProjectionLifecycleState.Current, true)]
+    [InlineData(ProjectionLifecycleState.Stale, false)]
+    [InlineData(ProjectionLifecycleState.Rebuilding, false)]
+    [InlineData(ProjectionLifecycleState.Degraded, false)]
+    [InlineData(ProjectionLifecycleState.Unavailable, false)]
+    [InlineData(ProjectionLifecycleState.LocalOnly, false)]
+    public void ProjectionLifecyclePolicy_ProjectionBackedAuthorized_IsExhaustive(
+        ProjectionLifecycleState lifecycle,
+        bool expected) {
+        ProjectionLifecyclePolicy.IsProjectionConfirmed(
+            QueryResponseProvenance.ProjectionBacked,
+            lifecycle).ShouldBe(expected);
+        ProjectionLifecyclePolicy.CanMutate(
+            isAuthorized: true,
+            QueryResponseProvenance.ProjectionBacked,
+            lifecycle).ShouldBe(expected);
+    }
+
+    [Fact]
     public void QueryResult_SystemTextJsonRoundTrip_PreservesSuccessPayloadAndMetadata() {
         // Regression guard: the projection actor wire path (DefaultProjectionActorInvoker ->
         // ActorProxy.InvokeMethodAsync<QueryEnvelope, QueryResult>) uses System.Text.Json, NOT

@@ -92,7 +92,10 @@ public class FakeEventStoreGatewayClientTests {
         var metadata = new QueryResponseMetadata(
             ETag: "etag-query",
             IsNotModified: false,
-            Paging: new QueryPagingMetadata(25, Offset: 50));
+            Paging: new QueryPagingMetadata(25, Offset: 50)) {
+            Provenance = QueryResponseProvenance.ProjectionBacked,
+            Lifecycle = ProjectionLifecycleState.Degraded,
+        };
         FakeEventStoreGatewayClient fake = new FakeEventStoreGatewayClient()
             .ConfigureQuerySuccess(payload, "corr-query", "etag-query", metadata);
 
@@ -103,6 +106,7 @@ public class FakeEventStoreGatewayClientTests {
         response.Payload.Count.ShouldBe(11);
         response.ETag.ShouldBe("etag-query");
         response.Metadata.ShouldBe(metadata);
+        response.Metadata!.Lifecycle.ShouldBe(ProjectionLifecycleState.Degraded);
     }
 
     [Fact]
@@ -136,8 +140,12 @@ public class FakeEventStoreGatewayClientTests {
 
     [Fact]
     public async Task ConfigureQueryNotModified_ConfiguresCacheResult() {
+        var metadata = new QueryResponseMetadata(ETag: "different-etag", IsNotModified: false) {
+            Provenance = QueryResponseProvenance.ProjectionBacked,
+            Lifecycle = ProjectionLifecycleState.Current,
+        };
         FakeEventStoreGatewayClient fake = new FakeEventStoreGatewayClient()
-            .ConfigureQueryNotModified("etag-cache");
+            .ConfigureQueryNotModified("etag-cache", metadata);
 
         EventStoreQueryResult response = await fake.SubmitQueryAsync(CreateQueryRequest());
 
@@ -147,6 +155,16 @@ public class FakeEventStoreGatewayClientTests {
         _ = response.Metadata.ShouldNotBeNull();
         response.Metadata.ETag.ShouldBe("etag-cache");
         response.Metadata.IsNotModified.ShouldBe(true);
+        response.Metadata.ETag.ShouldBe(response.ETag);
+        response.Metadata.IsNotModified.ShouldBe(response.IsNotModified);
+        response.Metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Current);
+
+        EventStoreQueryResult<CounterDto> typed = await fake.SubmitQueryAsync<CounterDto>(CreateQueryRequest());
+        _ = typed.Metadata.ShouldNotBeNull();
+        typed.Metadata.Lifecycle.ShouldBe(metadata.Lifecycle);
+        typed.Metadata.Provenance.ShouldBe(metadata.Provenance);
+        typed.Metadata.ETag.ShouldBe(typed.ETag);
+        typed.Metadata.IsNotModified.ShouldBe(typed.IsNotModified);
     }
 
     [Fact]

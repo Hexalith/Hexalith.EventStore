@@ -40,4 +40,10 @@ public sealed record QueryResponseMetadata(
     /// </summary>
     [DataMember]
     public QueryResponseProvenance Provenance { get; init; } = QueryResponseProvenance.Unknown;
+
+    /// <summary>
+    /// Gets authoritative projection lifecycle evidence for projection-backed responses.
+    /// </summary>
+    [DataMember]
+    public ProjectionLifecycleState Lifecycle { get; init; } = ProjectionLifecycleState.Unknown;
 }

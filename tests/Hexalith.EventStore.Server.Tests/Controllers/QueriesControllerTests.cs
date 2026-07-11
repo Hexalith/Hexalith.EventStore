@@ -326,7 +326,10 @@ public class QueriesControllerTests {
         string testETag = GenerateTestETag();
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult());
+            .Returns(CreateProjectionResult(
+                metadata: new QueryResponseMetadata {
+                    Lifecycle = ProjectionLifecycleState.Current,
+                }));
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
             .Returns(testETag);
@@ -340,7 +343,37 @@ public class QueriesControllerTests {
         StatusCodeResult statusResult = actionResult.ShouldBeOfType<StatusCodeResult>();
         statusResult.StatusCode.ShouldBe(304);
         controller.Response.Headers.ETag.ToString().ShouldBe($"\"{testETag}\"");
+        controller.Response.Headers[ProjectionLifecyclePolicy.HeaderName].ToString().ShouldBe("Current");
         _ = await mediator.Received(1).Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(ProjectionLifecycleState.Rebuilding)]
+    [InlineData(ProjectionLifecycleState.Degraded)]
+    [InlineData(ProjectionLifecycleState.Unavailable)]
+    [InlineData(ProjectionLifecycleState.LocalOnly)]
+    public async Task Submit_IfNoneMatchMatches_OperationalLifecycleEmitsCanonicalHeader(
+        ProjectionLifecycleState lifecycle) {
+        string testETag = GenerateTestETag();
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(CreateProjectionResult(
+                metadata: new QueryResponseMetadata(IsStale: false, IsDegraded: false) {
+                    Lifecycle = lifecycle,
+                }));
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
+            .Returns(testETag);
+        QueriesController controller = CreateController(mediator, eTagService);
+        controller.Response.Headers[ProjectionLifecyclePolicy.HeaderName] = "Current";
+
+        IActionResult actionResult = await controller.Submit(
+            CreateTestRequest(),
+            $"\"{testETag}\"",
+            CancellationToken.None);
+
+        actionResult.ShouldBeOfType<StatusCodeResult>().StatusCode.ShouldBe(StatusCodes.Status304NotModified);
+        controller.Response.Headers[ProjectionLifecyclePolicy.HeaderName].ToString().ShouldBe(lifecycle.ToString());
     }
 
     [Fact]
@@ -380,6 +413,7 @@ public class QueriesControllerTests {
                     WarningCodes: [QueryWarningCodes.DegradedSearch])
                 {
                     Provenance = QueryResponseProvenance.HandlerComputed,
+                    Lifecycle = ProjectionLifecycleState.Current,
                 }));
         IETagService eTagService = Substitute.For<IETagService>();
         _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
@@ -400,8 +434,10 @@ public class QueriesControllerTests {
             Arg.Any<CancellationToken>());
         controller.Response.Headers.ETag.ToString().ShouldBeEmpty();
         controller.Response.Headers["X-Hexalith-Query-Provenance"].ToString().ShouldBe("HandlerComputed");
+        controller.Response.Headers[ProjectionLifecyclePolicy.HeaderName].ToString().ShouldBeEmpty();
         _ = response.Metadata.ShouldNotBeNull();
         response.Metadata.Provenance.ShouldBe(QueryResponseProvenance.HandlerComputed);
+        response.Metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Unknown);
         response.Metadata.ETag.ShouldBeNull();
         response.Metadata.IsNotModified.ShouldBeNull();
         response.Metadata.IsStale.ShouldBeNull();
@@ -425,6 +461,7 @@ public class QueriesControllerTests {
                 }));
         IETagService eTagService = Substitute.For<IETagService>();
         QueriesController controller = CreateController(mediator, eTagService);
+        controller.Response.Headers[ProjectionLifecyclePolicy.HeaderName] = "Stale";
 
         IActionResult actionResult = await controller.Submit(CreateTestRequest(), null, CancellationToken.None);
 
@@ -440,6 +477,53 @@ public class QueriesControllerTests {
         response.Metadata.IsNotModified.ShouldBeNull();
         response.Metadata.ProjectionVersion.ShouldBeNull();
         response.Metadata.IsStale.ShouldBeNull();
+        controller.Response.Headers[ProjectionLifecyclePolicy.HeaderName].ToString().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Submit_ProjectionBackedOperationalLifecycle_EmitsCanonicalHeader() {
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(CreateProjectionResult(
+                metadata: new QueryResponseMetadata(IsStale: false, IsDegraded: false) {
+                    Lifecycle = ProjectionLifecycleState.Degraded,
+                }));
+        QueriesController controller = CreateController(mediator);
+        controller.Response.Headers[ProjectionLifecyclePolicy.HeaderName] = "Current";
+
+        IActionResult actionResult = await controller.Submit(CreateTestRequest(), null, CancellationToken.None);
+
+        SubmitQueryResponse response = actionResult.ShouldBeOfType<OkObjectResult>()
+            .Value.ShouldBeOfType<SubmitQueryResponse>();
+        _ = response.Metadata.ShouldNotBeNull();
+        response.Metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Degraded);
+        response.Metadata.IsStale.ShouldBeNull();
+        response.Metadata.IsDegraded.ShouldBe(true);
+        controller.Response.Headers[ProjectionLifecyclePolicy.HeaderName].ToString().ShouldBe("Degraded");
+    }
+
+    [Theory]
+    [InlineData(ProjectionLifecycleState.Unknown)]
+    [InlineData((ProjectionLifecycleState)99)]
+    public async Task Submit_UnknownOrInvalidLifecycle_NormalizesToUnknownAndOmitsHeader(
+        ProjectionLifecycleState lifecycle) {
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(CreateProjectionResult(
+                metadata: new QueryResponseMetadata(IsStale: false) {
+                    Lifecycle = lifecycle,
+                }));
+        QueriesController controller = CreateController(mediator);
+        controller.Response.Headers[ProjectionLifecyclePolicy.HeaderName] = "Current";
+
+        IActionResult actionResult = await controller.Submit(CreateTestRequest(), null, CancellationToken.None);
+
+        SubmitQueryResponse response = actionResult.ShouldBeOfType<OkObjectResult>()
+            .Value.ShouldBeOfType<SubmitQueryResponse>();
+        _ = response.Metadata.ShouldNotBeNull();
+        response.Metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Unknown);
+        response.Metadata.IsStale.ShouldBe(false);
+        controller.Response.Headers[ProjectionLifecyclePolicy.HeaderName].ToString().ShouldBeEmpty();
     }
 
     [Fact]
@@ -1333,6 +1417,48 @@ public class QueriesControllerTests {
         SubmitQueryResponse response = okResult.Value.ShouldBeOfType<SubmitQueryResponse>();
         _ = response.Metadata.ShouldNotBeNull();
         response.Metadata.IsStale.ShouldBe(false);
+    }
+
+    [Fact]
+    public async Task Submit_FreshnessPolicyWithCurrentLifecycle_IgnoresContradictoryLegacyStale() {
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(CreateProjectionResult(
+                metadata: new QueryResponseMetadata(IsStale: true) {
+                    Lifecycle = ProjectionLifecycleState.Current,
+                }));
+        QueriesController controller = CreateController(mediator);
+        SubmitQueryRequest request = CreateTestRequest() with {
+            Freshness = new QueryFreshnessPolicy(RequireFresh: true),
+        };
+
+        IActionResult actionResult = await controller.Submit(request, null, CancellationToken.None);
+
+        SubmitQueryResponse response = actionResult.ShouldBeOfType<OkObjectResult>()
+            .Value.ShouldBeOfType<SubmitQueryResponse>();
+        _ = response.Metadata.ShouldNotBeNull();
+        response.Metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Current);
+        response.Metadata.IsStale.ShouldBe(false);
+    }
+
+    [Fact]
+    public async Task Submit_FreshnessPolicyWithRebuildingLifecycle_FailsDespiteLegacyCurrent() {
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(CreateProjectionResult(
+                metadata: new QueryResponseMetadata(IsStale: false) {
+                    Lifecycle = ProjectionLifecycleState.Rebuilding,
+                }));
+        QueriesController controller = CreateController(mediator);
+        SubmitQueryRequest request = CreateTestRequest() with {
+            Freshness = new QueryFreshnessPolicy(RequireFresh: true),
+        };
+
+        QueryExecutionFailedException exception = await Should.ThrowAsync<QueryExecutionFailedException>(
+            () => controller.Submit(request, null, CancellationToken.None));
+
+        exception.ReasonCode.ShouldBe(QueryProblemReasonCodes.ProjectionStale);
+        controller.Response.Headers[ProjectionLifecyclePolicy.HeaderName].ToString().ShouldBeEmpty();
     }
 
     [Fact]

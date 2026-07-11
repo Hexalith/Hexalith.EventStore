@@ -161,6 +161,8 @@ Install **Contracts** + **Client**.
 
 Contracts gives you the gateway request and response DTOs for `POST /api/v1/commands` and `POST /api/v1/queries`, including public query policy and response metadata types. Client gives you `IEventStoreGatewayClient`, which handles HTTP posting, `If-None-Match`, `304 Not Modified`, ProblemDetails mapping, typed query payloads, metadata propagation, and cancellation.
 
+`QueryResponseMetadata.Lifecycle` carries the provenance-gated projection lifecycle. Use the Contracts-owned `ProjectionLifecyclePolicy` for the default consumer rule: only otherwise-authorized, projection-backed `Current` evidence permits mutation. Every other state fails closed by default, and `LocalOnly` is never projection-confirmed. The Client reconciles the body with `X-Hexalith-Projection-Lifecycle` on `200` and recovers bodyless `304` lifecycle only from that header.
+
 ```bash
 $ dotnet add package Hexalith.EventStore.Contracts
 $ dotnet add package Hexalith.EventStore.Client
@@ -202,6 +204,7 @@ Contracts contains the public generic query boundary:
 - `IProjectionActor` - the implementation-neutral projection query method contract EventStore invokes by method name.
 - `QueryEnvelope` - the actor wire envelope with tenant, domain, aggregate, query type, payload bytes, correlation, user, and optional entity ID.
 - `QueryResult` - the actor response with success flag, UTF-8 JSON payload bytes, error message, and optional projection type metadata.
+- `ProjectionLifecycleState` and `ProjectionLifecyclePolicy` - the lossless lifecycle contract and default fail-safe consumer policy.
 - `QueryAdapterFailureReason` - coarse adapter-edge categories such as `missing-payload`, `serialization-failure`, and `actor-response-mismatch`.
 
 ```bash

@@ -56,6 +56,7 @@ public sealed class RestApiGeneratedControllerErrorSemanticsTests
                     ])
                 {
                     Provenance = QueryResponseProvenance.ProjectionBacked,
+                    Lifecycle = ProjectionLifecycleState.Current,
                 },
             });
         };
@@ -70,6 +71,7 @@ public sealed class RestApiGeneratedControllerErrorSemanticsTests
         IHeaderDictionary headers = controller.HttpContext.Response.Headers;
         headers["ETag"].ToString().ShouldBe("\"strong-version\"");
         headers["X-Hexalith-Query-Provenance"].ToString().ShouldBe("ProjectionBacked");
+        headers[ProjectionLifecyclePolicy.HeaderName].ToString().ShouldBe("Current");
         headers["X-Hexalith-Projection-Version"].ToString().ShouldBe("42");
         headers["X-Hexalith-Served-At"].ToString().ShouldBe(servedAt.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
         headers["X-Hexalith-Is-Stale"].ToString().ShouldBe("false");
@@ -82,10 +84,41 @@ public sealed class RestApiGeneratedControllerErrorSemanticsTests
         headers["X-Hexalith-Next-Cursor"].ToString().ShouldBe("opaque-next");
     }
 
+    [Theory]
+    [InlineData(ProjectionLifecycleState.Current)]
+    [InlineData(ProjectionLifecycleState.Stale)]
+    [InlineData(ProjectionLifecycleState.Rebuilding)]
+    [InlineData(ProjectionLifecycleState.Degraded)]
+    [InlineData(ProjectionLifecycleState.Unavailable)]
+    [InlineData(ProjectionLifecycleState.LocalOnly)]
+    public async Task QueryAction_ProjectionLifecycle_EmitsExactCanonicalName(ProjectionLifecycleState lifecycle)
+    {
+        RestApiGeneratedController controller = CreateController();
+        controller.Gateway.QueryHandler = (_, _, _) =>
+            Task.FromResult(new EventStoreQueryResult(
+                "01KTESTQUERY200000000000",
+                JsonSerializer.SerializeToElement(new { counterId = "counter-1" }),
+                IsNotModified: false,
+                ETag: null)
+            {
+                Metadata = new QueryResponseMetadata
+                {
+                    Provenance = QueryResponseProvenance.ProjectionBacked,
+                    Lifecycle = lifecycle,
+                },
+            });
+
+        _ = (await InvokeQueryAsync(controller)).ShouldBeOfType<OkObjectResult>();
+
+        controller.HttpContext.Response.Headers[ProjectionLifecyclePolicy.HeaderName]
+            .ToString().ShouldBe(lifecycle.ToString());
+    }
+
     [Fact]
     public async Task QueryAction_SuccessWithoutMetadata_DoesNotSynthesizeMetadataHeaders()
     {
         RestApiGeneratedController controller = CreateController();
+        controller.HttpContext.Response.Headers[ProjectionLifecyclePolicy.HeaderName] = "Current";
         controller.Gateway.QueryHandler = static (request, ifNoneMatch, gateway) =>
         {
             gateway.LastQueryRequest = request;
@@ -102,6 +135,67 @@ public sealed class RestApiGeneratedControllerErrorSemanticsTests
 
         _ = result.ShouldBeOfType<OkObjectResult>();
         AssertMetadataHeadersAbsent(controller.HttpContext.Response.Headers);
+    }
+
+    [Theory]
+    [InlineData(ProjectionLifecycleState.Unknown)]
+    [InlineData((ProjectionLifecycleState)99)]
+    public async Task QueryAction_UnknownOrInvalidLifecycle_RemovesPreExistingHeader(
+        ProjectionLifecycleState lifecycle)
+    {
+        RestApiGeneratedController controller = CreateController();
+        controller.HttpContext.Response.Headers[ProjectionLifecyclePolicy.HeaderName] = "Stale";
+        controller.Gateway.QueryHandler = (_, _, _) =>
+            Task.FromResult(new EventStoreQueryResult(
+                "01KTESTQUERY200000000000",
+                JsonSerializer.SerializeToElement(new { counterId = "counter-1" }),
+                IsNotModified: false,
+                ETag: null)
+            {
+                Metadata = new QueryResponseMetadata
+                {
+                    Provenance = QueryResponseProvenance.ProjectionBacked,
+                    Lifecycle = lifecycle,
+                },
+            });
+
+        _ = (await InvokeQueryAsync(controller)).ShouldBeOfType<OkObjectResult>();
+
+        controller.HttpContext.Response.Headers.ContainsKey(ProjectionLifecyclePolicy.HeaderName).ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData(ProjectionLifecycleState.Current, true, false, "false", "false")]
+    [InlineData(ProjectionLifecycleState.Stale, false, true, "true", "true")]
+    [InlineData(ProjectionLifecycleState.Rebuilding, false, true, null, "true")]
+    [InlineData(ProjectionLifecycleState.Degraded, false, false, null, "true")]
+    public async Task QueryAction_Lifecycle_NormalizesCompatibilityHeaders(
+        ProjectionLifecycleState lifecycle,
+        bool staleFallback,
+        bool degradedFallback,
+        string? expectedStale,
+        string expectedDegraded)
+    {
+        RestApiGeneratedController controller = CreateController();
+        controller.Gateway.QueryHandler = (_, _, _) =>
+            Task.FromResult(new EventStoreQueryResult(
+                "01KTESTQUERY200000000000",
+                JsonSerializer.SerializeToElement(new { counterId = "counter-1" }),
+                IsNotModified: false,
+                ETag: null)
+            {
+                Metadata = new QueryResponseMetadata(IsStale: staleFallback, IsDegraded: degradedFallback)
+                {
+                    Provenance = QueryResponseProvenance.ProjectionBacked,
+                    Lifecycle = lifecycle,
+                },
+            });
+
+        _ = (await InvokeQueryAsync(controller)).ShouldBeOfType<OkObjectResult>();
+
+        IHeaderDictionary headers = controller.HttpContext.Response.Headers;
+        headers["X-Hexalith-Is-Stale"].ToString().ShouldBe(expectedStale ?? string.Empty);
+        headers["X-Hexalith-Is-Degraded"].ToString().ShouldBe(expectedDegraded);
     }
 
     [Fact]
@@ -159,6 +253,7 @@ public sealed class RestApiGeneratedControllerErrorSemanticsTests
                     WarningCodes: [QueryWarningCodes.DegradedSearch])
                 {
                     Provenance = provenance,
+                    Lifecycle = ProjectionLifecycleState.Current,
                 },
             });
         };
@@ -171,6 +266,7 @@ public sealed class RestApiGeneratedControllerErrorSemanticsTests
         headers.ContainsKey("ETag").ShouldBeFalse();
         headers.ContainsKey("X-Hexalith-Projection-Version").ShouldBeFalse();
         headers.ContainsKey("X-Hexalith-Is-Stale").ShouldBeFalse();
+        headers.ContainsKey(ProjectionLifecyclePolicy.HeaderName).ShouldBeFalse();
         headers["X-Hexalith-Served-At"].ToString().ShouldBe(servedAt.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
         headers["X-Hexalith-Is-Degraded"].ToString().ShouldBe("true");
         headers["X-Hexalith-Warning-Codes"].ToString().ShouldBe(QueryWarningCodes.DegradedSearch);
@@ -653,6 +749,7 @@ public sealed class RestApiGeneratedControllerErrorSemanticsTests
                     WarningCodes: [QueryWarningCodes.DegradedSearch])
                 {
                     Provenance = QueryResponseProvenance.ProjectionBacked,
+                    Lifecycle = ProjectionLifecycleState.Degraded,
                 },
             });
         };
@@ -669,9 +766,10 @@ public sealed class RestApiGeneratedControllerErrorSemanticsTests
         IHeaderDictionary headers = controller.HttpContext.Response.Headers;
         headers["ETag"].ToString().ShouldBe("\"strong-version\"");
         headers["X-Hexalith-Query-Provenance"].ToString().ShouldBe("ProjectionBacked");
+        headers[ProjectionLifecyclePolicy.HeaderName].ToString().ShouldBe("Degraded");
         headers["X-Hexalith-Projection-Version"].ToString().ShouldBe("42");
         headers["X-Hexalith-Served-At"].ToString().ShouldBe(servedAt.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
-        headers["X-Hexalith-Is-Stale"].ToString().ShouldBe("false");
+        headers["X-Hexalith-Is-Stale"].ToString().ShouldBeEmpty();
         headers["X-Hexalith-Is-Degraded"].ToString().ShouldBe("true");
         headers["X-Hexalith-Warning-Codes"].ToString().ShouldBe("degraded_search");
         headers["X-Hexalith-Page-Size"].ToString().ShouldBe("25");
@@ -958,6 +1056,7 @@ public sealed class RestApiGeneratedControllerErrorSemanticsTests
     private static void AssertMetadataHeadersAbsent(IHeaderDictionary headers)
     {
         headers.ContainsKey("ETag").ShouldBeFalse();
+        headers.ContainsKey(ProjectionLifecyclePolicy.HeaderName).ShouldBeFalse();
         headers.ContainsKey("X-Hexalith-Projection-Version").ShouldBeFalse();
         headers.ContainsKey("X-Hexalith-Served-At").ShouldBeFalse();
         headers.ContainsKey("X-Hexalith-Is-Stale").ShouldBeFalse();

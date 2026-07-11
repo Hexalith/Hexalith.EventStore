@@ -143,11 +143,18 @@ public partial class QueryRouter : IQueryRouter {
         }
     }
 
-    private static QueryResponseMetadata StampProjectionBacked(QueryResponseMetadata? metadata)
-        => (metadata ?? new QueryResponseMetadata()) with
-        {
+    private static QueryResponseMetadata StampProjectionBacked(QueryResponseMetadata? metadata) {
+        QueryResponseMetadata source = metadata ?? new QueryResponseMetadata();
+        ProjectionLifecycleState lifecycle = ProjectionLifecyclePolicy.Normalize(
+            source.Lifecycle,
+            QueryResponseProvenance.ProjectionBacked);
+        return source with {
             Provenance = QueryResponseProvenance.ProjectionBacked,
+            Lifecycle = lifecycle,
+            IsStale = ProjectionLifecyclePolicy.ProjectIsStale(lifecycle, source.IsStale),
+            IsDegraded = ProjectionLifecyclePolicy.ProjectIsDegraded(lifecycle, source.IsDegraded),
         };
+    }
 
     private static bool IsProjectionActorNotFound(Exception exception) {
         ArgumentNullException.ThrowIfNull(exception);

@@ -20,7 +20,11 @@ namespace Hexalith.EventStore.Client.Gateway;
 public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
     internal static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        Converters = { new JsonStringEnumConverter() },
+        Converters = {
+            new ProjectionLifecycleStateJsonConverter(),
+            new QueryResponseProvenanceJsonConverter(),
+            new JsonStringEnumConverter(),
+        },
     };
 
     private readonly HttpClient _httpClient;
@@ -147,9 +151,18 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
                     detail: "Not-modified query response requires projection-backed provenance and a strong ETag.");
             }
 
+            ProjectionLifecycleState lifecycle = ProjectionLifecyclePolicy.Normalize(
+                GetLifecycleHeader(response),
+                provenance);
+
             return new EventStoreQueryResult(null, null, IsNotModified: true, notModifiedETag) {
-                Metadata = new QueryResponseMetadata(ETag: notModifiedETag, IsNotModified: true) {
+                Metadata = new QueryResponseMetadata(
+                    ETag: notModifiedETag,
+                    IsNotModified: true,
+                    IsStale: ProjectionLifecyclePolicy.ProjectIsStale(lifecycle),
+                    IsDegraded: ProjectionLifecyclePolicy.ProjectIsDegraded(lifecycle)) {
                     Provenance = QueryResponseProvenance.ProjectionBacked,
+                    Lifecycle = lifecycle,
                 },
             };
         }
@@ -181,6 +194,7 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
         QueryResponseMetadata metadata = NormalizeMetadata(
             result.Metadata,
             GetProvenanceHeader(response),
+            GetLifecycleHeader(response),
             eTag,
             isNotModified: false);
 
@@ -301,14 +315,27 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
     private static QueryResponseMetadata NormalizeMetadata(
         QueryResponseMetadata? metadata,
         QueryResponseProvenance headerProvenance,
+        ProjectionLifecycleState headerLifecycle,
         string? eTag,
         bool isNotModified) {
         QueryResponseProvenance bodyProvenance = metadata?.Provenance ?? QueryResponseProvenance.Unknown;
         QueryResponseProvenance provenance = bodyProvenance == headerProvenance
             ? bodyProvenance
             : QueryResponseProvenance.Unknown;
+        ProjectionLifecycleState bodyLifecycle = ProjectionLifecyclePolicy.Normalize(
+            metadata?.Lifecycle ?? ProjectionLifecycleState.Unknown,
+            provenance);
+        ProjectionLifecycleState normalizedHeaderLifecycle = ProjectionLifecyclePolicy.Normalize(
+            headerLifecycle,
+            provenance);
+        ProjectionLifecycleState lifecycle = bodyLifecycle == normalizedHeaderLifecycle
+            ? bodyLifecycle
+            : ProjectionLifecycleState.Unknown;
         QueryResponseMetadata normalized = (metadata ?? new QueryResponseMetadata()) with {
             Provenance = provenance,
+            Lifecycle = lifecycle,
+            IsStale = ProjectionLifecyclePolicy.ProjectIsStale(lifecycle, metadata?.IsStale),
+            IsDegraded = ProjectionLifecyclePolicy.ProjectIsDegraded(lifecycle, metadata?.IsDegraded),
         };
 
         return provenance == QueryResponseProvenance.ProjectionBacked
@@ -321,6 +348,7 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
                 IsNotModified = null,
                 IsStale = null,
                 ProjectionVersion = null,
+                Lifecycle = ProjectionLifecycleState.Unknown,
             };
     }
 
@@ -338,6 +366,27 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
             nameof(QueryResponseProvenance.ProjectionBacked) => QueryResponseProvenance.ProjectionBacked,
             nameof(QueryResponseProvenance.HandlerComputed) => QueryResponseProvenance.HandlerComputed,
             _ => QueryResponseProvenance.Unknown,
+        };
+    }
+
+    private static ProjectionLifecycleState GetLifecycleHeader(HttpResponseMessage response) {
+        if (!response.Headers.TryGetValues(ProjectionLifecyclePolicy.HeaderName, out IEnumerable<string>? values)) {
+            return ProjectionLifecycleState.Unknown;
+        }
+
+        string[] lifecycleValues = values.ToArray();
+        if (lifecycleValues.Length != 1) {
+            return ProjectionLifecycleState.Unknown;
+        }
+
+        return lifecycleValues[0] switch {
+            nameof(ProjectionLifecycleState.Current) => ProjectionLifecycleState.Current,
+            nameof(ProjectionLifecycleState.Stale) => ProjectionLifecycleState.Stale,
+            nameof(ProjectionLifecycleState.Rebuilding) => ProjectionLifecycleState.Rebuilding,
+            nameof(ProjectionLifecycleState.Degraded) => ProjectionLifecycleState.Degraded,
+            nameof(ProjectionLifecycleState.Unavailable) => ProjectionLifecycleState.Unavailable,
+            nameof(ProjectionLifecycleState.LocalOnly) => ProjectionLifecycleState.LocalOnly,
+            _ => ProjectionLifecycleState.Unknown,
         };
     }
 

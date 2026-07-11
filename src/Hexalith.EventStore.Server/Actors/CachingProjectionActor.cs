@@ -199,6 +199,7 @@ public abstract partial class CachingProjectionActor(
             : metadata with {
                 IsStale = null,
                 ServedAt = null,
+                Lifecycle = ProjectionLifecycleState.Unknown,
             };
 
     private static string? ComputePagingChecksum(QueryPagingOptions? paging)

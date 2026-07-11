@@ -125,6 +125,10 @@ public partial class QueriesController(
             && ETagMatches(ifNoneMatch, currentETag);
 
         Response.Headers["X-Hexalith-Query-Provenance"] = metadata.Provenance.ToString();
+        _ = Response.Headers.Remove(ProjectionLifecyclePolicy.HeaderName);
+        if (metadata.Lifecycle != ProjectionLifecycleState.Unknown) {
+            Response.Headers[ProjectionLifecyclePolicy.HeaderName] = metadata.Lifecycle.ToString();
+        }
 
         if (currentETag is not null) {
             Response.Headers.ETag = $"\"{currentETag}\"";
@@ -171,8 +175,14 @@ public partial class QueriesController(
     }
 
     private static QueryResponseMetadata NormalizeProducerMetadata(QueryResponseMetadata? metadata) {
-        QueryResponseMetadata normalized = (metadata ?? new QueryResponseMetadata()) with {
-            Provenance = NormalizeProvenance(metadata?.Provenance ?? QueryResponseProvenance.Unknown),
+        QueryResponseMetadata source = metadata ?? new QueryResponseMetadata();
+        QueryResponseProvenance provenance = NormalizeProvenance(source.Provenance);
+        ProjectionLifecycleState lifecycle = ProjectionLifecyclePolicy.Normalize(source.Lifecycle, provenance);
+        QueryResponseMetadata normalized = source with {
+            Provenance = provenance,
+            Lifecycle = lifecycle,
+            IsStale = ProjectionLifecyclePolicy.ProjectIsStale(lifecycle, source.IsStale),
+            IsDegraded = ProjectionLifecyclePolicy.ProjectIsDegraded(lifecycle, source.IsDegraded),
         };
         return normalized.Provenance == QueryResponseProvenance.ProjectionBacked
             ? normalized
@@ -208,6 +218,7 @@ public partial class QueriesController(
             Paging: producerMetadata?.Paging,
             WarningCodes: producerMetadata?.WarningCodes) {
             Provenance = producerMetadata?.Provenance ?? QueryResponseProvenance.Unknown,
+            Lifecycle = producerMetadata?.Lifecycle ?? ProjectionLifecycleState.Unknown,
         };
 
     private static void EnforceFreshnessPolicy(
@@ -232,12 +243,18 @@ public partial class QueriesController(
                 QueryProblemReasonCodes.ProjectionStale);
         }
 
-        if (metadata.IsStale == false
+        bool isCurrent = metadata.Lifecycle switch {
+            ProjectionLifecycleState.Current => true,
+            ProjectionLifecycleState.Unknown => metadata.IsStale == false,
+            _ => false,
+        };
+
+        if (isCurrent
             && request.Freshness?.MaxStaleness is null) {
             return;
         }
 
-        if (metadata.IsStale == false
+        if (isCurrent
             && request.Freshness?.MaxStaleness is { } maxStaleness
             && producerMetadata?.ServedAt is { } producerServedAt
             && servedAt - producerServedAt <= maxStaleness) {

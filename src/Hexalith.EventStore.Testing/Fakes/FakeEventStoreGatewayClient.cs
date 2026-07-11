@@ -130,10 +130,18 @@ public sealed class FakeEventStoreGatewayClient : IEventStoreGatewayClient {
     /// <summary>
     /// Configures the fake to return a not-modified query result.
     /// </summary>
-    public FakeEventStoreGatewayClient ConfigureQueryNotModified(string? eTag = null) {
+    /// <param name="eTag">The cache validator exposed by both the result and its metadata.</param>
+    /// <param name="metadata">Optional metadata whose stable evidence is preserved while cache fields are normalized.</param>
+    /// <returns>The configured fake.</returns>
+    public FakeEventStoreGatewayClient ConfigureQueryNotModified(
+        string? eTag = null,
+        QueryResponseMetadata? metadata = null) {
         QueryException = null;
         QueryResult = new EventStoreQueryResult(null, null, IsNotModified: true, eTag) {
-            Metadata = new QueryResponseMetadata(ETag: eTag, IsNotModified: true),
+            Metadata = (metadata ?? new QueryResponseMetadata()) with {
+                ETag = eTag,
+                IsNotModified = true,
+            },
         };
         return this;
     }

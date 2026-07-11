@@ -73,6 +73,7 @@ public class SubmitQueryHandlerTests {
             ProjectionVersion: "orders-v7",
             Paging: new QueryPagingMetadata(PageSize: 25, Offset: 50)) {
             Provenance = QueryResponseProvenance.ProjectionBacked,
+            Lifecycle = ProjectionLifecycleState.Degraded,
         };
         IQueryRouter router = Substitute.For<IQueryRouter>();
         _ = router.RouteQueryAsync(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
@@ -91,9 +92,37 @@ public class SubmitQueryHandlerTests {
         // Assert
         result.Metadata.ShouldBe(metadata);
         result.Metadata!.Provenance.ShouldBe(QueryResponseProvenance.ProjectionBacked);
+        result.Metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Degraded);
         result.Metadata.ProjectionVersion.ShouldBe("orders-v7");
         _ = result.Metadata.Paging.ShouldNotBeNull();
         result.Metadata.Paging.Offset.ShouldBe(50);
+    }
+
+    [Theory]
+    [InlineData(ProjectionLifecycleState.Rebuilding)]
+    [InlineData(ProjectionLifecycleState.Degraded)]
+    [InlineData(ProjectionLifecycleState.Unavailable)]
+    [InlineData(ProjectionLifecycleState.LocalOnly)]
+    public async Task Handle_OperationalLifecycle_PreservesExactValue(
+        ProjectionLifecycleState lifecycle) {
+        JsonElement payload = JsonSerializer.SerializeToElement(new { value = 42 });
+        var metadata = new QueryResponseMetadata {
+            Provenance = QueryResponseProvenance.ProjectionBacked,
+            Lifecycle = lifecycle,
+        };
+        IQueryRouter router = Substitute.For<IQueryRouter>();
+        _ = router.RouteQueryAsync(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new QueryRouterResult(
+                Success: true,
+                Payload: payload,
+                NotFound: false,
+                ProjectionType: "counter",
+                Metadata: metadata));
+        var handler = new SubmitQueryHandler(router, NullLogger<SubmitQueryHandler>.Instance);
+
+        SubmitQueryResult result = await handler.Handle(CreateTestQuery(), CancellationToken.None);
+
+        result.Metadata.ShouldNotBeNull().Lifecycle.ShouldBe(lifecycle);
     }
 
     [Fact]

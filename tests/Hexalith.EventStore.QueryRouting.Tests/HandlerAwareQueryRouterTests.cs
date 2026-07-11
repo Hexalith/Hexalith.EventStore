@@ -39,6 +39,7 @@ public sealed class HandlerAwareQueryRouterTests {
             ProjectionVersion: "widget-v1",
             WarningCodes: [QueryWarningCodes.DegradedSearch]) {
             Provenance = QueryResponseProvenance.ProjectionBacked,
+            Lifecycle = ProjectionLifecycleState.Current,
         };
         _ = invoker.InvokeAsync(Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>())
             .Returns(QueryResult.FromPayload(payload, projectionType: "widget", metadata));
@@ -51,6 +52,7 @@ public sealed class HandlerAwareQueryRouterTests {
         result.ProjectionType.ShouldBeNull();
         _ = result.Metadata.ShouldNotBeNull();
         result.Metadata.Provenance.ShouldBe(QueryResponseProvenance.HandlerComputed);
+        result.Metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Unknown);
         result.Metadata.IsStale.ShouldBe(false);
         result.Metadata.ProjectionVersion.ShouldBe("widget-v1");
         result.Metadata.IsDegraded.ShouldBe(true);
