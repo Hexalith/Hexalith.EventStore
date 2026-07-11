@@ -33,7 +33,13 @@ public sealed class HandlerAwareQueryRouterTests {
         IQueryRouter inner = Substitute.For<IQueryRouter>();
         IDomainQueryInvoker invoker = Substitute.For<IDomainQueryInvoker>();
         JsonElement payload = JsonSerializer.SerializeToElement(new { value = 42 });
-        var metadata = new QueryResponseMetadata(IsStale: false, ProjectionVersion: "widget-v1");
+        var metadata = new QueryResponseMetadata(
+            IsStale: false,
+            IsDegraded: true,
+            ProjectionVersion: "widget-v1",
+            WarningCodes: [QueryWarningCodes.DegradedSearch]) {
+            Provenance = QueryResponseProvenance.ProjectionBacked,
+        };
         _ = invoker.InvokeAsync(Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>())
             .Returns(QueryResult.FromPayload(payload, projectionType: "widget", metadata));
 
@@ -42,8 +48,13 @@ public sealed class HandlerAwareQueryRouterTests {
         QueryRouterResult result = await router.RouteQueryAsync(Query("widget", "get-widget"));
 
         result.Success.ShouldBeTrue();
-        result.ProjectionType.ShouldBe("widget");
-        result.Metadata.ShouldBe(metadata);
+        result.ProjectionType.ShouldBeNull();
+        _ = result.Metadata.ShouldNotBeNull();
+        result.Metadata.Provenance.ShouldBe(QueryResponseProvenance.HandlerComputed);
+        result.Metadata.IsStale.ShouldBe(false);
+        result.Metadata.ProjectionVersion.ShouldBe("widget-v1");
+        result.Metadata.IsDegraded.ShouldBe(true);
+        result.Metadata.WarningCodes.ShouldBe([QueryWarningCodes.DegradedSearch]);
         await invoker.Received(1).InvokeAsync(Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>());
         await inner.DidNotReceive().RouteQueryAsync(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
     }

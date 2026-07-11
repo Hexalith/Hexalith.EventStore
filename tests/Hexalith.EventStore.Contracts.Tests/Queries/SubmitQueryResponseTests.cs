@@ -64,7 +64,9 @@ public class SubmitQueryResponseTests {
                 ProjectionVersion: "projection-v1",
                 ServedAt: servedAt,
                 Paging: new QueryPagingMetadata(PageSize: 25, Offset: 50, NextCursor: null, TotalCount: null, HasMore: false),
-                WarningCodes: [QueryWarningCodes.DegradedSearch]));
+                WarningCodes: [QueryWarningCodes.DegradedSearch]) {
+                Provenance = QueryResponseProvenance.ProjectionBacked,
+            });
 
         string json = JsonSerializer.Serialize(response, options);
         SubmitQueryResponse? roundTripped = JsonSerializer.Deserialize<SubmitQueryResponse>(json, options);
@@ -77,6 +79,7 @@ public class SubmitQueryResponseTests {
         _ = roundTripped.ShouldNotBeNull();
         _ = roundTripped.Metadata.ShouldNotBeNull();
         roundTripped.Metadata.ETag.ShouldBe("etag-1");
+        roundTripped.Metadata.Provenance.ShouldBe(QueryResponseProvenance.ProjectionBacked);
         roundTripped.Metadata.IsDegraded.ShouldBe(true);
         roundTripped.Metadata.ServedAt.ShouldBe(servedAt);
         _ = roundTripped.Metadata.Paging.ShouldNotBeNull();

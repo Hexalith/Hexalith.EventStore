@@ -111,7 +111,7 @@ public partial class QueryRouter : IQueryRouter {
                     Payload: payload,
                     NotFound: false,
                     ProjectionType: result.ProjectionType,
-                    Metadata: result.Metadata);
+                    Metadata: StampProjectionBacked(result.Metadata));
             }
             catch (JsonException) {
                 Log.QueryExecutionFailed(_logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, QueryAdapterFailureReason.SerializationFailure);
@@ -142,6 +142,12 @@ public partial class QueryRouter : IQueryRouter {
             return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: QueryAdapterFailureReason.ActorException);
         }
     }
+
+    private static QueryResponseMetadata StampProjectionBacked(QueryResponseMetadata? metadata)
+        => (metadata ?? new QueryResponseMetadata()) with
+        {
+            Provenance = QueryResponseProvenance.ProjectionBacked,
+        };
 
     private static bool IsProjectionActorNotFound(Exception exception) {
         ArgumentNullException.ThrowIfNull(exception);

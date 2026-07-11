@@ -68,56 +68,6 @@ public partial class QueriesController(
         await ValidateAuthorizationBeforeLookupAsync(request, userId, correlationId, cancellationToken)
             .ConfigureAwait(false);
 
-        // Gate 1: ETag pre-check — decode projection type from self-routing ETag
-        string? currentETag = null;
-        bool gate1Skipped = false;
-        bool skipConditionalPreCheck = HasExplicitPolicyInputs(request) || HasUnsafeQueryPayload(request);
-
-        if (skipConditionalPreCheck && !string.IsNullOrWhiteSpace(ifNoneMatch)) {
-            gate1Skipped = true;
-            Log.ETagPreCheckSkippedForPolicyInputs(logger, correlationId);
-        }
-        else if (!string.IsNullOrWhiteSpace(ifNoneMatch) && ifNoneMatch.AsSpan().Trim().SequenceEqual("*".AsSpan())) {
-            // Wildcard If-None-Match: skip Gate 1 entirely (no projection type to decode)
-            gate1Skipped = true;
-            Log.ETagPreCheckMiss(logger, correlationId, false, true);
-        }
-        else if (!string.IsNullOrWhiteSpace(ifNoneMatch)) {
-            // Decode self-routing ETag to determine projection type for ETag actor lookup.
-            // If the header contains decodable ETags for multiple projection types, skip Gate 1
-            // to avoid returning 304 based on a validator for a different projection.
-            HeaderProjectionTypeAnalysis analysis = AnalyzeHeaderProjectionTypes(ifNoneMatch);
-
-            if (analysis.HasMixedProjectionTypes) {
-                Log.MixedProjectionTypesSkipped(logger, correlationId);
-            }
-            else if (analysis.ProjectionType is not null) {
-                try {
-                    currentETag = await eTagService
-                        .GetCurrentETagAsync(analysis.ProjectionType, request.Tenant, cancellationToken)
-                        .ConfigureAwait(false);
-                }
-                catch (Exception ex) {
-                    Log.ETagPreCheckFailed(logger, correlationId, ex.GetType().Name);
-                    currentETag = null;
-                }
-            }
-            else {
-                // No ETag decoded (malformed, old-format, etc.) — cache miss
-                Log.ETagDecodeSkipped(logger, correlationId);
-            }
-        }
-
-        if (!gate1Skipped && currentETag is not null && ETagMatches(ifNoneMatch, currentETag)) {
-            Response.Headers.ETag = $"\"{currentETag}\"";
-            Log.ETagPreCheckMatch(logger, correlationId, currentETag[..Math.Min(8, currentETag.Length)]);
-            return StatusCode(StatusCodes.Status304NotModified);
-        }
-
-        if (!gate1Skipped) {
-            Log.ETagPreCheckMiss(logger, correlationId, currentETag is not null, !string.IsNullOrWhiteSpace(ifNoneMatch));
-        }
-
         byte[] payloadBytes = request.Payload.HasValue
             ? JsonSerializer.SerializeToUtf8Bytes(request.Payload.Value)
             : [];
@@ -147,36 +97,94 @@ public partial class QueriesController(
 
         SubmitQueryResult result = await mediator.Send(query, cancellationToken).ConfigureAwait(false);
 
-        // Set ETag response header — fetch from ETag actor if not already known
-        // Uses runtime-discovered projection type (FR63), falls back to request.Domain
-        if (currentETag is null) {
-            string projectionTypeForETag = string.IsNullOrWhiteSpace(result.ProjectionType)
-                ? (string.IsNullOrWhiteSpace(request.ProjectionType) ? request.Domain : request.ProjectionType)
-                : result.ProjectionType;
+        QueryResponseMetadata producerMetadata = NormalizeProducerMetadata(result.Metadata);
+        bool projectionBacked = producerMetadata.Provenance == QueryResponseProvenance.ProjectionBacked;
+        string? currentETag = null;
+        if (projectionBacked && !string.IsNullOrWhiteSpace(result.ProjectionType)) {
             try {
                 currentETag = await eTagService
-                    .GetCurrentETagAsync(projectionTypeForETag, request.Tenant, cancellationToken)
+                    .GetCurrentETagAsync(result.ProjectionType, request.Tenant, cancellationToken)
                     .ConfigureAwait(false);
             }
-            catch (Exception) {
+            catch (Exception ex) {
                 // Fail-open: no ETag header on response is acceptable
+                Log.ETagPreCheckFailed(logger, correlationId, ex.GetType().Name);
             }
         }
 
         DateTimeOffset servedAt = DateTimeOffset.UtcNow;
         QueryResponseMetadata metadata = MergeQueryMetadata(
-            result.Metadata,
+            producerMetadata,
             currentETag,
             isNotModified: false,
             servedAt);
-        EnforceFreshnessPolicy(request, correlationId, result.Metadata, metadata, servedAt);
+        EnforceFreshnessPolicy(request, correlationId, producerMetadata, metadata, servedAt);
+
+        bool conditionalMatch = ShouldEvaluateConditionalRequest(request, ifNoneMatch, correlationId)
+            && currentETag is not null
+            && ETagMatches(ifNoneMatch, currentETag);
+
+        Response.Headers["X-Hexalith-Query-Provenance"] = metadata.Provenance.ToString();
 
         if (currentETag is not null) {
             Response.Headers.ETag = $"\"{currentETag}\"";
         }
 
+        if (conditionalMatch && currentETag is not null) {
+            Log.ETagPreCheckMatch(logger, correlationId, currentETag[..Math.Min(8, currentETag.Length)]);
+            return StatusCode(StatusCodes.Status304NotModified);
+        }
+
         return Ok(new SubmitQueryResponse(result.CorrelationId, result.Payload, Metadata: metadata));
     }
+
+    private bool ShouldEvaluateConditionalRequest(
+        SubmitQueryRequest request,
+        string? ifNoneMatch,
+        string correlationId) {
+        if (string.IsNullOrWhiteSpace(ifNoneMatch)) {
+            return false;
+        }
+
+        if (ifNoneMatch.AsSpan().Trim().SequenceEqual("*".AsSpan())) {
+            Log.ETagPreCheckMiss(logger, correlationId, false, true);
+            return false;
+        }
+
+        if (HasExplicitPolicyInputs(request) || HasUnsafeQueryPayload(request)) {
+            Log.ETagPreCheckSkippedForPolicyInputs(logger, correlationId);
+            return false;
+        }
+
+        HeaderProjectionTypeAnalysis analysis = AnalyzeHeaderProjectionTypes(ifNoneMatch);
+        if (analysis.HasMixedProjectionTypes) {
+            Log.MixedProjectionTypesSkipped(logger, correlationId);
+            return false;
+        }
+
+        return true;
+    }
+
+    private static QueryResponseMetadata NormalizeProducerMetadata(QueryResponseMetadata? metadata) {
+        QueryResponseMetadata normalized = (metadata ?? new QueryResponseMetadata()) with {
+            Provenance = NormalizeProvenance(metadata?.Provenance ?? QueryResponseProvenance.Unknown),
+        };
+        return normalized.Provenance == QueryResponseProvenance.ProjectionBacked
+            ? normalized
+            : normalized with {
+                ETag = null,
+                IsNotModified = null,
+                IsStale = null,
+                ProjectionVersion = null,
+            };
+    }
+
+    private static QueryResponseProvenance NormalizeProvenance(QueryResponseProvenance provenance)
+        => provenance switch {
+            QueryResponseProvenance.ProjectionBacked => QueryResponseProvenance.ProjectionBacked,
+            QueryResponseProvenance.HandlerComputed => QueryResponseProvenance.HandlerComputed,
+            _ => QueryResponseProvenance.Unknown,
+        };
 
     private static QueryResponseMetadata MergeQueryMetadata(
         QueryResponseMetadata? producerMetadata,
@@ -191,7 +199,9 @@ public partial class QueriesController(
             ProjectionVersion: producerMetadata?.ProjectionVersion,
             ServedAt: producerMetadata?.ServedAt ?? servedAt,
             Paging: producerMetadata?.Paging,
-            WarningCodes: producerMetadata?.WarningCodes);
+            WarningCodes: producerMetadata?.WarningCodes) {
+            Provenance = producerMetadata?.Provenance ?? QueryResponseProvenance.Unknown,
+        };
 
     private static void EnforceFreshnessPolicy(
         SubmitQueryRequest request,
@@ -201,6 +211,18 @@ public partial class QueriesController(
         DateTimeOffset servedAt) {
         if (!HasMeaningfulFreshness(request.Freshness)) {
             return;
+        }
+
+        if (metadata.Provenance != QueryResponseProvenance.ProjectionBacked) {
+            throw new QueryExecutionFailedException(
+                correlationId,
+                request.Tenant,
+                request.Domain,
+                request.AggregateId,
+                request.QueryType,
+                StatusCodes.Status400BadRequest,
+                "Projection freshness could not be verified for this query response.",
+                QueryProblemReasonCodes.ProjectionStale);
         }
 
         if (metadata.IsStale == false

@@ -105,14 +105,17 @@ public class QueryRouterTests {
         var metadata = new QueryResponseMetadata(
             IsStale: false,
             ProjectionVersion: "orders-v2",
-            WarningCodes: [QueryWarningCodes.DegradedSearch]);
+            WarningCodes: [QueryWarningCodes.DegradedSearch]) {
+            Provenance = QueryResponseProvenance.HandlerComputed,
+        };
         (IProjectionActorInvoker _, QueryRouter router) = CreateRouterWithInvoker(
             QueryResult.FromPayload(resultPayload, "orders", metadata));
 
         QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
 
         result.Success.ShouldBeTrue();
-        result.Metadata.ShouldBe(metadata);
+        _ = result.Metadata.ShouldNotBeNull();
+        result.Metadata.Provenance.ShouldBe(QueryResponseProvenance.ProjectionBacked);
         result.Metadata!.ProjectionVersion.ShouldBe("orders-v2");
         _ = result.Metadata.WarningCodes.ShouldNotBeNull();
         result.Metadata.WarningCodes.ShouldContain(QueryWarningCodes.DegradedSearch);

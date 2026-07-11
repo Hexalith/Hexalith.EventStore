@@ -67,7 +67,10 @@ public sealed class SampleApiHostMiddlewareTests
                     Metadata = new QueryResponseMetadata(
                         IsStale: false,
                         ProjectionVersion: "42",
-                        ServedAt: new DateTimeOffset(2026, 7, 7, 10, 30, 0, TimeSpan.Zero)),
+                        ServedAt: new DateTimeOffset(2026, 7, 7, 10, 30, 0, TimeSpan.Zero))
+                    {
+                        Provenance = QueryResponseProvenance.ProjectionBacked,
+                    },
                 });
             },
         };
@@ -94,6 +97,7 @@ public sealed class SampleApiHostMiddlewareTests
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         response.Headers.ETag.ShouldNotBeNull().Tag.ShouldBe("\"counter-version\"");
+        response.Headers.GetValues("X-Hexalith-Query-Provenance").Single().ShouldBe("ProjectionBacked");
         response.Headers.GetValues("X-Hexalith-Projection-Version").Single().ShouldBe("42");
 
         await using Stream body = await response.Content

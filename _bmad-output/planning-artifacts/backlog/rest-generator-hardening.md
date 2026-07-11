@@ -65,7 +65,7 @@ Deferred generator items surfaced while proving Epic 2's external integration su
 
 - Existing deferred-work entries plus Epic D and Epic 2 retrospective findings.
 - The command-status `Location` policy decision (Epic 2 retro action item 3) gates S2.
-- Query response provenance / freshness metadata (architecture invariant AD-15, Story 4.7) governs any freshness-header behavior these items touch; generated freshness headers remain conditional evidence until then.
+- Query response provenance / freshness metadata is enforced by architecture invariant AD-15 and EventStore **Story 2.8**. Generated controllers now emit provenance and gate ETag/version/stale/`304` behavior on `ProjectionBacked`; **Story 4.7** retains only the Tenants producer cleanup.
 - Generator test infrastructure in `tests/Hexalith.EventStore.RestApi.Generators.Tests/`.
 
 ## Risks
