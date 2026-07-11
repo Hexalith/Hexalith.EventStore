@@ -1,3 +1,10 @@
+# [3.57.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.56.0...v3.57.0) (2026-07-11)
+
+
+### Features
+
+* **spec:** add coordinated read-model batch writes specification ([e224167](https://github.com/Hexalith/Hexalith.EventStore/commit/e224167ca932d18b1b0ad6d4fffe6009ad551196))
+
 # [3.56.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.55.0...v3.56.0) (2026-07-11)
 
 
