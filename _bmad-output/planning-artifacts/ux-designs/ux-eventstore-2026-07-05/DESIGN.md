@@ -3,7 +3,7 @@ name: Hexalith.EventStore Admin
 description: Brownfield operations UX for administrators and platform operators. FrontComposer on Blazor Fluent UI V5, visually aligned to the Microsoft Fluent UI Blazor V5 documentation shell.
 status: final
 created: 2026-07-05
-updated: 2026-07-05
+updated: 2026-07-11
 sources:
   - docs/brownfield/architecture.md
   - _bmad-output/planning-artifacts/prd.md
@@ -140,6 +140,10 @@ components:
   projection-freshness-indicator:
     current: '{colors.status-success-background}'
     stale: '{colors.status-warning-background}'
+    rebuilding: '{colors.status-neutral-background}'
+    degraded: '{colors.status-warning-background}'
+    unavailable: '{colors.status-danger-background}'
+    local-only: '{colors.status-neutral-background}'
     unknown: '{colors.status-neutral-background}'
   deferred-operation-placeholder:
     background: '{colors.status-neutral-background}'
@@ -222,7 +226,7 @@ The canonical component names below must match `EXPERIENCE.md.Component Patterns
 - **Detail panel** - `FluentDrawer`, `FluentDialog`, or FrontComposer panel primitive for drill-in evidence. Use `FluentAccordion` if it has multiple titled sections.
 - **Multi-section panel** - `FluentAccordion` when a page, dialog, or detail panel has two or more titled sibling sections. Primary section expands by default.
 - **Command lifecycle tracker** - Compact ordered state tracker for command progress and terminal states. It uses status colors only with text labels.
-- **Projection freshness indicator** - Badge or compact status row for current, stale, and unknown evidence — current/stale shown only for projection-backed provenance (AD-15); otherwise unknown.
+- **Projection freshness indicator** - Badge or compact status row for `Current`, `Stale`, `Rebuilding`, `Degraded`, `Unavailable`, `LocalOnly`, and `Unknown`. The six lifecycle states are authoritative only for projection-backed provenance (AD-15/FR36); handler-computed, missing, or invalid provenance renders `Unknown`. Every state uses readable text in addition to Fluent status styling; `LocalOnly` never appears as projection-confirmed success.
 - **Deferred operation placeholder** - Disabled or read-only state for intentionally unavailable work. It must not look like a runnable form.
 - **Command palette** - Optional power-user accelerator inside the EventStore dashboard. It must not replace visible tabs and controls.
 

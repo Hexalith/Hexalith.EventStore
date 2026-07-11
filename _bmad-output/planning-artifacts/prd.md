@@ -2,7 +2,7 @@
 title: eventstore Phase 4 Implementation Readiness Recovery PRD
 status: final
 created: 2026-07-05
-updated: 2026-07-05
+updated: 2026-07-11
 project: eventstore
 source_artifacts:
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05.md
@@ -14,7 +14,7 @@ source_artifacts:
 
 ## 0. Document Purpose
 
-This PRD is the authoritative Phase 4 functional and non-functional requirements baseline for Hexalith.EventStore. It exists to close the implementation-readiness blocker reported on 2026-07-05: the epic plan contained FR1-FR35 and NFR1-NFR18, but no standalone PRD existed for PRD-to-epic traceability.
+This PRD is the authoritative Phase 4 functional and non-functional requirements baseline for Hexalith.EventStore. It exists to close the implementation-readiness blocker reported on 2026-07-05: the original epic plan contained FR1-FR35 and NFR1-NFR18, but no standalone PRD existed for PRD-to-epic traceability. The approved 2026-07-11 Parties parity correction adds FR36.
 
 This document owns product requirement intent, MVP scope, non-goals, success metrics, and FR/NFR traceability. `_bmad-output/planning-artifacts/epics.md` owns implementation slicing and sequencing. The required architecture and UX planning artifacts remain separate handoffs and must not be replaced by this PRD.
 
@@ -103,10 +103,10 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 | FR1 | Domain modules built on Hexalith.EventStore must be domain-centric, containing domain code such as aggregates, commands, events, projections, query handlers, validators, and contracts, while platform boilerplate is supplied by EventStore libraries. |
 | FR2 | The platform must provide a domain-service SDK with `AddEventStoreDomainService`, `UseEventStoreDomainService`, and `MapEventStoreDomainService` so a domain service host can be reduced to the canonical SDK host shape. |
 | FR3 | The domain-service SDK must expose the canonical DAPR-facing endpoints `/process`, `/replay-state`, `/query`, `/project`, and `/admin/operational-index-metadata`. |
-| FR4 | The platform must provide a domain query-handler seam using `IDomainQueryHandler`, discovery, dispatch, operational metadata reporting, gateway-side query-type capture, handler-aware routing to domain `/query` endpoints, and end-to-end `QueryResponseMetadata` propagation for freshness, projection version, ETag, served-at, degraded/warning state, and paging evidence, carrying an explicit query-response provenance classification (projection-backed, handler-computed, or unknown) that governs whether that evidence is projection-backed. |
-| FR5 | The platform must provide a generic persisted read-model store and write policy with optimistic-concurrency merge-on-write, multi-key/index support, DAPR implementation, and in-memory testing support. |
+| FR4 | The platform must provide a domain query-handler seam using `IDomainQueryHandler`, discovery, dispatch, operational metadata reporting, gateway-side query-type capture, handler-aware routing to domain `/query` endpoints, and end-to-end `QueryResponseMetadata` propagation for freshness, projection version, ETag, served-at, degraded/warning state, and paging evidence, carrying an explicit query-response provenance classification (projection-backed, handler-computed, or unknown) that governs whether that evidence is projection-backed. Projection-backed responses must additionally preserve a lossless lifecycle representation or owner-approved mapping for `Current`, `Stale`, `Rebuilding`, `Degraded`, `Unavailable`, and `LocalOnly`; consumers must not infer lifecycle from ETags or claim projection-confirmed success without projection-backed provenance. |
+| FR5 | The platform must provide generic persisted read-model lifecycle and write contracts with ETag-aware reads/writes, coordinated read-model and sequence/checkpoint erasure, and detail/index batch writes or an approved equivalent. Batch behavior must define partial-failure recovery, idempotency, ordering, flush completion, optimistic concurrency, DAPR behavior, and deterministic in-memory testing semantics. |
 | FR6 | The platform must provide a reusable DataProtection-backed query cursor codec with scope validation, payload limits, tamper/key-rotation handling, and caller-supplied purpose isolation. |
-| FR7 | The platform must provide a generic projection-handler seam for `/project` dispatch and a generic domain-event subscription/consumer pipeline with deduplication and endpoint mapping. |
+| FR7 | The platform must provide an asynchronous, cancellation-aware projection-handler seam supporting multiple named projections per domain and coordinated detail/index persistence, plus a generic domain-event subscription/consumer pipeline with deduplication and endpoint mapping. Projection delivery must tolerate duplicate and out-of-order events through the actual handler path, and full rebuilds must remain correct across paging boundaries. |
 | FR8 | The platform must provide Aspire, telemetry, and health-check extensions for domain modules, including `AddEventStoreDomainModule`, convention telemetry, and DAPR state-store health checks. |
 | FR9 | The Sample domain and Tenants domain must adopt platform SDK seams so duplicated request routers, projection actors, cursor codecs, state-store plumbing, telemetry, health checks, and per-domain Aspire wiring are removed or reduced to domain-specific logic. |
 | FR10 | The EventStore package set must include the domain-service and service-default packages as publishable packages, and release packaging must publish only the manifest-governed EventStore package set. |
@@ -192,6 +192,16 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 
 **Done evidence:** Admin unavailable operations are hidden/disabled or return `501`; audit records remain support-safe; integration tests assert persisted state evidence; backlog artifacts exist for GDPR-1, IAM-1, KIT-1, and REST generator hardening.
 
+### 6.8 Consumer Projection/Query Parity Closure
+
+**Description:** Consuming domain modules may remove local projection/query infrastructure only after EventStore implements, proves, and owner-approves every required generic replacement capability against one exact runtime commit.
+
+| ID | Requirement |
+| --- | --- |
+| FR36 | Before a consuming module deletes local projection/query infrastructure, EventStore must produce an owner-reviewed parity packet proving every required capability through production paths, record an approved runtime SHA, and require the consumer's checked-out EventStore SHA to match that approval. |
+
+**Done evidence:** Stories 1.9-1.14 are complete and reviewed; Story 1.15 records every parity item as `available`, cites persisted production-path evidence, records explicit owner approval, and names the exact EventStore runtime SHA that Parties verifies before Story 8.6 resumes.
+
 ## 7. Cross-Cutting Non-Functional Requirements
 
 | ID | Requirement |
@@ -201,9 +211,9 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 | NFR3 | Production authentication must reject insecure symmetric-key mode unless explicitly break-glassed, require HTTPS metadata where appropriate, and pin accepted JWT algorithms. |
 | NFR4 | Committed configuration must not contain forgeable administrator signing keys, credentials, bearer tokens, decoded JWT payloads, or other operational secrets. |
 | NFR5 | SignalR detail metadata must remain bounded and metadata-only; framework logs must not expose metadata values above Debug level. |
-| NFR6 | Event delivery semantics are at-least-once and unordered; subscribers must deduplicate by `MessageId` and order only where domain semantics make `SequenceNumber` meaningful. |
+| NFR6 | Event delivery semantics are at-least-once and unordered; subscribers must deduplicate by `MessageId` and order only where domain semantics make `SequenceNumber` meaningful. Duplicate and out-of-order safety must be enforced and proven through the production projection dispatcher, handler, persistence, marker, and checkpoint path rather than only aggregate replay or transport-level tests. |
 | NFR7 | Event persistence and command processing must avoid silent data loss: staged-state flushes, stale pipeline records, append races, and committed-but-unpublished events must be explicitly guarded or recovered. |
-| NFR8 | Snapshot and projection behavior must have a bounded cost model as streams grow, must avoid unnecessary full-stream replay when already current, and must expose projection freshness/version evidence through platform query metadata when callers depend on current/stale decisions; freshness/version evidence is authoritative only for query responses whose route provenance is projection-backed, and handler-computed or unknown-provenance responses must not be presented as current or stale. |
+| NFR8 | Snapshot and projection behavior must have a bounded cost model as streams grow, must avoid unnecessary full-stream replay when already current, and must expose projection freshness/version evidence through platform query metadata when callers depend on lifecycle decisions; freshness/version evidence is authoritative only for query responses whose route provenance is projection-backed, and handler-computed or unknown-provenance responses must not be presented as authoritative lifecycle evidence. Paged rebuild output must equal canonical aggregate replay and must never overwrite a complete live model with page-only state. |
 | NFR9 | Release behavior must be reproducible and independent of local submodule checkout state; Release builds must use package references for external Hexalith libraries unless intentionally overridden. |
 | NFR10 | CI/CD must separate deterministic release-gate tests from live-sidecar/integration tests while preserving live-sidecar coverage in a dedicated lane. |
 | NFR11 | Package publishing must be manifest-driven and must not publish submodule packages or packages outside the EventStore release inventory. |
@@ -211,7 +221,7 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 | NFR13 | Generated code and source-generator packages must build cleanly under warnings-as-errors and must follow EventStore code style, nullable, ULID, and `ConfigureAwait(false)` rules. |
 | NFR14 | Interactive UI hosts must not expose generated or hand-written per-message MVC command/query controllers; UI command/query flows consume client libraries. |
 | NFR15 | Admin UX must not present deferred backup, restore, import, compaction, or other unavailable operations as functional; unavailable operations must be hidden/disabled or return `501`. |
-| NFR16 | Integration and higher-tier tests must assert persisted state-store/read-model/end-state evidence, not only HTTP status codes or mock call counts. |
+| NFR16 | Integration and higher-tier tests must assert persisted state-store/read-model/end-state evidence, not only HTTP status codes or mock call counts. Erasure, batch recovery, handler idempotency, and rebuild equivalence require persisted detail, index, marker, lifecycle, and checkpoint evidence through their production paths. |
 | NFR17 | Operational hardening must support secret stores, DAPR app health checks, readiness-tagged health checks, resiliency targets, immutable image tags, and documented crypto-shred boundaries. |
 | NFR18 | AOT/trimming is explicitly not a target while reflection conventions remain load-bearing, and that constraint must be documented. |
 
@@ -256,10 +266,11 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 - Security and tenant isolation remediation, including production auth guards, secret stripping, admin endpoint protections, trust-boundary closure, and topology parity.
 - Cost/evolution work behind spec-first gates for folded snapshots, projection cost/sequence guards, and event versioning/upcasting.
 - Operator/admin/deployment/test recovery work and explicit backlog artifacts for deferred capability tracks.
+- Projection/query parity completion: generic read-model/checkpoint erasure, coordinated batch writes, six-state lifecycle compatibility, asynchronous multi-projection dispatch, production-path idempotency, correct paged rebuilds, and owner-approved runtime-pin closure.
 
 ### 9.2 Out Of Scope For MVP
 
-- GDPR aggregate erasure/tombstoning implementation; backlog artifact only.
+- Full GDPR aggregate/event tombstoning, broker-history deletion, backup erasure, and crypto-shredding; backlog artifact only. Generic projection read-model/checkpoint erasure is in scope under FR5 and Story 1.9.
 - Admin interactive OIDC login implementation; backlog artifact only.
 - Aggregate test kit implementation; backlog artifact only.
 - REST generator hardening beyond the approved Epic 2 proof scope; backlog artifact only.
@@ -271,14 +282,15 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 
 **Primary**
 
-- **SM1:** Implementation readiness re-run no longer reports missing PRD as a blocker. Validates FR1-FR35 and NFR1-NFR18 traceability.
-- **SM2:** Every FR1-FR35 maps to at least one epic and story in `epics.md`. Validates all functional requirements.
+- **SM1:** Implementation readiness re-run no longer reports missing PRD as a blocker. Validates FR1-FR36 and NFR1-NFR18 traceability.
+- **SM2:** Every FR1-FR36 maps to at least one epic and story in `epics.md`. Validates all functional requirements.
 - **SM3:** High-risk NFRs NFR1-NFR4, NFR7, NFR10-NFR11, and NFR14-NFR17 map to concrete story coverage before Phase 4 implementation resumes. Validates security, release, UI, test, and operational hardening NFRs.
 
 **Secondary**
 
 - **SM4:** Oversized stories identified by the readiness report are split or explicitly accepted as coordinated slices with named owners and validation commands. Validates implementation readiness and reviewability.
 - **SM5:** Required architecture and UX artifacts exist under `_bmad-output/planning-artifacts` and are referenced by the epic plan. Validates downstream usability.
+- **SM6:** The projection/query SDK parity packet is owner-approved as `available`, every required production-path proof passes, and the consuming Parties checkout matches the approved EventStore runtime SHA before Story 8.6 resumes. Validates FR36 and the parity implementation gate.
 
 **Counter-Metrics**
 
@@ -327,6 +339,7 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 | FR33 | Epic 6 - Bounded cost and event evolution |
 | FR34 | Epic 7 - Delivery, admin, deploy, and IntegrationTests recovery |
 | FR35 | Epic 7 - Backlog capability tracking |
+| FR36 | Epic 1 - Projection/query parity implementation and owner-approved runtime-pin closure |
 
 ### 11.2 High-Risk NFR Story Coverage
 
@@ -336,17 +349,21 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 | NFR2 | 2.4, 5.2, 5.5, 5.6 |
 | NFR3 | 5.3 |
 | NFR4 | 5.3, 7.3 |
+| NFR6 | 1.13, 7.1 |
 | NFR7 | 4.1, 4.2, 4.4, 4.5, 5.1 |
+| NFR8 | 1.11, 1.14, 6.3, 6.4 |
 | NFR10 | 3.1, 7.4 |
 | NFR11 | 3.6 |
 | NFR14 | 2.3, 2.4 |
 | NFR15 | 7.2 |
-| NFR16 | 7.4 |
+| NFR16 | 1.9, 1.10, 1.11, 1.12, 1.13, 1.14, 1.15, 7.4 |
 | NFR17 | 5.6, 7.3 |
 
 ### 11.3 Required Follow-On Readiness Work
 
 The PRD, architecture, UX, and epics artifacts now exist under `_bmad-output/planning-artifacts` and reference each other. The remaining readiness gate is verification: re-run implementation readiness after the story-quality corrections below are reviewed.
+
+- Parties projection/query parity remains blocked until Stories 1.9-1.15 complete in the approved order and Story 1.15 records an owner-approved `available` packet tied to the exact runtime SHA consumed by Parties.
 
 - `epics.md` contains coordinated-slice gates for Stories 1.3, 1.6, 2.4, 3.7, 5.6, 7.2, 7.3, and 7.4, including owners, review boundaries, and validation commands. Implementation story files must either split those stories or carry the coordinated-slice gate forward.
 - Story 5.2 now requires concrete request-size limits: `1_048_576` bytes for representative admin JSON write/sandbox bodies and `10 * 1024 * 1024` bytes for `AdminBackupsController.ImportStream`, with bounded rejection tests and no upstream service invocation on excessive requests.

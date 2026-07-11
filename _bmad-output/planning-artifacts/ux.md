@@ -1,7 +1,7 @@
 # UX Handoff - Hexalith.EventStore Phase 4
 
 Status: final
-Updated: 2026-07-09
+Updated: 2026-07-11
 
 This file is the canonical top-level UX handoff expected by `prd.md`,
 `architecture.md`, and `epics.md`.
@@ -22,3 +22,7 @@ validation artifacts, older review findings, archived UX exports, or legacy
 Readiness note: this handoff exists to satisfy the top-level artifact path
 required by the PRD, architecture, and epic plan while preserving the sharded
 UX source as the detailed canonical contract.
+
+The approved 2026-07-11 Parties parity correction expands the canonical
+projection lifecycle UX to `Current`, `Stale`, `Rebuilding`, `Degraded`,
+`Unavailable`, `LocalOnly`, and the fail-safe `Unknown` fallback.

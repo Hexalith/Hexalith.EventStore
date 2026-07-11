@@ -5,6 +5,7 @@ classification: backlog
 status: draft
 source_story: 7.5
 created: 2026-07-05
+updated: 2026-07-11
 ---
 
 # GDPR-1 - Aggregate Erasure And Tombstoning
@@ -15,7 +16,8 @@ Define a future capability for aggregate-level erasure or tombstoning across Eve
 
 ## Non-Goals
 
-- Do not implement erasure or tombstoning in Phase 4 MVP.
+- Do not implement aggregate/event tombstoning, broker-history deletion, backup erasure, audit-record erasure, or crypto-shredding in Phase 4 MVP.
+- Generic projection read-model and companion delivery/rebuild checkpoint erasure is separately authorized by Epic 1 Story 1.9. Completing Story 1.9 is not completion of GDPR-1 and does not authorize deletion of write-model event history.
 - Do not rewrite historical event streams as a cleanup mechanism.
 - Do not hide this work inside security, backup, compaction, or admin UI stories.
 

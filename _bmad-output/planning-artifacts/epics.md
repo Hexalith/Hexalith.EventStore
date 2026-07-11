@@ -23,6 +23,7 @@ inputDocuments:
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05-query-metadata-sequencing.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-09.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-09-implementation-readiness-corrections.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-11.md
 ---
 
 # eventstore - Epic Breakdown
@@ -96,6 +97,17 @@ Story 7.5 is a planning/backlog artifact story, not an implementation story. It 
 - `_bmad-output/planning-artifacts/backlog/kit-1-aggregate-test-kit.md`
 - `_bmad-output/planning-artifacts/backlog/rest-generator-hardening.md`
 
+### Parties Projection/Query Parity Gate
+
+Story 1.8 completed its investigation and correctly produced a `still blocked` owner packet. Its `done` status means the investigation is complete; it does not mean the SDK prerequisite is available. Parties Story 8.6 remains blocked until all follow-up implementation and closure stories complete:
+
+1. Stories 1.9-1.11 establish read-model lifecycle, coordinated writes, and complete lifecycle metadata.
+2. Story 1.12 establishes asynchronous named multi-projection dispatch.
+3. Stories 1.13 and 1.14 prove production-path delivery idempotency and replay-equivalent paged rebuilds.
+4. Story 1.15 re-runs parity, records explicit EventStore owner approval, and binds the exact runtime SHA.
+
+Cursor scope compatibility may reuse Story 1.8 evidence. Every other blocked item must be reclassified `available` by Story 1.15. Parties must verify its checked-out `references/Hexalith.EventStore` SHA matches the approved runtime SHA before Story 8.6 resumes or local rollback code is removed.
+
 ## Requirements Inventory
 
 ### Functional Requirements
@@ -106,13 +118,13 @@ FR2: The platform must provide a domain-service SDK with `AddEventStoreDomainSer
 
 FR3: The domain-service SDK must expose the canonical DAPR-facing endpoints `/process`, `/replay-state`, `/query`, `/project`, and `/admin/operational-index-metadata`.
 
-FR4: The platform must provide a domain query-handler seam using `IDomainQueryHandler`, discovery, dispatch, operational metadata reporting, gateway-side query-type capture, handler-aware routing to domain `/query` endpoints, and end-to-end `QueryResponseMetadata` propagation for freshness, projection version, ETag, served-at, degraded/warning state, and paging evidence, carrying an explicit query-response provenance classification (projection-backed, handler-computed, or unknown) that governs whether that evidence is projection-backed.
+FR4: The platform must provide a domain query-handler seam using `IDomainQueryHandler`, discovery, dispatch, operational metadata reporting, gateway-side query-type capture, handler-aware routing to domain `/query` endpoints, and end-to-end `QueryResponseMetadata` propagation for freshness, projection version, ETag, served-at, degraded/warning state, and paging evidence, carrying an explicit query-response provenance classification (projection-backed, handler-computed, or unknown) that governs whether that evidence is projection-backed. Projection-backed responses must additionally preserve a lossless lifecycle representation or owner-approved mapping for `Current`, `Stale`, `Rebuilding`, `Degraded`, `Unavailable`, and `LocalOnly`; consumers must not infer lifecycle from ETags or claim projection-confirmed success without projection-backed provenance.
 
-FR5: The platform must provide a generic persisted read-model store and write policy with optimistic-concurrency merge-on-write, multi-key/index support, DAPR implementation, and in-memory testing support.
+FR5: The platform must provide generic persisted read-model lifecycle and write contracts with ETag-aware reads/writes, coordinated read-model and sequence/checkpoint erasure, and detail/index batch writes or an approved equivalent. Batch behavior must define partial-failure recovery, idempotency, ordering, flush completion, optimistic concurrency, DAPR behavior, and deterministic in-memory testing semantics.
 
 FR6: The platform must provide a reusable DataProtection-backed query cursor codec with scope validation, payload limits, tamper/key-rotation handling, and caller-supplied purpose isolation.
 
-FR7: The platform must provide a generic projection-handler seam for `/project` dispatch and a generic domain-event subscription/consumer pipeline with deduplication and endpoint mapping.
+FR7: The platform must provide an asynchronous, cancellation-aware projection-handler seam supporting multiple named projections per domain and coordinated detail/index persistence, plus a generic domain-event subscription/consumer pipeline with deduplication and endpoint mapping. Projection delivery must tolerate duplicate and out-of-order events through the actual handler path, and full rebuilds must remain correct across paging boundaries.
 
 FR8: The platform must provide Aspire, telemetry, and health-check extensions for domain modules, including `AddEventStoreDomainModule`, convention telemetry, and DAPR state-store health checks.
 
@@ -170,6 +182,8 @@ FR34: Delivery, admin, and deployment remediation must document at-least-once un
 
 FR35: Backlog capabilities must be tracked for GDPR aggregate erasure/tombstoning, Admin interactive OIDC login, an aggregate test kit, and REST generator hardening.
 
+FR36: Before a consuming module deletes local projection/query infrastructure, EventStore must produce an owner-reviewed parity packet proving every required capability through production paths, record an approved runtime SHA, and require the consumer's checked-out EventStore SHA to match that approval.
+
 ### NonFunctional Requirements
 
 NFR1: Security must fail closed for public, internal, domain-service, projection-notification, and admin surfaces; no endpoint may rely only on network posture or caller-supplied admin flags.
@@ -182,11 +196,11 @@ NFR4: Committed configuration must not contain forgeable administrator signing k
 
 NFR5: SignalR detail metadata must remain bounded and metadata-only; framework logs must not expose metadata values above Debug level.
 
-NFR6: Event delivery semantics are at-least-once and unordered; subscribers must deduplicate by `MessageId` and order only where domain semantics make `SequenceNumber` meaningful.
+NFR6: Event delivery semantics are at-least-once and unordered; subscribers must deduplicate by `MessageId` and order only where domain semantics make `SequenceNumber` meaningful. Duplicate and out-of-order safety must be enforced and proven through the production projection dispatcher, handler, persistence, marker, and checkpoint path rather than only aggregate replay or transport-level tests.
 
 NFR7: Event persistence and command processing must avoid silent data loss: staged-state flushes, stale pipeline records, append races, and committed-but-unpublished events must be explicitly guarded or recovered.
 
-NFR8: Snapshot and projection behavior must have a bounded cost model as streams grow, must avoid unnecessary full-stream replay when already current, and must expose projection freshness/version evidence through platform query metadata when callers depend on current/stale decisions; freshness/version evidence is authoritative only for query responses whose route provenance is projection-backed, and handler-computed or unknown-provenance responses must not be presented as current or stale.
+NFR8: Snapshot and projection behavior must have a bounded cost model as streams grow, must avoid unnecessary full-stream replay when already current, and must expose projection freshness/version evidence through platform query metadata when callers depend on lifecycle decisions; freshness/version evidence is authoritative only for query responses whose route provenance is projection-backed, and handler-computed or unknown-provenance responses must not be presented as authoritative lifecycle evidence. Paged rebuild output must equal canonical aggregate replay and must never overwrite a complete live model with page-only state.
 
 NFR9: Release behavior must be reproducible and independent of local submodule checkout state; Release builds must use package references for external Hexalith libraries unless intentionally overridden.
 
@@ -202,7 +216,7 @@ NFR14: Interactive UI hosts must not expose generated or hand-written per-messag
 
 NFR15: Admin UX must not present deferred backup, restore, import, compaction, or other unavailable operations as functional; unavailable operations must be hidden/disabled or return 501.
 
-NFR16: Integration and higher-tier tests must assert persisted state-store/read-model/end-state evidence, not only HTTP status codes or mock call counts.
+NFR16: Integration and higher-tier tests must assert persisted state-store/read-model/end-state evidence, not only HTTP status codes or mock call counts. Erasure, batch recovery, handler idempotency, and rebuild equivalence require persisted detail, index, marker, lifecycle, and checkpoint evidence through their production paths.
 
 NFR17: Operational hardening must support secret stores, DAPR app health checks, readiness-tagged health checks, resiliency targets, immutable image tags, and documented crypto-shred boundaries.
 
@@ -227,7 +241,7 @@ NFR18: AOT/trimming is explicitly not a target while reflection conventions rema
 - Shared Hexalith.Builds workflow/action references are intentionally `@main`; third-party action pinning policy remains enforced by the shared workflows.
 - Any global-ordering sharding implementation must update the frozen `_bmad-output/implementation-artifacts/spec-dapr-global-event-ordering.md` before code changes.
 - Specs are required before implementing folded snapshots, projection delivery cost changes, and event schema versioning/upcasting.
-- GDPR erasure, Admin OIDC login, and aggregate test-kit work are backlog epics and must not be hidden inside unrelated remediation stories.
+- Full aggregate/event GDPR tombstoning, broker-history deletion, backup erasure, audit-record erasure, and crypto-shredding remain backlog work and must not be hidden inside unrelated remediation stories. Generic projection read-model/checkpoint erasure is active Story 1.9 scope.
 
 ### UX Design Requirements
 
@@ -305,6 +319,8 @@ FR34: Epic 7 - Delivery, admin, deploy, and IntegrationTests recovery.
 
 FR35: Epic 7 - Backlog capability tracking.
 
+FR36: Epic 1 - Projection/query parity implementation and owner-approved runtime-pin closure.
+
 ## Epic List
 
 ### Epic 1: Domain Author Self-Service Platform
@@ -313,7 +329,7 @@ FR35: Epic 7 - Backlog capability tracking.
 
 Domain authors can build and run EventStore-backed domain modules with minimal boilerplate and reusable platform seams, while the platform owns hosting, query, projection, read-model, cursor, telemetry, health, Aspire, and packaging concerns.
 
-**FRs covered:** FR1, FR2, FR3, FR4, FR5, FR6, FR7, FR8, FR9, FR10
+**FRs covered:** FR1, FR2, FR3, FR4, FR5, FR6, FR7, FR8, FR9, FR10, FR36
 
 ### Epic 2: External Integration Surfaces
 
@@ -606,7 +622,7 @@ So that the domain-centric model is reusable and hard to regress.
 ### Story 1.8: Projection/Query SDK Owner Parity Proof
 
 **Requirements covered:** FR4, FR5, FR6, FR7, FR9, NFR8, NFR16
-**Classification:** Post-completion owner-proof follow-up for cross-repo domain migration.
+**Classification:** Completed investigation/proof story for cross-repo domain migration. Its `done` status means the investigation and blocked packet were completed; it does not mean SDK parity is available. Implementation closure is owned by Stories 1.9-1.15.
 
 As an EventStore platform owner,
 I want reviewed proof that the projection/query SDK can replace a non-trivial domain's local projection/query mechanics,
@@ -637,6 +653,287 @@ So that consuming modules can delete local rollback code only after EventStore o
 **Given** the owner proof is available
 **When** a consuming repo records it in its prerequisite matrix
 **Then** the consuming repo must still verify its checked-out EventStore pin matches the approved SHA before source migration or local rollback deletion starts.
+
+### Story 1.9: Read-Model And Projection Checkpoint Erasure
+
+**Requirements covered:** FR5, FR36, NFR2, NFR16
+
+As a domain projection maintainer,
+I want generic read-model and checkpoint erasure,
+So that removing or recreating an aggregate cannot leave stale projection state that discards valid future events.
+
+**Acceptance Criteria:**
+
+**Given** a projection store requires lifecycle cleanup
+**When** its public contract is used
+**Then** `IReadModelStore` exposes an asynchronous, cancellation-aware delete/erase operation with explicit absent-key and ETag-conflict behavior
+**And** deleting an already-absent key is idempotent.
+
+**Given** a tenant/domain/aggregate/projection scope is erased
+**When** the platform-owned lifecycle operation completes
+**Then** the selected read-model keys and companion delivery/rebuild sequence or checkpoint keys are absent
+**And** recreating the same aggregate identifier accepts sequence-one delivery without a stale high-water mark.
+
+**Given** the keys share a transaction-capable state store
+**When** erasure runs
+**Then** the operation uses an atomic transaction
+**And** a backend without that capability uses a documented resumable protocol whose partial completion never reports success and whose retry converges safely.
+
+**Given** DAPR and in-memory implementations are exercised
+**When** success, absent state, ETag conflict, cancellation, injected partial failure, and retry are tested
+**Then** both implementations expose equivalent observable behavior
+**And** the fake supports deterministic conflict and partial-failure injection.
+
+**Given** tenant isolation is enforced
+**When** an erasure request targets another tenant's scope
+**Then** it cannot delete or reveal that state
+**And** persisted-state tests verify the denial and both tenants' end state.
+
+**Given** Story 1.9 completes
+**When** its scope is reviewed
+**Then** it has not erased event streams, snapshots, broker history, backups, audit evidence, or cryptographic keys
+**And** full GDPR aggregate/event tombstoning remains owned by GDPR-1.
+
+### Story 1.10: Coordinated Read-Model Batch Writes
+
+**Requirements covered:** FR5, FR36, NFR7, NFR16
+
+As a projection author,
+I want coordinated detail and index writes,
+So that a projection cannot expose an updated detail model with a missing or inconsistent index entry.
+
+**Acceptance Criteria:**
+
+**Given** one projection delivery produces multiple typed writes or deletes within one configured state-store component
+**When** the generic asynchronous batch contract executes
+**Then** each operation carries its key, value or deletion intent, and concurrency policy
+**And** existing single-key APIs remain compatible.
+
+**Given** the configured DAPR store supports transactions
+**When** a detail/index batch is flushed
+**Then** it uses one state transaction
+**And** a non-transactional backend uses an explicitly documented resumable equivalent; cross-store work is never described as atomic.
+
+**Given** failure occurs before durable completion
+**When** the result is returned
+**Then** it reports a structured incomplete/conflict outcome rather than success
+**And** recovery completes or safely compensates incomplete work without losing already durable state.
+
+**Given** a stable projection batch identity has completed
+**When** the same logical batch is retried
+**Then** the retry is an idempotent success and the batch is not applied twice
+**And** conflicting reuse of the identity fails predictably.
+
+**Given** the batch reports success
+**When** persisted state is inspected
+**Then** every operation has been durably accepted by the configured store
+**And** cancellation or deferred flush never implies rollback/completion unless the backend guarantees it explicitly.
+
+**Given** deterministic and live-DAPR tests run
+**When** they exercise success, ETag conflict, duplicate batch, cancellation, and injected failure between detail and index operations
+**Then** detail, index, batch/recovery marker, and checkpoint end state is asserted directly
+**And** mock calls alone are not accepted as G10 proof.
+
+### Story 1.11: Complete Projection Freshness Lifecycle
+
+**Requirements covered:** FR4, FR36, NFR8, NFR15
+
+As a projection/query consumer,
+I want a complete, provenance-safe projection lifecycle contract,
+So that operational states are not collapsed into a stale Boolean or inferred from an ETag.
+
+**Acceptance Criteria:**
+
+**Given** the public lifecycle contract is defined
+**When** it is serialized or deserialized
+**Then** it supports exact stable values `Unknown = 0`, `Current`, `Stale`, `Rebuilding`, `Degraded`, `Unavailable`, and `LocalOnly`
+**And** missing, numeric, case-variant, or unrecognized input fails safely to `Unknown`.
+
+**Given** authoritative platform evidence exists
+**When** lifecycle is classified
+**Then** persisted projection evidence produces `Current` or `Stale`, active rebuild lifecycle produces `Rebuilding`, serviceable output with a known degraded dependency produces `Degraded`, failed/unreachable authoritative storage produces `Unavailable`, and explicit non-authoritative consumer fallback produces `LocalOnly`
+**And** lifecycle is never inferred from ETag presence, HTTP success, payload fields, or SignalR.
+
+**Given** query provenance is available from Story 2.8
+**When** lifecycle metadata crosses the query path
+**Then** only `ProjectionBacked` responses may carry an authoritative lifecycle state
+**And** handler-computed, missing, or invalid provenance yields `Unknown` without reopening Story 2.8 route-selection scope.
+
+**Given** legacy metadata remains supported
+**When** lifecycle is projected into compatibility fields
+**Then** `Current` may produce `IsStale=false`, `Stale` may produce `IsStale=true`, and other lifecycle states do not fabricate stale/current evidence
+**And** `IsDegraded` remains an additive compatibility view rather than the source of the lifecycle state.
+
+**Given** a lifecycle-aware response is produced
+**When** it crosses query results, gateway responses, typed/untyped clients, generated REST output, and UI-facing metadata
+**Then** the state and canonical bounded header are preserved only when authoritative
+**And** handler-computed routes omit authoritative lifecycle headers.
+
+**Given** consumer and UX mapping is validated
+**When** all six Parties states are exercised
+**Then** mutation availability follows the approved UX table, `LocalOnly` never counts as projection-confirmed success, and tests cover serialization, omission, provenance gating, and persisted-path propagation.
+
+### Story 1.12: Asynchronous Multi-Projection Dispatch
+
+**Requirements covered:** FR7, FR36, NFR7, NFR12
+
+As a domain projection author,
+I want asynchronous named projection handlers with one-to-many dispatch,
+So that one domain can durably maintain detail and index projections through platform seams.
+
+**Acceptance Criteria:**
+
+**Given** a named projection handler performs persistence
+**When** it handles a request
+**Then** the contract is asynchronous and cancellation-aware, can await `IReadModelStore`, `ReadModelWritePolicy`, and Story 1.10 batches, and completes only after required persistence finishes
+**And** production awaits use `ConfigureAwait(false)`.
+
+**Given** handlers are registered
+**When** routes are validated
+**Then** handlers are uniquely identified by `(Domain, ProjectionType)`, multiple projection types may share one domain, and duplicate pairs fail deterministically with a support-safe diagnostic.
+
+**Given** one delivery applies to multiple projections
+**When** dispatch runs
+**Then** every applicable named handler is invoked, detail and index outcomes remain distinguishable, and observable invocation order is deterministic.
+
+**Given** one projection handler fails after another completes durably
+**When** the endpoint returns its bounded per-projection result or equivalent versioned result
+**Then** failed projection checkpoint state does not advance as success
+**And** partial failure remains retryable without losing successful durable work.
+
+**Given** existing synchronous single-projection consumers remain
+**When** the new contract ships
+**Then** they continue through a compatibility adapter or an explicitly approved breaking-version plan
+**And** no consumer silently receives a changed JSON shape or ambiguous domain-only route.
+
+**Given** a test domain registers detail and index handlers
+**When** the production dispatch path executes
+**Then** both async persistence operations are awaited and both persisted outputs are independently verified
+**And** a one-handler failure proves truthful result and checkpoint behavior without Parties-specific EventStore logic.
+
+### Story 1.13: Projection-Handler Delivery Idempotency
+
+**Requirements covered:** FR7, FR36, NFR6, NFR7, NFR16
+
+As an operator,
+I want projection delivery to be duplicate-safe and order-safe through the real handler path,
+So that at-least-once unordered delivery cannot corrupt detail or index state.
+
+**Acceptance Criteria:**
+
+**Given** delivery identity is persisted
+**When** projection state is addressed
+**Then** idempotency/checkpoint state is scoped by tenant, domain, aggregate, and projection type, duplicate detection uses EventStore `MessageId`, and `SequenceNumber` is never treated as globally ordered.
+
+**Given** the same completed `MessageId` is delivered again
+**When** the handler path receives it
+**Then** the delivery is an idempotent no-op, an in-progress duplicate is deferred/retryable, and the logical detail/index batch is not applied twice.
+
+**Given** an out-of-order event arrives
+**When** its sequence is already applied, contains a future gap, or conflicts with a different message identity/content
+**Then** a lower applied sequence is ignored safely, a gap returns retryable without advancing the checkpoint, and a conflict fails safely without persisted-state change.
+
+**Given** projection writes and completion markers are persisted
+**When** the coordinated operation completes or retries after partial failure
+**Then** checkpoints advance only after required durable writes and retry converges to the same final state as one successful delivery.
+
+**Given** deduplication history is bounded
+**When** an event falls outside retained history
+**Then** the platform invokes an explicit rebuild/reconciliation path rather than silently applying it
+**And** the retention/compaction policy is documented and tested.
+
+**Given** production-path tests run
+**When** they exercise one in-order delivery, exact duplicate, reversed order, gap then missing event, duplicate during partial failure, and conflicting sequence/message identity through orchestration, `/project`, async dispatch, handler, and durable store
+**Then** final detail, index, batch marker, and checkpoint state equals the single in-order baseline.
+
+**Given** Stories 6.3/6.4 later optimize delivery cost
+**When** their implementation is reviewed
+**Then** they preserve this minimum correctness baseline.
+
+### Story 1.14: Correct Paged Rebuild And Replay Equivalence
+
+**Requirements covered:** FR7, FR33, FR36, NFR8, NFR16
+
+As an operator,
+I want paged projection rebuilds to be replay-equivalent,
+So that rebuilding a long stream cannot replace correct state with a partial-page model.
+
+**Acceptance Criteria:**
+
+**Given** a projection handler participates in rebuild
+**When** its contract is inspected
+**Then** it declares or is adapted to full-replay or incremental semantics; full-replay handlers receive the complete required prefix, incremental handlers receive prior staged state plus a contiguous page, and a page is never presented as a complete stream.
+
+**Given** paged rebuild begins
+**When** work is incomplete
+**Then** operation-scoped staging or equivalent non-live isolation holds its detail/index state
+**And** the last complete live model is not overwritten until every required projection completes durably.
+
+**Given** a stream exceeds the configured page size
+**When** rebuild reads every page
+**Then** page boundaries neither duplicate, skip, nor reorder events
+**And** a bounded `toPosition` produces the same result as canonical replay through that position.
+
+**Given** rebuild is canceled or a handler/store fails
+**When** the operation stops and resumes
+**Then** the last complete live model remains intact, progress resumes from a safe boundary, and page-read progress is not misreported as projection completion.
+
+**Given** detail and index projections rebuild together
+**When** the operation outcome is written
+**Then** each projection remains independently observable but the operation cannot report success while any required projection is incomplete
+**And** promotion and checkpoints follow Stories 1.10-1.13.
+
+**Given** replay-equivalence evidence is produced
+**When** a fixture larger than two pages runs through canonical replay/full-sequence projection and the production paged rebuild orchestrator
+**Then** persisted detail, index, projection versions, and checkpoints are semantically equal
+**And** tests also cover empty streams, exact page boundaries, bounded positions, cancellation, failure, and resume.
+
+**Given** correctness precedes cost optimization
+**When** a temporary full-sequence strategy is required
+**Then** it has an explicit safety bound and failure mode
+**And** Stories 6.3/6.4 may optimize it later without changing equivalence guarantees.
+
+### Story 1.15: Owner-Approved Parity Closure And Runtime Pin
+
+**Requirements covered:** FR36, NFR12, NFR16
+
+As an EventStore platform owner,
+I want a reviewed parity-closure packet tied to an exact runtime commit,
+So that Parties Story 8.6 resumes only against capabilities that are implemented, verified, and approved.
+
+**Acceptance Criteria:**
+
+**Given** closure starts
+**When** prerequisites are checked
+**Then** Stories 1.9-1.14 are complete and reviewed, Story 2.8 is complete before Story 1.11 evidence is accepted, and public API/compatibility decisions are recorded.
+
+**Given** parity is re-evaluated
+**When** the packet is produced
+**Then** read-model/checkpoint erasure, coordinated batching, six-state lifecycle, duplicate/out-of-order handler safety, rebuild equivalence, cursor compatibility, async persistence, and multiple projections per domain are each classified
+**And** every item must be `available`; any unresolved item keeps the final decision `still blocked`.
+
+**Given** evidence is recorded
+**When** each requirement is reviewed
+**Then** the packet cites source paths, test paths, exact commands/results, persisted-state evidence, known limitations, and rollback guidance
+**And** mock-only or isolated aggregate-replayer proof cannot close handler-path requirements.
+
+**Given** the proof result is ready
+**When** owner review occurs
+**Then** the packet records EventStore reviewer, approval date/source or PR, accepted scope, residual limitations, and explicit consumer-migration authorization
+**And** story-creation authorization does not count as proof-result approval.
+
+**Given** the runtime implementation is approved
+**When** repository identity is recorded
+**Then** one exact EventStore commit containing the approved implementation/evidence is named, its working tree/test results correspond to that commit, and any later documentation-only SHA distinction is explicit.
+
+**Given** the packet is handed to Parties
+**When** Parties evaluates its prerequisite
+**Then** it must verify `references/Hexalith.EventStore` resolves to the approved SHA; a mismatch leaves Story 8.6 blocked, and EventStore approval does not itself modify Parties or delete its rollback code.
+
+**Given** Story 1.15 completion is requested
+**When** the packet still says `still blocked`
+**Then** the story remains `in-progress` with the blocking condition recorded and a scoped corrective item is created
+**And** Story 1.15 and Epic 1 become `done` only after the final decision is `available`.
 
 ## Epic 2: External Integration Surfaces
 
@@ -1661,6 +1958,11 @@ So that projection optimizations do not introduce out-of-order state regressions
 **Then** the exact output path is `_bmad-output/implementation-artifacts/spec-projection-cost-sequence-guard.md`
 **And** the artifact records approver, approval date, accepted scope, rejected alternatives, open decisions, and explicit authorization for Story 6.4 to start.
 
+**Given** Stories 1.13 and 1.14 own the production correctness baseline
+**When** this optimization spec defines checkpoint short-circuit, tail delivery, and sequence-guard changes
+**Then** it starts from their approved duplicate, gap, page-safety, staging, promotion, and replay-equivalence invariants
+**And** it does not redefine or weaken those guarantees.
+
 ### Story 6.4: Projection Cost And Sequence Guard Implementation
 
 **Requirements covered:** FR33
@@ -1679,7 +1981,8 @@ So that projection updates remain correct and cheaper on long streams.
 **Given** Story 6.4 implementation starts
 **When** implementation preflight runs
 **Then** `_bmad-output/implementation-artifacts/spec-projection-cost-sequence-guard.md` exists and contains approval evidence
-**And** implementation tasks cite the approved spec sections they satisfy.
+**And** Stories 1.13 and 1.14 are complete
+**And** implementation tasks cite the approved spec sections and correctness-baseline scenarios they preserve.
 
 **Given** a projection checkpoint trails the stream head
 **When** incremental projection delivery is available
@@ -1693,7 +1996,8 @@ So that projection updates remain correct and cheaper on long streams.
 
 **Given** projection cost tests run
 **When** long-stream projection scenarios are exercised
-**Then** reduced replay behavior and correctness guards are both verified.
+**Then** reduced replay behavior and correctness guards are both verified
+**And** the full Stories 1.13/1.14 persisted-outcome corpus remains green.
 
 ### Story 6.5: Event Versioning And Upcasting Spec
 
@@ -1909,7 +2213,8 @@ So that GDPR erasure, admin OIDC, aggregate testing, and generator hardening are
 **Given** GDPR aggregate erasure and tombstoning are deferred
 **When** backlog artifacts are updated
 **Then** `_bmad-output/planning-artifacts/backlog/gdpr-1-aggregate-erasure.md` records crypto-shred, tombstone, broker, snapshot, retention, and verification scope
-**And** it is not implemented opportunistically inside unrelated cleanup stories.
+**And** it is not implemented opportunistically inside unrelated cleanup stories
+**And** generic projection read-model/checkpoint erasure remains separately authorized by Story 1.9 without implying completion of GDPR-1.
 
 **Given** Admin interactive OIDC login is deferred
 **When** backlog artifacts are updated

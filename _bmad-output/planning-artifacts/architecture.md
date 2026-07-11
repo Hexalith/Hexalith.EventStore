@@ -7,9 +7,9 @@ paradigm: DAPR-backed hexagonal event-sourcing platform
 scope: Hexalith.EventStore Phase 4 implementation readiness recovery
 status: final
 created: 2026-07-05
-updated: 2026-07-05
+updated: 2026-07-11
 binds:
-  - FR1-FR35
+  - FR1-FR36
   - NFR1-NFR18
 sources:
   - _bmad-output/planning-artifacts/prd.md
@@ -48,7 +48,7 @@ flowchart LR
 
 ### AD-1 - DAPR-Backed Hexagonal Event Sourcing [ADOPTED]
 
-- **Binds:** all Phase 4 epics, FR1-FR35, NFR1-NFR18
+- **Binds:** all Phase 4 epics, FR1-FR36, NFR1-NFR18
 - **Prevents:** one team treating EventStore as a CRUD web API while another builds actor-owned event sourcing.
 - **Rule:** The system remains CQRS plus DDD plus event sourcing on DAPR state, actors, pub/sub, and service invocation, with Aspire owning local orchestration and deployable topology seed.
 
@@ -84,15 +84,15 @@ flowchart LR
 
 ### AD-7 - Read Models And Cursors Use Platform Seams [ADOPTED]
 
-- **Binds:** FR5-FR6, FR9, FR33, NFR8
+- **Binds:** FR5-FR6, FR9, FR33, FR36, NFR8, NFR16
 - **Prevents:** each domain inventing its own DAPR state wrapper, optimistic-concurrency policy, cursor format, or cursor protection scope.
-- **Rule:** Persisted read models use `IReadModelStore` plus `ReadModelWritePolicy`. Paging cursors use `IQueryCursorCodec` plus `QueryCursorScope`. Cursors are opaque, DataProtection-backed, scope-validated, bounded, and fail safe on tamper, malformed payloads, wrong scope, wrong query type, or key rotation.
+- **Rule:** Persisted read models use platform-owned lifecycle and write contracts. Erasure removes selected read-model keys and companion delivery/rebuild sequence or checkpoint keys as one logical tenant/domain/aggregate/projection-scoped operation. Detail/index changes use a generic same-store batch transaction or an explicitly approved resumable equivalent defining atomicity boundaries, partial-failure recovery, idempotency, optimistic concurrency, ordering, and flush completion; DAPR and in-memory implementations expose equivalent observable semantics. Paging cursors use `IQueryCursorCodec` plus `QueryCursorScope`. Cursors are opaque, DataProtection-backed, scope-validated, bounded, and fail safe on tamper, malformed payloads, wrong scope, wrong query type, or key rotation.
 
 ### AD-8 - Projection Delivery Is A Freshness Signal [ADOPTED]
 
-- **Binds:** FR7, FR16, FR34, NFR5-NFR6, NFR12, NFR15
+- **Binds:** FR7, FR16, FR34, FR36, NFR5-NFR6, NFR12, NFR15-NFR16
 - **Prevents:** UI or subscribers treating SignalR/DAPR notifications, HTTP 202, or command acceptance as proof of projection-confirmed success.
-- **Rule:** DAPR pub/sub and projection notifications are at-least-once and unordered. Consumers deduplicate by EventStore `MessageId`. SignalR detail notifications are additive, group-scoped, metadata-only, bounded, and backward compatible with signal-only clients. User-visible success requires projection/read-model evidence.
+- **Rule:** DAPR pub/sub and projection notifications are at-least-once and unordered. Duplicate and out-of-order safety is enforced and proven through the production projection dispatcher, handler, persistence, marker, and checkpoint path. Deduplication uses EventStore `MessageId`; sequence guards are scoped to tenant/domain/aggregate/projection identity and never treat sequence numbers as globally ordered. Completed duplicates are idempotent no-ops, in-progress duplicates are retryable/deferred, and gaps do not advance checkpoints. SignalR detail notifications are additive, group-scoped, metadata-only, bounded, and backward compatible with signal-only clients. User-visible success requires projection/read-model evidence.
 
 ### AD-9 - AppHost And DAPR YAML Change Together [ADOPTED]
 
@@ -124,9 +124,11 @@ flowchart LR
 - **Prevents:** story-local choices silently changing snapshot format, replay cost, projection ordering, event schema evolution, cancellation contracts, or global position meaning.
 - **Rule:** Folded snapshots, projection delivery cost, projection sequence guards, event versioning/upcasting, event identity metadata validation, cancellation-token public seams, and global-position sharding require approved specs at named paths before implementation stories start. AOT/trimming remains out of target while reflection conventions are load-bearing.
 
+Stories 1.13 and 1.14 own the minimum projection correctness baseline for production-path idempotency and replay-equivalent paged rebuilds. Stories 6.3/6.4 may optimize checkpoint, tail-delivery, and replay cost only after that baseline exists and must not redefine or weaken duplicate, gap, page-safety, staging, promotion, or replay-equivalence guarantees.
+
 ### AD-14 - Query Evidence Crosses The Gateway As Platform Metadata
 
-- **Binds:** FR4-FR6, FR15, FR34, NFR8, NFR15
+- **Binds:** FR4-FR6, FR15, FR34, FR36, NFR8, NFR15-NFR16
 - **Prevents:** domain handlers, gateway routing, generated APIs, and UI hosts disagreeing about freshness, projection version, paging, ETag, or projection-confirmed state.
 - **Rule:** Query/read-model evidence metadata is carried through `QueryResponseMetadata` and HTTP response headers owned by the gateway, not ad hoc payload fields. The canonical flow is:
 
@@ -167,7 +169,7 @@ flowchart TD
 
 ### AD-15 - Query Response Provenance Is Explicit And Route-Bound
 
-- **Binds:** FR4, FR12, FR15, FR34, NFR8, NFR15, NFR16
+- **Binds:** FR4, FR12, FR15, FR34, FR36, NFR8, NFR15, NFR16
 - **Prevents:** generated REST or UI code treating a gateway ETag, or a gateway-attached projection validator, as projection-backed current/stale evidence for a response no projection produced.
 - **Rule:** Every query response carries an explicit provenance classification — `ProjectionBacked`, `HandlerComputed`, or `Unknown` — set by the route that produced it and preserved across `QueryResult.Metadata -> QueryRouterResult.Metadata -> SubmitQueryResult.Metadata -> SubmitQueryResponse.Metadata -> EventStoreQueryResult.Metadata`.
 
@@ -178,6 +180,8 @@ flowchart TD
 5. Guardrail evidence is persisted-path, not mock (AD-12 / NFR16): a handler route must be asserted to carry no projection ETag/version on the real gateway path, and a projection-backed route to carry a genuine one.
 
 AD-15 extends AD-14: AD-14 defines *what* metadata crosses and *how it merges*; AD-15 defines *whether* the ETag / projection validator legitimately belongs to the response path.
+
+Projection lifecycle and query provenance are orthogonal. Only `ProjectionBacked` responses may carry authoritative lifecycle evidence. The platform lifecycle representation preserves `Current`, `Stale`, `Rebuilding`, `Degraded`, `Unavailable`, and `LocalOnly` without collapsing transitional or restrictive states into a stale Boolean. `HandlerComputed`, missing, or invalid provenance remains `Unknown`, and lifecycle is never inferred from ETags, HTTP success, payload fields, or SignalR.
 
 ### AD-16 - Health And Probe Endpoints Are Explicitly Anonymous And Fail-Closed-Compatible [ADOPTED]
 
@@ -221,6 +225,18 @@ Guardrail evidence (AD-12): a unit test seeds a pre-existing `dapr-app-id` / `da
 
 AD-18 extends AD-3 (gateway is the command/query policy boundary) and AD-10 (security fails closed), applied to the client-to-sidecar transport boundary, and is enforced through the platform per AD-2 (domain modules stay domain-centric; no per-host transport boilerplate).
 
+### AD-19 - Projection Dispatch Is Asynchronous And One-To-Many [ADOPTED]
+
+- **Binds:** FR7, FR36, NFR6-NFR8, NFR12, NFR16
+- **Prevents:** a synchronous domain-only handler contract from blocking durable asynchronous persistence or preventing one domain from maintaining both detail and cross-aggregate index projections.
+- **Rule:** Projection handlers are identified by `(Domain, ProjectionType)`, not by domain alone. A domain may register multiple named handlers. Dispatch and persistence are asynchronous and cancellation-aware, and an endpoint returns bounded distinguishable per-projection outcomes or an equivalent versioned result so checkpoint state cannot advance a failed projection as though it succeeded. Existing synchronous single-projection consumers require an additive compatibility adapter or an explicitly approved breaking-version and migration plan. No consuming-domain-specific logic enters EventStore.
+
+### AD-20 - Paged Rebuilds Are Replay-Equivalent [ADOPTED]
+
+- **Binds:** FR7, FR33, FR36, NFR7-NFR8, NFR16
+- **Prevents:** a later rebuild page replacing a correct live model with page-only state or a checkpoint reporting completion before every required projection is durably complete.
+- **Rule:** Every handler declares or is adapted to explicit full-replay or incremental semantics. Paging is an event-read optimization, never a semantic projection boundary: a page is not passed to a full-replay handler as the complete stream. Rebuild work uses operation-scoped staging or equivalent non-live isolation, preserves the last complete live model on cancel/failure, resumes from a safe boundary, and promotes detail/index outputs only after all required projections complete. Rebuild output, projection versions, and checkpoints must equal canonical aggregate replay for the same event prefix, including streams longer than the configured page size.
+
 ## Consistency Conventions
 
 | Concern | Convention |
@@ -234,6 +250,9 @@ AD-18 extends AD-3 (gateway is the command/query policy boundary) and AD-10 (sec
 | Health probes | `/health`, `/alive`, `/ready` (from `ServiceDefaults.MapDefaultEndpoints`) are explicitly `AllowAnonymous` and support-safe. They are the only anonymous exception to fail-closed (AD-16); a fallback/deny-by-default policy is never weakened to reach them. |
 | Serialization | Command, rehydrate, project, and pub/sub payloads use shared platform serialization paths once Story 4.3 lands; no story introduces a private JSON option set for the same payload family. |
 | Cursors and ETags | Cursors and ETags are opaque implementation details. They are not parsed, displayed, logged, or exposed as support text. An ETag is a cache validator, not projection evidence; version/freshness claims require `ProjectionBacked` route provenance (AD-15). |
+| Projection lifecycle | `Current`, `Stale`, `Rebuilding`, `Degraded`, `Unavailable`, and `LocalOnly` are preserved only as projection-backed evidence. Handler-computed or unknown provenance renders `Unknown`; lifecycle is not inferred from ETags or SignalR. |
+| Projection persistence | Read-model/checkpoint erasure and detail/index batches follow AD-7; async named fan-out follows AD-19; checkpoints advance only after required durable work. |
+| Projection rebuild | Full/incremental semantics are explicit; paged work stays staged and replay-equivalent per AD-20. |
 | Sidecar control-plane headers | Outbound `dapr-app-id` / `dapr-api-token` are handler-owned, **replaced not appended**, set authoritatively from config by the single platform handler; caller/inbound-forwarded values are never routed (AD-18). |
 | UI | Module UI uses FrontComposer and Fluent UI Blazor V5. UI success is projection-confirmed, support-safe, accessible, and localized; detailed UX flows live in `ux.md`. |
 | Runtime topology | AppHost resource names, DAPR app IDs, component scopes, ACL policies, pub/sub topics, and deployment overlays remain aligned by tests. |
@@ -318,12 +337,12 @@ flowchart TB
 
 | Capability / Area | Lives in | Governed by |
 | --- | --- | --- |
-| FR1-FR10 Domain author self-service | `Client`, `DomainService`, `ServiceDefaults`, `Aspire`, domain modules | AD-1, AD-2, AD-7, AD-9, AD-11, AD-14, AD-15 |
+| FR1-FR10, FR36 Domain author self-service and consumer parity closure | `Contracts`, `Client`, `DomainService`, `Server`, `Testing`, domain modules | AD-1, AD-2, AD-7, AD-8, AD-9, AD-11, AD-12, AD-14, AD-15, AD-19, AD-20 |
 | FR11-FR16 External integration surfaces | `RestApi.Generators`, external API hosts, `IEventStoreGatewayClient`, SignalR | AD-3, AD-4, AD-8, AD-10, AD-15, AD-18 |
 | FR17-FR22, FR25 Release and repository reliability | `.github/workflows`, `tools/release-packages.json`, central props, `references/` layout | AD-9, AD-11, AD-12 |
 | FR23-FR24, FR27, FR29-FR31 Event correctness and recovery | `Server` actors, persisters, publishers, replay, status/archive, recovery | AD-5, AD-6, AD-12, AD-13 |
 | FR26, FR28, FR32 Security and tenant isolation | gateway auth, Admin.Server auth, DAPR ACLs, AppHost, deployment templates | AD-3, AD-9, AD-10, AD-12, AD-16, AD-18 |
-| FR33 Bounded cost and event evolution | spec artifacts, `Client`/`Server` public seams, snapshots, projections, upcasters | AD-6, AD-7, AD-13 |
+| FR33 Bounded cost and event evolution | spec artifacts, `Client`/`Server` public seams, snapshots, projections, upcasters | AD-6, AD-7, AD-13, AD-20 |
 | FR34-FR35 Operator trust and backlog | Admin surfaces, delivery docs, deployment hardening, integration lanes, backlog artifacts | AD-8, AD-10, AD-12, AD-13, AD-14, AD-15, AD-16 |
 
 ## Deferred
@@ -335,4 +354,4 @@ flowchart TB
 | Exact tenant-vs-domain global-position sharding design | FR24 requires renegotiating the frozen global-ordering spec before implementation. AD-6 preserves current semantics until then. |
 | Folded snapshot payload shape, projection sequence guard algorithm, event upcaster ordering, and cancellation contract details | FR33 explicitly requires spec-first stories 6.1, 6.3, and 6.5 before implementation. |
 | Production mTLS trust domain, namespace values, secret-store provider, and deployment overlay specifics | The invariant is topology parity and fail-closed app-layer security. Environment-specific values belong in deployment hardening stories and deploy templates. |
-| GDPR erasure/tombstoning, Admin interactive OIDC login, aggregate test kit, and REST generator hardening backlog | PRD marks these as backlog artifacts for Phase 4 MVP, not implementation scope. |
+| Full aggregate/event GDPR tombstoning, broker-history deletion, backup erasure, crypto-shredding, Admin interactive OIDC login, aggregate test kit, and REST generator hardening backlog | PRD marks these as backlog artifacts for Phase 4 MVP. Generic projection read-model/checkpoint erasure is active FR5/Story 1.9 scope and is not deferred here. |
