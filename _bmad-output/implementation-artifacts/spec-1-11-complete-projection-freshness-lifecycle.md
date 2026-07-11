@@ -2,10 +2,11 @@
 title: '1.11 Complete Projection Freshness Lifecycle'
 type: 'feature'
 created: '2026-07-11'
-status: 'in-review'
+status: 'done'
 baseline_revision: 'f6aafb38e81969ab7ca04be484b60b857f0f7a86'
+final_revision: '6aa29af6af13c76631c4122a96ddef8b3da47fb7'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/project-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-1-context.md'
@@ -80,6 +81,29 @@ warnings: [oversized]
 
 ## Review Triage Log
 
+### 2026-07-11 — Review pass
+- intent_gap: 0
+- bad_spec: 0
+- patch: 15: (high 0, medium 11, low 4)
+- defer: 0
+- reject: 5: (high 0, medium 3, low 2)
+- addressed_findings:
+  - `[medium]` `[patch]` Preserved additive `IsDegraded` evidence for non-degraded lifecycle values and added an exhaustive compatibility truth table.
+  - `[medium]` `[patch]` Added all-state bodyless `304` lifecycle and compatibility-field coverage.
+  - `[medium]` `[patch]` Added same-value and conflicting duplicate lifecycle-header rejection for `200` and `304`.
+  - `[medium]` `[patch]` Made mutation and projection-confirmation policy tests exhaustive across the stable lifecycle set.
+  - `[medium]` `[patch]` Merged fake not-modified metadata with authoritative ETag/not-modified fields and documented the public parameters.
+  - `[medium]` `[patch]` Added missing, numeric, case-variant, invalid, and non-projection lifecycle reconciliation coverage for gateway `200` responses.
+  - `[medium]` `[patch]` Normalized generated REST lifecycle compatibility headers and covered unknown/invalid omission.
+  - `[medium]` `[patch]` Exercised operational lifecycle headers on core/generated conditional responses.
+  - `[medium]` `[patch]` Added operational lifecycle preservation proof across the query metadata carrier chain.
+  - `[medium]` `[patch]` Re-read persisted freshness state after typed and untyped queries to prove the read path did not mutate it.
+  - `[medium]` `[patch]` Cleared pre-existing lifecycle headers before core and generated omission paths.
+  - `[low]` `[patch]` Corrected conditional lifecycle-header wording in the concept guide.
+  - `[low]` `[patch]` Linked the new lifecycle concept from the documentation index.
+  - `[low]` `[patch]` Documented lifecycle output on the persisted freshness bridge.
+  - `[low]` `[patch]` Completed XML parameter documentation for the expanded fake API.
+
 ## Design Notes
 
 The new lifecycle enum lives in Contracts and does not replace `ReadModelFreshnessState`: downstream consumers depend on legacy `Aging = 2`. Operational states are explicit producer evidence; the platform documents their sources and transports them but does not guess precedence among simultaneous signals. Unknown lifecycle may use legacy `IsStale` only for request freshness compatibility; it never becomes a lifecycle state. The canonical lifecycle header is required on the core gateway so bodyless `304` can preserve authoritative state, then generated REST forwards the same closed-set value.
@@ -96,3 +120,73 @@ The new lifecycle enum lives in Contracts and does not replace `ReadModelFreshne
 - `dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj` -- expected: controller/cache/persisted-path lifecycle proof green, or exact pre-existing broad-lane blocker recorded separately.
 - `dotnet build Hexalith.EventStore.slnx --configuration Release -m:1 -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` -- expected: warnings-as-errors Release build green.
 - `git diff --check` -- expected: no whitespace errors.
+
+## Auto Run Result
+
+Status: done
+
+### Summary
+
+Added a stable seven-state projection lifecycle contract, provenance-safe normalization, persisted freshness mapping, default consumer mutation policy, canonical gateway/generated REST headers, typed/untyped and bodyless-`304` reconciliation, cache invalidation, testing-fake parity, and lifecycle documentation.
+
+### Files Changed
+
+- `src/Hexalith.EventStore.Contracts/Queries/ProjectionLifecycleState.cs` -- defines stable lifecycle values.
+- `src/Hexalith.EventStore.Contracts/Queries/ProjectionLifecycleStateJsonConverter.cs` -- provides exact-name fail-safe JSON conversion.
+- `src/Hexalith.EventStore.Contracts/Queries/ProjectionLifecyclePolicy.cs` -- centralizes provenance, compatibility, header, confirmation, and mutation policy.
+- `src/Hexalith.EventStore.Contracts/Queries/QueryResponseMetadata.cs` -- adds the init-only lifecycle carrier without changing constructor ABI.
+- `src/Hexalith.EventStore.Client/Projections/ReadModelFreshnessExtensions.cs` -- maps persisted age evidence into lifecycle metadata.
+- `src/Hexalith.EventStore.Client/Projections/ReadModelFreshnessResult.cs` -- keeps the public freshness result in its own file.
+- `src/Hexalith.EventStore.Client/Gateway/EventStoreGatewayClient.cs` -- reconciles lifecycle body/header evidence for `200` and `304`.
+- `src/Hexalith.EventStore/Queries/HandlerAwareQueryRouter.cs` -- removes lifecycle authority from handler-computed routes.
+- `src/Hexalith.EventStore.Server/Queries/QueryRouter.cs` -- normalizes projection-backed lifecycle metadata.
+- `src/Hexalith.EventStore/Controllers/QueriesController.cs` -- enforces lifecycle-aware freshness and emits canonical headers.
+- `src/Hexalith.EventStore.Server/Actors/CachingProjectionActor.cs` -- clears time-sensitive lifecycle evidence on cache hits.
+- `src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs` -- emits normalized lifecycle and compatibility headers.
+- `src/Hexalith.EventStore.Testing/Fakes/FakeEventStoreGatewayClient.cs` -- preserves explicit lifecycle and consistent cache metadata.
+- `tests/Hexalith.EventStore.Contracts.Tests/Queries/ProjectionAdapterContractTests.cs` -- covers stable values, serialization, compatibility, and policy truth tables.
+- `tests/Hexalith.EventStore.Contracts.Tests/Queries/QueryResultLifecycleCarrierTests.cs` -- proves operational lifecycle carrier round trips.
+- `tests/Hexalith.EventStore.Contracts.Tests/Queries/SubmitQueryResponseTests.cs` -- covers response lifecycle propagation.
+- `tests/Hexalith.EventStore.Client.Tests/Projections/ReadModelFreshnessTests.cs` -- covers persisted age-to-lifecycle mapping.
+- `tests/Hexalith.EventStore.Client.Tests/Gateway/EventStoreGatewayClientTests.cs` -- covers authoritative, unsafe, duplicate, typed/untyped, and `304` lifecycle transport.
+- `tests/Hexalith.EventStore.QueryRouting.Tests/HandlerAwareQueryRouterTests.cs` -- proves handler routes fail closed.
+- `tests/Hexalith.EventStore.Server.Tests/Queries/QueryRouterTests.cs` -- proves projection-route operational lifecycle propagation.
+- `tests/Hexalith.EventStore.Server.Tests/Pipeline/Queries/SubmitQueryHandlerTests.cs` -- proves handler carrier propagation.
+- `tests/Hexalith.EventStore.Server.Tests/Controllers/QueriesControllerTests.cs` -- covers normalization, headers, omission, and freshness policy.
+- `tests/Hexalith.EventStore.Server.Tests/Actors/CachingProjectionActorTests.cs` -- proves cached lifecycle clearing.
+- `tests/Hexalith.EventStore.Server.Tests/Integration/QueryResponseProvenancePersistenceTests.cs` -- proves persisted Current/Stale evidence through typed/untyped clients.
+- `tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiControllerGenerationTests.cs` -- checks generated lifecycle code.
+- `tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiGeneratedControllerErrorSemanticsTests.cs` -- exercises generated lifecycle/compatibility headers.
+- `tests/Hexalith.EventStore.Sample.Tests/SampleApi/SampleApiGeneratedControllerRuntimeTests.cs` -- proves generated runtime lifecycle headers.
+- `tests/Hexalith.EventStore.Sample.Tests/SampleApi/SampleApiHostMiddlewareTests.cs` -- proves hosted generated API lifecycle behavior.
+- `tests/Hexalith.EventStore.Testing.Tests/Fakes/FakeEventStoreGatewayClientTests.cs` -- covers fake typed/untyped/not-modified parity.
+- `docs/concepts/projection-lifecycle.md` -- documents lifecycle sources and consumer policy.
+- `docs/reference/query-api.md` -- documents lifecycle wire/header behavior.
+- `docs/reference/nuget-packages.md` -- documents package ownership and APIs.
+- `docs/index.md` -- links the lifecycle concept.
+- `_bmad-output/implementation-artifacts/spec-1-11-complete-projection-freshness-lifecycle.md` -- records the implementation and review result.
+
+### Review Findings
+
+- Patches applied: 15 (11 medium, 4 low), primarily compatibility preservation and exhaustive public-boundary verification.
+- Items deferred: 0.
+- Items rejected: 5, covering direct invalid-enum `DataContractSerializer` behavior outside the JSON wire contract, an unreachable hypothetical legacy classifier value, consumer-submodule/operational-producer expansion outside this EventStore contract story, and unrelated sprint-tracker state.
+- Follow-up review recommended: true because review-driven changes crossed public contract, client, gateway, generator, fake, documentation, and test surfaces.
+
+### Verification
+
+- Contracts tests: 693 passed.
+- Client tests: 590 passed.
+- Query-routing tests: 6 passed.
+- REST generator tests: 124 passed.
+- Sample tests: 117 passed.
+- Testing-fake tests: 144 passed.
+- Full Server tests: 2,295 passed, 25 pre-existing ATDD tests skipped, 0 failed.
+- Serialized Release solution build: succeeded with 0 warnings and 0 errors.
+- Matrix audit: all eight intent-contract scenarios have executed passing coverage.
+- `git diff --check`: passed.
+
+### Residual Risks
+
+- Story 2.8 remains formally `in-review`; this story consumes its implemented provenance invariants but does not claim that separate owner-review closure.
+- Consumer-specific UI rendering/localization and actual operational producer wiring remain owned by their respective consumer and later projection stories; this change supplies and verifies the EventStore contract/carrier/default-policy surface.
