@@ -1,3 +1,10 @@
+# [3.55.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.54.0...v3.55.0) (2026-07-11)
+
+
+### Features
+
+* **sprint-status:** update last_updated timestamp and story status ([445c3a8](https://github.com/Hexalith/Hexalith.EventStore/commit/445c3a87830c9f55ffaf0ea4d0b0d07758a54bfd))
+
 # [3.54.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.53.0...v3.54.0) (2026-07-11)
 
 
