@@ -23,21 +23,21 @@ project_knowledge = "{project-root}/docs"
 [modules.tea]
 test_artifacts = "{project-root}/_bmad-output/test-artifacts"
 tea_use_playwright_utils = true
-tea_use_pactjs_utils = false
-tea_pact_mcp = "none"
+tea_use_pactjs_utils = true
+tea_pact_mcp = "mcp"
 tea_browser_automation = "auto"
 tea_execution_mode = "auto"
 tea_capability_probe = true
 test_stack_type = "auto"
 ci_platform = "auto"
 test_framework = "auto"
-risk_threshold = "p1"
+risk_threshold = "p3"
 test_design_output = "_bmad-output/test-artifacts/test-design"
 test_review_output = "_bmad-output/test-artifacts/test-reviews"
 trace_output = "_bmad-output/test-artifacts/traceability"
 
 [modules.cis]
-visual_tools = "intermediate"
+visual_tools = ["mermaid", "excalidraw", "gemini-nano"]
 
 [agents.bmad-agent-analyst]
 module = "bmm"

@@ -1,7 +1,0 @@
-# Team override: architectural pivots must rewrite affected story files.
-
-[workflow]
-
-activation_steps_append = [
-  "Enforce the Correct-Course Story Rewrite Gate: when a change is an architectural pivot or an approved proposal supersedes active story ACs, tasks, Dev Notes, project structure notes, or design assumptions, identify every affected story file and include explicit old-to-new story rewrites in the Sprint Change Proposal. Halt approval or handoff if the rewrite gate is missing.",
-]

@@ -37,8 +37,19 @@ enabled = true
 # The loop is bounded by limits.max_review_cycles either way.
 trigger = "recommended"
 
+[stories]
+# Story-queue source. "sprint-status" (default) walks sprint-status.yaml written
+# by bmad-sprint-planning. "stories" opts into folder+id dispatch: the loop reads
+# a typed stories.yaml (Story Breakdown output, sibling of SPEC.md) and dispatches
+# each entry by spec-folder + story id. `bmad-loop run --spec <folder>` forces
+# stories mode for a single run regardless of this setting.
+source = "sprint-status"     # sprint-status | stories
+# Required (and must parse) when source = "stories": the project-relative path to
+# the epic's spec folder holding stories.yaml + SPEC.md. Ignored under sprint-status.
+spec_folder = ""
+
 [adapter]
-name = "claude"               # claude | codex | gemini | <custom .bmad-loop/profiles/*.toml>
+name = "claude"              # claude | codex | gemini | <custom .bmad-loop/profiles/*.toml>
 model = ""                   # empty = CLI default model
 cleanup_session_on_finish = true  # kill the run's tmux session when it finishes (false keeps it for inspection)
 # extra_args replaces the profile's default permission-bypass flags when set:
@@ -56,6 +67,10 @@ cleanup_session_on_finish = true  # kill the run's tmux session when it finishes
 # keys above.
 # [adapter.dev]
 # model = "opus"
+# [adapter.review]
+# name = "codex"
+# model = "gpt-5-codex"
+# stop_without_result_nudges = 5     # e.g. a multi-turn review needs more nudges than dev
 # [adapter.triage]
 # model = "opus"
 
@@ -131,3 +146,24 @@ enabled = []                 # e.g. ["unity", "my-lint-plugin"]
 # over slow/high-latency links (SSH, Tailscale). Equivalent to launching with
 # `bmad-loop tui --low-frame-rate`. Takes effect the next time the TUI starts.
 low_frame_rate = false
+# Persisted dashboard pane sizes, in terminal cells. 0 = unset (use the built-in
+# default proportions). The TUI writes these when you resize a pane by mouse-drag
+# or the Ctrl+W resize mode; they are re-applied on the next launch. Usually you
+# won't hand-edit these — resize in the TUI instead.
+# left_width = 0        # sidebar width, columns
+# runs_height = 0       # Runs pane height, rows
+# deferred_height = 0   # Deferred pane height, rows
+# tasks_height = 0      # Tasks table height, rows
+
+[mux]
+# Terminal-multiplexer backend for this machine (the transport axis — which
+# tmux-like program hosts sessions; independent of [adapter], the coding-CLI
+# axis). Machine-specific: `bmad-loop init` gitignores policy.toml, so this
+# choice never travels to teammates on other machines or OSes.
+# Unset = auto-select: the BMAD_LOOP_MUX_BACKEND env var wins, then this key,
+# then the platform default (win32: psmux, elsewhere: tmux) when installed,
+# then the first registered backend that matches this platform and is
+# available. Naming a backend that is not registered fails loudly at launch.
+# `bmad-loop mux` lists backends and shows the selection; `bmad-loop mux set
+# <name>` writes this key. Takes effect on the next bmad-loop invocation.
+# backend = "tmux"

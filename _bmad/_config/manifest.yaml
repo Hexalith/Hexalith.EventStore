@@ -1,48 +1,48 @@
 installation:
-  version: 6.10.0
-  installDate: 2026-07-10T19:00:44.933Z
-  lastUpdated: 2026-07-10T19:30:56.507Z
+  version: 6.10.1-next.12
+  installDate: 2026-07-11T07:55:17.152Z
+  lastUpdated: 2026-07-11T07:55:17.152Z
 modules:
   - name: core
-    version: 6.10.0
-    installDate: 2026-07-10T19:00:43.774Z
-    lastUpdated: 2026-07-10T19:30:56.497Z
+    version: 6.10.1-next.12
+    installDate: 2026-07-11T07:55:16.417Z
+    lastUpdated: 2026-07-11T07:55:17.142Z
     source: built-in
     npmPackage: null
     repoUrl: null
   - name: bmm
-    version: 6.10.0
-    installDate: 2026-07-10T19:00:43.686Z
-    lastUpdated: 2026-07-10T19:30:56.498Z
+    version: 6.10.1-next.12
+    installDate: 2026-07-11T07:55:16.362Z
+    lastUpdated: 2026-07-11T07:55:17.144Z
     source: built-in
     npmPackage: null
     repoUrl: null
   - name: bmad-loop
     version: main
-    installDate: 2026-07-10T19:00:43.809Z
-    lastUpdated: 2026-07-10T19:30:56.502Z
+    installDate: 2026-07-11T07:55:16.441Z
+    lastUpdated: 2026-07-11T07:55:17.147Z
     source: external
     npmPackage: null
     repoUrl: https://github.com/bmad-code-org/bmad-loop
     channel: next
-    sha: f9a6bf57d61f052edc6d628d4f2662a3fd2734d9
+    sha: 1b4251593af88489f3b552a5ef2ebbfe0425df56
   - name: tea
-    version: v1.19.0
-    installDate: 2026-07-10T19:00:44.723Z
-    lastUpdated: 2026-07-10T19:30:56.504Z
+    version: main
+    installDate: 2026-07-11T07:55:17.009Z
+    lastUpdated: 2026-07-11T07:55:17.149Z
     source: external
     npmPackage: bmad-method-test-architecture-enterprise
     repoUrl: https://github.com/bmad-code-org/bmad-method-test-architecture-enterprise
-    channel: stable
+    channel: next
     sha: 8734d51f24071ddbcb3617390b5fcddb4128ef77
   - name: cis
-    version: v0.2.1
-    installDate: 2026-07-10T19:00:44.791Z
-    lastUpdated: 2026-07-10T19:30:56.507Z
+    version: main
+    installDate: 2026-07-11T07:55:17.049Z
+    lastUpdated: 2026-07-11T07:55:17.152Z
     source: external
     npmPackage: bmad-creative-intelligence-suite
     repoUrl: https://github.com/bmad-code-org/bmad-module-creative-intelligence-suite
-    channel: stable
+    channel: next
     sha: 07a8dd03d196a762f21c241d985293fe5b0f90e7
 ides:
   - claude-code

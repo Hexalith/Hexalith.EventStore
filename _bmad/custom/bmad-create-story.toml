@@ -1,7 +1,0 @@
-# Team override: ready-for-dev stories must reflect approved architectural pivots.
-
-[workflow]
-
-activation_steps_append = [
-  "Enforce the Correct-Course Story Rewrite Gate: scan approved sprint change proposals, readiness reports, retrospectives, architecture, previous stories, and sprint action items for superseded scope. A story affected by an architectural pivot cannot be marked ready-for-dev while active ACs, tasks, or Dev Notes contradict the approved baseline; rewrite active content or mark stale text superseded with the proposal path.",
-]
