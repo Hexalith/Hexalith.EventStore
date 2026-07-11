@@ -1,3 +1,10 @@
+# [3.56.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.55.0...v3.56.0) (2026-07-11)
+
+
+### Features
+
+* **projections:** implement coordinated erasure of read models and checkpoints ([009197d](https://github.com/Hexalith/Hexalith.EventStore/commit/009197d35f88c6f505ba6749f8d7c0910539a0f7))
+
 # [3.55.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.54.0...v3.55.0) (2026-07-11)
 
 
