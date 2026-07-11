@@ -4,7 +4,7 @@ baseline_commit: 19e0c1997cd26b03d2fd780b31455e0a29dc175a
 
 # Story 1.9: Read-Model And Projection Checkpoint Erasure
 
-Status: review
+Status: in-progress
 
 **Requirements covered:** FR5, FR36, NFR2, NFR16
 **Governed by:** AD-7 (Read Models And Cursors Use Platform Seams), AD-12 (High-Risk Verification Requires Persisted Evidence), AD-2 (Domain Modules Stay Domain-Centric)
@@ -222,3 +222,27 @@ GPT-5 Codex
 ## Change Log
 
 - 2026-07-11: Added ETag-aware single-key erasure, atomic same-store and resumable cross-store coordinated projection erasure, tenant-key isolation guards, persisted recreation proof, and comprehensive tests.
+
+## Review Findings (Code Review 2026-07-11)
+
+Reviewed diff `19e0c199..009197d3` through four adversarial layers (Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor). Severities are the reviewer's final call by consequence to the SDK consumer.
+
+**decision-needed** (must be resolved before patches):
+
+- [ ] [Review][Decision] Governing-contract conflict — the implementation satisfies this narrow story file, but contradicts both the frozen intent-contract `spec-1-9-...md` (`status: blocked`, "human-resolved full lifecycle contract") and the §4.4 sprint-change-proposal it cites as authoritative. §4.4 requires a **projection-scoped** operation removing **delivery *and* rebuild** checkpoints; the code is aggregate-scoped (`projection-checkpoints:{ActorId}`, no `{projectionName}`, no migration) and erases delivery only. The intent-contract additionally *forbids* things the code does — adding members to released `IReadModelStore`/`IProjectionCheckpointTracker` (requires opt-in `IReadModelConditionalEraser`), accepting raw store/key/ETag from callers (requires a canonical `ProjectionReadModelAddress` factory), calling `ExecuteStateTransactionAsync` on Redis (requires resumable-only), and using key-string assertions as runtime authz — and *requires* absent components (`ProjectionLifecycleActor`, GlobalAdministrator Admin REST surface, `tests/Hexalith.EventStore.IntegrationTests` real-Redis proof). Human must decide which contract governs. [HIGH]
+- [ ] [Review][Decision] Tenant-isolation guard fails-closed on the documented real key layout — `target.Key.StartsWith(identity.TenantId + ":")` rejects `TenantProjectionHandler`'s actual keys (`projection:tenants:{id}`, `audit:{id}`, `projection:tenant-index:singleton`), none tenant-prefixed (verified). The coordinated erase silently no-ops (returns `false`) for the only documented real consumer, so the drift fix (AC5) does not work in production; the singleton index key is structurally un-eraseable. Tests pass only because they use synthetic ActorId-prefixed keys. Correct ownership model is exactly what the contract decision resolves. [`ProjectionStateEraser.cs:48-50`] [HIGH]
+- [ ] [Review][Decision] Same-store atomic path is unsafe, non-idempotent, and untested — (a) the intent-contract's persisted Redis probe showed a **partial** two-delete commit on ETag conflict while Redis warns rollback is unsupported; `catch (Dapr.DaprException) { return false; }` assumes no mutation → silent read-model loss; (b) etag-conditional deletes of now-absent keys fail the whole transaction on retry-after-success → returns `false`, contradicting the documented "retry converges" guarantee under at-least-once delivery; (c) duplicate keys → backend-undefined double-delete; (d) only `DaprException` caught, transport faults propagate; (e) the `RecordingDaprClient.ExecuteStateTransactionException` injection hook was added but never set by any test and the recorder does no etag/existence checking, so the entire atomic failure/conflict path is unexercised. [`ProjectionStateEraser.cs:44-75`] [HIGH]
+- [ ] [Review][Decision] Cross-store resumable protocol does not actually converge — if read-model erases succeed but `checkpointTracker.TryEraseAsync` returns `false` on a stale `checkpointEtag`, read models are gone but the drift-blocking checkpoint survives (the exact AC5 broken state), and retrying with the same stale etag returns `false` forever; the XML-doc claims convergence. Erasing the checkpoint last also widens the crash window for the very bug being fixed. Intent-contract's answer is the lifecycle actor with persisted per-target progress + internal ETag read-back. [`ProjectionStateEraser.cs:78-89`] [MEDIUM]
+- [ ] [Review][Decision] AD-12 persisted-evidence proofs are simulations; key behaviors unverified — AC5 recreation proof uses `Substitute.For<DaprClient>()` + a captured local, not persisted state; AC6 checkpoint-untouched assertions are tautological (the `persistedCheckpoints` dict is never wired to the mock); DAPR-vs-InMemory absent-key idempotency (AC1/AC2) is unproven (fake hardcodes absent⇒true; real `TryDeleteStateAsync` under FirstWrite may return false); empty-string ETag is accepted (only null rejected) → implementation divergence; coordinator-level cancellation and the `target.TenantId == identity.TenantId` sub-clause are unpinned. Intent-contract mandates real integration tests. [MEDIUM]
+
+**patch** (safe regardless of the contract decision):
+
+- [ ] [Review][Patch] Cross-store `catch (Exception) { return false; }` swallows programming/config faults as a benign retryable conflict, no `ILogger` is injected (denied/conflict/incomplete/unknown are an indistinguishable unlogged `false` on an AD-12 path), and the two paths' failure contract is asymmetric — narrow the catch, add structured outcome logging, unify the contract [`ProjectionStateEraser.cs:93-95`]
+- [ ] [Review][Patch] Empty `readModelTargets` makes `targets.All(...)` vacuously true → atomic path deletes only the checkpoint and returns `true`; a caller that omitted its targets gets a false "fully erased" signal — validate/guard empty input [`ProjectionStateEraser.cs:55-58`]
+- [ ] [Review][Patch] `ProjectionStateEraserTests` (a Server type) lives in the Client test project, inverting layering vs the Server-project recommendation [`tests/Hexalith.EventStore.Client.Tests/Projections/ProjectionStateEraserTests.cs:1`]
+
+**defer** (pre-existing / expected):
+
+- [x] [Review][Defer] No production code calls `IProjectionStateEraser` (only DI registration) — deferred, expected: the caller is the future Admin/GDPR-1 erasure trigger, which the contract decision covers [`ServiceCollectionExtensions.cs:56`]
+
+Dismissed as noise: the `InMemoryReadModelStore.Compose` `-`/`+` line (git binary-diff rendering artifact — baseline raw NUL separator replaced by the escaped `"\0"`; runtime-identical cleanup).
