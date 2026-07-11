@@ -34,4 +34,10 @@ public sealed record QueryResponseMetadata(
         get => _warningCodes;
         init => _warningCodes = value?.ToArray();
     }
+
+    /// <summary>
+    /// Gets the authoritative route that produced the response.
+    /// </summary>
+    [DataMember]
+    public QueryResponseProvenance Provenance { get; init; } = QueryResponseProvenance.Unknown;
 }
