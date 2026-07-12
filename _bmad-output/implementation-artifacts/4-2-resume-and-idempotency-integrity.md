@@ -1,3 +1,7 @@
+---
+baseline_commit: 322e3193d22295153c74d16baee32a7e74f6d72a
+---
+
 # Story 4.2: Resume And Idempotency Integrity
 
 Status: ready-for-dev
