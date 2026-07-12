@@ -160,12 +160,60 @@ query/projection actor, and UI code. See
 `samples/Hexalith.EventStore.Sample/` (`Program.cs` + `Counter/`).
 
 Do not add domain-owned `*.AppHost`, `*.Aspire`, or `*.ServiceDefaults` projects. Domain modules should use
-the platform seams (`IReadModelStore`, `ReadModelWritePolicy`, `IQueryCursorCodec`, `QueryCursorScope`,
+the platform seams (`IReadModelStore`, `IReadModelBatchStore`, `ReadModelWritePolicy`, `IQueryCursorCodec`, `QueryCursorScope`,
 `EventStoreDomainDiagnostics`, `AddEventStoreDomainStateStoreHealthCheck`, and the SDK endpoint mapping)
 instead of custom state-store wrappers, cursor codecs, telemetry sources/meters, health checks, or hand-mapped
 canonical endpoints. Generated REST controllers belong in dedicated external API hosts; interactive UI hosts
 consume EventStore Client libraries and do not host generated or hand-written per-message MVC command/query
 controllers.
+
+## Coordinated read-model batch writes (`IReadModelBatchStore`)
+
+When one projection delivery must persist several related keys together — for example a detail model and
+its index entry — use the additive `IReadModelBatchStore` seam so a reader never observes an updated detail
+model paired with a missing or stale index. It is registered on the same singleton as `IReadModelStore`
+(`AddEventStoreReadModelStore`), so both resolve to the same instance.
+
+```csharp
+var batch = new ReadModelBatch(
+    new ReadModelBatchScope(storeName, tenantId, domain, aggregateId, projectionType, batchId),
+    [
+        ReadModelBatchOperation.Write(detailKey, detail, ReadModelBatchConcurrency.LastWrite),
+        ReadModelBatchOperation.Write(indexKey, index, ReadModelBatchConcurrency.CreateOnly),
+    ]);
+ReadModelBatchResult result = await batchStore.ExecuteAsync(batch, cancellationToken);
+```
+
+Contract highlights (Story 1.10):
+
+- **Immediate execution, no builder.** One immutable `ReadModelBatch` in, one structured
+  `ReadModelBatchResult` out. Validation/programming/configuration errors throw; expected concurrency and
+  durable-recovery outcomes are reported as `Completed`, `AlreadyCompleted`, `Conflict`, `Incomplete`, or
+  `Indeterminate` (never a bare boolean or a swallowed exception).
+- **Stable identity.** `batchId` is a caller-supplied ULID/message id — never a fresh value per retry.
+  Reusing the identity with the same canonical fingerprint returns idempotent `AlreadyCompleted`; reusing
+  it with a different fingerprint returns an identity `Conflict` before any new mutation.
+- **Same store only.** All operations target one configured state-store component; mixed-store manifests,
+  duplicate keys, empty manifests, invalid ETag modes, and configured size-limit violations fail before any
+  state access.
+- **Profile qualification.** A store defaults to the marker-gated `Resumable` profile: readers see the
+  previous complete values until the commit marker is durable, and an interrupted batch converges on
+  retry with the same identity. A store uses the single-transaction path only when an operator explicitly
+  configures `ReadModelBatchStoreProfile.TransactionQualified`, backed by a live conditional-write probe —
+  the repository Redis profile stays `Resumable`.
+- **Post-dispatch cancellation is never a rollback.** After a request may have reached the store,
+  cancellation triggers bounded, caller-token-independent reconciliation and returns a proven
+  completed/conflict/incomplete result or `Indeterminate`.
+- **Indefinite terminal receipts.** Completed receipts (scope hash, batch identity, fingerprint, terminal
+  time, protocol version) are retained indefinitely so the completed-retry and conflicting-identity
+  guarantees hold; a bounded retention horizon is deferred to the production delivery dedup contract.
+- **Checkpoint boundary.** Batches own detail/index operations, the batch marker/envelopes,
+  reconciliation, and receipt cleanup only. They never touch `ProjectionUpdateOrchestrator`,
+  projection delivery/rebuild checkpoints, or dedup markers.
+
+Batching is a platform seam. Domain modules consume `IReadModelStore`/`IReadModelBatchStore` and must not
+introduce raw `DaprClient` byte-state calls, `ExecuteStateTransactionAsync`, custom batch markers, or
+state-store wrappers (enforced by `DomainModuleAuthoringGuardrailTests`).
 
 ## Commits & branches
 

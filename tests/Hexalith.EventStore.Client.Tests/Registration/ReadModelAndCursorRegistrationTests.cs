@@ -28,6 +28,60 @@ public class ReadModelAndCursorRegistrationTests {
     }
 
     [Fact]
+    public void AddEventStoreReadModelStore_BindsSameSingletonToBothStoreInterfaces() {
+        var services = new ServiceCollection();
+        _ = services.AddSingleton(Substitute.For<DaprClient>());
+
+        _ = services.AddEventStoreReadModelStore();
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        IReadModelStore single = provider.GetRequiredService<IReadModelStore>();
+        IReadModelBatchStore batch = provider.GetRequiredService<IReadModelBatchStore>();
+
+        _ = single.ShouldBeOfType<DaprReadModelStore>();
+        ReferenceEquals(single, batch).ShouldBeTrue("one DaprReadModelStore singleton must back both interfaces");
+    }
+
+    [Fact]
+    public void AddEventStoreReadModelStore_RepeatRegistration_IsIdempotent() {
+        var services = new ServiceCollection();
+        _ = services.AddSingleton(Substitute.For<DaprClient>());
+
+        _ = services.AddEventStoreReadModelStore();
+        _ = services.AddEventStoreReadModelStore();
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        provider.GetServices<IReadModelStore>().Count().ShouldBe(1);
+        ReferenceEquals(
+            provider.GetRequiredService<IReadModelStore>(),
+            provider.GetRequiredService<IReadModelBatchStore>()).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void AddEventStoreReadModelStore_CustomStoreOverride_IsRespected() {
+        var services = new ServiceCollection();
+        _ = services.AddSingleton(Substitute.For<DaprClient>());
+        IReadModelStore custom = Substitute.For<IReadModelStore>();
+        _ = services.AddSingleton(custom);
+
+        _ = services.AddEventStoreReadModelStore();
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        provider.GetRequiredService<IReadModelStore>().ShouldBeSameAs(custom);
+        // The custom store is not batch-capable, so the default DAPR batch store provides batching.
+        _ = provider.GetRequiredService<IReadModelBatchStore>().ShouldBeOfType<DaprReadModelStore>();
+    }
+
+    [Fact]
+    public void AddEventStoreReadModelStore_InvalidBatchOptions_ThrowsAtRegistration() {
+        var services = new ServiceCollection();
+        _ = services.AddSingleton(Substitute.For<DaprClient>());
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(
+            () => services.AddEventStoreReadModelStore(o => o.MaxOperations = 0));
+    }
+
+    [Fact]
     public void AddEventStoreQueryCursorCodec_RegistersResolvableCodec() {
         var services = new ServiceCollection();
         _ = services.AddSingleton<IDataProtectionProvider>(new EphemeralDataProtectionProvider());

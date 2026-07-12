@@ -49,6 +49,10 @@ public sealed class DomainModuleAuthoringGuardrailTests
         @"\b(?:record\s+struct|class|struct|record)\s+\w+(?:\s*<[^>{}]*>)?(?:\s*\([^;{}]*\))?\s*:\s*[^{;]*\b(?:[\w.]+\.)?IReadModelStore\b",
         RegexOptions.Compiled | RegexOptions.Singleline);
 
+    private static readonly Regex CustomReadModelBatchStoreDeclaration = new(
+        @"\b(?:record\s+struct|class|struct|record)\s+\w+(?:\s*<[^>{}]*>)?(?:\s*\([^;{}]*\))?\s*:\s*[^{;]*\b(?:[\w.]+\.)?IReadModelBatchStore\b",
+        RegexOptions.Compiled | RegexOptions.Singleline);
+
     private static readonly Regex NewActivitySourceDeclaration = new(
         @"\bnew\s+(?:[\w.]+\.)?ActivitySource\s*\(|\bActivitySource\b[^;\r\n=]*=\s*new\s*(?:\(|(?:[\w.]+\.)?ActivitySource\s*\()",
         RegexOptions.Compiled);
@@ -82,6 +86,15 @@ public sealed class DomainModuleAuthoringGuardrailTests
         "TrySaveStateAsync",
         "DeleteStateAsync",
         "ExecuteStateTransactionAsync",
+
+        // Raw byte-state APIs are how a domain module could bypass the platform read-model batch
+        // envelope decoder (Story 1.10). Coordinated batches are a platform seam in
+        // Hexalith.EventStore.Client; domain modules consume IReadModelStore/IReadModelBatchStore and
+        // never touch raw byte state directly.
+        "GetByteStateAsync",
+        "GetByteStateAndETagAsync",
+        "SaveByteStateAsync",
+        "TrySaveByteStateAsync",
     ];
 
     private static readonly string[] ActorStateAccessMarkers =
@@ -260,6 +273,9 @@ public sealed class DomainModuleAuthoringGuardrailTests
     [InlineData("DaprClient client = default!; _ = client!.SaveStateAsync(\"store\", \"key\", state);")]
     [InlineData("_ = services.GetRequiredService<DaprClient>().SaveStateAsync(\"store\", \"key\", state);")]
     [InlineData("_ = CreateDaprClient().SaveStateAsync(\"store\", \"key\", state);")]
+    [InlineData("DaprClient client = default!; _ = client.GetByteStateAndETagAsync(\"store\", \"key\");")]
+    [InlineData("DaprClient client = default!; _ = client.TrySaveByteStateAsync(\"store\", \"key\", bytes, etag);")]
+    [InlineData("DaprClient client = default!; _ = client.SaveByteStateAsync(\"store\", \"key\", bytes);")]
     public void GuardrailHelpers_DetectDaprStateAccessByReceiverShape(string source)
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -606,6 +622,7 @@ public sealed class DomainModuleAuthoringGuardrailTests
     {
         AddViolationIf(offenders, CustomCursorCodecDeclaration.IsMatch(code), name, rootPath, file, "implements IQueryCursorCodec");
         AddViolationIf(offenders, CustomReadModelStoreDeclaration.IsMatch(code), name, rootPath, file, "implements IReadModelStore");
+        AddViolationIf(offenders, CustomReadModelBatchStoreDeclaration.IsMatch(code), name, rootPath, file, "implements IReadModelBatchStore");
         AddViolationIf(offenders, CustomHealthCheckDeclaration.IsMatch(code), name, rootPath, file, "implements IHealthCheck");
         AddViolationIf(offenders, NewActivitySourceDeclaration.IsMatch(code), name, rootPath, file, "declares a new ActivitySource");
         AddViolationIf(offenders, NewMeterDeclaration.IsMatch(code), name, rootPath, file, "declares a new Meter");

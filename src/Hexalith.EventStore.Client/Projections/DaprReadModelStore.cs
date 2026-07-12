@@ -1,16 +1,49 @@
+using System.Text.Json;
+
 using Dapr.Client;
+
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.Client.Projections;
 
 /// <summary>
-/// DAPR state-store implementation of <see cref="IReadModelStore"/>.
+/// DAPR state-store implementation of <see cref="IReadModelStore"/> and the additive coordinated
+/// <see cref="IReadModelBatchStore"/>.
 /// </summary>
 /// <remarks>
-/// Writes via <see cref="TrySaveAsync{TValue}"/> use first-write-wins concurrency so the
-/// reload-and-merge loop in <see cref="ReadModelWritePolicy"/> can detect and retry on conflict.
+/// <para>
+/// Single-key writes via <see cref="TrySaveAsync{TValue}"/> use first-write-wins concurrency so the
+/// reload-and-merge loop in <see cref="ReadModelWritePolicy"/> can detect and retry on conflict. Batches
+/// use the marker-gated resumable protocol by default; a store must be explicitly qualified as
+/// <see cref="ReadModelBatchStoreProfile.TransactionQualified"/> to use the single-transaction path.
+/// </para>
+/// <para>
+/// <see cref="GetAsync{TValue}"/> reads raw bytes through the pinned byte-state API and decodes both legacy
+/// raw values and versioned batch envelopes, so a reader observes the previous complete value until a
+/// resumable batch's commit marker is durable, and the committed value afterwards.
+/// </para>
 /// </remarks>
-/// <param name="daprClient">The DAPR client used to access the state store.</param>
-public sealed class DaprReadModelStore(DaprClient daprClient) : IReadModelStore {
+public sealed class DaprReadModelStore : IReadModelStore, IReadModelBatchStore {
+    private readonly DaprClient _daprClient;
+    private readonly ReadModelBatchOptions _options;
+    private readonly ILogger _logger;
+
+    /// <summary>Initializes a new <see cref="DaprReadModelStore"/>.</summary>
+    /// <param name="daprClient">The DAPR client used to access the state store.</param>
+    /// <param name="options">The coordinated-batch options and per-store profiles.</param>
+    /// <param name="logger">The logger for bounded structured batch events.</param>
+    public DaprReadModelStore(
+        DaprClient daprClient,
+        IOptions<ReadModelBatchOptions>? options = null,
+        ILogger<DaprReadModelStore>? logger = null) {
+        ArgumentNullException.ThrowIfNull(daprClient);
+        _daprClient = daprClient;
+        _options = options?.Value ?? new ReadModelBatchOptions();
+        _logger = logger ?? NullLogger<DaprReadModelStore>.Instance;
+    }
+
     /// <inheritdoc/>
     public async Task<ReadModelEntry<TValue>> GetAsync<TValue>(
         string storeName,
@@ -20,11 +53,16 @@ public sealed class DaprReadModelStore(DaprClient daprClient) : IReadModelStore 
         ArgumentException.ThrowIfNullOrWhiteSpace(storeName);
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
 
-        (TValue value, string etag) = await daprClient
-            .GetStateAndETagAsync<TValue>(storeName, key, cancellationToken: cancellationToken)
+        var accessor = new DaprReadModelBatchStateAccessor(_daprClient, storeName);
+        RawStateEntry visible = await ReadModelBatchProtocol
+            .ResolveVisibleAsync(accessor, key, cancellationToken)
             .ConfigureAwait(false);
+        if (!visible.Exists) {
+            return new ReadModelEntry<TValue>(null, null);
+        }
 
-        return new ReadModelEntry<TValue>(value, etag);
+        TValue? value = JsonSerializer.Deserialize<TValue>(visible.Value.Span, _daprClient.JsonSerializerOptions);
+        return new ReadModelEntry<TValue>(value, visible.ETag);
     }
 
     /// <inheritdoc/>
@@ -38,7 +76,7 @@ public sealed class DaprReadModelStore(DaprClient daprClient) : IReadModelStore 
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
         ArgumentNullException.ThrowIfNull(value);
 
-        await daprClient
+        await _daprClient
             .SaveStateAsync(storeName, key, value, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
     }
@@ -56,7 +94,7 @@ public sealed class DaprReadModelStore(DaprClient daprClient) : IReadModelStore 
         ArgumentNullException.ThrowIfNull(value);
         ArgumentNullException.ThrowIfNull(etag);
 
-        return await daprClient
+        return await _daprClient
             .TrySaveStateAsync(
                 storeName,
                 key,
@@ -77,7 +115,7 @@ public sealed class DaprReadModelStore(DaprClient daprClient) : IReadModelStore 
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
         ArgumentNullException.ThrowIfNull(etag);
 
-        return await daprClient
+        return await _daprClient
             .TryDeleteStateAsync(
                 storeName,
                 key,
@@ -85,5 +123,16 @@ public sealed class DaprReadModelStore(DaprClient daprClient) : IReadModelStore 
                 new StateOptions { Concurrency = ConcurrencyMode.FirstWrite },
                 cancellationToken: cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
+    public async Task<ReadModelBatchResult> ExecuteAsync(
+        ReadModelBatch batch,
+        CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(batch);
+
+        var accessor = new DaprReadModelBatchStateAccessor(_daprClient, batch.Scope.StoreName);
+        var protocol = new ReadModelBatchProtocol(accessor, _options, _logger);
+        return await protocol.ExecuteAsync(batch, injector: null, cancellationToken).ConfigureAwait(false);
     }
 }

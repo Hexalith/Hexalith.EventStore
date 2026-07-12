@@ -32,6 +32,18 @@ internal sealed class RecordingDaprClient : DaprClient
 
     public StateOptions StateOptions { get; private set; }
 
+    private readonly Dictionary<string, (byte[] Value, string ETag)> _byteStore = new(StringComparer.Ordinal);
+    private long _byteEtag;
+
+    // When set, ExecuteStateTransactionAsync throws before applying, simulating an ambiguous dispatch.
+    public bool ThrowOnNextByteWrite { get; set; }
+
+    private string NextByteETag() => (++_byteEtag).ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    public bool ByteStoreContains(string key) => _byteStore.ContainsKey(key);
+
+    public byte[] ByteStoreValue(string key) => _byteStore.TryGetValue(key, out (byte[] Value, string ETag) e) ? e.Value : null;
+
     public override Task<bool> TrySaveStateAsync<TValue>(
         string storeName,
         string key,
@@ -73,7 +85,12 @@ internal sealed class RecordingDaprClient : DaprClient
 
     public override Task DeleteBulkStateAsync(string storeName, IReadOnlyList<BulkDeleteStateItem> items, CancellationToken cancellationToken) => throw new NotSupportedException();
 
-    public override Task DeleteStateAsync(string storeName, string key, StateOptions stateOptions, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken) => throw new NotSupportedException();
+    public override Task DeleteStateAsync(string storeName, string key, StateOptions stateOptions, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        _ = _byteStore.Remove(key);
+        return Task.CompletedTask;
+    }
 
     public override Task<ReadOnlyMemory<byte>> EncryptAsync(string vaultResourceName, ReadOnlyMemory<byte> plaintextBytes, string keyName, EncryptionOptions encryptionOptions, CancellationToken cancellationToken) => throw new NotSupportedException();
 
@@ -89,9 +106,26 @@ internal sealed class RecordingDaprClient : DaprClient
         StoreName = storeName;
         TransactionOperations = operations.ToArray();
         ExecuteStateTransactionCallCount++;
-        return ExecuteStateTransactionException is null
-            ? Task.CompletedTask
-            : Task.FromException(ExecuteStateTransactionException);
+        if (ExecuteStateTransactionException is not null)
+        {
+            return Task.FromException(ExecuteStateTransactionException);
+        }
+
+        // Apply the transaction atomically to the stateful byte store so read-back verification can prove
+        // the persisted end state (all-or-nothing under the transaction-qualified profile).
+        foreach (StateTransactionRequest operation in operations)
+        {
+            if (operation.OperationType == StateOperationType.Delete)
+            {
+                _ = _byteStore.Remove(operation.Key);
+            }
+            else
+            {
+                _byteStore[operation.Key] = (operation.Value.ToArray(), NextByteETag());
+            }
+        }
+
+        return Task.CompletedTask;
     }
 
     public override Task<Dictionary<string, Dictionary<string, string>>> GetBulkSecretAsync(string storeName, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken) => throw new NotSupportedException();
@@ -100,7 +134,13 @@ internal sealed class RecordingDaprClient : DaprClient
 
     public override Task<IReadOnlyList<BulkStateItem<TValue>>> GetBulkStateAsync<TValue>(string storeName, IReadOnlyList<string> keys, int? parallelism, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken) => throw new NotSupportedException();
 
-    public override Task<(ReadOnlyMemory<byte>, string)> GetByteStateAndETagAsync(string storeName, string key, ConsistencyMode? consistencyMode, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken) => throw new NotSupportedException();
+    public override Task<(ReadOnlyMemory<byte>, string)> GetByteStateAndETagAsync(string storeName, string key, ConsistencyMode? consistencyMode, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return _byteStore.TryGetValue(key, out (byte[] Value, string ETag) entry)
+            ? Task.FromResult<(ReadOnlyMemory<byte>, string)>((entry.Value, entry.ETag))
+            : Task.FromResult<(ReadOnlyMemory<byte>, string)>((ReadOnlyMemory<byte>.Empty, string.Empty));
+    }
 
     public override Task<ReadOnlyMemory<byte>> GetByteStateAsync(string storeName, string key, ConsistencyMode? consistencyMode, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken) => throw new NotSupportedException();
 
@@ -150,7 +190,12 @@ internal sealed class RecordingDaprClient : DaprClient
 
     public override Task SaveBulkStateAsync<TValue>(string storeName, IReadOnlyList<SaveStateItem<TValue>> items, CancellationToken cancellationToken) => throw new NotSupportedException();
 
-    public override Task SaveByteStateAsync(string storeName, string key, ReadOnlyMemory<byte> binaryValue, StateOptions stateOptions, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken) => throw new NotSupportedException();
+    public override Task SaveByteStateAsync(string storeName, string key, ReadOnlyMemory<byte> binaryValue, StateOptions stateOptions, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        _byteStore[key] = (binaryValue.ToArray(), NextByteETag());
+        return Task.CompletedTask;
+    }
 
     public override Task SaveStateAsync<TValue>(string storeName, string key, TValue value, StateOptions stateOptions, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken) => throw new NotSupportedException();
 
@@ -176,7 +221,27 @@ internal sealed class RecordingDaprClient : DaprClient
         return Task.FromResult(TryDeleteResult);
     }
 
-    public override Task<bool> TrySaveByteStateAsync(string storeName, string key, ReadOnlyMemory<byte> binaryValue, string etag, StateOptions stateOptions, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken) => throw new NotSupportedException();
+    public override Task<bool> TrySaveByteStateAsync(string storeName, string key, ReadOnlyMemory<byte> binaryValue, string etag, StateOptions stateOptions, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (ThrowOnNextByteWrite)
+        {
+            ThrowOnNextByteWrite = false;
+            throw new Dapr.DaprException("Injected byte-write transport failure.");
+        }
+
+        bool exists = _byteStore.TryGetValue(key, out (byte[] Value, string ETag) current);
+        bool matches = exists
+            ? string.Equals(current.ETag, etag, StringComparison.Ordinal)
+            : string.IsNullOrEmpty(etag);
+        if (!matches)
+        {
+            return Task.FromResult(false);
+        }
+
+        _byteStore[key] = (binaryValue.ToArray(), NextByteETag());
+        return Task.FromResult(true);
+    }
 
     public override Task<UnlockResponse> Unlock(string storeName, string resourceId, string lockOwner, CancellationToken cancellationToken) => throw new NotSupportedException();
 

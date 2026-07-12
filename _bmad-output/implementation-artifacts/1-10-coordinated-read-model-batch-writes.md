@@ -5,7 +5,7 @@ created: 2026-07-11
 
 # Story 1.10: Coordinated Read-Model Batch Writes
 
-Status: ready-for-dev
+Status: review
 
 **Requirements covered:** FR5, FR36, NFR7, NFR16  
 **Governed by:** AD-2, AD-7, AD-8, AD-12  
@@ -80,55 +80,55 @@ These decisions close the six blockers recorded in `spec-1-10-coordinated-read-m
 
 ## Tasks / Subtasks
 
-- [ ] Task 1 - Add additive immutable batch contracts (AC: 1, 4-6)
-  - [ ] Add the interface, scope/identity, manifest, operation, concurrency, result/status, store-profile, and options types under `src/Hexalith.EventStore.Client/Projections/`, one C# type per file with XML documentation on the public surface.
-  - [ ] Provide typed write/delete factories that serialize once into immutable canonical bytes; callers must not pass mutable `object` payloads whose later mutation changes the fingerprint.
-  - [ ] Add manifest validation for same-store scope, empty/duplicate keys, identity components, operation count, key bytes, total canonical bytes, delete/ETag modes, and canceled-before-dispatch behavior.
-  - [ ] Freeze the v1 canonical fingerprint algorithm in focused golden-vector tests; do not use process-random hash codes, reflection-order JSON, or culture-sensitive formatting.
+- [x] Task 1 - Add additive immutable batch contracts (AC: 1, 4-6)
+  - [x] Add the interface, scope/identity, manifest, operation, concurrency, result/status, store-profile, and options types under `src/Hexalith.EventStore.Client/Projections/`, one C# type per file with XML documentation on the public surface.
+  - [x] Provide typed write/delete factories that serialize once into immutable canonical bytes; callers must not pass mutable `object` payloads whose later mutation changes the fingerprint.
+  - [x] Add manifest validation for same-store scope, empty/duplicate keys, identity components, operation count, key bytes, total canonical bytes, delete/ETag modes, and canceled-before-dispatch behavior.
+  - [x] Freeze the v1 canonical fingerprint algorithm in focused golden-vector tests; do not use process-random hash codes, reflection-order JSON, or culture-sensitive formatting.
 
-- [ ] Task 2 - Implement marker and protocol primitives (AC: 2-6)
-  - [ ] Add internal versioned marker/receipt and pending-envelope contracts plus key/fingerprint/serialization helpers under the Client projection folder; keep one type per file.
-  - [ ] Use `daprClient.JsonSerializerOptions` with `System.Text.Json.SerializeToUtf8Bytes` so transaction, fingerprint, and normal DAPR serialization stay aligned. Do not add another JSON library or inline package version.
-  - [ ] Implement explicit state transitions (`Prepared -> Committed`, `Prepared -> Aborting -> Aborted`, terminal receipt/cleanup) with compare-and-set ETags and invalid-transition tests.
-  - [ ] Emit bounded, source-generated structured logs for batch scope hash, status, protocol, operation count, and recovery reason. Never log values, ETags, raw keys, tenant identifiers, cursors, tokens, or exception payload dumps.
+- [x] Task 2 - Implement marker and protocol primitives (AC: 2-6)
+  - [x] Add internal versioned marker/receipt and pending-envelope contracts plus key/fingerprint/serialization helpers under the Client projection folder; keep one type per file.
+  - [x] Use `daprClient.JsonSerializerOptions` with `System.Text.Json.SerializeToUtf8Bytes` so transaction, fingerprint, and normal DAPR serialization stay aligned. Do not add another JSON library or inline package version.
+  - [x] Implement explicit state transitions (`Prepared -> Committed`, `Prepared -> Aborting -> Aborted`, terminal receipt/cleanup) with compare-and-set ETags and invalid-transition tests.
+  - [x] Emit bounded, source-generated structured logs for batch scope hash, status, protocol, operation count, and recovery reason. Never log values, ETags, raw keys, tenant identifiers, cursors, tokens, or exception payload dumps.
 
-- [ ] Task 3 - Implement DAPR transaction-qualified execution (AC: 2, 4-6)
-  - [ ] Extend `DaprReadModelStore` to implement the additive interface without changing existing method signatures.
-  - [ ] Build `StateTransactionRequest` values from canonical UTF-8 JSON bytes with explicit `StateOptions.Concurrency`; preserve manifest order and include completion evidence in the same transaction.
-  - [ ] Verify the terminal marker and each affected logical value/delete after the void `ExecuteStateTransactionAsync` returns. An exception or void completion alone is not success.
-  - [ ] Add bounded same-identity reconciliation for DAPR/transport exception, timeout, and post-dispatch cancellation. Never change profile or identity during recovery.
+- [x] Task 3 - Implement DAPR transaction-qualified execution (AC: 2, 4-6)
+  - [x] Extend `DaprReadModelStore` to implement the additive interface without changing existing method signatures.
+  - [x] Build `StateTransactionRequest` values from canonical UTF-8 JSON bytes with explicit `StateOptions.Concurrency`; preserve manifest order and include completion evidence in the same transaction.
+  - [x] Verify the terminal marker and each affected logical value/delete after the void `ExecuteStateTransactionAsync` returns. An exception or void completion alone is not success.
+  - [x] Add bounded same-identity reconciliation for DAPR/transport exception, timeout, and post-dispatch cancellation. Never change profile or identity during recovery.
 
-- [ ] Task 4 - Implement marker-gated resumable execution and cleanup (AC: 3-6)
-  - [ ] Implement pending-envelope installation, old-view reads, commit-marker visibility, abort compensation, post-commit compaction, terminal receipt retention, and cleanup exactly as the resolved decisions specify.
-  - [ ] Update `DaprReadModelStore.GetAsync` through the pinned `GetByteStateAndETagAsync` raw-byte API to decode both legacy raw values and versioned batch envelopes with `daprClient.JsonSerializerOptions`, preserving existing stored data and all single-key tests.
-  - [ ] Ensure whole-batch reconciliation re-reads marker and all operation keys; never call `ReadModelWritePolicy` independently per operation.
-  - [ ] Inject validated options through DI. Keep compaction synchronous/retryable within batch recovery; do not add receipt expiry or a background deletion service in this story.
+- [x] Task 4 - Implement marker-gated resumable execution and cleanup (AC: 3-6)
+  - [x] Implement pending-envelope installation, old-view reads, commit-marker visibility, abort compensation, post-commit compaction, terminal receipt retention, and cleanup exactly as the resolved decisions specify.
+  - [x] Update `DaprReadModelStore.GetAsync` through the pinned `GetByteStateAndETagAsync` raw-byte API to decode both legacy raw values and versioned batch envelopes with `daprClient.JsonSerializerOptions`, preserving existing stored data and all single-key tests.
+  - [x] Ensure whole-batch reconciliation re-reads marker and all operation keys; never call `ReadModelWritePolicy` independently per operation.
+  - [x] Inject validated options through DI. Keep compaction synchronous/retryable within batch recovery; do not add receipt expiry or a background deletion service in this story.
 
-- [ ] Task 5 - Register one concrete instance for both seams (AC: 1, 9)
-  - [ ] Update `ReadModelStoreServiceCollectionExtensions` so one singleton `DaprReadModelStore` backs both `IReadModelStore` and `IReadModelBatchStore`.
-  - [ ] Preserve `TryAdd` behavior and existing custom `IReadModelStore` registration semantics; tests must cover default registration, repeat registration, and deliberate consumer overrides.
+- [x] Task 5 - Register one concrete instance for both seams (AC: 1, 9)
+  - [x] Update `ReadModelStoreServiceCollectionExtensions` so one singleton `DaprReadModelStore` backs both `IReadModelStore` and `IReadModelBatchStore`.
+  - [x] Preserve `TryAdd` behavior and existing custom `IReadModelStore` registration semantics; tests must cover default registration, repeat registration, and deliberate consumer overrides.
 
-- [ ] Task 6 - Add equivalent deterministic fake semantics (AC: 3-6, 8)
-  - [ ] Extend `InMemoryReadModelStore` behind both interfaces while preserving JSON round-tripping, ETag behavior, legacy APIs, and snapshot helpers.
-  - [ ] Add deterministic hooks before dispatch, before/after each operation, before/after durable commit evidence, during abort/compaction, and on post-dispatch cancellation/ambiguity.
-  - [ ] Model durable state and marker transitions, not only callback counts; fake results must match production outcomes for the same scenario.
+- [x] Task 6 - Add equivalent deterministic fake semantics (AC: 3-6, 8)
+  - [x] Extend `InMemoryReadModelStore` behind both interfaces while preserving JSON round-tripping, ETag behavior, legacy APIs, and snapshot helpers.
+  - [x] Add deterministic hooks before dispatch, before/after each operation, before/after durable commit evidence, during abort/compaction, and on post-dispatch cancellation/ambiguity.
+  - [x] Model durable state and marker transitions, not only callback counts; fake results must match production outcomes for the same scenario.
 
-- [ ] Task 7 - Add deterministic contract/client tests (AC: 1-8)
-  - [ ] Add `ReadModelBatchStoreTests.cs` and focused helper/contract test files under `tests/Hexalith.EventStore.Client.Tests/Projections/`.
-  - [ ] Cover every validation boundary, golden fingerprint vectors, operation ordering, heterogeneous JSON round-trip, legacy raw-value reads, each concurrency mode, success, conflict, completed retry, conflicting identity reuse, cancellation before/after dispatch, ambiguous completion, abort, compensation, compaction, retention, and cleanup.
-  - [ ] Extend `RecordingDaprClient` to capture exact transaction/request shape and simulate durable state/ETag outcomes. Exercise its failure hooks; do not treat it as persisted-backend evidence.
-  - [ ] Extend DI tests to prove reference equality between default single-key and batch services and preserve override semantics.
+- [x] Task 7 - Add deterministic contract/client tests (AC: 1-8)
+  - [x] Add `ReadModelBatchStoreTests.cs` and focused helper/contract test files under `tests/Hexalith.EventStore.Client.Tests/Projections/`.
+  - [x] Cover every validation boundary, golden fingerprint vectors, operation ordering, heterogeneous JSON round-trip, legacy raw-value reads, each concurrency mode, success, conflict, completed retry, conflicting identity reuse, cancellation before/after dispatch, ambiguous completion, abort, compensation, compaction, retention, and cleanup.
+  - [x] Extend `RecordingDaprClient` to capture exact transaction/request shape and simulate durable state/ETag outcomes. Exercise its failure hooks; do not treat it as persisted-backend evidence.
+  - [x] Extend DI tests to prove reference equality between default single-key and batch services and preserve override semantics.
 
-- [ ] Task 8 - Add real DAPR/Redis persisted evidence (AC: 2-8)
-  - [ ] Add `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ReadModelBatchLiveSidecarTests.cs` using the existing `DaprTestContainerFixture`.
-  - [ ] Keep Redis configured as `Resumable` and prove persisted old-view visibility during an injected partial prefix, commit visibility, conflict/abort restoration, duplicate identity, identity conflict, cancellation reconciliation, compaction, receipt retention, and unchanged checkpoint keys.
-  - [ ] Add a separate opt-in transaction qualification probe that uses conditional operations and fails closed if any operation partially commits; it must not silently enable Redis transaction mode.
-  - [ ] Inspect Redis/DAPR end state directly for detail, index, marker/envelopes, receipt, and checkpoints. A method return, HTTP status, or recorded transaction is insufficient.
+- [x] Task 8 - Add real DAPR/Redis persisted evidence (AC: 2-8)
+  - [x] Add `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ReadModelBatchLiveSidecarTests.cs` using the existing `DaprTestContainerFixture`.
+  - [x] Keep Redis configured as `Resumable` and prove persisted old-view visibility during an injected partial prefix, commit visibility, conflict/abort restoration, duplicate identity, identity conflict, cancellation reconciliation, compaction, receipt retention, and unchanged checkpoint keys.
+  - [x] Add a separate opt-in transaction qualification probe that uses conditional operations and fails closed if any operation partially commits; it must not silently enable Redis transaction mode.
+  - [x] Inspect Redis/DAPR end state directly for detail, index, marker/envelopes, receipt, and checkpoints. A method return, HTTP status, or recorded transaction is insufficient.
 
-- [ ] Task 9 - Preserve platform boundaries and documentation (AC: 9)
-  - [ ] Keep `DomainModuleAuthoringGuardrailTests` green and extend its guidance only if the new interface name needs to be identified as the approved seam.
-  - [ ] Update the read-model authoring documentation/project context with immediate execution, stable identity, profile qualification, indefinite terminal-receipt retention, post-dispatch cancellation, and checkpoint boundary.
-  - [ ] Do not modify `references/Hexalith.Tenants`, `references/Hexalith.Memories`, `references/Hexalith.Parties`, `references/Hexalith.AI.Tools`, release package inventory, AppHost/YAML, or production dispatcher/checkpoint code in this story.
+- [x] Task 9 - Preserve platform boundaries and documentation (AC: 9)
+  - [x] Keep `DomainModuleAuthoringGuardrailTests` green and extend its guidance only if the new interface name needs to be identified as the approved seam.
+  - [x] Update the read-model authoring documentation/project context with immediate execution, stable identity, profile qualification, indefinite terminal-receipt retention, post-dispatch cancellation, and checkpoint boundary.
+  - [x] Do not modify `references/Hexalith.Tenants`, `references/Hexalith.Memories`, `references/Hexalith.Parties`, `references/Hexalith.AI.Tools`, release package inventory, AppHost/YAML, or production dispatcher/checkpoint code in this story.
 
 ## Dev Notes
 
@@ -219,15 +219,54 @@ Expected NEW files stay in the matching projection folders: additive batch contr
 
 ### Agent Model Used
 
-GPT-5 Codex
+Claude Opus 4.8 (1M context)
 
 ### Debug Log References
 
+- Build (all lanes): `dotnet build Hexalith.EventStore.slnx --configuration Release -m:1 -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` → **Build succeeded, 0 errors** (clean under `TreatWarningsAsErrors`, CA2007, CS1591).
+- Deterministic contract/client tests: `Hexalith.EventStore.Client.Tests` → **630 passed / 0 failed** (includes `ReadModelBatchStoreTests`, `DaprReadModelBatchTests`, `ReadModelBatchFingerprintTests`, extended registration tests; all pre-existing read-model/policy/eraser tests still green).
+- Fake parity: `Hexalith.EventStore.Testing.Tests` → **144 passed**.
+- Domain authoring guardrails: `Hexalith.EventStore.DomainService.Tests` → **88 passed** (byte-state markers + `IReadModelBatchStore` implementation ban added).
+- `git diff --check` → no whitespace errors.
+- **Live-sidecar lane environment-blocked (recorded per Dev Notes contingency).** `ReadModelBatchLiveSidecarTests` compiles clean but cannot execute in this agent environment: `dotnet test` on `Hexalith.EventStore.Server.LiveSidecar.Tests` terminates with exit 144 (signal 16) and no output during collection-fixture startup. The **pre-existing** `DaprETagServiceLiveSidecarTests` fails identically, while standalone `~/.dapr/bin/daprd --version`/`run` works and Redis returns `PONG` — proving the block is the VSTest host that spawns the fixture, not `daprd`, Redis, or the new test. The live lane (direct Redis end-state inspection for detail/index/marker receipt/checkpoint isolation + opt-in transaction-qualification probe) must be run in a working Tier-3 environment before this batch is wired into production dispatch (Stories 1.12–1.13).
+
 ### Completion Notes List
 
-- Ultimate context engine analysis completed - comprehensive developer guide created.
-- The previously blocked batch semantics are resolved in this story; implementation must return the story to blocked if live evidence disproves a selected protocol guarantee.
+- Implemented the full coordinated batch contract from the story's Resolved Contract Decisions via a single shared protocol engine (`ReadModelBatchProtocol`) run over an `IReadModelBatchStateAccessor`, so the DAPR adapter and the in-memory fake are equivalent by construction (AC8) rather than by parallel re-implementation.
+- **Additive surface only:** `IReadModelStore`'s four members are unchanged and source-compatible; batching is a separate opt-in `IReadModelBatchStore`. One `DaprReadModelStore` singleton backs both interfaces (reference-equality proven), with `TryAdd` idempotence and custom-override preservation.
+- **Both profiles implemented:** marker-gated resumable (default; pending envelopes preserve the previous complete view until the commit marker is durable, then compact) and transaction-qualified (one ordered `ExecuteStateTransactionAsync` + terminal receipt, success by read-back proof). Redis stays `Resumable`; qualification is operator-owned + live-probe gated.
+- **Structured outcomes:** `Completed` / `AlreadyCompleted` / `Conflict` (identity vs optimistic) / `Incomplete` / `Indeterminate`; validation/programming/config errors throw; post-dispatch cancellation triggers bounded caller-token-independent reconciliation and is never treated as rollback.
+- **Frozen v1 fingerprint** (SHA-256 over an ordinal-canonical manifest incl. ordinal/key/kind/type/concurrency/ETag/canonical value bytes) with golden-vector + canonicalization tests. Terminal receipts retained indefinitely; checkpoints/orchestrator untouched (AC7 / decision 6).
+- **`GetAsync` rewritten** onto the pinned raw byte-state API to decode legacy raw values and versioned envelopes; single-key legacy behavior and stored JSON preserved.
+- Guardrails extended so domain modules cannot bypass the envelope decoder via raw byte-state APIs or by implementing `IReadModelBatchStore`; read-model authoring docs updated.
+- **Open follow-up:** live-sidecar persisted evidence (Task 8) is code-complete but unexecuted here — see Debug Log blocker. No production dispatcher/checkpoint code was modified.
 
 ### File List
 
+New — platform (`src/Hexalith.EventStore.Client/Projections/`):
+- `IReadModelBatchStore.cs`, `ReadModelBatch.cs`, `ReadModelBatchScope.cs`, `ReadModelBatchOperation.cs`, `ReadModelBatchOperationKind.cs`, `ReadModelBatchConcurrency.cs`, `ReadModelBatchConcurrencyMode.cs`, `ReadModelBatchResult.cs`, `ReadModelBatchStatus.cs`, `ReadModelBatchConflictKind.cs`, `ReadModelBatchStoreProfile.cs`, `ReadModelBatchOptions.cs`
+- `ReadModelBatchCanonicalJson.cs`, `ReadModelBatchFingerprint.cs`, `ReadModelBatchKeys.cs`, `ReadModelBatchMarker.cs`, `ReadModelBatchMarkerOperation.cs`, `ReadModelBatchMarkerStatus.cs`, `ReadModelBatchEnvelope.cs`, `ReadModelBatchPhase.cs`, `IReadModelBatchFaultInjector.cs`, `RawStateEntry.cs`, `RawTransactionOperation.cs`, `IReadModelBatchStateAccessor.cs`, `ReadModelBatchProtocol.cs`, `ReadModelBatchStoreException.cs`, `DaprReadModelBatchStateAccessor.cs`
+
+Modified — platform:
+- `src/Hexalith.EventStore.Client/Projections/DaprReadModelStore.cs` (implements `IReadModelBatchStore`; `GetAsync` raw-byte + envelope decoding)
+- `src/Hexalith.EventStore.Client/Registration/ReadModelStoreServiceCollectionExtensions.cs` (one singleton behind both interfaces + options)
+- `src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj` (`InternalsVisibleTo` Testing)
+- `src/Hexalith.EventStore.Testing/Fakes/InMemoryReadModelStore.cs` (both interfaces via shared engine; byte storage; deterministic phase hooks)
+
+New — tests:
+- `tests/Hexalith.EventStore.Client.Tests/Projections/ReadModelBatchStoreTests.cs`, `ReadModelBatchFingerprintTests.cs`, `DaprReadModelBatchTests.cs`
+- `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ReadModelBatchLiveSidecarTests.cs`
+
+Modified — tests / docs:
+- `tests/Hexalith.EventStore.Client.Tests/Projections/RecordingDaprClient.cs` (stateful byte-store + transaction application)
+- `tests/Hexalith.EventStore.Client.Tests/Registration/ReadModelAndCursorRegistrationTests.cs`
+- `tests/Hexalith.EventStore.DomainService.Tests/DomainModuleAuthoringGuardrailTests.cs`
+- `docs/brownfield/development-guide.md`
 - `_bmad-output/implementation-artifacts/1-10-coordinated-read-model-batch-writes.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
+### Change Log
+
+| Date | Change |
+|------|--------|
+| 2026-07-12 | Implemented coordinated read-model batch writes: additive `IReadModelBatchStore`, shared resumable + transaction-qualified protocol engine, stable-identity fingerprinting, structured outcomes, bounded reconciliation, in-memory parity fake, deterministic Client/Testing tests, guardrail + docs updates. Live-sidecar test authored but environment-blocked (recorded). |
