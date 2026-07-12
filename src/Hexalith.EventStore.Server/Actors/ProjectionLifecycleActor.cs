@@ -23,7 +23,7 @@ public partial class ProjectionLifecycleActor(ActorHost host, ILogger<Projection
     public async Task<ProjectionEraseAdmission> BeginEraseAsync(ProjectionEraseBeginRequest request) {
         ArgumentNullException.ThrowIfNull(request);
 
-        ProjectionLifecycleState state = await ReadStateAsync().ConfigureAwait(false);
+        ProjectionLifecycleActorState state = await ReadStateAsync().ConfigureAwait(false);
 
         if (state.Phase == ProjectionLifecyclePhase.Erasing) {
             if (string.Equals(state.OperationId, request.OperationId, StringComparison.Ordinal)) {
@@ -39,7 +39,7 @@ public partial class ProjectionLifecycleActor(ActorHost host, ILogger<Projection
                 new Dictionary<string, string>(StringComparer.Ordinal));
         }
 
-        var admitted = new ProjectionLifecycleState(
+        var admitted = new ProjectionLifecycleActorState(
             ProjectionLifecyclePhase.Erasing,
             request.OperationId,
             request.ManifestDigest,
@@ -56,7 +56,7 @@ public partial class ProjectionLifecycleActor(ActorHost host, ILogger<Projection
     public async Task<bool> RecordTargetOutcomeAsync(ProjectionTargetOutcomeRequest request) {
         ArgumentNullException.ThrowIfNull(request);
 
-        ProjectionLifecycleState state = await ReadStateAsync().ConfigureAwait(false);
+        ProjectionLifecycleActorState state = await ReadStateAsync().ConfigureAwait(false);
         if (state.Phase != ProjectionLifecyclePhase.Erasing
             || !string.Equals(state.OperationId, request.OperationId, StringComparison.Ordinal)) {
             return false;
@@ -75,13 +75,13 @@ public partial class ProjectionLifecycleActor(ActorHost host, ILogger<Projection
     public async Task<bool> CompleteEraseAsync(ProjectionEraseCompleteRequest request) {
         ArgumentNullException.ThrowIfNull(request);
 
-        ProjectionLifecycleState state = await ReadStateAsync().ConfigureAwait(false);
+        ProjectionLifecycleActorState state = await ReadStateAsync().ConfigureAwait(false);
         if (state.Phase != ProjectionLifecyclePhase.Erasing
             || !string.Equals(state.OperationId, request.OperationId, StringComparison.Ordinal)) {
             return false;
         }
 
-        await PersistStateAsync(new ProjectionLifecycleState(
+        await PersistStateAsync(new ProjectionLifecycleActorState(
                 ProjectionLifecyclePhase.Idle,
                 OperationId: null,
                 ManifestDigest: null,
@@ -94,25 +94,25 @@ public partial class ProjectionLifecycleActor(ActorHost host, ILogger<Projection
 
     /// <inheritdoc/>
     public async Task<ProjectionDeliveryAdmission> TryAdmitDeliveryWriteAsync() {
-        ProjectionLifecycleState state = await ReadStateAsync().ConfigureAwait(false);
+        ProjectionLifecycleActorState state = await ReadStateAsync().ConfigureAwait(false);
         return new ProjectionDeliveryAdmission(state.Phase != ProjectionLifecyclePhase.Erasing, state.Phase);
     }
 
-    private async Task<ProjectionLifecycleState> ReadStateAsync() {
-        ConditionalValue<ProjectionLifecycleState> result = await StateManager
-            .TryGetStateAsync<ProjectionLifecycleState>(LifecycleStateKey)
+    private async Task<ProjectionLifecycleActorState> ReadStateAsync() {
+        ConditionalValue<ProjectionLifecycleActorState> result = await StateManager
+            .TryGetStateAsync<ProjectionLifecycleActorState>(LifecycleStateKey)
             .ConfigureAwait(false);
 
         return result.HasValue
             ? result.Value
-            : new ProjectionLifecycleState(
+            : new ProjectionLifecycleActorState(
                 ProjectionLifecyclePhase.Idle,
                 OperationId: null,
                 ManifestDigest: null,
                 new Dictionary<string, string>(StringComparer.Ordinal));
     }
 
-    private async Task PersistStateAsync(ProjectionLifecycleState state) {
+    private async Task PersistStateAsync(ProjectionLifecycleActorState state) {
         await StateManager.SetStateAsync(LifecycleStateKey, state).ConfigureAwait(false);
         await StateManager.SaveStateAsync().ConfigureAwait(false);
     }
@@ -157,7 +157,7 @@ public partial class ProjectionLifecycleActor(ActorHost host, ILogger<Projection
 /// <param name="OperationId">The in-flight erase operation identifier, or null when idle.</param>
 /// <param name="ManifestDigest">The erase target manifest digest, or null when idle.</param>
 /// <param name="PerTargetOutcomes">Per-target erase outcomes recorded during the operation.</param>
-internal sealed record ProjectionLifecycleState(
+internal sealed record ProjectionLifecycleActorState(
     ProjectionLifecyclePhase Phase,
     string? OperationId,
     string? ManifestDigest,

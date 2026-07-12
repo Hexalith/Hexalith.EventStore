@@ -143,6 +143,7 @@ public static class EventStoreServerServiceCollectionExtensions {
             options.Actors.RegisterActor<ETagActor>();
             options.Actors.RegisterActor<GlobalPositionActor>(GlobalPositionActor.ActorTypeName);
             options.Actors.RegisterActor<EventReplayProjectionActor>(QueryRouter.ProjectionActorTypeName);
+            options.Actors.RegisterActor<ProjectionLifecycleActor>(ProjectionLifecycleActor.ActorTypeName);
         });
 
         return services;

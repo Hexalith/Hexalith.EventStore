@@ -65,7 +65,8 @@ public class ProjectionUpdateOrchestratorTests {
         IHttpClientFactory? httpClientFactory = null,
         ILogger<ProjectionUpdateOrchestrator>? logger = null,
         IProjectionRebuildCheckpointStore? rebuildCheckpointStore = null,
-        IProjectionDeliveryCheckpointStore? deliveryCheckpointStore = null) {
+        IProjectionDeliveryCheckpointStore? deliveryCheckpointStore = null,
+        IProjectionLifecycleGateway? lifecycleGateway = null) {
         IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
         daprClient ??= Substitute.For<DaprClient>();
         IDomainServiceResolver resolver = Substitute.For<IDomainServiceResolver>();
@@ -75,7 +76,7 @@ public class ProjectionUpdateOrchestratorTests {
                 .Returns(0);
         }
         IOptions<ProjectionOptions> projectionOptions = Options.Create(new ProjectionOptions());
-        var sut = new ProjectionUpdateOrchestrator(actorProxyFactory, daprClient, httpClientFactory ?? Substitute.For<IHttpClientFactory>(), resolver, checkpointTracker, projectionOptions, logger ?? NullLogger<ProjectionUpdateOrchestrator>.Instance, rebuildCheckpointStore, deliveryCheckpointStore: deliveryCheckpointStore);
+        var sut = new ProjectionUpdateOrchestrator(actorProxyFactory, daprClient, httpClientFactory ?? Substitute.For<IHttpClientFactory>(), resolver, checkpointTracker, projectionOptions, logger ?? NullLogger<ProjectionUpdateOrchestrator>.Instance, rebuildCheckpointStore, deliveryCheckpointStore: deliveryCheckpointStore, lifecycleGateway: lifecycleGateway);
         return (sut, actorProxyFactory, daprClient, resolver, checkpointTracker);
     }
 
@@ -1557,6 +1558,85 @@ public class ProjectionUpdateOrchestratorTests {
         handler.CallCount.ShouldBe(1);
         await writeActor.Received(1).UpdateProjectionAsync(Arg.Any<ProjectionState>());
         // Saved to the projection-scoped key (keyed by ProjectionType), NOT the aggregate-wide tracker.
+        _ = await deliveryStore.Received(1).SaveDeliveredSequenceAsync(TestIdentity, "counter-summary", 2, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DeliverProjectionAsync_LifecycleGatewayDefersWrite_SuppressesWriteAndScopedSave() {
+        // Task 5 "gate the write": the projection name is only known after /project returns, so the
+        // gateway is consulted immediately before the write. When it defers (erase in progress) the
+        // write is suppressed, no ETag regen occurs, and the scoped checkpoint is NOT advanced. The
+        // /project call still happens exactly once (the gate is post-/project).
+        IProjectionDeliveryCheckpointStore deliveryStore = Substitute.For<IProjectionDeliveryCheckpointStore>();
+        _ = deliveryStore.ReadDeliveredSequenceAsync(TestIdentity, "counter-summary", Arg.Any<CancellationToken>())
+            .Returns(0);
+        IProjectionLifecycleGateway lifecycleGateway = Substitute.For<IProjectionLifecycleGateway>();
+        _ = lifecycleGateway.TryAdmitDeliveryWriteAsync(TestIdentity, "counter-summary", Arg.Any<CancellationToken>())
+            .Returns(false);
+        var handler = new CountingProjectionResponseHandler();
+        IHttpClientFactory httpClientFactory = CreateHttpClientFactory(handler);
+        DaprClient daprClient = new DaprClientBuilder().Build();
+        IProjectionWriteActor writeActor = Substitute.For<IProjectionWriteActor>();
+        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(
+            daprClient: daprClient,
+            httpClientFactory: httpClientFactory,
+            deliveryCheckpointStore: deliveryStore,
+            lifecycleGateway: lifecycleGateway);
+        var registration = new DomainServiceRegistration("counter-service", "project", "test-tenant", "test-domain", "v1");
+        _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(registration);
+        IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
+        _ = aggregateActor.GetEventsAsync(0).Returns([CreateTestEnvelope(1), CreateTestEnvelope(2)]);
+        _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor")
+            .Returns(aggregateActor);
+        _ = actorProxyFactory.CreateActorProxy<IProjectionWriteActor>(Arg.Any<ActorId>(), QueryRouter.ProjectionActorTypeName)
+            .Returns(writeActor);
+
+        await sut.DeliverProjectionAsync(TestIdentity);
+
+        handler.CallCount.ShouldBe(1);
+        _ = await lifecycleGateway.Received(1).TryAdmitDeliveryWriteAsync(TestIdentity, "counter-summary", Arg.Any<CancellationToken>());
+        await writeActor.DidNotReceiveWithAnyArgs().UpdateProjectionAsync(default!);
+        _ = await deliveryStore.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default!, default, default);
+    }
+
+    [Fact]
+    public async Task DeliverProjectionAsync_LifecycleGatewayAdmitsWrite_ProceedsWithDeliveryAndScopedSave() {
+        // Positive path: the gateway admits the write, so normal delivery proceeds — the projection is
+        // written and the scoped checkpoint advances to the stream max. Proves the gate is inert when
+        // no erase is in progress.
+        IProjectionDeliveryCheckpointStore deliveryStore = Substitute.For<IProjectionDeliveryCheckpointStore>();
+        _ = deliveryStore.ReadDeliveredSequenceAsync(TestIdentity, "counter-summary", Arg.Any<CancellationToken>())
+            .Returns(0);
+        _ = deliveryStore.SaveDeliveredSequenceAsync(TestIdentity, "counter-summary", Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        IProjectionLifecycleGateway lifecycleGateway = Substitute.For<IProjectionLifecycleGateway>();
+        _ = lifecycleGateway.TryAdmitDeliveryWriteAsync(TestIdentity, "counter-summary", Arg.Any<CancellationToken>())
+            .Returns(true);
+        var handler = new CountingProjectionResponseHandler();
+        IHttpClientFactory httpClientFactory = CreateHttpClientFactory(handler);
+        DaprClient daprClient = new DaprClientBuilder().Build();
+        IProjectionWriteActor writeActor = Substitute.For<IProjectionWriteActor>();
+        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(
+            daprClient: daprClient,
+            httpClientFactory: httpClientFactory,
+            deliveryCheckpointStore: deliveryStore,
+            lifecycleGateway: lifecycleGateway);
+        var registration = new DomainServiceRegistration("counter-service", "project", "test-tenant", "test-domain", "v1");
+        _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(registration);
+        IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
+        _ = aggregateActor.GetEventsAsync(0).Returns([CreateTestEnvelope(1), CreateTestEnvelope(2)]);
+        _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor")
+            .Returns(aggregateActor);
+        _ = actorProxyFactory.CreateActorProxy<IProjectionWriteActor>(Arg.Any<ActorId>(), QueryRouter.ProjectionActorTypeName)
+            .Returns(writeActor);
+
+        await sut.DeliverProjectionAsync(TestIdentity);
+
+        handler.CallCount.ShouldBe(1);
+        _ = await lifecycleGateway.Received(1).TryAdmitDeliveryWriteAsync(TestIdentity, "counter-summary", Arg.Any<CancellationToken>());
+        await writeActor.Received(1).UpdateProjectionAsync(Arg.Any<ProjectionState>());
         _ = await deliveryStore.Received(1).SaveDeliveredSequenceAsync(TestIdentity, "counter-summary", 2, Arg.Any<CancellationToken>());
     }
 
