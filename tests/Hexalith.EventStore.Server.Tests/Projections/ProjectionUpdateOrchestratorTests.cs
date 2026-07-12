@@ -64,7 +64,8 @@ public class ProjectionUpdateOrchestratorTests {
         DaprClient? daprClient = null,
         IHttpClientFactory? httpClientFactory = null,
         ILogger<ProjectionUpdateOrchestrator>? logger = null,
-        IProjectionRebuildCheckpointStore? rebuildCheckpointStore = null) {
+        IProjectionRebuildCheckpointStore? rebuildCheckpointStore = null,
+        IProjectionDeliveryCheckpointStore? deliveryCheckpointStore = null) {
         IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
         daprClient ??= Substitute.For<DaprClient>();
         IDomainServiceResolver resolver = Substitute.For<IDomainServiceResolver>();
@@ -74,7 +75,7 @@ public class ProjectionUpdateOrchestratorTests {
                 .Returns(0);
         }
         IOptions<ProjectionOptions> projectionOptions = Options.Create(new ProjectionOptions());
-        var sut = new ProjectionUpdateOrchestrator(actorProxyFactory, daprClient, httpClientFactory ?? Substitute.For<IHttpClientFactory>(), resolver, checkpointTracker, projectionOptions, logger ?? NullLogger<ProjectionUpdateOrchestrator>.Instance, rebuildCheckpointStore);
+        var sut = new ProjectionUpdateOrchestrator(actorProxyFactory, daprClient, httpClientFactory ?? Substitute.For<IHttpClientFactory>(), resolver, checkpointTracker, projectionOptions, logger ?? NullLogger<ProjectionUpdateOrchestrator>.Instance, rebuildCheckpointStore, deliveryCheckpointStore: deliveryCheckpointStore);
         return (sut, actorProxyFactory, daprClient, resolver, checkpointTracker);
     }
 
@@ -1441,7 +1442,11 @@ public class ProjectionUpdateOrchestratorTests {
     }
 
     [Fact]
-    public async Task UpdateProjectionAsync_CheckpointGreaterThanEventSequence_LogsDriftAndDoesNotInvokeProject() {
+    public async Task UpdateProjectionAsync_CheckpointGreaterThanEventSequence_EvaluatesDriftAfterProjectAndSuppressesWrite() {
+        // Option A (projection-scoped delivery checkpoints): the non-empty-stream drift check moved
+        // AFTER /project returns. With no delivery store supplied, the drift baseline falls back to
+        // the aggregate-wide value read earlier (7). The side-effect-free /project compute IS invoked
+        // (CallCount == 1), but the projection WRITE and the checkpoint SAVE are still suppressed.
         IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
         _ = checkpointTracker.ReadLastDeliveredSequenceAsync(TestIdentity, Arg.Any<CancellationToken>())
             .Returns(7);
@@ -1449,6 +1454,7 @@ public class ProjectionUpdateOrchestratorTests {
         var handler = new CountingProjectionResponseHandler();
         IHttpClientFactory httpClientFactory = CreateHttpClientFactory(handler);
         DaprClient daprClient = new DaprClientBuilder().Build();
+        IProjectionWriteActor writeActor = Substitute.For<IProjectionWriteActor>();
         (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(
             checkpointTracker,
             daprClient,
@@ -1461,16 +1467,97 @@ public class ProjectionUpdateOrchestratorTests {
         _ = aggregateActor.GetEventsAsync(0).Returns([CreateTestEnvelope(1), CreateTestEnvelope(2)]);
         _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor")
             .Returns(aggregateActor);
+        _ = actorProxyFactory.CreateActorProxy<IProjectionWriteActor>(Arg.Any<ActorId>(), QueryRouter.ProjectionActorTypeName)
+            .Returns(writeActor);
 
         await sut.UpdateProjectionAsync(TestIdentity);
 
-        handler.CallCount.ShouldBe(0);
+        // /project is invoked before drift suppression (approved Option A: /project is side-effect-free).
+        handler.CallCount.ShouldBe(1);
+        // The projection write is suppressed and the checkpoint is not advanced.
+        await writeActor.DidNotReceiveWithAnyArgs().UpdateProjectionAsync(default!);
         entries.ShouldContain(e =>
             e.EventId.Id == 1143
             && e.Message.Contains($"ReasonCode={ProjectionReasonCodes.CheckpointDrift}", StringComparison.Ordinal)
             && e.Message.Contains("LastDeliveredSequence=7", StringComparison.Ordinal)
             && e.Message.Contains("HighestEventSequence=2", StringComparison.Ordinal));
         _ = await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
+    }
+
+    [Fact]
+    public async Task DeliverProjectionAsync_ScopedCheckpointExceedsStreamMax_SuppressesWriteAfterProject() {
+        // Projection-scoped drift: the delivery store reports the scoped checkpoint (99) is ahead of
+        // the available stream max (2). Drift is evaluated AFTER /project returns using
+        // response.ProjectionType, so /project is invoked once but the write + scoped save are suppressed.
+        IProjectionDeliveryCheckpointStore deliveryStore = Substitute.For<IProjectionDeliveryCheckpointStore>();
+        _ = deliveryStore.ReadDeliveredSequenceAsync(TestIdentity, "counter-summary", Arg.Any<CancellationToken>())
+            .Returns(99);
+        var entries = new List<LogEntry>();
+        var handler = new CountingProjectionResponseHandler();
+        IHttpClientFactory httpClientFactory = CreateHttpClientFactory(handler);
+        DaprClient daprClient = new DaprClientBuilder().Build();
+        IProjectionWriteActor writeActor = Substitute.For<IProjectionWriteActor>();
+        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(
+            daprClient: daprClient,
+            httpClientFactory: httpClientFactory,
+            logger: new TestLogger<ProjectionUpdateOrchestrator>(entries),
+            deliveryCheckpointStore: deliveryStore);
+        var registration = new DomainServiceRegistration("counter-service", "project", "test-tenant", "test-domain", "v1");
+        _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(registration);
+        IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
+        _ = aggregateActor.GetEventsAsync(0).Returns([CreateTestEnvelope(1), CreateTestEnvelope(2)]);
+        _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor")
+            .Returns(aggregateActor);
+        _ = actorProxyFactory.CreateActorProxy<IProjectionWriteActor>(Arg.Any<ActorId>(), QueryRouter.ProjectionActorTypeName)
+            .Returns(writeActor);
+
+        await sut.DeliverProjectionAsync(TestIdentity);
+
+        handler.CallCount.ShouldBe(1);
+        _ = await deliveryStore.Received(1).ReadDeliveredSequenceAsync(TestIdentity, "counter-summary", Arg.Any<CancellationToken>());
+        await writeActor.DidNotReceiveWithAnyArgs().UpdateProjectionAsync(default!);
+        _ = await deliveryStore.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default!, default, default);
+        entries.ShouldContain(e =>
+            e.EventId.Id == 1143
+            && e.Message.Contains($"ReasonCode={ProjectionReasonCodes.CheckpointDrift}", StringComparison.Ordinal)
+            && e.Message.Contains("LastDeliveredSequence=99", StringComparison.Ordinal)
+            && e.Message.Contains("HighestEventSequence=2", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task DeliverProjectionAsync_ScopedCheckpointBelowStreamMax_WritesAndSavesScopedCheckpoint() {
+        // Positive path: the projection-scoped checkpoint (0) is below the stream max, so no drift is
+        // detected. The projection is written and the scoped checkpoint is advanced to the stream max (2).
+        IProjectionDeliveryCheckpointStore deliveryStore = Substitute.For<IProjectionDeliveryCheckpointStore>();
+        _ = deliveryStore.ReadDeliveredSequenceAsync(TestIdentity, "counter-summary", Arg.Any<CancellationToken>())
+            .Returns(0);
+        _ = deliveryStore.SaveDeliveredSequenceAsync(TestIdentity, "counter-summary", Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        var handler = new CountingProjectionResponseHandler();
+        IHttpClientFactory httpClientFactory = CreateHttpClientFactory(handler);
+        DaprClient daprClient = new DaprClientBuilder().Build();
+        IProjectionWriteActor writeActor = Substitute.For<IProjectionWriteActor>();
+        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(
+            daprClient: daprClient,
+            httpClientFactory: httpClientFactory,
+            deliveryCheckpointStore: deliveryStore);
+        var registration = new DomainServiceRegistration("counter-service", "project", "test-tenant", "test-domain", "v1");
+        _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(registration);
+        IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
+        _ = aggregateActor.GetEventsAsync(0).Returns([CreateTestEnvelope(1), CreateTestEnvelope(2)]);
+        _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor")
+            .Returns(aggregateActor);
+        _ = actorProxyFactory.CreateActorProxy<IProjectionWriteActor>(Arg.Any<ActorId>(), QueryRouter.ProjectionActorTypeName)
+            .Returns(writeActor);
+
+        await sut.DeliverProjectionAsync(TestIdentity);
+
+        handler.CallCount.ShouldBe(1);
+        await writeActor.Received(1).UpdateProjectionAsync(Arg.Any<ProjectionState>());
+        // Saved to the projection-scoped key (keyed by ProjectionType), NOT the aggregate-wide tracker.
+        _ = await deliveryStore.Received(1).SaveDeliveredSequenceAsync(TestIdentity, "counter-summary", 2, Arg.Any<CancellationToken>());
     }
 
     [Fact]

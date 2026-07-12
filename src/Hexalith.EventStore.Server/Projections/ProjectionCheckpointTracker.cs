@@ -14,10 +14,11 @@ namespace Hexalith.EventStore.Server.Projections;
 public sealed partial class ProjectionCheckpointTracker(
     DaprClient daprClient,
     IOptions<ProjectionOptions> options,
-    ILogger<ProjectionCheckpointTracker> logger) : IProjectionCheckpointTracker, IProjectionCheckpointEraser {
+    ILogger<ProjectionCheckpointTracker> logger) : IProjectionCheckpointTracker, IProjectionCheckpointEraser, IProjectionDeliveryCheckpointStore {
     private const int MaxEtagRetries = 3;
     private const int IdentityPageSize = 100;
     private const string StateKeyPrefix = "projection-checkpoints:";
+    private const string MigratedMarkerPrefix = "projection-checkpoints-migrated:";
     private const string IdentityScopeIndexKey = "projection-identities:scopes";
     private const string IdentityScopePagePrefix = "projection-identities:scopes:";
     private const string IdentityIndexPrefix = "projection-identities:index:";
@@ -148,6 +149,205 @@ public sealed partial class ProjectionCheckpointTracker(
     }
 
     /// <inheritdoc/>
+    public async Task<long> ReadDeliveredSequenceAsync(
+        AggregateIdentity identity,
+        string projectionName,
+        CancellationToken cancellationToken = default) {
+        ValidateIdentity(identity);
+        ValidateProjectionName(projectionName);
+
+        string stateStoreName = options.Value.CheckpointStateStoreName;
+        string scopedKey = GetProjectionScopedStateKey(identity, projectionName);
+
+        ProjectionCheckpoint? scoped = await daprClient
+            .GetStateAsync<ProjectionCheckpoint>(stateStoreName, scopedKey, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+
+        if (scoped is not null) {
+            if (!string.Equals(scoped.TenantId, identity.TenantId, StringComparison.Ordinal)
+                || !string.Equals(scoped.Domain, identity.Domain, StringComparison.Ordinal)
+                || !string.Equals(scoped.AggregateId, identity.AggregateId, StringComparison.Ordinal)) {
+                throw new InvalidOperationException("Projection checkpoint identity does not match the requested aggregate identity.");
+            }
+
+            return scoped.LastDeliveredSequence;
+        }
+
+        // Scoped key absent: consult the migration marker to distinguish "never migrated" from
+        // "migrated then erased". A present marker means an operator (or the eraser) intentionally
+        // removed the projection-scoped checkpoint, so we must NOT fall back to the legacy value.
+        ProjectionCheckpointMigrationMarker? marker = await daprClient
+            .GetStateAsync<ProjectionCheckpointMigrationMarker>(
+                stateStoreName,
+                GetMigratedMarkerKey(identity, projectionName),
+                cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+
+        if (marker is not null) {
+            return 0;
+        }
+
+        // Never migrated: lazily migrate from the legacy aggregate-wide checkpoint. The legacy key
+        // is only read here and is NEVER deleted, so other projections of the same aggregate keep
+        // migrating from it independently.
+        ProjectionCheckpoint? legacy = await daprClient
+            .GetStateAsync<ProjectionCheckpoint>(stateStoreName, GetStateKey(identity), cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+
+        long migratedValue = 0;
+        if (legacy is not null
+            && string.Equals(legacy.TenantId, identity.TenantId, StringComparison.Ordinal)
+            && string.Equals(legacy.Domain, identity.Domain, StringComparison.Ordinal)
+            && string.Equals(legacy.AggregateId, identity.AggregateId, StringComparison.Ordinal)
+            && legacy.LastDeliveredSequence > 0) {
+            migratedValue = legacy.LastDeliveredSequence;
+
+            // Conditionally seed the projection-scoped key from the legacy high-water mark. Read the
+            // current ETag (absent → empty) and TrySaveStateAsync; a concurrent migration that won
+            // the race leaves a non-null value, in which case we adopt the persisted value.
+            (ProjectionCheckpoint? currentScoped, string scopedEtag) = await daprClient
+                .GetStateAndETagAsync<ProjectionCheckpoint>(stateStoreName, scopedKey, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+            if (currentScoped is null) {
+                _ = await daprClient
+                    .TrySaveStateAsync(
+                        stateStoreName,
+                        scopedKey,
+                        new ProjectionCheckpoint(
+                            identity.TenantId,
+                            identity.Domain,
+                            identity.AggregateId,
+                            migratedValue,
+                            DateTimeOffset.UtcNow),
+                        scopedEtag,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            else {
+                migratedValue = currentScoped.LastDeliveredSequence;
+            }
+        }
+
+        // Persist the migration marker so a later erase-then-read returns 0 instead of re-migrating
+        // the legacy value. The marker is written even when the legacy checkpoint is absent/zero so
+        // the (cheap) legacy read is not repeated on every subsequent read.
+        await MarkMigratedAsync(identity, projectionName, cancellationToken).ConfigureAwait(false);
+
+        return migratedValue;
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> SaveDeliveredSequenceAsync(
+        AggregateIdentity identity,
+        string projectionName,
+        long deliveredSequence,
+        CancellationToken cancellationToken = default) {
+        ValidateIdentity(identity);
+        ValidateProjectionName(projectionName);
+        ArgumentOutOfRangeException.ThrowIfNegative(deliveredSequence);
+
+        string key = GetProjectionScopedStateKey(identity, projectionName);
+        string stateStoreName = options.Value.CheckpointStateStoreName;
+        for (int attempt = 0; attempt < MaxEtagRetries; attempt++) {
+            try {
+                (ProjectionCheckpoint? existing, string etag) = await daprClient
+                    .GetStateAndETagAsync<ProjectionCheckpoint>(
+                        stateStoreName,
+                        key,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (existing is not null
+                    && (!string.Equals(existing.TenantId, identity.TenantId, StringComparison.Ordinal)
+                        || !string.Equals(existing.Domain, identity.Domain, StringComparison.Ordinal)
+                        || !string.Equals(existing.AggregateId, identity.AggregateId, StringComparison.Ordinal))) {
+                    throw new InvalidOperationException("Projection checkpoint identity does not match the requested aggregate identity.");
+                }
+
+                // Skip the round-trip when the proposed sequence is already covered by the persisted
+                // projection-scoped checkpoint (mirrors the aggregate-wide save). Migration is still
+                // finalized so a later erase-then-read cannot regress to the legacy value.
+                if (existing is not null && existing.LastDeliveredSequence >= deliveredSequence) {
+                    await MarkMigratedAsync(identity, projectionName, cancellationToken).ConfigureAwait(false);
+                    return true;
+                }
+
+                long maxSequence = Math.Max(existing?.LastDeliveredSequence ?? 0, deliveredSequence);
+                var checkpoint = new ProjectionCheckpoint(
+                    identity.TenantId,
+                    identity.Domain,
+                    identity.AggregateId,
+                    maxSequence,
+                    DateTimeOffset.UtcNow);
+
+                bool saved = await daprClient
+                    .TrySaveStateAsync(
+                        stateStoreName,
+                        key,
+                        checkpoint,
+                        etag,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (saved) {
+                    // A save implies migration is complete: finalize the marker so a later
+                    // erase-then-read returns 0 rather than falling back to the legacy value.
+                    await MarkMigratedAsync(identity, projectionName, cancellationToken).ConfigureAwait(false);
+                    return true;
+                }
+
+                logger.LogDebug(
+                    "ETag mismatch while updating projection-scoped checkpoint '{CheckpointKey}', retry {Attempt}.",
+                    key,
+                    attempt + 1);
+            }
+            catch (OperationCanceledException) {
+                throw;
+            }
+            catch (Exception ex) when (attempt < MaxEtagRetries - 1) {
+                logger.LogDebug(
+                    ex,
+                    "Retry {Attempt} while updating projection-scoped checkpoint '{CheckpointKey}'.",
+                    attempt + 1,
+                    key);
+            }
+        }
+
+        return false;
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> TryEraseAsync(
+        AggregateIdentity identity,
+        string projectionName,
+        string etag,
+        CancellationToken cancellationToken = default) {
+        ValidateIdentity(identity);
+        ValidateProjectionName(projectionName);
+        ArgumentNullException.ThrowIfNull(etag);
+
+        // Erase the projection-scoped checkpoint only. The migration marker is intentionally left in
+        // place so subsequent reads return 0 rather than re-migrating the legacy aggregate-wide value.
+        return await daprClient
+            .TryDeleteStateAsync(
+                options.Value.CheckpointStateStoreName,
+                GetProjectionScopedStateKey(identity, projectionName),
+                etag,
+                new StateOptions { Concurrency = ConcurrencyMode.FirstWrite },
+                cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task MarkMigratedAsync(AggregateIdentity identity, string projectionName, CancellationToken cancellationToken) =>
+        await daprClient
+            .SaveStateAsync(
+                options.Value.CheckpointStateStoreName,
+                GetMigratedMarkerKey(identity, projectionName),
+                new ProjectionCheckpointMigrationMarker(true),
+                cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+
+    /// <inheritdoc/>
     public async Task TrackIdentityAsync(AggregateIdentity identity, CancellationToken cancellationToken = default) {
         ValidateIdentity(identity);
 
@@ -261,6 +461,24 @@ public sealed partial class ProjectionCheckpointTracker(
     internal static string GetStateKey(AggregateIdentity identity) {
         ArgumentNullException.ThrowIfNull(identity);
         return StateKeyPrefix + identity.ActorId;
+    }
+
+    internal static string GetProjectionScopedStateKey(AggregateIdentity identity, string projectionName) {
+        ArgumentNullException.ThrowIfNull(identity);
+        return StateKeyPrefix + identity.ActorId + ":" + projectionName;
+    }
+
+    internal static string GetMigratedMarkerKey(AggregateIdentity identity, string projectionName) {
+        ArgumentNullException.ThrowIfNull(identity);
+        return MigratedMarkerPrefix + identity.ActorId + ":" + projectionName;
+    }
+
+    // Mirrors ValidateIdentity's defense-in-depth for the projection name component: the name is
+    // interpolated directly into the projection-scoped and migration-marker keys, so it must not be
+    // empty and must not smuggle a reserved separator/terminator that would collide keys.
+    private static void ValidateProjectionName(string projectionName) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(projectionName);
+        AssertNoReservedChars(projectionName, nameof(projectionName));
     }
 
     private static void AssertNoReservedChars(string value, string parameterName) {
@@ -538,6 +756,12 @@ public sealed partial class ProjectionCheckpointTracker(
     internal sealed record ProjectionIdentityPage(ProjectionIdentity[] Identities) {
         public static ProjectionIdentityPage Empty { get; } = new([]);
     }
+
+    // Persisted marker recording that a projection-scoped checkpoint has been migrated in from (or
+    // initialized alongside) the legacy aggregate-wide checkpoint. Its presence — not its value —
+    // signals that an absent projection-scoped key is an intentional erase, so reads must not fall
+    // back to the legacy aggregate-wide value.
+    internal sealed record ProjectionCheckpointMigrationMarker(bool Migrated);
 
     private static partial class Log {
         [LoggerMessage(

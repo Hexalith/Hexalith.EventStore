@@ -16,7 +16,7 @@ namespace Hexalith.EventStore.Server.Projections;
 public sealed partial class ProjectionRebuildCheckpointStore(
     DaprClient daprClient,
     IOptions<ProjectionOptions> options,
-    ILogger<ProjectionRebuildCheckpointStore> logger) : IProjectionRebuildCheckpointStore {
+    ILogger<ProjectionRebuildCheckpointStore> logger) : IProjectionRebuildCheckpointStore, IProjectionRebuildCheckpointEraser {
     // P12-7P (pass-7): bumped from 3 to 5 to reduce CheckpointConflict failures when N>3 concurrent
     // operators/transitions hit the same active-index key. Bigger retry budget plus jitter
     // mitigates the ETag-contention hotspot without sharding the index.
@@ -591,6 +591,56 @@ public sealed partial class ProjectionRebuildCheckpointStore(
         }
 
         return 0;
+    }
+
+    /// <inheritdoc/>
+    public async Task<(bool Present, string Etag)> TryReadAggregateCheckpointEtagAsync(
+        ProjectionRebuildCheckpointScope scope,
+        CancellationToken cancellationToken = default) {
+        // Task 4: fail closed against operator-scope BEFORE any state access. A non-null AggregateId
+        // guarantees GetStateKey composes the aggregate-specific row and never the '*' operator-scope
+        // key or an active-rebuild index key.
+        EnsureAggregateScope(scope);
+
+        (ProjectionRebuildCheckpoint? value, string etag) = await daprClient
+            .GetStateAndETagAsync<ProjectionRebuildCheckpoint>(
+                options.Value.CheckpointStateStoreName,
+                GetStateKey(scope),
+                cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+        return (value is not null, etag);
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> TryEraseAggregateCheckpointAsync(
+        ProjectionRebuildCheckpointScope scope,
+        string etag,
+        CancellationToken cancellationToken = default) {
+        // Task 4: fail closed against operator-scope BEFORE any state access. Because GetStateKey for a
+        // non-null AggregateId can NEVER produce the '*' operator-scope key or an index key, this guard
+        // fully protects the operator-scope row and the active-rebuild index keys.
+        EnsureAggregateScope(scope);
+        ArgumentNullException.ThrowIfNull(etag);
+
+        return await daprClient
+            .TryDeleteStateAsync(
+                options.Value.CheckpointStateStoreName,
+                GetStateKey(scope),
+                etag,
+                new StateOptions { Concurrency = ConcurrencyMode.FirstWrite },
+                cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    // Task 4: operator-scope protection. The aggregate-specific erase capability must refuse any
+    // operator-scope ('*' suffix) scope so it can never delete the operator-scope row or an index key.
+    private static void EnsureAggregateScope(ProjectionRebuildCheckpointScope scope) {
+        ArgumentNullException.ThrowIfNull(scope);
+        if (string.IsNullOrWhiteSpace(scope.AggregateId)) {
+            throw new ArgumentException(
+                "Aggregate-specific rebuild checkpoint erase requires a non-null AggregateId; the operator-scope row (AggregateId = null) must never be erased through this API.",
+                nameof(scope));
+        }
     }
 
     // D3-B: SaveAsync/ResetAsync write a per-(tenant, domain) index of active projection names.

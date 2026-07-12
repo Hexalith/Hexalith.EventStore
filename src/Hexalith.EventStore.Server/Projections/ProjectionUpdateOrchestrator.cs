@@ -31,7 +31,7 @@ namespace Hexalith.EventStore.Server.Projections;
 /// Entire method is wrapped in try/catch — fire-and-forget safe. Any exception is
 /// swallowed after logging. The projection stays at last known state on failure.
 /// </remarks>
-public partial class ProjectionUpdateOrchestrator(
+internal partial class ProjectionUpdateOrchestrator(
     IActorProxyFactory actorProxyFactory,
     DaprClient daprClient,
     IHttpClientFactory httpClientFactory,
@@ -41,7 +41,8 @@ public partial class ProjectionUpdateOrchestrator(
     ILogger<ProjectionUpdateOrchestrator> logger,
     IProjectionRebuildCheckpointStore? rebuildCheckpointStore = null,
     IEventPayloadProtectionService? payloadProtectionService = null,
-    IOptions<EventStoreActorOptions>? actorOptions = null) : IProjectionUpdateOrchestrator, IProjectionPollerDeliveryGateway, IProjectionRebuildOrchestrator {
+    IOptions<EventStoreActorOptions>? actorOptions = null,
+    IProjectionDeliveryCheckpointStore? deliveryCheckpointStore = null) : IProjectionUpdateOrchestrator, IProjectionPollerDeliveryGateway, IProjectionRebuildOrchestrator {
     // Per-aggregate serialization across orchestrator instances. Entries are evicted and the
     // underlying SemaphoreSlim disposed when the last holder releases, so a multi-tenant server
     // with many short-lived aggregates does not accumulate kernel handles indefinitely.
@@ -123,6 +124,10 @@ public partial class ProjectionUpdateOrchestrator(
                 // (e.g., state-store backup/restore mismatch) that the original deferred-work
                 // entry called out: without this branch the orchestrator would log NoEventsFound
                 // and silently return, hiding the drift indefinitely.
+                //
+                // This branch stays on the released aggregate-wide checkpoint (lastDeliveredSequence
+                // read above) and is diagnostic-only: with no events there is no /project call and
+                // therefore no projection name to scope the checkpoint by.
                 if (lastDeliveredSequence > 0) {
                     Log.CheckpointDriftDetected(
                         logger,
@@ -140,18 +145,10 @@ public partial class ProjectionUpdateOrchestrator(
             }
 
             long highestAvailableSequence = events.Max(e => e.SequenceNumber);
-            if (lastDeliveredSequence > highestAvailableSequence) {
-                Log.CheckpointDriftDetected(
-                    logger,
-                    identity.TenantId,
-                    identity.Domain,
-                    identity.AggregateId,
-                    ProjectionReasonCodes.CheckpointDrift,
-                    lastDeliveredSequence,
-                    highestAvailableSequence);
-                return;
-            }
 
+            // Option A: the non-empty-stream drift check moved AFTER /project returns so it can read
+            // the projection-scoped checkpoint (keyed by response.ProjectionType). See the drift
+            // branch below, just before the projection write.
             ProjectionReadabilityResult projectionReadability = await TryBuildProjectionEventsAsync(
                     identity,
                     events,
@@ -216,6 +213,29 @@ public partial class ProjectionUpdateOrchestrator(
                 return;
             }
 
+            // Option A: projection-scoped drift check. The projection name is only known once
+            // /project returns response.ProjectionType, so drift suppression happens here — after the
+            // side-effect-free /project compute and before the projection WRITE. The write and the
+            // checkpoint save below are suppressed when the projection-scoped checkpoint is ahead of
+            // the available stream. When no delivery store is supplied (legacy path used by the
+            // orchestrator unit tests) the aggregate-wide value read earlier is used instead.
+            long scopedLastDelivered = deliveryCheckpointStore is not null
+                ? await deliveryCheckpointStore
+                    .ReadDeliveredSequenceAsync(identity, response.ProjectionType, cancellationToken)
+                    .ConfigureAwait(false)
+                : lastDeliveredSequence;
+            if (scopedLastDelivered > highestAvailableSequence) {
+                Log.CheckpointDriftDetected(
+                    logger,
+                    identity.TenantId,
+                    identity.Domain,
+                    identity.AggregateId,
+                    ProjectionReasonCodes.CheckpointDrift,
+                    scopedLastDelivered,
+                    highestAvailableSequence);
+                return;
+            }
+
             if (response.State.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined
                 || (response.State.ValueKind == JsonValueKind.String && string.IsNullOrWhiteSpace(response.State.GetString()))) {
                 Log.InvalidProjectionResponse(logger, identity.TenantId, identity.Domain, identity.AggregateId, ProjectionReasonCodes.ProjectInvalidState);
@@ -244,9 +264,16 @@ public partial class ProjectionUpdateOrchestrator(
 
             long highestDeliveredSequence = highestAvailableSequence;
             try {
-                bool checkpointSaved = await checkpointTracker
-                    .SaveDeliveredSequenceAsync(identity, highestDeliveredSequence, cancellationToken)
-                    .ConfigureAwait(false);
+                // Save to the projection-scoped checkpoint (keyed by response.ProjectionType) when a
+                // delivery store is supplied; otherwise fall back to the released aggregate-wide
+                // checkpoint (legacy path used by the orchestrator unit tests).
+                bool checkpointSaved = deliveryCheckpointStore is not null
+                    ? await deliveryCheckpointStore
+                        .SaveDeliveredSequenceAsync(identity, response.ProjectionType, highestDeliveredSequence, cancellationToken)
+                        .ConfigureAwait(false)
+                    : await checkpointTracker
+                        .SaveDeliveredSequenceAsync(identity, highestDeliveredSequence, cancellationToken)
+                        .ConfigureAwait(false);
                 if (!checkpointSaved) {
                     Log.CheckpointSaveExhausted(logger, identity.TenantId, identity.Domain, identity.AggregateId, highestDeliveredSequence);
                 }
@@ -848,9 +875,16 @@ public partial class ProjectionUpdateOrchestrator(
             // provides an additional eventual-consistency healing path for the rebuild side; the
             // poller mirror remains best-effort by design.
             try {
-                bool checkpointSaved = await checkpointTracker
-                    .SaveDeliveredSequenceAsync(identity, highestAppliedSequence, cancellationToken)
-                    .ConfigureAwait(false);
+                // Mirror the poller checkpoint to the projection-scoped key (keyed by
+                // response.ProjectionType) when a delivery store is supplied; otherwise fall back to
+                // the released aggregate-wide checkpoint.
+                bool checkpointSaved = deliveryCheckpointStore is not null
+                    ? await deliveryCheckpointStore
+                        .SaveDeliveredSequenceAsync(identity, response.ProjectionType, highestAppliedSequence, cancellationToken)
+                        .ConfigureAwait(false)
+                    : await checkpointTracker
+                        .SaveDeliveredSequenceAsync(identity, highestAppliedSequence, cancellationToken)
+                        .ConfigureAwait(false);
                 if (!checkpointSaved) {
                     Log.CheckpointSaveExhausted(logger, identity.TenantId, identity.Domain, identity.AggregateId, highestAppliedSequence);
                 }
