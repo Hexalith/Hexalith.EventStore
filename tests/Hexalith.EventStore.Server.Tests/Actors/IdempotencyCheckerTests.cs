@@ -1,4 +1,3 @@
-
 using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Server.Actors;
@@ -11,31 +10,38 @@ using Shouldly;
 
 namespace Hexalith.EventStore.Server.Tests.Actors;
 
-public class IdempotencyCheckerTests {
+public class IdempotencyCheckerTests
+{
     private readonly IActorStateManager _stateManager = Substitute.For<IActorStateManager>();
     private readonly ILogger<IdempotencyChecker> _logger = Substitute.For<ILogger<IdempotencyChecker>>();
+
+    private static CommandProcessingIdentity Identity(
+        string messageId = "message-123",
+        string causationId = "cause-123",
+        string commandType = "TestCommand")
+        => new(messageId, causationId, commandType);
 
     private IdempotencyChecker CreateChecker() => new(_stateManager, _logger);
 
     [Fact]
-    public async Task CheckAsync_NoExistingRecord_ReturnsNull() {
-        // Arrange
+    public async Task CheckAsync_NoExistingRecord_ReturnsMiss()
+    {
         _ = _stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
         IdempotencyChecker checker = CreateChecker();
 
-        // Act
-        CommandProcessingResult? result = await checker.CheckAsync("cause-123");
+        IdempotencyCheckResult result = await checker.CheckAsync(Identity());
 
-        // Assert
-        result.ShouldBeNull();
+        result.Outcome.ShouldBe(IdempotencyCheckOutcome.Miss);
+        result.Result.ShouldBeNull();
     }
 
     [Fact]
-    public async Task CheckAsync_ExistingRecord_ReturnsCachedResult() {
-        // Arrange
+    public async Task CheckAsync_ExactTerminalRecord_ReturnsCompleteCachedResult()
+    {
+        CommandProcessingIdentity identity = Identity();
         var record = new IdempotencyRecord(
-            "cause-123",
+            identity.CausationId,
             "corr-456",
             true,
             null,
@@ -44,16 +50,19 @@ public class IdempotencyCheckerTests {
             ResultPayload: """{"status":"ok"}""",
             BackpressureExceeded: true,
             BackpressurePendingCount: 9,
-            BackpressureThreshold: 8);
-        _ = _stateManager.TryGetStateAsync<IdempotencyRecord>("idempotency:cause-123", Arg.Any<CancellationToken>())
+            BackpressureThreshold: 8,
+            MessageId: identity.MessageId,
+            CommandType: identity.CommandType,
+            ExpiresAt: DateTimeOffset.UtcNow.AddHours(1),
+            Disposition: IdempotencyRecordDisposition.Terminal);
+        _ = _stateManager.TryGetStateAsync<IdempotencyRecord>("idempotency:message-123", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(true, record));
         IdempotencyChecker checker = CreateChecker();
 
-        // Act
-        CommandProcessingResult? result = await checker.CheckAsync("cause-123");
+        IdempotencyCheckResult check = await checker.CheckAsync(identity);
 
-        // Assert
-        _ = result.ShouldNotBeNull();
+        check.Outcome.ShouldBe(IdempotencyCheckOutcome.ExactTerminalDuplicate);
+        CommandProcessingResult result = check.Result.ShouldNotBeNull();
         result.Accepted.ShouldBeTrue();
         result.CorrelationId.ShouldBe("corr-456");
         result.EventCount.ShouldBe(2);
@@ -63,94 +72,183 @@ public class IdempotencyCheckerTests {
         result.BackpressureThreshold.ShouldBe(8);
     }
 
-    [Fact]
-    public async Task RecordAsync_StoresIdempotencyRecord() {
-        // Arrange
+    [Theory]
+    [InlineData("different-message", "cause-123", "TestCommand")]
+    [InlineData("message-123", "different-cause", "TestCommand")]
+    [InlineData("message-123", "cause-123", "DifferentCommand")]
+    public async Task CheckAsync_StoredIdentityMismatch_ReturnsConflictWithoutMutation(
+        string storedMessageId,
+        string storedCausationId,
+        string storedCommandType)
+    {
+        var record = new IdempotencyRecord(
+            storedCausationId,
+            "corr-456",
+            true,
+            null,
+            DateTimeOffset.UtcNow,
+            MessageId: storedMessageId,
+            CommandType: storedCommandType,
+            ExpiresAt: DateTimeOffset.UtcNow.AddHours(1),
+            Disposition: IdempotencyRecordDisposition.Terminal);
+        _ = _stateManager.TryGetStateAsync<IdempotencyRecord>("idempotency:message-123", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyRecord>(true, record));
         IdempotencyChecker checker = CreateChecker();
+
+        IdempotencyCheckResult result = await checker.CheckAsync(Identity());
+
+        result.Outcome.ShouldBe(IdempotencyCheckOutcome.IdentityConflict);
+        result.Result.ShouldBeNull();
+        await _stateManager.DidNotReceive().SetStateAsync(
+            Arg.Any<string>(),
+            Arg.Any<IdempotencyRecord>(),
+            Arg.Any<CancellationToken>());
+        _ = await _stateManager.DidNotReceive().TryRemoveStateAsync(
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CheckAsync_ExactLegacyKeyRecord_StagesAtomicMigration()
+    {
+        CommandProcessingIdentity identity = Identity();
+        var record = new IdempotencyRecord(
+            identity.CausationId,
+            "corr-456",
+            true,
+            null,
+            DateTimeOffset.UtcNow,
+            MessageId: identity.MessageId,
+            CommandType: identity.CommandType,
+            ExpiresAt: DateTimeOffset.UtcNow.AddHours(1),
+            Disposition: IdempotencyRecordDisposition.Terminal);
+        _ = _stateManager.TryGetStateAsync<IdempotencyRecord>("idempotency:message-123", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
+        _ = _stateManager.TryGetStateAsync<IdempotencyRecord>("idempotency:cause-123", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyRecord>(true, record));
+        IdempotencyChecker checker = CreateChecker();
+
+        IdempotencyCheckResult result = await checker.CheckAsync(identity);
+
+        result.Outcome.ShouldBe(IdempotencyCheckOutcome.LegacyMigration);
+        _ = result.Result.ShouldNotBeNull();
+        await _stateManager.Received(1).SetStateAsync(
+            "idempotency:message-123",
+            record,
+            Arg.Any<CancellationToken>());
+        _ = await _stateManager.Received(1).TryRemoveStateAsync(
+            "idempotency:cause-123",
+            Arg.Any<CancellationToken>());
+        await _stateManager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CheckAsync_UnverifiableLegacyRecord_ReturnsConflictAndPreservesRecord()
+    {
+        var legacyRecord = new IdempotencyRecord(
+            "cause-123",
+            "corr-456",
+            true,
+            null,
+            DateTimeOffset.UtcNow);
+        _ = _stateManager.TryGetStateAsync<IdempotencyRecord>("idempotency:message-123", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
+        _ = _stateManager.TryGetStateAsync<IdempotencyRecord>("idempotency:cause-123", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyRecord>(true, legacyRecord));
+        IdempotencyChecker checker = CreateChecker();
+
+        IdempotencyCheckResult result = await checker.CheckAsync(Identity());
+
+        result.Outcome.ShouldBe(IdempotencyCheckOutcome.IdentityConflict);
+        await _stateManager.DidNotReceive().SetStateAsync(
+            Arg.Any<string>(),
+            Arg.Any<IdempotencyRecord>(),
+            Arg.Any<CancellationToken>());
+        _ = await _stateManager.DidNotReceive().TryRemoveStateAsync(
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CheckAsync_WhenMessageAndCausationMatch_PerformsOnlyMessageLookup()
+    {
+        _ = _stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
+        IdempotencyChecker checker = CreateChecker();
+        CommandProcessingIdentity identity = Identity(causationId: "message-123");
+
+        IdempotencyCheckResult result = await checker.CheckAsync(identity);
+
+        result.Outcome.ShouldBe(IdempotencyCheckOutcome.Miss);
+        _ = await _stateManager.Received(1).TryGetStateAsync<IdempotencyRecord>(
+            "idempotency:message-123",
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RecordAsync_StoresCompleteIdentityAtMessageKey()
+    {
+        IdempotencyChecker checker = CreateChecker();
+        CommandProcessingIdentity identity = Identity();
         var processingResult = new CommandProcessingResult(
             Accepted: true,
             CorrelationId: "corr-789",
             EventCount: 3,
             ResultPayload: """{"events":3}""");
+        DateTimeOffset expiresAt = DateTimeOffset.UtcNow.AddHours(24);
 
-        // Act
-        await checker.RecordAsync("cause-abc", processingResult);
+        await checker.RecordAsync(
+            identity,
+            processingResult,
+            expiresAt,
+            IdempotencyRecordDisposition.Terminal);
 
-        // Assert
         await _stateManager.Received(1).SetStateAsync(
-            "idempotency:cause-abc",
+            "idempotency:message-123",
             Arg.Is<IdempotencyRecord>(r =>
-                r.CausationId == "cause-abc" &&
+                r.MessageId == identity.MessageId &&
+                r.CausationId == identity.CausationId &&
+                r.CommandType == identity.CommandType &&
                 r.CorrelationId == "corr-789" &&
                 r.Accepted &&
                 r.EventCount == 3 &&
-                r.ResultPayload == """{"events":3}"""),
+                r.ResultPayload == """{"events":3}""" &&
+                r.ExpiresAt == expiresAt &&
+                r.Disposition == IdempotencyRecordDisposition.Terminal),
             Arg.Any<CancellationToken>());
-    }
-
-    [Fact]
-    public async Task RecordAsync_DoesNotCallSaveState() {
-        // Arrange
-        IdempotencyChecker checker = CreateChecker();
-        var processingResult = new CommandProcessingResult(Accepted: true, CorrelationId: "corr-1");
-
-        // Act
-        await checker.RecordAsync("cause-1", processingResult);
-
-        // Assert
         await _stateManager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task CheckAsync_NullCausationId_ThrowsArgumentException() {
-        // Arrange
+    public async Task CheckAsync_NullIdentity_ThrowsArgumentNullException()
+    {
         IdempotencyChecker checker = CreateChecker();
 
-        // Act & Assert
-        _ = await Should.ThrowAsync<ArgumentException>(() => checker.CheckAsync(null!));
+        _ = await Should.ThrowAsync<ArgumentNullException>(() => checker.CheckAsync(null!));
     }
 
     [Fact]
-    public async Task CheckAsync_WhitespaceCausationId_ThrowsArgumentException() {
-        // Arrange
-        IdempotencyChecker checker = CreateChecker();
-
-        // Act & Assert
-        _ = await Should.ThrowAsync<ArgumentException>(() => checker.CheckAsync("   "));
-    }
-
-    [Fact]
-    public async Task RecordAsync_NullCausationId_ThrowsArgumentException() {
-        // Arrange
+    public async Task RecordAsync_NullIdentity_ThrowsArgumentNullException()
+    {
         IdempotencyChecker checker = CreateChecker();
         var result = new CommandProcessingResult(Accepted: true);
 
-        // Act & Assert
-        _ = await Should.ThrowAsync<ArgumentException>(() => checker.RecordAsync(null!, result));
+        _ = await Should.ThrowAsync<ArgumentNullException>(() => checker.RecordAsync(
+            null!,
+            result,
+            DateTimeOffset.UtcNow.AddHours(1),
+            IdempotencyRecordDisposition.Terminal));
     }
 
     [Fact]
-    public async Task RecordAsync_NullResult_ThrowsArgumentNullException() {
-        // Arrange
+    public async Task RecordAsync_NullResult_ThrowsArgumentNullException()
+    {
         IdempotencyChecker checker = CreateChecker();
 
-        // Act & Assert
-        _ = await Should.ThrowAsync<ArgumentNullException>(() => checker.RecordAsync("cause-1", null!));
-    }
-
-    [Fact]
-    public async Task CheckAsync_CorrectKeyFormat_UsesIdempotencyPrefix() {
-        // Arrange
-        _ = _stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
-        IdempotencyChecker checker = CreateChecker();
-
-        // Act
-        _ = await checker.CheckAsync("my-causation-id");
-
-        // Assert
-        _ = await _stateManager.Received(1).TryGetStateAsync<IdempotencyRecord>(
-            "idempotency:my-causation-id",
-            Arg.Any<CancellationToken>());
+        _ = await Should.ThrowAsync<ArgumentNullException>(() => checker.RecordAsync(
+            Identity(),
+            null!,
+            DateTimeOffset.UtcNow.AddHours(1),
+            IdempotencyRecordDisposition.Terminal));
     }
 }

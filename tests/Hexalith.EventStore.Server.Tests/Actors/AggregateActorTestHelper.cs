@@ -127,14 +127,22 @@ internal static class AggregateActorTestHelper {
         }
     }
 
-    internal static void ConfigureDuplicate(IActorStateManager stateManager, string causationId, string correlationId) {
-        var record = new IdempotencyRecord(causationId, correlationId, true, null, DateTimeOffset.UtcNow);
-        _ = stateManager.TryGetStateAsync<IdempotencyRecord>($"idempotency:{causationId}", Arg.Any<CancellationToken>())
+    internal static void ConfigureDuplicate(IActorStateManager stateManager, CommandEnvelope command) {
+        string normalizedCausationId = command.CausationId ?? command.MessageId;
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        var record = IdempotencyRecord.FromResult(
+            new CommandProcessingIdentity(command.MessageId, normalizedCausationId, command.CommandType),
+            new CommandProcessingResult(true, CorrelationId: command.CorrelationId),
+            now,
+            now.AddHours(24),
+            IdempotencyRecordDisposition.Terminal);
+        string key = $"idempotency:{command.MessageId}";
+        _ = stateManager.TryGetStateAsync<IdempotencyRecord>(key, Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(true, record));
 
         // Default for other keys
         _ = stateManager.TryGetStateAsync<IdempotencyRecord>(
-            Arg.Is<string>(s => s != $"idempotency:{causationId}"), Arg.Any<CancellationToken>())
+            Arg.Is<string>(s => s != key), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
     }
 

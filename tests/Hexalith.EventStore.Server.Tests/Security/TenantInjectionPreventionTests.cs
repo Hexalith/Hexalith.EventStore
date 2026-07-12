@@ -122,7 +122,7 @@ public class TenantInjectionPreventionTests {
 
         // Assert -- idempotency record stored with rejection
         await stateManager.Received(1).SetStateAsync(
-            "idempotency:cause-reject",
+            "idempotency:msg-tenant-2",
             Arg.Is<IdempotencyRecord>(r => r.Accepted == false),
             Arg.Any<CancellationToken>());
 

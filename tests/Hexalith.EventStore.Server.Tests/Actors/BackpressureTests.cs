@@ -99,12 +99,18 @@ public class BackpressureTests {
     }
 
     private static void ConfigureDuplicate(IActorStateManager stateManager, string causationId, string correlationId) {
-        var record = new IdempotencyRecord(causationId, correlationId, true, null, DateTimeOffset.UtcNow);
-        _ = stateManager.TryGetStateAsync<IdempotencyRecord>($"idempotency:{causationId}", Arg.Any<CancellationToken>())
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        var record = IdempotencyRecord.FromResult(
+            new CommandProcessingIdentity("msg-1", causationId, "CreateOrder"),
+            new CommandProcessingResult(true, CorrelationId: correlationId),
+            now,
+            now.AddHours(24),
+            IdempotencyRecordDisposition.Terminal);
+        _ = stateManager.TryGetStateAsync<IdempotencyRecord>("idempotency:msg-1", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(true, record));
 
         _ = stateManager.TryGetStateAsync<IdempotencyRecord>(
-            Arg.Is<string>(s => s != $"idempotency:{causationId}"), Arg.Any<CancellationToken>())
+            Arg.Is<string>(s => s != "idempotency:msg-1"), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
     }
 

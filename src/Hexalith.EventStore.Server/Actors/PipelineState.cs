@@ -16,6 +16,8 @@ namespace Hexalith.EventStore.Server.Actors;
 /// Legacy serialized result payload retained only for old in-flight checkpoint deserialization.
 /// Pipeline checkpoints are crash-recovery control state and new writes must keep this value null.
 /// </param>
+/// <param name="MessageId">The command message identifier, or <c>null</c> for a legacy checkpoint.</param>
+/// <param name="CausationId">The normalized causation identifier, or <c>null</c> for a legacy checkpoint.</param>
 public record PipelineState(
     string CorrelationId,
     CommandStatus CurrentStage,
@@ -23,4 +25,6 @@ public record PipelineState(
     DateTimeOffset StartedAt,
     int? EventCount,
     string? RejectionEventType,
-    string? ResultPayload = null);
+    string? ResultPayload = null,
+    string? MessageId = null,
+    string? CausationId = null);

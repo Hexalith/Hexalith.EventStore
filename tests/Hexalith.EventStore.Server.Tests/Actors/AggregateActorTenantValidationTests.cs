@@ -58,7 +58,7 @@ public class AggregateActorTenantValidationTests {
 
         // Assert
         await ctx.StateManager.Received(1).SetStateAsync(
-            "idempotency:cause-mismatch",
+            $"idempotency:{envelope.MessageId}",
             Arg.Is<IdempotencyRecord>(r => r.Accepted == false),
             Arg.Any<CancellationToken>());
     }

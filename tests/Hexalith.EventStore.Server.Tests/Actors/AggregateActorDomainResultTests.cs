@@ -249,7 +249,7 @@ public class AggregateActorDomainResultTests {
 
         // Assert
         await ctx.StateManager.Received(1).SetStateAsync(
-            "idempotency:cause-reject",
+            $"idempotency:{envelope.MessageId}",
             Arg.Is<IdempotencyRecord>(r => r.Accepted == false),
             Arg.Any<CancellationToken>());
     }
@@ -481,7 +481,7 @@ public class AggregateActorDomainResultTests {
         result.Accepted.ShouldBeFalse();
         result.ErrorMessage.ShouldBe("ConcurrencyConflict");
         await ctx.StateManager.Received(1).SetStateAsync(
-            "idempotency:cause-conflict-terminal",
+            $"idempotency:{envelope.MessageId}",
             Arg.Is<IdempotencyRecord>(record => record.Accepted == false && record.ErrorMessage == "ConcurrencyConflict"),
             Arg.Any<CancellationToken>());
         await ctx.StatusStore.Received(1).WriteStatusAsync(

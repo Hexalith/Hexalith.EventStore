@@ -28,8 +28,12 @@ public class AggregateActorIdempotencyTests {
 
         // Assert
         await ctx.StateManager.Received(1).SetStateAsync(
-            "idempotency:cause-new",
-            Arg.Is<IdempotencyRecord>(r => r.CausationId == "cause-new" && r.CorrelationId == correlationId),
+            $"idempotency:{envelope.MessageId}",
+            Arg.Is<IdempotencyRecord>(r =>
+                r.MessageId == envelope.MessageId
+                && r.CausationId == "cause-new"
+                && r.CommandType == envelope.CommandType
+                && r.CorrelationId == correlationId),
             Arg.Any<CancellationToken>());
     }
 
@@ -43,10 +47,16 @@ public class AggregateActorIdempotencyTests {
             CorrelationId: "corr-dup",
             EventCount: 3,
             ResultPayload: "{\"result\":\"cached\"}");
-        IdempotencyRecord record = IdempotencyRecord.FromResult("cause-dup", original);
-        _ = ctx.StateManager.TryGetStateAsync<IdempotencyRecord>("idempotency:cause-dup", Arg.Any<CancellationToken>())
-            .Returns(new ConditionalValue<IdempotencyRecord>(true, record));
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: "corr-dup", causationId: "cause-dup");
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        IdempotencyRecord record = IdempotencyRecord.FromResult(
+            new CommandProcessingIdentity(envelope.MessageId, "cause-dup", envelope.CommandType),
+            original,
+            now,
+            now.AddHours(24),
+            IdempotencyRecordDisposition.Terminal);
+        _ = ctx.StateManager.TryGetStateAsync<IdempotencyRecord>($"idempotency:{envelope.MessageId}", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyRecord>(true, record));
 
         // Act
         CommandProcessingResult result = await ctx.Actor.ProcessCommandAsync(envelope);
@@ -59,8 +69,8 @@ public class AggregateActorIdempotencyTests {
     public async Task ProcessCommandAsync_DuplicateCommand_DoesNotCallSaveState() {
         // Arrange
         ActorTestContext ctx = CreateActor();
-        ConfigureDuplicate(ctx.StateManager, "cause-dup", "corr-dup");
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: "corr-dup", causationId: "cause-dup");
+        ConfigureDuplicate(ctx.StateManager, envelope);
 
         // Act
         _ = await ctx.Actor.ProcessCommandAsync(envelope);
@@ -73,8 +83,8 @@ public class AggregateActorIdempotencyTests {
     public async Task ProcessCommandAsync_DuplicateCommand_DoesNotStoreNewRecord() {
         // Arrange
         ActorTestContext ctx = CreateActor();
-        ConfigureDuplicate(ctx.StateManager, "cause-dup", "corr-dup");
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: "corr-dup", causationId: "cause-dup");
+        ConfigureDuplicate(ctx.StateManager, envelope);
 
         // Act
         _ = await ctx.Actor.ProcessCommandAsync(envelope);
@@ -90,8 +100,8 @@ public class AggregateActorIdempotencyTests {
     public async Task ProcessCommandAsync_DuplicateCommand_LogsDuplicateDetection() {
         // Arrange
         ActorTestContext ctx = CreateActor();
-        ConfigureDuplicate(ctx.StateManager, "cause-dup", "corr-dup");
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: "corr-dup", causationId: "cause-dup");
+        ConfigureDuplicate(ctx.StateManager, envelope);
 
         // Act
         _ = await ctx.Actor.ProcessCommandAsync(envelope);
@@ -106,7 +116,7 @@ public class AggregateActorIdempotencyTests {
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_NullCausationId_UseCorrelationIdAsFallback() {
+    public async Task ProcessCommandAsync_NullCausationId_UsesMessageIdAsNormalizedCausation() {
         // Arrange
         string correlationId = "corr-fallback";
         ActorTestContext ctx = CreateActor();
@@ -116,9 +126,9 @@ public class AggregateActorIdempotencyTests {
         // Act
         _ = await ctx.Actor.ProcessCommandAsync(envelope);
 
-        // Assert -- should use correlationId as the key since causationId is null
+        // Assert -- message id is both the primary key and normalized causation when causation is absent.
         _ = await ctx.StateManager.Received(1).TryGetStateAsync<IdempotencyRecord>(
-            $"idempotency:{correlationId}",
+            $"idempotency:{envelope.MessageId}",
             Arg.Any<CancellationToken>());
     }
 
@@ -135,10 +145,16 @@ public class AggregateActorIdempotencyTests {
             BackpressureExceeded: true,
             BackpressurePendingCount: 17,
             BackpressureThreshold: 10);
-        IdempotencyRecord record = IdempotencyRecord.FromResult("cause-rejected", original);
-        _ = ctx.StateManager.TryGetStateAsync<IdempotencyRecord>("idempotency:cause-rejected", Arg.Any<CancellationToken>())
-            .Returns(new ConditionalValue<IdempotencyRecord>(true, record));
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: "corr-rejected", causationId: "cause-rejected");
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        IdempotencyRecord record = IdempotencyRecord.FromResult(
+            new CommandProcessingIdentity(envelope.MessageId, "cause-rejected", envelope.CommandType),
+            original,
+            now,
+            now.AddHours(24),
+            IdempotencyRecordDisposition.Terminal);
+        _ = ctx.StateManager.TryGetStateAsync<IdempotencyRecord>($"idempotency:{envelope.MessageId}", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyRecord>(true, record));
 
         // Act
         CommandProcessingResult result = await ctx.Actor.ProcessCommandAsync(envelope);

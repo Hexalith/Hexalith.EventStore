@@ -100,7 +100,11 @@ public partial class AggregateActor(
             bool pendingCommandTracked = false;
             bool drainRecordCreated = false;
 
-            string causationId = command.CausationId ?? command.CorrelationId;
+            string causationId = command.CausationId ?? command.MessageId;
+            var commandIdentity = new CommandProcessingIdentity(
+                command.MessageId,
+                causationId,
+                command.CommandType);
 
             Log.ActorActivated(logger, Host.Id.GetId(), command.CorrelationId, causationId, command.TenantId, command.Domain, command.AggregateId, command.CommandType);
 
@@ -119,19 +123,39 @@ public partial class AggregateActor(
                 ActivityKind.Internal)) {
                 SetActivityTags(activity, command);
 
-                CommandProcessingResult? cached = await idempotencyChecker
-                    .CheckAsync(causationId)
+                IdempotencyCheckResult idempotencyCheck = await idempotencyChecker
+                    .CheckAsync(commandIdentity)
                     .ConfigureAwait(false);
 
-                if (cached is not null) {
+                if (idempotencyCheck.StateMutationStaged)
+                {
+                    await StateManager.SaveStateAsync().ConfigureAwait(false);
+                }
+
+                if (idempotencyCheck.Outcome is IdempotencyCheckOutcome.ExactTerminalDuplicate
+                    or IdempotencyCheckOutcome.LegacyMigration
+                    or IdempotencyCheckOutcome.RetryableRecoverable)
+                {
+                    CommandProcessingResult cached = idempotencyCheck.Result
+                        ?? throw new InvalidOperationException("Cached idempotency outcome did not contain a result.");
                     logger.LogInformation(
-                        "Duplicate command detected: CausationId={CausationId}, CorrelationId={CorrelationId}, ActorId={ActorId}. Returning cached result.",
-                        causationId,
+                        "Duplicate command detected: MessageId={MessageId}, CorrelationId={CorrelationId}, ActorId={ActorId}. Returning cached result.",
+                        command.MessageId,
                         command.CorrelationId,
                         Host.Id);
                     _ = (activity?.SetStatus(ActivityStatusCode.Ok));
                     _ = (processActivity?.SetStatus(ActivityStatusCode.Ok));
                     return cached;
+                }
+
+                if (idempotencyCheck.Outcome == IdempotencyCheckOutcome.IdentityConflict)
+                {
+                    _ = (activity?.SetStatus(ActivityStatusCode.Error, "CommandIdentityConflict"));
+                    _ = (processActivity?.SetStatus(ActivityStatusCode.Error, "CommandIdentityConflict"));
+                    return new CommandProcessingResult(
+                        Accepted: false,
+                        ErrorMessage: "command_identity_conflict",
+                        CorrelationId: command.CorrelationId);
                 }
 
                 // Step 1b: Check for in-flight pipeline state (resume detection -- AC #8)
@@ -198,7 +222,11 @@ public partial class AggregateActor(
                             ErrorMessage: ex.Message,
                             CorrelationId: command.CorrelationId);
 
-                        await idempotencyChecker.RecordAsync(causationId, rejectionResult).ConfigureAwait(false);
+                        await RecordIdempotencyAsync(
+                            idempotencyChecker,
+                            commandIdentity,
+                            rejectionResult,
+                            IdempotencyRecordDisposition.Terminal).ConfigureAwait(false);
                         // F-PM7: This SaveStateAsync commits ONLY the idempotency rejection record.
                         await StateManager.SaveStateAsync().ConfigureAwait(false);
                         _ = (activity?.AddException(ex));
@@ -268,7 +296,9 @@ public partial class AggregateActor(
                     DateTimeOffset.UtcNow,
                     EventCount: null,
                     RejectionEventType: null,
-                    ResultPayload: null);
+                    ResultPayload: null,
+                    MessageId: commandIdentity.MessageId,
+                    CausationId: commandIdentity.CausationId);
                 await stateMachine.CheckpointAsync(pipelineKeyPrefix, pipelineState).ConfigureAwait(false);
                 await StateManager.SaveStateAsync().ConfigureAwait(false);
 
@@ -438,7 +468,9 @@ public partial class AggregateActor(
                             command.CommandType,
                             pipelineState.StartedAt,
                             EventCount: domainResult.Events.Count,
-                            RejectionEventType: rejectionEventType);
+                            RejectionEventType: rejectionEventType,
+                            MessageId: commandIdentity.MessageId,
+                            CausationId: commandIdentity.CausationId);
                         await stateMachine.CheckpointAsync(pipelineKeyPrefix, eventsStoredState).ConfigureAwait(false);
 
                         // Atomic commit: events + snapshot + EventsStored checkpoint (AC #9)
@@ -515,7 +547,9 @@ public partial class AggregateActor(
                         command.CommandType,
                         pipelineState.StartedAt,
                         EventCount: domainResult.Events.Count,
-                        RejectionEventType: domainResult.IsRejection ? GetEventTypeName(domainResult.Events[0]) : null);
+                        RejectionEventType: domainResult.IsRejection ? GetEventTypeName(domainResult.Events[0]) : null,
+                        MessageId: commandIdentity.MessageId,
+                        CausationId: commandIdentity.CausationId);
                     await stateMachine.CheckpointAsync(pipelineKeyPrefix, eventsPublishedState).ConfigureAwait(false);
 
                     LogStageTransition(CommandStatus.EventsPublished, command, causationId, startTicks);
@@ -549,7 +583,9 @@ public partial class AggregateActor(
                         command.CommandType,
                         pipelineState.StartedAt,
                         EventCount: domainResult.Events.Count,
-                        RejectionEventType: rejectionEventType);
+                        RejectionEventType: rejectionEventType,
+                        MessageId: commandIdentity.MessageId,
+                        CausationId: commandIdentity.CausationId);
                     await stateMachine.CheckpointAsync(pipelineKeyPrefix, publishFailedState).ConfigureAwait(false);
 
                     // Cleanup pipeline and commit atomically
@@ -562,7 +598,11 @@ public partial class AggregateActor(
                         publishResult.FailureReason,
                         rejectionEventType);
 
-                    await idempotencyChecker.RecordAsync(causationId, failResult).ConfigureAwait(false);
+                    await RecordIdempotencyAsync(
+                        idempotencyChecker,
+                        commandIdentity,
+                        failResult,
+                        IdempotencyRecordDisposition.Recoverable).ConfigureAwait(false);
 
                     // Story 4.2: Store drain record for recovery (committed in same atomic batch)
                     long startSequence = persistResult.NewSequenceNumber - domainResult.Events.Count + 1;
@@ -1529,7 +1569,9 @@ public partial class AggregateActor(
                 command.CommandType,
                 existingPipeline.StartedAt,
                 EventCount: existingPipeline.EventCount,
-                RejectionEventType: existingPipeline.RejectionEventType);
+                RejectionEventType: existingPipeline.RejectionEventType,
+                MessageId: existingPipeline.MessageId,
+                CausationId: existingPipeline.CausationId);
 
             await stateMachine.CheckpointAsync(pipelineKeyPrefix, eventsPublishedState).ConfigureAwait(false);
 
@@ -1643,7 +1685,9 @@ public partial class AggregateActor(
             command.CommandType,
             existingPipeline.StartedAt,
             EventCount: existingPipeline.EventCount,
-            RejectionEventType: existingPipeline.RejectionEventType);
+            RejectionEventType: existingPipeline.RejectionEventType,
+            MessageId: existingPipeline.MessageId,
+            CausationId: existingPipeline.CausationId);
         await stateMachine.CheckpointAsync(pipelineKeyPrefix, publishFailedState).ConfigureAwait(false);
 
         await stateMachine.CleanupPipelineAsync(pipelineKeyPrefix, command.CorrelationId)
@@ -1655,7 +1699,11 @@ public partial class AggregateActor(
             failureReason,
             existingPipeline.RejectionEventType);
 
-        await idempotencyChecker.RecordAsync(causationId, failResult).ConfigureAwait(false);
+        await RecordIdempotencyAsync(
+            idempotencyChecker,
+            CreateCommandProcessingIdentity(command),
+            failResult,
+            IdempotencyRecordDisposition.Recoverable).ConfigureAwait(false);
 
         // Story 4.2: Store drain record for recovery on resume path (committed in same atomic batch)
         int eventCount = existingPipeline.EventCount ?? 0;
@@ -1901,6 +1949,32 @@ public partial class AggregateActor(
         return command.Domain;
     }
 
+    private static CommandProcessingIdentity CreateCommandProcessingIdentity(CommandEnvelope command)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        return new CommandProcessingIdentity(
+            command.MessageId,
+            command.CausationId ?? command.MessageId,
+            command.CommandType);
+    }
+
+    private static Task RecordIdempotencyAsync(
+        IdempotencyChecker idempotencyChecker,
+        CommandProcessingIdentity identity,
+        CommandProcessingResult result,
+        IdempotencyRecordDisposition disposition)
+    {
+        ArgumentNullException.ThrowIfNull(idempotencyChecker);
+        ArgumentNullException.ThrowIfNull(identity);
+        ArgumentNullException.ThrowIfNull(result);
+
+        return idempotencyChecker.RecordAsync(
+            identity,
+            result,
+            DateTimeOffset.UtcNow.AddHours(24),
+            disposition);
+    }
+
     /// <summary>
     /// Handles infrastructure failures by routing to dead-letter and transitioning to Rejected.
     /// Dead-letter publication is best-effort and non-blocking (AC #7).
@@ -1949,7 +2023,9 @@ public partial class AggregateActor(
             DateTimeOffset.UtcNow,
             EventCount: null,
             RejectionEventType: null,
-            ResultPayload: null);
+            ResultPayload: null,
+            MessageId: command.MessageId,
+            CausationId: causationId);
         await stateMachine.CheckpointAsync(pipelineKeyPrefix, rejectedState).ConfigureAwait(false);
         await stateMachine.CleanupPipelineAsync(pipelineKeyPrefix, command.CorrelationId)
             .ConfigureAwait(false);
@@ -1960,7 +2036,11 @@ public partial class AggregateActor(
             CorrelationId: command.CorrelationId,
             EventCount: 0);
 
-        await idempotencyChecker.RecordAsync(causationId, failResult).ConfigureAwait(false);
+        await RecordIdempotencyAsync(
+            idempotencyChecker,
+            CreateCommandProcessingIdentity(command),
+            failResult,
+            IdempotencyRecordDisposition.Terminal).ConfigureAwait(false);
         await StateManager.SaveStateAsync().ConfigureAwait(false);
 
         // Advisory status write (non-blocking per rule #12)
@@ -1993,7 +2073,11 @@ public partial class AggregateActor(
             CorrelationId: command.CorrelationId,
             EventCount: 0);
 
-        await idempotencyChecker.RecordAsync(causationId, result).ConfigureAwait(false);
+        await RecordIdempotencyAsync(
+            idempotencyChecker,
+            CreateCommandProcessingIdentity(command),
+            result,
+            IdempotencyRecordDisposition.Terminal).ConfigureAwait(false);
         await stateMachine.CleanupPipelineAsync(pipelineKeyPrefix, command.CorrelationId)
             .ConfigureAwait(false);
 
@@ -2051,7 +2135,11 @@ public partial class AggregateActor(
             EventCount: eventCount,
             ResultPayload: resultPayload);
 
-        await idempotencyChecker.RecordAsync(causationId, result).ConfigureAwait(false);
+        await RecordIdempotencyAsync(
+            idempotencyChecker,
+            CreateCommandProcessingIdentity(command),
+            result,
+            IdempotencyRecordDisposition.Terminal).ConfigureAwait(false);
         await stateMachine.CleanupPipelineAsync(pipelineKeyPrefix, command.CorrelationId)
             .ConfigureAwait(false);
 

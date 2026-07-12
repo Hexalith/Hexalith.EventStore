@@ -20,18 +20,26 @@ public class IdempotencyRecordTests {
         DateTimeOffset before = DateTimeOffset.UtcNow;
 
         // Act
-        var record = IdempotencyRecord.FromResult("cause-456", result);
-        DateTimeOffset after = DateTimeOffset.UtcNow;
-
+        var identity = new CommandProcessingIdentity("message-123", "cause-456", "TestCommand");
+        DateTimeOffset expiresAt = before.AddHours(24);
+        var record = IdempotencyRecord.FromResult(
+            identity,
+            result,
+            before,
+            expiresAt,
+            IdempotencyRecordDisposition.Terminal);
         // Assert
         record.CausationId.ShouldBe("cause-456");
+        record.MessageId.ShouldBe("message-123");
+        record.CommandType.ShouldBe("TestCommand");
+        record.ExpiresAt.ShouldBe(expiresAt);
+        record.Disposition.ShouldBe(IdempotencyRecordDisposition.Terminal);
         record.CorrelationId.ShouldBe("corr-123");
         record.Accepted.ShouldBeTrue();
         record.ErrorMessage.ShouldBeNull();
         record.EventCount.ShouldBe(4);
         record.ResultPayload.ShouldBe("""{"ok":true}""");
-        record.ProcessedAt.ShouldBeGreaterThanOrEqualTo(before);
-        record.ProcessedAt.ShouldBeLessThanOrEqualTo(after);
+        record.ProcessedAt.ShouldBe(before);
     }
 
     [Fact]
@@ -71,7 +79,12 @@ public class IdempotencyRecordTests {
             CorrelationId: "corr-1",
             EventCount: 5,
             ResultPayload: "{\"key\":\"value\"}");
-        var record = IdempotencyRecord.FromResult("cause-1", original);
+        var record = IdempotencyRecord.FromResult(
+            new CommandProcessingIdentity("message-1", "cause-1", "TestCommand"),
+            original,
+            DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow.AddHours(24),
+            IdempotencyRecordDisposition.Terminal);
 
         // Act
         CommandProcessingResult roundtripped = record.ToResult();
@@ -97,7 +110,11 @@ public class IdempotencyRecordTests {
             ResultPayload: """{"result":"cached"}""",
             BackpressureExceeded: true,
             BackpressurePendingCount: 10,
-            BackpressureThreshold: 9);
+            BackpressureThreshold: 9,
+            MessageId: "message-abc",
+            CommandType: "TestCommand",
+            ExpiresAt: new DateTimeOffset(2026, 2, 15, 12, 0, 0, TimeSpan.Zero),
+            Disposition: IdempotencyRecordDisposition.Terminal);
 
         // Act
         string json = JsonSerializer.Serialize(original);
@@ -115,5 +132,30 @@ public class IdempotencyRecordTests {
         deserialized.BackpressureExceeded.ShouldBe(original.BackpressureExceeded);
         deserialized.BackpressurePendingCount.ShouldBe(original.BackpressurePendingCount);
         deserialized.BackpressureThreshold.ShouldBe(original.BackpressureThreshold);
+        deserialized.MessageId.ShouldBe(original.MessageId);
+        deserialized.CommandType.ShouldBe(original.CommandType);
+        deserialized.ExpiresAt.ShouldBe(original.ExpiresAt);
+        deserialized.Disposition.ShouldBe(original.Disposition);
+    }
+
+    [Fact]
+    public void LegacyJson_DeserializesWithAdditiveIdentityDefaults()
+    {
+        const string json = """
+            {
+              "CausationId": "cause-legacy",
+              "CorrelationId": "corr-legacy",
+              "Accepted": true,
+              "ErrorMessage": null,
+              "ProcessedAt": "2026-02-14T12:00:00+00:00"
+            }
+            """;
+
+        IdempotencyRecord record = JsonSerializer.Deserialize<IdempotencyRecord>(json).ShouldNotBeNull();
+
+        record.MessageId.ShouldBeNull();
+        record.CommandType.ShouldBeNull();
+        record.ExpiresAt.ShouldBeNull();
+        record.Disposition.ShouldBeNull();
     }
 }
