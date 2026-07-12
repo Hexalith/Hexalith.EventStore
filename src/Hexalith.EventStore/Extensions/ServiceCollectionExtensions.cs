@@ -143,7 +143,11 @@ public static class EventStoreServiceCollectionExtensions {
             .BindConfiguration("EventStore:CommandStatus");
         _ = services.AddSingleton<ICommandStatusStore, DaprCommandStatusStore>();
         _ = services.AddOptions<CommandCorrelationIndexOptions>()
-            .BindConfiguration("EventStore:CommandCorrelationIndex");
+            .BindConfiguration("EventStore:CommandCorrelationIndex")
+            .Validate(
+                o => o.Capacity > 0 && o.MaxConcurrencyRetries >= 0,
+                "Command correlation index Capacity must be greater than zero and MaxConcurrencyRetries must be non-negative.")
+            .ValidateOnStart();
         _ = services.AddSingleton<ICommandCorrelationIndex, DaprCommandCorrelationIndex>();
 
         // Command archive for replay (Story 2.7)

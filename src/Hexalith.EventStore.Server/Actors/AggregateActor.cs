@@ -108,7 +108,9 @@ public partial class AggregateActor(
             bool pendingCommandTracked = false;
             bool drainRecordCreated = false;
 
-            string causationId = command.CausationId ?? command.MessageId;
+            string causationId = string.IsNullOrWhiteSpace(command.CausationId)
+                ? command.MessageId
+                : command.CausationId;
             var commandIdentity = new CommandProcessingIdentity(
                 command.MessageId,
                 causationId,
@@ -230,8 +232,15 @@ public partial class AggregateActor(
 
                     if (!exactIdentity && committedCheckpoint)
                     {
+                        // A stale committed checkpoint that lacks a persisted event range (legacy,
+                        // pre-range) cannot be handed off safely: its events cannot be identified
+                        // without re-deriving from the mutable stream head. Fail closed and preserve it.
+                        bool missingCommittedRange = existingPipeline.EventCount is > 0
+                            && (existingPipeline.StartSequence is null || existingPipeline.EndSequence is null);
+
                         if (!HasCompletePipelineIdentity(existingPipeline)
-                            || string.Equals(existingPipeline.MessageId, command.MessageId, StringComparison.Ordinal))
+                            || string.Equals(existingPipeline.MessageId, command.MessageId, StringComparison.Ordinal)
+                            || missingCommittedRange)
                         {
                             Log.PipelineIdentityConflict(
                                 logger,
@@ -246,11 +255,32 @@ public partial class AggregateActor(
                                 CorrelationId: command.CorrelationId);
                         }
 
-                        await HandoffStaleCommittedCheckpointAsync(
-                            command,
-                            existingPipeline,
-                            stateMachine,
-                            pipelineKeyPrefix).ConfigureAwait(false);
+                        try
+                        {
+                            await HandoffStaleCommittedCheckpointAsync(
+                                existingPipeline,
+                                stateMachine,
+                                pipelineKeyPrefix).ConfigureAwait(false);
+                        }
+                        catch (Exception ex) when (ex is not OperationCanceledException)
+                        {
+                            // A handoff that cannot complete must not fault the actor turn, which DAPR
+                            // would redeliver into the same fault (poison loop). Discard any uncommitted
+                            // staged state, preserve the checkpoint, and fail closed on the incoming command.
+                            await StateManager.ClearCacheAsync().ConfigureAwait(false);
+                            logger.LogError(
+                                ex,
+                                "Stale committed checkpoint handoff failed: CorrelationId={CorrelationId}, MessageId={MessageId}, Stage={Stage}",
+                                command.CorrelationId,
+                                command.MessageId,
+                                existingPipeline.CurrentStage);
+                            _ = (activity?.SetStatus(ActivityStatusCode.Error, "CommandIdentityConflict"));
+                            _ = (processActivity?.SetStatus(ActivityStatusCode.Error, "CommandIdentityConflict"));
+                            return new CommandProcessingResult(
+                                Accepted: false,
+                                ErrorMessage: "command_identity_conflict",
+                                CorrelationId: command.CorrelationId);
+                        }
                     }
                     else
                     {
@@ -516,7 +546,9 @@ public partial class AggregateActor(
                             EventCount: domainResult.Events.Count,
                             RejectionEventType: rejectionEventType,
                             MessageId: commandIdentity.MessageId,
-                            CausationId: commandIdentity.CausationId);
+                            CausationId: commandIdentity.CausationId,
+                            StartSequence: persistResult.NewSequenceNumber - domainResult.Events.Count + 1,
+                            EndSequence: persistResult.NewSequenceNumber);
                         await stateMachine.CheckpointAsync(pipelineKeyPrefix, eventsStoredState).ConfigureAwait(false);
 
                         // Atomic commit: events + snapshot + EventsStored checkpoint (AC #9)
@@ -595,7 +627,9 @@ public partial class AggregateActor(
                         EventCount: domainResult.Events.Count,
                         RejectionEventType: domainResult.IsRejection ? GetEventTypeName(domainResult.Events[0]) : null,
                         MessageId: commandIdentity.MessageId,
-                        CausationId: commandIdentity.CausationId);
+                        CausationId: commandIdentity.CausationId,
+                        StartSequence: persistResult.NewSequenceNumber - domainResult.Events.Count + 1,
+                        EndSequence: persistResult.NewSequenceNumber);
                     await stateMachine.CheckpointAsync(pipelineKeyPrefix, eventsPublishedState).ConfigureAwait(false);
 
                     LogStageTransition(CommandStatus.EventsPublished, command, causationId, startTicks);
@@ -631,7 +665,9 @@ public partial class AggregateActor(
                         EventCount: domainResult.Events.Count,
                         RejectionEventType: rejectionEventType,
                         MessageId: commandIdentity.MessageId,
-                        CausationId: commandIdentity.CausationId);
+                        CausationId: commandIdentity.CausationId,
+                        StartSequence: persistResult.NewSequenceNumber - domainResult.Events.Count + 1,
+                        EndSequence: persistResult.NewSequenceNumber);
                     await stateMachine.CheckpointAsync(pipelineKeyPrefix, publishFailedState).ConfigureAwait(false);
 
                     // Cleanup pipeline and commit atomically
@@ -1568,7 +1604,6 @@ public partial class AggregateActor(
     }
 
     private async Task HandoffStaleCommittedCheckpointAsync(
-        CommandEnvelope incomingCommand,
         PipelineState stalePipeline,
         ActorStateMachine stateMachine,
         string pipelineKeyPrefix)
@@ -1586,17 +1621,14 @@ public partial class AggregateActor(
             return;
         }
 
-        ConditionalValue<AggregateMetadata> metadataResult = await StateManager
-            .TryGetStateAsync<AggregateMetadata>(incomingCommand.AggregateIdentity.MetadataKey)
-            .ConfigureAwait(false);
-        if (!metadataResult.HasValue)
-        {
-            throw new InvalidOperationException("Cannot hand off a stale committed checkpoint without aggregate metadata.");
-        }
-
-        long endSequence = metadataResult.Value.CurrentSequence;
-        long startSequence = endSequence - eventCount + 1;
-        if (startSequence < 1 || endSequence < startSequence)
+        // Use the checkpoint's persisted committed range -- NEVER re-derive it from the mutable stream
+        // head, which an interleaved different-correlation command may have advanced past this command's
+        // events. The caller guards against a legacy checkpoint that lacks the range, so it is required here.
+        long startSequence = stalePipeline.StartSequence
+            ?? throw new InvalidOperationException("Cannot hand off a stale committed checkpoint without a persisted start sequence.");
+        long endSequence = stalePipeline.EndSequence
+            ?? throw new InvalidOperationException("Cannot hand off a stale committed checkpoint without a persisted end sequence.");
+        if (startSequence < 1 || endSequence < startSequence || (endSequence - startSequence + 1) != eventCount)
         {
             throw new InvalidOperationException("Cannot hand off a stale committed checkpoint with an invalid event range.");
         }
@@ -1644,9 +1676,26 @@ public partial class AggregateActor(
         int eventCount = existingPipeline.EventCount ?? 0;
 
         if (eventCount > 0) {
+            if (existingPipeline.StartSequence is not long resumeStart
+                || existingPipeline.EndSequence is not long resumeEnd) {
+                // Legacy committed checkpoint without a persisted event range: the exact events cannot
+                // be identified safely (an interleaved command may have advanced the stream head), so
+                // fail closed rather than re-publishing a guessed range. The checkpoint is preserved.
+                Log.PipelineIdentityConflict(
+                    logger,
+                    command.CorrelationId,
+                    command.MessageId,
+                    existingPipeline.CurrentStage.ToString());
+                _ = (processActivity?.SetStatus(ActivityStatusCode.Error, "CommandIdentityConflict"));
+                return new CommandProcessingResult(
+                    Accepted: false,
+                    ErrorMessage: "command_identity_conflict",
+                    CorrelationId: command.CorrelationId);
+            }
+
             IReadOnlyList<EventEnvelope> persistedEvents;
             try {
-                persistedEvents = await LoadPersistedEventsForResumeAsync(command.AggregateIdentity, eventCount)
+                persistedEvents = await LoadPersistedEventsRangeAsync(command.AggregateIdentity, resumeStart, resumeEnd)
                     .ConfigureAwait(false);
             }
             catch (Exception ex) when (ex is not OperationCanceledException) {
@@ -1702,7 +1751,9 @@ public partial class AggregateActor(
                 EventCount: existingPipeline.EventCount,
                 RejectionEventType: existingPipeline.RejectionEventType,
                 MessageId: existingPipeline.MessageId,
-                CausationId: existingPipeline.CausationId);
+                CausationId: existingPipeline.CausationId,
+                StartSequence: existingPipeline.StartSequence,
+                EndSequence: existingPipeline.EndSequence);
 
             await stateMachine.CheckpointAsync(pipelineKeyPrefix, eventsPublishedState).ConfigureAwait(false);
 
@@ -1740,36 +1791,6 @@ public partial class AggregateActor(
             command.CommandType);
 
         return result;
-    }
-
-    private async Task<IReadOnlyList<EventEnvelope>> LoadPersistedEventsForResumeAsync(AggregateIdentity identity, int eventCount) {
-        if (eventCount <= 0) {
-            return [];
-        }
-
-        ConditionalValue<AggregateMetadata> metadataResult = await StateManager
-            .TryGetStateAsync<AggregateMetadata>(identity.MetadataKey)
-            .ConfigureAwait(false);
-
-        if (!metadataResult.HasValue) {
-            throw new InvalidOperationException(
-                $"Cannot resume publication without aggregate metadata for {identity.ActorId}.");
-        }
-
-        long currentSequence = metadataResult.Value.CurrentSequence;
-        long startSequence = currentSequence - eventCount + 1;
-
-        if (startSequence < 1) {
-            throw new InvalidOperationException(
-                $"Invalid resume event range for {identity.ActorId}: startSequence={startSequence}, currentSequence={currentSequence}, eventCount={eventCount}.");
-        }
-
-        EventEnvelope[] events = await ReadEventsRangeAsync(identity, (int)startSequence, eventCount)
-            .ConfigureAwait(false);
-
-        return events
-            .OrderBy(x => x.SequenceNumber)
-            .ToList();
     }
 
     private async Task<IReadOnlyList<EventEnvelope>> LoadPersistedEventsRangeAsync(
@@ -1818,7 +1839,9 @@ public partial class AggregateActor(
             EventCount: existingPipeline.EventCount,
             RejectionEventType: existingPipeline.RejectionEventType,
             MessageId: existingPipeline.MessageId,
-            CausationId: existingPipeline.CausationId);
+            CausationId: existingPipeline.CausationId,
+            StartSequence: existingPipeline.StartSequence,
+            EndSequence: existingPipeline.EndSequence);
         await stateMachine.CheckpointAsync(pipelineKeyPrefix, publishFailedState).ConfigureAwait(false);
 
         await stateMachine.CleanupPipelineAsync(pipelineKeyPrefix, command.CorrelationId)
@@ -1849,16 +1872,13 @@ public partial class AggregateActor(
                 endSequence = persistedEvents.Max(e => e.SequenceNumber);
                 hasRange = true;
             }
-            else {
-                ConditionalValue<AggregateMetadata> metadataResult = await StateManager
-                    .TryGetStateAsync<AggregateMetadata>(command.AggregateIdentity.MetadataKey)
-                    .ConfigureAwait(false);
-
-                if (metadataResult.HasValue) {
-                    endSequence = metadataResult.Value.CurrentSequence;
-                    startSequence = endSequence - eventCount + 1;
-                    hasRange = true;
-                }
+            else if (existingPipeline.StartSequence is long checkpointStart
+                && existingPipeline.EndSequence is long checkpointEnd) {
+                // Use the checkpoint's persisted committed range -- never re-derive from the mutable
+                // stream head, which an interleaved command may have advanced past this command's events.
+                startSequence = checkpointStart;
+                endSequence = checkpointEnd;
+                hasRange = true;
             }
 
             if (hasRange

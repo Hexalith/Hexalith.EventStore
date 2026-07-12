@@ -114,46 +114,52 @@ public sealed class DaprCommandCorrelationIndex(
         ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
 
         string key = CommandCorrelationIndexConstants.BuildKey(tenantId, correlationId);
-        CommandCorrelationIndexOptions configured = indexOptions.Value;
-        for (int attempt = 0; attempt <= configured.MaxConcurrencyRetries; attempt++)
+        (CommandCorrelationIndexRecord? stored, string etag) = await daprClient
+            .GetStateAndETagAsync<CommandCorrelationIndexRecord>(
+                statusOptions.Value.StateStoreName,
+                key,
+                cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+        if (stored is null)
         {
-            (CommandCorrelationIndexRecord? stored, string etag) = await daprClient
-                .GetStateAndETagAsync<CommandCorrelationIndexRecord>(
-                    statusOptions.Value.StateStoreName,
-                    key,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-            if (stored is null)
-            {
-                return new CommandCorrelationResolution(CommandCorrelationResolutionOutcome.NotFound);
-            }
-
-            DateTimeOffset now = TimeProvider.GetUtcNow();
-            List<CommandCorrelationIndexEntry> entries = stored.Entries
-                .Where(entry => entry.ExpiresAt > now)
-                .ToList();
-            bool overflowed = IsOverflowActive(stored, now);
-            DateTimeOffset? overflowExpiresAt = overflowed ? stored.OverflowExpiresAt : null;
-            if (entries.Count != stored.Entries.Count || overflowed != stored.Overflowed)
-            {
-                var pruned = new CommandCorrelationIndexRecord(entries, overflowed, overflowExpiresAt);
-                if (!await TrySaveAsync(key, pruned, etag, cancellationToken).ConfigureAwait(false))
-                {
-                    continue;
-                }
-            }
-
-            if (overflowed || entries.Count > 1)
-            {
-                return new CommandCorrelationResolution(CommandCorrelationResolutionOutcome.Ambiguous);
-            }
-
-            return entries.Count == 1
-                ? new CommandCorrelationResolution(CommandCorrelationResolutionOutcome.Resolved, entries[0].MessageId)
-                : new CommandCorrelationResolution(CommandCorrelationResolutionOutcome.NotFound);
+            return new CommandCorrelationResolution(CommandCorrelationResolutionOutcome.NotFound);
         }
 
-        return new CommandCorrelationResolution(CommandCorrelationResolutionOutcome.Ambiguous);
+        DateTimeOffset now = TimeProvider.GetUtcNow();
+        List<CommandCorrelationIndexEntry> entries = stored.Entries
+            .Where(entry => entry.ExpiresAt > now)
+            .ToList();
+        bool overflowed = IsOverflowActive(stored, now);
+        DateTimeOffset? overflowExpiresAt = overflowed ? stored.OverflowExpiresAt : null;
+
+        // Resolution is authoritative from the current read. Pruning expired entries is advisory
+        // maintenance only, so a lost ETag race or a transient save failure must never turn a valid
+        // read into a 409/500 -- degrade to the resolution computed above.
+        if (entries.Count != stored.Entries.Count || overflowed != stored.Overflowed)
+        {
+            try
+            {
+                var pruned = new CommandCorrelationIndexRecord(entries, overflowed, overflowExpiresAt);
+                _ = await TrySaveAsync(key, pruned, etag, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogWarning(
+                    ex,
+                    "Correlation index prune (advisory) failed during resolution: TenantId={TenantId}, CorrelationId={CorrelationId}. Resolution proceeds from the read.",
+                    tenantId,
+                    correlationId);
+            }
+        }
+
+        if (overflowed || entries.Count > 1)
+        {
+            return new CommandCorrelationResolution(CommandCorrelationResolutionOutcome.Ambiguous);
+        }
+
+        return entries.Count == 1
+            ? new CommandCorrelationResolution(CommandCorrelationResolutionOutcome.Resolved, entries[0].MessageId)
+            : new CommandCorrelationResolution(CommandCorrelationResolutionOutcome.NotFound);
     }
 
     private static bool IsOverflowActive(CommandCorrelationIndexRecord? record, DateTimeOffset now)

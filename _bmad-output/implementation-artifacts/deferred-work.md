@@ -220,3 +220,25 @@ _All items LOW / non-blocking. Story 2.7 accepted (all AC1–AC7 met; Release bu
 - source_spec: `_bmad-output/implementation-artifacts/spec-gh-29184319584-fix-live-sidecar-ci.md`
   summary: Make in-memory read-model writes atomic with batch accessor ETag compare-and-set operations.
   evidence: Pre-existing `SaveAsync`, `TrySaveAsync`, `TryEraseAsync`, and `SeedRaw` paths do not share the batch accessor's `_gate`, so a true concurrent write can occur between the fake accessor's ETag check and assignment and be overwritten while conditional success is reported.
+
+## Deferred from: code review of 4-2-resume-and-idempotency-integrity (2026-07-12)
+
+- source_spec: `_bmad-output/implementation-artifacts/4-2-resume-and-idempotency-integrity.md`
+  summary: Add committed-state tests for new fail-closed / drain-identity paths (distinct messageId≠correlationId drain, Expired-outcome actor commit, SubmitCommandHandler identity guards).
+  evidence: Message-keyed drain handoff + advisory-status identity is only exercised where messageId ≡ correlationId; the actor commit of a staged Expired idempotency mutation (AggregateActor.cs:173-176) is undriven; SubmitCommandHandler fail-closed guards (SubmitCommandHandler.cs:65-71,117-124) are untested.
+
+- source_spec: `_bmad-output/implementation-artifacts/4-2-resume-and-idempotency-integrity.md`
+  summary: Cover AdminTraceQueryController correlation-index resolution/ambiguity path and accept the advisory-index not-found degradation.
+  evidence: The resolve→ambiguity-409→message-primary-read branch (AdminTraceQueryController.cs:59-78) is unexercised because Dw3TestUtilities.cs:185 builds the controller with a null index; not-found-when-index-missing is inherent to an advisory index queried by correlationId (state scan forbidden).
+
+- source_spec: `_bmad-output/implementation-artifacts/4-2-resume-and-idempotency-integrity.md`
+  summary: Bound the correlation-index overflow marker so a hot shared correlationId is not permanently ambiguous.
+  evidence: DaprCommandCorrelationIndex.cs:81 refreshes OverflowExpiresAt on every over-capacity AddAsync, so a steadily-loaded correlationId stays Ambiguous (409) indefinitely even after the original 128 entries expire.
+
+- source_spec: `_bmad-output/implementation-artifacts/4-2-resume-and-idempotency-integrity.md`
+  summary: (Story 4.4) Prevent domain re-execution when a Recoverable (stored-but-unpublished) idempotency record expires after the retention window.
+  evidence: IdempotencyChecker.ClassifyAsync applies the bounded ExpiresAt to Recoverable records too (expiry check precedes the disposition branch), so a retry after 24h is treated as a miss and could re-execute the domain. Broader recovery is owned by Story 4.4.
+
+- source_spec: `_bmad-output/implementation-artifacts/4-2-resume-and-idempotency-integrity.md`
+  summary: Correct the drain activity message-id telemetry tag for legacy correlation-keyed drain records.
+  evidence: DrainUnpublishedEventsAsync sets eventstore.message_id to the tracking id (a correlationId for legacy records) before the real message id is added, undermining message-id-primary telemetry.

@@ -443,7 +443,8 @@ public class PersistThenPublishResilienceTests {
         var existingPipeline = new PipelineState(
             "corr-resilience", CommandStatus.EventsStored, "CreateOrder",
             DateTimeOffset.UtcNow.AddSeconds(-5), EventCount: 2, RejectionEventType: null,
-            MessageId: "msg-resilience", CausationId: "msg-resilience");
+            MessageId: "msg-resilience", CausationId: "msg-resilience",
+            StartSequence: 1, EndSequence: 2);
 
         _ = stateManager.TryGetStateAsync<PipelineState>(
             Arg.Is<string>(s => s.Contains(":pipeline:corr-resilience")),
@@ -502,7 +503,8 @@ public class PersistThenPublishResilienceTests {
         var existingPipeline = new PipelineState(
             "corr-resilience", CommandStatus.EventsStored, "CreateOrder",
             DateTimeOffset.UtcNow.AddSeconds(-5), EventCount: 2, RejectionEventType: null,
-            MessageId: "msg-resilience", CausationId: "msg-resilience");
+            MessageId: "msg-resilience", CausationId: "msg-resilience",
+            StartSequence: 1, EndSequence: 2);
 
         _ = stateManager.TryGetStateAsync<PipelineState>(
             Arg.Is<string>(s => s.Contains(":pipeline:corr-resilience")),
@@ -553,7 +555,8 @@ public class PersistThenPublishResilienceTests {
         var existingPipeline = new PipelineState(
             "corr-resilience", CommandStatus.EventsStored, "CreateOrder",
             DateTimeOffset.UtcNow.AddSeconds(-5), EventCount: 2, RejectionEventType: null,
-            MessageId: "msg-resilience", CausationId: "msg-resilience");
+            MessageId: "msg-resilience", CausationId: "msg-resilience",
+            StartSequence: 1, EndSequence: 2);
 
         _ = stateManager.TryGetStateAsync<PipelineState>(
             Arg.Is<string>(s => s.Contains(":pipeline:corr-resilience")),
@@ -603,8 +606,10 @@ public class PersistThenPublishResilienceTests {
     }
 
     [Fact]
-    public async Task ResumeFromEventsStored_PrepareFails_MetadataUnavailable_ThrowsInsteadOfSilentPublishFailed() {
-        // Arrange -- resume starts at EventsStored, but metadata is unavailable so range cannot be computed for drain.
+    public async Task ResumeFromEventsStored_LegacyCheckpointWithoutRange_FailsClosedWithoutPublishing() {
+        // Arrange -- a legacy committed checkpoint without a persisted StartSequence/EndSequence cannot
+        // have its events identified safely (an interleaved command may have advanced the stream head),
+        // so resume must fail closed rather than re-publish a guessed range.
         (AggregateActor actor, IActorStateManager stateManager, IEventPublisher eventPublisher) = CreateActor();
 
         var existingPipeline = new PipelineState(
@@ -617,14 +622,15 @@ public class PersistThenPublishResilienceTests {
             Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(true, existingPipeline));
 
-        _ = stateManager.TryGetStateAsync<AggregateMetadata>(
-            "test-tenant:test-domain:agg-001:metadata", Arg.Any<CancellationToken>())
-            .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
-
         CommandEnvelope envelope = CreateTestEnvelope();
 
-        // Act + Assert
-        _ = await Should.ThrowAsync<InvalidOperationException>(() => actor.ProcessCommandAsync(envelope));
+        // Act
+        CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
+
+        // Assert -- fail closed with the identity-conflict contract; the checkpoint is preserved and
+        // nothing is published under a re-derived range.
+        result.Accepted.ShouldBeFalse();
+        result.ErrorMessage.ShouldBe("command_identity_conflict");
 
         _ = await eventPublisher.DidNotReceive().PublishEventsAsync(
             Arg.Any<AggregateIdentity>(),

@@ -108,7 +108,7 @@ development_status:
 
   epic-4: in-progress
   4-1-event-identity-and-duplicate-result-fidelity: done
-  4-2-resume-and-idempotency-integrity: review
+  4-2-resume-and-idempotency-integrity: done
   4-3-deterministic-replay-dispatch-and-serialization: backlog
   4-4-committed-event-publication-recovery: backlog
   4-5-append-durability-race-evidence: backlog

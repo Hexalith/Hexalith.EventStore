@@ -18,6 +18,15 @@ namespace Hexalith.EventStore.Server.Actors;
 /// </param>
 /// <param name="MessageId">The command message identifier, or <c>null</c> for a legacy checkpoint.</param>
 /// <param name="CausationId">The normalized causation identifier, or <c>null</c> for a legacy checkpoint.</param>
+/// <param name="StartSequence">
+/// The first aggregate sequence number of this command's committed events, or <c>null</c> for a
+/// pre-range legacy checkpoint. Persisted so resume/handoff never re-derive the range from the
+/// mutable stream head (which an interleaved command may have advanced).
+/// </param>
+/// <param name="EndSequence">
+/// The last aggregate sequence number of this command's committed events, or <c>null</c> for a
+/// pre-range legacy checkpoint.
+/// </param>
 public record PipelineState(
     string CorrelationId,
     CommandStatus CurrentStage,
@@ -27,4 +36,6 @@ public record PipelineState(
     string? RejectionEventType,
     string? ResultPayload = null,
     string? MessageId = null,
-    string? CausationId = null);
+    string? CausationId = null,
+    long? StartSequence = null,
+    long? EndSequence = null);

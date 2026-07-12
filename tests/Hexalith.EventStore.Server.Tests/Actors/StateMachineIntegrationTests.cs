@@ -233,7 +233,8 @@ public class StateMachineIntegrationTests {
         var existingPipeline = new PipelineState(
             "corr-sm-test", CommandStatus.EventsStored, "CreateOrder",
             DateTimeOffset.UtcNow.AddSeconds(-5), EventCount: 2, RejectionEventType: null,
-            MessageId: "msg-sm-test", CausationId: "msg-sm-test");
+            MessageId: "msg-sm-test", CausationId: "msg-sm-test",
+            StartSequence: 1, EndSequence: 2);
 
         _ = stateManager.TryGetStateAsync<PipelineState>(
             Arg.Is<string>(s => s.Contains(":pipeline:corr-sm-test")),
@@ -332,6 +333,64 @@ public class StateMachineIntegrationTests {
     }
 
     [Fact]
+    public async Task ProcessCommand_ResumeFromEventsStored_UsesCheckpointRange_NotAdvancedStreamHead() {
+        // Regression (D1): the stale command committed events 1-2 (recorded in the checkpoint range), then an
+        // interleaved command advanced the aggregate head to 9. Resume MUST publish the checkpoint's own events
+        // [1,2]; a range re-derived from the mutated head would be [8,9], losing/duplicating events.
+        (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, IEventPublisher eventPublisher) = CreateActor();
+
+        var existingPipeline = new PipelineState(
+            "corr-sm-test", CommandStatus.EventsStored, "CreateOrder",
+            DateTimeOffset.UtcNow.AddSeconds(-5), EventCount: 2, RejectionEventType: null,
+            MessageId: "msg-sm-test", CausationId: "msg-sm-test",
+            StartSequence: 1, EndSequence: 2);
+
+        _ = stateManager.TryGetStateAsync<PipelineState>(
+            Arg.Is<string>(s => s.Contains(":pipeline:corr-sm-test")),
+            Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<PipelineState>(true, existingPipeline));
+
+        // Aggregate head advanced to 9 by an interleaved command.
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(
+            "test-tenant:test-domain:agg-001:metadata", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(9, DateTimeOffset.UtcNow, null)));
+
+        // Only the stale command's own events (sequences 1-2) are readable; sequences 8-9 are NOT mocked,
+        // so a head-derived read would find nothing.
+        for (int seq = 1; seq <= 2; seq++) {
+            int s = seq;
+            _ = stateManager.TryGetStateAsync<EventEnvelope>(
+                $"test-tenant:test-domain:agg-001:events:{s}", Arg.Any<CancellationToken>())
+                .Returns(new ConditionalValue<EventEnvelope>(
+                    true,
+                    new EventEnvelope(
+                        "msg-1", "agg-001", "test-aggregate", "test-tenant", "test-domain", s, 0, DateTimeOffset.UtcNow,
+                        "corr-sm-test", $"cause-{s}", "system", "1.0.0", "TestEvent", 1, "json", [1], null)));
+        }
+
+        _ = stateManager.TryGetStateAsync<int>(PendingCommandCountKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<int>(true, 1));
+
+        CommandEnvelope envelope = CreateTestEnvelope();
+
+        // Act
+        CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
+
+        // Assert -- resumed and published exactly the checkpoint's two events (sequences 1 and 2).
+        result.Accepted.ShouldBeTrue();
+        _ = await eventPublisher.Received(1).PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Is<IReadOnlyList<EventEnvelope>>(events =>
+                events.Count == 2
+                && events[0].SequenceNumber == 1
+                && events[1].SequenceNumber == 2),
+            "corr-sm-test",
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>());
+        _ = await invoker.DidNotReceive().InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>());
+    }
+
+    [Fact]
     public async Task ProcessCommand_CrashAtEventsStored_Resume_DropsLegacyResultPayload() {
         // Arrange -- legacy payloads may exist in old checkpoints, but resume must not propagate them.
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, IEventPublisher eventPublisher) = CreateActor();
@@ -340,7 +399,8 @@ public class StateMachineIntegrationTests {
         var existingPipeline = new PipelineState(
             "corr-sm-test", CommandStatus.EventsStored, "CreateOrder",
             DateTimeOffset.UtcNow.AddSeconds(-5), EventCount: 2, RejectionEventType: null, ResultPayload: resultPayload,
-            MessageId: "msg-sm-test", CausationId: "msg-sm-test");
+            MessageId: "msg-sm-test", CausationId: "msg-sm-test",
+            StartSequence: 1, EndSequence: 2);
 
         _ = stateManager.TryGetStateAsync<PipelineState>(
             Arg.Is<string>(s => s.Contains(":pipeline:corr-sm-test")),
@@ -510,6 +570,9 @@ public class StateMachineIntegrationTests {
     public async Task ProcessCommand_CorrelationCollisionAtCommittedCheckpoint_HandsOffOldMessageAndExecutesNewCommand()
     {
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, IEventPublisher eventPublisher) = CreateActor();
+        // The stale command committed events 1-2 (persisted in the checkpoint range). An interleaved
+        // different-correlation command then advanced the aggregate head to 9. The handoff MUST drain the
+        // checkpoint's own range [1,2], never a range re-derived from the mutated head (which would be [8,9]).
         var existingPipeline = new PipelineState(
             "corr-sm-test",
             CommandStatus.EventsStored,
@@ -518,7 +581,9 @@ public class StateMachineIntegrationTests {
             EventCount: 2,
             RejectionEventType: null,
             MessageId: "old-message",
-            CausationId: "old-cause");
+            CausationId: "old-cause",
+            StartSequence: 1,
+            EndSequence: 2);
         _ = stateManager.TryGetStateAsync<PipelineState>(
             Arg.Is<string>(s => s.Contains(":pipeline:corr-sm-test")),
             Arg.Any<CancellationToken>())
@@ -528,8 +593,10 @@ public class StateMachineIntegrationTests {
             Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(
                 true,
-                new AggregateMetadata(2, DateTimeOffset.UtcNow, null)));
-        for (int sequence = 1; sequence <= 2; sequence++)
+                new AggregateMetadata(9, DateTimeOffset.UtcNow, null)));
+        // Events 1-9 are all readable (1-2 are the stale command's; 3-9 belong to the interleaved
+        // command that advanced the head). The handoff drain must still target only [1,2].
+        for (int sequence = 1; sequence <= 9; sequence++)
         {
             int persistedSequence = sequence;
             _ = stateManager.TryGetStateAsync<EventEnvelope>(
