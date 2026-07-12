@@ -68,23 +68,6 @@ public interface IReadModelStore {
         string etag,
         CancellationToken cancellationToken = default)
         where TValue : class;
-
-    /// <summary>
-    /// Attempts to erase a read-model value under optimistic concurrency (first-write-wins).
-    /// </summary>
-    /// <param name="storeName">The DAPR state-store component name.</param>
-    /// <param name="key">The state key.</param>
-    /// <param name="etag">The expected ETag.</param>
-    /// <param name="cancellationToken">A cancellation token.</param>
-    /// <returns>
-    /// <see langword="true"/> when the value was erased or was already absent;
-    /// <see langword="false"/> when a present value has a different ETag.
-    /// </returns>
-    Task<bool> TryEraseAsync(
-        string storeName,
-        string key,
-        string etag,
-        CancellationToken cancellationToken = default);
 }
 
 /// <summary>

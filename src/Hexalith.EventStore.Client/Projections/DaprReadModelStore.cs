@@ -9,8 +9,9 @@ using Microsoft.Extensions.Options;
 namespace Hexalith.EventStore.Client.Projections;
 
 /// <summary>
-/// DAPR state-store implementation of <see cref="IReadModelStore"/> and the additive coordinated
-/// <see cref="IReadModelBatchStore"/>.
+/// DAPR state-store implementation of <see cref="IReadModelStore"/>, the additive coordinated
+/// <see cref="IReadModelBatchStore"/>, and the additive ETag-conditional
+/// <see cref="IReadModelConditionalEraser"/>.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -25,7 +26,7 @@ namespace Hexalith.EventStore.Client.Projections;
 /// resumable batch's commit marker is durable, and the committed value afterwards.
 /// </para>
 /// </remarks>
-public sealed class DaprReadModelStore : IReadModelStore, IReadModelBatchStore {
+public sealed class DaprReadModelStore : IReadModelStore, IReadModelBatchStore, IReadModelConditionalEraser {
     private readonly DaprClient _daprClient;
     private readonly ReadModelBatchOptions _options;
     private readonly ILogger _logger;

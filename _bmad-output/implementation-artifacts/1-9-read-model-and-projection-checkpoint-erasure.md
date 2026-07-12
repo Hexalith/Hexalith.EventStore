@@ -1,6 +1,10 @@
+---
+baseline_commit: 67b462de3f87993b72671e68c760573a83f96bc4
+---
+
 # Story 1.9: Read-Model And Projection Checkpoint Erasure
 
-Status: ready-for-dev
+Status: in-progress
 
 **Requirements covered:** FR5, FR36, NFR2, NFR16
 **Governed by:** AD-7 (Read Models And Cursors Use Platform Seams), AD-12 (High-Risk Verification Requires Persisted Evidence), AD-2 (Domain Modules Stay Domain-Centric), AD-8 (Projection Delivery Is A Freshness Signal), AD-10 (Security Fails Closed Above Infrastructure Scoping)
@@ -75,20 +79,20 @@ The frozen spec's status is `blocked` on an *intent gap that was human-resolved 
 
 > Implement in order; each task must leave all configured suites green before the next. Tasks 1-2 revert narrow public-surface mistakes and build the ownership seam; 3-6 build the coordinated resumable operation; 7-8 add the boundary + DI; 9-10 are the deterministic and persisted proofs. **RED→GREEN→REFACTOR each subtask.**
 
-- [ ] **Task 1 — Additive opt-in erase capabilities; restore released interfaces (AC: 1, 2)**
-  - [ ] Revert the narrow additions that mutated released interfaces: remove `TryEraseAsync` from `IReadModelStore` (`src/Hexalith.EventStore.Client/Projections/IReadModelStore.cs:83-87`) and from `IProjectionCheckpointTracker` (`src/Hexalith.EventStore.Server/Projections/IProjectionCheckpointTracker.cs:42-45`). The released four-member `IReadModelStore` (`GetAsync`/`SaveAsync`/`TrySaveAsync`) and the released `IProjectionCheckpointTracker` shape must be restored (AC2 — no new members on released interfaces).
-  - [ ] Add opt-in `IReadModelConditionalEraser` in `src/Hexalith.EventStore.Client/Projections/`, mirroring the additive `IReadModelBatchStore` capability pattern (`IReadModelBatchStore.cs`; one method, structured/idempotent contract, XML docs stating "the same concrete instance also implements `IReadModelStore`"). Method shape: `Task<bool> TryEraseAsync(string storeName, string key, string etag, CancellationToken ct = default)` — absent-key ⇒ `true` idempotently (regardless of supplied ETag); present-key ETag-mismatch ⇒ `false`; never throws for either.
-  - [ ] Implement in `DaprReadModelStore` (`DaprReadModelStore.cs`) via `_daprClient.TryDeleteStateAsync(storeName, key, etag, new StateOptions { Concurrency = ConcurrencyMode.FirstWrite }, cancellationToken: ct)` (mirror the existing `TrySaveAsync` FirstWrite idiom at `:97-105`; `.ConfigureAwait(false)`; validate with `ArgumentException.ThrowIfNullOrWhiteSpace`/`ArgumentNullException.ThrowIfNull`). The narrow `TryEraseAsync` body at `DaprReadModelStore.cs:109-126` already does exactly this — move it behind the capability interface rather than the released one.
-  - [ ] Implement in `InMemoryReadModelStore` (`src/Hexalith.EventStore.Testing/Fakes/InMemoryReadModelStore.cs`); keep the deterministic `ConcurrentWriteBeforeTryErase` failure-injection hook (`:51`, invoked `:143`) and the absent⇒true / mismatch⇒false logic (`:133-157`). Preserve `Snapshot<TValue>` (`:196-200`) for persisted-fake inspection.
-  - [ ] Add a Server-internal checkpoint-erase capability (NOT on the released `IProjectionCheckpointTracker`) for the projection-scoped delivery checkpoint; keep it internal to Server unless an external consumer is proven. Reuse the narrow `ProjectionCheckpointTracker.TryEraseAsync` implementation body but move its interface member off the released contract.
-  - [ ] Register one singleton behind `IReadModelStore` + `IReadModelBatchStore` + `IReadModelConditionalEraser` in `AddEventStoreReadModelStore` (`src/Hexalith.EventStore.Client/Registration/ReadModelStoreServiceCollectionExtensions.cs:27-43`, same `TryAddSingleton(sp => sp.GetRequiredService<DaprReadModelStore>())` shape).
+- [ ] **Task 1 — Additive opt-in erase capabilities; restore released interfaces (AC: 1, 2)** — _seams done (Stage A); last subtask (coordinator resolves capabilities before mutation) is Stage E_
+  - [x] Revert the narrow additions that mutated released interfaces: remove `TryEraseAsync` from `IReadModelStore` (`src/Hexalith.EventStore.Client/Projections/IReadModelStore.cs:83-87`) and from `IProjectionCheckpointTracker` (`src/Hexalith.EventStore.Server/Projections/IProjectionCheckpointTracker.cs:42-45`). The released four-member `IReadModelStore` (`GetAsync`/`SaveAsync`/`TrySaveAsync`) and the released `IProjectionCheckpointTracker` shape must be restored (AC2 — no new members on released interfaces).
+  - [x] Add opt-in `IReadModelConditionalEraser` in `src/Hexalith.EventStore.Client/Projections/`, mirroring the additive `IReadModelBatchStore` capability pattern (`IReadModelBatchStore.cs`; one method, structured/idempotent contract, XML docs stating "the same concrete instance also implements `IReadModelStore`"). Method shape: `Task<bool> TryEraseAsync(string storeName, string key, string etag, CancellationToken ct = default)` — absent-key ⇒ `true` idempotently (regardless of supplied ETag); present-key ETag-mismatch ⇒ `false`; never throws for either.
+  - [x] Implement in `DaprReadModelStore` (`DaprReadModelStore.cs`) via `_daprClient.TryDeleteStateAsync(storeName, key, etag, new StateOptions { Concurrency = ConcurrencyMode.FirstWrite }, cancellationToken: ct)` (mirror the existing `TrySaveAsync` FirstWrite idiom at `:97-105`; `.ConfigureAwait(false)`; validate with `ArgumentException.ThrowIfNullOrWhiteSpace`/`ArgumentNullException.ThrowIfNull`). The narrow `TryEraseAsync` body at `DaprReadModelStore.cs:109-126` already does exactly this — move it behind the capability interface rather than the released one.
+  - [x] Implement in `InMemoryReadModelStore` (`src/Hexalith.EventStore.Testing/Fakes/InMemoryReadModelStore.cs`); keep the deterministic `ConcurrentWriteBeforeTryErase` failure-injection hook (`:51`, invoked `:143`) and the absent⇒true / mismatch⇒false logic (`:133-157`). Preserve `Snapshot<TValue>` (`:196-200`) for persisted-fake inspection.
+  - [x] Add a Server-internal checkpoint-erase capability (NOT on the released `IProjectionCheckpointTracker`) for the projection-scoped delivery checkpoint; keep it internal to Server unless an external consumer is proven. Reuse the narrow `ProjectionCheckpointTracker.TryEraseAsync` implementation body but move its interface member off the released contract.
+  - [x] Register one singleton behind `IReadModelStore` + `IReadModelBatchStore` + `IReadModelConditionalEraser` in `AddEventStoreReadModelStore` (`src/Hexalith.EventStore.Client/Registration/ReadModelStoreServiceCollectionExtensions.cs:27-43`, same `TryAddSingleton(sp => sp.GetRequiredService<DaprReadModelStore>())` shape).
   - [ ] The coordinator resolves every required capability **before the first mutation** and returns `Unsupported` when any implementation has not opted in.
 
-- [ ] **Task 2 — Canonical `ProjectionReadModelAddress` + factory; deny raw/legacy/shared (AC: 3)**
-  - [ ] Add `ProjectionReadModelAddress` (platform-owned, e.g. `src/Hexalith.EventStore.Server/Projections/` or `src/Hexalith.EventStore.Client/Projections/` — choose per AD-2/AD-7, confirm placement in Dev Agent Record) binding tenant, domain, projection, aggregate, and registered logical slot into a canonical key. Add a factory that accepts a validated `AggregateIdentity`, a validated projection name, and a **registered** logical slot; resolves the configured store from `IOptions<ProjectionOptions>` (NOT a caller argument, mirroring `ProjectionCheckpointTracker`'s `options.Value.CheckpointStateStoreName`); and emits the canonical key. Reserved-char discipline: reuse the `AggregateIdentity`/`ProjectionRebuildCheckpointStore` convention (segments colon-free; `':' '\0' '|' '\r' '\n'` reserved).
-  - [ ] Only addresses produced by this factory are accepted for erasure. Legacy/opaque caller keys are denied until migrated/rebuilt. A logical slot is registered as **aggregate-owned** or **shared**; the factory refuses shared slots for whole-key erasure (the shared singleton index — e.g. Tenants' `projection:tenant-index:singleton` — is structurally excluded).
-  - [ ] Register logical projection slots through the DomainService seam (insertion point `AddDomainProjectionHandlers` in `src/Hexalith.EventStore.DomainService/EventStoreDomainServiceExtensions.cs:266-281`). Domain modules **declare** aggregate-owned vs shared slots; they must not implement raw DAPR erasure plumbing (AC13/AD-2).
-  - [ ] Delete the narrow caller-supplied target model: remove `ReadModelEraseTarget(TenantId, StoreName, Key, ETag)` (`src/Hexalith.EventStore.Server/Projections/ReadModelEraseTarget.cs`) and the fail-closed `target.Key.StartsWith(identity.TenantId + ":")` guard (`ProjectionStateEraser.cs:49-50`) that the review proved rejects the only real consumer's keys. Ownership is proven by the factory, not by string-prefix guessing.
+- [x] **Task 2 — Canonical `ProjectionReadModelAddress` + factory; deny raw/legacy/shared (AC: 3)**
+  - [x] Add `ProjectionReadModelAddress` (platform-owned, e.g. `src/Hexalith.EventStore.Server/Projections/` or `src/Hexalith.EventStore.Client/Projections/` — choose per AD-2/AD-7, confirm placement in Dev Agent Record) binding tenant, domain, projection, aggregate, and registered logical slot into a canonical key. Add a factory that accepts a validated `AggregateIdentity`, a validated projection name, and a **registered** logical slot; resolves the configured store from `IOptions<ProjectionOptions>` (NOT a caller argument, mirroring `ProjectionCheckpointTracker`'s `options.Value.CheckpointStateStoreName`); and emits the canonical key. Reserved-char discipline: reuse the `AggregateIdentity`/`ProjectionRebuildCheckpointStore` convention (segments colon-free; `':' '\0' '|' '\r' '\n'` reserved).
+  - [x] Only addresses produced by this factory are accepted for erasure. Legacy/opaque caller keys are denied until migrated/rebuilt. A logical slot is registered as **aggregate-owned** or **shared**; the factory refuses shared slots for whole-key erasure (the shared singleton index — e.g. Tenants' `projection:tenant-index:singleton` — is structurally excluded).
+  - [x] Register logical projection slots through the DomainService seam (insertion point `AddDomainProjectionHandlers` in `src/Hexalith.EventStore.DomainService/EventStoreDomainServiceExtensions.cs:266-281`). Domain modules **declare** aggregate-owned vs shared slots; they must not implement raw DAPR erasure plumbing (AC13/AD-2).
+  - [x] Delete the narrow caller-supplied target model: remove `ReadModelEraseTarget(TenantId, StoreName, Key, ETag)` (`src/Hexalith.EventStore.Server/Projections/ReadModelEraseTarget.cs`) and the fail-closed `target.Key.StartsWith(identity.TenantId + ":")` guard (`ProjectionStateEraser.cs:49-50`) that the review proved rejects the only real consumer's keys. Ownership is proven by the factory, not by string-prefix guessing.
 
 - [ ] **Task 3 — Projection-scoped delivery checkpoint + verified one-time migration actor (AC: 4)**
   - [ ] Migrate delivery-checkpoint addressing from aggregate-wide `projection-checkpoints:{identity.ActorId}` (`ProjectionCheckpointTracker.cs:20,261-263`) to projection-scoped `projection-checkpoints:{identity.ActorId}:{projectionName}`. Add a `projectionName` dimension to the tracker's key composition and its read/write paths.
@@ -213,12 +217,76 @@ All configured tests must pass before this story is complete. `Server.Tests`' pr
 
 ### Agent Model Used
 
+Claude Opus 4.8 (1M context) — `/bmad-dev-story` staged execution (verify each stage), started 2026-07-12.
+
+### Task 3 design decision (Stage B) — Option A, human-approved 2026-07-12 (SPEC DEVIATION)
+
+The frozen spec's Task 3 migration ("resolve **every** registered projection, copy legacy → each, verify, then **delete the legacy key**") is not implementable as written: the codebase has **no domain→projection registry** (`DomainServiceRegistration` carries only domain; `ProjectionSlotRegistry` is keyed by projection name, not domain-indexed; only the active-rebuild index holds a live `domain→projectionName[]`, for in-flight rebuilds only), and the drift-check checkpoint read happens **before** the projection name is known (`response.ProjectionType` returns from `/project` afterward). User selected **Option A**:
+
+- Delivery checkpoint keyed by **`response.ProjectionType`** → `projection-checkpoints:{ActorId}:{projectionName}`.
+- Drift check moved **after** the `/project` call so it suppresses the projection **write** (the `/project` compute is side-effect-free), since the projection name isn't known before then.
+- **Lazy per-projection migration** on first projection-scoped access (copy legacy aggregate-wide high-water mark → this projection's key, guarded by a per-`(identity,projection)` migrated marker so post-erasure reads do not fall back to the retained legacy value).
+- **Legacy aggregate-wide key is RETAINED** (never auto-deleted) — completeness is unprovable without enumeration.
+- **Spec delta:** relaxes the frozen spec's "enumerate all + delete legacy key" and "no indefinite dual-read fallback"; a dedicated one-time enumeration migration actor is replaced by lazy per-projection migration. The fresh-identity drift proof (AC12) is unaffected (a fresh identity has no legacy key; erasing the projection-scoped key alone removes the gate).
+- **AC2 refinement:** the released `IProjectionCheckpointTracker` must keep its exact 4-member shape (Read/Save/Track/Enumerate — no changed or added members, per AC2). Therefore the projection-scoped delivery read/write/erase go through a **new Server-internal** interface on the concrete `ProjectionCheckpointTracker` (extending the internal `IProjectionCheckpointEraser` capability), consumed by the orchestrator. The released interface's aggregate-wide Read/Save are left intact (legacy/observability). The orchestrator switches its delivery-checkpoint dependency to the internal projection-scoped API.
+
+### Stage B build sequence (big-bang; no intermediate green)
+
+Internal projection-scoped delivery API + concrete impl (lazy migration + per-`(identity,projection)` migrated marker) → orchestrator restructure (drift after `/project`, keyed by `response.ProjectionType`; both delivery + rebuild save sites pass the projection name) → update the ~40 orchestrator/poller test mock+fake call sites to the internal projection-scoped API → new migration/scope tests → build+test. The tracker's own unit tests (`ProjectionCheckpointTrackerTests`) stay on the released aggregate-wide members and are largely untouched.
+
+### Placement decisions (per Task 2 / AD-2 / AD-7)
+
+- **`ProjectionReadModelAddress` + `IProjectionReadModelAddressFactory` + `ProjectionSlotRegistry` → Server** (`src/Hexalith.EventStore.Server/Projections/`). The factory resolves the read-model store from `IOptions<ProjectionOptions>` (Server config) and the coordinated eraser (Server) consumes it. The address record has an **internal** constructor so only the factory can mint erasable addresses (forgery resistance for AC3).
+- **Slot-declaration types → Client** (`ProjectionReadModelSlotKind`, `ProjectionReadModelSlotDeclaration`, `IDeclaresProjectionReadModelSlots` in `src/Hexalith.EventStore.Client/Projections/`). `Hexalith.EventStore.DomainService` references **Client, not Server**, so the domain-facing declaration contract must live in Client. Declarations are registered as DI singletons (`ProjectionReadModelSlotDeclaration`); the Server `ProjectionSlotRegistry` absorbs all of them when resolved (`ProjectionSlotServiceCollectionExtensions.BuildSlotRegistry`) — order- and package-boundary-independent.
+- **Read-model store name** resolved from a new additive `ProjectionOptions.ReadModelStateStoreName` (default `statestore`), not conflated with `CheckpointStateStoreName`.
+- Canonical key form: `readmodel:{tenant}:{domain}:{projection}:{aggregate}:{slot}`, all segments reserved-char-free (`ProjectionKeySegments`).
+
 ### Debug Log References
+
+- 2026-07-12 Stage A (Task 1+2 seams + revert narrow coordinator):
+  - Removed `TryEraseAsync` from released `IReadModelStore` / `IProjectionCheckpointTracker`; moved erase behind opt-in `IReadModelConditionalEraser` (Client) and internal `IProjectionCheckpointEraser` (Server); deleted narrow `ProjectionStateEraser` / `IProjectionStateEraser` / `ReadModelEraseTarget` and their DI + tests.
+  - Added canonical `ProjectionReadModelAddress` + factory + slot registry + DomainService slot-declaration discovery.
+  - GREEN: Server.Tests **2328 passed / 0 failed / 25 skipped** (164s); Client.Tests 633/633 (incl. new erase tests 5+13); Testing.Tests 144/144; DomainService.Tests 88/88 (guardrails unmodified); new `ProjectionReadModelAddressFactoryTests` 10/10. Release build of Server/Testing/DomainService clean (TreatWarningsAsErrors).
+  - Environment note: a concurrent agent ("fix-live-sidecar-CI") committed unrelated batch-protocol changes to the tree mid-stage (HEAD 67b462de → acc45f14); none of this story's files were absorbed (verified). Work continued on the shared tree per user direction.
 
 ### Completion Notes List
 
+- **Stage A DONE** — Task 1 seams (6/7 subtasks; the coordinator-side "resolve capabilities before mutation" is Stage E) and Task 2 (complete). Released interfaces restored to their pre-narrow shape (AC2); erasure is opt-in additive. Canonical ownership seam in place (AC3 factory-side denial of shared/legacy/unregistered targets).
+
 ### File List
+
+_Stage A:_
+- `src/Hexalith.EventStore.Client/Projections/IReadModelStore.cs` (reverted — removed `TryEraseAsync`)
+- `src/Hexalith.EventStore.Client/Projections/IReadModelConditionalEraser.cs` (new)
+- `src/Hexalith.EventStore.Client/Projections/DaprReadModelStore.cs` (implements new capability)
+- `src/Hexalith.EventStore.Client/Projections/ProjectionReadModelSlotKind.cs` (new)
+- `src/Hexalith.EventStore.Client/Projections/ProjectionReadModelSlotDeclaration.cs` (new)
+- `src/Hexalith.EventStore.Client/Registration/ReadModelStoreServiceCollectionExtensions.cs` (register `IReadModelConditionalEraser`)
+- `src/Hexalith.EventStore.Testing/Fakes/InMemoryReadModelStore.cs` (implements new capability)
+- `src/Hexalith.EventStore.Server/Projections/IProjectionCheckpointTracker.cs` (reverted — removed `TryEraseAsync`)
+- `src/Hexalith.EventStore.Server/Projections/IProjectionCheckpointEraser.cs` (new, internal)
+- `src/Hexalith.EventStore.Server/Projections/ProjectionCheckpointTracker.cs` (implements internal eraser)
+- `src/Hexalith.EventStore.Server/Projections/ProjectionKeySegments.cs` (new)
+- `src/Hexalith.EventStore.Server/Projections/ProjectionReadModelAddress.cs` (new)
+- `src/Hexalith.EventStore.Server/Projections/ProjectionReadModelAddressException.cs` (new)
+- `src/Hexalith.EventStore.Server/Projections/IProjectionReadModelAddressFactory.cs` (new)
+- `src/Hexalith.EventStore.Server/Projections/ProjectionReadModelAddressFactory.cs` (new)
+- `src/Hexalith.EventStore.Server/Projections/IProjectionSlotRegistry.cs` (new)
+- `src/Hexalith.EventStore.Server/Projections/ProjectionSlotRegistry.cs` (new)
+- `src/Hexalith.EventStore.Server/Configuration/ProjectionOptions.cs` (added `ReadModelStateStoreName`)
+- `src/Hexalith.EventStore.Server/Configuration/ProjectionSlotServiceCollectionExtensions.cs` (new)
+- `src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs` (DI: remove narrow eraser; add registry/factory/checkpoint-eraser)
+- `src/Hexalith.EventStore.DomainService/EventStoreDomainServiceExtensions.cs` (slot-declaration discovery seam)
+- `src/Hexalith.EventStore.Server/Projections/ProjectionStateEraser.cs` (deleted — narrow)
+- `src/Hexalith.EventStore.Server/Projections/IProjectionStateEraser.cs` (deleted — narrow)
+- `src/Hexalith.EventStore.Server/Projections/ReadModelEraseTarget.cs` (deleted — narrow)
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionReadModelAddressFactoryTests.cs` (new)
+- `tests/Hexalith.EventStore.Client.Tests/Projections/ProjectionStateEraserTests.cs` (deleted — narrow)
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorTests.cs` (removed narrow recreation-proof test)
+- `tests/Hexalith.EventStore.Server.Tests/Security/StorageKeyIsolationTests.cs` (removed narrow forged-tenant erase test)
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionPollerServiceTests.cs` / `Dw1PollerCorruptionAtddTests.cs` (removed dangling fake `TryEraseAsync`)
 
 ## Change Log
 
+- 2026-07-12: Stage A — reverted the narrow released-interface mutations; introduced opt-in `IReadModelConditionalEraser` + internal `IProjectionCheckpointEraser`; deleted narrow `ProjectionStateEraser`/`ReadModelEraseTarget`; added canonical `ProjectionReadModelAddress` factory + slot registry + DomainService slot-declaration seam. All configured suites green (Server.Tests 2328, Client 633, Testing 144, DomainService 88).
 - 2026-07-12: Story rebuilt from the frozen `spec-1-9` full lifecycle contract (supersedes the narrow committed attempt archived at `investigations/1-9-narrow-superseded-2026-07-11.md`). Renders resumable-only Redis, additive opt-in capabilities, canonical `ProjectionReadModelAddress` factory, projection-scoped delivery + aggregate-specific rebuild checkpoint erasure with verified migration, persisted `ProjectionLifecycleActor`, GlobalAdministrator Admin REST surface, and real-Redis persisted proof.

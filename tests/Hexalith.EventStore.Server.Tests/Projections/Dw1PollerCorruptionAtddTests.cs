@@ -123,9 +123,6 @@ public class Dw1PollerCorruptionAtddTests {
         public Task<bool> SaveDeliveredSequenceAsync(AggregateIdentity identity, long deliveredSequence, CancellationToken cancellationToken = default) =>
             Task.FromResult(true);
 
-        public Task<bool> TryEraseAsync(AggregateIdentity identity, string etag, CancellationToken cancellationToken = default) =>
-            Task.FromResult(true);
-
         public Task TrackIdentityAsync(AggregateIdentity identity, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
 

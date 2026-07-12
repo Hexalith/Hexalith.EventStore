@@ -30,21 +30,6 @@ public interface IProjectionCheckpointTracker {
     Task<bool> SaveDeliveredSequenceAsync(AggregateIdentity identity, long deliveredSequence, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Attempts to erase the aggregate delivery checkpoint under optimistic concurrency.
-    /// </summary>
-    /// <param name="identity">The aggregate identity.</param>
-    /// <param name="etag">The expected checkpoint ETag.</param>
-    /// <param name="cancellationToken">A cancellation token.</param>
-    /// <returns>
-    /// <see langword="true"/> when the checkpoint was erased or already absent;
-    /// <see langword="false"/> when a present checkpoint has a different ETag.
-    /// </returns>
-    Task<bool> TryEraseAsync(
-        AggregateIdentity identity,
-        string etag,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Registers an aggregate identity as eligible for polling-mode projection delivery.
     /// </summary>
     /// <param name="identity">The aggregate identity.</param>

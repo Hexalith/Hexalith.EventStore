@@ -12,6 +12,13 @@ public record ProjectionOptions {
     public string CheckpointStateStoreName { get; init; } = "statestore";
 
     /// <summary>
+    /// Gets the DAPR state store component name for canonical, aggregate-owned projection read-model values
+    /// minted by <c>ProjectionReadModelAddressFactory</c>. Resolved by the factory instead of being supplied
+    /// by a caller, so a REST caller can never target an arbitrary store.
+    /// </summary>
+    public string ReadModelStateStoreName { get; init; } = "statestore";
+
+    /// <summary>
     /// Gets the default refresh interval in milliseconds.
     /// 0 = immediate (fire-and-forget after persistence).
     /// Values &gt; 0 enable background polling at that interval (Story 11-4).
@@ -57,6 +64,10 @@ public record ProjectionOptions {
     public void Validate() {
         if (string.IsNullOrWhiteSpace(CheckpointStateStoreName)) {
             throw new InvalidOperationException("Projection checkpoint state store name must not be empty.");
+        }
+
+        if (string.IsNullOrWhiteSpace(ReadModelStateStoreName)) {
+            throw new InvalidOperationException("Projection read-model state store name must not be empty.");
         }
 
         if (DefaultRefreshIntervalMs < 0) {

@@ -29,7 +29,7 @@ namespace Hexalith.EventStore.Testing.Fakes;
 /// protocol phase.
 /// </para>
 /// </remarks>
-public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelBatchStore {
+public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelBatchStore, IReadModelConditionalEraser {
     private static readonly JsonSerializerOptions s_json = new(JsonSerializerDefaults.Web);
 
     private readonly ConcurrentDictionary<string, Entry> _entries = new(StringComparer.Ordinal);

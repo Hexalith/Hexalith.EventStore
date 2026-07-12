@@ -14,7 +14,7 @@ namespace Hexalith.EventStore.Server.Projections;
 public sealed partial class ProjectionCheckpointTracker(
     DaprClient daprClient,
     IOptions<ProjectionOptions> options,
-    ILogger<ProjectionCheckpointTracker> logger) : IProjectionCheckpointTracker {
+    ILogger<ProjectionCheckpointTracker> logger) : IProjectionCheckpointTracker, IProjectionCheckpointEraser {
     private const int MaxEtagRetries = 3;
     private const int IdentityPageSize = 100;
     private const string StateKeyPrefix = "projection-checkpoints:";

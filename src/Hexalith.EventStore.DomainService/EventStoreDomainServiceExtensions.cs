@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using Hexalith.EventStore.Client.Attributes;
 using Hexalith.EventStore.Client.Configuration;
 using Hexalith.EventStore.Client.Discovery;
+using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Projections;
@@ -276,7 +277,31 @@ public static class EventStoreDomainServiceExtensions {
                     // /project endpoint can resolve them without a request scope.
                     _ = services.AddSingleton(typeof(IDomainProjectionHandler), type);
                 }
+
+                RegisterDeclaredProjectionReadModelSlots(services, type);
             }
+        }
+    }
+
+    // A domain declares its aggregate-owned vs shared read-model slots by implementing the static
+    // IDeclaresProjectionReadModelSlots contract (a Client-package type — no raw DAPR plumbing, AD-2).
+    // Each declaration is registered as a DI singleton; the platform slot registry absorbs them all when
+    // it is resolved. The static declaration is read without instantiating the type.
+    private static void RegisterDeclaredProjectionReadModelSlots(IServiceCollection services, Type type) {
+        if (type is not { IsClass: true, IsAbstract: false }
+            || !typeof(IDeclaresProjectionReadModelSlots).IsAssignableFrom(type)) {
+            return;
+        }
+
+        PropertyInfo? property = type.GetProperty(
+            nameof(IDeclaresProjectionReadModelSlots.ProjectionReadModelSlots),
+            BindingFlags.Public | BindingFlags.Static);
+        if (property?.GetValue(null) is not IReadOnlyList<ProjectionReadModelSlotDeclaration> slots) {
+            return;
+        }
+
+        foreach (ProjectionReadModelSlotDeclaration slot in slots) {
+            _ = services.AddSingleton(slot);
         }
     }
 

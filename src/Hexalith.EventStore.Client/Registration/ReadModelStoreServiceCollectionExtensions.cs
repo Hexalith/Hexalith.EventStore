@@ -39,6 +39,9 @@ public static class ReadModelStoreServiceCollectionExtensions {
         services.TryAddSingleton<IReadModelBatchStore>(static sp =>
             sp.GetService<IReadModelStore>() as IReadModelBatchStore
             ?? sp.GetRequiredService<DaprReadModelStore>());
+        services.TryAddSingleton<IReadModelConditionalEraser>(static sp =>
+            sp.GetService<IReadModelStore>() as IReadModelConditionalEraser
+            ?? sp.GetRequiredService<DaprReadModelStore>());
         return services;
     }
 }
