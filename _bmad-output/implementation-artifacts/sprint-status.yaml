@@ -60,7 +60,10 @@ development_status:
   # Done means the investigation and `still blocked` packet were completed; it does not mean parity is available.
   1-8-projection-query-sdk-owner-parity-proof: done
   # Parties parity implementation follow-ups discovered by Story 1.8.
-  1-9-read-model-and-projection-checkpoint-erasure: in-progress
+  # 2026-07-12: narrow in-progress attempt (committed, contradicted frozen spec-1-9) superseded;
+  # story rebuilt from the frozen full-lifecycle contract and reset to ready-for-dev.
+  # Prior narrow attempt archived at investigations/1-9-narrow-superseded-2026-07-11.md.
+  1-9-read-model-and-projection-checkpoint-erasure: ready-for-dev
   1-10-coordinated-read-model-batch-writes: review
   1-11-complete-projection-freshness-lifecycle: done
   1-12-asynchronous-multi-projection-dispatch: backlog
