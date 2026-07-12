@@ -1,3 +1,10 @@
+# [3.59.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.58.0...v3.59.0) (2026-07-12)
+
+
+### Features
+
+* **projections:** implement read-model batch processing with validation and state management ([428ef1a](https://github.com/Hexalith/Hexalith.EventStore/commit/428ef1a123f270652f960e0c922f8a1104f275ed))
+
 # [3.58.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.57.0...v3.58.0) (2026-07-11)
 
 
