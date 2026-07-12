@@ -14,11 +14,21 @@ internal sealed class RecordingDaprClient : DaprClient
 
     public bool TrySaveResult { get; init; }
 
-    public bool TryDeleteResult { get; init; }
+    public bool? TryDeleteResult { get; init; }
 
     public Exception ExecuteStateTransactionException { get; init; }
 
     public int ExecuteStateTransactionCallCount { get; private set; }
+
+    public int SaveByteStateCallCount { get; private set; }
+
+    public int DeleteStateCallCount { get; private set; }
+
+    public Action<string, ReadOnlyMemory<byte>> BeforeTrySaveByteState { get; set; }
+
+    public IReadOnlyList<(string Key, byte[] Value, string ETag, ConcurrencyMode Concurrency)> TrySaveByteOperations => _trySaveByteOperations;
+
+    public IReadOnlyList<(string Key, string ETag, ConcurrencyMode Concurrency)> TryDeleteByteOperations => _tryDeleteByteOperations;
 
     public IReadOnlyList<StateTransactionRequest> TransactionOperations { get; private set; }
 
@@ -33,6 +43,8 @@ internal sealed class RecordingDaprClient : DaprClient
     public StateOptions StateOptions { get; private set; }
 
     private readonly Dictionary<string, (byte[] Value, string ETag)> _byteStore = new(StringComparer.Ordinal);
+    private readonly List<(string Key, byte[] Value, string ETag, ConcurrencyMode Concurrency)> _trySaveByteOperations = [];
+    private readonly List<(string Key, string ETag, ConcurrencyMode Concurrency)> _tryDeleteByteOperations = [];
     private long _byteEtag;
 
     // When set, ExecuteStateTransactionAsync throws before applying, simulating an ambiguous dispatch.
@@ -43,6 +55,9 @@ internal sealed class RecordingDaprClient : DaprClient
     public bool ByteStoreContains(string key) => _byteStore.ContainsKey(key);
 
     public byte[] ByteStoreValue(string key) => _byteStore.TryGetValue(key, out (byte[] Value, string ETag) e) ? e.Value : null;
+
+    public void SeedByteStore(string key, ReadOnlyMemory<byte> value) =>
+        _byteStore[key] = (value.ToArray(), NextByteETag());
 
     public override Task<bool> TrySaveStateAsync<TValue>(
         string storeName,
@@ -88,6 +103,7 @@ internal sealed class RecordingDaprClient : DaprClient
     public override Task DeleteStateAsync(string storeName, string key, StateOptions stateOptions, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        DeleteStateCallCount++;
         _ = _byteStore.Remove(key);
         return Task.CompletedTask;
     }
@@ -193,6 +209,7 @@ internal sealed class RecordingDaprClient : DaprClient
     public override Task SaveByteStateAsync(string storeName, string key, ReadOnlyMemory<byte> binaryValue, StateOptions stateOptions, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        SaveByteStateCallCount++;
         _byteStore[key] = (binaryValue.ToArray(), NextByteETag());
         return Task.CompletedTask;
     }
@@ -218,17 +235,40 @@ internal sealed class RecordingDaprClient : DaprClient
         Key = key;
         ETag = etag;
         StateOptions = stateOptions;
-        return Task.FromResult(TryDeleteResult);
+        _tryDeleteByteOperations.Add((
+            key,
+            etag,
+            stateOptions.Concurrency ?? throw new InvalidOperationException("Conditional delete requires a concurrency mode.")));
+        if (TryDeleteResult is not null)
+        {
+            return Task.FromResult(TryDeleteResult.Value);
+        }
+
+        if (!_byteStore.TryGetValue(key, out (byte[] Value, string ETag) current)
+            || !string.Equals(current.ETag, etag, StringComparison.Ordinal))
+        {
+            return Task.FromResult(false);
+        }
+
+        _ = _byteStore.Remove(key);
+        return Task.FromResult(true);
     }
 
     public override Task<bool> TrySaveByteStateAsync(string storeName, string key, ReadOnlyMemory<byte> binaryValue, string etag, StateOptions stateOptions, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        _trySaveByteOperations.Add((
+            key,
+            binaryValue.ToArray(),
+            etag,
+            stateOptions.Concurrency ?? throw new InvalidOperationException("Conditional write requires a concurrency mode.")));
         if (ThrowOnNextByteWrite)
         {
             ThrowOnNextByteWrite = false;
             throw new Dapr.DaprException("Injected byte-write transport failure.");
         }
+
+        BeforeTrySaveByteState?.Invoke(key, binaryValue);
 
         bool exists = _byteStore.TryGetValue(key, out (byte[] Value, string ETag) current);
         bool matches = exists

@@ -247,24 +247,19 @@ public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelBatchSto
             }
         }
 
-        public Task WriteAsync(string key, ReadOnlyMemory<byte> value, CancellationToken cancellationToken) {
+        public Task<bool> TryDeleteAsync(string key, string expectedETag, CancellationToken cancellationToken) {
             cancellationToken.ThrowIfCancellationRequested();
             string composite = Compose(storeName, key);
             lock (store._gate) {
-                store._entries[composite] = new Entry(value.ToArray(), store.NextETag());
+                if (!store._entries.TryGetValue(composite, out Entry? current)
+                    || !string.Equals(current.ETag, expectedETag, StringComparison.Ordinal)) {
+                    return Task.FromResult(false);
+                }
+
+                bool removed = ((ICollection<KeyValuePair<string, Entry>>)store._entries)
+                    .Remove(new KeyValuePair<string, Entry>(composite, current));
+                return Task.FromResult(removed);
             }
-
-            return Task.CompletedTask;
-        }
-
-        public Task DeleteAsync(string key, CancellationToken cancellationToken) {
-            cancellationToken.ThrowIfCancellationRequested();
-            string composite = Compose(storeName, key);
-            lock (store._gate) {
-                _ = store._entries.TryRemove(composite, out _);
-            }
-
-            return Task.CompletedTask;
         }
 
         public Task ExecuteTransactionAsync(IReadOnlyList<RawTransactionOperation> operations, CancellationToken cancellationToken) {

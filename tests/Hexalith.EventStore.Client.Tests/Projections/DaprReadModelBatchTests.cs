@@ -56,6 +56,12 @@ public class DaprReadModelBatchTests {
         client.ByteStoreContains(markerKey).ShouldBeTrue("the terminal completion receipt must be retained");
         client.ByteStoreValue("detail:agg-1")
             .ShouldBe(ReadModelBatchCanonicalJson.Serialize(new Detail(2)).ToArray());
+        (string Key, byte[] Value, string ETag, ConcurrencyMode Concurrency) compact = client.TrySaveByteOperations
+            .Last(operation => operation.Key == "detail:agg-1");
+        compact.Value.ShouldBe(ReadModelBatchCanonicalJson.Serialize(new Detail(2)).ToArray());
+        compact.ETag.ShouldNotBeNullOrEmpty("compaction must compare-and-set the installed envelope");
+        compact.Concurrency.ShouldBe(ConcurrencyMode.FirstWrite);
+        client.SaveByteStateCallCount.ShouldBe(0, "resumable compaction must not overwrite an installed envelope unconditionally");
     }
 
     [Fact]
@@ -103,6 +109,133 @@ public class DaprReadModelBatchTests {
     }
 
     [Fact]
+    public async Task ExecuteAsync_ResumableDelete_UsesEnvelopeEtagAndRemovesValue() {
+        var client = new RecordingDaprClient();
+        DaprReadModelStore store = CreateStore(client);
+        _ = await store.ExecuteAsync(WriteBatch());
+        string etag = (await store.GetAsync<Detail>(Store, "detail:agg-1")).ETag!;
+        var deleteScope = new ReadModelBatchScope(
+            Store,
+            "tenant-1",
+            "counter",
+            "agg-1",
+            "counterView",
+            "01J0BATCH0000000000000001");
+        var deleteBatch = new ReadModelBatch(
+            deleteScope,
+            [ReadModelBatchOperation.Delete("detail:agg-1", ReadModelBatchConcurrency.Match(etag))]);
+
+        ReadModelBatchResult result = await store.ExecuteAsync(deleteBatch);
+
+        result.Status.ShouldBe(ReadModelBatchStatus.Completed);
+        client.ByteStoreContains("detail:agg-1").ShouldBeFalse();
+        (string Key, string ETag, ConcurrencyMode Concurrency) compact = client.TryDeleteByteOperations
+            .Last(operation => operation.Key == "detail:agg-1");
+        compact.ETag.ShouldNotBeNullOrEmpty("delete compaction must compare-and-set the installed envelope");
+        compact.Concurrency.ShouldBe(ConcurrencyMode.FirstWrite);
+        client.DeleteStateCallCount.ShouldBe(0, "resumable delete compaction must not delete an installed envelope unconditionally");
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_PreCommitConflict_ConditionallyRestoresPreviousValue() {
+        var client = new RecordingDaprClient();
+        DaprReadModelStore store = CreateStore(client);
+        _ = await store.ExecuteAsync(WriteBatch());
+        var conflictScope = new ReadModelBatchScope(
+            Store,
+            "tenant-1",
+            "counter",
+            "agg-1",
+            "counterView",
+            "01J0BATCH0000000000000002");
+        var conflictBatch = new ReadModelBatch(
+            conflictScope,
+            [
+                ReadModelBatchOperation.Write("detail:agg-1", new Detail(9), ReadModelBatchConcurrency.LastWrite),
+                ReadModelBatchOperation.Write("index:counterView", new IndexEntry(9), ReadModelBatchConcurrency.CreateOnly),
+            ]);
+
+        ReadModelBatchResult result = await store.ExecuteAsync(conflictBatch);
+
+        result.Status.ShouldBe(ReadModelBatchStatus.Conflict);
+        client.ByteStoreValue("detail:agg-1")
+            .ShouldBe(ReadModelBatchCanonicalJson.Serialize(new Detail(2)).ToArray());
+        (string Key, byte[] Value, string ETag, ConcurrencyMode Concurrency) compensation = client.TrySaveByteOperations
+            .Last(operation => operation.Key == "detail:agg-1");
+        compensation.Value.ShouldBe(ReadModelBatchCanonicalJson.Serialize(new Detail(2)).ToArray());
+        compensation.ETag.ShouldNotBeNullOrEmpty("compensation must compare-and-set the installed envelope");
+        compensation.Concurrency.ShouldBe(ConcurrencyMode.FirstWrite);
+    }
+
+    [Theory]
+    [InlineData(true, ReadModelBatchStatus.Completed)]
+    [InlineData(false, ReadModelBatchStatus.Indeterminate)]
+    public async Task ExecuteAsync_ReceiptMarkerCasRace_RequiresMatchingCompletedReceipt(
+        bool matchingFingerprint,
+        ReadModelBatchStatus expectedStatus) {
+        var client = new RecordingDaprClient();
+        DaprReadModelStore store = CreateStore(client);
+        string markerKey = ReadModelBatchKeys.MarkerKey(Scope().ComputeScopeHash());
+        bool raced = false;
+        client.BeforeTrySaveByteState = (key, value) => {
+            if (!raced
+                && string.Equals(key, markerKey, StringComparison.Ordinal)
+                && MarkerStatus(value) == ReadModelBatchMarkerStatus.Completed) {
+                raced = true;
+                client.SeedByteStore(
+                    key,
+                    matchingFingerprint ? value : WithFingerprint(value, "v1:foreign-receipt"));
+            }
+        };
+
+        ReadModelBatchResult result = await store.ExecuteAsync(WriteBatch());
+
+        raced.ShouldBeTrue();
+        result.Status.ShouldBe(expectedStatus);
+    }
+
+    [Theory]
+    [InlineData(true, ReadModelBatchStatus.Conflict)]
+    [InlineData(false, ReadModelBatchStatus.Indeterminate)]
+    public async Task ExecuteAsync_AbortMarkerCasRace_RequiresMatchingAbortingMarker(
+        bool matchingFingerprint,
+        ReadModelBatchStatus expectedStatus) {
+        var client = new RecordingDaprClient();
+        DaprReadModelStore store = CreateStore(client);
+        _ = await store.ExecuteAsync(WriteBatch());
+        var conflictScope = new ReadModelBatchScope(
+            Store,
+            "tenant-1",
+            "counter",
+            "agg-1",
+            "counterView",
+            "01J0BATCH0000000000000003");
+        var conflictBatch = new ReadModelBatch(
+            conflictScope,
+            [
+                ReadModelBatchOperation.Write("detail:agg-1", new Detail(9), ReadModelBatchConcurrency.LastWrite),
+                ReadModelBatchOperation.Write("index:counterView", new IndexEntry(9), ReadModelBatchConcurrency.CreateOnly),
+            ]);
+        string markerKey = ReadModelBatchKeys.MarkerKey(conflictScope.ComputeScopeHash());
+        bool raced = false;
+        client.BeforeTrySaveByteState = (key, value) => {
+            if (!raced
+                && string.Equals(key, markerKey, StringComparison.Ordinal)
+                && MarkerStatus(value) == ReadModelBatchMarkerStatus.Aborting) {
+                raced = true;
+                client.SeedByteStore(
+                    key,
+                    matchingFingerprint ? value : WithFingerprint(value, "v1:foreign-abort"));
+            }
+        };
+
+        ReadModelBatchResult result = await store.ExecuteAsync(conflictBatch);
+
+        raced.ShouldBeTrue();
+        result.Status.ShouldBe(expectedStatus);
+    }
+
+    [Fact]
     public async Task ExecuteAsync_IdentityReuse_DifferentFingerprint_ReturnsIdentityConflict() {
         var client = new RecordingDaprClient();
         DaprReadModelStore store = CreateStore(client);
@@ -115,6 +248,21 @@ public class DaprReadModelBatchTests {
 
         result.Status.ShouldBe(ReadModelBatchStatus.Conflict);
         result.ConflictKind.ShouldBe(ReadModelBatchConflictKind.Identity);
+    }
+
+    private static ReadModelBatchMarkerStatus MarkerStatus(ReadOnlyMemory<byte> value) =>
+        System.Text.Json.JsonSerializer
+            .Deserialize<ReadModelBatchMarker>(value.Span, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))!
+            .Status;
+
+    private static ReadOnlyMemory<byte> WithFingerprint(ReadOnlyMemory<byte> value, string fingerprint) {
+        ReadModelBatchMarker marker = System.Text.Json.JsonSerializer
+            .Deserialize<ReadModelBatchMarker>(value.Span, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))!;
+        marker.Fingerprint = fingerprint;
+        return ReadModelBatchCanonicalJson.Canonicalize(
+            System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(
+                marker,
+                new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)));
     }
 
     [Fact]

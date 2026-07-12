@@ -194,3 +194,29 @@ _All items LOW / non-blocking. Story 2.7 accepted (all AC1–AC7 met; Release bu
 ## Deferred from: code review of 1-9-read-model-and-projection-checkpoint-erasure (2026-07-11)
 
 - No production code calls `IProjectionStateEraser` — only the DI registration in `ServiceCollectionExtensions.cs:56`. The end-to-end read-model/checkpoint drift fix is unreachable from any wired in-tree path; it depends on a future Admin/GDPR-1 erasure trigger. Deferred as expected — the caller is exactly what the governing-contract decision (see Story 1.9 Review Findings) resolves. Do not add a caller in isolation before that decision.
+
+## Deferred from: review of spec-gh-29184319584-fix-live-sidecar-ci (2026-07-12)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-29184319584-fix-live-sidecar-ci.md`
+  summary: Complete the in-progress Story 1.9 erasure refactor so the Server and Server.Tests projects compile again.
+  evidence: Pre-existing Story 1.9 working-tree changes delete `IProjectionStateEraser`, `ProjectionStateEraser`, and `ReadModelEraseTarget` while production registration and `StorageKeyIsolationTests` still reference them; `ProjectionCheckpointTracker` also exposes an internal capability through a public class.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-29184319584-fix-live-sidecar-ci.md`
+  summary: Preserve or explicitly version the released erasure API surface being removed by Story 1.9.
+  evidence: The pre-existing Story 1.9 diff removes released interface members and public erasure types without an API-compatibility gate, creating source and binary breaks that the current concrete-class tests cannot detect.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-29184319584-fix-live-sidecar-ci.md`
+  summary: Make Story 1.9 erasure capability DI fail closed for custom stores and checkpoint trackers.
+  evidence: The pre-existing registrations can bind a default DAPR eraser behind a custom non-capable `IReadModelStore` or unconditionally cast a custom `IProjectionCheckpointTracker`, risking wrong-backend mutation or resolution-time failure instead of `Unsupported`.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-29184319584-fix-live-sidecar-ci.md`
+  summary: Wire and verify Story 1.9 projection slot discovery and canonical read-model address ownership end to end.
+  evidence: The pre-existing slot/address types lack reliable registration and contract coverage, declarations can be skipped by handler-registration early returns, and no production writer currently proves it uses the same canonical key factory as erasure.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-29184319584-fix-live-sidecar-ci.md`
+  summary: Finish the Story 1.9 persisted erasure coordinator and lifecycle/admin boundary before exposing partial seams.
+  evidence: The active story requires resumable coordination, rebuild-checkpoint deletion, delivery-last ordering, lifecycle serialization, active-rebuild refusal, structured outcomes, and an authenticated boundary, but the reviewed pre-existing diff does not yet provide those runtime components.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-29184319584-fix-live-sidecar-ci.md`
+  summary: Make in-memory read-model writes atomic with batch accessor ETag compare-and-set operations.
+  evidence: Pre-existing `SaveAsync`, `TrySaveAsync`, `TryEraseAsync`, and `SeedRaw` paths do not share the batch accessor's `_gate`, so a true concurrent write can occur between the fake accessor's ETag check and assignment and be overwritten while conditional success is reported.

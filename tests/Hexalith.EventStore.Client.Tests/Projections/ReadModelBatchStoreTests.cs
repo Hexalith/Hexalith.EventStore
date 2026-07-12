@@ -192,6 +192,53 @@ public class ReadModelBatchStoreTests {
         store.Snapshot<IndexEntry>(Store, "index:counterView")!.Count.ShouldBe(1);
     }
 
+    [Fact]
+    public async Task ExecuteAsync_PreCommitConflict_CompensatesRestoringPreviousValue() {
+        var store = new InMemoryReadModelStore();
+        await store.SaveAsync(Store, "detail:agg-1", new Detail(1));
+        await store.SaveAsync(Store, "index:counterView", new IndexEntry(1));
+        ReadModelBatch batch = new(
+            Scope(),
+            [
+                ReadModelBatchOperation.Write("detail:agg-1", new Detail(2), ReadModelBatchConcurrency.LastWrite),
+                ReadModelBatchOperation.Write("index:counterView", new IndexEntry(2), ReadModelBatchConcurrency.CreateOnly),
+            ]);
+
+        ReadModelBatchResult result = await store.ExecuteAsync(batch);
+
+        result.Status.ShouldBe(ReadModelBatchStatus.Conflict);
+        result.ConflictKind.ShouldBe(ReadModelBatchConflictKind.Optimistic);
+        store.HasPendingEnvelope(Store, "detail:agg-1").ShouldBeFalse();
+        store.Snapshot<Detail>(Store, "detail:agg-1")!.Version.ShouldBe(1);
+        store.Snapshot<IndexEntry>(Store, "index:counterView")!.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_CompensationRace_PreservesConcurrentValueAndDoesNotReportConflictAsProven() {
+        var store = new InMemoryReadModelStore();
+        await store.SaveAsync(Store, "index:counterView", new IndexEntry(1));
+        store.BatchFaultHook = (phase, ordinal, _) => {
+            if (phase == ReadModelBatchPhase.AfterInstallOperation && ordinal == 0) {
+                store.SeedRaw(Store, "detail:agg-1", new Detail(99));
+            }
+
+            return Task.CompletedTask;
+        };
+        ReadModelBatch batch = new(
+            Scope(),
+            [
+                ReadModelBatchOperation.Write("detail:agg-1", new Detail(2), ReadModelBatchConcurrency.LastWrite),
+                ReadModelBatchOperation.Write("index:counterView", new IndexEntry(2), ReadModelBatchConcurrency.CreateOnly),
+            ]);
+
+        ReadModelBatchResult result = await store.ExecuteAsync(batch);
+
+        result.IsSuccess.ShouldBeFalse();
+        result.Status.ShouldBe(ReadModelBatchStatus.Indeterminate);
+        store.Snapshot<Detail>(Store, "detail:agg-1")!.Version.ShouldBe(99);
+        store.Snapshot<IndexEntry>(Store, "index:counterView")!.Count.ShouldBe(1);
+    }
+
     // ----- Resumable visibility, interruption, and convergence -----
 
     [Fact]
@@ -244,6 +291,27 @@ public class ReadModelBatchStoreTests {
 
         result.Status.ShouldBe(ReadModelBatchStatus.Completed);
         (await store.GetAsync<Detail>(Store, "detail:agg-1")).Value!.Version.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_CompactionRace_PreservesConcurrentValueAndDoesNotReportSuccess() {
+        var store = new InMemoryReadModelStore();
+        bool raced = false;
+        store.BatchFaultHook = (phase, ordinal, _) => {
+            if (phase == ReadModelBatchPhase.BeforeCompaction && ordinal == 0 && !raced) {
+                raced = true;
+                store.SeedRaw(Store, "detail:agg-1", new Detail(99));
+            }
+
+            return Task.CompletedTask;
+        };
+
+        ReadModelBatchResult result = await store.ExecuteAsync(WriteBatch());
+
+        result.IsSuccess.ShouldBeFalse();
+        result.Status.ShouldBe(ReadModelBatchStatus.Indeterminate);
+        store.Snapshot<Detail>(Store, "detail:agg-1")!.Version.ShouldBe(99);
+        store.Snapshot<IndexEntry>(Store, "index:counterView").ShouldBeNull();
     }
 
     [Fact]

@@ -38,23 +38,13 @@ internal sealed class DaprReadModelBatchStateAccessor(DaprClient daprClient, str
             .ConfigureAwait(false);
 
     /// <inheritdoc/>
-    public async Task WriteAsync(string key, ReadOnlyMemory<byte> value, CancellationToken cancellationToken) =>
+    public async Task<bool> TryDeleteAsync(string key, string expectedETag, CancellationToken cancellationToken) =>
         await daprClient
-            .SaveByteStateAsync(
+            .TryDeleteStateAsync(
                 storeName,
                 key,
-                value,
-                new StateOptions { Concurrency = ConcurrencyMode.LastWrite },
-                cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
-
-    /// <inheritdoc/>
-    public async Task DeleteAsync(string key, CancellationToken cancellationToken) =>
-        await daprClient
-            .DeleteStateAsync(
-                storeName,
-                key,
-                new StateOptions { Concurrency = ConcurrencyMode.LastWrite },
+                expectedETag,
+                new StateOptions { Concurrency = ConcurrencyMode.FirstWrite },
                 cancellationToken: cancellationToken)
             .ConfigureAwait(false);
 

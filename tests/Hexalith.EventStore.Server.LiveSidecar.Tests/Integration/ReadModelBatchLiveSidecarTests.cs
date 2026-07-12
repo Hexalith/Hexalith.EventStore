@@ -45,17 +45,21 @@ public class ReadModelBatchLiveSidecarTests {
         string tenant = $"rmb-{unique}";
         string detailKey = $"{tenant}:detail";
         string indexKey = $"{tenant}:index";
+        string deletedKey = $"{tenant}:deleted";
         string checkpointKey = $"{tenant}:checkpoint";
         var scope = new ReadModelBatchScope(StoreName, tenant, "counter", "agg-1", "counterView", $"01BATCH{unique}");
 
         // Seed a representative delivery/rebuild checkpoint the batch must never touch.
         await client.SaveStateAsync(StoreName, checkpointKey, new Detail(7));
+        await client.SaveStateAsync(StoreName, deletedKey, new Detail(1));
+        (_, string deleteEtag) = await client.GetStateAndETagAsync<Detail>(StoreName, deletedKey);
 
         var batch = new ReadModelBatch(
             scope,
             [
                 ReadModelBatchOperation.Write(detailKey, new Detail(2), ReadModelBatchConcurrency.LastWrite),
                 ReadModelBatchOperation.Write(indexKey, new IndexEntry(3), ReadModelBatchConcurrency.LastWrite),
+                ReadModelBatchOperation.Delete(deletedKey, ReadModelBatchConcurrency.Match(deleteEtag)),
             ]);
 
         ReadModelBatchResult result = await store.ExecuteAsync(batch);
@@ -69,6 +73,7 @@ public class ReadModelBatchLiveSidecarTests {
         (await ReadStateJsonAsync(db, detailKey)).ShouldNotBeNull();
         System.Text.Json.JsonSerializer.Deserialize<Detail>(await ReadStateJsonAsync(db, detailKey)!, s_json)!.Version.ShouldBe(2);
         System.Text.Json.JsonSerializer.Deserialize<IndexEntry>(await ReadStateJsonAsync(db, indexKey)!, s_json)!.Count.ShouldBe(3);
+        (await ReadStateJsonAsync(db, deletedKey)).ShouldBeNull("the committed delete envelope must be conditionally compacted to absence");
 
         // The terminal completion receipt (Completed = status 4) is retained.
         string? markerJson = await ResolveMarkerJsonAsync(db, scope.ComputeScopeHash());
@@ -170,7 +175,7 @@ public class ReadModelBatchLiveSidecarTests {
         new DaprClientBuilder().UseGrpcEndpoint(_fixture.DaprGrpcEndpoint).Build();
 
     private static async Task<ConnectionMultiplexer> ConnectRedisAsync() =>
-        await ConnectionMultiplexer.ConnectAsync("localhost:6379,abortConnect=false");
+        await ConnectionMultiplexer.ConnectAsync("localhost:6379,abortConnect=false,allowAdmin=true");
 
     private static async Task<byte[]?> ReadStateJsonAsync(IDatabase db, string logicalKey) {
         RedisValue value = await db.HashGetAsync($"{AppId}||{logicalKey}", "data");

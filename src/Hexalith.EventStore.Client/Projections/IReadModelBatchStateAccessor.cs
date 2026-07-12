@@ -26,18 +26,12 @@ internal interface IReadModelBatchStateAccessor {
     /// <returns><see langword="true"/> when the write succeeded; <see langword="false"/> on ETag conflict.</returns>
     Task<bool> TryWriteAsync(string key, ReadOnlyMemory<byte> value, string expectedETag, CancellationToken cancellationToken);
 
-    /// <summary>Writes a value unconditionally (last-write-wins).</summary>
+    /// <summary>Deletes a value under first-write optimistic concurrency.</summary>
     /// <param name="key">The state key.</param>
-    /// <param name="value">The raw value bytes.</param>
+    /// <param name="expectedETag">The expected ETag.</param>
     /// <param name="cancellationToken">A cancellation token.</param>
-    /// <returns>A task representing the write.</returns>
-    Task WriteAsync(string key, ReadOnlyMemory<byte> value, CancellationToken cancellationToken);
-
-    /// <summary>Deletes a key unconditionally (idempotent when absent).</summary>
-    /// <param name="key">The state key.</param>
-    /// <param name="cancellationToken">A cancellation token.</param>
-    /// <returns>A task representing the delete.</returns>
-    Task DeleteAsync(string key, CancellationToken cancellationToken);
+    /// <returns><see langword="true"/> when the delete succeeded; <see langword="false"/> on ETag conflict.</returns>
+    Task<bool> TryDeleteAsync(string key, string expectedETag, CancellationToken cancellationToken);
 
     /// <summary>
     /// Executes a single ordered state transaction. Only called when <see cref="SupportsTransaction"/> is
