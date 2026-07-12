@@ -57,6 +57,7 @@ public static class EventStoreServerServiceCollectionExtensions {
             (IProjectionCheckpointEraser)sp.GetRequiredService<IProjectionCheckpointTracker>());
         services.TryAddSingleton<IProjectionDeliveryCheckpointStore>(static sp =>
             (IProjectionDeliveryCheckpointStore)sp.GetRequiredService<IProjectionCheckpointTracker>());
+        services.TryAddSingleton<IProjectionLifecycleGateway, DaprProjectionLifecycleGateway>();
         services.TryAddSingleton<IProjectionSlotRegistry>(ProjectionSlotServiceCollectionExtensions.BuildSlotRegistry);
         services.TryAddSingleton<IProjectionReadModelAddressFactory, ProjectionReadModelAddressFactory>();
         services.TryAddSingleton<IProjectionRebuildCheckpointStore, ProjectionRebuildCheckpointStore>();

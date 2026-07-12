@@ -42,7 +42,8 @@ internal partial class ProjectionUpdateOrchestrator(
     IProjectionRebuildCheckpointStore? rebuildCheckpointStore = null,
     IEventPayloadProtectionService? payloadProtectionService = null,
     IOptions<EventStoreActorOptions>? actorOptions = null,
-    IProjectionDeliveryCheckpointStore? deliveryCheckpointStore = null) : IProjectionUpdateOrchestrator, IProjectionPollerDeliveryGateway, IProjectionRebuildOrchestrator {
+    IProjectionDeliveryCheckpointStore? deliveryCheckpointStore = null,
+    IProjectionLifecycleGateway? lifecycleGateway = null) : IProjectionUpdateOrchestrator, IProjectionPollerDeliveryGateway, IProjectionRebuildOrchestrator {
     // Per-aggregate serialization across orchestrator instances. Entries are evicted and the
     // underlying SemaphoreSlim disposed when the last holder releases, so a multi-tenant server
     // with many short-lived aggregates does not accumulate kernel handles indefinitely.
@@ -243,6 +244,25 @@ internal partial class ProjectionUpdateOrchestrator(
             }
 
             Log.DomainServiceInvocationSucceeded(logger, identity.TenantId, identity.Domain, identity.AggregateId, registration.AppId);
+
+            // Task 5 "gate the write": the projection name is only known now (response.ProjectionType),
+            // so the ProjectionLifecycleActor is consulted immediately before the only state-recreating
+            // step. When an erase is in progress the write is deferred (no write, no ETag regen, no
+            // checkpoint save); the poller retries on its next tick. A null gateway preserves legacy
+            // behavior (keeps existing unit tests green).
+            if (lifecycleGateway is not null
+                && !await lifecycleGateway
+                    .TryAdmitDeliveryWriteAsync(identity, response.ProjectionType, cancellationToken)
+                    .ConfigureAwait(false)) {
+                Log.ProjectionDeliveryDeferredForErase(
+                    logger,
+                    identity.TenantId,
+                    identity.Domain,
+                    identity.AggregateId,
+                    response.ProjectionType,
+                    ProjectionReasonCodes.DeliveryDeferredForErase);
+                return;
+            }
 
             // Step 5: Derive projection actor ID and update state
             string projectionActorId = QueryActorIdHelper.DeriveActorId(
@@ -831,6 +851,25 @@ internal partial class ProjectionUpdateOrchestrator(
                 }
             }
 
+            // Task 5 "gate the write": consult the ProjectionLifecycleActor immediately before the only
+            // state-recreating step, now that response.ProjectionType is known. When an erase is in
+            // progress the rebuild page is NOT applied and progress is NOT advanced — Interrupt() leaves
+            // the operator-scope row Running so the rebuild retries later. A null gateway preserves legacy
+            // behavior.
+            if (lifecycleGateway is not null
+                && !await lifecycleGateway
+                    .TryAdmitDeliveryWriteAsync(identity, response.ProjectionType, cancellationToken)
+                    .ConfigureAwait(false)) {
+                Log.ProjectionDeliveryDeferredForErase(
+                    logger,
+                    identity.TenantId,
+                    identity.Domain,
+                    identity.AggregateId,
+                    response.ProjectionType,
+                    ProjectionReasonCodes.DeliveryDeferredForErase);
+                return RebuildDeliveryResult.Interrupt();
+            }
+
             await writeProxy
                 .UpdateProjectionAsync(ProjectionState.FromJsonElement(response.ProjectionType, identity.TenantId, response.State))
                 .ConfigureAwait(false);
@@ -1346,6 +1385,12 @@ internal partial class ProjectionUpdateOrchestrator(
             Level = LogLevel.Information,
             Message = "Projection delivery skipped because an operator rebuild is active: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, ReasonCode={ReasonCode}, Stage=ProjectionPollerRebuildConflict")]
         public static partial void PollerRebuildConflict(ILogger logger, string tenantId, string domain, string aggregateId, string reasonCode);
+
+        [LoggerMessage(
+            EventId = 1146,
+            Level = LogLevel.Information,
+            Message = "Projection delivery deferred because an erase is in progress: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, ProjectionType={ProjectionType}, ReasonCode={ReasonCode}, Stage=ProjectionDeliveryDeferredForErase")]
+        public static partial void ProjectionDeliveryDeferredForErase(ILogger logger, string tenantId, string domain, string aggregateId, string projectionType, string reasonCode);
 
         [LoggerMessage(
             EventId = 1147,

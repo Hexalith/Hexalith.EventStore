@@ -16,5 +16,6 @@ internal static class ProjectionReasonCodes {
     public const string ProjectInvalidState = "project_invalid_state";
     public const string ProjectTimeout = "project_timeout";
     public const string CheckpointDrift = "checkpoint_drift";
+    public const string DeliveryDeferredForErase = "delivery_deferred_for_erase";
     public const string Unknown = "unknown";
 }
