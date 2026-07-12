@@ -2,7 +2,7 @@
 title: 'Restore CI documentation contracts'
 type: 'bugfix'
 created: '2026-07-12'
-status: 'draft'
+status: 'ready-for-dev'
 baseline_commit: '471ca8670a760bca95dde94dc4d90aecae053d86'
 review_loop_iteration: 0
 context:
