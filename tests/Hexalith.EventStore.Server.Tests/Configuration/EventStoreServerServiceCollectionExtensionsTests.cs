@@ -1,5 +1,7 @@
+using Dapr.Actors.Runtime;
 using Dapr.Client;
 
+using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Projections;
@@ -34,12 +36,23 @@ public class EventStoreServerServiceCollectionExtensionsTests {
     }
 
     [Fact]
-    public void AddEventStoreServerRegistersGlobalPositionAllocator() {
+    public void AddEventStoreServerRegistersDaprGlobalPositionAllocator() {
         using ServiceProvider provider = BuildProvider(registerDaprClient: false);
 
-        IGlobalPositionAllocator? allocator = provider.GetService<IGlobalPositionAllocator>();
+        IGlobalPositionAllocator allocator = provider.GetRequiredService<IGlobalPositionAllocator>();
 
-        allocator.ShouldNotBeNull();
+        _ = allocator.ShouldBeOfType<DaprGlobalPositionAllocator>();
+    }
+
+    [Fact]
+    public void AddEventStoreServerRegistersGlobalPositionActor() {
+        using ServiceProvider provider = BuildProvider(registerDaprClient: false);
+
+        ActorRuntime actorRuntime = provider.GetRequiredService<ActorRuntime>();
+
+        actorRuntime.RegisteredActors.ShouldContain(registration =>
+            registration.Type.ImplementationType == typeof(GlobalPositionActor)
+            && registration.Type.ActorTypeName == GlobalPositionActor.ActorTypeName);
     }
 
     private static ServiceProvider BuildProvider(bool registerDaprClient) {

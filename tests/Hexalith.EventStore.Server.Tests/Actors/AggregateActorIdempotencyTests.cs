@@ -37,15 +37,22 @@ public class AggregateActorIdempotencyTests {
     public async Task ProcessCommandAsync_DuplicateCommand_ReturnsCachedResult() {
         // Arrange
         ActorTestContext ctx = CreateActor();
-        ConfigureDuplicate(ctx.StateManager, "cause-dup", "corr-dup");
+        var original = new CommandProcessingResult(
+            Accepted: true,
+            ErrorMessage: null,
+            CorrelationId: "corr-dup",
+            EventCount: 3,
+            ResultPayload: "{\"result\":\"cached\"}");
+        IdempotencyRecord record = IdempotencyRecord.FromResult("cause-dup", original);
+        _ = ctx.StateManager.TryGetStateAsync<IdempotencyRecord>("idempotency:cause-dup", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyRecord>(true, record));
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: "corr-dup", causationId: "cause-dup");
 
         // Act
         CommandProcessingResult result = await ctx.Actor.ProcessCommandAsync(envelope);
 
         // Assert
-        result.Accepted.ShouldBeTrue();
-        result.CorrelationId.ShouldBe("corr-dup");
+        result.ShouldBe(original);
     }
 
     [Fact]
@@ -119,15 +126,24 @@ public class AggregateActorIdempotencyTests {
     public async Task ProcessCommandAsync_DuplicateRejectedCommand_ReturnsCachedRejection() {
         // Arrange
         ActorTestContext ctx = CreateActor();
-        var record = new IdempotencyRecord("cause-rejected", "corr-rejected", false, "TenantMismatch: ...", DateTimeOffset.UtcNow);
+        var original = new CommandProcessingResult(
+            Accepted: false,
+            ErrorMessage: "Backpressure exceeded: 17 pending commands (threshold: 10)",
+            CorrelationId: "corr-rejected",
+            EventCount: 0,
+            ResultPayload: null,
+            BackpressureExceeded: true,
+            BackpressurePendingCount: 17,
+            BackpressureThreshold: 10);
+        IdempotencyRecord record = IdempotencyRecord.FromResult("cause-rejected", original);
         _ = ctx.StateManager.TryGetStateAsync<IdempotencyRecord>("idempotency:cause-rejected", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(true, record));
-        CommandEnvelope envelope = CreateTestEnvelope(tenantId: "wrong-tenant", correlationId: "corr-rejected", causationId: "cause-rejected");
+        CommandEnvelope envelope = CreateTestEnvelope(correlationId: "corr-rejected", causationId: "cause-rejected");
 
         // Act
         CommandProcessingResult result = await ctx.Actor.ProcessCommandAsync(envelope);
 
         // Assert
-        result.Accepted.ShouldBeFalse();
+        result.ShouldBe(original);
     }
 }
