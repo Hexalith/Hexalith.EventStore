@@ -23,7 +23,8 @@ namespace Hexalith.EventStore.Controllers;
 public sealed partial class AdminProjectionRebuildController(
     IProjectionRebuildCheckpointStore checkpointStore,
     ILogger<AdminProjectionRebuildController> logger,
-    IProjectionRebuildOrchestrator? rebuildOrchestrator = null) : ControllerBase {
+    IProjectionRebuildOrchestrator? rebuildOrchestrator = null,
+    IProjectionEraseCoordinator? eraseCoordinator = null) : ControllerBase {
     /// <summary>
     /// Gets the current rebuild status for a projection.
     /// </summary>
@@ -225,6 +226,136 @@ public sealed partial class AdminProjectionRebuildController(
             failureReasonCode: null,
             accepted: true,
             ct).ConfigureAwait(false);
+
+    /// <summary>
+    /// Erases the read-model targets, rebuild checkpoint, and delivery checkpoint for a projection
+    /// through the coordinated eraser. The request carries only logical identifiers (tenant, domain,
+    /// aggregate, projection, logical slot identifiers, operationId); it never accepts store names,
+    /// physical keys, or ETags. GlobalAdministrator is required before any state is touched (P-D1).
+    /// </summary>
+    [HttpPost("{tenantId}/{projectionName}/erase")]
+    [ProducesResponseType(typeof(ProjectionEraseResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden, "application/problem+json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict, "application/problem+json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable, "application/problem+json")]
+    public async Task<IActionResult> EraseProjectionAsync(
+        string tenantId,
+        string projectionName,
+        [FromBody] ProjectionEraseRequestBody? body,
+        CancellationToken cancellationToken) {
+        // Denial-before-resolution: reject any non-admin caller before building the request or
+        // touching the coordinator, so no logical ID is ever resolved for an unauthorized principal.
+        IActionResult? authFailure = EnsureGlobalAdministrator();
+        if (authFailure is not null) {
+            return authFailure;
+        }
+
+        if (eraseCoordinator is null) {
+            return ProblemWithReason(
+                StatusCodes.Status503ServiceUnavailable,
+                "Service Unavailable",
+                "Projection erase capability is not available.",
+                StreamReplayReasonCodes.ServiceUnavailable);
+        }
+
+        if (body is null) {
+            return ProblemWithReason(
+                StatusCodes.Status400BadRequest,
+                "Bad Request",
+                "Projection erase request body is required.",
+                StreamReplayReasonCodes.MissingRequiredField);
+        }
+
+        // Logical IDs only: no store name, physical key, or ETag is accepted (the DTO shape forbids
+        // it structurally); we merely validate the logical fields are present.
+        if (string.IsNullOrWhiteSpace(body.Domain)
+            || string.IsNullOrWhiteSpace(body.AggregateId)
+            || string.IsNullOrWhiteSpace(body.OperationId)
+            || body.Slots is null
+            || body.Slots.Count == 0
+            || body.Slots.Any(string.IsNullOrWhiteSpace)) {
+            return ProblemWithReason(
+                StatusCodes.Status400BadRequest,
+                "Bad Request",
+                "Projection erase request requires domain, aggregateId, operationId, and at least one non-empty slot.",
+                StreamReplayReasonCodes.MissingRequiredField);
+        }
+
+        var request = new ProjectionEraseRequest(
+            tenantId,
+            body.Domain,
+            body.AggregateId,
+            projectionName,
+            body.Slots,
+            body.OperationId);
+        ProjectionEraseResult result = await eraseCoordinator
+            .EraseAsync(request, cancellationToken)
+            .ConfigureAwait(false);
+        return MapEraseResult(result);
+    }
+
+    /// <summary>
+    /// Maps a coordinated erase result to an HTTP outcome, disclosing only the outcome kind, the
+    /// support-safe reason code, and the per-target outcome classifications (never raw target values).
+    /// </summary>
+    private IActionResult MapEraseResult(ProjectionEraseResult result) {
+        switch (result.Kind) {
+            case ProjectionEraseOutcomeKind.Success:
+                Log.EraseCompleted(logger, result.TargetOutcomes.Count);
+                return Ok(new ProjectionEraseResponse(
+                    result.Kind.ToString(),
+                    result.ReasonCode,
+                    [.. result.TargetOutcomes.Select(static outcome =>
+                        new ProjectionEraseTargetOutcomeDto(outcome.TargetKey, outcome.Outcome))]));
+            case ProjectionEraseOutcomeKind.Denied:
+                return ProblemWithReason(
+                    StatusCodes.Status403Forbidden,
+                    "Forbidden",
+                    "Projection erase request was denied.",
+                    result.ReasonCode ?? StreamReplayReasonCodes.ForbiddenRole);
+            case ProjectionEraseOutcomeKind.Unsupported:
+                return ProblemWithReason(
+                    StatusCodes.Status400BadRequest,
+                    "Bad Request",
+                    "Projection erase is not supported for the requested target set.",
+                    result.ReasonCode ?? StreamReplayReasonCodes.InvalidAggregateIdentity);
+            case ProjectionEraseOutcomeKind.ActiveRebuild:
+                Response.Headers.RetryAfter = "5";
+                return ProblemWithReason(
+                    StatusCodes.Status409Conflict,
+                    "Conflict",
+                    "A projection rebuild is active for this domain; erase is refused.",
+                    result.ReasonCode ?? StreamReplayReasonCodes.PollerRebuildConflict);
+            case ProjectionEraseOutcomeKind.Conflict:
+                Response.Headers.RetryAfter = "5";
+                return ProblemWithReason(
+                    StatusCodes.Status409Conflict,
+                    "Conflict",
+                    "Projection erase conflicted with a concurrent operation.",
+                    result.ReasonCode ?? StreamReplayReasonCodes.CheckpointConflict);
+            case ProjectionEraseOutcomeKind.Incomplete:
+                Response.Headers.RetryAfter = "5";
+                return ProblemWithReason(
+                    StatusCodes.Status409Conflict,
+                    "Conflict",
+                    "Projection erase did not complete for all targets; retry with the same operationId to resume.",
+                    result.ReasonCode ?? StreamReplayReasonCodes.RetryableTransientFailure);
+            case ProjectionEraseOutcomeKind.Canceled:
+                return ProblemWithReason(
+                    StatusCodes.Status503ServiceUnavailable,
+                    "Service Unavailable",
+                    "Projection erase was canceled.",
+                    result.ReasonCode ?? StreamReplayReasonCodes.RebuildCanceled);
+            case ProjectionEraseOutcomeKind.Unknown:
+            default:
+                return ProblemWithReason(
+                    StatusCodes.Status503ServiceUnavailable,
+                    "Service Unavailable",
+                    "Projection erase outcome could not be classified; retry with the same operationId to resume.",
+                    result.ReasonCode ?? StreamReplayReasonCodes.ServiceUnavailable);
+        }
+    }
 
     /// <summary>
     /// Transitions an existing rebuild operation to a new status. Returns 404 when no rebuild exists (P5).
@@ -675,5 +806,11 @@ public sealed partial class AdminProjectionRebuildController(
             Level = LogLevel.Warning,
             Message = "Projection rebuild lifecycle request rejected: ReasonCode={ReasonCode}, Stage=ProjectionRebuildLifecycleRejected")]
         public static partial void LifecycleRejected(ILogger logger, string reasonCode);
+
+        [LoggerMessage(
+            EventId = 1196,
+            Level = LogLevel.Information,
+            Message = "Projection erase completed: TargetCount={TargetCount}, Stage=ProjectionEraseCompleted")]
+        public static partial void EraseCompleted(ILogger logger, int targetCount);
     }
 }

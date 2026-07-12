@@ -386,11 +386,235 @@ public class AdminProjectionRebuildControllerTests {
         controller.Response.Headers.RetryAfter.ToString().ShouldBe("30");
     }
 
+    [Fact]
+    public async Task EraseProjectionWithGlobalAdministratorSuccessReturnsOkAndMapsOutcomes() {
+        IProjectionRebuildCheckpointStore store = Substitute.For<IProjectionRebuildCheckpointStore>();
+        IProjectionEraseCoordinator coordinator = Substitute.For<IProjectionEraseCoordinator>();
+        _ = coordinator.EraseAsync(Arg.Any<ProjectionEraseRequest>(), Arg.Any<CancellationToken>())
+            .Returns(ProjectionEraseResult.Of(
+                ProjectionEraseOutcomeKind.Success,
+                reasonCode: null,
+                outcomes: [
+                    new ProjectionEraseTargetOutcome("target-1", "Complete"),
+                    new ProjectionEraseTargetOutcome("target-2", "Complete"),
+                ]));
+        AdminProjectionRebuildController controller = CreateController(store, asGlobalAdmin: true, eraseCoordinator: coordinator);
+
+        IActionResult result = await controller.EraseProjectionAsync(
+            Tenant,
+            Projection,
+            new ProjectionEraseRequestBody("party", "aggregate-1", ["slot-1", "slot-2"], "01HX0000000000000000000009"),
+            CancellationToken.None);
+
+        OkObjectResult ok = result.ShouldBeOfType<OkObjectResult>();
+        ok.StatusCode.ShouldBe(StatusCodes.Status200OK);
+        ProjectionEraseResponse response = ok.Value.ShouldBeOfType<ProjectionEraseResponse>();
+        response.Outcome.ShouldBe(nameof(ProjectionEraseOutcomeKind.Success));
+        response.Targets.Count.ShouldBe(2);
+        response.Targets[0].TargetKey.ShouldBe("target-1");
+        response.Targets[0].Outcome.ShouldBe("Complete");
+        response.Targets[1].TargetKey.ShouldBe("target-2");
+        _ = await coordinator.Received(1).EraseAsync(Arg.Any<ProjectionEraseRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task EraseProjectionWithoutGlobalAdministratorRoleReturnsForbiddenBeforeCoordinator() {
+        IProjectionRebuildCheckpointStore store = Substitute.For<IProjectionRebuildCheckpointStore>();
+        IProjectionEraseCoordinator coordinator = Substitute.For<IProjectionEraseCoordinator>();
+        AdminProjectionRebuildController controller = CreateController(store, asGlobalAdmin: false, eraseCoordinator: coordinator);
+
+        IActionResult result = await controller.EraseProjectionAsync(
+            Tenant,
+            Projection,
+            new ProjectionEraseRequestBody("party", "aggregate-1", ["slot-1"], "01HX0000000000000000000009"),
+            CancellationToken.None);
+
+        ObjectResult problemResult = result.ShouldBeOfType<ObjectResult>();
+        problemResult.StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
+        ProblemDetails problem = problemResult.Value.ShouldBeOfType<ProblemDetails>();
+        problem.Type.ShouldBe(ProblemTypeUris.Forbidden);
+        problem.Extensions["reasonCode"].ShouldBe(StreamReplayReasonCodes.ForbiddenRole);
+        AssertNoForbiddenLeakage(problem);
+        // Denial-before-resolution: no logical ID is ever resolved for an unauthorized caller.
+        _ = await coordinator.DidNotReceiveWithAnyArgs().EraseAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task EraseProjectionUnsupportedReturnsBadRequest() {
+        IProjectionRebuildCheckpointStore store = Substitute.For<IProjectionRebuildCheckpointStore>();
+        IProjectionEraseCoordinator coordinator = Substitute.For<IProjectionEraseCoordinator>();
+        _ = coordinator.EraseAsync(Arg.Any<ProjectionEraseRequest>(), Arg.Any<CancellationToken>())
+            .Returns(ProjectionEraseResult.Of(ProjectionEraseOutcomeKind.Unsupported, "shared-slot"));
+        AdminProjectionRebuildController controller = CreateController(store, asGlobalAdmin: true, eraseCoordinator: coordinator);
+
+        IActionResult result = await controller.EraseProjectionAsync(
+            Tenant,
+            Projection,
+            new ProjectionEraseRequestBody("party", "aggregate-1", ["slot-1"], "01HX0000000000000000000009"),
+            CancellationToken.None);
+
+        ObjectResult problemResult = result.ShouldBeOfType<ObjectResult>();
+        problemResult.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
+        ProblemDetails problem = problemResult.Value.ShouldBeOfType<ProblemDetails>();
+        problem.Extensions["reasonCode"].ShouldBe("shared-slot");
+    }
+
+    [Theory]
+    [InlineData(ProjectionEraseOutcomeKind.ActiveRebuild)]
+    [InlineData(ProjectionEraseOutcomeKind.Conflict)]
+    [InlineData(ProjectionEraseOutcomeKind.Incomplete)]
+    public async Task EraseProjectionRetryableOutcomesReturnConflictWithRetryAfterHeader(ProjectionEraseOutcomeKind kind) {
+        IProjectionRebuildCheckpointStore store = Substitute.For<IProjectionRebuildCheckpointStore>();
+        IProjectionEraseCoordinator coordinator = Substitute.For<IProjectionEraseCoordinator>();
+        _ = coordinator.EraseAsync(Arg.Any<ProjectionEraseRequest>(), Arg.Any<CancellationToken>())
+            .Returns(ProjectionEraseResult.Of(kind, "erase-conflict"));
+        AdminProjectionRebuildController controller = CreateController(store, asGlobalAdmin: true, eraseCoordinator: coordinator);
+
+        IActionResult result = await controller.EraseProjectionAsync(
+            Tenant,
+            Projection,
+            new ProjectionEraseRequestBody("party", "aggregate-1", ["slot-1"], "01HX0000000000000000000009"),
+            CancellationToken.None);
+
+        ObjectResult problemResult = result.ShouldBeOfType<ObjectResult>();
+        problemResult.StatusCode.ShouldBe(StatusCodes.Status409Conflict);
+        controller.Response.Headers.RetryAfter.ToString().ShouldBe("5");
+    }
+
+    [Theory]
+    [InlineData(ProjectionEraseOutcomeKind.Unknown)]
+    [InlineData(ProjectionEraseOutcomeKind.Canceled)]
+    public async Task EraseProjectionUnavailableOutcomesReturnServiceUnavailable(ProjectionEraseOutcomeKind kind) {
+        IProjectionRebuildCheckpointStore store = Substitute.For<IProjectionRebuildCheckpointStore>();
+        IProjectionEraseCoordinator coordinator = Substitute.For<IProjectionEraseCoordinator>();
+        _ = coordinator.EraseAsync(Arg.Any<ProjectionEraseRequest>(), Arg.Any<CancellationToken>())
+            .Returns(ProjectionEraseResult.Of(kind, "erase-unavailable"));
+        AdminProjectionRebuildController controller = CreateController(store, asGlobalAdmin: true, eraseCoordinator: coordinator);
+
+        IActionResult result = await controller.EraseProjectionAsync(
+            Tenant,
+            Projection,
+            new ProjectionEraseRequestBody("party", "aggregate-1", ["slot-1"], "01HX0000000000000000000009"),
+            CancellationToken.None);
+
+        ObjectResult problemResult = result.ShouldBeOfType<ObjectResult>();
+        problemResult.StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
+        ProblemDetails problem = problemResult.Value.ShouldBeOfType<ProblemDetails>();
+        problem.Extensions["reasonCode"].ShouldBe("erase-unavailable");
+    }
+
+    [Fact]
+    public async Task EraseProjectionDeniedOutcomeReturnsForbidden() {
+        IProjectionRebuildCheckpointStore store = Substitute.For<IProjectionRebuildCheckpointStore>();
+        IProjectionEraseCoordinator coordinator = Substitute.For<IProjectionEraseCoordinator>();
+        _ = coordinator.EraseAsync(Arg.Any<ProjectionEraseRequest>(), Arg.Any<CancellationToken>())
+            .Returns(ProjectionEraseResult.Of(ProjectionEraseOutcomeKind.Denied, "erase-denied"));
+        AdminProjectionRebuildController controller = CreateController(store, asGlobalAdmin: true, eraseCoordinator: coordinator);
+
+        IActionResult result = await controller.EraseProjectionAsync(
+            Tenant,
+            Projection,
+            new ProjectionEraseRequestBody("party", "aggregate-1", ["slot-1"], "01HX0000000000000000000009"),
+            CancellationToken.None);
+
+        ObjectResult problemResult = result.ShouldBeOfType<ObjectResult>();
+        problemResult.StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
+        ProblemDetails problem = problemResult.Value.ShouldBeOfType<ProblemDetails>();
+        problem.Extensions["reasonCode"].ShouldBe("erase-denied");
+    }
+
+    [Fact]
+    public async Task EraseProjectionWithMissingBodyReturnsBadRequest() {
+        IProjectionRebuildCheckpointStore store = Substitute.For<IProjectionRebuildCheckpointStore>();
+        IProjectionEraseCoordinator coordinator = Substitute.For<IProjectionEraseCoordinator>();
+        AdminProjectionRebuildController controller = CreateController(store, asGlobalAdmin: true, eraseCoordinator: coordinator);
+
+        IActionResult result = await controller.EraseProjectionAsync(Tenant, Projection, body: null, CancellationToken.None);
+
+        ObjectResult problemResult = result.ShouldBeOfType<ObjectResult>();
+        problemResult.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
+        ProblemDetails problem = problemResult.Value.ShouldBeOfType<ProblemDetails>();
+        problem.Extensions["reasonCode"].ShouldBe(StreamReplayReasonCodes.MissingRequiredField);
+        _ = await coordinator.DidNotReceiveWithAnyArgs().EraseAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task EraseProjectionWithBlankSlotReturnsBadRequestBeforeCoordinator() {
+        IProjectionRebuildCheckpointStore store = Substitute.For<IProjectionRebuildCheckpointStore>();
+        IProjectionEraseCoordinator coordinator = Substitute.For<IProjectionEraseCoordinator>();
+        AdminProjectionRebuildController controller = CreateController(store, asGlobalAdmin: true, eraseCoordinator: coordinator);
+
+        IActionResult result = await controller.EraseProjectionAsync(
+            Tenant,
+            Projection,
+            new ProjectionEraseRequestBody("party", "aggregate-1", ["   "], "01HX0000000000000000000009"),
+            CancellationToken.None);
+
+        ObjectResult problemResult = result.ShouldBeOfType<ObjectResult>();
+        problemResult.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
+        _ = await coordinator.DidNotReceiveWithAnyArgs().EraseAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task EraseProjectionWithoutRegisteredCoordinatorReturnsServiceUnavailable() {
+        IProjectionRebuildCheckpointStore store = Substitute.For<IProjectionRebuildCheckpointStore>();
+        AdminProjectionRebuildController controller = CreateController(store, asGlobalAdmin: true);
+
+        IActionResult result = await controller.EraseProjectionAsync(
+            Tenant,
+            Projection,
+            new ProjectionEraseRequestBody("party", "aggregate-1", ["slot-1"], "01HX0000000000000000000009"),
+            CancellationToken.None);
+
+        ObjectResult problemResult = result.ShouldBeOfType<ObjectResult>();
+        problemResult.StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
+    }
+
+    [Fact]
+    public async Task EraseProjectionPassesOnlyRouteAndBodyLogicalIdsIntoCoordinatorRequest() {
+        IProjectionRebuildCheckpointStore store = Substitute.For<IProjectionRebuildCheckpointStore>();
+        IProjectionEraseCoordinator coordinator = Substitute.For<IProjectionEraseCoordinator>();
+        ProjectionEraseRequest? captured = null;
+        _ = coordinator.EraseAsync(
+                Arg.Do<ProjectionEraseRequest>(request => captured = request),
+                Arg.Any<CancellationToken>())
+            .Returns(ProjectionEraseResult.Of(ProjectionEraseOutcomeKind.Success));
+        AdminProjectionRebuildController controller = CreateController(store, asGlobalAdmin: true, eraseCoordinator: coordinator);
+
+        _ = await controller.EraseProjectionAsync(
+            Tenant,
+            Projection,
+            new ProjectionEraseRequestBody("party", "aggregate-7", ["slot-a", "slot-b"], "01HX0000000000000000000009"),
+            CancellationToken.None);
+
+        ProjectionEraseRequest capturedRequest = captured.ShouldNotBeNull();
+        capturedRequest.TenantId.ShouldBe(Tenant);
+        capturedRequest.Domain.ShouldBe("party");
+        capturedRequest.AggregateId.ShouldBe("aggregate-7");
+        capturedRequest.ProjectionName.ShouldBe(Projection);
+        capturedRequest.Slots.ShouldBe(["slot-a", "slot-b"]);
+        capturedRequest.OperationId.ShouldBe("01HX0000000000000000000009");
+    }
+
+    [Fact]
+    public void ProjectionEraseRequestBodyExposesOnlyLogicalIdMembers() {
+        IEnumerable<string> memberNames = typeof(ProjectionEraseRequestBody)
+            .GetProperties()
+            .Select(property => property.Name);
+
+        foreach (string name in memberNames) {
+            foreach (string forbidden in new[] { "store", "key", "etag", "physical" }) {
+                name.ShouldNotContain(forbidden, Case.Insensitive);
+            }
+        }
+    }
+
     private static AdminProjectionRebuildController CreateController(
         IProjectionRebuildCheckpointStore store,
         bool asGlobalAdmin,
-        IProjectionRebuildOrchestrator? rebuildOrchestrator = null)
-        => new(store, NullLogger<AdminProjectionRebuildController>.Instance, rebuildOrchestrator) {
+        IProjectionRebuildOrchestrator? rebuildOrchestrator = null,
+        IProjectionEraseCoordinator? eraseCoordinator = null)
+        => new(store, NullLogger<AdminProjectionRebuildController>.Instance, rebuildOrchestrator, eraseCoordinator) {
             ControllerContext = new ControllerContext {
                 HttpContext = new DefaultHttpContext {
                     User = CreatePrincipal(asGlobalAdmin),
