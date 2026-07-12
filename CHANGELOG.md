@@ -1,3 +1,24 @@
+# [3.61.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.60.0...v3.61.0) (2026-07-12)
+
+
+### Bug Fixes
+
+* **client:** guard batch compaction with etags ([acc45f1](https://github.com/Hexalith/Hexalith.EventStore/commit/acc45f14f0b6f56dbfa3fd53c7d38927f35b8848))
+* **docs:** update CI documentation status to ready-for-dev ([7eb975e](https://github.com/Hexalith/Hexalith.EventStore/commit/7eb975e0ea59bde713f514f609f090b1c52c2cba))
+* **server:** complete ProjectionLifecycleActor write-gate (build fix + tests) ([c8bbd38](https://github.com/Hexalith/Hexalith.EventStore/commit/c8bbd3845ce0f28cea1f33b9bf5a7b3c3d0f5461))
+
+
+### Features
+
+* **docs:** update documentation with commit message guidelines and release package inventory ([d0abf9e](https://github.com/Hexalith/Hexalith.EventStore/commit/d0abf9e0591dfb8450fcf18c7ef9958ac3b40fa3))
+* refactor projection erasure ([322e319](https://github.com/Hexalith/Hexalith.EventStore/commit/322e3193d22295153c74d16baee32a7e74f6d72a))
+* **server:** authenticated GlobalAdministrator projection erase endpoint ([453708e](https://github.com/Hexalith/Hexalith.EventStore/commit/453708ed684335f9194897f4fde49815681981a4))
+* **server:** coordinated resumable projection eraser ([ea0928e](https://github.com/Hexalith/Hexalith.EventStore/commit/ea0928e5ed4d9008a43cfb2877f09fe6ee5ae32a))
+* **server:** enforce command identity matching ([298e191](https://github.com/Hexalith/Hexalith.EventStore/commit/298e191adcf9649cd8d05bae88a1cf41cf4e4137))
+* **server:** harden command idempotency ([ddccb9b](https://github.com/Hexalith/Hexalith.EventStore/commit/ddccb9b16fbf6ebcdf23e0129ec57f9de0b7e1ac))
+* **server:** persist committed event range for resume integrity ([6633465](https://github.com/Hexalith/Hexalith.EventStore/commit/66334657ccd748cf51a6eb7c17edeac0b49c6d63))
+* **server:** projection-scoped delivery checkpoint and rebuild-row erase capability ([940e8ac](https://github.com/Hexalith/Hexalith.EventStore/commit/940e8acb451a56d2761f26b116414bfe0e5e0e4d))
+
 # [3.60.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.59.0...v3.60.0) (2026-07-12)
 
 
