@@ -62,4 +62,21 @@ internal interface IProjectionDeliveryCheckpointStore {
     /// <see langword="false"/> when a present checkpoint has a different ETag.
     /// </returns>
     Task<bool> TryEraseAsync(AggregateIdentity identity, string projectionName, string etag, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Reads the current ETag of the projection-scoped delivery checkpoint row for read-back classification.
+    /// </summary>
+    /// <remarks>
+    /// This is a raw ETag read of the projection-scoped key only: it never triggers the lazy legacy
+    /// migration performed by <see cref="ReadDeliveredSequenceAsync"/>, and it does not fall back to the
+    /// legacy aggregate-wide checkpoint. The coordinated eraser passes the returned ETag straight to
+    /// <see cref="TryEraseAsync"/> for a first-write-wins conditional erase.
+    /// </remarks>
+    /// <param name="identity">The aggregate identity.</param>
+    /// <param name="projectionName">The projection name (the domain-service <c>ProjectionType</c>).</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>
+    /// <c>(true, etag)</c> when the projection-scoped checkpoint is present; <c>(false, "")</c> when absent.
+    /// </returns>
+    Task<(bool Present, string Etag)> TryReadDeliveryCheckpointEtagAsync(AggregateIdentity identity, string projectionName, CancellationToken cancellationToken = default);
 }

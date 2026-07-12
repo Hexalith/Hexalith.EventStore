@@ -127,6 +127,24 @@ public sealed class DaprReadModelStore : IReadModelStore, IReadModelBatchStore, 
     }
 
     /// <inheritdoc/>
+    public async Task<(bool Present, string Etag)> TryReadEtagAsync(
+        string storeName,
+        string key,
+        CancellationToken cancellationToken = default) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(storeName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+
+        // Mirror GetAsync's marker-gated visibility read so the returned ETag matches the key that
+        // TryEraseAsync deletes (type-agnostic: raw bytes only, never a TValue deserialization). A
+        // committed-delete envelope reports absent, exactly as the visible value would.
+        var accessor = new DaprReadModelBatchStateAccessor(_daprClient, storeName);
+        RawStateEntry visible = await ReadModelBatchProtocol
+            .ResolveVisibleAsync(accessor, key, cancellationToken)
+            .ConfigureAwait(false);
+        return visible.Exists ? (true, visible.ETag) : (false, string.Empty);
+    }
+
+    /// <inheritdoc/>
     public async Task<ReadModelBatchResult> ExecuteAsync(
         ReadModelBatch batch,
         CancellationToken cancellationToken = default) {

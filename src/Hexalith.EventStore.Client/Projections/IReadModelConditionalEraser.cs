@@ -34,4 +34,24 @@ public interface IReadModelConditionalEraser {
         string key,
         string etag,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Reads the current ETag of a read-model value without deserializing (or knowing) its value type.
+    /// </summary>
+    /// <remarks>
+    /// The returned ETag mirrors the store's own visibility/ETag read, so it can be passed straight back to
+    /// <see cref="TryEraseAsync"/> for a first-write-wins conditional erase and read-back classification. The
+    /// coordinated eraser uses this to detect an absent target (skip), a matching target (erase), or a newer
+    /// concurrent value (conflict) without disclosing the stored value.
+    /// </remarks>
+    /// <param name="storeName">The DAPR state-store component name.</param>
+    /// <param name="key">The state key.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>
+    /// <c>(true, etag)</c> when a value is present; <c>(false, "")</c> when the value is absent.
+    /// </returns>
+    Task<(bool Present, string Etag)> TryReadEtagAsync(
+        string storeName,
+        string key,
+        CancellationToken cancellationToken = default);
 }

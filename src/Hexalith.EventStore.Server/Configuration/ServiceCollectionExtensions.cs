@@ -63,6 +63,7 @@ public static class EventStoreServerServiceCollectionExtensions {
         services.TryAddSingleton<IProjectionRebuildCheckpointStore, ProjectionRebuildCheckpointStore>();
         services.TryAddSingleton<IProjectionRebuildCheckpointEraser>(static sp =>
             (IProjectionRebuildCheckpointEraser)sp.GetRequiredService<IProjectionRebuildCheckpointStore>());
+        services.TryAddSingleton<IProjectionEraseCoordinator, ProjectionEraseCoordinator>();
         services.TryAddSingleton<IProjectionPollerTickSource, PeriodicProjectionPollerTickSource>();
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<IValidateOptions<IdempotencyRetentionOptions>, ValidateIdempotencyRetentionOptions>();

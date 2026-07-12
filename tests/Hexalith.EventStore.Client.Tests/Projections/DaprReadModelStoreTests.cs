@@ -55,4 +55,43 @@ public class DaprReadModelStoreTests {
         await Should.ThrowAsync<OperationCanceledException>(
             () => store.TryEraseAsync(StoreName, "read-model:1", "etag-1", source.Token));
     }
+
+    [Fact]
+    public async Task TryReadEtagAsync_PresentValue_ReturnsPresentTrueWithEtagUsableForErase() {
+        var daprClient = new RecordingDaprClient();
+        daprClient.SeedByteStore("read-model:1", "{\"value\":42}"u8.ToArray());
+        var store = new DaprReadModelStore(daprClient);
+
+        (bool present, string etag) = await store.TryReadEtagAsync(StoreName, "read-model:1");
+
+        present.ShouldBeTrue();
+        etag.ShouldNotBeNullOrEmpty();
+
+        // The ETag mirrors the store's visibility read, so it drives a first-write-wins erase.
+        bool erased = await store.TryEraseAsync(StoreName, "read-model:1", etag);
+        erased.ShouldBeTrue();
+        daprClient.ByteStoreContains("read-model:1").ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task TryReadEtagAsync_AbsentValue_ReturnsPresentFalseWithEmptyEtag() {
+        var daprClient = new RecordingDaprClient();
+        var store = new DaprReadModelStore(daprClient);
+
+        (bool present, string etag) = await store.TryReadEtagAsync(StoreName, "missing");
+
+        present.ShouldBeFalse();
+        etag.ShouldBe(string.Empty);
+    }
+
+    [Fact]
+    public async Task TryReadEtagAsync_Cancelled_ThrowsOperationCanceledException() {
+        var daprClient = new RecordingDaprClient();
+        var store = new DaprReadModelStore(daprClient);
+        using var source = new CancellationTokenSource();
+        await source.CancelAsync();
+
+        await Should.ThrowAsync<OperationCanceledException>(
+            () => store.TryReadEtagAsync(StoreName, "read-model:1", source.Token));
+    }
 }

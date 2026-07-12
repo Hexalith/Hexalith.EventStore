@@ -157,6 +157,21 @@ public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelBatchSto
     }
 
     /// <inheritdoc/>
+    public Task<(bool Present, string Etag)> TryReadEtagAsync(
+        string storeName,
+        string key,
+        CancellationToken cancellationToken = default) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(storeName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        // Read the raw backing entry so the returned ETag matches the one TryEraseAsync compares against.
+        return _entries.TryGetValue(Compose(storeName, key), out Entry? entry)
+            ? Task.FromResult((true, entry.ETag))
+            : Task.FromResult((false, string.Empty));
+    }
+
+    /// <inheritdoc/>
     public async Task<ReadModelBatchResult> ExecuteAsync(
         ReadModelBatch batch,
         CancellationToken cancellationToken = default) {

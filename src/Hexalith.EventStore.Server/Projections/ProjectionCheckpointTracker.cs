@@ -338,6 +338,24 @@ public sealed partial class ProjectionCheckpointTracker(
             .ConfigureAwait(false);
     }
 
+    /// <inheritdoc/>
+    public async Task<(bool Present, string Etag)> TryReadDeliveryCheckpointEtagAsync(
+        AggregateIdentity identity,
+        string projectionName,
+        CancellationToken cancellationToken = default) {
+        ValidateIdentity(identity);
+        ValidateProjectionName(projectionName);
+
+        // Raw ETag read of the projection-scoped key ONLY: no lazy legacy migration, no legacy fallback.
+        (ProjectionCheckpoint? value, string etag) = await daprClient
+            .GetStateAndETagAsync<ProjectionCheckpoint>(
+                options.Value.CheckpointStateStoreName,
+                GetProjectionScopedStateKey(identity, projectionName),
+                cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+        return (value is not null, etag);
+    }
+
     private async Task MarkMigratedAsync(AggregateIdentity identity, string projectionName, CancellationToken cancellationToken) =>
         await daprClient
             .SaveStateAsync(

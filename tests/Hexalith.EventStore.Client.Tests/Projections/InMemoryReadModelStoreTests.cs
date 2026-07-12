@@ -157,4 +157,41 @@ public class InMemoryReadModelStoreTests {
         await Should.ThrowAsync<OperationCanceledException>(
             () => store.TryEraseAsync(StoreName, "k", string.Empty, source.Token));
     }
+
+    [Fact]
+    public async Task TryReadEtagAsync_PresentValue_ReturnsPresentTrueWithEtagUsableForErase() {
+        var store = new InMemoryReadModelStore();
+        await store.SaveAsync(StoreName, "k", new Model { Value = 1 });
+        ReadModelEntry<Model> entry = await store.GetAsync<Model>(StoreName, "k");
+
+        (bool present, string etag) = await store.TryReadEtagAsync(StoreName, "k");
+
+        present.ShouldBeTrue();
+        etag.ShouldBe(entry.ETag);
+
+        // Parity with DAPR: the read ETag drives a first-write-wins erase to completion.
+        bool erased = await store.TryEraseAsync(StoreName, "k", etag);
+        erased.ShouldBeTrue();
+        store.Snapshot<Model>(StoreName, "k").ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task TryReadEtagAsync_AbsentValue_ReturnsPresentFalseWithEmptyEtag() {
+        var store = new InMemoryReadModelStore();
+
+        (bool present, string etag) = await store.TryReadEtagAsync(StoreName, "missing");
+
+        present.ShouldBeFalse();
+        etag.ShouldBe(string.Empty);
+    }
+
+    [Fact]
+    public async Task TryReadEtagAsync_Cancelled_ThrowsOperationCanceledException() {
+        var store = new InMemoryReadModelStore();
+        using var source = new CancellationTokenSource();
+        await source.CancelAsync();
+
+        await Should.ThrowAsync<OperationCanceledException>(
+            () => store.TryReadEtagAsync(StoreName, "k", source.Token));
+    }
 }
