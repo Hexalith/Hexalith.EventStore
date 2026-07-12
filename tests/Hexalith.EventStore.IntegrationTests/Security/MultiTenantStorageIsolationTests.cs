@@ -142,22 +142,28 @@ public class MultiTenantStorageIsolationTests {
         var idempotencyA = new IdempotencyChecker(stateManagerA, Substitute.For<ILogger<IdempotencyChecker>>());
         var idempotencyB = new IdempotencyChecker(stateManagerB, Substitute.For<ILogger<IdempotencyChecker>>());
 
-        string causationId = "shared-causation-id";
+        string messageId = "shared-message-id";
+        var commandIdentity = new CommandProcessingIdentity(messageId, messageId, "CreateOrder");
         var result = new CommandProcessingResult(true, CorrelationId: "corr-001");
 
         // Act - record idempotency in tenant-a's actor
-        await idempotencyA.RecordAsync(causationId, result);
+        await idempotencyA.RecordAsync(
+            commandIdentity,
+            result,
+            DateTimeOffset.UtcNow.AddHours(24),
+            IdempotencyRecordDisposition.Terminal);
         await stateManagerA.SaveStateAsync();
 
         // Check from tenant-b's actor
-        CommandProcessingResult? checkFromB = await idempotencyB.CheckAsync(causationId);
+        IdempotencyCheckResult checkFromB = await idempotencyB.CheckAsync(commandIdentity);
 
         // Assert - tenant-b cannot see tenant-a's idempotency record
-        checkFromB.ShouldBeNull();
+        checkFromB.Outcome.ShouldBe(IdempotencyCheckOutcome.Miss);
 
         // But tenant-a can see its own record
-        CommandProcessingResult? checkFromA = await idempotencyA.CheckAsync(causationId);
-        _ = checkFromA.ShouldNotBeNull();
+        IdempotencyCheckResult checkFromA = await idempotencyA.CheckAsync(commandIdentity);
+        checkFromA.Outcome.ShouldBe(IdempotencyCheckOutcome.ExactTerminalDuplicate);
+        _ = checkFromA.Result.ShouldNotBeNull();
     }
 
     // --- 3.5: Full pipeline test -- submit commands for two tenants, verify complete key isolation ---

@@ -34,12 +34,14 @@ public class StateMachineIntegrationTests {
     private static CommandEnvelope CreateTestEnvelope(
         string tenantId = "test-tenant",
         string? correlationId = null,
-        string? causationId = null) => new(
-        MessageId: Guid.NewGuid().ToString(),
+        string? causationId = null,
+        string messageId = "msg-sm-test",
+        string commandType = "CreateOrder") => new(
+        MessageId: messageId,
         TenantId: tenantId,
         Domain: "test-domain",
         AggregateId: "agg-001",
-        CommandType: "CreateOrder",
+        CommandType: commandType,
         Payload: [1, 2, 3],
         CorrelationId: correlationId ?? "corr-sm-test",
         CausationId: causationId,
@@ -230,7 +232,8 @@ public class StateMachineIntegrationTests {
 
         var existingPipeline = new PipelineState(
             "corr-sm-test", CommandStatus.EventsStored, "CreateOrder",
-            DateTimeOffset.UtcNow.AddSeconds(-5), EventCount: 2, RejectionEventType: null);
+            DateTimeOffset.UtcNow.AddSeconds(-5), EventCount: 2, RejectionEventType: null,
+            MessageId: "msg-sm-test", CausationId: "msg-sm-test");
 
         _ = stateManager.TryGetStateAsync<PipelineState>(
             Arg.Is<string>(s => s.Contains(":pipeline:corr-sm-test")),
@@ -336,7 +339,8 @@ public class StateMachineIntegrationTests {
         const string resultPayload = "{\"result\":{\"applied\":[\"Updated person details\"]},\"party\":{\"id\":\"agg-001\"}}";
         var existingPipeline = new PipelineState(
             "corr-sm-test", CommandStatus.EventsStored, "CreateOrder",
-            DateTimeOffset.UtcNow.AddSeconds(-5), EventCount: 2, RejectionEventType: null, ResultPayload: resultPayload);
+            DateTimeOffset.UtcNow.AddSeconds(-5), EventCount: 2, RejectionEventType: null, ResultPayload: resultPayload,
+            MessageId: "msg-sm-test", CausationId: "msg-sm-test");
 
         _ = stateManager.TryGetStateAsync<PipelineState>(
             Arg.Is<string>(s => s.Contains(":pipeline:corr-sm-test")),
@@ -469,7 +473,8 @@ public class StateMachineIntegrationTests {
 
         var existingPipeline = new PipelineState(
             "corr-sm-test", CommandStatus.Processing, "CreateOrder",
-            DateTimeOffset.UtcNow.AddSeconds(-5), EventCount: null, RejectionEventType: null);
+            DateTimeOffset.UtcNow.AddSeconds(-5), EventCount: null, RejectionEventType: null,
+            MessageId: "msg-sm-test", CausationId: "msg-sm-test");
 
         _ = stateManager.TryGetStateAsync<PipelineState>(
             Arg.Is<string>(s => s.Contains(":pipeline:corr-sm-test")),
@@ -499,6 +504,175 @@ public class StateMachineIntegrationTests {
 
         await stateManager.DidNotReceive().SetStateAsync(PendingCommandCountKey, 2, Arg.Any<CancellationToken>());
         await stateManager.Received().SetStateAsync(PendingCommandCountKey, 0, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ProcessCommand_CorrelationCollisionAtCommittedCheckpoint_HandsOffOldMessageAndExecutesNewCommand()
+    {
+        (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, IEventPublisher eventPublisher) = CreateActor();
+        var existingPipeline = new PipelineState(
+            "corr-sm-test",
+            CommandStatus.EventsStored,
+            "CreateOrder",
+            DateTimeOffset.UtcNow.AddSeconds(-5),
+            EventCount: 2,
+            RejectionEventType: null,
+            MessageId: "old-message",
+            CausationId: "old-cause");
+        _ = stateManager.TryGetStateAsync<PipelineState>(
+            Arg.Is<string>(s => s.Contains(":pipeline:corr-sm-test")),
+            Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<PipelineState>(true, existingPipeline));
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(
+            "test-tenant:test-domain:agg-001:metadata",
+            Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(
+                true,
+                new AggregateMetadata(2, DateTimeOffset.UtcNow, null)));
+        for (int sequence = 1; sequence <= 2; sequence++)
+        {
+            int persistedSequence = sequence;
+            _ = stateManager.TryGetStateAsync<EventEnvelope>(
+                $"test-tenant:test-domain:agg-001:events:{persistedSequence}",
+                Arg.Any<CancellationToken>())
+                .Returns(new ConditionalValue<EventEnvelope>(
+                    true,
+                    new EventEnvelope(
+                        "old-message",
+                        "agg-001",
+                        "test-aggregate",
+                        "test-tenant",
+                        "test-domain",
+                        persistedSequence,
+                        0,
+                        DateTimeOffset.UtcNow,
+                        "corr-sm-test",
+                        "old-cause",
+                        "system",
+                        "1.0.0",
+                        "TestEvent",
+                        1,
+                        "json",
+                        [1],
+                        null)));
+        }
+        CommandEnvelope envelope = CreateTestEnvelope(messageId: "new-message", causationId: "new-cause");
+
+        CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
+
+        result.ErrorMessage.ShouldBeNull();
+        result.Accepted.ShouldBeTrue();
+        _ = await invoker.Received(1).InvokeAsync(envelope, Arg.Any<object?>());
+        _ = await eventPublisher.DidNotReceive().PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            "corr-sm-test",
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>());
+        await stateManager.Received(1).SetStateAsync(
+            "drain:old-message",
+            Arg.Is<UnpublishedEventsRecord>(record =>
+                record.MessageId == "old-message"
+                && record.CorrelationId == "corr-sm-test"
+                && record.StartSequence == 1
+                && record.EndSequence == 2
+                && record.EventCount == 2),
+            Arg.Any<CancellationToken>());
+        _ = await stateManager.Received().TryRemoveStateAsync(
+            Arg.Is<string>(s => s.Contains(":pipeline:corr-sm-test")),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ProcessCommand_LegacyCommittedCheckpoint_ReturnsIdentityConflictWithoutMutation()
+    {
+        (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, IEventPublisher eventPublisher) = CreateActor();
+        var existingPipeline = new PipelineState(
+            "corr-sm-test",
+            CommandStatus.EventsStored,
+            "CreateOrder",
+            DateTimeOffset.UtcNow.AddSeconds(-5),
+            EventCount: 2,
+            RejectionEventType: null);
+        _ = stateManager.TryGetStateAsync<PipelineState>(
+            Arg.Is<string>(s => s.Contains(":pipeline:corr-sm-test")),
+            Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<PipelineState>(true, existingPipeline));
+
+        CommandProcessingResult result = await actor.ProcessCommandAsync(CreateTestEnvelope());
+
+        result.Accepted.ShouldBeFalse();
+        result.ErrorMessage.ShouldBe("command_identity_conflict");
+        _ = await invoker.DidNotReceive().InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>());
+        _ = await eventPublisher.DidNotReceive().PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>());
+        _ = await stateManager.DidNotReceive().TryRemoveStateAsync(
+            Arg.Is<string>(s => s.Contains(":pipeline:")),
+            Arg.Any<CancellationToken>());
+        await stateManager.DidNotReceive().SetStateAsync(
+            Arg.Is<string>(s => s.StartsWith("drain:", StringComparison.Ordinal)),
+            Arg.Any<UnpublishedEventsRecord>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ProcessCommand_SameMessageDifferentCommandTypeCheckpoint_ReturnsIdentityConflict()
+    {
+        (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, _) = CreateActor();
+        var existingPipeline = new PipelineState(
+            "corr-sm-test",
+            CommandStatus.EventsStored,
+            "DifferentCommand",
+            DateTimeOffset.UtcNow.AddSeconds(-5),
+            EventCount: 1,
+            RejectionEventType: null,
+            MessageId: "msg-sm-test",
+            CausationId: "msg-sm-test");
+        _ = stateManager.TryGetStateAsync<PipelineState>(
+            Arg.Is<string>(s => s.Contains(":pipeline:corr-sm-test")),
+            Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<PipelineState>(true, existingPipeline));
+
+        CommandProcessingResult result = await actor.ProcessCommandAsync(CreateTestEnvelope());
+
+        result.Accepted.ShouldBeFalse();
+        result.ErrorMessage.ShouldBe("command_identity_conflict");
+        _ = await invoker.DidNotReceive().InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>());
+        _ = await stateManager.DidNotReceive().TryRemoveStateAsync(
+            Arg.Is<string>(s => s.Contains(":pipeline:")),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ProcessCommand_SameMessageDifferentCausationCheckpoint_ReturnsIdentityConflict()
+    {
+        (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, _) = CreateActor();
+        var existingPipeline = new PipelineState(
+            "corr-sm-test",
+            CommandStatus.EventsStored,
+            "CreateOrder",
+            DateTimeOffset.UtcNow.AddSeconds(-5),
+            EventCount: 1,
+            RejectionEventType: null,
+            MessageId: "msg-sm-test",
+            CausationId: "different-cause");
+        _ = stateManager.TryGetStateAsync<PipelineState>(
+            Arg.Is<string>(s => s.Contains(":pipeline:corr-sm-test")),
+            Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<PipelineState>(true, existingPipeline));
+
+        CommandProcessingResult result = await actor.ProcessCommandAsync(CreateTestEnvelope());
+
+        result.Accepted.ShouldBeFalse();
+        result.ErrorMessage.ShouldBe("command_identity_conflict");
+        _ = await invoker.DidNotReceive().InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>());
+        _ = await stateManager.DidNotReceive().TryRemoveStateAsync(
+            Arg.Is<string>(s => s.Contains(":pipeline:")),
+            Arg.Any<CancellationToken>());
     }
 
     // --- Task 8.6: Advisory status write failure ---

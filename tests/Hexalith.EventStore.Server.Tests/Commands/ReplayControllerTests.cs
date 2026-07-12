@@ -6,6 +6,7 @@ using Hexalith.EventStore.Controllers;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.Models;
+using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 using Hexalith.EventStore.Testing.Fakes;
 
@@ -24,6 +25,7 @@ namespace Hexalith.EventStore.Server.Tests.Commands;
 public class ReplayControllerTests {
     private readonly InMemoryCommandArchiveStore _archiveStore = new();
     private readonly InMemoryCommandStatusStore _statusStore = new();
+    private readonly InMemoryCommandCorrelationIndex _correlationIndex = new();
     private readonly IMediator _mediator = Substitute.For<IMediator>();
 
     private ReplayController CreateController(ClaimsPrincipal? user = null) {
@@ -31,7 +33,8 @@ public class ReplayControllerTests {
             _archiveStore,
             _statusStore,
             _mediator,
-            NullLogger<ReplayController>.Instance);
+            NullLogger<ReplayController>.Instance,
+            _correlationIndex);
 
         var httpContext = new DefaultHttpContext {
             User = user ?? CreateUserWithTenants("tenant-a"),
@@ -40,6 +43,31 @@ public class ReplayControllerTests {
         controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
 
         return controller;
+    }
+
+    private async Task SeedMessagePrimaryCommand(
+        string tenant,
+        string messageId,
+        string correlationId,
+        CommandStatus status) {
+        var archived = new ArchivedCommand(
+            Tenant: tenant,
+            Domain: "orders",
+            AggregateId: "agg-001",
+            CommandType: "CreateOrder",
+            Payload: [1, 2, 3],
+            Extensions: null,
+            OriginalTimestamp: DateTimeOffset.UtcNow,
+            MessageId: messageId,
+            CorrelationId: correlationId);
+
+        await _archiveStore.WriteCommandAsync(tenant, messageId, archived, CancellationToken.None);
+        await _statusStore.WriteStatusAsync(
+            tenant,
+            messageId,
+            new CommandStatusRecord(status, DateTimeOffset.UtcNow, "agg-001", null, null, null, null, messageId, correlationId),
+            CancellationToken.None);
+        _ = await _correlationIndex.AddAsync(tenant, correlationId, messageId);
     }
 
     private static ClaimsPrincipal CreateUserWithTenants(params string[] tenants) {
@@ -93,6 +121,104 @@ public class ReplayControllerTests {
         response.IsReplay.ShouldBeTrue();
         response.PreviousStatus.ShouldBe("Rejected");
         response.OriginalCorrelationId.ShouldBe(correlationId);
+        string responseMessageId = response.MessageId.ShouldNotBeNull();
+        responseMessageId.ShouldNotBeNullOrWhiteSpace();
+        CorrelationIdMiddleware.IsValidIdentifier(responseMessageId).ShouldBeTrue();
+        responseMessageId.ShouldNotBe(response.CorrelationId);
+    }
+
+    [Fact]
+    public async Task Replay_MessagePrimary_UsesNewMessageIdForResponseAndLocation() {
+        const string originalMessageId = "01ORIGINALMESSAGE00000000001";
+        const string originalCorrelationId = "01ORIGINALCORRELATION000001";
+        await SeedMessagePrimaryCommand("tenant-a", originalMessageId, originalCorrelationId, CommandStatus.Rejected);
+        SubmitCommand? submitted = null;
+        _ = _mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => {
+                submitted = callInfo.Arg<SubmitCommand>();
+                return new SubmitCommandResult(submitted.CorrelationId, MessageId: submitted.MessageId);
+            });
+        ReplayController controller = CreateController();
+        controller.Request.Scheme = "https";
+        controller.Request.Host = new HostString("gateway.example");
+
+        IActionResult result = await controller.Replay(originalMessageId, CancellationToken.None);
+
+        AcceptedResult accepted = result.ShouldBeOfType<AcceptedResult>();
+        ReplayCommandResponse response = accepted.Value.ShouldBeOfType<ReplayCommandResponse>();
+        SubmitCommand replay = submitted.ShouldNotBeNull();
+        response.MessageId.ShouldBe(replay.MessageId);
+        response.OriginalMessageId.ShouldBe(originalMessageId);
+        response.CorrelationId.ShouldBe(replay.CorrelationId);
+        response.OriginalCorrelationId.ShouldBe(originalCorrelationId);
+        response.MessageId.ShouldNotBe(response.CorrelationId);
+        response.MessageId.ShouldNotBe(originalMessageId);
+        controller.Response.Headers.Location.ToString().ShouldBe(
+            $"https://gateway.example/api/v1/commands/status/{response.MessageId}");
+    }
+
+    [Fact]
+    public async Task Replay_UniqueCorrelationCompatibility_ResolvesMessagePrimaryArchive() {
+        const string originalMessageId = "01ORIGINALMESSAGE00000000002";
+        const string originalCorrelationId = "01ORIGINALCORRELATION000002";
+        await SeedMessagePrimaryCommand("tenant-a", originalMessageId, originalCorrelationId, CommandStatus.Rejected);
+        _ = _mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => new SubmitCommandResult(
+                callInfo.Arg<SubmitCommand>().CorrelationId,
+                MessageId: callInfo.Arg<SubmitCommand>().MessageId));
+        ReplayController controller = CreateController();
+
+        IActionResult result = await controller.Replay(originalCorrelationId, CancellationToken.None);
+
+        ReplayCommandResponse response = result.ShouldBeOfType<AcceptedResult>()
+            .Value.ShouldBeOfType<ReplayCommandResponse>();
+        response.OriginalMessageId.ShouldBe(originalMessageId);
+        response.OriginalCorrelationId.ShouldBe(originalCorrelationId);
+    }
+
+    [Fact]
+    public async Task Replay_AmbiguousCorrelation_ReturnsSupportSafe409() {
+        const string correlationId = "01AMBIGUOUSREPLAY0000000001";
+        _ = await _correlationIndex.AddAsync("tenant-a", correlationId, "01MESSAGE000000000000000011");
+        _ = await _correlationIndex.AddAsync("tenant-a", correlationId, "01MESSAGE000000000000000012");
+        ReplayController controller = CreateController();
+
+        IActionResult result = await controller.Replay(correlationId, CancellationToken.None);
+
+        ObjectResult conflict = result.ShouldBeOfType<ObjectResult>();
+        conflict.StatusCode.ShouldBe(StatusCodes.Status409Conflict);
+        ProblemDetails problem = conflict.Value.ShouldBeOfType<ProblemDetails>();
+        problem.Type.ShouldBe(ProblemTypeUris.CommandCorrelationAmbiguous);
+        problem.Detail.ShouldContain("MessageId");
+        problem.Detail.ShouldNotContain("01MESSAGE000000000000000011");
+        _ = await _mediator.DidNotReceive().Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Replay_AuthorizedTenantOnly_DoesNotProbeOtherTenantArchiveOrIndex() {
+        ICommandArchiveStore archiveStore = Substitute.For<ICommandArchiveStore>();
+        ICommandStatusStore statusStore = Substitute.For<ICommandStatusStore>();
+        ICommandCorrelationIndex index = Substitute.For<ICommandCorrelationIndex>();
+        _ = index.ResolveAsync("tenant-a", Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new CommandCorrelationResolution(CommandCorrelationResolutionOutcome.NotFound));
+        var controller = new ReplayController(
+            archiveStore,
+            statusStore,
+            _mediator,
+            NullLogger<ReplayController>.Instance,
+            index) {
+            ControllerContext = new ControllerContext {
+                HttpContext = new DefaultHttpContext { User = CreateUserWithTenants("tenant-a") },
+            },
+        };
+        const string trackingId = "01AUTHORIZEDLOOKUP0000000001";
+
+        _ = await controller.Replay(trackingId, CancellationToken.None);
+
+        _ = await archiveStore.Received(1).ReadCommandAsync("tenant-a", trackingId, Arg.Any<CancellationToken>());
+        _ = await index.Received(1).ResolveAsync("tenant-a", trackingId, Arg.Any<CancellationToken>());
+        _ = await archiveStore.DidNotReceive().ReadCommandAsync("tenant-secret", Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _ = await index.DidNotReceive().ResolveAsync("tenant-secret", Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

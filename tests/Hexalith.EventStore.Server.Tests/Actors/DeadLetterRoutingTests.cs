@@ -181,6 +181,49 @@ public class DeadLetterRoutingTests {
     }
 
     [Fact]
+    public async Task ProcessCommand_DomainServiceInvocationFails_DoesNotCacheTransientResult()
+    {
+        (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker, _) = CreateActorWithMockState();
+        ConfigureNoDuplicate(stateManager);
+        CommandEnvelope envelope = CreateTestEnvelope();
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+            .ThrowsAsync(new HttpRequestException("Domain service unavailable"));
+
+        CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
+
+        result.Accepted.ShouldBeFalse();
+        await stateManager.DidNotReceive().SetStateAsync(
+            $"idempotency:{envelope.MessageId}",
+            Arg.Any<IdempotencyRecord>(),
+            Arg.Any<CancellationToken>());
+        await stateManager.Received().ClearCacheAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ProcessCommand_DomainServiceInvocationFails_SameMessageCanRetrySuccessfully()
+    {
+        (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker, _) = CreateActorWithMockState();
+        ConfigureNoDuplicate(stateManager);
+        CommandEnvelope envelope = CreateTestEnvelope();
+        int invocationCount = 0;
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+            .Returns(_ =>
+            {
+                invocationCount++;
+                return invocationCount == 1
+                    ? Task.FromException<DomainResult>(new HttpRequestException("Domain service unavailable"))
+                    : Task.FromResult(DomainResult.NoOp());
+            });
+
+        CommandProcessingResult first = await actor.ProcessCommandAsync(envelope);
+        CommandProcessingResult retry = await actor.ProcessCommandAsync(envelope);
+
+        first.Accepted.ShouldBeFalse();
+        retry.Accepted.ShouldBeTrue();
+        _ = await invoker.Received(2).InvokeAsync(envelope, Arg.Any<object?>());
+    }
+
+    [Fact]
     public async Task ProcessCommand_StateRehydrationFails_DeadLetterPublished() {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, _, _, IDeadLetterPublisher deadLetterPublisher) = CreateActorWithMockState();

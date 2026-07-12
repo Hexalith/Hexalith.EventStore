@@ -20,4 +20,7 @@ public record SubmitCommand(
 /// <summary>
 /// Result of processing a <see cref="SubmitCommand"/>.
 /// </summary>
-public record SubmitCommandResult(string CorrelationId, string? ResultPayload = null);
+public record SubmitCommandResult(
+    string CorrelationId,
+    string? ResultPayload = null,
+    string? MessageId = null);

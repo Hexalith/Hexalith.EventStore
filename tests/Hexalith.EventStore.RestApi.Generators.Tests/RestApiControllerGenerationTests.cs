@@ -62,7 +62,8 @@ public sealed class RestApiControllerGenerationTests
         source.ShouldContain("Route value 'counterId' does not match the command body.");
         source.ShouldContain("new SubmitCommandRequest(");
         source.ShouldContain("Response.Headers[\"Retry-After\"] = \"1\";");
-        source.ShouldContain("statusLocationBuilder.TryBuild(__hexalithResponse.CorrelationId, out string? __hexalithStatusLocation)");
+        source.ShouldContain("string __hexalithStatusKey = __hexalithResponse.MessageId ?? __hexalithResponse.CorrelationId;");
+        source.ShouldContain("statusLocationBuilder.TryBuild(__hexalithStatusKey, out string? __hexalithStatusLocation)");
         source.ShouldContain("Response.Headers[\"Location\"] = __hexalithStatusLocation;");
         source.ShouldNotContain("\"/api/v1/commands/status/\"");
         source.ShouldContain("[FromQuery(Name = \"page\")]");
@@ -515,7 +516,7 @@ public sealed class RestApiControllerGenerationTests
         source.ShouldContain("body.AggregateId");
         source.ShouldContain(".SubmitCommandAsync(__hexalithRequest, cancellationToken)");
         source.ShouldContain("Response.Headers[\"Retry-After\"] = \"1\";");
-        source.ShouldContain("statusLocationBuilder.TryBuild(__hexalithResponse.CorrelationId, out");
+        source.ShouldContain("statusLocationBuilder.TryBuild(__hexalithStatusKey, out");
         source.ShouldNotContain("\"/api/v1/commands/status/\"");
         source.ShouldContain("StatusCodes.Status202Accepted");
         source.ShouldContain("ConfigureAwait(false)");

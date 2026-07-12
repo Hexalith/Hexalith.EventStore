@@ -24,9 +24,10 @@ namespace Hexalith.EventStore.Controllers;
 [Tags("Commands")]
 public class CommandStatusController(
     ICommandStatusStore statusStore,
-    ILogger<CommandStatusController> logger) : ControllerBase {
+    ILogger<CommandStatusController> logger,
+    ICommandCorrelationIndex? correlationIndex = null) : ControllerBase {
     /// <summary>
-    /// Gets the current processing status of a command by correlation ID.
+    /// Gets the current processing status of a command by message ID, with bounded correlation compatibility.
     /// </summary>
     /// <remarks>
     /// Tenant-scoped: only returns status for the authenticated user's authorized tenants (SEC-3).
@@ -49,41 +50,41 @@ public class CommandStatusController(
     /// the consumer should continue polling with the Retry-After interval.
     /// </remarks>
     /// <response code="200">Command status found. See response body for current state.</response>
-    /// <response code="400">Bad request. Invalid correlation ID format.</response>
+    /// <response code="400">Bad request. Invalid message or correlation identifier format.</response>
     /// <response code="401">Authentication required.</response>
     /// <response code="403">Forbidden. No tenant authorization claims found.</response>
-    /// <response code="404">No command status found for the given correlation ID.</response>
+    /// <response code="404">No command status found for the given message or correlation identifier.</response>
     /// <response code="429">Rate limit exceeded. Retry after the Retry-After interval.</response>
-    [HttpGet("{correlationId}")]
+    [HttpGet("{messageId}")]
     [ProducesResponseType(typeof(CommandStatusResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests, "application/problem+json")]
-    public async Task<IActionResult> GetStatus(string correlationId, CancellationToken cancellationToken) {
-        ArgumentNullException.ThrowIfNull(correlationId);
+    public async Task<IActionResult> GetStatus(string messageId, CancellationToken cancellationToken) {
+        ArgumentNullException.ThrowIfNull(messageId);
 
         using Activity? activity = EventStoreActivitySources.EventStore.StartActivity(
             EventStoreActivitySources.QueryStatus, ActivityKind.Server);
-        _ = (activity?.SetTag(EventStoreActivitySource.TagCorrelationId, correlationId));
+        _ = (activity?.SetTag(EventStoreActivitySource.TagCorrelationId, messageId));
 
         string requestCorrelationId = HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString()
-            ?? correlationId;
+            ?? messageId;
 
         try {
-            if (!CorrelationIdMiddleware.IsValidIdentifier(correlationId)) {
+            if (!CorrelationIdMiddleware.IsValidIdentifier(messageId)) {
                 _ = (activity?.SetStatus(ActivityStatusCode.Error, "InvalidCorrelationId"));
                 return CreateProblemDetails(
                     StatusCodes.Status400BadRequest,
                     ProblemTypeUris.BadRequest,
                     "Bad Request",
-                    $"Correlation ID must be 1-{CorrelationIdMiddleware.MaxIdentifierLength} characters of alphanumerics and hyphens (with alphanumeric anchors).",
+                    $"Message or correlation identifier must be 1-{CorrelationIdMiddleware.MaxIdentifierLength} characters of alphanumerics and hyphens (with alphanumeric anchors).",
                     requestCorrelationId);
             }
 
             // Store correlationId in HttpContext.Items for error handler access
-            HttpContext.Items["StatusCorrelationId"] = correlationId;
+            HttpContext.Items["StatusCorrelationId"] = messageId;
 
             // Extract tenant claims
             var tenantClaims = User.FindAll("eventstore:tenant")
@@ -105,35 +106,67 @@ public class CommandStatusController(
                     requestCorrelationId);
             }
 
-            // Try each authorized tenant (SEC-3: command could be under any authorized tenant)
+            var matches = new List<(string Tenant, string MessageId, CommandStatusRecord Record)>();
+            var legacyMatches = new List<(string Tenant, CommandStatusRecord Record)>();
+
+            // Search only authorized tenants. Message-primary records are authoritative; the
+            // bounded index is the sole compatibility lookup for a correlation identifier.
             foreach (string tenant in tenantClaims) {
                 _ = (activity?.SetTag(EventStoreActivitySource.TagTenantId, tenant));
 
-                CommandStatusRecord? record = await statusStore
-                    .ReadStatusAsync(tenant, correlationId, cancellationToken)
+                CommandStatusRecord? directRecord = await statusStore
+                    .ReadStatusAsync(tenant, messageId, cancellationToken)
                     .ConfigureAwait(false);
 
-                if (record is not null) {
-                    logger.LogDebug(
-                        "Status found: CorrelationId={CorrelationId}, Tenant={Tenant}, Status={Status}",
-                        correlationId,
-                        tenant,
-                        record.Status);
+                if (directRecord is not null
+                    && string.Equals(directRecord.MessageId, messageId, StringComparison.Ordinal)) {
+                    matches.Add((tenant, messageId, directRecord));
+                    continue;
+                }
 
-                    // Only include Retry-After for non-terminal statuses (consumer should keep polling).
-                    if (!record.Status.IsTerminal()) {
-                        Response.Headers["Retry-After"] = "1";
+                if (correlationIndex is not null) {
+                    CommandCorrelationResolution resolution = await correlationIndex
+                        .ResolveAsync(tenant, messageId, cancellationToken)
+                        .ConfigureAwait(false);
+
+                    if (resolution.Outcome == CommandCorrelationResolutionOutcome.Ambiguous) {
+                        return CreateAmbiguityProblemDetails(requestCorrelationId);
                     }
 
-                    _ = (activity?.SetStatus(ActivityStatusCode.Ok));
-                    return Ok(CommandStatusResponse.FromRecord(correlationId, record));
+                    if (resolution is { Outcome: CommandCorrelationResolutionOutcome.Resolved, MessageId: not null }) {
+                        CommandStatusRecord? indexedRecord = await statusStore
+                            .ReadStatusAsync(tenant, resolution.MessageId, cancellationToken)
+                            .ConfigureAwait(false);
+                        if (indexedRecord is not null) {
+                            matches.Add((tenant, resolution.MessageId, indexedRecord));
+                            continue;
+                        }
+                    }
                 }
+
+                if (directRecord is not null) {
+                    legacyMatches.Add((tenant, directRecord));
+                }
+            }
+
+            if (matches.Count > 1 || (matches.Count == 0 && legacyMatches.Count > 1)) {
+                return CreateAmbiguityProblemDetails(requestCorrelationId);
+            }
+
+            if (matches.Count == 1) {
+                (string tenant, string resolvedMessageId, CommandStatusRecord record) = matches[0];
+                return CreateStatusResult(tenant, resolvedMessageId, record, activity);
+            }
+
+            if (legacyMatches.Count == 1) {
+                (string tenant, CommandStatusRecord record) = legacyMatches[0];
+                return CreateStatusResult(tenant, messageId, record, activity);
             }
 
             // Not found in any authorized tenant -> 404 (also covers tenant mismatch per SEC-3)
             logger.LogDebug(
                 "Status not found: CorrelationId={CorrelationId}, TenantsSearched={Tenants}",
-                correlationId,
+                messageId,
                 string.Join(",", tenantClaims));
 
             _ = (activity?.SetStatus(ActivityStatusCode.Error, "NotFound"));
@@ -141,7 +174,7 @@ public class CommandStatusController(
                 StatusCodes.Status404NotFound,
                 ProblemTypeUris.CommandStatusNotFound,
                 "Not Found",
-                $"No command status found for correlation ID '{correlationId}'.",
+                $"No command status found for message or correlation identifier '{messageId}'.",
                 requestCorrelationId);
         }
         catch (OperationCanceledException) {
@@ -151,6 +184,36 @@ public class CommandStatusController(
             ProtectedDataDiagnosticRedactor.RecordActivityException(activity, ex, "command-status");
             throw;
         }
+    }
+
+    private IActionResult CreateStatusResult(
+        string tenant,
+        string messageId,
+        CommandStatusRecord record,
+        Activity? activity) {
+        logger.LogDebug(
+            "Status found: MessageId={MessageId}, CorrelationId={CorrelationId}, Tenant={Tenant}, Status={Status}",
+            messageId,
+            record.CorrelationId,
+            tenant,
+            record.Status);
+
+        if (!record.Status.IsTerminal()) {
+            Response.Headers["Retry-After"] = "1";
+        }
+
+        _ = (activity?.SetStatus(ActivityStatusCode.Ok));
+        return Ok(CommandStatusResponse.FromRecord(messageId, record));
+    }
+
+    private ObjectResult CreateAmbiguityProblemDetails(string requestCorrelationId) {
+        _ = (Activity.Current?.SetStatus(ActivityStatusCode.Error, "AmbiguousCorrelation"));
+        return CreateProblemDetails(
+            StatusCodes.Status409Conflict,
+            ProblemTypeUris.CommandCorrelationAmbiguous,
+            "Ambiguous Command Correlation",
+            "The correlation identifier maps to multiple commands. Query again using the command MessageId.",
+            requestCorrelationId);
     }
 
     private ObjectResult CreateProblemDetails(int statusCode, string type, string title, string detail, string correlationId) {

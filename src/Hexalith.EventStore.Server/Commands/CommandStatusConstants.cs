@@ -12,8 +12,8 @@ public static class CommandStatusConstants {
 
     /// <summary>
     /// Builds the state store key for a command status entry.
-    /// Key format: {tenantId}:{correlationId}:status (per D2).
+    /// Key format: {tenantId}:{messageId}:status.
     /// </summary>
-    public static string BuildKey(string tenantId, string correlationId)
-        => $"{tenantId}:{correlationId}:status";
+    public static string BuildKey(string tenantId, string messageId)
+        => $"{tenantId}:{messageId}:status";
 }

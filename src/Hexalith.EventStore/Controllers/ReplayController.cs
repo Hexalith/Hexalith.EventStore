@@ -30,7 +30,8 @@ public class ReplayController(
     ICommandArchiveStore archiveStore,
     ICommandStatusStore statusStore,
     IMediator mediator,
-    ILogger<ReplayController> logger) : ControllerBase {
+    ILogger<ReplayController> logger,
+    ICommandCorrelationIndex? correlationIndex = null) : ControllerBase {
     private static readonly HashSet<CommandStatus> _replayableStatuses =
     [
         CommandStatus.Rejected,
@@ -109,21 +110,61 @@ public class ReplayController(
                     requestCorrelationId);
             }
 
-            // AC #5: Search for archived command across authorized tenants (SEC-3)
-            ArchivedCommand? archivedCommand = null;
-            string? foundTenant = null;
+            // Search only authorized tenants. New archive records are message-primary; the
+            // bounded correlation index provides compatibility without a state-store scan.
+            var matches = new List<(string Tenant, string MessageId, ArchivedCommand Command)>();
+            var legacyMatches = new List<(string Tenant, ArchivedCommand Command)>();
 
             foreach (string tenant in tenantClaims) {
                 _ = (activity?.SetTag(EventStoreActivitySource.TagTenantId, tenant));
 
-                archivedCommand = await archiveStore
+                ArchivedCommand? directCommand = await archiveStore
                     .ReadCommandAsync(tenant, correlationId, cancellationToken)
                     .ConfigureAwait(false);
 
-                if (archivedCommand is not null) {
-                    foundTenant = tenant;
-                    break;
+                if (directCommand is not null
+                    && string.Equals(directCommand.MessageId, correlationId, StringComparison.Ordinal)) {
+                    matches.Add((tenant, correlationId, directCommand));
+                    continue;
                 }
+
+                if (correlationIndex is not null) {
+                    CommandCorrelationResolution resolution = await correlationIndex
+                        .ResolveAsync(tenant, correlationId, cancellationToken)
+                        .ConfigureAwait(false);
+                    if (resolution.Outcome == CommandCorrelationResolutionOutcome.Ambiguous) {
+                        return CreateCorrelationAmbiguityProblemDetails(requestCorrelationId);
+                    }
+
+                    if (resolution is { Outcome: CommandCorrelationResolutionOutcome.Resolved, MessageId: not null }) {
+                        ArchivedCommand? indexedCommand = await archiveStore
+                            .ReadCommandAsync(tenant, resolution.MessageId, cancellationToken)
+                            .ConfigureAwait(false);
+                        if (indexedCommand is not null) {
+                            matches.Add((tenant, resolution.MessageId, indexedCommand));
+                            continue;
+                        }
+                    }
+                }
+
+                if (directCommand is not null) {
+                    legacyMatches.Add((tenant, directCommand));
+                }
+            }
+
+            if (matches.Count > 1 || (matches.Count == 0 && legacyMatches.Count > 1)) {
+                return CreateCorrelationAmbiguityProblemDetails(requestCorrelationId);
+            }
+
+            ArchivedCommand? archivedCommand = null;
+            string? foundTenant = null;
+            string? originalMessageId = null;
+            if (matches.Count == 1) {
+                (foundTenant, originalMessageId, archivedCommand) = matches[0];
+            }
+            else if (legacyMatches.Count == 1) {
+                (foundTenant, archivedCommand) = legacyMatches[0];
+                originalMessageId = correlationId;
             }
 
             // AC #4: 404 for non-existent or expired correlation ID
@@ -147,7 +188,7 @@ public class ReplayController(
 
             // AC #3: Read current status to validate replayability
             CommandStatusRecord? statusRecord = await statusStore
-                .ReadStatusAsync(foundTenant, correlationId, cancellationToken)
+                .ReadStatusAsync(foundTenant, originalMessageId!, cancellationToken)
                 .ConfigureAwait(false);
 
             // H5: Null status (expired or never written) -- cannot determine replayability
@@ -209,12 +250,20 @@ public class ReplayController(
             _ = await mediator.Send(command, cancellationToken).ConfigureAwait(false);
 
             // AC #1: Return 202 Accepted with replay response
-            string absoluteLocationUri = $"{Request.Scheme}://{Request.Host}/api/v1/commands/status/{replayCorrelationId}";
+            string absoluteLocationUri = $"{Request.Scheme}://{Request.Host}/api/v1/commands/status/{command.MessageId}";
             Response.Headers["Location"] = absoluteLocationUri;
             Response.Headers["Retry-After"] = "1";
 
             _ = (activity?.SetStatus(ActivityStatusCode.Ok));
-            return Accepted(absoluteLocationUri, new ReplayCommandResponse(replayCorrelationId, IsReplay: true, PreviousStatus: previousStatus, OriginalCorrelationId: correlationId));
+            return Accepted(
+                absoluteLocationUri,
+                new ReplayCommandResponse(
+                    replayCorrelationId,
+                    IsReplay: true,
+                    PreviousStatus: previousStatus,
+                    OriginalCorrelationId: archivedCommand.CorrelationId ?? correlationId,
+                    MessageId: command.MessageId,
+                    OriginalMessageId: archivedCommand.MessageId));
         }
         catch (OperationCanceledException) {
             throw;
@@ -267,4 +316,12 @@ public class ReplayController(
 
         return new ObjectResult(problemDetails) { StatusCode = StatusCodes.Status409Conflict };
     }
+
+    private ObjectResult CreateCorrelationAmbiguityProblemDetails(string requestCorrelationId)
+        => CreateProblemDetails(
+            StatusCodes.Status409Conflict,
+            ProblemTypeUris.CommandCorrelationAmbiguous,
+            "Ambiguous Command Correlation",
+            "The correlation identifier maps to multiple commands. Replay using the command MessageId.",
+            requestCorrelationId);
 }

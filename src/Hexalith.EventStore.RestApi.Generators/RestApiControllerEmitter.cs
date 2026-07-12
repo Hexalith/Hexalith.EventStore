@@ -278,7 +278,8 @@ internal static class RestApiControllerEmitter
         builder.AppendLine("                .ConfigureAwait(false);");
         builder.AppendLine();
         builder.AppendLine("            Response.Headers[\"Retry-After\"] = \"1\";");
-        builder.AppendLine("            if (statusLocationBuilder.TryBuild(__hexalithResponse.CorrelationId, out string? __hexalithStatusLocation))");
+        builder.AppendLine("            string __hexalithStatusKey = __hexalithResponse.MessageId ?? __hexalithResponse.CorrelationId;");
+        builder.AppendLine("            if (statusLocationBuilder.TryBuild(__hexalithStatusKey, out string? __hexalithStatusLocation))");
         builder.AppendLine("            {");
         builder.AppendLine("                Response.Headers[\"Location\"] = __hexalithStatusLocation;");
         builder.AppendLine("            }");

@@ -19,14 +19,14 @@ public sealed class InMemoryCommandStatusStore : ICommandStatusStore {
     /// <inheritdoc/>
     public Task WriteStatusAsync(
         string tenantId,
-        string correlationId,
+        string messageId,
         CommandStatusRecord status,
         CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(messageId);
         ArgumentNullException.ThrowIfNull(status);
 
-        string key = CommandStatusConstants.BuildKey(tenantId, correlationId);
+        string key = CommandStatusConstants.BuildKey(tenantId, messageId);
         DateTimeOffset expiry = DateTimeOffset.UtcNow.AddSeconds(TtlSeconds);
         _store[key] = (status, expiry);
         ConcurrentQueue<CommandStatusRecord> queue = _history.GetOrAdd(key, _ => new ConcurrentQueue<CommandStatusRecord>());
@@ -37,12 +37,12 @@ public sealed class InMemoryCommandStatusStore : ICommandStatusStore {
     /// <inheritdoc/>
     public Task<CommandStatusRecord?> ReadStatusAsync(
         string tenantId,
-        string correlationId,
+        string messageId,
         CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(messageId);
 
-        string key = CommandStatusConstants.BuildKey(tenantId, correlationId);
+        string key = CommandStatusConstants.BuildKey(tenantId, messageId);
 
         if (_store.TryGetValue(key, out (CommandStatusRecord Record, DateTimeOffset Expiry) entry)) {
             if (entry.Expiry <= DateTimeOffset.UtcNow) {
@@ -67,13 +67,13 @@ public sealed class InMemoryCommandStatusStore : ICommandStatusStore {
     /// Gets the write history for a status key in append order.
     /// </summary>
     /// <param name="tenantId">Tenant identifier.</param>
-    /// <param name="correlationId">Correlation identifier.</param>
+    /// <param name="messageId">Message identifier.</param>
     /// <returns>Status history in write order, or empty if none.</returns>
-    public IReadOnlyList<CommandStatusRecord> GetStatusHistory(string tenantId, string correlationId) {
+    public IReadOnlyList<CommandStatusRecord> GetStatusHistory(string tenantId, string messageId) {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(messageId);
 
-        string key = CommandStatusConstants.BuildKey(tenantId, correlationId);
+        string key = CommandStatusConstants.BuildKey(tenantId, messageId);
         return _history.TryGetValue(key, out ConcurrentQueue<CommandStatusRecord>? queue)
             ? [.. queue]
             : [];

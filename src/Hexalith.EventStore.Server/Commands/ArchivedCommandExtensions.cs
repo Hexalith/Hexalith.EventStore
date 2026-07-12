@@ -1,4 +1,5 @@
 
+using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 
@@ -20,7 +21,9 @@ public static class ArchivedCommandExtensions {
             command.CommandType,
             command.Payload,
             command.Extensions,
-            DateTimeOffset.UtcNow);
+            DateTimeOffset.UtcNow,
+            command.MessageId,
+            command.CorrelationId);
     }
 
     /// <summary>
@@ -65,7 +68,7 @@ public static class ArchivedCommandExtensions {
         }
 
         return new SubmitCommand(
-            MessageId: Guid.NewGuid().ToString(),
+            MessageId: UniqueIdHelper.GenerateSortableUniqueStringId(),
             Tenant: archived.Tenant,
             Domain: archived.Domain,
             AggregateId: archived.AggregateId,

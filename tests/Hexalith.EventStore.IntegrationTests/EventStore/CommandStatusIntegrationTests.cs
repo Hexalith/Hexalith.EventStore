@@ -154,8 +154,9 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
 
         // Act - query status as tenant-b (SEC-3: should return 404, not 403)
         HttpClient tenantBClient = CreateAuthenticatedClient("tenant-b");
+        string statusKey = submitResult.MessageId.ShouldNotBeNull();
         HttpResponseMessage statusResponse = await tenantBClient.GetAsync(
-            $"/api/v1/commands/status/{submitResult.CorrelationId}");
+            $"/api/v1/commands/status/{statusKey}");
 
         // Assert
         statusResponse.StatusCode.ShouldBe(HttpStatusCode.NotFound);
@@ -184,11 +185,12 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
         // Get the Location header
         string? locationHeader = submitResponse.Headers.Location?.ToString();
         _ = locationHeader.ShouldNotBeNull();
-        locationHeader.ShouldContain($"/api/v1/commands/status/{submitResult.CorrelationId}");
+        string statusKey = submitResult.MessageId.ShouldNotBeNull();
+        locationHeader.ShouldContain($"/api/v1/commands/status/{statusKey}");
 
         // Act - verify the Location URL is accessible
         HttpResponseMessage statusResponse = await client.GetAsync(
-            $"/api/v1/commands/status/{submitResult.CorrelationId}");
+            $"/api/v1/commands/status/{statusKey}");
 
         // Assert - the endpoint works
         statusResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -211,9 +213,10 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
         HttpResponseMessage submitResponse = await client.PostAsJsonAsync("/api/v1/commands", request);
         submitResponse.StatusCode.ShouldBe(HttpStatusCode.Accepted);
         SubmitCommandResponse? submitResult = await submitResponse.Content.ReadFromJsonAsync<SubmitCommandResponse>();
+        string statusKey = submitResult!.MessageId.ShouldNotBeNull();
 
         HttpResponseMessage statusResponse = await client.GetAsync(
-            $"/api/v1/commands/status/{submitResult!.CorrelationId}");
+            $"/api/v1/commands/status/{statusKey}");
 
         // Assert
         statusResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -240,10 +243,11 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
         submitResponse.StatusCode.ShouldBe(HttpStatusCode.Accepted);
         SubmitCommandResponse? submitResult = await submitResponse.Content.ReadFromJsonAsync<SubmitCommandResponse>();
         _ = submitResult.ShouldNotBeNull();
+        string statusKey = submitResult.MessageId.ShouldNotBeNull();
 
         // Act - query status
         HttpResponseMessage statusResponse = await client.GetAsync(
-            $"/api/v1/commands/status/{submitResult.CorrelationId}");
+            $"/api/v1/commands/status/{statusKey}");
 
         // Assert
         statusResponse.StatusCode.ShouldBe(HttpStatusCode.OK);

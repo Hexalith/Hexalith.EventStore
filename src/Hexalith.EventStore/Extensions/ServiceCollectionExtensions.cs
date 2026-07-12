@@ -39,6 +39,7 @@ public static class EventStoreServiceCollectionExtensions {
         _ = services.AddExceptionHandler<AuthorizationServiceUnavailableHandler>();  // 503 — BEFORE 403
         _ = services.AddExceptionHandler<AuthorizationExceptionHandler>();           // 403
         _ = services.AddExceptionHandler<BackpressureExceptionHandler>();
+        _ = services.AddExceptionHandler<CommandIdentityConflictExceptionHandler>();
         _ = services.AddExceptionHandler<ConcurrencyConflictExceptionHandler>();
         _ = services.AddExceptionHandler<DomainCommandRejectedExceptionHandler>();
         _ = services.AddExceptionHandler<QueryNotFoundExceptionHandler>();           // 404
@@ -141,6 +142,9 @@ public static class EventStoreServiceCollectionExtensions {
         _ = services.AddOptions<CommandStatusOptions>()
             .BindConfiguration("EventStore:CommandStatus");
         _ = services.AddSingleton<ICommandStatusStore, DaprCommandStatusStore>();
+        _ = services.AddOptions<CommandCorrelationIndexOptions>()
+            .BindConfiguration("EventStore:CommandCorrelationIndex");
+        _ = services.AddSingleton<ICommandCorrelationIndex, DaprCommandCorrelationIndex>();
 
         // Command archive for replay (Story 2.7)
         _ = services.AddSingleton<ICommandArchiveStore, DaprCommandArchiveStore>();

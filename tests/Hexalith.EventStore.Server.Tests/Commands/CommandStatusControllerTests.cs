@@ -4,11 +4,14 @@ using System.Security.Claims;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Controllers;
 using Hexalith.EventStore.Models;
+using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Testing.Fakes;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
+
+using NSubstitute;
 
 using Shouldly;
 
@@ -42,6 +45,92 @@ public class CommandStatusControllerTests {
         CommandStatusResponse response = okResult.Value.ShouldBeOfType<CommandStatusResponse>();
         response.Status.ShouldBe("Received");
         response.AggregateId.ShouldBe("agg-1");
+        response.MessageId.ShouldBeNull("legacy correlation-primary records must not infer command identity");
+    }
+
+    [Fact]
+    public async Task GetStatus_MessagePrimary_ReturnsDistinctMessageAndCorrelationIdentity() {
+        const string messageId = "01MESSAGEPRIMARY000000000001";
+        const string correlationId = "01CORRELATIONTRACE0000000001";
+        var store = new InMemoryCommandStatusStore();
+        await store.WriteStatusAsync(
+            "tenant-a",
+            messageId,
+            new CommandStatusRecord(
+                CommandStatus.Completed,
+                DateTimeOffset.UtcNow,
+                "agg-1",
+                1,
+                null,
+                null,
+                null,
+                messageId,
+                correlationId),
+            CancellationToken.None);
+        var controller = CreateController(store, new InMemoryCommandCorrelationIndex(), "tenant-a");
+
+        IActionResult result = await controller.GetStatus(messageId, CancellationToken.None);
+
+        CommandStatusResponse response = result.ShouldBeOfType<OkObjectResult>()
+            .Value.ShouldBeOfType<CommandStatusResponse>();
+        response.MessageId.ShouldBe(messageId);
+        response.CorrelationId.ShouldBe(correlationId);
+    }
+
+    [Fact]
+    public async Task GetStatus_UniqueCorrelationIndexResolution_ReadsMessagePrimaryRecord() {
+        const string messageId = "01MESSAGEPRIMARY000000000002";
+        const string correlationId = "01CORRELATIONTRACE0000000002";
+        var store = new InMemoryCommandStatusStore();
+        var index = new InMemoryCommandCorrelationIndex();
+        await store.WriteStatusAsync(
+            "tenant-a",
+            messageId,
+            new CommandStatusRecord(CommandStatus.Completed, DateTimeOffset.UtcNow, "agg-2", 0, null, null, null, messageId, correlationId),
+            CancellationToken.None);
+        _ = await index.AddAsync("tenant-a", correlationId, messageId);
+        var controller = CreateController(store, index, "tenant-a");
+
+        IActionResult result = await controller.GetStatus(correlationId, CancellationToken.None);
+
+        CommandStatusResponse response = result.ShouldBeOfType<OkObjectResult>()
+            .Value.ShouldBeOfType<CommandStatusResponse>();
+        response.MessageId.ShouldBe(messageId);
+        response.CorrelationId.ShouldBe(correlationId);
+    }
+
+    [Fact]
+    public async Task GetStatus_AmbiguousCorrelation_ReturnsSupportSafe409() {
+        const string correlationId = "01AMBIGUOUSCORRELATION000001";
+        var index = new InMemoryCommandCorrelationIndex();
+        _ = await index.AddAsync("tenant-a", correlationId, "01MESSAGE000000000000000001");
+        _ = await index.AddAsync("tenant-a", correlationId, "01MESSAGE000000000000000002");
+        var controller = CreateController(new InMemoryCommandStatusStore(), index, "tenant-a");
+
+        IActionResult result = await controller.GetStatus(correlationId, CancellationToken.None);
+
+        ObjectResult conflict = result.ShouldBeOfType<ObjectResult>();
+        conflict.StatusCode.ShouldBe(StatusCodes.Status409Conflict);
+        ProblemDetails problem = conflict.Value.ShouldBeOfType<ProblemDetails>();
+        problem.Type.ShouldBe("https://hexalith.io/problems/command-correlation-ambiguous");
+        problem.Detail.ShouldContain("MessageId");
+        problem.Detail.ShouldNotContain("01MESSAGE000000000000000001");
+    }
+
+    [Fact]
+    public async Task GetStatus_AuthorizedTenantOnly_DoesNotProbeOtherTenantStatusOrIndex() {
+        ICommandStatusStore store = Substitute.For<ICommandStatusStore>();
+        ICommandCorrelationIndex index = Substitute.For<ICommandCorrelationIndex>();
+        _ = index.ResolveAsync("tenant-a", CorrelationId, Arg.Any<CancellationToken>())
+            .Returns(new CommandCorrelationResolution(CommandCorrelationResolutionOutcome.NotFound));
+        var controller = CreateController(store, index, "tenant-a");
+
+        _ = await controller.GetStatus(CorrelationId, CancellationToken.None);
+
+        _ = await store.Received(1).ReadStatusAsync("tenant-a", CorrelationId, Arg.Any<CancellationToken>());
+        _ = await index.Received(1).ResolveAsync("tenant-a", CorrelationId, Arg.Any<CancellationToken>());
+        _ = await store.DidNotReceive().ReadStatusAsync("tenant-secret", Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _ = await index.DidNotReceive().ResolveAsync("tenant-secret", Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -196,7 +285,7 @@ public class CommandStatusControllerTests {
         ObjectResult objResult = result.ShouldBeOfType<ObjectResult>();
         objResult.StatusCode.ShouldBe(400);
         ProblemDetails pd = objResult.Value.ShouldBeOfType<ProblemDetails>();
-        pd.Detail.ShouldBe("Correlation ID must be 1-128 characters of alphanumerics and hyphens (with alphanumeric anchors).");
+        pd.Detail.ShouldBe("Message or correlation identifier must be 1-128 characters of alphanumerics and hyphens (with alphanumeric anchors).");
         pd.Type.ShouldBe("https://hexalith.io/problems/bad-request");
         pd.Extensions.ShouldContainKey("correlationId");
         _controller.HttpContext.Response.ContentType.ShouldBe("application/problem+json");
@@ -381,5 +470,20 @@ public class CommandStatusControllerTests {
         _controller.ControllerContext = new ControllerContext {
             HttpContext = httpContext,
         };
+    }
+
+    private static CommandStatusController CreateController(
+        ICommandStatusStore store,
+        ICommandCorrelationIndex index,
+        params string[] tenants) {
+        var controller = new CommandStatusController(store, NullLogger<CommandStatusController>.Instance, index);
+        var claims = new List<Claim> { new("sub", "test-user") };
+        claims.AddRange(tenants.Select(tenant => new Claim("eventstore:tenant", tenant)));
+        controller.ControllerContext = new ControllerContext {
+            HttpContext = new DefaultHttpContext {
+                User = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth")),
+            },
+        };
+        return controller;
     }
 }

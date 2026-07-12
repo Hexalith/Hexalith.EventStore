@@ -24,6 +24,17 @@ public sealed record CommandProcessingIdentity(
             && string.Equals(CommandType, commandType, StringComparison.Ordinal);
 
     /// <summary>
+    /// Determines whether a pipeline checkpoint belongs to this exact command.
+    /// </summary>
+    /// <param name="pipelineState">The persisted pipeline checkpoint.</param>
+    /// <returns><see langword="true"/> only when all checkpoint identity fields match.</returns>
+    public bool Matches(PipelineState pipelineState)
+    {
+        ArgumentNullException.ThrowIfNull(pipelineState);
+        return Matches(pipelineState.MessageId, pipelineState.CausationId, pipelineState.CommandType);
+    }
+
+    /// <summary>
     /// Validates that all identity fields are present.
     /// </summary>
     public void Validate()

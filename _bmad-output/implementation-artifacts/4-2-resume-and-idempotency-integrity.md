@@ -4,7 +4,7 @@ baseline_commit: 322e3193d22295153c74d16baee32a7e74f6d72a
 
 # Story 4.2: Resume And Idempotency Integrity
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -26,69 +26,69 @@ so that stale pipeline state cannot hijack a different command or prevent a vali
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 — Introduce exact command identity in pipeline and idempotency state** (AC: 1, 3, 5)
-  - [ ] Extend `PipelineState` additively with `MessageId` and normalized `CausationId`; retain `CorrelationId`, `CommandType`, stage, timestamps, event counts, rejection metadata, and legacy `ResultPayload` compatibility. Append optional/defaulted fields so old JSON can deserialize.
-  - [ ] Extend `IdempotencyRecord` additively with `MessageId`, `CommandType`, and an application-visible expiration timestamp (or equivalently explicit bounded-retention field). Preserve `CausationId`, `ProcessedAt`, and all eight `CommandProcessingResult` fields from Story 4.1.
-  - [ ] Re-key new idempotency entries as `idempotency:{messageId}`. Pass the complete normalized identity into `CheckAsync` / `RecordAsync`; do not continue using a correlation-derived fallback as the key.
-  - [ ] Normalize absent direct-actor `CausationId` to `MessageId`, not `CorrelationId`. The normal gateway path already maps `CausationId = MessageId`; preserve explicit non-null causation ids supplied by legitimate callers.
-  - [ ] Return a cached terminal result only when `MessageId`, normalized `CausationId`, and `CommandType` all match with ordinal semantics. Add a dedicated support-safe identity-conflict path for mismatches and unverifiable legacy records; never log payloads or raw protected data.
-  - [ ] After a new message-key miss, perform at most one bounded legacy lookup at `idempotency:{normalizedCausationId}` when that key differs from the message key. If the legacy record contains the new fields and matches exactly, stage an atomic copy-to-message-key/remove-old-key migration and commit it before returning the cached result. If its identity cannot be proven, preserve it and return `command_identity_conflict`; never delete it and re-execute the command.
-  - [ ] Model checker outcomes explicitly (miss, exact terminal duplicate, expired, retryable/recoverable, identity conflict, legacy migration) so `AggregateActor` cannot conflate conflict with a cache miss.
-  - [ ] Keep the pipeline actor-state key correlation-addressable for collision discovery unless an equivalent bounded lookup is introduced. A new command reusing a correlation id must still find and classify the old checkpoint rather than strand it silently.
+- [x] **Task 1 — Introduce exact command identity in pipeline and idempotency state** (AC: 1, 3, 5)
+  - [x] Extend `PipelineState` additively with `MessageId` and normalized `CausationId`; retain `CorrelationId`, `CommandType`, stage, timestamps, event counts, rejection metadata, and legacy `ResultPayload` compatibility. Append optional/defaulted fields so old JSON can deserialize.
+  - [x] Extend `IdempotencyRecord` additively with `MessageId`, `CommandType`, and an application-visible expiration timestamp (or equivalently explicit bounded-retention field). Preserve `CausationId`, `ProcessedAt`, and all eight `CommandProcessingResult` fields from Story 4.1.
+  - [x] Re-key new idempotency entries as `idempotency:{messageId}`. Pass the complete normalized identity into `CheckAsync` / `RecordAsync`; do not continue using a correlation-derived fallback as the key.
+  - [x] Normalize absent direct-actor `CausationId` to `MessageId`, not `CorrelationId`. The normal gateway path already maps `CausationId = MessageId`; preserve explicit non-null causation ids supplied by legitimate callers.
+  - [x] Return a cached terminal result only when `MessageId`, normalized `CausationId`, and `CommandType` all match with ordinal semantics. Add a dedicated support-safe identity-conflict path for mismatches and unverifiable legacy records; never log payloads or raw protected data.
+  - [x] After a new message-key miss, perform at most one bounded legacy lookup at `idempotency:{normalizedCausationId}` when that key differs from the message key. If the legacy record contains the new fields and matches exactly, stage an atomic copy-to-message-key/remove-old-key migration and commit it before returning the cached result. If its identity cannot be proven, preserve it and return `command_identity_conflict`; never delete it and re-execute the command.
+  - [x] Model checker outcomes explicitly (miss, exact terminal duplicate, expired, retryable/recoverable, identity conflict, legacy migration) so `AggregateActor` cannot conflate conflict with a cache miss.
+  - [x] Keep the pipeline actor-state key correlation-addressable for collision discovery unless an equivalent bounded lookup is introduced. A new command reusing a correlation id must still find and classify the old checkpoint rather than strand it silently.
 
-- [ ] **Task 2 — Move tenant validation ahead of every actor-state operation** (AC: 2)
-  - [ ] In `AggregateActor.ProcessCommandAsync`, validate `command.TenantId` against `Host.Id` immediately after argument/cancellation/activity setup and before creating or invoking `IdempotencyChecker` / `ActorStateMachine` or reading pending counts.
-  - [ ] On tenant mismatch, preserve the current typed/support-safe denial and security telemetry, but perform no idempotency rejection write, pipeline cleanup, status write, or actor-state commit.
-  - [ ] Replace the misleading existing tenant test that permits an `IdempotencyRecord` read with assertions that the unauthorized path makes zero actor-state calls. Keep the existing prohibition on aggregate metadata/event reads.
-  - [ ] Preserve actor-id parsing through `TenantValidator`; do not query DAPR state or accept a wire assertion to decide tenant ownership.
+- [x] **Task 2 — Move tenant validation ahead of every actor-state operation** (AC: 2)
+  - [x] In `AggregateActor.ProcessCommandAsync`, validate `command.TenantId` against `Host.Id` immediately after argument/cancellation/activity setup and before creating or invoking `IdempotencyChecker` / `ActorStateMachine` or reading pending counts.
+  - [x] On tenant mismatch, preserve the current typed/support-safe denial and security telemetry, but perform no idempotency rejection write, pipeline cleanup, status write, or actor-state commit.
+  - [x] Replace the misleading existing tenant test that permits an `IdempotencyRecord` read with assertions that the unauthorized path makes zero actor-state calls. Keep the existing prohibition on aggregate metadata/event reads.
+  - [x] Preserve actor-id parsing through `TenantValidator`; do not query DAPR state or accept a wire assertion to decide tenant ownership.
 
-- [ ] **Task 3 — Make stale checkpoint handling stage-aware and loss-safe** (AC: 1, 3, 5)
-  - [ ] Add one exact identity comparison helper used by all resume branches. Do not scatter partially different comparisons through `AggregateActor`.
-  - [ ] If a mismatched stale checkpoint is `Processing` (no committed events), stage cleanup, commit it, and process the incoming command normally.
-  - [ ] If a mismatched checkpoint can represent committed events (`EventsStored` or a defensive legacy equivalent), do not publish or complete those events with the incoming command envelope. Convert/preserve the old event range on the existing drain/recovery seam under the old command's unique message identity, commit the handoff and checkpoint cleanup, then process the incoming command.
-  - [ ] A legacy committed checkpoint without `MessageId`/`CausationId` is not safe to drain under the incoming identity. Do not infer command `MessageId` from an event `MessageId`. Unless companion persisted data proves the complete old command identity unambiguously, preserve the checkpoint/events, return `command_identity_conflict`, and do not execute the incoming command. Add an explicit recovery diagnostic; never clean the checkpoint merely to unblock the new command.
-  - [ ] Ensure stale-state cleanup and drain handoff cannot be overwritten when two commands share a correlation id. If `UnpublishedEventsRecord` / reminder identity must move from correlation id to message id to achieve this, make that narrow additive identity change while retaining correlation as metadata. Story 4.4 still owns broader activation/sweep and unrecoverable-publication semantics.
-  - [ ] Preserve pending-command accounting: no double increment/decrement, no negative count, and no stale checkpoint causing a valid new command to bypass backpressure or domain invocation.
-  - [ ] Add committed-state tests for same identity resume, same-correlation/different-message, same-message/different-command-type, causation mismatch, legacy missing identity, and stale committed-event handoff.
+- [x] **Task 3 — Make stale checkpoint handling stage-aware and loss-safe** (AC: 1, 3, 5)
+  - [x] Add one exact identity comparison helper used by all resume branches. Do not scatter partially different comparisons through `AggregateActor`.
+  - [x] If a mismatched stale checkpoint is `Processing` (no committed events), stage cleanup, commit it, and process the incoming command normally.
+  - [x] If a mismatched checkpoint can represent committed events (`EventsStored` or a defensive legacy equivalent), do not publish or complete those events with the incoming command envelope. Convert/preserve the old event range on the existing drain/recovery seam under the old command's unique message identity, commit the handoff and checkpoint cleanup, then process the incoming command.
+  - [x] A legacy committed checkpoint without `MessageId`/`CausationId` is not safe to drain under the incoming identity. Do not infer command `MessageId` from an event `MessageId`. Unless companion persisted data proves the complete old command identity unambiguously, preserve the checkpoint/events, return `command_identity_conflict`, and do not execute the incoming command. Add an explicit recovery diagnostic; never clean the checkpoint merely to unblock the new command.
+  - [x] Ensure stale-state cleanup and drain handoff cannot be overwritten when two commands share a correlation id. If `UnpublishedEventsRecord` / reminder identity must move from correlation id to message id to achieve this, make that narrow additive identity change while retaining correlation as metadata. Story 4.4 still owns broader activation/sweep and unrecoverable-publication semantics.
+  - [x] Preserve pending-command accounting: no double increment/decrement, no negative count, and no stale checkpoint causing a valid new command to bypass backpressure or domain invocation.
+  - [x] Add committed-state tests for same identity resume, same-correlation/different-message, same-message/different-command-type, causation mismatch, legacy missing identity, and stale committed-event handoff.
 
-- [ ] **Task 4 — Bound idempotency retention and classify outcomes correctly** (AC: 3, 5)
-  - [ ] Add centrally registered idempotency retention options; default terminal retention is 86,400 seconds (24 hours) and validation rejects any value shorter than the configured status/archive TTL. Keep package versions centralized and do not add a new dependency. Use `TimeProvider` for deterministic expiration tests if time abstraction is needed (`Microsoft.Extensions.TimeProvider.Testing` is already centrally available).
-  - [ ] Treat accepted, accepted-no-op, and domain-rejected results as terminal deduplicated outcomes. Their records receive the configured bounded expiration.
-  - [ ] Do not persist pre-commit transient infrastructure failures or exhausted persistence-conflict results as terminal duplicate records. Preserve `StateManager.ClearCacheAsync()` before staging failure cleanup so partially staged events remain uncommitted.
-  - [ ] Keep publish failures / stored-but-unpublished results on a recoverable path that prevents domain re-execution; do not turn a post-commit publication failure into a clean idempotency miss. Preserve the existing drain record and stable persisted event `MessageId` behavior needed by Story 4.4.
-  - [ ] Make application-level `ExpiresAt` checking authoritative. Do not rely solely on DAPR actor-state TTL: the repository does not enable `ActorStateTTL`, and DAPR 1.18 documents that actor SDK caches can retain expired state until deactivation. Expired records are staged for removal and treated as misses only after exact identity and safety rules are applied. A legacy record without `ExpiresAt` is not treated as expired; exact new identity fields are required for safe migration, otherwise AC 5 applies.
-  - [ ] Update `IdempotencyCheckerTests`, `AggregateActorIdempotencyTests`, and failure-path tests to prove transient retry, terminal duplicate fidelity, expiration, mismatch conflict, and preservation of all result fields.
-  - [ ] Reconcile Story 4.1's newly strengthened rejected-duplicate actor test: keep its eight-field fidelity assertion, but do not use a wrong-tenant envelope to reach the cache after tenant validation moves first. Seed a terminal domain rejection under the correct tenant and test tenant mismatch separately as a zero-state-access denial.
+- [x] **Task 4 — Bound idempotency retention and classify outcomes correctly** (AC: 3, 5)
+  - [x] Add centrally registered idempotency retention options; default terminal retention is 86,400 seconds (24 hours) and validation rejects any value shorter than the configured status/archive TTL. Keep package versions centralized and do not add a new dependency. Use `TimeProvider` for deterministic expiration tests if time abstraction is needed (`Microsoft.Extensions.TimeProvider.Testing` is already centrally available).
+  - [x] Treat accepted, accepted-no-op, and domain-rejected results as terminal deduplicated outcomes. Their records receive the configured bounded expiration.
+  - [x] Do not persist pre-commit transient infrastructure failures or exhausted persistence-conflict results as terminal duplicate records. Preserve `StateManager.ClearCacheAsync()` before staging failure cleanup so partially staged events remain uncommitted.
+  - [x] Keep publish failures / stored-but-unpublished results on a recoverable path that prevents domain re-execution; do not turn a post-commit publication failure into a clean idempotency miss. Preserve the existing drain record and stable persisted event `MessageId` behavior needed by Story 4.4.
+  - [x] Make application-level `ExpiresAt` checking authoritative. Do not rely solely on DAPR actor-state TTL: the repository does not enable `ActorStateTTL`, and DAPR 1.18 documents that actor SDK caches can retain expired state until deactivation. Expired records are staged for removal and treated as misses only after exact identity and safety rules are applied. A legacy record without `ExpiresAt` is not treated as expired; exact new identity fields are required for safe migration, otherwise AC 5 applies.
+  - [x] Update `IdempotencyCheckerTests`, `AggregateActorIdempotencyTests`, and failure-path tests to prove transient retry, terminal duplicate fidelity, expiration, mismatch conflict, and preservation of all result fields.
+  - [x] Reconcile Story 4.1's newly strengthened rejected-duplicate actor test: keep its eight-field fidelity assertion, but do not use a wrong-tenant envelope to reach the cache after tenant validation moves first. Seed a terminal domain rejection under the correct tenant and test tenant mismatch separately as a zero-state-access denial.
 
-- [ ] **Task 5 — Re-key status/archive storage and add a tenant-scoped correlation index** (AC: 4, 6, 7)
-  - [ ] Change `ICommandStatusStore`, `ICommandArchiveStore`, DAPR implementations, constants, and in-memory fakes so primary operations name and use `messageId`; new keys are `{tenant}:{messageId}:status` and `{tenant}:{messageId}:command`.
-  - [ ] Add `MessageId` and `CorrelationId` to stored status/archive data additively where required so records are self-describing and can populate responses/indexes without treating the key argument as correlation.
-  - [ ] Add a bounded, tenant-scoped correlation index whose entries can represent one correlation id mapping to multiple message ids. Default capacity is 128 live entries per `(tenant, correlationId)` and each entry carries its own expiry aligned with the status/archive TTL. Do not use `DaprClient.QueryStateAsync`, direct Redis scans, or an unbounded in-memory list.
-  - [ ] Make `SubmitCommandHandler` the single index-write owner. It invokes the index once per submission after attempting the authoritative message-keyed status/archive writes; neither store independently updates the same index. Duplicate message ids are idempotent no-ops.
-  - [ ] Update the shared index with ETag optimistic concurrency and a bounded default of three retries. Before add or resolution, prune expired entries; resolution may also prune entries whose authoritative message-primary record no longer exists. If capacity remains full, set/preserve an overflow marker and fail correlation compatibility safely without evicting an arbitrary live message. Primary message-id lookup remains available.
-  - [ ] Define partial-failure semantics: the message-keyed record is authoritative; index maintenance is advisory/rebuildable and cannot make a valid message-id lookup fail. After retry exhaustion, log only support-safe identity metadata and continue the primary command path; make the in-memory fake expose equivalent observable behavior and deterministic conflict injection.
-  - [ ] New writes use message-id primary keys and correlation-index writes; do not continue dual-writing new correlation-primary status/archive records. A bounded legacy read fallback may read pre-existing correlation-primary records only after tenant authorization and only when no message-primary/index result exists.
-  - [ ] When a correlation lookup is ambiguous, return a deterministic support-safe conflict rather than selecting newest/first. Never disclose message ids belonging to an unauthorized tenant.
-  - [ ] Update `SubmitCommandHandler` to write/read status and archive by `request.MessageId` while preserving actual `request.CorrelationId` as metadata and activity-tracing input.
-  - [ ] Carry message identity through `ConcurrencyConflictException` and `ConcurrencyConflictExceptionHandler`; their advisory status write cannot remain correlation-primary after the store contract changes.
+- [x] **Task 5 — Re-key status/archive storage and add a tenant-scoped correlation index** (AC: 4, 6, 7)
+  - [x] Change `ICommandStatusStore`, `ICommandArchiveStore`, DAPR implementations, constants, and in-memory fakes so primary operations name and use `messageId`; new keys are `{tenant}:{messageId}:status` and `{tenant}:{messageId}:command`.
+  - [x] Add `MessageId` and `CorrelationId` to stored status/archive data additively where required so records are self-describing and can populate responses/indexes without treating the key argument as correlation.
+  - [x] Add a bounded, tenant-scoped correlation index whose entries can represent one correlation id mapping to multiple message ids. Default capacity is 128 live entries per `(tenant, correlationId)` and each entry carries its own expiry aligned with the status/archive TTL. Do not use `DaprClient.QueryStateAsync`, direct Redis scans, or an unbounded in-memory list.
+  - [x] Make `SubmitCommandHandler` the single index-write owner. It invokes the index once per submission after attempting the authoritative message-keyed status/archive writes; neither store independently updates the same index. Duplicate message ids are idempotent no-ops.
+  - [x] Update the shared index with ETag optimistic concurrency and a bounded default of three retries. Before add or resolution, prune expired entries; resolution may also prune entries whose authoritative message-primary record no longer exists. If capacity remains full, set/preserve an overflow marker and fail correlation compatibility safely without evicting an arbitrary live message. Primary message-id lookup remains available.
+  - [x] Define partial-failure semantics: the message-keyed record is authoritative; index maintenance is advisory/rebuildable and cannot make a valid message-id lookup fail. After retry exhaustion, log only support-safe identity metadata and continue the primary command path; make the in-memory fake expose equivalent observable behavior and deterministic conflict injection.
+  - [x] New writes use message-id primary keys and correlation-index writes; do not continue dual-writing new correlation-primary status/archive records. A bounded legacy read fallback may read pre-existing correlation-primary records only after tenant authorization and only when no message-primary/index result exists.
+  - [x] When a correlation lookup is ambiguous, return a deterministic support-safe conflict rather than selecting newest/first. Never disclose message ids belonging to an unauthorized tenant.
+  - [x] Update `SubmitCommandHandler` to write/read status and archive by `request.MessageId` while preserving actual `request.CorrelationId` as metadata and activity-tracing input.
+  - [x] Carry message identity through `ConcurrencyConflictException` and `ConcurrencyConflictExceptionHandler`; their advisory status write cannot remain correlation-primary after the store contract changes.
 
-- [ ] **Task 6 — Carry the message tracking key through gateway, replay, generated REST, and admin consumers** (AC: 4, 6, 7)
-  - [ ] Add an additive canonical message/status tracking field to `SubmitCommandResult` and public `SubmitCommandResponse`; keep the real correlation id available for tracing/backward-compatible clients. The single status key used by `Location` becomes `MessageId` (or an explicitly named `StatusKey` resolving to it), not a correlation value hidden under the old name.
-  - [ ] Map actor idempotency identity conflict to a dedicated `CommandIdentityConflictException`/problem type at the gateway: HTTP `409`, no `Retry-After`, no cached rejection/status mutation, and a support-safe detail telling the caller to submit the correct tuple or a new `MessageId`. Do not expose stored command identity values or translate it to a generic `500`.
-  - [ ] Update `CommandsController`, `CommandStatusController`, `ReplayController`, `CommandStatusResponse`, and `ReplayCommandResponse` so primary routes/lookups/locations use message id. Preserve a bounded tenant-authorized correlation compatibility path per AC 6.
-  - [ ] Update `RestApiControllerEmitter` and client status-location logic to use the canonical tracking field while preserving AD-17: absolute gateway-owned `Location` when configured, no `Location` when unconfigured, and no external-host status endpoint.
-  - [ ] Update `ArchivedCommandExtensions` so replay creates a new ULID `MessageId` and preserves a separately meaningful correlation chain. Remove the existing `Guid.NewGuid()` command-message generation on this touched path; EventStore message/correlation/causation identifiers are ULID-safe.
-  - [ ] Reconcile `AdminTraceQueryController`, activity/status consumers, and the duplicated `AdminStateStoreKeys` helper/test contract with message-primary identity. Keep admin correlation search as indexed search, not primary storage identity.
-  - [ ] Preserve `SubmitCommandHandler`'s newer projection behavior: trigger projection update only after an accepted result with events, keep it advisory, and do not change event publication's `triggerProjectionUpdate: false` ownership.
+- [x] **Task 6 — Carry the message tracking key through gateway, replay, generated REST, and admin consumers** (AC: 4, 6, 7)
+  - [x] Add an additive canonical message/status tracking field to `SubmitCommandResult` and public `SubmitCommandResponse`; keep the real correlation id available for tracing/backward-compatible clients. The single status key used by `Location` becomes `MessageId` (or an explicitly named `StatusKey` resolving to it), not a correlation value hidden under the old name.
+  - [x] Map actor idempotency identity conflict to a dedicated `CommandIdentityConflictException`/problem type at the gateway: HTTP `409`, no `Retry-After`, no cached rejection/status mutation, and a support-safe detail telling the caller to submit the correct tuple or a new `MessageId`. Do not expose stored command identity values or translate it to a generic `500`.
+  - [x] Update `CommandsController`, `CommandStatusController`, `ReplayController`, `CommandStatusResponse`, and `ReplayCommandResponse` so primary routes/lookups/locations use message id. Preserve a bounded tenant-authorized correlation compatibility path per AC 6.
+  - [x] Update `RestApiControllerEmitter` and client status-location logic to use the canonical tracking field while preserving AD-17: absolute gateway-owned `Location` when configured, no `Location` when unconfigured, and no external-host status endpoint.
+  - [x] Update `ArchivedCommandExtensions` so replay creates a new ULID `MessageId` and preserves a separately meaningful correlation chain. Remove the existing `Guid.NewGuid()` command-message generation on this touched path; EventStore message/correlation/causation identifiers are ULID-safe.
+  - [x] Reconcile `AdminTraceQueryController`, activity/status consumers, and the duplicated `AdminStateStoreKeys` helper/test contract with message-primary identity. Keep admin correlation search as indexed search, not primary storage identity.
+  - [x] Preserve `SubmitCommandHandler`'s newer projection behavior: trigger projection update only after an accepted result with events, keep it advisory, and do not change event publication's `triggerProjectionUpdate: false` ownership.
 
-- [ ] **Task 7 — Prove the complete behavior and regression boundaries** (AC: 1-7)
-  - [ ] Actor/state-machine tests: exact resume match, correlation collision, causation/type mismatch, legacy record, committed-event drain handoff, pending-count balance, and committed checkpoint cleanup.
-  - [ ] Security tests: unauthorized tenant causes no actor-state/idempotency/pipeline read or write; status/archive/index queries search only authorized tenants and produce indistinguishable not-found behavior across tenants.
-  - [ ] Retry/idempotency tests: transient infrastructure and exhausted pre-commit conflict retry successfully; terminal accepted/no-op/domain rejection returns the original eight-field result; post-commit publish failure does not re-run domain/event persistence.
-  - [ ] Store/fake tests: message-id key shape, TTL metadata/expiry, self-describing records, one-to-many correlation index, ambiguity, concurrent index update, legacy fallback, and DAPR/in-memory parity.
-  - [ ] Gateway/contract/generator tests: response carries distinct message and correlation ids, `Location` uses the message/status key, status/replay resolve by message id, correlation compatibility is explicit, and generated external APIs remain gateway delegators.
-  - [ ] Higher-tier evidence: inspect persisted actor state and DAPR state-store keys/records for tenant + message identity, stale checkpoint cleanup/drain handoff, retry outcome, index state, and absence of unauthorized reads. HTTP `202`/`200` and mock invocation counts alone are insufficient.
-  - [ ] Run the per-project validation commands in Testing Requirements. Record exact pass/fail/skip counts and any Microsoft.Testing.Platform/xUnit v3 fallback; never weaken a gate or use solution-level `dotnet test`.
+- [x] **Task 7 — Prove the complete behavior and regression boundaries** (AC: 1-7)
+  - [x] Actor/state-machine tests: exact resume match, correlation collision, causation/type mismatch, legacy record, committed-event drain handoff, pending-count balance, and committed checkpoint cleanup.
+  - [x] Security tests: unauthorized tenant causes no actor-state/idempotency/pipeline read or write; status/archive/index queries search only authorized tenants and produce indistinguishable not-found behavior across tenants.
+  - [x] Retry/idempotency tests: transient infrastructure and exhausted pre-commit conflict retry successfully; terminal accepted/no-op/domain rejection returns the original eight-field result; post-commit publish failure does not re-run domain/event persistence.
+  - [x] Store/fake tests: message-id key shape, TTL metadata/expiry, self-describing records, one-to-many correlation index, ambiguity, concurrent index update, legacy fallback, and DAPR/in-memory parity.
+  - [x] Gateway/contract/generator tests: response carries distinct message and correlation ids, `Location` uses the message/status key, status/replay resolve by message id, correlation compatibility is explicit, and generated external APIs remain gateway delegators.
+  - [x] Higher-tier evidence: inspect persisted actor state and DAPR state-store keys/records for tenant + message identity, stale checkpoint cleanup/drain handoff, retry outcome, index state, and absence of unauthorized reads. HTTP `202`/`200` and mock invocation counts alone are insufficient.
+  - [x] Run the per-project validation commands in Testing Requirements. Record exact pass/fail/skip counts and any Microsoft.Testing.Platform/xUnit v3 fallback; never weaken a gate or use solution-level `dotnet test`.
 
 ## Dev Notes
 
@@ -238,16 +238,137 @@ dotnet test tests/Hexalith.EventStore.IntegrationTests/Hexalith.EventStore.Integ
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+OpenAI Codex (GPT-5)
 
 ### Implementation Plan / Decisions
 
+- Implement each task in story order with per-task red/green/refactor and full Server regression gates before advancing.
+- Represent exact command identity as `(MessageId, normalized CausationId, CommandType)` and keep correlation-addressed pipeline lookup only for collision discovery.
+- Use explicit idempotency outcomes so misses, exact duplicates, recovery records, expiry, conflicts, and legacy migration cannot be conflated.
+
 ### Debug Log References
+
+- Task 1 RED: Server test project failed to compile because the new exact-identity API/types did not exist.
+- Task 1 GREEN: focused identity/idempotency lanes 93/93; full Server suite 2333 total, 2308 passed, 25 skipped, 0 failed.
+- Task 2 RED: focused tenant/security lanes observed five actor-state calls before denial.
+- Task 2 GREEN: focused tenant/security lanes 25/25; full Server suite 2333 total, 2308 passed, 25 skipped, 0 failed.
+- Task 3 RED: committed-collision tests exposed correlation-only resume and missing message-keyed drain identity.
+- Task 3 GREEN: focused resume/drain lanes 69/69; full Server suite 2336 total, 2311 passed, 25 skipped, 0 failed.
+- Task 4 RED: retention option types were absent and failure-path tests observed terminal caching of transient/conflict outcomes.
+- Task 4 GREEN: focused retention/retry/recovery lanes 84/84; full Server suite 2343 total, 2318 passed, 25 skipped, 0 failed.
+- Task 5 GREEN: focused handler/store/index lanes 177/177; full Server suite 2346 total, 2321 passed, 25 skipped, 0 failed.
+- Task 6 GREEN: focused gateway/controller/generator/error lanes 208/208; full Server suite 2362 total, 2337 passed, 25 skipped, 0 failed.
+- Task 7 RELEASE: package-reference Release build succeeded with 0 warnings/errors. Server 2364 total, 2339 passed, 25 skipped; Client 637/637; REST generators 124/124; Testing 150/150; Admin Server 735 total, 717 passed, 18 skipped; LiveSidecar 29/29.
+- Task 7 CONTRACTS: 694 total, 692 passed, 2 unrelated baseline policy failures in unchanged root guidance (`AGENTS.md` package inventory and `.github/copilot-instructions.md` commitlint text); non-Packaging contract lane 670/670.
+- Task 7 HIGHER-TIER: Story 4.2 command/status/replay/OpenAPI/tenant-isolation integration lane 50/50. The unfiltered integration command was attempted twice but the external live-routing lane did not terminate within 15 minutes; the first attempt exposed unrelated query/dead-letter timeouts before cancellation. No Microsoft.Testing.Platform/xUnit v3 fallback was required.
 
 ### Completion Notes List
 
 Ultimate context engine analysis completed - comprehensive developer guide created
 
+- Task 1: Added additive pipeline/idempotency identity and expiry fields, explicit checker outcomes, message-key storage, exact ordinal matching, safe legacy migration, conflict preservation, and MessageId causation normalization.
+- Task 2: Moved typed tenant validation ahead of all actor-state helpers and proved mismatch performs zero actor-state or advisory-status operations.
+- Task 3: Added exact stage-aware resume classification, fail-closed legacy/same-message conflicts, atomic committed-range handoff, and message-keyed drain/reminder identity with legacy compatibility.
+- Task 4: Added validated 24-hour retention with deterministic application expiry, terminal/recoverable classification, retryable pre-commit failures, and non-reexecuting post-commit recovery.
+- Task 5: Re-keyed authoritative status/archive storage by MessageId, added self-describing records and a bounded ETag correlation index with advisory failure semantics, and carried message identity through concurrency conflicts.
+- Task 6: Added canonical message tracking across responses, locations, status/replay/admin consumers, generated REST, ULID replay, and dedicated support-safe identity/correlation conflict responses.
+- Task 7: Added committed-state, tenant-isolation, DAPR/fake parity, gateway contract, replay, OpenAPI, and evidence-preservation coverage; validated all deterministic story lanes and documented unrelated baseline/environment gate exceptions.
+
 ### File List
 
+- src/Hexalith.EventStore.Server/Actors/AggregateActor.cs
+- src/Hexalith.EventStore.Server/Actors/CommandProcessingIdentity.cs
+- src/Hexalith.EventStore.Server/Actors/IdempotencyChecker.cs
+- src/Hexalith.EventStore.Server/Actors/IdempotencyCheckOutcome.cs
+- src/Hexalith.EventStore.Server/Actors/IdempotencyCheckResult.cs
+- src/Hexalith.EventStore.Server/Actors/IdempotencyRecord.cs
+- src/Hexalith.EventStore.Server/Actors/IdempotencyRecordDisposition.cs
+- src/Hexalith.EventStore.Server/Actors/IdempotencyRetentionOptions.cs
+- src/Hexalith.EventStore.Server/Actors/ValidateIdempotencyRetentionOptions.cs
+- src/Hexalith.EventStore.Server/Actors/IIdempotencyChecker.cs
+- src/Hexalith.EventStore.Server/Actors/PipelineState.cs
+- src/Hexalith.EventStore.Server/Actors/UnpublishedEventsRecord.cs
+- src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs
+- tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorDomainResultTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorIdempotencyTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorTenantValidationTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorTestHelper.cs
+- tests/Hexalith.EventStore.Server.Tests/Actors/BackpressureTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Actors/IdempotencyCheckerTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Actors/IdempotencyRecordTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Security/TenantInjectionPreventionTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Actors/StateMachineIntegrationTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Actors/DeadLetterRoutingTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Configuration/IdempotencyRetentionOptionsTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Events/PersistThenPublishResilienceTests.cs
+- src/Hexalith.EventStore.Admin.Server/Helpers/AdminStateStoreKeys.cs
+- src/Hexalith.EventStore.Contracts/Commands/ArchivedCommand.cs
+- src/Hexalith.EventStore.Contracts/Commands/CommandStatusRecord.cs
+- src/Hexalith.EventStore.Contracts/Commands/SubmitCommandResponse.cs
+- src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs
+- src/Hexalith.EventStore.Server/Commands/ArchivedCommandExtensions.cs
+- src/Hexalith.EventStore.Server/Commands/CommandArchiveConstants.cs
+- src/Hexalith.EventStore.Server/Commands/CommandCorrelationIndexAddOutcome.cs
+- src/Hexalith.EventStore.Server/Commands/CommandCorrelationIndexConstants.cs
+- src/Hexalith.EventStore.Server/Commands/CommandCorrelationIndexEntry.cs
+- src/Hexalith.EventStore.Server/Commands/CommandCorrelationIndexOptions.cs
+- src/Hexalith.EventStore.Server/Commands/CommandCorrelationIndexRecord.cs
+- src/Hexalith.EventStore.Server/Commands/CommandCorrelationResolution.cs
+- src/Hexalith.EventStore.Server/Commands/CommandCorrelationResolutionOutcome.cs
+- src/Hexalith.EventStore.Server/Commands/CommandIdentityConflictException.cs
+- src/Hexalith.EventStore.Server/Commands/CommandStatusConstants.cs
+- src/Hexalith.EventStore.Server/Commands/ConcurrencyConflictException.cs
+- src/Hexalith.EventStore.Server/Commands/DaprCommandArchiveStore.cs
+- src/Hexalith.EventStore.Server/Commands/DaprCommandCorrelationIndex.cs
+- src/Hexalith.EventStore.Server/Commands/DaprCommandStatusStore.cs
+- src/Hexalith.EventStore.Server/Commands/ICommandArchiveStore.cs
+- src/Hexalith.EventStore.Server/Commands/ICommandCorrelationIndex.cs
+- src/Hexalith.EventStore.Server/Commands/ICommandStatusStore.cs
+- src/Hexalith.EventStore.Server/Pipeline/Commands/SubmitCommand.cs
+- src/Hexalith.EventStore.Server/Pipeline/SubmitCommandHandler.cs
+- src/Hexalith.EventStore.Testing/Fakes/InMemoryCommandArchiveStore.cs
+- src/Hexalith.EventStore.Testing/Fakes/InMemoryCommandCorrelationIndex.cs
+- src/Hexalith.EventStore.Testing/Fakes/InMemoryCommandStatusStore.cs
+- src/Hexalith.EventStore/Controllers/AdminTraceQueryController.cs
+- src/Hexalith.EventStore/Controllers/CommandStatusController.cs
+- src/Hexalith.EventStore/Controllers/CommandsController.cs
+- src/Hexalith.EventStore/Controllers/ReplayController.cs
+- src/Hexalith.EventStore/ErrorHandling/CommandIdentityConflictExceptionHandler.cs
+- src/Hexalith.EventStore/ErrorHandling/ConcurrencyConflictExceptionHandler.cs
+- src/Hexalith.EventStore/ErrorHandling/ProblemTypeUris.cs
+- src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs
+- src/Hexalith.EventStore/Models/CommandStatusResponse.cs
+- src/Hexalith.EventStore/Models/ReplayCommandResponse.cs
+- src/Hexalith.EventStore/Models/SubmitCommandResponse.cs
+- src/Hexalith.EventStore/OpenApi/CommandDocumentationTransformer.cs
+- src/Hexalith.EventStore/OpenApi/ErrorReferenceEndpoints.cs
+- tests/Hexalith.EventStore.Contracts.Tests/Commands/SubmitCommandResponseTests.cs
+- tests/Hexalith.EventStore.IntegrationTests/EventStore/CommandStatusIntegrationTests.cs
+- tests/Hexalith.EventStore.IntegrationTests/EventStore/CommandsControllerTests.cs
+- tests/Hexalith.EventStore.IntegrationTests/EventStore/OpenApiIntegrationTests.cs
+- tests/Hexalith.EventStore.IntegrationTests/EventStore/ReplayIntegrationTests.cs
+- tests/Hexalith.EventStore.IntegrationTests/Helpers/JwtAuthenticatedWebApplicationFactory.cs
+- tests/Hexalith.EventStore.IntegrationTests/Security/MultiTenantStorageIsolationTests.cs
+- tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiControllerGenerationTests.cs
+- tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiGeneratedControllerErrorSemanticsTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Actors/EventPublicationIntegrationTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Commands/CommandIdentityConflictTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Commands/ConcurrencyConflictExceptionHandlerTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Commands/CommandStatusControllerTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Commands/DaprCommandArchiveStoreTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Commands/DaprCommandCorrelationIndexTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Commands/DaprCommandStatusStoreTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Commands/ReplayControllerTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Commands/SubmitCommandHandlerArchiveTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Commands/SubmitCommandHandlerStatusTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Controllers/CommandsControllerResultPayloadTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Observability/DeadLetterOriginTracingTests.cs
+- tests/Hexalith.EventStore.Server.Tests/OpenApi/OpenApiSpecTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Pipeline/SubmitCommandHandlerResultPayloadTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Pipeline/SubmitCommandHandlerTests.cs
+- tests/Hexalith.EventStore.Testing.Tests/Fakes/AdjustableTimeProvider.cs
+- tests/Hexalith.EventStore.Testing.Tests/Fakes/InMemoryCommandCorrelationIndexTests.cs
+
 ### Change Log
+
+- 2026-07-12: Implemented Story 4.2 exact resume/idempotency integrity, message-primary command tracking, bounded correlation compatibility, safe replay/gateway propagation, and complete regression coverage.

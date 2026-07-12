@@ -11,7 +11,7 @@ public interface ICommandArchiveStore {
     /// </summary>
     Task WriteCommandAsync(
         string tenantId,
-        string correlationId,
+        string messageId,
         ArchivedCommand command,
         CancellationToken cancellationToken = default);
 
@@ -21,6 +21,6 @@ public interface ICommandArchiveStore {
     /// </summary>
     Task<ArchivedCommand?> ReadCommandAsync(
         string tenantId,
-        string correlationId,
+        string messageId,
         CancellationToken cancellationToken = default);
 }

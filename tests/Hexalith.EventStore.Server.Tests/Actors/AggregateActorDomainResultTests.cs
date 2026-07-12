@@ -322,9 +322,11 @@ public class AggregateActorDomainResultTests {
         result.Accepted.ShouldBeFalse();
         await ctx.StatusStore.Received().WriteStatusAsync(
             envelope.TenantId,
-            envelope.CorrelationId,
+            envelope.MessageId,
             Arg.Is<CommandStatusRecord>(record =>
                 record.Status == CommandStatus.Rejected
+                && record.MessageId == envelope.MessageId
+                && record.CorrelationId == envelope.CorrelationId
                 && record.FailureReason == "Protected data diagnostic details were redacted. ReasonCode=protected-data-diagnostic-redacted; Stage=Processing."
                 && record.RejectionEventType == null),
             Arg.Any<CancellationToken>());
@@ -480,15 +482,17 @@ public class AggregateActorDomainResultTests {
         // Assert
         result.Accepted.ShouldBeFalse();
         result.ErrorMessage.ShouldBe("ConcurrencyConflict");
-        await ctx.StateManager.Received(1).SetStateAsync(
+        await ctx.StateManager.DidNotReceive().SetStateAsync(
             $"idempotency:{envelope.MessageId}",
-            Arg.Is<IdempotencyRecord>(record => record.Accepted == false && record.ErrorMessage == "ConcurrencyConflict"),
+            Arg.Any<IdempotencyRecord>(),
             Arg.Any<CancellationToken>());
         await ctx.StatusStore.Received(1).WriteStatusAsync(
             envelope.TenantId,
-            envelope.CorrelationId,
+            envelope.MessageId,
             Arg.Is<CommandStatusRecord>(record =>
                 record.Status == CommandStatus.Rejected
+                && record.MessageId == envelope.MessageId
+                && record.CorrelationId == envelope.CorrelationId
                 && record.FailureReason == "ConcurrencyConflict"
                 && record.RejectionEventType == null),
             Arg.Any<CancellationToken>());
@@ -498,6 +502,11 @@ public class AggregateActorDomainResultTests {
             Arg.Any<string>(),
             Arg.Any<CancellationToken>(),
             Arg.Any<bool>());
+
+        CommandProcessingResult retry = await ctx.Actor.ProcessCommandAsync(envelope);
+
+        retry.Accepted.ShouldBeTrue();
+        _ = await ctx.Invoker.Received(2).InvokeAsync(envelope, Arg.Any<object?>());
     }
 
     // === Code Review Fix: D3 -- Rejection events persisted ===

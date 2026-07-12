@@ -49,7 +49,7 @@ public class OpenApiSpecTests : IClassFixture<OpenApiWebApplicationFactory> {
 
         JsonElement paths = doc.GetProperty("paths");
         OperationHasTag(paths, "/api/v1/commands", "post", "Commands").ShouldBeTrue();
-        OperationHasTag(paths, "/api/v1/commands/status/{correlationId}", "get", "Commands").ShouldBeTrue();
+        OperationHasTag(paths, "/api/v1/commands/status/{messageId}", "get", "Commands").ShouldBeTrue();
         OperationHasTag(paths, "/api/v1/queries", "post", "Queries").ShouldBeTrue();
         OperationHasTag(paths, "/api/v1/commands/validate", "post", "Validation").ShouldBeTrue();
         OperationHasTag(paths, "/api/v1/queries/validate", "post", "Validation").ShouldBeTrue();
@@ -95,7 +95,7 @@ public class OpenApiSpecTests : IClassFixture<OpenApiWebApplicationFactory> {
 
         JsonElement paths = doc.GetProperty("paths");
         JsonElement submitOperation = paths.GetProperty("/api/v1/commands").GetProperty("post");
-        JsonElement statusOperation = paths.GetProperty("/api/v1/commands/status/{correlationId}").GetProperty("get");
+        JsonElement statusOperation = paths.GetProperty("/api/v1/commands/status/{messageId}").GetProperty("get");
 
         submitOperation.TryGetProperty("description", out JsonElement submitDescriptionElement)
             .ShouldBeTrue(submitOperation.GetRawText());
@@ -109,11 +109,11 @@ public class OpenApiSpecTests : IClassFixture<OpenApiWebApplicationFactory> {
         submitDescription.ShouldContain("Location header pointing to the status polling endpoint");
         submitOperation.GetProperty("responses").GetProperty("202").GetProperty("description").GetString().ShouldBe("Command accepted for processing. Check status at the Location header URL.");
 
-        statusOperation.GetProperty("summary").GetString().ShouldBe("Gets the current processing status of a command by correlation ID.");
+        statusOperation.GetProperty("summary").GetString().ShouldBe("Gets the current processing status of a command by message ID, with bounded correlation compatibility.");
         _ = statusDescription.ShouldNotBeNull();
         statusDescription.ShouldContain("Command Lifecycle States");
         statusDescription.ShouldContain("Terminal states mean the command has reached its final outcome");
-        statusOperation.GetProperty("responses").GetProperty("404").GetProperty("description").GetString().ShouldBe("No command status found for the given correlation ID.");
+        statusOperation.GetProperty("responses").GetProperty("404").GetProperty("description").GetString().ShouldBe("No command status found for the given message or correlation identifier.");
     }
 
     [Fact]

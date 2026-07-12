@@ -29,7 +29,8 @@ public class AdminTraceQueryController(
     ICommandStatusStore commandStatusStore,
     IActorProxyFactory actorProxyFactory,
     IConfiguration configuration,
-    ILogger<AdminTraceQueryController> logger) : ControllerBase {
+    ILogger<AdminTraceQueryController> logger,
+    ICommandCorrelationIndex? correlationIndex = null) : ControllerBase {
     private const int MaxEventScan = 10_000;
 
     /// <summary>
@@ -53,9 +54,27 @@ public class AdminTraceQueryController(
         }
 
         try {
-            // Step 1: Read command status
+            // Step 1: Resolve correlation through the bounded tenant index, then read the
+            // authoritative message-primary status. Direct read is legacy compatibility only.
+            string statusKey = correlationId;
+            if (correlationIndex is not null) {
+                CommandCorrelationResolution resolution = await correlationIndex
+                    .ResolveAsync(tenantId, correlationId, ct)
+                    .ConfigureAwait(false);
+                if (resolution.Outcome == CommandCorrelationResolutionOutcome.Ambiguous) {
+                    return Problem(
+                        statusCode: StatusCodes.Status409Conflict,
+                        title: "Ambiguous Command Correlation",
+                        detail: "The correlation identifier maps to multiple commands. Query using the command MessageId.");
+                }
+
+                if (resolution is { Outcome: CommandCorrelationResolutionOutcome.Resolved, MessageId: not null }) {
+                    statusKey = resolution.MessageId;
+                }
+            }
+
             CommandStatusRecord? commandStatus = await commandStatusStore
-                .ReadStatusAsync(tenantId, correlationId, ct)
+                .ReadStatusAsync(tenantId, statusKey, ct)
                 .ConfigureAwait(false);
 
             string resolvedDomain;

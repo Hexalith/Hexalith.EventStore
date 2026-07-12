@@ -17,6 +17,7 @@ public class ConcurrencyConflictException : Exception {
         : base("An optimistic concurrency conflict occurred.") {
         CorrelationId = string.Empty;
         AggregateId = string.Empty;
+        MessageId = null;
     }
 
     /// <summary>Standard message-only constructor (serialization support).</summary>
@@ -24,6 +25,7 @@ public class ConcurrencyConflictException : Exception {
         : base(message) {
         CorrelationId = string.Empty;
         AggregateId = string.Empty;
+        MessageId = null;
     }
 
     /// <summary>Standard message+inner constructor (serialization support).</summary>
@@ -31,6 +33,7 @@ public class ConcurrencyConflictException : Exception {
         : base(message, innerException) {
         CorrelationId = string.Empty;
         AggregateId = string.Empty;
+        MessageId = null;
     }
 
     /// <summary>Primary domain constructor with full context.</summary>
@@ -40,7 +43,8 @@ public class ConcurrencyConflictException : Exception {
         string? tenantId = null,
         string? detail = null,
         string? conflictSource = null,
-        Exception? innerException = null)
+        Exception? innerException = null,
+        string? messageId = null)
         : base(detail ?? string.Format(DefaultDetailTemplate, aggregateId), innerException) {
         ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
         ArgumentException.ThrowIfNullOrWhiteSpace(aggregateId);
@@ -49,9 +53,13 @@ public class ConcurrencyConflictException : Exception {
         AggregateId = aggregateId;
         TenantId = tenantId;
         ConflictSource = conflictSource;
+        MessageId = messageId;
     }
 
     public string CorrelationId { get; }
+
+    /// <summary>Gets the command message identifier used for primary status storage.</summary>
+    public string? MessageId { get; }
 
     public string AggregateId { get; }
 

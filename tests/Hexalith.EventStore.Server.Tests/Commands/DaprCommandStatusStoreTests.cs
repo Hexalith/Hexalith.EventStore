@@ -29,12 +29,12 @@ public class DaprCommandStatusStoreTests {
         var record = new CommandStatusRecord(CommandStatus.Received, DateTimeOffset.UtcNow, "agg-1", null, null, null, null);
 
         // Act
-        await store.WriteStatusAsync("tenant-a", "corr-123", record, CancellationToken.None);
+        await store.WriteStatusAsync("tenant-a", "message-123", record, CancellationToken.None);
 
         // Assert
         await _daprClient.Received(1).SaveStateAsync(
             "statestore",
-            "tenant-a:corr-123:status",
+            "tenant-a:message-123:status",
             record,
             stateOptions: Arg.Any<StateOptions?>(),
             metadata: Arg.Is<IReadOnlyDictionary<string, string>>(m => m.ContainsKey("ttlInSeconds")),
@@ -88,14 +88,14 @@ public class DaprCommandStatusStoreTests {
 
         _ = _daprClient.GetStateAsync<CommandStatusRecord>(
             "statestore",
-            "tenant-a:corr-123:status",
+            "tenant-a:message-123:status",
             consistencyMode: Arg.Any<ConsistencyMode?>(),
             metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
             cancellationToken: Arg.Any<CancellationToken>())
             .Returns(expected);
 
         // Act
-        CommandStatusRecord? result = await store.ReadStatusAsync("tenant-a", "corr-123", CancellationToken.None);
+        CommandStatusRecord? result = await store.ReadStatusAsync("tenant-a", "message-123", CancellationToken.None);
 
         // Assert
         _ = result.ShouldNotBeNull();

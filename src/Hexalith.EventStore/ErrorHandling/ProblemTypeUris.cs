@@ -15,6 +15,8 @@ public static class ProblemTypeUris {
     public const string UnsupportedApiVersion = "https://hexalith.io/problems/unsupported-api-version";
     public const string DomainRejection = "https://hexalith.io/problems/domain-rejections";
     public const string ConcurrencyConflict = "https://hexalith.io/problems/concurrency-conflict";
+    public const string CommandIdentityConflict = "https://hexalith.io/problems/command-identity-conflict";
+    public const string CommandCorrelationAmbiguous = "https://hexalith.io/problems/command-correlation-ambiguous";
     public const string RateLimitExceeded = "https://hexalith.io/problems/rate-limit-exceeded";
     public const string BackpressureExceeded = "https://hexalith.io/problems/backpressure-exceeded";
     public const string ServiceUnavailable = "https://hexalith.io/problems/service-unavailable";

@@ -48,11 +48,13 @@ public class SubmitCommandHandlerArchiveTests {
 
         // Assert
         ArchivedCommand? archived = await archiveStore.ReadCommandAsync(
-            command.Tenant, command.CorrelationId, CancellationToken.None);
+            command.Tenant, command.MessageId, CancellationToken.None);
 
         _ = archived.ShouldNotBeNull();
         archived.Tenant.ShouldBe(command.Tenant);
         archived.CommandType.ShouldBe(command.CommandType);
+        archived.MessageId.ShouldBe(command.MessageId);
+        archived.CorrelationId.ShouldBe(command.CorrelationId);
     }
 
     [Fact]
@@ -120,7 +122,7 @@ public class SubmitCommandHandlerArchiveTests {
 
         // Assert
         ArchivedCommand? archived = await archiveStore.ReadCommandAsync(
-            command.Tenant, command.CorrelationId, CancellationToken.None);
+            command.Tenant, command.MessageId, CancellationToken.None);
 
         _ = archived.ShouldNotBeNull();
         archived.Tenant.ShouldBe(command.Tenant);

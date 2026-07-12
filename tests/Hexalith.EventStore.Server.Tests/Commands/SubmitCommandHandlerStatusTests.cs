@@ -47,11 +47,13 @@ public class SubmitCommandHandlerStatusTests {
 
         // Assert
         CommandStatusRecord? status = await statusStore.ReadStatusAsync(
-            command.Tenant, command.CorrelationId, CancellationToken.None);
+            command.Tenant, command.MessageId, CancellationToken.None);
 
         _ = status.ShouldNotBeNull();
         status.Status.ShouldBe(CommandStatus.Received);
         status.AggregateId.ShouldBe(command.AggregateId);
+        status.MessageId.ShouldBe(command.MessageId);
+        status.CorrelationId.ShouldBe(command.CorrelationId);
     }
 
     [Fact]

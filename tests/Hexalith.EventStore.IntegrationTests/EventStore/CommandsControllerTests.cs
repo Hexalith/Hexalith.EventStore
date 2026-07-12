@@ -38,10 +38,11 @@ public class CommandsControllerTests(JwtAuthenticatedWebApplicationFactory facto
         _ = body.ShouldNotBeNull();
         // FR4: CorrelationId defaults to MessageId when not provided
         body.CorrelationId.ShouldBe(messageId);
+        body.MessageId.ShouldBe(messageId);
 
         // Location header: absolute URI pointing to status endpoint
         _ = response.Headers.Location.ShouldNotBeNull();
-        response.Headers.Location!.ToString().ShouldContain($"/api/v1/commands/status/{body.CorrelationId}");
+        response.Headers.Location!.ToString().ShouldContain($"/api/v1/commands/status/{body.MessageId}");
 
         // Retry-After: delta-seconds format (integer "1")
         response.Headers.GetValues("Retry-After").ShouldContain("1");
@@ -136,10 +137,12 @@ public class CommandsControllerTests(JwtAuthenticatedWebApplicationFactory facto
 
         // Explicit CorrelationId preserved
         body.CorrelationId.ShouldBe(explicitCorrelationId);
+        body.MessageId.ShouldBe(messageId);
 
-        // Location header references the explicit correlationId
+        // Location header uses the canonical message tracking key, not trace correlation.
         _ = response.Headers.Location.ShouldNotBeNull();
-        response.Headers.Location!.ToString().ShouldContain($"/api/v1/commands/status/{explicitCorrelationId}");
+        response.Headers.Location!.ToString().ShouldContain($"/api/v1/commands/status/{messageId}");
+        response.Headers.Location!.ToString().ShouldNotContain(explicitCorrelationId);
     }
 
     [Fact]

@@ -93,6 +93,22 @@ public class CommandsControllerResultPayloadTests {
     }
 
     [Fact]
+    public async Task Submit_DistinctMessageAndCorrelation_ReturnsMessageTrackingLocation() {
+        (CommandsController controller, _) = CreateController(null);
+        SubmitCommandRequest request = CreateTestRequest();
+
+        IActionResult result = await controller.Submit(request, CancellationToken.None);
+
+        AcceptedResult accepted = result.ShouldBeOfType<AcceptedResult>();
+        var response = accepted.Value.ShouldBeOfType<Hexalith.EventStore.Contracts.Commands.SubmitCommandResponse>();
+        response.CorrelationId.ShouldBe("test-correlation-id");
+        response.MessageId.ShouldBe(request.MessageId);
+        controller.Response.Headers.Location.ToString().ShouldBe(
+            $"https://localhost/api/v1/commands/status/{request.MessageId}");
+        controller.Response.Headers.Location.ToString().ShouldNotContain(response.CorrelationId);
+    }
+
+    [Fact]
     public async Task Submit_ValidArrayResultPayload_PreservedInResponse() {
         // Arrange
         (CommandsController controller, _) = CreateController("[1,2,3]");

@@ -36,12 +36,12 @@ public class DaprCommandArchiveStoreTests {
         ArchivedCommand command = CreateTestCommand();
 
         // Act
-        await store.WriteCommandAsync("tenant-a", "corr-123", command, CancellationToken.None);
+        await store.WriteCommandAsync("tenant-a", "message-123", command, CancellationToken.None);
 
         // Assert
         await _daprClient.Received(1).SaveStateAsync(
             "statestore",
-            "tenant-a:corr-123:command",
+            "tenant-a:message-123:command",
             command,
             stateOptions: Arg.Any<StateOptions?>(),
             metadata: Arg.Is<IReadOnlyDictionary<string, string>>(m => m.ContainsKey("ttlInSeconds")),
@@ -95,14 +95,14 @@ public class DaprCommandArchiveStoreTests {
 
         _ = _daprClient.GetStateAsync<ArchivedCommand>(
             "statestore",
-            "tenant-a:corr-123:command",
+            "tenant-a:message-123:command",
             consistencyMode: Arg.Any<ConsistencyMode?>(),
             metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
             cancellationToken: Arg.Any<CancellationToken>())
             .Returns(expected);
 
         // Act
-        ArchivedCommand? result = await store.ReadCommandAsync("tenant-a", "corr-123", CancellationToken.None);
+        ArchivedCommand? result = await store.ReadCommandAsync("tenant-a", "message-123", CancellationToken.None);
 
         // Assert
         _ = result.ShouldNotBeNull();

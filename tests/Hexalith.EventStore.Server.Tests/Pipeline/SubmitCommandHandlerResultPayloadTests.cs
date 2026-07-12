@@ -28,8 +28,8 @@ public class SubmitCommandHandlerResultPayloadTests {
         var router = CreateRouter(SensitiveResultPayload);
         SubmitCommand command = CreateCommand();
 
-        _ = statusStore.ReadStatusAsync(command.Tenant, command.CorrelationId, Arg.Any<CancellationToken>())
-            .Returns(CreateStatus(CommandStatus.Completed, command.AggregateId));
+        _ = statusStore.ReadStatusAsync(command.Tenant, command.MessageId, Arg.Any<CancellationToken>())
+            .Returns(CreateStatus(CommandStatus.Completed, command));
 
         var handler = CreateHandler(statusStore, router, logs);
 
@@ -50,8 +50,8 @@ public class SubmitCommandHandlerResultPayloadTests {
         var router = CreateRouter(SensitiveResultPayload);
         SubmitCommand command = CreateCommand();
 
-        _ = statusStore.ReadStatusAsync(command.Tenant, command.CorrelationId, Arg.Any<CancellationToken>())
-            .Returns(CreateStatus(CommandStatus.PublishFailed, command.AggregateId));
+        _ = statusStore.ReadStatusAsync(command.Tenant, command.MessageId, Arg.Any<CancellationToken>())
+            .Returns(CreateStatus(CommandStatus.PublishFailed, command));
 
         var handler = CreateHandler(statusStore, router, logs);
 
@@ -78,7 +78,7 @@ public class SubmitCommandHandlerResultPayloadTests {
         var router = CreateRouter(SensitiveResultPayload);
         SubmitCommand command = CreateCommand();
 
-        _ = statusStore.ReadStatusAsync(command.Tenant, command.CorrelationId, Arg.Any<CancellationToken>())
+        _ = statusStore.ReadStatusAsync(command.Tenant, command.MessageId, Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Status store unavailable"));
 
         var handler = CreateHandler(statusStore, router, logs);
@@ -107,7 +107,7 @@ public class SubmitCommandHandlerResultPayloadTests {
         var router = CreateRouter(SensitiveResultPayload);
         SubmitCommand command = CreateCommand();
 
-        _ = statusStore.ReadStatusAsync(command.Tenant, command.CorrelationId, Arg.Any<CancellationToken>())
+        _ = statusStore.ReadStatusAsync(command.Tenant, command.MessageId, Arg.Any<CancellationToken>())
             .Returns((CommandStatusRecord?)null);
 
         var handler = CreateHandler(statusStore, router, logs);
@@ -129,7 +129,7 @@ public class SubmitCommandHandlerResultPayloadTests {
     }
 
     [Fact]
-    public async Task Handle_NullActorPayload_DoesNotReadStatusOnlyForPayloadAndDoesNotWarn() {
+    public async Task Handle_NullActorPayload_PerformsSingleEvidenceReadAndDoesNotWarn() {
         // Arrange
         var logs = new List<CapturedLogEntry>();
         var statusStore = Substitute.For<ICommandStatusStore>();
@@ -144,8 +144,8 @@ public class SubmitCommandHandlerResultPayloadTests {
         result.CorrelationId.ShouldBe(command.CorrelationId);
         result.ResultPayload.ShouldBeNull();
         logs.ShouldNotContain(static entry => entry.EventId.Id == ResultPayloadDroppedEventId);
-        _ = await statusStore.DidNotReceive().ReadStatusAsync(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _ = await statusStore.Received(1).ReadStatusAsync(
+            command.Tenant, command.MessageId, Arg.Any<CancellationToken>());
     }
 
     private static SubmitCommandHandler CreateHandler(
@@ -175,14 +175,16 @@ public class SubmitCommandHandlerResultPayloadTests {
         UserId: "test-user",
         Extensions: null);
 
-    private static CommandStatusRecord CreateStatus(CommandStatus status, string aggregateId) => new(
+    private static CommandStatusRecord CreateStatus(CommandStatus status, SubmitCommand command) => new(
         status,
         DateTimeOffset.UtcNow,
-        aggregateId,
+        command.AggregateId,
         EventCount: status == CommandStatus.Completed ? 1 : null,
         RejectionEventType: null,
         FailureReason: null,
-        TimeoutDuration: null);
+        TimeoutDuration: null,
+        MessageId: command.MessageId,
+        CorrelationId: command.CorrelationId);
 
     private static void AssertAllowedDropProperties(
         CapturedLogEntry warning,

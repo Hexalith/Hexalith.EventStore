@@ -52,7 +52,7 @@ public class OpenApiIntegrationTests(JwtAuthenticatedWebApplicationFactory facto
         // Assert
         doc.TryGetProperty("paths", out JsonElement paths).ShouldBeTrue();
         // OpenAPI path parameters use {param} syntax
-        string statusPath = "/api/v1/commands/status/{correlationId}";
+        string statusPath = "/api/v1/commands/status/{messageId}";
         paths.TryGetProperty(statusPath, out _).ShouldBeTrue(
             $"Expected path '{statusPath}' in paths: {string.Join(", ", EnumeratePropertyNames(paths))}");
     }

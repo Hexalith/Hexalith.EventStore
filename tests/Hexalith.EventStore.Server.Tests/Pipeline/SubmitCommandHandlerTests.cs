@@ -134,6 +134,36 @@ public class SubmitCommandHandlerTests {
         await projectionOrchestrator.DidNotReceiveWithAnyArgs().UpdateProjectionAsync(default!, default);
     }
 
+    [Fact]
+    public async Task Handle_Submission_UpdatesCorrelationIndexExactlyOnce()
+    {
+        ICommandCorrelationIndex correlationIndex = Substitute.For<ICommandCorrelationIndex>();
+        _ = correlationIndex.AddAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>())
+            .Returns(CommandCorrelationIndexAddOutcome.Added);
+        var handler = new SubmitCommandHandler(
+            new InMemoryCommandStatusStore(),
+            new InMemoryCommandArchiveStore(),
+            CreateMockRouter(),
+            activityTracker: null,
+            streamActivityTracker: null,
+            new NoOpProjectionUpdateOrchestrator(),
+            NullLogger<SubmitCommandHandler>.Instance,
+            correlationIndex);
+        SubmitCommand command = CreateCommand(correlationId: "shared-correlation");
+
+        _ = await handler.Handle(command, CancellationToken.None);
+
+        _ = await correlationIndex.Received(1).AddAsync(
+            command.Tenant,
+            command.CorrelationId,
+            command.MessageId,
+            Arg.Any<CancellationToken>());
+    }
+
     /// <summary>
     /// Structural pin: <see cref="SubmitCommandHandler.Handle"/> with the 4-arg constructor
     /// (status store + archive store + router + logger) and unconfigured
@@ -209,22 +239,20 @@ public class SubmitCommandHandlerTests {
         // surfaces here rather than degrading the pin to vacuous.
         await statusStore.Received(1).WriteStatusAsync(
             command.Tenant,
-            command.CorrelationId,
+            command.MessageId,
             Arg.Any<CommandStatusRecord>(),
             Arg.Any<CancellationToken>());
         await archiveStore.Received(1).WriteCommandAsync(
             command.Tenant,
-            command.CorrelationId,
+            command.MessageId,
             Arg.Any<ArchivedCommand>(),
             Arg.Any<CancellationToken>());
         _ = await router.Received(1).RouteCommandAsync(command, Arg.Any<CancellationToken>());
 
-        // Both activity-trackers are null in the 5-arg ctor path — the tracker-gated read-back
-        // at SubmitCommandHandler.cs:97-110 must NOT fire here. Locking DidNotReceive pins the
-        // no-trackers shape: a future change that adds a non-null default tracker would surface
-        // as a test failure rather than a silent behaviour shift.
-        _ = await statusStore.DidNotReceive().ReadStatusAsync(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        // The handler performs one post-route evidence read before writing Received so an
+        // identity conflict can never overwrite an existing message-primary status.
+        _ = await statusStore.Received(1).ReadStatusAsync(
+            command.Tenant, command.MessageId, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -253,7 +281,7 @@ public class SubmitCommandHandlerTests {
 
         await statusStore.WriteStatusAsync(
             command.Tenant,
-            command.CorrelationId,
+            command.MessageId,
             new CommandStatusRecord(
                 CommandStatus.Rejected,
                 DateTimeOffset.UtcNow,
@@ -261,13 +289,16 @@ public class SubmitCommandHandlerTests {
                 EventCount: null,
                 RejectionEventType: null,
                 FailureReason: "ConcurrencyConflict",
-                TimeoutDuration: null),
+                TimeoutDuration: null,
+                MessageId: command.MessageId,
+                CorrelationId: command.CorrelationId),
             CancellationToken.None);
 
         // Act & Assert
         ConcurrencyConflictException ex = await Should.ThrowAsync<ConcurrencyConflictException>(
             () => handler.Handle(command, CancellationToken.None));
         ex.CorrelationId.ShouldBe(correlationId);
+        ex.MessageId.ShouldBe(command.MessageId);
         ex.AggregateId.ShouldBe(command.AggregateId);
     }
 

@@ -47,7 +47,7 @@ public class AggregateActorTenantValidationTests {
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_TenantMismatch_StoresRejectionInIdempotencyCache() {
+    public async Task ProcessCommandAsync_TenantMismatch_PerformsNoActorStateAccess() {
         // Arrange
         ActorTestContext ctx = CreateActor();
         ConfigureNoDuplicate(ctx.StateManager);
@@ -56,15 +56,11 @@ public class AggregateActorTenantValidationTests {
         // Act
         _ = await ctx.Actor.ProcessCommandAsync(envelope);
 
-        // Assert
-        await ctx.StateManager.Received(1).SetStateAsync(
-            $"idempotency:{envelope.MessageId}",
-            Arg.Is<IdempotencyRecord>(r => r.Accepted == false),
-            Arg.Any<CancellationToken>());
+        ctx.StateManager.ReceivedCalls().ShouldBeEmpty();
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_TenantMismatch_CallsSaveStateAsync() {
+    public async Task ProcessCommandAsync_TenantMismatch_DoesNotWriteAdvisoryStatus() {
         // Arrange
         ActorTestContext ctx = CreateActor();
         ConfigureNoDuplicate(ctx.StateManager);
@@ -73,8 +69,7 @@ public class AggregateActorTenantValidationTests {
         // Act
         _ = await ctx.Actor.ProcessCommandAsync(envelope);
 
-        // Assert
-        await ctx.StateManager.Received(1).SaveStateAsync(Arg.Any<CancellationToken>());
+        ctx.StatusStore.ReceivedCalls().ShouldBeEmpty();
     }
 
     [Fact]

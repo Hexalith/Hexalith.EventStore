@@ -181,17 +181,34 @@ public class ConcurrencyConflictExceptionHandlerTests {
         var exception = new ConcurrencyConflictException(
             correlationId: "cmd-corr-id",
             aggregateId: "order-123",
-            tenantId: "acme");
+            tenantId: "acme",
+            messageId: "message-id");
 
         // Act
         _ = await _handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
 
         // Assert
-        CommandStatusRecord? status = await _statusStore.ReadStatusAsync("acme", "cmd-corr-id");
+        CommandStatusRecord? status = await _statusStore.ReadStatusAsync("acme", "message-id");
         _ = status.ShouldNotBeNull();
         status.Status.ShouldBe(CommandStatus.Rejected);
         status.FailureReason.ShouldBe("ConcurrencyConflict");
         status.AggregateId.ShouldBe("order-123");
+        status.MessageId.ShouldBe("message-id");
+        status.CorrelationId.ShouldBe("cmd-corr-id");
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_LegacyConflictWithoutMessageId_DoesNotWriteCorrelationPrimaryStatus() {
+        DefaultHttpContext httpContext = CreateHttpContextWithBody();
+        var exception = new ConcurrencyConflictException(
+            correlationId: "cmd-corr-id",
+            aggregateId: "order-123",
+            tenantId: "acme");
+
+        bool handled = await _handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
+
+        handled.ShouldBeTrue();
+        (await _statusStore.ReadStatusAsync("acme", "cmd-corr-id")).ShouldBeNull();
     }
 
     [Fact]
@@ -210,7 +227,8 @@ public class ConcurrencyConflictExceptionHandlerTests {
         var exception = new ConcurrencyConflictException(
             correlationId: "cmd-corr-id",
             aggregateId: "order-123",
-            tenantId: "acme");
+            tenantId: "acme",
+            messageId: "message-id");
 
         // Act
         bool handled = await handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
@@ -237,7 +255,8 @@ public class ConcurrencyConflictExceptionHandlerTests {
         var exception = new ConcurrencyConflictException(
             correlationId: "cmd-corr-id",
             aggregateId: "order-123",
-            tenantId: "acme");
+            tenantId: "acme",
+            messageId: "message-id");
 
         // Act
         _ = await handler.TryHandleAsync(httpContext, exception, CancellationToken.None);

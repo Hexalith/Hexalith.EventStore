@@ -9,8 +9,8 @@ public static class CommandArchiveConstants {
 
     /// <summary>
     /// Builds the state store key for a command archive entry.
-    /// Key format: {tenantId}:{correlationId}:command (per D2).
+    /// Key format: {tenantId}:{messageId}:command.
     /// </summary>
-    public static string BuildKey(string tenantId, string correlationId)
-        => $"{tenantId}:{correlationId}:{KeySuffix}";
+    public static string BuildKey(string tenantId, string messageId)
+        => $"{tenantId}:{messageId}:{KeySuffix}";
 }

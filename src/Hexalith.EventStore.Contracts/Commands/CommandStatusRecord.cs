@@ -11,6 +11,8 @@ namespace Hexalith.EventStore.Contracts.Commands;
 /// <param name="RejectionEventType">Fully qualified rejection event type name for domain rejections.</param>
 /// <param name="FailureReason">Description of an infrastructure or publication failure when available.</param>
 /// <param name="TimeoutDuration">Duration before timeout occurred (TimedOut status only).</param>
+/// <param name="MessageId">The command message identifier, or <c>null</c> for a legacy record.</param>
+/// <param name="CorrelationId">The tracing correlation identifier, or <c>null</c> for a legacy record.</param>
 public record CommandStatusRecord(
     CommandStatus Status,
     DateTimeOffset Timestamp,
@@ -18,4 +20,6 @@ public record CommandStatusRecord(
     int? EventCount,
     string? RejectionEventType,
     string? FailureReason,
-    TimeSpan? TimeoutDuration);
+    TimeSpan? TimeoutDuration,
+    string? MessageId = null,
+    string? CorrelationId = null);

@@ -40,7 +40,7 @@ public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer e
     /// <remarks>
     /// The command is validated and routed to the appropriate domain aggregate for processing.
     /// On success, returns 202 Accepted with a Location header pointing to the status polling endpoint.
-    /// The consumer should poll the status endpoint using the correlation ID until a terminal status is reached.
+    /// The consumer should poll the status endpoint using the returned message ID until a terminal status is reached.
     /// </remarks>
     /// <response code="202">Command accepted for processing. Check status at the Location header URL.</response>
     /// <response code="400">Validation failed. See errors object for field-level details.</response>
@@ -123,11 +123,15 @@ public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer e
         SubmitCommandResult result = await mediator.Send(command, cancellationToken).ConfigureAwait(false);
 
         // RFC 7231: Location header should be absolute URI
-        string absoluteLocationUri = $"{Request.Scheme}://{Request.Host}/api/v1/commands/status/{result.CorrelationId}";
+        string statusKey = result.MessageId ?? command.MessageId;
+        string absoluteLocationUri = $"{Request.Scheme}://{Request.Host}/api/v1/commands/status/{statusKey}";
         Response.Headers["Location"] = absoluteLocationUri;
         Response.Headers["Retry-After"] = "1";
 
-        return Accepted(new SubmitCommandResponse(result.CorrelationId, ParseOptionalResultPayload(result.ResultPayload, result.CorrelationId, logger)));
+        return Accepted(new SubmitCommandResponse(
+            result.CorrelationId,
+            ParseOptionalResultPayload(result.ResultPayload, result.CorrelationId, logger),
+            statusKey));
     }
 
     private static JsonElement? ParseOptionalResultPayload(string? resultPayload, string correlationId, ILogger logger) {

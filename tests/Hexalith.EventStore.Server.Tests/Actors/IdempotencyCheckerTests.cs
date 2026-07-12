@@ -3,6 +3,7 @@ using Dapr.Actors.Runtime;
 using Hexalith.EventStore.Server.Actors;
 
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 
 using NSubstitute;
 
@@ -166,6 +167,36 @@ public class IdempotencyCheckerTests
             Arg.Any<CancellationToken>());
         _ = await _stateManager.DidNotReceive().TryRemoveStateAsync(
             Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CheckAsync_ExpiredExactRecord_StagesRemovalAndReturnsExpired()
+    {
+        var now = new DateTimeOffset(2026, 7, 12, 10, 0, 0, TimeSpan.Zero);
+        var timeProvider = new FakeTimeProvider(now);
+        CommandProcessingIdentity identity = Identity();
+        var record = new IdempotencyRecord(
+            identity.CausationId,
+            "corr-456",
+            true,
+            null,
+            now.AddHours(-24),
+            MessageId: identity.MessageId,
+            CommandType: identity.CommandType,
+            ExpiresAt: now.AddSeconds(-1),
+            Disposition: IdempotencyRecordDisposition.Terminal);
+        _ = _stateManager.TryGetStateAsync<IdempotencyRecord>("idempotency:message-123", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyRecord>(true, record));
+        var checker = new IdempotencyChecker(_stateManager, _logger, timeProvider);
+
+        IdempotencyCheckResult result = await checker.CheckAsync(identity);
+
+        result.Outcome.ShouldBe(IdempotencyCheckOutcome.Expired);
+        result.StateMutationStaged.ShouldBeTrue();
+        result.Result.ShouldBeNull();
+        _ = await _stateManager.Received(1).TryRemoveStateAsync(
+            "idempotency:message-123",
             Arg.Any<CancellationToken>());
     }
 

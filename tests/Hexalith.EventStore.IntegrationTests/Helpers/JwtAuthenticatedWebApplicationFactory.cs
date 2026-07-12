@@ -23,6 +23,9 @@ public class JwtAuthenticatedWebApplicationFactory : WebApplicationFactory<Event
     /// <summary>Gets the shared InMemoryCommandArchiveStore instance used across all tests.</summary>
     public InMemoryCommandArchiveStore ArchiveStore { get; } = new();
 
+    /// <summary>Gets the shared tenant-scoped in-memory correlation index.</summary>
+    public InMemoryCommandCorrelationIndex CorrelationIndex { get; } = new();
+
     /// <summary>Gets the shared FakeCommandRouter instance used across all tests.</summary>
     public FakeCommandRouter Router { get; } = new() { FakeActor = new FakeAggregateActor() };
 
@@ -55,6 +58,14 @@ public class JwtAuthenticatedWebApplicationFactory : WebApplicationFactory<Event
             }
 
             _ = services.AddSingleton<ICommandArchiveStore>(ArchiveStore);
+
+            ServiceDescriptor? indexDescriptor = services.FirstOrDefault(
+                descriptor => descriptor.ServiceType == typeof(ICommandCorrelationIndex));
+            if (indexDescriptor is not null) {
+                _ = services.Remove(indexDescriptor);
+            }
+
+            _ = services.AddSingleton<ICommandCorrelationIndex>(CorrelationIndex);
 
             // Replace CommandRouter with fake (no DAPR actor infrastructure needed)
             TestServiceOverrides.ReplaceCommandRouter(services, Router);

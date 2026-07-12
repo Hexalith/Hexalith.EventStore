@@ -11,23 +11,23 @@ public static class AdminStateStoreKeys {
     /// Builds the command status key. Source: Server/Commands/CommandStatusConstants.BuildKey().
     /// </summary>
     /// <param name="tenantId">The tenant identifier.</param>
-    /// <param name="correlationId">The correlation identifier.</param>
+    /// <param name="messageId">The command message identifier.</param>
     /// <returns>The state store key for command status.</returns>
-    public static string CommandStatusKey(string tenantId, string correlationId) {
+    public static string CommandStatusKey(string tenantId, string messageId) {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
-        return $"{tenantId}:{correlationId}:status";
+        ArgumentException.ThrowIfNullOrWhiteSpace(messageId);
+        return $"{tenantId}:{messageId}:status";
     }
 
     /// <summary>
     /// Builds the command archive key. Source: Server/Commands/CommandArchiveConstants.BuildKey().
     /// </summary>
     /// <param name="tenantId">The tenant identifier.</param>
-    /// <param name="correlationId">The correlation identifier.</param>
+    /// <param name="messageId">The command message identifier.</param>
     /// <returns>The state store key for command archive.</returns>
-    public static string CommandArchiveKey(string tenantId, string correlationId) {
+    public static string CommandArchiveKey(string tenantId, string messageId) {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
-        return $"{tenantId}:{correlationId}:command";
+        ArgumentException.ThrowIfNullOrWhiteSpace(messageId);
+        return $"{tenantId}:{messageId}:command";
     }
 }

@@ -18,14 +18,14 @@ public sealed class InMemoryCommandArchiveStore : ICommandArchiveStore {
     /// <inheritdoc/>
     public Task WriteCommandAsync(
         string tenantId,
-        string correlationId,
+        string messageId,
         ArchivedCommand command,
         CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(messageId);
         ArgumentNullException.ThrowIfNull(command);
 
-        string key = CommandArchiveConstants.BuildKey(tenantId, correlationId);
+        string key = CommandArchiveConstants.BuildKey(tenantId, messageId);
         DateTimeOffset expiry = DateTimeOffset.UtcNow.AddSeconds(TtlSeconds);
         _store[key] = (command, expiry);
         return Task.CompletedTask;
@@ -34,12 +34,12 @@ public sealed class InMemoryCommandArchiveStore : ICommandArchiveStore {
     /// <inheritdoc/>
     public Task<ArchivedCommand?> ReadCommandAsync(
         string tenantId,
-        string correlationId,
+        string messageId,
         CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(messageId);
 
-        string key = CommandArchiveConstants.BuildKey(tenantId, correlationId);
+        string key = CommandArchiveConstants.BuildKey(tenantId, messageId);
 
         if (_store.TryGetValue(key, out (ArchivedCommand Command, DateTimeOffset Expiry) entry)) {
             if (entry.Expiry <= DateTimeOffset.UtcNow) {

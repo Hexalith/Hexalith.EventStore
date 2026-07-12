@@ -22,14 +22,14 @@ public class DaprCommandArchiveStore(
     /// </remarks>
     public async Task WriteCommandAsync(
         string tenantId,
-        string correlationId,
+        string messageId,
         ArchivedCommand command,
         CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(messageId);
         ArgumentNullException.ThrowIfNull(command);
 
-        string key = CommandArchiveConstants.BuildKey(tenantId, correlationId);
+        string key = CommandArchiveConstants.BuildKey(tenantId, messageId);
         CommandStatusOptions opts = options.Value;
 
         var metadata = new Dictionary<string, string>
@@ -45,20 +45,20 @@ public class DaprCommandArchiveStore(
             cancellationToken: cancellationToken).ConfigureAwait(false);
 
         logger.LogDebug(
-            "Command archived: CorrelationId={CorrelationId}, TenantId={TenantId}",
-            correlationId,
+            "Command archived: MessageId={MessageId}, TenantId={TenantId}",
+            messageId,
             tenantId);
     }
 
     /// <inheritdoc/>
     public async Task<ArchivedCommand?> ReadCommandAsync(
         string tenantId,
-        string correlationId,
+        string messageId,
         CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(messageId);
 
-        string key = CommandArchiveConstants.BuildKey(tenantId, correlationId);
+        string key = CommandArchiveConstants.BuildKey(tenantId, messageId);
         CommandStatusOptions opts = options.Value;
 
         try {
@@ -73,8 +73,8 @@ public class DaprCommandArchiveStore(
         catch (Exception ex) {
             logger.LogWarning(
                 ex,
-                "Failed to read archived command for {CorrelationId}, TenantId={TenantId}. Returning null.",
-                correlationId,
+                "Failed to read archived command for {MessageId}, TenantId={TenantId}. Returning null.",
+                messageId,
                 tenantId);
             return null;
         }

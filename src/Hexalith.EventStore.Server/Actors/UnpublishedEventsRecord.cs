@@ -14,6 +14,7 @@ namespace Hexalith.EventStore.Server.Actors;
 /// <param name="FailedAt">When the publication failure occurred.</param>
 /// <param name="RetryCount">Number of drain retry attempts.</param>
 /// <param name="LastFailureReason">Reason for the most recent drain failure.</param>
+/// <param name="MessageId">The command message identifier, or <c>null</c> for a legacy correlation-keyed record.</param>
 public record UnpublishedEventsRecord(
     string CorrelationId,
     long StartSequence,
@@ -23,19 +24,20 @@ public record UnpublishedEventsRecord(
     bool IsRejection,
     DateTimeOffset FailedAt,
     int RetryCount,
-    string? LastFailureReason) {
+    string? LastFailureReason,
+    string? MessageId = null) {
     /// <summary>State key prefix for unpublished event records.</summary>
     public const string StateKeyPrefix = "drain:";
 
-    /// <summary>Gets the actor state key for the given correlation ID.</summary>
-    /// <param name="correlationId">The correlation ID.</param>
-    /// <returns>The state key in format "drain:{correlationId}".</returns>
-    public static string GetStateKey(string correlationId) => $"{StateKeyPrefix}{correlationId}";
+    /// <summary>Gets the actor state key for the command tracking identity.</summary>
+    /// <param name="trackingId">The message ID for new records, or correlation ID for legacy records.</param>
+    /// <returns>The state key in format "drain:{trackingId}".</returns>
+    public static string GetStateKey(string trackingId) => $"{StateKeyPrefix}{trackingId}";
 
-    /// <summary>Gets the DAPR actor reminder name for the given correlation ID.</summary>
-    /// <param name="correlationId">The correlation ID.</param>
-    /// <returns>The reminder name in format "drain-unpublished-{correlationId}".</returns>
-    public static string GetReminderName(string correlationId) => $"drain-unpublished-{correlationId}";
+    /// <summary>Gets the DAPR actor reminder name for the command tracking identity.</summary>
+    /// <param name="trackingId">The message ID for new records, or correlation ID for legacy records.</param>
+    /// <returns>The reminder name in format "drain-unpublished-{trackingId}".</returns>
+    public static string GetReminderName(string trackingId) => $"drain-unpublished-{trackingId}";
 
     /// <summary>Returns a new record with incremented retry count and updated failure reason.</summary>
     /// <param name="failureReason">The reason for the latest failure.</param>

@@ -17,15 +17,15 @@ public sealed class CommandDocumentationTransformer : IOpenApiOperationTransform
             operation.Description =
                 "The command is validated and routed to the appropriate domain aggregate for processing. " +
                 "On success, returns 202 Accepted with a Location header pointing to the status polling endpoint. " +
-                "The consumer should poll the status endpoint using the correlation ID until a terminal status is reached.";
+                "The consumer should poll the status endpoint using the returned MessageId until a terminal status is reached.";
             SetResponseDescription(
                 operation,
                 "202",
                 "Command accepted for processing. Check status at the Location header URL.");
         }
-        else if (string.Equals(context.Description.RelativePath, "api/v1/commands/status/{correlationId}", StringComparison.OrdinalIgnoreCase)
+        else if (string.Equals(context.Description.RelativePath, "api/v1/commands/status/{messageId}", StringComparison.OrdinalIgnoreCase)
             && string.Equals(context.Description.HttpMethod, "GET", StringComparison.OrdinalIgnoreCase)) {
-            operation.Summary = "Gets the current processing status of a command by correlation ID.";
+            operation.Summary = "Gets the current processing status of a command by message ID, with bounded correlation compatibility.";
             operation.Description =
                 "Tenant-scoped: only returns status for the authenticated user's authorized tenants (SEC-3).\n\n" +
                 "Command Lifecycle States:\n\n" +
@@ -35,7 +35,7 @@ public sealed class CommandDocumentationTransformer : IOpenApiOperationTransform
             SetResponseDescription(
                 operation,
                 "404",
-                "No command status found for the given correlation ID.");
+                "No command status found for the given message or correlation identifier.");
         }
 
         return Task.CompletedTask;

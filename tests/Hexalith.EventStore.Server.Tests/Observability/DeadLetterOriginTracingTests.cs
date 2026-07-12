@@ -659,8 +659,11 @@ public class DeadLetterOriginTracingTests {
         // Assert: Command status store received a write for this correlation ID with Rejected status
         await statusStore.Received().WriteStatusAsync(
             Arg.Any<string>(),
-            correlationId,
-            Arg.Is<CommandStatusRecord>(r => r.Status == CommandStatus.Rejected),
+            envelope.MessageId,
+            Arg.Is<CommandStatusRecord>(r =>
+                r.Status == CommandStatus.Rejected
+                && r.MessageId == envelope.MessageId
+                && r.CorrelationId == correlationId),
             Arg.Any<CancellationToken>());
     }
 
@@ -672,14 +675,14 @@ public class DeadLetterOriginTracingTests {
         (AggregateActor actor, _, _, IDomainServiceInvoker invoker, _, ICommandStatusStore statusStore) =
             CreateActorWithFakeDeadLetter();
 
-        // Capture the final status write
+        CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId);
+
+        // Capture the final status write by the authoritative message identity.
         _ = statusStore.WriteStatusAsync(
             Arg.Any<string>(),
-            correlationId,
+            envelope.MessageId,
             Arg.Do<CommandStatusRecord>(r => capturedStatus = r),
             Arg.Any<CancellationToken>());
-
-        CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId);
 
         _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Infra failure"));
@@ -690,6 +693,8 @@ public class DeadLetterOriginTracingTests {
         // Assert: The last status write is for Rejected terminal state
         _ = capturedStatus.ShouldNotBeNull("Status store should have received a status write");
         capturedStatus.Status.ShouldBe(CommandStatus.Rejected);
+        capturedStatus.MessageId.ShouldBe(envelope.MessageId);
+        capturedStatus.CorrelationId.ShouldBe(correlationId);
     }
 
     [Fact]

@@ -71,6 +71,16 @@ public static class ErrorReferenceEndpoints {
             """{"type":"https://hexalith.io/problems/concurrency-conflict","title":"Conflict","status":409,"detail":"A concurrency conflict occurred. Please retry after the specified interval."}""",
             ["Wait for the interval specified in the Retry-After response header.", "Retry the command — the server will resolve the conflict on the next attempt."]),
 
+        new("command-identity-conflict", "Command Identity Conflict", 409,
+            "The supplied message identifier is associated with a different or unverifiable command identity. The conflict is non-retryable with that identity tuple.",
+            """{"type":"https://hexalith.io/problems/command-identity-conflict","title":"Command Identity Conflict","status":409,"detail":"The supplied MessageId cannot be verified for this command. Submit the original command identity tuple or use a new MessageId."}""",
+            ["Verify the original MessageId, causation identifier, and command type.", "If the original tuple is unavailable, submit the command with a new MessageId."]),
+
+        new("command-correlation-ambiguous", "Ambiguous Command Correlation", 409,
+            "The tenant-scoped correlation identifier maps to multiple live commands, so compatibility lookup cannot select one safely.",
+            """{"type":"https://hexalith.io/problems/command-correlation-ambiguous","title":"Ambiguous Command Correlation","status":409,"detail":"The correlation identifier maps to multiple commands. Query again using the command MessageId."}""",
+            ["Use the MessageId returned by command submission.", "Do not retry correlation lookup until a unique MessageId is available."]),
+
         new("rate-limit-exceeded", "Rate Limit Exceeded", 429,
             "The per-tenant rate limit has been exceeded for the current time window.",
             """{"type":"https://hexalith.io/problems/rate-limit-exceeded","title":"Too Many Requests","status":429,"detail":"Rate limit exceeded for tenant 'tenant-a'. Please retry after the specified interval."}""",
@@ -82,9 +92,9 @@ public static class ErrorReferenceEndpoints {
             ["Retry after the Retry-After interval (typically 30 seconds).", "If the error persists, check infrastructure health."]),
 
         new("command-status-not-found", "Command Status Not Found", 404,
-            "No command status record was found for the given correlation ID. The command may not have been submitted or the status may have expired.",
-            """{"type":"https://hexalith.io/problems/command-status-not-found","title":"Not Found","status":404,"detail":"No command status found for correlation ID '01JAXYZ1234567890ABCDEFGH'."}""",
-            ["Verify the correlation ID from the original 202 Accepted response.", "Status records may expire after the configured retention period."]),
+            "No command status record was found for the given message or correlation identifier. The command may not have been submitted or the status may have expired.",
+            """{"type":"https://hexalith.io/problems/command-status-not-found","title":"Not Found","status":404,"detail":"No command status found for message or correlation identifier '01JAXYZ1234567890ABCDEFGH'."}""",
+            ["Verify the MessageId from the original 202 Accepted response.", "Status records may expire after the configured retention period."]),
 
         new("unsupported-api-version", "Unsupported API Version", 400,
             "The API version in the request path is not supported by this service.",

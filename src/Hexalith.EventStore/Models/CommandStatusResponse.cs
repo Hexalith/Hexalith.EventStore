@@ -16,15 +16,16 @@ public record CommandStatusResponse(
     int? EventCount,
     string? RejectionEventType,
     string? FailureReason,
-    string? TimeoutDuration) {
+    string? TimeoutDuration,
+    string? MessageId = null) {
     /// <summary>
     /// Creates a <see cref="CommandStatusResponse"/> from a <see cref="CommandStatusRecord"/>.
     /// </summary>
-    public static CommandStatusResponse FromRecord(string correlationId, CommandStatusRecord record) {
-        ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
+    public static CommandStatusResponse FromRecord(string statusKey, CommandStatusRecord record) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(statusKey);
         ArgumentNullException.ThrowIfNull(record);
         return new CommandStatusResponse(
-            CorrelationId: correlationId,
+            CorrelationId: record.CorrelationId ?? statusKey,
             Status: record.Status.ToString(),
             StatusCode: (int)record.Status,
             Timestamp: record.Timestamp,
@@ -32,6 +33,7 @@ public record CommandStatusResponse(
             EventCount: record.EventCount,
             RejectionEventType: record.RejectionEventType,
             FailureReason: record.FailureReason,
-            TimeoutDuration: record.TimeoutDuration is not null ? XmlConvert.ToString(record.TimeoutDuration.Value) : null);
+            TimeoutDuration: record.TimeoutDuration is not null ? XmlConvert.ToString(record.TimeoutDuration.Value) : null,
+            MessageId: record.MessageId);
     }
 }

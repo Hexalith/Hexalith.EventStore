@@ -47,10 +47,10 @@ public class ConcurrencyConflictExceptionHandler(
         // (advisory writes must not block the error response).
         if (!cancellationToken.IsCancellationRequested) {
             try {
-                if (conflict.TenantId is not null) {
+                if (conflict.TenantId is not null && conflict.MessageId is not null) {
                     await statusStore.WriteStatusAsync(
                         conflict.TenantId,
-                        conflict.CorrelationId,
+                        conflict.MessageId,
                         new CommandStatusRecord(
                             CommandStatus.Rejected,
                             DateTimeOffset.UtcNow,
@@ -58,7 +58,9 @@ public class ConcurrencyConflictExceptionHandler(
                             EventCount: null,
                             RejectionEventType: null,
                             FailureReason: "ConcurrencyConflict",
-                            TimeoutDuration: null),
+                            TimeoutDuration: null,
+                            MessageId: conflict.MessageId,
+                            CorrelationId: conflict.CorrelationId),
                         cancellationToken).ConfigureAwait(false);
                 }
             }

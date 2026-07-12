@@ -941,7 +941,9 @@ public sealed class RestApiGeneratedControllerErrorSemanticsTests
         controller.Gateway.CommandHandler = (request, _) =>
         {
             capturedRequest = request;
-            return Task.FromResult(new SubmitCommandResponse("01KTESTCOMMANDSTATUS000000"));
+            return Task.FromResult(new SubmitCommandResponse(
+                "01KTESTCOMMANDCORRELATION000",
+                MessageId: "01KTESTCOMMANDSTATUS000000"));
         };
         object body = Activator.CreateInstance(
             controller.Assembly.GetType("Smoke.IncrementCounter", throwOnError: true)!,
@@ -952,7 +954,8 @@ public sealed class RestApiGeneratedControllerErrorSemanticsTests
 
         AcceptedResult accepted = result.ShouldBeOfType<AcceptedResult>();
         SubmitCommandResponse response = accepted.Value.ShouldBeOfType<SubmitCommandResponse>();
-        response.CorrelationId.ShouldBe("01KTESTCOMMANDSTATUS000000");
+        response.CorrelationId.ShouldBe("01KTESTCOMMANDCORRELATION000");
+        response.MessageId.ShouldBe("01KTESTCOMMANDSTATUS000000");
         controller.Gateway.CommandCallCount.ShouldBe(1);
         SubmitCommandRequest request = capturedRequest.ShouldNotBeNull();
         request.MessageId.ShouldNotBeNullOrWhiteSpace();

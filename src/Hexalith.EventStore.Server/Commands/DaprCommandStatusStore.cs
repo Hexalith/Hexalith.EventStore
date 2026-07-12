@@ -22,14 +22,14 @@ public class DaprCommandStatusStore(
     /// </remarks>
     public async Task WriteStatusAsync(
         string tenantId,
-        string correlationId,
+        string messageId,
         CommandStatusRecord status,
         CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(messageId);
         ArgumentNullException.ThrowIfNull(status);
 
-        string key = CommandStatusConstants.BuildKey(tenantId, correlationId);
+        string key = CommandStatusConstants.BuildKey(tenantId, messageId);
         CommandStatusOptions opts = options.Value;
 
         var metadata = new Dictionary<string, string>
@@ -45,8 +45,8 @@ public class DaprCommandStatusStore(
             cancellationToken: cancellationToken).ConfigureAwait(false);
 
         logger.LogDebug(
-            "Command status written: CorrelationId={CorrelationId}, TenantId={TenantId}, Status={Status}",
-            correlationId,
+            "Command status written: MessageId={MessageId}, TenantId={TenantId}, Status={Status}",
+            messageId,
             tenantId,
             status.Status);
     }
@@ -54,12 +54,12 @@ public class DaprCommandStatusStore(
     /// <inheritdoc/>
     public async Task<CommandStatusRecord?> ReadStatusAsync(
         string tenantId,
-        string correlationId,
+        string messageId,
         CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(messageId);
 
-        string key = CommandStatusConstants.BuildKey(tenantId, correlationId);
+        string key = CommandStatusConstants.BuildKey(tenantId, messageId);
         CommandStatusOptions opts = options.Value;
 
         try {
@@ -74,8 +74,8 @@ public class DaprCommandStatusStore(
         catch (Exception ex) {
             logger.LogWarning(
                 ex,
-                "Failed to read command status for {CorrelationId}. Returning null.",
-                correlationId);
+                "Failed to read command status for {MessageId}. Returning null.",
+                messageId);
             return null;
         }
     }

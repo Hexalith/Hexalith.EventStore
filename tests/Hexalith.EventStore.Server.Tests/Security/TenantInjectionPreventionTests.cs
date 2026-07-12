@@ -94,7 +94,7 @@ public class TenantInjectionPreventionTests {
     // --- Task 3.6: AC #8 ---
 
     [Fact]
-    public async Task TenantValidator_MismatchDetected_RejectionRecordedViaIdempotency() {
+    public async Task TenantValidator_MismatchDetected_PerformsNoActorStateAccess() {
         // Arrange
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
@@ -120,14 +120,7 @@ public class TenantInjectionPreventionTests {
         // Act
         _ = await actor.ProcessCommandAsync(command);
 
-        // Assert -- idempotency record stored with rejection
-        await stateManager.Received(1).SetStateAsync(
-            "idempotency:msg-tenant-2",
-            Arg.Is<IdempotencyRecord>(r => r.Accepted == false),
-            Arg.Any<CancellationToken>());
-
-        // SaveStateAsync called exactly once (for the rejection commit)
-        await stateManager.Received(1).SaveStateAsync(Arg.Any<CancellationToken>());
+        stateManager.ReceivedCalls().ShouldBeEmpty();
     }
 
     // --- Task 3.7: AC #4 ---

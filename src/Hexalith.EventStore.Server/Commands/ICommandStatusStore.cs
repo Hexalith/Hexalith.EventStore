@@ -11,7 +11,7 @@ public interface ICommandStatusStore {
     /// </summary>
     Task WriteStatusAsync(
         string tenantId,
-        string correlationId,
+        string messageId,
         CommandStatusRecord status,
         CancellationToken cancellationToken = default);
 
@@ -21,6 +21,6 @@ public interface ICommandStatusStore {
     /// </summary>
     Task<CommandStatusRecord?> ReadStatusAsync(
         string tenantId,
-        string correlationId,
+        string messageId,
         CancellationToken cancellationToken = default);
 }

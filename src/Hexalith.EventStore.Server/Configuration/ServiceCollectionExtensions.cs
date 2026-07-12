@@ -60,6 +60,10 @@ public static class EventStoreServerServiceCollectionExtensions {
         services.TryAddSingleton<IProjectionRebuildCheckpointStore, ProjectionRebuildCheckpointStore>();
         services.TryAddSingleton<IProjectionPollerTickSource, PeriodicProjectionPollerTickSource>();
         services.TryAddSingleton(TimeProvider.System);
+        services.TryAddSingleton<IValidateOptions<IdempotencyRetentionOptions>, ValidateIdempotencyRetentionOptions>();
+        _ = services.AddOptions<IdempotencyRetentionOptions>()
+            .Bind(configuration.GetSection("EventStore:Idempotency"))
+            .ValidateOnStart();
         services.TryAddSingleton<IValidateOptions<ProjectionChangeNotifierOptions>, ValidateProjectionChangeNotifierOptions>();
         _ = services.Configure<DomainServiceOptions>(configuration.GetSection("EventStore:DomainServices"));
         _ = services.AddOptions<ProjectionChangeNotifierOptions>()

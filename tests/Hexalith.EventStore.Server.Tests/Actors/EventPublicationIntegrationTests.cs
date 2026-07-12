@@ -151,8 +151,11 @@ public class EventPublicationIntegrationTests {
         // Advisory status writes include EventsPublished
         await statusStore.Received().WriteStatusAsync(
             "test-tenant",
-            "corr-pub-test",
-            Arg.Is<CommandStatusRecord>(r => r.Status == CommandStatus.EventsPublished));
+            envelope.MessageId,
+            Arg.Is<CommandStatusRecord>(r =>
+                r.Status == CommandStatus.EventsPublished
+                && r.MessageId == envelope.MessageId
+                && r.CorrelationId == envelope.CorrelationId));
     }
 
     // --- Task 7.2: Publication fails ---
@@ -201,7 +204,7 @@ public class EventPublicationIntegrationTests {
         CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
         EventEnvelope[] persisted = await actor.GetEventsAsync(0);
         IReadOnlyList<CommandStatusRecord> history = ((InMemoryCommandStatusStore)statusStore)
-            .GetStatusHistory(envelope.TenantId, envelope.CorrelationId);
+            .GetStatusHistory(envelope.TenantId, envelope.MessageId);
 
         // Assert
         result.Accepted.ShouldBeTrue("pub/sub failure after event storage must not reject a successful domain command");
@@ -294,7 +297,7 @@ public class EventPublicationIntegrationTests {
         // Act
         CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
         IReadOnlyList<CommandStatusRecord> history = ((InMemoryCommandStatusStore)statusStore)
-            .GetStatusHistory(envelope.TenantId, envelope.CorrelationId);
+            .GetStatusHistory(envelope.TenantId, envelope.MessageId);
 
         // Assert
         result.Accepted.ShouldBeFalse();
@@ -403,8 +406,11 @@ public class EventPublicationIntegrationTests {
         // Assert -- advisory EventsPublished status written
         await statusStore.Received().WriteStatusAsync(
             "test-tenant",
-            "corr-pub-test",
-            Arg.Is<CommandStatusRecord>(r => r.Status == CommandStatus.EventsPublished));
+            envelope.MessageId,
+            Arg.Is<CommandStatusRecord>(r =>
+                r.Status == CommandStatus.EventsPublished
+                && r.MessageId == envelope.MessageId
+                && r.CorrelationId == envelope.CorrelationId));
     }
 
     // --- Task 7.7: PublishFailed advisory status ---
@@ -432,8 +438,12 @@ public class EventPublicationIntegrationTests {
         // Assert -- advisory PublishFailed status written
         await statusStore.Received().WriteStatusAsync(
             "test-tenant",
-            "corr-pub-test",
-            Arg.Is<CommandStatusRecord>(r => r.Status == CommandStatus.PublishFailed && r.FailureReason == "Broker down"));
+            envelope.MessageId,
+            Arg.Is<CommandStatusRecord>(r =>
+                r.Status == CommandStatus.PublishFailed
+                && r.FailureReason == "Broker down"
+                && r.MessageId == envelope.MessageId
+                && r.CorrelationId == envelope.CorrelationId));
     }
 
     // --- Task 7.8: EventsPublished checkpoint atomicity ---

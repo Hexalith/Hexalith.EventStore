@@ -24,7 +24,8 @@ public partial class SubmitCommandHandler(
     ICommandActivityTracker? activityTracker,
     IStreamActivityTracker? streamActivityTracker,
     IProjectionUpdateOrchestrator projectionOrchestrator,
-    ILogger<SubmitCommandHandler> logger) : IRequestHandler<SubmitCommand, SubmitCommandResult> {
+    ILogger<SubmitCommandHandler> logger,
+    ICommandCorrelationIndex? correlationIndex = null) : IRequestHandler<SubmitCommand, SubmitCommandResult> {
 
     public SubmitCommandHandler(
         ICommandStatusStore statusStore,
@@ -40,67 +41,141 @@ public partial class SubmitCommandHandler(
 
         Log.CommandReceived(logger, request.MessageId, request.CorrelationId, causationId, request.CommandType, request.Tenant, request.Domain, request.AggregateId);
 
-        var result = new SubmitCommandResult(request.CorrelationId);
+        var result = new SubmitCommandResult(request.CorrelationId, MessageId: request.MessageId);
 
-        try {
-            await statusStore.WriteStatusAsync(
-                request.Tenant,
+        CommandProcessingResult processingResult = await commandRouter.RouteCommandAsync(request, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (!processingResult.Accepted
+            && string.Equals(processingResult.ErrorMessage, "command_identity_conflict", StringComparison.Ordinal)) {
+            throw new CommandIdentityConflictException(
+                request.MessageId,
                 request.CorrelationId,
-                new CommandStatusRecord(
+                request.Tenant);
+        }
+
+        CommandStatusRecord? observedStatus = null;
+        bool statusReadSucceeded = false;
+        try {
+            observedStatus = await statusStore
+                .ReadStatusAsync(request.Tenant, request.MessageId, cancellationToken)
+                .ConfigureAwait(false);
+            statusReadSucceeded = true;
+
+            if (observedStatus is not null
+                && !string.Equals(observedStatus.MessageId, request.MessageId, StringComparison.Ordinal)) {
+                throw new CommandIdentityConflictException(
+                    request.MessageId,
+                    request.CorrelationId,
+                    request.Tenant);
+            }
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (CommandIdentityConflictException) {
+            throw;
+        }
+        catch (Exception ex) {
+            Log.StatusReadForTrackingFailed(logger, ex, request.CorrelationId, request.Tenant);
+        }
+
+        if (statusReadSucceeded
+            && observedStatus is null
+            && processingResult.ResultPayload is null) {
+            try {
+                observedStatus = new CommandStatusRecord(
                     CommandStatus.Received,
                     DateTimeOffset.UtcNow,
                     request.AggregateId,
                     EventCount: null,
                     RejectionEventType: null,
                     FailureReason: null,
-                    TimeoutDuration: null),
-                cancellationToken).ConfigureAwait(false);
+                    TimeoutDuration: null,
+                    MessageId: request.MessageId,
+                    CorrelationId: request.CorrelationId);
+                await statusStore.WriteStatusAsync(
+                    request.Tenant,
+                    request.MessageId,
+                    observedStatus,
+                    cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) {
+                throw;
+            }
+            catch (Exception ex) {
+                observedStatus = null;
+                Log.StatusWriteFailed(logger, ex, request.CorrelationId, request.Tenant);
+            }
+        }
+
+        try {
+            ArchivedCommand? archived = await archiveStore
+                .ReadCommandAsync(request.Tenant, request.MessageId, cancellationToken)
+                .ConfigureAwait(false);
+            if (archived is not null) {
+                if (!string.Equals(archived.MessageId, request.MessageId, StringComparison.Ordinal)
+                    || !string.Equals(archived.CommandType, request.CommandType, StringComparison.Ordinal)) {
+                    throw new CommandIdentityConflictException(
+                        request.MessageId,
+                        request.CorrelationId,
+                        request.Tenant);
+                }
+            }
+            else {
+                await archiveStore.WriteCommandAsync(
+                    request.Tenant,
+                    request.MessageId,
+                    request.ToArchivedCommand(),
+                    cancellationToken).ConfigureAwait(false);
+            }
         }
         catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex) {
-            Log.StatusWriteFailed(logger, ex, request.CorrelationId, request.Tenant);
-        }
-
-        try {
-            await archiveStore.WriteCommandAsync(
-                request.Tenant,
-                request.CorrelationId,
-                request.ToArchivedCommand(),
-                cancellationToken).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) {
+        catch (CommandIdentityConflictException) {
             throw;
         }
         catch (Exception ex) {
             Log.ArchiveWriteFailed(logger, ex, request.CorrelationId, request.Tenant);
         }
 
-        CommandProcessingResult processingResult = await commandRouter.RouteCommandAsync(request, cancellationToken)
-            .ConfigureAwait(false);
+        if (correlationIndex is not null) {
+            try {
+                CommandCorrelationIndexAddOutcome indexOutcome = await correlationIndex.AddAsync(
+                    request.Tenant,
+                    request.CorrelationId,
+                    request.MessageId,
+                    cancellationToken).ConfigureAwait(false);
+                if (indexOutcome is CommandCorrelationIndexAddOutcome.Overflow
+                    or CommandCorrelationIndexAddOutcome.RetryExhausted) {
+                    Log.CorrelationIndexMaintenanceFailed(
+                        logger,
+                        request.MessageId,
+                        request.CorrelationId,
+                        request.Tenant,
+                        indexOutcome.ToString());
+                }
+            }
+            catch (OperationCanceledException) {
+                throw;
+            }
+            catch (Exception ex) {
+                Log.CorrelationIndexWriteFailed(
+                    logger,
+                    ex,
+                    request.MessageId,
+                    request.CorrelationId,
+                    request.Tenant);
+            }
+        }
 
         if (processingResult.Accepted && processingResult.EventCount > 0) {
             await TriggerProjectionUpdateAsync(request).ConfigureAwait(false);
         }
 
         // Read final status once for both activity trackers (advisory, rule #12)
-        CommandStatusRecord? finalStatus = null;
-        bool statusReadSucceeded = false;
-        if (activityTracker is not null || streamActivityTracker is not null || processingResult.ResultPayload is not null) {
-            try {
-                finalStatus = await statusStore
-                    .ReadStatusAsync(request.Tenant, request.CorrelationId, cancellationToken)
-                    .ConfigureAwait(false);
-                statusReadSucceeded = true;
-            }
-            catch (OperationCanceledException) {
-                throw;
-            }
-            catch (Exception ex) {
-                Log.StatusReadForTrackingFailed(logger, ex, request.CorrelationId, request.Tenant);
-            }
-        }
+        CommandStatusRecord? finalStatus = observedStatus;
 
         // Track command in admin activity index (advisory, rule #12)
         if (activityTracker is not null) {
@@ -158,7 +233,7 @@ public partial class SubmitCommandHandler(
             }
 
             CommandStatusRecord? status = await statusStore
-                .ReadStatusAsync(request.Tenant, request.CorrelationId, cancellationToken)
+                .ReadStatusAsync(request.Tenant, request.MessageId, cancellationToken)
                 .ConfigureAwait(false);
 
             if (status is { RejectionEventType: not null }) {
@@ -175,7 +250,8 @@ public partial class SubmitCommandHandler(
                     request.CorrelationId,
                     request.AggregateId,
                     request.Tenant,
-                    conflictSource: "StateStore");
+                    conflictSource: "StateStore",
+                    messageId: request.MessageId);
             }
 
             throw new InvalidOperationException(processingResult.ErrorMessage ?? "Command processing was rejected.");
@@ -219,6 +295,28 @@ public partial class SubmitCommandHandler(
     }
 
     private static partial class Log {
+
+        [LoggerMessage(
+            EventId = 1109,
+            Level = LogLevel.Warning,
+            Message = "Correlation index maintenance did not complete: MessageId={MessageId}, CorrelationId={CorrelationId}, TenantId={TenantId}, Outcome={Outcome}. Message-primary lookup remains authoritative. Stage=CorrelationIndexMaintenanceFailed")]
+        public static partial void CorrelationIndexMaintenanceFailed(
+            ILogger logger,
+            string messageId,
+            string correlationId,
+            string tenantId,
+            string outcome);
+
+        [LoggerMessage(
+            EventId = 1110,
+            Level = LogLevel.Warning,
+            Message = "Correlation index write failed: MessageId={MessageId}, CorrelationId={CorrelationId}, TenantId={TenantId}. Message-primary lookup remains authoritative. Stage=CorrelationIndexWriteFailed")]
+        public static partial void CorrelationIndexWriteFailed(
+            ILogger logger,
+            Exception ex,
+            string messageId,
+            string correlationId,
+            string tenantId);
 
         [LoggerMessage(
             EventId = 1104,

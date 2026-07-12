@@ -225,11 +225,11 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
         replayResponse.StatusCode.ShouldBe(HttpStatusCode.Accepted);
         ReplayCommandResponse? replayResult = await replayResponse.Content.ReadFromJsonAsync<ReplayCommandResponse>();
         _ = replayResult.ShouldNotBeNull();
-        string replayCorrelationId = replayResult.CorrelationId;
+        string replayMessageId = replayResult.MessageId.ShouldNotBeNull();
 
-        // Assert - status of the new replay correlation ID should be Received
+        // Assert - status of the new replay message ID should be Received
         HttpResponseMessage statusResponse = await client.GetAsync(
-            $"/api/v1/commands/status/{replayCorrelationId}");
+            $"/api/v1/commands/status/{replayMessageId}");
         statusResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
         CommandStatusResponse? status = await statusResponse.Content.ReadFromJsonAsync<CommandStatusResponse>();
         _ = status.ShouldNotBeNull();
@@ -247,15 +247,16 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
         HttpResponseMessage response = await client.PostAsync(
             $"/api/v1/commands/replay/{correlationId}", null);
 
-        // Assert — Location header points to status endpoint with the new replay correlation ID
+        // Assert — Location header points to status endpoint with the new replay message ID
         response.StatusCode.ShouldBe(HttpStatusCode.Accepted);
         string? location = response.Headers.Location?.ToString();
         _ = location.ShouldNotBeNull();
         location.ShouldContain("/api/v1/commands/status/");
-        // The location uses the new replay correlation ID, not the original
+        // The location uses the new replay message ID, not the original command identity.
         ReplayCommandResponse? replayResult = await response.Content.ReadFromJsonAsync<ReplayCommandResponse>();
         _ = replayResult.ShouldNotBeNull();
-        location.ShouldContain(replayResult.CorrelationId);
+        location.ShouldContain(replayResult.MessageId.ShouldNotBeNull());
+        location.ShouldNotContain(replayResult.CorrelationId);
     }
 
     [Fact]

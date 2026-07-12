@@ -30,8 +30,9 @@ namespace Hexalith.EventStore.Server.Tests.Events;
 public class PersistThenPublishResilienceTests {
     private static CommandEnvelope CreateTestEnvelope(
         string? correlationId = null,
-        string? causationId = null) => new(
-        MessageId: Guid.NewGuid().ToString(),
+        string? causationId = null,
+        string messageId = "msg-resilience") => new(
+        MessageId: messageId,
         TenantId: "test-tenant",
         Domain: "test-domain",
         AggregateId: "agg-001",
@@ -93,6 +94,11 @@ public class PersistThenPublishResilienceTests {
         // Arrange
         (AggregateActor actor, IActorStateManager stateManager, IEventPublisher eventPublisher) = CreateActor();
         CommandEnvelope envelope = CreateTestEnvelope();
+        IdempotencyRecord? storedIdempotencyRecord = null;
+        _ = stateManager.SetStateAsync(
+            $"idempotency:{envelope.MessageId}",
+            Arg.Do<IdempotencyRecord>(record => storedIdempotencyRecord = record),
+            Arg.Any<CancellationToken>());
 
         _ = eventPublisher.PublishEventsAsync(
             Arg.Any<AggregateIdentity>(),
@@ -107,6 +113,12 @@ public class PersistThenPublishResilienceTests {
 
         // Assert
         result.Accepted.ShouldBeTrue();
+        await stateManager.Received(1).SetStateAsync(
+            $"idempotency:{envelope.MessageId}",
+            Arg.Is<IdempotencyRecord>(record =>
+                record.Disposition == IdempotencyRecordDisposition.Recoverable
+                && record.ExpiresAt.HasValue),
+            Arg.Any<CancellationToken>());
         await stateManager.Received().SetStateAsync(
             Arg.Is<string>(s => s.StartsWith("drain:")),
             Arg.Is<UnpublishedEventsRecord>(r =>
@@ -115,6 +127,21 @@ public class PersistThenPublishResilienceTests {
                 r.RetryCount == 0 &&
                 r.LastFailureReason == "Pub/sub unavailable"),
             Arg.Any<CancellationToken>());
+
+        _ = stateManager.TryGetStateAsync<IdempotencyRecord>(
+            $"idempotency:{envelope.MessageId}",
+            Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyRecord>(true, storedIdempotencyRecord.ShouldNotBeNull()));
+
+        CommandProcessingResult retry = await actor.ProcessCommandAsync(envelope);
+
+        retry.ShouldBe(result);
+        _ = await eventPublisher.Received(1).PublishEventsAsync(
+            Arg.Any<AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>());
     }
 
     // --- Task 8.3: Record contains correct sequence range ---
@@ -201,7 +228,7 @@ public class PersistThenPublishResilienceTests {
         result.Accepted.ShouldBeTrue();
         await timerManager.Received().RegisterReminderAsync(
             Arg.Is<ActorReminder>(r =>
-                r.Name == UnpublishedEventsRecord.GetReminderName(envelope.CorrelationId)));
+                r.Name == UnpublishedEventsRecord.GetReminderName(envelope.MessageId)));
     }
 
     // --- Story 4.2 Task 7.1: Drain reminder uses configured timing values ---
@@ -240,7 +267,7 @@ public class PersistThenPublishResilienceTests {
         // Assert -- reminder name is correct
         await timerManager.Received(1).RegisterReminderAsync(
             Arg.Is<ActorReminder>(r =>
-                r.Name == UnpublishedEventsRecord.GetReminderName(envelope.CorrelationId)));
+                r.Name == UnpublishedEventsRecord.GetReminderName(envelope.MessageId)));
 
         // Assert -- reminder dueTime matches configured InitialDrainDelay
         await timerManager.Received(1).RegisterReminderAsync(
@@ -415,7 +442,8 @@ public class PersistThenPublishResilienceTests {
 
         var existingPipeline = new PipelineState(
             "corr-resilience", CommandStatus.EventsStored, "CreateOrder",
-            DateTimeOffset.UtcNow.AddSeconds(-5), EventCount: 2, RejectionEventType: null);
+            DateTimeOffset.UtcNow.AddSeconds(-5), EventCount: 2, RejectionEventType: null,
+            MessageId: "msg-resilience", CausationId: "msg-resilience");
 
         _ = stateManager.TryGetStateAsync<PipelineState>(
             Arg.Is<string>(s => s.Contains(":pipeline:corr-resilience")),
@@ -473,7 +501,8 @@ public class PersistThenPublishResilienceTests {
 
         var existingPipeline = new PipelineState(
             "corr-resilience", CommandStatus.EventsStored, "CreateOrder",
-            DateTimeOffset.UtcNow.AddSeconds(-5), EventCount: 2, RejectionEventType: null);
+            DateTimeOffset.UtcNow.AddSeconds(-5), EventCount: 2, RejectionEventType: null,
+            MessageId: "msg-resilience", CausationId: "msg-resilience");
 
         _ = stateManager.TryGetStateAsync<PipelineState>(
             Arg.Is<string>(s => s.Contains(":pipeline:corr-resilience")),
@@ -513,7 +542,7 @@ public class PersistThenPublishResilienceTests {
         result.Accepted.ShouldBeTrue();
         await timerManager.Received().RegisterReminderAsync(
             Arg.Is<ActorReminder>(r =>
-                r.Name == UnpublishedEventsRecord.GetReminderName("corr-resilience")));
+                r.Name == UnpublishedEventsRecord.GetReminderName("msg-resilience")));
     }
 
     [Fact]
@@ -523,7 +552,8 @@ public class PersistThenPublishResilienceTests {
 
         var existingPipeline = new PipelineState(
             "corr-resilience", CommandStatus.EventsStored, "CreateOrder",
-            DateTimeOffset.UtcNow.AddSeconds(-5), EventCount: 2, RejectionEventType: null);
+            DateTimeOffset.UtcNow.AddSeconds(-5), EventCount: 2, RejectionEventType: null,
+            MessageId: "msg-resilience", CausationId: "msg-resilience");
 
         _ = stateManager.TryGetStateAsync<PipelineState>(
             Arg.Is<string>(s => s.Contains(":pipeline:corr-resilience")),
@@ -579,7 +609,8 @@ public class PersistThenPublishResilienceTests {
 
         var existingPipeline = new PipelineState(
             "corr-resilience", CommandStatus.EventsStored, "CreateOrder",
-            DateTimeOffset.UtcNow.AddSeconds(-5), EventCount: 2, RejectionEventType: null);
+            DateTimeOffset.UtcNow.AddSeconds(-5), EventCount: 2, RejectionEventType: null,
+            MessageId: "msg-resilience", CausationId: "msg-resilience");
 
         _ = stateManager.TryGetStateAsync<PipelineState>(
             Arg.Is<string>(s => s.Contains(":pipeline:corr-resilience")),
