@@ -1,3 +1,10 @@
+# [3.60.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.59.0...v3.60.0) (2026-07-12)
+
+
+### Features
+
+* add quick-dev workflow for compiling epic context and implementing specs ([67b462d](https://github.com/Hexalith/Hexalith.EventStore/commit/67b462de3f87993b72671e68c760573a83f96bc4))
+
 # [3.59.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.58.0...v3.59.0) (2026-07-12)
 
 
