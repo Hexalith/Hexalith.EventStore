@@ -344,6 +344,9 @@ public class QueriesControllerTests {
         statusResult.StatusCode.ShouldBe(304);
         controller.Response.Headers.ETag.ToString().ShouldBe($"\"{testETag}\"");
         controller.Response.Headers[ProjectionLifecyclePolicy.HeaderName].ToString().ShouldBe("Current");
+        // The bodyless 304 must still carry projection provenance: EventStoreGatewayClient rejects
+        // a not-modified response lacking X-Hexalith-Query-Provenance: ProjectionBacked as a 502.
+        controller.Response.Headers["X-Hexalith-Query-Provenance"].ToString().ShouldBe("ProjectionBacked");
         _ = await mediator.Received(1).Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
     }
 
@@ -391,6 +394,7 @@ public class QueriesControllerTests {
         IActionResult actionResult = await controller.Submit(request, $"\"{testETag}\"", CancellationToken.None);
 
         actionResult.ShouldBeOfType<StatusCodeResult>().StatusCode.ShouldBe(304);
+        controller.Response.Headers["X-Hexalith-Query-Provenance"].ToString().ShouldBe("ProjectionBacked");
         _ = await mediator.Received(1).Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
     }
 

@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T20:01:46+02:00
-last_updated: 2026-07-13T12:44:49+02:00
+last_updated: 2026-07-13T15:30:59+02:00
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -92,7 +92,7 @@ development_status:
   2-7-outbound-dapr-routing-header-ownership: done
   # Phase 4 readiness correction: EventStore-owned query provenance enforcement
   # moved earlier to remove the Epic 2 -> Epic 4 forward dependency.
-  2-8-query-response-provenance-contract-and-route-aware-gateway-etag: review
+  2-8-query-response-provenance-contract-and-route-aware-gateway-etag: done
   epic-2-retrospective: done
 
   epic-3: in-progress
