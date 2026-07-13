@@ -75,6 +75,11 @@ internal sealed class ReadModelBatchProtocol {
                 ? await RunTransactionAsync(cancellationToken).ConfigureAwait(false)
                 : await RunResumableAsync(cancellationToken).ConfigureAwait(false);
         }
+        catch (ReadModelBatchRaceException) {
+            // A concurrent same-identity run advanced the marker past Prepared: resolve to a structured
+            // result through bounded reconciliation instead of throwing.
+            return await ReconcileAsync("prepare-race").ConfigureAwait(false);
+        }
         catch (OperationCanceledException) {
             // Post-dispatch cancellation is never treated as rollback: reconcile durable state.
             return await ReconcileAsync("cancellation").ConfigureAwait(false);
@@ -119,15 +124,19 @@ internal sealed class ReadModelBatchProtocol {
                 && marker.Status is ReadModelBatchMarkerStatus.Committed or ReadModelBatchMarkerStatus.Completed;
         }
 
+        // The stored bytes are a batch envelope, not the logical value, so the logical value has no stable
+        // compare-and-set ETag until the key is compacted. Surface an empty ETag for any envelope-wrapped
+        // read: a consumer's `TrySaveAsync(value, thatETag)` then fails closed (create-only against an
+        // existing key) instead of CAS-matching the envelope wrapper and clobbering the in-flight batch.
         if (committed) {
             return envelope.IsDelete
                 ? new RawStateEntry(false, ReadOnlyMemory<byte>.Empty, string.Empty)
-                : new RawStateEntry(true, envelope.CandidateBytes(), entry.ETag);
+                : new RawStateEntry(true, envelope.CandidateBytes(), string.Empty);
         }
 
         return envelope.PreviousBase64 is null
             ? new RawStateEntry(false, ReadOnlyMemory<byte>.Empty, string.Empty)
-            : new RawStateEntry(true, envelope.PreviousBytes(), entry.ETag);
+            : new RawStateEntry(true, envelope.PreviousBytes(), string.Empty);
     }
 
     private void ValidateLimits(ReadModelBatch batch) {
@@ -142,6 +151,15 @@ internal sealed class ReadModelBatchProtocol {
             if (keyBytes > _options.MaxKeyByteLength) {
                 throw new ArgumentException(
                     $"Read-model batch logical key exceeds the configured maximum of {_options.MaxKeyByteLength} UTF-8 bytes.",
+                    nameof(batch));
+            }
+
+            // Guard against a concurrency policy built through the raw record constructor with a null
+            // expected ETag (the factory methods guard, but the public constructor cannot). Fail before
+            // any state access rather than dereferencing a null ETag mid-install.
+            if (operation.Concurrency.ExpectedETag is null) {
+                throw new ArgumentException(
+                    "Read-model batch operation has a null expected ETag; use the ReadModelBatchConcurrency factory methods.",
                     nameof(batch));
             }
         }
@@ -234,7 +252,10 @@ internal sealed class ReadModelBatchProtocol {
                 return currentEtag;
             }
 
-            throw new InvalidOperationException("Concurrent batch prepare race could not be resolved.");
+            // A concurrent same-identity run advanced the marker past Prepared (Committed/Completed/
+            // Aborting/Aborted). This is an expected recovery outcome, not a programming error: signal the
+            // engine to reconcile to a structured result rather than throwing InvalidOperationException.
+            throw new ReadModelBatchRaceException();
         }
 
         (_, string preparedEtag, _) = await ReadMarkerAsync(cancellationToken).ConfigureAwait(false);
@@ -309,8 +330,15 @@ internal sealed class ReadModelBatchProtocol {
             return ReadModelBatchResult.Indeterminate(_fingerprint, "marker-lost");
         }
 
-        if (marker.Status == ReadModelBatchMarkerStatus.Committed) {
+        if (marker.Status is ReadModelBatchMarkerStatus.Committed or ReadModelBatchMarkerStatus.Completed) {
             return null;
+        }
+
+        if (marker.Status != ReadModelBatchMarkerStatus.Prepared) {
+            // A concurrent same-identity run moved the marker to Aborting/Aborted and is restoring the
+            // previous view. Never force-commit over an in-flight compensation (that would produce a torn
+            // committed view); reconcile on retry instead.
+            return ReadModelBatchResult.Indeterminate(_fingerprint, "commit-abort-race");
         }
 
         marker.Status = ReadModelBatchMarkerStatus.Committed;
@@ -360,7 +388,29 @@ internal sealed class ReadModelBatchProtocol {
                 }
             }
             else if (!IsCompacted(operation, current)) {
-                return false;
+                // The key holds neither our envelope nor the compacted value: a concurrent single-key
+                // writer overwrote it after the commit marker became durable. The committed marker is the
+                // durable visibility decision, so reclaim the key to the committed end-state once (a foreign
+                // envelope belonging to a different batch is left untouched and retried).
+                if (current.Exists && ReadModelBatchEnvelope.IsEnvelope(current.Value.Span)) {
+                    return false;
+                }
+
+                if (operation.Kind == ReadModelBatchOperationKind.Delete) {
+                    _ = await _accessor
+                        .TryDeleteAsync(operation.Key, current.ETag, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                else {
+                    _ = await _accessor
+                        .TryWriteAsync(operation.Key, operation.CanonicalValue, current.ETag, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+
+                RawStateEntry reclaimed = await _accessor.ReadAsync(operation.Key, cancellationToken).ConfigureAwait(false);
+                if (!IsCompacted(operation, reclaimed)) {
+                    return false;
+                }
             }
 
             if (_injector is not null) {
@@ -512,7 +562,11 @@ internal sealed class ReadModelBatchProtocol {
             }
 
             if (marker.Status == ReadModelBatchMarkerStatus.Completed) {
-                return ReadModelBatchResult.AlreadyCompleted(_fingerprint);
+                // Never trust the receipt the (possibly mis-qualified) transaction wrote on a retry: prove
+                // the operation keys are durable before reporting idempotent success.
+                return await VerifyOperationKeysAsync(cancellationToken).ConfigureAwait(false)
+                    ? ReadModelBatchResult.AlreadyCompleted(_fingerprint)
+                    : ReadModelBatchResult.Indeterminate(_fingerprint, "transaction-partial-on-retry");
             }
         }
 
@@ -545,7 +599,17 @@ internal sealed class ReadModelBatchProtocol {
             await _injector.InjectAsync(ReadModelBatchPhase.BeforeCommit, -1, cancellationToken).ConfigureAwait(false);
         }
 
-        await _accessor.ExecuteTransactionAsync(operations, cancellationToken).ConfigureAwait(false);
+        try {
+            await _accessor.ExecuteTransactionAsync(operations, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not ArgumentException and not InvalidOperationException) {
+            // The atomic transaction threw (ETag/create-only rejection, transport failure, or post-dispatch
+            // cancellation). Never re-issue under a new identity/profile: reconcile the same marker and keys
+            // and classify a proven optimistic-precondition failure as a convergent Conflict (recompute the
+            // whole batch), otherwise Indeterminate. Returning Incomplete here would tell the caller to
+            // retry the identical doomed transaction forever.
+            return await ReconcileTransactionAsync().ConfigureAwait(false);
+        }
 
         if (_injector is not null) {
             await _injector.InjectAsync(ReadModelBatchPhase.AfterCommit, -1, cancellationToken).ConfigureAwait(false);
@@ -563,21 +627,75 @@ internal sealed class ReadModelBatchProtocol {
             return ReadModelBatchResult.Incomplete(_fingerprint, "transaction-marker-unverified");
         }
 
-        foreach (ReadModelBatchOperation operation in _batch.Operations) {
-            RawStateEntry entry = await _accessor.ReadAsync(operation.Key, cancellationToken).ConfigureAwait(false);
-            if (operation.Kind == ReadModelBatchOperationKind.Delete) {
-                if (entry.Exists) {
-                    return ReadModelBatchResult.Incomplete(_fingerprint, "transaction-delete-unverified");
-                }
-            }
-            else if (!entry.Exists || !entry.Value.Span.SequenceEqual(operation.CanonicalValue.Span)) {
-                return ReadModelBatchResult.Incomplete(_fingerprint, "transaction-write-unverified");
-            }
+        if (!await VerifyOperationKeysAsync(cancellationToken).ConfigureAwait(false)) {
+            return ReadModelBatchResult.Incomplete(_fingerprint, "transaction-operation-unverified");
         }
 
         ReadModelBatchLog.Committed(_logger, _scopeHash, _profileName, _batch.Operations.Count);
         ReadModelBatchLog.Outcome(_logger, _scopeHash, nameof(ReadModelBatchStatus.Completed), _profileName, "transaction");
         return ReadModelBatchResult.Completed(_fingerprint);
+    }
+
+    /// <summary>Reads back every operation key and proves it matches the manifest's write/delete intent.</summary>
+    private async Task<bool> VerifyOperationKeysAsync(CancellationToken cancellationToken) {
+        foreach (ReadModelBatchOperation operation in _batch.Operations) {
+            RawStateEntry entry = await _accessor.ReadAsync(operation.Key, cancellationToken).ConfigureAwait(false);
+            if (operation.Kind == ReadModelBatchOperationKind.Delete) {
+                if (entry.Exists) {
+                    return false;
+                }
+            }
+            else if (!entry.Exists || !entry.Value.Span.SequenceEqual(operation.CanonicalValue.Span)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Reconciles a transaction-qualified batch after the single transaction threw or was ambiguous, using a
+    /// bounded, caller-token-independent read-back. A durable receipt is trusted only when the operation keys
+    /// are also durable; a still-prepared marker with a failed precondition is a convergent optimistic
+    /// conflict; anything else is indeterminate.
+    /// </summary>
+    private async Task<ReadModelBatchResult> ReconcileTransactionAsync() {
+        using var reconcileSource = new CancellationTokenSource(_options.ReconciliationTimeout);
+        CancellationToken token = reconcileSource.Token;
+        ReadModelBatchLog.Reconciling(_logger, _scopeHash, _profileName, "transaction-dispatch");
+        try {
+            (ReadModelBatchMarker? marker, _, bool exists) = await ReadMarkerAsync(token).ConfigureAwait(false);
+            if (!exists || marker is null) {
+                return ReadModelBatchResult.Indeterminate(_fingerprint, "transaction-dispatch");
+            }
+
+            if (!string.Equals(marker.Fingerprint, _fingerprint, StringComparison.Ordinal)) {
+                return ReadModelBatchResult.IdentityConflict(_fingerprint);
+            }
+
+            if (marker.Status == ReadModelBatchMarkerStatus.Completed) {
+                // The receipt is part of the transaction, so a durable receipt only proves completion when
+                // the operation keys are also durable.
+                return await VerifyOperationKeysAsync(token).ConfigureAwait(false)
+                    ? ReadModelBatchResult.Completed(_fingerprint)
+                    : ReadModelBatchResult.Indeterminate(_fingerprint, "transaction-partial");
+            }
+
+            // The marker is still Prepared: the atomic transaction did not commit (receipt not durable). If
+            // any operation's optimistic precondition no longer holds, this is a truthful optimistic conflict
+            // that converges by recomputing the whole batch under a new identity; otherwise it is ambiguous.
+            foreach (ReadModelBatchOperation operation in _batch.Operations) {
+                RawStateEntry current = await _accessor.ReadAsync(operation.Key, token).ConfigureAwait(false);
+                if (!SatisfiesConcurrency(operation, current)) {
+                    return ReadModelBatchResult.OptimisticConflict(_fingerprint, "transaction-precondition");
+                }
+            }
+
+            return ReadModelBatchResult.Indeterminate(_fingerprint, "transaction-dispatch");
+        }
+        catch (Exception) {
+            return ReadModelBatchResult.Indeterminate(_fingerprint, "transaction-dispatch");
+        }
     }
 
     private async Task<ReadModelBatchResult> ReconcileAsync(string reason) {

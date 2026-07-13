@@ -60,6 +60,18 @@ public class ReadModelBatchFingerprintTests {
         manifest.ShouldBe(expected);
     }
 
+    // A fully-literal golden fingerprint: the expected value is a hardcoded constant, NOT derived from the
+    // production serializer/canonicalizer (unlike the manifest golden above, whose value bytes flow through
+    // ReadModelBatchCanonicalJson). Any silent change to value serialization, canonicalization, or
+    // fingerprint material moves the computed fingerprint away from this frozen constant and fails here — a
+    // fingerprint drift otherwise silently regresses idempotency (stored terminal receipts stop matching, so
+    // a completed-retry re-applies the batch or returns a spurious identity conflict).
+    private const string GoldenFingerprint = "v1:7swKRZpMEEyvUykZ1t_DjwFYzAYcVYCj1FxyNrRcLj4";
+
+    [Fact]
+    public void Compute_FrozenGoldenFingerprint_DetectsAnySerializationDrift() =>
+        ReadModelBatchFingerprint.Compute(SampleBatch()).ShouldBe(GoldenFingerprint);
+
     [Fact]
     public void Compute_MatchesIndependentSha256OfManifest() {
         ReadModelBatch batch = SampleBatch();
