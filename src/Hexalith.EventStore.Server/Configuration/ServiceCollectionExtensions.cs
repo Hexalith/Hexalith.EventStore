@@ -49,6 +49,7 @@ public static class EventStoreServerServiceCollectionExtensions {
         services.TryAddTransient<IProjectionPollerDeliveryGateway, ProjectionUpdateOrchestrator>();
         services.TryAddTransient<IProjectionRebuildOrchestrator, ProjectionUpdateOrchestrator>();
         services.TryAddTransient<INamedProjectionDispatchCoordinator, NamedProjectionDispatchCoordinator>();
+        services.TryAddSingleton<IProjectionDeliveryRetryScheduler, DaprProjectionDeliveryRetryScheduler>();
         services.TryAddSingleton<NamedProjectionRouteCatalog>();
         services.TryAddSingleton<INamedProjectionRouteCatalog>(static sp => sp.GetRequiredService<NamedProjectionRouteCatalog>());
         services.TryAddTransient<IEventPublisher, EventPublisher>();

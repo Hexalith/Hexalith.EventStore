@@ -27,8 +27,11 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
     DaprClient daprClient,
     IHttpClientFactory httpClientFactory,
     IOptions<ProjectionDispatchOptions> options,
-    ILogger<NamedProjectionDispatchCoordinator> logger) : INamedProjectionDispatchCoordinator {
+    ILogger<NamedProjectionDispatchCoordinator> logger,
+    IProjectionDeliveryRetryScheduler? retryScheduler = null,
+    TimeProvider? timeProvider = null) : INamedProjectionDispatchCoordinator {
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
+    private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
 
     /// <inheritdoc/>
     public async Task<bool> TryDispatchAsync(
@@ -59,8 +62,43 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
 
         EventEnvelope head = events.OrderBy(static item => item.SequenceNumber).Last();
         long highestSequence = head.SequenceNumber;
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+        var proposedWork = new ProjectionDeliveryRetryWorkItem(
+            ProjectionDeliveryRetryWorkItem.CreateWorkId(
+                identity.TenantId,
+                identity.Domain,
+                identity.AggregateId,
+                highestSequence),
+            identity.TenantId,
+            identity.Domain,
+            identity.AggregateId,
+            registration.AppId,
+            serviceVersion,
+            highestSequence,
+            head.MessageId,
+            [.. catalogEntry.ProjectionTypes.Order(StringComparer.Ordinal)],
+            [],
+            head.MessageId,
+            catalogEntry.CatalogFingerprint,
+            0,
+            now,
+            null);
+        ProjectionDeliveryRetryWorkItem scheduledWork = retryScheduler is null
+            ? proposedWork
+            : await retryScheduler.ScheduleAsync(proposedWork, cancellationToken).ConfigureAwait(false);
+        if (!string.Equals(scheduledWork.HeadMessageId, head.MessageId, StringComparison.Ordinal)
+            || !string.Equals(scheduledWork.DispatchId, head.MessageId, StringComparison.Ordinal)
+            || !string.Equals(scheduledWork.CatalogFingerprint, catalogEntry.CatalogFingerprint, StringComparison.Ordinal)
+            || !string.Equals(scheduledWork.AppId, registration.AppId, StringComparison.Ordinal)
+            || !string.Equals(scheduledWork.ServiceVersion, serviceVersion, StringComparison.Ordinal)) {
+            return true;
+        }
+
+        HashSet<string> pendingRoutes = new(scheduledWork.PendingRoutes, StringComparer.Ordinal);
         List<string> admittedRoutes = [];
-        foreach (string projectionType in catalogEntry.ProjectionTypes.Order(StringComparer.Ordinal)) {
+        foreach (string projectionType in catalogEntry.ProjectionTypes
+            .Where(pendingRoutes.Contains)
+            .Order(StringComparer.Ordinal)) {
             cancellationToken.ThrowIfCancellationRequested();
             long deliveredSequence = await checkpointStore
                 .ReadDeliveredSequenceAsync(identity, projectionType, cancellationToken)
@@ -93,6 +131,8 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         }
 
         if (admittedRoutes.Count == 0) {
+            await DeferAsync(scheduledWork, ProjectionDispatchReasonCodes.PartialRetry, dispatchOptions, cancellationToken)
+                .ConfigureAwait(false);
             return true;
         }
 
@@ -104,8 +144,8 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         var dispatchRequest = new ProjectionDispatchRequest(
             projectionRequest,
             admittedRoutes,
-            head.MessageId,
-            catalogEntry.CatalogFingerprint);
+            scheduledWork.DispatchId,
+            scheduledWork.CatalogFingerprint);
 
         ProjectionDispatchResponse? dispatchResponse = await InvokeAsync(
             registration.AppId,
@@ -120,6 +160,8 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
             dispatchResponse,
             admittedRoutes,
             dispatchOptions);
+        var completedRoutes = new HashSet<string>(StringComparer.Ordinal);
+        var terminalRoutes = new HashSet<string>(scheduledWork.TerminalRoutes, StringComparer.Ordinal);
         foreach (string projectionType in admittedRoutes) {
             cancellationToken.ThrowIfCancellationRequested();
             long started = Stopwatch.GetTimestamp();
@@ -142,9 +184,12 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                             .ConfigureAwait(false);
                     }
 
-                    _ = await checkpointStore
+                    bool checkpointSaved = await checkpointStore
                         .SaveDeliveredSequenceAsync(identity, projectionType, highestSequence, cancellationToken)
                         .ConfigureAwait(false);
+                    if (checkpointSaved) {
+                        _ = completedRoutes.Add(projectionType);
+                    }
                 }
                 catch (OperationCanceledException) {
                     throw;
@@ -152,6 +197,9 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                 catch (Exception) {
                     // Durable handler work may already exist. Leave this projection pending for stable-id retry.
                 }
+            }
+            else if (outcome.Status == ProjectionDispatchStatus.Failed) {
+                _ = terminalRoutes.Add(projectionType);
             }
 
             Log.RouteOutcome(
@@ -164,7 +212,57 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                 Stopwatch.GetElapsedTime(started).TotalMilliseconds);
         }
 
+        if (retryScheduler is not null) {
+            string[] remainingRoutes = [.. scheduledWork.PendingRoutes
+                .Where(route => !completedRoutes.Contains(route) && !terminalRoutes.Contains(route))
+                .Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal)];
+            if (remainingRoutes.Length == 0 && terminalRoutes.Count == 0) {
+                await retryScheduler.DeleteAsync(scheduledWork.WorkId, cancellationToken).ConfigureAwait(false);
+            }
+            else {
+                int attempt = Math.Min(scheduledWork.Attempt + 1, dispatchOptions.MaxRetryAttempts);
+                var updated = scheduledWork with {
+                    PendingRoutes = remainingRoutes,
+                    TerminalRoutes = [.. terminalRoutes.Order(StringComparer.Ordinal)],
+                    Attempt = attempt,
+                    NextDueUtc = _timeProvider.GetUtcNow() + GetRetryDelay(attempt, dispatchOptions),
+                    LastReasonCode = terminalRoutes.Count > 0
+                        ? ProjectionDispatchReasonCodes.HandlerFailure
+                        : ProjectionDispatchReasonCodes.PartialRetry,
+                };
+                await retryScheduler.UpdateAsync(updated, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
         return true;
+    }
+
+    private async Task DeferAsync(
+        ProjectionDeliveryRetryWorkItem workItem,
+        string reasonCode,
+        ProjectionDispatchOptions dispatchOptions,
+        CancellationToken cancellationToken) {
+        if (retryScheduler is null) {
+            return;
+        }
+
+        int attempt = Math.Min(workItem.Attempt + 1, dispatchOptions.MaxRetryAttempts);
+        await retryScheduler.UpdateAsync(
+            workItem with {
+                Attempt = attempt,
+                NextDueUtc = _timeProvider.GetUtcNow() + GetRetryDelay(attempt, dispatchOptions),
+                LastReasonCode = reasonCode,
+            },
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    private static TimeSpan GetRetryDelay(int attempt, ProjectionDispatchOptions dispatchOptions) {
+        double multiplier = Math.Pow(2, Math.Max(0, attempt - 1));
+        double ticks = Math.Min(
+            dispatchOptions.RetryMaxDelay.Ticks,
+            dispatchOptions.RetryBaseDelay.Ticks * multiplier);
+        return TimeSpan.FromTicks((long)ticks);
     }
 
     private async Task<ProjectionDispatchResponse?> InvokeAsync(
