@@ -63,4 +63,3 @@ Normal delivery invokes named handlers only after the server admits the exact me
 - `IReadModelStore` — independent ETag-aware persistence
 - `IReadModelBatchStore` and `ReadModelBatchProjectionResultMapper` — coordinated persistence and truthful outcome mapping
 - `AddLegacyProjectionHandlerAdapter<THandler>` — explicit compatibility bridge for one legacy handler and one named route
-
