@@ -1,3 +1,10 @@
+## [3.61.5](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.61.4...v3.61.5) (2026-07-13)
+
+
+### Bug Fixes
+
+* **sprint-status:** update epic-2 status to done and revise action note ([00b840b](https://github.com/Hexalith/Hexalith.EventStore/commit/00b840b80099dbaef180ab03e64fc75bbee18b0b))
+
 ## [3.61.4](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.61.3...v3.61.4) (2026-07-13)
 
 
