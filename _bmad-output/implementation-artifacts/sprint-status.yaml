@@ -79,7 +79,7 @@ development_status:
   1-15-owner-approved-parity-closure-and-runtime-pin: backlog
   epic-1-retrospective: done
 
-  epic-2: in-progress
+  epic-2: done
   2-1-rest-contract-seam-for-command-and-query-messages: done
   2-2-rest-api-generator-discovery-and-controller-emission: done
   2-3-sample-external-api-host-proof: done
@@ -235,8 +235,8 @@ action_items:
   - epic: 2
     action: "Decide and enforce the outbound DAPR routing-header replacement policy for generated API host clients."
     owner: "Amelia (Developer)"
-    status: in-progress
-    note: "Policy DECIDED 2026-07-07 (sprint-change-proposal-2026-07-07-outbound-dapr-routing-header-policy): outbound dapr-app-id / dapr-api-token are handler-owned and REPLACED not appended, set authoritatively from config by a single platform handler in Hexalith.EventStore.Client (wired by AddEventStoreGatewayClient), innermost in the chain; caller/inbound-forwarded values never routed. Formalized as architecture invariant AD-18. Enforcement tracked as Story 2.7 (delete 3 in-repo DaprAppIdHandler copies, add replacement + guardrail tests; Tenants submodule copy = coordinated maintainer-approval follow-on). Closes to done when Story 2.7 ships."
+    status: done
+    note: "Completed by Story 2.7 on 2026-07-10. AD-18 is implemented by the centralized Client handler; the three in-repository hosts use it and replacement, stripping, ordering, and structural guardrails are verified. Fresh 2026-07-13 Release evidence: Client 651/651, Sample 117/117, Admin UI 841/841. The Tenants submodule copy remains the explicitly coordinated maintainer-approval follow-up."
   - epic: 2
     action: "Patch or explicitly schedule the raw SignalR hub leave validation gap."
     owner: "Amelia (Developer)"
