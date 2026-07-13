@@ -1,3 +1,10 @@
+## [3.61.3](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.61.2...v3.61.3) (2026-07-13)
+
+
+### Bug Fixes
+
+* **provenance:** update status to review and reconcile documentation ([59b7b9a](https://github.com/Hexalith/Hexalith.EventStore/commit/59b7b9a8f33d7e5460196c2bb984252ba376b37a))
+
 ## [3.61.2](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.61.1...v3.61.2) (2026-07-13)
 
 
