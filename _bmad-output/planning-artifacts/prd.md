@@ -2,10 +2,11 @@
 title: eventstore Phase 4 Implementation Readiness Recovery PRD
 status: final
 created: 2026-07-05
-updated: 2026-07-11
+updated: 2026-07-13
 project: eventstore
 source_artifacts:
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-13.md
   - _bmad-output/planning-artifacts/implementation-readiness-report-2026-07-05.md
   - _bmad-output/planning-artifacts/epics.md
 ---
@@ -363,7 +364,7 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 
 The PRD, architecture, UX, and epics artifacts now exist under `_bmad-output/planning-artifacts` and reference each other. The remaining readiness gate is verification: re-run implementation readiness after the story-quality corrections below are reviewed.
 
-- Parties projection/query parity remains blocked until Stories 1.9-1.15 complete in the approved order and Story 1.15 records an owner-approved `available` packet tied to the exact runtime SHA consumed by Parties.
+- Parties projection/query parity remains blocked until Stories 1.9-1.15 complete and Story 1.15 records an owner-approved `available` packet tied to the exact runtime SHA consumed by Parties. Stories 1.9-1.14 may be implemented and reviewed in parallel once the contracts they directly consume exist; the approved capability sequence governs evidence acceptance and final parity closure, not serial story execution. Story 1.15 must still verify that Stories 1.9-1.14 are complete and reviewed before it may close the gate.
 
 - `epics.md` contains coordinated-slice gates for Stories 1.3, 1.6, 2.4, 3.7, 5.6, 7.2, 7.3, and 7.4, including owners, review boundaries, and validation commands. Implementation story files must either split those stories or carry the coordinated-slice gate forward.
 - Story 5.2 now requires concrete request-size limits: `1_048_576` bytes for representative admin JSON write/sandbox bodies and `10 * 1024 * 1024` bytes for `AdminBackupsController.ImportStream`, with bounded rejection tests and no upstream service invocation on excessive requests.

@@ -5,6 +5,7 @@ using System.Text.Json;
 using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Client.Discovery;
 using Hexalith.EventStore.Client.Handlers;
+using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Projections;
@@ -478,6 +479,86 @@ public sealed class EventStoreDomainServiceExtensionsTests {
     }
 
     /// <summary>
+    /// Proves the released metadata response constructor, deconstructor, and legacy JSON shape remain intact.
+    /// </summary>
+    [Fact]
+    public void AdminOperationalIndexMetadata_Response_PreservesLegacyAbiAndJsonShape() {
+        var response = new AdminOperationalIndexMetadata.Response([]);
+        response.Deconstruct(out IReadOnlyList<AdminOperationalIndexMetadata.DomainMetadata> domains);
+
+        string json = JsonSerializer.Serialize(response, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        domains.ShouldBeEmpty();
+        json.ShouldBe("{\"domains\":[]}");
+    }
+
+    /// <summary>
+    /// Proves named routes are exact, ordinally sorted, capability bound, and fingerprinted deterministically.
+    /// </summary>
+    [Fact]
+    public void AdminOperationalIndexMetadata_Create_IncludesDeterministicNamedDispatchCatalog() {
+        DiscoveryResult discovery = new(
+            [new DiscoveredDomain(typeof(WidgetAggregate), "widget", typeof(WidgetState), DomainKind.Aggregate)],
+            []);
+        IAsyncDomainProjectionHandler detail = CreateNamedProjectionHandler("widget", "widget-detail");
+        IAsyncDomainProjectionHandler index = CreateNamedProjectionHandler("widget", "widget-index");
+
+        AdminOperationalIndexMetadata.Response first = AdminOperationalIndexMetadata.Create(
+            discovery,
+            ["widget"],
+            queryHandlers: null,
+            namedProjectionHandlers: [index, detail],
+            appId: "widget-service",
+            serviceVersion: "1.2.0",
+            options: new ProjectionDispatchOptions());
+        AdminOperationalIndexMetadata.Response second = AdminOperationalIndexMetadata.Create(
+            discovery,
+            ["widget"],
+            queryHandlers: null,
+            namedProjectionHandlers: [detail, index],
+            appId: "widget-service",
+            serviceVersion: "1.2.0",
+            options: new ProjectionDispatchOptions());
+
+        AdminOperationalIndexMetadata.DomainMetadata widget = first.Domains.ShouldHaveSingleItem();
+        widget.NamedProjectionTypes.ShouldBe(["widget-detail", "widget-index"]);
+        first.DispatchVersion.ShouldBe(ProjectionDispatchProtocol.Version);
+        first.DispatchCapability.ShouldBe(ProjectionDispatchProtocol.Capability);
+        first.AppId.ShouldBe("widget-service");
+        first.ServiceVersion.ShouldBe("1.2.0");
+        first.CatalogFingerprint.ShouldNotBeNullOrWhiteSpace();
+        first.CatalogFingerprint.ShouldBe(second.CatalogFingerprint);
+    }
+
+    /// <summary>Proves app and service bindings participate in the route-catalog fingerprint.</summary>
+    [Fact]
+    public void AdminOperationalIndexMetadata_Create_BindsFingerprintToAppAndServiceVersion() {
+        DiscoveryResult discovery = new(
+            [new DiscoveredDomain(typeof(WidgetAggregate), "widget", typeof(WidgetState), DomainKind.Aggregate)],
+            []);
+        IAsyncDomainProjectionHandler handler = CreateNamedProjectionHandler("widget", "widget-detail");
+
+        AdminOperationalIndexMetadata.Response first = AdminOperationalIndexMetadata.Create(
+            discovery,
+            ["widget"],
+            null,
+            [handler],
+            "widget-service",
+            "1.2.0",
+            new ProjectionDispatchOptions());
+        AdminOperationalIndexMetadata.Response stale = AdminOperationalIndexMetadata.Create(
+            discovery,
+            ["widget"],
+            null,
+            [handler],
+            "widget-service",
+            "1.1.0",
+            new ProjectionDispatchOptions());
+
+        first.CatalogFingerprint.ShouldNotBe(stale.CatalogFingerprint);
+    }
+
+    /// <summary>
     /// Proves <c>IDomainQueryHandler</c> implementations in the domain assembly are discovered and registered.
     /// </summary>
     [Fact]
@@ -694,6 +775,7 @@ public sealed class EventStoreDomainServiceExtensionsTests {
             "/admin/operational-index-metadata",
             "/process",
             "/project",
+            "/project/v2",
             "/query",
             "/replay-state"]);
     }
@@ -712,6 +794,13 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         handler.Domain.Returns("WIDGET");
         handler.Project(Arg.Any<ProjectionRequest>()).Returns(
             new ProjectionResponse("duplicate-widget", JsonSerializer.SerializeToElement(new { duplicate = true })));
+        return handler;
+    }
+
+    private static IAsyncDomainProjectionHandler CreateNamedProjectionHandler(string domain, string projectionType) {
+        IAsyncDomainProjectionHandler handler = Substitute.For<IAsyncDomainProjectionHandler>();
+        handler.Domain.Returns(domain);
+        handler.ProjectionType.Returns(projectionType);
         return handler;
     }
 

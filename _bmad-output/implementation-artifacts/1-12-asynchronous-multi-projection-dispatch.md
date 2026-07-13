@@ -1,10 +1,14 @@
+---
+baseline_commit: 5223e9c9c2f0dd71673003c710b8739efc8484ff
+---
+
 # Story 1.12: Asynchronous Multi-Projection Dispatch
 
 Status: ready-for-dev
 
 **Requirements covered:** FR7, FR36, NFR7, NFR12, NFR16  
 **Governed by:** AD-2, AD-7, AD-8, AD-12, AD-19, AD-20  
-**Depends on:** Stories 1.4, 1.9, 1.10, and 1.11; Story 1.12 cannot complete until the open review findings for Stories 1.9 and 1.10 are resolved  
+**Builds on:** Implemented platform seams from Stories 1.4, 1.9, 1.10, and 1.11. Unresolved review findings in another story are not a serial completion lock; Story 1.12 may implement and complete independently unless it exposes a direct contract contradiction. Story 1.15 remains blocked until Stories 1.9-1.14 are complete and reviewed.
 **Feeds:** Stories 1.13-1.15; Story 1.14 owns named-handler rebuild staging and replay equivalence
 
 ## Story
@@ -314,4 +318,5 @@ To be completed by the development agent.
 
 | Date | Change |
 | --- | --- |
+| 2026-07-13 | Applied the approved sprint correction: Story 1.12 may proceed independently of unresolved sibling-story review findings while Story 1.15 retains the complete-and-reviewed convergence gate. |
 | 2026-07-12 | Created comprehensive ready-for-dev Story 1.12 context with additive v2 compatibility, pre-persistence admission, deterministic fan-out, partial-failure checkpoint truth, rebuild safety, and persisted evidence gates. |

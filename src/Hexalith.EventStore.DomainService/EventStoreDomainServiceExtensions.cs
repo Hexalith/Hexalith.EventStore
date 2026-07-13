@@ -14,8 +14,10 @@ using Hexalith.EventStore.ServiceDefaults;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.DomainService;
 
@@ -25,7 +27,7 @@ namespace Hexalith.EventStore.DomainService;
 /// needs: Aspire service defaults (observability, health, resilience), convention-based discovery and
 /// registration of aggregates/projections, runtime activation, and the canonical DAPR-invoked HTTP
 /// endpoints (<c>/process</c>, <c>/replay-state</c>, <c>/query</c>, <c>/project</c>, and
-/// <c>/admin/operational-index-metadata</c>).
+/// <c>/project/v2</c>, and <c>/admin/operational-index-metadata</c>).
 /// </summary>
 /// <remarks>
 /// A conforming domain service is:
@@ -124,6 +126,7 @@ public static class EventStoreDomainServiceExtensions {
     /// <item><description><c>POST /replay-state</c> — reconstructs aggregate state through the Apply convention.</description></item>
     /// <item><description><c>POST /query</c> — dispatches a query to the matching <see cref="IDomainQueryHandler"/>.</description></item>
     /// <item><description><c>POST /project</c> — dispatches a full-replay projection to the matching <see cref="IDomainProjectionHandler"/> (skipped when the app already mapped its own <c>/project</c>).</description></item>
+    /// <item><description><c>POST /project/v2</c> — dispatches an admitted set to exact named async projection handlers.</description></item>
     /// <item><description><c>POST /admin/operational-index-metadata</c> — returns the domain's command/event/projection catalog.</description></item>
     /// </list>
     /// </summary>
@@ -135,9 +138,12 @@ public static class EventStoreDomainServiceExtensions {
 
         ValidateDomainQueryHandlerRoutes(app.Services);
         bool mapProjectionEndpoint = !IsRouteMapped(app, "/project", HttpMethods.Post);
+        bool mapNamedProjectionEndpoint = !IsRouteMapped(app, "/project/v2", HttpMethods.Post);
         if (mapProjectionEndpoint) {
             ValidateDomainProjectionHandlerRoutes(app.Services);
         }
+
+        ValidateNamedDomainProjectionHandlerRoutes(app.Services);
 
         _ = app.MapGet("/", () => "Hexalith EventStore domain service");
 
@@ -169,10 +175,53 @@ public static class EventStoreDomainServiceExtensions {
                 });
         }
 
+        if (mapNamedProjectionEndpoint) {
+            _ = app.MapPost(
+                "/project/v2",
+                async (ProjectionDispatchRequest request,
+                       IServiceProvider serviceProvider,
+                       IOptions<ProjectionDispatchOptions> projectionDispatchOptions,
+                       [FromServices] DomainProjectionCatalogRegistry catalogRegistry,
+                       CancellationToken cancellationToken) => {
+                    try {
+                        ProjectionDispatchResponse response = await DomainProjectionDispatcher
+                            .DispatchAsync(
+                                serviceProvider,
+                                request,
+                                projectionDispatchOptions.Value,
+                                catalogRegistry,
+                                cancellationToken)
+                            .ConfigureAwait(false);
+                        return (IResult)Results.Ok(response);
+                    }
+                    catch (ProjectionDispatchValidationException exception) {
+                        return Results.BadRequest(exception.ReasonCode);
+                    }
+                });
+        }
+
         _ = app.MapPost(
             "/admin/operational-index-metadata",
-            (AdminOperationalIndexMetadata.Request request, DiscoveryResult discovery, IEnumerable<IDomainQueryHandler> queryHandlers)
-                => Results.Ok(AdminOperationalIndexMetadata.Create(discovery, request.Domains, queryHandlers)));
+            (AdminOperationalIndexMetadata.Request request,
+             DiscoveryResult discovery,
+             IEnumerable<IDomainQueryHandler> queryHandlers,
+             IEnumerable<IAsyncDomainProjectionHandler> namedProjectionHandlers,
+             IOptions<ProjectionDispatchOptions> projectionDispatchOptions,
+             [FromServices] DomainProjectionCatalogRegistry catalogRegistry) => {
+                AdminOperationalIndexMetadata.Response response =
+                    string.IsNullOrWhiteSpace(request.AppId) || string.IsNullOrWhiteSpace(request.ServiceVersion)
+                        ? AdminOperationalIndexMetadata.Create(discovery, request.Domains, queryHandlers)
+                        : AdminOperationalIndexMetadata.Create(
+                            discovery,
+                            request.Domains,
+                            queryHandlers,
+                            namedProjectionHandlers,
+                            request.AppId,
+                            request.ServiceVersion,
+                            projectionDispatchOptions.Value);
+                RegisterNamedProjectionCatalog(response, catalogRegistry);
+                return Results.Ok(response);
+            });
 
         return app;
     }
@@ -202,6 +251,9 @@ public static class EventStoreDomainServiceExtensions {
 
         // Discover and register IDomainProjectionHandler implementations for the /project endpoint.
         AddDomainProjectionHandlers(builder.Services, domainAssemblies);
+        _ = builder.Services.AddSingleton<DomainProjectionCatalogRegistry>();
+        _ = builder.Services.AddOptions<ProjectionDispatchOptions>()
+            .BindConfiguration("EventStore:ProjectionDispatch");
 
         DiscoveryResult discovery = GetRegisteredDiscoveryResult(builder.Services);
         _ = builder.Services.AddEventStoreDomainTelemetry(GetDiscoveredDomainNames(discovery, domainAssemblies));
@@ -219,6 +271,7 @@ public static class EventStoreDomainServiceExtensions {
             .Select(static domain => domain.DomainName)
             .Concat(GetHandlerDomainNames<IDomainQueryHandler>(domainAssemblies))
             .Concat(GetHandlerDomainNames<IDomainProjectionHandler>(domainAssemblies))
+            .Concat(GetHandlerDomainNames<IAsyncDomainProjectionHandler>(domainAssemblies))
             .Distinct(StringComparer.OrdinalIgnoreCase);
 
     private static IEnumerable<string> GetHandlerDomainNames<THandler>(Assembly[] domainAssemblies) {
@@ -242,6 +295,7 @@ public static class EventStoreDomainServiceExtensions {
                     yield return handler switch {
                         IDomainQueryHandler queryHandler => queryHandler.Domain,
                         IDomainProjectionHandler projectionHandler => projectionHandler.Domain,
+                        IAsyncDomainProjectionHandler projectionHandler => projectionHandler.Domain,
                         _ => throw new InvalidOperationException($"Unsupported domain handler type '{typeof(THandler).FullName}'."),
                     };
                 }
@@ -265,17 +319,24 @@ public static class EventStoreDomainServiceExtensions {
     }
 
     private static void AddDomainProjectionHandlers(IServiceCollection services, Assembly[] domainAssemblies) {
-        // Idempotent: skip if projection handlers are already registered (e.g. a second call on the same services).
-        if (services.Any(static s => s.ServiceType == typeof(IDomainProjectionHandler))) {
-            return;
-        }
+        bool registerLegacyHandlers = !services.Any(static service => service.ServiceType == typeof(IDomainProjectionHandler));
+        bool registerAsyncHandlers = !services.Any(static service => service.ServiceType == typeof(IAsyncDomainProjectionHandler));
 
         foreach (Assembly assembly in domainAssemblies) {
             foreach (Type type in assembly.GetTypes()) {
-                if (type is { IsClass: true, IsAbstract: false } && typeof(IDomainProjectionHandler).IsAssignableFrom(type)) {
+                if (registerLegacyHandlers
+                    && type is { IsClass: true, IsAbstract: false }
+                    && typeof(IDomainProjectionHandler).IsAssignableFrom(type)) {
                     // Full-replay projection handlers are stateless (Model a) — registered as singletons so the
                     // /project endpoint can resolve them without a request scope.
                     _ = services.AddSingleton(typeof(IDomainProjectionHandler), type);
+                }
+
+                if (registerAsyncHandlers
+                    && type is { IsClass: true, IsAbstract: false }
+                    && typeof(IAsyncDomainProjectionHandler).IsAssignableFrom(type)) {
+                    // Named projection handlers own persistence resources and therefore resolve per request scope.
+                    _ = services.AddScoped(typeof(IAsyncDomainProjectionHandler), type);
                 }
 
                 RegisterDeclaredProjectionReadModelSlots(services, type);
@@ -333,5 +394,31 @@ public static class EventStoreDomainServiceExtensions {
     private static void ValidateDomainProjectionHandlerRoutes(IServiceProvider serviceProvider) {
         using IServiceScope scope = serviceProvider.CreateScope();
         _ = DomainProjectionHandlerRouteValidator.MaterializeAndValidate(scope.ServiceProvider.GetServices<IDomainProjectionHandler>());
+    }
+
+    private static void ValidateNamedDomainProjectionHandlerRoutes(IServiceProvider serviceProvider) {
+        using IServiceScope scope = serviceProvider.CreateScope();
+        ProjectionDispatchOptions options = scope.ServiceProvider
+            .GetService<IOptions<ProjectionDispatchOptions>>()
+            ?.Value
+            ?? new ProjectionDispatchOptions();
+        _ = DomainProjectionHandlerRouteValidator.MaterializeAndValidateNamed(
+            scope.ServiceProvider.GetServices<IAsyncDomainProjectionHandler>(),
+            options);
+    }
+
+    private static void RegisterNamedProjectionCatalog(
+        AdminOperationalIndexMetadata.Response response,
+        DomainProjectionCatalogRegistry catalogRegistry) {
+        if (string.IsNullOrWhiteSpace(response.CatalogFingerprint)) {
+            return;
+        }
+
+        catalogRegistry.Register(
+            response.CatalogFingerprint,
+            response.Domains
+                .Where(static domain => domain.NamedProjectionTypes is { Count: > 0 })
+                .SelectMany(domain => domain.NamedProjectionTypes!
+                    .Select(projectionType => new ProjectionDispatchRoute(domain.Domain, projectionType))));
     }
 }

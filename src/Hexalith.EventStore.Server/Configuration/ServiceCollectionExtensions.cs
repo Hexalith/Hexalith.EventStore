@@ -48,6 +48,9 @@ public static class EventStoreServerServiceCollectionExtensions {
         services.TryAddTransient<IProjectionUpdateOrchestrator, ProjectionUpdateOrchestrator>();
         services.TryAddTransient<IProjectionPollerDeliveryGateway, ProjectionUpdateOrchestrator>();
         services.TryAddTransient<IProjectionRebuildOrchestrator, ProjectionUpdateOrchestrator>();
+        services.TryAddTransient<INamedProjectionDispatchCoordinator, NamedProjectionDispatchCoordinator>();
+        services.TryAddSingleton<NamedProjectionRouteCatalog>();
+        services.TryAddSingleton<INamedProjectionRouteCatalog>(static sp => sp.GetRequiredService<NamedProjectionRouteCatalog>());
         services.TryAddTransient<IEventPublisher, EventPublisher>();
         services.TryAddTransient<IDeadLetterPublisher, DeadLetterPublisher>();
         services.TryAddSingleton<IProjectionChangeNotifier, DaprProjectionChangeNotifier>();
@@ -98,6 +101,10 @@ public static class EventStoreServerServiceCollectionExtensions {
         _ = services.AddOptions<ProjectionOptions>()
             .Bind(configuration.GetSection("EventStore:Projections"))
             .Validate(o => { o.Validate(); return true; }, "Projection configuration is invalid. All intervals must be >= 0 and domain keys must be non-empty.")
+            .ValidateOnStart();
+        _ = services.AddOptions<ProjectionDispatchOptions>()
+            .Bind(configuration.GetSection("EventStore:ProjectionDispatch"))
+            .Validate(o => { o.Validate(); return true; }, "Projection dispatch configuration is invalid.")
             .ValidateOnStart();
         _ = services.AddHostedService<ProjectionDiscoveryHostedService>();
         // P-DEC1-8P/P4-9P: register cleanup only when DaprClient is available. Non-DAPR test

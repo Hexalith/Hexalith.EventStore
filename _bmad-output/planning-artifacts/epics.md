@@ -24,6 +24,7 @@ inputDocuments:
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-09.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-09-implementation-readiness-corrections.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-11.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-13.md
 ---
 
 # eventstore - Epic Breakdown
@@ -105,6 +106,8 @@ Story 1.8 completed its investigation and correctly produced a `still blocked` o
 2. Story 1.12 establishes asynchronous named multi-projection dispatch.
 3. Stories 1.13 and 1.14 prove production-path delivery idempotency and replay-equivalent paged rebuilds.
 4. Story 1.15 re-runs parity, records explicit EventStore owner approval, and binds the exact runtime SHA.
+
+The numbered capability sequence governs evidence acceptance and final parity closure; it is not a serial execution lock. Stories 1.9-1.14 may be implemented and reviewed in parallel once the contracts they directly consume exist. An unresolved review item in one story blocks Story 1.15 closure, but does not block another implementation story unless it exposes a direct contract contradiction; a direct contradiction must halt the affected story and be routed through change control.
 
 Cursor scope compatibility may reuse Story 1.8 evidence. Every other blocked item must be reclassified `available` by Story 1.15. Parties must verify its checked-out `references/Hexalith.EventStore` SHA matches the approved runtime SHA before Story 8.6 resumes or local rollback code is removed.
 
@@ -776,6 +779,8 @@ So that operational states are not collapsed into a stale Boolean or inferred fr
 ### Story 1.12: Asynchronous Multi-Projection Dispatch
 
 **Requirements covered:** FR7, FR36, NFR7, NFR12
+
+**Sequencing correction:** Story 1.12 builds on the implemented platform seams from Stories 1.4, 1.9, 1.10, and 1.11, but unresolved review findings in another story are not a serial completion lock. Story 1.12 may implement and complete independently unless it exposes a direct contract contradiction. Story 1.15 remains blocked until Stories 1.9-1.14 are complete and reviewed.
 
 As a domain projection author,
 I want asynchronous named projection handlers with one-to-many dispatch,

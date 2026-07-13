@@ -1,7 +1,10 @@
 using System.Reflection;
+using System.Text.Json.Serialization;
 
 using Hexalith.EventStore.Client.Discovery;
+using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Contracts.Events;
+using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Contracts.Results;
 
 namespace Hexalith.EventStore.DomainService;
@@ -25,7 +28,57 @@ public static class AdminOperationalIndexMetadata {
     public static Response Create(
         DiscoveryResult discovery,
         IReadOnlyList<string>? requestedDomains,
-        IEnumerable<IDomainQueryHandler>? queryHandlers = null) {
+        IEnumerable<IDomainQueryHandler>? queryHandlers = null)
+        => CreateCore(
+            discovery,
+            requestedDomains,
+            queryHandlers,
+            namedProjectionHandlers: null,
+            appId: null,
+            serviceVersion: null,
+            options: null);
+
+    /// <summary>
+    /// Creates capability-bound operational metadata including exact named projection routes.
+    /// </summary>
+    /// <param name="discovery">The discovery result for the hosted domains.</param>
+    /// <param name="requestedDomains">The domains to include, or <c>null</c>/empty for all.</param>
+    /// <param name="queryHandlers">The registered query handlers.</param>
+    /// <param name="namedProjectionHandlers">The registered named asynchronous projection handlers.</param>
+    /// <param name="appId">The DAPR application identity to bind to this catalog.</param>
+    /// <param name="serviceVersion">The domain-service version to bind to this catalog.</param>
+    /// <param name="options">The named dispatch limits.</param>
+    /// <returns>The operational-index metadata response.</returns>
+    public static Response Create(
+        DiscoveryResult discovery,
+        IReadOnlyList<string>? requestedDomains,
+        IEnumerable<IDomainQueryHandler>? queryHandlers,
+        IEnumerable<IAsyncDomainProjectionHandler>? namedProjectionHandlers,
+        string appId,
+        string serviceVersion,
+        ProjectionDispatchOptions options) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(appId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(serviceVersion);
+        ArgumentNullException.ThrowIfNull(options);
+
+        return CreateCore(
+            discovery,
+            requestedDomains,
+            queryHandlers,
+            namedProjectionHandlers,
+            appId,
+            serviceVersion,
+            options);
+    }
+
+    private static Response CreateCore(
+        DiscoveryResult discovery,
+        IReadOnlyList<string>? requestedDomains,
+        IEnumerable<IDomainQueryHandler>? queryHandlers,
+        IEnumerable<IAsyncDomainProjectionHandler>? namedProjectionHandlers,
+        string? appId,
+        string? serviceVersion,
+        ProjectionDispatchOptions? options) {
         ArgumentNullException.ThrowIfNull(discovery);
 
         HashSet<string> requested = requestedDomains is { Count: > 0 }
@@ -33,22 +86,42 @@ public static class AdminOperationalIndexMetadata {
             : new HashSet<string>(discovery.Aggregates.Select(a => a.DomainName), StringComparer.OrdinalIgnoreCase);
 
         IDomainQueryHandler[] materializedQueryHandlers = DomainQueryHandlerRouteValidator.MaterializeAndValidate(queryHandlers);
+        IAsyncDomainProjectionHandler[] materializedNamedHandlers = options is null
+            ? []
+            : DomainProjectionHandlerRouteValidator.MaterializeAndValidateNamed(namedProjectionHandlers, options);
 
         ILookup<string, string> queryTypesByDomain = materializedQueryHandlers
             .ToLookup(h => h.Domain, h => h.QueryType, StringComparer.OrdinalIgnoreCase);
+        ILookup<string, string> namedProjectionTypesByDomain = materializedNamedHandlers
+            .Where(handler => requested.Contains(handler.Domain))
+            .ToLookup(handler => handler.Domain, handler => handler.ProjectionType, StringComparer.Ordinal);
 
         List<DomainMetadata> domains = [.. discovery.Aggregates
             .Where(a => requested.Contains(a.DomainName))
-            .Select(a => CreateDomainMetadata(a, discovery, queryTypesByDomain))
+            .Select(a => CreateDomainMetadata(a, discovery, queryTypesByDomain, namedProjectionTypesByDomain))
             .OrderBy(d => d.Domain, StringComparer.OrdinalIgnoreCase)];
 
-        return new Response(domains);
+        if (materializedNamedHandlers.Length == 0 || appId is null || serviceVersion is null) {
+            return new Response(domains);
+        }
+
+        ProjectionDispatchRoute[] admittedRoutes = [.. materializedNamedHandlers
+            .Where(handler => requested.Contains(handler.Domain))
+            .Select(handler => new ProjectionDispatchRoute(handler.Domain, handler.ProjectionType))];
+        return new Response(domains) {
+            DispatchVersion = ProjectionDispatchProtocol.Version,
+            DispatchCapability = ProjectionDispatchProtocol.Capability,
+            AppId = appId,
+            ServiceVersion = serviceVersion,
+            CatalogFingerprint = ProjectionRouteCatalogFingerprint.Compute(appId, serviceVersion, admittedRoutes),
+        };
     }
 
     private static DomainMetadata CreateDomainMetadata(
         DiscoveredDomain aggregate,
         DiscoveryResult discovery,
-        ILookup<string, string> queryTypesByDomain) {
+        ILookup<string, string> queryTypesByDomain,
+        ILookup<string, string> namedProjectionTypesByDomain) {
         Type aggregateType = aggregate.Type;
         Type stateType = aggregate.StateType;
         List<string> commandTypes = [.. aggregateType
@@ -96,7 +169,11 @@ public static class AdminOperationalIndexMetadata {
             commandTypes,
             [aggregateType.FullName ?? aggregateType.Name],
             projectionNames,
-            queryTypes);
+            queryTypes) {
+            NamedProjectionTypes = [.. namedProjectionTypesByDomain[aggregate.DomainName]
+                .Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal)],
+        };
     }
 
     private static IEnumerable<string> DiscoverProjectionHandlerNames(Assembly assembly, string domain)
@@ -116,11 +193,39 @@ public static class AdminOperationalIndexMetadata {
 
     /// <summary>The operational-index metadata request: the domains to include.</summary>
     /// <param name="Domains">The requested domain names.</param>
-    public sealed record Request(IReadOnlyList<string> Domains);
+    public sealed record Request(IReadOnlyList<string> Domains) {
+        /// <summary>Gets the optional DAPR app id requested for capability binding.</summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? AppId { get; init; }
+
+        /// <summary>Gets the optional domain-service version requested for capability binding.</summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? ServiceVersion { get; init; }
+    }
 
     /// <summary>The operational-index metadata response.</summary>
     /// <param name="Domains">The per-domain metadata entries.</param>
-    public sealed record Response(IReadOnlyList<DomainMetadata> Domains);
+    public sealed record Response(IReadOnlyList<DomainMetadata> Domains) {
+        /// <summary>Gets the optional named dispatch protocol version.</summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? DispatchVersion { get; init; }
+
+        /// <summary>Gets the optional named dispatch capability marker.</summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? DispatchCapability { get; init; }
+
+        /// <summary>Gets the DAPR app id bound to the named route catalog.</summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? AppId { get; init; }
+
+        /// <summary>Gets the domain-service version bound to the named route catalog.</summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? ServiceVersion { get; init; }
+
+        /// <summary>Gets the deterministic fingerprint of the bound named route catalog.</summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? CatalogFingerprint { get; init; }
+    }
 
     /// <summary>Operational metadata for a single domain.</summary>
     /// <param name="Domain">The kebab-case domain name.</param>
@@ -137,5 +242,9 @@ public static class AdminOperationalIndexMetadata {
         IReadOnlyList<string> CommandTypes,
         IReadOnlyList<string> AggregateTypes,
         IReadOnlyList<string> ProjectionNames,
-        IReadOnlyList<string> QueryTypes);
+        IReadOnlyList<string> QueryTypes) {
+        /// <summary>Gets the exact canonical named asynchronous projection types for this domain.</summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public IReadOnlyList<string>? NamedProjectionTypes { get; init; }
+    }
 }

@@ -43,7 +43,8 @@ internal partial class ProjectionUpdateOrchestrator(
     IEventPayloadProtectionService? payloadProtectionService = null,
     IOptions<EventStoreActorOptions>? actorOptions = null,
     IProjectionDeliveryCheckpointStore? deliveryCheckpointStore = null,
-    IProjectionLifecycleGateway? lifecycleGateway = null) : IProjectionUpdateOrchestrator, IProjectionPollerDeliveryGateway, IProjectionRebuildOrchestrator {
+    IProjectionLifecycleGateway? lifecycleGateway = null,
+    INamedProjectionDispatchCoordinator? namedProjectionDispatchCoordinator = null) : IProjectionUpdateOrchestrator, IProjectionPollerDeliveryGateway, IProjectionRebuildOrchestrator {
     // Per-aggregate serialization across orchestrator instances. Entries are evicted and the
     // underlying SemaphoreSlim disposed when the last holder releases, so a multi-tenant server
     // with many short-lived aggregates does not accumulate kernel handles indefinitely.
@@ -169,6 +170,18 @@ internal partial class ProjectionUpdateOrchestrator(
 
             // Step 4: Invoke domain service /project endpoint via DAPR
             var request = new ProjectionRequest(identity.TenantId, identity.Domain, identity.AggregateId, projectionReadability.Events!);
+            if (namedProjectionDispatchCoordinator is not null
+                && await namedProjectionDispatchCoordinator
+                    .TryDispatchAsync(
+                        identity,
+                        registration,
+                        events,
+                        projectionReadability.Events!,
+                        cancellationToken)
+                    .ConfigureAwait(false)) {
+                return;
+            }
+
             using HttpRequestMessage httpRequest = daprClient.CreateInvokeMethodRequest(
                 registration.AppId,
                 "project",

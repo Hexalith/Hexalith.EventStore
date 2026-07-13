@@ -17,6 +17,7 @@ using Hexalith.EventStore.Pipeline;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Pipeline;
+using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Services;
 using Hexalith.EventStore.Validation;
 

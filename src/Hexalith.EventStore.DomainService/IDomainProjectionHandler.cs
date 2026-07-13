@@ -14,7 +14,8 @@ namespace Hexalith.EventStore.DomainService;
 /// the read model from scratch, returning the current state as a <see cref="ProjectionResponse"/>. It holds no
 /// state between calls and does not read or persist prior projection state — the gateway's projection actor
 /// stores and serves the single returned read model. Persisted, incrementally-merged multi-read-model state is
-/// a separate platform capability (the Epic A8 read-model store consumed by query handlers), not this seam.
+/// a separate platform capability exposed through <see cref="IAsyncDomainProjectionHandler"/>. This legacy seam
+/// remains unchanged for the version-1 <c>/project</c> protocol.
 /// </remarks>
 public interface IDomainProjectionHandler {
     /// <summary>Gets the kebab-case domain this handler serves (matched against <see cref="ProjectionRequest.Domain"/>).</summary>
