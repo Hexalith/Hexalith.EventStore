@@ -1,3 +1,10 @@
+## [3.61.2](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.61.1...v3.61.2) (2026-07-13)
+
+
+### Bug Fixes
+
+* **client:** harden coordinated read-model batch protocol from review ([#281](https://github.com/Hexalith/Hexalith.EventStore/issues/281)) ([6ab2b22](https://github.com/Hexalith/Hexalith.EventStore/commit/6ab2b22a73a9723c54139090b9b5f6f5d5bb528b))
+
 ## [3.61.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.61.0...v3.61.1) (2026-07-13)
 
 
