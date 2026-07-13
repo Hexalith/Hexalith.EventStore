@@ -18,6 +18,9 @@ public sealed class ProjectionDispatchOptions {
     /// <summary>The default maximum retry attempts per activation.</summary>
     public const int DefaultMaxRetryAttempts = 8;
 
+    /// <summary>The default maximum number of due work items drained in one worker scan.</summary>
+    public const int DefaultRetryScanBatchSize = 64;
+
     /// <summary>Gets or sets the maximum handlers registered for one domain.</summary>
     public int MaxHandlersPerDomain { get; set; } = DefaultMaxHandlersPerDomain;
 
@@ -32,6 +35,9 @@ public sealed class ProjectionDispatchOptions {
 
     /// <summary>Gets or sets the maximum retry attempts performed in one worker activation.</summary>
     public int MaxRetryAttempts { get; set; } = DefaultMaxRetryAttempts;
+
+    /// <summary>Gets or sets the maximum number of due work items drained in one worker scan.</summary>
+    public int RetryScanBatchSize { get; set; } = DefaultRetryScanBatchSize;
 
     /// <summary>Gets or sets the initial retry backoff.</summary>
     public TimeSpan RetryBaseDelay { get; set; } = TimeSpan.FromSeconds(1);
@@ -52,6 +58,7 @@ public sealed class ProjectionDispatchOptions {
         ArgumentOutOfRangeException.ThrowIfGreaterThan(MaxReasonCodeBytes, ProjectionDispatchReasonCodes.MaxAsciiBytes);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaxOutcomeEnvelopeBytes);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaxRetryAttempts);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(RetryScanBatchSize);
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(RetryBaseDelay, TimeSpan.Zero);
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(RetryMaxDelay, TimeSpan.Zero);
         ArgumentOutOfRangeException.ThrowIfLessThan(RetryMaxDelay, RetryBaseDelay);

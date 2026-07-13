@@ -23,7 +23,7 @@ public sealed class ProjectionDeliveryRetryWorkerTests {
         DateTimeOffset now = new(2026, 7, 13, 12, 0, 0, TimeSpan.Zero);
         ProjectionDeliveryRetryWorkItem workItem = WorkItem(now);
         IProjectionDeliveryRetryScheduler scheduler = Substitute.For<IProjectionDeliveryRetryScheduler>();
-        _ = scheduler.GetDueAsync(now, 8, Arg.Any<CancellationToken>())
+        _ = scheduler.GetDueAsync(now, ProjectionDispatchOptions.DefaultRetryScanBatchSize, Arg.Any<CancellationToken>())
             .Returns([workItem]);
         INamedProjectionDispatchCoordinator coordinator = Substitute.For<INamedProjectionDispatchCoordinator>();
         _ = coordinator.TryDispatchAsync(
@@ -74,7 +74,7 @@ public sealed class ProjectionDeliveryRetryWorkerTests {
         DateTimeOffset now = new(2026, 7, 13, 12, 0, 0, TimeSpan.Zero);
         ProjectionDeliveryRetryWorkItem workItem = WorkItem(now);
         IProjectionDeliveryRetryScheduler scheduler = Substitute.For<IProjectionDeliveryRetryScheduler>();
-        _ = scheduler.GetDueAsync(now, 8, Arg.Any<CancellationToken>()).Returns([workItem]);
+        _ = scheduler.GetDueAsync(now, ProjectionDispatchOptions.DefaultRetryScanBatchSize, Arg.Any<CancellationToken>()).Returns([workItem]);
         INamedProjectionDispatchCoordinator coordinator = Substitute.For<INamedProjectionDispatchCoordinator>();
         _ = coordinator.TryDispatchAsync(
                 Arg.Any<AggregateIdentity>(),

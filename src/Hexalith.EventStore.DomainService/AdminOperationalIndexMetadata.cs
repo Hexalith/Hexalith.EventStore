@@ -105,9 +105,21 @@ public static class AdminOperationalIndexMetadata {
             return new Response(domains);
         }
 
-        ProjectionDispatchRoute[] admittedRoutes = [.. materializedNamedHandlers
-            .Where(handler => requested.Contains(handler.Domain))
-            .Select(handler => new ProjectionDispatchRoute(handler.Domain, handler.ProjectionType))];
+        // Compute the fingerprint over exactly the routes emitted in the per-domain metadata
+        // (aggregate-backed domains only). A named handler on a domain with no discovered aggregate
+        // is not emitted, so it must not contribute to the fingerprint either; otherwise the
+        // EventStore side — which recomputes the fingerprint from the emitted NamedProjectionTypes —
+        // would mismatch and reject the entire catalog, silently disabling v2 for the whole service.
+        ProjectionDispatchRoute[] admittedRoutes = [.. domains
+            .Where(domain => domain.NamedProjectionTypes is { Count: > 0 })
+            .SelectMany(domain => domain.NamedProjectionTypes!
+                .Select(projectionType => new ProjectionDispatchRoute(domain.Domain, projectionType)))];
+        if (admittedRoutes.Length == 0) {
+            // Named handlers exist but none resolve to an emitted (aggregate-backed) route. Do not
+            // advertise a v2 capability with zero servable routes; present as a non-v2 service.
+            return new Response(domains);
+        }
+
         return new Response(domains) {
             DispatchVersion = ProjectionDispatchProtocol.Version,
             DispatchCapability = ProjectionDispatchProtocol.Capability,

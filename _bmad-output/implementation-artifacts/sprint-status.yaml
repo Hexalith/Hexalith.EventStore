@@ -72,7 +72,7 @@ development_status:
   1-9-read-model-and-projection-checkpoint-erasure: in-progress
   1-10-coordinated-read-model-batch-writes: done
   1-11-complete-projection-freshness-lifecycle: done
-  1-12-asynchronous-multi-projection-dispatch: review
+  1-12-asynchronous-multi-projection-dispatch: in-progress
   1-13-projection-handler-delivery-idempotency: ready-for-dev
   1-14-correct-paged-rebuild-and-replay-equivalence: ready-for-dev
   # Cannot become done while its owner packet remains `still blocked`; Epic 1 remains in-progress until `available`.

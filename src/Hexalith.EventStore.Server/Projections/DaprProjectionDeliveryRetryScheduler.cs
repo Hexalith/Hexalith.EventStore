@@ -42,13 +42,13 @@ public sealed class DaprProjectionDeliveryRetryScheduler(
         return MutateAsync(
             items => {
                 int index = items.FindIndex(item => string.Equals(item.WorkId, workItem.WorkId, StringComparison.Ordinal));
-                if (index >= 0) {
-                    items[index] = workItem;
-                }
-                else {
-                    items.Add(workItem);
+                if (index < 0) {
+                    // Update-only: never resurrect a work item that a concurrent live delivery has
+                    // already converged and deleted. Insertion is ScheduleAsync's responsibility.
+                    return false;
                 }
 
+                items[index] = workItem;
                 return true;
             },
             cancellationToken);

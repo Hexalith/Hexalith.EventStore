@@ -33,7 +33,19 @@ internal sealed partial class ProjectionDeliveryRetryWorker(
     protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
         using var timer = new PeriodicTimer(dispatchOptions.Value.RetryWorkerInterval, timeProvider);
         while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false)) {
-            await RunOnceAsync(stoppingToken).ConfigureAwait(false);
+            try {
+                await RunOnceAsync(stoppingToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) {
+                throw;
+            }
+            catch (Exception ex) {
+                // A transient state-store/DAPR fault (including ledger optimistic-concurrency
+                // exhaustion) must never fault this BackgroundService: the .NET default
+                // BackgroundServiceExceptionBehavior.StopHost would otherwise terminate the host.
+                // Log and continue; due work is retried on the next tick.
+                Log.RetryActivationFailed(logger, ex);
+            }
         }
     }
 
@@ -43,7 +55,7 @@ internal sealed partial class ProjectionDeliveryRetryWorker(
         ProjectionDispatchOptions options = dispatchOptions.Value;
         options.Validate();
         IReadOnlyList<ProjectionDeliveryRetryWorkItem> due = await scheduler
-            .GetDueAsync(timeProvider.GetUtcNow(), options.MaxRetryAttempts, cancellationToken)
+            .GetDueAsync(timeProvider.GetUtcNow(), options.RetryScanBatchSize, cancellationToken)
             .ConfigureAwait(false);
         foreach (ProjectionDeliveryRetryWorkItem workItem in due) {
             cancellationToken.ThrowIfCancellationRequested();
@@ -104,7 +116,16 @@ internal sealed partial class ProjectionDeliveryRetryWorker(
         }
         catch (Exception) {
             Log.RetryFailed(logger, workItem.WorkId, ProjectionDispatchReasonCodes.PartialRetry);
-            await DeferAsync(workItem, options, cancellationToken).ConfigureAwait(false);
+            try {
+                await DeferAsync(workItem, options, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) {
+                throw;
+            }
+            catch (Exception) {
+                // A ledger fault while recording backoff must not escape into the hosted worker
+                // loop; the work item stays due and is retried on the next tick.
+            }
         }
     }
 
@@ -167,5 +188,11 @@ internal sealed partial class ProjectionDeliveryRetryWorker(
             Level = LogLevel.Warning,
             Message = "Named projection retry remains pending: WorkId={WorkId}, ReasonCode={ReasonCode}, Stage=NamedProjectionRetry")]
         public static partial void RetryFailed(ILogger logger, string workId, string reasonCode);
+
+        [LoggerMessage(
+            EventId = 4661,
+            Level = LogLevel.Error,
+            Message = "Named projection retry activation failed; the worker continues on the next tick. Stage=NamedProjectionRetryActivation")]
+        public static partial void RetryActivationFailed(ILogger logger, Exception exception);
     }
 }
