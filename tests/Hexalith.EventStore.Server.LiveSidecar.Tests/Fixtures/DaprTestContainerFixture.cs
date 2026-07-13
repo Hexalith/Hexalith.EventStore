@@ -6,9 +6,12 @@ using System.Text;
 
 using Dapr.Actors;
 using Dapr.Actors.Client;
+using Dapr.Client;
 
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Results;
+using Hexalith.EventStore.Contracts.Projections;
+using Hexalith.EventStore.DomainService;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
@@ -22,6 +25,7 @@ using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 using RedisConnectionMultiplexer = StackExchange.Redis.IConnectionMultiplexer;
 using RedisDatabase = StackExchange.Redis.IDatabase;
@@ -84,6 +88,10 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
 
     /// <summary>Gets the in-memory command status store for test assertions.</summary>
     public InMemoryCommandStatusStore CommandStatusStore { get; } = new();
+
+    /// <summary>Gets the running test host services.</summary>
+    public IServiceProvider Services => _testHost?.Services
+        ?? throw new InvalidOperationException("The live-sidecar test host has not started.");
 
     /// <inheritdoc/>
     public async ValueTask InitializeAsync()
@@ -533,12 +541,21 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         builder.Configuration["DAPR_GRPC_PORT"] = _daprGrpcPort.ToString();
         builder.Configuration["Dapr:HttpPort"] = _daprHttpPort.ToString();
         builder.Configuration["Dapr:GrpcPort"] = _daprGrpcPort.ToString();
+        builder.Configuration["EventStore:Actors:AggregateActorTypeName"] = AggregateActorTypeName;
+        builder.Configuration["EventStore:ProjectionDispatch:RetryWorkerInterval"] = "00:10:00";
 
         _ = builder.WebHost.ConfigureKestrel(serverOptions => serverOptions.ListenLocalhost(_appPort, listenOptions => listenOptions.Protocols = HttpProtocols.Http1));
 
+        _ = builder.Services.AddSingleton(
+            new DaprClientBuilder()
+                .UseHttpEndpoint(DaprHttpEndpoint)
+                .UseGrpcEndpoint(DaprGrpcEndpoint)
+                .Build());
         _ = builder.Services.AddEventStoreServer(builder.Configuration);
-        builder.Services.AddActors(options =>
-            options.Actors.RegisterActor<AggregateActor>(AggregateActorTypeName));
+        _ = builder.Services.AddSingleton<DomainProjectionCatalogRegistry>();
+        _ = builder.Services.AddScoped<IAsyncDomainProjectionHandler, LiveCounterDetailProjectionHandler>();
+        _ = builder.Services.AddScoped<IAsyncDomainProjectionHandler, LiveCounterIndexProjectionHandler>();
+        _ = builder.Services.AddSingleton<LiveNamedProjectionFaultControl>();
 
         _ = builder.Services.AddSingleton<IDomainServiceInvoker>(DomainServiceInvoker);
         _ = builder.Services.AddSingleton<IEventPublisher>(EventPublisher);
@@ -556,6 +573,16 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         });
 
         _ = _testHost.MapActorsHandlers();
+        _ = _testHost.MapPost(
+            "/project/v2",
+            async (ProjectionDispatchRequest request,
+                   IServiceProvider serviceProvider,
+                   IOptions<Hexalith.EventStore.Client.Projections.ProjectionDispatchOptions> options,
+                   DomainProjectionCatalogRegistry catalogRegistry,
+                   CancellationToken cancellationToken) => Microsoft.AspNetCore.Http.Results.Ok(
+                       await DomainProjectionDispatcher
+                           .DispatchAsync(serviceProvider, request, options.Value, catalogRegistry, cancellationToken)
+                           .ConfigureAwait(false)));
         _ = _testHost.MapGet("/healthz", () => Microsoft.AspNetCore.Http.Results.Ok("healthy"));
 
         await _testHost.StartAsync().ConfigureAwait(false);

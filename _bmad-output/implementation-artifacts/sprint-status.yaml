@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-07-12T22:35:03+02:00
+# last_updated: 2026-07-13T18:45:22+02:00
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T20:01:46+02:00
-last_updated: 2026-07-13T18:09:19+02:00
+last_updated: 2026-07-13T18:45:22+02:00
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -72,7 +72,7 @@ development_status:
   1-9-read-model-and-projection-checkpoint-erasure: in-progress
   1-10-coordinated-read-model-batch-writes: done
   1-11-complete-projection-freshness-lifecycle: done
-  1-12-asynchronous-multi-projection-dispatch: in-progress
+  1-12-asynchronous-multi-projection-dispatch: review
   1-13-projection-handler-delivery-idempotency: ready-for-dev
   1-14-correct-paged-rebuild-and-replay-equivalence: ready-for-dev
   # Cannot become done while its owner packet remains `still blocked`; Epic 1 remains in-progress until `available`.

@@ -63,9 +63,15 @@ flowchart LR
 Domain services (`sample`, `tenants`, and any custom domain) own **only domain logic** — aggregates,
 commands, events, projections, validators, queries, contracts. Everything needed to run on Hexalith.EventStore
 is supplied by the **`Hexalith.EventStore.DomainService` SDK** (which builds on the client libraries):
-hosting, the DAPR-invoked domain-service endpoints (`/process`, `/replay-state`, `/query`, `/project`,
+hosting, the DAPR-invoked domain-service endpoints (`/process`, `/replay-state`, `/query`, `/project`, `/project/v2`,
 `/admin/operational-index-metadata`), convention discovery/registration, ServiceDefaults, telemetry, health
 checks, read-model/cursor seams, and event-subscription/projection-consumer plumbing.
+
+Persisted read models use scoped `IAsyncDomainProjectionHandler` implementations keyed by the exact canonical
+`(Domain, ProjectionType)` route. Handlers persist through `IReadModelStore` or `IReadModelBatchStore`, reuse the
+server-supplied dispatch ID for idempotency, await durable completion, and return structured outcomes. The
+released synchronous `IDomainProjectionHandler` and `/project` route remain the full-replay compatibility seam;
+named persistence handlers are not invoked by rebuild until the staged rebuild protocol is available.
 
 A conforming domain module therefore does **not** ship its own `*.AppHost`, `*.Aspire`, or `*.ServiceDefaults`
 projects, and does **not** re-implement projection/query actors, DAPR sidecar wiring, read-model state-store

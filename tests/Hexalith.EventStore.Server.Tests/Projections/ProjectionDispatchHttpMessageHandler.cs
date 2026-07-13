@@ -3,7 +3,9 @@ using System.Text;
 
 namespace Hexalith.EventStore.Server.Tests.Projections;
 
-internal sealed class ProjectionDispatchHttpMessageHandler(string responseJson) : HttpMessageHandler {
+internal sealed class ProjectionDispatchHttpMessageHandler(
+    string responseJson,
+    HttpStatusCode statusCode = HttpStatusCode.OK) : HttpMessageHandler {
     private readonly string _responseJson = responseJson;
 
     public int CallCount { get; private set; }
@@ -17,7 +19,7 @@ internal sealed class ProjectionDispatchHttpMessageHandler(string responseJson) 
         RequestJson = request.Content is null
             ? null
             : await request.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        return new HttpResponseMessage(HttpStatusCode.OK) {
+        return new HttpResponseMessage(statusCode) {
             Content = new StringContent(_responseJson, Encoding.UTF8, "application/json"),
         };
     }

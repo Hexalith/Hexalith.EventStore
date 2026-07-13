@@ -151,10 +151,8 @@ internal partial class ProjectionUpdateOrchestrator(
             // Option A: the non-empty-stream drift check moved AFTER /project returns so it can read
             // the projection-scoped checkpoint (keyed by response.ProjectionType). See the drift
             // branch below, just before the projection write.
-            ProjectionReadabilityResult projectionReadability = await TryBuildProjectionEventsAsync(
-                    identity,
-                    events,
-                    cancellationToken)
+            ProjectionEventReadabilityResult projectionReadability = await ProjectionEventWireBuilder
+                .BuildAsync(_payloadProtectionService, identity, events, cancellationToken)
                 .ConfigureAwait(false);
             if (projectionReadability.UnreadableReason is not null) {
                 Log.UnreadableProtectedEvent(
@@ -708,10 +706,8 @@ internal partial class ProjectionUpdateOrchestrator(
                 return RebuildDeliveryResult.Complete(perAggregateProgress, pageComplete: reached);
             }
 
-            ProjectionReadabilityResult projectionReadability = await TryBuildProjectionEventsAsync(
-                    identity,
-                    events,
-                    cancellationToken)
+            ProjectionEventReadabilityResult projectionReadability = await ProjectionEventWireBuilder
+                .BuildAsync(_payloadProtectionService, identity, events, cancellationToken)
                 .ConfigureAwait(false);
             if (projectionReadability.UnreadableReason is not null) {
                 string reasonCode = UnreadableProtectedDataReasonCodes.From(projectionReadability.UnreadableReason.Value);
@@ -1048,81 +1044,6 @@ internal partial class ProjectionUpdateOrchestrator(
             // but a prior aggregate-specific run persisted a non-null value.
             OperationId = checkpoint.OperationId,
         };
-
-    private async Task<ProjectionReadabilityResult> TryBuildProjectionEventsAsync(
-        AggregateIdentity identity,
-        IReadOnlyList<EventEnvelope> events,
-        CancellationToken cancellationToken) {
-        var projectionEvents = new ProjectionEventDto[events.Count];
-        for (int i = 0; i < events.Count; i++) {
-            EventEnvelope envelope = events[i];
-            EventStorePayloadProtectionMetadata storedMetadata = EventStorePayloadProtectionMetadataCarrier
-                .Read(envelope.Extensions);
-
-            if (storedMetadata.State == PayloadProtectionState.ProviderOpaque) {
-                return ProjectionReadabilityResult.Unreadable(
-                    UnreadableProtectedDataReasonMapper.FromProviderOpaqueMetadata(storedMetadata),
-                    envelope.SequenceNumber);
-            }
-
-            byte[] payload = envelope.Payload;
-            string serializationFormat = envelope.SerializationFormat;
-            if (storedMetadata.State == PayloadProtectionState.Protected) {
-                PayloadUnprotectionOutcome outcome;
-                try {
-                    outcome = await _payloadProtectionService
-                        .TryUnprotectEventPayloadAsync(
-                            identity,
-                            envelope.EventTypeName,
-                            envelope.Payload,
-                            envelope.SerializationFormat,
-                            storedMetadata,
-                            cancellationToken)
-                        .ConfigureAwait(false);
-                }
-                catch (OperationCanceledException) {
-                    throw;
-                }
-                catch {
-                    return ProjectionReadabilityResult.Unreadable(
-                        UnreadableProtectedDataReason.ProviderUnavailable,
-                        envelope.SequenceNumber);
-                }
-
-                if (outcome.IsUnreadable) {
-                    return ProjectionReadabilityResult.Unreadable(
-                        outcome.UnreadableReason!.Value,
-                        envelope.SequenceNumber);
-                }
-
-                payload = outcome.PayloadBytes!;
-                serializationFormat = outcome.SerializationFormat!;
-            }
-
-            projectionEvents[i] = new ProjectionEventDto(
-                envelope.EventTypeName,
-                payload,
-                serializationFormat,
-                envelope.SequenceNumber,
-                envelope.Timestamp,
-                envelope.CorrelationId,
-                envelope.MessageId,
-                envelope.UserId);
-        }
-
-        return ProjectionReadabilityResult.Readable(projectionEvents);
-    }
-
-    private sealed record ProjectionReadabilityResult(
-        ProjectionEventDto[]? Events,
-        UnreadableProtectedDataReason? UnreadableReason,
-        long? SequenceNumber) {
-        public static ProjectionReadabilityResult Readable(ProjectionEventDto[] events)
-            => new(events, null, null);
-
-        public static ProjectionReadabilityResult Unreadable(UnreadableProtectedDataReason reason, long sequenceNumber)
-            => new(null, reason, sequenceNumber);
-    }
 
     private async Task<HttpResponseMessage?> SendProjectRequestAsync(
         HttpClient httpClient,

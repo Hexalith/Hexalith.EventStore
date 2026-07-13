@@ -28,6 +28,7 @@ This page is for .NET developers integrating Hexalith.EventStore. Documentation 
 
 *For developers performing specific operational tasks — deployment, configuration, troubleshooting.*
 
+- [Named Projection and Read-Model Authoring](guides/named-projection-authoring.md) — persisted named handlers, stable dispatch identity, and legacy/rebuild boundaries
 - [Configuration Reference](guides/configuration-reference.md) — all configurable options and their defaults
 - [DAPR Component Reference](guides/dapr-component-reference.md) — state store, pub/sub, and secret store component setup
 - [DAPR FAQ](guides/dapr-faq.md) — honest answers about DAPR dependency, risks, and operational costs

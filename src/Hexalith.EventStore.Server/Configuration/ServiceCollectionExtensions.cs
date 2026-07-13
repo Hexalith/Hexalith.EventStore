@@ -108,6 +108,10 @@ public static class EventStoreServerServiceCollectionExtensions {
             .Validate(o => { o.Validate(); return true; }, "Projection dispatch configuration is invalid.")
             .ValidateOnStart();
         _ = services.AddHostedService<ProjectionDiscoveryHostedService>();
+        _ = services.AddSingleton<IHostedService>(serviceProvider =>
+            serviceProvider.GetService<DaprClient>() is null
+                ? NoOpHostedService.Instance
+                : ActivatorUtilities.CreateInstance<ProjectionDeliveryRetryWorker>(serviceProvider));
         // P-DEC1-8P/P4-9P: register cleanup only when DaprClient is available. Non-DAPR test
         // hosts use the same no-op pattern as the projection poller so they do not emit recurring
         // sweep failures from DAPR-backed stores.

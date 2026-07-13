@@ -138,6 +138,34 @@ public sealed class DomainProjectionDispatcherV2Tests {
         outcome.ReasonCode.ShouldBe(ProjectionDispatchReasonCodes.MalformedOutcome);
     }
 
+    [Fact]
+    public async Task DispatchAsync_DoesNotCompleteBeforeDurableHandlerBarrier() {
+        var barrier = new TaskCompletionSource<DomainProjectionHandlerResult>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        IAsyncDomainProjectionHandler handler = CreateHandler("widget", "widget-detail");
+        handler.ProjectAsync(Arg.Any<ProjectionRequest>(), "dispatch-1", Arg.Any<CancellationToken>())
+            .Returns(barrier.Task);
+        using ServiceProvider provider = BuildProvider(handler);
+        DomainProjectionCatalogRegistry registry = CreateRegistry("fingerprint-1", "widget-detail");
+
+        Task<ProjectionDispatchResponse> dispatch = DomainProjectionDispatcher.DispatchAsync(
+            provider,
+            CreateRequest("fingerprint-1", "widget-detail"),
+            new ProjectionDispatchOptions(),
+            registry,
+            CancellationToken.None);
+
+        dispatch.IsCompleted.ShouldBeFalse();
+        barrier.SetResult(DomainProjectionHandlerResult.Completed());
+        ProjectionDispatchResponse response = await dispatch;
+
+        response.Outcomes.ShouldHaveSingleItem().Status.ShouldBe(ProjectionDispatchStatus.Completed);
+        _ = handler.Received(1).ProjectAsync(
+            Arg.Any<ProjectionRequest>(),
+            "dispatch-1",
+            Arg.Any<CancellationToken>());
+    }
+
     [Theory]
     [InlineData(ReadModelBatchStatus.Completed, ReadModelBatchConflictKind.None, ProjectionDispatchStatus.Completed)]
     [InlineData(ReadModelBatchStatus.AlreadyCompleted, ReadModelBatchConflictKind.None, ProjectionDispatchStatus.AlreadyCompleted)]

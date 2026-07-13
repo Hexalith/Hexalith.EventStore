@@ -91,6 +91,12 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
             || !string.Equals(scheduledWork.CatalogFingerprint, catalogEntry.CatalogFingerprint, StringComparison.Ordinal)
             || !string.Equals(scheduledWork.AppId, registration.AppId, StringComparison.Ordinal)
             || !string.Equals(scheduledWork.ServiceVersion, serviceVersion, StringComparison.Ordinal)) {
+            await DeferAsync(
+                    scheduledWork,
+                    ProjectionDispatchReasonCodes.PartialRetry,
+                    dispatchOptions,
+                    cancellationToken)
+                .ConfigureAwait(false);
             return true;
         }
 
@@ -153,6 +159,12 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
             dispatchOptions,
             cancellationToken).ConfigureAwait(false);
         if (dispatchResponse is null) {
+            await DeferAsync(
+                    scheduledWork,
+                    ProjectionDispatchReasonCodes.PartialRetry,
+                    dispatchOptions,
+                    cancellationToken)
+                .ConfigureAwait(false);
             return true;
         }
 

@@ -6,12 +6,14 @@ using Dapr.Client;
 using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Projections;
+using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Projections;
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Time.Testing;
 
 using NSubstitute;
 
@@ -112,11 +114,220 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
         handler.CallCount.ShouldBe(0);
     }
 
+    [Fact]
+    public async Task TryDispatchAsync_PersistsWorkBeforeDispatchAndRetainsOnlyPendingRouteWithBackoff() {
+        DateTimeOffset now = new(2026, 7, 13, 12, 0, 0, TimeSpan.Zero);
+        var timeProvider = new FakeTimeProvider(now);
+        IProjectionDeliveryRetryScheduler scheduler = Substitute.For<IProjectionDeliveryRetryScheduler>();
+        _ = scheduler.ScheduleAsync(Arg.Any<ProjectionDeliveryRetryWorkItem>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.ArgAt<ProjectionDeliveryRetryWorkItem>(0));
+        string responseJson = JsonSerializer.Serialize(new ProjectionDispatchResponse(
+            ProjectionDispatchProtocol.Version,
+            [
+                new ProjectionDispatchOutcome("widget-detail", ProjectionDispatchStatus.Completed, null, null),
+                new ProjectionDispatchOutcome("widget-index", ProjectionDispatchStatus.Indeterminate, null, ProjectionDispatchReasonCodes.HandlerFailure),
+            ]));
+        var handler = new ProjectionDispatchHttpMessageHandler(responseJson);
+        NamedProjectionDispatchCoordinator coordinator = CreateCoordinator(
+            Snapshot("fingerprint", "widget-detail", "widget-index"),
+            handler,
+            out IProjectionDeliveryCheckpointStore checkpoints,
+            out IProjectionLifecycleGateway lifecycle,
+            scheduler,
+            timeProvider);
+        _ = checkpoints.ReadDeliveredSequenceAsync(Identity, Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(0);
+        _ = checkpoints.SaveDeliveredSequenceAsync(Identity, Arg.Any<string>(), 2, Arg.Any<CancellationToken>()).Returns(true);
+        _ = lifecycle.TryAdmitDeliveryWriteAsync(Identity, Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
+
+        _ = await coordinator.TryDispatchAsync(
+            Identity,
+            Registration(),
+            [Envelope(1), Envelope(2)],
+            [],
+            CancellationToken.None);
+
+        _ = await scheduler.Received(1).ScheduleAsync(
+            Arg.Is<ProjectionDeliveryRetryWorkItem>(item =>
+                item.HeadSequence == 2
+                && item.HeadMessageId == "message-2"
+                && item.DispatchId == "message-2"
+                && item.PendingRoutes.SequenceEqual(new[] { "widget-detail", "widget-index" })),
+            Arg.Any<CancellationToken>());
+        scheduler.ReceivedCalls().First().GetMethodInfo().Name.ShouldBe(nameof(IProjectionDeliveryRetryScheduler.ScheduleAsync));
+        await scheduler.Received(1).UpdateAsync(
+            Arg.Is<ProjectionDeliveryRetryWorkItem>(item =>
+                item.PendingRoutes.SequenceEqual(new[] { "widget-index" })
+                && item.TerminalRoutes.Count == 0
+                && item.Attempt == 1
+                && item.NextDueUtc == now.AddSeconds(1)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task TryDispatchAsync_TransportFailureRetainsPendingRoutesWithBackoff() {
+        DateTimeOffset now = new(2026, 7, 13, 12, 0, 0, TimeSpan.Zero);
+        var timeProvider = new FakeTimeProvider(now);
+        IProjectionDeliveryRetryScheduler scheduler = Substitute.For<IProjectionDeliveryRetryScheduler>();
+        _ = scheduler.ScheduleAsync(Arg.Any<ProjectionDeliveryRetryWorkItem>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.ArgAt<ProjectionDeliveryRetryWorkItem>(0));
+        var handler = new ProjectionDispatchHttpMessageHandler("{}", System.Net.HttpStatusCode.ServiceUnavailable);
+        NamedProjectionDispatchCoordinator coordinator = CreateCoordinator(
+            Snapshot("fingerprint", "widget-detail"),
+            handler,
+            out IProjectionDeliveryCheckpointStore checkpoints,
+            out IProjectionLifecycleGateway lifecycle,
+            scheduler,
+            timeProvider);
+        _ = checkpoints.ReadDeliveredSequenceAsync(Identity, "widget-detail", Arg.Any<CancellationToken>()).Returns(0);
+        _ = lifecycle.TryAdmitDeliveryWriteAsync(Identity, "widget-detail", Arg.Any<CancellationToken>()).Returns(true);
+
+        _ = await coordinator.TryDispatchAsync(
+            Identity,
+            Registration(),
+            [Envelope(1), Envelope(2)],
+            [],
+            CancellationToken.None);
+
+        await scheduler.Received(1).UpdateAsync(
+            Arg.Is<ProjectionDeliveryRetryWorkItem>(item =>
+                item.PendingRoutes.SequenceEqual(new[] { "widget-detail" })
+                && item.Attempt == 1
+                && item.NextDueUtc == now.AddSeconds(1)
+                && item.LastReasonCode == ProjectionDispatchReasonCodes.PartialRetry),
+            Arg.Any<CancellationToken>());
+        await scheduler.DidNotReceiveWithAnyArgs().DeleteAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task TryDispatchAsync_KnownTerminalOutcomeRemainsOperatorVisibleWithoutRetry() {
+        DateTimeOffset now = new(2026, 7, 13, 12, 0, 0, TimeSpan.Zero);
+        IProjectionDeliveryRetryScheduler scheduler = Substitute.For<IProjectionDeliveryRetryScheduler>();
+        _ = scheduler.ScheduleAsync(Arg.Any<ProjectionDeliveryRetryWorkItem>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.ArgAt<ProjectionDeliveryRetryWorkItem>(0));
+        string responseJson = JsonSerializer.Serialize(new ProjectionDispatchResponse(
+            ProjectionDispatchProtocol.Version,
+            [new ProjectionDispatchOutcome(
+                "widget-detail",
+                ProjectionDispatchStatus.Failed,
+                null,
+                ProjectionDispatchReasonCodes.HandlerFailure)]));
+        NamedProjectionDispatchCoordinator coordinator = CreateCoordinator(
+            Snapshot("fingerprint", "widget-detail"),
+            new ProjectionDispatchHttpMessageHandler(responseJson),
+            out IProjectionDeliveryCheckpointStore checkpoints,
+            out IProjectionLifecycleGateway lifecycle,
+            scheduler,
+            new FakeTimeProvider(now));
+        _ = checkpoints.ReadDeliveredSequenceAsync(Identity, "widget-detail", Arg.Any<CancellationToken>()).Returns(0);
+        _ = lifecycle.TryAdmitDeliveryWriteAsync(Identity, "widget-detail", Arg.Any<CancellationToken>()).Returns(true);
+
+        _ = await coordinator.TryDispatchAsync(
+            Identity,
+            Registration(),
+            [Envelope(1), Envelope(2)],
+            [],
+            CancellationToken.None);
+
+        await scheduler.Received(1).UpdateAsync(
+            Arg.Is<ProjectionDeliveryRetryWorkItem>(item =>
+                item.PendingRoutes.Count == 0
+                && item.TerminalRoutes.SequenceEqual(new[] { "widget-detail" })
+                && item.LastReasonCode == ProjectionDispatchReasonCodes.HandlerFailure),
+            Arg.Any<CancellationToken>());
+        await scheduler.DidNotReceiveWithAnyArgs().DeleteAsync(default!, default);
+        _ = await checkpoints.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default!, default, default);
+    }
+
+    [Fact]
+    public async Task TryDispatchAsync_ExhaustedAttemptRemainsPendingAtBoundedBackoff() {
+        DateTimeOffset now = new(2026, 7, 13, 12, 0, 0, TimeSpan.Zero);
+        IProjectionDeliveryRetryScheduler scheduler = Substitute.For<IProjectionDeliveryRetryScheduler>();
+        _ = scheduler.ScheduleAsync(Arg.Any<ProjectionDeliveryRetryWorkItem>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.ArgAt<ProjectionDeliveryRetryWorkItem>(0) with { Attempt = 8 });
+        string responseJson = JsonSerializer.Serialize(new ProjectionDispatchResponse(
+            ProjectionDispatchProtocol.Version,
+            [new ProjectionDispatchOutcome(
+                "widget-detail",
+                ProjectionDispatchStatus.Retryable,
+                null,
+                ProjectionDispatchReasonCodes.PartialRetry)]));
+        NamedProjectionDispatchCoordinator coordinator = CreateCoordinator(
+            Snapshot("fingerprint", "widget-detail"),
+            new ProjectionDispatchHttpMessageHandler(responseJson),
+            out IProjectionDeliveryCheckpointStore checkpoints,
+            out IProjectionLifecycleGateway lifecycle,
+            scheduler,
+            new FakeTimeProvider(now));
+        _ = checkpoints.ReadDeliveredSequenceAsync(Identity, "widget-detail", Arg.Any<CancellationToken>()).Returns(0);
+        _ = lifecycle.TryAdmitDeliveryWriteAsync(Identity, "widget-detail", Arg.Any<CancellationToken>()).Returns(true);
+
+        _ = await coordinator.TryDispatchAsync(
+            Identity,
+            Registration(),
+            [Envelope(1), Envelope(2)],
+            [],
+            CancellationToken.None);
+
+        await scheduler.Received(1).UpdateAsync(
+            Arg.Is<ProjectionDeliveryRetryWorkItem>(item =>
+                item.PendingRoutes.SequenceEqual(new[] { "widget-detail" })
+                && item.Attempt == 8
+                && item.NextDueUtc == now.AddSeconds(128)),
+            Arg.Any<CancellationToken>());
+        await scheduler.DidNotReceiveWithAnyArgs().DeleteAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task TryDispatchAsync_StateBearingSuccessPreservesAdmissionWriteEtagCheckpointOrder() {
+        JsonElement state = JsonSerializer.SerializeToElement(new { value = 42 });
+        string responseJson = JsonSerializer.Serialize(new ProjectionDispatchResponse(
+            ProjectionDispatchProtocol.Version,
+            [new ProjectionDispatchOutcome(
+                "widget-detail",
+                ProjectionDispatchStatus.Completed,
+                state,
+                null)]));
+        IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
+        IProjectionWriteActor writeActor = Substitute.For<IProjectionWriteActor>();
+        IETagActor eTagActor = Substitute.For<IETagActor>();
+        _ = actorProxyFactory.CreateActorProxy<IProjectionWriteActor>(Arg.Any<Dapr.Actors.ActorId>(), Arg.Any<string>())
+            .Returns(writeActor);
+        _ = actorProxyFactory.CreateActorProxy<IETagActor>(Arg.Any<Dapr.Actors.ActorId>(), Arg.Any<string>())
+            .Returns(eTagActor);
+        _ = eTagActor.RegenerateAsync().Returns("etag-1");
+        NamedProjectionDispatchCoordinator coordinator = CreateCoordinator(
+            Snapshot("fingerprint", "widget-detail"),
+            new ProjectionDispatchHttpMessageHandler(responseJson),
+            out IProjectionDeliveryCheckpointStore checkpoints,
+            out IProjectionLifecycleGateway lifecycle,
+            actorProxyFactory: actorProxyFactory);
+        _ = checkpoints.ReadDeliveredSequenceAsync(Identity, "widget-detail", Arg.Any<CancellationToken>()).Returns(0);
+        _ = checkpoints.SaveDeliveredSequenceAsync(Identity, "widget-detail", 2, Arg.Any<CancellationToken>()).Returns(true);
+        _ = lifecycle.TryAdmitDeliveryWriteAsync(Identity, "widget-detail", Arg.Any<CancellationToken>()).Returns(true);
+
+        _ = await coordinator.TryDispatchAsync(
+            Identity,
+            Registration(),
+            [Envelope(1), Envelope(2)],
+            [],
+            CancellationToken.None);
+
+        Received.InOrder(() => {
+            _ = lifecycle.TryAdmitDeliveryWriteAsync(Identity, "widget-detail", Arg.Any<CancellationToken>());
+            _ = writeActor.UpdateProjectionAsync(Arg.Any<ProjectionState>());
+            _ = eTagActor.RegenerateAsync();
+            _ = checkpoints.SaveDeliveredSequenceAsync(Identity, "widget-detail", 2, Arg.Any<CancellationToken>());
+        });
+    }
+
     private static NamedProjectionDispatchCoordinator CreateCoordinator(
         NamedProjectionRouteCatalogSnapshot snapshot,
         ProjectionDispatchHttpMessageHandler handler,
         out IProjectionDeliveryCheckpointStore checkpoints,
-        out IProjectionLifecycleGateway lifecycle) {
+        out IProjectionLifecycleGateway lifecycle,
+        IProjectionDeliveryRetryScheduler? scheduler = null,
+        TimeProvider? timeProvider = null,
+        IActorProxyFactory? actorProxyFactory = null) {
         var catalog = new NamedProjectionRouteCatalog();
         catalog.Replace(snapshot);
         checkpoints = Substitute.For<IProjectionDeliveryCheckpointStore>();
@@ -127,11 +338,13 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
             catalog,
             checkpoints,
             lifecycle,
-            Substitute.For<IActorProxyFactory>(),
+            actorProxyFactory ?? Substitute.For<IActorProxyFactory>(),
             new DaprClientBuilder().Build(),
             httpClientFactory,
             Options.Create(new ProjectionDispatchOptions()),
-            NullLogger<NamedProjectionDispatchCoordinator>.Instance);
+            NullLogger<NamedProjectionDispatchCoordinator>.Instance,
+            scheduler,
+            timeProvider);
     }
 
     private static NamedProjectionRouteCatalogSnapshot Snapshot(string fingerprint, params string[] projectionTypes)

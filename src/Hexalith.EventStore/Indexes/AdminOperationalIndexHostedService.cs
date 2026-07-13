@@ -227,7 +227,10 @@ public sealed partial class AdminOperationalIndexHostedService(
             }
 
             IReadOnlyList<string> projectionNames = metadataByDomain.TryGetValue(registration.Domain, out AdminOperationalIndexDomainMetadata? domainMetadata)
-                ? domainMetadata.ProjectionNames
+                ? [.. domainMetadata.ProjectionNames
+                    .Concat(domainMetadata.NamedProjectionTypes ?? [])
+                    .Distinct(StringComparer.Ordinal)
+                    .Order(StringComparer.Ordinal)]
                 : [];
 
             foreach (string projectionName in projectionNames.Where(static p => !IsProjectionActorStateKey(p))) {
@@ -272,7 +275,12 @@ public sealed partial class AdminOperationalIndexHostedService(
             .OrderBy(c => c.Domain, StringComparer.OrdinalIgnoreCase)
             .ThenBy(c => c.TypeName, StringComparer.Ordinal)];
         List<AggregateTypeInfo> aggregates = [.. metadata
-            .SelectMany(m => m.AggregateTypes.Select(a => new AggregateTypeInfo(a, m.Domain, m.EventTypes.Count, m.CommandTypes.Count, m.ProjectionNames.Count > 0)))
+            .SelectMany(m => m.AggregateTypes.Select(a => new AggregateTypeInfo(
+                a,
+                m.Domain,
+                m.EventTypes.Count,
+                m.CommandTypes.Count,
+                m.ProjectionNames.Count > 0 || m.NamedProjectionTypes is { Count: > 0 })))
             .OrderBy(a => a.Domain, StringComparer.OrdinalIgnoreCase)
             .ThenBy(a => a.TypeName, StringComparer.Ordinal)];
 
@@ -369,7 +377,12 @@ public sealed partial class AdminOperationalIndexHostedService(
             [.. items.SelectMany(i => i.CommandTypes).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)],
             [.. items.SelectMany(i => i.AggregateTypes).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)],
             [.. items.SelectMany(i => i.ProjectionNames).Where(static p => !IsProjectionActorStateKey(p)).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)],
-            [.. items.SelectMany(i => i.QueryTypes ?? []).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)]);
+            [.. items.SelectMany(i => i.QueryTypes ?? []).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)]) {
+            NamedProjectionTypes = [.. items
+                .SelectMany(static item => item.NamedProjectionTypes ?? [])
+                .Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal)],
+        };
 
     private static string ToPascalCase(string value)
         => string.IsNullOrWhiteSpace(value)

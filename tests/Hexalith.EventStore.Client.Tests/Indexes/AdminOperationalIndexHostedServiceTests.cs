@@ -112,6 +112,40 @@ public class AdminOperationalIndexHostedServiceTests {
         snapshot.TenantProjections.ShouldBeEmpty();
     }
 
+    [Fact]
+    public void BuildSnapshot_PersistsExactMergedNamedProjectionTypes() {
+        var first = new AdminOperationalIndexDomainMetadata(
+            "counter",
+            [],
+            [],
+            [],
+            ["CounterAggregate"],
+            []) {
+            NamedProjectionTypes = ["counter-index"],
+        };
+        var second = new AdminOperationalIndexDomainMetadata(
+            "counter",
+            [],
+            [],
+            [],
+            ["CounterAggregate"],
+            []) {
+            NamedProjectionTypes = ["counter-detail", "counter-index"],
+        };
+        AdminOperationalIndexDomainMetadata merged = MergeDomainMetadata("counter", [first, second]);
+        var registration = new DomainServiceRegistration("sample", "process", "tenant-a", "counter", "v1");
+
+        AdminOperationalIndexSnapshot snapshot = AdminOperationalIndexHostedService.BuildSnapshot(
+            [merged],
+            [registration],
+            new ProjectionOptions());
+
+        merged.NamedProjectionTypes.ShouldBe(["counter-detail", "counter-index"]);
+        snapshot.Projections.Select(static projection => projection.Name)
+            .ShouldBe(["counter-detail", "counter-index"]);
+        snapshot.AggregateTypes.ShouldHaveSingleItem().HasProjections.ShouldBeTrue();
+    }
+
     private static AdminOperationalIndexDomainMetadata MergeDomainMetadata(
         string domain,
         IEnumerable<AdminOperationalIndexDomainMetadata> metadata) {

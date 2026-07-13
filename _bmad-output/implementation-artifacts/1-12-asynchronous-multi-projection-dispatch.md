@@ -4,7 +4,7 @@ baseline_commit: 5223e9c9c2f0dd71673003c710b8739efc8484ff
 
 # Story 1.12: Asynchronous Multi-Projection Dispatch
 
-Status: ready-for-dev
+Status: review
 
 **Requirements covered:** FR7, FR36, NFR7, NFR12, NFR16  
 **Governed by:** AD-2, AD-7, AD-8, AD-12, AD-19, AD-20  
@@ -122,63 +122,63 @@ The current server invokes `/project` before it knows `ProjectionType` because t
 
 ## Tasks / Subtasks
 
-- [ ] Task 1 - Freeze additive contracts and limits (AC: 1-5)
-  - [ ] Add one-type-per-file v2 contracts under `src/Hexalith.EventStore.Contracts/Projections/`: `ProjectionDispatchRequest`, `ProjectionDispatchResponse`, `ProjectionDispatchOutcome`, `ProjectionDispatchStatus`, and dispatch capability/version constants.
-  - [ ] Preserve the released constructors and serialized members of `ProjectionRequest` and `ProjectionResponse`; add contract tests that serialize the legacy shape and deserialize with old expectations.
-  - [ ] Add validated `ProjectionDispatchOptions` (default maximum 32 handlers/outcomes plus bounded retry/backoff settings) without adding an inline package version.
-  - [ ] Add bounded stable reason codes for duplicate route, unsupported route/capability, malformed outcome, handler failure, cancellation, and partial retry.
+- [x] Task 1 - Freeze additive contracts and limits (AC: 1-5)
+  - [x] Add one-type-per-file v2 contracts under `src/Hexalith.EventStore.Contracts/Projections/`: `ProjectionDispatchRequest`, `ProjectionDispatchResponse`, `ProjectionDispatchOutcome`, `ProjectionDispatchStatus`, and dispatch capability/version constants.
+  - [x] Preserve the released constructors and serialized members of `ProjectionRequest` and `ProjectionResponse`; add contract tests that serialize the legacy shape and deserialize with old expectations.
+  - [x] Add validated `ProjectionDispatchOptions` (default maximum 32 handlers/outcomes plus bounded retry/backoff settings) without adding an inline package version.
+  - [x] Add bounded stable reason codes for duplicate route, unsupported route/capability, malformed outcome, handler failure, cancellation, and partial retry.
 
-- [ ] Task 2 - Add the named async handler seam and compatibility adapter (AC: 1, 2, 5)
-  - [ ] Add `IAsyncDomainProjectionHandler` and `DomainProjectionHandlerResult` in DomainService with the exact async signature and status/state/reason behavior above.
-  - [ ] Leave `IDomainProjectionHandler.Project` unchanged; update its documentation only to name the additive async seam.
-  - [ ] Add only an explicitly named `(Domain, ProjectionType)` legacy adapter for v2, validate the returned route, and reject ambiguous legacy+named registration for the same pair; unmapped legacy handlers remain v1-only.
-  - [ ] Register persistence-capable handlers with a DI lifetime that permits scoped dependencies (`IReadModelStore`, logging, options); do not preserve the old singleton assumption for the new interface.
+- [x] Task 2 - Add the named async handler seam and compatibility adapter (AC: 1, 2, 5)
+  - [x] Add `IAsyncDomainProjectionHandler` and `DomainProjectionHandlerResult` in DomainService with the exact async signature and status/state/reason behavior above.
+  - [x] Leave `IDomainProjectionHandler.Project` unchanged; update its documentation only to name the additive async seam.
+  - [x] Add only an explicitly named `(Domain, ProjectionType)` legacy adapter for v2, validate the returned route, and reject ambiguous legacy+named registration for the same pair; unmapped legacy handlers remain v1-only.
+  - [x] Register persistence-capable handlers with a DI lifetime that permits scoped dependencies (`IReadModelStore`, logging, options); do not preserve the old singleton assumption for the new interface.
 
-- [ ] Task 3 - Build deterministic route validation and metadata (AC: 2, 3)
-  - [ ] Update route validation to permit same-domain/different-projection async handlers, reject duplicate canonical pairs and over-limit domains, and preserve legacy duplicate-domain validation.
-  - [ ] Sort named routes explicitly by projection type using ordinal comparison.
-  - [ ] Extend `AdminOperationalIndexMetadata` additively with exact named routes, dispatch version/capability, app/service binding, and deterministic sorted-route fingerprint while preserving released constructors/deconstructors.
-  - [ ] Add `INamedProjectionRouteCatalog`; atomically publish the exact successful metadata-load snapshot to both runtime consumers and persisted admin indexes instead of deriving a second catalog.
-  - [ ] Prove missing/legacy/stale/mismatched metadata fails closed and cannot authorize side-effectful dispatch.
+- [x] Task 3 - Build deterministic route validation and metadata (AC: 2, 3)
+  - [x] Update route validation to permit same-domain/different-projection async handlers, reject duplicate canonical pairs and over-limit domains, and preserve legacy duplicate-domain validation.
+  - [x] Sort named routes explicitly by projection type using ordinal comparison.
+  - [x] Extend `AdminOperationalIndexMetadata` additively with exact named routes, dispatch version/capability, app/service binding, and deterministic sorted-route fingerprint while preserving released constructors/deconstructors.
+  - [x] Add `INamedProjectionRouteCatalog`; atomically publish the exact successful metadata-load snapshot to both runtime consumers and persisted admin indexes instead of deriving a second catalog.
+  - [x] Prove missing/legacy/stale/mismatched metadata fails closed and cannot authorize side-effectful dispatch.
 
-- [ ] Task 4 - Implement v2 domain-service dispatch (AC: 1-5)
-  - [ ] Add `DomainProjectionDispatcher.DispatchAsync` to validate the admitted set, await sequential handlers with `ConfigureAwait(false)`, and continue after non-cancellation handler failure.
-  - [ ] Map expected batch outcomes through one platform helper; map unexpected failure to support-safe `Indeterminate`, reserving `Failed` for known terminal outcomes.
-  - [ ] Map `POST /project/v2` without changing the v1 endpoint or bespoke-v1-route yielding behavior.
-  - [ ] Return `200` plus bounded outcomes for a valid partial dispatch; reject empty admission, catalog-fingerprint mismatch, and malformed/unsupported requests before invoking handlers.
+- [x] Task 4 - Implement v2 domain-service dispatch (AC: 1-5)
+  - [x] Add `DomainProjectionDispatcher.DispatchAsync` to validate the admitted set, await sequential handlers with `ConfigureAwait(false)`, and continue after non-cancellation handler failure.
+  - [x] Map expected batch outcomes through one platform helper; map unexpected failure to support-safe `Indeterminate`, reserving `Failed` for known terminal outcomes.
+  - [x] Map `POST /project/v2` without changing the v1 endpoint or bespoke-v1-route yielding behavior.
+  - [x] Return `200` plus bounded outcomes for a valid partial dispatch; reject empty admission, catalog-fingerprint mismatch, and malformed/unsupported requests before invoking handlers.
 
-- [ ] Task 5 - Integrate safe normal delivery (AC: 3, 4, 6)
-  - [ ] Refactor the 1,419-line `ProjectionUpdateOrchestrator` through a focused named-dispatch collaborator instead of duplicating another large flow inline.
-  - [ ] Resolve exact versioned projection routes, run projection-scoped drift and lifecycle admission before v2 invocation, and send only admitted routes with the stable dispatch identity.
-  - [ ] Reconcile v2 outcomes independently; persist optional legacy actor state and advance only proven successful projection checkpoints.
-  - [ ] Add durable `IProjectionDeliveryRetryScheduler` work plus a hosted worker for immediate-mode partial outcomes; reconstruct the original full-history request through the recorded stream head and reuse its dispatch id/fingerprint across restart-safe bounded retries.
-  - [ ] Preserve successful sibling checkpoints, retain retryable/indeterminate/missing/malformed work, surface known-terminal failure without auto-retry, and never report all-success for partial failure.
-  - [ ] Keep named persistence dispatch out of `DeliverProjectionForRebuildAsync` and prove the safe defer behavior.
+- [x] Task 5 - Integrate safe normal delivery (AC: 3, 4, 6)
+  - [x] Refactor the 1,419-line `ProjectionUpdateOrchestrator` through a focused named-dispatch collaborator instead of duplicating another large flow inline.
+  - [x] Resolve exact versioned projection routes, run projection-scoped drift and lifecycle admission before v2 invocation, and send only admitted routes with the stable dispatch identity.
+  - [x] Reconcile v2 outcomes independently; persist optional legacy actor state and advance only proven successful projection checkpoints.
+  - [x] Add durable `IProjectionDeliveryRetryScheduler` work plus a hosted worker for immediate-mode partial outcomes; reconstruct the original full-history request through the recorded stream head and reuse its dispatch id/fingerprint across restart-safe bounded retries.
+  - [x] Preserve successful sibling checkpoints, retain retryable/indeterminate/missing/malformed work, surface known-terminal failure without auto-retry, and never report all-success for partial failure.
+  - [x] Keep named persistence dispatch out of `DeliverProjectionForRebuildAsync` and prove the safe defer behavior.
 
-- [ ] Task 6 - Add a generic detail/index proof domain (AC: 1, 3, 4, 6)
-  - [ ] Add two named handlers in test fixtures for one generic domain; do not encode Parties/Tenants business rules.
-  - [ ] Have both handlers use the platform persistence seams; at least one proof must execute an `IReadModelBatchStore` batch with the stable dispatch identity.
-  - [ ] Add an awaited-completion barrier/fault hook proving the endpoint does not return and the server does not checkpoint before durable completion.
-  - [ ] Inject one-handler failure/indeterminate result after its sibling commits and prove retry converges to `AlreadyCompleted` + completed without duplicate successful work.
+- [x] Task 6 - Add a generic detail/index proof domain (AC: 1, 3, 4, 6)
+  - [x] Add two named handlers in test fixtures for one generic domain; do not encode Parties/Tenants business rules.
+  - [x] Have both handlers use the platform persistence seams; at least one proof must execute an `IReadModelBatchStore` batch with the stable dispatch identity.
+  - [x] Add an awaited-completion barrier/fault hook proving the endpoint does not return and the server does not checkpoint before durable completion.
+  - [x] Inject one-handler failure/indeterminate result after its sibling commits and prove retry converges to `AlreadyCompleted` + completed without duplicate successful work.
 
-- [ ] Task 7 - Add deterministic compatibility and failure tests (AC: 1-6)
-  - [ ] DomainService tests: discovery/lifetime, same domain with distinct projection types, duplicate pair/case variant, over-limit routes, reverse registration order, deterministic invocation order, cancellation, continue-after-failure, bounded outcome, v1 shape, legacy adapter, and bespoke `/project` yielding.
-  - [ ] Contracts tests: v1 JSON shape, v2 version/status stability, unsafe enum/input behavior, duplicate/unrequested/malformed outcomes, and bounded reason codes.
-  - [ ] Server tests: pre-persistence drift/erase denial, empty-admission skip, catalog-fingerprint mismatch, per-projection outcome reconciliation, sibling checkpoint independence, exact dispatch-id-to-batch-id propagation, no checkpoint on retryable/indeterminate/failed/malformed outcome or canceled transport, and no named-handler invocation during rebuild.
-  - [ ] Retry tests: immediate mode does not rely on `ProjectionPollerService`; pending work survives scheduler/worker recreation, reloads only through the recorded stream head, preserves dispatch identity, applies bounded backoff, clears on convergence, and remains operator-visible on known-terminal or exhausted work.
-  - [ ] Keep existing Sample synchronous handler tests green; use Shouldly for new assertions and xUnit v3 project lanes.
+- [x] Task 7 - Add deterministic compatibility and failure tests (AC: 1-6)
+  - [x] DomainService tests: discovery/lifetime, same domain with distinct projection types, duplicate pair/case variant, over-limit routes, reverse registration order, deterministic invocation order, cancellation, continue-after-failure, bounded outcome, v1 shape, legacy adapter, and bespoke `/project` yielding.
+  - [x] Contracts tests: v1 JSON shape, v2 version/status stability, unsafe enum/input behavior, duplicate/unrequested/malformed outcomes, and bounded reason codes.
+  - [x] Server tests: pre-persistence drift/erase denial, empty-admission skip, catalog-fingerprint mismatch, per-projection outcome reconciliation, sibling checkpoint independence, exact dispatch-id-to-batch-id propagation, no checkpoint on retryable/indeterminate/failed/malformed outcome or canceled transport, and no named-handler invocation during rebuild.
+  - [x] Retry tests: immediate mode does not rely on `ProjectionPollerService`; pending work survives scheduler/worker recreation, reloads only through the recorded stream head, preserves dispatch identity, applies bounded backoff, clears on convergence, and remains operator-visible on known-terminal or exhausted work.
+  - [x] Keep existing Sample synchronous handler tests green; use Shouldly for new assertions and xUnit v3 project lanes.
 
-- [ ] Task 8 - Add persisted production-path evidence (AC: 4, 6; NFR16)
-  - [ ] Before claiming Story 1.10 batch wiring proven, run its `ReadModelBatchLiveSidecarTests` in a working Tier-3 environment; the prior implementation session authored the tests but recorded exit 144 during fixture startup, not executed evidence.
-  - [ ] Add a live DAPR/Redis test that drives EventStore orchestration -> DAPR `/project/v2` -> both named handlers -> `IReadModelBatchStore`/`IReadModelStore` -> response reconciliation.
-  - [ ] Inspect persisted detail, index, batch marker/receipt, successful and failed projection checkpoints, and retry end state directly. HTTP `200`, handler call counts, or recorder requests are insufficient.
-  - [ ] Record Dapr.Client package, DAPR CLI, runtime, and Redis component versions used by the evidence; do not infer runtime semantics from the NuGet version.
+- [x] Task 8 - Add persisted production-path evidence (AC: 4, 6; NFR16)
+  - [x] Before claiming Story 1.10 batch wiring proven, run its `ReadModelBatchLiveSidecarTests` in a working Tier-3 environment; the prior implementation session authored the tests but recorded exit 144 during fixture startup, not executed evidence.
+  - [x] Add a live DAPR/Redis test that drives EventStore orchestration -> DAPR `/project/v2` -> both named handlers -> `IReadModelBatchStore`/`IReadModelStore` -> response reconciliation.
+  - [x] Inspect persisted detail, index, batch marker/receipt, successful and failed projection checkpoints, and retry end state directly. HTTP `200`, handler call counts, or recorder requests are insufficient.
+  - [x] Record Dapr.Client package, DAPR CLI, runtime, and Redis component versions used by the evidence; do not infer runtime semantics from the NuGet version.
 
-- [ ] Task 9 - Update authoring guidance and guardrails (AC: 1, 5)
-  - [ ] Update projection/read-model authoring documentation to prefer the async named seam for persistence and retain the legacy seam for synchronous full-replay compatibility.
-  - [ ] Update project context/state instructions in the owning repository source when appropriate; do not edit `references/Hexalith.AI.Tools` from EventStore without explicit approval.
-  - [ ] Keep domain-module guardrails green: domains consume `IReadModelStore`/`IReadModelBatchStore`; they do not add raw DAPR state clients, custom batch markers, query/projection actors, or platform plumbing.
-  - [ ] Do not modify root-declared submodules, AppHost/DAPR YAML, release inventory, generated REST/UI surfaces, or add a package/project.
+- [x] Task 9 - Update authoring guidance and guardrails (AC: 1, 5)
+  - [x] Update projection/read-model authoring documentation to prefer the async named seam for persistence and retain the legacy seam for synchronous full-replay compatibility.
+  - [x] Update project context/state instructions in the owning repository source when appropriate; do not edit `references/Hexalith.AI.Tools` from EventStore without explicit approval.
+  - [x] Keep domain-module guardrails green: domains consume `IReadModelStore`/`IReadModelBatchStore`; they do not add raw DAPR state clients, custom batch markers, query/projection actors, or platform plumbing.
+  - [x] Do not modify root-declared submodules, AppHost/DAPR YAML, release inventory, generated REST/UI surfaces, or add a package/project.
 
 ## Dev Notes
 
@@ -304,19 +304,97 @@ The Story 1.12 heading in `epics.md` names NFR7/NFR12, while the PRD high-risk m
 
 ### Agent Model Used
 
-To be completed by the development agent.
+GPT-5 Codex
 
 ### Debug Log References
 
+- Baseline/preflight: `5223e9c9c2f0dd71673003c710b8739efc8484ff`; approved correction recorded in `sprint-change-proposal-2026-07-13.md` before implementation continued.
+- Release restore/build: `Hexalith.EventStore.slnx` — 48 projects restored/built, 0 warnings, 0 errors.
+- Deterministic tests: Contracts 701/701; Client 663/663; DomainService 113/113; Testing 150/150; Sample 117/117; Server 2442 passed, 25 pre-existing quarantined ATDD specifications skipped.
+- Tier-3 live-sidecar tests: 34/34 passed, including Story 1.10 `ReadModelBatchLiveSidecarTests` and Story 1.12 `NamedProjectionDispatchLiveSidecarTests`.
+- Live evidence versions: Dapr.Client 1.18.4; DAPR CLI 1.18.0; DAPR runtime 1.18.1; Redis `docker.io/redis:6`; Docker Server 29.4.3; StackExchange.Redis 3.0.11.
+- Final hygiene: `git diff --check` passed.
+
 ### Completion Notes List
 
-- Ultimate context engine analysis completed - comprehensive developer guide created.
+- Added additive v2 contracts, exact capability-bound route catalogs, scoped async handler discovery, explicit legacy mapping, deterministic sequential dispatch, and truthful closed per-route outcomes without changing v1 wire/API behavior.
+- Added pre-persistence drift/lifecycle admission, independent checkpoint reconciliation, state-bearing write/ETag/checkpoint ordering, and a durable payload-free retry scheduler/worker with stable dispatch identity, bounded backoff, terminal retention, and recorded-head reconstruction.
+- Persisted the exact named route set into admin operational indexes and published the runtime catalog only after a complete successful metadata load/index write.
+- Proved detail/index partial failure and convergence through real AggregateActor -> EventStore orchestrator -> DAPR `/project/v2` -> batch store -> Redis, including independent checkpoints, durable receipts, scheduler/worker recreation, empty converged ledger, and duplicate `AlreadyCompleted` receipts without mutation.
+- Preserved legacy synchronous Sample projections and the v1 rebuild path; the verified rebuild lane never invokes named persistence handlers.
+- Added named projection/read-model authoring guidance and updated the repository-owned AI context. No AppHost/DAPR YAML, release inventory, generated REST/UI surface, package, or project was added or changed for Story 1.12.
 
 ### File List
+
+- `_bmad-output/implementation-artifacts/1-12-asynchronous-multi-projection-dispatch.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/planning-artifacts/epics.md`
+- `_bmad-output/planning-artifacts/prd.md`
+- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-13.md`
+- `_bmad-output/project-context.md`
+- `docs/brownfield/integration-architecture.md`
+- `docs/guides/named-projection-authoring.md`
+- `docs/index.md`
+- `src/Hexalith.EventStore.Client/Projections/ProjectionDispatchOptions.cs`
+- `src/Hexalith.EventStore.Client/Projections/ProjectionDispatchRoute.cs`
+- `src/Hexalith.EventStore.Client/Projections/ProjectionRouteCatalogFingerprint.cs`
+- `src/Hexalith.EventStore.Contracts/Projections/ProjectionDispatchOutcome.cs`
+- `src/Hexalith.EventStore.Contracts/Projections/ProjectionDispatchProtocol.cs`
+- `src/Hexalith.EventStore.Contracts/Projections/ProjectionDispatchReasonCodes.cs`
+- `src/Hexalith.EventStore.Contracts/Projections/ProjectionDispatchRequest.cs`
+- `src/Hexalith.EventStore.Contracts/Projections/ProjectionDispatchResponse.cs`
+- `src/Hexalith.EventStore.Contracts/Projections/ProjectionDispatchStatus.cs`
+- `src/Hexalith.EventStore.DomainService/AdminOperationalIndexMetadata.cs`
+- `src/Hexalith.EventStore.DomainService/DomainProjectionCatalogRegistry.cs`
+- `src/Hexalith.EventStore.DomainService/DomainProjectionDispatcher.cs`
+- `src/Hexalith.EventStore.DomainService/DomainProjectionHandlerResult.cs`
+- `src/Hexalith.EventStore.DomainService/DomainProjectionHandlerRouteValidator.cs`
+- `src/Hexalith.EventStore.DomainService/DomainProjectionServiceCollectionExtensions.cs`
+- `src/Hexalith.EventStore.DomainService/EventStoreDomainServiceExtensions.cs`
+- `src/Hexalith.EventStore.DomainService/IAsyncDomainProjectionHandler.cs`
+- `src/Hexalith.EventStore.DomainService/IDomainProjectionHandler.cs`
+- `src/Hexalith.EventStore.DomainService/LegacyDomainProjectionHandlerAdapter.cs`
+- `src/Hexalith.EventStore.DomainService/ProjectionDispatchValidationException.cs`
+- `src/Hexalith.EventStore.DomainService/ReadModelBatchProjectionResultMapper.cs`
+- `src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs`
+- `src/Hexalith.EventStore.Server/Projections/DaprProjectionDeliveryRetryScheduler.cs`
+- `src/Hexalith.EventStore.Server/Projections/INamedProjectionDispatchCoordinator.cs`
+- `src/Hexalith.EventStore.Server/Projections/INamedProjectionRouteCatalog.cs`
+- `src/Hexalith.EventStore.Server/Projections/IProjectionDeliveryRetryScheduler.cs`
+- `src/Hexalith.EventStore.Server/Projections/NamedProjectionDispatchCoordinator.cs`
+- `src/Hexalith.EventStore.Server/Projections/NamedProjectionRouteCatalog.cs`
+- `src/Hexalith.EventStore.Server/Projections/NamedProjectionRouteCatalogEntry.cs`
+- `src/Hexalith.EventStore.Server/Projections/NamedProjectionRouteCatalogSnapshot.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryRetryLedger.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryRetryWorkItem.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryRetryWorker.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionEventReadabilityResult.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionEventWireBuilder.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs`
+- `src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs`
+- `src/Hexalith.EventStore/Indexes/AdminOperationalIndexHostedService.cs`
+- `tests/Hexalith.EventStore.Client.Tests/Indexes/AdminOperationalIndexHostedServiceTests.cs`
+- `tests/Hexalith.EventStore.Client.Tests/Projections/ProjectionDispatchOptionsTests.cs`
+- `tests/Hexalith.EventStore.Contracts.Tests/Projections/ProjectionDispatchContractTests.cs`
+- `tests/Hexalith.EventStore.DomainService.Tests/DomainProjectionDispatcherV2Tests.cs`
+- `tests/Hexalith.EventStore.DomainService.Tests/DomainProjectionHandlerCompatibilityTests.cs`
+- `tests/Hexalith.EventStore.DomainService.Tests/EventStoreDomainServiceExtensionsTests.cs`
+- `tests/Hexalith.EventStore.DomainService.Tests/Fixtures/WidgetAsyncProjectionHandler.cs`
+- `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DaprTestContainerFixture.cs`
+- `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/LiveCounterDetailProjectionHandler.cs`
+- `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/LiveCounterIndexProjectionHandler.cs`
+- `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/LiveNamedProjectionFaultControl.cs`
+- `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/NamedProjectionDispatchLiveSidecarTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/NamedProjectionDispatchCoordinatorTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/NamedProjectionRouteCatalogTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionDeliveryRetryWorkerTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionDispatchHttpMessageHandler.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorTests.cs`
 
 ## Change Log
 
 | Date | Change |
 | --- | --- |
+| 2026-07-13 | Implemented additive asynchronous named multi-projection dispatch, exact route metadata/catalog admission, independent checkpoint reconciliation, durable immediate retry, persisted DAPR/Redis evidence, compatibility tests, and authoring guidance; moved the story to review. |
 | 2026-07-13 | Applied the approved sprint correction: Story 1.12 may proceed independently of unresolved sibling-story review findings while Story 1.15 retains the complete-and-reviewed convergence gate. |
 | 2026-07-12 | Created comprehensive ready-for-dev Story 1.12 context with additive v2 compatibility, pre-persistence admission, deterministic fan-out, partial-failure checkpoint truth, rebuild safety, and persisted evidence gates. |

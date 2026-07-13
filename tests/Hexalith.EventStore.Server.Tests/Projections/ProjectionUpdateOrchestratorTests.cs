@@ -66,7 +66,8 @@ public class ProjectionUpdateOrchestratorTests {
         ILogger<ProjectionUpdateOrchestrator>? logger = null,
         IProjectionRebuildCheckpointStore? rebuildCheckpointStore = null,
         IProjectionDeliveryCheckpointStore? deliveryCheckpointStore = null,
-        IProjectionLifecycleGateway? lifecycleGateway = null) {
+        IProjectionLifecycleGateway? lifecycleGateway = null,
+        INamedProjectionDispatchCoordinator? namedProjectionDispatchCoordinator = null) {
         IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
         daprClient ??= Substitute.For<DaprClient>();
         IDomainServiceResolver resolver = Substitute.For<IDomainServiceResolver>();
@@ -76,7 +77,7 @@ public class ProjectionUpdateOrchestratorTests {
                 .Returns(0);
         }
         IOptions<ProjectionOptions> projectionOptions = Options.Create(new ProjectionOptions());
-        var sut = new ProjectionUpdateOrchestrator(actorProxyFactory, daprClient, httpClientFactory ?? Substitute.For<IHttpClientFactory>(), resolver, checkpointTracker, projectionOptions, logger ?? NullLogger<ProjectionUpdateOrchestrator>.Instance, rebuildCheckpointStore, deliveryCheckpointStore: deliveryCheckpointStore, lifecycleGateway: lifecycleGateway);
+        var sut = new ProjectionUpdateOrchestrator(actorProxyFactory, daprClient, httpClientFactory ?? Substitute.For<IHttpClientFactory>(), resolver, checkpointTracker, projectionOptions, logger ?? NullLogger<ProjectionUpdateOrchestrator>.Instance, rebuildCheckpointStore, deliveryCheckpointStore: deliveryCheckpointStore, lifecycleGateway: lifecycleGateway, namedProjectionDispatchCoordinator: namedProjectionDispatchCoordinator);
         return (sut, actorProxyFactory, daprClient, resolver, checkpointTracker);
     }
 
@@ -209,13 +210,15 @@ public class ProjectionUpdateOrchestratorTests {
             });
 
         IProjectionWriteActor writeActor = Substitute.For<IProjectionWriteActor>();
+        INamedProjectionDispatchCoordinator namedProjectionDispatchCoordinator = Substitute.For<INamedProjectionDispatchCoordinator>();
         IHttpClientFactory httpClientFactory = CreateHttpClientFactory("""{"projectionType":"counter-summary","state":{"value":1}}""");
         DaprClient daprClient = new DaprClientBuilder().Build();
         (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(
             checkpointTracker,
             daprClient,
             httpClientFactory,
-            rebuildCheckpointStore: rebuildCheckpointStore);
+            rebuildCheckpointStore: rebuildCheckpointStore,
+            namedProjectionDispatchCoordinator: namedProjectionDispatchCoordinator);
         var registration = new DomainServiceRegistration("counter-service", "project", TestIdentity.TenantId, TestIdentity.Domain, "v1");
         _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(registration);
@@ -232,6 +235,12 @@ public class ProjectionUpdateOrchestratorTests {
         await sut.RebuildProjectionAsync(CreateRebuildScope());
 
         await writeActor.Received(1).UpdateProjectionAsync(Arg.Any<ProjectionState>());
+        _ = await namedProjectionDispatchCoordinator.DidNotReceiveWithAnyArgs().TryDispatchAsync(
+            default!,
+            default!,
+            default!,
+            default!,
+            default);
         _ = await rebuildCheckpointStore.Received(1).SaveAsync(
             Arg.Is<ProjectionRebuildCheckpointScope>(scope =>
                 scope.Tenant == TestIdentity.TenantId
