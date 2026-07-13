@@ -176,45 +176,47 @@ internal sealed partial class ProjectionEraseCoordinator : IProjectionEraseCoord
             }
 
             // 6. Erase in strict order: read-model targets -> rebuild row -> delivery checkpoint.
-            var targetOutcomes = new List<ProjectionEraseTargetOutcome>(readModelTargets.Count + 2);
-
+            //    Short-circuit on the first non-Complete outcome so a failed earlier target never erases a
+            //    later one. In particular the delivery checkpoint (erased last) MUST NOT be erased after a
+            //    read-model or rebuild-row failure: that preserves the "checkpoint last" safety ordering so
+            //    a partial failure cannot leave a present read model behind a reset (0) delivery checkpoint.
+            var orderedTargets = new List<EraseTarget>(readModelTargets.Count + 2);
             foreach (ProjectionReadModelAddress address in readModelTargets) {
+                ProjectionReadModelAddress target = address;
+                orderedTargets.Add(new EraseTarget(
+                    target.Key,
+                    ct => readModelEraser.TryReadEtagAsync(target.StoreName, target.Key, ct),
+                    (etag, ct) => readModelEraser.TryEraseAsync(target.StoreName, target.Key, etag, ct)));
+            }
+
+            orderedTargets.Add(new EraseTarget(
+                rebuildKey,
+                ct => rebuildEraser.TryReadAggregateCheckpointEtagAsync(rebuildScope, ct),
+                (etag, ct) => rebuildEraser.TryEraseAggregateCheckpointAsync(rebuildScope, etag, ct)));
+
+            orderedTargets.Add(new EraseTarget(
+                deliveryKey,
+                ct => deliveryStore.TryReadDeliveryCheckpointEtagAsync(identity, request.ProjectionName, ct),
+                (etag, ct) => deliveryStore.TryEraseAsync(identity, request.ProjectionName, etag, ct)));
+
+            var targetOutcomes = new List<ProjectionEraseTargetOutcome>(orderedTargets.Count);
+            foreach (EraseTarget target in orderedTargets) {
                 string outcome = await ProcessTargetAsync(
                         identity,
                         request.ProjectionName,
                         operationId,
-                        address.Key,
+                        target.Key,
                         resumeOutcomes,
-                        ct => readModelEraser.TryReadEtagAsync(address.StoreName, address.Key, ct),
-                        (etag, ct) => readModelEraser.TryEraseAsync(address.StoreName, address.Key, etag, ct),
+                        target.ReadEtagAsync,
+                        target.EraseAsync,
                         cancellationToken)
                     .ConfigureAwait(false);
-                targetOutcomes.Add(new ProjectionEraseTargetOutcome(address.Key, outcome));
+                targetOutcomes.Add(new ProjectionEraseTargetOutcome(target.Key, outcome));
+                if (!string.Equals(outcome, OutcomeComplete, StringComparison.Ordinal)) {
+                    // A target is not durably complete: stop before erasing any later target.
+                    break;
+                }
             }
-
-            string rebuildOutcome = await ProcessTargetAsync(
-                    identity,
-                    request.ProjectionName,
-                    operationId,
-                    rebuildKey,
-                    resumeOutcomes,
-                    ct => rebuildEraser.TryReadAggregateCheckpointEtagAsync(rebuildScope, ct),
-                    (etag, ct) => rebuildEraser.TryEraseAggregateCheckpointAsync(rebuildScope, etag, ct),
-                    cancellationToken)
-                .ConfigureAwait(false);
-            targetOutcomes.Add(new ProjectionEraseTargetOutcome(rebuildKey, rebuildOutcome));
-
-            string deliveryOutcome = await ProcessTargetAsync(
-                    identity,
-                    request.ProjectionName,
-                    operationId,
-                    deliveryKey,
-                    resumeOutcomes,
-                    ct => deliveryStore.TryReadDeliveryCheckpointEtagAsync(identity, request.ProjectionName, ct),
-                    (etag, ct) => deliveryStore.TryEraseAsync(identity, request.ProjectionName, etag, ct),
-                    cancellationToken)
-                .ConfigureAwait(false);
-            targetOutcomes.Add(new ProjectionEraseTargetOutcome(deliveryKey, deliveryOutcome));
 
             // 7. Aggregate. On any non-success outcome do NOT complete: the phase stays Erasing so the same
             //    operationId can resume.
@@ -249,9 +251,17 @@ internal sealed partial class ProjectionEraseCoordinator : IProjectionEraseCoord
                 return ProjectionEraseResult.Of(ProjectionEraseOutcomeKind.Incomplete, "verify-present", targetOutcomes);
             }
 
-            _ = await _lifecycleGateway
+            bool completed = await _lifecycleGateway
                 .CompleteEraseAsync(identity, request.ProjectionName, operationId, cancellationToken)
                 .ConfigureAwait(false);
+            if (!completed) {
+                // The lifecycle actor did not confirm completion (a different operation took over, or the
+                // phase is no longer Erasing under this operationId). The targets are durably absent, but we
+                // cannot claim Success and release queued delivery: report Unknown so the caller retries.
+                Log.EraseNonSuccess(_logger, scope, operationId, "complete-unconfirmed");
+                return ProjectionEraseResult.Of(ProjectionEraseOutcomeKind.Unknown, "complete-unconfirmed", targetOutcomes);
+            }
+
             Log.EraseSucceeded(_logger, scope, operationId, targetOutcomes.Count);
             return ProjectionEraseResult.Of(ProjectionEraseOutcomeKind.Success, reasonCode: null, targetOutcomes);
         }
@@ -313,9 +323,17 @@ internal sealed partial class ProjectionEraseCoordinator : IProjectionEraseCoord
         }
 
         string outcome = await ClassifyEraseAsync(readEtagAsync, eraseAsync, cancellationToken).ConfigureAwait(false);
-        _ = await _lifecycleGateway
+        bool recorded = await _lifecycleGateway
             .RecordTargetOutcomeAsync(identity, projectionName, operationId, targetKey, outcome, cancellationToken)
             .ConfigureAwait(false);
+        if (!recorded) {
+            // The lifecycle actor no longer owns this operationId (a different operation took over, or the
+            // phase left Erasing), so this target's outcome could not be durably recorded. Do not treat it
+            // as durably complete: surface Unknown so the operation does not falsely complete.
+            Log.TargetOutcome(_logger, $"{identity.ActorId}:{projectionName}", operationId, targetKey, "RecordRejected");
+            return OutcomeUnknown;
+        }
+
         Log.TargetOutcome(_logger, $"{identity.ActorId}:{projectionName}", operationId, targetKey, outcome);
         return outcome;
     }
@@ -404,6 +422,13 @@ internal sealed partial class ProjectionEraseCoordinator : IProjectionEraseCoord
         request.Domain ?? string.Empty,
         request.AggregateId ?? string.Empty,
         request.ProjectionName ?? string.Empty);
+
+    // An ordered erase target: its canonical key plus the read-etag and conditional-erase delegates. The
+    // coordinator processes these in strict order and stops at the first non-Complete outcome.
+    private readonly record struct EraseTarget(
+        string Key,
+        Func<CancellationToken, Task<(bool Present, string Etag)>> ReadEtagAsync,
+        Func<string, CancellationToken, Task<bool>> EraseAsync);
 
     private static partial class Log {
         [LoggerMessage(

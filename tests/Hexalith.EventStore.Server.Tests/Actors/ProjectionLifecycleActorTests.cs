@@ -70,6 +70,26 @@ public class ProjectionLifecycleActorTests {
     }
 
     [Fact]
+    public async Task BeginEraseAsync_SameOperationDifferentManifest_ConflictsWithoutResume() {
+        (ProjectionLifecycleActor actor, InMemoryStateManager stateManager) = CreateActor();
+        _ = await actor.BeginEraseAsync(new ProjectionEraseBeginRequest("op-1", "digest-1"));
+        (await actor.RecordTargetOutcomeAsync(new ProjectionTargetOutcomeRequest("op-1", "target-a", "erased"))).ShouldBeTrue();
+
+        // Same operationId but a DIFFERENT target manifest must be refused, not resumed against a manifest
+        // that was never admitted.
+        ProjectionEraseAdmission admission = await actor.BeginEraseAsync(new ProjectionEraseBeginRequest("op-1", "digest-2"));
+
+        admission.Kind.ShouldBe(ProjectionEraseAdmissionKind.Conflict);
+        admission.PerTargetOutcomes.ShouldBeEmpty();
+
+        // The in-flight operation and its recorded progress are untouched.
+        ProjectionLifecycleActorState persisted = PersistedState(stateManager);
+        persisted.OperationId.ShouldBe("op-1");
+        persisted.ManifestDigest.ShouldBe("digest-1");
+        persisted.PerTargetOutcomes["target-a"].ShouldBe("erased");
+    }
+
+    [Fact]
     public async Task BeginEraseAsync_DifferentOperationWhileErasing_ConflictsWithoutStateChange() {
         (ProjectionLifecycleActor actor, InMemoryStateManager stateManager) = CreateActor();
         _ = await actor.BeginEraseAsync(new ProjectionEraseBeginRequest("op-1", "digest-1"));

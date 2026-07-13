@@ -156,7 +156,7 @@ public class ProjectionDeliveryCheckpointStoreTests {
     }
 
     [Fact]
-    public async Task TryEraseAsync_DeletesScopedKeyWithFirstWriteAndLeavesMarker() {
+    public async Task TryEraseAsync_DeletesScopedKeyWithFirstWriteAndEnsuresMarker() {
         // Arrange
         DaprClient daprClient = Substitute.For<DaprClient>();
         string scopedKey = ProjectionCheckpointTracker.GetProjectionScopedStateKey(TestIdentity, ProjectionName);
@@ -174,7 +174,7 @@ public class ProjectionDeliveryCheckpointStoreTests {
         // Act
         bool erased = await tracker.TryEraseAsync(TestIdentity, ProjectionName, "etag-x");
 
-        // Assert — deletes the scoped key under FirstWrite and never touches the marker key.
+        // Assert — deletes the scoped key under FirstWrite and never DELETES the marker key.
         erased.ShouldBeTrue();
         _ = await daprClient.Received(1).TryDeleteStateAsync(
             "statestore",
@@ -187,6 +187,44 @@ public class ProjectionDeliveryCheckpointStoreTests {
             "statestore",
             markerKey,
             Arg.Any<string>(),
+            stateOptions: Arg.Any<StateOptions?>(),
+            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>());
+        // F4: a successful erase ENSURES the migration marker so a subsequent read returns 0 even if an
+        // earlier lazy migration failed to persist its marker (closes the drift re-arm window).
+        await daprClient.Received(1).SaveStateAsync(
+            "statestore",
+            markerKey,
+            Arg.Any<ProjectionCheckpointTracker.ProjectionCheckpointMigrationMarker>(),
+            stateOptions: Arg.Any<StateOptions?>(),
+            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task TryEraseAsync_RefusedByNewerEtag_DoesNotWriteMarker() {
+        // F4: when the conditional delete is refused (a newer value is present), the marker must NOT be
+        // written — the present value must stay observable to a subsequent read rather than reading 0.
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        string scopedKey = ProjectionCheckpointTracker.GetProjectionScopedStateKey(TestIdentity, ProjectionName);
+        string markerKey = ProjectionCheckpointTracker.GetMigratedMarkerKey(TestIdentity, ProjectionName);
+        _ = daprClient.TryDeleteStateAsync(
+                "statestore",
+                scopedKey,
+                "stale-etag",
+                stateOptions: Arg.Any<StateOptions?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(false);
+        ProjectionCheckpointTracker tracker = CreateTracker(daprClient);
+
+        bool erased = await tracker.TryEraseAsync(TestIdentity, ProjectionName, "stale-etag");
+
+        erased.ShouldBeFalse();
+        await daprClient.DidNotReceive().SaveStateAsync(
+            "statestore",
+            markerKey,
+            Arg.Any<ProjectionCheckpointTracker.ProjectionCheckpointMigrationMarker>(),
             stateOptions: Arg.Any<StateOptions?>(),
             metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
             cancellationToken: Arg.Any<CancellationToken>());

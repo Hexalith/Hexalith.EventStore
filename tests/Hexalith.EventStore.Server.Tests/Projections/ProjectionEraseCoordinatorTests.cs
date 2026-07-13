@@ -278,6 +278,72 @@ public class ProjectionEraseCoordinatorTests {
         hasDaprClient.ShouldBeFalse();
     }
 
+    [Fact]
+    public async Task EraseAsync_ReadModelFailsWhileLaterTargetsPresent_ShortCircuitsBeforeErasingCheckpoint() {
+        // F1: a read-model Conflict MUST short-circuit so the aggregate rebuild row and (last) delivery
+        // checkpoint are NOT erased behind a still-present read model, preserving the "checkpoint last"
+        // safety ordering (otherwise the checkpoint would reset to 0 while the read model is present).
+        SetupReadModel((true, "etag-old"));
+        _ = _readModelEraser.TryEraseAsync(RmStore, RmKey, "etag-old", Arg.Any<CancellationToken>()).Returns(false);
+        SetupRebuild((true, "etag-rb"));
+        SetupDelivery((true, "etag-dl"));
+
+        ProjectionEraseResult result = await CreateSut().EraseAsync(Request());
+
+        result.Kind.ShouldBe(ProjectionEraseOutcomeKind.Conflict);
+        _ = await _rebuildEraser.DidNotReceive().TryEraseAggregateCheckpointAsync(Arg.Any<ProjectionRebuildCheckpointScope>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _ = await _deliveryStore.DidNotReceive().TryEraseAsync(Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _ = await _gateway.DidNotReceive().CompleteEraseAsync(Arg.Any<AggregateIdentity>(), ProjectionName, OperationId, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task EraseAsync_RecordTargetOutcomeRejected_ReturnsUnknownAndDoesNotEraseLaterTargets() {
+        // F2: when the lifecycle actor no longer owns the operation, RecordTargetOutcomeAsync returns false;
+        // the target must not be treated as complete and later targets must not be erased.
+        SetupReadModel((true, "etag-rm"), (false, ""));
+        _ = _readModelEraser.TryEraseAsync(RmStore, RmKey, "etag-rm", Arg.Any<CancellationToken>()).Returns(true);
+        _ = _gateway.RecordTargetOutcomeAsync(Arg.Any<AggregateIdentity>(), ProjectionName, OperationId, RmKey, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(false);
+        SetupDelivery((true, "etag-dl"));
+
+        ProjectionEraseResult result = await CreateSut().EraseAsync(Request());
+
+        result.Kind.ShouldBe(ProjectionEraseOutcomeKind.Unknown);
+        _ = await _deliveryStore.DidNotReceive().TryEraseAsync(Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _ = await _gateway.DidNotReceive().CompleteEraseAsync(Arg.Any<AggregateIdentity>(), ProjectionName, OperationId, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task EraseAsync_CompleteEraseRejected_ReturnsUnknownNotSuccess() {
+        // F2: every target erased and verified absent, but the actor cannot confirm completion (a different
+        // operation took over). The coordinator must report Unknown, never Success.
+        SetupReadModel((true, "etag-rm"), (false, ""), (false, ""));
+        _ = _readModelEraser.TryEraseAsync(RmStore, RmKey, "etag-rm", Arg.Any<CancellationToken>()).Returns(true);
+        SetupRebuild((false, ""));
+        SetupDelivery((false, ""));
+        _ = _gateway.CompleteEraseAsync(Arg.Any<AggregateIdentity>(), ProjectionName, OperationId, Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        ProjectionEraseResult result = await CreateSut().EraseAsync(Request());
+
+        result.Kind.ShouldBe(ProjectionEraseOutcomeKind.Unknown);
+        result.ReasonCode.ShouldBe("complete-unconfirmed");
+        result.Kind.ShouldNotBe(ProjectionEraseOutcomeKind.Success);
+    }
+
+    [Fact]
+    public async Task EraseAsync_LifecycleGatewayThrowsUnexpectedly_ReturnsUnknownWithoutComplete() {
+        // F5: the outer catch converts a genuinely-unexpected fault into a resumable Unknown, never Success.
+        _ = _gateway.BeginEraseAsync(Arg.Any<AggregateIdentity>(), ProjectionName, OperationId, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns<Task<ProjectionEraseAdmission>>(_ => throw new InvalidOperationException("boom"));
+
+        ProjectionEraseResult result = await CreateSut().EraseAsync(Request());
+
+        result.Kind.ShouldBe(ProjectionEraseOutcomeKind.Unknown);
+        result.ReasonCode.ShouldBe("unexpected");
+        _ = await _gateway.DidNotReceive().CompleteEraseAsync(Arg.Any<AggregateIdentity>(), ProjectionName, OperationId, Arg.Any<CancellationToken>());
+    }
+
     private static ProjectionEraseAdmission Admission(
         ProjectionEraseAdmissionKind kind,
         IReadOnlyDictionary<string, string>? outcomes = null)

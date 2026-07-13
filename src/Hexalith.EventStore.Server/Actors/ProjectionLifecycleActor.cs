@@ -27,6 +27,15 @@ public partial class ProjectionLifecycleActor(ActorHost host, ILogger<Projection
 
         if (state.Phase == ProjectionLifecyclePhase.Erasing) {
             if (string.Equals(state.OperationId, request.OperationId, StringComparison.Ordinal)) {
+                if (!string.Equals(state.ManifestDigest, request.ManifestDigest, StringComparison.Ordinal)) {
+                    // Same operationId but a different target manifest: refuse rather than resume against a
+                    // manifest that was never admitted. Resume must reuse the recorded manifest/progress.
+                    Log.EraseManifestMismatch(logger, Host.Id.GetId(), request.OperationId);
+                    return new ProjectionEraseAdmission(
+                        ProjectionEraseAdmissionKind.Conflict,
+                        new Dictionary<string, string>(StringComparer.Ordinal));
+                }
+
                 Log.EraseResumed(logger, Host.Id.GetId(), request.OperationId);
                 return new ProjectionEraseAdmission(
                     ProjectionEraseAdmissionKind.Resume,
@@ -141,6 +150,12 @@ public partial class ProjectionLifecycleActor(ActorHost host, ILogger<Projection
             Level = LogLevel.Debug,
             Message = "Projection erase target outcome recorded. ActorId={ActorId}, OperationId={OperationId}, TargetKey={TargetKey}, Outcome={Outcome}")]
         public static partial void TargetOutcomeRecorded(ILogger logger, string actorId, string operationId, string targetKey, string outcome);
+
+        [LoggerMessage(
+            EventId = 5056,
+            Level = LogLevel.Warning,
+            Message = "Projection erase refused: the same operation resumed with a different target manifest. ActorId={ActorId}, OperationId={OperationId}, Phase=Erasing")]
+        public static partial void EraseManifestMismatch(ILogger logger, string actorId, string operationId);
 
         [LoggerMessage(
             EventId = 5055,

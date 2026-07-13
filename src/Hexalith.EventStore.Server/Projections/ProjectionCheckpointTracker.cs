@@ -326,9 +326,8 @@ public sealed partial class ProjectionCheckpointTracker(
         ValidateProjectionName(projectionName);
         ArgumentNullException.ThrowIfNull(etag);
 
-        // Erase the projection-scoped checkpoint only. The migration marker is intentionally left in
-        // place so subsequent reads return 0 rather than re-migrating the legacy aggregate-wide value.
-        return await daprClient
+        // Erase the projection-scoped checkpoint only.
+        bool erased = await daprClient
             .TryDeleteStateAsync(
                 options.Value.CheckpointStateStoreName,
                 GetProjectionScopedStateKey(identity, projectionName),
@@ -336,6 +335,17 @@ public sealed partial class ProjectionCheckpointTracker(
                 new StateOptions { Concurrency = ConcurrencyMode.FirstWrite },
                 cancellationToken: cancellationToken)
             .ConfigureAwait(false);
+
+        // Ensure the migration marker is present after a successful erase (or idempotent absence) so a
+        // subsequent read returns 0 instead of re-migrating the retained legacy aggregate-wide value.
+        // Do NOT write the marker when a newer value was refused (erased == false): the present value must
+        // still be observable to a read. Ensuring the marker here closes the window where a prior lazy
+        // migration seeded the scoped key but failed to persist its marker.
+        if (erased) {
+            await MarkMigratedAsync(identity, projectionName, cancellationToken).ConfigureAwait(false);
+        }
+
+        return erased;
     }
 
     /// <inheritdoc/>
