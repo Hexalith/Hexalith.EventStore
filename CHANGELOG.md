@@ -1,3 +1,10 @@
+## [3.61.6](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.61.5...v3.61.6) (2026-07-13)
+
+
+### Bug Fixes
+
+* **spec:** amend review triage log and resolve decision items ([5223e9c](https://github.com/Hexalith/Hexalith.EventStore/commit/5223e9c9c2f0dd71673003c710b8739efc8484ff))
+
 ## [3.61.5](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.61.4...v3.61.5) (2026-07-13)
 
 
