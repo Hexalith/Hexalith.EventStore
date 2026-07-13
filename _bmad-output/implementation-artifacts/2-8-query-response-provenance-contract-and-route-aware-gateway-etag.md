@@ -1,6 +1,7 @@
 ---
-status: in-review
+status: review
 baseline_revision: 404201a9363c1b80121ecbf5e72ca4fb71f6ac79
+baseline_commit: 58761c5039c94d81b8d1e576fe77e8a77201bf23
 review_loop_iteration: 2
 ---
 
@@ -26,40 +27,40 @@ so that generated REST and UI code never present a gateway ETag or fabricated ve
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 - Add the backward-compatible provenance contract** (AC: 1, 5)
-  - [ ] Add `src/Hexalith.EventStore.Contracts/Queries/QueryResponseProvenance.cs` as the sole type in the file. Define explicit stable values with `Unknown = 0`, plus `ProjectionBacked` and `HandlerComputed`; use `DataContract`/`EnumMember` and a dedicated converter that writes only the exact AC5 names and reads missing, null, numeric, case-variant, or unrecognized values as `Unknown` without throwing or elevating provenance. The stock `JsonStringEnumConverter<QueryResponseProvenance>` is insufficient because it accepts numeric/case-variant input and throws on unknown strings.
-  - [ ] Update `QueryResponseMetadata.cs` with a non-positional `[DataMember]` `Provenance` init property defaulting to `Unknown`. **Do not append a primary-constructor parameter:** Story 1.2 already showed that changing positional record constructors breaks compiled consumers and requires compatibility overload repair.
-  - [ ] Pin old/new DataContract and JSON behavior in Contracts tests: old payload without provenance -> `Unknown`; all values round-trip; the existing `QueryResponseMetadata` constructor signature remains present; warning-code defensive copying remains unchanged.
+- [x] **Task 1 - Add the backward-compatible provenance contract** (AC: 1, 5)
+  - [x] Add `src/Hexalith.EventStore.Contracts/Queries/QueryResponseProvenance.cs` as the sole type in the file. Define explicit stable values with `Unknown = 0`, plus `ProjectionBacked` and `HandlerComputed`; use `DataContract`/`EnumMember` and a dedicated converter that writes only the exact AC5 names and reads missing, null, numeric, case-variant, or unrecognized values as `Unknown` without throwing or elevating provenance. The stock `JsonStringEnumConverter<QueryResponseProvenance>` is insufficient because it accepts numeric/case-variant input and throws on unknown strings.
+  - [x] Update `QueryResponseMetadata.cs` with a non-positional `[DataMember]` `Provenance` init property defaulting to `Unknown`. **Do not append a primary-constructor parameter:** Story 1.2 already showed that changing positional record constructors breaks compiled consumers and requires compatibility overload repair.
+  - [x] Pin old/new DataContract and JSON behavior in Contracts tests: old payload without provenance -> `Unknown`; all values round-trip; the existing `QueryResponseMetadata` constructor signature remains present; warning-code defensive copying remains unchanged.
 
-- [ ] **Task 2 - Make route selection authoritative** (AC: 1-3)
-  - [ ] Update `HandlerAwareQueryRouter` so every successful handler branch returns `ProjectionType: null` and metadata stamped `HandlerComputed`, overriding any producer provenance while preserving payload, paging, degraded state, warnings, served-at, cancellation, and existing safe failures.
-  - [ ] Update `QueryRouter` so successful projection-actor branches stamp `ProjectionBacked`, overriding missing/producer provenance while preserving producer metadata and all existing DAPR cancellation/not-found/error classification.
-  - [ ] Keep `QueryResult`, `QueryRouterResult`, `SubmitQueryResult`, `SubmitQueryResponse`, `SubmitQueryHandler`, and `EventStoreQueryResult` as pass-through carriers unless a test proves a real propagation defect. Do not duplicate provenance fields on every wrapper.
+- [x] **Task 2 - Make route selection authoritative** (AC: 1-3)
+  - [x] Update `HandlerAwareQueryRouter` so every successful handler branch returns `ProjectionType: null` and metadata stamped `HandlerComputed`, overriding any producer provenance while preserving payload, paging, degraded state, warnings, served-at, cancellation, and existing safe failures.
+  - [x] Update `QueryRouter` so successful projection-actor branches stamp `ProjectionBacked`, overriding missing/producer provenance while preserving producer metadata and all existing DAPR cancellation/not-found/error classification.
+  - [x] Keep `QueryResult`, `QueryRouterResult`, `SubmitQueryResult`, `SubmitQueryResponse`, `SubmitQueryHandler`, and `EventStoreQueryResult` as pass-through carriers unless a test proves a real propagation defect. Do not duplicate provenance fields on every wrapper.
 
-- [ ] **Task 3 - Make gateway ETag and freshness behavior route-aware** (AC: 2-5)
-  - [ ] Refactor `QueriesController` so a conditional match is evaluated only after authoritative route provenance exists. Prefer route-first evaluation over duplicating handler-registry decision logic in the controller.
-  - [ ] Fetch/compare a projection-actor ETag only for `ProjectionBacked`. Remove the post-route `result.ProjectionType -> request.ProjectionType -> request.Domain` fallback for `HandlerComputed`/`Unknown`; do not call `IETagService` for those routes.
-  - [ ] Sanitize non-projection routes before policy evaluation/serialization: `ETag = null`, `IsNotModified = null`, `ProjectionVersion = null`, and `IsStale = null`, with no projection-derived HTTP/body ETag; preserve `IsDegraded`, warning codes, paging, and served-at. Never map `ETag` to `ProjectionVersion`.
-  - [ ] Preserve bounded/mixed/malformed `If-None-Match` handling, its existing decode/miss telemetry, policy/payload cache-safety rules, authorization-before-lookup, tenant/RBAC behavior, ETag-service fail-open behavior, cancellation propagation, and the existing freshness ProblemDetails taxonomy. Undecodable/legacy validators remain cache misses rather than being compared as raw ETags. Set success ETag headers only after freshness enforcement.
-  - [ ] Emit `X-Hexalith-Query-Provenance` for successful gateway `200` and `304` responses. Missing or unrecognized input must never elevate to `ProjectionBacked`.
+- [x] **Task 3 - Make gateway ETag and freshness behavior route-aware** (AC: 2-5)
+  - [x] Refactor `QueriesController` so a conditional match is evaluated only after authoritative route provenance exists. Prefer route-first evaluation over duplicating handler-registry decision logic in the controller.
+  - [x] Fetch/compare a projection-actor ETag only for `ProjectionBacked`. Remove the post-route `result.ProjectionType -> request.ProjectionType -> request.Domain` fallback for `HandlerComputed`/`Unknown`; do not call `IETagService` for those routes.
+  - [x] Sanitize non-projection routes before policy evaluation/serialization: `ETag = null`, `IsNotModified = null`, `ProjectionVersion = null`, and `IsStale = null`, with no projection-derived HTTP/body ETag; preserve `IsDegraded`, warning codes, paging, and served-at. Never map `ETag` to `ProjectionVersion`.
+  - [x] Preserve bounded/mixed/malformed `If-None-Match` handling, its existing decode/miss telemetry, policy/payload cache-safety rules, authorization-before-lookup, tenant/RBAC behavior, ETag-service fail-open behavior, cancellation propagation, and the existing freshness ProblemDetails taxonomy. Undecodable/legacy validators remain cache misses rather than being compared as raw ETags. Set success ETag headers only after freshness enforcement.
+  - [x] Emit `X-Hexalith-Query-Provenance` for successful gateway `200` and `304` responses. Missing or unrecognized input must never elevate to `ProjectionBacked`.
 
-- [ ] **Task 4 - Enforce provenance in clients and generated REST** (AC: 5)
-  - [ ] Update `EventStoreGatewayClient` to normalize provenance from the response body/header and preserve it identically in typed and untyped results. For `HandlerComputed` or `Unknown`, clear ETag, `IsNotModified`, `ProjectionVersion`, and `IsStale` while preserving unrelated metadata. A bodyless `304` reads the provenance header and is accepted only for `ProjectionBacked` with a non-wildcard strong ETag; missing, invalid, duplicate, or contradictory provenance fails closed as a gateway error rather than exposing an unsafe not-modified result. On `200`, missing, invalid, duplicate, or contradictory body/header provenance normalizes to `Unknown` and clears projection evidence. Preserve weak-ETag rejection and HTTP ETag precedence as validator-only behavior for projection-backed responses.
-  - [ ] Update `RestApiControllerEmitter` so generated query actions forward `X-Hexalith-Query-Provenance`, emit ETag/projection-version/stale headers, and return `304` only when metadata is `ProjectionBacked`. A `HandlerComputed` or `Unknown` result that contradictorily carries ETag/`IsNotModified` is sanitized or rejected fail-closed. Preserve bounded strong ETags, paging/degraded/warning headers, support-safe ProblemDetails, gateway-only delegation, and generated code `ConfigureAwait(false)`.
-  - [ ] Update generated source assertions, compiled generated-controller runtime tests, and Sample API host tests. Existing positive projection-header fixtures must opt into `ProjectionBacked`; add `HandlerComputed` and `Unknown` omission cases.
+- [x] **Task 4 - Enforce provenance in clients and generated REST** (AC: 5)
+  - [x] Update `EventStoreGatewayClient` to normalize provenance from the response body/header and preserve it identically in typed and untyped results. For `HandlerComputed` or `Unknown`, clear ETag, `IsNotModified`, `ProjectionVersion`, and `IsStale` while preserving unrelated metadata. A bodyless `304` reads the provenance header and is accepted only for `ProjectionBacked` with a non-wildcard strong ETag; missing, invalid, duplicate, or contradictory provenance fails closed as a gateway error rather than exposing an unsafe not-modified result. On `200`, missing, invalid, duplicate, or contradictory body/header provenance normalizes to `Unknown` and clears projection evidence. Preserve weak-ETag rejection and HTTP ETag precedence as validator-only behavior for projection-backed responses.
+  - [x] Update `RestApiControllerEmitter` so generated query actions forward `X-Hexalith-Query-Provenance`, emit ETag/projection-version/stale headers, and return `304` only when metadata is `ProjectionBacked`. A `HandlerComputed` or `Unknown` result that contradictorily carries ETag/`IsNotModified` is sanitized or rejected fail-closed. Preserve bounded strong ETags, paging/degraded/warning headers, support-safe ProblemDetails, gateway-only delegation, and generated code `ConfigureAwait(false)`.
+  - [x] Update generated source assertions, compiled generated-controller runtime tests, and Sample API host tests. Existing positive projection-header fixtures must opt into `ProjectionBacked`; add `HandlerComputed` and `Unknown` omission cases.
 
-- [ ] **Task 5 - Prove compatibility and real behavior** (AC: 1-6)
-  - [ ] Extend `ProjectionAdapterContractTests`, `SubmitQueryResponseTests`, `HandlerAwareQueryRouterTests`, `QueryRouterTests`, `SubmitQueryHandlerTests`, `QueriesControllerTests`, `EventStoreGatewayClientTests`, generator tests, and Sample generated-host tests only where their existing assertions are affected.
-  - [ ] Add the regression that currently escapes: a handler-supported request carrying a matching, decodable self-routing `If-None-Match` must reach the handler, must not call `IETagService`, must not return `304`, and must expose no projection ETag/version/stale evidence.
-  - [ ] Add `tests/Hexalith.EventStore.IntegrationTests/ContractTests/QueryResponseProvenanceE2ETests.cs` (or the existing contract-test equivalent) for real-path proof. Reuse the live Tenants `list-tenants` handler through EventStore's raw `/api/v1/queries` gateway route without editing the submodule; the generated `GET /api/tenants` surface remains proven by compiled generated-controller runtime tests because the current `tenants-api` Aspire resource has no discoverable HTTP endpoint. Establish a genuinely matching current self-routing validator before the live handler request by first obtaining the strong `counter:tenant-a` validator, then submitting `list-tenants` with tenant `tenant-a`, request `projectionType: counter`, and an empty/cache-eligible payload. That exact scope must have returned pre-route `304` in the old implementation; prove the new implementation reaches the handler, returns `200`, and neutralizes projection-looking metadata. Do not use a validator from a different projection/tenant key, and do not use a payload that the cache-safety guard would skip. Reuse the persisted Sample projection round-trip for projection provenance/strong ETag/`304`; assert the raw bodyless `304` carries `X-Hexalith-Query-Provenance: ProjectionBacked` and is accepted through `EventStoreGatewayClient`.
-  - [ ] For genuine `IReadModelFreshness` version/stale traversal, use a test-owned persisted read-model fixture and read the value back through `IReadModelStore`, then drive the value through production `QueryRouter`, `SubmitQueryHandler`, `QueriesController` HTTP serialization, and `EventStoreGatewayClient`. A test-owned actor/proxy adapter may source the already-persisted metadata, but tests must not manually construct the carrier wrappers being proved. The Tier 2/3 acceptance proof must inspect persisted read-model/state evidence and assert the exact version/stale values at the client surface. Do **not** add fabricated freshness/version fields to `ProjectionState` or `EventReplayProjectionActor`; that would pull the separately deferred D6 design into this story.
+- [x] **Task 5 - Prove compatibility and real behavior** (AC: 1-6)
+  - [x] Extend `ProjectionAdapterContractTests`, `SubmitQueryResponseTests`, `HandlerAwareQueryRouterTests`, `QueryRouterTests`, `SubmitQueryHandlerTests`, `QueriesControllerTests`, `EventStoreGatewayClientTests`, generator tests, and Sample generated-host tests only where their existing assertions are affected.
+  - [x] Add the regression that currently escapes: a handler-supported request carrying a matching, decodable self-routing `If-None-Match` must reach the handler, must not call `IETagService`, must not return `304`, and must expose no projection ETag/version/stale evidence.
+  - [x] Add `tests/Hexalith.EventStore.IntegrationTests/ContractTests/QueryResponseProvenanceE2ETests.cs` (or the existing contract-test equivalent) for real-path proof. Reuse the live Tenants `list-tenants` handler through EventStore's raw `/api/v1/queries` gateway route without editing the submodule; the generated `GET /api/tenants` surface remains proven by compiled generated-controller runtime tests because the current `tenants-api` Aspire resource has no discoverable HTTP endpoint. Establish a genuinely matching current self-routing validator before the live handler request by first obtaining the strong `counter:tenant-a` validator, then submitting `list-tenants` with tenant `tenant-a`, request `projectionType: counter`, and an empty/cache-eligible payload. That exact scope must have returned pre-route `304` in the old implementation; prove the new implementation reaches the handler, returns `200`, and neutralizes projection-looking metadata. Do not use a validator from a different projection/tenant key, and do not use a payload that the cache-safety guard would skip. Reuse the persisted Sample projection round-trip for projection provenance/strong ETag/`304`; assert the raw bodyless `304` carries `X-Hexalith-Query-Provenance: ProjectionBacked` and is accepted through `EventStoreGatewayClient`.
+  - [x] For genuine `IReadModelFreshness` version/stale traversal, use a test-owned persisted read-model fixture and read the value back through `IReadModelStore`, then drive the value through production `QueryRouter`, `SubmitQueryHandler`, `QueriesController` HTTP serialization, and `EventStoreGatewayClient`. A test-owned actor/proxy adapter may source the already-persisted metadata, but tests must not manually construct the carrier wrappers being proved. The Tier 2/3 acceptance proof must inspect persisted read-model/state evidence and assert the exact version/stale values at the client surface. Do **not** add fabricated freshness/version fields to `ProjectionState` or `EventReplayProjectionActor`; that would pull the separately deferred D6 design into this story.
 
-- [ ] **Task 6 - Reconcile documentation and run gates** (AC: 5-7)
-  - [ ] Update `docs/reference/query-api.md` to document `metadata.provenance`, `X-Hexalith-Query-Provenance`, projection-only freshness/version claims, and route-aware conditional requests. Replace the incorrect wording that an ETag is the projection version; it is an opaque validator for the selected representation.
-  - [ ] Confirm no `references/Hexalith.Tenants` diff and no unrelated root submodule-pointer change. Reconcile stale provenance ownership in `_bmad-output/implementation-artifacts/deferred-work.md` and `_bmad-output/planning-artifacts/backlog/rest-generator-hardening.md`: EventStore platform enforcement is Story 2.8; only the Tenants producer follow-up remains Story 4.7. Do not pull either ledger's unrelated deferred items into implementation.
-  - [ ] Run `dotnet build Hexalith.EventStore.slnx --configuration Release`.
-  - [ ] Run per project: `Contracts.Tests`, `QueryRouting.Tests`, `Server.Tests`, `Client.Tests`, `RestApi.Generators.Tests`, and `Sample.Tests`.
-  - [ ] Run the focused Tier 2/3 provenance lane using the repository's existing IntegrationTests prerequisites; record the exact command, persisted evidence, and any environment blocker separately from deterministic green lanes.
+- [x] **Task 6 - Reconcile documentation and run gates** (AC: 5-7)
+  - [x] Update `docs/reference/query-api.md` to document `metadata.provenance`, `X-Hexalith-Query-Provenance`, projection-only freshness/version claims, and route-aware conditional requests. Replace the incorrect wording that an ETag is the projection version; it is an opaque validator for the selected representation.
+  - [x] Confirm no `references/Hexalith.Tenants` diff and no unrelated root submodule-pointer change. Reconcile stale provenance ownership in `_bmad-output/implementation-artifacts/deferred-work.md` and `_bmad-output/planning-artifacts/backlog/rest-generator-hardening.md`: EventStore platform enforcement is Story 2.8; only the Tenants producer follow-up remains Story 4.7. Do not pull either ledger's unrelated deferred items into implementation.
+  - [x] Run `dotnet build Hexalith.EventStore.slnx --configuration Release`.
+  - [x] Run per project: `Contracts.Tests`, `QueryRouting.Tests`, `Server.Tests`, `Client.Tests`, `RestApi.Generators.Tests`, and `Sample.Tests`.
+  - [x] Run the focused Tier 2/3 provenance lane using the repository's existing IntegrationTests prerequisites; record the exact command, persisted evidence, and any environment blocker separately from deterministic green lanes.
 
 ## Dev Notes
 
@@ -201,8 +202,50 @@ GPT-5 Codex
 
 ### Debug Log References
 
+- 2026-07-13: Reconciled the pre-existing Task 1 implementation at baseline `58761c50`; verified the dedicated fail-safe converter, additive metadata member, constructor ABI, DataContract/JSON defaults, and warning defensive copy. `Contracts.Tests` Release: 694/694 passed.
+- 2026-07-13: Verified authoritative handler/projection router stamping and unchanged metadata carriers. `QueryRouting.Tests` Release: 6/6 passed; `Server.Tests` Release: 2,429 passed, 25 skipped, 0 failed.
+- 2026-07-13: Verified route-first conditional evaluation, projection-only ETag lookup/304, non-projection evidence sanitization, provenance/lifecycle headers, and fail-closed freshness policy. Focused `QueriesControllerTests`: 64/64 passed.
+- 2026-07-13: Verified strict .NET client provenance normalization, typed/untyped parity, safe 304 handling, and generated REST projection-only metadata/status behavior. Release gates: `Client.Tests` 651/651, `RestApi.Generators.Tests` 124/124, `Sample.Tests` 117/117.
+- 2026-07-13: Verified the persisted `IReadModelFreshness` path by writing and reading the test-owned read model through `IReadModelStore`, then traversing production router, handler, HTTP, and client surfaces. Focused `QueryResponseProvenancePersistenceTests`: 2/2 passed; IntegrationTests Release build: 0 warnings, 0 errors.
+- 2026-07-13: Ran the live Tier 3 route in source-debug mode (`dotnet build tests/Hexalith.EventStore.IntegrationTests/Hexalith.EventStore.IntegrationTests.csproj -c Debug -p:UseHexalithProjectReferences=true`, then `dotnet tests .../bin/Debug/net10.0/Hexalith.EventStore.IntegrationTests.dll -class Hexalith.EventStore.IntegrationTests.ContractTests.QueryResponseProvenanceE2ETests -reporter quiet -noAutoReporters -longRunning 60`). The initial package-mode lane correctly had no `tenants` resource; the source lane exposed and repaired shared-client reuse in the acceptance test. Final live lane: 1/1 passed, proving projection strong ETag/304 through raw and official-client paths and handler-computed `list-tenants` returning 200 without projection evidence.
+- 2026-07-13: Reconciled query API documentation and deferred-work ownership; confirmed no Tenants submodule or root submodule-pointer diff. Final Release solution build: 0 warnings, 0 errors. Final per-project gates: Contracts 694/694, QueryRouting 6/6, Server 2,429 passed plus 25 intentional skips, Client 651/651, RestApi.Generators 124/124, Sample generated-host 117/117. Re-ran the focused persisted Tier 2 proof successfully after the final build.
+
 ### Completion Notes List
 
-Ultimate context engine analysis completed - comprehensive developer guide created.
+- Reconciled the complete Story 2.8 implementation already present at the baseline against every task and acceptance criterion; no production-code gap remained.
+- Repaired the live acceptance proof to give `EventStoreGatewayClient` its own fresh Aspire `HttpClient`, avoiding mutation of an already-used shared client while preserving raw-route and official-client coverage.
+- Verified persisted freshness/version traversal, live handler/projection route behavior, documentation and deferred-work ownership, and every required Release gate with no Tenants or unrelated submodule change.
 
 ### File List
+
+- `_bmad-output/implementation-artifacts/2-8-query-response-provenance-contract-and-route-aware-gateway-etag.md`
+- `_bmad-output/implementation-artifacts/deferred-work.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/planning-artifacts/backlog/rest-generator-hardening.md`
+- `docs/reference/query-api.md`
+- `src/Hexalith.EventStore.Client/Gateway/EventStoreGatewayClient.cs`
+- `src/Hexalith.EventStore.Contracts/Queries/QueryResponseMetadata.cs`
+- `src/Hexalith.EventStore.Contracts/Queries/QueryResponseProvenance.cs`
+- `src/Hexalith.EventStore.Contracts/Queries/QueryResponseProvenanceJsonConverter.cs`
+- `src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs`
+- `src/Hexalith.EventStore.Server/Queries/QueryRouter.cs`
+- `src/Hexalith.EventStore/Controllers/QueriesController.cs`
+- `src/Hexalith.EventStore/Queries/HandlerAwareQueryRouter.cs`
+- `tests/Hexalith.EventStore.Client.Tests/Gateway/EventStoreGatewayClientTests.cs`
+- `tests/Hexalith.EventStore.Contracts.Tests/Queries/ProjectionAdapterContractTests.cs`
+- `tests/Hexalith.EventStore.Contracts.Tests/Queries/SubmitQueryResponseTests.cs`
+- `tests/Hexalith.EventStore.IntegrationTests/ContractTests/QueryResponseProvenanceE2ETests.cs`
+- `tests/Hexalith.EventStore.QueryRouting.Tests/HandlerAwareQueryRouterTests.cs`
+- `tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiControllerGenerationTests.cs`
+- `tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiGeneratedControllerErrorSemanticsTests.cs`
+- `tests/Hexalith.EventStore.Sample.Tests/SampleApi/SampleApiGeneratedControllerRuntimeTests.cs`
+- `tests/Hexalith.EventStore.Sample.Tests/SampleApi/SampleApiHostMiddlewareTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Controllers/QueriesControllerTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Integration/PersistedFreshnessReadModel.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Integration/QueryResponseProvenancePersistenceTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Pipeline/Queries/SubmitQueryHandlerTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Queries/QueryRouterTests.cs`
+
+### Change Log
+
+- 2026-07-13: Completed implementation reconciliation, repaired the live gateway acceptance test's HTTP-client isolation, verified Tier 2/3 evidence and all Release gates, and moved the story to review.

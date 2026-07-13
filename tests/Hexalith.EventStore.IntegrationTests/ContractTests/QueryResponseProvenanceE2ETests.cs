@@ -4,6 +4,8 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 
+using Aspire.Hosting.Testing;
+
 using Hexalith.EventStore.Client.Gateway;
 using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.IntegrationTests.Fixtures;
@@ -97,39 +99,33 @@ public sealed class QueryResponseProvenanceE2ETests(AspireContractTestFixture fi
         rawResponse.Headers.GetValues("X-Hexalith-Query-Provenance").Single()
             .ShouldBe("ProjectionBacked");
 
-        AuthenticationHeaderValue? previousAuthorization = fixture.EventStoreClient.DefaultRequestHeaders.Authorization;
-        try
-        {
-            fixture.EventStoreClient.DefaultRequestHeaders.Authorization = CreateAuthorization(
-                "test-user",
-                "tenant-a",
-                ["counter"]);
-            var gatewayClient = new EventStoreGatewayClient(
-                fixture.EventStoreClient,
-                Options.Create(new EventStoreGatewayClientOptions()));
-            var request = new SubmitQueryRequest(
-                Tenant: "tenant-a",
-                Domain: "counter",
-                AggregateId: aggregateId,
-                QueryType: "get-counter-status",
-                ProjectionType: "counter",
-                Payload: JsonSerializer.SerializeToElement(new { id = aggregateId }),
-                EntityId: aggregateId);
+        using HttpClient gatewayHttpClient = fixture.App.CreateHttpClient("eventstore");
+        gatewayHttpClient.Timeout = TimeSpan.FromSeconds(60);
+        gatewayHttpClient.DefaultRequestHeaders.Authorization = CreateAuthorization(
+            "test-user",
+            "tenant-a",
+            ["counter"]);
+        var gatewayClient = new EventStoreGatewayClient(
+            gatewayHttpClient,
+            Options.Create(new EventStoreGatewayClientOptions()));
+        var request = new SubmitQueryRequest(
+            Tenant: "tenant-a",
+            Domain: "counter",
+            AggregateId: aggregateId,
+            QueryType: "get-counter-status",
+            ProjectionType: "counter",
+            Payload: JsonSerializer.SerializeToElement(new { id = aggregateId }),
+            EntityId: aggregateId);
 
-            EventStoreQueryResult clientResult = await gatewayClient
-                .SubmitQueryAsync(request, currentProjectionETag, cancellationToken)
-                .ConfigureAwait(false);
+        EventStoreQueryResult clientResult = await gatewayClient
+            .SubmitQueryAsync(request, currentProjectionETag, cancellationToken)
+            .ConfigureAwait(false);
 
-            clientResult.IsNotModified.ShouldBeTrue();
-            clientResult.ETag.ShouldBe(currentProjectionETag.Trim('"'));
-            _ = clientResult.Metadata.ShouldNotBeNull();
-            clientResult.Metadata.Provenance.ShouldBe(QueryResponseProvenance.ProjectionBacked);
-            clientResult.Metadata.IsNotModified.ShouldBe(true);
-        }
-        finally
-        {
-            fixture.EventStoreClient.DefaultRequestHeaders.Authorization = previousAuthorization;
-        }
+        clientResult.IsNotModified.ShouldBeTrue();
+        clientResult.ETag.ShouldBe(currentProjectionETag.Trim('"'));
+        _ = clientResult.Metadata.ShouldNotBeNull();
+        clientResult.Metadata.Provenance.ShouldBe(QueryResponseProvenance.ProjectionBacked);
+        clientResult.Metadata.IsNotModified.ShouldBe(true);
     }
 
     private async Task<string> PollForCurrentProjectionETagAsync(
