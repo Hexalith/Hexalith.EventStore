@@ -1,3 +1,10 @@
+## [3.61.4](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.61.3...v3.61.4) (2026-07-13)
+
+
+### Bug Fixes
+
+* **provenance:** update status to done and add projection provenance header assertion ([7cf3e42](https://github.com/Hexalith/Hexalith.EventStore/commit/7cf3e42781e5ec5a0af0a1428b77a61462b8d4ca))
+
 ## [3.61.3](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.61.2...v3.61.3) (2026-07-13)
 
 
