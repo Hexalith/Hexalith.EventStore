@@ -1,3 +1,11 @@
+# [3.62.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.61.6...v3.62.0) (2026-07-13)
+
+
+### Features
+
+* **projections:** add Dapr-based delivery retry scheduler and related types ([4df72d9](https://github.com/Hexalith/Hexalith.EventStore/commit/4df72d9a998b6ad238e9704956cf0ed3d48d110b))
+* **projections:** implement named projection route catalog and related classes ([988021d](https://github.com/Hexalith/Hexalith.EventStore/commit/988021de700da2a82a7530ba667610d637cc0468))
+
 ## [3.61.6](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.61.5...v3.61.6) (2026-07-13)
 
 
