@@ -17,6 +17,8 @@ public class ReadModelBatchStoreTests {
 
     public sealed record IndexEntry(int Count);
 
+    public sealed record Checkpoint(int Version);
+
     private static ReadModelBatchScope Scope(string batchId = "01J0BATCH0000000000000000") =>
         new(Store, "tenant-1", "counter", "agg-1", "counterView", batchId);
 
@@ -27,6 +29,36 @@ public class ReadModelBatchStoreTests {
                 ReadModelBatchOperation.Write("detail:agg-1", new Detail(2), ReadModelBatchConcurrency.LastWrite),
                 ReadModelBatchOperation.Write("index:counterView", new IndexEntry(2), ReadModelBatchConcurrency.LastWrite),
             ]);
+
+    // ----- Checkpoint boundary (AC7 / decision 6) -----
+
+    [Fact]
+    public async Task ExecuteAsync_LeavesSeededDeliveryAndRebuildCheckpointsUnchanged() {
+        var store = new InMemoryReadModelStore();
+        // Representative delivery/rebuild checkpoint keys the batch owns no part of and must never touch.
+        await store.SaveAsync(Store, "checkpoint:delivery:agg-1", new Checkpoint(7));
+        await store.SaveAsync(Store, "checkpoint:rebuild:agg-1", new Checkpoint(3));
+
+        // A successful batch leaves them unchanged.
+        (await store.ExecuteAsync(WriteBatch())).Status.ShouldBe(ReadModelBatchStatus.Completed);
+        store.Snapshot<Checkpoint>(Store, "checkpoint:delivery:agg-1")!.Version.ShouldBe(7);
+        store.Snapshot<Checkpoint>(Store, "checkpoint:rebuild:agg-1")!.Version.ShouldBe(3);
+
+        // An identity conflict leaves them unchanged.
+        ReadModelBatch different = new(
+            Scope(),
+            [ReadModelBatchOperation.Write("detail:agg-1", new Detail(9), ReadModelBatchConcurrency.LastWrite)]);
+        (await store.ExecuteAsync(different)).ConflictKind.ShouldBe(ReadModelBatchConflictKind.Identity);
+
+        // An optimistic conflict (abort/compensation) leaves them unchanged.
+        ReadModelBatch abort = new(
+            Scope("01J0BATCH0000000000000099"),
+            [ReadModelBatchOperation.Write("detail:agg-1", new Detail(9), ReadModelBatchConcurrency.Match("stale"))]);
+        (await store.ExecuteAsync(abort)).Status.ShouldBe(ReadModelBatchStatus.Conflict);
+
+        store.Snapshot<Checkpoint>(Store, "checkpoint:delivery:agg-1")!.Version.ShouldBe(7);
+        store.Snapshot<Checkpoint>(Store, "checkpoint:rebuild:agg-1")!.Version.ShouldBe(3);
+    }
 
     // ----- Validation (before any state access) -----
 
@@ -57,6 +89,20 @@ public class ReadModelBatchStoreTests {
     public void DeleteOperation_WithCreateOnlyConcurrency_Throws() =>
         Should.Throw<ArgumentException>(() =>
             ReadModelBatchOperation.Delete("k", ReadModelBatchConcurrency.CreateOnly));
+
+    [Fact]
+    public async Task ExecuteAsync_ExpectedEtagConcurrencyWithNullEtag_ThrowsBeforeStateAccess() {
+        var store = new InMemoryReadModelStore();
+        // The concurrency factory methods guard, but the raw record constructor can be misused with a null
+        // ETag; it must fail before any state access rather than dereferencing null mid-install.
+        var badConcurrency = new ReadModelBatchConcurrency(ReadModelBatchConcurrencyMode.ExpectedETag, null!);
+        var batch = new ReadModelBatch(
+            Scope(),
+            [ReadModelBatchOperation.Write("detail:agg-1", new Detail(1), badConcurrency)]);
+
+        _ = await Should.ThrowAsync<ArgumentException>(() => store.ExecuteAsync(batch));
+        store.Snapshot<Detail>(Store, "detail:agg-1").ShouldBeNull();
+    }
 
     [Fact]
     public async Task ExecuteAsync_ExceedingOperationLimit_ThrowsBeforeStateAccess() {

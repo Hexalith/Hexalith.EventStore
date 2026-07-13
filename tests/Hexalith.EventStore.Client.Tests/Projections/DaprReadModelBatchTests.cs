@@ -93,8 +93,50 @@ public class DaprReadModelBatchTests {
         ReadModelBatchResult result = await store.ExecuteAsync(WriteBatch());
 
         result.IsSuccess.ShouldBeFalse();
-        result.Status.ShouldBe(ReadModelBatchStatus.Incomplete);
+        // An ambiguous dispatch with unconditional writes cannot prove completion or conflict, so the
+        // truthful outcome is Indeterminate (never Incomplete, which would tell the caller to retry the
+        // identical doomed transaction forever) — Decision 3.
+        result.Status.ShouldBe(ReadModelBatchStatus.Indeterminate);
         (await store.GetAsync<Detail>(Store, "detail:agg-1")).Value.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_TransactionQualifiedProfile_PartialCommit_IsCaughtByReadBackProof() {
+        // Simulate a mis-qualified store that advertises transactions but silently drops one logical data
+        // operation while still committing the terminal receipt. A void ExecuteStateTransactionAsync return
+        // must NEVER be trusted: success follows read-back proof (AC2). Deleting the read-back loop in
+        // VerifyTransactionAsync would make this return Completed.
+        var client = new RecordingDaprClient {
+            TransactionOperationApplyFilter = operation => operation.Key != "index:counterView",
+        };
+        DaprReadModelStore store = CreateStore(client, ReadModelBatchStoreProfile.TransactionQualified);
+
+        ReadModelBatchResult result = await store.ExecuteAsync(WriteBatch());
+
+        result.IsSuccess.ShouldBeFalse("a partially-committed transaction must never report success");
+        result.Status.ShouldBe(ReadModelBatchStatus.Incomplete);
+        client.ExecuteStateTransactionCallCount.ShouldBe(1);
+        // The receipt and the applied detail key are durable, but the dropped index key proves the gap.
+        string markerKey = ReadModelBatchKeys.MarkerKey(Scope().ComputeScopeHash());
+        client.ByteStoreContains(markerKey).ShouldBeTrue("the transaction committed its receipt");
+        client.ByteStoreContains("detail:agg-1").ShouldBeTrue();
+        client.ByteStoreContains("index:counterView").ShouldBeFalse("the mis-qualified store dropped this operation");
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_TransactionQualifiedProfile_CompletedRetry_ReverifiesKeys() {
+        // A retry that finds a durable Completed receipt must still prove the operation keys before reporting
+        // AlreadyCompleted; it must not trust the marker the (possibly mis-qualified) transaction wrote.
+        var client = new RecordingDaprClient();
+        DaprReadModelStore store = CreateStore(client, ReadModelBatchStoreProfile.TransactionQualified);
+        (await store.ExecuteAsync(WriteBatch())).Status.ShouldBe(ReadModelBatchStatus.Completed);
+
+        // Corrupt the persisted end state after completion (a data key drifts) and retry the same identity.
+        client.SeedByteStore("index:counterView", ReadModelBatchCanonicalJson.Serialize(new IndexEntry(999)));
+        ReadModelBatchResult retry = await store.ExecuteAsync(WriteBatch());
+
+        retry.IsSuccess.ShouldBeFalse("a retry must re-verify keys, not trust the receipt alone");
+        retry.Status.ShouldBe(ReadModelBatchStatus.Indeterminate);
     }
 
     [Fact]

@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 using Dapr.Client;
 
 using Hexalith.EventStore.Client.Projections;
@@ -14,6 +16,27 @@ using Shouldly;
 namespace Hexalith.EventStore.Client.Tests.Registration;
 
 public class ReadModelAndCursorRegistrationTests {
+    private sealed record SampleModel(int Count, string Text);
+
+    [Fact]
+    public void BatchCanonicalSerializer_MatchesDefaultDaprJsonOptions_SoBatchValuesRoundTrip() {
+        // Batch values (and the fingerprint material) are serialized with fixed DAPR-default (Web) options
+        // for cross-deployment stability, but DaprReadModelStore.GetAsync deserializes with
+        // DaprClient.JsonSerializerOptions. If DAPR's default options ever diverge from the Web defaults,
+        // batch-written values would silently fail to round-trip. Pin the assumption here so a DAPR upgrade
+        // that changes the default breaks the build instead of production reads.
+        JsonSerializerOptions daprDefault = new DaprClientBuilder().Build().JsonSerializerOptions;
+        var web = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+
+        daprDefault.PropertyNamingPolicy.ShouldBe(web.PropertyNamingPolicy);
+        daprDefault.PropertyNameCaseInsensitive.ShouldBe(web.PropertyNameCaseInsensitive);
+        daprDefault.NumberHandling.ShouldBe(web.NumberHandling);
+
+        var value = new SampleModel(5, "hi");
+        ReadOnlyMemory<byte> canonical = ReadModelBatchCanonicalJson.Serialize(value);
+        JsonSerializer.Deserialize<SampleModel>(canonical.Span, daprDefault).ShouldBe(value);
+    }
+
     [Fact]
     public void AddEventStoreReadModelStore_RegistersResolvableDaprReadModelStore() {
         var services = new ServiceCollection();

@@ -196,6 +196,12 @@ Contract highlights (Story 1.10):
 - **Same store only.** All operations target one configured state-store component; mixed-store manifests,
   duplicate keys, empty manifests, invalid ETag modes, and configured size-limit violations fail before any
   state access.
+- **Default DAPR JSON required.** Batch values are serialized with the fixed DAPR-default (`Web`) JSON
+  options so the canonical fingerprint stays stable across deployments (changing it is a versioned contract
+  change). The batch seam therefore requires the store's effective `DaprClient.JsonSerializerOptions` to
+  remain the Web defaults; a consumer that customizes them (custom converters, naming policy) must not use
+  batching, because `GetAsync` deserializes with those custom options and batch-written values would not
+  round-trip. A registration guard test pins the default assumption.
 - **Profile qualification.** A store defaults to the marker-gated `Resumable` profile: readers see the
   previous complete values until the commit marker is durable, and an interrupted batch converges on
   retry with the same identity. A store uses the single-transaction path only when an operator explicitly

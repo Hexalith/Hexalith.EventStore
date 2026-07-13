@@ -50,6 +50,11 @@ internal sealed class RecordingDaprClient : DaprClient
     // When set, ExecuteStateTransactionAsync throws before applying, simulating an ambiguous dispatch.
     public bool ThrowOnNextByteWrite { get; set; }
 
+    // When set, a transaction operation is applied to the byte store only if the predicate returns true.
+    // Lets a test simulate a mis-qualified store that commits the terminal receipt but partially applies the
+    // logical data operations, so read-back verification (not the void response) must catch the gap.
+    public Func<StateTransactionRequest, bool> TransactionOperationApplyFilter { get; set; }
+
     private string NextByteETag() => (++_byteEtag).ToString(System.Globalization.CultureInfo.InvariantCulture);
 
     public bool ByteStoreContains(string key) => _byteStore.ContainsKey(key);
@@ -127,10 +132,16 @@ internal sealed class RecordingDaprClient : DaprClient
             return Task.FromException(ExecuteStateTransactionException);
         }
 
-        // Apply the transaction atomically to the stateful byte store so read-back verification can prove
-        // the persisted end state (all-or-nothing under the transaction-qualified profile).
+        // Apply the transaction to the stateful byte store so read-back verification can prove the persisted
+        // end state. Normally all-or-nothing (transaction-qualified profile); a test may install
+        // TransactionOperationApplyFilter to simulate a mis-qualified store that partially commits.
         foreach (StateTransactionRequest operation in operations)
         {
+            if (TransactionOperationApplyFilter is not null && !TransactionOperationApplyFilter(operation))
+            {
+                continue;
+            }
+
             if (operation.OperationType == StateOperationType.Delete)
             {
                 _ = _byteStore.Remove(operation.Key);

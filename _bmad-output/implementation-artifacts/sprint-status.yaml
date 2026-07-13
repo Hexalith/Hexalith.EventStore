@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T20:01:46+02:00
-last_updated: 2026-07-13T00:00:00+02:00
+last_updated: 2026-07-13T12:00:00+02:00
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -70,7 +70,7 @@ development_status:
   # actor-result honoring, resume digest, marker durability, outer-catch test); 8 architect decisions
   # recorded as open action items (patch-now/log-decisions). review -> in-progress.
   1-9-read-model-and-projection-checkpoint-erasure: in-progress
-  1-10-coordinated-read-model-batch-writes: review
+  1-10-coordinated-read-model-batch-writes: done
   1-11-complete-projection-freshness-lifecycle: done
   1-12-asynchronous-multi-projection-dispatch: ready-for-dev
   1-13-projection-handler-delivery-idempotency: backlog

@@ -58,8 +58,20 @@ internal sealed class ReadModelBatchEnvelope {
     /// <summary>Deserializes an envelope from raw bytes.</summary>
     /// <param name="raw">The raw stored bytes.</param>
     /// <returns>The envelope, or <see langword="null"/> when the bytes are not a valid envelope.</returns>
+    /// <remarks>
+    /// The cheap <see cref="IsEnvelope"/> substring prescreen can match a legacy value that merely contains
+    /// the discriminator token (e.g. a string value equal to <c>$hxrmb</c>). This authoritative decode
+    /// therefore requires the discriminator to be an actual <em>top-level</em> JSON property; otherwise it
+    /// returns <see langword="null"/> so the raw legacy value is preserved and read back unchanged.
+    /// </remarks>
     public static ReadModelBatchEnvelope? FromBytes(ReadOnlyMemory<byte> raw) {
         try {
+            using JsonDocument document = JsonDocument.Parse(raw);
+            if (document.RootElement.ValueKind != JsonValueKind.Object
+                || !document.RootElement.TryGetProperty(DiscriminatorPropertyName, out _)) {
+                return null;
+            }
+
             return JsonSerializer.Deserialize<ReadModelBatchEnvelope>(raw.Span, s_json);
         }
         catch (JsonException) {
