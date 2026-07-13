@@ -1,3 +1,10 @@
+## [3.61.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.61.0...v3.61.1) (2026-07-13)
+
+
+### Bug Fixes
+
+* **projection:** ensure correct handling of erase operations and manifest validation ([1a34a9c](https://github.com/Hexalith/Hexalith.EventStore/commit/1a34a9cfe72f50b191c3bbe8594fac96a9a2b9fa))
+
 # [3.61.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.60.0...v3.61.0) (2026-07-12)
 
 
