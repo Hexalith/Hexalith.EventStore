@@ -1,3 +1,10 @@
+## [3.64.2](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.64.1...v3.64.2) (2026-07-14)
+
+
+### Bug Fixes
+
+* **projections:** add unit tests for projection delivery reconciler and state contracts ([1a01e0e](https://github.com/Hexalith/Hexalith.EventStore/commit/1a01e0eae50ef6c4e4fc219864c878e2bc4399b2))
+
 ## [3.64.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.64.0...v3.64.1) (2026-07-14)
 
 
