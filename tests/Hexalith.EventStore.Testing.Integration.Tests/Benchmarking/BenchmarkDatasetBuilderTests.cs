@@ -44,8 +44,8 @@ public class BenchmarkDatasetBuilderTests {
         receipt.LastGlobalPosition.ShouldBe(503);
         allocator.AllocationCount.ShouldBe(1);
         allocator.RequestedCount.ShouldBe(3);
-        lifecycle.ActivationCount.ShouldBe(1);
-        lifecycle.DeactivationCount.ShouldBe(1);
+        lifecycle.ActivationCount.ShouldBe(2);
+        lifecycle.DeactivationCount.ShouldBe(2);
         handler.TransactionKeys.Count.ShouldBe(3);
         handler.TransactionKeys[0].ShouldBe([
             $"{identity.EventStreamKeyPrefix}1",
@@ -68,8 +68,8 @@ public class BenchmarkDatasetBuilderTests {
         }
 
         allocator.AllocationCount.ShouldBe(1);
-        lifecycle.ActivationCount.ShouldBe(2);
-        lifecycle.DeactivationCount.ShouldBe(2);
+        lifecycle.ActivationCount.ShouldBe(3);
+        lifecycle.DeactivationCount.ShouldBe(3);
     }
 
     [Fact]
@@ -160,13 +160,44 @@ public class BenchmarkDatasetBuilderTests {
     }
 
     [Fact]
-    public async Task SeedAsync_AllocationFailureIsNotMaskedWhenStrictDeactivationAlsoFails() {
+    public async Task SeedAsync_ReactivatesEveryActorImmediatelyForItsWritePhase() {
         var handler = new RecordingActorStateHttpMessageHandler();
         using var httpClient = new HttpClient(handler);
-        var allocationException = new ApplicationException("Synthetic allocation failure.");
-        var allocator = new RecordingGlobalPositionAllocator(1) { AllocationException = allocationException };
+        var allocator = new RecordingGlobalPositionAllocator(10);
+        var lifecycle = new RecordingBenchmarkActorLifecycle();
+        var options = new BenchmarkDatasetBuilderOptions { MaxConcurrentActors = 1 };
+        using var builder = new BenchmarkDatasetBuilder(
+            httpClient,
+            new Uri("http://localhost:3500"),
+            allocator,
+            "AggregateActor",
+            lifecycle,
+            options);
+        var definition = new BenchmarkDatasetDefinition(
+            "multi-actor-lifecycle",
+            [
+                CreateAggregate(new AggregateIdentity("tenant-a", "counter", "aggregate-a"), 1, includeSnapshot: false),
+                CreateAggregate(new AggregateIdentity("tenant-a", "counter", "aggregate-b"), 1, includeSnapshot: false),
+            ]);
+
+        BenchmarkDatasetReceipt receipt = await builder.SeedAsync(
+            definition,
+            TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        receipt.AggregateCount.ShouldBe(2);
+        lifecycle.ActivationCount.ShouldBe(4);
+        lifecycle.DeactivationCount.ShouldBe(4);
+    }
+
+    [Fact]
+    public async Task SeedAsync_TransactionFailurePreservesPrimaryErrorAndCanBeCleanedUp() {
+        var handler = new RecordingActorStateHttpMessageHandler();
+        handler.FailPostAttempt = 2;
+        using var httpClient = new HttpClient(handler);
+        var allocator = new RecordingGlobalPositionAllocator(1);
         var lifecycle = new RecordingBenchmarkActorLifecycle {
             DeactivationException = new InvalidOperationException("Synthetic deactivation failure."),
+            DeactivationFailureAtCount = 2,
         };
         using var builder = new BenchmarkDatasetBuilder(
             httpClient,
@@ -175,19 +206,62 @@ public class BenchmarkDatasetBuilderTests {
             "AggregateActor",
             lifecycle);
         BenchmarkDatasetDefinition definition = CreateDefinition(
-            new AggregateIdentity("tenant-a", "counter", "allocation-failure"),
-            1,
+            new AggregateIdentity("tenant-a", "counter", "transaction-failure"),
+            3,
             includeSnapshot: false);
 
-        ApplicationException exception = await Should.ThrowAsync<ApplicationException>(
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(
             () => builder.SeedAsync(definition, TestContext.Current.CancellationToken)).ConfigureAwait(true);
 
-        exception.ShouldBeSameAs(allocationException);
+        exception.Message.ShouldContain("ERR_SYNTHETIC_TRANSACTION_FAILURE");
+        exception.Message.ShouldNotContain("Amount");
         exception.Data["BenchmarkActorDeactivationFailure"].ShouldBe(typeof(InvalidOperationException).FullName);
-        handler.PostCount.ShouldBe(0);
         allocator.AllocationCount.ShouldBe(1);
-        lifecycle.ActivationCount.ShouldBe(1);
-        lifecycle.DeactivationCount.ShouldBe(1);
+        lifecycle.ActivationCount.ShouldBe(2);
+        lifecycle.DeactivationCount.ShouldBe(2);
+        AggregateIdentity identity = definition.Aggregates[0].Identity;
+        handler.ContainsState(identity, $"{identity.EventStreamKeyPrefix}1").ShouldBeTrue();
+        handler.ContainsState(identity, identity.MetadataKey).ShouldBeFalse();
+
+        handler.FailPostAttempt = 0;
+        await builder.CleanupAsync(definition, TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        handler.ContainsState(identity, $"{identity.EventStreamKeyPrefix}1").ShouldBeFalse();
+        lifecycle.ActivationCount.ShouldBe(3);
+        lifecycle.DeactivationCount.ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task SeedAsync_SnapshotCreatedAtMismatchFailsReadBackValidation() {
+        var handler = new RecordingActorStateHttpMessageHandler();
+        using var httpClient = new HttpClient(handler);
+        var allocator = new RecordingGlobalPositionAllocator(1);
+        var lifecycle = new RecordingBenchmarkActorLifecycle();
+        AggregateIdentity identity = new("tenant-a", "counter", "snapshot-timestamp-drift");
+        handler.UpsertJsonTransform = (key, json) => {
+            if (!string.Equals(key, identity.SnapshotKey, StringComparison.Ordinal)) {
+                return json;
+            }
+
+            SnapshotRecord snapshot = JsonSerializer.Deserialize<SnapshotRecord>(json)!;
+            return JsonSerializer.Serialize(snapshot with { CreatedAt = snapshot.CreatedAt.AddMinutes(1) });
+        };
+        using var builder = new BenchmarkDatasetBuilder(
+            httpClient,
+            new Uri("http://localhost:3500"),
+            allocator,
+            "AggregateActor",
+            lifecycle);
+        BenchmarkDatasetDefinition definition = CreateDefinition(identity, 2, includeSnapshot: true);
+
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(
+            () => builder.SeedAsync(definition, TestContext.Current.CancellationToken)).ConfigureAwait(true);
+
+        exception.Message.ShouldContain("snapshot read-back validation failed");
+        lifecycle.ActivationCount.ShouldBe(2);
+        lifecycle.DeactivationCount.ShouldBe(2);
+
+        await builder.CleanupAsync(definition, TestContext.Current.CancellationToken).ConfigureAwait(true);
     }
 
     [Fact]

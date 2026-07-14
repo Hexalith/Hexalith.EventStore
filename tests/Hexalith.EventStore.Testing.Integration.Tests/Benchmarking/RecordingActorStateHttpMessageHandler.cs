@@ -12,6 +12,11 @@ internal sealed class RecordingActorStateHttpMessageHandler : HttpMessageHandler
     private readonly List<int> _transactionBytes = [];
     private readonly List<IReadOnlyList<string>> _transactionKeys = [];
     private int _getCount;
+    private int _postAttemptCount;
+
+    internal int FailPostAttempt { get; set; }
+
+    internal Func<string, string, string>? UpsertJsonTransform { get; set; }
 
     internal int GetCount {
         get {
@@ -91,6 +96,16 @@ internal sealed class RecordingActorStateHttpMessageHandler : HttpMessageHandler
             return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
         }
 
+        int postAttempt = Interlocked.Increment(ref _postAttemptCount);
+        if (FailPostAttempt == postAttempt) {
+            return new HttpResponseMessage(HttpStatusCode.InternalServerError) {
+                Content = new StringContent(
+                    "{\"errorCode\":\"ERR_SYNTHETIC_TRANSACTION_FAILURE\"}",
+                    Encoding.UTF8,
+                    "application/json"),
+            };
+        }
+
         byte[] body = await request.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
         using JsonDocument document = JsonDocument.Parse(body);
         var transactionKeys = new List<string>();
@@ -104,7 +119,10 @@ internal sealed class RecordingActorStateHttpMessageHandler : HttpMessageHandler
                 transactionKeys.Add(key);
                 string stateKey = CreateStateKey(actorId, key);
                 if (string.Equals(operation, "upsert", StringComparison.Ordinal)) {
-                    _state[stateKey] = stateRequest.GetProperty("value").GetRawText();
+                    string json = stateRequest.GetProperty("value").GetRawText();
+                    _state[stateKey] = UpsertJsonTransform is null
+                        ? json
+                        : UpsertJsonTransform(key, json);
                 }
                 else if (string.Equals(operation, "delete", StringComparison.Ordinal)) {
                     _state.Remove(stateKey);

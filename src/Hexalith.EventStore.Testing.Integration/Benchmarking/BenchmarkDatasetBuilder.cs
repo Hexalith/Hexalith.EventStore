@@ -1,9 +1,7 @@
 using System.Buffers.Binary;
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
-using System.Runtime.ExceptionServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -146,55 +144,36 @@ public sealed class BenchmarkDatasetBuilder : IDisposable {
                 }
             },
             cancellationToken).ConfigureAwait(false);
-        await ActivateFreshAggregatesAsync(aggregates, cancellationToken).ConfigureAwait(false);
+        await ValidateFreshAggregatesThroughLifecycleAsync(aggregates, cancellationToken).ConfigureAwait(false);
         validationStopwatch.Stop();
 
-        var allocationStopwatch = new Stopwatch();
-        var writeStopwatch = new Stopwatch();
-        long firstGlobalPosition = 0;
-        long lastGlobalPosition = 0;
+        var allocationStopwatch = Stopwatch.StartNew();
+        long firstGlobalPosition = await _globalPositionAllocator
+            .AllocateAsync(totalEventCount, cancellationToken)
+            .ConfigureAwait(false);
+        if (firstGlobalPosition <= 0) {
+            throw new InvalidOperationException("The global-position allocator returned a non-positive range start.");
+        }
+
+        long lastGlobalPosition = checked(firstGlobalPosition + totalEventCount - 1L);
+        allocationStopwatch.Stop();
+
         var positionedAggregates = new List<(BenchmarkAggregateDefinition Aggregate, int EventOffset)>(aggregates.Count);
-        Exception? seedException = null;
-        try {
-            allocationStopwatch.Start();
-            firstGlobalPosition = await _globalPositionAllocator
-                .AllocateAsync(totalEventCount, cancellationToken)
-                .ConfigureAwait(false);
-            if (firstGlobalPosition <= 0) {
-                throw new InvalidOperationException("The global-position allocator returned a non-positive range start.");
-            }
-
-            lastGlobalPosition = checked(firstGlobalPosition + totalEventCount - 1L);
-            allocationStopwatch.Stop();
-
-            int eventOffset = 0;
-            foreach (BenchmarkAggregateDefinition aggregate in aggregates) {
-                positionedAggregates.Add((aggregate, eventOffset));
-                eventOffset = checked(eventOffset + aggregate.Events.Count);
-            }
-
-            writeStopwatch.Start();
-            await ExecuteForEachAsync(
-                positionedAggregates,
-                (positioned, token) => WriteAggregateAsync(
-                    positioned.Aggregate,
-                    checked(firstGlobalPosition + positioned.EventOffset),
-                    token),
-                cancellationToken).ConfigureAwait(false);
-            writeStopwatch.Stop();
+        int eventOffset = 0;
+        foreach (BenchmarkAggregateDefinition aggregate in aggregates) {
+            positionedAggregates.Add((aggregate, eventOffset));
+            eventOffset = checked(eventOffset + aggregate.Events.Count);
         }
-        catch (Exception ex) {
-            seedException = ex;
-            throw;
-        }
-        finally {
-            try {
-                await DeactivateAggregatesAsync(aggregates, CancellationToken.None).ConfigureAwait(false);
-            }
-            catch (Exception deactivationException) when (seedException is not null) {
-                RecordSecondaryDeactivationFailure(seedException, deactivationException);
-            }
-        }
+
+        var writeStopwatch = Stopwatch.StartNew();
+        await ExecuteForEachAsync(
+            positionedAggregates,
+            (positioned, token) => WriteAggregateWithLifecycleAsync(
+                positioned.Aggregate,
+                checked(firstGlobalPosition + positioned.EventOffset),
+                token),
+            cancellationToken).ConfigureAwait(false);
+        writeStopwatch.Stop();
 
         var readBackStopwatch = Stopwatch.StartNew();
         await ExecuteForEachAsync(
@@ -648,7 +627,8 @@ public sealed class BenchmarkDatasetBuilder : IDisposable {
 
         var operations = new List<byte[]>(_options.MaxOperationsPerTransaction);
         int transactionBytes = EmptyTransactionBytes;
-        for (int sequence = 1; sequence <= eventCount; sequence++) {
+        for (int index = 0; index < eventCount; index++) {
+            int sequence = checked(index + 1);
             transactionBytes = await AppendOperationAsync(
                 identity,
                 operations,
@@ -699,65 +679,59 @@ public sealed class BenchmarkDatasetBuilder : IDisposable {
         }
     }
 
-    private async Task ActivateFreshAggregatesAsync(
-        IReadOnlyList<BenchmarkAggregateDefinition> aggregates,
-        CancellationToken cancellationToken) {
-        var activationAttempts = new ConcurrentBag<AggregateIdentity>();
-        try {
-            await ExecuteForEachAggregateAsync(
-                aggregates,
-                async (aggregate, token) => {
-                    activationAttempts.Add(aggregate.Identity);
-                    AggregateStreamMetadata metadata = await _actorLifecycle
-                        .ActivateAsync(aggregate.Identity, token)
-                        .ConfigureAwait(false);
-                    if (metadata.Exists || metadata.CurrentSequence != 0) {
-                        throw new InvalidOperationException(
-                            $"Benchmark dataset cannot overwrite production-visible aggregate stream '{aggregate.Identity.ActorId}'.");
-                    }
-                },
-                cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception activationException) {
-            try {
-                await DeactivateIdentitiesAsync([.. activationAttempts], CancellationToken.None).ConfigureAwait(false);
-            }
-            catch (Exception deactivationException) {
-                RecordSecondaryDeactivationFailure(activationException, deactivationException);
-            }
-
-            throw;
-        }
-    }
-
-    private async Task DeactivateAggregatesAsync(
+    private async Task ValidateFreshAggregatesThroughLifecycleAsync(
         IReadOnlyList<BenchmarkAggregateDefinition> aggregates,
         CancellationToken cancellationToken) =>
-        await DeactivateIdentitiesAsync(
-            [.. aggregates.Select(static aggregate => aggregate.Identity)],
+        await ExecuteForEachAggregateAsync(
+            aggregates,
+            (aggregate, token) => ExecuteFreshActorPhaseAsync(
+                aggregate.Identity,
+                action: null,
+                token),
             cancellationToken).ConfigureAwait(false);
 
-    private async Task DeactivateIdentitiesAsync(
-        IReadOnlyList<AggregateIdentity> identities,
+    private Task WriteAggregateWithLifecycleAsync(
+        BenchmarkAggregateDefinition aggregate,
+        long firstGlobalPosition,
+        CancellationToken cancellationToken) =>
+        ExecuteFreshActorPhaseAsync(
+            aggregate.Identity,
+            token => WriteAggregateAsync(aggregate, firstGlobalPosition, token),
+            cancellationToken);
+
+    private async Task ExecuteFreshActorPhaseAsync(
+        AggregateIdentity identity,
+        Func<CancellationToken, Task>? action,
         CancellationToken cancellationToken) {
-        var failures = new ConcurrentQueue<Exception>();
-        await ExecuteForEachAsync(
-            identities,
-            async (identity, token) => {
-                try {
-                    await _actorLifecycle.DeactivateAsync(identity, token).ConfigureAwait(false);
-                }
-                catch (Exception ex) {
-                    failures.Enqueue(ex);
-                }
-            },
-            cancellationToken).ConfigureAwait(false);
-        if (failures.Count == 1 && failures.TryDequeue(out Exception? singleFailure)) {
-            ExceptionDispatchInfo.Capture(singleFailure).Throw();
-        }
+        bool activationAttempted = false;
+        Exception? phaseException = null;
+        try {
+            activationAttempted = true;
+            AggregateStreamMetadata metadata = await _actorLifecycle
+                .ActivateAsync(identity, cancellationToken)
+                .ConfigureAwait(false);
+            if (metadata.Exists || metadata.CurrentSequence != 0) {
+                throw new InvalidOperationException(
+                    $"Benchmark dataset cannot overwrite production-visible aggregate stream '{identity.ActorId}'.");
+            }
 
-        if (!failures.IsEmpty) {
-            throw new AggregateException("One or more benchmark aggregate actors could not be deactivated.", failures);
+            if (action is not null) {
+                await action(cancellationToken).ConfigureAwait(false);
+            }
+        }
+        catch (Exception ex) {
+            phaseException = ex;
+            throw;
+        }
+        finally {
+            if (activationAttempted) {
+                try {
+                    await _actorLifecycle.DeactivateAsync(identity, CancellationToken.None).ConfigureAwait(false);
+                }
+                catch (Exception deactivationException) when (phaseException is not null) {
+                    RecordSecondaryDeactivationFailure(phaseException, deactivationException);
+                }
+            }
         }
     }
 
@@ -896,6 +870,7 @@ public sealed class BenchmarkDatasetBuilder : IDisposable {
                 ?? throw new InvalidOperationException(
                     $"Benchmark snapshot is missing after write for '{aggregate.Identity.ActorId}'.");
             if (snapshot.SequenceNumber != aggregate.Snapshot.SequenceNumber
+                || snapshot.CreatedAt != aggregate.Snapshot.CreatedAt
                 || !string.Equals(snapshot.Domain, aggregate.Identity.Domain, StringComparison.Ordinal)
                 || !string.Equals(snapshot.AggregateId, aggregate.Identity.AggregateId, StringComparison.Ordinal)
                 || !string.Equals(snapshot.TenantId, aggregate.Identity.TenantId, StringComparison.Ordinal)

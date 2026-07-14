@@ -14,6 +14,8 @@ internal sealed class RecordingBenchmarkActorLifecycle : IBenchmarkActorLifecycl
 
     internal Exception? DeactivationException { get; set; }
 
+    internal int DeactivationFailureAtCount { get; set; }
+
     internal int DeactivationCount => Volatile.Read(ref _deactivationCount);
 
     public Task<AggregateStreamMetadata> ActivateAsync(
@@ -33,8 +35,9 @@ internal sealed class RecordingBenchmarkActorLifecycle : IBenchmarkActorLifecycl
         AggregateIdentity identity,
         CancellationToken cancellationToken = default) {
         cancellationToken.ThrowIfCancellationRequested();
-        Interlocked.Increment(ref _deactivationCount);
-        if (DeactivationException is not null) {
+        int deactivationCount = Interlocked.Increment(ref _deactivationCount);
+        if (DeactivationException is not null
+            && (DeactivationFailureAtCount == 0 || DeactivationFailureAtCount == deactivationCount)) {
             return Task.FromException(DeactivationException);
         }
 
