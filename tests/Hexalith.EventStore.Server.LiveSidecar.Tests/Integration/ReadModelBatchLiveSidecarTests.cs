@@ -3,6 +3,7 @@ using Dapr.Client;
 using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures;
 
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 using Shouldly;
@@ -118,6 +119,126 @@ public class ReadModelBatchLiveSidecarTests {
             .Version.ShouldBe(2);
     }
 
+    [Fact]
+    [Trait("Tier", "3")]
+    public async Task PartialPrefix_PreservesOldVisibleView_ThenSameIdentityConverges() {
+        _fixture.ThrowIfHostStopped();
+        using DaprClient client = CreateClient();
+        var store = new DaprReadModelStore(client, Options.Create(new ReadModelBatchOptions()));
+
+        string unique = Guid.NewGuid().ToString("N");
+        string tenant = $"rmb-{unique}";
+        string detailKey = $"{tenant}:detail";
+        string indexKey = $"{tenant}:index";
+        var scope = new ReadModelBatchScope(StoreName, tenant, "counter", "agg-1", "counterView", $"01BATCH{unique}");
+        var batch = new ReadModelBatch(
+            scope,
+            [
+                ReadModelBatchOperation.Write(detailKey, new Detail(2), ReadModelBatchConcurrency.LastWrite),
+                ReadModelBatchOperation.Write(indexKey, new IndexEntry(2), ReadModelBatchConcurrency.LastWrite),
+            ]);
+
+        await client.SaveStateAsync(StoreName, detailKey, new Detail(1));
+        await client.SaveStateAsync(StoreName, indexKey, new IndexEntry(1));
+
+        var fault = new ReadModelBatchLiveFaultInjector(ReadModelBatchPhase.AfterInstallOperation, 0);
+        ReadModelBatchResult interrupted = await ExecuteWithFaultAsync(client, batch, fault);
+
+        interrupted.Status.ShouldBe(ReadModelBatchStatus.Incomplete);
+        (await store.GetAsync<Detail>(StoreName, detailKey)).Value!.Version.ShouldBe(1);
+        (await store.GetAsync<IndexEntry>(StoreName, indexKey)).Value!.Count.ShouldBe(1);
+
+        await using ConnectionMultiplexer redis = await ConnectRedisAsync();
+        string rawDetail = System.Text.Encoding.UTF8.GetString((await ReadStateJsonAsync(redis.GetDatabase(), detailKey))!);
+        rawDetail.ShouldContain("\"$hxrmb\":1");
+
+        ReadModelBatchResult retry = await store.ExecuteAsync(batch);
+        retry.Status.ShouldBe(ReadModelBatchStatus.Completed);
+        System.Text.Json.JsonSerializer.Deserialize<Detail>(await ReadStateJsonAsync(redis.GetDatabase(), detailKey)!, s_json)!
+            .Version.ShouldBe(2);
+        System.Text.Json.JsonSerializer.Deserialize<IndexEntry>(await ReadStateJsonAsync(redis.GetDatabase(), indexKey)!, s_json)!
+            .Count.ShouldBe(2);
+    }
+
+    [Fact]
+    [Trait("Tier", "3")]
+    public async Task ConflictAfterPartialInstall_AbortsAndRestoresPreviousView() {
+        _fixture.ThrowIfHostStopped();
+        using DaprClient client = CreateClient();
+        var store = new DaprReadModelStore(client, Options.Create(new ReadModelBatchOptions()));
+
+        string unique = Guid.NewGuid().ToString("N");
+        string tenant = $"rmb-{unique}";
+        string detailKey = $"{tenant}:detail";
+        string indexKey = $"{tenant}:index";
+        var scope = new ReadModelBatchScope(StoreName, tenant, "counter", "agg-1", "counterView", $"01BATCH{unique}");
+
+        await client.SaveStateAsync(StoreName, detailKey, new Detail(1));
+        await client.SaveStateAsync(StoreName, indexKey, new IndexEntry(1));
+        (_, string staleIndexEtag) = await client.GetStateAndETagAsync<IndexEntry>(StoreName, indexKey);
+        await client.SaveStateAsync(StoreName, indexKey, new IndexEntry(2));
+
+        var batch = new ReadModelBatch(
+            scope,
+            [
+                ReadModelBatchOperation.Write(detailKey, new Detail(3), ReadModelBatchConcurrency.LastWrite),
+                ReadModelBatchOperation.Write(indexKey, new IndexEntry(3), ReadModelBatchConcurrency.Match(staleIndexEtag)),
+            ]);
+
+        ReadModelBatchResult result = await store.ExecuteAsync(batch);
+
+        result.Status.ShouldBe(ReadModelBatchStatus.Conflict);
+        result.ConflictKind.ShouldBe(ReadModelBatchConflictKind.Optimistic);
+        (await store.GetAsync<Detail>(StoreName, detailKey)).Value!.Version.ShouldBe(1);
+        (await store.GetAsync<IndexEntry>(StoreName, indexKey)).Value!.Count.ShouldBe(2);
+
+        await using ConnectionMultiplexer redis = await ConnectRedisAsync();
+        System.Text.Json.JsonSerializer.Deserialize<Detail>(await ReadStateJsonAsync(redis.GetDatabase(), detailKey)!, s_json)!
+            .Version.ShouldBe(1);
+        System.Text.Json.JsonSerializer.Deserialize<IndexEntry>(await ReadStateJsonAsync(redis.GetDatabase(), indexKey)!, s_json)!
+            .Count.ShouldBe(2);
+        (await ResolveMarkerJsonAsync(redis.GetDatabase(), scope.ComputeScopeHash()))!
+            .ShouldContain("\"st\":3");
+    }
+
+    [Fact]
+    [Trait("Tier", "3")]
+    public async Task PostDispatchCancellation_ReconcilesCommittedBatchWithoutRollback() {
+        _fixture.ThrowIfHostStopped();
+        using DaprClient client = CreateClient();
+        var store = new DaprReadModelStore(client, Options.Create(new ReadModelBatchOptions()));
+
+        string unique = Guid.NewGuid().ToString("N");
+        string tenant = $"rmb-{unique}";
+        string detailKey = $"{tenant}:detail";
+        string indexKey = $"{tenant}:index";
+        var scope = new ReadModelBatchScope(StoreName, tenant, "counter", "agg-1", "counterView", $"01BATCH{unique}");
+        var batch = new ReadModelBatch(
+            scope,
+            [
+                ReadModelBatchOperation.Write(detailKey, new Detail(4), ReadModelBatchConcurrency.LastWrite),
+                ReadModelBatchOperation.Write(indexKey, new IndexEntry(4), ReadModelBatchConcurrency.LastWrite),
+            ]);
+        using var cancellation = new CancellationTokenSource();
+        var fault = new ReadModelBatchLiveFaultInjector(
+            ReadModelBatchPhase.AfterCommit,
+            -1,
+            _ => cancellation.Cancel());
+
+        ReadModelBatchResult result = await ExecuteWithFaultAsync(client, batch, fault, cancellation.Token);
+
+        result.Status.ShouldBe(ReadModelBatchStatus.Completed);
+        await using ConnectionMultiplexer redis = await ConnectRedisAsync();
+        System.Text.Json.JsonSerializer.Deserialize<Detail>(await ReadStateJsonAsync(redis.GetDatabase(), detailKey)!, s_json)!
+            .Version.ShouldBe(4);
+        System.Text.Json.JsonSerializer.Deserialize<IndexEntry>(await ReadStateJsonAsync(redis.GetDatabase(), indexKey)!, s_json)!
+            .Count.ShouldBe(4);
+        (await ResolveMarkerJsonAsync(redis.GetDatabase(), scope.ComputeScopeHash()))!
+            .ShouldContain("\"st\":4");
+
+        (await store.ExecuteAsync(batch)).Status.ShouldBe(ReadModelBatchStatus.AlreadyCompleted);
+    }
+
     /// <summary>
     /// Opt-in qualification probe (set <c>RUN_TX_QUALIFICATION_PROBE=1</c>). Issues a conditional multi-op
     /// transaction with one deliberately-stale ETag and inspects Redis for a partial commit. It fails
@@ -173,6 +294,16 @@ public class ReadModelBatchLiveSidecarTests {
 
     private DaprClient CreateClient() =>
         new DaprClientBuilder().UseGrpcEndpoint(_fixture.DaprGrpcEndpoint).Build();
+
+    private static Task<ReadModelBatchResult> ExecuteWithFaultAsync(
+        DaprClient client,
+        ReadModelBatch batch,
+        IReadModelBatchFaultInjector faultInjector,
+        CancellationToken cancellationToken = default) {
+        var accessor = new DaprReadModelBatchStateAccessor(client, batch.Scope.StoreName);
+        var protocol = new ReadModelBatchProtocol(accessor, new ReadModelBatchOptions(), NullLogger.Instance);
+        return protocol.ExecuteAsync(batch, faultInjector, cancellationToken);
+    }
 
     private static async Task<ConnectionMultiplexer> ConnectRedisAsync() =>
         await ConnectionMultiplexer.ConnectAsync("localhost:6379,abortConnect=false,allowAdmin=true");

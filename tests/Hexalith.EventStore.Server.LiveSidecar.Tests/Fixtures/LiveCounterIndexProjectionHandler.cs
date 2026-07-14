@@ -20,6 +20,7 @@ public sealed class LiveCounterIndexProjectionHandler(
         string dispatchId,
         CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(request);
+        faultControl.RecordIndexInvocation();
         if (faultControl.FailIndex) {
             return DomainProjectionHandlerResult.Retryable(ProjectionDispatchReasonCodes.PartialRetry);
         }

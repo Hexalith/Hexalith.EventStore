@@ -81,6 +81,16 @@ public sealed class ProjectionDispatchOptions {
             ProjectionDispatchReasonCodes.HandlerFailure,
             ProjectionDispatchReasonCodes.Cancellation,
             ProjectionDispatchReasonCodes.PartialRetry,
+            ProjectionDispatchReasonCodes.DeliveryAlreadyCompleted,
+            ProjectionDispatchReasonCodes.DeliveryInProgress,
+            ProjectionDispatchReasonCodes.DeliveryGap,
+            ProjectionDispatchReasonCodes.DeliveryIdentityConflict,
+            ProjectionDispatchReasonCodes.DeliveryReconciliationRequired,
+            ProjectionDispatchReasonCodes.DeliverySchemaRegression,
+            ProjectionDispatchReasonCodes.DeliveryStateUnavailable,
+            ProjectionDispatchReasonCodes.DeliveryLeaseReclaimed,
+            ProjectionDispatchReasonCodes.DeliveryReconciled,
+            ProjectionDispatchReasonCodes.DeliveryRebuildRequired,
         }.Max(static value => value.Length);
         ArgumentOutOfRangeException.ThrowIfLessThan(MaxReasonCodeBytes, minimumReasonCodeBytes);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(MaxReasonCodeBytes, ProjectionDispatchReasonCodes.MaxAsciiBytes);

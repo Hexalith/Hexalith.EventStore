@@ -420,8 +420,21 @@ public sealed class DaprProjectionDeliveryRetryScheduler(
         ArgumentOutOfRangeException.ThrowIfNegative(workItem.Attempt);
         ArgumentNullException.ThrowIfNull(workItem.PendingRoutes);
         ArgumentNullException.ThrowIfNull(workItem.TerminalRoutes);
+        ArgumentNullException.ThrowIfNull(workItem.ReservationFencingTokens);
         if (workItem.PendingRoutes.Count == 0 && workItem.TerminalRoutes.Count == 0) {
             throw new ArgumentException("Retry work must retain at least one pending or terminal route.", nameof(workItem));
+        }
+
+        string[] allRoutes = [.. workItem.PendingRoutes.Concat(workItem.TerminalRoutes)];
+        if (allRoutes.Any(string.IsNullOrWhiteSpace)
+            || allRoutes.Distinct(StringComparer.Ordinal).Count() != allRoutes.Length
+            || workItem.ReservationFencingTokens.Any(pair =>
+                string.IsNullOrWhiteSpace(pair.Key)
+                || pair.Value <= 0
+                || !workItem.PendingRoutes.Contains(pair.Key, StringComparer.Ordinal))) {
+            throw new ArgumentException(
+                "Retry routes and reservation fencing tokens must be unique, positive, and pending-route scoped.",
+                nameof(workItem));
         }
     }
 

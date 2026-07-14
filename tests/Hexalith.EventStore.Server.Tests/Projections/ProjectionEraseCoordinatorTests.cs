@@ -36,6 +36,7 @@ public class ProjectionEraseCoordinatorTests {
     private static readonly string RebuildKey = ProjectionRebuildCheckpointStore.GetStateKey(
         new ProjectionRebuildCheckpointScope(TenantId, Domain, ProjectionName, AggregateId, OperationId));
     private static readonly string DeliveryKey = ProjectionCheckpointTracker.GetProjectionScopedStateKey(Identity, ProjectionName);
+    private static readonly string ReconciliationKey = ProjectionDeliveryStateKeys.GetReconciliationKey(Identity, ProjectionName);
 
     private readonly IProjectionReadModelAddressFactory _addressFactory = Substitute.For<IProjectionReadModelAddressFactory>();
     private readonly IReadModelConditionalEraser _readModelEraser = Substitute.For<IReadModelConditionalEraser>();
@@ -89,10 +90,11 @@ public class ProjectionEraseCoordinatorTests {
         ProjectionEraseResult result = await CreateSut().EraseAsync(Request());
 
         result.Kind.ShouldBe(ProjectionEraseOutcomeKind.Success);
-        result.TargetOutcomes.Select(o => o.TargetKey).ShouldBe([RmKey, RebuildKey, DeliveryKey]);
+        result.TargetOutcomes.Select(o => o.TargetKey).ShouldBe([RmKey, RebuildKey, ReconciliationKey, DeliveryKey]);
         result.TargetOutcomes.ShouldAllBe(o => o.Outcome == "Complete");
         _ = await _gateway.Received(1).RecordTargetOutcomeAsync(Arg.Any<AggregateIdentity>(), ProjectionName, OperationId, RmKey, "Complete", Arg.Any<CancellationToken>());
         _ = await _gateway.Received(1).RecordTargetOutcomeAsync(Arg.Any<AggregateIdentity>(), ProjectionName, OperationId, RebuildKey, "Complete", Arg.Any<CancellationToken>());
+        _ = await _gateway.Received(1).RecordTargetOutcomeAsync(Arg.Any<AggregateIdentity>(), ProjectionName, OperationId, ReconciliationKey, "Complete", Arg.Any<CancellationToken>());
         _ = await _gateway.Received(1).RecordTargetOutcomeAsync(Arg.Any<AggregateIdentity>(), ProjectionName, OperationId, DeliveryKey, "Complete", Arg.Any<CancellationToken>());
         _ = await _gateway.Received(1).CompleteEraseAsync(Arg.Any<AggregateIdentity>(), ProjectionName, OperationId, Arg.Any<CancellationToken>());
 
@@ -106,6 +108,7 @@ public class ProjectionEraseCoordinatorTests {
                 Arg.Any<CancellationToken>());
             _ = _gateway.RecordTargetOutcomeAsync(Arg.Any<AggregateIdentity>(), ProjectionName, OperationId, RmKey, "Complete", Arg.Any<CancellationToken>());
             _ = _gateway.RecordTargetOutcomeAsync(Arg.Any<AggregateIdentity>(), ProjectionName, OperationId, RebuildKey, "Complete", Arg.Any<CancellationToken>());
+            _ = _gateway.RecordTargetOutcomeAsync(Arg.Any<AggregateIdentity>(), ProjectionName, OperationId, ReconciliationKey, "Complete", Arg.Any<CancellationToken>());
             _ = _gateway.RecordTargetOutcomeAsync(Arg.Any<AggregateIdentity>(), ProjectionName, OperationId, DeliveryKey, "Complete", Arg.Any<CancellationToken>());
             _ = _gateway.CompleteEraseAsync(Arg.Any<AggregateIdentity>(), ProjectionName, OperationId, Arg.Any<CancellationToken>());
         });

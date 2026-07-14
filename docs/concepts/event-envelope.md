@@ -250,7 +250,7 @@ When events are published to DAPR pub/sub, they are wrapped in CloudEvents 1.0 f
 
 - **`cloudevent.source`** — `hexalith-eventstore/{tenantId}/{domain}` (e.g., `hexalith-eventstore/demo/counter`). This identifies which tenant and domain produced the event, enabling topic-level and source-level filtering. In a multi-tenant system, subscribers can use the source to process events from specific tenants independently.
 
-- **`cloudevent.id`** — `{correlationId}:{sequenceNumber}` (globally unique per event). This composite ID ensures idempotent delivery — subscribers can detect and skip duplicate events by checking whether they have already processed a given `cloudevent.id`. The combination of correlation ID and sequence number guarantees uniqueness across all aggregates and tenants.
+- **`cloudevent.id`** — the EventStore-generated persisted event `messageId`. This is the stable event identity across publication, drain recovery, and transport retries. Subscribers can use it to recognize the same persisted event; do not derive identity from correlation ID and sequence.
 
 Events follow the [CloudEvents 1.0 specification](https://cloudevents.io/), making them consumable by any CloudEvents-compatible subscriber — including non-.NET services, third-party event routers, and cloud-native event meshes.
 
@@ -273,11 +273,13 @@ For cross-backend idempotency, use EventStore-owned metadata:
 - `messageId`
 - `eventTypeName`
 - topic name
-- `cloudevent.id` (composite: `{correlationId}:{sequenceNumber}`)
+- `cloudevent.id` (the persisted EventStore `messageId`)
 
 Do not use broker-specific receipt IDs, Kafka offsets, Service Bus lock tokens, delivery counts, subscriber retry counts, or transport-specific handles as the primary idempotency key. Those values are useful for broker operations, but they are not portable across DAPR pub/sub backends.
 
 Ordering has the same boundary. EventStore persists events with a gapless `sequenceNumber` per aggregate and publishes/drains each persisted range in sequence order. Broker delivery order and subscriber processing order remain backend- and topology-dependent. Kafka partition ordering requires a stable partition key and proof; Azure Service Bus ordered processing requires session-enabled topics/subscriptions and a stable session ID. EventStore does not currently emit backend-specific `partitionKey`, `__key`, `SessionId`, or `PartitionKey` publish metadata, so those backend ordering claims must be treated as configured or documented-only until explicit proof is captured.
+
+`sequenceNumber` is meaningful only inside `(tenantId, domain, aggregateId)`. It is not a global event order and must not be used alone as a deduplication key. The production named-projection path combines the persisted `messageId`, aggregate-local sequence, canonical content fingerprint, and projection scope; see [Projection delivery guarantees](projection-delivery.md).
 
 ## Security Considerations
 

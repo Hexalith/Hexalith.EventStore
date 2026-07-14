@@ -18,6 +18,7 @@ using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
+using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Testing.Fakes;
 
 using Microsoft.AspNetCore.Builder;
@@ -137,6 +138,8 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
 
             await VerifyAppListeningAsync().ConfigureAwait(false);
 
+            await ActivateProjectionDeliveryWriterProtocolAsync().ConfigureAwait(false);
+
             // Warm the actor runtime (placement dissemination + activation + Redis round-trip)
             // before any live-sidecar test asserts, so cold-start latency on CI runners does not
             // make the first real actor call fail open. See
@@ -148,6 +151,22 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
             await DisposeTestResourcesAsync().ConfigureAwait(false);
             RestoreDaprPortEnvironment();
             throw;
+        }
+    }
+
+    private async Task ActivateProjectionDeliveryWriterProtocolAsync()
+    {
+        IProjectionDeliveryCutover cutover = Services.GetRequiredService<IProjectionDeliveryCutover>();
+        ProjectionDeliveryCutoverStatus status = await cutover.ActivateAsync(
+            new ProjectionDeliveryCutoverRequest(
+                "2794ecba4c435de5e53603aa6080b8d32d669858",
+                "disposable-live-fixture-backup",
+                WritersQuiesced: true,
+                RetryWorkersQuiesced: true,
+                DowngradeProhibitedAcknowledged: true)).ConfigureAwait(false);
+        if (status != ProjectionDeliveryCutoverStatus.Activated)
+        {
+            throw new InvalidOperationException("Projection delivery writer protocol v2 could not be activated for the live fixture.");
         }
     }
 
@@ -227,6 +246,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         EventPublisher.Reset();
         DeadLetterPublisher.Reset();
         CommandStatusStore.Clear();
+        Services.GetRequiredService<LiveNamedProjectionFaultControl>().Reset();
     }
 
     /// <summary>

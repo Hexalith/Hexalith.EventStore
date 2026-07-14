@@ -5,7 +5,9 @@ using Hexalith.EventStore.DomainService;
 namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures;
 
 /// <summary>Persists the live counter detail read model through the coordinated batch store.</summary>
-public sealed class LiveCounterDetailProjectionHandler(IReadModelBatchStore batchStore) : IAsyncDomainProjectionHandler {
+public sealed class LiveCounterDetailProjectionHandler(
+    IReadModelBatchStore batchStore,
+    LiveNamedProjectionFaultControl faultControl) : IAsyncDomainProjectionHandler {
     /// <inheritdoc/>
     public string Domain => "counter";
 
@@ -18,6 +20,7 @@ public sealed class LiveCounterDetailProjectionHandler(IReadModelBatchStore batc
         string dispatchId,
         CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(request);
+        faultControl.RecordDetailInvocation();
         var scope = new ReadModelBatchScope(
             "statestore",
             request.TenantId,

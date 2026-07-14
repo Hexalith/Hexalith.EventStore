@@ -1,17 +1,16 @@
 using System.Security.Claims;
-
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
+using Hexalith.EventStore.Contracts.Identity;
+using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Contracts.Streams;
 using Hexalith.EventStore.Controllers;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Server.Projections;
-
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-
 using NSubstitute;
-
 using Shouldly;
 
 namespace Hexalith.EventStore.Server.Tests.Controllers;
@@ -609,12 +608,100 @@ public class AdminProjectionRebuildControllerTests {
         }
     }
 
+    [Fact]
+    public async Task ActivateDeliveryWriterProtocol_DeniesBeforeCutoverServiceMutation() {
+        IProjectionRebuildCheckpointStore store = Substitute.For<IProjectionRebuildCheckpointStore>();
+        IProjectionDeliveryCutover cutover = Substitute.For<IProjectionDeliveryCutover>();
+        using ServiceProvider services = new ServiceCollection().AddSingleton(cutover).BuildServiceProvider();
+        AdminProjectionRebuildController controller = CreateController(
+            store,
+            asGlobalAdmin: false,
+            serviceProvider: services);
+
+        IActionResult result = await controller.ActivateDeliveryWriterProtocolAsync(
+            new ProjectionDeliveryCutoverRequestBody("commit", "backup", true, true, true),
+            CancellationToken.None);
+
+        result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
+        _ = await cutover.DidNotReceiveWithAnyArgs().ActivateAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task ActivateDeliveryWriterProtocol_MapsSuccessfulAttestedCutover() {
+        IProjectionRebuildCheckpointStore store = Substitute.For<IProjectionRebuildCheckpointStore>();
+        IProjectionDeliveryCutover cutover = Substitute.For<IProjectionDeliveryCutover>();
+        _ = cutover.ActivateAsync(Arg.Any<ProjectionDeliveryCutoverRequest>(), Arg.Any<CancellationToken>())
+            .Returns(ProjectionDeliveryCutoverStatus.Activated);
+        using ServiceProvider services = new ServiceCollection().AddSingleton(cutover).BuildServiceProvider();
+        AdminProjectionRebuildController controller = CreateController(
+            store,
+            asGlobalAdmin: true,
+            serviceProvider: services);
+
+        IActionResult result = await controller.ActivateDeliveryWriterProtocolAsync(
+            new ProjectionDeliveryCutoverRequestBody("commit-abc", "backup-7", true, true, true),
+            CancellationToken.None);
+
+        result.ShouldBeOfType<OkObjectResult>();
+        _ = await cutover.Received(1).ActivateAsync(
+            Arg.Is<ProjectionDeliveryCutoverRequest>(request =>
+                request.CutoverCommit == "commit-abc"
+                && request.BackupReference == "backup-7"
+                && request.WritersQuiesced
+                && request.RetryWorkersQuiesced
+                && request.DowngradeProhibitedAcknowledged),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ReconcileDelivery_AttributesJwtSubjectAndPassesExactScope() {
+        IProjectionRebuildCheckpointStore store = Substitute.For<IProjectionRebuildCheckpointStore>();
+        IProjectionDeliveryReconciler reconciler = Substitute.For<IProjectionDeliveryReconciler>();
+        _ = reconciler.ReconcileFromEventStoreAsync(
+                Arg.Any<AggregateIdentity>(),
+                "order-detail",
+                "operator-1",
+                Arg.Any<CancellationToken>())
+            .Returns(new ProjectionDeliveryReconciliationResult(
+                ProjectionDeliveryReconciliationStatus.Completed,
+                ProjectionDispatchReasonCodes.DeliveryReconciled,
+                7));
+        using ServiceProvider services = new ServiceCollection().AddSingleton(reconciler).BuildServiceProvider();
+        AdminProjectionRebuildController controller = CreateController(
+            store,
+            asGlobalAdmin: true,
+            serviceProvider: services);
+
+        IActionResult result = await controller.ReconcileDeliveryFromEventStoreAsync(
+            Tenant,
+            "order-detail",
+            "sales",
+            "order-42",
+            CancellationToken.None);
+
+        result.ShouldBeOfType<OkObjectResult>();
+        _ = await reconciler.Received(1).ReconcileFromEventStoreAsync(
+            Arg.Is<AggregateIdentity>(identity =>
+                identity.TenantId == Tenant
+                && identity.Domain == "sales"
+                && identity.AggregateId == "order-42"),
+            "order-detail",
+            "operator-1",
+            Arg.Any<CancellationToken>());
+    }
+
     private static AdminProjectionRebuildController CreateController(
         IProjectionRebuildCheckpointStore store,
         bool asGlobalAdmin,
         IProjectionRebuildOrchestrator? rebuildOrchestrator = null,
-        IProjectionEraseCoordinator? eraseCoordinator = null)
-        => new(store, NullLogger<AdminProjectionRebuildController>.Instance, rebuildOrchestrator, eraseCoordinator) {
+        IProjectionEraseCoordinator? eraseCoordinator = null,
+        IServiceProvider? serviceProvider = null)
+        => new(
+            store,
+            NullLogger<AdminProjectionRebuildController>.Instance,
+            rebuildOrchestrator,
+            eraseCoordinator,
+            serviceProvider) {
             ControllerContext = new ControllerContext {
                 HttpContext = new DefaultHttpContext {
                     User = CreatePrincipal(asGlobalAdmin),

@@ -4,7 +4,7 @@ baseline_commit: 5223e9c9c2f0dd71673003c710b8739efc8484ff
 
 # Story 1.13: Projection Handler Delivery Idempotency
 
-Status: ready-for-dev
+Status: done
 
 **Requirements covered:** FR7, FR36, NFR6, NFR7, NFR16  
 **Governed by:** AD-7, AD-8, AD-10, AD-12, AD-19, AD-20  
@@ -144,51 +144,69 @@ These decisions are part of the story. If the final Story 1.12 code contradicts 
 
 ## Tasks / Subtasks
 
-- [ ] **Task 0: Satisfy direct-contract and batch-production gates** (AC: 4, 6)
-  - [ ] Re-read the final landed Story 1.9 and Story 1.12 artifacts/code. Confirm the scoped checkpoint/lifecycle seams, v2 envelope, named coordinator, per-route retry item, dispatch identity, and outcome mapping; stop on a direct contradiction.
-  - [ ] Before wiring Story 1.10 batching into named production dispatch, make `ReadModelBatchLiveSidecarTests` pass against real DAPR/Redis and add the deferred partial-prefix old-view, conflict/abort restoration, and post-dispatch cancellation/reconciliation scenarios.
-  - [ ] Capture the exact commands, runtime/component versions, fixture health, and persisted proof. The earlier fixture exit 144 is not a pass.
-  - [ ] Define and rehearse the no-mixed-writer maintenance cutover, store-level v2 protocol marker, quiescence/readiness checks, state backup, rollback boundary, and downgrade prohibition before migrating an existing environment.
+- [x] **Task 0: Satisfy direct-contract and batch-production gates** (AC: 4, 6)
+  - [x] Re-read the final landed Story 1.9 and Story 1.12 artifacts/code. Confirm the scoped checkpoint/lifecycle seams, v2 envelope, named coordinator, per-route retry item, dispatch identity, and outcome mapping; stop on a direct contradiction.
+  - [x] Before wiring Story 1.10 batching into named production dispatch, make `ReadModelBatchLiveSidecarTests` pass against real DAPR/Redis and add the deferred partial-prefix old-view, conflict/abort restoration, and post-dispatch cancellation/reconciliation scenarios.
+  - [x] Capture the exact commands, runtime/component versions, fixture health, and persisted proof. The earlier fixture exit 144 is not a pass.
+  - [x] Define and rehearse the no-mixed-writer maintenance cutover, store-level v2 protocol marker, quiescence/readiness checks, state backup, rollback boundary, and downgrade prohibition before migrating an existing environment.
 
-- [ ] **Task 1: Implement the versioned delivery-state contract and migration** (AC: 1, 2, 3, 5)
-  - [ ] Add one-type-per-file state, receipt, reservation, admission/result, options, validator, and internal state-store abstractions under `Hexalith.EventStore.Server/Projections` and configuration.
-  - [ ] Refactor the projection-scoped part of `ProjectionCheckpointTracker` to read/write the compatible versioned row without changing released `IProjectionCheckpointTracker` behavior or erasing extra delivery fields.
-  - [ ] Implement ETag/first-write transitions, bounded retry, zero-state creation, sequence-only migration classification, writer-version regression detection, read-back classification, and deterministic compaction using `TimeProvider`.
-  - [ ] Add the authenticated, tenant/scope-authorized maintenance-only EventStore hydration/reconciliation seam, operator attribution, audit evidence, and provenance; prove it preserves the sequence and never invokes handlers or mutates read models/batches.
-  - [ ] Keep the current key when feasible. If a companion is required, update erasure manifest/resume/read-back tests before using it.
+- [x] **Task 1: Implement the versioned delivery-state contract and migration** (AC: 1, 2, 3, 5)
+  - [x] Add one-type-per-file state, receipt, reservation, admission/result, options, validator, and internal state-store abstractions under `Hexalith.EventStore.Server/Projections` and configuration.
+  - [x] Refactor the projection-scoped part of `ProjectionCheckpointTracker` to read/write the compatible versioned row without changing released `IProjectionCheckpointTracker` behavior or erasing extra delivery fields.
+  - [x] Implement ETag/first-write transitions, bounded retry, zero-state creation, sequence-only migration classification, writer-version regression detection, read-back classification, and deterministic compaction using `TimeProvider`.
+  - [x] Add the authenticated, tenant/scope-authorized maintenance-only EventStore hydration/reconciliation seam, operator attribution, audit evidence, and provenance; prove it preserves the sequence and never invokes handlers or mutates read models/batches.
+  - [x] Keep the current key when feasible. If a companion is required, update erasure manifest/resume/read-back tests before using it.
 
-- [ ] **Task 2: Freeze and test canonical delivery fingerprints** (AC: 1, 3, 5)
-  - [ ] Implement the exact v1 domain-separated event/prefix chain and byte encoding; reject missing identity and malformed/non-contiguous history before state mutation.
-  - [ ] Add golden vectors covering `H0`, `E(n)`, multi-event `Hn`, null/empty optional fields, binary payloads, culture/time-zone invariance, scope/projection separation, every field change, retained-overlap changes, and ordered prefix extension.
-  - [ ] Prove no payload/digest/key/ETag leaks through serialization diagnostics, logs, traces, or exception text.
+- [x] **Task 2: Freeze and test canonical delivery fingerprints** (AC: 1, 3, 5)
+  - [x] Implement the exact v1 domain-separated event/prefix chain and byte encoding; reject missing identity and malformed/non-contiguous history before state mutation.
+  - [x] Add golden vectors covering `H0`, `E(n)`, multi-event `Hn`, null/empty optional fields, binary payloads, culture/time-zone invariance, scope/projection separation, every field change, retained-overlap changes, and ordered prefix extension.
+  - [x] Prove no payload/digest/key/ETag leaks through serialization diagnostics, logs, traces, or exception text.
 
-- [ ] **Task 3: Add the delivery idempotency coordinator** (AC: 1-5)
-  - [ ] Implement the full admission matrix, conditional claim/complete/release/reclaim transitions, fencing-token checks, checkpoint convergence, and support-safe reason mapping outside the large orchestrator class.
-  - [ ] Extend Story 1.12's durable retry state and worker for same-identity reservation recovery; do not create another queue or dispatch ID.
-  - [ ] Route out-of-retention and sequence-only migration states to durable authorized reconciliation without invoking a handler.
+- [x] **Task 3: Add the delivery idempotency coordinator** (AC: 1-5)
+  - [x] Implement the full admission matrix, conditional claim/complete/release/reclaim transitions, fencing-token checks, checkpoint convergence, and support-safe reason mapping outside the large orchestrator class.
+  - [x] Extend Story 1.12's durable retry state and worker for same-identity reservation recovery; do not create another queue or dispatch ID.
+  - [x] Route out-of-retention and sequence-only migration states to durable authorized reconciliation without invoking a handler.
 
-- [ ] **Task 4: Integrate per-route admission with final Story 1.12 dispatch** (AC: 2, 3, 4)
-  - [ ] Update the focused named-dispatch/orchestration collaborator to partition routes, reserve before `/project/v2`, preserve deterministic route order, and synthesize truthful outcomes for skipped routes.
-  - [ ] Complete only after `Completed`/`AlreadyCompleted` durable proof and any compatibility actor write/ETag; leave or release reservations according to the uncertainty rules.
-  - [ ] Preserve legacy `/project` compatibility, lifecycle admission, catalog drift handling, per-projection checkpoint independence, and immediate/polling/retry ownership.
+- [x] **Task 4: Integrate per-route admission with final Story 1.12 dispatch** (AC: 2, 3, 4)
+  - [x] Update the focused named-dispatch/orchestration collaborator to partition routes, reserve before `/project/v2`, preserve deterministic route order, and synthesize truthful outcomes for skipped routes.
+  - [x] Complete only after `Completed`/`AlreadyCompleted` durable proof and any compatibility actor write/ETag; leave or release reservations according to the uncertainty rules.
+  - [x] Preserve legacy `/project` compatibility, lifecycle admission, catalog drift handling, per-projection checkpoint independence, and immediate/polling/retry ownership.
 
-- [ ] **Task 5: Prove state-machine behavior deterministically** (AC: 1-5)
-  - [ ] Cover concurrent cross-replica-style CAS claims; completed and active duplicates; retained lower delivery; gap then missing; reverse trigger order; same sequence/different ID; same ID/different sequence or content; malformed order; and tenant/projection isolation.
-  - [ ] Inject failure/cancellation before handler, after batch receipt, before delivery completion, during completion CAS, and after completion before retry cleanup. Every retry must converge or remain explicitly retryable/indeterminate without duplicate writes.
-  - [ ] Cover lease expiry/fenced reclaim, a late expired handler resuming after the new attempt, routes without reclaim-safe idempotency, exhausted ETag conflicts, 256/4096 compaction boundaries, below-floor reconciliation, zero and non-zero legacy hydration, cross-tenant/wrong-scope reconciliation denial, audit attribution, prefix/overlap mismatch, checkpoint drift, writer downgrade, global-marker survival across per-scope erasure, and erased aggregate recreation at sequence 1.
-  - [ ] Keep in-memory/fake externally observable behavior identical to DAPR behavior; do not repeat the generic event-marker fake/production asymmetry.
+- [x] **Task 5: Prove state-machine behavior deterministically** (AC: 1-5)
+  - [x] Cover concurrent cross-replica-style CAS claims; completed and active duplicates; retained lower delivery; gap then missing; reverse trigger order; same sequence/different ID; same ID/different sequence or content; malformed order; and tenant/projection isolation.
+  - [x] Inject failure/cancellation before handler, after batch receipt, before delivery completion, during completion CAS, and after completion before retry cleanup. Every retry must converge or remain explicitly retryable/indeterminate without duplicate writes.
+  - [x] Cover lease expiry/fenced reclaim, a late expired handler resuming after the new attempt, routes without reclaim-safe idempotency, exhausted ETag conflicts, 256/4096 compaction boundaries, below-floor reconciliation, zero and non-zero legacy hydration, cross-tenant/wrong-scope reconciliation denial, audit attribution, prefix/overlap mismatch, checkpoint drift, writer downgrade, global-marker survival across per-scope erasure, and erased aggregate recreation at sequence 1.
+  - [x] Keep in-memory/fake externally observable behavior identical to DAPR behavior; do not repeat the generic event-marker fake/production asymmetry.
 
-- [ ] **Task 6: Produce real production-path parity evidence** (AC: 6)
-  - [ ] Add a live-sidecar fixture that drives orchestration through DAPR `/project/v2`, final named dispatch, real detail/index handlers, `IReadModelBatchStore`, Redis/state store, delivery state, lifecycle state, retry state, and checkpoint.
-  - [ ] Run the six AC6 scenarios, including concurrent invocations from separate orchestrator instances. Inspect persisted values after quiescence and compare them field-for-field with one in-order application.
-  - [ ] Assert per-projection sibling isolation and batch identity reuse. Include active-reservation and partial-batch recovery, not only completed duplicate replay; assert completed/active duplicates, gaps, conflicts, and schema regression never invoke `/project/v2` or a handler.
-  - [ ] Save bounded evidence with exact repository SHA and runtime/component versions for Story 1.15; do not promote mock-only or skipped evidence.
+- [x] **Task 6: Produce real production-path parity evidence** (AC: 6)
+  - [x] Add a live-sidecar fixture that drives orchestration through DAPR `/project/v2`, final named dispatch, real detail/index handlers, `IReadModelBatchStore`, Redis/state store, delivery state, lifecycle state, retry state, and checkpoint.
+  - [x] Run the six AC6 scenarios, including concurrent invocations from separate orchestrator instances. Inspect persisted values after quiescence and compare them field-for-field with one in-order application.
+  - [x] Assert per-projection sibling isolation and batch identity reuse. Include active-reservation and partial-batch recovery, not only completed duplicate replay; assert completed/active duplicates, gaps, conflicts, and schema regression never invoke `/project/v2` or a handler.
+  - [x] Save bounded evidence with exact repository SHA and runtime/component versions for Story 1.15; do not promote mock-only or skipped evidence.
 
-- [ ] **Task 7: Document and guard the contract** (AC: 1-6)
-  - [ ] Update projection/replay and event-envelope documentation: at-least-once duplicate behavior, per-aggregate sequence semantics, EventStore `MessageId` identity, v2 guarantee boundary, defaults, migration, compaction, leases, and operator reconciliation.
-  - [ ] Correct stale guidance that derives CloudEvent identity from correlation/sequence; do not change the already-frozen persisted EventStore `MessageId` contract.
-  - [ ] Add registration/options validation, public API compatibility, serialization shape, reason-code bound, architecture-boundary, docs-link, and release-package guard tests.
-  - [ ] Restore/build `Hexalith.EventStore.slnx`, then run every affected test `.csproj` individually (including Contracts, Client, DomainService, Server, and Server.LiveSidecar), formatting/analyzers, `git diff --check`, and the required Tier-3 lane. Never run solution-level `dotnet test` and do not use `.sln` files.
+- [x] **Task 7: Document and guard the contract** (AC: 1-6)
+  - [x] Update projection/replay and event-envelope documentation: at-least-once duplicate behavior, per-aggregate sequence semantics, EventStore `MessageId` identity, v2 guarantee boundary, defaults, migration, compaction, leases, and operator reconciliation.
+  - [x] Correct stale guidance that derives CloudEvent identity from correlation/sequence; do not change the already-frozen persisted EventStore `MessageId` contract.
+  - [x] Add registration/options validation, public API compatibility, serialization shape, reason-code bound, architecture-boundary, docs-link, and release-package guard tests.
+  - [x] Restore/build `Hexalith.EventStore.slnx`, then run every affected test `.csproj` individually (including Contracts, Client, DomainService, Server, and Server.LiveSidecar), formatting/analyzers, `git diff --check`, and the required Tier-3 lane. Never run solution-level `dotnet test` and do not use `.sln` files.
+
+### Review Findings
+
+- [x] [Review][Patch] Active same-fence retries redispatch within the reservation lease [src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryIdempotencyCoordinator.cs:128]
+- [x] [Review][Patch] Reconciliation can clear a live delivery reservation [src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryReconciler.cs:43]
+- [x] [Review][Patch] Reconciliation overwrites schema-regressed or unsupported rows [src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryReconciler.cs:43]
+- [x] [Review][Patch] Hydration and attributable operator evidence are not atomic [src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryReconciler.cs:134]
+- [x] [Review][Patch] Transient history failures are misclassified as rebuild-required [src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryReconciler.cs:97]
+- [x] [Review][Patch] Reservation timestamps become stale across optimistic-concurrency retries [src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryIdempotencyCoordinator.cs:39]
+- [x] [Review][Patch] Current-row validation omits receipt and reservation invariants [src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryIdempotencyCoordinator.cs:355]
+- [x] [Review][Patch] Same-commit cutover races report false conflicts [src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryCutover.cs:31]
+- [x] [Review][Patch] History paging ignores cancellation between actor calls [src/Hexalith.EventStore.Server/Projections/EventStoreProjectionDeliveryHistoryReader.cs:38]
+- [x] [Review][Patch] Reconciliation retry exhaustion reports the preserved sequence as zero [src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryReconciler.cs:183]
+- [x] [Review][Patch] The concrete authoritative-history reader lacks paging and decryption verification [src/Hexalith.EventStore.Server/Projections/EventStoreProjectionDeliveryHistoryReader.cs:23]
+- [x] [Review][Patch] Real DAPR reconciliation-work persistence lacks an end-state assertion [src/Hexalith.EventStore.Server/Projections/DaprProjectionDeliveryStateStore.cs:103]
+- [x] [Review][Patch] Conflicting cutover-marker behavior lacks verification [src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryCutover.cs:21]
+- [x] [Review][Patch] Completion CAS exhaustion and retained retry work lack verification [src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryIdempotencyCoordinator.cs:223]
+- [x] [Review][Patch] Diagnostic outcome-to-tag mappings lack verification [src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryDiagnostics.cs:20]
 
 ## Dev Notes
 
@@ -249,14 +267,110 @@ GPT-5 Codex
 
 ### Debug Log References
 
+- 2026-07-14 Task 0 resumed after the final Story 1.9/1.12 artifacts landed. The earlier blockers are resolved: v2 outcomes require `Status`, the production endpoint recomputes route-catalog identity locally, and retry state is the final sharded v2 design. `ReadModelBatchLiveSidecarTests` now cover partial-prefix old-view preservation, conflict/abort restoration, and post-dispatch cancellation reconciliation; all six batch scenarios passed against real DAPR 1.18.1/Redis 6. The store-global writer marker, readiness gate, explicit backup/quiescence/no-downgrade activation attestations, downgrade classification, marker-survival rehearsal, and operator cutover runbook were then exercised successfully against the same live component.
 - 2026-07-14 Task 0 prerequisite audit halted implementation against the current landed Story 1.12 code. A follow-up review appended unresolved HIGH architecture decisions and patches to Story 1.12. Source verification confirmed direct Story 1.13 contract contradictions: an omitted v2 `ProjectionDispatchOutcome.Status` deserializes to numeric `Completed = 0`, so malformed wire input can fabricate durable success, and `DomainProjectionCatalogRegistry` authorizes only fingerprints issued in the current process, preventing the required cross-replica `/project/v2` production-path proof after replica selection or restart. Additional unresolved HIGH findings affect handler-local cancellation, bounded-envelope outcome truth, and catalog-size convergence. Per Task 0 and the Resolved Implementation Contract, Story 1.13 stopped before batch-gate expansion or implementation rather than weakening either contract. No production code or tests were changed; the unrelated dirty Story 1.12/deferred-work review edits and submodule checkout changes were preserved.
 - 2026-07-14 Task 0 prerequisite audit halted implementation before code changes. Story 1.12 remains `in-progress` with its approved HIGH P8 retry-ledger partitioning redesign and dependent P7 verification work not yet applied; the landed scheduler still stores all work under `projection-delivery-retry:ledger:v1`. Story 1.13 must extend the final Story 1.12 work item/store for reservation recovery, so implementing against the superseded global-ledger shape would violate the direct-prerequisite contract. Story 1.9 also remains `in-progress` with remediation R1-R3 outstanding. No Task 1-7 implementation or tests were started.
+- 2026-07-14 Tasks 1-5 implemented and deterministically verified. Cross-replica-style claims produce one reservation, completed/active duplicates fail safe, lease reclaim increments the fence, stale attempts cannot complete, unsafe reclaim records reconciliation, ETag exhaustion stays retryable, and compaction passed at both 256 and 4096 limits.
+- 2026-07-14 Tasks 6-7 completed. Production named dispatch passed in-order, completed duplicate, active concurrent duplicate, reverse trigger, gap-then-canonical, partial failure/retry, identity/content conflict, and downgraded-row sibling-isolation assertions against persisted detail/index, batch receipt, delivery/checkpoint, lifecycle baseline, and retry state.
+- 2026-07-14 Full affected-project validation completed without a solution-level test invocation. The implementation baseline marker/evidence remains `2794ecba4c435de5e53603aa6080b8d32d669858`; the workspace release-only HEAD advanced externally to `a62075a7a818b609beedfcaf04952c893abb6757` during validation.
+- 2026-07-14 Code-review chunk 1 remediation applied all 15 accepted patches. Focused review tests passed 63/63, the real DAPR/Redis atomic reconciliation assertion passed 1/1, the full Server test project passed 2564 with 25 declared skips, and the final transient-history audit passed 39/39 focused tests.
 
 ### Completion Notes List
 
-- Story context created from the canonical Epic 1/Story 1.13 contract, upstream implementation artifacts, architecture decisions, source inspection, git history, and current official DAPR behavior.
-- Validation resolved the checkpoint/ledger ownership, fingerprint, state machine, migration, retention, lease recovery, v2 compatibility, evidence, and hard-gate ambiguities before implementation.
+- Implemented the projection-scoped v2 delivery row, exact fingerprint chain, ETag-authoritative admission/completion/release/reclaim coordinator, bounded receipt retention, writer-protocol readiness/cutover, and attributable EventStore reconciliation without changing the frozen `/project/v2` envelope.
+- Integrated per-route reservation and truthful skip/failure outcomes into the final Story 1.12 coordinator. Stable retry work now carries only positive pending-route fencing tokens; handler/batch success, compatibility writes, delivery completion, and checkpoint advancement converge through the single delivery row.
+- Added bounded route/status/reason metrics and traces; delivery/retry diagnostics omit payloads, fingerprints/digests, state keys, ETags, work hashes, and exception messages.
+- Extended erasure ordering for the payload-free reconciliation companion key while preserving the store-global marker and existing lifecycle/migration-marker rules.
+- Added authenticated admin activation and reconciliation operations, JWT-subject audit attribution, downgrade regression detection, documentation, and the no-mixed-writer cutover/rollback runbook.
+- Real DAPR 1.18.1/Redis 6 proof covers all six AC6 scenario families plus schema-regression sibling isolation. The complete live project passed 42/42 tests; bounded evidence is in `docs/operations/projection-delivery-v2-evidence.md`.
+- Final validation: `Hexalith.EventStore.slnx` build succeeded with 0 warnings/errors; Contracts 702/702, Client 671/671, DomainService 128/128, Server 2539 passed with 25 declared skips, and Server.LiveSidecar 42/42. Changed-file whitespace/import formatting and `git diff --check` passed.
+- Code-review remediation closed all 15 chunk-1 findings: live reservations are never redispatched or reconciled away, hydration and operator evidence commit atomically, schema/history failures are classified explicitly, CAS/cutover/paging edge cases fail safely, and concrete telemetry, retry retention, decryption, and DAPR end states are verified.
 
 ### File List
 
-To be completed by the development agent.
+- `_bmad-output/implementation-artifacts/1-13-projection-handler-delivery-idempotency.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `docs/concepts/event-envelope.md`
+- `docs/concepts/projection-delivery.md`
+- `docs/concepts/projection-lifecycle.md`
+- `docs/operations/projection-delivery-v2-cutover.md`
+- `docs/operations/projection-delivery-v2-evidence.md`
+- `src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj`
+- `src/Hexalith.EventStore.Client/Projections/ProjectionDispatchOptions.cs`
+- `src/Hexalith.EventStore.Contracts/Projections/ProjectionDispatchReasonCodes.cs`
+- `src/Hexalith.EventStore.Server/Configuration/ProjectionDeliveryIdempotencyOptions.cs`
+- `src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs`
+- `src/Hexalith.EventStore.Server/Projections/DaprProjectionDeliveryRetryScheduler.cs`
+- `src/Hexalith.EventStore.Server/Projections/DaprProjectionDeliveryStateStore.cs`
+- `src/Hexalith.EventStore.Server/Projections/EventStoreProjectionDeliveryHistoryReader.cs`
+- `src/Hexalith.EventStore.Server/Projections/IProjectionDeliveryCheckpointStore.cs`
+- `src/Hexalith.EventStore.Server/Projections/IProjectionDeliveryCutover.cs`
+- `src/Hexalith.EventStore.Server/Projections/IProjectionDeliveryHistoryReader.cs`
+- `src/Hexalith.EventStore.Server/Projections/IProjectionDeliveryIdempotencyCoordinator.cs`
+- `src/Hexalith.EventStore.Server/Projections/IProjectionDeliveryReconciler.cs`
+- `src/Hexalith.EventStore.Server/Projections/IProjectionDeliveryStateStore.cs`
+- `src/Hexalith.EventStore.Server/Projections/NamedProjectionDispatchCoordinator.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionCheckpointTracker.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryAdmissionDisposition.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryAdmissionResult.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryCompletion.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryCutover.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryCutoverRequest.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryCutoverStatus.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryDiagnostics.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryEventDigest.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryFingerprint.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryFingerprintHistory.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryHistoryValidationException.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryIdempotencyCoordinator.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryMigrationProvenance.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryReceipt.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryReconciler.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryReconciliationResult.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryReconciliationStatus.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryReconciliationWork.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryReservation.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryRetryWorkItem.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryRetryWorker.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryState.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryStateClassification.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryStateClassifier.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryStateKeys.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryStateReadResult.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryWriterProtocol.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryWriterProtocolHealthCheck.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionEraseCoordinator.cs`
+- `src/Hexalith.EventStore/Controllers/AdminProjectionRebuildController.cs`
+- `src/Hexalith.EventStore/Controllers/ProjectionDeliveryCutoverRequestBody.cs`
+- `tests/Hexalith.EventStore.Contracts.Tests/Projections/ProjectionDispatchContractTests.cs`
+- `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DaprTestContainerFixture.cs`
+- `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/LiveCounterDetailProjectionHandler.cs`
+- `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/LiveCounterIndexProjectionHandler.cs`
+- `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/LiveNamedProjectionFaultControl.cs`
+- `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/NamedProjectionDispatchLiveSidecarTests.cs`
+- `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionDeliveryCutoverLiveSidecarTests.cs`
+- `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionEraseLiveSidecarTests.cs`
+- `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ReadModelBatchLiveFaultInjector.cs`
+- `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ReadModelBatchLiveSidecarTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Configuration/EventStoreServerServiceCollectionExtensionsTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Configuration/ProjectionDeliveryIdempotencyOptionsTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Controllers/AdminProjectionRebuildControllerTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/DaprProjectionDeliveryRetrySchedulerTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/EventStoreProjectionDeliveryHistoryReaderTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/InMemoryProjectionDeliveryStateStore.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/NamedProjectionDispatchCoordinatorTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionCheckpointTrackerTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionDeliveryCutoverTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionDeliveryDiagnosticsTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionDeliveryDocumentationTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionDeliveryFingerprintTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionDeliveryIdempotencyCoordinatorTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionDeliveryReconcilerTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionDeliveryStateContractTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionDeliveryWriterProtocolHealthCheckTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionEraseCoordinatorTests.cs`
+
+### Change Log
+
+- 2026-07-14: Implemented projection delivery idempotency, migration/reconciliation, operational cutover, bounded observability, production-path proof, and documentation; moved story to review.
+- 2026-07-14: Applied and verified all 15 chunk-1 code-review patches; moved story to done.

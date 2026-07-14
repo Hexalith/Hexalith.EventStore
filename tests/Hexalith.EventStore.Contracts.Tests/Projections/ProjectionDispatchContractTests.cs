@@ -109,6 +109,16 @@ public class ProjectionDispatchContractTests {
             ProjectionDispatchReasonCodes.HandlerFailure,
             ProjectionDispatchReasonCodes.Cancellation,
             ProjectionDispatchReasonCodes.PartialRetry,
+            ProjectionDispatchReasonCodes.DeliveryAlreadyCompleted,
+            ProjectionDispatchReasonCodes.DeliveryInProgress,
+            ProjectionDispatchReasonCodes.DeliveryGap,
+            ProjectionDispatchReasonCodes.DeliveryIdentityConflict,
+            ProjectionDispatchReasonCodes.DeliveryReconciliationRequired,
+            ProjectionDispatchReasonCodes.DeliverySchemaRegression,
+            ProjectionDispatchReasonCodes.DeliveryStateUnavailable,
+            ProjectionDispatchReasonCodes.DeliveryLeaseReclaimed,
+            ProjectionDispatchReasonCodes.DeliveryReconciled,
+            ProjectionDispatchReasonCodes.DeliveryRebuildRequired,
         ];
 
         reasonCodes.Distinct(StringComparer.Ordinal).Count().ShouldBe(reasonCodes.Length);

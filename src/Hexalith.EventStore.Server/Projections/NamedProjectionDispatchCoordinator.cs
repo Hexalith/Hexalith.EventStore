@@ -30,7 +30,8 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
     ILogger<NamedProjectionDispatchCoordinator> logger,
     IProjectionDeliveryRetryScheduler? retryScheduler = null,
     TimeProvider? timeProvider = null,
-    INamedProjectionCatalogRefresher? catalogRefresher = null) : INamedProjectionDispatchCoordinator {
+    INamedProjectionCatalogRefresher? catalogRefresher = null,
+    IProjectionDeliveryIdempotencyCoordinator? idempotencyCoordinator = null) : INamedProjectionDispatchCoordinator {
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
     private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
 
@@ -163,27 +164,32 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         HashSet<string> pendingRoutes = new(scheduledWork.PendingRoutes, StringComparer.Ordinal);
         List<string> admittedRoutes = [];
         var settledRoutes = new HashSet<string>(StringComparer.Ordinal);
+        var completedRoutes = new HashSet<string>(StringComparer.Ordinal);
+        var terminalRoutes = new HashSet<string>(scheduledWork.TerminalRoutes, StringComparer.Ordinal);
+        var reservations = new Dictionary<string, ProjectionDeliveryReservation>(StringComparer.Ordinal);
         foreach (string projectionType in catalogEntry.ProjectionTypes
             .Where(pendingRoutes.Contains)
             .Order(StringComparer.Ordinal)) {
             cancellationToken.ThrowIfCancellationRequested();
-            long deliveredSequence = await checkpointStore
-                .ReadDeliveredSequenceAsync(identity, projectionType, cancellationToken)
-                .ConfigureAwait(false);
-            if (deliveredSequence > highestSequence) {
-                Log.RouteNotAdmitted(
-                    logger,
-                    identity.TenantId,
-                    identity.Domain,
-                    identity.AggregateId,
-                    projectionType,
-                    ProjectionReasonCodes.CheckpointDrift);
+            if (idempotencyCoordinator is null) {
+                long deliveredSequence = await checkpointStore
+                    .ReadDeliveredSequenceAsync(identity, projectionType, cancellationToken)
+                    .ConfigureAwait(false);
+                if (deliveredSequence > highestSequence) {
+                    Log.RouteNotAdmitted(
+                        logger,
+                        identity.TenantId,
+                        identity.Domain,
+                        identity.AggregateId,
+                        projectionType,
+                        ProjectionReasonCodes.CheckpointDrift);
 
-                // A checkpoint already ahead of this head will never need this delivery. Treat the
-                // route as terminally settled for this work item (mirroring the v1 terminal no-op)
-                // so the item can converge and be deleted rather than deferring this route forever.
-                _ = settledRoutes.Add(projectionType);
-                continue;
+                    // A checkpoint already ahead of this head will never need this delivery. Treat the
+                    // route as terminally settled for this work item (mirroring the v1 terminal no-op)
+                    // so the item can converge and be deleted rather than deferring this route forever.
+                    _ = settledRoutes.Add(projectionType);
+                    continue;
+                }
             }
 
             if (!await lifecycleGateway
@@ -201,6 +207,42 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                 continue;
             }
 
+            if (idempotencyCoordinator is not null) {
+                ProjectionDeliveryAdmissionResult admission = await idempotencyCoordinator
+                    .TryAdmitAsync(
+                        identity,
+                        projectionType,
+                        projectionEvents,
+                        reclaimSafe: true,
+                        cancellationToken,
+                        scheduledWork.ReservationFencingTokens.TryGetValue(projectionType, out long token)
+                            ? token
+                            : null)
+                    .ConfigureAwait(false);
+                ProjectionDeliveryDiagnostics.RecordAdmission(projectionType, admission);
+                if (admission.Disposition == ProjectionDeliveryAdmissionDisposition.Dispatch) {
+                    admittedRoutes.Add(projectionType);
+                    reservations.Add(projectionType, admission.Reservation!);
+                    continue;
+                }
+
+                Log.RouteNotAdmitted(
+                    logger,
+                    identity.TenantId,
+                    identity.Domain,
+                    identity.AggregateId,
+                    projectionType,
+                    admission.ReasonCode ?? ProjectionDispatchReasonCodes.DeliveryStateUnavailable);
+                if (admission.Disposition == ProjectionDeliveryAdmissionDisposition.AlreadyCompleted) {
+                    _ = completedRoutes.Add(projectionType);
+                }
+                else if (admission.Disposition == ProjectionDeliveryAdmissionDisposition.Failed) {
+                    _ = terminalRoutes.Add(projectionType);
+                }
+
+                continue;
+            }
+
             admittedRoutes.Add(projectionType);
         }
 
@@ -209,9 +251,10 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
             // deferred routes remain this re-schedules with backoff, otherwise it deletes the item.
             await ReconcileRetryLedgerAsync(
                     scheduledWork,
-                    completedRoutes: new HashSet<string>(StringComparer.Ordinal),
-                    terminalRoutes: new HashSet<string>(scheduledWork.TerminalRoutes, StringComparer.Ordinal),
+                    completedRoutes,
+                    terminalRoutes,
                     settledRoutes,
+                    reservations,
                     dispatchOptions,
                     cancellationToken)
                 .ConfigureAwait(false);
@@ -239,7 +282,8 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                     scheduledWork,
                     ProjectionDispatchReasonCodes.PartialRetry,
                     dispatchOptions,
-                    cancellationToken)
+                    cancellationToken,
+                    reservations)
                 .ConfigureAwait(false);
             return true;
         }
@@ -248,10 +292,11 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
             dispatchResponse,
             admittedRoutes,
             dispatchOptions);
-        var completedRoutes = new HashSet<string>(StringComparer.Ordinal);
-        var terminalRoutes = new HashSet<string>(scheduledWork.TerminalRoutes, StringComparer.Ordinal);
         foreach (string projectionType in admittedRoutes) {
-            cancellationToken.ThrowIfCancellationRequested();
+            if (idempotencyCoordinator is null) {
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+
             long started = Stopwatch.GetTimestamp();
             if (!validOutcomes.TryGetValue(projectionType, out ProjectionDispatchOutcome? outcome)) {
                 Log.RouteOutcome(
@@ -267,15 +312,32 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
 
             if (outcome.Status is ProjectionDispatchStatus.Completed or ProjectionDispatchStatus.AlreadyCompleted) {
                 try {
+                    using CancellationTokenSource? finalization = idempotencyCoordinator is null
+                        ? null
+                        : new CancellationTokenSource(TimeSpan.FromSeconds(30), _timeProvider);
+                    CancellationToken finalizationToken = finalization?.Token ?? cancellationToken;
                     if (outcome.State is not null) {
-                        await WriteLegacyActorStateAsync(identity, projectionType, outcome.State.Value, cancellationToken)
+                        await WriteLegacyActorStateAsync(identity, projectionType, outcome.State.Value, finalizationToken)
                             .ConfigureAwait(false);
                     }
 
-                    bool checkpointSaved = await checkpointStore
-                        .SaveDeliveredSequenceAsync(identity, projectionType, highestSequence, cancellationToken)
-                        .ConfigureAwait(false);
-                    if (checkpointSaved) {
+                    if (idempotencyCoordinator is not null) {
+                        ProjectionDeliveryCompletion completion = await idempotencyCoordinator
+                            .CompleteAsync(
+                                identity,
+                                projectionType,
+                                projectionEvents,
+                                reservations[projectionType],
+                                finalizationToken)
+                            .ConfigureAwait(false);
+                        ProjectionDeliveryDiagnostics.RecordCompletion(projectionType, completion);
+                        if (completion is ProjectionDeliveryCompletion.Completed or ProjectionDeliveryCompletion.AlreadyCompleted) {
+                            _ = completedRoutes.Add(projectionType);
+                        }
+                    }
+                    else if (await checkpointStore
+                        .SaveDeliveredSequenceAsync(identity, projectionType, highestSequence, finalizationToken)
+                        .ConfigureAwait(false)) {
                         _ = completedRoutes.Add(projectionType);
                     }
                 }
@@ -287,6 +349,13 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                 }
             }
             else if (outcome.Status == ProjectionDispatchStatus.Failed) {
+                if (idempotencyCoordinator is not null) {
+                    using var release = new CancellationTokenSource(TimeSpan.FromSeconds(30), _timeProvider);
+                    _ = await idempotencyCoordinator
+                        .TryReleaseAsync(identity, projectionType, reservations[projectionType], release.Token)
+                        .ConfigureAwait(false);
+                }
+
                 _ = terminalRoutes.Add(projectionType);
             }
 
@@ -303,9 +372,10 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         await ReconcileRetryLedgerAsync(
                 scheduledWork,
                 completedRoutes,
-                terminalRoutes,
-                settledRoutes,
-                dispatchOptions,
+            terminalRoutes,
+            settledRoutes,
+            reservations,
+            dispatchOptions,
                 cancellationToken)
             .ConfigureAwait(false);
 
@@ -323,6 +393,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         IReadOnlySet<string> completedRoutes,
         IReadOnlySet<string> terminalRoutes,
         IReadOnlySet<string> settledRoutes,
+        IReadOnlyDictionary<string, ProjectionDeliveryReservation> reservations,
         ProjectionDispatchOptions dispatchOptions,
         CancellationToken cancellationToken) {
         if (retryScheduler is null) {
@@ -345,6 +416,9 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
             var updated = scheduledWork with {
                 PendingRoutes = remainingRoutes,
                 TerminalRoutes = [.. terminalRoutes.Order(StringComparer.Ordinal)],
+                ReservationFencingTokens = reservations
+                    .Where(pair => remainingRoutes.Contains(pair.Key, StringComparer.Ordinal))
+                    .ToDictionary(static pair => pair.Key, static pair => pair.Value.FencingToken, StringComparer.Ordinal),
                 Attempt = attempt,
                 NextDueUtc = _timeProvider.GetUtcNow() + GetRetryDelay(attempt, dispatchOptions),
                 LastReasonCode = terminalRoutes.Count > 0
@@ -370,7 +444,8 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         ProjectionDeliveryRetryWorkItem workItem,
         string reasonCode,
         ProjectionDispatchOptions dispatchOptions,
-        CancellationToken cancellationToken) {
+        CancellationToken cancellationToken,
+        IReadOnlyDictionary<string, ProjectionDeliveryReservation>? reservations = null) {
         if (retryScheduler is null) {
             return;
         }
@@ -379,6 +454,12 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         try {
             _ = await retryScheduler.TryUpdateAsync(
                 workItem with {
+                    ReservationFencingTokens = reservations is null
+                        ? workItem.ReservationFencingTokens
+                        : reservations.ToDictionary(
+                            static pair => pair.Key,
+                            static pair => pair.Value.FencingToken,
+                            StringComparer.Ordinal),
                     Attempt = attempt,
                     NextDueUtc = _timeProvider.GetUtcNow() + GetRetryDelay(attempt, dispatchOptions),
                     LastReasonCode = reasonCode,
@@ -497,19 +578,11 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
             .UpdateProjectionAsync(ProjectionState.FromJsonElement(projectionType, identity.TenantId, state))
             .ConfigureAwait(false);
 
-        try {
-            IETagActor eTagProxy = actorProxyFactory.CreateActorProxy<IETagActor>(
-                new ActorId($"{projectionType}:{identity.TenantId}"),
-                ETagActor.ETagActorTypeName);
-            cancellationToken.ThrowIfCancellationRequested();
-            _ = await eTagProxy.RegenerateAsync().ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) {
-            throw;
-        }
-        catch (Exception) {
-            // Preserve the existing fail-open ETag policy; durable state still permits checkpoint advancement.
-        }
+        IETagActor eTagProxy = actorProxyFactory.CreateActorProxy<IETagActor>(
+            new ActorId($"{projectionType}:{identity.TenantId}"),
+            ETagActor.ETagActorTypeName);
+        cancellationToken.ThrowIfCancellationRequested();
+        _ = await eTagProxy.RegenerateAsync().ConfigureAwait(false);
     }
 
     private static partial class Log {

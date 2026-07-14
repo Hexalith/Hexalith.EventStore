@@ -28,6 +28,7 @@ public sealed partial class ProjectionCheckpointTracker(
     // (page size is 100); a corrupt persisted index with PageCount near int.MaxValue would
     // satisfy every other corruption clause yet still drive a near-infinite enumeration loop.
     private const int MaxReasonablePageCount = 1_000_000;
+    private readonly IProjectionDeliveryStateStore _deliveryStateStore = new DaprProjectionDeliveryStateStore(daprClient, options);
 
     /// <inheritdoc/>
     public async Task<long> ReadLastDeliveredSequenceAsync(
@@ -159,9 +160,20 @@ public sealed partial class ProjectionCheckpointTracker(
         string stateStoreName = options.Value.CheckpointStateStoreName;
         string scopedKey = GetProjectionScopedStateKey(identity, projectionName);
 
-        ProjectionCheckpoint? scoped = await daprClient
-            .GetStateAsync<ProjectionCheckpoint>(stateStoreName, scopedKey, cancellationToken: cancellationToken)
+        ProjectionDeliveryStateReadResult deliveryRead = await _deliveryStateStore
+            .ReadAsync(identity, projectionName, cancellationToken)
             .ConfigureAwait(false);
+        ProjectionDeliveryState? deliveryState = deliveryRead.State;
+        ProjectionCheckpoint? scoped = deliveryState is null
+            ? await daprClient
+                .GetStateAsync<ProjectionCheckpoint>(stateStoreName, scopedKey, cancellationToken: cancellationToken)
+                .ConfigureAwait(false)
+            : new ProjectionCheckpoint(
+                deliveryState.TenantId,
+                deliveryState.Domain,
+                deliveryState.AggregateId,
+                deliveryState.LastDeliveredSequence,
+                deliveryState.UpdatedAt);
 
         if (scoped is not null) {
             if (!string.Equals(scoped.TenantId, identity.TenantId, StringComparison.Ordinal)
@@ -250,12 +262,53 @@ public sealed partial class ProjectionCheckpointTracker(
         string stateStoreName = options.Value.CheckpointStateStoreName;
         for (int attempt = 0; attempt < MaxEtagRetries; attempt++) {
             try {
-                (ProjectionCheckpoint? existing, string etag) = await daprClient
-                    .GetStateAndETagAsync<ProjectionCheckpoint>(
-                        stateStoreName,
-                        key,
-                        cancellationToken: cancellationToken)
+                ProjectionDeliveryStateReadResult deliveryRead = await _deliveryStateStore
+                    .ReadAsync(identity, projectionName, cancellationToken)
                     .ConfigureAwait(false);
+                if (deliveryRead.Classification == ProjectionDeliveryStateClassification.Current) {
+                    if (deliveryRead.State!.LastDeliveredSequence >= deliveredSequence) {
+                        await MarkMigratedAsync(identity, projectionName, cancellationToken).ConfigureAwait(false);
+                        return true;
+                    }
+
+                    // A v2 row can advance only through a fenced completion transition that also
+                    // persists exact receipts and the cumulative prefix fingerprint. The legacy
+                    // checkpoint-only path must never erase those fields or invent completion.
+                    return false;
+                }
+
+                if (deliveryRead.Classification is ProjectionDeliveryStateClassification.SchemaRegression
+                    or ProjectionDeliveryStateClassification.Unsupported) {
+                    return false;
+                }
+
+                ProjectionDeliveryWriterProtocol? protocol = await _deliveryStateStore
+                    .ReadWriterProtocolAsync(cancellationToken)
+                    .ConfigureAwait(false);
+                if (protocol?.IsCurrent == true) {
+                    // After cutover, no five-field writer may create or advance a scoped row.
+                    return false;
+                }
+
+                ProjectionCheckpoint? existing;
+                string etag;
+                if (deliveryRead.State is null) {
+                    (existing, etag) = await daprClient
+                        .GetStateAndETagAsync<ProjectionCheckpoint>(
+                            stateStoreName,
+                            key,
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                else {
+                    existing = new ProjectionCheckpoint(
+                        deliveryRead.State.TenantId,
+                        deliveryRead.State.Domain,
+                        deliveryRead.State.AggregateId,
+                        deliveryRead.State.LastDeliveredSequence,
+                        deliveryRead.State.UpdatedAt);
+                    etag = deliveryRead.Etag;
+                }
 
                 if (existing is not null
                     && (!string.Equals(existing.TenantId, identity.TenantId, StringComparison.Ordinal)
@@ -364,6 +417,39 @@ public sealed partial class ProjectionCheckpointTracker(
                 cancellationToken: cancellationToken)
             .ConfigureAwait(false);
         return (value is not null, etag);
+    }
+
+    /// <inheritdoc/>
+    public async Task<(bool Present, string Etag)> TryReadDeliveryReconciliationEtagAsync(
+        AggregateIdentity identity,
+        string projectionName,
+        CancellationToken cancellationToken = default) {
+        ValidateIdentity(identity);
+        ValidateProjectionName(projectionName);
+        (ProjectionDeliveryReconciliationWork? value, string etag) = await daprClient
+            .GetStateAndETagAsync<ProjectionDeliveryReconciliationWork>(
+                options.Value.CheckpointStateStoreName,
+                ProjectionDeliveryStateKeys.GetReconciliationKey(identity, projectionName),
+                cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+        return (value is not null, etag);
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> TryEraseDeliveryReconciliationAsync(
+        AggregateIdentity identity,
+        string projectionName,
+        string etag,
+        CancellationToken cancellationToken = default) {
+        ValidateIdentity(identity);
+        ValidateProjectionName(projectionName);
+        ArgumentNullException.ThrowIfNull(etag);
+        return await daprClient.TryDeleteStateAsync(
+            options.Value.CheckpointStateStoreName,
+            ProjectionDeliveryStateKeys.GetReconciliationKey(identity, projectionName),
+            etag,
+            new StateOptions { Concurrency = ConcurrencyMode.FirstWrite },
+            cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     private async Task MarkMigratedAsync(AggregateIdentity identity, string projectionName, CancellationToken cancellationToken) =>

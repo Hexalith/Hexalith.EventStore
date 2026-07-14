@@ -62,6 +62,11 @@ public static class EventStoreServerServiceCollectionExtensions {
             (IProjectionCheckpointEraser)sp.GetRequiredService<IProjectionCheckpointTracker>());
         services.TryAddSingleton<IProjectionDeliveryCheckpointStore>(static sp =>
             (IProjectionDeliveryCheckpointStore)sp.GetRequiredService<IProjectionCheckpointTracker>());
+        services.TryAddSingleton<IProjectionDeliveryStateStore, DaprProjectionDeliveryStateStore>();
+        services.TryAddSingleton<IProjectionDeliveryIdempotencyCoordinator, ProjectionDeliveryIdempotencyCoordinator>();
+        services.TryAddSingleton<IProjectionDeliveryHistoryReader, EventStoreProjectionDeliveryHistoryReader>();
+        services.TryAddSingleton<IProjectionDeliveryReconciler, ProjectionDeliveryReconciler>();
+        services.TryAddSingleton<IProjectionDeliveryCutover, ProjectionDeliveryCutover>();
         services.TryAddSingleton<IProjectionLifecycleGateway, DaprProjectionLifecycleGateway>();
         services.TryAddSingleton<IProjectionSlotRegistry>(ProjectionSlotServiceCollectionExtensions.BuildSlotRegistry);
         services.TryAddSingleton<IProjectionReadModelAddressFactory, ProjectionReadModelAddressFactory>();
@@ -108,6 +113,14 @@ public static class EventStoreServerServiceCollectionExtensions {
             .Bind(configuration.GetSection("EventStore:ProjectionDispatch"))
             .Validate(o => { o.Validate(); return true; }, "Projection dispatch configuration is invalid.")
             .ValidateOnStart();
+        _ = services.AddOptions<ProjectionDeliveryIdempotencyOptions>()
+            .Bind(configuration.GetSection("EventStore:ProjectionDeliveryIdempotency"))
+            .Validate(o => { o.Validate(); return true; }, "Projection delivery idempotency configuration is invalid.")
+            .ValidateOnStart();
+        _ = services.AddHealthChecks().AddCheck<ProjectionDeliveryWriterProtocolHealthCheck>(
+            "projection-delivery-writer-protocol",
+            failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
+            tags: ["ready"]);
         _ = services.AddHostedService<ProjectionDiscoveryHostedService>();
         _ = services.AddSingleton<IHostedService>(serviceProvider =>
             serviceProvider.GetService<DaprClient>() is null

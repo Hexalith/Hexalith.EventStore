@@ -79,4 +79,17 @@ internal interface IProjectionDeliveryCheckpointStore {
     /// <c>(true, etag)</c> when the projection-scoped checkpoint is present; <c>(false, "")</c> when absent.
     /// </returns>
     Task<(bool Present, string Etag)> TryReadDeliveryCheckpointEtagAsync(AggregateIdentity identity, string projectionName, CancellationToken cancellationToken = default);
+
+    /// <summary>Reads the ETag of payload-free reconciliation work for coordinated erasure.</summary>
+    Task<(bool Present, string Etag)> TryReadDeliveryReconciliationEtagAsync(
+        AggregateIdentity identity,
+        string projectionName,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Conditionally erases payload-free reconciliation work before the delivery row.</summary>
+    Task<bool> TryEraseDeliveryReconciliationAsync(
+        AggregateIdentity identity,
+        string projectionName,
+        string etag,
+        CancellationToken cancellationToken = default);
 }

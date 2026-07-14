@@ -1042,6 +1042,44 @@ public class ProjectionCheckpointTrackerTests {
             cancellationToken: Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task ScopedLegacySave_CannotOverwriteCurrentV2DeliveryRow() {
+        const string projectionName = "order-detail";
+        ProjectionDeliveryState current = ProjectionDeliveryState.CreateEmpty(
+            TestIdentity,
+            projectionName,
+            ProjectionDeliveryFingerprint.ComputeInitial(TestIdentity, projectionName),
+            DateTimeOffset.UtcNow);
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetStateAndETagAsync<ProjectionDeliveryState>(
+                "statestore",
+                ProjectionCheckpointTracker.GetProjectionScopedStateKey(TestIdentity, projectionName),
+                consistencyMode: Arg.Any<ConsistencyMode?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns((current, "v2-etag"));
+        _ = daprClient.GetStateAsync<ProjectionDeliveryWriterProtocol>(
+                "statestore",
+                ProjectionDeliveryStateKeys.WriterProtocol,
+                consistencyMode: Arg.Any<ConsistencyMode?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(new ProjectionDeliveryWriterProtocol(1, 2, "commit-abc", DateTimeOffset.UtcNow));
+        ProjectionCheckpointTracker tracker = CreateTracker(daprClient);
+
+        bool saved = await tracker.SaveDeliveredSequenceAsync(TestIdentity, projectionName, 1);
+
+        saved.ShouldBeFalse();
+        _ = await daprClient.DidNotReceiveWithAnyArgs().TrySaveStateAsync(
+            default!,
+            default!,
+            default(ProjectionCheckpoint)!,
+            default!,
+            stateOptions: default,
+            metadata: default,
+            cancellationToken: default);
+    }
+
     private static ProjectionCheckpointTracker CreateTracker(
         DaprClient daprClient,
         string stateStoreName = "statestore",

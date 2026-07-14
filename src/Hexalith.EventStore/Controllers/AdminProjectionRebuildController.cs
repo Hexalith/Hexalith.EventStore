@@ -3,6 +3,8 @@ using Dapr;
 using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Authorization;
+using Hexalith.EventStore.Contracts.Identity;
+using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Contracts.Streams;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Server.Projections;
@@ -24,7 +26,8 @@ public sealed partial class AdminProjectionRebuildController(
     IProjectionRebuildCheckpointStore checkpointStore,
     ILogger<AdminProjectionRebuildController> logger,
     IProjectionRebuildOrchestrator? rebuildOrchestrator = null,
-    IProjectionEraseCoordinator? eraseCoordinator = null) : ControllerBase {
+    IProjectionEraseCoordinator? eraseCoordinator = null,
+    IServiceProvider? serviceProvider = null) : ControllerBase {
     /// <summary>
     /// Gets the current rebuild status for a projection.
     /// </summary>
@@ -293,6 +296,146 @@ public sealed partial class AdminProjectionRebuildController(
             .EraseAsync(request, cancellationToken)
             .ConfigureAwait(false);
         return MapEraseResult(result);
+    }
+
+    /// <summary>Activates the store-global projection delivery v2 writer protocol after maintenance quiescence.</summary>
+    [HttpPost("delivery-writer-protocol/activate")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden, "application/problem+json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict, "application/problem+json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable, "application/problem+json")]
+    public async Task<IActionResult> ActivateDeliveryWriterProtocolAsync(
+        [FromBody] ProjectionDeliveryCutoverRequestBody? body,
+        CancellationToken cancellationToken) {
+        IActionResult? authFailure = EnsureGlobalAdministrator();
+        if (authFailure is not null) {
+            return authFailure;
+        }
+
+        IProjectionDeliveryCutover? cutover = serviceProvider?.GetService<IProjectionDeliveryCutover>()
+            ?? HttpContext.RequestServices.GetService<IProjectionDeliveryCutover>();
+        if (cutover is null) {
+            return ProblemWithReason(
+                StatusCodes.Status503ServiceUnavailable,
+                "Service Unavailable",
+                "Projection delivery cutover capability is not available.",
+                StreamReplayReasonCodes.ServiceUnavailable);
+        }
+
+        if (body is null) {
+            return ProblemWithReason(
+                StatusCodes.Status400BadRequest,
+                "Bad Request",
+                "Projection delivery cutover attestations are required.",
+                StreamReplayReasonCodes.MissingRequiredField);
+        }
+
+        ProjectionDeliveryCutoverStatus status = await cutover.ActivateAsync(
+            new ProjectionDeliveryCutoverRequest(
+                body.CutoverCommit,
+                body.BackupReference,
+                body.WritersQuiesced,
+                body.RetryWorkersQuiesced,
+                body.DowngradeProhibitedAcknowledged),
+            cancellationToken).ConfigureAwait(false);
+        return status switch {
+            ProjectionDeliveryCutoverStatus.Activated => Ok(new { status = "Activated" }),
+            ProjectionDeliveryCutoverStatus.PreconditionsFailed => ProblemWithReason(
+                StatusCodes.Status400BadRequest,
+                "Bad Request",
+                "Backup, writer quiescence, retry-worker quiescence, and no-downgrade attestations are required.",
+                StreamReplayReasonCodes.MissingRequiredField),
+            ProjectionDeliveryCutoverStatus.Conflict => ProblemWithReason(
+                StatusCodes.Status409Conflict,
+                "Conflict",
+                "A different projection delivery writer protocol marker is already present.",
+                StreamReplayReasonCodes.CheckpointConflict),
+            _ => ProblemWithReason(
+                StatusCodes.Status503ServiceUnavailable,
+                "Service Unavailable",
+                "Projection delivery writer protocol storage is unavailable.",
+                StreamReplayReasonCodes.ServiceUnavailable),
+        };
+    }
+
+    /// <summary>Hydrates exact delivery receipts from EventStore without invoking projection handlers.</summary>
+    [HttpPost("{tenantId}/{projectionName}/delivery-reconciliation/{domain}/{aggregateId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden, "application/problem+json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict, "application/problem+json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable, "application/problem+json")]
+    public async Task<IActionResult> ReconcileDeliveryFromEventStoreAsync(
+        string tenantId,
+        string projectionName,
+        string domain,
+        string aggregateId,
+        CancellationToken cancellationToken) {
+        IActionResult? authFailure = EnsureGlobalAdministrator();
+        if (authFailure is not null) {
+            return authFailure;
+        }
+
+        IProjectionDeliveryReconciler? reconciler = serviceProvider?.GetService<IProjectionDeliveryReconciler>()
+            ?? HttpContext.RequestServices.GetService<IProjectionDeliveryReconciler>();
+        if (reconciler is null) {
+            return ProblemWithReason(
+                StatusCodes.Status503ServiceUnavailable,
+                "Service Unavailable",
+                "Projection delivery reconciliation capability is not available.",
+                StreamReplayReasonCodes.ServiceUnavailable);
+        }
+
+        AggregateIdentity identity;
+        try {
+            identity = new AggregateIdentity(tenantId, domain, aggregateId);
+            _ = CreateScope(tenantId, projectionName);
+        }
+        catch (ArgumentException) {
+            return ProblemWithReason(
+                StatusCodes.Status400BadRequest,
+                "Bad Request",
+                "Projection delivery reconciliation scope is invalid.",
+                StreamReplayReasonCodes.InvalidAggregateIdentity);
+        }
+
+        string? operatorId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+            ?? User.FindFirst("sub")?.Value
+            ?? User.Identity?.Name;
+        if (string.IsNullOrWhiteSpace(operatorId)) {
+            return ProblemWithReason(
+                StatusCodes.Status403Forbidden,
+                "Forbidden",
+                "An attributable operator identity is required.",
+                StreamReplayReasonCodes.ForbiddenRole);
+        }
+
+        ProjectionDeliveryReconciliationResult result = await reconciler
+            .ReconcileFromEventStoreAsync(identity, projectionName, operatorId, cancellationToken)
+            .ConfigureAwait(false);
+        return result.Status switch {
+            ProjectionDeliveryReconciliationStatus.Completed => Ok(new {
+                status = "Completed",
+                result.ReasonCode,
+                result.PreservedSequence,
+            }),
+            ProjectionDeliveryReconciliationStatus.ScopeDenied => ProblemWithReason(
+                StatusCodes.Status403Forbidden,
+                "Forbidden",
+                "The requested tenant or projection scope is not authorized for this persisted row.",
+                ProjectionDispatchReasonCodes.DeliveryReconciliationRequired),
+            ProjectionDeliveryReconciliationStatus.RebuildRequired => ProblemWithReason(
+                StatusCodes.Status409Conflict,
+                "Conflict",
+                "Authoritative EventStore history cannot prove the persisted delivery checkpoint.",
+                ProjectionDispatchReasonCodes.DeliveryRebuildRequired),
+            _ => ProblemWithReason(
+                StatusCodes.Status503ServiceUnavailable,
+                "Service Unavailable",
+                "Projection delivery reconciliation state is unavailable.",
+                ProjectionDispatchReasonCodes.DeliveryStateUnavailable),
+        };
     }
 
     /// <summary>

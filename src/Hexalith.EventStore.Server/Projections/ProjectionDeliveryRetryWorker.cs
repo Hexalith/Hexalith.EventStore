@@ -39,12 +39,12 @@ internal sealed partial class ProjectionDeliveryRetryWorker(
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) {
                 throw;
             }
-            catch (Exception ex) {
+            catch (Exception) {
                 // A transient state-store/DAPR fault (including ledger optimistic-concurrency
                 // exhaustion) must never fault this BackgroundService: the .NET default
                 // BackgroundServiceExceptionBehavior.StopHost would otherwise terminate the host.
                 // Log and continue; due work is retried on the next tick.
-                Log.RetryActivationFailed(logger, ex);
+                Log.RetryActivationFailed(logger, ProjectionDispatchReasonCodes.DeliveryStateUnavailable);
             }
         }
     }
@@ -116,7 +116,7 @@ internal sealed partial class ProjectionDeliveryRetryWorker(
             throw;
         }
         catch (Exception) {
-            Log.RetryFailed(logger, workItem.WorkId, ProjectionDispatchReasonCodes.PartialRetry);
+            Log.RetryFailed(logger, ProjectionDispatchReasonCodes.PartialRetry);
             try {
                 await DeferAsync(workItem, options, cancellationToken).ConfigureAwait(false);
             }
@@ -195,13 +195,13 @@ internal sealed partial class ProjectionDeliveryRetryWorker(
         [LoggerMessage(
             EventId = 4660,
             Level = LogLevel.Warning,
-            Message = "Named projection retry remains pending: WorkId={WorkId}, ReasonCode={ReasonCode}, Stage=NamedProjectionRetry")]
-        public static partial void RetryFailed(ILogger logger, string workId, string reasonCode);
+            Message = "Named projection retry remains pending: ReasonCode={ReasonCode}, Stage=NamedProjectionRetry")]
+        public static partial void RetryFailed(ILogger logger, string reasonCode);
 
         [LoggerMessage(
             EventId = 4661,
             Level = LogLevel.Error,
-            Message = "Named projection retry activation failed; the worker continues on the next tick. Stage=NamedProjectionRetryActivation")]
-        public static partial void RetryActivationFailed(ILogger logger, Exception exception);
+            Message = "Named projection retry activation failed; the worker continues on the next tick. ReasonCode={ReasonCode}, Stage=NamedProjectionRetryActivation")]
+        public static partial void RetryActivationFailed(ILogger logger, string reasonCode);
     }
 }

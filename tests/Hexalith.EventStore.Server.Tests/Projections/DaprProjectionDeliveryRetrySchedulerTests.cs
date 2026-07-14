@@ -300,6 +300,33 @@ public sealed class DaprProjectionDeliveryRetrySchedulerTests {
         due.ShouldHaveSingleItem().WorkId.ShouldBe("work-valid");
     }
 
+    [Fact]
+    public async Task ScheduleAsync_RejectsReservationFenceOutsidePendingRoutes() {
+        var scheduler = CreateScheduler(Substitute.For<DaprClient>());
+        ProjectionDeliveryRetryWorkItem malformed = CreateWorkItem("work-invalid", "aggregate-a") with {
+            ReservationFencingTokens = new Dictionary<string, long>(StringComparer.Ordinal) {
+                ["counter-index"] = 1,
+            },
+        };
+
+        _ = await Should.ThrowAsync<ArgumentException>(() => scheduler.ScheduleAsync(malformed));
+    }
+
+    [Fact]
+    public async Task ScheduleAsync_PreservesPositivePendingRouteReservationFence() {
+        var state = new Dictionary<string, ProjectionDeliveryRetryLedger>(StringComparer.Ordinal);
+        DaprProjectionDeliveryRetryScheduler scheduler = CreateScheduler(CreateStatefulDaprClient(state));
+        ProjectionDeliveryRetryWorkItem work = CreateWorkItem("work-fenced", "aggregate-a") with {
+            ReservationFencingTokens = new Dictionary<string, long>(StringComparer.Ordinal) {
+                ["counter-detail"] = 7,
+            },
+        };
+
+        ProjectionDeliveryRetryWorkItem saved = await scheduler.ScheduleAsync(work);
+
+        saved.ReservationFencingTokens["counter-detail"].ShouldBe(7);
+    }
+
     private static DaprProjectionDeliveryRetryScheduler CreateScheduler(
         DaprClient daprClient,
         bool enableLegacyMigration = false) =>

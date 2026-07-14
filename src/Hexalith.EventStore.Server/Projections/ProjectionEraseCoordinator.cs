@@ -189,8 +189,9 @@ internal sealed partial class ProjectionEraseCoordinator : IProjectionEraseCoord
                 identity.AggregateId,
                 operationId);
             string rebuildKey = ProjectionRebuildCheckpointStore.GetStateKey(rebuildScope);
+            string reconciliationKey = ProjectionDeliveryStateKeys.GetReconciliationKey(identity, request.ProjectionName);
             string deliveryKey = ProjectionCheckpointTracker.GetProjectionScopedStateKey(identity, request.ProjectionName);
-            string manifestDigest = ComputeManifestDigest(readModelTargets, rebuildKey, deliveryKey);
+            string manifestDigest = ComputeManifestDigest(readModelTargets, rebuildKey, reconciliationKey, deliveryKey);
 
             // 5. Begin (or resume) the erase via the lifecycle actor — the first mutation.
             ProjectionEraseAdmission admission = await _lifecycleGateway
@@ -254,7 +255,7 @@ internal sealed partial class ProjectionEraseCoordinator : IProjectionEraseCoord
             //    later one. In particular the delivery checkpoint (erased last) MUST NOT be erased after a
             //    read-model or rebuild-row failure: that preserves the "checkpoint last" safety ordering so
             //    a partial failure cannot leave a present read model behind a reset (0) delivery checkpoint.
-            var orderedTargets = new List<EraseTarget>(readModelTargets.Count + 2);
+            var orderedTargets = new List<EraseTarget>(readModelTargets.Count + 3);
             foreach (ProjectionReadModelAddress address in readModelTargets) {
                 ProjectionReadModelAddress target = address;
                 orderedTargets.Add(new EraseTarget(
@@ -267,6 +268,11 @@ internal sealed partial class ProjectionEraseCoordinator : IProjectionEraseCoord
                 rebuildKey,
                 ct => rebuildEraser.TryReadAggregateCheckpointEtagAsync(rebuildScope, ct),
                 (etag, ct) => rebuildEraser.TryEraseAggregateCheckpointAsync(rebuildScope, etag, ct)));
+
+            orderedTargets.Add(new EraseTarget(
+                reconciliationKey,
+                ct => deliveryStore.TryReadDeliveryReconciliationEtagAsync(identity, request.ProjectionName, ct),
+                (etag, ct) => deliveryStore.TryEraseDeliveryReconciliationAsync(identity, request.ProjectionName, etag, ct)));
 
             orderedTargets.Add(new EraseTarget(
                 deliveryKey,
@@ -355,13 +361,15 @@ internal sealed partial class ProjectionEraseCoordinator : IProjectionEraseCoord
     private static string ComputeManifestDigest(
         IReadOnlyList<ProjectionReadModelAddress> readModelTargets,
         string rebuildKey,
+        string reconciliationKey,
         string deliveryKey) {
-        var keys = new List<string>(readModelTargets.Count + 2);
+        var keys = new List<string>(readModelTargets.Count + 3);
         foreach (ProjectionReadModelAddress address in readModelTargets) {
             keys.Add(address.Key);
         }
 
         keys.Add(rebuildKey);
+        keys.Add(reconciliationKey);
         keys.Add(deliveryKey);
         keys.Sort(StringComparer.Ordinal);
 
@@ -485,6 +493,13 @@ internal sealed partial class ProjectionEraseCoordinator : IProjectionEraseCoord
             .TryReadAggregateCheckpointEtagAsync(rebuildScope, cancellationToken)
             .ConfigureAwait(false);
         if (rebuildPresent) {
+            return false;
+        }
+
+        (bool reconciliationPresent, _) = await deliveryStore
+            .TryReadDeliveryReconciliationEtagAsync(identity, projectionName, cancellationToken)
+            .ConfigureAwait(false);
+        if (reconciliationPresent) {
             return false;
         }
 

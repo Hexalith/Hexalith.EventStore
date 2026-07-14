@@ -44,6 +44,10 @@ public sealed record ProjectionDeliveryRetryWorkItem(
     /// <summary>Gets the current cross-replica lease expiry.</summary>
     public DateTimeOffset? LeaseExpiresUtc { get; init; }
 
+    /// <summary>Gets active per-route delivery fencing tokens owned by this durable retry item.</summary>
+    public IReadOnlyDictionary<string, long> ReservationFencingTokens { get; init; } =
+        new Dictionary<string, long>(StringComparer.Ordinal);
+
     /// <summary>Creates a deterministic opaque work id without persisting event payloads.</summary>
     /// <param name="tenantId">The aggregate tenant.</param>
     /// <param name="domain">The aggregate domain.</param>

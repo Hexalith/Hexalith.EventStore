@@ -366,6 +366,127 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
     }
 
     [Fact]
+    public async Task TryDispatchAsync_V2IdempotencyPartitionsRoutesAndCompletesOnlyReservedRoute() {
+        string responseJson = JsonSerializer.Serialize(new ProjectionDispatchResponse(
+            ProjectionDispatchProtocol.Version,
+            [new ProjectionDispatchOutcome("widget-index", ProjectionDispatchStatus.Completed, null, null)]));
+        IProjectionDeliveryIdempotencyCoordinator idempotency = Substitute.For<IProjectionDeliveryIdempotencyCoordinator>();
+        ProjectionDeliveryReservation reservation = Reservation("message-1");
+        _ = idempotency.TryAdmitAsync(
+                Identity,
+                "widget-detail",
+                Arg.Any<IReadOnlyList<ProjectionEventDto>>(),
+                true,
+                Arg.Any<CancellationToken>())
+            .Returns(new ProjectionDeliveryAdmissionResult(
+                ProjectionDeliveryAdmissionDisposition.AlreadyCompleted,
+                ProjectionDispatchReasonCodes.DeliveryAlreadyCompleted,
+                null));
+        _ = idempotency.TryAdmitAsync(
+                Identity,
+                "widget-index",
+                Arg.Any<IReadOnlyList<ProjectionEventDto>>(),
+                true,
+                Arg.Any<CancellationToken>())
+            .Returns(new ProjectionDeliveryAdmissionResult(
+                ProjectionDeliveryAdmissionDisposition.Dispatch,
+                null,
+                reservation));
+        _ = idempotency.CompleteAsync(
+                Identity,
+                "widget-index",
+                Arg.Any<IReadOnlyList<ProjectionEventDto>>(),
+                reservation,
+                Arg.Any<CancellationToken>())
+            .Returns(ProjectionDeliveryCompletion.Completed);
+        var handler = new ProjectionDispatchHttpMessageHandler(responseJson);
+        NamedProjectionDispatchCoordinator coordinator = CreateCoordinator(
+            Snapshot("fingerprint", "widget-detail", "widget-index"),
+            handler,
+            out IProjectionDeliveryCheckpointStore checkpoints,
+            out IProjectionLifecycleGateway lifecycle,
+            idempotencyCoordinator: idempotency);
+        _ = lifecycle.TryAdmitDeliveryWriteAsync(Identity, Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
+
+        _ = await coordinator.TryDispatchAsync(
+            Identity,
+            Registration(),
+            [Envelope(1)],
+            [ProjectionEvent(1)],
+            CancellationToken.None);
+
+        handler.CallCount.ShouldBe(1);
+        ProjectionDispatchRequest request = JsonSerializer.Deserialize<ProjectionDispatchRequest>(
+            handler.RequestJson!,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web)).ShouldNotBeNull();
+        request.ProjectionTypes.ShouldBe(["widget-index"]);
+        _ = await idempotency.Received(1).CompleteAsync(
+            Identity,
+            "widget-index",
+            Arg.Any<IReadOnlyList<ProjectionEventDto>>(),
+            reservation,
+            Arg.Any<CancellationToken>());
+        _ = await checkpoints.DidNotReceiveWithAnyArgs().ReadDeliveredSequenceAsync(default!, default!, default);
+        _ = await checkpoints.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default!, default, default);
+    }
+
+    [Fact]
+    public async Task TryDispatchAsync_CompletionStateUnavailable_RetainsRouteAndReservationFenceForRetry() {
+        DateTimeOffset now = new(2026, 7, 13, 12, 0, 0, TimeSpan.Zero);
+        IProjectionDeliveryRetryScheduler scheduler = Substitute.For<IProjectionDeliveryRetryScheduler>();
+        _ = scheduler.ScheduleAsync(Arg.Any<ProjectionDeliveryRetryWorkItem>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.ArgAt<ProjectionDeliveryRetryWorkItem>(0));
+        IProjectionDeliveryIdempotencyCoordinator idempotency = Substitute.For<IProjectionDeliveryIdempotencyCoordinator>();
+        ProjectionDeliveryReservation reservation = Reservation("message-1") with { FencingToken = 7 };
+        _ = idempotency.TryAdmitAsync(
+                Identity,
+                "widget-detail",
+                Arg.Any<IReadOnlyList<ProjectionEventDto>>(),
+                true,
+                Arg.Any<CancellationToken>())
+            .Returns(new ProjectionDeliveryAdmissionResult(
+                ProjectionDeliveryAdmissionDisposition.Dispatch,
+                null,
+                reservation));
+        _ = idempotency.CompleteAsync(
+                Identity,
+                "widget-detail",
+                Arg.Any<IReadOnlyList<ProjectionEventDto>>(),
+                reservation,
+                Arg.Any<CancellationToken>())
+            .Returns(ProjectionDeliveryCompletion.StateUnavailable);
+        string responseJson = JsonSerializer.Serialize(new ProjectionDispatchResponse(
+            ProjectionDispatchProtocol.Version,
+            [new ProjectionDispatchOutcome("widget-detail", ProjectionDispatchStatus.Completed, null, null)]));
+        NamedProjectionDispatchCoordinator coordinator = CreateCoordinator(
+            Snapshot("fingerprint", "widget-detail"),
+            new ProjectionDispatchHttpMessageHandler(responseJson),
+            out _,
+            out IProjectionLifecycleGateway lifecycle,
+            scheduler,
+            new FakeTimeProvider(now),
+            idempotencyCoordinator: idempotency);
+        _ = lifecycle.TryAdmitDeliveryWriteAsync(Identity, "widget-detail", Arg.Any<CancellationToken>()).Returns(true);
+
+        _ = await coordinator.TryDispatchAsync(
+            Identity,
+            Registration(),
+            [Envelope(1)],
+            [ProjectionEvent(1)],
+            CancellationToken.None);
+
+        _ = await scheduler.Received(1).TryUpdateAsync(
+            Arg.Is<ProjectionDeliveryRetryWorkItem>(item =>
+                item.PendingRoutes.SequenceEqual(new[] { "widget-detail" })
+                && item.ReservationFencingTokens.Count == 1
+                && item.ReservationFencingTokens["widget-detail"] == 7
+                && item.Attempt == 1
+                && item.NextDueUtc == now.AddSeconds(1)),
+            Arg.Any<CancellationToken>());
+        _ = await scheduler.DidNotReceiveWithAnyArgs().TryDeleteAsync(default!, default);
+    }
+
+    [Fact]
     public async Task TryDispatchAsync_InvalidOutcomeSetsFailClosedWithoutAdvancingCheckpoint() {
         ProjectionDispatchResponse[] invalidResponses = [
             new ProjectionDispatchResponse(
@@ -413,7 +534,8 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
         out IProjectionLifecycleGateway lifecycle,
         IProjectionDeliveryRetryScheduler? scheduler = null,
         TimeProvider? timeProvider = null,
-        IActorProxyFactory? actorProxyFactory = null) {
+        IActorProxyFactory? actorProxyFactory = null,
+        IProjectionDeliveryIdempotencyCoordinator? idempotencyCoordinator = null) {
         var catalog = new NamedProjectionRouteCatalog();
         catalog.Replace(snapshot);
         checkpoints = Substitute.For<IProjectionDeliveryCheckpointStore>();
@@ -451,7 +573,8 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
             Options.Create(new ProjectionDispatchOptions()),
             NullLogger<NamedProjectionDispatchCoordinator>.Instance,
             scheduler,
-            timeProvider);
+            timeProvider,
+            idempotencyCoordinator: idempotencyCoordinator);
     }
 
     private static NamedProjectionRouteCatalogSnapshot Snapshot(string fingerprint, params string[] projectionTypes)
@@ -488,4 +611,25 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
             "json",
             [],
             null);
+
+    private static ProjectionEventDto ProjectionEvent(long sequence) => new(
+        "widget-updated",
+        [],
+        "json",
+        sequence,
+        DateTimeOffset.UnixEpoch,
+        "correlation",
+        $"message-{sequence}",
+        "user");
+
+    private static ProjectionDeliveryReservation Reservation(string messageId) => new(
+        1,
+        1,
+        messageId,
+        messageId,
+        "v1:manifest",
+        1,
+        DateTimeOffset.UnixEpoch,
+        DateTimeOffset.UnixEpoch.AddMinutes(5),
+        1);
 }

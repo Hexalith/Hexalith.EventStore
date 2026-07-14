@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-07-14T10:57:04+02:00
+# last_updated: 2026-07-14T23:13:16+02:00
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T20:01:46+02:00
-last_updated: 2026-07-14T10:57:04+02:00
+last_updated: 2026-07-14T23:13:16+02:00
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -77,7 +77,9 @@ development_status:
   # 2026-07-14: Follow-up review complete; all 27 actionable patches applied, final Release suites
   # and real Dapr/Redis named-dispatch production path verified green.
   1-12-asynchronous-multi-projection-dispatch: done
-  1-13-projection-handler-delivery-idempotency: in-progress
+  # 2026-07-14: v2 delivery row/fingerprints/fenced reservations, authenticated reconciliation,
+  # no-mixed-writer cutover, bounded observability, and real Dapr/Redis parity evidence complete.
+  1-13-projection-handler-delivery-idempotency: done
   1-14-correct-paged-rebuild-and-replay-equivalence: ready-for-dev
   # Cannot become done while its owner packet remains `still blocked`; Epic 1 remains in-progress until `available`.
   1-15-owner-approved-parity-closure-and-runtime-pin: backlog

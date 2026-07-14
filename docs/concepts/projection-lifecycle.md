@@ -2,6 +2,8 @@
 
 # Projection Lifecycle
 
+For the production `/project/v2` duplicate, ordering, reservation, completion, retention, and reconciliation boundary, see [Projection delivery guarantees](projection-delivery.md).
+
 `QueryResponseMetadata.Lifecycle` preserves projection operation state without collapsing it into the legacy `IsStale` and `IsDegraded` Booleans. The stable values are `Unknown`, `Current`, `Stale`, `Rebuilding`, `Degraded`, `Unavailable`, and `LocalOnly`.
 
 Lifecycle is authoritative only when `QueryResponseMetadata.Provenance` is `ProjectionBacked`. Handler-computed, missing, invalid, cached, or contradictory evidence resolves to `Unknown`. EventStore never infers lifecycle from an ETag, HTTP success or `304`, payload fields, SignalR, or compatibility Booleans.

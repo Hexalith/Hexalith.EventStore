@@ -90,7 +90,7 @@ public class ProjectionEraseLiveSidecarTests {
         await client.SaveStateAsync(StoreName, readModelKey, new ReadModelDoc(7));
         // (b) HIGH projection-scoped delivery checkpoint (LastDeliveredSequence=999) via the real write
         //     path, which also persists the migration marker exactly as production reaches this state.
-        (await harness.Tracker.SaveDeliveredSequenceAsync(identity, projection, 999)).ShouldBeTrue();
+        await SeedDeliveryStateAsync(client, identity, projection, 999);
         // (c) aggregate-specific rebuild row (terminal status: does NOT enter the active-rebuild index,
         //     so the erase's active-rebuild gate sees no operator rebuild in flight).
         await client.SaveStateAsync(
@@ -107,7 +107,12 @@ public class ProjectionEraseLiveSidecarTests {
             new ProjectionEraseRequest(tenant, domain, agg, projection, [Slot], operationId));
 
         result.Kind.ShouldBe(ProjectionEraseOutcomeKind.Success);
-        result.TargetOutcomes.Select(o => o.TargetKey).ShouldBe([readModelKey, rebuildKey, deliveryKey]);
+        result.TargetOutcomes.Select(o => o.TargetKey).ShouldBe([
+            readModelKey,
+            rebuildKey,
+            ProjectionDeliveryStateKeys.GetReconciliationKey(identity, projection),
+            deliveryKey,
+        ]);
         result.TargetOutcomes.ShouldAllBe(o => o.Outcome == "Complete");
 
         // Fresh persisted end-state reads: every erasable target is ABSENT and the marker is RETAINED.
@@ -143,7 +148,7 @@ public class ProjectionEraseLiveSidecarTests {
         // Seed a HIGH delivery checkpoint (999) + marker, plus read-model and rebuild rows. NO event
         // stream is seeded, and none is created by the erase.
         await client.SaveStateAsync(StoreName, readModelKey, new ReadModelDoc(3));
-        (await harness.Tracker.SaveDeliveredSequenceAsync(identity, projection, 999)).ShouldBeTrue();
+        await SeedDeliveryStateAsync(client, identity, projection, 999);
         await client.SaveStateAsync(
             StoreName,
             rebuildKey,
@@ -197,9 +202,9 @@ public class ProjectionEraseLiveSidecarTests {
 
         // Seed both tenants: read-model + delivery checkpoint each.
         await client.SaveStateAsync(StoreName, readModelKeyA, new ReadModelDoc(1));
-        (await harness.Tracker.SaveDeliveredSequenceAsync(identityA, projection, 111)).ShouldBeTrue();
+        await SeedDeliveryStateAsync(client, identityA, projection, 111);
         await client.SaveStateAsync(StoreName, readModelKeyB, new ReadModelDoc(2));
-        (await harness.Tracker.SaveDeliveredSequenceAsync(identityB, projection, 555)).ShouldBeTrue();
+        await SeedDeliveryStateAsync(client, identityB, projection, 555);
 
         // Capture tenant B's exact persisted value + ETag before erasing tenant A.
         (ReadModelDoc? bReadModelBefore, string bReadModelEtagBefore) = await client.GetStateAndETagAsync<ReadModelDoc>(StoreName, readModelKeyB);
@@ -247,7 +252,7 @@ public class ProjectionEraseLiveSidecarTests {
         string rebuildKey = ProjectionRebuildCheckpointStore.GetStateKey(rebuildScope);
 
         await client.SaveStateAsync(StoreName, readModelKey, new ReadModelDoc(4));
-        (await harness.Tracker.SaveDeliveredSequenceAsync(identity, projection, 999)).ShouldBeTrue();
+        await SeedDeliveryStateAsync(client, identity, projection, 999);
         await client.SaveStateAsync(
             StoreName,
             rebuildKey,
@@ -262,7 +267,12 @@ public class ProjectionEraseLiveSidecarTests {
         // Complete and the operation converges to Success without any injected partial failure.
         ProjectionEraseResult second = await harness.Coordinator.EraseAsync(request);
         second.Kind.ShouldBe(ProjectionEraseOutcomeKind.Success);
-        second.TargetOutcomes.Select(o => o.TargetKey).ShouldBe([readModelKey, rebuildKey, deliveryKey]);
+        second.TargetOutcomes.Select(o => o.TargetKey).ShouldBe([
+            readModelKey,
+            rebuildKey,
+            ProjectionDeliveryStateKeys.GetReconciliationKey(identity, projection),
+            deliveryKey,
+        ]);
         second.TargetOutcomes.ShouldAllBe(o => o.Outcome == "Complete");
 
         // Redis is still at the erased end-state after the second run.
@@ -276,6 +286,35 @@ public class ProjectionEraseLiveSidecarTests {
 
     private static async Task<ConnectionMultiplexer> ConnectRedisAsync() =>
         await ConnectionMultiplexer.ConnectAsync("localhost:6379,abortConnect=false,allowAdmin=true");
+
+    private static async Task SeedDeliveryStateAsync(
+        DaprClient client,
+        AggregateIdentity identity,
+        string projectionName,
+        long sequence) {
+        var store = new DaprProjectionDeliveryStateStore(
+            client,
+            Options.Create(new ProjectionOptions { CheckpointStateStoreName = StoreName }));
+        ProjectionDeliveryStateReadResult read = await store.ReadAsync(identity, projectionName);
+        string messageId = $"seed-message-{sequence}";
+        string prefix = $"v1:seed-prefix-{sequence}";
+        ProjectionDeliveryState state = ProjectionDeliveryState.CreateEmpty(
+            identity,
+            projectionName,
+            ProjectionDeliveryFingerprint.ComputeInitial(identity, projectionName),
+            DateTimeOffset.UtcNow) with {
+            LastDeliveredSequence = sequence,
+            LastCompletedMessageId = messageId,
+            CompletedPrefixFingerprint = prefix,
+            CompletedReceipts = [new ProjectionDeliveryReceipt(sequence, messageId, $"v1:seed-event-{sequence}", prefix)],
+            FirstRetainedSequence = sequence,
+        };
+        (await store.TrySaveAsync(identity, projectionName, state, read.Etag)).ShouldBeTrue();
+        await client.SaveStateAsync(
+            StoreName,
+            ProjectionCheckpointTracker.GetMigratedMarkerKey(identity, projectionName),
+            new MigrationMarkerProbe(true));
+    }
 
     // Distinct, reserved-char-free, regex-valid identity segments for one run so parallel/repeat runs
     // never collide.
