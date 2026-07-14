@@ -1,3 +1,11 @@
+## [3.64.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.64.0...v3.64.1) (2026-07-14)
+
+
+### Bug Fixes
+
+* **projections:** harden dispatch recovery ([84db7f6](https://github.com/Hexalith/Hexalith.EventStore/commit/84db7f6558673ece9b12f2436afd2484b85ce6f4))
+* **testing:** isolate benchmark actor phases ([0f3c274](https://github.com/Hexalith/Hexalith.EventStore/commit/0f3c274229fb536d76b9aaaf85a64477237940e1))
+
 # [3.64.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.63.0...v3.64.0) (2026-07-14)
 
 
