@@ -62,6 +62,19 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
 
         EventEnvelope head = events.OrderBy(static item => item.SequenceNumber).Last();
         long highestSequence = head.SequenceNumber;
+        if (string.IsNullOrWhiteSpace(head.MessageId)) {
+            // The stable dispatch identity derives from the head event's message id. Without it we
+            // cannot form a valid work item; this domain is v2-owned, so defer rather than fall
+            // through to v1. A later delivery trigger with a valid head reconciles this aggregate.
+            Log.DispatchDeferred(
+                logger,
+                identity.TenantId,
+                identity.Domain,
+                identity.AggregateId,
+                ProjectionDispatchReasonCodes.MalformedOutcome);
+            return true;
+        }
+
         DateTimeOffset now = _timeProvider.GetUtcNow();
         var proposedWork = new ProjectionDeliveryRetryWorkItem(
             ProjectionDeliveryRetryWorkItem.CreateWorkId(
@@ -81,11 +94,32 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
             head.MessageId,
             catalogEntry.CatalogFingerprint,
             0,
-            now,
+            now + dispatchOptions.RetryWorkerInterval,
             null);
-        ProjectionDeliveryRetryWorkItem scheduledWork = retryScheduler is null
-            ? proposedWork
-            : await retryScheduler.ScheduleAsync(proposedWork, cancellationToken).ConfigureAwait(false);
+        ProjectionDeliveryRetryWorkItem scheduledWork;
+        if (retryScheduler is null) {
+            scheduledWork = proposedWork;
+        }
+        else {
+            try {
+                scheduledWork = await retryScheduler.ScheduleAsync(proposedWork, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) {
+                throw;
+            }
+            catch (Exception) {
+                // A retry-ledger fault must not surface as a dropped or duplicated delivery. This
+                // domain is v2-owned, so do not fall through to v1; a later trigger reconciles it.
+                Log.DispatchDeferred(
+                    logger,
+                    identity.TenantId,
+                    identity.Domain,
+                    identity.AggregateId,
+                    ProjectionDispatchReasonCodes.PartialRetry);
+                return true;
+            }
+        }
+
         if (!string.Equals(scheduledWork.HeadMessageId, head.MessageId, StringComparison.Ordinal)
             || !string.Equals(scheduledWork.DispatchId, head.MessageId, StringComparison.Ordinal)
             || !string.Equals(scheduledWork.CatalogFingerprint, catalogEntry.CatalogFingerprint, StringComparison.Ordinal)
@@ -102,6 +136,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
 
         HashSet<string> pendingRoutes = new(scheduledWork.PendingRoutes, StringComparer.Ordinal);
         List<string> admittedRoutes = [];
+        var settledRoutes = new HashSet<string>(StringComparer.Ordinal);
         foreach (string projectionType in catalogEntry.ProjectionTypes
             .Where(pendingRoutes.Contains)
             .Order(StringComparer.Ordinal)) {
@@ -117,6 +152,11 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                     identity.AggregateId,
                     projectionType,
                     ProjectionReasonCodes.CheckpointDrift);
+
+                // A checkpoint already ahead of this head will never need this delivery. Treat the
+                // route as terminally settled for this work item (mirroring the v1 terminal no-op)
+                // so the item can converge and be deleted rather than deferring this route forever.
+                _ = settledRoutes.Add(projectionType);
                 continue;
             }
 
@@ -130,6 +170,8 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                     identity.AggregateId,
                     projectionType,
                     ProjectionReasonCodes.DeliveryDeferredForErase);
+
+                // Lifecycle denial (e.g. erase in progress) may lift later; keep the route pending.
                 continue;
             }
 
@@ -137,7 +179,15 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         }
 
         if (admittedRoutes.Count == 0) {
-            await DeferAsync(scheduledWork, ProjectionDispatchReasonCodes.PartialRetry, dispatchOptions, cancellationToken)
+            // Nothing to dispatch this round. Prune settled (drift-ahead) routes: if only lifecycle-
+            // deferred routes remain this re-schedules with backoff, otherwise it deletes the item.
+            await ReconcileRetryLedgerAsync(
+                    scheduledWork,
+                    completedRoutes: new HashSet<string>(StringComparer.Ordinal),
+                    terminalRoutes: new HashSet<string>(scheduledWork.TerminalRoutes, StringComparer.Ordinal),
+                    settledRoutes,
+                    dispatchOptions,
+                    cancellationToken)
                 .ConfigureAwait(false);
             return true;
         }
@@ -224,30 +274,70 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                 Stopwatch.GetElapsedTime(started).TotalMilliseconds);
         }
 
-        if (retryScheduler is not null) {
+        await ReconcileRetryLedgerAsync(
+                scheduledWork,
+                completedRoutes,
+                terminalRoutes,
+                settledRoutes,
+                dispatchOptions,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return true;
+    }
+
+    /// <summary>
+    /// Reconciles the durable retry work item after one dispatch round: prunes completed and
+    /// drift-settled routes, retains lifecycle-deferred and terminal routes, and deletes the item
+    /// only when every route has converged. A ledger fault is logged and swallowed so it never
+    /// surfaces as a dropped delivery; idempotent retry reconciles the stale item on the next tick.
+    /// </summary>
+    private async Task ReconcileRetryLedgerAsync(
+        ProjectionDeliveryRetryWorkItem scheduledWork,
+        IReadOnlySet<string> completedRoutes,
+        IReadOnlySet<string> terminalRoutes,
+        IReadOnlySet<string> settledRoutes,
+        ProjectionDispatchOptions dispatchOptions,
+        CancellationToken cancellationToken) {
+        if (retryScheduler is null) {
+            return;
+        }
+
+        try {
             string[] remainingRoutes = [.. scheduledWork.PendingRoutes
-                .Where(route => !completedRoutes.Contains(route) && !terminalRoutes.Contains(route))
+                .Where(route => !completedRoutes.Contains(route)
+                    && !terminalRoutes.Contains(route)
+                    && !settledRoutes.Contains(route))
                 .Distinct(StringComparer.Ordinal)
                 .Order(StringComparer.Ordinal)];
             if (remainingRoutes.Length == 0 && terminalRoutes.Count == 0) {
                 await retryScheduler.DeleteAsync(scheduledWork.WorkId, cancellationToken).ConfigureAwait(false);
+                return;
             }
-            else {
-                int attempt = Math.Min(scheduledWork.Attempt + 1, dispatchOptions.MaxRetryAttempts);
-                var updated = scheduledWork with {
-                    PendingRoutes = remainingRoutes,
-                    TerminalRoutes = [.. terminalRoutes.Order(StringComparer.Ordinal)],
-                    Attempt = attempt,
-                    NextDueUtc = _timeProvider.GetUtcNow() + GetRetryDelay(attempt, dispatchOptions),
-                    LastReasonCode = terminalRoutes.Count > 0
-                        ? ProjectionDispatchReasonCodes.HandlerFailure
-                        : ProjectionDispatchReasonCodes.PartialRetry,
-                };
-                await retryScheduler.UpdateAsync(updated, cancellationToken).ConfigureAwait(false);
-            }
-        }
 
-        return true;
+            int attempt = Math.Min(scheduledWork.Attempt + 1, dispatchOptions.MaxRetryAttempts);
+            var updated = scheduledWork with {
+                PendingRoutes = remainingRoutes,
+                TerminalRoutes = [.. terminalRoutes.Order(StringComparer.Ordinal)],
+                Attempt = attempt,
+                NextDueUtc = _timeProvider.GetUtcNow() + GetRetryDelay(attempt, dispatchOptions),
+                LastReasonCode = terminalRoutes.Count > 0
+                    ? ProjectionDispatchReasonCodes.HandlerFailure
+                    : ProjectionDispatchReasonCodes.PartialRetry,
+            };
+            await retryScheduler.UpdateAsync(updated, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (Exception) {
+            Log.DispatchDeferred(
+                logger,
+                scheduledWork.TenantId,
+                scheduledWork.Domain,
+                scheduledWork.AggregateId,
+                ProjectionDispatchReasonCodes.PartialRetry);
+        }
     }
 
     private async Task DeferAsync(
@@ -260,13 +350,28 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         }
 
         int attempt = Math.Min(workItem.Attempt + 1, dispatchOptions.MaxRetryAttempts);
-        await retryScheduler.UpdateAsync(
-            workItem with {
-                Attempt = attempt,
-                NextDueUtc = _timeProvider.GetUtcNow() + GetRetryDelay(attempt, dispatchOptions),
-                LastReasonCode = reasonCode,
-            },
-            cancellationToken).ConfigureAwait(false);
+        try {
+            await retryScheduler.UpdateAsync(
+                workItem with {
+                    Attempt = attempt,
+                    NextDueUtc = _timeProvider.GetUtcNow() + GetRetryDelay(attempt, dispatchOptions),
+                    LastReasonCode = reasonCode,
+                },
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (Exception) {
+            // A ledger fault while recording backoff must not surface as a dropped delivery; the
+            // work item stays at its prior due time and is reconciled on a later trigger/tick.
+            Log.DispatchDeferred(
+                logger,
+                workItem.TenantId,
+                workItem.Domain,
+                workItem.AggregateId,
+                reasonCode);
+        }
     }
 
     private static TimeSpan GetRetryDelay(int attempt, ProjectionDispatchOptions dispatchOptions) {
@@ -406,5 +511,16 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
             string projectionType,
             ProjectionDispatchStatus status,
             double durationMs);
+
+        [LoggerMessage(
+            EventId = 4652,
+            Level = LogLevel.Warning,
+            Message = "Named projection dispatch deferred: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, ReasonCode={ReasonCode}, Stage=NamedProjectionDispatchDeferred")]
+        public static partial void DispatchDeferred(
+            ILogger logger,
+            string tenantId,
+            string domain,
+            string aggregateId,
+            string reasonCode);
     }
 }

@@ -116,6 +116,8 @@ public static class DomainProjectionDispatcher {
 
     private static void ValidateRequest(ProjectionDispatchRequest dispatchRequest, ProjectionDispatchOptions options) {
         if (dispatchRequest.Request is null
+            || string.IsNullOrWhiteSpace(dispatchRequest.Request.TenantId)
+            || string.IsNullOrWhiteSpace(dispatchRequest.Request.AggregateId)
             || dispatchRequest.ProjectionTypes is not { Count: > 0 }
             || dispatchRequest.ProjectionTypes.Count > options.MaxOutcomes
             || string.IsNullOrWhiteSpace(dispatchRequest.DispatchId)
