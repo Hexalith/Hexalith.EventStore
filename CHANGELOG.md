@@ -1,3 +1,15 @@
+# [3.63.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.62.0...v3.63.0) (2026-07-14)
+
+
+### Bug Fixes
+
+* **projection:** harden named multi-projection dispatch retry from review ([#282](https://github.com/Hexalith/Hexalith.EventStore/issues/282)) ([10af34c](https://github.com/Hexalith/Hexalith.EventStore/commit/10af34c266d20b1f83222419b4cd35a0ce0efa61))
+
+
+### Features
+
+* **projection:** implement named projection delivery and retry mechanism ([4681ac1](https://github.com/Hexalith/Hexalith.EventStore/commit/4681ac1dc59bd48fdfcf64d0c6428e5ca4046333))
+
 # [3.62.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.61.6...v3.62.0) (2026-07-13)
 
 
