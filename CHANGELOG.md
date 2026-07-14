@@ -1,3 +1,10 @@
+# [3.64.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.63.0...v3.64.0) (2026-07-14)
+
+
+### Features
+
+* **testing:** add benchmark dataset builder ([c5adf4f](https://github.com/Hexalith/Hexalith.EventStore/commit/c5adf4f62fe05f294fb8cdc42edbbecac37b0748))
+
 # [3.63.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.62.0...v3.63.0) (2026-07-14)
 
 
