@@ -14,6 +14,7 @@
     <ProjectReference Include="..\..\src\Hexalith.EventStore.Gateway\Hexalith.EventStore.Gateway.csproj" />
     <ProjectReference Include="..\..\src\Hexalith.EventStore.Server\Hexalith.EventStore.Server.csproj" />
     <ProjectReference Include="..\..\src\Hexalith.EventStore.Testing\Hexalith.EventStore.Testing.csproj" />
+    <ProjectReference Include="..\..\src\Hexalith.EventStore.Testing.Integration\Hexalith.EventStore.Testing.Integration.csproj" />
   </ItemGroup>
 
   <ItemGroup>

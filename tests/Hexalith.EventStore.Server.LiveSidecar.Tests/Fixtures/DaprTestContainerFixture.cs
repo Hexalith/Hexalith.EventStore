@@ -72,6 +72,9 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
     /// <summary>Gets the Dapr HTTP endpoint for test clients.</summary>
     public string DaprHttpEndpoint => $"http://localhost:{_daprHttpPort}";
 
+    /// <summary>Gets the application HTTP endpoint hosting the Dapr actors.</summary>
+    public string AppHttpEndpoint => $"http://localhost:{_appPort}";
+
     /// <summary>Gets the Dapr gRPC endpoint for test clients.</summary>
     public string DaprGrpcEndpoint => $"http://localhost:{_daprGrpcPort}";
 
