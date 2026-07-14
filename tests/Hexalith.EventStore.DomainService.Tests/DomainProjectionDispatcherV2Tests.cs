@@ -88,6 +88,36 @@ public sealed class DomainProjectionDispatcherV2Tests {
             Arg.Any<CancellationToken>());
     }
 
+    [Theory]
+    [InlineData("", "widget-1")]
+    [InlineData("tenant-a", " ")]
+    public async Task DispatchAsync_RejectsBlankAggregateIdentityBeforeAnyInvocation(
+        string tenantId,
+        string aggregateId) {
+        IAsyncDomainProjectionHandler handler = CreateHandler("widget", "widget-detail");
+        using ServiceProvider provider = BuildProvider(handler);
+        DomainProjectionCatalogRegistry registry = CreateRegistry("fingerprint-1", "widget-detail");
+        var request = new ProjectionDispatchRequest(
+            new ProjectionRequest(tenantId, "widget", aggregateId, []),
+            ["widget-detail"],
+            "dispatch-1",
+            "fingerprint-1");
+
+        ProjectionDispatchValidationException exception = await Should.ThrowAsync<ProjectionDispatchValidationException>(() =>
+            DomainProjectionDispatcher.DispatchAsync(
+                provider,
+                request,
+                new ProjectionDispatchOptions(),
+                registry,
+                CancellationToken.None));
+
+        exception.ReasonCode.ShouldBe(ProjectionDispatchReasonCodes.MalformedOutcome);
+        _ = handler.DidNotReceive().ProjectAsync(
+            Arg.Any<ProjectionRequest>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+    }
+
     [Fact]
     public async Task DispatchAsync_PropagatesCancellationAndDoesNotStartLaterHandler() {
         using var source = new CancellationTokenSource();
@@ -139,6 +169,30 @@ public sealed class DomainProjectionDispatcherV2Tests {
     }
 
     [Fact]
+    public async Task DispatchAsync_OverLimitEnvelopeMapsOutcomeToBoundedSafeFailure() {
+        IAsyncDomainProjectionHandler handler = CreateHandler("widget", "widget-detail");
+        handler.ProjectAsync(Arg.Any<ProjectionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(DomainProjectionHandlerResult.Completed(
+                JsonSerializer.SerializeToElement(new { content = new string('x', 1024) })));
+        using ServiceProvider provider = BuildProvider(handler);
+        DomainProjectionCatalogRegistry registry = CreateRegistry("fingerprint-1", "widget-detail");
+        var options = new ProjectionDispatchOptions { MaxOutcomeEnvelopeBytes = 256 };
+
+        ProjectionDispatchResponse response = await DomainProjectionDispatcher.DispatchAsync(
+            provider,
+            CreateRequest("fingerprint-1", "widget-detail"),
+            options,
+            registry,
+            CancellationToken.None);
+
+        ProjectionDispatchOutcome outcome = response.Outcomes.ShouldHaveSingleItem();
+        outcome.Status.ShouldBe(ProjectionDispatchStatus.Failed);
+        outcome.State.ShouldBeNull();
+        outcome.ReasonCode.ShouldBe(ProjectionDispatchReasonCodes.MalformedOutcome);
+        JsonSerializer.SerializeToUtf8Bytes(response).Length.ShouldBeLessThanOrEqualTo(options.MaxOutcomeEnvelopeBytes);
+    }
+
+    [Fact]
     public async Task DispatchAsync_DoesNotCompleteBeforeDurableHandlerBarrier() {
         var barrier = new TaskCompletionSource<DomainProjectionHandlerResult>(
             TaskCreationOptions.RunContinuationsAsynchronously);
@@ -182,6 +236,21 @@ public sealed class DomainProjectionDispatcherV2Tests {
         DomainProjectionHandlerResult result = ReadModelBatchProjectionResultMapper.Map(batchResult);
 
         result.Status.ShouldBe(expected);
+    }
+
+    [Fact]
+    public void ReadModelBatchResultMapper_InconsistentStatusAndConflictUsesSafeDefault() {
+        var batchResult = new ReadModelBatchResult(
+            ReadModelBatchStatus.Completed,
+            "batch-fingerprint",
+            ReadModelBatchConflictKind.Identity,
+            null);
+
+        DomainProjectionHandlerResult result = ReadModelBatchProjectionResultMapper.Map(batchResult);
+
+        result.Status.ShouldBe(ProjectionDispatchStatus.Failed);
+        result.State.ShouldBeNull();
+        result.ReasonCode.ShouldBe(ProjectionDispatchReasonCodes.MalformedOutcome);
     }
 
     private static IAsyncDomainProjectionHandler CreateHandler(string domain, string projectionType) {

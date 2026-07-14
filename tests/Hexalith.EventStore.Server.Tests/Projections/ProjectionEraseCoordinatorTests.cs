@@ -43,16 +43,34 @@ public class ProjectionEraseCoordinatorTests {
     private readonly IProjectionDeliveryCheckpointStore _deliveryStore = Substitute.For<IProjectionDeliveryCheckpointStore>();
     private readonly IProjectionRebuildCheckpointStore _rebuildStore = Substitute.For<IProjectionRebuildCheckpointStore>();
     private readonly IProjectionLifecycleGateway _gateway = Substitute.For<IProjectionLifecycleGateway>();
+    private readonly IProjectionSlotRegistry _slotRegistry = Substitute.For<IProjectionSlotRegistry>();
 
     public ProjectionEraseCoordinatorTests() {
         // Default happy defaults: one aggregate-owned slot, no active rebuild, freshly admitted, all
         // record/complete calls acknowledged.
         _ = _addressFactory.Create(Arg.Any<AggregateIdentity>(), ProjectionName, Slot)
             .Returns(new ProjectionReadModelAddress(RmStore, RmKey, TenantId, Domain, ProjectionName, AggregateId, Slot));
+        _ = _addressFactory.CreateForAdmittedManifest(Arg.Any<AggregateIdentity>(), ProjectionName, Slot)
+            .Returns(new ProjectionReadModelAddress(RmStore, RmKey, TenantId, Domain, ProjectionName, AggregateId, Slot));
+        _ = _slotRegistry.DeclaresCanonicalWriter(Domain, ProjectionName, Slot).Returns(true);
         _ = _rebuildStore.HasActiveOperatorRebuildForDomainAsync(TenantId, Domain, Arg.Any<CancellationToken>())
             .Returns(false);
-        _ = _gateway.BeginEraseAsync(Arg.Any<AggregateIdentity>(), ProjectionName, OperationId, Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = _gateway.BeginEraseAsync(
+                Arg.Any<AggregateIdentity>(),
+                ProjectionName,
+                OperationId,
+                Arg.Any<string>(),
+                true,
+                Arg.Any<CancellationToken>())
             .Returns(Admission(ProjectionEraseAdmissionKind.Admitted));
+        _ = _gateway.BeginEraseAsync(
+                Arg.Any<AggregateIdentity>(),
+                ProjectionName,
+                OperationId,
+                Arg.Any<string>(),
+                false,
+                Arg.Any<CancellationToken>())
+            .Returns(Admission(ProjectionEraseAdmissionKind.BeginNotAllowed));
         _ = _gateway.RecordTargetOutcomeAsync(Arg.Any<AggregateIdentity>(), ProjectionName, OperationId, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(true);
         _ = _gateway.CompleteEraseAsync(Arg.Any<AggregateIdentity>(), ProjectionName, OperationId, Arg.Any<CancellationToken>())
@@ -79,7 +97,13 @@ public class ProjectionEraseCoordinatorTests {
         _ = await _gateway.Received(1).CompleteEraseAsync(Arg.Any<AggregateIdentity>(), ProjectionName, OperationId, Arg.Any<CancellationToken>());
 
         Received.InOrder(() => {
-            _ = _gateway.BeginEraseAsync(Arg.Any<AggregateIdentity>(), ProjectionName, OperationId, Arg.Any<string>(), Arg.Any<CancellationToken>());
+            _ = _gateway.BeginEraseAsync(
+                Arg.Any<AggregateIdentity>(),
+                ProjectionName,
+                OperationId,
+                Arg.Any<string>(),
+                true,
+                Arg.Any<CancellationToken>());
             _ = _gateway.RecordTargetOutcomeAsync(Arg.Any<AggregateIdentity>(), ProjectionName, OperationId, RmKey, "Complete", Arg.Any<CancellationToken>());
             _ = _gateway.RecordTargetOutcomeAsync(Arg.Any<AggregateIdentity>(), ProjectionName, OperationId, RebuildKey, "Complete", Arg.Any<CancellationToken>());
             _ = _gateway.RecordTargetOutcomeAsync(Arg.Any<AggregateIdentity>(), ProjectionName, OperationId, DeliveryKey, "Complete", Arg.Any<CancellationToken>());
@@ -97,7 +121,7 @@ public class ProjectionEraseCoordinatorTests {
     }
 
     [Fact]
-    public async Task EraseAsync_UnregisteredOrSharedSlot_ReturnsUnsupportedBeforeMutation() {
+    public async Task EraseAsync_UnregisteredOrSharedSlot_ProbesResumeWithoutTargetMutation() {
         _ = _addressFactory.Create(Arg.Any<AggregateIdentity>(), ProjectionName, Slot)
             .Returns<ProjectionReadModelAddress>(_ => throw new ProjectionReadModelAddressException("not registered"));
 
@@ -106,18 +130,227 @@ public class ProjectionEraseCoordinatorTests {
         result.Kind.ShouldBe(ProjectionEraseOutcomeKind.Unsupported);
         result.ReasonCode.ShouldBe("unresolvable-target");
         _ = await _rebuildStore.DidNotReceive().HasActiveOperatorRebuildForDomainAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
-        await AssertNoMutationAsync();
+        _ = await _gateway.Received(1).BeginEraseAsync(
+            Arg.Any<AggregateIdentity>(),
+            ProjectionName,
+            OperationId,
+            Arg.Any<string>(),
+            false,
+            Arg.Any<CancellationToken>());
+        await AssertNoTargetMutationAsync();
+    }
+
+    [Fact]
+    public async Task EraseAsync_RegisteredWriterlessSlot_ProbesResumeWithoutTargetMutation() {
+        _ = _slotRegistry.DeclaresCanonicalWriter(Domain, ProjectionName, Slot).Returns(false);
+
+        ProjectionEraseResult result = await CreateSut().EraseAsync(Request());
+
+        result.Kind.ShouldBe(ProjectionEraseOutcomeKind.Unsupported);
+        result.ReasonCode.ShouldBe("no-canonical-writer");
+        _ = await _rebuildStore.DidNotReceive().HasActiveOperatorRebuildForDomainAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+        _ = await _gateway.Received(1).BeginEraseAsync(
+            Arg.Any<AggregateIdentity>(),
+            ProjectionName,
+            OperationId,
+            Arg.Any<string>(),
+            false,
+            Arg.Any<CancellationToken>());
+        await AssertNoTargetMutationAsync();
+    }
+
+    [Fact]
+    public async Task EraseAsync_ResumeAfterCanonicalWriterDeclarationRemoved_RemainsAuthoritative() {
+        _ = _slotRegistry.DeclaresCanonicalWriter(Domain, ProjectionName, Slot).Returns(false);
+        _ = _gateway.BeginEraseAsync(
+                Arg.Any<AggregateIdentity>(),
+                ProjectionName,
+                OperationId,
+                Arg.Any<string>(),
+                false,
+                Arg.Any<CancellationToken>())
+            .Returns(Admission(ProjectionEraseAdmissionKind.Resume));
+        SetupReadModel((false, ""), (false, ""));
+        SetupRebuild((false, ""), (false, ""));
+        SetupDelivery((false, ""), (false, ""));
+
+        ProjectionEraseResult result = await CreateSut().EraseAsync(Request());
+
+        result.Kind.ShouldBe(ProjectionEraseOutcomeKind.Success);
+        _ = await _rebuildStore.DidNotReceive().HasActiveOperatorRebuildForDomainAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+        _ = await _gateway.Received(1).CompleteEraseAsync(
+            Arg.Any<AggregateIdentity>(),
+            ProjectionName,
+            OperationId,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task EraseAsync_ResumeAfterSlotRegistrationRemoved_RecreatesAdmittedManifest() {
+        _ = _addressFactory.Create(Arg.Any<AggregateIdentity>(), ProjectionName, Slot)
+            .Returns<ProjectionReadModelAddress>(_ => throw new ProjectionReadModelAddressException("removed"));
+        _ = _gateway.BeginEraseAsync(
+                Arg.Any<AggregateIdentity>(),
+                ProjectionName,
+                OperationId,
+                Arg.Any<string>(),
+                false,
+                Arg.Any<CancellationToken>())
+            .Returns(Admission(ProjectionEraseAdmissionKind.Resume));
+        SetupReadModel((false, ""), (false, ""));
+        SetupRebuild((false, ""), (false, ""));
+        SetupDelivery((false, ""), (false, ""));
+
+        ProjectionEraseResult result = await CreateSut().EraseAsync(Request());
+
+        result.Kind.ShouldBe(ProjectionEraseOutcomeKind.Success);
+        _ = _addressFactory.Received(1).CreateForAdmittedManifest(
+            Arg.Any<AggregateIdentity>(),
+            ProjectionName,
+            Slot);
+        _ = await _gateway.Received(1).CompleteEraseAsync(
+            Arg.Any<AggregateIdentity>(),
+            ProjectionName,
+            OperationId,
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task EraseAsync_ActiveRebuild_ReturnsActiveRebuildWithoutMutation() {
         _ = _rebuildStore.HasActiveOperatorRebuildForDomainAsync(TenantId, Domain, Arg.Any<CancellationToken>()).Returns(true);
+        _ = _gateway.BeginEraseAsync(
+                Arg.Any<AggregateIdentity>(),
+                ProjectionName,
+                OperationId,
+                Arg.Any<string>(),
+                false,
+                Arg.Any<CancellationToken>())
+            .Returns(Admission(ProjectionEraseAdmissionKind.BeginNotAllowed));
 
         ProjectionEraseResult result = await CreateSut().EraseAsync(Request());
 
         result.Kind.ShouldBe(ProjectionEraseOutcomeKind.ActiveRebuild);
         result.ReasonCode.ShouldBe("active-rebuild");
-        await AssertNoMutationAsync();
+        _ = await _gateway.Received(1).BeginEraseAsync(
+            Arg.Any<AggregateIdentity>(),
+            ProjectionName,
+            OperationId,
+            Arg.Any<string>(),
+            false,
+            Arg.Any<CancellationToken>());
+        await AssertNoTargetMutationAsync();
+    }
+
+    [Fact]
+    public async Task EraseAsync_ResumeWhileRebuildNowActive_BypassesFreshBeginGateAndConverges() {
+        _ = _rebuildStore.HasActiveOperatorRebuildForDomainAsync(TenantId, Domain, Arg.Any<CancellationToken>()).Returns(true);
+        _ = _gateway.BeginEraseAsync(
+                Arg.Any<AggregateIdentity>(),
+                ProjectionName,
+                OperationId,
+                Arg.Any<string>(),
+                false,
+                Arg.Any<CancellationToken>())
+            .Returns(Admission(ProjectionEraseAdmissionKind.Resume));
+        SetupReadModel((false, ""), (false, ""));
+        SetupRebuild((false, ""), (false, ""));
+        SetupDelivery((false, ""), (false, ""));
+
+        ProjectionEraseResult result = await CreateSut().EraseAsync(Request());
+
+        result.Kind.ShouldBe(ProjectionEraseOutcomeKind.Success);
+        _ = await _gateway.Received(1).BeginEraseAsync(
+            Arg.Any<AggregateIdentity>(),
+            ProjectionName,
+            OperationId,
+            Arg.Any<string>(),
+            false,
+            Arg.Any<CancellationToken>());
+        _ = await _gateway.Received(1).CompleteEraseAsync(
+            Arg.Any<AggregateIdentity>(),
+            ProjectionName,
+            OperationId,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task EraseAsync_OldActorAdmitsBlockedFreshBegin_UnwindsBeforeReturningBlock() {
+        _ = _rebuildStore.HasActiveOperatorRebuildForDomainAsync(TenantId, Domain, Arg.Any<CancellationToken>()).Returns(true);
+        _ = _gateway.BeginEraseAsync(
+                Arg.Any<AggregateIdentity>(),
+                ProjectionName,
+                OperationId,
+                Arg.Any<string>(),
+                false,
+                Arg.Any<CancellationToken>())
+            .Returns(Admission(ProjectionEraseAdmissionKind.Admitted));
+
+        ProjectionEraseResult result = await CreateSut().EraseAsync(Request());
+
+        result.Kind.ShouldBe(ProjectionEraseOutcomeKind.ActiveRebuild);
+        result.ReasonCode.ShouldBe("active-rebuild");
+        _ = await _gateway.Received(1).CompleteEraseAsync(
+            Arg.Any<AggregateIdentity>(),
+            ProjectionName,
+            OperationId,
+            Arg.Any<CancellationToken>());
+        _ = await _gateway.DidNotReceive().RecordTargetOutcomeAsync(
+            Arg.Any<AggregateIdentity>(),
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+        await AssertNoEraseTargetMutationAsync();
+    }
+
+    [Fact]
+    public async Task EraseAsync_OldActorAdmitsBlockedFreshBeginAndUnwindFails_ReturnsUnknown() {
+        _ = _rebuildStore.HasActiveOperatorRebuildForDomainAsync(TenantId, Domain, Arg.Any<CancellationToken>()).Returns(true);
+        _ = _gateway.BeginEraseAsync(
+                Arg.Any<AggregateIdentity>(),
+                ProjectionName,
+                OperationId,
+                Arg.Any<string>(),
+                false,
+                Arg.Any<CancellationToken>())
+            .Returns(Admission(ProjectionEraseAdmissionKind.Admitted));
+        _ = _gateway.CompleteEraseAsync(
+                Arg.Any<AggregateIdentity>(),
+                ProjectionName,
+                OperationId,
+                Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        ProjectionEraseResult result = await CreateSut().EraseAsync(Request());
+
+        result.Kind.ShouldBe(ProjectionEraseOutcomeKind.Unknown);
+        result.ReasonCode.ShouldBe("fresh-begin-unwind-unconfirmed");
+        await AssertNoEraseTargetMutationAsync();
+    }
+
+    [Fact]
+    public async Task EraseAsync_UnknownAdmissionKind_FailsClosedWithoutTargetMutation() {
+        _ = _gateway.BeginEraseAsync(
+                Arg.Any<AggregateIdentity>(),
+                ProjectionName,
+                OperationId,
+                Arg.Any<string>(),
+                true,
+                Arg.Any<CancellationToken>())
+            .Returns(Admission((ProjectionEraseAdmissionKind)999));
+
+        ProjectionEraseResult result = await CreateSut().EraseAsync(Request());
+
+        result.Kind.ShouldBe(ProjectionEraseOutcomeKind.Unknown);
+        result.ReasonCode.ShouldBe("unknown-admission");
+        await AssertNoTargetMutationAsync();
     }
 
     [Fact]
@@ -129,12 +362,25 @@ public class ProjectionEraseCoordinatorTests {
 
         result.Kind.ShouldBe(ProjectionEraseOutcomeKind.ActiveRebuild);
         result.ReasonCode.ShouldBe("active-rebuild-gate-unavailable");
-        await AssertNoMutationAsync();
+        _ = await _gateway.Received(1).BeginEraseAsync(
+            Arg.Any<AggregateIdentity>(),
+            ProjectionName,
+            OperationId,
+            Arg.Any<string>(),
+            false,
+            Arg.Any<CancellationToken>());
+        await AssertNoTargetMutationAsync();
     }
 
     [Fact]
     public async Task EraseAsync_BeginEraseConflict_ReturnsConflictWithoutEraseOrComplete() {
-        _ = _gateway.BeginEraseAsync(Arg.Any<AggregateIdentity>(), ProjectionName, OperationId, Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = _gateway.BeginEraseAsync(
+                Arg.Any<AggregateIdentity>(),
+                ProjectionName,
+                OperationId,
+                Arg.Any<string>(),
+                Arg.Any<bool>(),
+                Arg.Any<CancellationToken>())
             .Returns(Admission(ProjectionEraseAdmissionKind.Conflict));
 
         ProjectionEraseResult result = await CreateSut().EraseAsync(Request());
@@ -205,21 +451,49 @@ public class ProjectionEraseCoordinatorTests {
     }
 
     [Fact]
-    public async Task EraseAsync_ResumeWithTargetAlreadyComplete_SkipsCompletedTarget() {
-        _ = _gateway.BeginEraseAsync(Arg.Any<AggregateIdentity>(), ProjectionName, OperationId, Arg.Any<string>(), Arg.Any<CancellationToken>())
+    public async Task EraseAsync_ResumeWithTargetAlreadyComplete_ReclassifiesAbsentTarget() {
+        _ = _gateway.BeginEraseAsync(
+                Arg.Any<AggregateIdentity>(),
+                ProjectionName,
+                OperationId,
+                Arg.Any<string>(),
+                Arg.Any<bool>(),
+                Arg.Any<CancellationToken>())
             .Returns(Admission(ProjectionEraseAdmissionKind.Resume, new Dictionary<string, string>(StringComparer.Ordinal) {
                 [RmKey] = "Complete",
             }));
-        // The read-model target was already erased in the prior attempt, so it verifies absent.
+        // The read-model target was already erased in the prior attempt, so reclassification finds it absent.
         SetupReadModel((false, ""));
         // Rebuild + delivery are absent -> Complete, so the whole operation completes.
 
         ProjectionEraseResult result = await CreateSut().EraseAsync(Request());
 
         result.Kind.ShouldBe(ProjectionEraseOutcomeKind.Success);
-        // Skipped target: no re-erase and no re-record for the already-complete key.
         _ = await _readModelEraser.DidNotReceive().TryEraseAsync(RmStore, RmKey, Arg.Any<string>(), Arg.Any<CancellationToken>());
-        _ = await _gateway.DidNotReceive().RecordTargetOutcomeAsync(Arg.Any<AggregateIdentity>(), ProjectionName, OperationId, RmKey, Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _ = await _gateway.Received(1).RecordTargetOutcomeAsync(Arg.Any<AggregateIdentity>(), ProjectionName, OperationId, RmKey, "Complete", Arg.Any<CancellationToken>());
+        _ = await _gateway.Received(1).CompleteEraseAsync(Arg.Any<AggregateIdentity>(), ProjectionName, OperationId, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task EraseAsync_ResumeWithRecordedCompleteTargetRecreated_ReclassifiesAndErasesCurrentTarget() {
+        _ = _gateway.BeginEraseAsync(
+                Arg.Any<AggregateIdentity>(),
+                ProjectionName,
+                OperationId,
+                Arg.Any<string>(),
+                Arg.Any<bool>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Admission(ProjectionEraseAdmissionKind.Resume, new Dictionary<string, string>(StringComparer.Ordinal) {
+                [RmKey] = "Complete",
+            }));
+        SetupReadModel((true, "etag-recreated"), (false, ""), (false, ""));
+        _ = _readModelEraser.TryEraseAsync(RmStore, RmKey, "etag-recreated", Arg.Any<CancellationToken>()).Returns(true);
+
+        ProjectionEraseResult result = await CreateSut().EraseAsync(Request());
+
+        result.Kind.ShouldBe(ProjectionEraseOutcomeKind.Success);
+        _ = await _readModelEraser.Received(1).TryEraseAsync(RmStore, RmKey, "etag-recreated", Arg.Any<CancellationToken>());
+        _ = await _gateway.Received(1).RecordTargetOutcomeAsync(Arg.Any<AggregateIdentity>(), ProjectionName, OperationId, RmKey, "Complete", Arg.Any<CancellationToken>());
         _ = await _gateway.Received(1).CompleteEraseAsync(Arg.Any<AggregateIdentity>(), ProjectionName, OperationId, Arg.Any<CancellationToken>());
     }
 
@@ -252,6 +526,7 @@ public class ProjectionEraseCoordinatorTests {
     public async Task EraseAsync_CapabilityNotOptedIn_ReturnsUnsupportedBeforeBegin() {
         var sut = new ProjectionEraseCoordinator(
             _addressFactory,
+            _slotRegistry,
             _rebuildStore,
             _gateway,
             NullLogger<ProjectionEraseCoordinator>.Instance,
@@ -263,7 +538,13 @@ public class ProjectionEraseCoordinatorTests {
 
         result.Kind.ShouldBe(ProjectionEraseOutcomeKind.Unsupported);
         result.ReasonCode.ShouldBe("capability-unavailable");
-        _ = await _gateway.DidNotReceive().BeginEraseAsync(Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _ = await _gateway.DidNotReceive().BeginEraseAsync(
+            Arg.Any<AggregateIdentity>(),
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<bool>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -334,7 +615,13 @@ public class ProjectionEraseCoordinatorTests {
     [Fact]
     public async Task EraseAsync_LifecycleGatewayThrowsUnexpectedly_ReturnsUnknownWithoutComplete() {
         // F5: the outer catch converts a genuinely-unexpected fault into a resumable Unknown, never Success.
-        _ = _gateway.BeginEraseAsync(Arg.Any<AggregateIdentity>(), ProjectionName, OperationId, Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = _gateway.BeginEraseAsync(
+                Arg.Any<AggregateIdentity>(),
+                ProjectionName,
+                OperationId,
+                Arg.Any<string>(),
+                Arg.Any<bool>(),
+                Arg.Any<CancellationToken>())
             .Returns<Task<ProjectionEraseAdmission>>(_ => throw new InvalidOperationException("boom"));
 
         ProjectionEraseResult result = await CreateSut().EraseAsync(Request());
@@ -355,6 +642,7 @@ public class ProjectionEraseCoordinatorTests {
     private ProjectionEraseCoordinator CreateSut()
         => new(
             _addressFactory,
+            _slotRegistry,
             _rebuildStore,
             _gateway,
             NullLogger<ProjectionEraseCoordinator>.Instance,
@@ -372,9 +660,23 @@ public class ProjectionEraseCoordinatorTests {
         => _ = _deliveryStore.TryReadDeliveryCheckpointEtagAsync(Identity, ProjectionName, Arg.Any<CancellationToken>()).Returns(first, rest);
 
     private async Task AssertNoMutationAsync() {
-        _ = await _gateway.DidNotReceive().BeginEraseAsync(Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _ = await _gateway.DidNotReceive().BeginEraseAsync(
+            Arg.Any<AggregateIdentity>(),
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<bool>(),
+            Arg.Any<CancellationToken>());
+        await AssertNoTargetMutationAsync();
+    }
+
+    private async Task AssertNoTargetMutationAsync() {
         _ = await _gateway.DidNotReceive().RecordTargetOutcomeAsync(Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         _ = await _gateway.DidNotReceive().CompleteEraseAsync(Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await AssertNoEraseTargetMutationAsync();
+    }
+
+    private async Task AssertNoEraseTargetMutationAsync() {
         _ = await _readModelEraser.DidNotReceive().TryEraseAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         _ = await _rebuildEraser.DidNotReceive().TryEraseAggregateCheckpointAsync(Arg.Any<ProjectionRebuildCheckpointScope>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         _ = await _deliveryStore.DidNotReceive().TryEraseAsync(Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());

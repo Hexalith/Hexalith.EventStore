@@ -48,6 +48,13 @@ public partial class ProjectionLifecycleActor(ActorHost host, ILogger<Projection
                 new Dictionary<string, string>(StringComparer.Ordinal));
         }
 
+        if (!request.AllowBegin) {
+            Log.FreshBeginNotAllowed(logger, Host.Id.GetId(), request.OperationId);
+            return new ProjectionEraseAdmission(
+                ProjectionEraseAdmissionKind.BeginNotAllowed,
+                new Dictionary<string, string>(StringComparer.Ordinal));
+        }
+
         var admitted = new ProjectionLifecycleActorState(
             ProjectionLifecyclePhase.Erasing,
             request.OperationId,
@@ -162,6 +169,12 @@ public partial class ProjectionLifecycleActor(ActorHost host, ILogger<Projection
             Level = LogLevel.Debug,
             Message = "Projection erase completed. ActorId={ActorId}, OperationId={OperationId}, Phase=Idle")]
         public static partial void EraseCompleted(ILogger logger, string actorId, string operationId);
+
+        [LoggerMessage(
+            EventId = 5057,
+            Level = LogLevel.Debug,
+            Message = "Projection erase fresh begin refused by caller gate. ActorId={ActorId}, OperationId={OperationId}, Phase=Idle")]
+        public static partial void FreshBeginNotAllowed(ILogger logger, string actorId, string operationId);
     }
 }
 

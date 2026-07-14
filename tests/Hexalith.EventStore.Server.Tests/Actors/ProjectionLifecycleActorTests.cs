@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 using Dapr.Actors;
 using Dapr.Actors.Runtime;
 
@@ -19,6 +21,19 @@ namespace Hexalith.EventStore.Server.Tests.Actors;
 /// state machine and its per-turn persistence.
 /// </summary>
 public class ProjectionLifecycleActorTests {
+    [Fact]
+    public async Task BeginEraseAsync_IdleAndFreshBeginNotAllowed_RefusesWithoutLeavingIdle() {
+        (ProjectionLifecycleActor actor, _) = CreateActor();
+
+        ProjectionEraseAdmission admission = await actor.BeginEraseAsync(
+            new ProjectionEraseBeginRequest("op-1", "digest-1", allowBegin: false));
+        ProjectionDeliveryAdmission delivery = await actor.TryAdmitDeliveryWriteAsync();
+
+        admission.Kind.ShouldBe(ProjectionEraseAdmissionKind.BeginNotAllowed);
+        delivery.Admitted.ShouldBeTrue();
+        delivery.Phase.ShouldBe(ProjectionLifecyclePhase.Idle);
+    }
+
     private const string StateKey = "projection-lifecycle";
 
     private static (ProjectionLifecycleActor Actor, InMemoryStateManager StateManager) CreateActor() {
@@ -67,6 +82,39 @@ public class ProjectionLifecycleActorTests {
 
         admission.Kind.ShouldBe(ProjectionEraseAdmissionKind.Resume);
         admission.PerTargetOutcomes.ShouldContainKeyAndValue("target-a", "erased");
+    }
+
+    [Fact]
+    public async Task BeginEraseAsync_SameOperationWithFreshBeginDisallowed_StillResumes() {
+        (ProjectionLifecycleActor actor, _) = CreateActor();
+        _ = await actor.BeginEraseAsync(new ProjectionEraseBeginRequest("op-1", "digest-1"));
+        (await actor.RecordTargetOutcomeAsync(new ProjectionTargetOutcomeRequest("op-1", "target-a", "erased"))).ShouldBeTrue();
+
+        ProjectionEraseAdmission admission = await actor.BeginEraseAsync(
+            new ProjectionEraseBeginRequest("op-1", "digest-1", allowBegin: false));
+
+        admission.Kind.ShouldBe(ProjectionEraseAdmissionKind.Resume);
+        admission.PerTargetOutcomes.ShouldContainKeyAndValue("target-a", "erased");
+    }
+
+    [Fact]
+    public void ProjectionEraseBeginRequest_ReleasedConstructorAndDeconstructRemainAvailable() {
+        Type requestType = typeof(ProjectionEraseBeginRequest);
+
+        requestType.GetConstructor([typeof(string), typeof(string)]).ShouldNotBeNull();
+        requestType.GetMethod("Deconstruct", [
+            typeof(string).MakeByRefType(),
+            typeof(string).MakeByRefType(),
+        ]).ShouldNotBeNull();
+    }
+
+    [Fact]
+    public void ProjectionEraseBeginRequest_ReleasedJsonPayload_DefaultsAllowBeginToTrue() {
+        ProjectionEraseBeginRequest? request = JsonSerializer.Deserialize<ProjectionEraseBeginRequest>(
+            """{"operationId":"op-1","manifestDigest":"digest-1"}""",
+            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        request.ShouldNotBeNull().AllowBegin.ShouldBeTrue();
     }
 
     [Fact]

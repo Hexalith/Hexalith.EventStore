@@ -168,18 +168,20 @@ internal partial class ProjectionUpdateOrchestrator(
 
             // Step 4: Invoke domain service /project endpoint via DAPR
             var request = new ProjectionRequest(identity.TenantId, identity.Domain, identity.AggregateId, projectionReadability.Events!);
-            if (namedProjectionDispatchCoordinator is not null
-                && await namedProjectionDispatchCoordinator
+            if (namedProjectionDispatchCoordinator is not null) {
+                _ = await namedProjectionDispatchCoordinator
                     .TryDispatchAsync(
                         identity,
                         registration,
                         events,
                         projectionReadability.Events!,
                         cancellationToken)
-                    .ConfigureAwait(false)) {
-                return;
+                    .ConfigureAwait(false);
             }
 
+            // Named v2 routes and an unmapped legacy v1 handler may intentionally coexist for the
+            // same domain. Named delivery therefore does not short-circuit the released v1 path.
+            // A named-only service returns a support-safe non-success response from /project.
             using HttpRequestMessage httpRequest = daprClient.CreateInvokeMethodRequest(
                 registration.AppId,
                 "project",

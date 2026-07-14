@@ -249,7 +249,7 @@ GPT-5 Codex
 
 ### Debug Log References
 
-To be completed by the development agent.
+- 2026-07-14 Task 0 prerequisite audit halted implementation before code changes. Story 1.12 remains `in-progress` with its approved HIGH P8 retry-ledger partitioning redesign and dependent P7 verification work not yet applied; the landed scheduler still stores all work under `projection-delivery-retry:ledger:v1`. Story 1.13 must extend the final Story 1.12 work item/store for reservation recovery, so implementing against the superseded global-ledger shape would violate the direct-prerequisite contract. Story 1.9 also remains `in-progress` with remediation R1-R3 outstanding. No Task 1-7 implementation or tests were started.
 
 ### Completion Notes List
 

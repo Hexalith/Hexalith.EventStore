@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using System.Text;
 using System.Text.Json;
 
 using Hexalith.Commons.UniqueIds;
@@ -15,6 +16,7 @@ using Hexalith.EventStore.DomainService.Tests.Fixtures;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -780,6 +782,41 @@ public sealed class EventStoreDomainServiceExtensionsTests {
             "/replay-state"]);
     }
 
+    [Fact]
+    public async Task NamedProjectionEndpoints_RegisterCatalogAndMapValidationFailureToBadRequest() {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.AddEventStoreDomainService();
+        _ = builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
+        WebApplication app = builder.Build();
+        _ = app.UseEventStoreDomainService();
+        string fingerprint = ProjectionRouteCatalogFingerprint.Compute(
+            "sample",
+            "v1",
+            [new ProjectionDispatchRoute("widget", "widget-detail")]);
+        var metadataRequest = new AdminOperationalIndexMetadata.Request(["widget"]) {
+            AppId = "sample",
+            ServiceVersion = "v1",
+        };
+
+        (int metadataStatus, string metadataBody) = await InvokeEndpointAsync(
+            app,
+            "/admin/operational-index-metadata",
+            metadataRequest);
+
+        metadataStatus.ShouldBe(StatusCodes.Status200OK, metadataBody);
+        app.Services.GetRequiredService<DomainProjectionCatalogRegistry>().Contains(fingerprint).ShouldBeTrue();
+
+        var invalidDispatch = new ProjectionDispatchRequest(
+            new ProjectionRequest("tenant-a", "widget", "widget-1", []),
+            [],
+            "dispatch-1",
+            fingerprint);
+        (int dispatchStatus, string dispatchBody) = await InvokeEndpointAsync(app, "/project/v2", invalidDispatch);
+
+        dispatchStatus.ShouldBe(StatusCodes.Status400BadRequest);
+        dispatchBody.ShouldContain(ProjectionDispatchReasonCodes.MalformedOutcome);
+    }
+
     private static ProjectionEventDto CreateProjectionEvent()
         => new(
             EventTypeName: "WidgetCreated",
@@ -830,6 +867,33 @@ public sealed class EventStoreDomainServiceExtensionsTests {
             .Select(static route => route!)
             .OrderBy(static route => route, StringComparer.Ordinal)
             .ToArray();
+
+    private static async Task<(int StatusCode, string Body)> InvokeEndpointAsync<TRequest>(
+        WebApplication app,
+        string route,
+        TRequest request) {
+        RouteEndpoint endpoint = GetRouteEndpoints(app).Single(candidate =>
+            string.Equals(candidate.RoutePattern.RawText, route, StringComparison.Ordinal));
+        byte[] body = JsonSerializer.SerializeToUtf8Bytes(request, JsonSerializerOptions.Web);
+        var context = new DefaultHttpContext {
+            RequestServices = app.Services,
+        };
+        IHttpRequestBodyDetectionFeature bodyDetection = Substitute.For<IHttpRequestBodyDetectionFeature>();
+        bodyDetection.CanHaveBody.Returns(true);
+        context.Features.Set(bodyDetection);
+        context.Request.Method = HttpMethods.Post;
+        context.Request.ContentType = "application/json";
+        context.Request.ContentLength = body.Length;
+        context.Request.Body = new MemoryStream(body);
+        context.Response.Body = new MemoryStream();
+
+        await endpoint.RequestDelegate!(context);
+
+        context.Response.Body.Position = 0;
+        using var reader = new StreamReader(context.Response.Body, Encoding.UTF8);
+        string responseBody = await reader.ReadToEndAsync().ConfigureAwait(false);
+        return (context.Response.StatusCode, responseBody);
+    }
 
     private static DomainServiceRequest CreateProcessRequest()
         => new(

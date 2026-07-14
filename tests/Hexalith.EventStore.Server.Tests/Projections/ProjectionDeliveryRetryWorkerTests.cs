@@ -3,6 +3,7 @@ using Dapr.Actors.Client;
 
 using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Contracts.Identity;
+using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
@@ -14,6 +15,8 @@ using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 
 using NSubstitute;
+
+using Shouldly;
 
 namespace Hexalith.EventStore.Server.Tests.Projections;
 
@@ -111,6 +114,161 @@ public sealed class ProjectionDeliveryRetryWorkerTests {
                 && item.NextDueUtc == now.AddSeconds(1)),
             Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task RunOnceAsync_ActiveRebuild_DefersWithoutReadingOrDispatching() {
+        DateTimeOffset now = new(2026, 7, 13, 12, 0, 0, TimeSpan.Zero);
+        ProjectionDeliveryRetryWorkItem workItem = WorkItem(now);
+        IProjectionDeliveryRetryScheduler scheduler = Substitute.For<IProjectionDeliveryRetryScheduler>();
+        _ = scheduler.GetDueAsync(now, ProjectionDispatchOptions.DefaultRetryScanBatchSize, Arg.Any<CancellationToken>()).Returns([workItem]);
+        INamedProjectionDispatchCoordinator coordinator = Substitute.For<INamedProjectionDispatchCoordinator>();
+        IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
+        IProjectionRebuildCheckpointStore rebuilds = Substitute.For<IProjectionRebuildCheckpointStore>();
+        _ = rebuilds.HasActiveOperatorRebuildForDomainAsync("tenant-a", "widget", Arg.Any<CancellationToken>()).Returns(true);
+        ProjectionDeliveryRetryWorker worker = CreateWorker(now, scheduler, coordinator, actorProxyFactory, rebuilds);
+
+        await worker.RunOnceAsync(CancellationToken.None);
+
+        _ = actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IAggregateActor>(default!, default!);
+        _ = await coordinator.DidNotReceiveWithAnyArgs().TryDispatchAsync(default!, default!, default!, default!, default);
+        await scheduler.Received(1).UpdateAsync(
+            Arg.Is<ProjectionDeliveryRetryWorkItem>(item => item.Attempt == 1 && item.NextDueUtc == now.AddSeconds(1)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RunOnceAsync_RecordedHeadMismatch_DefersWithoutDispatching() {
+        DateTimeOffset now = new(2026, 7, 13, 12, 0, 0, TimeSpan.Zero);
+        ProjectionDeliveryRetryWorkItem workItem = WorkItem(now);
+        IProjectionDeliveryRetryScheduler scheduler = Substitute.For<IProjectionDeliveryRetryScheduler>();
+        _ = scheduler.GetDueAsync(now, ProjectionDispatchOptions.DefaultRetryScanBatchSize, Arg.Any<CancellationToken>()).Returns([workItem]);
+        INamedProjectionDispatchCoordinator coordinator = Substitute.For<INamedProjectionDispatchCoordinator>();
+        IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
+        _ = aggregateActor.ReadEventsRangeAsync(0, 2, 256).Returns([Envelope(1), Envelope(2) with { MessageId = "different-head" }]);
+        IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
+        _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), nameof(AggregateActor)).Returns(aggregateActor);
+        IProjectionRebuildCheckpointStore rebuilds = Substitute.For<IProjectionRebuildCheckpointStore>();
+        _ = rebuilds.HasActiveOperatorRebuildForDomainAsync("tenant-a", "widget", Arg.Any<CancellationToken>()).Returns(false);
+        ProjectionDeliveryRetryWorker worker = CreateWorker(now, scheduler, coordinator, actorProxyFactory, rebuilds);
+
+        await worker.RunOnceAsync(CancellationToken.None);
+
+        _ = await coordinator.DidNotReceiveWithAnyArgs().TryDispatchAsync(default!, default!, default!, default!, default);
+        await scheduler.Received(1).UpdateAsync(
+            Arg.Is<ProjectionDeliveryRetryWorkItem>(item => item.Attempt == 1),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RunOnceAsync_UnreadableHistory_DefersWithoutDispatching() {
+        DateTimeOffset now = new(2026, 7, 13, 12, 0, 0, TimeSpan.Zero);
+        ProjectionDeliveryRetryWorkItem workItem = WorkItem(now);
+        IProjectionDeliveryRetryScheduler scheduler = Substitute.For<IProjectionDeliveryRetryScheduler>();
+        _ = scheduler.GetDueAsync(now, ProjectionDispatchOptions.DefaultRetryScanBatchSize, Arg.Any<CancellationToken>()).Returns([workItem]);
+        INamedProjectionDispatchCoordinator coordinator = Substitute.For<INamedProjectionDispatchCoordinator>();
+        IDictionary<string, string> extensions = EventStorePayloadProtectionMetadataCarrier.Write(
+            (IDictionary<string, string>?)null,
+            EventStorePayloadProtectionMetadata.ProviderOpaque("parseError"));
+        IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
+        _ = aggregateActor.ReadEventsRangeAsync(0, 2, 256).Returns([
+            Envelope(1),
+            Envelope(2) with { Extensions = extensions },
+        ]);
+        IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
+        _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), nameof(AggregateActor)).Returns(aggregateActor);
+        IProjectionRebuildCheckpointStore rebuilds = Substitute.For<IProjectionRebuildCheckpointStore>();
+        _ = rebuilds.HasActiveOperatorRebuildForDomainAsync("tenant-a", "widget", Arg.Any<CancellationToken>()).Returns(false);
+        ProjectionDeliveryRetryWorker worker = CreateWorker(now, scheduler, coordinator, actorProxyFactory, rebuilds);
+
+        await worker.RunOnceAsync(CancellationToken.None);
+
+        _ = await coordinator.DidNotReceiveWithAnyArgs().TryDispatchAsync(default!, default!, default!, default!, default);
+        await scheduler.Received(1).UpdateAsync(
+            Arg.Is<ProjectionDeliveryRetryWorkItem>(item => item.Attempt == 1),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RunOnceAsync_HistoryAndLedgerFailures_DoNotEscapeWorkerActivation() {
+        DateTimeOffset now = new(2026, 7, 13, 12, 0, 0, TimeSpan.Zero);
+        ProjectionDeliveryRetryWorkItem workItem = WorkItem(now);
+        IProjectionDeliveryRetryScheduler scheduler = Substitute.For<IProjectionDeliveryRetryScheduler>();
+        _ = scheduler.GetDueAsync(now, ProjectionDispatchOptions.DefaultRetryScanBatchSize, Arg.Any<CancellationToken>()).Returns([workItem]);
+        _ = scheduler.UpdateAsync(Arg.Any<ProjectionDeliveryRetryWorkItem>(), Arg.Any<CancellationToken>())
+            .Returns<Task>(_ => throw new InvalidOperationException("ledger unavailable"));
+        INamedProjectionDispatchCoordinator coordinator = Substitute.For<INamedProjectionDispatchCoordinator>();
+        IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
+        _ = aggregateActor.ReadEventsRangeAsync(0, 2, 256)
+            .Returns<Task<EventEnvelope[]>>(_ => throw new InvalidOperationException("actor unavailable"));
+        IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
+        _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), nameof(AggregateActor)).Returns(aggregateActor);
+        IProjectionRebuildCheckpointStore rebuilds = Substitute.For<IProjectionRebuildCheckpointStore>();
+        _ = rebuilds.HasActiveOperatorRebuildForDomainAsync("tenant-a", "widget", Arg.Any<CancellationToken>()).Returns(false);
+        ProjectionDeliveryRetryWorker worker = CreateWorker(now, scheduler, coordinator, actorProxyFactory, rebuilds);
+
+        await Should.NotThrowAsync(() => worker.RunOnceAsync(CancellationToken.None));
+
+        await scheduler.Received(1).UpdateAsync(
+            Arg.Is<ProjectionDeliveryRetryWorkItem>(item => item.Attempt == 1),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ActivationFailure_ContinuesOnNextTick() {
+        var secondActivation = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        int activationCount = 0;
+        IProjectionDeliveryRetryScheduler scheduler = Substitute.For<IProjectionDeliveryRetryScheduler>();
+        _ = scheduler.GetDueAsync(
+                Arg.Any<DateTimeOffset>(),
+                ProjectionDispatchOptions.DefaultRetryScanBatchSize,
+                Arg.Any<CancellationToken>())
+            .Returns(_ => {
+                if (Interlocked.Increment(ref activationCount) == 1) {
+                    throw new InvalidOperationException("state store unavailable");
+                }
+
+                secondActivation.TrySetResult();
+                return [];
+            });
+        var options = new ProjectionDispatchOptions { RetryWorkerInterval = TimeSpan.FromMilliseconds(10) };
+        var worker = new ProjectionDeliveryRetryWorker(
+            scheduler,
+            Substitute.For<INamedProjectionDispatchCoordinator>(),
+            Substitute.For<IActorProxyFactory>(),
+            new NoOpEventPayloadProtectionService(),
+            Options.Create(new EventStoreActorOptions()),
+            Options.Create(options),
+            Substitute.For<IProjectionRebuildCheckpointStore>(),
+            TimeProvider.System,
+            NullLogger<ProjectionDeliveryRetryWorker>.Instance);
+
+        await worker.StartAsync(CancellationToken.None);
+        try {
+            await secondActivation.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        }
+        finally {
+            await worker.StopAsync(CancellationToken.None);
+        }
+
+        activationCount.ShouldBeGreaterThanOrEqualTo(2);
+    }
+
+    private static ProjectionDeliveryRetryWorker CreateWorker(
+        DateTimeOffset now,
+        IProjectionDeliveryRetryScheduler scheduler,
+        INamedProjectionDispatchCoordinator coordinator,
+        IActorProxyFactory actorProxyFactory,
+        IProjectionRebuildCheckpointStore rebuilds) =>
+        new(
+            scheduler,
+            coordinator,
+            actorProxyFactory,
+            new NoOpEventPayloadProtectionService(),
+            Options.Create(new EventStoreActorOptions()),
+            Options.Create(new ProjectionDispatchOptions()),
+            rebuilds,
+            new FakeTimeProvider(now),
+            NullLogger<ProjectionDeliveryRetryWorker>.Instance);
 
     private static ProjectionDeliveryRetryWorkItem WorkItem(DateTimeOffset dueUtc)
         => new(

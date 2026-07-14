@@ -73,6 +73,23 @@ public class ProjectionEraseRegistrationTests {
             && registration.Type.ActorTypeName == ProjectionLifecycleActor.ActorTypeName);
     }
 
+    [Fact]
+    public void AddProjectionReadModelSlot_PropagatesDomainScopedCanonicalWriterFlag() {
+        IServiceCollection services = BuildServices(registerDaprClient: false);
+        _ = services.AddProjectionReadModelSlot(
+            "orders",
+            "summary",
+            "detail",
+            ProjectionReadModelSlotKind.AggregateOwned,
+            declaresCanonicalWriter: true);
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        IProjectionSlotRegistry registry = provider.GetRequiredService<IProjectionSlotRegistry>();
+
+        registry.DeclaresCanonicalWriter("orders", "summary", "detail").ShouldBeTrue();
+        registry.DeclaresCanonicalWriter("billing", "summary", "detail").ShouldBeFalse();
+    }
+
     private static IServiceCollection BuildServices(bool registerDaprClient) {
         IConfiguration configuration = new ConfigurationBuilder()
             .AddInMemoryCollection([])

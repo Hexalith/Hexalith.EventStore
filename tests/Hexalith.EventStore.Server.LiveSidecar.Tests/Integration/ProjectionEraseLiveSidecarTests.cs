@@ -75,6 +75,7 @@ public class ProjectionEraseLiveSidecarTests {
 
         var registry = new ProjectionSlotRegistry();
         registry.Register(projection, Slot, ProjectionReadModelSlotKind.AggregateOwned);
+        registry.RegisterCanonicalWriter(domain, projection, Slot);
         EraseHarness harness = EraseHarness.Build(client, registry);
 
         // Canonical, platform-derived target keys (never caller-supplied).
@@ -132,6 +133,7 @@ public class ProjectionEraseLiveSidecarTests {
 
         var registry = new ProjectionSlotRegistry();
         registry.Register(projection, Slot, ProjectionReadModelSlotKind.AggregateOwned);
+        registry.RegisterCanonicalWriter(domain, projection, Slot);
         EraseHarness harness = EraseHarness.Build(client, registry);
 
         string readModelKey = harness.Factory.Create(identity, projection, Slot).Key;
@@ -186,6 +188,7 @@ public class ProjectionEraseLiveSidecarTests {
 
         var registry = new ProjectionSlotRegistry();
         registry.Register(projection, Slot, ProjectionReadModelSlotKind.AggregateOwned);
+        registry.RegisterCanonicalWriter(domain, projection, Slot);
         EraseHarness harness = EraseHarness.Build(client, registry);
 
         string readModelKeyA = harness.Factory.Create(identityA, projection, Slot).Key;
@@ -235,6 +238,7 @@ public class ProjectionEraseLiveSidecarTests {
 
         var registry = new ProjectionSlotRegistry();
         registry.Register(projection, Slot, ProjectionReadModelSlotKind.AggregateOwned);
+        registry.RegisterCanonicalWriter(domain, projection, Slot);
         EraseHarness harness = EraseHarness.Build(client, registry);
 
         string readModelKey = harness.Factory.Create(identity, projection, Slot).Key;
@@ -301,7 +305,13 @@ public class ProjectionEraseLiveSidecarTests {
 
             IProjectionLifecycleGateway gateway = Substitute.For<IProjectionLifecycleGateway>();
             _ = gateway
-                .BeginEraseAsync(Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .BeginEraseAsync(
+                    Arg.Any<AggregateIdentity>(),
+                    Arg.Any<string>(),
+                    Arg.Any<string>(),
+                    Arg.Any<string>(),
+                    Arg.Any<bool>(),
+                    Arg.Any<CancellationToken>())
                 .Returns(new ProjectionEraseAdmission(ProjectionEraseAdmissionKind.Admitted, new Dictionary<string, string>(StringComparer.Ordinal)));
             _ = gateway
                 .RecordTargetOutcomeAsync(Arg.Any<AggregateIdentity>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -312,6 +322,7 @@ public class ProjectionEraseLiveSidecarTests {
 
             var coordinator = new ProjectionEraseCoordinator(
                 factory,
+                registry,
                 rebuildStore,
                 gateway,
                 NullLogger<ProjectionEraseCoordinator>.Instance,

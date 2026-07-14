@@ -16,6 +16,7 @@ using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures;
 using Hexalith.EventStore.Server.Projections;
+using Hexalith.EventStore.Server.Queries;
 using Hexalith.EventStore.Testing.Builders;
 
 using Microsoft.Extensions.Logging.Abstractions;
@@ -107,11 +108,19 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
         detailCheckpoint.RootElement.GetProperty("lastDeliveredSequence").GetInt64().ShouldBe(head.SequenceNumber);
         (await ReadStateJsonAsync(database, indexCheckpointKey).ConfigureAwait(true)).ShouldBeNull();
 
-        string retryJson = System.Text.Encoding.UTF8.GetString(
-            (await ReadStateJsonAsync(database, "projection-delivery-retry:ledger:v1").ConfigureAwait(true)).ShouldNotBeNull());
+        (await ReadStateJsonAsync(database, "projection-delivery-retry:ledger:v1").ConfigureAwait(true)).ShouldBeNull();
+        string retryJson = (await ReadFirstStateByPatternAsync(
+                database,
+                "*projection-delivery-retry:ledger:v2:*")
+            .ConfigureAwait(true)).ShouldNotBeNull();
         retryJson.ShouldContain("counter-index");
         retryJson.ShouldContain(head.MessageId);
         retryJson.ShouldNotContain("payload", Case.Insensitive);
+
+        string legacyActorId = $"counter-legacy:{identity.TenantId}:{identity.AggregateId}";
+        string legacyActorKey = $"{AppId}||{QueryRouter.ProjectionActorTypeName}||{legacyActorId}||{EventReplayProjectionActor.ProjectionStateKey}";
+        string legacyState = (await database.HashGetAsync(legacyActorKey, "data").ConfigureAwait(true)).ToString();
+        legacyState.ShouldContain("counter-legacy");
 
         var recreatedScheduler = new DaprProjectionDeliveryRetryScheduler(
             services.GetRequiredService<DaprClient>(),
@@ -145,8 +154,10 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
             (await ReadStateJsonAsync(database, indexCheckpointKey).ConfigureAwait(true)).ShouldNotBeNull());
         indexCheckpoint.RootElement.GetProperty("lastDeliveredSequence").GetInt64().ShouldBe(head.SequenceNumber);
 
-        string convergedRetryJson = System.Text.Encoding.UTF8.GetString(
-            (await ReadStateJsonAsync(database, "projection-delivery-retry:ledger:v1").ConfigureAwait(true)).ShouldNotBeNull());
+        string convergedRetryJson = (await ReadFirstStateByPatternAsync(
+                database,
+                "*projection-delivery-retry:ledger:v2:*")
+            .ConfigureAwait(true)).ShouldNotBeNull();
         convergedRetryJson.ShouldContain("\"items\":[]");
 
         var detailScope = new ReadModelBatchScope(
@@ -236,6 +247,18 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
 
     private static async Task<string?> ResolveMarkerJsonAsync(IDatabase database, string scopeHash) {
         var keys = (RedisResult[])(await database.ExecuteAsync("KEYS", $"*{scopeHash}*").ConfigureAwait(true))!;
+        foreach (RedisResult key in keys) {
+            RedisValue data = await database.HashGetAsync((string)key!, "data").ConfigureAwait(true);
+            if (!data.IsNullOrEmpty) {
+                return data.ToString();
+            }
+        }
+
+        return null;
+    }
+
+    private static async Task<string?> ReadFirstStateByPatternAsync(IDatabase database, string pattern) {
+        var keys = (RedisResult[])(await database.ExecuteAsync("KEYS", pattern).ConfigureAwait(true))!;
         foreach (RedisResult key in keys) {
             RedisValue data = await database.HashGetAsync((string)key!, "data").ConfigureAwait(true);
             if (!data.IsNullOrEmpty) {

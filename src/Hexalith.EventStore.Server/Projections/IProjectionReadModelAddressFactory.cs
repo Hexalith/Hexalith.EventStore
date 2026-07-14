@@ -20,6 +20,24 @@ public interface IProjectionReadModelAddressFactory {
     ProjectionReadModelAddress Create(AggregateIdentity identity, string projectionName, string slot);
 
     /// <summary>
+    /// Recreates a canonical address for a manifest that was already admitted by the persisted lifecycle
+    /// actor. The manifest digest remains the authority when a later deployment changes slot declarations.
+    /// </summary>
+    /// <param name="identity">The validated aggregate identity.</param>
+    /// <param name="projectionName">The validated projection name.</param>
+    /// <param name="slot">The logical slot recorded by the admitted request.</param>
+    /// <returns>The canonical address.</returns>
+    /// <remarks>
+    /// The default preserves binary compatibility for custom factories and reuses their normal validation.
+    /// Platform factories override this member to derive the already-admitted address without consulting
+    /// mutable slot-registration metadata.
+    /// </remarks>
+    ProjectionReadModelAddress CreateForAdmittedManifest(
+        AggregateIdentity identity,
+        string projectionName,
+        string slot) => Create(identity, projectionName, slot);
+
+    /// <summary>
     /// Creates canonical addresses for every registered aggregate-owned slot of a projection — the whole-key
     /// erasure manifest for one aggregate identity. Shared slots are excluded.
     /// </summary>

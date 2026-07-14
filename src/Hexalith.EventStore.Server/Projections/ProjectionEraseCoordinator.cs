@@ -23,10 +23,8 @@ internal sealed partial class ProjectionEraseCoordinator : IProjectionEraseCoord
     private const string OutcomeIncomplete = "Incomplete";
     private const string OutcomeUnknown = "Unknown";
 
-    private static readonly IReadOnlyDictionary<string, string> s_noResumeOutcomes =
-        new Dictionary<string, string>(StringComparer.Ordinal);
-
     private readonly IProjectionReadModelAddressFactory _addressFactory;
+    private readonly IProjectionSlotRegistry _slotRegistry;
     private readonly IProjectionRebuildCheckpointStore _rebuildStore;
     private readonly IProjectionLifecycleGateway _lifecycleGateway;
     private readonly ILogger<ProjectionEraseCoordinator> _logger;
@@ -36,6 +34,7 @@ internal sealed partial class ProjectionEraseCoordinator : IProjectionEraseCoord
 
     /// <summary>Initializes a new <see cref="ProjectionEraseCoordinator"/>.</summary>
     /// <param name="addressFactory">The canonical read-model address factory.</param>
+    /// <param name="slotRegistry">The domain-declared logical slot and canonical-writer registry.</param>
     /// <param name="rebuildStore">The rebuild checkpoint store providing the active-rebuild gate.</param>
     /// <param name="lifecycleGateway">The lifecycle actor gateway.</param>
     /// <param name="logger">The logger for bounded, support-safe structured events.</param>
@@ -44,6 +43,7 @@ internal sealed partial class ProjectionEraseCoordinator : IProjectionEraseCoord
     /// <param name="deliveryCheckpointStore">The opt-in projection-scoped delivery checkpoint store.</param>
     public ProjectionEraseCoordinator(
         IProjectionReadModelAddressFactory addressFactory,
+        IProjectionSlotRegistry slotRegistry,
         IProjectionRebuildCheckpointStore rebuildStore,
         IProjectionLifecycleGateway lifecycleGateway,
         ILogger<ProjectionEraseCoordinator> logger,
@@ -51,6 +51,7 @@ internal sealed partial class ProjectionEraseCoordinator : IProjectionEraseCoord
         IProjectionRebuildCheckpointEraser? rebuildEraser = null,
         IProjectionDeliveryCheckpointStore? deliveryCheckpointStore = null) {
         _addressFactory = addressFactory ?? throw new ArgumentNullException(nameof(addressFactory));
+        _slotRegistry = slotRegistry ?? throw new ArgumentNullException(nameof(slotRegistry));
         _rebuildStore = rebuildStore ?? throw new ArgumentNullException(nameof(rebuildStore));
         _lifecycleGateway = lifecycleGateway ?? throw new ArgumentNullException(nameof(lifecycleGateway));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -106,44 +107,79 @@ internal sealed partial class ProjectionEraseCoordinator : IProjectionEraseCoord
         string operationId = request.OperationId;
 
         try {
-            // 2. Resolve + validate the canonical manifest BEFORE any mutation. An unregistered / shared /
-            //    legacy slot (or any invalid segment) is not erasable: report Unsupported without touching
-            //    or disclosing target state.
+            // 2. Recreate the deterministic canonical manifest before lifecycle admission. Normal creation
+            //    validates current registration metadata. If that metadata drifted after an earlier attempt,
+            //    the platform factory can still recreate the already-admitted addresses; the actor's manifest
+            //    digest then decides whether this request is the matching resume. An idle scope receives
+            //    AllowBegin=false and therefore remains unmodified.
             var readModelTargets = new List<ProjectionReadModelAddress>(request.Slots.Count);
+            string? freshBeginBlockReason = null;
             try {
                 foreach (string slot in request.Slots) {
                     readModelTargets.Add(_addressFactory.Create(identity, request.ProjectionName, slot));
                 }
             }
             catch (ProjectionReadModelAddressException) {
-                Log.EraseUnsupported(_logger, scope, "unresolvable-target");
-                return ProjectionEraseResult.Of(ProjectionEraseOutcomeKind.Unsupported, "unresolvable-target");
+                freshBeginBlockReason = "unresolvable-target";
+                readModelTargets.Clear();
+                try {
+                    foreach (string slot in request.Slots) {
+                        readModelTargets.Add(_addressFactory.CreateForAdmittedManifest(
+                            identity,
+                            request.ProjectionName,
+                            slot));
+                    }
+                }
+                catch (ProjectionReadModelAddressException) {
+                    Log.EraseUnsupported(_logger, scope, freshBeginBlockReason);
+                    return ProjectionEraseResult.Of(
+                        ProjectionEraseOutcomeKind.Unsupported,
+                        freshBeginBlockReason);
+                }
+                catch (ArgumentException) {
+                    Log.EraseUnsupported(_logger, scope, "invalid-target");
+                    return ProjectionEraseResult.Of(ProjectionEraseOutcomeKind.Unsupported, "invalid-target");
+                }
             }
             catch (ArgumentException) {
                 Log.EraseUnsupported(_logger, scope, "invalid-target");
                 return ProjectionEraseResult.Of(ProjectionEraseOutcomeKind.Unsupported, "invalid-target");
             }
 
-            // 3. Active-rebuild gate (fail-closed): a transient gate fault is treated as ActiveRebuild so we
-            //    never proceed to mutate during a possible operator rebuild.
-            bool activeRebuild;
-            try {
-                activeRebuild = await _rebuildStore
-                    .HasActiveOperatorRebuildForDomainAsync(identity.TenantId, identity.Domain, cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) {
-                throw;
-            }
-            catch (Exception ex) {
-                Log.EraseActiveRebuildGateUnavailable(_logger, ex, scope);
-                return ProjectionEraseResult.Of(ProjectionEraseOutcomeKind.ActiveRebuild, "active-rebuild-gate-unavailable");
+            if (freshBeginBlockReason is null) {
+                foreach (string slot in request.Slots) {
+                    if (!_slotRegistry.DeclaresCanonicalWriter(
+                        identity.Domain,
+                        request.ProjectionName,
+                        slot)) {
+                        freshBeginBlockReason = "no-canonical-writer";
+                        break;
+                    }
+                }
             }
 
-            if (activeRebuild) {
-                Log.EraseActiveRebuildDetected(_logger, scope);
-                return ProjectionEraseResult.Of(ProjectionEraseOutcomeKind.ActiveRebuild, "active-rebuild");
+            // 3. Evaluate the active-rebuild gate only when the fresh manifest is otherwise admissible.
+            //    A matching actor resume bypasses every fresh-begin gate and remains authoritative even when
+            //    registration metadata or rebuild state changes after the operation was admitted.
+            if (freshBeginBlockReason is null) {
+                try {
+                    bool activeRebuild = await _rebuildStore
+                        .HasActiveOperatorRebuildForDomainAsync(identity.TenantId, identity.Domain, cancellationToken)
+                        .ConfigureAwait(false);
+                    if (activeRebuild) {
+                        freshBeginBlockReason = "active-rebuild";
+                    }
+                }
+                catch (OperationCanceledException) {
+                    throw;
+                }
+                catch (Exception ex) {
+                    Log.EraseActiveRebuildGateUnavailable(_logger, ex, scope);
+                    freshBeginBlockReason = "active-rebuild-gate-unavailable";
+                }
             }
+
+            bool allowFreshBegin = freshBeginBlockReason is null;
 
             // 4. Deterministic manifest digest over the sorted target keys (no Random / time).
             var rebuildScope = new ProjectionRebuildCheckpointScope(
@@ -158,21 +194,59 @@ internal sealed partial class ProjectionEraseCoordinator : IProjectionEraseCoord
 
             // 5. Begin (or resume) the erase via the lifecycle actor — the first mutation.
             ProjectionEraseAdmission admission = await _lifecycleGateway
-                .BeginEraseAsync(identity, request.ProjectionName, operationId, manifestDigest, cancellationToken)
+                .BeginEraseAsync(
+                    identity,
+                    request.ProjectionName,
+                    operationId,
+                    manifestDigest,
+                    allowFreshBegin,
+                    cancellationToken)
                 .ConfigureAwait(false);
 
-            IReadOnlyDictionary<string, string> resumeOutcomes = s_noResumeOutcomes;
             switch (admission.Kind) {
                 case ProjectionEraseAdmissionKind.Conflict:
                     Log.EraseConflict(_logger, scope, operationId, "operation-conflict");
                     return ProjectionEraseResult.Of(ProjectionEraseOutcomeKind.Conflict, "operation-conflict");
+                case ProjectionEraseAdmissionKind.BeginNotAllowed:
+                    return FreshBeginBlocked(scope, freshBeginBlockReason ?? "fresh-begin-not-allowed");
                 case ProjectionEraseAdmissionKind.Resume:
-                    resumeOutcomes = admission.PerTargetOutcomes ?? s_noResumeOutcomes;
-                    Log.EraseResumed(_logger, scope, operationId, resumeOutcomes.Count);
+                    Log.EraseResumed(_logger, scope, operationId, admission.PerTargetOutcomes?.Count ?? 0);
                     break;
-                default:
+                case ProjectionEraseAdmissionKind.Admitted:
+                    if (!allowFreshBegin) {
+                        // A mixed-version actor may ignore the new AllowBegin field and admit an idle scope.
+                        // No erase target has been touched yet, so explicitly unwind that actor transition
+                        // before returning the original fail-closed result.
+                        bool unwound = await _lifecycleGateway
+                            .CompleteEraseAsync(
+                                identity,
+                                request.ProjectionName,
+                                operationId,
+                                cancellationToken)
+                            .ConfigureAwait(false);
+                        if (!unwound) {
+                            Log.EraseNonSuccess(
+                                _logger,
+                                scope,
+                                operationId,
+                                "fresh-begin-unwind-unconfirmed");
+                            return ProjectionEraseResult.Of(
+                                ProjectionEraseOutcomeKind.Unknown,
+                                "fresh-begin-unwind-unconfirmed");
+                        }
+
+                        return FreshBeginBlocked(
+                            scope,
+                            freshBeginBlockReason ?? "fresh-begin-not-allowed");
+                    }
+
                     Log.EraseAdmitted(_logger, scope, operationId);
                     break;
+                default:
+                    Log.EraseNonSuccess(_logger, scope, operationId, "unknown-admission");
+                    return ProjectionEraseResult.Of(
+                        ProjectionEraseOutcomeKind.Unknown,
+                        "unknown-admission");
             }
 
             // 6. Erase in strict order: read-model targets -> rebuild row -> delivery checkpoint.
@@ -206,7 +280,6 @@ internal sealed partial class ProjectionEraseCoordinator : IProjectionEraseCoord
                         request.ProjectionName,
                         operationId,
                         target.Key,
-                        resumeOutcomes,
                         target.ReadEtagAsync,
                         target.EraseAsync,
                         cancellationToken)
@@ -306,22 +379,29 @@ internal sealed partial class ProjectionEraseCoordinator : IProjectionEraseCoord
         return false;
     }
 
-    // Erase one target and record its outcome, skipping a target already recorded Complete on resume.
+    private ProjectionEraseResult FreshBeginBlocked(string scope, string reasonCode) {
+        if (string.Equals(reasonCode, "no-canonical-writer", StringComparison.Ordinal)
+            || string.Equals(reasonCode, "unresolvable-target", StringComparison.Ordinal)) {
+            Log.EraseUnsupported(_logger, scope, reasonCode);
+            return ProjectionEraseResult.Of(ProjectionEraseOutcomeKind.Unsupported, reasonCode);
+        }
+
+        if (string.Equals(reasonCode, "active-rebuild", StringComparison.Ordinal)) {
+            Log.EraseActiveRebuildDetected(_logger, scope);
+        }
+
+        return ProjectionEraseResult.Of(ProjectionEraseOutcomeKind.ActiveRebuild, reasonCode);
+    }
+
+    // Reclassify one target against current state and durably record its latest outcome.
     private async Task<string> ProcessTargetAsync(
         AggregateIdentity identity,
         string projectionName,
         string operationId,
         string targetKey,
-        IReadOnlyDictionary<string, string> resumeOutcomes,
         Func<CancellationToken, Task<(bool Present, string Etag)>> readEtagAsync,
         Func<string, CancellationToken, Task<bool>> eraseAsync,
         CancellationToken cancellationToken) {
-        if (resumeOutcomes.TryGetValue(targetKey, out string? prior)
-            && string.Equals(prior, OutcomeComplete, StringComparison.Ordinal)) {
-            Log.TargetOutcome(_logger, $"{identity.ActorId}:{projectionName}", operationId, targetKey, "Resumed-Complete");
-            return OutcomeComplete;
-        }
-
         string outcome = await ClassifyEraseAsync(readEtagAsync, eraseAsync, cancellationToken).ConfigureAwait(false);
         bool recorded = await _lifecycleGateway
             .RecordTargetOutcomeAsync(identity, projectionName, operationId, targetKey, outcome, cancellationToken)

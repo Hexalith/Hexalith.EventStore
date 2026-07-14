@@ -4,7 +4,7 @@ baseline_commit: 5223e9c9c2f0dd71673003c710b8739efc8484ff
 
 # Story 1.12: Asynchronous Multi-Projection Dispatch
 
-Status: in-progress
+Status: review
 
 **Requirements covered:** FR7, FR36, NFR7, NFR12, NFR16  
 **Governed by:** AD-2, AD-7, AD-8, AD-12, AD-19, AD-20  
@@ -310,10 +310,11 @@ GPT-5 Codex
 
 - Baseline/preflight: `5223e9c9c2f0dd71673003c710b8739efc8484ff`; approved correction recorded in `sprint-change-proposal-2026-07-13.md` before implementation continued.
 - Release restore/build: `Hexalith.EventStore.slnx` — 48 projects restored/built, 0 warnings, 0 errors.
-- Deterministic tests: Contracts 701/701; Client 663/663; DomainService 113/113; Testing 150/150; Sample 117/117; Server 2442 passed, 25 pre-existing quarantined ATDD specifications skipped.
+- Deterministic tests: Contracts 701/701; Client 665/665; DomainService 118/118; Testing 150/150; Sample 117/117; Server 2474 passed, 25 pre-existing quarantined ATDD specifications skipped.
 - Tier-3 live-sidecar tests: 34/34 passed, including Story 1.10 `ReadModelBatchLiveSidecarTests` and Story 1.12 `NamedProjectionDispatchLiveSidecarTests`.
 - Live evidence versions: Dapr.Client 1.18.4; DAPR CLI 1.18.0; DAPR runtime 1.18.1; Redis `docker.io/redis:6`; Docker Server 29.4.3; StackExchange.Redis 3.0.11.
-- Final hygiene: `git diff --check` passed.
+- Review-fix focused lanes: Client hosted-index tests 7/7; DomainService dispatcher/endpoint tests 51/51; Server scheduler/worker/orchestrator tests 73/73.
+- Final hygiene: `git diff --check` passed; live-sidecar cleanup left no `daprd` process.
 
 ### Completion Notes List
 
@@ -323,6 +324,9 @@ GPT-5 Codex
 - Proved detail/index partial failure and convergence through real AggregateActor -> EventStore orchestrator -> DAPR `/project/v2` -> batch store -> Redis, including independent checkpoints, durable receipts, scheduler/worker recreation, empty converged ledger, and duplicate `AlreadyCompleted` receipts without mutation.
 - Preserved legacy synchronous Sample projections and the v1 rebuild path; the verified rebuild lane never invokes named persistence handlers.
 - Added named projection/read-model authoring guidance and updated the repository-owned AI context. No AppHost/DAPR YAML, release inventory, generated REST/UI surface, package, or project was added or changed for Story 1.12.
+- Resolved legacy/named coexistence by running admitted v2 named delivery and the compatible v1 legacy route for the same domain; named-only rebuilds remain isolated on the fail-safe v1 rebuild path and cannot advance on an unavailable legacy route.
+- Replaced the single global v1 retry-ledger key with 64 deterministic v2 shards, bulk due-work scans, per-shard optimistic concurrency, and idempotent v1-to-v2 migration. Dapr.Client API details for bulk state reads were verified with the repository's .NET API inspection skill.
+- Closed the CI verification gaps across scheduler mutation/migration, hosted catalog publication, endpoint wiring/error mapping, dispatcher bounds, mapper defaults, live/v2 orchestration, worker safety branches, and rebuild isolation.
 
 ### File List
 
@@ -374,6 +378,7 @@ GPT-5 Codex
 - `src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs`
 - `src/Hexalith.EventStore/Indexes/AdminOperationalIndexHostedService.cs`
 - `tests/Hexalith.EventStore.Client.Tests/Indexes/AdminOperationalIndexHostedServiceTests.cs`
+- `tests/Hexalith.EventStore.Client.Tests/Indexes/AdminOperationalIndexHttpMessageHandler.cs`
 - `tests/Hexalith.EventStore.Client.Tests/Projections/ProjectionDispatchOptionsTests.cs`
 - `tests/Hexalith.EventStore.Contracts.Tests/Projections/ProjectionDispatchContractTests.cs`
 - `tests/Hexalith.EventStore.DomainService.Tests/DomainProjectionDispatcherV2Tests.cs`
@@ -387,6 +392,7 @@ GPT-5 Codex
 - `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/NamedProjectionDispatchLiveSidecarTests.cs`
 - `tests/Hexalith.EventStore.Server.Tests/Projections/NamedProjectionDispatchCoordinatorTests.cs`
 - `tests/Hexalith.EventStore.Server.Tests/Projections/NamedProjectionRouteCatalogTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/DaprProjectionDeliveryRetrySchedulerTests.cs`
 - `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionDeliveryRetryWorkerTests.cs`
 - `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionDispatchHttpMessageHandler.cs`
 - `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorTests.cs`
@@ -395,6 +401,7 @@ GPT-5 Codex
 
 | Date | Change |
 | --- | --- |
+| 2026-07-14 | Resolved all remaining review findings: legacy/named coexistence, a 64-shard retry ledger with v1 migration, complete CI verification for durable retry and production wiring, and renewed deterministic/live validation; moved the story to review. |
 | 2026-07-13 | Implemented additive asynchronous named multi-projection dispatch, exact route metadata/catalog admission, independent checkpoint reconciliation, durable immediate retry, persisted DAPR/Redis evidence, compatibility tests, and authoring guidance; moved the story to review. |
 | 2026-07-13 | Applied the approved sprint correction: Story 1.12 may proceed independently of unresolved sibling-story review findings while Story 1.15 retains the complete-and-reviewed convergence gate. |
 | 2026-07-12 | Created comprehensive ready-for-dev Story 1.12 context with additive v2 compatibility, pre-persistence admission, deterministic fan-out, partial-failure checkpoint truth, rebuild safety, and persisted evidence gates. |
@@ -403,13 +410,13 @@ GPT-5 Codex
 
 Code review 2026-07-13 (baseline `5223e9c9` → HEAD, 55 code files / +3898 −118). Four adversarial layers (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor); no layer failed. Spec conformance is strong — ACs 1–6 substantially MET, `ConfigureAwait(false)` clean, no `Guid.TryParse`, per-projection checkpoint truth correct.
 
-**Fix status (2026-07-13):** 7 patches applied and verified green — deterministic (Contracts 701/701, Client 663/663, DomainService 113/113, Server 2467 with 25 pre-existing skips) **and Tier-3 live-sidecar on real DAPR 1.18.1 + Redis 6**: `NamedProjectionDispatchLiveSidecarTests` 1/1 and `ReadModelBatchLiveSidecarTests` 3/3 green, with the partial-failure→converge path (`counter-detail=Completed`, `counter-index=Retryable`→retry→`Completed`) exercising the patched coordinator reconciliation; no orphaned `daprd`. 2 patches remain as action items (P7 CI tests, P8 ledger re-architecture — need a design decision). 1 patch reverted (P10 — the fail-closed guard was the wrong fix; see the corrected D3 below). 5 deferred, 4 dismissed. Story stays **in-progress** pending P7/P8 and the corrected D3.
+**Fix status (2026-07-14):** All actionable review findings are applied and verified green — deterministic (Contracts 701/701, Client 665/665, DomainService 118/118, Testing 150/150, Sample 117/117, Server 2474 passed with 25 pre-existing skips) **and Tier-3 live-sidecar on real DAPR 1.18.1 + Redis 6**: 34/34 green, including v2/v1 coexistence, partial-failure convergence, sharded retry-ledger persistence, empty converged ledger, and legacy actor state; no orphaned `daprd`. 5 findings remain explicitly deferred and 4 dismissed. Story is ready for review.
 
 **Decision-needed (resolved 2026-07-13)**
 
-- [x] [Review][Decision] Single global retry-ledger key architecture (HIGH) → **Re-architect now** (Patch P8, action item — not yet applied). Partition the ledger off the single `projection-delivery-retry:ledger:v1` key (per-aggregate/tenant keys or index+shard) so it no longer contends/grows/wedges at scale. [blind-hunter+edge-case-hunter] [src/Hexalith.EventStore.Server/Projections/DaprProjectionDeliveryRetryScheduler.cs:14]
+- [x] [Review][Decision] Single global retry-ledger key architecture (HIGH) → **Re-architect now** (Patch P8 — applied as 64 deterministic v2 shards with bulk scanning and idempotent v1 migration). Partition the ledger off the single `projection-delivery-retry:ledger:v1` key (per-aggregate/tenant keys or index+shard) so it no longer contends/grows/wedges at scale. [blind-hunter+edge-case-hunter] [src/Hexalith.EventStore.Server/Projections/DaprProjectionDeliveryRetryScheduler.cs:14]
 - [x] [Review][Decision] No terminal/dead-letter/cleanup taxonomy for non-converging retry work (MEDIUM) → **Patch safe ones (Patch P9 — applied), defer rest**. Applied: drift-ahead (`deliveredSequence > head`) is now terminal for the work item. Deferred to Story 1.13 + a cleanup-policy story: poison retry ceiling / dead-letter, fingerprint/version re-bind, permanent-4xx handling, terminal-only cleanup. [blind-hunter+edge-case-hunter] [src/Hexalith.EventStore.Server/Projections/NamedProjectionDispatchCoordinator.cs:112]
-- [ ] [Review][Decision] Legacy projection starved when a domain also has named routes (MEDIUM, AC5 / Resolved Contract #1) — **RE-OPENED. Original resolution (fail-closed startup guard, P10) was REVERTED**: applying it broke 4 `UseEventStoreDomainService_*` tests because the frozen spec §1 ("an unmapped legacy handler remains v1-only") and the story's own fixtures (`WidgetAsyncProjectionHandler` native named handler + legacy `WidgetProjection`, both domain `widget`) intentionally support legacy/named coexistence per domain; the DomainService correctly serves both `/project` and `/project/v2`. The real defect is that the EventStore **orchestrator** (`ProjectionUpdateOrchestrator.DeliverProjectionAsync:171-181`) fully skips the v1 `/project` call once the v2 catalog is present, so an unadapted legacy projection stops updating. Correct fix (D3 option b) is orchestrator-side: still deliver v1 legacy routes alongside v2 named routes for the same domain — a larger change needing its own tests + Tier-3. Decide: implement orchestrator coexistence now, or defer as a follow-up. [blind-hunter+acceptance-auditor] [src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:171]
+- [x] [Review][Decision] Legacy projection starved when a domain also has named routes (MEDIUM, AC5 / Resolved Contract #1) — **resolved with D3 option b**: the orchestrator now attempts admitted v2 named delivery and continues through the v1 legacy route for the same event batch. Unit and live Redis evidence prove both named read models and the legacy projection actor advance. The v1 rebuild path remains isolated and fails safely for named-only domains. [blind-hunter+acceptance-auditor] [src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:171]
 
 **Patch**
 
@@ -420,8 +427,8 @@ Code review 2026-07-13 (baseline `5223e9c9` → HEAD, 55 code files / +3898 −1
 - [x] [Review][Patch] `MaxRetryAttempts` overloaded as the worker's per-tick scan page size (LOW-MEDIUM) — **applied**: added `RetryScanBatchSize` (default 64) + validation; the worker uses it for `GetDueAsync`, leaving `MaxRetryAttempts` for backoff only. [blind-hunter+edge-case-hunter] [src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryRetryWorker.cs:45]
 - [x] [Review][Patch] `/project/v2` validates only `Request.Domain` (LOW-MEDIUM) — **applied**: `ValidateRequest` now rejects null/blank `Request.TenantId`/`Request.AggregateId`. [edge-case-hunter] [src/Hexalith.EventStore.DomainService/DomainProjectionDispatcher.cs:117]
 - [x] [Review][Patch] (from D2) Drift-ahead route becomes terminal instead of deferring forever (MEDIUM) — **applied**: drift-ahead routes are collected into a settled set and pruned in a unified `ReconcileRetryLedgerAsync`, so the work item can converge/delete instead of deferring that route forever. [blind-hunter+edge-case-hunter] [src/Hexalith.EventStore.Server/Projections/NamedProjectionDispatchCoordinator.cs:112]
-- [ ] [Review][Patch] CI verification gaps on the durable-retry backbone and production wiring (MEDIUM, ACTION ITEM) — exercised only by the CI-excluded Tier-3 suite or not at all: the whole `DaprProjectionDeliveryRetryScheduler`, `AdminOperationalIndexHostedService.StartAsync` (Replace + fail-closed skip), `RegisterNamedProjectionCatalog` + v2 endpoint exception→`BadRequest` mapping, the orchestrator v2 short-circuit positive branch, the worker head-match/rebuild/unreadable/exception guards, dispatcher request-validation/envelope-overflow branches, the `ReadModelBatchProjectionResultMapper` default arm, and named-only-domain rebuild safe-defer. Add fake-`DaprClient`/substitute unit tests so regressions fail the CI gate. Depends on P8's final scheduler shape. [verification-gap] [tests/Hexalith.EventStore.Server.Tests/Projections/]
-- [ ] [Review][Patch] (from D1) Re-architect the retry ledger off the single global key (HIGH, ACTION ITEM) — replace the single `projection-delivery-retry:ledger:v1` state key with a partitioned layout (per-aggregate or per-tenant keys, or an index + sharded records). Needs a state-store index-capability decision and Tier-3 validation. Preserve idempotent get-or-create by `WorkId`, `GetDueAsync` ordering, and restart-safety. [blind-hunter+edge-case-hunter] [src/Hexalith.EventStore.Server/Projections/DaprProjectionDeliveryRetryScheduler.cs:14]
+- [x] [Review][Patch] CI verification gaps on the durable-retry backbone and production wiring (MEDIUM, ACTION ITEM) — **applied**: fake-`DaprClient`/substitute tests now cover the full sharded scheduler, hosted catalog Replace/fail-closed behavior, named-catalog endpoint registration and `BadRequest` mapping, v2+v1 orchestration, worker head/rebuild/readability/process/top-level exception guards, dispatcher request/envelope bounds, mapper default behavior, and named-only rebuild isolation. [verification-gap] [tests/Hexalith.EventStore.Server.Tests/Projections/]
+- [x] [Review][Patch] (from D1) Re-architect the retry ledger off the single global key (HIGH, ACTION ITEM) — **applied**: 64 SHA-256-selected v2 shard keys, per-shard ETag mutation, deterministic bounded bulk scans, update-only convergence safety, and restart-safe idempotent migration/deletion of the v1 ledger. Verified against fake state and real DAPR/Redis. [blind-hunter+edge-case-hunter] [src/Hexalith.EventStore.Server/Projections/DaprProjectionDeliveryRetryScheduler.cs:14]
 
 **Deferred**
 

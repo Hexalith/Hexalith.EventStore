@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.Json;
 
 using Dapr.Actors;
 using Dapr.Actors.Client;
@@ -573,6 +574,12 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         });
 
         _ = _testHost.MapActorsHandlers();
+        _ = _testHost.MapPost(
+            "/project",
+            (ProjectionRequest request) => Microsoft.AspNetCore.Http.Results.Ok(
+                new ProjectionResponse(
+                    "counter-legacy",
+                    JsonSerializer.SerializeToElement(new { eventCount = request.Events.Length }))));
         _ = _testHost.MapPost(
             "/project/v2",
             async (ProjectionDispatchRequest request,

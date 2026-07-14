@@ -31,11 +31,17 @@ internal sealed class DaprProjectionLifecycleGateway(IActorProxyFactory actorPro
     }
 
     /// <inheritdoc/>
-    public Task<ProjectionEraseAdmission> BeginEraseAsync(AggregateIdentity identity, string projectionName, string operationId, string manifestDigest, CancellationToken cancellationToken = default) {
+    public Task<ProjectionEraseAdmission> BeginEraseAsync(
+        AggregateIdentity identity,
+        string projectionName,
+        string operationId,
+        string manifestDigest,
+        bool allowBegin,
+        CancellationToken cancellationToken = default) {
         ActorProxy proxy = CreateProxy(identity, projectionName);
         return proxy.InvokeMethodAsync<ProjectionEraseBeginRequest, ProjectionEraseAdmission>(
             nameof(IProjectionLifecycleActor.BeginEraseAsync),
-            new ProjectionEraseBeginRequest(operationId, manifestDigest),
+            new ProjectionEraseBeginRequest(operationId, manifestDigest, allowBegin),
             cancellationToken);
     }
 

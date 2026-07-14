@@ -140,6 +140,56 @@ public class ProjectionUpdateOrchestratorTests {
             Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task DeliverProjectionAsync_WithNamedAndLegacyRoutes_DeliversBoth() {
+        IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
+        _ = checkpointTracker.ReadLastDeliveredSequenceAsync(TestIdentity, Arg.Any<CancellationToken>())
+            .Returns(0);
+        _ = checkpointTracker.SaveDeliveredSequenceAsync(TestIdentity, Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        INamedProjectionDispatchCoordinator namedProjectionDispatchCoordinator = Substitute.For<INamedProjectionDispatchCoordinator>();
+        _ = namedProjectionDispatchCoordinator.TryDispatchAsync(
+                TestIdentity,
+                Arg.Any<DomainServiceRegistration>(),
+                Arg.Any<EventEnvelope[]>(),
+                Arg.Any<ProjectionEventDto[]>(),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+        var handler = new CountingProjectionResponseHandler();
+        IHttpClientFactory httpClientFactory = CreateHttpClientFactory(handler);
+        DaprClient daprClient = new DaprClientBuilder().Build();
+        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(
+            checkpointTracker,
+            daprClient,
+            httpClientFactory,
+            namedProjectionDispatchCoordinator: namedProjectionDispatchCoordinator);
+        var registration = new DomainServiceRegistration("counter-service", "project", TestIdentity.TenantId, TestIdentity.Domain, "v1");
+        _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(registration);
+        IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
+        _ = aggregateActor.GetEventsAsync(0).Returns([CreateTestEnvelope()]);
+        _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor")
+            .Returns(aggregateActor);
+        IProjectionWriteActor writeActor = Substitute.For<IProjectionWriteActor>();
+        _ = actorProxyFactory.CreateActorProxy<IProjectionWriteActor>(Arg.Any<ActorId>(), QueryRouter.ProjectionActorTypeName)
+            .Returns(writeActor);
+
+        await sut.DeliverProjectionAsync(TestIdentity);
+
+        _ = await namedProjectionDispatchCoordinator.Received(1).TryDispatchAsync(
+            TestIdentity,
+            registration,
+            Arg.Any<EventEnvelope[]>(),
+            Arg.Any<ProjectionEventDto[]>(),
+            Arg.Any<CancellationToken>());
+        handler.CallCount.ShouldBe(1);
+        await writeActor.Received(1).UpdateProjectionAsync(Arg.Any<ProjectionState>());
+        _ = await checkpointTracker.Received(1).SaveDeliveredSequenceAsync(
+            TestIdentity,
+            1,
+            Arg.Any<CancellationToken>());
+    }
+
     // P23-6P: an operator rebuild of a domain that has zero tracked aggregates is vacuously
     // successful when a ToPosition bound is set. The operator-scope row transitions to
     // Succeeded immediately (no aggregate-scoped work executes). Pins the D3-6P decision.
@@ -335,7 +385,7 @@ public class ProjectionUpdateOrchestratorTests {
     }
 
     [Fact]
-    public async Task RebuildProjectionAsync_ProjectRejectionDoesNotAdvanceRebuildCheckpoint() {
+    public async Task RebuildProjectionAsync_NamedOnlyDomainDoesNotAdvanceRebuildCheckpoint() {
         IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
         _ = checkpointTracker.EnumerateTrackedIdentitiesAsync(Arg.Any<CancellationToken>())
             .Returns(EnumerateTracked(TestIdentity));
@@ -346,13 +396,15 @@ public class ProjectionUpdateOrchestratorTests {
             .Returns(CreateRebuildCheckpoint(0, ProjectionRebuildStatus.Running, "operation-1", toPosition: 10));
 
         IProjectionWriteActor writeActor = Substitute.For<IProjectionWriteActor>();
-        IHttpClientFactory httpClientFactory = CreateHttpClientFactory(new FixedResponseHandler(HttpStatusCode.BadRequest, new StringContent("rejected")));
+        INamedProjectionDispatchCoordinator namedProjectionDispatchCoordinator = Substitute.For<INamedProjectionDispatchCoordinator>();
+        IHttpClientFactory httpClientFactory = CreateHttpClientFactory(new FixedResponseHandler(HttpStatusCode.NotFound, new StringContent("legacy route unavailable")));
         DaprClient daprClient = new DaprClientBuilder().Build();
         (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(
             checkpointTracker,
             daprClient,
             httpClientFactory,
-            rebuildCheckpointStore: rebuildCheckpointStore);
+            rebuildCheckpointStore: rebuildCheckpointStore,
+            namedProjectionDispatchCoordinator: namedProjectionDispatchCoordinator);
         var registration = new DomainServiceRegistration("counter-service", "project", TestIdentity.TenantId, TestIdentity.Domain, "v1");
         _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(registration);
@@ -367,8 +419,15 @@ public class ProjectionUpdateOrchestratorTests {
 
         await sut.RebuildProjectionAsync(CreateRebuildScope());
 
-        // Rejection records a safe Failed status without advancing beyond the last applied sequence.
+        // Rebuild remains on the isolated v1 path. A named-only domain therefore defers safely by
+        // recording the unavailable legacy route without dispatching v2 or advancing progress.
         await writeActor.DidNotReceiveWithAnyArgs().UpdateProjectionAsync(default!);
+        _ = await namedProjectionDispatchCoordinator.DidNotReceiveWithAnyArgs().TryDispatchAsync(
+            default!,
+            default!,
+            default!,
+            default!,
+            default);
         _ = await rebuildCheckpointStore.Received(1).ResetAsync(
             Arg.Is<ProjectionRebuildCheckpointScope>(scope => scope.OperationId == "operation-1"),
             0,

@@ -25,9 +25,18 @@ internal interface IProjectionLifecycleGateway {
     /// <param name="projectionName">The projection name (fourth key segment).</param>
     /// <param name="operationId">The erase operation identifier.</param>
     /// <param name="manifestDigest">The erase target manifest digest.</param>
+    /// <param name="allowBegin">
+    /// Whether an idle lifecycle scope may begin erasing. A matching in-flight operation may still resume.
+    /// </param>
     /// <param name="cancellationToken">A cancellation token.</param>
     /// <returns>The admission decision.</returns>
-    Task<ProjectionEraseAdmission> BeginEraseAsync(AggregateIdentity identity, string projectionName, string operationId, string manifestDigest, CancellationToken cancellationToken = default);
+    Task<ProjectionEraseAdmission> BeginEraseAsync(
+        AggregateIdentity identity,
+        string projectionName,
+        string operationId,
+        string manifestDigest,
+        bool allowBegin,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Records the erase outcome for a single target within the in-flight operation.

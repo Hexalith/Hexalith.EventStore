@@ -20,12 +20,7 @@ public sealed class ProjectionReadModelAddressFactory(
 
     /// <inheritdoc/>
     public ProjectionReadModelAddress Create(AggregateIdentity identity, string projectionName, string slot) {
-        ArgumentNullException.ThrowIfNull(identity);
-        ProjectionKeySegments.Validate(identity.TenantId, "identity.TenantId");
-        ProjectionKeySegments.Validate(identity.Domain, "identity.Domain");
-        ProjectionKeySegments.Validate(identity.AggregateId, "identity.AggregateId");
-        ProjectionKeySegments.Validate(projectionName, nameof(projectionName));
-        ProjectionKeySegments.Validate(slot, nameof(slot));
+        Validate(identity, projectionName, slot);
 
         if (!slotRegistry.TryGetKind(projectionName, slot, out ProjectionReadModelSlotKind kind)) {
             throw new ProjectionReadModelAddressException(
@@ -37,6 +32,15 @@ public sealed class ProjectionReadModelAddressFactory(
                 $"Read-model slot '{slot}' for projection '{projectionName}' is shared and is excluded from whole-key erasure.");
         }
 
+        return Build(identity, projectionName, slot);
+    }
+
+    /// <inheritdoc/>
+    public ProjectionReadModelAddress CreateForAdmittedManifest(
+        AggregateIdentity identity,
+        string projectionName,
+        string slot) {
+        Validate(identity, projectionName, slot);
         return Build(identity, projectionName, slot);
     }
 
@@ -70,5 +74,14 @@ public sealed class ProjectionReadModelAddressFactory(
             projectionName,
             identity.AggregateId,
             slot);
+    }
+
+    private static void Validate(AggregateIdentity identity, string projectionName, string slot) {
+        ArgumentNullException.ThrowIfNull(identity);
+        ProjectionKeySegments.Validate(identity.TenantId, "identity.TenantId");
+        ProjectionKeySegments.Validate(identity.Domain, "identity.Domain");
+        ProjectionKeySegments.Validate(identity.AggregateId, "identity.AggregateId");
+        ProjectionKeySegments.Validate(projectionName, nameof(projectionName));
+        ProjectionKeySegments.Validate(slot, nameof(slot));
     }
 }

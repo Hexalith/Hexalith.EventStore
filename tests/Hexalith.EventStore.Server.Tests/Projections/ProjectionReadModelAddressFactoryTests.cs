@@ -3,6 +3,7 @@ using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Projections;
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 using Shouldly;
@@ -57,6 +58,16 @@ public sealed class ProjectionReadModelAddressFactoryTests {
             () => factory.Create(Identity, "summary", "detail"));
     }
 
+    [Fact]
+    public void CreateForAdmittedManifest_UnregisteredSlot_RecreatesCanonicalAddress() {
+        ProjectionReadModelAddressFactory factory = CreateFactory(new ProjectionSlotRegistry(), "read-models");
+
+        ProjectionReadModelAddress address = factory.CreateForAdmittedManifest(Identity, "summary", "detail");
+
+        address.Key.ShouldBe("readmodel:tenant-a:orders:summary:order-1:detail");
+        address.StoreName.ShouldBe("read-models");
+    }
+
     [Theory]
     [InlineData("sum:mary", "detail")]
     [InlineData("summary", "de:tail")]
@@ -95,5 +106,64 @@ public sealed class ProjectionReadModelAddressFactoryTests {
 
         _ = Should.Throw<InvalidOperationException>(
             () => registry.Register("summary", "detail", ProjectionReadModelSlotKind.Shared));
+    }
+
+    [Fact]
+    public void Registry_CanonicalWriterDeclaration_IsDomainScoped() {
+        var registry = new ProjectionSlotRegistry();
+        registry.Register("summary", "writerless", ProjectionReadModelSlotKind.AggregateOwned);
+        registry.Register("summary", "canonical", ProjectionReadModelSlotKind.AggregateOwned);
+        registry.RegisterCanonicalWriter("orders", "summary", "canonical");
+
+        registry.DeclaresCanonicalWriter("orders", "summary", "writerless").ShouldBeFalse();
+        registry.DeclaresCanonicalWriter("orders", "summary", "canonical").ShouldBeTrue();
+        registry.DeclaresCanonicalWriter("billing", "summary", "canonical").ShouldBeFalse();
+        registry.DeclaresCanonicalWriter("orders", "summary", "missing").ShouldBeFalse();
+
+        registry.RegisterCanonicalWriter("billing", "summary", "canonical");
+        registry.DeclaresCanonicalWriter("billing", "summary", "canonical").ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Registry_CanonicalWriterDeclaration_RequiresRegisteredAggregateOwnedSlot() {
+        var registry = new ProjectionSlotRegistry();
+        registry.Register("summary", "shared", ProjectionReadModelSlotKind.Shared);
+
+        _ = Should.Throw<InvalidOperationException>(
+            () => registry.RegisterCanonicalWriter("orders", "summary", "missing"));
+        _ = Should.Throw<InvalidOperationException>(
+            () => registry.RegisterCanonicalWriter("orders", "summary", "shared"));
+    }
+
+    [Fact]
+    public void ReleasedPublicShapes_RemainAvailable() {
+        Type declarationType = typeof(ProjectionReadModelSlotDeclaration);
+        declarationType.GetConstructor([
+            typeof(string),
+            typeof(string),
+            typeof(ProjectionReadModelSlotKind),
+        ]).ShouldNotBeNull();
+        declarationType.GetMethod("Deconstruct", [
+            typeof(string).MakeByRefType(),
+            typeof(string).MakeByRefType(),
+            typeof(ProjectionReadModelSlotKind).MakeByRefType(),
+        ]).ShouldNotBeNull();
+
+        typeof(ProjectionSlotServiceCollectionExtensions).GetMethod(
+            nameof(ProjectionSlotServiceCollectionExtensions.AddProjectionReadModelSlot),
+            [
+                typeof(IServiceCollection),
+                typeof(string),
+                typeof(string),
+                typeof(ProjectionReadModelSlotKind),
+            ]).ShouldNotBeNull();
+
+        typeof(IProjectionSlotRegistry).GetMethod(
+            nameof(IProjectionSlotRegistry.Register),
+            [
+                typeof(string),
+                typeof(string),
+                typeof(ProjectionReadModelSlotKind),
+            ]).ShouldNotBeNull();
     }
 }

@@ -28,6 +28,33 @@ public interface IProjectionSlotRegistry {
     bool TryGetKind(string projectionName, string slot, out ProjectionReadModelSlotKind kind);
 
     /// <summary>
+    /// Registers a domain-scoped canonical writer for an aggregate-owned projection slot.
+    /// </summary>
+    /// <param name="domain">The domain that owns the projection writer.</param>
+    /// <param name="projectionName">The projection name.</param>
+    /// <param name="slot">The logical slot name.</param>
+    /// <exception cref="NotSupportedException">
+    /// The registry implementation predates domain-scoped canonical-writer declarations.
+    /// </exception>
+    void RegisterCanonicalWriter(string domain, string projectionName, string slot)
+        => throw new NotSupportedException(
+            $"{GetType().FullName} does not support domain-scoped canonical-writer declarations.");
+
+    /// <summary>
+    /// Determines whether a registered slot declares a writer that persists through its canonical address
+    /// for the requested domain.
+    /// </summary>
+    /// <param name="domain">The domain that owns the projection writer.</param>
+    /// <param name="projectionName">The projection name.</param>
+    /// <param name="slot">The logical slot name.</param>
+    /// <returns>
+    /// <see langword="true"/> only when the slot is registered and that domain explicitly declares a
+    /// canonical writer; otherwise <see langword="false"/>. The default preserves binary compatibility and
+    /// fails closed for registry implementations compiled before writer declarations existed.
+    /// </returns>
+    bool DeclaresCanonicalWriter(string domain, string projectionName, string slot) => false;
+
+    /// <summary>
     /// Returns the logical slot names registered as <see cref="ProjectionReadModelSlotKind.AggregateOwned"/>
     /// for a projection, in a stable order. Shared slots are excluded.
     /// </summary>

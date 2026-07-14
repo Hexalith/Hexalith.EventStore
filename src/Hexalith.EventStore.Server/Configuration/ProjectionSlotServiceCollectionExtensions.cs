@@ -35,6 +35,38 @@ public static class ProjectionSlotServiceCollectionExtensions {
     }
 
     /// <summary>
+    /// Declares a domain-scoped logical projection read-model slot with its canonical-writer capability.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="domain">The domain that owns the projection writer.</param>
+    /// <param name="projectionName">The projection name (colon-free segment).</param>
+    /// <param name="slot">The logical slot name (colon-free segment).</param>
+    /// <param name="kind">Whether the slot is aggregate-owned or shared.</param>
+    /// <param name="declaresCanonicalWriter">
+    /// Whether the domain declares a writer that persists this slot through its canonical platform address.
+    /// </param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddProjectionReadModelSlot(
+        this IServiceCollection services,
+        string domain,
+        string projectionName,
+        string slot,
+        ProjectionReadModelSlotKind kind,
+        bool declaresCanonicalWriter) {
+        ArgumentNullException.ThrowIfNull(services);
+        ProjectionKeySegments.Validate(domain, nameof(domain));
+        ProjectionKeySegments.Validate(projectionName, nameof(projectionName));
+        ProjectionKeySegments.Validate(slot, nameof(slot));
+        _ = services.AddSingleton(new ProjectionReadModelSlotDeclaration(
+            domain,
+            projectionName,
+            slot,
+            kind,
+            declaresCanonicalWriter));
+        return services;
+    }
+
+    /// <summary>
     /// Builds a <see cref="ProjectionSlotRegistry"/> populated from every registered
     /// <see cref="ProjectionReadModelSlotDeclaration"/>.
     /// </summary>
@@ -44,6 +76,15 @@ public static class ProjectionSlotServiceCollectionExtensions {
         var registry = new ProjectionSlotRegistry();
         foreach (ProjectionReadModelSlotDeclaration declaration in serviceProvider.GetServices<ProjectionReadModelSlotDeclaration>()) {
             registry.Register(declaration.ProjectionName, declaration.Slot, declaration.Kind);
+            if (declaration.DeclaresCanonicalWriter) {
+                registry.RegisterCanonicalWriter(
+                    declaration.Domain
+                        ?? throw new InvalidOperationException(
+                            $"Canonical writer declaration for projection '{declaration.ProjectionName}' slot "
+                            + $"'{declaration.Slot}' must specify its owning domain."),
+                    declaration.ProjectionName,
+                    declaration.Slot);
+            }
         }
 
         return registry;

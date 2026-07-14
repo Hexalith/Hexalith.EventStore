@@ -1,14 +1,81 @@
+using System.Net;
 using System.Reflection;
+using System.Text;
+using System.Text.Json;
 
+using Dapr.Client;
+
+using Hexalith.EventStore.Client.Projections;
+using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Indexes;
+using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
+using Hexalith.EventStore.Server.Projections;
+
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+
+using NSubstitute;
 
 using Shouldly;
 
 namespace Hexalith.EventStore.Client.Tests.Indexes;
 
 public class AdminOperationalIndexHostedServiceTests {
+    [Fact]
+    public async Task StartAsync_CompleteNamedMetadata_PublishesExactLoadedCatalog() {
+        ProjectionDispatchRoute[] routes = [new("counter", "counter-detail")];
+        string fingerprint = ProjectionRouteCatalogFingerprint.Compute("sample", "v1", routes);
+        var response = new AdminOperationalIndexMetadataResponse([
+            new AdminOperationalIndexDomainMetadata(
+                "counter",
+                [],
+                [],
+                [],
+                ["CounterAggregate"],
+                []) {
+                NamedProjectionTypes = ["counter-detail"],
+            },
+        ]) {
+            DispatchVersion = ProjectionDispatchProtocol.Version,
+            DispatchCapability = ProjectionDispatchProtocol.Capability,
+            AppId = "sample",
+            ServiceVersion = "v1",
+            CatalogFingerprint = fingerprint,
+        };
+        DaprClient daprClient = CreateDaprClient();
+        IHttpClientFactory httpClientFactory = CreateHttpClientFactory(() => new HttpResponseMessage(HttpStatusCode.OK) {
+            Content = new StringContent(JsonSerializer.Serialize(response, JsonSerializerOptions.Web), Encoding.UTF8, "application/json"),
+        });
+        INamedProjectionRouteCatalog routeCatalog = Substitute.For<INamedProjectionRouteCatalog>();
+        AdminOperationalIndexHostedService hostedService = CreateHostedService(daprClient, httpClientFactory, routeCatalog);
+
+        await hostedService.StartAsync(CancellationToken.None);
+
+        routeCatalog.Received(1).Replace(Arg.Is<NamedProjectionRouteCatalogSnapshot>(snapshot =>
+            snapshot.Entries.Count == 1
+            && snapshot.Entries[0].AppId == "sample"
+            && snapshot.Entries[0].ServiceVersion == "v1"
+            && snapshot.Entries[0].Domain == "counter"
+            && snapshot.Entries[0].CatalogFingerprint == fingerprint
+            && snapshot.Entries[0].ProjectionTypes.SequenceEqual(new[] { "counter-detail" }, StringComparer.Ordinal)));
+    }
+
+    [Fact]
+    public async Task StartAsync_MetadataFailure_PreservesExistingCatalogAndIndexes() {
+        DaprClient daprClient = CreateDaprClient();
+        IHttpClientFactory httpClientFactory = CreateHttpClientFactory(
+            () => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
+        INamedProjectionRouteCatalog routeCatalog = Substitute.For<INamedProjectionRouteCatalog>();
+        AdminOperationalIndexHostedService hostedService = CreateHostedService(daprClient, httpClientFactory, routeCatalog);
+
+        await hostedService.StartAsync(CancellationToken.None);
+
+        routeCatalog.DidNotReceiveWithAnyArgs().Replace(default!);
+        daprClient.ReceivedCalls().ShouldNotContain(static call => call.GetMethodInfo().Name == nameof(DaprClient.SaveStateAsync));
+    }
+
     [Fact]
     public void BuildSnapshot_RejectsProjectionActorKeysAndBuildsCatalogPayloads() {
         var metadata = new AdminOperationalIndexDomainMetadata(
@@ -153,5 +220,43 @@ public class AdminOperationalIndexHostedServiceTests {
             "MergeDomainMetadata",
             BindingFlags.Static | BindingFlags.NonPublic)!;
         return (AdminOperationalIndexDomainMetadata)method.Invoke(null, [domain, metadata])!;
+    }
+
+    private static AdminOperationalIndexHostedService CreateHostedService(
+        DaprClient daprClient,
+        IHttpClientFactory httpClientFactory,
+        INamedProjectionRouteCatalog routeCatalog) {
+        var registration = new DomainServiceRegistration("sample", "process", "*", "counter", "v1");
+        var domainOptions = new DomainServiceOptions();
+        domainOptions.Registrations["*:counter:v1"] = registration;
+        return new AdminOperationalIndexHostedService(
+            daprClient,
+            httpClientFactory,
+            Options.Create(new CommandStatusOptions()),
+            Options.Create(domainOptions),
+            Options.Create(new ProjectionOptions()),
+            routeCatalog,
+            NullLogger<AdminOperationalIndexHostedService>.Instance);
+    }
+
+    private static DaprClient CreateDaprClient() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.CreateInvokeMethodRequest(
+                HttpMethod.Post,
+                "sample",
+                "admin/operational-index-metadata",
+                Arg.Any<IReadOnlyCollection<KeyValuePair<string, string>>>(),
+                Arg.Any<AdminOperationalIndexMetadataRequest>())
+            .Returns(new HttpRequestMessage(HttpMethod.Post, "http://metadata"));
+        return daprClient;
+    }
+
+    private static IHttpClientFactory CreateHttpClientFactory(Func<HttpResponseMessage> responseFactory) {
+        IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
+        _ = factory.CreateClient(Arg.Any<string>())
+            .Returns(new HttpClient(new AdminOperationalIndexHttpMessageHandler(responseFactory)));
+        _ = factory.CreateClient()
+            .Returns(new HttpClient(new AdminOperationalIndexHttpMessageHandler(responseFactory)));
+        return factory;
     }
 }
