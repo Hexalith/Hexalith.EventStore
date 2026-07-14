@@ -556,8 +556,41 @@ public sealed class EventStoreDomainServiceExtensionsTests {
             "widget-service",
             "1.1.0",
             new ProjectionDispatchOptions());
+        AdminOperationalIndexMetadata.Response otherApp = AdminOperationalIndexMetadata.Create(
+            discovery,
+            ["widget"],
+            null,
+            [handler],
+            "other-widget-service",
+            "1.2.0",
+            new ProjectionDispatchOptions());
 
         first.CatalogFingerprint.ShouldNotBe(stale.CatalogFingerprint);
+        first.CatalogFingerprint.ShouldNotBe(otherApp.CatalogFingerprint);
+    }
+
+    [Fact]
+    public void AdminOperationalIndexMetadata_Create_ExcludesOrphanNamedRouteFromFingerprint() {
+        DiscoveryResult discovery = new(
+            [new DiscoveredDomain(typeof(WidgetAggregate), "widget", typeof(WidgetState), DomainKind.Aggregate)],
+            []);
+        IAsyncDomainProjectionHandler valid = CreateNamedProjectionHandler("widget", "widget-detail");
+        IAsyncDomainProjectionHandler orphan = CreateNamedProjectionHandler("orphan", "orphan-detail");
+
+        AdminOperationalIndexMetadata.Response response = AdminOperationalIndexMetadata.Create(
+            discovery,
+            ["widget", "orphan"],
+            null,
+            [orphan, valid],
+            "widget-service",
+            "v1",
+            new ProjectionDispatchOptions());
+
+        response.Domains.ShouldHaveSingleItem().Domain.ShouldBe("widget");
+        response.CatalogFingerprint.ShouldBe(ProjectionRouteCatalogFingerprint.Compute(
+            "widget-service",
+            "v1",
+            [new ProjectionDispatchRoute("widget", "widget-detail")]));
     }
 
     /// <summary>
@@ -785,6 +818,8 @@ public sealed class EventStoreDomainServiceExtensionsTests {
     [Fact]
     public async Task NamedProjectionEndpoints_RegisterCatalogAndMapValidationFailureToBadRequest() {
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        builder.Configuration["EventStore:DomainService:AppId"] = "sample";
+        builder.Configuration["EventStore:DomainService:ServiceVersion"] = "v1";
         _ = builder.AddEventStoreDomainService();
         _ = builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
         WebApplication app = builder.Build();
@@ -806,6 +841,15 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         metadataStatus.ShouldBe(StatusCodes.Status200OK, metadataBody);
         app.Services.GetRequiredService<DomainProjectionCatalogRegistry>().Contains(fingerprint).ShouldBeTrue();
 
+        var validDispatch = new ProjectionDispatchRequest(
+            new ProjectionRequest("tenant-a", "widget", "widget-1", []),
+            ["widget-detail"],
+            "dispatch-1",
+            fingerprint);
+        (int validStatus, string validBody) = await InvokeEndpointAsync(app, "/project/v2", validDispatch);
+        validStatus.ShouldBe(StatusCodes.Status200OK, validBody);
+        validBody.ShouldContain("widget-detail");
+
         var invalidDispatch = new ProjectionDispatchRequest(
             new ProjectionRequest("tenant-a", "widget", "widget-1", []),
             [],
@@ -815,6 +859,53 @@ public sealed class EventStoreDomainServiceExtensionsTests {
 
         dispatchStatus.ShouldBe(StatusCodes.Status400BadRequest);
         dispatchBody.ShouldContain(ProjectionDispatchReasonCodes.MalformedOutcome);
+    }
+
+    [Fact]
+    public async Task NamedMetadataEndpoint_RejectsCallerSelectedAppIdentity() {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        builder.Configuration["EventStore:DomainService:AppId"] = "authoritative-app";
+        builder.Configuration["EventStore:DomainService:ServiceVersion"] = "v1";
+        _ = builder.AddEventStoreDomainService();
+        WebApplication app = builder.Build();
+        _ = app.UseEventStoreDomainService();
+        var request = new AdminOperationalIndexMetadata.Request(["widget"]) {
+            AppId = "attacker-selected-app",
+            ServiceVersion = "v1",
+        };
+
+        (int status, string body) = await InvokeEndpointAsync(
+            app,
+            "/admin/operational-index-metadata",
+            request);
+
+        status.ShouldBe(StatusCodes.Status400BadRequest, body);
+        body.ShouldContain(ProjectionDispatchReasonCodes.UnsupportedCapability);
+    }
+
+    [Fact]
+    public void UseEventStoreDomainService_InvokesDuplicateNamedRouteValidationAtStartup() {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.AddEventStoreDomainService();
+        _ = builder.Services.AddScoped(_ => CreateNamedProjectionHandler("widget", "widget-detail"));
+        WebApplication app = builder.Build();
+
+        InvalidOperationException exception = Should.Throw<InvalidOperationException>(() =>
+            app.UseEventStoreDomainService());
+
+        exception.Message.ShouldContain(ProjectionDispatchReasonCodes.DuplicateRoute);
+    }
+
+    [Fact]
+    public void UseEventStoreDomainService_PreservesPreMappedCustomNamedEndpoint() {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.AddEventStoreDomainService();
+        WebApplication app = builder.Build();
+        _ = app.MapPost("/project/v2", () => Results.Ok("custom"));
+
+        _ = app.UseEventStoreDomainService();
+
+        GetMappedRoutes(app).Count(static route => route == "/project/v2").ShouldBe(1);
     }
 
     private static ProjectionEventDto CreateProjectionEvent()

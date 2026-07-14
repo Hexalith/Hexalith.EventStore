@@ -29,6 +29,8 @@ public class ProjectionDispatchOptionsTests {
         options => options.RetryBaseDelay = TimeSpan.Zero,
         options => options.RetryMaxDelay = TimeSpan.Zero,
         options => options.RetryWorkerInterval = TimeSpan.Zero,
+        options => options.RetryLeaseDuration = TimeSpan.Zero,
+        options => options.CatalogRefreshInterval = TimeSpan.Zero,
     };
 
     [Theory]
@@ -59,5 +61,19 @@ public class ProjectionDispatchOptionsTests {
         };
 
         _ = Should.Throw<ArgumentOutOfRangeException>(options.Validate);
+    }
+
+    [Fact]
+    public void Validate_RejectsEnvelopeThatCannotRepresentEverySafeOutcome() {
+        var options = new ProjectionDispatchOptions { MaxOutcomeEnvelopeBytes = 128 };
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(options.Validate);
+    }
+
+    [Fact]
+    public void Validate_RequiresExplicitQuiescedWriterMarkerForLegacyMigration() {
+        var options = new ProjectionDispatchOptions { EnableLegacyRetryLedgerMigration = true };
+
+        _ = Should.Throw<ArgumentException>(options.Validate);
     }
 }

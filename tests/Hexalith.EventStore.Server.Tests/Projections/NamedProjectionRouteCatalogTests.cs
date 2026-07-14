@@ -66,6 +66,56 @@ public sealed class NamedProjectionRouteCatalogTests {
         }
     }
 
+    [Fact]
+    public void Upsert_ReplacesOnlyTheExactBinding() {
+        var catalog = new NamedProjectionRouteCatalog();
+        catalog.Replace(new NamedProjectionRouteCatalogSnapshot([
+            CreateEntry("widget-service", "v1", "widget", "old", ["widget-detail"]),
+            CreateEntry("orders-service", "v1", "orders", "orders", ["order-detail"]),
+        ]));
+
+        catalog.Upsert([
+            CreateEntry("widget-service", "v1", "widget", "new", ["widget-index"]),
+        ]);
+
+        catalog.Current.TryGet("widget-service", "v1", "widget", out NamedProjectionRouteCatalogEntry? widget).ShouldBeTrue();
+        widget.ShouldNotBeNull().CatalogFingerprint.ShouldBe("new");
+        catalog.Current.TryGet("orders-service", "v1", "orders", out _).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void MetadataValidation_RejectsCatalogAboveLocalHandlerLimit() {
+        AdminOperationalIndexMetadataResponse response = CreateResponse();
+        var options = new ProjectionDispatchOptions {
+            MaxHandlersPerDomain = 1,
+            MaxOutcomes = 1,
+        };
+
+        bool accepted = AdminOperationalIndexHostedService.TryCreateNamedProjectionEntries(
+            response,
+            "widget-service",
+            "v1",
+            options,
+            out IReadOnlyList<NamedProjectionRouteCatalogEntry> entries);
+
+        accepted.ShouldBeFalse();
+        entries.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Fingerprint_LengthPrefixesPreventDelimiterAmbiguity() {
+        string first = ProjectionRouteCatalogFingerprint.Compute(
+            "app\nversion",
+            "v1",
+            [new ProjectionDispatchRoute("widget", "widget-detail")]);
+        string second = ProjectionRouteCatalogFingerprint.Compute(
+            "app",
+            "version\nv1",
+            [new ProjectionDispatchRoute("widget", "widget-detail")]);
+
+        first.ShouldNotBe(second);
+    }
+
     private static AdminOperationalIndexMetadataResponse CreateResponse() {
         ProjectionDispatchRoute[] routes = [
             new("widget", "widget-index"),

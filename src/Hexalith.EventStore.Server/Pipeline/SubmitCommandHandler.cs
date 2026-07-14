@@ -25,7 +25,8 @@ public partial class SubmitCommandHandler(
     IStreamActivityTracker? streamActivityTracker,
     IProjectionUpdateOrchestrator projectionOrchestrator,
     ILogger<SubmitCommandHandler> logger,
-    ICommandCorrelationIndex? correlationIndex = null) : IRequestHandler<SubmitCommand, SubmitCommandResult> {
+    ICommandCorrelationIndex? correlationIndex = null,
+    IProjectionActivationOutbox? projectionActivationOutbox = null) : IRequestHandler<SubmitCommand, SubmitCommandResult> {
 
     public SubmitCommandHandler(
         ICommandStatusStore statusStore,
@@ -42,6 +43,14 @@ public partial class SubmitCommandHandler(
         Log.CommandReceived(logger, request.MessageId, request.CorrelationId, causationId, request.CommandType, request.Tenant, request.Domain, request.AggregateId);
 
         var result = new SubmitCommandResult(request.CorrelationId, MessageId: request.MessageId);
+
+        if (projectionActivationOutbox is not null) {
+            // Write-ahead is mandatory: an aggregate commit must never become visible before its
+            // payload-free projection activation can be recovered by another replica.
+            await projectionActivationOutbox.EnsureAsync(
+                new AggregateIdentity(request.Tenant, request.Domain, request.AggregateId),
+                cancellationToken).ConfigureAwait(false);
+        }
 
         CommandProcessingResult processingResult = await commandRouter.RouteCommandAsync(request, cancellationToken)
             .ConfigureAwait(false);

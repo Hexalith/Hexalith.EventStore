@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Buffers.Binary;
 using System.Text;
 
 using Hexalith.EventStore.Contracts.Projections;
@@ -20,18 +21,30 @@ public static class ProjectionRouteCatalogFingerprint {
         ArgumentException.ThrowIfNullOrWhiteSpace(serviceVersion);
         ArgumentNullException.ThrowIfNull(routes);
 
-        var builder = new StringBuilder();
-        _ = builder.Append(ProjectionDispatchProtocol.Capability).Append('\n');
-        _ = builder.Append(ProjectionDispatchProtocol.Version).Append('\n');
-        _ = builder.Append(appId).Append('\n');
-        _ = builder.Append(serviceVersion).Append('\n');
-        foreach (ProjectionDispatchRoute route in routes
+        ProjectionDispatchRoute[] canonicalRoutes = [.. routes
             .OrderBy(static route => route.Domain, StringComparer.Ordinal)
-            .ThenBy(static route => route.ProjectionType, StringComparer.Ordinal)) {
-            _ = builder.Append(route.Domain).Append('\u001f').Append(route.ProjectionType).Append('\n');
+            .ThenBy(static route => route.ProjectionType, StringComparer.Ordinal)];
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        Append(hash, ProjectionDispatchProtocol.Capability);
+        Append(hash, ProjectionDispatchProtocol.Version.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        Append(hash, appId);
+        Append(hash, serviceVersion);
+        Span<byte> routeCount = stackalloc byte[sizeof(int)];
+        BinaryPrimitives.WriteInt32BigEndian(routeCount, canonicalRoutes.Length);
+        hash.AppendData(routeCount);
+        foreach (ProjectionDispatchRoute route in canonicalRoutes) {
+            Append(hash, route.Domain);
+            Append(hash, route.ProjectionType);
         }
 
-        byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(builder.ToString()));
-        return Convert.ToHexStringLower(hash);
+        return Convert.ToHexStringLower(hash.GetHashAndReset());
+    }
+
+    private static void Append(IncrementalHash hash, string value) {
+        byte[] bytes = Encoding.UTF8.GetBytes(value);
+        Span<byte> length = stackalloc byte[sizeof(int)];
+        BinaryPrimitives.WriteInt32BigEndian(length, bytes.Length);
+        hash.AppendData(length);
+        hash.AppendData(bytes);
     }
 }

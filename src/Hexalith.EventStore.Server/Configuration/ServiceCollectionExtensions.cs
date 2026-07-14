@@ -50,6 +50,7 @@ public static class EventStoreServerServiceCollectionExtensions {
         services.TryAddTransient<IProjectionRebuildOrchestrator, ProjectionUpdateOrchestrator>();
         services.TryAddTransient<INamedProjectionDispatchCoordinator, NamedProjectionDispatchCoordinator>();
         services.TryAddSingleton<IProjectionDeliveryRetryScheduler, DaprProjectionDeliveryRetryScheduler>();
+        services.TryAddSingleton<IProjectionActivationOutbox, DaprProjectionActivationOutbox>();
         services.TryAddSingleton<NamedProjectionRouteCatalog>();
         services.TryAddSingleton<INamedProjectionRouteCatalog>(static sp => sp.GetRequiredService<NamedProjectionRouteCatalog>());
         services.TryAddTransient<IEventPublisher, EventPublisher>();
@@ -112,6 +113,10 @@ public static class EventStoreServerServiceCollectionExtensions {
             serviceProvider.GetService<DaprClient>() is null
                 ? NoOpHostedService.Instance
                 : ActivatorUtilities.CreateInstance<ProjectionDeliveryRetryWorker>(serviceProvider));
+        _ = services.AddSingleton<IHostedService>(serviceProvider =>
+            serviceProvider.GetService<DaprClient>() is null
+                ? NoOpHostedService.Instance
+                : ActivatorUtilities.CreateInstance<ProjectionActivationWorker>(serviceProvider));
         // P-DEC1-8P/P4-9P: register cleanup only when DaprClient is available. Non-DAPR test
         // hosts use the same no-op pattern as the projection poller so they do not emit recurring
         // sweep failures from DAPR-backed stores.

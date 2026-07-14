@@ -44,7 +44,8 @@ internal partial class ProjectionUpdateOrchestrator(
     IOptions<EventStoreActorOptions>? actorOptions = null,
     IProjectionDeliveryCheckpointStore? deliveryCheckpointStore = null,
     IProjectionLifecycleGateway? lifecycleGateway = null,
-    INamedProjectionDispatchCoordinator? namedProjectionDispatchCoordinator = null) : IProjectionUpdateOrchestrator, IProjectionPollerDeliveryGateway, IProjectionRebuildOrchestrator {
+    INamedProjectionDispatchCoordinator? namedProjectionDispatchCoordinator = null,
+    IProjectionActivationOutbox? projectionActivationOutbox = null) : IProjectionUpdateOrchestrator, IProjectionPollerDeliveryGateway, IProjectionRebuildOrchestrator {
     // Per-aggregate serialization across orchestrator instances. Entries are evicted and the
     // underlying SemaphoreSlim disposed when the last holder releases, so a multi-tenant server
     // with many short-lived aggregates does not accumulate kernel handles indefinitely.
@@ -75,9 +76,17 @@ internal partial class ProjectionUpdateOrchestrator(
     /// <inheritdoc/>
     public async Task DeliverProjectionAsync(AggregateIdentity identity, CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(identity);
+        bool namedActivationDurable = namedProjectionDispatchCoordinator is null;
+        ProjectionActivationWorkItem? activationWorkItem = null;
 
         using IDisposable projectionLock = await ProjectionLocks.AcquireAsync(identity.ActorId, cancellationToken).ConfigureAwait(false);
         try {
+            if (projectionActivationOutbox is not null) {
+                activationWorkItem = await projectionActivationOutbox
+                    .GetAsync(identity, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
             Log.UpdateStarted(logger, identity.TenantId, identity.Domain, identity.AggregateId);
 
             // D3-B: route through the active-rebuilds index instead of probing by
@@ -143,6 +152,7 @@ internal partial class ProjectionUpdateOrchestrator(
                 }
 
                 Log.NoEventsFound(logger, identity.TenantId, identity.Domain, identity.AggregateId);
+                namedActivationDurable = true;
                 return;
             }
 
@@ -169,14 +179,29 @@ internal partial class ProjectionUpdateOrchestrator(
             // Step 4: Invoke domain service /project endpoint via DAPR
             var request = new ProjectionRequest(identity.TenantId, identity.Domain, identity.AggregateId, projectionReadability.Events!);
             if (namedProjectionDispatchCoordinator is not null) {
-                _ = await namedProjectionDispatchCoordinator
-                    .TryDispatchAsync(
-                        identity,
-                        registration,
-                        events,
-                        projectionReadability.Events!,
+                try {
+                    _ = await namedProjectionDispatchCoordinator
+                        .TryDispatchAsync(
+                            identity,
+                            registration,
+                            events,
+                            projectionReadability.Events!,
                         cancellationToken)
-                    .ConfigureAwait(false);
+                        .ConfigureAwait(false);
+                    namedActivationDurable = true;
+                }
+                catch (OperationCanceledException) {
+                    throw;
+                }
+                catch (Exception ex) {
+                    Log.NamedProjectionDispatchFailed(
+                        logger,
+                        ex,
+                        identity.TenantId,
+                        identity.Domain,
+                        identity.AggregateId,
+                        ex.GetType().Name);
+                }
             }
 
             // Named v2 routes and an unmapped legacy v1 handler may intentionally coexist for the
@@ -319,6 +344,22 @@ internal partial class ProjectionUpdateOrchestrator(
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
             Log.ProjectionUpdateFailed(logger, ex, identity.TenantId, identity.Domain, identity.AggregateId);
+        }
+        finally {
+            if (namedActivationDurable && projectionActivationOutbox is not null && activationWorkItem is not null) {
+                try {
+                    await projectionActivationOutbox.CompleteAsync(activationWorkItem, CancellationToken.None).ConfigureAwait(false);
+                }
+                catch (Exception ex) {
+                    Log.ProjectionActivationCompletionFailed(
+                        logger,
+                        ex,
+                        identity.TenantId,
+                        identity.Domain,
+                        identity.AggregateId,
+                        ex.GetType().Name);
+                }
+            }
         }
     }
 
@@ -1351,5 +1392,29 @@ internal partial class ProjectionUpdateOrchestrator(
             Level = LogLevel.Warning,
             Message = "Unreadable protected event blocked projection delivery: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, SequenceNumber={SequenceNumber}, ReasonCode={ReasonCode}, Stage={Stage}")]
         public static partial void UnreadableProtectedEvent(ILogger logger, string tenantId, string domain, string aggregateId, long sequenceNumber, string reasonCode, string stage);
+
+        [LoggerMessage(
+            EventId = 4659,
+            Level = LogLevel.Warning,
+            Message = "Named projection dispatch failed; legacy projection delivery continues: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, ExceptionType={ExceptionType}, Stage=NamedProjectionDispatchFailed")]
+        public static partial void NamedProjectionDispatchFailed(
+            ILogger logger,
+            Exception exception,
+            string tenantId,
+            string domain,
+            string aggregateId,
+            string exceptionType);
+
+        [LoggerMessage(
+            EventId = 4658,
+            Level = LogLevel.Warning,
+            Message = "Projection activation completion failed and remains recoverable: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, ExceptionType={ExceptionType}, Stage=ProjectionActivationCompletionFailed")]
+        public static partial void ProjectionActivationCompletionFailed(
+            ILogger logger,
+            Exception exception,
+            string tenantId,
+            string domain,
+            string aggregateId,
+            string exceptionType);
     }
 }

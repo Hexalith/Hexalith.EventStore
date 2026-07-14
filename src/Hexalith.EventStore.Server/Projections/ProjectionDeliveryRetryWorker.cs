@@ -109,6 +109,7 @@ internal sealed partial class ProjectionDeliveryRetryWorker(
                 .ConfigureAwait(false);
             if (!handled) {
                 await DeferAsync(workItem, options, cancellationToken).ConfigureAwait(false);
+                return;
             }
         }
         catch (OperationCanceledException) {
@@ -122,9 +123,7 @@ internal sealed partial class ProjectionDeliveryRetryWorker(
             catch (OperationCanceledException) {
                 throw;
             }
-            catch (Exception) {
-                // A ledger fault while recording backoff must not escape into the hosted worker
-                // loop; the work item stays due and is retried on the next tick.
+            catch {
             }
         }
     }
@@ -166,20 +165,30 @@ internal sealed partial class ProjectionDeliveryRetryWorker(
         return [.. events];
     }
 
-    private Task DeferAsync(
+    private async Task DeferAsync(
         ProjectionDeliveryRetryWorkItem workItem,
         ProjectionDispatchOptions options,
         CancellationToken cancellationToken) {
-        int attempt = Math.Min(workItem.Attempt + 1, options.MaxRetryAttempts);
+        ProjectionDeliveryRetryWorkItem? claimed = await scheduler.TryAcquireAsync(
+            workItem,
+            Guid.NewGuid().ToString("N", System.Globalization.CultureInfo.InvariantCulture),
+            timeProvider.GetUtcNow(),
+            options.RetryLeaseDuration,
+            cancellationToken).ConfigureAwait(false);
+        if (claimed is null) {
+            return;
+        }
+
+        int attempt = Math.Min(claimed.Attempt + 1, options.MaxRetryAttempts);
         double multiplier = Math.Pow(2, Math.Max(0, attempt - 1));
         long delayTicks = (long)Math.Min(options.RetryMaxDelay.Ticks, options.RetryBaseDelay.Ticks * multiplier);
-        return scheduler.UpdateAsync(
-            workItem with {
+        _ = await scheduler.TryUpdateAsync(
+            claimed with {
                 Attempt = attempt,
                 NextDueUtc = timeProvider.GetUtcNow() + TimeSpan.FromTicks(delayTicks),
                 LastReasonCode = ProjectionDispatchReasonCodes.PartialRetry,
             },
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
     }
 
     private static partial class Log {

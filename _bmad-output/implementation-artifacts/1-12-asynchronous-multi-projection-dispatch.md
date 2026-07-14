@@ -4,7 +4,7 @@ baseline_commit: 5223e9c9c2f0dd71673003c710b8739efc8484ff
 
 # Story 1.12: Asynchronous Multi-Projection Dispatch
 
-Status: review
+Status: done
 
 **Requirements covered:** FR7, FR36, NFR7, NFR12, NFR16  
 **Governed by:** AD-2, AD-7, AD-8, AD-12, AD-19, AD-20  
@@ -309,11 +309,11 @@ GPT-5 Codex
 ### Debug Log References
 
 - Baseline/preflight: `5223e9c9c2f0dd71673003c710b8739efc8484ff`; approved correction recorded in `sprint-change-proposal-2026-07-13.md` before implementation continued.
-- Release restore/build: `Hexalith.EventStore.slnx` — 48 projects restored/built, 0 warnings, 0 errors.
-- Deterministic tests: Contracts 701/701; Client 665/665; DomainService 118/118; Testing 150/150; Sample 117/117; Server 2474 passed, 25 pre-existing quarantined ATDD specifications skipped.
+- Final Release build: `Hexalith.EventStore.slnx` — succeeded with 0 warnings and 0 errors.
+- Final deterministic tests: Contracts 702/702; Client 671/671; DomainService 128/128; AppHost 48/48; Server 2488 passed, 25 pre-existing quarantined ATDD specifications skipped.
 - Tier-3 live-sidecar tests: 34/34 passed, including Story 1.10 `ReadModelBatchLiveSidecarTests` and Story 1.12 `NamedProjectionDispatchLiveSidecarTests`.
 - Live evidence versions: Dapr.Client 1.18.4; DAPR CLI 1.18.0; DAPR runtime 1.18.1; Redis `docker.io/redis:6`; Docker Server 29.4.3; StackExchange.Redis 3.0.11.
-- Review-fix focused lanes: Client hosted-index tests 7/7; DomainService dispatcher/endpoint tests 51/51; Server scheduler/worker/orchestrator tests 73/73.
+- Review-fix focused lanes: authoritative dispatcher/endpoint, hosted metadata, retry scheduler/worker/coordinator, activation outbox, command/orchestrator, and authorization-host regression tests all passed.
 - Final hygiene: `git diff --check` passed; live-sidecar cleanup left no `daprd` process.
 
 ### Completion Notes List
@@ -327,6 +327,7 @@ GPT-5 Codex
 - Resolved legacy/named coexistence by running admitted v2 named delivery and the compatible v1 legacy route for the same domain; named-only rebuilds remain isolated on the fail-safe v1 rebuild path and cannot advance on an unavailable legacy route.
 - Replaced the single global v1 retry-ledger key with 64 deterministic v2 shards, bulk due-work scans, per-shard optimistic concurrency, and idempotent v1-to-v2 migration. Dapr.Client API details for bulk state reads were verified with the repository's .NET API inspection skill.
 - Closed the CI verification gaps across scheduler mutation/migration, hosted catalog publication, endpoint wiring/error mapping, dispatcher bounds, mapper defaults, live/v2 orchestration, worker safety branches, and rebuild isolation.
+- Applied all 27 follow-up review patches: authoritative replica-safe catalog binding and refresh, required/fully bounded v2 outcomes, exact binding-aware indexes, distributed leased retry fencing, maintenance-gated migration with a durable protocol marker, and a revision-fenced commit-coupled activation outbox. The production Dapr/Redis named-dispatch scenario and exact-final Release suites are green.
 
 ### File List
 
@@ -350,6 +351,7 @@ GPT-5 Codex
 - `src/Hexalith.EventStore.Contracts/Projections/ProjectionDispatchStatus.cs`
 - `src/Hexalith.EventStore.DomainService/AdminOperationalIndexMetadata.cs`
 - `src/Hexalith.EventStore.DomainService/DomainProjectionCatalogRegistry.cs`
+- `src/Hexalith.EventStore.DomainService/DomainProjectionIdentityOptions.cs`
 - `src/Hexalith.EventStore.DomainService/DomainProjectionDispatcher.cs`
 - `src/Hexalith.EventStore.DomainService/DomainProjectionHandlerResult.cs`
 - `src/Hexalith.EventStore.DomainService/DomainProjectionHandlerRouteValidator.cs`
@@ -361,15 +363,24 @@ GPT-5 Codex
 - `src/Hexalith.EventStore.DomainService/ProjectionDispatchValidationException.cs`
 - `src/Hexalith.EventStore.DomainService/ReadModelBatchProjectionResultMapper.cs`
 - `src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs`
+- `src/Hexalith.EventStore.Server/Events/EventPublisher.cs`
+- `src/Hexalith.EventStore.Server/Pipeline/SubmitCommandHandler.cs`
+- `src/Hexalith.EventStore.Server/Projections/DaprProjectionActivationOutbox.cs`
 - `src/Hexalith.EventStore.Server/Projections/DaprProjectionDeliveryRetryScheduler.cs`
+- `src/Hexalith.EventStore.Server/Projections/INamedProjectionCatalogRefresher.cs`
 - `src/Hexalith.EventStore.Server/Projections/INamedProjectionDispatchCoordinator.cs`
 - `src/Hexalith.EventStore.Server/Projections/INamedProjectionRouteCatalog.cs`
 - `src/Hexalith.EventStore.Server/Projections/IProjectionDeliveryRetryScheduler.cs`
+- `src/Hexalith.EventStore.Server/Projections/IProjectionActivationOutbox.cs`
 - `src/Hexalith.EventStore.Server/Projections/NamedProjectionDispatchCoordinator.cs`
 - `src/Hexalith.EventStore.Server/Projections/NamedProjectionRouteCatalog.cs`
 - `src/Hexalith.EventStore.Server/Projections/NamedProjectionRouteCatalogEntry.cs`
 - `src/Hexalith.EventStore.Server/Projections/NamedProjectionRouteCatalogSnapshot.cs`
 - `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryRetryLedger.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionActivationLedger.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionActivationWorkItem.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionActivationWorker.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryRetryLease.cs`
 - `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryRetryWorkItem.cs`
 - `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryRetryWorker.cs`
 - `src/Hexalith.EventStore.Server/Projections/ProjectionEventReadabilityResult.cs`
@@ -391,6 +402,9 @@ GPT-5 Codex
 - `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/LiveNamedProjectionFaultControl.cs`
 - `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/NamedProjectionDispatchLiveSidecarTests.cs`
 - `tests/Hexalith.EventStore.Server.Tests/Projections/NamedProjectionDispatchCoordinatorTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Integration/ActorBasedAuthWebApplicationFactory.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Pipeline/SubmitCommandHandlerTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/DaprProjectionActivationOutboxTests.cs`
 - `tests/Hexalith.EventStore.Server.Tests/Projections/NamedProjectionRouteCatalogTests.cs`
 - `tests/Hexalith.EventStore.Server.Tests/Projections/DaprProjectionDeliveryRetrySchedulerTests.cs`
 - `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionDeliveryRetryWorkerTests.cs`
@@ -401,6 +415,7 @@ GPT-5 Codex
 
 | Date | Change |
 | --- | --- |
+| 2026-07-14 | Applied all 27 follow-up review patches, added distributed/revision fencing and commit-coupled activation durability, renewed real Dapr/Redis evidence, and moved the story from review to done. |
 | 2026-07-14 | Resolved all remaining review findings: legacy/named coexistence, a 64-shard retry ledger with v1 migration, complete CI verification for durable retry and production wiring, and renewed deterministic/live validation; moved the story to review. |
 | 2026-07-13 | Implemented additive asynchronous named multi-projection dispatch, exact route metadata/catalog admission, independent checkpoint reconciliation, durable immediate retry, persisted DAPR/Redis evidence, compatibility tests, and authoring guidance; moved the story to review. |
 | 2026-07-13 | Applied the approved sprint correction: Story 1.12 may proceed independently of unresolved sibling-story review findings while Story 1.15 retains the complete-and-reviewed convergence gate. |
@@ -410,7 +425,7 @@ GPT-5 Codex
 
 Code review 2026-07-13 (baseline `5223e9c9` → HEAD, 55 code files / +3898 −118). Four adversarial layers (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor); no layer failed. Spec conformance is strong — ACs 1–6 substantially MET, `ConfigureAwait(false)` clean, no `Guid.TryParse`, per-projection checkpoint truth correct.
 
-**Fix status (2026-07-14):** All actionable review findings are applied and verified green — deterministic (Contracts 701/701, Client 665/665, DomainService 118/118, Testing 150/150, Sample 117/117, Server 2474 passed with 25 pre-existing skips) **and Tier-3 live-sidecar on real DAPR 1.18.1 + Redis 6**: 34/34 green, including v2/v1 coexistence, partial-failure convergence, sharded retry-ledger persistence, empty converged ledger, and legacy actor state; no orphaned `daprd`. 5 findings remain explicitly deferred and 4 dismissed. Story is ready for review.
+**Fix status (2026-07-14):** All actionable review findings, including both follow-up chunks, are applied and verified green — final deterministic runs (Contracts 702/702, Client 671/671, DomainService 128/128, AppHost 48/48, Server 2488 passed with 25 pre-existing skips), a 0-warning/0-error Release solution build, and renewed Story 1.12 Tier-3 live-sidecar proof on real Dapr/Redis. Previously accepted deferred/dismissed items remain recorded for their owning future work; Story 1.12 is done.
 
 **Decision-needed (resolved 2026-07-13)**
 
@@ -435,26 +450,42 @@ Code review 2026-07-13 (baseline `5223e9c9` → HEAD, 55 code files / +3898 −1
 - [x] [Review][Defer] `HasFailures` blast radius on named-metadata rejection [src/Hexalith.EventStore/Indexes/AdminOperationalIndexHostedService.cs:37] — deferred: atomic all-or-nothing publish is spec-mandated (§2); cross-app coupling + startup-only load with no refresh is a broader platform concern. [verification-gap]
 - [x] [Review][Defer] `DomainProjectionHandlerResult.AlreadyCompleted()` has no state overload [src/Hexalith.EventStore.DomainService/DomainProjectionHandlerResult.cs:25] — deferred: Contract #3/#5 gap for a hand-written state-bearing handler returning `AlreadyCompleted()` on retry (checkpoint advances without the deferred actor write); adapter + batch handlers unaffected, so narrow. Recommend adding `AlreadyCompleted(JsonElement? state)`. [acceptance-auditor]
 - [x] [Review][Defer] `WorkId` omits app id/version/fingerprint [src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryRetryWorkItem.cs:44] — deferred: two `(appId, serviceVersion)` bindings for the same domain+head collide on one work item, stalling the second binding's retries. Affects blue/green or multi-version rollout of the same domain. [blind-hunter]
-- [x] [Review][Defer] `DomainProjectionCatalogRegistry` empty after a domain-service restart [src/Hexalith.EventStore.DomainService/DomainProjectionCatalogRegistry.cs:8] — deferred: until the gateway re-queries metadata (startup-only), `Contains(fingerprint)` is false → 400 → coordinator defers. Overlaps the refresh-cadence concern above. [edge-case-hunter]
+- [x] [Review][Resolved] `DomainProjectionCatalogRegistry` empty after a domain-service restart [src/Hexalith.EventStore.DomainService/DomainProjectionCatalogRegistry.cs:8] — resolved by the follow-up authoritative local fingerprint recomputation and resolver-aligned lazy/periodic refresh; production dispatch no longer depends on process-local issuance history. [edge-case-hunter]
 - [x] [Review][Defer] (from D2) Retry taxonomy remainder — poison ceiling / dead-letter, catalog fingerprint/version re-bind, permanent-4xx handling, terminal-only cleanup [src/Hexalith.EventStore.Server/Projections/NamedProjectionDispatchCoordinator.cs:227] — deferred to Story 1.13 (poison/dedup horizon) + a dedicated retry-cleanup-policy story; drift-ahead is handled now (Patch from D2). A `4xx` from `/project/v2` can be a transient metadata-refresh race, so terminal-4xx handling needs the same story's design. [blind-hunter+edge-case-hunter]
 
 **Chunk 1 follow-up review (2026-07-14; contracts and DomainService)**
 
-- [ ] [Review][Decision] Catalog authorization is not replica-, restart-, or current-binding-safe (HIGH) — `DomainProjectionCatalogRegistry` trusts fingerprints issued by a prior metadata request to one process. In a multi-replica DAPR service, only the replica that answered metadata accepts the fingerprint; another replica or a restarted replica rejects every valid dispatch until metadata is requested there. The registry also retains stale/caller-selected bindings without a bounded current-binding policy. Resolving this requires choosing between replica-local deterministic validation from authoritative app/version configuration and a distributed catalog-issuance mechanism. [src/Hexalith.EventStore.DomainService/DomainProjectionCatalogRegistry.cs:10]
-- [ ] [Review][Decision] Catalog acquisition ignores dynamic and convention-based service resolution (HIGH) — `AdminOperationalIndexHostedService` enumerates static `DomainServiceOptions.Registrations` only once at startup, while the platform resolver also supports DAPR config-store and default convention routing. Named projections reached through those normal paths never enter the v2 catalog, and startup metadata failures cannot recover without a process restart. Resolving this requires choosing a lazy/periodic resolver-aligned refresh design or explicitly constraining v2 to validated static registrations. [src/Hexalith.EventStore/Indexes/AdminOperationalIndexHostedService.cs:55]
-- [ ] [Review][Patch] Omitted wire status deserializes as durable `Completed` (HIGH) [src/Hexalith.EventStore.Contracts/Projections/ProjectionDispatchOutcome.cs:12]
-- [ ] [Review][Patch] Handler-local cancellation aborts later independent handlers (HIGH) [src/Hexalith.EventStore.DomainService/DomainProjectionDispatcher.cs:88]
-- [ ] [Review][Patch] Envelope budgeting and serialization can discard all outcomes or escape as transport failure (HIGH) [src/Hexalith.EventStore.DomainService/DomainProjectionDispatcher.cs:99]
-- [ ] [Review][Patch] EventStore accepts catalogs larger than its local outcome limit and retries them forever (HIGH) [src/Hexalith.EventStore/Indexes/AdminOperationalIndexHostedService.cs:153]
-- [ ] [Review][Patch] Dispatch option validation admits impossible reason-code and envelope bounds (MEDIUM) [src/Hexalith.EventStore.Client/Projections/ProjectionDispatchOptions.cs:53]
-- [ ] [Review][Patch] Null event arrays or elements can reach persistence handlers (MEDIUM) [src/Hexalith.EventStore.DomainService/DomainProjectionDispatcher.cs:117]
-- [ ] [Review][Patch] Admin projection indexes merge named routes across app/version bindings (MEDIUM) [src/Hexalith.EventStore/Indexes/AdminOperationalIndexHostedService.cs:119]
-- [ ] [Review][Patch] Delimiter-based catalog fingerprint material is ambiguous for unconstrained bindings (MEDIUM) [src/Hexalith.EventStore.Client/Projections/ProjectionRouteCatalogFingerprint.cs:23]
-- [ ] [Review][Patch] Hosted metadata tests do not assert outgoing app/version binding (MEDIUM) [tests/Hexalith.EventStore.Client.Tests/Indexes/AdminOperationalIndexHostedServiceTests.cs:244]
-- [ ] [Review][Patch] Aggregate-backed route filtering lacks mixed valid/orphan verification (MEDIUM) [tests/Hexalith.EventStore.DomainService.Tests/EventStoreDomainServiceExtensionsTests.cs:501]
-- [ ] [Review][Patch] Malformed HTTP-200 metadata is not verified through the fail-closed hosted-service path (MEDIUM) [tests/Hexalith.EventStore.Client.Tests/Indexes/AdminOperationalIndexHostedServiceTests.cs:65]
-- [ ] [Review][Patch] The SDK-mapped `/project/v2` success path is not exercised (MEDIUM) [tests/Hexalith.EventStore.DomainService.Tests/EventStoreDomainServiceExtensionsTests.cs:786]
-- [ ] [Review][Patch] Startup invocation of duplicate named-route validation is unverified (MEDIUM) [src/Hexalith.EventStore.DomainService/EventStoreDomainServiceExtensions.cs:146]
-- [ ] [Review][Patch] Pre-mapped custom `/project/v2` preservation is unverified (MEDIUM) [src/Hexalith.EventStore.DomainService/EventStoreDomainServiceExtensions.cs:141]
-- [ ] [Review][Patch] Fingerprint verification changes service version but never app id (MEDIUM) [tests/Hexalith.EventStore.DomainService.Tests/EventStoreDomainServiceExtensionsTests.cs:537]
+- [x] [Review][Patch] Catalog authorization is not replica-, restart-, or current-binding-safe (HIGH) — **applied**: `/project/v2` recomputes the fingerprint from authoritative local app/version options and the current validated route set on every replica; caller-selected and stale bindings fail closed. [src/Hexalith.EventStore.DomainService/DomainProjectionDispatcher.cs]
+- [x] [Review][Patch] Catalog acquisition ignores dynamic and convention-based service resolution (HIGH) — **applied**: missing exact bindings trigger resolver-aligned lazy metadata acquisition, successful loads update only that binding, and a periodic refresh loop recovers startup/transient failures and tracks dynamically resolved registrations. [src/Hexalith.EventStore/Indexes/AdminOperationalIndexHostedService.cs]
+- [x] [Review][Patch] Omitted wire status deserializes as durable `Completed` (HIGH) — **applied**: `Status` is JSON-required and omission is rejected during deserialization. [src/Hexalith.EventStore.Contracts/Projections/ProjectionDispatchOutcome.cs]
+- [x] [Review][Patch] Handler-local cancellation aborts later independent handlers (HIGH) — **applied**: only request-token cancellation propagates; a handler-local `OperationCanceledException` becomes an indeterminate safe outcome and later routes continue. [src/Hexalith.EventStore.DomainService/DomainProjectionDispatcher.cs]
+- [x] [Review][Patch] Envelope budgeting and serialization can discard all outcomes or escape as transport failure (HIGH) — **applied**: cumulative budgeting preserves one bounded safe outcome per route, retroactively removes state when needed, and catches controlled JSON serialization/depth failures. [src/Hexalith.EventStore.DomainService/DomainProjectionDispatcher.cs]
+- [x] [Review][Patch] EventStore accepts catalogs larger than its local outcome limit and retries them forever (HIGH) — **applied**: metadata admission validates both total outcomes and per-domain handler limits against local dispatch options. [src/Hexalith.EventStore/Indexes/AdminOperationalIndexHostedService.cs]
+- [x] [Review][Patch] Dispatch option validation admits impossible reason-code and envelope bounds (MEDIUM) — **applied**: validation enforces every stable reason code and the worst-case safe envelope for all configured outcomes, with a bounded maximum configuration size. [src/Hexalith.EventStore.Client/Projections/ProjectionDispatchOptions.cs]
+- [x] [Review][Patch] Null event arrays or elements can reach persistence handlers (MEDIUM) — **applied**: v2 request validation rejects null event collections and null elements before handler invocation. [src/Hexalith.EventStore.DomainService/DomainProjectionDispatcher.cs]
+- [x] [Review][Patch] Admin projection indexes merge named routes across app/version bindings (MEDIUM) — **applied**: projection-index construction uses exact `(appId, serviceVersion, domain)` metadata while shared type catalogs retain their intended domain merge. [src/Hexalith.EventStore/Indexes/AdminOperationalIndexHostedService.cs]
+- [x] [Review][Patch] Delimiter-based catalog fingerprint material is ambiguous for unconstrained bindings (MEDIUM) — **applied**: fingerprint material is length-prefixed binary data with an explicit route count before SHA-256 hashing. [src/Hexalith.EventStore.Client/Projections/ProjectionRouteCatalogFingerprint.cs]
+- [x] [Review][Patch] Hosted metadata tests do not assert outgoing app/version binding (MEDIUM) — **applied**: hosted-index tests capture and assert the exact outbound app id, service version, and domain. [tests/Hexalith.EventStore.Client.Tests/Indexes/AdminOperationalIndexHostedServiceTests.cs]
+- [x] [Review][Patch] Aggregate-backed route filtering lacks mixed valid/orphan verification (MEDIUM) — **applied**: endpoint tests prove aggregate-backed routes are emitted while orphan named handlers are excluded. [tests/Hexalith.EventStore.DomainService.Tests/EventStoreDomainServiceExtensionsTests.cs]
+- [x] [Review][Patch] Malformed HTTP-200 metadata is not verified through the fail-closed hosted-service path (MEDIUM) — **applied**: hosted-service tests exercise malformed success bodies and preservation of the last valid catalog. [tests/Hexalith.EventStore.Client.Tests/Indexes/AdminOperationalIndexHostedServiceTests.cs]
+- [x] [Review][Patch] The SDK-mapped `/project/v2` success path is not exercised (MEDIUM) — **applied**: endpoint tests invoke the SDK route and verify a successful authoritative v2 response. [tests/Hexalith.EventStore.DomainService.Tests/EventStoreDomainServiceExtensionsTests.cs]
+- [x] [Review][Patch] Startup invocation of duplicate named-route validation is unverified (MEDIUM) — **applied**: startup mapping tests prove duplicate named routes fail before serving traffic. [tests/Hexalith.EventStore.DomainService.Tests/EventStoreDomainServiceExtensionsTests.cs]
+- [x] [Review][Patch] Pre-mapped custom `/project/v2` preservation is unverified (MEDIUM) — **applied**: route tests prove an application-mapped v2 endpoint remains authoritative. [tests/Hexalith.EventStore.DomainService.Tests/EventStoreDomainServiceExtensionsTests.cs]
+- [x] [Review][Patch] Fingerprint verification changes service version but never app id (MEDIUM) — **applied**: tests now reject caller-selected app ids as well as stale service versions. [tests/Hexalith.EventStore.DomainService.Tests/EventStoreDomainServiceExtensionsTests.cs]
 - [x] [Review][Defer] HTTP 200 with a literal `null` metadata body is treated as a successful empty load [src/Hexalith.EventStore/Indexes/AdminOperationalIndexHostedService.cs:96] — deferred, pre-existing
+
+**Chunk 2 follow-up review (2026-07-14; server dispatch, durable retry, runtime catalog, and focused tests)**
+
+The edge-case-hunter layer did not return and was stopped; blind-hunter, verification-gap, and acceptance-auditor completed. Findings already recorded by Chunk 1 (catalog acquisition, local outcome-limit admission, binding-aware admin indexes, and hosted metadata boundary tests) remain active and are not duplicated below.
+
+- [x] [Review][Patch] Cross-replica delivery can regress a read model behind its monotonic checkpoint (HIGH) — **applied**: aggregate-scoped distributed leases serialize different stream heads across EventStore replicas before route admission and remote persistence. [blind-hunter+acceptance-auditor] [src/Hexalith.EventStore.Server/Projections/DaprProjectionDeliveryRetryScheduler.cs]
+- [x] [Review][Patch] Concurrent retry workers can overwrite newer per-route reconciliation (HIGH) — **applied**: work items carry revisions and lease ownership; claim, update, and delete transitions require an exact current revision/owner and reject stale snapshots. [blind-hunter+acceptance-auditor] [src/Hexalith.EventStore.Server/Projections/DaprProjectionDeliveryRetryScheduler.cs]
+- [x] [Review][Patch] Rolling v1-to-v2 ledger migration can delete unseen legacy writes (HIGH) — **applied**: migration is disabled by default, requires explicit quiescence confirmation and marker, reads the v1 ETag, conditionally deletes it, serializes local migration, and persists a durable v2-ready protocol marker before normal scheduling proceeds. [blind-hunter] [src/Hexalith.EventStore.Server/Projections/DaprProjectionDeliveryRetryScheduler.cs]
+- [x] [Review][Patch] Retry-ledger write failure leaves immediate named delivery with no durable recovery trigger (HIGH) — **applied**: a payload-free Dapr activation outbox is persisted before aggregate commit/direct publication success and cleared only after durable named handoff or convergence; revision fences prevent stale workers clearing or deferring newer activations. [blind-hunter+acceptance-auditor] [src/Hexalith.EventStore.Server/Projections/DaprProjectionActivationOutbox.cs]
+
+- [x] [Review][Patch] Named-dispatch dependency faults suppress the coexisting legacy v1 delivery path (HIGH) — **applied**: named faults are logged and retain activation evidence while the compatible legacy v1 route continues independently. [src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs]
+- [x] [Review][Patch] Malformed persisted retry records can poison migration or starve an ordered worker activation (MEDIUM) — **applied**: due scans and maintenance migration filter malformed records without blocking valid work. [src/Hexalith.EventStore.Server/Projections/DaprProjectionDeliveryRetryScheduler.cs]
+- [x] [Review][Patch] Fail-closed duplicate, invalid-status, oversized-reason, and over-limit outcome handling lacks coordinator tests (HIGH) — **applied**: coordinator tests cover all four malformed/over-limit response classes and preserve pending work. [tests/Hexalith.EventStore.Server.Tests/Projections/NamedProjectionDispatchCoordinatorTests.cs]
+- [x] [Review][Patch] Hosted retry-worker activation and multi-page history reconstruction lack production-wiring tests (MEDIUM) — **applied**: tests verify hosted worker registration/selection and reconstruct histories across bounded actor pages. [src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs]
+- [x] [Review][Patch] Scheduler conflict and persisted-identity mismatch tests do not exercise competing state or stale bindings (MEDIUM) — **applied**: stateful scheduler tests exercise competing aggregate heads, stale revisions, conditional transitions, and identity/fingerprint mismatch deferral. [tests/Hexalith.EventStore.Server.Tests/Projections/DaprProjectionDeliveryRetrySchedulerTests.cs]
+- [x] [Review][Patch] Tier-3 evidence manually injects the route catalog and retry worker, bypassing production metadata publication and hosted activation (MEDIUM) — **applied**: the live Dapr/Redis proof loads the catalog through the production hosted metadata service and selects the production-registered hosted retry worker. [tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/NamedProjectionDispatchLiveSidecarTests.cs]

@@ -176,7 +176,11 @@ public sealed class DomainProjectionDispatcherV2Tests {
                 JsonSerializer.SerializeToElement(new { content = new string('x', 1024) })));
         using ServiceProvider provider = BuildProvider(handler);
         DomainProjectionCatalogRegistry registry = CreateRegistry("fingerprint-1", "widget-detail");
-        var options = new ProjectionDispatchOptions { MaxOutcomeEnvelopeBytes = 256 };
+        var options = new ProjectionDispatchOptions {
+            MaxHandlersPerDomain = 1,
+            MaxOutcomes = 1,
+            MaxOutcomeEnvelopeBytes = 256,
+        };
 
         ProjectionDispatchResponse response = await DomainProjectionDispatcher.DispatchAsync(
             provider,
@@ -190,6 +194,62 @@ public sealed class DomainProjectionDispatcherV2Tests {
         outcome.State.ShouldBeNull();
         outcome.ReasonCode.ShouldBe(ProjectionDispatchReasonCodes.MalformedOutcome);
         JsonSerializer.SerializeToUtf8Bytes(response).Length.ShouldBeLessThanOrEqualTo(options.MaxOutcomeEnvelopeBytes);
+    }
+
+    [Fact]
+    public async Task DispatchAsync_AccumulatedEnvelopePressureStillReturnsOneSafeOutcomePerRoute() {
+        IAsyncDomainProjectionHandler first = CreateHandler("widget", "a-first");
+        IAsyncDomainProjectionHandler second = CreateHandler("widget", "b-second");
+        first.ProjectAsync(Arg.Any<ProjectionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(DomainProjectionHandlerResult.Completed(
+                JsonSerializer.SerializeToElement(new { content = new string('a', 1024) })));
+        second.ProjectAsync(Arg.Any<ProjectionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(DomainProjectionHandlerResult.Completed(
+                JsonSerializer.SerializeToElement(new { content = new string('b', 1024) })));
+        using ServiceProvider provider = BuildProvider(first, second);
+        DomainProjectionCatalogRegistry registry = CreateRegistry("fingerprint-1", "a-first", "b-second");
+        var options = new ProjectionDispatchOptions {
+            MaxHandlersPerDomain = 2,
+            MaxOutcomes = 2,
+            MaxOutcomeEnvelopeBytes = ProjectionDispatchOptions.GetMinimumOutcomeEnvelopeBytes(2) + 16,
+        };
+
+        ProjectionDispatchResponse response = await DomainProjectionDispatcher.DispatchAsync(
+            provider,
+            CreateRequest("fingerprint-1", "a-first", "b-second"),
+            options,
+            registry,
+            CancellationToken.None);
+
+        response.Outcomes.Count.ShouldBe(2);
+        response.Outcomes.ShouldAllBe(static outcome => outcome.Status == ProjectionDispatchStatus.Failed);
+        JsonSerializer.SerializeToUtf8Bytes(response, new JsonSerializerOptions(JsonSerializerDefaults.Web))
+            .Length.ShouldBeLessThanOrEqualTo(options.MaxOutcomeEnvelopeBytes);
+    }
+
+    [Fact]
+    public async Task DispatchAsync_StateExceedingSerializerDepthMapsToSafeFailure() {
+        string deeplyNestedJson = $"{new string('[', 80)}0{new string(']', 80)}";
+        using JsonDocument document = JsonDocument.Parse(
+            deeplyNestedJson,
+            new JsonDocumentOptions { MaxDepth = 128 });
+        IAsyncDomainProjectionHandler handler = CreateHandler("widget", "widget-detail");
+        handler.ProjectAsync(Arg.Any<ProjectionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(DomainProjectionHandlerResult.Completed(document.RootElement.Clone()));
+        using ServiceProvider provider = BuildProvider(handler);
+        DomainProjectionCatalogRegistry registry = CreateRegistry("fingerprint-1", "widget-detail");
+
+        ProjectionDispatchResponse response = await DomainProjectionDispatcher.DispatchAsync(
+            provider,
+            CreateRequest("fingerprint-1", "widget-detail"),
+            new ProjectionDispatchOptions(),
+            registry,
+            CancellationToken.None);
+
+        ProjectionDispatchOutcome outcome = response.Outcomes.ShouldHaveSingleItem();
+        outcome.Status.ShouldBe(ProjectionDispatchStatus.Failed);
+        outcome.State.ShouldBeNull();
+        outcome.ReasonCode.ShouldBe(ProjectionDispatchReasonCodes.MalformedOutcome);
     }
 
     [Fact]
@@ -218,6 +278,96 @@ public sealed class DomainProjectionDispatcherV2Tests {
             Arg.Any<ProjectionRequest>(),
             "dispatch-1",
             Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DispatchAsync_HandlerLocalCancellationMapsFailureAndContinues() {
+        IAsyncDomainProjectionHandler first = CreateHandler("widget", "a-first");
+        first.ProjectAsync(Arg.Any<ProjectionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns<Task<DomainProjectionHandlerResult>>(_ => throw new OperationCanceledException("handler-local"));
+        IAsyncDomainProjectionHandler second = CreateHandler("widget", "b-second");
+        second.ProjectAsync(Arg.Any<ProjectionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(DomainProjectionHandlerResult.Completed());
+        using ServiceProvider provider = BuildProvider(first, second);
+        DomainProjectionCatalogRegistry registry = CreateRegistry("fingerprint-1", "a-first", "b-second");
+
+        ProjectionDispatchResponse response = await DomainProjectionDispatcher.DispatchAsync(
+            provider,
+            CreateRequest("fingerprint-1", "a-first", "b-second"),
+            new ProjectionDispatchOptions(),
+            registry,
+            CancellationToken.None);
+
+        response.Outcomes[0].Status.ShouldBe(ProjectionDispatchStatus.Indeterminate);
+        response.Outcomes[1].Status.ShouldBe(ProjectionDispatchStatus.Completed);
+        _ = second.Received(1).ProjectAsync(Arg.Any<ProjectionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DispatchAsync_AuthoritativeFingerprintWorksWithoutProcessLocalIssuanceHistory() {
+        IAsyncDomainProjectionHandler handler = CreateHandler("widget", "widget-detail");
+        handler.ProjectAsync(Arg.Any<ProjectionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(DomainProjectionHandlerResult.Completed());
+        using ServiceProvider provider = BuildProvider(handler);
+        string fingerprint = ProjectionRouteCatalogFingerprint.Compute(
+            "widget-service",
+            "v1",
+            [new ProjectionDispatchRoute("widget", "widget-detail")]);
+
+        ProjectionDispatchResponse response = await DomainProjectionDispatcher.DispatchAsync(
+            provider,
+            CreateRequest(fingerprint, "widget-detail"),
+            new ProjectionDispatchOptions(),
+            new DomainProjectionIdentityOptions { AppId = "widget-service", ServiceVersion = "v1" },
+            CancellationToken.None);
+
+        response.Outcomes.ShouldHaveSingleItem().Status.ShouldBe(ProjectionDispatchStatus.Completed);
+    }
+
+    [Fact]
+    public async Task DispatchAsync_NullEventArrayIsRejectedBeforeHandlerInvocation() {
+        IAsyncDomainProjectionHandler handler = CreateHandler("widget", "widget-detail");
+        using ServiceProvider provider = BuildProvider(handler);
+        DomainProjectionCatalogRegistry registry = CreateRegistry("fingerprint-1", "widget-detail");
+        var request = new ProjectionDispatchRequest(
+            new ProjectionRequest("tenant-a", "widget", "widget-1", null!),
+            ["widget-detail"],
+            "dispatch-1",
+            "fingerprint-1");
+
+        ProjectionDispatchValidationException exception = await Should.ThrowAsync<ProjectionDispatchValidationException>(() =>
+            DomainProjectionDispatcher.DispatchAsync(
+                provider,
+                request,
+                new ProjectionDispatchOptions(),
+                registry,
+                CancellationToken.None));
+
+        exception.ReasonCode.ShouldBe(ProjectionDispatchReasonCodes.MalformedOutcome);
+        _ = handler.DidNotReceiveWithAnyArgs().ProjectAsync(default!, default!, default);
+    }
+
+    [Fact]
+    public async Task DispatchAsync_NullEventElementIsRejectedBeforeHandlerInvocation() {
+        IAsyncDomainProjectionHandler handler = CreateHandler("widget", "widget-detail");
+        using ServiceProvider provider = BuildProvider(handler);
+        DomainProjectionCatalogRegistry registry = CreateRegistry("fingerprint-1", "widget-detail");
+        var request = new ProjectionDispatchRequest(
+            new ProjectionRequest("tenant-a", "widget", "widget-1", [null!]),
+            ["widget-detail"],
+            "dispatch-1",
+            "fingerprint-1");
+
+        ProjectionDispatchValidationException exception = await Should.ThrowAsync<ProjectionDispatchValidationException>(() =>
+            DomainProjectionDispatcher.DispatchAsync(
+                provider,
+                request,
+                new ProjectionDispatchOptions(),
+                registry,
+                CancellationToken.None));
+
+        exception.ReasonCode.ShouldBe(ProjectionDispatchReasonCodes.MalformedOutcome);
+        _ = handler.DidNotReceiveWithAnyArgs().ProjectAsync(default!, default!, default);
     }
 
     [Theory]

@@ -547,6 +547,8 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         builder.Configuration["Dapr:GrpcPort"] = _daprGrpcPort.ToString();
         builder.Configuration["EventStore:Actors:AggregateActorTypeName"] = AggregateActorTypeName;
         builder.Configuration["EventStore:ProjectionDispatch:RetryWorkerInterval"] = "00:10:00";
+        builder.Configuration["EventStore:DomainService:AppId"] = "eventstore";
+        builder.Configuration["EventStore:DomainService:ServiceVersion"] = "v1";
 
         _ = builder.WebHost.ConfigureKestrel(serverOptions => serverOptions.ListenLocalhost(_appPort, listenOptions => listenOptions.Protocols = HttpProtocols.Http1));
 
@@ -557,6 +559,8 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
                 .Build());
         _ = builder.Services.AddEventStoreServer(builder.Configuration);
         _ = builder.Services.AddSingleton<DomainProjectionCatalogRegistry>();
+        _ = builder.Services.AddOptions<DomainProjectionIdentityOptions>()
+            .BindConfiguration("EventStore:DomainService");
         _ = builder.Services.AddScoped<IAsyncDomainProjectionHandler, LiveCounterDetailProjectionHandler>();
         _ = builder.Services.AddScoped<IAsyncDomainProjectionHandler, LiveCounterIndexProjectionHandler>();
         _ = builder.Services.AddSingleton<LiveNamedProjectionFaultControl>();
@@ -588,11 +592,33 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
             async (ProjectionDispatchRequest request,
                    IServiceProvider serviceProvider,
                    IOptions<Hexalith.EventStore.Client.Projections.ProjectionDispatchOptions> options,
-                   DomainProjectionCatalogRegistry catalogRegistry,
+                   IOptions<DomainProjectionIdentityOptions> identityOptions,
                    CancellationToken cancellationToken) => Microsoft.AspNetCore.Http.Results.Ok(
                        await DomainProjectionDispatcher
-                           .DispatchAsync(serviceProvider, request, options.Value, catalogRegistry, cancellationToken)
+                           .DispatchAsync(serviceProvider, request, options.Value, identityOptions.Value, cancellationToken)
                            .ConfigureAwait(false)));
+        _ = _testHost.MapPost(
+            "/admin/operational-index-metadata",
+            (AdminOperationalIndexMetadata.Request request,
+             IServiceProvider serviceProvider,
+             IOptions<Hexalith.EventStore.Client.Projections.ProjectionDispatchOptions> options,
+             IOptions<DomainProjectionIdentityOptions> identityOptions) => {
+                var discovery = new Hexalith.EventStore.Client.Discovery.DiscoveryResult(
+                    [new Hexalith.EventStore.Client.Discovery.DiscoveredDomain(
+                        typeof(Hexalith.EventStore.Sample.Counter.CounterAggregate),
+                        "counter",
+                        typeof(Hexalith.EventStore.Sample.Counter.State.CounterState),
+                        Hexalith.EventStore.Client.Discovery.DomainKind.Aggregate)],
+                    []);
+                return Microsoft.AspNetCore.Http.Results.Ok(AdminOperationalIndexMetadata.Create(
+                    discovery,
+                    request.Domains,
+                    queryHandlers: null,
+                    serviceProvider.GetServices<IAsyncDomainProjectionHandler>(),
+                    identityOptions.Value.AppId,
+                    identityOptions.Value.ServiceVersion,
+                    options.Value));
+            });
         _ = _testHost.MapGet("/healthz", () => Microsoft.AspNetCore.Http.Results.Ok("healthy"));
 
         await _testHost.StartAsync().ConfigureAwait(false);

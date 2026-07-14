@@ -60,6 +60,15 @@ public class AdminOperationalIndexHostedServiceTests {
             && snapshot.Entries[0].Domain == "counter"
             && snapshot.Entries[0].CatalogFingerprint == fingerprint
             && snapshot.Entries[0].ProjectionTypes.SequenceEqual(new[] { "counter-detail" }, StringComparer.Ordinal)));
+        _ = daprClient.Received(1).CreateInvokeMethodRequest(
+            HttpMethod.Post,
+            "sample",
+            "admin/operational-index-metadata",
+            Arg.Any<IReadOnlyCollection<KeyValuePair<string, string>>>(),
+            Arg.Is<AdminOperationalIndexMetadataRequest>(request =>
+                request.AppId == "sample"
+                && request.ServiceVersion == "v1"
+                && request.Domains.SequenceEqual(new[] { "counter" }, StringComparer.Ordinal)));
     }
 
     [Fact]
@@ -71,6 +80,23 @@ public class AdminOperationalIndexHostedServiceTests {
         AdminOperationalIndexHostedService hostedService = CreateHostedService(daprClient, httpClientFactory, routeCatalog);
 
         await hostedService.StartAsync(CancellationToken.None);
+
+        routeCatalog.DidNotReceiveWithAnyArgs().Replace(default!);
+        daprClient.ReceivedCalls().ShouldNotContain(static call => call.GetMethodInfo().Name == nameof(DaprClient.SaveStateAsync));
+    }
+
+    [Fact]
+    public async Task StartAsync_MalformedSuccessfulResponsePreservesExistingCatalogAndIndexes() {
+        DaprClient daprClient = CreateDaprClient();
+        IHttpClientFactory httpClientFactory = CreateHttpClientFactory(
+            () => new HttpResponseMessage(HttpStatusCode.OK) {
+                Content = new StringContent("null", Encoding.UTF8, "application/json"),
+            });
+        INamedProjectionRouteCatalog routeCatalog = Substitute.For<INamedProjectionRouteCatalog>();
+        AdminOperationalIndexHostedService hostedService = CreateHostedService(daprClient, httpClientFactory, routeCatalog);
+
+        await hostedService.StartAsync(CancellationToken.None);
+        await hostedService.StopAsync(CancellationToken.None);
 
         routeCatalog.DidNotReceiveWithAnyArgs().Replace(default!);
         daprClient.ReceivedCalls().ShouldNotContain(static call => call.GetMethodInfo().Name == nameof(DaprClient.SaveStateAsync));
@@ -211,6 +237,31 @@ public class AdminOperationalIndexHostedServiceTests {
         snapshot.Projections.Select(static projection => projection.Name)
             .ShouldBe(["counter-detail", "counter-index"]);
         snapshot.AggregateTypes.ShouldHaveSingleItem().HasProjections.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void BuildSnapshot_BoundMetadataDoesNotLeakProjectionRoutesAcrossApps() {
+        var appOneMetadata = new AdminOperationalIndexDomainMetadata("counter", [], [], [], [], []) {
+            NamedProjectionTypes = ["counter-detail"],
+        };
+        var appTwoMetadata = new AdminOperationalIndexDomainMetadata("counter", [], [], [], [], []) {
+            NamedProjectionTypes = ["counter-index"],
+        };
+        var appOne = new DomainServiceRegistration("app-one", "process", "tenant-a", "counter", "v1");
+        var appTwo = new DomainServiceRegistration("app-two", "process", "tenant-b", "counter", "v1");
+        var bound = new Dictionary<(string AppId, string ServiceVersion, string Domain), AdminOperationalIndexDomainMetadata> {
+            [("app-one", "v1", "counter")] = appOneMetadata,
+            [("app-two", "v1", "counter")] = appTwoMetadata,
+        };
+
+        AdminOperationalIndexSnapshot snapshot = AdminOperationalIndexHostedService.BuildSnapshot(
+            [appOneMetadata, appTwoMetadata],
+            [appOne, appTwo],
+            new ProjectionOptions(),
+            bound);
+
+        snapshot.TenantProjections["tenant-a"].Select(static item => item.Name).ShouldBe(["counter-detail"]);
+        snapshot.TenantProjections["tenant-b"].Select(static item => item.Name).ShouldBe(["counter-index"]);
     }
 
     private static AdminOperationalIndexDomainMetadata MergeDomainMetadata(

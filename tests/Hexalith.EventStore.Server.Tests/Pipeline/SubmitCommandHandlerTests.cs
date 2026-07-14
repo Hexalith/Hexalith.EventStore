@@ -91,6 +91,54 @@ public class SubmitCommandHandlerTests {
     }
 
     [Fact]
+    public async Task Handle_PersistsProjectionActivationBeforeAggregateRouting() {
+        ICommandRouter router = Substitute.For<ICommandRouter>();
+        _ = router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new CommandProcessingResult(Accepted: true, EventCount: 1));
+        IProjectionActivationOutbox outbox = Substitute.For<IProjectionActivationOutbox>();
+        var handler = new SubmitCommandHandler(
+            new InMemoryCommandStatusStore(),
+            new InMemoryCommandArchiveStore(),
+            router,
+            activityTracker: null,
+            streamActivityTracker: null,
+            new NoOpProjectionUpdateOrchestrator(),
+            NullLogger<SubmitCommandHandler>.Instance,
+            correlationIndex: null,
+            outbox);
+        SubmitCommand command = CreateCommand();
+
+        _ = await handler.Handle(command, CancellationToken.None);
+
+        Received.InOrder(() => {
+            _ = outbox.EnsureAsync(Arg.Any<AggregateIdentity>(), Arg.Any<CancellationToken>());
+            _ = router.RouteCommandAsync(command, Arg.Any<CancellationToken>());
+        });
+    }
+
+    [Fact]
+    public async Task Handle_ActivationPersistenceFailurePreventsAggregateCommit() {
+        ICommandRouter router = Substitute.For<ICommandRouter>();
+        IProjectionActivationOutbox outbox = Substitute.For<IProjectionActivationOutbox>();
+        _ = outbox.EnsureAsync(Arg.Any<AggregateIdentity>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("outbox unavailable"));
+        var handler = new SubmitCommandHandler(
+            new InMemoryCommandStatusStore(),
+            new InMemoryCommandArchiveStore(),
+            router,
+            activityTracker: null,
+            streamActivityTracker: null,
+            new NoOpProjectionUpdateOrchestrator(),
+            NullLogger<SubmitCommandHandler>.Instance,
+            correlationIndex: null,
+            outbox);
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => handler.Handle(CreateCommand(), CancellationToken.None));
+
+        _ = await router.DidNotReceiveWithAnyArgs().RouteCommandAsync(default!, default);
+    }
+
+    [Fact]
     public async Task Handle_ProjectionUpdateFailure_ReturnsCommandResult() {
         ICommandRouter router = Substitute.For<ICommandRouter>();
         _ = router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())

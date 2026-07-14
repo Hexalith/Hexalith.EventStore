@@ -35,6 +35,15 @@ public sealed record ProjectionDeliveryRetryWorkItem(
     int Attempt,
     DateTimeOffset NextDueUtc,
     string? LastReasonCode) {
+    /// <summary>Gets the optimistic revision of this retry transition.</summary>
+    public long Revision { get; init; }
+
+    /// <summary>Gets the current cross-replica lease owner.</summary>
+    public string? LeaseOwner { get; init; }
+
+    /// <summary>Gets the current cross-replica lease expiry.</summary>
+    public DateTimeOffset? LeaseExpiresUtc { get; init; }
+
     /// <summary>Creates a deterministic opaque work id without persisting event payloads.</summary>
     /// <param name="tenantId">The aggregate tenant.</param>
     /// <param name="domain">The aggregate domain.</param>

@@ -27,7 +27,8 @@ public partial class EventPublisher(
     IEventPayloadProtectionService payloadProtectionService,
     IProjectionUpdateOrchestrator projectionOrchestrator,
     ITopicNameValidator? topicNameValidator = null,
-    IHostEnvironment? hostEnvironment = null) : IEventPublisher {
+    IHostEnvironment? hostEnvironment = null,
+    IProjectionActivationOutbox? projectionActivationOutbox = null) : IEventPublisher {
     /// <inheritdoc/>
     public async Task<EventPublishResult> PublishEventsAsync(
         AggregateIdentity identity,
@@ -207,6 +208,10 @@ public partial class EventPublisher(
                     cancellationToken).ConfigureAwait(false);
 
                 publishedCount++;
+            }
+
+            if (triggerProjectionUpdate && projectionActivationOutbox is not null) {
+                await projectionActivationOutbox.EnsureAsync(identity, cancellationToken).ConfigureAwait(false);
             }
 
             double durationMs = Stopwatch.GetElapsedTime(startTicks).TotalMilliseconds;

@@ -15,6 +15,7 @@ namespace Hexalith.EventStore.DomainService;
 /// backs <c>/query</c>.
 /// </summary>
 public static class DomainProjectionDispatcher {
+    private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
     /// <summary>
     /// Projects a request by dispatching it to the matching domain projection handler.
     /// </summary>
@@ -53,7 +54,6 @@ public static class DomainProjectionDispatcher {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(catalogRegistry);
         options.Validate();
-
         ValidateRequest(dispatchRequest, options);
         if (!catalogRegistry.Contains(dispatchRequest.CatalogFingerprint)) {
             throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedCapability);
@@ -66,9 +66,68 @@ public static class DomainProjectionDispatcher {
             throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedRoute);
         }
 
-        HashSet<string> requestedTypes = new(dispatchRequest.ProjectionTypes, StringComparer.Ordinal);
-        IAsyncDomainProjectionHandler[] handlers = [.. DomainProjectionHandlerRouteValidator
+        return await DispatchCoreAsync(serviceProvider, dispatchRequest, options, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>Dispatches using a catalog fingerprint recomputed from authoritative local identity and routes.</summary>
+    /// <param name="serviceProvider">The scoped request service provider.</param>
+    /// <param name="dispatchRequest">The version-2 dispatch request.</param>
+    /// <param name="options">The validated dispatch bounds.</param>
+    /// <param name="identityOptions">The authoritative local service binding.</param>
+    /// <param name="cancellationToken">Propagates request cancellation and prevents later starts.</param>
+    /// <returns>A bounded deterministic per-projection response.</returns>
+    public static async Task<ProjectionDispatchResponse> DispatchAsync(
+        IServiceProvider serviceProvider,
+        ProjectionDispatchRequest dispatchRequest,
+        ProjectionDispatchOptions options,
+        DomainProjectionIdentityOptions identityOptions,
+        CancellationToken cancellationToken) {
+        ArgumentNullException.ThrowIfNull(serviceProvider);
+        ArgumentNullException.ThrowIfNull(dispatchRequest);
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(identityOptions);
+        options.Validate();
+        identityOptions.Validate();
+        ValidateRequest(dispatchRequest, options);
+
+        IAsyncDomainProjectionHandler[] allHandlers = DomainProjectionHandlerRouteValidator
             .MaterializeAndValidateNamed(serviceProvider.GetServices<IAsyncDomainProjectionHandler>(), options)
+            .ToArray();
+        ProjectionDispatchRoute[] authoritativeRoutes = [.. allHandlers
+            .Where(handler => string.Equals(handler.Domain, dispatchRequest.Request.Domain, StringComparison.Ordinal))
+            .Select(handler => new ProjectionDispatchRoute(handler.Domain, handler.ProjectionType))];
+        if (authoritativeRoutes.Length == 0
+            || !string.Equals(
+                ProjectionRouteCatalogFingerprint.Compute(
+                    identityOptions.AppId,
+                    identityOptions.ServiceVersion,
+                    authoritativeRoutes),
+                dispatchRequest.CatalogFingerprint,
+                StringComparison.Ordinal)) {
+            throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedCapability);
+        }
+
+        return await DispatchCoreAsync(
+                serviceProvider,
+                dispatchRequest,
+                options,
+                cancellationToken,
+                allHandlers)
+            .ConfigureAwait(false);
+    }
+
+    private static async Task<ProjectionDispatchResponse> DispatchCoreAsync(
+        IServiceProvider serviceProvider,
+        ProjectionDispatchRequest dispatchRequest,
+        ProjectionDispatchOptions options,
+        CancellationToken cancellationToken,
+        IReadOnlyList<IAsyncDomainProjectionHandler>? materializedHandlers = null) {
+        HashSet<string> requestedTypes = new(dispatchRequest.ProjectionTypes, StringComparer.Ordinal);
+        IAsyncDomainProjectionHandler[] handlers = [.. (materializedHandlers
+            ?? DomainProjectionHandlerRouteValidator.MaterializeAndValidateNamed(
+                serviceProvider.GetServices<IAsyncDomainProjectionHandler>(),
+                options))
             .Where(handler => string.Equals(handler.Domain, dispatchRequest.Request.Domain, StringComparison.Ordinal)
                 && requestedTypes.Contains(handler.ProjectionType))];
         if (handlers.Length != requestedTypes.Count) {
@@ -85,8 +144,15 @@ public static class DomainProjectionDispatcher {
                     .ConfigureAwait(false);
                 outcome = NormalizeOutcome(handler.ProjectionType, result, options);
             }
-            catch (OperationCanceledException) {
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
                 throw;
+            }
+            catch (OperationCanceledException) {
+                outcome = new ProjectionDispatchOutcome(
+                    handler.ProjectionType,
+                    ProjectionDispatchStatus.Indeterminate,
+                    null,
+                    ProjectionDispatchReasonCodes.HandlerFailure);
             }
             catch (Exception) {
                 outcome = new ProjectionDispatchOutcome(
@@ -97,7 +163,8 @@ public static class DomainProjectionDispatcher {
             }
 
             outcomes.Add(outcome);
-            if (GetEnvelopeSize(outcomes) <= options.MaxOutcomeEnvelopeBytes) {
+            if (TryGetEnvelopeSize(outcomes, out int envelopeSize)
+                && envelopeSize <= options.MaxOutcomeEnvelopeBytes) {
                 continue;
             }
 
@@ -106,8 +173,21 @@ public static class DomainProjectionDispatcher {
                 ProjectionDispatchStatus.Failed,
                 null,
                 ProjectionDispatchReasonCodes.MalformedOutcome);
-            if (GetEnvelopeSize(outcomes) > options.MaxOutcomeEnvelopeBytes) {
-                throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.MalformedOutcome);
+            for (int index = 0;
+                (!TryGetEnvelopeSize(outcomes, out envelopeSize)
+                    || envelopeSize > options.MaxOutcomeEnvelopeBytes)
+                && index < outcomes.Count;
+                index++) {
+                ProjectionDispatchOutcome prior = outcomes[index];
+                if (prior.State is null) {
+                    continue;
+                }
+
+                outcomes[index] = new ProjectionDispatchOutcome(
+                    prior.ProjectionType,
+                    ProjectionDispatchStatus.Failed,
+                    null,
+                    ProjectionDispatchReasonCodes.MalformedOutcome);
             }
         }
 
@@ -118,6 +198,8 @@ public static class DomainProjectionDispatcher {
         if (dispatchRequest.Request is null
             || string.IsNullOrWhiteSpace(dispatchRequest.Request.TenantId)
             || string.IsNullOrWhiteSpace(dispatchRequest.Request.AggregateId)
+            || dispatchRequest.Request.Events is null
+            || dispatchRequest.Request.Events.Any(static item => item is null)
             || dispatchRequest.ProjectionTypes is not { Count: > 0 }
             || dispatchRequest.ProjectionTypes.Count > options.MaxOutcomes
             || string.IsNullOrWhiteSpace(dispatchRequest.DispatchId)
@@ -146,6 +228,7 @@ public static class DomainProjectionDispatcher {
         ProjectionDispatchOptions options) {
         if (result is null
             || !Enum.IsDefined(result.Status)
+            || result.State is { ValueKind: JsonValueKind.Undefined }
             || (result.State is not null
                 && result.Status is not ProjectionDispatchStatus.Completed and not ProjectionDispatchStatus.AlreadyCompleted)
             || !IsValidReasonCode(result.ReasonCode, options.MaxReasonCodeBytes)) {
@@ -156,8 +239,17 @@ public static class DomainProjectionDispatcher {
                 ProjectionDispatchReasonCodes.MalformedOutcome);
         }
 
-        JsonElement? state = result.State?.Clone();
-        return new ProjectionDispatchOutcome(projectionType, result.Status, state, result.ReasonCode);
+        try {
+            JsonElement? state = result.State?.Clone();
+            return new ProjectionDispatchOutcome(projectionType, result.Status, state, result.ReasonCode);
+        }
+        catch (InvalidOperationException) {
+            return new ProjectionDispatchOutcome(
+                projectionType,
+                ProjectionDispatchStatus.Failed,
+                null,
+                ProjectionDispatchReasonCodes.MalformedOutcome);
+        }
     }
 
     private static bool IsValidReasonCode(string? reasonCode, int maxBytes) {
@@ -169,7 +261,18 @@ public static class DomainProjectionDispatcher {
             && reasonCode.All(static character => character <= 0x7f);
     }
 
-    private static int GetEnvelopeSize(IReadOnlyList<ProjectionDispatchOutcome> outcomes)
-        => JsonSerializer.SerializeToUtf8Bytes(
-            new ProjectionDispatchResponse(ProjectionDispatchProtocol.Version, outcomes)).Length;
+    private static bool TryGetEnvelopeSize(
+        IReadOnlyList<ProjectionDispatchOutcome> outcomes,
+        out int envelopeSize) {
+        try {
+            envelopeSize = JsonSerializer.SerializeToUtf8Bytes(
+                new ProjectionDispatchResponse(ProjectionDispatchProtocol.Version, outcomes),
+                SerializerOptions).Length;
+            return true;
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or JsonException or NotSupportedException) {
+            envelopeSize = int.MaxValue;
+            return false;
+        }
+    }
 }

@@ -61,7 +61,10 @@ public static class HexalithEventStoreDomainModuleExtensions {
 
         // DAPR app health gates service invocation/pub-sub traffic into the app. Use liveness here, not
         // readiness, so sidecar-dependent readiness checks cannot feed back into DAPR traffic eligibility.
-        return domainModule.AddAspireDaprDomainModule(new AspireDaprDomainModuleOptions(
+        return domainModule
+            .WithEnvironment("EventStore__DomainService__AppId", appId)
+            .WithEnvironment("EventStore__DomainService__ServiceVersion", "v1")
+            .AddAspireDaprDomainModule(new AspireDaprDomainModuleOptions(
             appId,
             isolated ? AspireDaprInfrastructureMode.Isolated : AspireDaprInfrastructureMode.Shared) {
             Config = daprConfigPath,
@@ -71,6 +74,6 @@ public static class HexalithEventStoreDomainModuleExtensions {
             AppHealthCheckPath = DaprAppHealthCheckPath,
             PlacementHostAddress = daprPlacementHostAddress,
             SchedulerHostAddress = daprSchedulerHostAddress,
-        }).Project;
+            }).Project;
     }
 }

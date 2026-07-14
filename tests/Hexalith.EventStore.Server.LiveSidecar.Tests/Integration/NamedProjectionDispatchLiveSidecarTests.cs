@@ -10,6 +10,7 @@ using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.DomainService;
+using Hexalith.EventStore.Indexes;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
@@ -21,6 +22,7 @@ using Hexalith.EventStore.Testing.Builders;
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 using NSubstitute;
@@ -71,18 +73,23 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
             new("counter", "counter-index"),
         ];
         string fingerprint = ProjectionRouteCatalogFingerprint.Compute(AppId, "v1", routes);
-        services.GetRequiredService<INamedProjectionRouteCatalog>().Replace(
-            new NamedProjectionRouteCatalogSnapshot([
-                new NamedProjectionRouteCatalogEntry(
-                    AppId,
-                    "v1",
-                    identity.Domain,
-                    ProjectionDispatchProtocol.Version,
-                    ProjectionDispatchProtocol.Capability,
-                    fingerprint,
-                    routes.Select(static route => route.ProjectionType)),
-            ]));
-        services.GetRequiredService<DomainProjectionCatalogRegistry>().Register(fingerprint, routes);
+        var domainServiceOptions = new DomainServiceOptions();
+        domainServiceOptions.Registrations["tenant-a|counter|v1"] = new DomainServiceRegistration(
+            AppId,
+            "process",
+            identity.TenantId,
+            identity.Domain,
+            "v1");
+        var catalogLoader = new AdminOperationalIndexHostedService(
+            services.GetRequiredService<DaprClient>(),
+            services.GetRequiredService<IHttpClientFactory>(),
+            Options.Create(new Hexalith.EventStore.Server.Commands.CommandStatusOptions()),
+            Options.Create(domainServiceOptions),
+            services.GetRequiredService<IOptions<ProjectionOptions>>(),
+            services.GetRequiredService<INamedProjectionRouteCatalog>(),
+            NullLogger<AdminOperationalIndexHostedService>.Instance,
+            services.GetRequiredService<IOptions<ProjectionDispatchOptions>>());
+        await catalogLoader.StartAsync(CancellationToken.None).ConfigureAwait(true);
 
         IDomainServiceResolver resolver = Substitute.For<IDomainServiceResolver>();
         _ = resolver.ResolveAsync(identity.TenantId, identity.Domain, "v1", Arg.Any<CancellationToken>())
@@ -109,9 +116,10 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
         (await ReadStateJsonAsync(database, indexCheckpointKey).ConfigureAwait(true)).ShouldBeNull();
 
         (await ReadStateJsonAsync(database, "projection-delivery-retry:ledger:v1").ConfigureAwait(true)).ShouldBeNull();
-        string retryJson = (await ReadFirstStateByPatternAsync(
+        (string retryStateKey, string retryJson) = (await ReadStateByPatternContainingAsync(
                 database,
-                "*projection-delivery-retry:ledger:v2:*")
+                "*projection-delivery-retry:ledger:v2:*",
+                head.MessageId)
             .ConfigureAwait(true)).ShouldNotBeNull();
         retryJson.ShouldContain("counter-index");
         retryJson.ShouldContain(head.MessageId);
@@ -128,6 +136,7 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
         ProjectionDeliveryRetryWorkItem persistedWork = (await recreatedScheduler
                 .GetDueAsync(DateTimeOffset.UtcNow.AddMinutes(1), 8, CancellationToken.None)
                 .ConfigureAwait(true))
+            .Where(item => string.Equals(item.AggregateId, identity.AggregateId, StringComparison.Ordinal))
             .ShouldHaveSingleItem();
         persistedWork.HeadSequence.ShouldBe(head.SequenceNumber);
         persistedWork.HeadMessageId.ShouldBe(head.MessageId);
@@ -136,17 +145,10 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
 
         faultControl.FailIndex = false;
         await Task.Delay(TimeSpan.FromMilliseconds(1100)).ConfigureAwait(true);
-        var recreatedWorker = new ProjectionDeliveryRetryWorker(
-            recreatedScheduler,
-            services.GetRequiredService<INamedProjectionDispatchCoordinator>(),
-            actorProxyFactory,
-            services.GetRequiredService<IEventPayloadProtectionService>(),
-            services.GetRequiredService<IOptions<EventStoreActorOptions>>(),
-            services.GetRequiredService<IOptions<ProjectionDispatchOptions>>(),
-            services.GetRequiredService<IProjectionRebuildCheckpointStore>(),
-            TimeProvider.System,
-            NullLogger<ProjectionDeliveryRetryWorker>.Instance);
-        await recreatedWorker.RunOnceAsync(CancellationToken.None).ConfigureAwait(true);
+        ProjectionDeliveryRetryWorker hostedWorker = services.GetServices<IHostedService>()
+            .OfType<ProjectionDeliveryRetryWorker>()
+            .ShouldHaveSingleItem();
+        await hostedWorker.RunOnceAsync(CancellationToken.None).ConfigureAwait(true);
 
         JsonDocument index = JsonDocument.Parse((await ReadStateJsonAsync(database, indexKey).ConfigureAwait(true)).ShouldNotBeNull());
         index.RootElement.GetProperty("aggregateId").GetString().ShouldBe(identity.AggregateId);
@@ -154,10 +156,7 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
             (await ReadStateJsonAsync(database, indexCheckpointKey).ConfigureAwait(true)).ShouldNotBeNull());
         indexCheckpoint.RootElement.GetProperty("lastDeliveredSequence").GetInt64().ShouldBe(head.SequenceNumber);
 
-        string convergedRetryJson = (await ReadFirstStateByPatternAsync(
-                database,
-                "*projection-delivery-retry:ledger:v2:*")
-            .ConfigureAwait(true)).ShouldNotBeNull();
+        string convergedRetryJson = (await database.HashGetAsync(retryStateKey, "data").ConfigureAwait(true)).ToString();
         convergedRetryJson.ShouldContain("\"items\":[]");
 
         var detailScope = new ReadModelBatchScope(
@@ -197,7 +196,7 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
                 head.MessageId,
                 fingerprint),
             services.GetRequiredService<IOptions<ProjectionDispatchOptions>>().Value,
-            services.GetRequiredService<DomainProjectionCatalogRegistry>(),
+            services.GetRequiredService<IOptions<DomainProjectionIdentityOptions>>().Value,
             CancellationToken.None).ConfigureAwait(true);
 
         duplicateResponse.Outcomes.Select(static outcome => outcome.Status)
@@ -206,6 +205,7 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
             .ShouldBe(detailReceipt);
         (await ResolveMarkerJsonAsync(database, indexScope.ComputeScopeHash()).ConfigureAwait(true))
             .ShouldBe(indexReceipt);
+        await catalogLoader.StopAsync(CancellationToken.None).ConfigureAwait(true);
     }
 
     private ProjectionUpdateOrchestrator CreateOrchestrator(
@@ -257,12 +257,15 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
         return null;
     }
 
-    private static async Task<string?> ReadFirstStateByPatternAsync(IDatabase database, string pattern) {
+    private static async Task<(string Key, string Json)?> ReadStateByPatternContainingAsync(
+        IDatabase database,
+        string pattern,
+        string expectedText) {
         var keys = (RedisResult[])(await database.ExecuteAsync("KEYS", pattern).ConfigureAwait(true))!;
         foreach (RedisResult key in keys) {
             RedisValue data = await database.HashGetAsync((string)key!, "data").ConfigureAwait(true);
-            if (!data.IsNullOrEmpty) {
-                return data.ToString();
+            if (!data.IsNullOrEmpty && data.ToString().Contains(expectedText, StringComparison.Ordinal)) {
+                return ((string)key!, data.ToString());
             }
         }
 

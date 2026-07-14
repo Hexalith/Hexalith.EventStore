@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Text.Json.Serialization;
 
@@ -27,12 +28,21 @@ public sealed partial class AdminOperationalIndexHostedService(
     IOptions<DomainServiceOptions> domainServiceOptions,
     IOptions<ProjectionOptions> projectionOptions,
     INamedProjectionRouteCatalog namedProjectionRouteCatalog,
-    ILogger<AdminOperationalIndexHostedService> logger) : IHostedService {
+    ILogger<AdminOperationalIndexHostedService> logger,
+    IOptions<ProjectionDispatchOptions>? projectionDispatchOptions = null) : IHostedService, INamedProjectionCatalogRefresher {
     private const string MetadataMethodName = "admin/operational-index-metadata";
     private readonly string _stateStoreName = commandStatusOptions.Value.StateStoreName;
+    private readonly ConcurrentDictionary<string, DomainServiceRegistration> _knownRegistrations = new(StringComparer.Ordinal);
+    private readonly CancellationTokenSource _refreshStopping = new();
+    private Task? _refreshTask;
 
     /// <inheritdoc/>
     public async Task StartAsync(CancellationToken cancellationToken) {
+        foreach (DomainServiceRegistration registration in domainServiceOptions.Value.Registrations.Values) {
+            TrackRegistration(registration);
+        }
+        _refreshTask = RefreshLoopAsync(_refreshStopping.Token);
+
         AdminOperationalIndexMetadataLoadResult metadataLoad = await LoadDomainMetadataAsync(cancellationToken).ConfigureAwait(false);
         if (metadataLoad.HasFailures) {
             Log.MetadataWriteSkipped(logger);
@@ -42,7 +52,8 @@ public sealed partial class AdminOperationalIndexHostedService(
         AdminOperationalIndexSnapshot snapshot = BuildSnapshot(
             metadataLoad.Metadata,
             domainServiceOptions.Value.Registrations.Values,
-            projectionOptions.Value);
+            projectionOptions.Value,
+            metadataLoad.BoundMetadata);
         await WriteProjectionIndexAsync(snapshot, cancellationToken).ConfigureAwait(false);
         await WriteTypeCatalogIndexesAsync(snapshot, cancellationToken).ConfigureAwait(false);
         await WriteQueryTypeIndexAsync(snapshot, cancellationToken).ConfigureAwait(false);
@@ -50,69 +61,74 @@ public sealed partial class AdminOperationalIndexHostedService(
     }
 
     /// <inheritdoc/>
-    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-
-    private async Task<AdminOperationalIndexMetadataLoadResult> LoadDomainMetadataAsync(CancellationToken ct) {
-        var domainsByBinding = new Dictionary<(string AppId, string Version), HashSet<string>>();
-        foreach (DomainServiceRegistration registration in domainServiceOptions.Value.Registrations.Values) {
-            if (string.IsNullOrWhiteSpace(registration.AppId) || string.IsNullOrWhiteSpace(registration.Domain)) {
-                continue;
+    public async Task StopAsync(CancellationToken cancellationToken) {
+        await _refreshStopping.CancelAsync().ConfigureAwait(false);
+        if (_refreshTask is not null) {
+            try {
+                await _refreshTask.WaitAsync(cancellationToken).ConfigureAwait(false);
             }
-
-            string serviceVersion = string.IsNullOrWhiteSpace(registration.Version) ? "v1" : registration.Version;
-            var binding = (registration.AppId, serviceVersion);
-            if (!domainsByBinding.TryGetValue(binding, out HashSet<string>? domains)) {
-                domains = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                domainsByBinding[binding] = domains;
+            catch (OperationCanceledException) when (_refreshStopping.IsCancellationRequested) {
             }
+        }
+    }
 
-            _ = domains.Add(registration.Domain);
+    /// <inheritdoc/>
+    public async Task<bool> RefreshAsync(
+        DomainServiceRegistration registration,
+        CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(registration);
+        TrackRegistration(registration);
+        (bool success, _, IReadOnlyList<NamedProjectionRouteCatalogEntry> entries) = await LoadBindingAsync(
+            registration,
+            cancellationToken).ConfigureAwait(false);
+        if (!success) {
+            throw new InvalidOperationException(
+                $"Named projection metadata refresh failed for '{registration.AppId}/{GetServiceVersion(registration)}/{registration.Domain}'.");
         }
 
+        string version = GetServiceVersion(registration);
+        if (entries.Count == 0) {
+            namedProjectionRouteCatalog.Remove(registration.AppId, version, registration.Domain);
+            return false;
+        }
+
+        namedProjectionRouteCatalog.Upsert(entries);
+        return true;
+    }
+
+    private async Task<AdminOperationalIndexMetadataLoadResult> LoadDomainMetadataAsync(CancellationToken ct) {
+        DomainServiceRegistration[] bindings = [.. domainServiceOptions.Value.Registrations.Values
+            .Where(static registration => !string.IsNullOrWhiteSpace(registration.AppId)
+                && !string.IsNullOrWhiteSpace(registration.Domain))
+            .GroupBy(static registration => $"{registration.AppId}\u001f{GetServiceVersion(registration)}\u001f{registration.Domain}", StringComparer.Ordinal)
+            .Select(static group => group.First())];
+
         var results = new List<AdminOperationalIndexDomainMetadata>();
+        var boundMetadata = new Dictionary<(string AppId, string ServiceVersion, string Domain), AdminOperationalIndexDomainMetadata>();
         var namedProjectionEntries = new List<NamedProjectionRouteCatalogEntry>();
         bool hasFailures = false;
-        foreach (((string appId, string serviceVersion), HashSet<string> domains) in domainsByBinding) {
+        foreach (DomainServiceRegistration registration in bindings) {
             try {
-                var request = new AdminOperationalIndexMetadataRequest([.. domains.Order(StringComparer.OrdinalIgnoreCase)]) {
-                    AppId = appId,
-                    ServiceVersion = serviceVersion,
-                };
-                using HttpRequestMessage httpRequest = daprClient.CreateInvokeMethodRequest(appId, MetadataMethodName, request);
-                HttpClient httpClient = httpClientFactory.CreateClient();
-                using HttpResponseMessage response = await httpClient.SendAsync(httpRequest, ct).ConfigureAwait(false);
-
-                // A 404 means the target app does not expose /admin/operational-index-metadata: it is a
-                // pub/sub consumer, not a metadata-bearing domain service. Skip it WITHOUT marking a failure
-                // so the indexes for domains that DID respond are still written — a single endpoint-less
-                // consumer must not suppress the entire operational index.
-                if (response.StatusCode == HttpStatusCode.NotFound) {
-                    Log.MetadataEndpointAbsent(logger, appId);
+                (bool success, AdminOperationalIndexDomainMetadata? bindingMetadata, IReadOnlyList<NamedProjectionRouteCatalogEntry> entries) =
+                    await LoadBindingAsync(registration, ct).ConfigureAwait(false);
+                if (!success) {
+                    hasFailures = true;
                     continue;
                 }
 
-                _ = response.EnsureSuccessStatusCode();
-
-                AdminOperationalIndexMetadataResponse? responseMetadata = await response.Content
-                    .ReadFromJsonAsync<AdminOperationalIndexMetadataResponse>(ct)
-                    .ConfigureAwait(false);
-                if (responseMetadata is not null) {
-                    results.AddRange(responseMetadata.Domains);
-                    if (TryCreateNamedProjectionEntries(responseMetadata, appId, serviceVersion, out IReadOnlyList<NamedProjectionRouteCatalogEntry> entries)) {
-                        namedProjectionEntries.AddRange(entries);
-                    }
-                    else if (HasNamedProjectionMetadata(responseMetadata)) {
-                        hasFailures = true;
-                        Log.NamedProjectionMetadataRejected(logger, appId, serviceVersion);
-                    }
+                if (bindingMetadata is not null) {
+                    results.Add(bindingMetadata);
+                    boundMetadata[(registration.AppId, GetServiceVersion(registration), registration.Domain)] = bindingMetadata;
                 }
+
+                namedProjectionEntries.AddRange(entries);
             }
             catch (OperationCanceledException) {
                 throw;
             }
             catch (Exception ex) {
                 hasFailures = true;
-                Log.MetadataUnavailable(logger, appId, ex.GetType().Name);
+                Log.MetadataUnavailable(logger, registration.AppId, ex.GetType().Name);
             }
         }
 
@@ -129,7 +145,52 @@ public sealed partial class AdminOperationalIndexHostedService(
             namedRoutes = NamedProjectionRouteCatalogSnapshot.Empty;
         }
 
-        return new AdminOperationalIndexMetadataLoadResult(metadata, namedRoutes, hasFailures);
+        return new AdminOperationalIndexMetadataLoadResult(metadata, namedRoutes, hasFailures, boundMetadata);
+    }
+
+    private async Task<(bool Success, AdminOperationalIndexDomainMetadata? Metadata, IReadOnlyList<NamedProjectionRouteCatalogEntry> Entries)>
+        LoadBindingAsync(DomainServiceRegistration registration, CancellationToken cancellationToken) {
+        string serviceVersion = GetServiceVersion(registration);
+        var request = new AdminOperationalIndexMetadataRequest([registration.Domain]) {
+            AppId = registration.AppId,
+            ServiceVersion = serviceVersion,
+        };
+        using HttpRequestMessage httpRequest = daprClient.CreateInvokeMethodRequest(
+            registration.AppId,
+            MetadataMethodName,
+            request);
+        HttpClient httpClient = httpClientFactory.CreateClient();
+        using HttpResponseMessage response = await httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
+        if (response.StatusCode == HttpStatusCode.NotFound) {
+            Log.MetadataEndpointAbsent(logger, registration.AppId);
+            return (true, null, []);
+        }
+
+        _ = response.EnsureSuccessStatusCode();
+        AdminOperationalIndexMetadataResponse? responseMetadata = await response.Content
+            .ReadFromJsonAsync<AdminOperationalIndexMetadataResponse>(cancellationToken)
+            .ConfigureAwait(false);
+        if (responseMetadata is null) {
+            return (false, null, []);
+        }
+
+        AdminOperationalIndexDomainMetadata? metadata = responseMetadata.Domains.SingleOrDefault(
+            domain => string.Equals(domain.Domain, registration.Domain, StringComparison.Ordinal));
+        if (TryCreateNamedProjectionEntries(
+            responseMetadata,
+            registration.AppId,
+            serviceVersion,
+            projectionDispatchOptions?.Value ?? new ProjectionDispatchOptions(),
+            out IReadOnlyList<NamedProjectionRouteCatalogEntry> entries)) {
+            return (metadata is not null, metadata, entries);
+        }
+
+        if (HasNamedProjectionMetadata(responseMetadata)) {
+            Log.NamedProjectionMetadataRejected(logger, registration.AppId, serviceVersion);
+            return (false, metadata, []);
+        }
+
+        return (metadata is not null, metadata, []);
     }
 
     internal static bool TryCreateNamedProjectionEntries(
@@ -137,9 +198,25 @@ public sealed partial class AdminOperationalIndexHostedService(
         string expectedAppId,
         string expectedServiceVersion,
         out IReadOnlyList<NamedProjectionRouteCatalogEntry> entries) {
+        return TryCreateNamedProjectionEntries(
+            response,
+            expectedAppId,
+            expectedServiceVersion,
+            new ProjectionDispatchOptions(),
+            out entries);
+    }
+
+    internal static bool TryCreateNamedProjectionEntries(
+        AdminOperationalIndexMetadataResponse response,
+        string expectedAppId,
+        string expectedServiceVersion,
+        ProjectionDispatchOptions dispatchOptions,
+        out IReadOnlyList<NamedProjectionRouteCatalogEntry> entries) {
         ArgumentNullException.ThrowIfNull(response);
         ArgumentException.ThrowIfNullOrWhiteSpace(expectedAppId);
         ArgumentException.ThrowIfNullOrWhiteSpace(expectedServiceVersion);
+        ArgumentNullException.ThrowIfNull(dispatchOptions);
+        dispatchOptions.Validate();
 
         entries = [];
         if (response.DispatchVersion != ProjectionDispatchProtocol.Version
@@ -156,6 +233,12 @@ public sealed partial class AdminOperationalIndexHostedService(
                 .SelectMany(domain => domain.NamedProjectionTypes!
                     .Select(projectionType => new ProjectionDispatchRoute(domain.Domain, projectionType)))];
             if (routes.Length == 0) {
+                return false;
+            }
+
+            if (routes.Length > dispatchOptions.MaxOutcomes
+                || routes.GroupBy(static route => route.Domain, StringComparer.Ordinal)
+                    .Any(group => group.Count() > dispatchOptions.MaxHandlersPerDomain)) {
                 return false;
             }
 
@@ -206,7 +289,8 @@ public sealed partial class AdminOperationalIndexHostedService(
     public static AdminOperationalIndexSnapshot BuildSnapshot(
         IReadOnlyList<AdminOperationalIndexDomainMetadata> metadata,
         IEnumerable<DomainServiceRegistration> registrations,
-        ProjectionOptions projectionOptions) {
+        ProjectionOptions projectionOptions,
+        IReadOnlyDictionary<(string AppId, string ServiceVersion, string Domain), AdminOperationalIndexDomainMetadata>? boundMetadata = null) {
         ArgumentNullException.ThrowIfNull(metadata);
         ArgumentNullException.ThrowIfNull(registrations);
         ArgumentNullException.ThrowIfNull(projectionOptions);
@@ -217,7 +301,12 @@ public sealed partial class AdminOperationalIndexHostedService(
             .Where(static t => !string.IsNullOrWhiteSpace(t) && !string.Equals(t, "*", StringComparison.Ordinal))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Order(StringComparer.OrdinalIgnoreCase)];
-        var metadataByDomain = metadata.ToDictionary(m => m.Domain, StringComparer.OrdinalIgnoreCase);
+        var metadataByDomain = metadata
+            .GroupBy(static item => item.Domain, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                static group => group.Key,
+                static group => MergeDomainMetadata(group.Key, group),
+                StringComparer.OrdinalIgnoreCase);
         var all = new List<ProjectionStatus>();
         var byTenant = new Dictionary<string, List<ProjectionStatus>>(StringComparer.OrdinalIgnoreCase);
 
@@ -226,7 +315,14 @@ public sealed partial class AdminOperationalIndexHostedService(
                 continue;
             }
 
-            IReadOnlyList<string> projectionNames = metadataByDomain.TryGetValue(registration.Domain, out AdminOperationalIndexDomainMetadata? domainMetadata)
+            string serviceVersion = GetServiceVersion(registration);
+            AdminOperationalIndexDomainMetadata? domainMetadata = boundMetadata is not null
+                && boundMetadata.TryGetValue((registration.AppId, serviceVersion, registration.Domain), out AdminOperationalIndexDomainMetadata? bound)
+                ? bound
+                : boundMetadata is null && metadataByDomain.TryGetValue(registration.Domain, out AdminOperationalIndexDomainMetadata? unbound)
+                    ? unbound
+                    : null;
+            IReadOnlyList<string> projectionNames = domainMetadata is not null
                 ? [.. domainMetadata.ProjectionNames
                     .Concat(domainMetadata.NamedProjectionTypes ?? [])
                     .Distinct(StringComparer.Ordinal)
@@ -293,13 +389,53 @@ public sealed partial class AdminOperationalIndexHostedService(
                 .ToList(),
             StringComparer.OrdinalIgnoreCase);
 
-        var queryTypesByDomain = metadata.ToDictionary(
-            m => m.Domain,
-            m => (IReadOnlyList<string>)[.. (m.QueryTypes ?? []).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)],
-            StringComparer.OrdinalIgnoreCase);
+        var queryTypesByDomain = metadata
+            .GroupBy(static item => item.Domain, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                static group => group.Key,
+                static group => (IReadOnlyList<string>)[.. group
+                    .SelectMany(static item => item.QueryTypes ?? [])
+                    .Distinct(StringComparer.Ordinal)
+                    .Order(StringComparer.Ordinal)],
+                StringComparer.OrdinalIgnoreCase);
 
         return new AdminOperationalIndexSnapshot(all, normalizedByTenant, events, commands, aggregates, queryTypesByDomain);
     }
+
+    private async Task RefreshLoopAsync(CancellationToken cancellationToken) {
+        ProjectionDispatchOptions options = projectionDispatchOptions?.Value ?? new ProjectionDispatchOptions();
+        options.Validate();
+        using var timer = new PeriodicTimer(options.CatalogRefreshInterval);
+        try {
+            while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false)) {
+                foreach (DomainServiceRegistration registration in _knownRegistrations.Values) {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    try {
+                        _ = await RefreshAsync(registration, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+                        throw;
+                    }
+                    catch (Exception ex) {
+                        Log.MetadataUnavailable(logger, registration.AppId, ex.GetType().Name);
+                    }
+                }
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+        }
+    }
+
+    private void TrackRegistration(DomainServiceRegistration registration) {
+        if (string.IsNullOrWhiteSpace(registration.AppId) || string.IsNullOrWhiteSpace(registration.Domain)) {
+            return;
+        }
+
+        _knownRegistrations[$"{registration.AppId}\u001f{GetServiceVersion(registration)}\u001f{registration.Domain}"] = registration;
+    }
+
+    private static string GetServiceVersion(DomainServiceRegistration registration)
+        => string.IsNullOrWhiteSpace(registration.Version) ? "v1" : registration.Version;
 
     private async Task WriteProjectionIndexAsync(AdminOperationalIndexSnapshot snapshot, CancellationToken ct) {
         await daprClient.SaveStateAsync(_stateStoreName, "admin:projections:all", snapshot.Projections, cancellationToken: ct).ConfigureAwait(false);
@@ -419,7 +555,8 @@ public sealed partial class AdminOperationalIndexHostedService(
 internal sealed record AdminOperationalIndexMetadataLoadResult(
     IReadOnlyList<AdminOperationalIndexDomainMetadata> Metadata,
     NamedProjectionRouteCatalogSnapshot NamedProjectionRoutes,
-    bool HasFailures);
+    bool HasFailures,
+    IReadOnlyDictionary<(string AppId, string ServiceVersion, string Domain), AdminOperationalIndexDomainMetadata> BoundMetadata);
 
 /// <summary>Metadata request sent from EventStore to domain services for admin index population.</summary>
 /// <param name="Domains">Configured domains for the target domain service.</param>

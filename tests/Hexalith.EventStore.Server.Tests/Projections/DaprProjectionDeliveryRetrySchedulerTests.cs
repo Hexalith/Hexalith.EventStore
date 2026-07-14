@@ -1,5 +1,6 @@
 using Dapr.Client;
 
+using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Projections;
 
@@ -66,12 +67,13 @@ public sealed class DaprProjectionDeliveryRetrySchedulerTests {
     }
 
     [Fact]
-    public async Task UpdateAsync_MissingWorkId_DoesNotResurrectWork() {
+    public async Task UpdateAsync_UnclaimedWorkIsRejectedWithoutResurrection() {
         var state = new Dictionary<string, ProjectionDeliveryRetryLedger>(StringComparer.Ordinal);
         DaprClient daprClient = CreateStatefulDaprClient(state);
         var scheduler = CreateScheduler(daprClient);
 
-        await scheduler.UpdateAsync(CreateWorkItem("work-a", "aggregate-a") with { Attempt = 1 });
+        _ = await Should.ThrowAsync<ArgumentException>(() =>
+            scheduler.UpdateAsync(CreateWorkItem("work-a", "aggregate-a") with { Attempt = 1 }));
 
         state.Values.SelectMany(static ledger => ledger.Items).ShouldBeEmpty();
         _ = await daprClient.DidNotReceiveWithAnyArgs().TrySaveStateAsync(
@@ -109,24 +111,37 @@ public sealed class DaprProjectionDeliveryRetrySchedulerTests {
     }
 
     [Fact]
-    public async Task UpdateAndDeleteAsync_PersistThenRemoveOnlyTargetWorkItem() {
+    public async Task ClaimedUpdateAndDelete_PersistThenRemoveOnlyTargetWorkItem() {
         var state = new Dictionary<string, ProjectionDeliveryRetryLedger>(StringComparer.Ordinal);
         DaprClient daprClient = CreateStatefulDaprClient(state);
         var scheduler = CreateScheduler(daprClient);
         DateTimeOffset now = DateTimeOffset.UtcNow;
         ProjectionDeliveryRetryWorkItem first = CreateWorkItem("work-a", "aggregate-a") with { NextDueUtc = now.AddMinutes(-1) };
         ProjectionDeliveryRetryWorkItem second = CreateWorkItem("work-b", "aggregate-b") with { NextDueUtc = now.AddMinutes(-1) };
-        _ = await scheduler.ScheduleAsync(first);
-        _ = await scheduler.ScheduleAsync(second);
-        ProjectionDeliveryRetryWorkItem updated = first with {
+        first = await scheduler.ScheduleAsync(first);
+        second = await scheduler.ScheduleAsync(second);
+        ProjectionDeliveryRetryWorkItem claimedFirst = (await scheduler.TryAcquireAsync(
+            first,
+            "replica-first",
+            now,
+            TimeSpan.FromMinutes(1))).ShouldNotBeNull();
+        ProjectionDeliveryRetryWorkItem claimedSecond = (await scheduler.TryAcquireAsync(
+            second,
+            "replica-second",
+            now,
+            TimeSpan.FromMinutes(1))).ShouldNotBeNull();
+        ProjectionDeliveryRetryWorkItem updated = claimedFirst with {
             Attempt = 2,
             PendingRoutes = ["counter-index"],
         };
 
-        await scheduler.UpdateAsync(updated);
-        await scheduler.DeleteAsync(second.WorkId);
+        (await scheduler.TryUpdateAsync(updated)).ShouldBeTrue();
+        (await scheduler.TryDeleteAsync(claimedSecond)).ShouldBeTrue();
 
-        (await scheduler.GetDueAsync(now, 8)).ShouldHaveSingleItem().ShouldBe(updated);
+        ProjectionDeliveryRetryWorkItem persisted = (await scheduler.GetDueAsync(now, 8)).ShouldHaveSingleItem();
+        persisted.Attempt.ShouldBe(2);
+        persisted.PendingRoutes.ShouldBe(["counter-index"]);
+        persisted.LeaseOwner.ShouldBeNull();
     }
 
     [Fact]
@@ -179,21 +194,128 @@ public sealed class DaprProjectionDeliveryRetrySchedulerTests {
             ["projection-delivery-retry:ledger:v1"] = new([legacyWork]),
         };
         DaprClient daprClient = CreateStatefulDaprClient(state);
-        var scheduler = CreateScheduler(daprClient);
+        var scheduler = CreateScheduler(daprClient, enableLegacyMigration: true);
 
         ProjectionDeliveryRetryWorkItem due = (await scheduler.GetDueAsync(DateTimeOffset.UtcNow, 8)).ShouldHaveSingleItem();
 
         due.ShouldBe(legacyWork);
         state.ShouldNotContainKey("projection-delivery-retry:ledger:v1");
         state.Keys.ShouldContain(static key => key.StartsWith("projection-delivery-retry:ledger:v2:", StringComparison.Ordinal));
+        await daprClient.Received(1).SaveStateAsync(
+            "statestore",
+            "projection-delivery-retry:protocol",
+            "v2-ready:v1-writers-quiesced",
+            stateOptions: Arg.Any<StateOptions?>(),
+            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>());
     }
 
-    private static DaprProjectionDeliveryRetryScheduler CreateScheduler(DaprClient daprClient) =>
-        new(daprClient, Options.Create(new ProjectionOptions()));
+    [Fact]
+    public async Task GetDueAsync_MalformedLegacyItem_DoesNotPoisonMaintenanceMigration() {
+        ProjectionDeliveryRetryWorkItem malformed = CreateWorkItem("work-invalid", "aggregate-a") with {
+            PendingRoutes = null!,
+        };
+        var state = new Dictionary<string, ProjectionDeliveryRetryLedger>(StringComparer.Ordinal) {
+            ["projection-delivery-retry:ledger:v1"] = new([malformed]),
+        };
+        DaprClient daprClient = CreateStatefulDaprClient(state);
+        DaprProjectionDeliveryRetryScheduler scheduler = CreateScheduler(daprClient, enableLegacyMigration: true);
+
+        IReadOnlyList<ProjectionDeliveryRetryWorkItem> due = await scheduler.GetDueAsync(DateTimeOffset.UtcNow, 8);
+
+        due.ShouldBeEmpty();
+        state.ShouldNotContainKey("projection-delivery-retry:ledger:v1");
+        await daprClient.Received(1).SaveStateAsync(
+            "statestore",
+            "projection-delivery-retry:protocol",
+            "v2-ready:v1-writers-quiesced",
+            stateOptions: Arg.Any<StateOptions?>(),
+            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task TryAcquireAsync_SerializesDifferentHeadsForTheSameAggregateAcrossReplicas() {
+        var state = new Dictionary<string, ProjectionDeliveryRetryLedger>(StringComparer.Ordinal);
+        DaprClient daprClient = CreateStatefulDaprClient(state);
+        DaprProjectionDeliveryRetryScheduler scheduler = CreateScheduler(daprClient);
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        ProjectionDeliveryRetryWorkItem older = await scheduler.ScheduleAsync(CreateWorkItem("work-old", "aggregate-a"));
+        ProjectionDeliveryRetryWorkItem newer = await scheduler.ScheduleAsync(
+            CreateWorkItem("work-new", "aggregate-a") with { HeadSequence = 2, HeadMessageId = "message-2" });
+
+        ProjectionDeliveryRetryWorkItem? claimedNewer = await scheduler.TryAcquireAsync(
+            newer,
+            "replica-new",
+            now,
+            TimeSpan.FromMinutes(1));
+        ProjectionDeliveryRetryWorkItem? blockedOlder = await scheduler.TryAcquireAsync(
+            older,
+            "replica-old",
+            now,
+            TimeSpan.FromMinutes(1));
+
+        claimedNewer.ShouldNotBeNull();
+        blockedOlder.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task TryUpdateAsync_RejectsStaleClaimedRevision() {
+        var state = new Dictionary<string, ProjectionDeliveryRetryLedger>(StringComparer.Ordinal);
+        DaprClient daprClient = CreateStatefulDaprClient(state);
+        DaprProjectionDeliveryRetryScheduler scheduler = CreateScheduler(daprClient);
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        ProjectionDeliveryRetryWorkItem scheduled = await scheduler.ScheduleAsync(CreateWorkItem("work-a", "aggregate-a"));
+        ProjectionDeliveryRetryWorkItem claimed = (await scheduler.TryAcquireAsync(
+            scheduled,
+            "replica-a",
+            now,
+            TimeSpan.FromMinutes(1))).ShouldNotBeNull();
+
+        bool first = await scheduler.TryUpdateAsync(claimed with { Attempt = 1 });
+        bool stale = await scheduler.TryUpdateAsync(claimed with { Attempt = 7 });
+
+        first.ShouldBeTrue();
+        stale.ShouldBeFalse();
+        state.Values.SelectMany(static ledger => ledger.Items).ShouldHaveSingleItem().Attempt.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task GetDueAsync_MalformedPersistedItemDoesNotPoisonValidWork() {
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        ProjectionDeliveryRetryWorkItem valid = CreateWorkItem("work-valid", "aggregate-a") with {
+            NextDueUtc = now.AddMinutes(-1),
+        };
+        ProjectionDeliveryRetryWorkItem malformed = CreateWorkItem("work-invalid", "aggregate-b") with {
+            PendingRoutes = null!,
+            NextDueUtc = now.AddMinutes(-1),
+        };
+        var state = new Dictionary<string, ProjectionDeliveryRetryLedger>(StringComparer.Ordinal) {
+            ["projection-delivery-retry:ledger:v2:00"] = new([malformed, valid]),
+        };
+        DaprProjectionDeliveryRetryScheduler scheduler = CreateScheduler(CreateStatefulDaprClient(state));
+
+        IReadOnlyList<ProjectionDeliveryRetryWorkItem> due = await scheduler.GetDueAsync(now, 8);
+
+        due.ShouldHaveSingleItem().WorkId.ShouldBe("work-valid");
+    }
+
+    private static DaprProjectionDeliveryRetryScheduler CreateScheduler(
+        DaprClient daprClient,
+        bool enableLegacyMigration = false) =>
+        new(
+            daprClient,
+            Options.Create(new ProjectionOptions()),
+            Options.Create(new ProjectionDispatchOptions {
+                EnableLegacyRetryLedgerMigration = enableLegacyMigration,
+                LegacyRetryLedgerWritersQuiesced = enableLegacyMigration,
+                LegacyRetryLedgerMigrationMarker = enableLegacyMigration ? "v1-writers-quiesced" : null,
+            }));
 
     private static DaprClient CreateStatefulDaprClient(
         Dictionary<string, ProjectionDeliveryRetryLedger> state) {
         DaprClient daprClient = Substitute.For<DaprClient>();
+        var leases = new Dictionary<string, ProjectionDeliveryRetryLease>(StringComparer.Ordinal);
         _ = daprClient.GetStateAsync<ProjectionDeliveryRetryLedger>(
                 "statestore",
                 Arg.Any<string>(),
@@ -225,6 +347,30 @@ public sealed class DaprProjectionDeliveryRetrySchedulerTests {
                 state[call.ArgAt<string>(1)] = call.ArgAt<ProjectionDeliveryRetryLedger>(2);
                 return true;
             });
+        _ = daprClient.GetStateAndETagAsync<ProjectionDeliveryRetryLease>(
+                "statestore",
+                Arg.Any<string>(),
+                consistencyMode: Arg.Any<ConsistencyMode?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(call => {
+                string key = call.ArgAt<string>(1);
+                return ((ProjectionDeliveryRetryLease, string))(
+                    leases.GetValueOrDefault(key)!,
+                    leases.ContainsKey(key) ? "etag" : string.Empty);
+            });
+        _ = daprClient.TrySaveStateAsync(
+                "statestore",
+                Arg.Any<string>(),
+                Arg.Any<ProjectionDeliveryRetryLease>(),
+                Arg.Any<string>(),
+                stateOptions: Arg.Any<StateOptions?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(call => {
+                leases[call.ArgAt<string>(1)] = call.ArgAt<ProjectionDeliveryRetryLease>(2);
+                return true;
+            });
         _ = daprClient.GetBulkStateAsync<ProjectionDeliveryRetryLedger>(
                 "statestore",
                 Arg.Any<IReadOnlyList<string>>(),
@@ -245,6 +391,20 @@ public sealed class DaprProjectionDeliveryRetrySchedulerTests {
                 cancellationToken: Arg.Any<CancellationToken>())
             .Returns(call => {
                 _ = state.Remove(call.ArgAt<string>(1));
+                return Task.CompletedTask;
+            });
+        _ = daprClient.ExecuteStateTransactionAsync(
+                "statestore",
+                Arg.Any<IReadOnlyList<StateTransactionRequest>>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(call => {
+                foreach (StateTransactionRequest request in call.ArgAt<IReadOnlyList<StateTransactionRequest>>(1)) {
+                    if (request.OperationType == StateOperationType.Delete) {
+                        _ = state.Remove(request.Key);
+                    }
+                }
+
                 return Task.CompletedTask;
             });
         return daprClient;

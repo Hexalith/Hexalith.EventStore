@@ -5,6 +5,7 @@ using Dapr.Actors.Client;
 
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Actors.Authorization;
+using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Testing.Fakes;
 
 using Microsoft.AspNetCore.Hosting;
@@ -12,6 +13,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using NSubstitute;
 
@@ -78,6 +80,16 @@ public class ActorBasedAuthWebApplicationFactory : WebApplicationFactory<EventSt
             _ = MockProxyFactory
                 .CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), Arg.Any<string>())
                 .Returns(fakeAggregateActor);
+
+            // Projection activation persistence is outside this fixture's authorization scope.
+            // Replace the production Dapr-backed outbox so an authorized request can reach
+            // the mocked aggregate actor without requiring a sidecar.
+            services.RemoveAll<IProjectionActivationOutbox>();
+            IProjectionActivationOutbox projectionActivationOutbox = Substitute.For<IProjectionActivationOutbox>();
+            _ = projectionActivationOutbox
+                .EnsureAsync(Arg.Any<Contracts.Identity.AggregateIdentity>(), Arg.Any<CancellationToken>())
+                .Returns(Task.CompletedTask);
+            _ = services.AddSingleton(projectionActivationOutbox);
 
             _ = services.AddSingleton(MockProxyFactory);
         });

@@ -167,7 +167,11 @@ public static class EventStoreServiceCollectionExtensions {
         // Writer only — the reader lives in DaprStreamQueryService on the Admin.Server side.
         _ = services.AddSingleton<DaprStreamActivityTracker>();
         _ = services.AddSingleton<IStreamActivityTracker>(sp => sp.GetRequiredService<DaprStreamActivityTracker>());
-        _ = services.AddHostedService<AdminOperationalIndexHostedService>();
+        _ = services.AddSingleton<AdminOperationalIndexHostedService>();
+        _ = services.AddSingleton<INamedProjectionCatalogRefresher>(
+            static serviceProvider => serviceProvider.GetRequiredService<AdminOperationalIndexHostedService>());
+        _ = services.AddHostedService(
+            static serviceProvider => serviceProvider.GetRequiredService<AdminOperationalIndexHostedService>());
 
         // Extension metadata sanitization (Story 5.4, SEC-4)
         _ = services.AddOptions<ExtensionMetadataOptions>()

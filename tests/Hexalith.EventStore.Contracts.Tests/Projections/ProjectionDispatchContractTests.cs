@@ -87,6 +87,13 @@ public class ProjectionDispatchContractTests {
     }
 
     [Fact]
+    public void ProjectionDispatchOutcome_OmittedStatusIsRejectedInsteadOfDefaultingToCompleted() {
+        const string json = """{"projectionType":"order-detail","state":null,"reasonCode":null}""";
+
+        _ = Should.Throw<JsonException>(() => JsonSerializer.Deserialize<ProjectionDispatchOutcome>(json, WebJson));
+    }
+
+    [Fact]
     public void ProjectionDispatchProtocol_ExposesFrozenVersionAndCapability() {
         ProjectionDispatchProtocol.Version.ShouldBe(2);
         ProjectionDispatchProtocol.Capability.ShouldBe("named-projection-dispatch-v2");

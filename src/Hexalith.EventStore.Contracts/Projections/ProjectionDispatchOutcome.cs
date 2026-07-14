@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Hexalith.EventStore.Contracts.Projections;
 
@@ -11,6 +12,6 @@ namespace Hexalith.EventStore.Contracts.Projections;
 /// <param name="ReasonCode">An optional bounded support-safe reason code.</param>
 public sealed record ProjectionDispatchOutcome(
     string ProjectionType,
-    ProjectionDispatchStatus Status,
+    [property: JsonRequired] ProjectionDispatchStatus Status,
     JsonElement? State,
     string? ReasonCode);

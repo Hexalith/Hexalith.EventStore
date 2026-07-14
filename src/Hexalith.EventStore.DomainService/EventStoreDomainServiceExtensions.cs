@@ -17,6 +17,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.DomainService;
@@ -181,7 +182,7 @@ public static class EventStoreDomainServiceExtensions {
                 async (ProjectionDispatchRequest request,
                        IServiceProvider serviceProvider,
                        IOptions<ProjectionDispatchOptions> projectionDispatchOptions,
-                       [FromServices] DomainProjectionCatalogRegistry catalogRegistry,
+                       IOptions<DomainProjectionIdentityOptions> projectionIdentityOptions,
                        CancellationToken cancellationToken) => {
                     try {
                         ProjectionDispatchResponse response = await DomainProjectionDispatcher
@@ -189,7 +190,7 @@ public static class EventStoreDomainServiceExtensions {
                                 serviceProvider,
                                 request,
                                 projectionDispatchOptions.Value,
-                                catalogRegistry,
+                                projectionIdentityOptions.Value,
                                 cancellationToken)
                             .ConfigureAwait(false);
                         return (IResult)Results.Ok(response);
@@ -207,18 +208,30 @@ public static class EventStoreDomainServiceExtensions {
              IEnumerable<IDomainQueryHandler> queryHandlers,
              IEnumerable<IAsyncDomainProjectionHandler> namedProjectionHandlers,
              IOptions<ProjectionDispatchOptions> projectionDispatchOptions,
+             IOptions<DomainProjectionIdentityOptions> projectionIdentityOptions,
              [FromServices] DomainProjectionCatalogRegistry catalogRegistry) => {
-                AdminOperationalIndexMetadata.Response response =
-                    string.IsNullOrWhiteSpace(request.AppId) || string.IsNullOrWhiteSpace(request.ServiceVersion)
-                        ? AdminOperationalIndexMetadata.Create(discovery, request.Domains, queryHandlers)
-                        : AdminOperationalIndexMetadata.Create(
-                            discovery,
-                            request.Domains,
-                            queryHandlers,
-                            namedProjectionHandlers,
-                            request.AppId,
-                            request.ServiceVersion,
-                            projectionDispatchOptions.Value);
+                DomainProjectionIdentityOptions identity = projectionIdentityOptions.Value;
+                AdminOperationalIndexMetadata.Response response;
+                if (string.IsNullOrWhiteSpace(request.AppId) || string.IsNullOrWhiteSpace(request.ServiceVersion)) {
+                    response = AdminOperationalIndexMetadata.Create(discovery, request.Domains, queryHandlers);
+                }
+                else {
+                    if (!string.Equals(request.AppId, identity.AppId, StringComparison.Ordinal)
+                        || !string.Equals(request.ServiceVersion, identity.ServiceVersion, StringComparison.Ordinal)
+                        || request.Domains.Count != 1) {
+                        return Results.BadRequest(ProjectionDispatchReasonCodes.UnsupportedCapability);
+                    }
+
+                    response = AdminOperationalIndexMetadata.Create(
+                        discovery,
+                        request.Domains,
+                        queryHandlers,
+                        namedProjectionHandlers,
+                        identity.AppId,
+                        identity.ServiceVersion,
+                        projectionDispatchOptions.Value);
+                }
+
                 RegisterNamedProjectionCatalog(response, catalogRegistry);
                 return Results.Ok(response);
             });
@@ -254,6 +267,18 @@ public static class EventStoreDomainServiceExtensions {
         _ = builder.Services.AddSingleton<DomainProjectionCatalogRegistry>();
         _ = builder.Services.AddOptions<ProjectionDispatchOptions>()
             .BindConfiguration("EventStore:ProjectionDispatch");
+        _ = builder.Services.AddOptions<DomainProjectionIdentityOptions>()
+            .BindConfiguration("EventStore:DomainService")
+            .PostConfigure(options => {
+                options.AppId = string.IsNullOrWhiteSpace(options.AppId)
+                    ? Environment.GetEnvironmentVariable("DAPR_APP_ID") ?? builder.Environment.ApplicationName
+                    : options.AppId;
+                options.ServiceVersion = string.IsNullOrWhiteSpace(options.ServiceVersion)
+                    ? "v1"
+                    : options.ServiceVersion;
+            })
+            .Validate(options => !string.IsNullOrWhiteSpace(options.AppId)
+                && !string.IsNullOrWhiteSpace(options.ServiceVersion));
 
         DiscoveryResult discovery = GetRegisteredDiscoveryResult(builder.Services);
         _ = builder.Services.AddEventStoreDomainTelemetry(GetDiscoveredDomainNames(discovery, domainAssemblies));

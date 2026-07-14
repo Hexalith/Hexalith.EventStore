@@ -45,6 +45,51 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
     }
 
     [Fact]
+    public async Task TryDispatchAsync_MissingBindingRefreshesFromResolverAlignedRegistration() {
+        var catalog = new NamedProjectionRouteCatalog();
+        INamedProjectionCatalogRefresher refresher = Substitute.For<INamedProjectionCatalogRefresher>();
+        _ = refresher.RefreshAsync(Arg.Any<DomainServiceRegistration>(), Arg.Any<CancellationToken>())
+            .Returns(_ => {
+                catalog.Upsert(Snapshot("fingerprint", "widget-detail").Entries);
+                return true;
+            });
+        string responseJson = JsonSerializer.Serialize(new ProjectionDispatchResponse(
+            ProjectionDispatchProtocol.Version,
+            [new ProjectionDispatchOutcome("widget-detail", ProjectionDispatchStatus.Completed, null, null)]));
+        var handler = new ProjectionDispatchHttpMessageHandler(responseJson);
+        IProjectionDeliveryCheckpointStore checkpoints = Substitute.For<IProjectionDeliveryCheckpointStore>();
+        _ = checkpoints.ReadDeliveredSequenceAsync(Identity, "widget-detail", Arg.Any<CancellationToken>()).Returns(0);
+        _ = checkpoints.SaveDeliveredSequenceAsync(Identity, "widget-detail", 1, Arg.Any<CancellationToken>()).Returns(true);
+        IProjectionLifecycleGateway lifecycle = Substitute.For<IProjectionLifecycleGateway>();
+        _ = lifecycle.TryAdmitDeliveryWriteAsync(Identity, "widget-detail", Arg.Any<CancellationToken>()).Returns(true);
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        httpClientFactory.CreateClient(Arg.Any<string>()).Returns(new HttpClient(handler));
+        var coordinator = new NamedProjectionDispatchCoordinator(
+            catalog,
+            checkpoints,
+            lifecycle,
+            Substitute.For<IActorProxyFactory>(),
+            new DaprClientBuilder().Build(),
+            httpClientFactory,
+            Options.Create(new ProjectionDispatchOptions()),
+            NullLogger<NamedProjectionDispatchCoordinator>.Instance,
+            catalogRefresher: refresher);
+
+        bool handled = await coordinator.TryDispatchAsync(
+            Identity,
+            Registration(),
+            [Envelope(1)],
+            [],
+            CancellationToken.None);
+
+        handled.ShouldBeTrue();
+        handler.CallCount.ShouldBe(1);
+        _ = await refresher.Received(1).RefreshAsync(
+            Arg.Is<DomainServiceRegistration>(registration => registration.AppId == "widget-service"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task TryDispatchAsync_UsesStableHeadIdentityAndAdvancesOnlySuccessfulProjection() {
         const string fingerprint = "catalog-fingerprint";
         string responseJson = JsonSerializer.Serialize(new ProjectionDispatchResponse(
@@ -154,7 +199,7 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
                 && item.PendingRoutes.SequenceEqual(new[] { "widget-detail", "widget-index" })),
             Arg.Any<CancellationToken>());
         scheduler.ReceivedCalls().First().GetMethodInfo().Name.ShouldBe(nameof(IProjectionDeliveryRetryScheduler.ScheduleAsync));
-        await scheduler.Received(1).UpdateAsync(
+        _ = await scheduler.Received(1).TryUpdateAsync(
             Arg.Is<ProjectionDeliveryRetryWorkItem>(item =>
                 item.PendingRoutes.SequenceEqual(new[] { "widget-index" })
                 && item.TerminalRoutes.Count == 0
@@ -188,14 +233,14 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
             [],
             CancellationToken.None);
 
-        await scheduler.Received(1).UpdateAsync(
+        _ = await scheduler.Received(1).TryUpdateAsync(
             Arg.Is<ProjectionDeliveryRetryWorkItem>(item =>
                 item.PendingRoutes.SequenceEqual(new[] { "widget-detail" })
                 && item.Attempt == 1
                 && item.NextDueUtc == now.AddSeconds(1)
                 && item.LastReasonCode == ProjectionDispatchReasonCodes.PartialRetry),
             Arg.Any<CancellationToken>());
-        await scheduler.DidNotReceiveWithAnyArgs().DeleteAsync(default!, default);
+        _ = await scheduler.DidNotReceiveWithAnyArgs().TryDeleteAsync(default!, default);
     }
 
     [Fact]
@@ -228,13 +273,13 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
             [],
             CancellationToken.None);
 
-        await scheduler.Received(1).UpdateAsync(
+        _ = await scheduler.Received(1).TryUpdateAsync(
             Arg.Is<ProjectionDeliveryRetryWorkItem>(item =>
                 item.PendingRoutes.Count == 0
                 && item.TerminalRoutes.SequenceEqual(new[] { "widget-detail" })
                 && item.LastReasonCode == ProjectionDispatchReasonCodes.HandlerFailure),
             Arg.Any<CancellationToken>());
-        await scheduler.DidNotReceiveWithAnyArgs().DeleteAsync(default!, default);
+        _ = await scheduler.DidNotReceiveWithAnyArgs().TryDeleteAsync(default!, default);
         _ = await checkpoints.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default!, default, default);
     }
 
@@ -268,13 +313,13 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
             [],
             CancellationToken.None);
 
-        await scheduler.Received(1).UpdateAsync(
+        _ = await scheduler.Received(1).TryUpdateAsync(
             Arg.Is<ProjectionDeliveryRetryWorkItem>(item =>
                 item.PendingRoutes.SequenceEqual(new[] { "widget-detail" })
                 && item.Attempt == 8
                 && item.NextDueUtc == now.AddSeconds(128)),
             Arg.Any<CancellationToken>());
-        await scheduler.DidNotReceiveWithAnyArgs().DeleteAsync(default!, default);
+        _ = await scheduler.DidNotReceiveWithAnyArgs().TryDeleteAsync(default!, default);
     }
 
     [Fact]
@@ -320,6 +365,47 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
         });
     }
 
+    [Fact]
+    public async Task TryDispatchAsync_InvalidOutcomeSetsFailClosedWithoutAdvancingCheckpoint() {
+        ProjectionDispatchResponse[] invalidResponses = [
+            new ProjectionDispatchResponse(
+                ProjectionDispatchProtocol.Version,
+                [
+                    new ProjectionDispatchOutcome("widget-detail", ProjectionDispatchStatus.Completed, null, null),
+                    new ProjectionDispatchOutcome("widget-detail", ProjectionDispatchStatus.Completed, null, null),
+                ]),
+            new ProjectionDispatchResponse(
+                ProjectionDispatchProtocol.Version,
+                [new ProjectionDispatchOutcome("widget-detail", (ProjectionDispatchStatus)999, null, null)]),
+            new ProjectionDispatchResponse(
+                ProjectionDispatchProtocol.Version,
+                [new ProjectionDispatchOutcome("widget-detail", ProjectionDispatchStatus.Retryable, null, new string('r', 129))]),
+            new ProjectionDispatchResponse(
+                ProjectionDispatchProtocol.Version,
+                [.. Enumerable.Range(0, 33).Select(_ =>
+                    new ProjectionDispatchOutcome("widget-detail", ProjectionDispatchStatus.Completed, null, null))]),
+        ];
+
+        foreach (ProjectionDispatchResponse invalidResponse in invalidResponses) {
+            NamedProjectionDispatchCoordinator coordinator = CreateCoordinator(
+                Snapshot("fingerprint", "widget-detail"),
+                new ProjectionDispatchHttpMessageHandler(JsonSerializer.Serialize(invalidResponse)),
+                out IProjectionDeliveryCheckpointStore checkpoints,
+                out IProjectionLifecycleGateway lifecycle);
+            _ = checkpoints.ReadDeliveredSequenceAsync(Identity, "widget-detail", Arg.Any<CancellationToken>()).Returns(0);
+            _ = lifecycle.TryAdmitDeliveryWriteAsync(Identity, "widget-detail", Arg.Any<CancellationToken>()).Returns(true);
+
+            _ = await coordinator.TryDispatchAsync(
+                Identity,
+                Registration(),
+                [Envelope(1)],
+                [],
+                CancellationToken.None);
+
+            _ = await checkpoints.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default!, default, default);
+        }
+    }
+
     private static NamedProjectionDispatchCoordinator CreateCoordinator(
         NamedProjectionRouteCatalogSnapshot snapshot,
         ProjectionDispatchHttpMessageHandler handler,
@@ -334,6 +420,27 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
         lifecycle = Substitute.For<IProjectionLifecycleGateway>();
         var httpClientFactory = Substitute.For<IHttpClientFactory>();
         httpClientFactory.CreateClient(Arg.Any<string>()).Returns(new HttpClient(handler));
+        if (scheduler is not null) {
+            _ = scheduler.TryAcquireAsync(
+                    Arg.Any<ProjectionDeliveryRetryWorkItem>(),
+                    Arg.Any<string>(),
+                    Arg.Any<DateTimeOffset>(),
+                    Arg.Any<TimeSpan>(),
+                    Arg.Any<CancellationToken>())
+                .Returns(call => {
+                    ProjectionDeliveryRetryWorkItem item = call.ArgAt<ProjectionDeliveryRetryWorkItem>(0);
+                    return item with {
+                        Revision = item.Revision + 1,
+                        LeaseOwner = call.ArgAt<string>(1),
+                        LeaseExpiresUtc = call.ArgAt<DateTimeOffset>(2) + call.ArgAt<TimeSpan>(3),
+                    };
+                });
+            _ = scheduler.TryUpdateAsync(Arg.Any<ProjectionDeliveryRetryWorkItem>(), Arg.Any<CancellationToken>())
+                .Returns(true);
+            _ = scheduler.TryDeleteAsync(Arg.Any<ProjectionDeliveryRetryWorkItem>(), Arg.Any<CancellationToken>())
+                .Returns(true);
+        }
+
         return new NamedProjectionDispatchCoordinator(
             catalog,
             checkpoints,

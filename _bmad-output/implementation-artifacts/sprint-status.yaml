@@ -74,7 +74,9 @@ development_status:
   1-9-read-model-and-projection-checkpoint-erasure: done
   1-10-coordinated-read-model-batch-writes: done
   1-11-complete-projection-freshness-lifecycle: done
-  1-12-asynchronous-multi-projection-dispatch: review
+  # 2026-07-14: Follow-up review complete; all 27 actionable patches applied, final Release suites
+  # and real Dapr/Redis named-dispatch production path verified green.
+  1-12-asynchronous-multi-projection-dispatch: done
   1-13-projection-handler-delivery-idempotency: in-progress
   1-14-correct-paged-rebuild-and-replay-equivalence: ready-for-dev
   # Cannot become done while its owner packet remains `still blocked`; Epic 1 remains in-progress until `available`.

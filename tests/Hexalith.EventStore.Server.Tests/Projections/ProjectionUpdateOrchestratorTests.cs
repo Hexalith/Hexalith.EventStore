@@ -67,7 +67,8 @@ public class ProjectionUpdateOrchestratorTests {
         IProjectionRebuildCheckpointStore? rebuildCheckpointStore = null,
         IProjectionDeliveryCheckpointStore? deliveryCheckpointStore = null,
         IProjectionLifecycleGateway? lifecycleGateway = null,
-        INamedProjectionDispatchCoordinator? namedProjectionDispatchCoordinator = null) {
+        INamedProjectionDispatchCoordinator? namedProjectionDispatchCoordinator = null,
+        IProjectionActivationOutbox? projectionActivationOutbox = null) {
         IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
         daprClient ??= Substitute.For<DaprClient>();
         IDomainServiceResolver resolver = Substitute.For<IDomainServiceResolver>();
@@ -77,7 +78,7 @@ public class ProjectionUpdateOrchestratorTests {
                 .Returns(0);
         }
         IOptions<ProjectionOptions> projectionOptions = Options.Create(new ProjectionOptions());
-        var sut = new ProjectionUpdateOrchestrator(actorProxyFactory, daprClient, httpClientFactory ?? Substitute.For<IHttpClientFactory>(), resolver, checkpointTracker, projectionOptions, logger ?? NullLogger<ProjectionUpdateOrchestrator>.Instance, rebuildCheckpointStore, deliveryCheckpointStore: deliveryCheckpointStore, lifecycleGateway: lifecycleGateway, namedProjectionDispatchCoordinator: namedProjectionDispatchCoordinator);
+        var sut = new ProjectionUpdateOrchestrator(actorProxyFactory, daprClient, httpClientFactory ?? Substitute.For<IHttpClientFactory>(), resolver, checkpointTracker, projectionOptions, logger ?? NullLogger<ProjectionUpdateOrchestrator>.Instance, rebuildCheckpointStore, deliveryCheckpointStore: deliveryCheckpointStore, lifecycleGateway: lifecycleGateway, namedProjectionDispatchCoordinator: namedProjectionDispatchCoordinator, projectionActivationOutbox: projectionActivationOutbox);
         return (sut, actorProxyFactory, daprClient, resolver, checkpointTracker);
     }
 
@@ -188,6 +189,41 @@ public class ProjectionUpdateOrchestratorTests {
             TestIdentity,
             1,
             Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DeliverProjectionAsync_NamedFailureStillDeliversLegacyAndRetainsActivation() {
+        IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
+        _ = checkpointTracker.ReadLastDeliveredSequenceAsync(TestIdentity, Arg.Any<CancellationToken>()).Returns(0);
+        _ = checkpointTracker.SaveDeliveredSequenceAsync(TestIdentity, Arg.Any<long>(), Arg.Any<CancellationToken>()).Returns(true);
+        INamedProjectionDispatchCoordinator named = Substitute.For<INamedProjectionDispatchCoordinator>();
+        _ = named.TryDispatchAsync(
+                TestIdentity,
+                Arg.Any<DomainServiceRegistration>(),
+                Arg.Any<EventEnvelope[]>(),
+                Arg.Any<ProjectionEventDto[]>(),
+                Arg.Any<CancellationToken>())
+            .Returns<Task<bool>>(_ => throw new InvalidOperationException("retry ledger unavailable"));
+        IProjectionActivationOutbox outbox = Substitute.For<IProjectionActivationOutbox>();
+        var legacyHandler = new CountingProjectionResponseHandler();
+        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(
+            checkpointTracker,
+            new DaprClientBuilder().Build(),
+            CreateHttpClientFactory(legacyHandler),
+            namedProjectionDispatchCoordinator: named,
+            projectionActivationOutbox: outbox);
+        _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new DomainServiceRegistration("counter-service", "project", TestIdentity.TenantId, TestIdentity.Domain, "v1"));
+        IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
+        _ = aggregateActor.GetEventsAsync(0).Returns([CreateTestEnvelope()]);
+        _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor").Returns(aggregateActor);
+        _ = actorProxyFactory.CreateActorProxy<IProjectionWriteActor>(Arg.Any<ActorId>(), QueryRouter.ProjectionActorTypeName)
+            .Returns(Substitute.For<IProjectionWriteActor>());
+
+        await sut.DeliverProjectionAsync(TestIdentity);
+
+        legacyHandler.CallCount.ShouldBe(1);
+        await outbox.DidNotReceiveWithAnyArgs().CompleteAsync(default!, default);
     }
 
     // P23-6P: an operator rebuild of a domain that has zero tracked aggregates is vacuously

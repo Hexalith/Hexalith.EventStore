@@ -29,7 +29,8 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
     IOptions<ProjectionDispatchOptions> options,
     ILogger<NamedProjectionDispatchCoordinator> logger,
     IProjectionDeliveryRetryScheduler? retryScheduler = null,
-    TimeProvider? timeProvider = null) : INamedProjectionDispatchCoordinator {
+    TimeProvider? timeProvider = null,
+    INamedProjectionCatalogRefresher? catalogRefresher = null) : INamedProjectionDispatchCoordinator {
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
     private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
 
@@ -57,7 +58,16 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
             identity.Domain,
             out NamedProjectionRouteCatalogEntry? catalogEntry)
             || catalogEntry is null) {
-            return false;
+            if (catalogRefresher is null
+                || !await catalogRefresher.RefreshAsync(registration, cancellationToken).ConfigureAwait(false)
+                || !routeCatalog.Current.TryGet(
+                    registration.AppId,
+                    serviceVersion,
+                    identity.Domain,
+                    out catalogEntry)
+                || catalogEntry is null) {
+                return false;
+            }
         }
 
         EventEnvelope head = events.OrderBy(static item => item.SequenceNumber).Last();
@@ -107,17 +117,33 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
             catch (OperationCanceledException) {
                 throw;
             }
-            catch (Exception) {
-                // A retry-ledger fault must not surface as a dropped or duplicated delivery. This
-                // domain is v2-owned, so do not fall through to v1; a later trigger reconciles it.
+            catch (Exception exception) {
                 Log.DispatchDeferred(
                     logger,
                     identity.TenantId,
                     identity.Domain,
                     identity.AggregateId,
                     ProjectionDispatchReasonCodes.PartialRetry);
+                throw new InvalidOperationException(
+                    "Named projection retry activation could not be persisted.",
+                    exception);
+            }
+        }
+
+        if (retryScheduler is not null) {
+            ProjectionDeliveryRetryWorkItem? claimedWork = await retryScheduler
+                .TryAcquireAsync(
+                    scheduledWork,
+                    Guid.NewGuid().ToString("N", System.Globalization.CultureInfo.InvariantCulture),
+                    now,
+                    dispatchOptions.RetryLeaseDuration,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            if (claimedWork is null) {
                 return true;
             }
+
+            scheduledWork = claimedWork;
         }
 
         if (!string.Equals(scheduledWork.HeadMessageId, head.MessageId, StringComparison.Ordinal)
@@ -311,7 +337,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                 .Distinct(StringComparer.Ordinal)
                 .Order(StringComparer.Ordinal)];
             if (remainingRoutes.Length == 0 && terminalRoutes.Count == 0) {
-                await retryScheduler.DeleteAsync(scheduledWork.WorkId, cancellationToken).ConfigureAwait(false);
+                _ = await retryScheduler.TryDeleteAsync(scheduledWork, cancellationToken).ConfigureAwait(false);
                 return;
             }
 
@@ -325,7 +351,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                     ? ProjectionDispatchReasonCodes.HandlerFailure
                     : ProjectionDispatchReasonCodes.PartialRetry,
             };
-            await retryScheduler.UpdateAsync(updated, cancellationToken).ConfigureAwait(false);
+            _ = await retryScheduler.TryUpdateAsync(updated, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) {
             throw;
@@ -351,7 +377,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
 
         int attempt = Math.Min(workItem.Attempt + 1, dispatchOptions.MaxRetryAttempts);
         try {
-            await retryScheduler.UpdateAsync(
+            _ = await retryScheduler.TryUpdateAsync(
                 workItem with {
                     Attempt = attempt,
                     NextDueUtc = _timeProvider.GetUtcNow() + GetRetryDelay(attempt, dispatchOptions),
