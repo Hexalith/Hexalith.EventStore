@@ -1,3 +1,10 @@
+## [3.67.3](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.67.2...v3.67.3) (2026-07-15)
+
+
+### Bug Fixes
+
+* **review:** update maintainer-approved Tenants commit and rollback boundary ([76f1223](https://github.com/Hexalith/Hexalith.EventStore/commit/76f122332216cc5d9b44a421bdbed3ab20d35f5e))
+
 ## [3.67.2](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.67.1...v3.67.2) (2026-07-15)
 
 
