@@ -36,6 +36,73 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
     private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
 
     /// <inheritdoc/>
+    public async Task<NamedProjectionRebuildResult> TryRebuildAsync(
+        AggregateIdentity identity,
+        DomainServiceRegistration registration,
+        ProjectionEventDto[] projectionEvents,
+        string operationId,
+        CancellationToken cancellationToken) {
+        ArgumentNullException.ThrowIfNull(identity);
+        ArgumentNullException.ThrowIfNull(registration);
+        ArgumentNullException.ThrowIfNull(projectionEvents);
+        ArgumentException.ThrowIfNullOrWhiteSpace(operationId);
+
+        ProjectionDispatchOptions dispatchOptions = options.Value;
+        dispatchOptions.Validate();
+        string serviceVersion = string.IsNullOrWhiteSpace(registration.Version) ? "v1" : registration.Version;
+        if (!routeCatalog.Current.TryGet(
+            registration.AppId,
+            serviceVersion,
+            identity.Domain,
+            out NamedProjectionRouteCatalogEntry? catalogEntry)
+            || catalogEntry is null) {
+            if (catalogRefresher is null
+                || !await catalogRefresher.RefreshAsync(registration, cancellationToken).ConfigureAwait(false)
+                || !routeCatalog.Current.TryGet(
+                    registration.AppId,
+                    serviceVersion,
+                    identity.Domain,
+                    out catalogEntry)
+                || catalogEntry is null) {
+                return new NamedProjectionRebuildResult(Owned: false, Succeeded: true, []);
+            }
+        }
+
+        string[] requiredRoutes = [.. catalogEntry.ProjectionTypes.Order(StringComparer.Ordinal)];
+        var request = new ProjectionDispatchRequest(
+            new ProjectionRequest(
+                identity.TenantId,
+                identity.Domain,
+                identity.AggregateId,
+                projectionEvents),
+            requiredRoutes,
+            operationId,
+            catalogEntry.CatalogFingerprint);
+        ProjectionDispatchResponse? response = await InvokeAsync(
+                registration.AppId,
+                "project/rebuild/v1",
+                request,
+                dispatchOptions,
+                cancellationToken)
+            .ConfigureAwait(false);
+        if (response is null) {
+            return new NamedProjectionRebuildResult(Owned: true, Succeeded: false, []);
+        }
+
+        Dictionary<string, ProjectionDispatchOutcome> validOutcomes = ValidateOutcomes(
+            response,
+            requiredRoutes,
+            dispatchOptions);
+        ProjectionDispatchOutcome[] orderedOutcomes = [.. requiredRoutes
+            .Where(validOutcomes.ContainsKey)
+            .Select(route => validOutcomes[route])];
+        bool succeeded = orderedOutcomes.Length == requiredRoutes.Length
+            && orderedOutcomes.All(static outcome =>
+                outcome.Status is ProjectionDispatchStatus.Completed or ProjectionDispatchStatus.AlreadyCompleted);
+        return new NamedProjectionRebuildResult(Owned: true, succeeded, orderedOutcomes);
+    }
+
+    /// <inheritdoc/>
     public async Task<bool> TryDispatchAsync(
         AggregateIdentity identity,
         DomainServiceRegistration registration,
@@ -274,6 +341,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
 
         ProjectionDispatchResponse? dispatchResponse = await InvokeAsync(
             registration.AppId,
+            "project/v2",
             dispatchRequest,
             dispatchOptions,
             cancellationToken).ConfigureAwait(false);
@@ -491,11 +559,12 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
 
     private async Task<ProjectionDispatchResponse?> InvokeAsync(
         string appId,
+        string methodName,
         ProjectionDispatchRequest request,
         ProjectionDispatchOptions dispatchOptions,
         CancellationToken cancellationToken) {
         try {
-            using HttpRequestMessage httpRequest = daprClient.CreateInvokeMethodRequest(appId, "project/v2", request);
+            using HttpRequestMessage httpRequest = daprClient.CreateInvokeMethodRequest(appId, methodName, request);
             HttpClient client = httpClientFactory.CreateClient();
             using HttpResponseMessage response = await client.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode

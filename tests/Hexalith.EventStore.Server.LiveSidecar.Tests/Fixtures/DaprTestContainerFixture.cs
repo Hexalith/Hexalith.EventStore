@@ -618,6 +618,16 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
                            .DispatchAsync(serviceProvider, request, options.Value, identityOptions.Value, cancellationToken)
                            .ConfigureAwait(false)));
         _ = _testHost.MapPost(
+            "/project/rebuild/v1",
+            async (ProjectionDispatchRequest request,
+                   IServiceProvider serviceProvider,
+                   IOptions<Hexalith.EventStore.Client.Projections.ProjectionDispatchOptions> options,
+                   IOptions<DomainProjectionIdentityOptions> identityOptions,
+                   CancellationToken cancellationToken) => Microsoft.AspNetCore.Http.Results.Ok(
+                       await DomainProjectionDispatcher
+                           .RebuildAsync(serviceProvider, request, options.Value, identityOptions.Value, cancellationToken)
+                           .ConfigureAwait(false)));
+        _ = _testHost.MapPost(
             "/admin/operational-index-metadata",
             (AdminOperationalIndexMetadata.Request request,
              IServiceProvider serviceProvider,

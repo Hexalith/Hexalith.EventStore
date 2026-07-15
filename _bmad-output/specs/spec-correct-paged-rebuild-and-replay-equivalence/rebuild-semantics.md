@@ -13,13 +13,15 @@
 | Lifecycle | Surface `Rebuilding` while work is active. Clear it after durable promotion or terminal failure/cancellation cleanup. Only persisted `ProjectionBacked` freshness evidence is authoritative. |
 | Versions | Projection versions come from persisted `IReadModelFreshness`; `ETag` remains an opaque cache validator and cannot be copied into a projection version. |
 | Failure | Cancellation, handler failure, store failure, conflict, gap, safety-limit exhaustion, or indeterminate promotion preserves the last complete live view and cannot produce operation success. |
+| Safety bounds | `ProjectionOptions.RebuildMaxPrefixEventCount` defaults to 10,000 and `ProjectionOptions.RebuildMaxPrefixBytes` defaults to 67,108,864 (64 MiB); both reject non-positive values. Exceeding either returns `rebuild_prefix_safety_limit_exceeded`. |
+| Sequencing | Stories 1.10 and 1.12 are complete; use their coordinated-batch and named-dispatch seams without a Story 1.14-local substitute. |
 
 ## Operation contract
 
 1. Preserve the controller's pre-existing `Running` precondition and enumerate the same tracked aggregate identities.
 2. Establish the requested prefix boundary from `toPosition` and the highest available aggregate sequence.
 3. Read contiguous pages from the last safe rebuild boundary without exposing a page result as live state.
-4. For the current full-replay handler, accumulate the complete prefix within the approved safety ceiling and invoke `/project` once the prefix is complete. Do not invoke it with each page as if that page were the full stream.
+4. For the current full-replay handler, accumulate the complete prefix within both approved safety ceilings and invoke `/project` once the prefix is complete. Do not invoke it with each page as if that page were the full stream.
 5. Persist handler outputs as operation-scoped candidates. Required detail/index candidates and actor projection state remain invisible to live readers.
 6. Record bounded, distinguishable outcomes for each required projection. Any incomplete, failed, or indeterminate outcome prevents operation success.
 7. Promote candidates through the approved coordinated batch/resumable protocol. Promotion must be retryable under the same operation identity.
@@ -54,14 +56,14 @@ Deterministic tests must use the production orchestrator, `/project` handler pat
 ## Compatibility and sequencing gates
 
 - Story 1.10 must supply the approved `IReadModelBatchStore`/marker-gated resumable primitive before promotion code depends on it. Story 1.14 must not recreate that protocol.
-- The current `/project` contract exposes one domain-keyed full-replay response, while the acceptance contract requires production-path detail/index outcomes. Implementation cannot silently narrow the equivalence surface. Resolve whether Story 1.12 lands first or an explicitly approved additive compatibility adapter belongs in Story 1.14.
+- Story 1.12 named multi-projection dispatch is complete. Consume its named-handler seam for required detail/index outcomes while preserving the domain-keyed full-replay actor path; do not silently narrow the equivalence surface or create a local dispatch substitute.
 - Story 1.13 owns `MessageId` delivery deduplication and delivery-checkpoint advancement. Story 1.14 advances only rebuild checkpoints after promotion.
 - Preserve released signatures on `IReadModelStore`, `ProjectionLifecycleState`, `QueryResponseMetadata`, and `ProjectionRebuildCheckpoint`. Additive optional types or interfaces are allowed.
 - Preserve the immediate/poller full-replay path, operator pause/resume/cancel/retry behavior, bounded `toPosition`, active-index cleanup, and controller authorization behavior unless this contract explicitly changes them.
 
 ## Safety-bound gate
 
-The temporary complete-prefix strategy requires a configured maximum event count and/or serialized-byte total before implementation starts. Validation must reject non-positive configuration. Exceeding the bound returns an approved structured reason code, keeps candidate work non-live, does not advance a completion checkpoint, and clears terminal lifecycle correctly. The approved limit and reason code remain open in `SPEC.md`.
+The temporary complete-prefix strategy is bounded by `ProjectionOptions.RebuildMaxPrefixEventCount` (default 10,000) and `ProjectionOptions.RebuildMaxPrefixBytes` (default 67,108,864 bytes / 64 MiB). Validation rejects either value when non-positive. Exceeding either bound returns `rebuild_prefix_safety_limit_exceeded`, keeps candidate work non-live, does not advance a completion checkpoint, and clears terminal lifecycle correctly.
 
 ## Traceability
 

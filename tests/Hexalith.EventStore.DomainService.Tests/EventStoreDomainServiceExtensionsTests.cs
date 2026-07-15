@@ -810,6 +810,7 @@ public sealed class EventStoreDomainServiceExtensionsTests {
             "/admin/operational-index-metadata",
             "/process",
             "/project",
+            "/project/rebuild/v1",
             "/project/v2",
             "/query",
             "/replay-state"]);

@@ -4,17 +4,20 @@ using Dapr.Actors;
 namespace Hexalith.EventStore.Server.Actors;
 
 /// <summary>
-/// Lifecycle phase of a projection with respect to erasure. The
+/// Persisted lifecycle phase of a projection with respect to rebuild and erasure. The
 /// <see cref="ProjectionLifecycleActor"/> persists this phase so that projection delivery
 /// writes and projection erasure are mutually exclusive per
 /// (tenant, domain, aggregate, projection).
 /// </summary>
 public enum ProjectionLifecyclePhase {
-    /// <summary>No erase is in progress; projection delivery writes are admitted.</summary>
+    /// <summary>No rebuild or erase is in progress; projection delivery writes are admitted.</summary>
     Idle = 0,
 
     /// <summary>An erase operation is in progress; projection delivery writes are deferred.</summary>
     Erasing = 1,
+
+    /// <summary>A rebuild operation is in progress; ordinary delivery writes are deferred.</summary>
+    Rebuilding = 2,
 }
 
 /// <summary>
@@ -79,7 +82,7 @@ public sealed record ProjectionTargetOutcomeRequest(string OperationId, string T
 public sealed record ProjectionEraseCompleteRequest(string OperationId);
 
 /// <summary>Admission decision for a projection delivery write.</summary>
-/// <param name="Admitted">True when the delivery write may proceed (phase is not <see cref="ProjectionLifecyclePhase.Erasing"/>).</param>
+/// <param name="Admitted">True when the delivery write may proceed (phase is <see cref="ProjectionLifecyclePhase.Idle"/>).</param>
 /// <param name="Phase">The lifecycle phase observed at admission time.</param>
 public sealed record ProjectionDeliveryAdmission(bool Admitted, ProjectionLifecyclePhase Phase);
 
@@ -89,6 +92,20 @@ public sealed record ProjectionDeliveryAdmission(bool Admitted, ProjectionLifecy
 /// per lifecycle scope) provides the cross-replica serialization primitive.
 /// </summary>
 public interface IProjectionLifecycleActor : IActor {
+    /// <summary>Begins or resumes the matching rebuild operation.</summary>
+    /// <param name="request">The stable rebuild operation identity.</param>
+    /// <returns>True when this operation owns the rebuilding phase.</returns>
+    Task<bool> BeginRebuildAsync(ProjectionRebuildLifecycleRequest request);
+
+    /// <summary>Completes the matching rebuild operation and returns to idle.</summary>
+    /// <param name="request">The stable rebuild operation identity.</param>
+    /// <returns>True when the matching operation was completed.</returns>
+    Task<bool> CompleteRebuildAsync(ProjectionRebuildLifecycleRequest request);
+
+    /// <summary>Reads the persisted lifecycle phase.</summary>
+    /// <returns>The current persisted phase, or idle when state is absent.</returns>
+    Task<ProjectionLifecyclePhase> ReadPhaseAsync();
+
     /// <summary>
     /// Begins (or resumes) an erase operation, transitioning the phase to
     /// <see cref="ProjectionLifecyclePhase.Erasing"/> when idle.
@@ -115,6 +132,6 @@ public interface IProjectionLifecycleActor : IActor {
     /// <summary>
     /// Reports whether a projection delivery write is admitted at this instant.
     /// </summary>
-    /// <returns>An admission where <see cref="ProjectionDeliveryAdmission.Admitted"/> is false while erasing.</returns>
+    /// <returns>An admission where <see cref="ProjectionDeliveryAdmission.Admitted"/> is false while rebuilding or erasing.</returns>
     Task<ProjectionDeliveryAdmission> TryAdmitDeliveryWriteAsync();
 }

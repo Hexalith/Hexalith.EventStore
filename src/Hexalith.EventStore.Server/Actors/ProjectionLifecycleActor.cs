@@ -5,10 +5,10 @@ using Microsoft.Extensions.Logging;
 namespace Hexalith.EventStore.Server.Actors;
 
 /// <summary>
-/// DAPR actor that serializes projection delivery writes against projection erasure per
+/// DAPR actor that serializes projection delivery writes against rebuild and erasure per
 /// (tenant, domain, aggregate, projection). One actor instance per lifecycle scope makes DAPR
-/// turn-based concurrency the cross-replica serialization primitive: while an erase operation
-/// holds the <see cref="ProjectionLifecyclePhase.Erasing"/> phase, delivery writes are deferred.
+/// turn-based concurrency the cross-replica serialization primitive: while rebuild or erase owns
+/// a non-idle lifecycle phase, ordinary delivery writes are deferred.
 /// </summary>
 public partial class ProjectionLifecycleActor(ActorHost host, ILogger<ProjectionLifecycleActor> logger)
     : Actor(host), IProjectionLifecycleActor {
@@ -20,10 +20,62 @@ public partial class ProjectionLifecycleActor(ActorHost host, ILogger<Projection
     private const string LifecycleStateKey = "projection-lifecycle";
 
     /// <inheritdoc/>
+    public async Task<bool> BeginRebuildAsync(ProjectionRebuildLifecycleRequest request) {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.OperationId);
+        ProjectionLifecycleActorState state = await ReadStateAsync().ConfigureAwait(false);
+        if (state.Phase == ProjectionLifecyclePhase.Rebuilding) {
+            return string.Equals(state.OperationId, request.OperationId, StringComparison.Ordinal);
+        }
+
+        if (state.Phase != ProjectionLifecyclePhase.Idle) {
+            return false;
+        }
+
+        await PersistStateAsync(new ProjectionLifecycleActorState(
+                ProjectionLifecyclePhase.Rebuilding,
+                request.OperationId,
+                ManifestDigest: null,
+                new Dictionary<string, string>(StringComparer.Ordinal)))
+            .ConfigureAwait(false);
+        return true;
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> CompleteRebuildAsync(ProjectionRebuildLifecycleRequest request) {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.OperationId);
+        ProjectionLifecycleActorState state = await ReadStateAsync().ConfigureAwait(false);
+        if (state.Phase != ProjectionLifecyclePhase.Rebuilding
+            || !string.Equals(state.OperationId, request.OperationId, StringComparison.Ordinal)) {
+            return false;
+        }
+
+        await PersistStateAsync(new ProjectionLifecycleActorState(
+                ProjectionLifecyclePhase.Idle,
+                OperationId: null,
+                ManifestDigest: null,
+                new Dictionary<string, string>(StringComparer.Ordinal)))
+            .ConfigureAwait(false);
+        return true;
+    }
+
+    /// <inheritdoc/>
+    public async Task<ProjectionLifecyclePhase> ReadPhaseAsync()
+        => (await ReadStateAsync().ConfigureAwait(false)).Phase;
+
+    /// <inheritdoc/>
     public async Task<ProjectionEraseAdmission> BeginEraseAsync(ProjectionEraseBeginRequest request) {
         ArgumentNullException.ThrowIfNull(request);
 
         ProjectionLifecycleActorState state = await ReadStateAsync().ConfigureAwait(false);
+
+        if (state.Phase == ProjectionLifecyclePhase.Rebuilding) {
+            Log.EraseConflict(logger, Host.Id.GetId(), request.OperationId, state.OperationId ?? string.Empty);
+            return new ProjectionEraseAdmission(
+                ProjectionEraseAdmissionKind.Conflict,
+                new Dictionary<string, string>(StringComparer.Ordinal));
+        }
 
         if (state.Phase == ProjectionLifecyclePhase.Erasing) {
             if (string.Equals(state.OperationId, request.OperationId, StringComparison.Ordinal)) {
@@ -111,7 +163,7 @@ public partial class ProjectionLifecycleActor(ActorHost host, ILogger<Projection
     /// <inheritdoc/>
     public async Task<ProjectionDeliveryAdmission> TryAdmitDeliveryWriteAsync() {
         ProjectionLifecycleActorState state = await ReadStateAsync().ConfigureAwait(false);
-        return new ProjectionDeliveryAdmission(state.Phase != ProjectionLifecyclePhase.Erasing, state.Phase);
+        return new ProjectionDeliveryAdmission(state.Phase == ProjectionLifecyclePhase.Idle, state.Phase);
     }
 
     private async Task<ProjectionLifecycleActorState> ReadStateAsync() {

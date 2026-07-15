@@ -9,8 +9,11 @@ using Google.Protobuf;
 
 using Grpc.Core;
 
+using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Queries;
+using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Pipeline.Queries;
+using Hexalith.EventStore.Server.Projections;
 
 using Microsoft.Extensions.Logging;
 
@@ -26,6 +29,7 @@ public partial class QueryRouter : IQueryRouter {
     public const string ProjectionActorTypeName = "ProjectionActor";
 
     private readonly IProjectionActorInvoker _invoker;
+    private readonly IProjectionLifecycleGateway? _lifecycleGateway;
     private readonly ILogger<QueryRouter> _logger;
 
     /// <summary>
@@ -38,7 +42,10 @@ public partial class QueryRouter : IQueryRouter {
     /// <see cref="CancellationToken"/> into the invocation operation.
     /// </remarks>
     public QueryRouter(IActorProxyFactory actorProxyFactory, ILogger<QueryRouter> logger)
-        : this(new DefaultProjectionActorInvoker(actorProxyFactory), logger) {
+        : this(
+            new DefaultProjectionActorInvoker(actorProxyFactory),
+            logger,
+            new DaprProjectionLifecycleGateway(actorProxyFactory)) {
     }
 
     /// <summary>
@@ -48,6 +55,19 @@ public partial class QueryRouter : IQueryRouter {
         ArgumentNullException.ThrowIfNull(invoker);
         ArgumentNullException.ThrowIfNull(logger);
         _invoker = invoker;
+        _logger = logger;
+    }
+
+    /// <summary>Internal test constructor with persisted lifecycle evidence.</summary>
+    internal QueryRouter(
+        IProjectionActorInvoker invoker,
+        ILogger<QueryRouter> logger,
+        IProjectionLifecycleGateway lifecycleGateway) {
+        ArgumentNullException.ThrowIfNull(invoker);
+        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(lifecycleGateway);
+        _invoker = invoker;
+        _lifecycleGateway = lifecycleGateway;
         _logger = logger;
     }
 
@@ -105,13 +125,19 @@ public partial class QueryRouter : IQueryRouter {
 
             try {
                 JsonElement payload = result.GetPayload();
+                QueryResponseMetadata? metadata = await ApplyPersistedLifecycleAsync(
+                        query,
+                        result.ProjectionType ?? routingQueryType,
+                        result.Metadata,
+                        cancellationToken)
+                    .ConfigureAwait(false);
                 Log.QueryRouted(_logger, query.CorrelationId, actorId);
                 return new QueryRouterResult(
                     Success: true,
                     Payload: payload,
                     NotFound: false,
                     ProjectionType: result.ProjectionType,
-                    Metadata: StampProjectionBacked(result.Metadata));
+                    Metadata: StampProjectionBacked(metadata));
             }
             catch (JsonException) {
                 Log.QueryExecutionFailed(_logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, QueryAdapterFailureReason.SerializationFailure);
@@ -154,6 +180,38 @@ public partial class QueryRouter : IQueryRouter {
             IsStale = ProjectionLifecyclePolicy.ProjectIsStale(lifecycle, source.IsStale),
             IsDegraded = ProjectionLifecyclePolicy.ProjectIsDegraded(lifecycle, source.IsDegraded),
         };
+    }
+
+    private async Task<QueryResponseMetadata?> ApplyPersistedLifecycleAsync(
+        SubmitQuery query,
+        string projectionType,
+        QueryResponseMetadata? metadata,
+        CancellationToken cancellationToken) {
+        if (_lifecycleGateway is null) {
+            return metadata;
+        }
+
+        try {
+            var identity = new AggregateIdentity(query.Tenant, query.Domain, query.AggregateId);
+            ProjectionLifecyclePhase phase = await _lifecycleGateway
+                .ReadPhaseAsync(identity, projectionType, cancellationToken)
+                .ConfigureAwait(false);
+            return phase == ProjectionLifecyclePhase.Rebuilding
+                ? (metadata ?? new QueryResponseMetadata()) with {
+                    Lifecycle = ProjectionLifecycleState.Rebuilding,
+                    IsStale = null,
+                }
+                : metadata;
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (Exception) {
+            return (metadata ?? new QueryResponseMetadata()) with {
+                Lifecycle = ProjectionLifecycleState.Unknown,
+                IsStale = null,
+            };
+        }
     }
 
     private static bool IsProjectionActorNotFound(Exception exception) {

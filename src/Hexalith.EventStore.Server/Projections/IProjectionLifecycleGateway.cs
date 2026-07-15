@@ -9,13 +9,33 @@ namespace Hexalith.EventStore.Server.Projections;
 /// DAPR proxy path. Kept internal so the actor + its contracts remain the only public surface.
 /// </summary>
 internal interface IProjectionLifecycleGateway {
+    /// <summary>Begins or resumes a persisted rebuild lifecycle operation.</summary>
+    Task<bool> BeginRebuildAsync(
+        AggregateIdentity identity,
+        string projectionName,
+        string operationId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Completes the matching persisted rebuild lifecycle operation.</summary>
+    Task<bool> CompleteRebuildAsync(
+        AggregateIdentity identity,
+        string projectionName,
+        string operationId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Reads the persisted lifecycle phase for projection-backed query evidence.</summary>
+    Task<ProjectionLifecyclePhase> ReadPhaseAsync(
+        AggregateIdentity identity,
+        string projectionName,
+        CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Reports whether a projection delivery write is admitted for the given projection scope.
     /// </summary>
     /// <param name="identity">The aggregate identity.</param>
     /// <param name="projectionName">The projection name (fourth key segment).</param>
     /// <param name="cancellationToken">A cancellation token.</param>
-    /// <returns>True when the delivery write may proceed; false while an erase is in progress.</returns>
+    /// <returns>True when the delivery write may proceed; false while a rebuild or erase is in progress.</returns>
     Task<bool> TryAdmitDeliveryWriteAsync(AggregateIdentity identity, string projectionName, CancellationToken cancellationToken = default);
 
     /// <summary>

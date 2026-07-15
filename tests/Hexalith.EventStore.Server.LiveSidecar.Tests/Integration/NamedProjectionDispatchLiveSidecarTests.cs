@@ -2,11 +2,13 @@ using System.Text.Json;
 using Dapr.Actors;
 using Dapr.Actors.Client;
 using Dapr.Client;
+using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Contracts.Security;
+using Hexalith.EventStore.Contracts.Streams;
 using Hexalith.EventStore.DomainService;
 using Hexalith.EventStore.Indexes;
 using Hexalith.EventStore.Server.Actors;
@@ -482,9 +484,101 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
         await catalogLoader.StopAsync(CancellationToken.None).ConfigureAwait(true);
     }
 
+    [Fact]
+    [Trait("Tier", "3")]
+    public async Task PagedRebuild_MoreThanTwoPages_PersistsEquivalentRedisActorDetailIndexAndCheckpoints() {
+        fixture.ThrowIfHostStopped();
+        fixture.ResetTestState();
+        fixture.SetupCounterDomain();
+        IServiceProvider services = fixture.Services;
+        string aggregateId = $"named-rebuild-{UniqueIdHelper.GenerateSortableUniqueStringId()}";
+        var identity = new AggregateIdentity("tenant-a", "counter", aggregateId);
+        EventEnvelope[] events = await CreateAggregateHistoryAsync(identity, 7).ConfigureAwait(true);
+        long expectedVersion = events.Max(static item => item.SequenceNumber);
+        IProjectionCheckpointTracker tracker = services.GetRequiredService<IProjectionCheckpointTracker>();
+        await tracker.TrackIdentityAsync(identity, CancellationToken.None).ConfigureAwait(true);
+        AdminOperationalIndexHostedService catalogLoader = await LoadCatalogAsync(identity).ConfigureAwait(true);
+        var operatorScope = new ProjectionRebuildCheckpointScope(
+            identity.TenantId,
+            identity.Domain,
+            identity.Domain,
+            AggregateId: identity.AggregateId,
+            OperationId: UniqueIdHelper.GenerateSortableUniqueStringId());
+        IProjectionRebuildCheckpointStore rebuildStore = services.GetRequiredService<IProjectionRebuildCheckpointStore>();
+        ProjectionRebuildCheckpointSaveResult begin = await rebuildStore.ResetAsync(
+            operatorScope,
+            0,
+            ProjectionRebuildStatus.Running,
+            failureReasonCode: null,
+            CancellationToken.None,
+            toPosition: expectedVersion).ConfigureAwait(true);
+        begin.Succeeded.ShouldBeTrue();
+        IDomainServiceResolver resolver = Substitute.For<IDomainServiceResolver>();
+        _ = resolver.ResolveAsync(identity.TenantId, identity.Domain, "v1", Arg.Any<CancellationToken>())
+            .Returns(Registration(identity));
+        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
+            HttpEndpoint = fixture.DaprHttpEndpoint,
+        });
+        ProjectionUpdateOrchestrator orchestrator = CreateOrchestrator(
+            actorProxyFactory,
+            resolver,
+            new ProjectionOptions { RebuildPageSize = 3 });
+        IProjectionDeliveryCheckpointStore delivery = services.GetRequiredService<IProjectionDeliveryCheckpointStore>();
+        (await delivery.ReadDeliveredSequenceAsync(identity, "counter-detail", CancellationToken.None).ConfigureAwait(true))
+            .ShouldBe(0);
+        (await delivery.ReadDeliveredSequenceAsync(identity, "counter-index", CancellationToken.None).ConfigureAwait(true))
+            .ShouldBe(0);
+
+        await orchestrator.RebuildProjectionAsync(operatorScope with { OperationId = null }).ConfigureAwait(true);
+
+        await using ConnectionMultiplexer redis = await ConnectionMultiplexer
+            .ConnectAsync("localhost:6379,abortConnect=false,allowAdmin=true")
+            .ConfigureAwait(true);
+        IDatabase database = redis.GetDatabase();
+        string detailKey = $"{identity.TenantId}:{identity.Domain}:{identity.AggregateId}:detail";
+        string indexKey = $"{identity.TenantId}:{identity.Domain}:{identity.AggregateId}:index";
+        JsonDocument detail = JsonDocument.Parse(
+            (await ReadStateJsonAsync(database, detailKey).ConfigureAwait(true)).ShouldNotBeNull());
+        JsonDocument index = JsonDocument.Parse(
+            (await ReadStateJsonAsync(database, indexKey).ConfigureAwait(true)).ShouldNotBeNull());
+        detail.RootElement.GetProperty("eventCount").GetInt32().ShouldBe(events.Length);
+        detail.RootElement.GetProperty("projectionVersion").GetString()
+            .ShouldBe(expectedVersion.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        index.RootElement.GetProperty("aggregateId").GetString().ShouldBe(identity.AggregateId);
+        index.RootElement.GetProperty("projectionVersion").GetString()
+            .ShouldBe(expectedVersion.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+        string legacyActorId = $"counter-legacy:{identity.TenantId}:{identity.AggregateId}";
+        string legacyActorKey = $"{AppId}||{QueryRouter.ProjectionActorTypeName}||{legacyActorId}||{EventReplayProjectionActor.ProjectionStateKey}";
+        JsonDocument legacy = JsonDocument.Parse(
+            (await database.HashGetAsync(legacyActorKey, "data").ConfigureAwait(true)).ToString());
+        legacy.RootElement.GetProperty("stateBytes").Deserialize<byte[]>()
+            .ShouldNotBeNull()
+            .ShouldNotBeEmpty();
+        byte[] stateBytes = legacy.RootElement.GetProperty("stateBytes").Deserialize<byte[]>()!;
+        JsonDocument actorState = JsonDocument.Parse(stateBytes);
+        actorState.RootElement.GetProperty("eventCount").GetInt32().ShouldBe(events.Length);
+
+        ProjectionRebuildCheckpoint operatorCheckpoint = (await rebuildStore
+            .ReadAsync(operatorScope, CancellationToken.None)
+            .ConfigureAwait(true)).ShouldNotBeNull();
+        operatorCheckpoint.Status.ShouldBe(ProjectionRebuildStatus.Succeeded);
+        operatorCheckpoint.LastAppliedSequence.ShouldBe(expectedVersion);
+        (await services.GetRequiredService<IProjectionLifecycleGateway>()
+                .ReadPhaseAsync(identity, identity.Domain, CancellationToken.None)
+                .ConfigureAwait(true))
+            .ShouldBe(ProjectionLifecyclePhase.Idle);
+        (await delivery.ReadDeliveredSequenceAsync(identity, "counter-detail", CancellationToken.None).ConfigureAwait(true))
+            .ShouldBe(0);
+        (await delivery.ReadDeliveredSequenceAsync(identity, "counter-index", CancellationToken.None).ConfigureAwait(true))
+            .ShouldBe(0);
+        await catalogLoader.StopAsync(CancellationToken.None).ConfigureAwait(true);
+    }
+
     private ProjectionUpdateOrchestrator CreateOrchestrator(
         IActorProxyFactory actorProxyFactory,
-        IDomainServiceResolver resolver) {
+        IDomainServiceResolver resolver,
+        ProjectionOptions? projectionOptions = null) {
         IServiceProvider services = fixture.Services;
         return new ProjectionUpdateOrchestrator(
             actorProxyFactory,
@@ -492,7 +586,9 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
             services.GetRequiredService<IHttpClientFactory>(),
             resolver,
             services.GetRequiredService<IProjectionCheckpointTracker>(),
-            services.GetRequiredService<IOptions<ProjectionOptions>>(),
+            projectionOptions is null
+                ? services.GetRequiredService<IOptions<ProjectionOptions>>()
+                : Options.Create(projectionOptions),
             NullLogger<ProjectionUpdateOrchestrator>.Instance,
             services.GetRequiredService<IProjectionRebuildCheckpointStore>(),
             services.GetRequiredService<IEventPayloadProtectionService>(),

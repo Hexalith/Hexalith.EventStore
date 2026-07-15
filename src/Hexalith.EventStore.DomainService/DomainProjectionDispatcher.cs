@@ -70,6 +70,161 @@ public static class DomainProjectionDispatcher {
             .ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Plans every required named full-replay projection and promotes the candidates through one
+    /// coordinated read-model batch.
+    /// </summary>
+    /// <param name="serviceProvider">The scoped request service provider.</param>
+    /// <param name="dispatchRequest">The rebuild dispatch containing the complete event prefix.</param>
+    /// <param name="options">The validated dispatch bounds.</param>
+    /// <param name="identityOptions">The authoritative local service binding.</param>
+    /// <param name="cancellationToken">Propagates request cancellation and prevents later starts.</param>
+    /// <returns>One durable, distinguishable outcome per required projection route.</returns>
+    public static async Task<ProjectionDispatchResponse> RebuildAsync(
+        IServiceProvider serviceProvider,
+        ProjectionDispatchRequest dispatchRequest,
+        ProjectionDispatchOptions options,
+        DomainProjectionIdentityOptions identityOptions,
+        CancellationToken cancellationToken) {
+        ArgumentNullException.ThrowIfNull(serviceProvider);
+        ArgumentNullException.ThrowIfNull(dispatchRequest);
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(identityOptions);
+        options.Validate();
+        identityOptions.Validate();
+        ValidateRequest(dispatchRequest, options);
+
+        IAsyncDomainProjectionHandler[] allHandlers = DomainProjectionHandlerRouteValidator
+            .MaterializeAndValidateNamed(serviceProvider.GetServices<IAsyncDomainProjectionHandler>(), options);
+        ProjectionDispatchRoute[] authoritativeRoutes = [.. allHandlers
+            .Where(handler => string.Equals(handler.Domain, dispatchRequest.Request.Domain, StringComparison.Ordinal))
+            .Select(handler => new ProjectionDispatchRoute(handler.Domain, handler.ProjectionType))];
+        if (authoritativeRoutes.Length == 0
+            || !string.Equals(
+                ProjectionRouteCatalogFingerprint.Compute(
+                    identityOptions.AppId,
+                    identityOptions.ServiceVersion,
+                    authoritativeRoutes),
+                dispatchRequest.CatalogFingerprint,
+                StringComparison.Ordinal)) {
+            throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedCapability);
+        }
+
+        HashSet<string> requestedTypes = new(dispatchRequest.ProjectionTypes, StringComparer.Ordinal);
+        if (requestedTypes.Count != authoritativeRoutes.Length
+            || authoritativeRoutes.Any(route => !requestedTypes.Contains(route.ProjectionType))) {
+            throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedRoute);
+        }
+
+        IAsyncDomainProjectionHandler[] handlers = [.. allHandlers.Where(handler =>
+            string.Equals(handler.Domain, dispatchRequest.Request.Domain, StringComparison.Ordinal)
+            && requestedTypes.Contains(handler.ProjectionType))];
+        if (handlers.Length != requestedTypes.Count) {
+            throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedRoute);
+        }
+
+        var outcomes = new Dictionary<string, ProjectionDispatchOutcome>(StringComparer.Ordinal);
+        var operations = new List<ReadModelBatchOperation>();
+        string? storeName = null;
+        foreach (IAsyncDomainProjectionHandler handler in handlers) {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (handler is not IAsyncDomainProjectionRebuildHandler rebuildHandler
+                || rebuildHandler.RebuildSemantics != DomainProjectionRebuildSemantics.FullReplay) {
+                outcomes[handler.ProjectionType] = new ProjectionDispatchOutcome(
+                    handler.ProjectionType,
+                    ProjectionDispatchStatus.Failed,
+                    null,
+                    ProjectionDispatchReasonCodes.UnsupportedCapability);
+                continue;
+            }
+
+            try {
+                DomainProjectionRebuildPlan plan = await rebuildHandler
+                    .PrepareRebuildAsync(
+                        dispatchRequest.Request,
+                        dispatchRequest.DispatchId,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+                if (storeName is not null && !string.Equals(storeName, plan.StoreName, StringComparison.Ordinal)) {
+                    outcomes[handler.ProjectionType] = new ProjectionDispatchOutcome(
+                        handler.ProjectionType,
+                        ProjectionDispatchStatus.Failed,
+                        null,
+                        ProjectionDispatchReasonCodes.UnsupportedCapability);
+                    continue;
+                }
+
+                storeName ??= plan.StoreName;
+                operations.AddRange(plan.Operations);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+                throw;
+            }
+            catch (Exception) {
+                outcomes[handler.ProjectionType] = new ProjectionDispatchOutcome(
+                    handler.ProjectionType,
+                    ProjectionDispatchStatus.Indeterminate,
+                    null,
+                    ProjectionDispatchReasonCodes.HandlerFailure);
+            }
+        }
+
+        if (outcomes.Count > 0) {
+            return new ProjectionDispatchResponse(
+                ProjectionDispatchProtocol.Version,
+                [.. handlers.Select(handler => outcomes.TryGetValue(handler.ProjectionType, out ProjectionDispatchOutcome? outcome)
+                    ? outcome
+                    : new ProjectionDispatchOutcome(
+                        handler.ProjectionType,
+                        ProjectionDispatchStatus.Retryable,
+                        null,
+                        ProjectionDispatchReasonCodes.PartialRetry))]);
+        }
+
+        IReadModelBatchStore? batchStore = serviceProvider.GetService<IReadModelBatchStore>();
+        if (batchStore is null || storeName is null) {
+            return FailureForEveryRoute(handlers, ProjectionDispatchReasonCodes.UnsupportedCapability);
+        }
+
+        ReadModelBatch batch;
+        try {
+            batch = new ReadModelBatch(
+                new ReadModelBatchScope(
+                    storeName,
+                    dispatchRequest.Request.TenantId,
+                    dispatchRequest.Request.Domain,
+                    dispatchRequest.Request.AggregateId,
+                    "rebuild",
+                    dispatchRequest.DispatchId),
+                operations);
+        }
+        catch (Exception exception) when (exception is ArgumentException or ArgumentNullException) {
+            return FailureForEveryRoute(handlers, ProjectionDispatchReasonCodes.MalformedOutcome);
+        }
+
+        DomainProjectionHandlerResult result;
+        try {
+            ReadModelBatchResult batchResult = await batchStore
+                .ExecuteAsync(batch, cancellationToken)
+                .ConfigureAwait(false);
+            result = ReadModelBatchProjectionResultMapper.Map(batchResult);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+            throw;
+        }
+        catch (Exception) {
+            result = DomainProjectionHandlerResult.Indeterminate(ProjectionDispatchReasonCodes.HandlerFailure);
+        }
+
+        return new ProjectionDispatchResponse(
+            ProjectionDispatchProtocol.Version,
+            [.. handlers.Select(handler => new ProjectionDispatchOutcome(
+                handler.ProjectionType,
+                result.Status,
+                null,
+                result.ReasonCode))]);
+    }
+
     /// <summary>Dispatches using a catalog fingerprint recomputed from authoritative local identity and routes.</summary>
     /// <param name="serviceProvider">The scoped request service provider.</param>
     /// <param name="dispatchRequest">The version-2 dispatch request.</param>
@@ -193,6 +348,17 @@ public static class DomainProjectionDispatcher {
 
         return new ProjectionDispatchResponse(ProjectionDispatchProtocol.Version, outcomes);
     }
+
+    private static ProjectionDispatchResponse FailureForEveryRoute(
+        IEnumerable<IAsyncDomainProjectionHandler> handlers,
+        string reasonCode)
+        => new(
+            ProjectionDispatchProtocol.Version,
+            [.. handlers.Select(handler => new ProjectionDispatchOutcome(
+                handler.ProjectionType,
+                ProjectionDispatchStatus.Failed,
+                null,
+                reasonCode))]);
 
     private static void ValidateRequest(ProjectionDispatchRequest dispatchRequest, ProjectionDispatchOptions options) {
         if (dispatchRequest.Request is null

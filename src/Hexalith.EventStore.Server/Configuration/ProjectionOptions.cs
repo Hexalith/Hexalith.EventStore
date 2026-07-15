@@ -39,6 +39,15 @@ public record ProjectionOptions {
     /// </summary>
     public int RebuildIndexCleanupCadenceSeconds { get; init; } = 60;
 
+    /// <summary>Gets the maximum number of aggregate events read per rebuild page.</summary>
+    public int RebuildPageSize { get; init; } = 256;
+
+    /// <summary>Gets the maximum event count admitted by the temporary complete-prefix rebuild strategy.</summary>
+    public int RebuildMaxPrefixEventCount { get; init; } = 10_000;
+
+    /// <summary>Gets the maximum serialized bytes admitted by the temporary complete-prefix rebuild strategy.</summary>
+    public int RebuildMaxPrefixBytes { get; init; } = 67_108_864;
+
     /// <summary>
     /// Gets the effective refresh interval for a given domain.
     /// </summary>
@@ -76,6 +85,18 @@ public record ProjectionOptions {
 
         if (RebuildIndexCleanupCadenceSeconds < 0) {
             throw new InvalidOperationException("Projection rebuild index cleanup cadence must be >= 0 seconds (0 disables the cleanup service).");
+        }
+
+        if (RebuildPageSize <= 0) {
+            throw new InvalidOperationException("Projection rebuild page size must be > 0.");
+        }
+
+        if (RebuildMaxPrefixEventCount <= 0) {
+            throw new InvalidOperationException("Projection rebuild maximum prefix event count must be > 0.");
+        }
+
+        if (RebuildMaxPrefixBytes <= 0) {
+            throw new InvalidOperationException("Projection rebuild maximum prefix bytes must be > 0.");
         }
 
         HashSet<string> seenKeys = new(StringComparer.OrdinalIgnoreCase);

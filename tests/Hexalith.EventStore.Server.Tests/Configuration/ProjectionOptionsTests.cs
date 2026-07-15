@@ -11,6 +11,24 @@ public class ProjectionOptionsTests {
         var options = new ProjectionOptions();
 
         Should.NotThrow(options.Validate);
+        options.RebuildPageSize.ShouldBe(256);
+        options.RebuildMaxPrefixEventCount.ShouldBe(10_000);
+        options.RebuildMaxPrefixBytes.ShouldBe(67_108_864);
+    }
+
+    [Theory]
+    [InlineData("page-size")]
+    [InlineData("event-count")]
+    [InlineData("prefix-bytes")]
+    public void Validate_NonPositiveRebuildBound_Throws(string property) {
+        ProjectionOptions options = property switch {
+            "page-size" => new ProjectionOptions { RebuildPageSize = 0 },
+            "event-count" => new ProjectionOptions { RebuildMaxPrefixEventCount = 0 },
+            "prefix-bytes" => new ProjectionOptions { RebuildMaxPrefixBytes = 0 },
+            _ => throw new InvalidOperationException("Unknown test case."),
+        };
+
+        _ = Should.Throw<InvalidOperationException>(options.Validate);
     }
 
     [Fact]

@@ -53,7 +53,9 @@ Long-stream rebuilds currently pass one bounded page to a stateless full-replay 
 - Promotion uses Story 1.10's same-store batch or marker-gated resumable protocol. It must not invent another marker, claim cross-store atomicity, or persist live output before best-effort checkpointing.
 - Only `IProjectionRebuildCheckpointStore` advances after proven promotion. `IProjectionCheckpointTracker` delivery checkpoints remain unchanged for Story 1.13.
 - The rebuild page size is configurable, validates greater than zero, and defaults to 256. Exact page boundaries remain correct.
-- Full-prefix accumulation has a configured safety ceiling and structured fail-closed outcome. Stories 6.3/6.4 may optimize cost without weakening equivalence.
+- `ProjectionOptions.RebuildMaxPrefixEventCount` defaults to 10,000 and `ProjectionOptions.RebuildMaxPrefixBytes` defaults to 67,108,864 (64 MiB); both are configurable server-wide and validation rejects non-positive values.
+- Exceeding either full-prefix safety bound fails closed with `rebuild_prefix_safety_limit_exceeded`, preserves every live surface, advances no completion checkpoint, and clears terminal `Rebuilding` lifecycle state. Stories 6.3/6.4 may optimize cost without weakening equivalence.
+- Story 1.10 coordinated batching and Story 1.12 named dispatch are completed prerequisites; Story 1.14 consumes those seams and must not create a local substitute.
 - Persisted `IReadModelFreshness` is the projection-version authority. Lifecycle is never inferred from ETag, HTTP outcome, payload fields, or SignalR.
 - Aggregate sequence remains gapless per aggregate; `SequenceNumber` is never global ordering; bounded `toPosition` uses the canonical replay boundary; shared platform JSON options remain authoritative.
 - Existing immediate/poller full-replay behavior and admin rebuild control flow remain compatible. Public capability is additive.
@@ -72,8 +74,3 @@ A production-path rebuild of a fixture larger than two configured pages promotes
 ## Assumptions
 
 - Internal staging key names and private helper types are implementation details when they are operation-scoped, collision-safe, support-safe, and preserve released ABI.
-
-## Open Questions
-
-- Must Story 1.10 coordinated batching and Story 1.12 named multi-projection dispatch land before Story 1.14, or is an additive Story 1.14 compatibility adapter authorized to expose the required detail/index projection set without implementing those stories?
-- What maximum complete-prefix event count and/or serialized-byte ceiling, default value, configurability scope, and structured failure reason code are approved for the temporary full-sequence strategy?

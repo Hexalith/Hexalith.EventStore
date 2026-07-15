@@ -25,6 +25,75 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
     private static readonly AggregateIdentity Identity = new("tenant-a", "widget", "widget-1");
 
     [Fact]
+    public async Task TryRebuildAsync_CoordinatesEveryCatalogRouteWithoutDeliveryCheckpointMutation() {
+        string responseJson = JsonSerializer.Serialize(new ProjectionDispatchResponse(
+            ProjectionDispatchProtocol.Version,
+            [
+                new ProjectionDispatchOutcome("widget-detail", ProjectionDispatchStatus.Completed, null, null),
+                new ProjectionDispatchOutcome("widget-index", ProjectionDispatchStatus.AlreadyCompleted, null, null),
+            ]));
+        var handler = new ProjectionDispatchHttpMessageHandler(responseJson);
+        NamedProjectionDispatchCoordinator coordinator = CreateCoordinator(
+            Snapshot("fingerprint", "widget-index", "widget-detail"),
+            handler,
+            out IProjectionDeliveryCheckpointStore checkpoints,
+            out IProjectionLifecycleGateway lifecycle);
+
+        NamedProjectionRebuildResult result = await coordinator.TryRebuildAsync(
+            Identity,
+            Registration(),
+            [ProjectionEvent(1), ProjectionEvent(2)],
+            "operation-1",
+            CancellationToken.None);
+
+        result.Owned.ShouldBeTrue();
+        result.Succeeded.ShouldBeTrue();
+        result.Outcomes.Select(static outcome => outcome.ProjectionType)
+            .ShouldBe(["widget-detail", "widget-index"]);
+        handler.RequestUri!.AbsolutePath.ShouldEndWith("/project/rebuild/v1");
+        ProjectionDispatchRequest request = JsonSerializer.Deserialize<ProjectionDispatchRequest>(
+            handler.RequestJson!,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web)).ShouldNotBeNull();
+        request.DispatchId.ShouldBe("operation-1");
+        request.CatalogFingerprint.ShouldBe("fingerprint");
+        request.ProjectionTypes.ShouldBe(["widget-detail", "widget-index"]);
+        _ = await checkpoints.DidNotReceiveWithAnyArgs().ReadDeliveredSequenceAsync(default!, default!, default);
+        _ = await checkpoints.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default!, default, default);
+        _ = await lifecycle.DidNotReceiveWithAnyArgs().TryAdmitDeliveryWriteAsync(default!, default!, default);
+    }
+
+    [Fact]
+    public async Task TryRebuildAsync_PartialOutcomeIsOwnedButCannotSucceed() {
+        string responseJson = JsonSerializer.Serialize(new ProjectionDispatchResponse(
+            ProjectionDispatchProtocol.Version,
+            [
+                new ProjectionDispatchOutcome("widget-detail", ProjectionDispatchStatus.Completed, null, null),
+                new ProjectionDispatchOutcome(
+                    "widget-index",
+                    ProjectionDispatchStatus.Retryable,
+                    null,
+                    ProjectionDispatchReasonCodes.PartialRetry),
+            ]));
+        NamedProjectionDispatchCoordinator coordinator = CreateCoordinator(
+            Snapshot("fingerprint", "widget-detail", "widget-index"),
+            new ProjectionDispatchHttpMessageHandler(responseJson),
+            out _,
+            out _);
+
+        NamedProjectionRebuildResult result = await coordinator.TryRebuildAsync(
+            Identity,
+            Registration(),
+            [ProjectionEvent(1)],
+            "operation-1",
+            CancellationToken.None);
+
+        result.Owned.ShouldBeTrue();
+        result.Succeeded.ShouldBeFalse();
+        result.Outcomes[0].Status.ShouldBe(ProjectionDispatchStatus.Completed);
+        result.Outcomes[1].Status.ShouldBe(ProjectionDispatchStatus.Retryable);
+    }
+
+    [Fact]
     public async Task TryDispatchAsync_ReturnsFalseWhenExactCatalogBindingIsMissing() {
         ProjectionDispatchHttpMessageHandler handler = new("{}");
         NamedProjectionDispatchCoordinator coordinator = CreateCoordinator(

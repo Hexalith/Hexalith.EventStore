@@ -54,6 +54,38 @@ public class ProjectionLifecycleActorTests {
     }
 
     [Fact]
+    public async Task BeginAndCompleteRebuildAsync_PersistsTruthfulLifecycleAndDefersDelivery() {
+        (ProjectionLifecycleActor actor, InMemoryStateManager stateManager) = CreateActor();
+
+        bool begun = await actor.BeginRebuildAsync(new ProjectionRebuildLifecycleRequest("rebuild-1"));
+        ProjectionDeliveryAdmission during = await actor.TryAdmitDeliveryWriteAsync();
+
+        begun.ShouldBeTrue();
+        during.Admitted.ShouldBeFalse();
+        during.Phase.ShouldBe(ProjectionLifecyclePhase.Rebuilding);
+        ProjectionLifecycleActorState rebuilding = PersistedState(stateManager);
+        rebuilding.OperationId.ShouldBe("rebuild-1");
+        (await actor.BeginRebuildAsync(new ProjectionRebuildLifecycleRequest("rebuild-1"))).ShouldBeTrue();
+        (await actor.BeginRebuildAsync(new ProjectionRebuildLifecycleRequest("rebuild-2"))).ShouldBeFalse();
+
+        (await actor.CompleteRebuildAsync(new ProjectionRebuildLifecycleRequest("rebuild-1"))).ShouldBeTrue();
+        (await actor.ReadPhaseAsync()).ShouldBe(ProjectionLifecyclePhase.Idle);
+        (await actor.TryAdmitDeliveryWriteAsync()).Admitted.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task BeginEraseAsync_WhileRebuilding_ConflictsWithoutReplacingLifecycle() {
+        (ProjectionLifecycleActor actor, _) = CreateActor();
+        _ = await actor.BeginRebuildAsync(new ProjectionRebuildLifecycleRequest("rebuild-1"));
+
+        ProjectionEraseAdmission admission = await actor.BeginEraseAsync(
+            new ProjectionEraseBeginRequest("erase-1", "digest-1"));
+
+        admission.Kind.ShouldBe(ProjectionEraseAdmissionKind.Conflict);
+        (await actor.ReadPhaseAsync()).ShouldBe(ProjectionLifecyclePhase.Rebuilding);
+    }
+
+    [Fact]
     public async Task BeginEraseAsync_FromIdle_AdmitsAndPersistsErasingPhase() {
         (ProjectionLifecycleActor actor, InMemoryStateManager stateManager) = CreateActor();
 

@@ -12,10 +12,13 @@ internal sealed class ProjectionDispatchHttpMessageHandler(
 
     public string? RequestJson { get; private set; }
 
+    public Uri? RequestUri { get; private set; }
+
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
         CancellationToken cancellationToken) {
         CallCount++;
+        RequestUri = request.RequestUri;
         RequestJson = request.Content is null
             ? null
             : await request.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);

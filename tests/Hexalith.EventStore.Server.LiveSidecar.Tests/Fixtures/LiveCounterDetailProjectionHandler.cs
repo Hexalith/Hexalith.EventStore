@@ -7,12 +7,36 @@ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures;
 /// <summary>Persists the live counter detail read model through the coordinated batch store.</summary>
 public sealed class LiveCounterDetailProjectionHandler(
     IReadModelBatchStore batchStore,
-    LiveNamedProjectionFaultControl faultControl) : IAsyncDomainProjectionHandler {
+    LiveNamedProjectionFaultControl faultControl) : IAsyncDomainProjectionRebuildHandler {
     /// <inheritdoc/>
     public string Domain => "counter";
 
     /// <inheritdoc/>
     public string ProjectionType => "counter-detail";
+
+    /// <inheritdoc/>
+    public DomainProjectionRebuildSemantics RebuildSemantics => DomainProjectionRebuildSemantics.FullReplay;
+
+    /// <inheritdoc/>
+    public Task<DomainProjectionRebuildPlan> PrepareRebuildAsync(
+        ProjectionRequest request,
+        string operationId,
+        CancellationToken cancellationToken) {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(operationId);
+        cancellationToken.ThrowIfCancellationRequested();
+        string key = $"{request.TenantId}:{request.Domain}:{request.AggregateId}:detail";
+        string projectionVersion = request.Events.Max(static item => item.SequenceNumber).ToString(
+            System.Globalization.CultureInfo.InvariantCulture);
+        var value = new Dictionary<string, object> {
+            ["eventCount"] = request.Events.Length,
+            ["dispatchId"] = operationId,
+            ["projectionVersion"] = projectionVersion,
+        };
+        return Task.FromResult(new DomainProjectionRebuildPlan(
+            "statestore",
+            [ReadModelBatchOperation.Write(key, value, ReadModelBatchConcurrency.LastWrite)]));
+    }
 
     /// <inheritdoc/>
     public async Task<DomainProjectionHandlerResult> ProjectAsync(

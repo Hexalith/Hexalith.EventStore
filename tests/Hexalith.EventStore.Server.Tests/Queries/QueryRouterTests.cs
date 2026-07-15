@@ -11,8 +11,10 @@ using Google.Protobuf;
 using Grpc.Core;
 
 using Hexalith.EventStore.Contracts.Queries;
+using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Pipeline.Queries;
+using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Server.Queries;
 
 using Microsoft.Extensions.Logging;
@@ -122,6 +124,37 @@ public class QueryRouterTests {
         result.Metadata!.ProjectionVersion.ShouldBe("orders-v2");
         _ = result.Metadata.WarningCodes.ShouldNotBeNull();
         result.Metadata.WarningCodes.ShouldContain(QueryWarningCodes.DegradedSearch);
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_PersistedRebuildPhaseOverridesProjectionBackedCurrentEvidence() {
+        JsonElement payload = JsonSerializer.SerializeToElement(new { value = 42 });
+        IProjectionActorInvoker invoker = Substitute.For<IProjectionActorInvoker>();
+        _ = invoker.InvokeAsync(
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<QueryEnvelope>(),
+                Arg.Any<CancellationToken>())
+            .Returns(QueryResult.FromPayload(
+                payload,
+                "orders",
+                new QueryResponseMetadata(IsStale: false, ProjectionVersion: "2") {
+                    Lifecycle = ProjectionLifecycleState.Current,
+                }));
+        IProjectionLifecycleGateway lifecycle = Substitute.For<IProjectionLifecycleGateway>();
+        _ = lifecycle.ReadPhaseAsync(
+                Arg.Any<AggregateIdentity>(),
+                "orders",
+                Arg.Any<CancellationToken>())
+            .Returns(ProjectionLifecyclePhase.Rebuilding);
+        var router = new QueryRouter(invoker, NullLogger<QueryRouter>.Instance, lifecycle);
+
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
+
+        result.Metadata.ShouldNotBeNull().Provenance.ShouldBe(QueryResponseProvenance.ProjectionBacked);
+        result.Metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Rebuilding);
+        result.Metadata.IsStale.ShouldBeNull();
+        result.Metadata.ProjectionVersion.ShouldBe("2");
     }
 
     [Theory]

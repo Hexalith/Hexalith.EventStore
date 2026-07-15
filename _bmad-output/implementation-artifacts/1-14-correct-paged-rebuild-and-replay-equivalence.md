@@ -54,34 +54,34 @@ In `src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs`,
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 — Establish the equivalence oracle and its harness (AC: 3, 6)**
-  - [ ] Add a deterministic test fixture that projects a stream via canonical `AggregateReplayer.Replay<TState>` (full-sequence) into the same detail + index read models used by the domain projection, producing the reference persisted state, projection versions, and checkpoint.
-  - [ ] Use the existing detail/index test models `AggregateReadModel` (detail: `Id`, `Status`) and `AggregateIndexReadModel` (index: `List<string> AggregateIds`) from `tests/Hexalith.EventStore.Client.Tests/Projections/`, or an equivalent Server-side pair; keep the reference builder side-effect-free.
-  - [ ] Assert the oracle rejects gaps/duplicates and requires sequence-starts-at-1 exactly as `AggregateReplayer` does (do not reimplement replay semantics).
+- [x] **Task 1 — Establish the equivalence oracle and its harness (AC: 3, 6)**
+  - [x] Add a deterministic test fixture that projects a stream via canonical `AggregateReplayer.Replay<TState>` (full-sequence) into the same detail + index read models used by the domain projection, producing the reference persisted state, projection versions, and checkpoint.
+  - [x] Use the existing detail/index test models `AggregateReadModel` (detail: `Id`, `Status`) and `AggregateIndexReadModel` (index: `List<string> AggregateIds`) from `tests/Hexalith.EventStore.Client.Tests/Projections/`, or an equivalent Server-side pair; keep the reference builder side-effect-free.
+  - [x] Assert the oracle rejects gaps/duplicates and requires sequence-starts-at-1 exactly as `AggregateReplayer` does (do not reimplement replay semantics).
 
-- [ ] **Task 2 — Make the rebuild delivery feed a complete prefix / stage, never overwrite with a page (AC: 1, 2, 4)**
-  - [ ] In `ProjectionUpdateOrchestrator.DeliverProjectionForRebuildAsync`, stop presenting a lone page to the stateless full-replay `/project` handler as the whole stream. Either (a) accumulate the complete required prefix up to the page/`toPosition` boundary before invoking the full-replay handler, or (b) hold page outputs in operation-scoped staging and only compute/promote the complete-prefix result. **Choose per the frozen spec / decision points below; do not weaken to page-only.**
-  - [ ] Introduce operation-scoped staging (non-live isolation) so the live `projection-state` key (and any detail/index read-model key) is **not** mutated until promotion. Do not overwrite `EventReplayProjectionActor.ProjectionStateKey` mid-operation.
-  - [ ] Preserve the last complete live model on cancel/failure; resume from the last durable safe boundary using `ProjectionRebuildCheckpoint.LastAppliedSequence`/`ToPosition`.
+- [x] **Task 2 — Make the rebuild delivery feed a complete prefix / stage, never overwrite with a page (AC: 1, 2, 4)**
+  - [x] In `ProjectionUpdateOrchestrator.DeliverProjectionForRebuildAsync`, stop presenting a lone page to the stateless full-replay `/project` handler as the whole stream. Either (a) accumulate the complete required prefix up to the page/`toPosition` boundary before invoking the full-replay handler, or (b) hold page outputs in operation-scoped staging and only compute/promote the complete-prefix result. **Choose per the frozen spec / decision points below; do not weaken to page-only.**
+  - [x] Introduce operation-scoped staging (non-live isolation) so the live `projection-state` key (and any detail/index read-model key) is **not** mutated until promotion. Do not overwrite `EventReplayProjectionActor.ProjectionStateKey` mid-operation.
+  - [x] Preserve the last complete live model on cancel/failure; resume from the last durable safe boundary using `ProjectionRebuildCheckpoint.LastAppliedSequence`/`ToPosition`.
 
-- [ ] **Task 3 — Promote atomically-enough after all required projections complete (AC: 2, 5)**
-  - [ ] Add a promotion step that swaps staged detail+index outputs into the live slot only after every required projection for the operation is durably complete; reuse Story 1.10's coordinated-batch / resumable-marker primitive (`ReadModelWritePolicy` / `IReadModelBatchStore`) rather than inventing a new marker.
-  - [ ] Ensure the operation cannot report `Succeeded` while any required projection is incomplete; keep per-projection outcomes distinguishable.
-  - [ ] Advance rebuild checkpoints (`IProjectionRebuildCheckpointStore.SaveAsync`) only after promotion is durable; never advance a failed projection as success (AD-19). Do not advance the *delivery* checkpoint (`IProjectionCheckpointTracker`) outside the 1.13 contract — leave that seam intact.
+- [x] **Task 3 — Promote atomically-enough after all required projections complete (AC: 2, 5)**
+  - [x] Add a promotion step that swaps staged detail+index outputs into the live slot only after every required projection for the operation is durably complete; reuse Story 1.10's coordinated-batch / resumable-marker primitive (`ReadModelWritePolicy` / `IReadModelBatchStore`) rather than inventing a new marker.
+  - [x] Ensure the operation cannot report `Succeeded` while any required projection is incomplete; keep per-projection outcomes distinguishable.
+  - [x] Advance rebuild checkpoints (`IProjectionRebuildCheckpointStore.SaveAsync`) only after promotion is durable; never advance a failed projection as success (AD-19). Do not advance the *delivery* checkpoint (`IProjectionCheckpointTracker`) outside the 1.13 contract — leave that seam intact.
 
-- [ ] **Task 4 — Make rebuild page size configurable and prove page-boundary safety (AC: 3)**
-  - [ ] Replace the hard-coded `private const int RebuildPageSize = 256` with a value on `ProjectionOptions` (e.g. `RebuildPageSize`, validated `> 0` in `ProjectionOptions.Validate()`), defaulting to 256 for compatibility. Keep the existing `events.Length < RebuildPageSize` page-complete detection correct for the new configurable size (including the exact-boundary case documented at L863–868).
-  - [ ] Prove no duplicate/skip/reorder across page boundaries for streams of length {0, exactly pageSize, pageSize+1, N×pageSize, N×pageSize+1}.
+- [x] **Task 4 — Make rebuild page size configurable and prove page-boundary safety (AC: 3)**
+  - [x] Replace the hard-coded `private const int RebuildPageSize = 256` with a value on `ProjectionOptions` (e.g. `RebuildPageSize`, validated `> 0` in `ProjectionOptions.Validate()`), defaulting to 256 for compatibility. Keep the existing `events.Length < RebuildPageSize` page-complete detection correct for the new configurable size (including the exact-boundary case documented at L863–868).
+  - [x] Prove no duplicate/skip/reorder across page boundaries for streams of length {0, exactly pageSize, pageSize+1, N×pageSize, N×pageSize+1}.
 
-- [ ] **Task 5 — Surface a truthful `Rebuilding` lifecycle (AC: 8)**
-  - [ ] Ensure an in-flight rebuild is observable as `ProjectionLifecycleState.Rebuilding` and clears to `Current`/`Stale` only on durable promotion; never leave a stale `Rebuilding` after terminal Succeeded/Failed/Canceled.
-  - [ ] Do not infer lifecycle from ETag/HTTP/payload/SignalR; only `ProjectionBacked` provenance carries the authoritative state (reuse `ProjectionLifecyclePolicy`; do not reopen Story 1.11/2.8 route-selection scope).
+- [x] **Task 5 — Surface a truthful `Rebuilding` lifecycle (AC: 8)**
+  - [x] Ensure an in-flight rebuild is observable as `ProjectionLifecycleState.Rebuilding` and clears to `Current`/`Stale` only on durable promotion; never leave a stale `Rebuilding` after terminal Succeeded/Failed/Canceled.
+  - [x] Do not infer lifecycle from ETag/HTTP/payload/SignalR; only `ProjectionBacked` provenance carries the authoritative state (reuse `ProjectionLifecyclePolicy`; do not reopen Story 1.11/2.8 route-selection scope).
 
-- [ ] **Task 6 — Replay-equivalence + edge-case test corpus (AC: 3, 4, 6, 7)**
-  - [ ] Add tests in `tests/Hexalith.EventStore.Server.Tests/Projections/` (alongside `ProjectionUpdateOrchestratorTests.cs`) asserting persisted **detail, index, projection versions, and checkpoints** from the production paged-rebuild orchestrator are **semantically equal** to the Task-1 canonical oracle for a fixture **> 2 pages**.
-  - [ ] Cover: empty stream, exact page boundary, `toPosition`-bounded rebuild, mid-rebuild cancellation (live model intact), injected handler/store failure (live model intact, retry converges), and resume-from-progress.
-  - [ ] Assert **persisted end-state** (via `InMemoryReadModelStore.Snapshot<T>()` / captured store state and the projection-state key), **not** mock call counts or `202`/`200` — recorder call counts are request-shape evidence only (NFR16 / AD-12).
-  - [ ] Add a targeted regression test that fails on the current overwrite bug (page-only state replacing a complete model) and passes only after staging/promotion lands.
+- [x] **Task 6 — Replay-equivalence + edge-case test corpus (AC: 3, 4, 6, 7)**
+  - [x] Add tests in `tests/Hexalith.EventStore.Server.Tests/Projections/` (alongside `ProjectionUpdateOrchestratorTests.cs`) asserting persisted **detail, index, projection versions, and checkpoints** from the production paged-rebuild orchestrator are **semantically equal** to the Task-1 canonical oracle for a fixture **> 2 pages**.
+  - [x] Cover: empty stream, exact page boundary, `toPosition`-bounded rebuild, mid-rebuild cancellation (live model intact), injected handler/store failure (live model intact, retry converges), and resume-from-progress.
+  - [x] Assert **persisted end-state** (via `InMemoryReadModelStore.Snapshot<T>()` / captured store state and the projection-state key), **not** mock call counts or `202`/`200` — recorder call counts are request-shape evidence only (NFR16 / AD-12).
+  - [x] Add a targeted regression test that fails on the current overwrite bug (page-only state replacing a complete model) and passes only after staging/promotion lands.
 
 - [ ] **Task 7 — Guardrails, build, and (if reachable) live-sidecar evidence (AC: 6)**
   - [ ] `ConfigureAwait(false)` on every new production await (CA2007 is build-breaking). File-scoped namespaces, one type per file, no copyright headers, ULID-safe identity (`Ulid.TryParse`, never `Guid.TryParse`), central package versions only.
@@ -203,6 +203,75 @@ Expected: whole-solution Release build clean (warnings-as-errors); new replay-eq
 
 ### Debug Log References
 
+- 2026-07-15 Task 1 RED: Release compilation failed with CS0246/CS0103 because the equivalence oracle and fixture types did not exist.
+- 2026-07-15 Task 1 GREEN: `ProjectionRebuildEquivalenceOracleTests` passed 5/5 after the fixture delegated replay validation to `AggregateReplayer`; the full Release server test assembly passed 2,595 tests with 0 failed/errors and 25 skipped in 513.205 seconds.
+- 2026-07-15 Task 2 HALT: The canonical Story 1.14 spec's safety-bound gate still leaves the maximum complete-prefix limit and structured failure reason code open and explicitly requires approval before production implementation starts. Story 1.10/1.12 sequencing is complete; this is the remaining contract gap.
+- 2026-07-15 Task 2 contract resolution: Approval froze server-wide limits of 10,000 events and 67,108,864 serialized bytes with failure reason `rebuild_prefix_safety_limit_exceeded`; the preservation-validated SPEC has zero open questions.
+- 2026-07-15 Task 2 RED: The multi-page regression projected only the first 256 events, and a second-page read failure did not exercise the missing continuation because rebuild performed only one page read.
+- 2026-07-15 Task 2 GREEN: Rebuild reconstructs the complete prefix from sequence one, invokes the stateless full-replay handler once, and keeps its response non-live until the prefix is complete; 62 orchestrator tests passed, followed by 2,597/2,597 server tests (0 failed/errors, 25 skipped) in 511.558 seconds.
+- 2026-07-15 Task 3 RED: DomainService test compilation failed because named handlers had no explicit rebuild semantics/candidate-plan seam, and the server coordinator had no rebuild-specific dispatch contract.
+- 2026-07-15 Task 3 GREEN: Full-replay named handlers prepare side-effect-free candidates that the domain endpoint promotes as one Story 1.10 batch; partial preparation/dispatch blocks actor promotion and rebuild checkpoint advancement. Focused server tests passed 77/77, DomainService passed 130/130, and the full server suite passed 2,600/2,600 (0 failed/errors, 25 skipped) in 486.640 seconds.
+- 2026-07-15 Task 4 RED: Release compilation failed because `ProjectionOptions` did not expose the approved page-size or prefix safety settings.
+- 2026-07-15 Task 4 GREEN: Configurable paging (default 256) validates positive values and rejects non-contiguous/oversized pages. The `{0, 3, 4, 6, 7}` corpus proved exact cursors and `/project` sequence ordering; focused tests passed 79/79 and the full server suite passed 2,608/2,608 (0 failed/errors, 25 skipped) in 531.254 seconds.
+- 2026-07-15 Task 5 RED: Release compilation failed with 24 errors because the persisted lifecycle actor/gateway had no rebuild begin, complete, or read-phase contract and query routing could not consult authoritative lifecycle state.
+- 2026-07-15 Task 5 GREEN: Rebuild now persists `Rebuilding` before reads, defers ordinary delivery/erase conflicts, promotes named and actor state before checkpoint/lifecycle completion, and clears lifecycle on success, failure, cancellation, and durable-bound resume. Focused lifecycle/query/orchestrator tests passed 144/144 and the full server suite passed 2,613/2,613 (0 failed/errors, 25 skipped) in 506.105 seconds.
+- 2026-07-15 Task 6 RED: Safety-bound test compilation failed with four CS0117 errors because the approved `rebuild_prefix_safety_limit_exceeded` reason code and enforcement path did not exist.
+- 2026-07-15 Task 6 GREEN: Event-count and serialized-byte ceilings now fail closed before any promotion; the real orchestrator/coordinator/domain-dispatcher/batch-store harness proved oracle-equivalent persisted actor, detail, index, freshness version, and rebuild checkpoints across seven edge scenarios. Focused tests passed 84/84, DomainService passed 131/131, and the full server suite passed 2,622/2,622 (0 failed/errors, 25 skipped) in 505.420 seconds.
+
 ### Completion Notes List
 
+- Task 1: Added a deterministic, side-effect-free canonical replay oracle that produces semantic detail/index models, projection freshness/version, and checkpoint state from `AggregateReplayer` output.
+- Task 1: Added canonical sequence validation coverage for non-one starts, gaps, and duplicates, plus repeated-invocation and input-immutability coverage.
+- Task 2: Converted rebuild paging into a bounded-read implementation detail: every invocation reconstructs the complete prefix through `toPosition` or end-of-stream before projecting and promoting.
+- Task 2: Kept the candidate response operation-local until all pages are read, preserving the prior live actor state on cancellation or later-page failure and making retry reconstruct the same safe prefix.
+- Task 3: Added an opt-in named rebuild contract with explicit full-replay semantics and immutable candidate plans; all required named candidates are combined into one existing resumable batch under the stable rebuild operation identity.
+- Task 3: Added `/project/rebuild/v1` and server coordination with bounded per-route outcomes; actor promotion and rebuild checkpoints follow named durability, while normal delivery checkpoints are intentionally untouched.
+- Task 4: Replaced the rebuild constant with validated server configuration while retaining the compatible 256-event default and exact-multiple terminal read behavior.
+- Task 4: Added ordered contiguous-page validation plus a configurable page-size corpus that asserts the exact event sequence presented to the production handler path.
+- Task 5: Added a persisted, operation-owned rebuild lifecycle that blocks competing delivery/erase writes and is completed only after named state, actor state, and rebuild progress are durable.
+- Task 5: Query routing now overlays persisted `Rebuilding` only on projection-backed evidence and fails closed to unknown lifecycle when the authoritative lifecycle read is unavailable.
+- Task 6: Added explicit complete-prefix count/byte enforcement with the approved stable failure code; exhaustion preserves live actor/named state, advances no rebuild progress, and clears terminal lifecycle.
+- Task 6: Added persisted production-path equivalence coverage for more than two pages, empty/exact/bounded inputs, cancellation, interrupted batch promotion with same-operation retry, and resume from persisted progress; the cumulative event count makes the suite fail on page-only overwrite behavior.
+
 ### File List
+
+- `tests/Hexalith.EventStore.Server.Tests/Projections/AggregateIndexReadModel.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/AggregateReadModel.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionRebuildAggregateState.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionRebuildEquivalenceOracle.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionRebuildEquivalenceOracleTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionRebuildEquivalenceSnapshot.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionStatusChanged.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorTests.cs`
+- `_bmad-output/specs/spec-correct-paged-rebuild-and-replay-equivalence/.memlog.md`
+- `_bmad-output/specs/spec-correct-paged-rebuild-and-replay-equivalence/SPEC.md`
+- `_bmad-output/specs/spec-correct-paged-rebuild-and-replay-equivalence/rebuild-semantics.md`
+- `src/Hexalith.EventStore.DomainService/DomainProjectionDispatcher.cs`
+- `src/Hexalith.EventStore.DomainService/DomainProjectionRebuildPlan.cs`
+- `src/Hexalith.EventStore.DomainService/DomainProjectionRebuildSemantics.cs`
+- `src/Hexalith.EventStore.DomainService/EventStoreDomainServiceExtensions.cs`
+- `src/Hexalith.EventStore.DomainService/IAsyncDomainProjectionRebuildHandler.cs`
+- `src/Hexalith.EventStore.Server/Projections/INamedProjectionDispatchCoordinator.cs`
+- `src/Hexalith.EventStore.Server/Projections/NamedProjectionDispatchCoordinator.cs`
+- `src/Hexalith.EventStore.Server/Projections/NamedProjectionRebuildResult.cs`
+- `tests/Hexalith.EventStore.DomainService.Tests/DomainProjectionDispatcherV2Tests.cs`
+- `tests/Hexalith.EventStore.DomainService.Tests/EventStoreDomainServiceExtensionsTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/NamedProjectionDispatchCoordinatorTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionDispatchHttpMessageHandler.cs`
+- `src/Hexalith.EventStore.Server/Configuration/ProjectionOptions.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Configuration/ProjectionOptionsTests.cs`
+- `src/Hexalith.EventStore.Server/Actors/IProjectionLifecycleActor.cs`
+- `src/Hexalith.EventStore.Server/Actors/ProjectionLifecycleActor.cs`
+- `src/Hexalith.EventStore.Server/Actors/ProjectionRebuildLifecycleRequest.cs`
+- `src/Hexalith.EventStore.Server/Projections/IProjectionLifecycleGateway.cs`
+- `src/Hexalith.EventStore.Server/Projections/DaprProjectionLifecycleGateway.cs`
+- `src/Hexalith.EventStore.Server/Queries/QueryRouter.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Actors/ProjectionLifecycleActorTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Queries/QueryRouterTests.cs`
+- `src/Hexalith.EventStore.Contracts/Streams/StreamReplayReasonCodes.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionRebuildPrefixSafetyLimitExceededException.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/InMemoryProjectionRebuildCheckpointStore.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionRebuildProductionHarness.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionRebuildProductionHttpMessageHandler.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionRebuildProductionPathTests.cs`

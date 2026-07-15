@@ -70,6 +70,9 @@ public static class StreamReplayReasonCodes {
     /// <summary>The rebuild operation is paused.</summary>
     public const string RebuildPaused = "rebuild-paused";
 
+    /// <summary>The temporary complete-prefix rebuild exceeded an approved safety ceiling.</summary>
+    public const string RebuildPrefixSafetyLimitExceeded = "rebuild_prefix_safety_limit_exceeded";
+
     /// <summary>The domain projection apply path failed.</summary>
     public const string DomainFailure = "domain-failure";
 
