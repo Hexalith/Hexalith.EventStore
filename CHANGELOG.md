@@ -1,3 +1,10 @@
+# [3.65.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.64.3...v3.65.0) (2026-07-15)
+
+
+### Features
+
+* **reviews:** add technology currentness review for July 2026 update ([c6f0173](https://github.com/Hexalith/Hexalith.EventStore/commit/c6f01732ab097a1d49a475d699700653dd7d5b5a))
+
 ## [3.64.3](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.64.2...v3.64.3) (2026-07-15)
 
 
