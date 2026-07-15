@@ -1,3 +1,11 @@
+# [3.67.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.66.0...v3.67.0) (2026-07-15)
+
+
+### Features
+
+* **skills:** add pushall skill for syncing and managing submodules ([8e3566f](https://github.com/Hexalith/Hexalith.EventStore/commit/8e3566fcd7f313c886e5a57e60c2ee47df6cf7ca))
+* **status:** update story status to in-progress and refresh last updated timestamp ([583911f](https://github.com/Hexalith/Hexalith.EventStore/commit/583911f918a1701dcc9fd321bf97e60b3ef392c7))
+
 # [3.66.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.65.0...v3.66.0) (2026-07-15)
 
 
