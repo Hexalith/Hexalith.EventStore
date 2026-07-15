@@ -1,3 +1,10 @@
+## [3.67.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.67.0...v3.67.1) (2026-07-15)
+
+
+### Bug Fixes
+
+* **references:** mark subproject commit as dirty ([82ed167](https://github.com/Hexalith/Hexalith.EventStore/commit/82ed167c1c78d4ff50d3f8eab43850bb6abd0fe7))
+
 # [3.67.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.66.0...v3.67.0) (2026-07-15)
 
 
