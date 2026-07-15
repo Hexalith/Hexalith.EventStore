@@ -17,7 +17,17 @@ public sealed class EventStoreDomainServiceConfigurationTests
     public async Task RootEventStoreConfiguration_ConfiguresTenantsDomainServices(string fileName)
     {
         using DaprClient daprClient = new DaprClientBuilder().Build();
-        DomainServiceResolver resolver = CreateResolver(fileName, daprClient);
+        DomainServiceOptions options = LoadDomainServiceOptions(fileName);
+
+        options.Registrations.ShouldContainKey("system|tenants|v1");
+        DomainServiceRegistration configuredRegistration = options.Registrations["system|tenants|v1"];
+        configuredRegistration.AppId.ShouldBe("tenants");
+        configuredRegistration.MethodName.ShouldBe("process");
+        configuredRegistration.TenantId.ShouldBe("system");
+        configuredRegistration.Domain.ShouldBe("tenants");
+        configuredRegistration.Version.ShouldBe("v1");
+
+        DomainServiceResolver resolver = CreateResolver(options, daprClient);
 
         await AssertResolvesAsync(
             resolver,
@@ -37,7 +47,9 @@ public sealed class EventStoreDomainServiceConfigurationTests
     public async Task RootEventStoreDevelopmentConfiguration_ConfiguresSampleDomainServices()
     {
         using DaprClient daprClient = new DaprClientBuilder().Build();
-        DomainServiceResolver resolver = CreateResolver("appsettings.Development.json", daprClient);
+        DomainServiceResolver resolver = CreateResolver(
+            LoadDomainServiceOptions("appsettings.Development.json"),
+            daprClient);
 
         await AssertResolvesAsync(
             resolver,
@@ -53,17 +65,19 @@ public sealed class EventStoreDomainServiceConfigurationTests
             expectedTenantId: "tenant-b").ConfigureAwait(true);
     }
 
-    private static DomainServiceResolver CreateResolver(string fileName, DaprClient daprClient)
+    private static DomainServiceResolver CreateResolver(DomainServiceOptions options, DaprClient daprClient)
+        => new(
+            daprClient,
+            Options.Create(options),
+            NullLogger<DomainServiceResolver>.Instance);
+
+    private static DomainServiceOptions LoadDomainServiceOptions(string fileName)
     {
         DomainServiceOptions options = new();
         LoadEventStoreSettings(fileName)
             .GetSection("EventStore:DomainServices")
             .Bind(options);
-
-        return new DomainServiceResolver(
-            daprClient,
-            Options.Create(options),
-            NullLogger<DomainServiceResolver>.Instance);
+        return options;
     }
 
     private static IConfigurationRoot LoadEventStoreSettings(string fileName)

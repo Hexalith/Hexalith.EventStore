@@ -100,61 +100,26 @@ public sealed record CounterIncremented(int IncrementedBy = 1) : IEventPayload;
 
 When old v1 events are replayed, the JSON payload is `{}` (empty object). `System.Text.Json` deserializes this to `CounterIncremented(IncrementedBy: 1)` because of the default parameter value. The state rehydration produces the correct count. No explicit upcasting code is needed — the safe schema change handles it automatically.
 
-### Manual Upcasting via State Rehydration
+### Explicit Compatibility via Typed State Application
 
-For unsafe changes (renaming types, splitting events), you write explicit upcasting logic in your state rehydration code. The Counter sample demonstrates this pattern in [`CounterProcessor.cs`](../../samples/Hexalith.EventStore.Sample/Counter/CounterProcessor.cs):
+For unsafe changes (renaming types, splitting events), keep every persisted event type available and make the aggregate state understand both the legacy and current contracts. `EventStoreAggregate<TState>` discovers typed `Apply` methods; it does not require a hand-written `IDomainProcessor` or string-based event-name matching.
 
 ```csharp
-// From CounterProcessor.cs — real code, not idealized
-private static void ApplyEventToCount(string eventTypeName, ref int countValue)
+[Obsolete("Retained for streams written by v1.")]
+public sealed record CounterIncrementedV1 : IEventPayload;
+
+public sealed record CounterIncremented(int IncrementedBy = 1) : IEventPayload;
+
+public sealed class CounterState
 {
-    if (eventTypeName.EndsWith("CounterIncremented", StringComparison.Ordinal))
-    {
-        countValue++;
-        return;
-    }
+    public int Count { get; private set; }
 
-    if (eventTypeName.EndsWith("CounterDecremented", StringComparison.Ordinal))
-    {
-        countValue = Math.Max(0, countValue - 1);
-        return;
-    }
-
-    if (eventTypeName.EndsWith("CounterReset", StringComparison.Ordinal))
-    {
-        countValue = 0;
-    }
+    public void Apply(CounterIncrementedV1 _) => Count++;
+    public void Apply(CounterIncremented e) => Count += e.IncrementedBy;
 }
 ```
 
-This code uses `EndsWith()` for type matching rather than exact string comparison. The trade-offs:
-
-- **Why `EndsWith()`:** Resilience to namespace changes. If the event class moves from `MyApp.Events.CounterIncremented` to `MyApp.V2.Events.CounterIncremented`, the suffix still matches — the rehydration code does not break.
-- **Risk:** Suffix collision. If two event types share the same suffix (e.g., `OrderItemIncremented` and `CounterIncremented` both end with `Incremented`), the match is ambiguous. In single-domain scenarios this is unlikely, but multi-domain assemblies could hit this.
-- **Recommendation:** Use the most specific suffix possible. For production services with many event types, consider exact type name matching to eliminate ambiguity.
-
-### Multi-Representation State Handling
-
-The Counter sample also demonstrates handling multiple state representations during rehydration — a critical pattern when snapshot formats evolve:
-
-```csharp
-// From CounterProcessor.cs — handles null, typed, JSON, and enumerable state
-private static int RehydrateCount(object? currentState)
-{
-    if (currentState is null)
-        return 0;
-
-    if (currentState is CounterState typedState)
-        return typedState.Count;
-
-    if (currentState is JsonElement json)
-        return RehydrateCountFromJson(json);
-
-    return RehydrateCountFromObjectEnumerable(currentState);
-}
-```
-
-State arrives in different forms depending on context: `null` for new aggregates, a typed `CounterState` when deserialization succeeds directly, a `JsonElement` when the state store returns raw JSON, or an enumerable of events when replaying from an event array. Your rehydration code must handle all representations.
+The legacy type must retain the persisted type identity expected by old streams. Test replay with serialized v1 payloads before deploying the new service. If a change cannot be represented safely by typed compatibility handlers, introduce an explicit adapter at the serialization boundary rather than guessing from a type-name suffix.
 
 ### Upcasting Flow
 
@@ -315,9 +280,7 @@ Old events replay with `IncrementedBy = 1`, producing the same state as before. 
 
 ### Step 4: Handle Snapshot State Evolution
 
-Snapshots contain serialized aggregate state. When the state shape changes, old snapshots must remain deserializable. The `CounterProcessor` already demonstrates this with its multi-format `RehydrateCount()` method that handles null, typed, `JsonElement`, and enumerable representations.
-
-For more complex state objects, the same principle applies: always handle the possibility that the deserialized state has a different shape than expected. Use nullable properties with defaults, and test backward compatibility by deserializing old-format state.
+Snapshots contain serialized aggregate state. When the state shape changes, old snapshots must remain deserializable into the current state type. Prefer additive nullable properties or properties with safe defaults, and test backward compatibility by deserializing representative old-format snapshots and replaying the remaining events.
 
 ### Step 5: Deploy the New Version
 

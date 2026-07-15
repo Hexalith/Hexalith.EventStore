@@ -115,8 +115,8 @@ src/
 ```
 samples/
 ├── Hexalith.EventStore.Sample/            # Counter + Greeting domains
-│   └── Counter/  CounterAggregate (fluent), CounterProcessor (legacy IDomainProcessor),
-│                 CounterProjectionHandler, Commands/, Events/, State/CounterState, Queries/
+│   └── Counter/  CounterAggregate (fluent), CounterProjectionHandler,
+│                 Commands/, Events/, State/CounterState, Queries/
 ├── Hexalith.EventStore.Sample.BlazorUI/   # Blazor Server sample (3 SignalR refresh patterns)
 │   ├── Components/  CounterCommandForm, CounterValueCard, CounterHistoryGrid
 │   └── Pages/      NotificationPattern, SilentReloadPattern, SelectiveRefreshPattern

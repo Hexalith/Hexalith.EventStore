@@ -12,8 +12,6 @@ The sample application includes a Counter domain service that processes three co
 
 Your domain logic lives in a `CounterAggregate` class that extends `EventStoreAggregate<CounterState>`. Each command gets a typed `Handle` method that receives the command and current state, then returns events. State is reconstructed via `Apply` methods on `CounterState`. The platform handles everything else: routing, persistence, snapshots, and pub/sub delivery.
 
-> `IDomainProcessor` remains available as an escape hatch for advanced scenarios — see the legacy `CounterProcessor` in the sample for an example.
-
 DAPR handles message delivery and state storage — you don't write infrastructure code.
 
 ## Clone and Run

@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-07-15T21:38:15+02:00
+# last_updated: 2026-07-16T01:01:57+02:00
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T20:01:46+02:00
-last_updated: 2026-07-15T21:38:15+02:00
+last_updated: 2026-07-16T01:01:57+02:00
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -59,7 +59,7 @@ development_status:
   1-8-sample-domain-centric-adoption: done
   # Split children require Tenants maintainer approval and an exact accepted Tenants SHA.
   1-9-tenants-query-and-read-model-adoption: done
-  1-10-tenants-projection-and-event-consumer-adoption: review
+  1-10-tenants-projection-and-event-consumer-adoption: done
   1-11-domain-module-adoption-guardrails: done
   1-12-domainservice-packaging-and-guardrails: done
   # Investigation/proof completed `still blocked`; it does not claim parity availability.
@@ -70,7 +70,8 @@ development_status:
   1-17-asynchronous-multi-projection-dispatch: done
   1-18-projection-handler-delivery-idempotency: done
   1-19-correct-paged-rebuild-and-replay-equivalence: review
-  # Cannot become done while its owner packet remains `still blocked`.
+  # Cannot become done while its projection/query owner packet remains `still blocked`.
+  # Explicitly excludes payload-protection G5 and Parties Story 8.7; those are Epic 8.
   1-20-owner-approved-parity-closure-and-runtime-pin: ready-for-dev
   epic-1-retrospective: done
 
@@ -159,6 +160,13 @@ development_status:
   7-17-aggregate-test-kit-backlog: done
   7-18-rest-generator-hardening-backlog: done
   epic-7-retrospective: optional
+
+  epic-8: backlog
+  # Security/architecture gate; authorizes Story 8.2 but no runtime implementation.
+  8-1-shared-payload-protection-security-spec-and-adr: backlog
+  # Post-MVP G5 implementation; blocked until the approved Story 8.1 spec exists.
+  8-2-shared-payload-protection-engine-and-parties-g5-parity: backlog
+  epic-8-retrospective: optional
 
 action_items:
   - epic: D

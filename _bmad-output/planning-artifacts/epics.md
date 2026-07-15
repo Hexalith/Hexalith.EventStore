@@ -26,6 +26,7 @@ inputDocuments:
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-11.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-13.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-16.md
   - _bmad-output/specs/spec-eventstore-phase-4-readiness-recovery/SPEC.md
 ---
 
@@ -119,6 +120,17 @@ The numbered capability sequence governs evidence acceptance and final parity cl
 
 Cursor scope compatibility may reuse Story 1.13 evidence. Every other blocked item must be reclassified `available` by Story 1.20. Source-mode consumers verify the EventStore submodule SHA; package-mode consumers verify exact package versions and hashes; deployed consumers verify the image digest maps to the approved EventStore SHA. The consuming repository SHA is never compared to the EventStore SHA.
 
+Story 1.20 closes the projection/query SDK prerequisite for Parties Story 8.6 only. It does not deliver or approve the G5 payload-protection engine, `pdenc-v2`, key mechanics, production backend, or Parties Story 8.7 migration.
+
+### Payload-Protection Security Gate
+
+The optional shared payload-protection engine is committed post-MVP work under Epic 8 and is independent from Story 1.20.
+
+- Story 8.2 cannot start until Story 8.1 produces `_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md` with named architecture and security approval plus explicit implementation authorization.
+- No EventStore hook, Story 22.7 artifact, custom-provider example, LocalDev/in-memory backend, or interface-only backend counts as the G5 engine or as production proof.
+- Story 1.20 cannot classify G5 and does not block or authorize Story 8.2.
+- Parties keeps G5 `needs-additive-api`, Story 8.7 in backlog, and its local provider/DI rollback path until Story 8.2 is implemented, reviewed, released or pinned, and proven through dual-provider compatibility and rollback after `pdenc-v2` writes.
+
 ## Requirements Inventory
 
 ### Functional Requirements
@@ -195,6 +207,8 @@ FR35: Backlog capabilities must be tracked for GDPR aggregate erasure/tombstonin
 
 FR36: Before a consuming module deletes local projection/query infrastructure, EventStore must produce an owner-reviewed parity packet proving every required capability through production paths, record an approved runtime SHA, and require the consumer's checked-out EventStore SHA to match that approval.
 
+FR37: EventStore must provide an optional shared payload-protection engine package built on `IEventPayloadProtectionService` and the existing provider-neutral metadata, outcome, workflow, and redaction contracts. The engine must implement the approved `pdenc-v2` format and byte-stable authenticated-data contract, preserve `json+pdenc-v1`, `json-redacted`, legacy-unprotected, and snapshot read compatibility, expose `IPersonalDataPolicy` and `IErasureStateProvider` extension seams, supply reusable key-lifecycle and resilience mechanics behind shared contracts, include at least one integration-proven production backend, and produce EventStore-owner plus Parties dual-provider parity and rollback evidence before G5 is available.
+
 ### NonFunctional Requirements
 
 NFR1: Security must fail closed for public, internal, domain-service, projection-notification, and admin surfaces; no endpoint may rely only on network posture or caller-supplied admin flags. The only anonymous exception is the health/liveness/readiness probe endpoints (`/health`, `/alive`, `/ready`), which are explicitly pinned `AllowAnonymous` and support-safe (AD-16); the fail-closed default is never weakened to reach probes.
@@ -233,6 +247,8 @@ NFR17: Operational hardening must support secret stores, DAPR app health checks,
 
 NFR18: AOT/trimming is explicitly not a target while reflection conventions remain load-bearing, and that constraint must be documented.
 
+NFR19: Payload protection must fail closed and preserve byte-stable, versioned cryptographic semantics. Deleted, missing, denied, unavailable, malformed, tampered, and opaque states must remain bounded typed outcomes. Key material must be zeroed when no longer needed; caches must be invalidated on lifecycle changes; development-only backends must not start as production proof; and rollout, historical reads, downgrade, and rollback after writing the newest format must be integration-tested.
+
 ### Additional Requirements
 
 - Standalone PRD, architecture, and UX design contracts are present under `_bmad-output/planning-artifacts`; this epics document must stay aligned with those artifacts and the approved sprint change proposals.
@@ -252,10 +268,11 @@ NFR18: AOT/trimming is explicitly not a target while reflection conventions rema
 - Shared Hexalith.Builds workflow/action references are intentionally `@main`; third-party action pinning policy remains enforced by the shared workflows.
 - Any global-ordering sharding implementation must update the frozen `_bmad-output/implementation-artifacts/spec-dapr-global-event-ordering.md` before code changes.
 - Specs are required before implementing folded snapshots, projection delivery cost changes, and event schema versioning/upcasting.
-- Full aggregate/event GDPR tombstoning, broker-history deletion, backup erasure, audit-record erasure, and crypto-shredding remain backlog work and must not be hidden inside unrelated remediation stories. Generic projection read-model/checkpoint erasure is active Story 1.14 scope.
+- Full aggregate/event GDPR tombstoning, broker-history deletion, physical backup erasure, audit-record deletion, and provider/operator key-custody operations remain outside Phase 4 MVP and must not be hidden inside unrelated remediation stories. Generic projection read-model/checkpoint erasure is active Story 1.14 scope. The optional EventStore-owned shared payload-protection engine is separately committed under post-MVP Epic 8; Stories 22.7a-d supplied prerequisites, not that engine.
 - AD-19 fixes the normalized server result as `ProjectionDispatchResult` Version 1 with bounded ordinal route entries, stable status codes, and explicit checkpoint-advance state; no equivalent result shape is accepted without a new architecture decision.
 - AD-21 makes `src/Hexalith.EventStore.Admin.UI` the single consolidated EventStore UI under resource `eventstore-admin-ui`, FrontComposer module `event-store-admin`, matching Shell/Contracts.UI `3.2.2`, and Fluent UI V5. No additional UI host is created.
 - AD-22 requires owner-approved exact EventStore artifact identity before consumer infrastructure removal; use source SHA, package versions/hashes, or deployed image digest as applicable, never the consumer repository SHA.
+- AD-23 makes EventStore the owner of the optional shared payload-protection engine, stable formats, shared key mechanics, production-backend conformance, release provenance, and G5 proof while provider/operators retain production key custody and credentials and domains retain legal policy.
 
 ### UX Design Requirements
 
@@ -335,6 +352,8 @@ FR35: Epic 7 - Backlog capability tracking.
 
 FR36: Epic 1 - Projection/query parity implementation and owner-approved runtime-pin closure.
 
+FR37: Epic 8 - Shared payload-protection security specification, engine implementation, production backend, and Parties G5 parity.
+
 ## Epic List
 
 ### Epic 1: Domain Author Self-Service Platform
@@ -398,6 +417,16 @@ Platform users can operate long-lived streams with bounded snapshot and projecti
 Operators get honest admin UX, attributable admin actions, production deployment hardening, reliable higher-tier test evidence, and explicit backlog tracks for erasure, admin OIDC, aggregate test kits, and generator hardening.
 
 **FRs covered:** FR34, FR35
+
+### Epic 8: Shared Payload Protection
+
+**Epic type:** Post-MVP Security Platform Capability
+
+Platform security owners and domain modules can use an optional, reusable, production-proven payload-protection engine without duplicating cryptographic formats and key-lifecycle mechanics, while providers/operators retain key custody and domains retain legal policy.
+
+**Sequencing note:** Story 8.1 is an approval gate for Story 8.2. Epic 8 does not block Phase 4 MVP, but Story 8.2 blocks Parties Story 8.7 migration.
+
+**FRs covered:** FR37
 
 ## Epic 1: Domain Author Self-Service Platform
 
@@ -1094,6 +1123,8 @@ So that Parties Story 8.6 resumes only against capabilities that are implemented
 **When** the packet still says `still blocked`
 **Then** the story remains `in-progress` with the blocking condition recorded and a scoped corrective item is created
 **And** Story 1.20 and Epic 1 become `done` only after the final decision is `available`.
+
+**Explicit exclusion:** Story 1.20 closes the EventStore projection/query SDK prerequisite for Parties Story 8.6 only. It does not deliver or approve the G5 payload-protection engine, `pdenc-v2`, reusable key mechanics, a production backend, or Parties Story 8.7 migration. Only Story 8.2's approved `available` proof packet may close G5.
 
 ## Epic 2: External Integration Surfaces
 
@@ -2801,3 +2832,129 @@ So that diagnostics, incrementality, authorization, request limits, safe errors,
 **When** its backlog artifact is reviewed
 **Then** it contains scope, non-goals, dependencies, risks, validation expectations, resolved first-wave items, and named target source/test artifacts for remaining work
 **And** unsupported shapes, duplicate JSON names, invalid bindings, route constraints, case-insensitive matching, referenced-contract incrementality, generated auth/error semantics, and request-size/status-location follow-ups remain auditable.
+
+## Epic 8: Shared Payload Protection
+
+Platform security owners and domain modules can use an optional, reusable, production-proven payload-protection engine without duplicating cryptographic formats and key-lifecycle mechanics, while providers/operators retain key custody and domains retain legal policy.
+
+### Story 8.1: Shared Payload-Protection Security Spec And ADR
+
+**Requirements covered:** FR37, NFR19
+**Classification:** Security/architecture gate; no runtime implementation is authorized.
+**Owner / review boundary:** Winston (Architect) with a named Security Reviewer; the EventStore owner, Release owner, Operations owner, and Parties maintainer approve their boundaries.
+**Focused validation:** independent structure/threat-model/test-vector review of `_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md` plus approval-evidence validation.
+
+As a platform security owner,
+I want the shared payload-protection ownership and durable security contract approved before implementation,
+So that the engine cannot make story-local choices that strand persisted history or weaken key custody.
+
+**Acceptance Criteria:**
+
+**Given** the EventStore-owned optional engine is proposed
+**When** the security specification is approved
+**Then** it fixes package and dependency boundaries, backend ownership, operator custody, Parties-retained policy, and whether an ADR-selected adapter requires a companion package
+**And** it does not treat an interface-only or development backend as production.
+
+**Given** `pdenc-v2` will persist durable data
+**When** the wire contract is frozen
+**Then** the canonical envelope, AES-GCM parameters, nonce/tag representation, algorithm identifiers, byte-stable AAD encoding, canonical property-path encoding, and format/version rules are test-vector ready
+**And** AAD binds tenant, domain, aggregate, event or snapshot type, property path, key version, and format, or records the explicitly approved equivalent.
+
+**Given** historical data must remain usable
+**When** compatibility is specified
+**Then** `json+pdenc-v1`, `json-redacted`, legacy-unprotected, current Story 22.7 metadata, and snapshot reads have explicit routing and typed failure behavior
+**And** rollout, mixed history, downgrade, and rollback-after-v2-write policies are defined.
+
+**Given** policy and key lifecycle are shared
+**When** contracts are frozen
+**Then** `IPersonalDataPolicy`, `IErasureStateProvider`, policy discovery including `PersonalDataAttribute` or an approved equivalent, key paths, state keys, actor/reminder names, metric names, audit fields, and versioning rules are exact
+**And** storage, wrapping, rotation, retry, circuit breaking, cache invalidation, and key zeroing responsibilities are assigned.
+
+**Given** a production backend is required
+**When** backend selection and restrictions are approved
+**Then** at least one non-development adapter, its integration environment, credentials/custody boundary, failure taxonomy, and conformance evidence are named
+**And** LocalDev/in-memory startup restrictions outside Development are explicit.
+
+**Given** the security review evaluates misuse and failure
+**When** the threat model and test vectors are inspected
+**Then** cross-tenant/cross-aggregate substitution, nonce reuse, path ambiguity, metadata tampering, malformed/oversized envelopes, key deletion, provider denial/unavailability, cache staleness, downgrade, and rollback are covered
+**And** no-leak boundaries include logs, traces, metrics, exceptions, ProblemDetails, evidence, exports, processing records, certificates, and reports.
+
+**Given** Story 8.1 completes
+**When** its output is recorded
+**Then** the exact path is `_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md`
+**And** it records approvers, date, accepted scope, rejected alternatives, open decisions, threat model, test vectors, migration posture, and explicit authorization for Story 8.2 to start.
+
+### Story 8.2: Shared Payload-Protection Engine And Parties G5 Parity
+
+**Requirements covered:** FR37, NFR1-NFR4, NFR7, NFR9-NFR12, NFR16-NFR17, NFR19
+**Owner / review boundary:** Amelia (Developer); a named EventStore owner and Security Reviewer approve implementation; Murat reviews verification; the Release owner approves artifact provenance; the Parties maintainer approves consumer parity.
+**Focused validation:** EventStore contract/engine/server/package suites; ADR-selected production-backend integration; owner golden vectors; Parties local/shared dual-provider compatibility; no-leak scans; package-only consumer validation; post-v2-write rollback rehearsal.
+
+As a platform security owner,
+I want an optional shared payload-protection engine built on EventStore's provider-neutral hooks,
+So that domain modules can protect persisted payloads without implementing reusable cryptographic and key-lifecycle infrastructure.
+
+**Acceptance Criteria:**
+
+**Given** implementation preflight runs
+**When** Story 8.2 starts
+**Then** the approved Story 8.1 specification exists at the exact required path and explicitly authorizes implementation
+**And** code tasks cite the approved sections they satisfy.
+
+**Given** the optional engine is packaged
+**When** release/package validation runs
+**Then** `Hexalith.EventStore.PayloadProtection` and any ADR-approved companion adapter are packable, opt-in, centrally versioned, and manifest-governed
+**And** the package cannot replace the current no-op default without explicit DI configuration and production-safe option validation.
+
+**Given** Story 8.2 adds one engine package or an ADR-approved engine/adapter package set
+**When** release inventory is updated
+**Then** `tools/release-packages.json`, `AGENTS.md`, inventory tests, package metadata, SBOM/provenance evidence, and package-only consumer validation agree on the exact set
+**And** the current 14-package inventory changes only in the same implementation slice that creates the approved packable project or projects.
+
+**Given** a selected event property or snapshot value is written
+**When** `pdenc-v2` protection runs
+**Then** AES-GCM authenticated data binds tenant, domain, aggregate, event or snapshot type, canonical property path, key version, and format—or the exact approved equivalent—and matches byte-stable golden vectors
+**And** nonce reuse, unbounded input, path ambiguity, and cross-scope ciphertext substitution fail safely.
+
+**Given** existing history is read
+**When** the engine encounters `json+pdenc-v1`, `json-redacted`, legacy-unprotected data, current Story 22.7 metadata, protected snapshots, or mixed-version streams
+**Then** every supported form remains readable according to the approved policy
+**And** unreadable history never silently downgrades to plaintext or unprotected state.
+
+**Given** protection cannot return plaintext
+**When** a key is deleted, missing, denied, or unavailable, or metadata/ciphertext is malformed, tampered, opaque, or version-unknown
+**Then** those conditions remain separate bounded typed outcomes with explicit retry/permanence semantics
+**And** logs, traces, metrics, exceptions, ProblemDetails, evidence, exports, processing records, certificates, and reports pass no-leak scans.
+
+**Given** reusable key lifecycle is enabled
+**When** keys are created, stored, wrapped, unwrapped, rotated, cached, invalidated, erased, retried, audited, or denied
+**Then** generic behavior is supplied behind shared contracts with bounded retry and circuit-breaker behavior
+**And** cache invalidation and zeroing of plaintext key buffers are verified on success, failure, cancellation, rotation, and erasure paths.
+
+**Given** production proof is requested
+**When** backend conformance runs
+**Then** at least one Story 8.1-selected, pluggable non-development backend is exercised against its real service boundary
+**And** LocalDev/in-memory implementations cannot satisfy production proof and fail startup outside their allowed environment.
+
+**Given** policy and erasure behavior vary by domain
+**When** `IPersonalDataPolicy`, `IErasureStateProvider`, and approved discovery metadata are used
+**Then** the engine remains domain-neutral while Parties can retain its legal policy, erasure orchestration, certificates/reports, and UX semantics
+**And** no Parties-specific rule enters EventStore.
+
+**Given** compatibility validation runs
+**When** EventStore owner goldens and Parties dual-provider tests execute
+**Then** protected/redacted/legacy reads, typed unreadable outcomes, key zeroing, no-leak diagnostics, Art.20 exports, Art.30 processing records, erasure reports/certificates, and persisted state pass through both retained Parties-local and shared-provider paths
+**And** HTTP-only, mock-only, or interface-shape evidence cannot close G5.
+
+**Given** rollback is rehearsed
+**When** the shared engine has written `pdenc-v2` data and the approved rollback procedure is executed
+**Then** retained software and configuration can read or safely route that history according to the ADR without data or metadata loss
+**And** switching DI before any v2 write is explicitly insufficient evidence.
+
+**Given** completion is requested
+**When** the G5 proof packet is reviewed
+**Then** it records exact EventStore source SHA, package IDs/versions/hashes, production-backend identity/version, test commands/results, persisted evidence, named reviewer approvals, limitations, historical-data policy, and rollback instructions
+**And** the packet decision is `available`; otherwise Story 8.2 and Epic 8 remain non-`done` and Parties G5 remains `needs-additive-api`.
+
+**Produces:** `_bmad-output/implementation-artifacts/8-2-shared-payload-protection-engine-and-parties-g5-parity-proof-packet.md`.

@@ -155,7 +155,7 @@ Rehydration follows a snapshot-first strategy: load the most recent snapshot (if
 
 With the current state in hand, the actor sends your command to the domain service — the only place where your business logic runs.
 
-The actor resolves which domain service handles this tenant and domain combination (via the [DAPR configuration store](https://docs.dapr.io/developing-applications/building-blocks/configuration/) or `appsettings.json`), then uses [DAPR service invocation](https://docs.dapr.io/developing-applications/building-blocks/service-invocation/) to call the domain service's `/process` endpoint. In the sample domain, this reaches `CounterProcessor`, which receives the command and current state, runs your pure business logic, and returns a `DomainResult`.
+The actor resolves which domain service handles this tenant and domain combination (via the [DAPR configuration store](https://docs.dapr.io/developing-applications/building-blocks/configuration/) or `appsettings.json`), then uses [DAPR service invocation](https://docs.dapr.io/developing-applications/building-blocks/service-invocation/) to call the domain service's `/process` endpoint. In the sample domain, the domain-service SDK discovers `CounterAggregate`, invokes its typed handler with the command and current state, and returns the resulting `DomainResult`.
 
 For the Counter domain, the `Handle` method is a pure function with no infrastructure access:
 
@@ -163,8 +163,7 @@ For the Counter domain, the `Handle` method is a pure function with no infrastru
 // Pure function: Command + State -> Events (no infrastructure access)
 public static DomainResult Handle(IncrementCounter command, CounterState? state)
 {
-    int currentValue = state?.Value ?? 0;
-    return DomainResult.Success(new CounterIncremented(currentValue + command.Amount));
+    return DomainResult.Success(new IEventPayload[] { new CounterIncremented() });
 }
 ```
 

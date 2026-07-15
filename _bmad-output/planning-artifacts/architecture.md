@@ -7,16 +7,17 @@ paradigm: DAPR-backed hexagonal event-sourcing platform
 scope: Hexalith.EventStore Phase 4 implementation readiness recovery
 status: final
 created: 2026-07-05
-updated: 2026-07-15
+updated: 2026-07-16
 binds:
-  - FR1-FR36
-  - NFR1-NFR18
+  - FR1-FR37
+  - NFR1-NFR19
 sources:
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/epics.md
   - _bmad-output/planning-artifacts/implementation-readiness-report-2026-07-05.md
   - _bmad-output/planning-artifacts/implementation-readiness-report-2026-07-15.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-16.md
   - _bmad-output/implementation-artifacts/spec-dapr-global-event-ordering.md
   - docs/brownfield/architecture.md
   - docs/brownfield/integration-architecture.md
@@ -51,7 +52,7 @@ flowchart LR
 
 ### AD-1 - DAPR-Backed Hexagonal Event Sourcing [ADOPTED]
 
-- **Binds:** all Phase 4 epics, FR1-FR36, NFR1-NFR18
+- **Binds:** all current epics, FR1-FR37, NFR1-NFR19
 - **Prevents:** one team treating EventStore as a CRUD web API while another builds actor-owned event sourcing.
 - **Rule:** The system remains CQRS plus DDD plus event sourcing on DAPR state, actors, pub/sub, and service invocation, with Aspire owning local orchestration and deployable topology seed.
 
@@ -282,6 +283,16 @@ Existing synchronous single-projection consumers continue through an explicitly 
 
 The consuming repository's own commit SHA is never compared to the EventStore SHA. Without owner approval or a matching dependency/runtime identity, the consumer keeps its local infrastructure and the adoption child remains non-`done`; generic EventStore platform work may continue independently.
 
+### AD-23 - EventStore Owns The Optional Shared Payload-Protection Engine [ADOPTED]
+
+- **Binds:** FR37, NFR1-NFR4, NFR7, NFR9-NFR12, NFR16-NFR17, NFR19
+- **Prevents:** consuming domains implementing reusable cryptography and key lifecycle independently, or operators mistaking provider-neutral hooks, an interface-only backend, or an in-memory backend for production payload protection.
+- **Rule:** EventStore owns the optional `Hexalith.EventStore.PayloadProtection` engine, stable `pdenc-v2` envelope and byte-stable AAD contract, backward readers, `IPersonalDataPolicy` and `IErasureStateProvider` seams, shared key mechanics, backend abstraction, production-backend conformance, goldens, release provenance, and Parties G5 proof. Provider/operators own production root-key and key-encryption-key custody, credentials, KMS/HSM/secret-store service operation, and environment policy. Parties retains domain legal policy, erasure orchestration semantics, certificates/reports, and UX/copy unless a separately approved ADR moves a named concern.
+
+At least one Story 8.1-selected non-development backend adapter must be implemented and integration-proven by Story 8.2. An interface, LocalDev provider, or in-memory implementation cannot satisfy production proof. The security specification may place an adapter in a companion package when dependency or credential boundaries require it, but it may not move the stable engine contract back into a consuming domain or silently create a second contract authority.
+
+Implementation is blocked until `_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md` records named architecture and security approval for package boundaries; the canonical `pdenc-v2` envelope and AAD bytes; `json+pdenc-v1`, `json-redacted`, legacy-unprotected, metadata, and snapshot reads; policy/discovery seams; key paths; state keys; actor/reminder/metric names; backend restrictions; versioning; rollout; mixed history; downgrade; and rollback after v2 writes.
+
 ## Consistency Conventions
 
 | Concern | Convention |
@@ -298,10 +309,11 @@ The consuming repository's own commit SHA is never compared to the EventStore SH
 | Projection lifecycle | `Current`, `Stale`, `Rebuilding`, `Degraded`, `Unavailable`, and `LocalOnly` are preserved only as projection-backed evidence. Handler-computed or unknown provenance renders `Unknown`; lifecycle is not inferred from ETags or SignalR. |
 | Projection persistence | Read-model/checkpoint erasure and detail/index batches follow AD-7; async named fan-out follows AD-19; the normalized `ProjectionDispatchResult` makes each route's `Advanced`/`NotAdvanced` checkpoint decision explicit after required durable work. |
 | Projection rebuild | Full/incremental semantics are explicit; paged work stays staged and replay-equivalent per AD-20. |
+| Payload protection | EventStore owns the optional engine, stable formats, shared mechanics, production-backend conformance, and G5 proof; provider/operators own production key custody and credentials; domains retain legal policy per AD-23. The no-op provider remains the default until the optional engine is explicitly registered. |
 | Sidecar control-plane headers | Outbound `dapr-app-id` / `dapr-api-token` are handler-owned, **replaced not appended**, set authoritatively from config by the single platform handler; caller/inbound-forwarded values are never routed (AD-18). |
 | UI | `src/Hexalith.EventStore.Admin.UI` is the single consolidated EventStore UI and retains the `eventstore-admin-ui` resource/container identity. It composes matching FrontComposer `3.2.2` Shell/Contracts.UI dependencies and Fluent UI Blazor V5. `Admin.UI` owns the canonical dashboard route table; non-canonical legacy routes redirect to canonical deep links under the selected `event-store-admin` / **Event Store Admin** module entry. UI success is projection-confirmed, support-safe, accessible, and localized; detailed UX flows live in the canonical UX artifacts. |
 | Runtime topology | AppHost resource names, DAPR app IDs, component scopes, ACL policies, pub/sub topics, and deployment overlays remain aligned by tests. |
-| Release | Restore/build use `Hexalith.EventStore.slnx`; unit tests run per project; package versions live in central props; release output is manifest-driven. Central .NET/ASP.NET security patch pins move together per AD-11. |
+| Release | Restore/build use `Hexalith.EventStore.slnx`; unit tests run per project; package versions live in central props; release output is manifest-driven. Central .NET/ASP.NET security patch pins move together per AD-11. The inventory remains 14 packages until Story 8.2 creates an approved packable engine project; engine and any approved companion adapter then update the manifest, inventory guidance, package governance, and package-only consumer validation atomically. |
 
 ## Stack
 
@@ -339,6 +351,7 @@ src/
   Hexalith.EventStore.RestApi.Generators/ # analyzer-only typed REST controller generator
   Hexalith.EventStore.Aspire/           # Aspire EventStore and domain-module topology extensions
   Hexalith.EventStore.ServiceDefaults/  # telemetry, health, discovery, resilience defaults
+  Hexalith.EventStore.PayloadProtection/ # optional shared engine and approved production-backend boundary
   Hexalith.EventStore.Admin.*/          # admin abstractions, server, CLI, MCP; Admin.UI is the consolidated EventStore UI
 samples/
   Hexalith.EventStore.Sample/           # domain-centric reference service
@@ -360,6 +373,8 @@ flowchart TB
         SampleApi[sample-api]
         SampleUI[sample-blazor-ui]
         Security[security]
+        PayloadProtection[optional payload-protection engine]
+        KeyBackend[(provider-operated KMS/HSM/secret-store backend)]
         StateStore[(statestore)]
         PubSub{{pubsub}}
     end
@@ -370,6 +385,8 @@ flowchart TB
     AppHost --> SampleApi
     AppHost --> SampleUI
     AppHost --> Security
+    EventStore --> PayloadProtection
+    PayloadProtection --> KeyBackend
     EventStore --> StateStore
     EventStore --> PubSub
     AdminServer -->|support-safe operational reads only| StateStore
@@ -391,6 +408,7 @@ flowchart TB
 | FR26, FR28, FR32 Security and tenant isolation | gateway auth, Admin.Server auth, DAPR ACLs, AppHost, deployment templates | AD-3, AD-9, AD-10, AD-12, AD-16, AD-18 |
 | FR33 Bounded cost and event evolution | spec artifacts, `Client`/`Server` public seams, snapshots, projections, upcasters | AD-6, AD-7, AD-13, AD-20 |
 | FR34-FR35 Operator trust and backlog | Admin surfaces, consolidated EventStore UI, delivery docs, deployment hardening, integration lanes, backlog artifacts | AD-8, AD-10, AD-12, AD-13, AD-14, AD-15, AD-16, AD-21 |
+| FR37 Optional shared payload protection and Parties G5 parity | `Contracts`, optional `PayloadProtection` engine, ADR-approved production adapter, `Server` hook integration, `Testing`, release evidence, Parties consumer proof | AD-5, AD-9, AD-10, AD-11, AD-12, AD-13, AD-22, AD-23 |
 
 ## Deferred
 
@@ -402,4 +420,4 @@ flowchart TB
 | Exact tenant-vs-domain global-position sharding design | FR24 requires renegotiating the frozen global-ordering spec before implementation. AD-6 preserves current semantics until then. |
 | Folded snapshot payload shape, projection sequence guard algorithm, event upcaster ordering, and cancellation contract details | FR33 explicitly requires spec-first stories 6.1, 6.3, and 6.5 before implementation. |
 | Production mTLS trust domain, namespace values, secret-store provider, and deployment overlay specifics | The invariant is topology parity and fail-closed app-layer security. Environment-specific values belong in deployment hardening stories and deploy templates. |
-| Full aggregate/event GDPR tombstoning, broker-history deletion, backup erasure, crypto-shredding, Admin interactive OIDC login, aggregate test kit, and REST generator hardening backlog | PRD marks these as backlog artifacts for Phase 4 MVP. Generic projection read-model/checkpoint erasure is active FR5/Story 1.14 scope and is not deferred here. |
+| Full aggregate/event GDPR tombstoning, broker-history deletion, physical backup erasure, audit-record deletion, provider/operator key-custody operations, Admin interactive OIDC login, aggregate test kit, and REST generator hardening backlog | These remain outside Phase 4 MVP. Generic projection read-model/checkpoint erasure is active FR5/Story 1.14 scope. The optional EventStore-owned shared payload-protection engine is separately committed as post-MVP Epic 8 and remains unavailable until its ADR, implementation, production backend, release, G5 proof, and consumer rollback complete. |

@@ -9,6 +9,9 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+
 using Shouldly;
 
 /// <summary>
@@ -486,13 +489,10 @@ public sealed class DomainModuleAuthoringGuardrailTests
     [Fact]
     public void DomainModules_DoNotDeclareLegacyNonAggregateDomainProcessors()
     {
-        Regex processorDeclaration = new(
-            @"\b(class|record)\s+\w+(?:\s*<[^>{}]*>)?\s*:[^{;]*\b(?:[\w.]+\.)?IDomainProcessor\b",
-            RegexOptions.Compiled | RegexOptions.Singleline);
         string[] offenders = DomainModuleRoots()
             .SelectMany(root => Directory
                 .EnumerateFiles(root.Path, "*.cs", SearchOption.AllDirectories)
-                .Where(file => !IsBuildArtifact(file) && !IsTestSource(file) && processorDeclaration.IsMatch(File.ReadAllText(file)))
+                .Where(file => !IsBuildArtifact(file) && !IsTestSource(file) && DeclaresDomainProcessor(File.ReadAllText(file)))
                 .Select(file => $"{root.Name}: {Path.GetRelativePath(root.Path, file)}"))
             .ToArray();
 
@@ -500,6 +500,27 @@ public sealed class DomainModuleAuthoringGuardrailTests
             "Domain modules must prove convention-discovered EventStoreAggregate<TState> handlers, not "
             + "legacy hand-written IDomainProcessor paths. Offending files: "
             + string.Join(", ", offenders));
+    }
+
+    [Theory]
+    [InlineData("sealed class Processor : IDomainProcessor { }")]
+    [InlineData("record class Processor(int Value) : global::Hexalith.EventStore.Contracts.IDomainProcessor;")]
+    [InlineData("readonly struct Processor : Hexalith.EventStore.Contracts.IDomainProcessor { }")]
+    [InlineData("readonly record struct Processor(int Value) : IDomainProcessor;")]
+    [InlineData("class @Processor<T>(T value) : Alias::@IDomainProcessor { }")]
+    public void GuardrailHelpers_DetectEveryDomainProcessorTypeDeclaration(string source)
+    {
+        DeclaresDomainProcessor(source).ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData("// sealed class Processor : IDomainProcessor { }")]
+    [InlineData("const string text = \"sealed class Processor : IDomainProcessor { }\";")]
+    [InlineData("sealed class Aggregate : EventStoreAggregate<State> { }")]
+    [InlineData("sealed class Wrapper : IWrapper<IDomainProcessor> { }")]
+    public void GuardrailHelpers_IgnoreNonDomainProcessorSyntax(string source)
+    {
+        DeclaresDomainProcessor(source).ShouldBeFalse();
     }
 
     [Fact]
@@ -773,6 +794,25 @@ public sealed class DomainModuleAuthoringGuardrailTests
             || ContainsGenericServiceInvocation(text, @"(?:[\w.]+\.)?(?:IActorStateManager|IStateManager)", ActorStateAccessMarkers)
             || ContainsInvocationOnCallResult(text, ActorStateAccessMarkers);
     }
+
+    private static bool DeclaresDomainProcessor(string source)
+        => CSharpSyntaxTree
+            .ParseText(source)
+            .GetRoot()
+            .DescendantNodes()
+            .OfType<TypeDeclarationSyntax>()
+            .Any(static declaration => declaration.BaseList?.Types
+                .Any(static baseType => RightmostTypeIdentifier(baseType.Type) == "IDomainProcessor") == true);
+
+    private static string? RightmostTypeIdentifier(TypeSyntax type)
+        => type switch
+        {
+            IdentifierNameSyntax identifier => identifier.Identifier.ValueText,
+            GenericNameSyntax generic => generic.Identifier.ValueText,
+            QualifiedNameSyntax qualified => RightmostTypeIdentifier(qualified.Right),
+            AliasQualifiedNameSyntax alias => RightmostTypeIdentifier(alias.Name),
+            _ => null,
+        };
 
     private static bool ContainsDaprStateAccess(string text)
     {

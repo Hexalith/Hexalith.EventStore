@@ -2,11 +2,12 @@
 title: eventstore Phase 4 Implementation Readiness Recovery PRD
 status: final
 created: 2026-07-05
-updated: 2026-07-13
+updated: 2026-07-16
 project: eventstore
 source_artifacts:
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-13.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-16.md
   - _bmad-output/planning-artifacts/implementation-readiness-report-2026-07-05.md
   - _bmad-output/planning-artifacts/epics.md
 ---
@@ -15,7 +16,7 @@ source_artifacts:
 
 ## 0. Document Purpose
 
-This PRD is the authoritative Phase 4 functional and non-functional requirements baseline for Hexalith.EventStore. It exists to close the implementation-readiness blocker reported on 2026-07-05: the original epic plan contained FR1-FR35 and NFR1-NFR18, but no standalone PRD existed for PRD-to-epic traceability. The approved 2026-07-11 Parties parity correction adds FR36.
+This PRD is the authoritative Phase 4 functional and non-functional requirements baseline for Hexalith.EventStore. It exists to close the implementation-readiness blocker reported on 2026-07-05: the original epic plan contained FR1-FR35 and NFR1-NFR18, but no standalone PRD existed for PRD-to-epic traceability. The approved 2026-07-11 Parties projection/query parity correction adds FR36. The approved 2026-07-16 payload-protection ownership correction adds FR37 and NFR19 as a committed post-MVP capability; it does not enlarge the Phase 4 MVP.
 
 This document owns product requirement intent, MVP scope, non-goals, success metrics, and FR/NFR traceability. `_bmad-output/planning-artifacts/epics.md` owns implementation slicing and sequencing. The required architecture and UX planning artifacts remain separate handoffs and must not be replaced by this PRD.
 
@@ -201,7 +202,17 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 | --- | --- |
 | FR36 | Before a consuming module deletes local projection/query infrastructure, EventStore must produce an owner-reviewed parity packet proving every required capability through production paths, record an approved runtime SHA, and require the consumer's checked-out EventStore SHA to match that approval. |
 
-**Done evidence:** Stories 1.9-1.14 are complete and reviewed; Story 1.15 records every parity item as `available`, cites persisted production-path evidence, records explicit owner approval, and names the exact EventStore runtime SHA that Parties verifies before Story 8.6 resumes.
+**Done evidence:** Stories 1.14-1.19 are complete and reviewed; Story 1.20 records every projection/query parity item as `available`, cites persisted production-path evidence, records explicit owner approval, and names the exact EventStore runtime SHA that Parties verifies before Story 8.6 resumes. Story 1.20 does not cover payload-protection G5 or Parties Story 8.7.
+
+### 6.9 Optional Shared Payload Protection
+
+**Description:** Domain modules may opt into a reusable EventStore-owned payload-protection engine without duplicating durable cryptographic formats and key-lifecycle infrastructure, while providers/operators retain production key custody and domains retain legal policy.
+
+| ID | Requirement |
+| --- | --- |
+| FR37 | EventStore must provide an optional shared payload-protection engine package built on `IEventPayloadProtectionService` and the existing provider-neutral metadata, outcome, workflow, and redaction contracts. The engine must implement the approved `pdenc-v2` format and byte-stable authenticated-data contract, preserve `json+pdenc-v1`, `json-redacted`, legacy-unprotected, and snapshot read compatibility, expose `IPersonalDataPolicy` and `IErasureStateProvider` extension seams, supply reusable key-lifecycle and resilience mechanics behind shared contracts, include at least one integration-proven production backend, and produce EventStore-owner plus Parties dual-provider parity and rollback evidence before G5 is available. |
+
+**Done evidence:** The approved security ADR exists; package/API inventory and production-backend integration are verified; EventStore owner goldens and Parties dual-provider compatibility pass; rollback succeeds after `pdenc-v2` writes; and the G5 packet records exact source, package, backend, review, limitation, historical-data, and rollback identity.
 
 ## 7. Cross-Cutting Non-Functional Requirements
 
@@ -225,6 +236,7 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 | NFR16 | Integration and higher-tier tests must assert persisted state-store/read-model/end-state evidence, not only HTTP status codes or mock call counts. Erasure, batch recovery, handler idempotency, and rebuild equivalence require persisted detail, index, marker, lifecycle, and checkpoint evidence through their production paths. |
 | NFR17 | Operational hardening must support secret stores, DAPR app health checks, readiness-tagged health checks, resiliency targets, immutable image tags, and documented crypto-shred boundaries. |
 | NFR18 | AOT/trimming is explicitly not a target while reflection conventions remain load-bearing, and that constraint must be documented. |
+| NFR19 | Payload protection must fail closed and preserve byte-stable, versioned cryptographic semantics. Deleted, missing, denied, unavailable, malformed, tampered, and opaque states must remain bounded typed outcomes. Key material must be zeroed when no longer needed; caches must be invalidated on lifecycle changes; development-only backends must not start as production proof; and rollout, historical reads, downgrade, and rollback after writing the newest format must be integration-tested. |
 
 ## 8. Constraints And Guardrails
 
@@ -271,7 +283,7 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 
 ### 9.2 Out Of Scope For MVP
 
-- Full GDPR aggregate/event tombstoning, broker-history deletion, backup erasure, and crypto-shredding; backlog artifact only. Generic projection read-model/checkpoint erasure is in scope under FR5 and Story 1.9.
+- Full GDPR aggregate/event tombstoning, broker-history deletion, physical backup erasure, audit-record deletion, and provider/operator key-custody operations remain outside the Phase 4 MVP under GDPR-1. Generic projection read-model/checkpoint erasure is in scope under FR5 and Story 1.14. The optional shared payload-protection engine and Parties G5 parity are a committed post-MVP capability in Epic 8; Stories 22.7a-d supplied prerequisites, not that engine.
 - Admin interactive OIDC login implementation; backlog artifact only.
 - Aggregate test kit implementation; backlog artifact only.
 - REST generator hardening beyond the approved Epic 2 proof scope; backlog artifact only.
@@ -279,12 +291,18 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 - Moving generated REST controllers into interactive UI hosts.
 - Treating HTTP `202`, SignalR notification, or command acceptance as projection-confirmed UI success.
 
+### 9.3 Committed Post-MVP Scope
+
+- Epic 8 owns the optional shared payload-protection security specification and implementation under FR37/NFR19.
+- Epic 8 does not block Phase 4 MVP completion, but Story 8.2 blocks Parties Story 8.7 migration until the engine is implemented, reviewed, released or pinned, and proven through dual-provider compatibility and rollback after `pdenc-v2` writes.
+- Provider/operator root-key custody, production credentials, KMS/HSM/secret-store service operation, and environment policy remain operational responsibilities rather than EventStore-owned secret material.
+
 ## 10. Success Metrics
 
 **Primary**
 
-- **SM1:** Implementation readiness re-run no longer reports missing PRD as a blocker. Validates FR1-FR36 and NFR1-NFR18 traceability.
-- **SM2:** Every FR1-FR36 maps to at least one epic and story in `epics.md`. Validates all functional requirements.
+- **SM1:** Implementation readiness re-run no longer reports missing PRD as a blocker. Validates Phase 4 FR1-FR36 and NFR1-NFR18 traceability plus the separately gated post-MVP FR37/NFR19 commitment.
+- **SM2:** Every FR1-FR37 maps to at least one epic and story in `epics.md`, with Epic 8 explicitly classified post-MVP. Validates all committed functional requirements without silently expanding Phase 4.
 - **SM3:** High-risk NFRs NFR1-NFR4, NFR7, NFR10-NFR11, and NFR14-NFR17 map to concrete story coverage before Phase 4 implementation resumes. Validates security, release, UI, test, and operational hardening NFRs.
 
 **Secondary**
@@ -292,6 +310,7 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 - **SM4:** Oversized stories identified by the readiness report are split or explicitly accepted as coordinated slices with named owners and validation commands. Validates implementation readiness and reviewability.
 - **SM5:** Required architecture and UX artifacts exist under `_bmad-output/planning-artifacts` and are referenced by the epic plan. Validates downstream usability.
 - **SM6:** The projection/query SDK parity packet is owner-approved as `available`, every required production-path proof passes, and the consuming Parties checkout matches the approved EventStore runtime SHA before Story 8.6 resumes. Validates FR36 and the parity implementation gate.
+- **SM7:** The payload-protection G5 packet is owner/security-approved as `available`, exact source/package/backend identities are recorded, EventStore goldens and Parties dual-provider parity pass, and rollback succeeds after `pdenc-v2` writes before Parties Story 8.7 resumes. Validates FR37/NFR19.
 
 **Counter-Metrics**
 
@@ -341,6 +360,7 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 | FR34 | Epic 7 - Delivery, admin, deploy, and IntegrationTests recovery |
 | FR35 | Epic 7 - Backlog capability tracking |
 | FR36 | Epic 1 - Projection/query parity implementation and owner-approved runtime-pin closure |
+| FR37 | Epic 8 - Shared payload-protection security specification, engine implementation, production backend, and Parties G5 parity |
 
 ### 11.2 High-Risk NFR Story Coverage
 
@@ -359,12 +379,15 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 | NFR15 | 7.2 |
 | NFR16 | 1.9, 1.10, 1.11, 1.12, 1.13, 1.14, 1.15, 7.4 |
 | NFR17 | 5.6, 7.3 |
+| NFR19 | 8.1, 8.2 |
 
 ### 11.3 Required Follow-On Readiness Work
 
 The PRD, architecture, UX, and epics artifacts now exist under `_bmad-output/planning-artifacts` and reference each other. The remaining readiness gate is verification: re-run implementation readiness after the story-quality corrections below are reviewed.
 
-- Parties projection/query parity remains blocked until Stories 1.9-1.15 complete and Story 1.15 records an owner-approved `available` packet tied to the exact runtime SHA consumed by Parties. Stories 1.9-1.14 may be implemented and reviewed in parallel once the contracts they directly consume exist; the approved capability sequence governs evidence acceptance and final parity closure, not serial story execution. Story 1.15 must still verify that Stories 1.9-1.14 are complete and reviewed before it may close the gate.
+- Parties projection/query parity remains blocked until Stories 1.14-1.19 complete and Story 1.20 records an owner-approved `available` packet tied to the exact runtime SHA consumed by Parties. Stories 1.14-1.19 may be implemented and reviewed in parallel once the contracts they directly consume exist; the approved capability sequence governs evidence acceptance and final parity closure, not serial story execution. Story 1.20 must still verify that Stories 1.14-1.19 are complete and reviewed before it may close the Story 8.6 gate. Story 1.20 does not close G5.
+
+- Parties payload-protection G5 remains `needs-additive-api` until Story 8.1's approved security specification gates Story 8.2, and Story 8.2 supplies an owner/security-approved `available` packet with exact source/package/backend identities, EventStore goldens, Parties dual-provider compatibility, and rollback after `pdenc-v2` writes.
 
 - `epics.md` contains coordinated-slice gates for Stories 1.3, 1.6, 2.4, 3.7, 5.6, 7.2, 7.3, and 7.4, including owners, review boundaries, and validation commands. Implementation story files must either split those stories or carry the coordinated-slice gate forward.
 - Story 5.2 now requires concrete request-size limits: `1_048_576` bytes for representative admin JSON write/sandbox bodies and `10 * 1024 * 1024` bytes for `AdminBackupsController.ImportStream`, with bounded rejection tests and no upstream service invocation on excessive requests.
@@ -380,8 +403,8 @@ The PRD, architecture, UX, and epics artifacts now exist under `_bmad-output/pla
 
 ## 12. Open Questions
 
-No PRD-level product-scope questions are open after the approved 2026-07-05 readiness-recovery proposal. The remaining open work is downstream planning and backlog refinement listed in section 11.3.
+No PRD-level ownership or MVP-scope questions are open after the approved 2026-07-16 payload-protection correction. The remaining payload-protection design decisions are intentionally gated by Story 8.1 and the exact approved security specification listed in section 11.3.
 
 ## 13. Assumptions Index
 
-No inline `[ASSUMPTION]` tags are present in this PRD. The PRD follows the approved change proposal and preserves Phase 4 scope without reduction.
+No inline `[ASSUMPTION]` tags are present in this PRD. The PRD follows the approved change proposals, preserves Phase 4 scope without reduction or expansion, and records Epic 8 separately as committed post-MVP work.

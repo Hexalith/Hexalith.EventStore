@@ -9,11 +9,13 @@ guide covers the **provider-neutral hook contract** introduced in Story 22.7a:
 - The fail-closed rules EventStore applies when it encounters legacy, malformed, or unknown
   protection metadata.
 
-> **Out of scope for this guide.** Real encryption providers, key lifecycle (deletion, rotation,
-> invalidation), missing-key behavior, crypto-shredding workflows, restored-backup safety, and
-> full operational redaction across the Admin UI, CLI, MCP, ProblemDetails, and backup tooling are
-> tracked in Stories 22.7b, 22.7c, and 22.7d. This page documents only the hook and metadata
-> contract that those follow-up stories build on.
+> **Delivery boundary.** Stories 22.7a-d delivered provider-neutral protection hooks and metadata,
+> typed unreadable outcomes, key-lifecycle and restored-backup workflow contracts, and fail-closed
+> redaction/recovery behavior. They did **not** deliver a real encryption engine, `pdenc-v2`,
+> personal-data policy seams, reusable key storage/wrapping/rotation mechanics, KMS/HSM/secret-store
+> integration, or a production backend. Those capabilities remain unavailable until post-MVP Epic
+> 8 is implemented, released or pinned, and proven through its dedicated G5 packet. Without
+> explicit engine registration, the no-op provider remains the default.
 
 ## Default behavior
 
@@ -229,12 +231,14 @@ state, restore admission decisions, and a single canonical readability decision 
 read, publish, replay, rebuild, snapshot-load, backup-admission, admin, CLI, and MCP surface
 consumes.
 
-> **Out of scope.** Real encryption providers, key vault / KMS integration, certificate
-> management, DAPR secret-store wiring, legal hold UX, jurisdiction-specific compliance
-> automation, full operational redaction (Story 22.7d), and a physical backup engine remain
-> deferred. Admin backup trigger/validate/restore/import operations still return a
-> deferred result; bounded single-stream export uses the EventStore stream-read path.
-> The restored-backup admission contracts return `DeferredValidation` until the engine lands.
+> **Out of scope for Story 22.7c.** Real encryption providers, key vault / KMS integration,
+> certificate management, DAPR secret-store wiring, legal hold UX, jurisdiction-specific
+> compliance automation, full operational redaction (Story 22.7d), and a physical backup engine
+> were not delivered by this workflow-contract story. The optional shared engine is now committed
+> separately under Epic 8, while provider/operator key custody and physical backup remain outside
+> that engine. Admin backup trigger/validate/restore/import operations still return a deferred
+> result; bounded single-stream export uses the EventStore stream-read path. The restored-backup
+> admission contracts return `DeferredValidation` until the physical backup engine lands.
 
 ### Canonical readability decision
 
@@ -436,12 +440,21 @@ no captured string from a public surface contains any sentinel. Failure messages
 Vault / DAPR secret-store integration, no physical backup engine, no skip-past-unreadable replay
 policy, no DW4 validator schema changes, and no mutation of immutable persisted event payloads.
 
-## Deferred to Story 22.7d
+## Still deferred after Stories 22.7a-d
 
 - ~~Replay/rebuild/backup-validation artifact scans — Story 22.7d-4.~~ **Completed by Story 22.7d-4.**
-- Real encryption provider, key vault integration, cloud KMS, DAPR secret-store integration.
+- The optional shared encryption engine, `pdenc-v2`, personal-data/erasure policy seams, reusable
+  key mechanics, and at least one production backend are committed under Epic 8 Stories 8.1-8.2.
+  They remain unavailable until the approved security spec, implementation, release or pin,
+  dedicated G5 proof packet, Parties dual-provider parity, and post-v2-write rollback complete.
+- Physical backup implementation, aggregate/event deletion, provider/operator credentials and key
+  custody, legal hold UX, and jurisdiction-specific compliance automation remain outside Story 8.2.
 
 ## Registering a custom provider
+
+The example below demonstrates the existing hook contract only. It is caller-supplied code, is not
+the EventStore shared engine, does not define `pdenc-v2`, and cannot count as a production-backend
+or Parties G5 proof.
 
 ```csharp
 public sealed class MyProtectionService : IEventPayloadProtectionService {
