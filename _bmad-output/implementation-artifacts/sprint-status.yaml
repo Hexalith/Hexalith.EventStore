@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-07-15T18:31:25+02:00
+# last_updated: 2026-07-15T21:38:15+02:00
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T20:01:46+02:00
-last_updated: 2026-07-15T18:31:25+02:00
+last_updated: 2026-07-15T21:38:15+02:00
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -58,7 +58,7 @@ development_status:
   1-7-domain-module-hosting-observability: done
   1-8-sample-domain-centric-adoption: done
   # Split children require Tenants maintainer approval and an exact accepted Tenants SHA.
-  1-9-tenants-query-and-read-model-adoption: review
+  1-9-tenants-query-and-read-model-adoption: done
   1-10-tenants-projection-and-event-consumer-adoption: review
   1-11-domain-module-adoption-guardrails: done
   1-12-domainservice-packaging-and-guardrails: done
