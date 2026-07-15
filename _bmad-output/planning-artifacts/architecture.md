@@ -7,7 +7,7 @@ paradigm: DAPR-backed hexagonal event-sourcing platform
 scope: Hexalith.EventStore Phase 4 implementation readiness recovery
 status: final
 created: 2026-07-05
-updated: 2026-07-11
+updated: 2026-07-15
 binds:
   - FR1-FR36
   - NFR1-NFR18
@@ -15,6 +15,8 @@ sources:
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/epics.md
   - _bmad-output/planning-artifacts/implementation-readiness-report-2026-07-05.md
+  - _bmad-output/planning-artifacts/implementation-readiness-report-2026-07-15.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15.md
   - _bmad-output/implementation-artifacts/spec-dapr-global-event-ordering.md
   - docs/brownfield/architecture.md
   - docs/brownfield/integration-architecture.md
@@ -32,8 +34,9 @@ Hexalith.EventStore is a DAPR-backed hexagonal event-sourcing platform. The Even
 ```mermaid
 flowchart LR
     ExternalApi[External API hosts] -->|IEventStoreGatewayClient| Gateway[EventStore gateway]
-    UI[Interactive UI hosts] -->|EventStore Client libraries| Gateway
-    Admin[Admin Server / CLI / MCP] -->|delegated writes and safe reads| Gateway
+    UI[Domain interactive UI hosts] -->|EventStore Client libraries| Gateway
+    AdminUI[EventStore Admin UI<br/>FrontComposer shell] -->|typed admin client| Admin[Admin Server / CLI / MCP]
+    Admin -->|delegated writes and safe reads| Gateway
     Gateway -->|command route| Actor[AggregateActor]
     Actor -->|DAPR service invocation| DomainSvc[Domain service]
     DomainSvc -->|DomainResult| Actor
@@ -110,7 +113,7 @@ flowchart LR
 
 - **Binds:** FR10, FR21-FR22, FR25, NFR9-NFR11
 - **Prevents:** local submodule checkout state, Debug source references, or hard-coded package loops changing released package output.
-- **Rule:** `tools/release-packages.json` is the EventStore release inventory. Release/package validation uses package-reference mode by default. Source project references require explicit `UseHexalithProjectReferences=true` and are never used for package publication. Submodule packages are not produced by EventStore release jobs.
+- **Rule:** `tools/release-packages.json` is the EventStore release inventory. Release/package validation uses package-reference mode by default. Source project references require explicit `UseHexalithProjectReferences=true` and are never used for package publication. Submodule packages are not produced by EventStore release jobs. Central .NET/ASP.NET security patch pins move and are validated as one unit; mixed patch bands are not releasable. Before the next implementation or release slice, the repository seed moves from .NET SDK `10.0.301` / ASP.NET `10.0.9` to the verified `10.0.302` / `10.0.10` security baseline.
 
 ### AD-12 - High-Risk Verification Requires Persisted Evidence [ADOPTED]
 
@@ -159,6 +162,11 @@ flowchart TD
     ExternalApi[External API hosts] -->|depend on| GatewayClient[IEventStoreGatewayClient]
     ExternalApi -->|use analyzer| Generator
     UIHosts[Interactive UI hosts] -->|depend on| GatewayClient
+    AdminUI[Hexalith.EventStore.Admin.UI] -->|depends on| FrontComposerShell[Hexalith.FrontComposer.Shell]
+    AdminUI -->|depends on| FrontComposerContractsUI[Hexalith.FrontComposer.Contracts.UI]
+    FrontComposerShell -->|depends on| FrontComposerContractsUI
+    FrontComposerShell -->|renders with| FluentUI[Fluent UI Blazor V5]
+    FrontComposerContractsUI -->|renders with| FluentUI
     DomainModules[Domain modules] -->|host through| DomainService
     AppHost[AppHost] -->|uses| Aspire[Aspire extensions]
     AppHost -->|orchestrates| Gateway
@@ -228,14 +236,51 @@ AD-18 extends AD-3 (gateway is the command/query policy boundary) and AD-10 (sec
 ### AD-19 - Projection Dispatch Is Asynchronous And One-To-Many [ADOPTED]
 
 - **Binds:** FR7, FR36, NFR6-NFR8, NFR12, NFR16
-- **Prevents:** a synchronous domain-only handler contract from blocking durable asynchronous persistence or preventing one domain from maintaining both detail and cross-aggregate index projections.
-- **Rule:** Projection handlers are identified by `(Domain, ProjectionType)`, not by domain alone. A domain may register multiple named handlers. Dispatch and persistence are asynchronous and cancellation-aware, and an endpoint returns bounded distinguishable per-projection outcomes or an equivalent versioned result so checkpoint state cannot advance a failed projection as though it succeeded. Existing synchronous single-projection consumers require an additive compatibility adapter or an explicitly approved breaking-version and migration plan. No consuming-domain-specific logic enters EventStore.
+- **Prevents:** a synchronous domain-only handler contract, ambiguous result alternatives, or inconsistent checkpoint interpretation from blocking durable one-to-many persistence or advancing failed work as though it succeeded.
+- **Rule:** Projection handlers are identified by `(Domain, ProjectionType)`, not by domain alone. A domain may register multiple named handlers. Dispatch and persistence are asynchronous and cancellation-aware. The additive `/project/v2` wire contract remains `ProjectionDispatchResponse(Version, Outcomes)` with `Version = 2`; its serialized members stay frozen. The server then emits one exact normalized result: `ProjectionDispatchResult(Version, Entries)` with `Version = 1`, where every `ProjectionDispatchResultEntry` contains `Domain`, `ProjectionType`, the stable `ProjectionDispatchStatus` outcome code, and `ProjectionCheckpointAdvanceState` (`NotAdvanced = 0`, `Advanced = 1`).
+
+  1. `Entries` is bounded by the validated positive `ProjectionDispatchOptions.MaxOutcomes` value (default `32`), ordered by admitted `ProjectionType` using ordinal comparison, and contains exactly one entry for each admitted `(Domain, ProjectionType)` route.
+  2. `ProjectionDispatchStatus` is the closed stable outcome code: `Completed = 0`, `AlreadyCompleted = 1`, `Retryable = 2`, `Indeterminate = 3`, and `Failed = 4`.
+  3. The server records `Advanced` only after the route reports `Completed` or `AlreadyCompleted`, all required durable persistence and any legacy actor write succeed, and the route checkpoint save completes. Every other status and every missing, malformed, duplicate, unrequested, or transport-failed outcome normalizes to `NotAdvanced`; cancellation emits no fabricated result and advances nothing.
+  4. Partial success preserves independently durable sibling work and keeps failed work retryable under the same dispatch identity.
+  5. No equivalent or alternative normalized result shape is accepted. Changing the v2 wire envelope or the normalized result requires a new contract version and architecture decision.
+
+The status/checkpoint normalization matrix is binding:
+
+| Observed condition | Normalized outcome code | Checkpoint state |
+| --- | --- | --- |
+| Wire `Completed` or `AlreadyCompleted`; required persistence, legacy actor write when applicable, and checkpoint save all complete | Preserve wire code | `Advanced` |
+| Wire `Completed` or `AlreadyCompleted`, but a required post-handler persistence, actor-write, or checkpoint-save step fails or cannot be proved | `Indeterminate` | `NotAdvanced` |
+| Wire `Retryable` or a known optimistic conflict/incomplete operation | `Retryable` | `NotAdvanced` |
+| Wire `Indeterminate`; transport interruption/timeout; unexpected handler exception; or missing, duplicate, unrequested, malformed, or over-limit outcome | `Indeterminate` | `NotAdvanced` |
+| Wire `Failed` or deterministic request, registration, configuration, catalog/fingerprint, or unsupported-route validation failure | `Failed` | `NotAdvanced` |
+| Request cancellation | No fabricated normalized result | No advancement |
+
+Existing synchronous single-projection consumers continue through an explicitly registered compatibility adapter or an approved breaking-version and migration plan. No consuming-domain-specific logic enters EventStore.
 
 ### AD-20 - Paged Rebuilds Are Replay-Equivalent [ADOPTED]
 
 - **Binds:** FR7, FR33, FR36, NFR7-NFR8, NFR16
 - **Prevents:** a later rebuild page replacing a correct live model with page-only state or a checkpoint reporting completion before every required projection is durably complete.
 - **Rule:** Every handler declares or is adapted to explicit full-replay or incremental semantics. Paging is an event-read optimization, never a semantic projection boundary: a page is not passed to a full-replay handler as the complete stream. Rebuild work uses operation-scoped staging or equivalent non-live isolation, preserves the last complete live model on cancel/failure, resumes from a safe boundary, and promotes detail/index outputs only after all required projections complete. Rebuild output, projection versions, and checkpoints must equal canonical aggregate replay for the same event prefix, including streams longer than the configured page size.
+
+### AD-21 - The Existing Admin UI Is The Consolidated EventStore UI [ADOPTED]
+
+- **Binds:** FR13, FR15, FR34, NFR14-NFR15, Story 7.14
+- **Prevents:** parallel EventStore UI hosts choosing different shells, resource identities, module navigation, client boundaries, or legacy-route behavior.
+- **Rule:** `src/Hexalith.EventStore.Admin.UI` evolves in place into the consolidated EventStore UI service. Its AppHost resource and container identity remain `eventstore-admin-ui`; no additional EventStore UI host is created. The UI composes matching `3.2.2` versions of `Hexalith.FrontComposer.Shell` and `Hexalith.FrontComposer.Contracts.UI` plus Fluent UI Blazor V5; Debug source and Release package modes resolve the same package boundary. `Admin.UI` owns one canonical dashboard route table and the stable FrontComposer module identity `event-store-admin` with label **Event Store Admin**. Existing canonical deep links remain; every other legacy route redirects to a canonical dashboard deep link rather than preserving a second page implementation, and the `event-store-admin` entry stays selected. UI command/query flows remain typed-client consumers and do not acquire generated or hand-written per-message MVC controllers.
+
+### AD-22 - Consumer Infrastructure Removal Requires Owner-Approved Exact-SHA Parity [ADOPTED]
+
+- **Binds:** FR36, NFR12, NFR16
+- **Prevents:** persisted evidence from one EventStore runtime authorizing a consuming module to delete local projection/query infrastructure against a different source commit, package build, or deployed image.
+- **Rule:** A consuming module removes local projection/query infrastructure only after an EventStore-owner-reviewed parity packet marks every required capability `available`, cites persisted production-path evidence, records the exact approved EventStore source/runtime commit SHA, and maps that SHA to the released artifact identities: exact consumed package versions and hashes plus the deployed EventStore container image digest when applicable.
+
+  - Source mode proves the checked-out **EventStore submodule** SHA equals the approved EventStore SHA.
+  - Package mode proves the resolved EventStore package versions and hashes equal the packet's manifest-governed artifacts.
+  - Deployed mode proves the running EventStore image digest maps through release provenance to the approved EventStore SHA.
+
+The consuming repository's own commit SHA is never compared to the EventStore SHA. Without owner approval or a matching dependency/runtime identity, the consumer keeps its local infrastructure and the adoption child remains non-`done`; generic EventStore platform work may continue independently.
 
 ## Consistency Conventions
 
@@ -251,18 +296,18 @@ AD-18 extends AD-3 (gateway is the command/query policy boundary) and AD-10 (sec
 | Serialization | Command, rehydrate, project, and pub/sub payloads use shared platform serialization paths once Story 4.3 lands; no story introduces a private JSON option set for the same payload family. |
 | Cursors and ETags | Cursors and ETags are opaque implementation details. They are not parsed, displayed, logged, or exposed as support text. An ETag is a cache validator, not projection evidence; version/freshness claims require `ProjectionBacked` route provenance (AD-15). |
 | Projection lifecycle | `Current`, `Stale`, `Rebuilding`, `Degraded`, `Unavailable`, and `LocalOnly` are preserved only as projection-backed evidence. Handler-computed or unknown provenance renders `Unknown`; lifecycle is not inferred from ETags or SignalR. |
-| Projection persistence | Read-model/checkpoint erasure and detail/index batches follow AD-7; async named fan-out follows AD-19; checkpoints advance only after required durable work. |
+| Projection persistence | Read-model/checkpoint erasure and detail/index batches follow AD-7; async named fan-out follows AD-19; the normalized `ProjectionDispatchResult` makes each route's `Advanced`/`NotAdvanced` checkpoint decision explicit after required durable work. |
 | Projection rebuild | Full/incremental semantics are explicit; paged work stays staged and replay-equivalent per AD-20. |
 | Sidecar control-plane headers | Outbound `dapr-app-id` / `dapr-api-token` are handler-owned, **replaced not appended**, set authoritatively from config by the single platform handler; caller/inbound-forwarded values are never routed (AD-18). |
-| UI | Module UI uses FrontComposer and Fluent UI Blazor V5. UI success is projection-confirmed, support-safe, accessible, and localized; detailed UX flows live in `ux.md`. |
+| UI | `src/Hexalith.EventStore.Admin.UI` is the single consolidated EventStore UI and retains the `eventstore-admin-ui` resource/container identity. It composes matching FrontComposer `3.2.2` Shell/Contracts.UI dependencies and Fluent UI Blazor V5. `Admin.UI` owns the canonical dashboard route table; non-canonical legacy routes redirect to canonical deep links under the selected `event-store-admin` / **Event Store Admin** module entry. UI success is projection-confirmed, support-safe, accessible, and localized; detailed UX flows live in the canonical UX artifacts. |
 | Runtime topology | AppHost resource names, DAPR app IDs, component scopes, ACL policies, pub/sub topics, and deployment overlays remain aligned by tests. |
-| Release | Restore/build use `Hexalith.EventStore.slnx`; unit tests run per project; package versions live in central props; release output is manifest-driven. |
+| Release | Restore/build use `Hexalith.EventStore.slnx`; unit tests run per project; package versions live in central props; release output is manifest-driven. Central .NET/ASP.NET security patch pins move together per AD-11. |
 
 ## Stack
 
 | Name | Version |
 | --- | --- |
-| .NET SDK | 10.0.301 (`rollForward: latestPatch`) |
+| .NET SDK | Repository seed `10.0.301`; required security baseline `10.0.302` (`rollForward: latestPatch`) |
 | Target framework | net10.0 |
 | Aspire.Hosting | 13.4.6 |
 | Aspire.Hosting.Keycloak / Kubernetes | 13.4.6-preview.1.26319.6 |
@@ -270,12 +315,13 @@ AD-18 extends AD-3 (gateway is the command/query policy boundary) and AD-10 (sec
 | Dapr .NET SDK packages | 1.18.4 |
 | MediatR | 14.2.0 |
 | FluentValidation | 12.1.1 |
-| ASP.NET Core / SignalR packages | 10.0.9 |
+| ASP.NET Core / SignalR packages | Repository seed `10.0.9`; required security baseline `10.0.10` |
 | Microsoft.CodeAnalysis packages | 5.6.0 |
 | Microsoft.FluentUI.AspNetCore.Components | 5.0.0-rc.4-26180.1 |
+| Hexalith.FrontComposer.Shell / Contracts.UI | `3.2.2`; matching root-declared source in Debug and centrally pinned NuGet packages in Release |
 | OpenTelemetry exporter/hosting/ASP.NET/HTTP packages | 1.16.0 |
 | OpenTelemetry runtime instrumentation | 1.15.1 |
-| Hexalith.Commons.UniqueIds | 2.26.0 |
+| Hexalith.Commons.UniqueIds | 2.28.1 |
 | xUnit v3 | 3.2.2 |
 | Shouldly | 4.3.0 |
 | NSubstitute | 6.0.0-rc.1 |
@@ -293,7 +339,7 @@ src/
   Hexalith.EventStore.RestApi.Generators/ # analyzer-only typed REST controller generator
   Hexalith.EventStore.Aspire/           # Aspire EventStore and domain-module topology extensions
   Hexalith.EventStore.ServiceDefaults/  # telemetry, health, discovery, resilience defaults
-  Hexalith.EventStore.Admin.*/          # admin abstractions, server, UI, CLI, MCP
+  Hexalith.EventStore.Admin.*/          # admin abstractions, server, CLI, MCP; Admin.UI is the consolidated EventStore UI
 samples/
   Hexalith.EventStore.Sample/           # domain-centric reference service
   Hexalith.EventStore.Sample.Contracts/ # sample public contracts
@@ -309,7 +355,7 @@ flowchart TB
         AppHost[AppHost]
         EventStore[eventstore]
         AdminServer[eventstore-admin]
-        AdminUI[eventstore-admin-ui]
+        AdminUI[eventstore-admin-ui<br/>Hexalith.EventStore.Admin.UI]
         Sample[sample]
         SampleApi[sample-api]
         SampleUI[sample-blazor-ui]
@@ -326,7 +372,8 @@ flowchart TB
     AppHost --> Security
     EventStore --> StateStore
     EventStore --> PubSub
-    AdminServer --> StateStore
+    AdminServer -->|support-safe operational reads only| StateStore
+    AdminServer -->|state-mutating actions| EventStore
     SampleApi -->|service invocation only| EventStore
     SampleUI -->|service invocation only| EventStore
     AdminUI -->|service invocation only| AdminServer
@@ -337,20 +384,21 @@ flowchart TB
 
 | Capability / Area | Lives in | Governed by |
 | --- | --- | --- |
-| FR1-FR10, FR36 Domain author self-service and consumer parity closure | `Contracts`, `Client`, `DomainService`, `Server`, `Testing`, domain modules | AD-1, AD-2, AD-7, AD-8, AD-9, AD-11, AD-12, AD-14, AD-15, AD-19, AD-20 |
-| FR11-FR16 External integration surfaces | `RestApi.Generators`, external API hosts, `IEventStoreGatewayClient`, SignalR | AD-3, AD-4, AD-8, AD-10, AD-15, AD-18 |
+| FR1-FR10, FR36 Domain author self-service and consumer parity closure | `Contracts`, `Client`, `DomainService`, `Server`, `Testing`, domain modules | AD-1, AD-2, AD-7, AD-8, AD-9, AD-11, AD-12, AD-14, AD-15, AD-19, AD-20, AD-22 |
+| FR11-FR16 External integration surfaces | `RestApi.Generators`, external API hosts, `IEventStoreGatewayClient`, SignalR, consolidated EventStore UI boundary | AD-3, AD-4, AD-8, AD-10, AD-15, AD-18, AD-21 |
 | FR17-FR22, FR25 Release and repository reliability | `.github/workflows`, `tools/release-packages.json`, central props, `references/` layout | AD-9, AD-11, AD-12 |
 | FR23-FR24, FR27, FR29-FR31 Event correctness and recovery | `Server` actors, persisters, publishers, replay, status/archive, recovery | AD-5, AD-6, AD-12, AD-13 |
 | FR26, FR28, FR32 Security and tenant isolation | gateway auth, Admin.Server auth, DAPR ACLs, AppHost, deployment templates | AD-3, AD-9, AD-10, AD-12, AD-16, AD-18 |
 | FR33 Bounded cost and event evolution | spec artifacts, `Client`/`Server` public seams, snapshots, projections, upcasters | AD-6, AD-7, AD-13, AD-20 |
-| FR34-FR35 Operator trust and backlog | Admin surfaces, delivery docs, deployment hardening, integration lanes, backlog artifacts | AD-8, AD-10, AD-12, AD-13, AD-14, AD-15, AD-16 |
+| FR34-FR35 Operator trust and backlog | Admin surfaces, consolidated EventStore UI, delivery docs, deployment hardening, integration lanes, backlog artifacts | AD-8, AD-10, AD-12, AD-13, AD-14, AD-15, AD-16, AD-21 |
 
 ## Deferred
 
 | Deferred item | Why it can wait |
 | --- | --- |
 | `ux.md` user journeys, screen states, component-level patterns, accessibility, and localization evidence | PRD makes UX a separate readiness artifact. This spine binds UI-host boundaries and support-safe/projection-confirmed rules only. |
-| Story splitting for 1.3, 1.6, 2.4, 3.7, 5.6, 7.2, 7.3, 7.4, and 7.5 | Readiness report owns implementation slicing defects; this spine supplies shared invariants for the split stories. |
+| Story splitting, renumbering, evidence crosswalks, and sprint-status migration under the approved 2026-07-15 proposal | `epics.md`, active story specs, and sprint planning own implementation identity and sequencing; this spine supplies the shared invariants for every resulting slice. |
+| Quantitative EventStore UI performance budgets | No production baseline supports a numerical release gate yet. A future UX-performance backlog item may establish measured budgets without weakening accessibility, responsive layout, evidence-state, or support-safety rules. |
 | Exact tenant-vs-domain global-position sharding design | FR24 requires renegotiating the frozen global-ordering spec before implementation. AD-6 preserves current semantics until then. |
 | Folded snapshot payload shape, projection sequence guard algorithm, event upcaster ordering, and cancellation contract details | FR33 explicitly requires spec-first stories 6.1, 6.3, and 6.5 before implementation. |
 | Production mTLS trust domain, namespace values, secret-store provider, and deployment overlay specifics | The invariant is topology parity and fail-closed app-layer security. Environment-specific values belong in deployment hardening stories and deploy templates. |

@@ -5,7 +5,7 @@ created: 2026-07-11
 
 # Story 1.14: Correct Paged Rebuild And Replay Equivalence
 
-Status: ready-for-dev
+Status: review
 
 **Requirements covered:** FR7, FR33, FR36, NFR7, NFR8, NFR16
 **Governed by:** AD-20 (controlling invariant), AD-19, AD-13, AD-8, AD-7, AD-15, AD-14, AD-12, AD-6, AD-5, AD-2
@@ -83,9 +83,9 @@ In `src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs`,
   - [x] Assert **persisted end-state** (via `InMemoryReadModelStore.Snapshot<T>()` / captured store state and the projection-state key), **not** mock call counts or `202`/`200` — recorder call counts are request-shape evidence only (NFR16 / AD-12).
   - [x] Add a targeted regression test that fails on the current overwrite bug (page-only state replacing a complete model) and passes only after staging/promotion lands.
 
-- [ ] **Task 7 — Guardrails, build, and (if reachable) live-sidecar evidence (AC: 6)**
-  - [ ] `ConfigureAwait(false)` on every new production await (CA2007 is build-breaking). File-scoped namespaces, one type per file, no copyright headers, ULID-safe identity (`Ulid.TryParse`, never `Guid.TryParse`), central package versions only.
-  - [ ] If a live-DAPR/Redis lane is reachable (`tests/Hexalith.EventStore.Server.LiveSidecar.Tests/`, `DaprFactAttribute`), assert the equivalence corpus against persisted Redis state; if environment-blocked, record the exact blocker separately — deterministic tests do not substitute for persisted DAPR/Redis evidence but do not block the story on an unavailable environment.
+- [x] **Task 7 — Guardrails, build, and (if reachable) live-sidecar evidence (AC: 6)**
+  - [x] `ConfigureAwait(false)` on every new production await (CA2007 is build-breaking). File-scoped namespaces, one type per file, no copyright headers, ULID-safe identity (`Ulid.TryParse`, never `Guid.TryParse`), central package versions only.
+  - [x] If a live-DAPR/Redis lane is reachable (`tests/Hexalith.EventStore.Server.LiveSidecar.Tests/`, `DaprFactAttribute`), assert the equivalence corpus against persisted Redis state; if environment-blocked, record the exact blocker separately — deterministic tests do not substitute for persisted DAPR/Redis evidence but do not block the story on an unavailable environment.
 
 ## Dev Notes
 
@@ -217,6 +217,10 @@ Expected: whole-solution Release build clean (warnings-as-errors); new replay-eq
 - 2026-07-15 Task 5 GREEN: Rebuild now persists `Rebuilding` before reads, defers ordinary delivery/erase conflicts, promotes named and actor state before checkpoint/lifecycle completion, and clears lifecycle on success, failure, cancellation, and durable-bound resume. Focused lifecycle/query/orchestrator tests passed 144/144 and the full server suite passed 2,613/2,613 (0 failed/errors, 25 skipped) in 506.105 seconds.
 - 2026-07-15 Task 6 RED: Safety-bound test compilation failed with four CS0117 errors because the approved `rebuild_prefix_safety_limit_exceeded` reason code and enforcement path did not exist.
 - 2026-07-15 Task 6 GREEN: Event-count and serialized-byte ceilings now fail closed before any promotion; the real orchestrator/coordinator/domain-dispatcher/batch-store harness proved oracle-equivalent persisted actor, detail, index, freshness version, and rebuild checkpoints across seven edge scenarios. Focused tests passed 84/84, DomainService passed 131/131, and the full server suite passed 2,622/2,622 (0 failed/errors, 25 skipped) in 505.420 seconds.
+- 2026-07-15 Task 7 GREEN: The 48-project Release build completed with 0 warnings/errors. Final affected suites passed: Server 2,623 total (0 failed/errors, 25 skipped), DomainService 132/132, Client 671/671, and Contracts 702/702. Guardrail review replaced the new live-test GUID aggregate identity with a sortable ULID; the warnings-as-errors build enforced production-await CA2007 compliance.
+- 2026-07-15 Task 7 persisted evidence: `PagedRebuild_MoreThanTwoPages_PersistsEquivalentRedisActorDetailIndexAndCheckpoints` passed 1/1 through the real DAPR/Redis lane, proving equivalent persisted actor, detail, index, freshness version, operator checkpoint, lifecycle, and unchanged delivery checkpoints.
+- 2026-07-15 Task 7 baseline note: The broader LiveSidecar assembly passed 43/44; the sole failure, existing `NormalDelivery_PersistsIndependentDetailIndexCheckpointsAndConvergedRetryLedger`, reproduced at unchanged pre-story HEAD `fc1b930a84d9ba5fad34f8d059afe46d3d5b9ea3`, confirming it is not a Story 1.14 regression.
+- 2026-07-15 extended integration note: The separate broad Aspire integration assembly could not complete reliably in this workspace: ephemeral endpoints became connection-refused and projection-writer protocol v2 never became ready. The interrupted runner reported 105 total, 33 failed, 1 skipped after 873.440 seconds. This environmental lane is outside the story's required Tier-1 and focused persisted-state gates; it is recorded here rather than represented as green.
 
 ### Completion Notes List
 
@@ -232,6 +236,8 @@ Expected: whole-solution Release build clean (warnings-as-errors); new replay-eq
 - Task 5: Query routing now overlays persisted `Rebuilding` only on projection-backed evidence and fails closed to unknown lifecycle when the authoritative lifecycle read is unavailable.
 - Task 6: Added explicit complete-prefix count/byte enforcement with the approved stable failure code; exhaustion preserves live actor/named state, advances no rebuild progress, and clears terminal lifecycle.
 - Task 6: Added persisted production-path equivalence coverage for more than two pages, empty/exact/bounded inputs, cancellation, interrupted batch promotion with same-operation retry, and resume from persisted progress; the cumulative event count makes the suite fail on page-only overwrite behavior.
+- Task 7: Completed the project guardrail audit and clean Release build, including ULID-safe live-test identity and build-enforced `ConfigureAwait(false)` compliance.
+- Task 7: Proved the greater-than-two-page corpus against persisted Redis state through the real orchestrator, rebuild endpoint, coordinated batch store, actor state, checkpoint, and lifecycle path.
 
 ### File List
 
@@ -275,3 +281,11 @@ Expected: whole-solution Release build clean (warnings-as-errors); new replay-eq
 - `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionRebuildProductionHarness.cs`
 - `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionRebuildProductionHttpMessageHandler.cs`
 - `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionRebuildProductionPathTests.cs`
+- `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DaprTestContainerFixture.cs`
+- `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/LiveCounterDetailProjectionHandler.cs`
+- `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/LiveCounterIndexProjectionHandler.cs`
+- `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/NamedProjectionDispatchLiveSidecarTests.cs`
+
+## Change Log
+
+- 2026-07-15: Implemented replay-equivalent paged rebuilds with bounded complete-prefix reconstruction, operation-scoped candidate isolation, coordinated detail/index promotion, truthful persisted lifecycle, durable checkpoint ordering, configurable page sizing, explicit safety limits, and deterministic plus real Redis/DAPR equivalence evidence. Status moved to review.
