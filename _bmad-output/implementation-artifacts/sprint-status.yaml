@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-07-15T14:32:06+02:00
+# last_updated: 2026-07-15T18:31:25+02:00
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T20:01:46+02:00
-last_updated: 2026-07-15T14:32:06+02:00
+last_updated: 2026-07-15T18:31:25+02:00
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -81,7 +81,7 @@ development_status:
   # Split children remain in review until the exact Tenants approval/SHA evidence exists.
   2-4-tenants-rest-contract-metadata-and-routes: review
   2-5-dedicated-external-tenants-api-host: review
-  2-6-tenants-ui-client-library-alignment-and-ux-evidence: review
+  2-6-tenants-ui-client-library-alignment-and-ux-evidence: in-progress
   2-7-tenants-compatibility-and-package-mode-validation: review
   2-8-scoped-metadata-rich-projection-notifications: done
   2-9-generated-command-status-location-policy: done
