@@ -1,3 +1,10 @@
+## [3.67.2](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.67.1...v3.67.2) (2026-07-15)
+
+
+### Bug Fixes
+
+* **references:** update subproject commit for Hexalith.Memories ([97c335c](https://github.com/Hexalith/Hexalith.EventStore/commit/97c335cc5685928166914e6b7725502b8017de8b))
+
 ## [3.67.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.67.0...v3.67.1) (2026-07-15)
 
 
