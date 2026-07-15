@@ -1,3 +1,10 @@
+## [3.64.3](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.64.2...v3.64.3) (2026-07-15)
+
+
+### Bug Fixes
+
+* **projections:** preserve paged rebuild state ([592ea52](https://github.com/Hexalith/Hexalith.EventStore/commit/592ea52c7e493eea7ab5ddb1c5ee584bd884d3fe))
+
 ## [3.64.2](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.64.1...v3.64.2) (2026-07-14)
 
 
