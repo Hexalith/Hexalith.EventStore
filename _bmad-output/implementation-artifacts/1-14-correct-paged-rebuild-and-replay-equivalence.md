@@ -1,9 +1,14 @@
 ---
 baseline_commit: 88aa5c2c2dcb4ca85e4e36cd5455b4e7742d0fc9
 created: 2026-07-11
+historical_story_id: "1.14"
+superseded_by: 1-19-correct-paged-rebuild-and-replay-equivalence.md
 ---
 
 # Story 1.14: Correct Paged Rebuild And Replay Equivalence
+
+> Historical execution artifact. Active review continues under Story 1.19; this file
+> retains the implementation, test, and review record without rewriting history.
 
 Status: review
 

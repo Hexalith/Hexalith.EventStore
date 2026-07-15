@@ -1,5 +1,9 @@
 # Story 1.2: Domain Query Handler Routing
 
+> Historical execution artifact. The July 15 restructure reissues the active story as
+> `1-2-domain-query-routing-and-response-provenance.md`; the completed implementation and
+> review evidence in this file remains authoritative for the original routing slice.
+
 Status: ready-for-dev
 
 ## Story

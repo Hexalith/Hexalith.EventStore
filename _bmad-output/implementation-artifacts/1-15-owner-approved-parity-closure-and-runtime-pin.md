@@ -2,9 +2,14 @@
 created: 2026-07-15
 story_id: "1.15"
 story_key: 1-15-owner-approved-parity-closure-and-runtime-pin
+historical_story_id: "1.15"
+superseded_by: 1-20-owner-approved-parity-closure-and-runtime-pin.md
 ---
 
 # Story 1.15: Owner-Approved Parity Closure And Runtime Pin
+
+> Historical planning artifact. The unstarted closure story is reissued as Story 1.20,
+> whose acceptance criteria adopt AD-22's exact source/package/container identity rules.
 
 Status: ready-for-dev
 

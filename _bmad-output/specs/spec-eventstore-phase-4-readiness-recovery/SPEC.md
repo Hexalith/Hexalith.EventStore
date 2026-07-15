@@ -9,7 +9,8 @@ companions:
   - ../../project-context.md
 sources:
   - ../../planning-artifacts/prd.md
-  - ../../planning-artifacts/implementation-readiness-report-2026-07-05.md
+  - ../../planning-artifacts/implementation-readiness-report-2026-07-15.md
+  - ../../planning-artifacts/sprint-change-proposal-2026-07-15.md
 ---
 
 > **Canonical contract.** This SPEC and the files in `companions:` are the complete, preservation-validated contract for what to build, test, and validate. Source documents listed in frontmatter are for traceability only.
@@ -23,12 +24,12 @@ Hexalith.EventStore Phase 4 must turn a working DAPR-native event-sourcing platf
 ## Capabilities
 
 - **CAP-1**
-  - **intent:** Domain authors can build EventStore-backed domain modules with domain code only while EventStore libraries supply hosting, query, projection, read-model, cursor, telemetry, health, Aspire, and packaging seams.
-  - **success:** Sample and Tenants adoption prove duplicated platform boilerplate is removed or guarded without changing domain behavior.
+  - **intent:** Domain authors can build EventStore-backed domain modules with domain code only while EventStore libraries supply hosting, query, projection, read-model, cursor, telemetry, health, Aspire, packaging, and consumer-parity seams.
+  - **success:** Sample and Tenants adoption preserve domain behavior, production-path evidence proves the generic replacement seams, and consumer infrastructure remains until an owner-approved parity packet matches the exact consumed EventStore source, package, or image identity.
 
 - **CAP-2**
   - **intent:** External API developers can expose typed generated REST endpoints in dedicated API hosts while interactive UI hosts consume client libraries directly.
-  - **success:** Generated controllers delegate to `IEventStoreGatewayClient`, and Sample/Tenants UI hosts contain no generated or hand-written per-message MVC command/query controllers.
+  - **success:** Generated controllers delegate to `IEventStoreGatewayClient`, Sample/Tenants UI hosts contain no generated or hand-written per-message MVC command/query controllers, and handler-computed or unknown responses never claim projection-confirmed state.
 
 - **CAP-3**
   - **intent:** Maintainers can release reproducibly with references-based submodules, deterministic package mode, dedicated live-sidecar coverage, shared security workflows, and manifest-governed package output.
@@ -44,15 +45,15 @@ Hexalith.EventStore Phase 4 must turn a working DAPR-native event-sourcing platf
 
 - **CAP-6**
   - **intent:** Long-lived streams can evolve with bounded snapshot/projection cost, sequence-safe projection updates, event versioning/upcasting, validated identity metadata, and cancellation-aware public seams.
-  - **success:** Folded snapshot, projection cost/sequence guard, and event versioning/upcasting specs are approved before implementation, and dependent code conforms to them.
+  - **success:** The exact bounded `ProjectionDispatchResult` and replay-equivalent paged rebuild baseline are proven before folded snapshot, projection cost/sequence guard, and event versioning/upcasting specs authorize dependent implementation.
 
 - **CAP-7**
   - **intent:** Operators get explicit delivery semantics, poison/dead-letter handling, attributable admin actions, honest unavailable-operation behavior, hardened deployment posture, meaningful higher-tier evidence, and tracked future capability backlog.
-  - **success:** Unavailable admin operations are hidden, disabled, or return `501`; audit records are support-safe; integration tests assert persisted evidence; backlog artifacts exist for GDPR-1, IAM-1, KIT-1, and REST generator hardening.
+  - **success:** `Hexalith.EventStore.Admin.UI` is the single consolidated FrontComposer-based EventStore UI, unavailable operations are hidden, disabled, or return `501`, audit records are support-safe, integration tests assert persisted evidence, and four independently governed backlog artifacts exist.
 
 - **CAP-8**
   - **intent:** Phase 4 has a coherent planning baseline before full implementation resumes.
-  - **success:** PRD, architecture, UX, story splits, and high-risk NFR traceability are reconciled and implementation readiness is re-run without missing-artifact blockers.
+  - **success:** The seven-epic plan has no forward dependency, all eight oversized parents are replaced by focused children, active identifiers and evidence are auditably migrated, and a fresh implementation-readiness assessment reports no structural blocker.
 
 ## Constraints
 
@@ -68,6 +69,12 @@ Hexalith.EventStore Phase 4 must turn a working DAPR-native event-sourcing platf
 - Release is manifest-governed through `tools/release-packages.json`; Release/package validation uses package-reference mode by default; submodule packages are not produced by EventStore release jobs.
 - High-risk verification must assert persisted Redis/state-store/read-model/CloudEvent bodies, topology YAML or sidecar arguments, package outputs, and security denials.
 - Folded snapshots, projection delivery cost, projection sequence guards, event versioning/upcasting, identity metadata validation, cancellation-token public seams, and global-position sharding require approved specs before implementation stories start.
+- Preserve the frozen `/project/v2` wire response and emit one server-owned `ProjectionDispatchResult` Version 1 with bounded ordinal route entries, stable status codes, and explicit `Advanced` or `NotAdvanced` checkpoint state; no equivalent shape is allowed without a new architecture decision.
+- `src/Hexalith.EventStore.Admin.UI` remains the only EventStore UI host and the `eventstore-admin-ui` resource. It composes matching FrontComposer Shell and Contracts.UI `3.2.2` packages with Fluent UI V5, owns the `event-store-admin` module, and redirects legacy routes to canonical dashboard deep links.
+- Consumer infrastructure removal requires an EventStore-owner-approved parity packet and exact identity evidence for the consumed EventStore source SHA, package versions and hashes, or deployed image digest; never compare a consumer repository SHA to the EventStore SHA.
+- The approved replan preserves seven-epic order and MVP scope, rehomes platform provenance into Story 1.2, and leaves generated REST/Tenants provenance consumption in Epic 2.
+- A split child inherits `done` only through an evidence crosswalk naming implementation, focused tests, review results, and external approval/exact SHA where applicable; otherwise it remains `review`.
+- Tenants adoption requires maintainer approval, approved PR/commit evidence, exact Tenants SHA, repository boundary, source/package-mode validation, and an explicit disposition when approval is unavailable.
 - Use `Hexalith.EventStore.slnx` for restore/build; run unit tests by project; keep package versions centralized; do not recurse submodules or modify submodule files without explicit approval.
 - EventStore envelope identifiers use ULID-safe handling where required; `Guid.TryParse` is forbidden for `messageId`, `correlationId`, `aggregateId`, and `causationId`.
 - UI-facing work must use FrontComposer and Blazor Fluent UI V5, remain support-safe, avoid theme redefinition, and keep detailed UX evidence in `ux.md`.
@@ -80,10 +87,12 @@ Hexalith.EventStore Phase 4 must turn a working DAPR-native event-sourcing platf
 - Do not move generated REST controllers into interactive UI hosts.
 - Do not treat HTTP `202`, SignalR notification, or command acceptance as projection-confirmed UI success.
 - Do not target AOT/trimming while reflection conventions remain load-bearing.
+- Do not create an additional EventStore UI host or preserve duplicate legacy page implementations.
+- Do not roll back implementation solely because planning identities are being restructured.
 
 ## Success signal
 
-Implementation readiness can be re-run against this package and no longer fails because PRD, architecture, UX, story slicing, or high-risk NFR traceability is missing. The resulting implementation plan maps FR1-FR35, NFR1-NFR18, architecture ADs, and UX evidence to reviewable stories with concrete persisted-evidence validation.
+Implementation readiness can be re-run against this package and finds complete FR1-FR36/NFR1-NFR18 coverage, no later-epic prerequisite, no oversized active parent, and deterministic owner/evidence gates. The resulting plan preserves architecture AD-1 through AD-22, canonical UX, exact story migration history, and persisted-evidence validation.
 
 ## Assumptions
 

@@ -3,9 +3,15 @@ status: done
 baseline_revision: 404201a9363c1b80121ecbf5e72ca4fb71f6ac79
 baseline_commit: 58761c5039c94d81b8d1e576fe77e8a77201bf23
 review_loop_iteration: 2
+historical_story_id: "2.8"
+platform_scope_adopted_by: 1-2-domain-query-routing-and-response-provenance.md
+consumer_scope_reissued_as: 2-11-query-provenance-consumption-in-generated-rest-and-tenants.md
 ---
 
 # Story 2.8: Query Response Provenance Contract And Route-Aware Gateway ETag
+
+> Historical execution artifact. The completed EventStore platform contract is now part
+> of Story 1.2. The remaining generated REST/Tenants consumer boundary is Story 2.11.
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 

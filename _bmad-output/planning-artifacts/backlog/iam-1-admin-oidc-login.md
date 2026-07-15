@@ -3,7 +3,8 @@ id: IAM-1
 title: Admin Interactive OIDC Login
 classification: backlog
 status: draft
-source_story: 7.5
+source_story: 7.16
+supersedes_source_story: 7.5
 created: 2026-07-05
 ---
 
@@ -22,7 +23,7 @@ Define a future Admin UI and Admin API authentication path using authorization-c
 ## Dependencies
 
 - Production authentication guard work in Story 5.3.
-- Admin claims normalization and audit work in Story 7.2.
+- Admin claims normalization in Story 7.2 and state-mutating audit in Story 7.3.
 - Identity-provider deployment and callback URL decisions.
 
 ## Risks

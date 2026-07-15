@@ -25,6 +25,8 @@ inputDocuments:
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-09-implementation-readiness-corrections.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-11.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-13.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15.md
+  - _bmad-output/specs/spec-eventstore-phase-4-readiness-recovery/SPEC.md
 ---
 
 # eventstore - Epic Breakdown
@@ -33,49 +35,55 @@ inputDocuments:
 
 This document provides the complete epic and story breakdown for eventstore, decomposing the formal PRD, architecture, UX handoff, and approved sprint change proposals into implementable stories.
 
-The current Phase 4 planning baseline is `_bmad-output/planning-artifacts/prd.md`, `_bmad-output/planning-artifacts/architecture.md`, `_bmad-output/planning-artifacts/ux.md`, and the approved sprint change proposals in `_bmad-output/planning-artifacts`. The PRD owns FR/NFR truth, the architecture artifact owns implementation invariants and decision gates, the UX handoff owns UI governance and journeys, and this epics document owns implementation slicing and story acceptance criteria.
+The current Phase 4 planning baseline is `_bmad-output/planning-artifacts/prd.md`, `_bmad-output/planning-artifacts/architecture.md`, `_bmad-output/planning-artifacts/ux.md`, `_bmad-output/specs/spec-eventstore-phase-4-readiness-recovery/SPEC.md` with its companions, and the approved sprint change proposals in `_bmad-output/planning-artifacts`. The PRD owns FR/NFR truth, the architecture artifact owns implementation invariants and decision gates, the UX handoff owns UI governance and journeys, the SPEC preserves the complete downstream contract, and this epics document owns implementation slicing and story acceptance criteria. PRD section 7 is authoritative whenever copied NFR text drifts.
 
 ## Implementation Readiness Execution Gates
 
-The 2026-07-05 implementation readiness assessment found complete FR traceability but identified story-quality gates that must be closed before broad Phase 4 implementation starts.
+The 2026-07-15 implementation readiness assessment found complete FR1-FR36 traceability but blocked broad Phase 4 implementation on a later-epic prerequisite and eight oversized implementation stories. The approved July 15 direct adjustment preserves the seven-epic MVP while replacing those parents with focused children.
 
 ### Query Metadata Sequencing Gate
 
 The platform-owned query metadata propagation contract must be implemented by the earliest stories that depend on it, not by a later Epic 7 story.
 
 - Story 1.2 owns platform result metadata propagation, gateway merge rules, freshness policy enforcement, and typed client metadata exposure.
-- Story 1.3 owns authoritative paging metadata, cursor opacity, invalid cursor handling, and read-model/end-state evidence for paging.
+- Stories 1.3-1.5 separately own persisted read models, deterministic testing, and authoritative protected-cursor/paging behavior.
 - Story 2.2 owns generated REST query metadata headers, `304` behavior, and safe problem-detail behavior.
-- Story 2.4 owns Tenants API/UI proof against the real platform query metadata path.
-- Story 7.5 remains backlog-artifact work only.
+- Stories 2.4-2.7 own Tenants contract, external-host, UI, and compatibility/package-mode proofs against the real platform query metadata path.
+- Stories 7.15-7.18 remain backlog-artifact work only.
 
-Story 7.6 has been deleted; its acceptance criteria are redistributed into the owning earlier stories above.
+The former query-metadata Story 7.6 remains superseded; its acceptance criteria stay with the earlier platform/consumer stories, while the approved July 15 plan assigns identifier 7.6 to the focused secret-store child and records that reuse in the migration crosswalk.
 
 ### Query Response Provenance Gate
 
-Query-response provenance is governed by architecture invariant AD-15. Story 2.8 owns the EventStore platform contract and route-aware gateway enforcement before generated REST or UI consumers may claim current/stale projection evidence. No UI or generated-API story that renders current/stale state or projection version may proceed unless Story 2.8 is done, or the story explicitly renders handler-computed and unknown provenance as Unknown and avoids projection-backed evidence claims.
+Query-response provenance is governed by architecture invariants AD-14 and AD-15. Story 1.2 owns the EventStore platform contract, route stamping, route-aware gateway enforcement, typed-client propagation, and real-gateway-path evidence before any consumer may claim current/stale projection state. Story 2.11 owns generated REST and Tenants consumption only.
 
-Story 4.7 no longer owns the EventStore platform prerequisite. Any Tenants producer aliasing fix that requires submodule maintainer approval is tracked as a non-blocking Tenants follow-up; until approved, affected Tenants routes must render Unknown rather than Current/Stale unless they source genuine projection-backed freshness.
+No UI or generated-API story may render current/stale state or projection version unless provenance is `ProjectionBacked`; handler-computed and unknown routes render `Unknown`. Story 4.7 remains the maintainer-approved Tenants producer follow-up and does not block the EventStore platform prerequisite.
 
-### Coordinated-Slice Gates For Oversized Stories
+### Focused Story And Migration Gates
 
-The stories below may proceed in one of two ways:
+The former coordinated-slice parents are superseded and must not be recreated as active implementation stories. Their replacements are:
 
-- Split the story into the named implementation slices before creating implementation story files.
-- Keep the story as a coordinated slice only if the named owner, review boundary, and validation commands are carried into the implementation story file.
+- Story 1.3 -> Stories 1.3-1.5.
+- Story 1.6 -> Stories 1.8-1.11.
+- Story 2.4 -> Stories 2.4-2.7.
+- Story 3.7 -> Stories 3.7-3.9.
+- Story 5.6 -> Stories 5.6-5.9.
+- Story 7.2 -> Stories 7.2-7.5.
+- Story 7.3 -> Stories 7.6-7.9.
+- Story 7.4 -> Stories 7.10-7.13.
+- Story 7.5 -> Stories 7.15-7.18, with new Story 7.14 owning the consolidated EventStore Admin dashboard migration.
 
-Implementation handoff gate: a story file for any row in this table is not ready-for-dev or ready-for-review unless its active content includes the row's required slices/coordinated boundary, owner/review boundary, and validation commands. A superseded-scope note is insufficient if active acceptance criteria or tasks still instruct the abandoned design.
+Every child names one owner, one review boundary, deterministic acceptance criteria, and focused validation. `_bmad-output/planning-artifacts/story-id-migration-2026-07-15.md` is the audit authority for old/new identifiers, status inheritance, evidence, and active-file supersession. A child inherits `done` only when that crosswalk names existing implementation, focused tests, and review results; Tenants children additionally require maintainer approval and exact SHA. Missing evidence leaves a child in `review`, not `done`.
 
-| Story | Required slices or coordinated boundary | Owner | Required validation commands |
-| --- | --- | --- | --- |
-| 1.3 | Read-model store/write policy; testing fake/conflict semantics; protected cursor codec. Tenants adoption moves to 1.6. | Amelia (Developer) with Murat (Test Architect) review | `dotnet build Hexalith.EventStore.slnx --configuration Release`; `dotnet test tests/Hexalith.EventStore.Client.Tests/`; `dotnet test tests/Hexalith.EventStore.Testing.Tests/`; `dotnet test tests/Hexalith.EventStore.DomainService.Tests/` |
-| 1.6 | Sample adoption; Tenants query/read-model adoption; Tenants projection/event-consumer adoption; governance guardrails. | Amelia (Developer) with Winston (Architect) review | `dotnet build Hexalith.EventStore.slnx --configuration Release`; `dotnet test tests/Hexalith.EventStore.Sample.Tests/`; `dotnet test tests/Hexalith.EventStore.DomainService.Tests/`; `dotnet test references/Hexalith.Tenants/tests/Hexalith.Tenants.Server.Tests/`; `dotnet test references/Hexalith.Tenants/tests/Hexalith.Tenants.Client.Tests/` |
-| 2.4 | Tenants REST contract metadata; external Tenants API host; Tenants UI client-library alignment; compatibility validation. | Amelia (Developer) with Sally (UX Designer) review for UI evidence | `dotnet build Hexalith.EventStore.slnx --configuration Release`; `dotnet test tests/Hexalith.EventStore.RestApi.Generators.Tests/`; `dotnet test references/Hexalith.Tenants/tests/Hexalith.Tenants.Contracts.Tests/`; `dotnet test references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/` |
-| 3.7 | Shared workflow caller migration; workflow reference/cache validation; supply-chain publishing backlog. | Paige (Technical Writer) and Amelia (Developer) | `dotnet build Hexalith.EventStore.slnx --configuration Release`; `rg -n "Hexalith.Builds/.+@" .github references -g "*.yml" -g "*.yaml"`; `rg -n "NUGET_API_KEY|trusted publishing|attestation|SBOM|provenance" docs .github _bmad-output -g "*.md" -g "*.yml" -g "*.yaml"` |
-| 5.6 | AppHost component loading parity; production DAPR component/ACL parity; topology drift tests; deployment documentation alignment. | Winston (Architect) with Amelia (Developer) | `dotnet build Hexalith.EventStore.slnx --configuration Release`; `dotnet test tests/Hexalith.EventStore.AppHost.Tests/`; `dotnet test tests/Hexalith.EventStore.IntegrationTests/` in the dedicated integration lane |
-| 7.2 | Claims normalization; audit logging; honest deferred admin operations; shared typed-client reduction. | Amelia (Developer) with Sally (UX Designer) review for UI honesty | `dotnet build Hexalith.EventStore.slnx --configuration Release`; `dotnet test tests/Hexalith.EventStore.Admin.Server.Tests/`; `dotnet test tests/Hexalith.EventStore.Admin.UI.Tests/`; `dotnet test tests/Hexalith.EventStore.Admin.Cli.Tests/` |
-| 7.3 | Secret-store deployment configuration; readiness/app-health checks; DAPR resiliency policy; immutable image tags. | Winston (Architect) with Paige (Technical Writer) | `dotnet build Hexalith.EventStore.slnx --configuration Release`; `dotnet test tests/Hexalith.EventStore.AppHost.Tests/`; `rg -n "secretKeyRef|app-health|resiliency|immutable|git-SHA" deploy docs _bmad-output src/Hexalith.EventStore.AppHost/DaprComponents samples/dapr-components -g "*.yaml" -g "*.yml" -g "*.md"` |
-| 7.4 | Integration CI lane recovery; persisted state evidence assertions; fake/integration reclassification; perf/advisory workflow hygiene. | Murat (Test Architect) with Amelia (Developer) | `dotnet build Hexalith.EventStore.slnx --configuration Release`; `dotnet test tests/Hexalith.EventStore.Testing.Integration.Tests/`; `dotnet test tests/Hexalith.EventStore.IntegrationTests/` in the dedicated integration lane |
+| Child stories | Owner / review boundary | Focused validation |
+| --- | --- | --- |
+| 1.3-1.5 | Amelia / Murat reviews store, fake, and cursor contracts independently | Client, Testing, DomainService, and focused Server query tests |
+| 1.8-1.11 | Amelia / Winston reviews Sample, Tenants query/read-model, Tenants projection/consumer, and guardrails independently | Sample, DomainService, AppHost, and scoped Tenants suites |
+| 2.4-2.7 | Amelia / Sally reviews UI evidence; Tenants maintainer approves submodule changes | RestApi.Generators plus scoped Tenants Contracts, Integration, UI, and package/source-mode builds |
+| 3.7-3.9 | Amelia / Paige reviews workflow migration, safety validation, and backlog separately | Workflow scans, manifest governance tests, Release build, and documented supply-chain evidence |
+| 5.6-5.9 | Winston / Amelia reviews AppHost, production YAML, drift tests, and docs separately | AppHost tests, topology scans, dedicated integration lane, and docs checks |
+| 7.2-7.14 | Owner/reviewer named by each Admin, deployment, testing, workflow, or UI child | Focused Admin, AppHost, integration, workflow, and UI suites named by each child |
+| 7.15-7.18 | John / specialist reviewer named by backlog domain | Independent artifact-structure validation for each backlog product |
 
 ### Spec-Gated Story Outputs
 
@@ -91,7 +99,7 @@ Approval evidence must include approver, date, accepted scope, rejected alternat
 
 ### Backlog Artifact Outputs
 
-Story 7.5 is a planning/backlog artifact story, not an implementation story. It completes only when these exact artifacts exist:
+Stories 7.15-7.18 are independent planning/backlog artifact stories, not runtime implementation stories. Each completes only when its own exact artifact satisfies scope, non-goals, dependencies, risks, and validation expectations:
 
 - `_bmad-output/planning-artifacts/backlog/gdpr-1-aggregate-erasure.md`
 - `_bmad-output/planning-artifacts/backlog/iam-1-admin-oidc-login.md`
@@ -100,16 +108,16 @@ Story 7.5 is a planning/backlog artifact story, not an implementation story. It 
 
 ### Parties Projection/Query Parity Gate
 
-Story 1.8 completed its investigation and correctly produced a `still blocked` owner packet. Its `done` status means the investigation is complete; it does not mean the SDK prerequisite is available. Parties Story 8.6 remains blocked until all follow-up implementation and closure stories complete:
+Story 1.13 completed its investigation and correctly produced a `still blocked` owner packet. Its `done` status means the investigation is complete; it does not mean the SDK prerequisite is available. Parties Story 8.6 remains blocked until all follow-up implementation and closure stories complete:
 
-1. Stories 1.9-1.11 establish read-model lifecycle, coordinated writes, and complete lifecycle metadata.
-2. Story 1.12 establishes asynchronous named multi-projection dispatch.
-3. Stories 1.13 and 1.14 prove production-path delivery idempotency and replay-equivalent paged rebuilds.
-4. Story 1.15 re-runs parity, records explicit EventStore owner approval, and binds the exact runtime SHA.
+1. Stories 1.14-1.16 establish read-model lifecycle, coordinated writes, and complete lifecycle metadata.
+2. Story 1.17 establishes asynchronous named multi-projection dispatch.
+3. Stories 1.18 and 1.19 prove production-path delivery idempotency and replay-equivalent paged rebuilds.
+4. Story 1.20 re-runs parity, records explicit EventStore owner approval, and binds exact source, package, or deployed-image identity.
 
-The numbered capability sequence governs evidence acceptance and final parity closure; it is not a serial execution lock. Stories 1.9-1.14 may be implemented and reviewed in parallel once the contracts they directly consume exist. An unresolved review item in one story blocks Story 1.15 closure, but does not block another implementation story unless it exposes a direct contract contradiction; a direct contradiction must halt the affected story and be routed through change control.
+The numbered capability sequence governs evidence acceptance and final parity closure; it is not a serial execution lock. Stories 1.14-1.19 may be implemented and reviewed in parallel once the contracts they directly consume exist. An unresolved review item in one story blocks Story 1.20 closure, but does not block another implementation story unless it exposes a direct contract contradiction; a direct contradiction must halt the affected story and be routed through change control.
 
-Cursor scope compatibility may reuse Story 1.8 evidence. Every other blocked item must be reclassified `available` by Story 1.15. Parties must verify its checked-out `references/Hexalith.EventStore` SHA matches the approved runtime SHA before Story 8.6 resumes or local rollback code is removed.
+Cursor scope compatibility may reuse Story 1.13 evidence. Every other blocked item must be reclassified `available` by Story 1.20. Source-mode consumers verify the EventStore submodule SHA; package-mode consumers verify exact package versions and hashes; deployed consumers verify the image digest maps to the approved EventStore SHA. The consuming repository SHA is never compared to the EventStore SHA.
 
 ## Requirements Inventory
 
@@ -189,7 +197,7 @@ FR36: Before a consuming module deletes local projection/query infrastructure, E
 
 ### NonFunctional Requirements
 
-NFR1: Security must fail closed for public, internal, domain-service, projection-notification, and admin surfaces; no endpoint may rely only on network posture or caller-supplied admin flags.
+NFR1: Security must fail closed for public, internal, domain-service, projection-notification, and admin surfaces; no endpoint may rely only on network posture or caller-supplied admin flags. The only anonymous exception is the health/liveness/readiness probe endpoints (`/health`, `/alive`, `/ready`), which are explicitly pinned `AllowAnonymous` and support-safe (AD-16); the fail-closed default is never weakened to reach probes.
 
 NFR2: Tenant isolation must be preserved across state keys, actor IDs, topics, admin queries, generated REST APIs, SignalR groups, and deployment configuration.
 
@@ -244,7 +252,10 @@ NFR18: AOT/trimming is explicitly not a target while reflection conventions rema
 - Shared Hexalith.Builds workflow/action references are intentionally `@main`; third-party action pinning policy remains enforced by the shared workflows.
 - Any global-ordering sharding implementation must update the frozen `_bmad-output/implementation-artifacts/spec-dapr-global-event-ordering.md` before code changes.
 - Specs are required before implementing folded snapshots, projection delivery cost changes, and event schema versioning/upcasting.
-- Full aggregate/event GDPR tombstoning, broker-history deletion, backup erasure, audit-record erasure, and crypto-shredding remain backlog work and must not be hidden inside unrelated remediation stories. Generic projection read-model/checkpoint erasure is active Story 1.9 scope.
+- Full aggregate/event GDPR tombstoning, broker-history deletion, backup erasure, audit-record erasure, and crypto-shredding remain backlog work and must not be hidden inside unrelated remediation stories. Generic projection read-model/checkpoint erasure is active Story 1.14 scope.
+- AD-19 fixes the normalized server result as `ProjectionDispatchResult` Version 1 with bounded ordinal route entries, stable status codes, and explicit checkpoint-advance state; no equivalent result shape is accepted without a new architecture decision.
+- AD-21 makes `src/Hexalith.EventStore.Admin.UI` the single consolidated EventStore UI under resource `eventstore-admin-ui`, FrontComposer module `event-store-admin`, matching Shell/Contracts.UI `3.2.2`, and Fluent UI V5. No additional UI host is created.
+- AD-22 requires owner-approved exact EventStore artifact identity before consumer infrastructure removal; use source SHA, package versions/hashes, or deployed image digest as applicable, never the consumer repository SHA.
 
 ### UX Design Requirements
 
@@ -409,7 +420,7 @@ So that I can run a domain module with platform-provided hosting and DAPR endpoi
 
 **Given** a domain service uses the SDK host extensions
 **When** the application maps domain-service endpoints
-**Then** `/process`, `/replay-state`, `/project`, and `/admin/operational-index-metadata` are available through SDK-owned mappings
+**Then** `/process`, `/replay-state`, `/query`, `/project`, and `/admin/operational-index-metadata` are available through SDK-owned mappings
 **And** route mapping remains compatible with domains that already provide a bespoke `/project` route.
 
 **Given** the Sample domain host is used as the in-repository proof
@@ -422,13 +433,13 @@ So that I can run a domain module with platform-provided hosting and DAPR endpoi
 **Then** the Release build is clean under warnings-as-errors
 **And** focused SDK and Sample tests verify endpoint mapping, assembly discovery, and compatibility behavior.
 
-### Story 1.2: Domain Query Handler Routing
+### Story 1.2: Domain Query Routing And Response Provenance
 
-**Requirements covered:** FR4
+**Requirements covered:** FR4, FR36, NFR8, NFR16
 
 As a domain author,
 I want domain queries to be implemented as plain query handlers and routed by the platform,
-So that my domain can expose query behavior without hosting a custom projection/query actor.
+So that my domain can expose query behavior without hosting a custom projection/query actor and consumers can distinguish genuine projection evidence from handler-computed results.
 
 **Acceptance Criteria:**
 
@@ -461,48 +472,107 @@ So that my domain can expose query behavior without hosting a custom projection/
 **Then** freshness is represented as unknown, not current
 **And** freshness-dependent requests fail closed according to the existing `query_projection_stale` taxonomy instead of silently treating unknown freshness as current.
 
+**Given** a handler route, projection-backed route, or unresolved route produces a response
+**When** `HandlerAwareQueryRouter` and the gateway stamp metadata
+**Then** provenance is respectively `HandlerComputed`, `ProjectionBacked`, or `Unknown`
+**And** that classification is preserved through `QueryResult.Metadata`, router/gateway responses, typed and untyped clients, and external adapters.
+
+**Given** a route is `HandlerComputed` or `Unknown`
+**When** the gateway merges response metadata
+**Then** it attaches no projection-actor ETag, projection version, freshness, or lifecycle evidence
+**And** consumers render `Unknown` rather than `Current` or `Stale`.
+
+**Given** a route is `ProjectionBacked`
+**When** the gateway exposes lifecycle evidence
+**Then** projection version and lifecycle originate from persisted read-model freshness rather than an ETag alias
+**And** real-gateway-path tests prove the handler route omits projection evidence while the persisted projection route preserves genuine evidence.
+
 **Given** query routing is tested
 **When** focused unit tests execute
-**Then** domain-side dispatch, operational metadata capture, handler-aware routing, fallback behavior, metadata propagation, gateway merge behavior, typed client metadata exposure, and backward-compatible projection-actor routing are verified.
+**Then** domain-side dispatch, operational metadata capture, handler-aware routing, fallback behavior, route stamping, metadata propagation, gateway merge behavior, typed client metadata exposure, and backward-compatible projection-actor routing are verified.
 
-### Story 1.3: Generic Read Models And Query Cursors
+### Story 1.3: Persisted Read-Model Store And Write Policy
 
-**Requirements covered:** FR5, FR6
+**Requirements covered:** FR5, FR36, NFR7, NFR16
+**Owner / review boundary:** Amelia (Developer); Murat (Test Architect) reviews only the production store and write-policy contract.
+**Focused validation:** `dotnet test tests/Hexalith.EventStore.Client.Tests/ --configuration Release`; `dotnet build Hexalith.EventStore.slnx --configuration Release`.
 
-As a domain author,
-I want platform-provided persisted read-model storage and protected query cursors,
-So that I can implement domain-specific read behavior without reimplementing DAPR state access, optimistic concurrency, or cursor protection.
+As a domain projection author,
+I want a platform-owned persisted read-model store and write policy,
+So that ETag-aware reads, writes, and bounded merge retries behave consistently without domain-owned DAPR state wrappers.
 
 **Acceptance Criteria:**
 
-**Given** a domain projection or query handler needs durable read-model state
-**When** it uses `IReadModelStore` and `ReadModelWritePolicy`
-**Then** it can read and write ETag-aware entries by key
-**And** it can apply events or merge singleton/index read models with bounded optimistic-concurrency retries.
+**Given** a projection or query handler uses `IReadModelStore` and `ReadModelWritePolicy`
+**When** it reads, creates, replaces, applies, or merges an entry
+**Then** ETags and first-write concurrency are enforced by the DAPR adapter
+**And** singleton/index merges use a bounded retry budget with a deterministic conflict result.
 
-**Given** a domain needs deterministic tests for read-model behavior
-**When** it uses the platform testing fake
-**Then** the fake preserves first-write-wins and ETag conflict semantics
-**And** tests can inject conflicts without relying on live DAPR infrastructure.
+**Given** the public registration seam is used
+**When** services resolve the store and policy
+**Then** the contracts remain additive, cancellation-aware, and independently configurable
+**And** no Tenants source change is required by this platform story.
 
-**Given** a domain query returns paged results
-**When** it creates a cursor with `IQueryCursorCodec` and `QueryCursorScope`
-**Then** the cursor is protected with a caller-supplied Data Protection purpose
-**And** decoding fails safely for wrong scope, wrong query type, malformed payload, tampering, oversize payload, or key rotation
-**And** successful paged responses can return authoritative `QueryPagingMetadata` with effective page size, offset or next cursor, total count when known, and has-more evidence without exposing cursor internals
-**And** request paging echoed by the gateway is not treated as proof of total count, next cursor, or page completeness unless the query handler or projection produced that metadata.
+**Given** focused store tests run
+**When** success, first write, conflict, retry exhaustion, cancellation, and DAPR failure are exercised
+**Then** observable results and persisted state match the documented policy
+**And** mock call counts alone do not close the story.
 
-**Given** cursor or paging inputs are invalid, malformed, wrong-scope, oversized, tampered, or expired after key rotation
-**When** the query path rejects them
-**Then** the response uses support-safe validation/problem details
-**And** tests prove cursors remain opaque and are not parsed, logged, displayed as support text, or treated as ordering proof.
+### Story 1.4: Deterministic Read-Model Testing Fake
 
-**Given** the read-model and cursor seams are proven against non-trivial platform scenarios
-**When** the implementation validates ETag-aware reads/writes, merge-on-write behavior, deterministic conflict injection, protected cursor encoding/decoding, invalid cursor rejection, and paging metadata propagation
-**Then** the platform read-model and cursor contracts are proven without modifying the Tenants submodule
-**And** production Tenants read-model/cursor adoption remains out of Story 1.3 and is owned by Story 1.6.
+**Requirements covered:** FR5, FR36, NFR16
+**Owner / review boundary:** Amelia (Developer); Murat (Test Architect) reviews deterministic fake semantics only.
+**Focused validation:** `dotnet test tests/Hexalith.EventStore.Testing.Tests/ --configuration Release`; focused in-memory store tests in `Hexalith.EventStore.Client.Tests`.
 
-### Story 1.4: Projection And Domain Event Consumer Seams
+As a domain test author,
+I want an in-memory read-model fake with production-equivalent observable semantics,
+So that conflict, retry, partial-failure, and JSON round-trip behavior can be tested without live DAPR infrastructure.
+
+**Acceptance Criteria:**
+
+**Given** a test uses the platform fake
+**When** entries are saved, read, replaced, or deleted
+**Then** first-write and ETag behavior match the production store contract
+**And** values cross a serialization boundary rather than sharing mutable object references.
+
+**Given** a test needs deterministic failure
+**When** it injects conflict or partial-failure behavior
+**Then** the configured attempt fails at the named boundary and retry behavior is reproducible
+**And** unrelated keys and attempts remain unaffected.
+
+**Given** the fake and production contract tests run
+**When** equivalent scenarios are compared
+**Then** their public outcomes agree
+**And** fake-only behavior is not labeled as live integration evidence.
+
+### Story 1.5: Protected Query Cursor Codec
+
+**Requirements covered:** FR6, NFR2, NFR16
+**Owner / review boundary:** Amelia (Developer); Murat (Test Architect) reviews cursor protection and query-boundary evidence only.
+**Focused validation:** cursor/registration tests in `Hexalith.EventStore.Client.Tests`, `Hexalith.EventStore.DomainService.Tests`, and focused query validation/problem-detail tests in `Hexalith.EventStore.Server.Tests`.
+
+As a domain query author,
+I want a reusable protected query cursor codec,
+So that paged queries preserve opaque scope without exposing or trusting client-controlled cursor internals.
+
+**Acceptance Criteria:**
+
+**Given** a handler encodes a cursor with `IQueryCursorCodec` and `QueryCursorScope`
+**When** the cursor is decoded with the same caller-supplied Data Protection purpose and scope
+**Then** the bounded payload round-trips
+**And** wrong tenant/domain/query scope, malformed input, tampering, oversize payload, or key rotation fails safely.
+
+**Given** a producer supplies paging evidence
+**When** it crosses query and typed-client results
+**Then** effective page size, offset or next cursor, total count when known, and `HasMore` remain producer-authored
+**And** gateway request paging is never promoted to authoritative evidence.
+
+**Given** cursor input is rejected
+**When** the query surface returns problem details and logs the failure
+**Then** it uses the support-safe `query_invalid_page` taxonomy
+**And** raw cursor, decoded position, scope, protected payload, and ETag internals are never parsed for support text or disclosed.
+
+### Story 1.6: Projection And Domain Event Consumer Seams
 
 **Requirements covered:** FR7
 
@@ -532,7 +602,7 @@ So that I can keep projection and subscription behavior domain-specific while re
 **Then** projection dispatch, custom-route yielding, event handler registration, deduplication, and endpoint mapping are verified
 **And** the Client library remains ASP.NET-free while endpoint mapping stays in the DomainService SDK.
 
-### Story 1.5: Domain Module Hosting Observability
+### Story 1.7: Domain Module Hosting Observability
 
 **Requirements covered:** FR8
 
@@ -562,37 +632,115 @@ So that local topology, diagnostics, and health behavior are consistent across e
 **Then** duplicated sidecar, telemetry, and health-check wiring is removed from domain modules
 **And** Release builds remain clean under warnings-as-errors.
 
-### Story 1.6: Sample And Tenants Domain-Centric Adoption
+### Story 1.8: Sample Domain-Centric Adoption
 
-**Requirements covered:** FR9
+**Requirements covered:** FR9, NFR14
+**Owner / review boundary:** Amelia (Developer); Winston (Architect) reviews the Sample domain/platform boundary only.
+**Focused validation:** `Hexalith.EventStore.Sample.Tests`, `Hexalith.EventStore.DomainService.Tests`, and the Release solution build.
 
 As a platform maintainer,
-I want the Sample and Tenants domains to prove the domain-centric model,
-So that future domain authors have working references that do not duplicate platform infrastructure.
+I want the Sample domain to be the minimal domain-centric reference,
+So that domain authors can see platform SDK adoption without copied hosting or infrastructure.
 
 **Acceptance Criteria:**
 
-**Given** the Sample domain is the minimal reference implementation
-**When** it adopts the SDK host, projection handler, and event-consumer seams
-**Then** its host and supporting files contain only domain-specific behavior
-**And** moved request routing, projection, and operational metadata infrastructure is deleted from the Sample project.
+**Given** the Sample domain adopts the canonical host, projection, query, and event-consumer seams
+**When** its source and project graph are inspected
+**Then** it contains domain behavior and contracts only
+**And** moved request routing, operational metadata, ServiceDefaults, Aspire, state-store, cursor, telemetry, and health plumbing is absent.
 
-**Given** the Tenants domain is the non-trivial reference implementation
-**When** it adopts `IDomainQueryHandler`, `IReadModelStore`, `ReadModelWritePolicy`, `IQueryCursorCodec`, platform domain-event consumers, platform telemetry, and platform health checks
-**Then** tenant RBAC, audit, read-model, pagination, and projection semantics are preserved
-**And** per-domain query actors, cursor codecs, state-store wrappers, telemetry classes, health checks, and reusable Aspire/ServiceDefaults plumbing are removed.
+**Given** the Sample UI issues commands and queries
+**When** host boundaries are scanned
+**Then** it consumes typed EventStore client seams
+**And** it hosts no generated or hand-written per-message MVC command/query controllers.
 
-**Given** domain-module authoring rules are enforced
-**When** Sample and Tenants references are inspected by guardrail tests or governance checks
-**Then** domain modules do not reintroduce their own reusable hosting, Aspire, ServiceDefaults, projection actor, cursor, state-store, telemetry, or health-check infrastructure
-**And** any remaining AppHost/topology ownership follows the current root repository architecture rules.
+**Given** focused Sample and SDK tests run
+**When** aggregate dispatch, query, projection, health, and guardrail behavior is exercised
+**Then** domain behavior is preserved
+**And** the Release build remains clean under warnings-as-errors.
 
-**Given** the adoption proofs are validated
-**When** the relevant EventStore and domain test projects run
-**Then** unit tiers remain green
-**And** any CI-gated DAPR/Aspire integration gaps are documented with exact blockers and follow-up work.
+### Story 1.9: Tenants Query And Read-Model Adoption
 
-### Story 1.7: DomainService Packaging And Guardrails
+**Requirements covered:** FR4, FR5, FR6, FR9, FR36, NFR2, NFR8, NFR16
+**Owner / review boundary:** Amelia (Developer); Winston (Architect) and the Tenants maintainer approve the query/read-model boundary.
+**Focused validation:** scoped Tenants query, read-model, cursor, RBAC, audit, and Client tests in source mode plus exact package-mode evidence.
+
+As a Tenants maintainer,
+I want Tenants queries and read models to consume EventStore platform seams,
+So that tenant RBAC, audit, pagination, and lifecycle behavior remain intact without local platform clones.
+
+**Acceptance Criteria:**
+
+**Given** Tenants adopts `IDomainQueryHandler`, `IReadModelStore`, `ReadModelWritePolicy`, and `IQueryCursorCodec`
+**When** local query/read-model infrastructure is removed
+**Then** RBAC, audit, cursor scope, paging, ETag, and persisted lifecycle behavior remain equivalent
+**And** route provenance follows Story 1.2 rather than an ETag-derived alias.
+
+**Given** the change crosses the Tenants repository boundary
+**When** completion is requested
+**Then** the evidence names the Tenants maintainer-approved PR/commit, exact Tenants SHA, accepted scope, source/package mode, and validation results
+**And** without approval the child remains `review` or `backlog` and no submodule edit is silently authorized.
+
+**Given** focused production-path tests run
+**When** tenant-scoped reads, conflicts, invalid cursors, lifecycle evidence, and cross-tenant denial are exercised
+**Then** persisted end state and support-safe errors are asserted
+**And** mock-only proof cannot close the child.
+
+### Story 1.10: Tenants Projection And Event-Consumer Adoption
+
+**Requirements covered:** FR7, FR9, FR36, NFR2, NFR6, NFR16
+**Owner / review boundary:** Amelia (Developer); Winston (Architect) and the Tenants maintainer approve projection/consumer replacement.
+**Focused validation:** scoped Tenants projection, event-publication, duplicate/out-of-order, health, and persisted-state tests in source and package modes.
+
+As a Tenants maintainer,
+I want projections and domain-event consumers to use EventStore platform dispatch and delivery seams,
+So that local actor/plumbing removal preserves tenant isolation and delivery correctness.
+
+**Acceptance Criteria:**
+
+**Given** Tenants adopts named projection and event-consumer seams
+**When** local projection actors, marker plumbing, telemetry, and health duplication are removed
+**Then** domain-specific projection logic remains
+**And** duplicate, out-of-order, checkpoint, audit, and tenant behavior is preserved through production paths.
+
+**Given** the replacement is approved
+**When** completion evidence is recorded
+**Then** it cites the Tenants maintainer-approved PR/commit, exact SHA, source/package mode, persisted-state tests, and rollback boundary
+**And** absent approval leaves local infrastructure intact and the child non-`done`.
+
+**Given** one projection or consumer fails
+**When** retry and recovery run
+**Then** successful durable state is not misreported or lost
+**And** checkpoints advance only after required durable work.
+
+### Story 1.11: Domain-Module Adoption Guardrails
+
+**Requirements covered:** FR1, FR9, FR10, NFR14
+**Owner / review boundary:** Amelia (Developer); Winston (Architect) reviews repository-boundary and anti-boilerplate policy only.
+**Focused validation:** `DomainModuleAuthoringGuardrailTests`, Sample tests, AppHost configuration tests, and read-only scans of initialized domain-module roots.
+
+As a platform maintainer,
+I want domain-module architecture guardrails,
+So that future Sample, Tenants, and third-party modules cannot silently reintroduce reusable platform boilerplate.
+
+**Acceptance Criteria:**
+
+**Given** initialized domain-module roots are scanned
+**When** a module owns reusable hosting, Aspire, ServiceDefaults, projection/query actors, cursor codecs, state-store wrappers, telemetry, health checks, or per-message UI controllers prohibited by AD-2/AD-4
+**Then** the guardrail fails with the platform seam that must replace it
+**And** domain-specific contracts, handlers, projections, validators, and explicitly approved exceptions remain allowed.
+
+**Given** a scan reaches a root-declared submodule
+**When** it evaluates source
+**Then** it remains read-only unless maintainer approval exists
+**And** it never initializes nested submodules.
+
+**Given** focused governance tests run
+**When** approved and prohibited fixtures are evaluated
+**Then** matching is deterministic and support-safe
+**And** package/source-mode project boundaries remain valid.
+
+### Story 1.12: DomainService Packaging And Guardrails
 
 **Requirements covered:** FR10
 
@@ -622,10 +770,10 @@ So that the domain-centric model is reusable and hard to regress.
 **Then** package dependencies are reproducible
 **And** the solution remains clean under warnings-as-errors.
 
-### Story 1.8: Projection/Query SDK Owner Parity Proof
+### Story 1.13: Projection/Query SDK Owner Parity Proof
 
 **Requirements covered:** FR4, FR5, FR6, FR7, FR9, NFR8, NFR16
-**Classification:** Completed investigation/proof story for cross-repo domain migration. Its `done` status means the investigation and blocked packet were completed; it does not mean SDK parity is available. Implementation closure is owned by Stories 1.9-1.15.
+**Classification:** Completed investigation/proof story for cross-repo domain migration. Its `done` status means the investigation and blocked packet were completed; it does not mean SDK parity is available. Implementation closure is owned by Stories 1.14-1.20.
 
 As an EventStore platform owner,
 I want reviewed proof that the projection/query SDK can replace a non-trivial domain's local projection/query mechanics,
@@ -657,7 +805,7 @@ So that consuming modules can delete local rollback code only after EventStore o
 **When** a consuming repo records it in its prerequisite matrix
 **Then** the consuming repo must still verify its checked-out EventStore pin matches the approved SHA before source migration or local rollback deletion starts.
 
-### Story 1.9: Read-Model And Projection Checkpoint Erasure
+### Story 1.14: Read-Model And Projection Checkpoint Erasure
 
 **Requirements covered:** FR5, FR36, NFR2, NFR16
 
@@ -692,12 +840,12 @@ So that removing or recreating an aggregate cannot leave stale projection state 
 **Then** it cannot delete or reveal that state
 **And** persisted-state tests verify the denial and both tenants' end state.
 
-**Given** Story 1.9 completes
+**Given** Story 1.14 completes
 **When** its scope is reviewed
 **Then** it has not erased event streams, snapshots, broker history, backups, audit evidence, or cryptographic keys
 **And** full GDPR aggregate/event tombstoning remains owned by GDPR-1.
 
-### Story 1.10: Coordinated Read-Model Batch Writes
+### Story 1.15: Coordinated Read-Model Batch Writes
 
 **Requirements covered:** FR5, FR36, NFR7, NFR16
 
@@ -737,7 +885,7 @@ So that a projection cannot expose an updated detail model with a missing or inc
 **Then** detail, index, batch/recovery marker, and checkpoint end state is asserted directly
 **And** mock calls alone are not accepted as G10 proof.
 
-### Story 1.11: Complete Projection Freshness Lifecycle
+### Story 1.16: Complete Projection Freshness Lifecycle
 
 **Requirements covered:** FR4, FR36, NFR8, NFR15
 
@@ -757,10 +905,10 @@ So that operational states are not collapsed into a stale Boolean or inferred fr
 **Then** persisted projection evidence produces `Current` or `Stale`, active rebuild lifecycle produces `Rebuilding`, serviceable output with a known degraded dependency produces `Degraded`, failed/unreachable authoritative storage produces `Unavailable`, and explicit non-authoritative consumer fallback produces `LocalOnly`
 **And** lifecycle is never inferred from ETag presence, HTTP success, payload fields, or SignalR.
 
-**Given** query provenance is available from Story 2.8
+**Given** query provenance is available from Story 1.2
 **When** lifecycle metadata crosses the query path
 **Then** only `ProjectionBacked` responses may carry an authoritative lifecycle state
-**And** handler-computed, missing, or invalid provenance yields `Unknown` without reopening Story 2.8 route-selection scope.
+**And** handler-computed, missing, or invalid provenance yields `Unknown` without reopening Story 1.2 route-selection scope.
 
 **Given** legacy metadata remains supported
 **When** lifecycle is projected into compatibility fields
@@ -776,11 +924,11 @@ So that operational states are not collapsed into a stale Boolean or inferred fr
 **When** all six Parties states are exercised
 **Then** mutation availability follows the approved UX table, `LocalOnly` never counts as projection-confirmed success, and tests cover serialization, omission, provenance gating, and persisted-path propagation.
 
-### Story 1.12: Asynchronous Multi-Projection Dispatch
+### Story 1.17: Asynchronous Multi-Projection Dispatch
 
 **Requirements covered:** FR7, FR36, NFR7, NFR12
 
-**Sequencing correction:** Story 1.12 builds on the implemented platform seams from Stories 1.4, 1.9, 1.10, and 1.11, but unresolved review findings in another story are not a serial completion lock. Story 1.12 may implement and complete independently unless it exposes a direct contract contradiction. Story 1.15 remains blocked until Stories 1.9-1.14 are complete and reviewed.
+**Sequencing correction:** Story 1.17 builds on the implemented platform seams from Stories 1.6, 1.14, 1.15, and 1.16, but unresolved review findings in another story are not a serial completion lock. Story 1.17 may implement and complete independently unless it exposes a direct contract contradiction. Story 1.20 remains blocked until Stories 1.14-1.19 are complete and reviewed.
 
 As a domain projection author,
 I want asynchronous named projection handlers with one-to-many dispatch,
@@ -790,7 +938,7 @@ So that one domain can durably maintain detail and index projections through pla
 
 **Given** a named projection handler performs persistence
 **When** it handles a request
-**Then** the contract is asynchronous and cancellation-aware, can await `IReadModelStore`, `ReadModelWritePolicy`, and Story 1.10 batches, and completes only after required persistence finishes
+**Then** the contract is asynchronous and cancellation-aware, can await `IReadModelStore`, `ReadModelWritePolicy`, and Story 1.15 batches, and completes only after required persistence finishes
 **And** production awaits use `ConfigureAwait(false)`.
 
 **Given** handlers are registered
@@ -802,9 +950,14 @@ So that one domain can durably maintain detail and index projections through pla
 **Then** every applicable named handler is invoked, detail and index outcomes remain distinguishable, and observable invocation order is deterministic.
 
 **Given** one projection handler fails after another completes durably
-**When** the endpoint returns its bounded per-projection result or equivalent versioned result
-**Then** failed projection checkpoint state does not advance as success
-**And** partial failure remains retryable without losing successful durable work.
+**When** the server normalizes the frozen `/project/v2` wire response
+**Then** it emits exactly one bounded `ProjectionDispatchResult` Version 1 with one ordinal entry per admitted `(Domain, ProjectionType)` route
+**And** every entry contains the stable `ProjectionDispatchStatus` code and explicit `ProjectionCheckpointAdvanceState`.
+
+**Given** a route returns or encounters any completion, retry, validation, transport, persistence, checkpoint, malformed-outcome, or cancellation condition
+**When** normalization follows AD-19
+**Then** only `Completed` or `AlreadyCompleted` after required durable persistence, any legacy actor write, and checkpoint save records `Advanced`
+**And** retryable work records `Retryable`/`NotAdvanced`, deterministic validation records `Failed`/`NotAdvanced`, uncertainty records `Indeterminate`/`NotAdvanced`, and cancellation fabricates no result and advances nothing.
 
 **Given** existing synchronous single-projection consumers remain
 **When** the new contract ships
@@ -816,7 +969,7 @@ So that one domain can durably maintain detail and index projections through pla
 **Then** both async persistence operations are awaited and both persisted outputs are independently verified
 **And** a one-handler failure proves truthful result and checkpoint behavior without Parties-specific EventStore logic.
 
-### Story 1.13: Projection-Handler Delivery Idempotency
+### Story 1.18: Projection-Handler Delivery Idempotency
 
 **Requirements covered:** FR7, FR36, NFR6, NFR7, NFR16
 
@@ -855,7 +1008,7 @@ So that at-least-once unordered delivery cannot corrupt detail or index state.
 **When** their implementation is reviewed
 **Then** they preserve this minimum correctness baseline.
 
-### Story 1.14: Correct Paged Rebuild And Replay Equivalence
+### Story 1.19: Correct Paged Rebuild And Replay Equivalence
 
 **Requirements covered:** FR7, FR33, FR36, NFR8, NFR16
 
@@ -886,7 +1039,7 @@ So that rebuilding a long stream cannot replace correct state with a partial-pag
 **Given** detail and index projections rebuild together
 **When** the operation outcome is written
 **Then** each projection remains independently observable but the operation cannot report success while any required projection is incomplete
-**And** promotion and checkpoints follow Stories 1.10-1.13.
+**And** promotion and checkpoints follow Stories 1.15-1.18.
 
 **Given** replay-equivalence evidence is produced
 **When** a fixture larger than two pages runs through canonical replay/full-sequence projection and the production paged rebuild orchestrator
@@ -898,7 +1051,7 @@ So that rebuilding a long stream cannot replace correct state with a partial-pag
 **Then** it has an explicit safety bound and failure mode
 **And** Stories 6.3/6.4 may optimize it later without changing equivalence guarantees.
 
-### Story 1.15: Owner-Approved Parity Closure And Runtime Pin
+### Story 1.20: Owner-Approved Parity Closure And Runtime Pin
 
 **Requirements covered:** FR36, NFR12, NFR16
 
@@ -910,7 +1063,7 @@ So that Parties Story 8.6 resumes only against capabilities that are implemented
 
 **Given** closure starts
 **When** prerequisites are checked
-**Then** Stories 1.9-1.14 are complete and reviewed, Story 2.8 is complete before Story 1.11 evidence is accepted, and public API/compatibility decisions are recorded.
+**Then** Stories 1.14-1.19 are complete and reviewed, Story 1.2 is complete before Story 1.16 evidence is accepted, and public API/compatibility decisions are recorded.
 
 **Given** parity is re-evaluated
 **When** the packet is produced
@@ -929,16 +1082,18 @@ So that Parties Story 8.6 resumes only against capabilities that are implemented
 
 **Given** the runtime implementation is approved
 **When** repository identity is recorded
-**Then** one exact EventStore commit containing the approved implementation/evidence is named, its working tree/test results correspond to that commit, and any later documentation-only SHA distinction is explicit.
+**Then** one exact EventStore source commit containing the approved implementation/evidence is named and its working tree/test results correspond to that commit
+**And** release provenance maps that SHA to exact consumed package versions and hashes plus the deployed EventStore image digest where applicable.
 
 **Given** the packet is handed to Parties
 **When** Parties evaluates its prerequisite
-**Then** it must verify `references/Hexalith.EventStore` resolves to the approved SHA; a mismatch leaves Story 8.6 blocked, and EventStore approval does not itself modify Parties or delete its rollback code.
+**Then** source mode verifies `references/Hexalith.EventStore` resolves to the approved EventStore SHA, package mode verifies exact package identities, and deployed mode verifies the image digest maps to that SHA
+**And** a mismatch leaves Story 8.6 blocked, the Parties repository SHA is never compared to the EventStore SHA, and EventStore approval does not itself modify Parties or delete rollback code.
 
-**Given** Story 1.15 completion is requested
+**Given** Story 1.20 completion is requested
 **When** the packet still says `still blocked`
 **Then** the story remains `in-progress` with the blocking condition recorded and a scoped corrective item is created
-**And** Story 1.15 and Epic 1 become `done` only after the final decision is `available`.
+**And** Story 1.20 and Epic 1 become `done` only after the final decision is `available`.
 
 ## Epic 2: External Integration Surfaces
 
@@ -1043,40 +1198,115 @@ So that I can see the intended integration pattern without coupling it to the in
 **Then** generated query and command endpoints compile and behave as expected
 **And** any smoke tests verify ETag/`304` query behavior, metadata header behavior when available, and accepted command behavior through the external API host.
 
-### Story 2.4: Tenants External API Host Adoption
+### Story 2.4: Tenants REST Contract Metadata And Routes
 
-**Requirements covered:** FR15
+**Requirements covered:** FR11, FR15, NFR13
+**Owner / review boundary:** Amelia (Developer); the Tenants maintainer approves contract identity and route metadata.
+**Focused validation:** scoped Tenants Contracts tests and EventStore REST generator diagnostics/output tests.
 
-As an external tenant-management integrator,
-I want Tenants typed REST endpoints to be generated in an external API host,
-So that external applications can use stable tenant APIs while Tenants UI stays a client-library consumer.
+As a Tenants contract maintainer,
+I want command and query contracts to declare the external REST surface,
+So that generated tenant APIs remain stable without duplicating controller logic.
 
 **Acceptance Criteria:**
 
-**Given** Tenants commands and queries are intended for external REST exposure
-**When** their contracts implement the required EventStore REST contract seam and route metadata
-**Then** rich routes such as tenant detail, tenant users, user tenants, global administrators, and tenant audit are declared in contracts
-**And** the declarations do not duplicate controller logic.
+**Given** a Tenants command or query is externally exposed
+**When** contract metadata is inspected
+**Then** route, verb, tenant source, aggregate/entity binding, and API scope are explicit
+**And** tenant detail, tenant users, user tenants, global administrators, and audit routes remain unambiguous.
 
-**Given** an external Tenants API host references the Tenants contracts and generator
-**When** it builds
-**Then** generated controllers replace the former hand-written `TenantsQueryController` surface
-**And** all generated actions delegate through `IEventStoreGatewayClient` so gateway auth, validation, status, archive, and observability remain the front door.
+**Given** invalid or duplicate route metadata exists
+**When** generator diagnostics run
+**Then** compilation fails with deterministic support-safe diagnostics
+**And** no runtime fallback invents a route.
 
-**Given** Tenants UI needs tenant command and query behavior
-**When** it is aligned with the corrected architecture
-**Then** it uses EventStore/Tenants client libraries instead of hosting MVC command/query controllers
-**And** UI-specific flows continue to preserve projection-confirmed success and support-safe states.
+**Given** completion is requested
+**When** cross-repository evidence is reviewed
+**Then** it names the Tenants maintainer-approved PR/commit, exact SHA, accepted contract scope, and focused test results
+**And** absent approval keeps this child non-`done`.
 
-**Given** Tenants external API adoption is validated
-**When** submodule unit and integration tests run in their appropriate lanes
-**Then** the generated REST surface preserves existing external behavior
-**And** freshness, projection-version, ETag, and paging evidence is backed by the real platform query metadata path implemented by Stories 1.2, 1.3, and 2.2 rather than by mocked gateway-client metadata
-**And** Tenants UI and generated API evidence must not rely on ad hoc payload fields or missing freshness metadata to claim projection-confirmed success
-**And** the Tenants external API proof runs or records exact blockers for package-reference mode with `UseHexalithProjectReferences=false`, proving it does not depend on source-only EventStore project references or a mixed source `Hexalith.EventStore.Gateway` plus package `Hexalith.EventStore.DomainService` graph
-**And** any CI-gated DAPR/Aspire blockers are documented with exact commands and failure reasons.
+### Story 2.5: Dedicated External Tenants API Host
 
-### Story 2.5: Scoped Metadata-Rich Projection Notifications
+**Requirements covered:** FR13, FR15, NFR2, NFR14
+**Owner / review boundary:** Amelia (Developer); the Tenants maintainer reviews the API-host boundary.
+**Focused validation:** Tenants generated-controller integration tests plus EventStore AppHost topology/ACL tests.
+
+As an external tenant-management integrator,
+I want generated Tenants controllers in one dedicated external API host,
+So that gateway policy remains the front door and domain/UI hosts expose no per-message API surface.
+
+**Acceptance Criteria:**
+
+**Given** `Hexalith.Tenants.Api` references Tenants contracts and the EventStore generator
+**When** it builds and starts
+**Then** generated command/query controllers delegate only to `IEventStoreGatewayClient`
+**And** the host contains inbound auth, controller mapping, service defaults, and gateway-client wiring without domain implementation or UI dependencies.
+
+**Given** AppHost and DAPR ACLs include `tenants-api`
+**When** topology is inspected
+**Then** the host may invoke only the EventStore gateway command/query operations it needs
+**And** it receives no state-store, pub/sub, or direct Tenants domain-service persistence access.
+
+**Given** unauthorized, invalid, mismatched, not-modified, or gateway-failure cases run through compiled generated routes
+**When** results are asserted
+**Then** responses are support-safe and no unintended gateway call occurs
+**And** the evidence records maintainer approval, exact Tenants SHA, and focused test results before `done`.
+
+### Story 2.6: Tenants UI Client-Library Alignment And UX Evidence
+
+**Requirements covered:** FR13, FR15, FR34, NFR14, NFR15
+**Owner / review boundary:** Amelia (Developer); Sally (UX Designer) and the Tenants maintainer review UI-host and evidence-state behavior.
+**Focused validation:** Tenants UI tests, canonical UX conformance checks, and structural controller/analyzer scans.
+
+As a Tenants operator,
+I want the interactive UI to consume typed client libraries and display honest evidence states,
+So that it remains an interactive host rather than a second external API surface.
+
+**Acceptance Criteria:**
+
+**Given** Tenants UI issues commands and queries
+**When** its project graph and endpoints are inspected
+**Then** it uses Tenants/EventStore client libraries
+**And** it has no REST generator analyzer, assembly opt-in, generated controller mapping, or hand-written per-message MVC controller.
+
+**Given** query provenance is `ProjectionBacked`, `HandlerComputed`, or `Unknown`
+**When** lifecycle is rendered
+**Then** only projection-backed evidence may show `Current`, `Stale`, `Rebuilding`, `Degraded`, `Unavailable`, or `LocalOnly`
+**And** handler-computed, missing, or invalid provenance renders `Unknown` without claiming projection-confirmed success.
+
+**Given** UI acceptance is recorded
+**When** Sally and the Tenants maintainer review the focused evidence
+**Then** support-safe denied/loading/stale/rebuilding/degraded/unavailable/local-only states follow canonical UX
+**And** the exact approved Tenants SHA is recorded before `done`.
+
+### Story 2.7: Tenants Compatibility And Package-Mode Validation
+
+**Requirements covered:** FR15, FR21, FR22, NFR9, NFR12, NFR16
+**Owner / review boundary:** Amelia (Developer); the Tenants maintainer reviews compatibility and exact dependency identity.
+**Focused validation:** separate Debug/source and Release/package restores/builds plus scoped Tenants Contracts, Integration, UI, and Server tests.
+
+As a release maintainer,
+I want Tenants external API/UI adoption proven in both source and package modes,
+So that the proof does not depend on a mixed or accidental source graph.
+
+**Acceptance Criteria:**
+
+**Given** source mode is selected
+**When** restore, build, and focused tests run
+**Then** the approved Tenants and EventStore submodule SHAs are recorded
+**And** the graph uses the intended root-declared project references without nested submodules.
+
+**Given** package mode is selected
+**When** Release restore, build, and focused tests run
+**Then** EventStore dependencies resolve to exact approved package versions and hashes
+**And** no source-only `Hexalith.EventStore.Gateway` plus package `DomainService` mixture is present.
+
+**Given** compatibility evidence is incomplete or maintainer approval is unavailable
+**When** status is evaluated
+**Then** generic EventStore platform work may remain complete
+**And** this Tenants child stays `review` or `backlog` with the blocker and rollback posture recorded.
+
+### Story 2.8: Scoped Metadata-Rich Projection Notifications
 
 **Requirements covered:** FR16
 
@@ -1098,7 +1328,7 @@ So that clients can filter stale or out-of-order updates before re-querying with
 
 **Given** notification metadata is provided by a domain
 **When** metadata exceeds configured entry or byte limits
-**Then** the framework rejects or clips the metadata according to documented options
+**Then** the framework rejects the detail notification before broadcast and never clips metadata
 **And** metadata values are not logged above Debug level.
 
 **Given** clients join or leave scoped projection groups
@@ -1108,9 +1338,10 @@ So that clients can filter stale or out-of-order updates before re-querying with
 
 **Given** projection notification tests run
 **When** SignalR and optional DAPR notification paths are exercised
-**Then** scoped detail delivery, signal-only compatibility, auth rejection, metadata bounds, fail-open broadcast behavior, and Redis backplane fan-out are covered.
+**Then** scoped detail delivery, auth rejection, metadata rejection, and Redis backplane fan-out are covered
+**And** an already-authorized legacy signal-only notification may remain compatible only without detail metadata, under existing validated group scope, and never as a tenant/group authorization bypass.
 
-### Story 2.6: Generated Command-Status Location Policy
+### Story 2.9: Generated Command-Status Location Policy
 
 **Requirements covered:** FR12 (generated controller emission); governed by AD-3, AD-4, AD-17; forward-compatible with FR27.
 
@@ -1145,9 +1376,9 @@ So that I never poll a 404 status link and my client's base authority stays corr
 **And** the spec-2-2 and spec-2-3 command-status `Location` deferred-work entries are closed.
 
 **Sequencing note:** Independent of FR27 command-status re-keying — implementable now against the current `CorrelationId` key; the identifier value migrates transparently when Epic 4 re-keys.
-**Placement note:** Epic 2 shipped its original five stories; Story 2.6 is a post-retro hardening follow-on, tracked `backlog`.
+**Placement note:** This is the renumbered post-retro hardening follow-on formerly tracked as Story 2.6.
 
-### Story 2.7: Outbound DAPR Routing-Header Ownership
+### Story 2.10: Outbound DAPR Routing-Header Ownership
 
 **Requirements covered:** FR13, FR14 (hardening); security posture FR26/FR28. Trigger: Epic 2 retro open action; defect from Story 2.3 review (deferred-work, spec-2-3). Governed by AD-18.
 
@@ -1178,47 +1409,49 @@ So that a caller- or inbound-supplied `dapr-app-id` / `dapr-api-token` can never
 
 **Given** the Tenants submodule carries an identical `DaprAppIdHandler`
 **When** this story completes
-**Then** the equivalent submodule change is recorded as a coordinated follow-up requiring maintainer approval (Story 2.4 lineage)
+**Then** the equivalent submodule change is recorded under the Stories 2.4-2.7 Tenants approval/package-mode boundary
 **And** it is not silently modified here.
 
 **Given** Release build and focused tests run
 **When** the change lands
 **Then** all configured tests pass, including the new replacement and guardrail tests.
 
-**Placement note:** Post-retro hardening follow-on; Epic 2 reopened to `in-progress`. Correct-course rationale in `sprint-change-proposal-2026-07-07-outbound-dapr-routing-header-policy.md`.
+**Placement note:** Renumbered from Story 2.7; correct-course rationale remains in `sprint-change-proposal-2026-07-07-outbound-dapr-routing-header-policy.md`.
 
-### Story 2.8: Query Response Provenance Contract And Route-Aware Gateway ETag
+### Story 2.11: Query Provenance Consumption In Generated REST And Tenants
 
-**Requirements covered:** FR4, FR12, FR15, FR34, NFR8, NFR16 (EventStore-owned query-response provenance slice); governed by AD-14 and AD-15.
+**Requirements covered:** FR12, FR15, FR34, NFR8, NFR14, NFR16; consumes Story 1.2 and is governed by AD-14/AD-15.
 
-As a consumer of platform query metadata,
-I want every query response to declare explicit route provenance and the gateway to stop attaching projection ETags to handler-computed responses,
-So that generated REST and UI code never present a gateway ETag or fabricated version as projection-backed current/stale evidence.
+As an external API and Tenants UI consumer,
+I want route provenance from Story 1.2 preserved and rendered safely,
+So that generated REST and UI surfaces never present an opaque ETag or handler-computed response as projection-backed lifecycle evidence.
 
 **Acceptance Criteria:**
 
-**Given** a response from a domain query handler (`HandlerAwareQueryRouter`, `ProjectionType` null)
-**When** the gateway builds `QueryResponseMetadata`
-**Then** provenance is `HandlerComputed`
-**And** the gateway attaches no projection-actor ETag, projection version, or `IsStale` derived from `request.Domain`/`request.ProjectionType`
-**And** a Tier 2/3 test asserts on the real gateway path that no projection ETag and no `X-Hexalith-Projection-Version`/`X-Hexalith-Is-Stale` header is emitted for the handler route.
+**Given** generated REST receives `ProjectionBacked` metadata from Story 1.2
+**When** it emits query headers or `304`
+**Then** it forwards only present bounded projection version, lifecycle/freshness, ETag, served-at, warning, and paging evidence
+**And** runtime tests prove the values originate from persisted projection state through the real gateway path.
 
-**Given** a response from a projection actor / read model with persisted `IReadModelFreshness`
-**When** the gateway builds `QueryResponseMetadata`
-**Then** provenance is `ProjectionBacked`
-**And** `ProjectionVersion`/`IsStale` are sourced from the persisted read model, never aliased from the ETag
-**And** a Tier 2/3 test asserts the genuine version/freshness values traverse the gateway.
+**Given** generated REST or Tenants UI receives `HandlerComputed`, `Unknown`, missing, or invalid provenance
+**When** it renders headers or lifecycle state
+**Then** it omits projection-backed version/freshness headers and renders `Unknown`
+**And** it never derives lifecycle from ETag, HTTP success, payload fields, or SignalR.
 
-**Given** a consumer, including generated REST headers or UI freshness indicators
-**When** provenance is `HandlerComputed` or `Unknown`
-**Then** it renders `Unknown`, never `Current`/`Stale`, and does not claim projection-confirmed success.
+**Given** a query returns not-modified
+**When** generated REST evaluates `304`
+**Then** the response requires the strong gateway-authoritative validator allowed by the route provenance contract
+**And** missing or invalid evidence fails safely without fabricating projection state.
 
 **Given** a Tenants producer still aliases `ProjectionVersion := ETag`
-**When** the EventStore-owned platform enforcement lands without submodule maintainer approval for the producer fix
-**Then** the affected route is classified `HandlerComputed` or `Unknown`
-**And** the Tenants producer aliasing fix is tracked as a separate maintainer-approved follow-up, not as a blocker for EventStore platform provenance enforcement.
+**When** consumer behavior is exercised before Story 4.7 receives maintainer approval
+**Then** the affected route remains `Unknown`
+**And** this consumer story does not silently edit the Tenants producer or reopen Story 1.2 platform scope.
 
-**Sequencing note:** This story is a Phase 4 readiness blocker for generated REST/UI current/stale evidence. Implement before any new generated API or UI story claims projection-backed freshness.
+**Given** focused consumer tests run
+**When** projection-backed, handler-computed, unknown, and invalid-provenance paths are exercised
+**Then** generated headers, UI evidence states, and persisted read-model proof are asserted
+**And** mock-only gateway metadata cannot close the story.
 
 ## Epic 3: Release And Repository Reliability
 
@@ -1235,18 +1468,18 @@ So that releases are not blocked by cold-start sidecar flakiness while live-side
 **Acceptance Criteria:**
 
 **Given** tests require a live `daprd` sidecar
-**When** those test classes are categorized
-**Then** they are marked with a `LiveSidecar` trait
-**And** non-live-sidecar tests remain in the deterministic release gate.
+**When** project ownership is inspected
+**Then** they live in `tests/Hexalith.EventStore.Server.LiveSidecar.Tests`
+**And** `tests/Hexalith.EventStore.Server.Tests` contains only deterministic tests.
 
 **Given** the release workflow runs
 **When** it executes Server.Tests
-**Then** it filters out `Category=LiveSidecar`
+**Then** it runs `tests/Hexalith.EventStore.Server.Tests` unfiltered with no `Category!=LiveSidecar` selection
 **And** it does not install or initialize DAPR solely for the release gate.
 
 **Given** the dedicated integration workflow runs
-**When** it provisions DAPR and executes `Category=LiveSidecar`
-**Then** live-sidecar tests run in their own lane
+**When** it provisions DAPR and executes `tests/Hexalith.EventStore.Server.LiveSidecar.Tests`
+**Then** live-sidecar tests run in their dedicated project/lane
 **And** failures are visible without blocking semantic-release publishing.
 
 **Given** live-sidecar tests start on a cold CI runner
@@ -1254,7 +1487,7 @@ So that releases are not blocked by cold-start sidecar flakiness while live-side
 **Then** it performs readiness retry and warm-up actor round trips
 **And** placement, activation, and Redis state paths are hot before assertions depend on them.
 
-> Companion: **Story 3.8** provides the local DAPR/Aspire generated-API smoke preflight
+> Companion: **Story 3.10** provides the local DAPR/Aspire generated-API smoke preflight
 > that classifies environment blockers before live-sidecar evidence is trusted.
 
 ### Story 3.2: Harden DAPR ETag Timeout For Integration Conditions
@@ -1403,47 +1636,79 @@ So that release output is reviewable and cannot accidentally publish submodule p
 **And** local source project paths do not leak into release package metadata
 **And** `Hexalith.EventStore.Gateway` package metadata carries package dependencies, not source paths, so external package-mode consumers can restore without EventStore source checkout state.
 
-### Story 3.7: Shared CI/CD Security Gates And Supply-Chain Backlog
+### Story 3.7: Shared Workflow Caller Migration
 
-**Requirements covered:** FR25
+**Requirements covered:** FR25, NFR10
+**Owner / review boundary:** Amelia (Developer); Paige (Technical Writer) reviews workflow/documentation alignment.
+**Focused validation:** workflow syntax/scans, deterministic Server.Tests, live-sidecar project listing, and Release solution build.
 
 As a repository maintainer,
-I want EventStore CI/CD to follow the same reusable workflow pattern as Hexalith.Tenants,
-So that CI, release, security gates, package validation, and container publishing are governed through Hexalith.Builds with only module-specific inputs in EventStore.
+I want CI and release to use shared Hexalith.Builds workflow callers,
+So that module-specific workflow code stays thin while the deterministic and live-sidecar lanes remain separate.
 
 **Acceptance Criteria:**
 
-**Given** EventStore uses GitHub Actions for CI, release, CodeQL, dependency review, and commitlint
-**When** workflow files are inspected
-**Then** `.github/workflows/ci.yml` is a thin caller of `Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@main`
-**And** `.github/workflows/release.yml` is a thin caller of `Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@main`
-**And** CodeQL, dependency-review, and commitlint remain thin shared workflow callers using `@main`
-**And** caller workflows retain only module-specific triggers, concurrency, permissions, secrets, and workflow inputs.
+**Given** CI, release, CodeQL, dependency review, and commitlint workflows are inspected
+**When** the migration is complete
+**Then** they are thin approved shared callers using `@main`
+**And** local files retain only module triggers, concurrency, permissions, secrets, and inputs.
 
-**Given** EventStore Server.Tests previously contained both deterministic in-process tests and `Category=LiveSidecar` tests
-**When** CI is migrated to the shared reusable workflow pattern
-**Then** deterministic server tests still run in the blocking release gate without a `Category!=LiveSidecar` filter
-**And** live-sidecar tests still run in a dedicated non-release-blocking lane with DAPR initialized
-**And** the migration does not make live-sidecar failures block semantic-release publishing.
+**Given** deterministic and live-sidecar suites run
+**When** caller inputs are evaluated
+**Then** `Server.Tests` runs unfiltered in the blocking lane and `Server.LiveSidecar.Tests` runs in the dedicated non-release-blocking DAPR lane
+**And** semantic-release does not depend on live-sidecar success.
 
-**Given** EventStore package release is manifest-governed
-**When** shared CI runs consumer/package validation
-**Then** EventStore provides compatible `scripts/pack-release-packages.py`, `scripts/validate-nuget-packages.py`, and `scripts/validate-consumer-package-references.py` entry points
-**And** those scripts preserve `tools/release-packages.json` as the package inventory
-**And** validation rejects submodule packages or package outputs outside the EventStore manifest.
+### Story 3.8: Workflow Reference And Validation Safety
 
-**Given** EventStore release runs through `domain-release.yml@main`
-**When** semantic-release publishes artifacts
-**Then** NuGet publishing remains scoped to manifest-listed `Hexalith.EventStore.*` packages
-**And** container publishing uses explicit EventStore project-to-repository mappings approved for release
-**And** no sample or admin container is published accidentally
-**And** release secrets are validated before any irreversible NuGet or container publish command runs.
+**Requirements covered:** FR22, FR25, NFR9, NFR11
+**Owner / review boundary:** Amelia (Developer); Paige (Technical Writer) reviews reference/cache and operational documentation safety.
+**Focused validation:** shared-reference scans, package wrapper validation, release-secret preflight tests, and manifest-governance tests.
 
-**Given** the migration completes
-**When** docs and workflow references are scanned
-**Then** `docs/ci.md`, `.releaserc.json`, package-governance tests, and CI documentation describe the Tenants-style reusable workflow pattern accurately.
+As a release maintainer,
+I want workflow references, caches, package validators, and publish ordering to fail safely,
+So that shared caller migration cannot publish the wrong artifacts or reuse an incompatible graph.
 
-### Story 3.8: Generated API DAPR/Aspire Smoke Preflight
+**Acceptance Criteria:**
+
+**Given** shared workflow references and cache keys are scanned
+**When** validation runs
+**Then** approved Hexalith.Builds callers use the intended reference and dependency-mode inputs
+**And** caches cannot mix Debug/source and Release/package assets.
+
+**Given** package and release helpers run
+**When** manifest output, consumer restore, credentials, and head SHA are checked
+**Then** only the 14 manifest packages and approved `eventstore` container mapping can proceed
+**And** secret or identity failure occurs before any irreversible publish.
+
+**Given** docs and governance tests are reviewed
+**When** stale custom-workflow or filter assumptions appear
+**Then** validation fails or documentation is corrected
+**And** `docs/ci.md` matches the actual workflow topology.
+
+### Story 3.9: Supply-Chain Publishing Backlog
+
+**Requirements covered:** FR25, NFR11
+**Classification:** Planning/backlog artifact; it does not silently enable trusted publishing, attestations, SBOMs, or provenance.
+**Owner / review boundary:** Paige (Technical Writer); Amelia (Developer) reviews feasibility and current workflow ownership.
+**Focused validation:** `rg` scans for `NUGET_API_KEY`, trusted publishing, attestation, SBOM, and provenance plus structure review of `_bmad-output/planning-artifacts/backlog/supply-chain-publishing.md`.
+
+As a release owner,
+I want unresolved supply-chain publishing work recorded as a focused backlog product,
+So that credential modernization and artifact provenance are not hidden inside completed caller migration.
+
+**Acceptance Criteria:**
+
+**Given** current publish workflows and documentation are inspected
+**When** remaining supply-chain gaps are cataloged in `_bmad-output/planning-artifacts/backlog/supply-chain-publishing.md`
+**Then** each trusted-publishing, attestation, SBOM, provenance, or credential item names scope, owner, dependency, risk, and validation expectation
+**And** completed manifest/package safeguards are not reopened without a new approved story.
+
+**Given** the backlog artifact is reviewed
+**When** completion is requested
+**Then** Paige and Amelia record the accepted inventory and evidence paths
+**And** runtime/publishing changes remain unauthorized by this planning story.
+
+### Story 3.10: Generated API DAPR/Aspire Smoke Preflight
 
 **Requirements covered:** FR17 and FR34 validation enablement; governs NFR16 evidence quality. This is a validation/tooling story, not a runtime product capability. Companion to Story 3.1. Re-homed 2026-07-07 from the defunct TEST-1.1.
 
@@ -1465,13 +1730,13 @@ So that runtime blockers are classified support-safely before they are accepted 
 
 **Given** the optional Sample generated-API smoke is requested
 **When** it exercises the generated command and query endpoints
-**Then** it verifies accepted-command and ETag/`304` behavior plus persisted/read-model end-state where available, never relying on status codes alone
+**Then** it verifies accepted-command and ETag/`304` behavior, the persisted event, and resulting read-model/query state, never relying on status codes alone
 **And** all output is support-safe (no tokens, JWTs, connection strings, private addresses, raw payloads, or stack traces).
 
 **Given** the preflight completes
 **When** it reports its result
 **Then** it emits generated API endpoints, DAPR sidecar readiness, placement/scheduler readiness, and support-safe failure details (Epic 2 retro item 4 completion gate)
-**And** it exits with distinct status categories for success, blocked environment, topology-not-running, generated-API failure, and state-evidence failure.
+**And** missing persisted event or read-model/query evidence exits with the distinct `state-evidence-failure` result rather than success.
 
 ## Epic 4: Event Correctness And Recovery
 
@@ -1651,7 +1916,8 @@ So that ordering metadata scales without violating the frozen global-ordering co
 
 ### Story 4.7: Tenants Query Provenance Follow-Up
 
-**Classification:** Coordinated follow-up requiring Tenants submodule maintainer approval. This story is not the EventStore platform provenance prerequisite; that work is owned by Story 2.8.
+**Requirements covered:** FR15, NFR8, NFR16
+**Classification:** External-authority follow-up requiring Tenants maintainer approval. This story is not the EventStore platform provenance prerequisite; that work is owned by Story 1.2.
 
 As a platform maintainer coordinating with Tenants maintainers,
 I want Tenants producer-side query freshness aliases removed or explicitly classified as non-projection-backed,
@@ -1665,9 +1931,14 @@ So that Tenants never presents an opaque ETag as projection version or current/s
 **Or** the route is explicitly classified `HandlerComputed` or `Unknown` and consumers render Unknown.
 
 **Given** maintainer approval is not yet available
-**When** EventStore platform provenance enforcement ships through Story 2.8
+**When** EventStore platform provenance enforcement ships through Story 1.2
 **Then** EventStore blocks fabricated Current/Stale claims by route classification
 **And** this Tenants follow-up remains visible without blocking the EventStore-owned platform story.
+
+**Given** completion is requested
+**When** authority and runtime identity are checked
+**Then** the evidence names the Tenants maintainer-approved PR/commit, exact Tenants SHA, accepted scope, source/package mode, and focused production-path validation
+**And** without that evidence the story remains `backlog` or `review`; EventStore closes the platform risk through the `Unknown` fallback contract rather than silently declaring the producer fixed.
 
 ## Epic 5: Security And Tenant Isolation
 
@@ -1848,34 +2119,93 @@ So that sidecar, gateway, and domain-service calls cannot mint trust from header
 **Then** sidecar/pubsub caller identity is verified
 **And** forged external requests cannot broadcast projection changes.
 
-### Story 5.6: Runtime Topology And Deploy Parity
+### Story 5.6: AppHost Component Loading And Sidecar-Argument Parity
 
-**Requirements covered:** FR32
+**Requirements covered:** FR32, NFR2, NFR17
+**Owner / review boundary:** Winston (Architect); Amelia (Developer) reviews AppHost implementation and tests.
+**Focused validation:** `Hexalith.EventStore.AppHost.Tests` and AppHost/DAPR component-path scans.
 
 As an operator,
-I want the topology loaded at runtime to match the security posture tested and deployed,
-So that local AppHost, test, and production DAPR configurations enforce the same tenant isolation assumptions.
+I want AppHost to load the intended DAPR components explicitly,
+So that local sidecars cannot silently use unscoped generated components.
 
 **Acceptance Criteria:**
 
-**Given** the AppHost starts DAPR sidecars
-**When** pub/sub components are configured
-**Then** the scoped/dead-letter `pubsub.yaml` path is passed explicitly
-**And** daprd does not silently load an unscoped generated component instead.
+**Given** AppHost starts each DAPR sidecar
+**When** sidecar annotations and arguments are inspected
+**Then** the intended state-store, scoped/dead-letter pub/sub, ACL, and resiliency component paths are explicit for the named resource
+**And** placement, scheduler, app-health, app-id, and component arguments match architecture conventions.
 
-**Given** production DAPR component templates are used
-**When** state-store and pub/sub YAML are inspected
-**Then** key prefixes, tenant scopes, ACLs, and app-id rules match the posture asserted by tests
-**And** deny-by-default rules are preserved.
+**Given** a component path or argument is absent, duplicated, or points to a generated fallback
+**When** AppHost tests run
+**Then** the focused test fails with the resource and expected path
+**And** deny-by-default posture is not relaxed to make the test pass.
 
-**Given** AppHost topology tests run
-**When** they inspect the generated or configured sidecar arguments
-**Then** they assert the actual component paths and ACL posture loaded at runtime
-**And** stale config drift fails tests.
+### Story 5.7: Production DAPR Component And ACL Parity
 
-**Given** topology, app-id, topic, or sidecar settings change
-**When** documentation and deployment manifests are updated
-**Then** DAPR access-control YAML, AppHost resource names, and route/topic wiring remain aligned.
+**Requirements covered:** FR32, NFR1, NFR2, NFR17
+**Owner / review boundary:** Winston (Architect); Amelia (Developer) reviews production YAML and deployment boundary.
+**Focused validation:** structured scans/tests for `deploy/dapr`, access-control, component scopes, key prefixes, topics, and app IDs.
+
+As a deployment operator,
+I want production DAPR components and ACLs to match the approved runtime posture,
+So that tenant isolation does not change between local proof and deployment.
+
+**Acceptance Criteria:**
+
+**Given** production state-store, pub/sub, subscription, resiliency, and access-control YAML is parsed
+**When** scopes and metadata are compared with AppHost resources
+**Then** key prefixes, tenant/app scopes, topic routes, app IDs, and allowed operations match
+**And** access control remains deny by default.
+
+**Given** a new resource, topic, component, or route is introduced
+**When** production templates are updated
+**Then** all affected scopes and ACLs change in the same story
+**And** no broad wildcard silently replaces a named rule.
+
+### Story 5.8: Runtime Topology Drift Tests
+
+**Requirements covered:** FR32, NFR2, NFR16, NFR17
+**Owner / review boundary:** Amelia (Developer); Murat (Test Architect) reviews actual-runtime evidence.
+**Focused validation:** AppHost tests plus the dedicated integration lane asserting sidecar arguments and loaded component posture.
+
+As a quality maintainer,
+I want topology drift tests against configured and running resources,
+So that stale AppHost, YAML, ACL, or deployment assumptions fail before release.
+
+**Acceptance Criteria:**
+
+**Given** AppHost configuration and production templates are loaded
+**When** drift tests compare resources, component paths, app IDs, scopes, topics, and ACL rules
+**Then** every expected mapping is explicit and exact
+**And** missing, extra, or conflicting mappings fail deterministically.
+
+**Given** the dedicated DAPR/Aspire lane is available
+**When** runtime evidence is collected
+**Then** actual sidecar arguments and component access are asserted for enumerated high-risk resources
+**And** documentation or mocks alone cannot close runtime parity.
+
+### Story 5.9: Deployment And Operator Documentation Alignment
+
+**Requirements covered:** FR32, NFR17
+**Owner / review boundary:** Paige (Technical Writer); Winston (Architect) reviews topology accuracy.
+**Focused validation:** documentation link/path checks and structured comparison with AppHost/deploy artifact names.
+
+As an operator,
+I want deployment documentation to name the topology that code and tests enforce,
+So that runbooks do not direct operators toward stale app IDs, components, topics, or ACLs.
+
+**Acceptance Criteria:**
+
+**Given** Stories 5.6-5.8 establish the runtime topology
+**When** deployment and operator docs are updated
+**Then** component paths, app IDs, resource names, topics, scopes, key-prefix posture, health behavior, and deny-by-default ACLs match the verified artifacts
+**And** local-only or environment-specific differences are explicit.
+
+**Given** documentation validation runs
+**When** referenced paths and identifiers are checked
+**Then** stale or missing references fail
+**And** no runtime behavior change is hidden in this documentation-only child.
 
 ## Epic 6: Bounded Cost And Event Evolution
 
@@ -1963,7 +2293,7 @@ So that projection optimizations do not introduce out-of-order state regressions
 **Then** the exact output path is `_bmad-output/implementation-artifacts/spec-projection-cost-sequence-guard.md`
 **And** the artifact records approver, approval date, accepted scope, rejected alternatives, open decisions, and explicit authorization for Story 6.4 to start.
 
-**Given** Stories 1.13 and 1.14 own the production correctness baseline
+**Given** Stories 1.18 and 1.19 own the production correctness baseline
 **When** this optimization spec defines checkpoint short-circuit, tail delivery, and sequence-guard changes
 **Then** it starts from their approved duplicate, gap, page-safety, staging, promotion, and replay-equivalence invariants
 **And** it does not redefine or weaken those guarantees.
@@ -1986,7 +2316,7 @@ So that projection updates remain correct and cheaper on long streams.
 **Given** Story 6.4 implementation starts
 **When** implementation preflight runs
 **Then** `_bmad-output/implementation-artifacts/spec-projection-cost-sequence-guard.md` exists and contains approval evidence
-**And** Stories 1.13 and 1.14 are complete
+**And** Stories 1.18 and 1.19 are complete
 **And** implementation tasks cite the approved spec sections and correctness-baseline scenarios they preserve.
 
 **Given** a projection checkpoint trails the stream head
@@ -2002,7 +2332,7 @@ So that projection updates remain correct and cheaper on long streams.
 **Given** projection cost tests run
 **When** long-stream projection scenarios are exercised
 **Then** reduced replay behavior and correctness guards are both verified
-**And** the full Stories 1.13/1.14 persisted-outcome corpus remains green.
+**And** the full Stories 1.18/1.19 persisted-outcome corpus remains green.
 
 ### Story 6.5: Event Versioning And Upcasting Spec
 
@@ -2103,140 +2433,371 @@ So that subscriber failures do not become infinite retry storms or hidden data-l
 **When** duplicate, late, out-of-order, retry-exhausted, and dead-letter scenarios are exercised
 **Then** delivery semantics and poison handling are verified.
 
-### Story 7.2: Admin Claims, Audit, And Honest Deferred Operations
+### Story 7.2: Admin Claims Normalization
 
-**Requirements covered:** FR34
+**Requirements covered:** FR34, NFR1, NFR2
+**Owner / review boundary:** Amelia (Developer); Winston (Architect) reviews authorization semantics.
+**Focused validation:** Admin.Server claims/authorization tests and cross-tenant denial tests.
 
 As an administrator,
-I want admin actions to be correctly authorized, attributable, and honest about unsupported operations,
-So that the admin plane is trustworthy for production operations.
+I want Admin claims normalized exactly like gateway claims,
+So that missing or malformed tenant/permission input cannot widen access.
 
 **Acceptance Criteria:**
 
 **Given** Admin.Server receives user claims
-**When** claims transformation runs
-**Then** `tenants` and `permissions` are normalized consistently with gateway rules
-**And** null or missing tenant scope denies access rather than granting all-tenant visibility.
+**When** transformation runs
+**Then** `tenants` and `permissions` use the shared canonical representation
+**And** null, missing, malformed, or empty tenant scope denies access rather than granting all-tenant visibility.
 
-**Given** a state-mutating admin action executes
-**When** authorization succeeds
-**Then** a structured audit record includes the authenticated user id, tenant context, action, outcome, and correlation id
-**And** audit logging does not expose tokens, raw payloads, or stack traces.
+**Given** normalized claims are used by an Admin query or action
+**When** same-tenant, cross-tenant, global-admin, and missing-permission cases run
+**Then** authorization matches gateway policy
+**And** denial exposes no resource existence or unsafe claim detail.
 
-**Given** backup, restore, import, compaction, or other deferred operations are not implemented
-**When** an operator views the Admin UI or calls the corresponding server endpoint
-**Then** the UI hides or disables unavailable operations
-**And** any remaining endpoint returns `501` instead of presenting fake success.
+### Story 7.3: State-Mutating Admin Audit
 
-**Given** admin API clients are duplicated across hosts or tools
-**When** a shared typed client is introduced or planned
-**Then** behavior remains consistent
-**And** duplicated request/response mapping is reduced without changing authorization semantics.
+**Requirements covered:** FR34, NFR2, NFR15, NFR16
+**Owner / review boundary:** Amelia (Developer); Murat (Test Architect) reviews durable audit evidence.
+**Focused validation:** Admin.Server/CLI mutation tests asserting authenticated actor, tenant, action, outcome, correlation, and persisted audit record.
 
-### Story 7.3: Production Deployment Hardening
+As an operator,
+I want every state-mutating admin action attributable,
+So that privileged changes can be audited without exposing sensitive payloads.
 
-**Requirements covered:** FR34
+**Acceptance Criteria:**
 
-**Architecture gate:** AD-16 (health/probe anonymous-access contract). Enabling DAPR app-health/readiness probes assumes the probe endpoints are reachable anonymously; if a fail-closed policy is present, the AD-16 exemption must already be in place.
+**Given** an authorized state-mutating Admin action succeeds, fails, or is denied
+**When** the action completes
+**Then** a structured audit record captures authenticated user id, tenant, action, outcome, and ULID-safe correlation id
+**And** it excludes tokens, raw payloads, secrets, and stack traces.
+
+**Given** audit persistence fails
+**When** a mutation would otherwise proceed
+**Then** the configured fail-closed policy is applied and the outcome is support-safe
+**And** focused tests assert both business state and audit end state.
+
+### Story 7.4: Honest Deferred Admin Operations
+
+**Requirements covered:** FR34, NFR15
+**Owner / review boundary:** Amelia (Developer); Sally (UX Designer) reviews UI honesty and route behavior.
+**Focused validation:** Admin.Server and Admin.UI tests for every enumerated deferred operation.
+
+As an administrator,
+I want unavailable operations represented honestly,
+So that backup, restore, import, compaction, and other deferred capabilities cannot appear to succeed.
+
+**Acceptance Criteria:**
+
+**Given** an Admin operation is not implemented
+**When** the UI and server route inventory is inspected
+**Then** the UI hides or disables it and any retained endpoint returns `501`
+**And** no mock success, optimistic toast, or fabricated completion state is shown.
+
+**Given** each deferred operation is exercised
+**When** focused UI/server tests run
+**Then** the enumerated route/control behavior and support-safe message are asserted
+**And** implementation remains owned by its explicit future backlog.
+
+### Story 7.5: Shared Typed Admin Client
+
+**Requirements covered:** FR34, NFR12, NFR14
+**Owner / review boundary:** Amelia (Developer); Winston (Architect) reviews the typed-client boundary.
+**Focused validation:** Admin.Abstractions, Admin.Server, Admin.UI, and Admin.Cli client-contract tests.
+
+As an Admin surface developer,
+I want one shared typed Admin client,
+So that UI and tools do not duplicate request/response mapping or bypass authorization semantics.
+
+**Acceptance Criteria:**
+
+**Given** Admin UI and CLI call supported server operations
+**When** client composition is inspected
+**Then** both consume the shared typed contract/client surface
+**And** duplicated per-host HTTP mapping is removed without adding per-message MVC controllers to interactive UI hosts.
+
+**Given** success, denial, not-found, unavailable, validation, and cancellation outcomes occur
+**When** typed-client tests run
+**Then** each outcome maps consistently and support-safely
+**And** planning a client is insufficient: the implementation and focused tests must exist.
+
+### Story 7.6: Secret-Store Configuration
+
+**Requirements covered:** FR34, NFR4, NFR17
+**Owner / review boundary:** Winston (Architect); Amelia (Developer) reviews deployment configuration and tests.
+**Focused validation:** structured production-manifest scans for secret stores, `secretKeyRef`, and prohibited plaintext placeholders.
 
 As a production operator,
-I want deployment configuration to use secret stores, health checks, resiliency policy, and immutable images,
-So that deployed EventStore environments have a defensible operational posture.
+I want deployment secrets resolved through approved secret stores,
+So that committed component configuration contains no forgeable operational credentials.
 
 **Acceptance Criteria:**
 
-**Given** production DAPR components require secrets
-**When** deploy manifests are generated or inspected
-**Then** secrets use secret-store components and `secretKeyRef`
-**And** plaintext `{env:...}` placeholders are removed where production posture requires secret indirection.
+**Given** production DAPR or application configuration requires a secret
+**When** manifests are parsed
+**Then** the value resolves through the named secret-store component and `secretKeyRef`
+**And** no plaintext key, token, password, signing key, or unsafe `{env:...}` substitute remains in committed production posture.
 
-**Given** services expose health checks
-**When** readiness probes are configured
-**Then** state-store health checks are tagged for readiness
-**And** DAPR app health checks are enabled where supported
-**And** the probe endpoints `/health`, `/alive`, and `/ready` are reachable anonymously per the AD-16 contract even when a fail-closed authorization policy is active.
+**Given** a required secret or store is missing
+**When** deployment validation runs
+**Then** it fails before the dependent resource starts
+**And** diagnostics name the configuration key without disclosing the value.
 
-**Given** DAPR resiliency policies are configured
-**When** domain service invocations are inspected
-**Then** the `apps` targets include the domain services the code assumes are covered
-**And** retries, timeouts, and circuit-breaker behavior are documented.
+### Story 7.7: Readiness And DAPR App-Health
 
-**Given** container images are produced for release
-**When** deploy manifests reference image tags
-**Then** immutable git-SHA tags are supported or preferred
-**And** mutable tags are not the only production deployment option.
+**Requirements covered:** FR34, NFR1, NFR17
+**Architecture gate:** AD-16.
+**Owner / review boundary:** Amelia (Developer); Winston (Architect) reviews probe ownership and fail-closed compatibility.
+**Focused validation:** AppHost and real-host-pipeline tests for the explicit resource/probe inventory.
 
-### Story 7.4: Integration Test Recovery And State Evidence
+As an operator,
+I want explicit readiness and DAPR app-health behavior,
+So that orchestration removes unhealthy traffic without weakening endpoint authorization.
 
-**Requirements covered:** FR34
+**Acceptance Criteria:**
+
+**Given** EventStore, Admin.Server, Sample, and configured domain-service resources expose probes
+**When** AppHost sidecar arguments and host endpoints are inspected
+**Then** the resource inventory explicitly maps liveness to `/alive`, readiness to `/ready`, health to `/health`, and DAPR app-health to the architecture-approved path
+**And** required state-store checks carry the `ready` tag.
+
+**Given** fail-closed authorization is active
+**When** unauthenticated probes and a representative protected endpoint run on the same host
+**Then** `/health`, `/alive`, and `/ready` remain explicitly anonymous/support-safe while the protected endpoint denies access
+**And** no fallback policy is weakened to reach probes.
+
+### Story 7.8: DAPR Resiliency
+
+**Requirements covered:** FR34, NFR17
+**Owner / review boundary:** Winston (Architect); Amelia (Developer) reviews runtime target alignment.
+**Focused validation:** structured resiliency YAML tests and focused timeout/retry/circuit-breaker behavior tests.
+
+As an operator,
+I want DAPR resiliency policies to cover the exact application targets used at runtime,
+So that invocation failures have bounded, documented behavior.
+
+**Acceptance Criteria:**
+
+**Given** runtime service invocation targets are enumerated
+**When** resiliency YAML is parsed
+**Then** every required app target has the approved timeout, retry, and circuit-breaker policy
+**And** no stale or missing app ID is silently ignored.
+
+**Given** transient, terminal, timeout, and open-circuit conditions occur
+**When** focused tests exercise the policy
+**Then** attempts and failure timing remain bounded
+**And** documentation states which operations are safe to retry.
+
+### Story 7.9: Immutable Production Images
+
+**Requirements covered:** FR34, NFR11, NFR17
+**Owner / review boundary:** Amelia (Developer); Paige (Technical Writer) reviews deployment/release identity documentation.
+**Focused validation:** release/deploy scans proving production overlays use an immutable git-SHA tag or digest mapped to release provenance.
+
+As a deployment operator,
+I want production overlays to reference immutable image identity,
+So that a deployed EventStore version can be traced to one approved build.
+
+**Acceptance Criteria:**
+
+**Given** production overlays reference EventStore images
+**When** manifests are rendered or scanned
+**Then** they use an immutable git-SHA tag or digest, not only a mutable tag
+**And** release provenance maps that identity to the source commit and manifest-governed artifacts.
+
+**Given** an image identity is missing, mutable-only, or unmapped
+**When** deployment validation runs
+**Then** production promotion fails
+**And** support-safe diagnostics identify the affected resource.
+
+### Story 7.10: Integration CI Recovery
+
+**Requirements covered:** FR34, NFR10, NFR16
+**Owner / review boundary:** Amelia (Developer); Murat (Test Architect) reviews lane ownership and execution evidence.
+**Focused validation:** workflow syntax plus infra-free and dedicated Aspire/DAPR integration commands.
 
 As a quality maintainer,
-I want integration tests to run in meaningful CI lanes and assert persisted state evidence,
-So that high-risk tenant, DAPR, and topology behavior is not validated only by local or smoke tests.
+I want every integration suite assigned to a runnable CI lane,
+So that high-risk behavior is not left as an undocumented local-only promise.
 
 **Acceptance Criteria:**
 
-**Given** IntegrationTests include infra-free or lightweight subsets
-**When** CI workflows are updated
-**Then** those subsets run in CI without requiring the full Aspire topology
-**And** full Aspire-dependent tests have a dedicated documented lane or blocker.
+**Given** integration projects and subsets are inventoried
+**When** workflow ownership is checked
+**Then** infra-free/lightweight suites run in deterministic CI and full Aspire/DAPR suites run in a dedicated documented lane
+**And** each excluded suite has an owner, blocker, and expiry rather than a permanent skip.
 
-**Given** integration tests currently assert only HTTP `202`, `200`, or mock call counts
-**When** they are refactored
-**Then** they assert Redis/state-store/read-model/CloudEvent end-state evidence where applicable
-**And** shared read-back helpers are extracted into `Hexalith.EventStore.Testing.Integration`.
+**Given** a lane is triggered
+**When** environment setup or product tests fail
+**Then** blocked infrastructure and product failures are classified separately
+**And** results remain visible without misclassifying release-gate status.
 
-**Given** fake-simulated conflict tests are labeled as integration tests
-**When** the test suite is reviewed
-**Then** fake-only tests are moved to unit scope or rewritten against real infrastructure
-**And** integration labels reflect actual external dependency coverage.
+### Story 7.11: Persisted-State Evidence And Read-Back Helpers
 
-**Given** performance or advisory validation is needed
-**When** CI workflows are updated
-**Then** a `workflow_dispatch` perf-lab lane is available
-**And** permanently red advisory jobs or never-driven skips are either fixed, quarantined with rationale, or removed.
+**Requirements covered:** FR34, NFR7, NFR16
+**Owner / review boundary:** Amelia (Developer); Murat (Test Architect) reviews persisted evidence semantics.
+**Focused validation:** `Hexalith.EventStore.Testing.Integration.Tests` and enumerated high-risk integration scenarios.
 
-### Story 7.5: Track Future Capability Backlog
+As an integration-test author,
+I want shared read-back helpers and mandatory persisted evidence,
+So that success cannot be inferred only from HTTP status or mock calls.
+
+**Acceptance Criteria:**
+
+**Given** command acceptance, query projection, delivery, erasure, batch recovery, idempotency, rebuild, or publication recovery is tested
+**When** the scenario completes
+**Then** the test asserts its required Redis/state-store/read-model/CloudEvent detail, index, marker, lifecycle, checkpoint, or publication end state
+**And** the evidence is enumerated per scenario rather than qualified by “where applicable.”
+
+**Given** multiple suites need state inspection
+**When** helpers are extracted
+**Then** `Hexalith.EventStore.Testing.Integration` provides support-safe typed read-back seams
+**And** helpers do not hide tenant scope, eventual-consistency waits, or assertion boundaries.
+
+### Story 7.12: Fake And Integration Test Reclassification
+
+**Requirements covered:** FR34, NFR10, NFR16
+**Owner / review boundary:** Murat (Test Architect); Amelia (Developer) reviews project moves and build impact.
+**Focused validation:** test-project inventory, workflow classification checks, and focused real-infrastructure replacements.
+
+As a quality maintainer,
+I want test labels to reflect actual external dependencies,
+So that fake-only evidence is not mistaken for integration proof.
+
+**Acceptance Criteria:**
+
+**Given** a test uses only substitutes or in-memory fakes
+**When** classification is reviewed
+**Then** it moves to unit scope unless rewritten against the external dependency it claims to verify
+**And** retained integration tests name the real state store, DAPR sidecar, broker, Aspire topology, or host boundary they exercise.
+
+**Given** projects are reclassified
+**When** CI inventories run
+**Then** every test project belongs to one explicit workflow or dated quarantine
+**And** deterministic and live lanes remain separate.
+
+### Story 7.13: Advisory And Performance Workflow Hygiene
+
+**Requirements covered:** FR34, NFR10
+**Owner / review boundary:** Amelia (Developer); Murat (Test Architect) reviews trigger and result semantics.
+**Focused validation:** workflow syntax, trigger scans, and one recorded green or quarantined result per advisory/performance job.
+
+As a quality owner,
+I want advisory and performance workflows to be runnable and accountable,
+So that permanently red or never-triggered jobs do not masquerade as quality controls.
+
+**Acceptance Criteria:**
+
+**Given** an advisory or performance job exists
+**When** workflow configuration is inspected
+**Then** it has a runnable trigger such as `workflow_dispatch`
+**And** required browser/tool setup and bounded timeout are explicit.
+
+**Given** the job is evaluated
+**When** completion evidence is recorded
+**Then** it has a green run or a quarantine entry with owner, reason, and expiry
+**And** removal requires an explicit disposition rather than silent deletion.
+
+### Story 7.14: Consolidated EventStore Admin Dashboard Migration
+
+**Requirements covered:** FR13, FR15, FR34, NFR14, NFR15
+**Owner / review boundary:** Amelia (Developer); Sally (UX Designer) and Winston (Architect) review the UI/service boundary.
+**Focused validation:** Admin.UI component/route tests, AppHost resource tests, FrontComposer dependency-mode checks, accessibility/localization evidence, and typed-client boundary scans.
+
+As an EventStore operator,
+I want one consolidated Event Store Admin dashboard,
+So that operational navigation, evidence states, and legacy deep links remain coherent without creating another UI host.
+
+**Acceptance Criteria:**
+
+**Given** the consolidated UI is implemented
+**When** project and AppHost ownership are inspected
+**Then** `src/Hexalith.EventStore.Admin.UI` evolves in place and retains resource/container identity `eventstore-admin-ui`
+**And** no additional EventStore UI host is created.
+
+**Given** the UI composes its shell
+**When** Debug/source and Release/package graphs are validated
+**Then** matching `3.2.2` versions of `Hexalith.FrontComposer.Shell` and `Hexalith.FrontComposer.Contracts.UI` plus Fluent UI V5 are used
+**And** the stable module identity is `event-store-admin` with label **Event Store Admin**.
+
+**Given** canonical and legacy routes are requested
+**When** navigation resolves them
+**Then** canonical dashboard deep links render one page implementation and keep the module selected
+**And** every other legacy route redirects to a canonical deep link rather than preserving duplicate pages.
+
+**Given** Admin query/command flows and evidence states are exercised
+**When** UI tests run
+**Then** typed clients remain the only boundary, deferred operations are honest, provenance/lifecycle states follow canonical UX, and output is support-safe, accessible, responsive, and localizable
+**And** no unsupported quantitative performance release gate is invented without a measured production baseline.
+
+### Story 7.15: GDPR Aggregate Erasure Backlog
 
 **Requirements covered:** FR35
-
-**Classification:** Planning/backlog artifact. This story does not authorize implementation of GDPR erasure/tombstoning, Admin interactive OIDC login, aggregate test kit, or REST generator hardening. It completes by producing exact backlog artifacts with scope, non-goals, dependencies, risks, and validation expectations.
-
-**Required outputs:**
-
-- `_bmad-output/planning-artifacts/backlog/gdpr-1-aggregate-erasure.md`
-- `_bmad-output/planning-artifacts/backlog/iam-1-admin-oidc-login.md`
-- `_bmad-output/planning-artifacts/backlog/kit-1-aggregate-test-kit.md`
-- `_bmad-output/planning-artifacts/backlog/rest-generator-hardening.md`
+**Classification:** Planning/backlog artifact; no runtime erasure is authorized.
+**Owner / review boundary:** John (Product Manager); Winston (Architect) reviews persistence/legal boundary assumptions.
+**Focused validation:** independent artifact-structure review of `_bmad-output/planning-artifacts/backlog/gdpr-1-aggregate-erasure.md`.
 
 As a product owner,
-I want large deferred capabilities tracked as explicit backlog epics,
-So that GDPR erasure, admin OIDC, aggregate testing, and generator hardening are not hidden inside unrelated remediation work.
+I want GDPR aggregate erasure and tombstoning tracked independently,
+So that legal retention, crypto-shred, replay, backup, and audit questions are not hidden in projection cleanup.
 
 **Acceptance Criteria:**
 
-**Given** GDPR aggregate erasure and tombstoning are deferred
-**When** backlog artifacts are updated
-**Then** `_bmad-output/planning-artifacts/backlog/gdpr-1-aggregate-erasure.md` records crypto-shred, tombstone, broker, snapshot, retention, and verification scope
-**And** it is not implemented opportunistically inside unrelated cleanup stories
-**And** generic projection read-model/checkpoint erasure remains separately authorized by Story 1.9 without implying completion of GDPR-1.
+**Given** GDPR-1 remains deferred
+**When** its artifact is reviewed
+**Then** it contains scope, non-goals, dependencies, risks, and validation expectations for streams, snapshots, read models, broker history, backups, audit evidence, retention, tombstones, and crypto-shred
+**And** generic projection erasure in Story 1.14 does not imply GDPR completion.
 
-**Given** Admin interactive OIDC login is deferred
-**When** backlog artifacts are updated
-**Then** `_bmad-output/planning-artifacts/backlog/iam-1-admin-oidc-login.md` records authorization-code with PKCE, forwarded end-user tokens, and removal of ROPC/self-mint service identity
-**And** it remains separate from immediate secret-stripping/auth-guard fixes.
+### Story 7.16: Admin Interactive OIDC Backlog
 
-**Given** an aggregate test kit is deferred
-**When** backlog artifacts are updated
-**Then** `_bmad-output/planning-artifacts/backlog/kit-1-aggregate-test-kit.md` records `Given(events).When(command).Then(events)` style fixtures, replay determinism, Apply idempotency, and package dependency boundaries
-**And** it tracks the split needed for testing packages to avoid unnecessary Server dependencies.
+**Requirements covered:** FR35
+**Classification:** Planning/backlog artifact; no interactive login implementation is authorized.
+**Owner / review boundary:** John (Product Manager); Winston (Architect) and Sally (UX Designer) review identity/UX boundaries.
+**Focused validation:** independent artifact-structure review of `_bmad-output/planning-artifacts/backlog/iam-1-admin-oidc-login.md`.
 
-**Given** REST generator hardening remains after Epic 2
-**When** backlog artifacts are updated
-**Then** `_bmad-output/planning-artifacts/backlog/rest-generator-hardening.md` records generator incrementality, generated-controller authz checks, and deferred-work items
-**And** they are not lost when Epic D proof stories complete.
+As a product owner,
+I want Admin interactive OIDC login tracked independently,
+So that authorization-code/PKCE, forwarded user identity, claim normalization, and session UX remain separate from immediate auth guards.
 
-**Given** REST generator retrospective action items are recorded
-**When** REST generator hardening is prepared
-**Then** `_bmad-output/planning-artifacts/backlog/rest-generator-hardening.md` links the dedicated hardening story or backlog item that pulls from `_bmad-output/implementation-artifacts/deferred-work.md`
-**And** it explicitly covers unsupported contract-shape diagnostics, duplicate command JSON-name diagnostics, invalid `RestQueryBinding` source diagnostics, empty constant binding diagnostics, route-template constraint behavior, case-insensitive route/JSON-name matching, referenced-contract incrementality, and generated external API error-semantics coverage.
+**Acceptance Criteria:**
+
+**Given** IAM-1 remains deferred
+**When** its artifact is reviewed
+**Then** it contains scope, non-goals, dependencies, risks, and validation expectations for PKCE, token forwarding, denied tenants, expired sessions, and audit identity
+**And** it does not weaken current production auth or substitute service identity for a user.
+
+### Story 7.17: Aggregate Test-Kit Backlog
+
+**Requirements covered:** FR35
+**Classification:** Planning/backlog artifact; no runtime/test-kit package implementation is authorized.
+**Owner / review boundary:** John (Product Manager); Murat (Test Architect) reviews testing/package boundaries.
+**Focused validation:** independent artifact-structure review of `_bmad-output/planning-artifacts/backlog/kit-1-aggregate-test-kit.md`.
+
+As a product owner,
+I want the aggregate test kit tracked independently,
+So that fixture ergonomics, replay determinism, idempotency, rejection, and package dependencies receive focused design.
+
+**Acceptance Criteria:**
+
+**Given** KIT-1 remains deferred
+**When** its artifact is reviewed
+**Then** it contains scope, non-goals, dependencies, risks, and validation expectations for `Given(events).When(command).Then(events)`, replay, metadata, unsupported handlers, and lightweight package consumption
+**And** it does not replace domain-specific business tests or pull Server internals into domain test packages.
+
+### Story 7.18: REST Generator Hardening Backlog
+
+**Requirements covered:** FR35
+**Classification:** Planning/backlog artifact; completed first-wave fixes remain closed and future runtime changes require new story approval.
+**Owner / review boundary:** John (Product Manager); Amelia (Developer) reviews generator feasibility and evidence links.
+**Focused validation:** independent artifact-structure review of `_bmad-output/planning-artifacts/backlog/rest-generator-hardening.md` and linked deferred-work evidence.
+
+As a product owner,
+I want remaining REST generator hardening tracked independently,
+So that diagnostics, incrementality, authorization, request limits, safe errors, and binding edge cases are not lost after proof stories complete.
+
+**Acceptance Criteria:**
+
+**Given** REST generator hardening remains
+**When** its backlog artifact is reviewed
+**Then** it contains scope, non-goals, dependencies, risks, validation expectations, resolved first-wave items, and named target source/test artifacts for remaining work
+**And** unsupported shapes, duplicate JSON names, invalid bindings, route constraints, case-insensitive matching, referenced-contract incrementality, generated auth/error semantics, and request-size/status-location follow-ups remain auditable.

@@ -4,6 +4,8 @@ created: 2026-07-05
 rehomed: 2026-07-07
 rehomed_from: TEST-1-1-generated-api-smoke-preflight
 source_story_key: 3-8-generated-api-dapr-aspire-smoke-preflight
+historical_story_id: "3.8"
+superseded_by: 3-10-generated-api-dapr-aspire-smoke-preflight.md
 source_epic: "Epic 3 - Release And Repository Reliability (companion to Story 3.1)"
 source_action: "Epic 2 retro action item 4 (carries Epic D item 4 / Epic 1 preflight gate)"
 source_files:
@@ -20,6 +22,9 @@ source_files:
 ---
 
 # Story 3.8: Generated API DAPR/Aspire Smoke Preflight
+
+> Historical execution artifact. The completed story is reissued as Story 3.10 with the
+> strengthened persisted-event and read-model/query-state evidence rule.
 
 Status: done
 

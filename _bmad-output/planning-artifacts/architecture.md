@@ -127,7 +127,7 @@ flowchart LR
 - **Prevents:** story-local choices silently changing snapshot format, replay cost, projection ordering, event schema evolution, cancellation contracts, or global position meaning.
 - **Rule:** Folded snapshots, projection delivery cost, projection sequence guards, event versioning/upcasting, event identity metadata validation, cancellation-token public seams, and global-position sharding require approved specs at named paths before implementation stories start. AOT/trimming remains out of target while reflection conventions are load-bearing.
 
-Stories 1.13 and 1.14 own the minimum projection correctness baseline for production-path idempotency and replay-equivalent paged rebuilds. Stories 6.3/6.4 may optimize checkpoint, tail-delivery, and replay cost only after that baseline exists and must not redefine or weaken duplicate, gap, page-safety, staging, promotion, or replay-equivalence guarantees.
+Stories 1.18 and 1.19 own the minimum projection correctness baseline for production-path idempotency and replay-equivalent paged rebuilds. Stories 6.3/6.4 may optimize checkpoint, tail-delivery, and replay cost only after that baseline exists and must not redefine or weaken duplicate, gap, page-safety, staging, promotion, or replay-equivalence guarantees.
 
 ### AD-14 - Query Evidence Crosses The Gateway As Platform Metadata
 
@@ -402,4 +402,4 @@ flowchart TB
 | Exact tenant-vs-domain global-position sharding design | FR24 requires renegotiating the frozen global-ordering spec before implementation. AD-6 preserves current semantics until then. |
 | Folded snapshot payload shape, projection sequence guard algorithm, event upcaster ordering, and cancellation contract details | FR33 explicitly requires spec-first stories 6.1, 6.3, and 6.5 before implementation. |
 | Production mTLS trust domain, namespace values, secret-store provider, and deployment overlay specifics | The invariant is topology parity and fail-closed app-layer security. Environment-specific values belong in deployment hardening stories and deploy templates. |
-| Full aggregate/event GDPR tombstoning, broker-history deletion, backup erasure, crypto-shredding, Admin interactive OIDC login, aggregate test kit, and REST generator hardening backlog | PRD marks these as backlog artifacts for Phase 4 MVP. Generic projection read-model/checkpoint erasure is active FR5/Story 1.9 scope and is not deferred here. |
+| Full aggregate/event GDPR tombstoning, broker-history deletion, backup erasure, crypto-shredding, Admin interactive OIDC login, aggregate test kit, and REST generator hardening backlog | PRD marks these as backlog artifacts for Phase 4 MVP. Generic projection read-model/checkpoint erasure is active FR5/Story 1.14 scope and is not deferred here. |

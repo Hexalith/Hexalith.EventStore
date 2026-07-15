@@ -3,7 +3,8 @@ id: KIT-1
 title: Aggregate Test Kit
 classification: backlog
 status: draft
-source_story: 7.5
+source_story: 7.17
+supersedes_source_story: 7.5
 created: 2026-07-05
 ---
 
