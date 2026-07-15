@@ -1,3 +1,10 @@
+# [3.66.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.65.0...v3.66.0) (2026-07-15)
+
+
+### Features
+
+* **docs:** update requirements traceability and add new implementation artifacts ([9a42cc7](https://github.com/Hexalith/Hexalith.EventStore/commit/9a42cc716e5f26d388ee05ad5fb4edb73a95843a))
+
 # [3.65.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.64.3...v3.65.0) (2026-07-15)
 
 
