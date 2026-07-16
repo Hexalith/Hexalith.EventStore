@@ -1,3 +1,10 @@
+## [3.68.6](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.68.5...v3.68.6) (2026-07-16)
+
+
+### Bug Fixes
+
+* align documented .NET SDK version ([5c95efb](https://github.com/Hexalith/Hexalith.EventStore/commit/5c95efbd76f465e3584dffbc8c22c2262a866bd4))
+
 ## [3.68.5](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.68.4...v3.68.5) (2026-07-16)
 
 
