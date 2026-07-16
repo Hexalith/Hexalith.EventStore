@@ -1,3 +1,10 @@
+## [3.68.2](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.68.1...v3.68.2) (2026-07-16)
+
+
+### Bug Fixes
+
+* **global:** update SDK version to 10.0.302 ([d6c849a](https://github.com/Hexalith/Hexalith.EventStore/commit/d6c849aaf8f77f967377f72b763bd44b3131a713))
+
 ## [3.68.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.68.0...v3.68.1) (2026-07-16)
 
 
