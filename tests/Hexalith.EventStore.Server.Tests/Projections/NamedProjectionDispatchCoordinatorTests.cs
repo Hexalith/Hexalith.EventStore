@@ -133,10 +133,12 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
             out IProjectionLifecycleGateway lifecycle);
         _ = checkpoints.ReadDeliveredSequenceAsync(Identity, Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(0);
         _ = checkpoints.SaveDeliveredSequenceAsync(Identity, Arg.Any<string>(), 1, Arg.Any<CancellationToken>()).Returns(true);
+        // The delivery lifecycle lease is keyed by an opaque per-invocation token (not the stable
+        // dispatch id), so the release op id is matched with Arg.Any rather than a fixed message id.
         _ = lifecycle.CompleteDeliveryWriteAsync(
                 Identity,
                 Arg.Any<string>(),
-                "message-1",
+                Arg.Any<string>(),
                 CancellationToken.None)
             .Returns(call => !string.Equals(call.ArgAt<string>(1), "widget-detail", StringComparison.Ordinal));
 
@@ -150,12 +152,12 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
         _ = await lifecycle.Received(2).CompleteDeliveryWriteAsync(
             Identity,
             "widget-detail",
-            "message-1",
+            Arg.Any<string>(),
             CancellationToken.None);
         _ = await lifecycle.Received(1).CompleteDeliveryWriteAsync(
             Identity,
             "widget-index",
-            "message-1",
+            Arg.Any<string>(),
             CancellationToken.None);
     }
 

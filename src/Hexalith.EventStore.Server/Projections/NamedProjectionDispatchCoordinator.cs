@@ -356,6 +356,15 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         var terminalRoutes = new HashSet<string>(scheduledWork.TerminalRoutes, StringComparer.Ordinal);
         var reservations = new Dictionary<string, ProjectionDeliveryReservation>(StringComparer.Ordinal);
         var lifecycleLeases = new HashSet<string>(StringComparer.Ordinal);
+
+        // Each dispatch invocation takes a unique lifecycle delivery-lease id rather than the shared,
+        // stable dispatch id. Two concurrent deliveries of the same aggregate share a dispatch id, so
+        // both would re-enter one Delivering lease; the loser, once denied by idempotency admission, would
+        // then release the winner's shared lease and fail the winner's own completion. A per-invocation
+        // token makes the loser fail closed at BeginDeliveryWrite so it never acquires or releases the
+        // winner's lease. A crashed holder's lease is recovered through its bounded expiry, matching the
+        // delivery reservation's own lease bound.
+        string deliveryLeaseToken = Guid.NewGuid().ToString("N", System.Globalization.CultureInfo.InvariantCulture);
         try {
             foreach (string projectionType in catalogEntry.ProjectionTypes
                 .Where(pendingRoutes.Contains)
@@ -386,7 +395,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                     .BeginDeliveryWriteAsync(
                         identity,
                         projectionType,
-                        scheduledWork.DispatchId,
+                        deliveryLeaseToken,
                         cancellationToken)
                     .ConfigureAwait(false)) {
                     Log.RouteNotAdmitted(
@@ -397,7 +406,8 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                         projectionType,
                         ProjectionReasonCodes.DeliveryDeferredForErase);
 
-                    // Lifecycle denial (e.g. erase in progress) may lift later; keep the route pending.
+                    // Lifecycle denial (concurrent delivery holding the lease, or erase in progress) may
+                    // lift later; keep the route pending.
                     continue;
                 }
 
@@ -426,7 +436,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                         .CompleteDeliveryWriteAsync(
                             identity,
                             projectionType,
-                            scheduledWork.DispatchId,
+                            deliveryLeaseToken,
                             CancellationToken.None)
                         .ConfigureAwait(false)) {
                         throw new InvalidOperationException("Named projection delivery lifecycle lease completion was rejected.");
@@ -579,11 +589,12 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
             }
 
             // The durable work item is the crash-recovery carrier for the stable dispatch id. Keep it
-            // until every lifecycle lease has been released; deleting it first can orphan Delivering
-            // forever if the process stops between ledger reconciliation and the finally block.
+            // until every lifecycle lease has been released; deleting it first can strand this
+            // invocation's delivery lease until its bounded expiry if the process stops between ledger
+            // reconciliation and the finally block. A later retry then reclaims the expired lease.
             await CompleteDeliveryLifecycleLeasesAsync(
                     identity,
-                    scheduledWork.DispatchId,
+                    deliveryLeaseToken,
                     lifecycleLeases)
                 .ConfigureAwait(false);
 
@@ -603,7 +614,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
             if (lifecycleLeases.Count > 0) {
                 await CompleteDeliveryLifecycleLeasesAsync(
                         identity,
-                        scheduledWork.DispatchId,
+                        deliveryLeaseToken,
                         lifecycleLeases)
                     .ConfigureAwait(false);
             }
