@@ -92,6 +92,28 @@ In `src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs`,
   - [x] `ConfigureAwait(false)` on every new production await (CA2007 is build-breaking). File-scoped namespaces, one type per file, no copyright headers, ULID-safe identity (`Ulid.TryParse`, never `Guid.TryParse`), central package versions only.
   - [x] If a live-DAPR/Redis lane is reachable (`tests/Hexalith.EventStore.Server.LiveSidecar.Tests/`, `DaprFactAttribute`), assert the equivalence corpus against persisted Redis state; if environment-blocked, record the exact blocker separately — deterministic tests do not substitute for persisted DAPR/Redis evidence but do not block the story on an unavailable environment.
 
+### Review Findings
+
+- [ ] [Review][Patch] [HIGH] Publish named read models, the legacy actor, freshness/index state, and rebuild checkpoint through one durable visibility boundary [src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:961]
+- [ ] [Review][Patch] [HIGH] Replace point-in-time lifecycle admission with a write fence that remains valid through legacy and named projection commits [src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:291]
+- [ ] [Review][Patch] [HIGH] Acquire and complete rebuild lifecycle ownership for every required named projection route, not only the operator projection name [src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:479]
+- [ ] [Review][Patch] [HIGH] Centralize rebuild terminalization so rejected admission, malformed responses, safety failures, and cleanup-write rejection cannot leave Running/Rebuilding state behind [src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:463]
+- [ ] [Review][Patch] [HIGH] Freeze each replay target to the initial durable stream head before reading multiple pages [src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:1108]
+- [ ] [Review][Patch] [HIGH] Reject a legacy rebuild response whose ProjectionType differs from the lifecycle/checkpoint scope [src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:948]
+- [ ] [Review][Patch] [HIGH] Validate direct rebuild event histories start at one and are ordered, contiguous, duplicate-free, and bounded before promotion [src/Hexalith.EventStore.DomainService/DomainProjectionDispatcher.cs:363]
+- [ ] [Review][Patch] [HIGH] Preserve structured per-route named rebuild outcomes instead of collapsing every failure to ProjectionApplyRejected [src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:961]
+- [ ] [Review][Patch] [HIGH] Enforce the serialized-byte safety ceiling incrementally before the complete prefix is materialized and decrypted in memory [src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:821]
+- [ ] [Review][Patch] [MEDIUM] Make projection payload and lifecycle observation version-coherent so an old payload cannot be returned as Current after promotion [src/Hexalith.EventStore.Server/Queries/QueryRouter.cs:126]
+- [ ] [Review][Patch] [MEDIUM] Pin the exact public rebuild-prefix safety reason literal in the contract taxonomy test [tests/Hexalith.EventStore.Contracts.Tests/Streams/StreamReadContractTests.cs:80]
+- [ ] [Review][Patch] [MEDIUM] Add query-boundary verification that lifecycle-store failure returns Unknown without leaking stale freshness [src/Hexalith.EventStore.Server/Queries/QueryRouter.cs:209]
+- [x] [Review][Defer] Activation outbox completion can discard recoverable work after named dispatch declines or later legacy delivery fails [src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:183] — deferred, pre-existing
+- [x] [Review][Defer] Query lifecycle overlay still ignores an in-flight Erasing phase [src/Hexalith.EventStore.Server/Queries/QueryRouter.cs:199] — deferred, pre-existing
+- [x] [Review][Defer] A blank head MessageId defers named delivery without creating durable retry evidence [src/Hexalith.EventStore.Server/Projections/NamedProjectionDispatchCoordinator.cs:143] — deferred, pre-existing
+- [x] [Review][Defer] One manually registered async projection handler suppresses convention discovery of every other handler [src/Hexalith.EventStore.DomainService/EventStoreDomainServiceExtensions.cs:375] — deferred, pre-existing
+- [x] [Review][Defer] Lifecycle declarations and persisted state still place multiple types in single source files [src/Hexalith.EventStore.Server/Actors/IProjectionLifecycleActor.cs:12] — deferred, pre-existing
+- [x] [Review][Defer] A null Domains collection in operational-index metadata input can reach Count and return an internal error [src/Hexalith.EventStore.DomainService/EventStoreDomainServiceExtensions.cs:248] — deferred, pre-existing
+- [x] [Review][Defer] Erase lifecycle admission accepts blank operation/digest values and does not fail closed on an unknown persisted phase [src/Hexalith.EventStore.Server/Actors/ProjectionLifecycleActor.cs:68] — deferred, pre-existing
+
 ## Dev Notes
 
 ### Current state of files that will be updated
