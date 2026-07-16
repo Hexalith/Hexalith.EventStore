@@ -1,3 +1,11 @@
+## [3.68.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.68.0...v3.68.1) (2026-07-16)
+
+
+### Bug Fixes
+
+* **projections:** isolate concurrent named-delivery lifecycle leases ([d2c6b5b](https://github.com/Hexalith/Hexalith.EventStore/commit/d2c6b5b3712f574a7ae50d5d66f4cb872f845589))
+* **spec:** update status to in-review for sprint change proposal ([02a93d5](https://github.com/Hexalith/Hexalith.EventStore/commit/02a93d5a0325dc842ad6a64897a3b8fb2907b9a9))
+
 # [3.68.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.67.3...v3.68.0) (2026-07-16)
 
 
