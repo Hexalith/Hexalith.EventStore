@@ -237,14 +237,41 @@ INSTALLED_SDK_VERSION="$(dotnet --version)"
 # locally), so resolve the effective versions from the import graph. Checking out
 # only the Builds submodule is a source checkout, not a restore/build/publish gate.
 git submodule update --init --checkout -- references/Hexalith.Builds
-ASPNET_PIN_SOURCES=(Directory.Packages.props references/Hexalith.Builds/Props/Directory.Packages.props)
-mapfile -t ASPNET_PIN_PAIRS < <(
-  sed -nE 's/.*<PackageVersion Include="(Microsoft\.AspNetCore\.(SignalR\.Client|SignalR\.StackExchangeRedis|DataProtection\.Abstractions))" Version="([^"]+)" *\/>.*/\1 \3/p' \
-    "${ASPNET_PIN_SOURCES[@]}")
-test "$(printf '%s\n' "${ASPNET_PIN_PAIRS[@]}" | awk 'NF{print $1}' | sort -u | grep -c .)" -eq 3
-mapfile -t ASPNET_PIN_VERSIONS < <(printf '%s\n' "${ASPNET_PIN_PAIRS[@]}" | awk 'NF{print $2}' | sort -u)
-test "${#ASPNET_PIN_VERSIONS[@]}" -eq 1
-REPOSITORY_ASPNET_VERSION="${ASPNET_PIN_VERSIONS[0]}"
+ASPNET_PIN_SOURCES=(references/Hexalith.Builds/Props/Directory.Packages.props Directory.Packages.props)
+discover_effective_aspnet_pin_pairs() {
+  sed -nE 's/.*<PackageVersion (Include|Update)="(Microsoft\.AspNetCore\.[^"]+)" Version="([^"]+)" *\/>.*/\2 \3/p' \
+    "$@" |
+    awk '{ effective[$1] = $2 } END { for (id in effective) print id, effective[id] }' |
+    LC_ALL=C sort
+}
+
+validate_aspnet_pin_band() {
+  local pair
+  local package_id
+  local version
+  local identity_count=0
+  local -a regular_versions=()
+  local -a unique_versions=()
+  for pair in "$@"; do
+    read -r package_id version <<< "$pair"
+    test -n "$package_id" && test -n "$version" || return 1
+    if test "$package_id" = 'Microsoft.AspNetCore.Identity'; then
+      test "$version" = '2.3.11' || return 1
+      identity_count=$((identity_count + 1))
+    else
+      [[ "$version" =~ ^10\.[0-9]+\.[0-9]+$ ]] || return 1
+      regular_versions+=("$version")
+    fi
+  done
+  test "$identity_count" -eq 1 || return 1
+  test "${#regular_versions[@]}" -gt 0 || return 1
+  mapfile -t unique_versions < <(printf '%s\n' "${regular_versions[@]}" | LC_ALL=C sort -u)
+  test "${#unique_versions[@]}" -eq 1 || return 1
+  printf '%s\n' "${unique_versions[0]}"
+}
+
+mapfile -t ASPNET_PIN_PAIRS < <(discover_effective_aspnet_pin_pairs "${ASPNET_PIN_SOURCES[@]}")
+REPOSITORY_ASPNET_VERSION="$(validate_aspnet_pin_band "${ASPNET_PIN_PAIRS[@]}")"
 dotnet --list-runtimes > "$EVIDENCE_ROOT/dotnet-runtimes.txt"
 discover_bound_runtime_versions() {
   local runtime_inventory="$1"
@@ -1040,15 +1067,74 @@ run_xunit_class \
 ```bash
 PACKAGE_OUTPUT="$GATE_ROOT/packages"
 PACKAGE_VERSION="999.1.20-proof.$(git rev-parse --short=12 "$CANDIDATE_SHA")"
+EXPECTED_PACKAGE_IDS="$EVIDENCE_ROOT/expected-package-ids.txt"
+cat > "$EXPECTED_PACKAGE_IDS" <<'PACKAGE_IDS'
+Hexalith.EventStore.Admin.Abstractions
+Hexalith.EventStore.Admin.Cli
+Hexalith.EventStore.Admin.Server
+Hexalith.EventStore.Aspire
+Hexalith.EventStore.Client
+Hexalith.EventStore.Contracts
+Hexalith.EventStore.DomainService
+Hexalith.EventStore.Gateway
+Hexalith.EventStore.RestApi.Generators
+Hexalith.EventStore.Server
+Hexalith.EventStore.ServiceDefaults
+Hexalith.EventStore.SignalR
+Hexalith.EventStore.Testing
+Hexalith.EventStore.Testing.Integration
+PACKAGE_IDS
+
+validate_literal_package_inventory() {
+  python3 - "$1" "$2" "$3" <<'PY'
+import pathlib
+import sys
+import xml.etree.ElementTree as ET
+import zipfile
+
+package_directory = pathlib.Path(sys.argv[1])
+expected_version = sys.argv[2]
+expected_ids = pathlib.Path(sys.argv[3]).read_text(encoding="utf-8").splitlines()
+if not expected_ids or any(not package_id for package_id in expected_ids) or len(expected_ids) != len(set(expected_ids)):
+    raise SystemExit("literal package inventory contains blank or duplicate IDs")
+expected_names = {f"{package_id}.{expected_version}.nupkg" for package_id in expected_ids}
+packages = sorted(package_directory.glob("*.nupkg"))
+actual_names = {package.name for package in packages}
+if actual_names != expected_names or len(packages) != len(expected_ids):
+    raise SystemExit("package filenames do not match the literal approved inventory")
+
+actual_ids = []
+for package in packages:
+    with zipfile.ZipFile(package, "r") as archive:
+        nuspec_names = [name for name in archive.namelist() if name.endswith(".nuspec")]
+        if len(nuspec_names) != 1:
+            raise SystemExit(f"{package.name}: expected exactly one nuspec")
+        with archive.open(nuspec_names[0]) as nuspec:
+            root = ET.parse(nuspec).getroot()
+    namespace = root.tag[1:].split("}", 1)[0] if root.tag.startswith("{") else ""
+    prefix = f"{{{namespace}}}" if namespace else ""
+    metadata = root.find(f"{prefix}metadata")
+    package_id = metadata.findtext(f"{prefix}id") if metadata is not None else None
+    version = metadata.findtext(f"{prefix}version") if metadata is not None else None
+    if package_id not in expected_ids or version != expected_version or package.name != f"{package_id}.{version}.nupkg":
+        raise SystemExit(f"{package.name}: unexpected nuspec identity {package_id}/{version}")
+    actual_ids.append(package_id)
+
+if len(actual_ids) != len(set(actual_ids)) or set(actual_ids) != set(expected_ids):
+    raise SystemExit("embedded nuspec IDs do not match the literal approved inventory")
+PY
+}
+
 assert_candidate_identity
 if rm -rf "$PACKAGE_OUTPUT" &&
   find src -type d \( -path '*/bin/Release' -o -path '*/obj/Release' \) \
     -prune -exec rm -rf {} + &&
   python3 scripts/pack-release-packages.py "$PACKAGE_OUTPUT" "$PACKAGE_VERSION" &&
+  validate_literal_package_inventory "$PACKAGE_OUTPUT" "$PACKAGE_VERSION" "$EXPECTED_PACKAGE_IDS" &&
   python3 scripts/validate-nuget-packages.py "$PACKAGE_OUTPUT" &&
-  test "$(find "$PACKAGE_OUTPUT" -maxdepth 1 -type f -name '*.nupkg' | wc -l)" -eq 14 &&
   python3 scripts/validate-consumer-package-references.py "$PACKAGE_OUTPUT" &&
-  sha256sum "$PACKAGE_OUTPUT"/*.nupkg | sort -k2 > "$EVIDENCE_ROOT/nuget-sha256.txt" &&
+  (cd "$PACKAGE_OUTPUT" && sha256sum -- *.nupkg | LC_ALL=C sort -k2) \
+    > "$EVIDENCE_ROOT/nuget-sha256.txt" &&
   test "$(wc -l < "$EVIDENCE_ROOT/nuget-sha256.txt")" -eq 14; then
   package_gate_status=0
 else
@@ -1136,6 +1222,64 @@ validate_published_manifest() {
   printf '%s\n' "$manifest_sha256"
 }
 
+# Restore into the isolated cache and capture the exact SDK-generated multi-architecture
+# image-index bytes/digest. The capture target observes the same GeneratedImageIndex string
+# that the SDK hands to its registry publisher; provenance never derives identity from a tag.
+CONTAINER_PROJECT='src/Hexalith.EventStore/Hexalith.EventStore.csproj'
+CONTAINER_PROJECT_DIRECTORY="${CONTAINER_PROJECT%/*}"
+CAPTURE_TARGETS="$EVIDENCE_ROOT/capture-generated-image-index.targets"
+GENERATED_IMAGE_INDEX="$EVIDENCE_ROOT/generated-image-index.json"
+GENERATED_IMAGE_INDEX_DIGEST="$EVIDENCE_ROOT/generated-image-index.digest.txt"
+cat > "$CAPTURE_TARGETS" <<'MSBUILD'
+<Project>
+  <UsingTask TaskName="CaptureGeneratedImageIndex"
+             TaskFactory="RoslynCodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <ImageIndex ParameterType="System.String" Required="true" />
+      <OutputPath ParameterType="System.String" Required="true" />
+      <Digest ParameterType="System.String" Output="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Security.Cryptography" />
+      <Using Namespace="System.Text" />
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        byte[] bytes = new UTF8Encoding(false).GetBytes(ImageIndex);
+        File.WriteAllBytes(OutputPath, bytes);
+        using (SHA256 sha256 = SHA256.Create())
+        {
+          byte[] hash = sha256.ComputeHash(bytes);
+          Digest = "sha256:" + BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+        }
+      ]]></Code>
+    </Task>
+  </UsingTask>
+  <Target Name="CapturePublishedImageIndex" AfterTargets="_PublishMultiArchContainers">
+    <Error Condition="'$(GeneratedImageIndex)' == ''"
+           Text="The .NET container SDK did not expose GeneratedImageIndex." />
+    <CaptureGeneratedImageIndex ImageIndex="$(GeneratedImageIndex)"
+                                OutputPath="$(ContainerImageIndexOutputPath)">
+      <Output TaskParameter="Digest" PropertyName="CapturedImageIndexDigest" />
+    </CaptureGeneratedImageIndex>
+    <WriteLinesToFile File="$(ContainerImageIndexDigestOutputPath)"
+                      Lines="$(CapturedImageIndexDigest)"
+                      Overwrite="true"
+                      Encoding="UTF-8" />
+  </Target>
+</Project>
+MSBUILD
+chmod a-w "$CAPTURE_TARGETS"
+CAPTURE_TARGETS_SHA256="$(sha256sum "$CAPTURE_TARGETS" | awk '{print $1}')"
+rm -rf "$CONTAINER_PROJECT_DIRECTORY/bin/Release" "$CONTAINER_PROJECT_DIRECTORY/obj/Release"
+dotnet restore "$CONTAINER_PROJECT" \
+  --configfile nuget.config \
+  --packages "$NUGET_PACKAGES" \
+  -p:UseHexalithProjectReferences=false \
+  -p:NuGetAudit=false \
+  -p:MinVerVersionOverride=1.0.0
+
 # Immediately before publication, recheck source identity/cleanliness and authority validity.
 assert_candidate_identity
 for repository in . "${ROOT_SUBMODULES[@]}"; do
@@ -1148,20 +1292,37 @@ validate_publication_authority "$AUTHORITY_CHECKED_AT"
 AUTHORITY_SHA256="$(sha256sum "$AUTHORITY_EVIDENCE" | awk '{print $1}')"
 AUTHORITY_CHECKED_AT_SHA256="$(sha256sum "$AUTHORITY_CHECKED_AT_EVIDENCE" | awk '{print $1}')"
 assert_candidate_identity
-if dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj \
+if dotnet publish "$CONTAINER_PROJECT" \
     --configuration Release \
     --no-restore \
     -p:PublishProfile=DefaultContainer \
+    -p:UseHexalithProjectReferences=false \
+    -p:NuGetAudit=false \
+    -p:MinVerVersionOverride=1.0.0 \
     -p:ContainerRegistry="$PUBLISH_CONTAINER_REGISTRY" \
     -p:ContainerRepository="$PUBLISH_CONTAINER_REPOSITORY" \
     -p:ContainerImageTag="$IMAGE_TAG" \
-    "-p:ContainerRuntimeIdentifiers=linux-x64;linux-arm64"; then
+    "-p:ContainerRuntimeIdentifiers=linux-x64;linux-arm64" \
+    -p:CustomAfterMicrosoftCommonTargets="$CAPTURE_TARGETS" \
+    -p:ContainerImageIndexOutputPath="$GENERATED_IMAGE_INDEX" \
+    -p:ContainerImageIndexDigestOutputPath="$GENERATED_IMAGE_INDEX_DIGEST" \
+    2>&1 | tee "$EVIDENCE_ROOT/container-publish.txt"; then
   publication_gate_status=0
 else
   publication_gate_status=$?
 fi
 assert_candidate_identity
 test "$publication_gate_status" -eq 0
+for repository in . "${ROOT_SUBMODULES[@]}"; do
+  assert_publication_source_clean "$repository"
+done
+test "$(sha256sum "$CAPTURE_TARGETS" | awk '{print $1}')" = "$CAPTURE_TARGETS_SHA256"
+test -s "$GENERATED_IMAGE_INDEX"
+test -s "$GENERATED_IMAGE_INDEX_DIGEST"
+IMAGE_DIGEST="$(cat "$GENERATED_IMAGE_INDEX_DIGEST")"
+[[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+test "sha256:$(sha256sum "$GENERATED_IMAGE_INDEX" | awk '{print $1}')" = "$IMAGE_DIGEST"
+jq -e '.manifests | type == "array" and length > 0' "$GENERATED_IMAGE_INDEX" >/dev/null
 assert_candidate_identity
 if docker buildx imagetools inspect "$IMAGE_REPOSITORY:$IMAGE_TAG" \
   | tee "$EVIDENCE_ROOT/container-inspect.txt"; then
@@ -1171,9 +1332,9 @@ else
 fi
 assert_candidate_identity
 test "$inspect_tag_gate_status" -eq 0
-IMAGE_DIGEST="$({ awk '$1 == "Digest:" { print $2; exit }' \
+TAG_IMAGE_DIGEST="$({ awk '$1 == "Digest:" { print $2; exit }' \
   "$EVIDENCE_ROOT/container-inspect.txt"; } || true)"
-[[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+test "$TAG_IMAGE_DIGEST" = "$IMAGE_DIGEST"
 assert_candidate_identity
 if docker buildx imagetools inspect "$IMAGE_REPOSITORY@$IMAGE_DIGEST" --raw \
   > "$EVIDENCE_ROOT/container-manifest.json"; then
@@ -1203,9 +1364,18 @@ jq -n \
   --arg authority_checked_at "$AUTHORITY_CHECKED_AT" \
   --arg authority_checked_at_file "$(basename "$AUTHORITY_CHECKED_AT_EVIDENCE")" \
   --arg authority_checked_at_sha256 "$AUTHORITY_CHECKED_AT_SHA256" \
+  --arg capture_targets_file "$(basename "$CAPTURE_TARGETS")" \
+  --arg capture_targets_sha256 "$CAPTURE_TARGETS_SHA256" \
+  --arg generated_index_file "$(basename "$GENERATED_IMAGE_INDEX")" \
   --rawfile platforms "$EVIDENCE_ROOT/container-platforms.txt" \
   '{source_sha: $source_sha, repository: $repository, tag: $tag, digest: $digest,
     manifest_sha256: $manifest_sha256,
+    sdk_generated_index: {
+      file: $generated_index_file,
+      digest: $digest,
+      capture_targets_file: $capture_targets_file,
+      capture_targets_sha256: $capture_targets_sha256
+    },
     platforms: ($platforms | split("\n") | map(select(length > 0))),
     publish_properties: {
       container_registry: $container_registry,
@@ -1272,6 +1442,8 @@ exactly one front-matter field to point back to A:
 ```bash
 set -euo pipefail
 PACKET='_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md'
+STORY='_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md'
+SPRINT_STATUS='_bmad-output/implementation-artifacts/sprint-status.yaml'
 : "${EVIDENCE_COMMIT_A:?set the evidence commit A SHA}"
 : "${POINTER_COMMIT_B:?set the pointer-only commit B SHA}"
 
@@ -1285,8 +1457,12 @@ test "$(git rev-parse --verify --end-of-options "${POINTER_COMMIT_B}^")" = "$EVI
 A_PACKET="$(mktemp)"
 B_PACKET="$(mktemp)"
 EXPECTED_B_PACKET="$(mktemp)"
+A_STORY="$(mktemp)"
+A_SPRINT_STATUS="$(mktemp)"
 git show "$EVIDENCE_COMMIT_A:$PACKET" > "$A_PACKET"
 git show "$POINTER_COMMIT_B:$PACKET" > "$B_PACKET"
+git show "$EVIDENCE_COMMIT_A:$STORY" > "$A_STORY"
+git show "$EVIDENCE_COMMIT_A:$SPRINT_STATUS" > "$A_SPRINT_STATUS"
 
 front_value() {
   local packet="$1"
@@ -1329,6 +1505,20 @@ done
 test "$(front_value "$A_PACKET" documentation_commit_sha)" = 'null'
 test "$(front_value "$A_PACKET" final_decision)" = 'still blocked'
 test "$(front_value "$A_PACKET" authorize_consumer_migration)" = 'false'
+test "$(front_value "$A_STORY" status)" = 'blocked'
+test "$(awk '
+  NR == 1 && $0 == "---" { in_front = 1; next }
+  in_front && $0 == "---" { in_front = 0; after_front = 1; next }
+  after_front && /^Status: / { print substr($0, 9); exit }
+' "$A_STORY")" = 'blocked'
+awk '
+  /^  epic-1:/ { epic_count++; epic_ok += ($0 == "  epic-1: in-progress") }
+  /^  1-20-owner-approved-parity-closure-and-runtime-pin:/ {
+    story_count++
+    story_ok += ($0 == "  1-20-owner-approved-parity-closure-and-runtime-pin: in-progress")
+  }
+  END { exit !(epic_count == 1 && epic_ok == 1 && story_count == 1 && story_ok == 1) }
+' "$A_SPRINT_STATUS"
 test "$(front_value "$B_PACKET" tested_runtime_sha)" = "$A_TESTED_RUNTIME_SHA"
 test "$(front_value "$B_PACKET" documentation_commit_sha)" = "$EVIDENCE_COMMIT_A"
 test "$(front_value "$B_PACKET" final_decision)" = 'still blocked'
@@ -1403,6 +1593,9 @@ test "$APPROVED_PACKAGE_VERSION" != 'NOT_SELECTED'
 test -d "$APPROVED_PACKAGE_DIRECTORY"
 test -f "$APPROVED_PACKAGE_HASHES"
 test -f "$CONSUMER_PROJECT"
+APPROVED_PACKAGE_DIRECTORY="$(realpath "$APPROVED_PACKAGE_DIRECTORY")"
+APPROVED_PACKAGE_HASHES="$(realpath "$APPROVED_PACKAGE_HASHES")"
+CONSUMER_PROJECT="$(realpath "$CONSUMER_PROJECT")"
 
 EXPECTED_IDS="$(mktemp)"
 cat > "$EXPECTED_IDS" <<'PACKAGE_IDS'
@@ -1423,13 +1616,42 @@ Hexalith.EventStore.Testing.Integration
 PACKAGE_IDS
 sort -u -o "$EXPECTED_IDS" "$EXPECTED_IDS"
 test "$(wc -l < "$EXPECTED_IDS")" -eq 14
+EXPECTED_PACKAGE_FILES="$(mktemp)"
+awk -v version="$APPROVED_PACKAGE_VERSION" '{ print $0 "." version ".nupkg" }' \
+  "$EXPECTED_IDS" | LC_ALL=C sort > "$EXPECTED_PACKAGE_FILES"
 
 ACTUAL_IDS="$(mktemp)"
+ACTUAL_PACKAGE_FILES="$(mktemp)"
 find "$APPROVED_PACKAGE_DIRECTORY" -maxdepth 1 -type f -name '*.nupkg' -printf '%f\n' \
-  | sed -n "s/\.${APPROVED_PACKAGE_VERSION//./\\.}\.nupkg$//p" \
+  | LC_ALL=C sort > "$ACTUAL_PACKAGE_FILES"
+diff -u "$EXPECTED_PACKAGE_FILES" "$ACTUAL_PACKAGE_FILES"
+sed -n "s/\.${APPROVED_PACKAGE_VERSION//./\\.}\.nupkg$//p" "$ACTUAL_PACKAGE_FILES" \
   | sort -u > "$ACTUAL_IDS"
 test "$(find "$APPROVED_PACKAGE_DIRECTORY" -maxdepth 1 -type f -name '*.nupkg' | wc -l)" -eq 14
 diff -u "$EXPECTED_IDS" "$ACTUAL_IDS"
+validate_package_hash_manifest() {
+  local hash_file="$1"
+  local expected_files="$2"
+  local hash_filenames
+  hash_filenames="$(mktemp)"
+  if ! awk '
+    NF == 2 && length($1) == 64 && $1 !~ /[^0-9a-f]/ && $2 !~ /\// {
+      print $2
+      valid++
+    }
+    END { if (NR != 14 || valid != 14) exit 1 }
+  ' "$hash_file" | LC_ALL=C sort -u > "$hash_filenames"; then
+    rm -f "$hash_filenames"
+    return 1
+  fi
+  if test "$(wc -l < "$hash_filenames")" -ne 14 ||
+    ! diff -u "$expected_files" "$hash_filenames"; then
+    rm -f "$hash_filenames"
+    return 1
+  fi
+  rm -f "$hash_filenames"
+}
+validate_package_hash_manifest "$APPROVED_PACKAGE_HASHES" "$EXPECTED_PACKAGE_FILES"
 (cd "$APPROVED_PACKAGE_DIRECTORY" && sha256sum --check "$APPROVED_PACKAGE_HASHES")
 
 CONSUMER_GATE="$(mktemp -d)"
@@ -1495,6 +1717,7 @@ test "$(awk '$1 == "Digest:" { print $2; exit }' "$INSPECT_OUTPUT")" \
   = "$APPROVED_IMAGE_DIGEST"
 docker buildx imagetools inspect "$IMMUTABLE_IMAGE" --raw > "$RAW_MANIFEST"
 jq -e '.manifests | type == "array" and length > 0' "$RAW_MANIFEST"
+test "sha256:$(sha256sum "$RAW_MANIFEST" | awk '{print $1}')" = "$APPROVED_IMAGE_DIGEST"
 jq -r '.manifests[].platform | "\(.os)/\(.architecture)\(if .variant then "/" + .variant else "" end)"' \
   "$RAW_MANIFEST" | sort -u > "$ACTUAL_PLATFORMS"
 test -s "$ACTUAL_PLATFORMS"

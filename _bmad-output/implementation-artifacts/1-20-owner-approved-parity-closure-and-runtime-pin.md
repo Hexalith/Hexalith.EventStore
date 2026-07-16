@@ -122,6 +122,25 @@ from this proposal inventory and remains owned by its existing changes.
 
 ## Review Triage Log
 
+### Review Findings
+
+- [x] [Review][Patch] [high] Restore Story 1.16 to fail-closed review state until a named disposition is tied to the committed candidate runtime [_bmad-output/implementation-artifacts/spec-1-11-complete-projection-freshness-lifecycle.md:9]
+- [x] [Review][Patch] [high] Make the AD-11 mutation fixture actually vary repository and installed SDK versions [_bmad-output/implementation-artifacts/spec-1-16-1-20-sprint-change-proposal.md:318]
+- [x] [Review][Patch] [high] Reject mixed ASP.NET patch bands across every effective 10.x central package pin [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:240]
+- [x] [Review][Patch] [high] Compare package output with the literal approved 14-package inventory instead of trusting candidate-owned validators [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1047]
+- [x] [Review][Patch] [medium] Generate the NuGet SHA-256 manifest with portable relative package filenames [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1051]
+- [x] [Review][Patch] [high] Require the checksum manifest to cover exactly all 14 approved package filenames [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1433]
+- [x] [Review][Patch] [high] Restore and rebuild the container project from fresh exact-candidate outputs immediately before publication [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1151]
+- [x] [Review][Patch] [high] Recheck source and submodule cleanliness after the publication-capable build [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1163]
+- [x] [Review][Patch] [high] Bind provenance to the digest produced by this publication rather than resolving a mutable tag afterward [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1166]
+- [x] [Review][Patch] [high] Verify evidence commit A keeps the story and Epic 1 status guards blocked, not only packet front matter [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1318]
+- [x] [Review][Patch] [medium] Add a negative A/B fixture where candidate and tested-runtime SHAs differ [_bmad-output/implementation-artifacts/spec-1-16-1-20-sprint-change-proposal.md:549]
+- [x] [Review][Patch] [medium] Hash consumer-fetched raw manifest bytes and compare them with the approved image digest [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1496]
+- [x] [Review][Patch] [medium] Replace the obsolete current-work attribution check with a reproducible historical revision check [_bmad-output/implementation-artifacts/spec-1-16-1-20-sprint-change-proposal.md:223]
+
+Applied and verified on 2026-07-16: the complete proposal verification script passes
+fail-fast, including every added positive and negative fixture; `git diff --check` also passes.
+
 ### 2026-07-16 — Review pass
 
 - intent_gap: 0

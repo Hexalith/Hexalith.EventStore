@@ -222,6 +222,7 @@ bash -c '
   set -euo pipefail
   audited_head=02a93d5a0325dc842ad6a64897a3b8fb2907b9a9
   audited_parent=f9d1f1986d87fa375ddab22ccd2cccde96209ec5
+  finalized_head=ac60e831ba3521315f6046d29bbb7abde91c1628
   proposal_at_parent=(
     _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md
     _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
@@ -237,7 +238,12 @@ bash -c '
     _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
     _bmad-output/implementation-artifacts/spec-1-16-1-20-sprint-change-proposal.md
   )
-  test "$(git rev-parse HEAD)" = "$audited_head"
+  finalized_head_paths=(
+    _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
+    _bmad-output/implementation-artifacts/spec-1-16-1-20-sprint-change-proposal.md
+  )
+  git merge-base --is-ancestor "$audited_head" HEAD
+  git merge-base --is-ancestor "$finalized_head" HEAD
   test "$(git rev-parse "${audited_head}^")" = "$audited_parent"
   diff -u \
     <(printf "%s\n" "${proposal_at_parent[@]}" "${concurrent_at_parent[@]}" | LC_ALL=C sort) \
@@ -246,19 +252,16 @@ bash -c '
     <(printf "%s\n" "${audited_head_paths[@]}" | LC_ALL=C sort) \
     <(git diff-tree --no-commit-id --name-only -r "$audited_head" | LC_ALL=C sort)
   diff -u \
-    <(printf " M %s\n" "${audited_head_paths[@]}" | LC_ALL=C sort) \
-    <(git status --porcelain=v1 | LC_ALL=C sort)
-  git diff --cached --quiet
-  git diff --quiet HEAD -- \
-    _bmad-output/implementation-artifacts/deferred-work.md \
-    _bmad-output/implementation-artifacts/spec-1-11-complete-projection-freshness-lifecycle.md
+    <(printf "%s\n" "${finalized_head_paths[@]}" | LC_ALL=C sort) \
+    <(git diff-tree --no-commit-id --name-only -r "$finalized_head" | LC_ALL=C sort)
 '
 ```
 
 Expected: exit 0. Audited HEAD `02a93d5a...` changed exactly packet+spec; its direct parent
 `f9d1f198...` changed exactly five proposal paths plus the two concurrent submodule pointers.
-Current work is exactly unstaged ` M` packet+spec with no staged path. Earlier baseline history
-remains review input, not proposal attribution; deferred work and Story 1.16 equal `HEAD`.
+The committed finalization `ac60e831...` also changed exactly packet+spec, and both historical
+revisions are ancestors of the reviewed checkout. No assertion depends on a now-obsolete
+working-tree shape.
 
 ```bash
 bash -c '
@@ -328,12 +331,76 @@ bash -c '
     fi
   done
 ' _ _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
+
+bash -c '
+  set -euo pipefail
+  packet="$1"
+  function_file="$(mktemp)"
+  trap "rm -f -- \"$function_file\"" EXIT
+  awk '\''/^validate_aspnet_pin_band\(\) \{$/ { capture = 1 }
+    capture { print }
+    capture && /^}$/ { exit }'\'' "$packet" > "$function_file"
+  bash -n "$function_file"
+  source "$function_file"
+  exact=(
+    "Microsoft.AspNetCore.Authentication.JwtBearer 10.0.10"
+    "Microsoft.AspNetCore.Identity 2.3.11"
+    "Microsoft.AspNetCore.SignalR.Client 10.0.10"
+  )
+  test "$(validate_aspnet_pin_band "${exact[@]}")" = 10.0.10
+  mixed=("${exact[@]}")
+  mixed[0]="Microsoft.AspNetCore.Authentication.JwtBearer 10.0.9"
+  ! validate_aspnet_pin_band "${mixed[@]}" >/dev/null 2>&1
+  wrong_major=("${exact[@]}")
+  wrong_major[0]="Microsoft.AspNetCore.Authentication.JwtBearer 9.0.10"
+  ! validate_aspnet_pin_band "${wrong_major[@]}" >/dev/null 2>&1
+  wrong_legacy=("${exact[@]}")
+  wrong_legacy[1]="Microsoft.AspNetCore.Identity 10.0.10"
+  ! validate_aspnet_pin_band "${wrong_legacy[@]}" >/dev/null 2>&1
+' _ _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
 ```
 
 Expected: exit 0. Every packet Bash block parses, the extracted exact AD-11 function passes
-the valid tuple, and each individual mismatch fails even when the function is invoked by `if`.
+the valid tuple, each individual mismatch fails even when the function is invoked by `if`,
+and the ASP.NET pin-band validator rejects mixed patch bands, wrong majors, and a changed
+legacy Identity exception.
 
 ```bash
+bash -c '
+  set -euo pipefail
+  packet="$1"
+  inventory_function="$(mktemp)"
+  expected="$(mktemp)"
+  packages="$(mktemp -d)"
+  trap "rm -f -- \"$inventory_function\" \"$expected\"; rm -rf -- \"$packages\"" EXIT
+  awk '\''/^validate_literal_package_inventory\(\) \{$/ { capture = 1 }
+    capture { print }
+    capture && /^}$/ { exit }'\'' "$packet" > "$inventory_function"
+  bash -n "$inventory_function"
+  source "$inventory_function"
+  printf "%s\n" Alpha Beta > "$expected"
+  python3 - "$packages" <<"PY"
+import pathlib
+import sys
+import zipfile
+
+directory = pathlib.Path(sys.argv[1])
+for package_id in ("Alpha", "Beta"):
+    with zipfile.ZipFile(directory / f"{package_id}.1.0.0.nupkg", "w") as package:
+        package.writestr(f"{package_id}.nuspec", f"<package><metadata><id>{package_id}</id><version>1.0.0</version></metadata></package>")
+PY
+  validate_literal_package_inventory "$packages" 1.0.0 "$expected"
+  python3 - "$packages/Beta.1.0.0.nupkg" <<"PY"
+import pathlib
+import sys
+import zipfile
+
+with zipfile.ZipFile(pathlib.Path(sys.argv[1]), "w") as package:
+    package.writestr("Beta.nuspec", "<package><metadata><id>Alpha</id><version>1.0.0</version></metadata></package>")
+PY
+  ! validate_literal_package_inventory "$packages" 1.0.0 "$expected" >/dev/null 2>&1
+' _ _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
+
 bash -c '
   set -euo pipefail
   packet="$1"
@@ -479,6 +546,69 @@ matching raw-byte digest and exact two-platform set.
 bash -c '
   set -euo pipefail
   packet="$1"
+  hash_function="$(mktemp)"
+  expected="$(mktemp)"
+  complete="$(mktemp)"
+  partial="$(mktemp)"
+  absolute="$(mktemp)"
+  trap "rm -f -- \"$hash_function\" \"$expected\" \"$complete\" \"$partial\" \"$absolute\"" EXIT
+  awk '\''/^validate_package_hash_manifest\(\) \{$/ { capture = 1 }
+    capture { print }
+    capture && /^}$/ { exit }'\'' "$packet" > "$hash_function"
+  bash -n "$hash_function"
+  source "$hash_function"
+  for number in $(seq -w 1 14); do
+    printf "Package%s.1.0.0.nupkg\n" "$number"
+  done > "$expected"
+  while IFS= read -r filename; do
+    printf "%064d  %s\n" 0 "$filename"
+  done < "$expected" > "$complete"
+  validate_package_hash_manifest "$complete" "$expected"
+  sed -n "1,13p" "$complete" > "$partial"
+  ! validate_package_hash_manifest "$partial" "$expected" >/dev/null 2>&1
+  awk '\''{ print $1 "  /tmp/" $2 }'\'' "$complete" > "$absolute"
+  ! validate_package_hash_manifest "$absolute" "$expected" >/dev/null 2>&1
+' _ _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
+
+bash -c '
+  set -euo pipefail
+  packet="$1"
+  capture_targets="$(mktemp --suffix=.targets)"
+  fixture_project="$(mktemp --suffix=.proj)"
+  generated_index="$(mktemp)"
+  generated_digest="$(mktemp)"
+  trap "rm -f -- \"$capture_targets\" \"$fixture_project\" \"$generated_index\" \"$generated_digest\"" EXIT
+  python3 - "$packet" "$capture_targets" <<"PY"
+import pathlib
+import sys
+
+lines = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8").splitlines()
+marker = "cat > \"$CAPTURE_TARGETS\" <<" + chr(39) + "MSBUILD" + chr(39)
+start = lines.index(marker) + 1
+end = lines.index("MSBUILD", start)
+pathlib.Path(sys.argv[2]).write_text("\n".join(lines[start:end]) + "\n", encoding="utf-8")
+PY
+  cat > "$fixture_project" <<EOF
+<Project>
+  <Import Project="$capture_targets" />
+  <Target Name="_PublishMultiArchContainers">
+    <PropertyGroup>
+      <GeneratedImageIndex>{"schemaVersion":2,"manifests":[]}</GeneratedImageIndex>
+      <ContainerImageIndexOutputPath>$generated_index</ContainerImageIndexOutputPath>
+      <ContainerImageIndexDigestOutputPath>$generated_digest</ContainerImageIndexDigestOutputPath>
+    </PropertyGroup>
+  </Target>
+</Project>
+EOF
+  dotnet msbuild "$fixture_project" -nologo -t:_PublishMultiArchContainers
+  expected_digest="sha256:$(printf %s '\''{"schemaVersion":2,"manifests":[]}'\'' | sha256sum | awk '\''{print $1}'\'')"
+  test "$(cat "$generated_digest")" = "$expected_digest"
+  test "sha256:$(sha256sum "$generated_index" | awk '\''{print $1}'\'')" = "$expected_digest"
+' _ _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
+
+bash -c '
+  set -euo pipefail
+  packet="$1"
   clean_function="$(mktemp)"
   repository="$(mktemp -d)"
   trap "rm -f -- \"$clean_function\"; rm -rf -- \"$repository\"" EXIT
@@ -506,22 +636,32 @@ bash -c '
 ' _ _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
 
 awk '
-  $0 == "  assert_publication_source_clean \"$repository\"" { clean_call = NR }
+  $0 == "dotnet restore \"$CONTAINER_PROJECT\" \\" { restore = NR }
+  $0 == "  assert_publication_source_clean \"$repository\"" {
+    if (first_clean == 0) first_clean = NR
+    last_clean = NR
+  }
   $0 == "AUTHORITY_CHECKED_AT=\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"" { action_time = NR }
   $0 == "validate_publication_authority \"$AUTHORITY_CHECKED_AT\"" { authority_call = NR }
   $0 == "assert_candidate_identity" { last_identity = NR }
-  $0 == "if dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj \\" {
+  $0 == "if dotnet publish \"$CONTAINER_PROJECT\" \\" {
     publish = NR; immediate_identity = (last_identity == NR - 1)
   }
-  END { exit !(clean_call > 0 && clean_call < action_time && action_time < authority_call &&
-    authority_call < publish && immediate_identity) }
+  $0 == "IMAGE_DIGEST=\"$(cat \"$GENERATED_IMAGE_INDEX_DIGEST\")\"" { generated_digest = NR }
+  $0 == "test \"$TAG_IMAGE_DIGEST\" = \"$IMAGE_DIGEST\"" { tag_consistency = NR }
+  END { exit !(restore > 0 && restore < first_clean && first_clean < action_time &&
+    action_time < authority_call && authority_call < publish && immediate_identity &&
+    publish < last_clean && last_clean < generated_digest && generated_digest < tag_consistency) }
 ' _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
 ```
 
-Expected: the actual cleanliness function accepts a clean repository and generated `bin`/`obj`,
-rejects untracked and unapproved ignored inputs, and the publication block orders clean source,
-fresh action timestamp, authority validation, and an immediate candidate-identity check before
-`dotnet publish`.
+Expected: the literal package gate accepts the exact filename-to-nuspec mapping and rejects
+duplicate embedded identities. The package hash guard accepts exactly 14 portable relative
+filenames and rejects partial or absolute-path manifests. The extracted SDK image-index capture
+target preserves exact bytes and emits their digest. The cleanliness function accepts a clean repository and generated
+`bin`/`obj`, rejects untracked and unapproved ignored inputs, and the publication block orders a
+fresh isolated restore, clean source, fresh action timestamp, authority validation, immediate
+candidate identity, post-publish cleanliness, SDK-produced digest capture, and tag consistency.
 
 ```bash
 bash -c '
@@ -541,16 +681,34 @@ bash -c '
   git -C "$repository" config user.email proof@example.invalid
   git -C "$repository" config user.name Proof
   mkdir -p "$repository/src"
+  packet_path="$repository/_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md"
+  story_path="$repository/_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md"
+  sprint_path="$repository/_bmad-output/implementation-artifacts/sprint-status.yaml"
+  write_story_guard() {
+    local status="$1"
+    mkdir -p "$(dirname "$story_path")"
+    printf "%s\n" "---" "status: $status" "---" "" "# Story 1.20" "" \
+      "Status: $status" > "$story_path"
+  }
+  write_sprint_guard() {
+    local epic_status="$1"
+    local story_status="$2"
+    printf "%s\n" "development_status:" "  epic-1: $epic_status" \
+      "  1-20-owner-approved-parity-closure-and-runtime-pin: $story_status" > "$sprint_path"
+  }
   printf "stable runtime\n" > "$repository/src/runtime.txt"
-  git -C "$repository" add src/runtime.txt
+  write_story_guard blocked
+  write_sprint_guard in-progress in-progress
+  git -C "$repository" add src/runtime.txt _bmad-output
   git -C "$repository" commit -qm runtime
   runtime="$(git -C "$repository" rev-parse HEAD)"
-  packet_path="$repository/_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md"
   write_packet() {
     local documentation="$1"
+    local candidate="${2:-$runtime}"
+    local tested="${3:-$runtime}"
     mkdir -p "$(dirname "$packet_path")"
-    printf "%s\n" "---" "candidate_source_sha: $runtime" \
-      "tested_runtime_sha: $runtime" "documentation_commit_sha: $documentation" \
+    printf "%s\n" "---" "candidate_source_sha: $candidate" \
+      "tested_runtime_sha: $tested" "documentation_commit_sha: $documentation" \
       "final_decision: still blocked" "authorize_consumer_migration: false" "---" \
       "# Evidence" > "$packet_path"
   }
@@ -586,19 +744,48 @@ bash -c '
   bad_b="$(git -C "$repository" rev-parse HEAD)"
   ! (cd "$repository" && EVIDENCE_COMMIT_A="$bad_a" POINTER_COMMIT_B="$bad_b" \
     bash "$verification_script" >/dev/null 2>&1)
+
+  git -C "$repository" checkout -qb unequal-identities-a "$runtime"
+  unequal_candidate=0000000000000000000000000000000000000000
+  write_packet null "$unequal_candidate" "$runtime"
+  git -C "$repository" add _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
+  git -C "$repository" commit -qm unequal-identities-a
+  unequal_a="$(git -C "$repository" rev-parse HEAD)"
+  write_packet "$unequal_a" "$unequal_candidate" "$runtime"
+  git -C "$repository" add _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
+  git -C "$repository" commit -qm unequal-identities-b
+  unequal_b="$(git -C "$repository" rev-parse HEAD)"
+  ! (cd "$repository" && EVIDENCE_COMMIT_A="$unequal_a" POINTER_COMMIT_B="$unequal_b" \
+    bash "$verification_script" >/dev/null 2>&1)
+
+  git -C "$repository" checkout -qb premature-status-a "$runtime"
+  write_packet null
+  write_story_guard done
+  write_sprint_guard done done
+  git -C "$repository" add _bmad-output
+  git -C "$repository" commit -qm premature-status-a
+  premature_a="$(git -C "$repository" rev-parse HEAD)"
+  write_packet "$premature_a"
+  git -C "$repository" add _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
+  git -C "$repository" commit -qm premature-status-b
+  premature_b="$(git -C "$repository" rev-parse HEAD)"
+  ! (cd "$repository" && EVIDENCE_COMMIT_A="$premature_a" POINTER_COMMIT_B="$premature_b" \
+    bash "$verification_script" >/dev/null 2>&1)
 ' _ _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
 ```
 
 Expected: the extracted actual A/B verifier accepts runtime → evidence-only A → pointer-only B,
-rejects an extra-file B, and rejects A when it bundles a non-`_bmad-output/` path.
+rejects an extra-file B, rejects A when it bundles a non-`_bmad-output/` path, rejects unequal
+candidate/tested-runtime identities, and rejects A when it prematurely completes Story 1.20 or
+Epic 1.
 
 ```bash
-git status --short --branch
+git diff --check
 ```
 
-Expected: only the packet and spec are currently unstaged; no staged,
-runtime, dependency, package, topology, submodule-content, Parties, or persisted-data edit is
-attributed to this proposal.
+Expected: exit 0. Current review work has no whitespace or conflict-marker errors; historical
+proposal attribution is verified by immutable revisions above rather than by a transient
+working-tree snapshot.
 
 ## Suggested Review Order
 

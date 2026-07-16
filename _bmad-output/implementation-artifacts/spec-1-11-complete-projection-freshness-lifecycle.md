@@ -6,7 +6,7 @@ status: 'done'
 baseline_revision: 'f6aafb38e81969ab7ca04be484b60b857f0f7a86'
 final_revision: '6aa29af6af13c76631c4122a96ddef8b3da47fb7'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/project-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-1-context.md'
@@ -91,14 +91,15 @@ warnings: [oversized]
 
 ## Review Triage Log
 
-### 2026-07-16 — Follow-up review of exact candidate `8aa6d0f0a417034d0c46eb9506fb7196a013401b`
+### 2026-07-16 — Follow-up review attempt against candidate `8aa6d0f0a417034d0c46eb9506fb7196a013401b`
 
-- decision-needed: 1 high, resolved by Administrator as a separate durable monotonic lifecycle epoch and applied as a patch.
+- review identity: incomplete; no named reviewer or durable approval source is recorded for a committed runtime containing the reviewed fixes.
+- decision-needed: 1 high, resolved by Administrator as a separate durable monotonic lifecycle epoch and applied as a working-tree patch.
 - patch: 6 fixed (high 1, medium 5).
 - defer: 1 high, pre-existing erase-query visibility policy retained under the Story 1.19 ledger owner.
 - dismissed: 3 as out of Story 1.16 scope, intentional controlling-contract behavior, or redundant verification.
 - verification: focused actor/router Release lane 88 passed / 0 failed; complete Server Release lane 2,626 passed / 25 skipped / 0 failed; `Hexalith.EventStore.slnx` Release build 0 warnings / 0 errors.
-- disposition: `done`; `followup_review_recommended` cleared. The applied working-tree patch still requires a committed exact SHA before Story 1.20 can use it as runtime evidence.
+- disposition: incomplete; the review used candidate `8aa6d0f0...` plus an uncommitted patch, so no exact committed runtime contains both the reviewed behavior and its evidence. `followup_review_recommended` remains `true` until a named review with a durable source is tied to that committed runtime.
 
 ### 2026-07-11 — Review pass
 - intent_gap: 0
