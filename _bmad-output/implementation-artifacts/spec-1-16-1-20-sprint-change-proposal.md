@@ -2,7 +2,7 @@
 title: 'Implement Story 1.16/1.20 Sprint Change Proposal'
 type: 'chore'
 created: '2026-07-16'
-status: 'in-review'
+status: 'done'
 baseline_commit: '4423e03bef8f2e6f9139a143a3fc42ea8c835dfd'
 review_loop_iteration: 5
 context:
@@ -103,13 +103,24 @@ PACKET='_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure
 awk '
   NR == 1 && $0 == "---" { in_front = 1; next }
   in_front && $0 == "---" { in_front = 0; exit }
-  in_front && $0 == "candidate_source_sha: 85877902f8d60a466ab90cd8b68b53838863db1c" { candidate++ }
-  in_front && $0 == "tested_runtime_sha: null" { runtime++ }
-  in_front && $0 == "documentation_commit_sha: null" { documentation++ }
-  in_front && $0 == "final_decision: still blocked" { decision++ }
-  in_front && $0 == "authorize_consumer_migration: false" { migration++ }
-  END { exit !(candidate == 1 && runtime == 1 && documentation == 1 &&
-    decision == 1 && migration == 1) }
+  in_front && index($0, "candidate_source_sha:") == 1 {
+    candidate_key++; candidate_ok += ($0 == "candidate_source_sha: 85877902f8d60a466ab90cd8b68b53838863db1c")
+  }
+  in_front && index($0, "tested_runtime_sha:") == 1 {
+    runtime_key++; runtime_ok += ($0 == "tested_runtime_sha: null")
+  }
+  in_front && index($0, "documentation_commit_sha:") == 1 {
+    documentation_key++; documentation_ok += ($0 == "documentation_commit_sha: null")
+  }
+  in_front && index($0, "final_decision:") == 1 {
+    decision_key++; decision_ok += ($0 == "final_decision: still blocked")
+  }
+  in_front && index($0, "authorize_consumer_migration:") == 1 {
+    migration_key++; migration_ok += ($0 == "authorize_consumer_migration: false")
+  }
+  END { exit !(candidate_key == 1 && candidate_ok == 1 && runtime_key == 1 &&
+    runtime_ok == 1 && documentation_key == 1 && documentation_ok == 1 &&
+    decision_key == 1 && decision_ok == 1 && migration_key == 1 && migration_ok == 1) }
 ' "$PACKET"
 
 awk '
@@ -124,12 +135,13 @@ awk '
     expected["### Multiple projections per domain"] = 1
     expected["## Cross-Cutting Compatibility And Release Gate"] = 1
   }
-  /^##(#)? / {
+  /^```/ { fenced = !fenced; next }
+  !fenced && /^##(#)? / {
     active = ($0 in expected) ? $0 : ""
     if ($0 in expected) headings[$0]++
     next
   }
-  active != "" && /^- classification: / {
+  !fenced && active != "" && /^- classification: / {
     classifications[active]++
     if ($0 == "- classification: `still blocked`") blocked[active]++
   }
@@ -150,24 +162,33 @@ which is `still blocked`.
 awk '
   NR == 1 && $0 == "---" { in_front = 1; next }
   in_front && $0 == "---" { in_front = 0; exit }
-  in_front && $0 == "followup_review_recommended: true" { flag++ }
-  END { exit !(flag == 1) }
+  in_front && index($0, "followup_review_recommended:") == 1 {
+    flag_key++; flag_ok += ($0 == "followup_review_recommended: true")
+  }
+  END { exit !(flag_key == 1 && flag_ok == 1) }
 ' _bmad-output/implementation-artifacts/spec-1-11-complete-projection-freshness-lifecycle.md
 
 awk '
   NR == 1 && $0 == "---" { in_front = 1; next }
   in_front && $0 == "---" { in_front = 0; exit }
-  in_front && $0 == "story_id: \"1.20\"" { story++ }
-  in_front && $0 == "status: blocked" { status++ }
-  END { exit !(story == 1 && status == 1) }
+  in_front && index($0, "story_id:") == 1 {
+    story_key++; story_ok += ($0 == "story_id: \"1.20\"")
+  }
+  in_front && index($0, "status:") == 1 {
+    status_key++; status_ok += ($0 == "status: blocked")
+  }
+  END { exit !(story_key == 1 && story_ok == 1 && status_key == 1 && status_ok == 1) }
 ' _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md
 
 awk '
-  $0 == "# last_updated: 2026-07-16" { comment_date++ }
-  $0 == "last_updated: 2026-07-16" { field_date++ }
-  $0 == "  epic-1: in-progress" { epic++ }
-  $0 == "  1-20-owner-approved-parity-closure-and-runtime-pin: in-progress" { story++ }
-  END { exit !(comment_date == 1 && field_date == 1 && epic == 1 && story == 1) }
+  /^# last_updated:/ { comment_key++; comment_ok += ($0 == "# last_updated: 2026-07-16") }
+  /^last_updated:/ { field_key++; field_ok += ($0 == "last_updated: 2026-07-16") }
+  /^  epic-1:/ { epic_key++; epic_ok += ($0 == "  epic-1: in-progress") }
+  /^  1-20-owner-approved-parity-closure-and-runtime-pin:/ {
+    story_key++; story_ok += ($0 == "  1-20-owner-approved-parity-closure-and-runtime-pin: in-progress")
+  }
+  END { exit !(comment_key == 1 && comment_ok == 1 && field_key == 1 && field_ok == 1 &&
+    epic_key == 1 && epic_ok == 1 && story_key == 1 && story_ok == 1) }
 ' _bmad-output/implementation-artifacts/sprint-status.yaml
 ```
 
@@ -176,55 +197,98 @@ file is exactly `blocked`; the sprint Story 1.20 and Epic 1 entries remain exact
 `in-progress`; both tracker dates remain `2026-07-16`.
 
 ```bash
+awk '
+  $0 == "## Deferred from: Story 1.20 correct-course readiness audit (2026-07-16)" {
+    section++; in_ad11 = 1; next
+  }
+  in_ad11 && /^## / { in_ad11 = 0 }
+  in_ad11 && /^  status:/ {
+    status_key++; status_ok += ($0 == "  status: open-blocking")
+  }
+  in_ad11 && /^  summary:/ {
+    summary_key++
+    summary_ok += ($0 == "  summary: Land the architecture AD-11 .NET/ASP.NET security baseline before selecting Story 1.20\047s tested runtime SHA.")
+  }
+  END { exit !(section == 1 && status_key == 1 && status_ok == 1 &&
+    summary_key == 1 && summary_ok == 1) }
+' _bmad-output/implementation-artifacts/deferred-work.md
+```
+
+Expected: exactly one AD-11 readiness section exists, with one `open-blocking` status and
+the approved summary; no duplicate ledger entry is accepted.
+
+```bash
 bash -c '
   set -euo pipefail
-  proposal_owned=(
+  audited_head=02a93d5a0325dc842ad6a64897a3b8fb2907b9a9
+  audited_parent=f9d1f1986d87fa375ddab22ccd2cccde96209ec5
+  proposal_at_parent=(
     _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md
     _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
     _bmad-output/implementation-artifacts/epic-1-context.md
     _bmad-output/implementation-artifacts/spec-1-16-1-20-sprint-change-proposal.md
     _bmad-output/implementation-artifacts/sprint-status.yaml
   )
-  verify_only=(
-    _bmad-output/implementation-artifacts/deferred-work.md
-    _bmad-output/implementation-artifacts/spec-1-11-complete-projection-freshness-lifecycle.md
+  concurrent_at_parent=(
+    references/Hexalith.FrontComposer
+    references/Hexalith.Memories
   )
-  current_unstaged=(
+  audited_head_paths=(
     _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
     _bmad-output/implementation-artifacts/spec-1-16-1-20-sprint-change-proposal.md
   )
-  test "${#proposal_owned[@]}" -eq 5
-  test "${#verify_only[@]}" -eq 2
-  for path in "${proposal_owned[@]}" "${verify_only[@]}"; do
-    test -e "$path"
-  done
-  mapfile -d "" -t records < <(git status --porcelain=v1 -z)
-  actual=()
-  for record in "${records[@]}"; do actual+=("${record:3}"); done
+  test "$(git rev-parse HEAD)" = "$audited_head"
+  test "$(git rev-parse "${audited_head}^")" = "$audited_parent"
   diff -u \
-    <(printf "%s\n" "${current_unstaged[@]}" | LC_ALL=C sort) \
-    <(printf "%s\n" "${actual[@]}" | LC_ALL=C sort)
+    <(printf "%s\n" "${proposal_at_parent[@]}" "${concurrent_at_parent[@]}" | LC_ALL=C sort) \
+    <(git diff-tree --no-commit-id --name-only -r "$audited_parent" | LC_ALL=C sort)
+  diff -u \
+    <(printf "%s\n" "${audited_head_paths[@]}" | LC_ALL=C sort) \
+    <(git diff-tree --no-commit-id --name-only -r "$audited_head" | LC_ALL=C sort)
+  diff -u \
+    <(printf " M %s\n" "${audited_head_paths[@]}" | LC_ALL=C sort) \
+    <(git status --porcelain=v1 | LC_ALL=C sort)
+  git diff --cached --quiet
   git diff --quiet HEAD -- \
     _bmad-output/implementation-artifacts/deferred-work.md \
     _bmad-output/implementation-artifacts/spec-1-11-complete-projection-freshness-lifecycle.md
 '
 ```
 
-Expected: exit 0. The action inventory remains exactly five proposal edits plus two verify-only
-paths. After concurrent commit `f9d1f198`, the current worktree contains exactly the packet and
-this spec; Story/sprint/context changes and the previously reported concurrent work are preserved
-in post-baseline history. The deferred ledger and Story 1.16 remain byte-identical to `HEAD`.
+Expected: exit 0. Audited HEAD `02a93d5a...` changed exactly packet+spec; its direct parent
+`f9d1f198...` changed exactly five proposal paths plus the two concurrent submodule pointers.
+Current work is exactly unstaged ` M` packet+spec with no staged path. Earlier baseline history
+remains review input, not proposal attribution; deferred work and Story 1.16 equal `HEAD`.
 
 ```bash
 bash -c '
   set -euo pipefail
-  packet="$1"
   syntax_file="$(mktemp)"
   trap "rm -f -- \"$syntax_file\"" EXIT
-  awk '\''/^```bash$/ { in_bash = 1; next }
-    in_bash && /^```$/ { print ""; in_bash = 0; next }
-    in_bash { print }'\'' "$packet" > "$syntax_file"
-  bash -n "$syntax_file"
+  for document in "$1" "$2"; do
+    awk '\''/^```bash$/ { in_bash = 1; next }
+      in_bash && /^```$/ { print ""; in_bash = 0; next }
+      in_bash { print }'\'' "$document" > "$syntax_file"
+    bash -n "$syntax_file"
+  done
+' _ _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md \
+  _bmad-output/implementation-artifacts/spec-1-16-1-20-sprint-change-proposal.md
+
+bash -c '
+  set -euo pipefail
+  packet="$1"
+  function_file="$(mktemp)"
+  trap "rm -f -- \"$function_file\"" EXIT
+  for function_name in fresh_release run_xunit_class run_xunit_method run_xunit_all; do
+    awk -v signature="$function_name() {" '\''
+      $0 == signature { capture = 1 }
+      capture { print }
+      capture && /^}$/ { exit }
+    '\'' "$packet" > "$function_file"
+    bash -n "$function_file"
+    test "$(grep -c "^  assert_candidate_identity$" "$function_file")" -eq 2
+  done
+  test "$(grep -c "^assert_candidate_identity$" "$packet")" -ge 11
 ' _ _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
 
 bash -c '
@@ -273,6 +337,73 @@ the valid tuple, and each individual mismatch fails even when the function is in
 bash -c '
   set -euo pipefail
   packet="$1"
+  discovery_function="$(mktemp)"
+  replacement_function="$(mktemp)"
+  inventory="$(mktemp)"
+  valid="$(mktemp)"
+  mutated="$(mktemp)"
+  trap "rm -f -- \"$discovery_function\" \"$replacement_function\" \"$inventory\" \"$valid\" \"$mutated\"" EXIT
+  awk '\''/^discover_bound_runtime_versions\(\) \{$/ { capture = 1 }
+    capture { print }
+    capture && /^}$/ { exit }'\'' "$packet" > "$discovery_function"
+  awk '\''/^validate_ad11_replacement\(\) \{$/ { capture = 1 }
+    capture { print }
+    capture && /^}$/ { exit }'\'' "$packet" > "$replacement_function"
+  bash -n "$discovery_function"
+  bash -n "$replacement_function"
+  source "$discovery_function"
+  source "$replacement_function"
+  printf "%s\n" \
+    "Microsoft.AspNetCore.App 10.0.11 [/dotnet/shared/Microsoft.AspNetCore.App]" \
+    "Microsoft.NETCore.App 10.0.11 [/dotnet/shared/Microsoft.NETCore.App]" > "$inventory"
+  mapfile -t bound < <(discover_bound_runtime_versions "$inventory" 10.0.11)
+  test "${#bound[@]}" -eq 2
+  test "${bound[0]}" = 10.0.11
+  test "${bound[1]}" = 10.0.11
+  sed "s/Microsoft.NETCore.App 10.0.11/Microsoft.NETCore.App 10.0.10/" \
+    "$inventory" > "$mutated"
+  ! discover_bound_runtime_versions "$mutated" 10.0.11 >/dev/null 2>&1
+
+  REPOSITORY_URL=https://github.com/Hexalith/Hexalith.EventStore.git
+  CANDIDATE_SHA=0123456789abcdef0123456789abcdef01234567
+  REPOSITORY_SDK_VERSION=10.0.303
+  REPOSITORY_SDK_ROLL_FORWARD=latestPatch
+  INSTALLED_SDK_VERSION=10.0.303
+  REPOSITORY_ASPNET_VERSION=10.0.11
+  INSTALLED_ASPNET_VERSION=10.0.11
+  INSTALLED_RUNTIME_VERSION=10.0.11
+  checked_at=2026-07-16T12:00:00Z
+  jq -n --arg repository "$REPOSITORY_URL" --arg source_sha "$CANDIDATE_SHA" '\''{
+    action: "ad11-baseline-replacement", owner: "architecture-owner",
+    approved_at: "2026-07-16T11:00:00Z", durable_source: "approval://ad11/1",
+    rationale: "later security baseline", expires_at: "2026-07-16T13:00:00Z",
+    scope: {repository: $repository, source_sha: $source_sha, sdk_version: "10.0.303",
+      sdk_roll_forward: "latestPatch", aspnet_version: "10.0.11",
+      runtime_version: "10.0.11"}}
+  '\'' > "$valid"
+  validate_ad11_replacement "$checked_at" "$valid" >/dev/null
+  for mutation in '\''.owner = " "'\'' '\''.approved_at = "2026-07-16T13:00:00Z"'\'' \
+      '\''.expires_at = "2026-07-16T12:00:00Z"'\'' \
+      '\''.scope.runtime_version = "10.0.10"'\'' \
+      '\''.scope.source_sha = "ffffffffffffffffffffffffffffffffffffffff"'\'' \
+      '\''.scope.repository = "https://example.invalid/EventStore.git"'\''; do
+    jq "$mutation" "$valid" > "$mutated"
+    ! validate_ad11_replacement "$checked_at" "$mutated" >/dev/null 2>&1
+  done
+  printf "{" > "$mutated"
+  ! validate_ad11_replacement "$checked_at" "$mutated" >/dev/null 2>&1
+' _ _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
+```
+
+Expected: the actual runtime-discovery function binds matching installed ASP.NET/.NET runtime
+patches and rejects mismatch; the actual AD-11 replacement predicate accepts a valid later
+baseline and rejects blank, malformed, future, expired, wrong-runtime, wrong-source, and
+wrong-repository records.
+
+```bash
+bash -c '
+  set -euo pipefail
+  packet="$1"
   authority_function="$(mktemp)"
   authority_record="$(mktemp)"
   mutated_record="$(mktemp)"
@@ -295,8 +426,13 @@ bash -c '
     '\'' > "$authority_record"
   AUTHORITY_EVIDENCE="$authority_record"
   validate_publication_authority "$checked_at" >/dev/null
-  for mutation in '\''.owner = " "'\'' '\''.expires_at = "2026-07-16T12:00:00Z"'\'' \
-      '\''.scope.repository = "registry.invalid/eventstore"'\''; do
+  for mutation in '\''.action = "container-inspection"'\'' '\''.owner = " "'\'' \
+      '\''.authorized_at = "2026-07-16T13:00:00Z"'\'' \
+      '\''.durable_source = " "'\'' '\''.rationale = " "'\'' \
+      '\''.expires_at = "2026-07-16T12:00:00Z"'\'' \
+      '\''.scope.repository = "registry.invalid/eventstore"'\'' \
+      '\''.scope.tag = "proof-wrong"'\'' \
+      '\''.scope.source_sha = "ffffffffffffffffffffffffffffffffffffffff"'\''; do
     jq "$mutation" "$authority_record" > "$mutated_record"
     AUTHORITY_EVIDENCE="$mutated_record"
     if validate_publication_authority "$checked_at" >/dev/null 2>&1; then
@@ -308,26 +444,153 @@ bash -c '
 
 bash -c '
   set -euo pipefail
+  packet="$1"
+  manifest_function="$(mktemp)"
   manifest="$(mktemp)"
   platforms="$(mktemp)"
-  expected="$(mktemp)"
-  trap "rm -f -- \"$manifest\" \"$platforms\" \"$expected\"" EXIT
+  trap "rm -f -- \"$manifest_function\" \"$manifest\" \"$platforms\"" EXIT
+  awk '\''/^validate_published_manifest\(\) \{$/ { capture = 1 }
+    capture { print }
+    capture && /^}$/ { exit }'\'' "$packet" > "$manifest_function"
+  bash -n "$manifest_function"
+  source "$manifest_function"
   printf %s '\''{"manifests":[{"platform":{"os":"linux","architecture":"amd64"}},{"platform":{"os":"linux","architecture":"arm64"}}]}'\'' > "$manifest"
   IMAGE_DIGEST="sha256:$(sha256sum "$manifest" | awk '\''{print $1}'\'')"
-  test "sha256:$(sha256sum "$manifest" | awk '\''{print $1}'\'')" = "$IMAGE_DIGEST"
-  jq -r '\''.manifests[].platform | "\(.os)/\(.architecture)"'\'' "$manifest" |
-    sort -u > "$platforms"
-  printf "%s\n" linux/amd64 linux/arm64 > "$expected"
-  cmp --silent "$expected" "$platforms"
-  ! test "sha256:$(printf wrong | sha256sum | awk '\''{print $1}'\'')" = "$IMAGE_DIGEST"
-  printf "%s\n" linux/amd64 linux/arm64 linux/s390x > "$platforms"
-  ! cmp --silent "$expected" "$platforms"
-'
+  test "$(validate_published_manifest "$manifest" "$IMAGE_DIGEST" "$platforms")" \
+    = "${IMAGE_DIGEST#sha256:}"
+  ! validate_published_manifest "$manifest" \
+    sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff \
+    "$platforms" >/dev/null 2>&1
+  printf %s '\''{"manifests":[{"platform":{"os":"linux","architecture":"amd64"}}]}'\'' > "$manifest"
+  IMAGE_DIGEST="sha256:$(sha256sum "$manifest" | awk '\''{print $1}'\'')"
+  ! validate_published_manifest "$manifest" "$IMAGE_DIGEST" "$platforms" >/dev/null 2>&1
+  printf %s '\''{"manifests":[{"platform":{"os":"linux","architecture":"amd64"}},{"platform":{"os":"linux","architecture":"arm64"}},{"platform":{"os":"linux","architecture":"s390x"}}]}'\'' > "$manifest"
+  IMAGE_DIGEST="sha256:$(sha256sum "$manifest" | awk '\''{print $1}'\'')"
+  ! validate_published_manifest "$manifest" "$IMAGE_DIGEST" "$platforms" >/dev/null 2>&1
+' _ _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
 ```
 
 Expected: exit 0. The extracted publication-authority predicate accepts the valid scoped,
-unexpired fixture and rejects blank owner, action-time expiry, and wrong repository; the
-manifest probe accepts only its matching raw-byte digest and exact two-platform set.
+unexpired fixture and rejects wrong action, blank fields, future authorization, action-time
+expiry, and wrong repository/tag/source. The extracted manifest validator accepts only the
+matching raw-byte digest and exact two-platform set.
+
+```bash
+bash -c '
+  set -euo pipefail
+  packet="$1"
+  clean_function="$(mktemp)"
+  repository="$(mktemp -d)"
+  trap "rm -f -- \"$clean_function\"; rm -rf -- \"$repository\"" EXIT
+  awk '\''/^assert_publication_source_clean\(\) \{$/ { capture = 1 }
+    capture { print }
+    capture && /^}$/ { exit }'\'' "$packet" > "$clean_function"
+  bash -n "$clean_function"
+  source "$clean_function"
+  git -C "$repository" init -q
+  git -C "$repository" config user.email proof@example.invalid
+  git -C "$repository" config user.name Proof
+  printf "%s\n" bin/ obj/ "*.tmp" > "$repository/.gitignore"
+  git -C "$repository" add .gitignore
+  git -C "$repository" commit -qm baseline
+  assert_publication_source_clean "$repository"
+  mkdir -p "$repository/src/bin" "$repository/src/obj"
+  : > "$repository/src/bin/output.dll"
+  : > "$repository/src/obj/assets.json"
+  assert_publication_source_clean "$repository"
+  : > "$repository/untracked.txt"
+  ! assert_publication_source_clean "$repository" >/dev/null 2>&1
+  rm "$repository/untracked.txt"
+  : > "$repository/unapproved.tmp"
+  ! assert_publication_source_clean "$repository" >/dev/null 2>&1
+' _ _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
+
+awk '
+  $0 == "  assert_publication_source_clean \"$repository\"" { clean_call = NR }
+  $0 == "AUTHORITY_CHECKED_AT=\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"" { action_time = NR }
+  $0 == "validate_publication_authority \"$AUTHORITY_CHECKED_AT\"" { authority_call = NR }
+  $0 == "assert_candidate_identity" { last_identity = NR }
+  $0 == "if dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj \\" {
+    publish = NR; immediate_identity = (last_identity == NR - 1)
+  }
+  END { exit !(clean_call > 0 && clean_call < action_time && action_time < authority_call &&
+    authority_call < publish && immediate_identity) }
+' _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
+```
+
+Expected: the actual cleanliness function accepts a clean repository and generated `bin`/`obj`,
+rejects untracked and unapproved ignored inputs, and the publication block orders clean source,
+fresh action timestamp, authority validation, and an immediate candidate-identity check before
+`dotnet publish`.
+
+```bash
+bash -c '
+  set -euo pipefail
+  packet="$1"
+  verification_script="$(mktemp)"
+  repository="$(mktemp -d)"
+  trap "rm -f -- \"$verification_script\"; rm -rf -- \"$repository\"" EXIT
+  awk '\''$0 == "### Evidence Commit A And Pointer-Only Commit B Verification" {
+      section = 1; next
+    }
+    section && /^```bash$/ { capture = 1; next }
+    capture && /^```$/ { exit }
+    capture { print }'\'' "$packet" > "$verification_script"
+  bash -n "$verification_script"
+  git -C "$repository" init -q
+  git -C "$repository" config user.email proof@example.invalid
+  git -C "$repository" config user.name Proof
+  mkdir -p "$repository/src"
+  printf "stable runtime\n" > "$repository/src/runtime.txt"
+  git -C "$repository" add src/runtime.txt
+  git -C "$repository" commit -qm runtime
+  runtime="$(git -C "$repository" rev-parse HEAD)"
+  packet_path="$repository/_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md"
+  write_packet() {
+    local documentation="$1"
+    mkdir -p "$(dirname "$packet_path")"
+    printf "%s\n" "---" "candidate_source_sha: $runtime" \
+      "tested_runtime_sha: $runtime" "documentation_commit_sha: $documentation" \
+      "final_decision: still blocked" "authorize_consumer_migration: false" "---" \
+      "# Evidence" > "$packet_path"
+  }
+  write_packet null
+  git -C "$repository" add _bmad-output
+  git -C "$repository" commit -qm evidence-a
+  evidence_a="$(git -C "$repository" rev-parse HEAD)"
+  write_packet "$evidence_a"
+  git -C "$repository" add _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
+  git -C "$repository" commit -qm pointer-b
+  pointer_b="$(git -C "$repository" rev-parse HEAD)"
+  (cd "$repository" && EVIDENCE_COMMIT_A="$evidence_a" POINTER_COMMIT_B="$pointer_b" \
+    bash "$verification_script")
+
+  git -C "$repository" checkout -qb extra-b "$evidence_a"
+  write_packet "$evidence_a"
+  printf "extra\n" > "$repository/_bmad-output/extra.txt"
+  git -C "$repository" add _bmad-output
+  git -C "$repository" commit -qm extra-b
+  extra_b="$(git -C "$repository" rev-parse HEAD)"
+  ! (cd "$repository" && EVIDENCE_COMMIT_A="$evidence_a" POINTER_COMMIT_B="$extra_b" \
+    bash "$verification_script" >/dev/null 2>&1)
+
+  git -C "$repository" checkout -qb non-evidence-a "$runtime"
+  write_packet null
+  printf "untested\n" > "$repository/src/untested.txt"
+  git -C "$repository" add _bmad-output src/untested.txt
+  git -C "$repository" commit -qm non-evidence-a
+  bad_a="$(git -C "$repository" rev-parse HEAD)"
+  write_packet "$bad_a"
+  git -C "$repository" add _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
+  git -C "$repository" commit -qm bad-pointer-b
+  bad_b="$(git -C "$repository" rev-parse HEAD)"
+  ! (cd "$repository" && EVIDENCE_COMMIT_A="$bad_a" POINTER_COMMIT_B="$bad_b" \
+    bash "$verification_script" >/dev/null 2>&1)
+' _ _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
+```
+
+Expected: the extracted actual A/B verifier accepts runtime → evidence-only A → pointer-only B,
+rejects an extra-file B, and rejects A when it bundles a non-`_bmad-output/` path.
 
 ```bash
 git status --short --branch
@@ -336,3 +599,43 @@ git status --short --branch
 Expected: only the packet and spec are currently unstaged; no staged,
 runtime, dependency, package, topology, submodule-content, Parties, or persisted-data edit is
 attributed to this proposal.
+
+## Suggested Review Order
+
+**Fail-Closed Closure Design**
+
+- Start with the approved intent and immutable safety boundaries.
+  [spec-1-16-1-20-sprint-change-proposal.md:15](./spec-1-16-1-20-sprint-change-proposal.md#L15)
+
+- Confirm Story 1.20 requires complete evidence without promoting current state.
+  [1-20-owner-approved-parity-closure-and-runtime-pin.md:22](./1-20-owner-approved-parity-closure-and-runtime-pin.md#L22)
+
+- Follow the authority, evidence-A, pointer-B, and later-transition sequence.
+  [1-20-owner-approved-parity-closure-and-runtime-pin.md:78](./1-20-owner-approved-parity-closure-and-runtime-pin.md#L78)
+
+- Verify the packet remains explicitly blocked and non-authorizing.
+  [1-20-owner-approved-parity-closure-proof-packet.md:17](./1-20-owner-approved-parity-closure-proof-packet.md#L17)
+
+**Executable Identity and Publication Gates**
+
+- Inspect exact AD-11, runtime-binding, and per-gate candidate identity enforcement.
+  [1-20-owner-approved-parity-closure-proof-packet.md:199](./1-20-owner-approved-parity-closure-proof-packet.md#L199)
+
+- Review package, publication-authority, manifest-digest, and exact-platform validation.
+  [1-20-owner-approved-parity-closure-proof-packet.md:953](./1-20-owner-approved-parity-closure-proof-packet.md#L953)
+
+- Check evidence-only A and pointer-only B against self-reference or code drift.
+  [1-20-owner-approved-parity-closure-proof-packet.md:1258](./1-20-owner-approved-parity-closure-proof-packet.md#L1258)
+
+**State and Compatibility Preservation**
+
+- Confirm Story 1.20 and Epic 1 remain in progress.
+  [sprint-status.yaml:83](./sprint-status.yaml#L83)
+
+- Confirm canonical routes and additive projection-handler compatibility remain explicit.
+  [epic-1-context.md:35](./epic-1-context.md#L35)
+
+**Verification Evidence**
+
+- Run structural, mutation, attribution, and temporary commit-graph fixtures.
+  [spec-1-16-1-20-sprint-change-proposal.md:83](./spec-1-16-1-20-sprint-change-proposal.md#L83)

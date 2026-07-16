@@ -3,7 +3,7 @@ schema: hexalith.eventstore.parity-closure-proof-packet/v1
 story_id: "1.20"
 story_key: 1-20-owner-approved-parity-closure-and-runtime-pin
 created: 2026-07-16T05:09:20+02:00
-updated: 2026-07-16T14:35:43+02:00
+updated: 2026-07-16T15:00:52+02:00
 historical_packet: 1-8-projection-query-sdk-owner-proof-packet.md
 candidate_source_sha: 85877902f8d60a466ab90cd8b68b53838863db1c
 tested_runtime_sha: null
@@ -51,13 +51,13 @@ production-path and package/container gate at that unchanged SHA, explicitly dis
 Story 1.16's retained follow-up recommendation, obtain named EventStore-owner approval,
 and update this packet.
 
-### Exact-SHA Failure And Readiness Re-Audit — Observed 2026-07-16T14:35:43+02:00
+### Exact-SHA Failure And Readiness Re-Audit — Observed 2026-07-16T15:00:52+02:00
 
-- repository identity observed at: `2026-07-16T14:35:43+02:00`
+- repository identity observed at: `2026-07-16T15:00:52+02:00`
 - repository: `https://github.com/Hexalith/Hexalith.EventStore.git`
 - repository root: `/home/administrator/projects/hexalith/eventstore`
 - planning/evidence branch observed: `main`
-- planning/evidence HEAD observed: `f9d1f1986d87fa375ddab22ccd2cccde96209ec5`
+- planning/evidence HEAD observed: `02a93d5a0325dc842ad6a64897a3b8fb2907b9a9`
 - tracking state observed: HEAD equalled locally recorded `origin/main`; no claim is made
   about an unfetched remote state
 - failed candidate SHA: `85877902f8d60a466ab90cd8b68b53838863db1c`
@@ -219,7 +219,11 @@ mkdir -p "$EVIDENCE_ROOT"
 git -C "$SOURCE_REPOSITORY" worktree add --detach "$CHECKOUT" "$CANDIDATE_SHA"
 cd "$CHECKOUT"
 
-test "$(git rev-parse --verify --end-of-options 'HEAD^{commit}')" = "$CANDIDATE_SHA"
+assert_candidate_identity() {
+  test "$(git rev-parse --verify --end-of-options 'HEAD^{commit}')" = "$CANDIDATE_SHA"
+}
+
+assert_candidate_identity
 
 # Fail closed on AD-11 before any candidate build or publication-capable gate.
 AD11_CHECKED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -236,14 +240,28 @@ mapfile -t ASPNET_PIN_VERSIONS < <(
 test "${#ASPNET_PIN_VERSIONS[@]}" -eq 1
 REPOSITORY_ASPNET_VERSION="${ASPNET_PIN_VERSIONS[0]}"
 dotnet --list-runtimes > "$EVIDENCE_ROOT/dotnet-runtimes.txt"
-INSTALLED_ASPNET_VERSION="$(awk -v version="$REPOSITORY_ASPNET_VERSION" '
-  $1 == "Microsoft.AspNetCore.App" && $2 == version { print $2; exit }
-' "$EVIDENCE_ROOT/dotnet-runtimes.txt")"
-INSTALLED_RUNTIME_VERSION="$(awk -v version="$REPOSITORY_ASPNET_VERSION" '
-  $1 == "Microsoft.NETCore.App" && $2 == version { print $2; exit }
-' "$EVIDENCE_ROOT/dotnet-runtimes.txt")"
-test "$INSTALLED_ASPNET_VERSION" = "$REPOSITORY_ASPNET_VERSION"
-test "$INSTALLED_RUNTIME_VERSION" = "$REPOSITORY_ASPNET_VERSION"
+discover_bound_runtime_versions() {
+  local runtime_inventory="$1"
+  local repository_version="$2"
+  local installed_aspnet
+  local installed_runtime
+  installed_aspnet="$(awk -v version="$repository_version" '
+    $1 == "Microsoft.AspNetCore.App" && $2 == version { print $2; exit }
+  ' "$runtime_inventory")"
+  installed_runtime="$(awk -v version="$repository_version" '
+    $1 == "Microsoft.NETCore.App" && $2 == version { print $2; exit }
+  ' "$runtime_inventory")"
+  test "$installed_aspnet" = "$repository_version" || return 1
+  test "$installed_runtime" = "$repository_version" || return 1
+  printf '%s\n' "$installed_aspnet" "$installed_runtime"
+}
+mapfile -t BOUND_RUNTIME_VERSIONS < <(
+  discover_bound_runtime_versions "$EVIDENCE_ROOT/dotnet-runtimes.txt" \
+    "$REPOSITORY_ASPNET_VERSION"
+)
+test "${#BOUND_RUNTIME_VERSIONS[@]}" -eq 2
+INSTALLED_ASPNET_VERSION="${BOUND_RUNTIME_VERSIONS[0]}"
+INSTALLED_RUNTIME_VERSION="${BOUND_RUNTIME_VERSIONS[1]}"
 
 ad11_exact_baseline() {
   test "$REPOSITORY_SDK_VERSION" = '10.0.302' &&
@@ -254,32 +272,11 @@ ad11_exact_baseline() {
     test "$INSTALLED_RUNTIME_VERSION" = "$REPOSITORY_ASPNET_VERSION"
 }
 
-AD11_PREFLIGHT="$EVIDENCE_ROOT/ad11-preflight.json"
-AD11_REPLACEMENT_EVIDENCE="$EVIDENCE_ROOT/ad11-replacement-authority.json"
-if ad11_exact_baseline; then
-  jq -n \
-    --arg checked_at "$AD11_CHECKED_AT" \
-    --arg repository "$REPOSITORY_URL" \
-    --arg source_sha "$CANDIDATE_SHA" \
-    --arg sdk_version "$REPOSITORY_SDK_VERSION" \
-    --arg sdk_roll_forward "$REPOSITORY_SDK_ROLL_FORWARD" \
-    --arg installed_sdk_version "$INSTALLED_SDK_VERSION" \
-    --arg aspnet_version "$REPOSITORY_ASPNET_VERSION" \
-    --arg installed_aspnet_version "$INSTALLED_ASPNET_VERSION" \
-    --arg runtime_version "$INSTALLED_RUNTIME_VERSION" \
-    '{mode: "exact-baseline", checked_at: $checked_at, repository: $repository,
-      source_sha: $source_sha, sdk_version: $sdk_version,
-      sdk_roll_forward: $sdk_roll_forward, installed_sdk_version: $installed_sdk_version,
-      aspnet_version: $aspnet_version, installed_aspnet_version: $installed_aspnet_version,
-      runtime_version: $runtime_version}' > "$AD11_PREFLIGHT"
-else
-  : "${AD11_REPLACEMENT_RECORD:?exact AD-11 baseline absent; set durable replacement JSON path}"
-  test -s "$AD11_REPLACEMENT_RECORD"
-  test ! -e "$AD11_REPLACEMENT_EVIDENCE"
-  cp -- "$AD11_REPLACEMENT_RECORD" "$AD11_REPLACEMENT_EVIDENCE"
-  chmod a-w "$AD11_REPLACEMENT_EVIDENCE"
+validate_ad11_replacement() {
+  local checked_at="$1"
+  local replacement_record="$2"
   jq -e \
-    --arg checked_at "$AD11_CHECKED_AT" \
+    --arg checked_at "$checked_at" \
     --arg repository "$REPOSITORY_URL" \
     --arg source_sha "$CANDIDATE_SHA" \
     --arg sdk_version "$REPOSITORY_SDK_VERSION" \
@@ -313,7 +310,34 @@ else
        (($aspnet_version | version_parts) > ("10.0.10" | version_parts))) and
       ((.approved_at | fromdateiso8601) <= ($checked_at | fromdateiso8601)) and
       ((.expires_at | fromdateiso8601) > ($checked_at | fromdateiso8601))
-    ' "$AD11_REPLACEMENT_EVIDENCE"
+    ' "$replacement_record"
+}
+
+AD11_PREFLIGHT="$EVIDENCE_ROOT/ad11-preflight.json"
+AD11_REPLACEMENT_EVIDENCE="$EVIDENCE_ROOT/ad11-replacement-authority.json"
+if ad11_exact_baseline; then
+  jq -n \
+    --arg checked_at "$AD11_CHECKED_AT" \
+    --arg repository "$REPOSITORY_URL" \
+    --arg source_sha "$CANDIDATE_SHA" \
+    --arg sdk_version "$REPOSITORY_SDK_VERSION" \
+    --arg sdk_roll_forward "$REPOSITORY_SDK_ROLL_FORWARD" \
+    --arg installed_sdk_version "$INSTALLED_SDK_VERSION" \
+    --arg aspnet_version "$REPOSITORY_ASPNET_VERSION" \
+    --arg installed_aspnet_version "$INSTALLED_ASPNET_VERSION" \
+    --arg runtime_version "$INSTALLED_RUNTIME_VERSION" \
+    '{mode: "exact-baseline", checked_at: $checked_at, repository: $repository,
+      source_sha: $source_sha, sdk_version: $sdk_version,
+      sdk_roll_forward: $sdk_roll_forward, installed_sdk_version: $installed_sdk_version,
+      aspnet_version: $aspnet_version, installed_aspnet_version: $installed_aspnet_version,
+      runtime_version: $runtime_version}' > "$AD11_PREFLIGHT"
+else
+  : "${AD11_REPLACEMENT_RECORD:?exact AD-11 baseline absent; set durable replacement JSON path}"
+  test -s "$AD11_REPLACEMENT_RECORD"
+  test ! -e "$AD11_REPLACEMENT_EVIDENCE"
+  cp -- "$AD11_REPLACEMENT_RECORD" "$AD11_REPLACEMENT_EVIDENCE"
+  chmod a-w "$AD11_REPLACEMENT_EVIDENCE"
+  validate_ad11_replacement "$AD11_CHECKED_AT" "$AD11_REPLACEMENT_EVIDENCE"
   AD11_REPLACEMENT_SHA256="$(sha256sum "$AD11_REPLACEMENT_EVIDENCE" | awk '{print $1}')"
   jq -n \
     --arg checked_at "$AD11_CHECKED_AT" \
@@ -358,20 +382,28 @@ mkdir -p "$DOTNET_CLI_HOME" "$NUGET_PACKAGES" "$NUGET_HTTP_CACHE_PATH"
 fresh_release() {
   local project="$1"
   local project_directory="${project%/*}"
-  rm -rf "$project_directory/bin/Release" "$project_directory/obj/Release"
-  dotnet restore "$project" \
-    --configfile nuget.config \
-    --packages "$NUGET_PACKAGES" \
-    -p:UseHexalithProjectReferences=false \
-    -p:NuGetAudit=false \
-    -p:MinVerVersionOverride=1.0.0
-  dotnet build "$project" \
-    --configuration Release \
-    --no-restore \
-    -m:1 \
-    -p:UseHexalithProjectReferences=false \
-    -p:NuGetAudit=false \
-    -p:MinVerVersionOverride=1.0.0
+  local gate_status
+  assert_candidate_identity
+  if rm -rf "$project_directory/bin/Release" "$project_directory/obj/Release" &&
+    dotnet restore "$project" \
+      --configfile nuget.config \
+      --packages "$NUGET_PACKAGES" \
+      -p:UseHexalithProjectReferences=false \
+      -p:NuGetAudit=false \
+      -p:MinVerVersionOverride=1.0.0 &&
+    dotnet build "$project" \
+      --configuration Release \
+      --no-restore \
+      -m:1 \
+      -p:UseHexalithProjectReferences=false \
+      -p:NuGetAudit=false \
+      -p:MinVerVersionOverride=1.0.0; then
+    gate_status=0
+  else
+    gate_status=$?
+  fi
+  assert_candidate_identity
+  return "$gate_status"
 }
 
 run_xunit_class() {
@@ -380,11 +412,19 @@ run_xunit_class() {
   local evidence_name="$3"
   local methods="$EVIDENCE_ROOT/$evidence_name.methods.txt"
   local results="$EVIDENCE_ROOT/$evidence_name.xml"
-  test -f "$assembly"
-  dotnet "$assembly" -noColor -list methods -class "$class_name" | tee "$methods"
-  grep -Fq "$class_name." "$methods"
-  dotnet "$assembly" -noColor -class "$class_name" -xml "$results"
-  grep -Eq 'total="[1-9][0-9]*"' "$results"
+  local gate_status
+  assert_candidate_identity
+  if test -f "$assembly" &&
+    dotnet "$assembly" -noColor -list methods -class "$class_name" | tee "$methods" &&
+    grep -Fq "$class_name." "$methods" &&
+    dotnet "$assembly" -noColor -class "$class_name" -xml "$results" &&
+    grep -Eq 'total="[1-9][0-9]*"' "$results"; then
+    gate_status=0
+  else
+    gate_status=$?
+  fi
+  assert_candidate_identity
+  return "$gate_status"
 }
 
 run_xunit_method() {
@@ -393,20 +433,36 @@ run_xunit_method() {
   local evidence_name="$3"
   local methods="$EVIDENCE_ROOT/$evidence_name.methods.txt"
   local results="$EVIDENCE_ROOT/$evidence_name.xml"
-  test -f "$assembly"
-  dotnet "$assembly" -noColor -list methods -method "$method_name" | tee "$methods"
-  grep -Fxq "$method_name" "$methods"
-  dotnet "$assembly" -noColor -method "$method_name" -xml "$results"
-  grep -Eq 'total="[1-9][0-9]*"' "$results"
+  local gate_status
+  assert_candidate_identity
+  if test -f "$assembly" &&
+    dotnet "$assembly" -noColor -list methods -method "$method_name" | tee "$methods" &&
+    grep -Fxq "$method_name" "$methods" &&
+    dotnet "$assembly" -noColor -method "$method_name" -xml "$results" &&
+    grep -Eq 'total="[1-9][0-9]*"' "$results"; then
+    gate_status=0
+  else
+    gate_status=$?
+  fi
+  assert_candidate_identity
+  return "$gate_status"
 }
 
 run_xunit_all() {
   local assembly="$1"
   local evidence_name="$2"
   local results="$EVIDENCE_ROOT/$evidence_name.xml"
-  test -f "$assembly"
-  dotnet "$assembly" -noColor -xml "$results"
-  grep -Eq 'total="[1-9][0-9]*"' "$results"
+  local gate_status
+  assert_candidate_identity
+  if test -f "$assembly" &&
+    dotnet "$assembly" -noColor -xml "$results" &&
+    grep -Eq 'total="[1-9][0-9]*"' "$results"; then
+    gate_status=0
+  else
+    gate_status=$?
+  fi
+  assert_candidate_identity
+  return "$gate_status"
 }
 ```
 
@@ -417,7 +473,7 @@ restores through the committed `nuget.config` into a new cache, and builds befor
 assembly is invoked. After all gates, the runtime-source proof is:
 
 ```bash
-test "$(git rev-parse --verify --end-of-options 'HEAD^{commit}')" = "$CANDIDATE_SHA"
+assert_candidate_identity
 test -z "$(git status --porcelain=v1 --untracked-files=all --ignore-submodules=none)"
 ```
 
@@ -917,18 +973,25 @@ run_xunit_class \
 ```bash
 find . -type d \( -path '*/bin/Release' -o -path '*/obj/Release' \) \
   -prune -exec rm -rf {} +
-dotnet restore Hexalith.EventStore.slnx \
-  --configfile nuget.config \
-  --packages "$NUGET_PACKAGES" \
-  -p:NuGetAudit=false \
-  -p:MinVerVersionOverride=1.0.0
-dotnet build Hexalith.EventStore.slnx \
-  --configuration Release \
-  --no-restore \
-  -m:1 \
-  -warnaserror \
-  -p:NuGetAudit=false \
-  -p:MinVerVersionOverride=1.0.0
+assert_candidate_identity
+if dotnet restore Hexalith.EventStore.slnx \
+    --configfile nuget.config \
+    --packages "$NUGET_PACKAGES" \
+    -p:NuGetAudit=false \
+    -p:MinVerVersionOverride=1.0.0 &&
+  dotnet build Hexalith.EventStore.slnx \
+    --configuration Release \
+    --no-restore \
+    -m:1 \
+    -warnaserror \
+    -p:NuGetAudit=false \
+    -p:MinVerVersionOverride=1.0.0; then
+  solution_gate_status=0
+else
+  solution_gate_status=$?
+fi
+assert_candidate_identity
+test "$solution_gate_status" -eq 0
 
 while IFS='|' read -r project assembly evidence_name; do
   test -n "$project"
@@ -971,15 +1034,22 @@ run_xunit_class \
 ```bash
 PACKAGE_OUTPUT="$GATE_ROOT/packages"
 PACKAGE_VERSION="999.1.20-proof.$(git rev-parse --short=12 "$CANDIDATE_SHA")"
-rm -rf "$PACKAGE_OUTPUT"
-find src -type d \( -path '*/bin/Release' -o -path '*/obj/Release' \) \
-  -prune -exec rm -rf {} +
-python3 scripts/pack-release-packages.py "$PACKAGE_OUTPUT" "$PACKAGE_VERSION"
-python3 scripts/validate-nuget-packages.py "$PACKAGE_OUTPUT"
-test "$(find "$PACKAGE_OUTPUT" -maxdepth 1 -type f -name '*.nupkg' | wc -l)" -eq 14
-python3 scripts/validate-consumer-package-references.py "$PACKAGE_OUTPUT"
-sha256sum "$PACKAGE_OUTPUT"/*.nupkg | sort -k2 > "$EVIDENCE_ROOT/nuget-sha256.txt"
-test "$(wc -l < "$EVIDENCE_ROOT/nuget-sha256.txt")" -eq 14
+assert_candidate_identity
+if rm -rf "$PACKAGE_OUTPUT" &&
+  find src -type d \( -path '*/bin/Release' -o -path '*/obj/Release' \) \
+    -prune -exec rm -rf {} + &&
+  python3 scripts/pack-release-packages.py "$PACKAGE_OUTPUT" "$PACKAGE_VERSION" &&
+  python3 scripts/validate-nuget-packages.py "$PACKAGE_OUTPUT" &&
+  test "$(find "$PACKAGE_OUTPUT" -maxdepth 1 -type f -name '*.nupkg' | wc -l)" -eq 14 &&
+  python3 scripts/validate-consumer-package-references.py "$PACKAGE_OUTPUT" &&
+  sha256sum "$PACKAGE_OUTPUT"/*.nupkg | sort -k2 > "$EVIDENCE_ROOT/nuget-sha256.txt" &&
+  test "$(wc -l < "$EVIDENCE_ROOT/nuget-sha256.txt")" -eq 14; then
+  package_gate_status=0
+else
+  package_gate_status=$?
+fi
+assert_candidate_identity
+test "$package_gate_status" -eq 0
 ```
 
 - required exact container publication, immutable inspection, and provenance commands:
@@ -1043,8 +1113,25 @@ assert_publication_source_clean() {
     --untracked-files=all -z)
 }
 
+validate_published_manifest() {
+  local manifest_file="$1"
+  local image_digest="$2"
+  local platforms_file="$3"
+  local manifest_sha256
+  [[ "$image_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || return 1
+  jq -e '.manifests | type == "array" and length > 0' "$manifest_file" \
+    >/dev/null || return 1
+  manifest_sha256="$(sha256sum "$manifest_file" | awk '{print $1}')" || return 1
+  test "sha256:$manifest_sha256" = "$image_digest" || return 1
+  jq -r '.manifests[].platform |
+    "\(.os)/\(.architecture)\(if .variant then "/" + .variant else "" end)"' \
+    "$manifest_file" | sort -u > "$platforms_file" || return 1
+  cmp --silent <(printf '%s\n' 'linux/amd64' 'linux/arm64') "$platforms_file" || return 1
+  printf '%s\n' "$manifest_sha256"
+}
+
 # Immediately before publication, recheck source identity/cleanliness and authority validity.
-test "$(git rev-parse --verify --end-of-options 'HEAD^{commit}')" = "$CANDIDATE_SHA"
+assert_candidate_identity
 for repository in . "${ROOT_SUBMODULES[@]}"; do
   assert_publication_source_clean "$repository"
 done
@@ -1054,31 +1141,45 @@ chmod a-w "$AUTHORITY_CHECKED_AT_EVIDENCE"
 validate_publication_authority "$AUTHORITY_CHECKED_AT"
 AUTHORITY_SHA256="$(sha256sum "$AUTHORITY_EVIDENCE" | awk '{print $1}')"
 AUTHORITY_CHECKED_AT_SHA256="$(sha256sum "$AUTHORITY_CHECKED_AT_EVIDENCE" | awk '{print $1}')"
-dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj \
-  --configuration Release \
-  --no-restore \
-  -p:PublishProfile=DefaultContainer \
-  -p:ContainerRegistry="$PUBLISH_CONTAINER_REGISTRY" \
-  -p:ContainerRepository="$PUBLISH_CONTAINER_REPOSITORY" \
-  -p:ContainerImageTag="$IMAGE_TAG" \
-  "-p:ContainerRuntimeIdentifiers=linux-x64;linux-arm64"
-docker buildx imagetools inspect "$IMAGE_REPOSITORY:$IMAGE_TAG" \
-  | tee "$EVIDENCE_ROOT/container-inspect.txt"
+assert_candidate_identity
+if dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj \
+    --configuration Release \
+    --no-restore \
+    -p:PublishProfile=DefaultContainer \
+    -p:ContainerRegistry="$PUBLISH_CONTAINER_REGISTRY" \
+    -p:ContainerRepository="$PUBLISH_CONTAINER_REPOSITORY" \
+    -p:ContainerImageTag="$IMAGE_TAG" \
+    "-p:ContainerRuntimeIdentifiers=linux-x64;linux-arm64"; then
+  publication_gate_status=0
+else
+  publication_gate_status=$?
+fi
+assert_candidate_identity
+test "$publication_gate_status" -eq 0
+assert_candidate_identity
+if docker buildx imagetools inspect "$IMAGE_REPOSITORY:$IMAGE_TAG" \
+  | tee "$EVIDENCE_ROOT/container-inspect.txt"; then
+  inspect_tag_gate_status=0
+else
+  inspect_tag_gate_status=$?
+fi
+assert_candidate_identity
+test "$inspect_tag_gate_status" -eq 0
 IMAGE_DIGEST="$({ awk '$1 == "Digest:" { print $2; exit }' \
   "$EVIDENCE_ROOT/container-inspect.txt"; } || true)"
 [[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
-docker buildx imagetools inspect "$IMAGE_REPOSITORY@$IMAGE_DIGEST" --raw \
-  > "$EVIDENCE_ROOT/container-manifest.json"
-MANIFEST_SHA256="$(sha256sum "$EVIDENCE_ROOT/container-manifest.json" | awk '{print $1}')"
-test "sha256:$MANIFEST_SHA256" = "$IMAGE_DIGEST"
-jq -e '.manifests | type == "array" and length > 0' \
-  "$EVIDENCE_ROOT/container-manifest.json"
-jq -r '.manifests[].platform | "\(.os)/\(.architecture)\(if .variant then "/" + .variant else "" end)"' \
-  "$EVIDENCE_ROOT/container-manifest.json" | sort -u \
-  > "$EVIDENCE_ROOT/container-platforms.txt"
-printf '%s\n' 'linux/amd64' 'linux/arm64' > "$EVIDENCE_ROOT/expected-container-platforms.txt"
-cmp --silent "$EVIDENCE_ROOT/expected-container-platforms.txt" \
-  "$EVIDENCE_ROOT/container-platforms.txt"
+assert_candidate_identity
+if docker buildx imagetools inspect "$IMAGE_REPOSITORY@$IMAGE_DIGEST" --raw \
+  > "$EVIDENCE_ROOT/container-manifest.json"; then
+  inspect_digest_gate_status=0
+else
+  inspect_digest_gate_status=$?
+fi
+assert_candidate_identity
+test "$inspect_digest_gate_status" -eq 0
+MANIFEST_SHA256="$(validate_published_manifest \
+  "$EVIDENCE_ROOT/container-manifest.json" "$IMAGE_DIGEST" \
+  "$EVIDENCE_ROOT/container-platforms.txt")"
 test "$(sha256sum "$AUTHORITY_EVIDENCE" | awk '{print $1}')" = "$AUTHORITY_SHA256"
 test "$(sha256sum "$AUTHORITY_CHECKED_AT_EVIDENCE" | awk '{print $1}')" = "$AUTHORITY_CHECKED_AT_SHA256"
 test "$(cat "$AUTHORITY_CHECKED_AT_EVIDENCE")" = "$AUTHORITY_CHECKED_AT"
@@ -1114,6 +1215,7 @@ jq -n \
       checked_at_sha256: $authority_checked_at_sha256
     }}' \
   > "$EVIDENCE_ROOT/container-provenance.json"
+assert_candidate_identity
 ```
 
 The authority check revalidates the immutable evidence copy at a fresh action timestamp after
