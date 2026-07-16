@@ -114,7 +114,7 @@ flowchart LR
 
 - **Binds:** FR10, FR21-FR22, FR25, NFR9-NFR11
 - **Prevents:** local submodule checkout state, Debug source references, or hard-coded package loops changing released package output.
-- **Rule:** `tools/release-packages.json` is the EventStore release inventory. Release/package validation uses package-reference mode by default. Source project references require explicit `UseHexalithProjectReferences=true` and are never used for package publication. Submodule packages are not produced by EventStore release jobs. Central .NET/ASP.NET security patch pins move and are validated as one unit; mixed patch bands are not releasable. Before the next implementation or release slice, the repository seed moves from .NET SDK `10.0.302` / ASP.NET `10.0.9` to the verified `10.0.302` / `10.0.10` security baseline.
+- **Rule:** `tools/release-packages.json` is the EventStore release inventory. Release/package validation uses package-reference mode by default. Source project references require explicit `UseHexalithProjectReferences=true` and are never used for package publication. Submodule packages are not produced by EventStore release jobs. Central .NET/ASP.NET security patch pins move and are validated as one unit; mixed patch bands are not releasable. The repository SDK seed is `10.0.302`; before the next implementation or release slice, the ASP.NET pins move from `10.0.9` to the verified `10.0.10` security baseline.
 
 ### AD-12 - High-Risk Verification Requires Persisted Evidence [ADOPTED]
 

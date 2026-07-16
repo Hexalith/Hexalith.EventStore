@@ -343,7 +343,7 @@ Goal: a domain module needs **only** a reference to the SDK + its domain code + 
 - New test project `tests/Hexalith.EventStore.DomainService.Tests` (4 tests), including the no-arg
   calling-assembly discovery contract. Coupled Sample tests repointed off the moved router.
 
-**Verification (SDK 10.0.302 via `~/.dotnet`):** build clean (0 warnings under `TreatWarningsAsErrors`);
+**Verification (SDK 10.0.300 via `~/.dotnet`):** build clean (0 warnings under `TreatWarningsAsErrors`);
 DomainService.Tests 4/4, Sample.Tests (tests/) 74/74, Sample.Tests (samples/) 4/4, Client.Tests 399/399.
 
 **Also done — B1 query-seam spike (2026-06-02):** two-codebase investigation (platform query pipeline +
@@ -562,7 +562,7 @@ client/testing reduction; final build/test) are unstarted.
   reconciled. `deploy/dapr/accesscontrol.tenants.yaml` now allows the SDK endpoints `/query`, `/replay-state`,
   `/admin/operational-index-metadata` (in addition to `/process`, `/project`).
 
-- **Verification (SDK 10.0.302):** host + AppHost + Sample build clean (0 warnings under warnings-as-errors);
+- **Verification (SDK 10.0.300):** host + AppHost + Sample build clean (0 warnings under warnings-as-errors);
   **Contracts.Tests 103/103, Client.Tests 92/92, Testing.Tests 181/181, Sample.Tests 31/31, Server.Tests 681
   pass** with the 9 **pre-existing** cross-repo doc/config-drift failures excluded (`EventStoreHostAppsettings`
   + `Documentation.*` read the uninitialized nested `Hexalith.EventStore` submodule path). IntegrationTests

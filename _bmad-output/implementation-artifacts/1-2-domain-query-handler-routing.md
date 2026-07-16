@@ -155,7 +155,7 @@ Likely tests:
 
 ### Version And External Documentation Notes
 
-Repo-pinned versions win. Current local package pins include .NET SDK `10.0.302`, Aspire `13.4.6`, Dapr client/ASP.NET/actors `1.18.4`, MediatR `14.2.0`, FluentValidation `12.1.1`, xUnit v3 `3.2.2`, Shouldly `4.3.0`, and NSubstitute `6.0.0-rc.1`.
+Repo-pinned versions win. Current local package pins include .NET SDK `10.0.301`, Aspire `13.4.6`, Dapr client/ASP.NET/actors `1.18.4`, MediatR `14.2.0`, FluentValidation `12.1.1`, xUnit v3 `3.2.2`, Shouldly `4.3.0`, and NSubstitute `6.0.0-rc.1`.
 
 External docs checked on 2026-07-06:
 - Microsoft `DataContractSerializer` .NET 10 docs: adding metadata to `QueryResult` must remain additive and preserve old serialized shapes. https://learn.microsoft.com/en-us/dotnet/api/system.runtime.serialization.datacontractserializer?view=net-10.0

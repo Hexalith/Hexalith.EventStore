@@ -13,7 +13,7 @@
 | Ticket | N/A |
 | Date opened | 2026-07-04 |
 | Status | Concluded |
-| System | Local repo `/home/administrator/projects/hexalith/eventstore`, .NET SDK 10.0.302 |
+| System | Local repo `/home/administrator/projects/hexalith/eventstore`, .NET SDK 10.0.301 |
 | Evidence sources | NuGet flat-container API, NuGet search API, temporary `dotnet add package`, release manifest, release config, package project |
 
 ## Problem Statement

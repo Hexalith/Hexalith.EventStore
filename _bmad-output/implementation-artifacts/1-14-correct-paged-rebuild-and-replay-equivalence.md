@@ -174,7 +174,7 @@ Read these completely before touching them. The rebuild subsystem is large and m
 
 ### Latest Technical Information
 
-- .NET SDK `10.0.302` (`rollForward: latestPatch`), TFM `net10.0`, `TreatWarningsAsErrors=true`, `Nullable`+`ImplicitUsings`. **CA2007 (`ConfigureAwait(false)`) is a build-breaker** on production awaits.
+- .NET SDK `10.0.301` (`rollForward: latestPatch`), TFM `net10.0`, `TreatWarningsAsErrors=true`, `Nullable`+`ImplicitUsings`. **CA2007 (`ConfigureAwait(false)`) is a build-breaker** on production awaits.
 - DAPR .NET SDK is centrally pinned (`Directory.Packages.props`, `ManagePackageVersionsCentrally=true`) — never add versions to `.csproj`. `architecture.md#Stack` pins Dapr 1.18.4 / xUnit v3 3.2.2 / Shouldly 4.3.0; record CLI/runtime/SDK versions separately if you produce live evidence (do not infer runtime from the NuGet version).
 - DAPR transactional store → one state transaction; non-transactional → an explicitly documented **resumable equivalent** with defined atomicity boundaries; "cross-store work is never described as atomic." DAPR and in-memory implementations must expose **equivalent observable semantics**.
 - Identity: ULID-safe; `Guid.TryParse` on `messageId`/`correlationId`/`aggregateId`/`causationId` is forbidden (enforced by `ProtectedIdentifierGuidParserAuditTests`). Aggregate identity `ActorId => "{TenantId}:{Domain}:{AggregateId}"` — `:` cannot appear in a component.

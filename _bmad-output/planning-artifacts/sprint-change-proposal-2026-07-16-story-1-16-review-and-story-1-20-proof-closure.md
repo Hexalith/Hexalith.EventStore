@@ -79,7 +79,7 @@ Root submodule identities observed:
 | NuGet proof | Manifest names 14 packages; approved versions and SHA-256 hashes absent | Inventory is known, artifact identity is not pinned. |
 | Container proof | Repository resolves to `registry.hexalith.com/eventstore`; digest/platform provenance absent | Configuration identity is known, immutable deployed identity is not pinned. |
 | Owner review | No named proof-result reviewer, date, durable source, or migration authorization | AD-22 approval gate remains open. |
-| Runtime baseline | Repository and machine use SDK `10.0.302` / runtime `10.0.9`; central ASP.NET pins remain `10.0.9` | Architecture AD-11's required `10.0.302` / `10.0.10` baseline is not satisfied. |
+| Runtime baseline | Repository and machine use SDK `10.0.301` / runtime `10.0.9`; central ASP.NET pins remain `10.0.9` | Architecture AD-11's required `10.0.302` / `10.0.10` baseline is not satisfied. |
 
 ### 1.4 Decision at proposal time
 
@@ -292,7 +292,7 @@ Prerequisite ledger changes:
 - Lifecycle cleanup: reproducible normal-delivery failure is recorded as scoped
   corrective work. Hard blocker until repaired or explicitly dispositioned by
   the responsible owner and a later candidate passes the complete lane.
-- AD-11 security baseline: repository and machine remain on SDK 10.0.302 /
+- AD-11 security baseline: repository and machine remain on SDK 10.0.301 /
   runtime 10.0.9 instead of required SDK 10.0.302 / ASP.NET 10.0.10.
   Hard blocker before selecting or publishing the proof runtime.
 - Package identity: exact 14-package inventory confirmed, but approved
@@ -399,8 +399,8 @@ owning corrective item records the distinct AD-11 mismatch.
 - summary: Land the architecture AD-11 .NET/ASP.NET security baseline before
   selecting Story 1.20's tested runtime SHA.
 - evidence:
-  - `global.json` pins SDK `10.0.302`;
-  - the installed SDK is `10.0.302` and host/runtime is `10.0.9`;
+  - `global.json` pins SDK `10.0.301`;
+  - the installed SDK is `10.0.301` and host/runtime is `10.0.9`;
   - `Directory.Packages.props` retains ASP.NET package pins at `10.0.9`;
   - architecture AD-11 requires SDK `10.0.302` and ASP.NET `10.0.10`
     before the next implementation or release slice.

@@ -84,7 +84,7 @@ so that generated REST and UI code never present a gateway ETag or fabricated ve
 - **AD-15:** the selected route stamps provenance. Consumers never infer it from ETag, projection type, request domain, payload fields, or a producer's self-assertion.
 - **AD-12/NFR16:** mock-only metadata proves branches, not persisted-path acceptance. Tier 2/3 evidence must inspect the actual gateway response and persisted state/read model.
 - ETags and cursors remain opaque and support-safe. Do not display, parse for business meaning, or log raw values. Existing self-routing ETag decoding is only cache routing and must occur after the response path is known to be projection-backed.
-- No new NuGet dependency or package-version change is required. Use the repository pins: .NET SDK `10.0.302`, DAPR .NET SDK `1.18.4`, xUnit v3 `3.2.2`, Shouldly `4.3.0`, and NSubstitute `6.0.0-rc.1`.
+- No new NuGet dependency or package-version change is required. Use the repository pins: .NET SDK `10.0.301`, DAPR .NET SDK `1.18.4`, xUnit v3 `3.2.2`, Shouldly `4.3.0`, and NSubstitute `6.0.0-rc.1`.
 
 ### Existing Files Being Modified
 

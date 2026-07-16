@@ -147,7 +147,7 @@ harden the integration suite so it is reliable on its own lane.
     - `Hexalith.EventStore.Aspire` depends on `CommunityToolkit.Aspire.Hosting.Dapr`, which is
       **preview-only upstream** (DAPR-on-Aspire) with no stable version to pin → scoped, documented
       `NoWarn NU5104` in `Aspire.csproj` only.
-- Validated locally (SDK 10.0.302, faithful with `GeneratePackageOnBuild=false`): **all 12 EventStore
+- Validated locally (SDK 10.0.301, faithful with `GeneratePackageOnBuild=false`): **all 12 EventStore
   packages pack clean, 0 submodule packages, all `Testing`-consumer test projects compile.**
 
 ### Production (published package)

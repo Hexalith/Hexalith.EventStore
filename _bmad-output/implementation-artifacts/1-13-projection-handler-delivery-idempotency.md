@@ -228,7 +228,7 @@ These decisions are part of the story. If the final Story 1.12 code contradicts 
 
 ### Engineering constraints
 
-- Repository baseline: .NET SDK 10.0.302, `net10.0`, C# 14, DAPR .NET packages 1.18.4, and xUnit v3; use centrally managed package versions and add no dependency for hashing/state transitions.
+- Repository baseline: .NET SDK 10.0.301, `net10.0`, C# 14, DAPR .NET packages 1.18.4, and xUnit v3; use centrally managed package versions and add no dependency for hashing/state transitions.
 - Follow Allman braces, file-scoped namespaces, nullable annotations, XML docs, source-generated logging, one type per file, CRLF for C#, and `ConfigureAwait(false)` in production awaits.
 - Use `AggregateIdentity`, `ProjectionKeySegments`, ordinal comparisons/order, stable EventStore/ULID strings, and `TimeProvider`. Never substitute `Guid` identity or current culture/time-zone behavior.
 - Preserve cancellation tokens through reads/invocation, but use a bounded independent finalization token only when durable completion must be reconciled after caller cancellation; test that boundary explicitly.
