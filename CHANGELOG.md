@@ -1,3 +1,10 @@
+# [3.69.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.68.6...v3.69.0) (2026-07-16)
+
+
+### Features
+
+* **implementation-artifacts:** enhance ASP.NET pin validation and package inventory checks ([8c70efb](https://github.com/Hexalith/Hexalith.EventStore/commit/8c70efb08b1bf2fcd077ad930c5827d1ab1594da))
+
 ## [3.68.6](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.68.5...v3.68.6) (2026-07-16)
 
 
