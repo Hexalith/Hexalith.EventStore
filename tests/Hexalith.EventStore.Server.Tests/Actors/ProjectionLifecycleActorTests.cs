@@ -36,6 +36,7 @@ public class ProjectionLifecycleActorTests {
     }
 
     private const string StateKey = "projection-lifecycle";
+    private const string EpochStateKey = "projection-lifecycle-epoch";
 
     private static (ProjectionLifecycleActor Actor, InMemoryStateManager StateManager) CreateActor(
         TimeProvider? timeProvider = null) {
@@ -164,8 +165,8 @@ public class ProjectionLifecycleActorTests {
     }
 
     [Fact]
-    public async Task ReadSnapshotAsync_RevisionChangesOnlyOnPersistedLifecycleTransitions() {
-        (ProjectionLifecycleActor actor, _) = CreateActor();
+    public async Task ReadSnapshotAsync_DeliveryCompletionAdvancesDurableEpochWithoutIdleLifecycleRow() {
+        (ProjectionLifecycleActor actor, InMemoryStateManager stateManager) = CreateActor();
 
         (await actor.ReadSnapshotAsync()).ShouldBe(new ProjectionLifecycleSnapshot(ProjectionLifecyclePhase.Idle, 0));
         (await actor.BeginDeliveryWriteAsync(new ProjectionDeliveryLifecycleRequest("delivery-1"))).ShouldBeTrue();
@@ -174,9 +175,11 @@ public class ProjectionLifecycleActorTests {
         (await actor.ReadSnapshotAsync()).Revision.ShouldBe(1);
         (await actor.CompleteDeliveryWriteAsync(new ProjectionDeliveryLifecycleRequest("delivery-1"))).ShouldBeTrue();
 
-        // Completing a normal delivery clears the lease and restores the absent baseline, so the
-        // synthesized idle snapshot reads revision 0 rather than a persisted post-delivery record.
-        (await actor.ReadSnapshotAsync()).ShouldBe(new ProjectionLifecycleSnapshot(ProjectionLifecyclePhase.Idle, 0));
+        // Completing a normal delivery clears the lease while retaining a separate monotonic epoch.
+        // The synthesized idle snapshot therefore cannot repeat the pre-delivery Idle(0) observation.
+        (await actor.ReadSnapshotAsync()).ShouldBe(new ProjectionLifecycleSnapshot(ProjectionLifecyclePhase.Idle, 2));
+        stateManager.CommittedState.ShouldNotContainKey(StateKey);
+        stateManager.CommittedState[EpochStateKey].ShouldBe(2L);
     }
 
     [Fact]
@@ -188,8 +191,11 @@ public class ProjectionLifecycleActorTests {
 
         (await actor.CompleteDeliveryWriteAsync(new ProjectionDeliveryLifecycleRequest("delivery-1"))).ShouldBeTrue();
 
-        // A completed normal delivery must not leave a persisted lifecycle record: absent means idle.
+        // A completed normal delivery must not leave a persisted active lifecycle record: absent means idle.
+        // The separate epoch is retained so readers can detect a delivery that began and completed
+        // around their projection payload read.
         stateManager.CommittedState.ShouldNotContainKey(StateKey);
+        stateManager.CommittedState[EpochStateKey].ShouldBe(2L);
         (await actor.ReadPhaseAsync()).ShouldBe(ProjectionLifecyclePhase.Idle);
         (await actor.TryAdmitDeliveryWriteAsync()).Admitted.ShouldBeTrue();
 

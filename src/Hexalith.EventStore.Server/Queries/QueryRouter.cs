@@ -150,6 +150,8 @@ public partial class QueryRouter : IQueryRouter {
                 bool stable = string.Equals(lifecycleProjectionType, actualProjectionType, StringComparison.Ordinal)
                     && LifecycleObservation.IsStable(before, after);
                 if (!stable
+                    && !before.Failed
+                    && !after.Failed
                     && after.Snapshot?.Phase != ProjectionLifecyclePhase.Rebuilding
                     && attempt == 0) {
                     lifecycleProjectionType = actualProjectionType;
@@ -224,6 +226,10 @@ public partial class QueryRouter : IQueryRouter {
             return new LifecycleObservation(snapshot, Failed: false, Enabled: true);
         }
         catch (OperationCanceledException) {
+            throw;
+        }
+        catch (Exception ex) when (ContainsCancellationException(ex)) {
+            ThrowFirstCancellationException(ex);
             throw;
         }
         catch (Exception) {

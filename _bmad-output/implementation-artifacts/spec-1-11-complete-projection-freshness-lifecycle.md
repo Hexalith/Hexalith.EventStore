@@ -6,7 +6,7 @@ status: 'done'
 baseline_revision: 'f6aafb38e81969ab7ca04be484b60b857f0f7a86'
 final_revision: '6aa29af6af13c76631c4122a96ddef8b3da47fb7'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/project-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-1-context.md'
@@ -77,9 +77,28 @@ warnings: [oversized]
 - Given handler-computed, missing, invalid, cached, or contradictory evidence, when it crosses router, controller, client, or generated REST boundaries, then lifecycle is `Unknown` and no authoritative lifecycle header is exposed.
 - Given each lifecycle state and provenance combination, when the EventStore-owned consumer policy is evaluated, then only projection-backed `Current` permits an otherwise-authorized mutation and `LocalOnly` never counts as projection-confirmed success.
 
+### Review Findings
+
+- [x] [Review][Patch] [high] Prevent delivery lifecycle ABA from validating a stale query payload by retaining absent-idle cleanup while adding a separate durable monotonic lifecycle epoch — Administrator selected this design on 2026-07-16. Fixed with a separate `projection-lifecycle-epoch` actor-state value committed atomically with active-row removal; post-delivery absence now synthesizes `Idle(2)` instead of repeating `Idle(0)`. [`src/Hexalith.EventStore.Server/Actors/ProjectionLifecycleActor.cs:181`; `tests/Hexalith.EventStore.Server.Tests/Actors/ProjectionLifecycleActorTests.cs:168`]
+- [x] [Review][Patch] [medium] Fail closed once instead of executing every successful query actor twice during a persistent lifecycle-store outage — fixed by making lifecycle-read failure ineligible for the coherence retry. [`src/Hexalith.EventStore.Server/Queries/QueryRouter.cs:150`]
+- [x] [Review][Patch] [medium] Propagate wrapped lifecycle-read cancellation instead of converting it into lifecycle failure and continuing — fixed with exception-tree cancellation propagation before the generic failure fallback. [`src/Hexalith.EventStore.Server/Queries/QueryRouter.cs:228`]
+- [x] [Review][Patch] [medium] Verify that the public production constructor actually reads persisted lifecycle evidence and changes the returned lifecycle — covered through the real weak/JSON `ActorProxyFactory` path. [`tests/Hexalith.EventStore.Server.Tests/Queries/QueryRouterTests.cs:1197`]
+- [x] [Review][Patch] [medium] Assert that enabled, stable `Idle` lifecycle observation preserves producer `Current`, `IsStale = false`, and stable metadata — covered. [`tests/Hexalith.EventStore.Server.Tests/Queries/QueryRouterTests.cs:162`]
+- [x] [Review][Patch] [medium] Exercise the normal `Idle` projection-alias retry path instead of only the `Rebuilding` shortcut — covered with two payload invocations and converged alias lifecycle evidence. [`tests/Hexalith.EventStore.Server.Tests/Queries/QueryRouterTests.cs:768`]
+- [x] [Review][Defer] [high] Define erase-query visibility so a stably `Erasing` projection cannot retain producer `Current` and remain mutation-eligible [`src/Hexalith.EventStore.Server/Queries/QueryRouter.cs:248`] — deferred, pre-existing; reconfirmed against the existing Story 1.19 ledger entry.
+
 ## Spec Change Log
 
 ## Review Triage Log
+
+### 2026-07-16 — Follow-up review of exact candidate `8aa6d0f0a417034d0c46eb9506fb7196a013401b`
+
+- decision-needed: 1 high, resolved by Administrator as a separate durable monotonic lifecycle epoch and applied as a patch.
+- patch: 6 fixed (high 1, medium 5).
+- defer: 1 high, pre-existing erase-query visibility policy retained under the Story 1.19 ledger owner.
+- dismissed: 3 as out of Story 1.16 scope, intentional controlling-contract behavior, or redundant verification.
+- verification: focused actor/router Release lane 88 passed / 0 failed; complete Server Release lane 2,626 passed / 25 skipped / 0 failed; `Hexalith.EventStore.slnx` Release build 0 warnings / 0 errors.
+- disposition: `done`; `followup_review_recommended` cleared. The applied working-tree patch still requires a committed exact SHA before Story 1.20 can use it as runtime evidence.
 
 ### 2026-07-11 — Review pass
 - intent_gap: 0

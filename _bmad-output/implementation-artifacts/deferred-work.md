@@ -327,3 +327,7 @@ _All items LOW / non-blocking. Story 2.7 accepted (all AC1–AC7 met; Release bu
     5. Commit the correction independently.
     6. Use that resulting commit, or a reviewed descendant, as the Story 1.20 candidate runtime.
   reopen_trigger: Any Story 1.20 packet update, package build, container publication, or owner-approval request that names a runtime without satisfying this baseline.
+
+## Deferred from: code review of spec-1-11-complete-projection-freshness-lifecycle (2026-07-16)
+
+- Reconfirmed the existing Story 1.19 erase-query visibility gap at candidate `8aa6d0f0a417034d0c46eb9506fb7196a013401b`: a stable `Erasing` lifecycle falls through `QueryRouter.ApplyPersistedLifecycle`, so producer `Current` can remain projection-confirmed and mutation-eligible while read-model targets are being erased. The policy choice (for example `Unknown`, `Unavailable`, or rejecting the query) remains intentionally deferred under the earlier Story 1.19 ledger entry; this review adds no duplicate implementation owner. [`src/Hexalith.EventStore.Server/Queries/QueryRouter.cs:248`]

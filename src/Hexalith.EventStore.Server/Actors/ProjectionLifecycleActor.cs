@@ -21,6 +21,7 @@ public partial class ProjectionLifecycleActor(
     public const string ActorTypeName = "ProjectionLifecycleActor";
 
     private const string LifecycleStateKey = "projection-lifecycle";
+    private const string LifecycleEpochStateKey = "projection-lifecycle-epoch";
     private static readonly TimeSpan DefaultDeliveryLeaseDuration = TimeSpan.FromMinutes(5);
     private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
 
@@ -182,9 +183,9 @@ public partial class ProjectionLifecycleActor(
         // rather than leaving a persisted Idle record. Delivery is the high-frequency path: persisting an
         // Idle row for every completed aggregate delivery would accumulate lifecycle residue that erasure
         // would later have to reclaim, and would surface a spurious lifecycle row for an otherwise idle
-        // projection. Only the transient delivery lease is cleared here; the rebuild/erase paths keep their
-        // durable Idle transition.
-        await ClearStateAsync().ConfigureAwait(false);
+        // projection. The transient delivery lease is cleared here while a separate monotonic epoch is
+        // retained; the rebuild/erase paths keep their durable Idle transition.
+        await ClearStateAsync(checked(state.Revision + 1)).ConfigureAwait(false);
         return true;
     }
 
@@ -297,22 +298,32 @@ public partial class ProjectionLifecycleActor(
             .TryGetStateAsync<ProjectionLifecycleActorState>(LifecycleStateKey)
             .ConfigureAwait(false);
 
-        return result.HasValue
-            ? result.Value
-            : new ProjectionLifecycleActorState(
-                ProjectionLifecyclePhase.Idle,
-                OperationId: null,
-                ManifestDigest: null,
-                new Dictionary<string, string>(StringComparer.Ordinal));
+        if (result.HasValue) {
+            return result.Value;
+        }
+
+        ConditionalValue<long> epoch = await StateManager
+            .TryGetStateAsync<long>(LifecycleEpochStateKey)
+            .ConfigureAwait(false);
+        return new ProjectionLifecycleActorState(
+            ProjectionLifecyclePhase.Idle,
+            OperationId: null,
+            ManifestDigest: null,
+            new Dictionary<string, string>(StringComparer.Ordinal),
+            epoch.HasValue ? epoch.Value : 0);
     }
 
     private async Task PersistStateAsync(ProjectionLifecycleActorState state) {
         await StateManager.SetStateAsync(LifecycleStateKey, state).ConfigureAwait(false);
+        await StateManager.SetStateAsync(LifecycleEpochStateKey, state.Revision).ConfigureAwait(false);
         await StateManager.SaveStateAsync().ConfigureAwait(false);
     }
 
-    private async Task ClearStateAsync() {
-        // The delivery lease is always persisted before completion, so the state key exists here.
+    private async Task ClearStateAsync(long nextEpoch) {
+        // Commit the post-delivery epoch and transient lease removal together. The durable epoch
+        // prevents an Idle(n) -> Delivering(n+1) -> Idle(n) ABA observation without retaining the
+        // high-frequency lifecycle row that the absent-idle cleanup contract forbids.
+        await StateManager.SetStateAsync(LifecycleEpochStateKey, nextEpoch).ConfigureAwait(false);
         await StateManager.RemoveStateAsync(LifecycleStateKey).ConfigureAwait(false);
         await StateManager.SaveStateAsync().ConfigureAwait(false);
     }

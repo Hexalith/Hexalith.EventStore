@@ -1,5 +1,6 @@
 
 using System.Net;
+using System.Text;
 using System.Text.Json;
 
 using Dapr;
@@ -16,6 +17,7 @@ using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Pipeline.Queries;
 using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Server.Queries;
+using Hexalith.EventStore.Testing.Http;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -158,6 +160,42 @@ public class QueryRouterTests {
     }
 
     [Fact]
+    public async Task RouteQueryAsync_StablePersistedIdlePreservesProjectionBackedCurrentEvidence() {
+        JsonElement payload = JsonSerializer.SerializeToElement(new { value = 42 });
+        IProjectionActorInvoker invoker = Substitute.For<IProjectionActorInvoker>();
+        _ = invoker.InvokeAsync(
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<QueryEnvelope>(),
+                Arg.Any<CancellationToken>())
+            .Returns(QueryResult.FromPayload(
+                payload,
+                "orders",
+                new QueryResponseMetadata(IsStale: true, ProjectionVersion: "2") {
+                    Lifecycle = ProjectionLifecycleState.Current,
+                }));
+        IProjectionLifecycleGateway lifecycle = Substitute.For<IProjectionLifecycleGateway>();
+        _ = lifecycle.ReadSnapshotAsync(
+                Arg.Any<AggregateIdentity>(),
+                "orders",
+                Arg.Any<CancellationToken>())
+            .Returns(new ProjectionLifecycleSnapshot(ProjectionLifecyclePhase.Idle, 3));
+        var router = new QueryRouter(invoker, NullLogger<QueryRouter>.Instance, lifecycle);
+
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery(projectionType: "orders"));
+
+        result.Metadata.ShouldNotBeNull().Provenance.ShouldBe(QueryResponseProvenance.ProjectionBacked);
+        result.Metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Current);
+        result.Metadata.IsStale.ShouldBe(false);
+        result.Metadata.ProjectionVersion.ShouldBe("2");
+        _ = await invoker.Received(1).InvokeAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<QueryEnvelope>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task RouteQueryAsync_PersistedDeliveryPhaseDoesNotExposeCurrentEvidence() {
         JsonElement payload = JsonSerializer.SerializeToElement(new { value = 42 });
         IProjectionActorInvoker invoker = Substitute.For<IProjectionActorInvoker>();
@@ -216,7 +254,7 @@ public class QueryRouterTests {
         result.Success.ShouldBeTrue();
         result.Metadata.ShouldNotBeNull().Lifecycle.ShouldBe(ProjectionLifecycleState.Unknown);
         result.Metadata.IsStale.ShouldBeNull();
-        _ = await invoker.Received(2).InvokeAsync(
+        _ = await invoker.Received(1).InvokeAsync(
             Arg.Any<string>(),
             Arg.Any<string>(),
             Arg.Any<QueryEnvelope>(),
@@ -224,7 +262,31 @@ public class QueryRouterTests {
     }
 
     [Fact]
-    public async Task RouteQueryAsync_LifecycleRevisionChangesAroundReadRetriesPayload() {
+    public async Task RouteQueryAsync_WrappedLifecycleCancellationPropagatesBeforeProjectionInvocation() {
+        IProjectionActorInvoker invoker = Substitute.For<IProjectionActorInvoker>();
+        IProjectionLifecycleGateway lifecycle = Substitute.For<IProjectionLifecycleGateway>();
+        _ = lifecycle.ReadSnapshotAsync(
+                Arg.Any<AggregateIdentity>(),
+                "orders",
+                Arg.Any<CancellationToken>())
+            .Returns<ProjectionLifecycleSnapshot>(_ => throw new ActorMethodInvocationException(
+                "lifecycle invocation failed",
+                new OperationCanceledException("request cancelled"),
+                false));
+        var router = new QueryRouter(invoker, NullLogger<QueryRouter>.Instance, lifecycle);
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(
+            () => router.RouteQueryAsync(CreateTestQuery(projectionType: "orders")));
+
+        _ = await invoker.DidNotReceive().InvokeAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<QueryEnvelope>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_DeliveryEpochChangesAroundReadRetriesPayload() {
         IProjectionActorInvoker invoker = Substitute.For<IProjectionActorInvoker>();
         _ = invoker.InvokeAsync(
                 Arg.Any<string>(),
@@ -241,9 +303,9 @@ public class QueryRouterTests {
                 Arg.Any<CancellationToken>())
             .Returns(
                 new ProjectionLifecycleSnapshot(ProjectionLifecyclePhase.Idle, 0),
-                new ProjectionLifecycleSnapshot(ProjectionLifecyclePhase.Idle, 1),
-                new ProjectionLifecycleSnapshot(ProjectionLifecyclePhase.Idle, 1),
-                new ProjectionLifecycleSnapshot(ProjectionLifecyclePhase.Idle, 1));
+                new ProjectionLifecycleSnapshot(ProjectionLifecyclePhase.Idle, 2),
+                new ProjectionLifecycleSnapshot(ProjectionLifecyclePhase.Idle, 2),
+                new ProjectionLifecycleSnapshot(ProjectionLifecyclePhase.Idle, 2));
         var router = new QueryRouter(invoker, NullLogger<QueryRouter>.Instance, lifecycle);
 
         QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery(projectionType: "orders"));
@@ -704,6 +766,55 @@ public class QueryRouterTests {
     }
 
     [Fact]
+    public async Task RouteQueryAsync_IdleProjectionAliasConvergesBeforeReturningPayload() {
+        IProjectionActorInvoker invoker = Substitute.For<IProjectionActorInvoker>();
+        _ = invoker.InvokeAsync(
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<QueryEnvelope>(),
+                Arg.Any<CancellationToken>())
+            .Returns(
+                QueryResult.FromPayload(JsonSerializer.SerializeToElement(new { value = 1 }), "order-list"),
+                QueryResult.FromPayload(
+                    JsonSerializer.SerializeToElement(new { value = 2 }),
+                    "order-list",
+                    new QueryResponseMetadata(IsStale: false) {
+                        Lifecycle = ProjectionLifecycleState.Current,
+                    }));
+        IProjectionLifecycleGateway lifecycle = Substitute.For<IProjectionLifecycleGateway>();
+        _ = lifecycle.ReadSnapshotAsync(
+                Arg.Any<AggregateIdentity>(),
+                "GetOrderStatus",
+                Arg.Any<CancellationToken>())
+            .Returns(new ProjectionLifecycleSnapshot(ProjectionLifecyclePhase.Idle, 1));
+        _ = lifecycle.ReadSnapshotAsync(
+                Arg.Any<AggregateIdentity>(),
+                "order-list",
+                Arg.Any<CancellationToken>())
+            .Returns(
+                new ProjectionLifecycleSnapshot(ProjectionLifecyclePhase.Idle, 2),
+                new ProjectionLifecycleSnapshot(ProjectionLifecyclePhase.Idle, 2),
+                new ProjectionLifecycleSnapshot(ProjectionLifecyclePhase.Idle, 2));
+        var router = new QueryRouter(invoker, NullLogger<QueryRouter>.Instance, lifecycle);
+
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
+
+        result.Success.ShouldBeTrue();
+        result.ProjectionType.ShouldBe("order-list");
+        result.Payload.ShouldNotBeNull().GetProperty("value").GetInt32().ShouldBe(2);
+        result.Metadata.ShouldNotBeNull().Lifecycle.ShouldBe(ProjectionLifecycleState.Current);
+        _ = await invoker.Received(2).InvokeAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<QueryEnvelope>(),
+            Arg.Any<CancellationToken>());
+        _ = await lifecycle.Received(3).ReadSnapshotAsync(
+            Arg.Any<AggregateIdentity>(),
+            "order-list",
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task RouteQueryAsync_NullProjectionType_PassesThroughNull() {
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         (IProjectionActorInvoker _, QueryRouter router) = CreateRouterWithInvoker(QueryResult.FromPayload(resultPayload));
@@ -1080,6 +1191,58 @@ public class QueryRouterTests {
         result.ProjectionType.ShouldBe("tenants");
         _ = result.Payload.ShouldNotBeNull();
         result.Payload!.Value.GetProperty("items").GetArrayLength().ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task QueryRouter_ProductionConstructorReadsLifecycleAndOverridesReturnedCurrentEvidence() {
+        var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        string lifecycleResponse = JsonSerializer.Serialize(
+            new ProjectionLifecycleSnapshot(ProjectionLifecyclePhase.Rebuilding, 4),
+            jsonOptions);
+        string queryResponse = JsonSerializer.Serialize(
+            QueryResult.FromPayload(
+                JsonSerializer.SerializeToElement(new { value = 42 }),
+                "orders",
+                new QueryResponseMetadata(IsStale: false) {
+                    Lifecycle = ProjectionLifecycleState.Current,
+                }),
+            jsonOptions);
+        int lifecycleReads = 0;
+        int queryInvocations = 0;
+        using var handler = new MockHttpMessageHandler((request, _) => {
+            string path = request.RequestUri.ShouldNotBeNull().AbsolutePath;
+            if (path.Contains(nameof(IProjectionLifecycleActor.ReadSnapshotAsync), StringComparison.Ordinal)) {
+                lifecycleReads++;
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) {
+                    Content = new StringContent(lifecycleResponse, Encoding.UTF8, "application/json"),
+                });
+            }
+
+            if (path.Contains(nameof(IProjectionActor.QueryAsync), StringComparison.Ordinal)) {
+                queryInvocations++;
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) {
+                    Content = new StringContent(queryResponse, Encoding.UTF8, "application/json"),
+                });
+            }
+
+            throw new InvalidOperationException($"Unexpected actor request path '{path}'.");
+        });
+        var proxyOptions = new ActorProxyOptions {
+            HttpEndpoint = "http://localhost:3500",
+            JsonSerializerOptions = jsonOptions,
+            UseJsonSerialization = true,
+        };
+        IActorProxyFactory factory = new ActorProxyFactory(proxyOptions, handler);
+        var router = new QueryRouter(factory, NullLogger<QueryRouter>.Instance);
+
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery(projectionType: "orders"));
+
+        result.Success.ShouldBeTrue();
+        result.Payload.ShouldNotBeNull().GetProperty("value").GetInt32().ShouldBe(42);
+        result.Metadata.ShouldNotBeNull().Lifecycle.ShouldBe(ProjectionLifecycleState.Rebuilding);
+        result.Metadata.IsStale.ShouldBeNull();
+        lifecycleReads.ShouldBe(2);
+        queryInvocations.ShouldBe(1);
     }
 
     [Fact]
