@@ -237,7 +237,7 @@ The current server invokes `/project` before it knows `ProjectionType` because t
 
 ### Latest Technical Information
 
-- The repository pins .NET SDK `10.0.301`/`net10.0`, Dapr.Client and Dapr.AspNetCore `1.18.4`, Aspire Hosting `13.4.6`, xUnit v3 `3.2.2`, Shouldly `4.3.0`, and NSubstitute `6.0.0-rc.1`. Keep versions centralized; this story is not a dependency upgrade.
+- The repository pins .NET SDK `10.0.302`/`net10.0`, Dapr.Client and Dapr.AspNetCore `1.18.4`, Aspire Hosting `13.4.6`, xUnit v3 `3.2.2`, Shouldly `4.3.0`, and NSubstitute `6.0.0-rc.1`. Keep versions centralized; this story is not a dependency upgrade.
 - ASP.NET Core 10 Minimal APIs bind a `CancellationToken` route parameter to `HttpContext.RequestAborted`; pass it through every dispatcher/handler/store await. [Microsoft Minimal API parameter binding](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/minimal-apis/parameter-binding?view=aspnetcore-10.0)
 - Microsoft DI preserves registration order when resolving `IEnumerable<T>`, but deterministic behavior in this contract must not depend on that incidental registration order; sort validated routes explicitly. [Microsoft ASP.NET Core dependency injection](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/dependency-injection)
 - DAPR HTTP service invocation may retry transient failures, and non-streaming requests with known content length remain retryable. A valid partial handler failure must therefore be a `200` versioned application outcome, and transport retries must reuse stable dispatch/batch identity. [DAPR service invocation overview](https://docs.dapr.io/developing-applications/building-blocks/service-invocation/service-invocation-overview/)

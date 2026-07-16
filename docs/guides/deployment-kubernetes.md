@@ -111,7 +111,7 @@ Before starting, ensure you have the following installed:
     - **AKS** (Azure Kubernetes Service)
     - **EKS** (Amazon Elastic Kubernetes Service)
     - **GKE** (Google Kubernetes Engine)
-- **.NET 10 SDK** — version 10.0.300 or later patch in the same feature band (`dotnet --version` to check)
+- **.NET 10 SDK** — version 10.0.302 or later patch in the same feature band (`dotnet --version` to check)
 - **Aspire CLI** — install as a global tool if not already present:
 
     ```bash

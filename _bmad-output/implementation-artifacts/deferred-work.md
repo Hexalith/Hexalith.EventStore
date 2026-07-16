@@ -314,8 +314,8 @@ _All items LOW / non-blocking. Story 2.7 accepted (all AC1–AC7 met; Release bu
   owner: EventStore build/release maintainer
   summary: Land the architecture AD-11 .NET/ASP.NET security baseline before selecting Story 1.20's tested runtime SHA.
   evidence:
-    - `global.json` pins SDK `10.0.301`;
-    - the installed SDK is `10.0.301` and host/runtime is `10.0.9`;
+    - `global.json` pins SDK `10.0.302`;
+    - the installed SDK is `10.0.302` and host/runtime is `10.0.9`;
     - `Directory.Packages.props` retains ASP.NET package pins at `10.0.9`;
     - architecture AD-11 requires SDK `10.0.302` and ASP.NET `10.0.10` before the next implementation or release slice.
   consequence: No current commit may be promoted to `tested_runtime_sha`, and no package/container proof publication may be accepted, while this mismatch remains.

@@ -25,7 +25,7 @@ No currentness or fit assertion in this review is based only on model training d
 
 ### H1 — The .NET/ASP.NET rows are one security servicing release behind
 
-**Evidence:** The spine and repository pin SDK `10.0.301` and ASP.NET Core/SignalR `10.0.9`. Microsoft released .NET `10.0.10` on 2026-07-14 with SDK `10.0.302`; the official notes explicitly identify security and non-security fixes and list the 10.0.10 ASP.NET/SignalR packages. `global.json` uses `rollForward: latestPatch`, so an installed 10.0.302 is admissible, but the stated `10.0.301` Stack value and the central `10.0.9` package pins are no longer the current serviced baseline.
+**Evidence:** The spine and repository pin SDK `10.0.302` and ASP.NET Core/SignalR `10.0.9`. Microsoft released .NET `10.0.10` on 2026-07-14 with SDK `10.0.302`; the official notes explicitly identify security and non-security fixes and list the 10.0.10 ASP.NET/SignalR packages. `global.json` uses `rollForward: latestPatch`, so an installed 10.0.302 is admissible, but the stated `10.0.302` Stack value and the central `10.0.9` package pins are no longer the current serviced baseline.
 
 **Impact:** The spine's claim that named technology is verified-current is false on its own update date, and implementers could treat a security-superseded patch as the approved build baseline.
 
@@ -82,7 +82,7 @@ Do not finalize the updated spine as technology-current until H1 and H2 are reco
 
 Verdict: **pass with a non-blocking implementation-reality caveat; no critical or high findings remain.**
 
-- **H1 resolved.** AD-11 and Stack now distinguish repository seed (`10.0.301` / `10.0.9`) from the required current security baseline (`10.0.302` / `10.0.10`) and prohibit another implementation or release slice before the coordinated move. This accurately represents both current repository state and Microsoft's 2026-07-14 security release.
+- **H1 resolved.** AD-11 and Stack now distinguish repository seed (`10.0.302` / `10.0.9`) from the required current security baseline (`10.0.302` / `10.0.10`) and prohibit another implementation or release slice before the coordinated move. This accurately represents both current repository state and Microsoft's 2026-07-14 security release.
 - **H2 resolved at architecture altitude.** AD-21 now fixes matching `3.2.2` Shell/Contracts.UI dependencies and one Debug-source/Release-package boundary; both `3.2.2` packages exist in the official registry and current FrontComposer APIs fit the selected shell/navigation model. The repository has not implemented that target yet: the checked-out source is `v3.2.2-8-g0a84e818`, imported central props still pin Shell `3.1.1` and omit Contracts.UI, and `Admin.UI` has no FrontComposer reference. This is now bounded Story 7.14 implementation work rather than an open architectural choice. The Stack/dependency view should be read as target state until that story lands.
 - **M1 resolved.** `Hexalith.Commons.UniqueIds 2.28.1` now matches evaluated central props and the official package registry.
 - **M2 resolved.** AD-19 now correctly makes `ProjectionDispatchOptions.MaxOutcomes` the validated positive bound and identifies `32` as its default, rather than freezing 32 as the wire ceiling. The local additional validation ceiling (`4096`) remains implementation seed. The new normalized result is explicitly versioned and does not mutate the verified `/project/v2` envelope.

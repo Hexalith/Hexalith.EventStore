@@ -35,7 +35,7 @@ The exact-SHA gate failed before package/container publication and owner review:
    an approvable tested runtime and no parity row is promoted to `available`.
 4. The completed Story 1.16 source spec still retains
    `followup_review_recommended: true` without an explicit disposition.
-5. The repository and installed toolchain remain on SDK `10.0.301` / runtime and
+5. The repository and installed toolchain remain on SDK `10.0.302` / runtime and
    central ASP.NET pins `10.0.9`, below architecture AD-11's required
    `10.0.302` / `10.0.10` security baseline.
 6. No named EventStore owner has reviewed completed passing exact-SHA evidence, and no
@@ -83,7 +83,7 @@ substitute for the tested runtime. Package versions and hashes, container digest
 platform provenance, named owner approval, and migration authorization also remain absent.
 
 Architecture AD-11 is a hard precondition before selecting or publishing a replacement
-runtime. `global.json` and the installed SDK remain `10.0.301`, the installed host/runtime
+runtime. `global.json` and the installed SDK remain `10.0.302`, the installed host/runtime
 and central ASP.NET pins remain `10.0.9`, and AD-11 requires SDK `10.0.302` plus matching
 ASP.NET and installed `Microsoft.NETCore.App` runtime `10.0.10`, or a
 later replacement recorded with the named architecture owner, approval date, durable
@@ -105,7 +105,7 @@ changes no runtime or package pin.
 | Story 1.17 asynchronous multi-projection dispatch | `done` | Crosswalk maps completed historical Story 1.12 and narrows acceptance to AD-19's normalized result. | Satisfied for sequencing; evidence not promoted to this packet without exact-SHA rerun. |
 | Story 1.18 delivery idempotency | `done` | Crosswalk maps completed historical Story 1.13 production-path evidence. | Satisfied for sequencing; evidence not promoted to this packet without exact-SHA rerun. |
 | Story 1.19 paged rebuild equivalence | `done` | Active Story 1.19 records approval after 13 in-scope patches, one explicit deferral, a 2,620-test Server pass, the real DAPR/Redis paged-rebuild pass, and a warning-free Release build. | Satisfied for sequencing; the paged-rebuild live test also passed at the current candidate SHA, but the cross-cutting live gate did not. |
-| Architecture AD-11 security baseline | `open-blocking` | Repository seed, installed SDK/runtime, and central ASP.NET pins remain `10.0.301` / `10.0.9`; AD-11 requires SDK `10.0.302` plus matching ASP.NET and installed `Microsoft.NETCore.App` runtime `10.0.10`, or a replacement with named architecture owner, approval date, durable source, rationale, exact candidate/toolchain/ASP.NET/runtime scope, and unexpired `expires_at`. | **Hard blocker.** The executable preflight must accept the exact baseline or a complete, in-scope, unexpired replacement record before candidate, package, or container gates. |
+| Architecture AD-11 security baseline | `open-blocking` | Repository seed, installed SDK/runtime, and central ASP.NET pins remain `10.0.302` / `10.0.9`; AD-11 requires SDK `10.0.302` plus matching ASP.NET and installed `Microsoft.NETCore.App` runtime `10.0.10`, or a replacement with named architecture owner, approval date, durable source, rationale, exact candidate/toolchain/ASP.NET/runtime scope, and unexpired `expires_at`. | **Hard blocker.** The executable preflight must accept the exact baseline or a complete, in-scope, unexpired replacement record before candidate, package, or container gates. |
 | Story 1.20 owner review | pending | No reviewer, approval date, or durable source exists. | **Hard blocker.** |
 
 ## Artifact Identity Pin
@@ -186,7 +186,7 @@ Captured from the failed exact-SHA gate environment; these values do not identif
 approved runtime:
 
 - OS: Ubuntu 26.04, Linux `x64`
-- .NET SDK: `10.0.301` (`96856fd726`)
+- .NET SDK: `10.0.302` (`96856fd726`)
 - .NET host/runtime: `10.0.9` (`901ca94124`)
 - Dapr CLI: `1.18.0`
 - Dapr runtime: `1.18.1`
@@ -1234,7 +1234,7 @@ later proof-result approval and distinct release-owner disposition.
 
 | Gate | Required result | Evidence target | Required disposition owner | Current result |
 | --- | --- | --- | --- | --- |
-| AD-11 readiness | exact SDK `10.0.302` plus matching ASP.NET and installed `Microsoft.NETCore.App` runtime `10.0.10`, or complete, scoped, unexpired replacement authority binding those versions before candidate gates | `ad11-preflight.json`, runtime inventory, its SHA-256, and replacement-authority copy/hash when used | Architecture owner and EventStore build/release maintainer | **OPEN**; current repository/toolchain remains `10.0.301` / `10.0.9` and no replacement record exists |
+| AD-11 readiness | exact SDK `10.0.302` plus matching ASP.NET and installed `Microsoft.NETCore.App` runtime `10.0.10`, or complete, scoped, unexpired replacement authority binding those versions before candidate gates | `ad11-preflight.json`, runtime inventory, its SHA-256, and replacement-authority copy/hash when used | Architecture owner and EventStore build/release maintainer | **OPEN**; current repository/toolchain remains `10.0.302` / `10.0.9` and no replacement record exists |
 | Exact committed source | Same 40-hex SHA before and after gates; clean regular and ignored inputs before restore | pre/post status, submodule SHAs, environment inventory | EventStore owner | PASS for failed candidate `85877902f8d60a466ab90cd8b68b53838863db1c` |
 | Release build and tests | warning-free solution build; positive xUnit totals for every listed project/filter | build log plus XML and method-list files under `$EVIDENCE_ROOT` | EventStore owner | **FAIL**; Release build and broad unit lanes passed, full live-sidecar was 42 passed / 2 failed |
 | NuGet inventory | exact 14-ID set, one approved version, 14 SHA-256 values, package-only consumer success | package listing, validator logs, `nuget-sha256.txt`, consumer assets/tool-install log | EventStore release owner | NOT RUN |
@@ -1514,7 +1514,7 @@ this packet authorizes no consumer repository, package pin, deployment, or rollb
 | `git rev-parse --verify --end-of-options 'HEAD^{commit}'` | PASS; candidate discovery SHA `26842d284f2da91399b7891bf7b5880ce2f6b561`. |
 | `git status --porcelain=v1 --untracked-files=all --ignore-submodules=none` | CLOSURE BLOCKED; the Story 1.20 specification was already modified, so `HEAD` was not selected as tested runtime. |
 | `git submodule status` | PASS for inventory capture; two root-declared submodules were uninitialized and no nested submodules were initialized. |
-| `dotnet --info` | PASS; SDK `10.0.301`, host/runtime `10.0.9`, Ubuntu 26.04 `linux-x64`. |
+| `dotnet --info` | PASS; SDK `10.0.302`, host/runtime `10.0.9`, Ubuntu 26.04 `linux-x64`. |
 | `dapr --version` | PASS; CLI `1.18.0`, runtime `1.18.1`. |
 
 ### Exact release-package inventory check

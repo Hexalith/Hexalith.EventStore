@@ -4,7 +4,7 @@ Evidence captured on 2026-07-14 from implementation baseline `2794ecba4c435de5e5
 
 ## Environment
 
-- .NET SDK `10.0.301`, target `net10.0`
+- .NET SDK `10.0.302`, target `net10.0`
 - DAPR CLI `1.18.0`, runtime `1.18.1`, .NET packages `1.18.4`
 - Docker `29.4.3`
 - component `state.redis`, `actorStateStore=true`

@@ -5,7 +5,7 @@
 
 ## Prerequisites
 
-- **.NET SDK 10.0.300** (pinned in `global.json`, roll-forward `latestPatch`).
+- **.NET SDK 10.0.302** (pinned in `global.json`, roll-forward `latestPatch`).
 - **Docker Desktop** (for Redis, integration tests, container builds).
 - **DAPR CLI** + runtime (`daprd`, `placement`, `scheduler`).
 - **Aspire CLI** (`aspire`).

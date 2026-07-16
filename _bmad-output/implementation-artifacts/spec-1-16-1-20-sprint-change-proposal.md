@@ -315,9 +315,9 @@ bash -c '
       installed_aspnet installed_runtime; do
     set_exact
     case "$mismatch" in
-      repository_sdk) REPOSITORY_SDK_VERSION=10.0.301 ;;
+      repository_sdk) REPOSITORY_SDK_VERSION=10.0.302 ;;
       roll_forward) REPOSITORY_SDK_ROLL_FORWARD=minor ;;
-      installed_sdk) INSTALLED_SDK_VERSION=10.0.301 ;;
+      installed_sdk) INSTALLED_SDK_VERSION=10.0.302 ;;
       repository_aspnet) REPOSITORY_ASPNET_VERSION=10.0.9 ;;
       installed_aspnet) INSTALLED_ASPNET_VERSION=10.0.9 ;;
       installed_runtime) INSTALLED_RUNTIME_VERSION=10.0.9 ;;
