@@ -10,7 +10,8 @@ namespace Hexalith.EventStore.Testing.Fakes;
 
 /// <summary>
 /// In-memory test double for <see cref="IReadModelStore"/> and the additive
-/// <see cref="IReadModelBatchStore"/> with realistic ETag / first-write-wins semantics, so both the
+/// <see cref="IReadModelBatchStore"/> / <see cref="IReadModelBatchStagingStore"/> protocols with
+/// realistic ETag / first-write-wins semantics, so both the
 /// optimistic-concurrency retry loop in <see cref="ReadModelWritePolicy"/> and the coordinated batch
 /// protocol can be exercised without a DAPR sidecar.
 /// </summary>

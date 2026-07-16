@@ -10,7 +10,8 @@ namespace Hexalith.EventStore.Client.Projections;
 
 /// <summary>
 /// DAPR state-store implementation of <see cref="IReadModelStore"/>, the additive coordinated
-/// <see cref="IReadModelBatchStore"/>, and the additive ETag-conditional
+/// <see cref="IReadModelBatchStore"/>, its marker-gated <see cref="IReadModelBatchStagingStore"/>
+/// companion, and the additive ETag-conditional
 /// <see cref="IReadModelConditionalEraser"/>.
 /// </summary>
 /// <remarks>

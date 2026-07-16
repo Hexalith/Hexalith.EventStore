@@ -60,7 +60,7 @@ Validation on 2026-07-16:
 
 - Client tests: 673 passed.
 - Domain service tests: 143 passed.
-- Server tests: 2,618 passed, 25 skipped, 0 failed.
+- Server tests: 2,620 passed, 25 skipped, 0 failed.
 - Post-patch lifecycle tests: 22 passed; named coordinator tests: 16 passed.
 - Real DAPR/Redis paged-rebuild equivalence test: 1 passed.
 - Release solution build: succeeded with 0 warnings and 0 errors.
