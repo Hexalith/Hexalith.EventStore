@@ -2,7 +2,7 @@
 title: 'Implement Story 1.16/1.20 Sprint Change Proposal'
 type: 'chore'
 created: '2026-07-16'
-status: 'in-review'
+status: 'in-progress'
 baseline_commit: '4423e03bef8f2e6f9139a143a3fc42ea8c835dfd'
 review_loop_iteration: 1
 context:
@@ -49,30 +49,35 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [x] `_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md` -- incrementally add the dated exact-SHA audit and AD-11 hard blocker, including runtime/documentation identity separation, without duplicating or replacing the existing failed-run evidence.
-- [x] `_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md` -- expand acceptance items 1 and 5–10 and add the approved ten-step closure execution order while retaining `status: blocked`.
+- [x] `_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md` -- incrementally add the dated exact-SHA audit and AD-11 hard blocker, including runtime/documentation identity separation, without duplicating or replacing the existing failed-run evidence; refresh `updated` to the actual edit time.
+- [x] `_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md` -- expand acceptance items 1 and 5–10, reconcile the stale Auto Run summary with Story 1.19's completed review, and add the approved ten-step closure order while retaining `status: blocked`; make release-owner authority an explicit prerequisite to external container publication and distinguish it from final proof approval.
 - [x] `_bmad-output/implementation-artifacts/deferred-work.md` -- append the separately owned AD-11 `open-blocking` corrective item with evidence, consequence, closure conditions, and reopen trigger; preserve existing entries verbatim.
 - [x] `_bmad-output/implementation-artifacts/sprint-status.yaml` -- replace only Story 1.20's explanatory comments with the approved blocker list; retain Story 1.20 and Epic 1 `in-progress`.
 - [x] `_bmad-output/implementation-artifacts/spec-1-11-complete-projection-freshness-lifecycle.md` -- verify and retain `followup_review_recommended: true`; make no review-disposition edit without all approved fields and evidence.
+- [x] `_bmad-output/implementation-artifacts/epic-1-context.md` -- restore the durable Sample/Tenants behavior-preservation and release-hygiene constraints plus the projection-handler adapter/breaking-migration compatibility rule that the refreshed context over-pruned.
 
 **Acceptance Criteria:**
 - Given the failed candidate and incomplete identities, when the artifacts are updated, then no field, capability row, story, epic, or comment claims approval, availability, completion, or migration authority.
 - Given existing concurrent evidence and deferred items, when approved text is applied, then those contents remain intact and the AD-11 work is additive and separately owned.
 - Given Story 1.16 lacks an exact-runtime review, when implementation completes, then its flag remains `true` and the Story 1.20 blockers explicitly name that condition.
 - Given the proposal is evidence-only, when the diff is reviewed, then no runtime source, test, pin, package manifest, container, topology, submodule, Parties, or persisted-data artifact changed.
+- Given external container publication requires release-owner authority, when the closure order is read, then authority precedes publication and final proof approval remains a later distinct gate.
 
 ## Spec Change Log
 
+- Review loop 1: the first review found stale Story 1.19 wording, ambiguous pre-publication authority, an unchanged proof-packet timestamp, an untracked-file whitespace gap, and over-pruned Epic 1 constraints. Tasks and verification now require those corrections, avoiding contradictory blocker narratives, unauthorized publication ordering, weak provenance, incomplete whitespace coverage, and future context-driven compatibility/release regressions. KEEP: preserve the additive AD-11 audit and ledger work, exact-SHA failure evidence, current-fact reconciliation, all existing deferred entries, every fail-closed status/identity/capability guard, Story 1.16's retained flag, and all concurrent lifecycle/submodule changes.
+
 ## Design Notes
 
-The approved proposal contains replacement-style examples based on an earlier checkout. Treat them as semantic requirements: merge their missing gates into the current artifacts, whose later exact-SHA failure evidence is authoritative. Current repository identity supersedes proposal-era audit facts, but the failed detached-run evidence remains historical proof.
+The approved proposal contains replacement-style examples based on an earlier checkout. Treat them as semantic requirements: merge their missing gates into the current artifacts, whose later exact-SHA failure evidence is authoritative. Current repository identity supersedes proposal-era audit facts, but the failed detached-run evidence remains historical proof. Release-owner authority to perform external publication must exist before the publish step; the later release-owner disposition approves the completed identity/provenance packet.
 
 ## Verification
 
 **Commands:**
-- `git diff --check` -- expected: no whitespace errors or conflict markers.
+- `git diff --check` and `git diff --cached --check` -- expected: no whitespace errors or conflict markers in unstaged or staged tracked changes.
+- `test -z "$(git diff --no-index --check -- /dev/null _bmad-output/implementation-artifacts/spec-1-16-1-20-sprint-change-proposal.md 2>&1)"` -- expected: untracked spec has no whitespace errors.
 - `bash scripts/check-deferred-work.sh _bmad-output/implementation-artifacts/deferred-work.md` -- expected: exit 0; pre-existing legacy advisories may remain.
 - `rg -c '^- classification: `still blocked`$' _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md` -- expected: `9`.
 - `rg -n 'tested_runtime_sha: null|documentation_commit_sha: null|final_decision: still blocked|authorize_consumer_migration: false' _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md` -- expected: all four guards present.
 - `rg -n 'followup_review_recommended: true' _bmad-output/implementation-artifacts/spec-1-11-complete-projection-freshness-lifecycle.md` -- expected: fail-closed flag present.
-- `git status --short --branch` -- expected: only the workflow context/spec and four approved target edits; no runtime or submodule changes.
+- `git status --short --branch` -- expected: authorized planning/evidence edits remain attributable to this spec; concurrent runtime, test, branch, or submodule work is reported separately and preserved.

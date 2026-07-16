@@ -3,7 +3,7 @@ schema: hexalith.eventstore.parity-closure-proof-packet/v1
 story_id: "1.20"
 story_key: 1-20-owner-approved-parity-closure-and-runtime-pin
 created: 2026-07-16T05:09:20+02:00
-updated: 2026-07-16T10:54:07+02:00
+updated: 2026-07-16T13:03:02+02:00
 historical_packet: 1-8-projection-query-sdk-owner-proof-packet.md
 candidate_source_sha: 85877902f8d60a466ab90cd8b68b53838863db1c
 tested_runtime_sha: null
@@ -55,14 +55,20 @@ and update this packet.
 
 - repository: `https://github.com/Hexalith/Hexalith.EventStore.git`
 - repository root: `/home/administrator/projects/hexalith/eventstore`
-- current planning/evidence branch: `fix/projection-delivery-lifecycle-baseline`
-- current planning/evidence baseline: `4423e03bef8f2e6f9139a143a3fc42ea8c835dfd`,
+- planning/evidence branch observed at `2026-07-16T12:58:18+02:00`: `main`
+- planning/evidence baseline observed at `2026-07-16T12:58:18+02:00`:
+  `e5658e0b79b5582a962b2eed2964cf8fe8f2ca2e`,
   equal to the locally recorded `origin/main` without asserting an unfetched remote state
 - failed candidate SHA: `85877902f8d60a466ab90cd8b68b53838863db1c`
 - detached candidate worktree: clean before and after the attempted gates
 - root submodules in the detached candidate: all seven declared entries initialized at
   their committed gitlinks; no nested submodules initialized
 - tested runtime SHA: not selected
+
+The observed planning/evidence baseline contains later merged lifecycle corrective work,
+but it has not passed this packet's unchanged exact-SHA gates and is not selected as the
+tested runtime. Its presence does not alter the failed candidate's historical result or
+close the lifecycle-cleanup blocker.
 
 The existing exact-SHA completion-attempt log remains the authoritative command-and-result
 record. Its reproducible live-sidecar failure disqualifies the candidate despite the

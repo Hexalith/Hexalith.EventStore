@@ -178,19 +178,46 @@ public class ProjectionDeliveryIdempotencyCoordinatorTests {
     }
 
     [Fact]
-    public async Task ActiveReservation_WithMatchingDurableFence_RemainsRetryableUntilLeaseExpiry() {
+    public async Task ActiveReservation_WithMatchingDurableFence_ReclaimsImmediatelyForRightfulOwner() {
         ProjectionDeliveryState state = EmptyState() with {
             ActiveReservation = Reservation(1, "message-1") with { FencingToken = 7 },
         };
         var store = new InMemoryProjectionDeliveryStateStore(state);
         ProjectionDeliveryIdempotencyCoordinator coordinator = CreateCoordinator(store);
 
+        // The rightful owner presents the exact durable fence of its own unexpired reservation, so it
+        // resumes immediately instead of waiting out the lease. The reclaim advances the fence so any
+        // stale holder of token 7 is fenced out of a later completion.
         ProjectionDeliveryAdmissionResult result = await coordinator.TryAdmitAsync(
             Identity,
             "order-detail",
             [Event(1)],
             reclaimSafe: true,
             resumeFencingToken: 7);
+
+        result.Disposition.ShouldBe(ProjectionDeliveryAdmissionDisposition.Dispatch);
+        result.ReasonCode.ShouldBe(ProjectionDispatchReasonCodes.DeliveryLeaseReclaimed);
+        result.Reservation!.FencingToken.ShouldBe(8);
+        result.Reservation.Attempt.ShouldBe(2);
+        store.State!.ActiveReservation!.FencingToken.ShouldBe(8);
+    }
+
+    [Fact]
+    public async Task ActiveReservation_WithNonMatchingFence_RemainsRetryableUntilLeaseExpiry() {
+        ProjectionDeliveryState state = EmptyState() with {
+            ActiveReservation = Reservation(1, "message-1") with { FencingToken = 7 },
+        };
+        var store = new InMemoryProjectionDeliveryStateStore(state);
+        ProjectionDeliveryIdempotencyCoordinator coordinator = CreateCoordinator(store);
+
+        // A caller that is not the current owner (stale or absent fence) must wait for the unexpired
+        // lease to lapse before any reclaim, so it can never cut in front of the live owner.
+        ProjectionDeliveryAdmissionResult result = await coordinator.TryAdmitAsync(
+            Identity,
+            "order-detail",
+            [Event(1)],
+            reclaimSafe: true,
+            resumeFencingToken: 6);
 
         result.Disposition.ShouldBe(ProjectionDeliveryAdmissionDisposition.Retryable);
         result.ReasonCode.ShouldBe(ProjectionDispatchReasonCodes.DeliveryInProgress);

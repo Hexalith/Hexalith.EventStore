@@ -21,23 +21,57 @@ than treating story creation as owner approval.
 
 ## Acceptance Boundary
 
-1. Stories 1.14-1.19 are complete and reviewed, and Story 1.2 platform provenance is
-   complete before lifecycle/provenance evidence is accepted.
+1. Stories 1.14-1.19 are complete and reviewed, Story 1.2 platform provenance is
+   complete before lifecycle/provenance evidence is accepted, and Story 1.16 additionally
+   has a dated follow-up-review disposition tied to the candidate runtime. Its historical
+   `spec-1-11...` filename does not weaken active identity 1.16.
 2. Every parity capability is classified `available` or the packet remains `still blocked`;
    no partial consumer migration is authorized.
 3. Evidence records source/test paths, exact commands, persisted read-back, environment,
    limitations, and rollback guidance; mock-only or HTTP-only proof cannot close a row.
 4. A named EventStore owner reviews the completed exact-SHA evidence and records approval,
    date, durable source, accepted scope, limitations, and migration decision.
-5. Under AD-22, the packet distinguishes and pins: the exact EventStore source commit;
-   exact NuGet package IDs, versions, and hashes; and the exact container repository,
-   immutable digest, and platform set. One identity must never stand in for another.
-6. Consumer repositories verify both gitlink and checkout against the approved source SHA,
-   or exact package/container identities when that is the approved consumption mode.
-7. Any unresolved prerequisite, review, identity, production proof, or owner decision leaves
-   the packet `still blocked`, Story 1.20 non-`done`, and Epic 1 `in-progress`.
+5. Before a runtime SHA is selected, the committed candidate satisfies architecture AD-11,
+   including SDK `10.0.302` and ASP.NET `10.0.10`, or a later approved replacement
+   baseline. Any required pin correction belongs to scoped build/release corrective work,
+   not this evidence-only story.
+6. The selected candidate is tested from a clean detached checkout. The same 40-hex commit
+   is present before and after every production-path, package, and container gate.
+7. `tested_runtime_sha` identifies the unchanged runtime commit.
+   `documentation_commit_sha` identifies the later evidence-only commit that records review
+   results and approvals. A documentation commit never substitutes for the tested runtime.
+8. Under AD-22, the packet separately pins the exact EventStore source SHA; all 14 NuGet
+   package IDs, one exact version, and SHA-256 per package; and the container repository,
+   immutable digest, platform set, and provenance mapping to the tested runtime SHA. Consumer
+   repositories verify both gitlink and checkout against the approved source SHA, or those
+   exact package/container identities when that is the approved consumption mode.
+9. Story 1.16 follow-up review and the final Story 1.20 packet each receive the required
+   named review. External container publication requires explicit release-owner authority
+   before the registry operation. That execution authority is not proof approval; after
+   publication, the completed identity and provenance evidence requires a distinct
+   release-owner disposition, while final proof approval and migration authorization remain
+   with the named EventStore owner.
+10. Any unresolved prerequisite, security baseline, review, runtime identity,
+    production-path result, package/container pin, publication authority, or owner decision
+    keeps `final_decision: still blocked`, Story 1.20 non-`done`, and Epic 1 `in-progress`.
 
 Produces: `1-20-owner-approved-parity-closure-proof-packet.md`.
+
+## Closure Execution Order
+
+1. Repair or explicitly disposition the recorded lifecycle-cleanup defect.
+2. Land the AD-11 security-baseline correction under its owning build/release work.
+3. Select the resulting clean committed runtime SHA.
+4. Run and disposition Story 1.16 follow-up review against that SHA.
+5. Run all detached exact-SHA persisted production-path gates.
+6. Build and hash the exact 14-package inventory.
+7. Record explicit release-owner authority for the external registry operation, then
+   publish and inspect the container and record immutable digest/platform provenance.
+8. Commit the evidence-only documentation update separately.
+9. Obtain named EventStore-owner proof approval, including explicit migration
+   authorization, and the release-owner's separate final disposition of the completed
+   package/container identities and provenance.
+10. Change the packet to `available` and update sprint status only if every gate passes.
 
 ## Review Triage Log
 
@@ -72,10 +106,12 @@ Produces: `1-20-owner-approved-parity-closure-proof-packet.md`.
 Status: blocked
 Blocking condition: prerequisite and owner-approval gate remains unresolved
 
-Summary: Produced and review-hardened a fail-closed parity proof packet. It authorizes no
-consumer migration because Story 1.19 is still in review, no clean runtime SHA has been
-selected and tested, package/container identities are not pinned, and no named EventStore
-owner has approved the evidence.
+Summary: Produced and review-hardened a fail-closed parity proof packet. Story 1.19's review
+is complete and is no longer a prerequisite blocker. The packet authorizes no consumer
+migration because Story 1.16's follow-up review remains undispositioned, the only tested
+clean candidate failed the live-sidecar gate, no replacement runtime has passed every gate,
+package/container identities are not pinned, and no named EventStore owner has approved the
+completed evidence.
 
 Files changed:
 
@@ -99,12 +135,15 @@ Verification performed:
 - xUnit v3 zero-match probe: PASS; a missing class returned zero with `total="0"`, while the positive class listed six methods, validating the packet's explicit guards.
 - Tracked and no-index whitespace checks: PASS; the tracked diff and complete untracked packet are clean.
 - Packet structural checks: PASS; all nine closure classifications remain `still blocked`, and migration authorization remains false.
-- Production-path, package-build, package-consumer, and container publication gates: NOT RUN by design because the prerequisite gate failed before an approvable runtime SHA could be selected.
+- Exact-SHA production-path gate: FAILED for candidate `85877902...`; the full
+  live-sidecar lane and both isolated reproductions retained the lifecycle-cleanup defect.
+- Package-build, package-consumer, and container-publication gates: NOT RUN after the
+  reproducible live failure; Story 1.19's completed review is no longer the blocker.
 
-Residual risks: Story 1.19 still requires final review disposition; Story 1.16's retained
-follow-up recommendation needs explicit reconciliation; exact source/package/container
-identities and persisted production evidence remain absent; named owner approval remains
-absent. No consumer migration is authorized.
+Residual risks: Story 1.19's review is complete and is no longer a blocker. Story 1.16's
+retained follow-up recommendation still needs explicit reconciliation; the failed candidate
+does not supply exact source/package/container identities or complete persisted production
+evidence; named owner approval remains absent. No consumer migration is authorized.
 
 ## Dev Agent Record
 

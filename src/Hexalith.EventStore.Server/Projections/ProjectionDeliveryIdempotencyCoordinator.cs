@@ -129,7 +129,18 @@ internal sealed class ProjectionDeliveryIdempotencyCoordinator(
                     return Failed(ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
                 }
 
-                if (active.ExpiresAt > now) {
+                // The durable retry work item carries the fencing token of the reservation it created.
+                // A caller presenting that exact token is the reservation's rightful owner resuming its
+                // own interrupted delivery after a transient handler failure, so it may reclaim
+                // immediately instead of waiting out the lease. Any caller without the matching token must
+                // wait for the lease to lapse before a safe reclaim, so a stale or competing writer can
+                // never cut in front of the live owner. Reclaim always advances the fencing token, so a
+                // same-token race is resolved by the ETag save below: exactly one reclaim wins and the
+                // loser re-reads an advanced token and is fenced back onto this wait path.
+                bool ownsActiveReservation = resumeFencingToken is { } presentedToken
+                    && active.FencingToken > 0
+                    && presentedToken == active.FencingToken;
+                if (active.ExpiresAt > now && !ownsActiveReservation) {
                     return Retryable(ProjectionDispatchReasonCodes.DeliveryInProgress);
                 }
 
