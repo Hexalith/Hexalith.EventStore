@@ -2,7 +2,7 @@
 title: 'Implement Story 1.16/1.20 Sprint Change Proposal'
 type: 'chore'
 created: '2026-07-16'
-status: 'in-progress'
+status: 'in-review'
 baseline_commit: '4423e03bef8f2e6f9139a143a3fc42ea8c835dfd'
 review_loop_iteration: 5
 context:
@@ -185,16 +185,24 @@ bash -c '
     _bmad-output/implementation-artifacts/spec-1-16-1-20-sprint-change-proposal.md
     _bmad-output/implementation-artifacts/sprint-status.yaml
   )
-  concurrent=(
-    references/Hexalith.FrontComposer
-    src/Hexalith.EventStore.Server/Projections/NamedProjectionDispatchCoordinator.cs
-    tests/Hexalith.EventStore.Server.Tests/Projections/NamedProjectionDispatchCoordinatorTests.cs
+  verify_only=(
+    _bmad-output/implementation-artifacts/deferred-work.md
+    _bmad-output/implementation-artifacts/spec-1-11-complete-projection-freshness-lifecycle.md
   )
+  current_unstaged=(
+    _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
+    _bmad-output/implementation-artifacts/spec-1-16-1-20-sprint-change-proposal.md
+  )
+  test "${#proposal_owned[@]}" -eq 5
+  test "${#verify_only[@]}" -eq 2
+  for path in "${proposal_owned[@]}" "${verify_only[@]}"; do
+    test -e "$path"
+  done
   mapfile -d "" -t records < <(git status --porcelain=v1 -z)
   actual=()
   for record in "${records[@]}"; do actual+=("${record:3}"); done
   diff -u \
-    <(printf "%s\n" "${proposal_owned[@]}" "${concurrent[@]}" | LC_ALL=C sort) \
+    <(printf "%s\n" "${current_unstaged[@]}" | LC_ALL=C sort) \
     <(printf "%s\n" "${actual[@]}" | LC_ALL=C sort)
   git diff --quiet HEAD -- \
     _bmad-output/implementation-artifacts/deferred-work.md \
@@ -202,9 +210,10 @@ bash -c '
 '
 ```
 
-Expected: exit 0. The current worktree contains exactly five proposal-owned changes and the
-three explicitly reported concurrent paths; the deferred ledger and Story 1.16 remain
-byte-identical to `HEAD`.
+Expected: exit 0. The action inventory remains exactly five proposal edits plus two verify-only
+paths. After concurrent commit `f9d1f198`, the current worktree contains exactly the packet and
+this spec; Story/sprint/context changes and the previously reported concurrent work are preserved
+in post-baseline history. The deferred ledger and Story 1.16 remain byte-identical to `HEAD`.
 
 ```bash
 bash -c '
@@ -296,15 +305,34 @@ bash -c '
     fi
   done
 ' _ _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
+
+bash -c '
+  set -euo pipefail
+  manifest="$(mktemp)"
+  platforms="$(mktemp)"
+  expected="$(mktemp)"
+  trap "rm -f -- \"$manifest\" \"$platforms\" \"$expected\"" EXIT
+  printf %s '\''{"manifests":[{"platform":{"os":"linux","architecture":"amd64"}},{"platform":{"os":"linux","architecture":"arm64"}}]}'\'' > "$manifest"
+  IMAGE_DIGEST="sha256:$(sha256sum "$manifest" | awk '\''{print $1}'\'')"
+  test "sha256:$(sha256sum "$manifest" | awk '\''{print $1}'\'')" = "$IMAGE_DIGEST"
+  jq -r '\''.manifests[].platform | "\(.os)/\(.architecture)"'\'' "$manifest" |
+    sort -u > "$platforms"
+  printf "%s\n" linux/amd64 linux/arm64 > "$expected"
+  cmp --silent "$expected" "$platforms"
+  ! test "sha256:$(printf wrong | sha256sum | awk '\''{print $1}'\'')" = "$IMAGE_DIGEST"
+  printf "%s\n" linux/amd64 linux/arm64 linux/s390x > "$platforms"
+  ! cmp --silent "$expected" "$platforms"
+'
 ```
 
 Expected: exit 0. The extracted publication-authority predicate accepts the valid scoped,
-unexpired fixture and rejects blank owner, action-time expiry, and wrong repository.
+unexpired fixture and rejects blank owner, action-time expiry, and wrong repository; the
+manifest probe accepts only its matching raw-byte digest and exact two-platform set.
 
 ```bash
 git status --short --branch
 ```
 
-Expected: the same five proposal-owned and three concurrent paths are visible; no staged,
+Expected: only the packet and spec are currently unstaged; no staged,
 runtime, dependency, package, topology, submodule-content, Parties, or persisted-data edit is
 attributed to this proposal.

@@ -3,7 +3,7 @@ schema: hexalith.eventstore.parity-closure-proof-packet/v1
 story_id: "1.20"
 story_key: 1-20-owner-approved-parity-closure-and-runtime-pin
 created: 2026-07-16T05:09:20+02:00
-updated: 2026-07-16T14:26:50+02:00
+updated: 2026-07-16T14:35:43+02:00
 historical_packet: 1-8-projection-query-sdk-owner-proof-packet.md
 candidate_source_sha: 85877902f8d60a466ab90cd8b68b53838863db1c
 tested_runtime_sha: null
@@ -51,13 +51,13 @@ production-path and package/container gate at that unchanged SHA, explicitly dis
 Story 1.16's retained follow-up recommendation, obtain named EventStore-owner approval,
 and update this packet.
 
-### Exact-SHA Failure And Readiness Re-Audit — Observed 2026-07-16T13:55:26+02:00
+### Exact-SHA Failure And Readiness Re-Audit — Observed 2026-07-16T14:35:43+02:00
 
-- repository identity observed at: `2026-07-16T13:55:26+02:00`
+- repository identity observed at: `2026-07-16T14:35:43+02:00`
 - repository: `https://github.com/Hexalith/Hexalith.EventStore.git`
 - repository root: `/home/administrator/projects/hexalith/eventstore`
 - planning/evidence branch observed: `main`
-- planning/evidence HEAD observed: `6b026f77531b1503fa254782ea7a39916fe4eac5`
+- planning/evidence HEAD observed: `f9d1f1986d87fa375ddab22ccd2cccde96209ec5`
 - tracking state observed: HEAD equalled locally recorded `origin/main`; no claim is made
   about an unfetched remote state
 - failed candidate SHA: `85877902f8d60a466ab90cd8b68b53838863db1c`
@@ -135,16 +135,18 @@ closed:
 1. Final EventStore and release-owner approvals first exist in durable external sources.
    They bind the tested runtime, package hashes, image digest/platform provenance,
    limitations, migration decision, and approved evidence content.
-2. Evidence commit **A** records the completed results and those durable approval references.
-   It leaves `documentation_commit_sha: null`, `final_decision: still blocked`, and
+2. Evidence commit **A** is the single-parent child of the equal candidate/tested runtime,
+   changes only `_bmad-output/`, and records the completed results and those durable approval
+   references. It leaves `documentation_commit_sha: null`, `final_decision: still blocked`, and
    `authorize_consumer_migration: false`; A alone grants no authority.
 3. Pointer-only commit **B**, whose direct parent is A, changes only
    `documentation_commit_sha` from `null` to A's 40-hex SHA. The field identifies A, never B,
    so neither commit self-references. Any other semantic or file change invalidates B.
-4. The executable structural procedure below verifies A's tested-runtime pin, B's direct
-   parent, B's pointer to A, and the exact one-field packet change. Only after it passes may a
-   separate later status-only transition be considered; B itself changes no decision,
-   migration authorization, story status, or sprint status.
+4. The executable structural procedure below verifies A's equal candidate/tested-runtime pin,
+   sole parent, and evidence-only path boundary; B's direct parent and pointer to A; and the
+   exact one-field packet change. Only after it passes may a separate later status-only
+   transition be considered; B itself changes no decision, migration authorization, story
+   status, or sprint status.
 
 ### NuGet package identities
 
