@@ -1,6 +1,6 @@
 ---
 title: eventstore Phase 4 Implementation Readiness Recovery PRD
-status: draft
+status: final
 created: 2026-07-05
 updated: 2026-07-16
 project: eventstore
@@ -46,7 +46,7 @@ source_artifacts:
 
 ## 0. Document Purpose
 
-This PRD is the authoritative Phase 4 functional and non-functional requirements baseline for Hexalith.EventStore. It exists to close the implementation-readiness blocker reported on 2026-07-05: the original epic plan contained FR1-FR35 and NFR1-NFR18, but no standalone PRD existed for PRD-to-epic traceability. The approved 2026-07-11 Parties projection/query parity correction adds FR36. The approved 2026-07-16 payload-protection ownership correction adds FR37 and NFR19 as a committed post-MVP capability; it does not enlarge the Phase 4 MVP.
+This PRD is the authoritative Phase 4 functional and non-functional requirements baseline for Hexalith.EventStore. It exists to close the implementation-readiness blocker reported on 2026-07-05: the original epic plan contained FR1-FR35 and NFR1-NFR18, but no standalone PRD existed for PRD-to-epic traceability. The approved 2026-07-11 Parties projection/query parity correction adds FR36. The approved 2026-07-16 payload-protection ownership correction adds FR37 and NFR19 as a committed post-MVP capability. This capability does not enlarge the Phase 4 MVP.
 
 This document owns product requirement intent, MVP scope, non-goals, success metrics, and FR/NFR traceability. `_bmad-output/planning-artifacts/epics.md` owns implementation slicing and sequencing. The required architecture and UX planning artifacts remain separate handoffs and must not be replaced by this PRD.
 
@@ -61,7 +61,7 @@ The baseline correction does not reduce MVP scope. It separates planning respons
 - `ux.md` must own UI governance, user-flow evidence, and support-safe interaction rules.
 - `epics.md` owns story slicing, sequencing, acceptance criteria, and implementation handoff.
 
-Implementation should not resume as a full Phase 4 package until this PRD, the architecture artifact, the UX artifact, story splits, and high-risk NFR traceability are reconciled and readiness is re-run.
+Implementation should not resume as a full Phase 4 package until this PRD, the architecture artifact, the UX artifact, the story splits, and the high-risk NFR traceability are complete and implementation readiness is re-run.
 
 ## 2. Vision
 
@@ -89,7 +89,7 @@ The central product bet is that Phase 4 succeeds only if platform reuse and oper
 - Operate EventStore with fail-closed auth, tenant isolation, safe secret handling, bounded replay/projection cost, crash recovery, and clear delivery semantics.
 - Release EventStore packages reproducibly from a manifest-governed package set without leaking source-reference or submodule state into release output.
 - Trust UI and admin surfaces because they present accepted, confirmed, deferred, and unavailable states honestly and safely.
-- Prove high-risk behavior with targeted tests that assert persisted Redis/state-store/read-model/CloudEvent evidence, not only HTTP status or mock calls.
+- Prove high-risk behavior with targeted tests that assert persisted evidence from Redis, the state store, read models, and CloudEvents, not only HTTP status or mock calls.
 
 ### 3.3 Product Shape
 
@@ -98,7 +98,7 @@ This is a brownfield developer-platform and operations-hardening PRD. Its primar
 ## 4. Glossary
 
 - **Admin UI** - EventStore administrative Blazor surface. It must never present unavailable backup, restore, import, compaction, or deferred operations as functional.
-- **Aggregate Identity** - The contract identity made from tenant, domain, and aggregate id. EventStore envelope identifiers use ULID semantics where applicable.
+- **Aggregate Identity** - The contract identity made from tenant, domain, and aggregate ID. EventStore envelope identifiers use ULID semantics where applicable.
 - **Architecture Artifact** - `_bmad-output/planning-artifacts/architecture.md`, the Phase 4 decision and invariant document required before implementation readiness can return to READY.
 - **DAPR Boundary** - The state, pub/sub, service invocation, actor, config, access-control, and resiliency infrastructure abstraction boundary.
 - **Domain Module** - A domain-centric EventStore-backed module containing aggregates, commands, events, projections, query handlers, validators, and contracts, but not reusable platform boilerplate.
@@ -115,9 +115,9 @@ This is a brownfield developer-platform and operations-hardening PRD. Its primar
 Phase 4 carries these concerns and the PRD must preserve them through downstream planning:
 
 - Security and fail-closed authorization across public, internal, domain-service, projection-notification, admin, and generated REST surfaces.
-- Tenant isolation across state keys, actor ids, topics, admin queries, generated APIs, SignalR groups, and deployment configuration.
+- Tenant isolation across state keys, actor IDs, topics, admin queries, generated APIs, SignalR groups, and deployment configuration.
 - Public API and package contract stability for EventStore libraries, REST generator output, and domain-service seams.
-- DAPR/Aspire runtime topology parity across AppHost, tests, production component templates, ACLs, app ids, topics, and sidecar arguments.
+- DAPR/Aspire runtime topology parity across AppHost, tests, production component templates, ACLs, app IDs, topics, and sidecar arguments.
 - Event correctness, idempotency, crash recovery, append durability, and delivery semantics under duplicate, concurrent, late, and failure conditions.
 - Release reproducibility, package manifest discipline, submodule path policy, and shared workflow governance.
 - UI governance for FrontComposer and Fluent UI V5 usage, projection-confirmed success, honest unavailable operations, support-safe rendering, accessibility, and localization evidence.
@@ -152,7 +152,7 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 | ID | Requirement |
 | --- | --- |
 | FR11 | The platform must provide a REST API source-generator contract seam with `ICommandContract`, `IQueryContract`, optional `RestRouteAttribute`, and assembly-level `RestApiAttribute`. |
-| FR12 | The REST API generator must discover command/query contracts and emit typed, OpenAPI-visible controllers that delegate to `IEventStoreGatewayClient`, forward canonical query metadata headers when supplied by the gateway, and include tests covering discovery, routing conventions, diagnostics, generated output, query metadata headers, `304`, and safe problem-detail behavior. An accepted generated command must emit an absolute, gateway-authoritative command-status `Location` URI when the gateway supplies a valid target; it must omit `Location` when the target is absent, invalid, or unavailable rather than emit a relative or dangling external-host URI. |
+| FR12 | The REST API generator must discover command and query contracts and emit typed, OpenAPI-visible controllers that delegate to `IEventStoreGatewayClient` and forward canonical query metadata headers when the gateway supplies them. The generator test suite must cover discovery, routing conventions, diagnostics, generated output, query metadata headers, `304`, and safe problem-detail behavior. An accepted generated command must emit an absolute, gateway-authoritative command-status `Location` URI when the gateway supplies a valid target; it must omit `Location` when the target is absent, invalid, or unavailable rather than emit a relative or dangling external-host URI. |
 | FR13 | Generated REST controllers must live in dedicated external-facing API hosts, not interactive UI hosts; interactive UI hosts must consume EventStore client libraries directly. |
 | FR14 | The Sample proof must introduce a contracts-only Sample contracts library and an external Sample API host, move shared contracts there, and prove generated query and command controllers through that external API host. |
 | FR15 | The Tenants proof must move generated Tenants controllers to an external Tenants API host, while Tenants UI consumes client libraries and no longer hosts hand-written per-message controllers; any Tenants freshness, projection-version, ETag, or paging evidence shown by generated APIs or UI must come from the platform query metadata path. |
@@ -171,7 +171,7 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 | FR19 | Root-declared Git submodules must live under `references/`, and solution, project, documentation, Aspire metadata, and LLM instruction paths must resolve through the `references/` layout. |
 | FR20 | The Aspire Keycloak resource must be named `security` while preserving Keycloak as the implementation technology and updating fixtures/resource lookups accordingly. |
 | FR21 | Cross-repo Hexalith library dependencies must use Debug source project references when explicitly enabled and Release package references by default, with package versions pinned centrally. |
-| FR22 | Release restore, build, test, pack, and semantic-release commands must assert package-reference mode and avoid packaging submodule projects. |
+| FR22 | Commands used to restore, build, test, pack, and run semantic-release must assert package-reference mode and avoid packaging submodule projects. |
 | FR25 | EventStore workflows must use shared Hexalith.Builds security gates through `@main`, keep third-party actions SHA-pinned through shared workflows, and define NuGet package publish scope in `tools/release-packages.json`. |
 
 **Done evidence:** Release/package-mode validation cannot publish submodule packages; CI separates release-gate tests from live-sidecar tests; documentation and path scans no longer depend on root-level Hexalith submodule paths.
@@ -182,14 +182,14 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 
 | ID | Requirement |
 | --- | --- |
-| FR23 | Persisted events must receive non-zero, actor-allocated global positions; CloudEvent ids must use the event `MessageId`; duplicate command replies must preserve the original command result fields. |
+| FR23 | Persisted events must receive non-zero, actor-allocated global positions; CloudEvent IDs must use the event `MessageId`; duplicate command replies must preserve the original command result fields. |
 | FR24 | The global-position allocation strategy must be renegotiated toward sharding per tenant or domain, and the frozen global-ordering spec must be updated before implementation. |
-| FR27 | Pipeline correctness remediation must make resume/idempotency matching use `MessageId`, `CausationId`, and `CommandType`; key command status/archive by the gateway-owned status key without depending on `CorrelationId` equaling `MessageId`; preserve retryability for transient failures; and validate tenant access before idempotency reads. |
+| FR27 | Pipeline correctness remediation must make resume and idempotency matching use `MessageId`, `CausationId`, and `CommandType`; key command status and archive records by the gateway-owned status key without depending on `CorrelationId` equaling `MessageId`; preserve retryability for transient failures; and validate tenant access before idempotency reads. |
 | FR29 | Replay and dispatch remediation must make event apply-method resolution boundary-safe and ambiguity-detecting, and must use one shared `JsonSerializerOptions` path for command, rehydrate, project, and pub/sub payload serialization. |
-| FR30 | Crash recovery remediation must detect events committed but not published and complete publication or drain/recover them without requiring resubmission with the same correlation id. |
+| FR30 | Crash recovery remediation must detect events committed but not published and complete their publication, drain them, or recover them without requiring resubmission with the same correlation ID. |
 | FR31 | Append durability remediation must start with a live-sidecar two-writer race test and DAPR conflict-exception spike before choosing an optimistic-concurrency fencing design. |
 
-**Done evidence:** Tests prove CloudEvent id stability, duplicate result fidelity, stale pipeline rejection, replay ambiguity handling, stored-but-unpublished recovery, and real DAPR conflict behavior before append fencing design changes.
+**Done evidence:** Tests prove CloudEvent ID stability, duplicate result fidelity, stale pipeline rejection, replay ambiguity handling, stored-but-unpublished recovery, and real DAPR conflict behavior before append fencing design changes.
 
 ### 6.5 Security And Tenant Isolation
 
@@ -253,9 +253,9 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 | NFR3 | Production authentication must reject insecure symmetric-key mode unless explicitly break-glassed, require HTTPS metadata where appropriate, and pin accepted JWT algorithms. |
 | NFR4 | Committed configuration must not contain forgeable administrator signing keys, credentials, bearer tokens, decoded JWT payloads, or other operational secrets. |
 | NFR5 | SignalR detail metadata must remain bounded and metadata-only; framework logs must not expose metadata values above Debug level. |
-| NFR6 | Event delivery semantics are at-least-once and unordered; subscribers must deduplicate by `MessageId` and order only where domain semantics make `SequenceNumber` meaningful. Duplicate and out-of-order safety must be enforced and proven through the production projection dispatcher, handler, persistence, marker, and checkpoint path rather than only aggregate replay or transport-level tests. |
+| NFR6 | Event delivery semantics are at-least-once and unordered; subscribers must deduplicate by `MessageId` and order events only where domain semantics make `SequenceNumber` meaningful. Safety against duplicate and out-of-order delivery must be enforced and proven through the production projection dispatcher, handler, persistence, marker, and checkpoint path rather than only aggregate replay or transport-level tests. |
 | NFR7 | Event persistence and command processing must avoid silent data loss: staged-state flushes, stale pipeline records, append races, and committed-but-unpublished events must be explicitly guarded or recovered. |
-| NFR8 | Snapshot and projection behavior must have a bounded cost model as streams grow, must avoid unnecessary full-stream replay when already current, and must expose projection freshness/version evidence through platform query metadata when callers depend on lifecycle decisions; freshness/version evidence is authoritative only for query responses whose route provenance is projection-backed, and handler-computed or unknown-provenance responses must not be presented as authoritative lifecycle evidence. Paged rebuild output must equal canonical aggregate replay and must never overwrite a complete live model with page-only state. |
+| NFR8 | Snapshot and projection behavior must have a bounded cost model as streams grow, must avoid unnecessary full-stream replay when projections are already current, and must expose projection freshness/version evidence through platform query metadata when callers depend on lifecycle decisions; freshness/version evidence is authoritative only for query responses whose route provenance is projection-backed, and handler-computed or unknown-provenance responses must not be presented as authoritative lifecycle evidence. Paged rebuild output must equal canonical aggregate replay and must never overwrite a complete live model with page-only state. |
 | NFR9 | Release behavior must be reproducible and independent of local submodule checkout state; Release builds must use package references for external Hexalith libraries unless intentionally overridden. |
 | NFR10 | CI/CD must separate deterministic release-gate tests from live-sidecar/integration tests while preserving live-sidecar coverage in a dedicated lane. |
 | NFR11 | Package publishing must be manifest-driven and must not publish submodule packages or packages outside the EventStore release inventory. |
@@ -281,7 +281,7 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 
 ### 8.2 Identity And Authorization
 
-- Message, correlation, causation, and EventStore aggregate identifiers must use ULID-safe handling where EventStore envelope semantics require sortable unique ids.
+- Message, correlation, causation, and EventStore aggregate identifiers must use ULID-safe handling where EventStore envelope semantics require sortable unique IDs.
 - `Guid.TryParse` is forbidden for `messageId`, `correlationId`, `aggregateId`, and `causationId`.
 - Tenant access must be validated before status, idempotency, state, projection, admin, or generated REST data can disclose resource existence.
 - Domain-service, internal, projection-notification, and admin-computation endpoints require app-layer credentials and must not trust caller-supplied admin flags.
@@ -376,7 +376,7 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 | FR20 | Epic 3 - Aspire Keycloak resource renamed to security |
 | FR21 | Epic 3 - Debug source references and Release package references |
 | FR22 | Epic 3 - Release commands assert package mode and avoid submodule packaging |
-| FR23 | Epic 4 - Non-zero global positions, MessageId CloudEvent ids, duplicate result fidelity |
+| FR23 | Epic 4 - Non-zero global positions, MessageId CloudEvent IDs, duplicate result fidelity |
 | FR24 | Epic 4 - Global-position sharding spec renegotiation |
 | FR25 | Epic 3 - Shared Hexalith.Builds gates and manifest-driven package scope |
 | FR26 | Epic 5 - Phase 0 security and safe-remediation fixes |
