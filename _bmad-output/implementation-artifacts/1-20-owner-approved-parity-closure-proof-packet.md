@@ -201,8 +201,10 @@ approved runtime:
 The following repository-root procedure is mandatory before any capability command below.
 It creates a detached disposable checkout containing only committed inputs, initializes
 only root-declared `references/` submodules, and rejects untracked or ignored inputs before
-restore. Before submodule initialization, restore, build, test, package, or publication, it
-accepts only the exact AD-11 baseline or a durable, in-scope, unexpired replacement record.
+restore. Before restore, build, test, package, or publication, it accepts only the exact AD-11
+baseline or a durable, in-scope, unexpired replacement record; because the AD-11 ASP.NET pins are
+now centrally owned by `Hexalith.Builds`, the check first checks out only that submodule to
+resolve the effective pins.
 It then uses an isolated NuGet/Dotnet cache and defines runners that cannot credit stale
 Release assemblies or zero-match filters.
 
@@ -231,12 +233,16 @@ REPOSITORY_URL="$(git config --get remote.origin.url)"
 REPOSITORY_SDK_VERSION="$(jq -er '.sdk.version | select(type == "string" and test("\\S"))' global.json)"
 REPOSITORY_SDK_ROLL_FORWARD="$(jq -er '.sdk.rollForward | select(type == "string" and test("\\S"))' global.json)"
 INSTALLED_SDK_VERSION="$(dotnet --version)"
-ASPNET_PIN_COUNT="$(grep -Ec '<PackageVersion Include="Microsoft\.AspNetCore\.(SignalR\.Client|SignalR\.StackExchangeRedis|DataProtection\.Abstractions)" Version="[^"]+" */>' Directory.Packages.props)"
-test "$ASPNET_PIN_COUNT" -eq 3
-mapfile -t ASPNET_PIN_VERSIONS < <(
-  sed -nE 's/.*<PackageVersion Include="Microsoft\.AspNetCore\.(SignalR\.Client|SignalR\.StackExchangeRedis|DataProtection\.Abstractions)" Version="([^"]+)" *\/>.*/\2/p' \
-    Directory.Packages.props | sort -u
-)
+# AD-11 ASP.NET pins are centrally owned by Hexalith.Builds (no longer redefined
+# locally), so resolve the effective versions from the import graph. Checking out
+# only the Builds submodule is a source checkout, not a restore/build/publish gate.
+git submodule update --init --checkout -- references/Hexalith.Builds
+ASPNET_PIN_SOURCES=(Directory.Packages.props references/Hexalith.Builds/Props/Directory.Packages.props)
+mapfile -t ASPNET_PIN_PAIRS < <(
+  sed -nE 's/.*<PackageVersion Include="(Microsoft\.AspNetCore\.(SignalR\.Client|SignalR\.StackExchangeRedis|DataProtection\.Abstractions))" Version="([^"]+)" *\/>.*/\1 \3/p' \
+    "${ASPNET_PIN_SOURCES[@]}")
+test "$(printf '%s\n' "${ASPNET_PIN_PAIRS[@]}" | awk 'NF{print $1}' | sort -u | grep -c .)" -eq 3
+mapfile -t ASPNET_PIN_VERSIONS < <(printf '%s\n' "${ASPNET_PIN_PAIRS[@]}" | awk 'NF{print $2}' | sort -u)
 test "${#ASPNET_PIN_VERSIONS[@]}" -eq 1
 REPOSITORY_ASPNET_VERSION="${ASPNET_PIN_VERSIONS[0]}"
 dotnet --list-runtimes > "$EVIDENCE_ROOT/dotnet-runtimes.txt"
