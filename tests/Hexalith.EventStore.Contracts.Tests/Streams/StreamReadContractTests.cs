@@ -86,6 +86,7 @@ public class StreamReadContractTests {
         StreamReplayReasonCodes.CheckpointConflict.ShouldBe("checkpoint-conflict");
         StreamReplayReasonCodes.CheckpointDrift.ShouldBe("checkpoint-drift");
         StreamReplayReasonCodes.RebuildPaused.ShouldBe("rebuild-paused");
+        StreamReplayReasonCodes.RebuildPrefixSafetyLimitExceeded.ShouldBe("rebuild_prefix_safety_limit_exceeded");
         StreamReplayReasonCodes.OperatorPreempted.ShouldBe("operator-preempted");
         StreamReplayReasonCodes.DomainFailure.ShouldBe("domain-failure");
         StreamReplayReasonCodes.PollerRebuildConflict.ShouldBe("poller-rebuild-conflict");

@@ -93,6 +93,7 @@ public static class DomainProjectionDispatcher {
         options.Validate();
         identityOptions.Validate();
         ValidateRequest(dispatchRequest, options);
+        ValidateRebuildEventHistory(dispatchRequest.Request.Events, options.MaxRebuildEventCount);
 
         IAsyncDomainProjectionHandler[] allHandlers = DomainProjectionHandlerRouteValidator
             .MaterializeAndValidateNamed(serviceProvider.GetServices<IAsyncDomainProjectionHandler>(), options);
@@ -385,6 +386,26 @@ public static class DomainProjectionDispatcher {
 
         if (dispatchRequest.ProjectionTypes.Distinct(StringComparer.Ordinal).Count() != dispatchRequest.ProjectionTypes.Count) {
             throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.DuplicateRoute);
+        }
+    }
+
+    private static void ValidateRebuildEventHistory(
+        IReadOnlyList<ProjectionEventDto> events,
+        int maxEventCount) {
+        if (events.Count > maxEventCount) {
+            throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.MalformedOutcome);
+        }
+
+        long expectedSequence = 1;
+        foreach (ProjectionEventDto item in events) {
+            if (item.SequenceNumber != expectedSequence
+                || item.Payload is null
+                || string.IsNullOrWhiteSpace(item.EventTypeName)
+                || string.IsNullOrWhiteSpace(item.SerializationFormat)) {
+                throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.MalformedOutcome);
+            }
+
+            expectedSequence++;
         }
     }
 

@@ -29,6 +29,26 @@ internal interface IProjectionLifecycleGateway {
         string projectionName,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Reads phase and revision for a version-coherent projection query.</summary>
+    Task<ProjectionLifecycleSnapshot> ReadSnapshotAsync(
+        AggregateIdentity identity,
+        string projectionName,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Acquires a persisted delivery lease held through the complete projection write.</summary>
+    Task<bool> BeginDeliveryWriteAsync(
+        AggregateIdentity identity,
+        string projectionName,
+        string operationId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Releases the matching persisted delivery lease.</summary>
+    Task<bool> CompleteDeliveryWriteAsync(
+        AggregateIdentity identity,
+        string projectionName,
+        string operationId,
+        CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Reports whether a projection delivery write is admitted for the given projection scope.
     /// </summary>

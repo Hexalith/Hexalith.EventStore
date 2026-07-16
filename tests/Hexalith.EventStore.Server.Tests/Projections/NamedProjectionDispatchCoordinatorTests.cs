@@ -50,6 +50,7 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
         result.Succeeded.ShouldBeTrue();
         result.Outcomes.Select(static outcome => outcome.ProjectionType)
             .ShouldBe(["widget-detail", "widget-index"]);
+        result.LifecycleProjectionTypes.ShouldBe(["widget-detail", "widget-index"]);
         handler.RequestUri!.AbsolutePath.ShouldEndWith("/project/rebuild/v1");
         ProjectionDispatchRequest request = JsonSerializer.Deserialize<ProjectionDispatchRequest>(
             handler.RequestJson!,
@@ -59,7 +60,9 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
         request.ProjectionTypes.ShouldBe(["widget-detail", "widget-index"]);
         _ = await checkpoints.DidNotReceiveWithAnyArgs().ReadDeliveredSequenceAsync(default!, default!, default);
         _ = await checkpoints.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default!, default, default);
-        _ = await lifecycle.DidNotReceiveWithAnyArgs().TryAdmitDeliveryWriteAsync(default!, default!, default);
+        _ = await lifecycle.DidNotReceiveWithAnyArgs().BeginDeliveryWriteAsync(default!, default!, default!, default);
+        _ = await lifecycle.Received(1).BeginRebuildAsync(Identity, "widget-detail", "operation-1", Arg.Any<CancellationToken>());
+        _ = await lifecycle.Received(1).BeginRebuildAsync(Identity, "widget-index", "operation-1", Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -91,6 +94,69 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
         result.Succeeded.ShouldBeFalse();
         result.Outcomes[0].Status.ShouldBe(ProjectionDispatchStatus.Completed);
         result.Outcomes[1].Status.ShouldBe(ProjectionDispatchStatus.Retryable);
+    }
+
+    [Fact]
+    public void NamedProjectionRebuildResult_AnyFailedRequiredRouteIsTerminal() {
+        var result = new NamedProjectionRebuildResult(
+            Owned: true,
+            Succeeded: false,
+            [
+                new ProjectionDispatchOutcome(
+                    "widget-detail",
+                    ProjectionDispatchStatus.Failed,
+                    null,
+                    ProjectionDispatchReasonCodes.HandlerFailure),
+                new ProjectionDispatchOutcome(
+                    "widget-index",
+                    ProjectionDispatchStatus.Retryable,
+                    null,
+                    ProjectionDispatchReasonCodes.PartialRetry),
+            ],
+            ["widget-detail", "widget-index"]);
+
+        result.IsTerminalFailure.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task TryDispatchAsync_FirstLifecycleReleaseFailureStillAttemptsEveryRoute() {
+        string responseJson = JsonSerializer.Serialize(new ProjectionDispatchResponse(
+            ProjectionDispatchProtocol.Version,
+            [
+                new ProjectionDispatchOutcome("widget-detail", ProjectionDispatchStatus.Completed, null, null),
+                new ProjectionDispatchOutcome("widget-index", ProjectionDispatchStatus.Completed, null, null),
+            ]));
+        NamedProjectionDispatchCoordinator coordinator = CreateCoordinator(
+            Snapshot("fingerprint", "widget-detail", "widget-index"),
+            new ProjectionDispatchHttpMessageHandler(responseJson),
+            out IProjectionDeliveryCheckpointStore checkpoints,
+            out IProjectionLifecycleGateway lifecycle);
+        _ = checkpoints.ReadDeliveredSequenceAsync(Identity, Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(0);
+        _ = checkpoints.SaveDeliveredSequenceAsync(Identity, Arg.Any<string>(), 1, Arg.Any<CancellationToken>()).Returns(true);
+        _ = lifecycle.CompleteDeliveryWriteAsync(
+                Identity,
+                Arg.Any<string>(),
+                "message-1",
+                CancellationToken.None)
+            .Returns(call => !string.Equals(call.ArgAt<string>(1), "widget-detail", StringComparison.Ordinal));
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => coordinator.TryDispatchAsync(
+            Identity,
+            Registration(),
+            [Envelope(1)],
+            [ProjectionEvent(1)],
+            CancellationToken.None));
+
+        _ = await lifecycle.Received(1).CompleteDeliveryWriteAsync(
+            Identity,
+            "widget-detail",
+            "message-1",
+            CancellationToken.None);
+        _ = await lifecycle.Received(1).CompleteDeliveryWriteAsync(
+            Identity,
+            "widget-index",
+            "message-1",
+            CancellationToken.None);
     }
 
     [Fact]
@@ -130,7 +196,8 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
         _ = checkpoints.ReadDeliveredSequenceAsync(Identity, "widget-detail", Arg.Any<CancellationToken>()).Returns(0);
         _ = checkpoints.SaveDeliveredSequenceAsync(Identity, "widget-detail", 1, Arg.Any<CancellationToken>()).Returns(true);
         IProjectionLifecycleGateway lifecycle = Substitute.For<IProjectionLifecycleGateway>();
-        _ = lifecycle.TryAdmitDeliveryWriteAsync(Identity, "widget-detail", Arg.Any<CancellationToken>()).Returns(true);
+        _ = lifecycle.BeginDeliveryWriteAsync(Identity, "widget-detail", Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
+        _ = lifecycle.CompleteDeliveryWriteAsync(Identity, "widget-detail", Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
         IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
         httpClientFactory.CreateClient(Arg.Any<string>()).Returns(new HttpClient(handler));
         var coordinator = new NamedProjectionDispatchCoordinator(
@@ -176,7 +243,7 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
             out IProjectionLifecycleGateway lifecycle);
         _ = checkpoints.ReadDeliveredSequenceAsync(Identity, Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(0);
         _ = checkpoints.SaveDeliveredSequenceAsync(Identity, Arg.Any<string>(), 2, Arg.Any<CancellationToken>()).Returns(true);
-        _ = lifecycle.TryAdmitDeliveryWriteAsync(Identity, Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
+        _ = lifecycle.BeginDeliveryWriteAsync(Identity, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
 
         bool handled = await coordinator.TryDispatchAsync(
             Identity,
@@ -215,7 +282,7 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
             out IProjectionLifecycleGateway lifecycle);
         _ = checkpoints.ReadDeliveredSequenceAsync(Identity, "widget-detail", Arg.Any<CancellationToken>()).Returns(3);
         _ = checkpoints.ReadDeliveredSequenceAsync(Identity, "widget-index", Arg.Any<CancellationToken>()).Returns(0);
-        _ = lifecycle.TryAdmitDeliveryWriteAsync(Identity, "widget-index", Arg.Any<CancellationToken>()).Returns(false);
+        _ = lifecycle.BeginDeliveryWriteAsync(Identity, "widget-index", Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(false);
 
         bool handled = await coordinator.TryDispatchAsync(
             Identity,
@@ -251,7 +318,7 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
             timeProvider);
         _ = checkpoints.ReadDeliveredSequenceAsync(Identity, Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(0);
         _ = checkpoints.SaveDeliveredSequenceAsync(Identity, Arg.Any<string>(), 2, Arg.Any<CancellationToken>()).Returns(true);
-        _ = lifecycle.TryAdmitDeliveryWriteAsync(Identity, Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
+        _ = lifecycle.BeginDeliveryWriteAsync(Identity, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
 
         _ = await coordinator.TryDispatchAsync(
             Identity,
@@ -293,7 +360,7 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
             scheduler,
             timeProvider);
         _ = checkpoints.ReadDeliveredSequenceAsync(Identity, "widget-detail", Arg.Any<CancellationToken>()).Returns(0);
-        _ = lifecycle.TryAdmitDeliveryWriteAsync(Identity, "widget-detail", Arg.Any<CancellationToken>()).Returns(true);
+        _ = lifecycle.BeginDeliveryWriteAsync(Identity, "widget-detail", Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
 
         _ = await coordinator.TryDispatchAsync(
             Identity,
@@ -333,7 +400,7 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
             scheduler,
             new FakeTimeProvider(now));
         _ = checkpoints.ReadDeliveredSequenceAsync(Identity, "widget-detail", Arg.Any<CancellationToken>()).Returns(0);
-        _ = lifecycle.TryAdmitDeliveryWriteAsync(Identity, "widget-detail", Arg.Any<CancellationToken>()).Returns(true);
+        _ = lifecycle.BeginDeliveryWriteAsync(Identity, "widget-detail", Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
 
         _ = await coordinator.TryDispatchAsync(
             Identity,
@@ -373,7 +440,7 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
             scheduler,
             new FakeTimeProvider(now));
         _ = checkpoints.ReadDeliveredSequenceAsync(Identity, "widget-detail", Arg.Any<CancellationToken>()).Returns(0);
-        _ = lifecycle.TryAdmitDeliveryWriteAsync(Identity, "widget-detail", Arg.Any<CancellationToken>()).Returns(true);
+        _ = lifecycle.BeginDeliveryWriteAsync(Identity, "widget-detail", Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
 
         _ = await coordinator.TryDispatchAsync(
             Identity,
@@ -417,7 +484,7 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
             actorProxyFactory: actorProxyFactory);
         _ = checkpoints.ReadDeliveredSequenceAsync(Identity, "widget-detail", Arg.Any<CancellationToken>()).Returns(0);
         _ = checkpoints.SaveDeliveredSequenceAsync(Identity, "widget-detail", 2, Arg.Any<CancellationToken>()).Returns(true);
-        _ = lifecycle.TryAdmitDeliveryWriteAsync(Identity, "widget-detail", Arg.Any<CancellationToken>()).Returns(true);
+        _ = lifecycle.BeginDeliveryWriteAsync(Identity, "widget-detail", Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
 
         _ = await coordinator.TryDispatchAsync(
             Identity,
@@ -427,10 +494,11 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
             CancellationToken.None);
 
         Received.InOrder(() => {
-            _ = lifecycle.TryAdmitDeliveryWriteAsync(Identity, "widget-detail", Arg.Any<CancellationToken>());
+            _ = lifecycle.BeginDeliveryWriteAsync(Identity, "widget-detail", Arg.Any<string>(), Arg.Any<CancellationToken>());
             _ = writeActor.UpdateProjectionAsync(Arg.Any<ProjectionState>());
             _ = eTagActor.RegenerateAsync();
             _ = checkpoints.SaveDeliveredSequenceAsync(Identity, "widget-detail", 2, Arg.Any<CancellationToken>());
+            _ = lifecycle.CompleteDeliveryWriteAsync(Identity, "widget-detail", Arg.Any<string>(), CancellationToken.None);
         });
     }
 
@@ -475,7 +543,7 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
             out IProjectionDeliveryCheckpointStore checkpoints,
             out IProjectionLifecycleGateway lifecycle,
             idempotencyCoordinator: idempotency);
-        _ = lifecycle.TryAdmitDeliveryWriteAsync(Identity, Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
+        _ = lifecycle.BeginDeliveryWriteAsync(Identity, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
 
         _ = await coordinator.TryDispatchAsync(
             Identity,
@@ -535,7 +603,7 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
             scheduler,
             new FakeTimeProvider(now),
             idempotencyCoordinator: idempotency);
-        _ = lifecycle.TryAdmitDeliveryWriteAsync(Identity, "widget-detail", Arg.Any<CancellationToken>()).Returns(true);
+        _ = lifecycle.BeginDeliveryWriteAsync(Identity, "widget-detail", Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
 
         _ = await coordinator.TryDispatchAsync(
             Identity,
@@ -583,7 +651,7 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
                 out IProjectionDeliveryCheckpointStore checkpoints,
                 out IProjectionLifecycleGateway lifecycle);
             _ = checkpoints.ReadDeliveredSequenceAsync(Identity, "widget-detail", Arg.Any<CancellationToken>()).Returns(0);
-            _ = lifecycle.TryAdmitDeliveryWriteAsync(Identity, "widget-detail", Arg.Any<CancellationToken>()).Returns(true);
+            _ = lifecycle.BeginDeliveryWriteAsync(Identity, "widget-detail", Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
 
             _ = await coordinator.TryDispatchAsync(
                 Identity,
@@ -609,6 +677,24 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
         catalog.Replace(snapshot);
         checkpoints = Substitute.For<IProjectionDeliveryCheckpointStore>();
         lifecycle = Substitute.For<IProjectionLifecycleGateway>();
+        _ = lifecycle.BeginRebuildAsync(
+                Arg.Any<AggregateIdentity>(),
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+        _ = lifecycle.BeginDeliveryWriteAsync(
+                Arg.Any<AggregateIdentity>(),
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+        _ = lifecycle.CompleteDeliveryWriteAsync(
+                Arg.Any<AggregateIdentity>(),
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
         var httpClientFactory = Substitute.For<IHttpClientFactory>();
         httpClientFactory.CreateClient(Arg.Any<string>()).Returns(new HttpClient(handler));
         if (scheduler is not null) {

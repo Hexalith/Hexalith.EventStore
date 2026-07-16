@@ -68,6 +68,7 @@ public static class EventStoreServerServiceCollectionExtensions {
         services.TryAddSingleton<IProjectionDeliveryReconciler, ProjectionDeliveryReconciler>();
         services.TryAddSingleton<IProjectionDeliveryCutover, ProjectionDeliveryCutover>();
         services.TryAddSingleton<IProjectionLifecycleGateway, DaprProjectionLifecycleGateway>();
+        services.TryAddSingleton<IProjectionRebuildWriteGateway, DaprProjectionRebuildWriteGateway>();
         services.TryAddSingleton<IProjectionSlotRegistry>(ProjectionSlotServiceCollectionExtensions.BuildSlotRegistry);
         services.TryAddSingleton<IProjectionReadModelAddressFactory, ProjectionReadModelAddressFactory>();
         services.TryAddSingleton<IProjectionRebuildCheckpointStore, ProjectionRebuildCheckpointStore>();

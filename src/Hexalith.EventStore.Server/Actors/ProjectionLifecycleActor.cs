@@ -36,7 +36,8 @@ public partial class ProjectionLifecycleActor(ActorHost host, ILogger<Projection
                 ProjectionLifecyclePhase.Rebuilding,
                 request.OperationId,
                 ManifestDigest: null,
-                new Dictionary<string, string>(StringComparer.Ordinal)))
+                new Dictionary<string, string>(StringComparer.Ordinal),
+                checked(state.Revision + 1)))
             .ConfigureAwait(false);
         return true;
     }
@@ -55,7 +56,8 @@ public partial class ProjectionLifecycleActor(ActorHost host, ILogger<Projection
                 ProjectionLifecyclePhase.Idle,
                 OperationId: null,
                 ManifestDigest: null,
-                new Dictionary<string, string>(StringComparer.Ordinal)))
+                new Dictionary<string, string>(StringComparer.Ordinal),
+                checked(state.Revision + 1)))
             .ConfigureAwait(false);
         return true;
     }
@@ -65,12 +67,61 @@ public partial class ProjectionLifecycleActor(ActorHost host, ILogger<Projection
         => (await ReadStateAsync().ConfigureAwait(false)).Phase;
 
     /// <inheritdoc/>
+    public async Task<ProjectionLifecycleSnapshot> ReadSnapshotAsync() {
+        ProjectionLifecycleActorState state = await ReadStateAsync().ConfigureAwait(false);
+        return new ProjectionLifecycleSnapshot(state.Phase, state.Revision);
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> BeginDeliveryWriteAsync(ProjectionDeliveryLifecycleRequest request) {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.OperationId);
+        ProjectionLifecycleActorState state = await ReadStateAsync().ConfigureAwait(false);
+        if (state.Phase == ProjectionLifecyclePhase.Delivering) {
+            return string.Equals(state.OperationId, request.OperationId, StringComparison.Ordinal);
+        }
+
+        if (state.Phase != ProjectionLifecyclePhase.Idle) {
+            return false;
+        }
+
+        await PersistStateAsync(new ProjectionLifecycleActorState(
+                ProjectionLifecyclePhase.Delivering,
+                request.OperationId,
+                ManifestDigest: null,
+                new Dictionary<string, string>(StringComparer.Ordinal),
+                checked(state.Revision + 1)))
+            .ConfigureAwait(false);
+        return true;
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> CompleteDeliveryWriteAsync(ProjectionDeliveryLifecycleRequest request) {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.OperationId);
+        ProjectionLifecycleActorState state = await ReadStateAsync().ConfigureAwait(false);
+        if (state.Phase != ProjectionLifecyclePhase.Delivering
+            || !string.Equals(state.OperationId, request.OperationId, StringComparison.Ordinal)) {
+            return false;
+        }
+
+        await PersistStateAsync(new ProjectionLifecycleActorState(
+                ProjectionLifecyclePhase.Idle,
+                OperationId: null,
+                ManifestDigest: null,
+                new Dictionary<string, string>(StringComparer.Ordinal),
+                checked(state.Revision + 1)))
+            .ConfigureAwait(false);
+        return true;
+    }
+
+    /// <inheritdoc/>
     public async Task<ProjectionEraseAdmission> BeginEraseAsync(ProjectionEraseBeginRequest request) {
         ArgumentNullException.ThrowIfNull(request);
 
         ProjectionLifecycleActorState state = await ReadStateAsync().ConfigureAwait(false);
 
-        if (state.Phase == ProjectionLifecyclePhase.Rebuilding) {
+        if (state.Phase is ProjectionLifecyclePhase.Rebuilding or ProjectionLifecyclePhase.Delivering) {
             Log.EraseConflict(logger, Host.Id.GetId(), request.OperationId, state.OperationId ?? string.Empty);
             return new ProjectionEraseAdmission(
                 ProjectionEraseAdmissionKind.Conflict,
@@ -111,7 +162,8 @@ public partial class ProjectionLifecycleActor(ActorHost host, ILogger<Projection
             ProjectionLifecyclePhase.Erasing,
             request.OperationId,
             request.ManifestDigest,
-            new Dictionary<string, string>(StringComparer.Ordinal));
+            new Dictionary<string, string>(StringComparer.Ordinal),
+            checked(state.Revision + 1));
         await PersistStateAsync(admitted).ConfigureAwait(false);
 
         Log.EraseAdmitted(logger, Host.Id.GetId(), request.OperationId, request.ManifestDigest);
@@ -153,7 +205,8 @@ public partial class ProjectionLifecycleActor(ActorHost host, ILogger<Projection
                 ProjectionLifecyclePhase.Idle,
                 OperationId: null,
                 ManifestDigest: null,
-                new Dictionary<string, string>(StringComparer.Ordinal)))
+                new Dictionary<string, string>(StringComparer.Ordinal),
+                checked(state.Revision + 1)))
             .ConfigureAwait(false);
 
         Log.EraseCompleted(logger, Host.Id.GetId(), request.OperationId);
@@ -241,4 +294,5 @@ internal sealed record ProjectionLifecycleActorState(
     ProjectionLifecyclePhase Phase,
     string? OperationId,
     string? ManifestDigest,
-    Dictionary<string, string> PerTargetOutcomes);
+    Dictionary<string, string> PerTargetOutcomes,
+    long Revision = 0);

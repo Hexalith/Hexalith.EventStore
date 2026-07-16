@@ -142,19 +142,119 @@ public class QueryRouterTests {
                     Lifecycle = ProjectionLifecycleState.Current,
                 }));
         IProjectionLifecycleGateway lifecycle = Substitute.For<IProjectionLifecycleGateway>();
-        _ = lifecycle.ReadPhaseAsync(
+        _ = lifecycle.ReadSnapshotAsync(
                 Arg.Any<AggregateIdentity>(),
                 "orders",
                 Arg.Any<CancellationToken>())
-            .Returns(ProjectionLifecyclePhase.Rebuilding);
+            .Returns(new ProjectionLifecycleSnapshot(ProjectionLifecyclePhase.Rebuilding, 1));
         var router = new QueryRouter(invoker, NullLogger<QueryRouter>.Instance, lifecycle);
 
-        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery(projectionType: "orders"));
 
         result.Metadata.ShouldNotBeNull().Provenance.ShouldBe(QueryResponseProvenance.ProjectionBacked);
         result.Metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Rebuilding);
         result.Metadata.IsStale.ShouldBeNull();
         result.Metadata.ProjectionVersion.ShouldBe("2");
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_PersistedDeliveryPhaseDoesNotExposeCurrentEvidence() {
+        JsonElement payload = JsonSerializer.SerializeToElement(new { value = 42 });
+        IProjectionActorInvoker invoker = Substitute.For<IProjectionActorInvoker>();
+        _ = invoker.InvokeAsync(
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<QueryEnvelope>(),
+                Arg.Any<CancellationToken>())
+            .Returns(QueryResult.FromPayload(
+                payload,
+                "orders",
+                new QueryResponseMetadata(IsStale: false, ProjectionVersion: "2") {
+                    Lifecycle = ProjectionLifecycleState.Current,
+                }));
+        IProjectionLifecycleGateway lifecycle = Substitute.For<IProjectionLifecycleGateway>();
+        _ = lifecycle.ReadSnapshotAsync(
+                Arg.Any<AggregateIdentity>(),
+                "orders",
+                Arg.Any<CancellationToken>())
+            .Returns(new ProjectionLifecycleSnapshot(ProjectionLifecyclePhase.Delivering, 1));
+        var router = new QueryRouter(invoker, NullLogger<QueryRouter>.Instance, lifecycle);
+
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery(projectionType: "orders"));
+
+        result.Metadata.ShouldNotBeNull().Provenance.ShouldBe(QueryResponseProvenance.ProjectionBacked);
+        result.Metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Unknown);
+        result.Metadata.IsStale.ShouldBeNull();
+        result.Metadata.ProjectionVersion.ShouldBe("2");
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_LifecycleStoreFailureReturnsUnknownWithoutStaleEvidence() {
+        JsonElement payload = JsonSerializer.SerializeToElement(new { value = 42 });
+        IProjectionActorInvoker invoker = Substitute.For<IProjectionActorInvoker>();
+        _ = invoker.InvokeAsync(
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<QueryEnvelope>(),
+                Arg.Any<CancellationToken>())
+            .Returns(QueryResult.FromPayload(
+                payload,
+                "orders",
+                new QueryResponseMetadata(IsStale: false, ProjectionVersion: "2") {
+                    Lifecycle = ProjectionLifecycleState.Current,
+                }));
+        IProjectionLifecycleGateway lifecycle = Substitute.For<IProjectionLifecycleGateway>();
+        _ = lifecycle.ReadSnapshotAsync(
+                Arg.Any<AggregateIdentity>(),
+                "orders",
+                Arg.Any<CancellationToken>())
+            .Returns<ProjectionLifecycleSnapshot>(_ => throw new InvalidOperationException("state store unavailable"));
+        var router = new QueryRouter(invoker, NullLogger<QueryRouter>.Instance, lifecycle);
+
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery(projectionType: "orders"));
+
+        result.Success.ShouldBeTrue();
+        result.Metadata.ShouldNotBeNull().Lifecycle.ShouldBe(ProjectionLifecycleState.Unknown);
+        result.Metadata.IsStale.ShouldBeNull();
+        _ = await invoker.Received(2).InvokeAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<QueryEnvelope>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_LifecycleRevisionChangesAroundReadRetriesPayload() {
+        IProjectionActorInvoker invoker = Substitute.For<IProjectionActorInvoker>();
+        _ = invoker.InvokeAsync(
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<QueryEnvelope>(),
+                Arg.Any<CancellationToken>())
+            .Returns(
+                QueryResult.FromPayload(JsonSerializer.SerializeToElement(new { value = 1 }), "orders"),
+                QueryResult.FromPayload(JsonSerializer.SerializeToElement(new { value = 2 }), "orders"));
+        IProjectionLifecycleGateway lifecycle = Substitute.For<IProjectionLifecycleGateway>();
+        _ = lifecycle.ReadSnapshotAsync(
+                Arg.Any<AggregateIdentity>(),
+                "orders",
+                Arg.Any<CancellationToken>())
+            .Returns(
+                new ProjectionLifecycleSnapshot(ProjectionLifecyclePhase.Idle, 0),
+                new ProjectionLifecycleSnapshot(ProjectionLifecyclePhase.Idle, 1),
+                new ProjectionLifecycleSnapshot(ProjectionLifecyclePhase.Idle, 1),
+                new ProjectionLifecycleSnapshot(ProjectionLifecyclePhase.Idle, 1));
+        var router = new QueryRouter(invoker, NullLogger<QueryRouter>.Instance, lifecycle);
+
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery(projectionType: "orders"));
+
+        result.Success.ShouldBeTrue();
+        result.Payload.ShouldNotBeNull().GetProperty("value").GetInt32().ShouldBe(2);
+        _ = await invoker.Received(2).InvokeAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<QueryEnvelope>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Theory]

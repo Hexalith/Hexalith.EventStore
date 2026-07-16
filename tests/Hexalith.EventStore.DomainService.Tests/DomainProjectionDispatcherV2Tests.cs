@@ -477,6 +477,71 @@ public sealed class DomainProjectionDispatcherV2Tests {
     }
 
     [Fact]
+    public async Task RebuildAsync_NonCanonicalEventHistoriesAreRejectedBeforePreparation() {
+        IAsyncDomainProjectionRebuildHandler handler = CreateRebuildHandler("widget", "widget-detail");
+        IReadModelBatchStore batchStore = Substitute.For<IReadModelBatchStore>();
+        using ServiceProvider provider = BuildRebuildProvider(batchStore, handler);
+        string fingerprint = ProjectionRouteCatalogFingerprint.Compute(
+            "widget-service",
+            "v1",
+            [new ProjectionDispatchRoute("widget", "widget-detail")]);
+        long[][] invalidSequences = [[2], [1, 3], [1, 1], [2, 1]];
+
+        foreach (long[] sequences in invalidSequences) {
+            var request = new ProjectionDispatchRequest(
+                new ProjectionRequest(
+                    "tenant-a",
+                    "widget",
+                    "widget-1",
+                    [.. sequences.Select(ProjectionEvent)]),
+                ["widget-detail"],
+                "dispatch-1",
+                fingerprint);
+
+            ProjectionDispatchValidationException exception = await Should.ThrowAsync<ProjectionDispatchValidationException>(() =>
+                DomainProjectionDispatcher.RebuildAsync(
+                    provider,
+                    request,
+                    new ProjectionDispatchOptions(),
+                    new DomainProjectionIdentityOptions { AppId = "widget-service", ServiceVersion = "v1" },
+                    CancellationToken.None));
+
+            exception.ReasonCode.ShouldBe(ProjectionDispatchReasonCodes.MalformedOutcome);
+        }
+
+        _ = handler.DidNotReceiveWithAnyArgs().PrepareRebuildAsync(default!, default!, default);
+        _ = await batchStore.DidNotReceiveWithAnyArgs().ExecuteAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task RebuildAsync_EventHistoryOverConfiguredBoundIsRejectedBeforePreparation() {
+        IAsyncDomainProjectionRebuildHandler handler = CreateRebuildHandler("widget", "widget-detail");
+        IReadModelBatchStore batchStore = Substitute.For<IReadModelBatchStore>();
+        using ServiceProvider provider = BuildRebuildProvider(batchStore, handler);
+        string fingerprint = ProjectionRouteCatalogFingerprint.Compute(
+            "widget-service",
+            "v1",
+            [new ProjectionDispatchRoute("widget", "widget-detail")]);
+        var request = new ProjectionDispatchRequest(
+            new ProjectionRequest("tenant-a", "widget", "widget-1", [ProjectionEvent(1), ProjectionEvent(2)]),
+            ["widget-detail"],
+            "dispatch-1",
+            fingerprint);
+
+        ProjectionDispatchValidationException exception = await Should.ThrowAsync<ProjectionDispatchValidationException>(() =>
+            DomainProjectionDispatcher.RebuildAsync(
+                provider,
+                request,
+                new ProjectionDispatchOptions { MaxRebuildEventCount = 1 },
+                new DomainProjectionIdentityOptions { AppId = "widget-service", ServiceVersion = "v1" },
+                CancellationToken.None));
+
+        exception.ReasonCode.ShouldBe(ProjectionDispatchReasonCodes.MalformedOutcome);
+        _ = handler.DidNotReceiveWithAnyArgs().PrepareRebuildAsync(default!, default!, default);
+        _ = await batchStore.DidNotReceiveWithAnyArgs().ExecuteAsync(default!, default);
+    }
+
+    [Fact]
     public void DomainProjectionRebuildPlan_OperationsCannotBeMutatedThroughRuntimeListShape() {
         var plan = new DomainProjectionRebuildPlan(
             "statestore",
@@ -569,4 +634,15 @@ public sealed class DomainProjectionDispatcherV2Tests {
             projectionTypes,
             "dispatch-1",
             fingerprint);
+
+    private static ProjectionEventDto ProjectionEvent(long sequence)
+        => new(
+            "widget-updated",
+            [],
+            "json",
+            sequence,
+            DateTimeOffset.UnixEpoch,
+            "correlation-1",
+            $"message-{sequence}",
+            "user-1");
 }

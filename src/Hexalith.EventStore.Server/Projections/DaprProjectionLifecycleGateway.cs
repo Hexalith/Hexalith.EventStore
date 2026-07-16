@@ -57,6 +57,43 @@ internal sealed class DaprProjectionLifecycleGateway(IActorProxyFactory actorPro
     }
 
     /// <inheritdoc/>
+    public Task<ProjectionLifecycleSnapshot> ReadSnapshotAsync(
+        AggregateIdentity identity,
+        string projectionName,
+        CancellationToken cancellationToken = default) {
+        ActorProxy proxy = CreateProxy(identity, projectionName);
+        return proxy.InvokeMethodAsync<ProjectionLifecycleSnapshot>(
+            nameof(IProjectionLifecycleActor.ReadSnapshotAsync),
+            cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<bool> BeginDeliveryWriteAsync(
+        AggregateIdentity identity,
+        string projectionName,
+        string operationId,
+        CancellationToken cancellationToken = default) {
+        ActorProxy proxy = CreateProxy(identity, projectionName);
+        return proxy.InvokeMethodAsync<ProjectionDeliveryLifecycleRequest, bool>(
+            nameof(IProjectionLifecycleActor.BeginDeliveryWriteAsync),
+            new ProjectionDeliveryLifecycleRequest(operationId),
+            cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<bool> CompleteDeliveryWriteAsync(
+        AggregateIdentity identity,
+        string projectionName,
+        string operationId,
+        CancellationToken cancellationToken = default) {
+        ActorProxy proxy = CreateProxy(identity, projectionName);
+        return proxy.InvokeMethodAsync<ProjectionDeliveryLifecycleRequest, bool>(
+            nameof(IProjectionLifecycleActor.CompleteDeliveryWriteAsync),
+            new ProjectionDeliveryLifecycleRequest(operationId),
+            cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public async Task<bool> TryAdmitDeliveryWriteAsync(AggregateIdentity identity, string projectionName, CancellationToken cancellationToken = default) {
         ActorProxy proxy = CreateProxy(identity, projectionName);
         ProjectionDeliveryAdmission admission = await proxy

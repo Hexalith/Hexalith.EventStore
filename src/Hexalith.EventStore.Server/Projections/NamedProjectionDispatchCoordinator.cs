@@ -64,42 +64,114 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                     identity.Domain,
                     out catalogEntry)
                 || catalogEntry is null) {
-                return new NamedProjectionRebuildResult(Owned: false, Succeeded: true, []);
+                return new NamedProjectionRebuildResult(Owned: false, Succeeded: true, [], []);
             }
         }
 
         string[] requiredRoutes = [.. catalogEntry.ProjectionTypes.Order(StringComparer.Ordinal)];
-        var request = new ProjectionDispatchRequest(
-            new ProjectionRequest(
-                identity.TenantId,
-                identity.Domain,
-                identity.AggregateId,
-                projectionEvents),
-            requiredRoutes,
-            operationId,
-            catalogEntry.CatalogFingerprint);
-        ProjectionDispatchResponse? response = await InvokeAsync(
-                registration.AppId,
-                "project/rebuild/v1",
-                request,
-                dispatchOptions,
-                cancellationToken)
-            .ConfigureAwait(false);
-        if (response is null) {
-            return new NamedProjectionRebuildResult(Owned: true, Succeeded: false, []);
-        }
+        var lifecycleProjectionTypes = new List<string>(requiredRoutes.Length);
+        try {
+            foreach (string projectionType in requiredRoutes) {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!await lifecycleGateway
+                    .BeginRebuildAsync(identity, projectionType, operationId, cancellationToken)
+                    .ConfigureAwait(false)) {
+                    ProjectionDispatchOutcome[] denied = [.. requiredRoutes.Select(route => new ProjectionDispatchOutcome(
+                    route,
+                    ProjectionDispatchStatus.Retryable,
+                    null,
+                    ProjectionDispatchReasonCodes.DeliveryInProgress))];
+                    return new NamedProjectionRebuildResult(
+                        Owned: true,
+                        Succeeded: false,
+                        denied,
+                        lifecycleProjectionTypes);
+                }
 
-        Dictionary<string, ProjectionDispatchOutcome> validOutcomes = ValidateOutcomes(
-            response,
-            requiredRoutes,
-            dispatchOptions);
-        ProjectionDispatchOutcome[] orderedOutcomes = [.. requiredRoutes
-            .Where(validOutcomes.ContainsKey)
-            .Select(route => validOutcomes[route])];
-        bool succeeded = orderedOutcomes.Length == requiredRoutes.Length
-            && orderedOutcomes.All(static outcome =>
-                outcome.Status is ProjectionDispatchStatus.Completed or ProjectionDispatchStatus.AlreadyCompleted);
-        return new NamedProjectionRebuildResult(Owned: true, succeeded, orderedOutcomes);
+                lifecycleProjectionTypes.Add(projectionType);
+            }
+
+            var request = new ProjectionDispatchRequest(
+                new ProjectionRequest(
+                    identity.TenantId,
+                    identity.Domain,
+                    identity.AggregateId,
+                    projectionEvents),
+                requiredRoutes,
+                operationId,
+                catalogEntry.CatalogFingerprint);
+            ProjectionDispatchResponse? response = await InvokeAsync(
+                    registration.AppId,
+                    "project/rebuild/v1",
+                    request,
+                    dispatchOptions,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            if (response is null) {
+                ProjectionDispatchOutcome[] indeterminate = [.. requiredRoutes.Select(route => new ProjectionDispatchOutcome(
+                route,
+                ProjectionDispatchStatus.Indeterminate,
+                null,
+                ProjectionDispatchReasonCodes.HandlerFailure))];
+                return new NamedProjectionRebuildResult(
+                    Owned: true,
+                    Succeeded: false,
+                    indeterminate,
+                    lifecycleProjectionTypes);
+            }
+
+            Dictionary<string, ProjectionDispatchOutcome> validOutcomes = ValidateOutcomes(
+                response,
+                requiredRoutes,
+                dispatchOptions);
+            ProjectionDispatchOutcome[] orderedOutcomes = [.. requiredRoutes.Select(route =>
+            validOutcomes.TryGetValue(route, out ProjectionDispatchOutcome? outcome)
+                ? outcome
+                : new ProjectionDispatchOutcome(
+                    route,
+                    ProjectionDispatchStatus.Indeterminate,
+                    null,
+                    ProjectionDispatchReasonCodes.MalformedOutcome))];
+            bool succeeded = orderedOutcomes.Length == requiredRoutes.Length
+                && orderedOutcomes.All(static outcome =>
+                    outcome.Status is ProjectionDispatchStatus.Completed or ProjectionDispatchStatus.AlreadyCompleted);
+            return new NamedProjectionRebuildResult(
+                Owned: true,
+                succeeded,
+                orderedOutcomes,
+                lifecycleProjectionTypes);
+        }
+        catch {
+            foreach (string projectionType in lifecycleProjectionTypes) {
+                try {
+                    bool completed = await lifecycleGateway
+                        .CompleteRebuildAsync(identity, projectionType, operationId, CancellationToken.None)
+                        .ConfigureAwait(false);
+                    if (!completed) {
+                        Log.LifecycleReleaseFailed(
+                            logger,
+                            identity.TenantId,
+                            identity.Domain,
+                            identity.AggregateId,
+                            projectionType,
+                            operationId,
+                            "completion-rejected");
+                    }
+                }
+                catch (Exception exception) when (exception is not OperationCanceledException) {
+                    Log.LifecycleReleaseFailed(
+                        logger,
+                        identity.TenantId,
+                        identity.Domain,
+                        identity.AggregateId,
+                        projectionType,
+                        operationId,
+                        exception.GetType().Name);
+                }
+            }
+
+            throw;
+        }
     }
 
     /// <inheritdoc/>
@@ -234,220 +306,267 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         var completedRoutes = new HashSet<string>(StringComparer.Ordinal);
         var terminalRoutes = new HashSet<string>(scheduledWork.TerminalRoutes, StringComparer.Ordinal);
         var reservations = new Dictionary<string, ProjectionDeliveryReservation>(StringComparer.Ordinal);
-        foreach (string projectionType in catalogEntry.ProjectionTypes
-            .Where(pendingRoutes.Contains)
-            .Order(StringComparer.Ordinal)) {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (idempotencyCoordinator is null) {
-                long deliveredSequence = await checkpointStore
-                    .ReadDeliveredSequenceAsync(identity, projectionType, cancellationToken)
-                    .ConfigureAwait(false);
-                if (deliveredSequence > highestSequence) {
+        var lifecycleLeases = new HashSet<string>(StringComparer.Ordinal);
+        try {
+            foreach (string projectionType in catalogEntry.ProjectionTypes
+                .Where(pendingRoutes.Contains)
+                .Order(StringComparer.Ordinal)) {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (idempotencyCoordinator is null) {
+                    long deliveredSequence = await checkpointStore
+                        .ReadDeliveredSequenceAsync(identity, projectionType, cancellationToken)
+                        .ConfigureAwait(false);
+                    if (deliveredSequence > highestSequence) {
+                        Log.RouteNotAdmitted(
+                            logger,
+                            identity.TenantId,
+                            identity.Domain,
+                            identity.AggregateId,
+                            projectionType,
+                            ProjectionReasonCodes.CheckpointDrift);
+
+                        // A checkpoint already ahead of this head will never need this delivery. Treat the
+                        // route as terminally settled for this work item (mirroring the v1 terminal no-op)
+                        // so the item can converge and be deleted rather than deferring this route forever.
+                        _ = settledRoutes.Add(projectionType);
+                        continue;
+                    }
+                }
+
+                if (!await lifecycleGateway
+                    .BeginDeliveryWriteAsync(
+                        identity,
+                        projectionType,
+                        scheduledWork.DispatchId,
+                        cancellationToken)
+                    .ConfigureAwait(false)) {
                     Log.RouteNotAdmitted(
                         logger,
                         identity.TenantId,
                         identity.Domain,
                         identity.AggregateId,
                         projectionType,
-                        ProjectionReasonCodes.CheckpointDrift);
+                        ProjectionReasonCodes.DeliveryDeferredForErase);
 
-                    // A checkpoint already ahead of this head will never need this delivery. Treat the
-                    // route as terminally settled for this work item (mirroring the v1 terminal no-op)
-                    // so the item can converge and be deleted rather than deferring this route forever.
-                    _ = settledRoutes.Add(projectionType);
+                    // Lifecycle denial (e.g. erase in progress) may lift later; keep the route pending.
                     continue;
                 }
-            }
 
-            if (!await lifecycleGateway
-                .TryAdmitDeliveryWriteAsync(identity, projectionType, cancellationToken)
-                .ConfigureAwait(false)) {
-                Log.RouteNotAdmitted(
-                    logger,
-                    identity.TenantId,
-                    identity.Domain,
-                    identity.AggregateId,
-                    projectionType,
-                    ProjectionReasonCodes.DeliveryDeferredForErase);
+                _ = lifecycleLeases.Add(projectionType);
 
-                // Lifecycle denial (e.g. erase in progress) may lift later; keep the route pending.
-                continue;
-            }
+                if (idempotencyCoordinator is not null) {
+                    ProjectionDeliveryAdmissionResult admission = await idempotencyCoordinator
+                        .TryAdmitAsync(
+                            identity,
+                            projectionType,
+                            projectionEvents,
+                            reclaimSafe: true,
+                            cancellationToken,
+                            scheduledWork.ReservationFencingTokens.TryGetValue(projectionType, out long token)
+                                ? token
+                                : null)
+                        .ConfigureAwait(false);
+                    ProjectionDeliveryDiagnostics.RecordAdmission(projectionType, admission);
+                    if (admission.Disposition == ProjectionDeliveryAdmissionDisposition.Dispatch) {
+                        admittedRoutes.Add(projectionType);
+                        reservations.Add(projectionType, admission.Reservation!);
+                        continue;
+                    }
 
-            if (idempotencyCoordinator is not null) {
-                ProjectionDeliveryAdmissionResult admission = await idempotencyCoordinator
-                    .TryAdmitAsync(
-                        identity,
+                    if (!await lifecycleGateway
+                        .CompleteDeliveryWriteAsync(
+                            identity,
+                            projectionType,
+                            scheduledWork.DispatchId,
+                            CancellationToken.None)
+                        .ConfigureAwait(false)) {
+                        throw new InvalidOperationException("Named projection delivery lifecycle lease completion was rejected.");
+                    }
+
+                    _ = lifecycleLeases.Remove(projectionType);
+
+                    Log.RouteNotAdmitted(
+                        logger,
+                        identity.TenantId,
+                        identity.Domain,
+                        identity.AggregateId,
                         projectionType,
-                        projectionEvents,
-                        reclaimSafe: true,
-                        cancellationToken,
-                        scheduledWork.ReservationFencingTokens.TryGetValue(projectionType, out long token)
-                            ? token
-                            : null)
-                    .ConfigureAwait(false);
-                ProjectionDeliveryDiagnostics.RecordAdmission(projectionType, admission);
-                if (admission.Disposition == ProjectionDeliveryAdmissionDisposition.Dispatch) {
-                    admittedRoutes.Add(projectionType);
-                    reservations.Add(projectionType, admission.Reservation!);
+                        admission.ReasonCode ?? ProjectionDispatchReasonCodes.DeliveryStateUnavailable);
+                    if (admission.Disposition == ProjectionDeliveryAdmissionDisposition.AlreadyCompleted) {
+                        _ = completedRoutes.Add(projectionType);
+                    }
+                    else if (admission.Disposition == ProjectionDeliveryAdmissionDisposition.Failed) {
+                        _ = terminalRoutes.Add(projectionType);
+                    }
+
                     continue;
                 }
 
-                Log.RouteNotAdmitted(
-                    logger,
-                    identity.TenantId,
-                    identity.Domain,
-                    identity.AggregateId,
-                    projectionType,
-                    admission.ReasonCode ?? ProjectionDispatchReasonCodes.DeliveryStateUnavailable);
-                if (admission.Disposition == ProjectionDeliveryAdmissionDisposition.AlreadyCompleted) {
-                    _ = completedRoutes.Add(projectionType);
+                admittedRoutes.Add(projectionType);
+            }
+
+            if (admittedRoutes.Count == 0) {
+                // Nothing to dispatch this round. Prune settled (drift-ahead) routes: if only lifecycle-
+                // deferred routes remain this re-schedules with backoff, otherwise it deletes the item.
+                await ReconcileRetryLedgerAsync(
+                        scheduledWork,
+                        completedRoutes,
+                        terminalRoutes,
+                        settledRoutes,
+                        reservations,
+                        dispatchOptions,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+                return true;
+            }
+
+            var projectionRequest = new ProjectionRequest(
+                identity.TenantId,
+                identity.Domain,
+                identity.AggregateId,
+                projectionEvents);
+            var dispatchRequest = new ProjectionDispatchRequest(
+                projectionRequest,
+                admittedRoutes,
+                scheduledWork.DispatchId,
+                scheduledWork.CatalogFingerprint);
+
+            ProjectionDispatchResponse? dispatchResponse = await InvokeAsync(
+                registration.AppId,
+                "project/v2",
+                dispatchRequest,
+                dispatchOptions,
+                cancellationToken).ConfigureAwait(false);
+            if (dispatchResponse is null) {
+                await DeferAsync(
+                        scheduledWork,
+                        ProjectionDispatchReasonCodes.PartialRetry,
+                        dispatchOptions,
+                        cancellationToken,
+                        reservations)
+                    .ConfigureAwait(false);
+                return true;
+            }
+
+            Dictionary<string, ProjectionDispatchOutcome> validOutcomes = ValidateOutcomes(
+                dispatchResponse,
+                admittedRoutes,
+                dispatchOptions);
+            foreach (string projectionType in admittedRoutes) {
+                if (idempotencyCoordinator is null) {
+                    cancellationToken.ThrowIfCancellationRequested();
                 }
-                else if (admission.Disposition == ProjectionDeliveryAdmissionDisposition.Failed) {
+
+                long started = Stopwatch.GetTimestamp();
+                if (!validOutcomes.TryGetValue(projectionType, out ProjectionDispatchOutcome? outcome)) {
+                    Log.RouteOutcome(
+                        logger,
+                        identity.TenantId,
+                        identity.Domain,
+                        identity.AggregateId,
+                        projectionType,
+                        ProjectionDispatchStatus.Indeterminate,
+                        Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+                    continue;
+                }
+
+                if (outcome.Status is ProjectionDispatchStatus.Completed or ProjectionDispatchStatus.AlreadyCompleted) {
+                    try {
+                        using CancellationTokenSource? finalization = idempotencyCoordinator is null
+                            ? null
+                            : new CancellationTokenSource(TimeSpan.FromSeconds(30), _timeProvider);
+                        CancellationToken finalizationToken = finalization?.Token ?? cancellationToken;
+                        if (outcome.State is not null) {
+                            await WriteLegacyActorStateAsync(identity, projectionType, outcome.State.Value, finalizationToken)
+                                .ConfigureAwait(false);
+                        }
+
+                        if (idempotencyCoordinator is not null) {
+                            ProjectionDeliveryCompletion completion = await idempotencyCoordinator
+                                .CompleteAsync(
+                                    identity,
+                                    projectionType,
+                                    projectionEvents,
+                                    reservations[projectionType],
+                                    finalizationToken)
+                                .ConfigureAwait(false);
+                            ProjectionDeliveryDiagnostics.RecordCompletion(projectionType, completion);
+                            if (completion is ProjectionDeliveryCompletion.Completed or ProjectionDeliveryCompletion.AlreadyCompleted) {
+                                _ = completedRoutes.Add(projectionType);
+                            }
+                        }
+                        else if (await checkpointStore
+                            .SaveDeliveredSequenceAsync(identity, projectionType, highestSequence, finalizationToken)
+                            .ConfigureAwait(false)) {
+                            _ = completedRoutes.Add(projectionType);
+                        }
+                    }
+                    catch (OperationCanceledException) {
+                        throw;
+                    }
+                    catch (Exception) {
+                        // Durable handler work may already exist. Leave this projection pending for stable-id retry.
+                    }
+                }
+                else if (outcome.Status == ProjectionDispatchStatus.Failed) {
+                    if (idempotencyCoordinator is not null) {
+                        using var release = new CancellationTokenSource(TimeSpan.FromSeconds(30), _timeProvider);
+                        _ = await idempotencyCoordinator
+                            .TryReleaseAsync(identity, projectionType, reservations[projectionType], release.Token)
+                            .ConfigureAwait(false);
+                    }
+
                     _ = terminalRoutes.Add(projectionType);
                 }
 
-                continue;
-            }
-
-            admittedRoutes.Add(projectionType);
-        }
-
-        if (admittedRoutes.Count == 0) {
-            // Nothing to dispatch this round. Prune settled (drift-ahead) routes: if only lifecycle-
-            // deferred routes remain this re-schedules with backoff, otherwise it deletes the item.
-            await ReconcileRetryLedgerAsync(
-                    scheduledWork,
-                    completedRoutes,
-                    terminalRoutes,
-                    settledRoutes,
-                    reservations,
-                    dispatchOptions,
-                    cancellationToken)
-                .ConfigureAwait(false);
-            return true;
-        }
-
-        var projectionRequest = new ProjectionRequest(
-            identity.TenantId,
-            identity.Domain,
-            identity.AggregateId,
-            projectionEvents);
-        var dispatchRequest = new ProjectionDispatchRequest(
-            projectionRequest,
-            admittedRoutes,
-            scheduledWork.DispatchId,
-            scheduledWork.CatalogFingerprint);
-
-        ProjectionDispatchResponse? dispatchResponse = await InvokeAsync(
-            registration.AppId,
-            "project/v2",
-            dispatchRequest,
-            dispatchOptions,
-            cancellationToken).ConfigureAwait(false);
-        if (dispatchResponse is null) {
-            await DeferAsync(
-                    scheduledWork,
-                    ProjectionDispatchReasonCodes.PartialRetry,
-                    dispatchOptions,
-                    cancellationToken,
-                    reservations)
-                .ConfigureAwait(false);
-            return true;
-        }
-
-        Dictionary<string, ProjectionDispatchOutcome> validOutcomes = ValidateOutcomes(
-            dispatchResponse,
-            admittedRoutes,
-            dispatchOptions);
-        foreach (string projectionType in admittedRoutes) {
-            if (idempotencyCoordinator is null) {
-                cancellationToken.ThrowIfCancellationRequested();
-            }
-
-            long started = Stopwatch.GetTimestamp();
-            if (!validOutcomes.TryGetValue(projectionType, out ProjectionDispatchOutcome? outcome)) {
                 Log.RouteOutcome(
                     logger,
                     identity.TenantId,
                     identity.Domain,
                     identity.AggregateId,
                     projectionType,
-                    ProjectionDispatchStatus.Indeterminate,
+                    outcome.Status,
                     Stopwatch.GetElapsedTime(started).TotalMilliseconds);
-                continue;
             }
 
-            if (outcome.Status is ProjectionDispatchStatus.Completed or ProjectionDispatchStatus.AlreadyCompleted) {
-                try {
-                    using CancellationTokenSource? finalization = idempotencyCoordinator is null
-                        ? null
-                        : new CancellationTokenSource(TimeSpan.FromSeconds(30), _timeProvider);
-                    CancellationToken finalizationToken = finalization?.Token ?? cancellationToken;
-                    if (outcome.State is not null) {
-                        await WriteLegacyActorStateAsync(identity, projectionType, outcome.State.Value, finalizationToken)
-                            .ConfigureAwait(false);
-                    }
+            await ReconcileRetryLedgerAsync(
+                    scheduledWork,
+                    completedRoutes,
+                terminalRoutes,
+                settledRoutes,
+                reservations,
+                dispatchOptions,
+                    cancellationToken)
+                .ConfigureAwait(false);
 
-                    if (idempotencyCoordinator is not null) {
-                        ProjectionDeliveryCompletion completion = await idempotencyCoordinator
-                            .CompleteAsync(
-                                identity,
-                                projectionType,
-                                projectionEvents,
-                                reservations[projectionType],
-                                finalizationToken)
-                            .ConfigureAwait(false);
-                        ProjectionDeliveryDiagnostics.RecordCompletion(projectionType, completion);
-                        if (completion is ProjectionDeliveryCompletion.Completed or ProjectionDeliveryCompletion.AlreadyCompleted) {
-                            _ = completedRoutes.Add(projectionType);
-                        }
-                    }
-                    else if (await checkpointStore
-                        .SaveDeliveredSequenceAsync(identity, projectionType, highestSequence, finalizationToken)
-                        .ConfigureAwait(false)) {
-                        _ = completedRoutes.Add(projectionType);
-                    }
-                }
-                catch (OperationCanceledException) {
-                    throw;
-                }
-                catch (Exception) {
-                    // Durable handler work may already exist. Leave this projection pending for stable-id retry.
-                }
-            }
-            else if (outcome.Status == ProjectionDispatchStatus.Failed) {
-                if (idempotencyCoordinator is not null) {
-                    using var release = new CancellationTokenSource(TimeSpan.FromSeconds(30), _timeProvider);
-                    _ = await idempotencyCoordinator
-                        .TryReleaseAsync(identity, projectionType, reservations[projectionType], release.Token)
-                        .ConfigureAwait(false);
-                }
-
-                _ = terminalRoutes.Add(projectionType);
-            }
-
-            Log.RouteOutcome(
-                logger,
-                identity.TenantId,
-                identity.Domain,
-                identity.AggregateId,
-                projectionType,
-                outcome.Status,
-                Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+            return true;
         }
+        finally {
+            Exception? lifecycleCompletionFailure = null;
+            foreach (string projectionType in lifecycleLeases) {
+                try {
+                    if (!await lifecycleGateway
+                        .CompleteDeliveryWriteAsync(
+                            identity,
+                            projectionType,
+                            scheduledWork.DispatchId,
+                            CancellationToken.None)
+                        .ConfigureAwait(false)) {
+                        lifecycleCompletionFailure ??= new InvalidOperationException(
+                            "Named projection delivery lifecycle lease completion was rejected.");
+                    }
+                }
+                catch (Exception exception) {
+                    lifecycleCompletionFailure ??= exception;
+                }
+            }
 
-        await ReconcileRetryLedgerAsync(
-                scheduledWork,
-                completedRoutes,
-            terminalRoutes,
-            settledRoutes,
-            reservations,
-            dispatchOptions,
-                cancellationToken)
-            .ConfigureAwait(false);
-
-        return true;
+            if (lifecycleCompletionFailure is not null) {
+                throw new InvalidOperationException(
+                    "One or more named projection delivery lifecycle leases could not be completed.",
+                    lifecycleCompletionFailure);
+            }
+        }
     }
 
     /// <summary>
@@ -689,6 +808,19 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
             string tenantId,
             string domain,
             string aggregateId,
+            string reasonCode);
+
+        [LoggerMessage(
+            EventId = 4653,
+            Level = LogLevel.Error,
+            Message = "Named projection lifecycle release failed: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, ProjectionType={ProjectionType}, OperationId={OperationId}, ReasonCode={ReasonCode}, Stage=NamedProjectionLifecycleRelease")]
+        public static partial void LifecycleReleaseFailed(
+            ILogger logger,
+            string tenantId,
+            string domain,
+            string aggregateId,
+            string projectionType,
+            string operationId,
             string reasonCode);
     }
 }

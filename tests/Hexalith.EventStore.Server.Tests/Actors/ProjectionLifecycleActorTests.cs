@@ -86,6 +86,36 @@ public class ProjectionLifecycleActorTests {
     }
 
     [Fact]
+    public async Task DeliveryLease_BlocksRebuildAndEraseUntilMatchingCompletion() {
+        (ProjectionLifecycleActor actor, _) = CreateActor();
+
+        (await actor.BeginDeliveryWriteAsync(new ProjectionDeliveryLifecycleRequest("delivery-1"))).ShouldBeTrue();
+        (await actor.BeginDeliveryWriteAsync(new ProjectionDeliveryLifecycleRequest("delivery-1"))).ShouldBeTrue();
+        (await actor.BeginDeliveryWriteAsync(new ProjectionDeliveryLifecycleRequest("delivery-2"))).ShouldBeFalse();
+        (await actor.BeginRebuildAsync(new ProjectionRebuildLifecycleRequest("rebuild-1"))).ShouldBeFalse();
+        ProjectionEraseAdmission erase = await actor.BeginEraseAsync(
+            new ProjectionEraseBeginRequest("erase-1", "digest-1"));
+
+        erase.Kind.ShouldBe(ProjectionEraseAdmissionKind.Conflict);
+        (await actor.CompleteDeliveryWriteAsync(new ProjectionDeliveryLifecycleRequest("delivery-2"))).ShouldBeFalse();
+        (await actor.CompleteDeliveryWriteAsync(new ProjectionDeliveryLifecycleRequest("delivery-1"))).ShouldBeTrue();
+        (await actor.BeginRebuildAsync(new ProjectionRebuildLifecycleRequest("rebuild-1"))).ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ReadSnapshotAsync_RevisionChangesOnlyOnPersistedLifecycleTransitions() {
+        (ProjectionLifecycleActor actor, _) = CreateActor();
+
+        (await actor.ReadSnapshotAsync()).ShouldBe(new ProjectionLifecycleSnapshot(ProjectionLifecyclePhase.Idle, 0));
+        (await actor.BeginDeliveryWriteAsync(new ProjectionDeliveryLifecycleRequest("delivery-1"))).ShouldBeTrue();
+        (await actor.ReadSnapshotAsync()).ShouldBe(new ProjectionLifecycleSnapshot(ProjectionLifecyclePhase.Delivering, 1));
+        (await actor.BeginDeliveryWriteAsync(new ProjectionDeliveryLifecycleRequest("delivery-1"))).ShouldBeTrue();
+        (await actor.ReadSnapshotAsync()).Revision.ShouldBe(1);
+        (await actor.CompleteDeliveryWriteAsync(new ProjectionDeliveryLifecycleRequest("delivery-1"))).ShouldBeTrue();
+        (await actor.ReadSnapshotAsync()).ShouldBe(new ProjectionLifecycleSnapshot(ProjectionLifecyclePhase.Idle, 2));
+    }
+
+    [Fact]
     public async Task BeginEraseAsync_FromIdle_AdmitsAndPersistsErasingPhase() {
         (ProjectionLifecycleActor actor, InMemoryStateManager stateManager) = CreateActor();
 

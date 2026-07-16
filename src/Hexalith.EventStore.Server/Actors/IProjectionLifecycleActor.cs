@@ -18,6 +18,9 @@ public enum ProjectionLifecyclePhase {
 
     /// <summary>A rebuild operation is in progress; ordinary delivery writes are deferred.</summary>
     Rebuilding = 2,
+
+    /// <summary>An admitted delivery owns the lifecycle scope until its projection write completes.</summary>
+    Delivering = 3,
 }
 
 /// <summary>
@@ -105,6 +108,20 @@ public interface IProjectionLifecycleActor : IActor {
     /// <summary>Reads the persisted lifecycle phase.</summary>
     /// <returns>The current persisted phase, or idle when state is absent.</returns>
     Task<ProjectionLifecyclePhase> ReadPhaseAsync();
+
+    /// <summary>Reads the phase together with its monotonic transition revision.</summary>
+    /// <returns>Versioned persisted lifecycle evidence.</returns>
+    Task<ProjectionLifecycleSnapshot> ReadSnapshotAsync();
+
+    /// <summary>Begins or resumes a delivery lease that fences rebuild and erase admission.</summary>
+    /// <param name="request">The stable delivery identity.</param>
+    /// <returns>True when the matching delivery owns the lifecycle scope.</returns>
+    Task<bool> BeginDeliveryWriteAsync(ProjectionDeliveryLifecycleRequest request);
+
+    /// <summary>Releases the matching delivery lease after every projection write has finished.</summary>
+    /// <param name="request">The stable delivery identity.</param>
+    /// <returns>True when the matching lease was released.</returns>
+    Task<bool> CompleteDeliveryWriteAsync(ProjectionDeliveryLifecycleRequest request);
 
     /// <summary>
     /// Begins (or resumes) an erase operation, transitioning the phase to

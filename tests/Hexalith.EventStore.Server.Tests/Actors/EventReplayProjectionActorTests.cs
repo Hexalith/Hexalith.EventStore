@@ -75,6 +75,59 @@ public class EventReplayProjectionActorTests {
     }
 
     [Fact]
+    public async Task StageProjectionAsync_PersistsCandidateWithoutChangingLiveState() {
+        (EventReplayProjectionActor actor, IActorStateManager stateManager, IProjectionChangeNotifier notifier, _) = CreateActor();
+        ProjectionState state = CreateTestState();
+        var candidate = new ProjectionRebuildCandidate("operation-1", state);
+        _ = stateManager.TryGetStateAsync<ProjectionRebuildCandidate>(
+                EventReplayProjectionActor.ProjectionRebuildCandidateKey,
+                Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<ProjectionRebuildCandidate>(false, default!));
+
+        await actor.StageProjectionAsync(candidate);
+
+        await stateManager.Received(1).SetStateAsync(
+            EventReplayProjectionActor.ProjectionRebuildCandidateKey,
+            candidate,
+            Arg.Any<CancellationToken>());
+        await stateManager.DidNotReceive().SetStateAsync(
+            EventReplayProjectionActor.ProjectionStateKey,
+            Arg.Any<ProjectionState>(),
+            Arg.Any<CancellationToken>());
+        await notifier.DidNotReceiveWithAnyArgs().NotifyProjectionChangedAsync(default!, default!, default, default);
+    }
+
+    [Fact]
+    public async Task PromoteProjectionAsync_MatchingCandidateSwapsLiveStateBeforeNotification() {
+        (EventReplayProjectionActor actor, IActorStateManager stateManager, IProjectionChangeNotifier notifier, _) = CreateActor();
+        ProjectionState state = CreateTestState();
+        var candidate = new ProjectionRebuildCandidate("operation-1", state);
+        _ = stateManager.TryGetStateAsync<ProjectionRebuildCandidate>(
+                EventReplayProjectionActor.ProjectionRebuildCandidateKey,
+                Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<ProjectionRebuildCandidate>(true, candidate));
+
+        bool promoted = await actor.PromoteProjectionAsync(new ProjectionRebuildCandidateOperation("operation-1"));
+
+        promoted.ShouldBeTrue();
+        Received.InOrder(() => {
+            _ = stateManager.SetStateAsync(
+                EventReplayProjectionActor.ProjectionStateKey,
+                state,
+                Arg.Any<CancellationToken>());
+            _ = stateManager.RemoveStateAsync(
+                EventReplayProjectionActor.ProjectionRebuildCandidateKey,
+                Arg.Any<CancellationToken>());
+            _ = stateManager.SaveStateAsync(Arg.Any<CancellationToken>());
+            _ = notifier.NotifyProjectionChangedAsync(
+                TestProjectionType,
+                TestTenantId,
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>());
+        });
+    }
+
+    [Fact]
     public async Task UpdateProjectionAsync_WithCancellationToken_PassesTokenToActorStateAndNotifier() {
         (EventReplayProjectionActor actor, IActorStateManager stateManager, IProjectionChangeNotifier notifier, _) = CreateActor();
         ProjectionState state = CreateTestState();

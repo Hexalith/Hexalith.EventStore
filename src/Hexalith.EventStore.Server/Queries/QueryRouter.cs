@@ -106,31 +106,59 @@ public partial class QueryRouter : IQueryRouter {
             query.Paging);
 
         try {
-            QueryResult? result = await _invoker.InvokeAsync(actorId, actorTypeName, envelope, cancellationToken).ConfigureAwait(false);
-
-            if (result is null) {
-                Log.QueryExecutionFailed(_logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, QueryAdapterFailureReason.ActorResponseMismatch);
-                return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: QueryAdapterFailureReason.ActorResponseMismatch);
-            }
-
-            if (!result.Success) {
-                Log.QueryExecutionFailed(_logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, GetSafeLogErrorMessage(result.ErrorMessage));
-                return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: result.ErrorMessage, Metadata: result.Metadata);
-            }
-
-            if (result.PayloadBytes is not { Length: > 0 }) {
-                Log.QueryExecutionFailed(_logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, QueryAdapterFailureReason.MissingPayload);
-                return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: QueryAdapterFailureReason.MissingPayload);
-            }
-
-            try {
-                JsonElement payload = result.GetPayload();
-                QueryResponseMetadata? metadata = await ApplyPersistedLifecycleAsync(
+            string lifecycleProjectionType = routingQueryType;
+            for (int attempt = 0; attempt < 2; attempt++) {
+                LifecycleObservation before = await ReadLifecycleAsync(
                         query,
-                        result.ProjectionType ?? routingQueryType,
-                        result.Metadata,
+                        lifecycleProjectionType,
                         cancellationToken)
                     .ConfigureAwait(false);
+                QueryResult? result = await _invoker
+                    .InvokeAsync(actorId, actorTypeName, envelope, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (result is null) {
+                    Log.QueryExecutionFailed(_logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, QueryAdapterFailureReason.ActorResponseMismatch);
+                    return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: QueryAdapterFailureReason.ActorResponseMismatch);
+                }
+
+                if (!result.Success) {
+                    Log.QueryExecutionFailed(_logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, GetSafeLogErrorMessage(result.ErrorMessage));
+                    return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: result.ErrorMessage, Metadata: result.Metadata);
+                }
+
+                if (result.PayloadBytes is not { Length: > 0 }) {
+                    Log.QueryExecutionFailed(_logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, QueryAdapterFailureReason.MissingPayload);
+                    return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: QueryAdapterFailureReason.MissingPayload);
+                }
+
+                JsonElement payload;
+                try {
+                    payload = result.GetPayload();
+                }
+                catch (JsonException) {
+                    Log.QueryExecutionFailed(_logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, QueryAdapterFailureReason.SerializationFailure);
+                    return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: QueryAdapterFailureReason.SerializationFailure);
+                }
+
+                string actualProjectionType = result.ProjectionType ?? routingQueryType;
+                LifecycleObservation after = await ReadLifecycleAsync(
+                        query,
+                        actualProjectionType,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+                bool stable = string.Equals(lifecycleProjectionType, actualProjectionType, StringComparison.Ordinal)
+                    && LifecycleObservation.IsStable(before, after);
+                if (!stable
+                    && after.Snapshot?.Phase != ProjectionLifecyclePhase.Rebuilding
+                    && attempt == 0) {
+                    lifecycleProjectionType = actualProjectionType;
+                    continue;
+                }
+
+                QueryResponseMetadata? metadata = ApplyPersistedLifecycle(
+                    result.Metadata,
+                    stable ? after : LifecycleObservation.Unstable(after));
                 Log.QueryRouted(_logger, query.CorrelationId, actorId);
                 return new QueryRouterResult(
                     Success: true,
@@ -139,10 +167,8 @@ public partial class QueryRouter : IQueryRouter {
                     ProjectionType: result.ProjectionType,
                     Metadata: StampProjectionBacked(metadata));
             }
-            catch (JsonException) {
-                Log.QueryExecutionFailed(_logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, QueryAdapterFailureReason.SerializationFailure);
-                return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: QueryAdapterFailureReason.SerializationFailure);
-            }
+
+            throw new InvalidOperationException("Projection lifecycle could not be observed coherently.");
         }
         catch (OperationCanceledException) {
             throw;
@@ -182,36 +208,78 @@ public partial class QueryRouter : IQueryRouter {
         };
     }
 
-    private async Task<QueryResponseMetadata?> ApplyPersistedLifecycleAsync(
+    private async Task<LifecycleObservation> ReadLifecycleAsync(
         SubmitQuery query,
         string projectionType,
-        QueryResponseMetadata? metadata,
         CancellationToken cancellationToken) {
         if (_lifecycleGateway is null) {
-            return metadata;
+            return LifecycleObservation.Disabled;
         }
 
         try {
             var identity = new AggregateIdentity(query.Tenant, query.Domain, query.AggregateId);
-            ProjectionLifecyclePhase phase = await _lifecycleGateway
-                .ReadPhaseAsync(identity, projectionType, cancellationToken)
+            ProjectionLifecycleSnapshot snapshot = await _lifecycleGateway
+                .ReadSnapshotAsync(identity, projectionType, cancellationToken)
                 .ConfigureAwait(false);
-            return phase == ProjectionLifecyclePhase.Rebuilding
-                ? (metadata ?? new QueryResponseMetadata()) with {
-                    Lifecycle = ProjectionLifecycleState.Rebuilding,
-                    IsStale = null,
-                }
-                : metadata;
+            return new LifecycleObservation(snapshot, Failed: false, Enabled: true);
         }
         catch (OperationCanceledException) {
             throw;
         }
         catch (Exception) {
+            return LifecycleObservation.Failure;
+        }
+    }
+
+    private static QueryResponseMetadata? ApplyPersistedLifecycle(
+        QueryResponseMetadata? metadata,
+        LifecycleObservation observation) {
+        if (!observation.Enabled) {
+            return metadata;
+        }
+
+        if (observation.Failed || observation.Snapshot is null) {
             return (metadata ?? new QueryResponseMetadata()) with {
                 Lifecycle = ProjectionLifecycleState.Unknown,
                 IsStale = null,
             };
         }
+
+        return observation.Snapshot.Phase switch {
+            ProjectionLifecyclePhase.Rebuilding => (metadata ?? new QueryResponseMetadata()) with {
+                Lifecycle = ProjectionLifecycleState.Rebuilding,
+                IsStale = null,
+            },
+            ProjectionLifecyclePhase.Delivering => (metadata ?? new QueryResponseMetadata()) with {
+                Lifecycle = ProjectionLifecycleState.Unknown,
+                IsStale = null,
+            },
+            _ => metadata,
+        };
+    }
+
+    private sealed record LifecycleObservation(
+        ProjectionLifecycleSnapshot? Snapshot,
+        bool Failed,
+        bool Enabled) {
+        public static LifecycleObservation Disabled { get; } = new(null, Failed: false, Enabled: false);
+
+        public static LifecycleObservation Failure { get; } = new(null, Failed: true, Enabled: true);
+
+        public static bool IsStable(LifecycleObservation before, LifecycleObservation after)
+            => before.Enabled == after.Enabled
+                && before.Failed == after.Failed
+                && (!before.Enabled
+                    || (!before.Failed
+                        && before.Snapshot is not null
+                        && after.Snapshot is not null
+                        && before.Snapshot.Revision == after.Snapshot.Revision
+                        && before.Snapshot.Phase == after.Snapshot.Phase));
+
+        public static LifecycleObservation Unstable(LifecycleObservation after)
+            => after.Snapshot?.Phase == ProjectionLifecyclePhase.Rebuilding
+                ? after
+                : Failure;
     }
 
     private static bool IsProjectionActorNotFound(Exception exception) {

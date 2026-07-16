@@ -16,6 +16,9 @@ public sealed class ProjectionDispatchOptions {
     /// <summary>The default maximum serialized outcome-envelope size.</summary>
     public const int DefaultMaxOutcomeEnvelopeBytes = 1_048_576;
 
+    /// <summary>The default maximum number of events accepted by the direct rebuild endpoint.</summary>
+    public const int DefaultMaxRebuildEventCount = 10_000;
+
     /// <summary>The default maximum retry attempts per activation.</summary>
     public const int DefaultMaxRetryAttempts = 8;
 
@@ -33,6 +36,9 @@ public sealed class ProjectionDispatchOptions {
 
     /// <summary>Gets or sets the maximum serialized outcome-envelope size.</summary>
     public int MaxOutcomeEnvelopeBytes { get; set; } = DefaultMaxOutcomeEnvelopeBytes;
+
+    /// <summary>Gets or sets the maximum complete-prefix event count accepted for rebuild.</summary>
+    public int MaxRebuildEventCount { get; set; } = DefaultMaxRebuildEventCount;
 
     /// <summary>Gets or sets the maximum retry attempts performed in one worker activation.</summary>
     public int MaxRetryAttempts { get; set; } = DefaultMaxRetryAttempts;
@@ -98,6 +104,7 @@ public sealed class ProjectionDispatchOptions {
         ArgumentOutOfRangeException.ThrowIfLessThan(
             MaxOutcomeEnvelopeBytes,
             GetMinimumOutcomeEnvelopeBytes(MaxOutcomes));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaxRebuildEventCount);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaxRetryAttempts);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(RetryScanBatchSize);
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(RetryBaseDelay, TimeSpan.Zero);

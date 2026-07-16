@@ -132,6 +132,7 @@ internal sealed class ProjectionRebuildProductionHarness : IDisposable {
 
         ActorProxyFactory = Substitute.For<IActorProxyFactory>();
         AggregateActor = Substitute.For<IAggregateActor>();
+        _ = AggregateActor.GetCurrentSequenceAsync().Returns(eventCount);
         _ = AggregateActor.ReadEventsRangeAsync(Arg.Any<long>(), Arg.Any<long?>(), Arg.Any<int>())
             .Returns(call => {
                 long cursor = call.ArgAt<long>(0);
@@ -155,6 +156,37 @@ internal sealed class ProjectionRebuildProductionHarness : IDisposable {
                 Arg.Any<ActorId>(),
                 QueryRouter.ProjectionActorTypeName)
             .Returns(ProjectionWriteActor);
+        RebuildWrites = Substitute.For<IProjectionRebuildWriteGateway>();
+        ProjectionRebuildCandidate? stagedCandidate = null;
+        _ = RebuildWrites.StageAsync(
+                Arg.Any<string>(),
+                Arg.Any<ProjectionRebuildCandidate>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => {
+                stagedCandidate = call.ArgAt<ProjectionRebuildCandidate>(1);
+                return Task.CompletedTask;
+            });
+        _ = RebuildWrites.PromoteAsync(
+                Arg.Any<string>(),
+                OperationId,
+                Arg.Any<CancellationToken>())
+            .Returns(_ => {
+                if (stagedCandidate is null) {
+                    return false;
+                }
+
+                ActorState = stagedCandidate.State;
+                stagedCandidate = null;
+                return true;
+            });
+        _ = RebuildWrites.DiscardAsync(
+                Arg.Any<string>(),
+                OperationId,
+                Arg.Any<CancellationToken>())
+            .Returns(_ => {
+                stagedCandidate = null;
+                return true;
+            });
         IETagActor etagActor = Substitute.For<IETagActor>();
         _ = etagActor.RegenerateAsync().Returns("transport-etag-not-a-projection-version");
         _ = ActorProxyFactory.CreateActorProxy<IETagActor>(Arg.Any<ActorId>(), ETagActor.ETagActorTypeName)
@@ -163,13 +195,13 @@ internal sealed class ProjectionRebuildProductionHarness : IDisposable {
         Lifecycle = Substitute.For<IProjectionLifecycleGateway>();
         _ = Lifecycle.BeginRebuildAsync(
                 Identity,
-                Domain,
+                Arg.Any<string>(),
                 OperationId,
                 Arg.Any<CancellationToken>())
             .Returns(true);
         _ = Lifecycle.CompleteRebuildAsync(
                 Identity,
-                Domain,
+                Arg.Any<string>(),
                 OperationId,
                 Arg.Any<CancellationToken>())
             .Returns(true);
@@ -207,7 +239,7 @@ internal sealed class ProjectionRebuildProductionHarness : IDisposable {
         _ = CheckpointTracker.EnumerateTrackedIdentitiesAsync(Arg.Any<CancellationToken>())
             .Returns(EnumerateIdentity(Identity));
         RebuildCheckpoints = new InMemoryProjectionRebuildCheckpointStore();
-        OperatorScope = new ProjectionRebuildCheckpointScope(TenantId, Domain, Domain, null, OperationId);
+        OperatorScope = new ProjectionRebuildCheckpointScope(TenantId, Domain, DetailProjectionType, null, OperationId);
         AggregateScope = OperatorScope with { AggregateId = AggregateId };
         SeedOperator(ProjectionRebuildStatus.Running, toPosition);
 
@@ -224,7 +256,8 @@ internal sealed class ProjectionRebuildProductionHarness : IDisposable {
             NullLogger<ProjectionUpdateOrchestrator>.Instance,
             RebuildCheckpoints,
             lifecycleGateway: Lifecycle,
-            namedProjectionDispatchCoordinator: namedCoordinator);
+            namedProjectionDispatchCoordinator: namedCoordinator,
+            rebuildWriteGateway: RebuildWrites);
     }
 
     public AggregateIdentity Identity { get; }
@@ -248,6 +281,8 @@ internal sealed class ProjectionRebuildProductionHarness : IDisposable {
     public IAggregateActor AggregateActor { get; }
 
     public IProjectionWriteActor ProjectionWriteActor { get; }
+
+    public IProjectionRebuildWriteGateway RebuildWrites { get; }
 
     public IProjectionLifecycleGateway Lifecycle { get; }
 
@@ -276,7 +311,7 @@ internal sealed class ProjectionRebuildProductionHarness : IDisposable {
         => RebuildCheckpoints.Seed(new ProjectionRebuildCheckpoint(
             TenantId,
             Domain,
-            Domain,
+            DetailProjectionType,
             null,
             OperationId,
             0,
@@ -289,7 +324,7 @@ internal sealed class ProjectionRebuildProductionHarness : IDisposable {
         => RebuildCheckpoints.Seed(new ProjectionRebuildCheckpoint(
             TenantId,
             Domain,
-            Domain,
+            DetailProjectionType,
             AggregateId,
             OperationId,
             sequence,

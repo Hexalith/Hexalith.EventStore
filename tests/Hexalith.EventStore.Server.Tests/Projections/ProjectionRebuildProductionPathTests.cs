@@ -81,7 +81,7 @@ public sealed class ProjectionRebuildProductionPathTests {
         checkpoint.FailureReasonCode.ShouldBe(StreamReplayReasonCodes.RebuildCanceled);
         _ = await harness.Lifecycle.Received(1).CompleteRebuildAsync(
             harness.Identity,
-            harness.Identity.Domain,
+            harness.OperatorScope.ProjectionName,
             ProjectionRebuildProductionHarness.OperationId,
             CancellationToken.None);
     }
@@ -97,12 +97,11 @@ public sealed class ProjectionRebuildProductionPathTests {
         await harness.RunAsync();
 
         await AssertOldLiveViewAsync(harness, resolveBatchVisibility: true);
-        ProjectionRebuildCheckpoint failed = harness.RebuildCheckpoints
+        ProjectionRebuildCheckpoint interrupted = harness.RebuildCheckpoints
             .Snapshot(harness.OperatorScope).ShouldNotBeNull();
-        failed.Status.ShouldBe(ProjectionRebuildStatus.Failed);
-        failed.FailureReasonCode.ShouldBe(StreamReplayReasonCodes.ProjectionApplyRejected);
+        interrupted.Status.ShouldBe(ProjectionRebuildStatus.Running);
+        interrupted.FailureReasonCode.ShouldBeNull();
         harness.ReadModels.BatchFaultHook = null;
-        harness.SeedOperator(ProjectionRebuildStatus.Running);
 
         await harness.RunAsync();
 
@@ -110,7 +109,7 @@ public sealed class ProjectionRebuildProductionPathTests {
     }
 
     [Fact]
-    public async Task Rebuild_HandlerPreparationFailure_PreservesEveryLiveSurfaceAndFailsOperation() {
+    public async Task Rebuild_HandlerPreparationFailure_PreservesEveryLiveSurfaceAndRemainsResumable() {
         using var harness = new ProjectionRebuildProductionHarness(eventCount: 7) {
             FailIndexPreparation = true,
         };
@@ -118,15 +117,15 @@ public sealed class ProjectionRebuildProductionPathTests {
         await harness.RunAsync();
 
         await AssertOldLiveViewAsync(harness);
-        ProjectionRebuildCheckpoint failed = harness.RebuildCheckpoints
+        ProjectionRebuildCheckpoint interrupted = harness.RebuildCheckpoints
             .Snapshot(harness.OperatorScope).ShouldNotBeNull();
-        failed.Status.ShouldBe(ProjectionRebuildStatus.Failed);
-        failed.FailureReasonCode.ShouldBe(StreamReplayReasonCodes.ProjectionApplyRejected);
-        _ = await harness.Lifecycle.Received(1).CompleteRebuildAsync(
-            harness.Identity,
-            harness.Identity.Domain,
-            ProjectionRebuildProductionHarness.OperationId,
-            CancellationToken.None);
+        interrupted.Status.ShouldBe(ProjectionRebuildStatus.Running);
+        interrupted.FailureReasonCode.ShouldBeNull();
+        _ = await harness.Lifecycle.DidNotReceiveWithAnyArgs().CompleteRebuildAsync(default!, default!, default!, default);
+
+        harness.FailIndexPreparation = false;
+        await harness.RunAsync();
+        await AssertConvergedAsync(harness);
     }
 
     [Fact]
@@ -172,7 +171,7 @@ public sealed class ProjectionRebuildProductionPathTests {
         operatorCheckpoint.OperationId.ShouldBe(ProjectionRebuildProductionHarness.OperationId);
         _ = await harness.Lifecycle.Received().CompleteRebuildAsync(
             harness.Identity,
-            harness.Identity.Domain,
+            harness.OperatorScope.ProjectionName,
             ProjectionRebuildProductionHarness.OperationId,
             CancellationToken.None);
     }
