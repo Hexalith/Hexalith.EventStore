@@ -105,3 +105,38 @@ Residual risks: Story 1.19 still requires final review disposition; Story 1.16's
 follow-up recommendation needs explicit reconciliation; exact source/package/container
 identities and persisted production evidence remain absent; named owner approval remains
 absent. No consumer migration is authorized.
+
+## Dev Agent Record
+
+### Debug Log
+
+- 2026-07-16: Re-read current sprint/story evidence. Story 1.19 is now `done` with an
+  approved review disposition; Story 1.16 still retains an undispositioned follow-up flag.
+- Selected clean candidate `85877902f8d60a466ab90cd8b68b53838863db1c` and created a
+  detached checkout with only the seven root-declared submodules initialized.
+- Release solution build passed with 0 warnings/errors. Eighteen unit/focused projects,
+  Testing.Integration, AppHost, and Admin UI E2E passed.
+- Full live-sidecar validation failed 2/44. The named-dispatch class reproduced 1/6, and
+  its normal-delivery method reproduced 1/1, meeting the workflow's three-consecutive-failure
+  HALT condition.
+
+### Completion Notes
+
+- Story remains fail-closed and non-authorizing. No runtime code was changed because this
+  closure story has no implementation task authorizing a projection lifecycle patch.
+- Updated the proof packet with the current exact-SHA results and recorded a scoped
+  corrective item in `deferred-work.md`.
+- Package, container, provenance E2E, and owner-approval gates were not run after the
+  reproducible live regression failure.
+
+## File List
+
+- `_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md`
+- `_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md`
+- `_bmad-output/implementation-artifacts/deferred-work.md`
+
+## Change Log
+
+- 2026-07-16: Recorded the failed exact-SHA completion attempt and kept Story 1.20
+  fail-closed pending a scoped lifecycle-cleanup fix, remaining review disposition, release
+  identity gates, and named owner approval.

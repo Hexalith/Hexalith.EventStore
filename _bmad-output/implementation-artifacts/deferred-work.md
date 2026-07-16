@@ -300,3 +300,9 @@ _All items LOW / non-blocking. Story 2.7 accepted (all AC1–AC7 met; Release bu
 - source_spec: `_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md`
   summary: Make dev-auto review finalization conditional on fail-closed artifact decisions instead of unconditionally marking every reviewed spec `done`.
   evidence: Story 1.20 requires any `final_decision: still blocked` or `authorize_consumer_migration: false` result to remain non-`done`, but `.agents/skills/bmad-dev-auto/step-04-review.md` currently sets `status: done` unconditionally after review; a generic guard and workflow test are needed so later automation cannot mistake a non-authorizing proof packet for completed closure.
+
+## Deferred from: exact-SHA gate of 1-20-owner-approved-parity-closure-and-runtime-pin (2026-07-16)
+
+- source_spec: `_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md`
+  summary: Repair or explicitly disposition the named-projection lifecycle cleanup defect before selecting an approved parity runtime.
+  evidence: Clean detached candidate `85877902f8d60a466ab90cd8b68b53838863db1c` built Release with 0 warnings/errors and passed the broad unit lanes, but `Hexalith.EventStore.Server.LiveSidecar.Tests.dll` finished 42 passed / 2 failed. The isolated `NamedProjectionDispatchLiveSidecarTests` run finished 5 passed / 1 failed, and `NormalDelivery_PersistsIndependentDetailIndexCheckpointsAndConvergedRetryLedger` reproduced alone at 0 passed / 1 failed because the Redis lifecycle hash remained present instead of returning to the idle/absent baseline. The initial full lane also reported an unreleased lifecycle lease in `ConcurrentDuplicateReverseAndConflict_StayEquivalentToOneInOrderDelivery`. Story 1.20 authorizes evidence and closure only, not an unscoped runtime patch; rerun the mandatory exact-SHA live gate after the defect has an owned implementation story or explicit owner disposition.
