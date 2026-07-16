@@ -1,12 +1,42 @@
 ---
 title: eventstore Phase 4 Implementation Readiness Recovery PRD
-status: final
+status: draft
 created: 2026-07-05
 updated: 2026-07-16
 project: eventstore
 source_artifacts:
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-02-global-event-ordering.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-02-rest-api-external-host.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-02.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-04.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05-correct-course-story-rewrites.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05-domain-contracts-library-guidance.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05-generated-api-error-semantics-tests.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05-generated-api-smoke-preflight.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05-query-metadata-propagation.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05-query-metadata-sequencing.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05-readiness-quality.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05-rest-generator-hardening.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05-tenants-package-mode-gateway.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-07-followup-review-disposition-2-2-2-3.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-07-generated-api-command-status-location-policy.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-07-generated-api-smoke-preflight-rehome.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-07-health-endpoint-anonymous-access-contract.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-07-outbound-dapr-routing-header-policy.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-07-rest-generator-hardening.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-07-route-provenance-contract.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-07-signalr-hub-leave-validation.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-07-story-1-7-followup-review-disposition.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-07.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-09-implementation-readiness-corrections.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-09.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-10.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-11.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-13-outbound-dapr-routing-header-policy-closure.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-13.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-16-story-1-16-review-and-story-1-20-proof-closure.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-16.md
   - _bmad-output/planning-artifacts/implementation-readiness-report-2026-07-05.md
   - _bmad-output/planning-artifacts/epics.md
@@ -122,7 +152,7 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 | ID | Requirement |
 | --- | --- |
 | FR11 | The platform must provide a REST API source-generator contract seam with `ICommandContract`, `IQueryContract`, optional `RestRouteAttribute`, and assembly-level `RestApiAttribute`. |
-| FR12 | The REST API generator must discover command/query contracts and emit typed, OpenAPI-visible controllers that delegate to `IEventStoreGatewayClient`, forward canonical query metadata headers when supplied by the gateway, and include tests covering discovery, routing conventions, diagnostics, generated output, query metadata headers, `304`, and safe problem-detail behavior. |
+| FR12 | The REST API generator must discover command/query contracts and emit typed, OpenAPI-visible controllers that delegate to `IEventStoreGatewayClient`, forward canonical query metadata headers when supplied by the gateway, and include tests covering discovery, routing conventions, diagnostics, generated output, query metadata headers, `304`, and safe problem-detail behavior. An accepted generated command must emit an absolute, gateway-authoritative command-status `Location` URI when the gateway supplies a valid target; it must omit `Location` when the target is absent, invalid, or unavailable rather than emit a relative or dangling external-host URI. |
 | FR13 | Generated REST controllers must live in dedicated external-facing API hosts, not interactive UI hosts; interactive UI hosts must consume EventStore client libraries directly. |
 | FR14 | The Sample proof must introduce a contracts-only Sample contracts library and an external Sample API host, move shared contracts there, and prove generated query and command controllers through that external API host. |
 | FR15 | The Tenants proof must move generated Tenants controllers to an external Tenants API host, while Tenants UI consumes client libraries and no longer hosts hand-written per-message controllers; any Tenants freshness, projection-version, ETag, or paging evidence shown by generated APIs or UI must come from the platform query metadata path. |
@@ -154,7 +184,7 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 | --- | --- |
 | FR23 | Persisted events must receive non-zero, actor-allocated global positions; CloudEvent ids must use the event `MessageId`; duplicate command replies must preserve the original command result fields. |
 | FR24 | The global-position allocation strategy must be renegotiated toward sharding per tenant or domain, and the frozen global-ordering spec must be updated before implementation. |
-| FR27 | Pipeline correctness remediation must make resume/idempotency matching use `MessageId`, `CausationId`, and `CommandType`; key command status/archive by message id; preserve retryability for transient failures; and validate tenant access before idempotency reads. |
+| FR27 | Pipeline correctness remediation must make resume/idempotency matching use `MessageId`, `CausationId`, and `CommandType`; key command status/archive by the gateway-owned status key without depending on `CorrelationId` equaling `MessageId`; preserve retryability for transient failures; and validate tenant access before idempotency reads. |
 | FR29 | Replay and dispatch remediation must make event apply-method resolution boundary-safe and ambiguity-detecting, and must use one shared `JsonSerializerOptions` path for command, rehydrate, project, and pub/sub payload serialization. |
 | FR30 | Crash recovery remediation must detect events committed but not published and complete publication or drain/recover them without requiring resubmission with the same correlation id. |
 | FR31 | Append durability remediation must start with a live-sidecar two-writer race test and DAPR conflict-exception spike before choosing an optimistic-concurrency fencing design. |
@@ -219,7 +249,7 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 | ID | Requirement |
 | --- | --- |
 | NFR1 | Security must fail closed for public, internal, domain-service, projection-notification, and admin surfaces; no endpoint may rely only on network posture or caller-supplied admin flags. The only anonymous exception is the health/liveness/readiness probe endpoints (`/health`, `/alive`, `/ready`), which are explicitly pinned `AllowAnonymous` and support-safe (AD-16); the fail-closed default is never weakened to reach probes. |
-| NFR2 | Tenant isolation must be preserved across state keys, actor IDs, topics, admin queries, generated REST APIs, SignalR groups, and deployment configuration. |
+| NFR2 | Tenant isolation must be preserved across state keys, actor IDs, topics, admin queries, generated REST APIs, SignalR groups, and deployment configuration. Tenant provisioning must reject the reserved `system` tenant name. |
 | NFR3 | Production authentication must reject insecure symmetric-key mode unless explicitly break-glassed, require HTTPS metadata where appropriate, and pin accepted JWT algorithms. |
 | NFR4 | Committed configuration must not contain forgeable administrator signing keys, credentials, bearer tokens, decoded JWT payloads, or other operational secrets. |
 | NFR5 | SignalR detail metadata must remain bounded and metadata-only; framework logs must not expose metadata values above Debug level. |
