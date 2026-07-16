@@ -1,3 +1,17 @@
+# [3.68.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.67.3...v3.68.0) (2026-07-16)
+
+
+### Bug Fixes
+
+* update BMAD 6.10.1n16 ([26842d2](https://github.com/Hexalith/Hexalith.EventStore/commit/26842d284f2da91399b7891bf7b5880ce2f6b561))
+* update server test results and documentation references ([8587790](https://github.com/Hexalith/Hexalith.EventStore/commit/85877902f8d60a466ab90cd8b68b53838863db1c))
+
+
+### Features
+
+* **projection:** implement operation-scoped rebuild staging and lifecycle management ([6cf7a56](https://github.com/Hexalith/Hexalith.EventStore/commit/6cf7a56613706469bf74a8faca51060dccf6bce5))
+* **projections:** add read model batch staging interface and related types ([50d1358](https://github.com/Hexalith/Hexalith.EventStore/commit/50d135813f3c2bfca915bed638e68ecb3ce787f8))
+
 ## [3.67.3](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.67.2...v3.67.3) (2026-07-15)
 
 
