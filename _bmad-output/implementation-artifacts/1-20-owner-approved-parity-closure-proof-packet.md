@@ -3,7 +3,7 @@ schema: hexalith.eventstore.parity-closure-proof-packet/v1
 story_id: "1.20"
 story_key: 1-20-owner-approved-parity-closure-and-runtime-pin
 created: 2026-07-16T05:09:20+02:00
-updated: 2026-07-16T13:03:02+02:00
+updated: 2026-07-16T14:26:50+02:00
 historical_packet: 1-8-projection-query-sdk-owner-proof-packet.md
 candidate_source_sha: 85877902f8d60a466ab90cd8b68b53838863db1c
 tested_runtime_sha: null
@@ -51,21 +51,22 @@ production-path and package/container gate at that unchanged SHA, explicitly dis
 Story 1.16's retained follow-up recommendation, obtain named EventStore-owner approval,
 and update this packet.
 
-### Exact-SHA Failure And Readiness Re-Audit — 2026-07-16
+### Exact-SHA Failure And Readiness Re-Audit — Observed 2026-07-16T13:55:26+02:00
 
+- repository identity observed at: `2026-07-16T13:55:26+02:00`
 - repository: `https://github.com/Hexalith/Hexalith.EventStore.git`
 - repository root: `/home/administrator/projects/hexalith/eventstore`
-- planning/evidence branch observed at `2026-07-16T12:58:18+02:00`: `main`
-- planning/evidence baseline observed at `2026-07-16T12:58:18+02:00`:
-  `e5658e0b79b5582a962b2eed2964cf8fe8f2ca2e`,
-  equal to the locally recorded `origin/main` without asserting an unfetched remote state
+- planning/evidence branch observed: `main`
+- planning/evidence HEAD observed: `6b026f77531b1503fa254782ea7a39916fe4eac5`
+- tracking state observed: HEAD equalled locally recorded `origin/main`; no claim is made
+  about an unfetched remote state
 - failed candidate SHA: `85877902f8d60a466ab90cd8b68b53838863db1c`
 - detached candidate worktree: clean before and after the attempted gates
 - root submodules in the detached candidate: all seven declared entries initialized at
   their committed gitlinks; no nested submodules initialized
 - tested runtime SHA: not selected
 
-The observed planning/evidence baseline contains later merged lifecycle corrective work,
+The planning/evidence HEAD observed above contains later merged lifecycle corrective work,
 but it has not passed this packet's unchanged exact-SHA gates and is not selected as the
 tested runtime. Its presence does not alter the failed candidate's historical result or
 close the lifecycle-cleanup blocker.
@@ -83,9 +84,15 @@ platform provenance, named owner approval, and migration authorization also rema
 
 Architecture AD-11 is a hard precondition before selecting or publishing a replacement
 runtime. `global.json` and the installed SDK remain `10.0.301`, the installed host/runtime
-and central ASP.NET pins remain `10.0.9`, and AD-11 requires `10.0.302` / `10.0.10` or a
-later named architecture-owner-approved baseline. The separately owned corrective item is
-recorded in `deferred-work.md`; this evidence-only story changes no runtime or package pin.
+and central ASP.NET pins remain `10.0.9`, and AD-11 requires SDK `10.0.302` plus matching
+ASP.NET and installed `Microsoft.NETCore.App` runtime `10.0.10`, or a
+later replacement recorded with the named architecture owner, approval date, durable
+source, rationale, exact candidate/toolchain/ASP.NET/runtime scope, and an unexpired
+`expires_at` value.
+The mandatory executable preflight rejects a mismatched exact baseline and any missing,
+blank, malformed, expired, or out-of-scope replacement record before candidate gates. The
+separately owned corrective item is recorded in `deferred-work.md`; this evidence-only story
+changes no runtime or package pin.
 
 ## Prerequisite And Review Ledger
 
@@ -98,7 +105,7 @@ recorded in `deferred-work.md`; this evidence-only story changes no runtime or p
 | Story 1.17 asynchronous multi-projection dispatch | `done` | Crosswalk maps completed historical Story 1.12 and narrows acceptance to AD-19's normalized result. | Satisfied for sequencing; evidence not promoted to this packet without exact-SHA rerun. |
 | Story 1.18 delivery idempotency | `done` | Crosswalk maps completed historical Story 1.13 production-path evidence. | Satisfied for sequencing; evidence not promoted to this packet without exact-SHA rerun. |
 | Story 1.19 paged rebuild equivalence | `done` | Active Story 1.19 records approval after 13 in-scope patches, one explicit deferral, a 2,620-test Server pass, the real DAPR/Redis paged-rebuild pass, and a warning-free Release build. | Satisfied for sequencing; the paged-rebuild live test also passed at the current candidate SHA, but the cross-cutting live gate did not. |
-| Architecture AD-11 security baseline | `open-blocking` | Repository seed, installed SDK/runtime, and central ASP.NET pins remain `10.0.301` / `10.0.9`; AD-11 requires `10.0.302` / `10.0.10` or a later approved replacement. | **Hard blocker.** A separately owned build/release correction must land before a tested runtime is selected or package/container proof is published. |
+| Architecture AD-11 security baseline | `open-blocking` | Repository seed, installed SDK/runtime, and central ASP.NET pins remain `10.0.301` / `10.0.9`; AD-11 requires SDK `10.0.302` plus matching ASP.NET and installed `Microsoft.NETCore.App` runtime `10.0.10`, or a replacement with named architecture owner, approval date, durable source, rationale, exact candidate/toolchain/ASP.NET/runtime scope, and unexpired `expires_at`. | **Hard blocker.** The executable preflight must accept the exact baseline or a complete, in-scope, unexpired replacement record before candidate, package, or container gates. |
 | Story 1.20 owner review | pending | No reviewer, approval date, or durable source exists. | **Hard blocker.** |
 
 ## Artifact Identity Pin
@@ -119,6 +126,25 @@ substitutes for a value in another.
 
 `85877902f8d60a466ab90cd8b68b53838863db1c` is a failed candidate only. It is not an
 approved source pin and does not authorize a consumer gitlink or checkout update.
+
+### Documentation Identity Without Self-Reference
+
+Future closure uses two documentation commits and keeps every intermediate state fail
+closed:
+
+1. Final EventStore and release-owner approvals first exist in durable external sources.
+   They bind the tested runtime, package hashes, image digest/platform provenance,
+   limitations, migration decision, and approved evidence content.
+2. Evidence commit **A** records the completed results and those durable approval references.
+   It leaves `documentation_commit_sha: null`, `final_decision: still blocked`, and
+   `authorize_consumer_migration: false`; A alone grants no authority.
+3. Pointer-only commit **B**, whose direct parent is A, changes only
+   `documentation_commit_sha` from `null` to A's 40-hex SHA. The field identifies A, never B,
+   so neither commit self-references. Any other semantic or file change invalidates B.
+4. The executable structural procedure below verifies A's tested-runtime pin, B's direct
+   parent, B's pointer to A, and the exact one-field packet change. Only after it passes may a
+   separate later status-only transition be considered; B itself changes no decision,
+   migration authorization, story status, or sprint status.
 
 ### NuGet package identities
 
@@ -172,8 +198,10 @@ approved runtime:
 
 The following repository-root procedure is mandatory before any capability command below.
 It creates a detached disposable checkout containing only committed inputs, initializes
-only root-declared `references/` submodules, rejects untracked or ignored inputs before
-restore, uses an isolated NuGet/Dotnet cache, and defines runners that cannot credit stale
+only root-declared `references/` submodules, and rejects untracked or ignored inputs before
+restore. Before submodule initialization, restore, build, test, package, or publication, it
+accepts only the exact AD-11 baseline or a durable, in-scope, unexpired replacement record.
+It then uses an isolated NuGet/Dotnet cache and defines runners that cannot credit stale
 Release assemblies or zero-match filters.
 
 ```bash
@@ -190,6 +218,123 @@ git -C "$SOURCE_REPOSITORY" worktree add --detach "$CHECKOUT" "$CANDIDATE_SHA"
 cd "$CHECKOUT"
 
 test "$(git rev-parse --verify --end-of-options 'HEAD^{commit}')" = "$CANDIDATE_SHA"
+
+# Fail closed on AD-11 before any candidate build or publication-capable gate.
+AD11_CHECKED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+REPOSITORY_URL="$(git config --get remote.origin.url)"
+REPOSITORY_SDK_VERSION="$(jq -er '.sdk.version | select(type == "string" and test("\\S"))' global.json)"
+REPOSITORY_SDK_ROLL_FORWARD="$(jq -er '.sdk.rollForward | select(type == "string" and test("\\S"))' global.json)"
+INSTALLED_SDK_VERSION="$(dotnet --version)"
+ASPNET_PIN_COUNT="$(grep -Ec '<PackageVersion Include="Microsoft\.AspNetCore\.(SignalR\.Client|SignalR\.StackExchangeRedis|DataProtection\.Abstractions)" Version="[^"]+" */>' Directory.Packages.props)"
+test "$ASPNET_PIN_COUNT" -eq 3
+mapfile -t ASPNET_PIN_VERSIONS < <(
+  sed -nE 's/.*<PackageVersion Include="Microsoft\.AspNetCore\.(SignalR\.Client|SignalR\.StackExchangeRedis|DataProtection\.Abstractions)" Version="([^"]+)" *\/>.*/\2/p' \
+    Directory.Packages.props | sort -u
+)
+test "${#ASPNET_PIN_VERSIONS[@]}" -eq 1
+REPOSITORY_ASPNET_VERSION="${ASPNET_PIN_VERSIONS[0]}"
+dotnet --list-runtimes > "$EVIDENCE_ROOT/dotnet-runtimes.txt"
+INSTALLED_ASPNET_VERSION="$(awk -v version="$REPOSITORY_ASPNET_VERSION" '
+  $1 == "Microsoft.AspNetCore.App" && $2 == version { print $2; exit }
+' "$EVIDENCE_ROOT/dotnet-runtimes.txt")"
+INSTALLED_RUNTIME_VERSION="$(awk -v version="$REPOSITORY_ASPNET_VERSION" '
+  $1 == "Microsoft.NETCore.App" && $2 == version { print $2; exit }
+' "$EVIDENCE_ROOT/dotnet-runtimes.txt")"
+test "$INSTALLED_ASPNET_VERSION" = "$REPOSITORY_ASPNET_VERSION"
+test "$INSTALLED_RUNTIME_VERSION" = "$REPOSITORY_ASPNET_VERSION"
+
+ad11_exact_baseline() {
+  test "$REPOSITORY_SDK_VERSION" = '10.0.302' &&
+    test "$REPOSITORY_SDK_ROLL_FORWARD" = 'latestPatch' &&
+    test "$INSTALLED_SDK_VERSION" = '10.0.302' &&
+    test "$REPOSITORY_ASPNET_VERSION" = '10.0.10' &&
+    test "$INSTALLED_ASPNET_VERSION" = "$REPOSITORY_ASPNET_VERSION" &&
+    test "$INSTALLED_RUNTIME_VERSION" = "$REPOSITORY_ASPNET_VERSION"
+}
+
+AD11_PREFLIGHT="$EVIDENCE_ROOT/ad11-preflight.json"
+AD11_REPLACEMENT_EVIDENCE="$EVIDENCE_ROOT/ad11-replacement-authority.json"
+if ad11_exact_baseline; then
+  jq -n \
+    --arg checked_at "$AD11_CHECKED_AT" \
+    --arg repository "$REPOSITORY_URL" \
+    --arg source_sha "$CANDIDATE_SHA" \
+    --arg sdk_version "$REPOSITORY_SDK_VERSION" \
+    --arg sdk_roll_forward "$REPOSITORY_SDK_ROLL_FORWARD" \
+    --arg installed_sdk_version "$INSTALLED_SDK_VERSION" \
+    --arg aspnet_version "$REPOSITORY_ASPNET_VERSION" \
+    --arg installed_aspnet_version "$INSTALLED_ASPNET_VERSION" \
+    --arg runtime_version "$INSTALLED_RUNTIME_VERSION" \
+    '{mode: "exact-baseline", checked_at: $checked_at, repository: $repository,
+      source_sha: $source_sha, sdk_version: $sdk_version,
+      sdk_roll_forward: $sdk_roll_forward, installed_sdk_version: $installed_sdk_version,
+      aspnet_version: $aspnet_version, installed_aspnet_version: $installed_aspnet_version,
+      runtime_version: $runtime_version}' > "$AD11_PREFLIGHT"
+else
+  : "${AD11_REPLACEMENT_RECORD:?exact AD-11 baseline absent; set durable replacement JSON path}"
+  test -s "$AD11_REPLACEMENT_RECORD"
+  test ! -e "$AD11_REPLACEMENT_EVIDENCE"
+  cp -- "$AD11_REPLACEMENT_RECORD" "$AD11_REPLACEMENT_EVIDENCE"
+  chmod a-w "$AD11_REPLACEMENT_EVIDENCE"
+  jq -e \
+    --arg checked_at "$AD11_CHECKED_AT" \
+    --arg repository "$REPOSITORY_URL" \
+    --arg source_sha "$CANDIDATE_SHA" \
+    --arg sdk_version "$REPOSITORY_SDK_VERSION" \
+    --arg sdk_roll_forward "$REPOSITORY_SDK_ROLL_FORWARD" \
+    --arg installed_sdk "$INSTALLED_SDK_VERSION" \
+    --arg aspnet_version "$REPOSITORY_ASPNET_VERSION" \
+    --arg installed_aspnet "$INSTALLED_ASPNET_VERSION" \
+    --arg runtime_version "$INSTALLED_RUNTIME_VERSION" '
+      def nonblank: type == "string" and test("\\S");
+      def version_parts: split(".") | map(tonumber);
+      type == "object" and
+      .action == "ad11-baseline-replacement" and
+      (.owner | nonblank) and
+      (.approved_at | nonblank) and
+      (.durable_source | nonblank) and
+      (.rationale | nonblank) and
+      (.expires_at | nonblank) and
+      (.scope | type == "object") and
+      .scope.repository == $repository and
+      .scope.source_sha == $source_sha and
+      .scope.sdk_version == $sdk_version and
+      .scope.sdk_roll_forward == $sdk_roll_forward and
+      .scope.sdk_version == $installed_sdk and
+      .scope.aspnet_version == $aspnet_version and
+      .scope.aspnet_version == $installed_aspnet and
+      .scope.runtime_version == $runtime_version and
+      $runtime_version == $aspnet_version and
+      (($sdk_version | version_parts) >= ("10.0.302" | version_parts)) and
+      (($aspnet_version | version_parts) >= ("10.0.10" | version_parts)) and
+      ((($sdk_version | version_parts) > ("10.0.302" | version_parts)) or
+       (($aspnet_version | version_parts) > ("10.0.10" | version_parts))) and
+      ((.approved_at | fromdateiso8601) <= ($checked_at | fromdateiso8601)) and
+      ((.expires_at | fromdateiso8601) > ($checked_at | fromdateiso8601))
+    ' "$AD11_REPLACEMENT_EVIDENCE"
+  AD11_REPLACEMENT_SHA256="$(sha256sum "$AD11_REPLACEMENT_EVIDENCE" | awk '{print $1}')"
+  jq -n \
+    --arg checked_at "$AD11_CHECKED_AT" \
+    --arg repository "$REPOSITORY_URL" \
+    --arg source_sha "$CANDIDATE_SHA" \
+    --arg sdk_version "$REPOSITORY_SDK_VERSION" \
+    --arg sdk_roll_forward "$REPOSITORY_SDK_ROLL_FORWARD" \
+    --arg installed_sdk_version "$INSTALLED_SDK_VERSION" \
+    --arg aspnet_version "$REPOSITORY_ASPNET_VERSION" \
+    --arg installed_aspnet_version "$INSTALLED_ASPNET_VERSION" \
+    --arg runtime_version "$INSTALLED_RUNTIME_VERSION" \
+    --arg authority_file "$(basename "$AD11_REPLACEMENT_EVIDENCE")" \
+    --arg authority_sha256 "$AD11_REPLACEMENT_SHA256" \
+    '{mode: "durable-replacement", checked_at: $checked_at, repository: $repository,
+      source_sha: $source_sha, sdk_version: $sdk_version,
+      sdk_roll_forward: $sdk_roll_forward, installed_sdk_version: $installed_sdk_version,
+      aspnet_version: $aspnet_version, installed_aspnet_version: $installed_aspnet_version,
+      runtime_version: $runtime_version, authority_file: $authority_file,
+      authority_sha256: $authority_sha256}' > "$AD11_PREFLIGHT"
+fi
+chmod a-w "$AD11_PREFLIGHT"
+sha256sum "$AD11_PREFLIGHT" > "$EVIDENCE_ROOT/ad11-preflight.sha256"
+
 mapfile -t ROOT_SUBMODULES < <(
   git config -f .gitmodules --get-regexp '^submodule\..*\.path$' |
     awk '$2 ~ /^references\// { print $2 }'
@@ -838,13 +983,81 @@ test "$(wc -l < "$EVIDENCE_ROOT/nuget-sha256.txt")" -eq 14
 - required exact container publication, immutable inspection, and provenance commands:
 
 ```bash
-IMAGE_REPOSITORY='registry.hexalith.com/eventstore'
+set -euo pipefail
+: "${RELEASE_AUTHORITY_RECORD:?set the durable release-owner authority JSON path}"
+test -s "$RELEASE_AUTHORITY_RECORD"
+
+PUBLISH_CONTAINER_REGISTRY='registry.hexalith.com'
+PUBLISH_CONTAINER_REPOSITORY='eventstore'
+IMAGE_REPOSITORY="$PUBLISH_CONTAINER_REGISTRY/$PUBLISH_CONTAINER_REPOSITORY"
 IMAGE_TAG="proof-${CANDIDATE_SHA}"
+test "$IMAGE_REPOSITORY" = 'registry.hexalith.com/eventstore'
+
+# Freeze the authority bytes before the first publication-capable command.
+AUTHORITY_EVIDENCE="$EVIDENCE_ROOT/release-owner-publication-authority.json"
+AUTHORITY_CHECKED_AT_EVIDENCE="$EVIDENCE_ROOT/release-owner-publication-authority.checked-at.txt"
+test ! -e "$AUTHORITY_EVIDENCE"
+test ! -e "$AUTHORITY_CHECKED_AT_EVIDENCE"
+cp -- "$RELEASE_AUTHORITY_RECORD" "$AUTHORITY_EVIDENCE"
+chmod a-w "$AUTHORITY_EVIDENCE"
+
+validate_publication_authority() {
+  local checked_at="$1"
+  jq -e \
+    --arg checked_at "$checked_at" \
+    --arg repository "$IMAGE_REPOSITORY" \
+    --arg tag "$IMAGE_TAG" \
+    --arg source_sha "$CANDIDATE_SHA" '
+      def nonblank: type == "string" and test("\\S");
+      type == "object" and
+      .action == "container-publication" and
+      (.owner | nonblank) and
+      (.authorized_at | nonblank) and
+      (.durable_source | nonblank) and
+      (.rationale | nonblank) and
+      (.expires_at | nonblank) and
+      (.scope | type == "object") and
+      .scope.repository == $repository and
+      .scope.tag == $tag and
+      .scope.source_sha == $source_sha and
+      ((.authorized_at | fromdateiso8601) <= ($checked_at | fromdateiso8601)) and
+      ((.expires_at | fromdateiso8601) > ($checked_at | fromdateiso8601))
+    ' "$AUTHORITY_EVIDENCE"
+}
+
+assert_publication_source_clean() {
+  local repository="$1"
+  local ignored_entry
+  local ignored_path
+  test -z "$(git -C "$repository" status --porcelain=v1 --untracked-files=all)" || return 1
+  while IFS= read -r -d '' ignored_entry; do
+    ignored_path="${ignored_entry:3}"
+    case "$ignored_path" in
+      */bin/|*/bin/*|*/obj/|*/obj/*) ;;
+      *) printf 'unexpected ignored publication input: %s:%s\n' \
+           "$repository" "$ignored_path" >&2; return 1 ;;
+    esac
+  done < <(git -C "$repository" status --porcelain=v1 --ignored=matching \
+    --untracked-files=all -z)
+}
+
+# Immediately before publication, recheck source identity/cleanliness and authority validity.
+test "$(git rev-parse --verify --end-of-options 'HEAD^{commit}')" = "$CANDIDATE_SHA"
+for repository in . "${ROOT_SUBMODULES[@]}"; do
+  assert_publication_source_clean "$repository"
+done
+AUTHORITY_CHECKED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+printf '%s\n' "$AUTHORITY_CHECKED_AT" > "$AUTHORITY_CHECKED_AT_EVIDENCE"
+chmod a-w "$AUTHORITY_CHECKED_AT_EVIDENCE"
+validate_publication_authority "$AUTHORITY_CHECKED_AT"
+AUTHORITY_SHA256="$(sha256sum "$AUTHORITY_EVIDENCE" | awk '{print $1}')"
+AUTHORITY_CHECKED_AT_SHA256="$(sha256sum "$AUTHORITY_CHECKED_AT_EVIDENCE" | awk '{print $1}')"
 dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj \
   --configuration Release \
   --no-restore \
   -p:PublishProfile=DefaultContainer \
-  -p:ContainerRegistry=registry.hexalith.com \
+  -p:ContainerRegistry="$PUBLISH_CONTAINER_REGISTRY" \
+  -p:ContainerRepository="$PUBLISH_CONTAINER_REPOSITORY" \
   -p:ContainerImageTag="$IMAGE_TAG" \
   "-p:ContainerRuntimeIdentifiers=linux-x64;linux-arm64"
 docker buildx imagetools inspect "$IMAGE_REPOSITORY:$IMAGE_TAG" \
@@ -854,28 +1067,68 @@ IMAGE_DIGEST="$({ awk '$1 == "Digest:" { print $2; exit }' \
 [[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
 docker buildx imagetools inspect "$IMAGE_REPOSITORY@$IMAGE_DIGEST" --raw \
   > "$EVIDENCE_ROOT/container-manifest.json"
+MANIFEST_SHA256="$(sha256sum "$EVIDENCE_ROOT/container-manifest.json" | awk '{print $1}')"
+test "sha256:$MANIFEST_SHA256" = "$IMAGE_DIGEST"
 jq -e '.manifests | type == "array" and length > 0' \
   "$EVIDENCE_ROOT/container-manifest.json"
 jq -r '.manifests[].platform | "\(.os)/\(.architecture)\(if .variant then "/" + .variant else "" end)"' \
   "$EVIDENCE_ROOT/container-manifest.json" | sort -u \
   > "$EVIDENCE_ROOT/container-platforms.txt"
-test -s "$EVIDENCE_ROOT/container-platforms.txt"
+printf '%s\n' 'linux/amd64' 'linux/arm64' > "$EVIDENCE_ROOT/expected-container-platforms.txt"
+cmp --silent "$EVIDENCE_ROOT/expected-container-platforms.txt" \
+  "$EVIDENCE_ROOT/container-platforms.txt"
+test "$(sha256sum "$AUTHORITY_EVIDENCE" | awk '{print $1}')" = "$AUTHORITY_SHA256"
+test "$(sha256sum "$AUTHORITY_CHECKED_AT_EVIDENCE" | awk '{print $1}')" = "$AUTHORITY_CHECKED_AT_SHA256"
+test "$(cat "$AUTHORITY_CHECKED_AT_EVIDENCE")" = "$AUTHORITY_CHECKED_AT"
 jq -n \
   --arg source_sha "$CANDIDATE_SHA" \
   --arg repository "$IMAGE_REPOSITORY" \
+  --arg tag "$IMAGE_TAG" \
   --arg digest "$IMAGE_DIGEST" \
+  --arg manifest_sha256 "$MANIFEST_SHA256" \
+  --arg container_registry "$PUBLISH_CONTAINER_REGISTRY" \
+  --arg container_repository "$PUBLISH_CONTAINER_REPOSITORY" \
+  --arg runtime_identifiers 'linux-x64;linux-arm64' \
+  --arg authority_file "$(basename "$AUTHORITY_EVIDENCE")" \
+  --arg authority_sha256 "$AUTHORITY_SHA256" \
+  --arg authority_checked_at "$AUTHORITY_CHECKED_AT" \
+  --arg authority_checked_at_file "$(basename "$AUTHORITY_CHECKED_AT_EVIDENCE")" \
+  --arg authority_checked_at_sha256 "$AUTHORITY_CHECKED_AT_SHA256" \
   --rawfile platforms "$EVIDENCE_ROOT/container-platforms.txt" \
-  '{source_sha: $source_sha, repository: $repository, digest: $digest,
-    platforms: ($platforms | split("\n") | map(select(length > 0)))}' \
+  '{source_sha: $source_sha, repository: $repository, tag: $tag, digest: $digest,
+    manifest_sha256: $manifest_sha256,
+    platforms: ($platforms | split("\n") | map(select(length > 0))),
+    publish_properties: {
+      container_registry: $container_registry,
+      container_repository: $container_repository,
+      container_image_tag: $tag,
+      container_runtime_identifiers: $runtime_identifiers
+    },
+    publication_authority: {
+      file: $authority_file,
+      sha256: $authority_sha256,
+      checked_at: $authority_checked_at,
+      checked_at_file: $authority_checked_at_file,
+      checked_at_sha256: $authority_checked_at_sha256
+    }}' \
   > "$EVIDENCE_ROOT/container-provenance.json"
 ```
 
+The authority check revalidates the immutable evidence copy at a fresh action timestamp after
+candidate/source-cleanliness checks and before the first registry write. The checked-at file,
+both hashes, exact authorized repository/tag/source SHA, raw-manifest digest, platform set, and
+actual publish properties survive in provenance. This is an evidence-integrity preflight only:
+it does not create human
+release authority, replace registry authentication/authorization, or substitute for the
+later proof-result approval and distinct release-owner disposition.
+
 | Gate | Required result | Evidence target | Required disposition owner | Current result |
 | --- | --- | --- | --- | --- |
+| AD-11 readiness | exact SDK `10.0.302` plus matching ASP.NET and installed `Microsoft.NETCore.App` runtime `10.0.10`, or complete, scoped, unexpired replacement authority binding those versions before candidate gates | `ad11-preflight.json`, runtime inventory, its SHA-256, and replacement-authority copy/hash when used | Architecture owner and EventStore build/release maintainer | **OPEN**; current repository/toolchain remains `10.0.301` / `10.0.9` and no replacement record exists |
 | Exact committed source | Same 40-hex SHA before and after gates; clean regular and ignored inputs before restore | pre/post status, submodule SHAs, environment inventory | EventStore owner | PASS for failed candidate `85877902f8d60a466ab90cd8b68b53838863db1c` |
 | Release build and tests | warning-free solution build; positive xUnit totals for every listed project/filter | build log plus XML and method-list files under `$EVIDENCE_ROOT` | EventStore owner | **FAIL**; Release build and broad unit lanes passed, full live-sidecar was 42 passed / 2 failed |
 | NuGet inventory | exact 14-ID set, one approved version, 14 SHA-256 values, package-only consumer success | package listing, validator logs, `nuget-sha256.txt`, consumer assets/tool-install log | EventStore release owner | NOT RUN |
-| Container runtime | immutable registry digest, non-empty explicit platform set, digest-to-tested-SHA provenance | `container-inspect.txt`, manifest, platform set, `container-provenance.json` | EventStore release owner | NOT RUN |
+| Container runtime | freshly revalidated pre-publication release-owner authority; clean candidate source; immutable registry digest equal to the raw-manifest SHA-256; exact `linux/amd64` and `linux/arm64`; digest-to-tested-SHA provenance | immutable authority and checked-at copies/hashes, `container-inspect.txt`, raw manifest/hash, exact platform set, `container-provenance.json` | EventStore release owner | NOT RUN |
 | Limitations and migration | every matrix-row limitation accepted or rejected by a named reviewer in a durable source | signed review record or PR URL and date | EventStore owner | NOT RUN |
 
 - compatibility boundary: additive public APIs, the legacy query metadata ABI, legacy
@@ -897,6 +1150,104 @@ jq -n \
 
 Story creation, implementation review of an individual prerequisite, and authorship of
 this blocked packet are not proof-result owner approval.
+
+### Evidence Commit A And Pointer-Only Commit B Verification
+
+Run this repository-root procedure only after the completed proof results and distinct
+EventStore-owner and release-owner dispositions exist in durable external sources. It
+proves that evidence commit A is a single-parent, `_bmad-output/`-only child of the equal
+candidate/tested runtime while remaining fail closed, and that its direct child B changes
+exactly one front-matter field to point back to A:
+
+```bash
+set -euo pipefail
+PACKET='_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md'
+: "${EVIDENCE_COMMIT_A:?set the evidence commit A SHA}"
+: "${POINTER_COMMIT_B:?set the pointer-only commit B SHA}"
+
+EVIDENCE_COMMIT_A="$(git rev-parse --verify --end-of-options "${EVIDENCE_COMMIT_A}^{commit}")"
+POINTER_COMMIT_B="$(git rev-parse --verify --end-of-options "${POINTER_COMMIT_B}^{commit}")"
+[[ "$EVIDENCE_COMMIT_A" =~ ^[0-9a-f]{40}$ ]]
+[[ "$POINTER_COMMIT_B" =~ ^[0-9a-f]{40}$ ]]
+test "$(git rev-list --parents -n 1 "$POINTER_COMMIT_B" | awk '{print NF}')" -eq 2
+test "$(git rev-parse --verify --end-of-options "${POINTER_COMMIT_B}^")" = "$EVIDENCE_COMMIT_A"
+
+A_PACKET="$(mktemp)"
+B_PACKET="$(mktemp)"
+EXPECTED_B_PACKET="$(mktemp)"
+git show "$EVIDENCE_COMMIT_A:$PACKET" > "$A_PACKET"
+git show "$POINTER_COMMIT_B:$PACKET" > "$B_PACKET"
+
+front_value() {
+  local packet="$1"
+  local key="$2"
+  awk -v key="$key" '
+    NR == 1 && $0 == "---" { in_front = 1; next }
+    in_front && $0 == "---" { in_front = 0; exit }
+    in_front && index($0, key ": ") == 1 {
+      value = substr($0, length(key) + 3)
+      count++
+    }
+    END {
+      if (count != 1) exit 1
+      print value
+    }
+  ' "$packet"
+}
+
+A_TESTED_RUNTIME_SHA="$(front_value "$A_PACKET" tested_runtime_sha)"
+[[ "$A_TESTED_RUNTIME_SHA" =~ ^[0-9a-f]{40}$ ]]
+A_CANDIDATE_SOURCE_SHA="$(front_value "$A_PACKET" candidate_source_sha)"
+test "$A_CANDIDATE_SOURCE_SHA" = "$A_TESTED_RUNTIME_SHA"
+A_TESTED_RUNTIME_COMMIT="$(git rev-parse --verify --end-of-options \
+  "${A_TESTED_RUNTIME_SHA}^{commit}")"
+test "$A_TESTED_RUNTIME_COMMIT" = "$A_TESTED_RUNTIME_SHA"
+test "$(git rev-list --parents -n 1 "$EVIDENCE_COMMIT_A" | awk '{print NF}')" -eq 2
+test "$(git rev-parse --verify --end-of-options "${EVIDENCE_COMMIT_A}^")" \
+  = "$A_TESTED_RUNTIME_COMMIT"
+mapfile -t A_CHANGED_FILES < <(
+  git diff --name-only "$A_TESTED_RUNTIME_COMMIT" "$EVIDENCE_COMMIT_A"
+)
+test "${#A_CHANGED_FILES[@]}" -gt 0
+for changed_file in "${A_CHANGED_FILES[@]}"; do
+  case "$changed_file" in
+    _bmad-output/*) ;;
+    *) printf 'evidence commit A changed non-evidence path: %s\n' \
+         "$changed_file" >&2; exit 1 ;;
+  esac
+done
+test "$(front_value "$A_PACKET" documentation_commit_sha)" = 'null'
+test "$(front_value "$A_PACKET" final_decision)" = 'still blocked'
+test "$(front_value "$A_PACKET" authorize_consumer_migration)" = 'false'
+test "$(front_value "$B_PACKET" tested_runtime_sha)" = "$A_TESTED_RUNTIME_SHA"
+test "$(front_value "$B_PACKET" documentation_commit_sha)" = "$EVIDENCE_COMMIT_A"
+test "$(front_value "$B_PACKET" final_decision)" = 'still blocked'
+test "$(front_value "$B_PACKET" authorize_consumer_migration)" = 'false'
+
+mapfile -t B_CHANGED_FILES < <(git diff --name-only "$EVIDENCE_COMMIT_A" "$POINTER_COMMIT_B")
+test "${#B_CHANGED_FILES[@]}" -eq 1
+test "${B_CHANGED_FILES[0]}" = "$PACKET"
+awk -v evidence_commit_a="$EVIDENCE_COMMIT_A" '
+  NR == 1 && $0 == "---" { in_front = 1; print; next }
+  in_front && $0 == "---" { in_front = 0; print; next }
+  in_front && $0 == "documentation_commit_sha: null" && changed == 0 {
+    print "documentation_commit_sha: " evidence_commit_a
+    changed = 1
+    next
+  }
+  { print }
+  END { if (changed != 1) exit 1 }
+' "$A_PACKET" > "$EXPECTED_B_PACKET"
+cmp --silent "$EXPECTED_B_PACKET" "$B_PACKET"
+```
+
+A missing or non-unique opening field, unequal candidate/runtime identity, unresolved tested
+runtime, merge commit A, any A parent other than that runtime, an A path outside
+`_bmad-output/`, merge commit B, wrong B parent/pointer, changed decision/migration guard,
+extra B file, or any change beyond that exact one-line pointer update exits nonzero. This is
+only a structural evidence-only/non-self-reference check. Neither A nor B grants migration
+authority or substitutes for complete proof, durable approvals, or every independent gate on
+a later status-only transition.
 
 ## Consumer Handoff Guard
 

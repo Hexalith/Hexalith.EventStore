@@ -32,7 +32,7 @@ Enable domain authors to build and run EventStore-backed modules from domain beh
 ## Requirements & Constraints
 
 - Domain modules contain domain behavior and contracts only. Reusable request routing, projection/query actors, cursor codecs, state-store wrappers, telemetry, health checks, ServiceDefaults, Aspire plumbing, and per-message UI controllers belong to EventStore platform packages.
-- The domain-service SDK owns the canonical host shape and DAPR-facing process, replay, query, projection, and operational-metadata endpoints. Existing bespoke projection routes must remain compatible.
+- The domain-service SDK owns the canonical host shape and DAPR-facing `/process`, `/replay-state`, `/query`, `/project`, and `/admin/operational-index-metadata` endpoints. It yields safely to an existing bespoke projection route, which must remain compatible.
 - Query handlers are discovered and routed by the platform. Producer-authored freshness, lifecycle, projection version, paging, degraded state, and warnings must survive the gateway and client path; missing or non-authoritative evidence remains unknown. Gateway-echoed request paging is not authoritative evidence.
 - Read-model contracts require ETag-aware reads and writes, bounded optimistic concurrency, deterministic production-equivalent testing semantics, coordinated same-store detail/index changes, and tenant/domain/aggregate/projection-scoped erasure of read-model plus delivery/rebuild checkpoint state. Erasure does not include event streams, snapshots, broker history, backups, audit evidence, or cryptographic keys.
 - Cursors are purpose-isolated, scoped, bounded, opaque, DataProtection-backed, and fail safely for malformed or oversized data, tampering, wrong scope or query type, and key rotation.

@@ -32,28 +32,46 @@ than treating story creation as owner approval.
 4. A named EventStore owner reviews the completed exact-SHA evidence and records approval,
    date, durable source, accepted scope, limitations, and migration decision.
 5. Before a runtime SHA is selected, the committed candidate satisfies architecture AD-11,
-   including SDK `10.0.302` and ASP.NET `10.0.10`, or a later approved replacement
-   baseline. Any required pin correction belongs to scoped build/release corrective work,
-   not this evidence-only story.
+   including SDK `10.0.302`, ASP.NET `10.0.10`, and an installed
+   `Microsoft.NETCore.App` `10.0.10` runtime, or a later replacement documented with
+   the named architecture owner, approval date, durable source, rationale and exact
+   candidate/toolchain/ASP.NET/runtime scope, and an unexpired `expires_at` value. The executable
+   readiness preflight rejects a mismatched exact baseline and any missing, blank,
+   malformed, expired, or out-of-scope replacement record before candidate gates. Any
+   required pin correction belongs to scoped build/release corrective work, not this
+   evidence-only story.
 6. The selected candidate is tested from a clean detached checkout. The same 40-hex commit
    is present before and after every production-path, package, and container gate.
-7. `tested_runtime_sha` identifies the unchanged runtime commit.
-   `documentation_commit_sha` identifies the later evidence-only commit that records review
-   results and approvals. A documentation commit never substitutes for the tested runtime.
+7. `tested_runtime_sha` identifies the unchanged runtime commit and equals A's
+   `candidate_source_sha`; that real commit is the sole direct parent of evidence commit A,
+   whose changed paths are restricted to `_bmad-output/`. Final durable approvals precede A,
+   which records the results and approval references while keeping
+   `documentation_commit_sha: null` and all decision/migration guards blocked. Pointer-only
+   commit B, whose direct parent is A, changes only `documentation_commit_sha` to A's 40-hex
+   SHA. The field never identifies B, so neither commit self-references.
 8. Under AD-22, the packet separately pins the exact EventStore source SHA; all 14 NuGet
    package IDs, one exact version, and SHA-256 per package; and the container repository,
-   immutable digest, platform set, and provenance mapping to the tested runtime SHA. Consumer
+   immutable digest whose value equals the raw-manifest SHA-256, exact `linux/amd64` and
+   `linux/arm64` platform set, and provenance mapping to the tested runtime SHA. Consumer
    repositories verify both gitlink and checkout against the approved source SHA, or those
    exact package/container identities when that is the approved consumption mode.
 9. Story 1.16 follow-up review and the final Story 1.20 packet each receive the required
-   named review. External container publication requires explicit release-owner authority
-   before the registry operation. That execution authority is not proof approval; after
-   publication, the completed identity and provenance evidence requires a distinct
-   release-owner disposition, while final proof approval and migration authorization remain
-   with the named EventStore owner.
+   named review. External container publication requires a durable release-owner authority
+   record created before the registry operation and naming the owner, date, durable source,
+   rationale, exact repository/tag/source-SHA scope, and an unexpired `expires_at` value.
+   The record is copied and hashed, then revalidated at a fresh action timestamp immediately
+   before publication after the candidate HEAD and source cleanliness are rechecked. Ignored
+   inputs are limited to generated `bin`/`obj`; the authority record, action time, hashes, and
+   actual publish properties are bound into provenance. Missing, blank, malformed, expired,
+   or out-of-scope authority is rejected. This
+   evidence-integrity preflight neither grants human authority nor replaces registry access
+   control. After all evidence exists, the distinct release-owner disposition and named
+   EventStore-owner approval must exist durably before evidence commit A.
 10. Any unresolved prerequisite, security baseline, review, runtime identity,
-    production-path result, package/container pin, publication authority, or owner decision
-    keeps `final_decision: still blocked`, Story 1.20 non-`done`, and Epic 1 `in-progress`.
+    production-path result, package/container pin, publication authority, owner decision,
+    evidence commit A, or valid pointer-only commit B keeps `final_decision: still blocked`,
+    `authorize_consumer_migration: false`, `status: blocked`, Story 1.20 non-`done`, and
+    Epic 1 `in-progress`.
 
 Produces: `1-20-owner-approved-parity-closure-proof-packet.md`.
 
@@ -65,13 +83,42 @@ Produces: `1-20-owner-approved-parity-closure-proof-packet.md`.
 4. Run and disposition Story 1.16 follow-up review against that SHA.
 5. Run all detached exact-SHA persisted production-path gates.
 6. Build and hash the exact 14-package inventory.
-7. Record explicit release-owner authority for the external registry operation, then
-   publish and inspect the container and record immutable digest/platform provenance.
-8. Commit the evidence-only documentation update separately.
-9. Obtain named EventStore-owner proof approval, including explicit migration
-   authorization, and the release-owner's separate final disposition of the completed
-   package/container identities and provenance.
-10. Change the packet to `available` and update sprint status only if every gate passes.
+7. Recheck the candidate HEAD and clean tracked/untracked source, allowing ignored inputs only
+   under generated `bin`/`obj`; at a fresh action timestamp revalidate a durable release-owner
+   authority record naming the owner, date, source, rationale, exact repository/tag/source-SHA
+   scope, and `expires_at` value. Reject missing, blank, malformed, expired, out-of-scope, or
+   dirty input before publication. Pin the raw manifest hash to the immutable digest and require
+   exactly `linux/amd64` and `linux/arm64` before accepting container inspection evidence.
+8. After all results exist, obtain the named EventStore-owner proof approval and the
+   release-owner's distinct final disposition in durable external sources.
+9. Create evidence commit A recording the results and approval references while preserving
+   `documentation_commit_sha: null`, `final_decision: still blocked`, and
+   `authorize_consumer_migration: false`.
+10. Create direct-child pointer-only commit B changing only `documentation_commit_sha` to
+    A's 40-hex SHA. Verify A is a single-parent evidence-only child of its equal
+    candidate/tested-runtime identity, and verify B's one-field diff. This structural check
+    substitutes for no proof or approval;
+    only then may a separately authorized later status-only transition be considered. Until that
+    transition passes every independent gate, retain `status: blocked` and the current
+    sprint/Epic states.
+
+## Current Sprint-Change Proposal Implementation File Inventory
+
+This inventory describes the current Story 1.16/1.20 proposal implementation. It is
+separate from the historical Auto Run `Files changed` list and Dev Agent `File List` below.
+
+| File | Current proposal action |
+| --- | --- |
+| `1-20-owner-approved-parity-closure-proof-packet.md` | Preserve failed-run evidence and guards; add the observed audit, executable AD-11 gate, non-self-referential two-commit pin, and fail-closed publication-authority evidence procedure. |
+| `1-20-owner-approved-parity-closure-and-runtime-pin.md` | Record acceptance, authority, commit sequencing, current inventory, and blocked closure order. |
+| `deferred-work.md` | Preserve the one existing AD-11 `open-blocking` corrective item without duplication. |
+| `sprint-status.yaml` | Preserve the approved Story 1.20 blocker comments and `in-progress` statuses; refresh `last_updated`. |
+| `spec-1-11-complete-projection-freshness-lifecycle.md` | Verify only; retain `followup_review_recommended: true` with no disposition edit. |
+| `epic-1-context.md` | Restore canonical endpoints and retain durable behavior, release, and compatibility constraints. |
+| `spec-1-16-1-20-sprint-change-proposal.md` | Track this implementation and verification; preserve the frozen approval block unchanged. |
+
+Concurrent runtime, test, branch, submodule, Parties, and persisted-data work is excluded
+from this proposal inventory and remains owned by its existing changes.
 
 ## Review Triage Log
 
