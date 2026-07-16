@@ -1,3 +1,10 @@
+## [3.68.4](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.68.3...v3.68.4) (2026-07-16)
+
+
+### Bug Fixes
+
+* **submodules:** update subproject references for FrontComposer, Memories, and Tenants ([8aa6d0f](https://github.com/Hexalith/Hexalith.EventStore/commit/8aa6d0f0a417034d0c46eb9506fb7196a013401b))
+
 ## [3.68.3](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.68.2...v3.68.3) (2026-07-16)
 
 
