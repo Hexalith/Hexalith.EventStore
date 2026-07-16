@@ -21,18 +21,21 @@ internal sealed class ProjectionRebuildProductionHttpMessageHandler(
             ? string.Empty
             : await request.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         string path = request.RequestUri?.AbsolutePath ?? string.Empty;
-        if (path.EndsWith("/project/rebuild/v1", StringComparison.Ordinal)) {
+        if (path.Contains("/project/rebuild/", StringComparison.Ordinal)) {
             ProjectionDispatchRequest dispatchRequest = JsonSerializer.Deserialize<ProjectionDispatchRequest>(
                 requestJson,
                 SerializerOptions) ?? throw new InvalidOperationException("Rebuild request body was missing.");
-            ProjectionDispatchResponse response = await DomainProjectionDispatcher
-                .RebuildAsync(
-                    services,
-                    dispatchRequest,
-                    dispatchOptions,
-                    identityOptions,
-                    cancellationToken)
-                .ConfigureAwait(false);
+            ProjectionDispatchResponse response = path switch {
+                var value when value.EndsWith("/project/rebuild/stage/v1", StringComparison.Ordinal) =>
+                    await DomainProjectionDispatcher.StageRebuildAsync(services, dispatchRequest, dispatchOptions, identityOptions, cancellationToken).ConfigureAwait(false),
+                var value when value.EndsWith("/project/rebuild/commit/v1", StringComparison.Ordinal) =>
+                    await DomainProjectionDispatcher.CommitRebuildAsync(services, dispatchRequest, dispatchOptions, identityOptions, cancellationToken).ConfigureAwait(false),
+                var value when value.EndsWith("/project/rebuild/abort/v1", StringComparison.Ordinal) =>
+                    await DomainProjectionDispatcher.AbortRebuildAsync(services, dispatchRequest, dispatchOptions, identityOptions, cancellationToken).ConfigureAwait(false),
+                var value when value.EndsWith("/project/rebuild/verify/v1", StringComparison.Ordinal) =>
+                    await DomainProjectionDispatcher.VerifyRebuildAsync(services, dispatchRequest, dispatchOptions, identityOptions, cancellationToken).ConfigureAwait(false),
+                _ => await DomainProjectionDispatcher.RebuildAsync(services, dispatchRequest, dispatchOptions, identityOptions, cancellationToken).ConfigureAwait(false),
+            };
             return Json(response);
         }
 

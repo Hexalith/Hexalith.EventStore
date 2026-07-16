@@ -86,6 +86,233 @@ public static class DomainProjectionDispatcher {
         ProjectionDispatchOptions options,
         DomainProjectionIdentityOptions identityOptions,
         CancellationToken cancellationToken) {
+        DomainProjectionRebuildPreparation preparation = await PrepareRebuildBatchAsync(
+                serviceProvider,
+                dispatchRequest,
+                options,
+                identityOptions,
+                cancellationToken)
+            .ConfigureAwait(false);
+        if (preparation.Failure is not null) {
+            return preparation.Failure;
+        }
+
+        IReadModelBatchStore? batchStore = serviceProvider.GetService<IReadModelBatchStore>();
+        if (batchStore is null || preparation.Batch is null) {
+            return FailureForEveryRoute(preparation.Handlers, ProjectionDispatchReasonCodes.UnsupportedCapability);
+        }
+
+        DomainProjectionHandlerResult result;
+        try {
+            ReadModelBatchResult batchResult = await batchStore
+                .ExecuteAsync(preparation.Batch, cancellationToken)
+                .ConfigureAwait(false);
+            result = ReadModelBatchProjectionResultMapper.Map(batchResult);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+            throw;
+        }
+        catch (Exception) {
+            result = DomainProjectionHandlerResult.Indeterminate(ProjectionDispatchReasonCodes.HandlerFailure);
+        }
+
+        return new ProjectionDispatchResponse(
+            ProjectionDispatchProtocol.Version,
+            [.. preparation.Handlers.Select(handler => new ProjectionDispatchOutcome(
+                handler.ProjectionType,
+                result.Status,
+                null,
+                result.ReasonCode))]);
+    }
+
+    /// <summary>Stages named rebuild candidates behind the existing resumable batch marker.</summary>
+    public static Task<ProjectionDispatchResponse> StageRebuildAsync(
+        IServiceProvider serviceProvider,
+        ProjectionDispatchRequest dispatchRequest,
+        ProjectionDispatchOptions options,
+        DomainProjectionIdentityOptions identityOptions,
+        CancellationToken cancellationToken)
+        => ExecuteStagedRebuildAsync(
+            serviceProvider,
+            dispatchRequest,
+            options,
+            identityOptions,
+            DomainProjectionRebuildBatchAction.Stage,
+            cancellationToken);
+
+    /// <summary>Commits and reads back named rebuild candidates.</summary>
+    public static Task<ProjectionDispatchResponse> CommitRebuildAsync(
+        IServiceProvider serviceProvider,
+        ProjectionDispatchRequest dispatchRequest,
+        ProjectionDispatchOptions options,
+        DomainProjectionIdentityOptions identityOptions,
+        CancellationToken cancellationToken)
+        => ExecuteStagedRebuildAsync(
+            serviceProvider,
+            dispatchRequest,
+            options,
+            identityOptions,
+            DomainProjectionRebuildBatchAction.Commit,
+            cancellationToken);
+
+    /// <summary>Compensates uncommitted named rebuild candidates.</summary>
+    public static Task<ProjectionDispatchResponse> AbortRebuildAsync(
+        IServiceProvider serviceProvider,
+        ProjectionDispatchRequest dispatchRequest,
+        ProjectionDispatchOptions options,
+        DomainProjectionIdentityOptions identityOptions,
+        CancellationToken cancellationToken)
+        => ExecuteStagedRebuildAsync(
+            serviceProvider,
+            dispatchRequest,
+            options,
+            identityOptions,
+            DomainProjectionRebuildBatchAction.Abort,
+            cancellationToken);
+
+    /// <summary>Verifies named rebuild marker and operation evidence.</summary>
+    public static Task<ProjectionDispatchResponse> VerifyRebuildAsync(
+        IServiceProvider serviceProvider,
+        ProjectionDispatchRequest dispatchRequest,
+        ProjectionDispatchOptions options,
+        DomainProjectionIdentityOptions identityOptions,
+        CancellationToken cancellationToken)
+        => ExecuteStagedRebuildAsync(
+            serviceProvider,
+            dispatchRequest,
+            options,
+            identityOptions,
+            DomainProjectionRebuildBatchAction.Verify,
+            cancellationToken);
+
+    /// <summary>Dispatches using a catalog fingerprint recomputed from authoritative local identity and routes.</summary>
+    /// <param name="serviceProvider">The scoped request service provider.</param>
+    /// <param name="dispatchRequest">The version-2 dispatch request.</param>
+    /// <param name="options">The validated dispatch bounds.</param>
+    /// <param name="identityOptions">The authoritative local service binding.</param>
+    /// <param name="cancellationToken">Propagates request cancellation and prevents later starts.</param>
+    /// <returns>A bounded deterministic per-projection response.</returns>
+    public static async Task<ProjectionDispatchResponse> DispatchAsync(
+        IServiceProvider serviceProvider,
+        ProjectionDispatchRequest dispatchRequest,
+        ProjectionDispatchOptions options,
+        DomainProjectionIdentityOptions identityOptions,
+        CancellationToken cancellationToken) {
+        ArgumentNullException.ThrowIfNull(serviceProvider);
+        ArgumentNullException.ThrowIfNull(dispatchRequest);
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(identityOptions);
+        options.Validate();
+        identityOptions.Validate();
+        ValidateRequest(dispatchRequest, options);
+
+        IAsyncDomainProjectionHandler[] allHandlers = DomainProjectionHandlerRouteValidator
+            .MaterializeAndValidateNamed(serviceProvider.GetServices<IAsyncDomainProjectionHandler>(), options)
+            .ToArray();
+        ProjectionDispatchRoute[] authoritativeRoutes = [.. allHandlers
+            .Where(handler => string.Equals(handler.Domain, dispatchRequest.Request.Domain, StringComparison.Ordinal))
+            .Select(handler => new ProjectionDispatchRoute(handler.Domain, handler.ProjectionType))];
+        if (authoritativeRoutes.Length == 0
+            || !string.Equals(
+                ProjectionRouteCatalogFingerprint.Compute(
+                    identityOptions.AppId,
+                    identityOptions.ServiceVersion,
+                    authoritativeRoutes),
+                dispatchRequest.CatalogFingerprint,
+                StringComparison.Ordinal)) {
+            throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedCapability);
+        }
+
+        return await DispatchCoreAsync(
+                serviceProvider,
+                dispatchRequest,
+                options,
+                cancellationToken,
+                allHandlers)
+            .ConfigureAwait(false);
+    }
+
+    private static async Task<ProjectionDispatchResponse> ExecuteStagedRebuildAsync(
+        IServiceProvider serviceProvider,
+        ProjectionDispatchRequest dispatchRequest,
+        ProjectionDispatchOptions options,
+        DomainProjectionIdentityOptions identityOptions,
+        DomainProjectionRebuildBatchAction action,
+        CancellationToken cancellationToken) {
+        DomainProjectionRebuildPreparation preparation = await PrepareRebuildBatchAsync(
+                serviceProvider,
+                dispatchRequest,
+                options,
+                identityOptions,
+                cancellationToken)
+            .ConfigureAwait(false);
+        if (preparation.Failure is not null) {
+            return preparation.Failure;
+        }
+
+        IReadModelBatchStagingStore? stagingStore = serviceProvider.GetService<IReadModelBatchStagingStore>();
+        if (stagingStore is null || preparation.Batch is null) {
+            return FailureForEveryRoute(preparation.Handlers, ProjectionDispatchReasonCodes.UnsupportedCapability);
+        }
+
+        ReadModelBatchStagingResult stagingResult;
+        try {
+            stagingResult = action switch {
+                DomainProjectionRebuildBatchAction.Stage => await stagingStore
+                    .StageAsync(preparation.Batch, cancellationToken)
+                    .ConfigureAwait(false),
+                DomainProjectionRebuildBatchAction.Commit => await stagingStore
+                    .CommitAsync(preparation.Batch, cancellationToken)
+                    .ConfigureAwait(false),
+                DomainProjectionRebuildBatchAction.Abort => await stagingStore
+                    .AbortAsync(preparation.Batch, cancellationToken)
+                    .ConfigureAwait(false),
+                _ => await stagingStore
+                    .VerifyAsync(preparation.Batch, cancellationToken)
+                    .ConfigureAwait(false),
+            };
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+            throw;
+        }
+        catch (Exception) {
+            stagingResult = new ReadModelBatchStagingResult(
+                ReadModelBatchStagingStatus.Indeterminate,
+                string.Empty,
+                ProjectionDispatchReasonCodes.HandlerFailure);
+        }
+
+        bool succeeded = action switch {
+            DomainProjectionRebuildBatchAction.Stage => stagingResult.Status
+                is ReadModelBatchStagingStatus.Prepared or ReadModelBatchStagingStatus.Committed,
+            DomainProjectionRebuildBatchAction.Abort => stagingResult.Status == ReadModelBatchStagingStatus.Aborted,
+            _ => stagingResult.Status == ReadModelBatchStagingStatus.Committed,
+        };
+        ProjectionDispatchStatus status = succeeded
+            ? ProjectionDispatchStatus.Completed
+            : stagingResult.Status == ReadModelBatchStagingStatus.Conflict
+                ? ProjectionDispatchStatus.Failed
+                : ProjectionDispatchStatus.Indeterminate;
+        string? reasonCode = succeeded
+            ? null
+            : stagingResult.Status == ReadModelBatchStagingStatus.Conflict
+                ? ProjectionDispatchReasonCodes.MalformedOutcome
+                : ProjectionDispatchReasonCodes.HandlerFailure;
+        return new ProjectionDispatchResponse(
+            ProjectionDispatchProtocol.Version,
+            [.. preparation.Handlers.Select(handler => new ProjectionDispatchOutcome(
+                handler.ProjectionType,
+                status,
+                null,
+                reasonCode))]);
+    }
+
+    private static async Task<DomainProjectionRebuildPreparation> PrepareRebuildBatchAsync(
+        IServiceProvider serviceProvider,
+        ProjectionDispatchRequest dispatchRequest,
+        ProjectionDispatchOptions options,
+        DomainProjectionIdentityOptions identityOptions,
+        CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(serviceProvider);
         ArgumentNullException.ThrowIfNull(dispatchRequest);
         ArgumentNullException.ThrowIfNull(options);
@@ -171,7 +398,7 @@ public static class DomainProjectionDispatcher {
         }
 
         if (outcomes.Count > 0) {
-            return new ProjectionDispatchResponse(
+            var failure = new ProjectionDispatchResponse(
                 ProjectionDispatchProtocol.Version,
                 [.. handlers.Select(handler => outcomes.TryGetValue(handler.ProjectionType, out ProjectionDispatchOutcome? outcome)
                     ? outcome
@@ -180,16 +407,18 @@ public static class DomainProjectionDispatcher {
                         ProjectionDispatchStatus.Retryable,
                         null,
                         ProjectionDispatchReasonCodes.PartialRetry))]);
+            return new DomainProjectionRebuildPreparation(handlers, null, failure);
         }
 
-        IReadModelBatchStore? batchStore = serviceProvider.GetService<IReadModelBatchStore>();
-        if (batchStore is null || storeName is null) {
-            return FailureForEveryRoute(handlers, ProjectionDispatchReasonCodes.UnsupportedCapability);
+        if (storeName is null) {
+            return new DomainProjectionRebuildPreparation(
+                handlers,
+                null,
+                FailureForEveryRoute(handlers, ProjectionDispatchReasonCodes.UnsupportedCapability));
         }
 
-        ReadModelBatch batch;
         try {
-            batch = new ReadModelBatch(
+            var batch = new ReadModelBatch(
                 new ReadModelBatchScope(
                     storeName,
                     dispatchRequest.Request.TenantId,
@@ -198,79 +427,14 @@ public static class DomainProjectionDispatcher {
                     "rebuild",
                     dispatchRequest.DispatchId),
                 operations);
+            return new DomainProjectionRebuildPreparation(handlers, batch, null);
         }
         catch (Exception exception) when (exception is ArgumentException or ArgumentNullException) {
-            return FailureForEveryRoute(handlers, ProjectionDispatchReasonCodes.MalformedOutcome);
-        }
-
-        DomainProjectionHandlerResult result;
-        try {
-            ReadModelBatchResult batchResult = await batchStore
-                .ExecuteAsync(batch, cancellationToken)
-                .ConfigureAwait(false);
-            result = ReadModelBatchProjectionResultMapper.Map(batchResult);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
-            throw;
-        }
-        catch (Exception) {
-            result = DomainProjectionHandlerResult.Indeterminate(ProjectionDispatchReasonCodes.HandlerFailure);
-        }
-
-        return new ProjectionDispatchResponse(
-            ProjectionDispatchProtocol.Version,
-            [.. handlers.Select(handler => new ProjectionDispatchOutcome(
-                handler.ProjectionType,
-                result.Status,
+            return new DomainProjectionRebuildPreparation(
+                handlers,
                 null,
-                result.ReasonCode))]);
-    }
-
-    /// <summary>Dispatches using a catalog fingerprint recomputed from authoritative local identity and routes.</summary>
-    /// <param name="serviceProvider">The scoped request service provider.</param>
-    /// <param name="dispatchRequest">The version-2 dispatch request.</param>
-    /// <param name="options">The validated dispatch bounds.</param>
-    /// <param name="identityOptions">The authoritative local service binding.</param>
-    /// <param name="cancellationToken">Propagates request cancellation and prevents later starts.</param>
-    /// <returns>A bounded deterministic per-projection response.</returns>
-    public static async Task<ProjectionDispatchResponse> DispatchAsync(
-        IServiceProvider serviceProvider,
-        ProjectionDispatchRequest dispatchRequest,
-        ProjectionDispatchOptions options,
-        DomainProjectionIdentityOptions identityOptions,
-        CancellationToken cancellationToken) {
-        ArgumentNullException.ThrowIfNull(serviceProvider);
-        ArgumentNullException.ThrowIfNull(dispatchRequest);
-        ArgumentNullException.ThrowIfNull(options);
-        ArgumentNullException.ThrowIfNull(identityOptions);
-        options.Validate();
-        identityOptions.Validate();
-        ValidateRequest(dispatchRequest, options);
-
-        IAsyncDomainProjectionHandler[] allHandlers = DomainProjectionHandlerRouteValidator
-            .MaterializeAndValidateNamed(serviceProvider.GetServices<IAsyncDomainProjectionHandler>(), options)
-            .ToArray();
-        ProjectionDispatchRoute[] authoritativeRoutes = [.. allHandlers
-            .Where(handler => string.Equals(handler.Domain, dispatchRequest.Request.Domain, StringComparison.Ordinal))
-            .Select(handler => new ProjectionDispatchRoute(handler.Domain, handler.ProjectionType))];
-        if (authoritativeRoutes.Length == 0
-            || !string.Equals(
-                ProjectionRouteCatalogFingerprint.Compute(
-                    identityOptions.AppId,
-                    identityOptions.ServiceVersion,
-                    authoritativeRoutes),
-                dispatchRequest.CatalogFingerprint,
-                StringComparison.Ordinal)) {
-            throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedCapability);
+                FailureForEveryRoute(handlers, ProjectionDispatchReasonCodes.MalformedOutcome));
         }
-
-        return await DispatchCoreAsync(
-                serviceProvider,
-                dispatchRequest,
-                options,
-                cancellationToken,
-                allHandlers)
-            .ConfigureAwait(false);
     }
 
     private static async Task<ProjectionDispatchResponse> DispatchCoreAsync(

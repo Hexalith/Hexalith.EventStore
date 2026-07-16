@@ -50,20 +50,7 @@ internal sealed class ReadModelBatchProtocol {
         CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(batch);
 
-        // Cancellation requested before any state access throws without touching state.
-        cancellationToken.ThrowIfCancellationRequested();
-
-        // Deterministic validation before state access (throws on violation).
-        ValidateLimits(batch);
-
-        _batch = batch;
-        _injector = injector;
-        byte[] manifest = ReadModelBatchFingerprint.BuildCanonicalManifest(batch);
-        _fingerprint = ReadModelBatchFingerprint.ComputeFromManifest(manifest);
-        _scopeHash = batch.Scope.ComputeScopeHash();
-        _markerKey = ReadModelBatchKeys.MarkerKey(_scopeHash);
-        ReadModelBatchStoreProfile profile = _options.GetProfile(batch.Scope.StoreName);
-        _profileName = profile.ToString();
+        ReadModelBatchStoreProfile profile = Initialize(batch, injector, cancellationToken);
 
         // A before-dispatch fault (including simulated pre-dispatch cancellation) propagates.
         if (_injector is not null) {
@@ -88,6 +75,207 @@ internal sealed class ReadModelBatchProtocol {
             // Transport/DAPR failure after a request may have been dispatched: reconcile.
             return await ReconcileAsync("dispatch-failure").ConfigureAwait(false);
         }
+    }
+
+    /// <summary>Installs a resumable batch without committing its visibility marker.</summary>
+    public async Task<ReadModelBatchStagingResult> StageAsync(
+        ReadModelBatch batch,
+        IReadModelBatchFaultInjector? injector,
+        CancellationToken cancellationToken) {
+        ReadModelBatchStoreProfile profile = Initialize(batch, injector, cancellationToken);
+        if (profile != ReadModelBatchStoreProfile.Resumable) {
+            return Staging(ReadModelBatchStagingStatus.Indeterminate, "transaction-profile-not-stageable");
+        }
+
+        try {
+            return await RunStageAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (ReadModelBatchRaceException) {
+            return await ReconcileStagingAsync("prepare-race").ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) {
+            return await ReconcileStagingAsync("cancellation").ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not ArgumentException and not InvalidOperationException) {
+            return await ReconcileStagingAsync("dispatch-failure").ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>Commits and reads back a previously staged resumable batch.</summary>
+    public async Task<ReadModelBatchStagingResult> CommitStagedAsync(
+        ReadModelBatch batch,
+        IReadModelBatchFaultInjector? injector,
+        CancellationToken cancellationToken) {
+        ReadModelBatchStoreProfile profile = Initialize(batch, injector, cancellationToken);
+        if (profile != ReadModelBatchStoreProfile.Resumable) {
+            return Staging(ReadModelBatchStagingStatus.Indeterminate, "transaction-profile-not-stageable");
+        }
+
+        try {
+            (ReadModelBatchMarker? marker, _, bool exists) = await ReadMarkerAsync(cancellationToken).ConfigureAwait(false);
+            if (!exists || marker is null) {
+                return Staging(ReadModelBatchStagingStatus.Indeterminate, "marker-lost");
+            }
+
+            if (!string.Equals(marker.Fingerprint, _fingerprint, StringComparison.Ordinal)) {
+                return Staging(ReadModelBatchStagingStatus.Conflict, "identity-conflict");
+            }
+
+            if (marker.Status == ReadModelBatchMarkerStatus.Completed) {
+                return await VerifyOperationKeysAsync(cancellationToken).ConfigureAwait(false)
+                    ? Staging(ReadModelBatchStagingStatus.Committed)
+                    : Staging(ReadModelBatchStagingStatus.Indeterminate, "operation-unverified");
+            }
+
+            if (marker.Status == ReadModelBatchMarkerStatus.Committed) {
+                return await CompactAndCompleteAsync(cancellationToken).ConfigureAwait(false)
+                    ? Staging(ReadModelBatchStagingStatus.Committed)
+                    : Staging(ReadModelBatchStagingStatus.Indeterminate, "compaction-race");
+            }
+
+            if (marker.Status != ReadModelBatchMarkerStatus.Prepared
+                || !await VerifyStagedOperationKeysAsync(cancellationToken).ConfigureAwait(false)) {
+                return Staging(ReadModelBatchStagingStatus.Indeterminate, "candidate-unverified");
+            }
+
+            ReadModelBatchResult? failure = await CommitAsync(cancellationToken).ConfigureAwait(false);
+            if (failure is not null) {
+                return Map(failure);
+            }
+
+            return await CompactAndCompleteAsync(cancellationToken).ConfigureAwait(false)
+                ? Staging(ReadModelBatchStagingStatus.Committed)
+                : Staging(ReadModelBatchStagingStatus.Indeterminate, "compaction-race");
+        }
+        catch (OperationCanceledException) {
+            return await ReconcileStagingAsync("cancellation").ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not ArgumentException and not InvalidOperationException) {
+            return await ReconcileStagingAsync("dispatch-failure").ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>Compensates an uncommitted staged resumable batch.</summary>
+    public async Task<ReadModelBatchStagingResult> AbortStagedAsync(
+        ReadModelBatch batch,
+        IReadModelBatchFaultInjector? injector,
+        CancellationToken cancellationToken) {
+        ReadModelBatchStoreProfile profile = Initialize(batch, injector, cancellationToken);
+        if (profile != ReadModelBatchStoreProfile.Resumable) {
+            return Staging(ReadModelBatchStagingStatus.Indeterminate, "transaction-profile-not-stageable");
+        }
+
+        try {
+            (ReadModelBatchMarker? marker, _, bool exists) = await ReadMarkerAsync(cancellationToken).ConfigureAwait(false);
+            if (!exists) {
+                return Staging(ReadModelBatchStagingStatus.Aborted);
+            }
+
+            if (marker is null || !string.Equals(marker.Fingerprint, _fingerprint, StringComparison.Ordinal)) {
+                return Staging(ReadModelBatchStagingStatus.Conflict, "identity-conflict");
+            }
+
+            if (marker.Status == ReadModelBatchMarkerStatus.Aborted) {
+                return Staging(ReadModelBatchStagingStatus.Aborted);
+            }
+
+            if (marker.Status is ReadModelBatchMarkerStatus.Committed or ReadModelBatchMarkerStatus.Completed) {
+                return Staging(ReadModelBatchStagingStatus.Indeterminate, "already-committed");
+            }
+
+            return await CompensateAsync(_batch.Operations.Count, false, cancellationToken).ConfigureAwait(false)
+                ? Staging(ReadModelBatchStagingStatus.Aborted)
+                : Staging(ReadModelBatchStagingStatus.Indeterminate, "compensation-race");
+        }
+        catch (OperationCanceledException) {
+            return await ReconcileStagingAsync("cancellation").ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not ArgumentException and not InvalidOperationException) {
+            return await ReconcileStagingAsync("dispatch-failure").ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>Reads back the current durable state of a staged manifest.</summary>
+    public async Task<ReadModelBatchStagingResult> VerifyStagedAsync(
+        ReadModelBatch batch,
+        IReadModelBatchFaultInjector? injector,
+        CancellationToken cancellationToken) {
+        ReadModelBatchStoreProfile profile = Initialize(batch, injector, cancellationToken);
+        if (profile != ReadModelBatchStoreProfile.Resumable) {
+            return Staging(ReadModelBatchStagingStatus.Indeterminate, "transaction-profile-not-stageable");
+        }
+
+        return await ReconcileStagingAsync("verify").ConfigureAwait(false);
+    }
+
+    private ReadModelBatchStoreProfile Initialize(
+        ReadModelBatch batch,
+        IReadModelBatchFaultInjector? injector,
+        CancellationToken cancellationToken) {
+        cancellationToken.ThrowIfCancellationRequested();
+        ValidateLimits(batch);
+        _batch = batch;
+        _injector = injector;
+        byte[] manifest = ReadModelBatchFingerprint.BuildCanonicalManifest(batch);
+        _fingerprint = ReadModelBatchFingerprint.ComputeFromManifest(manifest);
+        _scopeHash = batch.Scope.ComputeScopeHash();
+        _markerKey = ReadModelBatchKeys.MarkerKey(_scopeHash);
+        ReadModelBatchStoreProfile profile = _options.GetProfile(batch.Scope.StoreName);
+        _profileName = profile.ToString();
+        return profile;
+    }
+
+    private async Task<ReadModelBatchStagingResult> RunStageAsync(CancellationToken cancellationToken) {
+        (ReadModelBatchMarker? marker, string markerEtag, bool exists) = await ReadMarkerAsync(cancellationToken).ConfigureAwait(false);
+        if (exists && marker is null) {
+            return Staging(ReadModelBatchStagingStatus.Indeterminate, "unreadable-marker");
+        }
+
+        if (marker is not null) {
+            if (!string.Equals(marker.Fingerprint, _fingerprint, StringComparison.Ordinal)) {
+                return Staging(ReadModelBatchStagingStatus.Conflict, "identity-conflict");
+            }
+
+            if (marker.Status == ReadModelBatchMarkerStatus.Completed) {
+                return await VerifyOperationKeysAsync(cancellationToken).ConfigureAwait(false)
+                    ? Staging(ReadModelBatchStagingStatus.Committed)
+                    : Staging(ReadModelBatchStagingStatus.Indeterminate, "operation-unverified");
+            }
+
+            if (marker.Status == ReadModelBatchMarkerStatus.Committed) {
+                return await CompactAndCompleteAsync(cancellationToken).ConfigureAwait(false)
+                    ? Staging(ReadModelBatchStagingStatus.Committed)
+                    : Staging(ReadModelBatchStagingStatus.Indeterminate, "compaction-race");
+            }
+
+            if (marker.Status == ReadModelBatchMarkerStatus.Aborting
+                && !await CompensateAsync(_batch.Operations.Count, false, cancellationToken).ConfigureAwait(false)) {
+                return Staging(ReadModelBatchStagingStatus.Indeterminate, "compensation-race");
+            }
+
+            if (marker.Status == ReadModelBatchMarkerStatus.Prepared) {
+                ReadModelBatchResult? resumedConflict = await InstallAsync(cancellationToken).ConfigureAwait(false);
+                if (resumedConflict is not null) {
+                    return Map(resumedConflict);
+                }
+
+                return await VerifyStagedOperationKeysAsync(cancellationToken).ConfigureAwait(false)
+                    ? Staging(ReadModelBatchStagingStatus.Prepared)
+                    : Staging(ReadModelBatchStagingStatus.Indeterminate, "candidate-unverified");
+            }
+
+            (marker, markerEtag, _) = await ReadMarkerAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        _ = await PrepareMarkerAsync(marker, markerEtag, cancellationToken).ConfigureAwait(false);
+        ReadModelBatchResult? conflict = await InstallAsync(cancellationToken).ConfigureAwait(false);
+        if (conflict is not null) {
+            return Map(conflict);
+        }
+
+        return await VerifyStagedOperationKeysAsync(cancellationToken).ConfigureAwait(false)
+            ? Staging(ReadModelBatchStagingStatus.Prepared)
+            : Staging(ReadModelBatchStagingStatus.Indeterminate, "candidate-unverified");
     }
 
     /// <summary>
@@ -653,6 +841,22 @@ internal sealed class ReadModelBatchProtocol {
         return true;
     }
 
+    private async Task<bool> VerifyStagedOperationKeysAsync(CancellationToken cancellationToken) {
+        for (int ordinal = 0; ordinal < _batch.Operations.Count; ordinal++) {
+            RawStateEntry entry = await _accessor
+                .ReadAsync(_batch.Operations[ordinal].Key, cancellationToken)
+                .ConfigureAwait(false);
+            if (!TryGetOwnEnvelope(entry, ordinal, out _)) {
+                return false;
+            }
+        }
+
+        (ReadModelBatchMarker? marker, _, _) = await ReadMarkerAsync(cancellationToken).ConfigureAwait(false);
+        return marker is not null
+            && marker.Status == ReadModelBatchMarkerStatus.Prepared
+            && string.Equals(marker.Fingerprint, _fingerprint, StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// Reconciles a transaction-qualified batch after the single transaction threw or was ambiguous, using a
     /// bounded, caller-token-independent read-back. A durable receipt is trusted only when the operation keys
@@ -737,6 +941,50 @@ internal sealed class ReadModelBatchProtocol {
             return ReadModelBatchResult.Indeterminate(_fingerprint, reason);
         }
     }
+
+    private async Task<ReadModelBatchStagingResult> ReconcileStagingAsync(string reason) {
+        using var reconcileSource = new CancellationTokenSource(_options.ReconciliationTimeout);
+        CancellationToken token = reconcileSource.Token;
+        try {
+            (ReadModelBatchMarker? marker, _, bool exists) = await ReadMarkerAsync(token).ConfigureAwait(false);
+            if (!exists || marker is null) {
+                return Staging(ReadModelBatchStagingStatus.Indeterminate, reason);
+            }
+
+            if (!string.Equals(marker.Fingerprint, _fingerprint, StringComparison.Ordinal)) {
+                return Staging(ReadModelBatchStagingStatus.Conflict, "identity-conflict");
+            }
+
+            return marker.Status switch {
+                ReadModelBatchMarkerStatus.Prepared => await VerifyStagedOperationKeysAsync(token).ConfigureAwait(false)
+                    ? Staging(ReadModelBatchStagingStatus.Prepared)
+                    : Staging(ReadModelBatchStagingStatus.Indeterminate, "candidate-unverified"),
+                ReadModelBatchMarkerStatus.Committed => await CompactAndCompleteAsync(token).ConfigureAwait(false)
+                    ? Staging(ReadModelBatchStagingStatus.Committed)
+                    : Staging(ReadModelBatchStagingStatus.Indeterminate, "compaction-race"),
+                ReadModelBatchMarkerStatus.Completed => await VerifyOperationKeysAsync(token).ConfigureAwait(false)
+                    ? Staging(ReadModelBatchStagingStatus.Committed)
+                    : Staging(ReadModelBatchStagingStatus.Indeterminate, "operation-unverified"),
+                ReadModelBatchMarkerStatus.Aborted => Staging(ReadModelBatchStagingStatus.Aborted),
+                _ => Staging(ReadModelBatchStagingStatus.Indeterminate, reason),
+            };
+        }
+        catch (Exception) {
+            return Staging(ReadModelBatchStagingStatus.Indeterminate, reason);
+        }
+    }
+
+    private ReadModelBatchStagingResult Staging(ReadModelBatchStagingStatus status, string? reason = null)
+        => new(status, _fingerprint, reason);
+
+    private ReadModelBatchStagingResult Map(ReadModelBatchResult result)
+        => result.Status switch {
+            ReadModelBatchStatus.Completed or ReadModelBatchStatus.AlreadyCompleted =>
+                Staging(ReadModelBatchStagingStatus.Committed, result.RecoveryReason),
+            ReadModelBatchStatus.Conflict =>
+                Staging(ReadModelBatchStagingStatus.Conflict, result.RecoveryReason),
+            _ => Staging(ReadModelBatchStagingStatus.Indeterminate, result.RecoveryReason),
+        };
 
     private async Task<(ReadModelBatchMarker? Marker, string ETag, bool Exists)> ReadMarkerAsync(CancellationToken cancellationToken) {
         RawStateEntry entry = await _accessor.ReadAsync(_markerKey, cancellationToken).ConfigureAwait(false);

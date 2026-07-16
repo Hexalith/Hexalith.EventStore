@@ -36,6 +36,55 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
     private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
 
     /// <inheritdoc/>
+    public async Task<NamedProjectionRebuildResult> AcquireRebuildLifecyclesAsync(
+        AggregateIdentity identity,
+        DomainServiceRegistration registration,
+        string operationId,
+        CancellationToken cancellationToken) {
+        ArgumentNullException.ThrowIfNull(identity);
+        ArgumentNullException.ThrowIfNull(registration);
+        ArgumentException.ThrowIfNullOrWhiteSpace(operationId);
+        NamedProjectionRouteCatalogEntry? catalogEntry = await ResolveCatalogEntryAsync(
+                identity,
+                registration,
+                cancellationToken)
+            .ConfigureAwait(false);
+        if (catalogEntry is null) {
+            return new NamedProjectionRebuildResult(Owned: false, Succeeded: true, [], []);
+        }
+
+        string[] requiredRoutes = [.. catalogEntry.ProjectionTypes.Order(StringComparer.Ordinal)];
+        var acquired = new List<string>(requiredRoutes.Length);
+        try {
+            foreach (string projectionType in requiredRoutes) {
+                if (!await lifecycleGateway
+                    .BeginRebuildAsync(identity, projectionType, operationId, cancellationToken)
+                    .ConfigureAwait(false)) {
+                    ProjectionDispatchOutcome[] denied = [.. requiredRoutes.Select(route => new ProjectionDispatchOutcome(
+                        route,
+                        ProjectionDispatchStatus.Retryable,
+                        null,
+                        ProjectionDispatchReasonCodes.DeliveryInProgress))];
+                    return new NamedProjectionRebuildResult(Owned: true, Succeeded: false, denied, acquired);
+                }
+
+                acquired.Add(projectionType);
+            }
+
+            ProjectionDispatchOutcome[] outcomes = [.. requiredRoutes.Select(route => new ProjectionDispatchOutcome(
+                route,
+                ProjectionDispatchStatus.Completed,
+                null,
+                null))];
+            return new NamedProjectionRebuildResult(Owned: true, Succeeded: true, outcomes, acquired);
+        }
+        catch {
+            await ReleaseRebuildLifecyclesAsync(identity, operationId, acquired).ConfigureAwait(false);
+            throw;
+        }
+    }
+
+    /// <inheritdoc/>
     public async Task<NamedProjectionRebuildResult> TryRebuildAsync(
         AggregateIdentity identity,
         DomainServiceRegistration registration,
@@ -102,7 +151,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                 catalogEntry.CatalogFingerprint);
             ProjectionDispatchResponse? response = await InvokeAsync(
                     registration.AppId,
-                    "project/rebuild/v1",
+                    "project/rebuild/stage/v1",
                     request,
                     dispatchOptions,
                     cancellationToken)
@@ -529,6 +578,15 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                     Stopwatch.GetElapsedTime(started).TotalMilliseconds);
             }
 
+            // The durable work item is the crash-recovery carrier for the stable dispatch id. Keep it
+            // until every lifecycle lease has been released; deleting it first can orphan Delivering
+            // forever if the process stops between ledger reconciliation and the finally block.
+            await CompleteDeliveryLifecycleLeasesAsync(
+                    identity,
+                    scheduledWork.DispatchId,
+                    lifecycleLeases)
+                .ConfigureAwait(false);
+
             await ReconcileRetryLedgerAsync(
                     scheduledWork,
                     completedRoutes,
@@ -542,30 +600,91 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
             return true;
         }
         finally {
-            Exception? lifecycleCompletionFailure = null;
-            foreach (string projectionType in lifecycleLeases) {
-                try {
-                    if (!await lifecycleGateway
-                        .CompleteDeliveryWriteAsync(
-                            identity,
-                            projectionType,
-                            scheduledWork.DispatchId,
-                            CancellationToken.None)
-                        .ConfigureAwait(false)) {
-                        lifecycleCompletionFailure ??= new InvalidOperationException(
-                            "Named projection delivery lifecycle lease completion was rejected.");
-                    }
-                }
-                catch (Exception exception) {
-                    lifecycleCompletionFailure ??= exception;
-                }
+            if (lifecycleLeases.Count > 0) {
+                await CompleteDeliveryLifecycleLeasesAsync(
+                        identity,
+                        scheduledWork.DispatchId,
+                        lifecycleLeases)
+                    .ConfigureAwait(false);
             }
+        }
+    }
 
-            if (lifecycleCompletionFailure is not null) {
-                throw new InvalidOperationException(
-                    "One or more named projection delivery lifecycle leases could not be completed.",
-                    lifecycleCompletionFailure);
+    /// <inheritdoc/>
+    public Task<NamedProjectionRebuildResult> CommitRebuildAsync(
+        AggregateIdentity identity,
+        DomainServiceRegistration registration,
+        ProjectionEventDto[] projectionEvents,
+        string operationId,
+        CancellationToken cancellationToken)
+        => InvokePreparedRebuildAsync(
+            identity,
+            registration,
+            projectionEvents,
+            operationId,
+            "project/rebuild/commit/v1",
+            cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<NamedProjectionRebuildResult> AbortRebuildAsync(
+        AggregateIdentity identity,
+        DomainServiceRegistration registration,
+        ProjectionEventDto[] projectionEvents,
+        string operationId,
+        CancellationToken cancellationToken)
+        => InvokePreparedRebuildAsync(
+            identity,
+            registration,
+            projectionEvents,
+            operationId,
+            "project/rebuild/abort/v1",
+            cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<NamedProjectionRebuildResult> VerifyRebuildAsync(
+        AggregateIdentity identity,
+        DomainServiceRegistration registration,
+        ProjectionEventDto[] projectionEvents,
+        string operationId,
+        CancellationToken cancellationToken)
+        => InvokePreparedRebuildAsync(
+            identity,
+            registration,
+            projectionEvents,
+            operationId,
+            "project/rebuild/verify/v1",
+            cancellationToken);
+
+    private async Task CompleteDeliveryLifecycleLeasesAsync(
+        AggregateIdentity identity,
+        string dispatchId,
+        ISet<string> lifecycleLeases) {
+        Exception? lifecycleCompletionFailure = null;
+        foreach (string projectionType in lifecycleLeases.ToArray()) {
+            try {
+                if (!await lifecycleGateway
+                    .CompleteDeliveryWriteAsync(
+                        identity,
+                        projectionType,
+                        dispatchId,
+                        CancellationToken.None)
+                    .ConfigureAwait(false)) {
+                    lifecycleCompletionFailure ??= new InvalidOperationException(
+                        "Named projection delivery lifecycle lease completion was rejected.");
+                    continue;
+                }
+
+                _ = lifecycleLeases.Remove(projectionType);
             }
+            catch (Exception exception) {
+                lifecycleCompletionFailure ??= exception;
+            }
+        }
+
+        if (lifecycleCompletionFailure is not null) {
+            throw new InvalidOperationException(
+                "One or more named projection delivery lifecycle leases could not be completed.",
+                lifecycleCompletionFailure);
         }
     }
 
@@ -674,6 +793,119 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
             dispatchOptions.RetryMaxDelay.Ticks,
             dispatchOptions.RetryBaseDelay.Ticks * multiplier);
         return TimeSpan.FromTicks((long)ticks);
+    }
+
+    private async Task<NamedProjectionRebuildResult> InvokePreparedRebuildAsync(
+        AggregateIdentity identity,
+        DomainServiceRegistration registration,
+        ProjectionEventDto[] projectionEvents,
+        string operationId,
+        string methodName,
+        CancellationToken cancellationToken) {
+        ArgumentNullException.ThrowIfNull(identity);
+        ArgumentNullException.ThrowIfNull(registration);
+        ArgumentNullException.ThrowIfNull(projectionEvents);
+        ArgumentException.ThrowIfNullOrWhiteSpace(operationId);
+        ProjectionDispatchOptions dispatchOptions = options.Value;
+        dispatchOptions.Validate();
+        NamedProjectionRouteCatalogEntry? catalogEntry = await ResolveCatalogEntryAsync(
+                identity,
+                registration,
+                cancellationToken)
+            .ConfigureAwait(false);
+        if (catalogEntry is null) {
+            return new NamedProjectionRebuildResult(Owned: false, Succeeded: true, [], []);
+        }
+
+        string[] requiredRoutes = [.. catalogEntry.ProjectionTypes.Order(StringComparer.Ordinal)];
+        var request = new ProjectionDispatchRequest(
+            new ProjectionRequest(
+                identity.TenantId,
+                identity.Domain,
+                identity.AggregateId,
+                projectionEvents),
+            requiredRoutes,
+            operationId,
+            catalogEntry.CatalogFingerprint);
+        ProjectionDispatchResponse? response = await InvokeAsync(
+                registration.AppId,
+                methodName,
+                request,
+                dispatchOptions,
+                cancellationToken)
+            .ConfigureAwait(false);
+        if (response is null) {
+            ProjectionDispatchOutcome[] indeterminate = [.. requiredRoutes.Select(route => new ProjectionDispatchOutcome(
+                route,
+                ProjectionDispatchStatus.Indeterminate,
+                null,
+                ProjectionDispatchReasonCodes.HandlerFailure))];
+            return new NamedProjectionRebuildResult(Owned: true, Succeeded: false, indeterminate, requiredRoutes);
+        }
+
+        Dictionary<string, ProjectionDispatchOutcome> validOutcomes = ValidateOutcomes(
+            response,
+            requiredRoutes,
+            dispatchOptions);
+        ProjectionDispatchOutcome[] orderedOutcomes = [.. requiredRoutes.Select(route =>
+            validOutcomes.TryGetValue(route, out ProjectionDispatchOutcome? outcome)
+                ? outcome
+                : new ProjectionDispatchOutcome(
+                    route,
+                    ProjectionDispatchStatus.Indeterminate,
+                    null,
+                    ProjectionDispatchReasonCodes.MalformedOutcome))];
+        bool succeeded = orderedOutcomes.All(static outcome =>
+            outcome.Status is ProjectionDispatchStatus.Completed or ProjectionDispatchStatus.AlreadyCompleted);
+        return new NamedProjectionRebuildResult(Owned: true, succeeded, orderedOutcomes, requiredRoutes);
+    }
+
+    private async Task<NamedProjectionRouteCatalogEntry?> ResolveCatalogEntryAsync(
+        AggregateIdentity identity,
+        DomainServiceRegistration registration,
+        CancellationToken cancellationToken) {
+        string serviceVersion = string.IsNullOrWhiteSpace(registration.Version) ? "v1" : registration.Version;
+        if (routeCatalog.Current.TryGet(
+            registration.AppId,
+            serviceVersion,
+            identity.Domain,
+            out NamedProjectionRouteCatalogEntry? catalogEntry)
+            && catalogEntry is not null) {
+            return catalogEntry;
+        }
+
+        return catalogRefresher is not null
+            && await catalogRefresher.RefreshAsync(registration, cancellationToken).ConfigureAwait(false)
+            && routeCatalog.Current.TryGet(
+                registration.AppId,
+                serviceVersion,
+                identity.Domain,
+                out catalogEntry)
+            ? catalogEntry
+            : null;
+    }
+
+    private async Task ReleaseRebuildLifecyclesAsync(
+        AggregateIdentity identity,
+        string operationId,
+        IEnumerable<string> projectionTypes) {
+        foreach (string projectionType in projectionTypes) {
+            try {
+                _ = await lifecycleGateway
+                    .CompleteRebuildAsync(identity, projectionType, operationId, CancellationToken.None)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException) {
+                Log.LifecycleReleaseFailed(
+                    logger,
+                    identity.TenantId,
+                    identity.Domain,
+                    identity.AggregateId,
+                    projectionType,
+                    operationId,
+                    exception.GetType().Name);
+            }
+        }
     }
 
     private async Task<ProjectionDispatchResponse?> InvokeAsync(

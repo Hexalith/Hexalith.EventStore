@@ -23,6 +23,20 @@ internal interface IProjectionLifecycleGateway {
         string operationId,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Fences matching rebuild promotion against terminal cleanup.</summary>
+    Task<bool> BeginRebuildPromotionAsync(
+        AggregateIdentity identity,
+        string projectionName,
+        string operationId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Releases a matching rebuild promotion fence.</summary>
+    Task<bool> CompleteRebuildPromotionAsync(
+        AggregateIdentity identity,
+        string projectionName,
+        string operationId,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Reads the persisted lifecycle phase for projection-backed query evidence.</summary>
     Task<ProjectionLifecyclePhase> ReadPhaseAsync(
         AggregateIdentity identity,

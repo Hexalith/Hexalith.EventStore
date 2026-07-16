@@ -12,14 +12,15 @@ namespace Hexalith.EventStore.Client.Registration;
 public static class ReadModelStoreServiceCollectionExtensions {
     /// <summary>
     /// Registers the DAPR-backed read-model store for domain modules that maintain persisted,
-    /// incrementally-updated read models. One <see cref="DaprReadModelStore"/> singleton backs both
-    /// <see cref="IReadModelStore"/> and the additive <see cref="IReadModelBatchStore"/>. Requires a
-    /// registered <c>DaprClient</c> (e.g. via <c>AddDaprClient</c>).
+    /// incrementally-updated read models. One <see cref="DaprReadModelStore"/> singleton backs
+    /// <see cref="IReadModelStore"/>, <see cref="IReadModelBatchStore"/>, and the additive
+    /// <see cref="IReadModelBatchStagingStore"/>. Requires a registered <c>DaprClient</c>
+    /// (e.g. via <c>AddDaprClient</c>).
     /// </summary>
     /// <remarks>
     /// Registration is idempotent (<c>TryAdd</c>). A consumer that pre-registers a custom
-    /// <see cref="IReadModelStore"/> keeps it; the batch interface then resolves to that same instance when
-    /// it also implements <see cref="IReadModelBatchStore"/>, otherwise to the default DAPR batch store.
+    /// <see cref="IReadModelStore"/> keeps it; the batch interfaces then resolve to that same instance when
+    /// it implements them, otherwise to the default DAPR batch store.
     /// </remarks>
     /// <param name="services">The service collection.</param>
     /// <param name="configureBatch">An optional delegate to tune batch limits and per-store profiles.</param>
@@ -38,6 +39,9 @@ public static class ReadModelStoreServiceCollectionExtensions {
         services.TryAddSingleton<IReadModelStore>(static sp => sp.GetRequiredService<DaprReadModelStore>());
         services.TryAddSingleton<IReadModelBatchStore>(static sp =>
             sp.GetService<IReadModelStore>() as IReadModelBatchStore
+            ?? sp.GetRequiredService<DaprReadModelStore>());
+        services.TryAddSingleton<IReadModelBatchStagingStore>(static sp =>
+            sp.GetService<IReadModelStore>() as IReadModelBatchStagingStore
             ?? sp.GetRequiredService<DaprReadModelStore>());
         services.TryAddSingleton<IReadModelConditionalEraser>(static sp =>
             sp.GetService<IReadModelStore>() as IReadModelConditionalEraser

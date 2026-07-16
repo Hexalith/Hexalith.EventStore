@@ -105,6 +105,16 @@ public interface IProjectionLifecycleActor : IActor {
     /// <returns>True when the matching operation was completed.</returns>
     Task<bool> CompleteRebuildAsync(ProjectionRebuildLifecycleRequest request);
 
+    /// <summary>Fences promotion so terminal cleanup cannot race a matching rebuild write.</summary>
+    /// <param name="request">The stable rebuild operation identity.</param>
+    /// <returns>True when the matching rebuild owns the promotion fence.</returns>
+    Task<bool> BeginRebuildPromotionAsync(ProjectionRebuildLifecycleRequest request);
+
+    /// <summary>Releases the matching promotion fence while retaining the rebuilding phase.</summary>
+    /// <param name="request">The stable rebuild operation identity.</param>
+    /// <returns>True when the matching promotion fence was released.</returns>
+    Task<bool> CompleteRebuildPromotionAsync(ProjectionRebuildLifecycleRequest request);
+
     /// <summary>Reads the persisted lifecycle phase.</summary>
     /// <returns>The current persisted phase, or idle when state is absent.</returns>
     Task<ProjectionLifecyclePhase> ReadPhaseAsync();

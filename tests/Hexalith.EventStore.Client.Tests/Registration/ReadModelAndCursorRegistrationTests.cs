@@ -51,7 +51,7 @@ public class ReadModelAndCursorRegistrationTests {
     }
 
     [Fact]
-    public void AddEventStoreReadModelStore_BindsSameSingletonToBothStoreInterfaces() {
+    public void AddEventStoreReadModelStore_BindsSameSingletonToEveryStoreInterface() {
         var services = new ServiceCollection();
         _ = services.AddSingleton(Substitute.For<DaprClient>());
 
@@ -60,9 +60,11 @@ public class ReadModelAndCursorRegistrationTests {
         using ServiceProvider provider = services.BuildServiceProvider();
         IReadModelStore single = provider.GetRequiredService<IReadModelStore>();
         IReadModelBatchStore batch = provider.GetRequiredService<IReadModelBatchStore>();
+        IReadModelBatchStagingStore staging = provider.GetRequiredService<IReadModelBatchStagingStore>();
 
         _ = single.ShouldBeOfType<DaprReadModelStore>();
         ReferenceEquals(single, batch).ShouldBeTrue("one DaprReadModelStore singleton must back both interfaces");
+        ReferenceEquals(single, staging).ShouldBeTrue("the same singleton must back phased staging");
     }
 
     [Fact]
@@ -78,6 +80,9 @@ public class ReadModelAndCursorRegistrationTests {
         ReferenceEquals(
             provider.GetRequiredService<IReadModelStore>(),
             provider.GetRequiredService<IReadModelBatchStore>()).ShouldBeTrue();
+        ReferenceEquals(
+            provider.GetRequiredService<IReadModelStore>(),
+            provider.GetRequiredService<IReadModelBatchStagingStore>()).ShouldBeTrue();
     }
 
     [Fact]
@@ -93,6 +98,7 @@ public class ReadModelAndCursorRegistrationTests {
         provider.GetRequiredService<IReadModelStore>().ShouldBeSameAs(custom);
         // The custom store is not batch-capable, so the default DAPR batch store provides batching.
         _ = provider.GetRequiredService<IReadModelBatchStore>().ShouldBeOfType<DaprReadModelStore>();
+        _ = provider.GetRequiredService<IReadModelBatchStagingStore>().ShouldBeOfType<DaprReadModelStore>();
     }
 
     [Fact]

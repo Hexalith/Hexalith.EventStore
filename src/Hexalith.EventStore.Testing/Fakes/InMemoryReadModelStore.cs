@@ -29,7 +29,7 @@ namespace Hexalith.EventStore.Testing.Fakes;
 /// protocol phase.
 /// </para>
 /// </remarks>
-public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelBatchStore, IReadModelConditionalEraser {
+public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelBatchStore, IReadModelBatchStagingStore, IReadModelConditionalEraser {
     private static readonly JsonSerializerOptions s_json = new(JsonSerializerDefaults.Web);
 
     private readonly ConcurrentDictionary<string, Entry> _entries = new(StringComparer.Ordinal);
@@ -183,6 +183,48 @@ public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelBatchSto
             : new DelegateFaultInjector(BatchFaultHook);
         var protocol = new ReadModelBatchProtocol(accessor, BatchOptions, NullLogger.Instance);
         return await protocol.ExecuteAsync(batch, injector, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
+    public Task<ReadModelBatchStagingResult> StageAsync(
+        ReadModelBatch batch,
+        CancellationToken cancellationToken = default)
+        => ExecuteStagingAsync(batch, ReadModelBatchStagingAction.Stage, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<ReadModelBatchStagingResult> CommitAsync(
+        ReadModelBatch batch,
+        CancellationToken cancellationToken = default)
+        => ExecuteStagingAsync(batch, ReadModelBatchStagingAction.Commit, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<ReadModelBatchStagingResult> AbortAsync(
+        ReadModelBatch batch,
+        CancellationToken cancellationToken = default)
+        => ExecuteStagingAsync(batch, ReadModelBatchStagingAction.Abort, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<ReadModelBatchStagingResult> VerifyAsync(
+        ReadModelBatch batch,
+        CancellationToken cancellationToken = default)
+        => ExecuteStagingAsync(batch, ReadModelBatchStagingAction.Verify, cancellationToken);
+
+    private async Task<ReadModelBatchStagingResult> ExecuteStagingAsync(
+        ReadModelBatch batch,
+        ReadModelBatchStagingAction action,
+        CancellationToken cancellationToken) {
+        ArgumentNullException.ThrowIfNull(batch);
+        var accessor = new InMemoryBatchAccessor(this, batch.Scope.StoreName);
+        IReadModelBatchFaultInjector? injector = BatchFaultHook is null
+            ? null
+            : new DelegateFaultInjector(BatchFaultHook);
+        var protocol = new ReadModelBatchProtocol(accessor, BatchOptions, NullLogger.Instance);
+        return action switch {
+            ReadModelBatchStagingAction.Stage => await protocol.StageAsync(batch, injector, cancellationToken).ConfigureAwait(false),
+            ReadModelBatchStagingAction.Commit => await protocol.CommitStagedAsync(batch, injector, cancellationToken).ConfigureAwait(false),
+            ReadModelBatchStagingAction.Abort => await protocol.AbortStagedAsync(batch, injector, cancellationToken).ConfigureAwait(false),
+            _ => await protocol.VerifyStagedAsync(batch, injector, cancellationToken).ConfigureAwait(false),
+        };
     }
 
     /// <summary>

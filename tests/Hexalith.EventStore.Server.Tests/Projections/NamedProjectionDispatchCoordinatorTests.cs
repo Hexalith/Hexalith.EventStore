@@ -51,7 +51,7 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
         result.Outcomes.Select(static outcome => outcome.ProjectionType)
             .ShouldBe(["widget-detail", "widget-index"]);
         result.LifecycleProjectionTypes.ShouldBe(["widget-detail", "widget-index"]);
-        handler.RequestUri!.AbsolutePath.ShouldEndWith("/project/rebuild/v1");
+        handler.RequestUri!.AbsolutePath.ShouldEndWith("/project/rebuild/stage/v1");
         ProjectionDispatchRequest request = JsonSerializer.Deserialize<ProjectionDispatchRequest>(
             handler.RequestJson!,
             new JsonSerializerOptions(JsonSerializerDefaults.Web)).ShouldNotBeNull();
@@ -147,7 +147,7 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
             [ProjectionEvent(1)],
             CancellationToken.None));
 
-        _ = await lifecycle.Received(1).CompleteDeliveryWriteAsync(
+        _ = await lifecycle.Received(2).CompleteDeliveryWriteAsync(
             Identity,
             "widget-detail",
             "message-1",

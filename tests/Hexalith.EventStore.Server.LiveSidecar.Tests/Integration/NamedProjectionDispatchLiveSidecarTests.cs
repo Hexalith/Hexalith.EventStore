@@ -501,7 +501,7 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
         var operatorScope = new ProjectionRebuildCheckpointScope(
             identity.TenantId,
             identity.Domain,
-            identity.Domain,
+            "counter-legacy",
             AggregateId: identity.AggregateId,
             OperationId: UniqueIdHelper.GenerateSortableUniqueStringId());
         IProjectionRebuildCheckpointStore rebuildStore = services.GetRequiredService<IProjectionRebuildCheckpointStore>();
@@ -531,6 +531,13 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
 
         await orchestrator.RebuildProjectionAsync(operatorScope with { OperationId = null }).ConfigureAwait(true);
 
+        ProjectionRebuildCheckpoint operatorCheckpoint = (await rebuildStore
+            .ReadAsync(operatorScope, CancellationToken.None)
+            .ConfigureAwait(true)).ShouldNotBeNull();
+        operatorCheckpoint.FailureReasonCode.ShouldBeNull();
+        operatorCheckpoint.Status.ShouldBe(ProjectionRebuildStatus.Succeeded);
+        operatorCheckpoint.LastAppliedSequence.ShouldBe(expectedVersion);
+
         await using ConnectionMultiplexer redis = await ConnectionMultiplexer
             .ConnectAsync("localhost:6379,abortConnect=false,allowAdmin=true")
             .ConfigureAwait(true);
@@ -559,13 +566,8 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
         JsonDocument actorState = JsonDocument.Parse(stateBytes);
         actorState.RootElement.GetProperty("eventCount").GetInt32().ShouldBe(events.Length);
 
-        ProjectionRebuildCheckpoint operatorCheckpoint = (await rebuildStore
-            .ReadAsync(operatorScope, CancellationToken.None)
-            .ConfigureAwait(true)).ShouldNotBeNull();
-        operatorCheckpoint.Status.ShouldBe(ProjectionRebuildStatus.Succeeded);
-        operatorCheckpoint.LastAppliedSequence.ShouldBe(expectedVersion);
         (await services.GetRequiredService<IProjectionLifecycleGateway>()
-                .ReadPhaseAsync(identity, identity.Domain, CancellationToken.None)
+                .ReadPhaseAsync(identity, "counter-legacy", CancellationToken.None)
                 .ConfigureAwait(true))
             .ShouldBe(ProjectionLifecyclePhase.Idle);
         (await delivery.ReadDeliveredSequenceAsync(identity, "counter-detail", CancellationToken.None).ConfigureAwait(true))
@@ -595,7 +597,8 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
             Options.Create(new EventStoreActorOptions { AggregateActorTypeName = fixture.AggregateActorTypeName }),
             services.GetRequiredService<IProjectionDeliveryCheckpointStore>(),
             services.GetRequiredService<IProjectionLifecycleGateway>(),
-            services.GetRequiredService<INamedProjectionDispatchCoordinator>());
+            services.GetRequiredService<INamedProjectionDispatchCoordinator>(),
+            rebuildWriteGateway: services.GetRequiredService<IProjectionRebuildWriteGateway>());
     }
 
     private async Task<EventEnvelope[]> CreateAggregateHistoryAsync(AggregateIdentity identity, int eventCount) {

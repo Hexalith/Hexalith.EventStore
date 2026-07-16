@@ -15,9 +15,13 @@ namespace Hexalith.EventStore.Server.Projections;
 /// <see cref="NullReferenceException"/> on <c>InvokeMethodAsync&lt;TRequest,TResponse&gt;</c>, so the
 /// weak proxy is created directly.
 /// </summary>
-internal sealed class DaprProjectionLifecycleGateway(IActorProxyFactory actorProxyFactory) : IProjectionLifecycleGateway {
+internal sealed class DaprProjectionLifecycleGateway(
+    IActorProxyFactory actorProxyFactory,
+    TimeProvider? timeProvider = null) : IProjectionLifecycleGateway {
+    private static readonly TimeSpan DeliveryLeaseDuration = TimeSpan.FromMinutes(5);
     private readonly IActorProxyFactory _actorProxyFactory = actorProxyFactory
         ?? throw new ArgumentNullException(nameof(actorProxyFactory));
+    private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
 
     /// <inheritdoc/>
     public Task<bool> BeginRebuildAsync(
@@ -41,6 +45,32 @@ internal sealed class DaprProjectionLifecycleGateway(IActorProxyFactory actorPro
         ActorProxy proxy = CreateProxy(identity, projectionName);
         return proxy.InvokeMethodAsync<ProjectionRebuildLifecycleRequest, bool>(
             nameof(IProjectionLifecycleActor.CompleteRebuildAsync),
+            new ProjectionRebuildLifecycleRequest(operationId),
+            cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<bool> BeginRebuildPromotionAsync(
+        AggregateIdentity identity,
+        string projectionName,
+        string operationId,
+        CancellationToken cancellationToken = default) {
+        ActorProxy proxy = CreateProxy(identity, projectionName);
+        return proxy.InvokeMethodAsync<ProjectionRebuildLifecycleRequest, bool>(
+            nameof(IProjectionLifecycleActor.BeginRebuildPromotionAsync),
+            new ProjectionRebuildLifecycleRequest(operationId),
+            cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<bool> CompleteRebuildPromotionAsync(
+        AggregateIdentity identity,
+        string projectionName,
+        string operationId,
+        CancellationToken cancellationToken = default) {
+        ActorProxy proxy = CreateProxy(identity, projectionName);
+        return proxy.InvokeMethodAsync<ProjectionRebuildLifecycleRequest, bool>(
+            nameof(IProjectionLifecycleActor.CompleteRebuildPromotionAsync),
             new ProjectionRebuildLifecycleRequest(operationId),
             cancellationToken);
     }
@@ -76,7 +106,9 @@ internal sealed class DaprProjectionLifecycleGateway(IActorProxyFactory actorPro
         ActorProxy proxy = CreateProxy(identity, projectionName);
         return proxy.InvokeMethodAsync<ProjectionDeliveryLifecycleRequest, bool>(
             nameof(IProjectionLifecycleActor.BeginDeliveryWriteAsync),
-            new ProjectionDeliveryLifecycleRequest(operationId),
+            new ProjectionDeliveryLifecycleRequest(
+                operationId,
+                _timeProvider.GetUtcNow() + DeliveryLeaseDuration),
             cancellationToken);
     }
 

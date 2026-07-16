@@ -628,6 +628,46 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
                            .RebuildAsync(serviceProvider, request, options.Value, identityOptions.Value, cancellationToken)
                            .ConfigureAwait(false)));
         _ = _testHost.MapPost(
+            "/project/rebuild/stage/v1",
+            async (ProjectionDispatchRequest request,
+                   IServiceProvider serviceProvider,
+                   IOptions<Hexalith.EventStore.Client.Projections.ProjectionDispatchOptions> options,
+                   IOptions<DomainProjectionIdentityOptions> identityOptions,
+                   CancellationToken cancellationToken) => Microsoft.AspNetCore.Http.Results.Ok(
+                       await DomainProjectionDispatcher
+                           .StageRebuildAsync(serviceProvider, request, options.Value, identityOptions.Value, cancellationToken)
+                           .ConfigureAwait(false)));
+        _ = _testHost.MapPost(
+            "/project/rebuild/commit/v1",
+            async (ProjectionDispatchRequest request,
+                   IServiceProvider serviceProvider,
+                   IOptions<Hexalith.EventStore.Client.Projections.ProjectionDispatchOptions> options,
+                   IOptions<DomainProjectionIdentityOptions> identityOptions,
+                   CancellationToken cancellationToken) => Microsoft.AspNetCore.Http.Results.Ok(
+                       await DomainProjectionDispatcher
+                           .CommitRebuildAsync(serviceProvider, request, options.Value, identityOptions.Value, cancellationToken)
+                           .ConfigureAwait(false)));
+        _ = _testHost.MapPost(
+            "/project/rebuild/abort/v1",
+            async (ProjectionDispatchRequest request,
+                   IServiceProvider serviceProvider,
+                   IOptions<Hexalith.EventStore.Client.Projections.ProjectionDispatchOptions> options,
+                   IOptions<DomainProjectionIdentityOptions> identityOptions,
+                   CancellationToken cancellationToken) => Microsoft.AspNetCore.Http.Results.Ok(
+                       await DomainProjectionDispatcher
+                           .AbortRebuildAsync(serviceProvider, request, options.Value, identityOptions.Value, cancellationToken)
+                           .ConfigureAwait(false)));
+        _ = _testHost.MapPost(
+            "/project/rebuild/verify/v1",
+            async (ProjectionDispatchRequest request,
+                   IServiceProvider serviceProvider,
+                   IOptions<Hexalith.EventStore.Client.Projections.ProjectionDispatchOptions> options,
+                   IOptions<DomainProjectionIdentityOptions> identityOptions,
+                   CancellationToken cancellationToken) => Microsoft.AspNetCore.Http.Results.Ok(
+                       await DomainProjectionDispatcher
+                           .VerifyRebuildAsync(serviceProvider, request, options.Value, identityOptions.Value, cancellationToken)
+                           .ConfigureAwait(false)));
+        _ = _testHost.MapPost(
             "/admin/operational-index-metadata",
             (AdminOperationalIndexMetadata.Request request,
              IServiceProvider serviceProvider,

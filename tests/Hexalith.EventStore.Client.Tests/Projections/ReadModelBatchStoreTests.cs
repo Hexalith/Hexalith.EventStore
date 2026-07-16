@@ -157,6 +157,41 @@ public class ReadModelBatchStoreTests {
     }
 
     [Fact]
+    public async Task Staging_PreparedCandidatesRemainPreviousVisibleUntilCommitAndVerify() {
+        var store = new InMemoryReadModelStore();
+        await store.SaveAsync(Store, "detail:agg-1", new Detail(1));
+        await store.SaveAsync(Store, "index:counterView", new IndexEntry(1));
+        ReadModelBatch batch = WriteBatch();
+
+        ReadModelBatchStagingResult staged = await store.StageAsync(batch);
+
+        staged.Status.ShouldBe(ReadModelBatchStagingStatus.Prepared);
+        (await store.GetAsync<Detail>(Store, "detail:agg-1")).Value!.Version.ShouldBe(1);
+        (await store.GetAsync<IndexEntry>(Store, "index:counterView")).Value!.Count.ShouldBe(1);
+        (await store.VerifyAsync(batch)).Status.ShouldBe(ReadModelBatchStagingStatus.Prepared);
+
+        (await store.CommitAsync(batch)).Status.ShouldBe(ReadModelBatchStagingStatus.Committed);
+        (await store.VerifyAsync(batch)).Status.ShouldBe(ReadModelBatchStagingStatus.Committed);
+        (await store.GetAsync<Detail>(Store, "detail:agg-1")).Value!.Version.ShouldBe(2);
+        (await store.GetAsync<IndexEntry>(Store, "index:counterView")).Value!.Count.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task Staging_AbortRestoresEveryPreviousValue() {
+        var store = new InMemoryReadModelStore();
+        await store.SaveAsync(Store, "detail:agg-1", new Detail(1));
+        await store.SaveAsync(Store, "index:counterView", new IndexEntry(1));
+        ReadModelBatch batch = WriteBatch("01J0BATCH0000000000000042");
+        (await store.StageAsync(batch)).Status.ShouldBe(ReadModelBatchStagingStatus.Prepared);
+
+        (await store.AbortAsync(batch)).Status.ShouldBe(ReadModelBatchStagingStatus.Aborted);
+
+        (await store.GetAsync<Detail>(Store, "detail:agg-1")).Value!.Version.ShouldBe(1);
+        (await store.GetAsync<IndexEntry>(Store, "index:counterView")).Value!.Count.ShouldBe(1);
+        store.HasPendingEnvelope(Store, "detail:agg-1").ShouldBeFalse();
+    }
+
+    [Fact]
     public async Task ExecuteAsync_CompletedRetry_SameFingerprint_ReturnsAlreadyCompletedWithoutReapplying() {
         var store = new InMemoryReadModelStore();
         _ = await store.ExecuteAsync(WriteBatch());

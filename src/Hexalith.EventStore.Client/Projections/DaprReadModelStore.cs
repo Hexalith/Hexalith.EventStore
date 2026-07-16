@@ -26,7 +26,7 @@ namespace Hexalith.EventStore.Client.Projections;
 /// resumable batch's commit marker is durable, and the committed value afterwards.
 /// </para>
 /// </remarks>
-public sealed class DaprReadModelStore : IReadModelStore, IReadModelBatchStore, IReadModelConditionalEraser {
+public sealed class DaprReadModelStore : IReadModelStore, IReadModelBatchStore, IReadModelBatchStagingStore, IReadModelConditionalEraser {
     private readonly DaprClient _daprClient;
     private readonly ReadModelBatchOptions _options;
     private readonly ILogger _logger;
@@ -153,5 +153,45 @@ public sealed class DaprReadModelStore : IReadModelStore, IReadModelBatchStore, 
         var accessor = new DaprReadModelBatchStateAccessor(_daprClient, batch.Scope.StoreName);
         var protocol = new ReadModelBatchProtocol(accessor, _options, _logger);
         return await protocol.ExecuteAsync(batch, injector: null, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
+    public async Task<ReadModelBatchStagingResult> StageAsync(
+        ReadModelBatch batch,
+        CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(batch);
+        var accessor = new DaprReadModelBatchStateAccessor(_daprClient, batch.Scope.StoreName);
+        var protocol = new ReadModelBatchProtocol(accessor, _options, _logger);
+        return await protocol.StageAsync(batch, injector: null, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
+    public async Task<ReadModelBatchStagingResult> CommitAsync(
+        ReadModelBatch batch,
+        CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(batch);
+        var accessor = new DaprReadModelBatchStateAccessor(_daprClient, batch.Scope.StoreName);
+        var protocol = new ReadModelBatchProtocol(accessor, _options, _logger);
+        return await protocol.CommitStagedAsync(batch, injector: null, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
+    public async Task<ReadModelBatchStagingResult> AbortAsync(
+        ReadModelBatch batch,
+        CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(batch);
+        var accessor = new DaprReadModelBatchStateAccessor(_daprClient, batch.Scope.StoreName);
+        var protocol = new ReadModelBatchProtocol(accessor, _options, _logger);
+        return await protocol.AbortStagedAsync(batch, injector: null, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
+    public async Task<ReadModelBatchStagingResult> VerifyAsync(
+        ReadModelBatch batch,
+        CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(batch);
+        var accessor = new DaprReadModelBatchStateAccessor(_daprClient, batch.Scope.StoreName);
+        var protocol = new ReadModelBatchProtocol(accessor, _options, _logger);
+        return await protocol.VerifyStagedAsync(batch, injector: null, cancellationToken).ConfigureAwait(false);
     }
 }

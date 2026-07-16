@@ -294,3 +294,9 @@ _All items LOW / non-blocking. Story 2.7 accepted (all AC1–AC7 met; Release bu
 - Lifecycle actor source files contain multiple enum, record, interface, and persisted-state declarations despite the repository's one-type-per-file rule. Split the pre-existing declarations during a scoped structural cleanup. [`src/Hexalith.EventStore.Server/Actors/IProjectionLifecycleActor.cs:12`]
 - Operational-index metadata request binding can deserialize `Domains` as null and then dereference `request.Domains.Count`, returning an internal error instead of a bounded malformed-request response. Add null-safe request validation. [`src/Hexalith.EventStore.DomainService/EventStoreDomainServiceExtensions.cs:248`]
 - Erase lifecycle admission does not reject blank operation/digest values, and an unknown persisted phase can fall through to a fresh erase admission. Validate erase identity and fail closed on undefined lifecycle phases. [`src/Hexalith.EventStore.Server/Actors/ProjectionLifecycleActor.cs:68`]
+
+## Deferred from: code review of 1-20-owner-approved-parity-closure-and-runtime-pin (2026-07-16)
+
+- source_spec: `_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md`
+  summary: Make dev-auto review finalization conditional on fail-closed artifact decisions instead of unconditionally marking every reviewed spec `done`.
+  evidence: Story 1.20 requires any `final_decision: still blocked` or `authorize_consumer_migration: false` result to remain non-`done`, but `.agents/skills/bmad-dev-auto/step-04-review.md` currently sets `status: done` unconditionally after review; a generic guard and workflow test are needed so later automation cannot mistake a non-authorizing proof packet for completed closure.

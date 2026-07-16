@@ -129,6 +129,10 @@ public static class EventStoreDomainServiceExtensions {
     /// <item><description><c>POST /project</c> — dispatches a full-replay projection to the matching <see cref="IDomainProjectionHandler"/> (skipped when the app already mapped its own <c>/project</c>).</description></item>
     /// <item><description><c>POST /project/v2</c> — dispatches an admitted set to exact named async projection handlers.</description></item>
     /// <item><description><c>POST /project/rebuild/v1</c> — coordinates full-prefix named rebuild candidates as one durable batch.</description></item>
+    /// <item><description><c>POST /project/rebuild/stage/v1</c> — stages named rebuild candidates without changing the visible view.</description></item>
+    /// <item><description><c>POST /project/rebuild/commit/v1</c> — commits and reads back staged named rebuild candidates.</description></item>
+    /// <item><description><c>POST /project/rebuild/abort/v1</c> — compensates an uncommitted named rebuild batch.</description></item>
+    /// <item><description><c>POST /project/rebuild/verify/v1</c> — verifies staged or committed named rebuild evidence.</description></item>
     /// <item><description><c>POST /admin/operational-index-metadata</c> — returns the domain's command/event/projection catalog.</description></item>
     /// </list>
     /// </summary>
@@ -141,7 +145,6 @@ public static class EventStoreDomainServiceExtensions {
         ValidateDomainQueryHandlerRoutes(app.Services);
         bool mapProjectionEndpoint = !IsRouteMapped(app, "/project", HttpMethods.Post);
         bool mapNamedProjectionEndpoint = !IsRouteMapped(app, "/project/v2", HttpMethods.Post);
-        bool mapNamedProjectionRebuildEndpoint = !IsRouteMapped(app, "/project/rebuild/v1", HttpMethods.Post);
         if (mapProjectionEndpoint) {
             ValidateDomainProjectionHandlerRoutes(app.Services);
         }
@@ -203,30 +206,11 @@ public static class EventStoreDomainServiceExtensions {
                 });
         }
 
-        if (mapNamedProjectionRebuildEndpoint) {
-            _ = app.MapPost(
-                "/project/rebuild/v1",
-                async (ProjectionDispatchRequest request,
-                       IServiceProvider serviceProvider,
-                       IOptions<ProjectionDispatchOptions> projectionDispatchOptions,
-                       IOptions<DomainProjectionIdentityOptions> projectionIdentityOptions,
-                       CancellationToken cancellationToken) => {
-                    try {
-                        ProjectionDispatchResponse response = await DomainProjectionDispatcher
-                            .RebuildAsync(
-                                serviceProvider,
-                                request,
-                                projectionDispatchOptions.Value,
-                                projectionIdentityOptions.Value,
-                                cancellationToken)
-                            .ConfigureAwait(false);
-                        return (IResult)Results.Ok(response);
-                    }
-                    catch (ProjectionDispatchValidationException exception) {
-                        return Results.BadRequest(exception.ReasonCode);
-                    }
-                });
-        }
+        MapNamedProjectionRebuildEndpoint(app, "/project/rebuild/v1", DomainProjectionRebuildBatchAction.Execute);
+        MapNamedProjectionRebuildEndpoint(app, "/project/rebuild/stage/v1", DomainProjectionRebuildBatchAction.Stage);
+        MapNamedProjectionRebuildEndpoint(app, "/project/rebuild/commit/v1", DomainProjectionRebuildBatchAction.Commit);
+        MapNamedProjectionRebuildEndpoint(app, "/project/rebuild/abort/v1", DomainProjectionRebuildBatchAction.Abort);
+        MapNamedProjectionRebuildEndpoint(app, "/project/rebuild/verify/v1", DomainProjectionRebuildBatchAction.Verify);
 
         _ = app.MapPost(
             "/admin/operational-index-metadata",
@@ -264,6 +248,47 @@ public static class EventStoreDomainServiceExtensions {
             });
 
         return app;
+    }
+
+    private static void MapNamedProjectionRebuildEndpoint(
+        WebApplication app,
+        string route,
+        DomainProjectionRebuildBatchAction action) {
+        if (IsRouteMapped(app, route, HttpMethods.Post)) {
+            return;
+        }
+
+        _ = app.MapPost(
+            route,
+            async (ProjectionDispatchRequest request,
+                   IServiceProvider serviceProvider,
+                   IOptions<ProjectionDispatchOptions> projectionDispatchOptions,
+                   IOptions<DomainProjectionIdentityOptions> projectionIdentityOptions,
+                   CancellationToken cancellationToken) => {
+                try {
+                    ProjectionDispatchResponse response = action switch {
+                        DomainProjectionRebuildBatchAction.Stage => await DomainProjectionDispatcher
+                            .StageRebuildAsync(serviceProvider, request, projectionDispatchOptions.Value, projectionIdentityOptions.Value, cancellationToken)
+                            .ConfigureAwait(false),
+                        DomainProjectionRebuildBatchAction.Commit => await DomainProjectionDispatcher
+                            .CommitRebuildAsync(serviceProvider, request, projectionDispatchOptions.Value, projectionIdentityOptions.Value, cancellationToken)
+                            .ConfigureAwait(false),
+                        DomainProjectionRebuildBatchAction.Abort => await DomainProjectionDispatcher
+                            .AbortRebuildAsync(serviceProvider, request, projectionDispatchOptions.Value, projectionIdentityOptions.Value, cancellationToken)
+                            .ConfigureAwait(false),
+                        DomainProjectionRebuildBatchAction.Verify => await DomainProjectionDispatcher
+                            .VerifyRebuildAsync(serviceProvider, request, projectionDispatchOptions.Value, projectionIdentityOptions.Value, cancellationToken)
+                            .ConfigureAwait(false),
+                        _ => await DomainProjectionDispatcher
+                            .RebuildAsync(serviceProvider, request, projectionDispatchOptions.Value, projectionIdentityOptions.Value, cancellationToken)
+                            .ConfigureAwait(false),
+                    };
+                    return (IResult)Results.Ok(response);
+                }
+                catch (ProjectionDispatchValidationException exception) {
+                    return Results.BadRequest(exception.ReasonCode);
+                }
+            });
     }
 
     private static WebApplicationBuilder AddEventStoreDomainServiceCore(

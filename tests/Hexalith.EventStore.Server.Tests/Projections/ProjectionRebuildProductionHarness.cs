@@ -104,7 +104,7 @@ internal sealed class ProjectionRebuildProductionHarness : IDisposable {
 
                 ProjectionRebuildEquivalenceSnapshot snapshot = BuildSnapshot(call.ArgAt<ProjectionRequest>(0));
                 return new DomainProjectionRebuildPlan(
-                    StoreName,
+                    FailIndexTerminal ? "different-projection-store" : StoreName,
                     [ReadModelBatchOperation.Write(IndexKey, snapshot.Index, ReadModelBatchConcurrency.LastWrite)]);
             });
 
@@ -113,6 +113,7 @@ internal sealed class ProjectionRebuildProductionHarness : IDisposable {
         _ = serviceCollection.AddSingleton<IAsyncDomainProjectionHandler>(detail);
         _ = serviceCollection.AddSingleton<IAsyncDomainProjectionHandler>(index);
         _ = serviceCollection.AddSingleton<IReadModelBatchStore>(ReadModels);
+        _ = serviceCollection.AddSingleton<IReadModelBatchStagingStore>(ReadModels);
         _services = serviceCollection.BuildServiceProvider();
 
         var dispatchOptions = new ProjectionDispatchOptions();
@@ -158,6 +159,7 @@ internal sealed class ProjectionRebuildProductionHarness : IDisposable {
             .Returns(ProjectionWriteActor);
         RebuildWrites = Substitute.For<IProjectionRebuildWriteGateway>();
         ProjectionRebuildCandidate? stagedCandidate = null;
+        ProjectionState? rollbackState = null;
         _ = RebuildWrites.StageAsync(
                 Arg.Any<string>(),
                 Arg.Any<ProjectionRebuildCandidate>(),
@@ -172,9 +174,10 @@ internal sealed class ProjectionRebuildProductionHarness : IDisposable {
                 Arg.Any<CancellationToken>())
             .Returns(_ => {
                 if (stagedCandidate is null) {
-                    return false;
+                    return rollbackState is not null;
                 }
 
+                rollbackState = ActorState;
                 ActorState = stagedCandidate.State;
                 stagedCandidate = null;
                 return true;
@@ -187,8 +190,32 @@ internal sealed class ProjectionRebuildProductionHarness : IDisposable {
                 stagedCandidate = null;
                 return true;
             });
+        _ = RebuildWrites.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ => ActorState);
+        _ = RebuildWrites.RollbackAsync(
+                Arg.Any<string>(),
+                OperationId,
+                Arg.Any<CancellationToken>())
+            .Returns(_ => {
+                if (rollbackState is not null) {
+                    ActorState = rollbackState;
+                    rollbackState = null;
+                }
+
+                stagedCandidate = null;
+                return true;
+            });
+        _ = RebuildWrites.FinalizeAsync(
+                Arg.Any<string>(),
+                OperationId,
+                Arg.Any<CancellationToken>())
+            .Returns(_ => {
+                rollbackState = null;
+                return true;
+            });
         IETagActor etagActor = Substitute.For<IETagActor>();
         _ = etagActor.RegenerateAsync().Returns("transport-etag-not-a-projection-version");
+        _ = etagActor.GetCurrentETagAsync().Returns("transport-etag-not-a-projection-version");
         _ = ActorProxyFactory.CreateActorProxy<IETagActor>(Arg.Any<ActorId>(), ETagActor.ETagActorTypeName)
             .Returns(etagActor);
 
@@ -200,6 +227,18 @@ internal sealed class ProjectionRebuildProductionHarness : IDisposable {
                 Arg.Any<CancellationToken>())
             .Returns(true);
         _ = Lifecycle.CompleteRebuildAsync(
+                Identity,
+                Arg.Any<string>(),
+                OperationId,
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+        _ = Lifecycle.BeginRebuildPromotionAsync(
+                Identity,
+                Arg.Any<string>(),
+                OperationId,
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+        _ = Lifecycle.CompleteRebuildPromotionAsync(
                 Identity,
                 Arg.Any<string>(),
                 OperationId,
@@ -299,6 +338,8 @@ internal sealed class ProjectionRebuildProductionHarness : IDisposable {
     public Func<long, long?, int, EventEnvelope[]>? PageReadOverride { get; set; }
 
     public bool FailIndexPreparation { get; set; }
+
+    public bool FailIndexTerminal { get; set; }
 
     public Task RunAsync(CancellationToken cancellationToken = default)
         => Sut.RebuildProjectionAsync(OperatorScope with { OperationId = null }, cancellationToken);

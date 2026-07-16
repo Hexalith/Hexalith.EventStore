@@ -34,6 +34,7 @@ public partial class EventReplayProjectionActor(
     : CachingProjectionActor(host, eTagService, logger), IProjectionWriteActor, IProjectionRebuildWriteActor {
     internal const string ProjectionStateKey = "projection-state";
     internal const string ProjectionRebuildCandidateKey = "projection-rebuild-candidate";
+    internal const string ProjectionRebuildPromotionReceiptKey = "projection-rebuild-promotion";
 
     /// <inheritdoc/>
     public Task UpdateProjectionAsync(ProjectionState state) =>
@@ -85,12 +86,16 @@ public partial class EventReplayProjectionActor(
         ArgumentException.ThrowIfNullOrWhiteSpace(request.OperationId);
         ValidateState(request.State);
 
-        ConditionalValue<ProjectionRebuildCandidate> existing = await StateManager
-            .TryGetStateAsync<ProjectionRebuildCandidate>(ProjectionRebuildCandidateKey)
+        ConditionalValue<ProjectionRebuildPromotionReceipt> receipt = await StateManager
+            .TryGetStateAsync<ProjectionRebuildPromotionReceipt>(ProjectionRebuildPromotionReceiptKey)
             .ConfigureAwait(false);
-        if (existing.HasValue
-            && !string.Equals(existing.Value.OperationId, request.OperationId, StringComparison.Ordinal)) {
-            throw new InvalidOperationException("A different projection rebuild candidate is already staged.");
+        if (receipt.HasValue
+            && string.Equals(receipt.Value.OperationId, request.OperationId, StringComparison.Ordinal)) {
+            return;
+        }
+
+        if (receipt.HasValue) {
+            await StateManager.RemoveStateAsync(ProjectionRebuildPromotionReceiptKey).ConfigureAwait(false);
         }
 
         await StateManager.SetStateAsync(ProjectionRebuildCandidateKey, request).ConfigureAwait(false);
@@ -101,6 +106,14 @@ public partial class EventReplayProjectionActor(
     public async Task<bool> PromoteProjectionAsync(ProjectionRebuildCandidateOperation request) {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentException.ThrowIfNullOrWhiteSpace(request.OperationId);
+        ConditionalValue<ProjectionRebuildPromotionReceipt> existingReceipt = await StateManager
+            .TryGetStateAsync<ProjectionRebuildPromotionReceipt>(ProjectionRebuildPromotionReceiptKey)
+            .ConfigureAwait(false);
+        if (existingReceipt.HasValue
+            && string.Equals(existingReceipt.Value.OperationId, request.OperationId, StringComparison.Ordinal)) {
+            return true;
+        }
+
         ConditionalValue<ProjectionRebuildCandidate> candidate = await StateManager
             .TryGetStateAsync<ProjectionRebuildCandidate>(ProjectionRebuildCandidateKey)
             .ConfigureAwait(false);
@@ -110,7 +123,16 @@ public partial class EventReplayProjectionActor(
         }
 
         ValidateState(candidate.Value.State);
+        ConditionalValue<ProjectionState> previous = await StateManager
+            .TryGetStateAsync<ProjectionState>(ProjectionStateKey)
+            .ConfigureAwait(false);
         await StateManager.SetStateAsync(ProjectionStateKey, candidate.Value.State).ConfigureAwait(false);
+        await StateManager.SetStateAsync(
+            ProjectionRebuildPromotionReceiptKey,
+            new ProjectionRebuildPromotionReceipt(
+                request.OperationId,
+                previous.HasValue ? previous.Value : null,
+                candidate.Value.State)).ConfigureAwait(false);
         await StateManager.RemoveStateAsync(ProjectionRebuildCandidateKey).ConfigureAwait(false);
         await StateManager.SaveStateAsync().ConfigureAwait(false);
 
@@ -158,6 +180,62 @@ public partial class EventReplayProjectionActor(
         await StateManager.RemoveStateAsync(ProjectionRebuildCandidateKey).ConfigureAwait(false);
         await StateManager.SaveStateAsync().ConfigureAwait(false);
         return true;
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> RollbackProjectionAsync(ProjectionRebuildCandidateOperation request) {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.OperationId);
+        ConditionalValue<ProjectionRebuildPromotionReceipt> receipt = await StateManager
+            .TryGetStateAsync<ProjectionRebuildPromotionReceipt>(ProjectionRebuildPromotionReceiptKey)
+            .ConfigureAwait(false);
+        if (!receipt.HasValue) {
+            return true;
+        }
+
+        if (!string.Equals(receipt.Value.OperationId, request.OperationId, StringComparison.Ordinal)) {
+            return false;
+        }
+
+        if (receipt.Value.PreviousState is null) {
+            await StateManager.RemoveStateAsync(ProjectionStateKey).ConfigureAwait(false);
+        }
+        else {
+            await StateManager.SetStateAsync(ProjectionStateKey, receipt.Value.PreviousState).ConfigureAwait(false);
+        }
+
+        await StateManager.RemoveStateAsync(ProjectionRebuildPromotionReceiptKey).ConfigureAwait(false);
+        await StateManager.RemoveStateAsync(ProjectionRebuildCandidateKey).ConfigureAwait(false);
+        await StateManager.SaveStateAsync().ConfigureAwait(false);
+        return true;
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> FinalizeProjectionAsync(ProjectionRebuildCandidateOperation request) {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.OperationId);
+        ConditionalValue<ProjectionRebuildPromotionReceipt> receipt = await StateManager
+            .TryGetStateAsync<ProjectionRebuildPromotionReceipt>(ProjectionRebuildPromotionReceiptKey)
+            .ConfigureAwait(false);
+        if (!receipt.HasValue) {
+            return true;
+        }
+
+        if (!string.Equals(receipt.Value.OperationId, request.OperationId, StringComparison.Ordinal)) {
+            return false;
+        }
+
+        await StateManager.RemoveStateAsync(ProjectionRebuildPromotionReceiptKey).ConfigureAwait(false);
+        await StateManager.SaveStateAsync().ConfigureAwait(false);
+        return true;
+    }
+
+    /// <inheritdoc/>
+    public async Task<ProjectionState?> ReadProjectionStateAsync() {
+        ConditionalValue<ProjectionState> state = await StateManager
+            .TryGetStateAsync<ProjectionState>(ProjectionStateKey)
+            .ConfigureAwait(false);
+        return state.HasValue ? state.Value : null;
     }
 
     /// <inheritdoc/>

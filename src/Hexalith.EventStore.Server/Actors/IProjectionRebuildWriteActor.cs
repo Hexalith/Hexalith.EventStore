@@ -12,4 +12,13 @@ public interface IProjectionRebuildWriteActor : IActor {
 
     /// <summary>Discards the matching non-live candidate without changing live state.</summary>
     Task<bool> DiscardProjectionAsync(ProjectionRebuildCandidateOperation request);
+
+    /// <summary>Restores the pre-promotion live state for the matching operation.</summary>
+    Task<bool> RollbackProjectionAsync(ProjectionRebuildCandidateOperation request);
+
+    /// <summary>Removes matching rollback evidence after every coordinated surface is proven.</summary>
+    Task<bool> FinalizeProjectionAsync(ProjectionRebuildCandidateOperation request);
+
+    /// <summary>Reads the current persisted live state without query caching.</summary>
+    Task<ProjectionState?> ReadProjectionStateAsync();
 }

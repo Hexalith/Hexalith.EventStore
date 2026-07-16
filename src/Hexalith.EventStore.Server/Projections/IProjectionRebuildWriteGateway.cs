@@ -12,4 +12,13 @@ internal interface IProjectionRebuildWriteGateway {
 
     /// <summary>Discards the matching non-live candidate.</summary>
     Task<bool> DiscardAsync(string actorId, string operationId, CancellationToken cancellationToken);
+
+    /// <summary>Restores the live state captured before matching promotion.</summary>
+    Task<bool> RollbackAsync(string actorId, string operationId, CancellationToken cancellationToken);
+
+    /// <summary>Removes matching rollback evidence after coordinated verification.</summary>
+    Task<bool> FinalizeAsync(string actorId, string operationId, CancellationToken cancellationToken);
+
+    /// <summary>Reads back the current persisted live actor state.</summary>
+    Task<ProjectionState?> ReadAsync(string actorId, CancellationToken cancellationToken);
 }

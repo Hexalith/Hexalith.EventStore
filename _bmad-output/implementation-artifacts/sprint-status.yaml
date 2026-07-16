@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-07-16T01:37:45+02:00
+# last_updated: 2026-07-16T10:16:02+02:00
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T20:01:46+02:00
-last_updated: 2026-07-16T01:37:45+02:00
+last_updated: 2026-07-16T10:16:02+02:00
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -69,10 +69,10 @@ development_status:
   1-16-complete-projection-freshness-lifecycle: done
   1-17-asynchronous-multi-projection-dispatch: done
   1-18-projection-handler-delivery-idempotency: done
-  1-19-correct-paged-rebuild-and-replay-equivalence: review
+  1-19-correct-paged-rebuild-and-replay-equivalence: done
   # Cannot become done while its projection/query owner packet remains `still blocked`.
   # Explicitly excludes payload-protection G5 and Parties Story 8.7; those are Epic 8.
-  1-20-owner-approved-parity-closure-and-runtime-pin: ready-for-dev
+  1-20-owner-approved-parity-closure-and-runtime-pin: in-progress
   epic-1-retrospective: done
 
   epic-2: in-progress

@@ -1,5 +1,7 @@
 using Hexalith.EventStore.Client.Projections;
+using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Contracts.Streams;
+using Hexalith.EventStore.Server.Actors;
 
 using NSubstitute;
 
@@ -50,7 +52,10 @@ public sealed class ProjectionRebuildProductionPathTests {
             ProjectionRebuildProductionHarness.IndexKey).ShouldNotBeNull();
         index.AggregateIds.ShouldBe(harness.OldIndex.AggregateIds);
         index.ProjectionVersion.ShouldBe(harness.OldIndex.ProjectionVersion);
-        harness.RebuildCheckpoints.Snapshot(harness.AggregateScope).ShouldBeNull();
+        ProjectionRebuildCheckpoint frozen = harness.RebuildCheckpoints
+            .Snapshot(harness.AggregateScope).ShouldNotBeNull();
+        frozen.LastAppliedSequence.ShouldBe(0);
+        frozen.ToPosition.ShouldBe(0);
         harness.RebuildCheckpoints.Snapshot(harness.OperatorScope)!.Status
             .ShouldBe(ProjectionRebuildStatus.Succeeded);
         await harness.ProjectionWriteActor.DidNotReceiveWithAnyArgs().UpdateProjectionAsync(default!);
@@ -109,6 +114,42 @@ public sealed class ProjectionRebuildProductionPathTests {
     }
 
     [Fact]
+    public async Task Rebuild_PromotionFenceReleaseFailure_RemainsRunningAndRetryCompletesCleanup() {
+        using var harness = new ProjectionRebuildProductionHarness(eventCount: 7);
+        bool permitLifecycleCompletion = false;
+        _ = harness.Lifecycle.CompleteRebuildPromotionAsync(
+                harness.Identity,
+                Arg.Any<string>(),
+                ProjectionRebuildProductionHarness.OperationId,
+                Arg.Any<CancellationToken>())
+            .Returns(_ => permitLifecycleCompletion);
+        _ = harness.Lifecycle.CompleteRebuildAsync(
+                harness.Identity,
+                Arg.Any<string>(),
+                ProjectionRebuildProductionHarness.OperationId,
+                Arg.Any<CancellationToken>())
+            .Returns(_ => permitLifecycleCompletion);
+        _ = harness.Lifecycle.ReadPhaseAsync(
+                harness.Identity,
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns(_ => permitLifecycleCompletion
+                ? ProjectionLifecyclePhase.Idle
+                : ProjectionLifecyclePhase.Rebuilding);
+
+        await harness.RunAsync();
+
+        harness.RebuildCheckpoints.Snapshot(harness.OperatorScope)!.Status
+            .ShouldBe(ProjectionRebuildStatus.Running);
+        harness.ActorSnapshot().ShouldBe(harness.Expected!.Detail);
+
+        permitLifecycleCompletion = true;
+        await harness.RunAsync();
+
+        await AssertConvergedAsync(harness);
+    }
+
+    [Fact]
     public async Task Rebuild_HandlerPreparationFailure_PreservesEveryLiveSurfaceAndRemainsResumable() {
         using var harness = new ProjectionRebuildProductionHarness(eventCount: 7) {
             FailIndexPreparation = true,
@@ -126,6 +167,35 @@ public sealed class ProjectionRebuildProductionPathTests {
         harness.FailIndexPreparation = false;
         await harness.RunAsync();
         await AssertConvergedAsync(harness);
+    }
+
+    [Fact]
+    public async Task Rebuild_TerminalNamedFailureDiscardsCandidatePreservesReasonAndReleasesEveryLifecycle() {
+        using var harness = new ProjectionRebuildProductionHarness(eventCount: 7) {
+            FailIndexTerminal = true,
+        };
+
+        await harness.RunAsync();
+
+        await AssertOldLiveViewAsync(harness);
+        ProjectionRebuildCheckpoint failed = harness.RebuildCheckpoints
+            .Snapshot(harness.OperatorScope).ShouldNotBeNull();
+        failed.Status.ShouldBe(ProjectionRebuildStatus.Failed);
+        failed.FailureReasonCode.ShouldBe(ProjectionDispatchReasonCodes.UnsupportedCapability);
+        _ = await harness.RebuildWrites.Received(1).DiscardAsync(
+            Arg.Any<string>(),
+            ProjectionRebuildProductionHarness.OperationId,
+            CancellationToken.None);
+        _ = await harness.Lifecycle.Received().CompleteRebuildAsync(
+            harness.Identity,
+            "aggregate-detail",
+            ProjectionRebuildProductionHarness.OperationId,
+            CancellationToken.None);
+        _ = await harness.Lifecycle.Received().CompleteRebuildAsync(
+            harness.Identity,
+            "aggregate-index",
+            ProjectionRebuildProductionHarness.OperationId,
+            CancellationToken.None);
     }
 
     [Fact]

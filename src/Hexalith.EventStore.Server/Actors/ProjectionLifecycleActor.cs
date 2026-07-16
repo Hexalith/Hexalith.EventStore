@@ -10,7 +10,10 @@ namespace Hexalith.EventStore.Server.Actors;
 /// turn-based concurrency the cross-replica serialization primitive: while rebuild or erase owns
 /// a non-idle lifecycle phase, ordinary delivery writes are deferred.
 /// </summary>
-public partial class ProjectionLifecycleActor(ActorHost host, ILogger<ProjectionLifecycleActor> logger)
+public partial class ProjectionLifecycleActor(
+    ActorHost host,
+    ILogger<ProjectionLifecycleActor> logger,
+    TimeProvider? timeProvider = null)
     : Actor(host), IProjectionLifecycleActor {
     /// <summary>
     /// The actor type name used for DAPR actor registration.
@@ -18,6 +21,8 @@ public partial class ProjectionLifecycleActor(ActorHost host, ILogger<Projection
     public const string ActorTypeName = "ProjectionLifecycleActor";
 
     private const string LifecycleStateKey = "projection-lifecycle";
+    private static readonly TimeSpan DefaultDeliveryLeaseDuration = TimeSpan.FromMinutes(5);
+    private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
 
     /// <inheritdoc/>
     public async Task<bool> BeginRebuildAsync(ProjectionRebuildLifecycleRequest request) {
@@ -48,6 +53,7 @@ public partial class ProjectionLifecycleActor(ActorHost host, ILogger<Projection
         ArgumentException.ThrowIfNullOrWhiteSpace(request.OperationId);
         ProjectionLifecycleActorState state = await ReadStateAsync().ConfigureAwait(false);
         if (state.Phase != ProjectionLifecyclePhase.Rebuilding
+            || state.PromotionFenced
             || !string.Equals(state.OperationId, request.OperationId, StringComparison.Ordinal)) {
             return false;
         }
@@ -59,6 +65,45 @@ public partial class ProjectionLifecycleActor(ActorHost host, ILogger<Projection
                 new Dictionary<string, string>(StringComparer.Ordinal),
                 checked(state.Revision + 1)))
             .ConfigureAwait(false);
+        return true;
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> BeginRebuildPromotionAsync(ProjectionRebuildLifecycleRequest request) {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.OperationId);
+        ProjectionLifecycleActorState state = await ReadStateAsync().ConfigureAwait(false);
+        if (state.Phase != ProjectionLifecyclePhase.Rebuilding
+            || !string.Equals(state.OperationId, request.OperationId, StringComparison.Ordinal)) {
+            return false;
+        }
+
+        if (state.PromotionFenced) {
+            return true;
+        }
+
+        await PersistStateAsync(state with {
+            PromotionFenced = true,
+            Revision = checked(state.Revision + 1),
+        }).ConfigureAwait(false);
+        return true;
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> CompleteRebuildPromotionAsync(ProjectionRebuildLifecycleRequest request) {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.OperationId);
+        ProjectionLifecycleActorState state = await ReadStateAsync().ConfigureAwait(false);
+        if (state.Phase != ProjectionLifecyclePhase.Rebuilding
+            || !state.PromotionFenced
+            || !string.Equals(state.OperationId, request.OperationId, StringComparison.Ordinal)) {
+            return false;
+        }
+
+        await PersistStateAsync(state with {
+            PromotionFenced = false,
+            Revision = checked(state.Revision + 1),
+        }).ConfigureAwait(false);
         return true;
     }
 
@@ -77,11 +122,38 @@ public partial class ProjectionLifecycleActor(ActorHost host, ILogger<Projection
         ArgumentNullException.ThrowIfNull(request);
         ArgumentException.ThrowIfNullOrWhiteSpace(request.OperationId);
         ProjectionLifecycleActorState state = await ReadStateAsync().ConfigureAwait(false);
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+        DateTimeOffset maximumLeaseExpiry = now + DefaultDeliveryLeaseDuration;
+        DateTimeOffset leaseExpiresAtUtc = request.LeaseExpiresAtUtc is { } requestedExpiry
+            && requestedExpiry > now
+                ? requestedExpiry < maximumLeaseExpiry ? requestedExpiry : maximumLeaseExpiry
+                : maximumLeaseExpiry;
+        bool reclaimExpiredDelivery = false;
         if (state.Phase == ProjectionLifecyclePhase.Delivering) {
-            return string.Equals(state.OperationId, request.OperationId, StringComparison.Ordinal);
+            if (string.Equals(state.OperationId, request.OperationId, StringComparison.Ordinal)) {
+                await PersistStateAsync(state with {
+                    DeliveryLeaseExpiresAtUtc = leaseExpiresAtUtc,
+                }).ConfigureAwait(false);
+                return true;
+            }
+
+            if (state.DeliveryLeaseExpiresAtUtc is null) {
+                // A pre-lease-version delivery has no safe expiry evidence. Start a bounded migration
+                // lease on the first competing request; a later retry can then reclaim it safely.
+                await PersistStateAsync(state with {
+                    DeliveryLeaseExpiresAtUtc = maximumLeaseExpiry,
+                }).ConfigureAwait(false);
+                return false;
+            }
+
+            if (state.DeliveryLeaseExpiresAtUtc > now) {
+                return false;
+            }
+
+            reclaimExpiredDelivery = true;
         }
 
-        if (state.Phase != ProjectionLifecyclePhase.Idle) {
+        if (state.Phase != ProjectionLifecyclePhase.Idle && !reclaimExpiredDelivery) {
             return false;
         }
 
@@ -90,7 +162,8 @@ public partial class ProjectionLifecycleActor(ActorHost host, ILogger<Projection
                 request.OperationId,
                 ManifestDigest: null,
                 new Dictionary<string, string>(StringComparer.Ordinal),
-                checked(state.Revision + 1)))
+                checked(state.Revision + 1),
+                DeliveryLeaseExpiresAtUtc: leaseExpiresAtUtc))
             .ConfigureAwait(false);
         return true;
     }
@@ -282,17 +355,3 @@ public partial class ProjectionLifecycleActor(ActorHost host, ILogger<Projection
         public static partial void FreshBeginNotAllowed(ILogger logger, string actorId, string operationId);
     }
 }
-
-/// <summary>
-/// Persisted lifecycle state for a single (tenant, domain, aggregate, projection) scope.
-/// </summary>
-/// <param name="Phase">The current lifecycle phase.</param>
-/// <param name="OperationId">The in-flight erase operation identifier, or null when idle.</param>
-/// <param name="ManifestDigest">The erase target manifest digest, or null when idle.</param>
-/// <param name="PerTargetOutcomes">Per-target erase outcomes recorded during the operation.</param>
-internal sealed record ProjectionLifecycleActorState(
-    ProjectionLifecyclePhase Phase,
-    string? OperationId,
-    string? ManifestDigest,
-    Dictionary<string, string> PerTargetOutcomes,
-    long Revision = 0);

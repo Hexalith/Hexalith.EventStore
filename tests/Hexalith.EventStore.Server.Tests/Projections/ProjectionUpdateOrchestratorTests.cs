@@ -2582,15 +2582,17 @@ public class ProjectionUpdateOrchestratorTests {
         // Task 5 "gate the write": the projection name is only known after /project returns, so the
         // gateway is consulted immediately before the write. When it defers (erase in progress) the
         // write is suppressed, no ETag regen occurs, and the scoped checkpoint is NOT advanced. The
-        // /project call still happens exactly once (the gate is post-/project).
+        // Each trigger still reaches /project (the gate is post-/project), while retries reuse the
+        // same deterministic delivery identity so an expired durable lease can be reclaimed safely.
         IProjectionDeliveryCheckpointStore deliveryStore = Substitute.For<IProjectionDeliveryCheckpointStore>();
         _ = deliveryStore.ReadDeliveredSequenceAsync(TestIdentity, "counter-summary", Arg.Any<CancellationToken>())
             .Returns(0);
         IProjectionLifecycleGateway lifecycleGateway = Substitute.For<IProjectionLifecycleGateway>();
+        var admittedOperationIds = new List<string>();
         _ = lifecycleGateway.BeginDeliveryWriteAsync(
                 TestIdentity,
                 "counter-summary",
-                Arg.Any<string>(),
+                Arg.Do<string>(operationId => admittedOperationIds.Add(operationId)),
                 Arg.Any<CancellationToken>())
             .Returns(false);
         var handler = new CountingProjectionResponseHandler();
@@ -2613,9 +2615,13 @@ public class ProjectionUpdateOrchestratorTests {
             .Returns(writeActor);
 
         await sut.DeliverProjectionAsync(TestIdentity);
+        await sut.DeliverProjectionAsync(TestIdentity);
 
-        handler.CallCount.ShouldBe(1);
-        _ = await lifecycleGateway.Received(1).BeginDeliveryWriteAsync(
+        handler.CallCount.ShouldBe(2);
+        admittedOperationIds.Count.ShouldBe(2);
+        admittedOperationIds[0].ShouldBe(admittedOperationIds[1]);
+        admittedOperationIds[0].ShouldStartWith("legacy-delivery-");
+        _ = await lifecycleGateway.Received(2).BeginDeliveryWriteAsync(
             TestIdentity,
             "counter-summary",
             Arg.Any<string>(),

@@ -670,6 +670,40 @@ public class QueryRouterTests {
     }
 
     [Fact]
+    public async Task RouteQueryAsync_ActorProjectionAliasUsesReturnedProjectionLifecycleEvidence() {
+        JsonElement resultPayload = JsonDocument.Parse("{\"status\":\"shipped\"}").RootElement;
+        IProjectionActorInvoker invoker = Substitute.For<IProjectionActorInvoker>();
+        _ = invoker.InvokeAsync(
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<QueryEnvelope>(),
+                Arg.Any<CancellationToken>())
+            .Returns(QueryResult.FromPayload(resultPayload, "order-list"));
+        IProjectionLifecycleGateway lifecycle = Substitute.For<IProjectionLifecycleGateway>();
+        _ = lifecycle.ReadSnapshotAsync(
+                Arg.Any<AggregateIdentity>(),
+                "GetOrderStatus",
+                Arg.Any<CancellationToken>())
+            .Returns(new ProjectionLifecycleSnapshot(ProjectionLifecyclePhase.Idle, 1));
+        _ = lifecycle.ReadSnapshotAsync(
+                Arg.Any<AggregateIdentity>(),
+                "order-list",
+                Arg.Any<CancellationToken>())
+            .Returns(new ProjectionLifecycleSnapshot(ProjectionLifecyclePhase.Rebuilding, 2));
+        var router = new QueryRouter(invoker, NullLogger<QueryRouter>.Instance, lifecycle);
+
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
+
+        result.Success.ShouldBeTrue();
+        result.ProjectionType.ShouldBe("order-list");
+        result.Metadata.ShouldNotBeNull().Lifecycle.ShouldBe(ProjectionLifecycleState.Rebuilding);
+        _ = await lifecycle.Received(1).ReadSnapshotAsync(
+            Arg.Any<AggregateIdentity>(),
+            "order-list",
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task RouteQueryAsync_NullProjectionType_PassesThroughNull() {
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
         (IProjectionActorInvoker _, QueryRouter router) = CreateRouterWithInvoker(QueryResult.FromPayload(resultPayload));

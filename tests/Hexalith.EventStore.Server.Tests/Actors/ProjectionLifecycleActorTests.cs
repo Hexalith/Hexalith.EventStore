@@ -7,6 +7,7 @@ using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 
 using NSubstitute;
 
@@ -36,12 +37,13 @@ public class ProjectionLifecycleActorTests {
 
     private const string StateKey = "projection-lifecycle";
 
-    private static (ProjectionLifecycleActor Actor, InMemoryStateManager StateManager) CreateActor() {
+    private static (ProjectionLifecycleActor Actor, InMemoryStateManager StateManager) CreateActor(
+        TimeProvider? timeProvider = null) {
         var stateManager = new InMemoryStateManager();
         ILogger<ProjectionLifecycleActor> logger = Substitute.For<ILogger<ProjectionLifecycleActor>>();
         var host = ActorHost.CreateForTest<ProjectionLifecycleActor>(
             new ActorTestOptions { ActorId = new ActorId("tenant:domain:agg:counter") });
-        var actor = new ProjectionLifecycleActor(host, logger);
+        var actor = new ProjectionLifecycleActor(host, logger, timeProvider);
 
         ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
 
@@ -100,6 +102,65 @@ public class ProjectionLifecycleActorTests {
         (await actor.CompleteDeliveryWriteAsync(new ProjectionDeliveryLifecycleRequest("delivery-2"))).ShouldBeFalse();
         (await actor.CompleteDeliveryWriteAsync(new ProjectionDeliveryLifecycleRequest("delivery-1"))).ShouldBeTrue();
         (await actor.BeginRebuildAsync(new ProjectionRebuildLifecycleRequest("rebuild-1"))).ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task DeliveryLease_ExpiredCrashLeaseCanBeReclaimedByAnotherDurableDelivery() {
+        DateTimeOffset now = new(2026, 7, 16, 8, 0, 0, TimeSpan.Zero);
+        var clock = new FakeTimeProvider(now);
+        (ProjectionLifecycleActor actor, _) = CreateActor(clock);
+        (await actor.BeginDeliveryWriteAsync(
+            new ProjectionDeliveryLifecycleRequest("delivery-1", now + TimeSpan.FromMinutes(1)))).ShouldBeTrue();
+
+        clock.Advance(TimeSpan.FromMinutes(2));
+
+        (await actor.BeginDeliveryWriteAsync(
+            new ProjectionDeliveryLifecycleRequest("delivery-2", clock.GetUtcNow() + TimeSpan.FromMinutes(1)))).ShouldBeTrue();
+        (await actor.CompleteDeliveryWriteAsync(new ProjectionDeliveryLifecycleRequest("delivery-1"))).ShouldBeFalse();
+        (await actor.CompleteDeliveryWriteAsync(new ProjectionDeliveryLifecycleRequest("delivery-2"))).ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task DeliveryLease_PreLeaseStateMigratesToBoundedExpiryBeforeReclamation() {
+        DateTimeOffset now = new(2026, 7, 16, 8, 0, 0, TimeSpan.Zero);
+        var clock = new FakeTimeProvider(now);
+        (ProjectionLifecycleActor actor, InMemoryStateManager stateManager) = CreateActor(clock);
+        await stateManager.SetStateAsync(
+            StateKey,
+            new ProjectionLifecycleActorState(
+                ProjectionLifecyclePhase.Delivering,
+                "legacy-delivery",
+                ManifestDigest: null,
+                new Dictionary<string, string>(StringComparer.Ordinal),
+                Revision: 7));
+        await stateManager.SaveStateAsync();
+
+        (await actor.BeginDeliveryWriteAsync(
+            new ProjectionDeliveryLifecycleRequest("delivery-2", now + TimeSpan.FromDays(1)))).ShouldBeFalse();
+        ProjectionLifecycleActorState migrated = PersistedState(stateManager);
+        migrated.Revision.ShouldBe(7);
+        migrated.DeliveryLeaseExpiresAtUtc.ShouldBe(now + TimeSpan.FromMinutes(5));
+
+        clock.Advance(TimeSpan.FromMinutes(6));
+
+        (await actor.BeginDeliveryWriteAsync(
+            new ProjectionDeliveryLifecycleRequest("delivery-2", clock.GetUtcNow() + TimeSpan.FromDays(1)))).ShouldBeTrue();
+        ProjectionLifecycleActorState reclaimed = PersistedState(stateManager);
+        reclaimed.OperationId.ShouldBe("delivery-2");
+        reclaimed.Revision.ShouldBe(8);
+        reclaimed.DeliveryLeaseExpiresAtUtc.ShouldBe(clock.GetUtcNow() + TimeSpan.FromMinutes(5));
+    }
+
+    [Fact]
+    public async Task RebuildPromotionFence_RejectsTerminalCleanupUntilPromotionCompletes() {
+        (ProjectionLifecycleActor actor, _) = CreateActor();
+        var request = new ProjectionRebuildLifecycleRequest("rebuild-1");
+        (await actor.BeginRebuildAsync(request)).ShouldBeTrue();
+        (await actor.BeginRebuildPromotionAsync(request)).ShouldBeTrue();
+
+        (await actor.CompleteRebuildAsync(request)).ShouldBeFalse();
+        (await actor.CompleteRebuildPromotionAsync(request)).ShouldBeTrue();
+        (await actor.CompleteRebuildAsync(request)).ShouldBeTrue();
     }
 
     [Fact]
