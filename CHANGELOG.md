@@ -1,3 +1,10 @@
+## [3.68.3](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.68.2...v3.68.3) (2026-07-16)
+
+
+### Bug Fixes
+
+* **deps:** inherit ASP.NET 10.0.10 pins from Hexalith.Builds ([3a43d5e](https://github.com/Hexalith/Hexalith.EventStore/commit/3a43d5e6151ebc51e945bf1b6cecda92fd198a09))
+
 ## [3.68.2](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.68.1...v3.68.2) (2026-07-16)
 
 
