@@ -306,3 +306,24 @@ _All items LOW / non-blocking. Story 2.7 accepted (all AC1–AC7 met; Release bu
 - source_spec: `_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md`
   summary: Repair or explicitly disposition the named-projection lifecycle cleanup defect before selecting an approved parity runtime.
   evidence: Clean detached candidate `85877902f8d60a466ab90cd8b68b53838863db1c` built Release with 0 warnings/errors and passed the broad unit lanes, but `Hexalith.EventStore.Server.LiveSidecar.Tests.dll` finished 42 passed / 2 failed. The isolated `NamedProjectionDispatchLiveSidecarTests` run finished 5 passed / 1 failed, and `NormalDelivery_PersistsIndependentDetailIndexCheckpointsAndConvergedRetryLedger` reproduced alone at 0 passed / 1 failed because the Redis lifecycle hash remained present instead of returning to the idle/absent baseline. The initial full lane also reported an unreleased lifecycle lease in `ConcurrentDuplicateReverseAndConflict_StayEquivalentToOneInOrderDelivery`. Story 1.20 authorizes evidence and closure only, not an unscoped runtime patch; rerun the mandatory exact-SHA live gate after the defect has an owned implementation story or explicit owner disposition.
+
+## Deferred from: Story 1.20 correct-course readiness audit (2026-07-16)
+
+- source_spec: `_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md`
+  status: open-blocking
+  owner: EventStore build/release maintainer
+  summary: Land the architecture AD-11 .NET/ASP.NET security baseline before selecting Story 1.20's tested runtime SHA.
+  evidence:
+    - `global.json` pins SDK `10.0.301`;
+    - the installed SDK is `10.0.301` and host/runtime is `10.0.9`;
+    - `Directory.Packages.props` retains ASP.NET package pins at `10.0.9`;
+    - architecture AD-11 requires SDK `10.0.302` and ASP.NET `10.0.10` before the next implementation or release slice.
+  consequence: No current commit may be promoted to `tested_runtime_sha`, and no package/container proof publication may be accepted, while this mismatch remains.
+  closure:
+    1. Update the repository seed and central ASP.NET pins to the AD-11 baseline, or record named architecture-owner approval for a newer replacement.
+    2. Install and capture the matching SDK/runtime.
+    3. Restore and build `Hexalith.EventStore.slnx` in Release.
+    4. Run the focused package/runtime validation owned by the correction.
+    5. Commit the correction independently.
+    6. Use that resulting commit, or a reviewed descendant, as the Story 1.20 candidate runtime.
+  reopen_trigger: Any Story 1.20 packet update, package build, container publication, or owner-approval request that names a runtime without satisfying this baseline.

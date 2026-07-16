@@ -35,7 +35,10 @@ The exact-SHA gate failed before package/container publication and owner review:
    an approvable tested runtime and no parity row is promoted to `available`.
 4. The completed Story 1.16 source spec still retains
    `followup_review_recommended: true` without an explicit disposition.
-5. No named EventStore owner has reviewed completed passing exact-SHA evidence, and no
+5. The repository and installed toolchain remain on SDK `10.0.301` / runtime and
+   central ASP.NET pins `10.0.9`, below architecture AD-11's required
+   `10.0.302` / `10.0.10` security baseline.
+6. No named EventStore owner has reviewed completed passing exact-SHA evidence, and no
    manifest-governed package/container identities have been produced or approved.
 
 ### Scoped corrective item
@@ -48,6 +51,36 @@ production-path and package/container gate at that unchanged SHA, explicitly dis
 Story 1.16's retained follow-up recommendation, obtain named EventStore-owner approval,
 and update this packet.
 
+### Exact-SHA Failure And Readiness Re-Audit — 2026-07-16
+
+- repository: `https://github.com/Hexalith/Hexalith.EventStore.git`
+- repository root: `/home/administrator/projects/hexalith/eventstore`
+- current planning/evidence branch: `fix/projection-delivery-lifecycle-baseline`
+- current planning/evidence baseline: `4423e03bef8f2e6f9139a143a3fc42ea8c835dfd`,
+  equal to the locally recorded `origin/main` without asserting an unfetched remote state
+- failed candidate SHA: `85877902f8d60a466ab90cd8b68b53838863db1c`
+- detached candidate worktree: clean before and after the attempted gates
+- root submodules in the detached candidate: all seven declared entries initialized at
+  their committed gitlinks; no nested submodules initialized
+- tested runtime SHA: not selected
+
+The existing exact-SHA completion-attempt log remains the authoritative command-and-result
+record. Its reproducible live-sidecar failure disqualifies the candidate despite the
+passing Release build and test subsets; those subsets grant no migration authority.
+
+Runtime and documentation identity remain deliberately separate. The
+`candidate_source_sha` records the failed candidate, `tested_runtime_sha: null` records
+that no unchanged runtime has passed every gate, and `documentation_commit_sha: null`
+records that no later evidence-only commit exists. A future documentation commit cannot
+substitute for the tested runtime. Package versions and hashes, container digest and
+platform provenance, named owner approval, and migration authorization also remain absent.
+
+Architecture AD-11 is a hard precondition before selecting or publishing a replacement
+runtime. `global.json` and the installed SDK remain `10.0.301`, the installed host/runtime
+and central ASP.NET pins remain `10.0.9`, and AD-11 requires `10.0.302` / `10.0.10` or a
+later named architecture-owner-approved baseline. The separately owned corrective item is
+recorded in `deferred-work.md`; this evidence-only story changes no runtime or package pin.
+
 ## Prerequisite And Review Ledger
 
 | Prerequisite | Current status | Current evidence | Closure disposition |
@@ -59,6 +92,7 @@ and update this packet.
 | Story 1.17 asynchronous multi-projection dispatch | `done` | Crosswalk maps completed historical Story 1.12 and narrows acceptance to AD-19's normalized result. | Satisfied for sequencing; evidence not promoted to this packet without exact-SHA rerun. |
 | Story 1.18 delivery idempotency | `done` | Crosswalk maps completed historical Story 1.13 production-path evidence. | Satisfied for sequencing; evidence not promoted to this packet without exact-SHA rerun. |
 | Story 1.19 paged rebuild equivalence | `done` | Active Story 1.19 records approval after 13 in-scope patches, one explicit deferral, a 2,620-test Server pass, the real DAPR/Redis paged-rebuild pass, and a warning-free Release build. | Satisfied for sequencing; the paged-rebuild live test also passed at the current candidate SHA, but the cross-cutting live gate did not. |
+| Architecture AD-11 security baseline | `open-blocking` | Repository seed, installed SDK/runtime, and central ASP.NET pins remain `10.0.301` / `10.0.9`; AD-11 requires `10.0.302` / `10.0.10` or a later approved replacement. | **Hard blocker.** A separately owned build/release correction must land before a tested runtime is selected or package/container proof is published. |
 | Story 1.20 owner review | pending | No reviewer, approval date, or durable source exists. | **Hard blocker.** |
 
 ## Artifact Identity Pin

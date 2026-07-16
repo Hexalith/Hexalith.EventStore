@@ -178,13 +178,13 @@ public partial class ProjectionLifecycleActor(
             return false;
         }
 
-        await PersistStateAsync(new ProjectionLifecycleActorState(
-                ProjectionLifecyclePhase.Idle,
-                OperationId: null,
-                ManifestDigest: null,
-                new Dictionary<string, string>(StringComparer.Ordinal),
-                checked(state.Revision + 1)))
-            .ConfigureAwait(false);
+        // A completed normal delivery must restore the absent lifecycle baseline (absent means idle)
+        // rather than leaving a persisted Idle record. Delivery is the high-frequency path: persisting an
+        // Idle row for every completed aggregate delivery would accumulate lifecycle residue that erasure
+        // would later have to reclaim, and would surface a spurious lifecycle row for an otherwise idle
+        // projection. Only the transient delivery lease is cleared here; the rebuild/erase paths keep their
+        // durable Idle transition.
+        await ClearStateAsync().ConfigureAwait(false);
         return true;
     }
 
@@ -308,6 +308,12 @@ public partial class ProjectionLifecycleActor(
 
     private async Task PersistStateAsync(ProjectionLifecycleActorState state) {
         await StateManager.SetStateAsync(LifecycleStateKey, state).ConfigureAwait(false);
+        await StateManager.SaveStateAsync().ConfigureAwait(false);
+    }
+
+    private async Task ClearStateAsync() {
+        // The delivery lease is always persisted before completion, so the state key exists here.
+        await StateManager.RemoveStateAsync(LifecycleStateKey).ConfigureAwait(false);
         await StateManager.SaveStateAsync().ConfigureAwait(false);
     }
 

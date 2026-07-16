@@ -70,7 +70,15 @@ development_status:
   1-17-asynchronous-multi-projection-dispatch: done
   1-18-projection-handler-delivery-idempotency: done
   1-19-correct-paged-rebuild-and-replay-equivalence: done
-  # Cannot become done while its projection/query owner packet remains `still blocked`.
+  # Story 1.19 review is complete. Story 1.20 remains in progress while:
+  # - Story 1.16 follow-up review lacks a dated exact-runtime disposition;
+  # - candidate 85877902... failed the live-sidecar gate reproducibly;
+  # - the lifecycle-cleanup corrective item remains unresolved;
+  # - the AD-11 SDK/ASP.NET security-baseline corrective item is open;
+  # - no later clean committed runtime SHA has passed all detached production gates;
+  # - exact NuGet versions/hashes and container digest/platform provenance are absent;
+  # - named EventStore and release-owner approval is absent.
+  # `final_decision: still blocked` cannot transition this story or Epic 1 to done.
   # Explicitly excludes payload-protection G5 and Parties Story 8.7; those are Epic 8.
   1-20-owner-approved-parity-closure-and-runtime-pin: in-progress
   epic-1-retrospective: done

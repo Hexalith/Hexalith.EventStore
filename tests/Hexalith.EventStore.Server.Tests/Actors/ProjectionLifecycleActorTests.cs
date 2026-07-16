@@ -173,7 +173,28 @@ public class ProjectionLifecycleActorTests {
         (await actor.BeginDeliveryWriteAsync(new ProjectionDeliveryLifecycleRequest("delivery-1"))).ShouldBeTrue();
         (await actor.ReadSnapshotAsync()).Revision.ShouldBe(1);
         (await actor.CompleteDeliveryWriteAsync(new ProjectionDeliveryLifecycleRequest("delivery-1"))).ShouldBeTrue();
-        (await actor.ReadSnapshotAsync()).ShouldBe(new ProjectionLifecycleSnapshot(ProjectionLifecyclePhase.Idle, 2));
+
+        // Completing a normal delivery clears the lease and restores the absent baseline, so the
+        // synthesized idle snapshot reads revision 0 rather than a persisted post-delivery record.
+        (await actor.ReadSnapshotAsync()).ShouldBe(new ProjectionLifecycleSnapshot(ProjectionLifecyclePhase.Idle, 0));
+    }
+
+    [Fact]
+    public async Task CompleteDeliveryWriteAsync_RestoresAbsentLifecycleBaseline() {
+        (ProjectionLifecycleActor actor, InMemoryStateManager stateManager) = CreateActor();
+
+        (await actor.BeginDeliveryWriteAsync(new ProjectionDeliveryLifecycleRequest("delivery-1"))).ShouldBeTrue();
+        stateManager.CommittedState.ShouldContainKey(StateKey);
+
+        (await actor.CompleteDeliveryWriteAsync(new ProjectionDeliveryLifecycleRequest("delivery-1"))).ShouldBeTrue();
+
+        // A completed normal delivery must not leave a persisted lifecycle record: absent means idle.
+        stateManager.CommittedState.ShouldNotContainKey(StateKey);
+        (await actor.ReadPhaseAsync()).ShouldBe(ProjectionLifecyclePhase.Idle);
+        (await actor.TryAdmitDeliveryWriteAsync()).Admitted.ShouldBeTrue();
+
+        // The cleared baseline still serializes a following rebuild/erase turn correctly.
+        (await actor.BeginRebuildAsync(new ProjectionRebuildLifecycleRequest("rebuild-1"))).ShouldBeTrue();
     }
 
     [Fact]
