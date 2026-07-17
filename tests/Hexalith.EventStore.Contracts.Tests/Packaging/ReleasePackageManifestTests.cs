@@ -182,13 +182,31 @@ public sealed class ReleasePackageManifestTests
         ciJob.ShouldNotContain("runs-on:");
         ciJob.ShouldNotContain("steps:");
 
-        tenantsSourceModeJob.ShouldContain("runs-on: ubuntu-latest");
-        tenantsSourceModeJob.ShouldContain("UseHexalithProjectReferences: 'true'");
-        tenantsSourceModeJob.ShouldContain("--configuration Debug");
-        tenantsSourceModeJob.ShouldContain("-m:1");
-        tenantsSourceModeJob.ShouldContain("Verify Tenants source-mode topology guardrails");
-        tenantsSourceModeJob.ShouldContain("--filter FullyQualifiedName~TenantsApiLaunchSettingsTests");
-        tenantsSourceModeJob.ShouldNotContain("continue-on-error:");
+        AssertTenantsSourceModeJobIsBlocking(tenantsSourceModeJob);
+    }
+
+    [Fact]
+    public void TenantsSourceModeJobValidationRejectsSkippedJob()
+    {
+        string job = CreateValidTenantsSourceModeJobBlock()
+            .Replace(
+                "    runs-on: ubuntu-latest",
+                "    if: ${{ false }}\n    runs-on: ubuntu-latest",
+                StringComparison.Ordinal);
+
+        _ = Should.Throw<Shouldly.ShouldAssertException>(() => AssertTenantsSourceModeJobIsBlocking(job));
+    }
+
+    [Fact]
+    public void TenantsSourceModeJobValidationRejectsTokenOnlyMatch()
+    {
+        string job = CreateValidTenantsSourceModeJobBlock()
+            .Replace(
+                "      -m:1",
+                "      # -m:1\n      -m:10",
+                StringComparison.Ordinal);
+
+        _ = Should.Throw<Shouldly.ShouldAssertException>(() => AssertTenantsSourceModeJobIsBlocking(job));
     }
 
     [Theory]
@@ -606,6 +624,46 @@ public sealed class ReleasePackageManifestTests
 
         return jobsContent[targetHeader.Index..jobEnd].TrimEnd('\n');
     }
+
+    private static void AssertTenantsSourceModeJobIsBlocking(string jobBlock)
+    {
+        string[] lines = jobBlock
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n')
+            .Split('\n');
+        string[] trimmedLines = lines.Select(static line => line.Trim()).ToArray();
+
+        lines.ShouldContain("    runs-on: ubuntu-latest");
+        lines.ShouldContain("      UseHexalithProjectReferences: 'true'");
+        trimmedLines.ShouldContain("--configuration Debug");
+        trimmedLines.ShouldContain("-m:1");
+        lines.ShouldContain("      - name: Verify Tenants source-mode topology guardrails");
+        trimmedLines.ShouldContain("--filter FullyQualifiedName~TenantsApiLaunchSettingsTests");
+        lines.Any(static line => line.TrimStart().StartsWith("continue-on-error:", StringComparison.Ordinal))
+            .ShouldBeFalse("The blocking Tenants source-mode job must not tolerate step failures.");
+        lines.Any(static line => line.TrimStart().StartsWith("if:", StringComparison.Ordinal))
+            .ShouldBeFalse("The blocking Tenants source-mode job and its required steps must not be conditionally skipped.");
+    }
+
+    private static string CreateValidTenantsSourceModeJobBlock()
+        => string.Join(
+            '\n',
+            [
+                "  tenants-source-mode:",
+                "    runs-on: ubuntu-latest",
+                "    env:",
+                "      UseHexalithProjectReferences: 'true'",
+                "    steps:",
+                "      - name: Build source-mode AppHost tests",
+                "        run: >-",
+                "          dotnet build tests/Hexalith.EventStore.AppHost.Tests/Hexalith.EventStore.AppHost.Tests.csproj",
+                "          --configuration Debug",
+                "          -m:1",
+                "      - name: Verify Tenants source-mode topology guardrails",
+                "        run: >-",
+                "          dotnet test tests/Hexalith.EventStore.AppHost.Tests/Hexalith.EventStore.AppHost.Tests.csproj",
+                "          --filter FullyQualifiedName~TenantsApiLaunchSettingsTests",
+            ]);
 
     private static string FindRepositoryRoot()
     {

@@ -65,33 +65,51 @@ public sealed class EventStoreDomainServiceConfigurationTests
             expectedTenantId: "tenant-b").ConfigureAwait(true);
     }
 
+    [Fact]
+    public void RootEventStoreDevelopmentConfigurationContainsOnlyHostedSampleDomains()
+    {
+        DomainServiceOptions options = LoadDomainServiceOptions(
+            "appsettings.json",
+            "appsettings.Development.json");
+
+        options.Registrations.Values
+            .Where(static registration => string.Equals(registration.AppId, "sample", StringComparison.Ordinal))
+            .Select(static registration => registration.Domain)
+            .Order(StringComparer.Ordinal)
+            .ShouldBe(["counter", "greeting"]);
+    }
+
     private static DomainServiceResolver CreateResolver(DomainServiceOptions options, DaprClient daprClient)
         => new(
             daprClient,
             Options.Create(options),
             NullLogger<DomainServiceResolver>.Instance);
 
-    private static DomainServiceOptions LoadDomainServiceOptions(string fileName)
+    private static DomainServiceOptions LoadDomainServiceOptions(params string[] fileNames)
     {
         DomainServiceOptions options = new();
-        LoadEventStoreSettings(fileName)
+        LoadEventStoreSettings(fileNames)
             .GetSection("EventStore:DomainServices")
             .Bind(options);
         return options;
     }
 
-    private static IConfigurationRoot LoadEventStoreSettings(string fileName)
+    private static IConfigurationRoot LoadEventStoreSettings(params string[] fileNames)
     {
-        string path = Path.Combine(
+        string eventStoreRoot = Path.Combine(
             RepositoryProjectPaths.GetRepositoryRoot(),
             "src",
-            "Hexalith.EventStore",
-            fileName);
+            "Hexalith.EventStore");
+        var builder = new ConfigurationBuilder();
 
-        File.Exists(path).ShouldBeTrue($"Expected EventStore configuration file at {path}.");
-        return new ConfigurationBuilder()
-            .AddJsonFile(path, optional: false)
-            .Build();
+        foreach (string fileName in fileNames)
+        {
+            string path = Path.Combine(eventStoreRoot, fileName);
+            File.Exists(path).ShouldBeTrue($"Expected EventStore configuration file at {path}.");
+            _ = builder.AddJsonFile(path, optional: false);
+        }
+
+        return builder.Build();
     }
 
     private static async Task AssertResolvesAsync(

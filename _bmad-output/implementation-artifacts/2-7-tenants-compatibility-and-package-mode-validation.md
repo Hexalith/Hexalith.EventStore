@@ -2,7 +2,7 @@
 created: 2026-07-15
 story_id: "2.7"
 story_key: 2-7-tenants-compatibility-and-package-mode-validation
-status: review
+status: done
 split_from: 2-4-tenants-external-api-host-adoption
 scope_split_to: 2-12-tenants-runtime-identity-adoption-and-package-mode-validation
 crosswalk: ../planning-artifacts/story-id-migration-2026-07-15.md
@@ -10,7 +10,7 @@ crosswalk: ../planning-artifacts/story-id-migration-2026-07-15.md
 
 # Story 2.7: Pre-Authorization Registration And Provenance Correction
 
-Status: review
+Status: done
 
 This child owns only the EventStore registration/proof-harness correction required before
 Story 1.20 can select a runtime. It changes no Tenants, EventStore, or Builds dependency
@@ -86,8 +86,31 @@ Tenants commit, source/package adoption, maintainer approval, and verification e
 
 ## Review Findings
 
-- [ ] [Review][Patch] Story enters review while the AC1-AC2 correction and live proof remain open [_bmad-output/implementation-artifacts/sprint-status.yaml:98]
-- [ ] [Review][Patch] Out-of-scope dependency pointers change and Builds downgrades the EventStore version [references/Hexalith.Builds:1]
-- [ ] [Review][Patch] The authoritative migration crosswalk contradicts the Story 2.7 split and omits Story 2.12 [_bmad-output/planning-artifacts/story-id-migration-2026-07-15.md:46]
-- [ ] [Review][Patch] The epic plan references an untracked sprint-change proposal [_bmad-output/planning-artifacts/epics.md:30]
-- [ ] [Review][Patch] The CI source-mode guard can pass a skipped or token-only job [tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs:185]
+- [x] [Review][Patch] Story enters review while the AC1-AC2 correction and live proof remain open [_bmad-output/implementation-artifacts/sprint-status.yaml:98]
+- [x] [Review][Patch] Out-of-scope dependency pointers change and Builds downgrades the EventStore version [references/Hexalith.Builds:1]
+- [x] [Review][Patch] The authoritative migration crosswalk contradicts the Story 2.7 split and omits Story 2.12 [_bmad-output/planning-artifacts/story-id-migration-2026-07-15.md:46]
+- [x] [Review][Patch] The epic plan references an untracked sprint-change proposal [_bmad-output/planning-artifacts/epics.md:30]
+- [x] [Review][Patch] The CI source-mode guard can pass a skipped or token-only job [tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs:185]
+
+## Completion Evidence
+
+- The base EventStore configuration no longer registers stale `orders` or `inventory`
+  sample domains. Development configuration resolves exactly the hosted `counter` and
+  `greeting` sample domains; the focused AppHost configuration lane passes 4/4.
+- The exact Debug source-topology E2E, built with
+  `UseHexalithProjectReferences=true`, passes 1/1. It stops EventStore, deletes the prior
+  Redis state, restarts EventStore, observes HTTP 200 with `HandlerComputed` provenance and
+  no projection-validator leakage, and reads freshly persisted
+  `admin:query-types:tenants` state containing `list-tenants`.
+- Genuine metadata failures remain atomic and fail closed; the correction changes only the
+  stale registration boundary and the proof harness.
+- The release-manifest/CI guard lane passes 22/22, including rejection of skipped and
+  token-only Tenants source-mode jobs.
+- The five out-of-scope dependency gitlinks match their pre-review identities. Effective
+  EventStore `Version` and `PackageVersion` are restored to `3.68.1`; no Tenants identity
+  changed and no nested submodule was initialized.
+- The migration crosswalk includes Story 2.12 and records Story 2.7 as EventStore-only; the
+  referenced 2026-07-17 sprint-change proposal is tracked.
+- This evidence is from the reviewed working tree based on
+  `5afbe0b4fb89620344c515ea007df4a162913574`. Story 1.20 must still rerun its complete gate
+  at one exact clean committed candidate SHA before it can authorize migration.

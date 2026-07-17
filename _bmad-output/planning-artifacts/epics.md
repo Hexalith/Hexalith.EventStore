@@ -76,7 +76,7 @@ The former coordinated-slice parents are superseded and must not be recreated as
 - Story 7.4 -> Stories 7.10-7.13.
 - Story 7.5 -> Stories 7.15-7.18, with new Story 7.14 owning the consolidated EventStore Admin dashboard migration.
 
-Every child names one owner, one review boundary, deterministic acceptance criteria, and focused validation. `_bmad-output/planning-artifacts/story-id-migration-2026-07-15.md` is the audit authority for old/new identifiers, status inheritance, evidence, and active-file supersession. A child inherits `done` only when that crosswalk names existing implementation, focused tests, and review results; Tenants children additionally require maintainer approval and exact SHA. Missing evidence leaves a child in `review`, not `done`.
+Every child names one owner, one review boundary, deterministic acceptance criteria, and focused validation. `_bmad-output/planning-artifacts/story-id-migration-2026-07-15.md` is the audit authority for old/new identifiers, status inheritance, evidence, and active-file supersession. A child inherits `done` only when that crosswalk names existing implementation, focused tests, and review results. Tenants children that cross the Tenants repository boundary additionally require maintainer approval and an exact SHA; the EventStore-only Story 2.7 prerequisite does not. Missing evidence leaves a child in `review`, not `done`.
 
 | Child stories | Owner / review boundary | Focused validation |
 | --- | --- | --- |

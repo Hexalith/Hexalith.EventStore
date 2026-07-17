@@ -8,7 +8,7 @@ plan: _bmad-output/planning-artifacts/epics.md
 
 # Story ID Migration And Evidence Crosswalk
 
-This is the audit authority for the approved July 15 epic/story restructuring. Historical artifacts retain their original identifiers; new active files link back through `supersedes`/`superseded_by` notes. A split child inherits `done` only when this crosswalk names implementation, focused tests, and review evidence. Tenants children additionally require maintainer approval and exact Tenants SHA.
+This is the audit authority for the approved July 15 epic/story restructuring. Historical artifacts retain their original identifiers; new active files link back through `supersedes`/`superseded_by` notes. A split child inherits `done` only when this crosswalk names implementation, focused tests, and review evidence. Tenants children that cross the Tenants repository boundary additionally require maintainer approval and an exact Tenants SHA; the EventStore-only Story 2.7 prerequisite does not.
 
 ## Epic 1
 
@@ -43,13 +43,14 @@ This is the audit authority for the approved July 15 epic/story restructuring. H
 | 2.4 | 2.4 | `review` | `spec-2-4-tenants-external-api-host-adoption.md` records contract metadata/tests, but lacks the new maintainer-approved PR/commit and exact SHA gate. |
 | 2.4 | 2.5 | `review` | Parent spec records dedicated host/AppHost/ACL/runtime tests; exact Tenants approval/SHA evidence is absent. |
 | 2.4 | 2.6 | `review` | Parent spec records UI boundary guardrails; independent UX review plus exact approved Tenants SHA is absent. |
-| 2.4 | 2.7 | `review` | Parent spec records source/package builds, but the approved repository boundary, exact SHA, and independent compatibility disposition are incomplete. |
+| 2.4 | 2.7 | `done` | The approved 2026-07-17 split retains only the EventStore registration/provenance prerequisite. The reviewed working tree based on `5afbe0b4fb89620344c515ea007df4a162913574` passes the exact source-topology E2E 1/1 with freshly persisted `admin:query-types:tenants` state, focused configuration tests 4/4, and CI-guard tests 22/22, with no net Tenants dependency-identity change. |
+| 2.4 | 2.12 | `backlog` | The approved 2026-07-17 split moves later Tenants runtime-identity adoption and package-mode validation here. No implementation story file or dependency change is authorized before Story 1.20 approves the exact runtime identities. |
 | 2.5 | 2.8 | `done` | Scope-only renumber; completed notification implementation/review remains, with deterministic reject-not-clip acceptance. |
 | 2.6 | 2.9 | `done` | Scope-only renumber; completed generated command-status policy evidence remains. |
 | 2.7 | 2.10 | `done` | Scope-only renumber; completed outbound-header policy evidence remains. |
 | 2.8 | 2.11 | `review` | Platform implementation moved to Story 1.2. Existing 2.4/2.8 evidence supports consumer behavior, but the new consumer-only slice still lacks exact Tenants approval/SHA and independent persisted-path review. |
 
-Epic 2 returns to `in-progress` until Stories 2.4-2.7 and 2.11 satisfy their external-authority gates.
+Epic 2 remains `in-progress` until Stories 2.4-2.7, 2.11, and 2.12 satisfy their scoped completion gates. External Tenants authority applies only to children that cross the Tenants repository boundary; Story 2.7 closes on EventStore-owned correction and proof evidence.
 
 ## Epic 3
 

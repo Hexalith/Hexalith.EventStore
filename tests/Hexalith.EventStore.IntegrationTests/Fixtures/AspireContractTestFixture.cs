@@ -1,9 +1,12 @@
 
 using global::Aspire.Hosting;
+using global::Aspire.Hosting.ApplicationModel;
 using global::Aspire.Hosting.Testing;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+
+using StackExchange.Redis;
 
 namespace Hexalith.EventStore.IntegrationTests.Fixtures;
 /// <summary>
@@ -13,6 +16,9 @@ namespace Hexalith.EventStore.IntegrationTests.Fixtures;
 /// Implements <see cref="IAsyncLifetime"/> so xUnit manages lifecycle around the test collection.
 /// </summary>
 public class AspireContractTestFixture : IAsyncLifetime {
+    private const string HandlerQueryTypesStateKey = "admin:query-types:tenants";
+    private const string RedisEndpoint = "localhost:6379";
+
     private DistributedApplication? _app;
     private IDistributedApplicationTestingBuilder? _builder;
     private string? _previousEnableKeycloak;
@@ -110,6 +116,42 @@ public class AspireContractTestFixture : IAsyncLifetime {
             .ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Restarts EventStore after clearing the persisted Tenants handler index. This proves the
+    /// next healthy EventStore instance rebuilt the index from live operational metadata.
+    /// </summary>
+    public async Task RestartEventStoreWithClearedHandlerQueryTypesStateAsync(CancellationToken cancellationToken) {
+        ExecuteCommandResult stopResult = await App.ResourceCommands
+            .ExecuteCommandAsync("eventstore", KnownResourceCommands.StopCommand, cancellationToken)
+            .ConfigureAwait(false);
+        if (!stopResult.Success) {
+            throw new InvalidOperationException(
+                $"Unable to stop EventStore before clearing {HandlerQueryTypesStateKey}. "
+                + $"Message: {stopResult.Message}; Error: {stopResult.ErrorMessage}");
+        }
+
+        _ = await App.ResourceNotifications
+            .WaitForResourceAsync("eventstore", KnownResourceStates.TerminalStates, cancellationToken)
+            .WaitAsync(TimeSpan.FromMinutes(1), cancellationToken)
+            .ConfigureAwait(false);
+
+        await DeleteHandlerQueryTypesStateAsync(cancellationToken).ConfigureAwait(false);
+
+        ExecuteCommandResult startResult = await App.ResourceCommands
+            .ExecuteCommandAsync("eventstore", KnownResourceCommands.StartCommand, cancellationToken)
+            .ConfigureAwait(false);
+        if (!startResult.Success) {
+            throw new InvalidOperationException(
+                $"Unable to restart EventStore after clearing {HandlerQueryTypesStateKey}. "
+                + $"Message: {startResult.Message}; Error: {startResult.ErrorMessage}");
+        }
+
+        _ = await App.ResourceNotifications
+            .WaitForResourceHealthyAsync("eventstore", cancellationToken)
+            .WaitAsync(TimeSpan.FromMinutes(3), cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     public async ValueTask DisposeAsync() {
         _eventStoreClient?.Dispose();
         _adminServerClient?.Dispose();
@@ -125,5 +167,23 @@ public class AspireContractTestFixture : IAsyncLifetime {
         Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", _previousAspNetCoreEnvironment);
         Environment.SetEnvironmentVariable("DOTNET_ENVIRONMENT", _previousDotNetEnvironment);
         Environment.SetEnvironmentVariable("EventStore__Actors__AggregateActorTypeName", _previousAggregateActorTypeName);
+    }
+
+    private static async Task DeleteHandlerQueryTypesStateAsync(CancellationToken cancellationToken)
+    {
+        using IConnectionMultiplexer redis = await ConnectionMultiplexer.ConnectAsync(new ConfigurationOptions
+        {
+            EndPoints = { RedisEndpoint },
+            ConnectTimeout = 5_000,
+            SyncTimeout = 5_000,
+            AbortOnConnectFail = false,
+            AllowAdmin = false,
+        }).ConfigureAwait(false);
+
+        _ = await redis.GetDatabase()
+            .KeyDeleteAsync(HandlerQueryTypesStateKey)
+            .WaitAsync(cancellationToken)
+            .ConfigureAwait(false);
+        await redis.CloseAsync(allowCommandsToComplete: true).ConfigureAwait(false);
     }
 }

@@ -15,6 +15,8 @@ using Microsoft.Extensions.Options;
 
 using Shouldly;
 
+using StackExchange.Redis;
+
 namespace Hexalith.EventStore.IntegrationTests.ContractTests;
 
 /// <summary>
@@ -25,6 +27,8 @@ namespace Hexalith.EventStore.IntegrationTests.ContractTests;
 [Collection("AspireContractTests")]
 public sealed class QueryResponseProvenanceE2ETests(AspireContractTestFixture fixture)
 {
+    private const string HandlerQueryTypesStateKey = "admin:query-types:tenants";
+    private const string RedisEndpoint = "localhost:6379";
     private static readonly TimeSpan s_projectionPollTimeout = TimeSpan.FromSeconds(45);
 
     [Fact]
@@ -32,6 +36,7 @@ public sealed class QueryResponseProvenanceE2ETests(AspireContractTestFixture fi
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromMinutes(3));
         CancellationToken cancellationToken = cancellation.Token;
+        await fixture.RestartEventStoreWithClearedHandlerQueryTypesStateAsync(cancellationToken).ConfigureAwait(true);
         _ = await fixture.App.ResourceNotifications
             .WaitForResourceHealthyAsync("tenants", cancellationToken)
             .WaitAsync(TimeSpan.FromMinutes(2), cancellationToken)
@@ -80,6 +85,35 @@ public sealed class QueryResponseProvenanceE2ETests(AspireContractTestFixture fi
         ShouldBeMissingOrNull(metadata, "etag");
         ShouldBeMissingOrNull(metadata, "projectionVersion");
         ShouldBeMissingOrNull(metadata, "isStale");
+
+        await AssertHandlerQueryTypePersistedAsync(cancellationToken).ConfigureAwait(true);
+    }
+
+    private static async Task AssertHandlerQueryTypePersistedAsync(CancellationToken cancellationToken)
+    {
+        using IConnectionMultiplexer redis = await ConnectionMultiplexer.ConnectAsync(new ConfigurationOptions
+        {
+            EndPoints = { RedisEndpoint },
+            ConnectTimeout = 5_000,
+            SyncTimeout = 5_000,
+            AbortOnConnectFail = false,
+            AllowAdmin = false,
+        }).ConfigureAwait(false);
+
+        RedisValue payload = await redis.GetDatabase()
+            .HashGetAsync(HandlerQueryTypesStateKey, "data")
+            .WaitAsync(cancellationToken)
+            .ConfigureAwait(false);
+        payload.HasValue.ShouldBeTrue($"Expected persisted DAPR state at {HandlerQueryTypesStateKey}.");
+
+        using JsonDocument document = JsonDocument.Parse(payload.ToString());
+        document.RootElement.ValueKind.ShouldBe(JsonValueKind.Array);
+        document.RootElement
+            .EnumerateArray()
+            .Select(static item => item.GetString())
+            .ShouldContain("list-tenants");
+
+        await redis.CloseAsync(allowCommandsToComplete: true).ConfigureAwait(false);
     }
 
     private async Task AssertProjectionNotModifiedRoundTripAsync(

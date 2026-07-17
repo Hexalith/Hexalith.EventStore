@@ -74,8 +74,8 @@ development_status:
   # - Story 1.16 follow-up review remains undispositioned for a named, durable, exact committed runtime SHA;
   # - historical candidate 85877902... failed the live-sidecar gate reproducibly;
   # - lifecycle cleanup and AD-11 now pass at current commit 772cdfef...;
-  # - the corrected source-topology query-provenance E2E fails reproducibly with
-  #   404/query_projection_missing because stale sample registrations suppress all admin indexes;
+  # - Story 2.7's reviewed working-tree correction now passes the exact source-topology
+  #   query-provenance E2E and persisted admin-index assertion;
   # - no later clean committed runtime SHA has passed all detached production gates;
   # - exact NuGet versions/hashes and container digest/platform provenance are absent;
   # - named EventStore and release-owner approval is absent.
@@ -93,9 +93,10 @@ development_status:
   # AD-18 host patch is applied and focused tests pass; exact post-patch Tenants commit/SHA acceptance is still pending.
   2-5-dedicated-external-tenants-api-host: in-progress
   2-6-tenants-ui-client-library-alignment-and-ux-evidence: in-progress
-  # Story 2.7 owns only the EventStore stale-registration/source-topology prerequisite.
-  # It may reach review without changing Tenants, EventStore, or Builds dependency identities.
-  2-7-tenants-compatibility-and-package-mode-validation: review
+  # Story 2.7 corrected the EventStore stale-registration/source-topology prerequisite and
+  # passed focused configuration, CI-guard, and live persisted-provenance evidence with no
+  # net Tenants, EventStore, or Builds dependency-identity change.
+  2-7-tenants-compatibility-and-package-mode-validation: done
   2-8-scoped-metadata-rich-projection-notifications: done
   2-9-generated-command-status-location-policy: done
   2-10-outbound-dapr-routing-header-ownership: done
