@@ -1,3 +1,15 @@
+## [3.70.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.70.0...v3.70.1) (2026-07-17)
+
+
+### Bug Fixes
+
+* align repository tests with the shared instructions baseline ([650faf0](https://github.com/Hexalith/Hexalith.EventStore/commit/650faf053a98ed1c03c048b8e0d2e4d281b095cf))
+* populate GitHub approval role allowlist with authenticated user login ([ea6ce49](https://github.com/Hexalith/Hexalith.EventStore/commit/ea6ce49b8656ef7ee7267ac3cc4949734a31821d))
+* update AI assistant instructions for agent skills and link formatting ([1cc023b](https://github.com/Hexalith/Hexalith.EventStore/commit/1cc023babefa5c4dad9b5d2e2892be58974f35f2))
+* update AI assistant instructions for consistency and clarity across documentation ([4ee739d](https://github.com/Hexalith/Hexalith.EventStore/commit/4ee739d6d5bb33e7c7f93526de2122369ed36e81))
+* update implementation artifacts and submodule references ([a9718a2](https://github.com/Hexalith/Hexalith.EventStore/commit/a9718a2106b31ff9c005203e5381c28d06db0e21))
+* update Microsoft.Extensions.TimeProvider.Testing package reference to use Update attribute ([ba203bd](https://github.com/Hexalith/Hexalith.EventStore/commit/ba203bdea0e8e42ff58f24f55ad8d64c3d3b84de))
+
 # [3.70.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.69.0...v3.70.0) (2026-07-17)
 
 
