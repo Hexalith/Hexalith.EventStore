@@ -93,16 +93,17 @@ development_status:
   # AD-18 host patch is applied and focused tests pass; exact post-patch Tenants commit/SHA acceptance is still pending.
   2-5-dedicated-external-tenants-api-host: in-progress
   2-6-tenants-ui-client-library-alignment-and-ux-evidence: in-progress
-  # Story 2.7 is the sole Tenants compatibility/adoption owner. Its EventStore-owned stale
-  # sample-registration and source-topology harness correction is a Story 1.20 prerequisite;
-  # dependency migration remains blocked until Story 1.20 authorizes the exact source/package
-  # identities. No duplicate Tenants-local story is required.
-  2-7-tenants-compatibility-and-package-mode-validation:  in-progress
+  # Story 2.7 owns only the EventStore stale-registration/source-topology prerequisite.
+  # It may reach review without changing Tenants, EventStore, or Builds dependency identities.
+  2-7-tenants-compatibility-and-package-mode-validation: review
   2-8-scoped-metadata-rich-projection-notifications: done
   2-9-generated-command-status-location-policy: done
   2-10-outbound-dapr-routing-header-ownership: done
   # EventStore platform enforcement moved to Story 1.2; this is consumer-only review scope.
   2-11-query-provenance-consumption-in-generated-rest-and-tenants: review
+  # Story 1.20 must be available and authorize migration before this adoption story activates;
+  # no implementation story file or dependency-identity change exists before that gate.
+  2-12-tenants-runtime-identity-adoption-and-package-mode-validation: backlog
   epic-2-retrospective: done
 
   epic-3: in-progress

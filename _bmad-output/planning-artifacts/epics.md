@@ -27,6 +27,7 @@ inputDocuments:
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-13.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-16.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-17.md
   - _bmad-output/specs/spec-eventstore-phase-4-readiness-recovery/SPEC.md
 ---
 
@@ -49,7 +50,7 @@ The platform-owned query metadata propagation contract must be implemented by th
 - Story 1.2 owns platform result metadata propagation, gateway merge rules, freshness policy enforcement, and typed client metadata exposure.
 - Stories 1.3-1.5 separately own persisted read models, deterministic testing, and authoritative protected-cursor/paging behavior.
 - Story 2.2 owns generated REST query metadata headers, `304` behavior, and safe problem-detail behavior.
-- Stories 2.4-2.7 own Tenants contract, external-host, UI, and compatibility/package-mode proofs against the real platform query metadata path.
+- Stories 2.4-2.7 own Tenants contract, external-host, UI, and the pre-authorization registration/provenance proof; Story 2.12 owns the Story 1.20-authorized source/package adoption proof.
 - Stories 7.15-7.18 remain backlog-artifact work only.
 
 The former query-metadata Story 7.6 remains superseded; its acceptance criteria stay with the earlier platform/consumer stories, while the approved July 15 plan assigns identifier 7.6 to the focused secret-store child and records that reuse in the migration crosswalk.
@@ -67,6 +68,7 @@ The former coordinated-slice parents are superseded and must not be recreated as
 - Story 1.3 -> Stories 1.3-1.5.
 - Story 1.6 -> Stories 1.8-1.11.
 - Story 2.4 -> Stories 2.4-2.7.
+- Story 2.7 -> retained pre-authorization scope in Story 2.7 plus authorized adoption in Story 2.12.
 - Story 3.7 -> Stories 3.7-3.9.
 - Story 5.6 -> Stories 5.6-5.9.
 - Story 7.2 -> Stories 7.2-7.5.
@@ -80,7 +82,7 @@ Every child names one owner, one review boundary, deterministic acceptance crite
 | --- | --- | --- |
 | 1.3-1.5 | Amelia / Murat reviews store, fake, and cursor contracts independently | Client, Testing, DomainService, and focused Server query tests |
 | 1.8-1.11 | Amelia / Winston reviews Sample, Tenants query/read-model, Tenants projection/consumer, and guardrails independently | Sample, DomainService, AppHost, and scoped Tenants suites |
-| 2.4-2.7 | Amelia / Sally reviews UI evidence; Tenants maintainer approves submodule changes | RestApi.Generators plus scoped Tenants Contracts, Integration, UI, and package/source-mode builds |
+| 2.4-2.7, 2.12 | Amelia / Sally reviews UI evidence; EventStore reviewers own the Story 2.7 prerequisite and the Tenants maintainer approves Story 2.12 identity adoption | RestApi.Generators plus scoped Tenants Contracts, Integration, UI, live source-topology, and package/source-mode builds |
 | 3.7-3.9 | Amelia / Paige reviews workflow migration, safety validation, and backlog separately | Workflow scans, manifest governance tests, Release build, and documented supply-chain evidence |
 | 5.6-5.9 | Winston / Amelia reviews AppHost, production YAML, drift tests, and docs separately | AppHost tests, topology scans, dedicated integration lane, and docs checks |
 | 7.2-7.14 | Owner/reviewer named by each Admin, deployment, testing, workflow, or UI child | Focused Admin, AppHost, integration, workflow, and UI suites named by each child |
@@ -1310,32 +1312,37 @@ So that it remains an interactive host rather than a second external API surface
 **Then** support-safe denied/loading/stale/rebuilding/degraded/unavailable/local-only states follow canonical UX
 **And** the exact approved Tenants SHA is recorded before `done`.
 
-### Story 2.7: Tenants Compatibility And Package-Mode Validation
+### Story 2.7: Pre-Authorization Registration And Provenance Correction
 
-**Requirements covered:** FR15, FR21, FR22, NFR9, NFR12, NFR16
-**Owner / review boundary:** Amelia (Developer); the Tenants maintainer reviews compatibility and exact dependency identity.
-**Focused validation:** separate Debug/source and Release/package restores/builds plus scoped Tenants Contracts, Integration, UI, and Server tests.
+**Requirements covered:** FR4, FR15, NFR12, NFR16
+**Owner / review boundary:** Amelia (Developer); an EventStore reviewer verifies only the registration/proof-harness and fail-closed provenance boundary. No Tenants dependency-identity approval is required because this story changes none.
+**Focused validation:** the live source-topology query-provenance E2E, operational-metadata registration/index tests, and a repository-boundary check proving no Tenants, EventStore, or Builds dependency identity changed.
 
-As a release maintainer,
-I want Tenants external API/UI adoption proven in both source and package modes,
-So that the proof does not depend on a mixed or accidental source graph.
+As an EventStore platform maintainer,
+I want configured domain bindings and the live proof harness to reflect the domains actually hosted,
+So that Story 1.20 can select a runtime from valid handler-routing and provenance evidence without consumer migration.
 
 **Acceptance Criteria:**
 
-**Given** source mode is selected
-**When** restore, build, and focused tests run
-**Then** the approved Tenants and EventStore submodule SHAs are recorded
-**And** the graph uses the intended root-declared project references without nested submodules.
+**Given** the current EventStore source topology
+**When** the live query-provenance E2E starts
+**Then** the AppHost is compiled with `UseHexalithProjectReferences=true`, the root-declared Tenants resource exists and becomes healthy
+**And** no nested submodule initialization is required.
 
-**Given** package mode is selected
-**When** Release restore, build, and focused tests run
-**Then** EventStore dependencies resolve to exact approved package versions and hashes
-**And** no source-only `Hexalith.EventStore.Gateway` plus package `DomainService` mixture is present.
+**Given** the configured sample and Tenants bindings
+**When** operational metadata is loaded
+**Then** every configured binding maps to a domain actually hosted by its selected service, genuine metadata failures remain fail-closed, and `admin:query-types:tenants` contains `list-tenants`
+**And** the exact E2E returns `200` with `HandlerComputed` provenance and no projection-validator leakage.
 
-**Given** compatibility evidence is incomplete or maintainer approval is unavailable
-**When** status is evaluated
-**Then** generic EventStore platform work may remain complete
-**And** this Tenants child stays `review` or `backlog` with the blocker and rollback posture recorded.
+**Given** Story 1.20 is blocked, non-authorizing, incomplete, or lacks any required source, package, or approval identity
+**When** the preceding criteria and the scoped fail-closed boundary are satisfied
+**Then** Story 2.7 may enter `review` without changing any Tenants, EventStore, or Builds dependency identity, and existing rollback paths remain intact
+**And** Story 1.20 authorization is not a prerequisite for review of this pre-authorization correction.
+
+**Given** a compatibility failure beyond the scoped EventStore registration/proof-harness correction requires consumer behavior or deployment-topology changes
+**When** the failure is classified
+**Then** Story 2.7 fails closed and routes it to Story 2.12 when it belongs to authorized identity adoption, or to another separately approved story
+**And** Story 2.7 does not broaden its scope silently.
 
 ### Story 2.8: Scoped Metadata-Rich Projection Notifications
 
@@ -1440,7 +1447,7 @@ So that a caller- or inbound-supplied `dapr-app-id` / `dapr-api-token` can never
 
 **Given** the Tenants submodule carries an identical `DaprAppIdHandler`
 **When** this story completes
-**Then** the equivalent submodule change is recorded under the Stories 2.4-2.7 Tenants approval/package-mode boundary
+**Then** the equivalent submodule change is recorded under the Story 2.12 Tenants approval/package-mode boundary
 **And** it is not silently modified here.
 
 **Given** Release build and focused tests run
@@ -1483,6 +1490,42 @@ So that generated REST and UI surfaces never present an opaque ETag or handler-c
 **When** projection-backed, handler-computed, unknown, and invalid-provenance paths are exercised
 **Then** generated headers, UI evidence states, and persisted read-model proof are asserted
 **And** mock-only gateway metadata cannot close the story.
+
+### Story 2.12: Tenants Runtime Identity Adoption And Package-Mode Validation
+
+**Requirements covered:** FR15, FR21, FR22, NFR9, NFR12, NFR16
+**Owner / review boundary:** Amelia (Developer); the Tenants maintainer reviews compatibility, the exact Tenants commit, and exact dependency identities. EventStore and release-owner approvals come from Story 1.20 and are not recreated here.
+**Focused validation:** separate Debug/source and Release/package restores/builds; scoped Tenants Contracts, Integration, UI, and Server tests; exact package-byte/hash verification; and no mixed source/package EventStore graph.
+
+As a Tenants release maintainer,
+I want Tenants to adopt only the owner-approved EventStore runtime identity in source and package modes,
+So that consumer migration is reproducible, maintainer-approved, and tied to the exact Story 1.20 evidence.
+
+**Acceptance Criteria:**
+
+**Given** Story 1.20 has not durably recorded `final_decision: available`, `authorize_consumer_migration: true`, a 40-hex `tested_runtime_sha`, named EventStore and release-owner approvals, and the approved package version plus SHA-256 inventory
+**When** Story 2.12 activation is evaluated
+**Then** it remains `backlog`, no implementation story file is created, and no Tenants, EventStore, or Builds dependency identity changes.
+
+**Given** Story 1.20 authorizes migration and names the approved EventStore source SHA
+**When** Debug/source mode is adopted
+**Then** `references/Hexalith.EventStore` gitlink and checkout both equal that SHA, no EventStore submodule content is edited
+**And** only Tenants-root-declared submodules are initialized.
+
+**Given** the approved package version and hashes
+**When** Release/package mode restores from an isolated cache
+**Then** every resolved `Hexalith.EventStore*` asset is a package at the exact version, fetched bytes match the approved hashes
+**And** the selected Builds commit already exposes that version.
+
+**Given** Gateway is in the EventStore release manifest
+**When** the dependency graph is aligned
+**Then** `Hexalith.EventStore.Gateway` follows the same conditional source/package policy as DomainService
+**And** Release assets contain no mixed Gateway-project/DomainService-package graph or any EventStore project reference.
+
+**Given** source and package modes are aligned
+**When** validation runs
+**Then** Tenants preserves its domain-service, AppHost, and UI registration and passes the focused source/package restore, build, projection/query/provenance/freshness, and package-compatibility evidence
+**And** completion records the Tenants maintainer-approved commit and exact accepted Tenants SHA.
 
 ## Epic 3: Release And Repository Reliability
 

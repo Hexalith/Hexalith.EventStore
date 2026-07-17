@@ -2550,20 +2550,22 @@ this packet authorizes no consumer repository, package pin, deployment, or rollb
 ### Downstream story routing
 
 These are adoption owners. Registration creates no migration authority and changes no
-dependency pointer. Story 2.7 additionally contains a narrowly scoped pre-authorization
-EventStore registration/harness correction required to make Story 1.20's live provenance
-gate valid; its later dependency-adoption phase remains downstream.
+dependency pointer. Story 2.7 owns the narrowly scoped pre-authorization EventStore
+registration/harness correction required to make Story 1.20's live provenance gate valid.
+Story 2.12 owns the later Tenants dependency-adoption phase.
 
 | Repository | Adoption owner | Current state | Activation/closure boundary |
 | --- | --- | --- | --- |
 | FrontComposer | Story 11.24, `Adopt the Owner-Approved EventStore Runtime Identity` | Registered `backlog`; no story file | Remains backlog until this packet is `available` and authorizes migration; then prove exact source/package identities, Pact provider verification, dual-mode builds, and live Aspire command/query/realtime smoke. |
 | Memories | Epic 28 / Story 28.1, `Adopt Owner-Approved EventStore Runtime Identity` | Registered `backlog`; no story file | Remains backlog until this packet is `available` and authorizes migration; then prove exact source/package identities while preserving the DAPR ingestion registration chain and live persistence/search/dedup behavior. |
-| Tenants | Existing EventStore Story 2.7, `Tenants Compatibility And Package-Mode Validation` | `review` | No duplicate Tenants-local story. Correct the stale sample registration/source-topology proof now without changing dependency identities; after authorization, align the source/package graph, including conditional Gateway ownership, and record exact Tenants maintainer evidence. |
+| Tenants prerequisite | EventStore Story 2.7, `Pre-Authorization Registration And Provenance Correction` | `review` | Correct the stale sample registration/source-topology proof now without changing dependency identities. Story 1.20 authorization is not required for review of this prerequisite. |
+| Tenants adoption | EventStore Story 2.12, `Tenants Runtime Identity Adoption And Package-Mode Validation` | Registered `backlog`; no story file | Remains backlog until this packet is `available` and authorizes migration; then align the source/package graph, including conditional Gateway ownership, and record exact Tenants maintainer evidence. |
 | Builds | Existing platform pin ownership | No new story | AD-11 SDK/runtime and central ASP.NET pins are already landed. A later EventStore package-version update is release-owner work only after approved artifacts exist. |
 
-FrontComposer and Memories story files must not be created before activation because their trackers
-interpret a created story file as `ready-for-dev`. Tenants Story 2.7 remains the existing fail-closed
-consumer review owner. Builds must not speculate a future EventStore package version.
+FrontComposer, Memories, and Tenants Story 2.12 implementation story files must not be created
+before activation because their trackers interpret a created story file as `ready-for-dev`.
+Tenants Story 2.7 remains independently reviewable as the fail-closed prerequisite. Builds
+must not speculate a future EventStore package version.
 
 ## Verification Log
 
@@ -2747,10 +2749,11 @@ to `candidate_source_sha` or `tested_runtime_sha`.
   index write. Consequently `admin:query-types:tenants` was absent, the handler-aware router
   fell back to the projection actor, and the live request returned
   `query_projection_missing`.
-- Ownership: existing Story 2.7 owns this EventStore/Tenants compatibility closure. No
-  duplicate Tenants-local story is created. The fix must remove/scope stale registrations
-  or otherwise reconcile absent configured bindings without weakening the fail-closed rule
-  for genuine metadata corruption or transport failure.
+- Ownership: Story 2.7 owns this EventStore source-topology prerequisite. The fix must
+  remove/scope stale registrations or otherwise reconcile absent configured bindings without
+  weakening the fail-closed rule for genuine metadata corruption or transport failure.
+  Story 2.12 owns later authorized Tenants identity adoption; no duplicate Tenants-local story
+  is created.
 - NuGet inventory, package consumer, container publication/inspection, Story 1.16 named
   follow-up disposition, and owner approvals remain incomplete for an authorizing runtime.
 

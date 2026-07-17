@@ -169,16 +169,73 @@ public sealed class ReleasePackageManifestTests
     {
         string root = FindRepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "ci.yml"));
+        string ciJob = ExtractTopLevelWorkflowJobBlock(workflow, "ci");
+        string tenantsSourceModeJob = ExtractTopLevelWorkflowJobBlock(workflow, "tenants-source-mode");
 
-        workflow.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@main");
-        workflow.ShouldContain("build-timeout-minutes: 40");
-        workflow.ShouldContain("run-consumer-validation: true");
-        workflow.ShouldContain("tests/Hexalith.EventStore.Server.Tests");
-        workflow.ShouldNotContain("tests/Hexalith.EventStore.Server.LiveSidecar.Tests");
-        workflow.ShouldNotContain("run-coverage-gate:");
-        workflow.ShouldNotContain("Category!=LiveSidecar");
-        workflow.ShouldNotContain("runs-on:");
-        workflow.ShouldNotContain("steps:");
+        ciJob.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@main");
+        ciJob.ShouldContain("build-timeout-minutes: 40");
+        ciJob.ShouldContain("run-consumer-validation: true");
+        ciJob.ShouldContain("tests/Hexalith.EventStore.Server.Tests");
+        ciJob.ShouldNotContain("tests/Hexalith.EventStore.Server.LiveSidecar.Tests");
+        ciJob.ShouldNotContain("run-coverage-gate:");
+        ciJob.ShouldNotContain("Category!=LiveSidecar");
+        ciJob.ShouldNotContain("runs-on:");
+        ciJob.ShouldNotContain("steps:");
+
+        tenantsSourceModeJob.ShouldContain("runs-on: ubuntu-latest");
+        tenantsSourceModeJob.ShouldContain("UseHexalithProjectReferences: 'true'");
+        tenantsSourceModeJob.ShouldContain("--configuration Debug");
+        tenantsSourceModeJob.ShouldContain("-m:1");
+        tenantsSourceModeJob.ShouldContain("Verify Tenants source-mode topology guardrails");
+        tenantsSourceModeJob.ShouldContain("--filter FullyQualifiedName~TenantsApiLaunchSettingsTests");
+        tenantsSourceModeJob.ShouldNotContain("continue-on-error:");
+    }
+
+    [Theory]
+    [InlineData("\n", true)]
+    [InlineData("\r\n", false)]
+    public void Workflow_job_block_extraction_handles_line_endings_reordered_siblings_and_final_job(
+        string newline,
+        bool targetIsLast)
+    {
+        string[] targetJob =
+        [
+            "  target:",
+            "    uses: owner/repository/.github/workflows/target.yml@main",
+        ];
+        string[] siblingJob =
+        [
+            "  sibling:",
+            "    runs-on: ubuntu-latest",
+            "    steps:",
+            "      - run: dotnet test",
+        ];
+        string[] workflowLines = targetIsLast
+            ? ["name: CI", "jobs:", .. siblingJob, .. targetJob]
+            : ["name: CI", "jobs:", .. targetJob, .. siblingJob];
+        string workflow = string.Join(newline, workflowLines);
+
+        string targetBlock = ExtractTopLevelWorkflowJobBlock(workflow, "target");
+
+        targetBlock.ShouldStartWith("  target:");
+        targetBlock.ShouldContain("uses: owner/repository/.github/workflows/target.yml@main");
+        targetBlock.ShouldNotContain("runs-on:");
+        targetBlock.ShouldNotContain("steps:");
+        targetBlock.ShouldNotContain('\r');
+    }
+
+    [Theory]
+    [InlineData("jobs:\n  sibling:\n    runs-on: ubuntu-latest", "missing")]
+    [InlineData("jobs:\n  target:\n    uses: first\n  target:\n    uses: second", "duplicate")]
+    public void Workflow_job_block_extraction_fails_closed_when_target_is_missing_or_duplicate(
+        string workflow,
+        string scenario)
+    {
+        InvalidOperationException exception = Should.Throw<InvalidOperationException>(
+            () => ExtractTopLevelWorkflowJobBlock(workflow, "target"));
+
+        exception.Message.ShouldContain("exactly one top-level 'target' job");
+        exception.Message.ShouldContain(scenario);
     }
 
     [Fact]
@@ -497,6 +554,58 @@ public sealed class ReleasePackageManifestTests
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)
             .ToArray();
+
+    private static string ExtractTopLevelWorkflowJobBlock(string workflow, string jobId)
+    {
+        ArgumentNullException.ThrowIfNull(workflow);
+        ArgumentException.ThrowIfNullOrWhiteSpace(jobId);
+
+        string normalizedWorkflow = workflow
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n');
+        MatchCollection jobsHeaders = Regex.Matches(
+            normalizedWorkflow,
+            @"(?m)^jobs:[ \t]*(?:#.*)?$");
+
+        if (jobsHeaders.Count != 1)
+        {
+            throw new InvalidOperationException(
+                $"Workflow must contain exactly one top-level 'jobs' section; found {jobsHeaders.Count}.");
+        }
+
+        int jobsContentStart = normalizedWorkflow.IndexOf('\n', jobsHeaders[0].Index + jobsHeaders[0].Length);
+        jobsContentStart = jobsContentStart < 0 ? normalizedWorkflow.Length : jobsContentStart + 1;
+
+        Match followingTopLevelSection = Regex.Match(
+            normalizedWorkflow[jobsContentStart..],
+            @"(?m)^[A-Za-z0-9_-]+:[^\n]*$");
+        int jobsContentEnd = followingTopLevelSection.Success
+            ? jobsContentStart + followingTopLevelSection.Index
+            : normalizedWorkflow.Length;
+        string jobsContent = normalizedWorkflow[jobsContentStart..jobsContentEnd];
+        Match[] jobHeaders = Regex
+            .Matches(jobsContent, @"(?m)^  (?<id>[A-Za-z0-9_-]+):[ \t]*(?:#.*)?$")
+            .Cast<Match>()
+            .ToArray();
+        Match[] matchingHeaders = jobHeaders
+            .Where(match => string.Equals(match.Groups["id"].Value, jobId, StringComparison.Ordinal))
+            .ToArray();
+
+        if (matchingHeaders.Length != 1)
+        {
+            string scenario = matchingHeaders.Length == 0 ? "missing" : "duplicate";
+            throw new InvalidOperationException(
+                $"Workflow must contain exactly one top-level '{jobId}' job; target is {scenario} (found {matchingHeaders.Length}).");
+        }
+
+        Match targetHeader = matchingHeaders[0];
+        int followingJobIndex = Array.FindIndex(jobHeaders, match => match.Index > targetHeader.Index);
+        int jobEnd = followingJobIndex >= 0
+            ? jobHeaders[followingJobIndex].Index
+            : jobsContent.Length;
+
+        return jobsContent[targetHeader.Index..jobEnd].TrimEnd('\n');
+    }
 
     private static string FindRepositoryRoot()
     {

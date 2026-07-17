@@ -4,37 +4,33 @@ story_id: "2.7"
 story_key: 2-7-tenants-compatibility-and-package-mode-validation
 status: review
 split_from: 2-4-tenants-external-api-host-adoption
+scope_split_to: 2-12-tenants-runtime-identity-adoption-and-package-mode-validation
 crosswalk: ../planning-artifacts/story-id-migration-2026-07-15.md
 ---
 
-# Story 2.7: Tenants Compatibility And Package-Mode Validation
+# Story 2.7: Pre-Authorization Registration And Provenance Correction
 
 Status: review
 
-The parent Story 2.4 spec records Debug/source and Release/package validation. This child
-reviews exact EventStore/Tenants SHAs in source mode and exact package versions/hashes in
-package mode, with no mixed Gateway-source/DomainService-package graph. `done` requires the
-Tenants maintainer-approved repository boundary, exact SHA, compatibility disposition, and
-focused restore/build/test evidence. Incomplete identity evidence remains fail-closed.
+This child owns only the EventStore registration/proof-harness correction required before
+Story 1.20 can select a runtime. It changes no Tenants, EventStore, or Builds dependency
+identity. Authorized Tenants source/package adoption is owned by Story 2.12.
 
 ## Activation And Current Identity Gap
 
-This story is the sole Tenants compatibility and adoption owner; no duplicate Tenants-local
-story is required. Its work has two fail-closed phases:
-
-1. The pre-authorization compatibility correction may run now and is a Story 1.20
-   prerequisite. It may correct only EventStore-owned registration/proof-harness behavior
-   and may not change Tenants, EventStore, or Builds dependency identities.
-2. Runtime adoption remains in `review` until Story 1.20 durably records
-   `final_decision: available`, `authorize_consumer_migration: true`, a 40-hex
-   `tested_runtime_sha`, named owner approval, and the approved package version and SHA-256
-   inventory.
+This story is the Story 1.20 prerequisite. It may correct only EventStore-owned
+registration/proof-harness behavior and may not change Tenants, EventStore, or Builds
+dependency identities. Story 2.12 remains `backlog` until Story 1.20 durably records
+`final_decision: available`, `authorize_consumer_migration: true`, a 40-hex
+`tested_runtime_sha`, named owner approval, and the approved package version and SHA-256
+inventory.
 
 At the 2026-07-17 audit, Tenants pins EventStore source commit
 `a48580b1c8e43e2dd434771400c0d8008587d040` and Builds commit
 `87d76ba79309f5ba86bd6cea7f2105100cabde09`, whose EventStore package version is `3.67.3`.
-Neither identity is Story-1.20-approved migration evidence. Current EventStore HEAD, a tag,
-or an unapproved package version cannot substitute for the packet.
+Neither identity is Story-1.20-approved migration evidence. Story 2.7 leaves both unchanged;
+Story 2.12 owns their later authorized adoption. Current EventStore HEAD, a tag, or an
+unapproved package version cannot substitute for the packet.
 
 ## Reproduced Pre-Authorization Blocker
 
@@ -71,31 +67,19 @@ container migration.
    `list-tenants`, and the exact E2E returns 200 with `HandlerComputed` provenance and no
    projection validator leakage.
 3. Given Story 1.20 is blocked, non-authorizing, incomplete, or lacks any required source,
-   package, or approval identity, when this story is reviewed, then it remains `review`, no
-   Tenants/EventStore/Builds gitlink is changed, and existing rollback paths remain intact.
-4. Given Story 1.20 authorizes migration and names the approved EventStore source SHA, when
-   Debug/source mode is adopted, then `references/Hexalith.EventStore` gitlink and checkout
-   both equal that SHA, no EventStore submodule content is edited, and only Tenants-root-declared
-   submodules are initialized.
-5. Given the approved package version and hashes, when Release/package mode restores from an
-   isolated cache, then every resolved `Hexalith.EventStore*` asset is a package at the exact
-   version, fetched bytes match the approved hashes, and the selected Builds commit already
-   exposes that version.
-6. Given Gateway is in the EventStore release manifest, when the dependency graph is aligned,
-   then `Hexalith.EventStore.Gateway` follows the same conditional source/package policy as
-   DomainService and the Release assets contain no mixed Gateway-project/DomainService-package
-   graph or any EventStore project reference.
-7. Given source and package modes are aligned, when validation runs, then Tenants preserves its
-   domain-service, AppHost, and UI registration and passes the focused source/package restore,
-   build, projection/query/provenance/freshness, and package-compatibility evidence.
-8. Given any compatibility failure beyond the scoped EventStore registration/harness correction
+   package, or approval identity, when AC1, AC2, and the scoped fail-closed boundary are
+   satisfied, then Story 2.7 may enter `review` without changing any Tenants, EventStore, or
+   Builds dependency identity, and existing rollback paths remain intact. Story 1.20
+   authorization is not a prerequisite for review of this pre-authorization correction.
+4. Given any compatibility failure beyond the scoped EventStore registration/harness correction
    requires a consumer behavioral or deployment-topology change, when it is found,
-   then this story fails closed and routes that change to a separately approved story instead of
-   broadening the adoption silently.
+   then this story fails closed and routes that change to Story 2.12 when it belongs to
+   authorized identity adoption, or to another separately approved story, instead of
+   broadening Story 2.7 silently.
 
 ## Handoff
 
 The pre-authorization correction closes the live source-topology prerequisite without any
-dependency migration. The later closing Tenants commit updates only to the identities
-approved by Story 1.20, records the Tenants maintainer's exact accepted commit, and links its
-source/package verification evidence. Only that adoption phase is downstream of Story 1.20.
+dependency migration and may enter review while Story 1.20 remains non-authorizing. Story
+1.20 then selects and approves the exact runtime identities. Story 2.12 alone owns the later
+Tenants commit, source/package adoption, maintainer approval, and verification evidence.

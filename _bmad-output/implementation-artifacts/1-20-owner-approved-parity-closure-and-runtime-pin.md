@@ -279,9 +279,9 @@ evidence; named owner approval remains absent. No consumer migration is authoriz
   base sample registrations (`orders`, `inventory`) do not match the current sample host
   (`counter`, `greeting`), causing the atomic operational-index load to suppress
   `admin:query-types:tenants`.
-- Existing Story 2.7 owns the pre-authorization EventStore registration/harness correction
-  and the later authorized Tenants identity adoption. No duplicate Tenants-local story was
-  created.
+- Story 2.7 owns only the pre-authorization EventStore registration/harness correction.
+  Story 2.12 is the registered backlog owner for later authorized Tenants identity adoption;
+  no duplicate Tenants-local story was created.
 
 ## Dev Agent Record
 
