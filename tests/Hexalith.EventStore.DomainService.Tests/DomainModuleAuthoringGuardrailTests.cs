@@ -421,8 +421,8 @@ public sealed class DomainModuleAuthoringGuardrailTests
             $"Expected the root-declared Tenants submodule project at {csproj}; boundary verification must not pass without its subject.");
 
         List<string> dependencies = [];
-        dependencies.AddRange(await ReadEvaluatedDependencyValuesAsync(csproj, useProjectReferences: true).ConfigureAwait(false));
-        dependencies.AddRange(await ReadEvaluatedDependencyValuesAsync(csproj, useProjectReferences: false).ConfigureAwait(false));
+        dependencies.AddRange(await ReadEvaluatedDependencyValuesAsync(csproj, useProjectReferences: true));
+        dependencies.AddRange(await ReadEvaluatedDependencyValuesAsync(csproj, useProjectReferences: false));
 
         dependencies.Where(static dependency => MatchesDependencyIdentity(dependency, "Hexalith.Tenants.Api"))
             .ShouldBeEmpty("The Tenants domain-service host must not reference the dedicated generated API host.");

@@ -2,14 +2,14 @@
 created: 2026-07-15
 story_id: "2.4"
 story_key: 2-4-tenants-rest-contract-metadata-and-routes
-status: review
+status: done
 split_from: 2-4-tenants-external-api-host-adoption
 crosswalk: ../planning-artifacts/story-id-migration-2026-07-15.md
 ---
 
 # Story 2.4: Tenants REST Contract Metadata And Routes
 
-Status: review
+Status: done
 
 The parent Story 2.4 spec records contract metadata, generator diagnostics, and focused
 tests. This split child reviews only route/verb/tenant-source/entity/API-scope identity and
@@ -27,15 +27,24 @@ authority: `spec-2-4-tenants-external-api-host-adoption.md` and its implementati
 ### Review Findings
 
 - [x] [Review][Decision] [high] Split Story 2.4 lacks its required external acceptance evidence — resolved 2026-07-17 by recording the accepted direct, admin-authored Tenants commit chain, exact final SHA, and explicit contract-scope acceptance above.
-- [ ] [Review][Patch] [high] Replace `tenants-api` service-account credential injection with validation-only authority, audience, HTTPS-metadata, and security-dependency wiring [src/Hexalith.EventStore.AppHost/Program.cs:159]
-- [ ] [Review][Patch] [high] Release builds use the packaged REST generator while tests silently use a local source analyzer, leaving shipped behavior unverified and allowing mixed package/source Debug graphs [references/Hexalith.Tenants/src/Hexalith.Tenants.Api/Hexalith.Tenants.Api.csproj:8]
-- [ ] [Review][Patch] [medium] Source-mode `tenants-api` topology is guarded only by source-text assertions and is not compiled by normal CI [tests/Hexalith.EventStore.AppHost.Tests/Configuration/TenantsApiLaunchSettingsTests.cs:29]
-- [ ] [Review][Patch] [medium] The Tenants domain-service boundary guard returns green when the required submodule is absent from CI [tests/Hexalith.EventStore.DomainService.Tests/DomainModuleAuthoringGuardrailTests.cs:394]
-- [ ] [Review][Patch] [medium] The Tenants UI controller-boundary guard misses qualified, whitespace-formatted, and alternate MVC/controller syntax [references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/TenantsUiCompositionTests.cs:163]
-- [ ] [Review][Patch] [medium] The API minimal-endpoint guard misses alternate receivers and `MapFallback` variants [references/Hexalith.Tenants/tests/Hexalith.Tenants.IntegrationTests/TenantsApiStructuralTests.cs:19]
-- [ ] [Review][Patch] [medium] Dependency boundary guards inspect literal project XML with case-sensitive matching instead of the evaluated MSBuild graph [references/Hexalith.Tenants/tests/Hexalith.Tenants.IntegrationTests/TenantsApiStructuralTests.cs:28]
-- [ ] [Review][Patch] [medium] The root DAPR ACL guard uses an order-sensitive text parser that can ignore valid YAML operation mappings [tests/Hexalith.EventStore.AppHost.Tests/Configuration/TenantsApiLaunchSettingsTests.cs:86]
-- [ ] [Review][Patch] [medium] Cancellation-token assertions prove only that captured tokens are cancelable, not that request cancellation reaches the gateway [references/Hexalith.Tenants/tests/Hexalith.Tenants.IntegrationTests/TenantsApiGeneratedControllerTests.cs:102]
-- [ ] [Review][Patch] [medium] Symmetric-key startup failure branches have no behavioral host tests [references/Hexalith.Tenants/src/Hexalith.Tenants.Api/Program.cs:50]
-- [ ] [Review][Patch] [medium] Production-style authority-mode JWT validation is not exercised [references/Hexalith.Tenants/src/Hexalith.Tenants.Api/Program.cs:25]
-- [ ] [Review][Patch] [medium] Blank and whitespace-only DAPR endpoint/port fallback behavior is implemented but unverified [references/Hexalith.Tenants/tests/Hexalith.Tenants.IntegrationTests/TenantsApiGatewayHandlerTests.cs:25]
+- [x] [Review][Patch] [high] Replace `tenants-api` service-account credential injection with validation-only authority, audience, HTTPS-metadata, and security-dependency wiring [src/Hexalith.EventStore.AppHost/Program.cs:159]
+- [x] [Review][Patch] [high] Release builds use the packaged REST generator while tests silently use a local source analyzer, leaving shipped behavior unverified and allowing mixed package/source Debug graphs [references/Hexalith.Tenants/src/Hexalith.Tenants.Api/Hexalith.Tenants.Api.csproj:8]
+- [x] [Review][Patch] [medium] Source-mode `tenants-api` topology is guarded only by source-text assertions and is not compiled by normal CI [tests/Hexalith.EventStore.AppHost.Tests/Configuration/TenantsApiLaunchSettingsTests.cs:29]
+- [x] [Review][Patch] [medium] The Tenants domain-service boundary guard returns green when the required submodule is absent from CI [tests/Hexalith.EventStore.DomainService.Tests/DomainModuleAuthoringGuardrailTests.cs:394]
+- [x] [Review][Patch] [medium] The Tenants UI controller-boundary guard misses qualified, whitespace-formatted, and alternate MVC/controller syntax [references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/TenantsUiCompositionTests.cs:163]
+- [x] [Review][Patch] [medium] The API minimal-endpoint guard misses alternate receivers and `MapFallback` variants [references/Hexalith.Tenants/tests/Hexalith.Tenants.IntegrationTests/TenantsApiStructuralTests.cs:19]
+- [x] [Review][Patch] [medium] Dependency boundary guards inspect literal project XML with case-sensitive matching instead of the evaluated MSBuild graph [references/Hexalith.Tenants/tests/Hexalith.Tenants.IntegrationTests/TenantsApiStructuralTests.cs:28]
+- [x] [Review][Patch] [medium] The root DAPR ACL guard uses an order-sensitive text parser that can ignore valid YAML operation mappings [tests/Hexalith.EventStore.AppHost.Tests/Configuration/TenantsApiLaunchSettingsTests.cs:86]
+- [x] [Review][Patch] [medium] Cancellation-token assertions prove only that captured tokens are cancelable, not that request cancellation reaches the gateway [references/Hexalith.Tenants/tests/Hexalith.Tenants.IntegrationTests/TenantsApiGeneratedControllerTests.cs:102]
+- [x] [Review][Patch] [medium] Symmetric-key startup failure branches have no behavioral host tests [references/Hexalith.Tenants/src/Hexalith.Tenants.Api/Program.cs:50]
+- [x] [Review][Patch] [medium] Production-style authority-mode JWT validation is not exercised [references/Hexalith.Tenants/src/Hexalith.Tenants.Api/Program.cs:25]
+- [x] [Review][Patch] [medium] Blank and whitespace-only DAPR endpoint/port fallback behavior is implemented but unverified [references/Hexalith.Tenants/tests/Hexalith.Tenants.IntegrationTests/TenantsApiGatewayHandlerTests.cs:25]
+
+### Review Completion Evidence
+
+- EventStore AppHost security, source-mode topology, and ACL tests: 10/10 passed; the exact source-mode CI build completed with zero warnings and the targeted topology tests passed 3/3.
+- EventStore domain-module authoring guardrails: 37/37 passed.
+- Tenants generated-controller behavioral tests: 26/26 passed, including authority discovery, symmetric-key startup boundaries, and query/command cancellation propagation.
+- Tenants API structural tests: 5/5 passed; DAPR gateway handler tests: 12/12 passed.
+- Tenants UI composition and boundary tests: 16/16 passed. Restore required allowing the pre-existing FrontComposer `NU1506` duplicate central-version warning; the warning was not suppressed during compilation, which completed with warnings-as-errors.
+- Workflow validation: `actionlint .github/workflows/ci.yml` passed; root and Tenants `git diff --check` passed.

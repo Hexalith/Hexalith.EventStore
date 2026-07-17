@@ -88,8 +88,8 @@ development_status:
   2-1-rest-contract-seam-for-command-and-query-messages: done
   2-2-rest-api-generator-discovery-and-controller-emission: done
   2-3-sample-external-api-host-proof: done
-  # Split children remain in review until the exact Tenants approval/SHA evidence exists.
-  2-4-tenants-rest-contract-metadata-and-routes: review
+  # Story 2.4 records its accepted Tenants approval/SHA evidence; remaining split children retain their own gates.
+  2-4-tenants-rest-contract-metadata-and-routes: done
   2-5-dedicated-external-tenants-api-host: review
   2-6-tenants-ui-client-library-alignment-and-ux-evidence: in-progress
   # Story 2.7 is the sole Tenants compatibility/adoption owner. Its EventStore-owned stale
