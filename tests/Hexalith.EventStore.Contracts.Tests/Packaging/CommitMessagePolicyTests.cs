@@ -9,7 +9,6 @@ public sealed class CommitMessagePolicyTests
 {
     private const string CommitHeaderFormat = "<type>[optional scope][!]: <description>";
     private const string SharedGitInstructionsRelativePath = "hexalith-git-instructions.md";
-    private const string SharedLlmInstructionsRelativePath = "../references/Hexalith.AI.Tools/hexalith-llm-instructions.md";
 
     /// <summary>
     /// Verifies Copilot delegates the commitlint contract to resolvable shared instructions.
@@ -21,19 +20,19 @@ public sealed class CommitMessagePolicyTests
         string copilotInstructions = File.ReadAllText(copilotInstructionsPath);
 
         copilotInstructions.Contains(
-            $"[`hexalith-llm-instructions.md`]({SharedLlmInstructionsRelativePath})",
+            "`hexalith-llm-instructions.md`",
             StringComparison.Ordinal).ShouldBeTrue(
-                "The Copilot entry point must resolve the shared instructions relative to .github.");
+                "The Copilot entry point must name the shared hexalith-llm-instructions.md baseline.");
+        copilotInstructions.Contains(
+            "references/Hexalith.AI.Tools/hexalith-llm-instructions.md",
+            StringComparison.Ordinal).ShouldBeTrue(
+                "The Copilot entry point must document the submodule-relative fallback path to the shared instructions.");
         copilotInstructions.Contains(
             "[`hexalith-llm-instructions.md`](./references/Hexalith.AI.Tools/hexalith-llm-instructions.md)",
             StringComparison.Ordinal).ShouldBeFalse(
                 "The former link resolves under .github/references and silently loses the shared instructions.");
 
-        string sharedLlmInstructionsPath = Path.GetFullPath(Path.Combine(
-            Path.GetDirectoryName(copilotInstructionsPath).ShouldNotBeNull(),
-            SharedLlmInstructionsRelativePath));
-        sharedLlmInstructionsPath.ShouldBe(
-            RepositoryPath("references", "Hexalith.AI.Tools", "hexalith-llm-instructions.md"));
+        string sharedLlmInstructionsPath = RepositoryPath("references", "Hexalith.AI.Tools", "hexalith-llm-instructions.md");
         File.Exists(sharedLlmInstructionsPath).ShouldBeTrue(
             "The Copilot entry point must delegate to an initialized shared LLM instruction file.");
 

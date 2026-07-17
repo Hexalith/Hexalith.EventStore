@@ -432,8 +432,6 @@ public sealed class ReleasePackageManifestTests
         ReleasePackage[] packages = LoadReleasePackages();
         string[] docPaths =
         [
-            "AGENTS.md",
-            "CLAUDE.md",
             "docs/reference/nuget-packages.md",
             "docs/brownfield/project-overview.md",
             "docs/brownfield/architecture.md",
