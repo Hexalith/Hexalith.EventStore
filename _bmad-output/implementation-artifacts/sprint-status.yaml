@@ -90,13 +90,14 @@ development_status:
   2-3-sample-external-api-host-proof: done
   # Story 2.4 records its accepted Tenants approval/SHA evidence; remaining split children retain their own gates.
   2-4-tenants-rest-contract-metadata-and-routes: done
-  2-5-dedicated-external-tenants-api-host: review
+  # AD-18 host patch is applied and focused tests pass; exact post-patch Tenants commit/SHA acceptance is still pending.
+  2-5-dedicated-external-tenants-api-host: in-progress
   2-6-tenants-ui-client-library-alignment-and-ux-evidence: in-progress
   # Story 2.7 is the sole Tenants compatibility/adoption owner. Its EventStore-owned stale
   # sample-registration and source-topology harness correction is a Story 1.20 prerequisite;
   # dependency migration remains blocked until Story 1.20 authorizes the exact source/package
   # identities. No duplicate Tenants-local story is required.
-  2-7-tenants-compatibility-and-package-mode-validation: review
+  2-7-tenants-compatibility-and-package-mode-validation:  in-progress
   2-8-scoped-metadata-rich-projection-notifications: done
   2-9-generated-command-status-location-policy: done
   2-10-outbound-dapr-routing-header-ownership: done

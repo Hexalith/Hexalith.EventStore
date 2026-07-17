@@ -45,10 +45,14 @@ than treating story creation as owner approval.
 7. `tested_runtime_sha` identifies the unchanged runtime commit and equals A's
    `candidate_source_sha`; that real commit is the sole direct parent of evidence commit A,
    whose changed paths are restricted to `_bmad-output/`. Final durable approvals precede A,
-   which records the results and approval references while keeping
+   which records the results, hybrid evidence manifest/raw-bundle pins, artifact identities,
+   and approval references while keeping
    `documentation_commit_sha: null` and all decision/migration guards blocked. Pointer-only
    commit B, whose direct parent is A, changes only `documentation_commit_sha` to A's 40-hex
-   SHA. The field never identifies B, so neither commit self-references.
+   SHA. The field never identifies B, so neither commit self-references. Authorizing commit C
+   is B's direct child and may change only the verified packet decision/migration fields plus
+   the story status and exact sprint status/date/blocker-comment reconciliation after every A
+   identity, prerequisite, and approval is revalidated.
 8. Under AD-22, the packet separately pins the exact EventStore source SHA; all 14 NuGet
    package IDs, one exact version, and SHA-256 per package; and the container repository,
    immutable digest whose value equals the raw-manifest SHA-256, exact `linux/amd64` and
@@ -69,9 +73,9 @@ than treating story creation as owner approval.
    EventStore-owner approval must exist durably before evidence commit A.
 10. Any unresolved prerequisite, security baseline, review, runtime identity,
     production-path result, package/container pin, publication authority, owner decision,
-    evidence commit A, or valid pointer-only commit B keeps `final_decision: still blocked`,
-    `authorize_consumer_migration: false`, `status: blocked`, Story 1.20 non-`done`, and
-    Epic 1 `in-progress`.
+    evidence commit A, valid pointer-only commit B, or valid authorizing commit C keeps
+    `final_decision: still blocked`, `authorize_consumer_migration: false`, `status: blocked`,
+    Story 1.20 non-`done`, and Epic 1 `in-progress`.
 
 Produces: `1-20-owner-approved-parity-closure-proof-packet.md`.
 
@@ -92,16 +96,20 @@ Produces: `1-20-owner-approved-parity-closure-proof-packet.md`.
    exactly `linux/amd64` and `linux/arm64` before accepting container inspection evidence.
 8. After all results exist, obtain the named EventStore-owner proof approval and the
    release-owner's distinct final disposition in durable external sources.
-9. Create evidence commit A recording the results and approval references while preserving
+9. Upload the raw logs to immutable external storage, commit the critical identity/provenance
+   manifest under `_bmad-output`, and bind both by URL and SHA-256. Create evidence commit A
+   recording those pins, results, artifact identities, and approval references while preserving
    `documentation_commit_sha: null`, `final_decision: still blocked`, and
    `authorize_consumer_migration: false`.
 10. Create direct-child pointer-only commit B changing only `documentation_commit_sha` to
     A's 40-hex SHA. Verify A is a single-parent evidence-only child of its equal
-    candidate/tested-runtime identity, and verify B's one-field diff. This structural check
-    substitutes for no proof or approval;
-    only then may a separately authorized later status-only transition be considered. Until that
-    transition passes every independent gate, retain `status: blocked` and the current
-    sprint/Epic states.
+    candidate/tested-runtime identity and verify B's one-field diff.
+11. Create authorizing commit C as B's direct child. Permit only the exact packet
+    decision/migration changes, Story 1.20/Epic 1 status transition, non-regressing tracker date,
+    and replacement of the exact fail-closed blocker-comment block with the verified closure
+    statement; preserve file modes and revalidate every A prerequisite, evidence, package,
+    container, capability-row, and durable approval identity. Until C passes, retain
+    `status: blocked` and the current sprint/Epic states.
 
 ## Current Sprint-Change Proposal Implementation File Inventory
 
@@ -110,7 +118,7 @@ separate from the historical Auto Run `Files changed` list and Dev Agent `File L
 
 | File | Current proposal action |
 | --- | --- |
-| `1-20-owner-approved-parity-closure-proof-packet.md` | Preserve failed-run evidence and guards; add the observed audit, executable AD-11 gate, non-self-referential two-commit pin, and fail-closed publication-authority evidence procedure. |
+| `1-20-owner-approved-parity-closure-proof-packet.md` | Preserve failed-run evidence and guards; add the observed audit, executable AD-11 gate, hybrid durable-evidence retention, the non-self-referential A/B/C authorization protocol, and the fail-closed publication-authority evidence procedure. |
 | `1-20-owner-approved-parity-closure-and-runtime-pin.md` | Record acceptance, authority, commit sequencing, current inventory, and blocked closure order. |
 | `deferred-work.md` | Reconcile lifecycle and AD-11 as implementation-complete/evidence-confirmed and record Story 2.7's source-topology provenance blocker without duplication. |
 | `sprint-status.yaml` | Preserve the approved Story 1.20 blocker comments and `in-progress` statuses; refresh `last_updated`. |
@@ -138,22 +146,52 @@ from this proposal inventory and remains owned by its existing changes.
 - [x] [Review][Patch] [medium] Add a negative A/B fixture where candidate and tested-runtime SHAs differ [_bmad-output/implementation-artifacts/spec-1-16-1-20-sprint-change-proposal.md:549]
 - [x] [Review][Patch] [medium] Hash consumer-fetched raw manifest bytes and compare them with the approved image digest [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1496]
 - [x] [Review][Patch] [medium] Replace the obsolete current-work attribution check with a reproducible historical revision check [_bmad-output/implementation-artifacts/spec-1-16-1-20-sprint-change-proposal.md:223]
-- [ ] [Review][Decision] [high] Choose a durable retention boundary for exact-SHA evidence — the required build, test, package, environment, and provenance artifacts currently live only under a temporary `$EVIDENCE_ROOT`; decide whether evidence commit A stores them under `_bmad-output`, references an externally immutable bundle by URL and SHA-256, or uses both.
-- [ ] [Review][Decision] [high] Define the verified final authorization transition — the story permits a later status-only transition after commit B but defines no parent, allowed-path, allowed-field, approval-reference, or identity-pin verifier for that authorizing commit.
-- [ ] [Review][Patch] [high] Evaluate effective ASP.NET pins without depending on XML attribute order or line layout [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:245]
-- [ ] [Review][Patch] [high] Run the source-topology provenance lane in the supported Debug/project-reference mode and retain separate Release/package-mode evidence [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1049]
-- [ ] [Review][Patch] [high] Capture every evidence artifact promised by the gate table, including build, status, submodule, environment, package-validator, and consumer logs [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1413]
-- [ ] [Review][Patch] [high] Bind NuGet consumer restore results to the literal approved package IDs and exact approved package bytes [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1662]
-- [ ] [Review][Patch] [high] Require the container consumer's approved platform file to contain exactly `linux/amd64` and `linux/arm64` [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1707]
-- [ ] [Review][Patch] [high] Require evidence commit A to change the packet and record completed results and durable approval references [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1499]
-- [ ] [Review][Patch] [medium] Make the cited-path audit cover every repository path category that it claims to verify [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1801]
-- [ ] [Review][Patch] [high] Revalidate replacement AD-11 authority and environment identity before each major build, package, and publication gate [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:353]
-- [ ] [Review][Patch] [medium] Recheck ignored inputs after non-publication gates instead of checking only tracked and untracked files [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:513]
-- [ ] [Review][Patch] [medium] Quarantine or remove a published proof tag when post-publication validation fails [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1300]
-- [ ] [Review][Patch] [high] Verify container-consumer provenance maps the approved digest to the approved tested runtime SHA [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1709]
-- [ ] [Review][Patch] [high] Run every configured CI test project in the mandatory closure gate [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1034]
-- [ ] [Review][Patch] [medium] Reject file-mode changes in pointer-only commit B [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1532]
-- [ ] [Review][Patch] [high] Reject xUnit evidence runs whose matched tests are all skipped [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:447]
+- [x] [Review][Patch] [high] Persist a hybrid exact-SHA evidence bundle: commit the manifest and critical identity/provenance files under `_bmad-output`, and bind externally retained raw logs by immutable URL and SHA-256 [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:221]
+- [x] [Review][Patch] [high] Add an authorizing commit C as B's direct child, with strict path and field whitelists plus executable checks for every evidence pin, durable approval, available parity row, and permitted status transition [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md:98]
+- [x] [Review][Patch] [high] Evaluate effective ASP.NET pins without depending on XML attribute order or line layout [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:245]
+- [x] [Review][Patch] [high] Run the source-topology provenance lane in the supported Debug/project-reference mode and retain separate Release/package-mode evidence [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1049]
+- [x] [Review][Patch] [high] Capture every evidence artifact promised by the gate table, including build, status, submodule, environment, package-validator, and consumer logs [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1413]
+- [x] [Review][Patch] [high] Bind NuGet consumer restore results to the literal approved package IDs and exact approved package bytes [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1662]
+- [x] [Review][Patch] [high] Require the container consumer's approved platform file to contain exactly `linux/amd64` and `linux/arm64` [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1707]
+- [x] [Review][Patch] [high] Require evidence commit A to change the packet and record completed results and durable approval references [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1499]
+- [x] [Review][Patch] [medium] Make the cited-path audit cover every repository path category that it claims to verify [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1801]
+- [x] [Review][Patch] [high] Revalidate replacement AD-11 authority and environment identity before each major build, package, and publication gate [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:353]
+- [x] [Review][Patch] [medium] Recheck ignored inputs after non-publication gates instead of checking only tracked and untracked files [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:513]
+- [x] [Review][Patch] [medium] Quarantine or remove a published proof tag when post-publication validation fails [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1300]
+- [x] [Review][Patch] [high] Verify container-consumer provenance maps the approved digest to the approved tested runtime SHA [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1709]
+- [x] [Review][Patch] [high] Run every configured CI test project in the mandatory closure gate [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1034]
+- [x] [Review][Patch] [medium] Reject file-mode changes in pointer-only commit B [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1532]
+- [x] [Review][Patch] [high] Reject xUnit evidence runs whose matched tests are all skipped [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:447]
+- [x] [Review][Patch] [medium] Synchronize `review_loop_iteration` with the recorded sixth review loop [_bmad-output/implementation-artifacts/spec-1-16-1-20-sprint-change-proposal.md:7]
+- [x] [Review][Patch] [medium] Update the checked sprint-date contract and verifier to the reconciled 2026-07-17 tracker date [_bmad-output/implementation-artifacts/spec-1-16-1-20-sprint-change-proposal.md:55]
+- [x] [Review][Patch] [high] Reconcile the mandatory AD-11 ledger assertion with its implementation-complete/evidence-confirmed status and closure evidence [_bmad-output/implementation-artifacts/spec-1-16-1-20-sprint-change-proposal.md:200]
+- [x] [Review][Patch] [high] Reject duplicate platform manifests instead of accepting a unique-sorted two-platform projection [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1422]
+- [x] [Review][Patch] [high] Revalidate publication authority and candidate/source cleanliness at the final action timestamp immediately before `dotnet publish` [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1499]
+- [x] [Review][Patch] [medium] Scope the publication-order structural verifier to the executable publication block so unreachable duplicate markers cannot satisfy it [_bmad-output/implementation-artifacts/spec-1-16-1-20-sprint-change-proposal.md:699]
+- [x] [Review][Patch] [high] Commit and validate the final EventStore-owner approval and release-owner disposition records rather than accepting syntactic URL/hash placeholders [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1849]
+- [x] [Review][Patch] [high] Validate A's package hash manifest against the literal 14-package release inventory before C may authorize migration [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1856]
+- [x] [Review][Patch] [high] Revalidate the committed container provenance's publication-authority, checked-at, and SDK-capture identities during A/B/C verification [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1870]
+- [x] [Review][Patch] [high] Require A to record an approved exact-runtime Story 1.16 follow-up disposition before authorizing C can pass [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1738]
+- [x] [Review][Patch] [high] Reject A/C while any Story 1.20 deferred-work prerequisite remains `open-blocking` [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1738]
+- [x] [Review][Patch] [high] Make C reconcile the Story 1.20 blocker comments and require a non-regressing tracker date instead of changing only status rows [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1962]
+- [x] [Review][Patch] [medium] Restore the operational-metadata routing contract removed from the Epic 1 requirements context [_bmad-output/implementation-artifacts/epic-1-context.md:31]
+- [x] [Review][Patch] [medium] Clarify that handler-computed provenance remains `HandlerComputed` while its lifecycle evidence resolves to `Unknown` [_bmad-output/implementation-artifacts/epic-1-context.md:49]
+- [x] [Review][Patch] [medium] Replace the contradictory “Edit freely” generated-context instruction with an explicit planning-source synchronization rule [_bmad-output/implementation-artifacts/epic-1-context.md:3]
+- [x] [Review][Patch] [medium] Expand negative A/B/C histories to cover candidate/runtime mismatch, A runtime drift, semantic B drift, merge/non-direct C, stale approval, open prerequisites, and tracker regression [_bmad-output/implementation-artifacts/spec-1-16-1-20-sprint-change-proposal.md:748]
+
+Applied and verified on 2026-07-17 (chunk 2): applied all 16 review patches and passed the
+complete proposal verification suite. The suite now proves final action-time publication
+readiness, committed approval records, literal release-package identities, complete container
+authority provenance, completed Story 1.16 review, closed Story 1.20 prerequisites, coherent
+sprint closure, monotonic tracker chronology, and targeted rejection histories for every guard;
+all packet/proposal Bash blocks parse and `git diff --check` passes.
+
+Applied and verified on 2026-07-17: accepted the hybrid evidence-retention and strict
+authorizing-commit-C decisions, applied all 16 chunk-1 review patches, and passed the complete
+proposal verification suite. The suite includes Bash syntax checks, evaluated-MSBuild AD-11
+mutations, skipped-only xUnit rejection, literal configured-suite inventory comparison,
+package/container identity fixtures, and positive/negative A/B/C histories; `git diff --check`
+also passes.
 
 Applied and verified on 2026-07-16: the complete proposal verification script passes
 fail-fast, including every added positive and negative fixture; `git diff --check` also passes.
@@ -214,8 +252,10 @@ independently require follow-up review.
 Verification performed:
 
 - Exact release manifest inventory: PASS; all and only the 14 approved package IDs are present.
-- Cited-path audit: PASS; all 105 unique repository paths cited by the packet exist.
-- xUnit v3 zero-match probe: PASS; a missing class returned zero with `total="0"`, while the positive class listed six methods, validating the packet's explicit guards.
+- Cited-path audit: PASS; every extracted repository source, test, evidence, configuration,
+  submodule-owned configuration, release-tool, solution, and restore-config path exists.
+- xUnit v3 zero/skip probe: PASS; zero-match returned zero with `total="0"`, an all-skipped
+  result was rejected, and a positive result plus method listing was accepted.
 - Tracked and no-index whitespace checks: PASS; the tracked diff and complete untracked packet are clean.
 - Packet structural checks: PASS; all nine closure classifications remain `still blocked`, and migration authorization remains false.
 - Exact-SHA production-path gate: FAILED for candidate `85877902...`; the full

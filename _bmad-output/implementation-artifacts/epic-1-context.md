@@ -1,6 +1,6 @@
 # Epic 1 Context: Domain Author Self-Service Platform
 
-<!-- Compiled from planning artifacts. Edit freely. Regenerate with compile-epic-context if planning docs change. -->
+<!-- Compiled from planning artifacts. Keep durable decisions synchronized with their planning sources before regenerating with compile-epic-context. -->
 
 ## Goal
 
@@ -33,7 +33,7 @@ Enable domain authors to build and run EventStore-backed modules from domain beh
 
 - Domain modules contain domain behavior and contracts only. Reusable request routing, projection/query actors, cursor codecs, state-store wrappers, telemetry, health checks, ServiceDefaults, Aspire plumbing, and per-message UI controllers belong to EventStore platform packages.
 - The domain-service SDK owns the canonical host shape and DAPR-facing `/process`, `/replay-state`, `/query`, `/project`, and `/admin/operational-index-metadata` endpoints. It yields safely to an existing bespoke projection route, which must remain compatible.
-- Query handlers are discovered and routed by the platform. Producer-authored freshness, lifecycle, projection version, paging, degraded state, and warnings must survive the gateway and client path; missing or non-authoritative evidence remains unknown. Gateway-echoed request paging is not authoritative evidence.
+- Query handlers are discovered and routed by the platform; operational metadata drives the handler-aware gateway indexes and must fail closed when configured bindings are absent or invalid. Producer-authored freshness, lifecycle, projection version, paging, degraded state, and warnings must survive the gateway and client path; missing or non-authoritative evidence remains unknown. Gateway-echoed request paging is not authoritative evidence.
 - Read-model contracts require ETag-aware reads and writes, bounded optimistic concurrency, deterministic production-equivalent testing semantics, coordinated same-store detail/index changes, and tenant/domain/aggregate/projection-scoped erasure of read-model plus delivery/rebuild checkpoint state. Erasure does not include event streams, snapshots, broker history, backups, audit evidence, or cryptographic keys.
 - Cursors are purpose-isolated, scoped, bounded, opaque, DataProtection-backed, and fail safely for malformed or oversized data, tampering, wrong scope or query type, and key rotation.
 - Projection dispatch and persistence are asynchronous and cancellation-aware, support multiple named projections per domain, expose truthful per-projection outcomes, and advance checkpoints only after all required durable work. At-least-once unordered delivery deduplicates by EventStore `MessageId`; sequence is never treated as globally ordered.
@@ -46,7 +46,7 @@ Enable domain authors to build and run EventStore-backed modules from domain beh
 
 - The platform remains CQRS, DDD, and event sourcing over DAPR, with Aspire defining the local topology seed. Domain code returns domain results; durable event mutation remains platform-owned.
 - Query evidence travels in platform metadata rather than ad hoc payload fields. Domain/projection evidence owns lifecycle, version, paging, degraded state, and warnings; the gateway owns the opaque HTTP ETag, fills served-at only when absent, and derives not-modified from the HTTP outcome. ETags never prove freshness or projection version.
-- Query provenance is route-bound: only `ProjectionBacked` responses may carry authoritative `Current`, `Stale`, `Rebuilding`, `Degraded`, `Unavailable`, or `LocalOnly` lifecycle evidence. Handler-computed, missing, invalid, or unknown provenance resolves to `Unknown`.
+- Query provenance is route-bound: only `ProjectionBacked` responses may carry authoritative `Current`, `Stale`, `Rebuilding`, `Degraded`, `Unavailable`, or `LocalOnly` lifecycle evidence. A handler route retains `HandlerComputed` provenance, while its lifecycle evidence resolves to `Unknown`; missing, invalid, or unknown provenance also yields unknown lifecycle evidence.
 - Read models and cursors use the platform seams. Same-store batches use a transaction or a documented resumable equivalent with explicit atomicity, partial-failure, idempotency, ordering, concurrency, and completion semantics; DAPR and in-memory implementations expose equivalent observable behavior.
 - Projection handlers are keyed by `(Domain, ProjectionType)`. Partial fan-out success preserves independently durable sibling work, but failed or indeterminate routes do not advance. Full-replay and incremental rebuild semantics are explicit, work is staged, and promotion occurs only after every required projection completes durably. Compatibility requires an additive adapter or an explicitly approved breaking-version migration plan.
 - AppHost resources, DAPR configuration, app IDs, scopes, ACLs, topics, sidecar options, and topology tests change together. Release output is governed by `tools/release-packages.json`; package validation uses package-reference mode by default, and source references never drive publication.

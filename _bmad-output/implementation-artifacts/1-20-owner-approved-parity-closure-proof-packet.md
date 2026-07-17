@@ -8,6 +8,17 @@ historical_packet: 1-8-projection-query-sdk-owner-proof-packet.md
 candidate_source_sha: 85877902f8d60a466ab90cd8b68b53838863db1c
 tested_runtime_sha: null
 documentation_commit_sha: null
+evidence_manifest_sha256: null
+raw_evidence_bundle_url: null
+raw_evidence_bundle_sha256: null
+eventstore_owner_approval_url: null
+eventstore_owner_approval_sha256: null
+release_owner_disposition_url: null
+release_owner_disposition_sha256: null
+approved_package_version: null
+approved_package_hash_manifest_sha256: null
+approved_container_repository: null
+approved_container_digest: null
 final_decision: still blocked
 authorize_consumer_migration: false
 ---
@@ -94,7 +105,8 @@ source, rationale, exact candidate/toolchain/ASP.NET/runtime scope, and an unexp
 `expires_at` value.
 The mandatory executable preflight rejects a mismatched exact baseline and any missing,
 blank, malformed, expired, or out-of-scope replacement record before candidate gates. The
-separately owned corrective item is recorded in `deferred-work.md`; this evidence-only story
+separately owned corrective item is recorded in
+`_bmad-output/implementation-artifacts/deferred-work.md`; this evidence-only story
 changes no runtime or package pin.
 
 ## Prerequisite And Review Ledger
@@ -140,17 +152,21 @@ closed:
    They bind the tested runtime, package hashes, image digest/platform provenance,
    limitations, migration decision, and approved evidence content.
 2. Evidence commit **A** is the single-parent child of the equal candidate/tested runtime,
-   changes only `_bmad-output/`, and records the completed results and those durable approval
-   references. It leaves `documentation_commit_sha: null`, `final_decision: still blocked`, and
+   changes only `_bmad-output/`, and records the completed results, hybrid evidence manifest,
+   raw-log bundle URL/hash, artifact identities, and durable approval references. It leaves
+   `documentation_commit_sha: null`, `final_decision: still blocked`, and
    `authorize_consumer_migration: false`; A alone grants no authority.
 3. Pointer-only commit **B**, whose direct parent is A, changes only
    `documentation_commit_sha` from `null` to A's 40-hex SHA. The field identifies A, never B,
    so neither commit self-references. Any other semantic or file change invalidates B.
 4. The executable structural procedure below verifies A's equal candidate/tested-runtime pin,
-   sole parent, and evidence-only path boundary; B's direct parent and pointer to A; and the
-   exact one-field packet change. Only after it passes may a separate later status-only
-   transition be considered; B itself changes no decision, migration authorization, story
-   status, or sprint status.
+   sole parent, evidence-only path boundary, completed capability rows, durable evidence and
+   approval pins; B's direct parent and pointer to A; and the exact one-field packet change.
+5. Authorizing commit **C** must be B's direct child. Its verifier accepts only the packet,
+   story, and sprint-status files; requires their file modes to remain unchanged; reconstructs
+   the exact permitted decision/status/date/blocker-comment edits; and revalidates A's completed
+   Story 1.16 review, closed Story 1.20 prerequisites, evidence identities, and approvals before
+   migration authorization can become true.
 
 ### NuGet package identities
 
@@ -224,6 +240,7 @@ EVIDENCE_ROOT="$GATE_ROOT/evidence"
 mkdir -p "$EVIDENCE_ROOT"
 git -C "$SOURCE_REPOSITORY" worktree add --detach "$CHECKOUT" "$CANDIDATE_SHA"
 cd "$CHECKOUT"
+printf '%s\n' "$CANDIDATE_SHA" > "$EVIDENCE_ROOT/candidate-source-sha.txt"
 
 assert_candidate_identity() {
   test "$(git rev-parse --verify --end-of-options 'HEAD^{commit}')" = "$CANDIDATE_SHA"
@@ -238,14 +255,36 @@ REPOSITORY_SDK_VERSION="$(jq -er '.sdk.version | select(type == "string" and tes
 REPOSITORY_SDK_ROLL_FORWARD="$(jq -er '.sdk.rollForward | select(type == "string" and test("\\S"))' global.json)"
 INSTALLED_SDK_VERSION="$(dotnet --version)"
 # AD-11 ASP.NET pins are centrally owned by Hexalith.Builds (no longer redefined
-# locally), so resolve the effective versions from the import graph. Checking out
-# only the Builds submodule is a source checkout, not a restore/build/publish gate.
+# locally), so resolve evaluated PackageVersion items from the real import graph.
+# Checking out only the Builds submodule is a source checkout, not a candidate
+# restore/build/publish gate.
 git submodule update --init --checkout -- references/Hexalith.Builds
-ASPNET_PIN_SOURCES=(references/Hexalith.Builds/Props/Directory.Packages.props Directory.Packages.props)
+ASPNET_PIN_EVALUATOR="$GATE_ROOT/evaluate-package-versions.proj"
+ASPNET_PIN_OUTPUT="$EVIDENCE_ROOT/effective-package-versions.txt"
+cat > "$ASPNET_PIN_EVALUATOR" <<EOF
+<Project>
+  <Import Project="$CHECKOUT/Directory.Packages.props" />
+  <Target Name="WriteEffectivePackageVersions">
+    <WriteLinesToFile File="$ASPNET_PIN_OUTPUT"
+                      Lines="@(PackageVersion->'%(Identity) %(Version)')"
+                      Overwrite="true"
+                      Encoding="UTF-8" />
+  </Target>
+</Project>
+EOF
+chmod a-w "$ASPNET_PIN_EVALUATOR"
+
+evaluate_package_versions() {
+  rm -f "$ASPNET_PIN_OUTPUT"
+  dotnet msbuild "$ASPNET_PIN_EVALUATOR" -nologo \
+    -t:WriteEffectivePackageVersions >/dev/null
+  test -s "$ASPNET_PIN_OUTPUT"
+}
+
 discover_effective_aspnet_pin_pairs() {
-  sed -nE 's/.*<PackageVersion (Include|Update)="(Microsoft\.AspNetCore\.[^"]+)" Version="([^"]+)" *\/>.*/\2 \3/p' \
-    "$@" |
-    awk '{ effective[$1] = $2 } END { for (id in effective) print id, effective[id] }' |
+  local evaluated_items="$1"
+  awk '$1 ~ /^Microsoft\.AspNetCore\./ { effective[$1] = $2 }
+    END { for (id in effective) print id, effective[id] }' "$evaluated_items" |
     LC_ALL=C sort
 }
 
@@ -274,7 +313,8 @@ validate_aspnet_pin_band() {
   printf '%s\n' "${unique_versions[0]}"
 }
 
-mapfile -t ASPNET_PIN_PAIRS < <(discover_effective_aspnet_pin_pairs "${ASPNET_PIN_SOURCES[@]}")
+evaluate_package_versions
+mapfile -t ASPNET_PIN_PAIRS < <(discover_effective_aspnet_pin_pairs "$ASPNET_PIN_OUTPUT")
 REPOSITORY_ASPNET_VERSION="$(validate_aspnet_pin_band "${ASPNET_PIN_PAIRS[@]}")"
 dotnet --list-runtimes > "$EVIDENCE_ROOT/dotnet-runtimes.txt"
 discover_bound_runtime_versions() {
@@ -353,6 +393,7 @@ validate_ad11_replacement() {
 AD11_PREFLIGHT="$EVIDENCE_ROOT/ad11-preflight.json"
 AD11_REPLACEMENT_EVIDENCE="$EVIDENCE_ROOT/ad11-replacement-authority.json"
 if ad11_exact_baseline; then
+  AD11_MODE='exact-baseline'
   jq -n \
     --arg checked_at "$AD11_CHECKED_AT" \
     --arg repository "$REPOSITORY_URL" \
@@ -369,6 +410,7 @@ if ad11_exact_baseline; then
       aspnet_version: $aspnet_version, installed_aspnet_version: $installed_aspnet_version,
       runtime_version: $runtime_version}' > "$AD11_PREFLIGHT"
 else
+  AD11_MODE='durable-replacement'
   : "${AD11_REPLACEMENT_RECORD:?exact AD-11 baseline absent; set durable replacement JSON path}"
   test -s "$AD11_REPLACEMENT_RECORD"
   test ! -e "$AD11_REPLACEMENT_EVIDENCE"
@@ -398,18 +440,92 @@ fi
 chmod a-w "$AD11_PREFLIGHT"
 sha256sum "$AD11_PREFLIGHT" > "$EVIDENCE_ROOT/ad11-preflight.sha256"
 
+assert_ad11_current() {
+  local checked_at
+  local current_aspnet_version
+  local -a current_pairs=()
+  local -a current_runtime_versions=()
+  assert_candidate_identity
+  test "$(jq -er '.sdk.version' global.json)" = "$REPOSITORY_SDK_VERSION"
+  test "$(jq -er '.sdk.rollForward' global.json)" = "$REPOSITORY_SDK_ROLL_FORWARD"
+  test "$(dotnet --version)" = "$INSTALLED_SDK_VERSION"
+  evaluate_package_versions
+  mapfile -t current_pairs < <(discover_effective_aspnet_pin_pairs "$ASPNET_PIN_OUTPUT")
+  current_aspnet_version="$(validate_aspnet_pin_band "${current_pairs[@]}")"
+  test "$current_aspnet_version" = "$REPOSITORY_ASPNET_VERSION"
+  dotnet --list-runtimes > "$EVIDENCE_ROOT/dotnet-runtimes-current.txt"
+  mapfile -t current_runtime_versions < <(
+    discover_bound_runtime_versions "$EVIDENCE_ROOT/dotnet-runtimes-current.txt" \
+      "$current_aspnet_version"
+  )
+  test "${#current_runtime_versions[@]}" -eq 2
+  test "${current_runtime_versions[0]}" = "$INSTALLED_ASPNET_VERSION"
+  test "${current_runtime_versions[1]}" = "$INSTALLED_RUNTIME_VERSION"
+  if test "$AD11_MODE" = 'exact-baseline'; then
+    ad11_exact_baseline
+  else
+    checked_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    validate_ad11_replacement "$checked_at" "$AD11_REPLACEMENT_EVIDENCE"
+  fi
+}
+
 mapfile -t ROOT_SUBMODULES < <(
   git config -f .gitmodules --get-regexp '^submodule\..*\.path$' |
     awk '$2 ~ /^references\// { print $2 }'
 )
 test "${#ROOT_SUBMODULES[@]}" -gt 0
 git submodule update --init --checkout -- "${ROOT_SUBMODULES[@]}"
-test -z "$(git status --porcelain=v1 --untracked-files=all --ignore-submodules=none)"
 
-for repository in . "${ROOT_SUBMODULES[@]}"; do
-  test -z "$(git -C "$repository" status --porcelain=v1 --untracked-files=all)"
-  test -z "$(git -C "$repository" status --porcelain=v1 --ignored=matching --untracked-files=all)"
-done
+assert_repository_clean_allow_generated() {
+  local repository="$1"
+  local ignored_entry
+  local ignored_path
+  test -z "$(git -C "$repository" status --porcelain=v1 --untracked-files=all)" || return 1
+  while IFS= read -r -d '' ignored_entry; do
+    ignored_path="${ignored_entry:3}"
+    case "$ignored_path" in
+      */bin/|*/bin/*|*/obj/|*/obj/*) ;;
+      *) printf 'unexpected ignored source input: %s:%s\n' \
+           "$repository" "$ignored_path" >&2; return 1 ;;
+    esac
+  done < <(git -C "$repository" status --porcelain=v1 --ignored=matching \
+    --untracked-files=all -z)
+}
+
+assert_candidate_tree_clean() {
+  local repository
+  assert_candidate_identity
+  test -z "$(git status --porcelain=v1 --untracked-files=all --ignore-submodules=none)"
+  for repository in . "${ROOT_SUBMODULES[@]}"; do
+    assert_repository_clean_allow_generated "$repository"
+  done
+}
+
+capture_source_state() {
+  local output_file="$1"
+  local repository
+  {
+    printf 'candidate=%s\n' "$(git rev-parse HEAD)"
+    printf 'root-status:\n'
+    git status --porcelain=v1 --untracked-files=all --ignore-submodules=none
+    printf 'root-submodules:\n'
+    git submodule status
+    for repository in "${ROOT_SUBMODULES[@]}"; do
+      printf 'submodule=%s head=%s\n' "$repository" "$(git -C "$repository" rev-parse HEAD)"
+      git -C "$repository" status --porcelain=v1 --untracked-files=all
+    done
+  } > "$output_file"
+}
+
+assert_candidate_tree_clean
+capture_source_state "$EVIDENCE_ROOT/source-state-before.txt"
+{
+  printf 'captured_at=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  uname -a
+  dotnet --info
+  dapr --version
+  docker version
+} > "$EVIDENCE_ROOT/environment.txt" 2>&1
 
 export DOTNET_CLI_HOME="$GATE_ROOT/dotnet-home"
 export NUGET_PACKAGES="$GATE_ROOT/nuget-packages"
@@ -419,29 +535,81 @@ mkdir -p "$DOTNET_CLI_HOME" "$NUGET_PACKAGES" "$NUGET_HTTP_CACHE_PATH"
 fresh_release() {
   local project="$1"
   local use_project_references="${2:-false}"
+  local evidence_name="${3:-$(basename "${project%.csproj}")}"
   local project_directory="${project%/*}"
   local gate_status
-  assert_candidate_identity
+  assert_ad11_current
+  assert_candidate_tree_clean
   if rm -rf "$project_directory/bin/Release" "$project_directory/obj/Release" &&
     dotnet restore "$project" \
       --configfile nuget.config \
       --packages "$NUGET_PACKAGES" \
       -p:UseHexalithProjectReferences="$use_project_references" \
       -p:NuGetAudit=false \
-      -p:MinVerVersionOverride=1.0.0 &&
+      -p:MinVerVersionOverride=1.0.0 \
+      2>&1 | tee "$EVIDENCE_ROOT/$evidence_name.restore.log" &&
     dotnet build "$project" \
       --configuration Release \
       --no-restore \
       -m:1 \
       -p:UseHexalithProjectReferences="$use_project_references" \
       -p:NuGetAudit=false \
-      -p:MinVerVersionOverride=1.0.0; then
+      -p:MinVerVersionOverride=1.0.0 \
+      2>&1 | tee "$EVIDENCE_ROOT/$evidence_name.build.log"; then
     gate_status=0
   else
     gate_status=$?
   fi
-  assert_candidate_identity
+  assert_candidate_tree_clean
   return "$gate_status"
+}
+
+fresh_debug_source() {
+  local project="$1"
+  local evidence_name="$2"
+  local project_directory="${project%/*}"
+  local gate_status
+  assert_ad11_current
+  assert_candidate_tree_clean
+  if rm -rf "$project_directory/bin/Debug" "$project_directory/obj/Debug" &&
+    dotnet restore "$project" \
+      --configfile nuget.config \
+      --packages "$NUGET_PACKAGES" \
+      -p:Configuration=Debug \
+      -p:UseHexalithProjectReferences=true \
+      -p:NuGetAudit=false \
+      -p:MinVerVersionOverride=1.0.0 \
+      2>&1 | tee "$EVIDENCE_ROOT/$evidence_name.restore.log" &&
+    dotnet build "$project" \
+      --configuration Debug \
+      --no-restore \
+      -m:1 \
+      -p:UseHexalithProjectReferences=true \
+      -p:NuGetAudit=false \
+      -p:MinVerVersionOverride=1.0.0 \
+      2>&1 | tee "$EVIDENCE_ROOT/$evidence_name.build.log"; then
+    gate_status=0
+  else
+    gate_status=$?
+  fi
+  assert_candidate_tree_clean
+  return "$gate_status"
+}
+
+validate_xunit_result() {
+  local results="$1"
+  python3 - "$results" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+
+root = ET.parse(sys.argv[1]).getroot()
+total = int(root.attrib.get("total", "0"))
+passed = int(root.attrib.get("passed", "0"))
+failed = int(root.attrib.get("failed", "0"))
+errors = int(root.attrib.get("errors", "0"))
+if total <= 0 or passed <= 0 or failed != 0 or errors != 0:
+    raise SystemExit(1)
+PY
 }
 
 run_xunit_class() {
@@ -451,17 +619,18 @@ run_xunit_class() {
   local methods="$EVIDENCE_ROOT/$evidence_name.methods.txt"
   local results="$EVIDENCE_ROOT/$evidence_name.xml"
   local gate_status
-  assert_candidate_identity
+  assert_ad11_current
+  assert_candidate_tree_clean
   if test -f "$assembly" &&
     dotnet "$assembly" -noColor -list methods -class "$class_name" | tee "$methods" &&
     grep -Fq "$class_name." "$methods" &&
     dotnet "$assembly" -noColor -class "$class_name" -xml "$results" &&
-    grep -Eq 'total="[1-9][0-9]*"' "$results"; then
+    validate_xunit_result "$results"; then
     gate_status=0
   else
     gate_status=$?
   fi
-  assert_candidate_identity
+  assert_candidate_tree_clean
   return "$gate_status"
 }
 
@@ -472,17 +641,18 @@ run_xunit_method() {
   local methods="$EVIDENCE_ROOT/$evidence_name.methods.txt"
   local results="$EVIDENCE_ROOT/$evidence_name.xml"
   local gate_status
-  assert_candidate_identity
+  assert_ad11_current
+  assert_candidate_tree_clean
   if test -f "$assembly" &&
     dotnet "$assembly" -noColor -list methods -method "$method_name" | tee "$methods" &&
     grep -Fxq "$method_name" "$methods" &&
     dotnet "$assembly" -noColor -method "$method_name" -xml "$results" &&
-    grep -Eq 'total="[1-9][0-9]*"' "$results"; then
+    validate_xunit_result "$results"; then
     gate_status=0
   else
     gate_status=$?
   fi
-  assert_candidate_identity
+  assert_candidate_tree_clean
   return "$gate_status"
 }
 
@@ -491,28 +661,32 @@ run_xunit_all() {
   local evidence_name="$2"
   local results="$EVIDENCE_ROOT/$evidence_name.xml"
   local gate_status
-  assert_candidate_identity
+  assert_ad11_current
+  assert_candidate_tree_clean
   if test -f "$assembly" &&
     dotnet "$assembly" -noColor -xml "$results" &&
-    grep -Eq 'total="[1-9][0-9]*"' "$results"; then
+    validate_xunit_result "$results"; then
     gate_status=0
   else
     gate_status=$?
   fi
-  assert_candidate_identity
+  assert_candidate_tree_clean
   return "$gate_status"
 }
 ```
 
-The xUnit v3 in-process runner returns exit code zero when a filter matches zero tests.
-The `-list methods` plus `grep` checks reject that case before execution, and each XML
-result must report a positive `total`. `fresh_release` deletes Release `bin`/`obj`,
-restores through the committed `nuget.config` into a new cache, and builds before an
-assembly is invoked. After all gates, the runtime-source proof is:
+The xUnit v3 in-process runner returns exit code zero when a filter matches zero tests or
+when every matched test is skipped. The `-list methods` checks reject zero-match filters,
+and `validate_xunit_result` requires both a positive `total` and at least one passed test
+with no failures or runner errors. `fresh_release` and `fresh_debug_source` delete the
+configuration-specific `bin`/`obj`, restore through committed inputs into a new cache, and
+build before an assembly is invoked. Every build and test revalidates AD-11 plus regular,
+untracked, and ignored source inputs. After all gates, the runtime-source proof is:
 
 ```bash
-assert_candidate_identity
-test -z "$(git status --porcelain=v1 --untracked-files=all --ignore-submodules=none)"
+assert_ad11_current
+assert_candidate_tree_clean
+capture_source_state "$EVIDENCE_ROOT/source-state-after.txt"
 ```
 
 Ignored `bin`/`obj` evidence output is expected only after the pre-gate ignored-input
@@ -1011,48 +1185,88 @@ run_xunit_class \
 ```bash
 find . -type d \( -path '*/bin/Release' -o -path '*/obj/Release' \) \
   -prune -exec rm -rf {} +
-assert_candidate_identity
+assert_ad11_current
+assert_candidate_tree_clean
 if dotnet restore Hexalith.EventStore.slnx \
     --configfile nuget.config \
     --packages "$NUGET_PACKAGES" \
+    -p:UseHexalithProjectReferences=false \
     -p:NuGetAudit=false \
-    -p:MinVerVersionOverride=1.0.0 &&
+    -p:MinVerVersionOverride=1.0.0 \
+    2>&1 | tee "$EVIDENCE_ROOT/solution-restore.log" &&
   dotnet build Hexalith.EventStore.slnx \
     --configuration Release \
     --no-restore \
     -m:1 \
     -warnaserror \
+    -p:UseHexalithProjectReferences=false \
     -p:NuGetAudit=false \
-    -p:MinVerVersionOverride=1.0.0; then
+    -p:MinVerVersionOverride=1.0.0 \
+    2>&1 | tee "$EVIDENCE_ROOT/solution-build.log"; then
   solution_gate_status=0
 else
   solution_gate_status=$?
 fi
-assert_candidate_identity
+assert_candidate_tree_clean
 test "$solution_gate_status" -eq 0
 
 while IFS='|' read -r project assembly evidence_name; do
   test -n "$project"
-  fresh_release "$project"
+  fresh_release "$project" false "$evidence_name"
   run_xunit_all "$assembly" "$evidence_name"
 done <<'TEST_PROJECTS'
+tests/Hexalith.EventStore.Admin.Abstractions.Tests/Hexalith.EventStore.Admin.Abstractions.Tests.csproj|tests/Hexalith.EventStore.Admin.Abstractions.Tests/bin/Release/net10.0/Hexalith.EventStore.Admin.Abstractions.Tests.dll|crosscut-admin-abstractions
+tests/Hexalith.EventStore.Admin.Cli.Tests/Hexalith.EventStore.Admin.Cli.Tests.csproj|tests/Hexalith.EventStore.Admin.Cli.Tests/bin/Release/net10.0/Hexalith.EventStore.Admin.Cli.Tests.dll|crosscut-admin-cli
+tests/Hexalith.EventStore.Admin.Mcp.Tests/Hexalith.EventStore.Admin.Mcp.Tests.csproj|tests/Hexalith.EventStore.Admin.Mcp.Tests/bin/Release/net10.0/Hexalith.EventStore.Admin.Mcp.Tests.dll|crosscut-admin-mcp
+tests/Hexalith.EventStore.Admin.Server.Host.Tests/Hexalith.EventStore.Admin.Server.Host.Tests.csproj|tests/Hexalith.EventStore.Admin.Server.Host.Tests/bin/Release/net10.0/Hexalith.EventStore.Admin.Server.Host.Tests.dll|crosscut-admin-server-host
+tests/Hexalith.EventStore.Admin.Server.Tests/Hexalith.EventStore.Admin.Server.Tests.csproj|tests/Hexalith.EventStore.Admin.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Admin.Server.Tests.dll|crosscut-admin-server
+tests/Hexalith.EventStore.Admin.UI.Tests/Hexalith.EventStore.Admin.UI.Tests.csproj|tests/Hexalith.EventStore.Admin.UI.Tests/bin/Release/net10.0/Hexalith.EventStore.Admin.UI.Tests.dll|crosscut-admin-ui
+tests/Hexalith.EventStore.AppHost.Tests/Hexalith.EventStore.AppHost.Tests.csproj|tests/Hexalith.EventStore.AppHost.Tests/bin/Release/net10.0/Hexalith.EventStore.AppHost.Tests.dll|crosscut-apphost
 tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj|tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll|crosscut-contracts
 tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj|tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.dll|crosscut-client
+tests/Hexalith.EventStore.DeferredWorkGovernance.Tests/Hexalith.EventStore.DeferredWorkGovernance.Tests.csproj|tests/Hexalith.EventStore.DeferredWorkGovernance.Tests/bin/Release/net10.0/Hexalith.EventStore.DeferredWorkGovernance.Tests.dll|crosscut-deferred-work-governance
 tests/Hexalith.EventStore.DomainService.Tests/Hexalith.EventStore.DomainService.Tests.csproj|tests/Hexalith.EventStore.DomainService.Tests/bin/Release/net10.0/Hexalith.EventStore.DomainService.Tests.dll|crosscut-domain-service
+tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests.csproj|tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests/bin/Release/net10.0/Hexalith.EventStore.OperationalEvidence.Validator.Tests.dll|crosscut-operational-evidence
 tests/Hexalith.EventStore.QueryRouting.Tests/Hexalith.EventStore.QueryRouting.Tests.csproj|tests/Hexalith.EventStore.QueryRouting.Tests/bin/Release/net10.0/Hexalith.EventStore.QueryRouting.Tests.dll|crosscut-query-routing
 tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj|tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll|crosscut-server
 tests/Hexalith.EventStore.RestApi.Generators.Tests/Hexalith.EventStore.RestApi.Generators.Tests.csproj|tests/Hexalith.EventStore.RestApi.Generators.Tests/bin/Release/net10.0/Hexalith.EventStore.RestApi.Generators.Tests.dll|crosscut-rest-generator
 tests/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj|tests/Hexalith.EventStore.Sample.Tests/bin/Release/net10.0/Hexalith.EventStore.Sample.Tests.dll|crosscut-sample
+tests/Hexalith.EventStore.SignalR.Tests/Hexalith.EventStore.SignalR.Tests.csproj|tests/Hexalith.EventStore.SignalR.Tests/bin/Release/net10.0/Hexalith.EventStore.SignalR.Tests.dll|crosscut-signalr
+tests/Hexalith.EventStore.Testing.Integration.Tests/Hexalith.EventStore.Testing.Integration.Tests.csproj|tests/Hexalith.EventStore.Testing.Integration.Tests/bin/Release/net10.0/Hexalith.EventStore.Testing.Integration.Tests.dll|crosscut-testing-integration
 tests/Hexalith.EventStore.Testing.Tests/Hexalith.EventStore.Testing.Tests.csproj|tests/Hexalith.EventStore.Testing.Tests/bin/Release/net10.0/Hexalith.EventStore.Testing.Tests.dll|crosscut-testing
 TEST_PROJECTS
 
-fresh_release tests/Hexalith.EventStore.IntegrationTests/Hexalith.EventStore.IntegrationTests.csproj true
-run_xunit_class \
-  tests/Hexalith.EventStore.IntegrationTests/bin/Release/net10.0/Hexalith.EventStore.IntegrationTests.dll \
-  Hexalith.EventStore.IntegrationTests.ContractTests.QueryResponseProvenanceE2ETests \
-  crosscut-focused-integration
+fresh_release \
+  tests/Hexalith.EventStore.Admin.UI.E2E/Hexalith.EventStore.Admin.UI.E2E.csproj false \
+  crosscut-admin-ui-e2e
+pwsh tests/Hexalith.EventStore.Admin.UI.E2E/bin/Release/net10.0/playwright.ps1 \
+  install --with-deps chromium 2>&1 | tee "$EVIDENCE_ROOT/crosscut-admin-ui-e2e.playwright.log"
+run_xunit_all \
+  tests/Hexalith.EventStore.Admin.UI.E2E/bin/Release/net10.0/Hexalith.EventStore.Admin.UI.E2E.dll \
+  crosscut-admin-ui-e2e
 
-fresh_release tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj
+# Reproduce the configured Debug/source-mode AppHost topology guard lane separately.
+fresh_debug_source \
+  tests/Hexalith.EventStore.AppHost.Tests/Hexalith.EventStore.AppHost.Tests.csproj \
+  crosscut-apphost-source-topology
+run_xunit_class \
+  tests/Hexalith.EventStore.AppHost.Tests/bin/Debug/net10.0/Hexalith.EventStore.AppHost.Tests.dll \
+  Hexalith.EventStore.AppHost.Tests.Configuration.TenantsApiLaunchSettingsTests \
+  crosscut-apphost-source-topology
+
+# Package-mode Release compilation and source-mode Debug execution are distinct evidence.
+fresh_release \
+  tests/Hexalith.EventStore.IntegrationTests/Hexalith.EventStore.IntegrationTests.csproj false \
+  crosscut-integration-package-build
+fresh_debug_source \
+  tests/Hexalith.EventStore.IntegrationTests/Hexalith.EventStore.IntegrationTests.csproj \
+  crosscut-source-topology
+run_xunit_class \
+  tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.IntegrationTests.dll \
+  Hexalith.EventStore.IntegrationTests.ContractTests.QueryResponseProvenanceE2ETests \
+  crosscut-source-topology-provenance
+
+fresh_release tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj false crosscut-live-sidecar
 run_xunit_all \
   tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll \
   crosscut-live-sidecar
@@ -1072,6 +1286,7 @@ run_xunit_class \
 ```bash
 PACKAGE_OUTPUT="$GATE_ROOT/packages"
 PACKAGE_VERSION="999.1.20-proof.$(git rev-parse --short=12 "$CANDIDATE_SHA")"
+printf '%s\n' "$PACKAGE_VERSION" > "$EVIDENCE_ROOT/package-version.txt"
 EXPECTED_PACKAGE_IDS="$EVIDENCE_ROOT/expected-package-ids.txt"
 cat > "$EXPECTED_PACKAGE_IDS" <<'PACKAGE_IDS'
 Hexalith.EventStore.Admin.Abstractions
@@ -1130,14 +1345,21 @@ if len(actual_ids) != len(set(actual_ids)) or set(actual_ids) != set(expected_id
 PY
 }
 
-assert_candidate_identity
+assert_ad11_current
+assert_candidate_tree_clean
 if rm -rf "$PACKAGE_OUTPUT" &&
   find src -type d \( -path '*/bin/Release' -o -path '*/obj/Release' \) \
     -prune -exec rm -rf {} + &&
-  python3 scripts/pack-release-packages.py "$PACKAGE_OUTPUT" "$PACKAGE_VERSION" &&
-  validate_literal_package_inventory "$PACKAGE_OUTPUT" "$PACKAGE_VERSION" "$EXPECTED_PACKAGE_IDS" &&
-  python3 scripts/validate-nuget-packages.py "$PACKAGE_OUTPUT" &&
-  python3 scripts/validate-consumer-package-references.py "$PACKAGE_OUTPUT" &&
+  python3 scripts/pack-release-packages.py "$PACKAGE_OUTPUT" "$PACKAGE_VERSION" \
+    2>&1 | tee "$EVIDENCE_ROOT/package-build.log" &&
+  validate_literal_package_inventory "$PACKAGE_OUTPUT" "$PACKAGE_VERSION" "$EXPECTED_PACKAGE_IDS" \
+    2>&1 | tee "$EVIDENCE_ROOT/literal-package-inventory.log" &&
+  python3 scripts/validate-nuget-packages.py "$PACKAGE_OUTPUT" \
+    2>&1 | tee "$EVIDENCE_ROOT/package-validator.log" &&
+  python3 scripts/validate-consumer-package-references.py "$PACKAGE_OUTPUT" \
+    2>&1 | tee "$EVIDENCE_ROOT/package-consumer-validation.log" &&
+  find "$PACKAGE_OUTPUT" -maxdepth 1 -type f -name '*.nupkg' -printf '%f\n' \
+    | LC_ALL=C sort > "$EVIDENCE_ROOT/package-files.txt" &&
   (cd "$PACKAGE_OUTPUT" && sha256sum -- *.nupkg | LC_ALL=C sort -k2) \
     > "$EVIDENCE_ROOT/nuget-sha256.txt" &&
   test "$(wc -l < "$EVIDENCE_ROOT/nuget-sha256.txt")" -eq 14; then
@@ -1145,7 +1367,7 @@ if rm -rf "$PACKAGE_OUTPUT" &&
 else
   package_gate_status=$?
 fi
-assert_candidate_identity
+assert_candidate_tree_clean
 test "$package_gate_status" -eq 0
 ```
 
@@ -1159,7 +1381,7 @@ test -s "$RELEASE_AUTHORITY_RECORD"
 PUBLISH_CONTAINER_REGISTRY='registry.hexalith.com'
 PUBLISH_CONTAINER_REPOSITORY='eventstore'
 IMAGE_REPOSITORY="$PUBLISH_CONTAINER_REGISTRY/$PUBLISH_CONTAINER_REPOSITORY"
-IMAGE_TAG="proof-${CANDIDATE_SHA}"
+IMAGE_TAG="quarantine-proof-${CANDIDATE_SHA}"
 test "$IMAGE_REPOSITORY" = 'registry.hexalith.com/eventstore'
 
 # Freeze the authority bytes before the first publication-capable command.
@@ -1195,19 +1417,7 @@ validate_publication_authority() {
 }
 
 assert_publication_source_clean() {
-  local repository="$1"
-  local ignored_entry
-  local ignored_path
-  test -z "$(git -C "$repository" status --porcelain=v1 --untracked-files=all)" || return 1
-  while IFS= read -r -d '' ignored_entry; do
-    ignored_path="${ignored_entry:3}"
-    case "$ignored_path" in
-      */bin/|*/bin/*|*/obj/|*/obj/*) ;;
-      *) printf 'unexpected ignored publication input: %s:%s\n' \
-           "$repository" "$ignored_path" >&2; return 1 ;;
-    esac
-  done < <(git -C "$repository" status --porcelain=v1 --ignored=matching \
-    --untracked-files=all -z)
+  assert_repository_clean_allow_generated "$1"
 }
 
 validate_published_manifest() {
@@ -1216,7 +1426,7 @@ validate_published_manifest() {
   local platforms_file="$3"
   local manifest_sha256
   [[ "$image_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || return 1
-  jq -e '.manifests | type == "array" and length > 0' "$manifest_file" \
+  jq -e '.manifests | type == "array" and length == 2' "$manifest_file" \
     >/dev/null || return 1
   manifest_sha256="$(sha256sum "$manifest_file" | awk '{print $1}')" || return 1
   test "sha256:$manifest_sha256" = "$image_digest" || return 1
@@ -1278,6 +1488,8 @@ MSBUILD
 chmod a-w "$CAPTURE_TARGETS"
 CAPTURE_TARGETS_SHA256="$(sha256sum "$CAPTURE_TARGETS" | awk '{print $1}')"
 rm -rf "$CONTAINER_PROJECT_DIRECTORY/bin/Release" "$CONTAINER_PROJECT_DIRECTORY/obj/Release"
+assert_ad11_current
+assert_candidate_tree_clean
 dotnet restore "$CONTAINER_PROJECT" \
   --configfile nuget.config \
   --packages "$NUGET_PACKAGES" \
@@ -1285,18 +1497,26 @@ dotnet restore "$CONTAINER_PROJECT" \
   -p:NuGetAudit=false \
   -p:MinVerVersionOverride=1.0.0
 
-# Immediately before publication, recheck source identity/cleanliness and authority validity.
-assert_candidate_identity
-for repository in . "${ROOT_SUBMODULES[@]}"; do
-  assert_publication_source_clean "$repository"
-done
-AUTHORITY_CHECKED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-printf '%s\n' "$AUTHORITY_CHECKED_AT" > "$AUTHORITY_CHECKED_AT_EVIDENCE"
-chmod a-w "$AUTHORITY_CHECKED_AT_EVIDENCE"
-validate_publication_authority "$AUTHORITY_CHECKED_AT"
-AUTHORITY_SHA256="$(sha256sum "$AUTHORITY_EVIDENCE" | awk '{print $1}')"
-AUTHORITY_CHECKED_AT_SHA256="$(sha256sum "$AUTHORITY_CHECKED_AT_EVIDENCE" | awk '{print $1}')"
-assert_candidate_identity
+# Immediately before publication, recompute one final action-time readiness decision. The
+# function's last command is the authority predicate; no build, hash, or other mutable action
+# occurs between this complete readiness check and dotnet publish.
+prepare_publication_action() {
+  AUTHORITY_CHECKED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  printf '%s\n' "$AUTHORITY_CHECKED_AT" > "$AUTHORITY_CHECKED_AT_EVIDENCE"
+  chmod a-w "$AUTHORITY_CHECKED_AT_EVIDENCE"
+  AUTHORITY_SHA256="$(sha256sum "$AUTHORITY_EVIDENCE" | awk '{print $1}')"
+  AUTHORITY_CHECKED_AT_SHA256="$(
+    sha256sum "$AUTHORITY_CHECKED_AT_EVIDENCE" | awk '{print $1}'
+  )"
+  assert_ad11_current
+  for repository in . "${ROOT_SUBMODULES[@]}"; do
+    assert_publication_source_clean "$repository"
+  done
+  capture_source_state "$EVIDENCE_ROOT/source-state-before-publication.txt"
+  validate_publication_authority "$AUTHORITY_CHECKED_AT"
+}
+
+prepare_publication_action
 if dotnet publish "$CONTAINER_PROJECT" \
     --configuration Release \
     --no-restore \
@@ -1396,24 +1616,195 @@ jq -n \
       checked_at_sha256: $authority_checked_at_sha256
     }}' \
   > "$EVIDENCE_ROOT/container-provenance.json"
-assert_candidate_identity
+assert_ad11_current
+assert_candidate_tree_clean
+capture_source_state "$EVIDENCE_ROOT/source-state-after-publication.txt"
 ```
 
 The authority check revalidates the immutable evidence copy at a fresh action timestamp after
 candidate/source-cleanliness checks and before the first registry write. The checked-at file,
 both hashes, exact authorized repository/tag/source SHA, raw-manifest digest, platform set, and
-actual publish properties survive in provenance. This is an evidence-integrity preflight only:
+actual publish properties survive in provenance. Publication always uses a visibly quarantined
+tag; consumers can use only the separately verified immutable digest, so a failed post-publication
+inspection cannot expose an apparently approved proof tag. This is an evidence-integrity preflight only:
 it does not create human
 release authority, replace registry authentication/authorization, or substitute for the
 later proof-result approval and distinct release-owner disposition.
 
+### Hybrid Durable Evidence Retention
+
+After every gate succeeds, upload the raw logs/XML to immutable external storage, then run
+this block before evidence commit A. Critical identity/provenance files are copied into the
+repository; the larger raw bundle is bound by HTTPS URL and SHA-256 without bloating Git:
+
+```bash
+set -euo pipefail
+: "${RAW_EVIDENCE_BUNDLE_URL:?set immutable HTTPS raw-evidence bundle URL}"
+: "${RAW_EVIDENCE_BUNDLE_SHA256:?set raw-evidence bundle SHA-256}"
+: "${EVENTSTORE_OWNER_APPROVAL_RECORD:?set final EventStore-owner approval JSON path}"
+: "${RELEASE_OWNER_DISPOSITION_RECORD:?set final release-owner disposition JSON path}"
+[[ "$RAW_EVIDENCE_BUNDLE_URL" =~ ^https://[^[:space:]]+$ ]]
+[[ "$RAW_EVIDENCE_BUNDLE_SHA256" =~ ^[0-9a-f]{64}$ ]]
+test -s "$EVENTSTORE_OWNER_APPROVAL_RECORD"
+test -s "$RELEASE_OWNER_DISPOSITION_RECORD"
+assert_ad11_current
+assert_candidate_tree_clean
+capture_source_state "$EVIDENCE_ROOT/source-state-after.txt"
+
+FINAL_APPROVAL_CHECKED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+APPROVED_PACKAGE_VERSION="$(cat "$EVIDENCE_ROOT/package-version.txt")"
+APPROVED_PACKAGE_HASH_MANIFEST_SHA256="$(
+  sha256sum "$EVIDENCE_ROOT/nuget-sha256.txt" | awk '{print $1}'
+)"
+APPROVED_CONTAINER_REPOSITORY="$(jq -er '.repository' "$EVIDENCE_ROOT/container-provenance.json")"
+APPROVED_CONTAINER_DIGEST="$(jq -er '.digest' "$EVIDENCE_ROOT/container-provenance.json")"
+test -n "$APPROVED_PACKAGE_VERSION"
+[[ "$APPROVED_PACKAGE_HASH_MANIFEST_SHA256" =~ ^[0-9a-f]{64}$ ]]
+test "$APPROVED_CONTAINER_REPOSITORY" = 'registry.hexalith.com/eventstore'
+[[ "$APPROVED_CONTAINER_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+
+validate_final_owner_record() {
+  local record="$1"
+  local action="$2"
+  local decision="$3"
+  jq -e \
+    --arg checked_at "$FINAL_APPROVAL_CHECKED_AT" \
+    --arg action "$action" \
+    --arg decision "$decision" \
+    --arg repository "$REPOSITORY_URL" \
+    --arg source_sha "$CANDIDATE_SHA" \
+    --arg raw_sha256 "$RAW_EVIDENCE_BUNDLE_SHA256" \
+    --arg package_version "$APPROVED_PACKAGE_VERSION" \
+    --arg package_manifest_sha256 "$APPROVED_PACKAGE_HASH_MANIFEST_SHA256" \
+    --arg container_repository "$APPROVED_CONTAINER_REPOSITORY" \
+    --arg container_digest "$APPROVED_CONTAINER_DIGEST" '
+      def nonblank: type == "string" and test("\\S");
+      type == "object" and
+      .action == $action and
+      (.owner | nonblank) and
+      (.approved_at | nonblank) and
+      (.durable_source | type == "string" and test("^https://[^[:space:]]+$")) and
+      (.accepted_scope | nonblank) and
+      (.limitations | type == "array") and
+      .decision == $decision and
+      (.scope | type == "object") and
+      .scope.repository == $repository and
+      .scope.tested_runtime_sha == $source_sha and
+      .scope.raw_evidence_bundle_sha256 == $raw_sha256 and
+      .scope.package_version == $package_version and
+      .scope.package_hash_manifest_sha256 == $package_manifest_sha256 and
+      .scope.container_repository == $container_repository and
+      .scope.container_digest == $container_digest and
+      ((.approved_at | fromdateiso8601) <= ($checked_at | fromdateiso8601))
+    ' "$record"
+}
+
+validate_final_owner_record \
+  "$EVENTSTORE_OWNER_APPROVAL_RECORD" \
+  story-1-20-proof-approval \
+  authorize-consumer-migration
+validate_final_owner_record \
+  "$RELEASE_OWNER_DISPOSITION_RECORD" \
+  story-1-20-release-disposition \
+  approve-release-identities
+
+DURABLE_EVIDENCE_DIRECTORY="$SOURCE_REPOSITORY/_bmad-output/implementation-artifacts/evidence/story-1-20/$CANDIDATE_SHA"
+test ! -e "$DURABLE_EVIDENCE_DIRECTORY"
+mkdir -p "$DURABLE_EVIDENCE_DIRECTORY"
+CRITICAL_EVIDENCE_FILES=(
+  candidate-source-sha.txt
+  ad11-preflight.json
+  ad11-preflight.sha256
+  effective-package-versions.txt
+  dotnet-runtimes.txt
+  dotnet-runtimes-current.txt
+  environment.txt
+  source-state-before.txt
+  source-state-after.txt
+  source-state-before-publication.txt
+  source-state-after-publication.txt
+  expected-package-ids.txt
+  package-version.txt
+  package-files.txt
+  nuget-sha256.txt
+  generated-image-index.json
+  generated-image-index.digest.txt
+  capture-generated-image-index.targets
+  container-inspect.txt
+  container-manifest.json
+  container-platforms.txt
+  container-provenance.json
+  release-owner-publication-authority.json
+  release-owner-publication-authority.checked-at.txt
+)
+if test "$AD11_MODE" = 'durable-replacement'; then
+  CRITICAL_EVIDENCE_FILES+=(ad11-replacement-authority.json)
+fi
+for evidence_file in "${CRITICAL_EVIDENCE_FILES[@]}"; do
+  test -s "$EVIDENCE_ROOT/$evidence_file"
+  cp -- "$EVIDENCE_ROOT/$evidence_file" "$DURABLE_EVIDENCE_DIRECTORY/$evidence_file"
+done
+cp -- "$EVENTSTORE_OWNER_APPROVAL_RECORD" \
+  "$DURABLE_EVIDENCE_DIRECTORY/eventstore-owner-proof-approval.json"
+cp -- "$RELEASE_OWNER_DISPOSITION_RECORD" \
+  "$DURABLE_EVIDENCE_DIRECTORY/release-owner-final-disposition.json"
+chmod a-w \
+  "$DURABLE_EVIDENCE_DIRECTORY/eventstore-owner-proof-approval.json" \
+  "$DURABLE_EVIDENCE_DIRECTORY/release-owner-final-disposition.json"
+jq -n \
+  --arg url "$RAW_EVIDENCE_BUNDLE_URL" \
+  --arg sha256 "$RAW_EVIDENCE_BUNDLE_SHA256" \
+  '{url: $url, sha256: $sha256}' \
+  > "$DURABLE_EVIDENCE_DIRECTORY/raw-evidence-bundle.json"
+(
+  cd "$DURABLE_EVIDENCE_DIRECTORY"
+  find . -maxdepth 1 -type f ! -name 'critical-evidence-sha256.txt' -printf '%P\0' \
+    | LC_ALL=C sort -z \
+    | xargs -0 sha256sum --
+) > "$DURABLE_EVIDENCE_DIRECTORY/critical-evidence-sha256.txt"
+CRITICAL_EVIDENCE_MANIFEST_SHA256="$(
+  sha256sum "$DURABLE_EVIDENCE_DIRECTORY/critical-evidence-sha256.txt" | awk '{print $1}'
+)"
+[[ "$CRITICAL_EVIDENCE_MANIFEST_SHA256" =~ ^[0-9a-f]{64}$ ]]
+EVENTSTORE_OWNER_APPROVAL_URL="$(
+  jq -er '.durable_source' \
+    "$DURABLE_EVIDENCE_DIRECTORY/eventstore-owner-proof-approval.json"
+)"
+EVENTSTORE_OWNER_APPROVAL_SHA256="$(
+  sha256sum "$DURABLE_EVIDENCE_DIRECTORY/eventstore-owner-proof-approval.json" \
+    | awk '{print $1}'
+)"
+RELEASE_OWNER_DISPOSITION_URL="$(
+  jq -er '.durable_source' \
+    "$DURABLE_EVIDENCE_DIRECTORY/release-owner-final-disposition.json"
+)"
+RELEASE_OWNER_DISPOSITION_SHA256="$(
+  sha256sum "$DURABLE_EVIDENCE_DIRECTORY/release-owner-final-disposition.json" \
+    | awk '{print $1}'
+)"
+printf '%s\n' \
+  "evidence_manifest_sha256=$CRITICAL_EVIDENCE_MANIFEST_SHA256" \
+  "raw_bundle_url=$RAW_EVIDENCE_BUNDLE_URL" \
+  "raw_bundle_sha256=$RAW_EVIDENCE_BUNDLE_SHA256" \
+  "eventstore_owner_approval_url=$EVENTSTORE_OWNER_APPROVAL_URL" \
+  "eventstore_owner_approval_sha256=$EVENTSTORE_OWNER_APPROVAL_SHA256" \
+  "release_owner_disposition_url=$RELEASE_OWNER_DISPOSITION_URL" \
+  "release_owner_disposition_sha256=$RELEASE_OWNER_DISPOSITION_SHA256"
+```
+
+Evidence commit A must copy those seven printed values into packet front matter. Its
+structural verifier below re-hashes the committed manifest, validates the raw-bundle record,
+parses and binds both committed final-owner records, and binds package/container identities
+before accepting A.
+
 | Gate | Required result | Evidence target | Required disposition owner | Current result |
 | --- | --- | --- | --- | --- |
 | AD-11 readiness | exact SDK `10.0.302` plus matching ASP.NET and installed `Microsoft.NETCore.App` runtime `10.0.10`, or complete, scoped, unexpired replacement authority binding those versions before candidate gates | `ad11-preflight.json`, runtime inventory, its SHA-256, and replacement-authority copy/hash when used | Architecture owner and EventStore build/release maintainer | PASS in the 2026-07-17 current-HEAD readiness audit at `772cdfef...`; every later selected candidate must repeat the preflight |
-| Exact committed source | Same 40-hex SHA before and after gates; clean regular and ignored inputs before restore | pre/post status, submodule SHAs, environment inventory | EventStore owner | PASS for failed candidate `85877902f8d60a466ab90cd8b68b53838863db1c` |
-| Release build and tests | warning-free solution build; positive xUnit totals for every listed project/filter | build log plus XML and method-list files under `$EVIDENCE_ROOT` | EventStore owner | **FAIL / non-authorizing**; at current commit `772cdfef...`, the Release build, broad lanes, former lifecycle method/class, and full live-sidecar passed, but the corrected source-mode query-provenance E2E failed twice with 404 / `query_projection_missing` |
-| NuGet inventory | exact 14-ID set, one approved version, 14 SHA-256 values, package-only consumer success | package listing, validator logs, `nuget-sha256.txt`, consumer assets/tool-install log | EventStore release owner | NOT RUN |
-| Container runtime | freshly revalidated pre-publication release-owner authority; clean candidate source; immutable registry digest equal to the raw-manifest SHA-256; exact `linux/amd64` and `linux/arm64`; digest-to-tested-SHA provenance | immutable authority and checked-at copies/hashes, `container-inspect.txt`, raw manifest/hash, exact platform set, `container-provenance.json` | EventStore release owner | NOT RUN |
+| Exact committed source | Same 40-hex SHA before and after gates; clean regular and ignored inputs before and after every gate | `source-state-*.txt`, submodule SHAs, `environment.txt` | EventStore owner | PASS for failed candidate `85877902f8d60a466ab90cd8b68b53838863db1c` |
+| Release build and tests | warning-free solution build; at least one passed and no failed/error tests for every configured project/filter | restore/build logs plus XML and method-list files under `$EVIDENCE_ROOT` | EventStore owner | **FAIL / non-authorizing**; at current commit `772cdfef...`, the Release build, broad lanes, former lifecycle method/class, and full live-sidecar passed, but the corrected source-mode query-provenance E2E failed twice with 404 / `query_projection_missing` |
+| NuGet inventory | exact 14-ID set, one approved version, 14 SHA-256 values, package-only consumer success | `package-files.txt`, package/validator/consumer logs, `package-version.txt`, `nuget-sha256.txt` | EventStore release owner | NOT RUN |
+| Container runtime | freshly revalidated pre-publication release-owner authority; clean candidate source; quarantined publication tag; immutable registry digest equal to the raw-manifest SHA-256; exact `linux/amd64` and `linux/arm64`; digest-to-tested-SHA provenance | immutable authority and checked-at copies/hashes, `container-inspect.txt`, raw manifest/hash, exact platform set, `container-provenance.json` | EventStore release owner | NOT RUN |
+| Durable evidence | critical identity/provenance and exact final-approval records committed under `_bmad-output`; immutable external raw bundle bound by HTTPS URL and SHA-256 | `critical-evidence-sha256.txt`, `raw-evidence-bundle.json`, `eventstore-owner-proof-approval.json`, `release-owner-final-disposition.json`, packet front-matter pins | EventStore owner and EventStore release owner | NOT RUN |
 | Limitations and migration | every matrix-row limitation accepted or rejected by a named reviewer in a durable source | signed review record or PR URL and date | EventStore owner | NOT RUN |
 
 - compatibility boundary: additive public APIs, the legacy query metadata ABI, legacy
@@ -1436,38 +1827,71 @@ later proof-result approval and distinct release-owner disposition.
 Story creation, implementation review of an individual prerequisite, and authorship of
 this blocked packet are not proof-result owner approval.
 
-### Evidence Commit A And Pointer-Only Commit B Verification
+### Evidence Commit A, Pointer-Only Commit B, And Authorizing Commit C Verification
 
 Run this repository-root procedure only after the completed proof results and distinct
 EventStore-owner and release-owner dispositions exist in durable external sources. It
 proves that evidence commit A is a single-parent, `_bmad-output/`-only child of the equal
-candidate/tested runtime while remaining fail closed, and that its direct child B changes
-exactly one front-matter field to point back to A:
+candidate/tested runtime while recording every evidence/approval identity and remaining fail
+closed; its direct child B changes exactly one front-matter field to point back to A; and B's
+direct child C performs only the exact verified authorization/status transition:
 
 ```bash
 set -euo pipefail
 PACKET='_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md'
 STORY='_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md'
 SPRINT_STATUS='_bmad-output/implementation-artifacts/sprint-status.yaml'
+FOLLOWUP_SPEC='_bmad-output/implementation-artifacts/spec-1-11-complete-projection-freshness-lifecycle.md'
+DEFERRED_WORK='_bmad-output/implementation-artifacts/deferred-work.md'
+RELEASE_PACKAGES='tools/release-packages.json'
 : "${EVIDENCE_COMMIT_A:?set the evidence commit A SHA}"
 : "${POINTER_COMMIT_B:?set the pointer-only commit B SHA}"
+: "${AUTHORIZATION_COMMIT_C:?set the authorizing commit C SHA}"
 
 EVIDENCE_COMMIT_A="$(git rev-parse --verify --end-of-options "${EVIDENCE_COMMIT_A}^{commit}")"
 POINTER_COMMIT_B="$(git rev-parse --verify --end-of-options "${POINTER_COMMIT_B}^{commit}")"
+AUTHORIZATION_COMMIT_C="$(git rev-parse --verify --end-of-options "${AUTHORIZATION_COMMIT_C}^{commit}")"
 [[ "$EVIDENCE_COMMIT_A" =~ ^[0-9a-f]{40}$ ]]
 [[ "$POINTER_COMMIT_B" =~ ^[0-9a-f]{40}$ ]]
+[[ "$AUTHORIZATION_COMMIT_C" =~ ^[0-9a-f]{40}$ ]]
 test "$(git rev-list --parents -n 1 "$POINTER_COMMIT_B" | awk '{print NF}')" -eq 2
 test "$(git rev-parse --verify --end-of-options "${POINTER_COMMIT_B}^")" = "$EVIDENCE_COMMIT_A"
+test "$(git rev-list --parents -n 1 "$AUTHORIZATION_COMMIT_C" | awk '{print NF}')" -eq 2
+test "$(git rev-parse --verify --end-of-options "${AUTHORIZATION_COMMIT_C}^")" = "$POINTER_COMMIT_B"
 
 A_PACKET="$(mktemp)"
 B_PACKET="$(mktemp)"
 EXPECTED_B_PACKET="$(mktemp)"
 A_STORY="$(mktemp)"
 A_SPRINT_STATUS="$(mktemp)"
+A_FOLLOWUP_SPEC="$(mktemp)"
+A_DEFERRED_WORK="$(mktemp)"
+A_RELEASE_PACKAGES="$(mktemp)"
+A_EXPECTED_PACKAGE_IDS="$(mktemp)"
+A_EXPECTED_PACKAGE_FILES="$(mktemp)"
+A_EVIDENCE_MANIFEST="$(mktemp)"
+A_RAW_EVIDENCE_BUNDLE="$(mktemp)"
+A_PACKAGE_HASHES="$(mktemp)"
+A_CONTAINER_PROVENANCE="$(mktemp)"
+B_STORY="$(mktemp)"
+B_SPRINT_STATUS="$(mktemp)"
+C_PACKET="$(mktemp)"
+C_STORY="$(mktemp)"
+C_SPRINT_STATUS="$(mktemp)"
+EXPECTED_C_PACKET="$(mktemp)"
+EXPECTED_C_STORY="$(mktemp)"
+EXPECTED_C_SPRINT_STATUS="$(mktemp)"
 git show "$EVIDENCE_COMMIT_A:$PACKET" > "$A_PACKET"
 git show "$POINTER_COMMIT_B:$PACKET" > "$B_PACKET"
 git show "$EVIDENCE_COMMIT_A:$STORY" > "$A_STORY"
 git show "$EVIDENCE_COMMIT_A:$SPRINT_STATUS" > "$A_SPRINT_STATUS"
+git show "$EVIDENCE_COMMIT_A:$FOLLOWUP_SPEC" > "$A_FOLLOWUP_SPEC"
+git show "$EVIDENCE_COMMIT_A:$DEFERRED_WORK" > "$A_DEFERRED_WORK"
+git show "$POINTER_COMMIT_B:$STORY" > "$B_STORY"
+git show "$POINTER_COMMIT_B:$SPRINT_STATUS" > "$B_SPRINT_STATUS"
+git show "$AUTHORIZATION_COMMIT_C:$PACKET" > "$C_PACKET"
+git show "$AUTHORIZATION_COMMIT_C:$STORY" > "$C_STORY"
+git show "$AUTHORIZATION_COMMIT_C:$SPRINT_STATUS" > "$C_SPRINT_STATUS"
 
 front_value() {
   local packet="$1"
@@ -1507,6 +1931,270 @@ for changed_file in "${A_CHANGED_FILES[@]}"; do
          "$changed_file" >&2; exit 1 ;;
   esac
 done
+printf '%s\n' "${A_CHANGED_FILES[@]}" | grep -Fxq "$PACKET"
+printf '%s\n' "${A_CHANGED_FILES[@]}" | grep -Fxq "$FOLLOWUP_SPEC"
+A_EVIDENCE_DIRECTORY="_bmad-output/implementation-artifacts/evidence/story-1-20/$A_TESTED_RUNTIME_SHA"
+printf '%s\n' "${A_CHANGED_FILES[@]}" | grep -Fq "$A_EVIDENCE_DIRECTORY/"
+A_EVIDENCE_COPY="$(mktemp -d)"
+git archive "$EVIDENCE_COMMIT_A" "$A_EVIDENCE_DIRECTORY" | tar -x -C "$A_EVIDENCE_COPY"
+A_EVIDENCE_ROOT="$A_EVIDENCE_COPY/$A_EVIDENCE_DIRECTORY"
+test -d "$A_EVIDENCE_ROOT"
+git show "$A_TESTED_RUNTIME_COMMIT:$RELEASE_PACKAGES" > "$A_RELEASE_PACKAGES"
+A_EVIDENCE_MANIFEST_SHA256="$(front_value "$A_PACKET" evidence_manifest_sha256)"
+[[ "$A_EVIDENCE_MANIFEST_SHA256" =~ ^[0-9a-f]{64}$ ]]
+test "$(sha256sum "$A_EVIDENCE_ROOT/critical-evidence-sha256.txt" | awk '{print $1}')" \
+  = "$A_EVIDENCE_MANIFEST_SHA256"
+(cd "$A_EVIDENCE_ROOT" && sha256sum --check critical-evidence-sha256.txt)
+
+A_RAW_EVIDENCE_BUNDLE_URL="$(front_value "$A_PACKET" raw_evidence_bundle_url)"
+A_RAW_EVIDENCE_BUNDLE_SHA256="$(front_value "$A_PACKET" raw_evidence_bundle_sha256)"
+[[ "$A_RAW_EVIDENCE_BUNDLE_URL" =~ ^https://[^[:space:]]+$ ]]
+[[ "$A_RAW_EVIDENCE_BUNDLE_SHA256" =~ ^[0-9a-f]{64}$ ]]
+jq -e \
+  --arg url "$A_RAW_EVIDENCE_BUNDLE_URL" \
+  --arg sha256 "$A_RAW_EVIDENCE_BUNDLE_SHA256" \
+  '.url == $url and .sha256 == $sha256' \
+  "$A_EVIDENCE_ROOT/raw-evidence-bundle.json"
+
+test "$(front_value "$A_FOLLOWUP_SPEC" followup_review_recommended)" = 'false'
+awk -v tested_runtime_sha="$A_TESTED_RUNTIME_SHA" '
+  function field_value(prefix, value) {
+    value = substr($0, length(prefix) + 1)
+    gsub(/^`|`$/, "", value)
+    return value
+  }
+  /^### [0-9]{4}-[0-9]{2}-[0-9]{2} — Follow-up review disposition$/ {
+    sections++; in_disposition = 1; next
+  }
+  in_disposition && /^### / { in_disposition = 0 }
+  in_disposition && index($0, "- reviewed_runtime_sha: ") == 1 {
+    runtime++; runtime_ok += (field_value("- reviewed_runtime_sha: ") == tested_runtime_sha)
+  }
+  in_disposition && index($0, "- reviewer: ") == 1 {
+    value = field_value("- reviewer: "); reviewer++; reviewer_ok += (value != "" && value != "not assigned")
+  }
+  in_disposition && index($0, "- durable_source: ") == 1 {
+    value = field_value("- durable_source: "); source++
+    source_ok += (value ~ /^https:\/\/[^[:space:]]+$/ || value ~ /^[0-9a-f]{40}$/)
+  }
+  in_disposition && index($0, "- scope: ") == 1 {
+    scope++; scope_ok += (field_value("- scope: ") != "")
+  }
+  in_disposition && index($0, "- findings_and_resolutions: ") == 1 {
+    findings++; findings_ok += (field_value("- findings_and_resolutions: ") != "")
+  }
+  in_disposition && index($0, "- verification: ") == 1 {
+    verification++; verification_ok += (field_value("- verification: ") != "")
+  }
+  in_disposition && index($0, "- residual_limitations: ") == 1 {
+    residuals++; residuals_ok += (field_value("- residual_limitations: ") != "")
+  }
+  in_disposition && index($0, "- disposition: ") == 1 {
+    disposition++; disposition_ok += (field_value("- disposition: ") == "approved")
+  }
+  END {
+    exit !(sections == 1 && runtime == 1 && runtime_ok == 1 &&
+      reviewer == 1 && reviewer_ok == 1 && source == 1 && source_ok == 1 &&
+      scope == 1 && scope_ok == 1 && findings == 1 && findings_ok == 1 &&
+      verification == 1 && verification_ok == 1 && residuals == 1 &&
+      residuals_ok == 1 && disposition == 1 && disposition_ok == 1)
+  }
+' "$A_FOLLOWUP_SPEC"
+
+awk '
+  /^## Deferred from:/ {
+    relevant = ($0 ~ /Story 1\.20/ || $0 ~ /1-20-owner-approved-parity-closure/)
+    if (relevant) sections++
+    next
+  }
+  relevant && /^  status: open-blocking$/ { open++ }
+  END { exit !(sections > 0 && open == 0) }
+' "$A_DEFERRED_WORK"
+
+A_PACKAGE_VERSION="$(front_value "$A_PACKET" approved_package_version)"
+test -n "$A_PACKAGE_VERSION"
+test "$A_PACKAGE_VERSION" != 'null'
+A_PACKAGE_HASH_MANIFEST_SHA256="$(front_value "$A_PACKET" approved_package_hash_manifest_sha256)"
+[[ "$A_PACKAGE_HASH_MANIFEST_SHA256" =~ ^[0-9a-f]{64}$ ]]
+test "$(sha256sum "$A_EVIDENCE_ROOT/nuget-sha256.txt" | awk '{print $1}')" \
+  = "$A_PACKAGE_HASH_MANIFEST_SHA256"
+test "$(wc -l < "$A_EVIDENCE_ROOT/nuget-sha256.txt")" -eq 14
+awk -v version="$A_PACKAGE_VERSION" '
+  NF == 2 && length($1) == 64 && $1 !~ /[^0-9a-f]/ &&
+    substr($2, length($2) - length(version) - 6) == "." version ".nupkg" { valid++ }
+  END { exit !(NR == 14 && valid == 14) }
+' "$A_EVIDENCE_ROOT/nuget-sha256.txt"
+jq -e '
+  .packages | type == "array" and length == 14 and
+  (all(.[]; (.id | type == "string" and test("^[A-Za-z0-9.-]+$")))) and
+  (map(.id) | unique | length == 14)
+' "$A_RELEASE_PACKAGES" >/dev/null
+cat > "$A_EXPECTED_PACKAGE_IDS" <<'PACKAGE_IDS'
+Hexalith.EventStore.Admin.Abstractions
+Hexalith.EventStore.Admin.Cli
+Hexalith.EventStore.Admin.Server
+Hexalith.EventStore.Aspire
+Hexalith.EventStore.Client
+Hexalith.EventStore.Contracts
+Hexalith.EventStore.DomainService
+Hexalith.EventStore.Gateway
+Hexalith.EventStore.RestApi.Generators
+Hexalith.EventStore.Server
+Hexalith.EventStore.ServiceDefaults
+Hexalith.EventStore.SignalR
+Hexalith.EventStore.Testing
+Hexalith.EventStore.Testing.Integration
+PACKAGE_IDS
+diff -u \
+  "$A_EXPECTED_PACKAGE_IDS" \
+  <(jq -er '.packages[].id' "$A_RELEASE_PACKAGES" | LC_ALL=C sort)
+awk -v version="$A_PACKAGE_VERSION" '{ print $0 "." version ".nupkg" }' \
+  "$A_EXPECTED_PACKAGE_IDS" > "$A_EXPECTED_PACKAGE_FILES"
+diff -u \
+  "$A_EXPECTED_PACKAGE_FILES" \
+  <(awk '{ print $2 }' "$A_EVIDENCE_ROOT/nuget-sha256.txt" | LC_ALL=C sort)
+
+A_CONTAINER_REPOSITORY="$(front_value "$A_PACKET" approved_container_repository)"
+A_CONTAINER_DIGEST="$(front_value "$A_PACKET" approved_container_digest)"
+test -n "$A_CONTAINER_REPOSITORY"
+test "$A_CONTAINER_REPOSITORY" != 'null'
+[[ "$A_CONTAINER_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+A_PUBLICATION_AUTHORITY="$A_EVIDENCE_ROOT/release-owner-publication-authority.json"
+A_PUBLICATION_CHECKED_AT_FILE="$A_EVIDENCE_ROOT/release-owner-publication-authority.checked-at.txt"
+A_CAPTURE_TARGETS="$A_EVIDENCE_ROOT/capture-generated-image-index.targets"
+A_GENERATED_IMAGE_INDEX="$A_EVIDENCE_ROOT/generated-image-index.json"
+A_GENERATED_IMAGE_INDEX_DIGEST="$A_EVIDENCE_ROOT/generated-image-index.digest.txt"
+A_CONTAINER_MANIFEST="$A_EVIDENCE_ROOT/container-manifest.json"
+A_CONTAINER_PLATFORMS="$A_EVIDENCE_ROOT/container-platforms.txt"
+for required_evidence in \
+    "$A_PUBLICATION_AUTHORITY" \
+    "$A_PUBLICATION_CHECKED_AT_FILE" \
+    "$A_CAPTURE_TARGETS" \
+    "$A_GENERATED_IMAGE_INDEX" \
+    "$A_GENERATED_IMAGE_INDEX_DIGEST" \
+    "$A_CONTAINER_MANIFEST" \
+    "$A_CONTAINER_PLATFORMS"; do
+  test -s "$required_evidence"
+done
+A_PUBLICATION_CHECKED_AT="$(cat "$A_PUBLICATION_CHECKED_AT_FILE")"
+[[ "$A_PUBLICATION_CHECKED_AT" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]]
+test "$(cat "$A_GENERATED_IMAGE_INDEX_DIGEST")" = "$A_CONTAINER_DIGEST"
+test "sha256:$(sha256sum "$A_GENERATED_IMAGE_INDEX" | awk '{print $1}')" \
+  = "$A_CONTAINER_DIGEST"
+test "sha256:$(sha256sum "$A_CONTAINER_MANIFEST" | awk '{print $1}')" \
+  = "$A_CONTAINER_DIGEST"
+jq -e '.manifests | type == "array" and length == 2' \
+  "$A_CONTAINER_MANIFEST" >/dev/null
+jq -r '.manifests[].platform |
+  "\(.os)/\(.architecture)\(if .variant then "/" + .variant else "" end)"' \
+  "$A_CONTAINER_MANIFEST" | LC_ALL=C sort -u \
+  | cmp --silent <(printf '%s\n' linux/amd64 linux/arm64) -
+cmp --silent \
+  <(printf '%s\n' linux/amd64 linux/arm64) \
+  "$A_CONTAINER_PLATFORMS"
+jq -e \
+  --arg checked_at "$A_PUBLICATION_CHECKED_AT" \
+  --arg repository "$A_CONTAINER_REPOSITORY" \
+  --arg tag "quarantine-proof-$A_TESTED_RUNTIME_SHA" \
+  --arg source_sha "$A_TESTED_RUNTIME_SHA" '
+    def nonblank: type == "string" and test("\\S");
+    .action == "container-publication" and
+    (.owner | nonblank) and
+    (.authorized_at | nonblank) and
+    (.durable_source | nonblank) and
+    (.rationale | nonblank) and
+    (.expires_at | nonblank) and
+    .scope.repository == $repository and .scope.tag == $tag and
+    .scope.source_sha == $source_sha and
+    ((.authorized_at | fromdateiso8601) <= ($checked_at | fromdateiso8601)) and
+    ((.expires_at | fromdateiso8601) > ($checked_at | fromdateiso8601))
+  ' "$A_PUBLICATION_AUTHORITY"
+jq -e \
+  --arg repository "$A_CONTAINER_REPOSITORY" \
+  --arg digest "$A_CONTAINER_DIGEST" \
+  --arg source_sha "$A_TESTED_RUNTIME_SHA" \
+  --arg tag "quarantine-proof-$A_TESTED_RUNTIME_SHA" \
+  --arg authority_sha256 "$(sha256sum "$A_PUBLICATION_AUTHORITY" | awk '{print $1}')" \
+  --arg authority_checked_at "$A_PUBLICATION_CHECKED_AT" \
+  --arg authority_checked_at_sha256 "$(
+    sha256sum "$A_PUBLICATION_CHECKED_AT_FILE" | awk '{print $1}'
+  )" \
+  --arg capture_targets_sha256 "$(sha256sum "$A_CAPTURE_TARGETS" | awk '{print $1}')" '
+    .repository == $repository and .digest == $digest and .source_sha == $source_sha and
+    .tag == $tag and
+    .manifest_sha256 == ($digest | sub("^sha256:"; "")) and
+    (.platforms | length == 2 and sort == ["linux/amd64", "linux/arm64"]) and
+    .sdk_generated_index.file == "generated-image-index.json" and
+    .sdk_generated_index.digest == $digest and
+    .sdk_generated_index.capture_targets_file == "capture-generated-image-index.targets" and
+    .sdk_generated_index.capture_targets_sha256 == $capture_targets_sha256 and
+    .publish_properties.container_registry == "registry.hexalith.com" and
+    .publish_properties.container_repository == "eventstore" and
+    .publish_properties.container_image_tag == $tag and
+    .publish_properties.container_runtime_identifiers == "linux-x64;linux-arm64" and
+    .publication_authority.file == "release-owner-publication-authority.json" and
+    .publication_authority.sha256 == $authority_sha256 and
+    .publication_authority.checked_at == $authority_checked_at and
+    .publication_authority.checked_at_file ==
+      "release-owner-publication-authority.checked-at.txt" and
+    .publication_authority.checked_at_sha256 == $authority_checked_at_sha256
+  ' "$A_EVIDENCE_ROOT/container-provenance.json"
+
+A_COMMIT_EPOCH="$(git show -s --format=%ct "$EVIDENCE_COMMIT_A")"
+A_REPOSITORY_URL='https://github.com/Hexalith/Hexalith.EventStore.git'
+validate_committed_owner_record() {
+  local record="$1"
+  local action="$2"
+  local decision="$3"
+  local approval_prefix="$4"
+  local approval_url
+  local approval_sha256
+  approval_url="$(front_value "$A_PACKET" "${approval_prefix}_url")"
+  approval_sha256="$(front_value "$A_PACKET" "${approval_prefix}_sha256")"
+  [[ "$approval_url" =~ ^https://[^[:space:]]+$ ]]
+  [[ "$approval_sha256" =~ ^[0-9a-f]{64}$ ]]
+  test "$(sha256sum "$record" | awk '{print $1}')" = "$approval_sha256"
+  jq -e \
+    --argjson commit_epoch "$A_COMMIT_EPOCH" \
+    --arg action "$action" \
+    --arg decision "$decision" \
+    --arg durable_source "$approval_url" \
+    --arg repository "$A_REPOSITORY_URL" \
+    --arg source_sha "$A_TESTED_RUNTIME_SHA" \
+    --arg raw_sha256 "$A_RAW_EVIDENCE_BUNDLE_SHA256" \
+    --arg package_version "$A_PACKAGE_VERSION" \
+    --arg package_manifest_sha256 "$A_PACKAGE_HASH_MANIFEST_SHA256" \
+    --arg container_repository "$A_CONTAINER_REPOSITORY" \
+    --arg container_digest "$A_CONTAINER_DIGEST" '
+      def nonblank: type == "string" and test("\\S");
+      type == "object" and .action == $action and
+      (.owner | nonblank) and (.approved_at | nonblank) and
+      .durable_source == $durable_source and
+      (.accepted_scope | nonblank) and (.limitations | type == "array") and
+      .decision == $decision and
+      .scope.repository == $repository and
+      .scope.tested_runtime_sha == $source_sha and
+      .scope.raw_evidence_bundle_sha256 == $raw_sha256 and
+      .scope.package_version == $package_version and
+      .scope.package_hash_manifest_sha256 == $package_manifest_sha256 and
+      .scope.container_repository == $container_repository and
+      .scope.container_digest == $container_digest and
+      ((.approved_at | fromdateiso8601) <= $commit_epoch)
+    ' "$record"
+}
+
+validate_committed_owner_record \
+  "$A_EVIDENCE_ROOT/eventstore-owner-proof-approval.json" \
+  story-1-20-proof-approval \
+  authorize-consumer-migration \
+  eventstore_owner_approval
+validate_committed_owner_record \
+  "$A_EVIDENCE_ROOT/release-owner-final-disposition.json" \
+  story-1-20-release-disposition \
+  approve-release-identities \
+  release_owner_disposition
+test "$(grep -c '^- classification: `available`$' "$A_PACKET")" -eq 9
+test "$(grep -c '^- classification: `still blocked`$' "$A_PACKET")" -eq 0
 test "$(front_value "$A_PACKET" documentation_commit_sha)" = 'null'
 test "$(front_value "$A_PACKET" final_decision)" = 'still blocked'
 test "$(front_value "$A_PACKET" authorize_consumer_migration)" = 'false'
@@ -1532,6 +2220,8 @@ test "$(front_value "$B_PACKET" authorize_consumer_migration)" = 'false'
 mapfile -t B_CHANGED_FILES < <(git diff --name-only "$EVIDENCE_COMMIT_A" "$POINTER_COMMIT_B")
 test "${#B_CHANGED_FILES[@]}" -eq 1
 test "${B_CHANGED_FILES[0]}" = "$PACKET"
+test "$(git ls-tree "$EVIDENCE_COMMIT_A" -- "$PACKET" | awk '{print $1}')" \
+  = "$(git ls-tree "$POINTER_COMMIT_B" -- "$PACKET" | awk '{print $1}')"
 awk -v evidence_commit_a="$EVIDENCE_COMMIT_A" '
   NR == 1 && $0 == "---" { in_front = 1; print; next }
   in_front && $0 == "---" { in_front = 0; print; next }
@@ -1544,15 +2234,105 @@ awk -v evidence_commit_a="$EVIDENCE_COMMIT_A" '
   END { if (changed != 1) exit 1 }
 ' "$A_PACKET" > "$EXPECTED_B_PACKET"
 cmp --silent "$EXPECTED_B_PACKET" "$B_PACKET"
+
+mapfile -t C_CHANGED_FILES < <(git diff --name-only "$POINTER_COMMIT_B" "$AUTHORIZATION_COMMIT_C")
+diff -u \
+  <(printf '%s\n' "$PACKET" "$SPRINT_STATUS" "$STORY" | LC_ALL=C sort) \
+  <(printf '%s\n' "${C_CHANGED_FILES[@]}" | LC_ALL=C sort)
+for authorization_path in "$PACKET" "$STORY" "$SPRINT_STATUS"; do
+  test "$(git ls-tree "$POINTER_COMMIT_B" -- "$authorization_path" | awk '{print $1}')" \
+    = "$(git ls-tree "$AUTHORIZATION_COMMIT_C" -- "$authorization_path" | awk '{print $1}')"
+done
+
+awk '
+  NR == 1 && $0 == "---" { in_front = 1; print; next }
+  in_front && $0 == "---" { in_front = 0; print; next }
+  in_front && $0 == "final_decision: still blocked" && decision_changed == 0 {
+    print "final_decision: available"; decision_changed = 1; next
+  }
+  in_front && $0 == "authorize_consumer_migration: false" && migration_changed == 0 {
+    print "authorize_consumer_migration: true"; migration_changed = 1; next
+  }
+  { print }
+  END { if (decision_changed != 1 || migration_changed != 1) exit 1 }
+' "$B_PACKET" > "$EXPECTED_C_PACKET"
+cmp --silent "$EXPECTED_C_PACKET" "$C_PACKET"
+
+awk '
+  NR == 1 && $0 == "---" { in_front = 1; print; next }
+  in_front && $0 == "---" { in_front = 0; after_front = 1; print; next }
+  in_front && $0 == "status: blocked" && front_changed == 0 {
+    print "status: done"; front_changed = 1; next
+  }
+  after_front && $0 == "Status: blocked" && body_changed == 0 {
+    print "Status: done"; body_changed = 1; next
+  }
+  { print }
+  END { if (front_changed != 1 || body_changed != 1) exit 1 }
+' "$B_STORY" > "$EXPECTED_C_STORY"
+cmp --silent "$EXPECTED_C_STORY" "$C_STORY"
+
+B_LAST_UPDATED="$(awk '/^last_updated:/ { print $2; count++ }
+  END { if (count != 1) exit 1 }' "$B_SPRINT_STATUS")"
+B_LAST_UPDATED_COMMENT="$(awk '/^# last_updated:/ { print $3; count++ }
+  END { if (count != 1) exit 1 }' "$B_SPRINT_STATUS")"
+C_LAST_UPDATED="$(awk '/^last_updated:/ { print $2; count++ }
+  END { if (count != 1) exit 1 }' "$C_SPRINT_STATUS")"
+C_LAST_UPDATED_COMMENT="$(awk '/^# last_updated:/ { print $3; count++ }
+  END { if (count != 1) exit 1 }' "$C_SPRINT_STATUS")"
+[[ "$B_LAST_UPDATED" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]
+[[ "$C_LAST_UPDATED" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]
+test "$B_LAST_UPDATED_COMMENT" = "$B_LAST_UPDATED"
+test "$C_LAST_UPDATED_COMMENT" = "$C_LAST_UPDATED"
+[[ "$C_LAST_UPDATED" == "$B_LAST_UPDATED" || "$C_LAST_UPDATED" > "$B_LAST_UPDATED" ]]
+awk -v last_updated="$C_LAST_UPDATED" '
+  $0 == "# Story 1.19 review is complete. Story 1.20 remains in progress while:" {
+    print "# Story 1.20 owner-approved parity closure is complete; authorizing commit C"
+    print "# verified every pinned artifact, approval, prerequisite, and migration decision."
+    blocker_start++; in_blocker = 1; next
+  }
+  in_blocker && $0 == "# `final_decision: still blocked` cannot transition this story or Epic 1 to done." {
+    blocker_end++; in_blocker = 0; next
+  }
+  in_blocker { next }
+  /^# last_updated:/ { print "# last_updated: " last_updated; comment_count++; next }
+  /^last_updated:/ { print "last_updated: " last_updated; last_count++; next }
+  /^  epic-1:/ { print "  epic-1: done"; epic_count++; next }
+  /^  1-20-owner-approved-parity-closure-and-runtime-pin:/ {
+    print "  1-20-owner-approved-parity-closure-and-runtime-pin: done"; story_count++; next
+  }
+  { print }
+  END {
+    if (in_blocker || blocker_start != 1 || blocker_end != 1 || comment_count != 1 ||
+        last_count != 1 || epic_count != 1 || story_count != 1) exit 1
+  }
+' "$B_SPRINT_STATUS" > "$EXPECTED_C_SPRINT_STATUS"
+cmp --silent "$EXPECTED_C_SPRINT_STATUS" "$C_SPRINT_STATUS"
+
+test "$(front_value "$C_PACKET" tested_runtime_sha)" = "$A_TESTED_RUNTIME_SHA"
+test "$(front_value "$C_PACKET" documentation_commit_sha)" = "$EVIDENCE_COMMIT_A"
+test "$(front_value "$C_PACKET" final_decision)" = 'available'
+test "$(front_value "$C_PACKET" authorize_consumer_migration)" = 'true'
+test "$(front_value "$C_STORY" status)" = 'done'
+awk '
+  /^  epic-1:/ { epic_count++; epic_ok += ($0 == "  epic-1: done") }
+  /^  1-20-owner-approved-parity-closure-and-runtime-pin:/ {
+    story_count++
+    story_ok += ($0 == "  1-20-owner-approved-parity-closure-and-runtime-pin: done")
+  }
+  END { exit !(epic_count == 1 && epic_ok == 1 && story_count == 1 && story_ok == 1) }
+' "$C_SPRINT_STATUS"
 ```
 
 A missing or non-unique opening field, unequal candidate/runtime identity, unresolved tested
-runtime, merge commit A, any A parent other than that runtime, an A path outside
-`_bmad-output/`, merge commit B, wrong B parent/pointer, changed decision/migration guard,
-extra B file, or any change beyond that exact one-line pointer update exits nonzero. This is
-only a structural evidence-only/non-self-reference check. Neither A nor B grants migration
-authority or substitutes for complete proof, durable approvals, or every independent gate on
-a later status-only transition.
+runtime, an incomplete Story 1.16 review, an open Story 1.20 prerequisite, incomplete capability
+rows, a nonliteral package inventory, missing/mismatched evidence or approval pins, merge commit
+A, any A parent other than that runtime, an A path outside `_bmad-output/`, A not changing the
+packet and Story 1.16 disposition, merge commit B/C, wrong parent/pointer, file-mode change,
+extra path, stale sprint blocker narrative, regressing tracker date, or any edit beyond the
+reconstructed A/B/C contracts exits nonzero. A and B remain non-authorizing. Only verified C
+changes the decision, migration, story, and reconciled sprint guards after reusing A's already
+validated immutable evidence and approval identities.
 
 ## Consumer Handoff Guard
 
@@ -1684,23 +2464,38 @@ dotnet restore "$CONSUMER_PROJECT" \
   --force-evaluate \
   -p:UseHexalithProjectReferences=false
 ASSETS_FILE="$(dirname "$CONSUMER_PROJECT")/obj/project.assets.json"
-jq -e --arg version "$APPROVED_PACKAGE_VERSION" '
+SELECTED_EVENTSTORE_IDS="$CONSUMER_GATE/selected-eventstore-package-ids.txt"
+jq -er --arg version "$APPROVED_PACKAGE_VERSION" '
   [.libraries | to_entries[] |
     select(.key | startswith("Hexalith.EventStore") or startswith("hexalith.eventstore"))] as $eventstore |
   ($eventstore | length > 0) and
   all($eventstore[];
     .value.type == "package" and
-    ((.key | ascii_downcase) | endswith(("/" + $version) | ascii_downcase)))
-' "$ASSETS_FILE"
+    ((.key | ascii_downcase) | endswith(("/" + $version) | ascii_downcase))) as $valid |
+  if $valid then $eventstore[].key | split("/")[0] else error("invalid EventStore assets") end
+' "$ASSETS_FILE" | LC_ALL=C sort -u > "$SELECTED_EVENTSTORE_IDS"
+test -s "$SELECTED_EVENTSTORE_IDS"
+test -z "$(comm -23 "$SELECTED_EVENTSTORE_IDS" "$EXPECTED_IDS")"
+while IFS= read -r package_id; do
+  lower_id="${package_id,,}"
+  lower_version="${APPROVED_PACKAGE_VERSION,,}"
+  approved_nupkg="$APPROVED_PACKAGE_DIRECTORY/$package_id.$APPROVED_PACKAGE_VERSION.nupkg"
+  restored_nupkg="$CONSUMER_GATE/packages/$lower_id/$lower_version/$lower_id.$lower_version.nupkg"
+  test -f "$approved_nupkg"
+  test -f "$restored_nupkg"
+  cmp --silent "$approved_nupkg" "$restored_nupkg"
+done < "$SELECTED_EVENTSTORE_IDS"
 dotnet build "$CONSUMER_PROJECT" \
   --configuration Release \
   --no-restore \
   -p:UseHexalithProjectReferences=false
 ```
 
-The filename/version check proves the full approved inventory is present; the asset-file
-check proves every EventStore dependency actually selected by the consumer resolves as a
-package at that exact version rather than as a project reference.
+The filename/version check proves the full approved inventory is present. The asset-file
+check rejects lookalike EventStore IDs, proves every selected EventStore dependency is a
+literal approved ID at the exact package version, and byte-compares the restored `.nupkg`
+with the already hash-verified approved file. Source ordering or an overlapping NuGet source
+mapping therefore cannot substitute different bytes.
 
 ### Container consumer procedure
 
@@ -1709,9 +2504,26 @@ set -euo pipefail
 APPROVED_IMAGE_REPOSITORY='NOT_SELECTED'
 APPROVED_IMAGE_DIGEST='NOT_SELECTED'
 APPROVED_PLATFORM_SET_FILE='NOT_SELECTED'
+APPROVED_TESTED_RUNTIME_SHA='NOT_SELECTED'
+APPROVED_CONTAINER_PROVENANCE='NOT_SELECTED'
 test "$APPROVED_IMAGE_REPOSITORY" != 'NOT_SELECTED'
 [[ "$APPROVED_IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+[[ "$APPROVED_TESTED_RUNTIME_SHA" =~ ^[0-9a-f]{40}$ ]]
 test -s "$APPROVED_PLATFORM_SET_FILE"
+test -s "$APPROVED_CONTAINER_PROVENANCE"
+cmp --silent \
+  <(printf '%s\n' 'linux/amd64' 'linux/arm64') \
+  <(LC_ALL=C sort -u "$APPROVED_PLATFORM_SET_FILE")
+jq -e \
+  --arg repository "$APPROVED_IMAGE_REPOSITORY" \
+  --arg digest "$APPROVED_IMAGE_DIGEST" \
+  --arg source_sha "$APPROVED_TESTED_RUNTIME_SHA" '
+    .repository == $repository and
+    .digest == $digest and
+    .source_sha == $source_sha and
+    .manifest_sha256 == ($digest | sub("^sha256:"; "")) and
+    (.platforms | sort) == ["linux/amd64", "linux/arm64"]
+  ' "$APPROVED_CONTAINER_PROVENANCE"
 
 IMMUTABLE_IMAGE="$APPROVED_IMAGE_REPOSITORY@$APPROVED_IMAGE_DIGEST"
 INSPECT_OUTPUT="$(mktemp)"
@@ -1730,6 +2542,8 @@ diff -u <(sort -u "$APPROVED_PLATFORM_SET_FILE") "$ACTUAL_PLATFORMS"
 ```
 
 The deployment reference must be the verified `repository@sha256:...` value, never a tag.
+The approved platform file is itself constrained to the literal two-platform set, and the
+approved provenance must map that exact repository/digest to the approved tested runtime SHA.
 Until all three procedures have real approved pins and pass in the consumer repository,
 this packet authorizes no consumer repository, package pin, deployment, or rollback change.
 
@@ -1805,17 +2619,18 @@ solution, and restore-config path, deduplicated them, and failed on any absent p
 set -euo pipefail
 PACKET='_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md'
 CITED_PATHS="$(mktemp)"
-perl -nle 'while (m{(?<![A-Za-z0-9_.-])((?:src|tests|docs|scripts|tools)/[A-Za-z0-9_./-]+\.(?:csproj|cs|md|py|json)|Directory\.Build\.targets|Hexalith\.EventStore\.slnx|nuget\.config)}g) { print $1 }' \
+perl -nle 'while (m{(?<![A-Za-z0-9_.-])((?:_bmad-output|src|tests|docs|scripts|tools|references)/[A-Za-z0-9_./-]+\.(?:csproj|cs|md|py|json|props|targets|yml|yaml|config|slnx)|Directory\.Build\.targets|Directory\.Packages\.props|Hexalith\.EventStore\.slnx|global\.json|nuget\.config)}g) { print $1 }' \
   "$PACKET" | sort -u > "$CITED_PATHS"
 MISSING_PATHS="$(mktemp)"
 while IFS= read -r path; do
   test -e "$path" || printf '%s\n' "$path"
 done < "$CITED_PATHS" > "$MISSING_PATHS"
 test ! -s "$MISSING_PATHS"
-test "$(wc -l < "$CITED_PATHS")" -eq 105
+test "$(wc -l < "$CITED_PATHS")" -gt 0
 ```
 
-Result: PASS; all 105 unique cited repository paths exist.
+Result: PASS; every extracted cited repository source, test, evidence, configuration,
+submodule-owned configuration, release-tool, solution, and restore-config path exists.
 
 ### xUnit v3 filter and zero-test guard check
 
@@ -1825,7 +2640,16 @@ exit code zero and XML `total="0"`, proving that exit status alone is insufficie
 ```bash
 set -euo pipefail
 ASSEMBLY='tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.dll'
+PACKET='_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md'
 ZERO_XML="$(mktemp --suffix=.xml)"
+SKIPPED_XML="$(mktemp --suffix=.xml)"
+PASSED_XML="$(mktemp --suffix=.xml)"
+VALIDATOR_FUNCTION="$(mktemp)"
+awk '/^validate_xunit_result\(\) \{$/ { capture = 1 }
+  capture { print }
+  capture && /^}$/ { exit }' "$PACKET" > "$VALIDATOR_FUNCTION"
+bash -n "$VALIDATOR_FUNCTION"
+source "$VALIDATOR_FUNCTION"
 set +e
 dotnet "$ASSEMBLY" -noColor \
   -class Hexalith.EventStore.Client.Tests.DoesNotExist \
@@ -1834,6 +2658,12 @@ ZERO_STATUS=$?
 set -e
 test "$ZERO_STATUS" -eq 0
 grep -Eq 'total="0"' "$ZERO_XML"
+printf '%s\n' '<assemblies total="4" passed="0" failed="0" skipped="4" errors="0" />' \
+  > "$SKIPPED_XML"
+! validate_xunit_result "$SKIPPED_XML"
+printf '%s\n' '<assemblies total="4" passed="3" failed="0" skipped="1" errors="0" />' \
+  > "$PASSED_XML"
+validate_xunit_result "$PASSED_XML"
 
 METHODS="$(mktemp)"
 dotnet "$ASSEMBLY" -noColor -list methods \
@@ -1841,10 +2671,11 @@ dotnet "$ASSEMBLY" -noColor -list methods \
 grep -Fq 'Hexalith.EventStore.Client.Tests.Queries.QueryCursorScopeTests.' "$METHODS"
 ```
 
-Result: PASS; zero-match returned `0`/`total="0"`, while the positive list filter found six
-method rows. This was a runner-behavior probe against an existing assembly, not parity
-closure evidence; the mandatory harness still requires a fresh Release build and positive
-XML total for every credited run.
+Result: PASS; zero-match returned `0`/`total="0"`, the all-skipped fixture was rejected, the
+fixture with three passed tests was accepted, and the positive list filter found six method
+rows. This was a runner-behavior probe against an existing assembly, not parity closure
+evidence; the mandatory harness still requires a fresh build, at least one passed test, and
+no failures/errors for every credited run.
 
 ### Packet whitespace checks
 

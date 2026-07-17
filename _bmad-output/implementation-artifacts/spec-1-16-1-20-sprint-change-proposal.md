@@ -4,7 +4,7 @@ type: 'chore'
 created: '2026-07-16'
 status: 'done'
 baseline_commit: '4423e03bef8f2e6f9139a143a3fc42ea8c835dfd'
-review_loop_iteration: 5
+review_loop_iteration: 6
 context:
   - '{project-root}/_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-16-story-1-16-review-and-story-1-20-proof-closure.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-1-context.md'
@@ -49,10 +49,10 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [x] `_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md` -- preserve every prior loop requirement, then close the demonstrated bypasses: make the exact AD-11 predicate an explicit all-condition conjunction; capture, validate, and authority-bind the installed `Microsoft.NETCore.App` patch alongside SDK/ASP.NET; revalidate authority and source identity immediately before publication; require the exact requested platform set and raw-manifest digest; and require evidence-only A to be the single-parent child of its equal candidate/tested runtime without weakening B's direct-child one-field rule.
-- [x] `_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md` -- preserve all prior loop acceptance, Story 1.19 reconciliation, closure sequencing, durable metadata/expiry enforcement, non-self-referential A/B protocol, current proposal action inventory, and `status: blocked` requirements; keep the A/B check explicitly structural and leave any later authority-bearing transition subject to every independent closure gate.
-- [x] `_bmad-output/implementation-artifacts/deferred-work.md` -- preserve the already committed single AD-11 `open-blocking` corrective item and every existing entry; do not duplicate or rewrite them.
-- [x] `_bmad-output/implementation-artifacts/sprint-status.yaml` -- preserve the approved Story 1.20 blocker comments and `in-progress` states, and retain both `last_updated` fields as `2026-07-16`.
+- [x] `_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md` -- preserve every prior loop requirement; evaluate effective ASP.NET pins through MSBuild; revalidate AD-11 and ignored inputs around every gate; retain complete configured-test evidence; bind package/container consumer bytes and provenance; persist hybrid evidence pins; and verify evidence A, pointer-only B, and authorizing C without weakening any fail-closed intermediate state.
+- [x] `_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md` -- preserve all prior loop acceptance, Story 1.19 reconciliation, closure sequencing, durable metadata/expiry enforcement, the non-self-referential A/B/C protocol, current proposal action inventory, and `status: blocked` requirements; define C as B's direct child and the sole strictly verified authority-bearing transition.
+- [x] `_bmad-output/implementation-artifacts/deferred-work.md` -- preserve the single AD-11 corrective item, its `implementation-complete/evidence-confirmed` reconciliation, the separate open Story 2.7 source-topology prerequisite, and every existing entry without duplication or rewrite.
+- [x] `_bmad-output/implementation-artifacts/sprint-status.yaml` -- preserve the approved Story 1.20 blocker comments and `in-progress` states, and retain both reconciled `last_updated` fields as `2026-07-17`.
 - [x] `_bmad-output/implementation-artifacts/spec-1-11-complete-projection-freshness-lifecycle.md` -- verify structurally and retain exactly one opening-front-matter `followup_review_recommended: true`; make no review-disposition edit without all approved fields and evidence.
 - [x] `_bmad-output/implementation-artifacts/epic-1-context.md` -- preserve the restored Sample/Tenants behavior-preservation and release-hygiene constraints, projection-handler compatibility rule, and canonical SDK endpoint paths without expanding this approved correction into unrelated context design.
 
@@ -62,7 +62,7 @@ context:
 - Given Story 1.16 lacks an exact-runtime review, when implementation completes, then its flag remains `true` and the Story 1.20 blockers explicitly name that condition.
 - Given the proposal is evidence-only, when the diff is reviewed by attribution, then no proposal-owned runtime source, test, pin, package manifest, container, topology, submodule, Parties, or persisted-data edit exists; separately owned concurrent changes remain visible and byte-preserved.
 - Given external container publication requires release-owner authority, when the closure order is read, then authority precedes publication and final proof approval remains a later distinct gate.
-- Given approvals and commit identities cannot self-reference, when closure is recorded, then durable approvals precede evidence-only commit A, A is the single-parent `_bmad-output/`-only child of its equal candidate/tested runtime, and pointer-only commit B records A as `documentation_commit_sha`; expired or out-of-scope authority keeps the packet blocked.
+- Given approvals and commit identities cannot self-reference, when closure is recorded, then durable approvals precede evidence-only commit A, A commits their exact records and binds the hybrid evidence/artifact identities as the single-parent `_bmad-output/`-only child of its equal candidate/tested runtime, pointer-only commit B records A as `documentation_commit_sha`, and only a strictly reconstructed direct-child C may authorize migration and reconcile the Story 1.20/Epic 1 statuses, tracker date, and blocker comments; incomplete Story 1.16 review, open prerequisites, expired/missing/mismatched authority, or nonliteral artifact identity keeps the packet blocked.
 - Given AD-11 and publication are hard gates, when executable proof commands run, then baseline mismatch or missing/malformed/blank/expired/out-of-scope authority aborts before any build or publication-capable command, and accepted authority evidence is immutably copied, hashed, and bound into provenance.
 - Given Bash conditionals can suppress `errexit`, when any exact AD-11 SDK, roll-forward, installed SDK, ASP.NET, or .NET runtime condition mismatches, then the exact-baseline predicate returns failure and cannot bypass the replacement-authority path.
 - Given a publication is an external side effect, when it begins, then authority is still unexpired, tracked/untracked source and candidate identity still match, the inspected manifest has exactly `linux/amd64` and `linux/arm64`, and its raw bytes hash to the recorded immutable digest.
@@ -75,10 +75,11 @@ context:
 - Review loop 3: the third review found a self-referential documentation-SHA sequence, missing authority-expiry enforcement, no authority preflight in the executable container procedure, and an incomplete current file inventory. Tasks now require durable approvals before evidence commit A, a pointer-only commit B that pins A, fail-closed authority validation before publication, action-time validity checks, and a proposal-specific inventory separate from historical records. KEEP: every prior loop correction and preservation rule, especially the blocked packet fields and attribution boundary for concurrent work.
 - Review loop 4: the fourth review found that AD-11 remained prose-only, publication authority accepted whitespace and was not retained in provenance, the authorized repository was not bound to the actual publish properties, the A/B protocol lacked executable validation, and prose-wide `rg` could miss changed front matter. Tasks and verification now require fail-closed executable preflights, nonblank scoped fields, immutable authority evidence, explicit publish binding, A/B structural commands, and exact opening-front-matter parsing. KEEP: all prior loop corrections and every concurrent-change preservation boundary.
 - Review loop 5: the fifth review demonstrated an `errexit`-suppression false pass in the exact AD-11 predicate and found missing .NET-runtime binding, pre-publication revalidation, exact platform/digest checks, tested-runtime commit binding, structural cross-artifact guards, and attribution-aware path verification. Tasks and acceptance now make each condition executable and falsifiable. The A/B procedure remains a structural evidence-only/non-self-reference check, never proof-result approval; local record validation remains an evidence-integrity preflight, never a substitute for human authority, durable-source trust, or registry access control. KEEP: all prior fail-closed fields, the approved trust boundary, the exact five proposal-owned edits, verify-only ledger/Story 1.16 actions, and all explicitly reported concurrent worktree paths.
+- Review loop 6: the chunked code review found fail-open pin discovery, skipped-test credit, incomplete configured suites/log capture, temporary-only evidence, weak consumer byte/provenance binding, pointer-mode drift, stale tracker/ledger assertions, duplicate-platform acceptance, syntactic-only final approvals, and an authorizing transition that did not prove Story 1.16 review, closed prerequisites, literal package IDs, complete container authority provenance, coherent sprint comments, or monotonic chronology. The accepted decisions use hybrid durable evidence and a strict direct-child commit C. Verification now exercises evaluated MSBuild items plus positive and targeted negative A/B/C histories for every added guard. KEEP: A and B non-authorizing, exact source/package/container identity separation, and every prior owner-approval and clean-source boundary.
 
 ## Design Notes
 
-The approved proposal contains replacement-style examples based on an earlier checkout. Treat them as semantic requirements merged into the current richer evidence. Repository identity is an observed, timestamped audit fact. Authority validation is an evidence-integrity preflight, not a substitute for registry access control or human authorization; the accepted record and its digest must survive with provenance. After all results exist, named approvals live in durable external sources; evidence commit A records those results and approval references, then pointer-only commit B sets `documentation_commit_sha` to A. B must make no other semantic change. Whole-baseline review includes concurrent work for visibility, but scope acceptance is attribution-based: this evidence-only implementation must not author runtime or dependency changes owned by concurrent commits.
+The approved proposal contains replacement-style examples based on an earlier checkout. Treat them as semantic requirements merged into the current richer evidence. Repository identity is an observed, timestamped audit fact. Authority validation is an evidence-integrity preflight, not a substitute for registry access control or human authorization; each accepted record and digest must survive with provenance. After all results exist, named approvals live in durable external sources and exact committed copies; evidence commit A records the hybrid evidence, literal artifact identities, results, completed Story 1.16 review, closed prerequisites, and approval records; pointer-only commit B sets `documentation_commit_sha` to A and makes no other semantic change; verified direct-child C performs only the reconstructed authorization/status/date/comment transition. Whole-baseline review includes concurrent work for visibility, but scope acceptance is attribution-based: this evidence-only implementation must not author runtime or dependency changes owned by concurrent commits.
 
 ## Verification
 
@@ -181,8 +182,8 @@ awk '
 ' _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md
 
 awk '
-  /^# last_updated:/ { comment_key++; comment_ok += ($0 == "# last_updated: 2026-07-16") }
-  /^last_updated:/ { field_key++; field_ok += ($0 == "last_updated: 2026-07-16") }
+  /^# last_updated:/ { comment_key++; comment_ok += ($0 == "# last_updated: 2026-07-17") }
+  /^last_updated:/ { field_key++; field_ok += ($0 == "last_updated: 2026-07-17") }
   /^  epic-1:/ { epic_key++; epic_ok += ($0 == "  epic-1: in-progress") }
   /^  1-20-owner-approved-parity-closure-and-runtime-pin:/ {
     story_key++; story_ok += ($0 == "  1-20-owner-approved-parity-closure-and-runtime-pin: in-progress")
@@ -194,7 +195,7 @@ awk '
 
 Expected: exit 0. Story 1.16 has exactly one opening-front-matter true flag; the Story 1.20
 file is exactly `blocked`; the sprint Story 1.20 and Epic 1 entries remain exactly
-`in-progress`; both tracker dates remain `2026-07-16`.
+`in-progress`; both tracker dates remain `2026-07-17`.
 
 ```bash
 awk '
@@ -203,19 +204,21 @@ awk '
   }
   in_ad11 && /^## / { in_ad11 = 0 }
   in_ad11 && /^  status:/ {
-    status_key++; status_ok += ($0 == "  status: open-blocking")
+    status_key++; status_ok += ($0 == "  status: implementation-complete/evidence-confirmed")
   }
   in_ad11 && /^  summary:/ {
     summary_key++
     summary_ok += ($0 == "  summary: Land the architecture AD-11 .NET/ASP.NET security baseline before selecting Story 1.20\047s tested runtime SHA.")
   }
+  in_ad11 && /^  closure_evidence:/ { closure_key++ }
   END { exit !(section == 1 && status_key == 1 && status_ok == 1 &&
-    summary_key == 1 && summary_ok == 1) }
+    summary_key == 1 && summary_ok == 1 && closure_key == 1) }
 ' _bmad-output/implementation-artifacts/deferred-work.md
 ```
 
-Expected: exactly one AD-11 readiness section exists, with one `open-blocking` status and
-the approved summary; no duplicate ledger entry is accepted.
+Expected: exactly one AD-11 readiness section exists, with one
+`implementation-complete/evidence-confirmed` status, the approved summary, and one closure-evidence
+record; no duplicate ledger entry or stale open status is accepted.
 
 ```bash
 bash -c '
@@ -282,16 +285,27 @@ bash -c '
   packet="$1"
   function_file="$(mktemp)"
   trap "rm -f -- \"$function_file\"" EXIT
-  for function_name in fresh_release run_xunit_class run_xunit_method run_xunit_all; do
+  for function_name in fresh_release fresh_debug_source run_xunit_class run_xunit_method \
+      run_xunit_all validate_xunit_result assert_ad11_current prepare_publication_action \
+      validate_final_owner_record validate_committed_owner_record; do
     awk -v signature="$function_name() {" '\''
       $0 == signature { capture = 1 }
       capture { print }
       capture && /^}$/ { exit }
     '\'' "$packet" > "$function_file"
     bash -n "$function_file"
-    test "$(grep -c "^  assert_candidate_identity$" "$function_file")" -eq 2
+    case "$function_name" in
+      fresh_release|fresh_debug_source|run_xunit_class|run_xunit_method|run_xunit_all)
+        test "$(grep -c "^  assert_ad11_current$" "$function_file")" -eq 1
+        test "$(grep -c "^  assert_candidate_tree_clean$" "$function_file")" -eq 2
+        ;;
+      assert_ad11_current)
+        test "$(grep -c "^  assert_candidate_identity$" "$function_file")" -eq 1
+        ;;
+    esac
   done
-  test "$(grep -c "^assert_candidate_identity$" "$packet")" -ge 11
+  test "$(grep -c "^assert_ad11_current$" "$packet")" -ge 8
+  test "$(grep -c "^assert_candidate_tree_clean$" "$packet")" -ge 5
 ' _ _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
 
 bash -c '
@@ -358,12 +372,62 @@ bash -c '
   wrong_legacy[1]="Microsoft.AspNetCore.Identity 10.0.10"
   ! validate_aspnet_pin_band "${wrong_legacy[@]}" >/dev/null 2>&1
 ' _ _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
+
+bash -c '
+  set -euo pipefail
+  packet="$1"
+  props="$(mktemp --suffix=.props)"
+  project="$(mktemp --suffix=.proj)"
+  output="$(mktemp)"
+  functions="$(mktemp)"
+  trap "rm -f -- \"$props\" \"$project\" \"$output\" \"$functions\"" EXIT
+  cat > "$props" <<PROPS
+<Project>
+  <PropertyGroup>
+    <MixedVersion>10.0.9</MixedVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Version="10.0.10"
+                    Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageVersion Include="Microsoft.AspNetCore.Identity" Version="2.3.11" />
+    <PackageVersion Condition="\$(UseMixed)"
+                    Version="\$(MixedVersion)"
+                    Include="Microsoft.AspNetCore.OpenApi" />
+  </ItemGroup>
+</Project>
+PROPS
+  cat > "$project" <<PROJECT
+<Project>
+  <Import Project="$props" />
+  <Target Name="WriteEffectivePackageVersions">
+    <WriteLinesToFile File="$output"
+                      Lines="@(PackageVersion->&quot;%(Identity) %(Version)&quot;)"
+                      Overwrite="true" />
+  </Target>
+</Project>
+PROJECT
+  for function_name in discover_effective_aspnet_pin_pairs validate_aspnet_pin_band; do
+    awk -v signature="$function_name() {" '\''
+      $0 == signature { capture = 1 }
+      capture { print }
+      capture && /^}$/ { exit }
+    '\'' "$packet" >> "$functions"
+  done
+  source "$functions"
+  dotnet msbuild "$project" -nologo -t:WriteEffectivePackageVersions -p:UseMixed=false >/dev/null
+  mapfile -t exact < <(discover_effective_aspnet_pin_pairs "$output")
+  test "$(validate_aspnet_pin_band "${exact[@]}")" = 10.0.10
+  dotnet msbuild "$project" -nologo -t:WriteEffectivePackageVersions -p:UseMixed=true >/dev/null
+  mapfile -t mixed < <(discover_effective_aspnet_pin_pairs "$output")
+  ! validate_aspnet_pin_band "${mixed[@]}" >/dev/null 2>&1
+' _ _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
 ```
 
 Expected: exit 0. Every packet Bash block parses, the extracted exact AD-11 function passes
 the valid tuple, each individual mismatch fails even when the function is invoked by `if`,
-and the ASP.NET pin-band validator rejects mixed patch bands, wrong majors, and a changed
-legacy Identity exception.
+the ASP.NET pin-band validator rejects mixed patch bands, wrong majors, and a changed legacy
+Identity exception, and evaluated MSBuild items preserve reordered/multiline attributes while
+still rejecting a conditional mixed patch.
 
 ```bash
 bash -c '
@@ -531,6 +595,9 @@ bash -c '
   printf %s '\''{"manifests":[{"platform":{"os":"linux","architecture":"amd64"}}]}'\'' > "$manifest"
   IMAGE_DIGEST="sha256:$(sha256sum "$manifest" | awk '\''{print $1}'\'')"
   ! validate_published_manifest "$manifest" "$IMAGE_DIGEST" "$platforms" >/dev/null 2>&1
+  printf %s '\''{"manifests":[{"platform":{"os":"linux","architecture":"amd64"}},{"platform":{"os":"linux","architecture":"amd64"}}]}'\'' > "$manifest"
+  IMAGE_DIGEST="sha256:$(sha256sum "$manifest" | awk '\''{print $1}'\'')"
+  ! validate_published_manifest "$manifest" "$IMAGE_DIGEST" "$platforms" >/dev/null 2>&1
   printf %s '\''{"manifests":[{"platform":{"os":"linux","architecture":"amd64"}},{"platform":{"os":"linux","architecture":"arm64"}},{"platform":{"os":"linux","architecture":"s390x"}}]}'\'' > "$manifest"
   IMAGE_DIGEST="sha256:$(sha256sum "$manifest" | awk '\''{print $1}'\'')"
   ! validate_published_manifest "$manifest" "$IMAGE_DIGEST" "$platforms" >/dev/null 2>&1
@@ -540,7 +607,8 @@ bash -c '
 Expected: exit 0. The extracted publication-authority predicate accepts the valid scoped,
 unexpired fixture and rejects wrong action, blank fields, future authorization, action-time
 expiry, and wrong repository/tag/source. The extracted manifest validator accepts only the
-matching raw-byte digest and exact two-platform set.
+matching raw-byte digest and exactly one manifest for each required platform; missing,
+duplicated, or extra platform entries fail.
 
 ```bash
 bash -c '
@@ -612,7 +680,7 @@ bash -c '
   clean_function="$(mktemp)"
   repository="$(mktemp -d)"
   trap "rm -f -- \"$clean_function\"; rm -rf -- \"$repository\"" EXIT
-  awk '\''/^assert_publication_source_clean\(\) \{$/ { capture = 1 }
+  awk '\''/^assert_repository_clean_allow_generated\(\) \{$/ { capture = 1 }
     capture { print }
     capture && /^}$/ { exit }'\'' "$packet" > "$clean_function"
   bash -n "$clean_function"
@@ -623,45 +691,74 @@ bash -c '
   printf "%s\n" bin/ obj/ "*.tmp" > "$repository/.gitignore"
   git -C "$repository" add .gitignore
   git -C "$repository" commit -qm baseline
-  assert_publication_source_clean "$repository"
+  assert_repository_clean_allow_generated "$repository"
   mkdir -p "$repository/src/bin" "$repository/src/obj"
   : > "$repository/src/bin/output.dll"
   : > "$repository/src/obj/assets.json"
-  assert_publication_source_clean "$repository"
+  assert_repository_clean_allow_generated "$repository"
   : > "$repository/untracked.txt"
-  ! assert_publication_source_clean "$repository" >/dev/null 2>&1
+  ! assert_repository_clean_allow_generated "$repository" >/dev/null 2>&1
   rm "$repository/untracked.txt"
   : > "$repository/unapproved.tmp"
-  ! assert_publication_source_clean "$repository" >/dev/null 2>&1
+  ! assert_repository_clean_allow_generated "$repository" >/dev/null 2>&1
 ' _ _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
 
-awk '
-  $0 == "dotnet restore \"$CONTAINER_PROJECT\" \\" { restore = NR }
-  $0 == "  assert_publication_source_clean \"$repository\"" {
-    if (first_clean == 0) first_clean = NR
-    last_clean = NR
-  }
-  $0 == "AUTHORITY_CHECKED_AT=\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"" { action_time = NR }
-  $0 == "validate_publication_authority \"$AUTHORITY_CHECKED_AT\"" { authority_call = NR }
-  $0 == "assert_candidate_identity" { last_identity = NR }
-  $0 == "if dotnet publish \"$CONTAINER_PROJECT\" \\" {
-    publish = NR; immediate_identity = (last_identity == NR - 1)
-  }
-  $0 == "IMAGE_DIGEST=\"$(cat \"$GENERATED_IMAGE_INDEX_DIGEST\")\"" { generated_digest = NR }
-  $0 == "test \"$TAG_IMAGE_DIGEST\" = \"$IMAGE_DIGEST\"" { tag_consistency = NR }
-  END { exit !(restore > 0 && restore < first_clean && first_clean < action_time &&
-    action_time < authority_call && authority_call < publish && immediate_identity &&
-    publish < last_clean && last_clean < generated_digest && generated_digest < tag_consistency) }
-' _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
+bash -c '
+  set -euo pipefail
+  packet="$1"
+  publication_block="$(mktemp)"
+  trap "rm -f -- \"$publication_block\"" EXIT
+  awk '\''
+    $0 == "- required exact container publication, immutable inspection, and provenance commands:" {
+      section = 1; next
+    }
+    section && /^```bash$/ { capture = 1; next }
+    capture && /^```$/ { exit }
+    capture { print }
+  '\'' "$packet" > "$publication_block"
+  bash -n "$publication_block"
+  awk '\''
+    $0 == "dotnet restore \"$CONTAINER_PROJECT\" \\" { restore = NR }
+    $0 == "prepare_publication_action() {" { in_ready = 1; ready_function = NR; next }
+    in_ready && $0 == "  AUTHORITY_CHECKED_AT=\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"" {
+      action_time = NR
+    }
+    in_ready && $0 == "  assert_ad11_current" { final_ad11 = NR }
+    in_ready && $0 == "    assert_publication_source_clean \"$repository\"" {
+      final_clean = NR
+    }
+    in_ready && $0 == "  validate_publication_authority \"$AUTHORITY_CHECKED_AT\"" {
+      authority_call = NR
+    }
+    in_ready && $0 == "}" {
+      ready_end = NR; authority_is_last = (authority_call == NR - 1); in_ready = 0
+    }
+    $0 == "prepare_publication_action" { ready_call = NR }
+    $0 == "if dotnet publish \"$CONTAINER_PROJECT\" \\" {
+      publish = NR; readiness_is_immediate = (ready_call == NR - 1)
+    }
+    $0 == "  assert_publication_source_clean \"$repository\"" { last_clean = NR }
+    $0 == "IMAGE_TAG=\"quarantine-proof-${CANDIDATE_SHA}\"" { quarantine_tag = NR }
+    $0 == "IMAGE_DIGEST=\"$(cat \"$GENERATED_IMAGE_INDEX_DIGEST\")\"" { generated_digest = NR }
+    $0 == "test \"$TAG_IMAGE_DIGEST\" = \"$IMAGE_DIGEST\"" { tag_consistency = NR }
+    END { exit !(restore > 0 && ready_function > restore &&
+      ready_function < action_time && action_time < final_ad11 && final_ad11 < final_clean &&
+      final_clean < authority_call && authority_call < ready_end && authority_is_last &&
+      ready_end < ready_call && readiness_is_immediate && quarantine_tag > 0 &&
+      quarantine_tag < publish && publish < last_clean && last_clean < generated_digest &&
+      generated_digest < tag_consistency) }
+  '\'' "$publication_block"
+' _ _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
 ```
 
 Expected: the literal package gate accepts the exact filename-to-nuspec mapping and rejects
 duplicate embedded identities. The package hash guard accepts exactly 14 portable relative
 filenames and rejects partial or absolute-path manifests. The extracted SDK image-index capture
 target preserves exact bytes and emits their digest. The cleanliness function accepts a clean repository and generated
-`bin`/`obj`, rejects untracked and unapproved ignored inputs, and the publication block orders a
-fresh isolated restore, clean source, fresh action timestamp, authority validation, immediate
-candidate identity, post-publish cleanliness, SDK-produced digest capture, and tag consistency.
+`bin`/`obj`, rejects untracked and unapproved ignored inputs, and the structurally isolated
+publication block orders a fresh restore, one final action-time AD-11/source/authority readiness
+function immediately before quarantined publication, post-publish cleanliness, SDK-produced
+digest capture, and tag consistency. Markers outside that executable block cannot satisfy it.
 
 ```bash
 bash -c '
@@ -670,7 +767,7 @@ bash -c '
   verification_script="$(mktemp)"
   repository="$(mktemp -d)"
   trap "rm -f -- \"$verification_script\"; rm -rf -- \"$repository\"" EXIT
-  awk '\''$0 == "### Evidence Commit A And Pointer-Only Commit B Verification" {
+  awk '\''$0 == "### Evidence Commit A, Pointer-Only Commit B, And Authorizing Commit C Verification" {
       section = 1; next
     }
     section && /^```bash$/ { capture = 1; next }
@@ -680,10 +777,14 @@ bash -c '
   git -C "$repository" init -q
   git -C "$repository" config user.email proof@example.invalid
   git -C "$repository" config user.name Proof
-  mkdir -p "$repository/src"
+  git -C "$repository" remote add origin https://github.com/Hexalith/Hexalith.EventStore.git
+  mkdir -p "$repository/src" "$repository/tools"
   packet_path="$repository/_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md"
   story_path="$repository/_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md"
   sprint_path="$repository/_bmad-output/implementation-artifacts/sprint-status.yaml"
+  followup_path="$repository/_bmad-output/implementation-artifacts/spec-1-11-complete-projection-freshness-lifecycle.md"
+  deferred_path="$repository/_bmad-output/implementation-artifacts/deferred-work.md"
+  evidence_root="$repository/_bmad-output/implementation-artifacts/evidence/story-1-20"
   write_story_guard() {
     local status="$1"
     mkdir -p "$(dirname "$story_path")"
@@ -693,91 +794,438 @@ bash -c '
   write_sprint_guard() {
     local epic_status="$1"
     local story_status="$2"
+    local updated="${3:-2026-07-17}"
+    printf "%s\n" "# last_updated: $updated" "last_updated: $updated" > "$sprint_path"
+    if test "$story_status" = in-progress; then
+      printf "%s\n" \
+        "# Story 1.19 review is complete. Story 1.20 remains in progress while:" \
+        "# - fixture prerequisites remain under verification;" \
+        "# \`final_decision: still blocked\` cannot transition this story or Epic 1 to done." \
+        >> "$sprint_path"
+    else
+      printf "%s\n" \
+        "# Story 1.20 owner-approved parity closure is complete; authorizing commit C" \
+        "# verified every pinned artifact, approval, prerequisite, and migration decision." \
+        >> "$sprint_path"
+    fi
     printf "%s\n" "development_status:" "  epic-1: $epic_status" \
-      "  1-20-owner-approved-parity-closure-and-runtime-pin: $story_status" > "$sprint_path"
+      "  1-20-owner-approved-parity-closure-and-runtime-pin: $story_status" >> "$sprint_path"
+  }
+  write_followup_guard() {
+    local recommended="$1"
+    mkdir -p "$(dirname "$followup_path")"
+    printf "%s\n" "---" "followup_review_recommended: $recommended" "---" \
+      "" "# Story 1.16" > "$followup_path"
+    if test "$recommended" = false; then
+      printf "%s\n" "" "### 2026-07-17 — Follow-up review disposition" "" \
+        "- reviewed_runtime_sha: $runtime" \
+        "- reviewer: Independent Reviewer" \
+        "- durable_source: https://approvals.example/story-1-16" \
+        "- scope: integrated lifecycle runtime" \
+        "- findings_and_resolutions: all findings resolved" \
+        "- verification: exact runtime gates passed" \
+        "- residual_limitations: none" \
+        "- disposition: approved" >> "$followup_path"
+    fi
+  }
+  write_deferred_guard() {
+    local status="$1"
+    mkdir -p "$(dirname "$deferred_path")"
+    printf "%s\n" \
+      "# Deferred Work" "" \
+      "## Deferred from: Story 1.20 fixture prerequisite" "" \
+      "- source_spec: fixture" \
+      "  status: $status" > "$deferred_path"
+  }
+  write_blocked_packet() {
+    local documentation="${1:-null}"
+    local decision="${2:-still blocked}"
+    local authorize="${3:-false}"
+    mkdir -p "$(dirname "$packet_path")"
+    cat > "$packet_path" <<PACKET
+---
+candidate_source_sha: null
+tested_runtime_sha: null
+documentation_commit_sha: $documentation
+evidence_manifest_sha256: null
+raw_evidence_bundle_url: null
+raw_evidence_bundle_sha256: null
+eventstore_owner_approval_url: null
+eventstore_owner_approval_sha256: null
+release_owner_disposition_url: null
+release_owner_disposition_sha256: null
+approved_package_version: null
+approved_package_hash_manifest_sha256: null
+approved_container_repository: null
+approved_container_digest: null
+final_decision: $decision
+authorize_consumer_migration: $authorize
+---
+# Evidence
+PACKET
+    for _ in $(seq 1 9); do
+      echo "- classification: \`still blocked\`" >> "$packet_path"
+    done
   }
   printf "stable runtime\n" > "$repository/src/runtime.txt"
+  cat > "$repository/tools/release-packages.json" <<JSON
+{"packages":[
+{"id":"Hexalith.EventStore.Admin.Abstractions"},
+{"id":"Hexalith.EventStore.Admin.Cli"},
+{"id":"Hexalith.EventStore.Admin.Server"},
+{"id":"Hexalith.EventStore.Aspire"},
+{"id":"Hexalith.EventStore.Client"},
+{"id":"Hexalith.EventStore.Contracts"},
+{"id":"Hexalith.EventStore.DomainService"},
+{"id":"Hexalith.EventStore.Gateway"},
+{"id":"Hexalith.EventStore.RestApi.Generators"},
+{"id":"Hexalith.EventStore.Server"},
+{"id":"Hexalith.EventStore.ServiceDefaults"},
+{"id":"Hexalith.EventStore.SignalR"},
+{"id":"Hexalith.EventStore.Testing"},
+{"id":"Hexalith.EventStore.Testing.Integration"}
+]}
+JSON
   write_story_guard blocked
   write_sprint_guard in-progress in-progress
-  git -C "$repository" add src/runtime.txt _bmad-output
+  write_followup_guard true
+  write_deferred_guard open-blocking
+  write_blocked_packet
+  git -C "$repository" add src/runtime.txt tools/release-packages.json _bmad-output
   git -C "$repository" commit -qm runtime
   runtime="$(git -C "$repository" rev-parse HEAD)"
-  write_packet() {
-    local documentation="$1"
-    local candidate="${2:-$runtime}"
-    local tested="${3:-$runtime}"
-    mkdir -p "$(dirname "$packet_path")"
-    printf "%s\n" "---" "candidate_source_sha: $candidate" \
-      "tested_runtime_sha: $tested" "documentation_commit_sha: $documentation" \
-      "final_decision: still blocked" "authorize_consumer_migration: false" "---" \
-      "# Evidence" > "$packet_path"
+  zeros="$(printf "0%.0s" {1..64})"
+  raw_hash="$(printf "a%.0s" {1..64})"
+  package_version=1.2.3
+  package_ids=(
+    Hexalith.EventStore.Admin.Abstractions
+    Hexalith.EventStore.Admin.Cli
+    Hexalith.EventStore.Admin.Server
+    Hexalith.EventStore.Aspire
+    Hexalith.EventStore.Client
+    Hexalith.EventStore.Contracts
+    Hexalith.EventStore.DomainService
+    Hexalith.EventStore.Gateway
+    Hexalith.EventStore.RestApi.Generators
+    Hexalith.EventStore.Server
+    Hexalith.EventStore.ServiceDefaults
+    Hexalith.EventStore.SignalR
+    Hexalith.EventStore.Testing
+    Hexalith.EventStore.Testing.Integration
+  )
+  manifest_json='\''{"manifests":[{"platform":{"os":"linux","architecture":"amd64"}},{"platform":{"os":"linux","architecture":"arm64"}}]}'\''
+  image_hash="$(printf %s "$manifest_json" | sha256sum | awk '\''{print $1}'\'')"
+  write_evidence() {
+    durable="$evidence_root/$runtime"
+    rm -rf "$durable"
+    mkdir -p "$durable"
+    printf "%s\n" "{\"url\":\"https://evidence.example/raw.tgz\",\"sha256\":\"$raw_hash\"}" \
+      > "$durable/raw-evidence-bundle.json"
+    for package_id in "${package_ids[@]}"; do
+      printf "%s  %s.%s.nupkg\n" "$zeros" "$package_id" "$package_version"
+    done > "$durable/nuget-sha256.txt"
+    package_manifest_hash="$(sha256sum "$durable/nuget-sha256.txt" | cut -d " " -f 1)"
+    printf %s "$manifest_json" > "$durable/generated-image-index.json"
+    printf %s "$manifest_json" > "$durable/container-manifest.json"
+    printf "%s\n" "sha256:$image_hash" > "$durable/generated-image-index.digest.txt"
+    printf "%s\n" linux/amd64 linux/arm64 > "$durable/container-platforms.txt"
+    printf "%s\n" "<Project />" > "$durable/capture-generated-image-index.targets"
+    printf "%s\n" 2026-07-17T12:00:00Z \
+      > "$durable/release-owner-publication-authority.checked-at.txt"
+    cat > "$durable/release-owner-publication-authority.json" <<JSON
+{"action":"container-publication","owner":"Release Owner","authorized_at":"2026-07-17T11:00:00Z","durable_source":"https://approvals.example/publication","rationale":"proof fixture","expires_at":"2026-07-17T13:00:00Z","scope":{"repository":"registry.hexalith.com/eventstore","tag":"quarantine-proof-$runtime","source_sha":"$runtime"}}
+JSON
+    cat > "$durable/container-provenance.json" <<JSON
+{"source_sha":"$runtime","repository":"registry.hexalith.com/eventstore","tag":"quarantine-proof-$runtime","digest":"sha256:$image_hash","manifest_sha256":"$image_hash","sdk_generated_index":{"file":"generated-image-index.json","digest":"sha256:$image_hash","capture_targets_file":"capture-generated-image-index.targets","capture_targets_sha256":"$(sha256sum "$durable/capture-generated-image-index.targets" | awk '\''{print $1}'\'')"},"platforms":["linux/amd64","linux/arm64"],"publish_properties":{"container_registry":"registry.hexalith.com","container_repository":"eventstore","container_image_tag":"quarantine-proof-$runtime","container_runtime_identifiers":"linux-x64;linux-arm64"},"publication_authority":{"file":"release-owner-publication-authority.json","sha256":"$(sha256sum "$durable/release-owner-publication-authority.json" | awk '\''{print $1}'\'')","checked_at":"2026-07-17T12:00:00Z","checked_at_file":"release-owner-publication-authority.checked-at.txt","checked_at_sha256":"$(sha256sum "$durable/release-owner-publication-authority.checked-at.txt" | awk '\''{print $1}'\'')"}}
+JSON
+    cat > "$durable/eventstore-owner-proof-approval.json" <<JSON
+{"action":"story-1-20-proof-approval","owner":"EventStore Owner","approved_at":"2026-01-01T00:00:00Z","durable_source":"https://approvals.example/eventstore","accepted_scope":"complete proof fixture","limitations":[],"decision":"authorize-consumer-migration","scope":{"repository":"https://github.com/Hexalith/Hexalith.EventStore.git","tested_runtime_sha":"$runtime","raw_evidence_bundle_sha256":"$raw_hash","package_version":"$package_version","package_hash_manifest_sha256":"$package_manifest_hash","container_repository":"registry.hexalith.com/eventstore","container_digest":"sha256:$image_hash"}}
+JSON
+    cat > "$durable/release-owner-final-disposition.json" <<JSON
+{"action":"story-1-20-release-disposition","owner":"Release Owner","approved_at":"2026-01-01T00:00:00Z","durable_source":"https://approvals.example/release","accepted_scope":"release identities fixture","limitations":[],"decision":"approve-release-identities","scope":{"repository":"https://github.com/Hexalith/Hexalith.EventStore.git","tested_runtime_sha":"$runtime","raw_evidence_bundle_sha256":"$raw_hash","package_version":"$package_version","package_hash_manifest_sha256":"$package_manifest_hash","container_repository":"registry.hexalith.com/eventstore","container_digest":"sha256:$image_hash"}}
+JSON
+    owner_hash="$(sha256sum "$durable/eventstore-owner-proof-approval.json" | cut -d " " -f 1)"
+    release_hash="$(sha256sum "$durable/release-owner-final-disposition.json" | cut -d " " -f 1)"
+    (
+      cd "$durable"
+      find . -maxdepth 1 -type f ! -name "critical-evidence-sha256.txt" -printf "%P\\0" \
+        | LC_ALL=C sort -z | xargs -0 sha256sum --
+    ) > "$durable/critical-evidence-sha256.txt"
+    evidence_manifest_hash="$(sha256sum "$durable/critical-evidence-sha256.txt" | cut -d " " -f 1)"
   }
-  write_packet null
+  write_complete_packet() {
+    local documentation="$1"
+    local decision="${2:-still blocked}"
+    local authorize="${3:-false}"
+    local candidate="${4:-$runtime}"
+    local tested="${5:-$runtime}"
+    mkdir -p "$(dirname "$packet_path")"
+    cat > "$packet_path" <<PACKET
+---
+candidate_source_sha: $candidate
+tested_runtime_sha: $tested
+documentation_commit_sha: $documentation
+evidence_manifest_sha256: $evidence_manifest_hash
+raw_evidence_bundle_url: https://evidence.example/raw.tgz
+raw_evidence_bundle_sha256: $raw_hash
+eventstore_owner_approval_url: https://approvals.example/eventstore
+eventstore_owner_approval_sha256: $owner_hash
+release_owner_disposition_url: https://approvals.example/release
+release_owner_disposition_sha256: $release_hash
+approved_package_version: $package_version
+approved_package_hash_manifest_sha256: $package_manifest_hash
+approved_container_repository: registry.hexalith.com/eventstore
+approved_container_digest: sha256:$image_hash
+final_decision: $decision
+authorize_consumer_migration: $authorize
+---
+# Evidence
+PACKET
+    for _ in $(seq 1 9); do
+      echo "- classification: \`available\`" >> "$packet_path"
+    done
+  }
+  write_followup_guard false
+  write_deferred_guard implementation-complete/evidence-confirmed
+  write_evidence
+  write_complete_packet null
   git -C "$repository" add _bmad-output
   git -C "$repository" commit -qm evidence-a
   evidence_a="$(git -C "$repository" rev-parse HEAD)"
-  write_packet "$evidence_a"
+  write_complete_packet "$evidence_a"
   git -C "$repository" add _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
   git -C "$repository" commit -qm pointer-b
   pointer_b="$(git -C "$repository" rev-parse HEAD)"
+  write_complete_packet "$evidence_a" available true
+  write_story_guard done
+  write_sprint_guard done done 2026-07-18
+  git -C "$repository" add _bmad-output
+  git -C "$repository" commit -qm authorization-c
+  authorization_c="$(git -C "$repository" rev-parse HEAD)"
   (cd "$repository" && EVIDENCE_COMMIT_A="$evidence_a" POINTER_COMMIT_B="$pointer_b" \
+    AUTHORIZATION_COMMIT_C="$authorization_c" \
     bash "$verification_script")
 
-  git -C "$repository" checkout -qb extra-b "$evidence_a"
-  write_packet "$evidence_a"
+  finish_rejected_chain() {
+    local rejected_a="$1"
+    local label="$2"
+    local c_date="${3:-2026-07-18}"
+    local candidate="${4:-$runtime}"
+    local tested="${5:-$runtime}"
+    local rejected_b
+    local rejected_c
+    write_complete_packet "$rejected_a" "still blocked" false "$candidate" "$tested"
+    git -C "$repository" add "$packet_path"
+    git -C "$repository" commit -qm "$label-pointer-b"
+    rejected_b="$(git -C "$repository" rev-parse HEAD)"
+    write_complete_packet "$rejected_a" available true "$candidate" "$tested"
+    write_story_guard done
+    write_sprint_guard done done "$c_date"
+    git -C "$repository" add _bmad-output
+    git -C "$repository" commit -qm "$label-authorization-c"
+    rejected_c="$(git -C "$repository" rev-parse HEAD)"
+    ! (cd "$repository" && EVIDENCE_COMMIT_A="$rejected_a" \
+      POINTER_COMMIT_B="$rejected_b" AUTHORIZATION_COMMIT_C="$rejected_c" \
+      bash "$verification_script" >/dev/null 2>&1)
+  }
+
+  git -C "$repository" checkout -qb mode-b "$evidence_a"
+  write_complete_packet "$evidence_a"
+  chmod +x "$packet_path"
+  git -C "$repository" add "$packet_path"
+  git -C "$repository" commit -qm mode-b
+  mode_b="$(git -C "$repository" rev-parse HEAD)"
+  write_complete_packet "$evidence_a" available true
+  write_story_guard done
+  write_sprint_guard done done 2026-07-18
+  git -C "$repository" add _bmad-output
+  git -C "$repository" commit -qm mode-c
+  mode_c="$(git -C "$repository" rev-parse HEAD)"
+  ! (cd "$repository" && EVIDENCE_COMMIT_A="$evidence_a" POINTER_COMMIT_B="$mode_b" \
+    AUTHORIZATION_COMMIT_C="$mode_c" bash "$verification_script" >/dev/null 2>&1)
+
+  git -C "$repository" checkout -qb extra-c "$pointer_b"
+  write_complete_packet "$evidence_a" available true
+  write_story_guard done
+  write_sprint_guard done done 2026-07-18
   printf "extra\n" > "$repository/_bmad-output/extra.txt"
   git -C "$repository" add _bmad-output
-  git -C "$repository" commit -qm extra-b
-  extra_b="$(git -C "$repository" rev-parse HEAD)"
-  ! (cd "$repository" && EVIDENCE_COMMIT_A="$evidence_a" POINTER_COMMIT_B="$extra_b" \
+  git -C "$repository" commit -qm extra-c
+  extra_c="$(git -C "$repository" rev-parse HEAD)"
+  ! (cd "$repository" && EVIDENCE_COMMIT_A="$evidence_a" POINTER_COMMIT_B="$pointer_b" \
+    AUTHORIZATION_COMMIT_C="$extra_c" \
     bash "$verification_script" >/dev/null 2>&1)
 
-  git -C "$repository" checkout -qb non-evidence-a "$runtime"
-  write_packet null
-  printf "untested\n" > "$repository/src/untested.txt"
-  git -C "$repository" add _bmad-output src/untested.txt
-  git -C "$repository" commit -qm non-evidence-a
+  git -C "$repository" checkout -qb missing-packet-a "$runtime"
+  write_evidence
+  git -C "$repository" add "$evidence_root"
+  git -C "$repository" commit -qm missing-packet-a
   bad_a="$(git -C "$repository" rev-parse HEAD)"
-  write_packet "$bad_a"
-  git -C "$repository" add _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
+  write_blocked_packet "$bad_a"
+  git -C "$repository" add "$packet_path"
   git -C "$repository" commit -qm bad-pointer-b
   bad_b="$(git -C "$repository" rev-parse HEAD)"
-  ! (cd "$repository" && EVIDENCE_COMMIT_A="$bad_a" POINTER_COMMIT_B="$bad_b" \
-    bash "$verification_script" >/dev/null 2>&1)
-
-  git -C "$repository" checkout -qb unequal-identities-a "$runtime"
-  unequal_candidate=0000000000000000000000000000000000000000
-  write_packet null "$unequal_candidate" "$runtime"
-  git -C "$repository" add _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
-  git -C "$repository" commit -qm unequal-identities-a
-  unequal_a="$(git -C "$repository" rev-parse HEAD)"
-  write_packet "$unequal_a" "$unequal_candidate" "$runtime"
-  git -C "$repository" add _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
-  git -C "$repository" commit -qm unequal-identities-b
-  unequal_b="$(git -C "$repository" rev-parse HEAD)"
-  ! (cd "$repository" && EVIDENCE_COMMIT_A="$unequal_a" POINTER_COMMIT_B="$unequal_b" \
-    bash "$verification_script" >/dev/null 2>&1)
-
-  git -C "$repository" checkout -qb premature-status-a "$runtime"
-  write_packet null
+  write_blocked_packet "$bad_a" available true
   write_story_guard done
-  write_sprint_guard done done
+  write_sprint_guard done done 2026-07-18
   git -C "$repository" add _bmad-output
-  git -C "$repository" commit -qm premature-status-a
-  premature_a="$(git -C "$repository" rev-parse HEAD)"
-  write_packet "$premature_a"
-  git -C "$repository" add _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
-  git -C "$repository" commit -qm premature-status-b
-  premature_b="$(git -C "$repository" rev-parse HEAD)"
-  ! (cd "$repository" && EVIDENCE_COMMIT_A="$premature_a" POINTER_COMMIT_B="$premature_b" \
+  git -C "$repository" commit -qm bad-authorization-c
+  bad_c="$(git -C "$repository" rev-parse HEAD)"
+  ! (cd "$repository" && EVIDENCE_COMMIT_A="$bad_a" POINTER_COMMIT_B="$bad_b" \
+    AUTHORIZATION_COMMIT_C="$bad_c" \
+    bash "$verification_script" >/dev/null 2>&1)
+
+  git -C "$repository" checkout -qb candidate-mismatch-a "$runtime"
+  write_followup_guard false
+  write_deferred_guard implementation-complete/evidence-confirmed
+  write_evidence
+  wrong_candidate=ffffffffffffffffffffffffffffffffffffffff
+  write_complete_packet null "still blocked" false "$wrong_candidate" "$runtime"
+  git -C "$repository" add _bmad-output
+  git -C "$repository" commit -qm candidate-mismatch-a
+  mismatch_a="$(git -C "$repository" rev-parse HEAD)"
+  finish_rejected_chain "$mismatch_a" candidate-mismatch 2026-07-18 \
+    "$wrong_candidate" "$runtime"
+
+  git -C "$repository" checkout -qb runtime-drift-a "$runtime"
+  write_followup_guard false
+  write_deferred_guard implementation-complete/evidence-confirmed
+  write_evidence
+  write_complete_packet null
+  printf "drift\n" >> "$repository/src/runtime.txt"
+  git -C "$repository" add src/runtime.txt _bmad-output
+  git -C "$repository" commit -qm runtime-drift-a
+  runtime_drift_a="$(git -C "$repository" rev-parse HEAD)"
+  finish_rejected_chain "$runtime_drift_a" runtime-drift
+
+  git -C "$repository" checkout -qb semantic-b "$evidence_a"
+  write_complete_packet "$evidence_a"
+  printf "semantic drift\n" >> "$packet_path"
+  git -C "$repository" add "$packet_path"
+  git -C "$repository" commit -qm semantic-b
+  semantic_b="$(git -C "$repository" rev-parse HEAD)"
+  write_complete_packet "$evidence_a" available true
+  write_story_guard done
+  write_sprint_guard done done 2026-07-18
+  git -C "$repository" add _bmad-output
+  git -C "$repository" commit -qm semantic-b-c
+  semantic_b_c="$(git -C "$repository" rev-parse HEAD)"
+  ! (cd "$repository" && EVIDENCE_COMMIT_A="$evidence_a" POINTER_COMMIT_B="$semantic_b" \
+    AUTHORIZATION_COMMIT_C="$semantic_b_c" bash "$verification_script" >/dev/null 2>&1)
+
+  git -C "$repository" checkout -qb non-direct-c "$pointer_b"
+  printf "intermediate\n" > "$repository/_bmad-output/intermediate.txt"
+  git -C "$repository" add _bmad-output/intermediate.txt
+  git -C "$repository" commit -qm non-direct-intermediate
+  write_complete_packet "$evidence_a" available true
+  write_story_guard done
+  write_sprint_guard done done 2026-07-18
+  git -C "$repository" add _bmad-output
+  git -C "$repository" commit -qm non-direct-c
+  non_direct_c="$(git -C "$repository" rev-parse HEAD)"
+  ! (cd "$repository" && EVIDENCE_COMMIT_A="$evidence_a" POINTER_COMMIT_B="$pointer_b" \
+    AUTHORIZATION_COMMIT_C="$non_direct_c" bash "$verification_script" >/dev/null 2>&1)
+
+  git -C "$repository" checkout -qb stale-approval-a "$runtime"
+  write_followup_guard false
+  write_deferred_guard implementation-complete/evidence-confirmed
+  write_evidence
+  jq '\''.approved_at = "2999-01-01T00:00:00Z"'\'' \
+    "$durable/eventstore-owner-proof-approval.json" \
+    > "$durable/eventstore-owner-proof-approval.mutated.json"
+  mv "$durable/eventstore-owner-proof-approval.mutated.json" \
+    "$durable/eventstore-owner-proof-approval.json"
+  owner_hash="$(sha256sum "$durable/eventstore-owner-proof-approval.json" | cut -d " " -f 1)"
+  (
+    cd "$durable"
+    find . -maxdepth 1 -type f ! -name "critical-evidence-sha256.txt" -printf "%P\\0" \
+      | LC_ALL=C sort -z | xargs -0 sha256sum --
+  ) > "$durable/critical-evidence-sha256.txt"
+  evidence_manifest_hash="$(sha256sum "$durable/critical-evidence-sha256.txt" | cut -d " " -f 1)"
+  write_complete_packet null
+  git -C "$repository" add _bmad-output
+  git -C "$repository" commit -qm stale-approval-a
+  stale_approval_a="$(git -C "$repository" rev-parse HEAD)"
+  finish_rejected_chain "$stale_approval_a" stale-approval
+
+  git -C "$repository" checkout -qb open-prerequisite-a "$runtime"
+  write_followup_guard false
+  write_deferred_guard open-blocking
+  write_evidence
+  write_complete_packet null
+  git -C "$repository" add _bmad-output
+  git -C "$repository" commit -qm open-prerequisite-a
+  open_prerequisite_a="$(git -C "$repository" rev-parse HEAD)"
+  finish_rejected_chain "$open_prerequisite_a" open-prerequisite
+
+  git -C "$repository" checkout -qb incomplete-review-a "$runtime"
+  write_followup_guard true
+  write_deferred_guard implementation-complete/evidence-confirmed
+  write_evidence
+  write_complete_packet null
+  git -C "$repository" add _bmad-output
+  git -C "$repository" commit -qm incomplete-review-a
+  incomplete_review_a="$(git -C "$repository" rev-parse HEAD)"
+  finish_rejected_chain "$incomplete_review_a" incomplete-review
+
+  original_runtime="$runtime"
+  git -C "$repository" checkout -qb unrelated-package-runtime "$runtime"
+  jq '\''.packages[0].id = "Unrelated.Package"'\'' \
+    "$repository/tools/release-packages.json" \
+    > "$repository/tools/release-packages.mutated.json"
+  mv "$repository/tools/release-packages.mutated.json" \
+    "$repository/tools/release-packages.json"
+  git -C "$repository" add tools/release-packages.json
+  git -C "$repository" commit -qm unrelated-package-runtime
+  runtime="$(git -C "$repository" rev-parse HEAD)"
+  write_followup_guard false
+  write_deferred_guard implementation-complete/evidence-confirmed
+  write_evidence
+  write_complete_packet null
+  git -C "$repository" add _bmad-output
+  git -C "$repository" commit -qm unrelated-package-a
+  unrelated_package_a="$(git -C "$repository" rev-parse HEAD)"
+  finish_rejected_chain "$unrelated_package_a" unrelated-package
+  runtime="$original_runtime"
+
+  git -C "$repository" checkout -qb missing-container-authority-a "$runtime"
+  write_followup_guard false
+  write_deferred_guard implementation-complete/evidence-confirmed
+  write_evidence
+  jq '\''del(.publication_authority)'\'' "$durable/container-provenance.json" \
+    > "$durable/container-provenance.mutated.json"
+  mv "$durable/container-provenance.mutated.json" "$durable/container-provenance.json"
+  (
+    cd "$durable"
+    find . -maxdepth 1 -type f ! -name "critical-evidence-sha256.txt" -printf "%P\\0" \
+      | LC_ALL=C sort -z | xargs -0 sha256sum --
+  ) > "$durable/critical-evidence-sha256.txt"
+  evidence_manifest_hash="$(sha256sum "$durable/critical-evidence-sha256.txt" | cut -d " " -f 1)"
+  write_complete_packet null
+  git -C "$repository" add _bmad-output
+  git -C "$repository" commit -qm missing-container-authority-a
+  missing_container_authority_a="$(git -C "$repository" rev-parse HEAD)"
+  finish_rejected_chain "$missing_container_authority_a" missing-container-authority
+
+  git -C "$repository" checkout -qb regressing-date-c "$pointer_b"
+  write_complete_packet "$evidence_a" available true
+  write_story_guard done
+  write_sprint_guard done done 2026-07-16
+  git -C "$repository" add _bmad-output
+  git -C "$repository" commit -qm regressing-date-c
+  regressing_date_c="$(git -C "$repository" rev-parse HEAD)"
+  ! (cd "$repository" && EVIDENCE_COMMIT_A="$evidence_a" POINTER_COMMIT_B="$pointer_b" \
+    AUTHORIZATION_COMMIT_C="$regressing_date_c" \
     bash "$verification_script" >/dev/null 2>&1)
 ' _ _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
 ```
 
-Expected: the extracted actual A/B verifier accepts runtime → evidence-only A → pointer-only B,
-rejects an extra-file B, rejects A when it bundles a non-`_bmad-output/` path, rejects unequal
-candidate/tested-runtime identities, and rejects A when it prematurely completes Story 1.20 or
-Epic 1.
+Expected: the extracted actual verifier accepts runtime → evidence-only A → pointer-only B →
+authorizing C. It rejects a B file-mode change, an extra-file C, an A that does not update
+the packet, candidate/runtime mismatch, A-owned runtime drift, semantic B drift, non-direct C,
+future-dated final approval, open Story 1.20 prerequisites, incomplete Story 1.16 review, and a
+candidate-owned unrelated package ID, missing container-authority provenance, and a regressing C
+tracker date.
 
 ```bash
 git diff --check
