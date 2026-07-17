@@ -2,9 +2,9 @@
   "schema": "hexalith.eventstore.github-approval-role-allowlist/v1",
   "repository": "Hexalith/Hexalith.EventStore",
   "roles": {
-    "eventstore_owner": [],
-    "release_owner": [],
-    "architecture_owner": [],
-    "story_1_16_reviewer": []
+    "eventstore_owner": ["jpiquot"],
+    "release_owner": ["jpiquot"],
+    "architecture_owner": ["jpiquot"],
+    "story_1_16_reviewer": ["jpiquot"]
   }
 }
