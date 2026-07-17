@@ -5,7 +5,9 @@
 
 namespace Hexalith.EventStore.DomainService.Tests;
 
+using System.Diagnostics;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
@@ -410,30 +412,22 @@ public sealed class DomainModuleAuthoringGuardrailTests
     }
 
     [Fact]
-    public void TenantsDomainService_DoesNotReferenceGeneratedApiHostOrDeclarePerMessageControllers()
+    public async Task TenantsDomainService_DoesNotReferenceGeneratedApiHostOrDeclarePerMessageControllers()
     {
         string root = FindRepositoryRoot();
         string tenantsDomainRoot = Path.Combine(root, "references", "Hexalith.Tenants", "src", "Hexalith.Tenants");
         string csproj = Path.Combine(tenantsDomainRoot, "Hexalith.Tenants.csproj");
-        if (!File.Exists(csproj))
-        {
-            return;
-        }
+        File.Exists(csproj).ShouldBeTrue(
+            $"Expected the root-declared Tenants submodule project at {csproj}; boundary verification must not pass without its subject.");
 
-        XDocument project = XDocument.Load(csproj);
-        string[] dependencies = project
-            .Descendants()
-            .Where(static element => string.Equals(element.Name.LocalName, "ProjectReference", StringComparison.Ordinal)
-                || string.Equals(element.Name.LocalName, "PackageReference", StringComparison.Ordinal)
-                || string.Equals(element.Name.LocalName, "Reference", StringComparison.Ordinal)
-                || string.Equals(element.Name.LocalName, "Analyzer", StringComparison.Ordinal))
-            .Select(static element => ((string?)element.Attribute("Include"))?.Replace('\\', '/') ?? string.Empty)
-            .ToArray();
+        List<string> dependencies = [];
+        dependencies.AddRange(await ReadEvaluatedDependencyValuesAsync(csproj, useProjectReferences: true).ConfigureAwait(false));
+        dependencies.AddRange(await ReadEvaluatedDependencyValuesAsync(csproj, useProjectReferences: false).ConfigureAwait(false));
 
-        dependencies.Any(static dependency => dependency.Contains("Hexalith.Tenants.Api", StringComparison.Ordinal))
-            .ShouldBeFalse("The Tenants domain-service host must not reference the dedicated generated API host.");
-        dependencies.Any(static dependency => dependency.Contains("Hexalith.EventStore.RestApi.Generators", StringComparison.Ordinal))
-            .ShouldBeFalse("Generated REST controller analyzers belong only in dedicated external API hosts.");
+        dependencies.Where(static dependency => MatchesDependencyIdentity(dependency, "Hexalith.Tenants.Api"))
+            .ShouldBeEmpty("The Tenants domain-service host must not reference the dedicated generated API host.");
+        dependencies.Where(static dependency => MatchesDependencyIdentity(dependency, "Hexalith.EventStore.RestApi.Generators"))
+            .ShouldBeEmpty("Generated REST controller analyzers belong only in dedicated external API hosts.");
 
         string source = string.Join(
             Environment.NewLine,
@@ -1406,6 +1400,65 @@ public sealed class DomainModuleAuthoringGuardrailTests
             .Matches(text)
             .Cast<Match>()
             .Select(match => match.Groups["name"].Value);
+    }
+
+    private static async Task<string[]> ReadEvaluatedDependencyValuesAsync(
+        string projectPath,
+        bool useProjectReferences)
+    {
+        var startInfo = new ProcessStartInfo("dotnet")
+        {
+            WorkingDirectory = FindRepositoryRoot(),
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        startInfo.ArgumentList.Add("msbuild");
+        startInfo.ArgumentList.Add(projectPath);
+        startInfo.ArgumentList.Add("-nologo");
+        startInfo.ArgumentList.Add("-verbosity:quiet");
+        startInfo.ArgumentList.Add("-getItem:ProjectReference,PackageReference,Reference,Analyzer");
+        startInfo.ArgumentList.Add($"-property:UseHexalithProjectReferences={useProjectReferences.ToString().ToLowerInvariant()}");
+
+        using Process process = Process.Start(startInfo)
+            ?? throw new InvalidOperationException("Could not start dotnet msbuild for Tenants dependency evaluation.");
+        Task<string> standardOutput = process.StandardOutput.ReadToEndAsync();
+        Task<string> standardError = process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync().ConfigureAwait(false);
+        string output = await standardOutput.ConfigureAwait(false);
+        string error = await standardError.ConfigureAwait(false);
+
+        process.ExitCode.ShouldBe(0, $"dotnet msbuild dependency evaluation failed: {error}");
+
+        using JsonDocument document = JsonDocument.Parse(output);
+        var values = new List<string>();
+        foreach (JsonProperty itemType in document.RootElement.GetProperty("Items").EnumerateObject())
+        {
+            foreach (JsonElement item in itemType.Value.EnumerateArray())
+            {
+                foreach (string propertyName in new[] { "Identity", "FullPath", "HintPath", "NuGetPackageId", "Filename" })
+                {
+                    if (item.TryGetProperty(propertyName, out JsonElement value)
+                        && value.ValueKind == JsonValueKind.String
+                        && !string.IsNullOrWhiteSpace(value.GetString()))
+                    {
+                        values.Add(value.GetString()!);
+                    }
+                }
+            }
+        }
+
+        return values.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+    }
+
+    private static bool MatchesDependencyIdentity(string value, string expectedIdentity)
+    {
+        string normalized = value.Replace('\\', '/').Trim();
+        return string.Equals(normalized, expectedIdentity, StringComparison.OrdinalIgnoreCase)
+            || normalized.StartsWith($"{expectedIdentity},", StringComparison.OrdinalIgnoreCase)
+            || normalized.EndsWith($"/{expectedIdentity}", StringComparison.OrdinalIgnoreCase)
+            || normalized.EndsWith($"/{expectedIdentity}.csproj", StringComparison.OrdinalIgnoreCase)
+            || normalized.EndsWith($"/{expectedIdentity}.dll", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string SampleDomainProjectPath()

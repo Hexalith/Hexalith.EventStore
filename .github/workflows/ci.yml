@@ -38,3 +38,45 @@ jobs:
         tests/Hexalith.EventStore.Sample.Tests
         tests/Hexalith.EventStore.Testing.Integration.Tests
         tests/Hexalith.EventStore.Server.Tests
+
+  tenants-source-mode:
+    name: ci / tenants-source-mode
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      UseHexalithProjectReferences: 'true'
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          submodules: false
+
+      - name: Initialize root-declared submodules
+        uses: Hexalith/Hexalith.Builds/Github/initialize-build@main
+
+      - name: Initialize .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Restore source-mode AppHost tests
+        run: >-
+          dotnet restore tests/Hexalith.EventStore.AppHost.Tests/Hexalith.EventStore.AppHost.Tests.csproj
+          -p:Configuration=Debug
+          -p:UseHexalithProjectReferences=true
+
+      - name: Build source-mode AppHost tests
+        run: >-
+          dotnet build tests/Hexalith.EventStore.AppHost.Tests/Hexalith.EventStore.AppHost.Tests.csproj
+          --no-restore
+          --configuration Debug
+          -warnaserror
+          -p:UseHexalithProjectReferences=true
+
+      - name: Verify Tenants source-mode topology guardrails
+        run: >-
+          dotnet test tests/Hexalith.EventStore.AppHost.Tests/Hexalith.EventStore.AppHost.Tests.csproj
+          --no-build
+          --configuration Debug
+          --filter FullyQualifiedName~TenantsApiLaunchSettingsTests
+          -p:UseHexalithProjectReferences=true
