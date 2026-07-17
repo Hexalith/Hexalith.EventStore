@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-07-16
+# last_updated: 2026-07-17
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T20:01:46+02:00
-last_updated: 2026-07-16
+last_updated: 2026-07-17
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -72,9 +72,10 @@ development_status:
   1-19-correct-paged-rebuild-and-replay-equivalence: done
   # Story 1.19 review is complete. Story 1.20 remains in progress while:
   # - Story 1.16 follow-up review remains undispositioned for a named, durable, exact committed runtime SHA;
-  # - candidate 85877902... failed the live-sidecar gate reproducibly;
-  # - the lifecycle-cleanup corrective item remains unresolved;
-  # - the AD-11 SDK/ASP.NET security-baseline corrective item is open;
+  # - historical candidate 85877902... failed the live-sidecar gate reproducibly;
+  # - lifecycle cleanup and AD-11 now pass at current commit 772cdfef...;
+  # - the corrected source-topology query-provenance E2E fails reproducibly with
+  #   404/query_projection_missing because stale sample registrations suppress all admin indexes;
   # - no later clean committed runtime SHA has passed all detached production gates;
   # - exact NuGet versions/hashes and container digest/platform provenance are absent;
   # - named EventStore and release-owner approval is absent.
@@ -91,6 +92,10 @@ development_status:
   2-4-tenants-rest-contract-metadata-and-routes: review
   2-5-dedicated-external-tenants-api-host: review
   2-6-tenants-ui-client-library-alignment-and-ux-evidence: in-progress
+  # Story 2.7 is the sole Tenants compatibility/adoption owner. Its EventStore-owned stale
+  # sample-registration and source-topology harness correction is a Story 1.20 prerequisite;
+  # dependency migration remains blocked until Story 1.20 authorizes the exact source/package
+  # identities. No duplicate Tenants-local story is required.
   2-7-tenants-compatibility-and-package-mode-validation: review
   2-8-scoped-metadata-rich-projection-notifications: done
   2-9-generated-command-status-location-policy: done

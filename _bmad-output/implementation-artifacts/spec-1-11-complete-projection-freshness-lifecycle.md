@@ -101,6 +101,19 @@ warnings: [oversized]
 - verification: focused actor/router Release lane 88 passed / 0 failed; complete Server Release lane 2,626 passed / 25 skipped / 0 failed; `Hexalith.EventStore.slnx` Release build 0 warnings / 0 errors.
 - disposition: incomplete; the review used candidate `8aa6d0f0...` plus an uncommitted patch, so no exact committed runtime contains both the reviewed behavior and its evidence. `followup_review_recommended` remains `true` until a named review with a durable source is tied to that committed runtime.
 
+### 2026-07-17 — Committed implementation and runtime-evidence reconciliation
+
+- implementation identity: the reviewed lifecycle correction is committed as
+  `7b73a2f5cde990b0a026ec280f7620d067b3d110` and is present in exact clean detached
+  runtime `772cdfefa8163704de0f57042af5b0507c1ac771`.
+- runtime evidence: the exact formerly failing normal-delivery live-sidecar method passed
+  1/1, its `NamedProjectionDispatchLiveSidecarTests` class passed 6/6, and the complete
+  live-sidecar lane passed 44/44.
+- disposition: implementation and current-runtime evidence are reconciled. The frontmatter
+  remains `followup_review_recommended: true` because no named reviewer and durable approval
+  source has yet accepted that committed runtime; this is now a review-authority blocker,
+  not an unresolved lifecycle implementation defect.
+
 ### 2026-07-11 — Review pass
 - intent_gap: 0
 - bad_spec: 0

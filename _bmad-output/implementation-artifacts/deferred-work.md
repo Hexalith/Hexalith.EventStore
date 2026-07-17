@@ -304,21 +304,25 @@ _All items LOW / non-blocking. Story 2.7 accepted (all AC1–AC7 met; Release bu
 ## Deferred from: exact-SHA gate of 1-20-owner-approved-parity-closure-and-runtime-pin (2026-07-16)
 
 - source_spec: `_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md`
+  status: implementation-complete/evidence-confirmed
   summary: Repair or explicitly disposition the named-projection lifecycle cleanup defect before selecting an approved parity runtime.
-  evidence: Clean detached candidate `85877902f8d60a466ab90cd8b68b53838863db1c` built Release with 0 warnings/errors and passed the broad unit lanes, but `Hexalith.EventStore.Server.LiveSidecar.Tests.dll` finished 42 passed / 2 failed. The isolated `NamedProjectionDispatchLiveSidecarTests` run finished 5 passed / 1 failed, and `NormalDelivery_PersistsIndependentDetailIndexCheckpointsAndConvergedRetryLedger` reproduced alone at 0 passed / 1 failed because the Redis lifecycle hash remained present instead of returning to the idle/absent baseline. The initial full lane also reported an unreleased lifecycle lease in `ConcurrentDuplicateReverseAndConflict_StayEquivalentToOneInOrderDelivery`. Story 1.20 authorizes evidence and closure only, not an unscoped runtime patch; rerun the mandatory exact-SHA live gate after the defect has an owned implementation story or explicit owner disposition.
+  historical_evidence: Clean detached candidate `85877902f8d60a466ab90cd8b68b53838863db1c` built Release with 0 warnings/errors and passed the broad unit lanes, but `Hexalith.EventStore.Server.LiveSidecar.Tests.dll` finished 42 passed / 2 failed. The isolated `NamedProjectionDispatchLiveSidecarTests` run finished 5 passed / 1 failed, and `NormalDelivery_PersistsIndependentDetailIndexCheckpointsAndConvergedRetryLedger` reproduced alone at 0 passed / 1 failed because the Redis lifecycle hash remained present instead of returning to the idle/absent baseline. The initial full lane also reported an unreleased lifecycle lease in `ConcurrentDuplicateReverseAndConflict_StayEquivalentToOneInOrderDelivery`.
+  closure_evidence: Corrective commit `7b73a2f5cde990b0a026ec280f7620d067b3d110` is present in exact clean detached commit `772cdfefa8163704de0f57042af5b0507c1ac771`. At that commit the exact formerly failing normal-delivery method passed 1/1, `NamedProjectionDispatchLiveSidecarTests` passed 6/6, and the complete live-sidecar lane passed 44/44. Story 1.16's separate named durable follow-up-review disposition remains open; it is not an implementation failure.
 
 ## Deferred from: Story 1.20 correct-course readiness audit (2026-07-16)
 
 - source_spec: `_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md`
-  status: open-blocking
+  status: implementation-complete/evidence-confirmed
   owner: EventStore build/release maintainer
   summary: Land the architecture AD-11 .NET/ASP.NET security baseline before selecting Story 1.20's tested runtime SHA.
-  evidence:
-    - `global.json` pins SDK `10.0.301`;
-    - the installed SDK is `10.0.301` and host/runtime is `10.0.9`;
-    - `Directory.Packages.props` retains ASP.NET package pins at `10.0.9`;
-    - architecture AD-11 requires SDK `10.0.302` and ASP.NET `10.0.10` before the next implementation or release slice.
-  consequence: No current commit may be promoted to `tested_runtime_sha`, and no package/container proof publication may be accepted, while this mismatch remains.
+  historical_evidence:
+    - `global.json` pinned SDK `10.0.301`;
+    - the installed SDK and host/runtime were `10.0.301` / `10.0.9`;
+    - effective central ASP.NET pins were `10.0.9`.
+  closure_evidence:
+    - SDK correction `d6c849aaf8f77f967377f72b763bd44b3131a713`, ASP.NET correction `3a43d5e6151ebc51e945bf1b6cecda92fd198a09`, and validation hardening `8c70efb08b1bf2fcd077ad930c5827d1ab1594da` are present in commit `772cdfefa8163704de0f57042af5b0507c1ac771`;
+    - the exact executable preflight observed repository and installed SDK `10.0.302`, effective ASP.NET `10.0.10`, and installed `Microsoft.NETCore.App` `10.0.10`.
+  consequence: The baseline mismatch no longer blocks the current readiness audit. A later candidate, package build, or publication must repeat the executable preflight and fails closed if the baseline regresses.
   closure:
     1. Update the repository seed and central ASP.NET pins to the AD-11 baseline, or record named architecture-owner approval for a newer replacement.
     2. Install and capture the matching SDK/runtime.
@@ -327,6 +331,24 @@ _All items LOW / non-blocking. Story 2.7 accepted (all AC1–AC7 met; Release bu
     5. Commit the correction independently.
     6. Use that resulting commit, or a reviewed descendant, as the Story 1.20 candidate runtime.
   reopen_trigger: Any Story 1.20 packet update, package build, container publication, or owner-approval request that names a runtime without satisfying this baseline.
+
+## Deferred from: Story 1.20 current-HEAD source-topology gate (2026-07-17)
+
+- source_spec: `_bmad-output/implementation-artifacts/2-7-tenants-compatibility-and-package-mode-validation.md`
+  status: open-blocking
+  owner: EventStore Story 2.7
+  summary: Reconcile stale sample domain registrations and prove Tenants handler routing in the real source topology before selecting the Story 1.20 runtime.
+  evidence:
+    - the original packet harness forced `UseHexalithProjectReferences=false`, compiled no `tenants` AppHost resource, and then timed out waiting for it;
+    - the corrected exact-source run at `772cdfefa8163704de0f57042af5b0507c1ac771` compiled the Tenants resource and reproduced twice as 0/1 with HTTP 404 / `query_projection_missing`;
+    - Tenants operational-metadata calls returned HTTP 200, but merged base configuration still registers `orders` and `inventory` against the sample service while the current sample discovers only `counter` and `greeting`;
+    - an absent configured binding makes `AdminOperationalIndexHostedService` log Event 6101 and skip every derived index write, including `admin:query-types:tenants`, so `list-tenants` falls back to a nonexistent projection.
+  closure:
+    1. Compile the query-provenance E2E with `UseHexalithProjectReferences=true` and only root-declared submodules initialized.
+    2. Remove or correctly environment-scope stale sample registrations, or otherwise reconcile absent configured bindings without weakening fail-closed handling for genuine metadata failures.
+    3. Prove `admin:query-types:tenants` contains `list-tenants` and the exact live E2E returns 200 with `HandlerComputed` provenance and no projection evidence.
+    4. Keep all Tenants/EventStore/Builds identity changes blocked until Story 1.20 separately authorizes migration.
+  reopen_trigger: Any selected runtime or parity packet that credits the handler-provenance lane without a healthy compiled Tenants resource and a positive exact-source result.
 
 ## Deferred from: code review of spec-1-11-complete-projection-freshness-lifecycle (2026-07-16)
 

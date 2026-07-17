@@ -77,8 +77,9 @@ Produces: `1-20-owner-approved-parity-closure-proof-packet.md`.
 
 ## Closure Execution Order
 
-1. Repair or explicitly disposition the recorded lifecycle-cleanup defect.
-2. Land the AD-11 security-baseline correction under its owning build/release work.
+1. Preserve the verified lifecycle-cleanup and AD-11 corrections in the candidate lineage.
+2. Complete Story 2.7's pre-authorization correction for stale sample registrations and the
+   source-topology query-provenance gate, without changing consumer dependency identities.
 3. Select the resulting clean committed runtime SHA.
 4. Run and disposition Story 1.16 follow-up review against that SHA.
 5. Run all detached exact-SHA persisted production-path gates.
@@ -111,7 +112,7 @@ separate from the historical Auto Run `Files changed` list and Dev Agent `File L
 | --- | --- |
 | `1-20-owner-approved-parity-closure-proof-packet.md` | Preserve failed-run evidence and guards; add the observed audit, executable AD-11 gate, non-self-referential two-commit pin, and fail-closed publication-authority evidence procedure. |
 | `1-20-owner-approved-parity-closure-and-runtime-pin.md` | Record acceptance, authority, commit sequencing, current inventory, and blocked closure order. |
-| `deferred-work.md` | Preserve the one existing AD-11 `open-blocking` corrective item without duplication. |
+| `deferred-work.md` | Reconcile lifecycle and AD-11 as implementation-complete/evidence-confirmed and record Story 2.7's source-topology provenance blocker without duplication. |
 | `sprint-status.yaml` | Preserve the approved Story 1.20 blocker comments and `in-progress` statuses; refresh `last_updated`. |
 | `spec-1-11-complete-projection-freshness-lifecycle.md` | Verify only; retain `followup_review_recommended: true` with no disposition edit. |
 | `epic-1-context.md` | Restore canonical endpoints and retain durable behavior, release, and compatibility constraints. |
@@ -211,6 +212,21 @@ retained follow-up recommendation still needs explicit reconciliation; the faile
 does not supply exact source/package/container identities or complete persisted production
 evidence; named owner approval remains absent. No consumer migration is authorized.
 
+### 2026-07-17 current-HEAD reconciliation
+
+- Current clean detached commit `772cdfefa8163704de0f57042af5b0507c1ac771`
+  passes the AD-11 executable preflight, the exact former lifecycle failure, its complete
+  class, and the 44-test live-sidecar lane. Those two implementation blockers are closed.
+- The proof harness incorrectly built the Tenants-dependent E2E in package mode; it now
+  selects source mode explicitly for that topology.
+- The corrected E2E fails reproducibly with HTTP 404 / `query_projection_missing`. Stale
+  base sample registrations (`orders`, `inventory`) do not match the current sample host
+  (`counter`, `greeting`), causing the atomic operational-index load to suppress
+  `admin:query-types:tenants`.
+- Existing Story 2.7 owns the pre-authorization EventStore registration/harness correction
+  and the later authorized Tenants identity adoption. No duplicate Tenants-local story was
+  created.
+
 ## Dev Agent Record
 
 ### Debug Log
@@ -245,3 +261,6 @@ evidence; named owner approval remains absent. No consumer migration is authoriz
 - 2026-07-16: Recorded the failed exact-SHA completion attempt and kept Story 1.20
   fail-closed pending a scoped lifecycle-cleanup fix, remaining review disposition, release
   identity gates, and named owner approval.
+- 2026-07-17: Reconciled current-HEAD evidence: lifecycle and AD-11 pass; corrected the
+  source-topology proof harness; routed the reproducible stale-registration/query-provenance
+  blocker to existing Story 2.7; retained all release and migration guards.

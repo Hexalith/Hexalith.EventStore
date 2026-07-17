@@ -3,7 +3,7 @@ schema: hexalith.eventstore.parity-closure-proof-packet/v1
 story_id: "1.20"
 story_key: 1-20-owner-approved-parity-closure-and-runtime-pin
 created: 2026-07-16T05:09:20+02:00
-updated: 2026-07-16T15:00:52+02:00
+updated: 2026-07-17T07:05:30+02:00
 historical_packet: 1-8-projection-query-sdk-owner-proof-packet.md
 candidate_source_sha: 85877902f8d60a466ab90cd8b68b53838863db1c
 tested_runtime_sha: null
@@ -35,21 +35,24 @@ The exact-SHA gate failed before package/container publication and owner review:
    an approvable tested runtime and no parity row is promoted to `available`.
 4. The completed Story 1.16 source spec still retains
    `followup_review_recommended: true` without an explicit disposition.
-5. The repository and installed toolchain remain on SDK `10.0.301` / runtime and
-   central ASP.NET pins `10.0.9`, below architecture AD-11's required
-   `10.0.302` / `10.0.10` security baseline.
+5. The failed candidate was below architecture AD-11's security baseline. Current commit
+   `772cdfefa8163704de0f57042af5b0507c1ac771` now passes the exact SDK `10.0.302`,
+   ASP.NET `10.0.10`, and installed `Microsoft.NETCore.App` `10.0.10` preflight, but it
+   remains non-authorizing because a corrected source-topology provenance gate fails.
 6. No named EventStore owner has reviewed completed passing exact-SHA evidence, and no
    manifest-governed package/container identities have been produced or approved.
 
 ### Scoped corrective item
 
-Repair or explicitly disposition the reproducible lifecycle-cleanup defect exercised by
-`NamedProjectionDispatchLiveSidecarTests.NormalDelivery_PersistsIndependentDetailIndexCheckpointsAndConvergedRetryLedger`.
-The scoped corrective item is recorded in `deferred-work.md` with the exact candidate SHA
-and three failing commands. Then select a new clean committed runtime, rerun every
-production-path and package/container gate at that unchanged SHA, explicitly disposition
-Story 1.16's retained follow-up recommendation, obtain named EventStore-owner approval,
-and update this packet.
+Keep the lifecycle-cleanup and AD-11 entries as resolved implementation history: current
+commit `772cdfefa8163704de0f57042af5b0507c1ac771` passed the exact former lifecycle
+failure, its complete six-test class, the 44-test live-sidecar lane, and the executable
+AD-11 preflight. Story 2.7 now owns the reproducible source-topology provenance blocker:
+remove or correctly scope stale `orders`/`inventory` sample registrations so one absent
+binding cannot suppress the complete admin query-type index, then rerun the corrected
+source-mode E2E. After that, rerun every production-path and package/container gate at one
+unchanged SHA, explicitly disposition Story 1.16's retained follow-up recommendation,
+obtain named EventStore-owner approval, and update this packet.
 
 ### Exact-SHA Failure And Readiness Re-Audit — Observed 2026-07-16T15:00:52+02:00
 
@@ -82,11 +85,11 @@ records that no later evidence-only commit exists. A future documentation commit
 substitute for the tested runtime. Package versions and hashes, container digest and
 platform provenance, named owner approval, and migration authorization also remain absent.
 
-Architecture AD-11 is a hard precondition before selecting or publishing a replacement
-runtime. `global.json` and the installed SDK remain `10.0.301`, the installed host/runtime
-and central ASP.NET pins remain `10.0.9`, and AD-11 requires SDK `10.0.302` plus matching
-ASP.NET and installed `Microsoft.NETCore.App` runtime `10.0.10`, or a
-later replacement recorded with the named architecture owner, approval date, durable
+Architecture AD-11 remains a hard executable precondition before selecting or publishing a
+replacement runtime. At current commit `772cdfefa8163704de0f57042af5b0507c1ac771`,
+`global.json`, the installed SDK/runtime, and the effective central ASP.NET pins satisfy
+the exact `10.0.302` / `10.0.10` baseline. A later candidate must pass the same preflight,
+or use a replacement recorded with the named architecture owner, approval date, durable
 source, rationale, exact candidate/toolchain/ASP.NET/runtime scope, and an unexpired
 `expires_at` value.
 The mandatory executable preflight rejects a mismatched exact baseline and any missing,
@@ -101,11 +104,12 @@ changes no runtime or package pin.
 | Story 1.2 platform provenance | `done` | `1-2-domain-query-routing-and-response-provenance.md` adopts the completed routing and route-aware provenance evidence. | Satisfied for sequencing; must still be rerun at the selected runtime SHA. |
 | Story 1.14 erasure | `done` | July 15 story-ID crosswalk maps completed historical Story 1.9 implementation, persisted-path evidence, and review. | Satisfied for sequencing; evidence not promoted to this packet without exact-SHA rerun. |
 | Story 1.15 coordinated batching | `done` | Crosswalk maps completed historical Story 1.10 implementation and review. | Satisfied for sequencing; evidence not promoted to this packet without exact-SHA rerun. |
-| Story 1.16 lifecycle | `done` | Crosswalk records completed lifecycle implementation/review and corrected Story 1.2 prerequisite. The retained source spec still says `followup_review_recommended: true`. | Status is complete, but the stale recommendation requires an explicit disposition before approval. |
+| Story 1.16 lifecycle | `done` | Corrective commit `7b73a2f5cde990b0a026ec280f7620d067b3d110` is present in current commit `772cdfef...`; the former exact failing method, its six-test class, and the complete 44-test live-sidecar lane passed in a clean detached checkout. The retained source spec still says `followup_review_recommended: true`. | Implementation and current-runtime verification are complete; the named durable review disposition remains required before approval. |
 | Story 1.17 asynchronous multi-projection dispatch | `done` | Crosswalk maps completed historical Story 1.12 and narrows acceptance to AD-19's normalized result. | Satisfied for sequencing; evidence not promoted to this packet without exact-SHA rerun. |
 | Story 1.18 delivery idempotency | `done` | Crosswalk maps completed historical Story 1.13 production-path evidence. | Satisfied for sequencing; evidence not promoted to this packet without exact-SHA rerun. |
 | Story 1.19 paged rebuild equivalence | `done` | Active Story 1.19 records approval after 13 in-scope patches, one explicit deferral, a 2,620-test Server pass, the real DAPR/Redis paged-rebuild pass, and a warning-free Release build. | Satisfied for sequencing; the paged-rebuild live test also passed at the current candidate SHA, but the cross-cutting live gate did not. |
-| Architecture AD-11 security baseline | `open-blocking` | Repository seed, installed SDK/runtime, and central ASP.NET pins remain `10.0.301` / `10.0.9`; AD-11 requires SDK `10.0.302` plus matching ASP.NET and installed `Microsoft.NETCore.App` runtime `10.0.10`, or a replacement with named architecture owner, approval date, durable source, rationale, exact candidate/toolchain/ASP.NET/runtime scope, and unexpired `expires_at`. | **Hard blocker.** The executable preflight must accept the exact baseline or a complete, in-scope, unexpired replacement record before candidate, package, or container gates. |
+| Architecture AD-11 security baseline | `implementation-complete/evidence-confirmed` | Commits `d6c849aaf8f77f967377f72b763bd44b3131a713`, `3a43d5e6151ebc51e945bf1b6cecda92fd198a09`, and `8c70efb08b1bf2fcd077ad930c5827d1ab1594da` are present in current commit `772cdfef...`; the executable preflight observed SDK `10.0.302`, ASP.NET `10.0.10`, and installed `Microsoft.NETCore.App` `10.0.10`. | Satisfied for the current readiness audit. Every later candidate must still pass the executable preflight unchanged. |
+| Source-topology query provenance | `open-blocking` | The packet's package-mode build omits the conditional `tenants` resource. With the harness corrected to source mode, `QueryResponseProvenanceE2ETests.LiveHandlerRoute_WithCurrentProjectionValidator_NeutralizesProjectionEvidence` failed twice at current commit `772cdfef...` with HTTP 404 / `query_projection_missing`. Base `appsettings.json` still registers `orders` and `inventory`, while the current sample hosts only `counter` and `greeting`; the missing bindings make `AdminOperationalIndexHostedService` skip all index writes, including `admin:query-types:tenants`. | **Hard blocker owned by Story 2.7.** Correct the registration/index boundary, retain fail-closed semantics for genuine metadata failures, and prove the handler route in the live source topology before candidate selection. |
 | Story 1.20 owner review | pending | No reviewer, approval date, or durable source exists. | **Hard blocker.** |
 
 ## Artifact Identity Pin
@@ -414,6 +418,7 @@ mkdir -p "$DOTNET_CLI_HOME" "$NUGET_PACKAGES" "$NUGET_HTTP_CACHE_PATH"
 
 fresh_release() {
   local project="$1"
+  local use_project_references="${2:-false}"
   local project_directory="${project%/*}"
   local gate_status
   assert_candidate_identity
@@ -421,14 +426,14 @@ fresh_release() {
     dotnet restore "$project" \
       --configfile nuget.config \
       --packages "$NUGET_PACKAGES" \
-      -p:UseHexalithProjectReferences=false \
+      -p:UseHexalithProjectReferences="$use_project_references" \
       -p:NuGetAudit=false \
       -p:MinVerVersionOverride=1.0.0 &&
     dotnet build "$project" \
       --configuration Release \
       --no-restore \
       -m:1 \
-      -p:UseHexalithProjectReferences=false \
+      -p:UseHexalithProjectReferences="$use_project_references" \
       -p:NuGetAudit=false \
       -p:MinVerVersionOverride=1.0.0; then
     gate_status=0
@@ -707,7 +712,7 @@ run_xunit_class \
   Hexalith.EventStore.Sample.Tests.SampleApi.SampleApiGeneratedControllerRuntimeTests \
   lifecycle-sample-runtime
 
-fresh_release tests/Hexalith.EventStore.IntegrationTests/Hexalith.EventStore.IntegrationTests.csproj
+fresh_release tests/Hexalith.EventStore.IntegrationTests/Hexalith.EventStore.IntegrationTests.csproj true
 run_xunit_class \
   tests/Hexalith.EventStore.IntegrationTests/bin/Release/net10.0/Hexalith.EventStore.IntegrationTests.dll \
   Hexalith.EventStore.IntegrationTests.ContractTests.QueryResponseProvenanceE2ETests \
@@ -1041,7 +1046,7 @@ tests/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj|t
 tests/Hexalith.EventStore.Testing.Tests/Hexalith.EventStore.Testing.Tests.csproj|tests/Hexalith.EventStore.Testing.Tests/bin/Release/net10.0/Hexalith.EventStore.Testing.Tests.dll|crosscut-testing
 TEST_PROJECTS
 
-fresh_release tests/Hexalith.EventStore.IntegrationTests/Hexalith.EventStore.IntegrationTests.csproj
+fresh_release tests/Hexalith.EventStore.IntegrationTests/Hexalith.EventStore.IntegrationTests.csproj true
 run_xunit_class \
   tests/Hexalith.EventStore.IntegrationTests/bin/Release/net10.0/Hexalith.EventStore.IntegrationTests.dll \
   Hexalith.EventStore.IntegrationTests.ContractTests.QueryResponseProvenanceE2ETests \
@@ -1404,9 +1409,9 @@ later proof-result approval and distinct release-owner disposition.
 
 | Gate | Required result | Evidence target | Required disposition owner | Current result |
 | --- | --- | --- | --- | --- |
-| AD-11 readiness | exact SDK `10.0.302` plus matching ASP.NET and installed `Microsoft.NETCore.App` runtime `10.0.10`, or complete, scoped, unexpired replacement authority binding those versions before candidate gates | `ad11-preflight.json`, runtime inventory, its SHA-256, and replacement-authority copy/hash when used | Architecture owner and EventStore build/release maintainer | **OPEN**; current repository/toolchain remains `10.0.301` / `10.0.9` and no replacement record exists |
+| AD-11 readiness | exact SDK `10.0.302` plus matching ASP.NET and installed `Microsoft.NETCore.App` runtime `10.0.10`, or complete, scoped, unexpired replacement authority binding those versions before candidate gates | `ad11-preflight.json`, runtime inventory, its SHA-256, and replacement-authority copy/hash when used | Architecture owner and EventStore build/release maintainer | PASS in the 2026-07-17 current-HEAD readiness audit at `772cdfef...`; every later selected candidate must repeat the preflight |
 | Exact committed source | Same 40-hex SHA before and after gates; clean regular and ignored inputs before restore | pre/post status, submodule SHAs, environment inventory | EventStore owner | PASS for failed candidate `85877902f8d60a466ab90cd8b68b53838863db1c` |
-| Release build and tests | warning-free solution build; positive xUnit totals for every listed project/filter | build log plus XML and method-list files under `$EVIDENCE_ROOT` | EventStore owner | **FAIL**; Release build and broad unit lanes passed, full live-sidecar was 42 passed / 2 failed |
+| Release build and tests | warning-free solution build; positive xUnit totals for every listed project/filter | build log plus XML and method-list files under `$EVIDENCE_ROOT` | EventStore owner | **FAIL / non-authorizing**; at current commit `772cdfef...`, the Release build, broad lanes, former lifecycle method/class, and full live-sidecar passed, but the corrected source-mode query-provenance E2E failed twice with 404 / `query_projection_missing` |
 | NuGet inventory | exact 14-ID set, one approved version, 14 SHA-256 values, package-only consumer success | package listing, validator logs, `nuget-sha256.txt`, consumer assets/tool-install log | EventStore release owner | NOT RUN |
 | Container runtime | freshly revalidated pre-publication release-owner authority; clean candidate source; immutable registry digest equal to the raw-manifest SHA-256; exact `linux/amd64` and `linux/arm64`; digest-to-tested-SHA provenance | immutable authority and checked-at copies/hashes, `container-inspect.txt`, raw manifest/hash, exact platform set, `container-provenance.json` | EventStore release owner | NOT RUN |
 | Limitations and migration | every matrix-row limitation accepted or rejected by a named reviewer in a durable source | signed review record or PR URL and date | EventStore owner | NOT RUN |
@@ -1728,6 +1733,24 @@ The deployment reference must be the verified `repository@sha256:...` value, nev
 Until all three procedures have real approved pins and pass in the consumer repository,
 this packet authorizes no consumer repository, package pin, deployment, or rollback change.
 
+### Downstream story routing
+
+These are adoption owners. Registration creates no migration authority and changes no
+dependency pointer. Story 2.7 additionally contains a narrowly scoped pre-authorization
+EventStore registration/harness correction required to make Story 1.20's live provenance
+gate valid; its later dependency-adoption phase remains downstream.
+
+| Repository | Adoption owner | Current state | Activation/closure boundary |
+| --- | --- | --- | --- |
+| FrontComposer | Story 11.24, `Adopt the Owner-Approved EventStore Runtime Identity` | Registered `backlog`; no story file | Remains backlog until this packet is `available` and authorizes migration; then prove exact source/package identities, Pact provider verification, dual-mode builds, and live Aspire command/query/realtime smoke. |
+| Memories | Epic 28 / Story 28.1, `Adopt Owner-Approved EventStore Runtime Identity` | Registered `backlog`; no story file | Remains backlog until this packet is `available` and authorizes migration; then prove exact source/package identities while preserving the DAPR ingestion registration chain and live persistence/search/dedup behavior. |
+| Tenants | Existing EventStore Story 2.7, `Tenants Compatibility And Package-Mode Validation` | `review` | No duplicate Tenants-local story. Correct the stale sample registration/source-topology proof now without changing dependency identities; after authorization, align the source/package graph, including conditional Gateway ownership, and record exact Tenants maintainer evidence. |
+| Builds | Existing platform pin ownership | No new story | AD-11 SDK/runtime and central ASP.NET pins are already landed. A later EventStore package-version update is release-owner work only after approved artifacts exist. |
+
+FrontComposer and Memories story files must not be created before activation because their trackers
+interpret a created story file as `ready-for-dev`. Tenants Story 2.7 remains the existing fail-closed
+consumer review owner. Builds must not speculate a future EventStore package version.
+
 ## Verification Log
 
 ### Discovery-only identity and environment
@@ -1865,11 +1888,47 @@ The query-provenance E2E, package build/consumer, container publish/inspect, and
 disposition gates were not run after the reproducible live regression failure. They cannot
 turn a failing runtime into an approved pin.
 
+### 2026-07-17 current-HEAD readiness re-audit
+
+This audit preserves the failed-candidate history above and does not promote current HEAD
+to `candidate_source_sha` or `tested_runtime_sha`.
+
+- Exact clean detached source: `772cdfefa8163704de0f57042af5b0507c1ac771`, with only
+  root-declared submodules initialized and isolated NuGet/Dotnet caches.
+- AD-11 executable preflight: PASS; repository and installed SDK `10.0.302`, effective
+  ASP.NET `10.0.10`, and installed `Microsoft.NETCore.App` `10.0.10`.
+- Warning-free Release build and broad regression lanes: PASS through the Server project.
+- Former lifecycle blocker: PASS; the exact previously failing normal-delivery method was
+  1/1, `NamedProjectionDispatchLiveSidecarTests` was 6/6, and the full live-sidecar lane was
+  44/44.
+- Packet harness defect: the original integration build forced
+  `UseHexalithProjectReferences=false`, so the AppHost omitted its conditional `tenants`
+  resource and the test timed out waiting for a topology that had not been compiled. The
+  harness now builds this source-topology E2E with `UseHexalithProjectReferences=true`.
+- Corrected source-topology E2E: FAIL reproducibly, 0/1 twice. The exact method
+  `LiveHandlerRoute_WithCurrentProjectionValidator_NeutralizesProjectionEvidence` returned
+  HTTP 404 with reason `query_projection_missing` instead of executing `list-tenants`.
+- Root cause boundary: Tenants' operational metadata calls returned 200, including the
+  `tenants` and `global-administrators` bindings. EventStore also merged stale base
+  registrations for `orders` and `inventory`, but the current sample service only discovers
+  `counter` and `greeting`. At least one requested binding therefore returned no matching
+  domain metadata; the atomic fail-closed load logged Event 6101 and skipped every admin
+  index write. Consequently `admin:query-types:tenants` was absent, the handler-aware router
+  fell back to the projection actor, and the live request returned
+  `query_projection_missing`.
+- Ownership: existing Story 2.7 owns this EventStore/Tenants compatibility closure. No
+  duplicate Tenants-local story is created. The fix must remove/scope stale registrations
+  or otherwise reconcile absent configured bindings without weakening the fail-closed rule
+  for genuine metadata corruption or transport failure.
+- NuGet inventory, package consumer, container publication/inspection, Story 1.16 named
+  follow-up disposition, and owner approvals remain incomplete for an authorizing runtime.
+
 ## Final Decision
 
 `still blocked`
 
-Story 1.20 and Epic 1 remain `in-progress`. The clean candidate failed a production-path
-gate, every parity row remains non-authorizing, source/package/container identities are
-unapproved or unresolved, Story 1.16 follow-up disposition is open, and owner approval is
-absent.
+Story 1.20 and Epic 1 remain `in-progress`. The lifecycle and AD-11 implementation blockers
+are cleared at current commit `772cdfef...`, but the corrected source-topology provenance
+gate fails reproducibly. Every parity row remains non-authorizing; source/package/container
+identities are unapproved or unresolved, Story 1.16's named follow-up disposition is open,
+and owner approval is absent.
