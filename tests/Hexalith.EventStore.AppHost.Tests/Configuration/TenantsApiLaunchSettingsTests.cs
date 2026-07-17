@@ -4,6 +4,8 @@ using System.Xml.Linq;
 
 using Hexalith.EventStore.Aspire;
 
+using YamlDotNet.RepresentationModel;
+
 public class TenantsApiLaunchSettingsTests
 {
     [Fact]
@@ -54,20 +56,42 @@ public class TenantsApiLaunchSettingsTests
     [Fact]
     public void EventStoreAccessControl_TenantsApiPolicyDocumentsGatewayPostOperations()
     {
-        string accessControl = File.ReadAllText(Path.Combine(
+        var yaml = new YamlStream();
+        using (var reader = File.OpenText(Path.Combine(
             RepositoryProjectPaths.GetRepositoryRoot(),
             "src",
             "Hexalith.EventStore.AppHost",
             "DaprComponents",
-            "accesscontrol.yaml"));
+            "accesscontrol.yaml")))
+        {
+            yaml.Load(reader);
+        }
 
-        string[] tenantsApiPolicies = ExtractYamlPolicies(accessControl, "tenants-api");
-        tenantsApiPolicies.Length.ShouldBe(1, "Expected exactly one DAPR access-control policy for tenants-api.");
-        string tenantsApiPolicy = tenantsApiPolicies[0];
+        YamlMappingNode root = yaml.Documents.ShouldHaveSingleItem().RootNode.ShouldBeOfType<YamlMappingNode>();
+        YamlMappingNode accessControl = Mapping(root, "spec", "accessControl");
+        YamlMappingNode[] tenantsApiPolicies = Sequence(accessControl, "policies")
+            .OfType<YamlMappingNode>()
+            .Where(static policy => string.Equals(Scalar(policy, "appId"), "tenants-api", StringComparison.Ordinal))
+            .ToArray();
+        YamlMappingNode tenantsApiPolicy = tenantsApiPolicies.ShouldHaveSingleItem(
+            "Expected exactly one DAPR access-control policy for tenants-api.");
 
-        tenantsApiPolicy.ShouldContain("defaultAction: deny");
-        tenantsApiPolicy.ShouldNotContain("name: /**");
-        Dictionary<string, AccessControlOperation> operations = ExtractOperations(tenantsApiPolicy);
+        Scalar(tenantsApiPolicy, "defaultAction").ShouldBe("deny");
+        var operations = new Dictionary<string, AccessControlOperation>(StringComparer.Ordinal);
+        foreach (YamlMappingNode operation in Sequence(tenantsApiPolicy, "operations").OfType<YamlMappingNode>())
+        {
+            string name = Scalar(operation, "name");
+            name.ShouldNotBe("/**", "tenants-api must not receive a wildcard EventStore invocation policy.");
+            string[] verbs = Sequence(operation, "httpVerb")
+                .OfType<YamlScalarNode>()
+                .Select(static verb => verb.Value ?? string.Empty)
+                .ToArray();
+            verbs.ShouldBe(["POST"], "tenants-api may document only POST service-invocation operations.");
+            operations
+                .TryAdd(name, new AccessControlOperation(verbs.Single(), Scalar(operation, "action")))
+                .ShouldBeTrue($"Duplicate DAPR ACL operation '{name}' must not be allowed to mask a broader rule.");
+        }
+
         operations.ShouldBe(new Dictionary<string, AccessControlOperation>(StringComparer.Ordinal)
         {
             ["/api/v1/queries"] = new("POST", "allow"),
@@ -84,88 +108,22 @@ public class TenantsApiLaunchSettingsTests
         return text[start..end];
     }
 
-    private static string[] ExtractYamlPolicies(string yaml, string appId)
+    private static YamlMappingNode Mapping(YamlMappingNode root, params string[] path)
     {
-        string marker = $"- appId: {appId}";
-        string nextPolicyMarker = "- appId:";
-        string[] lines = yaml.Split('\n');
-        var policies = new List<string>();
-        for (int index = 0; index < lines.Length; index++)
+        YamlNode current = root;
+        foreach (string segment in path)
         {
-            if (!string.Equals(lines[index].Trim(), marker, StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            var policyLines = new List<string>();
-            for (int policyIndex = index; policyIndex < lines.Length; policyIndex++)
-            {
-                if (policyIndex > index
-                    && lines[policyIndex].TrimStart().StartsWith(nextPolicyMarker, StringComparison.Ordinal))
-                {
-                    break;
-                }
-
-                policyLines.Add(lines[policyIndex]);
-            }
-
-            policies.Add(string.Join('\n', policyLines));
+            current = current.ShouldBeOfType<YamlMappingNode>().Children[new YamlScalarNode(segment)];
         }
 
-        return [.. policies];
+        return current.ShouldBeOfType<YamlMappingNode>();
     }
 
-    private static Dictionary<string, AccessControlOperation> ExtractOperations(string policy)
-    {
-        var operations = new Dictionary<string, AccessControlOperation>(StringComparer.Ordinal);
-        string? currentName = null;
-        string? currentVerb = null;
-        foreach (string rawLine in policy.Split('\n'))
-        {
-            string line = rawLine.Trim();
-            const string NamePrefix = "- name: ";
-            const string VerbPrefix = "httpVerb: ";
-            const string ActionPrefix = "action: ";
-            if (line.StartsWith(NamePrefix, StringComparison.Ordinal))
-            {
-                currentName = line[NamePrefix.Length..];
-                currentVerb = null;
-                continue;
-            }
+    private static YamlSequenceNode Sequence(YamlMappingNode root, string key)
+        => root.Children[new YamlScalarNode(key)].ShouldBeOfType<YamlSequenceNode>();
 
-            if (line.StartsWith(VerbPrefix, StringComparison.Ordinal) && currentName is not null)
-            {
-                currentVerb = line[VerbPrefix.Length..];
-                continue;
-            }
-
-            if (line.StartsWith(ActionPrefix, StringComparison.Ordinal)
-                && currentName is not null
-                && currentVerb is not null)
-            {
-                operations
-                    .TryAdd(currentName, new AccessControlOperation(NormalizeHttpVerb(currentVerb), line[ActionPrefix.Length..]))
-                    .ShouldBeTrue($"Duplicate DAPR ACL operation '{currentName}' must not be allowed to mask a broader rule.");
-                currentName = null;
-                currentVerb = null;
-            }
-        }
-
-        return operations;
-    }
-
-    private static string NormalizeHttpVerb(string httpVerb)
-    {
-        string[] verbs = httpVerb
-            .Trim()
-            .Trim('[', ']')
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(static verb => verb.Trim('\'', '"'))
-            .ToArray();
-
-        verbs.ShouldBe(["POST"], "tenants-api may document only POST service-invocation operations.");
-        return verbs.Single();
-    }
+    private static string Scalar(YamlMappingNode root, string key)
+        => root.Children[new YamlScalarNode(key)].ShouldBeOfType<YamlScalarNode>().Value ?? string.Empty;
 
     private sealed record AccessControlOperation(string HttpVerb, string Action);
 }
