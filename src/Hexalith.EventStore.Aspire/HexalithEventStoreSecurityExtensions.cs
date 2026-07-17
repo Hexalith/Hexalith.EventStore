@@ -144,6 +144,26 @@ public static class HexalithEventStoreSecurityExtensions
     }
 
     /// <summary>
+    /// Wires EventStore bearer-token validation settings without injecting service-account credentials.
+    /// </summary>
+    /// <param name="resource">The project resource to configure.</param>
+    /// <param name="security">The security resources returned by <see cref="AddHexalithEventStoreSecurity"/>.</param>
+    /// <returns>The same project resource builder for chaining.</returns>
+    public static IResourceBuilder<ProjectResource> WithEventStoreAuthenticationValidation(
+        this IResourceBuilder<ProjectResource> resource,
+        HexalithEventStoreSecurityResources security)
+    {
+        ArgumentNullException.ThrowIfNull(resource);
+        ArgumentNullException.ThrowIfNull(security);
+
+        return resource
+            .WithSecurityDependency(security)
+            .WithEnvironment("EventStore__Authentication__Authority", security.RealmUrl)
+            .WithEnvironment("EventStore__Authentication__Audience", security.Audience)
+            .WithEnvironment("EventStore__Authentication__RequireHttpsMetadata", ToConfigurationValue(security.RequireHttpsMetadata));
+    }
+
+    /// <summary>
     /// Wires service credentials for EventStore client token acquisition against the security realm.
     /// </summary>
     /// <param name="resource">The project resource to configure.</param>
@@ -166,10 +186,7 @@ public static class HexalithEventStoreSecurityExtensions
         ArgumentException.ThrowIfNullOrWhiteSpace(password);
 
         return resource
-            .WithSecurityDependency(security)
-            .WithEnvironment("EventStore__Authentication__Authority", security.RealmUrl)
-            .WithEnvironment("EventStore__Authentication__Audience", security.Audience)
-            .WithEnvironment("EventStore__Authentication__RequireHttpsMetadata", ToConfigurationValue(security.RequireHttpsMetadata))
+            .WithEventStoreAuthenticationValidation(security)
             .WithEnvironment("EventStore__Authentication__ClientId", clientId)
             .WithEnvironment("EventStore__Authentication__Username", username)
             .WithEnvironment("EventStore__Authentication__Password", password);

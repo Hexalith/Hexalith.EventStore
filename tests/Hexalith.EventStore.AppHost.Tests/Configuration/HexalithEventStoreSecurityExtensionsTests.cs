@@ -48,7 +48,25 @@ public class HexalithEventStoreSecurityExtensionsTests {
     }
 
     [Fact]
-    public void WithEventStoreClientCredentials_ForwardsAuthenticationValidationSettings() {
+    public void WithEventStoreAuthenticationValidation_ForwardsValidationSettingsWithoutServiceCredentials() {
+        string source = File.ReadAllText(Path.Combine(
+            RepositoryProjectPaths.GetRepositoryRoot(),
+            "src",
+            "Hexalith.EventStore.Aspire",
+            "HexalithEventStoreSecurityExtensions.cs"));
+
+        string method = ExtractMethod(source, "public static IResourceBuilder<ProjectResource> WithEventStoreAuthenticationValidation");
+
+        method.ShouldContain(".WithEnvironment(\"EventStore__Authentication__Authority\", security.RealmUrl)");
+        method.ShouldContain(".WithEnvironment(\"EventStore__Authentication__Audience\", security.Audience)");
+        method.ShouldContain(".WithEnvironment(\"EventStore__Authentication__RequireHttpsMetadata\", ToConfigurationValue(security.RequireHttpsMetadata))");
+        method.ShouldNotContain("EventStore__Authentication__ClientId");
+        method.ShouldNotContain("EventStore__Authentication__Username");
+        method.ShouldNotContain("EventStore__Authentication__Password");
+    }
+
+    [Fact]
+    public void WithEventStoreClientCredentials_ComposesValidationAndAddsServiceAccountSettings() {
         string source = File.ReadAllText(Path.Combine(
             RepositoryProjectPaths.GetRepositoryRoot(),
             "src",
@@ -57,10 +75,10 @@ public class HexalithEventStoreSecurityExtensionsTests {
 
         string method = ExtractMethod(source, "public static IResourceBuilder<ProjectResource> WithEventStoreClientCredentials");
 
-        method.ShouldContain(".WithEnvironment(\"EventStore__Authentication__Authority\", security.RealmUrl)");
-        method.ShouldContain(".WithEnvironment(\"EventStore__Authentication__Audience\", security.Audience)");
-        method.ShouldContain(".WithEnvironment(\"EventStore__Authentication__RequireHttpsMetadata\", ToConfigurationValue(security.RequireHttpsMetadata))");
+        method.ShouldContain(".WithEventStoreAuthenticationValidation(security)");
         method.ShouldContain(".WithEnvironment(\"EventStore__Authentication__ClientId\", clientId)");
+        method.ShouldContain(".WithEnvironment(\"EventStore__Authentication__Username\", username)");
+        method.ShouldContain(".WithEnvironment(\"EventStore__Authentication__Password\", password)");
     }
 
     private static EndpointAnnotation GetEndpoint(HexalithEventStoreSecurityResources security, string name) {

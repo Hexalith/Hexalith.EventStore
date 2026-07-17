@@ -47,7 +47,8 @@ public class TenantsApiLaunchSettingsTests
         tenantsApiBlock.ShouldNotContain("eventStoreResources.PubSub");
         tenantsApiBlock.ShouldNotContain(".WithReference(eventStoreResources");
 
-        program.ShouldContain("_ = tenantsApi.WithEventStoreClientCredentials(security);");
+        program.ShouldContain("_ = tenantsApi.WithEventStoreAuthenticationValidation(security);");
+        program.ShouldNotContain("_ = tenantsApi.WithEventStoreClientCredentials(security);");
     }
 
     [Fact]

@@ -57,7 +57,8 @@ public class SampleApiLaunchSettingsTests
         sampleApiBlock.ShouldNotContain("eventStoreResources.PubSub");
         sampleApiBlock.ShouldNotContain(".WithReference(eventStoreResources");
 
-        program.ShouldContain("_ = sampleApi.WithEventStoreClientCredentials(security);");
+        program.ShouldContain("_ = sampleApi.WithEventStoreAuthenticationValidation(security);");
+        program.ShouldNotContain("_ = sampleApi.WithEventStoreClientCredentials(security);");
     }
 
     [Fact]

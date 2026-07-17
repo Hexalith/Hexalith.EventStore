@@ -156,17 +156,17 @@ IResourceBuilder<ProjectResource> sampleApi = builder.AddProject<Projects.Hexali
 if (security is not null) {
 #if HEXALITH_TENANTS_SOURCE
     _ = tenants.WithJwtBearerSecurity(security);
-    _ = tenantsApi.WithEventStoreClientCredentials(security);
+    _ = tenantsApi.WithEventStoreAuthenticationValidation(security);
 #endif
 
     _ = adminServer.WithJwtBearerSecurity(security);
 
     _ = blazorUi.WithEventStoreClientCredentials(security);
 
-    // sample-api validates inbound callers against the same realm; WithEventStoreClientCredentials wires
-    // EventStore:Authentication:Authority so JWT validation uses OIDC discovery (Keycloak). With
-    // EnableKeycloak=false it falls back to the symmetric signing key from appsettings.Development.json.
-    _ = sampleApi.WithEventStoreClientCredentials(security);
+    // sample-api validates inbound callers against the same realm without receiving reusable service-account
+    // credentials. With EnableKeycloak=false it falls back to the symmetric signing key from
+    // appsettings.Development.json.
+    _ = sampleApi.WithEventStoreAuthenticationValidation(security);
 
     _ = adminUI
         .WithEventStoreClientCredentials(security)

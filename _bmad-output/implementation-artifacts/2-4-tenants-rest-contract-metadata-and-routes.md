@@ -17,10 +17,17 @@ deterministic invalid/duplicate diagnostics. `done` requires the Tenants maintai
 PR/commit, exact Tenants SHA, accepted contract scope, and focused test results. Historical
 authority: `spec-2-4-tenants-external-api-host-adoption.md` and its implementation review.
 
+## Acceptance Evidence
+
+- Tenants maintainer approval and accepted contract scope: on 2026-07-17, the review owner accepted the direct, admin-authored Tenants commits as the approval chain for this split story. GitHub user `jpiquot` authored and committed both changes and had repository `admin` permission when the evidence was verified.
+- Accepted implementation commit: [`f3844d34e314b96b7e5caf63aee2c5a5f2cbcf6a`](https://github.com/Hexalith/Hexalith.Tenants/commit/f3844d34e314b96b7e5caf63aee2c5a5f2cbcf6a) (`feat(api): harden generated tenants api host`).
+- Accepted final Tenants SHA: [`80d23613612088a0c3fee23eb149f34ce08e9729`](https://github.com/Hexalith/Hexalith.Tenants/commit/80d23613612088a0c3fee23eb149f34ce08e9729) (`test(api): harden generated tenants api coverage`), verified as an ancestor of `origin/main` and pinned by EventStore revision `34daf51c17c97d37c340660320ff4a8947572506`.
+- Accepted scope: route, verb, system-tenant source, entity identity, API-scope identity, and deterministic generated-controller diagnostics represented by the pinned implementation and focused tests. Focused results remain recorded in the historical parent spec.
+
 ### Review Findings
 
-- [ ] [Review][Decision] [high] Split Story 2.4 lacks its required external acceptance evidence — The reviewed range pins Tenants commit `80d23613612088a0c3fee23eb149f34ce08e9729` and records focused tests, but no Tenants maintainer-approved PR/commit or explicit contract-scope acceptance is documented. The story cannot move to `done` until that external approval is supplied or the acceptance gate is deliberately changed.
-- [ ] [Review][Decision] [high] The external API host receives unused reusable service-account credentials — `tenants-api` only validates and forwards the caller bearer, but the mandated `WithEventStoreClientCredentials` call also injects client ID, username, and password. Decide whether to replace it with validation-only authority/audience wiring or document and implement the intended service-account use.
+- [x] [Review][Decision] [high] Split Story 2.4 lacks its required external acceptance evidence — resolved 2026-07-17 by recording the accepted direct, admin-authored Tenants commit chain, exact final SHA, and explicit contract-scope acceptance above.
+- [ ] [Review][Patch] [high] Replace `tenants-api` service-account credential injection with validation-only authority, audience, HTTPS-metadata, and security-dependency wiring [src/Hexalith.EventStore.AppHost/Program.cs:159]
 - [ ] [Review][Patch] [high] Release builds use the packaged REST generator while tests silently use a local source analyzer, leaving shipped behavior unverified and allowing mixed package/source Debug graphs [references/Hexalith.Tenants/src/Hexalith.Tenants.Api/Hexalith.Tenants.Api.csproj:8]
 - [ ] [Review][Patch] [medium] Source-mode `tenants-api` topology is guarded only by source-text assertions and is not compiled by normal CI [tests/Hexalith.EventStore.AppHost.Tests/Configuration/TenantsApiLaunchSettingsTests.cs:29]
 - [ ] [Review][Patch] [medium] The Tenants domain-service boundary guard returns green when the required submodule is absent from CI [tests/Hexalith.EventStore.DomainService.Tests/DomainModuleAuthoringGuardrailTests.cs:394]
