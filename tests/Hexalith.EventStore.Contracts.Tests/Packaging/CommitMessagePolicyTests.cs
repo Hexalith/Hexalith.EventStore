@@ -8,30 +8,68 @@ namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 public sealed class CommitMessagePolicyTests
 {
     private const string CommitHeaderFormat = "<type>[optional scope][!]: <description>";
+    private const string SharedGitInstructionsRelativePath = "hexalith-git-instructions.md";
+    private const string SharedLlmInstructionsRelativePath = "../references/Hexalith.AI.Tools/hexalith-llm-instructions.md";
 
     /// <summary>
-    /// Verifies Copilot receives the commitlint contract without relying on a broken link.
+    /// Verifies Copilot delegates the commitlint contract to resolvable shared instructions.
     /// </summary>
     [Fact]
-    public void CopilotInstructionsExposeTheCommitlintContractDirectly()
+    public void CopilotInstructionsDelegateCommitlintContractToSharedInstructions()
     {
-        string instructions = ReadRepositoryFile(".github", "copilot-instructions.md");
+        string copilotInstructionsPath = RepositoryPath(".github", "copilot-instructions.md");
+        string copilotInstructions = File.ReadAllText(copilotInstructionsPath);
 
-        instructions.Contains(
-            "[`hexalith-llm-instructions.md`](../references/Hexalith.AI.Tools/hexalith-llm-instructions.md)",
+        copilotInstructions.Contains(
+            $"[`hexalith-llm-instructions.md`]({SharedLlmInstructionsRelativePath})",
             StringComparison.Ordinal).ShouldBeTrue(
                 "The Copilot entry point must resolve the shared instructions relative to .github.");
-        instructions.Contains(
+        copilotInstructions.Contains(
             "[`hexalith-llm-instructions.md`](./references/Hexalith.AI.Tools/hexalith-llm-instructions.md)",
             StringComparison.Ordinal).ShouldBeFalse(
                 "The former link resolves under .github/references and silently loses the shared instructions.");
-        instructions.ShouldContain("@commitlint/config-conventional");
-        instructions.ShouldContain(CommitHeaderFormat);
-        instructions.ShouldContain("Start the description with a lowercase letter");
-        instructions.ShouldContain("100 characters or fewer");
-        instructions.ShouldContain("near 50 characters");
-        instructions.ShouldContain("Choose the type by release impact");
-        instructions.ShouldContain("`revert`");
+
+        string sharedLlmInstructionsPath = Path.GetFullPath(Path.Combine(
+            Path.GetDirectoryName(copilotInstructionsPath).ShouldNotBeNull(),
+            SharedLlmInstructionsRelativePath));
+        sharedLlmInstructionsPath.ShouldBe(
+            RepositoryPath("references", "Hexalith.AI.Tools", "hexalith-llm-instructions.md"));
+        File.Exists(sharedLlmInstructionsPath).ShouldBeTrue(
+            "The Copilot entry point must delegate to an initialized shared LLM instruction file.");
+
+        string sharedLlmInstructions = File.ReadAllText(sharedLlmInstructionsPath);
+        sharedLlmInstructions.ShouldContain(
+            $"[hexalith-git-instructions.md]({SharedGitInstructionsRelativePath})");
+        sharedLlmInstructions.ShouldContain("Conventional Commits are mandatory");
+        sharedLlmInstructions.ShouldContain("<type>[scope][!]: <description>");
+
+        string sharedGitInstructionsPath = Path.GetFullPath(Path.Combine(
+            Path.GetDirectoryName(sharedLlmInstructionsPath).ShouldNotBeNull(),
+            SharedGitInstructionsRelativePath));
+        File.Exists(sharedGitInstructionsPath).ShouldBeTrue(
+            "The shared LLM instructions must delegate Git policy to a resolvable colocated file.");
+
+        string sharedGitInstructions = File.ReadAllText(sharedGitInstructionsPath);
+        sharedGitInstructions.ShouldContain("## Message Rules");
+        sharedGitInstructions.ShouldContain(CommitHeaderFormat);
+        sharedGitInstructions.ShouldContain("The description starts lowercase");
+        sharedGitInstructions.ShouldContain("Never use the `chore` type");
+        sharedGitInstructions.ShouldContain("--no-verify");
+
+        string[] duplicatedPolicyMarkers =
+        [
+            "@commitlint/config-conventional",
+            CommitHeaderFormat,
+            "Start the description with a lowercase letter",
+            "100 characters or fewer",
+            "near 50 characters",
+            "Choose the type by release impact",
+        ];
+        foreach (string marker in duplicatedPolicyMarkers)
+        {
+            copilotInstructions.Contains(marker, StringComparison.Ordinal).ShouldBeFalse(
+                $"The Copilot entry point must delegate commit policy instead of duplicating '{marker}'.");
+        }
 
         string submodules = ReadRepositoryFile(".gitmodules");
         submodules.ShouldContain("path = references/Hexalith.AI.Tools");

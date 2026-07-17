@@ -3,6 +3,7 @@ extern alias eventstore;
 using Dapr.Actors;
 using Dapr.Actors.Client;
 
+using Hexalith.EventStore.Indexes;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Testing.Fakes;
 
@@ -11,6 +12,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 using NSubstitute;
 
@@ -33,6 +35,8 @@ public class OpenApiWebApplicationFactory : WebApplicationFactory<EventStoreProg
         }));
 
         _ = builder.ConfigureTestServices(services => {
+            RemoveAdminOperationalIndexHostedService(services);
+
             // Replace IActorProxyFactory with a mock (avoids DaprClient startup)
             ServiceDescriptor? existingFactory = services.FirstOrDefault(
                 d => d.ServiceType == typeof(IActorProxyFactory));
@@ -55,5 +59,19 @@ public class OpenApiWebApplicationFactory : WebApplicationFactory<EventStoreProg
             // Remove Dapr health checks that require sidecar
             TestServiceOverrides.RemoveDaprHealthChecks(services);
         });
+    }
+
+    private static void RemoveAdminOperationalIndexHostedService(IServiceCollection services) {
+        ServiceDescriptor singleton = services.Single(
+            static descriptor => descriptor.ServiceType == typeof(AdminOperationalIndexHostedService));
+        int singletonIndex = services.IndexOf(singleton);
+        ServiceDescriptor hostedService = services
+            .Skip(singletonIndex + 1)
+            .Take(2)
+            .Single(static descriptor => descriptor.ServiceType == typeof(IHostedService)
+                && descriptor.Lifetime == ServiceLifetime.Singleton
+                && descriptor.ImplementationFactory is not null);
+
+        _ = services.Remove(hostedService);
     }
 }

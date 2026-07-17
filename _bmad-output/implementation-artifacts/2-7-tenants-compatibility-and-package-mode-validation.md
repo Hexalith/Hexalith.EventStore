@@ -83,3 +83,11 @@ The pre-authorization correction closes the live source-topology prerequisite wi
 dependency migration and may enter review while Story 1.20 remains non-authorizing. Story
 1.20 then selects and approves the exact runtime identities. Story 2.12 alone owns the later
 Tenants commit, source/package adoption, maintainer approval, and verification evidence.
+
+## Review Findings
+
+- [ ] [Review][Patch] Story enters review while the AC1-AC2 correction and live proof remain open [_bmad-output/implementation-artifacts/sprint-status.yaml:98]
+- [ ] [Review][Patch] Out-of-scope dependency pointers change and Builds downgrades the EventStore version [references/Hexalith.Builds:1]
+- [ ] [Review][Patch] The authoritative migration crosswalk contradicts the Story 2.7 split and omits Story 2.12 [_bmad-output/planning-artifacts/story-id-migration-2026-07-15.md:46]
+- [ ] [Review][Patch] The epic plan references an untracked sprint-change proposal [_bmad-output/planning-artifacts/epics.md:30]
+- [ ] [Review][Patch] The CI source-mode guard can pass a skipped or token-only job [tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs:185]
