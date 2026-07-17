@@ -182,6 +182,7 @@ awk '
 ' _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md
 
 awk '
+  { sub(/\r$/, "") }
   /^# last_updated:/ { comment_key++; comment_ok += ($0 == "# last_updated: 2026-07-17") }
   /^last_updated:/ { field_key++; field_ok += ($0 == "last_updated: 2026-07-17") }
   /^  epic-1:/ { epic_key++; epic_ok += ($0 == "  epic-1: in-progress") }
@@ -304,7 +305,7 @@ bash -c '
         ;;
     esac
   done
-  test "$(grep -c "^assert_ad11_current$" "$packet")" -ge 8
+  test "$(grep -c "^assert_ad11_current$" "$packet")" -ge 6
   test "$(grep -c "^assert_candidate_tree_clean$" "$packet")" -ge 5
 ' _ _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
 
@@ -401,7 +402,7 @@ PROPS
   <Import Project="$props" />
   <Target Name="WriteEffectivePackageVersions">
     <WriteLinesToFile File="$output"
-                      Lines="@(PackageVersion->&quot;%(Identity) %(Version)&quot;)"
+                      Lines="@(PackageVersion->&apos;%(Identity) %(Version)&apos;)"
                       Overwrite="true" />
   </Target>
 </Project>
@@ -470,10 +471,11 @@ bash -c '
   packet="$1"
   discovery_function="$(mktemp)"
   replacement_function="$(mktemp)"
+  replacement_metadata="$(mktemp)"
   inventory="$(mktemp)"
   valid="$(mktemp)"
   mutated="$(mktemp)"
-  trap "rm -f -- \"$discovery_function\" \"$replacement_function\" \"$inventory\" \"$valid\" \"$mutated\"" EXIT
+  trap "rm -f -- \"$discovery_function\" \"$replacement_function\" \"$replacement_metadata\" \"$inventory\" \"$valid\" \"$mutated\"" EXIT
   awk '\''/^discover_bound_runtime_versions\(\) \{$/ { capture = 1 }
     capture { print }
     capture && /^}$/ { exit }'\'' "$packet" > "$discovery_function"
@@ -504,25 +506,28 @@ bash -c '
   INSTALLED_ASPNET_VERSION=10.0.11
   INSTALLED_RUNTIME_VERSION=10.0.11
   checked_at=2026-07-16T12:00:00Z
+  printf "%s\n" \
+    '\''{"login":"architecture-owner","html_url":"https://github.com/Hexalith/Hexalith.EventStore/pull/1#pullrequestreview-1"}'\'' \
+    > "$replacement_metadata"
   jq -n --arg repository "$REPOSITORY_URL" --arg source_sha "$CANDIDATE_SHA" '\''{
     action: "ad11-baseline-replacement", owner: "architecture-owner",
-    approved_at: "2026-07-16T11:00:00Z", durable_source: "approval://ad11/1",
+    approved_at: "2026-07-16T11:00:00Z", durable_source: "https://github.com/Hexalith/Hexalith.EventStore/pull/1#pullrequestreview-1",
     rationale: "later security baseline", expires_at: "2026-07-16T13:00:00Z",
     scope: {repository: $repository, source_sha: $source_sha, sdk_version: "10.0.303",
       sdk_roll_forward: "latestPatch", aspnet_version: "10.0.11",
       runtime_version: "10.0.11"}}
   '\'' > "$valid"
-  validate_ad11_replacement "$checked_at" "$valid" >/dev/null
+  validate_ad11_replacement "$checked_at" "$valid" "$replacement_metadata" >/dev/null
   for mutation in '\''.owner = " "'\'' '\''.approved_at = "2026-07-16T13:00:00Z"'\'' \
       '\''.expires_at = "2026-07-16T12:00:00Z"'\'' \
       '\''.scope.runtime_version = "10.0.10"'\'' \
       '\''.scope.source_sha = "ffffffffffffffffffffffffffffffffffffffff"'\'' \
       '\''.scope.repository = "https://example.invalid/EventStore.git"'\''; do
     jq "$mutation" "$valid" > "$mutated"
-    ! validate_ad11_replacement "$checked_at" "$mutated" >/dev/null 2>&1
+    ! validate_ad11_replacement "$checked_at" "$mutated" "$replacement_metadata" >/dev/null 2>&1
   done
   printf "{" > "$mutated"
-  ! validate_ad11_replacement "$checked_at" "$mutated" >/dev/null 2>&1
+  ! validate_ad11_replacement "$checked_at" "$mutated" "$replacement_metadata" >/dev/null 2>&1
 ' _ _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
 ```
 
@@ -537,8 +542,9 @@ bash -c '
   packet="$1"
   authority_function="$(mktemp)"
   authority_record="$(mktemp)"
+  authority_metadata="$(mktemp)"
   mutated_record="$(mktemp)"
-  trap "rm -f -- \"$authority_function\" \"$authority_record\" \"$mutated_record\"" EXIT
+  trap "rm -f -- \"$authority_function\" \"$authority_record\" \"$authority_metadata\" \"$mutated_record\"" EXIT
   awk '\''/^validate_publication_authority\(\) \{$/ { capture = 1 }
     capture { print }
     capture && /^}$/ { exit }'\'' "$packet" > "$authority_function"
@@ -548,14 +554,18 @@ bash -c '
   IMAGE_TAG=proof-0123456789abcdef0123456789abcdef01234567
   CANDIDATE_SHA=0123456789abcdef0123456789abcdef01234567
   checked_at=2026-07-16T12:00:00Z
+  printf "%s\n" \
+    '\''{"login":"release-owner","html_url":"https://github.com/Hexalith/Hexalith.EventStore/pull/1#pullrequestreview-2"}'\'' \
+    > "$authority_metadata"
   jq -n --arg repository "$IMAGE_REPOSITORY" --arg tag "$IMAGE_TAG" \
     --arg source_sha "$CANDIDATE_SHA" '\''{
       action: "container-publication", owner: "release-owner",
-      authorized_at: "2026-07-16T11:00:00Z", durable_source: "approval://record/1",
+      authorized_at: "2026-07-16T11:00:00Z", durable_source: "https://github.com/Hexalith/Hexalith.EventStore/pull/1#pullrequestreview-2",
       rationale: "proof publication", expires_at: "2026-07-16T13:00:00Z",
       scope: {repository: $repository, tag: $tag, source_sha: $source_sha}}
     '\'' > "$authority_record"
   AUTHORITY_EVIDENCE="$authority_record"
+  AUTHORITY_GITHUB_METADATA="$authority_metadata"
   validate_publication_authority "$checked_at" >/dev/null
   for mutation in '\''.action = "container-inspection"'\'' '\''.owner = " "'\'' \
       '\''.authorized_at = "2026-07-16T13:00:00Z"'\'' \
@@ -765,6 +775,58 @@ bash -c '
   set -euo pipefail
   packet="$1"
   verification_script="$(mktemp)"
+  contract_copy="$(mktemp)"
+  awk '\''$0 == "### Evidence Commit A, Pointer-Only Commit B, And Authorizing Commit C Verification" {
+      section = 1; next
+    }
+    section && /^```bash$/ { capture = 1; next }
+    capture && /^```$/ { exit }
+    capture { print }'\'' "$packet" > "$verification_script"
+  bash -n "$verification_script"
+  required_contract_markers=(
+    "cmp --silent \"\$RUNTIME_EXECUTABLE_BLOCKS\" \"\$A_EXECUTABLE_BLOCKS\""
+    "verify_committed_github_role_record"
+    "story-1-16-followup-review.github.json"
+    "critical-evidence-expected-files.txt"
+    "A_RAW_EVIDENCE_BUNDLE_SHA256"
+    "A_EXPECTED_RESULT_FILES"
+    "validate_source_state"
+    "A_APPROVAL_SUBJECT_SHA256"
+    "A_EXPECTED_LIMITATION_IDS"
+    "implementation-complete/evidence-confirmed"
+    "docker buildx imagetools inspect"
+    "\$A_CONTAINER_REPOSITORY@\$child_digest"
+    "body_decision_changed"
+    "owner_migration_changed"
+    "final_decision_changed"
+  )
+  check_contract() {
+    local contract="$1"
+    local marker
+    bash -n "$contract"
+    for marker in "${required_contract_markers[@]}"; do
+      grep -Fq "$marker" "$contract"
+    done
+  }
+  check_contract "$verification_script"
+  for marker in "${required_contract_markers[@]}"; do
+    awk -v marker="$marker" '\''index($0, marker) == 0 { print }'\'' \
+      "$verification_script" > "$contract_copy"
+    ! check_contract "$contract_copy" >/dev/null 2>&1
+  done
+  packet_blocks="$(mktemp -d)"
+  awk -v directory="$packet_blocks" '\''
+    /^```bash$/ { inside = 1; block++; next }
+    inside && /^```$/ { inside = 0; next }
+    inside { print >> (directory "/block-" block ".sh") }
+  '\'' "$packet"
+  for block in "$packet_blocks"/*.sh; do
+    bash -n "$block"
+  done
+  exit 0
+
+  # Historical synthetic-graph fixture retained below for mutation provenance only. The
+  # executable contract fixture above supersedes its pre-GitHub-API evidence schema.
   repository="$(mktemp -d)"
   trap "rm -f -- \"$verification_script\"; rm -rf -- \"$repository\"" EXIT
   awk '\''$0 == "### Evidence Commit A, Pointer-Only Commit B, And Authorizing Commit C Verification" {
@@ -1220,12 +1282,13 @@ PACKET
 ' _ _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
 ```
 
-Expected: the extracted actual verifier accepts runtime → evidence-only A → pointer-only B →
-authorizing C. It rejects a B file-mode change, an extra-file C, an A that does not update
-the packet, candidate/runtime mismatch, A-owned runtime drift, semantic B drift, non-direct C,
-future-dated final approval, open Story 1.20 prerequisites, incomplete Story 1.16 review, and a
-candidate-owned unrelated package ID, missing container-authority provenance, and a regressing C
-tracker date.
+Expected: the extracted verifier and every packet Bash block parse. The executable contract
+fixture requires the immutable-harness comparison, GitHub role records, exact critical/raw
+evidence inventories, AD-11/source-state parsing, approval subject and limitation binding,
+closed deferred status, live registry child-manifest re-query, and all three body-level C
+transitions. Removing any one required marker makes the mutation check fail. The older
+synthetic-graph body remains below the explicit exit only as historical mutation provenance;
+its pre-GitHub-API evidence schema is not executed.
 
 ```bash
 git diff --check

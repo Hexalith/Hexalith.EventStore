@@ -133,6 +133,24 @@ from this proposal inventory and remains owned by its existing changes.
 
 ### Review Findings
 
+#### 2026-07-17 — Code review chunk 1: proof packet
+
+- [x] [Review][Patch] [high] Retrieve GitHub approval records through the API and require each approving login to match the committed allowlist for its EventStore, release, architecture, or Story 1.16 reviewer role [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1668]
+- [x] [Review][Patch] [high] Require the committed critical-evidence manifest to contain exactly the mandatory inventory and reject symlinks or non-basename paths [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1945]
+- [x] [Review][Patch] [high] Retrieve and hash the raw evidence bundle, then validate a deterministic gate/log/XML inventory and successful results before A/B/C authorization [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1951]
+- [x] [Review][Patch] [high] Parse and revalidate committed AD-11 and source-state evidence against the tested runtime, required versions, replacement authority, clean states, and submodule identities [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1945]
+- [x] [Review][Patch] [high] Bind final approvals to the exact evidence-manifest and packet content, require post-gate approval timestamps, and disposition every named matrix limitation [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1668]
+- [x] [Review][Patch] [high] Validate exactly one available classification and complete evidence fields under each of the nine named capability sections instead of counting unscoped strings [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:2198]
+- [x] [Review][Patch] [high] Require every Story 1.20 deferred-work section to carry exactly one explicit allowed closed status instead of checking only for absence of `open-blocking` [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:2006]
+- [x] [Review][Patch] [high] Prevent evidence commit A from weakening the reviewed gate harness or A/B/C verifier by pinning immutable executable-block identities [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1925]
+- [x] [Review][Patch] [high] Reconcile and verify the packet's body-level Decision, Owner Review, and Final Decision when commit C authorizes migration [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:2249]
+- [x] [Review][Patch] [high] Re-query the canonical registry during A/B/C verification and bind the approved repository, immutable digest, child manifests, platform set, and tested-runtime provenance [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:2059]
+- [x] [Review][Patch] [high] Load source, NuGet, and container consumer pins from a verified authorizing commit C instead of accepting caller-supplied self-consistent identities [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:2339]
+- [x] [Review][Patch] [high] Add the configured `samples/Hexalith.EventStore.Sample.Tests` project and compare the mandatory test list with discovered solution test projects [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1215]
+- [x] [Review][Patch] [high] Require Story 1.16 follow-up evidence to use a real calendar date and a resolvable durable source tied to the reviewed runtime [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1968]
+- [x] [Review][Patch] [medium] Run the lifecycle provenance E2E in supported Debug/project-reference mode rather than Release with source references [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:891]
+- [x] [Review][Patch] [medium] Reconcile the packet's stale Story 2.7 `review`/working-tree claims with the canonical committed status and exact-SHA rerun boundary [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:126]
+
 - [x] [Review][Patch] [high] Restore Story 1.16 to fail-closed review state until a named disposition is tied to the committed candidate runtime [_bmad-output/implementation-artifacts/spec-1-11-complete-projection-freshness-lifecycle.md:9]
 - [x] [Review][Patch] [high] Make the AD-11 mutation fixture actually vary repository and installed SDK versions [_bmad-output/implementation-artifacts/spec-1-16-1-20-sprint-change-proposal.md:318]
 - [x] [Review][Patch] [high] Reject mixed ASP.NET patch bands across every effective 10.x central package pin [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:240]
@@ -310,6 +328,8 @@ evidence; named owner approval remains absent. No consumer migration is authoriz
 
 - `_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md`
 - `_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md`
+- `_bmad-output/implementation-artifacts/1-20-github-approval-role-allowlist.json`
+- `_bmad-output/implementation-artifacts/spec-1-16-1-20-sprint-change-proposal.md`
 - `_bmad-output/implementation-artifacts/deferred-work.md`
 
 ## Change Log
@@ -320,3 +340,6 @@ evidence; named owner approval remains absent. No consumer migration is authoriz
 - 2026-07-17: Reconciled current-HEAD evidence: lifecycle and AD-11 pass; corrected the
   source-topology proof harness; routed the reproducible stale-registration/query-provenance
   blocker to existing Story 2.7; retained all release and migration guards.
+- 2026-07-17: Applied all 15 findings from proof-packet review chunk 1: GitHub role-bound
+  approvals, exact durable/raw evidence inventories, semantic A/B/C verification, live registry
+  re-query, verified-C consumer pins, complete test discovery, and reconciled Story 2.7 status.

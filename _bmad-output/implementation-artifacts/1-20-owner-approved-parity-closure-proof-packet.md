@@ -9,6 +9,7 @@ candidate_source_sha: 85877902f8d60a466ab90cd8b68b53838863db1c
 tested_runtime_sha: null
 documentation_commit_sha: null
 evidence_manifest_sha256: null
+approval_subject_sha256: null
 raw_evidence_bundle_url: null
 raw_evidence_bundle_sha256: null
 eventstore_owner_approval_url: null
@@ -49,7 +50,8 @@ The exact-SHA gate failed before package/container publication and owner review:
 5. The failed candidate was below architecture AD-11's security baseline. Commit
    `772cdfefa8163704de0f57042af5b0507c1ac771` passes the exact SDK `10.0.302`,
    ASP.NET `10.0.10`, and installed `Microsoft.NETCore.App` `10.0.10` preflight. Story 2.7's
-   reviewed working-tree correction now passes the source-topology provenance prerequisite,
+   correction is committed at `fd8ab24d110e605dfd64487cda84a301126d337d`, is recorded
+   `done`, and passes the source-topology provenance prerequisite,
    but this packet remains non-authorizing until every gate is rerun at one exact clean
    committed candidate SHA.
 6. No named EventStore owner has reviewed completed passing exact-SHA evidence, and no
@@ -60,7 +62,7 @@ The exact-SHA gate failed before package/container publication and owner review:
 Keep the lifecycle-cleanup and AD-11 entries as resolved implementation history: commit
 `772cdfefa8163704de0f57042af5b0507c1ac771` passed the exact former lifecycle failure, its
 complete six-test class, the 44-test live-sidecar lane, and the executable AD-11 preflight.
-Story 2.7's reviewed working tree now removes the stale base `orders`/`inventory`
+Story 2.7's committed `fd8ab24d110e605dfd64487cda84a301126d337d` correction removes the stale base `orders`/`inventory`
 registrations and passes the corrected source-mode E2E with freshly persisted
 `admin:query-types:tenants` state. Rerun that proof together with every remaining
 production-path and package/container gate at one unchanged clean committed SHA, explicitly
@@ -123,7 +125,7 @@ changes no runtime or package pin.
 | Story 1.18 delivery idempotency | `done` | Crosswalk maps completed historical Story 1.13 production-path evidence. | Satisfied for sequencing; evidence not promoted to this packet without exact-SHA rerun. |
 | Story 1.19 paged rebuild equivalence | `done` | Active Story 1.19 records approval after 13 in-scope patches, one explicit deferral, a 2,620-test Server pass, the real DAPR/Redis paged-rebuild pass, and a warning-free Release build. | Satisfied for sequencing; the paged-rebuild live test also passed at the current candidate SHA, but the cross-cutting live gate did not. |
 | Architecture AD-11 security baseline | `implementation-complete/evidence-confirmed` | Commits `d6c849aaf8f77f967377f72b763bd44b3131a713`, `3a43d5e6151ebc51e945bf1b6cecda92fd198a09`, and `8c70efb08b1bf2fcd077ad930c5827d1ab1594da` are present in current commit `772cdfef...`; the executable preflight observed SDK `10.0.302`, ASP.NET `10.0.10`, and installed `Microsoft.NETCore.App` `10.0.10`. | Satisfied for the current readiness audit. Every later candidate must still pass the executable preflight unchanged. |
-| Source-topology query provenance | `implementation-complete/reverification-required` | Story 2.7's reviewed working tree based on `5afbe0b4...` removes the stale base sample bindings. The exact Debug source-topology E2E passes 1/1, returns `HandlerComputed` provenance, and reads freshly persisted `admin:query-types:tenants` state containing `list-tenants`. | Story 2.7's prerequisite is satisfied. Rerun it at the exact clean committed candidate SHA selected for Story 1.20 before authorization. |
+| Source-topology query provenance | `implementation-complete/reverification-required` | Story 2.7 is `done`; committed correction `fd8ab24d110e605dfd64487cda84a301126d337d` removes the stale base sample bindings. The exact Debug source-topology E2E passes 1/1, returns `HandlerComputed` provenance, and reads freshly persisted `admin:query-types:tenants` state containing `list-tenants`. | Story 2.7's implementation prerequisite is satisfied. Rerun it at the exact clean committed candidate SHA selected for Story 1.20 before authorization. |
 | Story 1.20 owner review | pending | No reviewer, approval date, or durable source exists. | **Hard blocker.** |
 
 ## Artifact Identity Pin
@@ -250,9 +252,88 @@ assert_candidate_identity() {
 
 assert_candidate_identity
 
+APPROVAL_ROLE_ALLOWLIST='_bmad-output/implementation-artifacts/1-20-github-approval-role-allowlist.json'
+test -s "$APPROVAL_ROLE_ALLOWLIST"
+jq -e '
+  .schema == "hexalith.eventstore.github-approval-role-allowlist/v1" and
+  .repository == "Hexalith/Hexalith.EventStore" and
+  (.roles | type == "object") and
+  (.roles | keys | sort) ==
+    ["architecture_owner", "eventstore_owner", "release_owner", "story_1_16_reviewer"] and
+  all(.roles[]; type == "array" and length > 0 and length == (unique | length) and
+    all(.[]; type == "string" and test("^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$")))
+' "$APPROVAL_ROLE_ALLOWLIST" >/dev/null
+
+validate_github_approval_api_url() {
+  local api_url="$1"
+  [[ "$api_url" =~ ^https://api\.github\.com/repos/Hexalith/Hexalith\.EventStore/(issues/comments/[0-9]+|pulls/[0-9]+/reviews/[0-9]+)$ ]]
+}
+
+fetch_github_role_record() {
+  local api_url="$1"
+  local role="$2"
+  local record_output="$3"
+  local metadata_output="$4"
+  local response
+  local login
+  local html_url
+  local body_sha256
+  local -a curl_headers=(
+    -H 'Accept: application/vnd.github+json'
+    -H 'X-GitHub-Api-Version: 2022-11-28'
+  )
+  validate_github_approval_api_url "$api_url"
+  response="$(mktemp)"
+  if test -n "${GITHUB_TOKEN:-}"; then
+    curl_headers+=(-H "Authorization: Bearer $GITHUB_TOKEN")
+  fi
+  curl --fail --silent --show-error --location \
+    "${curl_headers[@]}" "$api_url" > "$response"
+  login="$(jq -er '.user.login | select(type == "string" and test("\\S"))' "$response")"
+  html_url="$(jq -er '.html_url | select(type == "string" and startswith("https://github.com/Hexalith/Hexalith.EventStore/"))' "$response")"
+  jq -e --arg role "$role" --arg login "$login" '
+    .roles[$role] | type == "array" and index($login) != null
+  ' "$APPROVAL_ROLE_ALLOWLIST" >/dev/null
+  jq -jer '.body | select(type == "string" and test("\\S"))' "$response" > "$record_output"
+  test -s "$record_output"
+  jq -e 'type == "object"' "$record_output" >/dev/null
+  body_sha256="$(sha256sum "$record_output" | awk '{print $1}')"
+  jq -n \
+    --arg api_url "$api_url" \
+    --arg html_url "$html_url" \
+    --arg login "$login" \
+    --arg role "$role" \
+    --arg body_sha256 "$body_sha256" \
+    '{api_url: $api_url, html_url: $html_url, login: $login,
+      role: $role, body_sha256: $body_sha256}' > "$metadata_output"
+  rm -f -- "$response"
+}
+
+verify_github_role_record() {
+  local record="$1"
+  local metadata="$2"
+  local expected_role="$3"
+  local fetched_record
+  local fetched_metadata
+  local api_url
+  test -s "$record"
+  test -s "$metadata"
+  api_url="$(jq -er --arg role "$expected_role" '
+    select(.role == $role) | .api_url
+  ' "$metadata")"
+  fetched_record="$(mktemp)"
+  fetched_metadata="$(mktemp)"
+  fetch_github_role_record "$api_url" "$expected_role" \
+    "$fetched_record" "$fetched_metadata"
+  cmp --silent "$record" "$fetched_record"
+  cmp --silent "$metadata" "$fetched_metadata"
+  rm -f -- "$fetched_record" "$fetched_metadata"
+}
+
 # Fail closed on AD-11 before any candidate build or publication-capable gate.
 AD11_CHECKED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 REPOSITORY_URL="$(git config --get remote.origin.url)"
+test "$REPOSITORY_URL" = 'https://github.com/Hexalith/Hexalith.EventStore.git'
 REPOSITORY_SDK_VERSION="$(jq -er '.sdk.version | select(type == "string" and test("\\S"))' global.json)"
 REPOSITORY_SDK_ROLL_FORWARD="$(jq -er '.sdk.rollForward | select(type == "string" and test("\\S"))' global.json)"
 INSTALLED_SDK_VERSION="$(dotnet --version)"
@@ -354,6 +435,11 @@ ad11_exact_baseline() {
 validate_ad11_replacement() {
   local checked_at="$1"
   local replacement_record="$2"
+  local replacement_metadata="$3"
+  local approved_login
+  local durable_source
+  approved_login="$(jq -er '.login' "$replacement_metadata")"
+  durable_source="$(jq -er '.html_url' "$replacement_metadata")"
   jq -e \
     --arg checked_at "$checked_at" \
     --arg repository "$REPOSITORY_URL" \
@@ -363,14 +449,16 @@ validate_ad11_replacement() {
     --arg installed_sdk "$INSTALLED_SDK_VERSION" \
     --arg aspnet_version "$REPOSITORY_ASPNET_VERSION" \
     --arg installed_aspnet "$INSTALLED_ASPNET_VERSION" \
-    --arg runtime_version "$INSTALLED_RUNTIME_VERSION" '
+    --arg runtime_version "$INSTALLED_RUNTIME_VERSION" \
+    --arg approved_login "$approved_login" \
+    --arg durable_source "$durable_source" '
       def nonblank: type == "string" and test("\\S");
       def version_parts: split(".") | map(tonumber);
       type == "object" and
       .action == "ad11-baseline-replacement" and
-      (.owner | nonblank) and
+      .owner == $approved_login and
       (.approved_at | nonblank) and
-      (.durable_source | nonblank) and
+      .durable_source == $durable_source and
       (.rationale | nonblank) and
       (.expires_at | nonblank) and
       (.scope | type == "object") and
@@ -394,6 +482,7 @@ validate_ad11_replacement() {
 
 AD11_PREFLIGHT="$EVIDENCE_ROOT/ad11-preflight.json"
 AD11_REPLACEMENT_EVIDENCE="$EVIDENCE_ROOT/ad11-replacement-authority.json"
+AD11_REPLACEMENT_GITHUB_METADATA="$EVIDENCE_ROOT/ad11-replacement-authority.github.json"
 if ad11_exact_baseline; then
   AD11_MODE='exact-baseline'
   jq -n \
@@ -413,12 +502,14 @@ if ad11_exact_baseline; then
       runtime_version: $runtime_version}' > "$AD11_PREFLIGHT"
 else
   AD11_MODE='durable-replacement'
-  : "${AD11_REPLACEMENT_RECORD:?exact AD-11 baseline absent; set durable replacement JSON path}"
-  test -s "$AD11_REPLACEMENT_RECORD"
+  : "${AD11_REPLACEMENT_APPROVAL_API_URL:?exact AD-11 baseline absent; set GitHub approval API URL}"
   test ! -e "$AD11_REPLACEMENT_EVIDENCE"
-  cp -- "$AD11_REPLACEMENT_RECORD" "$AD11_REPLACEMENT_EVIDENCE"
-  chmod a-w "$AD11_REPLACEMENT_EVIDENCE"
-  validate_ad11_replacement "$AD11_CHECKED_AT" "$AD11_REPLACEMENT_EVIDENCE"
+  test ! -e "$AD11_REPLACEMENT_GITHUB_METADATA"
+  fetch_github_role_record "$AD11_REPLACEMENT_APPROVAL_API_URL" architecture_owner \
+    "$AD11_REPLACEMENT_EVIDENCE" "$AD11_REPLACEMENT_GITHUB_METADATA"
+  chmod a-w "$AD11_REPLACEMENT_EVIDENCE" "$AD11_REPLACEMENT_GITHUB_METADATA"
+  validate_ad11_replacement "$AD11_CHECKED_AT" "$AD11_REPLACEMENT_EVIDENCE" \
+    "$AD11_REPLACEMENT_GITHUB_METADATA"
   AD11_REPLACEMENT_SHA256="$(sha256sum "$AD11_REPLACEMENT_EVIDENCE" | awk '{print $1}')"
   jq -n \
     --arg checked_at "$AD11_CHECKED_AT" \
@@ -432,15 +523,22 @@ else
     --arg runtime_version "$INSTALLED_RUNTIME_VERSION" \
     --arg authority_file "$(basename "$AD11_REPLACEMENT_EVIDENCE")" \
     --arg authority_sha256 "$AD11_REPLACEMENT_SHA256" \
+    --arg authority_github_metadata_file "$(basename "$AD11_REPLACEMENT_GITHUB_METADATA")" \
+    --arg authority_github_metadata_sha256 "$(sha256sum "$AD11_REPLACEMENT_GITHUB_METADATA" | awk '{print $1}')" \
     '{mode: "durable-replacement", checked_at: $checked_at, repository: $repository,
       source_sha: $source_sha, sdk_version: $sdk_version,
       sdk_roll_forward: $sdk_roll_forward, installed_sdk_version: $installed_sdk_version,
       aspnet_version: $aspnet_version, installed_aspnet_version: $installed_aspnet_version,
       runtime_version: $runtime_version, authority_file: $authority_file,
-      authority_sha256: $authority_sha256}' > "$AD11_PREFLIGHT"
+      authority_sha256: $authority_sha256,
+      authority_github_metadata_file: $authority_github_metadata_file,
+      authority_github_metadata_sha256: $authority_github_metadata_sha256}' > "$AD11_PREFLIGHT"
 fi
 chmod a-w "$AD11_PREFLIGHT"
-sha256sum "$AD11_PREFLIGHT" > "$EVIDENCE_ROOT/ad11-preflight.sha256"
+(
+  cd "$EVIDENCE_ROOT"
+  sha256sum ad11-preflight.json > ad11-preflight.sha256
+)
 
 assert_ad11_current() {
   local checked_at
@@ -467,13 +565,14 @@ assert_ad11_current() {
     ad11_exact_baseline
   else
     checked_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-    validate_ad11_replacement "$checked_at" "$AD11_REPLACEMENT_EVIDENCE"
+    validate_ad11_replacement "$checked_at" "$AD11_REPLACEMENT_EVIDENCE" \
+      "$AD11_REPLACEMENT_GITHUB_METADATA"
   fi
 }
 
 mapfile -t ROOT_SUBMODULES < <(
   git config -f .gitmodules --get-regexp '^submodule\..*\.path$' |
-    awk '$2 ~ /^references\// { print $2 }'
+    awk '$2 ~ /^references\// { print $2 }' | LC_ALL=C sort
 )
 test "${#ROOT_SUBMODULES[@]}" -gt 0
 git submodule update --init --checkout -- "${ROOT_SUBMODULES[@]}"
@@ -510,11 +609,17 @@ capture_source_state() {
     printf 'candidate=%s\n' "$(git rev-parse HEAD)"
     printf 'root-status:\n'
     git status --porcelain=v1 --untracked-files=all --ignore-submodules=none
+    printf 'root-ignored:\n'
+    git status --porcelain=v1 --ignored=matching --untracked-files=all \
+      --ignore-submodules=none
     printf 'root-submodules:\n'
     git submodule status
     for repository in "${ROOT_SUBMODULES[@]}"; do
       printf 'submodule=%s head=%s\n' "$repository" "$(git -C "$repository" rev-parse HEAD)"
+      printf 'submodule-status=%s:\n' "$repository"
       git -C "$repository" status --porcelain=v1 --untracked-files=all
+      printf 'submodule-ignored=%s:\n' "$repository"
+      git -C "$repository" status --porcelain=v1 --ignored=matching --untracked-files=all
     done
   } > "$output_file"
 }
@@ -701,6 +806,7 @@ must be rerun; they are not accepted as exact-SHA closure evidence in this packe
 
 ### Read-model and projection-checkpoint erasure
 
+- capability-id: `read-model-erasure`
 - classification: `still blocked`
 - source paths:
   - `src/Hexalith.EventStore.Client/Projections/IReadModelConditionalEraser.cs`
@@ -750,12 +856,15 @@ run_xunit_class \
 - closure result and persisted read-back: four exact-SHA live erasure tests passed, but
   the result is not promoted because the cross-cutting live gate failed and owner review
   has not occurred
+- limitation-ids: `erasure-admission-write-fence-races`, `erasure-caller-slot-completeness`,
+  `erasure-authenticated-stitched-e2e`, `erasure-global-administrator-boundary`
 - limitations requiring owner disposition: admission/write-fence races, caller-owned slot
   completeness, authenticated stitched E2E, and global-administrator boundary
 - rollback: retain the consumer erasure and checkpoint-reset implementation
 
 ### Coordinated batching
 
+- capability-id: `coordinated-batching`
 - classification: `still blocked`
 - source paths:
   - `src/Hexalith.EventStore.Client/Projections/IReadModelBatchStore.cs`
@@ -796,12 +905,16 @@ run_xunit_class \
   detail/index/receipt state, abort restoration, checkpoint immutability, cancellation,
   and same-identity convergence; the result remains non-authorizing because the
   cross-cutting live gate failed
+- limitation-ids: `batch-store-transaction-capability`, `batch-etag-behavior`,
+  `batch-corrupt-or-abandoned-envelope`, `batch-terminal-receipt-retention`,
+  `batch-cross-profile-boundary`
 - limitations requiring owner disposition: store transaction capability, ETag behavior,
   corrupt/abandoned envelopes, terminal receipt retention, and cross-profile boundaries
 - rollback: retain the consumer's coordinated detail/index write path and retry protocol
 
 ### Six-state lifecycle and route-bound provenance
 
+- capability-id: `lifecycle-and-route-provenance`
 - classification: `still blocked`
 - source paths:
   - `src/Hexalith.EventStore.Contracts/Queries/ProjectionLifecycleState.cs`
@@ -888,9 +1001,11 @@ run_xunit_class \
   Hexalith.EventStore.Sample.Tests.SampleApi.SampleApiGeneratedControllerRuntimeTests \
   lifecycle-sample-runtime
 
-fresh_release tests/Hexalith.EventStore.IntegrationTests/Hexalith.EventStore.IntegrationTests.csproj true
+fresh_debug_source \
+  tests/Hexalith.EventStore.IntegrationTests/Hexalith.EventStore.IntegrationTests.csproj \
+  lifecycle-provenance-source-topology
 run_xunit_class \
-  tests/Hexalith.EventStore.IntegrationTests/bin/Release/net10.0/Hexalith.EventStore.IntegrationTests.dll \
+  tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.IntegrationTests.dll \
   Hexalith.EventStore.IntegrationTests.ContractTests.QueryResponseProvenanceE2ETests \
   lifecycle-provenance-e2e
 ```
@@ -900,10 +1015,13 @@ run_xunit_class \
   query-provenance E2E lane was not reached after the live regression failure
 - compatibility decision awaiting approval: preserve `Unknown`, all six operational values,
   the legacy metadata ABI, and the rule that ETag never supplies lifecycle or version
+- limitation-ids: `lifecycle-unknown-compatibility`, `lifecycle-operational-value-abi`,
+  `lifecycle-legacy-metadata-abi`, `lifecycle-etag-evidence-boundary`
 - rollback: retain consumer freshness adapters and fail closed on non-projection evidence
 
 ### Duplicate and out-of-order production-handler safety
 
+- capability-id: `delivery-order-and-idempotency`
 - classification: `still blocked`
 - source paths:
   - `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryIdempotencyCoordinator.cs`
@@ -959,11 +1077,14 @@ done
   1 failed). The candidate cannot close duplicate/order production-handler safety.
 - compatibility decision awaiting approval: v2 protects exact named routes; legacy
   `/project` remains outside the v2 no-mixed-writer guarantee
+- limitation-ids: `delivery-legacy-project-route-boundary`,
+  `delivery-mixed-writer-cutover-boundary`
 - rollback: preserve the complete pre-cutover fleet and backup boundary; never roll one
   writer back across the global v2 marker
 
 ### Full paged-rebuild equivalence
 
+- capability-id: `paged-rebuild-equivalence`
 - classification: `still blocked`
 - source paths:
   - `src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs`
@@ -1013,6 +1134,9 @@ run_xunit_method \
 - closure result and persisted read-back: the real DAPR/Redis multi-page rebuild test
   passed at the candidate SHA and Story 1.19 review is closed, but the enclosing
   named-dispatch live gate failed and therefore cannot be approved as a complete lane
+- limitation-ids: `rebuild-complete-prefix-resource-bounds`,
+  `rebuild-coordinated-promotion-boundary`, `rebuild-cancellation-resume-semantics`,
+  `rebuild-deferred-review-items`
 - limitations requiring owner disposition: complete-prefix memory/byte bounds, coordinated
   promotion boundary, cancellation/resume semantics, and every deferred Story 1.19 review item
 - rollback: retain the last complete live model and consumer rebuild path; never promote
@@ -1020,6 +1144,7 @@ run_xunit_method \
 
 ### Cursor compatibility
 
+- capability-id: `cursor-compatibility`
 - classification: `still blocked`
 - source paths:
   - `src/Hexalith.EventStore.Client/Queries/IQueryCursorCodec.cs`
@@ -1056,11 +1181,13 @@ run_xunit_class \
 - closure result and persisted read-back: Client and DomainService regression projects
   passed at the candidate SHA; the result remains non-authorizing pending the failed live
   gate, release identities, and owner review
+- limitation-ids: `cursor-key-ring-loss-or-replacement`
 - limitation: routine retained-key rotation is distinct from key-ring loss/replacement
 - rollback: preserve opaque cursor handling and the existing consumer compatibility path
 
 ### Asynchronous projection persistence
 
+- capability-id: `asynchronous-projection-persistence`
 - classification: `still blocked`
 - source paths:
   - `src/Hexalith.EventStore.DomainService/IAsyncDomainProjectionHandler.cs`
@@ -1105,12 +1232,15 @@ run_xunit_class \
 
 - closure result and persisted read-back: FAILED as a complete production lane because
   named-delivery lifecycle cleanup did not converge in the full, class, or method reruns
+- limitation-ids: `async-hand-written-state-writes`, `async-stable-work-identity`,
+  `async-dead-letter-terminal-cleanup`, `async-null-metadata`
 - limitations requiring owner disposition: hand-written state writes, stable work identity,
   dead-letter/terminal cleanup, and null metadata behavior
 - rollback: retain the consumer's asynchronous persistence handoff
 
 ### Multiple projections per domain
 
+- capability-id: `multiple-projections-per-domain`
 - classification: `still blocked`
 - source paths:
   - `src/Hexalith.EventStore.DomainService/DomainProjectionDispatcher.cs`
@@ -1162,10 +1292,14 @@ run_xunit_class \
   lifecycle row and the concurrent scenario reported an unreleased lifecycle lease
 - compatibility decision awaiting approval: keep versioned `/project/v2`, legacy
   `/project`, exact `(Domain, ProjectionType)` routing, and bounded AD-19 results
+- limitation-ids: `multiprojection-versioned-route-boundary`,
+  `multiprojection-legacy-route-boundary`, `multiprojection-exact-route-identity`,
+  `multiprojection-bounded-result-contract`
 - rollback: retain consumer-owned detail/index handlers and route composition
 
 ## Cross-Cutting Compatibility And Release Gate
 
+- capability-id: `cross-cutting-release-compatibility`
 - classification: `still blocked`
 - production source paths:
   - `Directory.Build.targets`
@@ -1212,6 +1346,55 @@ fi
 assert_candidate_tree_clean
 test "$solution_gate_status" -eq 0
 
+DISCOVERED_TEST_PROJECTS="$EVIDENCE_ROOT/discovered-test-projects.txt"
+MANDATORY_TEST_PROJECTS="$EVIDENCE_ROOT/mandatory-test-projects.txt"
+python3 - Hexalith.EventStore.slnx > "$DISCOVERED_TEST_PROJECTS" <<'PY'
+import pathlib
+import sys
+import xml.etree.ElementTree as ET
+
+solution = ET.parse(sys.argv[1]).getroot()
+projects = []
+for element in solution.iter("Project"):
+    path = element.attrib.get("Path", "")
+    if not path.endswith(".csproj"):
+        continue
+    project = ET.parse(path).getroot()
+    if any(
+        reference.attrib.get("Include") == "xunit.v3"
+        for reference in project.iter("PackageReference")
+    ):
+        projects.append(path)
+for path in sorted(projects):
+    print(path)
+PY
+cat > "$MANDATORY_TEST_PROJECTS" <<'TEST_PROJECT_PATHS'
+samples/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj
+tests/Hexalith.EventStore.Admin.Abstractions.Tests/Hexalith.EventStore.Admin.Abstractions.Tests.csproj
+tests/Hexalith.EventStore.Admin.Cli.Tests/Hexalith.EventStore.Admin.Cli.Tests.csproj
+tests/Hexalith.EventStore.Admin.Mcp.Tests/Hexalith.EventStore.Admin.Mcp.Tests.csproj
+tests/Hexalith.EventStore.Admin.Server.Host.Tests/Hexalith.EventStore.Admin.Server.Host.Tests.csproj
+tests/Hexalith.EventStore.Admin.Server.Tests/Hexalith.EventStore.Admin.Server.Tests.csproj
+tests/Hexalith.EventStore.Admin.UI.E2E/Hexalith.EventStore.Admin.UI.E2E.csproj
+tests/Hexalith.EventStore.Admin.UI.Tests/Hexalith.EventStore.Admin.UI.Tests.csproj
+tests/Hexalith.EventStore.AppHost.Tests/Hexalith.EventStore.AppHost.Tests.csproj
+tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj
+tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj
+tests/Hexalith.EventStore.DeferredWorkGovernance.Tests/Hexalith.EventStore.DeferredWorkGovernance.Tests.csproj
+tests/Hexalith.EventStore.DomainService.Tests/Hexalith.EventStore.DomainService.Tests.csproj
+tests/Hexalith.EventStore.IntegrationTests/Hexalith.EventStore.IntegrationTests.csproj
+tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests.csproj
+tests/Hexalith.EventStore.QueryRouting.Tests/Hexalith.EventStore.QueryRouting.Tests.csproj
+tests/Hexalith.EventStore.RestApi.Generators.Tests/Hexalith.EventStore.RestApi.Generators.Tests.csproj
+tests/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj
+tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj
+tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj
+tests/Hexalith.EventStore.SignalR.Tests/Hexalith.EventStore.SignalR.Tests.csproj
+tests/Hexalith.EventStore.Testing.Integration.Tests/Hexalith.EventStore.Testing.Integration.Tests.csproj
+tests/Hexalith.EventStore.Testing.Tests/Hexalith.EventStore.Testing.Tests.csproj
+TEST_PROJECT_PATHS
+diff -u "$MANDATORY_TEST_PROJECTS" "$DISCOVERED_TEST_PROJECTS"
+
 while IFS='|' read -r project assembly evidence_name; do
   test -n "$project"
   fresh_release "$project" false "$evidence_name"
@@ -1236,6 +1419,7 @@ tests/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj|t
 tests/Hexalith.EventStore.SignalR.Tests/Hexalith.EventStore.SignalR.Tests.csproj|tests/Hexalith.EventStore.SignalR.Tests/bin/Release/net10.0/Hexalith.EventStore.SignalR.Tests.dll|crosscut-signalr
 tests/Hexalith.EventStore.Testing.Integration.Tests/Hexalith.EventStore.Testing.Integration.Tests.csproj|tests/Hexalith.EventStore.Testing.Integration.Tests/bin/Release/net10.0/Hexalith.EventStore.Testing.Integration.Tests.dll|crosscut-testing-integration
 tests/Hexalith.EventStore.Testing.Tests/Hexalith.EventStore.Testing.Tests.csproj|tests/Hexalith.EventStore.Testing.Tests/bin/Release/net10.0/Hexalith.EventStore.Testing.Tests.dll|crosscut-testing
+samples/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj|samples/Hexalith.EventStore.Sample.Tests/bin/Release/net10.0/Hexalith.EventStore.Sample.Tests.dll|crosscut-sample-quickstart
 TEST_PROJECTS
 
 fresh_release \
@@ -1377,8 +1561,7 @@ test "$package_gate_status" -eq 0
 
 ```bash
 set -euo pipefail
-: "${RELEASE_AUTHORITY_RECORD:?set the durable release-owner authority JSON path}"
-test -s "$RELEASE_AUTHORITY_RECORD"
+: "${RELEASE_AUTHORITY_APPROVAL_API_URL:?set the release-owner GitHub approval API URL}"
 
 PUBLISH_CONTAINER_REGISTRY='registry.hexalith.com'
 PUBLISH_CONTAINER_REPOSITORY='eventstore'
@@ -1388,25 +1571,34 @@ test "$IMAGE_REPOSITORY" = 'registry.hexalith.com/eventstore'
 
 # Freeze the authority bytes before the first publication-capable command.
 AUTHORITY_EVIDENCE="$EVIDENCE_ROOT/release-owner-publication-authority.json"
+AUTHORITY_GITHUB_METADATA="$EVIDENCE_ROOT/release-owner-publication-authority.github.json"
 AUTHORITY_CHECKED_AT_EVIDENCE="$EVIDENCE_ROOT/release-owner-publication-authority.checked-at.txt"
 test ! -e "$AUTHORITY_EVIDENCE"
+test ! -e "$AUTHORITY_GITHUB_METADATA"
 test ! -e "$AUTHORITY_CHECKED_AT_EVIDENCE"
-cp -- "$RELEASE_AUTHORITY_RECORD" "$AUTHORITY_EVIDENCE"
-chmod a-w "$AUTHORITY_EVIDENCE"
+fetch_github_role_record "$RELEASE_AUTHORITY_APPROVAL_API_URL" release_owner \
+  "$AUTHORITY_EVIDENCE" "$AUTHORITY_GITHUB_METADATA"
+chmod a-w "$AUTHORITY_EVIDENCE" "$AUTHORITY_GITHUB_METADATA"
 
 validate_publication_authority() {
   local checked_at="$1"
+  local approved_login
+  local durable_source
+  approved_login="$(jq -er '.login' "$AUTHORITY_GITHUB_METADATA")"
+  durable_source="$(jq -er '.html_url' "$AUTHORITY_GITHUB_METADATA")"
   jq -e \
     --arg checked_at "$checked_at" \
     --arg repository "$IMAGE_REPOSITORY" \
     --arg tag "$IMAGE_TAG" \
-    --arg source_sha "$CANDIDATE_SHA" '
+    --arg source_sha "$CANDIDATE_SHA" \
+    --arg approved_login "$approved_login" \
+    --arg durable_source "$durable_source" '
       def nonblank: type == "string" and test("\\S");
       type == "object" and
       .action == "container-publication" and
-      (.owner | nonblank) and
+      .owner == $approved_login and
       (.authorized_at | nonblank) and
-      (.durable_source | nonblank) and
+      .durable_source == $durable_source and
       (.rationale | nonblank) and
       (.expires_at | nonblank) and
       (.scope | type == "object") and
@@ -1507,6 +1699,9 @@ prepare_publication_action() {
   printf '%s\n' "$AUTHORITY_CHECKED_AT" > "$AUTHORITY_CHECKED_AT_EVIDENCE"
   chmod a-w "$AUTHORITY_CHECKED_AT_EVIDENCE"
   AUTHORITY_SHA256="$(sha256sum "$AUTHORITY_EVIDENCE" | awk '{print $1}')"
+  AUTHORITY_GITHUB_METADATA_SHA256="$(
+    sha256sum "$AUTHORITY_GITHUB_METADATA" | awk '{print $1}'
+  )"
   AUTHORITY_CHECKED_AT_SHA256="$(
     sha256sum "$AUTHORITY_CHECKED_AT_EVIDENCE" | awk '{print $1}'
   )"
@@ -1575,6 +1770,8 @@ MANIFEST_SHA256="$(validate_published_manifest \
   "$EVIDENCE_ROOT/container-manifest.json" "$IMAGE_DIGEST" \
   "$EVIDENCE_ROOT/container-platforms.txt")"
 test "$(sha256sum "$AUTHORITY_EVIDENCE" | awk '{print $1}')" = "$AUTHORITY_SHA256"
+test "$(sha256sum "$AUTHORITY_GITHUB_METADATA" | awk '{print $1}')" \
+  = "$AUTHORITY_GITHUB_METADATA_SHA256"
 test "$(sha256sum "$AUTHORITY_CHECKED_AT_EVIDENCE" | awk '{print $1}')" = "$AUTHORITY_CHECKED_AT_SHA256"
 test "$(cat "$AUTHORITY_CHECKED_AT_EVIDENCE")" = "$AUTHORITY_CHECKED_AT"
 jq -n \
@@ -1588,6 +1785,8 @@ jq -n \
   --arg runtime_identifiers 'linux-x64;linux-arm64' \
   --arg authority_file "$(basename "$AUTHORITY_EVIDENCE")" \
   --arg authority_sha256 "$AUTHORITY_SHA256" \
+  --arg authority_github_metadata_file "$(basename "$AUTHORITY_GITHUB_METADATA")" \
+  --arg authority_github_metadata_sha256 "$AUTHORITY_GITHUB_METADATA_SHA256" \
   --arg authority_checked_at "$AUTHORITY_CHECKED_AT" \
   --arg authority_checked_at_file "$(basename "$AUTHORITY_CHECKED_AT_EVIDENCE")" \
   --arg authority_checked_at_sha256 "$AUTHORITY_CHECKED_AT_SHA256" \
@@ -1613,6 +1812,8 @@ jq -n \
     publication_authority: {
       file: $authority_file,
       sha256: $authority_sha256,
+      github_metadata_file: $authority_github_metadata_file,
+      github_metadata_sha256: $authority_github_metadata_sha256,
       checked_at: $authority_checked_at,
       checked_at_file: $authority_checked_at_file,
       checked_at_sha256: $authority_checked_at_sha256
@@ -1633,27 +1834,155 @@ it does not create human
 release authority, replace registry authentication/authorization, or substitute for the
 later proof-result approval and distinct release-owner disposition.
 
+### Deterministic Raw Evidence Bundle
+
+After every gate succeeds, build the raw bundle locally before upload. The fixed test-result
+inventory prevents a missing lane from becoming self-consistent evidence, every result is parsed
+again, filtered runs retain their method listing, and the tarball is byte-reproducible:
+
+```bash
+EXPECTED_FILTERED_XUNIT_RESULTS=(
+  erasure-dapr-store erasure-coordinator erasure-lifecycle-admission
+  erasure-lifecycle-transport erasure-live
+  batch-DaprReadModelBatchTests batch-DaprReadModelStoreTests
+  batch-InMemoryReadModelStoreTests batch-ReadModelBatchStoreTests batch-live
+  lifecycle-ProjectionAdapterContractTests lifecycle-SubmitQueryResponseTests
+  lifecycle-ReadModelFreshnessTests lifecycle-EventStoreGatewayClientTests
+  lifecycle-query-routing lifecycle-QueryRouterTests lifecycle-QueriesControllerTests
+  lifecycle-CachingProjectionActorTests lifecycle-QueryResponseProvenancePersistenceTests
+  lifecycle-RestApiControllerGenerationTests
+  lifecycle-RestApiGeneratedControllerErrorSemanticsTests lifecycle-sample-runtime
+  lifecycle-provenance-e2e
+  delivery-ProjectionDeliveryIdempotencyCoordinatorTests
+  delivery-ProjectionDeliveryReconcilerTests delivery-ProjectionDeliveryCutoverTests
+  delivery-NamedProjectionDispatchCoordinatorTests
+  delivery-DaprProjectionDeliveryRetrySchedulerTests
+  delivery-DaprProjectionActivationOutboxTests
+  delivery-NamedProjectionDispatchLiveSidecarTests
+  delivery-ProjectionDeliveryCutoverLiveSidecarTests
+  rebuild-domain-dispatcher rebuild-ProjectionRebuildProductionPathTests
+  rebuild-ProjectionUpdateOrchestratorTests rebuild-ProjectionRebuildCheckpointStoreTests
+  rebuild-ProjectionLifecycleActorTests rebuild-live-persisted-equivalence
+  cursor-QueryCursorCodecTests cursor-QueryCursorScopeTests cursor-persisted-key-ring
+  async-domain-dispatcher async-NamedProjectionDispatchCoordinatorTests
+  async-DaprProjectionDeliveryRetrySchedulerTests
+  async-DaprProjectionActivationOutboxTests async-live
+  multiprojection-domain-dispatcher multiprojection-catalog-publication
+  multiprojection-NamedProjectionDispatchCoordinatorTests
+  multiprojection-NamedProjectionRouteCatalogTests multiprojection-live
+  crosscut-apphost-source-topology crosscut-source-topology-provenance
+  crosscut-release-manifest crosscut-domain-compatibility
+)
+EXPECTED_FULL_XUNIT_RESULTS=(
+  crosscut-admin-abstractions crosscut-admin-cli crosscut-admin-mcp
+  crosscut-admin-server-host crosscut-admin-server crosscut-admin-ui crosscut-apphost
+  crosscut-contracts crosscut-client crosscut-deferred-work-governance
+  crosscut-domain-service crosscut-operational-evidence crosscut-query-routing
+  crosscut-server crosscut-rest-generator crosscut-sample crosscut-signalr
+  crosscut-testing-integration crosscut-testing crosscut-sample-quickstart
+  crosscut-admin-ui-e2e crosscut-live-sidecar
+)
+REQUIRED_RAW_LOGS=(
+  solution-restore.log solution-build.log crosscut-admin-ui-e2e.playwright.log
+  package-build.log literal-package-inventory.log package-validator.log
+  package-consumer-validation.log container-publish.txt
+)
+RAW_EVIDENCE_BUNDLE_FILE="$GATE_ROOT/story-1-20-raw-evidence.tar.gz"
+LATEST_SUCCESSFUL_GATE_COMPLETED_AT_FILE="$EVIDENCE_ROOT/latest-successful-gate-completed-at.txt"
+
+build_raw_evidence_bundle() {
+  local bundle_stage
+  local evidence_name
+  local required_log
+  bundle_stage="$(mktemp -d)"
+  for evidence_name in "${EXPECTED_FILTERED_XUNIT_RESULTS[@]}"; do
+    test -s "$EVIDENCE_ROOT/$evidence_name.xml"
+    test -s "$EVIDENCE_ROOT/$evidence_name.methods.txt"
+    validate_xunit_result "$EVIDENCE_ROOT/$evidence_name.xml"
+  done
+  for evidence_name in "${EXPECTED_FULL_XUNIT_RESULTS[@]}"; do
+    test -s "$EVIDENCE_ROOT/$evidence_name.xml"
+    validate_xunit_result "$EVIDENCE_ROOT/$evidence_name.xml"
+  done
+  for required_log in "${REQUIRED_RAW_LOGS[@]}"; do
+    test -s "$EVIDENCE_ROOT/$required_log"
+  done
+  find "$EVIDENCE_ROOT" -maxdepth 1 -type f \
+    \( -name '*.log' -o -name '*.xml' -o -name '*.methods.txt' \) \
+    -exec cp -- {} "$bundle_stage/" \;
+  for required_log in "${REQUIRED_RAW_LOGS[@]}"; do
+    cp -- "$EVIDENCE_ROOT/$required_log" "$bundle_stage/$required_log"
+  done
+  (
+    cd "$bundle_stage"
+    find . -maxdepth 1 -type f -printf '%P\n' | LC_ALL=C sort \
+      > raw-evidence-files.txt
+    tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
+      -cf - -- * | gzip -n > "$RAW_EVIDENCE_BUNDLE_FILE"
+  )
+  rm -rf -- "$bundle_stage"
+  test -s "$RAW_EVIDENCE_BUNDLE_FILE"
+  sha256sum "$RAW_EVIDENCE_BUNDLE_FILE"
+}
+
+printf '%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  > "$LATEST_SUCCESSFUL_GATE_COMPLETED_AT_FILE"
+build_raw_evidence_bundle
+```
+
+Upload that exact file to immutable HTTPS storage. Do not rebuild from a different directory or
+compression tool after recording its hash.
+
 ### Hybrid Durable Evidence Retention
 
-After every gate succeeds, upload the raw logs/XML to immutable external storage, then run
+After uploading the deterministic raw bundle, run
 this block before evidence commit A. Critical identity/provenance files are copied into the
-repository; the larger raw bundle is bound by HTTPS URL and SHA-256 without bloating Git:
+repository; the larger raw bundle is retrieved and byte-compared with the locally generated
+bundle before it is bound by HTTPS URL and SHA-256 without bloating Git. The block prints the
+approval-subject path/hash after all non-approval evidence is frozen, then prompts for the two
+GitHub API URLs if they were not exported. Post the exact subject hash and scope in both approval
+records before answering those prompts; a non-interactive run without both URLs fails closed:
 
 ```bash
 set -euo pipefail
 : "${RAW_EVIDENCE_BUNDLE_URL:?set immutable HTTPS raw-evidence bundle URL}"
 : "${RAW_EVIDENCE_BUNDLE_SHA256:?set raw-evidence bundle SHA-256}"
-: "${EVENTSTORE_OWNER_APPROVAL_RECORD:?set final EventStore-owner approval JSON path}"
-: "${RELEASE_OWNER_DISPOSITION_RECORD:?set final release-owner disposition JSON path}"
+: "${STORY_1_16_REVIEW_API_URL:?set Story 1.16 reviewer GitHub approval API URL}"
 [[ "$RAW_EVIDENCE_BUNDLE_URL" =~ ^https://[^[:space:]]+$ ]]
 [[ "$RAW_EVIDENCE_BUNDLE_SHA256" =~ ^[0-9a-f]{64}$ ]]
-test -s "$EVENTSTORE_OWNER_APPROVAL_RECORD"
-test -s "$RELEASE_OWNER_DISPOSITION_RECORD"
+test -s "$RAW_EVIDENCE_BUNDLE_FILE"
+test "$(sha256sum "$RAW_EVIDENCE_BUNDLE_FILE" | awk '{print $1}')" \
+  = "$RAW_EVIDENCE_BUNDLE_SHA256"
+FETCHED_RAW_EVIDENCE_BUNDLE="$(mktemp)"
+curl --fail --silent --show-error --location "$RAW_EVIDENCE_BUNDLE_URL" \
+  > "$FETCHED_RAW_EVIDENCE_BUNDLE"
+test "$(sha256sum "$FETCHED_RAW_EVIDENCE_BUNDLE" | awk '{print $1}')" \
+  = "$RAW_EVIDENCE_BUNDLE_SHA256"
+cmp --silent "$RAW_EVIDENCE_BUNDLE_FILE" "$FETCHED_RAW_EVIDENCE_BUNDLE"
+RAW_BUNDLE_INSPECTION_DIRECTORY="$(mktemp -d)"
+tar -tzf "$FETCHED_RAW_EVIDENCE_BUNDLE" > "$RAW_BUNDLE_INSPECTION_DIRECTORY/archive-files.txt"
+test -z "$(awk '/(^\/|(^|\/)\.\.(\/|$))/' "$RAW_BUNDLE_INSPECTION_DIRECTORY/archive-files.txt")"
+tar -xzf "$FETCHED_RAW_EVIDENCE_BUNDLE" -C "$RAW_BUNDLE_INSPECTION_DIRECTORY"
+diff -u \
+  "$RAW_BUNDLE_INSPECTION_DIRECTORY/raw-evidence-files.txt" \
+  <(find "$RAW_BUNDLE_INSPECTION_DIRECTORY" -maxdepth 1 -type f \
+      ! -name archive-files.txt ! -name raw-evidence-files.txt -printf '%f\n' | LC_ALL=C sort)
+for evidence_name in "${EXPECTED_FILTERED_XUNIT_RESULTS[@]}"; do
+  validate_xunit_result "$RAW_BUNDLE_INSPECTION_DIRECTORY/$evidence_name.xml"
+  test -s "$RAW_BUNDLE_INSPECTION_DIRECTORY/$evidence_name.methods.txt"
+done
+for evidence_name in "${EXPECTED_FULL_XUNIT_RESULTS[@]}"; do
+  validate_xunit_result "$RAW_BUNDLE_INSPECTION_DIRECTORY/$evidence_name.xml"
+done
+for required_log in "${REQUIRED_RAW_LOGS[@]}"; do
+  test -s "$RAW_BUNDLE_INSPECTION_DIRECTORY/$required_log"
+done
+rm -rf -- "$RAW_BUNDLE_INSPECTION_DIRECTORY"
+rm -f -- "$FETCHED_RAW_EVIDENCE_BUNDLE"
 assert_ad11_current
 assert_candidate_tree_clean
 capture_source_state "$EVIDENCE_ROOT/source-state-after.txt"
 
-FINAL_APPROVAL_CHECKED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 APPROVED_PACKAGE_VERSION="$(cat "$EVIDENCE_ROOT/package-version.txt")"
 APPROVED_PACKAGE_HASH_MANIFEST_SHA256="$(
   sha256sum "$EVIDENCE_ROOT/nuget-sha256.txt" | awk '{print $1}'
@@ -1665,55 +1994,36 @@ test -n "$APPROVED_PACKAGE_VERSION"
 test "$APPROVED_CONTAINER_REPOSITORY" = 'registry.hexalith.com/eventstore'
 [[ "$APPROVED_CONTAINER_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
 
-validate_final_owner_record() {
-  local record="$1"
-  local action="$2"
-  local decision="$3"
-  jq -e \
-    --arg checked_at "$FINAL_APPROVAL_CHECKED_AT" \
-    --arg action "$action" \
-    --arg decision "$decision" \
-    --arg repository "$REPOSITORY_URL" \
-    --arg source_sha "$CANDIDATE_SHA" \
-    --arg raw_sha256 "$RAW_EVIDENCE_BUNDLE_SHA256" \
-    --arg package_version "$APPROVED_PACKAGE_VERSION" \
-    --arg package_manifest_sha256 "$APPROVED_PACKAGE_HASH_MANIFEST_SHA256" \
-    --arg container_repository "$APPROVED_CONTAINER_REPOSITORY" \
-    --arg container_digest "$APPROVED_CONTAINER_DIGEST" '
-      def nonblank: type == "string" and test("\\S");
-      type == "object" and
-      .action == $action and
-      (.owner | nonblank) and
-      (.approved_at | nonblank) and
-      (.durable_source | type == "string" and test("^https://[^[:space:]]+$")) and
-      (.accepted_scope | nonblank) and
-      (.limitations | type == "array") and
-      .decision == $decision and
-      (.scope | type == "object") and
-      .scope.repository == $repository and
-      .scope.tested_runtime_sha == $source_sha and
-      .scope.raw_evidence_bundle_sha256 == $raw_sha256 and
-      .scope.package_version == $package_version and
-      .scope.package_hash_manifest_sha256 == $package_manifest_sha256 and
-      .scope.container_repository == $container_repository and
-      .scope.container_digest == $container_digest and
-      ((.approved_at | fromdateiso8601) <= ($checked_at | fromdateiso8601))
-    ' "$record"
-}
-
-validate_final_owner_record \
-  "$EVENTSTORE_OWNER_APPROVAL_RECORD" \
-  story-1-20-proof-approval \
-  authorize-consumer-migration
-validate_final_owner_record \
-  "$RELEASE_OWNER_DISPOSITION_RECORD" \
-  story-1-20-release-disposition \
-  approve-release-identities
+STORY_1_16_REVIEW_RECORD="$EVIDENCE_ROOT/story-1-16-followup-review.json"
+STORY_1_16_REVIEW_GITHUB_METADATA="$EVIDENCE_ROOT/story-1-16-followup-review.github.json"
+fetch_github_role_record "$STORY_1_16_REVIEW_API_URL" story_1_16_reviewer \
+  "$STORY_1_16_REVIEW_RECORD" "$STORY_1_16_REVIEW_GITHUB_METADATA"
+STORY_1_16_REVIEWER_LOGIN="$(jq -er '.login' "$STORY_1_16_REVIEW_GITHUB_METADATA")"
+STORY_1_16_REVIEW_SOURCE="$(jq -er '.html_url' "$STORY_1_16_REVIEW_GITHUB_METADATA")"
+jq -e \
+  --arg owner "$STORY_1_16_REVIEWER_LOGIN" \
+  --arg durable_source "$STORY_1_16_REVIEW_SOURCE" \
+  --arg repository "$REPOSITORY_URL" \
+  --arg source_sha "$CANDIDATE_SHA" '
+    def nonblank: type == "string" and test("\\S");
+    type == "object" and
+    .action == "story-1-16-followup-review" and
+    .owner == $owner and
+    .durable_source == $durable_source and
+    (.reviewed_at | nonblank) and
+    .disposition == "approved" and
+    (.scope | type == "object") and
+    .scope.repository == $repository and
+    .scope.reviewed_runtime_sha == $source_sha and
+    (.scope.summary | nonblank) and
+    (.scope.verification | nonblank) and
+    (.scope.residual_limitations | nonblank)
+  ' "$STORY_1_16_REVIEW_RECORD" >/dev/null
 
 DURABLE_EVIDENCE_DIRECTORY="$SOURCE_REPOSITORY/_bmad-output/implementation-artifacts/evidence/story-1-20/$CANDIDATE_SHA"
 test ! -e "$DURABLE_EVIDENCE_DIRECTORY"
 mkdir -p "$DURABLE_EVIDENCE_DIRECTORY"
-CRITICAL_EVIDENCE_FILES=(
+CORE_EVIDENCE_FILES=(
   candidate-source-sha.txt
   ad11-preflight.json
   ad11-preflight.sha256
@@ -1729,6 +2039,8 @@ CRITICAL_EVIDENCE_FILES=(
   package-version.txt
   package-files.txt
   nuget-sha256.txt
+  discovered-test-projects.txt
+  mandatory-test-projects.txt
   generated-image-index.json
   generated-image-index.digest.txt
   capture-generated-image-index.targets
@@ -1737,22 +2049,22 @@ CRITICAL_EVIDENCE_FILES=(
   container-platforms.txt
   container-provenance.json
   release-owner-publication-authority.json
+  release-owner-publication-authority.github.json
   release-owner-publication-authority.checked-at.txt
+  story-1-16-followup-review.json
+  story-1-16-followup-review.github.json
+  latest-successful-gate-completed-at.txt
 )
 if test "$AD11_MODE" = 'durable-replacement'; then
-  CRITICAL_EVIDENCE_FILES+=(ad11-replacement-authority.json)
+  CORE_EVIDENCE_FILES+=(
+    ad11-replacement-authority.json
+    ad11-replacement-authority.github.json
+  )
 fi
-for evidence_file in "${CRITICAL_EVIDENCE_FILES[@]}"; do
+for evidence_file in "${CORE_EVIDENCE_FILES[@]}"; do
   test -s "$EVIDENCE_ROOT/$evidence_file"
   cp -- "$EVIDENCE_ROOT/$evidence_file" "$DURABLE_EVIDENCE_DIRECTORY/$evidence_file"
 done
-cp -- "$EVENTSTORE_OWNER_APPROVAL_RECORD" \
-  "$DURABLE_EVIDENCE_DIRECTORY/eventstore-owner-proof-approval.json"
-cp -- "$RELEASE_OWNER_DISPOSITION_RECORD" \
-  "$DURABLE_EVIDENCE_DIRECTORY/release-owner-final-disposition.json"
-chmod a-w \
-  "$DURABLE_EVIDENCE_DIRECTORY/eventstore-owner-proof-approval.json" \
-  "$DURABLE_EVIDENCE_DIRECTORY/release-owner-final-disposition.json"
 jq -n \
   --arg url "$RAW_EVIDENCE_BUNDLE_URL" \
   --arg sha256 "$RAW_EVIDENCE_BUNDLE_SHA256" \
@@ -1760,25 +2072,171 @@ jq -n \
   > "$DURABLE_EVIDENCE_DIRECTORY/raw-evidence-bundle.json"
 (
   cd "$DURABLE_EVIDENCE_DIRECTORY"
-  find . -maxdepth 1 -type f ! -name 'critical-evidence-sha256.txt' -printf '%P\0' \
-    | LC_ALL=C sort -z \
-    | xargs -0 sha256sum --
+  printf '%s\n' "${CORE_EVIDENCE_FILES[@]}" raw-evidence-bundle.json \
+    | LC_ALL=C sort -u > critical-evidence-expected-files.txt
+  while IFS= read -r evidence_file; do
+    test -f "$evidence_file"
+    test ! -L "$evidence_file"
+    [[ "$evidence_file" != */* ]]
+    sha256sum -- "$evidence_file"
+  done < critical-evidence-expected-files.txt
 ) > "$DURABLE_EVIDENCE_DIRECTORY/critical-evidence-sha256.txt"
 CRITICAL_EVIDENCE_MANIFEST_SHA256="$(
   sha256sum "$DURABLE_EVIDENCE_DIRECTORY/critical-evidence-sha256.txt" | awk '{print $1}'
 )"
 [[ "$CRITICAL_EVIDENCE_MANIFEST_SHA256" =~ ^[0-9a-f]{64}$ ]]
+
+APPROVAL_SUBJECT="$DURABLE_EVIDENCE_DIRECTORY/approval-subject.json"
+jq -n \
+  --arg repository "$REPOSITORY_URL" \
+  --arg tested_runtime_sha "$CANDIDATE_SHA" \
+  --arg evidence_manifest_sha256 "$CRITICAL_EVIDENCE_MANIFEST_SHA256" \
+  --arg raw_evidence_bundle_sha256 "$RAW_EVIDENCE_BUNDLE_SHA256" \
+  --arg package_version "$APPROVED_PACKAGE_VERSION" \
+  --arg package_hash_manifest_sha256 "$APPROVED_PACKAGE_HASH_MANIFEST_SHA256" \
+  --arg container_repository "$APPROVED_CONTAINER_REPOSITORY" \
+  --arg container_digest "$APPROVED_CONTAINER_DIGEST" \
+  '{
+    schema: "hexalith.eventstore.story-1-20-approval-subject/v1",
+    repository: $repository,
+    tested_runtime_sha: $tested_runtime_sha,
+    evidence_manifest_sha256: $evidence_manifest_sha256,
+    raw_evidence_bundle_sha256: $raw_evidence_bundle_sha256,
+    package_version: $package_version,
+    package_hash_manifest_sha256: $package_hash_manifest_sha256,
+    container_repository: $container_repository,
+    container_digest: $container_digest,
+    capabilities: [
+      {id:"read-model-erasure",limitations:["erasure-admission-write-fence-races","erasure-caller-slot-completeness","erasure-authenticated-stitched-e2e","erasure-global-administrator-boundary"]},
+      {id:"coordinated-batching",limitations:["batch-store-transaction-capability","batch-etag-behavior","batch-corrupt-or-abandoned-envelope","batch-terminal-receipt-retention","batch-cross-profile-boundary"]},
+      {id:"lifecycle-and-route-provenance",limitations:["lifecycle-unknown-compatibility","lifecycle-operational-value-abi","lifecycle-legacy-metadata-abi","lifecycle-etag-evidence-boundary"]},
+      {id:"delivery-order-and-idempotency",limitations:["delivery-legacy-project-route-boundary","delivery-mixed-writer-cutover-boundary"]},
+      {id:"paged-rebuild-equivalence",limitations:["rebuild-complete-prefix-resource-bounds","rebuild-coordinated-promotion-boundary","rebuild-cancellation-resume-semantics","rebuild-deferred-review-items"]},
+      {id:"cursor-compatibility",limitations:["cursor-key-ring-loss-or-replacement"]},
+      {id:"asynchronous-projection-persistence",limitations:["async-hand-written-state-writes","async-stable-work-identity","async-dead-letter-terminal-cleanup","async-null-metadata"]},
+      {id:"multiple-projections-per-domain",limitations:["multiprojection-versioned-route-boundary","multiprojection-legacy-route-boundary","multiprojection-exact-route-identity","multiprojection-bounded-result-contract"]},
+      {id:"cross-cutting-release-compatibility",limitations:["release-package-inventory-and-byte-identity","release-container-registry-and-platform-provenance","release-durable-evidence-retention","release-owner-authority-and-migration"]}
+    ] | map(. + {classification:"available"})
+  }' > "$APPROVAL_SUBJECT"
+APPROVAL_SUBJECT_SHA256="$(sha256sum "$APPROVAL_SUBJECT" | awk '{print $1}')"
+[[ "$APPROVAL_SUBJECT_SHA256" =~ ^[0-9a-f]{64}$ ]]
+printf '%s\n' \
+  "approval_subject_file=$APPROVAL_SUBJECT" \
+  "approval_subject_sha256=$APPROVAL_SUBJECT_SHA256" \
+  "latest_successful_gate_completed_at=$(cat "$LATEST_SUCCESSFUL_GATE_COMPLETED_AT_FILE")"
+if test -z "${EVENTSTORE_OWNER_APPROVAL_API_URL:-}"; then
+  printf 'EventStore-owner GitHub approval API URL: ' >&2
+  IFS= read -r EVENTSTORE_OWNER_APPROVAL_API_URL
+fi
+if test -z "${RELEASE_OWNER_DISPOSITION_API_URL:-}"; then
+  printf 'Release-owner GitHub disposition API URL: ' >&2
+  IFS= read -r RELEASE_OWNER_DISPOSITION_API_URL
+fi
+validate_github_approval_api_url "$EVENTSTORE_OWNER_APPROVAL_API_URL"
+validate_github_approval_api_url "$RELEASE_OWNER_DISPOSITION_API_URL"
+FINAL_APPROVAL_CHECKED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+EXPECTED_LIMITATION_IDS="$(mktemp)"
+jq -er '.capabilities[].limitations[]' "$APPROVAL_SUBJECT" | LC_ALL=C sort -u \
+  > "$EXPECTED_LIMITATION_IDS"
+
+EVENTSTORE_OWNER_APPROVAL_RECORD="$EVIDENCE_ROOT/eventstore-owner-proof-approval.json"
+EVENTSTORE_OWNER_APPROVAL_GITHUB_METADATA="$EVIDENCE_ROOT/eventstore-owner-proof-approval.github.json"
+RELEASE_OWNER_DISPOSITION_RECORD="$EVIDENCE_ROOT/release-owner-final-disposition.json"
+RELEASE_OWNER_DISPOSITION_GITHUB_METADATA="$EVIDENCE_ROOT/release-owner-final-disposition.github.json"
+fetch_github_role_record "$EVENTSTORE_OWNER_APPROVAL_API_URL" eventstore_owner \
+  "$EVENTSTORE_OWNER_APPROVAL_RECORD" "$EVENTSTORE_OWNER_APPROVAL_GITHUB_METADATA"
+fetch_github_role_record "$RELEASE_OWNER_DISPOSITION_API_URL" release_owner \
+  "$RELEASE_OWNER_DISPOSITION_RECORD" "$RELEASE_OWNER_DISPOSITION_GITHUB_METADATA"
+
+validate_final_owner_record() {
+  local record="$1"
+  local metadata="$2"
+  local action="$3"
+  local decision="$4"
+  local approved_login
+  local durable_source
+  approved_login="$(jq -er '.login' "$metadata")"
+  durable_source="$(jq -er '.html_url' "$metadata")"
+  jq -e \
+    --arg checked_at "$FINAL_APPROVAL_CHECKED_AT" \
+    --arg action "$action" \
+    --arg decision "$decision" \
+    --arg repository "$REPOSITORY_URL" \
+    --arg source_sha "$CANDIDATE_SHA" \
+    --arg raw_sha256 "$RAW_EVIDENCE_BUNDLE_SHA256" \
+    --arg package_version "$APPROVED_PACKAGE_VERSION" \
+    --arg package_manifest_sha256 "$APPROVED_PACKAGE_HASH_MANIFEST_SHA256" \
+    --arg container_repository "$APPROVED_CONTAINER_REPOSITORY" \
+    --arg container_digest "$APPROVED_CONTAINER_DIGEST" \
+    --arg approved_login "$approved_login" \
+    --arg durable_source "$durable_source" \
+    --arg evidence_manifest_sha256 "$CRITICAL_EVIDENCE_MANIFEST_SHA256" \
+    --arg approval_subject_sha256 "$APPROVAL_SUBJECT_SHA256" \
+    --arg latest_gate_completed_at "$(cat "$LATEST_SUCCESSFUL_GATE_COMPLETED_AT_FILE")" '
+      def nonblank: type == "string" and test("\\S");
+      type == "object" and
+      .action == $action and
+      .owner == $approved_login and
+      (.approved_at | nonblank) and
+      .durable_source == $durable_source and
+      (.accepted_scope | nonblank) and
+      (.limitations | type == "array" and length > 0 and
+        all(.[]; type == "object" and (.id | nonblank) and
+          .disposition == "accepted" and (.rationale | nonblank))) and
+      .decision == $decision and
+      (.scope | type == "object") and
+      .scope.repository == $repository and
+      .scope.tested_runtime_sha == $source_sha and
+      .scope.raw_evidence_bundle_sha256 == $raw_sha256 and
+      .scope.package_version == $package_version and
+      .scope.package_hash_manifest_sha256 == $package_manifest_sha256 and
+      .scope.container_repository == $container_repository and
+      .scope.container_digest == $container_digest and
+      .scope.evidence_manifest_sha256 == $evidence_manifest_sha256 and
+      .scope.approval_subject_sha256 == $approval_subject_sha256 and
+      .scope.latest_successful_gate_completed_at == $latest_gate_completed_at and
+      ((.approved_at | fromdateiso8601) >= ($latest_gate_completed_at | fromdateiso8601)) and
+      ((.approved_at | fromdateiso8601) <= ($checked_at | fromdateiso8601))
+    ' "$record"
+  diff -u "$EXPECTED_LIMITATION_IDS" \
+    <(jq -er '.limitations[].id' "$record" | LC_ALL=C sort -u)
+}
+
+validate_final_owner_record \
+  "$EVENTSTORE_OWNER_APPROVAL_RECORD" \
+  "$EVENTSTORE_OWNER_APPROVAL_GITHUB_METADATA" \
+  story-1-20-proof-approval \
+  authorize-consumer-migration
+validate_final_owner_record \
+  "$RELEASE_OWNER_DISPOSITION_RECORD" \
+  "$RELEASE_OWNER_DISPOSITION_GITHUB_METADATA" \
+  story-1-20-release-disposition \
+  approve-release-identities
+cp -- "$EVENTSTORE_OWNER_APPROVAL_RECORD" \
+  "$DURABLE_EVIDENCE_DIRECTORY/eventstore-owner-proof-approval.json"
+cp -- "$EVENTSTORE_OWNER_APPROVAL_GITHUB_METADATA" \
+  "$DURABLE_EVIDENCE_DIRECTORY/eventstore-owner-proof-approval.github.json"
+cp -- "$RELEASE_OWNER_DISPOSITION_RECORD" \
+  "$DURABLE_EVIDENCE_DIRECTORY/release-owner-final-disposition.json"
+cp -- "$RELEASE_OWNER_DISPOSITION_GITHUB_METADATA" \
+  "$DURABLE_EVIDENCE_DIRECTORY/release-owner-final-disposition.github.json"
+chmod a-w \
+  "$DURABLE_EVIDENCE_DIRECTORY/eventstore-owner-proof-approval.json" \
+  "$DURABLE_EVIDENCE_DIRECTORY/eventstore-owner-proof-approval.github.json" \
+  "$DURABLE_EVIDENCE_DIRECTORY/release-owner-final-disposition.json" \
+  "$DURABLE_EVIDENCE_DIRECTORY/release-owner-final-disposition.github.json" \
+  "$APPROVAL_SUBJECT"
 EVENTSTORE_OWNER_APPROVAL_URL="$(
-  jq -er '.durable_source' \
-    "$DURABLE_EVIDENCE_DIRECTORY/eventstore-owner-proof-approval.json"
+  jq -er '.html_url' \
+    "$DURABLE_EVIDENCE_DIRECTORY/eventstore-owner-proof-approval.github.json"
 )"
 EVENTSTORE_OWNER_APPROVAL_SHA256="$(
   sha256sum "$DURABLE_EVIDENCE_DIRECTORY/eventstore-owner-proof-approval.json" \
     | awk '{print $1}'
 )"
 RELEASE_OWNER_DISPOSITION_URL="$(
-  jq -er '.durable_source' \
-    "$DURABLE_EVIDENCE_DIRECTORY/release-owner-final-disposition.json"
+  jq -er '.html_url' \
+    "$DURABLE_EVIDENCE_DIRECTORY/release-owner-final-disposition.github.json"
 )"
 RELEASE_OWNER_DISPOSITION_SHA256="$(
   sha256sum "$DURABLE_EVIDENCE_DIRECTORY/release-owner-final-disposition.json" \
@@ -1786,15 +2244,17 @@ RELEASE_OWNER_DISPOSITION_SHA256="$(
 )"
 printf '%s\n' \
   "evidence_manifest_sha256=$CRITICAL_EVIDENCE_MANIFEST_SHA256" \
+  "approval_subject_sha256=$APPROVAL_SUBJECT_SHA256" \
   "raw_bundle_url=$RAW_EVIDENCE_BUNDLE_URL" \
   "raw_bundle_sha256=$RAW_EVIDENCE_BUNDLE_SHA256" \
   "eventstore_owner_approval_url=$EVENTSTORE_OWNER_APPROVAL_URL" \
   "eventstore_owner_approval_sha256=$EVENTSTORE_OWNER_APPROVAL_SHA256" \
   "release_owner_disposition_url=$RELEASE_OWNER_DISPOSITION_URL" \
   "release_owner_disposition_sha256=$RELEASE_OWNER_DISPOSITION_SHA256"
+rm -f -- "$EXPECTED_LIMITATION_IDS"
 ```
 
-Evidence commit A must copy those seven printed values into packet front matter. Its
+Evidence commit A must copy the eight final printed values into packet front matter. Its
 structural verifier below re-hashes the committed manifest, validates the raw-bundle record,
 parses and binds both committed final-owner records, and binds package/container identities
 before accepting A.
@@ -1809,6 +2269,9 @@ before accepting A.
 | Durable evidence | critical identity/provenance and exact final-approval records committed under `_bmad-output`; immutable external raw bundle bound by HTTPS URL and SHA-256 | `critical-evidence-sha256.txt`, `raw-evidence-bundle.json`, `eventstore-owner-proof-approval.json`, `release-owner-final-disposition.json`, packet front-matter pins | EventStore owner and EventStore release owner | NOT RUN |
 | Limitations and migration | every matrix-row limitation accepted or rejected by a named reviewer in a durable source | signed review record or PR URL and date | EventStore owner | NOT RUN |
 
+- limitation-ids: `release-package-inventory-and-byte-identity`,
+  `release-container-registry-and-platform-provenance`, `release-durable-evidence-retention`,
+  `release-owner-authority-and-migration`
 - compatibility boundary: additive public APIs, the legacy query metadata ABI, legacy
   `/project`, versioned `/project/v2`, and the manifest-owned 14-package inventory remain
   unchanged by this evidence-only packet
@@ -1846,6 +2309,7 @@ SPRINT_STATUS='_bmad-output/implementation-artifacts/sprint-status.yaml'
 FOLLOWUP_SPEC='_bmad-output/implementation-artifacts/spec-1-11-complete-projection-freshness-lifecycle.md'
 DEFERRED_WORK='_bmad-output/implementation-artifacts/deferred-work.md'
 RELEASE_PACKAGES='tools/release-packages.json'
+APPROVAL_ROLE_ALLOWLIST='_bmad-output/implementation-artifacts/1-20-github-approval-role-allowlist.json'
 : "${EVIDENCE_COMMIT_A:?set the evidence commit A SHA}"
 : "${POINTER_COMMIT_B:?set the pointer-only commit B SHA}"
 : "${AUTHORIZATION_COMMIT_C:?set the authorizing commit C SHA}"
@@ -1862,6 +2326,10 @@ test "$(git rev-list --parents -n 1 "$AUTHORIZATION_COMMIT_C" | awk '{print NF}'
 test "$(git rev-parse --verify --end-of-options "${AUTHORIZATION_COMMIT_C}^")" = "$POINTER_COMMIT_B"
 
 A_PACKET="$(mktemp)"
+RUNTIME_PACKET="$(mktemp)"
+RUNTIME_EXECUTABLE_BLOCKS="$(mktemp)"
+A_EXECUTABLE_BLOCKS="$(mktemp)"
+A_APPROVAL_ROLE_ALLOWLIST="$(mktemp)"
 B_PACKET="$(mktemp)"
 EXPECTED_B_PACKET="$(mktemp)"
 A_STORY="$(mktemp)"
@@ -1873,6 +2341,15 @@ A_EXPECTED_PACKAGE_IDS="$(mktemp)"
 A_EXPECTED_PACKAGE_FILES="$(mktemp)"
 A_EVIDENCE_MANIFEST="$(mktemp)"
 A_RAW_EVIDENCE_BUNDLE="$(mktemp)"
+A_RAW_EVIDENCE_DIRECTORY="$(mktemp -d)"
+A_EXPECTED_FILTERED_RESULTS="$(mktemp)"
+A_EXPECTED_FULL_RESULTS="$(mktemp)"
+A_EXPECTED_RESULT_FILES="$(mktemp)"
+A_EXPECTED_REQUIRED_LOGS="$(mktemp)"
+A_EXPECTED_LIMITATION_IDS="$(mktemp)"
+A_EXPECTED_CAPABILITY_IDS="$(mktemp)"
+A_APPROVAL_SUBJECT="$(mktemp)"
+A_EXPECTED_SOURCE_STATE="$(mktemp)"
 A_PACKAGE_HASHES="$(mktemp)"
 A_CONTAINER_PROVENANCE="$(mktemp)"
 B_STORY="$(mktemp)"
@@ -1912,6 +2389,43 @@ front_value() {
   ' "$packet"
 }
 
+verify_committed_github_role_record() {
+  local record="$1"
+  local metadata="$2"
+  local expected_role="$3"
+  local response
+  local api_url
+  local login
+  local html_url
+  local -a curl_headers=(
+    -H 'Accept: application/vnd.github+json'
+    -H 'X-GitHub-Api-Version: 2022-11-28'
+  )
+  test -f "$record" && test ! -L "$record" && test -s "$record"
+  test -f "$metadata" && test ! -L "$metadata" && test -s "$metadata"
+  api_url="$(jq -er --arg role "$expected_role" '
+    select(.role == $role) | .api_url
+  ' "$metadata")"
+  [[ "$api_url" =~ ^https://api\.github\.com/repos/Hexalith/Hexalith\.EventStore/(issues/comments/[0-9]+|pulls/[0-9]+/reviews/[0-9]+)$ ]]
+  login="$(jq -er '.login' "$metadata")"
+  html_url="$(jq -er '.html_url' "$metadata")"
+  jq -e --arg role "$expected_role" --arg login "$login" '
+    .roles[$role] | type == "array" and index($login) != null
+  ' "$A_APPROVAL_ROLE_ALLOWLIST" >/dev/null
+  response="$(mktemp)"
+  if test -n "${GITHUB_TOKEN:-}"; then
+    curl_headers+=(-H "Authorization: Bearer $GITHUB_TOKEN")
+  fi
+  curl --fail --silent --show-error --location \
+    "${curl_headers[@]}" "$api_url" > "$response"
+  test "$(jq -er '.user.login' "$response")" = "$login"
+  test "$(jq -er '.html_url' "$response")" = "$html_url"
+  test "$(jq -jr '.body' "$response" | sha256sum | awk '{print $1}')" \
+    = "$(jq -er '.body_sha256' "$metadata")"
+  cmp --silent "$record" <(jq -jr '.body' "$response")
+  rm -f -- "$response"
+}
+
 A_TESTED_RUNTIME_SHA="$(front_value "$A_PACKET" tested_runtime_sha)"
 [[ "$A_TESTED_RUNTIME_SHA" =~ ^[0-9a-f]{40}$ ]]
 A_CANDIDATE_SOURCE_SHA="$(front_value "$A_PACKET" candidate_source_sha)"
@@ -1919,6 +2433,31 @@ test "$A_CANDIDATE_SOURCE_SHA" = "$A_TESTED_RUNTIME_SHA"
 A_TESTED_RUNTIME_COMMIT="$(git rev-parse --verify --end-of-options \
   "${A_TESTED_RUNTIME_SHA}^{commit}")"
 test "$A_TESTED_RUNTIME_COMMIT" = "$A_TESTED_RUNTIME_SHA"
+git show "$A_TESTED_RUNTIME_COMMIT:$PACKET" > "$RUNTIME_PACKET"
+git show "$A_TESTED_RUNTIME_COMMIT:$APPROVAL_ROLE_ALLOWLIST" \
+  > "$A_APPROVAL_ROLE_ALLOWLIST"
+jq -e '
+  .schema == "hexalith.eventstore.github-approval-role-allowlist/v1" and
+  .repository == "Hexalith/Hexalith.EventStore" and
+  (.roles | type == "object") and
+  (.roles | keys | sort) ==
+    ["architecture_owner", "eventstore_owner", "release_owner", "story_1_16_reviewer"] and
+  all(.roles[]; type == "array" and length > 0 and length == (unique | length))
+' "$A_APPROVAL_ROLE_ALLOWLIST" >/dev/null
+extract_executable_blocks() {
+  local packet="$1"
+  local output="$2"
+  awk '
+    /^```bash$/ { in_block = 1; print; next }
+    in_block { print }
+    in_block && /^```$/ { in_block = 0 }
+    END { if (in_block) exit 1 }
+  ' "$packet" > "$output"
+  test -s "$output"
+}
+extract_executable_blocks "$RUNTIME_PACKET" "$RUNTIME_EXECUTABLE_BLOCKS"
+extract_executable_blocks "$A_PACKET" "$A_EXECUTABLE_BLOCKS"
+cmp --silent "$RUNTIME_EXECUTABLE_BLOCKS" "$A_EXECUTABLE_BLOCKS"
 test "$(git rev-list --parents -n 1 "$EVIDENCE_COMMIT_A" | awk '{print NF}')" -eq 2
 test "$(git rev-parse --verify --end-of-options "${EVIDENCE_COMMIT_A}^")" \
   = "$A_TESTED_RUNTIME_COMMIT"
@@ -1944,6 +2483,59 @@ test -d "$A_EVIDENCE_ROOT"
 git show "$A_TESTED_RUNTIME_COMMIT:$RELEASE_PACKAGES" > "$A_RELEASE_PACKAGES"
 A_EVIDENCE_MANIFEST_SHA256="$(front_value "$A_PACKET" evidence_manifest_sha256)"
 [[ "$A_EVIDENCE_MANIFEST_SHA256" =~ ^[0-9a-f]{64}$ ]]
+cat > "$A_EVIDENCE_MANIFEST" <<'CORE_EVIDENCE_FILES'
+ad11-preflight.json
+ad11-preflight.sha256
+candidate-source-sha.txt
+capture-generated-image-index.targets
+container-inspect.txt
+container-manifest.json
+container-platforms.txt
+container-provenance.json
+discovered-test-projects.txt
+dotnet-runtimes-current.txt
+dotnet-runtimes.txt
+effective-package-versions.txt
+environment.txt
+expected-package-ids.txt
+generated-image-index.digest.txt
+generated-image-index.json
+latest-successful-gate-completed-at.txt
+mandatory-test-projects.txt
+nuget-sha256.txt
+package-files.txt
+package-version.txt
+raw-evidence-bundle.json
+release-owner-publication-authority.checked-at.txt
+release-owner-publication-authority.github.json
+release-owner-publication-authority.json
+source-state-after-publication.txt
+source-state-after.txt
+source-state-before-publication.txt
+source-state-before.txt
+story-1-16-followup-review.github.json
+story-1-16-followup-review.json
+CORE_EVIDENCE_FILES
+if test "$(jq -er '.mode' "$A_EVIDENCE_ROOT/ad11-preflight.json")" = 'durable-replacement'; then
+  printf '%s\n' ad11-replacement-authority.github.json ad11-replacement-authority.json \
+    >> "$A_EVIDENCE_MANIFEST"
+fi
+LC_ALL=C sort -u -o "$A_EVIDENCE_MANIFEST" "$A_EVIDENCE_MANIFEST"
+test "$(wc -l < "$A_EVIDENCE_ROOT/critical-evidence-sha256.txt")" \
+  -eq "$(wc -l < "$A_EVIDENCE_MANIFEST")"
+diff -u "$A_EVIDENCE_MANIFEST" \
+  <(awk '
+      NF == 2 && length($1) == 64 && $1 !~ /[^0-9a-f]/ && $2 !~ /\// && $2 !~ /^\.\.?$/ {
+        print $2; valid++
+      }
+      END { if (valid != NR) exit 1 }
+    ' "$A_EVIDENCE_ROOT/critical-evidence-sha256.txt" | LC_ALL=C sort -u)
+diff -u "$A_EVIDENCE_MANIFEST" \
+  "$A_EVIDENCE_ROOT/critical-evidence-expected-files.txt"
+while IFS= read -r evidence_file; do
+  test -f "$A_EVIDENCE_ROOT/$evidence_file"
+  test ! -L "$A_EVIDENCE_ROOT/$evidence_file"
+done < "$A_EVIDENCE_MANIFEST"
 test "$(sha256sum "$A_EVIDENCE_ROOT/critical-evidence-sha256.txt" | awk '{print $1}')" \
   = "$A_EVIDENCE_MANIFEST_SHA256"
 (cd "$A_EVIDENCE_ROOT" && sha256sum --check critical-evidence-sha256.txt)
@@ -1957,9 +2549,335 @@ jq -e \
   --arg sha256 "$A_RAW_EVIDENCE_BUNDLE_SHA256" \
   '.url == $url and .sha256 == $sha256' \
   "$A_EVIDENCE_ROOT/raw-evidence-bundle.json"
+curl --fail --silent --show-error --location "$A_RAW_EVIDENCE_BUNDLE_URL" \
+  > "$A_RAW_EVIDENCE_BUNDLE"
+test "$(sha256sum "$A_RAW_EVIDENCE_BUNDLE" | awk '{print $1}')" \
+  = "$A_RAW_EVIDENCE_BUNDLE_SHA256"
+tar -tzf "$A_RAW_EVIDENCE_BUNDLE" > "$A_RAW_EVIDENCE_DIRECTORY/archive-files.txt"
+test -z "$(awk '/(^\/|(^|\/)\.\.(\/|$)|\/)/' \
+  "$A_RAW_EVIDENCE_DIRECTORY/archive-files.txt")"
+test "$(LC_ALL=C sort "$A_RAW_EVIDENCE_DIRECTORY/archive-files.txt" | uniq -d | wc -l)" -eq 0
+test -z "$(tar -tvzf "$A_RAW_EVIDENCE_BUNDLE" | awk 'substr($1, 1, 1) != "-"')"
+tar -xzf "$A_RAW_EVIDENCE_BUNDLE" -C "$A_RAW_EVIDENCE_DIRECTORY"
+test -s "$A_RAW_EVIDENCE_DIRECTORY/raw-evidence-files.txt"
+diff -u \
+  <((printf '%s\n' raw-evidence-files.txt; \
+    cat "$A_RAW_EVIDENCE_DIRECTORY/raw-evidence-files.txt") | LC_ALL=C sort) \
+  <(LC_ALL=C sort "$A_RAW_EVIDENCE_DIRECTORY/archive-files.txt")
+diff -u \
+  "$A_RAW_EVIDENCE_DIRECTORY/raw-evidence-files.txt" \
+  <(find "$A_RAW_EVIDENCE_DIRECTORY" -maxdepth 1 -type f \
+      ! -name archive-files.txt ! -name raw-evidence-files.txt -printf '%f\n' | LC_ALL=C sort)
+cat > "$A_EXPECTED_FILTERED_RESULTS" <<'FILTERED_RESULTS'
+async-DaprProjectionActivationOutboxTests
+async-DaprProjectionDeliveryRetrySchedulerTests
+async-NamedProjectionDispatchCoordinatorTests
+async-domain-dispatcher
+async-live
+batch-DaprReadModelBatchTests
+batch-DaprReadModelStoreTests
+batch-InMemoryReadModelStoreTests
+batch-ReadModelBatchStoreTests
+batch-live
+crosscut-apphost-source-topology
+crosscut-domain-compatibility
+crosscut-release-manifest
+crosscut-source-topology-provenance
+cursor-QueryCursorCodecTests
+cursor-QueryCursorScopeTests
+cursor-persisted-key-ring
+delivery-DaprProjectionActivationOutboxTests
+delivery-DaprProjectionDeliveryRetrySchedulerTests
+delivery-NamedProjectionDispatchCoordinatorTests
+delivery-NamedProjectionDispatchLiveSidecarTests
+delivery-ProjectionDeliveryCutoverLiveSidecarTests
+delivery-ProjectionDeliveryCutoverTests
+delivery-ProjectionDeliveryIdempotencyCoordinatorTests
+delivery-ProjectionDeliveryReconcilerTests
+erasure-coordinator
+erasure-dapr-store
+erasure-lifecycle-admission
+erasure-lifecycle-transport
+erasure-live
+lifecycle-CachingProjectionActorTests
+lifecycle-EventStoreGatewayClientTests
+lifecycle-ProjectionAdapterContractTests
+lifecycle-QueriesControllerTests
+lifecycle-QueryResponseProvenancePersistenceTests
+lifecycle-QueryRouterTests
+lifecycle-ReadModelFreshnessTests
+lifecycle-RestApiControllerGenerationTests
+lifecycle-RestApiGeneratedControllerErrorSemanticsTests
+lifecycle-SubmitQueryResponseTests
+lifecycle-provenance-e2e
+lifecycle-query-routing
+lifecycle-sample-runtime
+multiprojection-NamedProjectionDispatchCoordinatorTests
+multiprojection-NamedProjectionRouteCatalogTests
+multiprojection-catalog-publication
+multiprojection-domain-dispatcher
+multiprojection-live
+rebuild-ProjectionLifecycleActorTests
+rebuild-ProjectionRebuildCheckpointStoreTests
+rebuild-ProjectionRebuildProductionPathTests
+rebuild-ProjectionUpdateOrchestratorTests
+rebuild-domain-dispatcher
+rebuild-live-persisted-equivalence
+FILTERED_RESULTS
+cat > "$A_EXPECTED_FULL_RESULTS" <<'FULL_RESULTS'
+crosscut-admin-abstractions
+crosscut-admin-cli
+crosscut-admin-mcp
+crosscut-admin-server
+crosscut-admin-server-host
+crosscut-admin-ui
+crosscut-admin-ui-e2e
+crosscut-apphost
+crosscut-client
+crosscut-contracts
+crosscut-deferred-work-governance
+crosscut-domain-service
+crosscut-live-sidecar
+crosscut-operational-evidence
+crosscut-query-routing
+crosscut-rest-generator
+crosscut-sample
+crosscut-sample-quickstart
+crosscut-server
+crosscut-signalr
+crosscut-testing
+crosscut-testing-integration
+FULL_RESULTS
+cat > "$A_EXPECTED_REQUIRED_LOGS" <<'REQUIRED_LOGS'
+container-publish.txt
+crosscut-admin-ui-e2e.playwright.log
+literal-package-inventory.log
+package-build.log
+package-consumer-validation.log
+package-validator.log
+solution-build.log
+solution-restore.log
+REQUIRED_LOGS
+(
+  awk '{print $0 ".xml"; print $0 ".methods.txt"}' "$A_EXPECTED_FILTERED_RESULTS"
+  awk '{print $0 ".xml"}' "$A_EXPECTED_FULL_RESULTS"
+) | LC_ALL=C sort > "$A_EXPECTED_RESULT_FILES"
+diff -u "$A_EXPECTED_RESULT_FILES" \
+  <(awk '/\.(xml|methods\.txt)$/' \
+      "$A_RAW_EVIDENCE_DIRECTORY/raw-evidence-files.txt" | LC_ALL=C sort)
+while IFS= read -r required_log; do
+  grep -Fxq "$required_log" "$A_RAW_EVIDENCE_DIRECTORY/raw-evidence-files.txt"
+  test -s "$A_RAW_EVIDENCE_DIRECTORY/$required_log"
+done < "$A_EXPECTED_REQUIRED_LOGS"
+while IFS= read -r result_name; do
+  test -s "$A_RAW_EVIDENCE_DIRECTORY/$result_name.methods.txt"
+done < "$A_EXPECTED_FILTERED_RESULTS"
+while IFS= read -r result_file; do
+  case "$result_file" in
+    *.xml)
+      python3 - "$A_RAW_EVIDENCE_DIRECTORY/$result_file" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+
+root = ET.parse(sys.argv[1]).getroot()
+total = int(root.attrib.get("total", "0"))
+passed = int(root.attrib.get("passed", "0"))
+failed = int(root.attrib.get("failed", "0"))
+errors = int(root.attrib.get("errors", "0"))
+if total <= 0 or passed <= 0 or failed != 0 or errors != 0:
+    raise SystemExit(1)
+PY
+      ;;
+  esac
+done < "$A_RAW_EVIDENCE_DIRECTORY/raw-evidence-files.txt"
+
+A_LATEST_GATE_COMPLETED_AT="$(cat "$A_EVIDENCE_ROOT/latest-successful-gate-completed-at.txt")"
+[[ "$A_LATEST_GATE_COMPLETED_AT" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]]
+test "$(cat "$A_EVIDENCE_ROOT/candidate-source-sha.txt")" = "$A_TESTED_RUNTIME_SHA"
+test "$(cat "$A_EVIDENCE_ROOT/ad11-preflight.sha256")" \
+  = "$(sha256sum "$A_EVIDENCE_ROOT/ad11-preflight.json" | awk '{print $1}')  ad11-preflight.json"
+A_AD11_MODE="$(jq -er '.mode' "$A_EVIDENCE_ROOT/ad11-preflight.json")"
+if test "$A_AD11_MODE" = 'exact-baseline'; then
+  jq -e \
+    --arg repository 'https://github.com/Hexalith/Hexalith.EventStore.git' \
+    --arg source_sha "$A_TESTED_RUNTIME_SHA" \
+    --arg latest_gate "$A_LATEST_GATE_COMPLETED_AT" '
+      .mode == "exact-baseline" and
+      .repository == $repository and
+      .source_sha == $source_sha and
+      .sdk_version == "10.0.302" and
+      .sdk_roll_forward == "latestPatch" and
+      .installed_sdk_version == "10.0.302" and
+      .aspnet_version == "10.0.10" and
+      .installed_aspnet_version == "10.0.10" and
+      .runtime_version == "10.0.10" and
+      ((.checked_at | fromdateiso8601) <= ($latest_gate | fromdateiso8601))
+    ' "$A_EVIDENCE_ROOT/ad11-preflight.json" >/dev/null
+elif test "$A_AD11_MODE" = 'durable-replacement'; then
+  A_AD11_REPLACEMENT="$A_EVIDENCE_ROOT/ad11-replacement-authority.json"
+  A_AD11_REPLACEMENT_METADATA="$A_EVIDENCE_ROOT/ad11-replacement-authority.github.json"
+  verify_committed_github_role_record \
+    "$A_AD11_REPLACEMENT" "$A_AD11_REPLACEMENT_METADATA" architecture_owner
+  jq -e \
+    --arg repository 'https://github.com/Hexalith/Hexalith.EventStore.git' \
+    --arg source_sha "$A_TESTED_RUNTIME_SHA" \
+    --arg authority_file 'ad11-replacement-authority.json' \
+    --arg authority_sha256 "$(sha256sum "$A_AD11_REPLACEMENT" | awk '{print $1}')" \
+    --arg metadata_file 'ad11-replacement-authority.github.json' \
+    --arg metadata_sha256 "$(sha256sum "$A_AD11_REPLACEMENT_METADATA" | awk '{print $1}')" \
+    --arg latest_gate "$A_LATEST_GATE_COMPLETED_AT" '
+      def parts: split(".") | map(tonumber);
+      .mode == "durable-replacement" and
+      .repository == $repository and
+      .source_sha == $source_sha and
+      .sdk_roll_forward == "latestPatch" and
+      .sdk_version == .installed_sdk_version and
+      .aspnet_version == .installed_aspnet_version and
+      .aspnet_version == .runtime_version and
+      ((.sdk_version | parts) >= ("10.0.302" | parts)) and
+      ((.aspnet_version | parts) >= ("10.0.10" | parts)) and
+      (((.sdk_version | parts) > ("10.0.302" | parts)) or
+        ((.aspnet_version | parts) > ("10.0.10" | parts))) and
+      .authority_file == $authority_file and
+      .authority_sha256 == $authority_sha256 and
+      .authority_github_metadata_file == $metadata_file and
+      .authority_github_metadata_sha256 == $metadata_sha256 and
+      ((.checked_at | fromdateiso8601) <= ($latest_gate | fromdateiso8601))
+    ' "$A_EVIDENCE_ROOT/ad11-preflight.json" >/dev/null
+  A_AD11_APPROVER="$(jq -er '.login' "$A_AD11_REPLACEMENT_METADATA")"
+  A_AD11_SOURCE="$(jq -er '.html_url' "$A_AD11_REPLACEMENT_METADATA")"
+  jq -e \
+    --arg repository 'https://github.com/Hexalith/Hexalith.EventStore.git' \
+    --arg source_sha "$A_TESTED_RUNTIME_SHA" \
+    --arg owner "$A_AD11_APPROVER" \
+    --arg durable_source "$A_AD11_SOURCE" \
+    --arg sdk_version "$(jq -er '.sdk_version' "$A_EVIDENCE_ROOT/ad11-preflight.json")" \
+    --arg aspnet_version "$(jq -er '.aspnet_version' "$A_EVIDENCE_ROOT/ad11-preflight.json")" \
+    --arg checked_at "$(jq -er '.checked_at' "$A_EVIDENCE_ROOT/ad11-preflight.json")" \
+    --arg latest_gate "$A_LATEST_GATE_COMPLETED_AT" '
+      def nonblank: type == "string" and test("\\S");
+      .action == "ad11-baseline-replacement" and
+      .owner == $owner and .durable_source == $durable_source and
+      (.rationale | nonblank) and (.expires_at | nonblank) and
+      .scope.repository == $repository and .scope.source_sha == $source_sha and
+      .scope.sdk_version == $sdk_version and .scope.sdk_roll_forward == "latestPatch" and
+      .scope.aspnet_version == $aspnet_version and .scope.runtime_version == $aspnet_version and
+      ((.approved_at | fromdateiso8601) <= ($checked_at | fromdateiso8601)) and
+      ((.expires_at | fromdateiso8601) > ($latest_gate | fromdateiso8601))
+    ' "$A_AD11_REPLACEMENT" >/dev/null
+else
+  printf 'unsupported AD-11 mode: %s\n' "$A_AD11_MODE" >&2
+  exit 1
+fi
+
+A_RUNTIME_GITMODULES="$(mktemp)"
+git show "$A_TESTED_RUNTIME_COMMIT:.gitmodules" > "$A_RUNTIME_GITMODULES"
+while read -r _ submodule_path; do
+  submodule_sha="$(git ls-tree "$A_TESTED_RUNTIME_COMMIT" -- "$submodule_path" |
+    awk '$1 == "160000" {print $3}')"
+  [[ "$submodule_sha" =~ ^[0-9a-f]{40}$ ]]
+  printf 'submodule=%s head=%s\n' "$submodule_path" "$submodule_sha"
+done < <(git config -f "$A_RUNTIME_GITMODULES" --get-regexp '^submodule\..*\.path$' |
+  LC_ALL=C sort -k2) > "$A_EXPECTED_SOURCE_STATE"
+validate_source_state() {
+  local source_state="$1"
+  python3 - "$source_state" "$A_EXPECTED_SOURCE_STATE" "$A_TESTED_RUNTIME_SHA" <<'PY'
+import re
+import sys
+
+source_path, expected_path, runtime = sys.argv[1:]
+lines = open(source_path, encoding="utf-8").read().splitlines()
+expected = open(expected_path, encoding="utf-8").read().splitlines()
+if lines[:3] != [f"candidate={runtime}", "root-status:", "root-ignored:"]:
+    raise SystemExit("invalid source-state identity or nonempty root status")
+try:
+    root_submodules = lines.index("root-submodules:", 3)
+except ValueError as error:
+    raise SystemExit("missing root-submodules marker") from error
+
+def allowed_ignored(line):
+    return bool(re.fullmatch(r"!! (?:.+/)?(?:bin|obj)/(?:.*)?", line))
+
+if not all(allowed_ignored(line) for line in lines[3:root_submodules]):
+    raise SystemExit("unexpected ignored root input")
+cursor = root_submodules + 1
+for record in expected:
+    path, sha = re.fullmatch(r"submodule=(\S+) head=([0-9a-f]{40})", record).groups()
+    status = re.compile(rf" {sha} {re.escape(path)}(?: \([^)]*\))?")
+    if cursor >= len(lines) or not status.fullmatch(lines[cursor]):
+        raise SystemExit(f"missing root gitlink status for {path}")
+    cursor += 1
+for record in expected:
+    path, _ = re.fullmatch(r"submodule=(\S+) head=([0-9a-f]{40})", record).groups()
+    if cursor >= len(lines) or lines[cursor] != record:
+        raise SystemExit(f"missing submodule identity for {path}")
+    cursor += 1
+    if cursor >= len(lines) or lines[cursor] != f"submodule-status={path}:":
+        raise SystemExit(f"missing clean-status marker for {path}")
+    cursor += 1
+    if cursor >= len(lines) or lines[cursor] != f"submodule-ignored={path}:":
+        raise SystemExit(f"nonempty regular status for {path}")
+    cursor += 1
+    while cursor < len(lines) and lines[cursor].startswith("!! "):
+        if not allowed_ignored(lines[cursor]):
+            raise SystemExit(f"unexpected ignored submodule input for {path}")
+        cursor += 1
+if cursor != len(lines):
+    raise SystemExit("unexpected source-state suffix")
+PY
+}
+for source_state_name in \
+    source-state-before.txt source-state-after.txt \
+    source-state-before-publication.txt source-state-after-publication.txt; do
+  validate_source_state "$A_EVIDENCE_ROOT/$source_state_name"
+done
 
 test "$(front_value "$A_FOLLOWUP_SPEC" followup_review_recommended)" = 'false'
-awk -v tested_runtime_sha="$A_TESTED_RUNTIME_SHA" '
+A_STORY_REVIEW_RECORD="$A_EVIDENCE_ROOT/story-1-16-followup-review.json"
+A_STORY_REVIEW_METADATA="$A_EVIDENCE_ROOT/story-1-16-followup-review.github.json"
+verify_committed_github_role_record \
+  "$A_STORY_REVIEW_RECORD" "$A_STORY_REVIEW_METADATA" story_1_16_reviewer
+A_STORY_REVIEWER_LOGIN="$(jq -er '.login' "$A_STORY_REVIEW_METADATA")"
+A_STORY_REVIEW_API_URL="$(jq -er '.api_url' "$A_STORY_REVIEW_METADATA")"
+A_STORY_REVIEW_SOURCE="$(jq -er '.html_url' "$A_STORY_REVIEW_METADATA")"
+A_STORY_REVIEWED_AT="$(jq -er '.reviewed_at' "$A_STORY_REVIEW_RECORD")"
+A_COMMIT_EPOCH="$(git show -s --format=%ct "$EVIDENCE_COMMIT_A")"
+jq -e \
+  --argjson commit_epoch "$A_COMMIT_EPOCH" \
+  --arg owner "$A_STORY_REVIEWER_LOGIN" \
+  --arg durable_source "$A_STORY_REVIEW_SOURCE" \
+  --arg repository 'https://github.com/Hexalith/Hexalith.EventStore.git' \
+  --arg source_sha "$A_TESTED_RUNTIME_SHA" \
+  --arg latest_gate "$A_LATEST_GATE_COMPLETED_AT" '
+    def nonblank: type == "string" and test("\\S");
+    .action == "story-1-16-followup-review" and
+    .owner == $owner and .durable_source == $durable_source and
+    .disposition == "approved" and
+    .scope.repository == $repository and
+    .scope.reviewed_runtime_sha == $source_sha and
+    (.scope.summary | nonblank) and (.scope.verification | nonblank) and
+    (.scope.residual_limitations | nonblank) and
+    ((.reviewed_at | fromdateiso8601) >= ($latest_gate | fromdateiso8601)) and
+    ((.reviewed_at | fromdateiso8601) <= $commit_epoch)
+  ' "$A_STORY_REVIEW_RECORD" >/dev/null
+A_STORY_REVIEW_DATE="${A_STORY_REVIEWED_AT%%T*}"
+python3 - "$A_FOLLOWUP_SPEC" "$A_STORY_REVIEW_DATE" <<'PY'
+import datetime as dt
+import re
+import sys
+
+text = open(sys.argv[1], encoding="utf-8").read()
+expected = sys.argv[2]
+dt.date.fromisoformat(expected)
+dates = re.findall(r"^### (\d{4}-\d{2}-\d{2}) — Follow-up review disposition$", text, re.M)
+if dates != [expected]:
+    raise SystemExit(1)
+PY
+awk \
+  -v tested_runtime_sha="$A_TESTED_RUNTIME_SHA" \
+  -v reviewer_login="$A_STORY_REVIEWER_LOGIN" \
+  -v durable_source_api="$A_STORY_REVIEW_API_URL" \
+  -v durable_source="$A_STORY_REVIEW_SOURCE" '
   function field_value(prefix, value) {
     value = substr($0, length(prefix) + 1)
     gsub(/^`|`$/, "", value)
@@ -1975,9 +2893,15 @@ awk -v tested_runtime_sha="$A_TESTED_RUNTIME_SHA" '
   in_disposition && index($0, "- reviewer: ") == 1 {
     value = field_value("- reviewer: "); reviewer++; reviewer_ok += (value != "" && value != "not assigned")
   }
+  in_disposition && index($0, "- reviewer_login: ") == 1 {
+    value = field_value("- reviewer_login: "); login++; login_ok += (value == reviewer_login)
+  }
+  in_disposition && index($0, "- durable_source_api: ") == 1 {
+    value = field_value("- durable_source_api: "); api++; api_ok += (value == durable_source_api)
+  }
   in_disposition && index($0, "- durable_source: ") == 1 {
     value = field_value("- durable_source: "); source++
-    source_ok += (value ~ /^https:\/\/[^[:space:]]+$/ || value ~ /^[0-9a-f]{40}$/)
+    source_ok += (value == durable_source)
   }
   in_disposition && index($0, "- scope: ") == 1 {
     scope++; scope_ok += (field_value("- scope: ") != "")
@@ -1996,7 +2920,8 @@ awk -v tested_runtime_sha="$A_TESTED_RUNTIME_SHA" '
   }
   END {
     exit !(sections == 1 && runtime == 1 && runtime_ok == 1 &&
-      reviewer == 1 && reviewer_ok == 1 && source == 1 && source_ok == 1 &&
+      reviewer == 1 && reviewer_ok == 1 && login == 1 && login_ok == 1 &&
+      api == 1 && api_ok == 1 && source == 1 && source_ok == 1 &&
       scope == 1 && scope_ok == 1 && findings == 1 && findings_ok == 1 &&
       verification == 1 && verification_ok == 1 && residuals == 1 &&
       residuals_ok == 1 && disposition == 1 && disposition_ok == 1)
@@ -2004,13 +2929,28 @@ awk -v tested_runtime_sha="$A_TESTED_RUNTIME_SHA" '
 ' "$A_FOLLOWUP_SPEC"
 
 awk '
+  function finish_section() {
+    if (!relevant) return
+    sections++
+    if (status_count != 1 || status_value != "implementation-complete/evidence-confirmed") {
+      invalid++
+    }
+  }
   /^## Deferred from:/ {
+    finish_section()
     relevant = ($0 ~ /Story 1\.20/ || $0 ~ /1-20-owner-approved-parity-closure/)
-    if (relevant) sections++
+    status_count = 0
+    status_value = ""
     next
   }
-  relevant && /^  status: open-blocking$/ { open++ }
-  END { exit !(sections > 0 && open == 0) }
+  relevant && /^  status: / {
+    status_count++
+    status_value = substr($0, length("  status: ") + 1)
+  }
+  END {
+    finish_section()
+    exit !(sections > 0 && invalid == 0)
+  }
 ' "$A_DEFERRED_WORK"
 
 A_PACKAGE_VERSION="$(front_value "$A_PACKET" approved_package_version)"
@@ -2058,10 +2998,10 @@ diff -u \
 
 A_CONTAINER_REPOSITORY="$(front_value "$A_PACKET" approved_container_repository)"
 A_CONTAINER_DIGEST="$(front_value "$A_PACKET" approved_container_digest)"
-test -n "$A_CONTAINER_REPOSITORY"
-test "$A_CONTAINER_REPOSITORY" != 'null'
+test "$A_CONTAINER_REPOSITORY" = 'registry.hexalith.com/eventstore'
 [[ "$A_CONTAINER_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
 A_PUBLICATION_AUTHORITY="$A_EVIDENCE_ROOT/release-owner-publication-authority.json"
+A_PUBLICATION_AUTHORITY_METADATA="$A_EVIDENCE_ROOT/release-owner-publication-authority.github.json"
 A_PUBLICATION_CHECKED_AT_FILE="$A_EVIDENCE_ROOT/release-owner-publication-authority.checked-at.txt"
 A_CAPTURE_TARGETS="$A_EVIDENCE_ROOT/capture-generated-image-index.targets"
 A_GENERATED_IMAGE_INDEX="$A_EVIDENCE_ROOT/generated-image-index.json"
@@ -2070,6 +3010,7 @@ A_CONTAINER_MANIFEST="$A_EVIDENCE_ROOT/container-manifest.json"
 A_CONTAINER_PLATFORMS="$A_EVIDENCE_ROOT/container-platforms.txt"
 for required_evidence in \
     "$A_PUBLICATION_AUTHORITY" \
+    "$A_PUBLICATION_AUTHORITY_METADATA" \
     "$A_PUBLICATION_CHECKED_AT_FILE" \
     "$A_CAPTURE_TARGETS" \
     "$A_GENERATED_IMAGE_INDEX" \
@@ -2078,6 +3019,8 @@ for required_evidence in \
     "$A_CONTAINER_PLATFORMS"; do
   test -s "$required_evidence"
 done
+verify_committed_github_role_record \
+  "$A_PUBLICATION_AUTHORITY" "$A_PUBLICATION_AUTHORITY_METADATA" release_owner
 A_PUBLICATION_CHECKED_AT="$(cat "$A_PUBLICATION_CHECKED_AT_FILE")"
 [[ "$A_PUBLICATION_CHECKED_AT" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]]
 test "$(cat "$A_GENERATED_IMAGE_INDEX_DIGEST")" = "$A_CONTAINER_DIGEST"
@@ -2098,12 +3041,14 @@ jq -e \
   --arg checked_at "$A_PUBLICATION_CHECKED_AT" \
   --arg repository "$A_CONTAINER_REPOSITORY" \
   --arg tag "quarantine-proof-$A_TESTED_RUNTIME_SHA" \
-  --arg source_sha "$A_TESTED_RUNTIME_SHA" '
+  --arg source_sha "$A_TESTED_RUNTIME_SHA" \
+  --arg owner "$(jq -er '.login' "$A_PUBLICATION_AUTHORITY_METADATA")" \
+  --arg durable_source "$(jq -er '.html_url' "$A_PUBLICATION_AUTHORITY_METADATA")" '
     def nonblank: type == "string" and test("\\S");
     .action == "container-publication" and
-    (.owner | nonblank) and
+    .owner == $owner and
     (.authorized_at | nonblank) and
-    (.durable_source | nonblank) and
+    .durable_source == $durable_source and
     (.rationale | nonblank) and
     (.expires_at | nonblank) and
     .scope.repository == $repository and .scope.tag == $tag and
@@ -2117,6 +3062,7 @@ jq -e \
   --arg source_sha "$A_TESTED_RUNTIME_SHA" \
   --arg tag "quarantine-proof-$A_TESTED_RUNTIME_SHA" \
   --arg authority_sha256 "$(sha256sum "$A_PUBLICATION_AUTHORITY" | awk '{print $1}')" \
+  --arg authority_metadata_sha256 "$(sha256sum "$A_PUBLICATION_AUTHORITY_METADATA" | awk '{print $1}')" \
   --arg authority_checked_at "$A_PUBLICATION_CHECKED_AT" \
   --arg authority_checked_at_sha256 "$(
     sha256sum "$A_PUBLICATION_CHECKED_AT_FILE" | awk '{print $1}'
@@ -2136,26 +3082,182 @@ jq -e \
     .publish_properties.container_runtime_identifiers == "linux-x64;linux-arm64" and
     .publication_authority.file == "release-owner-publication-authority.json" and
     .publication_authority.sha256 == $authority_sha256 and
+    .publication_authority.github_metadata_file ==
+      "release-owner-publication-authority.github.json" and
+    .publication_authority.github_metadata_sha256 == $authority_metadata_sha256 and
     .publication_authority.checked_at == $authority_checked_at and
     .publication_authority.checked_at_file ==
       "release-owner-publication-authority.checked-at.txt" and
     .publication_authority.checked_at_sha256 == $authority_checked_at_sha256
   ' "$A_EVIDENCE_ROOT/container-provenance.json"
 
+A_REGISTRY_MANIFEST="$(mktemp)"
+docker buildx imagetools inspect \
+  "$A_CONTAINER_REPOSITORY@$A_CONTAINER_DIGEST" --raw > "$A_REGISTRY_MANIFEST"
+test "sha256:$(sha256sum "$A_REGISTRY_MANIFEST" | awk '{print $1}')" \
+  = "$A_CONTAINER_DIGEST"
+cmp --silent "$A_CONTAINER_MANIFEST" "$A_REGISTRY_MANIFEST"
+while IFS= read -r child_digest; do
+  [[ "$child_digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+  child_manifest="$(mktemp)"
+  docker buildx imagetools inspect \
+    "$A_CONTAINER_REPOSITORY@$child_digest" --raw > "$child_manifest"
+  test "sha256:$(sha256sum "$child_manifest" | awk '{print $1}')" = "$child_digest"
+  jq -e 'type == "object" and (.schemaVersion == 2)' "$child_manifest" >/dev/null
+done < <(jq -er '.manifests[].digest' "$A_CONTAINER_MANIFEST")
+
 A_COMMIT_EPOCH="$(git show -s --format=%ct "$EVIDENCE_COMMIT_A")"
 A_REPOSITORY_URL='https://github.com/Hexalith/Hexalith.EventStore.git'
+A_APPROVAL_SUBJECT_SHA256="$(front_value "$A_PACKET" approval_subject_sha256)"
+[[ "$A_APPROVAL_SUBJECT_SHA256" =~ ^[0-9a-f]{64}$ ]]
+cp -- "$A_EVIDENCE_ROOT/approval-subject.json" "$A_APPROVAL_SUBJECT"
+test "$(sha256sum "$A_APPROVAL_SUBJECT" | awk '{print $1}')" \
+  = "$A_APPROVAL_SUBJECT_SHA256"
+jq -e \
+  --arg repository "$A_REPOSITORY_URL" \
+  --arg source_sha "$A_TESTED_RUNTIME_SHA" \
+  --arg evidence_manifest_sha256 "$A_EVIDENCE_MANIFEST_SHA256" \
+  --arg raw_sha256 "$A_RAW_EVIDENCE_BUNDLE_SHA256" \
+  --arg package_version "$A_PACKAGE_VERSION" \
+  --arg package_manifest_sha256 "$A_PACKAGE_HASH_MANIFEST_SHA256" \
+  --arg container_repository "$A_CONTAINER_REPOSITORY" \
+  --arg container_digest "$A_CONTAINER_DIGEST" '
+    .schema == "hexalith.eventstore.story-1-20-approval-subject/v1" and
+    .repository == $repository and .tested_runtime_sha == $source_sha and
+    .evidence_manifest_sha256 == $evidence_manifest_sha256 and
+    .raw_evidence_bundle_sha256 == $raw_sha256 and
+    .package_version == $package_version and
+    .package_hash_manifest_sha256 == $package_manifest_sha256 and
+    .container_repository == $container_repository and
+    .container_digest == $container_digest and
+    (.capabilities | type == "array" and length == 9 and
+      (map(.id) | unique | length == 9) and
+      all(.[]; .classification == "available" and
+        (.limitations | type == "array" and length > 0 and
+          length == (unique | length))))
+  ' "$A_APPROVAL_SUBJECT" >/dev/null
+cat > "$A_EXPECTED_CAPABILITY_IDS" <<'CAPABILITY_IDS'
+asynchronous-projection-persistence
+coordinated-batching
+cross-cutting-release-compatibility
+cursor-compatibility
+delivery-order-and-idempotency
+lifecycle-and-route-provenance
+multiple-projections-per-domain
+paged-rebuild-equivalence
+read-model-erasure
+CAPABILITY_IDS
+cat > "$A_EXPECTED_LIMITATION_IDS" <<'LIMITATION_IDS'
+async-dead-letter-terminal-cleanup
+async-hand-written-state-writes
+async-null-metadata
+async-stable-work-identity
+batch-corrupt-or-abandoned-envelope
+batch-cross-profile-boundary
+batch-etag-behavior
+batch-store-transaction-capability
+batch-terminal-receipt-retention
+cursor-key-ring-loss-or-replacement
+delivery-legacy-project-route-boundary
+delivery-mixed-writer-cutover-boundary
+erasure-admission-write-fence-races
+erasure-authenticated-stitched-e2e
+erasure-caller-slot-completeness
+erasure-global-administrator-boundary
+lifecycle-etag-evidence-boundary
+lifecycle-legacy-metadata-abi
+lifecycle-operational-value-abi
+lifecycle-unknown-compatibility
+multiprojection-bounded-result-contract
+multiprojection-exact-route-identity
+multiprojection-legacy-route-boundary
+multiprojection-versioned-route-boundary
+rebuild-cancellation-resume-semantics
+rebuild-complete-prefix-resource-bounds
+rebuild-coordinated-promotion-boundary
+rebuild-deferred-review-items
+release-container-registry-and-platform-provenance
+release-durable-evidence-retention
+release-owner-authority-and-migration
+release-package-inventory-and-byte-identity
+LIMITATION_IDS
+diff -u "$A_EXPECTED_CAPABILITY_IDS" \
+  <(jq -er '.capabilities[].id' "$A_APPROVAL_SUBJECT" | LC_ALL=C sort)
+diff -u "$A_EXPECTED_LIMITATION_IDS" \
+  <(jq -er '.capabilities[].limitations[]' "$A_APPROVAL_SUBJECT" | LC_ALL=C sort)
+python3 - "$A_PACKET" "$A_APPROVAL_SUBJECT" "$A_TESTED_RUNTIME_COMMIT" <<'PY'
+import json
+import re
+import subprocess
+import sys
+
+packet_path, subject_path, runtime = sys.argv[1:]
+packet = open(packet_path, encoding="utf-8").read()
+subject = json.load(open(subject_path, encoding="utf-8"))
+start = packet.index("## Parity Capability Matrix")
+end = packet.index("## Owner Review", start)
+matrix = packet[start:end]
+if re.search(r"`still blocked`|\bFAILED\b|\bNOT RUN\b|\bowner disposition: pending\b", matrix):
+    raise SystemExit("matrix contains stale or non-authorizing state")
+matches = list(re.finditer(r"^- capability-id: `([^`]+)`$", matrix, re.M))
+if len(matches) != 9:
+    raise SystemExit("matrix must contain exactly nine capabilities")
+subject_map = {item["id"]: item for item in subject["capabilities"]}
+if set(subject_map) != {match.group(1) for match in matches}:
+    raise SystemExit("matrix and approval subject capability IDs differ")
+for index, match in enumerate(matches):
+    capability_id = match.group(1)
+    section_end = matches[index + 1].start() if index + 1 < len(matches) else len(matrix)
+    section = matrix[match.start():section_end]
+    if len(re.findall(r"^- classification: `available`$", section, re.M)) != 1:
+        raise SystemExit(f"{capability_id}: classification is not exactly available")
+    source_marker = re.search(r"^- (?:production )?source paths:$", section, re.M)
+    test_marker = re.search(r"^- (?:focused compatibility and packaging )?test paths:$", section, re.M)
+    required_marker = re.search(r"^- required exact .+:$", section, re.M)
+    rollback_marker = re.search(r"^- rollback: \S", section, re.M)
+    if not all((source_marker, test_marker, required_marker, rollback_marker)):
+        raise SystemExit(f"{capability_id}: incomplete source/test/command/rollback fields")
+    def paths_after(marker):
+        tail = section[marker.end():]
+        next_bullet = re.search(r"^-[ ]", tail, re.M)
+        body = tail[:next_bullet.start()] if next_bullet else tail
+        return re.findall(r"^  - `([^`]+)`$", body, re.M)
+    source_paths = paths_after(source_marker)
+    test_paths = paths_after(test_marker)
+    if not source_paths or not test_paths:
+        raise SystemExit(f"{capability_id}: empty source or test path list")
+    for path in source_paths + test_paths:
+        subprocess.run(["git", "cat-file", "-e", f"{runtime}:{path}"], check=True)
+    limitation = re.search(
+        r"^- limitation-ids: (.+(?:\n  `[^\n]+)*)$", section, re.M)
+    if not limitation:
+        raise SystemExit(f"{capability_id}: missing limitation IDs")
+    limitation_ids = re.findall(r"`([^`]+)`", limitation.group(1))
+    if limitation_ids != subject_map[capability_id]["limitations"]:
+        raise SystemExit(f"{capability_id}: limitation IDs differ from approval subject")
+    if capability_id == "cross-cutting-release-compatibility":
+        if "| PASS |" not in section:
+            raise SystemExit("cross-cutting row lacks completed gate results")
+    elif not re.search(r"^- closure result and persisted read-back: \S", section, re.M):
+        raise SystemExit(f"{capability_id}: missing closure result")
+PY
 validate_committed_owner_record() {
   local record="$1"
-  local action="$2"
-  local decision="$3"
-  local approval_prefix="$4"
+  local metadata="$2"
+  local expected_role="$3"
+  local action="$4"
+  local decision="$5"
+  local approval_prefix="$6"
   local approval_url
   local approval_sha256
+  local approved_login
   approval_url="$(front_value "$A_PACKET" "${approval_prefix}_url")"
   approval_sha256="$(front_value "$A_PACKET" "${approval_prefix}_sha256")"
-  [[ "$approval_url" =~ ^https://[^[:space:]]+$ ]]
   [[ "$approval_sha256" =~ ^[0-9a-f]{64}$ ]]
   test "$(sha256sum "$record" | awk '{print $1}')" = "$approval_sha256"
+  verify_committed_github_role_record "$record" "$metadata" "$expected_role"
+  test "$approval_url" = "$(jq -er '.html_url' "$metadata")"
+  approved_login="$(jq -er '.login' "$metadata")"
   jq -e \
     --argjson commit_epoch "$A_COMMIT_EPOCH" \
     --arg action "$action" \
@@ -2167,12 +3269,20 @@ validate_committed_owner_record() {
     --arg package_version "$A_PACKAGE_VERSION" \
     --arg package_manifest_sha256 "$A_PACKAGE_HASH_MANIFEST_SHA256" \
     --arg container_repository "$A_CONTAINER_REPOSITORY" \
-    --arg container_digest "$A_CONTAINER_DIGEST" '
+    --arg container_digest "$A_CONTAINER_DIGEST" \
+    --arg approved_login "$approved_login" \
+    --arg evidence_manifest_sha256 "$A_EVIDENCE_MANIFEST_SHA256" \
+    --arg approval_subject_sha256 "$A_APPROVAL_SUBJECT_SHA256" \
+    --arg latest_gate_completed_at "$A_LATEST_GATE_COMPLETED_AT" '
       def nonblank: type == "string" and test("\\S");
       type == "object" and .action == $action and
-      (.owner | nonblank) and (.approved_at | nonblank) and
+      .owner == $approved_login and (.approved_at | nonblank) and
       .durable_source == $durable_source and
-      (.accepted_scope | nonblank) and (.limitations | type == "array") and
+      (.accepted_scope | nonblank) and
+      (.limitations | type == "array" and length > 0 and
+        length == (map(.id) | unique | length) and
+        all(.[]; type == "object" and (.id | nonblank) and
+          .disposition == "accepted" and (.rationale | nonblank))) and
       .decision == $decision and
       .scope.repository == $repository and
       .scope.tested_runtime_sha == $source_sha and
@@ -2181,22 +3291,42 @@ validate_committed_owner_record() {
       .scope.package_hash_manifest_sha256 == $package_manifest_sha256 and
       .scope.container_repository == $container_repository and
       .scope.container_digest == $container_digest and
+      .scope.evidence_manifest_sha256 == $evidence_manifest_sha256 and
+      .scope.approval_subject_sha256 == $approval_subject_sha256 and
+      .scope.latest_successful_gate_completed_at == $latest_gate_completed_at and
+      ((.approved_at | fromdateiso8601) >= ($latest_gate_completed_at | fromdateiso8601)) and
       ((.approved_at | fromdateiso8601) <= $commit_epoch)
     ' "$record"
+  diff -u "$A_EXPECTED_LIMITATION_IDS" \
+    <(jq -er '.limitations[].id' "$record" | LC_ALL=C sort)
 }
 
 validate_committed_owner_record \
   "$A_EVIDENCE_ROOT/eventstore-owner-proof-approval.json" \
+  "$A_EVIDENCE_ROOT/eventstore-owner-proof-approval.github.json" \
+  eventstore_owner \
   story-1-20-proof-approval \
   authorize-consumer-migration \
   eventstore_owner_approval
 validate_committed_owner_record \
   "$A_EVIDENCE_ROOT/release-owner-final-disposition.json" \
+  "$A_EVIDENCE_ROOT/release-owner-final-disposition.github.json" \
+  release_owner \
   story-1-20-release-disposition \
   approve-release-identities \
   release_owner_disposition
-test "$(grep -c '^- classification: `available`$' "$A_PACKET")" -eq 9
-test "$(grep -c '^- classification: `still blocked`$' "$A_PACKET")" -eq 0
+A_OWNER_REVIEW="$(awk '/^## Owner Review$/{inside=1; next} inside && /^## /{exit} inside{print}' "$A_PACKET")"
+A_EVENTSTORE_OWNER_LOGIN="$(jq -er '.login' \
+  "$A_EVIDENCE_ROOT/eventstore-owner-proof-approval.github.json")"
+A_RELEASE_OWNER_LOGIN="$(jq -er '.login' \
+  "$A_EVIDENCE_ROOT/release-owner-final-disposition.github.json")"
+grep -Fq "$A_EVENTSTORE_OWNER_LOGIN" <<< "$A_OWNER_REVIEW"
+grep -Fq "$A_RELEASE_OWNER_LOGIN" <<< "$A_OWNER_REVIEW"
+grep -Fq "$(front_value "$A_PACKET" eventstore_owner_approval_url)" <<< "$A_OWNER_REVIEW"
+grep -Fq "$(front_value "$A_PACKET" release_owner_disposition_url)" <<< "$A_OWNER_REVIEW"
+grep -Fq 'migration decision: `authorize_consumer_migration: false`' <<< "$A_OWNER_REVIEW"
+test -z "$(grep -E 'not assigned|not recorded|accepted scope: none|accepted limitations: none' \
+  <<< "$A_OWNER_REVIEW")"
 test "$(front_value "$A_PACKET" documentation_commit_sha)" = 'null'
 test "$(front_value "$A_PACKET" final_decision)" = 'still blocked'
 test "$(front_value "$A_PACKET" authorize_consumer_migration)" = 'false'
@@ -2255,8 +3385,25 @@ awk '
   in_front && $0 == "authorize_consumer_migration: false" && migration_changed == 0 {
     print "authorize_consumer_migration: true"; migration_changed = 1; next
   }
+  !in_front && /^## / { section = $0 }
+  section == "## Decision" && $0 == "`still blocked`" && body_decision_changed == 0 {
+    print "`available`"; body_decision_changed = 1; next
+  }
+  section == "## Owner Review" &&
+      $0 == "- migration decision: `authorize_consumer_migration: false`" &&
+      owner_migration_changed == 0 {
+    print "- migration decision: `authorize_consumer_migration: true`"
+    owner_migration_changed = 1
+    next
+  }
+  section == "## Final Decision" && $0 == "`still blocked`" && final_decision_changed == 0 {
+    print "`available`"; final_decision_changed = 1; next
+  }
   { print }
-  END { if (decision_changed != 1 || migration_changed != 1) exit 1 }
+  END {
+    if (decision_changed != 1 || migration_changed != 1 || body_decision_changed != 1 ||
+        owner_migration_changed != 1 || final_decision_changed != 1) exit 1
+  }
 ' "$B_PACKET" > "$EXPECTED_C_PACKET"
 cmp --silent "$EXPECTED_C_PACKET" "$C_PACKET"
 
@@ -2315,6 +3462,11 @@ test "$(front_value "$C_PACKET" tested_runtime_sha)" = "$A_TESTED_RUNTIME_SHA"
 test "$(front_value "$C_PACKET" documentation_commit_sha)" = "$EVIDENCE_COMMIT_A"
 test "$(front_value "$C_PACKET" final_decision)" = 'available'
 test "$(front_value "$C_PACKET" authorize_consumer_migration)" = 'true'
+test "$(awk '/^## Decision$/{inside=1; next} inside && /^## /{exit} inside && /^`/{print}' \
+  "$C_PACKET")" = '`available`'
+test "$(awk '/^## Final Decision$/{inside=1; next} inside && /^## /{exit} inside && /^`/{print}' \
+  "$C_PACKET")" = '`available`'
+grep -Fq -- '- migration decision: `authorize_consumer_migration: true`' "$C_PACKET"
 test "$(front_value "$C_STORY" status)" = 'done'
 awk '
   /^  epic-1:/ { epic_count++; epic_ok += ($0 == "  epic-1: done") }
@@ -2338,16 +3490,25 @@ validated immutable evidence and approval identities.
 
 ## Consumer Handoff Guard
 
-All placeholders below intentionally fail closed. They may be replaced only from a future
-`available` packet carrying named owner approval and the matching evidence files.
+Run the complete A/B/C verifier above in the authorization repository **in the current shell**,
+then continue directly with exactly one consumer procedure below. The procedures derive every
+EventStore source/package/container pin from the already verified C packet and A evidence tree;
+callers supply only the consumer checkout/project or the directory containing the approved
+package bytes. Starting a new shell, assigning an artifact pin, or skipping the verifier loses
+the verified variables and fails closed.
 
 ### Source consumer procedure
 
 ```bash
 set -euo pipefail
-APPROVED_EVENTSTORE_SHA='NOT_SELECTED'
+: "${AUTHORIZATION_COMMIT_C:?run the A/B/C verifier in this shell first}"
+: "${CONSUMER_REPOSITORY:?set the source consumer repository path}"
+test "$(front_value "$C_PACKET" final_decision)" = 'available'
+test "$(front_value "$C_PACKET" authorize_consumer_migration)" = 'true'
+APPROVED_EVENTSTORE_SHA="$A_TESTED_RUNTIME_SHA"
 [[ "$APPROVED_EVENTSTORE_SHA" =~ ^[0-9a-f]{40}$ ]]
 EVENTSTORE_SUBMODULE='references/Hexalith.EventStore'
+cd "$CONSUMER_REPOSITORY"
 
 GITLINK_SHA="$(git ls-tree --object-only HEAD "$EVENTSTORE_SUBMODULE")"
 CHECKOUT_SHA="$(git -C "$EVENTSTORE_SUBMODULE" \
@@ -2366,17 +3527,19 @@ SHA/gitlink/checkout mismatch keeps source migration blocked.
 
 ### NuGet consumer procedure
 
-The future approval record must supply `APPROVED_PACKAGE_VERSION`, the directory containing
-the exact 14 `.nupkg` files, and a `sha256sum --check` file whose filenames are relative to
-that directory. The approved ID inventory is literal, not merely a count:
+The caller supplies the directory containing the exact 14 `.nupkg` files and the consumer
+project. Version and hash-manifest pins come only from verified A/C. The approved ID inventory
+is literal, not merely a count:
 
 ```bash
 set -euo pipefail
-APPROVED_PACKAGE_VERSION='NOT_SELECTED'
-APPROVED_PACKAGE_DIRECTORY='NOT_SELECTED'
-APPROVED_PACKAGE_HASHES='NOT_SELECTED'
-CONSUMER_PROJECT='NOT_SELECTED'
-test "$APPROVED_PACKAGE_VERSION" != 'NOT_SELECTED'
+: "${AUTHORIZATION_COMMIT_C:?run the A/B/C verifier in this shell first}"
+: "${APPROVED_PACKAGE_DIRECTORY:?set the directory containing approved package bytes}"
+: "${CONSUMER_PROJECT:?set the consumer project path}"
+test "$(front_value "$C_PACKET" final_decision)" = 'available'
+test "$(front_value "$C_PACKET" authorize_consumer_migration)" = 'true'
+APPROVED_PACKAGE_VERSION="$A_PACKAGE_VERSION"
+APPROVED_PACKAGE_HASHES="$A_EVIDENCE_ROOT/nuget-sha256.txt"
 test -d "$APPROVED_PACKAGE_DIRECTORY"
 test -f "$APPROVED_PACKAGE_HASHES"
 test -f "$CONSUMER_PROJECT"
@@ -2503,12 +3666,14 @@ mapping therefore cannot substitute different bytes.
 
 ```bash
 set -euo pipefail
-APPROVED_IMAGE_REPOSITORY='NOT_SELECTED'
-APPROVED_IMAGE_DIGEST='NOT_SELECTED'
-APPROVED_PLATFORM_SET_FILE='NOT_SELECTED'
-APPROVED_TESTED_RUNTIME_SHA='NOT_SELECTED'
-APPROVED_CONTAINER_PROVENANCE='NOT_SELECTED'
-test "$APPROVED_IMAGE_REPOSITORY" != 'NOT_SELECTED'
+: "${AUTHORIZATION_COMMIT_C:?run the A/B/C verifier in this shell first}"
+test "$(front_value "$C_PACKET" final_decision)" = 'available'
+test "$(front_value "$C_PACKET" authorize_consumer_migration)" = 'true'
+APPROVED_IMAGE_REPOSITORY="$A_CONTAINER_REPOSITORY"
+APPROVED_IMAGE_DIGEST="$A_CONTAINER_DIGEST"
+APPROVED_PLATFORM_SET_FILE="$A_EVIDENCE_ROOT/container-platforms.txt"
+APPROVED_TESTED_RUNTIME_SHA="$A_TESTED_RUNTIME_SHA"
+APPROVED_CONTAINER_PROVENANCE="$A_EVIDENCE_ROOT/container-provenance.json"
 [[ "$APPROVED_IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
 [[ "$APPROVED_TESTED_RUNTIME_SHA" =~ ^[0-9a-f]{40}$ ]]
 test -s "$APPROVED_PLATFORM_SET_FILE"
@@ -2560,13 +3725,13 @@ Story 2.12 owns the later Tenants dependency-adoption phase.
 | --- | --- | --- | --- |
 | FrontComposer | Story 11.24, `Adopt the Owner-Approved EventStore Runtime Identity` | Registered `backlog`; no story file | Remains backlog until this packet is `available` and authorizes migration; then prove exact source/package identities, Pact provider verification, dual-mode builds, and live Aspire command/query/realtime smoke. |
 | Memories | Epic 28 / Story 28.1, `Adopt Owner-Approved EventStore Runtime Identity` | Registered `backlog`; no story file | Remains backlog until this packet is `available` and authorizes migration; then prove exact source/package identities while preserving the DAPR ingestion registration chain and live persistence/search/dedup behavior. |
-| Tenants prerequisite | EventStore Story 2.7, `Pre-Authorization Registration And Provenance Correction` | `review` | Correct the stale sample registration/source-topology proof now without changing dependency identities. Story 1.20 authorization is not required for review of this prerequisite. |
+| Tenants prerequisite | EventStore Story 2.7, `Pre-Authorization Registration And Provenance Correction` | `done` | Committed correction `fd8ab24d...` resolves the stale sample registration/source-topology prerequisite without changing dependency identities; Story 1.20 must still rerun its own exact-candidate gate. |
 | Tenants adoption | EventStore Story 2.12, `Tenants Runtime Identity Adoption And Package-Mode Validation` | Registered `backlog`; no story file | Remains backlog until this packet is `available` and authorizes migration; then align the source/package graph, including conditional Gateway ownership, and record exact Tenants maintainer evidence. |
 | Builds | Existing platform pin ownership | No new story | AD-11 SDK/runtime and central ASP.NET pins are already landed. A later EventStore package-version update is release-owner work only after approved artifacts exist. |
 
 FrontComposer, Memories, and Tenants Story 2.12 implementation story files must not be created
 before activation because their trackers interpret a created story file as `ready-for-dev`.
-Tenants Story 2.7 remains independently reviewable as the fail-closed prerequisite. Builds
+Tenants Story 2.7 is complete as the fail-closed implementation prerequisite. Builds
 must not speculate a future EventStore package version.
 
 ## Verification Log
@@ -2740,7 +3905,8 @@ to `candidate_source_sha` or `tested_runtime_sha`.
   `UseHexalithProjectReferences=false`, so the AppHost omitted its conditional `tenants`
   resource and the test timed out waiting for a topology that had not been compiled. The
   harness now builds this source-topology E2E with `UseHexalithProjectReferences=true`.
-- Story 2.7 correction: PASS in the reviewed working tree based on `5afbe0b4...`. Base
+- Story 2.7 correction: committed at `fd8ab24d110e605dfd64487cda84a301126d337d`
+  and recorded `done`. Base
   configuration no longer registers the stale `orders` and `inventory` sample bindings;
   Development configuration contains exactly the hosted `counter` and `greeting` domains.
 - Corrected source-topology E2E: PASS, 1/1. The exact method
@@ -2753,8 +3919,8 @@ to `candidate_source_sha` or `tested_runtime_sha`.
 - Story 2.7 preserves atomic fail-closed behavior for genuine operational-metadata failures
   and makes no Tenants identity change. Story 2.12 still owns later authorized Tenants
   identity adoption.
-- Candidate boundary: this passing proof includes uncommitted reviewed corrections and is not
-  an exact clean committed Story 1.20 runtime. The complete gate must be rerun at the selected
+- Candidate boundary: the correction is committed, but this readiness audit did not select
+  or execute the complete gate at an exact clean Story 1.20 runtime. The complete gate must be rerun at the selected
   unchanged candidate SHA before any parity row becomes authorizing.
 - NuGet inventory, package consumer, container publication/inspection, Story 1.16 named
   follow-up disposition, and owner approvals remain incomplete for an authorizing runtime.
@@ -2764,8 +3930,8 @@ to `candidate_source_sha` or `tested_runtime_sha`.
 `still blocked`
 
 Story 1.20 and Epic 1 remain `in-progress`. The lifecycle and AD-11 implementation blockers
-are cleared at commit `772cdfef...`, and Story 2.7's reviewed working-tree correction passes
-the source-topology provenance prerequisite. It is not yet evidence from the exact clean
+are cleared at commit `772cdfef...`, and Story 2.7's committed `fd8ab24d...` correction passes
+the source-topology implementation prerequisite. It is not yet evidence from the exact clean
 committed Story 1.20 candidate. Every parity row remains non-authorizing;
 source/package/container identities are unapproved or unresolved, Story 1.16's named
 follow-up disposition is open, and owner approval is absent.
