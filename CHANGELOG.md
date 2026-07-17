@@ -1,3 +1,18 @@
+# [3.70.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.69.0...v3.70.0) (2026-07-17)
+
+
+### Bug Fixes
+
+* correct relative links in Copilot instructions and update CI workflow references ([5afbe0b](https://github.com/Hexalith/Hexalith.EventStore/commit/5afbe0b4fb89620344c515ea007df4a162913574))
+* update CI workflow guardrails and improve job extraction logic ([ae0221b](https://github.com/Hexalith/Hexalith.EventStore/commit/ae0221b4edccb8c5ce8bf5ac3b4cf93696172421))
+* update EventStore configuration and tests for tenant handling and source topology validation ([fd8ab24](https://github.com/Hexalith/Hexalith.EventStore/commit/fd8ab24da230058f2f239765b68d5e0a135b4b76))
+* update submodule references for Hexalith.Builds, Hexalith.FrontComposer, and Hexalith.Tenants ([dd3040c](https://github.com/Hexalith/Hexalith.EventStore/commit/dd3040c85bacf77cb08fe991218ca182cc34e68b))
+
+
+### Features
+
+* add review findings for external tenants API host ([1b3000f](https://github.com/Hexalith/Hexalith.EventStore/commit/1b3000f91bc7fd1a9bf2c1b3b7f552de7cd2d931))
+
 # [3.69.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.68.6...v3.69.0) (2026-07-16)
 
 
