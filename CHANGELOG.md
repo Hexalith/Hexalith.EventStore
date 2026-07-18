@@ -1,3 +1,10 @@
+# [3.74.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.73.0...v3.74.0) (2026-07-18)
+
+
+### Features
+
+* update submodule references and enhance validation tests for Tenants API launch settings ([8565fa9](https://github.com/Hexalith/Hexalith.EventStore/commit/8565fa920a43e55ebc3f1f967104ecbc5f86f143))
+
 # [3.73.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.72.0...v3.73.0) (2026-07-18)
 
 
