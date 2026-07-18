@@ -28,6 +28,8 @@ inputDocuments:
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-16.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-17.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-18.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-18-story-3-5-reconciliation.md
   - _bmad-output/specs/spec-eventstore-phase-4-readiness-recovery/SPEC.md
 ---
 
@@ -177,7 +179,7 @@ FR19: Root-declared Git submodules must live under `references/`, and solution, 
 
 FR20: The Aspire Keycloak resource must be named `security` while preserving Keycloak as the implementation technology and updating fixtures/resource lookups accordingly.
 
-FR21: Cross-repo Hexalith library dependencies must use Debug source project references when explicitly enabled and Release package references by default. Every source-owned NuGet dependency version used by a Hexalith repository must be declared in `references/Hexalith.Builds/Props/Directory.Packages.props`; consuming `Directory.Packages.props` files import that catalog and declare no local `PackageVersion`, version override, or fallback version property.
+FR21: Cross-repo Hexalith library dependencies use source project references only when `UseHexalithProjectReferences=true` is explicitly supplied and the root-declared source exists. An unset or explicit `false` value selects package references in every configuration, including Debug; Release and configuration-less evaluation therefore remain package-safe. Every source-owned NuGet dependency version used by a Hexalith repository must be declared in `references/Hexalith.Builds/Props/Directory.Packages.props`; consuming `Directory.Packages.props` files import that catalog and declare no local `PackageVersion`, version override, or fallback version property.
 
 FR22: Release restore, build, test, pack, and semantic-release commands must assert package-reference mode and avoid packaging submodule projects.
 
@@ -258,7 +260,7 @@ NFR19: Payload protection must fail closed and preserve byte-stable, versioned c
 - Use `Hexalith.EventStore.slnx` only for restore/build; do not introduce or use `.sln` files.
 - Run unit tests per project; do not make solution-level `dotnet test` the default EventStore validation path.
 - Keep `.csproj` package references versionless; all package versions must remain in `Directory.Packages.props`.
-- Preserve the Debug-source/Release-package dependency policy through `UseHexalithProjectReferences`; rerun restore after changing dependency mode.
+- Require explicit `UseHexalithProjectReferences=true` for source intent; unset or explicit `false` remains package intent in Debug, Release, and configuration-less evaluation. Rerun restore after changing dependency mode.
 - Use .NET SDK container support, not Dockerfiles, and keep container repository settings centralized.
 - Keep DAPR access-control YAML, sidecar app IDs, topics, and AppHost resource names aligned whenever topology changes.
 - Use ULIDs for message, correlation, causation, and aggregate identifiers where EventStore envelope semantics require sortable unique ids; do not use `Guid.TryParse` for these identifiers.
@@ -322,7 +324,7 @@ FR19: Epic 3 - Submodules under references layout.
 
 FR20: Epic 3 - Aspire Keycloak resource renamed to security.
 
-FR21: Epic 3 - Shared Builds package catalog with Debug source references and Release package references.
+FR21: Epic 3 - Shared Builds package catalog with explicit source opt-in and package-safe defaults.
 
 FR22: Epic 3 - Release commands assert package mode and avoid submodule packaging.
 
@@ -1647,6 +1649,7 @@ So that the topology exposes the service role instead of the Keycloak implementa
 ### Story 3.5: Shared Package Catalog And Source/Package Reference Modes
 
 **Requirements covered:** FR21
+**Activation gate:** Story 3.3 must reach `done` with current references-layout verification evidence before Story 3.5 starts.
 
 As a package maintainer,
 I want external Hexalith dependencies selected by build intent,
@@ -1654,10 +1657,15 @@ So that Debug builds can source-debug while Release builds depend on published p
 
 **Acceptance Criteria:**
 
-**Given** `UseHexalithProjectReferences` is not explicitly set
-**When** a Debug build evaluates project references
-**Then** external Hexalith project references are enabled when root-declared submodule source exists
-**And** developers can override the mode explicitly.
+**Given** `UseHexalithProjectReferences=true` is explicitly supplied
+**When** a build evaluates external Hexalith references and the root-declared source exists
+**Then** the project/source edge is selected
+**And** missing source falls back to the centrally pinned package edge.
+
+**Given** `UseHexalithProjectReferences` is unset or explicitly `false`
+**When** Debug, Release, or configuration-less evaluation runs
+**Then** package references are selected
+**And** no external source edge is activated.
 
 **Given** `UseHexalithProjectReferences` is not explicitly set
 **When** a Release build evaluates project references
@@ -1679,10 +1687,15 @@ So that Debug builds can source-debug while Release builds depend on published p
 **Then** restore is rerun before build or test
 **And** stale project-reference assets cannot leak into package-mode validation.
 
-**Given** any source-owned Hexalith project or root package props is scanned
+**Given** EventStore-owned projects/root package props and the shared Builds catalog/governance surfaces are scanned
 **When** NuGet version declarations are evaluated
-**Then** every dependency version originates from `references/Hexalith.Builds/Props/Directory.Packages.props`
-**And** consumer props contain no local `PackageVersion`, `VersionOverride`, or fallback dependency-version property.
+**Then** every EventStore-consumed dependency version originates from `references/Hexalith.Builds/Props/Directory.Packages.props`
+**And** EventStore consumer props contain no local `PackageVersion`, `VersionOverride`, or fallback dependency-version property.
+
+**Given** another Hexalith repository retains local version declarations
+**When** Story 3.5 closes its approved boundary
+**Then** a separately owned migration follow-up records that repository, owner/approval requirement, scope, rollback boundary, and prescribed validation
+**And** Story 3.5 does not edit that repository or claim it migrated.
 
 **Given** EventStore's existing local package-version entries
 **When** the catalog migration is applied

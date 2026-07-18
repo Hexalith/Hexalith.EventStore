@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-07-17
+# last_updated: 2026-07-18
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T20:01:46+02:00
-last_updated: 2026-07-17
+last_updated: 2026-07-18
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -114,7 +114,9 @@ development_status:
   3-4-aspire-security-resource-naming: backlog
   # Story 3.5 establishes Builds as the sole package-version authority before
   # Story 3.11 may refresh the ecosystem-wide catalog.
-  3-5-shared-package-catalog-and-source-package-reference-modes: backlog
+  # Explicit source opt-in and the Builds+EventStore AC6 boundary are approved.
+  # Story 3.3 must reach done before implementation; Story 1.20/2.12 still gates AC4 closure.
+  3-5-shared-package-catalog-and-source-package-reference-modes: ready-for-dev
   3-6-manifest-driven-release-packaging: backlog
   3-7-shared-workflow-caller-migration: done
   3-8-workflow-reference-and-validation-safety: done

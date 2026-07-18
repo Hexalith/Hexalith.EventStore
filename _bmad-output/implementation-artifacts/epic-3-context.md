@@ -30,7 +30,7 @@ Root-declared submodules must live under `references/`. Solution files, MSBuild 
 
 The Aspire identity-provider resource must be named `security` while preserving Keycloak as the implementation. Realm import, ports, dependencies, authentication behavior, fixture token logic, and endpoint resolution must continue to work through the service-role name.
 
-Cross-repo Hexalith dependencies must be selected by build intent. Debug builds may use source project references when root-declared source exists and the mode is enabled; Release builds must default to package references whose versions resolve only from `references/Hexalith.Builds/Props/Directory.Packages.props`. Consumer package props may configure CPM and import the catalog but may not declare local dependency versions. Validation must rerun restore after dependency-mode changes so stale project-reference assets cannot leak into package-mode builds.
+Cross-repo Hexalith dependencies must be selected by build intent. Source project references require explicit `UseHexalithProjectReferences=true` plus available root-declared source; unset or explicit `false` remains package intent in Debug, Release, and configuration-less evaluation. Package versions resolve only from `references/Hexalith.Builds/Props/Directory.Packages.props`. Consumer package props may configure CPM and import the catalog but may not declare local dependency versions. Validation must rerun restore after dependency-mode changes so stale project-reference assets cannot leak into package-mode builds.
 
 The shared Builds catalog must prefer latest validated stable releases for stable pins and validate intentional prerelease channels, major upgrades, framework/SDK coupling, and aligned package families as units. Compatibility exceptions require rationale, evidence, and a removal trigger. Missing, unlisted, or older search results must never downgrade a current pin.
 
@@ -54,7 +54,7 @@ AppHost resource names, DAPR app IDs, component scopes, ACL policies, pub/sub to
 
 Story 3.10 is the companion evidence path for Story 3.1. Live-sidecar re-tiering depends on a smoke preflight that can identify blocked local infrastructure before generated API or DAPR failures are accepted as product failures.
 
-Story 3.3 underpins Stories 3.5 and 3.6 because release/package validation must not depend on stale root-level submodule paths or local checkout shape.
+Story 3.3 underpins Stories 3.5 and 3.6 because release/package validation must not depend on stale root-level submodule paths or local checkout shape. Story 3.5 must not start until Story 3.3 reaches `done` with current verification evidence.
 
 Story 3.5 must be coherent before Story 3.6 can prove package metadata and release output, since manifest-driven publishing depends on Release package-reference mode and centrally pinned dependency versions.
 

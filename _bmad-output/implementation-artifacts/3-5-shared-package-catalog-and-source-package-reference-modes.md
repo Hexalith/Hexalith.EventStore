@@ -7,16 +7,29 @@ requirements: FR21
 governing_nfr: NFR9
 architecture_decision: AD-11
 story_type: cross-repository-build-governance
+implementation_decision: >-
+  The Administrator approved explicit source opt-in on 2026-07-18. Unset or explicit
+  UseHexalithProjectReferences=false selects packages in every configuration, including
+  Debug. Explicit true selects available root-declared source and otherwise falls back
+  to the centrally pinned package edge.
 completion_gate: >-
   AC4 cannot close while Story 1.20 has not authorized Story 2.12's exact
   EventStore runtime/package identity; independent Story 3.5 work may proceed,
   but the story must remain in-progress until the no-mixed-graph criterion is proven
   or approved change control revises the conflicting boundary.
+scope_decision: >-
+  Story 3.5 catalog-migration acceptance is limited to Hexalith.Builds and EventStore.
+  Other repositories with local version declarations require separately owned follow-ups
+  and are not edited or claimed as migrated by this story.
+sequencing_gate: >-
+  Story 3.3 underpins Story 3.5 and must reach done with current verification evidence
+  before Story 3.5 implementation begins.
 source_files:
   - _bmad-output/planning-artifacts/epics.md
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/architecture.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-18.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-18-story-3-5-reconciliation.md
   - _bmad-output/implementation-artifacts/epic-3-context.md
   - _bmad-output/implementation-artifacts/3-3-references-based-submodule-layout.md
   - _bmad-output/implementation-artifacts/deferred-work.md
@@ -37,6 +50,8 @@ Status: ready-for-dev
 
 <!-- Ultimate context engine analysis completed - comprehensive developer guide created. -->
 
+> Tracker note: this repository defines `ready-for-dev` as “story file created.” The AC1 authority and AC6 boundary are resolved, but Story 3.3 must reach `done` before implementation starts and AC4 remains a completion gate.
+
 ## Story
 
 As a **package maintainer**,
@@ -45,23 +60,35 @@ so that **Debug builds can source-debug, Release builds depend on published pack
 
 ## Story Context
 
-Story 3.5 implements FR21 under NFR9 and the source/package-mode invariant in AD-11. It is a coordinated change across the EventStore repository and the root-declared `references/Hexalith.Builds` repository. Work in each owning repository separately; commit Builds changes first only when the maintainer authorizes commits, then update the EventStore gitlink in an isolated dependency commit. Do not initialize or update nested submodules.
+Story 3.5 targets FR21 under NFR9 and AD-11. Its dependency-mode authority and catalog-migration boundary were reconciled by the approved 2026-07-18 course correction. It is a coordinated change across the EventStore repository and the root-declared `references/Hexalith.Builds` repository. Work in each owning repository separately; commit Builds changes first only when the maintainer authorizes commits, then update the EventStore gitlink in an isolated dependency commit. Do not initialize or update nested submodules.
 
 The approved 2026-07-18 correction establishes these boundaries:
 
 - `references/Hexalith.Builds/Props/Directory.Packages.props` is the single authority for source-owned NuGet dependency versions.
-- An unset Debug build selects source references when the root-declared source checkout exists. An unset Release build selects package references. Explicit caller properties win in both configurations.
+- Source project references require explicit `UseHexalithProjectReferences=true` plus available root-declared source. Unset or explicit `false` selects packages in Debug, Release, and configuration-less evaluation; requested source with missing source falls back to packages.
 - Configuration-less evaluation remains package-safe. This preserves the recovery from the historical stale-assets defect in which a configuration-less source restore was reused by a Release `--no-restore` build.
 - Switching dependency mode requires a new restore before build or test.
 - Story 3.5 migrates version authority and adopts the current Builds pins. Story 3.11 owns catalog-wide latest-compatible upgrades, lock-file policy, pruning, and broad dependency refreshes.
 - Story 3.6 owns the release-package manifest and final packed-artifact scope. Preserve its boundary.
 - Host applications remain source-only. Do not invent packages for AppHost, Admin host applications, or other non-library hosts merely to make the two modes look symmetrical.
 
+### Requirements reconciliation decision
+
+The Administrator approved FR21/AD-11 as the governing rule on 2026-07-18: source mode requires explicit `UseHexalithProjectReferences=true`; unset or explicit `false` is package intent in every configuration. The approved course-correction proposal aligns AC1, the governing planning artifacts, this truth table, and the implementation tasks to that decision.
+
+### Catalog-scope decision
+
+The Administrator approved Builds+EventStore as Story 3.5's implementation boundary. AC6 is satisfied by the shared Builds catalog/governance surfaces and EventStore-owned projects/root props. Repositories outside that boundary are not edited or claimed as migrated; each repository that retains local version declarations must receive a separately owned follow-up with authority, scope, rollback, and validation details.
+
+### Story 3.3 sequencing gate
+
+Epic 3 identifies Story 3.3's references layout as the foundation for Story 3.5. Story 3.3 must complete its normal development and review workflows and reach `done` with current verification evidence before Story 3.5 begins; do not silently mark it done inside this story.
+
 ### Current baseline at story creation
 
 The story was prepared against EventStore commit `f7b2aa1c4d14c4b7049ce5c6bfb6c82364c55778` and the live planning artifacts on 2026-07-18.
 
-- `Directory.Build.props` currently defaults `UseHexalithProjectReferences` to `false` when no caller value is supplied. Read-only MSBuild evaluation showed package mode for both unset Debug and unset Release, and source mode only with an explicit `true`. Debug-default source selection is therefore still missing.
+- `Directory.Build.props` currently defaults `UseHexalithProjectReferences` to `false` when no caller value is supplied. Read-only MSBuild evaluation showed package mode for both unset Debug and unset Release, and source mode only with an explicit `true`. That matches the approved AC1/FR21/AD-11 rule and must remain covered by focused evaluation tests.
 - Source flags already combine the selected mode with `Exists(...)` checks for the root-declared Commons and Tenants source paths. Preserve those checks and the current repository-layout resolution.
 - `Directory.Packages.props` imports the Builds catalog, but still contains the `HexalithCommonsVersion` fallback plus local declarations for `NBomber.Http`, `Microsoft.Playwright`, and `xunit.v3.extensibility.core`.
 - Commit `f7b2aa1c` already removed local masking declarations for `System.CommandLine`, `ModelContextProtocol`, `Microsoft.Extensions.TimeProvider.Testing`, and `NBomber`, and added an initial test guard. Preserve that completed work; do not reintroduce those declarations.
@@ -87,11 +114,16 @@ The explicit exception satisfies only the alternative in AC4's first `Then`; it 
 
 ## Acceptance Criteria
 
-**AC1 - Unset Debug selects available source dependencies and explicit overrides win.**
-**Given** `UseHexalithProjectReferences` is not explicitly set
-**When** a Debug build evaluates project references
-**Then** external Hexalith project references are enabled when root-declared submodule source exists
-**And** developers can override the mode explicitly.
+**AC1 - Source references require explicit opt-in and explicit overrides win.**
+**Given** `UseHexalithProjectReferences=true` is explicitly supplied
+**When** a build evaluates external Hexalith references and the root-declared source exists
+**Then** the project/source edge is selected
+**And** missing source falls back to the centrally pinned package edge.
+
+**Given** `UseHexalithProjectReferences` is unset or explicitly `false`
+**When** Debug, Release, or configuration-less evaluation runs
+**Then** package references are selected
+**And** no external source edge is activated.
 
 **AC2 - Unset Release selects packages whose versions come only from Builds.**
 **Given** `UseHexalithProjectReferences` is not explicitly set
@@ -117,11 +149,16 @@ The explicit exception satisfies only the alternative in AC4's first `Then`; it 
 **Then** restore is rerun before build or test
 **And** stale project-reference assets cannot leak into package-mode validation.
 
-**AC6 - Builds is the only source-owned NuGet version authority.**
-**Given** any source-owned Hexalith project or root package props is scanned
+**AC6 - Builds is the only NuGet version authority for the Story 3.5 implementation boundary.**
+**Given** EventStore-owned projects/root package props and the shared Builds catalog/governance surfaces are scanned
 **When** NuGet version declarations are evaluated
-**Then** every dependency version originates from `references/Hexalith.Builds/Props/Directory.Packages.props`
-**And** consumer props contain no local `PackageVersion`, `VersionOverride`, or fallback dependency-version property.
+**Then** every EventStore-consumed dependency version originates from `references/Hexalith.Builds/Props/Directory.Packages.props`
+**And** EventStore consumer props contain no local `PackageVersion`, `VersionOverride`, or fallback dependency-version property.
+
+**Given** another Hexalith repository retains local version declarations
+**When** Story 3.5 closes its approved boundary
+**Then** a separately owned migration follow-up records that repository, owner/approval requirement, scope, rollback boundary, and prescribed validation
+**And** Story 3.5 does not edit that repository or claim it migrated.
 
 **AC7 - Missing EventStore entries move to Builds and evaluate exactly once.**
 **Given** EventStore's existing local package-version entries
@@ -149,21 +186,26 @@ The explicit exception satisfies only the alternative in AC4's first `Then`; it 
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 - Reconcile the live baseline and protect ownership boundaries (AC1-AC10).**
+- [ ] **Task 1 - Apply the approved decisions and protect ownership boundaries (AC1-AC10).**
   - [ ] Re-read `git status --short --branch`, `git log -5 --oneline`, the relevant planning artifacts, and both repositories' tracked guidance before editing; preserve all user changes made after this story's baseline.
+  - [ ] Apply the approved explicit-opt-in rule consistently: unset or explicit `false` remains package mode in every configuration, while explicit `true` selects available source and otherwise falls back to packages.
+  - [ ] Enforce the approved Builds+EventStore AC6 boundary and register separately owned migration follow-ups for other repositories that retain local versions. Do not mutate or claim compliance for those repositories.
+  - [ ] Confirm Story 3.3 has reached `done` with current verification evidence before treating its references-layout guarantee as a completed prerequisite.
   - [ ] Confirm the EventStore root owns consumer-mode logic, tests, scripts, docs, and its wrapper; confirm `references/Hexalith.Builds` owns the shared catalog, catalog validator, samples, shared workflows, and dependency-update automation.
   - [ ] Confirm Story 2.12 is still gated by Story 1.20. If authorization has not changed, treat Tenants/Gateway as the documented source-only exception and make no dependency-identity change.
   - [ ] Record AC4 as a completion gate while the Gateway source edge still mixes with package-mode EventStore dependencies; do not move this story to `done` based on documentation alone.
   - [ ] Do not initialize/update nested submodules, perform broad dependency upgrades, generate lock files, prune packages, change release-manifest scope, or stage/commit/push unless separately authorized.
 
-- [ ] **Task 2 - Implement and prove the dependency-mode truth table (AC1-AC5).**
-  - [ ] Update `Directory.Build.props` so an unset `UseHexalithProjectReferences` evaluates to source intent only for `Configuration=Debug`; unset Release and unset/empty Configuration remain package intent.
+- [ ] **Task 2 - Implement and prove the approved dependency-mode truth table (AC1-AC5).**
+  - [ ] Keep `Directory.Build.props` package-safe for unset or explicit `false` in Debug, Release, and empty/unset Configuration; activate source only for explicit `true` when the root-declared path exists.
   - [ ] Preserve explicit `UseHexalithProjectReferences=true|false` as the highest-precedence override and keep the legacy `UseNuGetDeps` mapping coherent for existing callers.
+  - [ ] Add contradictory-input cases where both properties are supplied. Explicit `UseHexalithProjectReferences` is authoritative and `UseNuGetDeps` must not activate the opposite edge.
   - [ ] Preserve `Exists(...)` guards: source intent with a missing root-declared source path must activate the package fallback, not leave both edges inactive.
-  - [ ] Add focused evaluation coverage for at least: Debug/unset/source-present, Debug/explicit-false, Release/unset, Release/explicit-true/source-present, empty-configuration/unset, and requested-source/source-missing.
+  - [ ] Add focused evaluation coverage for at least: Debug/unset/source-present (package), Debug/explicit-false, Release/unset, Release/explicit-true/source-present, empty-configuration/unset, and requested-source/source-missing.
   - [ ] Evaluate all conditional external pairs and prove exactly one active `ProjectReference` or `PackageReference` per dependency and mode. Preserve same-repository EventStore project references as project references.
-  - [ ] Preserve deliberate source-only host edges in `Hexalith.EventStore.AppHost` and `Hexalith.EventStore.ServiceDefaults`; do not invent package identities for non-package hosts.
-  - [ ] Ensure shared Builds CI/release workflows restore with explicit Release/package intent before any `--no-restore` build/test so the Debug default cannot reintroduce stale assets.
+  - [ ] Preserve genuine source-only application-host edges in `Hexalith.EventStore.AppHost`; do not invent package identities for non-package applications.
+  - [ ] Reconcile `Hexalith.EventStore.ServiceDefaults` separately: it is a packable library, and `Hexalith.Commons.ServiceDefaults` has a central package identity. Determine whether the current Commons project edge is required; if required, add a mutually exclusive versionless package edge in package mode, otherwise remove the redundant project edge. Validate resulting package metadata.
+  - [ ] Ensure shared Builds CI/release workflows restore with explicit Release/package intent before any `--no-restore` build/test so mode switches cannot reuse stale assets.
 
 - [ ] **Task 3 - Complete catalog ownership in Hexalith.Builds (AC6-AC10).**
   - [ ] In the Builds repository, add exactly one central `PackageVersion` row for `NBomber.Http` `6.2.1` and exactly one for `xunit.v3.extensibility.core` `3.2.2` at their already-adopted EventStore versions.
@@ -172,6 +214,7 @@ The explicit exception satisfies only the alternative in AC4's first `Then`; it 
   - [ ] Update `README.md`, `DEVELOPMENT.md`, and `Samples/Module.Directory.Packages.props` so consumers import the catalog and contribute version changes to Builds; remove examples inviting consumer-local `PackageVersion` entries.
   - [ ] Move centralized NuGet dependency-update ownership to Builds. Preserve consumer npm and GitHub Actions automation.
   - [ ] Update the shared domain CI/release workflows and their workflow-contract tests to force a fresh Release/package-mode restore before build/test/package operations.
+  - [ ] Apply that workflow work in `.github/workflows/domain-ci.yml`, `.github/workflows/domain-release.yml`, and `.github/workflows/build-release.yml`, with contract coverage in `Tools/test-domain-workflow-test-platforms.ps1`.
   - [ ] Validate and, when commits are authorized, commit Builds first. Record the exact Builds SHA before changing the EventStore gitlink; do not bundle unrelated submodule dirt.
 
 - [ ] **Task 4 - Make EventStore an import-only catalog consumer (AC2, AC6-AC8).**
@@ -209,21 +252,22 @@ The explicit exception satisfies only the alternative in AC4's first `Then`; it 
 
 ### Top Guardrails
 
-- **Do not conflate default intent with source availability.** Debug defaults to source intent, but each external dependency activates a source edge only when its declared source path exists. Missing source must select the package edge.
+- **Do not conflate explicit source intent with source availability.** Each external dependency activates a source edge only for explicit `UseHexalithProjectReferences=true` when its declared source path exists; missing source must select the package edge.
 - **Keep empty Configuration package-safe.** The historical sequence `946016ce` -> `d1b6739c` -> `9333405e` shows why configuration-less source restore is unsafe when a later Release build uses `--no-restore`.
 - **Explicit caller values win.** Workflows and releases should continue passing `UseHexalithProjectReferences=false`; developers can explicitly opt either way.
 - **One dependency, one active edge.** A package/project pair must be mutually exclusive after evaluation. Host projects are deliberate source-only edges, not missing package declarations.
 - **Builds owns versions; consumers own references.** Project files keep versionless `PackageReference` items. The EventStore wrapper only configures CPM and imports Builds.
 - **No broad upgrades.** Story 3.5 adds two missing catalog IDs and adopts catalog values already present. Story 3.11 owns the catalog-wide compatibility refresh.
 - **Honor the identity gate.** No Gateway identity inference or Tenants mutation is allowed while Story 1.20/2.12 remains gated.
+- **Honor the approved catalog boundary.** Builds+EventStore is the Story 3.5 implementation boundary. Register separately owned follow-ups for other repositories; do not edit or claim compliance for them.
+- **Do not treat ServiceDefaults as an application host.** `Hexalith.EventStore.ServiceDefaults` is packable and Builds centrally identifies both EventStore and Commons ServiceDefaults packages; its external edge must be paired for package mode or proven unnecessary.
 - **Preserve current work.** The baseline includes a just-completed partial cleanup. Re-read the live worktree before each overlapping edit and never restore removed local declarations.
 
-### Dependency-mode truth table
+### Dependency-mode truth table (approved 2026-07-18)
 
 | Configuration | Explicit `UseHexalithProjectReferences` | Root-declared source exists | Expected external edge |
 |---|---:|---:|---|
-| Debug | unset | yes | project/source |
-| Debug | unset | no | package |
+| Debug | unset | either | package |
 | Debug | `false` | either | package |
 | Debug | `true` | yes | project/source |
 | Debug | `true` | no | package fallback |
@@ -239,7 +283,7 @@ The explicit exception satisfies only the alternative in AC4's first `Then`; it 
 
 | File or area | Action | Required outcome |
 |---|---|---|
-| `Directory.Build.props` | UPDATE | Deterministic Debug/source, Release/package, explicit-override, empty-configuration-safe evaluation. |
+| `Directory.Build.props` | UPDATE or VERIFY | Explicit source opt-in; package-safe unset/false defaults in every configuration; missing-source package fallback. |
 | `Directory.Packages.props` | UPDATE | Import-only consumer wrapper; no fallback property, local `PackageVersion`, or override. |
 | `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContractsPackageDependencyTests.cs` | UPDATE | Zero-local-version guard and effective Builds ownership/adoption checks; remove Playwright exception. |
 | Focused mode-evaluation test file | UPDATE or NEW | Cover every truth-table boundary and exactly-one active edge. Use one public type per file and PascalCase for new test methods. |
@@ -251,7 +295,8 @@ The explicit exception satisfies only the alternative in AC4's first `Then`; it 
 | Builds validator/tests, README, DEVELOPMENT, and sample | UPDATE in Builds | Enforce and teach single-catalog ownership. |
 | Builds shared domain CI/release workflows and contract tests | UPDATE in Builds | Explicit fresh Release/package restore before `--no-restore` operations. |
 | `references/Hexalith.Tenants/**` | READ-ONLY unless separately authorized | Record the Gateway exception; make no dependency-identity change under the active gate. |
-| EventStore AppHost/ServiceDefaults host edges | PRESERVE | Source-only hosts remain source-only; no fake package dependencies. |
+| `src/Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj` | UPDATE or VERIFY | Because this project is packable, pair the current Commons.ServiceDefaults source edge with its central package identity when required, or remove the edge if proven unnecessary; validate packed metadata. |
+| EventStore AppHost application edges | PRESERVE | Genuine application hosts remain source-only; no fake package dependencies. |
 | `tools/release-packages.json`, thin root workflow callers, pack tooling | PRESERVE | Story 3.6/3.7/3.8 boundaries remain intact. |
 
 ### Architecture and project conventions
@@ -268,13 +313,13 @@ The explicit exception satisfies only the alternative in AC4's first `Then`; it 
 
 - `src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj` already pairs Commons UniqueIds source/package edges with mutually exclusive conditions.
 - `src/Hexalith.EventStore.Admin.Server/Hexalith.EventStore.Admin.Server.csproj` and the Server/LiveSidecar test projects already pair Tenants Contracts source/package edges.
-- `src/Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj` deliberately references Commons.ServiceDefaults only from source when available; it is a hosting helper without a fake package fallback.
+- `src/Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj` is a packable library but currently references Commons.ServiceDefaults only from source. Because Builds already has a `Hexalith.Commons.ServiceDefaults` identity, implementation must either create a mutually exclusive source/package pair or prove and remove an unnecessary edge.
 - `src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj` and its host wiring use Tenants hosts as source applications. Preserve that topology.
 - Same-repository `Hexalith.EventStore.*` references remain project references in both modes.
 
 ### Previous Story Intelligence
 
-Story 3.3 established and verified the root `references/` layout. Reuse its path guardrails:
+Story 3.3 must reach `done` with current verification evidence before Story 3.5 relies on its root `references/` layout guarantee. After that prerequisite completes, reuse its path guardrails:
 
 - Resolve source checkouts through root-declared `references/Hexalith.*` paths and existing flexible fallbacks.
 - Do not move submodules, re-run the references migration, initialize nested submodules, or replace flexible source-path resolution with fixed assumptions.
@@ -286,7 +331,7 @@ Stories 3.7 and 3.8 have already made root workflows thin and hardened shared-re
 
 - `946016ce` introduced conditional source/package pairs, a Debug-source default, and explicit Release/package workflow values. Its mode shape is useful, but current layout/existence guards remain authoritative.
 - `d1b6739c` made empty Configuration select source mode and exposed stale project assets.
-- `9333405e` restored package-safe behavior for empty/unqualified Configuration. Do not regress it while reinstating the explicit Debug default.
+- `9333405e` restored package-safe behavior for empty/unqualified Configuration. Do not regress it while preserving explicit source opt-in.
 - `3a43d5e6` demonstrates the desired atomic catalog migration: add entries to Builds, update the gitlink, remove consumer declarations, and validate ownership/effective resolution without copying version literals into consumer tests.
 - `f7b2aa1c` is the current baseline and already removes four local masks plus adds an initial central-version guard. Treat this as partial Story 3.5 groundwork that must be preserved and completed.
 
@@ -317,6 +362,7 @@ dotnet msbuild src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.c
 # Builds: catalog governance. Run the owning scripts from references/Hexalith.Builds.
 pwsh ./Tools/validate-central-package-versions.ps1
 pwsh ./Tools/test-central-package-version-validator.ps1
+pwsh ./Tools/test-domain-workflow-test-platforms.ps1
 
 # EventStore: fresh source-mode restore/build.
 dotnet restore Hexalith.EventStore.slnx \
@@ -338,17 +384,37 @@ dotnet build Hexalith.EventStore.slnx \
   -m:1 \
   -p:UseHexalithProjectReferences=false
 
-# Focused package-governance tests. Add other affected project tests/builds found during implementation.
+# Focused package-governance tests.
 dotnet test tests/Hexalith.EventStore.Contracts.Tests/ \
   --configuration Release \
   --no-restore \
   -p:UseHexalithProjectReferences=false
 
+# Explicit consumers proving inherited System.CommandLine and MCP versions.
+dotnet test tests/Hexalith.EventStore.Admin.Cli.Tests/ \
+  --configuration Release --no-restore -p:UseHexalithProjectReferences=false
+dotnet test tests/Hexalith.EventStore.Admin.Mcp.Tests/ \
+  --configuration Release --no-restore -p:UseHexalithProjectReferences=false
+
+# TimeProvider consumers and integration package adoption.
+dotnet test tests/Hexalith.EventStore.Server.Tests/ \
+  --configuration Release --no-restore -p:UseHexalithProjectReferences=false
+dotnet test tests/Hexalith.EventStore.Admin.Server.Tests/ \
+  --configuration Release --no-restore -p:UseHexalithProjectReferences=false
+dotnet test tests/Hexalith.EventStore.Testing.Integration.Tests/ \
+  --configuration Release --no-restore -p:UseHexalithProjectReferences=false
+
+# Build-only consumers proving Playwright and NBomber inheritance.
+dotnet build tests/Hexalith.EventStore.Admin.UI.E2E/ \
+  --configuration Release --no-restore -p:UseHexalithProjectReferences=false
+dotnet build perf/Hexalith.EventStore.LoadTests/ \
+  --configuration Release --no-restore -p:UseHexalithProjectReferences=false
+
 bash scripts/check-doc-versions.sh
 git diff --check
 ```
 
-Also evaluate explicit `true`, explicit `false`, empty Configuration, and missing-source fixtures; the two default commands above are necessary but not sufficient. Build focused System.CommandLine, MCP, TimeProvider, load-test, and Playwright consumers to prove inherited versions actually restore and compile.
+Also evaluate explicit `true`, explicit `false`, empty Configuration, missing-source fixtures, and both contradictory legacy-property combinations. The focused test harness must assert that explicit `UseHexalithProjectReferences` is authoritative and prove exactly one active edge. Inspect the targeted ServiceDefaults package metadata when its Commons edge is reconciled. The commands above are necessary evidence, not permission to omit any additional affected project discovered during implementation.
 
 ### References
 
@@ -356,6 +422,7 @@ Also evaluate explicit `true`, explicit `false`, empty Configuration, and missin
 - Story 3.5 canonical ACs and Epic 3 sequencing: `_bmad-output/planning-artifacts/epics.md`
 - AD-11 and build/package invariants: `_bmad-output/planning-artifacts/architecture.md`
 - Approved scope correction and catalog inventory: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-18.md`
+- Approved AC1/AC6 reconciliation and sequencing decision: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-18-story-3-5-reconciliation.md`
 - Epic guardrails and cross-story dependencies: `_bmad-output/implementation-artifacts/epic-3-context.md`
 - Repository-wide implementation rules: `_bmad-output/project-context.md`
 - References-layout precedent: `_bmad-output/implementation-artifacts/3-3-references-based-submodule-layout.md`
@@ -382,3 +449,5 @@ Also evaluate explicit `true`, explicit `false`, empty Configuration, and missin
 ## Change Log
 
 - 2026-07-18: Story created from the approved FR21 correction, current repository baseline, prior-story/history analysis, and official MSBuild/NuGet/Git guidance; marked `ready-for-dev`.
+- 2026-07-18: Fresh-context checklist review encoded the AC1 authority, AC4 Gateway, AC6 ecosystem-scope, and Story 3.3 sequencing gates; corrected ServiceDefaults package treatment and made workflow/consumer validation executable.
+- 2026-07-18: Administrator-approved Correct Course aligned AC1 to explicit source opt-in, narrowed AC6 to Builds+EventStore with separately owned follow-ups, and made Story 3.3 `done` a start gate while retaining AC4 as the completion gate.

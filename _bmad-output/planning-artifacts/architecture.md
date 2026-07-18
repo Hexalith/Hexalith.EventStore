@@ -7,7 +7,7 @@ paradigm: DAPR-backed hexagonal event-sourcing platform
 scope: Hexalith.EventStore Phase 4 implementation readiness recovery
 status: final
 created: 2026-07-05
-updated: 2026-07-16
+updated: 2026-07-18
 binds:
   - FR1-FR37
   - NFR1-NFR19
@@ -18,6 +18,8 @@ sources:
   - _bmad-output/planning-artifacts/implementation-readiness-report-2026-07-15.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-16.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-18.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-18-story-3-5-reconciliation.md
   - _bmad-output/implementation-artifacts/spec-dapr-global-event-ordering.md
   - docs/brownfield/architecture.md
   - docs/brownfield/integration-architecture.md
@@ -114,7 +116,7 @@ flowchart LR
 
 - **Binds:** FR10, FR21-FR22, FR25, NFR9-NFR11
 - **Prevents:** local submodule checkout state, Debug source references, or hard-coded package loops changing released package output.
-- **Rule:** `tools/release-packages.json` is the EventStore release inventory. Release/package validation uses package-reference mode by default. Source project references require explicit `UseHexalithProjectReferences=true` and are never used for package publication. Submodule packages are not produced by EventStore release jobs. `references/Hexalith.Builds/Props/Directory.Packages.props` is the sole source-owned NuGet version catalog for Hexalith repositories; consumer props only configure CPM and import it. The catalog moves to latest validated compatible versions using configured-source evidence, grouped restore/build/test validation, and representative-consumer proof. Hexalith release families, .NET/ASP.NET patch bands, OpenTelemetry packages, test adapters, and other coupled sets move coherently. Major upgrades and channel changes require explicit proof. Compatibility exceptions record rationale and a removal trigger; missing, unlisted, or older search results never cause a downgrade. The repository SDK seed and verified security baseline are `10.0.302` and ASP.NET `10.0.10` respectively.
+- **Rule:** `tools/release-packages.json` is the EventStore release inventory. Release/package validation uses package-reference mode by default. Source project references require explicit `UseHexalithProjectReferences=true` and are never used for package publication. Unset or explicit `UseHexalithProjectReferences=false` is package intent in every configuration, including Debug. Explicit `true` is source intent, but each external edge still requires its root-declared source path to exist; missing source falls back to the centrally pinned package edge. Empty or unset configuration remains package-safe. Submodule packages are not produced by EventStore release jobs. `references/Hexalith.Builds/Props/Directory.Packages.props` is the sole source-owned NuGet version catalog for Hexalith repositories; consumer props only configure CPM and import it. The catalog moves to latest validated compatible versions using configured-source evidence, grouped restore/build/test validation, and representative-consumer proof. Hexalith release families, .NET/ASP.NET patch bands, OpenTelemetry packages, test adapters, and other coupled sets move coherently. Major upgrades and channel changes require explicit proof. Compatibility exceptions record rationale and a removal trigger; missing, unlisted, or older search results never cause a downgrade. The repository SDK seed and verified security baseline are `10.0.302` and ASP.NET `10.0.10` respectively.
 
 ### AD-12 - High-Risk Verification Requires Persisted Evidence [ADOPTED]
 

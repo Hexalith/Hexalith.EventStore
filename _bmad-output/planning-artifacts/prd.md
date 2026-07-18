@@ -2,7 +2,7 @@
 title: eventstore Phase 4 Implementation Readiness Recovery PRD
 status: final
 created: 2026-07-05
-updated: 2026-07-16
+updated: 2026-07-18
 project: eventstore
 source_artifacts:
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-02-global-event-ordering.md
@@ -38,6 +38,8 @@ source_artifacts:
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-16-story-1-16-review-and-story-1-20-proof-closure.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-16.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-18.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-18-story-3-5-reconciliation.md
   - _bmad-output/planning-artifacts/implementation-readiness-report-2026-07-05.md
   - _bmad-output/planning-artifacts/epics.md
 ---
@@ -170,7 +172,7 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 | FR18 | `DaprETagService` must allow an overridable actor request timeout while preserving the production default. |
 | FR19 | Root-declared Git submodules must live under `references/`, and solution, project, documentation, Aspire metadata, and LLM instruction paths must resolve through the `references/` layout. |
 | FR20 | The Aspire Keycloak resource must be named `security` while preserving Keycloak as the implementation technology and updating fixtures/resource lookups accordingly. |
-| FR21 | Cross-repo Hexalith library dependencies must use Debug source project references when explicitly enabled and Release package references by default. Every source-owned NuGet dependency version used by a Hexalith repository must be declared in `references/Hexalith.Builds/Props/Directory.Packages.props`; consuming `Directory.Packages.props` files import that catalog and declare no local `PackageVersion`, version override, or fallback version property. |
+| FR21 | Cross-repo Hexalith library dependencies use source project references only when `UseHexalithProjectReferences=true` is explicitly supplied and the root-declared source exists. An unset or explicit `false` value selects package references in every configuration, including Debug; Release and configuration-less evaluation therefore remain package-safe. Every source-owned NuGet dependency version used by a Hexalith repository must be declared in `references/Hexalith.Builds/Props/Directory.Packages.props`; consuming `Directory.Packages.props` files import that catalog and declare no local `PackageVersion`, version override, or fallback version property. |
 | FR22 | Commands used to restore, build, test, pack, and run semantic-release must assert package-reference mode and avoid packaging submodule projects. |
 | FR25 | EventStore workflows must use shared Hexalith.Builds security gates through `@main`, keep third-party actions SHA-pinned through shared workflows, and define NuGet package publish scope in `tools/release-packages.json`. |
 
@@ -276,7 +278,7 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 - Run unit tests by project; do not make solution-level `dotnet test` the EventStore default.
 - Keep every source-owned NuGet dependency version in `references/Hexalith.Builds/Props/Directory.Packages.props`; consuming `Directory.Packages.props` files only configure CPM and import the shared catalog.
 - Keep the shared Builds catalog on the latest validated compatible versions from configured package sources. Prefer the latest stable release for stable pins; validate intentional prerelease channels, aligned families, framework/SDK coupling, and major upgrades as units. Document every retained exception with its reason, evidence, and removal trigger, and never downgrade because search omits or unlists a package.
-- Preserve Debug source-reference and Release package-reference behavior.
+- Require explicit `UseHexalithProjectReferences=true` for source intent; unset or explicit `false` remains package intent in Debug, Release, and configuration-less evaluation.
 - Use .NET SDK container support, not Dockerfiles.
 - Never initialize nested submodules; only root-declared submodules under `references/` are valid.
 
