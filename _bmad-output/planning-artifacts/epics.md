@@ -177,7 +177,7 @@ FR19: Root-declared Git submodules must live under `references/`, and solution, 
 
 FR20: The Aspire Keycloak resource must be named `security` while preserving Keycloak as the implementation technology and updating fixtures/resource lookups accordingly.
 
-FR21: Cross-repo Hexalith library dependencies must use Debug source project references when explicitly enabled and Release package references by default, with package versions pinned centrally.
+FR21: Cross-repo Hexalith library dependencies must use Debug source project references when explicitly enabled and Release package references by default. Every source-owned NuGet dependency version used by a Hexalith repository must be declared in `references/Hexalith.Builds/Props/Directory.Packages.props`; consuming `Directory.Packages.props` files import that catalog and declare no local `PackageVersion`, version override, or fallback version property.
 
 FR22: Release restore, build, test, pack, and semantic-release commands must assert package-reference mode and avoid packaging submodule projects.
 
@@ -322,7 +322,7 @@ FR19: Epic 3 - Submodules under references layout.
 
 FR20: Epic 3 - Aspire Keycloak resource renamed to security.
 
-FR21: Epic 3 - Debug source references and Release package references.
+FR21: Epic 3 - Shared Builds package catalog with Debug source references and Release package references.
 
 FR22: Epic 3 - Release commands assert package mode and avoid submodule packaging.
 
@@ -378,7 +378,7 @@ External application developers can consume typed, generated REST APIs, while in
 
 **Epic type:** Release Reliability
 
-Maintainers can release reproducibly with correct package/reference mode, aligned submodule and Aspire resource layout, deterministic release gates, live-sidecar integration coverage, shared supply-chain workflows, and manifest-governed package output.
+Maintainers can release reproducibly with one authoritative, latest-compatible shared package catalog, correct package/reference mode, aligned submodule and Aspire resource layout, deterministic release gates, live-sidecar integration coverage, shared supply-chain workflows, and manifest-governed package output.
 
 **FRs covered:** FR17, FR18, FR19, FR20, FR21, FR22, FR25
 
@@ -1644,7 +1644,7 @@ So that the topology exposes the service role instead of the Keycloak implementa
 **Then** the resource display name and `OTEL_SERVICE_NAME` are `security`
 **And** dependent resources wait on `security`, not `keycloak`.
 
-### Story 3.5: Debug Source References And Release Package References
+### Story 3.5: Shared Package Catalog And Source/Package Reference Modes
 
 **Requirements covered:** FR21
 
@@ -1662,7 +1662,7 @@ So that Debug builds can source-debug while Release builds depend on published p
 **Given** `UseHexalithProjectReferences` is not explicitly set
 **When** a Release build evaluates project references
 **Then** external Hexalith package references are selected by default
-**And** package versions are pinned centrally in `Directory.Packages.props`.
+**And** every package version resolves from `references/Hexalith.Builds/Props/Directory.Packages.props`.
 
 **Given** project files reference external Hexalith libraries
 **When** source and package modes are evaluated
@@ -1678,6 +1678,31 @@ So that Debug builds can source-debug while Release builds depend on published p
 **When** validation commands run
 **Then** restore is rerun before build or test
 **And** stale project-reference assets cannot leak into package-mode validation.
+
+**Given** any source-owned Hexalith project or root package props is scanned
+**When** NuGet version declarations are evaluated
+**Then** every dependency version originates from `references/Hexalith.Builds/Props/Directory.Packages.props`
+**And** consumer props contain no local `PackageVersion`, `VersionOverride`, or fallback dependency-version property.
+
+**Given** EventStore's existing local package-version entries
+**When** the catalog migration is applied
+**Then** `NBomber.Http` and `xunit.v3.extensibility.core` exist in Builds and all EventStore-local version declarations are removed
+**And** effective evaluation resolves each migrated package ID exactly once from Builds.
+
+**Given** local overrides are removed
+**When** package mode restores and focused validation runs
+**Then** adoption of the current Builds versions, including `System.CommandLine`, `ModelContextProtocol`, and `Microsoft.Extensions.TimeProvider.Testing`, is explicit and verified
+**And** the migration is not accepted as a formatting-only change.
+
+**Given** package-version documentation, scripts, samples, and dependency-update automation are reviewed
+**When** this story completes
+**Then** they identify Builds as the owner, `scripts/check-doc-versions.sh` reads the shared catalog successfully, and no official sample invites repository-local package versions
+**And** consumer repositories do not open competing local-version updates.
+
+**Given** tool-manifest, SDK, ephemeral consumer-fixture, or cache versions are encountered
+**When** the governance scan reports them
+**Then** they are classified explicitly
+**And** they are not rewritten as NuGet CPM entries.
 
 ### Story 3.6: Manifest-Driven Release Packaging
 
@@ -1811,6 +1836,53 @@ So that runtime blockers are classified support-safely before they are accepted 
 **When** it reports its result
 **Then** it emits generated API endpoints, DAPR sidecar readiness, placement/scheduler readiness, and support-safe failure details (Epic 2 retro item 4 completion gate)
 **And** missing persisted event or read-model/query evidence exits with the distinct `state-evidence-failure` result rather than success.
+
+### Story 3.11: Validated Central Package Catalog Refresh
+
+**Requirements covered:** FR21, FR22, FR25, NFR9, NFR10, NFR16
+**Owner / review boundary:** Amelia (Developer) coordinates the Builds and EventStore changes; the Hexalith.Builds maintainer approves the catalog and exact Builds commit; affected repository maintainers approve coupled-family compatibility; Murat (Test Architect) reviews grouped validation evidence.
+**Focused validation:** Builds catalog validator and restore/build/test; EventStore Release/package-mode restore, build, focused tests, pack validation, and documentation-version checks; affected representative-consumer validation for every changed family.
+
+As a Hexalith release maintainer,
+I want the shared NuGet catalog refreshed to latest validated compatible package versions,
+So that all consuming repositories inherit current dependencies from one reproducible and compatibility-proven authority.
+
+**Acceptance Criteria:**
+
+**Given** Story 3.5 is not done or the Builds catalog does not contain every migrated EventStore package ID
+**When** Story 3.11 activation is evaluated
+**Then** the refresh remains `backlog`
+**And** no catalog-wide version change is accepted.
+
+**Given** the configured NuGet sources and the evaluated Builds catalog
+**When** the freshness audit runs
+**Then** it records every package ID, current version, latest stable and prerelease candidates as applicable, listing state, release-family membership, proposed disposition, and audit timestamp
+**And** unresolved packages are never silently dropped.
+
+**Given** a stable pin
+**When** a compatible stable update exists
+**Then** the latest validated stable release is selected
+**And** intentional prerelease channels, major-version changes, framework/SDK-coupled packages, and stable/prerelease transitions require explicit disposition and proof.
+
+**Given** packages share a Hexalith release property or another coupled version family
+**When** versions are selected
+**Then** the family uses an owner-approved common release inventory or an explicitly documented split
+**And** individually newest but incompatible package versions are never combined. The `Hexalith.Tenants` divergence requires Tenants release-owner evidence before its pin changes.
+
+**Given** the newest discovered release is incompatible, unavailable, unlisted, or older than the current pin
+**When** the current compatible version is retained
+**Then** the catalog records the reason, supporting validation or upstream constraint, and a removal trigger
+**And** `Microsoft.OpenApi` remains on the latest proven 2.x line until ASP.NET Core 10 compatibility with v3 is demonstrated, while `Microsoft.SourceLink.GitHub` is not downgraded merely because search reports an older version.
+
+**Given** candidate families are applied in reviewable groups
+**When** validation runs
+**Then** the Builds central-catalog validator, Builds validation, EventStore package-mode validation, and affected representative-consumer checks pass
+**And** each group has an independent rollback boundary.
+
+**Given** the refresh is submitted for review
+**When** maintainers inspect its evidence
+**Then** it identifies the exact Builds commit, package-source audit timestamp, accepted versions, retained exceptions, validation commands/results, and rollback grouping for each family
+**And** Builds owns NuGet catalog update proposals while consumer repositories do not open competing local-version updates.
 
 ## Epic 4: Event Correctness And Recovery
 

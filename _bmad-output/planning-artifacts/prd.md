@@ -170,7 +170,7 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 | FR18 | `DaprETagService` must allow an overridable actor request timeout while preserving the production default. |
 | FR19 | Root-declared Git submodules must live under `references/`, and solution, project, documentation, Aspire metadata, and LLM instruction paths must resolve through the `references/` layout. |
 | FR20 | The Aspire Keycloak resource must be named `security` while preserving Keycloak as the implementation technology and updating fixtures/resource lookups accordingly. |
-| FR21 | Cross-repo Hexalith library dependencies must use Debug source project references when explicitly enabled and Release package references by default, with package versions pinned centrally. |
+| FR21 | Cross-repo Hexalith library dependencies must use Debug source project references when explicitly enabled and Release package references by default. Every source-owned NuGet dependency version used by a Hexalith repository must be declared in `references/Hexalith.Builds/Props/Directory.Packages.props`; consuming `Directory.Packages.props` files import that catalog and declare no local `PackageVersion`, version override, or fallback version property. |
 | FR22 | Commands used to restore, build, test, pack, and run semantic-release must assert package-reference mode and avoid packaging submodule projects. |
 | FR25 | EventStore workflows must use shared Hexalith.Builds security gates through `@main`, keep third-party actions SHA-pinned through shared workflows, and define NuGet package publish scope in `tools/release-packages.json`. |
 
@@ -274,7 +274,8 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 
 - Use `Hexalith.EventStore.slnx` only for restore and build.
 - Run unit tests by project; do not make solution-level `dotnet test` the EventStore default.
-- Keep package versions centralized in `Directory.Packages.props`.
+- Keep every source-owned NuGet dependency version in `references/Hexalith.Builds/Props/Directory.Packages.props`; consuming `Directory.Packages.props` files only configure CPM and import the shared catalog.
+- Keep the shared Builds catalog on the latest validated compatible versions from configured package sources. Prefer the latest stable release for stable pins; validate intentional prerelease channels, aligned families, framework/SDK coupling, and major upgrades as units. Document every retained exception with its reason, evidence, and removal trigger, and never downgrade because search omits or unlists a package.
 - Preserve Debug source-reference and Release package-reference behavior.
 - Use .NET SDK container support, not Dockerfiles.
 - Never initialize nested submodules; only root-declared submodules under `references/` are valid.
@@ -374,7 +375,7 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 | FR18 | Epic 3 - Overridable DaprETagService actor timeout |
 | FR19 | Epic 3 - Submodules under references layout |
 | FR20 | Epic 3 - Aspire Keycloak resource renamed to security |
-| FR21 | Epic 3 - Debug source references and Release package references |
+| FR21 | Epic 3 - Shared Builds package catalog with Debug source references and Release package references |
 | FR22 | Epic 3 - Release commands assert package mode and avoid submodule packaging |
 | FR23 | Epic 4 - Non-zero global positions, MessageId CloudEvent IDs, duplicate result fidelity |
 | FR24 | Epic 4 - Global-position sharding spec renegotiation |
@@ -403,11 +404,12 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 | NFR6 | 1.13, 7.1 |
 | NFR7 | 4.1, 4.2, 4.4, 4.5, 5.1 |
 | NFR8 | 1.11, 1.14, 6.3, 6.4 |
-| NFR10 | 3.1, 7.4 |
+| NFR9 | 3.5, 3.8, 3.11 |
+| NFR10 | 3.1, 3.11, 7.4 |
 | NFR11 | 3.6 |
 | NFR14 | 2.3, 2.4 |
 | NFR15 | 7.2 |
-| NFR16 | 1.9, 1.10, 1.11, 1.12, 1.13, 1.14, 1.15, 7.4 |
+| NFR16 | 1.9, 1.10, 1.11, 1.12, 1.13, 1.14, 1.15, 3.11, 7.4 |
 | NFR17 | 5.6, 7.3 |
 | NFR19 | 8.1, 8.2 |
 

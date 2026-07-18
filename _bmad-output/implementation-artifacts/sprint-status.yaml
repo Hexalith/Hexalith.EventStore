@@ -112,12 +112,15 @@ development_status:
   3-2-harden-dapr-etag-timeout-for-integration-conditions: ready-for-dev
   3-3-references-based-submodule-layout: ready-for-dev
   3-4-aspire-security-resource-naming: backlog
-  3-5-debug-source-references-and-release-package-references: backlog
+  # Story 3.5 establishes Builds as the sole package-version authority before
+  # Story 3.11 may refresh the ecosystem-wide catalog.
+  3-5-shared-package-catalog-and-source-package-reference-modes: backlog
   3-6-manifest-driven-release-packaging: backlog
   3-7-shared-workflow-caller-migration: done
   3-8-workflow-reference-and-validation-safety: done
   3-9-supply-chain-publishing-backlog: review
   3-10-generated-api-dapr-aspire-smoke-preflight: done
+  3-11-validated-central-package-catalog-refresh: backlog
   epic-3-retrospective: optional
 
   epic-4: in-progress
