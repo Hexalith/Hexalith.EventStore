@@ -377,7 +377,7 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 | FR18 | Epic 3 - Overridable DaprETagService actor timeout |
 | FR19 | Epic 3 - Submodules under references layout |
 | FR20 | Epic 3 - Aspire Keycloak resource renamed to security |
-| FR21 | Epic 3 - Shared Builds package catalog with Debug source references and Release package references |
+| FR21 | Epic 3 - Ecosystem-wide Builds package catalog with explicit source opt-in and package-safe defaults |
 | FR22 | Epic 3 - Release commands assert package mode and avoid submodule packaging |
 | FR23 | Epic 4 - Non-zero global positions, MessageId CloudEvent IDs, duplicate result fidelity |
 | FR24 | Epic 4 - Global-position sharding spec renegotiation |

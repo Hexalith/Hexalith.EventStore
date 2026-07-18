@@ -1,5 +1,6 @@
 namespace Hexalith.EventStore.AppHost.Tests.Configuration;
 
+using System.Text.Json;
 using System.Xml.Linq;
 
 using Hexalith.EventStore.Aspire;
@@ -8,6 +9,42 @@ using YamlDotNet.RepresentationModel;
 
 public class TenantsApiLaunchSettingsTests
 {
+    /// <summary>
+    /// Verifies the ratified Tenants source revision exposes a usable Development launch profile
+    /// for the API project consumed by the source-mode AppHost graph.
+    /// </summary>
+    [Fact]
+    public void TenantsApiLaunchProfileProvidesDevelopmentHttpAndHttpsEndpoints()
+    {
+        string path = Path.Combine(
+            RepositoryProjectPaths.GetRepositoryRoot(),
+            "references",
+            "Hexalith.Tenants",
+            "src",
+            "Hexalith.Tenants.Api",
+            "Properties",
+            "launchSettings.json");
+
+        File.Exists(path).ShouldBeTrue();
+
+        using JsonDocument document = JsonDocument.Parse(File.ReadAllText(path));
+        JsonElement profile = document.RootElement
+            .GetProperty("profiles")
+            .GetProperty("Hexalith.Tenants.Api");
+
+        profile.GetProperty("commandName").GetString().ShouldBe("Project");
+        profile.GetProperty("launchBrowser").GetBoolean().ShouldBeTrue();
+
+        string applicationUrl = profile.GetProperty("applicationUrl").GetString().ShouldNotBeNull();
+        applicationUrl.ShouldContain("https://localhost:");
+        applicationUrl.ShouldContain("http://localhost:");
+
+        profile.GetProperty("environmentVariables")
+            .GetProperty("ASPNETCORE_ENVIRONMENT")
+            .GetString()
+            .ShouldBe("Development");
+    }
+
     [Fact]
     public void AppHostProject_ReferencesTenantsApiOnlyInTenantsSourceMode()
     {

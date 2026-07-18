@@ -1,53 +1,116 @@
+using System.Diagnostics;
+using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
+
 namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 
 /// <summary>
-/// Verifies the Story 1.20 proof packet retains the hardened shape of both operative
-/// approval-role allowlist validators. The predicates are asserted by shape only — the
-/// approved membership itself stays single-sourced in the allowlist, the packet, and the
-/// spec verification commands, never restated here.
+/// Verifies both operative Story 1.20 approval-role allowlist validators remain bound to
+/// their executable proof-packet commands and reject adversarial input. Approved membership
+/// stays single-sourced in the allowlist and packet rather than being restated by this test.
 /// </summary>
 public sealed class ProofPacketValidatorIntegrityTests
 {
     private const string PacketRelativePath =
         "_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md";
 
-    private const string SlurpedValidatorMarker = "jq -e -s '";
+    private const string AllowlistRelativePath =
+        "_bmad-output/implementation-artifacts/1-20-github-approval-role-allowlist.json";
+
+    private static readonly Regex BashBlockPattern = new(
+        @"^```bash\r?\n(?<body>.*?)^```\s*$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.Multiline | RegexOptions.Singleline);
+
+    private static readonly Regex ValidatorPattern = new(
+        @"jq\s+-e\s+-s\s+'(?<program>.*?)'\s+""(?<input>\$(?:APPROVAL_ROLE_ALLOWLIST|A_APPROVAL_ROLE_ALLOWLIST))""\s+>/dev/null",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.Singleline);
 
     /// <summary>
-    /// Verifies both allowlist validators keep the single-document slurp guard and the
-    /// exact-membership equality shape introduced by the ratified gate hardening.
+    /// Verifies both allowlist validators are executable, bound to their expected inputs, accept
+    /// the approved allowlist, and reject malformed or over-authorized variants.
     /// </summary>
     [Fact]
-    public void PacketAllowlistValidatorsKeepSlurpGuardAndExactMembershipShape()
+    public void PacketAllowlistValidatorsFailClosedForAdversarialInputs()
     {
-        string packet = File.ReadAllText(Path.Combine(FindRepositoryRoot(), PacketRelativePath));
+        string root = FindRepositoryRoot();
+        string packet = File.ReadAllText(Path.Combine(root, PacketRelativePath));
+        string executableBash = string.Join(
+            Environment.NewLine,
+            BashBlockPattern.Matches(packet).Select(match => match.Groups["body"].Value));
+        Match[] validators = ValidatorPattern.Matches(executableBash).ToArray();
 
-        string[] segments = packet.Split(SlurpedValidatorMarker, StringSplitOptions.None);
-        segments.Length.ShouldBe(
-            3,
-            "The packet must contain exactly two slurped jq allowlist validators (candidate gate and evidence-commit-A re-check).");
+        validators.Length.ShouldBe(
+            2,
+            "The executable packet must contain exactly the candidate and evidence-commit-A allowlist validators.");
+        validators.Select(match => match.Groups["input"].Value).ShouldBe(
+            ["$APPROVAL_ROLE_ALLOWLIST", "$A_APPROVAL_ROLE_ALLOWLIST"],
+            ignoreOrder: true,
+            customMessage: "Each operative validator must remain bound to its intended allowlist input.");
 
-        foreach (string segment in segments.Skip(1))
+        string validAllowlist = File.ReadAllText(Path.Combine(root, AllowlistRelativePath));
+        string invalidSchema = MutateAllowlist(validAllowlist, rootObject =>
+            rootObject["schema"] = "invalid-schema");
+        string invalidRepository = MutateAllowlist(validAllowlist, rootObject =>
+            rootObject["repository"] = "invalid/repository");
+        string extraRole = MutateAllowlist(validAllowlist, rootObject =>
         {
-            // Bound each validator to the text before its closing quote so assertions
-            // cannot be satisfied by tokens from elsewhere in the packet.
-            int closingQuote = segment.IndexOf("'", StringComparison.Ordinal);
-            closingQuote.ShouldBeGreaterThan(0, "Each slurped validator must close its jq program quote.");
-            string validator = segment[..closingQuote];
+            JsonObject roles = rootObject["roles"].ShouldBeOfType<JsonObject>();
+            roles["unexpected_role"] = new JsonArray("unexpected-reviewer");
+        });
+        string extraMember = MutateAllowlist(validAllowlist, rootObject =>
+        {
+            JsonObject roles = rootObject["roles"].ShouldBeOfType<JsonObject>();
+            JsonArray firstRole = roles.First().Value.ShouldBeOfType<JsonArray>();
+            firstRole.Add("unexpected-reviewer");
+        });
+        string multipleDocuments = validAllowlist + Environment.NewLine + validAllowlist;
 
-            validator.Contains("length == 1 and (.[0] |", StringComparison.Ordinal).ShouldBeTrue(
-                "Each allowlist validator must keep the single-document slurp guard; without it a multi-root JSON stream whose last document is valid passes the fail-closed gate.");
-            validator.Contains(".schema == \"hexalith.eventstore.github-approval-role-allowlist/v1\"", StringComparison.Ordinal).ShouldBeTrue(
-                "Each allowlist validator must pin the allowlist schema identifier.");
-            validator.Contains(".repository == \"Hexalith/Hexalith.EventStore\"", StringComparison.Ordinal).ShouldBeTrue(
-                "Each allowlist validator must pin the repository identity.");
-            validator.Contains("(.roles | keys | sort) ==", StringComparison.Ordinal).ShouldBeTrue(
-                "Each allowlist validator must assert the exact role key set.");
-            validator.Contains(".roles == {", StringComparison.Ordinal).ShouldBeTrue(
-                "Each allowlist validator must assert exact role membership by object equality, not per-record containment alone.");
-            validator.Contains("all(.roles[]; type == \"array\" and length > 0 and length == (unique | length)", StringComparison.Ordinal).ShouldBeTrue(
-                "Each allowlist validator must keep the non-empty and uniqueness predicates as residual defense.");
+        foreach (Match validator in validators)
+        {
+            string program = validator.Groups["program"].Value;
+            RunJq(program, validAllowlist).ShouldBe(
+                0,
+                "Each packet validator must accept the current owner-approved allowlist.");
+            RunJq(program, "{}").ShouldNotBe(0, "An empty object must fail closed.");
+            RunJq(program, invalidSchema).ShouldNotBe(0, "An invalid schema must fail closed.");
+            RunJq(program, invalidRepository).ShouldNotBe(0, "An invalid repository must fail closed.");
+            RunJq(program, extraRole).ShouldNotBe(0, "An extra role must fail closed.");
+            RunJq(program, extraMember).ShouldNotBe(0, "An extra approved-role member must fail closed.");
+            RunJq(program, multipleDocuments).ShouldNotBe(0, "Multiple JSON documents must fail closed.");
         }
+    }
+
+    private static string MutateAllowlist(string json, Action<JsonObject> mutate)
+    {
+        JsonObject root = JsonNode.Parse(json).ShouldBeOfType<JsonObject>();
+        mutate(root);
+        return root.ToJsonString();
+    }
+
+    private static int RunJq(string program, string input)
+    {
+        using var process = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = "jq",
+                RedirectStandardError = true,
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+            },
+        };
+        process.StartInfo.ArgumentList.Add("-e");
+        process.StartInfo.ArgumentList.Add("-s");
+        process.StartInfo.ArgumentList.Add(program);
+
+        process.Start().ShouldBeTrue("jq must be available to execute the proof-packet validators.");
+        process.StandardInput.Write(input);
+        process.StandardInput.Close();
+        process.WaitForExit(5000).ShouldBeTrue("jq validator execution must finish within five seconds.");
+        _ = process.StandardOutput.ReadToEnd();
+        _ = process.StandardError.ReadToEnd();
+        return process.ExitCode;
     }
 
     private static string FindRepositoryRoot()
@@ -59,6 +122,7 @@ public sealed class ProofPacketValidatorIntegrityTests
             while (directory is not null)
             {
                 if (File.Exists(Path.Combine(directory.FullName, PacketRelativePath.Replace('/', Path.DirectorySeparatorChar)))
+                    && File.Exists(Path.Combine(directory.FullName, AllowlistRelativePath.Replace('/', Path.DirectorySeparatorChar)))
                     && Directory.Exists(Path.Combine(directory.FullName, "src", "Hexalith.EventStore.Contracts")))
                 {
                     return directory.FullName;

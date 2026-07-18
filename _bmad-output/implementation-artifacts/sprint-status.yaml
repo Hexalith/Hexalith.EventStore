@@ -108,13 +108,14 @@ development_status:
   epic-2-retrospective: done
 
   epic-3: in-progress
-  3-1-re-tier-live-sidecar-tests-from-release-gate: review
+  3-1-re-tier-live-sidecar-tests-from-release-gate: in-progress
   3-2-harden-dapr-etag-timeout-for-integration-conditions: ready-for-dev
   3-3-references-based-submodule-layout: ready-for-dev
   3-4-aspire-security-resource-naming: backlog
   # Story 3.5 establishes Builds as the sole package-version authority before
   # Story 3.11 may refresh the ecosystem-wide catalog.
-  # Explicit source opt-in and the Builds+EventStore AC6 boundary are approved.
+  # Explicit source opt-in and ecosystem-wide AC6 responsibility are approved;
+  # each affected repository still requires its maintainer's authorization and validation.
   # Story 3.3 must reach done before implementation; Story 1.20/2.12 still gates AC4 closure.
   3-5-shared-package-catalog-and-source-package-reference-modes: ready-for-dev
   3-6-manifest-driven-release-packaging: backlog

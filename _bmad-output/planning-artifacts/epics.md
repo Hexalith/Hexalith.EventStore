@@ -1687,15 +1687,15 @@ So that Debug builds can source-debug while Release builds depend on published p
 **Then** restore is rerun before build or test
 **And** stale project-reference assets cannot leak into package-mode validation.
 
-**Given** EventStore-owned projects/root package props and the shared Builds catalog/governance surfaces are scanned
+**Given** source-owned Hexalith projects/root package props and the shared Builds catalog/governance surfaces are scanned
 **When** NuGet version declarations are evaluated
-**Then** every EventStore-consumed dependency version originates from `references/Hexalith.Builds/Props/Directory.Packages.props`
-**And** EventStore consumer props contain no local `PackageVersion`, `VersionOverride`, or fallback dependency-version property.
+**Then** every source-owned dependency version originates from `references/Hexalith.Builds/Props/Directory.Packages.props`
+**And** consuming props contain no local `PackageVersion`, `VersionOverride`, or fallback dependency-version property.
 
-**Given** another Hexalith repository retains local version declarations
-**When** Story 3.5 closes its approved boundary
-**Then** a separately owned migration follow-up records that repository, owner/approval requirement, scope, rollback boundary, and prescribed validation
-**And** Story 3.5 does not edit that repository or claim it migrated.
+**Given** an affected repository has not authorized or completed its migration
+**When** Story 3.5 completion is evaluated
+**Then** the repository, owner/approval requirement, scope, rollback boundary, and prescribed validation remain recorded as an open Story 3.5 blocker
+**And** the story remains `in-progress` without editing that repository outside its maintainer's authority.
 
 **Given** EventStore's existing local package-version entries
 **When** the catalog migration is applied

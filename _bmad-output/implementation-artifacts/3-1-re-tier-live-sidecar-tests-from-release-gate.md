@@ -37,7 +37,7 @@ source_files:
 
 # Story 3.1: Re-Tier Live-Sidecar Tests From Release Gate
 
-Status: review
+Status: in-progress
 
 <!-- CORRECT-COURSE REWRITE (2026-07-18):
      The earlier verification contract described filtered subsets of Server.Tests. Commit
@@ -111,7 +111,7 @@ Story 3.10 owns local DAPR/Aspire environment preflight. Story 7.10 owns adjacen
 **Then** it cites the current project, workflow, shared-workflow, solution, and documentation sources and no longer asks for repository-specific edits to `CLAUDE.md`,
 **And** its historical single-project assertions remain only as superseded traceability,
 **And** Story 3.10 is named as the preflight companion and Story 7.10 as the adjacent Integration-CI owner,
-**And** `sprint-status.yaml` remains `in-progress` until verification and review actually complete.
+**And** `sprint-status.yaml` remains `in-progress` while verification is active, moves to `review` when evidence is ready for code review, and does not move to `done` until review findings are resolved.
 
 ### AC6 - Validation And Recorded Evidence
 
@@ -162,7 +162,7 @@ The earlier `Server.Tests --filter Category!=LiveSidecar` and `Server.Tests --fi
 - [x] **Task 5 - Reconcile Story 3.1 authorities and references (AC5).**
   - [x] Remove the obsolete `CLAUDE.md` task/source.
   - [x] Update Story 3.10/7.10 ownership references and preserve historical notes only as superseded evidence.
-  - [x] Retain Story 3.1 as `in-progress`.
+  - [x] Retain Story 3.1 as `in-progress` during verification, then move it to `review` when the evidence packet is ready.
 - [x] **Task 6 - Validate both projects and record evidence (AC6).**
   - [x] Restore and build the Release solution with warnings as errors.
   - [x] Run the unfiltered deterministic project without DAPR.
@@ -173,14 +173,14 @@ The earlier `Server.Tests --filter Category!=LiveSidecar` and `Server.Tests --fi
 
 ### Review Findings
 
-- [ ] [Review][Decision] Two submodule advances are bundled without ratification or source-mode behavioral evidence — The reviewed range advances `references/Hexalith.FrontComposer` from `06b39738` to `564b1bad` and `references/Hexalith.Tenants` from `fbff4649` to `0733a4e0`, although the Story 3.5 proposal in the same range says it does not authorize submodule updates. Story 3.1 validation forced package mode, so it did not consume either source checkout; the only source-mode CI lane compiles the Tenants graph and runs three topology-source assertions, but does not observe the newly adopted Tenants API launch profile. The owner must choose whether to ratify and behaviorally validate these pointers or restore them in a dedicated follow-up.
-- [ ] [Review][Decision] Story 3.5 can close while ecosystem-wide FR21 remains unmet — PRD FR21 requires every Hexalith repository to consume the Builds catalog without local versions, but Story 3.5 is FR21's only mapped story and its newly approved AC6 boundary permits other repositories to remain noncompliant behind separately owned follow-ups. The owner must choose whether Story 3.5 retains ecosystem-wide completion responsibility, concrete replacement stories are created and mapped, or FR21 is narrowed explicitly.
-- [ ] [Review][Decision] The approved proof-packet observer checks predicate tokens rather than fail-closed behavior — `ProofPacketValidatorIntegrityTests` accepts validators that retain every asserted substring but become fail-open through an unreachable branch or appended `or true`, and it does not bind the two matches to the operative executable blocks and allowlist inputs. Story 1.20 explicitly approved a shape-only observer and treats gate-logic changes as ask-first, so strengthening this to execute positive and adversarial fixtures requires an owner decision rather than an automatic patch.
-- [ ] [Review][Patch] Reconcile the Story 3.1 status-transition contract with the current `review` state [_bmad-output/implementation-artifacts/3-1-re-tier-live-sidecar-tests-from-release-gate.md:40]
-- [ ] [Review][Patch] Correct the recorded preflight evidence because the generated-API script exits when Aspire is not running [_bmad-output/implementation-artifacts/3-1-re-tier-live-sidecar-tests-from-release-gate.md:234]
-- [ ] [Review][Patch] Replace `git status` scope proof with baseline-to-candidate evidence and acknowledge the mixed range [_bmad-output/implementation-artifacts/3-1-re-tier-live-sidecar-tests-from-release-gate.md:291]
-- [ ] [Review][Patch] Align the FR21 traceability summary with explicit source opt-in and package-safe defaults [_bmad-output/planning-artifacts/prd.md:380]
-- [ ] [Review][Patch] Make the anchored-reference link guard cover normalized CommonMark destinations instead of seven literal spellings [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CommitMessagePolicyTests.cs:34]
+- [ ] [Review][Patch] Ratify the accepted submodule advances and add focused source-mode behavioral validation — Administrator accepted all present bumps. The final observed targets are `references/Hexalith.Builds` `e64ae34e` -> `14ef97cf` (behavioral source validation ran at its parent `ff721456`; `14ef97cf` changes only `CHANGELOG.md`), `references/Hexalith.FrontComposer` `06b39738` -> `5c284c89` (including the initially reviewed `564b1bad` target), and `references/Hexalith.Tenants` `fbff4649` -> `2d85e35a` (including the initially reviewed `0733a4e0` target). Current source-mode validation is complete for the EventStore/Tenants graph (build: 0 warnings/errors; `TenantsApiLaunchSettingsTests`: 4/4 passed, including the adopted launch profile). FrontComposer validation remains blocked at `5c284c89`: focused restore and `--no-restore` build both fail under warnings-as-errors with `NU1902` for vulnerable `AngleSharp 1.4.0` (`GHSA-pgww-w46g-26qg`). NuGet audit was not suppressed. [references/Hexalith.Tenants:1]
+- [x] [Review][Patch] Restore ecosystem-wide FR21 completion responsibility to Story 3.5 — Administrator chose to keep Story 3.5 as FR21's ecosystem-wide implementation owner. Reconciled the Story 3.5 artifact, epic acceptance criteria, sprint-change proposal, context, tracker comments, and PRD traceability so partial Builds+EventStore work cannot close FR21. [_bmad-output/implementation-artifacts/3-5-shared-package-catalog-and-source-package-reference-modes.md:20]
+- [x] [Review][Patch] Execute and bind both proof-packet validators against valid and adversarial inputs — The focused Contracts test now extracts both operative executable validators, binds their intended inputs, accepts the real allowlist, and rejects empty, malformed identity, extra-role/member, and multi-document inputs without another approved-membership copy. [tests/Hexalith.EventStore.Contracts.Tests/Packaging/ProofPacketValidatorIntegrityTests.cs:21]
+- [x] [Review][Patch] Reconcile the Story 3.1 status-transition contract with the verification-to-review lifecycle and the unresolved-action return to `in-progress` [_bmad-output/implementation-artifacts/3-1-re-tier-live-sidecar-tests-from-release-gate.md:40]
+- [x] [Review][Patch] Correct the recorded preflight evidence because the generated-API script exits when Aspire is not running [_bmad-output/implementation-artifacts/3-1-re-tier-live-sidecar-tests-from-release-gate.md:234]
+- [x] [Review][Patch] Replace `git status` scope proof with baseline-to-candidate evidence and acknowledge the mixed range [_bmad-output/implementation-artifacts/3-1-re-tier-live-sidecar-tests-from-release-gate.md:291]
+- [x] [Review][Patch] Align the FR21 traceability summary with explicit source opt-in and package-safe defaults [_bmad-output/planning-artifacts/prd.md:380]
+- [x] [Review][Patch] Make the anchored-reference link guard cover normalized CommonMark destinations instead of seven literal spellings [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CommitMessagePolicyTests.cs:34]
 
 ## Dev Notes
 
@@ -242,7 +242,9 @@ dotnet test \
   --configuration Release \
   -p:UseHexalithProjectReferences=false
 
-scripts/generated-api-smoke-preflight.sh
+# Story 3.10 diagnoses the full Aspire topology. Exit 3 is an accepted, recorded
+# topology-not-running classification when the dedicated fixture prerequisites are available.
+scripts/generated-api-smoke-preflight.sh || test "$?" -eq 3
 
 dotnet test \
   tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj \
@@ -251,7 +253,7 @@ dotnet test \
   -p:UseHexalithProjectReferences=false
 ```
 
-If the live environment is intentionally unavailable, record the Story 3.10 preflight or dedicated fixture prerequisite result as `blocked`; do not report a product failure. Do not reuse historical PR #271 counts as the current baseline.
+The Story 3.10 script diagnoses the full generated-API Aspire topology, while `Server.LiveSidecar.Tests` starts its own `daprd` and performs its own Redis/placement/scheduler prerequisite checks. Record script exit `3` as `topology-not-running` rather than claiming a successful full-topology preflight; the dedicated project may continue only when its fixture-specific prerequisite and warm-up checks pass. If the live environment is unavailable, record the script or fixture result as `blocked`; do not report a product failure. Do not reuse historical PR #271 counts as the current baseline.
 
 ### References
 
@@ -292,32 +294,55 @@ OpenAI Codex (GPT-5)
 - 2026-07-18: Task 2 (AC2) re-verified. `.github/workflows/ci.yml` calls `Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@main` with `unit-test-projects` including `tests/Hexalith.EventStore.Server.Tests` and no `tests/Hexalith.EventStore.Server.LiveSidecar.Tests` entry; it supplies no `integration-test-projects` input. In the shared `domain-ci.yml`, the "Unit tests (Tier 1)" step runs `dotnet test "$proj" --no-build --configuration Release` with no `--filter`, and the "Install and initialize Dapr" step is gated `if: inputs.integration-test-projects != ''`, so DAPR is never initialized for the deterministic job. `.github/workflows/release.yml` triggers only on `workflow_run: workflows: [CI]` with `conclusion == 'success' && event == 'push' && github.sha == github.event.workflow_run.head_sha`, and has no reference to `Integration Tests`.
 - 2026-07-18: Task 3 (AC3) re-verified. `.github/workflows/integration.yml`'s `live-sidecar` job runs `Github/dapr-init` then `dotnet test tests/Hexalith.EventStore.Server.LiveSidecar.Tests/` with no `--filter`, uploads TRX + Cobertura coverage via `actions/upload-artifact` with `if: always()` and `if-no-files-found: error`, declares `on: push/pull_request/workflow_dispatch`, and uses its own `concurrency: group: integration-${{ github.ref }}`. `release.yml` has no dependency on this workflow (confirmed under Task 2).
 - 2026-07-18: Task 4 (AC4) re-verified. `DaprTestContainerFixture.VerifyPrerequisitesAsync` checks Redis (`6379`), placement (`50005`/`6050`), and scheduler (`50006`/`6060`) TCP reachability before `StartDaprSidecar`, raising `InvalidOperationException` with an explicit "Have you run 'dapr init'?" message on failure (environment-blocker classification, not a product failure). `WaitForDaprHealthAsync` retries the outbound health endpoint for up to `HealthTimeoutSeconds=60`; `WarmUpActorRuntimeAsync` retries an `IETagActor` regenerate/read-back round-trip for up to `WarmUpTimeoutSeconds=45`. `GetAggregateActorStateJsonAsync` reads persisted Redis actor-state hashes directly (with bounded retry) and is consumed by `EventPersistenceIntegrationTests`, `ReadModelBatchLiveSidecarTests`, `ProjectionEraseLiveSidecarTests`, and `NamedProjectionDispatchLiveSidecarTests` for durable read-back assertions.
-- 2026-07-18: Task 6 (AC6) runtime validation executed on this VM, which has a live local DAPR environment (Redis on `6379`, placement on `50005`, scheduler on `50006`, `daprd` 1.18.1 at `~/.dapr/bin/daprd` all reachable per `scripts/generated-api-smoke-preflight.sh`; only the full Aspire AppHost topology was not running, which the `LiveSidecar.Tests` fixture does not require since it starts its own `daprd` process directly). Exact commands and results:
+- 2026-07-18: Task 6 (AC6) runtime validation executed on this VM. `scripts/generated-api-smoke-preflight.sh` confirmed the local Docker/DAPR environment checks, then returned its documented exit `3` (`topology-not-running`) because the full Aspire AppHost was not running; this is a recorded Story 3.10 topology classification, not a successful full-topology preflight. The dedicated `LiveSidecar.Tests` fixture does not require that AppHost: it separately proved Redis on `6379`, placement on `50005`, scheduler on `50006`, and `daprd` 1.18.1 readiness before starting its own sidecar. Exact commands and results:
   - `dotnet restore Hexalith.EventStore.slnx -p:Configuration=Release -p:UseHexalithProjectReferences=false` — succeeded (up-to-date).
   - `dotnet build Hexalith.EventStore.slnx --no-restore --configuration Release -warnaserror -p:UseHexalithProjectReferences=false` — **Build succeeded, 0 Warning(s), 0 Error(s)**.
   - `dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --no-build --configuration Release -p:UseHexalithProjectReferences=false` (no DAPR running for this step) — **Passed! Failed: 0, Passed: 2626, Skipped: 25, Total: 2651**, duration 4m14s. No trait filter was passed.
   - `dotnet test tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj --no-build --configuration Release -p:UseHexalithProjectReferences=false` (live daprd/Redis/placement/scheduler) — **Passed! Failed: 0, Passed: 44, Skipped: 0, Total: 44**, duration 4s. No trait filter was passed.
   - Persisted-state evidence: `EventPersistenceIntegrationTests` asserts durable Redis sequence/read-back state via `GetCurrentSequenceAsync` (backed by the fixture's `GetAggregateActorStateJsonAsync` Redis hash read), not only HTTP/mock outcomes, satisfying the AC6/AC4 durable-evidence requirement.
   - No `Category!=LiveSidecar` / `Category=LiveSidecar` filter was used for either project; lane separation was exercised purely through physical project selection, matching the guardrail.
-- 2026-07-18: Task 7 (AC7) confirmed — `git status --short` shows no modified file outside this story file and `sprint-status.yaml`; no workflow, project-split, DAPR-threshold, two-writer-race, or Story 7.10/7.12-scoped change was made during this verification pass.
+- 2026-07-18: Task 7 (AC7) confirmed with `git diff --name-status 4fc14c00386bf8a403a633612d36fd8842be990e..f180c5fdda59bf1914429bb369234fabf7ce33de`, not `git status`. The complete review baseline spans 17 paths across three commits and is a mixed range: Story 3.1 owns this story file, its sprint-status transition, and the approved course-correction proposal; companion changes cover Story 3.5 planning, Story 1.20 guardrail tests, synchronized Copilot guidance, and two submodule advances. The complete diff contains no workflow, test-project split, DAPR-threshold, two-writer-race, or Story 7.10/7.12 runtime change. Code review separately ratified the FrontComposer and Tenants gitlinks and required focused source-mode evidence.
+- 2026-07-18: Administrator ratified all present bumps during code review. After later workspace advances, the final observed targets are `references/Hexalith.Builds` `e64ae34e` -> `14ef97cf`, `references/Hexalith.FrontComposer` `06b39738` -> `5c284c89`, and `references/Hexalith.Tenants` `fbff4649` -> `2d85e35a`. The accepted boundary preserves those pointers and requires source-mode validation, including direct observation of the adopted Tenants API launch profile.
+- 2026-07-18: Code-review validation results: package-mode `Contracts.Tests` build succeeded with 0 warnings/errors; direct xUnit runs passed `ProofPacketValidatorIntegrityTests` 1/1 and `CommitMessagePolicyTests` 11/11. Fresh Release/source-mode restore and AppHost.Tests build at Builds `ff721456` and Tenants `2d85e35a` succeeded with 0 warnings/errors; direct `TenantsApiLaunchSettingsTests` run passed 4/4, including the ratified profile. The subsequent accepted Builds `14ef97cf` release commit changes only `CHANGELOG.md`, leaving those build inputs unchanged. FrontComposer's focused Shell.Tests restore and `--no-restore` build at `5c284c89` both stopped before compilation with `NU1902` promoted to error for `AngleSharp` 1.4.0 (`GHSA-pgww-w46g-26qg`). NuGet audit and warnings-as-errors remained enabled, so the FrontComposer evidence item stays open.
+- 2026-07-18: Final package-mode safety restore and full Release solution build succeeded with **0 Warning(s), 0 Error(s)** using `UseHexalithProjectReferences=false`; the workspace was not left in source-reference mode.
 
 ### Completion Notes List
 
-- No product, test, workflow, or shared-guidance change was made. Verification initially stopped fail-closed on the post-baseline topology contradiction.
+- Story 3.1 itself made no product, test, workflow, or shared-guidance change. Its full baseline range is mixed and includes separately reviewed Story 3.5/1.20 planning and guardrail work, synchronized Copilot guidance, and ratified submodule advances.
 - The Story 3.1 planning contract now matches the dedicated live-sidecar topology.
 - All seven tasks (AC1-AC7) are verified against the current shipped topology: 14 `LiveSidecar`-tagged classes live only under `Server.LiveSidecar.Tests` with `[Collection("DaprTestContainer")]`; `ci.yml`/`domain-ci.yml` run `Server.Tests` unfiltered with no DAPR init; `integration.yml` runs `Server.LiveSidecar.Tests` unfiltered with DAPR init and always-on TRX/coverage upload; `release.yml` gates only on same-head successful `CI`; the fixture checks Redis/placement/scheduler prerequisites, retries health/warm-up with bounded timeouts, and live tests assert persisted Redis read-back state.
 - Runtime evidence captured on this VM's live local DAPR environment: Release build 0 warnings/0 errors; `Server.Tests` 2626 passed/0 failed/25 skipped/2651 total (no DAPR); `Server.LiveSidecar.Tests` 44 passed/0 failed/0 skipped/44 total (live daprd/Redis/placement/scheduler). No trait filter was used for either run.
-- No workflow, project-split, DAPR-threshold, or unrelated runtime change was made; `git status` confirms only this story file was touched during verification.
-- FR17/NFR10 done-evidence reconciliation is left to the review gate per AC6/AC5; this story sets Status to `review` and does not itself claim `done`.
+- The baseline-to-candidate diff confirms no workflow, project-split, DAPR-threshold, or unrelated runtime change was introduced for Story 3.1; companion changes in the mixed range are recorded separately rather than hidden behind a clean working tree.
+- FR17/NFR10 done-evidence reconciliation is left to the review gate per AC6/AC5. Verification moved the story to `review`; the unresolved FrontComposer review action now returns it to `in-progress`, and the story does not claim `done`.
+- Code review resolved seven of eight patch findings. FrontComposer source validation remains blocked by its warnings-as-errors NuGet vulnerability gate, so Story 3.1 returns to `in-progress` with that action item open.
 
 ### File List
 
+Story 3.1-owned files:
+
 - `_bmad-output/implementation-artifacts/3-1-re-tier-live-sidecar-tests-from-release-gate.md` (modified: approved course correction, verification evidence for AC1-AC7, and completion notes)
-- `_bmad-output/implementation-artifacts/sprint-status.yaml` (modified: Story 3.1 status updated to review)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (modified: Story 3.1 status returned to in-progress while one review action remains open)
 - `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-18-story-3-1-live-sidecar-topology.md` (added: approved course-correction proposal)
+
+The complete review range and later accepted workspace advances also contain companion Story 3.5 planning, Story 1.20 guardrail tests, the synchronized Copilot-entry-point correction, and the ratified Builds/FrontComposer/Tenants gitlink changes. Those paths are not represented as Story 3.1 implementation deliverables.
+
+Code-review action files:
+
+- `_bmad-output/implementation-artifacts/3-1-re-tier-live-sidecar-tests-from-release-gate.md`
+- `_bmad-output/implementation-artifacts/3-5-shared-package-catalog-and-source-package-reference-modes.md`
+- `_bmad-output/implementation-artifacts/epic-3-context.md`
+- `_bmad-output/implementation-artifacts/spec-1-20-add-github-approval-login.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/planning-artifacts/epics.md`
+- `_bmad-output/planning-artifacts/prd.md`
+- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-18-story-3-5-reconciliation.md`
+- `tests/Hexalith.EventStore.AppHost.Tests/Configuration/TenantsApiLaunchSettingsTests.cs`
+- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/CommitMessagePolicyTests.cs`
+- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ProofPacketValidatorIntegrityTests.cs`
 
 ### Change Log
 
 - 2026-07-18: Began verification and recorded a correct-course blocker caused by the later dedicated live-sidecar test-project split; no task was marked complete.
 - 2026-07-18: Applied the approved Story 3.1 specification correction for dedicated project paths, unfiltered lane assertions, and current validation commands; runtime verification remains pending.
 - 2026-07-18: Completed runtime verification for Tasks 1-4, 6, and 7 against the dedicated live-sidecar topology; captured exact pass/fail/skip counts and persisted-state evidence; all tasks now checked and Status moved to `review`.
+- 2026-07-18: Code review applied seven patches and retained one open FrontComposer validation blocker (`NU1902`/AngleSharp 1.4.0); Story 3.1 returned to `in-progress` rather than suppressing NuGet audit or weakening warnings-as-errors.

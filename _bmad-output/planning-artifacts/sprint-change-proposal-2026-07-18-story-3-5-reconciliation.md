@@ -22,14 +22,14 @@ target_stories:
 The Story 3.5 development preflight found that implementation cannot start safely from the current planning state:
 
 1. Story 3.5 AC1 says an **unset** Debug build selects available source projects, while PRD FR21 and adopted architecture decision AD-11 require source references to be **explicitly enabled** with `UseHexalithProjectReferences=true`.
-2. Story 3.5 AC6 is ecosystem-wide, but the approved implementation handoff authorizes migration work only in Hexalith.Builds and EventStore. Checked-out Commons, Memories, and PolymorphicSerializations repositories still contain local package-version declarations, so Builds+EventStore work cannot satisfy the current AC literally.
+2. Story 3.5 AC6 is ecosystem-wide. An earlier implementation handoff limited migration work to Hexalith.Builds and EventStore even though checked-out Commons, Memories, PolymorphicSerializations, FrontComposer, and Tenants repositories can retain local package-version declarations. Administrator's later Story 3.1 code-review decision supersedes that partial completion boundary: Story 3.5 remains responsible for ecosystem-wide FR21 closure while each repository retains its own maintainer authority.
 3. Story 3.3 is the references-layout prerequisite for Story 3.5, but it remains `ready-for-dev` with its verification tasks unchecked.
 4. Story 3.5 AC4 cannot close while Story 1.20 remains `in-progress` and Story 2.12 remains `backlog`; the Tenants graph still mixes a source Gateway edge with package-mode EventStore dependencies.
 
 The Administrator approved the following disposition in principle on 2026-07-18 and explicitly approved this complete proposal after batch review:
 
 - preserve FR21/AD-11 explicit source opt-in and amend Story 3.5 AC1;
-- narrow Story 3.5 AC6 implementation acceptance to Hexalith.Builds and EventStore while tracking other repository migrations separately; and
+- retain Story 3.5's ecosystem-wide AC6 completion responsibility while preserving per-repository maintainer approval, commit, rollback, and validation boundaries; and
 - complete and review Story 3.3 before Story 3.5 implementation resumes.
 
 This proposal makes those decisions durable without weakening the existing AC4 completion gate. It does not authorize Tenants dependency-identity changes, broad package upgrades, submodule updates, commits, or pushes.
@@ -41,7 +41,7 @@ This proposal makes those decisions durable without weakening the existing AC4 c
 - Epic 3 remains valid and in progress.
 - No epic is added, removed, or redefined.
 - Story 3.3 becomes an explicit `done` prerequisite for Story 3.5 rather than an assumed historical condition.
-- Story 3.5 retains its catalog-ownership and dependency-mode implementation scope, but its Debug default and repository boundary become unambiguous.
+- Story 3.5 retains ecosystem-wide catalog ownership and dependency-mode implementation responsibility, with explicit per-repository authority boundaries.
 - Story 3.11 remains backlog and still activates only after Story 3.5 is done. Because AC4 remains open, this proposal does not accelerate Story 3.11.
 - Stories 1.20 and 2.12 retain their current ownership and authorization boundaries.
 
@@ -58,8 +58,8 @@ This proposal makes those decisions durable without weakening the existing AC4 c
 - Replace the unset-Debug-source rule with explicit source opt-in.
 - Define unset and explicit `false` as package intent in every configuration, including Debug.
 - Retain `Exists(...)` source-availability fallback: explicit source intent with missing source selects packages.
-- Narrow AC6 completion evidence to EventStore-owned projects/root props plus the shared Builds catalog and its governance surfaces.
-- Register separately owned migration follow-ups for other repositories; do not edit them in Story 3.5.
+- Keep AC6 completion evidence ecosystem-wide across source-owned Hexalith consumers and the shared Builds catalog/governance surfaces.
+- Obtain each affected repository maintainer's authority before editing; unavailable authority blocks Story 3.5 completion rather than converting noncompliance into an unmapped follow-up.
 - Preserve the AC4 completion gate and keep Story 3.5 `in-progress` if the Tenants graph remains mixed after all independent work passes.
 
 ### Artifact Conflicts And Required Adjustments
@@ -68,11 +68,11 @@ This proposal makes those decisions durable without weakening the existing AC4 c
 | --- | --- |
 | `prd.md` FR21 and repository guardrail | Clarify that unset `UseHexalithProjectReferences` is package intent even in Debug; source mode requires explicit `true`. |
 | `architecture.md` AD-11 | Add the same deterministic default and preserve source-missing package fallback. |
-| `epics.md` Story 3.5 | Replace AC1 and narrow AC6; add Story 3.3 `done` sequencing and retain AC4 blocking language. |
+| `epics.md` Story 3.5 | Replace AC1, retain ecosystem-wide AC6, add Story 3.3 `done` sequencing, and retain AC4 blocking language. |
 | Story 3.5 implementation artifact | Resolve the authority/scope gates, update the truth table/tasks/guardrails, retain the Story 3.3 and AC4 gates, and record the decision. |
 | `epic-3-context.md` | State explicit source opt-in and the Story 3.3 `done` prerequisite. |
 | `sprint-status.yaml` | Preserve current story statuses; update comments only to describe the reconciled activation and completion gates. |
-| `deferred-work.md` | During Story 3.5, register separately owned catalog-migration follow-ups for affected repositories and retain the Gateway mixed-graph entry. |
+| `deferred-work.md` | During Story 3.5, record any repository-authorization blocker without treating it as FR21 completion evidence, and retain the Gateway mixed-graph entry. |
 | UX artifacts | No change. |
 | Runtime code and deployment artifacts | No change from this course correction. |
 
@@ -100,11 +100,11 @@ Use a **Direct Adjustment** within Epic 3.
 
 1. Apply the planning and story corrections in this proposal.
 2. Run Story 3.3 verification and review until it reaches `done`.
-3. Resume Story 3.5 using the explicit-opt-in truth table and Builds+EventStore migration boundary.
+3. Resume Story 3.5 using the explicit-opt-in truth table and ecosystem-wide migration responsibility, working repository-by-repository under maintainer authority.
 4. Complete all independent Story 3.5 work, but leave it `in-progress` if AC4 still lacks Story 1.20/2.12 graph-alignment evidence.
 
 - **Planning scope:** Moderate; several authoritative artifacts and one active story specification change.
-- **Implementation effort:** Unchanged for catalog migration, with added Story 3.3 verification and separate follow-up registration.
+- **Implementation effort:** Expanded to the full FR21 consumer boundary, with added Story 3.3 verification and per-repository authorization/validation coordination.
 - **Technical risk:** Lower than the current state because defaults and repository ownership become deterministic.
 - **Timeline impact:** Story 3.5 waits for Story 3.3 review; Story 3.11 remains gated.
 - **MVP impact:** None.
@@ -157,18 +157,18 @@ The existing shared-catalog ownership sentence remains unchanged.
 
 **NEW**
 
-> **AC6 - Builds is the only NuGet version authority for the Story 3.5 implementation boundary.**
+> **AC6 - Builds is the only NuGet version authority across the Hexalith ecosystem.**
 >
-> Given EventStore-owned projects/root package props and the shared Builds catalog/governance surfaces are scanned, when NuGet version declarations are evaluated, then every EventStore-consumed dependency version originates from `references/Hexalith.Builds/Props/Directory.Packages.props`, and EventStore consumer props contain no local `PackageVersion`, `VersionOverride`, or fallback dependency-version property.
+> Given source-owned Hexalith projects/root package props and the shared Builds catalog/governance surfaces are scanned, when NuGet version declarations are evaluated, then every source-owned dependency version originates from `references/Hexalith.Builds/Props/Directory.Packages.props`, and consuming props contain no local `PackageVersion`, `VersionOverride`, or fallback dependency-version property.
 >
-> Given another Hexalith repository retains local version declarations, when Story 3.5 closes its approved boundary, then a separately owned migration follow-up records that repository, owner/approval requirement, scope, rollback boundary, and prescribed validation; Story 3.5 does not edit that repository or claim it migrated.
+> Given an affected repository has not authorized or completed its migration, when Story 3.5 completion is evaluated, then the repository, owner/approval requirement, scope, rollback boundary, and prescribed validation remain recorded as an open Story 3.5 blocker, and the story remains `in-progress` without editing that repository outside its maintainer's authority.
 
 ### 4.5 Story 3.5 Implementation Artifact
 
 Apply these coordinated edits:
 
 - replace `implementation_gate` with an approved explicit-opt-in decision record;
-- replace `scope_gate` with the approved Builds+EventStore boundary and separate follow-up requirement;
+- replace `scope_gate` with ecosystem-wide FR21 completion responsibility and per-repository authority/validation boundaries;
 - retain `sequencing_gate`, strengthened to require Story 3.3 `done`;
 - retain `completion_gate` for AC4;
 - convert the requirements and catalog-scope reconciliation sections from open gates into approved decision records;
@@ -195,18 +195,18 @@ Separate catalog-migration entries are recorded for repositories still containin
 
 ### Recipients And Responsibilities
 
-- **Product Owner / backlog maintainer:** approve AC1 and AC6 changes and separate follow-up ownership.
+- **Product Owner / backlog maintainer:** approve AC1 and ecosystem-wide AC6 completion responsibility.
 - **Architecture owner:** approve the deterministic explicit-opt-in invariant.
 - **Developer:** apply artifact edits, verify Story 3.3, then implement Story 3.5 in task order.
 - **Hexalith.Builds maintainer:** approve and review Builds-owned catalog, validator, documentation, workflow, and automation changes.
-- **Other repository maintainers:** own any separately authorized consumer-catalog migrations.
+- **Other repository maintainers:** authorize, review, validate, and own their consumer-catalog migrations within Story 3.5's FR21 completion boundary.
 - **EventStore/release owner:** retain the Story 1.20/2.12 gate and approve eventual AC4 closure evidence.
 
 ### Success Criteria
 
 - FR21, AD-11, Epic Story 3.5, the Story 3.5 implementation artifact, Epic 3 context, and tracker comments agree that source mode requires explicit `true`.
-- Story 3.5 AC6 can be proven completely inside the approved Builds+EventStore boundary without claiming unrelated repositories migrated.
-- Every excluded repository with local version declarations has a separately owned follow-up.
+- Story 3.5 AC6 is proven across every source-owned Hexalith consumer without overriding repository-maintainer authority.
+- Any repository lacking authorization or migration evidence keeps Story 3.5 `in-progress` and visibly blocked.
 - Story 3.3 reaches `done` with current verification evidence before Story 3.5 starts.
 - Story 3.5 remains `in-progress` if AC4's no-mixed-graph criterion is still unproven.
 - No Tenants dependency identity, broad dependency family, nested submodule, commit, or push is changed by this proposal.

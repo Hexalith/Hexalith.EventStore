@@ -18,9 +18,11 @@ completion_gate: >-
   but the story must remain in-progress until the no-mixed-graph criterion is proven
   or approved change control revises the conflicting boundary.
 scope_decision: >-
-  Story 3.5 catalog-migration acceptance is limited to Hexalith.Builds and EventStore.
-  Other repositories with local version declarations require separately owned follow-ups
-  and are not edited or claimed as migrated by this story.
+  Administrator's Story 3.1 code-review decision on 2026-07-18 supersedes the earlier
+  Builds+EventStore-only boundary. Story 3.5 retains ecosystem-wide FR21 completion
+  responsibility. Work in each affected repository requires its maintainer's authority,
+  and missing authority blocks Story 3.5 completion rather than converting noncompliance
+  into an unmapped follow-up.
 sequencing_gate: >-
   Story 3.3 underpins Story 3.5 and must reach done with current verification evidence
   before Story 3.5 implementation begins.
@@ -39,6 +41,11 @@ source_files:
   - references/Hexalith.Builds/Props/Directory.Packages.props
   - references/Hexalith.Builds/README.md
   - references/Hexalith.Builds/Samples/Module.Directory.Packages.props
+  - references/Hexalith.Commons/Directory.Packages.props
+  - references/Hexalith.FrontComposer/Directory.Packages.props
+  - references/Hexalith.Memories/Directory.Packages.props
+  - references/Hexalith.PolymorphicSerializations/Directory.Packages.props
+  - references/Hexalith.Tenants/Directory.Packages.props
   - tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContractsPackageDependencyTests.cs
   - scripts/check-doc-versions.sh
   - .github/dependabot.yml
@@ -60,7 +67,7 @@ so that **Debug builds can source-debug, Release builds depend on published pack
 
 ## Story Context
 
-Story 3.5 targets FR21 under NFR9 and AD-11. Its dependency-mode authority and catalog-migration boundary were reconciled by the approved 2026-07-18 course correction. It is a coordinated change across the EventStore repository and the root-declared `references/Hexalith.Builds` repository. Work in each owning repository separately; commit Builds changes first only when the maintainer authorizes commits, then update the EventStore gitlink in an isolated dependency commit. Do not initialize or update nested submodules.
+Story 3.5 targets FR21 under NFR9 and AD-11. Its dependency-mode authority and catalog-migration boundary were reconciled by the approved 2026-07-18 course correction and the later Story 3.1 code-review decision. It is an ecosystem-wide coordinated change led by Hexalith.Builds and completed in every source-owned Hexalith consumer that retains local NuGet version authority. Work in each owning repository separately and only with that maintainer's authorization; commit owned repository changes before updating EventStore gitlinks in isolated dependency commits. Do not initialize or update nested submodules.
 
 The approved 2026-07-18 correction establishes these boundaries:
 
@@ -78,7 +85,7 @@ The Administrator approved FR21/AD-11 as the governing rule on 2026-07-18: sourc
 
 ### Catalog-scope decision
 
-The Administrator approved Builds+EventStore as Story 3.5's implementation boundary. AC6 is satisfied by the shared Builds catalog/governance surfaces and EventStore-owned projects/root props. Repositories outside that boundary are not edited or claimed as migrated; each repository that retains local version declarations must receive a separately owned follow-up with authority, scope, rollback, and validation details.
+The Administrator decided during Story 3.1 code review that Story 3.5 remains the ecosystem-wide implementation owner for FR21, superseding the earlier Builds+EventStore-only completion boundary. AC6 is satisfied only when the shared Builds catalog/governance surfaces and every source-owned Hexalith consumer resolve NuGet versions from Builds without local `PackageVersion`, `VersionOverride`, or fallback version properties. Each repository still keeps its own maintainer authority, commit, rollback, and validation boundary; unavailable authorization leaves Story 3.5 blocked and `in-progress` rather than allowing partial ecosystem work to close FR21.
 
 ### Story 3.3 sequencing gate
 
@@ -149,16 +156,16 @@ The explicit exception satisfies only the alternative in AC4's first `Then`; it 
 **Then** restore is rerun before build or test
 **And** stale project-reference assets cannot leak into package-mode validation.
 
-**AC6 - Builds is the only NuGet version authority for the Story 3.5 implementation boundary.**
-**Given** EventStore-owned projects/root package props and the shared Builds catalog/governance surfaces are scanned
+**AC6 - Builds is the only NuGet version authority across the Hexalith ecosystem.**
+**Given** source-owned Hexalith projects/root package props and the shared Builds catalog/governance surfaces are scanned
 **When** NuGet version declarations are evaluated
-**Then** every EventStore-consumed dependency version originates from `references/Hexalith.Builds/Props/Directory.Packages.props`
-**And** EventStore consumer props contain no local `PackageVersion`, `VersionOverride`, or fallback dependency-version property.
+**Then** every source-owned dependency version originates from `references/Hexalith.Builds/Props/Directory.Packages.props`
+**And** consuming props contain no local `PackageVersion`, `VersionOverride`, or fallback dependency-version property.
 
-**Given** another Hexalith repository retains local version declarations
-**When** Story 3.5 closes its approved boundary
-**Then** a separately owned migration follow-up records that repository, owner/approval requirement, scope, rollback boundary, and prescribed validation
-**And** Story 3.5 does not edit that repository or claim it migrated.
+**Given** an affected repository has not authorized or completed its migration
+**When** Story 3.5 completion is evaluated
+**Then** the repository, owner/approval requirement, scope, rollback boundary, and prescribed validation remain recorded as an open Story 3.5 blocker
+**And** the story remains `in-progress` without editing that repository outside its maintainer's authority.
 
 **AC7 - Missing EventStore entries move to Builds and evaluate exactly once.**
 **Given** EventStore's existing local package-version entries
@@ -187,9 +194,9 @@ The explicit exception satisfies only the alternative in AC4's first `Then`; it 
 ## Tasks / Subtasks
 
 - [ ] **Task 1 - Apply the approved decisions and protect ownership boundaries (AC1-AC10).**
-  - [ ] Re-read `git status --short --branch`, `git log -5 --oneline`, the relevant planning artifacts, and both repositories' tracked guidance before editing; preserve all user changes made after this story's baseline.
+  - [ ] Re-read `git status --short --branch`, `git log -5 --oneline`, the relevant planning artifacts, and every affected repository's tracked guidance before editing; preserve all user changes made after this story's baseline.
   - [ ] Apply the approved explicit-opt-in rule consistently: unset or explicit `false` remains package mode in every configuration, while explicit `true` selects available source and otherwise falls back to packages.
-  - [ ] Enforce the approved Builds+EventStore AC6 boundary and register separately owned migration follow-ups for other repositories that retain local versions. Do not mutate or claim compliance for those repositories.
+  - [ ] Enforce ecosystem-wide AC6. Inventory every source-owned Hexalith repository that retains local versions, obtain its maintainer's authority before editing it, and keep Story 3.5 blocked until each migration is complete and validated.
   - [ ] Confirm Story 3.3 has reached `done` with current verification evidence before treating its references-layout guarantee as a completed prerequisite.
   - [ ] Confirm the EventStore root owns consumer-mode logic, tests, scripts, docs, and its wrapper; confirm `references/Hexalith.Builds` owns the shared catalog, catalog validator, samples, shared workflows, and dependency-update automation.
   - [ ] Confirm Story 2.12 is still gated by Story 1.20. If authorization has not changed, treat Tenants/Gateway as the documented source-only exception and make no dependency-identity change.
@@ -225,7 +232,13 @@ The explicit exception satisfies only the alternative in AC4's first `Then`; it 
   - [ ] Add effective MSBuild/restore assertions for `NBomber.Http`, `xunit.v3.extensibility.core`, System.CommandLine, ModelContextProtocol, Microsoft.Extensions.TimeProvider.Testing, NBomber, and Playwright without hard-coding versions that merely duplicate the catalog. Where adoption itself matters, compare evaluated values to the Builds source of truth.
   - [ ] Preserve the completed removals in baseline commit `f7b2aa1c`; do not recreate prior consumer-local pins.
 
-- [ ] **Task 5 - Correct ownership guidance and automation in EventStore (AC9-AC10).**
+- [ ] **Task 5 - Migrate every remaining source-owned Hexalith consumer (AC6, AC8-AC10).**
+  - [ ] Inventory the root package props, project files, imported props/targets, dependency-update automation, and active catalog guidance in Commons, FrontComposer, Memories, PolymorphicSerializations, Tenants, and any additional source-owned Hexalith repository discovered during implementation.
+  - [ ] In each owning repository, obtain maintainer authorization, import the Builds catalog, remove local `PackageVersion`, `VersionOverride`, and fallback dependency-version properties, and preserve only explicitly classified non-CPM version categories.
+  - [ ] Run each repository's focused catalog/governance validation plus a fresh package-mode restore/build before recording its exact commit and updating the EventStore gitlink.
+  - [ ] If any required repository cannot be authorized or validated, record the blocker and keep Story 3.5 `in-progress`; do not treat an unmapped follow-up as FR21 completion evidence.
+
+- [ ] **Task 6 - Correct ownership guidance and automation in EventStore (AC9-AC10).**
   - [ ] Change `scripts/check-doc-versions.sh` to read `references/Hexalith.Builds/Props/Directory.Packages.props`; preserve its exact-one Dapr-row, family-consistency, documented-row-count, Bash-version, and LF guards.
   - [ ] Remove the EventStore NuGet entry from `.github/dependabot.yml` so the consumer cannot propose competing local catalog changes; retain npm and GitHub Actions entries.
   - [ ] Correct active owner guidance in `_bmad-output/project-context.md`, `docs/brownfield/development-guide.md`, `docs/brownfield/project-overview.md`, `docs/brownfield/source-tree-analysis.md`, `docs/reference/nuget-packages.md`, and any directly impacted operational guide found by the scan.
@@ -233,20 +246,20 @@ The explicit exception satisfies only the alternative in AC4's first `Then`; it 
   - [ ] Record `dotnet-tools.json` versions, `global.json` SDK selection, ephemeral package-consumer fixture props, and generated `.csproj.lscache` metadata as deliberate non-CPM categories. Do not move them into the Builds catalog.
   - [ ] Update `deferred-work.md` narrowly: close the Playwright masking item only after validation passes, and retain the Gateway mixed-graph item with its Story 1.20/2.12 removal trigger.
 
-- [ ] **Task 6 - Validate and fail closed on the Gateway completion gate without bypassing authorization (AC3-AC4).**
+- [ ] **Task 7 - Validate and fail closed on the Gateway completion gate without bypassing authorization (AC3-AC4).**
   - [ ] Inspect the current Tenants graph read-only and record the unconditional Gateway source edge plus the package-mode EventStore edges it can mix with.
   - [ ] Add root-owned validation or a governance scan that fails if the documented exception silently expands to another dependency or is marked resolved without the authorized Story 2.12 identity.
   - [ ] Document the exception, owner, risk, and removal trigger. Do not edit `references/Hexalith.Tenants`, add a speculative Gateway package row, or change EventStore package identities under this story.
   - [ ] Keep Story 3.5 `in-progress` while the graph remains mixed. The exception alone cannot satisfy AC4's final `And` criterion.
   - [ ] If owner authorization exists, stop and reconcile the now-obsolete exception with Story 1.20/2.12; consume Story 2.12's approved graph-alignment evidence rather than implementing an identity change here.
 
-- [ ] **Task 7 - Run fresh dual-mode and governance validation (AC1-AC10).**
+- [ ] **Task 8 - Run fresh dual-mode and governance validation (AC1-AC10).**
   - [ ] Run the Builds catalog validator and its focused tests before updating the EventStore gitlink.
   - [ ] Run MSBuild evaluation-only checks for every dependency-mode truth-table row and for exact-once effective package versions.
   - [ ] Restore and build Debug/source mode from a fresh restore; then rerun restore before Release/package build and tests. Never reuse the source-mode assets with `--no-restore` in package mode.
   - [ ] Run focused EventStore package-governance, Admin CLI, Admin MCP, TimeProvider, integration-testing, UI E2E build, and load-test build coverage needed to prove adoption of inherited versions.
   - [ ] Run `scripts/check-doc-versions.sh`, documentation/automation ownership scans, `git diff --check`, and repository-specific workflow contract tests.
-  - [ ] Record commands, result counts, effective versions, both repository SHAs, intentional exclusions, and any environment blocker in the Dev Agent Record.
+  - [ ] Record commands, result counts, effective versions, every affected repository SHA, intentional exclusions, and any environment blocker in the Dev Agent Record.
 
 ## Dev Notes
 
@@ -259,7 +272,7 @@ The explicit exception satisfies only the alternative in AC4's first `Then`; it 
 - **Builds owns versions; consumers own references.** Project files keep versionless `PackageReference` items. The EventStore wrapper only configures CPM and imports Builds.
 - **No broad upgrades.** Story 3.5 adds two missing catalog IDs and adopts catalog values already present. Story 3.11 owns the catalog-wide compatibility refresh.
 - **Honor the identity gate.** No Gateway identity inference or Tenants mutation is allowed while Story 1.20/2.12 remains gated.
-- **Honor the approved catalog boundary.** Builds+EventStore is the Story 3.5 implementation boundary. Register separately owned follow-ups for other repositories; do not edit or claim compliance for them.
+- **Honor ecosystem-wide FR21 and repository authority together.** Story 3.5 cannot close while a source-owned Hexalith consumer retains local NuGet version authority. Edit each repository only with its maintainer's approval and preserve a separate commit, rollback, and validation boundary per repository.
 - **Do not treat ServiceDefaults as an application host.** `Hexalith.EventStore.ServiceDefaults` is packable and Builds centrally identifies both EventStore and Commons ServiceDefaults packages; its external edge must be paired for package mode or proven unnecessary.
 - **Preserve current work.** The baseline includes a just-completed partial cleanup. Re-read the live worktree before each overlapping edit and never restore removed local declarations.
 
@@ -294,6 +307,7 @@ The explicit exception satisfies only the alternative in AC4's first `Then`; it 
 | `references/Hexalith.Builds/Props/Directory.Packages.props` | UPDATE in Builds | Add only NBomber.Http and xUnit extensibility rows required by this story. |
 | Builds validator/tests, README, DEVELOPMENT, and sample | UPDATE in Builds | Enforce and teach single-catalog ownership. |
 | Builds shared domain CI/release workflows and contract tests | UPDATE in Builds | Explicit fresh Release/package restore before `--no-restore` operations. |
+| Root package props and governance surfaces in every source-owned Hexalith consumer | UPDATE in each owning repository | Import Builds without local dependency-version authority; preserve per-repository approval, commit, rollback, and validation evidence. |
 | `references/Hexalith.Tenants/**` | READ-ONLY unless separately authorized | Record the Gateway exception; make no dependency-identity change under the active gate. |
 | `src/Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj` | UPDATE or VERIFY | Because this project is packable, pair the current Commons.ServiceDefaults source edge with its central package identity when required, or remove the edge if proven unnecessary; validate packed metadata. |
 | EventStore AppHost application edges | PRESERVE | Genuine application hosts remain source-only; no fake package dependencies. |
@@ -444,10 +458,11 @@ Also evaluate explicit `true`, explicit `false`, empty Configuration, missing-so
 
 ### File List
 
-<!-- List every added, modified, or deleted file in both owning repositories. Record Builds SHA and EventStore gitlink change separately. -->
+<!-- List every added, modified, or deleted file in each owning repository. Record each repository SHA and EventStore gitlink change separately. -->
 
 ## Change Log
 
 - 2026-07-18: Story created from the approved FR21 correction, current repository baseline, prior-story/history analysis, and official MSBuild/NuGet/Git guidance; marked `ready-for-dev`.
 - 2026-07-18: Fresh-context checklist review encoded the AC1 authority, AC4 Gateway, AC6 ecosystem-scope, and Story 3.3 sequencing gates; corrected ServiceDefaults package treatment and made workflow/consumer validation executable.
-- 2026-07-18: Administrator-approved Correct Course aligned AC1 to explicit source opt-in, narrowed AC6 to Builds+EventStore with separately owned follow-ups, and made Story 3.3 `done` a start gate while retaining AC4 as the completion gate.
+- 2026-07-18: Administrator-approved Correct Course aligned AC1 to explicit source opt-in and made Story 3.3 `done` a start gate while retaining AC4 as the completion gate.
+- 2026-07-18: Story 3.1 code-review decision superseded the Builds+EventStore-only AC6 boundary; Story 3.5 retains ecosystem-wide FR21 completion responsibility, with per-repository maintainer authorization and validation required before closure.

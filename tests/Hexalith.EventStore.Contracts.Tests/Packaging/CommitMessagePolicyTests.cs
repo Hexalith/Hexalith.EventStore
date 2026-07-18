@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 
@@ -31,21 +32,8 @@ public sealed class CommitMessagePolicyTests
         // The three entry points are identical normalized text, so any relative markdown
         // link resolves differently per entry point (.github/ vs repository root) and is
         // wrong from at least one of them; the baseline documents locations as prose.
-        string[] anchoredLinkForms =
-        [
-            "](references/",
-            "](./references/",
-            "](../references/",
-            "](/references/",
-            "]: references/",
-            "]: ./references/",
-            "]: ../references/",
-        ];
-        foreach (string linkForm in anchoredLinkForms)
-        {
-            copilotInstructions.Contains(linkForm, StringComparison.Ordinal).ShouldBeFalse(
-                $"A '{linkForm}' link resolves under .github/references from the Copilot entry point (or drifts per entry point) and silently loses the shared instructions.");
-        }
+        ContainsAnchoredReferencesLink(copilotInstructions).ShouldBeFalse(
+            "A Markdown link anchored under references/ resolves from a different base in the Copilot entry point and silently loses the shared instructions.");
 
         string sharedLlmInstructionsPath = RepositoryPath("references", "Hexalith.AI.Tools", "hexalith-llm-instructions.md");
         File.Exists(sharedLlmInstructionsPath).ShouldBeTrue(
@@ -90,6 +78,21 @@ public sealed class CommitMessagePolicyTests
     }
 
     /// <summary>
+    /// Verifies normalized inline and reference-style Markdown destinations cannot bypass the
+    /// shared-entry-point link guard through whitespace, angle brackets, or parent traversal.
+    /// </summary>
+    /// <param name="markdown">A Markdown link form that resolves below a references directory.</param>
+    [Theory]
+    [InlineData("[baseline](references/Hexalith.AI.Tools/file.md)")]
+    [InlineData("[baseline]( <references/Hexalith.AI.Tools/file.md> )")]
+    [InlineData("[baseline](../../references/Hexalith.AI.Tools/file.md)")]
+    [InlineData("[baseline]:references/Hexalith.AI.Tools/file.md")]
+    [InlineData("[baseline]:\t<../references/Hexalith.AI.Tools/file.md>")]
+    [InlineData("[baseline](/references/Hexalith.AI.Tools/file.md)")]
+    public void AnchoredReferencesLinksAreRecognizedAcrossCommonMarkForms(string markdown)
+        => ContainsAnchoredReferencesLink(markdown).ShouldBeTrue();
+
+    /// <summary>
     /// Verifies VS Code commit generation loads the repository-wide Copilot policy.
     /// </summary>
     [Fact]
@@ -106,6 +109,12 @@ public sealed class CommitMessagePolicyTests
             .ShouldBeTrue(
                 "VS Code Source Control commit generation must consume the repository-wide Copilot policy.");
     }
+
+    private static bool ContainsAnchoredReferencesLink(string markdown)
+        => Regex.IsMatch(
+            markdown,
+            @"\](?:\(\s*<?|:\s*<?)(?:/|\./|(?:\.\./)+)?references/",
+            RegexOptions.CultureInvariant | RegexOptions.Multiline);
 
     /// <summary>
     /// Verifies npm setup installs the repository-pinned Husky integration.
