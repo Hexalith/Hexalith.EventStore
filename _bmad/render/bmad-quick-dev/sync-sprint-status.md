@@ -6,11 +6,11 @@ Shared sub-step for updating `sprint-status.yaml` during quick-dev. Called from 
 
 Skip this entire file (return to caller) if ANY of:
 - `story_key` is unset
-- `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/sprint-status.yaml` does not exist on disk
+- `/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/sprint-status.yaml` does not exist on disk
 
 ## Instructions
 
-1. Load the FULL `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/sprint-status.yaml` file.
+1. Load the FULL `/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/sprint-status.yaml` file.
 2. Find the `development_status` entry matching `{story_key}`. If not found, warn the user once (`"{story_key} not found in sprint-status; skipping sprint sync"`) and return to caller.
 3. **Idempotency check.** If `development_status[{story_key}]` is already at `target_status` or a later state (`review` is later than `in-progress`; `done` is later than both), return to caller — no write needed. Never regress a story's status.
 4. Set `development_status[{story_key}]` to `{target_status}`.

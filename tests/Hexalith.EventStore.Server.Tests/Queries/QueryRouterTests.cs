@@ -863,6 +863,58 @@ public class QueryRouterTests {
     }
 
     [Fact]
+    public async Task RouteQueryAsync_ForwardsDualPrincipalFieldsToQueryEnvelope() {
+        JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
+        (IProjectionActorInvoker invoker, QueryRouter router) = CreateRouterWithInvoker(QueryResult.FromPayload(resultPayload));
+        var query = new SubmitQuery(
+            Tenant: "test-tenant",
+            Domain: "orders",
+            AggregateId: "order-1",
+            QueryType: "GetOrderStatus",
+            Payload: [],
+            CorrelationId: "corr-1",
+            UserId: "user-1",
+            OriginalActorId: "actor-1",
+            AuthenticatedWorkloadId: "workload-1",
+            IsDelegated: true,
+            Scopes: ["orders.read"],
+            Audience: ["eventstore-api"]);
+
+        _ = await router.RouteQueryAsync(query);
+
+        _ = await invoker.Received(1).InvokeAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Is<QueryEnvelope>(e =>
+                e.OriginalActorId == "actor-1" &&
+                e.AuthenticatedWorkloadId == "workload-1" &&
+                e.IsDelegated &&
+                e.Scopes != null && e.Scopes.SequenceEqual(new[] { "orders.read" }) &&
+                e.Audience != null && e.Audience.SequenceEqual(new[] { "eventstore-api" })),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_LegacyQueryWithoutDualPrincipalFields_ConstructsEnvelopeWithNullDualPrincipalFields() {
+        // Matrix row: "Legacy caller, no dual-principal fields populated" -> behaves exactly as today.
+        JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
+        (IProjectionActorInvoker invoker, QueryRouter router) = CreateRouterWithInvoker(QueryResult.FromPayload(resultPayload));
+
+        _ = await router.RouteQueryAsync(CreateTestQuery());
+
+        _ = await invoker.Received(1).InvokeAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Is<QueryEnvelope>(e =>
+                e.OriginalActorId == null &&
+                e.AuthenticatedWorkloadId == null &&
+                !e.IsDelegated &&
+                e.Scopes == null &&
+                e.Audience == null),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task RouteQueryAsync_GetParty_UsesEntityScopedPublicAdapterRoute() {
         JsonElement resultPayload = JsonDocument.Parse("{\"id\":\"party-42\"}").RootElement;
         (IProjectionActorInvoker invoker, QueryRouter router) = CreateRouterWithInvoker(QueryResult.FromPayload(resultPayload, "party"));

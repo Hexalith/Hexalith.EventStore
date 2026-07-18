@@ -103,7 +103,12 @@ public partial class QueryRouter : IQueryRouter {
             query.UserId,
             query.EntityId,
             query.IsGlobalAdmin,
-            query.Paging);
+            query.Paging,
+            query.OriginalActorId,
+            query.AuthenticatedWorkloadId,
+            query.IsDelegated,
+            query.Scopes,
+            query.Audience);
 
         try {
             string lifecycleProjectionType = routingQueryType;

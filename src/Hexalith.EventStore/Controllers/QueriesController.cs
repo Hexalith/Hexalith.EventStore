@@ -68,6 +68,8 @@ public partial class QueriesController(
         await ValidateAuthorizationBeforeLookupAsync(request, userId, correlationId, cancellationToken)
             .ConfigureAwait(false);
 
+        DualPrincipalIdentity dualPrincipal = DualPrincipalClaimsHelper.Extract(User, userId);
+
         byte[] payloadBytes = request.Payload.HasValue
             ? JsonSerializer.SerializeToUtf8Bytes(request.Payload.Value)
             : [];
@@ -93,7 +95,12 @@ public partial class QueriesController(
                 : request.ProjectionType,
             ProjectionActorType: request.ProjectionActorType,
             IsGlobalAdmin: GlobalAdministratorHelper.IsGlobalAdministrator(User),
-            Paging: NormalizePaging(request.Paging));
+            Paging: NormalizePaging(request.Paging),
+            OriginalActorId: dualPrincipal.OriginalActorId,
+            AuthenticatedWorkloadId: dualPrincipal.AuthenticatedWorkloadId,
+            IsDelegated: dualPrincipal.IsDelegated,
+            Scopes: dualPrincipal.Scopes,
+            Audience: dualPrincipal.Audience);
 
         SubmitQueryResult result = await mediator.Send(query, cancellationToken).ConfigureAwait(false);
 
