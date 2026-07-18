@@ -83,7 +83,7 @@ public sealed class ContractsPackageDependencyTests
                     element.Attribute("Include")?.Value ?? element.Attribute("Update")?.Value,
                     allowedOverride,
                     StringComparison.OrdinalIgnoreCase))
-                .Select(element => element.Attribute("Version")?.Value)
+                .Select(element => GetMsBuildMetadataValue(element, "Version"))
                 .SingleOrDefault();
 
             if (localVersion is null)
@@ -97,7 +97,7 @@ public sealed class ContractsPackageDependencyTests
                     element.Attribute("Include")?.Value ?? element.Attribute("Update")?.Value,
                     allowedOverride,
                     StringComparison.OrdinalIgnoreCase))
-                .Select(element => element.Attribute("Version")?.Value)
+                .Select(element => GetMsBuildMetadataValue(element, "Version"))
                 .SingleOrDefault();
 
             localVersion.ShouldBe(
@@ -130,7 +130,7 @@ public sealed class ContractsPackageDependencyTests
                 XDocument project = XDocument.Load(projectFile);
                 foreach (XElement packageReference in project.Descendants("PackageReference"))
                 {
-                    if (packageReference.Attribute("VersionOverride") is null)
+                    if (GetMsBuildMetadataValue(packageReference, "VersionOverride") is null)
                     {
                         continue;
                     }
@@ -144,7 +144,22 @@ public sealed class ContractsPackageDependencyTests
         }
 
         versionOverrides.ShouldBeEmpty(
-            "Project files must not carry PackageReference VersionOverride attributes; they bypass the centrally managed package versions.");
+            "Project files must not carry PackageReference VersionOverride metadata; it bypasses the centrally managed package versions.");
+    }
+
+    [Theory]
+    [InlineData("<PackageVersion Include=\"Example\" Version=\"1.2.3\" />", "Version", "1.2.3")]
+    [InlineData("<PackageVersion Include=\"Example\"><Version>1.2.3</Version></PackageVersion>", "Version", "1.2.3")]
+    [InlineData("<PackageReference Include=\"Example\" VersionOverride=\"1.2.3\" />", "VersionOverride", "1.2.3")]
+    [InlineData("<PackageReference Include=\"Example\"><VersionOverride>1.2.3</VersionOverride></PackageReference>", "VersionOverride", "1.2.3")]
+    public void MsBuildMetadataReaderRecognizesAttributeAndChildElementForms(
+        string xml,
+        string metadataName,
+        string expectedValue)
+    {
+        XElement element = XElement.Parse(xml);
+
+        GetMsBuildMetadataValue(element, metadataName).ShouldBe(expectedValue);
     }
 
     [Fact]
@@ -225,6 +240,9 @@ public sealed class ContractsPackageDependencyTests
             .Single()
             .Value;
     }
+
+    private static string? GetMsBuildMetadataValue(XElement element, string metadataName)
+        => element.Attribute(metadataName)?.Value ?? element.Element(metadataName)?.Value;
 
     private static XDocument LoadSharedPackageVersions(string root, XDocument packageVersions)
     {

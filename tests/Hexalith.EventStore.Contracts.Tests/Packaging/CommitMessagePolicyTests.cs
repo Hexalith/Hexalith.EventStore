@@ -11,6 +11,10 @@ public sealed class CommitMessagePolicyTests
     private const string CommitHeaderFormat = "<type>[optional scope][!]: <description>";
     private const string SharedGitInstructionsRelativePath = "hexalith-git-instructions.md";
 
+    private static readonly Regex MarkdownDestinationPattern = new(
+        @"\](?:\(\s*(?:<(?<destination>[^>]+)>|(?<destination>[^)\s]+))|:\s*(?:<(?<destination>[^>]+)>|(?<destination>[^\s]+)))",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.Multiline);
+
     /// <summary>
     /// Verifies Copilot delegates the commitlint contract to resolvable shared instructions.
     /// </summary>
@@ -89,6 +93,9 @@ public sealed class CommitMessagePolicyTests
     [InlineData("[baseline]:references/Hexalith.AI.Tools/file.md")]
     [InlineData("[baseline]:\t<../references/Hexalith.AI.Tools/file.md>")]
     [InlineData("[baseline](/references/Hexalith.AI.Tools/file.md)")]
+    [InlineData("[baseline](././references/Hexalith.AI.Tools/file.md)")]
+    [InlineData("[baseline](docs/../references/Hexalith.AI.Tools/file.md)")]
+    [InlineData("[baseline](references%2FHexalith.AI.Tools%2Ffile.md)")]
     public void AnchoredReferencesLinksAreRecognizedAcrossCommonMarkForms(string markdown)
         => ContainsAnchoredReferencesLink(markdown).ShouldBeTrue();
 
@@ -111,10 +118,48 @@ public sealed class CommitMessagePolicyTests
     }
 
     private static bool ContainsAnchoredReferencesLink(string markdown)
-        => Regex.IsMatch(
-            markdown,
-            @"\](?:\(\s*<?|:\s*<?)(?:/|\./|(?:\.\./)+)?references/",
-            RegexOptions.CultureInvariant | RegexOptions.Multiline);
+        => MarkdownDestinationPattern
+            .Matches(markdown)
+            .Any(match => IsAnchoredReferencesDestination(match.Groups["destination"].Value));
+
+    private static bool IsAnchoredReferencesDestination(string destination)
+    {
+        destination = Uri.UnescapeDataString(destination).Replace('\\', '/');
+        int suffixStart = destination.IndexOfAny(['?', '#']);
+        if (suffixStart >= 0)
+        {
+            destination = destination[..suffixStart];
+        }
+
+        if (Regex.IsMatch(destination, @"^[A-Za-z][A-Za-z0-9+.-]*:", RegexOptions.CultureInvariant))
+        {
+            return false;
+        }
+
+        List<string> normalizedSegments = [];
+        foreach (string segment in destination.Split('/', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (segment == ".")
+            {
+                continue;
+            }
+
+            if (segment == "..")
+            {
+                if (normalizedSegments.Count > 0)
+                {
+                    normalizedSegments.RemoveAt(normalizedSegments.Count - 1);
+                }
+
+                continue;
+            }
+
+            normalizedSegments.Add(segment);
+        }
+
+        return normalizedSegments.Count > 0
+            && string.Equals(normalizedSegments[0], "references", StringComparison.Ordinal);
+    }
 
     /// <summary>
     /// Verifies npm setup installs the repository-pinned Husky integration.

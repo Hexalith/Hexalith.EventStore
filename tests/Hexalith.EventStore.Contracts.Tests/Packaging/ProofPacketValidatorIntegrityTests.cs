@@ -22,8 +22,8 @@ public sealed class ProofPacketValidatorIntegrityTests
         RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.Multiline | RegexOptions.Singleline);
 
     private static readonly Regex ValidatorPattern = new(
-        @"jq\s+-e\s+-s\s+'(?<program>.*?)'\s+""(?<input>\$(?:APPROVAL_ROLE_ALLOWLIST|A_APPROVAL_ROLE_ALLOWLIST))""\s+>/dev/null",
-        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.Singleline);
+        @"^[ \t]*jq[ \t]+-e[ \t]+-s[ \t]+'(?<program>.*?)'[ \t\r\n]+""(?<input>\$(?:APPROVAL_ROLE_ALLOWLIST|A_APPROVAL_ROLE_ALLOWLIST))""[ \t]+>/dev/null[ \t]*$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.Multiline | RegexOptions.Singleline);
 
     /// <summary>
     /// Verifies both allowlist validators are executable, bound to their expected inputs, accept
@@ -38,10 +38,17 @@ public sealed class ProofPacketValidatorIntegrityTests
             Environment.NewLine,
             BashBlockPattern.Matches(packet).Select(match => match.Groups["body"].Value));
         Match[] validators = ValidatorPattern.Matches(executableBash).ToArray();
+        string commentedValidators = Regex.Replace(
+            executableBash,
+            @"^[ \t]*(?=jq[ \t]+-e[ \t]+-s)",
+            "# ",
+            RegexOptions.CultureInvariant | RegexOptions.Multiline);
 
         validators.Length.ShouldBe(
             2,
             "The executable packet must contain exactly the candidate and evidence-commit-A allowlist validators.");
+        ValidatorPattern.Matches(commentedValidators).ShouldBeEmpty(
+            "Commented jq text is not an executable proof-packet validator.");
         validators.Select(match => match.Groups["input"].Value).ShouldBe(
             ["$APPROVAL_ROLE_ALLOWLIST", "$A_APPROVAL_ROLE_ALLOWLIST"],
             ignoreOrder: true,
@@ -63,6 +70,28 @@ public sealed class ProofPacketValidatorIntegrityTests
             JsonArray firstRole = roles.First().Value.ShouldBeOfType<JsonArray>();
             firstRole.Add("unexpected-reviewer");
         });
+        string missingRole = MutateAllowlist(validAllowlist, rootObject =>
+        {
+            JsonObject roles = rootObject["roles"].ShouldBeOfType<JsonObject>();
+            roles.Remove(roles.First().Key).ShouldBeTrue();
+        });
+        string emptyRole = MutateAllowlist(validAllowlist, rootObject =>
+        {
+            JsonObject roles = rootObject["roles"].ShouldBeOfType<JsonObject>();
+            roles[roles.First().Key] = new JsonArray();
+        });
+        string replacedMember = MutateAllowlist(validAllowlist, rootObject =>
+        {
+            JsonObject roles = rootObject["roles"].ShouldBeOfType<JsonObject>();
+            JsonArray firstRole = roles.First().Value.ShouldBeOfType<JsonArray>();
+            firstRole[0] = "unexpected-reviewer";
+        });
+        string duplicateMember = MutateAllowlist(validAllowlist, rootObject =>
+        {
+            JsonObject roles = rootObject["roles"].ShouldBeOfType<JsonObject>();
+            JsonArray firstRole = roles.First().Value.ShouldBeOfType<JsonArray>();
+            firstRole.Add(firstRole[0].ShouldNotBeNull().DeepClone());
+        });
         string multipleDocuments = validAllowlist + Environment.NewLine + validAllowlist;
 
         foreach (Match validator in validators)
@@ -76,6 +105,10 @@ public sealed class ProofPacketValidatorIntegrityTests
             RunJq(program, invalidRepository).ShouldNotBe(0, "An invalid repository must fail closed.");
             RunJq(program, extraRole).ShouldNotBe(0, "An extra role must fail closed.");
             RunJq(program, extraMember).ShouldNotBe(0, "An extra approved-role member must fail closed.");
+            RunJq(program, missingRole).ShouldNotBe(0, "A missing approved role must fail closed.");
+            RunJq(program, emptyRole).ShouldNotBe(0, "An approved role without a member must fail closed.");
+            RunJq(program, replacedMember).ShouldNotBe(0, "A substituted approved-role member must fail closed.");
+            RunJq(program, duplicateMember).ShouldNotBe(0, "A duplicated approved-role member must fail closed.");
             RunJq(program, multipleDocuments).ShouldNotBe(0, "Multiple JSON documents must fail closed.");
         }
     }

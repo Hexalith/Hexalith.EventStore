@@ -36,8 +36,22 @@ public class TenantsApiLaunchSettingsTests
         profile.GetProperty("launchBrowser").GetBoolean().ShouldBeTrue();
 
         string applicationUrl = profile.GetProperty("applicationUrl").GetString().ShouldNotBeNull();
-        applicationUrl.ShouldContain("https://localhost:");
-        applicationUrl.ShouldContain("http://localhost:");
+        string[] endpointTexts = applicationUrl.Split(
+            ';',
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        endpointTexts.Length.ShouldBe(2);
+
+        Uri[] endpoints = endpointTexts.Select(endpointText =>
+        {
+            Uri.TryCreate(endpointText, UriKind.Absolute, out Uri? endpoint).ShouldBeTrue(
+                $"The Tenants API launch endpoint '{endpointText}' must be an absolute URI.");
+            return endpoint.ShouldNotBeNull();
+        }).ToArray();
+
+        endpoints.Select(endpoint => endpoint.Scheme).ShouldBe(["https", "http"], ignoreOrder: true);
+        endpoints.All(endpoint => string.Equals(endpoint.Host, "localhost", StringComparison.Ordinal)).ShouldBeTrue();
+        endpoints.All(endpoint => !endpoint.IsDefaultPort && endpoint.Port is > 0 and <= 65535).ShouldBeTrue();
+        endpoints.Select(endpoint => endpoint.Port).Distinct().Count().ShouldBe(2);
 
         profile.GetProperty("environmentVariables")
             .GetProperty("ASPNETCORE_ENVIRONMENT")

@@ -71,7 +71,7 @@ This proposal makes those decisions durable without weakening the existing AC4 c
 | `epics.md` Story 3.5 | Replace AC1, retain ecosystem-wide AC6, add Story 3.3 `done` sequencing, and retain AC4 blocking language. |
 | Story 3.5 implementation artifact | Resolve the authority/scope gates, update the truth table/tasks/guardrails, retain the Story 3.3 and AC4 gates, and record the decision. |
 | `epic-3-context.md` | State explicit source opt-in and the Story 3.3 `done` prerequisite. |
-| `sprint-status.yaml` | Preserve current story statuses; update comments only to describe the reconciled activation and completion gates. |
+| `sprint-status.yaml` | Preserve Story 3.3 at `ready-for-dev`, move Story 3.5 from `backlog` to `ready-for-dev` now that its story file and approved decision record exist, and update comments to describe the reconciled activation and completion gates. |
 | `deferred-work.md` | During Story 3.5, record any repository-authorization blocker without treating it as FR21 completion evidence, and retain the Gateway mixed-graph entry. |
 | UX artifacts | No change. |
 | Runtime code and deployment artifacts | No change from this course correction. |
