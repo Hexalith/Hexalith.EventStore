@@ -1,3 +1,10 @@
+## [3.70.2](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.70.1...v3.70.2) (2026-07-18)
+
+
+### Bug Fixes
+
+* update deferred work documentation and review findings for GitHub approval role ([4ff224b](https://github.com/Hexalith/Hexalith.EventStore/commit/4ff224bcc0578093fd7d589bd48938fcd6838c1f))
+
 ## [3.70.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.70.0...v3.70.1) (2026-07-17)
 
 
