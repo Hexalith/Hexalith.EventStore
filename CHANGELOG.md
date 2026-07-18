@@ -1,3 +1,10 @@
+# [3.72.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.71.0...v3.72.0) (2026-07-18)
+
+
+### Features
+
+* update submodule references and add review findings for Story 3.1 ([4f9d12d](https://github.com/Hexalith/Hexalith.EventStore/commit/4f9d12de8bfe22d4429339528a21742b230992f1))
+
 # [3.71.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.70.2...v3.71.0) (2026-07-18)
 
 
