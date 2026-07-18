@@ -31,6 +31,7 @@ Before working in a Hexalith repository, locate, read, and follow
   branch, or update dependencies unless the task explicitly requires it.
 - Validate changes with the narrowest relevant checks and report any blocker
   with the exact command and result.
+- Validate the commit message with commitlint.
 
 ## Agent Skills
 
