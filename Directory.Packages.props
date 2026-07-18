@@ -13,15 +13,4 @@
   <Import Project="$(Hexalith2BuildPackageProps)" Condition="Exists('$(Hexalith2BuildPackageProps)') And '$(HexalithVersionsLoaded)' != 'true'" />
   <Import Project="$(Hexalith3BuildPackageProps)" Condition="Exists('$(Hexalith3BuildPackageProps)') And '$(HexalithVersionsLoaded)' != 'true'" />
   <Import Project="$(Hexalith4BuildPackageProps)" Condition="'$(HexalithVersionsLoaded)' != 'true'" />
-  <PropertyGroup>
-    <!-- Compatibility guard for Hexalith.Builds 4.17.1, whose shared props can leave this blank. -->
-    <HexalithCommonsVersion Condition="'$(HexalithCommonsVersion)' == ''">2.28.0</HexalithCommonsVersion>
-  </PropertyGroup>
-  <ItemGroup Label="LoadTesting">
-    <PackageVersion Include="NBomber.Http" Version="6.2.1" />
-  </ItemGroup>
-  <ItemGroup Label="Testing">
-    <PackageVersion Update="Microsoft.Playwright" Version="1.61.0" />
-    <PackageVersion Include="xunit.v3.extensibility.core" Version="3.2.2" />
-  </ItemGroup>
 </Project>
