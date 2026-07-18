@@ -254,14 +254,21 @@ assert_candidate_identity
 
 APPROVAL_ROLE_ALLOWLIST='_bmad-output/implementation-artifacts/1-20-github-approval-role-allowlist.json'
 test -s "$APPROVAL_ROLE_ALLOWLIST"
-jq -e '
+jq -e -s '
+  length == 1 and (.[0] |
   .schema == "hexalith.eventstore.github-approval-role-allowlist/v1" and
   .repository == "Hexalith/Hexalith.EventStore" and
   (.roles | type == "object") and
   (.roles | keys | sort) ==
     ["architecture_owner", "eventstore_owner", "release_owner", "story_1_16_reviewer"] and
+  .roles == {
+    "architecture_owner": ["jpiquot"],
+    "eventstore_owner": ["jpiquot"],
+    "release_owner": ["jpiquot"],
+    "story_1_16_reviewer": ["jpiquot"]
+  } and
   all(.roles[]; type == "array" and length > 0 and length == (unique | length) and
-    all(.[]; type == "string" and test("^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$")))
+    all(.[]; type == "string" and test("^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$"))))
 ' "$APPROVAL_ROLE_ALLOWLIST" >/dev/null
 
 validate_github_approval_api_url() {
@@ -2436,13 +2443,20 @@ test "$A_TESTED_RUNTIME_COMMIT" = "$A_TESTED_RUNTIME_SHA"
 git show "$A_TESTED_RUNTIME_COMMIT:$PACKET" > "$RUNTIME_PACKET"
 git show "$A_TESTED_RUNTIME_COMMIT:$APPROVAL_ROLE_ALLOWLIST" \
   > "$A_APPROVAL_ROLE_ALLOWLIST"
-jq -e '
+jq -e -s '
+  length == 1 and (.[0] |
   .schema == "hexalith.eventstore.github-approval-role-allowlist/v1" and
   .repository == "Hexalith/Hexalith.EventStore" and
   (.roles | type == "object") and
   (.roles | keys | sort) ==
     ["architecture_owner", "eventstore_owner", "release_owner", "story_1_16_reviewer"] and
-  all(.roles[]; type == "array" and length > 0 and length == (unique | length))
+  .roles == {
+    "architecture_owner": ["jpiquot"],
+    "eventstore_owner": ["jpiquot"],
+    "release_owner": ["jpiquot"],
+    "story_1_16_reviewer": ["jpiquot"]
+  } and
+  all(.roles[]; type == "array" and length > 0 and length == (unique | length)))
 ' "$A_APPROVAL_ROLE_ALLOWLIST" >/dev/null
 extract_executable_blocks() {
   local packet="$1"

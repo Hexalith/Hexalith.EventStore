@@ -26,11 +26,22 @@ public sealed class CommitMessagePolicyTests
         copilotInstructions.Contains(
             "references/Hexalith.AI.Tools/hexalith-llm-instructions.md",
             StringComparison.Ordinal).ShouldBeTrue(
-                "The Copilot entry point must document the submodule-relative fallback path to the shared instructions.");
-        copilotInstructions.Contains(
-            "[`hexalith-llm-instructions.md`](./references/Hexalith.AI.Tools/hexalith-llm-instructions.md)",
-            StringComparison.Ordinal).ShouldBeFalse(
-                "The former link resolves under .github/references and silently loses the shared instructions.");
+                "The Copilot entry point must document the workspace-relative fallback path to the shared instructions.");
+
+        // The three entry points are identical normalized text, so any relative markdown
+        // link resolves differently per entry point (.github/ vs repository root) and is
+        // wrong from at least one of them; the baseline documents locations as prose.
+        string[] anchoredLinkForms =
+        [
+            "](references/",
+            "](./references/",
+            "](../references/",
+        ];
+        foreach (string linkForm in anchoredLinkForms)
+        {
+            copilotInstructions.Contains(linkForm, StringComparison.Ordinal).ShouldBeFalse(
+                $"A '{linkForm}' link resolves under .github/references from the Copilot entry point (or drifts per entry point) and silently loses the shared instructions.");
+        }
 
         string sharedLlmInstructionsPath = RepositoryPath("references", "Hexalith.AI.Tools", "hexalith-llm-instructions.md");
         File.Exists(sharedLlmInstructionsPath).ShouldBeTrue(

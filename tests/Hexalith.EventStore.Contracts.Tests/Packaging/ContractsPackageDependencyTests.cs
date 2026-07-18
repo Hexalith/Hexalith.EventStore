@@ -40,6 +40,36 @@ public sealed class ContractsPackageDependencyTests
     }
 
     [Fact]
+    public void Root_package_props_does_not_override_builds_central_versions()
+    {
+        string root = FindRepositoryRoot();
+        XDocument packageVersions = XDocument.Load(Path.Combine(root, "Directory.Packages.props"));
+        XDocument sharedPackageVersions = LoadSharedPackageVersions(root, packageVersions);
+
+        // Ledgered exception (deferred-work.md 2026-07-17): remove alongside the next
+        // Builds-owned version reconciliation. Any other overlap silently freezes the
+        // local copy when the Builds-central version moves.
+        string[] allowedOverrides = ["Microsoft.Playwright"];
+
+        HashSet<string> centralPackageIds = sharedPackageVersions
+            .Descendants("PackageVersion")
+            .Select(element => element.Attribute("Include")?.Value ?? element.Attribute("Update")?.Value)
+            .OfType<string>()
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        string[] maskingDeclarations = packageVersions
+            .Descendants("PackageVersion")
+            .Select(element => element.Attribute("Include")?.Value ?? element.Attribute("Update")?.Value)
+            .OfType<string>()
+            .Where(id => centralPackageIds.Contains(id))
+            .Where(id => !allowedOverrides.Contains(id, StringComparer.OrdinalIgnoreCase))
+            .ToArray();
+
+        maskingDeclarations.ShouldBeEmpty(
+            "The root Directory.Packages.props must not redeclare Builds-central package versions; a local Include/Update silently pins the repository when the central version moves.");
+    }
+
+    [Fact]
     public void Root_package_props_resolves_hexalith_builds_from_references_layouts()
     {
         string root = FindRepositoryRoot();
