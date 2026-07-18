@@ -182,6 +182,18 @@ The earlier `Server.Tests --filter Category!=LiveSidecar` and `Server.Tests --fi
 - [x] [Review][Patch] Align the FR21 traceability summary with explicit source opt-in and package-safe defaults [_bmad-output/planning-artifacts/prd.md:380]
 - [x] [Review][Patch] Make the anchored-reference link guard cover normalized CommonMark destinations instead of seven literal spellings [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CommitMessagePolicyTests.cs:34]
 
+#### Re-review `4fc14c00..1d83607c` (2026-07-18)
+
+- [ ] [Review][Decision] Reconcile the candidate dependency boundary before acceptance — The candidate advances Builds `e64ae34e` → `cd4333bf`, FrontComposer `06b39738` → `9417e69b`, Memories `6d7fd8aa` → `94958c22`, and Tenants `fbff4649` → `2d85e35a`, while the recorded ratification names older Builds/FrontComposer targets, omits Memories, and binds AC7 to `f180c5fd`/17 paths instead of `1d83607c`/21 paths. Decide whether to ratify all four current pointers and rerun exact-candidate package/source/live validation before refreshing the evidence and status, or restore the review boundary to the previously ratified pointers. [_bmad-output/implementation-artifacts/3-1-re-tier-live-sidecar-tests-from-release-gate.md:176]
+- [ ] [Review][Patch] Align `Hexalith.EventStore.Contracts` with the `3.71.0` EventStore package family in the Builds catalog [references/Hexalith.Builds/Props/Directory.Packages.props:7]
+- [ ] [Review][Patch] Bind proof-packet validator discovery to uncommented executable `jq` command lines [tests/Hexalith.EventStore.Contracts.Tests/Packaging/ProofPacketValidatorIntegrityTests.cs:20]
+- [ ] [Review][Patch] Add under-authorization mutations to the proof-packet validator integrity matrix [tests/Hexalith.EventStore.Contracts.Tests/Packaging/ProofPacketValidatorIntegrityTests.cs:50]
+- [ ] [Review][Patch] Cover child-element `Version` and `VersionOverride` metadata in central-version guards [tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContractsPackageDependencyTests.cs:80]
+- [ ] [Review][Patch] Parse Tenants launch-profile endpoints and require valid HTTP(S) localhost ports [tests/Hexalith.EventStore.AppHost.Tests/Configuration/TenantsApiLaunchSettingsTests.cs:38]
+- [ ] [Review][Patch] Normalize Markdown destinations before enforcing the anchored `references/` link ban [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CommitMessagePolicyTests.cs:113]
+- [ ] [Review][Patch] Make the Story 3.5 proposal explicitly authorize the `backlog` to `ready-for-dev` tracker transition [_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-18-story-3-5-reconciliation.md:74]
+- [x] [Review][Defer] Reconcile the stale `Server.Tests` CA2007 baseline exception in project context [_bmad-output/project-context.md:65] — deferred, pre-existing
+
 ## Dev Notes
 
 ### Guardrails
