@@ -7,6 +7,11 @@ requirements: FR21
 governing_nfr: NFR9
 architecture_decision: AD-11
 story_type: cross-repository-build-governance
+completion_gate: >-
+  AC4 cannot close while Story 1.20 has not authorized Story 2.12's exact
+  EventStore runtime/package identity; independent Story 3.5 work may proceed,
+  but the story must remain in-progress until the no-mixed-graph criterion is proven
+  or approved change control revises the conflicting boundary.
 source_files:
   - _bmad-output/planning-artifacts/epics.md
   - _bmad-output/planning-artifacts/prd.md
@@ -78,7 +83,7 @@ For Story 3.5, the safe and required outcome is therefore:
 - Tie removal of that exception to authorized Story 2.12 work after Story 1.20 supplies the owner-approved identity.
 - Keep the mixed-graph risk visible in `deferred-work.md`; do not mark it resolved.
 
-The explicit exception satisfies the alternative allowed by AC4 without bypassing the authorization gate. If owner authorization lands before implementation begins, stop and reconcile this story with the approved identity rather than inferring it.
+The explicit exception satisfies only the alternative in AC4's first `Then`; it does **not** by itself satisfy AC4's separate no-mixed-graph `And`. Independent catalog and mode work in this story may proceed, but Story 3.5 cannot become `done` while the current Tenants graph remains mixed. Closure requires either (a) Story 1.20 authorization followed by Story 2.12's approved graph alignment and evidence, or (b) approved change control that explicitly resolves the conflict. Do not infer an identity merely to unblock this story.
 
 ## Acceptance Criteria
 
@@ -148,6 +153,7 @@ The explicit exception satisfies the alternative allowed by AC4 without bypassin
   - [ ] Re-read `git status --short --branch`, `git log -5 --oneline`, the relevant planning artifacts, and both repositories' tracked guidance before editing; preserve all user changes made after this story's baseline.
   - [ ] Confirm the EventStore root owns consumer-mode logic, tests, scripts, docs, and its wrapper; confirm `references/Hexalith.Builds` owns the shared catalog, catalog validator, samples, shared workflows, and dependency-update automation.
   - [ ] Confirm Story 2.12 is still gated by Story 1.20. If authorization has not changed, treat Tenants/Gateway as the documented source-only exception and make no dependency-identity change.
+  - [ ] Record AC4 as a completion gate while the Gateway source edge still mixes with package-mode EventStore dependencies; do not move this story to `done` based on documentation alone.
   - [ ] Do not initialize/update nested submodules, perform broad dependency upgrades, generate lock files, prune packages, change release-manifest scope, or stage/commit/push unless separately authorized.
 
 - [ ] **Task 2 - Implement and prove the dependency-mode truth table (AC1-AC5).**
@@ -184,11 +190,12 @@ The explicit exception satisfies the alternative allowed by AC4 without bypassin
   - [ ] Record `dotnet-tools.json` versions, `global.json` SDK selection, ephemeral package-consumer fixture props, and generated `.csproj.lscache` metadata as deliberate non-CPM categories. Do not move them into the Builds catalog.
   - [ ] Update `deferred-work.md` narrowly: close the Playwright masking item only after validation passes, and retain the Gateway mixed-graph item with its Story 1.20/2.12 removal trigger.
 
-- [ ] **Task 6 - Validate the Gateway source-only exception without bypassing authorization (AC3-AC4).**
+- [ ] **Task 6 - Validate and fail closed on the Gateway completion gate without bypassing authorization (AC3-AC4).**
   - [ ] Inspect the current Tenants graph read-only and record the unconditional Gateway source edge plus the package-mode EventStore edges it can mix with.
   - [ ] Add root-owned validation or a governance scan that fails if the documented exception silently expands to another dependency or is marked resolved without the authorized Story 2.12 identity.
   - [ ] Document the exception, owner, risk, and removal trigger. Do not edit `references/Hexalith.Tenants`, add a speculative Gateway package row, or change EventStore package identities under this story.
-  - [ ] If owner authorization exists, stop and reconcile the now-obsolete exception with Story 1.20/2.12 before implementing an identity change.
+  - [ ] Keep Story 3.5 `in-progress` while the graph remains mixed. The exception alone cannot satisfy AC4's final `And` criterion.
+  - [ ] If owner authorization exists, stop and reconcile the now-obsolete exception with Story 1.20/2.12; consume Story 2.12's approved graph-alignment evidence rather than implementing an identity change here.
 
 - [ ] **Task 7 - Run fresh dual-mode and governance validation (AC1-AC10).**
   - [ ] Run the Builds catalog validator and its focused tests before updating the EventStore gitlink.
