@@ -1,3 +1,20 @@
+# [3.71.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.70.2...v3.71.0) (2026-07-18)
+
+
+### Bug Fixes
+
+* add commit message validation requirement with commitlint ([0183054](https://github.com/Hexalith/Hexalith.EventStore/commit/01830544145be4a688ccd9d786f45a5ae49e545b))
+* harden story 1.20 approval gate and enforce builds-central package versions ([f7b2aa1](https://github.com/Hexalith/Hexalith.EventStore/commit/f7b2aa1c4d14c4b7049ce5c6bfb6c82364c55778))
+* update completion gate and clarify acceptance criteria for Story 3.5 ([4fc14c0](https://github.com/Hexalith/Hexalith.EventStore/commit/4fc14c00386bf8a403a633612d36fd8842be990e))
+* update Story 3.1 status to review and complete task verification ([f180c5f](https://github.com/Hexalith/Hexalith.EventStore/commit/f180c5fdda59bf1914429bb369234fabf7ce33de))
+
+
+### Features
+
+* centralize and refresh Hexalith NuGet catalog ([befa320](https://github.com/Hexalith/Hexalith.EventStore/commit/befa320c65d7d7e102953f0c7231ae26e90e1201))
+* reconcile Story 3.5 Activation and Scope ([8dfb154](https://github.com/Hexalith/Hexalith.EventStore/commit/8dfb154fdc281b585fd3f4fb5ab877d85ba1cf80))
+* update sprint status and project references; enhance test coverage ([e911418](https://github.com/Hexalith/Hexalith.EventStore/commit/e9114183761611f47b730b737c47ecd160d5fd06))
+
 ## [3.70.2](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.70.1...v3.70.2) (2026-07-18)
 
 
