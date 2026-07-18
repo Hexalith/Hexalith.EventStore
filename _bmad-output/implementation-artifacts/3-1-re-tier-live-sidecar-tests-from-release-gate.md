@@ -171,6 +171,17 @@ The earlier `Server.Tests --filter Category!=LiveSidecar` and `Server.Tests --fi
 - [x] **Task 7 - Enforce scope boundaries (AC7).**
   - [x] Confirm no workflow, test-project split, DAPR threshold, two-writer scenario, or unrelated integration recovery was changed.
 
+### Review Findings
+
+- [ ] [Review][Decision] Two submodule advances are bundled without ratification or source-mode behavioral evidence — The reviewed range advances `references/Hexalith.FrontComposer` from `06b39738` to `564b1bad` and `references/Hexalith.Tenants` from `fbff4649` to `0733a4e0`, although the Story 3.5 proposal in the same range says it does not authorize submodule updates. Story 3.1 validation forced package mode, so it did not consume either source checkout; the only source-mode CI lane compiles the Tenants graph and runs three topology-source assertions, but does not observe the newly adopted Tenants API launch profile. The owner must choose whether to ratify and behaviorally validate these pointers or restore them in a dedicated follow-up.
+- [ ] [Review][Decision] Story 3.5 can close while ecosystem-wide FR21 remains unmet — PRD FR21 requires every Hexalith repository to consume the Builds catalog without local versions, but Story 3.5 is FR21's only mapped story and its newly approved AC6 boundary permits other repositories to remain noncompliant behind separately owned follow-ups. The owner must choose whether Story 3.5 retains ecosystem-wide completion responsibility, concrete replacement stories are created and mapped, or FR21 is narrowed explicitly.
+- [ ] [Review][Decision] The approved proof-packet observer checks predicate tokens rather than fail-closed behavior — `ProofPacketValidatorIntegrityTests` accepts validators that retain every asserted substring but become fail-open through an unreachable branch or appended `or true`, and it does not bind the two matches to the operative executable blocks and allowlist inputs. Story 1.20 explicitly approved a shape-only observer and treats gate-logic changes as ask-first, so strengthening this to execute positive and adversarial fixtures requires an owner decision rather than an automatic patch.
+- [ ] [Review][Patch] Reconcile the Story 3.1 status-transition contract with the current `review` state [_bmad-output/implementation-artifacts/3-1-re-tier-live-sidecar-tests-from-release-gate.md:40]
+- [ ] [Review][Patch] Correct the recorded preflight evidence because the generated-API script exits when Aspire is not running [_bmad-output/implementation-artifacts/3-1-re-tier-live-sidecar-tests-from-release-gate.md:234]
+- [ ] [Review][Patch] Replace `git status` scope proof with baseline-to-candidate evidence and acknowledge the mixed range [_bmad-output/implementation-artifacts/3-1-re-tier-live-sidecar-tests-from-release-gate.md:291]
+- [ ] [Review][Patch] Align the FR21 traceability summary with explicit source opt-in and package-safe defaults [_bmad-output/planning-artifacts/prd.md:380]
+- [ ] [Review][Patch] Make the anchored-reference link guard cover normalized CommonMark destinations instead of seven literal spellings [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CommitMessagePolicyTests.cs:34]
+
 ## Dev Notes
 
 ### Guardrails
