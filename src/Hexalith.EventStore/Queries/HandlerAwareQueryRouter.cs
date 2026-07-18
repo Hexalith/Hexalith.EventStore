@@ -53,7 +53,12 @@ public sealed class HandlerAwareQueryRouter(
             query.UserId,
             query.EntityId,
             query.IsGlobalAdmin,
-            query.Paging);
+            query.Paging,
+            query.OriginalActorId,
+            query.AuthenticatedWorkloadId,
+            query.IsDelegated,
+            query.Scopes,
+            query.Audience);
 
         QueryResult result = await invoker.InvokeAsync(envelope, cancellationToken).ConfigureAwait(false);
 

@@ -82,6 +82,48 @@ public sealed class HandlerAwareQueryRouterTests {
             Arg.Any<CancellationToken>());
     }
 
+    // Mirrors QueryRouterTests.RouteQueryAsync_ForwardsDualPrincipalFieldsToQueryEnvelope --
+    // HandlerAwareQueryRouter is a second, parallel IQueryRouter-chain site that builds a
+    // QueryEnvelope from SubmitQuery (Spec Change Log, Story 6.1-P2 review_loop_iteration 1):
+    // capability-declared/domain-handler-routed queries must receive the same dual-principal
+    // fields as the projection-actor QueryRouter path, since IDomainQueryHandler implementations
+    // are this story's real consumer.
+    [Fact]
+    public async Task RouteQueryAsync_HandlerBased_ForwardsDualPrincipalFieldsToQueryEnvelope() {
+        IDomainQueryHandlerRegistry registry = Substitute.For<IDomainQueryHandlerRegistry>();
+        _ = registry.SupportsQueryAsync("widget", "get-widget", Arg.Any<CancellationToken>()).Returns(true);
+        IQueryRouter inner = Substitute.For<IQueryRouter>();
+        IDomainQueryInvoker invoker = Substitute.For<IDomainQueryInvoker>();
+        JsonElement payload = JsonSerializer.SerializeToElement(new { value = 42 });
+        _ = invoker.InvokeAsync(Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>())
+            .Returns(QueryResult.FromPayload(payload, projectionType: "widget"));
+        var router = new HandlerAwareQueryRouter(inner, registry, invoker, NullLogger<HandlerAwareQueryRouter>.Instance);
+        var query = new SubmitQuery(
+            Tenant: "test-tenant",
+            Domain: "widget",
+            AggregateId: "widget-1",
+            QueryType: "get-widget",
+            Payload: [],
+            CorrelationId: "corr-1",
+            UserId: "user-1",
+            OriginalActorId: "actor-1",
+            AuthenticatedWorkloadId: "workload-1",
+            IsDelegated: true,
+            Scopes: ["widgets.read"],
+            Audience: ["eventstore-api"]);
+
+        _ = await router.RouteQueryAsync(query);
+
+        await invoker.Received(1).InvokeAsync(
+            Arg.Is<QueryEnvelope>(e =>
+                e.OriginalActorId == "actor-1" &&
+                e.AuthenticatedWorkloadId == "workload-1" &&
+                e.IsDelegated &&
+                e.Scopes != null && e.Scopes.SequenceEqual(new[] { "widgets.read" }) &&
+                e.Audience != null && e.Audience.SequenceEqual(new[] { "eventstore-api" })),
+            Arg.Any<CancellationToken>());
+    }
+
     [Fact]
     public async Task RouteQueryAsync_NotHandlerBased_DelegatesToInnerRouter() {
         IDomainQueryHandlerRegistry registry = Substitute.For<IDomainQueryHandlerRegistry>();

@@ -218,6 +218,129 @@ public class QueriesControllerTests {
             Arg.Any<CancellationToken>());
     }
 
+    // --- Dual-principal identity claim extraction (Story 6.1-P2) ---
+
+    [Fact]
+    public async Task Submit_LegacyPrincipal_OnlySubClaim_PopulatesOriginalActorIdOnlyFromSub() {
+        // Matrix row: "Legacy caller, no dual-principal fields populated" -> behaves exactly as
+        // today. OriginalActorId always mirrors the sub claim (same source as the legacy UserId
+        // field), but the remaining dual-principal fields stay unpopulated absent their claims —
+        // no new validation failure occurs for a claims-minimal token.
+        JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(CreateProjectionResult(resultPayload));
+
+        var principal = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "plain-user")], "test"));
+        QueriesController controller = CreateController(mediator, principal: principal);
+
+        _ = await controller.Submit(CreateTestRequest(), null, CancellationToken.None);
+
+        _ = await mediator.Received(1).Send(
+            Arg.Is<SubmitQuery>(q =>
+                q.OriginalActorId == "plain-user" &&
+                q.UserId == q.OriginalActorId &&
+                q.AuthenticatedWorkloadId == null &&
+                !q.IsDelegated &&
+                q.Scopes == null &&
+                q.Audience == null),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Submit_DualPrincipalToken_ExtractsOriginalActorIdFromSubClaim() {
+        JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(CreateProjectionResult(resultPayload));
+
+        var principal = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "end-user-1")], "test"));
+        QueriesController controller = CreateController(mediator, principal: principal);
+
+        _ = await controller.Submit(CreateTestRequest(), null, CancellationToken.None);
+
+        _ = await mediator.Received(1).Send(
+            Arg.Is<SubmitQuery>(q => q.OriginalActorId == "end-user-1"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Submit_AzpClaimPresent_SetsAuthenticatedWorkloadId() {
+        JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(CreateProjectionResult(resultPayload));
+
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim("sub", "end-user-1"), new Claim("azp", "gateway-client")], "test"));
+        QueriesController controller = CreateController(mediator, principal: principal);
+
+        _ = await controller.Submit(CreateTestRequest(), null, CancellationToken.None);
+
+        _ = await mediator.Received(1).Send(
+            Arg.Is<SubmitQuery>(q => q.AuthenticatedWorkloadId == "gateway-client"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Submit_AzpDiffersFromClientId_SetsIsDelegatedTrue() {
+        JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(CreateProjectionResult(resultPayload));
+
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            [
+                new Claim("sub", "end-user-1"),
+                new Claim("azp", "gateway-client"),
+                new Claim("client_id", "backend-client"),
+            ],
+            "test"));
+        QueriesController controller = CreateController(mediator, principal: principal);
+
+        _ = await controller.Submit(CreateTestRequest(), null, CancellationToken.None);
+
+        _ = await mediator.Received(1).Send(
+            Arg.Is<SubmitQuery>(q => q.IsDelegated),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Submit_ScopeClaim_SetsSubmitQueryScopes() {
+        JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(CreateProjectionResult(resultPayload));
+
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim("sub", "end-user-1"), new Claim("scope", "orders.read orders.write")], "test"));
+        QueriesController controller = CreateController(mediator, principal: principal);
+
+        _ = await controller.Submit(CreateTestRequest(), null, CancellationToken.None);
+
+        _ = await mediator.Received(1).Send(
+            Arg.Is<SubmitQuery>(q => q.Scopes != null && q.Scopes.SequenceEqual(new[] { "orders.read", "orders.write" })),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Submit_AudClaims_SetSubmitQueryAudience() {
+        JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(CreateProjectionResult(resultPayload));
+
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim("sub", "end-user-1"), new Claim("aud", "eventstore-api")], "test"));
+        QueriesController controller = CreateController(mediator, principal: principal);
+
+        _ = await controller.Submit(CreateTestRequest(), null, CancellationToken.None);
+
+        _ = await mediator.Received(1).Send(
+            Arg.Is<SubmitQuery>(q => q.Audience != null && q.Audience.SequenceEqual(new[] { "eventstore-api" })),
+            Arg.Any<CancellationToken>());
+    }
+
     [Fact]
     public async Task Submit_MissingSubClaim_ReturnsUnauthorizedAndDoesNotCallMediator() {
         // Arrange

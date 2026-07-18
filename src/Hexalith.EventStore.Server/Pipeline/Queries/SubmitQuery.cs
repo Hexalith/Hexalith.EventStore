@@ -21,7 +21,12 @@ public record SubmitQuery(
     string? ProjectionType = null,
     string? ProjectionActorType = null,
     bool IsGlobalAdmin = false,
-    QueryPagingOptions? Paging = null) : IRequest<SubmitQueryResult> {
+    QueryPagingOptions? Paging = null,
+    string? OriginalActorId = null,
+    string? AuthenticatedWorkloadId = null,
+    bool IsDelegated = false,
+    IReadOnlyList<string>? Scopes = null,
+    IReadOnlyList<string>? Audience = null) : IRequest<SubmitQueryResult> {
     /// <summary>
     /// Initializes a new instance of the <see cref="SubmitQuery"/> record using the original query shape.
     /// </summary>
@@ -50,6 +55,124 @@ public record SubmitQuery(
             projectionActorType,
             isGlobalAdmin,
             Paging: null) {
+    }
+
+    private readonly string[]? _scopes = Scopes?.ToArray();
+    private readonly string[]? _audience = Audience?.ToArray();
+
+    /// <summary>
+    /// Gets the OAuth scopes granted to the calling token, when populated by the gateway.
+    /// </summary>
+    /// <remarks>
+    /// Normalized to a freshly materialized array by this property's own <see langword="init"/>
+    /// accessor -- not only at construction -- so a <c>with</c> expression that reassigns this
+    /// property is normalized identically and can never retain a live reference to a
+    /// caller-supplied mutable list.
+    /// </remarks>
+    public IReadOnlyList<string>? Scopes {
+        get => _scopes;
+        init => _scopes = value?.ToArray();
+    }
+
+    /// <summary>
+    /// Gets the token audience values, when populated by the gateway.
+    /// </summary>
+    /// <remarks>
+    /// Normalized to a freshly materialized array by this property's own <see langword="init"/>
+    /// accessor -- not only at construction -- so a <c>with</c> expression that reassigns this
+    /// property is normalized identically and can never retain a live reference to a
+    /// caller-supplied mutable list.
+    /// </remarks>
+    public IReadOnlyList<string>? Audience {
+        get => _audience;
+        init => _audience = value?.ToArray();
+    }
+
+    /// <summary>
+    /// Determines whether this instance and <paramref name="other"/> represent the same query
+    /// submission.
+    /// </summary>
+    /// <param name="other">The other <see cref="SubmitQuery"/> to compare against.</param>
+    /// <returns>
+    /// <see langword="true"/> when every member is equal; otherwise, <see langword="false"/>.
+    /// <see cref="Scopes"/> and <see cref="Audience"/> are compared by ordinal sequence content
+    /// rather than by array reference -- the default record-synthesized equality would otherwise
+    /// treat two content-identical instances as unequal whenever their collections happen to be
+    /// backed by different array instances.
+    /// </returns>
+    public virtual bool Equals(SubmitQuery? other) {
+        if (other is null) {
+            return false;
+        }
+
+        if (ReferenceEquals(this, other)) {
+            return true;
+        }
+
+        return EqualityContract == other.EqualityContract
+            && Tenant == other.Tenant
+            && Domain == other.Domain
+            && AggregateId == other.AggregateId
+            && QueryType == other.QueryType
+            && EqualityComparer<byte[]>.Default.Equals(Payload, other.Payload)
+            && CorrelationId == other.CorrelationId
+            && UserId == other.UserId
+            && EntityId == other.EntityId
+            && ProjectionType == other.ProjectionType
+            && ProjectionActorType == other.ProjectionActorType
+            && IsGlobalAdmin == other.IsGlobalAdmin
+            && EqualityComparer<QueryPagingOptions?>.Default.Equals(Paging, other.Paging)
+            && OriginalActorId == other.OriginalActorId
+            && AuthenticatedWorkloadId == other.AuthenticatedWorkloadId
+            && IsDelegated == other.IsDelegated
+            && StringSequenceEquals(Scopes, other.Scopes)
+            && StringSequenceEquals(Audience, other.Audience);
+    }
+
+    /// <inheritdoc/>
+    public override int GetHashCode() {
+        HashCode hash = default;
+        hash.Add(EqualityContract);
+        hash.Add(Tenant);
+        hash.Add(Domain);
+        hash.Add(AggregateId);
+        hash.Add(QueryType);
+        hash.Add(Payload);
+        hash.Add(CorrelationId);
+        hash.Add(UserId);
+        hash.Add(EntityId);
+        hash.Add(ProjectionType);
+        hash.Add(ProjectionActorType);
+        hash.Add(IsGlobalAdmin);
+        hash.Add(Paging);
+        hash.Add(OriginalActorId);
+        hash.Add(AuthenticatedWorkloadId);
+        hash.Add(IsDelegated);
+        AddStringSequenceHash(ref hash, Scopes);
+        AddStringSequenceHash(ref hash, Audience);
+        return hash.ToHashCode();
+    }
+
+    // Content (ordinal sequence) equality for a nullable string list -- two nulls are equal, a
+    // null and an empty/non-empty list are not, matching IEnumerable<T>.SequenceEqual semantics
+    // when both sides are non-null.
+    private static bool StringSequenceEquals(IReadOnlyList<string>? left, IReadOnlyList<string>? right) {
+        if (left is null || right is null) {
+            return left is null && right is null;
+        }
+
+        return left.SequenceEqual(right, StringComparer.Ordinal);
+    }
+
+    private static void AddStringSequenceHash(ref HashCode hash, IReadOnlyList<string>? values) {
+        if (values is null) {
+            hash.Add(0);
+            return;
+        }
+
+        foreach (string value in values) {
+            hash.Add(value, StringComparer.Ordinal);
+        }
     }
 }
 

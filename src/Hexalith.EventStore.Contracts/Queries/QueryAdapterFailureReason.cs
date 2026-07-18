@@ -59,4 +59,32 @@ public static class QueryAdapterFailureReason {
     /// The actor returned a 403 Forbidden response; the caller is not permitted to execute this query.
     /// </summary>
     public const string Forbidden = "Forbidden";
+
+    /// <summary>
+    /// Internal-only diagnostic marker recorded when the opt-in safe-denial adapter unified a
+    /// <see cref="Forbidden"/> result into the shared not-found shape for a route that has opted
+    /// into the safe-denial boundary. Never surfaced on the wire response — the caller-visible
+    /// query router result for a safe-denied query carries the exact same shape as a genuine
+    /// not-found result (no error message). This constant exists solely so server-side logs can
+    /// still distinguish a policy-denied outcome from a genuinely nonexistent resource.
+    /// </summary>
+    public const string SafeDenialForbidden = "safe-denial-forbidden";
+
+    /// <summary>
+    /// Internal-only diagnostic marker recorded when the opt-in safe-denial adapter unified the
+    /// second existing not-found shape -- a projection actor's "no projection state available"
+    /// failure message (see <see cref="MissingProjectionState"/>) -- into the shared not-found
+    /// shape for a route that has opted into the safe-denial boundary. Never surfaced on the wire
+    /// response, for the same reason as <see cref="SafeDenialForbidden"/>.
+    /// </summary>
+    public const string SafeDenialMissingProjectionState = "safe-denial-missing-projection-state";
+
+    /// <summary>
+    /// The second existing not-found shape: a projection actor reports success=false with this
+    /// exact error message (rather than the router result's hard not-found flag set to
+    /// <see langword="true"/>) when no projection state has ever been built for the target
+    /// aggregate. Recognized by the opt-in safe-denial adapter so both genuine not-found shapes
+    /// are unified identically to a safe-denied Forbidden result.
+    /// </summary>
+    public const string MissingProjectionState = "No projection state available for this aggregate";
 }

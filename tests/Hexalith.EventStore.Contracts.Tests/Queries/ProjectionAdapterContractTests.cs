@@ -29,6 +29,29 @@ public class ProjectionAdapterContractTests {
             isGlobalAdmin: false,
             paging);
 
+    private static QueryEnvelope CreateEnvelopeWithDualPrincipal(
+        string? originalActorId = "actor-1",
+        string? authenticatedWorkloadId = "workload-1",
+        bool isDelegated = false,
+        IReadOnlyList<string>? scopes = null,
+        IReadOnlyList<string>? audience = null)
+        => new(
+            "tenant-a",
+            "parties",
+            "party",
+            "get-party",
+            JsonSerializer.SerializeToUtf8Bytes(new { id = "party-42" }),
+            "corr-1",
+            "user-1",
+            "party-42",
+            isGlobalAdmin: false,
+            paging: null,
+            originalActorId,
+            authenticatedWorkloadId,
+            isDelegated,
+            scopes,
+            audience);
+
     private static string FindRepositoryRoot() {
         DirectoryInfo? directory = new(Directory.GetCurrentDirectory());
         while (directory is not null) {
@@ -584,6 +607,75 @@ public class ProjectionAdapterContractTests {
         _ = restored.ShouldNotBeNull();
         restored.EntityId.ShouldBeNull();
         restored.AggregateIdentity.TenantId.ShouldBe(original.TenantId);
+    }
+
+    [Fact]
+    public void QueryEnvelope_DataContractRoundTrip_PreservesDualPrincipalMembers() {
+        QueryEnvelope original = CreateEnvelopeWithDualPrincipal(
+            originalActorId: "actor-1",
+            authenticatedWorkloadId: "workload-1",
+            isDelegated: true,
+            scopes: ["parties.read"],
+            audience: ["eventstore-api"]);
+        var serializer = new DataContractSerializer(typeof(QueryEnvelope));
+
+        using var stream = new MemoryStream();
+        serializer.WriteObject(stream, original);
+        stream.Position = 0;
+
+        var restored = (QueryEnvelope?)serializer.ReadObject(stream);
+
+        _ = restored.ShouldNotBeNull();
+        restored.OriginalActorId.ShouldBe("actor-1");
+        restored.AuthenticatedWorkloadId.ShouldBe("workload-1");
+        restored.IsDelegated.ShouldBeTrue();
+        restored.Scopes.ShouldBe(["parties.read"]);
+        restored.Audience.ShouldBe(["eventstore-api"]);
+    }
+
+    // DataContractSerializer round-trip coverage was previously only null vs. non-empty; an
+    // explicitly empty (non-null, zero-length) array is a third, distinct wire shape that must
+    // also survive the actor boundary without collapsing to null.
+    [Fact]
+    public void QueryEnvelope_DataContractRoundTrip_EmptyScopesAndAudienceArrays_PreservesEmptyNotNull() {
+        QueryEnvelope original = CreateEnvelopeWithDualPrincipal(scopes: [], audience: []);
+        var serializer = new DataContractSerializer(typeof(QueryEnvelope));
+
+        using var stream = new MemoryStream();
+        serializer.WriteObject(stream, original);
+        stream.Position = 0;
+
+        var restored = (QueryEnvelope?)serializer.ReadObject(stream);
+
+        _ = restored.ShouldNotBeNull();
+        _ = restored.Scopes.ShouldNotBeNull();
+        restored.Scopes.ShouldBeEmpty();
+        _ = restored.Audience.ShouldNotBeNull();
+        restored.Audience.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void QueryEnvelope_LegacyConstructorOverloads_DefaultDualPrincipalFieldsToNull() {
+        QueryEnvelope sut = CreateEnvelope();
+
+        sut.OriginalActorId.ShouldBeNull();
+        sut.AuthenticatedWorkloadId.ShouldBeNull();
+        sut.IsDelegated.ShouldBeFalse();
+        sut.Scopes.ShouldBeNull();
+        sut.Audience.ShouldBeNull();
+    }
+
+    [Fact]
+    public void QueryAdapterFailureReason_SafeDenialForbidden_IsInternalOnlyMarkerDistinctFromForbidden() {
+        QueryAdapterFailureReason.SafeDenialForbidden.ShouldBe("safe-denial-forbidden");
+        QueryAdapterFailureReason.SafeDenialForbidden.ShouldNotBe(QueryAdapterFailureReason.Forbidden);
+    }
+
+    [Fact]
+    public void QueryAdapterFailureReason_SafeDenialMissingProjectionState_IsInternalOnlyMarkerDistinctFromMissingProjectionState() {
+        QueryAdapterFailureReason.SafeDenialMissingProjectionState.ShouldBe("safe-denial-missing-projection-state");
+        QueryAdapterFailureReason.SafeDenialMissingProjectionState.ShouldNotBe(QueryAdapterFailureReason.MissingProjectionState);
+        QueryAdapterFailureReason.SafeDenialMissingProjectionState.ShouldNotBe(QueryAdapterFailureReason.SafeDenialForbidden);
     }
 
     [Fact]
