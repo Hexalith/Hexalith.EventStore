@@ -1,3 +1,12 @@
+# [3.73.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.72.0...v3.73.0) (2026-07-18)
+
+
+### Features
+
+* enhance Story 3.5 with ecosystem-wide Builds catalog and explicit source opt-in ([1d83607](https://github.com/Hexalith/Hexalith.EventStore/commit/1d83607cc4f5053fd3499b8fab0c81baffab85ff))
+* **query:** add dual-principal query identity and safe-denial routing boundary ([58236cf](https://github.com/Hexalith/Hexalith.EventStore/commit/58236cf38fbcce0d36c1925cb045031607b59a09))
+* update deferred work documentation and reconcile baseline exceptions ([8ce8465](https://github.com/Hexalith/Hexalith.EventStore/commit/8ce84653099240245caca7a113f77d0c4a688c6b))
+
 # [3.72.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.71.0...v3.72.0) (2026-07-18)
 
 
