@@ -57,6 +57,11 @@ public sealed class ContractsPackageDependencyTests
             .OfType<string>()
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
+        // A restructured Builds catalog (sub-imports, xmlns, renamed attributes) must fail
+        // this guard loudly instead of vacuously disabling it through an empty central set.
+        centralPackageIds.ShouldNotBeEmpty(
+            "The Builds-central catalog yielded no PackageVersion entries; the masking guard cannot run against an empty central set.");
+
         string[] maskingDeclarations = packageVersions
             .Descendants("PackageVersion")
             .Select(element => element.Attribute("Include")?.Value ?? element.Attribute("Update")?.Value)
@@ -67,6 +72,79 @@ public sealed class ContractsPackageDependencyTests
 
         maskingDeclarations.ShouldBeEmpty(
             "The root Directory.Packages.props must not redeclare Builds-central package versions; a local Include/Update silently pins the repository when the central version moves.");
+
+        // An allowlisted override is tolerated only as an identical-to-central no-op; a
+        // divergent value is the same silent version freeze this guard exists to catch.
+        foreach (string allowedOverride in allowedOverrides)
+        {
+            string? localVersion = packageVersions
+                .Descendants("PackageVersion")
+                .Where(element => string.Equals(
+                    element.Attribute("Include")?.Value ?? element.Attribute("Update")?.Value,
+                    allowedOverride,
+                    StringComparison.OrdinalIgnoreCase))
+                .Select(element => element.Attribute("Version")?.Value)
+                .SingleOrDefault();
+
+            if (localVersion is null)
+            {
+                continue;
+            }
+
+            string? centralVersion = sharedPackageVersions
+                .Descendants("PackageVersion")
+                .Where(element => string.Equals(
+                    element.Attribute("Include")?.Value ?? element.Attribute("Update")?.Value,
+                    allowedOverride,
+                    StringComparison.OrdinalIgnoreCase))
+                .Select(element => element.Attribute("Version")?.Value)
+                .SingleOrDefault();
+
+            localVersion.ShouldBe(
+                centralVersion,
+                $"The allowlisted '{allowedOverride}' override must match the Builds-central version; remove the local line or reconcile it with the central catalog.");
+        }
+    }
+
+    [Fact]
+    public void Project_files_do_not_version_override_central_package_versions()
+    {
+        string root = FindRepositoryRoot();
+
+        // CPM gives PackageReference VersionOverride precedence over every central pin, so a
+        // single project-level attribute silently bypasses the Builds-owns-versions invariant
+        // without touching Directory.Packages.props.
+        string[] projectDirectories = ["src", "tests", "perf", "samples", "tools"];
+        List<string> versionOverrides = [];
+
+        foreach (string projectDirectory in projectDirectories)
+        {
+            string path = Path.Combine(root, projectDirectory);
+            if (!Directory.Exists(path))
+            {
+                continue;
+            }
+
+            foreach (string projectFile in Directory.EnumerateFiles(path, "*.csproj", SearchOption.AllDirectories))
+            {
+                XDocument project = XDocument.Load(projectFile);
+                foreach (XElement packageReference in project.Descendants("PackageReference"))
+                {
+                    if (packageReference.Attribute("VersionOverride") is null)
+                    {
+                        continue;
+                    }
+
+                    string packageId = packageReference.Attribute("Include")?.Value
+                        ?? packageReference.Attribute("Update")?.Value
+                        ?? "<unnamed>";
+                    versionOverrides.Add($"{Path.GetRelativePath(root, projectFile)}: {packageId}");
+                }
+            }
+        }
+
+        versionOverrides.ShouldBeEmpty(
+            "Project files must not carry PackageReference VersionOverride attributes; they bypass the centrally managed package versions.");
     }
 
     [Fact]
@@ -150,13 +228,32 @@ public sealed class ContractsPackageDependencyTests
 
     private static XDocument LoadSharedPackageVersions(string root, XDocument packageVersions)
     {
-        string importPath = packageVersions
-            .Descendants("Hexalith1BuildPackageProps")
-            .Single()
-            .Value
-            .Replace("$(MSBuildThisFileDirectory)", root + Path.DirectorySeparatorChar, StringComparison.Ordinal);
+        // Mirror the four-branch conditional import chain of Directory.Packages.props so the
+        // guard validates the catalog actually in effect for the current checkout layout.
+        string[] importProperties =
+        [
+            "Hexalith1BuildPackageProps",
+            "Hexalith2BuildPackageProps",
+            "Hexalith3BuildPackageProps",
+            "Hexalith4BuildPackageProps",
+        ];
 
-        return XDocument.Load(importPath);
+        foreach (string importProperty in importProperties)
+        {
+            string importPath = Path.GetFullPath(packageVersions
+                .Descendants(importProperty)
+                .Single()
+                .Value
+                .Replace(MsBuildThisFileDirectory, root + Path.DirectorySeparatorChar, StringComparison.Ordinal));
+
+            if (File.Exists(importPath))
+            {
+                return XDocument.Load(importPath);
+            }
+        }
+
+        throw new FileNotFoundException(
+            "No declared Hexalith.Builds package props fallback exists; the effective central catalog cannot be validated.");
     }
 
     private static string ResolveMsBuildPath(string msBuildThisFileDirectory, string path)

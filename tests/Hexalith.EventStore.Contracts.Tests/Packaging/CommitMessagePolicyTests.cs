@@ -36,6 +36,10 @@ public sealed class CommitMessagePolicyTests
             "](references/",
             "](./references/",
             "](../references/",
+            "](/references/",
+            "]: references/",
+            "]: ./references/",
+            "]: ../references/",
         ];
         foreach (string linkForm in anchoredLinkForms)
         {
