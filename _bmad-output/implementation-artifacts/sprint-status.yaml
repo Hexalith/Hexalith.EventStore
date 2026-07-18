@@ -108,7 +108,7 @@ development_status:
   epic-2-retrospective: done
 
   epic-3: in-progress
-  3-1-re-tier-live-sidecar-tests-from-release-gate: in-progress
+  3-1-re-tier-live-sidecar-tests-from-release-gate: review
   3-2-harden-dapr-etag-timeout-for-integration-conditions: ready-for-dev
   3-3-references-based-submodule-layout: ready-for-dev
   3-4-aspire-security-resource-naming: backlog

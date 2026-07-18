@@ -37,7 +37,7 @@ source_files:
 
 # Story 3.1: Re-Tier Live-Sidecar Tests From Release Gate
 
-Status: in-progress
+Status: review
 
 <!-- CORRECT-COURSE REWRITE (2026-07-18):
      The earlier verification contract described filtered subsets of Server.Tests. Commit
@@ -145,31 +145,31 @@ The earlier `Server.Tests --filter Category!=LiveSidecar` and `Server.Tests --fi
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 - Verify physical project ownership and trait semantics (AC1).**
-  - [ ] Enumerate all `LiveSidecar`-tagged classes in `Server.LiveSidecar.Tests`.
-  - [ ] Prove `Server.Tests` contains no `LiveSidecar` trait or live fixture.
-  - [ ] Record the current inventory and the intentional deterministic sentinel/mock examples.
-- [ ] **Task 2 - Verify the deterministic release gate (AC2).**
-  - [ ] Confirm `ci.yml` supplies unfiltered `Server.Tests` through `unit-test-projects`.
-  - [ ] Confirm the live project is absent and no DAPR integration-test input is supplied.
-  - [ ] Confirm release listens only to successful same-head `CI` completion.
-- [ ] **Task 3 - Verify the dedicated live lane (AC3).**
-  - [ ] Confirm `integration.yml` initializes DAPR and runs the dedicated live project unfiltered.
-  - [ ] Confirm result upload and non-release-dependency semantics.
-- [ ] **Task 4 - Verify live fixture readiness and evidence seams (AC4).**
-  - [ ] Inspect the fixture at its dedicated-project path.
-  - [ ] Confirm prerequisite, health, warm-up, and persisted-state read-back behavior.
+- [x] **Task 1 - Verify physical project ownership and trait semantics (AC1).**
+  - [x] Enumerate all `LiveSidecar`-tagged classes in `Server.LiveSidecar.Tests`.
+  - [x] Prove `Server.Tests` contains no `LiveSidecar` trait or live fixture.
+  - [x] Record the current inventory and the intentional deterministic sentinel/mock examples.
+- [x] **Task 2 - Verify the deterministic release gate (AC2).**
+  - [x] Confirm `ci.yml` supplies unfiltered `Server.Tests` through `unit-test-projects`.
+  - [x] Confirm the live project is absent and no DAPR integration-test input is supplied.
+  - [x] Confirm release listens only to successful same-head `CI` completion.
+- [x] **Task 3 - Verify the dedicated live lane (AC3).**
+  - [x] Confirm `integration.yml` initializes DAPR and runs the dedicated live project unfiltered.
+  - [x] Confirm result upload and non-release-dependency semantics.
+- [x] **Task 4 - Verify live fixture readiness and evidence seams (AC4).**
+  - [x] Inspect the fixture at its dedicated-project path.
+  - [x] Confirm prerequisite, health, warm-up, and persisted-state read-back behavior.
 - [x] **Task 5 - Reconcile Story 3.1 authorities and references (AC5).**
   - [x] Remove the obsolete `CLAUDE.md` task/source.
   - [x] Update Story 3.10/7.10 ownership references and preserve historical notes only as superseded evidence.
   - [x] Retain Story 3.1 as `in-progress`.
-- [ ] **Task 6 - Validate both projects and record evidence (AC6).**
-  - [ ] Restore and build the Release solution with warnings as errors.
-  - [ ] Run the unfiltered deterministic project without DAPR.
-  - [ ] Preflight DAPR, then run the unfiltered live project or record an environment blocker.
-  - [ ] Capture counts and persisted-state evidence; reconcile FR17 done evidence only after review.
-- [ ] **Task 7 - Enforce scope boundaries (AC7).**
-  - [ ] Confirm no workflow, test-project split, DAPR threshold, two-writer scenario, or unrelated integration recovery was changed.
+- [x] **Task 6 - Validate both projects and record evidence (AC6).**
+  - [x] Restore and build the Release solution with warnings as errors.
+  - [x] Run the unfiltered deterministic project without DAPR.
+  - [x] Preflight DAPR, then run the unfiltered live project or record an environment blocker.
+  - [x] Capture counts and persisted-state evidence; reconcile FR17 done evidence only after review.
+- [x] **Task 7 - Enforce scope boundaries (AC7).**
+  - [x] Confirm no workflow, test-project split, DAPR threshold, two-writer scenario, or unrelated integration recovery was changed.
 
 ## Dev Notes
 
@@ -277,19 +277,36 @@ OpenAI Codex (GPT-5)
 - 2026-07-18: The two AC5 repository-specific statements no longer exist in `CLAUDE.md`; that file is now the synchronized universal assistant baseline and directs repository-specific CI guidance to authoritative configuration/documentation.
 - 2026-07-18: HALT before Task 1 completion. Tasks 2, 3, 5, and 6 target the superseded pre-split topology, so satisfying them literally would reverse intentional later work. Story 3.1 needs a correct-course rewrite against the current physical test-project separation before implementation can continue.
 - 2026-07-18: Administrator approved the dedicated live-sidecar topology course correction. The story specification was rewritten and statically reconciled; its runtime validation commands were not rerun as part of this workflow.
+- 2026-07-18: Task 1 (AC1) re-verified at repository HEAD. Confirmed by `grep` that exactly 14 classes under `tests/Hexalith.EventStore.Server.LiveSidecar.Tests` carry both `[Collection("DaprTestContainer")]` and `[Trait("Category", "LiveSidecar")]`: `Actors/ActorConcurrencyConflictTests`, `Actors/ActorTenantIsolationTests`, `Actors/AggregateActorIntegrationTests`, `Actors/TombstoningLifecycleTests`, `Benchmarking/BenchmarkDatasetBuilderLiveSidecarTests`, `Commands/CommandRoutingIntegrationTests`, `DomainServices/DaprSerializationRoundTripTests`, `Events/EventPersistenceIntegrationTests`, `Events/SnapshotIntegrationTests`, `Integration/DaprETagServiceLiveSidecarTests`, `Integration/NamedProjectionDispatchLiveSidecarTests`, `Integration/ProjectionDeliveryCutoverLiveSidecarTests`, `Integration/ProjectionEraseLiveSidecarTests`, `Integration/ReadModelBatchLiveSidecarTests`. This matches the Dev Notes inventory exactly. `grep -rn 'LiveSidecar'` and a filename search for `DaprTestContainerFixture`/`DaprTestContainerCollection` over `tests/Hexalith.EventStore.Server.Tests` returned zero matches. `TombstoningLifecycleSentinelTests` and `ETagActorIntegrationTests` remain in `Server.Tests` untagged with `LiveSidecar` (the latter carries `Category=Integration`/`Tier=2` only), confirming the intentional deterministic sentinel/mock examples.
+- 2026-07-18: Task 2 (AC2) re-verified. `.github/workflows/ci.yml` calls `Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@main` with `unit-test-projects` including `tests/Hexalith.EventStore.Server.Tests` and no `tests/Hexalith.EventStore.Server.LiveSidecar.Tests` entry; it supplies no `integration-test-projects` input. In the shared `domain-ci.yml`, the "Unit tests (Tier 1)" step runs `dotnet test "$proj" --no-build --configuration Release` with no `--filter`, and the "Install and initialize Dapr" step is gated `if: inputs.integration-test-projects != ''`, so DAPR is never initialized for the deterministic job. `.github/workflows/release.yml` triggers only on `workflow_run: workflows: [CI]` with `conclusion == 'success' && event == 'push' && github.sha == github.event.workflow_run.head_sha`, and has no reference to `Integration Tests`.
+- 2026-07-18: Task 3 (AC3) re-verified. `.github/workflows/integration.yml`'s `live-sidecar` job runs `Github/dapr-init` then `dotnet test tests/Hexalith.EventStore.Server.LiveSidecar.Tests/` with no `--filter`, uploads TRX + Cobertura coverage via `actions/upload-artifact` with `if: always()` and `if-no-files-found: error`, declares `on: push/pull_request/workflow_dispatch`, and uses its own `concurrency: group: integration-${{ github.ref }}`. `release.yml` has no dependency on this workflow (confirmed under Task 2).
+- 2026-07-18: Task 4 (AC4) re-verified. `DaprTestContainerFixture.VerifyPrerequisitesAsync` checks Redis (`6379`), placement (`50005`/`6050`), and scheduler (`50006`/`6060`) TCP reachability before `StartDaprSidecar`, raising `InvalidOperationException` with an explicit "Have you run 'dapr init'?" message on failure (environment-blocker classification, not a product failure). `WaitForDaprHealthAsync` retries the outbound health endpoint for up to `HealthTimeoutSeconds=60`; `WarmUpActorRuntimeAsync` retries an `IETagActor` regenerate/read-back round-trip for up to `WarmUpTimeoutSeconds=45`. `GetAggregateActorStateJsonAsync` reads persisted Redis actor-state hashes directly (with bounded retry) and is consumed by `EventPersistenceIntegrationTests`, `ReadModelBatchLiveSidecarTests`, `ProjectionEraseLiveSidecarTests`, and `NamedProjectionDispatchLiveSidecarTests` for durable read-back assertions.
+- 2026-07-18: Task 6 (AC6) runtime validation executed on this VM, which has a live local DAPR environment (Redis on `6379`, placement on `50005`, scheduler on `50006`, `daprd` 1.18.1 at `~/.dapr/bin/daprd` all reachable per `scripts/generated-api-smoke-preflight.sh`; only the full Aspire AppHost topology was not running, which the `LiveSidecar.Tests` fixture does not require since it starts its own `daprd` process directly). Exact commands and results:
+  - `dotnet restore Hexalith.EventStore.slnx -p:Configuration=Release -p:UseHexalithProjectReferences=false` — succeeded (up-to-date).
+  - `dotnet build Hexalith.EventStore.slnx --no-restore --configuration Release -warnaserror -p:UseHexalithProjectReferences=false` — **Build succeeded, 0 Warning(s), 0 Error(s)**.
+  - `dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --no-build --configuration Release -p:UseHexalithProjectReferences=false` (no DAPR running for this step) — **Passed! Failed: 0, Passed: 2626, Skipped: 25, Total: 2651**, duration 4m14s. No trait filter was passed.
+  - `dotnet test tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj --no-build --configuration Release -p:UseHexalithProjectReferences=false` (live daprd/Redis/placement/scheduler) — **Passed! Failed: 0, Passed: 44, Skipped: 0, Total: 44**, duration 4s. No trait filter was passed.
+  - Persisted-state evidence: `EventPersistenceIntegrationTests` asserts durable Redis sequence/read-back state via `GetCurrentSequenceAsync` (backed by the fixture's `GetAggregateActorStateJsonAsync` Redis hash read), not only HTTP/mock outcomes, satisfying the AC6/AC4 durable-evidence requirement.
+  - No `Category!=LiveSidecar` / `Category=LiveSidecar` filter was used for either project; lane separation was exercised purely through physical project selection, matching the guardrail.
+- 2026-07-18: Task 7 (AC7) confirmed — `git status --short` shows no modified file outside this story file and `sprint-status.yaml`; no workflow, project-split, DAPR-threshold, two-writer-race, or Story 7.10/7.12-scoped change was made during this verification pass.
 
 ### Completion Notes List
 
 - No product, test, workflow, or shared-guidance change was made. Verification initially stopped fail-closed on the post-baseline topology contradiction.
-- The Story 3.1 planning contract now matches the dedicated live-sidecar topology. Runtime verification and evidence capture remain in progress.
+- The Story 3.1 planning contract now matches the dedicated live-sidecar topology.
+- All seven tasks (AC1-AC7) are verified against the current shipped topology: 14 `LiveSidecar`-tagged classes live only under `Server.LiveSidecar.Tests` with `[Collection("DaprTestContainer")]`; `ci.yml`/`domain-ci.yml` run `Server.Tests` unfiltered with no DAPR init; `integration.yml` runs `Server.LiveSidecar.Tests` unfiltered with DAPR init and always-on TRX/coverage upload; `release.yml` gates only on same-head successful `CI`; the fixture checks Redis/placement/scheduler prerequisites, retries health/warm-up with bounded timeouts, and live tests assert persisted Redis read-back state.
+- Runtime evidence captured on this VM's live local DAPR environment: Release build 0 warnings/0 errors; `Server.Tests` 2626 passed/0 failed/25 skipped/2651 total (no DAPR); `Server.LiveSidecar.Tests` 44 passed/0 failed/0 skipped/44 total (live daprd/Redis/placement/scheduler). No trait filter was used for either run.
+- No workflow, project-split, DAPR-threshold, or unrelated runtime change was made; `git status` confirms only this story file was touched during verification.
+- FR17/NFR10 done-evidence reconciliation is left to the review gate per AC6/AC5; this story sets Status to `review` and does not itself claim `done`.
 
 ### File List
 
-- `_bmad-output/implementation-artifacts/3-1-re-tier-live-sidecar-tests-from-release-gate.md` (modified: approved course correction plus preserved development blocker record)
-- `_bmad-output/implementation-artifacts/sprint-status.yaml` (modified: Story 3.1 marked in progress)
+- `_bmad-output/implementation-artifacts/3-1-re-tier-live-sidecar-tests-from-release-gate.md` (modified: approved course correction, verification evidence for AC1-AC7, and completion notes)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (modified: Story 3.1 status updated to review)
 - `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-18-story-3-1-live-sidecar-topology.md` (added: approved course-correction proposal)
 
 ### Change Log
 
 - 2026-07-18: Began verification and recorded a correct-course blocker caused by the later dedicated live-sidecar test-project split; no task was marked complete.
 - 2026-07-18: Applied the approved Story 3.1 specification correction for dedicated project paths, unfiltered lane assertions, and current validation commands; runtime verification remains pending.
+- 2026-07-18: Completed runtime verification for Tasks 1-4, 6, and 7 against the dedicated live-sidecar topology; captured exact pass/fail/skip counts and persisted-state evidence; all tasks now checked and Status moved to `review`.
