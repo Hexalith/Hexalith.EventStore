@@ -981,13 +981,31 @@ import sys
 import xml.etree.ElementTree as ET
 
 root = ET.parse(sys.argv[1]).getroot()
-total = int(root.attrib.get("total", "0"))
-passed = int(root.attrib.get("passed", "0"))
-failed = int(root.attrib.get("failed", "0"))
-errors = int(root.attrib.get("errors", "0"))
-skipped = int(root.attrib.get("skipped", "0"))
-tests = root.findall(".//test")
-if (total <= 0 or passed != total or failed != 0 or errors != 0 or skipped != 0 or
+if root.tag == "assemblies":
+    summaries = root.findall("./assembly")
+    if len(summaries) != 1:
+        raise SystemExit(1)
+    summary = summaries[0]
+elif root.tag == "assembly":
+    summary = root
+else:
+    raise SystemExit(1)
+counters = ("total", "passed", "failed", "errors", "skipped", "not-run")
+if any(name not in summary.attrib for name in counters):
+    raise SystemExit(1)
+try:
+    values = {name: int(summary.attrib[name]) for name in counters}
+except ValueError:
+    raise SystemExit(1)
+root_counters = {name for name in counters if name in root.attrib}
+if root is not summary and root_counters:
+    if root_counters != set(counters) or any(root.attrib[name] != summary.attrib[name] for name in counters):
+        raise SystemExit(1)
+total = values["total"]
+passed = values["passed"]
+tests = summary.findall(".//test")
+if (total <= 0 or passed != total or values["failed"] != 0 or values["errors"] != 0 or
+        values["skipped"] != 0 or values["not-run"] != 0 or
         len(tests) != total or any(test.attrib.get("result") != "Pass" for test in tests)):
     raise SystemExit(1)
 PY
@@ -3592,13 +3610,31 @@ import sys
 import xml.etree.ElementTree as ET
 
 root = ET.parse(sys.argv[1]).getroot()
-total = int(root.attrib.get("total", "0"))
-passed = int(root.attrib.get("passed", "0"))
-failed = int(root.attrib.get("failed", "0"))
-errors = int(root.attrib.get("errors", "0"))
-skipped = int(root.attrib.get("skipped", "0"))
-tests = root.findall(".//test")
-if (total <= 0 or passed != total or failed != 0 or errors != 0 or skipped != 0 or
+if root.tag == "assemblies":
+    summaries = root.findall("./assembly")
+    if len(summaries) != 1:
+        raise SystemExit(1)
+    summary = summaries[0]
+elif root.tag == "assembly":
+    summary = root
+else:
+    raise SystemExit(1)
+counters = ("total", "passed", "failed", "errors", "skipped", "not-run")
+if any(name not in summary.attrib for name in counters):
+    raise SystemExit(1)
+try:
+    values = {name: int(summary.attrib[name]) for name in counters}
+except ValueError:
+    raise SystemExit(1)
+root_counters = {name for name in counters if name in root.attrib}
+if root is not summary and root_counters:
+    if root_counters != set(counters) or any(root.attrib[name] != summary.attrib[name] for name in counters):
+        raise SystemExit(1)
+total = values["total"]
+passed = values["passed"]
+tests = summary.findall(".//test")
+if (total <= 0 or passed != total or values["failed"] != 0 or values["errors"] != 0 or
+        values["skipped"] != 0 or values["not-run"] != 0 or
         len(tests) != total or any(test.attrib.get("result") != "Pass" for test in tests)):
     raise SystemExit(1)
 PY
@@ -5127,10 +5163,10 @@ ZERO_STATUS=$?
 set -e
 test "$ZERO_STATUS" -eq 0
 grep -Eq 'total="0"' "$ZERO_XML"
-printf '%s\n' '<assemblies total="4" passed="0" failed="0" skipped="4" errors="0" />' \
+printf '%s\n' '<assemblies><assembly name="Fixture.Tests.dll" total="4" passed="0" failed="0" skipped="4" errors="0" not-run="0"><collection><test result="Skip" /><test result="Skip" /><test result="Skip" /><test result="Skip" /></collection></assembly></assemblies>' \
   > "$SKIPPED_XML"
 ! validate_xunit_result "$SKIPPED_XML"
-printf '%s\n' '<assemblies total="4" passed="3" failed="0" skipped="1" errors="0" />' \
+printf '%s\n' '<assemblies><assembly name="Fixture.Tests.dll" total="4" passed="4" failed="0" skipped="0" errors="0" not-run="0"><collection><test result="Pass" /><test result="Pass" /><test result="Pass" /><test result="Pass" /></collection></assembly></assemblies>' \
   > "$PASSED_XML"
 validate_xunit_result "$PASSED_XML"
 
@@ -5141,7 +5177,7 @@ grep -Fq 'Hexalith.EventStore.Client.Tests.Queries.QueryCursorScopeTests.' "$MET
 ```
 
 Result: PASS; zero-match returned `0`/`total="0"`, the all-skipped fixture was rejected, the
-fixture with three passed tests was accepted, and the positive list filter found six method
+fixture with four passed tests was accepted, and the positive list filter found six method
 rows. This was a runner-behavior probe against an existing assembly, not parity closure
 evidence; the mandatory harness still requires a fresh build, at least one passed test, and
 no failures/errors for every credited run.

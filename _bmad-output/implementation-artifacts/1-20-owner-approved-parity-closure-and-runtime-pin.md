@@ -133,6 +133,19 @@ from this proposal inventory and remains owned by its existing changes.
 
 ### Review Findings
 
+#### 2026-07-19 — Exact-SHA execution corrections
+
+- [x] [Review][Patch] [high] Add the tracked executable provider adapter required by the hybrid
+  durable-evidence gate; the reviewed packet referenced
+  `tools/evidence-provider-adapters/<id>.sh`, but no adapter existed on `main`. Added the
+  authenticated, exact-version Azure immutable-blob adapter and its Contracts test in PR #301.
+- [x] [Review][Patch] [high] Read xUnit v3 counters from the single `<assembly>` summary rather
+  than the counter-less `<assemblies>` document root. The first isolated exact-SHA run passed
+  its first filtered test 8/8 but the obsolete root-counter parser rejected it as zero tests;
+  both the runtime gate and committed A/B/C recheck now validate the real schema, including
+  `not-run`, child-result totals, and optional aggregate-counter reconciliation. A Contracts
+  regression test extracts and executes the packet function against valid and adversarial XML.
+
 #### 2026-07-19 — Code review: uncommitted Story 1.20 hardening
 
 - [x] [Review][Patch] [high] Implement a trustworthy, version-bound WORM proof contract through a
@@ -448,3 +461,6 @@ evidence; named owner approval remains absent. No consumer migration is authoriz
   seven-year authorization retention, current-authority supersession, fixed xUnit identities and
   completeness, exact prerequisite/evidence inventories, dual-mode AD-11 evaluation, retry-safe
   Story 1.16 disposition, tail-safe authorization reconstruction, and executable mutation tests.
+- 2026-07-19: Repaired two execution-blocking proof defects found by the actual closure run: added
+  the missing authenticated immutable-blob adapter and aligned both xUnit validators with the
+  real xUnit v3 `<assemblies>/<assembly>` result schema.

@@ -113,6 +113,67 @@ public sealed class ProofPacketValidatorIntegrityTests
         }
     }
 
+    /// <summary>
+    /// Verifies the packet consumes the counter placement emitted by xUnit v3 and fails closed
+    /// for the obsolete root-only shape or any incomplete or contradictory summary.
+    /// </summary>
+    [Fact]
+    public void PacketXunitValidatorAcceptsRealV3SummaryAndRejectsInvalidSummaries()
+    {
+        string root = FindRepositoryRoot();
+        string packet = File.ReadAllText(Path.Combine(root, PacketRelativePath));
+        const string startMarker = "# xunit-result-contract-start";
+        const string endMarker = "# xunit-result-contract-end";
+        int start = packet.IndexOf(startMarker, StringComparison.Ordinal);
+        int bodyStart = start < 0 ? -1 : packet.IndexOf('\n', start) + 1;
+        int end = bodyStart <= 0 ? -1 : packet.IndexOf(endMarker, bodyStart, StringComparison.Ordinal);
+
+        start.ShouldBeGreaterThanOrEqualTo(0, "The executable packet must retain the xUnit validator start marker.");
+        bodyStart.ShouldBeGreaterThan(0, "The executable packet must place the validator after its start marker.");
+        end.ShouldBeGreaterThan(bodyStart, "The executable packet must retain the xUnit validator end marker.");
+        packet.LastIndexOf(startMarker, StringComparison.Ordinal).ShouldBe(start, "The xUnit validator marker must be unique.");
+        packet.LastIndexOf(endMarker, StringComparison.Ordinal).ShouldBe(end, "The xUnit validator marker must be unique.");
+
+        string validator = packet[bodyStart..end];
+        string temporaryDirectory = Path.Combine(Path.GetTempPath(), $"hexalith-xunit-validator-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(temporaryDirectory);
+        try
+        {
+            string scriptPath = Path.Combine(temporaryDirectory, "validate.sh");
+            File.WriteAllText(scriptPath, validator + Environment.NewLine + "validate_xunit_result \"$1\"" + Environment.NewLine);
+            string valid =
+                "<assemblies><assembly name=\"Fixture.Tests.dll\" total=\"1\" passed=\"1\" failed=\"0\" errors=\"0\" skipped=\"0\" not-run=\"0\">" +
+                "<collection><test type=\"Fixture.Tests.Case\" method=\"Passes\" result=\"Pass\" /></collection></assembly></assemblies>";
+            RunBashValidator(scriptPath, temporaryDirectory, "valid.xml", valid).ShouldBe(
+                0,
+                "The packet must accept the single-assembly summary emitted by xUnit v3.");
+
+            Dictionary<string, string> invalidFixtures = new(StringComparer.Ordinal)
+            {
+                ["root-only.xml"] =
+                    "<assemblies total=\"1\" passed=\"1\" failed=\"0\" errors=\"0\" skipped=\"0\" not-run=\"0\">" +
+                    "<assembly name=\"Fixture.Tests.dll\"><collection><test type=\"Fixture.Tests.Case\" method=\"Passes\" result=\"Pass\" /></collection></assembly></assemblies>",
+                ["multiple-assemblies.xml"] = valid.Replace("</assemblies>", "<assembly name=\"Other.Tests.dll\" total=\"0\" passed=\"0\" failed=\"0\" errors=\"0\" skipped=\"0\" not-run=\"0\" /></assemblies>", StringComparison.Ordinal),
+                ["skipped.xml"] = valid.Replace("skipped=\"0\"", "skipped=\"1\"", StringComparison.Ordinal),
+                ["not-run.xml"] = valid.Replace("not-run=\"0\"", "not-run=\"1\"", StringComparison.Ordinal),
+                ["counter-mismatch.xml"] = valid.Replace("total=\"1\"", "total=\"2\"", StringComparison.Ordinal),
+                ["failed-result.xml"] = valid.Replace("result=\"Pass\"", "result=\"Fail\"", StringComparison.Ordinal),
+                ["aggregate-mismatch.xml"] = valid.Replace("<assemblies>", "<assemblies total=\"2\" passed=\"2\" failed=\"0\" errors=\"0\" skipped=\"0\" not-run=\"0\">", StringComparison.Ordinal),
+            };
+
+            foreach ((string fileName, string xml) in invalidFixtures)
+            {
+                RunBashValidator(scriptPath, temporaryDirectory, fileName, xml).ShouldNotBe(
+                    0,
+                    $"The packet must fail closed for {fileName}.");
+            }
+        }
+        finally
+        {
+            Directory.Delete(temporaryDirectory, recursive: true);
+        }
+    }
+
     private static string MutateAllowlist(string json, Action<JsonObject> mutate)
     {
         JsonObject root = JsonNode.Parse(json).ShouldBeOfType<JsonObject>();
@@ -141,6 +202,30 @@ public sealed class ProofPacketValidatorIntegrityTests
         process.StandardInput.Write(input);
         process.StandardInput.Close();
         process.WaitForExit(5000).ShouldBeTrue("jq validator execution must finish within five seconds.");
+        _ = process.StandardOutput.ReadToEnd();
+        _ = process.StandardError.ReadToEnd();
+        return process.ExitCode;
+    }
+
+    private static int RunBashValidator(string scriptPath, string directory, string fileName, string xml)
+    {
+        string fixturePath = Path.Combine(directory, fileName);
+        File.WriteAllText(fixturePath, xml);
+        using var process = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = "bash",
+                RedirectStandardError = true,
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+            },
+        };
+        process.StartInfo.ArgumentList.Add(scriptPath);
+        process.StartInfo.ArgumentList.Add(fixturePath);
+
+        process.Start().ShouldBeTrue("bash must be available to execute the proof-packet validator.");
+        process.WaitForExit(5000).ShouldBeTrue("The xUnit validator must finish within five seconds.");
         _ = process.StandardOutput.ReadToEnd();
         _ = process.StandardError.ReadToEnd();
         return process.ExitCode;
