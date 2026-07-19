@@ -1,40 +1,200 @@
 {
-  "schema": "hexalith.eventstore.deferred-xunit-skip-allowlist/v1",
+  "schema": "hexalith.eventstore.deferred-xunit-skip-allowlist/v2",
   "repository": "Hexalith/Hexalith.EventStore",
-  "evidence_name": "crosscut-admin-mcp",
-  "assembly": "Hexalith.EventStore.Admin.Mcp.Tests.dll",
-  "tests": [
+  "canonical_inventory": "UTF-8 SHA-256 of ordinally sorted name + NUL + exact reason + LF records",
+  "lanes": [
     {
-      "name": "Hexalith.EventStore.Admin.Mcp.Tests.Dw2McpProtocolGatesAtddTests.ConsistencyTrigger_WithoutConfirm_DoesNotInvokeAdminApi",
-      "reason": "ATDD red phase — DW2 AC#8 (write-preview non-mutation proof). Remove Skip after the live evidence captures one approval-gated write tool's preview shape AND a before/after non-mutation pair."
+      "evidence_name": "crosscut-admin-mcp",
+      "assembly": "Hexalith.EventStore.Admin.Mcp.Tests.dll",
+      "deferred_work": [
+        "DW2"
+      ],
+      "skip_count": 8,
+      "inventory_sha256": "f74d3b2d868d4beea47df90816b382f62a626ecc6ceb301eef91ee6c963dd571",
+      "tests": {
+        "Hexalith.EventStore.Admin.Mcp.Tests.Dw2McpProtocolGatesAtddTests.ConsistencyTrigger_WithoutConfirm_DoesNotInvokeAdminApi": "ATDD red phase — DW2 AC#8 (write-preview non-mutation proof). Remove Skip after the live evidence captures one approval-gated write tool's preview shape AND a before/after non-mutation pair.",
+        "Hexalith.EventStore.Admin.Mcp.Tests.Dw2McpProtocolGatesAtddTests.McpHost_ValidEnvVars_KeepsStdoutEmptyBeforeJsonRpc": "ATDD red phase — DW2 AC#7 (MCP startup + stdio discipline). Remove Skip after the DW2 live MCP transcript captures initialize → tools/list with stdout reserved for JSON-RPC and stderr carrying logs.",
+        "Hexalith.EventStore.Admin.Mcp.Tests.Dw2McpProtocolGatesAtddTests.SessionFallback_NoEstablishedContext_DoesNotFabricateScope": "ATDD red phase — DW2 AC#9 (session fallback classification). Remove Skip after the live transcript captures session-set-context followed by a scope-omitted tool call that uses session values, with absent/broken/blocked classification recorded.",
+        "Hexalith.EventStore.Admin.Mcp.Tests.Dw2McpProtocolGatesAtddTests.StreamList_OmittedScope_FallsBackToSessionTenantAndDomain": "ATDD red phase — DW2 AC#9 (session fallback classification). Remove Skip after the live transcript captures session-set-context followed by a scope-omitted tool call that uses session values, with absent/broken/blocked classification recorded.",
+        "Hexalith.EventStore.Admin.Mcp.Tests.Dw2McpProtocolGatesAtddTests.ToolsAssembly_AdvertisesAtLeastOneApprovalGatedWriteTool": "ATDD red phase — DW2 AC#7 (MCP startup + stdio discipline). Remove Skip after the DW2 live MCP transcript captures initialize → tools/list with stdout reserved for JSON-RPC and stderr carrying logs.",
+        "Hexalith.EventStore.Admin.Mcp.Tests.Dw2McpProtocolGatesAtddTests.ToolsAssembly_AdvertisesRepresentativeReadTool": "ATDD red phase — DW2 AC#7 (MCP startup + stdio discipline). Remove Skip after the DW2 live MCP transcript captures initialize → tools/list with stdout reserved for JSON-RPC and stderr carrying logs.",
+        "Hexalith.EventStore.Admin.Mcp.Tests.Dw2McpProtocolGatesAtddTests.ToolsAssembly_AdvertisesSessionContextTools": "ATDD red phase — DW2 AC#9 (session fallback classification). Remove Skip after the live transcript captures session-set-context followed by a scope-omitted tool call that uses session values, with absent/broken/blocked classification recorded.",
+        "Hexalith.EventStore.Admin.Mcp.Tests.Dw2McpProtocolGatesAtddTests.WritePreviewShape_IsStable_AcrossEvidenceTranscripts": "ATDD red phase — DW2 AC#8 (write-preview non-mutation proof). Remove Skip after the live evidence captures one approval-gated write tool's preview shape AND a before/after non-mutation pair."
+      }
     },
     {
-      "name": "Hexalith.EventStore.Admin.Mcp.Tests.Dw2McpProtocolGatesAtddTests.McpHost_ValidEnvVars_KeepsStdoutEmptyBeforeJsonRpc",
-      "reason": "ATDD red phase — DW2 AC#7 (MCP startup + stdio discipline). Remove Skip after the DW2 live MCP transcript captures initialize → tools/list with stdout reserved for JSON-RPC and stderr carrying logs."
+      "evidence_name": "crosscut-admin-server",
+      "assembly": "Hexalith.EventStore.Admin.Server.Tests.dll",
+      "deferred_work": [
+        "DW2"
+      ],
+      "skip_count": 18,
+      "inventory_sha256": "50c2004509032d12e1fd0628a460d51c8b5e148669f53638097b5585c53d6df4",
+      "tests": {
+        "Hexalith.EventStore.Admin.Server.Tests.Evidence.Dw2EvidenceIndexAtddTests.DeferredWork_HasDw2DispositionMarker_OnAtLeastOneBullet": "ATDD red phase — DW2 AC#12 (deferred-work disposition markers). Remove Skip after the relevant bullets in deferred-work.md carry a DW2 disposition marker.",
+        "Hexalith.EventStore.Admin.Server.Tests.Evidence.Dw2EvidenceIndexAtddTests.EvidenceFolder_ExistsUnderTestArtifacts": "ATDD red phase — DW2 AC#11 (evidence folder). Remove Skip after `_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/` is created during the smoke run.",
+        "Hexalith.EventStore.Admin.Server.Tests.Evidence.Dw2EvidenceIndexAtddTests.EvidenceIndex_ContainsAllRequiredTables": "ATDD red phase — DW2 AC#11 (evidence index tables). Remove Skip after the evidence index file is written with all required tables.",
+        "Hexalith.EventStore.Admin.Server.Tests.Evidence.Dw2EvidenceIndexAtddTests.EvidenceIndex_RecordsCanonicalSeededStreamIdentifierBlock": "ATDD red phase — DW2 AC#11 (canonical seeded-stream identifier block). Remove Skip after the canonical block is recorded once and reused across Admin API, Admin UI, MCP, and CommandAPI artefacts.",
+        "Hexalith.EventStore.Admin.Server.Tests.Evidence.Dw2EvidenceIndexAtddTests.EvidenceIndex_RemoteMetadataStatusMatrix_HasRowsPerSurface": "ATDD red phase — DW2 AC#11 (per-surface RemoteMetadataStatus matrix). Remove Skip after the index records sidecar/actors/pubsub each as their own row.",
+        "Hexalith.EventStore.Admin.Server.Tests.Services.Dw2DebuggingTimeoutAtddTests.Bisect_RaisesOperationCanceledException_AfterLongerCap": "ATDD red phase — DW2 AC#5 (Epic 20 debugging timeout discipline). Remove Skip after the live smoke captures a timeout-classified row for the targeted tool in the DW2 Epic 20 debugging evidence table.",
+        "Hexalith.EventStore.Admin.Server.Tests.Services.Dw2DebuggingTimeoutAtddTests.Blame_RaisesOperationCanceledException_WhenRemoteHangs": "ATDD red phase — DW2 AC#5 (Epic 20 debugging timeout discipline). Remove Skip after the live smoke captures a timeout-classified row for the targeted tool in the DW2 Epic 20 debugging evidence table.",
+        "Hexalith.EventStore.Admin.Server.Tests.Services.Dw2DebuggingTimeoutAtddTests.StepThrough_RaisesOperationCanceledException_WhenRemoteHangs": "ATDD red phase — DW2 AC#5 (Epic 20 debugging timeout discipline). Remove Skip after the live smoke captures a timeout-classified row for the targeted tool in the DW2 Epic 20 debugging evidence table.",
+        "Hexalith.EventStore.Admin.Server.Tests.Services.Dw2DebuggingTimeoutAtddTests.TimeoutCapsAreDistinct_LockingPerToolBudget": "ATDD red phase — DW2 AC#5 (Epic 20 debugging timeout discipline). Remove Skip after the live smoke captures a timeout-classified row for the targeted tool in the DW2 Epic 20 debugging evidence table.",
+        "Hexalith.EventStore.Admin.Server.Tests.Services.Dw2DebuggingTimeoutAtddTests.TraceMap_RaisesOperationCanceledException_WhenRemoteHangs": "ATDD red phase — DW2 AC#5 (Epic 20 debugging timeout discipline). Remove Skip after the live smoke captures a timeout-classified row for the targeted tool in the DW2 Epic 20 debugging evidence table.",
+        "Hexalith.EventStore.Admin.Server.Tests.Services.Dw2RemoteMetadataPerSurfaceAtddTests.Actors_RemoteMetadataStatus_IsIndependentFromSidecarStatus": "ATDD red phase — DW2 AC#3 (per-surface RemoteMetadataStatus). Remove Skip after the live RemoteMetadataStatus matrix is recorded with independent rows for sidecar/actors/pubsub.",
+        "Hexalith.EventStore.Admin.Server.Tests.Services.Dw2RemoteMetadataPerSurfaceAtddTests.Components_ProbeTimeout_ProducesDegradedHealth_NotSilentSuccess": "ATDD red phase — DW2 AC#2 (Admin DAPR component coverage). Remove Skip after live smoke captures observed component/sidecar/actor/pubsub/resiliency rows in the DW2 evidence index.",
+        "Hexalith.EventStore.Admin.Server.Tests.Services.Dw2RemoteMetadataPerSurfaceAtddTests.PubSub_ParsesLegacyWrappedRulesShape_ForBackwardCompatibility": "ATDD red phase — DW2 AC#4 (degraded states stay visible). Remove Skip after the smoke captures a degraded sample — empty/Unreachable/parse-error/timeout/4xx/5xx — without flattening it into pass/fail prose.",
+        "Hexalith.EventStore.Admin.Server.Tests.Services.Dw2RemoteMetadataPerSurfaceAtddTests.PubSub_ParsesRulesArrayDirectShape_FromDaprMetadataV117": "ATDD red phase — DW2 AC#4 (degraded states stay visible). Remove Skip after the smoke captures a degraded sample — empty/Unreachable/parse-error/timeout/4xx/5xx — without flattening it into pass/fail prose.",
+        "Hexalith.EventStore.Admin.Server.Tests.Services.Dw2RemoteMetadataPerSurfaceAtddTests.PubSub_RemoteMetadataStatus_IsIndependentFromOtherSurfaces": "ATDD red phase — DW2 AC#3 (per-surface RemoteMetadataStatus). Remove Skip after the live RemoteMetadataStatus matrix is recorded with independent rows for sidecar/actors/pubsub.",
+        "Hexalith.EventStore.Admin.Server.Tests.Services.Dw2RemoteMetadataPerSurfaceAtddTests.Resiliency_FileNotFound_ReportsUnavailableWithStableMarker": "ATDD red phase — DW2 AC#4 (degraded states stay visible). Remove Skip after the smoke captures a degraded sample — empty/Unreachable/parse-error/timeout/4xx/5xx — without flattening it into pass/fail prose.",
+        "Hexalith.EventStore.Admin.Server.Tests.Services.Dw2RemoteMetadataPerSurfaceAtddTests.Sidecar_EmitsNotConfigured_WhenRemoteEndpointBlank": "ATDD red phase — DW2 AC#3 (per-surface RemoteMetadataStatus). Remove Skip after the live RemoteMetadataStatus matrix is recorded with independent rows for sidecar/actors/pubsub.",
+        "Hexalith.EventStore.Admin.Server.Tests.Services.Dw2RemoteMetadataPerSurfaceAtddTests.Sidecar_EmitsUnreachable_WhenRemoteEndpointConfiguredButFetchFails": "ATDD red phase — DW2 AC#3 (per-surface RemoteMetadataStatus). Remove Skip after the live RemoteMetadataStatus matrix is recorded with independent rows for sidecar/actors/pubsub."
+      }
     },
     {
-      "name": "Hexalith.EventStore.Admin.Mcp.Tests.Dw2McpProtocolGatesAtddTests.SessionFallback_NoEstablishedContext_DoesNotFabricateScope",
-      "reason": "ATDD red phase — DW2 AC#9 (session fallback classification). Remove Skip after the live transcript captures session-set-context followed by a scope-omitted tool call that uses session values, with absent/broken/blocked classification recorded."
+      "evidence_name": "crosscut-admin-ui-e2e",
+      "assembly": "Hexalith.EventStore.Admin.UI.E2E.dll",
+      "deferred_work": [
+        "DW5"
+      ],
+      "skip_count": 2,
+      "inventory_sha256": "193c55ba9ad83f2d32d6e206a333a1d77ee44fcb6195288a888dc321b20a1788",
+      "tests": {
+        "Hexalith.EventStore.Admin.UI.E2E.Dw5DialogAccessibilityBrowserAtddTests.CommandSandbox_PayloadDialog_RenderedElementCarriesAriaLabel": "ATDD red phase — DW5 AC#8 (CommandSandbox dialog live DOM aria-label). Remove Skip after the dev seeds a stream/command context that opens the CommandSandbox event-payload dialog and captures the rendered Fluent element's aria-label. If seeding is unavailable, record the blocker in the evidence index and leave Skip in place per story rule.",
+        "Hexalith.EventStore.Admin.UI.E2E.Dw5DialogAccessibilityBrowserAtddTests.EventDebugger_PayloadDialog_RenderedElementCarriesAriaLabel": "ATDD red phase — DW5 AC#9 (EventDebugger dialog live DOM aria-label). Remove Skip after the dev seeds a stream that opens the EventDebugger event-payload dialog and captures the rendered Fluent element's aria-label. If seeding is unavailable, record the blocker in the evidence index and leave Skip in place per story rule."
+      }
     },
     {
-      "name": "Hexalith.EventStore.Admin.Mcp.Tests.Dw2McpProtocolGatesAtddTests.StreamList_OmittedScope_FallsBackToSessionTenantAndDomain",
-      "reason": "ATDD red phase — DW2 AC#9 (session fallback classification). Remove Skip after the live transcript captures session-set-context followed by a scope-omitted tool call that uses session values, with absent/broken/blocked classification recorded."
+      "evidence_name": "crosscut-deferred-work-governance",
+      "assembly": "Hexalith.EventStore.DeferredWorkGovernance.Tests.dll",
+      "deferred_work": [
+        "DW6"
+      ],
+      "skip_count": 19,
+      "inventory_sha256": "93098649a244dc97f8a1122951f9fc81973066639615a16b4e10a6a8b0cd92eb",
+      "tests": {
+        "Hexalith.EventStore.DeferredWorkGovernance.Tests.Dw6BookkeepingAtddTests.DevAgentRecord_IncludesBeforeAfterCountsAndCheckerOutput": "ATDD red phase -- DW6 deferred-work governance checker and story artifacts are not implemented. Remove Skip when implementing.",
+        "Hexalith.EventStore.DeferredWorkGovernance.Tests.Dw6BookkeepingAtddTests.DevAgentRecord_ListsFilesTouchedAndRemainingUnclassifiedSections": "ATDD red phase -- DW6 deferred-work governance checker and story artifacts are not implemented. Remove Skip when implementing.",
+        "Hexalith.EventStore.DeferredWorkGovernance.Tests.Dw6BookkeepingAtddTests.SprintStatus_MovesToReviewOnlyAfterEvidenceIsRecorded": "ATDD red phase -- DW6 deferred-work governance checker and story artifacts are not implemented. Remove Skip when implementing.",
+        "Hexalith.EventStore.DeferredWorkGovernance.Tests.Dw6BookkeepingAtddTests.Story_LinksAtddArtifactsForDevStoryHandoff": "ATDD red phase -- DW6 deferred-work governance checker and story artifacts are not implemented. Remove Skip when implementing.",
+        "Hexalith.EventStore.DeferredWorkGovernance.Tests.Dw6CheckerReportAtddTests.Checker_HelpOutputDocumentsBlockingVersusAdvisoryBehavior": "ATDD red phase -- DW6 deferred-work governance checker and story artifacts are not implemented. Remove Skip when implementing.",
+        "Hexalith.EventStore.DeferredWorkGovernance.Tests.Dw6CheckerReportAtddTests.Checker_OutputIsStableSortedAndConcise": "ATDD red phase -- DW6 deferred-work governance checker and story artifacts are not implemented. Remove Skip when implementing.",
+        "Hexalith.EventStore.DeferredWorkGovernance.Tests.Dw6CheckerReportAtddTests.Checker_ReportIncludesAllCanonicalCountBuckets": "ATDD red phase -- DW6 deferred-work governance checker and story artifacts are not implemented. Remove Skip when implementing.",
+        "Hexalith.EventStore.DeferredWorkGovernance.Tests.Dw6CheckerReportAtddTests.Checker_UnclassifiedLiveBullets_ReportHeadingExcerptAndLocator": "ATDD red phase -- DW6 deferred-work governance checker and story artifacts are not implemented. Remove Skip when implementing.",
+        "Hexalith.EventStore.DeferredWorkGovernance.Tests.Dw6CheckerReportAtddTests.DocsValidationWiring_IsConsistentOrExplicitlyDeferred": "ATDD red phase -- DW6 deferred-work governance checker and story artifacts are not implemented. Remove Skip when implementing.",
+        "Hexalith.EventStore.DeferredWorkGovernance.Tests.Dw6GovernanceVocabularyAtddTests.DeferredWork_GovernanceSection_DefinesCanonicalDispositions": "ATDD red phase -- DW6 deferred-work governance checker and story artifacts are not implemented. Remove Skip when implementing.",
+        "Hexalith.EventStore.DeferredWorkGovernance.Tests.Dw6GovernanceVocabularyAtddTests.LegacyCompatibility_CheckerClassifiesMixedMarkerFixture": "ATDD red phase -- DW6 deferred-work governance checker and story artifacts are not implemented. Remove Skip when implementing.",
+        "Hexalith.EventStore.DeferredWorkGovernance.Tests.Dw6GovernanceVocabularyAtddTests.LegacyCompatibility_DocumentsRecognizedMixedForms": "ATDD red phase -- DW6 deferred-work governance checker and story artifacts are not implemented. Remove Skip when implementing.",
+        "Hexalith.EventStore.DeferredWorkGovernance.Tests.Dw6GovernanceVocabularyAtddTests.NewDeferralGuidance_RequiresGroupingHint": "ATDD red phase -- DW6 deferred-work governance checker and story artifacts are not implemented. Remove Skip when implementing.",
+        "Hexalith.EventStore.DeferredWorkGovernance.Tests.Dw6GovernanceVocabularyAtddTests.OpenAndStoryDispositions_RequireOwnerAndNextReviewDate": "ATDD red phase -- DW6 deferred-work governance checker and story artifacts are not implemented. Remove Skip when implementing.",
+        "Hexalith.EventStore.DeferredWorkGovernance.Tests.Dw6GovernanceVocabularyAtddTests.ReviewerAndRetrospectiveHandoffGuidance_IsDocumentedAndLinkedFromStory": "ATDD red phase -- DW6 deferred-work governance checker and story artifacts are not implemented. Remove Skip when implementing.",
+        "Hexalith.EventStore.DeferredWorkGovernance.Tests.Dw6LedgerSweepAtddTests.Checker_DoesNotTurnEveryLegacyBulletIntoABlockingFailure": "ATDD red phase -- DW6 deferred-work governance checker and story artifacts are not implemented. Remove Skip when implementing.",
+        "Hexalith.EventStore.DeferredWorkGovernance.Tests.Dw6LedgerSweepAtddTests.CuratedSweep_PreservesRawHistoricalBulletTextAgainstSnapshot": "ATDD red phase -- DW6 deferred-work governance checker and story artifacts are not implemented. Remove Skip when implementing.",
+        "Hexalith.EventStore.DeferredWorkGovernance.Tests.Dw6LedgerSweepAtddTests.ScopeBoundaries_DoNotClaimProductRuntimeOrGeneratedAuditFiles": "ATDD red phase -- DW6 deferred-work governance checker and story artifacts are not implemented. Remove Skip when implementing.",
+        "Hexalith.EventStore.DeferredWorkGovernance.Tests.Dw6LedgerSweepAtddTests.TouchedHeadingGroups_HaveOneLineRationaleInDevAgentRecord": "ATDD red phase -- DW6 deferred-work governance checker and story artifacts are not implemented. Remove Skip when implementing."
+      }
     },
     {
-      "name": "Hexalith.EventStore.Admin.Mcp.Tests.Dw2McpProtocolGatesAtddTests.ToolsAssembly_AdvertisesAtLeastOneApprovalGatedWriteTool",
-      "reason": "ATDD red phase — DW2 AC#7 (MCP startup + stdio discipline). Remove Skip after the DW2 live MCP transcript captures initialize → tools/list with stdout reserved for JSON-RPC and stderr carrying logs."
+      "evidence_name": "crosscut-operational-evidence",
+      "assembly": "Hexalith.EventStore.OperationalEvidence.Validator.Tests.dll",
+      "deferred_work": [
+        "DW4",
+        "DW9"
+      ],
+      "skip_count": 54,
+      "inventory_sha256": "b14053faf105bccdf0a674bc436a176bdd9743c4515c090cfee1f642b7e2c1dd",
+      "tests": {
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4DeferredWorkDispositionAtddTests.DeferredWork_Dw4RelevantBullets_CarryDispositionMarker": "ATDD red phase — DW4 AC#12 — DW4-relevant deferred-work bullets must carry a disposition marker. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4DeferredWorkDispositionAtddTests.DeferredWork_UnrelatedBullets_AreUnchangedFromSnapshot": "ATDD red phase — DW4 AC#12 — unrelated bullets must be unchanged from story-start snapshot. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4DiagnosticShapeAtddTests.DiagnosticOrdering_IsDeterministicAcrossRuns": "ATDD red phase — DW4 AC#13 — diagnostic ordering must be deterministic across runs. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4DiagnosticShapeAtddTests.DiagnosticOrdering_MatchesCanonicalSort": "ATDD red phase — DW4 AC#13 — diagnostic order matches canonical (file, schema, rule, section, field, line) sort. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4DiagnosticShapeAtddTests.DiagnosticRuleIds_MatchNamingContract": "ATDD red phase — DW4 AC#13 — every emitted rule id must match the naming contract. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4DiagnosticShapeAtddTests.DiagnosticShape_RequiredFieldsPresent": "ATDD red phase — DW4 AC#13 — every diagnostic must declare file, rule, hint at minimum. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4DiagnosticShapeAtddTests.RuleVocabulary_FamilyPrefixesAreDistinct": "ATDD red phase — DW4 AC#13 — every committed rule id in vocabulary obeys family-prefix rules. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4DocsValidationWiringAtddTests.CiIntegration_GitHubWorkflow_InvokesValidatorOrDeclaresDeferral": "ATDD red phase — DW4 AC#10 — docs-validation.yml must invoke the validator OR carry a CI-deferred reason. Remove Skip when wiring.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4DocsValidationWiringAtddTests.CiIntegration_PowerShellScript_InvokesValidatorOrDeclaresDeferral": "ATDD red phase — DW4 AC#10 — scripts/validate-docs.ps1 must invoke the validator OR carry a CI-deferred reason. Remove Skip when wiring.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4DocsValidationWiringAtddTests.CiIntegration_ShellScript_InvokesValidatorOrDeclaresDeferral": "ATDD red phase — DW4 AC#10 — scripts/validate-docs.sh must invoke the validator OR carry a CI-deferred reason. Remove Skip when wiring.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4DocsValidationWiringAtddTests.CiIntegration_SmokeRun_KnownBadFixtureExitsNonZero": "ATDD red phase — DW4 AC#10 — smoke: shelling out to the validator with a known-bad fixture must exit non-zero. Remove Skip when wiring.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4DocsValidationWiringAtddTests.Toolchain_EntrypointDeclarationFile_IsCommitted": "ATDD red phase — DW4 AC#9 — validator entrypoint is recorded in entrypoint.txt. Remove Skip when wiring.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4NotApplicableMarkerAtddTests.NotApplicable_EmptyReason_FailsWithReasonMissing": "ATDD red phase — DW4 AC#2 — 'not-applicable:' with empty reason must fail. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4NotApplicableMarkerAtddTests.NotApplicable_OnNonProfileRequiredField_FailsWithNotAllowedHere": "ATDD red phase — DW4 AC#2 — 'not-applicable: <reason>' on a non-profile required field must fail. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4ParseVsRuleSeparationAtddTests.ParserFailure_DuplicateRequiredHeading_ProducesParseFamilyOnly": "ATDD red phase — DW4 AC#13 — duplicate required heading must produce parse-heading-duplicate. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4ParseVsRuleSeparationAtddTests.ParserFailure_MalformedTable_ProducesParseFamilyOnly": "ATDD red phase — DW4 AC#13 — malformed table must produce parse-table-malformed without business-rule noise. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4ParseVsRuleSeparationAtddTests.ParserFailure_MalformedYaml_ProducesParseFamilyOnly": "ATDD red phase — DW4 AC#13 — malformed YAML must produce parse-yaml-malformed without business-rule noise. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4ProfileScopedAspireAtddTests.Profile_AspireClaimedButFieldsMissing_FailsWithProfileAspireFieldsMissing": "ATDD red phase — DW4 AC#7 — Aspire-claimed proof with blank Aspire fields must fail. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4ProfileScopedAspireAtddTests.Profile_NonAspireWithNotApplicableFields_Passes": "ATDD red phase — DW4 AC#7 — non-Aspire proof with not-applicable Aspire fields passes. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4QueryEvidenceNegativeAtddTests.QueryEvidence_ClassificationNotInEnum_Fails": "ATDD red phase — DW4 AC#4 — classification outside the 9-value enum must fail with classification-invalid. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4QueryEvidenceNegativeAtddTests.QueryEvidence_CorrelationControlMissing_Fails": "ATDD red phase — DW4 AC#6 — missing correlation-integrity control must fail with correlation-control-required-missing. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4QueryEvidenceNegativeAtddTests.QueryEvidence_EmptyRequiredTableCell_Fails": "ATDD red phase — DW4 AC#3 — empty required table cell must fail with required-table-cell-empty. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4QueryEvidenceNegativeAtddTests.QueryEvidence_FalsePositiveControlMissing_Fails": "ATDD red phase — DW4 AC#6 — missing false-positive control must fail with control-required-missing. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4QueryEvidenceNegativeAtddTests.QueryEvidence_MissingRequiredMetadata_Fails": "ATDD red phase — DW4 AC#2 — missing required metadata field must fail with query-required-metadata-missing. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4QueryEvidenceNegativeAtddTests.QueryEvidence_PlaceholderUnreplaced_Fails": "ATDD red phase — DW4 AC#3 — unreplaced angle-bracket placeholder must fail with placeholder-unreplaced. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4QueryEvidencePositiveAtddTests.QueryEvidence_MinimalValidFixture_Passes": "ATDD red phase — DW4 AC#1, #2 — minimal valid query/v1 evidence must pass. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4QueryEvidencePositiveAtddTests.QueryEvidence_NotApplicableAspireFields_Passes": "ATDD red phase — DW4 AC#7 — Aspire fields with 'not-applicable: <reason>' must pass. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4RedactionRulesAtddTests.Redaction_BearerTokenInDiagnosticsText_Fails": "ATDD red phase — DW4 AC#5 — JWT-shaped bearer token outside redaction marker must fail. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4RedactionRulesAtddTests.Redaction_ConnectionStringKeyword_Fails": "ATDD red phase — DW4 AC#5 — connection-string keyword must fail. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4RedactionRulesAtddTests.Redaction_DocumentedSyntheticMarkers_Pass": "ATDD red phase — DW4 AC#5 — documented synthetic markers under Redaction must NOT trigger false positives. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4RedactionRulesAtddTests.Redaction_ProductionHostname_Fails": "ATDD red phase — DW4 AC#5 — production hostname pattern must fail. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4RedactionRulesAtddTests.Redaction_RawSecretMarker_Fails": "ATDD red phase — DW4 AC#5 — raw secret marker (AKIA…, xoxb-, GitHub PAT shape) must fail. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4RedactionRulesAtddTests.Redaction_SectionMissing_Fails": "ATDD red phase — DW4 AC#5 — missing Redaction section must fail with redaction-section-missing. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4RedactionRulesAtddTests.Redaction_SignalrBearerToken_Fails": "ATDD red phase — DW4 AC#5 — SignalR fixture with bearer token must also fail. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4SchemaIdentificationAtddTests.SchemaIdentification_ContradictorySchemaMarkers_FailsClosedBeforeRules": "ATDD red phase — DW4 AC#1 / Adv-Elicitation — file with contradictory schema markers must fail with schema-version-contradictory. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4SchemaIdentificationAtddTests.SchemaIdentification_DuplicateSchemaMarkers_FailsClosedBeforeRules": "ATDD red phase — DW4 AC#1 / Adv-Elicitation — file with duplicate schema markers must fail with schema-version-duplicate. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4SchemaIdentificationAtddTests.SchemaIdentification_NoSchemaMarker_FailsClosedBeforeRules": "ATDD red phase — DW4 AC#1 / Adv-Elicitation — file with no schema marker must fail with schema-version-missing. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4SchemaIdentificationAtddTests.SchemaIdentification_UnsupportedFutureVersion_FailsClosed": "ATDD red phase — DW4 AC#1 — unsupported future schema version must fail with schema-version-unsupported. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4SignalrEvidenceNegativeAtddTests.SignalrEvidence_ClassificationNotInEnum_Fails": "ATDD red phase — DW4 AC#4 — classification outside the 6-value SignalR enum must fail. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4SignalrEvidenceNegativeAtddTests.SignalrEvidence_ControlMissing_Fails": "ATDD red phase — DW4 AC#6 — missing false-positive control must fail. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4SignalrEvidenceNegativeAtddTests.SignalrEvidence_MissingRequiredMetadata_Fails": "ATDD red phase — DW4 AC#2 — missing required SignalR metadata must fail with signalr-required-metadata-missing. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4SignalrEvidenceNegativeAtddTests.SignalrEvidence_PlaceholderUnreplaced_Fails": "ATDD red phase — DW4 AC#3 — placeholder unreplaced must fail with placeholder-unreplaced. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4SignalrEvidencePositiveAtddTests.SignalrEvidence_MinimalValidFixture_Passes": "ATDD red phase — DW4 AC#1, #2 — minimal valid signalr/v1 evidence must pass. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4TaxonomyMappingAtddTests.TaxonomyMapping_QueryAndSignalrDifferencesAreDocumented": "ATDD red phase — DW4 AC#4 — query and SignalR classification sets intentionally differ; mapping table is single-source. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4TaxonomyMappingAtddTests.TaxonomyMapping_QuerySchemaClassifications_MatchTemplate": "ATDD red phase — DW4 AC#4 — validator's query/v1 classification set matches the template enum. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4TaxonomyMappingAtddTests.TaxonomyMapping_SignalrSchemaClassifications_MatchTemplate": "ATDD red phase — DW4 AC#4 — validator's signalr/v1 classification set matches the template enum. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4ValidatorContractAtddTests.FixtureCoverageMatrix_EveryNonPassRuleFamilyHasAtLeastOneFixture": "ATDD red phase — DW4 AC#8 — every rule family in the vocabulary must be exercised by at least one fixture. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4ValidatorContractAtddTests.Fixture_ProducesExpectedVerdictAndRuleIds": "ATDD red phase — DW4 AC#8 — every fixture in catalog must produce its expected verdict and rule-id set. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4ValidatorContractAtddTests.ValidatorDefaultScope_DoesNotRecursivelyAuditHistoricalEvidence": "ATDD red phase — DW4 AC#1, #11 — default scope is templates + curated fixtures only. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw4ValidatorContractAtddTests.ValidatorEntrypoint_MustBeDeclaredAndResolveToInvoker": "ATDD red phase — DW4 AC#1 — validator entrypoint must be declared via entrypoint.txt. Remove Skip when wiring.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw9EvidenceValidatorPolishTests.ControlLinkageFixtures_EmitPreciseDw9Rule": "ATDD red phase -- DW9 evidence validator polish requires the DW4 validator entrypoint. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw9EvidenceValidatorPolishTests.LinkedControlRunFixtures_Pass": "ATDD red phase -- DW9 evidence validator polish requires the DW4 validator entrypoint. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw9EvidenceValidatorPolishTests.SkippedFiles_ReturnInformationalDiagnosticWithoutFailing": "ATDD red phase -- DW9 evidence validator polish requires the DW4 validator entrypoint. Remove Skip when implementing.",
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.Dw9EvidenceValidatorPolishTests.TemplateLookingFileWithoutSkipPredicate_IsStillAudited": "ATDD red phase -- DW9 evidence validator polish requires the DW4 validator entrypoint. Remove Skip when implementing."
+      }
     },
     {
-      "name": "Hexalith.EventStore.Admin.Mcp.Tests.Dw2McpProtocolGatesAtddTests.ToolsAssembly_AdvertisesRepresentativeReadTool",
-      "reason": "ATDD red phase — DW2 AC#7 (MCP startup + stdio discipline). Remove Skip after the DW2 live MCP transcript captures initialize → tools/list with stdout reserved for JSON-RPC and stderr carrying logs."
-    },
-    {
-      "name": "Hexalith.EventStore.Admin.Mcp.Tests.Dw2McpProtocolGatesAtddTests.ToolsAssembly_AdvertisesSessionContextTools",
-      "reason": "ATDD red phase — DW2 AC#9 (session fallback classification). Remove Skip after the live transcript captures session-set-context followed by a scope-omitted tool call that uses session values, with absent/broken/blocked classification recorded."
-    },
-    {
-      "name": "Hexalith.EventStore.Admin.Mcp.Tests.Dw2McpProtocolGatesAtddTests.WritePreviewShape_IsStable_AcrossEvidenceTranscripts",
-      "reason": "ATDD red phase — DW2 AC#8 (write-preview non-mutation proof). Remove Skip after the live evidence captures one approval-gated write tool's preview shape AND a before/after non-mutation pair."
+      "evidence_name": "crosscut-server",
+      "assembly": "Hexalith.EventStore.Server.Tests.dll",
+      "deferred_work": [
+        "DW1"
+      ],
+      "skip_count": 25,
+      "inventory_sha256": "abc05e0a1da748738f19d8162081a22debd92899c551bc1467ff75f5c3f36b7e",
+      "tests": {
+        "Hexalith.EventStore.Server.Tests.Actors.Dw1DrainHardeningAtddTests.DrainAnyClassifiedFailure_ActivityFailureReasonTagDoesNotContainRawExceptionMessage": "ATDD red phase — DW1 AC#8 (drain stable reason codes). Remove Skip when implementing.",
+        "Hexalith.EventStore.Server.Tests.Actors.Dw1DrainHardeningAtddTests.DrainEventCountMismatch_ActivityFailureReasonTagIsStableReasonCode": "ATDD red phase — DW1 AC#8 (drain stable reason codes). Remove Skip when implementing.",
+        "Hexalith.EventStore.Server.Tests.Actors.Dw1DrainHardeningAtddTests.DrainEventCountMismatch_DoesNotDecrementPendingCommandCount": "ATDD red phase — DW1 AC#7 (drain poison disposition). Remove Skip when implementing.",
+        "Hexalith.EventStore.Server.Tests.Actors.Dw1DrainHardeningAtddTests.DrainMissingEventInRange_ActivityFailureReasonTagIsStableReasonCode": "ATDD red phase — DW1 AC#8 (drain stable reason codes). Remove Skip when implementing.",
+        "Hexalith.EventStore.Server.Tests.Actors.Dw1DrainHardeningAtddTests.DrainPublishFailed_ActivityFailureReasonTagIsStableReasonCode": "ATDD red phase — DW1 AC#8 (drain stable reason codes). Remove Skip when implementing.",
+        "Hexalith.EventStore.Server.Tests.Actors.Dw1DrainHardeningAtddTests.DrainReminder_FiredTwiceForSameCorrelationId_DecrementsPendingCounterAtMostOnce": "ATDD red phase — DW1 AC#9 (reminder re-entrancy idempotence). Remove Skip when implementing.",
+        "Hexalith.EventStore.Server.Tests.Actors.Dw1DrainHardeningAtddTests.DrainReminder_FiredTwiceForSameCorrelationId_PublishesAtMostOnce": "ATDD red phase — DW1 AC#9 (reminder re-entrancy idempotence). Remove Skip when implementing.",
+        "Hexalith.EventStore.Server.Tests.Actors.Dw1DrainHardeningAtddTests.DrainReminder_FiredTwiceForSameCorrelationId_UnregistersReminderAtMostOnce": "ATDD red phase — DW1 AC#9 (reminder re-entrancy idempotence). Remove Skip when implementing.",
+        "Hexalith.EventStore.Server.Tests.Projections.Dw1PollerCorruptionAtddTests.PollOnceAsync_IdentityIndexCorruption_EmitsTrackerCorruptIdentityIndexReasonCode": "ATDD red phase — DW1 AC#5 (tracker corruption boundedness). Remove Skip when implementing.",
+        "Hexalith.EventStore.Server.Tests.Projections.Dw1PollerCorruptionAtddTests.PollOnceAsync_ScopeIndexCorruption_EmitsTrackerCorruptScopeIndexReasonCode": "ATDD red phase — DW1 AC#5 (tracker corruption boundedness). Remove Skip when implementing.",
+        "Hexalith.EventStore.Server.Tests.Projections.Dw1PollerCorruptionAtddTests.PollOnceAsync_TrackerCorruption_AdvancesNextDueToPreventTightRetryStorm": "ATDD red phase — DW1 AC#5 (tracker corruption boundedness). Remove Skip when implementing.",
+        "Hexalith.EventStore.Server.Tests.Projections.Dw1PollerCorruptionAtddTests.PollOnceAsync_TrackerCorruption_BoundedRetryWithinSameTick": "ATDD red phase — DW1 AC#5 (tracker corruption boundedness). Remove Skip when implementing.",
+        "Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_AnyClassifiedFailure_DoesNotLogEventPayload": "ATDD red phase — DW1 AC#2 (/project failure classification). Remove Skip when implementing.",
+        "Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_EmptyProjectionType_LogsProjectInvalidProjectionTypeReasonCode": "ATDD red phase — DW1 AC#2 (/project failure classification). Remove Skip when implementing.",
+        "Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_HostTokenCancelled_PropagatesOperationCanceledException": "ATDD red phase — DW1 AC#3 (cancellation vs timeout). Remove Skip when implementing.",
+        "Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_HttpTimeoutWhileHostStillRunning_LogsProjectTimeoutAndDoesNotThrow": "ATDD red phase — DW1 AC#3 (cancellation vs timeout). Remove Skip when implementing.",
+        "Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_InvalidCharset_LogsProjectInvalidCharsetReasonCode": "ATDD red phase — DW1 AC#2 (/project failure classification). Remove Skip when implementing.",
+        "Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_MalformedJson_LogsProjectMalformedJsonReasonCode": "ATDD red phase — DW1 AC#2 (/project failure classification). Remove Skip when implementing.",
+        "Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_NullState_LogsProjectInvalidStateReasonCode": "ATDD red phase — DW1 AC#2 (/project failure classification). Remove Skip when implementing.",
+        "Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_PersistedCheckpointAheadOfAggregateStream_DoesNotRegressCheckpoint": "ATDD red phase — DW1 AC#1 (checkpoint drift). Remove Skip when implementing.",
+        "Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_PersistedCheckpointAheadOfAggregateStream_EmitsCheckpointDriftReasonCode": "ATDD red phase — DW1 AC#1 (checkpoint drift). Remove Skip when implementing.",
+        "Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_TwoOverlappingCallsForSameActorId_AreSerializedByKeyedSemaphore": "ATDD red phase — DW1 AC#4 (per-aggregate serialization). Remove Skip when implementing.",
+        "Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_UnsupportedContentType_LogsProjectUnsupportedContentTypeReasonCode": "ATDD red phase — DW1 AC#2 (/project failure classification). Remove Skip when implementing.",
+        "Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_Upstream4xx_LogsProjectUpstream4xxReasonCode": "ATDD red phase — DW1 AC#2 (/project failure classification). Remove Skip when implementing.",
+        "Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_Upstream5xx_LogsProjectUpstream5xxReasonCode": "ATDD red phase — DW1 AC#2 (/project failure classification). Remove Skip when implementing."
+      }
     }
   ]
 }
