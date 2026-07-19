@@ -2,7 +2,7 @@
 title: eventstore Phase 4 Implementation Readiness Recovery PRD
 status: final
 created: 2026-07-05
-updated: 2026-07-18
+updated: 2026-07-19
 project: eventstore
 source_artifacts:
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-02-global-event-ordering.md
@@ -40,6 +40,7 @@ source_artifacts:
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-16.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-18.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-18-story-3-5-reconciliation.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-19-openbao-secret-store.md
   - _bmad-output/planning-artifacts/implementation-readiness-report-2026-07-05.md
   - _bmad-output/planning-artifacts/epics.md
 ---
@@ -221,7 +222,7 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 
 | ID | Requirement |
 | --- | --- |
-| FR34 | Delivery, admin, and deployment remediation must document at-least-once unordered delivery, add poison/dead-letter handling, bound in-memory deduplication, normalize admin claims, audit every state-mutating admin action, hide deferred admin operations, add secret-store-backed configuration, add readiness/app-health checks, and restore meaningful IntegrationTests CI coverage. |
+| FR34 | Delivery, admin, and deployment remediation must document at-least-once unordered delivery, add poison/dead-letter handling, bound in-memory deduplication, normalize admin claims, audit every state-mutating admin action, hide deferred admin operations, add OpenBao-backed DAPR secret-store configuration for production operational and application secrets, require application retrieval through the DAPR Secrets API, restrict Kubernetes Secrets to documented bootstrap credentials only when no approved mounted or projected credential mechanism is available, add readiness/app-health checks, and restore meaningful IntegrationTests CI coverage. |
 | FR35 | Backlog capabilities must be tracked for GDPR aggregate erasure/tombstoning, Admin interactive OIDC login, an aggregate test kit, and REST generator hardening. |
 
 **Done evidence:** Admin unavailable operations are hidden/disabled or return `501`; audit records remain support-safe; integration tests assert persisted state evidence; backlog artifacts exist for GDPR-1, IAM-1, KIT-1, and REST generator hardening.
@@ -266,7 +267,7 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 | NFR14 | Interactive UI hosts must not expose generated or hand-written per-message MVC command/query controllers; UI command/query flows consume client libraries. |
 | NFR15 | Admin UX must not present deferred backup, restore, import, compaction, or other unavailable operations as functional; unavailable operations must be hidden/disabled or return `501`. |
 | NFR16 | Integration and higher-tier tests must assert persisted state-store/read-model/end-state evidence, not only HTTP status codes or mock call counts. Erasure, batch recovery, handler idempotency, and rebuild equivalence require persisted detail, index, marker, lifecycle, and checkpoint evidence through their production paths. |
-| NFR17 | Operational hardening must support secret stores, DAPR app health checks, readiness-tagged health checks, resiliency targets, immutable image tags, and documented crypto-shred boundaries. |
+| NFR17 | Operational hardening must use the canonical DAPR `openbao` component for production operational and application secrets. Dependent DAPR components must use `secretKeyRef` with `auth.secretStore: openbao`; application code must use the DAPR Secrets API; and per-application access must be default-deny. OpenBao bootstrap credentials are platform inputs and may use Kubernetes Secrets only when no approved mounted or projected mechanism is available. Operational hardening must also support DAPR app-health checks, readiness-tagged health checks, resiliency targets, immutable image tags, and documented crypto-shred boundaries. |
 | NFR18 | AOT/trimming is explicitly not a target while reflection conventions remain load-bearing, and that constraint must be documented. |
 | NFR19 | Payload protection must fail closed and preserve byte-stable, versioned cryptographic semantics. Deleted, missing, denied, unavailable, malformed, tampered, and opaque states must remain bounded typed outcomes. Key material must be zeroed when no longer needed; caches must be invalidated on lifecycle changes; development-only backends must not start as production proof; and rollout, historical reads, downgrade, and rollback after writing the newest format must be integration-tested. |
 
@@ -402,7 +403,7 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 | NFR1 | 5.2, 5.3, 5.5, 7.2, 7.3 |
 | NFR2 | 2.4, 5.2, 5.5, 5.6 |
 | NFR3 | 5.3 |
-| NFR4 | 5.3, 7.3 |
+| NFR4 | 5.3, 7.3, 7.6 |
 | NFR6 | 1.13, 7.1 |
 | NFR7 | 4.1, 4.2, 4.4, 4.5, 5.1 |
 | NFR8 | 1.11, 1.14, 6.3, 6.4 |
@@ -412,7 +413,7 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 | NFR14 | 2.3, 2.4 |
 | NFR15 | 7.2 |
 | NFR16 | 1.9, 1.10, 1.11, 1.12, 1.13, 1.14, 1.15, 3.11, 7.4 |
-| NFR17 | 5.6, 7.3 |
+| NFR17 | 5.6, 7.3, 7.6 |
 | NFR19 | 8.1, 8.2 |
 
 ### 11.3 Required Follow-On Readiness Work

@@ -76,3 +76,18 @@
 | NFR16 | Integration and higher-tier tests must assert persisted state-store/read-model/end-state evidence. Erasure, batch recovery, handler idempotency, and rebuild equivalence require production-path detail, index, marker, lifecycle, and checkpoint proof. |
 | NFR17 | Operational hardening must support secret stores, DAPR app health checks, readiness-tagged health checks, resiliency targets, immutable image tags, and documented crypto-shred boundaries. |
 | NFR18 | AOT/trimming is explicitly not a target while reflection conventions remain load-bearing. |
+
+## AD-24 Operational Secret Invariant
+
+Architecture AD-24 is an adopted companion invariant for FR34, NFR4, NFR17, and current Story 7.6. The architecture companion owns the full decision; these consequences are binding:
+
+| Concern | Binding consequence |
+| --- | --- |
+| Provider and API | Production operational and application secrets resolve through DAPR component `openbao` using `secretstores.hashicorp.vault` v1. Dependent components use `auth.secretStore` and `secretKeyRef`; application code uses the DAPR Secrets API. |
+| Value-free contract | `deploy/dapr/openbao-secret-contract.yaml` is the sole catalog for logical names, map keys and shapes, consumers, dependent resources, retrieval lifecycle, OpenBao policy paths, and generation/cache/rotation bounds; it contains no secret values. |
+| Least privilege | Singleton component scopes, per-app DAPR `defaultAccess: deny` plus explicit `allowedSecrets`, and OpenBao ACLs derive from the contract. Missing, extra, or mismatched grants fail deployment validation. |
+| Bootstrap | OpenBao token, DAPR API token, and TLS trust material are out-of-band hosting inputs with no dependency on DAPR or OpenBao retrieval; committed inline credentials are forbidden. |
+| Readiness and failure | Hosts resolve declared required secrets before readiness. Missing startup inputs fail startup; runtime lookup or refresh failure fails closed, disables the dependent operation, expires unusable cached values, and holds readiness false until bounded recovery. |
+| Rotation | Atomic secret maps carry a non-secret generation. Rotation publishes a new generation, preserves overlap, waits for every cataloged consumer to acknowledge while ready, and only then revokes old material; incomplete acknowledgement retains old validity or publishes a restored generation. |
+| Evidence and profiles | Release evidence includes a real-OpenBao integration lane. Development substitutes preserve the same logical contract and default-deny behavior; Azure Container Apps managed DAPR is non-conforming until an approved compatible profile proves equivalent support and scoping. |
+| Key-custody separation | AD-24 does not approve or modify AD-23 or the draft payload-protection Azure Key Vault Premium RSA-HSM KEK proposal. DAPR secret stores are not production `pdenc-v2` key custody. |

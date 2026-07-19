@@ -7,7 +7,7 @@ paradigm: DAPR-backed hexagonal event-sourcing platform
 scope: Hexalith.EventStore Phase 4 implementation readiness recovery
 status: final
 created: 2026-07-05
-updated: 2026-07-18
+updated: 2026-07-19
 binds:
   - FR1-FR37
   - NFR1-NFR19
@@ -20,9 +20,16 @@ sources:
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-16.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-18.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-18-story-3-5-reconciliation.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-19-openbao-secret-store.md
   - _bmad-output/implementation-artifacts/spec-dapr-global-event-ordering.md
   - docs/brownfield/architecture.md
   - docs/brownfield/integration-architecture.md
+  - https://docs.dapr.io/reference/components-reference/supported-secret-stores/openbao/
+  - https://docs.dapr.io/reference/components-reference/supported-secret-stores/hashicorp-vault/
+  - https://docs.dapr.io/reference/components-reference/supported-secret-stores/kubernetes-secret-store/
+  - https://docs.dapr.io/developing-applications/building-blocks/secrets/secrets-scopes/
+  - https://openbao.org/docs/next/concepts/dev-server/
+  - https://learn.microsoft.com/en-us/azure/container-apps/dapr-overview
 companions:
   - _bmad-output/planning-artifacts/architecture/architecture-eventstore-2026-07-05/.memlog.md
   - _bmad-output/planning-artifacts/architecture.md
@@ -295,6 +302,26 @@ At least one Story 8.1-selected non-development backend adapter must be implemen
 
 Implementation is blocked until `_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md` records named architecture and security approval for package boundaries; the canonical `pdenc-v2` envelope and AAD bytes; `json+pdenc-v1`, `json-redacted`, legacy-unprotected, metadata, and snapshot reads; policy/discovery seams; key paths; state keys; actor/reminder/metric names; backend restrictions; versioning; rollout; mixed history; downgrade; and rollback after v2 writes.
 
+### AD-24 - Production DAPR Secrets Use OpenBao [ADOPTED]
+
+- **Binds:** FR34, NFR4, NFR17, Story 7.6
+- **Prevents:** deployment slices choosing incompatible secret providers, component identities, provider metadata owners, logical secret catalogs, access scopes, direct provider SDKs, plaintext credentials, or circular bootstrap lookup.
+- **Rule:** Production deployment and application secrets are resolved through the DAPR secrets building block backed by OpenBao. The canonical DAPR component is named `openbao` and uses `type: secretstores.hashicorp.vault` with `version: v1`; the official DAPR catalog lists OpenBao as Stable v1 since runtime 1.16. Production profiles pin a compatible DAPR runtime explicitly; the repository CI/deployment seed is `1.18.0`, while DAPR .NET SDK package versions are not runtime evidence. Dependent DAPR components use `auth.secretStore: openbao` and `secretKeyRef`; application code uses the DAPR Secrets API and does not import an OpenBao or Vault client.
+
+The platform deployment overlay is the sole owner and composer of the singleton `Component/openbao`, every per-app DAPR `Configuration`, and the value-free contract at `deploy/dapr/openbao-secret-contract.yaml`; state-store, pub/sub, application, and deployment slices do not author competing copies. The contract records each logical secret's store-relative name, embedded map keys, consumer app IDs, dependent component/host, `startup-only` or `runtime-required` retrieval lifecycle, matching OpenBao policy path, and runtime-required generation/cache/rotation bounds. The component fixes `vaultValueType: map` and `vaultKVUsePrefix: true`; the overlay alone supplies `vaultAddr`, `enginePath`, `vaultKVPrefix`, and TLS metadata. Exact environment values may differ, but logical names, embedded keys, value shapes, consumers, lifecycle, and rotation-unit boundaries stay identical.
+
+The `openbao` component scopes, per-app DAPR secret scopes (`defaultAccess: deny` plus explicit `allowedSecrets`), and least-privilege OpenBao ACL policies derive from that contract. Where DAPR automatically provisions the `kubernetes` secret store, every application's DAPR Configuration also applies `defaultAccess: deny` to that store. No application may retrieve secrets from the Kubernetes store unless a separately approved bootstrap-only exception identifies the exact consumer and key. A deployment validation gate rejects any missing or extra grant and any mismatch between the contract, scopes, and policies. Non-development deployments use HTTPS with certificate verification enabled. The OpenBao bootstrap token, DAPR API token, and TLS trust material are bootstrap-class inputs supplied directly by the hosting platform; they never depend on a DAPR API or component, are never committed, and are never resolved from OpenBao. Production prefers `vaultTokenMountPath` backed by a platform-projected, least-privilege token file. A Kubernetes Secret may hold only this bootstrap credential when no approved mounted or projected mechanism is available; it never holds downstream application, database, broker, signing, or operational secrets. Committed inline `vaultToken` values are forbidden. The Vault-compatible component reads its token at initialization, so planned token rotation performs a controlled DAPR sidecar rollout/restart before expiry or revocation and never assumes automatic renewal or reload; emergency replacement keeps readiness false until sidecars restart with the replacement credential.
+
+Every host validates its declared secrets through DAPR before becoming ready. Missing stores, bootstrap inputs, or `startup-only` secrets fail deployment/startup. Runtime-required consumers call `GetSecret` for one logical map; they do not use `BulkGetSecret` or pin `metadata.version_id` on the serving path. Values that must rotate atomically share that map and carry a required non-secret generation marker. A successful value may exist only in process memory for the cataloged `maxAge`, which is shorter than its rotation overlap window; consumers do not persist it, merge generations, or use it after expiry or a failed refresh. A lookup failure fails closed, disables the dependent operation, and keeps readiness false until a bounded successful recheck; no plaintext or alternate-provider fallback is allowed.
+
+Rotation is publish-overlap-acknowledge-revoke: publish the new OpenBao version/generation, keep old and new credentials accepted for the cataloged overlap, wait until every cataloged runtime consumer acknowledges the new generation while ready and every startup-only component completes its sidecar rollout/component initialization, then revoke the old material. Failure before complete acknowledgement retains the old credential and rolls back by publishing a restored generation; early revocation is forbidden. `startup-only` component credentials may continue operating from their initialized component until their controlled rotation rollout. Diagnostics identify only the logical configuration key and non-secret generation.
+
+The Aspire AppHost provisions a pinned official OpenBao container for local development, exposes a health-checked endpoint, waits for it before starting dependent sidecars, and makes the canonical `openbao` DAPR component available only to sidecars that require secrets. OpenBao development mode is explicitly non-production. Its bootstrap token is supplied through an Aspire secret parameter or protected temporary token file and is never committed or logged. Unit tests may use fakes, but integration and release evidence exercise real OpenBao through DAPR.
+
+Azure Container Apps managed DAPR is not a conforming production profile because its supported component set excludes OpenBao and it does not support DAPR Configuration secret scopes. That target requires a separately approved profile proving OpenBao component support and equivalent least-privilege scoping before it can claim AD-24 compliance.
+
+AD-24 governs operational and application secret retrieval. It does not approve, replace, or modify AD-23 or the draft-not-authorized payload-protection specification's proposed Azure Key Vault Premium RSA-HSM KEK wrap/unwrap backend; a DAPR secret store is not production `pdenc-v2` key custody.
+
 ## Consistency Conventions
 
 | Concern | Convention |
@@ -312,9 +339,10 @@ Implementation is blocked until `_bmad-output/implementation-artifacts/spec-shar
 | Projection persistence | Read-model/checkpoint erasure and detail/index batches follow AD-7; async named fan-out follows AD-19; the normalized `ProjectionDispatchResult` makes each route's `Advanced`/`NotAdvanced` checkpoint decision explicit after required durable work. |
 | Projection rebuild | Full/incremental semantics are explicit; paged work stays staged and replay-equivalent per AD-20. |
 | Payload protection | EventStore owns the optional engine, stable formats, shared mechanics, production-backend conformance, and G5 proof; provider/operators own production key custody and credentials; domains retain legal policy per AD-23. The no-op provider remains the default until the optional engine is explicitly registered. |
+| Secrets | Production operational/application secrets resolve through the DAPR `openbao` component and `secretKeyRef`; application code uses the DAPR Secrets API. The platform overlay owns provider metadata and logical names. Component/app access is allowlisted and default-deny, production TLS verification is enabled, bootstrap-token rotation rolls the sidecar, required-secret validation gates readiness, and payload-protection KEK custody remains separate per AD-24. |
 | Sidecar control-plane headers | Outbound `dapr-app-id` / `dapr-api-token` are handler-owned, **replaced not appended**, set authoritatively from config by the single platform handler; caller/inbound-forwarded values are never routed (AD-18). |
 | UI | `src/Hexalith.EventStore.Admin.UI` is the single consolidated EventStore UI and retains the `eventstore-admin-ui` resource/container identity. It composes matching FrontComposer `3.2.2` Shell/Contracts.UI dependencies and Fluent UI Blazor V5. `Admin.UI` owns the canonical dashboard route table; non-canonical legacy routes redirect to canonical deep links under the selected `event-store-admin` / **Event Store Admin** module entry. UI success is projection-confirmed, support-safe, accessible, and localized; detailed UX flows live in the canonical UX artifacts. |
-| Runtime topology | AppHost resource names, DAPR app IDs, component scopes, ACL policies, pub/sub topics, and deployment overlays remain aligned by tests. |
+| Runtime topology | AppHost resource names, DAPR app IDs, component scopes, secret scopes, ACL policies, pub/sub topics, and deployment overlays remain aligned by tests. |
 | Release | Restore/build use `Hexalith.EventStore.slnx`; unit tests run per project; every source-owned NuGet dependency version resolves from `references/Hexalith.Builds/Props/Directory.Packages.props`; release output is manifest-driven. Catalog families and central .NET/ASP.NET security patch pins move together under the latest-compatible evidence rules in AD-11. The inventory remains 14 packages until Story 8.2 creates an approved packable engine project; engine and any approved companion adapter then update the manifest, inventory guidance, package governance, and package-only consumer validation atomically. |
 
 ## Stack
@@ -328,7 +356,9 @@ The table records the current planning baseline. Story 3.11 updates version rows
 | Aspire.Hosting | 13.4.6 |
 | Aspire.Hosting.Keycloak / Kubernetes | 13.4.6-preview.1.26319.6 |
 | CommunityToolkit.Aspire.Hosting.Dapr | 13.4.0-preview.1.260602-0230 |
+| DAPR runtime | Repository CI/deployment seed `1.18.0`; production profiles pin a compatible 1.18.x release |
 | Dapr .NET SDK packages | 1.18.4 |
+| DAPR OpenBao secret store | Stable component v1 since DAPR runtime 1.16; `secretstores.hashicorp.vault` |
 | MediatR | 14.2.0 |
 | FluentValidation | 12.1.1 |
 | ASP.NET Core / SignalR packages | Repository seed `10.0.9`; required security baseline `10.0.10` |
@@ -364,6 +394,8 @@ samples/
   Hexalith.EventStore.Sample.BlazorUI/  # interactive UI client host
 tests/
   */                                    # per-project tests; Tier 2/3 assert persisted evidence
+deploy/dapr/
+  openbao-secret-contract.yaml          # value-free source for logical names, scopes, ACL paths, and retrieval lifecycle
 ```
 
 ```mermaid
@@ -377,6 +409,8 @@ flowchart TB
         SampleApi[sample-api]
         SampleUI[sample-blazor-ui]
         Security[security]
+        DaprSecrets[DAPR secret store<br/>openbao]
+        OpenBao[(OpenBao)]
         PayloadProtection[optional payload-protection engine]
         KeyBackend[(provider-operated KMS/HSM/secret-store backend)]
         StateStore[(statestore)]
@@ -389,6 +423,10 @@ flowchart TB
     AppHost --> SampleApi
     AppHost --> SampleUI
     AppHost --> Security
+    EventStore -->|DAPR Secrets API| DaprSecrets
+    DaprSecrets --> OpenBao
+    StateStore -.->|component secretKeyRef| DaprSecrets
+    PubSub -.->|component secretKeyRef| DaprSecrets
     EventStore --> PayloadProtection
     PayloadProtection --> KeyBackend
     EventStore --> StateStore
@@ -411,7 +449,7 @@ flowchart TB
 | FR23-FR24, FR27, FR29-FR31 Event correctness and recovery | `Server` actors, persisters, publishers, replay, status/archive, recovery | AD-5, AD-6, AD-12, AD-13 |
 | FR26, FR28, FR32 Security and tenant isolation | gateway auth, Admin.Server auth, DAPR ACLs, AppHost, deployment templates | AD-3, AD-9, AD-10, AD-12, AD-16, AD-18 |
 | FR33 Bounded cost and event evolution | spec artifacts, `Client`/`Server` public seams, snapshots, projections, upcasters | AD-6, AD-7, AD-13, AD-20 |
-| FR34-FR35 Operator trust and backlog | Admin surfaces, consolidated EventStore UI, delivery docs, deployment hardening, integration lanes, backlog artifacts | AD-8, AD-10, AD-12, AD-13, AD-14, AD-15, AD-16, AD-21 |
+| FR34-FR35 Operator trust and backlog | Admin surfaces, consolidated EventStore UI, delivery docs, deployment hardening, integration lanes, backlog artifacts | AD-8, AD-10, AD-12, AD-13, AD-14, AD-15, AD-16, AD-21, AD-24 |
 | FR37 Optional shared payload protection and Parties G5 parity | `Contracts`, optional `PayloadProtection` engine, ADR-approved production adapter, `Server` hook integration, `Testing`, release evidence, Parties consumer proof | AD-5, AD-9, AD-10, AD-11, AD-12, AD-13, AD-22, AD-23 |
 
 ## Deferred
@@ -423,5 +461,5 @@ flowchart TB
 | Quantitative EventStore UI performance budgets | No production baseline supports a numerical release gate yet. A future UX-performance backlog item may establish measured budgets without weakening accessibility, responsive layout, evidence-state, or support-safety rules. |
 | Exact tenant-vs-domain global-position sharding design | FR24 requires renegotiating the frozen global-ordering spec before implementation. AD-6 preserves current semantics until then. |
 | Folded snapshot payload shape, projection sequence guard algorithm, event upcaster ordering, and cancellation contract details | FR33 explicitly requires spec-first stories 6.1, 6.3, and 6.5 before implementation. |
-| Production mTLS trust domain, namespace values, secret-store provider, and deployment overlay specifics | The invariant is topology parity and fail-closed app-layer security. Environment-specific values belong in deployment hardening stories and deploy templates. |
+| Production mTLS trust domain, namespace values, OpenBao server release/HA/storage topology, provider endpoint and engine/prefix values, bootstrap-token acquisition/TTL, logical secret catalog entries, rotation maintenance window, and deployment overlay specifics | AD-24 fixes OpenBao, assigns these values to the platform overlay, and binds DAPR access/scoping/TLS/bootstrap rotation/readiness invariants. The exact environment values and operations belong in deployment hardening stories and deploy templates. |
 | Full aggregate/event GDPR tombstoning, broker-history deletion, physical backup erasure, audit-record deletion, provider/operator key-custody operations, Admin interactive OIDC login, aggregate test kit, and REST generator hardening backlog | These remain outside Phase 4 MVP. Generic projection read-model/checkpoint erasure is active FR5/Story 1.14 scope. The optional EventStore-owned shared payload-protection engine is separately committed as post-MVP Epic 8 and remains unavailable until its ADR, implementation, production backend, release, G5 proof, and consumer rollback complete. |
