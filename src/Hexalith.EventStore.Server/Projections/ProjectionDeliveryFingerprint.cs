@@ -8,6 +8,14 @@ using Hexalith.EventStore.Contracts.Projections;
 namespace Hexalith.EventStore.Server.Projections;
 
 /// <summary>Computes the frozen v1 projection delivery event and prefix fingerprints.</summary>
+/// <remarks>
+/// The persisted v1 identity intentionally excludes <see cref="ProjectionEventDto.GlobalPosition"/>.
+/// Adding that field to v1 would invalidate existing receipts and completed-prefix fingerprints.
+/// A projection that adopts persisted-position watermarks must therefore use the explicit full-rebuild
+/// path to rewrite its read model; ordinary duplicate delivery or replay retains the v1 identity and is
+/// not a watermark-repair mechanism. A future position-sensitive delivery identity requires a separately
+/// approved fingerprint/protocol version and state migration.
+/// </remarks>
 internal static class ProjectionDeliveryFingerprint {
     private static readonly byte[] _eventDomain = "hexalith.projection.delivery.event.v1"u8.ToArray();
     private static readonly byte[] _prefixDomain = "hexalith.projection.delivery.prefix.v1"u8.ToArray();

@@ -71,6 +71,52 @@ public class QueryCursorCodecTests {
     }
 
     [Fact]
+    public void TryDecode_RejectsCursorBoundToStaleProjectionWatermarkAsWrongScope() {
+        IQueryCursorCodec codec = CreateCodec();
+        string issuedScope = QueryCursorScope.Create()
+            .Add("tenant", "tenant-1")
+            .AddProjectionWatermark(41)
+            .Build();
+        string currentScope = QueryCursorScope.Create()
+            .Add("tenant", "tenant-1")
+            .AddProjectionWatermark(47)
+            .Build();
+        string cursor = codec.Encode("list-things", issuedScope, "thing-001");
+
+        bool decoded = codec.TryDecode(
+            cursor,
+            "list-things",
+            currentScope,
+            out string? position,
+            out string? failureReason);
+
+        decoded.ShouldBeFalse();
+        position.ShouldBeNull();
+        failureReason.ShouldBe("wrong-scope");
+    }
+
+    [Fact]
+    public void TryDecode_ReturnsPositionForIdenticalProjectionWatermarkScope() {
+        IQueryCursorCodec codec = CreateCodec();
+        string scope = QueryCursorScope.Create()
+            .Add("tenant", "tenant-1")
+            .AddProjectionWatermark(47)
+            .Build();
+        string cursor = codec.Encode("list-things", scope, "thing-001");
+
+        bool decoded = codec.TryDecode(
+            cursor,
+            "list-things",
+            scope,
+            out string? position,
+            out string? failureReason);
+
+        decoded.ShouldBeTrue();
+        position.ShouldBe("thing-001");
+        failureReason.ShouldBeNull();
+    }
+
+    [Fact]
     public void TryDecode_rejects_malformed_cursor() {
         IQueryCursorCodec codec = CreateCodec();
 

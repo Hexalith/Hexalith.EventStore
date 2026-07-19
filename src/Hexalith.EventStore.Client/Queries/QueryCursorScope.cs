@@ -59,6 +59,27 @@ public sealed class QueryCursorScope {
         return this;
     }
 
+    /// <summary>
+    /// Appends the authoritative persisted projection watermark using the canonical
+    /// <c>watermark</c> key and invariant decimal formatting.
+    /// </summary>
+    /// <param name="watermark">
+    /// The highest positive persisted global position durably applied to the read model. A
+    /// <see langword="null"/>, zero, or negative value is unknown/non-authoritative and is rejected.
+    /// </param>
+    /// <returns>This builder, for chaining.</returns>
+    public QueryCursorScope AddProjectionWatermark(long? watermark) {
+        if (watermark is null || watermark <= 0) {
+            throw new ArgumentOutOfRangeException(
+                nameof(watermark),
+                watermark,
+                "A projection watermark must be a positive persisted global position.");
+        }
+
+        AppendSegment("watermark", watermark.Value.ToString(CultureInfo.InvariantCulture));
+        return this;
+    }
+
     private void AppendSegment(string key, string value) {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
         if (_hasSegment) {

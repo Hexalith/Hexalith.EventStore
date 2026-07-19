@@ -110,7 +110,8 @@ public sealed class HandlerAwareQueryRouterTests {
             AuthenticatedWorkloadId: "workload-1",
             IsDelegated: true,
             Scopes: ["widgets.read"],
-            Audience: ["eventstore-api"]);
+            Audience: ["eventstore-api"],
+            DelegationId: "delegate-service");
 
         _ = await router.RouteQueryAsync(query);
 
@@ -120,7 +121,8 @@ public sealed class HandlerAwareQueryRouterTests {
                 e.AuthenticatedWorkloadId == "workload-1" &&
                 e.IsDelegated &&
                 e.Scopes != null && e.Scopes.SequenceEqual(new[] { "widgets.read" }) &&
-                e.Audience != null && e.Audience.SequenceEqual(new[] { "eventstore-api" })),
+                e.Audience != null && e.Audience.SequenceEqual(new[] { "eventstore-api" }) &&
+                e.DelegationId == "delegate-service"),
             Arg.Any<CancellationToken>());
     }
 

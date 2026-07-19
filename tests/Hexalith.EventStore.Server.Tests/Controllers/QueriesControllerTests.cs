@@ -243,7 +243,34 @@ public class QueriesControllerTests {
                 q.AuthenticatedWorkloadId == null &&
                 !q.IsDelegated &&
                 q.Scopes == null &&
-                q.Audience == null),
+                q.Audience == null &&
+                q.DelegationId == null),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Submit_ValidActSubject_SetsDelegationIdSeparatelyFromActorAndWorkload() {
+        JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(CreateProjectionResult(resultPayload));
+
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            [
+                new Claim("sub", "end-user-1"),
+                new Claim("azp", "gateway-client"),
+                new Claim("act", "{\"sub\":\"delegate-service\"}"),
+            ],
+            "test"));
+        QueriesController controller = CreateController(mediator, principal: principal);
+
+        _ = await controller.Submit(CreateTestRequest(), null, CancellationToken.None);
+
+        _ = await mediator.Received(1).Send(
+            Arg.Is<SubmitQuery>(q =>
+                q.OriginalActorId == "end-user-1" &&
+                q.AuthenticatedWorkloadId == "gateway-client" &&
+                q.DelegationId == "delegate-service"),
             Arg.Any<CancellationToken>());
     }
 

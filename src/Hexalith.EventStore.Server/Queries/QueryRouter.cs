@@ -108,7 +108,8 @@ public partial class QueryRouter : IQueryRouter {
             query.AuthenticatedWorkloadId,
             query.IsDelegated,
             query.Scopes,
-            query.Audience);
+            query.Audience,
+            query.DelegationId);
 
         try {
             string lifecycleProjectionType = routingQueryType;

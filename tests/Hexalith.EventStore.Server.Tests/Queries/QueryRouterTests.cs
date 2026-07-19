@@ -878,7 +878,8 @@ public class QueryRouterTests {
             AuthenticatedWorkloadId: "workload-1",
             IsDelegated: true,
             Scopes: ["orders.read"],
-            Audience: ["eventstore-api"]);
+            Audience: ["eventstore-api"],
+            DelegationId: "delegate-service");
 
         _ = await router.RouteQueryAsync(query);
 
@@ -890,7 +891,8 @@ public class QueryRouterTests {
                 e.AuthenticatedWorkloadId == "workload-1" &&
                 e.IsDelegated &&
                 e.Scopes != null && e.Scopes.SequenceEqual(new[] { "orders.read" }) &&
-                e.Audience != null && e.Audience.SequenceEqual(new[] { "eventstore-api" })),
+                e.Audience != null && e.Audience.SequenceEqual(new[] { "eventstore-api" }) &&
+                e.DelegationId == "delegate-service"),
             Arg.Any<CancellationToken>());
     }
 
@@ -910,7 +912,8 @@ public class QueryRouterTests {
                 e.AuthenticatedWorkloadId == null &&
                 !e.IsDelegated &&
                 e.Scopes == null &&
-                e.Audience == null),
+                e.Audience == null &&
+                e.DelegationId == null),
             Arg.Any<CancellationToken>());
     }
 
