@@ -1,3 +1,10 @@
+## [3.76.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.76.0...v3.76.1) (2026-07-19)
+
+
+### Bug Fixes
+
+* update Hexalith.FrontComposer submodule to latest commit ([80fa447](https://github.com/Hexalith/Hexalith.EventStore/commit/80fa4476460958b625cc9ad4f9be5cec252a83af))
+
 # [3.76.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.75.0...v3.76.0) (2026-07-19)
 
 
