@@ -1,3 +1,10 @@
+# [3.76.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.75.0...v3.76.0) (2026-07-19)
+
+
+### Features
+
+* add Story 3.12 for Multi-Platform EventStore Container Publishing Correction ([9b03ee1](https://github.com/Hexalith/Hexalith.EventStore/commit/9b03ee1b9890358984969e93c605caafff8b736d))
+
 # [3.75.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.74.0...v3.75.0) (2026-07-19)
 
 
