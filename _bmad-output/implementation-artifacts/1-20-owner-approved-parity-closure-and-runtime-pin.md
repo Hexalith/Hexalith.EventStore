@@ -201,9 +201,9 @@ from this proposal inventory and remains owned by its existing changes.
   assembly by retaining a complete method list and comparing it with every executed XML case
   [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:2992]
 - [x] [Review][Patch] [high] Reconcile xUnit root counters and child test results, requiring zero
-  failed, error, not-run, or unexpected skipped cases. The only exception is the exact committed
-  eight-test DW2 red-phase inventory in the Admin MCP full-assembly lane; any identity, reason,
-  assembly, count, or evidence-name drift fails closed
+  failed, error, not-run, or unexpected skipped cases. The only exceptions are the exact committed
+  126-case deferred red-phase inventories across six full-assembly lanes for DW1, DW2, DW4, DW5,
+  DW6, and DW9; any identity, reason, digest, assembly, count, or evidence-name drift fails closed
   [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:738]
 - [x] [Review][Patch] [high] Revalidate prerequisite review/provenance evidence from the committed
   story artifacts instead of accepting only seven mutable `done` tracker strings
@@ -247,8 +247,8 @@ owner approvals, or authorizing A/B/C chain exists yet.
 - [x] [Review][Patch] [high] Require the runtime and A/B/C authorization chain to be reachable from freshly fetched `origin/main` [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:237]
 - [x] [Review][Patch] [high] Initially required `skipped == 0` for every filtered and full xUnit
   result credited toward closure; the 2026-07-19 execution later narrowed this to zero unexpected
-  skips so the separately frozen, exact eight-test DW2 red-phase inventory remains enforceable
-  without authorizing that deferred implementation
+  skips so every separately frozen deferred red-phase inventory remains enforceable without
+  authorizing DW1, DW2, DW4, DW5, DW6, or DW9 implementation
   [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:713]
 - [x] [Review][Patch] [high] Restrict evidence commit A to the packet, the exact evidence directory, and a deterministic Story 1.16 disposition transform [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:2478]
 - [x] [Review][Patch] [high] Require provider-neutral WORM evidence for the raw bundle: URL, object version, retention deadline, immutable-policy proof, and SHA-256 [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1955]
@@ -474,10 +474,18 @@ evidence; named owner approval remains absent. No consumer migration is authoriz
   complete cross-cutting inventory stopped at Admin MCP with 320 passed, eight skipped, zero
   failed of 328. All eight are the frozen DW2 red-phase scaffolds that this story is forbidden to
   enable before their later live transcript exists.
-- Reconciled the two contracts with a committed, exact eight-test skip allowlist. The packet now
-  checks fully qualified names, reasons, assembly, evidence name, aggregate counters, and every
+- Initially reconciled the two contracts with a committed, exact eight-test skip allowlist. That
+  first repair checked fully qualified names, reasons, assembly, evidence name, aggregate counters, and every
   child result in the initial run, raw bundle, and A/B/C revalidation paths; all other skips still
   fail closed.
+- Candidate `689f71bf696246ab271956a3a1c218d6e51386fb` proved that first repair was too
+  narrow: it passed every focused lane, the clean Release solution build, and the Admin MCP
+  inventory, then failed closed at Admin Server with 717 passed, 18 frozen DW2 scaffolds skipped,
+  and zero failed of 735. No publication occurred.
+- Audited the remaining configured assemblies and replaced the single-lane exception with six
+  exact name/reason inventories: Admin MCP 8, Admin Server 18, Admin UI E2E 2, deferred-work
+  governance 19, operational evidence 54, and Server 25. The 126-case manifest binds each lane,
+  assembly, count, deferred-work scope, and canonical SHA-256; every other skip still fails closed.
 
 ### Completion Notes
 
@@ -554,8 +562,11 @@ evidence; named owner approval remains absent. No consumer migration is authoriz
 - 2026-07-19: Removed process-wide console mutation from the completion-command tests and made
   the remaining `ConsoleTests` collection non-parallel with all other collections after the PR
   gate exposed concurrent `StringWriter` corruption.
-- 2026-07-19: Preserved the frozen DW2 red phase while repairing Story 1.20's contradictory
-  zero-skip gate: only the exact eight committed Admin MCP scaffold names and reasons may skip,
-  and every execution, bundle, and authorization revalidator rejects any drift or additional skip.
+- 2026-07-19: First preserved the frozen DW2 red phase while repairing Story 1.20's contradictory
+  zero-skip gate for the exact eight committed Admin MCP scaffold names and reasons.
+- 2026-07-19: Extended that repair after candidate `689f71bf...` exposed the next known deferred
+  lane. The validator now permits only the exact 126 committed red-phase cases across the six
+  bound DW1/DW2/DW4/DW5/DW6/DW9 lanes and rejects all manifest, identity, reason, count, digest,
+  assembly, evidence-name, or unexpected-skip drift.
 - 2026-07-19: Repaired the Sample Blazor UI's .NET 10 Razor control-flow markup transitions after
   the exact-SHA proof correctly stopped its Sample test-project build before publication.

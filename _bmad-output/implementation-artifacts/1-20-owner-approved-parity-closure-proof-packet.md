@@ -991,6 +991,7 @@ validate_xunit_result() {
   local evidence_name="$2"
   local skip_allowlist='_bmad-output/implementation-artifacts/1-20-deferred-xunit-skip-allowlist.json'
   python3 - "$results" "$evidence_name" "$skip_allowlist" <<'PY'
+import hashlib
 import json
 import pathlib
 import sys
@@ -1033,32 +1034,89 @@ if (len(passed_tests) != passed or len(skipped_tests) != values["skipped"] or
         len(passed_tests) + len(skipped_tests) != len(tests)):
     raise SystemExit(1)
 
-expected_skips = {}
-if evidence_name == "crosscut-admin-mcp":
-    allowlist = json.loads(allowlist_path.read_text(encoding="utf-8"))
-    if (set(allowlist) != {"schema", "repository", "evidence_name", "assembly", "tests"} or
-            allowlist["schema"] != "hexalith.eventstore.deferred-xunit-skip-allowlist/v1" or
-            allowlist["repository"] != "Hexalith/Hexalith.EventStore" or
-            allowlist["evidence_name"] != evidence_name or
-            pathlib.Path(summary.attrib.get("name", "")).name != allowlist["assembly"] or
-            not isinstance(allowlist["tests"], list) or len(allowlist["tests"]) != 8):
-        raise SystemExit(1)
-    for item in allowlist["tests"]:
-        if (not isinstance(item, dict) or set(item) != {"name", "reason"} or
-                not isinstance(item["name"], str) or not item["name"] or
-                not isinstance(item["reason"], str) or not item["reason"] or
-                item["name"] in expected_skips):
-            raise SystemExit(1)
-        expected_skips[item["name"]] = item["reason"]
-
 actual_skips = {}
 for test in skipped_tests:
     name = test.attrib.get("name", "")
     reason = test.findtext("reason")
-    if not name or reason is None or name in actual_skips:
+    if not name or not reason or name in actual_skips:
         raise SystemExit(1)
     actual_skips[name] = reason
-if actual_skips != expected_skips:
+
+expected_lanes = {
+    "crosscut-admin-mcp": ("Hexalith.EventStore.Admin.Mcp.Tests.dll", 8, ("DW2",)),
+    "crosscut-admin-server": ("Hexalith.EventStore.Admin.Server.Tests.dll", 18, ("DW2",)),
+    "crosscut-admin-ui-e2e": ("Hexalith.EventStore.Admin.UI.E2E.dll", 2, ("DW5",)),
+    "crosscut-deferred-work-governance": (
+        "Hexalith.EventStore.DeferredWorkGovernance.Tests.dll", 19, ("DW6",)),
+    "crosscut-operational-evidence": (
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.dll", 54, ("DW4", "DW9")),
+    "crosscut-server": ("Hexalith.EventStore.Server.Tests.dll", 25, ("DW1",)),
+}
+def unique_json_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise SystemExit(1)
+        result[key] = value
+    return result
+
+allowlist = json.loads(
+    allowlist_path.read_text(encoding="utf-8"), object_pairs_hook=unique_json_object)
+if (set(allowlist) != {"schema", "repository", "canonical_inventory", "lanes"} or
+        allowlist["schema"] != "hexalith.eventstore.deferred-xunit-skip-allowlist/v2" or
+        allowlist["repository"] != "Hexalith/Hexalith.EventStore" or
+        allowlist["canonical_inventory"] !=
+        "UTF-8 SHA-256 of ordinally sorted name + NUL + exact reason + LF records" or
+        not isinstance(allowlist["lanes"], list) or
+        len(allowlist["lanes"]) != len(expected_lanes)):
+    raise SystemExit(1)
+lanes = {}
+for lane in allowlist["lanes"]:
+    if (not isinstance(lane, dict) or
+            set(lane) != {"evidence_name", "assembly", "deferred_work", "skip_count",
+                         "inventory_sha256", "tests"}):
+        raise SystemExit(1)
+    lane_name = lane["evidence_name"]
+    if (not isinstance(lane_name, str) or lane_name not in expected_lanes or lane_name in lanes or
+            not isinstance(lane["assembly"], str) or
+            not isinstance(lane["deferred_work"], list) or
+            not all(isinstance(item, str) and item for item in lane["deferred_work"]) or
+            type(lane["skip_count"]) is not int or lane["skip_count"] <= 0 or
+            not isinstance(lane["inventory_sha256"], str) or
+            len(lane["inventory_sha256"]) != 64 or
+            any(character not in "0123456789abcdef" for character in lane["inventory_sha256"]) or
+            not isinstance(lane["tests"], dict) or len(lane["tests"]) != lane["skip_count"] or
+            not all(isinstance(name, str) and name and isinstance(reason, str) and reason
+                    for name, reason in lane["tests"].items())):
+        raise SystemExit(1)
+    expected_assembly, expected_count, expected_deferred_work = expected_lanes[lane_name]
+    if (lane["assembly"] != expected_assembly or lane["skip_count"] != expected_count or
+            tuple(lane["deferred_work"]) != expected_deferred_work):
+        raise SystemExit(1)
+    manifest_inventory = "".join(
+        f"{name}\0{reason}\n" for name, reason in sorted(lane["tests"].items())
+    ).encode("utf-8")
+    if hashlib.sha256(manifest_inventory).hexdigest() != lane["inventory_sha256"]:
+        raise SystemExit(1)
+    lanes[lane_name] = lane
+if set(lanes) != set(expected_lanes):
+    raise SystemExit(1)
+
+expected_lane = lanes.get(evidence_name)
+if expected_lane is None:
+    if actual_skips:
+        raise SystemExit(1)
+else:
+    if (pathlib.Path(summary.attrib.get("name", "")).name != expected_lane["assembly"] or
+            len(actual_skips) != expected_lane["skip_count"] or
+            actual_skips != expected_lane["tests"]):
+        raise SystemExit(1)
+    inventory = "".join(
+        f"{name}\0{reason}\n" for name, reason in sorted(actual_skips.items())
+    ).encode("utf-8")
+    if hashlib.sha256(inventory).hexdigest() != expected_lane["inventory_sha256"]:
+        raise SystemExit(1)
+if values["skipped"] != len(actual_skips):
     raise SystemExit(1)
 PY
 }
@@ -1151,10 +1209,11 @@ run_xunit_all() {
 The xUnit v3 in-process runner returns exit code zero when a filter matches zero tests or
 when matched tests are skipped. The `-list methods` checks reject zero-match filters,
 and `validate_xunit_result` requires a positive `total`, no failures, runner errors, or
-not-run tests, and one child result per root total. Every child must pass except the exact eight
-DW2 red-phase scaffolds committed in `1-20-deferred-xunit-skip-allowlist.json`, which are allowed
-only for `crosscut-admin-mcp` when their fully qualified names, reasons, assembly, and counts all
-match. Any other skipped result, or any drift in that fixed inventory, fails closed.
+not-run tests, and one child result per root total. Every child must pass except the exact 126
+deferred red-phase cases committed in `1-20-deferred-xunit-skip-allowlist.json`. Those cases are
+confined to six full-assembly lanes for DW1, DW2, DW4, DW5, DW6, and DW9, with every fully
+qualified name and exact reason bound to its evidence name, assembly, count, and canonical
+SHA-256. Any other skipped result, or any drift in a fixed inventory, fails closed.
 Full-assembly runs retain their complete method list as well. Each runner records the exact assembly and selector
 under its evidence name for later XML/method-list identity verification. `fresh_release` and `fresh_debug_source` delete the
 configuration-specific `bin`/`obj`, restore through committed inputs into a new cache, and
@@ -2899,7 +2958,7 @@ before accepting A.
 | --- | --- | --- | --- | --- |
 | AD-11 readiness | exact SDK `10.0.302` plus matching ASP.NET and installed `Microsoft.NETCore.App` runtime `10.0.10`, or complete, scoped, unexpired replacement authority binding those versions before candidate gates | `ad11-preflight.json`, runtime inventory, its SHA-256, and replacement-authority copy/hash when used | Architecture owner and EventStore build/release maintainer | PASS in the 2026-07-17 current-HEAD readiness audit at `772cdfef...`; every later selected candidate must repeat the preflight |
 | Exact committed source | Same 40-hex SHA before and after gates; clean regular and ignored inputs before and after every gate | `source-state-*.txt`, submodule SHAs, `environment.txt` | EventStore owner | PASS for failed candidate `85877902f8d60a466ab90cd8b68b53838863db1c` |
-| Release build and tests | warning-free solution build; every configured project/filter has zero failed, errored, not-run, or unexpected skipped tests; only the exact eight committed DW2 red-phase scaffolds may remain skipped in the Admin MCP full-assembly lane | restore/build logs plus identity-bound XML and method-list files under `$EVIDENCE_ROOT` | EventStore owner | **INCOMPLETE / non-authorizing**; candidate `e4f5ad06...` passed every focused capability lane and the Release solution build, then exposed the proof contract's contradiction with the separately frozen DW2 red-phase boundary. The repaired contract must pass from zero at a new exact candidate SHA. |
+| Release build and tests | warning-free solution build; every configured project/filter has zero failed, errored, not-run, or unexpected skipped tests; only the exact 126 committed deferred red-phase cases may remain skipped in their six bound DW1/DW2/DW4/DW5/DW6/DW9 full-assembly lanes | restore/build logs plus identity-bound XML and method-list files under `$EVIDENCE_ROOT` | EventStore owner | **INCOMPLETE / non-authorizing**; candidate `689f71bf...` passed every focused capability lane, the Release solution build, and Admin MCP, then failed closed at Admin Server because the first allowlist repair covered only eight of the already-frozen cases. The complete exact-inventory repair must pass from zero at a new exact candidate SHA. |
 | NuGet inventory | exact 14-ID set, one approved version, 14 SHA-256 values, package-only consumer success | `package-files.txt`, package/validator/consumer logs, `package-version.txt`, `nuget-sha256.txt` | EventStore release owner | **OBSERVED CANDIDATE / non-authorizing**; Story 3.12 release v3.77.2 has exactly 14 independently hashed GitHub/NuGet identities with matching payloads, but it is not selected or approved here and the complete Story 1.20 candidate gate remains not run. |
 | Container runtime | freshly revalidated pre-publication release-owner authority; clean candidate source; quarantined publication tag; immutable registry digest equal to the raw-manifest SHA-256; exact `linux/amd64` and `linux/arm64`; digest-to-tested-SHA provenance | immutable authority and checked-at copies/hashes, `container-inspect.txt`, raw manifest/hash, exact platform set, `container-provenance.json` | EventStore release owner | **OBSERVED CANDIDATE / non-authorizing**; Story 3.12 release v3.77.2 passed immutable index/child/config validation and both digest smokes, but its source is not the selected tested runtime and the complete Story 1.20 provenance/approval gate remains not run. |
 | Durable evidence | critical identity/provenance and exact final-approval records committed under `_bmad-output`; immutable external raw bundle bound by HTTPS URL and SHA-256 | `critical-evidence-sha256.txt`, `raw-evidence-bundle.json`, `eventstore-owner-proof-approval.json`, `release-owner-final-disposition.json`, packet front-matter pins | EventStore owner and EventStore release owner | NOT RUN |
@@ -3667,6 +3726,7 @@ while IFS= read -r result_file; do
       python3 - \
         "$A_RAW_EVIDENCE_DIRECTORY/$result_file" "$result_name" \
         '_bmad-output/implementation-artifacts/1-20-deferred-xunit-skip-allowlist.json' <<'PY'
+import hashlib
 import json
 import pathlib
 import sys
@@ -3709,32 +3769,89 @@ if (len(passed_tests) != passed or len(skipped_tests) != values["skipped"] or
         len(passed_tests) + len(skipped_tests) != len(tests)):
     raise SystemExit(1)
 
-expected_skips = {}
-if evidence_name == "crosscut-admin-mcp":
-    allowlist = json.loads(allowlist_path.read_text(encoding="utf-8"))
-    if (set(allowlist) != {"schema", "repository", "evidence_name", "assembly", "tests"} or
-            allowlist["schema"] != "hexalith.eventstore.deferred-xunit-skip-allowlist/v1" or
-            allowlist["repository"] != "Hexalith/Hexalith.EventStore" or
-            allowlist["evidence_name"] != evidence_name or
-            pathlib.Path(summary.attrib.get("name", "")).name != allowlist["assembly"] or
-            not isinstance(allowlist["tests"], list) or len(allowlist["tests"]) != 8):
-        raise SystemExit(1)
-    for item in allowlist["tests"]:
-        if (not isinstance(item, dict) or set(item) != {"name", "reason"} or
-                not isinstance(item["name"], str) or not item["name"] or
-                not isinstance(item["reason"], str) or not item["reason"] or
-                item["name"] in expected_skips):
-            raise SystemExit(1)
-        expected_skips[item["name"]] = item["reason"]
-
 actual_skips = {}
 for test in skipped_tests:
     name = test.attrib.get("name", "")
     reason = test.findtext("reason")
-    if not name or reason is None or name in actual_skips:
+    if not name or not reason or name in actual_skips:
         raise SystemExit(1)
     actual_skips[name] = reason
-if actual_skips != expected_skips:
+
+expected_lanes = {
+    "crosscut-admin-mcp": ("Hexalith.EventStore.Admin.Mcp.Tests.dll", 8, ("DW2",)),
+    "crosscut-admin-server": ("Hexalith.EventStore.Admin.Server.Tests.dll", 18, ("DW2",)),
+    "crosscut-admin-ui-e2e": ("Hexalith.EventStore.Admin.UI.E2E.dll", 2, ("DW5",)),
+    "crosscut-deferred-work-governance": (
+        "Hexalith.EventStore.DeferredWorkGovernance.Tests.dll", 19, ("DW6",)),
+    "crosscut-operational-evidence": (
+        "Hexalith.EventStore.OperationalEvidence.Validator.Tests.dll", 54, ("DW4", "DW9")),
+    "crosscut-server": ("Hexalith.EventStore.Server.Tests.dll", 25, ("DW1",)),
+}
+def unique_json_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise SystemExit(1)
+        result[key] = value
+    return result
+
+allowlist = json.loads(
+    allowlist_path.read_text(encoding="utf-8"), object_pairs_hook=unique_json_object)
+if (set(allowlist) != {"schema", "repository", "canonical_inventory", "lanes"} or
+        allowlist["schema"] != "hexalith.eventstore.deferred-xunit-skip-allowlist/v2" or
+        allowlist["repository"] != "Hexalith/Hexalith.EventStore" or
+        allowlist["canonical_inventory"] !=
+        "UTF-8 SHA-256 of ordinally sorted name + NUL + exact reason + LF records" or
+        not isinstance(allowlist["lanes"], list) or
+        len(allowlist["lanes"]) != len(expected_lanes)):
+    raise SystemExit(1)
+lanes = {}
+for lane in allowlist["lanes"]:
+    if (not isinstance(lane, dict) or
+            set(lane) != {"evidence_name", "assembly", "deferred_work", "skip_count",
+                         "inventory_sha256", "tests"}):
+        raise SystemExit(1)
+    lane_name = lane["evidence_name"]
+    if (not isinstance(lane_name, str) or lane_name not in expected_lanes or lane_name in lanes or
+            not isinstance(lane["assembly"], str) or
+            not isinstance(lane["deferred_work"], list) or
+            not all(isinstance(item, str) and item for item in lane["deferred_work"]) or
+            type(lane["skip_count"]) is not int or lane["skip_count"] <= 0 or
+            not isinstance(lane["inventory_sha256"], str) or
+            len(lane["inventory_sha256"]) != 64 or
+            any(character not in "0123456789abcdef" for character in lane["inventory_sha256"]) or
+            not isinstance(lane["tests"], dict) or len(lane["tests"]) != lane["skip_count"] or
+            not all(isinstance(name, str) and name and isinstance(reason, str) and reason
+                    for name, reason in lane["tests"].items())):
+        raise SystemExit(1)
+    expected_assembly, expected_count, expected_deferred_work = expected_lanes[lane_name]
+    if (lane["assembly"] != expected_assembly or lane["skip_count"] != expected_count or
+            tuple(lane["deferred_work"]) != expected_deferred_work):
+        raise SystemExit(1)
+    manifest_inventory = "".join(
+        f"{name}\0{reason}\n" for name, reason in sorted(lane["tests"].items())
+    ).encode("utf-8")
+    if hashlib.sha256(manifest_inventory).hexdigest() != lane["inventory_sha256"]:
+        raise SystemExit(1)
+    lanes[lane_name] = lane
+if set(lanes) != set(expected_lanes):
+    raise SystemExit(1)
+
+expected_lane = lanes.get(evidence_name)
+if expected_lane is None:
+    if actual_skips:
+        raise SystemExit(1)
+else:
+    if (pathlib.Path(summary.attrib.get("name", "")).name != expected_lane["assembly"] or
+            len(actual_skips) != expected_lane["skip_count"] or
+            actual_skips != expected_lane["tests"]):
+        raise SystemExit(1)
+    inventory = "".join(
+        f"{name}\0{reason}\n" for name, reason in sorted(actual_skips.items())
+    ).encode("utf-8")
+    if hashlib.sha256(inventory).hexdigest() != expected_lane["inventory_sha256"]:
+        raise SystemExit(1)
+if values["skipped"] != len(actual_skips):
     raise SystemExit(1)
 PY
       ;;
@@ -5277,11 +5394,11 @@ grep -Fq 'Hexalith.EventStore.Client.Tests.Queries.QueryCursorScopeTests.' "$MET
 
 Result: PASS; zero-match returned `0`/`total="0"`, the unapproved all-skipped fixture was
 rejected, the fixture with four passed tests was accepted, and the positive list filter found
-six method rows. The Contracts regression additionally executes the exact Admin MCP DW2
-allowlist and rejects a wrong evidence name, wrong assembly, changed reason, missing expected
-skip, and added skip. This was a runner-behavior probe against an existing assembly, not parity
-closure evidence; the mandatory harness still requires a fresh build, at least one passed test,
-and no failures/errors or unexpected skips for every credited run.
+six method rows. The Contracts regression additionally executes every one of the six exact
+deferred inventories and rejects a wrong evidence name, wrong assembly, changed reason, missing
+expected skip, and added skip for each lane. This was a runner-behavior probe against an existing
+assembly, not parity closure evidence; the mandatory harness still requires a fresh build, a
+positive enumerated total, and no failures/errors or unexpected skips for every credited run.
 
 ### Packet whitespace checks
 
@@ -5377,10 +5494,19 @@ to `candidate_source_sha` or `tested_runtime_sha`.
 - Those eight results are the explicitly deferred DW2 red-phase scaffolds whose frozen recovery
   contract says they must remain skipped until a later live MCP transcript exists. Enabling them
   here would violate that scope; ignoring the whole project or accepting arbitrary skips would
-  weaken closure. The packet now binds the only exception to a committed exact-name, exact-reason,
-  exact-assembly eight-test allowlist and rejects any drift or other skip.
+  weaken closure. The first repair bound that observed exception to a committed exact-name,
+  exact-reason, exact-assembly eight-test allowlist and rejected any drift or other skip.
+- Candidate `689f71bf696246ab271956a3a1c218d6e51386fb` passed every focused capability
+  lane, the clean warning-free Release solution build, and the newly accepted Admin MCP lane. It
+  then failed closed at Admin Server: 717 passed, 18 frozen DW2 red-phase scaffolds skipped, zero
+  failed of 735. The fail-fast run stopped before package or container publication.
+- A complete audit of configured full assemblies found six already-frozen deferred lanes totaling
+  126 cases: Admin MCP 8, Admin Server 18, Admin UI E2E 2, deferred-work governance 19,
+  operational evidence 54, and Server 25. The replacement manifest commits every exact name and
+  reason and binds each inventory to its evidence name, assembly, count, DW scope, and canonical
+  SHA-256. All other skips remain forbidden.
 - No NuGet package, container, WORM object, evidence commit, or migration authorization was
-  produced by either failed attempt. A new candidate must run the complete protocol from zero.
+  produced by any failed attempt. A new candidate must run the complete protocol from zero.
 
 ## Final Decision
 

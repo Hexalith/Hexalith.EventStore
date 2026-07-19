@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
@@ -179,8 +181,8 @@ public sealed class ProofPacketValidatorIntegrityTests
     }
 
     /// <summary>
-    /// Verifies the one deferred-test exception is exact: only the committed DW2 inventory may
-    /// skip, only under its bound evidence name and assembly, with byte-equivalent reasons.
+    /// Verifies every deferred-test exception is exact: only a committed inventory may skip,
+    /// only under its bound evidence name and assembly, with byte-equivalent names and reasons.
     /// </summary>
     [Fact]
     public void PacketXunitValidatorAllowsOnlyCommittedDeferredSkipInventory()
@@ -195,59 +197,69 @@ public sealed class ProofPacketValidatorIntegrityTests
         string validator = packet[bodyStart..end];
         JsonObject allowlist = JsonNode.Parse(
             File.ReadAllText(Path.Combine(root, DeferredSkipAllowlistRelativePath))).ShouldBeOfType<JsonObject>();
-        string evidenceName = allowlist["evidence_name"].ShouldNotBeNull().GetValue<string>();
-        string assembly = allowlist["assembly"].ShouldNotBeNull().GetValue<string>();
-        List<(string Name, string Reason)> skips = allowlist["tests"].ShouldBeOfType<JsonArray>()
-            .Select(item => item.ShouldBeOfType<JsonObject>())
-            .Select(item => (
-                item["name"].ShouldNotBeNull().GetValue<string>(),
-                item["reason"].ShouldNotBeNull().GetValue<string>()))
-            .ToList();
-
-        skips.Count.ShouldBe(8, "The exception is intentionally limited to the eight DW2 red-phase scaffolds.");
+        JsonArray lanes = allowlist["lanes"].ShouldBeOfType<JsonArray>();
+        lanes.Count.ShouldBe(6, "Only the six reviewed deferred red-phase lanes may contain skips.");
+        lanes.Sum(item => item.ShouldBeOfType<JsonObject>()["skip_count"].ShouldNotBeNull().GetValue<int>())
+            .ShouldBe(126, "The reviewed cross-cutting inventory contains exactly 126 deferred red-phase cases.");
         string temporaryDirectory = Path.Combine(Path.GetTempPath(), $"hexalith-xunit-skips-{Guid.NewGuid():N}");
         Directory.CreateDirectory(temporaryDirectory);
         try
         {
             string scriptPath = Path.Combine(temporaryDirectory, "validate.sh");
             File.WriteAllText(scriptPath, validator + Environment.NewLine + "validate_xunit_result \"$1\" \"$2\"" + Environment.NewLine);
-            string valid = CreateXunitFixture(assembly, skips);
-            RunBashValidator(scriptPath, temporaryDirectory, "allowed.xml", valid, evidenceName).ShouldBe(
-                0,
-                "The packet must accept the exact committed deferred DW2 inventory.");
-            RunBashValidator(scriptPath, temporaryDirectory, "wrong-evidence.xml", valid).ShouldNotBe(
-                0,
-                "The deferred skips must not be accepted by another evidence lane.");
-            RunBashValidator(
-                scriptPath,
-                temporaryDirectory,
-                "wrong-assembly.xml",
-                CreateXunitFixture("Other.Tests.dll", skips),
-                evidenceName).ShouldNotBe(0, "The deferred skips must remain bound to the Admin MCP assembly.");
+            foreach (JsonObject lane in lanes.Select(item => item.ShouldBeOfType<JsonObject>()))
+            {
+                string evidenceName = lane["evidence_name"].ShouldNotBeNull().GetValue<string>();
+                string assembly = lane["assembly"].ShouldNotBeNull().GetValue<string>();
+                List<(string Name, string Reason)> skips = lane["tests"].ShouldBeOfType<JsonObject>()
+                    .Select(item => (Name: item.Key, Reason: item.Value.ShouldNotBeNull().GetValue<string>()))
+                    .OrderBy(item => item.Name, StringComparer.Ordinal)
+                    .ToList();
+                string safeName = evidenceName.Replace('-', '_');
 
-            List<(string Name, string Reason)> changedReason = [.. skips];
-            changedReason[0] = (changedReason[0].Name, changedReason[0].Reason + " changed");
-            RunBashValidator(
-                scriptPath,
-                temporaryDirectory,
-                "changed-reason.xml",
-                CreateXunitFixture(assembly, changedReason),
-                evidenceName).ShouldNotBe(0, "A changed skip reason must fail closed.");
-            RunBashValidator(
-                scriptPath,
-                temporaryDirectory,
-                "missing-skip.xml",
-                CreateXunitFixture(assembly, skips.Skip(1).ToList()),
-                evidenceName).ShouldNotBe(0, "A removed or unexpectedly enabled scaffold must change the reviewed contract.");
+                skips.Count.ShouldBe(lane["skip_count"].ShouldNotBeNull().GetValue<int>());
+                ComputeSkipInventorySha256(skips).ShouldBe(
+                    lane["inventory_sha256"].ShouldNotBeNull().GetValue<string>(),
+                    $"The committed digest for {evidenceName} must bind every exact name and reason.");
 
-            List<(string Name, string Reason)> unexpectedSkip = [.. skips];
-            unexpectedSkip.Add(("Unexpected.Tests.Case.Skips", "unexpected"));
-            RunBashValidator(
-                scriptPath,
-                temporaryDirectory,
-                "unexpected-skip.xml",
-                CreateXunitFixture(assembly, unexpectedSkip),
-                evidenceName).ShouldNotBe(0, "An additional skip must fail closed.");
+                string valid = CreateXunitFixture(assembly, skips);
+                RunBashValidator(scriptPath, temporaryDirectory, $"{safeName}-allowed.xml", valid, evidenceName).ShouldBe(
+                    0,
+                    $"The packet must accept the exact committed inventory for {evidenceName}.");
+                RunBashValidator(scriptPath, temporaryDirectory, $"{safeName}-wrong-evidence.xml", valid).ShouldNotBe(
+                    0,
+                    "Deferred skips must not be accepted by another evidence lane.");
+                RunBashValidator(
+                    scriptPath,
+                    temporaryDirectory,
+                    $"{safeName}-wrong-assembly.xml",
+                    CreateXunitFixture("Other.Tests.dll", skips),
+                    evidenceName).ShouldNotBe(0, "Deferred skips must remain bound to their reviewed assembly.");
+
+                List<(string Name, string Reason)> changedReason = [.. skips];
+                changedReason[0] = (changedReason[0].Name, changedReason[0].Reason + " changed");
+                RunBashValidator(
+                    scriptPath,
+                    temporaryDirectory,
+                    $"{safeName}-changed-reason.xml",
+                    CreateXunitFixture(assembly, changedReason),
+                    evidenceName).ShouldNotBe(0, "A changed skip reason must fail closed.");
+                RunBashValidator(
+                    scriptPath,
+                    temporaryDirectory,
+                    $"{safeName}-missing-skip.xml",
+                    CreateXunitFixture(assembly, skips.Skip(1).ToList()),
+                    evidenceName).ShouldNotBe(0, "An unexpectedly enabled scaffold must change the reviewed contract.");
+
+                List<(string Name, string Reason)> unexpectedSkip = [.. skips];
+                unexpectedSkip.Add(("Unexpected.Tests.Case.Skips", "unexpected"));
+                RunBashValidator(
+                    scriptPath,
+                    temporaryDirectory,
+                    $"{safeName}-unexpected-skip.xml",
+                    CreateXunitFixture(assembly, unexpectedSkip),
+                    evidenceName).ShouldNotBe(0, "An additional skip must fail closed.");
+            }
         }
         finally
         {
@@ -260,6 +272,15 @@ public sealed class ProofPacketValidatorIntegrityTests
         JsonObject root = JsonNode.Parse(json).ShouldBeOfType<JsonObject>();
         mutate(root);
         return root.ToJsonString();
+    }
+
+    private static string ComputeSkipInventorySha256(
+        IEnumerable<(string Name, string Reason)> skips)
+    {
+        string canonical = string.Concat(
+            skips.OrderBy(item => item.Name, StringComparer.Ordinal)
+                .Select(item => $"{item.Name}\0{item.Reason}\n"));
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical))).ToLowerInvariant();
     }
 
     private static string CreateXunitFixture(
