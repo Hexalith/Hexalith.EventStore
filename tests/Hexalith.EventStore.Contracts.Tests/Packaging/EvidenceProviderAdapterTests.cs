@@ -35,6 +35,7 @@ public sealed class EvidenceProviderAdapterTests
             await File.WriteAllTextAsync(payload, "immutable evidence", Encoding.UTF8);
             string payloadHash = Convert.ToHexStringLower(SHA256.HashData(await File.ReadAllBytesAsync(payload)));
             string fakeAz = Path.Combine(temporary, "az");
+            string fakeCurl = Path.Combine(temporary, "curl");
             string downloaded = Path.Combine(temporary, "downloaded.tar.gz");
             string proof = Path.Combine(temporary, "proof.json");
 
@@ -43,7 +44,15 @@ public sealed class EvidenceProviderAdapterTests
                 $$$"""
                 #!/usr/bin/env bash
                 set -euo pipefail
-                command_line="$*"
+                test "$1 $2" = 'account get-access-token'
+                printf '%s\n' 'contract-test-token'
+                """.Replace("\r\n", "\n", StringComparison.Ordinal));
+            File.SetUnixFileMode(fakeAz, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            await File.WriteAllTextAsync(
+                fakeCurl,
+                $$$"""
+                #!/usr/bin/env bash
+                set -euo pipefail
                 value_after() {
                   local wanted="$1"
                   shift
@@ -53,20 +62,23 @@ public sealed class EvidenceProviderAdapterTests
                   done
                   return 1
                 }
-                if [[ "$command_line" == storage\ blob\ download* ]]; then
-                  test "$(value_after --version-id "$@")" = '2026-07-19T20:00:00.0000000Z'
-                  cp -- '{{{payload}}}' "$(value_after --file "$@")"
-                elif [[ "$command_line" == storage\ blob\ show* ]]; then
-                  cat <<'JSON'
-                {"versionId":"2026-07-19T20:00:00.0000000Z","metadata":{"sha256":"{{{payloadHash}}}"},"immutabilityPolicy":{"expiryTime":"2033-07-20T20:00:00.9999999Z","policyMode":"Locked"}}
-                JSON
-                elif [[ "$command_line" == storage\ container\ immutability-policy\ show* ]]; then
-                  printf '%s\n' '{"state":"Locked","immutabilityPeriodSinceCreationInDays":2557}'
+                test "$(value_after --header "$@" | head -n 1)" = 'Authorization: Bearer contract-test-token'
+                [[ "${!#}" == *'versionid=2026-07-19T20%3A00%3A00.0000000Z' ]]
+                output="$(value_after --output "$@")"
+                if [[ " $* " == *' --head '* ]]; then
+                  headers="$(value_after --dump-header "$@")"
+                  printf '%s\r\n' \
+                    'HTTP/1.1 200 OK' \
+                    'x-ms-version-id: 2026-07-19T20:00:00.0000000Z' \
+                    'x-ms-meta-sha256: {{{payloadHash}}}' \
+                    'x-ms-immutability-policy-until-date: Wed, 20 Jul 2033 20:00:00 GMT' \
+                    'x-ms-immutability-policy-mode: Locked' \
+                    '' > "$headers"
                 else
-                  exit 91
+                  cp -- '{{{payload}}}' "$output"
                 fi
                 """.Replace("\r\n", "\n", StringComparison.Ordinal));
-            File.SetUnixFileMode(fakeAz, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            File.SetUnixFileMode(fakeCurl, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
 
             await RunAsync(adapter, temporary, "download", downloaded);
             File.ReadAllBytes(downloaded).ShouldBe(await File.ReadAllBytesAsync(payload));

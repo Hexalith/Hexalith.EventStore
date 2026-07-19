@@ -43,6 +43,7 @@ esac
 test -n "$OBJECT_URL" && test -n "$OBJECT_VERSION" && test -n "$OUTPUT" || usage
 test ! -e "$OUTPUT"
 command -v az >/dev/null
+command -v curl >/dev/null
 command -v python3 >/dev/null
 
 mapfile -t OBJECT_PARTS < <(python3 - "$OBJECT_URL" <<'PY'
@@ -63,6 +64,8 @@ container = urllib.parse.unquote(segments[0])
 blob = urllib.parse.unquote(segments[1])
 if container != segments[0] or any(character in container for character in "/\\"):
     raise SystemExit("container name must use its canonical unescaped form")
+if any(ord(character) < 32 or ord(character) == 127 for character in container + blob):
+    raise SystemExit("object URL contains a control character")
 if blob in {".", ".."} or any(part in {".", ".."} for part in blob.split("/")):
     raise SystemExit("blob name contains a traversal segment")
 print(match.group(1))
@@ -75,42 +78,46 @@ ACCOUNT_NAME="${OBJECT_PARTS[0]}"
 CONTAINER_NAME="${OBJECT_PARTS[1]}"
 BLOB_NAME="${OBJECT_PARTS[2]}"
 
+VERSIONED_OBJECT_URL="$(python3 - "$OBJECT_URL" "$OBJECT_VERSION" <<'PY'
+import sys
+import urllib.parse
+
+print(f"{sys.argv[1]}?{urllib.parse.urlencode({'versionid': sys.argv[2]})}")
+PY
+)"
+ACCESS_TOKEN="$(az account get-access-token \
+  --resource 'https://storage.azure.com/' \
+  --query accessToken \
+  --output tsv \
+  --only-show-errors)"
+test -n "$ACCESS_TOKEN"
+CURL_AUTHORIZATION_HEADER="Authorization: Bearer $ACCESS_TOKEN"
+
 if test "$COMMAND" = 'download'; then
-  az storage blob download \
-    --account-name "$ACCOUNT_NAME" \
-    --container-name "$CONTAINER_NAME" \
-    --name "$BLOB_NAME" \
-    --version-id "$OBJECT_VERSION" \
-    --auth-mode login \
-    --file "$OUTPUT" \
-    --overwrite true \
-    --no-progress \
-    --only-show-errors \
-    --output none
+  curl --fail --silent --show-error \
+    --proto '=https' --tlsv1.2 \
+    --header "$CURL_AUTHORIZATION_HEADER" \
+    --header 'x-ms-version: 2023-11-03' \
+    --output "$OUTPUT" \
+    "$VERSIONED_OBJECT_URL"
   test -s "$OUTPUT"
   exit 0
 fi
 
-BLOB_METADATA="$(mktemp)"
-CONTAINER_POLICY="$(mktemp)"
+BLOB_HEADERS="$(mktemp)"
 cleanup() {
-  rm -f -- "$BLOB_METADATA" "$CONTAINER_POLICY"
+  rm -f -- "$BLOB_HEADERS"
 }
 trap cleanup EXIT
 
-az storage blob show \
-  --account-name "$ACCOUNT_NAME" \
-  --container-name "$CONTAINER_NAME" \
-  --name "$BLOB_NAME" \
-  --version-id "$OBJECT_VERSION" \
-  --auth-mode login \
-  --only-show-errors \
-  --output json > "$BLOB_METADATA"
-az storage container immutability-policy show \
-  --account-name "$ACCOUNT_NAME" \
-  --container-name "$CONTAINER_NAME" \
-  --only-show-errors \
-  --output json > "$CONTAINER_POLICY"
+curl --fail --silent --show-error \
+  --proto '=https' --tlsv1.2 \
+  --head \
+  --header "$CURL_AUTHORIZATION_HEADER" \
+  --header 'x-ms-version: 2023-11-03' \
+  --dump-header "$BLOB_HEADERS" \
+  --output /dev/null \
+  "$VERSIONED_OBJECT_URL"
 
 ADAPTER_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
 ADAPTER_ID="${ADAPTER_PATH##*/}"
@@ -118,34 +125,40 @@ ADAPTER_ID="${ADAPTER_ID%.sh}"
 ADAPTER_SHA256="$(sha256sum "$ADAPTER_PATH" | awk '{print $1}')"
 
 python3 - \
-  "$BLOB_METADATA" "$CONTAINER_POLICY" "$OUTPUT" \
+  "$BLOB_HEADERS" "$OUTPUT" \
   "$ADAPTER_ID" "$ADAPTER_SHA256" "$OBJECT_URL" "$OBJECT_VERSION" <<'PY'
 import datetime as dt
+import email.utils
 import json
 import pathlib
 import re
 import sys
 
-blob_path, policy_path, output_path, adapter_id, adapter_sha256, object_url, object_version = sys.argv[1:]
-blob = json.loads(pathlib.Path(blob_path).read_text(encoding="utf-8"))
-policy = json.loads(pathlib.Path(policy_path).read_text(encoding="utf-8"))
+headers_path, output_path, adapter_id, adapter_sha256, object_url, object_version = sys.argv[1:]
+headers = {}
+for line in pathlib.Path(headers_path).read_text(encoding="iso-8859-1").splitlines():
+    if ":" not in line:
+        continue
+    name, value = line.split(":", 1)
+    normalized = name.strip().casefold()
+    if normalized in headers:
+        raise SystemExit(f"provider returned duplicate {normalized} headers")
+    headers[normalized] = value.strip()
 
-actual_version = blob.get("versionId") or blob.get("version_id")
-sha256 = (blob.get("metadata") or {}).get("sha256")
-immutability = blob.get("immutabilityPolicy") or blob.get("immutability_policy") or {}
-expiry = immutability.get("expiryTime") or immutability.get("expiry_time")
-blob_mode = immutability.get("policyMode") or immutability.get("policy_mode")
-policy_state = policy.get("state")
+actual_version = headers.get("x-ms-version-id")
+sha256 = headers.get("x-ms-meta-sha256")
+expiry = headers.get("x-ms-immutability-policy-until-date")
+blob_mode = headers.get("x-ms-immutability-policy-mode")
 
 if actual_version != object_version:
     raise SystemExit("provider returned a different object version")
 if not isinstance(sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", sha256):
     raise SystemExit("blob metadata lacks the canonical sha256 value")
-if policy_state != "Locked" or blob_mode != "Locked":
-    raise SystemExit("container and object immutability policies must both be locked")
+if blob_mode != "Locked":
+    raise SystemExit("object immutability policy must be locked")
 if not isinstance(expiry, str):
     raise SystemExit("blob metadata lacks an immutability expiry")
-expiry_time = dt.datetime.fromisoformat(expiry.replace("Z", "+00:00"))
+expiry_time = email.utils.parsedate_to_datetime(expiry)
 if expiry_time.tzinfo is None:
     raise SystemExit("immutability expiry must carry a timezone")
 retention_until = expiry_time.astimezone(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
