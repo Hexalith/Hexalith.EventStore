@@ -388,6 +388,19 @@ mark Story 1.20/Epic 1 done.
 - [x] [Review][Patch] Exercise the live HTTP adapter and post-probe expiry path so Accept headers,
   immutable references, untouched bytes, and action-time revalidation cannot regress behind pure
   fixture tests [references/Hexalith.Builds/Github/publish-containers/tests/test_oci_registry_validator.py:186]
+- [x] [Review][Evidence] Preserve the complete observable v3.77.1 quarantine identity: all 14
+  signed NuGet hashes/sizes, failed artifact metadata, exact OCI/config/smoke hashes, and a dated
+  live readback; narrow historical non-mutation wording to the evidence actually proved
+  [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md]
+- [x] [Review][Consistency] Replace the stale Story 1.20 blocker claiming Story 3.12 still had to
+  produce a two-platform index with the actual remaining selection/approval gate
+  [_bmad-output/implementation-artifacts/sprint-status.yaml]
+- [x] [Review][Consistency] Clarify that `documentation_commit_sha: null` means no Story 1.20
+  closure commit A is selected, not that this Story 3.12 evidence-only commit does not exist
+  [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md]
+- [x] [Review][Consistency] Describe approved package hashes as not selected rather than not
+  produced now that v3.77.2 observed hashes exist
+  [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md]
 
 ## Dev Notes
 
@@ -750,8 +763,9 @@ OpenAI Codex (GPT-5)
   `f9120d16c42e828a91393cd8eceb3bdee1ae4c28311ee4893d03cd51c044c812`.
 - 2026-07-19 Task 9 partial-publication quarantine: release v3.77.1 published all
   14 NuGet packages, tag, and exact two-platform OCI index, then failed both
-  product smokes. That identity remains permanently quarantined; it was never
-  retried, repointed, overwritten, or represented as authorizing evidence.
+  product smokes. That identity remains permanently quarantined. Story 3.12 did
+  not retry or repoint the version, and a later timestamped readback matched the
+  failed evidence bytes; no broader registry-history claim is inferred.
 - 2026-07-19 Task 9 pre-publication retry audit: run `29694306927` attempt 1 was
   externally cancelled during build and made no release mutation; attempt 2
   failed closed because its repository variable still referenced the v3.77.1
