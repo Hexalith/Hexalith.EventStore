@@ -31,6 +31,7 @@ inputDocuments:
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-18.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-18-story-3-5-reconciliation.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-19.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-19-openbao-secret-store.md
   - _bmad-output/specs/spec-eventstore-phase-4-readiness-recovery/SPEC.md
 ---
 
@@ -2734,27 +2735,27 @@ So that UI and tools do not duplicate request/response mapping or bypass authori
 **Then** each outcome maps consistently and support-safely
 **And** planning a client is insufficient: the implementation and focused tests must exist.
 
-### Story 7.6: Secret-Store Configuration
+### Story 7.6: OpenBao-Backed DAPR Secret Store
 
 **Requirements covered:** FR34, NFR4, NFR17
-**Owner / review boundary:** Winston (Architect); Amelia (Developer) reviews deployment configuration and tests.
-**Focused validation:** structured production-manifest scans for secret stores, `secretKeyRef`, and prohibited plaintext placeholders.
+**Architecture gate:** AD-24.
+**Owner / review boundary:** Winston (Architect); Amelia (Developer) implements the application and deployment slice; Murat (Test Architect) reviews the real-provider and negative security evidence.
+**Focused validation:** Aspire model inspection, structured DAPR YAML tests, application secret-retrieval tests, and a real OpenBao+DAPR integration lane.
 
 As a production operator,
-I want deployment secrets resolved through approved secret stores,
-So that committed component configuration contains no forgeable operational credentials.
+I want operational and application secrets resolved through an OpenBao-backed DAPR component,
+So that applications remain provider-independent and Kubernetes Secrets are not the system of record.
 
 **Acceptance Criteria:**
 
-**Given** production DAPR or application configuration requires a secret
-**When** manifests are parsed
-**Then** the value resolves through the named secret-store component and `secretKeyRef`
-**And** no plaintext key, token, password, signing key, or unsafe `{env:...}` substitute remains in committed production posture.
-
-**Given** a required secret or store is missing
-**When** deployment validation runs
-**Then** it fails before the dependent resource starts
-**And** diagnostics name the configuration key without disclosing the value.
+1. The Aspire AppHost provisions a pinned, health-checked OpenBao resource for local development and registers the canonical DAPR component `openbao` using `secretstores.hashicorp.vault`, version `v1`.
+2. Production configuration connects to externally managed OpenBao with TLS verification enabled. Authentication uses `vaultTokenMountPath` or an equivalent platform-projected bootstrap credential. A Kubernetes Secret is permitted only when no approved bootstrap mechanism is available; it never stores application or operational secrets.
+3. State-store, pub/sub, and other DAPR components obtain credentials through `secretKeyRef` with `auth.secretStore: openbao`; committed production configuration contains no credential-bearing `{env:...}` placeholders.
+4. Application code obtains required secrets through an injected DAPR client using `GetSecretAsync("openbao", ...)`. It contains no OpenBao/Vault client dependency, direct provider HTTP calls, or bulk-secret retrieval.
+5. DAPR secret scopes are default-deny and explicitly allow only the logical secrets required by each application.
+6. Missing, denied, or malformed secrets fail closed, gate readiness where required, identify only the logical key in diagnostics, and never disclose secret values.
+7. Automated verification proves the AppHost resource graph, component references, manifest rules, and a real DAPR-to-OpenBao read against a seeded non-production secret.
+8. Kubernetes deployment samples and operator documentation prefer OpenBao and describe the narrow bootstrap-only Kubernetes Secret exception.
 
 ### Story 7.7: Readiness And DAPR App-Health
 
