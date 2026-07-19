@@ -1,3 +1,10 @@
+# [3.77.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.76.1...v3.77.0) (2026-07-19)
+
+
+### Features
+
+* update tasks and status for Story 3.12 multi-platform EventStore container ([3241058](https://github.com/Hexalith/Hexalith.EventStore/commit/324105875d30babd9c480e15c7cb836ce0305ba2))
+
 ## [3.76.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.76.0...v3.76.1) (2026-07-19)
 
 
