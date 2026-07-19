@@ -3,7 +3,7 @@ schema: hexalith.eventstore.parity-closure-proof-packet/v1
 story_id: "1.20"
 story_key: 1-20-owner-approved-parity-closure-and-runtime-pin
 created: 2026-07-16T05:09:20+02:00
-updated: 2026-07-19T18:42:16+02:00
+updated: 2026-07-19T18:50:25+02:00
 historical_packet: 1-8-projection-query-sdk-owner-proof-packet.md
 candidate_source_sha: 85877902f8d60a466ab90cd8b68b53838863db1c
 tested_runtime_sha: null
@@ -112,11 +112,11 @@ passing Release build and test subsets; those subsets grant no migration authori
 Runtime and documentation identity remain deliberately separate. The
 `candidate_source_sha` records the failed candidate, `tested_runtime_sha: null` records
 that no unchanged runtime has passed every gate, and `documentation_commit_sha: null`
-records that no later evidence-only commit exists. A future documentation commit cannot
-substitute for the tested runtime. Approved package/container identities, named owner
-approval, and migration authorization remain absent. The observed v3.75.0 failure and
-v3.77.2 corrective release candidate recorded below are non-authorizing evidence and do
-not populate any `approved_*` field.
+records that no Story 1.20 closure evidence commit A has been selected or recorded. This
+Story 3.12 evidence handoff cannot substitute for the tested runtime or for closure commit
+A. Approved package/container identities, named owner approval, and migration authorization
+remain absent. The observed v3.75.0 failure and v3.77.2 corrective release candidate
+recorded below are non-authorizing evidence and do not populate any `approved_*` field.
 
 Architecture AD-11 remains a hard executable precondition before selecting or publishing a
 replacement runtime. At current commit `772cdfefa8163704de0f57042af5b0507c1ac771`,
@@ -199,20 +199,20 @@ unresolved.
 
 | Exact package ID | Approved version | SHA-256 |
 | --- | --- | --- |
-| `Hexalith.EventStore.Contracts` | not selected | not produced |
-| `Hexalith.EventStore.Client` | not selected | not produced |
-| `Hexalith.EventStore.Server` | not selected | not produced |
-| `Hexalith.EventStore.SignalR` | not selected | not produced |
-| `Hexalith.EventStore.Testing` | not selected | not produced |
-| `Hexalith.EventStore.Testing.Integration` | not selected | not produced |
-| `Hexalith.EventStore.Aspire` | not selected | not produced |
-| `Hexalith.EventStore.ServiceDefaults` | not selected | not produced |
-| `Hexalith.EventStore.DomainService` | not selected | not produced |
-| `Hexalith.EventStore.RestApi.Generators` | not selected | not produced |
-| `Hexalith.EventStore.Gateway` | not selected | not produced |
-| `Hexalith.EventStore.Admin.Abstractions` | not selected | not produced |
-| `Hexalith.EventStore.Admin.Cli` | not selected | not produced |
-| `Hexalith.EventStore.Admin.Server` | not selected | not produced |
+| `Hexalith.EventStore.Contracts` | not selected | not selected |
+| `Hexalith.EventStore.Client` | not selected | not selected |
+| `Hexalith.EventStore.Server` | not selected | not selected |
+| `Hexalith.EventStore.SignalR` | not selected | not selected |
+| `Hexalith.EventStore.Testing` | not selected | not selected |
+| `Hexalith.EventStore.Testing.Integration` | not selected | not selected |
+| `Hexalith.EventStore.Aspire` | not selected | not selected |
+| `Hexalith.EventStore.ServiceDefaults` | not selected | not selected |
+| `Hexalith.EventStore.DomainService` | not selected | not selected |
+| `Hexalith.EventStore.RestApi.Generators` | not selected | not selected |
+| `Hexalith.EventStore.Gateway` | not selected | not selected |
+| `Hexalith.EventStore.Admin.Abstractions` | not selected | not selected |
+| `Hexalith.EventStore.Admin.Cli` | not selected | not selected |
+| `Hexalith.EventStore.Admin.Server` | not selected | not selected |
 
 #### Observed v3.75.0 non-authorizing package evidence
 
@@ -252,19 +252,62 @@ Release workflow
 [run 29692936278, attempt 1](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/29692936278)
 at source/tag commit `a832374a98ccbfebffd5c850c67d79adf14b8971` partially mutated external
 destinations before failing. It published all 14 NuGet package IDs and
-`registry.hexalith.com/eventstore:3.77.1`, but created no GitHub Release. The tag resolves
-to an exact two-platform OCI index with digest and raw SHA-256
-`sha256:cdf89b8dfbc13c96dedae7897076582b43aea6c676039a89de304e162ce6e9b2`.
-Its immutable `linux/amd64` child
-`sha256:a478ae8978a8183fb754911f3970c36759f57779698755bab9653384ffcc7e1a`
-failed image start because required smoke-only JWT configuration was absent; its
-`linux/arm64` child
-`sha256:74742897de76b60f335874b177119504f68154a743f868e49c7e88efd528f83b`
-timed out under the former 60-second bound. Both cleanup paths passed.
+`registry.hexalith.com/eventstore:3.77.1`, but created no GitHub Release. Failed-run artifact
+[`release-evidence-29692936278-1`](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/29692936278/artifacts/8444173297)
+has ID `8444173297`, size `14409`, GitHub API digest
+`sha256:1c7cd62e9b4c0d0a447df3313bed91ebee9ef029f8bb7becd3b12141f51fcb58`,
+and expiry `2026-08-18T15:29:17Z`.
 
-This partial identity is permanently quarantined. Its packages, tag, index, children, and
-configs were not retried, repointed, overwritten, or combined with later bytes, and it is
-not a Story 1.20 candidate or approval source.
+At the `2026-07-19T16:49:56Z` quarantine readback, all 14 current NuGet.org copies had
+the exact ID/version `3.77.1` and the following signed identities. All 14 passed
+`dotnet nuget verify --all` as NuGet.org repository signatures. The failed-run artifact
+does not contain the pre-signing package files, so this table deliberately pins the
+observable signed NuGet identities rather than inferring unavailable unsigned bytes.
+
+| Exact package ID | NuGet.org size | NuGet.org SHA-256 |
+| --- | ---: | --- |
+| `Hexalith.EventStore.Admin.Abstractions` | 124843 | `24795405482d49606c515101863e0f39dd0f46b7c11bd3e65b7485d727d381e4` |
+| `Hexalith.EventStore.Admin.Cli` | 665185 | `4d6d5e3abef04782f036393e8dd3f815c209097ba8712cf116af16f9fbdef91e` |
+| `Hexalith.EventStore.Admin.Server` | 186524 | `45d4fc8d1edcaa55f03e6e465afbee1daa6bf53bf95e562240a24130c9fa71e5` |
+| `Hexalith.EventStore.Aspire` | 38751 | `a8a78f8767a492a421b29286b044d7f9757cc4c18bdb29f94ab75051565a8847` |
+| `Hexalith.EventStore.Client` | 159335 | `fc850a61ace400ee0fff3e70a96fcb2455351f83f241523e0e9ddc2a880cb09b` |
+| `Hexalith.EventStore.Contracts` | 156293 | `bd2aa2d60a01c7213007d56b9bb25446bc183295d5de580d2a7efc190628361b` |
+| `Hexalith.EventStore.DomainService` | 64906 | `297d98cd298d687a3d34af10972e6368217dd45ea6c1277d217158fc92daefe0` |
+| `Hexalith.EventStore.Gateway` | 243326 | `c5e0972533bc21896f79d74501c7f8e0e3ea0132a79ca3273500d8c8180888b0` |
+| `Hexalith.EventStore.RestApi.Generators` | 50083 | `252a51b4ad41406655f450533fecac3fb20f89788f75affa978e118d72194419` |
+| `Hexalith.EventStore.Server` | 342512 | `2bee83f6e0981fe459d35152b07776f06106ddaddccc673bca3a91b46d088da9` |
+| `Hexalith.EventStore.ServiceDefaults` | 29308 | `8586d060292b57e267077ba350ecd23f2f6ab923395414fb1dccedeafd8b7497` |
+| `Hexalith.EventStore.SignalR` | 34251 | `ad960bd50c308f50a9da7eb9d11f7a5aa2fc098fee4febe57d5619dbea0a6227` |
+| `Hexalith.EventStore.Testing` | 65409 | `e73abb11d3288bed3fbb6a643ae9dbfbe749145866d5d890a2bcb5d1ec9463c0` |
+| `Hexalith.EventStore.Testing.Integration` | 77047 | `5004299b371733a6ddc37b3a0f865c114f9ffd62cbc0ccf6413138a9a4f69d95` |
+
+The same timestamped registry readback matched every retained raw artifact byte. The tag
+resolves to the 493-byte OCI index digest/raw SHA-256
+`sha256:cdf89b8dfbc13c96dedae7897076582b43aea6c676039a89de304e162ce6e9b2`.
+Its 1399-byte `linux/amd64` child is
+`sha256:a478ae8978a8183fb754911f3970c36759f57779698755bab9653384ffcc7e1a`,
+with 3851-byte config
+`sha256:d8a1dbe0c58dbc9561d679f2a1873d9b818d531496578482bf77e35efcb26ddc`.
+Its 1399-byte `linux/arm64` child is
+`sha256:74742897de76b60f335874b177119504f68154a743f868e49c7e88efd528f83b`,
+with 3852-byte config
+`sha256:e49a7cb0fd06658cd1a7f5e3b84abcae3bd7b650bcece3b82d4457f7f723eadc`.
+Both configs declare the matching platform and version `3.77.1`.
+
+The amd64 child failed image start because required smoke-only JWT configuration was
+absent; its log SHA-256 is
+`27fb7d6e6a0d126cd84985edaa3ad46a40c145a2282e8b878ddb79336a4598a4`.
+The arm64 child timed out under the former 60-second bound; its log SHA-256 is
+`84c932731966e799636278d0da54dd2f281db98abca762dd717d95c261868118`.
+The emulation preflight passed with log SHA-256
+`73302833f7f705e259783281f19fe3babe78ba969994674ddfe37032291da18d`,
+both cleanup paths passed, and `smoke-results.json` hashes to
+`7dd398e40fb2458e0f273ba2ab9364a6664030acf9cac741b4c543c6daa9907d`.
+
+This partial identity is permanently quarantined and is not a Story 1.20 candidate or
+approval source. Story 3.12 performed no same-version retry or tag repoint. The current
+NuGet and registry observations match the frozen failed identity; no broader claim about
+unavailable historical registry audit events is inferred.
 
 #### Observed v3.77.2 Story 3.12 corrective package candidate
 
