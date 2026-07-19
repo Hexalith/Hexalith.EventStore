@@ -31,7 +31,7 @@ source_files:
 
 # Story 3.12: Multi-Platform EventStore Container Publishing Correction
 
-Status: in-progress
+Status: review
 
 <!-- Ultimate context engine analysis completed - comprehensive developer guide created. -->
 
@@ -309,32 +309,32 @@ mark Story 1.20/Epic 1 done.
   - [x] Run workflow/docs/mapping scans, `git diff --check`, and separate worktree/status checks in
     both repositories. Record every command/result and any environmental blocker exactly.
 
-- [ ] **Task 9 - Publish and inspect a new corrective version only after explicit authority (AC2-AC6).**
-  - [ ] Stop and obtain the separate durable release-owner authority described in AC5. Story
+- [x] **Task 9 - Publish and inspect a new corrective version only after explicit authority (AC2-AC6).**
+  - [x] Stop and obtain the separate durable release-owner authority described in AC5. Story
     approval or successful local tests are insufficient.
-  - [ ] Publish a new semantic-release-generated version from the authorized source SHA; do not
+  - [x] Publish a new semantic-release-generated version from the authorized source SHA; do not
     mutate or reuse any v3.75.0 package/tag/manifest/registry object.
-  - [ ] If any external mutation partially succeeds and the release later fails, preserve and
+  - [x] If any external mutation partially succeeds and the release later fails, preserve and
     quarantine that failed identity as non-authorizing evidence. Never retry the same semantic
     version, skip existing packages, or repoint its container tag; obtain new authority for a fresh
     version after the defect/environment is corrected.
-  - [ ] Capture the workflow run and attempt, resolved Hexalith.Builds reusable-workflow/action
+  - [x] Capture the workflow run and attempt, resolved Hexalith.Builds reusable-workflow/action
     commit identity, source SHA, release tag commit/parent, release URL, 14 package
     files/versions/sizes/hashes, container
     repository/index digest/raw bytes/hash, child descriptors/manifests/configs, exact platforms,
     and both child-digest smoke results.
-  - [ ] Independently download and hash all package assets. Require one new version across exactly
+  - [x] Independently download and hash all package assets. Require one new version across exactly
     the manifest IDs and verify package/container provenance maps to the same authorized release.
-  - [ ] Treat publication, inspection, emulation, product, or evidence failure as non-authorizing;
+  - [x] Treat publication, inspection, emulation, product, or evidence failure as non-authorizing;
     do not hide partial publication or record a failed release as pass.
 
-- [ ] **Task 10 - Hand observed evidence to Story 1.20 without deciding it (AC6, AC7).**
-  - [ ] Add the corrective release identity and immutable evidence to the Story 1.20 packet as
+- [x] **Task 10 - Hand observed evidence to Story 1.20 without deciding it (AC6, AC7).**
+  - [x] Add the corrective release identity and immutable evidence to the Story 1.20 packet as
     observed candidate data first; preserve every independent production-path, reviewer, owner,
     A/B/C, and migration gate.
-  - [ ] Do not populate `approved_*`, change `final_decision`, authorize migration, modify Parties or
+  - [x] Do not populate `approved_*`, change `final_decision`, authorize migration, modify Parties or
     Tenants, approve G5, or mark Story 1.20/Epic 1 done under Story 3.12 authority.
-  - [ ] Route the packet to the EventStore and release owners for their independent verification and
+  - [x] Route the packet to the EventStore and release owners for their independent verification and
     durable disposition. Record limitations and failed/blocked gates without optimistic inference.
 
 ### Review Findings
@@ -728,6 +728,63 @@ OpenAI Codex (GPT-5)
   disposition. External mutation remains fail-closed until the exact PR heads,
   repository trust decision, version, source SHA, Builds SHA, durable authority
   record, and destination-absence gates are resolved.
+- 2026-07-19 merged implementation identities: Hexalith.Builds PRs #18 and #19
+  landed the authority-bound publisher at `819c1f6d...` then `f8981e8e...`;
+  EventStore PRs #290 and #292 landed sources `c1bdfe31...` and `a832374a...`.
+  After the first live smoke exposed missing JWT startup configuration and an
+  insufficient arm64 emulation bound, Builds PRs #20 and #21 landed the final
+  reviewed shared execution commit
+  `9ec0a032d785dd0abdc14276e8784d6fdd826fd0`. EventStore PRs #294 and #295
+  then landed the final caller at
+  `77a9a442c0e6d0408957888e10c3a9accd634c99`; CI run `29694589389` passed.
+- 2026-07-19 final authority-bound helper SHA-256 values at Builds
+  `9ec0a032...`: publisher
+  `0787e2160ca5b02ce263cd314eba8c89207b09ab47ee3aec29f1199558460a59`,
+  OCI validator
+  `e1547e31fbdb8a678c99a245510e718c1cb35f6b9ec51264aa7bc1cdae419509`,
+  authority validator
+  `92692f7c1cea6d7a81c6ef9b1c5964c8b54b65fa461e91ac02c441b7101d8f8d`,
+  smoke shell entry point
+  `f11865658a24ecea906da087d8446c7f631dc5a9328e294676534d590ef0e89e`,
+  and smoke implementation
+  `f9120d16c42e828a91393cd8eceb3bdee1ae4c28311ee4893d03cd51c044c812`.
+- 2026-07-19 Task 9 partial-publication quarantine: release v3.77.1 published all
+  14 NuGet packages, tag, and exact two-platform OCI index, then failed both
+  product smokes. That identity remains permanently quarantined; it was never
+  retried, repointed, overwritten, or represented as authorizing evidence.
+- 2026-07-19 Task 9 pre-publication retry audit: run `29694306927` attempt 1 was
+  externally cancelled during build and made no release mutation; attempt 2
+  failed closed because its repository variable still referenced the v3.77.1
+  authority; attempt 3 consumed the corrected authority but became a safe no-op
+  when final release PR #295 advanced `main`. Each attempt was followed by
+  explicit tag, release, 14-package, and registry absence checks before the next
+  authorized source was considered.
+- 2026-07-19 Task 9 completed: durable authority comment `5016454096` bound
+  version `3.77.2`, source/tag commit
+  `77a9a442c0e6d0408957888e10c3a9accd634c99`, Builds workflow/action commit
+  `9ec0a032d785dd0abdc14276e8784d6fdd826fd0`, exact helper hashes, repository,
+  platforms, owner, rationale, and validity window. Release run `29694935552`
+  attempt 1 completed successfully and published GitHub release v3.77.2.
+- 2026-07-19 Task 9 evidence: Actions artifact `8444768158`
+  (`release-evidence-29694935552-1`) has API digest
+  `sha256:6e033439acaba9b44fd101984c7b567cb6914aee30a5bc0d12c8001116d5a9b2`.
+  The live OCI index digest and exact raw-index SHA-256 are
+  `sha256:db3ab41e187efc0de397fd1205660a0f685e2c94ecd8f4a8f1843ac567056bf6`;
+  it contains only child digests `sha256:3b5d2a23...` for amd64 and
+  `sha256:254a5714...` for arm64, whose configs match their descriptors. Both
+  immutable child smokes and cleanup passed.
+- 2026-07-19 Task 9 independent inspection: all 14 GitHub release assets and all
+  14 NuGet.org copies were downloaded and hashed. IDs and version `3.77.2` are
+  exact; after excluding NuGet.org's repository `.signature.p7s`, every package
+  payload entry is byte-identical, and all 14 NuGet.org repository signatures
+  pass `dotnet nuget verify --all`. Independent registry
+  tag/digest/child/config downloads exactly match the retained evidence bytes.
+- 2026-07-19 Task 10 evidence handoff: the Story 1.20 packet now records v3.77.2
+  as observed candidate data while keeping every `approved_*` field null,
+  `final_decision: still blocked`, and `authorize_consumer_migration: false`.
+  It explicitly retains the unrun exact-SHA production-path gate, Story 1.16
+  review, named owner approvals, WORM evidence, limitations, and A/B/C chain as
+  blockers.
 
 ### Completion Notes List
 
@@ -789,10 +846,20 @@ OpenAI Codex (GPT-5)
   immutable at the approved Builds SHA, moved authority validation ahead of Git
   tagging while retaining action-time revalidation, aligned config-blob handling
   with OCI Distribution semantics, and prevents cross-origin credential
-  forwarding. No external release action was authorized or executed.
+  forwarding.
+- Task 9 published fresh corrective release v3.77.2 only after exact durable
+  authority and destination-absence checks. It retains one coherent authorized
+  source/Builds/version identity across the 14 packages and exact two-platform
+  OCI index; both digest-pinned platform smokes passed. Failed v3.77.1 remains
+  quarantined as non-authorizing evidence.
+- Task 10 added the complete v3.77.2 observed identity to Story 1.20 without
+  selecting or approving it. Story 1.20 remains blocked and migration remains
+  unauthorized pending its independent runtime, reviewer, owner, durable
+  evidence, limitations, and A/B/C gates.
 
 ### File List
 
+- `_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md`
 - `_bmad-output/implementation-artifacts/3-12-multi-platform-eventstore-container-publishing-correction.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
 - `references/Hexalith.Builds/Github/publish-containers/oci_registry_validator.py`
@@ -819,3 +886,9 @@ OpenAI Codex (GPT-5)
 - `references/Hexalith.Builds/test/fixtures/publish-containers/v3.75.0-evidence.json`
 - `references/Hexalith.Builds/test/fixtures/publish-containers/v3.75.0-single-manifest.json`
 - `references/Hexalith.Builds/test/fixtures/publish-containers/validation-cases.json`
+
+### Change Log
+
+- 2026-07-19: Published and independently inspected corrective release v3.77.2;
+  handed its observed package/container identity to Story 1.20 while preserving
+  every independent approval and migration blocker.
