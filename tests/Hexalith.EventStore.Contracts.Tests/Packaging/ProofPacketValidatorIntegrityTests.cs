@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 
 namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 
@@ -16,6 +17,9 @@ public sealed class ProofPacketValidatorIntegrityTests
 
     private const string AllowlistRelativePath =
         "_bmad-output/implementation-artifacts/1-20-github-approval-role-allowlist.json";
+
+    private const string DeferredSkipAllowlistRelativePath =
+        "_bmad-output/implementation-artifacts/1-20-deferred-xunit-skip-allowlist.json";
 
     private static readonly Regex BashBlockPattern = new(
         @"^```bash\r?\n(?<body>.*?)^```\s*$",
@@ -140,7 +144,7 @@ public sealed class ProofPacketValidatorIntegrityTests
         try
         {
             string scriptPath = Path.Combine(temporaryDirectory, "validate.sh");
-            File.WriteAllText(scriptPath, validator + Environment.NewLine + "validate_xunit_result \"$1\"" + Environment.NewLine);
+            File.WriteAllText(scriptPath, validator + Environment.NewLine + "validate_xunit_result \"$1\" \"$2\"" + Environment.NewLine);
             string valid =
                 "<assemblies><assembly name=\"Fixture.Tests.dll\" total=\"1\" passed=\"1\" failed=\"0\" errors=\"0\" skipped=\"0\" not-run=\"0\">" +
                 "<collection><test type=\"Fixture.Tests.Case\" method=\"Passes\" result=\"Pass\" /></collection></assembly></assemblies>";
@@ -174,11 +178,127 @@ public sealed class ProofPacketValidatorIntegrityTests
         }
     }
 
+    /// <summary>
+    /// Verifies the one deferred-test exception is exact: only the committed DW2 inventory may
+    /// skip, only under its bound evidence name and assembly, with byte-equivalent reasons.
+    /// </summary>
+    [Fact]
+    public void PacketXunitValidatorAllowsOnlyCommittedDeferredSkipInventory()
+    {
+        string root = FindRepositoryRoot();
+        string packet = File.ReadAllText(Path.Combine(root, PacketRelativePath));
+        const string startMarker = "# xunit-result-contract-start";
+        const string endMarker = "# xunit-result-contract-end";
+        int start = packet.IndexOf(startMarker, StringComparison.Ordinal);
+        int bodyStart = start < 0 ? -1 : packet.IndexOf('\n', start) + 1;
+        int end = bodyStart <= 0 ? -1 : packet.IndexOf(endMarker, bodyStart, StringComparison.Ordinal);
+        string validator = packet[bodyStart..end];
+        JsonObject allowlist = JsonNode.Parse(
+            File.ReadAllText(Path.Combine(root, DeferredSkipAllowlistRelativePath))).ShouldBeOfType<JsonObject>();
+        string evidenceName = allowlist["evidence_name"].ShouldNotBeNull().GetValue<string>();
+        string assembly = allowlist["assembly"].ShouldNotBeNull().GetValue<string>();
+        List<(string Name, string Reason)> skips = allowlist["tests"].ShouldBeOfType<JsonArray>()
+            .Select(item => item.ShouldBeOfType<JsonObject>())
+            .Select(item => (
+                item["name"].ShouldNotBeNull().GetValue<string>(),
+                item["reason"].ShouldNotBeNull().GetValue<string>()))
+            .ToList();
+
+        skips.Count.ShouldBe(8, "The exception is intentionally limited to the eight DW2 red-phase scaffolds.");
+        string temporaryDirectory = Path.Combine(Path.GetTempPath(), $"hexalith-xunit-skips-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(temporaryDirectory);
+        try
+        {
+            string scriptPath = Path.Combine(temporaryDirectory, "validate.sh");
+            File.WriteAllText(scriptPath, validator + Environment.NewLine + "validate_xunit_result \"$1\" \"$2\"" + Environment.NewLine);
+            string valid = CreateXunitFixture(assembly, skips);
+            RunBashValidator(scriptPath, temporaryDirectory, "allowed.xml", valid, evidenceName).ShouldBe(
+                0,
+                "The packet must accept the exact committed deferred DW2 inventory.");
+            RunBashValidator(scriptPath, temporaryDirectory, "wrong-evidence.xml", valid).ShouldNotBe(
+                0,
+                "The deferred skips must not be accepted by another evidence lane.");
+            RunBashValidator(
+                scriptPath,
+                temporaryDirectory,
+                "wrong-assembly.xml",
+                CreateXunitFixture("Other.Tests.dll", skips),
+                evidenceName).ShouldNotBe(0, "The deferred skips must remain bound to the Admin MCP assembly.");
+
+            List<(string Name, string Reason)> changedReason = [.. skips];
+            changedReason[0] = (changedReason[0].Name, changedReason[0].Reason + " changed");
+            RunBashValidator(
+                scriptPath,
+                temporaryDirectory,
+                "changed-reason.xml",
+                CreateXunitFixture(assembly, changedReason),
+                evidenceName).ShouldNotBe(0, "A changed skip reason must fail closed.");
+            RunBashValidator(
+                scriptPath,
+                temporaryDirectory,
+                "missing-skip.xml",
+                CreateXunitFixture(assembly, skips.Skip(1).ToList()),
+                evidenceName).ShouldNotBe(0, "A removed or unexpectedly enabled scaffold must change the reviewed contract.");
+
+            List<(string Name, string Reason)> unexpectedSkip = [.. skips];
+            unexpectedSkip.Add(("Unexpected.Tests.Case.Skips", "unexpected"));
+            RunBashValidator(
+                scriptPath,
+                temporaryDirectory,
+                "unexpected-skip.xml",
+                CreateXunitFixture(assembly, unexpectedSkip),
+                evidenceName).ShouldNotBe(0, "An additional skip must fail closed.");
+        }
+        finally
+        {
+            Directory.Delete(temporaryDirectory, recursive: true);
+        }
+    }
+
     private static string MutateAllowlist(string json, Action<JsonObject> mutate)
     {
         JsonObject root = JsonNode.Parse(json).ShouldBeOfType<JsonObject>();
         mutate(root);
         return root.ToJsonString();
+    }
+
+    private static string CreateXunitFixture(
+        string assembly,
+        IReadOnlyList<(string Name, string Reason)> skips)
+    {
+        XElement collection = new("collection",
+            new XElement(
+                "test",
+                new XAttribute("name", "Fixture.Tests.Case.Passes"),
+                new XAttribute("type", "Fixture.Tests.Case"),
+                new XAttribute("method", "Passes"),
+                new XAttribute("result", "Pass")));
+        foreach ((string name, string reason) in skips)
+        {
+            int separator = name.LastIndexOf('.');
+            collection.Add(
+                new XElement(
+                    "test",
+                    new XAttribute("name", name),
+                    new XAttribute("type", name[..separator]),
+                    new XAttribute("method", name[(separator + 1)..]),
+                    new XAttribute("result", "Skip"),
+                    new XElement("reason", reason)));
+        }
+
+        return new XDocument(
+            new XElement(
+                "assemblies",
+                new XElement(
+                    "assembly",
+                    new XAttribute("name", assembly),
+                    new XAttribute("total", skips.Count + 1),
+                    new XAttribute("passed", 1),
+                    new XAttribute("failed", 0),
+                    new XAttribute("errors", 0),
+                    new XAttribute("skipped", skips.Count),
+                    new XAttribute("not-run", 0),
+                    collection))).ToString(SaveOptions.DisableFormatting);
     }
 
     private static int RunJq(string program, string input)
@@ -207,7 +327,12 @@ public sealed class ProofPacketValidatorIntegrityTests
         return process.ExitCode;
     }
 
-    private static int RunBashValidator(string scriptPath, string directory, string fileName, string xml)
+    private static int RunBashValidator(
+        string scriptPath,
+        string directory,
+        string fileName,
+        string xml,
+        string evidenceName = "fixture")
     {
         string fixturePath = Path.Combine(directory, fileName);
         File.WriteAllText(fixturePath, xml);
@@ -223,6 +348,8 @@ public sealed class ProofPacketValidatorIntegrityTests
         };
         process.StartInfo.ArgumentList.Add(scriptPath);
         process.StartInfo.ArgumentList.Add(fixturePath);
+        process.StartInfo.ArgumentList.Add(evidenceName);
+        process.StartInfo.WorkingDirectory = FindRepositoryRoot();
 
         process.Start().ShouldBeTrue("bash must be available to execute the proof-packet validator.");
         process.WaitForExit(5000).ShouldBeTrue("The xUnit validator must finish within five seconds.");

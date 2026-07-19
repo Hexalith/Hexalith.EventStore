@@ -1,0 +1,40 @@
+{
+  "schema": "hexalith.eventstore.deferred-xunit-skip-allowlist/v1",
+  "repository": "Hexalith/Hexalith.EventStore",
+  "evidence_name": "crosscut-admin-mcp",
+  "assembly": "Hexalith.EventStore.Admin.Mcp.Tests.dll",
+  "tests": [
+    {
+      "name": "Hexalith.EventStore.Admin.Mcp.Tests.Dw2McpProtocolGatesAtddTests.ConsistencyTrigger_WithoutConfirm_DoesNotInvokeAdminApi",
+      "reason": "ATDD red phase — DW2 AC#8 (write-preview non-mutation proof). Remove Skip after the live evidence captures one approval-gated write tool's preview shape AND a before/after non-mutation pair."
+    },
+    {
+      "name": "Hexalith.EventStore.Admin.Mcp.Tests.Dw2McpProtocolGatesAtddTests.McpHost_ValidEnvVars_KeepsStdoutEmptyBeforeJsonRpc",
+      "reason": "ATDD red phase — DW2 AC#7 (MCP startup + stdio discipline). Remove Skip after the DW2 live MCP transcript captures initialize → tools/list with stdout reserved for JSON-RPC and stderr carrying logs."
+    },
+    {
+      "name": "Hexalith.EventStore.Admin.Mcp.Tests.Dw2McpProtocolGatesAtddTests.SessionFallback_NoEstablishedContext_DoesNotFabricateScope",
+      "reason": "ATDD red phase — DW2 AC#9 (session fallback classification). Remove Skip after the live transcript captures session-set-context followed by a scope-omitted tool call that uses session values, with absent/broken/blocked classification recorded."
+    },
+    {
+      "name": "Hexalith.EventStore.Admin.Mcp.Tests.Dw2McpProtocolGatesAtddTests.StreamList_OmittedScope_FallsBackToSessionTenantAndDomain",
+      "reason": "ATDD red phase — DW2 AC#9 (session fallback classification). Remove Skip after the live transcript captures session-set-context followed by a scope-omitted tool call that uses session values, with absent/broken/blocked classification recorded."
+    },
+    {
+      "name": "Hexalith.EventStore.Admin.Mcp.Tests.Dw2McpProtocolGatesAtddTests.ToolsAssembly_AdvertisesAtLeastOneApprovalGatedWriteTool",
+      "reason": "ATDD red phase — DW2 AC#7 (MCP startup + stdio discipline). Remove Skip after the DW2 live MCP transcript captures initialize → tools/list with stdout reserved for JSON-RPC and stderr carrying logs."
+    },
+    {
+      "name": "Hexalith.EventStore.Admin.Mcp.Tests.Dw2McpProtocolGatesAtddTests.ToolsAssembly_AdvertisesRepresentativeReadTool",
+      "reason": "ATDD red phase — DW2 AC#7 (MCP startup + stdio discipline). Remove Skip after the DW2 live MCP transcript captures initialize → tools/list with stdout reserved for JSON-RPC and stderr carrying logs."
+    },
+    {
+      "name": "Hexalith.EventStore.Admin.Mcp.Tests.Dw2McpProtocolGatesAtddTests.ToolsAssembly_AdvertisesSessionContextTools",
+      "reason": "ATDD red phase — DW2 AC#9 (session fallback classification). Remove Skip after the live transcript captures session-set-context followed by a scope-omitted tool call that uses session values, with absent/broken/blocked classification recorded."
+    },
+    {
+      "name": "Hexalith.EventStore.Admin.Mcp.Tests.Dw2McpProtocolGatesAtddTests.WritePreviewShape_IsStable_AcrossEvidenceTranscripts",
+      "reason": "ATDD red phase — DW2 AC#8 (write-preview non-mutation proof). Remove Skip after the live evidence captures one approval-gated write tool's preview shape AND a before/after non-mutation pair."
+    }
+  ]
+}
