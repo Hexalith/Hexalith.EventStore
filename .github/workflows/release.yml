@@ -28,11 +28,11 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
-    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@f8981e8ec4a5dec9d574da139c2e00dd714f2a60
+    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@0b838f279ca37c1cc17d5574c779e6d92859677c
     with:
       solution: Hexalith.EventStore.slnx
       publish-containers: true
-      builds-execution-sha: f8981e8ec4a5dec9d574da139c2e00dd714f2a60
+      builds-execution-sha: 0b838f279ca37c1cc17d5574c779e6d92859677c
       release-authority-url: ${{ vars.HEXALITH_RELEASE_AUTHORITY_URL }}
       release-owner-allowlist: _bmad-output/implementation-artifacts/1-20-github-approval-role-allowlist.json
       container-projects: |
