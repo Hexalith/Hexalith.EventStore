@@ -42,7 +42,6 @@ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures;
 /// </summary>
 public sealed class DaprTestContainerFixture : IAsyncLifetime
 {
-    private const string AppId = "eventstore";
     private static readonly int PlacementPort = OperatingSystem.IsWindows() ? 6050 : 50005;
     private static readonly int SchedulerPort = OperatingSystem.IsWindows() ? 6060 : 50006;
     private const int RedisPort = 6379;
@@ -73,6 +72,9 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
     /// <summary>Gets the Dapr HTTP endpoint for test clients.</summary>
     public string DaprHttpEndpoint => $"http://localhost:{_daprHttpPort}";
 
+    /// <summary>Gets the isolated Dapr application ID used by this fixture run.</summary>
+    public string AppId { get; } = $"eventstore-live-{Guid.NewGuid():N}";
+
     /// <summary>Gets the application HTTP endpoint hosting the Dapr actors.</summary>
     public string AppHttpEndpoint => $"http://localhost:{_appPort}";
 
@@ -101,8 +103,6 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
     /// <inheritdoc/>
     public async ValueTask InitializeAsync()
     {
-        KillOrphanedDaprdProcesses();
-
         int[] ports = GetAvailablePorts(6);
         _appPort = ports[0];
         _daprHttpPort = ports[1];
@@ -449,101 +449,6 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         }
     }
 
-    /// <summary>
-    /// Kills orphaned daprd processes from previous test runs that used the same app ID.
-    /// If the test runner exits without calling DisposeAsync, stale sidecars remain registered
-    /// with the placement service. Actor calls get routed to these stale instances, which try
-    /// to connect to old app ports that are no longer listening.
-    /// </summary>
-    /// <remarks>
-    /// <para><b>Safety:</b> Only kills daprd processes whose command line contains the test
-    /// app ID ("<see cref="AppId"/>"). Set environment variable <c>DAPR_TEST_PRESERVE_SIDECARS=1</c>
-    /// to skip cleanup entirely (useful when running a local Dapr sidecar for other projects).</para>
-    /// </remarks>
-    private static void KillOrphanedDaprdProcesses()
-    {
-        if (Environment.GetEnvironmentVariable("DAPR_TEST_PRESERVE_SIDECARS") == "1")
-        {
-            return;
-        }
-
-        try
-        {
-            foreach (Process process in Process.GetProcessesByName("daprd"))
-            {
-                try
-                {
-                    // Only kill sidecars started with our test app-id to avoid
-                    // disrupting other local Dapr workloads.
-                    string? cmdLine = GetProcessCommandLine(process);
-                    if (cmdLine is null || !cmdLine.Contains(AppId, StringComparison.OrdinalIgnoreCase))
-                    {
-                        process.Dispose();
-                        continue;
-                    }
-
-                    process.Kill(entireProcessTree: true);
-                    _ = process.WaitForExit(5000);
-                }
-                catch (Exception)
-                {
-                    // Best-effort: process may have already exited
-                }
-                finally
-                {
-                    process.Dispose();
-                }
-            }
-        }
-        catch (Exception)
-        {
-            // Best-effort cleanup
-        }
-    }
-
-    /// <summary>
-    /// Attempts to read the command line of a process. Returns null if inaccessible.
-    /// </summary>
-    private static string? GetProcessCommandLine(Process process)
-    {
-        try
-        {
-            // On Windows, MainModule.FileName + StartInfo are not available for other processes.
-            // Fall back to reading /proc on Linux or wmic on Windows.
-            if (OperatingSystem.IsWindows())
-            {
-                using var searcher = new Process
-                {
-                    StartInfo = new ProcessStartInfo
-                    {
-                        FileName = "wmic",
-                        Arguments = $"process where processid={process.Id} get CommandLine /format:list",
-                        UseShellExecute = false,
-                        RedirectStandardOutput = true,
-                        CreateNoWindow = true,
-                    },
-                };
-                _ = searcher.Start();
-                string output = searcher.StandardOutput.ReadToEnd();
-                _ = searcher.WaitForExit(3000);
-                return output;
-            }
-
-            // On Linux/macOS, read /proc/{pid}/cmdline
-            string cmdlinePath = $"/proc/{process.Id}/cmdline";
-            if (File.Exists(cmdlinePath))
-            {
-                return File.ReadAllText(cmdlinePath).Replace('\0', ' ');
-            }
-        }
-        catch
-        {
-            // Best-effort: access denied or process exited
-        }
-
-        return null;
-    }
-
     private static string ResolveDaprdPath()
     {
         string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
@@ -567,7 +472,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         builder.Configuration["Dapr:GrpcPort"] = _daprGrpcPort.ToString();
         builder.Configuration["EventStore:Actors:AggregateActorTypeName"] = AggregateActorTypeName;
         builder.Configuration["EventStore:ProjectionDispatch:RetryWorkerInterval"] = "00:10:00";
-        builder.Configuration["EventStore:DomainService:AppId"] = "eventstore";
+        builder.Configuration["EventStore:DomainService:AppId"] = AppId;
         builder.Configuration["EventStore:DomainService:ServiceVersion"] = "v1";
 
         _ = builder.WebHost.ConfigureKestrel(serverOptions => serverOptions.ListenLocalhost(_appPort, listenOptions => listenOptions.Protocols = HttpProtocols.Http1));
@@ -716,7 +621,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         return $"{AppId}||{AggregateActorTypeName}||{actorId}||{key}";
     }
 
-    private static string CreateComponentFiles()
+    private string CreateComponentFiles()
     {
         string tempDir = Path.Combine(Path.GetTempPath(), $"dapr-components-{Guid.NewGuid():N}");
         _ = Directory.CreateDirectory(tempDir);
@@ -737,7 +642,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
                 - name: actorStateStore
                   value: "true"
             scopes:
-              - eventstore
+              - {{AppId}}
             """;
 
         string pubSubYaml = $$"""
@@ -756,7 +661,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
                 - name: enableDeadLetter
                   value: "true"
             scopes:
-              - eventstore
+              - {{AppId}}
             """;
 
         File.WriteAllText(Path.Combine(tempDir, "statestore.yaml"), stateStoreYaml);

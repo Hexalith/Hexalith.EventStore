@@ -155,6 +155,18 @@ from this proposal inventory and remains owned by its existing changes.
   `Hexalith.Builds` submodule advanced to `ffa1662829b28d1d90554980c87f23bd9d4e25e7` while the
   reusable release workflow remained pinned to its previous commit. The caller and its explicit
   `builds-execution-sha` input now match the root-declared dependency exactly.
+- [x] [Review][Patch] [high] Isolate every live-sidecar fixture run behind a unique Dapr app ID
+  instead of killing every local sidecar whose command line contains `eventstore`. The exact gate
+  now also rejects conflicting topology app IDs before executing, so it cannot disrupt or share
+  stale service registrations with another Aspire session.
+- [x] [Review][Patch] [high] Bound each query-provenance projection probe to five seconds inside
+  its 45-second convergence window. A single resilient request previously inherited a 60-second
+  `HttpClient.Timeout` and could overrun the entire poll without retaining the last actor response.
+- [x] [Review][Patch] [high] Isolate Admin CLI completion-command output behind injected writers
+  and make the existing `ConsoleTests` collection non-parallel with every other collection. The
+  exact PR gate exposed concurrent process-wide `Console.Out` mutation; before the fix, repeated
+  full-project runs reported inconsistent totals and corrupt durations. After the fix, 20
+  consecutive runs passed exactly 342 of 342 tests with stable one-second durations.
 
 #### 2026-07-19 — Code review: uncommitted Story 1.20 hardening
 
@@ -434,6 +446,11 @@ evidence; named owner approval remains absent. No consumer migration is authoriz
 - Full live-sidecar validation failed 2/44. The named-dispatch class reproduced 1/6, and
   its normal-delivery method reproduced 1/1, meeting the workflow's three-consecutive-failure
   HALT condition.
+- 2026-07-19: Exact PR validation run `29700903245` passed build/package validation and the
+  Contracts, Client, Testing, SignalR, and Admin.Abstractions suites, then exposed an intermittent
+  `StringWriter` corruption in `ConfigCompletionCommandTests`. Writer injection plus an explicit
+  non-parallel `ConsoleTests` boundary made 20 consecutive complete Admin CLI runs pass with the
+  same 342/342 count and duration.
 
 ### Completion Notes
 
@@ -443,6 +460,9 @@ evidence; named owner approval remains absent. No consumer migration is authoriz
   corrective item in `deferred-work.md`.
 - Package, container, provenance E2E, and owner-approval gates were not run after the
   reproducible live regression failure.
+- The PR-gate console race is repaired without treating a rerun as acceptance evidence. The
+  replacement candidate still requires a completely green PR gate and a fresh unchanged-SHA
+  closure run before any publication or approval step.
 
 ## File List
 
@@ -451,6 +471,13 @@ evidence; named owner approval remains absent. No consumer migration is authoriz
 - `_bmad-output/implementation-artifacts/1-20-github-approval-role-allowlist.json`
 - `_bmad-output/implementation-artifacts/spec-1-16-1-20-sprint-change-proposal.md`
 - `_bmad-output/implementation-artifacts/deferred-work.md`
+- `src/Hexalith.EventStore.Admin.Cli/Commands/Config/ConfigCompletionCommand.cs`
+- `tests/Hexalith.EventStore.Admin.Cli.Tests/Commands/Config/ConfigCompletionCommandTests.cs`
+- `tests/Hexalith.EventStore.Admin.Cli.Tests/ConsoleTestCollection.cs`
+- `tests/Hexalith.EventStore.IntegrationTests/ContractTests/QueryResponseProvenanceE2ETests.cs`
+- `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DaprTestContainerFixture.cs`
+- `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/NamedProjectionDispatchLiveSidecarTests.cs`
+- `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ReadModelBatchLiveSidecarTests.cs`
 
 ## Change Log
 
@@ -478,3 +505,11 @@ evidence; named owner approval remains absent. No consumer migration is authoriz
   work in the same shard while requiring the completed aggregate's retry item to be removed.
 - 2026-07-19: Realigned the reusable release-workflow execution SHA with the root-declared
   `Hexalith.Builds` dependency after the concurrent submodule bump.
+- 2026-07-19: Isolated the live-sidecar Dapr app identity and added a conflicting-topology
+  preflight after the closure run killed an unrelated Aspire session's EventStore sidecars and
+  subsequently observed stale `sample` / `tenants` registrations.
+- 2026-07-19: Made the provenance convergence probe enforce a per-request timeout shorter than
+  its outer polling deadline while retaining the last response or timeout diagnostic.
+- 2026-07-19: Removed process-wide console mutation from the completion-command tests and made
+  the remaining `ConsoleTests` collection non-parallel with all other collections after the PR
+  gate exposed concurrent `StringWriter` corruption.

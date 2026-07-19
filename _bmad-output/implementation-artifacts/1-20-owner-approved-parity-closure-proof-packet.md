@@ -896,12 +896,24 @@ capture_source_state() {
 
 assert_candidate_tree_clean
 capture_source_state "$EVIDENCE_ROOT/source-state-before.txt"
+DAPR_APP_INVENTORY="$(dapr list --output json)"
+jq -e 'type == "array"' <<<"$DAPR_APP_INVENTORY" >/dev/null
+CONFLICTING_DAPR_APPS="$(jq -c \
+  --argjson reserved '["eventstore","eventstore-admin","eventstore-admin-ui","eventstore-test-subscriber","sample","sample-api","sample-blazor-ui","tenants","tenants-api"]' \
+  '[.[] | select(.appId as $id | $reserved | index($id)) | {appId, daprdPid, cliPid}]' \
+  <<<"$DAPR_APP_INVENTORY")"
+if test "$(jq 'length' <<<"$CONFLICTING_DAPR_APPS")" -ne 0; then
+  printf 'conflicting Dapr application IDs must be stopped before the exact gate: %s\n' \
+    "$CONFLICTING_DAPR_APPS" >&2
+  exit 1
+fi
 {
   printf 'captured_at=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   uname -a
   dotnet --info
   dapr --version
   docker version
+  printf 'dapr_app_inventory_before=%s\n' "$DAPR_APP_INVENTORY"
 } > "$EVIDENCE_ROOT/environment.txt" 2>&1
 
 export DOTNET_CLI_HOME="$GATE_ROOT/dotnet-home"

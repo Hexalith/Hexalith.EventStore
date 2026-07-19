@@ -22,7 +22,6 @@ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Integration;
 [Trait("Category", "LiveSidecar")]
 public class ReadModelBatchLiveSidecarTests {
     private const string StoreName = "statestore";
-    private const string AppId = "eventstore";
 
     private static readonly System.Text.Json.JsonSerializerOptions s_json =
         new(System.Text.Json.JsonSerializerDefaults.Web);
@@ -308,8 +307,8 @@ public class ReadModelBatchLiveSidecarTests {
     private static async Task<ConnectionMultiplexer> ConnectRedisAsync() =>
         await ConnectionMultiplexer.ConnectAsync("localhost:6379,abortConnect=false,allowAdmin=true");
 
-    private static async Task<byte[]?> ReadStateJsonAsync(IDatabase db, string logicalKey) {
-        RedisValue value = await db.HashGetAsync($"{AppId}||{logicalKey}", "data");
+    private async Task<byte[]?> ReadStateJsonAsync(IDatabase db, string logicalKey) {
+        RedisValue value = await db.HashGetAsync($"{_fixture.AppId}||{logicalKey}", "data");
         if (!value.IsNullOrEmpty) {
             return (byte[]?)value;
         }
