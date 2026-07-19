@@ -400,3 +400,6 @@ _All items LOW / non-blocking. Story 2.7 accepted (all AC1–AC7 met; Release bu
 - source_spec: `_bmad-output/implementation-artifacts/spec-gh-29682903822-fix-ci-cd.md`
   summary: Resolve the repository's contradictory `chore` policy and document any automated-release exception.
   evidence: Shared Git instructions prohibit `chore`, while `CONTRIBUTING.md`, Dependabot configuration, and the verified semantic-release format allow or require it; this contradiction predates the CI repair.
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-29682903822-fix-ci-cd-2.md`
+  summary: Add an unoverridden Release property test that binds `Version` and `PackageVersion` to the repository release version.
+  evidence: The external `Hexalith.Builds` gitlink change updates `HexalithEventStoreVersion` from 3.74.0 to 3.75.0, while current tests do not assert the default evaluated version and CI package validation overrides it explicitly, allowing a stale catalog value to pass.
