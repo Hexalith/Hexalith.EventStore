@@ -77,7 +77,10 @@ development_status:
   # - Story 2.7's reviewed working-tree correction now passes the exact source-topology
   #   query-provenance E2E and persisted admin-index assertion;
   # - no later clean committed runtime SHA has passed all detached production gates;
-  # - exact NuGet versions/hashes and container digest/platform provenance are absent;
+  # - v3.75.0 has observed exact 14-package hashes, but its immutable container is a
+  #   single linux/amd64 Docker manifest and fails AC8;
+  # - Story 3.12 must produce a later exact linux/amd64 + linux/arm64 OCI index;
+  # - no conforming package/container release identity has been selected or approved;
   # - named EventStore and release-owner approval is absent.
   # `final_decision: still blocked` cannot transition this story or Epic 1 to done.
   # Explicitly excludes payload-protection G5 and Parties Story 8.7; those are Epic 8.
@@ -124,6 +127,10 @@ development_status:
   3-9-supply-chain-publishing-backlog: review
   3-10-generated-api-dapr-aspire-smoke-preflight: done
   3-11-validated-central-package-catalog-refresh: backlog
+  # v3.75.0 has valid observed package hashes but only a single linux/amd64 image.
+  # Story 3.12 must produce a later OCI index containing exactly linux/amd64 and
+  # linux/arm64 before Story 1.20 can consider release identity complete.
+  3-12-multi-platform-eventstore-container-publishing-correction: backlog
   epic-3-retrospective: optional
 
   epic-4: in-progress

@@ -30,6 +30,7 @@ inputDocuments:
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-17.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-18.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-18-story-3-5-reconciliation.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-19.md
   - _bmad-output/specs/spec-eventstore-phase-4-readiness-recovery/SPEC.md
 ---
 
@@ -1896,6 +1897,59 @@ So that all consuming repositories inherit current dependencies from one reprodu
 **When** maintainers inspect its evidence
 **Then** it identifies the exact Builds commit, package-source audit timestamp, accepted versions, retained exceptions, validation commands/results, and rollback grouping for each family
 **And** Builds owns NuGet catalog update proposals while consumer repositories do not open competing local-version updates.
+
+### Story 3.12: Multi-Platform EventStore Container Publishing Correction
+
+**Requirements covered:** FR22, FR25, NFR9, NFR11, NFR16, NFR17; governed by AD-11, AD-12, AD-22, and Story 1.20 Acceptance Boundary 8.
+
+**Owner / review boundary:** Amelia (Developer) coordinates EventStore and the shared publishing integration; the Hexalith.Builds maintainer approves the shared publisher implementation and exact Builds commit; Murat (Test Architect) reviews platform-set, digest, child-config, and smoke evidence; the release owner alone authorizes external publication and disposes the resulting artifact identity.
+
+**Focused validation:** shared publisher contract tests; negative manifest/index fixtures; EventStore release-caller validation; immutable registry inspection; both-platform child-config validation; `linux/amd64` and `linux/arm64` smoke; exact 14-package inventory and independent SHA-256 verification.
+
+As an EventStore release owner,
+I want the shared release path to publish an exact two-platform OCI index,
+So that a corrective EventStore release can satisfy Story 1.20 AC8 without changing package scope or overwriting v3.75.0.
+
+**Acceptance Criteria:**
+
+**Given** v3.75.0 is inspected
+**When** its release assets and container registry object are recorded
+**Then** all 14 package hashes from this proposal are preserved as observed non-authorizing evidence, the container digest/media type/config platform are recorded, and its missing `linux/arm64` descriptor is an explicit failed result
+**And** no v3.75.0 package, Git tag, container tag, manifest, or registry object is overwritten or reclassified as approved.
+
+**Given** the Hexalith.Builds shared publisher is corrected under maintainer authority
+**When** the EventStore container mapping is published for a new semantic version
+**Then** .NET SDK container support produces immutable `linux/amd64` and `linux/arm64` children and the version tag resolves to an OCI image index with media type `application/vnd.oci.image.index.v1+json`
+**And** the index contains exactly one descriptor for each required platform, with no duplicate, extra, `unknown/unknown`, or variant descriptor.
+
+**Given** the published index and child manifests are inspected
+**When** release validation runs against immutable digests
+**Then** the raw index bytes hash to the registry-reported index digest, every descriptor digest resolves, and each child config's `os`/`architecture` equals its descriptor
+**And** a single-platform manifest, wrong media type, missing/duplicate/extra platform, config mismatch, unresolved child, or digest mismatch fails the release evidence gate.
+
+**Given** the two immutable child digests are runnable
+**When** platform smoke validation executes
+**Then** both `linux/amd64` and `linux/arm64` variants start successfully and pass the same bounded support-safe EventStore health smoke
+**And** emulation/setup failure is reported separately from a product image failure and cannot be recorded as a pass.
+
+**Given** a corrective release is ready for external publication
+**When** the publish action is requested
+**Then** a separate durable release-owner authority record binds the repository, new version, source SHA, exact container repository, two-platform scope, owner, date, rationale, and validity window before registry or NuGet mutation occurs
+**And** this planning/story approval alone grants no registry, NuGet, commit, branch, submodule, or push authority.
+
+**Given** the corrective semantic release completes
+**When** its evidence is assembled
+**Then** exactly the 14 IDs in `tools/release-packages.json` share the new version and have independently verified SHA-256 values, while the container evidence records repository, index digest, raw-index hash, child digests/configs, exact platform set, source SHA, workflow run, and smoke results
+**And** the package inventory remains 14, only `eventstore` is published as a container, and package/container version provenance is coherent.
+
+**Given** Story 3.12 has produced a conforming release
+**When** its handoff reaches Story 1.20
+**Then** Story 1.20 independently revalidates every package/container identity, remaining production-path result, approval, and A/B/C authorization gate before selecting approved fields or authorizing migration
+**And** Story 3.12 does not modify Parties or Tenants, approve G5, authorize consumer migration, or mark Story 1.20/Epic 1 done.
+
+**Explicit exclusions:** no Dockerfile; no EventStore runtime behavior change; no new package or container mapping; no v3.75.0 mutation; no trusted-publishing, signing, SBOM, attestation, or credential-modernization expansion; no consumer dependency update; and no Story 1.20 proof-result approval.
+
+**Rationale:** A focused release story fixes the shared publishing defect while preserving the independent evidence and human-approval boundaries of Story 1.20.
 
 ## Epic 4: Event Correctness And Recovery
 

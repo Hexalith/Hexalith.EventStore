@@ -3,7 +3,7 @@ schema: hexalith.eventstore.parity-closure-proof-packet/v1
 story_id: "1.20"
 story_key: 1-20-owner-approved-parity-closure-and-runtime-pin
 created: 2026-07-16T05:09:20+02:00
-updated: 2026-07-19T12:00:07+02:00
+updated: 2026-07-19T13:54:48+02:00
 historical_packet: 1-8-projection-query-sdk-owner-proof-packet.md
 candidate_source_sha: 85877902f8d60a466ab90cd8b68b53838863db1c
 tested_runtime_sha: null
@@ -60,8 +60,11 @@ The exact-SHA gate failed before package/container publication and owner review:
    `done`, and passes the source-topology provenance prerequisite,
    but this packet remains non-authorizing until every gate is rerun at one exact clean
    committed candidate SHA.
-6. No named EventStore owner has reviewed completed passing exact-SHA evidence, and no
-   manifest-governed package/container identities have been produced or approved.
+6. v3.75.0 published the 14 manifest-governed packages and an EventStore container;
+   the exact package bytes/hashes and failed single-platform container identity are
+   recorded below. No conforming package/container identity has been produced or
+   approved, and no named EventStore owner has reviewed completed passing exact-SHA
+   evidence.
 
 ### Scoped corrective item
 
@@ -74,6 +77,11 @@ registrations and passes the corrected source-mode E2E with freshly persisted
 production-path and package/container gate at one unchanged clean committed SHA, explicitly
 disposition Story 1.16's retained follow-up recommendation, obtain named EventStore-owner
 approval, and update this packet.
+
+Story 3.12, Multi-Platform EventStore Container Publishing Correction, is the approved
+scoped release corrective item. It must produce a later semantic release whose immutable
+OCI index contains exactly `linux/amd64` and `linux/arm64`; its planning approval grants
+no publication or Story 1.20 migration authority.
 
 ### Exact-SHA Failure And Readiness Re-Audit — Observed 2026-07-16T15:00:52+02:00
 
@@ -103,8 +111,10 @@ Runtime and documentation identity remain deliberately separate. The
 `candidate_source_sha` records the failed candidate, `tested_runtime_sha: null` records
 that no unchanged runtime has passed every gate, and `documentation_commit_sha: null`
 records that no later evidence-only commit exists. A future documentation commit cannot
-substitute for the tested runtime. Package versions and hashes, container digest and
-platform provenance, named owner approval, and migration authorization also remain absent.
+substitute for the tested runtime. Approved package/container identities, named owner
+approval, and migration authorization remain absent. The observed v3.75.0 identities
+recorded below are non-authorizing failure evidence and do not populate any `approved_*`
+field.
 
 Architecture AD-11 remains a hard executable precondition before selecting or publishing a
 replacement runtime. At current commit `772cdfefa8163704de0f57042af5b0507c1ac771`,
@@ -180,8 +190,9 @@ closed:
 
 ### NuGet package identities
 
-`tools/release-packages.json` currently names exactly 14 package IDs. No closure package
-build was produced, so every version and SHA-256 hash is unresolved.
+`tools/release-packages.json` currently names exactly 14 package IDs. No conforming closure
+release has been selected or approved, so every approved version and SHA-256 hash remains
+unresolved.
 
 | Exact package ID | Approved version | SHA-256 |
 | --- | --- | --- |
@@ -200,6 +211,38 @@ build was produced, so every version and SHA-256 hash is unresolved.
 | `Hexalith.EventStore.Admin.Cli` | not selected | not produced |
 | `Hexalith.EventStore.Admin.Server` | not selected | not produced |
 
+#### Observed v3.75.0 non-authorizing package evidence
+
+Release [v3.75.0](https://github.com/Hexalith/Hexalith.EventStore/releases/tag/v3.75.0)
+was published at `2026-07-19T10:47:27Z` by successful release workflow
+[run 29683837428](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/29683837428).
+The workflow source commit and release-tag parent are
+`d046120fb4178252a0e0f300d714bac70018e9f7`; the release-tag commit is
+`67a9e00efaf397a31669f65df7008f671d20e06a`. The GitHub release API digests below
+were independently reproduced by downloading all 14 assets and running `sha256sum`
+over the resulting bytes.
+
+| Exact package ID | Version | Size (bytes) | SHA-256 |
+| --- | --- | ---: | --- |
+| `Hexalith.EventStore.Contracts` | `3.75.0` | 143191 | `501485bacf3d76e847d1e162d6b51a72816a89ed2f167c56df19eb2c9eb96cf3` |
+| `Hexalith.EventStore.Client` | `3.75.0` | 146237 | `5e592616dd180c8cc8b51facc0eb2dc06d0a33b7c426a9f5d9012739d7d2eb23` |
+| `Hexalith.EventStore.Server` | `3.75.0` | 329419 | `a6510fb61cad2ab4d933d19d948cc5ca847edfc1e86bff342407bfb6d5acf8e3` |
+| `Hexalith.EventStore.SignalR` | `3.75.0` | 21155 | `85493eefbc9c0a302f8e6b956d0e0c942c97b74d23599492782530a105725a56` |
+| `Hexalith.EventStore.Testing` | `3.75.0` | 52308 | `9fd627c9cfc2114f058eeb63cfbea80735bef8b1a38771912b21af3eed476a49` |
+| `Hexalith.EventStore.Testing.Integration` | `3.75.0` | 63949 | `c9b7d6e19fa804a4e880ec1ac244fed41da576e0fac42552ea061bf5b50acbc4` |
+| `Hexalith.EventStore.Aspire` | `3.75.0` | 25663 | `cd7f42446536b47856e72429821ce53593e4601c16067c9d8ea3b6490b7329e1` |
+| `Hexalith.EventStore.ServiceDefaults` | `3.75.0` | 16207 | `823ebba8870caa13dd8b64801a759fd0a65ec6a2f19def60c94e592f247e8313` |
+| `Hexalith.EventStore.DomainService` | `3.75.0` | 51821 | `d41937ce8d9a4890d2e97a8e09d09b3c56cc46b24666216e26d6055296905050` |
+| `Hexalith.EventStore.RestApi.Generators` | `3.75.0` | 36992 | `e5fa1eb0bd09e2c2e2321781aca81e0dd9f846e00d349634b194f7f43eed77dc` |
+| `Hexalith.EventStore.Gateway` | `3.75.0` | 230221 | `3700b8cb46a34ed2f9d3f2664a571f07a5a1f70423df70967926cea86f39968c` |
+| `Hexalith.EventStore.Admin.Abstractions` | `3.75.0` | 111743 | `345fe452dda39fbc3513778936375da03b0be5c9ef2aee858f28deb1756b1be5` |
+| `Hexalith.EventStore.Admin.Cli` | `3.75.0` | 652071 | `fb2ac8c69da9790a9ff46237cb1db8958feaf04a59d340375094dc81ac503aad` |
+| `Hexalith.EventStore.Admin.Server` | `3.75.0` | 173425 | `e88f69d1bbd840ae9fa29bf710dcc71cc106c5cbc8101a59dc5552887c7a7a67` |
+
+These are exact observed release bytes, not approved Story 1.20 package identities.
+They do not set `approved_package_version` or
+`approved_package_hash_manifest_sha256`.
+
 ### Container identity
 
 - configured candidate repository: `registry.hexalith.com/eventstore`
@@ -209,6 +252,27 @@ build was produced, so every version and SHA-256 hash is unresolved.
 
 The configured repository name is not a deployed identity. A tag, repository, source SHA,
 or package version cannot substitute for an immutable image digest and its platform set.
+
+#### Observed v3.75.0 non-authorizing container failure
+
+| Evidence | Observed value | Acceptance Boundary 8 expectation | Result |
+| --- | --- | --- | --- |
+| Tag | `registry.hexalith.com/eventstore:3.75.0` | A version tag resolving to the approved immutable index | Observed only |
+| Immutable digest | `sha256:1cb7b6ed3db986e9896cc36f360d14017f3bf3521eed8e33267c3dffd05ca253` | Digest of the raw OCI index | Valid digest of the wrong object type |
+| Raw-manifest SHA-256 | `1cb7b6ed3db986e9896cc36f360d14017f3bf3521eed8e33267c3dffd05ca253` | Equal to the immutable index digest | Pass for raw-byte binding only |
+| Manifest media type | `application/vnd.docker.distribution.manifest.v2+json` | `application/vnd.oci.image.index.v1+json` | Fail |
+| `manifests` array | Absent | Exactly two descriptors | Fail |
+| Config digest | `sha256:9623a1d61f39b21ab28948e903669a54b38ab500c190dc7e7c9889744209a6e9` | One matching child config per required platform | Only one config exists |
+| Config platform | `linux/amd64` | Exactly `linux/amd64` and `linux/arm64` | Fail: `linux/arm64` absent |
+| Image version label | `3.75.0` | Matches release version | Pass |
+
+The tag resolves to one Docker image manifest whose config declares only
+`linux/amd64`. It is not an OCI index and contains no `linux/arm64` descriptor, so
+v3.75.0 fails Acceptance Boundary 8 and cannot authorize consumer migration. Story
+3.12 owns the scoped multi-platform publishing correction. The frontmatter
+`approved_container_repository` and `approved_container_digest` remain null,
+`final_decision` remains `still blocked`, and `authorize_consumer_migration` remains
+`false`.
 
 ## Candidate Environment Inventory
 
