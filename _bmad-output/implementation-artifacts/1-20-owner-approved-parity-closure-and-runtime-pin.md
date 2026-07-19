@@ -200,8 +200,10 @@ from this proposal inventory and remains owned by its existing changes.
 - [x] [Review][Patch] [high] Prove full-assembly runs are complete and contain only the expected
   assembly by retaining a complete method list and comparing it with every executed XML case
   [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:2992]
-- [x] [Review][Patch] [high] Reconcile xUnit root counters and child test results, requiring every
-  credited test to pass and `total == passed` with zero failed, error, or skipped cases
+- [x] [Review][Patch] [high] Reconcile xUnit root counters and child test results, requiring zero
+  failed, error, not-run, or unexpected skipped cases. The only exception is the exact committed
+  eight-test DW2 red-phase inventory in the Admin MCP full-assembly lane; any identity, reason,
+  assembly, count, or evidence-name drift fails closed
   [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:738]
 - [x] [Review][Patch] [high] Revalidate prerequisite review/provenance evidence from the committed
   story artifacts instead of accepting only seven mutable `done` tracker strings
@@ -243,7 +245,11 @@ owner approvals, or authorizing A/B/C chain exists yet.
 #### 2026-07-19 — Code review chunk 1: proof packet
 
 - [x] [Review][Patch] [high] Require the runtime and A/B/C authorization chain to be reachable from freshly fetched `origin/main` [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:237]
-- [x] [Review][Patch] [high] Require `skipped == 0` for every filtered and full xUnit result credited toward closure [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:713]
+- [x] [Review][Patch] [high] Initially required `skipped == 0` for every filtered and full xUnit
+  result credited toward closure; the 2026-07-19 execution later narrowed this to zero unexpected
+  skips so the separately frozen, exact eight-test DW2 red-phase inventory remains enforceable
+  without authorizing that deferred implementation
+  [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:713]
 - [x] [Review][Patch] [high] Restrict evidence commit A to the packet, the exact evidence directory, and a deterministic Story 1.16 disposition transform [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:2478]
 - [x] [Review][Patch] [high] Require provider-neutral WORM evidence for the raw bundle: URL, object version, retention deadline, immutable-policy proof, and SHA-256 [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1955]
 - [x] [Review][Patch] [high] Start and health-check the digest-pinned image on both approved platforms, allowing emulation when native hardware is unavailable [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:3713]
@@ -463,6 +469,15 @@ evidence; named owner approval remains absent. No consumer migration is authoriz
   needed an unambiguous markup transition for Fluent components inside control-flow blocks. The
   corrected Sample UI Release build passed with zero warnings/errors and the complete Sample test
   project passed 117/117.
+- Candidate `e4f5ad06a16301237e3cd355f61e7ff2be28aedb` then passed every focused
+  capability lane, the source-topology E2E, and the warning-free Release solution build. The
+  complete cross-cutting inventory stopped at Admin MCP with 320 passed, eight skipped, zero
+  failed of 328. All eight are the frozen DW2 red-phase scaffolds that this story is forbidden to
+  enable before their later live transcript exists.
+- Reconciled the two contracts with a committed, exact eight-test skip allowlist. The packet now
+  checks fully qualified names, reasons, assembly, evidence name, aggregate counters, and every
+  child result in the initial run, raw bundle, and A/B/C revalidation paths; all other skips still
+  fail closed.
 
 ### Completion Notes
 
@@ -478,12 +493,17 @@ evidence; named owner approval remains absent. No consumer migration is authoriz
 - The candidate `15f79b58...` run remains rejected and produced no package/container publication.
   The Razor correction must merge through a new exact-head PR before the closure protocol restarts
   from a fresh detached checkout.
+- The candidate `e4f5ad06...` run also remains rejected and produced no package/container
+  publication. Its Admin MCP stop exposed a proof-contract defect, not a DW2 implementation
+  authorization. A new merged exact SHA must rerun the full protocol from zero after the strict
+  deferred-skip contract is reviewed.
 
 ## File List
 
 - `_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md`
 - `_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md`
 - `_bmad-output/implementation-artifacts/1-20-github-approval-role-allowlist.json`
+- `_bmad-output/implementation-artifacts/1-20-deferred-xunit-skip-allowlist.json`
 - `_bmad-output/implementation-artifacts/spec-1-16-1-20-sprint-change-proposal.md`
 - `_bmad-output/implementation-artifacts/deferred-work.md`
 - `src/Hexalith.EventStore.Admin.Cli/Commands/Config/ConfigCompletionCommand.cs`
@@ -494,6 +514,7 @@ evidence; named owner approval remains absent. No consumer migration is authoriz
 - `samples/Hexalith.EventStore.Sample.BlazorUI/Pages/SilentReloadPattern.razor`
 - `tests/Hexalith.EventStore.Admin.Cli.Tests/Commands/Config/ConfigCompletionCommandTests.cs`
 - `tests/Hexalith.EventStore.Admin.Cli.Tests/ConsoleTestCollection.cs`
+- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ProofPacketValidatorIntegrityTests.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/ContractTests/QueryResponseProvenanceE2ETests.cs`
 - `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DaprTestContainerFixture.cs`
 - `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/NamedProjectionDispatchLiveSidecarTests.cs`
@@ -533,5 +554,8 @@ evidence; named owner approval remains absent. No consumer migration is authoriz
 - 2026-07-19: Removed process-wide console mutation from the completion-command tests and made
   the remaining `ConsoleTests` collection non-parallel with all other collections after the PR
   gate exposed concurrent `StringWriter` corruption.
+- 2026-07-19: Preserved the frozen DW2 red phase while repairing Story 1.20's contradictory
+  zero-skip gate: only the exact eight committed Admin MCP scaffold names and reasons may skip,
+  and every execution, bundle, and authorization revalidator rejects any drift or additional skip.
 - 2026-07-19: Repaired the Sample Blazor UI's .NET 10 Razor control-flow markup transitions after
   the exact-SHA proof correctly stopped its Sample test-project build before publication.
