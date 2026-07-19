@@ -1,3 +1,16 @@
+# [3.75.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.74.0...v3.75.0) (2026-07-19)
+
+
+### Bug Fixes
+
+* **ci:** restore strict commitlint policy ([d046120](https://github.com/Hexalith/Hexalith.EventStore/commit/d046120fb4178252a0e0f300d714bac70018e9f7))
+* **workflow:** correct quick-dev paths ([dc058f8](https://github.com/Hexalith/Hexalith.EventStore/commit/dc058f869818632601bea9995efad74738fbad3d))
+
+
+### Features
+
+* Update last_updated date and improve contract validation ([3111a4b](https://github.com/Hexalith/Hexalith.EventStore/commit/3111a4bc613d22a8865c25a7c925c63b648ab1a1))
+
 # [3.74.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.73.0...v3.74.0) (2026-07-18)
 
 
