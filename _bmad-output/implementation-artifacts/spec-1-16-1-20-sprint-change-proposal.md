@@ -183,8 +183,8 @@ awk '
 
 awk '
   { sub(/\r$/, "") }
-  /^# last_updated:/ { comment_key++; comment_ok += ($0 == "# last_updated: 2026-07-17") }
-  /^last_updated:/ { field_key++; field_ok += ($0 == "last_updated: 2026-07-17") }
+  /^# last_updated:/ { comment_key++; comment_ok += ($0 == "# last_updated: 2026-07-18") }
+  /^last_updated:/ { field_key++; field_ok += ($0 == "last_updated: 2026-07-18") }
   /^  epic-1:/ { epic_key++; epic_ok += ($0 == "  epic-1: in-progress") }
   /^  1-20-owner-approved-parity-closure-and-runtime-pin:/ {
     story_key++; story_ok += ($0 == "  1-20-owner-approved-parity-closure-and-runtime-pin: in-progress")
@@ -752,8 +752,8 @@ bash -c '
     $0 == "IMAGE_DIGEST=\"$(cat \"$GENERATED_IMAGE_INDEX_DIGEST\")\"" { generated_digest = NR }
     $0 == "test \"$TAG_IMAGE_DIGEST\" = \"$IMAGE_DIGEST\"" { tag_consistency = NR }
     END { exit !(restore > 0 && ready_function > restore &&
-      ready_function < action_time && action_time < final_ad11 && final_ad11 < final_clean &&
-      final_clean < authority_call && authority_call < ready_end && authority_is_last &&
+      ready_function < final_ad11 && final_ad11 < final_clean && final_clean < action_time &&
+      action_time < authority_call && authority_call < ready_end && authority_is_last &&
       ready_end < ready_call && readiness_is_immediate && quarantine_tag > 0 &&
       quarantine_tag < publish && publish < last_clean && last_clean < generated_digest &&
       generated_digest < tag_consistency) }
@@ -766,7 +766,7 @@ duplicate embedded identities. The package hash guard accepts exactly 14 portabl
 filenames and rejects partial or absolute-path manifests. The extracted SDK image-index capture
 target preserves exact bytes and emits their digest. The cleanliness function accepts a clean repository and generated
 `bin`/`obj`, rejects untracked and unapproved ignored inputs, and the structurally isolated
-publication block orders a fresh restore, one final action-time AD-11/source/authority readiness
+publication block orders a fresh restore, one final AD-11/source/action-time/authority readiness
 function immediately before quarantined publication, post-publish cleanliness, SDK-produced
 digest capture, and tag consistency. Markers outside that executable block cannot satisfy it.
 
@@ -787,18 +787,29 @@ bash -c '
     "cmp --silent \"\$RUNTIME_EXECUTABLE_BLOCKS\" \"\$A_EXECUTABLE_BLOCKS\""
     "verify_committed_github_role_record"
     "story-1-16-followup-review.github.json"
+    "EXPECTED_A_FOLLOWUP_SPEC"
     "critical-evidence-expected-files.txt"
     "A_RAW_EVIDENCE_BUNDLE_SHA256"
     "A_EXPECTED_RESULT_FILES"
     "validate_source_state"
     "A_APPROVAL_SUBJECT_SHA256"
     "A_EXPECTED_LIMITATION_IDS"
+    "A_EXPECTED_PREREQUISITE_STATUSES"
     "implementation-complete/evidence-confirmed"
     "docker buildx imagetools inspect"
     "\$A_CONTAINER_REPOSITORY@\$child_digest"
-    "body_decision_changed"
+    "test-evidence-identities.tsv"
+    "raw_evidence_immutability_proof_sha256"
+    "verify_container_platform_smoke"
+    "test-identity-contract-start"
+    "authorization-phase-contract-start"
+    "container-smoke-verifier-contract-start"
+    "AUTHORIZATION_VERIFICATION_PHASE"
+    "CURRENT_AUTHORITY_PACKET"
+    "A_RUNTIME_EFFECTIVE_PACKAGES_RELEASE"
+    "decision_section_changed"
     "owner_migration_changed"
-    "final_decision_changed"
+    "final_section_changed"
   )
   check_contract() {
     local contract="$1"
@@ -823,10 +834,193 @@ bash -c '
   for block in "$packet_blocks"/*.sh; do
     bash -n "$block"
   done
+
+  fixture_root="$(mktemp -d)"
+  trap "rm -f -- \"$verification_script\" \"$contract_copy\"; rm -rf -- \"$packet_blocks\" \"$fixture_root\"" EXIT
+  extract_marker_contract() {
+    local start_marker="$1"
+    local end_marker="$2"
+    local output="$3"
+    awk -v start_marker="$start_marker" -v end_marker="$end_marker" '\''
+      $0 == start_marker { capture = 1; next }
+      $0 == end_marker { exit }
+      capture { print }
+    '\'' "$packet" > "$output"
+    test -s "$output"
+  }
+
+  xunit_contract="$fixture_root/xunit-contract.sh"
+  extract_marker_contract \
+    "# xunit-result-contract-start" "# xunit-result-contract-end" \
+    "$xunit_contract"
+  bash -n "$xunit_contract"
+  . "$xunit_contract"
+  xunit_good="$fixture_root/xunit-good.xml"
+  printf "%s\n" \
+    "<assemblies total=\"1\" passed=\"1\" failed=\"0\" errors=\"0\" skipped=\"0\"><assembly name=\"Fixture.Tests.dll\"><collection><test type=\"Fixture.Tests.Case\" method=\"Passes\" result=\"Pass\" /></collection></assembly></assemblies>" \
+    > "$xunit_good"
+  validate_xunit_result "$xunit_good"
+  xunit_mutated="$fixture_root/xunit-mutated.xml"
+  sed "s/skipped=\"0\"/skipped=\"1\"/" "$xunit_good" > "$xunit_mutated"
+  ! validate_xunit_result "$xunit_mutated" >/dev/null 2>&1
+  sed "s/result=\"Pass\"/result=\"Fail\"/" "$xunit_good" > "$xunit_mutated"
+  ! validate_xunit_result "$xunit_mutated" >/dev/null 2>&1
+  sed "s/total=\"1\"/total=\"2\"/" "$xunit_good" > "$xunit_mutated"
+  ! validate_xunit_result "$xunit_mutated" >/dev/null 2>&1
+
+  identity_contract="$fixture_root/test-identity-contract.py"
+  extract_marker_contract \
+    "# test-identity-contract-start" "# test-identity-contract-end" \
+    "$identity_contract"
+  identity_pairs="$fixture_root/full-identity-pairs.tsv"
+  sed -n "/^full_assemblies = {$/,/^}$/p" "$identity_contract" |
+    awk -F\" '\''/^    "/ { print $2 "|" $4 }'\'' > "$identity_pairs"
+  test -s "$identity_pairs"
+  identity_root="$fixture_root/identity-results"
+  mkdir -p "$identity_root"
+  identity_rows="$fixture_root/test-evidence-identities.tsv"
+  filtered_names="$fixture_root/filtered-names.txt"
+  full_names="$fixture_root/full-names.txt"
+  : > "$identity_rows"
+  : > "$filtered_names"
+  : > "$full_names"
+  while IFS="|" read -r result_name assembly; do
+    printf "%s|%s|all|\n" "$result_name" "$assembly" >> "$identity_rows"
+    printf "%s\n" "$result_name" >> "$full_names"
+    printf "%s\n" "Fixture.Case.$result_name" \
+      > "$identity_root/$result_name.methods.txt"
+    printf "%s\n" \
+      "<assemblies><assembly name=\"${assembly##*/}\"><collection><test type=\"Fixture.Case\" method=\"$result_name\" result=\"Pass\" /></collection></assembly></assemblies>" \
+      > "$identity_root/$result_name.xml"
+  done < "$identity_pairs"
+  python3 "$identity_contract" \
+    "$identity_root" "$identity_rows" "$filtered_names" "$full_names"
+  first_result="$(head -n 1 "$full_names")"
+  cp -- "$identity_root/$first_result.xml" "$fixture_root/identity-good.xml"
+  sed "s/<assembly name=\"[^\"]*\"/<assembly name=\"Wrong.Tests.dll\"/" \
+    "$fixture_root/identity-good.xml" > "$identity_root/$first_result.xml"
+  ! python3 "$identity_contract" \
+    "$identity_root" "$identity_rows" "$filtered_names" "$full_names" \
+    >/dev/null 2>&1
+  cp -- "$fixture_root/identity-good.xml" "$identity_root/$first_result.xml"
+  printf "%s\n" "Fixture.Case.Unexecuted" \
+    >> "$identity_root/$first_result.methods.txt"
+  ! python3 "$identity_contract" \
+    "$identity_root" "$identity_rows" "$filtered_names" "$full_names" \
+    >/dev/null 2>&1
+
+  worm_contract="$fixture_root/provider-worm-contract.sh"
+  extract_marker_contract \
+    "# provider-worm-contract-start" "# provider-worm-contract-end" \
+    "$worm_contract"
+  bash -n "$worm_contract"
+  . "$worm_contract"
+  RAW_EVIDENCE_PROVIDER_ADAPTER_ID=fixture-provider-v1
+  RAW_EVIDENCE_PROVIDER_ADAPTER_SHA256="$(printf "a%.0s" {1..64})"
+  RAW_EVIDENCE_BUNDLE_URL=https://evidence.example/raw.tgz
+  RAW_EVIDENCE_BUNDLE_OBJECT_VERSION=fixture-version-1
+  RAW_EVIDENCE_BUNDLE_SHA256="$(printf "b%.0s" {1..64})"
+  write_worm_fixture() {
+    local authenticated="$1"
+    local locked="$2"
+    local output="$3"
+    printf "%s\n" \
+      "{\"schema\":\"hexalith.eventstore.provider-worm-object-proof/v2\",\"provider\":{\"adapter_id\":\"$RAW_EVIDENCE_PROVIDER_ADAPTER_ID\",\"adapter_sha256\":\"$RAW_EVIDENCE_PROVIDER_ADAPTER_SHA256\",\"authenticated_api\":$authenticated},\"object\":{\"url\":\"$RAW_EVIDENCE_BUNDLE_URL\",\"version\":\"$RAW_EVIDENCE_BUNDLE_OBJECT_VERSION\",\"sha256\":\"$RAW_EVIDENCE_BUNDLE_SHA256\"},\"policy\":{\"mode\":\"WORM\",\"locked\":$locked,\"retention_until\":\"$RAW_EVIDENCE_BUNDLE_RETENTION_UNTIL\"}}" \
+      > "$output"
+  }
+  worm_proof="$fixture_root/worm-proof.json"
+  RAW_EVIDENCE_BUNDLE_RETENTION_UNTIL=2033-07-19T00:00:00Z
+  write_worm_fixture true true "$worm_proof"
+  validate_provider_worm_proof "$worm_proof" 2026-07-19T00:00:00Z
+  write_worm_fixture false true "$worm_proof"
+  ! validate_provider_worm_proof "$worm_proof" 2026-07-19T00:00:00Z \
+    >/dev/null 2>&1
+  write_worm_fixture true false "$worm_proof"
+  ! validate_provider_worm_proof "$worm_proof" 2026-07-19T00:00:00Z \
+    >/dev/null 2>&1
+  RAW_EVIDENCE_BUNDLE_RETENTION_UNTIL=2033-07-18T23:59:59Z
+  write_worm_fixture true true "$worm_proof"
+  ! validate_provider_worm_proof "$worm_proof" 2026-07-19T00:00:00Z \
+    >/dev/null 2>&1
+
+  authorization_contract="$fixture_root/authorization-phase-contract.sh"
+  extract_marker_contract \
+    "# authorization-phase-contract-start" "# authorization-phase-contract-end" \
+    "$authorization_contract"
+  bash -n "$authorization_contract"
+  . "$authorization_contract"
+  authorization_repository="$fixture_root/authorization-repository"
+  git init -q "$authorization_repository"
+  git -C "$authorization_repository" config user.email proof@example.invalid
+  git -C "$authorization_repository" config user.name Proof
+  git -C "$authorization_repository" commit -qm runtime --allow-empty
+  EVIDENCE_COMMIT_A="$(git -C "$authorization_repository" rev-parse HEAD)"
+  git -C "$authorization_repository" commit -qm pointer --allow-empty
+  POINTER_COMMIT_B="$(git -C "$authorization_repository" rev-parse HEAD)"
+  git -C "$authorization_repository" commit -qm authorize --allow-empty
+  AUTHORIZATION_COMMIT_C="$(git -C "$authorization_repository" rev-parse HEAD)"
+  OFFICIAL_MAIN_SHA="$POINTER_COMMIT_B"
+  AUTHORIZATION_VERIFICATION_PHASE=pre-merge
+  (cd "$authorization_repository" && verify_authorization_phase)
+  OFFICIAL_MAIN_SHA="$AUTHORIZATION_COMMIT_C"
+  AUTHORIZATION_VERIFICATION_PHASE=official-main
+  (cd "$authorization_repository" && verify_authorization_phase)
+  OFFICIAL_MAIN_SHA="$EVIDENCE_COMMIT_A"
+  AUTHORIZATION_VERIFICATION_PHASE=pre-merge
+  ! (cd "$authorization_repository" && verify_authorization_phase) \
+    >/dev/null 2>&1
+  OFFICIAL_MAIN_SHA="$POINTER_COMMIT_B"
+  AUTHORIZATION_VERIFICATION_PHASE=official-main
+  ! (cd "$authorization_repository" && verify_authorization_phase) \
+    >/dev/null 2>&1
+
+  smoke_contract="$fixture_root/container-smoke-contract.sh"
+  extract_marker_contract \
+    "# container-smoke-contract-start" "# container-smoke-contract-end" \
+    "$smoke_contract"
+  bash -n "$smoke_contract"
+  . "$smoke_contract"
+  DOCKER_CALLS="$fixture_root/docker-calls.txt"
+  : > "$DOCKER_CALLS"
+  docker() {
+    printf "%s\n" "$*" >> "$DOCKER_CALLS"
+    case "$1" in
+      run) printf "%s\n" fixture-container ;;
+      inspect)
+        if test "${2:-}" = -f; then printf "%s\n" true; else return 0; fi
+        ;;
+      port) printf "%s\n" 127.0.0.1:49152 ;;
+      logs) return 0 ;;
+      rm) test "${CLEANUP_FAIL:-0}" -eq 0 ;;
+      *) return 1 ;;
+    esac
+  }
+  curl() { test "${CURL_FAIL:-0}" -eq 0; }
+  sleep() { :; }
+  seq() { printf "%s\n" 1; }
+  CURL_FAIL=0
+  CLEANUP_FAIL=0
+  smoke_published_platform fixture.example/repository \
+    sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
+    linux/amd64 "$fixture_root/smoke-amd64.log"
+  smoke_published_platform fixture.example/repository \
+    sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
+    linux/arm64 "$fixture_root/smoke-arm64.log"
+  grep -Fq -- "--platform linux/amd64" "$DOCKER_CALLS"
+  grep -Fq -- "--platform linux/arm64" "$DOCKER_CALLS"
+  CURL_FAIL=1
+  ! smoke_published_platform fixture.example/repository \
+    sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
+    linux/amd64 "$fixture_root/smoke-failed-health.log" >/dev/null 2>&1
+  CURL_FAIL=0
+  CLEANUP_FAIL=1
+  ! smoke_published_platform fixture.example/repository \
+    sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
+    linux/amd64 "$fixture_root/smoke-failed-cleanup.log" >/dev/null 2>&1
   exit 0
 
   # Historical synthetic-graph fixture retained below for mutation provenance only. The
-  # executable contract fixture above supersedes its pre-GitHub-API evidence schema.
+  # reachable behavior fixtures above supersede its pre-GitHub-API evidence schema.
   repository="$(mktemp -d)"
   trap "rm -f -- \"$verification_script\"; rm -rf -- \"$repository\"" EXIT
   awk '\''$0 == "### Evidence Commit A, Pointer-Only Commit B, And Authorizing Commit C Verification" {
@@ -1282,12 +1476,16 @@ PACKET
 ' _ _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
 ```
 
-Expected: the extracted verifier and every packet Bash block parse. The executable contract
-fixture requires the immutable-harness comparison, GitHub role records, exact critical/raw
-evidence inventories, AD-11/source-state parsing, approval subject and limitation binding,
-closed deferred status, live registry child-manifest re-query, and all three body-level C
-transitions. Removing any one required marker makes the mutation check fail. The older
-synthetic-graph body remains below the explicit exit only as historical mutation provenance;
+Expected: the extracted verifier and every packet Bash block parse. Structural mutation checks
+require the immutable-harness comparison, GitHub role records, exact critical/raw evidence
+inventories, AD-11/source-state parsing, approval subject and limitation binding, closed deferred
+status, live registry child-manifest re-query, and all three body-level C transitions. Reachable
+fixtures then execute the packet's exact xUnit result and identity contracts, rejecting skips,
+failed children, incomplete totals, wrong assemblies, and incomplete full-run method listings;
+execute the WORM contract, rejecting unauthenticated, unlocked, and sub-seven-year retention;
+exercise valid and invalid pre-merge/official-main ancestry; and exercise both target container
+platforms plus health and cleanup failure paths. Only after those fixtures pass does the terminal
+exit run. The older synthetic graph remains after it solely as historical mutation provenance;
 its pre-GitHub-API evidence schema is not executed.
 
 ```bash

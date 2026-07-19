@@ -3,7 +3,7 @@ schema: hexalith.eventstore.parity-closure-proof-packet/v1
 story_id: "1.20"
 story_key: 1-20-owner-approved-parity-closure-and-runtime-pin
 created: 2026-07-16T05:09:20+02:00
-updated: 2026-07-17T07:05:30+02:00
+updated: 2026-07-19T12:00:07+02:00
 historical_packet: 1-8-projection-query-sdk-owner-proof-packet.md
 candidate_source_sha: 85877902f8d60a466ab90cd8b68b53838863db1c
 tested_runtime_sha: null
@@ -12,6 +12,12 @@ evidence_manifest_sha256: null
 approval_subject_sha256: null
 raw_evidence_bundle_url: null
 raw_evidence_bundle_sha256: null
+raw_evidence_bundle_object_version: null
+raw_evidence_bundle_retention_until: null
+raw_evidence_provider_adapter_id: null
+raw_evidence_provider_adapter_sha256: null
+raw_evidence_immutability_proof_url: null
+raw_evidence_immutability_proof_sha256: null
 eventstore_owner_approval_url: null
 eventstore_owner_approval_sha256: null
 release_owner_disposition_url: null
@@ -50,7 +56,7 @@ The exact-SHA gate failed before package/container publication and owner review:
 5. The failed candidate was below architecture AD-11's security baseline. Commit
    `772cdfefa8163704de0f57042af5b0507c1ac771` passes the exact SDK `10.0.302`,
    ASP.NET `10.0.10`, and installed `Microsoft.NETCore.App` `10.0.10` preflight. Story 2.7's
-   correction is committed at `fd8ab24d110e605dfd64487cda84a301126d337d`, is recorded
+   correction is committed at `fd8ab24da230058f2f239765b68d5e0a135b4b76`, is recorded
    `done`, and passes the source-topology provenance prerequisite,
    but this packet remains non-authorizing until every gate is rerun at one exact clean
    committed candidate SHA.
@@ -62,7 +68,7 @@ The exact-SHA gate failed before package/container publication and owner review:
 Keep the lifecycle-cleanup and AD-11 entries as resolved implementation history: commit
 `772cdfefa8163704de0f57042af5b0507c1ac771` passed the exact former lifecycle failure, its
 complete six-test class, the 44-test live-sidecar lane, and the executable AD-11 preflight.
-Story 2.7's committed `fd8ab24d110e605dfd64487cda84a301126d337d` correction removes the stale base `orders`/`inventory`
+Story 2.7's committed `fd8ab24da230058f2f239765b68d5e0a135b4b76` correction removes the stale base `orders`/`inventory`
 registrations and passes the corrected source-mode E2E with freshly persisted
 `admin:query-types:tenants` state. Rerun that proof together with every remaining
 production-path and package/container gate at one unchanged clean committed SHA, explicitly
@@ -125,7 +131,7 @@ changes no runtime or package pin.
 | Story 1.18 delivery idempotency | `done` | Crosswalk maps completed historical Story 1.13 production-path evidence. | Satisfied for sequencing; evidence not promoted to this packet without exact-SHA rerun. |
 | Story 1.19 paged rebuild equivalence | `done` | Active Story 1.19 records approval after 13 in-scope patches, one explicit deferral, a 2,620-test Server pass, the real DAPR/Redis paged-rebuild pass, and a warning-free Release build. | Satisfied for sequencing; the paged-rebuild live test also passed at the current candidate SHA, but the cross-cutting live gate did not. |
 | Architecture AD-11 security baseline | `implementation-complete/evidence-confirmed` | Commits `d6c849aaf8f77f967377f72b763bd44b3131a713`, `3a43d5e6151ebc51e945bf1b6cecda92fd198a09`, and `8c70efb08b1bf2fcd077ad930c5827d1ab1594da` are present in current commit `772cdfef...`; the executable preflight observed SDK `10.0.302`, ASP.NET `10.0.10`, and installed `Microsoft.NETCore.App` `10.0.10`. | Satisfied for the current readiness audit. Every later candidate must still pass the executable preflight unchanged. |
-| Source-topology query provenance | `implementation-complete/reverification-required` | Story 2.7 is `done`; committed correction `fd8ab24d110e605dfd64487cda84a301126d337d` removes the stale base sample bindings. The exact Debug source-topology E2E passes 1/1, returns `HandlerComputed` provenance, and reads freshly persisted `admin:query-types:tenants` state containing `list-tenants`. | Story 2.7's implementation prerequisite is satisfied. Rerun it at the exact clean committed candidate SHA selected for Story 1.20 before authorization. |
+| Source-topology query provenance | `implementation-complete/reverification-required` | Story 2.7 is `done`; committed correction `fd8ab24da230058f2f239765b68d5e0a135b4b76` removes the stale base sample bindings. The exact Debug source-topology E2E passes 1/1 at that correction, returns `HandlerComputed` provenance, and reads freshly persisted `admin:query-types:tenants` state containing `list-tenants`. | Story 2.7's implementation prerequisite is satisfied. Rerun it at the exact clean committed candidate SHA selected for Story 1.20 before authorization. |
 | Story 1.20 owner review | pending | No reviewer, approval date, or durable source exists. | **Hard blocker.** |
 
 ## Artifact Identity Pin
@@ -238,10 +244,16 @@ set -euo pipefail
 [[ "$CANDIDATE_SHA" =~ ^[0-9a-f]{40}$ ]]
 
 SOURCE_REPOSITORY="$(git rev-parse --show-toplevel)"
+git -C "$SOURCE_REPOSITORY" fetch --quiet --no-tags origin main
+OFFICIAL_MAIN_SHA="$(git -C "$SOURCE_REPOSITORY" rev-parse --verify \
+  --end-of-options 'refs/remotes/origin/main^{commit}')"
+git -C "$SOURCE_REPOSITORY" merge-base --is-ancestor "$CANDIDATE_SHA" "$OFFICIAL_MAIN_SHA"
 GATE_ROOT="$(mktemp -d)"
 CHECKOUT="$GATE_ROOT/eventstore"
 EVIDENCE_ROOT="$GATE_ROOT/evidence"
 mkdir -p "$EVIDENCE_ROOT"
+TEST_EVIDENCE_IDENTITIES="$EVIDENCE_ROOT/test-evidence-identities.tsv"
+: > "$TEST_EVIDENCE_IDENTITIES"
 git -C "$SOURCE_REPOSITORY" worktree add --detach "$CHECKOUT" "$CANDIDATE_SHA"
 cd "$CHECKOUT"
 printf '%s\n' "$CANDIDATE_SHA" > "$EVIDENCE_ROOT/candidate-source-sha.txt"
@@ -350,12 +362,13 @@ INSTALLED_SDK_VERSION="$(dotnet --version)"
 # restore/build/publish gate.
 git submodule update --init --checkout -- references/Hexalith.Builds
 ASPNET_PIN_EVALUATOR="$GATE_ROOT/evaluate-package-versions.proj"
-ASPNET_PIN_OUTPUT="$EVIDENCE_ROOT/effective-package-versions.txt"
+ASPNET_PIN_OUTPUT_DEBUG="$EVIDENCE_ROOT/effective-package-versions-debug.txt"
+ASPNET_PIN_OUTPUT_RELEASE="$EVIDENCE_ROOT/effective-package-versions-release.txt"
 cat > "$ASPNET_PIN_EVALUATOR" <<EOF
 <Project>
   <Import Project="$CHECKOUT/Directory.Packages.props" />
   <Target Name="WriteEffectivePackageVersions">
-    <WriteLinesToFile File="$ASPNET_PIN_OUTPUT"
+    <WriteLinesToFile File="\$(PackageVersionOutput)"
                       Lines="@(PackageVersion->'%(Identity) %(Version)')"
                       Overwrite="true"
                       Encoding="UTF-8" />
@@ -365,10 +378,16 @@ EOF
 chmod a-w "$ASPNET_PIN_EVALUATOR"
 
 evaluate_package_versions() {
-  rm -f "$ASPNET_PIN_OUTPUT"
+  local configuration="$1"
+  local use_project_references="$2"
+  local output="$3"
+  rm -f "$output"
   dotnet msbuild "$ASPNET_PIN_EVALUATOR" -nologo \
-    -t:WriteEffectivePackageVersions >/dev/null
-  test -s "$ASPNET_PIN_OUTPUT"
+    -t:WriteEffectivePackageVersions \
+    -p:Configuration="$configuration" \
+    -p:UseHexalithProjectReferences="$use_project_references" \
+    -p:PackageVersionOutput="$output" >/dev/null
+  test -s "$output"
 }
 
 discover_effective_aspnet_pin_pairs() {
@@ -403,9 +422,18 @@ validate_aspnet_pin_band() {
   printf '%s\n' "${unique_versions[0]}"
 }
 
-evaluate_package_versions
-mapfile -t ASPNET_PIN_PAIRS < <(discover_effective_aspnet_pin_pairs "$ASPNET_PIN_OUTPUT")
-REPOSITORY_ASPNET_VERSION="$(validate_aspnet_pin_band "${ASPNET_PIN_PAIRS[@]}")"
+evaluate_package_versions Debug true "$ASPNET_PIN_OUTPUT_DEBUG"
+evaluate_package_versions Release false "$ASPNET_PIN_OUTPUT_RELEASE"
+mapfile -t ASPNET_DEBUG_PIN_PAIRS < <(
+  discover_effective_aspnet_pin_pairs "$ASPNET_PIN_OUTPUT_DEBUG"
+)
+mapfile -t ASPNET_RELEASE_PIN_PAIRS < <(
+  discover_effective_aspnet_pin_pairs "$ASPNET_PIN_OUTPUT_RELEASE"
+)
+REPOSITORY_DEBUG_ASPNET_VERSION="$(validate_aspnet_pin_band "${ASPNET_DEBUG_PIN_PAIRS[@]}")"
+REPOSITORY_RELEASE_ASPNET_VERSION="$(validate_aspnet_pin_band "${ASPNET_RELEASE_PIN_PAIRS[@]}")"
+test "$REPOSITORY_DEBUG_ASPNET_VERSION" = "$REPOSITORY_RELEASE_ASPNET_VERSION"
+REPOSITORY_ASPNET_VERSION="$REPOSITORY_RELEASE_ASPNET_VERSION"
 dotnet --list-runtimes > "$EVIDENCE_ROOT/dotnet-runtimes.txt"
 discover_bound_runtime_versions() {
   local runtime_inventory="$1"
@@ -549,21 +577,31 @@ chmod a-w "$AD11_PREFLIGHT"
 
 assert_ad11_current() {
   local checked_at
-  local current_aspnet_version
-  local -a current_pairs=()
+  local current_debug_aspnet_version
+  local current_release_aspnet_version
+  local -a current_debug_pairs=()
+  local -a current_release_pairs=()
   local -a current_runtime_versions=()
   assert_candidate_identity
   test "$(jq -er '.sdk.version' global.json)" = "$REPOSITORY_SDK_VERSION"
   test "$(jq -er '.sdk.rollForward' global.json)" = "$REPOSITORY_SDK_ROLL_FORWARD"
   test "$(dotnet --version)" = "$INSTALLED_SDK_VERSION"
-  evaluate_package_versions
-  mapfile -t current_pairs < <(discover_effective_aspnet_pin_pairs "$ASPNET_PIN_OUTPUT")
-  current_aspnet_version="$(validate_aspnet_pin_band "${current_pairs[@]}")"
-  test "$current_aspnet_version" = "$REPOSITORY_ASPNET_VERSION"
+  evaluate_package_versions Debug true "$ASPNET_PIN_OUTPUT_DEBUG"
+  evaluate_package_versions Release false "$ASPNET_PIN_OUTPUT_RELEASE"
+  mapfile -t current_debug_pairs < <(
+    discover_effective_aspnet_pin_pairs "$ASPNET_PIN_OUTPUT_DEBUG"
+  )
+  mapfile -t current_release_pairs < <(
+    discover_effective_aspnet_pin_pairs "$ASPNET_PIN_OUTPUT_RELEASE"
+  )
+  current_debug_aspnet_version="$(validate_aspnet_pin_band "${current_debug_pairs[@]}")"
+  current_release_aspnet_version="$(validate_aspnet_pin_band "${current_release_pairs[@]}")"
+  test "$current_debug_aspnet_version" = "$current_release_aspnet_version"
+  test "$current_release_aspnet_version" = "$REPOSITORY_ASPNET_VERSION"
   dotnet --list-runtimes > "$EVIDENCE_ROOT/dotnet-runtimes-current.txt"
   mapfile -t current_runtime_versions < <(
     discover_bound_runtime_versions "$EVIDENCE_ROOT/dotnet-runtimes-current.txt" \
-      "$current_aspnet_version"
+      "$current_release_aspnet_version"
   )
   test "${#current_runtime_versions[@]}" -eq 2
   test "${current_runtime_versions[0]}" = "$INSTALLED_ASPNET_VERSION"
@@ -587,8 +625,14 @@ git submodule update --init --checkout -- "${ROOT_SUBMODULES[@]}"
 assert_repository_clean_allow_generated() {
   local repository="$1"
   local ignored_entry
+  local ignored_status
   local ignored_path
-  test -z "$(git -C "$repository" status --porcelain=v1 --untracked-files=all)" || return 1
+  local status_output
+  status_output="$(git -C "$repository" status --porcelain=v1 --untracked-files=all)" || return 1
+  test -z "$status_output" || return 1
+  ignored_status="$(mktemp)"
+  git -C "$repository" status --porcelain=v1 --ignored=matching \
+    --untracked-files=all -z > "$ignored_status" || return 1
   while IFS= read -r -d '' ignored_entry; do
     ignored_path="${ignored_entry:3}"
     case "$ignored_path" in
@@ -596,14 +640,17 @@ assert_repository_clean_allow_generated() {
       *) printf 'unexpected ignored source input: %s:%s\n' \
            "$repository" "$ignored_path" >&2; return 1 ;;
     esac
-  done < <(git -C "$repository" status --porcelain=v1 --ignored=matching \
-    --untracked-files=all -z)
+  done < "$ignored_status"
+  rm -f -- "$ignored_status"
 }
 
 assert_candidate_tree_clean() {
   local repository
+  local root_status
   assert_candidate_identity
-  test -z "$(git status --porcelain=v1 --untracked-files=all --ignore-submodules=none)"
+  root_status="$(git status --porcelain=v1 --untracked-files=all \
+    --ignore-submodules=none)" || return 1
+  test -z "$root_status"
   for repository in . "${ROOT_SUBMODULES[@]}"; do
     assert_repository_clean_allow_generated "$repository"
   done
@@ -710,6 +757,7 @@ fresh_debug_source() {
   return "$gate_status"
 }
 
+# xunit-result-contract-start
 validate_xunit_result() {
   local results="$1"
   python3 - "$results" <<'PY'
@@ -721,9 +769,28 @@ total = int(root.attrib.get("total", "0"))
 passed = int(root.attrib.get("passed", "0"))
 failed = int(root.attrib.get("failed", "0"))
 errors = int(root.attrib.get("errors", "0"))
-if total <= 0 or passed <= 0 or failed != 0 or errors != 0:
+skipped = int(root.attrib.get("skipped", "0"))
+tests = root.findall(".//test")
+if (total <= 0 or passed != total or failed != 0 or errors != 0 or skipped != 0 or
+        len(tests) != total or any(test.attrib.get("result") != "Pass" for test in tests)):
     raise SystemExit(1)
 PY
+}
+# xunit-result-contract-end
+
+record_test_identity() {
+  local evidence_name="$1"
+  local assembly="$2"
+  local selector_kind="$3"
+  local selector="${4:-}"
+  local expected="$evidence_name|$assembly|$selector_kind|$selector"
+  [[ "$evidence_name" != *'|'* && "$assembly" != *'|'* &&
+     "$selector_kind" != *'|'* && "$selector" != *'|'* ]]
+  if grep -Fq "$evidence_name|" "$TEST_EVIDENCE_IDENTITIES"; then
+    grep -Fxq "$expected" "$TEST_EVIDENCE_IDENTITIES"
+  else
+    printf '%s\n' "$expected" >> "$TEST_EVIDENCE_IDENTITIES"
+  fi
 }
 
 run_xunit_class() {
@@ -733,6 +800,7 @@ run_xunit_class() {
   local methods="$EVIDENCE_ROOT/$evidence_name.methods.txt"
   local results="$EVIDENCE_ROOT/$evidence_name.xml"
   local gate_status
+  record_test_identity "$evidence_name" "$assembly" class "$class_name"
   assert_ad11_current
   assert_candidate_tree_clean
   if test -f "$assembly" &&
@@ -755,6 +823,7 @@ run_xunit_method() {
   local methods="$EVIDENCE_ROOT/$evidence_name.methods.txt"
   local results="$EVIDENCE_ROOT/$evidence_name.xml"
   local gate_status
+  record_test_identity "$evidence_name" "$assembly" method "$method_name"
   assert_ad11_current
   assert_candidate_tree_clean
   if test -f "$assembly" &&
@@ -773,11 +842,15 @@ run_xunit_method() {
 run_xunit_all() {
   local assembly="$1"
   local evidence_name="$2"
+  local methods="$EVIDENCE_ROOT/$evidence_name.methods.txt"
   local results="$EVIDENCE_ROOT/$evidence_name.xml"
   local gate_status
+  record_test_identity "$evidence_name" "$assembly" all
   assert_ad11_current
   assert_candidate_tree_clean
   if test -f "$assembly" &&
+    dotnet "$assembly" -noColor -list methods | tee "$methods" &&
+    grep -Eq '^[^[:space:]]+\.[^[:space:]]+$' "$methods" &&
     dotnet "$assembly" -noColor -xml "$results" &&
     validate_xunit_result "$results"; then
     gate_status=0
@@ -790,9 +863,11 @@ run_xunit_all() {
 ```
 
 The xUnit v3 in-process runner returns exit code zero when a filter matches zero tests or
-when every matched test is skipped. The `-list methods` checks reject zero-match filters,
-and `validate_xunit_result` requires both a positive `total` and at least one passed test
-with no failures or runner errors. `fresh_release` and `fresh_debug_source` delete the
+when matched tests are skipped. The `-list methods` checks reject zero-match filters,
+and `validate_xunit_result` requires a positive `total`, `passed == total`, no failures,
+runner errors, or skipped tests, one child result per root total, and every child result `Pass`.
+Full-assembly runs retain their complete method list as well. Each runner records the exact assembly and selector
+under its evidence name for later XML/method-list identity verification. `fresh_release` and `fresh_debug_source` delete the
 configuration-specific `bin`/`obj`, restore through committed inputs into a new cache, and
 build before an assembly is invoked. Every build and test revalidates AD-11 plus regular,
 untracked, and ignored source inputs. After all gates, the runtime-source proof is:
@@ -1357,6 +1432,7 @@ DISCOVERED_TEST_PROJECTS="$EVIDENCE_ROOT/discovered-test-projects.txt"
 MANDATORY_TEST_PROJECTS="$EVIDENCE_ROOT/mandatory-test-projects.txt"
 python3 - Hexalith.EventStore.slnx > "$DISCOVERED_TEST_PROJECTS" <<'PY'
 import pathlib
+import subprocess
 import sys
 import xml.etree.ElementTree as ET
 
@@ -1366,11 +1442,16 @@ for element in solution.iter("Project"):
     path = element.attrib.get("Path", "")
     if not path.endswith(".csproj"):
         continue
-    project = ET.parse(path).getroot()
-    if any(
-        reference.attrib.get("Include") == "xunit.v3"
-        for reference in project.iter("PackageReference")
-    ):
+    result = subprocess.run(
+        ["dotnet", "msbuild", path, "-nologo", "-getProperty:IsTestProject"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    is_test_project = result.stdout.strip().casefold()
+    if is_test_project not in {"", "false", "true"}:
+        raise SystemExit(f"unexpected IsTestProject value for {path}: {result.stdout!r}")
+    if is_test_project == "true":
         projects.append(path)
 for path in sorted(projects):
     print(path)
@@ -1454,6 +1535,9 @@ fresh_release \
 fresh_debug_source \
   tests/Hexalith.EventStore.IntegrationTests/Hexalith.EventStore.IntegrationTests.csproj \
   crosscut-source-topology
+run_xunit_all \
+  tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.IntegrationTests.dll \
+  crosscut-source-topology-all
 run_xunit_class \
   tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.IntegrationTests.dll \
   Hexalith.EventStore.IntegrationTests.ContractTests.QueryResponseProvenanceE2ETests \
@@ -1638,6 +1722,74 @@ validate_published_manifest() {
   printf '%s\n' "$manifest_sha256"
 }
 
+validate_published_child_configs() {
+  local repository="$1"
+  local manifest_file="$2"
+  local child_config
+  local child_digest
+  local child_manifest
+  local descriptor_architecture
+  local descriptor_os
+  while IFS=$'\t' read -r child_digest descriptor_os descriptor_architecture; do
+    [[ "$child_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || return 1
+    child_manifest="$(mktemp)"
+    child_config="$(mktemp)"
+    docker buildx imagetools inspect "$repository@$child_digest" --raw \
+      > "$child_manifest" || return 1
+    test "sha256:$(sha256sum "$child_manifest" | awk '{print $1}')" = "$child_digest" || return 1
+    docker buildx imagetools inspect "$repository@$child_digest" \
+      --format '{{json .Image}}' > "$child_config" || return 1
+    jq -e --arg os "$descriptor_os" --arg architecture "$descriptor_architecture" '
+      .os == $os and .architecture == $architecture
+    ' "$child_config" >/dev/null || return 1
+    rm -f -- "$child_manifest" "$child_config"
+  done < <(jq -r '.manifests[] | [.digest, .platform.os, .platform.architecture] | @tsv' \
+    "$manifest_file")
+}
+
+# container-smoke-contract-start
+smoke_published_platform() (
+  local repository="$1"
+  local digest="$2"
+  local platform="$3"
+  local evidence_file="$4"
+  local container_id=''
+  local host_port=''
+  local smoke_status=1
+  cleanup_published_smoke() {
+    local exit_status=$?
+    if test -n "$container_id" &&
+        docker inspect "$container_id" >/dev/null 2>&1; then
+      docker rm --force "$container_id" >/dev/null 2>&1 || exit_status=1
+    fi
+    exit "$exit_status"
+  }
+  trap cleanup_published_smoke EXIT
+  : > "$evidence_file"
+  if container_id="$(docker run --detach --rm --platform "$platform" \
+      --publish 127.0.0.1::8080 \
+      --env ASPNETCORE_URLS=http://+:8080 \
+      "$repository@$digest" 2>> "$evidence_file")"; then
+    for _ in $(seq 1 90); do
+      if ! test "$(docker inspect -f '{{.State.Running}}' "$container_id" 2>/dev/null)" = 'true'; then
+        break
+      fi
+      host_port="$(docker port "$container_id" 8080/tcp 2>/dev/null |
+        awk -F: '/127\.0\.0\.1/ { print $NF; exit }')"
+      if test -n "$host_port" &&
+          curl --fail --silent --show-error --max-time 5 \
+            "http://127.0.0.1:$host_port/alive" >> "$evidence_file" 2>&1; then
+        smoke_status=0
+        break
+      fi
+      sleep 1
+    done
+    docker logs "$container_id" >> "$evidence_file" 2>&1 || true
+  fi
+  test "$smoke_status" -eq 0
+)
+# container-smoke-contract-end
+
 # Restore into the isolated cache and capture the exact SDK-generated multi-architecture
 # image-index bytes/digest. The capture target observes the same GeneratedImageIndex string
 # that the SDK hands to its registry publisher; provenance never derives identity from a tag.
@@ -1702,21 +1854,21 @@ dotnet restore "$CONTAINER_PROJECT" \
 # function's last command is the authority predicate; no build, hash, or other mutable action
 # occurs between this complete readiness check and dotnet publish.
 prepare_publication_action() {
-  AUTHORITY_CHECKED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-  printf '%s\n' "$AUTHORITY_CHECKED_AT" > "$AUTHORITY_CHECKED_AT_EVIDENCE"
-  chmod a-w "$AUTHORITY_CHECKED_AT_EVIDENCE"
   AUTHORITY_SHA256="$(sha256sum "$AUTHORITY_EVIDENCE" | awk '{print $1}')"
   AUTHORITY_GITHUB_METADATA_SHA256="$(
     sha256sum "$AUTHORITY_GITHUB_METADATA" | awk '{print $1}'
-  )"
-  AUTHORITY_CHECKED_AT_SHA256="$(
-    sha256sum "$AUTHORITY_CHECKED_AT_EVIDENCE" | awk '{print $1}'
   )"
   assert_ad11_current
   for repository in . "${ROOT_SUBMODULES[@]}"; do
     assert_publication_source_clean "$repository"
   done
   capture_source_state "$EVIDENCE_ROOT/source-state-before-publication.txt"
+  AUTHORITY_CHECKED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  printf '%s\n' "$AUTHORITY_CHECKED_AT" > "$AUTHORITY_CHECKED_AT_EVIDENCE"
+  chmod a-w "$AUTHORITY_CHECKED_AT_EVIDENCE"
+  AUTHORITY_CHECKED_AT_SHA256="$(
+    sha256sum "$AUTHORITY_CHECKED_AT_EVIDENCE" | awk '{print $1}'
+  )"
   validate_publication_authority "$AUTHORITY_CHECKED_AT"
 }
 
@@ -1776,6 +1928,12 @@ test "$inspect_digest_gate_status" -eq 0
 MANIFEST_SHA256="$(validate_published_manifest \
   "$EVIDENCE_ROOT/container-manifest.json" "$IMAGE_DIGEST" \
   "$EVIDENCE_ROOT/container-platforms.txt")"
+validate_published_child_configs "$IMAGE_REPOSITORY" \
+  "$EVIDENCE_ROOT/container-manifest.json"
+smoke_published_platform "$IMAGE_REPOSITORY" "$IMAGE_DIGEST" linux/amd64 \
+  "$EVIDENCE_ROOT/container-smoke-linux-amd64.log"
+smoke_published_platform "$IMAGE_REPOSITORY" "$IMAGE_DIGEST" linux/arm64 \
+  "$EVIDENCE_ROOT/container-smoke-linux-arm64.log"
 test "$(sha256sum "$AUTHORITY_EVIDENCE" | awk '{print $1}')" = "$AUTHORITY_SHA256"
 test "$(sha256sum "$AUTHORITY_GITHUB_METADATA" | awk '{print $1}')" \
   = "$AUTHORITY_GITHUB_METADATA_SHA256"
@@ -1800,6 +1958,8 @@ jq -n \
   --arg capture_targets_file "$(basename "$CAPTURE_TARGETS")" \
   --arg capture_targets_sha256 "$CAPTURE_TARGETS_SHA256" \
   --arg generated_index_file "$(basename "$GENERATED_IMAGE_INDEX")" \
+  --arg amd64_smoke_sha256 "$(sha256sum "$EVIDENCE_ROOT/container-smoke-linux-amd64.log" | awk '{print $1}')" \
+  --arg arm64_smoke_sha256 "$(sha256sum "$EVIDENCE_ROOT/container-smoke-linux-arm64.log" | awk '{print $1}')" \
   --rawfile platforms "$EVIDENCE_ROOT/container-platforms.txt" \
   '{source_sha: $source_sha, repository: $repository, tag: $tag, digest: $digest,
     manifest_sha256: $manifest_sha256,
@@ -1810,6 +1970,14 @@ jq -n \
       capture_targets_sha256: $capture_targets_sha256
     },
     platforms: ($platforms | split("\n") | map(select(length > 0))),
+    runtime_smoke: {
+      health_path: "/alive",
+      platforms: ["linux/amd64", "linux/arm64"],
+      logs: {
+        "linux/amd64": {file: "container-smoke-linux-amd64.log", sha256: $amd64_smoke_sha256},
+        "linux/arm64": {file: "container-smoke-linux-arm64.log", sha256: $arm64_smoke_sha256}
+      }
+    },
     publish_properties: {
       container_registry: $container_registry,
       container_repository: $container_repository,
@@ -1887,12 +2055,13 @@ EXPECTED_FULL_XUNIT_RESULTS=(
   crosscut-domain-service crosscut-operational-evidence crosscut-query-routing
   crosscut-server crosscut-rest-generator crosscut-sample crosscut-signalr
   crosscut-testing-integration crosscut-testing crosscut-sample-quickstart
-  crosscut-admin-ui-e2e crosscut-live-sidecar
+  crosscut-admin-ui-e2e crosscut-live-sidecar crosscut-source-topology-all
 )
 REQUIRED_RAW_LOGS=(
   solution-restore.log solution-build.log crosscut-admin-ui-e2e.playwright.log
   package-build.log literal-package-inventory.log package-validator.log
   package-consumer-validation.log container-publish.txt
+  container-smoke-linux-amd64.log container-smoke-linux-arm64.log
 )
 RAW_EVIDENCE_BUNDLE_FILE="$GATE_ROOT/story-1-20-raw-evidence.tar.gz"
 LATEST_SUCCESSFUL_GATE_COMPLETED_AT_FILE="$EVIDENCE_ROOT/latest-successful-gate-completed-at.txt"
@@ -1900,33 +2069,41 @@ LATEST_SUCCESSFUL_GATE_COMPLETED_AT_FILE="$EVIDENCE_ROOT/latest-successful-gate-
 build_raw_evidence_bundle() {
   local bundle_stage
   local evidence_name
+  local raw_evidence_manifest
   local required_log
   bundle_stage="$(mktemp -d)"
+  raw_evidence_manifest="$(mktemp)"
   for evidence_name in "${EXPECTED_FILTERED_XUNIT_RESULTS[@]}"; do
     test -s "$EVIDENCE_ROOT/$evidence_name.xml"
     test -s "$EVIDENCE_ROOT/$evidence_name.methods.txt"
     validate_xunit_result "$EVIDENCE_ROOT/$evidence_name.xml"
+    cp -- "$EVIDENCE_ROOT/$evidence_name.xml" \
+      "$EVIDENCE_ROOT/$evidence_name.methods.txt" "$bundle_stage/"
   done
   for evidence_name in "${EXPECTED_FULL_XUNIT_RESULTS[@]}"; do
     test -s "$EVIDENCE_ROOT/$evidence_name.xml"
+    test -s "$EVIDENCE_ROOT/$evidence_name.methods.txt"
     validate_xunit_result "$EVIDENCE_ROOT/$evidence_name.xml"
+    cp -- "$EVIDENCE_ROOT/$evidence_name.xml" \
+      "$EVIDENCE_ROOT/$evidence_name.methods.txt" "$bundle_stage/"
   done
   for required_log in "${REQUIRED_RAW_LOGS[@]}"; do
     test -s "$EVIDENCE_ROOT/$required_log"
   done
-  find "$EVIDENCE_ROOT" -maxdepth 1 -type f \
-    \( -name '*.log' -o -name '*.xml' -o -name '*.methods.txt' \) \
-    -exec cp -- {} "$bundle_stage/" \;
+  test -s "$TEST_EVIDENCE_IDENTITIES"
   for required_log in "${REQUIRED_RAW_LOGS[@]}"; do
     cp -- "$EVIDENCE_ROOT/$required_log" "$bundle_stage/$required_log"
   done
+  cp -- "$TEST_EVIDENCE_IDENTITIES" "$bundle_stage/test-evidence-identities.tsv"
   (
     cd "$bundle_stage"
     find . -maxdepth 1 -type f -printf '%P\n' | LC_ALL=C sort \
-      > raw-evidence-files.txt
+      > "$raw_evidence_manifest"
+    cp -- "$raw_evidence_manifest" raw-evidence-files.txt
     tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
       -cf - -- * | gzip -n > "$RAW_EVIDENCE_BUNDLE_FILE"
   )
+  rm -f -- "$raw_evidence_manifest"
   rm -rf -- "$bundle_stage"
   test -s "$RAW_EVIDENCE_BUNDLE_FILE"
   sha256sum "$RAW_EVIDENCE_BUNDLE_FILE"
@@ -1954,19 +2131,89 @@ records before answering those prompts; a non-interactive run without both URLs 
 set -euo pipefail
 : "${RAW_EVIDENCE_BUNDLE_URL:?set immutable HTTPS raw-evidence bundle URL}"
 : "${RAW_EVIDENCE_BUNDLE_SHA256:?set raw-evidence bundle SHA-256}"
+: "${RAW_EVIDENCE_BUNDLE_OBJECT_VERSION:?set immutable object version ID}"
+: "${RAW_EVIDENCE_BUNDLE_RETENTION_UNTIL:?set WORM retention deadline}"
+: "${RAW_EVIDENCE_PROVIDER_ADAPTER_ID:?set allowlisted provider adapter ID}"
+: "${RAW_EVIDENCE_IMMUTABILITY_PROOF_URL:?set provider immutability-proof HTTPS URL}"
+: "${RAW_EVIDENCE_IMMUTABILITY_PROOF_SHA256:?set provider immutability-proof SHA-256}"
 : "${STORY_1_16_REVIEW_API_URL:?set Story 1.16 reviewer GitHub approval API URL}"
 [[ "$RAW_EVIDENCE_BUNDLE_URL" =~ ^https://[^[:space:]]+$ ]]
 [[ "$RAW_EVIDENCE_BUNDLE_SHA256" =~ ^[0-9a-f]{64}$ ]]
+[[ "$RAW_EVIDENCE_BUNDLE_OBJECT_VERSION" =~ ^[^[:space:]]+$ ]]
+[[ "$RAW_EVIDENCE_BUNDLE_RETENTION_UNTIL" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]]
+[[ "$RAW_EVIDENCE_PROVIDER_ADAPTER_ID" =~ ^[a-z0-9][a-z0-9-]*-v[0-9]+$ ]]
+[[ "$RAW_EVIDENCE_IMMUTABILITY_PROOF_URL" =~ ^https://[^[:space:]]+$ ]]
+[[ "$RAW_EVIDENCE_IMMUTABILITY_PROOF_SHA256" =~ ^[0-9a-f]{64}$ ]]
 test -s "$RAW_EVIDENCE_BUNDLE_FILE"
 test "$(sha256sum "$RAW_EVIDENCE_BUNDLE_FILE" | awk '{print $1}')" \
   = "$RAW_EVIDENCE_BUNDLE_SHA256"
+RAW_EVIDENCE_PROVIDER_ADAPTER="tools/evidence-provider-adapters/$RAW_EVIDENCE_PROVIDER_ADAPTER_ID.sh"
+test "$(git ls-files --error-unmatch -- "$RAW_EVIDENCE_PROVIDER_ADAPTER")" \
+  = "$RAW_EVIDENCE_PROVIDER_ADAPTER"
+test "$(git ls-files -s -- "$RAW_EVIDENCE_PROVIDER_ADAPTER" | awk '{print $1}')" = '100755'
+test -f "$RAW_EVIDENCE_PROVIDER_ADAPTER" && test ! -L "$RAW_EVIDENCE_PROVIDER_ADAPTER"
+RAW_EVIDENCE_PROVIDER_ADAPTER_SHA256="$({ sha256sum "$RAW_EVIDENCE_PROVIDER_ADAPTER"; } | awk '{print $1}')"
+[[ "$RAW_EVIDENCE_PROVIDER_ADAPTER_SHA256" =~ ^[0-9a-f]{64}$ ]]
 FETCHED_RAW_EVIDENCE_BUNDLE="$(mktemp)"
-curl --fail --silent --show-error --location "$RAW_EVIDENCE_BUNDLE_URL" \
-  > "$FETCHED_RAW_EVIDENCE_BUNDLE"
+"$RAW_EVIDENCE_PROVIDER_ADAPTER" download \
+  --object-url "$RAW_EVIDENCE_BUNDLE_URL" \
+  --object-version "$RAW_EVIDENCE_BUNDLE_OBJECT_VERSION" \
+  --output "$FETCHED_RAW_EVIDENCE_BUNDLE"
 test "$(sha256sum "$FETCHED_RAW_EVIDENCE_BUNDLE" | awk '{print $1}')" \
   = "$RAW_EVIDENCE_BUNDLE_SHA256"
 cmp --silent "$RAW_EVIDENCE_BUNDLE_FILE" "$FETCHED_RAW_EVIDENCE_BUNDLE"
+RAW_EVIDENCE_IMMUTABILITY_PROOF="$EVIDENCE_ROOT/raw-evidence-immutability-proof.json"
+"$RAW_EVIDENCE_PROVIDER_ADAPTER" describe \
+  --object-url "$RAW_EVIDENCE_BUNDLE_URL" \
+  --object-version "$RAW_EVIDENCE_BUNDLE_OBJECT_VERSION" \
+  --output "$RAW_EVIDENCE_IMMUTABILITY_PROOF"
+test "$(sha256sum "$RAW_EVIDENCE_IMMUTABILITY_PROOF" | awk '{print $1}')" \
+  = "$RAW_EVIDENCE_IMMUTABILITY_PROOF_SHA256"
+FETCHED_RAW_EVIDENCE_PROOF="$(mktemp)"
+curl --fail --silent --show-error --location "$RAW_EVIDENCE_IMMUTABILITY_PROOF_URL" \
+  > "$FETCHED_RAW_EVIDENCE_PROOF"
+cmp --silent "$RAW_EVIDENCE_IMMUTABILITY_PROOF" "$FETCHED_RAW_EVIDENCE_PROOF"
+WORM_CHECKED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+# provider-worm-contract-start
+require_seven_year_retention() {
+  python3 - "$1" "$2" <<'PY'
+import datetime as dt
+import sys
+
+retention = dt.datetime.fromisoformat(sys.argv[1].replace("Z", "+00:00"))
+anchor = dt.datetime.fromisoformat(sys.argv[2].replace("Z", "+00:00"))
+try:
+    minimum = anchor.replace(year=anchor.year + 7)
+except ValueError:
+    minimum = anchor.replace(year=anchor.year + 7, day=28)
+if retention < minimum:
+    raise SystemExit("WORM retention is less than seven years")
+PY
+}
+validate_provider_worm_proof() {
+  local proof="$1"
+  local checked_at="$2"
+  jq -e \
+    --arg adapter_id "$RAW_EVIDENCE_PROVIDER_ADAPTER_ID" \
+    --arg adapter_sha256 "$RAW_EVIDENCE_PROVIDER_ADAPTER_SHA256" \
+    --arg url "$RAW_EVIDENCE_BUNDLE_URL" \
+    --arg version "$RAW_EVIDENCE_BUNDLE_OBJECT_VERSION" \
+    --arg sha256 "$RAW_EVIDENCE_BUNDLE_SHA256" \
+    --arg retention_until "$RAW_EVIDENCE_BUNDLE_RETENTION_UNTIL" '
+      .schema == "hexalith.eventstore.provider-worm-object-proof/v2" and
+      .provider.adapter_id == $adapter_id and
+      .provider.adapter_sha256 == $adapter_sha256 and
+      .provider.authenticated_api == true and
+      .object.url == $url and .object.version == $version and .object.sha256 == $sha256 and
+      .policy.mode == "WORM" and .policy.locked == true and
+      .policy.retention_until == $retention_until
+    ' "$proof" >/dev/null
+  require_seven_year_retention "$RAW_EVIDENCE_BUNDLE_RETENTION_UNTIL" "$checked_at"
+}
+# provider-worm-contract-end
+validate_provider_worm_proof "$RAW_EVIDENCE_IMMUTABILITY_PROOF" "$WORM_CHECKED_AT"
 RAW_BUNDLE_INSPECTION_DIRECTORY="$(mktemp -d)"
+RAW_BUNDLE_EXPECTED_FILES="$(mktemp)"
 tar -tzf "$FETCHED_RAW_EVIDENCE_BUNDLE" > "$RAW_BUNDLE_INSPECTION_DIRECTORY/archive-files.txt"
 test -z "$(awk '/(^\/|(^|\/)\.\.(\/|$))/' "$RAW_BUNDLE_INSPECTION_DIRECTORY/archive-files.txt")"
 tar -xzf "$FETCHED_RAW_EVIDENCE_BUNDLE" -C "$RAW_BUNDLE_INSPECTION_DIRECTORY"
@@ -1974,6 +2221,14 @@ diff -u \
   "$RAW_BUNDLE_INSPECTION_DIRECTORY/raw-evidence-files.txt" \
   <(find "$RAW_BUNDLE_INSPECTION_DIRECTORY" -maxdepth 1 -type f \
       ! -name archive-files.txt ! -name raw-evidence-files.txt -printf '%f\n' | LC_ALL=C sort)
+(
+  printf '%s\n' test-evidence-identities.tsv
+  printf '%s\n' "${EXPECTED_FILTERED_XUNIT_RESULTS[@]}" \
+    "${EXPECTED_FULL_XUNIT_RESULTS[@]}" | awk '{ print $0 ".xml"; print $0 ".methods.txt" }'
+  printf '%s\n' "${REQUIRED_RAW_LOGS[@]}"
+) | LC_ALL=C sort -u > "$RAW_BUNDLE_EXPECTED_FILES"
+diff -u "$RAW_BUNDLE_EXPECTED_FILES" \
+  "$RAW_BUNDLE_INSPECTION_DIRECTORY/raw-evidence-files.txt"
 for evidence_name in "${EXPECTED_FILTERED_XUNIT_RESULTS[@]}"; do
   validate_xunit_result "$RAW_BUNDLE_INSPECTION_DIRECTORY/$evidence_name.xml"
   test -s "$RAW_BUNDLE_INSPECTION_DIRECTORY/$evidence_name.methods.txt"
@@ -2023,9 +2278,56 @@ jq -e \
     .scope.repository == $repository and
     .scope.reviewed_runtime_sha == $source_sha and
     (.scope.summary | nonblank) and
+    (.scope.findings_and_resolutions | nonblank) and
     (.scope.verification | nonblank) and
     (.scope.residual_limitations | nonblank)
   ' "$STORY_1_16_REVIEW_RECORD" >/dev/null
+
+FOLLOWUP_SPEC_RELATIVE='_bmad-output/implementation-artifacts/spec-1-11-complete-projection-freshness-lifecycle.md'
+FOLLOWUP_SPEC_TARGET="$SOURCE_REPOSITORY/$FOLLOWUP_SPEC_RELATIVE"
+FOLLOWUP_SPEC_UPDATED="$(mktemp)"
+test "$(git -C "$SOURCE_REPOSITORY" rev-parse --verify --end-of-options 'HEAD^{commit}')" \
+  = "$CANDIDATE_SHA"
+python3 - \
+  "$CHECKOUT/$FOLLOWUP_SPEC_RELATIVE" "$FOLLOWUP_SPEC_UPDATED" \
+  "$STORY_1_16_REVIEW_RECORD" \
+  "$STORY_1_16_REVIEW_GITHUB_METADATA" "$CANDIDATE_SHA" <<'PY'
+import datetime as dt
+import json
+import pathlib
+import sys
+
+runtime_path, output_path, record_path, metadata_path, runtime_sha = sys.argv[1:]
+runtime = pathlib.Path(runtime_path).read_text(encoding="utf-8")
+if runtime.count("followup_review_recommended: true") != 1:
+    raise SystemExit("runtime follow-up spec lacks one unresolved recommendation")
+runtime = runtime.replace(
+    "followup_review_recommended: true",
+    "followup_review_recommended: false",
+    1,
+)
+record = json.loads(pathlib.Path(record_path).read_text(encoding="utf-8"))
+metadata = json.loads(pathlib.Path(metadata_path).read_text(encoding="utf-8"))
+review_date = record["reviewed_at"].split("T", 1)[0]
+dt.date.fromisoformat(review_date)
+scope = record["scope"]
+suffix = f"""
+
+### {review_date} — Follow-up review disposition
+
+- reviewed_runtime_sha: `{runtime_sha}`
+- reviewer: `{metadata['login']}`
+- reviewer_login: `{metadata['login']}`
+- durable_source_api: `{metadata['api_url']}`
+- durable_source: `{metadata['html_url']}`
+- scope: {json.dumps(scope['summary'], ensure_ascii=False)}
+- findings_and_resolutions: {json.dumps(scope['findings_and_resolutions'], ensure_ascii=False)}
+- verification: {json.dumps(scope['verification'], ensure_ascii=False)}
+- residual_limitations: {json.dumps(scope['residual_limitations'], ensure_ascii=False)}
+- disposition: `approved`
+"""
+pathlib.Path(output_path).write_text(runtime.rstrip("\n") + suffix, encoding="utf-8")
+PY
 
 DURABLE_EVIDENCE_DIRECTORY="$SOURCE_REPOSITORY/_bmad-output/implementation-artifacts/evidence/story-1-20/$CANDIDATE_SHA"
 test ! -e "$DURABLE_EVIDENCE_DIRECTORY"
@@ -2034,7 +2336,8 @@ CORE_EVIDENCE_FILES=(
   candidate-source-sha.txt
   ad11-preflight.json
   ad11-preflight.sha256
-  effective-package-versions.txt
+  effective-package-versions-debug.txt
+  effective-package-versions-release.txt
   dotnet-runtimes.txt
   dotnet-runtimes-current.txt
   environment.txt
@@ -2061,6 +2364,7 @@ CORE_EVIDENCE_FILES=(
   story-1-16-followup-review.json
   story-1-16-followup-review.github.json
   latest-successful-gate-completed-at.txt
+  raw-evidence-immutability-proof.json
 )
 if test "$AD11_MODE" = 'durable-replacement'; then
   CORE_EVIDENCE_FILES+=(
@@ -2075,7 +2379,16 @@ done
 jq -n \
   --arg url "$RAW_EVIDENCE_BUNDLE_URL" \
   --arg sha256 "$RAW_EVIDENCE_BUNDLE_SHA256" \
-  '{url: $url, sha256: $sha256}' \
+  --arg object_version "$RAW_EVIDENCE_BUNDLE_OBJECT_VERSION" \
+  --arg retention_until "$RAW_EVIDENCE_BUNDLE_RETENTION_UNTIL" \
+  --arg provider_adapter_id "$RAW_EVIDENCE_PROVIDER_ADAPTER_ID" \
+  --arg provider_adapter_sha256 "$RAW_EVIDENCE_PROVIDER_ADAPTER_SHA256" \
+  --arg proof_url "$RAW_EVIDENCE_IMMUTABILITY_PROOF_URL" \
+  --arg proof_sha256 "$RAW_EVIDENCE_IMMUTABILITY_PROOF_SHA256" \
+  '{url: $url, sha256: $sha256, object_version: $object_version,
+    retention_until: $retention_until,
+    provider_adapter: {id: $provider_adapter_id, sha256: $provider_adapter_sha256},
+    immutability_proof: {url: $proof_url, sha256: $proof_sha256}}' \
   > "$DURABLE_EVIDENCE_DIRECTORY/raw-evidence-bundle.json"
 (
   cd "$DURABLE_EVIDENCE_DIRECTORY"
@@ -2099,6 +2412,11 @@ jq -n \
   --arg tested_runtime_sha "$CANDIDATE_SHA" \
   --arg evidence_manifest_sha256 "$CRITICAL_EVIDENCE_MANIFEST_SHA256" \
   --arg raw_evidence_bundle_sha256 "$RAW_EVIDENCE_BUNDLE_SHA256" \
+  --arg raw_evidence_object_version "$RAW_EVIDENCE_BUNDLE_OBJECT_VERSION" \
+  --arg raw_evidence_retention_until "$RAW_EVIDENCE_BUNDLE_RETENTION_UNTIL" \
+  --arg raw_evidence_provider_adapter_id "$RAW_EVIDENCE_PROVIDER_ADAPTER_ID" \
+  --arg raw_evidence_provider_adapter_sha256 "$RAW_EVIDENCE_PROVIDER_ADAPTER_SHA256" \
+  --arg raw_evidence_proof_sha256 "$RAW_EVIDENCE_IMMUTABILITY_PROOF_SHA256" \
   --arg package_version "$APPROVED_PACKAGE_VERSION" \
   --arg package_hash_manifest_sha256 "$APPROVED_PACKAGE_HASH_MANIFEST_SHA256" \
   --arg container_repository "$APPROVED_CONTAINER_REPOSITORY" \
@@ -2109,6 +2427,11 @@ jq -n \
     tested_runtime_sha: $tested_runtime_sha,
     evidence_manifest_sha256: $evidence_manifest_sha256,
     raw_evidence_bundle_sha256: $raw_evidence_bundle_sha256,
+    raw_evidence_object_version: $raw_evidence_object_version,
+    raw_evidence_retention_until: $raw_evidence_retention_until,
+    raw_evidence_provider_adapter_id: $raw_evidence_provider_adapter_id,
+    raw_evidence_provider_adapter_sha256: $raw_evidence_provider_adapter_sha256,
+    raw_evidence_immutability_proof_sha256: $raw_evidence_proof_sha256,
     package_version: $package_version,
     package_hash_manifest_sha256: $package_hash_manifest_sha256,
     container_repository: $container_repository,
@@ -2249,11 +2572,23 @@ RELEASE_OWNER_DISPOSITION_SHA256="$(
   sha256sum "$DURABLE_EVIDENCE_DIRECTORY/release-owner-final-disposition.json" \
     | awk '{print $1}'
 )"
+if cmp --silent "$FOLLOWUP_SPEC_TARGET" "$FOLLOWUP_SPEC_UPDATED"; then
+  rm -f -- "$FOLLOWUP_SPEC_UPDATED"
+else
+  cmp --silent "$CHECKOUT/$FOLLOWUP_SPEC_RELATIVE" "$FOLLOWUP_SPEC_TARGET"
+  mv -- "$FOLLOWUP_SPEC_UPDATED" "$FOLLOWUP_SPEC_TARGET"
+fi
 printf '%s\n' \
   "evidence_manifest_sha256=$CRITICAL_EVIDENCE_MANIFEST_SHA256" \
   "approval_subject_sha256=$APPROVAL_SUBJECT_SHA256" \
   "raw_bundle_url=$RAW_EVIDENCE_BUNDLE_URL" \
   "raw_bundle_sha256=$RAW_EVIDENCE_BUNDLE_SHA256" \
+  "raw_bundle_object_version=$RAW_EVIDENCE_BUNDLE_OBJECT_VERSION" \
+  "raw_bundle_retention_until=$RAW_EVIDENCE_BUNDLE_RETENTION_UNTIL" \
+  "raw_evidence_provider_adapter_id=$RAW_EVIDENCE_PROVIDER_ADAPTER_ID" \
+  "raw_evidence_provider_adapter_sha256=$RAW_EVIDENCE_PROVIDER_ADAPTER_SHA256" \
+  "raw_bundle_immutability_proof_url=$RAW_EVIDENCE_IMMUTABILITY_PROOF_URL" \
+  "raw_bundle_immutability_proof_sha256=$RAW_EVIDENCE_IMMUTABILITY_PROOF_SHA256" \
   "eventstore_owner_approval_url=$EVENTSTORE_OWNER_APPROVAL_URL" \
   "eventstore_owner_approval_sha256=$EVENTSTORE_OWNER_APPROVAL_SHA256" \
   "release_owner_disposition_url=$RELEASE_OWNER_DISPOSITION_URL" \
@@ -2261,7 +2596,9 @@ printf '%s\n' \
 rm -f -- "$EXPECTED_LIMITATION_IDS"
 ```
 
-Evidence commit A must copy the eight final printed values into packet front matter. Its
+The block deterministically reconciles the Story 1.16 follow-up spec from the validated review
+record; evidence commit A must include that exact edit and copy the fourteen final printed values
+into packet front matter. Its
 structural verifier below re-hashes the committed manifest, validates the raw-bundle record,
 parses and binds both committed final-owner records, and binds package/container identities
 before accepting A.
@@ -2270,7 +2607,7 @@ before accepting A.
 | --- | --- | --- | --- | --- |
 | AD-11 readiness | exact SDK `10.0.302` plus matching ASP.NET and installed `Microsoft.NETCore.App` runtime `10.0.10`, or complete, scoped, unexpired replacement authority binding those versions before candidate gates | `ad11-preflight.json`, runtime inventory, its SHA-256, and replacement-authority copy/hash when used | Architecture owner and EventStore build/release maintainer | PASS in the 2026-07-17 current-HEAD readiness audit at `772cdfef...`; every later selected candidate must repeat the preflight |
 | Exact committed source | Same 40-hex SHA before and after gates; clean regular and ignored inputs before and after every gate | `source-state-*.txt`, submodule SHAs, `environment.txt` | EventStore owner | PASS for failed candidate `85877902f8d60a466ab90cd8b68b53838863db1c` |
-| Release build and tests | warning-free solution build; at least one passed and no failed/error tests for every configured project/filter | restore/build logs plus XML and method-list files under `$EVIDENCE_ROOT` | EventStore owner | **FAIL / non-authorizing**; at current commit `772cdfef...`, the Release build, broad lanes, former lifecycle method/class, and full live-sidecar passed, but the corrected source-mode query-provenance E2E failed twice with 404 / `query_projection_missing` |
+| Release build and tests | warning-free solution build; every configured project/filter has passed tests with zero failed, errored, or skipped tests | restore/build logs plus identity-bound XML and method-list files under `$EVIDENCE_ROOT` | EventStore owner | **INCOMPLETE / non-authorizing**; exact commit `772cdfef...` passed the Release build, broad lanes, former lifecycle method/class, and full live-sidecar but predated the Story 2.7 correction. Exact correction commit `fd8ab24da230058f2f239765b68d5e0a135b4b76` passed the focused source-mode query-provenance E2E, but the complete gate has not run at one selected candidate SHA. |
 | NuGet inventory | exact 14-ID set, one approved version, 14 SHA-256 values, package-only consumer success | `package-files.txt`, package/validator/consumer logs, `package-version.txt`, `nuget-sha256.txt` | EventStore release owner | NOT RUN |
 | Container runtime | freshly revalidated pre-publication release-owner authority; clean candidate source; quarantined publication tag; immutable registry digest equal to the raw-manifest SHA-256; exact `linux/amd64` and `linux/arm64`; digest-to-tested-SHA provenance | immutable authority and checked-at copies/hashes, `container-inspect.txt`, raw manifest/hash, exact platform set, `container-provenance.json` | EventStore release owner | NOT RUN |
 | Durable evidence | critical identity/provenance and exact final-approval records committed under `_bmad-output`; immutable external raw bundle bound by HTTPS URL and SHA-256 | `critical-evidence-sha256.txt`, `raw-evidence-bundle.json`, `eventstore-owner-proof-approval.json`, `release-owner-final-disposition.json`, packet front-matter pins | EventStore owner and EventStore release owner | NOT RUN |
@@ -2320,6 +2657,7 @@ APPROVAL_ROLE_ALLOWLIST='_bmad-output/implementation-artifacts/1-20-github-appro
 : "${EVIDENCE_COMMIT_A:?set the evidence commit A SHA}"
 : "${POINTER_COMMIT_B:?set the pointer-only commit B SHA}"
 : "${AUTHORIZATION_COMMIT_C:?set the authorizing commit C SHA}"
+: "${AUTHORIZATION_VERIFICATION_PHASE:?set pre-merge or official-main}"
 
 EVIDENCE_COMMIT_A="$(git rev-parse --verify --end-of-options "${EVIDENCE_COMMIT_A}^{commit}")"
 POINTER_COMMIT_B="$(git rev-parse --verify --end-of-options "${POINTER_COMMIT_B}^{commit}")"
@@ -2327,6 +2665,35 @@ AUTHORIZATION_COMMIT_C="$(git rev-parse --verify --end-of-options "${AUTHORIZATI
 [[ "$EVIDENCE_COMMIT_A" =~ ^[0-9a-f]{40}$ ]]
 [[ "$POINTER_COMMIT_B" =~ ^[0-9a-f]{40}$ ]]
 [[ "$AUTHORIZATION_COMMIT_C" =~ ^[0-9a-f]{40}$ ]]
+test "$(git remote get-url origin)" = 'https://github.com/Hexalith/Hexalith.EventStore.git'
+git fetch --quiet --no-tags origin main
+OFFICIAL_MAIN_SHA="$(git rev-parse --verify --end-of-options \
+  'refs/remotes/origin/main^{commit}')"
+# authorization-phase-contract-start
+verify_authorization_phase() {
+  case "$AUTHORIZATION_VERIFICATION_PHASE" in
+    pre-merge)
+      git merge-base --is-ancestor "$EVIDENCE_COMMIT_A" "$OFFICIAL_MAIN_SHA"
+      git merge-base --is-ancestor "$POINTER_COMMIT_B" "$OFFICIAL_MAIN_SHA"
+      test "$POINTER_COMMIT_B" = "$OFFICIAL_MAIN_SHA"
+      test "$AUTHORIZATION_COMMIT_C" \
+        = "$(git rev-parse --verify --end-of-options 'HEAD^{commit}')"
+      ;;
+    official-main)
+      for official_commit in \
+          "$EVIDENCE_COMMIT_A" "$POINTER_COMMIT_B" "$AUTHORIZATION_COMMIT_C"; do
+        git merge-base --is-ancestor "$official_commit" "$OFFICIAL_MAIN_SHA"
+      done
+      ;;
+    *)
+      printf 'invalid AUTHORIZATION_VERIFICATION_PHASE: %s\n' \
+        "$AUTHORIZATION_VERIFICATION_PHASE" >&2
+      return 1
+      ;;
+  esac
+}
+# authorization-phase-contract-end
+verify_authorization_phase
 test "$(git rev-list --parents -n 1 "$POINTER_COMMIT_B" | awk '{print NF}')" -eq 2
 test "$(git rev-parse --verify --end-of-options "${POINTER_COMMIT_B}^")" = "$EVIDENCE_COMMIT_A"
 test "$(git rev-list --parents -n 1 "$AUTHORIZATION_COMMIT_C" | awk '{print NF}')" -eq 2
@@ -2334,6 +2701,7 @@ test "$(git rev-parse --verify --end-of-options "${AUTHORIZATION_COMMIT_C}^")" =
 
 A_PACKET="$(mktemp)"
 RUNTIME_PACKET="$(mktemp)"
+RUNTIME_FOLLOWUP_SPEC="$(mktemp)"
 RUNTIME_EXECUTABLE_BLOCKS="$(mktemp)"
 A_EXECUTABLE_BLOCKS="$(mktemp)"
 A_APPROVAL_ROLE_ALLOWLIST="$(mktemp)"
@@ -2342,6 +2710,7 @@ EXPECTED_B_PACKET="$(mktemp)"
 A_STORY="$(mktemp)"
 A_SPRINT_STATUS="$(mktemp)"
 A_FOLLOWUP_SPEC="$(mktemp)"
+EXPECTED_A_FOLLOWUP_SPEC="$(mktemp)"
 A_DEFERRED_WORK="$(mktemp)"
 A_RELEASE_PACKAGES="$(mktemp)"
 A_EXPECTED_PACKAGE_IDS="$(mktemp)"
@@ -2353,8 +2722,11 @@ A_EXPECTED_FILTERED_RESULTS="$(mktemp)"
 A_EXPECTED_FULL_RESULTS="$(mktemp)"
 A_EXPECTED_RESULT_FILES="$(mktemp)"
 A_EXPECTED_REQUIRED_LOGS="$(mktemp)"
+A_EXPECTED_RAW_FILES="$(mktemp)"
+A_EXPECTED_EVIDENCE_TREE="$(mktemp)"
 A_EXPECTED_LIMITATION_IDS="$(mktemp)"
 A_EXPECTED_CAPABILITY_IDS="$(mktemp)"
+A_EXPECTED_PREREQUISITE_STATUSES="$(mktemp)"
 A_APPROVAL_SUBJECT="$(mktemp)"
 A_EXPECTED_SOURCE_STATE="$(mktemp)"
 A_PACKAGE_HASHES="$(mktemp)"
@@ -2440,7 +2812,9 @@ test "$A_CANDIDATE_SOURCE_SHA" = "$A_TESTED_RUNTIME_SHA"
 A_TESTED_RUNTIME_COMMIT="$(git rev-parse --verify --end-of-options \
   "${A_TESTED_RUNTIME_SHA}^{commit}")"
 test "$A_TESTED_RUNTIME_COMMIT" = "$A_TESTED_RUNTIME_SHA"
+git merge-base --is-ancestor "$A_TESTED_RUNTIME_COMMIT" "$OFFICIAL_MAIN_SHA"
 git show "$A_TESTED_RUNTIME_COMMIT:$PACKET" > "$RUNTIME_PACKET"
+git show "$A_TESTED_RUNTIME_COMMIT:$FOLLOWUP_SPEC" > "$RUNTIME_FOLLOWUP_SPEC"
 git show "$A_TESTED_RUNTIME_COMMIT:$APPROVAL_ROLE_ALLOWLIST" \
   > "$A_APPROVAL_ROLE_ALLOWLIST"
 jq -e -s '
@@ -2479,16 +2853,16 @@ mapfile -t A_CHANGED_FILES < <(
   git diff --name-only "$A_TESTED_RUNTIME_COMMIT" "$EVIDENCE_COMMIT_A"
 )
 test "${#A_CHANGED_FILES[@]}" -gt 0
+A_EVIDENCE_DIRECTORY="_bmad-output/implementation-artifacts/evidence/story-1-20/$A_TESTED_RUNTIME_SHA"
 for changed_file in "${A_CHANGED_FILES[@]}"; do
   case "$changed_file" in
-    _bmad-output/*) ;;
-    *) printf 'evidence commit A changed non-evidence path: %s\n' \
+    "$PACKET"|"$FOLLOWUP_SPEC"|"$A_EVIDENCE_DIRECTORY"/*) ;;
+    *) printf 'evidence commit A changed a non-whitelisted path: %s\n' \
          "$changed_file" >&2; exit 1 ;;
   esac
 done
 printf '%s\n' "${A_CHANGED_FILES[@]}" | grep -Fxq "$PACKET"
 printf '%s\n' "${A_CHANGED_FILES[@]}" | grep -Fxq "$FOLLOWUP_SPEC"
-A_EVIDENCE_DIRECTORY="_bmad-output/implementation-artifacts/evidence/story-1-20/$A_TESTED_RUNTIME_SHA"
 printf '%s\n' "${A_CHANGED_FILES[@]}" | grep -Fq "$A_EVIDENCE_DIRECTORY/"
 A_EVIDENCE_COPY="$(mktemp -d)"
 git archive "$EVIDENCE_COMMIT_A" "$A_EVIDENCE_DIRECTORY" | tar -x -C "$A_EVIDENCE_COPY"
@@ -2509,7 +2883,8 @@ container-provenance.json
 discovered-test-projects.txt
 dotnet-runtimes-current.txt
 dotnet-runtimes.txt
-effective-package-versions.txt
+effective-package-versions-debug.txt
+effective-package-versions-release.txt
 environment.txt
 expected-package-ids.txt
 generated-image-index.digest.txt
@@ -2520,6 +2895,7 @@ nuget-sha256.txt
 package-files.txt
 package-version.txt
 raw-evidence-bundle.json
+raw-evidence-immutability-proof.json
 release-owner-publication-authority.checked-at.txt
 release-owner-publication-authority.github.json
 release-owner-publication-authority.json
@@ -2553,18 +2929,114 @@ done < "$A_EVIDENCE_MANIFEST"
 test "$(sha256sum "$A_EVIDENCE_ROOT/critical-evidence-sha256.txt" | awk '{print $1}')" \
   = "$A_EVIDENCE_MANIFEST_SHA256"
 (cd "$A_EVIDENCE_ROOT" && sha256sum --check critical-evidence-sha256.txt)
+(
+  cat "$A_EVIDENCE_MANIFEST"
+  printf '%s\n' approval-subject.json critical-evidence-expected-files.txt \
+    critical-evidence-sha256.txt eventstore-owner-proof-approval.github.json \
+    eventstore-owner-proof-approval.json release-owner-final-disposition.github.json \
+    release-owner-final-disposition.json
+) | LC_ALL=C sort -u > "$A_EXPECTED_EVIDENCE_TREE"
+diff -u "$A_EXPECTED_EVIDENCE_TREE" \
+  <(find "$A_EVIDENCE_ROOT" -mindepth 1 -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort)
+test -z "$(find "$A_EVIDENCE_ROOT" -mindepth 1 -maxdepth 1 ! -type f -print -quit)"
 
 A_RAW_EVIDENCE_BUNDLE_URL="$(front_value "$A_PACKET" raw_evidence_bundle_url)"
 A_RAW_EVIDENCE_BUNDLE_SHA256="$(front_value "$A_PACKET" raw_evidence_bundle_sha256)"
+A_RAW_EVIDENCE_OBJECT_VERSION="$(front_value "$A_PACKET" raw_evidence_bundle_object_version)"
+A_RAW_EVIDENCE_RETENTION_UNTIL="$(front_value "$A_PACKET" raw_evidence_bundle_retention_until)"
+A_RAW_EVIDENCE_PROVIDER_ADAPTER_ID="$(front_value "$A_PACKET" raw_evidence_provider_adapter_id)"
+A_RAW_EVIDENCE_PROVIDER_ADAPTER_SHA256="$(front_value "$A_PACKET" raw_evidence_provider_adapter_sha256)"
+A_RAW_EVIDENCE_PROOF_URL="$(front_value "$A_PACKET" raw_evidence_immutability_proof_url)"
+A_RAW_EVIDENCE_PROOF_SHA256="$(front_value "$A_PACKET" raw_evidence_immutability_proof_sha256)"
 [[ "$A_RAW_EVIDENCE_BUNDLE_URL" =~ ^https://[^[:space:]]+$ ]]
 [[ "$A_RAW_EVIDENCE_BUNDLE_SHA256" =~ ^[0-9a-f]{64}$ ]]
+[[ "$A_RAW_EVIDENCE_OBJECT_VERSION" =~ ^[^[:space:]]+$ ]]
+[[ "$A_RAW_EVIDENCE_RETENTION_UNTIL" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]]
+[[ "$A_RAW_EVIDENCE_PROVIDER_ADAPTER_ID" =~ ^[a-z0-9][a-z0-9-]*-v[0-9]+$ ]]
+[[ "$A_RAW_EVIDENCE_PROVIDER_ADAPTER_SHA256" =~ ^[0-9a-f]{64}$ ]]
+[[ "$A_RAW_EVIDENCE_PROOF_URL" =~ ^https://[^[:space:]]+$ ]]
+[[ "$A_RAW_EVIDENCE_PROOF_SHA256" =~ ^[0-9a-f]{64}$ ]]
 jq -e \
   --arg url "$A_RAW_EVIDENCE_BUNDLE_URL" \
   --arg sha256 "$A_RAW_EVIDENCE_BUNDLE_SHA256" \
-  '.url == $url and .sha256 == $sha256' \
+  --arg object_version "$A_RAW_EVIDENCE_OBJECT_VERSION" \
+  --arg retention_until "$A_RAW_EVIDENCE_RETENTION_UNTIL" \
+  --arg provider_adapter_id "$A_RAW_EVIDENCE_PROVIDER_ADAPTER_ID" \
+  --arg provider_adapter_sha256 "$A_RAW_EVIDENCE_PROVIDER_ADAPTER_SHA256" \
+  --arg proof_url "$A_RAW_EVIDENCE_PROOF_URL" \
+  --arg proof_sha256 "$A_RAW_EVIDENCE_PROOF_SHA256" '
+    .url == $url and .sha256 == $sha256 and
+    .object_version == $object_version and .retention_until == $retention_until and
+    .provider_adapter.id == $provider_adapter_id and
+    .provider_adapter.sha256 == $provider_adapter_sha256 and
+    .immutability_proof.url == $proof_url and
+    .immutability_proof.sha256 == $proof_sha256
+  ' \
   "$A_EVIDENCE_ROOT/raw-evidence-bundle.json"
-curl --fail --silent --show-error --location "$A_RAW_EVIDENCE_BUNDLE_URL" \
-  > "$A_RAW_EVIDENCE_BUNDLE"
+A_RAW_EVIDENCE_PROOF="$A_EVIDENCE_ROOT/raw-evidence-immutability-proof.json"
+test "$(sha256sum "$A_RAW_EVIDENCE_PROOF" | awk '{print $1}')" \
+  = "$A_RAW_EVIDENCE_PROOF_SHA256"
+A_PROVIDER_ADAPTER_RELATIVE="tools/evidence-provider-adapters/$A_RAW_EVIDENCE_PROVIDER_ADAPTER_ID.sh"
+test "$(git ls-tree "$A_TESTED_RUNTIME_COMMIT" -- "$A_PROVIDER_ADAPTER_RELATIVE" | awk '{print $1}')" \
+  = '100755'
+A_PROVIDER_ADAPTER="$(mktemp)"
+git show "$A_TESTED_RUNTIME_COMMIT:$A_PROVIDER_ADAPTER_RELATIVE" > "$A_PROVIDER_ADAPTER"
+chmod 700 "$A_PROVIDER_ADAPTER"
+test "$(sha256sum "$A_PROVIDER_ADAPTER" | awk '{print $1}')" \
+  = "$A_RAW_EVIDENCE_PROVIDER_ADAPTER_SHA256"
+A_WORM_CHECKED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+A_AUTHORIZATION_COMMIT_AT="$(git show -s --format=%cI "$AUTHORIZATION_COMMIT_C")"
+require_committed_seven_year_retention() {
+  python3 - "$1" "$2" <<'PY'
+import datetime as dt
+import sys
+
+retention = dt.datetime.fromisoformat(sys.argv[1].replace("Z", "+00:00"))
+anchor = dt.datetime.fromisoformat(sys.argv[2].replace("Z", "+00:00"))
+try:
+    minimum = anchor.replace(year=anchor.year + 7)
+except ValueError:
+    minimum = anchor.replace(year=anchor.year + 7, day=28)
+if retention < minimum:
+    raise SystemExit("WORM retention is less than seven years")
+PY
+}
+jq -e \
+  --arg adapter_id "$A_RAW_EVIDENCE_PROVIDER_ADAPTER_ID" \
+  --arg adapter_sha256 "$A_RAW_EVIDENCE_PROVIDER_ADAPTER_SHA256" \
+  --arg url "$A_RAW_EVIDENCE_BUNDLE_URL" \
+  --arg version "$A_RAW_EVIDENCE_OBJECT_VERSION" \
+  --arg sha256 "$A_RAW_EVIDENCE_BUNDLE_SHA256" \
+  --arg retention_until "$A_RAW_EVIDENCE_RETENTION_UNTIL" '
+    .schema == "hexalith.eventstore.provider-worm-object-proof/v2" and
+    .provider.adapter_id == $adapter_id and
+    .provider.adapter_sha256 == $adapter_sha256 and
+    .provider.authenticated_api == true and
+    .object.url == $url and .object.version == $version and .object.sha256 == $sha256 and
+    .policy.mode == "WORM" and .policy.locked == true and
+    .policy.retention_until == $retention_until
+  ' "$A_RAW_EVIDENCE_PROOF" >/dev/null
+require_committed_seven_year_retention \
+  "$A_RAW_EVIDENCE_RETENTION_UNTIL" "$A_WORM_CHECKED_AT"
+require_committed_seven_year_retention \
+  "$A_RAW_EVIDENCE_RETENTION_UNTIL" "$A_AUTHORIZATION_COMMIT_AT"
+A_PROVIDER_PROOF_CURRENT="$(mktemp)"
+"$A_PROVIDER_ADAPTER" describe \
+  --object-url "$A_RAW_EVIDENCE_BUNDLE_URL" \
+  --object-version "$A_RAW_EVIDENCE_OBJECT_VERSION" \
+  --output "$A_PROVIDER_PROOF_CURRENT"
+cmp --silent "$A_RAW_EVIDENCE_PROOF" "$A_PROVIDER_PROOF_CURRENT"
+A_FETCHED_RAW_EVIDENCE_PROOF="$(mktemp)"
+curl --fail --silent --show-error --location "$A_RAW_EVIDENCE_PROOF_URL" \
+  > "$A_FETCHED_RAW_EVIDENCE_PROOF"
+test "$(sha256sum "$A_FETCHED_RAW_EVIDENCE_PROOF" | awk '{print $1}')" \
+  = "$A_RAW_EVIDENCE_PROOF_SHA256"
+cmp --silent "$A_RAW_EVIDENCE_PROOF" "$A_FETCHED_RAW_EVIDENCE_PROOF"
+rm -f -- "$A_FETCHED_RAW_EVIDENCE_PROOF" "$A_PROVIDER_PROOF_CURRENT"
+"$A_PROVIDER_ADAPTER" download \
+  --object-url "$A_RAW_EVIDENCE_BUNDLE_URL" \
+  --object-version "$A_RAW_EVIDENCE_OBJECT_VERSION" \
+  --output "$A_RAW_EVIDENCE_BUNDLE"
 test "$(sha256sum "$A_RAW_EVIDENCE_BUNDLE" | awk '{print $1}')" \
   = "$A_RAW_EVIDENCE_BUNDLE_SHA256"
 tar -tzf "$A_RAW_EVIDENCE_BUNDLE" > "$A_RAW_EVIDENCE_DIRECTORY/archive-files.txt"
@@ -2659,11 +3131,14 @@ crosscut-sample
 crosscut-sample-quickstart
 crosscut-server
 crosscut-signalr
+crosscut-source-topology-all
 crosscut-testing
 crosscut-testing-integration
 FULL_RESULTS
 cat > "$A_EXPECTED_REQUIRED_LOGS" <<'REQUIRED_LOGS'
 container-publish.txt
+container-smoke-linux-amd64.log
+container-smoke-linux-arm64.log
 crosscut-admin-ui-e2e.playwright.log
 literal-package-inventory.log
 package-build.log
@@ -2674,11 +3149,217 @@ solution-restore.log
 REQUIRED_LOGS
 (
   awk '{print $0 ".xml"; print $0 ".methods.txt"}' "$A_EXPECTED_FILTERED_RESULTS"
-  awk '{print $0 ".xml"}' "$A_EXPECTED_FULL_RESULTS"
+  awk '{print $0 ".xml"; print $0 ".methods.txt"}' "$A_EXPECTED_FULL_RESULTS"
 ) | LC_ALL=C sort > "$A_EXPECTED_RESULT_FILES"
 diff -u "$A_EXPECTED_RESULT_FILES" \
   <(awk '/\.(xml|methods\.txt)$/' \
       "$A_RAW_EVIDENCE_DIRECTORY/raw-evidence-files.txt" | LC_ALL=C sort)
+(
+  cat "$A_EXPECTED_RESULT_FILES" "$A_EXPECTED_REQUIRED_LOGS"
+  printf '%s\n' test-evidence-identities.tsv
+) | LC_ALL=C sort -u > "$A_EXPECTED_RAW_FILES"
+diff -u "$A_EXPECTED_RAW_FILES" \
+  "$A_RAW_EVIDENCE_DIRECTORY/raw-evidence-files.txt"
+grep -Fxq test-evidence-identities.tsv \
+  "$A_RAW_EVIDENCE_DIRECTORY/raw-evidence-files.txt"
+test -s "$A_RAW_EVIDENCE_DIRECTORY/test-evidence-identities.tsv"
+python3 - \
+  "$A_RAW_EVIDENCE_DIRECTORY" \
+  "$A_RAW_EVIDENCE_DIRECTORY/test-evidence-identities.tsv" \
+  "$A_EXPECTED_FILTERED_RESULTS" "$A_EXPECTED_FULL_RESULTS" <<'PY'
+# test-identity-contract-start
+import pathlib
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+root_dir = pathlib.Path(sys.argv[1])
+identity_path = pathlib.Path(sys.argv[2])
+filtered = set(pathlib.Path(sys.argv[3]).read_text(encoding="utf-8").splitlines())
+full = set(pathlib.Path(sys.argv[4]).read_text(encoding="utf-8").splitlines())
+expected_names = filtered | full
+identities = {}
+for line in identity_path.read_text(encoding="utf-8").splitlines():
+    parts = line.split("|")
+    if len(parts) != 4 or not all(parts[:3]):
+        raise SystemExit(f"invalid test identity row: {line!r}")
+    name, assembly, selector_kind, selector = parts
+    if name in identities or selector_kind not in {"all", "class", "method"}:
+        raise SystemExit(f"duplicate or invalid test identity: {name}")
+    if (selector_kind == "all") != (selector == ""):
+        raise SystemExit(f"invalid selector for {name}")
+    identities[name] = (assembly, selector_kind, selector)
+if set(identities) != expected_names:
+    raise SystemExit("test identity names differ from the mandatory result inventory")
+
+assembly_by_type_prefix = {
+    "Hexalith.EventStore.AppHost.Tests.": "tests/Hexalith.EventStore.AppHost.Tests/bin/Debug/net10.0/Hexalith.EventStore.AppHost.Tests.dll",
+    "Hexalith.EventStore.Client.Tests.": "tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.dll",
+    "Hexalith.EventStore.Contracts.Tests.": "tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll",
+    "Hexalith.EventStore.DomainService.Tests.": "tests/Hexalith.EventStore.DomainService.Tests/bin/Release/net10.0/Hexalith.EventStore.DomainService.Tests.dll",
+    "Hexalith.EventStore.IntegrationTests.": "tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.IntegrationTests.dll",
+    "Hexalith.EventStore.QueryRouting.Tests.": "tests/Hexalith.EventStore.QueryRouting.Tests/bin/Release/net10.0/Hexalith.EventStore.QueryRouting.Tests.dll",
+    "Hexalith.EventStore.RestApi.Generators.Tests.": "tests/Hexalith.EventStore.RestApi.Generators.Tests/bin/Release/net10.0/Hexalith.EventStore.RestApi.Generators.Tests.dll",
+    "Hexalith.EventStore.Sample.Tests.": "tests/Hexalith.EventStore.Sample.Tests/bin/Release/net10.0/Hexalith.EventStore.Sample.Tests.dll",
+    "Hexalith.EventStore.Server.LiveSidecar.Tests.": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+    "Hexalith.EventStore.Server.Tests.": "tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+}
+allowed_class_selectors = {
+    "Hexalith.EventStore.AppHost.Tests.Configuration.TenantsApiLaunchSettingsTests",
+    "Hexalith.EventStore.Client.Tests.Gateway.EventStoreGatewayClientTests",
+    "Hexalith.EventStore.Client.Tests.Indexes.AdminOperationalIndexHostedServiceTests",
+    "Hexalith.EventStore.Client.Tests.Projections.DaprReadModelBatchTests",
+    "Hexalith.EventStore.Client.Tests.Projections.DaprReadModelStoreTests",
+    "Hexalith.EventStore.Client.Tests.Projections.InMemoryReadModelStoreTests",
+    "Hexalith.EventStore.Client.Tests.Projections.ReadModelBatchStoreTests",
+    "Hexalith.EventStore.Client.Tests.Projections.ReadModelFreshnessTests",
+    "Hexalith.EventStore.Client.Tests.Queries.QueryCursorCodecTests",
+    "Hexalith.EventStore.Client.Tests.Queries.QueryCursorScopeTests",
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ReleasePackageManifestTests",
+    "Hexalith.EventStore.Contracts.Tests.Queries.ProjectionAdapterContractTests",
+    "Hexalith.EventStore.Contracts.Tests.Queries.SubmitQueryResponseTests",
+    "Hexalith.EventStore.DomainService.Tests.DomainProjectionDispatcherV2Tests",
+    "Hexalith.EventStore.DomainService.Tests.DomainProjectionHandlerCompatibilityTests",
+    "Hexalith.EventStore.DomainService.Tests.EventStoreDataProtectionTests",
+    "Hexalith.EventStore.IntegrationTests.ContractTests.QueryResponseProvenanceE2ETests",
+    "Hexalith.EventStore.QueryRouting.Tests.HandlerAwareQueryRouterTests",
+    "Hexalith.EventStore.RestApi.Generators.Tests.RestApiControllerGenerationTests",
+    "Hexalith.EventStore.RestApi.Generators.Tests.RestApiGeneratedControllerErrorSemanticsTests",
+    "Hexalith.EventStore.Sample.Tests.SampleApi.SampleApiGeneratedControllerRuntimeTests",
+    "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.NamedProjectionDispatchLiveSidecarTests",
+    "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionDeliveryCutoverLiveSidecarTests",
+    "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionEraseLiveSidecarTests",
+    "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ReadModelBatchLiveSidecarTests",
+    "Hexalith.EventStore.Server.Tests.Actors.CachingProjectionActorTests",
+    "Hexalith.EventStore.Server.Tests.Actors.ProjectionLifecycleActorTests",
+    "Hexalith.EventStore.Server.Tests.Controllers.QueriesControllerTests",
+    "Hexalith.EventStore.Server.Tests.Integration.QueryResponseProvenancePersistenceTests",
+    "Hexalith.EventStore.Server.Tests.Projections.DaprProjectionActivationOutboxTests",
+    "Hexalith.EventStore.Server.Tests.Projections.DaprProjectionDeliveryRetrySchedulerTests",
+    "Hexalith.EventStore.Server.Tests.Projections.DaprProjectionLifecycleGatewayTests",
+    "Hexalith.EventStore.Server.Tests.Projections.NamedProjectionDispatchCoordinatorTests",
+    "Hexalith.EventStore.Server.Tests.Projections.NamedProjectionRouteCatalogTests",
+    "Hexalith.EventStore.Server.Tests.Projections.ProjectionDeliveryCutoverTests",
+    "Hexalith.EventStore.Server.Tests.Projections.ProjectionDeliveryIdempotencyCoordinatorTests",
+    "Hexalith.EventStore.Server.Tests.Projections.ProjectionDeliveryReconcilerTests",
+    "Hexalith.EventStore.Server.Tests.Projections.ProjectionEraseCoordinatorTests",
+    "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildCheckpointStoreTests",
+    "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildProductionPathTests",
+    "Hexalith.EventStore.Server.Tests.Projections.ProjectionUpdateOrchestratorTests",
+    "Hexalith.EventStore.Server.Tests.Queries.QueryRouterTests",
+}
+filtered_exceptions = {
+    "erasure-dapr-store": "Hexalith.EventStore.Client.Tests.Projections.DaprReadModelStoreTests",
+    "erasure-coordinator": "Hexalith.EventStore.Server.Tests.Projections.ProjectionEraseCoordinatorTests",
+    "erasure-lifecycle-admission": "Hexalith.EventStore.Server.Tests.Actors.ProjectionLifecycleActorTests",
+    "erasure-lifecycle-transport": "Hexalith.EventStore.Server.Tests.Projections.DaprProjectionLifecycleGatewayTests",
+    "erasure-live": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionEraseLiveSidecarTests",
+    "batch-live": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ReadModelBatchLiveSidecarTests",
+    "lifecycle-query-routing": "Hexalith.EventStore.QueryRouting.Tests.HandlerAwareQueryRouterTests",
+    "lifecycle-sample-runtime": "Hexalith.EventStore.Sample.Tests.SampleApi.SampleApiGeneratedControllerRuntimeTests",
+    "lifecycle-provenance-e2e": "Hexalith.EventStore.IntegrationTests.ContractTests.QueryResponseProvenanceE2ETests",
+    "rebuild-domain-dispatcher": "Hexalith.EventStore.DomainService.Tests.DomainProjectionDispatcherV2Tests",
+    "cursor-persisted-key-ring": "Hexalith.EventStore.DomainService.Tests.EventStoreDataProtectionTests",
+    "async-domain-dispatcher": "Hexalith.EventStore.DomainService.Tests.DomainProjectionDispatcherV2Tests",
+    "async-live": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.NamedProjectionDispatchLiveSidecarTests",
+    "multiprojection-domain-dispatcher": "Hexalith.EventStore.DomainService.Tests.DomainProjectionDispatcherV2Tests",
+    "multiprojection-catalog-publication": "Hexalith.EventStore.Client.Tests.Indexes.AdminOperationalIndexHostedServiceTests",
+    "multiprojection-live": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.NamedProjectionDispatchLiveSidecarTests",
+    "crosscut-apphost-source-topology": "Hexalith.EventStore.AppHost.Tests.Configuration.TenantsApiLaunchSettingsTests",
+    "crosscut-source-topology-provenance": "Hexalith.EventStore.IntegrationTests.ContractTests.QueryResponseProvenanceE2ETests",
+    "crosscut-release-manifest": "Hexalith.EventStore.Contracts.Tests.Packaging.ReleasePackageManifestTests",
+    "crosscut-domain-compatibility": "Hexalith.EventStore.DomainService.Tests.DomainProjectionHandlerCompatibilityTests",
+}
+method_exceptions = {
+    "rebuild-live-persisted-equivalence":
+        "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.NamedProjectionDispatchLiveSidecarTests.PagedRebuild_MoreThanTwoPages_PersistsEquivalentRedisActorDetailIndexAndCheckpoints",
+}
+full_assemblies = {
+    "crosscut-admin-abstractions": "tests/Hexalith.EventStore.Admin.Abstractions.Tests/bin/Release/net10.0/Hexalith.EventStore.Admin.Abstractions.Tests.dll",
+    "crosscut-admin-cli": "tests/Hexalith.EventStore.Admin.Cli.Tests/bin/Release/net10.0/Hexalith.EventStore.Admin.Cli.Tests.dll",
+    "crosscut-admin-mcp": "tests/Hexalith.EventStore.Admin.Mcp.Tests/bin/Release/net10.0/Hexalith.EventStore.Admin.Mcp.Tests.dll",
+    "crosscut-admin-server": "tests/Hexalith.EventStore.Admin.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Admin.Server.Tests.dll",
+    "crosscut-admin-server-host": "tests/Hexalith.EventStore.Admin.Server.Host.Tests/bin/Release/net10.0/Hexalith.EventStore.Admin.Server.Host.Tests.dll",
+    "crosscut-admin-ui": "tests/Hexalith.EventStore.Admin.UI.Tests/bin/Release/net10.0/Hexalith.EventStore.Admin.UI.Tests.dll",
+    "crosscut-admin-ui-e2e": "tests/Hexalith.EventStore.Admin.UI.E2E/bin/Release/net10.0/Hexalith.EventStore.Admin.UI.E2E.dll",
+    "crosscut-apphost": "tests/Hexalith.EventStore.AppHost.Tests/bin/Release/net10.0/Hexalith.EventStore.AppHost.Tests.dll",
+    "crosscut-client": "tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.dll",
+    "crosscut-contracts": "tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll",
+    "crosscut-deferred-work-governance": "tests/Hexalith.EventStore.DeferredWorkGovernance.Tests/bin/Release/net10.0/Hexalith.EventStore.DeferredWorkGovernance.Tests.dll",
+    "crosscut-domain-service": "tests/Hexalith.EventStore.DomainService.Tests/bin/Release/net10.0/Hexalith.EventStore.DomainService.Tests.dll",
+    "crosscut-live-sidecar": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+    "crosscut-operational-evidence": "tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests/bin/Release/net10.0/Hexalith.EventStore.OperationalEvidence.Validator.Tests.dll",
+    "crosscut-query-routing": "tests/Hexalith.EventStore.QueryRouting.Tests/bin/Release/net10.0/Hexalith.EventStore.QueryRouting.Tests.dll",
+    "crosscut-rest-generator": "tests/Hexalith.EventStore.RestApi.Generators.Tests/bin/Release/net10.0/Hexalith.EventStore.RestApi.Generators.Tests.dll",
+    "crosscut-sample": "tests/Hexalith.EventStore.Sample.Tests/bin/Release/net10.0/Hexalith.EventStore.Sample.Tests.dll",
+    "crosscut-sample-quickstart": "samples/Hexalith.EventStore.Sample.Tests/bin/Release/net10.0/Hexalith.EventStore.Sample.Tests.dll",
+    "crosscut-server": "tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+    "crosscut-signalr": "tests/Hexalith.EventStore.SignalR.Tests/bin/Release/net10.0/Hexalith.EventStore.SignalR.Tests.dll",
+    "crosscut-source-topology-all": "tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.IntegrationTests.dll",
+    "crosscut-testing": "tests/Hexalith.EventStore.Testing.Tests/bin/Release/net10.0/Hexalith.EventStore.Testing.Tests.dll",
+    "crosscut-testing-integration": "tests/Hexalith.EventStore.Testing.Integration.Tests/bin/Release/net10.0/Hexalith.EventStore.Testing.Integration.Tests.dll",
+}
+if set(full_assemblies) != full:
+    raise SystemExit("full-result assembly contract differs from the mandatory inventory")
+expected_identities = {name: (assembly, "all", "") for name, assembly in full_assemblies.items()}
+for name in filtered:
+    if name in method_exceptions:
+        selector_kind = "method"
+        selector = method_exceptions[name]
+        class_selector = selector.rsplit(".", 1)[0]
+    else:
+        selector_kind = "class"
+        selector = filtered_exceptions.get(name)
+        if selector is None:
+            leaf = name.rsplit("-", 1)[-1]
+            candidates = [item for item in allowed_class_selectors if item.rsplit(".", 1)[-1] == leaf]
+            if len(candidates) != 1:
+                raise SystemExit(f"{name}: selector contract is not unique")
+            selector = candidates[0]
+        class_selector = selector
+    if class_selector not in allowed_class_selectors:
+        raise SystemExit(f"{name}: selector is outside the fixed contract")
+    prefixes = [prefix for prefix in assembly_by_type_prefix if class_selector.startswith(prefix)]
+    if len(prefixes) != 1:
+        raise SystemExit(f"{name}: assembly contract is not unique")
+    expected_identities[name] = (assembly_by_type_prefix[prefixes[0]], selector_kind, selector)
+if identities != expected_identities:
+    raise SystemExit("test evidence identities differ from the independently fixed contract")
+
+for name, (assembly, selector_kind, selector) in identities.items():
+    xml_root = ET.parse(root_dir / f"{name}.xml").getroot()
+    expected_assembly = pathlib.Path(assembly).name.casefold()
+    actual_assemblies = {
+        pathlib.Path(node.attrib.get("name", "")).name.casefold()
+        for node in xml_root.findall(".//assembly")
+    }
+    if actual_assemblies != {expected_assembly}:
+        raise SystemExit(f"{name}: XML assembly does not match {assembly}")
+    tests = xml_root.findall(".//test")
+    if not tests:
+        raise SystemExit(f"{name}: XML contains no test cases")
+    executed = {
+        f"{test.attrib.get('type', '')}.{test.attrib.get('method', '')}"
+        for test in tests
+    }
+    listing = (root_dir / f"{name}.methods.txt").read_text(encoding="utf-8")
+    if selector_kind == "all":
+        listed = set(re.findall(r"(?m)^[^\s]+\.[^\s]+$", listing))
+        if not listed or executed != listed:
+            raise SystemExit(f"{name}: full method listing and XML cases differ")
+    elif selector_kind == "class":
+        if any(test.attrib.get("type") != selector for test in tests):
+            raise SystemExit(f"{name}: XML contains a test outside {selector}")
+        listed = set(re.findall(rf"(?m)^{re.escape(selector)}\.[^\s]+$", listing))
+        if not listed or executed != listed:
+            raise SystemExit(f"{name}: method listing and XML cases differ")
+    elif executed != {selector}:
+        raise SystemExit(f"{name}: XML does not contain exactly {selector}")
+    else:
+        if selector not in listing.splitlines():
+            raise SystemExit(f"{name}: selected method is absent from the method listing")
+# test-identity-contract-end
+PY
 while IFS= read -r required_log; do
   grep -Fxq "$required_log" "$A_RAW_EVIDENCE_DIRECTORY/raw-evidence-files.txt"
   test -s "$A_RAW_EVIDENCE_DIRECTORY/$required_log"
@@ -2698,7 +3379,10 @@ total = int(root.attrib.get("total", "0"))
 passed = int(root.attrib.get("passed", "0"))
 failed = int(root.attrib.get("failed", "0"))
 errors = int(root.attrib.get("errors", "0"))
-if total <= 0 or passed <= 0 or failed != 0 or errors != 0:
+skipped = int(root.attrib.get("skipped", "0"))
+tests = root.findall(".//test")
+if (total <= 0 or passed != total or failed != 0 or errors != 0 or skipped != 0 or
+        len(tests) != total or any(test.attrib.get("result") != "Pass" for test in tests)):
     raise SystemExit(1)
 PY
       ;;
@@ -2710,6 +3394,98 @@ A_LATEST_GATE_COMPLETED_AT="$(cat "$A_EVIDENCE_ROOT/latest-successful-gate-compl
 test "$(cat "$A_EVIDENCE_ROOT/candidate-source-sha.txt")" = "$A_TESTED_RUNTIME_SHA"
 test "$(cat "$A_EVIDENCE_ROOT/ad11-preflight.sha256")" \
   = "$(sha256sum "$A_EVIDENCE_ROOT/ad11-preflight.json" | awk '{print $1}')  ad11-preflight.json"
+A_RUNTIME_SOURCE="$(mktemp -d)"
+A_RUNTIME_EVALUATOR="$(mktemp)"
+A_RUNTIME_EFFECTIVE_PACKAGES_DEBUG="$(mktemp)"
+A_RUNTIME_EFFECTIVE_PACKAGES_RELEASE="$(mktemp)"
+git archive "$A_TESTED_RUNTIME_COMMIT" | tar -x -C "$A_RUNTIME_SOURCE"
+A_BUILDS_SHA="$(git ls-tree "$A_TESTED_RUNTIME_COMMIT" -- references/Hexalith.Builds | awk '{print $3}')"
+[[ "$A_BUILDS_SHA" =~ ^[0-9a-f]{40}$ ]]
+git -C references/Hexalith.Builds cat-file -e "${A_BUILDS_SHA}^{commit}" 2>/dev/null ||
+  git -C references/Hexalith.Builds fetch --quiet origin "$A_BUILDS_SHA"
+mkdir -p "$A_RUNTIME_SOURCE/references/Hexalith.Builds"
+git -C references/Hexalith.Builds archive "$A_BUILDS_SHA" |
+  tar -x -C "$A_RUNTIME_SOURCE/references/Hexalith.Builds"
+cat > "$A_RUNTIME_EVALUATOR" <<EOF
+<Project>
+  <Import Project="$A_RUNTIME_SOURCE/Directory.Packages.props" />
+  <Target Name="WriteEffectivePackageVersions">
+    <WriteLinesToFile File="\$(PackageVersionOutput)"
+                      Lines="@(PackageVersion->'%(Identity) %(Version)')"
+                      Overwrite="true"
+                      Encoding="UTF-8" />
+  </Target>
+</Project>
+EOF
+(
+  cd "$A_RUNTIME_SOURCE"
+  dotnet msbuild "$A_RUNTIME_EVALUATOR" -nologo \
+    -t:WriteEffectivePackageVersions -p:Configuration=Debug \
+    -p:UseHexalithProjectReferences=true \
+    -p:PackageVersionOutput="$A_RUNTIME_EFFECTIVE_PACKAGES_DEBUG" >/dev/null
+  dotnet msbuild "$A_RUNTIME_EVALUATOR" -nologo \
+    -t:WriteEffectivePackageVersions -p:Configuration=Release \
+    -p:UseHexalithProjectReferences=false \
+    -p:PackageVersionOutput="$A_RUNTIME_EFFECTIVE_PACKAGES_RELEASE" >/dev/null
+)
+python3 - \
+  "$A_RUNTIME_SOURCE/global.json" \
+  "$A_RUNTIME_EFFECTIVE_PACKAGES_DEBUG" "$A_RUNTIME_EFFECTIVE_PACKAGES_RELEASE" \
+  "$A_EVIDENCE_ROOT/effective-package-versions-debug.txt" \
+  "$A_EVIDENCE_ROOT/effective-package-versions-release.txt" \
+  "$A_EVIDENCE_ROOT/dotnet-runtimes.txt" \
+  "$A_EVIDENCE_ROOT/dotnet-runtimes-current.txt" \
+  "$A_EVIDENCE_ROOT/ad11-preflight.json" <<'PY'
+import json
+import pathlib
+import sys
+
+(global_path, actual_debug_path, actual_release_path, evidence_debug_path,
+ evidence_release_path, runtimes_path, current_runtimes_path, preflight_path) = sys.argv[1:]
+global_json = json.loads(pathlib.Path(global_path).read_text(encoding="utf-8"))
+preflight = json.loads(pathlib.Path(preflight_path).read_text(encoding="utf-8"))
+if global_json.get("sdk", {}).get("version") != preflight.get("sdk_version"):
+    raise SystemExit("candidate global.json SDK differs from AD-11 evidence")
+if global_json.get("sdk", {}).get("rollForward") != preflight.get("sdk_roll_forward"):
+    raise SystemExit("candidate global.json rollForward differs from AD-11 evidence")
+
+def package_map(path):
+    result = {}
+    for line in pathlib.Path(path).read_text(encoding="utf-8").splitlines():
+        parts = line.split()
+        if len(parts) != 2:
+            raise SystemExit(f"invalid effective package row: {line!r}")
+        result[parts[0]] = parts[1]
+    return result
+
+actual_debug = package_map(actual_debug_path)
+actual_release = package_map(actual_release_path)
+evidence_debug = package_map(evidence_debug_path)
+evidence_release = package_map(evidence_release_path)
+if actual_debug != evidence_debug or actual_release != evidence_release:
+    raise SystemExit("candidate effective package pins differ from committed AD-11 evidence")
+if actual_debug != actual_release:
+    raise SystemExit("Debug/source and Release/package ASP.NET pin graphs differ")
+actual_packages = actual_release
+aspnet_versions = {
+    version
+    for package_id, version in actual_packages.items()
+    if package_id.startswith("Microsoft.AspNetCore.") and package_id != "Microsoft.AspNetCore.Identity"
+}
+if actual_packages.get("Microsoft.AspNetCore.Identity") != "2.3.11" or len(aspnet_versions) != 1:
+    raise SystemExit("candidate ASP.NET pins are not one valid effective band")
+aspnet_version = next(iter(aspnet_versions))
+if aspnet_version != preflight.get("aspnet_version"):
+    raise SystemExit("candidate ASP.NET band differs from AD-11 evidence")
+for runtime_inventory in (runtimes_path, current_runtimes_path):
+    inventory = pathlib.Path(runtime_inventory).read_text(encoding="utf-8").splitlines()
+    for runtime_name in ("Microsoft.AspNetCore.App", "Microsoft.NETCore.App"):
+        if not any(line.split()[:2] == [runtime_name, aspnet_version] for line in inventory):
+            raise SystemExit(f"{runtime_inventory}: missing {runtime_name} {aspnet_version}")
+PY
+rm -rf -- "$A_RUNTIME_SOURCE"
+rm -f -- "$A_RUNTIME_EVALUATOR" "$A_RUNTIME_EFFECTIVE_PACKAGES_DEBUG" \
+  "$A_RUNTIME_EFFECTIVE_PACKAGES_RELEASE"
 A_AD11_MODE="$(jq -er '.mode' "$A_EVIDENCE_ROOT/ad11-preflight.json")"
 if test "$A_AD11_MODE" = 'exact-baseline'; then
   jq -e \
@@ -2869,7 +3645,9 @@ jq -e \
     .disposition == "approved" and
     .scope.repository == $repository and
     .scope.reviewed_runtime_sha == $source_sha and
-    (.scope.summary | nonblank) and (.scope.verification | nonblank) and
+    (.scope.summary | nonblank) and
+    (.scope.findings_and_resolutions | nonblank) and
+    (.scope.verification | nonblank) and
     (.scope.residual_limitations | nonblank) and
     ((.reviewed_at | fromdateiso8601) >= ($latest_gate | fromdateiso8601)) and
     ((.reviewed_at | fromdateiso8601) <= $commit_epoch)
@@ -2941,6 +3719,44 @@ awk \
       residuals_ok == 1 && disposition == 1 && disposition_ok == 1)
   }
 ' "$A_FOLLOWUP_SPEC"
+python3 - \
+  "$RUNTIME_FOLLOWUP_SPEC" "$EXPECTED_A_FOLLOWUP_SPEC" \
+  "$A_STORY_REVIEW_RECORD" "$A_STORY_REVIEW_METADATA" \
+  "$A_STORY_REVIEW_DATE" "$A_TESTED_RUNTIME_SHA" <<'PY'
+import json
+import pathlib
+import sys
+
+runtime_path, expected_path, record_path, metadata_path, review_date, runtime_sha = sys.argv[1:]
+runtime = pathlib.Path(runtime_path).read_text(encoding="utf-8")
+if runtime.count("followup_review_recommended: true") != 1:
+    raise SystemExit("runtime follow-up spec lacks one unresolved recommendation")
+runtime = runtime.replace(
+    "followup_review_recommended: true",
+    "followup_review_recommended: false",
+    1,
+)
+record = json.loads(pathlib.Path(record_path).read_text(encoding="utf-8"))
+metadata = json.loads(pathlib.Path(metadata_path).read_text(encoding="utf-8"))
+scope = record["scope"]
+suffix = f"""
+
+### {review_date} — Follow-up review disposition
+
+- reviewed_runtime_sha: `{runtime_sha}`
+- reviewer: `{metadata['login']}`
+- reviewer_login: `{metadata['login']}`
+- durable_source_api: `{metadata['api_url']}`
+- durable_source: `{metadata['html_url']}`
+- scope: {json.dumps(scope['summary'], ensure_ascii=False)}
+- findings_and_resolutions: {json.dumps(scope['findings_and_resolutions'], ensure_ascii=False)}
+- verification: {json.dumps(scope['verification'], ensure_ascii=False)}
+- residual_limitations: {json.dumps(scope['residual_limitations'], ensure_ascii=False)}
+- disposition: `approved`
+"""
+pathlib.Path(expected_path).write_text(runtime.rstrip("\n") + suffix, encoding="utf-8")
+PY
+cmp --silent "$EXPECTED_A_FOLLOWUP_SPEC" "$A_FOLLOWUP_SPEC"
 
 awk '
   function finish_section() {
@@ -3081,11 +3897,19 @@ jq -e \
   --arg authority_checked_at_sha256 "$(
     sha256sum "$A_PUBLICATION_CHECKED_AT_FILE" | awk '{print $1}'
   )" \
+  --arg amd64_smoke_sha256 "$(sha256sum "$A_RAW_EVIDENCE_DIRECTORY/container-smoke-linux-amd64.log" | awk '{print $1}')" \
+  --arg arm64_smoke_sha256 "$(sha256sum "$A_RAW_EVIDENCE_DIRECTORY/container-smoke-linux-arm64.log" | awk '{print $1}')" \
   --arg capture_targets_sha256 "$(sha256sum "$A_CAPTURE_TARGETS" | awk '{print $1}')" '
     .repository == $repository and .digest == $digest and .source_sha == $source_sha and
     .tag == $tag and
     .manifest_sha256 == ($digest | sub("^sha256:"; "")) and
     (.platforms | length == 2 and sort == ["linux/amd64", "linux/arm64"]) and
+    .runtime_smoke.health_path == "/alive" and
+    (.runtime_smoke.platforms | sort) == ["linux/amd64", "linux/arm64"] and
+    .runtime_smoke.logs["linux/amd64"].file == "container-smoke-linux-amd64.log" and
+    .runtime_smoke.logs["linux/amd64"].sha256 == $amd64_smoke_sha256 and
+    .runtime_smoke.logs["linux/arm64"].file == "container-smoke-linux-arm64.log" and
+    .runtime_smoke.logs["linux/arm64"].sha256 == $arm64_smoke_sha256 and
     .sdk_generated_index.file == "generated-image-index.json" and
     .sdk_generated_index.digest == $digest and
     .sdk_generated_index.capture_targets_file == "capture-generated-image-index.targets" and
@@ -3111,14 +3935,71 @@ docker buildx imagetools inspect \
 test "sha256:$(sha256sum "$A_REGISTRY_MANIFEST" | awk '{print $1}')" \
   = "$A_CONTAINER_DIGEST"
 cmp --silent "$A_CONTAINER_MANIFEST" "$A_REGISTRY_MANIFEST"
-while IFS= read -r child_digest; do
+while IFS=$'\t' read -r child_digest descriptor_os descriptor_architecture; do
   [[ "$child_digest" =~ ^sha256:[0-9a-f]{64}$ ]]
   child_manifest="$(mktemp)"
+  child_config="$(mktemp)"
   docker buildx imagetools inspect \
     "$A_CONTAINER_REPOSITORY@$child_digest" --raw > "$child_manifest"
   test "sha256:$(sha256sum "$child_manifest" | awk '{print $1}')" = "$child_digest"
   jq -e 'type == "object" and (.schemaVersion == 2)' "$child_manifest" >/dev/null
-done < <(jq -er '.manifests[].digest' "$A_CONTAINER_MANIFEST")
+  docker buildx imagetools inspect "$A_CONTAINER_REPOSITORY@$child_digest" \
+    --format '{{json .Image}}' > "$child_config"
+  jq -e --arg os "$descriptor_os" --arg architecture "$descriptor_architecture" '
+    .os == $os and .architecture == $architecture
+  ' "$child_config" >/dev/null
+  rm -f -- "$child_manifest" "$child_config"
+done < <(jq -er '.manifests[] | [.digest, .platform.os, .platform.architecture] | @tsv' \
+  "$A_CONTAINER_MANIFEST")
+
+# container-smoke-verifier-contract-start
+verify_container_platform_smoke() (
+  local repository="$1"
+  local digest="$2"
+  local platform="$3"
+  local container_id=''
+  local host_port=''
+  local smoke_log
+  local smoke_status=1
+  smoke_log="$(mktemp)"
+  cleanup_verified_smoke() {
+    local exit_status=$?
+    if test -n "$container_id" &&
+        docker inspect "$container_id" >/dev/null 2>&1; then
+      docker rm --force "$container_id" >/dev/null 2>&1 || exit_status=1
+    fi
+    rm -f -- "$smoke_log" || exit_status=1
+    exit "$exit_status"
+  }
+  trap cleanup_verified_smoke EXIT
+  if container_id="$(docker run --detach --rm --platform "$platform" \
+      --publish 127.0.0.1::8080 \
+      --env ASPNETCORE_URLS=http://+:8080 \
+      "$repository@$digest" 2>> "$smoke_log")"; then
+    for _ in $(seq 1 90); do
+      if ! test "$(docker inspect -f '{{.State.Running}}' "$container_id" 2>/dev/null)" = 'true'; then
+        break
+      fi
+      host_port="$(docker port "$container_id" 8080/tcp 2>/dev/null |
+        awk -F: '/127\.0\.0\.1/ { print $NF; exit }')"
+      if test -n "$host_port" &&
+          curl --fail --silent --show-error --max-time 5 \
+            "http://127.0.0.1:$host_port/alive" >> "$smoke_log" 2>&1; then
+        smoke_status=0
+        break
+      fi
+      sleep 1
+    done
+    docker logs "$container_id" >> "$smoke_log" 2>&1 || true
+  fi
+  if test "$smoke_status" -ne 0; then
+    cat "$smoke_log" >&2
+    return 1
+  fi
+)
+# container-smoke-verifier-contract-end
+verify_container_platform_smoke "$A_CONTAINER_REPOSITORY" "$A_CONTAINER_DIGEST" linux/amd64
+verify_container_platform_smoke "$A_CONTAINER_REPOSITORY" "$A_CONTAINER_DIGEST" linux/arm64
 
 A_COMMIT_EPOCH="$(git show -s --format=%ct "$EVIDENCE_COMMIT_A")"
 A_REPOSITORY_URL='https://github.com/Hexalith/Hexalith.EventStore.git'
@@ -3132,6 +4013,11 @@ jq -e \
   --arg source_sha "$A_TESTED_RUNTIME_SHA" \
   --arg evidence_manifest_sha256 "$A_EVIDENCE_MANIFEST_SHA256" \
   --arg raw_sha256 "$A_RAW_EVIDENCE_BUNDLE_SHA256" \
+  --arg raw_object_version "$A_RAW_EVIDENCE_OBJECT_VERSION" \
+  --arg raw_retention_until "$A_RAW_EVIDENCE_RETENTION_UNTIL" \
+  --arg raw_provider_adapter_id "$A_RAW_EVIDENCE_PROVIDER_ADAPTER_ID" \
+  --arg raw_provider_adapter_sha256 "$A_RAW_EVIDENCE_PROVIDER_ADAPTER_SHA256" \
+  --arg raw_proof_sha256 "$A_RAW_EVIDENCE_PROOF_SHA256" \
   --arg package_version "$A_PACKAGE_VERSION" \
   --arg package_manifest_sha256 "$A_PACKAGE_HASH_MANIFEST_SHA256" \
   --arg container_repository "$A_CONTAINER_REPOSITORY" \
@@ -3140,6 +4026,11 @@ jq -e \
     .repository == $repository and .tested_runtime_sha == $source_sha and
     .evidence_manifest_sha256 == $evidence_manifest_sha256 and
     .raw_evidence_bundle_sha256 == $raw_sha256 and
+    .raw_evidence_object_version == $raw_object_version and
+    .raw_evidence_retention_until == $raw_retention_until and
+    .raw_evidence_provider_adapter_id == $raw_provider_adapter_id and
+    .raw_evidence_provider_adapter_sha256 == $raw_provider_adapter_sha256 and
+    .raw_evidence_immutability_proof_sha256 == $raw_proof_sha256 and
     .package_version == $package_version and
     .package_hash_manifest_sha256 == $package_manifest_sha256 and
     .container_repository == $container_repository and
@@ -3211,7 +4102,12 @@ subject = json.load(open(subject_path, encoding="utf-8"))
 start = packet.index("## Parity Capability Matrix")
 end = packet.index("## Owner Review", start)
 matrix = packet[start:end]
-if re.search(r"`still blocked`|\bFAILED\b|\bNOT RUN\b|\bowner disposition: pending\b", matrix):
+if re.search(
+    r"`still blocked`|\bFAILED\b|\bNOT RUN\b|\bINCOMPLETE\b|\bSKIPPED\b|"
+    r"\bBLOCKED\b|\bnon-authorizing\b|\bowner disposition: pending\b",
+    matrix,
+    re.I,
+):
     raise SystemExit("matrix contains stale or non-authorizing state")
 matches = list(re.finditer(r"^- capability-id: `([^`]+)`$", matrix, re.M))
 if len(matches) != 9:
@@ -3250,8 +4146,15 @@ for index, match in enumerate(matches):
     if limitation_ids != subject_map[capability_id]["limitations"]:
         raise SystemExit(f"{capability_id}: limitation IDs differ from approval subject")
     if capability_id == "cross-cutting-release-compatibility":
-        if "| PASS |" not in section:
-            raise SystemExit("cross-cutting row lacks completed gate results")
+        gate_rows = []
+        for line in section.splitlines():
+            if not line.startswith("| ") or line.startswith("| Gate |") or line.startswith("| ---"):
+                continue
+            cells = [cell.strip() for cell in line.strip("|").split("|")]
+            if len(cells) == 5:
+                gate_rows.append(cells)
+        if len(gate_rows) != 7 or any(row[-1] != "PASS" for row in gate_rows):
+            raise SystemExit("every cross-cutting gate row must report PASS")
     elif not re.search(r"^- closure result and persisted read-back: \S", section, re.M):
         raise SystemExit(f"{capability_id}: missing closure result")
 PY
@@ -3350,6 +4253,78 @@ test "$(awk '
   in_front && $0 == "---" { in_front = 0; after_front = 1; next }
   after_front && /^Status: / { print substr($0, 9); exit }
 ' "$A_STORY")" = 'blocked'
+cat > "$A_EXPECTED_PREREQUISITE_STATUSES" <<'PREREQUISITE_STATUSES'
+1-2-domain-query-routing-and-response-provenance
+1-14-read-model-and-projection-checkpoint-erasure
+1-15-coordinated-read-model-batch-writes
+1-16-complete-projection-freshness-lifecycle
+1-17-asynchronous-multi-projection-dispatch
+1-18-projection-handler-delivery-idempotency
+1-19-correct-paged-rebuild-and-replay-equivalence
+PREREQUISITE_STATUSES
+LC_ALL=C sort -o "$A_EXPECTED_PREREQUISITE_STATUSES" "$A_EXPECTED_PREREQUISITE_STATUSES"
+validate_prerequisite_statuses() {
+  local sprint_file="$1"
+  local actual
+  actual="$(mktemp)"
+  awk '
+    /^  1-(2-domain-query-routing-and-response-provenance|14-read-model-and-projection-checkpoint-erasure|15-coordinated-read-model-batch-writes|16-complete-projection-freshness-lifecycle|17-asynchronous-multi-projection-dispatch|18-projection-handler-delivery-idempotency|19-correct-paged-rebuild-and-replay-equivalence):/ {
+      if ($2 != "done") exit 1
+      key = $1
+      sub(/:$/, "", key)
+      print key
+    }
+  ' "$sprint_file" | LC_ALL=C sort > "$actual"
+  diff -u "$A_EXPECTED_PREREQUISITE_STATUSES" "$actual"
+  rm -f -- "$actual"
+}
+validate_prerequisite_statuses "$A_SPRINT_STATUS"
+validate_prerequisite_artifact() {
+  local artifact_path="$1"
+  local artifact
+  artifact="$(mktemp)"
+  git show "$EVIDENCE_COMMIT_A:$artifact_path" > "$artifact"
+  grep -Eq "^(status: ['\"]?done['\"]?|Status: done)$" "$artifact"
+  ! grep -Eq '^- \[ \].*\[Review\]' "$artifact"
+  grep -Eq '^- \[x\].*\[Review\]|^## .*Review|^### .*Review' "$artifact"
+  rm -f -- "$artifact"
+}
+validate_prerequisite_artifact \
+  '_bmad-output/implementation-artifacts/2-8-query-response-provenance-contract-and-route-aware-gateway-etag.md'
+validate_prerequisite_artifact \
+  '_bmad-output/implementation-artifacts/1-9-read-model-and-projection-checkpoint-erasure.md'
+validate_prerequisite_artifact \
+  '_bmad-output/implementation-artifacts/1-10-coordinated-read-model-batch-writes.md'
+validate_prerequisite_artifact \
+  '_bmad-output/implementation-artifacts/spec-1-11-complete-projection-freshness-lifecycle.md'
+validate_prerequisite_artifact \
+  '_bmad-output/implementation-artifacts/1-12-asynchronous-multi-projection-dispatch.md'
+validate_prerequisite_artifact \
+  '_bmad-output/implementation-artifacts/1-13-projection-handler-delivery-idempotency.md'
+validate_prerequisite_artifact \
+  '_bmad-output/implementation-artifacts/1-19-correct-paged-rebuild-and-replay-equivalence.md'
+ACTIVE_STORY_1_2="$(mktemp)"
+git show \
+  "$EVIDENCE_COMMIT_A:_bmad-output/implementation-artifacts/1-2-domain-query-routing-and-response-provenance.md" \
+  > "$ACTIVE_STORY_1_2"
+grep -Fqx 'status: done' "$ACTIVE_STORY_1_2"
+grep -Fqx 'Status: done' "$ACTIVE_STORY_1_2"
+grep -Fqx '  - 2-8-query-response-provenance-contract-and-route-aware-gateway-etag.md' \
+  "$ACTIVE_STORY_1_2"
+rm -f -- "$ACTIVE_STORY_1_2"
+PREREQUISITE_CROSSWALK="$(mktemp)"
+git show \
+  "$EVIDENCE_COMMIT_A:_bmad-output/planning-artifacts/story-id-migration-2026-07-15.md" \
+  > "$PREREQUISITE_CROSSWALK"
+for crosswalk_row in \
+    '| 1.9 | 1.14 | `done` |' \
+    '| 1.10 | 1.15 | `done` |' \
+    '| 1.11 | 1.16 | `done` |' \
+    '| 1.12 | 1.17 | `done` |' \
+    '| 1.13 | 1.18 | `done` |'; do
+  test "$(grep -Fc -- "$crosswalk_row" "$PREREQUISITE_CROSSWALK")" -eq 1
+done
+rm -f -- "$PREREQUISITE_CROSSWALK"
 awk '
   /^  epic-1:/ { epic_count++; epic_ok += ($0 == "  epic-1: in-progress") }
   /^  1-20-owner-approved-parity-closure-and-runtime-pin:/ {
@@ -3399,10 +4374,46 @@ awk '
   in_front && $0 == "authorize_consumer_migration: false" && migration_changed == 0 {
     print "authorize_consumer_migration: true"; migration_changed = 1; next
   }
-  !in_front && /^## / { section = $0 }
-  section == "## Decision" && $0 == "`still blocked`" && body_decision_changed == 0 {
-    print "`available`"; body_decision_changed = 1; next
+  !in_front && $0 == "## Decision" && decision_section_changed == 0 {
+    print
+    print ""
+    print "`available`"
+    print ""
+    print "Authorizing commit C permits consumer migration only to the exact source, package,"
+    print "and digest-pinned container identities verified by this packet. Historical failed"
+    print "candidate results below remain audit history and grant no independent authority."
+    decision_section_changed = 1
+    skip_decision_section = 1
+    next
   }
+  skip_decision_section && $0 == "### Scoped corrective item" {
+    print ""
+    print
+    skip_decision_section = 0
+    next
+  }
+  skip_decision_section { next }
+  !in_front && $0 == "## Final Decision" && final_section_changed == 0 {
+    print
+    print ""
+    print "`available`"
+    print ""
+    print "Story 1.20 and Epic 1 are complete. Authorizing commit C verified every prerequisite,"
+    print "approval, evidence pin, package identity, and digest-pinned two-platform container"
+    print "smoke result before permitting consumer migration."
+    final_section_changed = 1
+    skip_final_section = 1
+    next
+  }
+  skip_final_section && !in_front && /^## / {
+    print ""
+    print
+    section = $0
+    skip_final_section = 0
+    next
+  }
+  skip_final_section { next }
+  !in_front && /^## / { section = $0 }
   section == "## Owner Review" &&
       $0 == "- migration decision: `authorize_consumer_migration: false`" &&
       owner_migration_changed == 0 {
@@ -3410,13 +4421,11 @@ awk '
     owner_migration_changed = 1
     next
   }
-  section == "## Final Decision" && $0 == "`still blocked`" && final_decision_changed == 0 {
-    print "`available`"; final_decision_changed = 1; next
-  }
   { print }
   END {
-    if (decision_changed != 1 || migration_changed != 1 || body_decision_changed != 1 ||
-        owner_migration_changed != 1 || final_decision_changed != 1) exit 1
+    if (skip_decision_section || decision_changed != 1 || migration_changed != 1 ||
+        decision_section_changed != 1 || owner_migration_changed != 1 ||
+        final_section_changed != 1) exit 1
   }
 ' "$B_PACKET" > "$EXPECTED_C_PACKET"
 cmp --silent "$EXPECTED_C_PACKET" "$C_PACKET"
@@ -3482,6 +4491,7 @@ test "$(awk '/^## Final Decision$/{inside=1; next} inside && /^## /{exit} inside
   "$C_PACKET")" = '`available`'
 grep -Fq -- '- migration decision: `authorize_consumer_migration: true`' "$C_PACKET"
 test "$(front_value "$C_STORY" status)" = 'done'
+validate_prerequisite_statuses "$C_SPRINT_STATUS"
 awk '
   /^  epic-1:/ { epic_count++; epic_ok += ($0 == "  epic-1: done") }
   /^  1-20-owner-approved-parity-closure-and-runtime-pin:/ {
@@ -3490,6 +4500,51 @@ awk '
   }
   END { exit !(epic_count == 1 && epic_ok == 1 && story_count == 1 && story_ok == 1) }
 ' "$C_SPRINT_STATUS"
+
+if test "$AUTHORIZATION_VERIFICATION_PHASE" = 'official-main'; then
+  CURRENT_AUTHORITY_PACKET="$(mktemp)"
+  CURRENT_AUTHORITY_STORY="$(mktemp)"
+  CURRENT_AUTHORITY_SPRINT_STATUS="$(mktemp)"
+  git show "$OFFICIAL_MAIN_SHA:$PACKET" > "$CURRENT_AUTHORITY_PACKET"
+  git show "$OFFICIAL_MAIN_SHA:$STORY" > "$CURRENT_AUTHORITY_STORY"
+  git show "$OFFICIAL_MAIN_SHA:$SPRINT_STATUS" > "$CURRENT_AUTHORITY_SPRINT_STATUS"
+  for authority_field in \
+      candidate_source_sha tested_runtime_sha documentation_commit_sha \
+      evidence_manifest_sha256 \
+      approval_subject_sha256 raw_evidence_bundle_url raw_evidence_bundle_sha256 \
+      raw_evidence_bundle_object_version raw_evidence_bundle_retention_until \
+      raw_evidence_provider_adapter_id raw_evidence_provider_adapter_sha256 \
+      raw_evidence_immutability_proof_url raw_evidence_immutability_proof_sha256 \
+      eventstore_owner_approval_url eventstore_owner_approval_sha256 \
+      release_owner_disposition_url release_owner_disposition_sha256 \
+      approved_package_version approved_package_hash_manifest_sha256 \
+      approved_container_repository approved_container_digest final_decision \
+      authorize_consumer_migration; do
+    test "$(front_value "$CURRENT_AUTHORITY_PACKET" "$authority_field")" \
+      = "$(front_value "$C_PACKET" "$authority_field")"
+  done
+  test "$(front_value "$CURRENT_AUTHORITY_STORY" status)" = 'done'
+  test "$(awk '
+    NR == 1 && $0 == "---" { in_front = 1; next }
+    in_front && $0 == "---" { in_front = 0; after_front = 1; next }
+    after_front && /^Status: / { print substr($0, 9); exit }
+  ' "$CURRENT_AUTHORITY_STORY")" = 'done'
+  test "$(awk '/^## Decision$/{inside=1; next}
+    inside && /^## /{exit} inside && /^`/{print}' "$CURRENT_AUTHORITY_PACKET")" \
+    = '`available`'
+  test "$(awk '/^## Final Decision$/{inside=1; next}
+    inside && /^## /{exit} inside && /^`/{print}' "$CURRENT_AUTHORITY_PACKET")" \
+    = '`available`'
+  grep -Fq -- '- migration decision: `authorize_consumer_migration: true`' \
+    "$CURRENT_AUTHORITY_PACKET"
+  grep -Fqx '  epic-1: done' "$CURRENT_AUTHORITY_SPRINT_STATUS"
+  grep -Fqx \
+    '  1-20-owner-approved-parity-closure-and-runtime-pin: done' \
+    "$CURRENT_AUTHORITY_SPRINT_STATUS"
+  rm -f -- \
+    "$CURRENT_AUTHORITY_PACKET" "$CURRENT_AUTHORITY_STORY" \
+    "$CURRENT_AUTHORITY_SPRINT_STATUS"
+fi
 ```
 
 A missing or non-unique opening field, unequal candidate/runtime identity, unresolved tested
@@ -3500,7 +4555,10 @@ packet and Story 1.16 disposition, merge commit B/C, wrong parent/pointer, file-
 extra path, stale sprint blocker narrative, regressing tracker date, or any edit beyond the
 reconstructed A/B/C contracts exits nonzero. A and B remain non-authorizing. Only verified C
 changes the decision, migration, story, and reconciled sprint guards after reusing A's already
-validated immutable evidence and approval identities.
+validated immutable evidence and approval identities. Run `pre-merge` to verify C's complete
+semantics while it is the direct local child of official pointer B, then rerun as `official-main`
+to prove C is reachable and every authorization identity still matches the current official
+packet. A later official edit that changes or revokes one of those identities fails closed.
 
 ## Consumer Handoff Guard
 
@@ -3641,8 +4699,17 @@ dotnet restore "$CONSUMER_PROJECT" \
   --configfile "$CONSUMER_GATE/nuget.config" \
   --packages "$CONSUMER_GATE/packages" \
   --force-evaluate \
+  -p:Configuration=Release \
   -p:UseHexalithProjectReferences=false
-ASSETS_FILE="$(dirname "$CONSUMER_PROJECT")/obj/project.assets.json"
+ASSETS_FILE="$(dotnet msbuild "$CONSUMER_PROJECT" -nologo \
+  -getProperty:ProjectAssetsFile \
+  -p:Configuration=Release \
+  -p:UseHexalithProjectReferences=false)"
+test -n "$ASSETS_FILE"
+if [[ "$ASSETS_FILE" != /* ]]; then
+  ASSETS_FILE="$(dirname "$CONSUMER_PROJECT")/$ASSETS_FILE"
+fi
+test -f "$ASSETS_FILE"
 SELECTED_EVENTSTORE_IDS="$CONSUMER_GATE/selected-eventstore-package-ids.txt"
 jq -er --arg version "$APPROVED_PACKAGE_VERSION" '
   [.libraries | to_entries[] |
@@ -3703,7 +4770,9 @@ jq -e \
     .digest == $digest and
     .source_sha == $source_sha and
     .manifest_sha256 == ($digest | sub("^sha256:"; "")) and
-    (.platforms | sort) == ["linux/amd64", "linux/arm64"]
+    (.platforms | sort) == ["linux/amd64", "linux/arm64"] and
+    .runtime_smoke.health_path == "/alive" and
+    (.runtime_smoke.platforms | sort) == ["linux/amd64", "linux/arm64"]
   ' "$APPROVED_CONTAINER_PROVENANCE"
 
 IMMUTABLE_IMAGE="$APPROVED_IMAGE_REPOSITORY@$APPROVED_IMAGE_DIGEST"
@@ -3919,11 +4988,12 @@ to `candidate_source_sha` or `tested_runtime_sha`.
   `UseHexalithProjectReferences=false`, so the AppHost omitted its conditional `tenants`
   resource and the test timed out waiting for a topology that had not been compiled. The
   harness now builds this source-topology E2E with `UseHexalithProjectReferences=true`.
-- Story 2.7 correction: committed at `fd8ab24d110e605dfd64487cda84a301126d337d`
+- Story 2.7 correction: committed at `fd8ab24da230058f2f239765b68d5e0a135b4b76`
   and recorded `done`. Base
   configuration no longer registers the stale `orders` and `inventory` sample bindings;
   Development configuration contains exactly the hosted `counter` and `greeting` domains.
-- Corrected source-topology E2E: PASS, 1/1. The exact method
+- Corrected source-topology E2E at exact correction commit
+  `fd8ab24da230058f2f239765b68d5e0a135b4b76`: PASS, 1/1. The exact method
   `LiveHandlerRoute_WithCurrentProjectionValidator_NeutralizesProjectionEvidence` returned
   HTTP 200 with `HandlerComputed` provenance and no projection-validator leakage.
 - Persisted-state proof: the harness stops EventStore, deletes the prior

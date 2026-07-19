@@ -133,6 +133,103 @@ from this proposal inventory and remains owned by its existing changes.
 
 ### Review Findings
 
+#### 2026-07-19 — Code review: uncommitted Story 1.20 hardening
+
+- [x] [Review][Patch] [high] Implement a trustworthy, version-bound WORM proof contract through a
+  verified provider adapter — The owner selected an allowlisted provider adapter that validates
+  canonical provider API metadata and retrieves the exact object version; self-declared JSON from
+  an arbitrary HTTPS URL is not sufficient.
+- [x] [Review][Patch] [high] Require raw evidence to remain under locked retention for at least
+  seven years after authorization — The owner selected a seven-year minimum; the current
+  `retention_until > checked_at` comparison permits evidence to become mutable immediately after
+  authorization.
+- [x] [Review][Patch] [high] Enforce current-authority supersession semantics for authorizing C —
+  The owner selected a rule under which an older C remains valid only while current `origin/main`
+  retains its exact authorization identities; changing them requires a new valid C or an explicit
+  revocation record.
+- [x] [Review][Patch] [high] Make authorizing commit C semantically verifiable before it lands on
+  `origin/main`, while retaining a post-merge official-main reachability gate
+  [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:2551]
+- [x] [Review][Patch] [medium] Reject unapproved extra files in evidence commit A and extra logs in
+  the raw bundle by comparing both complete inventories with their exact allowlists
+  [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:2043]
+- [x] [Review][Patch] [high] Bind every mandatory evidence name to an independently fixed assembly,
+  selector kind, and selector instead of trusting `test-evidence-identities.tsv` to define its own
+  expected tuples
+  [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:2973]
+- [x] [Review][Patch] [high] Prove full-assembly runs are complete and contain only the expected
+  assembly by retaining a complete method list and comparing it with every executed XML case
+  [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:2992]
+- [x] [Review][Patch] [high] Reconcile xUnit root counters and child test results, requiring every
+  credited test to pass and `total == passed` with zero failed, error, or skipped cases
+  [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:738]
+- [x] [Review][Patch] [high] Revalidate prerequisite review/provenance evidence from the committed
+  story artifacts instead of accepting only seven mutable `done` tracker strings
+  [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:3882]
+- [x] [Review][Patch] [high] Require every cross-cutting release-gate result cell to equal `PASS`
+  exactly rather than accepting arbitrary `PASS...` prefixes
+  [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:3774]
+- [x] [Review][Patch] [high] Re-evaluate AD-11 package pins under the actual Debug/source and
+  Release/package project properties so conditional pins cannot escape the synthetic empty-global
+  evaluator
+  [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:3065]
+- [x] [Review][Patch] [high] Replace the marker-only proposal verifier and its early `exit 0` with
+  reachable behavioral mutation fixtures for ancestry, xUnit identity/skip handling, WORM
+  enforcement, and both platform smokes
+  [_bmad-output/implementation-artifacts/spec-1-16-1-20-sprint-change-proposal.md:773]
+- [x] [Review][Patch] [high] Populate Story 1.16 `findings_and_resolutions` from an explicit reviewed
+  field instead of duplicating `scope.summary` under a stronger label
+  [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:3389]
+- [x] [Review][Patch] [medium] Make the live Story 1.16 disposition update atomic and retry-safe so
+  concurrent edits cannot be overwritten and a later gate failure cannot strand an ambiguous
+  partial mutation
+  [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:2185]
+- [x] [Review][Patch] [high] Preserve or explicitly reject every section after `## Final Decision`
+  instead of letting commit C silently delete an arbitrary packet tail
+  [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:3976]
+- [x] [Review][Patch] [medium] Treat failed container cleanup as a gate failure and install an EXIT
+  trap so successful platform smokes cannot leave proof containers running
+  [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1723]
+
+Applied and verified on 2026-07-19: all 16 findings (13 high, 3 medium) are patched. The
+packet now uses a committed version-bound provider adapter and seven-year post-authorization
+WORM retention, exact evidence/test/prerequisite contracts, two-phase current-authority
+verification, atomic Story 1.16 reconciliation, tail-preserving C reconstruction, and
+cleanup-gated two-platform smokes. All 23 packet Bash blocks parse; all 11 proposal verification
+blocks pass, including reachable negative mutation fixtures; and `git diff --check` passes.
+Story 1.20 remains fail-closed because no actual exact-SHA evidence, release identities, durable
+owner approvals, or authorizing A/B/C chain exists yet.
+
+#### 2026-07-19 — Code review chunk 1: proof packet
+
+- [x] [Review][Patch] [high] Require the runtime and A/B/C authorization chain to be reachable from freshly fetched `origin/main` [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:237]
+- [x] [Review][Patch] [high] Require `skipped == 0` for every filtered and full xUnit result credited toward closure [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:713]
+- [x] [Review][Patch] [high] Restrict evidence commit A to the packet, the exact evidence directory, and a deterministic Story 1.16 disposition transform [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:2478]
+- [x] [Review][Patch] [high] Require provider-neutral WORM evidence for the raw bundle: URL, object version, retention deadline, immutable-policy proof, and SHA-256 [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1955]
+- [x] [Review][Patch] [high] Start and health-check the digest-pinned image on both approved platforms, allowing emulation when native hardware is unavailable [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:3713]
+
+- [x] [Review][Patch] [high] Correct the nonexistent Story 2.7 SHA and reconcile the contradictory readiness results [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:51]
+- [x] [Review][Patch] [high] Generate `raw-evidence-files.txt` without including the manifest itself so the mandated bundle can pass both verifiers [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1925]
+- [x] [Review][Patch] [high] Execute the complete mandatory `Hexalith.EventStore.IntegrationTests` assembly, not only one provenance class [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1392]
+- [x] [Review][Patch] [high] Bind every result filename and method list to its expected assembly, class, method, and executed XML cases [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:2675]
+- [x] [Review][Patch] [high] Revalidate Stories 1.2 and 1.14–1.19 completion and review prerequisites before commit C can authorize migration [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:2313]
+- [x] [Review][Patch] [high] Re-derive AD-11 SDK, ASP.NET, and runtime pins from the tested candidate instead of trusting self-reported evidence JSON [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:2713]
+- [x] [Review][Patch] [high] Capture and validate publication-authority expiry after final identity and cleanliness checks at the actual action time [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1705]
+- [x] [Review][Patch] [high] Make authorizing commit C reconcile every blocking decision narrative, not only five exact markers [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:3393]
+- [x] [Review][Patch] [high] Require every cross-cutting release gate row to be exactly complete and passing before authorization [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:3214]
+- [x] [Review][Patch] [high] Propagate `git status` command failures instead of treating empty failed output as a clean repository [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:591]
+- [x] [Review][Patch] [high] Verify each OCI child manifest config's actual OS and architecture rather than trusting index descriptor labels [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:3108]
+- [x] [Review][Patch] [high] Resolve the restored consumer assets path from evaluated MSBuild properties instead of hard-coding `obj/project.assets.json` [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:3640]
+- [x] [Review][Patch] [medium] Discover configured test projects from evaluated test-project semantics rather than a direct case-exact `xunit.v3` reference [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1356]
+
+Applied and verified on 2026-07-19 (chunk 1): applied all 18 review patches (17 high,
+1 medium). The complete proposal verification suite passes, including packet Bash parsing,
+publication ordering, deterministic Story 1.16 disposition, configured-test discovery contract,
+raw-evidence identity and WORM guards, strict A/B/C mutation boundaries, and both platform-smoke
+requirements; `git diff --check` also passes. Story 1.20 remains fail-closed because the actual
+exact-SHA evidence, release identities, durable approvals, and authorizing A/B/C chain do not yet
+exist.
+
 #### 2026-07-17 — Code review chunk 1: proof packet
 
 - [x] [Review][Patch] [high] Retrieve GitHub approval records through the API and require each approving login to match the committed allowlist for its EventStore, release, architecture, or Story 1.16 reviewer role [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:1668]
@@ -343,3 +440,11 @@ evidence; named owner approval remains absent. No consumer migration is authoriz
 - 2026-07-17: Applied all 15 findings from proof-packet review chunk 1: GitHub role-bound
   approvals, exact durable/raw evidence inventories, semantic A/B/C verification, live registry
   re-query, verified-C consumer pins, complete test discovery, and reconciled Story 2.7 status.
+- 2026-07-19: Applied all 18 findings from the new proof-packet review chunk: official-main
+  reachability, zero-skipped and identity-bound complete test evidence, WORM retention,
+  deterministic evidence-commit A, re-derived AD-11 and release prerequisites, actual OCI child
+  configuration checks, and digest-pinned health smoke on both approved platforms.
+- 2026-07-19: Applied all 16 adversarial follow-up findings: provider-adapter WORM proof and
+  seven-year authorization retention, current-authority supersession, fixed xUnit identities and
+  completeness, exact prerequisite/evidence inventories, dual-mode AD-11 evaluation, retry-safe
+  Story 1.16 disposition, tail-safe authorization reconstruction, and executable mutation tests.
