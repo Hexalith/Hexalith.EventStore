@@ -14,6 +14,9 @@
 | Backlog story shape | Stories 7.15-7.18 independently govern GDPR-1, IAM-1, KIT-1, and REST generator hardening artifacts. |
 | Admin request-size safety | Story 5.2 acceptance uses concrete limits: `1_048_576` bytes for representative admin JSON write/sandbox bodies and `10 * 1024 * 1024` bytes for `AdminBackupsController.ImportStream`; "tested or documented" is not enough. |
 | Spec-first cost/evolution | Stories 6.1, 6.3, and 6.5 produce approved specs at `_bmad-output/implementation-artifacts/spec-folded-snapshot.md`, `_bmad-output/implementation-artifacts/spec-projection-cost-sequence-guard.md`, and `_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md` before Stories 6.2, 6.4, and 6.6 implement them. |
+| Story 7.6 AD-24 contract | Story 7.6 cannot complete until the singleton DAPR `openbao` component uses `secretstores.hashicorp.vault` v1 and the value-free `deploy/dapr/openbao-secret-contract.yaml` drives logical secret shapes, consumers, retrieval lifecycle, component scopes, DAPR default-deny `allowedSecrets`, and matching OpenBao ACLs. |
+| Secret readiness and rotation | Required-secret startup and runtime failures fail closed and gate readiness; bootstrap inputs are acyclic; generation-aware rotation retains old validity until all cataloged consumers acknowledge while ready; a real-OpenBao integration lane proves the production path. |
+| Secret profile conformance | Local substitutes do not count as production proof, and Azure Container Apps managed DAPR cannot claim AD-24 compliance until a separately approved profile proves OpenBao support and equivalent least-privilege scoping. |
 | High-risk NFR traceability | NFR1-NFR4, NFR7, NFR10-NFR11, and NFR14-NFR17 map to concrete story coverage and persisted-evidence validation. |
 | UX readiness | `ux.md` covers Sample accepted-submission behavior, Tenants projection-confirmed states, Admin unavailable-operation behavior, support-safe states, accessibility/localization evidence, and FrontComposer/Fluent UI V5 governance. |
 | Readiness rerun | A fresh assessment reports complete FR1-FR36/NFR1-NFR18 coverage and no forward-dependency or oversized-parent structural blocker before broad remaining Phase 4 work resumes. |
@@ -59,3 +62,5 @@
 - Do not satisfy UI readiness by documenting intent only; UI stories still need component/governance evidence in `ux.md` and tests.
 - Do not grant `done` to a split child from parent status alone; require the evidence crosswalk.
 - Do not compare the consuming repository commit to the approved EventStore runtime SHA.
+- Do not count a manifest scan, local substitute, or mocked secret store as real-OpenBao production evidence.
+- Do not conflate AD-24 operational secrets with AD-23 or the draft payload-protection KEK backend.

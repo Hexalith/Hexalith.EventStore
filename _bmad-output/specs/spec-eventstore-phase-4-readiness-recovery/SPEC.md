@@ -41,7 +41,7 @@ Hexalith.EventStore Phase 4 must turn a working DAPR-native event-sourcing platf
 
 - **CAP-5**
   - **intent:** Public, internal, domain-service, projection-notification, admin, and generated REST surfaces fail closed and preserve tenant isolation.
-  - **success:** Anonymous and cross-tenant admin access fails, production auth rejects insecure modes unless break-glassed, committed config contains no forgeable secrets, and topology tests inspect actual sidecar component paths and ACL posture.
+  - **success:** Anonymous and cross-tenant admin access fails, production auth rejects insecure modes unless break-glassed, committed config contains no forgeable or operational secrets, and production evidence proves fail-closed required-secret handling plus matching default-deny DAPR scopes and OpenBao ACLs.
 
 - **CAP-6**
   - **intent:** Long-lived streams can evolve with bounded snapshot/projection cost, sequence-safe projection updates, event versioning/upcasting, validated identity metadata, and cancellation-aware public seams.
@@ -49,7 +49,7 @@ Hexalith.EventStore Phase 4 must turn a working DAPR-native event-sourcing platf
 
 - **CAP-7**
   - **intent:** Operators get explicit delivery semantics, poison/dead-letter handling, attributable admin actions, honest unavailable-operation behavior, hardened deployment posture, meaningful higher-tier evidence, and tracked future capability backlog.
-  - **success:** `Hexalith.EventStore.Admin.UI` is the single consolidated FrontComposer-based EventStore UI, unavailable operations are hidden, disabled, or return `501`, audit records are support-safe, integration tests assert persisted evidence, and four independently governed backlog artifacts exist.
+  - **success:** `Hexalith.EventStore.Admin.UI` is the single consolidated FrontComposer-based EventStore UI; unavailable operations are hidden, disabled, or return `501`; audit records remain support-safe; integration tests assert persisted evidence; operational secrets satisfy AD-24 readiness, runtime-failure, acknowledged-rotation, and real-OpenBao evidence gates; and four independently governed backlog artifacts exist.
 
 - **CAP-8**
   - **intent:** Phase 4 has a coherent planning baseline before full implementation resumes.
@@ -64,8 +64,12 @@ Hexalith.EventStore Phase 4 must turn a working DAPR-native event-sourcing platf
 - `AggregateActor` owns durable event mutation; domain code returns `DomainResult` and never writes EventStore state directly.
 - Read models use `IReadModelStore` plus `ReadModelWritePolicy`; cursors use `IQueryCursorCodec` plus `QueryCursorScope` and remain opaque, bounded, scoped, and fail safe.
 - Projection and pub/sub delivery are at-least-once and unordered; notifications are freshness signals, not proof of success; consumers deduplicate by EventStore `MessageId`.
-- Runtime topology changes must update AppHost, DAPR component/configuration YAML, app IDs, sidecar options, ACLs, topics, scopes, and topology tests together.
+- Runtime topology changes must update AppHost, DAPR component/configuration YAML, app IDs, sidecar options, ACLs, topics, component and secret scopes, the canonical secret contract, and topology tests together.
 - Security fails closed above infrastructure scoping: application-layer credentials and tenant authorization are required before data disclosure.
+- AD-24 binds FR34, NFR4, NFR17, and current Story 7.6: production operational and application secrets use DAPR component `openbao` of type `secretstores.hashicorp.vault` v1; logical names, map shapes, consumers, retrieval lifecycle, access paths, and rotation bounds derive from the value-free `deploy/dapr/openbao-secret-contract.yaml`.
+- The AD-24 contract drives singleton component scopes, per-app DAPR `defaultAccess: deny` plus explicit `allowedSecrets`, and least-privilege OpenBao ACLs; mismatches fail validation, while the OpenBao token, DAPR API token, and TLS trust material remain acyclic out-of-band bootstrap inputs.
+- AD-24 required secrets gate readiness, runtime lookup failure disables the dependent operation until bounded recovery, and rotation is generation-aware publish-overlap-acknowledge-revoke. Release evidence must use real OpenBao; Azure Container Apps managed DAPR is non-conforming until a separately approved compatible profile exists.
+- AD-24 governs operational and application secret retrieval only. It does not approve, replace, or modify AD-23 or the draft payload-protection Azure Key Vault Premium RSA-HSM KEK proposal; DAPR secret stores are not production `pdenc-v2` key custody.
 - Release is manifest-governed through `tools/release-packages.json`; Release/package validation uses package-reference mode by default; submodule packages are not produced by EventStore release jobs.
 - High-risk verification must assert persisted Redis/state-store/read-model/CloudEvent bodies, topology YAML or sidecar arguments, package outputs, and security denials.
 - Folded snapshots, projection delivery cost, projection sequence guards, event versioning/upcasting, identity metadata validation, cancellation-token public seams, and global-position sharding require approved specs before implementation stories start.
@@ -89,10 +93,12 @@ Hexalith.EventStore Phase 4 must turn a working DAPR-native event-sourcing platf
 - Do not target AOT/trimming while reflection conventions remain load-bearing.
 - Do not create an additional EventStore UI host or preserve duplicate legacy page implementations.
 - Do not roll back implementation solely because planning identities are being restructured.
+- Do not use the AD-24 operational secret store as payload-protection KEK custody or treat AD-24 as approval of the draft payload-protection backend.
+- Do not claim Azure Container Apps managed DAPR conforms to AD-24 without a separately approved compatible profile.
 
 ## Success signal
 
-Implementation readiness can be re-run against this package and finds complete FR1-FR36/NFR1-NFR18 coverage, no later-epic prerequisite, no oversized active parent, and deterministic owner/evidence gates. The resulting plan preserves architecture AD-1 through AD-22, canonical UX, exact story migration history, and persisted-evidence validation.
+Implementation readiness can be re-run against this package and finds complete Phase 4 FR1-FR36/NFR1-NFR18 coverage, no later-epic prerequisite, no oversized active parent, and deterministic owner/evidence gates. The resulting plan preserves architecture AD-1 through AD-24, separately gated post-MVP FR37/NFR19, canonical UX, exact story migration history, and persisted-evidence validation.
 
 ## Assumptions
 
