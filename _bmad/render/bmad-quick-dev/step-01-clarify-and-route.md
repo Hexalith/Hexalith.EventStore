@@ -28,7 +28,7 @@ Before listing artifacts or prompting the user, check whether you already know t
    Use the same routing as above.
 
 3. Otherwise — scan artifacts and ask
-   - Active specs (`draft`, `ready-for-dev`, `in-progress`, `in-review`) in `/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts`? → List them and HALT. Ask user which to resume (or `[N]` for new).
+   - Active specs (`draft`, `ready-for-dev`, `in-progress`, `in-review`) in `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts`? → List them and HALT. Ask user which to resume (or `[N]` for new).
      - If `draft` selected: Set `spec_file`. Run **Story-key resolution** (below). **EARLY EXIT** → `./step-02-plan.md` (resume planning from the draft)
      - If `ready-for-dev` or `in-progress` selected: Set `spec_file`. Run **Story-key resolution** (below). **EARLY EXIT** → `./step-03-implement.md`
      - If `in-review` selected: Set `spec_file`. Run **Story-key resolution** (below). **EARLY EXIT** → `./step-04-review.md`
@@ -40,12 +40,12 @@ Never ask extra questions if you already understand what the user intends.
 
 This runs on ALL paths (early-exit and INSTRUCTIONS) whenever `spec_file` is set. Determine whether the spec is an epic story — use the spec's filename, frontmatter, and any loaded epics file to identify `epic_num` and `story_num`. If the spec is not an epic story, skip silently and leave `story_key` unset.
 
-If the spec is an epic story and `/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/sprint-status.yaml` exists: find the `development_status` key matching `{epic_num}-{story_num}` by exact numeric equality on the first two segments (so `1-1` never collides with `1-10`). Exactly one match → set `story_key` to that full key. Zero or multiple matches → leave `story_key` unset (warn on multiple).
+If the spec is an epic story and `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/sprint-status.yaml` exists: find the `development_status` key matching `{epic_num}-{story_num}` by exact numeric equality on the first two segments (so `1-1` never collides with `1-10`). Exactly one match → set `story_key` to that full key. Zero or multiple matches → leave `story_key` unset (warn on multiple).
 
 ## INSTRUCTIONS
 
 1. Load context.
-   - List files in `/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/planning-artifacts` and `/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts`.
+   - List files in `/home/administrator/projects/hexalith/eventstore/_bmad-output/planning-artifacts` and `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts`.
    - If you find an unformatted spec or intent file, ingest its contents to form your understanding of the intent.
    - **Determine context strategy.** Using the intent and the artifact listing, infer whether the current work is a story from an epic. Do not rely on filename patterns or regex — reason about the intent, the listing, and any epics file content together.
 
@@ -53,17 +53,17 @@ If the spec is an epic story and `/home/administrator/projects/hexalith/projects
 
      1. Identify the epic number `{epic_num}` and (if present) the story number `{story_num}`. If you can't identify an epic number, use path B.
 
-     2. **Check for a valid cached epic context.** Look for `/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/epic-<N>-context.md` (where `<N>` is the epic number). A file is **valid** when it exists, is non-empty, starts with `# Epic <N> Context:` (with the correct epic number), and no file in `/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/planning-artifacts` is newer.
+     2. **Check for a valid cached epic context.** Look for `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/epic-<N>-context.md` (where `<N>` is the epic number). A file is **valid** when it exists, is non-empty, starts with `# Epic <N> Context:` (with the correct epic number), and no file in `/home/administrator/projects/hexalith/eventstore/_bmad-output/planning-artifacts` is newer.
         - **If valid:** load it as the primary planning context. Do not load raw planning docs (PRD, architecture, UX, etc.). Skip to step 5.
         - **If missing, empty, or invalid:** continue to step 3.
 
-     3. **Compile epic context.** Produce `/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/epic-<N>-context.md` by following `./compile-epic-context.md`, in order of preference:
-        - **Preferred — subagent:** spawn a subagent synchronously (wait for it to return in this turn) with `./compile-epic-context.md` as its prompt. Pass it the epic number, the epics file path, the `/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/planning-artifacts` directory, and the output path `/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/epic-<N>-context.md`.
+     3. **Compile epic context.** Produce `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/epic-<N>-context.md` by following `./compile-epic-context.md`, in order of preference:
+        - **Preferred — subagent:** spawn a subagent synchronously (wait for it to return in this turn) with `./compile-epic-context.md` as its prompt. Pass it the epic number, the epics file path, the `/home/administrator/projects/hexalith/eventstore/_bmad-output/planning-artifacts` directory, and the output path `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/epic-<N>-context.md`.
         - **Fallback — inline** (for runtimes without subagent support, e.g. Copilot, Codex, local Ollama, older Claude): if your runtime cannot spawn subagents, or the spawn fails/times out, read `./compile-epic-context.md` yourself and follow its instructions to produce the same output file.
 
      4. **Verify.** After compilation, verify the output file exists, is non-empty, and starts with `# Epic <N> Context:`. If valid, load it. If verification fails, HALT and report the failure.
 
-     5. **Previous story continuity.** Regardless of which context source succeeded above, scan `/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts` for specs from the same epic with `status: done` and a lower story number. Load the most recent one (highest story number below current). Extract its **Code Map**, **Design Notes**, **Spec Change Log**, and **task list** as continuity context for step-02 planning. If no `done` spec is found but an `in-review` spec exists for the same epic with a lower story number, note it to the user and ask whether to load it.
+     5. **Previous story continuity.** Regardless of which context source succeeded above, scan `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts` for specs from the same epic with `status: done` and a lower story number. Load the most recent one (highest story number below current). Extract its **Code Map**, **Design Notes**, **Spec Change Log**, and **task list** as continuity context for step-02 planning. If no `done` spec is found but an `in-review` spec exists for the same epic with a lower story number, note it to the user and ask whether to load it.
 
      6. **Resolve `{story_key}`.** If not already set by an earlier early-exit path, run **Story-key resolution** (above) now.
 
@@ -81,7 +81,7 @@ If the spec is an epic story and `/home/administrator/projects/hexalith/projects
    - Present detected distinct goals as a bullet list.
    - Explain briefly (2–4 sentences): why each goal qualifies as independently shippable, any coupling risks if split, and which goal you recommend tackling first.
    - HALT and ask human: `[S] Split — pick first goal, defer the rest` | `[K] Keep all goals — accept the risks`
-   - On **S**: For each deferred goal, append one new entry to `/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/deferred-work.md` using this format. Do not modify existing entries or look for duplicates. Narrow scope to the first-mentioned goal. Continue routing.
+   - On **S**: For each deferred goal, append one new entry to `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/deferred-work.md` using this format. Do not modify existing entries or look for duplicates. Narrow scope to the first-mentioned goal. Continue routing.
      ```markdown
      - source_spec: none
        summary: <one sentence naming the deferred goal>
@@ -90,7 +90,7 @@ If the spec is an epic story and `/home/administrator/projects/hexalith/projects
    - On **K**: Proceed as-is.
 5. Route — choose exactly one:
 
-   Derive a valid kebab-case slug from the clarified intent. If the intent references a tracking identifier (story number, issue number, ticket ID), lead the slug with it (e.g. `3-2-digest-delivery`, `gh-47-fix-auth`). If `/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/spec-{slug}.md` already exists: if its status is `draft`, treat it as the same work and resume it (set `spec_file` to that path, **EARLY EXIT** → `./step-02-plan.md`); otherwise append `-2`, `-3`, etc. Set `spec_file` = `/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/spec-{slug}.md`.
+   Derive a valid kebab-case slug from the clarified intent. If the intent references a tracking identifier (story number, issue number, ticket ID), lead the slug with it (e.g. `3-2-digest-delivery`, `gh-47-fix-auth`). If `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-{slug}.md` already exists: if its status is `draft`, treat it as the same work and resume it (set `spec_file` to that path, **EARLY EXIT** → `./step-02-plan.md`); otherwise append `-2`, `-3`, etc. Set `spec_file` = `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-{slug}.md`.
 
    **a) One-shot** — zero blast radius: no plausible path by which this change causes unintended consequences elsewhere. Clear intent, no architectural decisions.
 

@@ -25,14 +25,14 @@ Launch a subagent with no prior conversation context, with this prompt:
 
 > Invoke the `bmad-review-adversarial-general` skill on the changed files.
 
-If a layer's instruction requires subagents and none are available, generate one review prompt file per such layer in `/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts` and HALT. Ask the human to run each in a separate session and paste back the findings.
+If a layer's instruction requires subagents and none are available, generate one review prompt file per such layer in `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts` and HALT. Ask the human to run each in a separate session and paste back the findings.
 
 ### Classify
 
 Deduplicate all review findings. Three categories only:
 
 - **patch** — trivially fixable. Auto-fix immediately.
-- **defer** — pre-existing issue not caused by this change. Append one new entry to `/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/deferred-work.md` using this format. Do not modify existing entries or look for duplicates.
+- **defer** — pre-existing issue not caused by this change. Append one new entry to `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/deferred-work.md` using this format. Do not modify existing entries or look for duplicates.
   ```markdown
   - source_spec: `{spec_file}`
     summary: <one sentence>
