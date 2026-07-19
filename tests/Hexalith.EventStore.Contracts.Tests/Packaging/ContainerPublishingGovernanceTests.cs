@@ -92,8 +92,13 @@ public sealed class ContainerPublishingGovernanceTests
         string root = FindRepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
 
-        workflow.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@main");
-        workflow.ShouldContain("builds-execution-sha: ${{ vars.HEXALITH_BUILDS_RELEASE_SHA }}");
+        Match releaseWorkflow = Regex.Match(
+            workflow,
+            @"uses: Hexalith/Hexalith\.Builds/\.github/workflows/domain-release\.yml@(?<sha>[0-9a-f]{40})");
+        releaseWorkflow.Success.ShouldBeTrue();
+        workflow.ShouldContain($"builds-execution-sha: {releaseWorkflow.Groups["sha"].Value}");
+        workflow.ShouldNotContain("domain-release.yml@main");
+        workflow.ShouldNotContain("vars.HEXALITH_BUILDS_RELEASE_SHA");
         workflow.ShouldContain("release-authority-url: ${{ vars.HEXALITH_RELEASE_AUTHORITY_URL }}");
         workflow.ShouldContain(
             "release-owner-allowlist: _bmad-output/implementation-artifacts/1-20-github-approval-role-allowlist.json");

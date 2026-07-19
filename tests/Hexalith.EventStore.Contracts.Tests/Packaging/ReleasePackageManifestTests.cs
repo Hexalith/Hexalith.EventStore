@@ -276,7 +276,11 @@ public sealed class ReleasePackageManifestTests
         string root = FindRepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
 
-        workflow.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@main");
+        Match releaseWorkflow = Regex.Match(
+            workflow,
+            @"uses: Hexalith/Hexalith\.Builds/\.github/workflows/domain-release\.yml@(?<sha>[0-9a-f]{40})");
+        releaseWorkflow.Success.ShouldBeTrue();
+        workflow.ShouldContain($"builds-execution-sha: {releaseWorkflow.Groups["sha"].Value}");
         workflow.ShouldContain("github.sha == github.event.workflow_run.head_sha");
         workflow.ShouldContain("publish-containers: true");
         workflow.ShouldContain("src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore");

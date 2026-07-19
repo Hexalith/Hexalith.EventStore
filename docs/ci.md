@@ -14,7 +14,7 @@ Hexalith CI/CD standards and reusable workflow guidance live in
 | **CodeQL** | `.github/workflows/codeql.yml` | `push`, `pull_request` to `main`, weekly schedule | Thin caller to the shared CodeQL reusable workflow using `@main`. |
 | **Dependency Review** | `.github/workflows/dependency-review.yml` | `pull_request` to `main` | Thin caller to the shared dependency-review gate using `@main`. |
 | **Commitlint** | `.github/workflows/commitlint.yml` | `push` and `pull_request` to `main` | Thin caller to the shared Conventional Commits gate using `@main`. |
-| **Release** | `.github/workflows/release.yml` | successful `CI` workflow completion for a `push` to `main` | Thin caller to `Hexalith.Builds` `domain-release.yml@main` for semantic-release, NuGet publish, GitHub Release, and the approved EventStore container publish. |
+| **Release** | `.github/workflows/release.yml` | successful `CI` workflow completion for a `push` to `main` | Thin caller to an exact immutable `Hexalith.Builds` `domain-release.yml` commit for semantic-release, NuGet publish, GitHub Release, and the approved EventStore container publish. |
 
 ## Shared CI/CD Boundary
 
@@ -39,8 +39,11 @@ EventStore keeps only module-specific wiring here:
 - The approved release container mapping:
   `src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore`.
 
-Hexalith.Builds action and reusable workflow references use `@main` by Hexalith
-policy. Third-party action pinning is enforced by shared workflows.
+Hexalith.Builds action and reusable workflow references generally use `@main`
+by Hexalith policy. The publication-capable release workflow is the explicit
+exception: it pins one exact Builds commit so the caller and nested publisher
+cannot resolve independently. Third-party action pinning is enforced by shared
+workflows.
 
 ## Test Lanes
 
@@ -93,7 +96,7 @@ The release workflow starts only after the `CI` workflow completes successfully
 for a push to `main`. The job also requires `github.sha` to equal the completed
 CI workflow's `head_sha`, so a queued release does not publish a newer `main`
 tip than the commit whose CI passed. It delegates to
-`Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@main`.
+an exact 40-character `Hexalith/Hexalith.Builds` commit embedded in `release.yml`.
 
 Semantic-release still decides from commit history whether a release is
 warranted. NuGet publishing remains scoped to the 14 packages listed in
@@ -104,8 +107,8 @@ container publisher helper, and the required Zot registry credentials so a
 missing container secret cannot create a partial NuGet-only release. The
 semantic-release `verifyRelease` phase then fetches a separate durable GitHub
 issue-comment authority record, verifies its author against the checked-in
-release-owner allowlist, freezes its exact bytes, and proves the new version is absent for all 14
-NuGet IDs and the container tag before Git-tag creation. The `publish` phase
+release-owner allowlist, freezes its exact bytes, and proves the new version is
+absent for all 14 NuGet IDs and the container tag before Git-tag creation. The `publish` phase
 requires exact equality with the frozen authority and repeats destination
 absence immediately before NuGet. The shared publisher repeats the authority,
 expiry, and multi-media-type container-tag absence check immediately before the
@@ -120,8 +123,9 @@ maintainer-approved Hexalith.Builds execution SHA. The reusable workflow checks
 its resolved workflow SHA, checks out the nested action at that exact commit,
 and invokes it locally. The action then verifies its own action and helper bytes
 against the same commit before semantic-release can run. The repository
-variables `HEXALITH_BUILDS_RELEASE_SHA` and
-`HEXALITH_RELEASE_AUTHORITY_URL` provide those non-secret inputs. This gate
+embedded Builds SHA and repository variable `HEXALITH_RELEASE_AUTHORITY_URL`
+provide those non-secret inputs. The reusable-workflow reference and
+`builds-execution-sha` input must contain the same literal SHA. This gate
 validates authority evidence; it does not create human publication authority.
 The `GITHUB_TOKEN` is attached only to the exact GitHub API origin; cross-origin
 redirects drop authorization and HTTPS downgrade redirects fail closed.

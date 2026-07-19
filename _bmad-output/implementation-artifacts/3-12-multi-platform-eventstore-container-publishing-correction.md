@@ -254,9 +254,10 @@ mark Story 1.20/Epic 1 done.
     authorization time, durable source, rationale, and unexpired validity window.
   - [x] Before mutation, prove the called Builds workflow, nested `publish-containers` action, and
     installed helper bytes/revisions are the exact maintainer-approved identities in the authority
-    record. Because repository policy uses mutable `@main`, do not infer this from the EventStore
-    gitlink or current remote branch tip and do not allow independently resolved workflow/action
-    revisions to drift. If exact pre-publication binding cannot be established, fail closed.
+    record. The accepted review decision supersedes the prior mutable `@main` policy for this
+    publication-capable caller: pin one exact workflow/action SHA and do not allow independently
+    resolved revisions to drift. If exact pre-publication binding cannot be established, fail
+    closed.
   - [x] Distinguish the workflow/source (tag-parent) SHA from the semantic-release tag commit; record
     both after release so provenance cannot repeat the v3.75.0 identity ambiguity.
   - [x] Preflight that the proposed version is absent for every one of the 14 destination NuGet
@@ -272,9 +273,10 @@ mark Story 1.20/Epic 1 done.
     provenance. This validates authority evidence; it does not create human authority.
 
 - [x] **Task 7 - Integrate the thin EventStore caller and strengthen guardrails/docs (AC2, AC5, AC6).**
-  - [x] Preserve `.github/workflows/release.yml` as a thin `domain-release.yml@main` caller and keep
-    exactly the existing `eventstore` mapping. Add only inputs/secrets/outputs genuinely required by
-    the corrected shared contract.
+  - [x] Preserve `.github/workflows/release.yml` as a thin `domain-release.yml` caller and keep
+    exactly the existing `eventstore` mapping. Per the accepted review decision, bind the reusable
+    workflow and execution input to the same exact Builds SHA. Add only inputs/secrets/outputs
+    genuinely required by the corrected shared contract.
   - [x] Update `.releaserc.json`, `scripts/validate-release-secrets.sh`, or shared helper phases as
     needed so the authority gate runs before NuGet and the validated publisher runs for the same
     `${nextRelease.version}`. Do not duplicate OCI validation in JSON command strings.
@@ -337,11 +339,10 @@ mark Story 1.20/Epic 1 done.
 
 ### Review Findings
 
-- [ ] [Review][Decision] The EventStore caller still resolves the shared reusable workflow through
-  mutable `@main`. The runtime `job.workflow_*` gate binds the resolved workflow and action bytes to
-  the approved SHA, but a compromised mutable workflow could remove its own gate before receiving
-  publication secrets. Resolve this trust boundary with protected Builds `main` or an explicit
-  policy change to immutable caller pinning [.github/workflows/release.yml:31]
+- [x] [Review][Patch] Pin the EventStore reusable release workflow to the exact approved Builds SHA
+  so a mutable workflow cannot remove its own identity check before receiving publication secrets;
+  the owner chose immutable pinning and explicitly superseded the prior `@main` policy
+  [.github/workflows/release.yml:31]
 - [x] [Review][Patch] Run `initialize-build` from the already approved Builds checkout after the
   workflow-identity gate, not from an independent `@main` action
   [references/Hexalith.Builds/.github/workflows/domain-release.yml:90]
@@ -400,7 +401,7 @@ mark Story 1.20/Epic 1 done.
 | New Builds publisher validator/tests/fixtures | No exact-set OCI validator or publisher fixture suite exists. | **ADD in Builds:** reusable immutable-byte validator, fake-tool workflow tests, positive/negative registry fixtures, and bounded child-digest smoke coverage. | Keep network/mutation outside fixture lanes; follow existing `Tools/test-*.ps1` and `test/fixtures` conventions or a maintainer-approved equivalent. |
 | `references/Hexalith.Builds/.github/workflows/domain-release.yml` and `.md` | Installs the helper before `npx semantic-release`; declares registry credentials; no arm64 emulation/evidence phase. | **UPDATE in Builds:** required setup, fail-closed inputs/outputs, authority and evidence contract. | Full-history checkout, root-only submodules, package-mode Release build, pinned third-party actions, semantic-release ownership. |
 | `references/Hexalith.Builds/.github/workflows/build-release.yml` | Current Builds pre-release validation has no exact multi-platform publisher suite. | **UPDATE in Builds:** run the fixture/fake-tool publisher contract suite before a Builds release. | Existing validation/build/release ordering and required checks. |
-| `.github/workflows/release.yml` | Thin `domain-release.yml@main` caller with one `eventstore` mapping. | **VERIFY; UPDATE only if shared contract requires explicit authority/evidence wiring.** | Thin caller, `@main` policy, CI-head equality, one container mapping, explicit secrets. |
+| `.github/workflows/release.yml` | Thin caller with one `eventstore` mapping; formerly resolved `domain-release.yml@main`. | **UPDATE:** retain the thin caller but bind reusable workflow and execution input to one exact approved Builds SHA, plus explicit authority/evidence wiring. | Thin caller, CI-head equality, one container mapping, explicit secrets; immutable release pin supersedes the prior `@main` policy. |
 | `.releaserc.json`, `scripts/validate-release-secrets.sh`, and focused authority/destination validators as needed | Secret/helper checks precede NuGet; NuGet currently uses `--skip-duplicate`, then precedes the single-platform helper. | **UPDATE/ADD/VERIFY:** complete authority, approved-Builds-identity, and destination-absence preflight must precede the first NuGet/registry mutation; remove duplicate skipping; corrected publisher uses the same semantic version. Keep durable-record parsing out of `.releaserc.json` command strings. | Manifest pack/validate prepare phase, secret safety, and scoped NuGet package glob. |
 | `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs` | Verifies 14 packages, thin shared caller, approved mapping, `NUGET_API_KEY`, and publish ordering; it does not assert both Zot secrets or prove multi-platform registry behavior. | **UPDATE or complement with NEW focused test:** assert the corrected shared contract and ordering without duplicating shared validator internals. | Existing manifest, lane, shared-caller, and package-governance coverage. |
 | `docs/ci.md` | Describes 14 packages and one EventStore mapping but does not promise/verify an exact OCI index. | **UPDATE:** document the exact contract and evidence/authority boundary. | Shared-workflow ownership, lane separation, package manifest, supply-chain backlog exclusions. |
