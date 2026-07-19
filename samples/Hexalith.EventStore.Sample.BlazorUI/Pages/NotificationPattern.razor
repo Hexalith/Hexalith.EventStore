@@ -25,23 +25,21 @@
     The user decides when to refresh — the displayed data is held until they click "Refresh Now".
 </p>
 
-@if (_hasChanges)
-{
-    <FluentMessageBar Title="Data Changed" Intent="MessageBarIntent.Warning" AllowDismiss="false" Style="margin-bottom: 16px;">
-        Counter data has changed.
-        <FluentButton Appearance="ButtonAppearance.Primary" OnClick="RefreshDataAsync" Style="margin-left: 12px;">
-            Refresh Now
-        </FluentButton>
-    </FluentMessageBar>
-}
+<FluentMessageBar Title="Data Changed" Intent="MessageBarIntent.Warning" AllowDismiss="false"
+                  Visible="@_hasChanges" Style="margin-bottom: 16px;">
+    Counter data has changed.
+    <FluentButton Appearance="ButtonAppearance.Primary" OnClick="RefreshDataAsync" Style="margin-left: 12px;">
+        Refresh Now
+    </FluentButton>
+</FluentMessageBar>
 
 <FluentCard Style="max-width: 400px; padding: 24px;">
     <h2>Counter Value</h2>
     @if (_error is not null)
     {
-        <FluentMessageBar Title="Error" Intent="MessageBarIntent.Error" Style="margin-bottom: 12px;">
+        <Microsoft.FluentUI.AspNetCore.Components.FluentMessageBar Title="Error" Intent="MessageBarIntent.Error" Style="margin-bottom: 12px;">
             @_error
-        </FluentMessageBar>
+        </Microsoft.FluentUI.AspNetCore.Components.FluentMessageBar>
     }
     @if (_result is not null)
     {

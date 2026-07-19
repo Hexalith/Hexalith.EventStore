@@ -167,6 +167,11 @@ from this proposal inventory and remains owned by its existing changes.
   exact PR gate exposed concurrent process-wide `Console.Out` mutation; before the fix, repeated
   full-project runs reported inconsistent totals and corrupt durations. After the fix, 20
   consecutive runs passed exactly 342 of 342 tests with stable one-second durations.
+- [x] [Review][Patch] [high] Make the Sample Blazor UI compile under the exact AD-11 SDK when
+  Fluent components occur inside Razor control-flow blocks. Candidate `15f79b58...` stopped with
+  94 Razor/C# diagnostics before any package or container publication. Namespace-qualifying the
+  nested Fluent tags and expressing the top-level notification through `Visible` removes the
+  ambiguous markup transition; a fresh Release build and all 117 Sample tests pass.
 
 #### 2026-07-19 — Code review: uncommitted Story 1.20 hardening
 
@@ -451,6 +456,13 @@ evidence; named owner approval remains absent. No consumer migration is authoriz
   `StringWriter` corruption in `ConfigCompletionCommandTests`. Writer injection plus an explicit
   non-parallel `ConsoleTests` boundary made 20 consecutive complete Admin CLI runs pass with the
   same 342/342 count and duration.
+- Candidate `15f79b58b106c0bd1903f75d3f60042181be18f2` passed the early exact-SHA gates but
+  stopped at the Sample test-project build with 94 Razor/C# diagnostics. The fail-fast harness did
+  not reach source-topology, package, container, or external-evidence operations.
+- A fresh detached reproduction confirmed that the tracked Razor source, not generated output,
+  needed an unambiguous markup transition for Fluent components inside control-flow blocks. The
+  corrected Sample UI Release build passed with zero warnings/errors and the complete Sample test
+  project passed 117/117.
 
 ### Completion Notes
 
@@ -463,6 +475,9 @@ evidence; named owner approval remains absent. No consumer migration is authoriz
 - The PR-gate console race is repaired without treating a rerun as acceptance evidence. The
   replacement candidate still requires a completely green PR gate and a fresh unchanged-SHA
   closure run before any publication or approval step.
+- The candidate `15f79b58...` run remains rejected and produced no package/container publication.
+  The Razor correction must merge through a new exact-head PR before the closure protocol restarts
+  from a fresh detached checkout.
 
 ## File List
 
@@ -472,6 +487,11 @@ evidence; named owner approval remains absent. No consumer migration is authoriz
 - `_bmad-output/implementation-artifacts/spec-1-16-1-20-sprint-change-proposal.md`
 - `_bmad-output/implementation-artifacts/deferred-work.md`
 - `src/Hexalith.EventStore.Admin.Cli/Commands/Config/ConfigCompletionCommand.cs`
+- `samples/Hexalith.EventStore.Sample.BlazorUI/Components/CounterCommandForm.razor`
+- `samples/Hexalith.EventStore.Sample.BlazorUI/Components/CounterHistoryGrid.razor`
+- `samples/Hexalith.EventStore.Sample.BlazorUI/Components/CounterValueCard.razor`
+- `samples/Hexalith.EventStore.Sample.BlazorUI/Pages/NotificationPattern.razor`
+- `samples/Hexalith.EventStore.Sample.BlazorUI/Pages/SilentReloadPattern.razor`
 - `tests/Hexalith.EventStore.Admin.Cli.Tests/Commands/Config/ConfigCompletionCommandTests.cs`
 - `tests/Hexalith.EventStore.Admin.Cli.Tests/ConsoleTestCollection.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/ContractTests/QueryResponseProvenanceE2ETests.cs`
@@ -513,3 +533,5 @@ evidence; named owner approval remains absent. No consumer migration is authoriz
 - 2026-07-19: Removed process-wide console mutation from the completion-command tests and made
   the remaining `ConsoleTests` collection non-parallel with all other collections after the PR
   gate exposed concurrent `StringWriter` corruption.
+- 2026-07-19: Repaired the Sample Blazor UI's .NET 10 Razor control-flow markup transitions after
+  the exact-SHA proof correctly stopped its Sample test-project build before publication.
