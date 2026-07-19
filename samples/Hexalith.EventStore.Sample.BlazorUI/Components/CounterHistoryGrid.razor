@@ -10,24 +10,24 @@
     <h3>Counter History</h3>
     @if (_error is not null)
     {
-        <FluentMessageBar Title="Refresh Error" Intent="MessageBarIntent.Warning" Style="margin-bottom: 12px;">
+        <Microsoft.FluentUI.AspNetCore.Components.FluentMessageBar Title="Refresh Error" Intent="MessageBarIntent.Warning" Style="margin-bottom: 12px;">
             @_error
-        </FluentMessageBar>
+        </Microsoft.FluentUI.AspNetCore.Components.FluentMessageBar>
     }
     @if (_isLoading && _history.Count == 0)
     {
-        <FluentProgressBar />
+        <Microsoft.FluentUI.AspNetCore.Components.FluentProgressBar />
     }
     else
     {
-        <FluentDataGrid Items="@_history.AsQueryable()" Style="width: 100%;">
+        <Microsoft.FluentUI.AspNetCore.Components.FluentDataGrid Items="@_history.AsQueryable()" Style="width: 100%;">
             <PropertyColumn Property="@(e => e.Timestamp)" Title="Time" Format="HH:mm:ss.fff" />
             <PropertyColumn Property="@(e => e.Count)" Title="Count" />
             <PropertyColumn Property="@(e => e.ETag)" Title="ETag (prefix)" />
-        </FluentDataGrid>
+        </Microsoft.FluentUI.AspNetCore.Components.FluentDataGrid>
         @if (_isLoading)
         {
-            <FluentProgressBar Style="margin-top: 8px;" />
+            <Microsoft.FluentUI.AspNetCore.Components.FluentProgressBar Style="margin-top: 8px;" />
         }
     }
 </FluentCard>

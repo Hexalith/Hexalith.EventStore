@@ -1338,9 +1338,12 @@ run_xunit_class \
   lifecycle-provenance-e2e
 ```
 
-- closure result and persisted read-back: contract, client, query-routing, server,
-  generator, and Sample regression projects passed at the candidate SHA; the required
-  query-provenance E2E lane was not reached after the live regression failure
+- closure result and persisted read-back: candidate
+  `15f79b58b106c0bd1903f75d3f60042181be18f2` passed the contract, client,
+  query-routing, server, and generator regressions, then failed the Sample project build
+  with 94 Razor/C# diagnostics. The required Sample runtime and query-provenance E2E lanes
+  were not reached. The source correction passes a fresh Sample Release build and 117/117
+  Sample tests but is not accepted until a new exact-SHA closure run succeeds.
 - compatibility decision awaiting approval: preserve `Unknown`, all six operational values,
   the legacy metadata ABI, and the rule that ETag never supplies lifecycle or version
 - limitation-ids: `lifecycle-unknown-compatibility`, `lifecycle-operational-value-abi`,
