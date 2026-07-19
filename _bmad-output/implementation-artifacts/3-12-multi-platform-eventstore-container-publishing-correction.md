@@ -31,7 +31,7 @@ source_files:
 
 # Story 3.12: Multi-Platform EventStore Container Publishing Correction
 
-Status: ready-for-dev
+Status: in-progress
 
 <!-- Ultimate context engine analysis completed - comprehensive developer guide created. -->
 
@@ -184,127 +184,129 @@ mark Story 1.20/Epic 1 done.
   - [x] Keep every Story 1.20 `approved_*` field null, `final_decision: still blocked`, and
     `authorize_consumer_migration: false` during this story's observed-evidence handoff.
 
-- [ ] **Task 3 - Correct the Hexalith.Builds publisher with native .NET multi-RID support (AC2).**
-  - [ ] In the Builds-owned `Github/publish-containers` action/helper, preserve the existing
+- [x] **Task 3 - Correct the Hexalith.Builds publisher with native .NET multi-RID support (AC2).**
+  - [x] In the Builds-owned `Github/publish-containers` action/helper, preserve the existing
     `project.csproj|repository` mapping, SemVer checks, registry/repository validation, and
     semantic-release invocation contract.
-  - [ ] Replace the single-RID `--os linux --arch x64` publish with exactly two .NET SDK container
+  - [x] Replace the single-RID `--os linux --arch x64` publish with exactly two .NET SDK container
     RIDs that produce `linux/amd64` and `linux/arm64`. Evaluate the planning baseline
     `linux-x64;linux-arm64` against the configured Alpine base and any native assets; if the
     portable Alpine RIDs `linux-musl-x64;linux-musl-arm64` are required, record and test that
     decision without changing the external platform contract.
-  - [ ] Pass the chosen set, quoted as one shell argument, through both `RuntimeIdentifiers` and
+  - [x] Pass the chosen set, quoted as one shell argument, through both `RuntimeIdentifiers` and
     `ContainerRuntimeIdentifiers`; do not also set one single `RuntimeIdentifier`, `--arch`, or
     another property that collapses the operation back to one architecture. Force
     `ContainerImageFormat=OCI` for an explicit, testable outer-index contract.
-  - [ ] Keep `UseHexalithProjectReferences=false`, Release configuration, the new semantic version,
+  - [x] Keep `UseHexalithProjectReferences=false`, Release configuration, the new semantic version,
     `registry.hexalith.com`, repository `eventstore`, SDK container support, alpine base family,
     non-root `app`, port 8080, and existing OCI labels intact.
-  - [ ] Let the .NET SDK build the multi-architecture image/index. Do not introduce Dockerfiles or a
+  - [x] Let the .NET SDK build the multi-architecture image/index. Do not introduce Dockerfiles or a
     second hand-rolled image build pipeline when the pinned SDK already supplies the capability.
-  - [ ] Ensure a mapping succeeds only after its immutable published object passes Tasks 4 and 5;
+  - [x] Ensure a mapping succeeds only after its immutable published object passes Tasks 4 and 5;
     successful `dotnet publish` or tag existence alone is not release success.
 
-- [ ] **Task 4 - Add a fixture-driven, exact-set OCI validator (AC2, AC3).**
-  - [ ] Put reusable validation in Hexalith.Builds beside the shared publisher; do not bury it in
+- [x] **Task 4 - Add a fixture-driven, exact-set OCI validator (AC2, AC3).**
+  - [x] Put reusable validation in Hexalith.Builds beside the shared publisher; do not bury it in
     Story 1.20 or duplicate it in EventStore.
-  - [ ] Resolve the version tag with an explicit OCI-index `Accept` header, validate HTTP
+  - [x] Resolve the version tag with an explicit OCI-index `Accept` header, validate HTTP
     `Content-Type` against the manifest `mediaType`, capture `Docker-Content-Digest`, then GET the
     same object by immutable digest. Require identical untouched bytes and verify
     `sha256:<hex>` against those exact bytes before parsing.
-  - [ ] Require top-level `schemaVersion: 2` plus
+  - [x] Require top-level `schemaVersion: 2` plus
     `application/vnd.oci.image.index.v1+json`.
-  - [ ] Require exactly two descriptors and the exact set `linux/amd64`, `linux/arm64`; reject blank
+  - [x] Require exactly two descriptors and the exact set `linux/amd64`, `linux/arm64`; reject blank
     platform fields, variants, duplicates, extras, and `unknown/unknown`. Accept only recognized
     OCI/Docker child-manifest media types whose descriptor and response content type agree; do not
     require OCI child manifests when the exact outer object is the required OCI index.
-  - [ ] Resolve each descriptor by digest, bind each raw child-manifest hash and byte length to its
+  - [x] Resolve each descriptor by digest, bind each raw child-manifest hash and byte length to its
     descriptor digest/size, resolve its config blob, bind config digest/size, and require config
     `os`/`architecture` to equal the descriptor.
-  - [ ] Make failures deterministic and support-safe: reason codes may identify platform/media-type
+  - [x] Make failures deterministic and support-safe: reason codes may identify platform/media-type
     and digest class, but output must not expose registry credentials, authorization headers, raw
     tokens, or unrelated environment detail.
-  - [ ] Add a positive exact-two-platform fixture and negative fixtures for single manifest,
+  - [x] Add a positive exact-two-platform fixture and negative fixtures for single manifest,
     missing/duplicate/extra/unknown/variant platform, wrong top-level media type, tag/digest body
     disagreement, descriptor/config size mismatch, child config mismatch, unresolved child,
     malformed descriptor, and raw digest mismatch.
-  - [ ] Stub registry/tool boundaries in contract tests so negative coverage performs no network,
+  - [x] Stub registry/tool boundaries in contract tests so negative coverage performs no network,
     registry, NuGet, Git, or Docker mutation.
 
-- [ ] **Task 5 - Make both-platform smoke bounded, digest-pinned, and diagnostically honest (AC4).**
-  - [ ] Reuse the existing EventStore liveness contract: start the published child on a loopback
+- [x] **Task 5 - Make both-platform smoke bounded, digest-pinned, and diagnostically honest (AC4).**
+  - [x] Reuse the existing EventStore liveness contract: start the published child on a loopback
     ephemeral host port with `ASPNETCORE_URLS=http://+:8080` and poll `/alive` with the same bounded
     timeout/retry policy for both platforms.
-  - [ ] Resolve the descriptor for each platform and run `repository@<child-digest>`; do not smoke
+  - [x] Resolve the descriptor for each platform and run `repository@<child-digest>`; do not smoke
     the mutable version tag or rely on platform selection from the parent index digest.
-  - [ ] Add an arm64 emulation/runtime preflight before product smoke. If shared CI needs a QEMU or
+  - [x] Add an arm64 emulation/runtime preflight before product smoke. If shared CI needs a QEMU or
     binfmt setup action, keep it in Hexalith.Builds and SHA-pin the third-party action per FR25.
-  - [ ] Emit distinct outcomes for `environment/emulation-setup-failure`, `image-start-failure`,
+  - [x] Emit distinct outcomes for `environment/emulation-setup-failure`, `image-start-failure`,
     `liveness-timeout`, and `pass`. Only an actual `/alive` pass for each child is success.
-  - [ ] Preserve the earliest causal blocker when later checks also fail; a later product error must
+  - [x] Preserve the earliest causal blocker when later checks also fail; a later product error must
     not mask an existing registry/authentication/emulation environment failure.
-  - [ ] Always remove temporary containers/files, keep logs support-safe, and preserve both smoke
+  - [x] Always remove temporary containers/files, keep logs support-safe, and preserve both smoke
     logs and hashes in the evidence bundle.
 
-- [ ] **Task 6 - Gate the first irreversible action on durable release-owner authority (AC5).**
-  - [ ] Reuse the Story 1.20 publication-authority semantics rather than inventing an informal
+- [x] **Task 6 - Gate the first irreversible action on durable release-owner authority (AC5).**
+  - [x] Reuse the Story 1.20 publication-authority semantics rather than inventing an informal
     approval note. The frozen record must bind the repository, proposed semantic version,
     workflow/source SHA, exact `registry.hexalith.com/eventstore` repository, exact platforms,
     exact maintainer-approved Builds reusable-workflow/action/helper identities, named owner,
     authorization time, durable source, rationale, and unexpired validity window.
-  - [ ] Before mutation, prove the called Builds workflow, nested `publish-containers` action, and
+  - [x] Before mutation, prove the called Builds workflow, nested `publish-containers` action, and
     installed helper bytes/revisions are the exact maintainer-approved identities in the authority
-    record. Because repository policy uses mutable `@main`, do not infer this from the EventStore
-    gitlink or current remote branch tip and do not allow independently resolved workflow/action
-    revisions to drift. If exact pre-publication binding cannot be established, fail closed.
-  - [ ] Distinguish the workflow/source (tag-parent) SHA from the semantic-release tag commit; record
+    record. The accepted review decision supersedes the prior mutable `@main` policy for this
+    publication-capable caller: pin one exact workflow/action SHA and do not allow independently
+    resolved revisions to drift. If exact pre-publication binding cannot be established, fail
+    closed.
+  - [x] Distinguish the workflow/source (tag-parent) SHA from the semantic-release tag commit; record
     both after release so provenance cannot repeat the v3.75.0 identity ambiguity.
-  - [ ] Preflight that the proposed version is absent for every one of the 14 destination NuGet
+  - [x] Preflight that the proposed version is absent for every one of the 14 destination NuGet
     package IDs and that the exact container version tag is absent. Remove `--skip-duplicate` from
     the publication path: any pre-existing package or tag is a version collision, not permission
     to combine or overwrite release bytes.
-  - [ ] Revalidate the frozen authority at an action-time timestamp immediately before the first
+  - [x] Revalidate the frozen authority at an action-time timestamp immediately before the first
     publication-capable step. Missing, malformed, mismatched, expired, wrong-role, or changed bytes
     must fail before `dotnet nuget push` and before any registry write.
-  - [ ] Make the semantic-release publish ordering prove that a full authority preflight—not merely
+  - [x] Make the semantic-release publish ordering prove that a full authority preflight—not merely
     secret presence—precedes NuGet publication. Preserve secret preflight and never echo secrets.
-  - [ ] Record the authority bytes, durable-source metadata, hashes, and checked-at value in
+  - [x] Record the authority bytes, durable-source metadata, hashes, and checked-at value in
     provenance. This validates authority evidence; it does not create human authority.
 
-- [ ] **Task 7 - Integrate the thin EventStore caller and strengthen guardrails/docs (AC2, AC5, AC6).**
-  - [ ] Preserve `.github/workflows/release.yml` as a thin `domain-release.yml@main` caller and keep
-    exactly the existing `eventstore` mapping. Add only inputs/secrets/outputs genuinely required by
-    the corrected shared contract.
-  - [ ] Update `.releaserc.json`, `scripts/validate-release-secrets.sh`, or shared helper phases as
+- [x] **Task 7 - Integrate the thin EventStore caller and strengthen guardrails/docs (AC2, AC5, AC6).**
+  - [x] Preserve `.github/workflows/release.yml` as a thin `domain-release.yml` caller and keep
+    exactly the existing `eventstore` mapping. Per the accepted review decision, bind the reusable
+    workflow and execution input to the same exact Builds SHA. Add only inputs/secrets/outputs
+    genuinely required by the corrected shared contract.
+  - [x] Update `.releaserc.json`, `scripts/validate-release-secrets.sh`, or shared helper phases as
     needed so the authority gate runs before NuGet and the validated publisher runs for the same
     `${nextRelease.version}`. Do not duplicate OCI validation in JSON command strings.
-  - [ ] Extend EventStore release-governance tests (prefer a focused container-publishing test file
+  - [x] Extend EventStore release-governance tests (prefer a focused container-publishing test file
     if adding substantial logic) to prove thin-caller ownership, one mapping, authority-before-
     mutation ordering, explicit three-secret mapping with no `secrets: inherit`, exact platform
     contract, and rejection of a stale single-platform shared publisher contract. Parse mapping
     entries and ordering structurally; substring presence alone is insufficient.
-  - [ ] Update `docs/ci.md` with the exact two-platform contract, immutable registry inspection,
+  - [x] Update `docs/ci.md` with the exact two-platform contract, immutable registry inspection,
     child-config checks, `/alive` smoke, environment-vs-product classification, evidence fields,
     and publication/Story 1.20 authority boundaries. Include no credentials or private evidence.
-  - [ ] Reconcile the already-stale `docs/ci-secrets-checklist.md` with all three explicitly mapped
+  - [x] Reconcile the already-stale `docs/ci-secrets-checklist.md` with all three explicitly mapped
     release secrets (`NUGET_API_KEY`, `HEXALITH_ZOT_USERNAME`, `HEXALITH_ZOT_API_KEY`), including
     inventory/count, release use, onboarding, ownership, and rotation. Add authority inputs only if
     the corrected contract requires them; credential modernization remains out of scope.
-  - [ ] Preserve `tools/release-packages.json` at exactly 14 IDs and preserve `Directory.Build.targets`
+  - [x] Preserve `tools/release-packages.json` at exactly 14 IDs and preserve `Directory.Build.targets`
     plus the EventStore project container repository/base/user/port/label behavior.
 
-- [ ] **Task 8 - Validate implementation without external mutation (AC1-AC5).**
-  - [ ] Run shell syntax and shared publisher contract/fixture tests with fake executables/fixture
+- [x] **Task 8 - Validate implementation without external mutation (AC1-AC5).**
+  - [x] Run shell syntax and shared publisher contract/fixture tests with fake executables/fixture
     bytes; prove every negative case exits nonzero with its expected support-safe classification.
-  - [ ] Run Hexalith.Builds workflow/action contract checks and its repository-required focused
+  - [x] Run Hexalith.Builds workflow/action contract checks and its repository-required focused
     build/tests before recording the exact Builds commit. Wire the publisher suite into the Builds
     pre-release validation path (currently `.github/workflows/build-release.yml`) so it cannot be
     omitted from a Builds release.
-  - [ ] Run EventStore release-governance tests by project, then restore/build
+  - [x] Run EventStore release-governance tests by project, then restore/build
     `Hexalith.EventStore.slnx` in Release/package mode. Do not run solution-level `dotnet test`.
-  - [ ] Run package pack/validation/consumer checks into a fresh temporary output and prove the
+  - [x] Run package pack/validation/consumer checks into a fresh temporary output and prove the
     exact 14-ID inventory without publishing it.
-  - [ ] Run workflow/docs/mapping scans, `git diff --check`, and separate worktree/status checks in
+  - [x] Run workflow/docs/mapping scans, `git diff --check`, and separate worktree/status checks in
     both repositories. Record every command/result and any environmental blocker exactly.
 
 - [ ] **Task 9 - Publish and inspect a new corrective version only after explicit authority (AC2-AC6).**
@@ -335,6 +337,58 @@ mark Story 1.20/Epic 1 done.
   - [ ] Route the packet to the EventStore and release owners for their independent verification and
     durable disposition. Record limitations and failed/blocked gates without optimistic inference.
 
+### Review Findings
+
+- [x] [Review][Patch] Pin the EventStore reusable release workflow to the exact approved Builds SHA
+  so a mutable workflow cannot remove its own identity check before receiving publication secrets;
+  the owner chose immutable pinning and explicitly superseded the prior `@main` policy
+  [.github/workflows/release.yml:31]
+- [x] [Review][Patch] Run `initialize-build` from the already approved Builds checkout after the
+  workflow-identity gate, not from an independent `@main` action
+  [references/Hexalith.Builds/.github/workflows/domain-release.yml:90]
+- [x] [Review][Patch] Authenticate the durable authority source and owner, attach `GITHUB_TOKEN`
+  only to the exact trusted GitHub API origin, verify the release-owner allowlist, and reject HTTPS
+  downgrade redirects [references/Hexalith.Builds/Github/publish-containers/publication_authority.py:41]
+- [x] [Review][Patch] Freeze the authority bytes/hash during `verifyRelease` and require exact byte
+  equality during the pre-publication revalidation instead of overwriting the first record
+  [.releaserc.json:11]
+- [x] [Review][Patch] Probe every recognized manifest media type, test container-tag collisions,
+  and recheck tag absence immediately before SDK container publication
+  [references/Hexalith.Builds/Github/publish-containers/publication_authority.py:248]
+- [x] [Review][Patch] Upload the complete support-safe release-evidence directory with `always()` so
+  success and partial failure remain durable
+  [references/Hexalith.Builds/.github/workflows/domain-release.yml:208]
+- [x] [Review][Patch] Persist verified raw child-manifest and config bytes/hashes, not only the raw
+  parent index and descriptor identities
+  [references/Hexalith.Builds/Github/publish-containers/oci_registry_validator.py:179]
+- [x] [Review][Patch] Validate a missing registry digest before immutable dereference so it returns
+  the deterministic `missing-registry-digest` result instead of an uncaught `TypeError`
+  [references/Hexalith.Builds/Github/publish-containers/oci_registry_validator.py:238]
+- [x] [Review][Patch] Enforce the approved OCI repository-name grammar and keep evidence paths
+  beneath their configured root
+  [references/Hexalith.Builds/Github/publish-containers/publish-containers.sh:41]
+- [x] [Review][Patch] Make the arm64 environment preflight prove executable binfmt/runtime support
+  and behaviorally test runtime emulation-failure classification
+  [references/Hexalith.Builds/Github/publish-containers/smoke_container_platforms.py:88]
+- [x] [Review][Patch] Pull each immutable child explicitly with a bounded timeout before `docker run`
+  and preserve registry/environment failure classification
+  [references/Hexalith.Builds/Github/publish-containers/smoke_container_platforms.py:111]
+- [x] [Review][Patch] Reject non-finite smoke timeout/interval values so NaN or infinity cannot make
+  polling unbounded
+  [references/Hexalith.Builds/Github/publish-containers/smoke_container_platforms.py:209]
+- [x] [Review][Patch] Require and behaviorally assert the exact loopback `/alive` request and a 2xx
+  response; redirects must not pass
+  [references/Hexalith.Builds/Github/publish-containers/smoke_container_platforms.py:148]
+- [x] [Review][Patch] Inspect exited containers, retain bounded support-safe diagnostics, and record
+  cleanup failure without masking the earliest causal outcome
+  [references/Hexalith.Builds/Github/publish-containers/smoke_container_platforms.py:161]
+- [x] [Review][Patch] Add behavioral fail-closed tests proving rejected authority blocks both
+  mutation commands and that workflow/action SHA and byte mismatches stop semantic-release
+  [tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs:49]
+- [x] [Review][Patch] Exercise the live HTTP adapter and post-probe expiry path so Accept headers,
+  immutable references, untouched bytes, and action-time revalidation cannot regress behind pure
+  fixture tests [references/Hexalith.Builds/Github/publish-containers/tests/test_oci_registry_validator.py:186]
+
 ## Dev Notes
 
 ### Current implementation state and required preservation
@@ -347,7 +401,7 @@ mark Story 1.20/Epic 1 done.
 | New Builds publisher validator/tests/fixtures | No exact-set OCI validator or publisher fixture suite exists. | **ADD in Builds:** reusable immutable-byte validator, fake-tool workflow tests, positive/negative registry fixtures, and bounded child-digest smoke coverage. | Keep network/mutation outside fixture lanes; follow existing `Tools/test-*.ps1` and `test/fixtures` conventions or a maintainer-approved equivalent. |
 | `references/Hexalith.Builds/.github/workflows/domain-release.yml` and `.md` | Installs the helper before `npx semantic-release`; declares registry credentials; no arm64 emulation/evidence phase. | **UPDATE in Builds:** required setup, fail-closed inputs/outputs, authority and evidence contract. | Full-history checkout, root-only submodules, package-mode Release build, pinned third-party actions, semantic-release ownership. |
 | `references/Hexalith.Builds/.github/workflows/build-release.yml` | Current Builds pre-release validation has no exact multi-platform publisher suite. | **UPDATE in Builds:** run the fixture/fake-tool publisher contract suite before a Builds release. | Existing validation/build/release ordering and required checks. |
-| `.github/workflows/release.yml` | Thin `domain-release.yml@main` caller with one `eventstore` mapping. | **VERIFY; UPDATE only if shared contract requires explicit authority/evidence wiring.** | Thin caller, `@main` policy, CI-head equality, one container mapping, explicit secrets. |
+| `.github/workflows/release.yml` | Thin caller with one `eventstore` mapping; formerly resolved `domain-release.yml@main`. | **UPDATE:** retain the thin caller but bind reusable workflow and execution input to one exact approved Builds SHA, plus explicit authority/evidence wiring. | Thin caller, CI-head equality, one container mapping, explicit secrets; immutable release pin supersedes the prior `@main` policy. |
 | `.releaserc.json`, `scripts/validate-release-secrets.sh`, and focused authority/destination validators as needed | Secret/helper checks precede NuGet; NuGet currently uses `--skip-duplicate`, then precedes the single-platform helper. | **UPDATE/ADD/VERIFY:** complete authority, approved-Builds-identity, and destination-absence preflight must precede the first NuGet/registry mutation; remove duplicate skipping; corrected publisher uses the same semantic version. Keep durable-record parsing out of `.releaserc.json` command strings. | Manifest pack/validate prepare phase, secret safety, and scoped NuGet package glob. |
 | `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs` | Verifies 14 packages, thin shared caller, approved mapping, `NUGET_API_KEY`, and publish ordering; it does not assert both Zot secrets or prove multi-platform registry behavior. | **UPDATE or complement with NEW focused test:** assert the corrected shared contract and ordering without duplicating shared validator internals. | Existing manifest, lane, shared-caller, and package-governance coverage. |
 | `docs/ci.md` | Describes 14 packages and one EventStore mapping but does not promise/verify an exact OCI index. | **UPDATE:** document the exact contract and evidence/authority boundary. | Shared-workflow ownership, lane separation, package manifest, supply-chain backlog exclusions. |
@@ -565,7 +619,7 @@ and do not reuse `/tmp/hexalith-eventstore-story-3-12-packages` if it contains p
 
 ### Agent Model Used
 
-_To be completed by the implementing dev agent._
+OpenAI Codex (GPT-5)
 
 ### Debug Log References
 
@@ -585,6 +639,95 @@ _To be completed by the implementing dev agent._
   `4bbe7c04eb901050ee84075f0c8ad225fcc5fefe`; commits, pushes, publication,
   release execution, registry/NuGet mutation, and Story 1.20 disposition remain
   explicitly unauthorized.
+- 2026-07-19 Task 8 shared validation: `Tools/test-publish-containers.ps1`
+  passed 22/22 fixture/contract tests; `Hexalith.Builds.slnx` Release restore and
+  build passed with zero warnings/errors; the three built Builds test assemblies
+  passed 11/11, 52/52, and 1/1.
+- 2026-07-19 Task 8 EventStore validation: package-mode restore and Release
+  solution build passed with zero warnings/errors; focused container publishing
+  governance passed 5/5; a fresh temporary package lane produced and validated
+  exactly 14 packages plus the package-only consumer/tool installation.
+- 2026-07-19 Task 8 broad-gate blocker: the full Contracts test assembly passed
+  735/736. `CommitMessagePolicyTests.CommitMessageHookExecutesCommitlintAndRemainsUnixCompatible`
+  failed because the unrelated, user-owned working-tree change in
+  `commitlint.config.mjs` differs from the repository's exact committed policy
+  fixture. The change was initially preserved pending direction.
+- 2026-07-19 Task 8 blocker resolved under the user's explicit "do best"
+  direction: restored the committed three-line strict `commitlint.config.mjs`
+  policy, aligned the new governance assertion with the publisher's tested
+  literal shell argument, rebuilt the Contracts test project with zero
+  warnings/errors, and passed the complete Contracts assembly 736/736.
+- 2026-07-19 Task 8 real SDK validation initially failed with `MSB1006` because
+  shell argument grouping did not preserve literal quotes for MSBuild's
+  semicolon-separated property parser. A red/green contract test now requires
+  literal MSBuild quoting for both RID properties. The corrected command built a
+  112 MB local OCI archive without registry mutation; its exact OCI index digest
+  was `sha256:6ffec336936bddecd0345834ba43a6527288cc81f4dc50d66e2a49d67df35772`,
+  with exactly `linux/amd64` and `linux/arm64` children and matching configs.
+- 2026-07-19 Task 8 package validation first proved all 14 packages at synthetic
+  version `0.0.0-story-3-12`, but the consumer correctly rejected that version
+  as lower than a transitive `>=3.74.0` constraint. A fresh non-publishing
+  `99.0.0-story-3-12` lane then passed exact inventory, package validation,
+  13-library consumer build, and one tool installation.
+- 2026-07-19 Task 8 source audit hardened three boundaries with red/green tests:
+  the nested publisher action now runs from an exact approved Builds checkout
+  instead of an independent `@main`; semantic-release validates authority before
+  Git-tag creation and revalidates before NuGet/registry mutation; and registry
+  plus authority redirects strip authorization on cross-origin redirects. OCI
+  config blobs are digest/size bound without incorrectly requiring a manifest
+  media type in the blob HTTP response.
+- 2026-07-19 Task 8 final rerun: the shared publisher suite passed 22/22,
+  EventStore and Builds shell syntax checks passed, and `git diff --check`
+  passed in both owning repositories.
+- 2026-07-19 release work resumed under the user's explicit "do 1 & 2"
+  direction, authorizing scoped commits/pushes in Hexalith.Builds and
+  EventStore plus creation of the separate durable release-owner authority
+  record. Repository review/merge, authority validation, and destination
+  absence remain fail-closed gates before publication.
+- 2026-07-19 Hexalith.Builds candidate committed and pushed on
+  `fix/story-3-12-multi-platform-containers` as
+  `cc64ec1b4d5c59a8ece72eef3ae841d3284f7b82`. The final shared suite passed
+  22/22, including cross-origin redirect credential-stripping coverage; no
+  Builds `main` merge or release was performed at this point.
+- 2026-07-19 repository-state evidence: `git diff --check` and shell syntax
+  checks passed in both owning repositories. EventStore is one release commit
+  behind `origin/main` (`bf8a6358`, tag `v3.77.0`) and also contains unrelated
+  user-owned architecture/memlog/review changes. No fetch integration,
+  commit, push, release, registry/NuGet mutation, or Story 1.20 disposition was
+  performed by this workflow run.
+- 2026-07-19 Task 9 HALT: no separate durable EventStore release-owner authority
+  authorizes Git-tag/release execution, NuGet publication, or registry mutation.
+  The maintainer authority in this session explicitly permits only uncommitted
+  implementation and local validation, so no publication or Story 1.20 handoff
+  mutation was attempted.
+- 2026-07-19 Task 9 HALT resolved for repository mutation: the user explicitly
+  authorized the scoped Builds/EventStore commits and pushes and creation of
+  the durable release-owner record. Publication remains prohibited until that
+  record binds the exact reviewed/merged source and Builds SHAs and passes the
+  live destination-absence preflight.
+- 2026-07-19 concurrent repository-state change: an external maintainer process
+  checked both repositories out to `fix/story-3-12-multi-platform-containers`
+  and committed/pushed the shared Builds implementation as
+  `cc64ec1b4d5c59a8ece72eef3ae841d3284f7b82` (`fix(release): enforce exact
+  multi-platform container publication`, author Jérôme Piquot). Codex did not
+  run the checkout, commit, amend, or push. EventStore remains uncommitted at
+  `bf8a6358f32cbefeba037f664d8fe3120e644dc9`; its gitlink appears modified only
+  because the shared checkout moved externally. This observed commit does not
+  create release authority, and Builds `origin/main` still resolves to
+  `786955bccaa3ea676c3025c797bec3c30189425c`.
+- 2026-07-19 review remediation: Hexalith.Builds head
+  `077e6fcd892425fa4de0053a39c82913a5362bb0` passes the complete 36-test
+  publisher suite, Python compilation, shell syntax, diff checks, and workflow
+  lint (with actionlint 1.7.12's unsupported-property diagnostic ignored only
+  for GitHub's documented `job.workflow_repository` and `job.workflow_sha`).
+  SonarCloud passes that exact head. All code-level review patches are resolved;
+  the mutable-`@main` trust decision remains open because neither repository has
+  required-check branch protection.
+- 2026-07-19 Task 9 release authority expanded: `jpiquot`, acting as maintainer,
+  authorized commits, releases, NuGet/registry publication, and Story 1.20
+  disposition. External mutation remains fail-closed until the exact PR heads,
+  repository trust decision, version, source SHA, Builds SHA, durable authority
+  record, and destination-absence gates are resolved.
 
 ### Completion Notes List
 
@@ -601,13 +744,77 @@ _To be completed by the implementing dev agent._
   single-manifest shape fails the new OCI validator as
   `wrong-index-media-type`; the historical release and Story 1.20 packet were
   not mutated.
+- Task 3 replaced the collapsing `--os linux --arch x64` invocation with the
+  Alpine-compatible exact RID set `linux-musl-x64;linux-musl-arm64`, supplied as
+  one argument through both multi-RID properties. It forces OCI format and
+  package-reference Release mode, retains the mapping/version/repository
+  contract, and requires validator plus child-smoke success before a mapping can
+  return success. Fake-tool contract tests pass and prove no single-RID option
+  remains.
+- Task 4 added exact raw-byte registry validation with explicit OCI Accept
+  semantics, immutable tag/digest equality, schema/media-type enforcement, the
+  exact two-platform set, child/config digest and size binding, and config
+  platform matching. The fixture matrix passes positive coverage and every
+  required fail-closed negative classification without network or mutation.
+- Task 5 added SHA-pinned arm64 emulation setup plus an environment preflight,
+  then runs the same bounded loopback `/alive` policy against each immutable
+  child digest. Fake Docker/curl tests prove cleanup, both passes, and distinct
+  `environment/emulation-setup-failure`, `image-start-failure`, and
+  `liveness-timeout` outcomes; support-safe logs, summaries, and hashes are
+  retained.
+- Task 6 added a shared durable authority validator that binds the exact release
+  identity, one resolved Builds workflow/action SHA, installed helper hashes,
+  named release-owner role, rationale, and validity window. It records frozen
+  authority/source/check-time evidence and proves all 14 package versions plus
+  the container tag are absent. The shared workflow and action fail on identity
+  drift, EventStore runs this gate before NuGet, and duplicate skipping was
+  removed. Source SHA remains distinct from the later tag commit, which can only
+  be recorded after an authorized release.
+- Task 7 kept EventStore as a thin shared-workflow caller with one `eventstore`
+  mapping and three explicit release secrets. Focused structural tests prove the
+  authority gate precedes NuGet mutation, the shared publisher receives the
+  same version, the package inventory remains exactly 14, and container defaults
+  remain unchanged. EventStore and Builds CI documentation now records the exact
+  two-platform, immutable-validation, smoke, evidence, credential, and authority
+  boundaries. The shared 22-test publisher suite and all 5 EventStore governance
+  tests pass.
+- Task 8 completed every non-mutating release/package check. The shared
+  publisher suite passes 22/22, the focused governance suite passes 5/5, the
+  complete Contracts assembly passes 736/736, Builds and EventStore Release
+  builds pass with zero warnings/errors, and the fresh package-only lane proves
+  the exact 14-ID inventory plus consumer/tool installation. Shell, diff, docs,
+  mapping, and separate repository-state checks also pass.
+- Final source audit also proved the native .NET SDK creates the exact local OCI
+  index, removed a real MSBuild semicolon-quoting failure, made the nested action
+  immutable at the approved Builds SHA, moved authority validation ahead of Git
+  tagging while retaining action-time revalidation, aligned config-blob handling
+  with OCI Distribution semantics, and prevents cross-origin credential
+  forwarding. No external release action was authorized or executed.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/3-12-multi-platform-eventstore-container-publishing-correction.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
 - `references/Hexalith.Builds/Github/publish-containers/oci_registry_validator.py`
+- `references/Hexalith.Builds/Github/publish-containers/publication_authority.py`
+- `references/Hexalith.Builds/Github/publish-containers/publish-containers.sh`
+- `references/Hexalith.Builds/Github/publish-containers/action.yml`
+- `references/Hexalith.Builds/Github/publish-containers/smoke-container-platforms.sh`
+- `references/Hexalith.Builds/Github/publish-containers/smoke_container_platforms.py`
 - `references/Hexalith.Builds/Github/publish-containers/tests/test_oci_registry_validator.py`
+- `references/Hexalith.Builds/Github/publish-containers/tests/test_publish_script_contract.py`
+- `references/Hexalith.Builds/Github/publish-containers/tests/test_publication_authority.py`
+- `references/Hexalith.Builds/Github/publish-containers/tests/test_smoke_container_platforms.py`
+- `references/Hexalith.Builds/.github/workflows/domain-release.yml`
+- `references/Hexalith.Builds/.github/workflows/build-release.yml`
+- `references/Hexalith.Builds/.github/workflows/domain-release.md`
+- `references/Hexalith.Builds/Github/publish-containers/README.md`
+- `.github/workflows/release.yml`
+- `.releaserc.json`
+- `docs/ci.md`
+- `docs/ci-secrets-checklist.md`
+- `scripts/validate-release-authority.sh`
+- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs`
 - `references/Hexalith.Builds/Tools/test-publish-containers.ps1`
 - `references/Hexalith.Builds/test/fixtures/publish-containers/v3.75.0-evidence.json`
 - `references/Hexalith.Builds/test/fixtures/publish-containers/v3.75.0-single-manifest.json`
