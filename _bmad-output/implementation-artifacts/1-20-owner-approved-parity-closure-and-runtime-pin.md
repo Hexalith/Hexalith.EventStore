@@ -145,6 +145,12 @@ from this proposal inventory and remains owned by its existing changes.
   both the runtime gate and committed A/B/C recheck now validate the real schema, including
   `not-run`, child-result totals, and optional aggregate-counter reconciliation. A Contracts
   regression test extracts and executes the packet function against valid and adversarial XML.
+- [x] [Review][Patch] [high] Scope the persisted retry-ledger convergence assertion to the
+  aggregate's work item instead of requiring the entire 64-way shared shard to be empty. The
+  exact-SHA delivery run landed on a shard containing legitimate terminal work from another
+  aggregate, so the prior global-empty assertion failed after its own retry had converged. The
+  live regression now deterministically co-locates unrelated terminal work and proves that only
+  the completed aggregate's item is removed.
 
 #### 2026-07-19 — Code review: uncommitted Story 1.20 hardening
 
@@ -464,3 +470,5 @@ evidence; named owner approval remains absent. No consumer migration is authoriz
 - 2026-07-19: Repaired two execution-blocking proof defects found by the actual closure run: added
   the missing authenticated immutable-blob adapter and aligned both xUnit validators with the
   real xUnit v3 `<assemblies>/<assembly>` result schema.
+- 2026-07-19: Corrected the live retry-ledger convergence proof to preserve unrelated terminal
+  work in the same shard while requiring the completed aggregate's retry item to be removed.

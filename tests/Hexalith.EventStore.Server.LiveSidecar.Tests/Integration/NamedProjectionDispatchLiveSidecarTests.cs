@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Dapr.Actors;
 using Dapr.Actors.Client;
@@ -34,6 +36,7 @@ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Integration;
 [Trait("Category", "LiveSidecar")]
 public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFixture fixture) {
     private const string AppId = "eventstore";
+    private const int RetryLedgerShardCount = 64;
     private const string StoreName = "statestore";
 
     [Fact]
@@ -151,6 +154,12 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
         persistedWork.HeadMessageId.ShouldBe(head.MessageId);
         persistedWork.DispatchId.ShouldBe(head.MessageId);
         persistedWork.PendingRoutes.ShouldBe(["counter-index"]);
+        ProjectionDeliveryRetryWorkItem unrelatedTerminalWork = await recreatedScheduler.ScheduleAsync(
+            CreateUnrelatedSameShardWorkItem(persistedWork),
+            CancellationToken.None).ConfigureAwait(true);
+        retryJson = (await database.HashGetAsync(retryStateKey, "data").ConfigureAwait(true)).ToString();
+        retryJson.ShouldContain(persistedWork.WorkId);
+        retryJson.ShouldContain(unrelatedTerminalWork.WorkId);
 
         faultControl.FailIndex = false;
         await Task.Delay(TimeSpan.FromMilliseconds(1100)).ConfigureAwait(true);
@@ -167,7 +176,26 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
         indexCheckpoint.RootElement.GetProperty("activeReservation").ValueKind.ShouldBe(JsonValueKind.Null);
 
         string convergedRetryJson = (await database.HashGetAsync(retryStateKey, "data").ConfigureAwait(true)).ToString();
-        convergedRetryJson.ShouldContain("\"items\":[]");
+        using JsonDocument convergedRetryLedger = JsonDocument.Parse(convergedRetryJson);
+        string[] convergedWorkIds = [.. convergedRetryLedger.RootElement
+            .GetProperty("items")
+            .EnumerateArray()
+            .Select(static item => item.GetProperty("workId").GetString())
+            .OfType<string>()];
+        convergedWorkIds.ShouldNotContain(
+            persistedWork.WorkId,
+            "retry convergence removes this aggregate's work without requiring its whole shard to be empty");
+        convergedWorkIds.ShouldContain(
+            unrelatedTerminalWork.WorkId,
+            "convergence must preserve unrelated terminal work that shares the retry-ledger shard");
+        ProjectionDeliveryRetryWorkItem claimedUnrelatedWork = (await recreatedScheduler.TryAcquireAsync(
+            unrelatedTerminalWork,
+            Guid.NewGuid().ToString("N", System.Globalization.CultureInfo.InvariantCulture),
+            DateTimeOffset.UtcNow,
+            TimeSpan.FromMinutes(1),
+            CancellationToken.None).ConfigureAwait(true)).ShouldNotBeNull();
+        (await recreatedScheduler.TryDeleteAsync(claimedUnrelatedWork, CancellationToken.None).ConfigureAwait(true))
+            .ShouldBeTrue();
 
         var detailScope = new ReadModelBatchScope(
             StoreName,
@@ -685,5 +713,32 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
         }
 
         return null;
+    }
+
+    private static ProjectionDeliveryRetryWorkItem CreateUnrelatedSameShardWorkItem(
+        ProjectionDeliveryRetryWorkItem persistedWork) {
+        int targetShard = SHA256.HashData(Encoding.UTF8.GetBytes(persistedWork.WorkId))[0] % RetryLedgerShardCount;
+        string workId;
+        do {
+            workId = $"same-shard-terminal-{Guid.NewGuid():N}";
+        }
+        while (SHA256.HashData(Encoding.UTF8.GetBytes(workId))[0] % RetryLedgerShardCount != targetShard);
+
+        string messageId = Guid.NewGuid().ToString("N", System.Globalization.CultureInfo.InvariantCulture);
+        return persistedWork with {
+            WorkId = workId,
+            AggregateId = $"unrelated-{Guid.NewGuid():N}",
+            HeadMessageId = messageId,
+            PendingRoutes = [],
+            TerminalRoutes = ["counter-detail"],
+            DispatchId = messageId,
+            Attempt = 1,
+            NextDueUtc = DateTimeOffset.UtcNow,
+            LastReasonCode = ProjectionDispatchReasonCodes.HandlerFailure,
+            Revision = 0,
+            LeaseOwner = null,
+            LeaseExpiresUtc = null,
+            ReservationFencingTokens = new Dictionary<string, long>(StringComparer.Ordinal),
+        };
     }
 }
