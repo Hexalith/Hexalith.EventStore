@@ -335,6 +335,59 @@ mark Story 1.20/Epic 1 done.
   - [ ] Route the packet to the EventStore and release owners for their independent verification and
     durable disposition. Record limitations and failed/blocked gates without optimistic inference.
 
+### Review Findings
+
+- [ ] [Review][Decision] The EventStore caller still resolves the shared reusable workflow through
+  mutable `@main`. The runtime `job.workflow_*` gate binds the resolved workflow and action bytes to
+  the approved SHA, but a compromised mutable workflow could remove its own gate before receiving
+  publication secrets. Resolve this trust boundary with protected Builds `main` or an explicit
+  policy change to immutable caller pinning [.github/workflows/release.yml:31]
+- [x] [Review][Patch] Run `initialize-build` from the already approved Builds checkout after the
+  workflow-identity gate, not from an independent `@main` action
+  [references/Hexalith.Builds/.github/workflows/domain-release.yml:90]
+- [x] [Review][Patch] Authenticate the durable authority source and owner, attach `GITHUB_TOKEN`
+  only to the exact trusted GitHub API origin, verify the release-owner allowlist, and reject HTTPS
+  downgrade redirects [references/Hexalith.Builds/Github/publish-containers/publication_authority.py:41]
+- [x] [Review][Patch] Freeze the authority bytes/hash during `verifyRelease` and require exact byte
+  equality during the pre-publication revalidation instead of overwriting the first record
+  [.releaserc.json:11]
+- [x] [Review][Patch] Probe every recognized manifest media type, test container-tag collisions,
+  and recheck tag absence immediately before SDK container publication
+  [references/Hexalith.Builds/Github/publish-containers/publication_authority.py:248]
+- [x] [Review][Patch] Upload the complete support-safe release-evidence directory with `always()` so
+  success and partial failure remain durable
+  [references/Hexalith.Builds/.github/workflows/domain-release.yml:208]
+- [x] [Review][Patch] Persist verified raw child-manifest and config bytes/hashes, not only the raw
+  parent index and descriptor identities
+  [references/Hexalith.Builds/Github/publish-containers/oci_registry_validator.py:179]
+- [x] [Review][Patch] Validate a missing registry digest before immutable dereference so it returns
+  the deterministic `missing-registry-digest` result instead of an uncaught `TypeError`
+  [references/Hexalith.Builds/Github/publish-containers/oci_registry_validator.py:238]
+- [x] [Review][Patch] Enforce the approved OCI repository-name grammar and keep evidence paths
+  beneath their configured root
+  [references/Hexalith.Builds/Github/publish-containers/publish-containers.sh:41]
+- [x] [Review][Patch] Make the arm64 environment preflight prove executable binfmt/runtime support
+  and behaviorally test runtime emulation-failure classification
+  [references/Hexalith.Builds/Github/publish-containers/smoke_container_platforms.py:88]
+- [x] [Review][Patch] Pull each immutable child explicitly with a bounded timeout before `docker run`
+  and preserve registry/environment failure classification
+  [references/Hexalith.Builds/Github/publish-containers/smoke_container_platforms.py:111]
+- [x] [Review][Patch] Reject non-finite smoke timeout/interval values so NaN or infinity cannot make
+  polling unbounded
+  [references/Hexalith.Builds/Github/publish-containers/smoke_container_platforms.py:209]
+- [x] [Review][Patch] Require and behaviorally assert the exact loopback `/alive` request and a 2xx
+  response; redirects must not pass
+  [references/Hexalith.Builds/Github/publish-containers/smoke_container_platforms.py:148]
+- [x] [Review][Patch] Inspect exited containers, retain bounded support-safe diagnostics, and record
+  cleanup failure without masking the earliest causal outcome
+  [references/Hexalith.Builds/Github/publish-containers/smoke_container_platforms.py:161]
+- [x] [Review][Patch] Add behavioral fail-closed tests proving rejected authority blocks both
+  mutation commands and that workflow/action SHA and byte mismatches stop semantic-release
+  [tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs:49]
+- [x] [Review][Patch] Exercise the live HTTP adapter and post-probe expiry path so Accept headers,
+  immutable references, untouched bytes, and action-time revalidation cannot regress behind pure
+  fixture tests [references/Hexalith.Builds/Github/publish-containers/tests/test_oci_registry_validator.py:186]
+
 ## Dev Notes
 
 ### Current implementation state and required preservation
@@ -661,6 +714,19 @@ OpenAI Codex (GPT-5)
   because the shared checkout moved externally. This observed commit does not
   create release authority, and Builds `origin/main` still resolves to
   `786955bccaa3ea676c3025c797bec3c30189425c`.
+- 2026-07-19 review remediation: Hexalith.Builds head
+  `077e6fcd892425fa4de0053a39c82913a5362bb0` passes the complete 36-test
+  publisher suite, Python compilation, shell syntax, diff checks, and workflow
+  lint (with actionlint 1.7.12's unsupported-property diagnostic ignored only
+  for GitHub's documented `job.workflow_repository` and `job.workflow_sha`).
+  SonarCloud passes that exact head. All code-level review patches are resolved;
+  the mutable-`@main` trust decision remains open because neither repository has
+  required-check branch protection.
+- 2026-07-19 Task 9 release authority expanded: `jpiquot`, acting as maintainer,
+  authorized commits, releases, NuGet/registry publication, and Story 1.20
+  disposition. External mutation remains fail-closed until the exact PR heads,
+  repository trust decision, version, source SHA, Builds SHA, durable authority
+  record, and destination-absence gates are resolved.
 
 ### Completion Notes List
 

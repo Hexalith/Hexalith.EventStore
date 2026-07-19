@@ -34,6 +34,7 @@ jobs:
       publish-containers: true
       builds-execution-sha: ${{ vars.HEXALITH_BUILDS_RELEASE_SHA }}
       release-authority-url: ${{ vars.HEXALITH_RELEASE_AUTHORITY_URL }}
+      release-owner-allowlist: _bmad-output/implementation-artifacts/1-20-github-approval-role-allowlist.json
       container-projects: |
         src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore
     secrets:

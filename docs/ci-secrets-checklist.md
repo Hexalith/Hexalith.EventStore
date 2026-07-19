@@ -40,7 +40,8 @@ URL: `https://github.com/Hexalith/Hexalith.EventStore/settings/secrets/actions`
   tooling lockfile before semantic-release runs.
 - Non-secret repository variables `HEXALITH_BUILDS_RELEASE_SHA` and
   `HEXALITH_RELEASE_AUTHORITY_URL` bind the maintainer-approved shared execution
-  and durable release-owner record. They are required for a container release
+  and exact GitHub issue-comment API authority record. The caller also supplies
+  the checked-in Story 1.20 GitHub role allowlist path. These are required for a container release
   but are not part of this secrets inventory.
 
 ### `deploy-staging.yml`

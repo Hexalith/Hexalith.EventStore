@@ -102,11 +102,14 @@ publishing is enabled only for the approved EventStore host mapping. Before any
 NuGet package is pushed, semantic-release validates `NUGET_API_KEY`, the
 container publisher helper, and the required Zot registry credentials so a
 missing container secret cannot create a partial NuGet-only release. The
-semantic-release `verifyRelease` phase then validates a separate durable
-release-owner authority record and proves the new version is absent for all 14
+semantic-release `verifyRelease` phase then fetches a separate durable GitHub
+issue-comment authority record, verifies its author against the checked-in
+release-owner allowlist, freezes its exact bytes, and proves the new version is absent for all 14
 NuGet IDs and the container tag before Git-tag creation. The `publish` phase
-revalidates the same frozen authority and destination absence immediately before
-NuGet and registry mutation. Existing versions are collisions: the release path
+requires exact equality with the frozen authority and repeats destination
+absence immediately before NuGet. The shared publisher repeats the authority,
+expiry, and multi-media-type container-tag absence check immediately before the
+SDK registry write. Existing versions are collisions: the release path
 does not use `--skip-duplicate` and never overwrites an existing package, tag,
 manifest, or registry object.
 
@@ -120,6 +123,8 @@ against the same commit before semantic-release can run. The repository
 variables `HEXALITH_BUILDS_RELEASE_SHA` and
 `HEXALITH_RELEASE_AUTHORITY_URL` provide those non-secret inputs. This gate
 validates authority evidence; it does not create human publication authority.
+The `GITHUB_TOKEN` is attached only to the exact GitHub API origin; cross-origin
+redirects drop authorization and HTTPS downgrade redirects fail closed.
 
 The `publishCmd` calls the helper installed by the shared `publish-containers`
 action only after the authority gate and NuGet publication:
@@ -145,24 +150,33 @@ captures `Docker-Content-Digest`, rereads the object by immutable digest, and
 requires byte-for-byte equality and a matching SHA-256. Each child manifest and
 config is then resolved by digest. Manifest descriptor and response media types,
 all descriptor byte sizes and raw hashes, config descriptor media types, and
-config `os`/`architecture` must all agree.
+config `os`/`architecture` must all agree. Exact raw child-manifest and config
+bytes are retained beside the raw parent index with independent hashes.
 
-Both immutable child references (`repository@sha256:...`) run the same bounded
+Both immutable child references (`repository@sha256:...`) are explicitly pulled
+with bounded timeouts and run the same bounded
 smoke: loopback ephemeral host port, `ASPNETCORE_URLS=http://+:8080`, and `/alive`.
 Arm64 emulation is prepared by a SHA-pinned shared action and checked before the
 product smoke. Outcomes remain diagnostically distinct:
 
 - `environment/emulation-setup-failure` — the runner cannot execute arm64;
+- `registry-pull-failure` — an immutable child cannot be pulled;
 - `image-start-failure` — the child image does not start;
 - `liveness-timeout` — the process starts but `/alive` never passes in time;
+- `cleanup-failure` — a passing child cannot be safely removed;
 - `pass` — the child returns a successful `/alive` response.
 
-Only two `pass` results complete container publication. Evidence records the
+Only an exact 2xx `/alive` response passes; redirects are not followed. Exited
+containers are inspected before removal and bounded support-safe diagnostic
+hashes/excerpts preserve the earliest failure. Only two `pass` results complete
+container publication. Evidence records the
 source SHA separately from the later semantic-release tag commit, workflow run
 and approved Builds identity, repository/version, index digest and raw hash,
 child manifest/config identities, exact platforms, authority bytes/source/hash
 and checked-at time, and both smoke logs/hashes. Registry, authentication,
 emulation, product, or evidence failure leaves the release non-authorizing.
+The reusable workflow uploads the complete hidden evidence directory with
+`always()` so partial publication remains visible.
 
 Story 3.12 may hand a corrective release to Story 1.20 only as observed
 candidate evidence. Story 1.20 independently revalidates the full package and
