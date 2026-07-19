@@ -183,8 +183,8 @@ awk '
 
 awk '
   { sub(/\r$/, "") }
-  /^# last_updated:/ { comment_key++; comment_ok += ($0 == "# last_updated: 2026-07-18") }
-  /^last_updated:/ { field_key++; field_ok += ($0 == "last_updated: 2026-07-18") }
+  /^# last_updated:/ { comment_key++; comment_ok += ($0 == "# last_updated: 2026-07-19") }
+  /^last_updated:/ { field_key++; field_ok += ($0 == "last_updated: 2026-07-19") }
   /^  epic-1:/ { epic_key++; epic_ok += ($0 == "  epic-1: in-progress") }
   /^  1-20-owner-approved-parity-closure-and-runtime-pin:/ {
     story_key++; story_ok += ($0 == "  1-20-owner-approved-parity-closure-and-runtime-pin: in-progress")
@@ -857,7 +857,7 @@ bash -c '
   . "$xunit_contract"
   xunit_good="$fixture_root/xunit-good.xml"
   printf "%s\n" \
-    "<assemblies total=\"1\" passed=\"1\" failed=\"0\" errors=\"0\" skipped=\"0\"><assembly name=\"Fixture.Tests.dll\"><collection><test type=\"Fixture.Tests.Case\" method=\"Passes\" result=\"Pass\" /></collection></assembly></assemblies>" \
+    "<assemblies><assembly name=\"Fixture.Tests.dll\" total=\"1\" passed=\"1\" failed=\"0\" errors=\"0\" skipped=\"0\" not-run=\"0\"><collection><test type=\"Fixture.Tests.Case\" method=\"Passes\" result=\"Pass\" /></collection></assembly></assemblies>" \
     > "$xunit_good"
   validate_xunit_result "$xunit_good"
   xunit_mutated="$fixture_root/xunit-mutated.xml"
@@ -866,6 +866,10 @@ bash -c '
   sed "s/result=\"Pass\"/result=\"Fail\"/" "$xunit_good" > "$xunit_mutated"
   ! validate_xunit_result "$xunit_mutated" >/dev/null 2>&1
   sed "s/total=\"1\"/total=\"2\"/" "$xunit_good" > "$xunit_mutated"
+  ! validate_xunit_result "$xunit_mutated" >/dev/null 2>&1
+  printf "%s\n" \
+    "<assemblies total=\"1\" passed=\"1\" failed=\"0\" errors=\"0\" skipped=\"0\" not-run=\"0\"><assembly name=\"Fixture.Tests.dll\"><collection><test type=\"Fixture.Tests.Case\" method=\"Passes\" result=\"Pass\" /></collection></assembly></assemblies>" \
+    > "$xunit_mutated"
   ! validate_xunit_result "$xunit_mutated" >/dev/null 2>&1
 
   identity_contract="$fixture_root/test-identity-contract.py"
