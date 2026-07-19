@@ -8,8 +8,9 @@
     [
       "@semantic-release/exec",
       {
+        "verifyReleaseCmd": "HEXALITH_REQUIRE_CONTAINER_PUBLISHER=true bash scripts/validate-release-secrets.sh && bash scripts/validate-release-authority.sh ${nextRelease.version} >&2",
         "prepareCmd": "python3 tools/pack-release-packages.py ./nupkgs ${nextRelease.version} && python3 tools/validate-release-packages.py ./nupkgs ${nextRelease.version}",
-        "publishCmd": "HEXALITH_REQUIRE_CONTAINER_PUBLISHER=true bash scripts/validate-release-secrets.sh && dotnet nuget push \"./nupkgs/Hexalith.EventStore.*.nupkg\" --source https://api.nuget.org/v3/index.json --api-key \"$NUGET_API_KEY\" --skip-duplicate && ./.hexalith/release/publish-containers.sh ${nextRelease.version}"
+        "publishCmd": "HEXALITH_REQUIRE_CONTAINER_PUBLISHER=true bash scripts/validate-release-secrets.sh && bash scripts/validate-release-authority.sh ${nextRelease.version} >&2 && dotnet nuget push \"./nupkgs/Hexalith.EventStore.*.nupkg\" --source https://api.nuget.org/v3/index.json --api-key \"$NUGET_API_KEY\" && ./.hexalith/release/publish-containers.sh ${nextRelease.version}"
       }
     ],
     [

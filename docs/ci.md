@@ -102,8 +102,27 @@ publishing is enabled only for the approved EventStore host mapping. Before any
 NuGet package is pushed, semantic-release validates `NUGET_API_KEY`, the
 container publisher helper, and the required Zot registry credentials so a
 missing container secret cannot create a partial NuGet-only release. The
-`publishCmd` then calls the helper installed by the shared `publish-containers`
-action:
+semantic-release `verifyRelease` phase then validates a separate durable
+release-owner authority record and proves the new version is absent for all 14
+NuGet IDs and the container tag before Git-tag creation. The `publish` phase
+revalidates the same frozen authority and destination absence immediately before
+NuGet and registry mutation. Existing versions are collisions: the release path
+does not use `--skip-duplicate` and never overwrites an existing package, tag,
+manifest, or registry object.
+
+The authority record binds the EventStore repository, proposed version,
+workflow source SHA, `registry.hexalith.com/eventstore`, exact platform set,
+named owner, authorization and expiry times, rationale, durable source, and one
+maintainer-approved Hexalith.Builds execution SHA. The reusable workflow checks
+its resolved workflow SHA, checks out the nested action at that exact commit,
+and invokes it locally. The action then verifies its own action and helper bytes
+against the same commit before semantic-release can run. The repository
+variables `HEXALITH_BUILDS_RELEASE_SHA` and
+`HEXALITH_RELEASE_AUTHORITY_URL` provide those non-secret inputs. This gate
+validates authority evidence; it does not create human publication authority.
+
+The `publishCmd` calls the helper installed by the shared `publish-containers`
+action only after the authority gate and NuGet publication:
 
 ```text
 src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore
@@ -111,6 +130,44 @@ src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore
 
 Do not add sample, admin, or UI container mappings without an explicit release
 owner decision.
+
+### Exact container contract and evidence
+
+The shared publisher uses .NET SDK container support in Release/package mode
+with `linux-musl-x64;linux-musl-arm64` supplied through both
+`RuntimeIdentifiers` and `ContainerRuntimeIdentifiers`. The external contract
+is exactly `linux/amd64` plus `linux/arm64`. The version tag must resolve to an
+OCI index with media type `application/vnd.oci.image.index.v1+json`; duplicate,
+missing, extra, variant, blank, or `unknown/unknown` descriptors fail closed.
+
+Post-publish validation reads the tag with an explicit OCI `Accept` header,
+captures `Docker-Content-Digest`, rereads the object by immutable digest, and
+requires byte-for-byte equality and a matching SHA-256. Each child manifest and
+config is then resolved by digest. Manifest descriptor and response media types,
+all descriptor byte sizes and raw hashes, config descriptor media types, and
+config `os`/`architecture` must all agree.
+
+Both immutable child references (`repository@sha256:...`) run the same bounded
+smoke: loopback ephemeral host port, `ASPNETCORE_URLS=http://+:8080`, and `/alive`.
+Arm64 emulation is prepared by a SHA-pinned shared action and checked before the
+product smoke. Outcomes remain diagnostically distinct:
+
+- `environment/emulation-setup-failure` — the runner cannot execute arm64;
+- `image-start-failure` — the child image does not start;
+- `liveness-timeout` — the process starts but `/alive` never passes in time;
+- `pass` — the child returns a successful `/alive` response.
+
+Only two `pass` results complete container publication. Evidence records the
+source SHA separately from the later semantic-release tag commit, workflow run
+and approved Builds identity, repository/version, index digest and raw hash,
+child manifest/config identities, exact platforms, authority bytes/source/hash
+and checked-at time, and both smoke logs/hashes. Registry, authentication,
+emulation, product, or evidence failure leaves the release non-authorizing.
+
+Story 3.12 may hand a corrective release to Story 1.20 only as observed
+candidate evidence. Story 1.20 independently revalidates the full package and
+container identity and retains sole authority over its approval fields and
+consumer-migration decision.
 
 ## Submodules
 

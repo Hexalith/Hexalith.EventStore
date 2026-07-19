@@ -32,6 +32,8 @@ jobs:
     with:
       solution: Hexalith.EventStore.slnx
       publish-containers: true
+      builds-execution-sha: ${{ vars.HEXALITH_BUILDS_RELEASE_SHA }}
+      release-authority-url: ${{ vars.HEXALITH_RELEASE_AUTHORITY_URL }}
       container-projects: |
         src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore
     secrets:

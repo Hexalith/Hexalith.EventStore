@@ -1,0 +1,196 @@
+using System.Text.Json;
+using System.Text.RegularExpressions;
+
+namespace Hexalith.EventStore.Contracts.Tests.Packaging;
+
+/// <summary>
+/// Guards the EventStore-owned edge of the shared multi-platform publication contract.
+/// </summary>
+public sealed class ContainerPublishingGovernanceTests
+{
+    /// <summary>
+    /// Verifies that full publication authority runs before the first irreversible command.
+    /// </summary>
+    [Fact]
+    public void SemanticReleaseRequiresAuthorityBeforeTagNuGetAndContainerPublication()
+    {
+        string root = FindRepositoryRoot();
+        using JsonDocument configuration = JsonDocument.Parse(
+            File.ReadAllText(Path.Combine(root, ".releaserc.json")));
+        JsonElement execConfiguration = configuration.RootElement
+            .GetProperty("plugins")
+            .EnumerateArray()
+            .Where(plugin => plugin.ValueKind == JsonValueKind.Array)
+            .Select(plugin => plugin.EnumerateArray().ToArray())
+            .Where(plugin => plugin.Length == 2 && plugin[1].ValueKind == JsonValueKind.Object)
+            .Select(plugin => plugin[1])
+            .Where(plugin => plugin.TryGetProperty("publishCmd", out _))
+            .Single();
+        string verifyReleaseCommand = execConfiguration
+            .GetProperty("verifyReleaseCmd")
+            .GetString()
+            .ShouldNotBeNull();
+        string publishCommand = execConfiguration
+            .GetProperty("publishCmd")
+            .GetString()
+            .ShouldNotBeNull();
+
+        int verifySecretPreflight = verifyReleaseCommand.IndexOf(
+            "scripts/validate-release-secrets.sh",
+            StringComparison.Ordinal);
+        int verifyAuthorityPreflight = verifyReleaseCommand.IndexOf(
+            "scripts/validate-release-authority.sh",
+            StringComparison.Ordinal);
+        verifySecretPreflight.ShouldBeGreaterThanOrEqualTo(0);
+        verifyAuthorityPreflight.ShouldBeGreaterThan(verifySecretPreflight);
+        verifyReleaseCommand.ShouldNotContain("dotnet nuget push");
+        verifyReleaseCommand.ShouldNotContain("publish-containers.sh");
+
+        int secretPreflight = publishCommand.IndexOf("scripts/validate-release-secrets.sh", StringComparison.Ordinal);
+        int authorityPreflight = publishCommand.IndexOf("scripts/validate-release-authority.sh", StringComparison.Ordinal);
+        int nugetPublish = publishCommand.IndexOf("dotnet nuget push", StringComparison.Ordinal);
+        int containerPublish = publishCommand.IndexOf("./.hexalith/release/publish-containers.sh", StringComparison.Ordinal);
+
+        secretPreflight.ShouldBeGreaterThanOrEqualTo(0);
+        authorityPreflight.ShouldBeGreaterThan(secretPreflight);
+        nugetPublish.ShouldBeGreaterThan(authorityPreflight);
+        containerPublish.ShouldBeGreaterThan(nugetPublish);
+        publishCommand.ShouldNotContain("--skip-duplicate");
+    }
+
+    /// <summary>
+    /// Verifies that the local wrapper delegates durable authority and destination checks to the shared validator.
+    /// </summary>
+    [Fact]
+    public void AuthorityWrapperBindsReleaseIdentityAndSharedContract()
+    {
+        string root = FindRepositoryRoot();
+        string scriptPath = Path.Combine(root, "scripts", "validate-release-authority.sh");
+        File.Exists(scriptPath).ShouldBeTrue();
+        string script = File.ReadAllText(scriptPath);
+
+        script.ShouldContain("./.hexalith/release/publication_authority.py");
+        script.ShouldContain("HEXALITH_RELEASE_AUTHORITY_URL");
+        script.ShouldContain("HEXALITH_BUILDS_EXECUTION_SHA");
+        script.ShouldContain("GITHUB_SHA");
+        script.ShouldNotContain("git rev-parse HEAD");
+        script.ShouldContain("tools/release-packages.json");
+        script.ShouldContain("registry.hexalith.com/eventstore");
+    }
+
+    /// <summary>
+    /// Verifies that the thin caller supplies exact authority inputs without widening secrets or mappings.
+    /// </summary>
+    [Fact]
+    public void ThinReleaseCallerSuppliesExactAuthorityInputsAndOneMapping()
+    {
+        string root = FindRepositoryRoot();
+        string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
+
+        workflow.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@main");
+        workflow.ShouldContain("builds-execution-sha: ${{ vars.HEXALITH_BUILDS_RELEASE_SHA }}");
+        workflow.ShouldContain("release-authority-url: ${{ vars.HEXALITH_RELEASE_AUTHORITY_URL }}");
+        workflow.ShouldNotContain("secrets: inherit");
+
+        string mappingBlock = ExtractYamlBlock(workflow, "      container-projects: |");
+        mappingBlock
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ShouldBe(["src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore"]);
+
+        string secretsBlock = ExtractYamlBlock(workflow, "    secrets:");
+        string[] secretNames = Regex.Matches(secretsBlock, @"(?m)^\s{6}([A-Z0-9_]+):")
+            .Select(match => match.Groups[1].Value)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        secretNames.ShouldBe(
+            ["HEXALITH_ZOT_API_KEY", "HEXALITH_ZOT_USERNAME", "NUGET_API_KEY"]);
+    }
+
+    /// <summary>
+    /// Verifies the exact shared multi-platform invocation and post-publish gates.
+    /// </summary>
+    [Fact]
+    public void SharedPublisherContractIsExactTwoPlatformAndValidationGated()
+    {
+        string root = FindRepositoryRoot();
+        string publisher = File.ReadAllText(
+            Path.Combine(root, "references", "Hexalith.Builds", "Github", "publish-containers", "publish-containers.sh"));
+
+        publisher.ShouldContain("linux-musl-x64;linux-musl-arm64");
+        publisher.ShouldContain("\"-p:RuntimeIdentifiers=\\\"$runtime_identifiers\\\"\"");
+        publisher.ShouldContain("\"-p:ContainerRuntimeIdentifiers=\\\"$runtime_identifiers\\\"\"");
+        publisher.ShouldContain("-p:ContainerImageFormat=OCI");
+        publisher.ShouldContain("-p:UseHexalithProjectReferences=false");
+        publisher.ShouldNotContain("--os linux");
+        publisher.ShouldNotContain("--arch x64");
+        publisher.LastIndexOf("\n  \"$validator\"", StringComparison.Ordinal).ShouldBeGreaterThan(
+            publisher.IndexOf("dotnet publish", StringComparison.Ordinal));
+        publisher.LastIndexOf("\n  \"$smoke\"", StringComparison.Ordinal).ShouldBeGreaterThan(
+            publisher.LastIndexOf("\n  \"$validator\"", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// Verifies active CI documentation and preserved EventStore release/container scope.
+    /// </summary>
+    [Fact]
+    public void DocumentationAndContainerDefaultsDescribeTheExactReleaseContract()
+    {
+        string root = FindRepositoryRoot();
+        string ci = File.ReadAllText(Path.Combine(root, "docs", "ci.md"));
+        string secrets = File.ReadAllText(Path.Combine(root, "docs", "ci-secrets-checklist.md"));
+        string targets = File.ReadAllText(Path.Combine(root, "Directory.Build.targets"));
+        string project = File.ReadAllText(
+            Path.Combine(root, "src", "Hexalith.EventStore", "Hexalith.EventStore.csproj"));
+
+        ci.ShouldContain("application/vnd.oci.image.index.v1+json");
+        ci.ShouldContain("linux/amd64");
+        ci.ShouldContain("linux/arm64");
+        ci.ShouldContain("environment/emulation-setup-failure");
+        ci.ShouldContain("Story 1.20");
+        secrets.ShouldContain("HEXALITH_ZOT_USERNAME");
+        secrets.ShouldContain("HEXALITH_ZOT_API_KEY");
+        secrets.ShouldContain("Total user-managed secrets: 8");
+        targets.ShouldContain("mcr.microsoft.com/dotnet/aspnet:10.0-alpine");
+        targets.ShouldContain("<ContainerUser>app</ContainerUser>");
+        targets.ShouldContain("<ContainerPort Include=\"8080\"");
+        project.ShouldContain("<ContainerRepository>eventstore</ContainerRepository>");
+    }
+
+    private static string ExtractYamlBlock(string source, string marker)
+    {
+        string normalized = source.Replace("\r\n", "\n", StringComparison.Ordinal);
+        string[] lines = normalized.Split('\n');
+        int markerIndex = Array.FindIndex(lines, line => line.Equals(marker, StringComparison.Ordinal));
+        markerIndex.ShouldBeGreaterThanOrEqualTo(0);
+        int markerIndent = lines[markerIndex].TakeWhile(char.IsWhiteSpace).Count();
+        List<string> block = [];
+        for (int index = markerIndex + 1; index < lines.Length; index++)
+        {
+            string line = lines[index];
+            if (line.Length > 0 && line.TakeWhile(char.IsWhiteSpace).Count() <= markerIndent)
+            {
+                break;
+            }
+
+            block.Add(line);
+        }
+
+        return string.Join('\n', block);
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        DirectoryInfo? directory = new(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "Hexalith.EventStore.slnx")))
+            {
+                return directory.FullName;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException("Could not locate the Hexalith.EventStore repository root.");
+    }
+}
