@@ -121,13 +121,27 @@ public sealed class ContainerPublishingGovernanceTests
             workflow,
             @"uses: Hexalith/Hexalith\.Builds/\.github/workflows/domain-release\.yml@(?<sha>[0-9a-f]{40})");
         releaseWorkflow.Success.ShouldBeTrue();
-        workflow.ShouldContain($"builds-execution-sha: {releaseWorkflow.Groups["sha"].Value}");
+        string buildsSha = releaseWorkflow.Groups["sha"].Value;
+        workflow.ShouldContain($"builds-execution-sha: {buildsSha}");
         workflow.ShouldNotContain("domain-release.yml@main");
         workflow.ShouldNotContain("vars.HEXALITH_BUILDS_RELEASE_SHA");
         workflow.ShouldContain("release-authority-url: ${{ vars.HEXALITH_RELEASE_AUTHORITY_URL }}");
         workflow.ShouldContain(
             "release-owner-allowlist: _bmad-output/implementation-artifacts/1-20-github-approval-role-allowlist.json");
         workflow.ShouldNotContain("secrets: inherit");
+
+        string inputsBlock = ExtractYamlBlock(workflow, "    with:");
+        MatchCollection timeoutInputs = Regex.Matches(
+            inputsBlock,
+            @"(?m)^\s{6}timeout-minutes:\s*(?<minutes>\d+)\s*$");
+        timeoutInputs.Count.ShouldBe(1);
+        timeoutInputs[0].Groups["minutes"].Value.ShouldBe("60");
+
+        string buildsRoot = Path.Combine(root, "references", "Hexalith.Builds");
+        ReadGitHead(buildsRoot).ShouldBe(buildsSha);
+        string sharedWorkflow = File.ReadAllText(
+            Path.Combine(buildsRoot, ".github", "workflows", "domain-release.yml"));
+        sharedWorkflow.ShouldContain("timeout-minutes: ${{ inputs.timeout-minutes }}");
 
         string mappingBlock = ExtractYamlBlock(workflow, "      container-projects: |");
         mappingBlock
@@ -152,6 +166,14 @@ public sealed class ContainerPublishingGovernanceTests
         string root = FindRepositoryRoot();
         string publisher = File.ReadAllText(
             Path.Combine(root, "references", "Hexalith.Builds", "Github", "publish-containers", "publish-containers.sh"));
+        string smoke = File.ReadAllText(
+            Path.Combine(
+                root,
+                "references",
+                "Hexalith.Builds",
+                "Github",
+                "publish-containers",
+                "smoke_container_platforms.py"));
 
         publisher.ShouldContain("linux-musl-x64;linux-musl-arm64");
         publisher.ShouldContain("\"-p:RuntimeIdentifiers=\\\"$runtime_identifiers\\\"\"");
@@ -166,6 +188,11 @@ public sealed class ContainerPublishingGovernanceTests
             publisher.IndexOf("dotnet publish", StringComparison.Ordinal));
         publisher.LastIndexOf("\n  \"$smoke\"", StringComparison.Ordinal).ShouldBeGreaterThan(
             publisher.LastIndexOf("\n  \"$validator\"", StringComparison.Ordinal));
+        smoke.ShouldContain("DEFAULT_SMOKE_TIMEOUT_SECONDS = \"180\"");
+        smoke.ShouldContain("Authentication__JwtBearer__Issuer=");
+        smoke.ShouldContain("Authentication__JwtBearer__Audience=");
+        smoke.ShouldContain("Authentication__JwtBearer__SigningKey=");
+        smoke.ShouldContain("Authentication__JwtBearer__AllowInsecureSymmetricKey=true");
     }
 
     /// <summary>
@@ -287,5 +314,29 @@ public sealed class ContainerPublishingGovernanceTests
         }
 
         throw new DirectoryNotFoundException("Could not locate the Hexalith.EventStore repository root.");
+    }
+
+    private static string ReadGitHead(string repository)
+    {
+        using Process process = new()
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = "git",
+                RedirectStandardError = true,
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                WorkingDirectory = repository,
+            },
+        };
+        process.StartInfo.ArgumentList.Add("rev-parse");
+        process.StartInfo.ArgumentList.Add("HEAD");
+
+        process.Start().ShouldBeTrue();
+        string output = process.StandardOutput.ReadToEnd();
+        string error = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+        process.ExitCode.ShouldBe(0, $"Could not resolve the Builds submodule HEAD: {error}");
+        return output.Trim();
     }
 }

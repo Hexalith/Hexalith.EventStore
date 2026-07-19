@@ -79,8 +79,8 @@ development_status:
   # - no later clean committed runtime SHA has passed all detached production gates;
   # - v3.75.0 has observed exact 14-package hashes, but its immutable container is a
   #   single linux/amd64 Docker manifest and fails AC8;
-  # - Story 3.12 must produce a later exact linux/amd64 + linux/arm64 OCI index;
-  # - no conforming package/container release identity has been selected or approved;
+  # - Story 3.12 produced observed v3.77.2 with an exact linux/amd64 + linux/arm64 OCI index;
+  # - that conforming package/container identity has not been selected or approved by Story 1.20;
   # - named EventStore and release-owner approval is absent.
   # `final_decision: still blocked` cannot transition this story or Epic 1 to done.
   # Explicitly excludes payload-protection G5 and Parties Story 8.7; those are Epic 8.
@@ -127,10 +127,11 @@ development_status:
   3-9-supply-chain-publishing-backlog: review
   3-10-generated-api-dapr-aspire-smoke-preflight: done
   3-11-validated-central-package-catalog-refresh: backlog
-  # v3.75.0 has valid observed package hashes but only a single linux/amd64 image.
-  # Story 3.12 must produce a later OCI index containing exactly linux/amd64 and
-  # linux/arm64 before Story 1.20 can consider release identity complete.
-  3-12-multi-platform-eventstore-container-publishing-correction: in-progress
+  # v3.75.0 remains failed single-platform evidence; failed partial v3.77.1 is quarantined.
+  # Story 3.12 produced observed candidate v3.77.2 with exactly linux/amd64 and linux/arm64.
+  # Story 1.20 still requires independent exact-SHA gates, owner review, artifact selection,
+  # A/B/C authorization, and an explicit migration decision before any approved field changes.
+  3-12-multi-platform-eventstore-container-publishing-correction: review
   epic-3-retrospective: optional
 
   epic-4: in-progress

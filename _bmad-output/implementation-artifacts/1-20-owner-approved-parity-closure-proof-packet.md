@@ -3,7 +3,7 @@ schema: hexalith.eventstore.parity-closure-proof-packet/v1
 story_id: "1.20"
 story_key: 1-20-owner-approved-parity-closure-and-runtime-pin
 created: 2026-07-16T05:09:20+02:00
-updated: 2026-07-19T13:54:48+02:00
+updated: 2026-07-19T18:50:25+02:00
 historical_packet: 1-8-projection-query-sdk-owner-proof-packet.md
 candidate_source_sha: 85877902f8d60a466ab90cd8b68b53838863db1c
 tested_runtime_sha: null
@@ -60,11 +60,12 @@ The exact-SHA gate failed before package/container publication and owner review:
    `done`, and passes the source-topology provenance prerequisite,
    but this packet remains non-authorizing until every gate is rerun at one exact clean
    committed candidate SHA.
-6. v3.75.0 published the 14 manifest-governed packages and an EventStore container;
-   the exact package bytes/hashes and failed single-platform container identity are
-   recorded below. No conforming package/container identity has been produced or
-   approved, and no named EventStore owner has reviewed completed passing exact-SHA
-   evidence.
+6. v3.75.0 published the 14 manifest-governed packages and a failed single-platform
+   EventStore container. Story 3.12 later published conforming corrective release
+   v3.77.2 with the exact 14 packages and a validated two-platform OCI index. Both
+   identities are recorded below as observed evidence only: v3.77.2 has not been selected
+   as this packet's approved package/container identity, does not establish a tested
+   runtime SHA, and has no final Story 1.20 owner disposition.
 
 ### Scoped corrective item
 
@@ -79,9 +80,10 @@ disposition Story 1.16's retained follow-up recommendation, obtain named EventSt
 approval, and update this packet.
 
 Story 3.12, Multi-Platform EventStore Container Publishing Correction, is the approved
-scoped release corrective item. It must produce a later semantic release whose immutable
-OCI index contains exactly `linux/amd64` and `linux/arm64`; its planning approval grants
-no publication or Story 1.20 migration authority.
+scoped release corrective item. It produced observed corrective release v3.77.2, whose
+immutable OCI index contains exactly `linux/amd64` and `linux/arm64`. That result closes
+the scoped publisher correction only; Story 3.12 does not grant Story 1.20 approval or
+migration authority.
 
 ### Exact-SHA Failure And Readiness Re-Audit — Observed 2026-07-16T15:00:52+02:00
 
@@ -110,11 +112,11 @@ passing Release build and test subsets; those subsets grant no migration authori
 Runtime and documentation identity remain deliberately separate. The
 `candidate_source_sha` records the failed candidate, `tested_runtime_sha: null` records
 that no unchanged runtime has passed every gate, and `documentation_commit_sha: null`
-records that no later evidence-only commit exists. A future documentation commit cannot
-substitute for the tested runtime. Approved package/container identities, named owner
-approval, and migration authorization remain absent. The observed v3.75.0 identities
-recorded below are non-authorizing failure evidence and do not populate any `approved_*`
-field.
+records that no Story 1.20 closure evidence commit A has been selected or recorded. This
+Story 3.12 evidence handoff cannot substitute for the tested runtime or for closure commit
+A. Approved package/container identities, named owner approval, and migration authorization
+remain absent. The observed v3.75.0 failure and v3.77.2 corrective release candidate
+recorded below are non-authorizing evidence and do not populate any `approved_*` field.
 
 Architecture AD-11 remains a hard executable precondition before selecting or publishing a
 replacement runtime. At current commit `772cdfefa8163704de0f57042af5b0507c1ac771`,
@@ -190,26 +192,27 @@ closed:
 
 ### NuGet package identities
 
-`tools/release-packages.json` currently names exactly 14 package IDs. No conforming closure
-release has been selected or approved, so every approved version and SHA-256 hash remains
+`tools/release-packages.json` currently names exactly 14 package IDs. Story 3.12 produced
+the conforming observed v3.77.2 corrective release recorded below, but Story 1.20 has not
+selected or approved it. Every approved version and SHA-256 hash therefore remains
 unresolved.
 
 | Exact package ID | Approved version | SHA-256 |
 | --- | --- | --- |
-| `Hexalith.EventStore.Contracts` | not selected | not produced |
-| `Hexalith.EventStore.Client` | not selected | not produced |
-| `Hexalith.EventStore.Server` | not selected | not produced |
-| `Hexalith.EventStore.SignalR` | not selected | not produced |
-| `Hexalith.EventStore.Testing` | not selected | not produced |
-| `Hexalith.EventStore.Testing.Integration` | not selected | not produced |
-| `Hexalith.EventStore.Aspire` | not selected | not produced |
-| `Hexalith.EventStore.ServiceDefaults` | not selected | not produced |
-| `Hexalith.EventStore.DomainService` | not selected | not produced |
-| `Hexalith.EventStore.RestApi.Generators` | not selected | not produced |
-| `Hexalith.EventStore.Gateway` | not selected | not produced |
-| `Hexalith.EventStore.Admin.Abstractions` | not selected | not produced |
-| `Hexalith.EventStore.Admin.Cli` | not selected | not produced |
-| `Hexalith.EventStore.Admin.Server` | not selected | not produced |
+| `Hexalith.EventStore.Contracts` | not selected | not selected |
+| `Hexalith.EventStore.Client` | not selected | not selected |
+| `Hexalith.EventStore.Server` | not selected | not selected |
+| `Hexalith.EventStore.SignalR` | not selected | not selected |
+| `Hexalith.EventStore.Testing` | not selected | not selected |
+| `Hexalith.EventStore.Testing.Integration` | not selected | not selected |
+| `Hexalith.EventStore.Aspire` | not selected | not selected |
+| `Hexalith.EventStore.ServiceDefaults` | not selected | not selected |
+| `Hexalith.EventStore.DomainService` | not selected | not selected |
+| `Hexalith.EventStore.RestApi.Generators` | not selected | not selected |
+| `Hexalith.EventStore.Gateway` | not selected | not selected |
+| `Hexalith.EventStore.Admin.Abstractions` | not selected | not selected |
+| `Hexalith.EventStore.Admin.Cli` | not selected | not selected |
+| `Hexalith.EventStore.Admin.Server` | not selected | not selected |
 
 #### Observed v3.75.0 non-authorizing package evidence
 
@@ -243,6 +246,107 @@ These are exact observed release bytes, not approved Story 1.20 package identiti
 They do not set `approved_package_version` or
 `approved_package_hash_manifest_sha256`.
 
+#### Observed v3.77.1 quarantined partial publication
+
+Release workflow
+[run 29692936278, attempt 1](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/29692936278)
+at source/tag commit `a832374a98ccbfebffd5c850c67d79adf14b8971` partially mutated external
+destinations before failing. It published all 14 NuGet package IDs and
+`registry.hexalith.com/eventstore:3.77.1`, but created no GitHub Release. Failed-run artifact
+[`release-evidence-29692936278-1`](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/29692936278/artifacts/8444173297)
+has ID `8444173297`, size `14409`, GitHub API digest
+`sha256:1c7cd62e9b4c0d0a447df3313bed91ebee9ef029f8bb7becd3b12141f51fcb58`,
+and expiry `2026-08-18T15:29:17Z`.
+
+At the `2026-07-19T16:49:56Z` quarantine readback, all 14 current NuGet.org copies had
+the exact ID/version `3.77.1` and the following signed identities. All 14 passed
+`dotnet nuget verify --all` as NuGet.org repository signatures. The failed-run artifact
+does not contain the pre-signing package files, so this table deliberately pins the
+observable signed NuGet identities rather than inferring unavailable unsigned bytes.
+
+| Exact package ID | NuGet.org size | NuGet.org SHA-256 |
+| --- | ---: | --- |
+| `Hexalith.EventStore.Admin.Abstractions` | 124843 | `24795405482d49606c515101863e0f39dd0f46b7c11bd3e65b7485d727d381e4` |
+| `Hexalith.EventStore.Admin.Cli` | 665185 | `4d6d5e3abef04782f036393e8dd3f815c209097ba8712cf116af16f9fbdef91e` |
+| `Hexalith.EventStore.Admin.Server` | 186524 | `45d4fc8d1edcaa55f03e6e465afbee1daa6bf53bf95e562240a24130c9fa71e5` |
+| `Hexalith.EventStore.Aspire` | 38751 | `a8a78f8767a492a421b29286b044d7f9757cc4c18bdb29f94ab75051565a8847` |
+| `Hexalith.EventStore.Client` | 159335 | `fc850a61ace400ee0fff3e70a96fcb2455351f83f241523e0e9ddc2a880cb09b` |
+| `Hexalith.EventStore.Contracts` | 156293 | `bd2aa2d60a01c7213007d56b9bb25446bc183295d5de580d2a7efc190628361b` |
+| `Hexalith.EventStore.DomainService` | 64906 | `297d98cd298d687a3d34af10972e6368217dd45ea6c1277d217158fc92daefe0` |
+| `Hexalith.EventStore.Gateway` | 243326 | `c5e0972533bc21896f79d74501c7f8e0e3ea0132a79ca3273500d8c8180888b0` |
+| `Hexalith.EventStore.RestApi.Generators` | 50083 | `252a51b4ad41406655f450533fecac3fb20f89788f75affa978e118d72194419` |
+| `Hexalith.EventStore.Server` | 342512 | `2bee83f6e0981fe459d35152b07776f06106ddaddccc673bca3a91b46d088da9` |
+| `Hexalith.EventStore.ServiceDefaults` | 29308 | `8586d060292b57e267077ba350ecd23f2f6ab923395414fb1dccedeafd8b7497` |
+| `Hexalith.EventStore.SignalR` | 34251 | `ad960bd50c308f50a9da7eb9d11f7a5aa2fc098fee4febe57d5619dbea0a6227` |
+| `Hexalith.EventStore.Testing` | 65409 | `e73abb11d3288bed3fbb6a643ae9dbfbe749145866d5d890a2bcb5d1ec9463c0` |
+| `Hexalith.EventStore.Testing.Integration` | 77047 | `5004299b371733a6ddc37b3a0f865c114f9ffd62cbc0ccf6413138a9a4f69d95` |
+
+The same timestamped registry readback matched every retained raw artifact byte. The tag
+resolves to the 493-byte OCI index digest/raw SHA-256
+`sha256:cdf89b8dfbc13c96dedae7897076582b43aea6c676039a89de304e162ce6e9b2`.
+Its 1399-byte `linux/amd64` child is
+`sha256:a478ae8978a8183fb754911f3970c36759f57779698755bab9653384ffcc7e1a`,
+with 3851-byte config
+`sha256:d8a1dbe0c58dbc9561d679f2a1873d9b818d531496578482bf77e35efcb26ddc`.
+Its 1399-byte `linux/arm64` child is
+`sha256:74742897de76b60f335874b177119504f68154a743f868e49c7e88efd528f83b`,
+with 3852-byte config
+`sha256:e49a7cb0fd06658cd1a7f5e3b84abcae3bd7b650bcece3b82d4457f7f723eadc`.
+Both configs declare the matching platform and version `3.77.1`.
+
+The amd64 child failed image start because required smoke-only JWT configuration was
+absent; its log SHA-256 is
+`27fb7d6e6a0d126cd84985edaa3ad46a40c145a2282e8b878ddb79336a4598a4`.
+The arm64 child timed out under the former 60-second bound; its log SHA-256 is
+`84c932731966e799636278d0da54dd2f281db98abca762dd717d95c261868118`.
+The emulation preflight passed with log SHA-256
+`73302833f7f705e259783281f19fe3babe78ba969994674ddfe37032291da18d`,
+both cleanup paths passed, and `smoke-results.json` hashes to
+`7dd398e40fb2458e0f273ba2ab9364a6664030acf9cac741b4c543c6daa9907d`.
+
+This partial identity is permanently quarantined and is not a Story 1.20 candidate or
+approval source. Story 3.12 performed no same-version retry or tag repoint. The current
+NuGet and registry observations match the frozen failed identity; no broader claim about
+unavailable historical registry audit events is inferred.
+
+#### Observed v3.77.2 Story 3.12 corrective package candidate
+
+Release [v3.77.2](https://github.com/Hexalith/Hexalith.EventStore/releases/tag/v3.77.2)
+was published at `2026-07-19T16:35:54Z` by successful release workflow
+[run 29694935552, attempt 1](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/29694935552).
+The lightweight release tag resolves directly to authorized source
+`77a9a442c0e6d0408957888e10c3a9accd634c99`; that source's parent is
+`91327ebb78bbbc0874ef6af64ec0445674b72bd5`. The reusable workflow, nested action, and
+installed publisher helpers resolve to reviewed Hexalith.Builds commit
+`9ec0a032d785dd0abdc14276e8784d6fdd826fd0`.
+
+All 14 GitHub release assets and all 14 NuGet.org copies were independently downloaded.
+Each archive contains the exact expected package ID and version `3.77.2`. NuGet.org adds
+its `.signature.p7s` repository signature, so its signed archive size and hash differ from
+the GitHub release asset; every other archive entry is byte-identical. `dotnet nuget
+verify --all` accepted the NuGet.org repository signature on all 14 signed copies.
+
+| Exact package ID | GitHub size | GitHub SHA-256 | NuGet.org size | NuGet.org SHA-256 | Payload result |
+| --- | ---: | --- | ---: | --- | --- |
+| `Hexalith.EventStore.Contracts` | 143192 | `b6aecbcfd748f7d82763dd88c776b65f53bc974ed3dc0eeeea32fe0700900ca3` | 156279 | `32345c78754b6c0ed2a9bcc7b4d290a129c3809d3e921a42c5c1ede0761ad260` | Match |
+| `Hexalith.EventStore.Client` | 146242 | `30614e31dc5cbd282dccf977517d4a8910015ce252f33dc9dffbaf6f1b406947` | 159328 | `f2f5991711d02b176a75f3c9388ef3caf605b0d5422fd9f7835ede7b8504122f` | Match |
+| `Hexalith.EventStore.Server` | 329420 | `b4605035e87c4085e4af6bc72ce3d23d916e5d3eebf3378b4227cd94ca6d4939` | 342506 | `c3805daf5c8633f8401f46f990f050d6672bf6fa34fbd6cabd4c302e7a27ad91` | Match |
+| `Hexalith.EventStore.SignalR` | 21152 | `6bc16091542b614f25d24208a9b630c2ccb0f417fab423fa329e8ad5d3fcae61` | 34239 | `ddf5c266eeed23af010d9754ab16b39a3fe6ce367811c26618a4d40ad81f648a` | Match |
+| `Hexalith.EventStore.Testing` | 52306 | `50e7327b9e400182edd133c4d815fa92042c2702eb1339b69f17b8d4428aabc0` | 65393 | `2c34125149977bd3e01d2a4b0f0e48a0a6e444daa267d46d17e8e7f372bcbe29` | Match |
+| `Hexalith.EventStore.Testing.Integration` | 63950 | `2ec00f5348fd2a2c01ca4deb59a1ab7951529d2043cb0d4507f6c89374e5d6ed` | 77036 | `6dfaa12bc9c8b45e5ab9071e3d653ca8afe466d7bd5191ec693fbbdd6e61dc0c` | Match |
+| `Hexalith.EventStore.Aspire` | 25662 | `18785e5f2de5fa187d4635781cd8b9054b0ce103ec97513b0b1e232567a647bb` | 38748 | `af71a1bde29f48892b9cb7eb7e2803af50920571dba0a5e015b68f97c37a4e5c` | Match |
+| `Hexalith.EventStore.ServiceDefaults` | 16210 | `707d1762b6a0469c5f1f042ccb9e589784ee683523f99e98ad8ac27823851ab2` | 29296 | `be93c79cff7ecc92a9b27c3fe496395a4c90a20307e7aacc200d6fc657378fbe` | Match |
+| `Hexalith.EventStore.DomainService` | 51813 | `04f8c490f5afbba7a870618f4c59fece488afc735e2a3466b0d8f7ee2ca0d72f` | 64899 | `0e5253d829252de2e268628ab348927e72359bf7d5352f1565de27abcf6816b8` | Match |
+| `Hexalith.EventStore.RestApi.Generators` | 36990 | `00d5adfdc151a577bfa75c87a93b35e1636061b4521ec665ff43150717a2ca73` | 50077 | `400406405399b7a4ddaf7c82b74f127999a93a4b839ff40dc38543ae98129da5` | Match |
+| `Hexalith.EventStore.Gateway` | 230225 | `2a463b530cf2ceaa09f00863ea5e2f28a4292509b8b4ba943c1477bb9489ccaa` | 243312 | `227d0277e79c1dba987bdd0f7de0f0d5eef58981ecc5cf71219c42d365493308` | Match |
+| `Hexalith.EventStore.Admin.Abstractions` | 111749 | `55662d27de5fe6c3e2d1af3fb14b84a4a1ddcb329ac9c0a9710cbf69d2f80535` | 124835 | `092629ae02576d18e4f3bf099f5f0e002a2efc2d4ee3048cc761a82925b52175` | Match |
+| `Hexalith.EventStore.Admin.Cli` | 652071 | `176c8b2b51bf1c04bcfc226f4db8d71860e5fd4e4755b7bd4dbba957e65cf9f0` | 665158 | `323b7279bfd98714157401cf5150023404b9e050a47458eeee3aacc5c823bcd0` | Match |
+| `Hexalith.EventStore.Admin.Server` | 173431 | `5a0f8ac0981b18a4ad94233907266c396f8bfb5cd2fa1cf28e3ee00284d9e3dc` | 186518 | `4ade2ea6c5694d6d954453e5eb9fad3310d98c1718ab37d5a12f38746114812f` | Match |
+
+This exact 14-ID result satisfies Story 3.12's corrective package boundary. It is an
+observed Story 1.20 candidate only and does not set `approved_package_version` or
+`approved_package_hash_manifest_sha256`.
+
 ### Container identity
 
 - configured candidate repository: `registry.hexalith.com/eventstore`
@@ -272,6 +376,54 @@ v3.75.0 fails Acceptance Boundary 8 and cannot authorize consumer migration. Sto
 3.12 owns the scoped multi-platform publishing correction. The frontmatter
 `approved_container_repository` and `approved_container_digest` remain null,
 `final_decision` remains `still blocked`, and `authorize_consumer_migration` remains
+`false`.
+
+#### Observed v3.77.2 Story 3.12 corrective container candidate
+
+The release publisher revalidated durable release-owner authority
+[comment 5016454096](https://github.com/Hexalith/Hexalith.EventStore/issues/291#issuecomment-5016454096)
+at verify, NuGet-publish, and container-publish boundaries. The frozen authority body hash
+is `14648785dea224d9270335393092f12307ad5b1b6572073f91275421735707bf` and binds
+version `3.77.2`, source `77a9a442c0e6d0408957888e10c3a9accd634c99`, repository
+`registry.hexalith.com/eventstore`, exact platforms `linux/amd64` and `linux/arm64`,
+release owner `jpiquot`, and Builds commit
+`9ec0a032d785dd0abdc14276e8784d6fdd826fd0`.
+
+The complete support-safe evidence is retained as Actions artifact
+[`release-evidence-29694935552-1`](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/29694935552/artifacts/8444768158)
+(artifact ID `8444768158`, size `13463`, API archive digest
+`sha256:6e033439acaba9b44fd101984c7b567cb6914aee30a5bc0d12c8001116d5a9b2`,
+expiry `2026-08-18T16:28:51Z`). The live registry objects were independently fetched by tag
+and immutable digest; their bytes exactly match the artifact.
+
+| Evidence | Observed value | Acceptance Boundary 8 expectation | Result |
+| --- | --- | --- | --- |
+| Tag | `registry.hexalith.com/eventstore:3.77.2` | Version tag resolving to the immutable index | Pass |
+| Immutable index digest | `sha256:db3ab41e187efc0de397fd1205660a0f685e2c94ecd8f4a8f1843ac567056bf6` | Digest of the raw OCI index | Pass |
+| Raw index size / SHA-256 | `493` / `db3ab41e187efc0de397fd1205660a0f685e2c94ecd8f4a8f1843ac567056bf6` | Raw bytes hash to the reported digest | Pass |
+| Index media type | `application/vnd.oci.image.index.v1+json` | Exact OCI index media type | Pass |
+| Descriptor set | exactly `linux/amd64`, `linux/arm64` | Exact two-platform set, no extras or variants | Pass |
+| Release provenance | source/tag `77a9a442...`; Builds `9ec0a032...`; version `3.77.2` | One authorized release identity | Pass |
+
+| Platform | Child manifest digest / size | Config digest / size | Config platform | Digest-pinned `/alive` smoke |
+| --- | --- | --- | --- | --- |
+| `linux/amd64` | `sha256:3b5d2a23e5182aa64974fb23f23f7d358eacf1c1c8d93300b924ddd7df71c9c7` / 1399 | `sha256:973f608b344a8df3e445980f60668ea85df1af0e9169b5b2fbdf329f295892a5` / 3851 | `linux/amd64` | Pass after 11 polls; cleanup pass |
+| `linux/arm64` | `sha256:254a57140a6fc0ff02f198ac68ae4236e5b6c00ea9e9811cf777dc45ec19f605` / 1399 | `sha256:3a9703bb1107e88fb8e3324088247ff6a7b57bff588e2ba7c1e634ee51a7a814` / 3852 | `linux/arm64` | Emulation preflight pass; `/alive` pass after 75 polls; cleanup pass |
+
+The child manifests and configs hash exactly to their descriptor identities, and their
+config platforms match the descriptors. Smoke log SHA-256 values are
+`fc1d2b0320e5f7dbf45eab4b79882f49c2bcba0f59d1e965b63d34b2df01d3ad`
+for amd64, `a64df5406732bd6e299ece185174a4876d57b4662a77a3479cd571cffedc35c8`
+for arm64, and `a049a8f86fa6cea5565fca0f076d5c2dca01f85e97f7bb7cbe1826cfecd40e95`
+for the emulation preflight.
+
+This closes Story 3.12's scoped multi-platform publishing defect, but it is not a Story
+1.20 approval. Release source `77a9a442...` has not been selected as this packet's equal
+candidate/tested runtime and has not run the complete Story 1.20 production-path harness.
+Story 1.16 review disposition, named EventStore-owner proof approval, final release-owner
+disposition, durable WORM evidence, the A/B/C evidence chain, and every remaining
+production-path limitation gate are still open. Accordingly all `approved_*` fields remain
+null, `final_decision` remains `still blocked`, and `authorize_consumer_migration` remains
 `false`.
 
 ## Candidate Environment Inventory
@@ -2672,8 +2824,8 @@ before accepting A.
 | AD-11 readiness | exact SDK `10.0.302` plus matching ASP.NET and installed `Microsoft.NETCore.App` runtime `10.0.10`, or complete, scoped, unexpired replacement authority binding those versions before candidate gates | `ad11-preflight.json`, runtime inventory, its SHA-256, and replacement-authority copy/hash when used | Architecture owner and EventStore build/release maintainer | PASS in the 2026-07-17 current-HEAD readiness audit at `772cdfef...`; every later selected candidate must repeat the preflight |
 | Exact committed source | Same 40-hex SHA before and after gates; clean regular and ignored inputs before and after every gate | `source-state-*.txt`, submodule SHAs, `environment.txt` | EventStore owner | PASS for failed candidate `85877902f8d60a466ab90cd8b68b53838863db1c` |
 | Release build and tests | warning-free solution build; every configured project/filter has passed tests with zero failed, errored, or skipped tests | restore/build logs plus identity-bound XML and method-list files under `$EVIDENCE_ROOT` | EventStore owner | **INCOMPLETE / non-authorizing**; exact commit `772cdfef...` passed the Release build, broad lanes, former lifecycle method/class, and full live-sidecar but predated the Story 2.7 correction. Exact correction commit `fd8ab24da230058f2f239765b68d5e0a135b4b76` passed the focused source-mode query-provenance E2E, but the complete gate has not run at one selected candidate SHA. |
-| NuGet inventory | exact 14-ID set, one approved version, 14 SHA-256 values, package-only consumer success | `package-files.txt`, package/validator/consumer logs, `package-version.txt`, `nuget-sha256.txt` | EventStore release owner | NOT RUN |
-| Container runtime | freshly revalidated pre-publication release-owner authority; clean candidate source; quarantined publication tag; immutable registry digest equal to the raw-manifest SHA-256; exact `linux/amd64` and `linux/arm64`; digest-to-tested-SHA provenance | immutable authority and checked-at copies/hashes, `container-inspect.txt`, raw manifest/hash, exact platform set, `container-provenance.json` | EventStore release owner | NOT RUN |
+| NuGet inventory | exact 14-ID set, one approved version, 14 SHA-256 values, package-only consumer success | `package-files.txt`, package/validator/consumer logs, `package-version.txt`, `nuget-sha256.txt` | EventStore release owner | **OBSERVED CANDIDATE / non-authorizing**; Story 3.12 release v3.77.2 has exactly 14 independently hashed GitHub/NuGet identities with matching payloads, but it is not selected or approved here and the complete Story 1.20 candidate gate remains not run. |
+| Container runtime | freshly revalidated pre-publication release-owner authority; clean candidate source; quarantined publication tag; immutable registry digest equal to the raw-manifest SHA-256; exact `linux/amd64` and `linux/arm64`; digest-to-tested-SHA provenance | immutable authority and checked-at copies/hashes, `container-inspect.txt`, raw manifest/hash, exact platform set, `container-provenance.json` | EventStore release owner | **OBSERVED CANDIDATE / non-authorizing**; Story 3.12 release v3.77.2 passed immutable index/child/config validation and both digest smokes, but its source is not the selected tested runtime and the complete Story 1.20 provenance/approval gate remains not run. |
 | Durable evidence | critical identity/provenance and exact final-approval records committed under `_bmad-output`; immutable external raw bundle bound by HTTPS URL and SHA-256 | `critical-evidence-sha256.txt`, `raw-evidence-bundle.json`, `eventstore-owner-proof-approval.json`, `release-owner-final-disposition.json`, packet front-matter pins | EventStore owner and EventStore release owner | NOT RUN |
 | Limitations and migration | every matrix-row limitation accepted or rejected by a named reviewer in a durable source | signed review record or PR URL and date | EventStore owner | NOT RUN |
 
@@ -2683,8 +2835,9 @@ before accepting A.
 - compatibility boundary: additive public APIs, the legacy query metadata ABI, legacy
   `/project`, versioned `/project/v2`, and the manifest-owned 14-package inventory remain
   unchanged by this evidence-only packet
-- owner disposition: pending; the candidate failed before package/container gates and no
-  named owner has accepted the row limitations
+- owner disposition: pending; Story 3.12 supplied observed package/container candidate
+  evidence, but no named owner has selected it for Story 1.20 or accepted the row
+  limitations after a complete exact-SHA production-path run
 - rollback: do not change package pins, image deployment, consumer gitlinks, or consumer
   infrastructure from this packet
 
@@ -5080,6 +5233,7 @@ to `candidate_source_sha` or `tested_runtime_sha`.
 Story 1.20 and Epic 1 remain `in-progress`. The lifecycle and AD-11 implementation blockers
 are cleared at commit `772cdfef...`, and Story 2.7's committed `fd8ab24d...` correction passes
 the source-topology implementation prerequisite. It is not yet evidence from the exact clean
-committed Story 1.20 candidate. Every parity row remains non-authorizing;
-source/package/container identities are unapproved or unresolved, Story 1.16's named
-follow-up disposition is open, and owner approval is absent.
+committed Story 1.20 candidate. Story 3.12's v3.77.2 package/container identity is a
+conforming observed candidate but remains unselected and unapproved. Every parity row remains
+non-authorizing; Story 1.16's named follow-up disposition, the complete exact-SHA gate,
+durable evidence/limitations, owner approvals, and the A/B/C authorization chain remain open.
