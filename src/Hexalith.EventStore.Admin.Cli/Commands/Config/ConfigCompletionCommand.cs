@@ -26,7 +26,9 @@ public static class ConfigCompletionCommand {
         return command;
     }
 
-    internal static int Execute(string shell) {
+    internal static int Execute(string shell) => Execute(shell, Console.Out, Console.Error);
+
+    internal static int Execute(string shell, TextWriter output, TextWriter error) {
         string script = shell.ToLowerInvariant() switch {
             "bash" => CompletionScripts.GenerateBash(),
             "zsh" => CompletionScripts.GenerateZsh(),
@@ -36,12 +38,12 @@ public static class ConfigCompletionCommand {
         };
 
         if (string.IsNullOrEmpty(script)) {
-            Console.Error.WriteLine($"Unsupported shell '{shell}'. Supported: bash, zsh, powershell, fish.");
+            error.WriteLine($"Unsupported shell '{shell}'. Supported: bash, zsh, powershell, fish.");
             return ExitCodes.Error;
         }
 
         // Write to stdout (not stderr) so it can be piped
-        Console.Write(script);
+        output.Write(script);
         return ExitCodes.Success;
     }
 }

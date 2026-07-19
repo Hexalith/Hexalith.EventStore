@@ -30,6 +30,7 @@ public sealed class QueryResponseProvenanceE2ETests(AspireContractTestFixture fi
     private const string HandlerQueryTypesStateKey = "admin:query-types:tenants";
     private const string RedisEndpoint = "localhost:6379";
     private static readonly TimeSpan s_projectionPollTimeout = TimeSpan.FromSeconds(45);
+    private static readonly TimeSpan s_projectionProbeTimeout = TimeSpan.FromSeconds(5);
 
     [Fact]
     public async Task LiveHandlerRoute_WithCurrentProjectionValidator_NeutralizesProjectionEvidence()
@@ -169,23 +170,43 @@ public sealed class QueryResponseProvenanceE2ETests(AspireContractTestFixture fi
         DateTimeOffset deadline = DateTimeOffset.UtcNow.Add(s_projectionPollTimeout);
         string lastBody = string.Empty;
         HttpStatusCode lastStatus = 0;
+        Exception? lastError = null;
         while (DateTimeOffset.UtcNow < deadline)
         {
             cancellationToken.ThrowIfCancellationRequested();
             using HttpRequestMessage request = CreateProjectionRequest(aggregateId);
-            using HttpResponseMessage response = await fixture.EventStoreClient
-                .SendAsync(request, cancellationToken).ConfigureAwait(false);
-            lastStatus = response.StatusCode;
-            lastBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-
-            if (response.StatusCode == HttpStatusCode.OK
-                && response.Headers.ETag is { IsWeak: false } entityTag)
+            using var probeCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            TimeSpan remaining = deadline - DateTimeOffset.UtcNow;
+            if (remaining <= TimeSpan.Zero)
             {
-                response.Headers.GetValues("X-Hexalith-Query-Provenance").Single().ShouldBe("ProjectionBacked");
-                using JsonDocument document = JsonDocument.Parse(lastBody);
-                document.RootElement.GetProperty("metadata").GetProperty("provenance").GetString()
-                    .ShouldBe("ProjectionBacked");
-                return entityTag.ToString();
+                break;
+            }
+
+            probeCancellation.CancelAfter(remaining < s_projectionProbeTimeout ? remaining : s_projectionProbeTimeout);
+
+            try
+            {
+                using HttpResponseMessage response = await fixture.EventStoreClient
+                    .SendAsync(request, probeCancellation.Token).ConfigureAwait(false);
+                lastStatus = response.StatusCode;
+                lastBody = await response.Content
+                    .ReadAsStringAsync(probeCancellation.Token)
+                    .ConfigureAwait(false);
+                lastError = null;
+
+                if (response.StatusCode == HttpStatusCode.OK
+                    && response.Headers.ETag is { IsWeak: false } entityTag)
+                {
+                    response.Headers.GetValues("X-Hexalith-Query-Provenance").Single().ShouldBe("ProjectionBacked");
+                    using JsonDocument document = JsonDocument.Parse(lastBody);
+                    document.RootElement.GetProperty("metadata").GetProperty("provenance").GetString()
+                        .ShouldBe("ProjectionBacked");
+                    return entityTag.ToString();
+                }
+            }
+            catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                lastError = ex;
             }
 
             await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken).ConfigureAwait(false);
@@ -193,7 +214,8 @@ public sealed class QueryResponseProvenanceE2ETests(AspireContractTestFixture fi
 
         throw new ShouldAssertException(
             $"Projection did not expose a current strong ETag within {s_projectionPollTimeout}. "
-            + $"LastStatus={(int)lastStatus} {lastStatus}; Body: {lastBody}");
+            + $"LastStatus={(int)lastStatus} {lastStatus}; Body: {lastBody}",
+            lastError);
     }
 
     private static HttpRequestMessage CreateProjectionRequest(string aggregateId)

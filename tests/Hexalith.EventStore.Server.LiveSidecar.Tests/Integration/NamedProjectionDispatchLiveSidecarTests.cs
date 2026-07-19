@@ -35,7 +35,6 @@ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Integration;
 [Collection("DaprTestContainer")]
 [Trait("Category", "LiveSidecar")]
 public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFixture fixture) {
-    private const string AppId = "eventstore";
     private const int RetryLedgerShardCount = 64;
     private const string StoreName = "statestore";
 
@@ -71,10 +70,10 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
             new("counter", "counter-detail"),
             new("counter", "counter-index"),
         ];
-        string fingerprint = ProjectionRouteCatalogFingerprint.Compute(AppId, "v1", routes);
+        string fingerprint = ProjectionRouteCatalogFingerprint.Compute(fixture.AppId, "v1", routes);
         var domainServiceOptions = new DomainServiceOptions();
         domainServiceOptions.Registrations["tenant-a|counter|v1"] = new DomainServiceRegistration(
-            AppId,
+            fixture.AppId,
             "process",
             identity.TenantId,
             identity.Domain,
@@ -92,7 +91,7 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
 
         IDomainServiceResolver resolver = Substitute.For<IDomainServiceResolver>();
         _ = resolver.ResolveAsync(identity.TenantId, identity.Domain, "v1", Arg.Any<CancellationToken>())
-            .Returns(new DomainServiceRegistration(AppId, "process", identity.TenantId, identity.Domain, "v1"));
+            .Returns(new DomainServiceRegistration(fixture.AppId, "process", identity.TenantId, identity.Domain, "v1"));
         ProjectionUpdateOrchestrator orchestrator = CreateOrchestrator(actorProxyFactory, resolver);
 
         await orchestrator.DeliverProjectionAsync(identity).ConfigureAwait(true);
@@ -132,12 +131,12 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
         retryJson.ShouldNotContain("payload", Case.Insensitive);
 
         string legacyActorId = $"counter-legacy:{identity.TenantId}:{identity.AggregateId}";
-        string legacyActorKey = $"{AppId}||{QueryRouter.ProjectionActorTypeName}||{legacyActorId}||{EventReplayProjectionActor.ProjectionStateKey}";
+        string legacyActorKey = $"{fixture.AppId}||{QueryRouter.ProjectionActorTypeName}||{legacyActorId}||{EventReplayProjectionActor.ProjectionStateKey}";
         string legacyState = (await database.HashGetAsync(legacyActorKey, "data").ConfigureAwait(true)).ToString();
         legacyState.ShouldContain("counter-legacy");
         foreach (string projectionType in new[] { "counter-detail", "counter-index" }) {
             string lifecycleActorId = $"{identity.TenantId}:{identity.Domain}:{identity.AggregateId}:{projectionType}";
-            string lifecycleKey = $"{AppId}||{ProjectionLifecycleActor.ActorTypeName}||{lifecycleActorId}||projection-lifecycle";
+            string lifecycleKey = $"{fixture.AppId}||{ProjectionLifecycleActor.ActorTypeName}||{lifecycleActorId}||projection-lifecycle";
             (await database.HashGetAsync(lifecycleKey, "data").ConfigureAwait(true)).IsNullOrEmpty.ShouldBeTrue(
                 "normal delivery must preserve the persisted lifecycle baseline (absent means idle)");
         }
@@ -220,14 +219,14 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
 
         faultControl.DetailInvocationCount.ShouldBe(1);
         faultControl.IndexInvocationCount.ShouldBe(2);
-        string detailBeforeDuplicate = (await database.HashGetAsync($"{AppId}||{detailKey}", "data").ConfigureAwait(true)).ToString();
-        string indexBeforeDuplicate = (await database.HashGetAsync($"{AppId}||{indexKey}", "data").ConfigureAwait(true)).ToString();
+        string detailBeforeDuplicate = (await database.HashGetAsync($"{fixture.AppId}||{detailKey}", "data").ConfigureAwait(true)).ToString();
+        string indexBeforeDuplicate = (await database.HashGetAsync($"{fixture.AppId}||{indexKey}", "data").ConfigureAwait(true)).ToString();
         await orchestrator.DeliverProjectionAsync(identity).ConfigureAwait(true);
         faultControl.DetailInvocationCount.ShouldBe(1, "completed duplicates must not invoke /project/v2 handlers");
         faultControl.IndexInvocationCount.ShouldBe(2, "completed duplicates must not invoke /project/v2 handlers");
-        (await database.HashGetAsync($"{AppId}||{detailKey}", "data").ConfigureAwait(true)).ToString()
+        (await database.HashGetAsync($"{fixture.AppId}||{detailKey}", "data").ConfigureAwait(true)).ToString()
             .ShouldBe(detailBeforeDuplicate);
-        (await database.HashGetAsync($"{AppId}||{indexKey}", "data").ConfigureAwait(true)).ToString()
+        (await database.HashGetAsync($"{fixture.AppId}||{indexKey}", "data").ConfigureAwait(true)).ToString()
             .ShouldBe(indexBeforeDuplicate);
 
         ProjectionEventReadabilityResult readability = await ProjectionEventWireBuilder
@@ -303,8 +302,8 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
             .ConnectAsync("localhost:6379,abortConnect=false,allowAdmin=true")
             .ConfigureAwait(true);
         IDatabase database = redis.GetDatabase();
-        string detailModelKey = $"{AppId}||{identity.TenantId}:{identity.Domain}:{identity.AggregateId}:detail";
-        string indexModelKey = $"{AppId}||{identity.TenantId}:{identity.Domain}:{identity.AggregateId}:index";
+        string detailModelKey = $"{fixture.AppId}||{identity.TenantId}:{identity.Domain}:{identity.AggregateId}:detail";
+        string indexModelKey = $"{fixture.AppId}||{identity.TenantId}:{identity.Domain}:{identity.AggregateId}:index";
         string detailModelBaseline = (await database.HashGetAsync(detailModelKey, "data").ConfigureAwait(true)).ToString();
         string indexModelBaseline = (await database.HashGetAsync(indexModelKey, "data").ConfigureAwait(true)).ToString();
         var detailBatchScope = new ReadModelBatchScope(
@@ -584,7 +583,7 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
             .ShouldBe(expectedVersion.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
         string legacyActorId = $"counter-legacy:{identity.TenantId}:{identity.AggregateId}";
-        string legacyActorKey = $"{AppId}||{QueryRouter.ProjectionActorTypeName}||{legacyActorId}||{EventReplayProjectionActor.ProjectionStateKey}";
+        string legacyActorKey = $"{fixture.AppId}||{QueryRouter.ProjectionActorTypeName}||{legacyActorId}||{EventReplayProjectionActor.ProjectionStateKey}";
         JsonDocument legacy = JsonDocument.Parse(
             (await database.HashGetAsync(legacyActorKey, "data").ConfigureAwait(true)).ToString());
         legacy.RootElement.GetProperty("stateBytes").Deserialize<byte[]>()
@@ -664,15 +663,15 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
         return loader;
     }
 
-    private static DomainServiceRegistration Registration(AggregateIdentity identity) => new(
-        AppId,
+    private DomainServiceRegistration Registration(AggregateIdentity identity) => new(
+        fixture.AppId,
         "process",
         identity.TenantId,
         identity.Domain,
         "v1");
 
-    private static async Task<byte[]?> ReadStateJsonAsync(IDatabase database, string logicalKey) {
-        RedisValue value = await database.HashGetAsync($"{AppId}||{logicalKey}", "data").ConfigureAwait(true);
+    private async Task<byte[]?> ReadStateJsonAsync(IDatabase database, string logicalKey) {
+        RedisValue value = await database.HashGetAsync($"{fixture.AppId}||{logicalKey}", "data").ConfigureAwait(true);
         if (!value.IsNullOrEmpty) {
             return (byte[]?)value;
         }
