@@ -151,6 +151,10 @@ from this proposal inventory and remains owned by its existing changes.
   aggregate, so the prior global-empty assertion failed after its own retry had converged. The
   live regression now deterministically co-locates unrelated terminal work and proves that only
   the completed aggregate's item is removed.
+- [x] [Review][Patch] [high] Restore the release execution identity invariant after the root
+  `Hexalith.Builds` submodule advanced to `ffa1662829b28d1d90554980c87f23bd9d4e25e7` while the
+  reusable release workflow remained pinned to its previous commit. The caller and its explicit
+  `builds-execution-sha` input now match the root-declared dependency exactly.
 
 #### 2026-07-19 — Code review: uncommitted Story 1.20 hardening
 
@@ -472,3 +476,5 @@ evidence; named owner approval remains absent. No consumer migration is authoriz
   real xUnit v3 `<assemblies>/<assembly>` result schema.
 - 2026-07-19: Corrected the live retry-ledger convergence proof to preserve unrelated terminal
   work in the same shard while requiring the completed aggregate's retry item to be removed.
+- 2026-07-19: Realigned the reusable release-workflow execution SHA with the root-declared
+  `Hexalith.Builds` dependency after the concurrent submodule bump.
