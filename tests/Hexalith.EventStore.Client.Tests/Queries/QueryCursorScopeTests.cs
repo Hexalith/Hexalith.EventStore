@@ -48,6 +48,24 @@ public class QueryCursorScopeTests {
     }
 
     [Fact]
+    public void AddProjectionWatermark_BindsCanonicalPositiveInvariantDecimalSegment() {
+        string scope = QueryCursorScope.Create()
+            .Add("tenant", "tenant-1")
+            .AddProjectionWatermark(9_223_372_036_854_775_000)
+            .Build();
+
+        scope.ShouldBe("tenant:tenant-1|watermark:9223372036854775000");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(0L)]
+    [InlineData(-1L)]
+    public void AddProjectionWatermark_RejectsUnknownOrNonPositiveValues(long? watermark) =>
+        Should.Throw<ArgumentOutOfRangeException>(() =>
+            QueryCursorScope.Create().AddProjectionWatermark(watermark));
+
+    [Fact]
     public void Build_escapes_user_controlled_values_once_to_prevent_scope_collisions() {
         // An attacker-controlled value injecting the separators must not collide with a structurally
         // different scope built from clean values.

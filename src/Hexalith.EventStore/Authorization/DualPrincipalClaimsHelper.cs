@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 
 namespace Hexalith.EventStore.Authorization;
 
@@ -13,6 +14,7 @@ namespace Hexalith.EventStore.Authorization;
 /// <item><description><c>OriginalActorId</c> is the caller-supplied <c>sub</c> claim value — the same source as the legacy <c>UserId</c>.</description></item>
 /// <item><description><c>AuthenticatedWorkloadId</c> is the <c>azp</c> claim, falling back to <c>client_id</c>, then the first <c>aud</c> entry, when earlier sources are absent.</description></item>
 /// <item><description><c>IsDelegated</c> is <c>true</c> when an RFC 8693 <c>act</c> claim is present, or when <c>azp</c> and <c>client_id</c> are both present and differ.</description></item>
+/// <item><description><c>DelegationId</c> is a bounded string read only from a valid RFC 8693 <c>act.sub</c> claim.</description></item>
 /// <item><description><c>Scopes</c> is the whitespace-split <c>scope</c> claim, falling back to <c>scp</c>.</description></item>
 /// <item><description><c>Audience</c> is every <c>aud</c> claim value on the principal.</description></item>
 /// </list>
@@ -46,6 +48,8 @@ public static class DualPrincipalClaimsHelper {
     /// large. Truncating each entry's length closes that gap.
     /// </summary>
     private const int MaxClaimValueLength = 512;
+
+    private const int MaxActorClaimLength = 4_096;
 
     private const string ActorizedActorClaimType = "act";
     private const string AudienceClaimType = "aud";
@@ -81,7 +85,8 @@ public static class DualPrincipalClaimsHelper {
             authenticatedWorkloadId,
             isDelegated,
             ExtractScopes(principal),
-            audience.Count > 0 ? audience : null);
+            audience.Count > 0 ? audience : null,
+            ExtractDelegationId(principal));
     }
 
     private static string? FirstClaimValue(ClaimsPrincipal principal, string claimType) {
@@ -104,6 +109,61 @@ public static class DualPrincipalClaimsHelper {
         }
 
         return false;
+    }
+
+    private static string? ExtractDelegationId(ClaimsPrincipal principal) {
+        string? actorClaimValue = null;
+        foreach (Claim claim in principal.Claims) {
+            if (!string.Equals(claim.Type, ActorizedActorClaimType, StringComparison.Ordinal)
+                || string.IsNullOrWhiteSpace(claim.Value)) {
+                continue;
+            }
+
+            // RFC 8693 defines one "act" member. Multiple non-empty claims are ambiguous identity
+            // evidence, so preserve the existing IsDelegated signal but expose no identifier.
+            if (actorClaimValue is not null) {
+                return null;
+            }
+
+            actorClaimValue = claim.Value;
+        }
+
+        if (actorClaimValue is null || actorClaimValue.Length > MaxActorClaimLength) {
+            return null;
+        }
+
+        try {
+            using JsonDocument document = JsonDocument.Parse(actorClaimValue, new JsonDocumentOptions {
+                AllowTrailingCommas = false,
+                CommentHandling = JsonCommentHandling.Disallow,
+                MaxDepth = 8,
+            });
+            if (document.RootElement.ValueKind != JsonValueKind.Object) {
+                return null;
+            }
+
+            string? delegationId = null;
+            foreach (JsonProperty property in document.RootElement.EnumerateObject()) {
+                if (!property.NameEquals("sub")) {
+                    continue;
+                }
+
+                // Duplicate "sub" members are ambiguous and therefore unknown.
+                if (delegationId is not null || property.Value.ValueKind != JsonValueKind.String) {
+                    return null;
+                }
+
+                delegationId = property.Value.GetString();
+            }
+
+            return !string.IsNullOrWhiteSpace(delegationId)
+                && delegationId.Length <= MaxClaimValueLength
+                    ? delegationId
+                    : null;
+        }
+        catch (JsonException) {
+            return null;
+        }
     }
 
     private static IReadOnlyList<string> ExtractAudience(ClaimsPrincipal principal) {

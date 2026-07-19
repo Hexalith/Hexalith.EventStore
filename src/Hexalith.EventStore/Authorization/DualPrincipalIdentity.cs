@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 namespace Hexalith.EventStore.Authorization;
 
 /// <summary>
@@ -10,9 +12,42 @@ namespace Hexalith.EventStore.Authorization;
 /// <param name="IsDelegated">Whether the token carries delegation evidence (an RFC 8693 <c>act</c> claim, or <c>azp</c> diverging from <c>client_id</c>).</param>
 /// <param name="Scopes">The whitespace-split <c>scope</c>/<c>scp</c> claim values, when present.</param>
 /// <param name="Audience">The token's <c>aud</c> claim values, when present.</param>
+/// <param name="DelegationId">The delegation identifier sourced only from a valid RFC 8693 <c>act.sub</c> claim, when present.</param>
 public sealed record DualPrincipalIdentity(
     string OriginalActorId,
     string? AuthenticatedWorkloadId,
     bool IsDelegated,
     IReadOnlyList<string>? Scopes,
-    IReadOnlyList<string>? Audience);
+    IReadOnlyList<string>? Audience,
+    string? DelegationId = null) {
+    /// <summary>Initializes the prior five-member dual-principal identity shape.</summary>
+    [OverloadResolutionPriority(1)]
+    public DualPrincipalIdentity(
+        string OriginalActorId,
+        string? AuthenticatedWorkloadId,
+        bool IsDelegated,
+        IReadOnlyList<string>? Scopes,
+        IReadOnlyList<string>? Audience)
+        : this(
+            OriginalActorId,
+            AuthenticatedWorkloadId,
+            IsDelegated,
+            Scopes,
+            Audience,
+            DelegationId: null) {
+    }
+
+    /// <summary>Deconstructs the prior five-member dual-principal identity shape.</summary>
+    public void Deconstruct(
+        out string OriginalActorId,
+        out string? AuthenticatedWorkloadId,
+        out bool IsDelegated,
+        out IReadOnlyList<string>? Scopes,
+        out IReadOnlyList<string>? Audience) {
+        OriginalActorId = this.OriginalActorId;
+        AuthenticatedWorkloadId = this.AuthenticatedWorkloadId;
+        IsDelegated = this.IsDelegated;
+        Scopes = this.Scopes;
+        Audience = this.Audience;
+    }
+}

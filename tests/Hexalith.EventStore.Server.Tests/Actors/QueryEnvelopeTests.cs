@@ -30,6 +30,7 @@ public class QueryEnvelopeTests {
         bool isDelegated = false,
         IReadOnlyList<string>? scopes = null,
         IReadOnlyList<string>? audience = null,
+        string? delegationId = null,
         string tenantId = "test-tenant",
         string domain = "orders",
         string aggregateId = "order-42",
@@ -55,7 +56,8 @@ public class QueryEnvelopeTests {
             authenticatedWorkloadId,
             isDelegated,
             scopes,
-            audience);
+            audience,
+            delegationId);
 
     [Fact]
     public void Constructor_ValidFields_SetsAllProperties() {
@@ -338,6 +340,7 @@ public class QueryEnvelopeTests {
         sut.IsDelegated.ShouldBeFalse();
         sut.Scopes.ShouldBeNull();
         sut.Audience.ShouldBeNull();
+        sut.DelegationId.ShouldBeNull();
     }
 
     [Fact]
@@ -353,6 +356,53 @@ public class QueryEnvelopeTests {
         sut.IsDelegated.ShouldBeFalse();
         sut.Scopes.ShouldBeNull();
         sut.Audience.ShouldBeNull();
+        sut.DelegationId.ShouldBeNull();
+    }
+
+    [Fact]
+    public void PublicCompatibility_PreservesFifteenParameterConstructorAndSingleJsonConstructor() {
+        Type[] priorParameters = [
+            typeof(string),
+            typeof(string),
+            typeof(string),
+            typeof(string),
+            typeof(byte[]),
+            typeof(string),
+            typeof(string),
+            typeof(string),
+            typeof(bool),
+            typeof(QueryPagingOptions),
+            typeof(string),
+            typeof(string),
+            typeof(bool),
+            typeof(IReadOnlyList<string>),
+            typeof(IReadOnlyList<string>),
+        ];
+        typeof(QueryEnvelope).GetConstructor(priorParameters).ShouldNotBeNull();
+        typeof(QueryEnvelope).GetConstructors()
+            .Count(constructor => constructor.IsDefined(
+                typeof(System.Text.Json.Serialization.JsonConstructorAttribute),
+                inherit: false))
+            .ShouldBe(1);
+
+        var value = new QueryEnvelope(
+            "tenant-a",
+            "orders",
+            "order-1",
+            "get-order",
+            [],
+            "corr-1",
+            "user-1",
+            null,
+            false,
+            null,
+            "actor-1",
+            "workload-1",
+            true,
+            ["orders.read"],
+            ["eventstore-api"]);
+
+        value.DelegationId.ShouldBeNull();
     }
 
     [Fact]
@@ -362,13 +412,15 @@ public class QueryEnvelopeTests {
             authenticatedWorkloadId: "workload-1",
             isDelegated: true,
             scopes: ["orders.read", "orders.write"],
-            audience: ["eventstore-api"]);
+            audience: ["eventstore-api"],
+            delegationId: "delegate-service");
 
         sut.OriginalActorId.ShouldBe("actor-1");
         sut.AuthenticatedWorkloadId.ShouldBe("workload-1");
         sut.IsDelegated.ShouldBeTrue();
         sut.Scopes.ShouldBe(["orders.read", "orders.write"]);
         sut.Audience.ShouldBe(["eventstore-api"]);
+        sut.DelegationId.ShouldBe("delegate-service");
     }
 
     [Fact]
@@ -378,7 +430,8 @@ public class QueryEnvelopeTests {
             authenticatedWorkloadId: "workload-1",
             isDelegated: true,
             scopes: ["orders.read"],
-            audience: ["eventstore-api", "admin-api"]);
+            audience: ["eventstore-api", "admin-api"],
+            delegationId: "delegate-service");
 
         string json = JsonSerializer.Serialize(original);
         QueryEnvelope? deserialized = JsonSerializer.Deserialize<QueryEnvelope>(json);
@@ -389,6 +442,7 @@ public class QueryEnvelopeTests {
         deserialized.IsDelegated.ShouldBeTrue();
         deserialized.Scopes.ShouldBe(["orders.read"]);
         deserialized.Audience.ShouldBe(["eventstore-api", "admin-api"]);
+        deserialized.DelegationId.ShouldBe("delegate-service");
     }
 
     [Fact]
@@ -404,6 +458,7 @@ public class QueryEnvelopeTests {
         deserialized.IsDelegated.ShouldBeFalse();
         deserialized.Scopes.ShouldBeNull();
         deserialized.Audience.ShouldBeNull();
+        deserialized.DelegationId.ShouldBeNull();
     }
 
     [Fact]
@@ -413,7 +468,8 @@ public class QueryEnvelopeTests {
             authenticatedWorkloadId: "workload-1",
             isDelegated: true,
             scopes: ["orders.read", "orders.write"],
-            audience: ["eventstore-api"]);
+            audience: ["eventstore-api"],
+            delegationId: "delegate-service");
         var serializer = new DataContractSerializer(typeof(QueryEnvelope));
         using var ms = new MemoryStream();
         serializer.WriteObject(ms, original);
@@ -426,6 +482,7 @@ public class QueryEnvelopeTests {
         deserialized.IsDelegated.ShouldBeTrue();
         deserialized.Scopes.ShouldBe(["orders.read", "orders.write"]);
         deserialized.Audience.ShouldBe(["eventstore-api"]);
+        deserialized.DelegationId.ShouldBe("delegate-service");
     }
 
     [Fact]
@@ -441,7 +498,7 @@ public class QueryEnvelopeTests {
         ms.Position = 0;
         string xml = new StreamReader(ms).ReadToEnd();
         var document = XDocument.Parse(xml);
-        foreach (string elementName in new[] { "OriginalActorId", "AuthenticatedWorkloadId", "IsDelegated", "Scopes", "Audience" }) {
+        foreach (string elementName in new[] { "OriginalActorId", "AuthenticatedWorkloadId", "IsDelegated", "Scopes", "Audience", "DelegationId" }) {
             document.Descendants().Where(e => e.Name.LocalName == elementName).Remove();
         }
 
@@ -458,6 +515,7 @@ public class QueryEnvelopeTests {
         deserialized.IsDelegated.ShouldBeFalse();
         deserialized.Scopes.ShouldBeNull();
         deserialized.Audience.ShouldBeNull();
+        deserialized.DelegationId.ShouldBeNull();
         deserialized.TenantId.ShouldBe(original.TenantId);
     }
 

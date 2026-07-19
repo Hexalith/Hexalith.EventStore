@@ -72,6 +72,7 @@ public class SubmitQueryTests {
         sut.IsDelegated.ShouldBeFalse();
         sut.Scopes.ShouldBeNull();
         sut.Audience.ShouldBeNull();
+        sut.DelegationId.ShouldBeNull();
     }
 
     [Fact]
@@ -85,6 +86,7 @@ public class SubmitQueryTests {
         sut.IsDelegated.ShouldBeFalse();
         sut.Scopes.ShouldBeNull();
         sut.Audience.ShouldBeNull();
+        sut.DelegationId.ShouldBeNull();
         sut.Paging.ShouldBeNull();
     }
 
@@ -102,13 +104,62 @@ public class SubmitQueryTests {
             AuthenticatedWorkloadId: "workload-1",
             IsDelegated: true,
             Scopes: ["orders.read"],
-            Audience: ["eventstore-api"]);
+            Audience: ["eventstore-api"],
+            DelegationId: "delegate-service");
 
         sut.OriginalActorId.ShouldBe("actor-1");
         sut.AuthenticatedWorkloadId.ShouldBe("workload-1");
         sut.IsDelegated.ShouldBeTrue();
         sut.Scopes.ShouldBe(["orders.read"]);
         sut.Audience.ShouldBe(["eventstore-api"]);
+        sut.DelegationId.ShouldBe("delegate-service");
+    }
+
+    [Fact]
+    public void PublicCompatibility_PreservesSeventeenParameterConstructorAndDeconstruct() {
+        Type[] priorParameters = [
+            typeof(string),
+            typeof(string),
+            typeof(string),
+            typeof(string),
+            typeof(byte[]),
+            typeof(string),
+            typeof(string),
+            typeof(string),
+            typeof(string),
+            typeof(string),
+            typeof(bool),
+            typeof(QueryPagingOptions),
+            typeof(string),
+            typeof(string),
+            typeof(bool),
+            typeof(IReadOnlyList<string>),
+            typeof(IReadOnlyList<string>),
+        ];
+        typeof(SubmitQuery).GetConstructor(priorParameters).ShouldNotBeNull();
+        var value = new SubmitQuery(
+            "tenant-a",
+            "orders",
+            "order-1",
+            "get-order",
+            [],
+            "corr-1",
+            "user-1",
+            null,
+            null,
+            null,
+            false,
+            null,
+            "actor-1",
+            "workload-1",
+            true,
+            ["orders.read"],
+            ["eventstore-api"]);
+        (_, _, _, string queryType, _, _, _, _, _, _, _, _, string? actorId, _, _, _, _) = value;
+
+        queryType.ShouldBe("get-order");
+        actorId.ShouldBe("actor-1");
+        value.DelegationId.ShouldBeNull();
     }
 
     private static SubmitQuery CreateValid(

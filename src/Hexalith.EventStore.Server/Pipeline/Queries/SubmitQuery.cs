@@ -1,4 +1,5 @@
 
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 
 using Hexalith.EventStore.Contracts.Queries;
@@ -26,7 +27,51 @@ public record SubmitQuery(
     string? AuthenticatedWorkloadId = null,
     bool IsDelegated = false,
     IReadOnlyList<string>? Scopes = null,
-    IReadOnlyList<string>? Audience = null) : IRequest<SubmitQueryResult> {
+    IReadOnlyList<string>? Audience = null,
+    string? DelegationId = null) : IRequest<SubmitQueryResult> {
+    /// <summary>
+    /// Initializes the prior seventeen-member query shape without a delegation identifier.
+    /// </summary>
+    [OverloadResolutionPriority(1)]
+    public SubmitQuery(
+        string Tenant,
+        string Domain,
+        string AggregateId,
+        string QueryType,
+        byte[] Payload,
+        string CorrelationId,
+        string UserId,
+        string? EntityId = null,
+        string? ProjectionType = null,
+        string? ProjectionActorType = null,
+        bool IsGlobalAdmin = false,
+        QueryPagingOptions? Paging = null,
+        string? OriginalActorId = null,
+        string? AuthenticatedWorkloadId = null,
+        bool IsDelegated = false,
+        IReadOnlyList<string>? Scopes = null,
+        IReadOnlyList<string>? Audience = null)
+        : this(
+            Tenant,
+            Domain,
+            AggregateId,
+            QueryType,
+            Payload,
+            CorrelationId,
+            UserId,
+            EntityId,
+            ProjectionType,
+            ProjectionActorType,
+            IsGlobalAdmin,
+            Paging,
+            OriginalActorId,
+            AuthenticatedWorkloadId,
+            IsDelegated,
+            Scopes,
+            Audience,
+            DelegationId: null) {
+    }
+
     /// <summary>
     /// Initializes a new instance of the <see cref="SubmitQuery"/> record using the original query shape.
     /// </summary>
@@ -126,7 +171,8 @@ public record SubmitQuery(
             && AuthenticatedWorkloadId == other.AuthenticatedWorkloadId
             && IsDelegated == other.IsDelegated
             && StringSequenceEquals(Scopes, other.Scopes)
-            && StringSequenceEquals(Audience, other.Audience);
+            && StringSequenceEquals(Audience, other.Audience)
+            && DelegationId == other.DelegationId;
     }
 
     /// <inheritdoc/>
@@ -150,7 +196,46 @@ public record SubmitQuery(
         hash.Add(IsDelegated);
         AddStringSequenceHash(ref hash, Scopes);
         AddStringSequenceHash(ref hash, Audience);
+        hash.Add(DelegationId);
         return hash.ToHashCode();
+    }
+
+    /// <summary>Deconstructs the prior seventeen-member query shape.</summary>
+    public void Deconstruct(
+        out string Tenant,
+        out string Domain,
+        out string AggregateId,
+        out string QueryType,
+        out byte[] Payload,
+        out string CorrelationId,
+        out string UserId,
+        out string? EntityId,
+        out string? ProjectionType,
+        out string? ProjectionActorType,
+        out bool IsGlobalAdmin,
+        out QueryPagingOptions? Paging,
+        out string? OriginalActorId,
+        out string? AuthenticatedWorkloadId,
+        out bool IsDelegated,
+        out IReadOnlyList<string>? Scopes,
+        out IReadOnlyList<string>? Audience) {
+        Tenant = this.Tenant;
+        Domain = this.Domain;
+        AggregateId = this.AggregateId;
+        QueryType = this.QueryType;
+        Payload = this.Payload;
+        CorrelationId = this.CorrelationId;
+        UserId = this.UserId;
+        EntityId = this.EntityId;
+        ProjectionType = this.ProjectionType;
+        ProjectionActorType = this.ProjectionActorType;
+        IsGlobalAdmin = this.IsGlobalAdmin;
+        Paging = this.Paging;
+        OriginalActorId = this.OriginalActorId;
+        AuthenticatedWorkloadId = this.AuthenticatedWorkloadId;
+        IsDelegated = this.IsDelegated;
+        Scopes = this.Scopes;
+        Audience = this.Audience;
     }
 
     // Content (ordinal sequence) equality for a nullable string list -- two nulls are equal, a

@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 using System.Text.Json.Serialization;
 
@@ -92,7 +93,47 @@ public record QueryEnvelope {
             authenticatedWorkloadId: null,
             isDelegated: false,
             scopes: null,
-            audience: null) {
+            audience: null,
+            delegationId: null) {
+    }
+
+    /// <summary>
+    /// Initializes the prior fifteen-member dual-principal query shape without a delegation identifier.
+    /// </summary>
+    [OverloadResolutionPriority(1)]
+    public QueryEnvelope(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        string queryType,
+        byte[] payload,
+        string correlationId,
+        string userId,
+        string? entityId,
+        bool isGlobalAdmin,
+        QueryPagingOptions? paging,
+        string? originalActorId,
+        string? authenticatedWorkloadId,
+        bool isDelegated,
+        IReadOnlyList<string>? scopes,
+        IReadOnlyList<string>? audience)
+        : this(
+            tenantId,
+            domain,
+            aggregateId,
+            queryType,
+            payload,
+            correlationId,
+            userId,
+            entityId,
+            isGlobalAdmin,
+            paging,
+            originalActorId,
+            authenticatedWorkloadId,
+            isDelegated,
+            scopes,
+            audience,
+            delegationId: null) {
     }
 
     /// <summary>
@@ -113,6 +154,7 @@ public record QueryEnvelope {
     /// <param name="isDelegated">Trusted server-populated flag indicating the query was submitted through a delegated identity. Defaults to <see langword="false"/>.</param>
     /// <param name="scopes">Optional OAuth scopes granted to the calling token. Defaults to <see langword="null"/>.</param>
     /// <param name="audience">Optional token audience values. Defaults to <see langword="null"/>.</param>
+    /// <param name="delegationId">Optional delegation identifier sourced only from an authenticated RFC 8693 <c>act.sub</c> claim. Defaults to <see langword="null"/>.</param>
     [JsonConstructor]
     public QueryEnvelope(
         string tenantId,
@@ -129,7 +171,8 @@ public record QueryEnvelope {
         string? authenticatedWorkloadId,
         bool isDelegated,
         IReadOnlyList<string>? scopes,
-        IReadOnlyList<string>? audience) {
+        IReadOnlyList<string>? audience,
+        string? delegationId = null) {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
         ArgumentException.ThrowIfNullOrWhiteSpace(domain);
         ArgumentException.ThrowIfNullOrWhiteSpace(aggregateId);
@@ -151,6 +194,7 @@ public record QueryEnvelope {
         OriginalActorId = originalActorId;
         AuthenticatedWorkloadId = authenticatedWorkloadId;
         IsDelegated = isDelegated;
+        DelegationId = delegationId;
 
         // Scopes/Audience normalize to a concrete array in their own init accessors below (also
         // required so DataContractSerializer has a statically-known type for the interface-typed
@@ -279,6 +323,14 @@ public record QueryEnvelope {
     }
 
     /// <summary>
+    /// Gets the delegation identifier sourced only from the authenticated RFC 8693
+    /// <c>act.sub</c> claim. Optional; <see langword="null"/> when delegation evidence is absent,
+    /// malformed, or unavailable to legacy callers.
+    /// </summary>
+    [DataMember]
+    public string? DelegationId { get; init; }
+
+    /// <summary>
     /// Gets the aggregate identity represented by the tenant, domain, and aggregate ID.
     /// </summary>
     public AggregateIdentity AggregateIdentity
@@ -320,7 +372,8 @@ public record QueryEnvelope {
             && AuthenticatedWorkloadId == other.AuthenticatedWorkloadId
             && IsDelegated == other.IsDelegated
             && StringSequenceEquals(Scopes, other.Scopes)
-            && StringSequenceEquals(Audience, other.Audience);
+            && StringSequenceEquals(Audience, other.Audience)
+            && DelegationId == other.DelegationId;
     }
 
     /// <inheritdoc/>
@@ -342,6 +395,7 @@ public record QueryEnvelope {
         hash.Add(IsDelegated);
         AddStringSequenceHash(ref hash, Scopes);
         AddStringSequenceHash(ref hash, Audience);
+        hash.Add(DelegationId);
         return hash.ToHashCode();
     }
 

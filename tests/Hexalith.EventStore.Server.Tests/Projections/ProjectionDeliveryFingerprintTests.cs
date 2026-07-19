@@ -51,7 +51,7 @@ public class ProjectionDeliveryFingerprintTests {
     }
 
     [Fact]
-    public void EventFingerprint_DistinguishesNullEmptyBinaryAndEveryCanonicalField() {
+    public void EventFingerprint_DistinguishesNullEmptyBinaryAndEveryV1CanonicalField() {
         ProjectionEventDto baseline = Event(1, "message-1", [0, 128, 255]) with {
             UserId = null,
         };
@@ -71,6 +71,18 @@ public class ProjectionDeliveryFingerprintTests {
             .ShouldAllBe(candidate => !string.Equals(candidate, fingerprint, StringComparison.Ordinal));
         variants.Select(ProjectionDeliveryFingerprint.ComputeEvent)
             .Distinct(StringComparer.Ordinal).Count().ShouldBe(variants.Length);
+    }
+
+    [Fact]
+    public void V1EventFingerprint_IntentionallyIgnoresGlobalPositionForReceiptCompatibility() {
+        ProjectionEventDto legacy = Event(1, "message-1", [1]) with { GlobalPosition = 0 };
+        ProjectionEventDto authoritative = legacy with { GlobalPosition = 104 };
+
+        ProjectionDeliveryFingerprint.ComputeEvent(authoritative)
+            .ShouldBe(ProjectionDeliveryFingerprint.ComputeEvent(legacy));
+        ProjectionDeliveryFingerprint.ComputeHistory(Identity, "order-detail", [authoritative])
+            .PrefixFingerprint
+            .ShouldBe(ProjectionDeliveryFingerprint.ComputeHistory(Identity, "order-detail", [legacy]).PrefixFingerprint);
     }
 
     [Fact]

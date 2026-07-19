@@ -34,7 +34,8 @@ public class ProjectionAdapterContractTests {
         string? authenticatedWorkloadId = "workload-1",
         bool isDelegated = false,
         IReadOnlyList<string>? scopes = null,
-        IReadOnlyList<string>? audience = null)
+        IReadOnlyList<string>? audience = null,
+        string? delegationId = null)
         => new(
             "tenant-a",
             "parties",
@@ -50,7 +51,8 @@ public class ProjectionAdapterContractTests {
             authenticatedWorkloadId,
             isDelegated,
             scopes,
-            audience);
+            audience,
+            delegationId);
 
     private static string FindRepositoryRoot() {
         DirectoryInfo? directory = new(Directory.GetCurrentDirectory());
@@ -616,7 +618,8 @@ public class ProjectionAdapterContractTests {
             authenticatedWorkloadId: "workload-1",
             isDelegated: true,
             scopes: ["parties.read"],
-            audience: ["eventstore-api"]);
+            audience: ["eventstore-api"],
+            delegationId: "delegate-service");
         var serializer = new DataContractSerializer(typeof(QueryEnvelope));
 
         using var stream = new MemoryStream();
@@ -631,6 +634,7 @@ public class ProjectionAdapterContractTests {
         restored.IsDelegated.ShouldBeTrue();
         restored.Scopes.ShouldBe(["parties.read"]);
         restored.Audience.ShouldBe(["eventstore-api"]);
+        restored.DelegationId.ShouldBe("delegate-service");
     }
 
     // DataContractSerializer round-trip coverage was previously only null vs. non-empty; an
@@ -663,6 +667,7 @@ public class ProjectionAdapterContractTests {
         sut.IsDelegated.ShouldBeFalse();
         sut.Scopes.ShouldBeNull();
         sut.Audience.ShouldBeNull();
+        sut.DelegationId.ShouldBeNull();
     }
 
     [Fact]

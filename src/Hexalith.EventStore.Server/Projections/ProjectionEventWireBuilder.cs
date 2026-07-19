@@ -75,7 +75,8 @@ internal static class ProjectionEventWireBuilder {
                 envelope.Timestamp,
                 envelope.CorrelationId,
                 envelope.MessageId,
-                envelope.UserId);
+                envelope.UserId,
+                envelope.GlobalPosition);
         }
 
         return ProjectionEventReadabilityResult.Readable(projectionEvents);

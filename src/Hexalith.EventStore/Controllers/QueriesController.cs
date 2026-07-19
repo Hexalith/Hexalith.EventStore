@@ -100,7 +100,8 @@ public partial class QueriesController(
             AuthenticatedWorkloadId: dualPrincipal.AuthenticatedWorkloadId,
             IsDelegated: dualPrincipal.IsDelegated,
             Scopes: dualPrincipal.Scopes,
-            Audience: dualPrincipal.Audience);
+            Audience: dualPrincipal.Audience,
+            DelegationId: dualPrincipal.DelegationId);
 
         SubmitQueryResult result = await mediator.Send(query, cancellationToken).ConfigureAwait(false);
 

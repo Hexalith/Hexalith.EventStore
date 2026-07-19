@@ -1,5 +1,5 @@
-
 using System.Security.Claims;
+using System.Text.Json;
 
 using Hexalith.EventStore.Authorization;
 
@@ -12,6 +12,30 @@ public class DualPrincipalClaimsHelperTests {
         new(new ClaimsIdentity(claims, "test"));
 
     [Fact]
+    public void PublicCompatibility_PreservesFiveParameterConstructorAndDeconstruct() {
+        Type[] priorParameters = [
+            typeof(string),
+            typeof(string),
+            typeof(bool),
+            typeof(IReadOnlyList<string>),
+            typeof(IReadOnlyList<string>),
+        ];
+        typeof(DualPrincipalIdentity).GetConstructor(priorParameters).ShouldNotBeNull();
+        var value = new DualPrincipalIdentity(
+            "actor-1",
+            "workload-1",
+            true,
+            ["orders.read"],
+            ["eventstore-api"]);
+        (string actorId, string? workloadId, bool delegated, _, _) = value;
+
+        actorId.ShouldBe("actor-1");
+        workloadId.ShouldBe("workload-1");
+        delegated.ShouldBeTrue();
+        value.DelegationId.ShouldBeNull();
+    }
+
+    [Fact]
     public void Extract_OnlySubClaim_ReturnsOriginalActorIdAndLegacyDefaults() {
         ClaimsPrincipal principal = CreatePrincipal();
 
@@ -22,6 +46,7 @@ public class DualPrincipalClaimsHelperTests {
         identity.IsDelegated.ShouldBeFalse();
         identity.Scopes.ShouldBeNull();
         identity.Audience.ShouldBeNull();
+        identity.DelegationId.ShouldBeNull();
     }
 
     [Fact]
@@ -69,6 +94,49 @@ public class DualPrincipalClaimsHelperTests {
         DualPrincipalIdentity identity = DualPrincipalClaimsHelper.Extract(principal, "user-1");
 
         identity.IsDelegated.ShouldBeTrue();
+        identity.DelegationId.ShouldBe("delegate-service");
+    }
+
+    [Theory]
+    [InlineData("not-json")]
+    [InlineData("[]")]
+    [InlineData("{}")]
+    [InlineData("{\"sub\":null}")]
+    [InlineData("{\"sub\":42}")]
+    [InlineData("{\"sub\":\"   \"}")]
+    [InlineData("{\"sub\":\"one\",\"sub\":\"two\"}")]
+    public void Extract_MalformedOrAmbiguousActSubject_LeavesDelegationIdUnknown(string actClaim) {
+        ClaimsPrincipal principal = CreatePrincipal(new Claim("act", actClaim));
+
+        DualPrincipalIdentity identity = DualPrincipalClaimsHelper.Extract(principal, "user-1");
+
+        identity.IsDelegated.ShouldBeTrue();
+        identity.DelegationId.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Extract_OversizedActSubject_LeavesDelegationIdUnknownInsteadOfTruncating() {
+        string oversizedSubject = new('d', 513);
+        ClaimsPrincipal principal = CreatePrincipal(new Claim(
+            "act",
+            JsonSerializer.Serialize(new { sub = oversizedSubject })));
+
+        DualPrincipalIdentity identity = DualPrincipalClaimsHelper.Extract(principal, "user-1");
+
+        identity.IsDelegated.ShouldBeTrue();
+        identity.DelegationId.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Extract_MultipleActClaims_LeavesDelegationIdUnknown() {
+        ClaimsPrincipal principal = CreatePrincipal(
+            new Claim("act", "{\"sub\":\"delegate-one\"}"),
+            new Claim("act", "{\"sub\":\"delegate-two\"}"));
+
+        DualPrincipalIdentity identity = DualPrincipalClaimsHelper.Extract(principal, "user-1");
+
+        identity.IsDelegated.ShouldBeTrue();
+        identity.DelegationId.ShouldBeNull();
     }
 
     [Fact]
@@ -78,6 +146,7 @@ public class DualPrincipalClaimsHelperTests {
         DualPrincipalIdentity identity = DualPrincipalClaimsHelper.Extract(principal, "user-1");
 
         identity.IsDelegated.ShouldBeFalse();
+        identity.DelegationId.ShouldBeNull();
     }
 
     [Fact]
@@ -296,5 +365,6 @@ public class DualPrincipalClaimsHelperTests {
         identity.IsDelegated.ShouldBeTrue();
         identity.Scopes.ShouldBe(["orders.read", "orders.write"]);
         identity.Audience.ShouldBe(["eventstore-api"]);
+        identity.DelegationId.ShouldBe("gateway-client");
     }
 }

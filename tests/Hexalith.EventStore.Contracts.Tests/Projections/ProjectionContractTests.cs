@@ -16,7 +16,8 @@ public class ProjectionContractTests {
             Timestamp: new DateTimeOffset(2026, 3, 20, 10, 0, 0, TimeSpan.Zero),
             CorrelationId: "corr-001",
             MessageId: "01JZC5P8Z6M8AJ6W0KVRJHW5QX",
-            UserId: "user-001");
+            UserId: "user-001",
+            GlobalPosition: 104);
 
         string json = JsonSerializer.Serialize(dto);
         ProjectionEventDto? deserialized = JsonSerializer.Deserialize<ProjectionEventDto>(json);
@@ -30,6 +31,7 @@ public class ProjectionContractTests {
         deserialized.CorrelationId.ShouldBe("corr-001");
         deserialized.MessageId.ShouldBe("01JZC5P8Z6M8AJ6W0KVRJHW5QX");
         deserialized.UserId.ShouldBe("user-001");
+        deserialized.GlobalPosition.ShouldBe(104);
     }
 
     [Fact]
@@ -47,6 +49,102 @@ public class ProjectionContractTests {
 
         _ = deserialized.ShouldNotBeNull();
         deserialized.Payload.ShouldBeEmpty();
+        deserialized.GlobalPosition.ShouldBe(0);
+    }
+
+    [Fact]
+    public void ProjectionEventDto_LegacyJsonWithoutGlobalPosition_UsesUnknownDefault() {
+        const string json = """
+            {
+              "EventTypeName": "OrderCreated",
+              "Payload": "AQI=",
+              "SerializationFormat": "json",
+              "SequenceNumber": 1,
+              "Timestamp": "2026-07-19T12:00:00+00:00",
+              "CorrelationId": "corr-001"
+            }
+            """;
+
+        ProjectionEventDto? deserialized = JsonSerializer.Deserialize<ProjectionEventDto>(json);
+
+        _ = deserialized.ShouldNotBeNull();
+        deserialized.GlobalPosition.ShouldBe(0);
+    }
+
+    [Fact]
+    public void ProjectionEventDto_NegativeGlobalPosition_IsRejected() =>
+        Should.Throw<ArgumentOutOfRangeException>(() => new ProjectionEventDto(
+            "OrderCreated",
+            [1, 2],
+            "json",
+            1,
+            DateTimeOffset.UnixEpoch,
+            "corr-001",
+            GlobalPosition: -1));
+
+    [Fact]
+    public void ProjectionEventDto_PublicCompatibility_PreservesLegacyConstructorAndDeconstruct() {
+        Type[] legacyParameters = [
+            typeof(string),
+            typeof(byte[]),
+            typeof(string),
+            typeof(long),
+            typeof(DateTimeOffset),
+            typeof(string),
+            typeof(string),
+            typeof(string),
+        ];
+        typeof(ProjectionEventDto).GetConstructor(legacyParameters).ShouldNotBeNull();
+
+        var value = new ProjectionEventDto(
+            "OrderCreated",
+            [1],
+            "json",
+            1,
+            DateTimeOffset.UnixEpoch,
+            "corr-1",
+            "message-1",
+            "user-1");
+        (string eventType, _, _, long sequence, _, _, string? messageId, _) = value;
+
+        eventType.ShouldBe("OrderCreated");
+        sequence.ShouldBe(1);
+        messageId.ShouldBe("message-1");
+        value.GlobalPosition.ShouldBe(0);
+    }
+
+    [Fact]
+    public void ProjectionEventDto_WithExpression_RejectsNegativeGlobalPosition() {
+        var value = new ProjectionEventDto(
+            "OrderCreated",
+            [1],
+            "json",
+            1,
+            DateTimeOffset.UnixEpoch,
+            "corr-1");
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => value with { GlobalPosition = -1 });
+    }
+
+    [Fact]
+    public void ProjectionEventDto_ValueEquality_IncludesPriorFieldsAndGlobalPosition() {
+        var baseline = new ProjectionEventDto(
+            "OrderCreated",
+            [1],
+            "json",
+            1,
+            DateTimeOffset.UnixEpoch,
+            "corr-1",
+            "message-1",
+            "user-1",
+            104);
+        ProjectionEventDto equal = baseline with { };
+
+        equal.ShouldBe(baseline);
+        equal.GetHashCode().ShouldBe(baseline.GetHashCode());
+        (baseline with { EventTypeName = "OrderUpdated" }).ShouldNotBe(baseline);
+        ProjectionEventDto differentPosition = baseline with { GlobalPosition = 109 };
+        differentPosition.ShouldNotBe(baseline);
     }
 
     [Fact]
