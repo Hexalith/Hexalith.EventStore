@@ -112,9 +112,17 @@ absent for all 14 NuGet IDs and the container tag before Git-tag creation. The `
 requires exact equality with the frozen authority and repeats destination
 absence immediately before NuGet. The shared publisher repeats the authority,
 expiry, and multi-media-type container-tag absence check immediately before the
-SDK registry write. Existing versions are collisions: the release path
-does not use `--skip-duplicate` and never overwrites an existing package, tag,
-manifest, or registry object.
+SDK registry write. Existing versions are collisions: the release path does not
+use `--skip-duplicate` and never overwrites an existing package, tag, manifest,
+or registry object.
+
+The `main` branch accepts changes only through pull requests. Release automation
+therefore does not use `@semantic-release/changelog` or `@semantic-release/git`:
+it tags the already CI-approved source commit and publishes generated notes and
+package assets through the GitHub release without creating or pushing a release
+commit to `main`. Any tracked `CHANGELOG.md` update must arrive through its own
+reviewed pull request; GitHub Releases are the current machine-generated release
+record.
 
 The authority record binds the EventStore repository, proposed version,
 workflow source SHA, `registry.hexalith.com/eventstore`, exact platform set,

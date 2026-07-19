@@ -10,6 +10,31 @@ namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 public sealed class ContainerPublishingGovernanceTests
 {
     /// <summary>
+    /// Verifies that release automation never attempts to bypass the pull-request-only main branch.
+    /// </summary>
+    [Fact]
+    public void SemanticReleaseDoesNotPushGeneratedCommitsToProtectedMain()
+    {
+        string root = FindRepositoryRoot();
+        using JsonDocument configuration = JsonDocument.Parse(
+            File.ReadAllText(Path.Combine(root, ".releaserc.json")));
+        string[] pluginNames = configuration.RootElement
+            .GetProperty("plugins")
+            .EnumerateArray()
+            .Select(plugin => plugin.ValueKind == JsonValueKind.String
+                ? plugin.GetString()
+                : plugin.EnumerateArray().First().GetString())
+            .Where(name => name is not null)
+            .Select(name => name!)
+            .ToArray();
+
+        pluginNames.ShouldNotContain("@semantic-release/git");
+        pluginNames.ShouldNotContain("@semantic-release/changelog");
+        pluginNames.ShouldContain("@semantic-release/exec");
+        pluginNames.ShouldContain("@semantic-release/github");
+    }
+
+    /// <summary>
     /// Verifies that full publication authority runs before the first irreversible command.
     /// </summary>
     [Fact]
