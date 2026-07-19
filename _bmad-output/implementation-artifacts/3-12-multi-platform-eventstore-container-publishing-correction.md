@@ -159,29 +159,29 @@ mark Story 1.20/Epic 1 done.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 - Reconfirm repositories, baseline, scope, and authority (AC1-AC7).**
-  - [ ] Re-read root and Hexalith.Builds tracked guidance, `.editorconfig`, `.gitattributes`,
+- [x] **Task 1 - Reconfirm repositories, baseline, scope, and authority (AC1-AC7).**
+  - [x] Re-read root and Hexalith.Builds tracked guidance, `.editorconfig`, `.gitattributes`,
     workflow/configuration files, current branches, remotes, worktrees, and recent history before
     editing; preserve every user change made after this story baseline.
-  - [ ] Confirm EventStore starts at or after `9b03ee1b9890358984969e93c605caafff8b736d` and record
+  - [x] Confirm EventStore starts at or after `9b03ee1b9890358984969e93c605caafff8b736d` and record
     the exact live EventStore SHA and `references/Hexalith.Builds` SHA used for implementation.
-  - [ ] Obtain Hexalith.Builds maintainer authority before editing or committing the shared
+  - [x] Obtain Hexalith.Builds maintainer authority before editing or committing the shared
     publisher. If absent, stop at read-only analysis; do not implement a local EventStore copy.
-  - [ ] Treat commit, push, gitlink update, NuGet publication, registry mutation, and Story 1.20
+  - [x] Treat commit, push, gitlink update, NuGet publication, registry mutation, and Story 1.20
     disposition as separate authority-bearing actions. Do not infer one from another.
-  - [ ] Do not initialize/update nested submodules, create a Dockerfile, change dependencies,
+  - [x] Do not initialize/update nested submodules, create a Dockerfile, change dependencies,
     broaden package/container scope, modify Parties/Tenants, or stage/commit/push unless separately
     authorized.
 
-- [ ] **Task 2 - Freeze v3.75.0 as a regression fixture and historical failure (AC1, AC3).**
-  - [ ] Preserve the exact release/source/tag identities, package byte hashes, container digest,
+- [x] **Task 2 - Freeze v3.75.0 as a regression fixture and historical failure (AC1, AC3).**
+  - [x] Preserve the exact release/source/tag identities, package byte hashes, container digest,
     raw-manifest hash, media type, config digest/platform, and missing-arm64 result already recorded
     in the approved proposal and Story 1.20 proof packet.
-  - [ ] Add a deterministic single-manifest fixture representing the observed v3.75.0 shape and
+  - [x] Add a deterministic single-manifest fixture representing the observed v3.75.0 shape and
     prove the new validator rejects it as `single-platform`/`wrong-index-media-type`.
-  - [ ] Keep the historical version tag and object immutable. Never use `--skip-duplicate`, tag
+  - [x] Keep the historical version tag and object immutable. Never use `--skip-duplicate`, tag
     replacement, or registry mutation to present v3.75.0 as corrected.
-  - [ ] Keep every Story 1.20 `approved_*` field null, `final_decision: still blocked`, and
+  - [x] Keep every Story 1.20 `approved_*` field null, `final_decision: still blocked`, and
     `authorize_consumer_migration: false` during this story's observed-evidence handoff.
 
 - [ ] **Task 3 - Correct the Hexalith.Builds publisher with native .NET multi-RID support (AC2).**
@@ -569,8 +569,46 @@ _To be completed by the implementing dev agent._
 
 ### Debug Log References
 
+- 2026-07-19 Task 1 read-only gate: EventStore `main`/`origin/main`/live remote
+  `main` resolve to `80fa4476460958b625cc9ad4f9be5cec252a83af`; baseline
+  `9b03ee1b9890358984969e93c605caafff8b736d` is an ancestor.
+- 2026-07-19 Task 1 read-only gate: the EventStore gitlink, clean local
+  Hexalith.Builds checkout, local `origin/main`, and live Hexalith.Builds remote
+  `main` all resolve to `4bbe7c04eb901050ee84075f0c8ad225fcc5fefe`.
+- 2026-07-19 HALT: no separate Hexalith.Builds maintainer authority was provided
+  or found. The approved planning/story record explicitly grants no shared
+  publisher edit or commit authority, so implementation stopped before editing
+  Hexalith.Builds or EventStore release files.
+- 2026-07-19 authority resumed: `jpiquot`, acting as a Hexalith.Builds
+  maintainer, authorized uncommitted shared-publisher implementation edits and
+  local validation at Builds SHA
+  `4bbe7c04eb901050ee84075f0c8ad225fcc5fefe`; commits, pushes, publication,
+  release execution, registry/NuGet mutation, and Story 1.20 disposition remain
+  explicitly unauthorized.
+
 ### Completion Notes List
 
 - Ultimate context engine analysis completed - comprehensive developer guide created.
+- Task 1 was initially blocked at its mandatory authority gate; before authority
+  was supplied, no code, workflow, documentation, dependency, submodule,
+  package, registry, branch, commit, push, or Story 1.20 disposition action was
+  performed.
+- Task 1 completed after named Hexalith.Builds maintainer edit/test authority was
+  supplied. Repository identity, clean shared worktree, scope exclusions, and
+  separate irreversible-action gates were verified.
+- Task 2 froze the exact v3.75.0 identities and 14 package hashes as
+  non-authorizing fixture evidence. Focused tests prove its deterministic Docker
+  single-manifest shape fails the new OCI validator as
+  `wrong-index-media-type`; the historical release and Story 1.20 packet were
+  not mutated.
 
 ### File List
+
+- `_bmad-output/implementation-artifacts/3-12-multi-platform-eventstore-container-publishing-correction.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `references/Hexalith.Builds/Github/publish-containers/oci_registry_validator.py`
+- `references/Hexalith.Builds/Github/publish-containers/tests/test_oci_registry_validator.py`
+- `references/Hexalith.Builds/Tools/test-publish-containers.ps1`
+- `references/Hexalith.Builds/test/fixtures/publish-containers/v3.75.0-evidence.json`
+- `references/Hexalith.Builds/test/fixtures/publish-containers/v3.75.0-single-manifest.json`
+- `references/Hexalith.Builds/test/fixtures/publish-containers/validation-cases.json`

@@ -130,7 +130,7 @@ development_status:
   # v3.75.0 has valid observed package hashes but only a single linux/amd64 image.
   # Story 3.12 must produce a later OCI index containing exactly linux/amd64 and
   # linux/arm64 before Story 1.20 can consider release identity complete.
-  3-12-multi-platform-eventstore-container-publishing-correction: ready-for-dev
+  3-12-multi-platform-eventstore-container-publishing-correction: in-progress
   epic-3-retrospective: optional
 
   epic-4: in-progress
