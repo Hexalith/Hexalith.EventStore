@@ -167,7 +167,11 @@ bytes are retained beside the raw parent index with independent hashes.
 
 Both immutable child references (`repository@sha256:...`) are explicitly pulled
 with bounded timeouts and run the same bounded
-smoke: loopback ephemeral host port, `ASPNETCORE_URLS=http://+:8080`, and `/alive`.
+smoke: loopback ephemeral host port, `ASPNETCORE_URLS=http://+:8080`, a fixed
+non-secret JWT issuer/audience/key used only by the ephemeral smoke container,
+and `/alive`. The Production-mode symmetric-key override is explicit, and the
+common 180-second bound accommodates emulated arm64 startup without becoming
+unbounded.
 Arm64 emulation is prepared by a SHA-pinned shared action and checked before the
 product smoke. Outcomes remain diagnostically distinct:
 

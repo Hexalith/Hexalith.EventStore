@@ -152,6 +152,14 @@ public sealed class ContainerPublishingGovernanceTests
         string root = FindRepositoryRoot();
         string publisher = File.ReadAllText(
             Path.Combine(root, "references", "Hexalith.Builds", "Github", "publish-containers", "publish-containers.sh"));
+        string smoke = File.ReadAllText(
+            Path.Combine(
+                root,
+                "references",
+                "Hexalith.Builds",
+                "Github",
+                "publish-containers",
+                "smoke_container_platforms.py"));
 
         publisher.ShouldContain("linux-musl-x64;linux-musl-arm64");
         publisher.ShouldContain("\"-p:RuntimeIdentifiers=\\\"$runtime_identifiers\\\"\"");
@@ -166,6 +174,11 @@ public sealed class ContainerPublishingGovernanceTests
             publisher.IndexOf("dotnet publish", StringComparison.Ordinal));
         publisher.LastIndexOf("\n  \"$smoke\"", StringComparison.Ordinal).ShouldBeGreaterThan(
             publisher.LastIndexOf("\n  \"$validator\"", StringComparison.Ordinal));
+        smoke.ShouldContain("DEFAULT_SMOKE_TIMEOUT_SECONDS = \"180\"");
+        smoke.ShouldContain("Authentication__JwtBearer__Issuer=");
+        smoke.ShouldContain("Authentication__JwtBearer__Audience=");
+        smoke.ShouldContain("Authentication__JwtBearer__SigningKey=");
+        smoke.ShouldContain("Authentication__JwtBearer__AllowInsecureSymmetricKey=true");
     }
 
     /// <summary>
