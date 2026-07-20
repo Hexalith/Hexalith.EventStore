@@ -403,3 +403,6 @@ _All items LOW / non-blocking. Story 2.7 accepted (all AC1–AC7 met; Release bu
 - source_spec: `_bmad-output/implementation-artifacts/spec-gh-29682903822-fix-ci-cd-2.md`
   summary: Add an unoverridden Release property test that binds `Version` and `PackageVersion` to the repository release version.
   evidence: The external `Hexalith.Builds` gitlink change updates `HexalithEventStoreVersion` from 3.74.0 to 3.75.0, while current tests do not assert the default evaluated version and CI package validation overrides it explicitly, allowing a stale catalog value to pass.
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-29720431798-fix-ci-cd.md`
+  summary: Correct the nonexistent baseline SHA recorded by the Story 4.8 implementation artifact.
+  evidence: `_bmad-output/implementation-artifacts/4-8-durable-tenant-scoped-idempotency-admission-and-expired-key-precedence.md:2` records `afcc167ef277...`, while the valid baseline is `afcc167e0c539b09ecad978a58da2f756123f34e`; this originated in commit `73140382` and is unrelated to the CI gitlink repair.
