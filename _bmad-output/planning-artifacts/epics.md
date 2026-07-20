@@ -284,7 +284,7 @@ NFR19: Payload protection must fail closed and preserve byte-stable, versioned c
 - Specs are required before implementing folded snapshots, projection delivery cost changes, and event schema versioning/upcasting.
 - Full aggregate/event GDPR tombstoning, broker-history deletion, physical backup erasure, audit-record deletion, and provider/operator key-custody operations remain outside Phase 4 MVP and must not be hidden inside unrelated remediation stories. Generic projection read-model/checkpoint erasure is active Story 1.14 scope. The optional EventStore-owned shared payload-protection engine is separately committed under post-MVP Epic 8; Stories 22.7a-d supplied prerequisites, not that engine.
 - AD-19 fixes the normalized server result as `ProjectionDispatchResult` Version 1 with bounded ordinal route entries, stable status codes, and explicit checkpoint-advance state; no equivalent result shape is accepted without a new architecture decision.
-- AD-21 makes `src/Hexalith.EventStore.Admin.UI` the single consolidated EventStore UI under resource `eventstore-admin-ui`, FrontComposer module `event-store-admin`, matching Shell/Contracts.UI `3.2.2`, and Fluent UI V5. No additional UI host is created.
+- AD-21 makes `src/Hexalith.EventStore.Admin.UI` the single consolidated EventStore UI under resource `eventstore-admin-ui`, FrontComposer module `event-store-admin`, with all consumed FrontComposer packages (`Shell`, `Contracts.UI`) resolved from the Builds catalog's single `HexalithFrontComposerVersion` (currently `4.0.1`; `Contracts.UI` is added to that catalog under the same variable before adoption, never pinned locally), and Fluent UI V5. No additional UI host is created.
 - AD-22 requires owner-approved exact EventStore artifact identity before consumer infrastructure removal; use source SHA, package versions/hashes, or deployed image digest as applicable, never the consumer repository SHA.
 - AD-23 makes EventStore the owner of the optional shared payload-protection engine, stable formats, shared key mechanics, production-backend conformance, release provenance, and G5 proof while provider/operators retain production key custody and credentials and domains retain legal policy.
 
@@ -1097,6 +1097,8 @@ So that rebuilding a long stream cannot replace correct state with a partial-pag
 ### Story 1.20: Owner-Approved Parity Closure And Runtime Pin
 
 **Requirements covered:** FR36, NFR12, NFR16
+
+**Cross-epic dependency (intentional, governed):** Recording an approved runtime identity with a *deployed EventStore image digest* is satisfiable only by a conforming two-platform container release. **Story 3.12 (Epic 3)** is the scoped corrective item that produces that release; Story 1.20 independently revalidates and selects its identity under its A/B/C authorization gates. **Epic 1 cannot reach `done` until Story 3.12 delivers a conforming release *and* named EventStore/release-owner approval is recorded.** This forward dependency is deliberate — it is not resolved by reordering epics or rolling back completed work.
 
 As an EventStore platform owner,
 I want a reviewed parity-closure packet tied to an exact runtime commit,
@@ -2166,6 +2168,8 @@ So that Tenants never presents an opaque ETag as projection version or current/s
 
 **Requirements covered:** FR27, NFR7, NFR16
 
+**Sizing / delivery note:** Story 4.8 is an intentionally multi-slice story governed by `sprint-change-proposal-2026-07-20-oq8-durable-idempotency-admission.md`. It is delivered by decomposing its acceptance criteria into tracked task slices inside its dedicated story file, not as a single dev-loop unit. Its scope and coverage map (FR27, NFR7, NFR16) are not re-partitioned by this proposal.
+
 As a platform operator,
 I want every admitted mutation key to remain durably consumed after its replay
 result expires,
@@ -2993,7 +2997,7 @@ So that operational navigation, evidence states, and legacy deep links remain co
 
 **Given** the UI composes its shell
 **When** Debug/source and Release/package graphs are validated
-**Then** matching `3.2.2` versions of `Hexalith.FrontComposer.Shell` and `Hexalith.FrontComposer.Contracts.UI` plus Fluent UI V5 are used
+**Then** `Hexalith.FrontComposer.Shell` and `Hexalith.FrontComposer.Contracts.UI` both resolve from the Builds catalog's single `HexalithFrontComposerVersion` (currently `4.0.1`), with `Contracts.UI` added to that catalog under the same variable before adoption and never pinned locally, plus Fluent UI V5 are used
 **And** the stable module identity is `event-store-admin` with label **Event Store Admin**.
 
 **Given** canonical and legacy routes are requested
@@ -3135,6 +3139,8 @@ So that the engine cannot make story-local choices that strand persisted history
 **Requirements covered:** FR37, NFR1-NFR4, NFR7, NFR9-NFR12, NFR16-NFR17, NFR19
 **Owner / review boundary:** Amelia (Developer); a named EventStore owner and Security Reviewer approve implementation; Murat reviews verification; the Release owner approves artifact provenance; the Parties maintainer approves consumer parity.
 **Focused validation:** EventStore contract/engine/server/package suites; ADR-selected production-backend integration; owner golden vectors; Parties local/shared dual-provider compatibility; no-leak scans; package-only consumer validation; post-v2-write rollback rehearsal.
+
+**Sizing / delivery note:** Story 8.2 is post-MVP (Epic 8) and gated on the approved Story 8.1 spec/ADR. Its multi-slice decomposition (engine, key lifecycle, production-backend conformance, Parties dual-provider parity, rollback rehearsal) is authored **at Story 8.1 spec time**, not in this proposal. It does not block broad Phase 4 execution and its G5 proof packet remains a single closure gate.
 
 As a platform security owner,
 I want an optional shared payload-protection engine built on EventStore's provider-neutral hooks,

@@ -131,6 +131,7 @@ development_status:
   # Story 3.12 produced observed candidate v3.77.2 with exactly linux/amd64 and linux/arm64.
   # Story 1.20 still requires independent exact-SHA gates, owner review, artifact selection,
   # A/B/C authorization, and an explicit migration decision before any approved field changes.
+  # Gates Epic 1 done: Story 1.20 AC8 (deployed image digest) selects this release's identity.
   3-12-multi-platform-eventstore-container-publishing-correction: review
   epic-3-retrospective: optional
 
