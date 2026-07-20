@@ -3,6 +3,7 @@ name: Commitlint
 on:
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, edited]
   push:
     branches: [main]
 
@@ -16,3 +17,5 @@ permissions:
 jobs:
   commitlint:
     uses: Hexalith/Hexalith.Builds/.github/workflows/commitlint.yml@main
+    with:
+      pull-request-title: ${{ github.event.pull_request.title }}
