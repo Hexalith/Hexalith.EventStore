@@ -2,7 +2,7 @@
 title: 'Fix false failure after successful release publication'
 type: 'bugfix'
 created: '2026-07-20'
-status: 'in-progress'
+status: 'in-review'
 review_loop_iteration: 1
 baseline_commit: 'a21517e3b66458e997d1ea2f4df5072c4abde628'
 context:
@@ -48,10 +48,10 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `.releaserc.json` -- set `successCommentCondition` to JSON `false` on the existing `@semantic-release/github` options while retaining the `nupkgs/*.nupkg` asset mapping -- prevents false post-publication failures without removing GitHub Releases.
-- [ ] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/Fixtures/semantic-release-github-success.mjs` -- load the real plugin options, invoke the installed plugin's success hook for issue-like and ordinary commit histories, fake every GitHub HTTP response, and fail on GraphQL or numeric issue/PR comment/label calls -- proves the pinned implementation skips the failure path without external mutation.
-- [ ] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs` -- assert the exact asset and non-deprecated condition configuration, then execute the Node fixture in the normal xUnit governance lane -- prevents a config-only test from overstating runtime behavior.
-- [ ] `docs/ci.md` -- state that release completion intentionally omits referenced issue/PR comments and labels because branch-name fragments embedded in merge commit messages can resemble issue references -- aligns operator expectations with the reliable status contract.
+- [x] `.releaserc.json` -- set `successCommentCondition` to JSON `false` on the existing `@semantic-release/github` options while retaining the `nupkgs/*.nupkg` asset mapping -- prevents false post-publication failures without removing GitHub Releases.
+- [x] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/Fixtures/semantic-release-github-success.mjs` -- load the real plugin options, invoke the installed plugin's success hook for issue-like and ordinary commit histories, fake every GitHub HTTP response, and fail on GraphQL or numeric issue/PR comment/label calls -- proves the pinned implementation skips the failure path without external mutation.
+- [x] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs` -- assert the exact asset and non-deprecated condition configuration, then execute the Node fixture in the normal xUnit governance lane -- prevents a config-only test from overstating runtime behavior.
+- [x] `docs/ci.md` -- state that release completion intentionally omits referenced issue/PR comments and labels because branch-name fragments embedded in merge commit messages can resemble issue references -- aligns operator expectations with the reliable status contract.
 
 **Acceptance Criteria:**
 - Given release history containing `fix/gh-<run-id>` fragments, when semantic-release completes GitHub publication, then optional issue/PR notification cannot turn the successful release job red.
@@ -76,7 +76,14 @@ The fixture verifies the installed, lockfile-pinned `@semantic-release/github` s
 - `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests` -- expected: all focused governance tests pass.
 - `actionlint .github/workflows/release.yml` -- expected: surrounding release workflow remains valid and unchanged in behavior.
 - `git diff --check` -- expected: no whitespace errors.
-- `git diff --no-index --check -- /dev/null _bmad-output/implementation-artifacts/spec-gh-29763400936-fix-release-post-publish-status.md` -- expected: exit 1 because the spec is new, with no whitespace diagnostics.
+- `git diff --no-index --check -- /dev/null _bmad-output/implementation-artifacts/spec-gh-29763400936-fix-release-post-publish-status.md` -- expected: exit 1 for the content difference from `/dev/null`, with no whitespace diagnostics.
 
 **Manual checks:**
 - Read back the `v3.78.0` tag, GitHub Release, 14 assets, NuGet publication, OCI manifests/digest, and target SHA without dispatching a workflow; expect the existing publication to remain unchanged.
+
+**Results:**
+- `.releaserc.json` parsed successfully. The standalone Node fixture passed both issue-like and ordinary histories through three loopback-only fake GitHub repository reads; no GraphQL, numeric issue/PR notification mutation, or external request occurred.
+- The focused Contracts Tests Release build succeeded with zero warnings and zero errors. The direct `ContainerPublishingGovernanceTests` run passed 10/10, including execution of the Node fixture through the normal xUnit lane.
+- `actionlint .github/workflows/release.yml` and `git diff --check` passed. The fixture and spec no-index whitespace checks returned their expected content-difference statuses with no diagnostics.
+- Frozen matrix audit: issue-like and ordinary histories both passed the behavioral fixture; required build, preflight, package, container, smoke, and GitHub publication gates remain blocking and unchanged; and no release workflow or external mutation was executed.
+- The approved read-only evidence for run `29763400936` remains authoritative: `v3.78.0` targets `a21517e3b66458e997d1ea2f4df5072c4abde628`, has 14 GitHub assets and 14 published NuGet packages, and its two-platform OCI validation and smoke checks passed. This review loop performed no remote operation under its explicit execution boundary.

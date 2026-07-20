@@ -31,10 +31,10 @@ const server = createServer((request, response) => {
   requests.push(record);
   request.resume();
 
-  const isGraphQl = pathname === "/graphql";
+  const isGraphQl = pathname.endsWith("/graphql");
   const isNumericNotificationMutation =
     ["DELETE", "PATCH", "POST", "PUT"].includes(method) &&
-    /\/repos\/Hexalith\/Hexalith\.EventStore\/(?:issues|pulls)\/\d+(?:\/(?:comments|labels))?$/.test(
+    /\/(?:issues|pulls)\/\d+(?:\/(?:comments|labels))?$/.test(
       pathname,
     );
   if (isGraphQl || isNumericNotificationMutation) {
