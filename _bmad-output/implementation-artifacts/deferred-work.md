@@ -1,5 +1,19 @@
 # Deferred Work
 
+## Deferred from: immutable manual release hardening (2026-07-20)
+
+- source_spec: none
+  summary: Generalize the reusable publication preflight's hard-coded EventStore package count of exactly 14 so other callers can supply their own immutable expected inventory size without weakening EventStore's manifest contract.
+  evidence: The shared validator currently enforces `len(package_ids) == 14`; that is correct for EventStore but makes the otherwise reusable release workflow product-specific.
+- source_spec: none
+  summary: Give each container mapping its own frozen repository identity and phase evidence when multiple container mappings share one release invocation.
+  evidence: The current EventStore caller has one approved mapping, while the shared publisher reuses one preflight evidence directory and frozen identity; a second mapping would collide with the first mapping's repository identity.
+- source_spec: none
+  summary: Close the non-atomic gap between the final Zot tag-absence proof and the subsequent registry write.
+  evidence: The final read-only `HEAD` check fails closed on collisions and ambiguous responses, but another writer can still create the tag after absence is observed and before .NET SDK publication begins; Zot absence and write are not atomic.
+
+## Existing deferred work
+
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-1-p2-dual-principal-query-envelope-safe-denial.md`
   summary: Make a safe-denial route registration's `Domain`/`QueryType` casing mismatch against real wire values operator-visible (today only the registered-route list itself is logged, not whether any entry actually matches a query type that ever occurs).
   evidence: Round-2 blind-hunter review of 6.1-P2 -- ordinal case-sensitive route matching means a typo'd-casing registration silently gets no safe-denial protection, same failure mode the round-1 startup-logging fix targeted, but closing it needs a canonical registry of valid domain/queryType pairs to cross-check against, which doesn't exist anywhere in this codebase today -- out of proportion for a patch-level fix.
@@ -398,8 +412,8 @@ _All items LOW / non-blocking. Story 2.7 accepted (all AC1–AC7 met; Release bu
   summary: Reconcile the documented literal lowercase-start rule with commitlint's weaker default `subject-case` behavior.
   evidence: The restored default rejects `fix: Update status` but accepts descriptions beginning with digits or symbols before uppercase text, despite shared guidance requiring the description to start with a lowercase letter.
 - source_spec: `_bmad-output/implementation-artifacts/spec-gh-29682903822-fix-ci-cd.md`
-  summary: Resolve the repository's contradictory `chore` policy and document any automated-release exception.
-  evidence: Shared Git instructions prohibit `chore`, while `CONTRIBUTING.md`, Dependabot configuration, and the verified semantic-release format allow or require it; this contradiction predates the CI repair.
+  summary: RESOLVED 2026-07-20 — the repository excludes `chore` and uses specific non-release types, including `build(deps)` for automated dependency maintenance.
+  evidence: `commitlint.config.mjs`, `CONTRIBUTING.md`, project context, and Dependabot prefixes now agree with the shared Git instruction that prohibits `chore`.
 - source_spec: `_bmad-output/implementation-artifacts/spec-gh-29682903822-fix-ci-cd-2.md`
   summary: Add an unoverridden Release property test that binds `Version` and `PackageVersion` to the repository release version.
   evidence: The external `Hexalith.Builds` gitlink change updates `HexalithEventStoreVersion` from 3.74.0 to 3.75.0, while current tests do not assert the default evaluated version and CI package validation overrides it explicitly, allowing a stale catalog value to pass.

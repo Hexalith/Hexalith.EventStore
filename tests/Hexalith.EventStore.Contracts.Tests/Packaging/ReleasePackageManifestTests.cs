@@ -283,7 +283,11 @@ public sealed class ReleasePackageManifestTests
         releaseWorkflow.Success.ShouldBeTrue();
         releaseJob.ShouldContain($"builds-execution-sha: {releaseWorkflow.Groups["sha"].Value}");
         releaseJob.ShouldContain("needs: verify-source");
+        releaseJob.ShouldContain("actions: read");
         releaseJob.ShouldContain("environment-name: production");
+        releaseJob.ShouldContain("source-branch: main");
+        releaseJob.ShouldContain("source-ci-workflow: ci.yml");
+        releaseJob.ShouldContain("package-manifest: tools/release-packages.json");
         releaseJob.ShouldContain("publish-containers: true");
         releaseJob.ShouldContain("src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore");
         releaseJob.ShouldNotContain("src/Hexalith.EventStore.Admin");

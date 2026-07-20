@@ -76,7 +76,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 
 ### Development Workflow Rules
 
-- **Conventional Commits required** (semantic-release drives versioning): `feat` → minor, `fix` → patch, `feat!`/`BREAKING CHANGE:` → major; `docs`/`refactor`/`test`/`chore`/`perf` → no bump. Don't use `feat` for refactors (false minor bump + NuGet publish)
+- **Conventional Commits required** (semantic-release drives versioning): `feat` → minor, `fix`/`perf` → patch, `feat!`/`BREAKING CHANGE:` → major; `docs`/`refactor`/`test`/`build`/`ci` → no bump. Never use `chore`; choose the specific non-release type. Don't use `feat` for refactors (false minor bump + NuGet publish)
 - **Branches:** `feat/…`, `fix/…`, `docs/…`. No direct commits to `main`
 - **Senior code review is a mandatory pipeline stage** — budget for review-found rework (Epic 2: 5/5 stories patched). Verify CRITICAL findings before accepting (false-positive CRITICALs are expensive — R1-A8 verification-command rule)
 - Release on merge to main: test → pack → publish **14 packages** from `tools/release-packages.json`: `Hexalith.EventStore.Contracts`, `Hexalith.EventStore.Client`, `Hexalith.EventStore.Server`, `Hexalith.EventStore.SignalR`, `Hexalith.EventStore.Testing`, `Hexalith.EventStore.Testing.Integration`, `Hexalith.EventStore.Aspire`, `Hexalith.EventStore.ServiceDefaults`, `Hexalith.EventStore.DomainService`, `Hexalith.EventStore.RestApi.Generators`, `Hexalith.EventStore.Gateway`, `Hexalith.EventStore.Admin.Abstractions`, `Hexalith.EventStore.Admin.Cli`, and `Hexalith.EventStore.Admin.Server`; validation rejects missing or extra `.nupkg` files outside that manifest.

@@ -9,7 +9,7 @@ namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 /// </summary>
 public sealed class ContainerPublishingGovernanceTests
 {
-    private const string ApprovedBuildsReleaseSha = "2c2fd14ac6418d5758662aac8cfbe7df68615e12";
+    private const string ApprovedBuildsReleaseSha = "cf04c419378dfe1bd3c41a9244b5e3283092056e";
 
     /// <summary>
     /// Verifies that release automation never attempts to bypass the pull-request-only main branch.
@@ -104,12 +104,18 @@ public sealed class ContainerPublishingGovernanceTests
         script.ShouldContain("./.hexalith/release/publication_preflight.py");
         script.ShouldContain("HEXALITH_BUILDS_EXECUTION_SHA");
         script.ShouldContain("HEXALITH_RELEASE_ENVIRONMENT");
+        script.ShouldContain("HEXALITH_RELEASE_SOURCE_BRANCH");
+        script.ShouldContain("HEXALITH_RELEASE_SOURCE_CI_WORKFLOW");
+        script.ShouldContain("HEXALITH_RELEASE_PACKAGE_MANIFEST");
         script.ShouldContain("GITHUB_SHA");
         script.ShouldNotContain("git rev-parse HEAD");
         script.ShouldContain("tools/release-packages.json");
         script.ShouldNotContain("HEXALITH_RELEASE_AUTHORITY_URL");
         script.ShouldNotContain("1-20-github-approval-role-allowlist.json");
         script.ShouldContain("--phase \"$phase\"");
+        script.ShouldContain("--source-branch \"$source_branch\"");
+        script.ShouldContain("--source-ci-workflow \"$source_ci_workflow\"");
+        script.ShouldContain("--package-manifest \"$package_manifest\"");
         script.ShouldContain("registry.hexalith.com/eventstore");
     }
 
@@ -132,10 +138,19 @@ public sealed class ContainerPublishingGovernanceTests
         workflow.ShouldNotContain("domain-release.yml@main");
         workflow.ShouldNotContain("vars.HEXALITH_BUILDS_RELEASE_SHA");
         workflow.ShouldContain("environment-name: production");
+        workflow.ShouldContain("actions: read");
+        workflow.ShouldContain("source-branch: main");
+        workflow.ShouldContain("source-ci-workflow: ci.yml");
+        workflow.ShouldContain("package-manifest: tools/release-packages.json");
         workflow.ShouldNotContain("release-authority-url:");
         workflow.ShouldNotContain("release-owner-allowlist:");
         workflow.ShouldNotContain("references/Hexalith.Builds");
         workflow.ShouldNotContain("secrets: inherit");
+
+        string gitlink = RunGit(root, "ls-tree", "HEAD", "references/Hexalith.Builds");
+        Match gitlinkEntry = Regex.Match(gitlink, @"^160000 commit (?<sha>[0-9a-f]{40})\s+references/Hexalith\.Builds$");
+        gitlinkEntry.Success.ShouldBeTrue();
+        gitlinkEntry.Groups["sha"].Value.ShouldNotBe(ApprovedBuildsReleaseSha);
 
         string inputsBlock = ExtractYamlBlock(workflow, "    with:");
         MatchCollection timeoutInputs = Regex.Matches(
@@ -265,6 +280,9 @@ public sealed class ContainerPublishingGovernanceTests
             start.ArgumentList.Add(containerMarker);
             start.Environment["HEXALITH_BUILDS_EXECUTION_SHA"] = new string('a', 40);
             start.Environment["HEXALITH_RELEASE_ENVIRONMENT"] = "production";
+            start.Environment["HEXALITH_RELEASE_SOURCE_BRANCH"] = "main";
+            start.Environment["HEXALITH_RELEASE_SOURCE_CI_WORKFLOW"] = "ci.yml";
+            start.Environment["HEXALITH_RELEASE_PACKAGE_MANIFEST"] = "tools/release-packages.json";
             start.Environment["GITHUB_SHA"] = new string('b', 40);
             start.Environment["HEXALITH_PUBLICATION_PREFLIGHT"] = rejectingValidator;
             start.Environment["HEXALITH_ZOT_REGISTRY"] = "registry.hexalith.com";
@@ -428,5 +446,27 @@ public sealed class ContainerPublishingGovernanceTests
         }
 
         throw new DirectoryNotFoundException("Could not locate the Hexalith.EventStore repository root.");
+    }
+
+    private static string RunGit(string workingDirectory, params string[] arguments)
+    {
+        ProcessStartInfo start = new("git")
+        {
+            WorkingDirectory = workingDirectory,
+            RedirectStandardError = true,
+            RedirectStandardOutput = true,
+            UseShellExecute = false,
+        };
+        foreach (string argument in arguments)
+        {
+            start.ArgumentList.Add(argument);
+        }
+
+        using Process process = Process.Start(start).ShouldNotBeNull();
+        string output = process.StandardOutput.ReadToEnd();
+        string error = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+        process.ExitCode.ShouldBe(0, error);
+        return output.Trim();
     }
 }
