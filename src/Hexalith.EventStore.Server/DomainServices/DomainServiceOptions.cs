@@ -9,6 +9,8 @@ namespace Hexalith.EventStore.Server.DomainServices;
 /// Config store poisoning can redirect domain service registrations to malicious endpoints.</para>
 /// </remarks>
 public record DomainServiceOptions {
+    internal const int MaximumInvocationTimeoutSeconds = 3600;
+
     /// <summary>
     /// The DAPR config store name for domain service registration overrides.
     /// Default: null (convention-based routing only — AppId = domain name, MethodName = "process").
@@ -17,7 +19,7 @@ public record DomainServiceOptions {
     /// </summary>
     public string? ConfigStoreName { get; init; }
 
-    /// <summary>DAPR sidecar call timeout in seconds. Default: 5 (enforcement rule #14).</summary>
+    /// <summary>DAPR sidecar call timeout in seconds. Default: 5; maximum: 3600 (enforcement rule #14).</summary>
     public int InvocationTimeoutSeconds { get; init; } = 5;
 
     /// <summary>Maximum number of events allowed in a single domain service result. Default: 1000 (AC #6).</summary>

@@ -47,6 +47,13 @@ public class DomainServiceException : InvalidOperationException {
         EventSizeBytes = eventSizeBytes;
     }
 
+    internal DomainServiceException(string tenantId, string domain, string reason, Exception innerException)
+        : base($"Domain service invocation failed for tenant '{tenantId}', domain '{domain}': {reason}", innerException) {
+        TenantId = tenantId;
+        Domain = domain;
+        Reason = reason;
+    }
+
     /// <summary>Gets the tenant identifier.</summary>
     public string? TenantId { get; }
 

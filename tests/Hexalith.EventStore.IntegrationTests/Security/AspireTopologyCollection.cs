@@ -6,6 +6,6 @@ namespace Hexalith.EventStore.IntegrationTests.Security;
 /// sample domain service, Keycloak, Redis, DAPR sidecars) ONCE instead of per-class,
 /// reducing E2E test execution time from ~3x startup to ~1x.
 /// </summary>
-[CollectionDefinition("AspireTopology")]
+[CollectionDefinition("AspireTopology", DisableParallelization = true)]
 public class AspireTopologyCollection : ICollectionFixture<AspireTopologyFixture> {
 }

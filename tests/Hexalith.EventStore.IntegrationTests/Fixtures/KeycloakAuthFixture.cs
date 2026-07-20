@@ -163,5 +163,5 @@ public class KeycloakAuthFixture : IAsyncLifetime {
     }
 }
 
-[CollectionDefinition("KeycloakAuthTests")]
+[CollectionDefinition("KeycloakAuthTests", DisableParallelization = true)]
 public class KeycloakAuthTestCollection : ICollectionFixture<KeycloakAuthFixture>;

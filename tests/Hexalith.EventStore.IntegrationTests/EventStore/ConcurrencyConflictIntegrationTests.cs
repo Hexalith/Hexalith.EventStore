@@ -32,7 +32,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
         // Arrange
         using WebApplicationFactory<EventStoreProgram> customFactory = CreateConflictFactory();
         HttpClient client = CreateAuthenticatedClient(customFactory);
-        object request = CreateConflictRequest();
+        SubmitCommandRequest request = CreateConflictRequest();
 
         // Act
         HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/commands", request);
@@ -51,7 +51,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
         // Arrange
         using WebApplicationFactory<EventStoreProgram> customFactory = CreateConflictFactory();
         HttpClient client = CreateAuthenticatedClient(customFactory);
-        object request = CreateConflictRequest();
+        SubmitCommandRequest request = CreateConflictRequest();
 
         // Act
         HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/commands", request);
@@ -106,7 +106,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
         var statusStore = new Testing.Fakes.InMemoryCommandStatusStore();
         using WebApplicationFactory<EventStoreProgram> customFactory = CreateConflictFactory(statusStore);
         HttpClient client = CreateAuthenticatedClient(customFactory);
-        object request = CreateConflictRequest();
+        SubmitCommandRequest request = CreateConflictRequest();
 
         // Act
         HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/commands", request);
@@ -114,13 +114,13 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
 
-        // The status store should have a Rejected entry
-        IReadOnlyDictionary<string, (CommandStatusRecord Record, DateTimeOffset Expiry)> allStatuses = statusStore.GetAllStatuses();
-        CommandStatusRecord? rejectedStatus = allStatuses.Values
-            .Select(entry => entry.Record)
-            .FirstOrDefault(s => s.Status == CommandStatus.Rejected);
+        // The status store should have a Rejected entry under the submitted message identity.
+        CommandStatusRecord? rejectedStatus = await statusStore
+            .ReadStatusAsync(request.Tenant, request.MessageId);
         _ = rejectedStatus.ShouldNotBeNull();
+        rejectedStatus.Status.ShouldBe(CommandStatus.Rejected);
         rejectedStatus.FailureReason.ShouldBe("ConcurrencyConflict");
+        rejectedStatus.MessageId.ShouldBe(request.MessageId);
     }
 
     [Fact]
@@ -226,15 +226,14 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
         values!.First().ShouldBe("1");
     }
 
-    private static object CreateConflictRequest(string aggregateId = "order-123")
-        => new {
-            messageId = Guid.NewGuid().ToString(),
-            tenant = "test-tenant",
-            domain = "test-domain",
+    private static SubmitCommandRequest CreateConflictRequest(string aggregateId = "order-123")
+        => new(
+            Guid.NewGuid().ToString(),
+            "test-tenant",
+            "test-domain",
             aggregateId,
-            commandType = ConflictTriggerCommandType,
-            payload = new { amount = 100 },
-        };
+            ConflictTriggerCommandType,
+            JsonSerializer.SerializeToElement(new { amount = 100 }));
 
     private static HttpClient CreateAuthenticatedClient(WebApplicationFactory<EventStoreProgram> factory) {
         HttpClient client = factory.CreateClient();
@@ -291,7 +290,8 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
                 throw new ConcurrencyConflictException(
                     request.CorrelationId,
                     request.AggregateId,
-                    request.Tenant);
+                    request.Tenant,
+                    messageId: request.MessageId);
             }
 
             return await _inner.Handle(request, cancellationToken).ConfigureAwait(false);

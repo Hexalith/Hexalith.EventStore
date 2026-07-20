@@ -52,19 +52,49 @@ public partial class DaprDomainServiceInvoker(
         var request = new DomainServiceRequest(command, currentState);
 
         DomainServiceWireResult wireResult;
+        using var invocationCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        invocationCancellation.CancelAfter(TimeSpan.FromSeconds(options.Value.InvocationTimeoutSeconds));
         try {
             using HttpRequestMessage httpRequest = daprClient.CreateInvokeMethodRequest(
                 registration.AppId,
                 registration.MethodName,
                 request);
             HttpClient httpClient = httpClientFactory.CreateClient();
-            using HttpResponseMessage httpResponse = await httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
+            httpClient.Timeout = Timeout.InfiniteTimeSpan;
+            using HttpResponseMessage httpResponse = await httpClient
+                .SendAsync(httpRequest, invocationCancellation.Token)
+                .ConfigureAwait(false);
             _ = httpResponse.EnsureSuccessStatusCode();
-            wireResult = await httpResponse.Content.ReadFromJsonAsync<DomainServiceWireResult>(cancellationToken).ConfigureAwait(false)
+            wireResult = await httpResponse.Content
+                .ReadFromJsonAsync<DomainServiceWireResult>(invocationCancellation.Token)
+                .ConfigureAwait(false)
                 ?? throw new DomainServiceException(
                     command.TenantId,
                     command.Domain,
                     $"Null response from domain service '{registration.AppId}/{registration.MethodName}'");
+        }
+        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested) {
+            bool configuredTimeoutElapsed = invocationCancellation.IsCancellationRequested;
+            string reason = configuredTimeoutElapsed
+                ? $"Invocation timed out after {options.Value.InvocationTimeoutSeconds}s for service "
+                    + $"'{registration.AppId}/{registration.MethodName}'."
+                : $"Invocation of service '{registration.AppId}/{registration.MethodName}' was canceled before completion.";
+            logger.LogError(
+                ex,
+                "Domain service invocation was canceled: ConfiguredTimeoutElapsed={ConfiguredTimeoutElapsed}, TimeoutSeconds={TimeoutSeconds}, AppId={AppId}, Method={MethodName}, TenantId={TenantId}, Domain={Domain}, CorrelationId={CorrelationId}",
+                configuredTimeoutElapsed,
+                options.Value.InvocationTimeoutSeconds,
+                registration.AppId,
+                registration.MethodName,
+                command.TenantId,
+                command.Domain,
+                command.CorrelationId);
+
+            throw new DomainServiceException(
+                command.TenantId,
+                command.Domain,
+                reason,
+                ex);
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
             logger.LogError(

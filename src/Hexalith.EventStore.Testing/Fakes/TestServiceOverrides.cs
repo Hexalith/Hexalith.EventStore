@@ -1,7 +1,10 @@
 
+using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Commands;
+using Hexalith.EventStore.Server.Projections;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace Hexalith.EventStore.Testing.Fakes;
@@ -10,17 +13,19 @@ namespace Hexalith.EventStore.Testing.Fakes;
 /// </summary>
 public static class TestServiceOverrides {
     /// <summary>
-    /// Replaces ICommandRouter with a FakeCommandRouter that does not require DAPR actor infrastructure.
+    /// Replaces the command-routing path with fakes that do not require DAPR actor or state-store infrastructure.
     /// </summary>
     public static void ReplaceCommandRouter(IServiceCollection services, FakeCommandRouter? router = null) {
         ArgumentNullException.ThrowIfNull(services);
-        ServiceDescriptor? routerDescriptor = services.FirstOrDefault(
-            d => d.ServiceType == typeof(ICommandRouter));
-        if (routerDescriptor is not null) {
-            _ = services.Remove(routerDescriptor);
-        }
-
+        services.RemoveAll<ICommandRouter>();
         _ = services.AddSingleton<ICommandRouter>(router ?? new FakeCommandRouter());
+
+        // Projection activation is a mandatory write-ahead step before ICommandRouter is invoked.
+        // A fake router alone therefore no longer makes WebApplicationFactory command tests
+        // independent of DAPR. Replace the outbox as part of the same test boundary so callers
+        // cannot accidentally exercise localhost:3500 while believing the route is in-memory.
+        services.RemoveAll<IProjectionActivationOutbox>();
+        _ = services.AddSingleton<IProjectionActivationOutbox>(NoOpProjectionActivationOutbox.Instance);
     }
 
     /// <summary>
@@ -29,13 +34,61 @@ public static class TestServiceOverrides {
     /// </summary>
     public static void RemoveDaprHealthChecks(IServiceCollection services) {
         ArgumentNullException.ThrowIfNull(services);
-        _ = services.Configure<HealthCheckServiceOptions>(options => {
+        _ = services.PostConfigure<HealthCheckServiceOptions>(options => {
             var daprChecks = options.Registrations
-                .Where(r => r.Name.StartsWith("dapr-", StringComparison.OrdinalIgnoreCase))
+                .Where(r => r.Name.StartsWith("dapr-", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(
+                        r.Name,
+                        "projection-delivery-writer-protocol",
+                        StringComparison.Ordinal))
                 .ToList();
             foreach (HealthCheckRegistration check in daprChecks) {
                 _ = options.Registrations.Remove(check);
             }
         });
+    }
+
+    private sealed class NoOpProjectionActivationOutbox : IProjectionActivationOutbox {
+        public static NoOpProjectionActivationOutbox Instance { get; } = new();
+
+        public Task EnsureAsync(AggregateIdentity identity, CancellationToken cancellationToken = default) {
+            ArgumentNullException.ThrowIfNull(identity);
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        }
+
+        public Task<ProjectionActivationWorkItem?> GetAsync(
+            AggregateIdentity identity,
+            CancellationToken cancellationToken = default) {
+            ArgumentNullException.ThrowIfNull(identity);
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult<ProjectionActivationWorkItem?>(null);
+        }
+
+        public Task CompleteAsync(
+            ProjectionActivationWorkItem workItem,
+            CancellationToken cancellationToken = default) {
+            ArgumentNullException.ThrowIfNull(workItem);
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        }
+
+        public Task<IReadOnlyList<ProjectionActivationWorkItem>> GetDueAsync(
+            DateTimeOffset dueUtc,
+            int maximumCount,
+            CancellationToken cancellationToken = default) {
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumCount);
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult<IReadOnlyList<ProjectionActivationWorkItem>>([]);
+        }
+
+        public Task DeferAsync(
+            ProjectionActivationWorkItem workItem,
+            DateTimeOffset nextDueUtc,
+            CancellationToken cancellationToken = default) {
+            ArgumentNullException.ThrowIfNull(workItem);
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        }
     }
 }

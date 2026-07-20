@@ -1,9 +1,9 @@
-
 using global::Aspire.Hosting;
 using global::Aspire.Hosting.ApplicationModel;
 using global::Aspire.Hosting.Testing;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Logging;
 
 using StackExchange.Redis;
@@ -25,6 +25,7 @@ public class AspireContractTestFixture : IAsyncLifetime {
     private string? _previousAspNetCoreEnvironment;
     private string? _previousDotNetEnvironment;
     private string? _previousAggregateActorTypeName;
+    private string? _aggregateActorTypeName;
     private HttpClient? _eventStoreClient;
     private HttpClient? _adminServerClient;
 
@@ -48,6 +49,10 @@ public class AspireContractTestFixture : IAsyncLifetime {
     public DistributedApplication App => _app ?? throw new InvalidOperationException(
         "Test infrastructure not initialized. Ensure InitializeAsync has completed.");
 
+    /// <summary>Gets the unique aggregate actor type used by this topology.</summary>
+    public string AggregateActorTypeName => _aggregateActorTypeName ?? throw new InvalidOperationException(
+        "Test infrastructure not initialized. Ensure InitializeAsync has completed.");
+
     public async ValueTask InitializeAsync() {
         // Disable Keycloak for fast contract tests -- use symmetric key JWT auth instead.
         _previousEnableKeycloak = Environment.GetEnvironmentVariable("EnableKeycloak");
@@ -61,7 +66,8 @@ public class AspireContractTestFixture : IAsyncLifetime {
         Environment.SetEnvironmentVariable("DOTNET_ENVIRONMENT", "Development");
 
         _previousAggregateActorTypeName = Environment.GetEnvironmentVariable("EventStore__Actors__AggregateActorTypeName");
-        Environment.SetEnvironmentVariable("EventStore__Actors__AggregateActorTypeName", $"AggregateActorIntegration{Guid.NewGuid():N}");
+        _aggregateActorTypeName = $"AggregateActorIntegration{Guid.NewGuid():N}";
+        Environment.SetEnvironmentVariable("EventStore__Actors__AggregateActorTypeName", _aggregateActorTypeName);
 
         // 3-minute timeout for Aspire topology startup (no Keycloak container to pull/start).
         using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
@@ -85,6 +91,7 @@ public class AspireContractTestFixture : IAsyncLifetime {
             options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(60);
             options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(180);
             options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(120);
+            options.Retry.DisableForUnsafeHttpMethods();
         }));
 
         _app = await _builder.BuildAsync().ConfigureAwait(false);
@@ -169,10 +176,8 @@ public class AspireContractTestFixture : IAsyncLifetime {
         Environment.SetEnvironmentVariable("EventStore__Actors__AggregateActorTypeName", _previousAggregateActorTypeName);
     }
 
-    private static async Task DeleteHandlerQueryTypesStateAsync(CancellationToken cancellationToken)
-    {
-        using IConnectionMultiplexer redis = await ConnectionMultiplexer.ConnectAsync(new ConfigurationOptions
-        {
+    private static async Task DeleteHandlerQueryTypesStateAsync(CancellationToken cancellationToken) {
+        using IConnectionMultiplexer redis = await ConnectionMultiplexer.ConnectAsync(new ConfigurationOptions {
             EndPoints = { RedisEndpoint },
             ConnectTimeout = 5_000,
             SyncTimeout = 5_000,
