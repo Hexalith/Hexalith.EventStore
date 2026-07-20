@@ -146,7 +146,7 @@ development_status:
   # Approved by sprint-change-proposal-2026-07-20-oq8-durable-idempotency-admission.md.
   # EventStore owns the durable tenant/key admission prerequisite consumed by Folders Story 12.6;
   # create and validate the dedicated story artifact before moving this row to ready-for-dev.
-  4-8-durable-tenant-scoped-idempotency-admission-and-expired-key-precedence: backlog
+  4-8-durable-tenant-scoped-idempotency-admission-and-expired-key-precedence: ready-for-dev
   epic-4-retrospective: optional
 
   epic-5: backlog
