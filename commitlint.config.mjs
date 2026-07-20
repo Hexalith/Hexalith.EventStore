@@ -6,5 +6,7 @@ export default {
       'always',
       ['build', 'ci', 'docs', 'feat', 'fix', 'perf', 'refactor', 'revert', 'style', 'test'],
     ],
+    'header-max-length': [2, 'always', 200],
+    'body-max-line-length': [2, 'always', 200],
   },
 };

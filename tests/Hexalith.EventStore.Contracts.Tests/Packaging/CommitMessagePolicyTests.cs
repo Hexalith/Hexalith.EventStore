@@ -67,7 +67,7 @@ public sealed class CommitMessagePolicyTests
             "@commitlint/config-conventional",
             CommitHeaderFormat,
             "Start the description with a lowercase letter",
-            "100 characters or fewer",
+            "200 characters or fewer",
             "near 50 characters",
             "Choose the type by release impact",
         ];
@@ -300,7 +300,7 @@ public sealed class CommitMessagePolicyTests
         contributing.ShouldContain("Husky `prepare` script");
         contributing.ShouldContain(CommitHeaderFormat);
         contributing.ShouldContain("lowercase letter");
-        contributing.ShouldContain("100 characters or fewer");
+        contributing.ShouldContain("200 characters or fewer");
         contributing.ShouldContain("near 50 characters");
         contributing.ShouldContain("`revert`");
         contributing.ShouldContain("Do not use `chore`");

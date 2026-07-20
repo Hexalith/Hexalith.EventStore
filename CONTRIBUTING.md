@@ -43,12 +43,12 @@ uses the type to determine release impact:
 ```
 
 Start the description with a lowercase letter and omit a trailing period. Use
-imperative mood as a repository authoring convention. Keep the entire header at
-100 characters or fewer and prefer a concise header near 50 characters. Use
-`feat` for a minor release, `fix` or `perf` for a patch release, and `docs`,
-`test`, `refactor`, `build`, `ci`, `revert`, or `style` when product
-behavior does not change. Use `!` or a `BREAKING CHANGE:` footer for a major
-release.
+imperative mood as a repository authoring convention. Keep the entire header
+and each body line at 200 characters or fewer, and prefer a concise header
+near 50 characters. Use `feat` for a minor release, `fix` or `perf` for a
+patch release, and `docs`, `test`, `refactor`, `build`, `ci`, `revert`, or
+`style` when product behavior does not change. Use `!` or a
+`BREAKING CHANGE:` footer for a major release.
 
 Do not use `chore`; use the specific non-release type that describes the work
 (for example `build(deps)` for dependency maintenance).
