@@ -86,6 +86,11 @@ public static class ErrorReferenceEndpoints {
             """{"type":"https://hexalith.io/problems/idempotency-key-expired","title":"Idempotency Key Expired","status":409,"code":"idempotency_key_expired","category":"idempotency_key_expired","retryable":false,"clientAction":"refresh_state_then_submit_with_new_key","correlationId":"01JAXYZ1234567890ABCDEFGH"}""",
             ["Refresh current state.", "Submit the intended mutation with a new idempotency key."]),
 
+        new("idempotency-admission-failure", "Idempotency Admission Failed", 503,
+            "Trusted idempotency admission, execution fencing, or outcome reconciliation failed closed. This type covers several distinct codes; most return 503, but the rare outcome-unknown case returns 409 and means execution status could not be confirmed, not that the command definitely did not run.",
+            """{"type":"https://hexalith.io/problems/idempotency-admission-failure","title":"Idempotency Admission Failed","status":503,"detail":"Idempotency admission is temporarily unavailable. Retry later.","code":"idempotency_admission_unavailable","category":"service_unavailable","retryable":true,"clientAction":"retry_later","correlationId":"01JAXYZ1234567890ABCDEFGH"}""",
+            ["Read the response's 'code', 'category', 'retryable', and 'clientAction' fields to identify the exact failure — this example shows one of several codes mapped to this type.", "If 'retryable' is true, retry after Retry-After (503) or poll command status first for the 409 outcome-unknown case; if false, follow 'clientAction' (e.g. contact support) instead of retrying blindly."]),
+
         new("command-correlation-ambiguous", "Ambiguous Command Correlation", 409,
             "The tenant-scoped correlation identifier maps to multiple live commands, so compatibility lookup cannot select one safely.",
             """{"type":"https://hexalith.io/problems/command-correlation-ambiguous","title":"Ambiguous Command Correlation","status":409,"detail":"The correlation identifier maps to multiple commands. Query again using the command MessageId."}""",
