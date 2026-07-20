@@ -438,3 +438,12 @@ _All items LOW / non-blocking. Story 2.7 accepted (all AC1–AC7 met; Release bu
 - source_spec: `_bmad-output/implementation-artifacts/spec-gh-29720431798-fix-ci-cd.md`
   summary: Correct the nonexistent baseline SHA recorded by the Story 4.8 implementation artifact.
   evidence: `_bmad-output/implementation-artifacts/4-8-durable-tenant-scoped-idempotency-admission-and-expired-key-precedence.md:2` records `afcc167ef277...`, while the valid baseline is `afcc167e0c539b09ecad978a58da2f756123f34e`; this originated in commit `73140382` and is unrelated to the CI gitlink repair.
+
+## Deferred from: code review of spec-gh-29740868410-fix-ci-cd.md (2026-07-20)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-29740868410-fix-ci-cd.md`
+  summary: No unit test asserts that AggregateActor's several `ResultPayloadWithheld` formulas (`CreatePublishFailedResult` and the terminal-completion/concurrency-conflict paths) produce the correct value for each terminal branch.
+  evidence: PR #319 (`6945714b`) made `CommandProcessingResult.ResultPayloadWithheld` the sole authority for whether `SubmitCommandHandler` returns a command's result payload, but only the consumer side (`SubmitCommandHandlerResultPayloadTests`) has coverage; the producer side in `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs` (around lines 2018, 2264, 2297, 2358) has no test proving its withheld formula is correct per branch, so a regression there would go undetected by any current suite.
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-29740868410-fix-ci-cd.md`
+  summary: `SubmitCommandHandler.Log.ResultPayloadDropped`'s message text ("...because final command status was not Completed...") is stale under the flag-driven withholding logic and can be logged even when the reported `FinalStatus` is `Completed`.
+  evidence: PR #319 (`6945714b`) changed the drop decision from `finalStatus?.Status == CommandStatus.Completed` to `!processingResult.ResultPayloadWithheld` (`src/Hexalith.EventStore.Server/Pipeline/SubmitCommandHandler.cs:538`) but left the EventId=1107 log message template (line 777) referencing the old status-based reasoning, so the warning can misstate why the payload was withheld.
