@@ -477,6 +477,10 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
         string? tenantId = null;
         string? reason = null;
         string? reasonCode = null;
+        string? code = null;
+        string? category = null;
+        bool? retryable = null;
+        string? clientAction = null;
         string? retryAfter = response.Headers.RetryAfter?.ToString();
         IReadOnlyDictionary<string, string>? errors = null;
         IReadOnlyDictionary<string, JsonElement>? extensions = null;
@@ -501,6 +505,10 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
                 tenantId = GetString(root, GatewayProblemDetailsExtensions.TenantId);
                 reason = GetString(root, GatewayProblemDetailsExtensions.Reason);
                 reasonCode = GetString(root, GatewayProblemDetailsExtensions.ReasonCode);
+                code = GetString(root, GatewayProblemDetailsExtensions.Code);
+                category = GetString(root, GatewayProblemDetailsExtensions.Category);
+                retryable = GetBoolean(root, GatewayProblemDetailsExtensions.Retryable);
+                clientAction = GetString(root, GatewayProblemDetailsExtensions.ClientAction);
 
                 // P3: only override the HTTP header value when the JSON field is non-empty.
                 string? jsonRetryAfter = GetString(root, GatewayProblemDetailsExtensions.RetryAfter);
@@ -527,7 +535,11 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
             reason,
             retryAfter,
             extensions,
-            reasonCode);
+            reasonCode,
+            code: code,
+            category: category,
+            retryable: retryable,
+            clientAction: clientAction);
     }
 
     private static bool IsJsonResponse(HttpResponseMessage response) {
@@ -541,6 +553,12 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
         => root.TryGetProperty(propertyName, out JsonElement property) && property.ValueKind == JsonValueKind.String
             ? property.GetString()
             : null;
+
+    private static bool? GetBoolean(JsonElement root, string propertyName)
+        => root.TryGetProperty(propertyName, out JsonElement property)
+            && property.ValueKind is JsonValueKind.True or JsonValueKind.False
+                ? property.GetBoolean()
+                : null;
 
     private static IReadOnlyDictionary<string, string> GetErrors(JsonElement root) {
         if (!root.TryGetProperty(GatewayProblemDetailsExtensions.Errors, out JsonElement errorsElement)

@@ -58,6 +58,89 @@ public partial class CommandRouter(
         }
     }
 
+    /// <inheritdoc/>
+    public async Task<CommandProcessingResult> RouteFencedCommandAsync(
+        SubmitCommand command,
+        IdempotencyExecutionContext executionContext,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        ArgumentNullException.ThrowIfNull(executionContext);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (executionContext.FencingToken <= 0
+            || !string.Equals(executionContext.MessageId, command.MessageId, StringComparison.Ordinal)
+            || !string.Equals(executionContext.CorrelationId, command.CorrelationId, StringComparison.Ordinal)
+            || !string.Equals(executionContext.Tenant, command.Tenant, StringComparison.Ordinal)
+            || !string.Equals(executionContext.Domain, command.Domain, StringComparison.Ordinal)
+            || !string.Equals(executionContext.AggregateId, command.AggregateId, StringComparison.Ordinal)
+            || !string.Equals(executionContext.CommandType, command.CommandType, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("The idempotency execution fence is missing, stale, or invalid.");
+        }
+
+        var identity = new AggregateIdentity(command.Tenant, command.Domain, command.AggregateId);
+        string actorId = identity.ActorId;
+        Log.CommandRouting(
+            logger,
+            command.CorrelationId,
+            command.MessageId,
+            command.Tenant,
+            command.Domain,
+            command.AggregateId,
+            command.CommandType,
+            actorId);
+        var request = new FencedCommandEnvelope(command.ToCommandEnvelope(), executionContext);
+        try
+        {
+            IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
+                new ActorId(actorId),
+                actorOptions.Value.AggregateActorTypeName);
+            return await proxy.ProcessFencedCommandAsync(request).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Log.ActorInvocationFailed(
+                logger,
+                ex,
+                command.CorrelationId,
+                command.MessageId,
+                command.Tenant,
+                command.Domain,
+                command.AggregateId,
+                command.CommandType,
+                actorId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<IdempotencyCheckResult> ReconcileFencedCommandAsync(
+        SubmitCommand command,
+        IdempotencyExecutionContext executionContext,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        ArgumentNullException.ThrowIfNull(executionContext);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (executionContext.FencingToken <= 0
+            || !string.Equals(executionContext.MessageId, command.MessageId, StringComparison.Ordinal)
+            || !string.Equals(executionContext.CorrelationId, command.CorrelationId, StringComparison.Ordinal)
+            || !string.Equals(executionContext.Tenant, command.Tenant, StringComparison.Ordinal)
+            || !string.Equals(executionContext.Domain, command.Domain, StringComparison.Ordinal)
+            || !string.Equals(executionContext.AggregateId, command.AggregateId, StringComparison.Ordinal)
+            || !string.Equals(executionContext.CommandType, command.CommandType, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("The idempotency execution fence is missing, stale, or invalid.");
+        }
+
+        var identity = new AggregateIdentity(command.Tenant, command.Domain, command.AggregateId);
+        IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
+            new ActorId(identity.ActorId),
+            actorOptions.Value.AggregateActorTypeName);
+        return await proxy.ReconcileFencedCommandAsync(
+            new FencedCommandEnvelope(command.ToCommandEnvelope(), executionContext)).ConfigureAwait(false);
+    }
+
     private static partial class Log {
         [LoggerMessage(
             EventId = 1100,

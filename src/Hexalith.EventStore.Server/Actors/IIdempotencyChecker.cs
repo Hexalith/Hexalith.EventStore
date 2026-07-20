@@ -12,6 +12,9 @@ public interface IIdempotencyChecker
     /// <returns>An explicit lookup result that distinguishes misses, duplicates, recovery, and conflicts.</returns>
     Task<IdempotencyCheckResult> CheckAsync(CommandProcessingIdentity identity);
 
+    /// <summary>Inspects only the exact message-keyed record without staging migration or other mutation.</summary>
+    Task<IdempotencyCheckResult> InspectAsync(CommandProcessingIdentity identity);
+
     /// <summary>
     /// Stages a command processing result under its message-id key.
     /// </summary>

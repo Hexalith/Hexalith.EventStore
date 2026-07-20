@@ -37,4 +37,16 @@ public enum IdempotencyAdmissionDecision
     /// <summary>The persisted record cannot be verified safely.</summary>
     [EnumMember]
     Corrupt = 8,
+
+    /// <summary>The partition digest matched but its independent verification tag did not.</summary>
+    [EnumMember]
+    Collision = 9,
+
+    /// <summary>The prior authority durably redirects to a promoted target.</summary>
+    [EnumMember]
+    Redirect = 10,
+
+    /// <summary>Legacy state is uninventoried, ambiguous, corrupt, or otherwise unsafe to migrate.</summary>
+    [EnumMember]
+    UnsafeLegacy = 11,
 }

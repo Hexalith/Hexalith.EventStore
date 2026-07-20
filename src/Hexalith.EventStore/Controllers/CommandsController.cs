@@ -119,7 +119,7 @@ public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer e
             UserId: userId,
             Extensions: extensions,
             IsGlobalAdmin: IsGlobalAdministrator(User),
-            Idempotency: request.Idempotency);
+            IdempotencyKey: request.IdempotencyKey);
 
         SubmitCommandResult result = await mediator.Send(command, cancellationToken).ConfigureAwait(false);
 

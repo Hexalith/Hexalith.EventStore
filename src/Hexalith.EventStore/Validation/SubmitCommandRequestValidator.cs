@@ -18,7 +18,7 @@ public partial class SubmitCommandRequestValidator : AbstractValidator<SubmitCom
     private const int MaxExtensionKeyLength = 100;
     private const int MaxExtensionValueLength = 1000;
     private const int MaxTotalExtensionBytes = 65_536; // 64KB
-    private const int MaxCanonicalIntentBytes = 65_536;
+    private const int MaxIdempotencyKeyBytes = 4_096;
 
     // Identifiers (MessageId, CorrelationId): alphanumeric + hyphens (covers GUID and ULID formats)
     private static readonly Regex _identifierRegex = IdentifierPattern();
@@ -90,16 +90,11 @@ public partial class SubmitCommandRequestValidator : AbstractValidator<SubmitCom
             .Must(ext => ext == null || !ext.Any(kvp => _injectionPattern.IsMatch(kvp.Value) || _injectionPattern.IsMatch(kvp.Key)))
             .WithMessage("Extensions cannot contain script or HTML injection patterns");
 
-        _ = RuleFor(x => x.Idempotency)
-            .Must(descriptor => descriptor is null
-                || (!string.IsNullOrWhiteSpace(descriptor.AdapterId)
-                    && descriptor.AdapterId.Length <= MaxTenantDomainLength
-                    && !string.IsNullOrWhiteSpace(descriptor.OperationId)
-                    && descriptor.OperationId.Length <= 256
-                    && descriptor.DescriptorVersion > 0
-                    && descriptor.CanonicalIntent is { Length: > 0 and <= MaxCanonicalIntentBytes }
-                    && Enum.IsDefined(descriptor.RetentionTier)))
-            .WithMessage("Idempotency descriptor metadata, canonical intent, or retention tier is invalid.");
+        _ = RuleFor(x => x.IdempotencyKey)
+            .Must(key => key is null
+                || (!string.IsNullOrWhiteSpace(key)
+                    && Encoding.UTF8.GetByteCount(key) <= MaxIdempotencyKeyBytes))
+            .WithMessage($"IdempotencyKey must be non-blank and no larger than {MaxIdempotencyKeyBytes} UTF-8 bytes when supplied.");
     }
 
     private static readonly char[] _dangerousChars = ['<', '>', '&', '\'', '"'];

@@ -14,32 +14,38 @@ internal sealed class ValidateIdempotencyAdmissionOptions : IValidateOptions<Ide
             return ValidateOptionsResult.Success;
         }
 
-        if (string.IsNullOrWhiteSpace(options.ActiveDigestKeyVersion)
-            || !options.DigestKeys.TryGetValue(options.ActiveDigestKeyVersion, out string? encodedKey)
-            || !TryDecodeStrongKey(encodedKey))
+        if (string.IsNullOrWhiteSpace(options.ActiveDigestKeyVersion))
         {
             return ValidateOptionsResult.Fail(
-                "Enabled idempotency admission requires an active base64 digest key of at least 32 bytes.");
+                "Enabled idempotency admission requires one active digest-key version.");
         }
 
-        foreach (KeyValuePair<string, string> key in options.DigestKeys)
+        var versions = new HashSet<string>(StringComparer.Ordinal) { options.ActiveDigestKeyVersion };
+        if (options.ReaderDigestKeyVersions.Any(version =>
+            string.IsNullOrWhiteSpace(version) || !versions.Add(version)))
         {
-            if (string.IsNullOrWhiteSpace(key.Key) || !TryDecodeStrongKey(key.Value))
-            {
-                return ValidateOptionsResult.Fail(
-                    "Every idempotency digest key version must be named and contain at least 32 bytes.");
-            }
+            return ValidateOptionsResult.Fail(
+                "Retained idempotency reader versions must be named, distinct, and exclude the active version.");
         }
 
-        foreach (KeyValuePair<string, IdempotencyAdmissionOperationOptions> operation in options.Operations)
+        if (options.DigestKeySource == IdempotencyDigestKeySource.DaprSecret)
         {
-            if (string.IsNullOrWhiteSpace(operation.Key)
-                || operation.Value.DescriptorVersion <= 0
-                || !Enum.IsDefined(operation.Value.RetentionTier))
-            {
-                return ValidateOptionsResult.Fail(
-                    "Every idempotency operation must have a name, positive descriptor version, and known retention tier.");
-            }
+            return string.IsNullOrWhiteSpace(options.DigestKeySecretStoreName)
+                || string.IsNullOrWhiteSpace(options.DigestKeySecretName)
+                || string.IsNullOrWhiteSpace(options.DigestKeySecretGeneration)
+                || options.DigestKeys.Count > 0
+                ? ValidateOptionsResult.Fail(
+                    "Secret-backed idempotency admission requires store, map, and generation metadata and forbids inline keys.")
+                : ValidateOptionsResult.Success;
+        }
+
+        if (options.DigestKeys.Count != versions.Count
+            || versions.Any(version =>
+                !options.DigestKeys.TryGetValue(version, out string? encodedKey)
+                || !TryDecodeStrongKey(encodedKey)))
+        {
+            return ValidateOptionsResult.Fail(
+                "Configured idempotency admission requires exactly one strong key for every active and reader version.");
         }
 
         return ValidateOptionsResult.Success;

@@ -22,7 +22,11 @@ public sealed class EventStoreGatewayException : Exception {
         string? retryAfter = null,
         IReadOnlyDictionary<string, JsonElement>? extensions = null,
         string? reasonCode = null,
-        Exception? innerException = null)
+        Exception? innerException = null,
+        string? code = null,
+        string? category = null,
+        bool? retryable = null,
+        string? clientAction = null)
         : base(detail ?? title, innerException) {
         StatusCode = statusCode;
         Title = title;
@@ -34,6 +38,10 @@ public sealed class EventStoreGatewayException : Exception {
         Reason = reason;
         ReasonCode = reasonCode;
         RetryAfter = retryAfter;
+        Code = code;
+        Category = category;
+        Retryable = retryable;
+        ClientAction = clientAction;
         Extensions = extensions is null ? FrozenDictionary<string, JsonElement>.Empty : new Dictionary<string, JsonElement>(extensions, StringComparer.Ordinal);
     }
 
@@ -86,6 +94,18 @@ public sealed class EventStoreGatewayException : Exception {
     /// Gets retry guidance returned by the gateway when provided.
     /// </summary>
     public string? RetryAfter { get; }
+
+    /// <summary>Gets the stable canonical error code.</summary>
+    public string? Code { get; }
+
+    /// <summary>Gets the stable canonical error category.</summary>
+    public string? Category { get; }
+
+    /// <summary>Gets whether repeating the same request may later succeed.</summary>
+    public bool? Retryable { get; }
+
+    /// <summary>Gets stable client remediation guidance.</summary>
+    public string? ClientAction { get; }
 
     /// <summary>
     /// Gets non-standard ProblemDetails extensions returned by the gateway.

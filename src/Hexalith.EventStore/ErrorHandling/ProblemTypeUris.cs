@@ -18,6 +18,7 @@ public static class ProblemTypeUris {
     public const string CommandIdentityConflict = "https://hexalith.io/problems/command-identity-conflict";
     public const string IdempotencyConflict = "https://hexalith.io/problems/idempotency-conflict";
     public const string IdempotencyKeyExpired = "https://hexalith.io/problems/idempotency-key-expired";
+    public const string IdempotencyAdmissionFailure = "https://hexalith.io/problems/idempotency-admission-failure";
     public const string CommandCorrelationAmbiguous = "https://hexalith.io/problems/command-correlation-ambiguous";
     public const string RateLimitExceeded = "https://hexalith.io/problems/rate-limit-exceeded";
     public const string BackpressureExceeded = "https://hexalith.io/problems/backpressure-exceeded";

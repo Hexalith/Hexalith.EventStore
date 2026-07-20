@@ -7,7 +7,7 @@ namespace Hexalith.EventStore.Contracts.Commands;
 /// Command payload envelope containing all command fields and a computed aggregate identity.
 /// Validates required fields eagerly at construction time.
 /// </summary>
-/// <param name="MessageId">The unique command identity and idempotency key (ULID string).</param>
+/// <param name="MessageId">The unique ULID-safe command, status, archive, event, and aggregate-checkpoint identity.</param>
 /// <param name="TenantId">The tenant identifier.</param>
 /// <param name="Domain">The domain name.</param>
 /// <param name="AggregateId">The aggregate identifier.</param>
@@ -42,7 +42,7 @@ public record CommandEnvelope(
         return true;
     }
 
-    /// <summary>Gets the unique command identity and idempotency key (ULID string).</summary>
+    /// <summary>Gets the unique ULID-safe command, status, archive, event, and aggregate-checkpoint identity.</summary>
     [DataMember]
     public string MessageId { get; init; } = !string.IsNullOrWhiteSpace(MessageId)
         ? MessageId

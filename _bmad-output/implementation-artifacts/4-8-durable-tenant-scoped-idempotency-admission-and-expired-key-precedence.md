@@ -36,32 +36,32 @@ so that retries, conflicts, crashes, concurrent hosts, and old-key reuse cannot 
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 — Reconcile the approved authority before freezing implementation contracts** (AC: 1-8)
-  - [ ] Apply the approved July 20 planning handoff to prd.md, architecture.md, epics.md, and the canonical Phase 4 SPEC companions: strengthen FR27, NFR7, and NFR16; add Story 4.8; add AD-25 and the refined AD-5 command flow; update traceability and readiness gates. Preserve Story 4.2 as done and Story 4.4 as publication-recovery owner.
-  - [ ] Record the authority order in the updated artifacts: the approved July 20 change proposal and OQ8 design govern Story 4.8; the pre-change FR27/NFR7/NFR16/architecture text is historical context only.
-  - [ ] Resolve the tombstone schema conflict before finalizing the state schema: the canonical OQ8 design describes a minimal tombstone without a fence, while the EventStore work item says to preserve the fence. Architecture and Security must record one approved shape and its minimization/recovery rationale in AD-25; implementation and evidence must use exactly that shape.
-  - [ ] Freeze a crash-safe digest-key rotation/promotion protocol and a versioned legacy inventory/migration protocol. Per-actor serialization alone is insufficient when old and new digest versions route to different actor IDs.
-  - [ ] Define the approved production-equivalent DAPR component/profile and the evidence packet path. Do not duplicate Folders' canonical oq8-idempotency-evidence.yaml.
+- [x] **Task 1 — Reconcile the approved authority before freezing implementation contracts** (AC: 1-8)
+  - [x] Apply the approved July 20 planning handoff to prd.md, architecture.md, epics.md, and the canonical Phase 4 SPEC companions: strengthen FR27, NFR7, and NFR16; add Story 4.8; add AD-25 and the refined AD-5 command flow; update traceability and readiness gates. Preserve Story 4.2 as done and Story 4.4 as publication-recovery owner.
+  - [x] Record the authority order in the updated artifacts: the approved July 20 change proposal and OQ8 design govern Story 4.8; the pre-change FR27/NFR7/NFR16/architecture text is historical context only.
+  - [x] Resolve the tombstone schema conflict before finalizing the state schema: the canonical OQ8 design describes a minimal tombstone without a fence, while the EventStore work item says to preserve the fence. Architecture and Security must record one approved shape and its minimization/recovery rationale in AD-25; implementation and evidence must use exactly that shape.
+  - [x] Freeze a crash-safe digest-key rotation/promotion protocol and a versioned legacy inventory/migration protocol. Per-actor serialization alone is insufficient when old and new digest versions route to different actor IDs.
+  - [x] Define the approved production-equivalent DAPR component/profile and the evidence packet path. Do not duplicate Folders' canonical oq8-idempotency-evidence.yaml.
 
-- [ ] **Task 2 — Replace caller-authored descriptor authority with a trusted adapter boundary** (AC: 1, 2, 3)
-  - [ ] Remove CanonicalIdempotencyDescriptor authority from public JSON and extension metadata. Public callers may supply an opaque idempotency key through the approved transport, but cannot supply canonical bytes, adapter/operation/version/tier authority, digests, fences, states, or expiry.
-  - [ ] Add a server-owned adapter interface and registry that derive a descriptor after authentication, current tenant/operation authorization, payload validation, and canonical domain validation. Unknown adapter, operation, descriptor version, or policy fails closed before admission-state access.
-  - [ ] Define canonical intent as operation, canonical target, normalized semantic payload/options, policy version, delegated task scope, and behavior-affecting credential scope. Exclude correlation, bearer or provider tokens, clocks, traces, delivery attempts, retry metadata, and other non-semantic transport data.
-  - [ ] Make canonical encoding deterministic: versioned, length-prefixed, type-tagged, ordinal, duplicate-property rejecting, and schema-normalized only. Bind adapter ID, operation ID, descriptor version, and fixed tier explicitly rather than assuming the adapter embedded them in opaque canonical bytes.
-  - [ ] Re-evaluate current authorization before replay, conflict, pending/recovery, unknown, corrupt, and expired responses. Authentication, authorization, or canonical-validation failures before admission neither consume nor disclose a key and leave existing admission state unchanged.
+- [x] **Task 2 — Replace caller-authored descriptor authority with a trusted adapter boundary** (AC: 1, 2, 3)
+  - [x] Remove CanonicalIdempotencyDescriptor authority from public JSON and extension metadata. Public callers may supply an opaque idempotency key through the approved transport, but cannot supply canonical bytes, adapter/operation/version/tier authority, digests, fences, states, or expiry.
+  - [x] Add a server-owned adapter interface and registry that derive a descriptor after authentication, current tenant/operation authorization, payload validation, and canonical domain validation. Unknown adapter, operation, descriptor version, or policy fails closed before admission-state access.
+  - [x] Define canonical intent as operation, canonical target, normalized semantic payload/options, policy version, delegated task scope, and behavior-affecting credential scope. Exclude correlation, bearer or provider tokens, clocks, traces, delivery attempts, retry metadata, and other non-semantic transport data.
+  - [x] Make canonical encoding deterministic: versioned, length-prefixed, type-tagged, ordinal, duplicate-property rejecting, and schema-normalized only. Bind adapter ID, operation ID, descriptor version, and fixed tier explicitly rather than assuming the adapter embedded them in opaque canonical bytes.
+  - [x] Re-evaluate current authorization before replay, conflict, pending/recovery, unknown, corrupt, and expired responses. Authentication, authorization, or canonical-validation failures before admission neither consume nor disclose a key and leave existing admission state unchanged.
 
-- [ ] **Task 3 — Separate opaque idempotency keys from EventStore command identity** (AC: 2, 3, 5)
-  - [ ] Keep MessageId as the ULID-safe command/status/archive/event identity established by Stories 4.1 and 4.2. Introduce a distinct opaque idempotency-key input or a protected internal mapping; do not redefine MessageId as both identities.
-  - [ ] Remove the source candidate's command.MessageId-as-raw-key path and its random GUID downstream MessageId. Persist a stable ULID-safe execution identity before execution when a distinct internal execution identity is required, and reuse it during recovery.
-  - [ ] Ensure status, archive, correlation index, activity tracking, Location, error correlation, command envelopes, aggregate actor IDs, and domain-service calls never persist or log the raw opaque key.
-  - [ ] Add sentinel-based leakage tests that inject the real raw key at the public/trusted boundary and scan actor/state-store keys and values, status, archive, index, logs, traces, metrics, exceptions, errors, downstream requests, and evidence. Tests that inject only precomputed digests do not satisfy this requirement.
+- [x] **Task 3 — Separate opaque idempotency keys from EventStore command identity** (AC: 2, 3, 5)
+  - [x] Keep MessageId as the ULID-safe command/status/archive/event identity established by Stories 4.1 and 4.2. Introduce a distinct opaque idempotency-key input or a protected internal mapping; do not redefine MessageId as both identities.
+  - [x] Remove the source candidate's command.MessageId-as-raw-key path and its random GUID downstream MessageId. Persist a stable ULID-safe execution identity before execution when a distinct internal execution identity is required, and reuse it during recovery.
+  - [x] Ensure status, archive, correlation index, activity tracking, Location, error correlation, command envelopes, aggregate actor IDs, and domain-service calls never persist or log the raw opaque key.
+  - [x] Add sentinel-based leakage tests that inject the real raw key at the public/trusted boundary and scan actor/state-store keys and values, status, archive, index, logs, traces, metrics, exceptions, errors, downstream requests, and evidence. Tests that inject only precomputed digests do not satisfy this requirement.
 
-- [ ] **Task 4 — Implement the versioned key ring, collision safety, and rotation protocol** (AC: 2, 3, 4, 7)
-  - [ ] Replace active-key-only options access with an injectable versioned digest-key provider/key ring supporting one active writer, retained reader versions, explicit retirement, and support-safe unavailable/invalid-key outcomes. Retrieve production key material through the approved secret boundary; never expose it in configuration diagnostics.
-  - [ ] Preserve the candidate's separate domain strings for tenant derivation, key partition, collision verification, and canonical intent. Continue HMAC-SHA-256, constant-time comparison, and zeroing of temporary key/plaintext buffers.
-  - [ ] Look up retained reader-key actor identities before creating fresh active-version authority. Implement the approved crash-safe promotion/redirect protocol so mixed-version hosts cannot admit the same logical tenant/key through two actors.
-  - [ ] Detect a matching partition digest with a mismatched verification tag as a dedicated fail-closed collision/corrupt outcome. Do not fall through to conflict, missing, or execution.
-  - [ ] Refuse digest-key retirement while live records, tombstones, migration inventory, or legal-hold records reference that version; prove refusal and later success.
+- [x] **Task 4 — Implement the versioned key ring, collision safety, and rotation protocol** (AC: 2, 3, 4, 7)
+  - [x] Replace active-key-only options access with an injectable versioned digest-key provider/key ring supporting one active writer, retained reader versions, explicit retirement, and support-safe unavailable/invalid-key outcomes. Retrieve production key material through the approved secret boundary; never expose it in configuration diagnostics.
+  - [x] Preserve the candidate's separate domain strings for tenant derivation, key partition, collision verification, and canonical intent. Continue HMAC-SHA-256, constant-time comparison, and zeroing of temporary key/plaintext buffers.
+  - [x] Look up retained reader-key actor identities before creating fresh active-version authority. Implement the approved crash-safe promotion/redirect protocol so mixed-version hosts cannot admit the same logical tenant/key through two actors.
+  - [x] Detect a matching partition digest with a mismatched verification tag as a dedicated fail-closed collision/corrupt outcome. Do not fall through to conflict, missing, or execution.
+  - [x] Refuse digest-key retirement while live records, tombstones, migration inventory, or legal-hold records reference that version; prove refusal and later success.
 
 - [ ] **Task 5 — Complete the durable state machine, fencing, and execution integration** (AC: 4, 5, 7)
   - [ ] Preserve durable states reserved, pending, recoverable, unknown_provider_outcome, terminal, and expired, but implement the approved behavior matrix:
@@ -260,14 +260,96 @@ To be recorded by the implementing agent.
 
 ### Debug Log References
 
+- 2026-07-20 Task 1 plan: reconcile the approved OQ8 proposal/design into the PRD, architecture, epics, and canonical SPEC package; validate the required markers before and after editing; then run the Release build and broad Server/Contracts/Client deterministic suites.
+- 2026-07-20 Task 1 RED: the six-artifact contract check failed because Story 4.8, AD-25, CAP-4 tenant/key admission, OQ8 readiness, and Story 4.8 traceability were absent.
+- 2026-07-20 Task 1 GREEN: the same six-artifact contract check and `git diff --check` passed. `dotnet build Hexalith.EventStore.slnx --configuration Release -p:UseHexalithProjectReferences=false` passed with 0 warnings/errors; Contracts passed 747/747, Client 680/680, and Server 2788 passed with 25 declared skips and 0 failures.
+- 2026-07-20 Task 2 RED: public-contract serialization retained caller-authored descriptor authority, and the Server tests could not compile against the missing trusted adapter/registry/encoder boundary.
+- 2026-07-20 Task 2 GREEN: public-source authority scan and `git diff --check` passed; the Release solution build passed with 0 warnings/errors; Contracts passed 747/747, Client 680/680, and Server 2796 passed with 25 declared skips and 0 failures.
+- 2026-07-20 Task 3 RED: coordinator and handler tests observed generated/random downstream identities, then observed the real opaque key crossing the router boundary.
+- 2026-07-20 Task 3 GREEN: random execution-identity source scan and `git diff --check` passed; the Release solution build passed with 0 warnings/errors; Contracts passed 747/747, Client 680/680, and Server 2798 passed with 25 declared skips and 0 failures.
+- 2026-07-20 Task 4 RED: key-ring/retirement contracts failed to compile against the active-key-only protector; directory/promotion contracts failed to compile; verification mismatch still classified as generic corrupt.
+- 2026-07-20 Task 4 GREEN: focused key-ring, Dapr-secret, directory, promotion, collision, and actor tests passed 24/24; `git diff --check` and the Release solution build passed with 0 warnings/errors; Contracts passed 747/747, Client 680/680, and Server 2810 passed with 25 declared skips and 0 failures.
+
 ### Completion Notes List
 
 - Ultimate context engine analysis completed - comprehensive developer guide created
 - Story file created from the approved change proposal, current source candidate, architecture, prior-story review intelligence, current official platform documentation, and exhaustive affected-file analysis.
 - Implementation is not complete. Commit 4fd0c34f remains a release-blocked source candidate until every acceptance criterion and production evidence gate is satisfied.
+- Task 1 complete: planning and canonical SPEC authority now includes strengthened FR27/NFR7/NFR16, Story 4.8, refined AD-5, and AD-25. AD-25 adopts the approved fence-free minimal tombstone, a tenant-directory promotion/legacy-migration protocol, production-equivalent `oq8-postgresql-v1`, and `_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml` while preserving Story 4.2 history, Story 4.4 ownership, and Folders evidence ownership.
+- Task 2 complete: the public request exposes only an optional opaque key; trusted server adapters derive canonical intent after the existing authorization/validation behaviors; unknown or invalid adapters fail before actor access; and deterministic canonical encoding binds the trusted adapter, operation, descriptor version, tier, target, semantic JSON/options, policy, delegated scope, and credential scope while excluding transport metadata.
+- Task 3 complete: MessageId remains the original ULID-safe command/status/archive/event identity, no distinct execution mapping is required, the random GUID path is removed, and the handler strips the opaque key before routing. Real-key sentinel tests cover protected actor requests/state material, command envelopes, advisory status/archive/index/activity surfaces, logs, results, and public conflict/expiry exceptions.
+- Task 4 complete: an injectable active-writer/retained-reader key ring derives ordered aliases with the original domain-separated HMAC and buffer-zeroing rules; production resolves a generation-bound map through Dapr secrets; a tenant directory serializes authority and persists prepare/copy, source redirect, directory flip, and target activation; pre-promotion intent classification prevents equivalence rewrite; collision is dedicated; and retirement refuses active or referenced versions.
 
 ### File List
+
+- _bmad-output/implementation-artifacts/4-8-durable-tenant-scoped-idempotency-admission-and-expired-key-precedence.md
+- _bmad-output/implementation-artifacts/sprint-status.yaml
+- _bmad-output/planning-artifacts/architecture.md
+- _bmad-output/planning-artifacts/epics.md
+- _bmad-output/planning-artifacts/prd.md
+- _bmad-output/specs/spec-eventstore-phase-4-readiness-recovery/SPEC.md
+- _bmad-output/specs/spec-eventstore-phase-4-readiness-recovery/readiness-gates.md
+- _bmad-output/specs/spec-eventstore-phase-4-readiness-recovery/requirements-traceability.md
+- src/Hexalith.EventStore.Contracts/Commands/CanonicalIdempotencyDescriptor.cs (deleted)
+- src/Hexalith.EventStore.Contracts/Commands/SubmitCommandRequest.cs
+- src/Hexalith.EventStore.Server/Commands/CanonicalIdempotencyIntentEncoder.cs
+- src/Hexalith.EventStore.Server/Actors/IIdempotencyAdmissionDirectoryActor.cs
+- src/Hexalith.EventStore.Server/Actors/IdempotencyAdmissionActor.cs
+- src/Hexalith.EventStore.Server/Actors/IdempotencyAdmissionDecision.cs
+- src/Hexalith.EventStore.Server/Actors/IdempotencyAdmissionDirectoryActor.cs
+- src/Hexalith.EventStore.Server/Actors/IdempotencyAdmissionDirectoryAdvanceRequest.cs
+- src/Hexalith.EventStore.Server/Actors/IdempotencyAdmissionDirectoryAlias.cs
+- src/Hexalith.EventStore.Server/Actors/IdempotencyAdmissionDirectoryEntry.cs
+- src/Hexalith.EventStore.Server/Actors/IdempotencyAdmissionDirectoryRequest.cs
+- src/Hexalith.EventStore.Server/Actors/IdempotencyAdmissionDirectoryResult.cs
+- src/Hexalith.EventStore.Server/Actors/IdempotencyAdmissionInspection.cs
+- src/Hexalith.EventStore.Server/Actors/IdempotencyAdmissionPromotionActivationRequest.cs
+- src/Hexalith.EventStore.Server/Actors/IdempotencyAdmissionPromotionImportRequest.cs
+- src/Hexalith.EventStore.Server/Actors/IdempotencyAdmissionPromotionPhase.cs
+- src/Hexalith.EventStore.Server/Actors/IdempotencyAdmissionPromotionRecord.cs
+- src/Hexalith.EventStore.Server/Actors/IdempotencyAdmissionRedirectRecord.cs
+- src/Hexalith.EventStore.Server/Actors/IdempotencyAdmissionRedirectRequest.cs
+- src/Hexalith.EventStore.Server/Actors/IdempotencyAdmissionResult.cs
+- src/Hexalith.EventStore.Server/Commands/IIdempotencyIntentAdapter.cs
+- src/Hexalith.EventStore.Server/Commands/IIdempotencyIntentAdapterRegistry.cs
+- src/Hexalith.EventStore.Server/Commands/IIdempotencyDigestKeyProvider.cs
+- src/Hexalith.EventStore.Server/Commands/IdempotencyAdmissionCoordinator.cs
+- src/Hexalith.EventStore.Server/Commands/IdempotencyAdmissionSession.cs
+- src/Hexalith.EventStore.Server/Commands/IdempotencyCanonicalIntent.cs
+- src/Hexalith.EventStore.Server/Commands/ConfigurationIdempotencyDigestKeyProvider.cs
+- src/Hexalith.EventStore.Server/Commands/DaprSecretIdempotencyDigestKeyProvider.cs
+- src/Hexalith.EventStore.Server/Commands/IdempotencyDigestKeyReference.cs
+- src/Hexalith.EventStore.Server/Commands/IdempotencyDigestKeyReferenceKind.cs
+- src/Hexalith.EventStore.Server/Commands/IdempotencyDigestKeyRing.cs
+- src/Hexalith.EventStore.Server/Commands/IdempotencyIntentAdapterRegistry.cs
+- src/Hexalith.EventStore.Server/Commands/IdempotencyIntentAdapterServiceCollectionExtensions.cs
+- src/Hexalith.EventStore.Server/Commands/IdempotencyKeyProtector.cs
+- src/Hexalith.EventStore.Server/Commands/IdempotencyProtectedIdentitySet.cs
+- src/Hexalith.EventStore.Server/Commands/StaticIdempotencyDigestKeyProvider.cs
+- src/Hexalith.EventStore.Server/Commands/TrustedIdempotencyDescriptor.cs
+- src/Hexalith.EventStore.Server/Configuration/IdempotencyAdmissionOperationOptions.cs (deleted)
+- src/Hexalith.EventStore.Server/Configuration/IdempotencyAdmissionOptions.cs
+- src/Hexalith.EventStore.Server/Configuration/IdempotencyDigestKeySource.cs
+- src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs
+- src/Hexalith.EventStore.Server/Configuration/ValidateIdempotencyAdmissionOptions.cs
+- src/Hexalith.EventStore.Server/Pipeline/Commands/SubmitCommand.cs
+- src/Hexalith.EventStore.Server/Pipeline/SubmitCommandHandler.cs
+- src/Hexalith.EventStore/Controllers/CommandsController.cs
+- src/Hexalith.EventStore/Models/SubmitCommandRequest.cs
+- src/Hexalith.EventStore/Validation/SubmitCommandRequestValidator.cs
+- tests/Hexalith.EventStore.Contracts.Tests/Commands/SubmitCommandRequestTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Actors/IdempotencyAdmissionActorTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Actors/IdempotencyAdmissionDirectoryActorTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Commands/IdempotencyDigestKeyRingTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Commands/TrustedIdempotencyIntentTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Commands/SubmitCommandExtensionsTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Pipeline/SubmitCommandHandlerIdempotencyAdmissionTests.cs
+- tests/Hexalith.EventStore.Server.Tests/Pipeline/SubmitCommandRequestValidatorTests.cs
 
 ### Change Log
 
 - 2026-07-20: Created the context-filled Story 4.8 implementation and evidence guide; status set to ready-for-dev.
+- 2026-07-20: Reconciled the approved OQ8 authority across PRD, architecture, epics, and canonical SPEC companions; froze AD-25 tombstone, rotation/migration, production-profile, and evidence ownership decisions.
+- 2026-07-20: Replaced public descriptor authority with an opaque key and trusted, deterministic server adapter/registry boundary that fails closed before admission-state access.
+- 2026-07-20: Preserved the original ULID command identity, removed generated downstream identities, stripped opaque keys before routing, and added real-key leakage coverage across protected and advisory boundaries.
+- 2026-07-20: Added the versioned secret-backed digest key ring, reader-first tenant directory, crash-resumable promotion/redirect flow, dedicated collision decision, and reference-gated key retirement.

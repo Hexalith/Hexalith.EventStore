@@ -24,6 +24,7 @@ sources:
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-18.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-19-openbao-secret-store.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-19.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-20-oq8-durable-idempotency-admission.md
   - _bmad-output/implementation-artifacts/spec-dapr-global-event-ordering.md
   - docs/brownfield/architecture.md
   - docs/brownfield/integration-architecture.md
@@ -44,13 +45,22 @@ companions:
 
 Hexalith.EventStore is a DAPR-backed hexagonal event-sourcing platform. The EventStore gateway is the policy edge; DAPR actors own aggregate write serialization; domain services are pure domain adapters; generated REST hosts, interactive UI hosts, Admin surfaces, CLI, and MCP are external adapters that call platform seams instead of owning domain persistence.
 
+For Story 4.8, authority is ordered as follows: the approved 2026-07-20 OQ8
+sprint change proposal and the Architecture + Security + Test-approved OQ8
+design version 1.0.0 (SHA-256
+`1a55b0302e91233e12db91e6e245f0a22d6bf13fcf6cdf5ee0cbe5759f08dcd8`)
+govern; this architecture projects those decisions into EventStore; pre-change
+FR27/NFR7/NFR16 and architecture text is historical context only.
+
 ```mermaid
 flowchart LR
     ExternalApi[External API hosts] -->|IEventStoreGatewayClient| Gateway[EventStore gateway]
     UI[Domain interactive UI hosts] -->|EventStore Client libraries| Gateway
     AdminUI[EventStore Admin UI<br/>FrontComposer shell] -->|typed admin client| Admin[Admin Server / CLI / MCP]
     Admin -->|delegated writes and safe reads| Gateway
-    Gateway -->|command route| Actor[AggregateActor]
+    Gateway -->|authorized, canonical command| Adapter[Trusted canonical-intent adapter]
+    Adapter -->|opaque key + trusted descriptor| Admission[Idempotency admission actor]
+    Admission -->|current fenced execution context| Actor[AggregateActor]
     Actor -->|DAPR service invocation| DomainSvc[Domain service]
     DomainSvc -->|DomainResult| Actor
     Actor -->|write-once events, metadata, snapshots| State[(DAPR state store)]
@@ -86,11 +96,11 @@ flowchart LR
 - **Prevents:** interactive UI hosts becoming accidental public API/BFF hosts with their own controller semantics.
 - **Rule:** `Hexalith.EventStore.RestApi.Generators` emits controllers only into dedicated external-facing API hosts. Generated controllers delegate to `IEventStoreGatewayClient`. Interactive UI hosts consume EventStore Client libraries directly and host no generated or hand-written per-message MVC command/query controllers.
 
-### AD-5 - AggregateActor Owns Durable Event Mutation [ADOPTED]
+### AD-5 - Admission Precedes AggregateActor-Owned Durable Event Mutation [ADOPTED]
 
 - **Binds:** FR23, FR27, FR29-FR31, NFR7
 - **Prevents:** split-brain persistence where domain code, projections, or external hosts write events or command state independently.
-- **Rule:** `AggregateActor` is the durable mutation coordinator. It invokes pure domain processors/domain services, persists write-once events and metadata, records recovery state, manages snapshots through platform services, and publishes CloudEvents. Domain code returns `DomainResult`; it never writes EventStore state directly.
+- **Rule:** `AggregateActor` remains the durable event-mutation coordinator after AD-25 admission. The admission actor owns tenant/key serialization, reservation, and the current fence; `AggregateActor` accepts only an internal current-fence execution context before invoking pure domain processors/domain services, persisting write-once events and metadata, recording recovery state, managing snapshots, or scheduling projection activation. Domain code returns `DomainResult`; it never writes EventStore state directly. Admission orchestration stays unidirectional and does not replace Story 4.4 publication recovery.
 
 ### AD-6 - Persisted Event Identity Is Stable [ADOPTED]
 
@@ -120,7 +130,7 @@ flowchart LR
 
 - **Binds:** FR26, FR28, FR32, FR34, NFR1-NFR4, NFR15, NFR17
 - **Prevents:** endpoints trusting network location, DAPR ACLs, caller-supplied administrator flags, or committed secrets as the whole security model.
-- **Rule:** Public, internal, domain-service, projection-notification, and admin-computation endpoints require application-layer credentials and tenant authorization before disclosing data. Admin state mutations are attributable and support-safe. Deferred or unavailable admin operations are hidden, disabled, or return `501`.
+- **Rule:** Public, internal, domain-service, projection-notification, and admin-computation endpoints require application-layer credentials and tenant authorization before disclosing data. For AD-25 mutations, current tenant/operation authorization and canonical validation precede admission-state access, while every later disposition re-evaluates current authorization without mutating state on denial. Admin state mutations are attributable and support-safe. Deferred or unavailable admin operations are hidden, disabled, or return `501`.
 
 ### AD-11 - Release Is Manifest-Governed [ADOPTED]
 
@@ -134,7 +144,7 @@ The EventStore container release is one immutable OCI image index. Released cont
 
 - **Binds:** NFR7, NFR10, NFR16, SM-C2
 - **Prevents:** API smoke responses or mock call counts being accepted as integration proof for data-loss, topology, tenant isolation, release, or delivery behavior.
-- **Rule:** Tier 2/3 and readiness-critical tests inspect persisted Redis/state-store/read-model/CloudEvent bodies, topology YAML or sidecar arguments, package outputs, container release registry and smoke evidence, and security denials where applicable. `202`, `200`, and mock calls are smoke signals only.
+- **Rule:** Tier 2/3 and readiness-critical tests inspect persisted Redis/state-store/read-model/CloudEvent bodies, topology YAML or sidecar arguments, package outputs, container release registry and smoke evidence, and security denials where applicable. AD-25 evidence additionally proves multi-host admission serialization, restart/failover, current-fence enforcement, compaction, rotation, migration, leakage absence, and zero downstream work on every non-execute disposition. `202`, `200`, and mock calls are smoke signals only.
 
 ### AD-13 - Cost And Evolution Changes Are Spec-First
 
@@ -327,6 +337,68 @@ Azure Container Apps managed DAPR is not a conforming production profile because
 
 AD-24 governs operational and application secret retrieval. It does not approve, replace, or modify AD-23 or the draft-not-authorized payload-protection specification's proposed Azure Key Vault Premium RSA-HSM KEK wrap/unwrap backend; a DAPR secret store is not production `pdenc-v2` key custody.
 
+### AD-25 - Durable Idempotency Admission Precedes Mutation Execution [ADOPTED]
+
+- **Binds:** FR27, NFR7, NFR16, Story 4.8; refines AD-3, AD-5, AD-10, and AD-12.
+- **Prevents:** aggregate-local key reuse, delete-on-expiry resurrection, caller-selected equivalence or retention, duplicate cross-target effects, split authority during key rotation, and unreadable/corrupt/unsafe legacy state becoming permission to execute.
+- **Rule:** After authentication, current authorization, and canonical validation, a registered server-trusted adapter supplies a versioned canonical-intent descriptor and fixed retention class. Public requests and extensions supply only the approved opaque idempotency key and cannot select or override descriptor bytes, adapter/operation/version/policy authority, tier, digest, actor identity, fence, state, or expiry.
+
+EventStore owns a dedicated admission actor partitioned by managed tenant,
+digest-key version, and domain-separated HMAC-SHA-256 digest of the opaque key.
+A separate verification tag detects collisions. Raw keys and protected intent
+never enter actor IDs, state keys or values, downstream envelopes, status or
+archive records, logs, traces, metrics, errors, or evidence. Admission owns
+reservation, descriptor comparison, monotonically increasing fence issuance,
+pending/recoverable/unknown/terminal transitions, exact replay, inclusive
+expiry, and compaction. Exactly the current non-zero fence may cross an
+aggregate, domain-service, provider, repository, projection, audit, or
+scheduling side-effect boundary or finalize the terminal result.
+
+The design-approved tombstone shape is authoritative and deliberately excludes
+the fence: schema version, expired state, tenant partition, key digest,
+verification tag, digest-key version, retention class, first-consumed time,
+replay-expired time, and monotonic last-observed time only. A fence has no
+recovery value after terminal replay expiry because expired state can never
+execute or reconcile; retaining it would violate the approved metadata
+minimization boundary. Expiry atomically replaces the replay payload and live
+intent digest with that tombstone. Equivalent and different expired requests
+therefore return indistinguishable `idempotency_key_expired` outcomes before
+intent comparison or downstream work.
+
+Digest rotation uses a tenant-scoped admission directory on every compatible
+host. For a presented raw key, the trusted coordinator derives active and all
+retained-reader aliases, and the directory atomically selects exactly one
+canonical admission actor before any fresh active-version record can be
+created. Promotion is a recoverable prepare/copy/source-redirect/directory-flip
+protocol: the old canonical actor remains authoritative through prepare and
+copy; the target is non-executable until it durably acknowledges the imported
+record; the source then persists a redirect; and only then may the directory
+flip its canonical pointer. Each phase is idempotent and persisted, so a crash
+resumes or rolls back to the single prior authority. Mixed software versions
+that do not implement directory routing are deployment-incompatible and fail
+readiness. Retirement is refused while records, tombstones, directory aliases,
+migration entries, or legal holds reference the digest-key version.
+
+Legacy migration uses versioned tenant-scoped inventory entries that bind every
+known aggregate-local record to its source aggregate identity, legacy schema,
+protected aliases, exact logical result, and migration phase. A target admission
+record is prepared non-executable, the legacy source is replaced by a durable
+redirect only after target acknowledgement, and the inventory then flips to the
+target. Unknown, corrupt, cross-target-ambiguous, or uninventoried legacy
+evidence remains fail closed; source evidence is not removed until the target
+and redirect are durably proven.
+
+The approved production-equivalent evidence profile is
+`oq8-postgresql-v1`: DAPR runtime 1.18.x, component name `statestore`,
+`state.postgresql` with `actorStateStore: true`, the production resiliency
+policy in `deploy/dapr/resiliency.yaml`, and at least two EventStore hosts with
+independent sidecars sharing one PostgreSQL backend. It must demonstrate the
+transactional/strong-consistency behavior required by actors. The EventStore
+platform packet is
+`_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml`;
+Folders retains ownership of canonical `oq8-idempotency-evidence.yaml` and OQ8
+closure.
+
 ## Consistency Conventions
 
 | Concern | Convention |
@@ -334,6 +406,7 @@ AD-24 governs operational and application secret retrieval. It does not approve,
 | Identity | EventStore message, correlation, causation, and aggregate identifiers use ULID-safe handling where envelope semantics require sortable ids. `Guid.TryParse` is forbidden for those fields. Domain-specific ids may be caller-supplied only where that domain contract says so. |
 | Domain naming | Domains, command types, query types, projection types, state stores, topics, and app IDs use existing EventStore naming conventions and kebab-case where the convention engine owns names. |
 | State keys | Tenant, domain, and aggregate identity remain explicit in actor IDs, state keys, topic names, query scopes, SignalR groups, and admin filters. |
+| Idempotency admission | AD-25 tenant/key admission and its directory precede `AggregateActor`; public input contains only the opaque key, trusted adapters own canonical intent and fixed tiers, current fences guard side effects, and expired tombstones never authorize execution. |
 | Mutation | Commands produce events through pure aggregate/domain handlers. No code edits, deletes, or rewrites persisted events to repair business state; use compensating commands and verify projection evidence. |
 | Errors | External failures use safe problem details or structured rejection events. Business failures are domain results/rejections, not infrastructure exceptions. |
 | Command status | The generated `202` command-status `Location` is gateway-authoritative and fail-closed (AD-17): absolute to the configured gateway status base, or omitted. External API hosts map no command-status route. |
@@ -383,7 +456,7 @@ The table records the current planning baseline. Story 3.11 updates version rows
 src/
   Hexalith.EventStore.Contracts/        # stable command, event, query, REST, result, security contracts
   Hexalith.EventStore.Client/           # aggregate/projection bases, gateway client, read-model/cursor seams
-  Hexalith.EventStore.Server/           # DAPR actors, command routing, persistence, publishing, projections
+  Hexalith.EventStore.Server/           # DAPR admission/directory and aggregate actors, trusted adapters, fencing, migration, persistence, publishing, projections
   Hexalith.EventStore/                  # gateway host and public command/query/stream APIs
   Hexalith.EventStore.Gateway/          # reusable gateway host components
   Hexalith.EventStore.DomainService/    # domain-service host SDK and canonical endpoints
@@ -418,6 +491,7 @@ flowchart TB
         OpenBao[(OpenBao)]
         PayloadProtection[optional payload-protection engine]
         KeyBackend[(provider-operated KMS/HSM/secret-store backend)]
+        Admission[tenant/key admission + directory]
         StateStore[(statestore)]
         PubSub{{pubsub}}
     end
@@ -434,6 +508,9 @@ flowchart TB
     PubSub -.->|component secretKeyRef| DaprSecrets
     EventStore --> PayloadProtection
     PayloadProtection --> KeyBackend
+    EventStore --> Admission
+    Admission --> StateStore
+    Admission -->|current fence| EventStore
     EventStore --> StateStore
     EventStore --> PubSub
     AdminServer -->|support-safe operational reads only| StateStore
@@ -451,7 +528,7 @@ flowchart TB
 | FR1-FR10, FR36 Domain author self-service and consumer parity closure | `Contracts`, `Client`, `DomainService`, `Server`, `Testing`, domain modules | AD-1, AD-2, AD-7, AD-8, AD-9, AD-11, AD-12, AD-14, AD-15, AD-19, AD-20, AD-22 |
 | FR11-FR16 External integration surfaces | `RestApi.Generators`, external API hosts, `IEventStoreGatewayClient`, SignalR, consolidated EventStore UI boundary | AD-3, AD-4, AD-8, AD-10, AD-15, AD-18, AD-21 |
 | FR17-FR22, FR25 Release and repository reliability | `.github/workflows`, `tools/release-packages.json`, central props, `references/` layout | AD-9, AD-11, AD-12 |
-| FR23-FR24, FR27, FR29-FR31 Event correctness and recovery | `Server` actors, persisters, publishers, replay, status/archive, recovery | AD-5, AD-6, AD-12, AD-13 |
+| FR23-FR24, FR27, FR29-FR31 Event correctness and recovery | `Server` admission/directory and aggregate actors, trusted adapters, digest-key provider, fencing, migration, persisters, publishers, replay, status/archive, recovery, platform evidence | AD-3, AD-5, AD-6, AD-10, AD-12, AD-13, AD-25 |
 | FR26, FR28, FR32 Security and tenant isolation | gateway auth, Admin.Server auth, DAPR ACLs, AppHost, deployment templates | AD-3, AD-9, AD-10, AD-12, AD-16, AD-18 |
 | FR33 Bounded cost and event evolution | spec artifacts, `Client`/`Server` public seams, snapshots, projections, upcasters | AD-6, AD-7, AD-13, AD-20 |
 | FR34-FR35 Operator trust and backlog | Admin surfaces, consolidated EventStore UI, delivery docs, deployment hardening, integration lanes, backlog artifacts | AD-8, AD-10, AD-12, AD-13, AD-14, AD-15, AD-16, AD-21, AD-24 |

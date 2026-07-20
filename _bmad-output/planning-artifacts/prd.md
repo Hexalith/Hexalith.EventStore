@@ -2,7 +2,7 @@
 title: eventstore Phase 4 Implementation Readiness Recovery PRD
 status: final
 created: 2026-07-05
-updated: 2026-07-19
+updated: 2026-07-20
 project: eventstore
 source_artifacts:
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-02-global-event-ordering.md
@@ -44,6 +44,7 @@ source_artifacts:
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-18.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-19-openbao-secret-store.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-19.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-20-oq8-durable-idempotency-admission.md
   - _bmad-output/planning-artifacts/implementation-readiness-report-2026-07-05.md
   - _bmad-output/planning-artifacts/epics.md
 ---
@@ -68,6 +69,15 @@ The baseline correction does not reduce MVP scope. It separates planning respons
 - `epics.md` owns story slicing, sequencing, acceptance criteria, and implementation handoff.
 
 Implementation should not resume as a full Phase 4 package until this PRD, the architecture artifact, the UX artifact, the story splits, and the high-risk NFR traceability are complete and implementation readiness is re-run.
+
+### 1.1 OQ8 Authority Order
+
+For Story 4.8, the approved 2026-07-20 OQ8 sprint change proposal and the
+Architecture + Security + Test-approved OQ8 design version 1.0.0 (SHA-256
+`1a55b0302e91233e12db91e6e245f0a22d6bf13fcf6cdf5ee0cbe5759f08dcd8`)
+govern. This reconciled PRD, architecture, epics, and canonical SPEC package
+project that authority into EventStore. Any pre-change FR27, NFR7, NFR16, or
+architecture wording is historical context only and cannot weaken Story 4.8.
 
 ## 2. Vision
 
@@ -190,7 +200,7 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 | --- | --- |
 | FR23 | Persisted events must receive non-zero, actor-allocated global positions; CloudEvent IDs must use the event `MessageId`; duplicate command replies must preserve the original command result fields. |
 | FR24 | The global-position allocation strategy must be renegotiated toward sharding per tenant or domain, and the frozen global-ordering spec must be updated before implementation. |
-| FR27 | Pipeline correctness remediation must make resume and idempotency matching use `MessageId`, `CausationId`, and `CommandType`; key command status and archive records by the gateway-owned status key without depending on `CorrelationId` equaling `MessageId`; preserve retryability for transient failures; and validate tenant access before idempotency reads. |
+| FR27 | Pipeline and idempotency correctness remediation must use exact command identity for resume; provide an EventStore-owned, tenant-scoped durable admission contract accepting only a trusted, versioned canonical-intent descriptor and fixed retention tier; reject live conflicting intent and return non-retryable `idempotency_key_expired` for any expired-key reuse before aggregate, domain, or external execution; separate replay-result retention from metadata-only consumed-key evidence; and never convert consumed, unavailable, corrupt, or unsafe legacy state into a fresh miss. Command status/archive identity, transient retryability, and tenant-before-state validation remain required. |
 | FR29 | Replay and dispatch remediation must make event apply-method resolution boundary-safe and ambiguity-detecting, and must use one shared `JsonSerializerOptions` path for command, rehydrate, project, and pub/sub payload serialization. |
 | FR30 | Crash recovery remediation must detect events committed but not published and complete their publication, drain them, or recover them without requiring resubmission with the same correlation ID. |
 | FR31 | Append durability remediation must start with a live-sidecar two-writer race test and DAPR conflict-exception spike before choosing an optimistic-concurrency fencing design. |
@@ -260,7 +270,7 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 | NFR4 | Committed configuration must not contain forgeable administrator signing keys, credentials, bearer tokens, decoded JWT payloads, or other operational secrets. |
 | NFR5 | SignalR detail metadata must remain bounded and metadata-only; framework logs must not expose metadata values above Debug level. |
 | NFR6 | Event delivery semantics are at-least-once and unordered; subscribers must deduplicate by `MessageId` and order events only where domain semantics make `SequenceNumber` meaningful. Safety against duplicate and out-of-order delivery must be enforced and proven through the production projection dispatcher, handler, persistence, marker, and checkpoint path rather than only aggregate replay or transport-level tests. |
-| NFR7 | Event persistence and command processing must avoid silent data loss: staged-state flushes, stale pipeline records, append races, and committed-but-unpublished events must be explicitly guarded or recovered. |
+| NFR7 | Event persistence and command processing must avoid silent data loss: staged-state flushes, stale pipeline records, append races, and committed-but-unpublished events must be explicitly guarded or recovered. Command processing must also prevent duplicate side effects across reservation, fencing, execution, recovery, expiry, compaction, restart, and concurrent hosts; a consumed key cannot become executable fresh work because its replay result expired or storage became unreadable. |
 | NFR8 | Snapshot and projection behavior must have a bounded cost model as streams grow, must avoid unnecessary full-stream replay when projections are already current, and must expose projection freshness/version evidence through platform query metadata when callers depend on lifecycle decisions; freshness/version evidence is authoritative only for query responses whose route provenance is projection-backed, and handler-computed or unknown-provenance responses must not be presented as authoritative lifecycle evidence. Paged rebuild output must equal canonical aggregate replay and must never overwrite a complete live model with page-only state. |
 | NFR9 | Release behavior must be reproducible and independent of local submodule checkout state; Release builds must use package references for external Hexalith libraries unless intentionally overridden. |
 | NFR10 | CI/CD must separate deterministic release-gate tests from live-sidecar/integration tests while preserving live-sidecar coverage in a dedicated lane. |
@@ -269,7 +279,7 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 | NFR13 | Generated code and source-generator packages must build cleanly under warnings-as-errors and must follow EventStore code style, nullable, ULID, and `ConfigureAwait(false)` rules. |
 | NFR14 | Interactive UI hosts must not expose generated or hand-written per-message MVC command/query controllers; UI command/query flows consume client libraries. |
 | NFR15 | Admin UX must not present deferred backup, restore, import, compaction, or other unavailable operations as functional; unavailable operations must be hidden/disabled or return `501`. |
-| NFR16 | Integration and higher-tier tests must assert persisted state-store/read-model/end-state evidence, not only HTTP status codes or mock call counts. Erasure, batch recovery, handler idempotency, and rebuild equivalence require persisted detail, index, marker, lifecycle, and checkpoint evidence through their production paths. |
+| NFR16 | Integration and higher-tier tests must assert persisted state-store/read-model/end-state evidence, not only HTTP status codes or mock call counts. Erasure, batch recovery, handler idempotency, and rebuild equivalence require persisted detail, index, marker, lifecycle, and checkpoint evidence through their production paths. Durable-admission evidence must inspect production-path state and prove restart survival, multi-host serialization, inclusive expiry boundaries, atomic tombstone compaction, leakage constraints, and zero downstream execution for replay, conflict, expired, corrupt, and unsafe legacy outcomes. |
 | NFR17 | Operational hardening must use the canonical DAPR `openbao` component for production operational and application secrets. Dependent DAPR components must use `secretKeyRef` with `auth.secretStore: openbao`; application code must use the DAPR Secrets API; and per-application access must be default-deny. OpenBao bootstrap credentials are platform inputs and may use Kubernetes Secrets only when no approved mounted or projected mechanism is available. Operational hardening must also support DAPR app-health checks, readiness-tagged health checks, resiliency targets, immutable image tags, and documented crypto-shred boundaries. |
 | NFR18 | AOT/trimming is explicitly not a target while reflection conventions remain load-bearing, and that constraint must be documented. |
 | NFR19 | Payload protection must fail closed and preserve byte-stable, versioned cryptographic semantics. Deleted, missing, denied, unavailable, malformed, tampered, and opaque states must remain bounded typed outcomes. Key material must be zeroed when no longer needed; caches must be invalidated on lifecycle changes; development-only backends must not start as production proof; and rollout, historical reads, downgrade, and rollback after writing the newest format must be integration-tested. |
@@ -388,7 +398,7 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 | FR24 | Epic 4 - Global-position sharding spec renegotiation |
 | FR25 | Epic 3 - Shared Hexalith.Builds gates and manifest-driven package scope |
 | FR26 | Epic 5 - Phase 0 security and safe-remediation fixes |
-| FR27 | Epic 4 - Resume/idempotency integrity and command status re-keying |
+| FR27 | Epic 4 - Resume/idempotency integrity, command status re-keying, and Story 4.8 durable tenant/key admission |
 | FR28 | Epic 5 - Defense-in-depth trust boundary |
 | FR29 | Epic 4 - Replay and dispatch determinism |
 | FR30 | Epic 4 - Crash recovery for committed-but-unpublished events |
@@ -411,14 +421,14 @@ SM3's Phase 4 gate covers NFR1-NFR4, NFR7, NFR10-NFR11, and NFR14-NFR17. The tab
 | NFR3 | 5.3 |
 | NFR4 | 5.3, 7.6 |
 | NFR6 | 1.13, 7.1 |
-| NFR7 | 4.1, 4.2, 4.4, 4.5, 5.1 |
+| NFR7 | 4.1, 4.2, 4.4, 4.5, 4.8, 5.1 |
 | NFR8 | 1.16, 1.19, 6.3, 6.4 |
 | NFR9 | 3.5, 3.8, 3.11, 3.12 |
 | NFR10 | 3.1, 3.11, 7.10 |
 | NFR11 | 3.6, 3.12 |
 | NFR14 | 2.3, 2.5, 2.6 |
 | NFR15 | 7.3, 7.4, 7.14 |
-| NFR16 | 1.9, 1.10, 1.11, 1.12, 1.13, 1.14, 1.15, 3.11, 3.12, 7.10 |
+| NFR16 | 1.9, 1.10, 1.11, 1.12, 1.13, 1.14, 1.15, 3.11, 3.12, 4.8, 7.10 |
 | NFR17 | 3.12, 5.6, 7.6, 7.7, 7.8, 7.9 |
 | NFR19 | 8.1, 8.2 |
 

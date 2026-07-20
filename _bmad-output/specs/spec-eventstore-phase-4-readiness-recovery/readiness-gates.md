@@ -10,6 +10,7 @@
 | Migration audit | A story-ID/evidence crosswalk preserves old-to-new identities, statuses, active-file supersession, implementation evidence, focused tests, review results, and external approval/SHA evidence. |
 | Tenants authority | Stories 1.9-1.10, 2.4-2.7, and 4.7 cannot become `done` without maintainer-approved PR/commit evidence, exact Tenants SHA, accepted scope, source/package-mode validation, and an explicit no-approval disposition. |
 | Consumer parity | Story 1.20 closes only after Stories 1.14-1.19 are reviewed and the parity packet maps approved EventStore source SHA to exact package hashes or deployed image digest as applicable. |
+| OQ8 platform | Story 4.8 cannot enter review until AD-25 is implemented and `_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml` proves trusted admission, one current fence, inclusive expiry, minimal tombstone compaction, rotation/migration fail-closed behavior, leakage absence, restart/failover, and exactly one eligible execution across at least two EventStore sidecars sharing the approved `oq8-postgresql-v1` DAPR state profile. Folders cannot mark `implementation_evidence.eventstore_platform` complete until that packet is senior/security/test reviewed and a separately authorized EventStore source/package/runtime identity is consumed. |
 | Admin UI ownership | Story 7.14 evolves `Hexalith.EventStore.Admin.UI` in place under `eventstore-admin-ui`, matching FrontComposer `3.2.2` Shell/Contracts.UI and Fluent UI V5; no second UI host or duplicate legacy page implementation is created. |
 | Backlog story shape | Stories 7.15-7.18 independently govern GDPR-1, IAM-1, KIT-1, and REST generator hardening artifacts. |
 | Admin request-size safety | Story 5.2 acceptance uses concrete limits: `1_048_576` bytes for representative admin JSON write/sandbox bodies and `10 * 1024 * 1024` bytes for `AdminBackupsController.ImportStream`; "tested or documented" is not enough. |
@@ -47,12 +48,12 @@
 | NFR2 | 1.9-1.10, 2.4-2.7, 5.2, 5.5, 5.7-5.8 |
 | NFR3 | 5.3 |
 | NFR4 | 5.3, 7.6 |
-| NFR7 | 4.1, 4.2, 4.4, 4.5, 5.1 |
+| NFR7 | 4.1, 4.2, 4.4, 4.5, 4.8, 5.1 |
 | NFR10 | 3.1, 7.10, 7.12 |
 | NFR11 | 3.6 |
 | NFR14 | 2.3, 2.5-2.6, 7.14 |
 | NFR15 | 7.4, 7.14 |
-| NFR16 | 1.14-1.20, 2.11, 3.10, 5.8, 7.11-7.12 |
+| NFR16 | 1.14-1.20, 2.11, 3.10, 4.8, 5.8, 7.11-7.12 |
 | NFR17 | 5.6-5.9, 7.6-7.9 |
 
 ## Counter-Metrics

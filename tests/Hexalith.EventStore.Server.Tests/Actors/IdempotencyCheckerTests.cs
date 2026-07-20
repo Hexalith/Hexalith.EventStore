@@ -217,6 +217,42 @@ public class IdempotencyCheckerTests
     }
 
     [Fact]
+    public async Task InspectAsync_ExactTerminalRecord_IsReadOnlyAndReturnsAuthoritativeResult()
+    {
+        CommandProcessingIdentity identity = Identity(causationId: "message-123");
+        var record = new IdempotencyRecord(
+            identity.CausationId,
+            "corr-original",
+            true,
+            null,
+            DateTimeOffset.UtcNow,
+            EventCount: 2,
+            ResultPayload: "{\"status\":\"done\"}",
+            MessageId: identity.MessageId,
+            CommandType: identity.CommandType,
+            ExpiresAt: DateTimeOffset.UtcNow.AddHours(1),
+            Disposition: IdempotencyRecordDisposition.Terminal);
+        _ = _stateManager.TryGetStateAsync<IdempotencyRecord>(
+                "idempotency:message-123",
+                Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyRecord>(true, record));
+        IdempotencyChecker checker = CreateChecker();
+
+        IdempotencyCheckResult result = await checker.InspectAsync(identity);
+
+        result.Outcome.ShouldBe(IdempotencyCheckOutcome.ExactTerminalDuplicate);
+        result.Result.ShouldNotBeNull().ShouldBe(record.ToResult());
+        await _stateManager.DidNotReceive().SetStateAsync(
+            Arg.Any<string>(),
+            Arg.Any<IdempotencyRecord>(),
+            Arg.Any<CancellationToken>());
+        _ = await _stateManager.DidNotReceive().TryRemoveStateAsync(
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+        await _stateManager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task RecordAsync_StoresCompleteIdentityAtMessageKey()
     {
         IdempotencyChecker checker = CreateChecker();

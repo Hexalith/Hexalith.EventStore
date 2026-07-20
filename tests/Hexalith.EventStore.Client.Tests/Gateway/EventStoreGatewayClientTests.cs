@@ -568,6 +568,10 @@ public class EventStoreGatewayClientTests {
         exception.ReasonCode.ShouldBe("idempotency_key_expired");
         exception.CorrelationId.ShouldBe("corr-current");
         exception.RetryAfter.ShouldBeNull();
+        exception.Code.ShouldBe("idempotency_key_expired");
+        exception.Category.ShouldBe("idempotency_key_expired");
+        exception.Retryable.ShouldBe(false);
+        exception.ClientAction.ShouldBe("refresh_state_then_submit_with_new_key");
         exception.Extensions["code"].GetString().ShouldBe("idempotency_key_expired");
         exception.Extensions["category"].GetString().ShouldBe("idempotency_key_expired");
         exception.Extensions["retryable"].GetBoolean().ShouldBeFalse();
