@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-07-19
+# last_updated: 2026-07-20
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T20:01:46+02:00
-last_updated: 2026-07-19
+last_updated: 2026-07-20
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -143,6 +143,10 @@ development_status:
   4-6-global-position-sharding-spec-renegotiation: backlog
   # Coordinated Tenants follow-up only; EventStore platform prerequisite is Story 1.2.
   4-7-tenants-query-provenance-follow-up: backlog
+  # Approved by sprint-change-proposal-2026-07-20-oq8-durable-idempotency-admission.md.
+  # EventStore owns the durable tenant/key admission prerequisite consumed by Folders Story 12.6;
+  # create and validate the dedicated story artifact before moving this row to ready-for-dev.
+  4-8-durable-tenant-scoped-idempotency-admission-and-expired-key-precedence: backlog
   epic-4-retrospective: optional
 
   epic-5: backlog
