@@ -535,7 +535,7 @@ public partial class SubmitCommandHandler(
 
         string? resultPayload = null;
         if (processingResult.Accepted && processingResult.ResultPayload is not null) {
-            if (!processingResult.ResultPayloadWithheld) {
+            if (finalStatus?.Status == CommandStatus.Completed) {
                 resultPayload = processingResult.ResultPayload;
             }
             else {

@@ -86,6 +86,11 @@ public static class ErrorReferenceEndpoints {
             """{"type":"https://hexalith.io/problems/idempotency-key-expired","title":"Idempotency Key Expired","status":409,"code":"idempotency_key_expired","category":"idempotency_key_expired","retryable":false,"clientAction":"refresh_state_then_submit_with_new_key","correlationId":"01JAXYZ1234567890ABCDEFGH"}""",
             ["Refresh current state.", "Submit the intended mutation with a new idempotency key."]),
 
+        new("idempotency-admission-failure", "Idempotency Admission Failed", 503,
+            "Trusted idempotency admission failed closed: the coordinator could not safely admit, reconcile, or verify the request's idempotency key state.",
+            """{"type":"https://hexalith.io/problems/idempotency-admission-failure","title":"Idempotency Admission Failed","status":503,"detail":"Idempotency admission is temporarily unavailable. Retry later.","reasonCode":"idempotency_admission_unavailable","code":"idempotency_admission_unavailable","category":"service_unavailable","retryable":true,"clientAction":"retry_later","correlationId":"01JAXYZ1234567890ABCDEFGH"}""",
+            ["If retryable is true, retry after a short delay.", "If retryable is false, contact support with the correlationId — the idempotency state cannot be safely resolved automatically."]),
+
         new("command-correlation-ambiguous", "Ambiguous Command Correlation", 409,
             "The tenant-scoped correlation identifier maps to multiple live commands, so compatibility lookup cannot select one safely.",
             """{"type":"https://hexalith.io/problems/command-correlation-ambiguous","title":"Ambiguous Command Correlation","status":409,"detail":"The correlation identifier maps to multiple commands. Query again using the command MessageId."}""",
