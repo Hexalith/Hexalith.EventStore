@@ -514,21 +514,29 @@ evidence; named owner approval remains absent. No consumer migration is authoriz
 
 #### 2026-07-20 — Adversarial review of candidate gate corrections
 
-- [ ] [Review][Patch] Retry disposable writer-protocol activation within the bounded topology startup budget [tests/Hexalith.EventStore.IntegrationTests/Security/AspireTopologyFixture.cs:240]
-- [ ] [Review][Patch] Activate only when the detailed health report identifies the writer-protocol marker as the blocking check [tests/Hexalith.EventStore.IntegrationTests/Security/AspireTopologyFixture.cs:243]
-- [ ] [Review][Patch] Translate every non-caller HTTP cancellation into the domain-service failure contract [src/Hexalith.EventStore.Server/DomainServices/DaprDomainServiceInvoker.cs:75]
-- [ ] [Review][Patch] Reject invocation timeout values outside the supported bounded range during startup validation [src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs:85]
-- [ ] [Review][Patch] Preserve structured tenant/domain context on domain-service timeout failures [src/Hexalith.EventStore.Server/DomainServices/DaprDomainServiceInvoker.cs:87]
-- [ ] [Review][Patch] Make no-sidecar health-check removal independent of service-registration order [src/Hexalith.EventStore.Testing/Fakes/TestServiceOverrides.cs:37]
-- [ ] [Review][Patch] Preserve cancellation semantics in the no-op projection activation outbox [src/Hexalith.EventStore.Testing/Fakes/TestServiceOverrides.cs:53]
-- [ ] [Review][Patch] Verify caller cancellation remains unwrapped [tests/Hexalith.EventStore.Server.Tests/DomainServices/DaprDomainServiceInvokerTests.cs:117]
-- [ ] [Review][Patch] Verify fail-fast validation for zero, negative, and excessive invocation timeouts [tests/Hexalith.EventStore.Server.Tests/Configuration/EventStoreServerServiceCollectionExtensionsTests.cs:18]
-- [ ] [Review][Patch] Cover the no-op outbox completion and deferral operations [tests/Hexalith.EventStore.Testing.Tests/Fakes/TestServiceOverridesTests.cs:18]
-- [ ] [Review][Patch] Pin the configured invocation timeout duration in the regression test [tests/Hexalith.EventStore.Server.Tests/DomainServices/DaprDomainServiceInvokerTests.cs:117]
-- [ ] [Review][Patch] Assert conflict-status persistence under the submitted message identity [tests/Hexalith.EventStore.IntegrationTests/EventStore/ConcurrencyConflictIntegrationTests.cs:104]
-- [ ] [Review][Patch] Separate prerequisite corrective-work attribution from this evidence-only story [1-20-owner-approved-parity-closure-and-runtime-pin.md:489]
-- [ ] [Review][Patch] Derive the disposable cutover marker from the exact runtime source commit and verify persisted read-back [tests/Hexalith.EventStore.IntegrationTests/Security/AspireTopologyFixture.cs:22]
-- [ ] [Review][Patch] Replace the unexpected Tenant bootstrap skip with deterministic full-log-backlog verification [tests/Hexalith.EventStore.IntegrationTests/ContractTests/TenantBootstrapHealthTests.cs:57]
+- [x] [Review][Patch] Retry disposable writer-protocol activation within the bounded topology startup budget [tests/Hexalith.EventStore.IntegrationTests/Security/AspireTopologyFixture.cs:240]
+- [x] [Review][Patch] Activate only when the detailed health report identifies the writer-protocol marker as the blocking check [tests/Hexalith.EventStore.IntegrationTests/Security/AspireTopologyFixture.cs:243]
+- [x] [Review][Patch] Translate every non-caller HTTP cancellation into the domain-service failure contract [src/Hexalith.EventStore.Server/DomainServices/DaprDomainServiceInvoker.cs:75]
+- [x] [Review][Patch] Reject invocation timeout values outside the supported bounded range during startup validation [src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs:85]
+- [x] [Review][Patch] Preserve structured tenant/domain context on domain-service timeout failures [src/Hexalith.EventStore.Server/DomainServices/DaprDomainServiceInvoker.cs:87]
+- [x] [Review][Patch] Make no-sidecar health-check removal independent of service-registration order [src/Hexalith.EventStore.Testing/Fakes/TestServiceOverrides.cs:37]
+- [x] [Review][Patch] Preserve cancellation semantics in the no-op projection activation outbox [src/Hexalith.EventStore.Testing/Fakes/TestServiceOverrides.cs:53]
+- [x] [Review][Patch] Verify caller cancellation remains unwrapped [tests/Hexalith.EventStore.Server.Tests/DomainServices/DaprDomainServiceInvokerTests.cs:117]
+- [x] [Review][Patch] Verify fail-fast validation for zero, negative, and excessive invocation timeouts [tests/Hexalith.EventStore.Server.Tests/Configuration/EventStoreServerServiceCollectionExtensionsTests.cs:18]
+- [x] [Review][Patch] Cover the no-op outbox completion and deferral operations [tests/Hexalith.EventStore.Testing.Tests/Fakes/TestServiceOverridesTests.cs:18]
+- [x] [Review][Patch] Pin the configured invocation timeout duration in the regression test [tests/Hexalith.EventStore.Server.Tests/DomainServices/DaprDomainServiceInvokerTests.cs:117]
+- [x] [Review][Patch] Assert conflict-status persistence under the submitted message identity [tests/Hexalith.EventStore.IntegrationTests/EventStore/ConcurrencyConflictIntegrationTests.cs:104]
+- [x] [Review][Patch] Separate prerequisite corrective-work attribution from this evidence-only story [1-20-owner-approved-parity-closure-and-runtime-pin.md:489]
+- [x] [Review][Patch] Derive the disposable cutover marker from the exact runtime source commit and verify persisted read-back [tests/Hexalith.EventStore.IntegrationTests/Security/AspireTopologyFixture.cs:22]
+- [x] [Review][Patch] Replace the unexpected Tenant bootstrap skip with deterministic persisted-event verification [tests/Hexalith.EventStore.IntegrationTests/ContractTests/TenantBootstrapHealthTests.cs:57]
+
+Applied and verified on 2026-07-20: all 15 candidate-gate review patches are resolved. The
+complete Server assembly passed 2,762 with the exact 25 frozen ATDD skips of 2,787; Testing
+passed 152 of 152; the corrected Tenant bootstrap and conflict persistence proofs each passed
+without skips; and the disposable security topology activated and read back its schema-1,
+writer-protocol-v2 marker for exact source commit `97665d4606725478f60f55cfc285dbdb3913fa0f`.
+This review closure validates only the separately scoped prerequisite corrections and does not
+override Story 1.20's external evidence and named-approval gates.
 
 ### Completion Notes
 
@@ -554,6 +562,10 @@ evidence; named owner approval remains absent. No consumer migration is authoriz
   remains fail-closed until the corrected zero-unexpected-skip gate passes, the corrections merge,
   a fresh official-main SHA reruns every packet gate from zero, immutable raw evidence and artifact
   identities exist, both named approvals are durable, and A/B/C validate.
+- Resolved all 15 adversarial review patches. The full Server and Testing assemblies pass, the
+  Tenant bootstrap and conflict persistence focused proofs pass without skips, and the security
+  fixture persists and reads back the exact runtime cutover marker. Story status remains `blocked`
+  because code-review closure is not named owner approval or immutable authorization evidence.
 
 ## File List
 
@@ -582,7 +594,10 @@ traceability; it does not reclassify that path as a Story 1.20 implementation de
 - `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ReadModelBatchLiveSidecarTests.cs`
 - `src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs`
 - `src/Hexalith.EventStore.Server/DomainServices/DaprDomainServiceInvoker.cs`
+- `src/Hexalith.EventStore.Server/DomainServices/DomainServiceException.cs`
+- `src/Hexalith.EventStore.Server/DomainServices/DomainServiceOptions.cs`
 - `src/Hexalith.EventStore.Testing/Fakes/TestServiceOverrides.cs`
+- `tests/Hexalith.EventStore.IntegrationTests/ContractTests/TenantBootstrapHealthTests.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/EventStore/ConcurrencyConflictIntegrationTests.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspireContractTestCollection.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspireContractTestFixture.cs`
@@ -591,6 +606,7 @@ traceability; it does not reclassify that path as a Story 1.20 implementation de
 - `tests/Hexalith.EventStore.IntegrationTests/Fixtures/KeycloakAuthFixture.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/Security/AspireTopologyCollection.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/Security/AspireTopologyFixture.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Configuration/EventStoreServerServiceCollectionExtensionsTests.cs`
 - `tests/Hexalith.EventStore.Server.Tests/DomainServices/DaprDomainServiceInvokerTests.cs`
 - `tests/Hexalith.EventStore.Testing.Tests/Fakes/TestServiceOverridesTests.cs`
 
@@ -640,5 +656,10 @@ traceability; it does not reclassify that path as a Story 1.20 implementation de
   source-topology run passed 235/236 but its Tenant bootstrap observation skip is not allowlisted,
   so the gate rejected the run and authorization remains blocked pending a zero-unexpected-skip
   rerun, merge, and fresh exact-SHA closure run.
+- 2026-07-20: Resolved all 15 adversarial review findings with bounded cutover retry and exact
+  persisted marker readback, structured domain timeout enforcement, order-independent no-sidecar
+  overrides, complete fake-outbox cancellation coverage, exact conflict identity assertions, and
+  deterministic persisted Tenant bootstrap verification. Review closure does not change the
+  fail-closed Story 1.20 status.
 - 2026-07-19: Repaired the Sample Blazor UI's .NET 10 Razor control-flow markup transitions after
   the exact-SHA proof correctly stopped its Sample test-project build before publication.
