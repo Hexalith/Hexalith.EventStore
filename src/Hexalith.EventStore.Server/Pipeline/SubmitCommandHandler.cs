@@ -55,23 +55,50 @@ public partial class SubmitCommandHandler(
     public async Task<SubmitCommandResult> Handle(SubmitCommand request, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(request);
 
-        string diagnosticCausationId = request.Idempotency is null ? request.MessageId : "protected";
+        string diagnosticCausationId = request.IdempotencyKey is null ? request.MessageId : "protected";
         Log.CommandReceived(logger, request.CorrelationId, diagnosticCausationId, request.CommandType, request.Tenant, request.Domain, request.AggregateId);
 
-        var result = new SubmitCommandResult(request.CorrelationId, MessageId: request.MessageId);
-
+        string executionMessageId = request.MessageId;
+        string executionCorrelationId = request.CorrelationId;
+        bool reconcileUnknownOutcome = false;
         IdempotencyAdmissionSession? admissionSession = null;
-        if (request.Idempotency is not null)
+        if (request.IdempotencyKey is not null)
         {
             if (idempotencyAdmissionCoordinator is null)
             {
                 throw new InvalidOperationException("Trusted idempotency admission is unavailable.");
             }
 
-            admissionSession = await idempotencyAdmissionCoordinator
-                .AdmitAsync(request, cancellationToken)
-                .ConfigureAwait(false)
-                ?? throw new InvalidOperationException("Trusted idempotency admission returned no session.");
+            try
+            {
+                admissionSession = await idempotencyAdmissionCoordinator
+                    .AdmitAsync(request, cancellationToken)
+                    .ConfigureAwait(false)
+                    ?? throw new InvalidOperationException("Trusted idempotency admission returned no session.");
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (IdempotencyAdmissionFailureException)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                logger.LogError(
+                    "Trusted idempotency admission is unavailable. ExceptionType={ExceptionType}, CorrelationId={CorrelationId}, Stage=IdempotencyAdmissionUnavailable",
+                    exception.GetType().Name,
+                    request.CorrelationId);
+                throw AdmissionFailure(
+                    request.CorrelationId,
+                    "idempotency_admission_unavailable",
+                    "service_unavailable",
+                    retryable: true,
+                    "retry_later",
+                    503,
+                    "Idempotency admission is temporarily unavailable. Retry later.");
+            }
             switch (admissionSession.Decision)
             {
                 case IdempotencyAdmissionDecision.Conflict:
@@ -81,15 +108,127 @@ public partial class SubmitCommandHandler(
                 case IdempotencyAdmissionDecision.Replay:
                     return CreateReplayResult(request, admissionSession);
                 case IdempotencyAdmissionDecision.Execute:
+                case IdempotencyAdmissionDecision.Recoverable:
+                    executionMessageId = RequireExecutionIdentity(admissionSession.ExecutionMessageId);
+                    executionCorrelationId = RequireCheckpointIdentity(admissionSession.ExecutionCorrelationId);
                     break;
                 case IdempotencyAdmissionDecision.Pending:
-                case IdempotencyAdmissionDecision.Recoverable:
+                    return new SubmitCommandResult(
+                        request.CorrelationId,
+                        MessageId: RequireExecutionIdentity(admissionSession.ExecutionMessageId));
                 case IdempotencyAdmissionDecision.UnknownProviderOutcome:
+                    executionMessageId = RequireExecutionIdentity(admissionSession.ExecutionMessageId);
+                    executionCorrelationId = RequireCheckpointIdentity(admissionSession.ExecutionCorrelationId);
+                    reconcileUnknownOutcome = true;
+                    break;
                 case IdempotencyAdmissionDecision.Corrupt:
+                    throw AdmissionFailure(
+                        request.CorrelationId,
+                        "idempotency_admission_corrupt",
+                        "idempotency_admission_corrupt",
+                        retryable: false,
+                        "contact_support",
+                        503,
+                        "Idempotency admission state cannot be safely interpreted.");
+                case IdempotencyAdmissionDecision.Collision:
+                    throw AdmissionFailure(
+                        request.CorrelationId,
+                        "idempotency_key_collision",
+                        "idempotency_admission_corrupt",
+                        retryable: false,
+                        "contact_support",
+                        503,
+                        "Idempotency admission identity cannot be safely verified.");
+                case IdempotencyAdmissionDecision.Redirect:
+                    throw AdmissionFailure(
+                        request.CorrelationId,
+                        "idempotency_admission_unavailable",
+                        "service_unavailable",
+                        retryable: true,
+                        "retry_later",
+                        503,
+                        "Idempotency admission authority is temporarily unavailable.");
+                case IdempotencyAdmissionDecision.UnsafeLegacy:
+                    throw AdmissionFailure(
+                        request.CorrelationId,
+                        "idempotency_unsafe_legacy_state",
+                        "idempotency_admission_corrupt",
+                        retryable: false,
+                        "contact_support",
+                        503,
+                        "Legacy idempotency state is not safe to migrate automatically.");
                 default:
                     throw new InvalidOperationException(
                         $"Idempotency admission denied execution with decision '{admissionSession.Decision}'.");
             }
+        }
+
+        SubmitCommand executionRequest = admissionSession is null
+            ? request
+            : request with
+            {
+                MessageId = executionMessageId,
+                CorrelationId = executionCorrelationId,
+                IdempotencyKey = null,
+            };
+        var result = new SubmitCommandResult(request.CorrelationId, MessageId: executionMessageId);
+        if (reconcileUnknownOutcome)
+        {
+            IdempotencyExecutionContext executionContext = admissionSession?.ExecutionContext
+                ?? throw new InvalidOperationException("Unknown idempotency outcome has no reconciliation fence.");
+            await idempotencyAdmissionCoordinator!
+                .ValidateExecutionAsync(admissionSession, executionRequest, cancellationToken)
+                .ConfigureAwait(false);
+            IdempotencyCheckResult reconciliation;
+            try
+            {
+                reconciliation = await commandRouter
+                    .ReconcileFencedCommandAsync(executionRequest, executionContext, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                logger.LogError(
+                    "Idempotency reconciliation is unavailable. ExceptionType={ExceptionType}, CorrelationId={CorrelationId}, Stage=IdempotencyReconciliationUnavailable",
+                    exception.GetType().Name,
+                    request.CorrelationId);
+                throw AdmissionFailure(
+                    request.CorrelationId,
+                    "idempotency_reconciliation_unavailable",
+                    "service_unavailable",
+                    retryable: true,
+                    "retry_later",
+                    503,
+                    "Idempotency outcome reconciliation is temporarily unavailable. Retry later.");
+            }
+            if (reconciliation.Outcome is IdempotencyCheckOutcome.ExactTerminalDuplicate
+                or IdempotencyCheckOutcome.RetryableRecoverable)
+            {
+                CommandProcessingResult reconciledResult = reconciliation.Result
+                    ?? throw new InvalidOperationException("Authoritative reconciliation returned no command result.");
+                await idempotencyAdmissionCoordinator
+                    .ValidateExecutionAsync(admissionSession, executionRequest, cancellationToken)
+                    .ConfigureAwait(false);
+                await idempotencyAdmissionCoordinator
+                    .CompleteAsync(admissionSession, reconciledResult, cancellationToken)
+                    .ConfigureAwait(false);
+                return CreateReplayResult(
+                    request,
+                    admissionSession with { ReplayResult = reconciledResult });
+            }
+
+            throw AdmissionFailure(
+                request.CorrelationId,
+                "idempotency_outcome_unknown",
+                "idempotency_outcome_unknown",
+                retryable: true,
+                "poll_status_then_retry",
+                409,
+                "The original mutation outcome remains unknown. Poll status before retrying.");
         }
 
         string diagnosticMessageId = admissionSession is null ? request.MessageId : "protected";
@@ -98,32 +237,42 @@ public partial class SubmitCommandHandler(
         bool sideEffectBoundaryCrossed = false;
         try
         {
-            if (projectionActivationOutbox is not null)
-            {
-                // Write-ahead is mandatory: an aggregate commit must never become visible before its
-                // payload-free projection activation can be recovered by another replica.
-                await projectionActivationOutbox.EnsureAsync(
-                    new AggregateIdentity(request.Tenant, request.Domain, request.AggregateId),
-                    cancellationToken).ConfigureAwait(false);
-            }
-
+            IdempotencyExecutionContext? executionContext = null;
             if (admissionSession is not null && idempotencyAdmissionCoordinator is not null)
             {
                 await idempotencyAdmissionCoordinator
                     .BeginAsync(admissionSession, cancellationToken)
                     .ConfigureAwait(false);
-                sideEffectBoundaryCrossed = true;
+                executionContext = admissionSession.ExecutionContext
+                    ?? throw new InvalidOperationException("Executable idempotency admission returned no execution fence.");
+                await idempotencyAdmissionCoordinator
+                    .ValidateExecutionAsync(admissionSession, executionRequest, cancellationToken)
+                    .ConfigureAwait(false);
             }
 
-            SubmitCommand routedRequest = admissionSession is null
-                ? request
-                : request with
-                {
-                    MessageId = admissionSession.ExecutionMessageId
-                        ?? throw new InvalidOperationException("Executable idempotency admission returned no downstream message identifier."),
-                };
-            processingResult = await commandRouter.RouteCommandAsync(routedRequest, cancellationToken)
-                .ConfigureAwait(false);
+            if (projectionActivationOutbox is not null)
+            {
+                // Write-ahead is mandatory: an aggregate commit must never become visible before its
+                // payload-free projection activation can be recovered by another replica.
+                sideEffectBoundaryCrossed = admissionSession is not null;
+                await projectionActivationOutbox.EnsureAsync(
+                    new AggregateIdentity(executionRequest.Tenant, executionRequest.Domain, executionRequest.AggregateId),
+                    cancellationToken).ConfigureAwait(false);
+            }
+
+            if (executionContext is null)
+            {
+                processingResult = await commandRouter.RouteCommandAsync(executionRequest, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            else
+            {
+                sideEffectBoundaryCrossed = true;
+                processingResult = await commandRouter.RouteFencedCommandAsync(
+                    executionRequest,
+                    executionContext,
+                    cancellationToken).ConfigureAwait(false);
+            }
         }
         catch (Exception) when (admissionSession is not null && idempotencyAdmissionCoordinator is not null)
         {
@@ -142,6 +291,9 @@ public partial class SubmitCommandHandler(
             try
             {
                 await idempotencyAdmissionCoordinator
+                    .ValidateExecutionAsync(admissionSession, executionRequest, cancellationToken)
+                    .ConfigureAwait(false);
+                await idempotencyAdmissionCoordinator
                     .CompleteAsync(admissionSession, processingResult, cancellationToken)
                     .ConfigureAwait(false);
             }
@@ -159,7 +311,7 @@ public partial class SubmitCommandHandler(
         if (!processingResult.Accepted
             && string.Equals(processingResult.ErrorMessage, "command_identity_conflict", StringComparison.Ordinal)) {
             throw new CommandIdentityConflictException(
-                request.MessageId,
+                executionMessageId,
                 request.CorrelationId,
                 request.Tenant);
         }
@@ -174,14 +326,14 @@ public partial class SubmitCommandHandler(
         bool statusReadSucceeded = false;
         try {
             observedStatus = await statusStore
-                .ReadStatusAsync(request.Tenant, request.MessageId, cancellationToken)
+                .ReadStatusAsync(request.Tenant, executionMessageId, cancellationToken)
                 .ConfigureAwait(false);
             statusReadSucceeded = true;
 
             if (observedStatus is not null
-                && !string.Equals(observedStatus.MessageId, request.MessageId, StringComparison.Ordinal)) {
+                && !string.Equals(observedStatus.MessageId, executionMessageId, StringComparison.Ordinal)) {
                 throw new CommandIdentityConflictException(
-                    request.MessageId,
+                    executionMessageId,
                     request.CorrelationId,
                     request.Tenant);
             }
@@ -208,11 +360,16 @@ public partial class SubmitCommandHandler(
                     RejectionEventType: null,
                     FailureReason: null,
                     TimeoutDuration: null,
-                    MessageId: request.MessageId,
-                    CorrelationId: request.CorrelationId);
+                    MessageId: executionMessageId,
+                    CorrelationId: executionCorrelationId);
+                await ValidateExecutionFenceAsync(
+                    idempotencyAdmissionCoordinator,
+                    admissionSession,
+                    executionRequest,
+                    cancellationToken).ConfigureAwait(false);
                 await statusStore.WriteStatusAsync(
                     request.Tenant,
-                    request.MessageId,
+                    executionMessageId,
                     observedStatus,
                     cancellationToken).ConfigureAwait(false);
             }
@@ -227,22 +384,27 @@ public partial class SubmitCommandHandler(
 
         try {
             ArchivedCommand? archived = await archiveStore
-                .ReadCommandAsync(request.Tenant, request.MessageId, cancellationToken)
+                .ReadCommandAsync(request.Tenant, executionMessageId, cancellationToken)
                 .ConfigureAwait(false);
             if (archived is not null) {
-                if (!string.Equals(archived.MessageId, request.MessageId, StringComparison.Ordinal)
+                if (!string.Equals(archived.MessageId, executionMessageId, StringComparison.Ordinal)
                     || !string.Equals(archived.CommandType, request.CommandType, StringComparison.Ordinal)) {
                     throw new CommandIdentityConflictException(
-                        request.MessageId,
+                        executionMessageId,
                         request.CorrelationId,
                         request.Tenant);
                 }
             }
             else {
+                await ValidateExecutionFenceAsync(
+                    idempotencyAdmissionCoordinator,
+                    admissionSession,
+                    executionRequest,
+                    cancellationToken).ConfigureAwait(false);
                 await archiveStore.WriteCommandAsync(
                     request.Tenant,
-                    request.MessageId,
-                    request.ToArchivedCommand(),
+                    executionMessageId,
+                    executionRequest.ToArchivedCommand(),
                     cancellationToken).ConfigureAwait(false);
             }
         }
@@ -258,10 +420,15 @@ public partial class SubmitCommandHandler(
 
         if (correlationIndex is not null) {
             try {
+                await ValidateExecutionFenceAsync(
+                    idempotencyAdmissionCoordinator,
+                    admissionSession,
+                    executionRequest,
+                    cancellationToken).ConfigureAwait(false);
                 CommandCorrelationIndexAddOutcome indexOutcome = await correlationIndex.AddAsync(
                     request.Tenant,
-                    request.CorrelationId,
-                    request.MessageId,
+                    executionCorrelationId,
+                    executionMessageId,
                     cancellationToken).ConfigureAwait(false);
                 if (indexOutcome is CommandCorrelationIndexAddOutcome.Overflow
                     or CommandCorrelationIndexAddOutcome.RetryExhausted) {
@@ -287,7 +454,12 @@ public partial class SubmitCommandHandler(
         }
 
         if (processingResult.Accepted && processingResult.EventCount > 0) {
-            await TriggerProjectionUpdateAsync(request).ConfigureAwait(false);
+            await ValidateExecutionFenceAsync(
+                idempotencyAdmissionCoordinator,
+                admissionSession,
+                executionRequest,
+                cancellationToken).ConfigureAwait(false);
+            await TriggerProjectionUpdateAsync(executionRequest).ConfigureAwait(false);
         }
 
         // Read final status once for both activity trackers (advisory, rule #12)
@@ -296,11 +468,16 @@ public partial class SubmitCommandHandler(
         // Track command in admin activity index (advisory, rule #12)
         if (activityTracker is not null) {
             try {
+                await ValidateExecutionFenceAsync(
+                    idempotencyAdmissionCoordinator,
+                    admissionSession,
+                    executionRequest,
+                    cancellationToken).ConfigureAwait(false);
                 await activityTracker.TrackAsync(
                     request.Tenant,
                     request.Domain,
                     request.AggregateId,
-                    request.CorrelationId,
+                    executionCorrelationId,
                     request.CommandType,
                     finalStatus?.Status ?? (processingResult.Accepted ? CommandStatus.Completed : CommandStatus.Rejected),
                     finalStatus?.Timestamp ?? DateTimeOffset.UtcNow,
@@ -321,6 +498,11 @@ public partial class SubmitCommandHandler(
             && processingResult.Accepted
             && (finalStatus?.EventCount ?? 0) > 0) {
             try {
+                await ValidateExecutionFenceAsync(
+                    idempotencyAdmissionCoordinator,
+                    admissionSession,
+                    executionRequest,
+                    cancellationToken).ConfigureAwait(false);
                 await streamActivityTracker.TrackAsync(
                     request.Tenant,
                     request.Domain,
@@ -338,46 +520,22 @@ public partial class SubmitCommandHandler(
         }
 
         if (!processingResult.Accepted) {
-            if (processingResult.BackpressureExceeded) {
-                throw new Hexalith.EventStore.Server.Actors.BackpressureExceededException(
-                    request.CorrelationId,
-                    request.Tenant,
-                    request.Domain,
-                    request.AggregateId,
-                    pendingCount: processingResult.BackpressurePendingCount ?? 0,
-                    threshold: processingResult.BackpressureThreshold ?? 0);
-            }
-
             CommandStatusRecord? status = await statusStore
-                .ReadStatusAsync(request.Tenant, request.MessageId, cancellationToken)
+                .ReadStatusAsync(request.Tenant, executionMessageId, cancellationToken)
                 .ConfigureAwait(false);
-
-            if (status is { RejectionEventType: not null }) {
-                throw new DomainCommandRejectedException(
-                    request.CorrelationId,
-                    request.Tenant,
-                    status.RejectionEventType,
-                    processingResult.ErrorMessage ?? $"Domain rejection: {status.RejectionEventType}");
-            }
-
-            if (string.Equals(status?.FailureReason, "ConcurrencyConflict", StringComparison.Ordinal)
-                || string.Equals(processingResult.ErrorMessage, "ConcurrencyConflict", StringComparison.Ordinal)) {
-                throw new ConcurrencyConflictException(
-                    request.CorrelationId,
-                    request.AggregateId,
-                    request.Tenant,
-                    conflictSource: "StateStore",
-                    messageId: request.MessageId);
-            }
-
-            throw new InvalidOperationException(processingResult.ErrorMessage ?? "Command processing was rejected.");
+            ThrowDeterministicFailure(
+                request,
+                executionMessageId,
+                processingResult,
+                status?.RejectionEventType,
+                status?.FailureReason);
         }
 
         Log.CommandRouted(logger, request.CorrelationId);
 
         string? resultPayload = null;
         if (processingResult.Accepted && processingResult.ResultPayload is not null) {
-            if (finalStatus?.Status == CommandStatus.Completed) {
+            if (!processingResult.ResultPayloadWithheld) {
                 resultPayload = processingResult.ResultPayload;
             }
             else {
@@ -396,6 +554,35 @@ public partial class SubmitCommandHandler(
             ResultPayload = resultPayload,
         };
     }
+
+    private static string RequireExecutionIdentity(string? executionMessageId)
+        => !string.IsNullOrWhiteSpace(executionMessageId)
+            ? executionMessageId
+            : throw new InvalidOperationException("Live idempotency state has no execution identity.");
+
+    private static string RequireCheckpointIdentity(string? executionCorrelationId)
+        => !string.IsNullOrWhiteSpace(executionCorrelationId)
+            ? executionCorrelationId
+            : throw new InvalidOperationException("Live idempotency state has no checkpoint identity.");
+
+    private static Task ValidateExecutionFenceAsync(
+        IIdempotencyAdmissionCoordinator? coordinator,
+        IdempotencyAdmissionSession? session,
+        SubmitCommand command,
+        CancellationToken cancellationToken)
+        => coordinator is not null && session is not null
+            ? coordinator.ValidateExecutionAsync(session, command, cancellationToken)
+            : Task.CompletedTask;
+
+    private static IdempotencyAdmissionFailureException AdmissionFailure(
+        string correlationId,
+        string code,
+        string category,
+        bool retryable,
+        string clientAction,
+        int statusCode,
+        string detail)
+        => new(correlationId, code, category, retryable, clientAction, statusCode, detail);
 
     private async Task TriggerProjectionUpdateAsync(SubmitCommand request) {
         try {
@@ -418,26 +605,72 @@ public partial class SubmitCommandHandler(
             ?? throw new InvalidOperationException("Replay admission did not contain a command result.");
         if (!replay.Accepted)
         {
-            if (string.Equals(replay.ErrorMessage, "command_identity_conflict", StringComparison.Ordinal))
-            {
-                throw new CommandIdentityConflictException(
-                    request.MessageId,
-                    request.CorrelationId,
-                    request.Tenant);
-            }
-
-            if (string.Equals(replay.ErrorMessage, "idempotency_key_expired", StringComparison.Ordinal))
-            {
-                throw new IdempotencyKeyExpiredException(request.CorrelationId);
-            }
-
-            throw new InvalidOperationException(replay.ErrorMessage ?? "The replayed command was rejected.");
+            ThrowDeterministicFailure(
+                request,
+                RequireExecutionIdentity(session.ExecutionMessageId),
+                replay);
         }
 
         return new SubmitCommandResult(
             request.CorrelationId,
-            replay.ResultPayload,
-            request.MessageId);
+            replay.ResultPayloadWithheld ? null : replay.ResultPayload,
+            RequireExecutionIdentity(session.ExecutionMessageId));
+    }
+
+    private static void ThrowDeterministicFailure(
+        SubmitCommand request,
+        string executionMessageId,
+        CommandProcessingResult processingResult,
+        string? advisoryRejectionEventType = null,
+        string? advisoryFailureReason = null)
+    {
+        if (string.Equals(processingResult.ErrorMessage, "command_identity_conflict", StringComparison.Ordinal))
+        {
+            throw new CommandIdentityConflictException(
+                executionMessageId,
+                request.CorrelationId,
+                request.Tenant);
+        }
+
+        if (string.Equals(processingResult.ErrorMessage, "idempotency_key_expired", StringComparison.Ordinal))
+        {
+            throw new IdempotencyKeyExpiredException(request.CorrelationId);
+        }
+
+        if (processingResult.BackpressureExceeded)
+        {
+            throw new Hexalith.EventStore.Server.Actors.BackpressureExceededException(
+                request.CorrelationId,
+                request.Tenant,
+                request.Domain,
+                request.AggregateId,
+                processingResult.BackpressurePendingCount ?? 0,
+                processingResult.BackpressureThreshold ?? 0);
+        }
+
+        string? rejectionEventType = processingResult.RejectionEventType ?? advisoryRejectionEventType;
+        if (!string.IsNullOrWhiteSpace(rejectionEventType))
+        {
+            throw new DomainCommandRejectedException(
+                request.CorrelationId,
+                request.Tenant,
+                rejectionEventType,
+                processingResult.ErrorMessage ?? $"Domain rejection: {rejectionEventType}");
+        }
+
+        if (string.Equals(processingResult.FailureReason, "ConcurrencyConflict", StringComparison.Ordinal)
+            || string.Equals(advisoryFailureReason, "ConcurrencyConflict", StringComparison.Ordinal)
+            || string.Equals(processingResult.ErrorMessage, "ConcurrencyConflict", StringComparison.Ordinal))
+        {
+            throw new ConcurrencyConflictException(
+                request.CorrelationId,
+                request.AggregateId,
+                request.Tenant,
+                conflictSource: "StateStore",
+                messageId: executionMessageId);
+        }
+
+        throw new InvalidOperationException(processingResult.ErrorMessage ?? "Command processing was rejected.");
     }
 
     private static async Task MarkRecoveryStateAsync(

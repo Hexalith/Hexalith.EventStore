@@ -6,16 +6,13 @@ using Hexalith.EventStore.Validation;
 
 using Shouldly;
 
-using CanonicalIdempotencyDescriptor = Hexalith.EventStore.Contracts.Commands.CanonicalIdempotencyDescriptor;
-using IdempotencyReplayRetentionTier = Hexalith.EventStore.Contracts.Commands.IdempotencyReplayRetentionTier;
-
 namespace Hexalith.EventStore.Server.Tests.Pipeline;
 
 public class SubmitCommandRequestValidatorTests {
     private readonly SubmitCommandRequestValidator _validator = new();
 
     [Fact]
-    public void SubmitCommandRequestValidator_EmptyCanonicalDescriptor_ReturnsValidationError() {
+    public void SubmitCommandRequestValidator_EmptyOpaqueIdempotencyKey_ReturnsValidationError() {
         var request = new SubmitCommandRequest(
             MessageId: "msg-idempotency-invalid",
             Tenant: "test-tenant",
@@ -23,21 +20,16 @@ public class SubmitCommandRequestValidatorTests {
             AggregateId: "agg-001",
             CommandType: "CreateOrder",
             Payload: JsonDocument.Parse("{}").RootElement,
-            Idempotency: new CanonicalIdempotencyDescriptor(
-                "folders",
-                "CreateFolder",
-                1,
-                [],
-                IdempotencyReplayRetentionTier.Mutation));
+            IdempotencyKey: string.Empty);
 
         FluentValidation.Results.ValidationResult result = _validator.Validate(request);
 
         result.IsValid.ShouldBeFalse();
-        result.Errors.ShouldContain(error => error.PropertyName == "Idempotency");
+        result.Errors.ShouldContain(error => error.PropertyName == "IdempotencyKey");
     }
 
     [Fact]
-    public void SubmitCommandRequestValidator_ValidCanonicalDescriptor_Passes() {
+    public void SubmitCommandRequestValidator_OpaqueIdempotencyKey_PassesWithoutInterpretingItsFormat() {
         var request = new SubmitCommandRequest(
             MessageId: "msg-idempotency-valid",
             Tenant: "test-tenant",
@@ -45,16 +37,28 @@ public class SubmitCommandRequestValidatorTests {
             AggregateId: "agg-001",
             CommandType: "CreateOrder",
             Payload: JsonDocument.Parse("{}").RootElement,
-            Idempotency: new CanonicalIdempotencyDescriptor(
-                "folders",
-                "CreateFolder",
-                1,
-                [1, 2, 3],
-                IdempotencyReplayRetentionTier.Mutation));
+            IdempotencyKey: "caller opaque/key:with spaces?yes");
 
         FluentValidation.Results.ValidationResult result = _validator.Validate(request);
 
         result.IsValid.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void SubmitCommandRequestValidator_OpaqueIdempotencyKeyExceedsBound_ReturnsValidationError() {
+        var request = new SubmitCommandRequest(
+            MessageId: "msg-idempotency-too-large",
+            Tenant: "test-tenant",
+            Domain: "test-domain",
+            AggregateId: "agg-001",
+            CommandType: "CreateOrder",
+            Payload: JsonDocument.Parse("{}").RootElement,
+            IdempotencyKey: new string('k', 4_097));
+
+        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(error => error.PropertyName == "IdempotencyKey");
     }
 
     [Fact]

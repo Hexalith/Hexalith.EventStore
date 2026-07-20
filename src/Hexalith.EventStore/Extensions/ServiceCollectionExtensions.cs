@@ -42,6 +42,7 @@ public static class EventStoreServiceCollectionExtensions {
         _ = services.AddExceptionHandler<BackpressureExceptionHandler>();
         _ = services.AddExceptionHandler<IdempotencyKeyExpiredExceptionHandler>();
         _ = services.AddExceptionHandler<IdempotencyConflictExceptionHandler>();
+        _ = services.AddExceptionHandler<IdempotencyAdmissionFailureExceptionHandler>();
         _ = services.AddExceptionHandler<CommandIdentityConflictExceptionHandler>();
         _ = services.AddExceptionHandler<ConcurrencyConflictExceptionHandler>();
         _ = services.AddExceptionHandler<DomainCommandRejectedExceptionHandler>();

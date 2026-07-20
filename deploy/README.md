@@ -55,7 +55,7 @@ Do not use this table to claim exactly-once delivery or subscriber processing su
 
 | Variable                     | Description                  | Example                                                                                                               |
 | ---------------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `POSTGRES_CONNECTION_STRING` | PostgreSQL connection string | `host=mydb.postgres.database.azure.com;port=5432;username=dapr;password=<secret>;database=eventstore;sslmode=require` |
+| `POSTGRES_CONNECTION_STRING` | PostgreSQL pgx/libpq connection string | `host=mydb.postgres.database.azure.com port=5432 user=dapr password=<secret> dbname=eventstore sslmode=require` |
 
 ### Cosmos DB State Store
 

@@ -112,6 +112,34 @@ public class CommandRouterTests {
     }
 
     [Fact]
+    public async Task RouteFencedCommandAsync_ValidContext_UsesInternalFencedActorBoundary() {
+        (CommandRouter router, _, IAggregateActor actorProxy) = CreateRouter();
+        SubmitCommand command = CreateTestCommand();
+        var context = new IdempotencyExecutionContext(
+            IdempotencyExecutionContext.CurrentSchemaVersion,
+            "tenant-a:v1:key-digest",
+            7,
+            "v1",
+            command.MessageId,
+            command.CorrelationId,
+            command.Tenant,
+            command.Domain,
+            command.AggregateId,
+            command.CommandType,
+            "proof");
+        _ = actorProxy.ProcessFencedCommandAsync(Arg.Any<FencedCommandEnvelope>())
+            .Returns(new CommandProcessingResult(true, CorrelationId: command.CorrelationId));
+
+        _ = await router.RouteFencedCommandAsync(command, context);
+
+        _ = await actorProxy.Received(1).ProcessFencedCommandAsync(
+            Arg.Is<FencedCommandEnvelope>(fenced =>
+                fenced.Command.MessageId == command.MessageId
+                && fenced.ExecutionContext == context));
+        _ = await actorProxy.DidNotReceive().ProcessCommandAsync(Arg.Any<CommandEnvelope>());
+    }
+
+    [Fact]
     public async Task RouteCommandAsync_ActorThrows_PropagatesException() {
         // Arrange
         IAggregateActor actorProxy = Substitute.For<IAggregateActor>();

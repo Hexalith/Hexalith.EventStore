@@ -35,8 +35,20 @@ public static class EventStoreServerServiceCollectionExtensions {
 
         _ = services.AddEventStoreReadModelStore();
         services.TryAddSingleton<ICommandRouter, CommandRouter>();
+        services.TryAddSingleton<IIdempotencyDigestKeyProvider>(static serviceProvider =>
+        {
+            IOptions<IdempotencyAdmissionOptions> options = serviceProvider
+                .GetRequiredService<IOptions<IdempotencyAdmissionOptions>>();
+            return options.Value.DigestKeySource == IdempotencyDigestKeySource.DaprSecret
+                ? ActivatorUtilities.CreateInstance<DaprSecretIdempotencyDigestKeyProvider>(serviceProvider)
+                : new ConfigurationIdempotencyDigestKeyProvider(options);
+        });
         services.TryAddSingleton<IdempotencyKeyProtector>();
+        services.TryAddSingleton<IdempotencyExecutionContextProtector>();
+        services.TryAddSingleton<CanonicalIdempotencyIntentEncoder>();
+        services.TryAddSingleton<IIdempotencyIntentAdapterRegistry, IdempotencyIntentAdapterRegistry>();
         services.TryAddSingleton<IIdempotencyAdmissionCoordinator, IdempotencyAdmissionCoordinator>();
+        services.TryAddSingleton<IdempotencyTenantLifecyclePurger>();
         services.TryAddScoped<IQueryRouter, QueryRouter>();
         services.TryAddScoped<IETagService, DaprETagService>();
         services.TryAddSingleton<IDomainServiceResolver, DomainServiceResolver>();
@@ -186,6 +198,9 @@ public static class EventStoreServerServiceCollectionExtensions {
                     ? nameof(AggregateActor)
                     : aggregateActorTypeName);
             options.Actors.RegisterActor<IdempotencyAdmissionActor>(IdempotencyAdmissionActor.ActorTypeName);
+            options.Actors.RegisterActor<IdempotencyAdmissionDirectoryActor>(IdempotencyAdmissionDirectoryActor.ActorTypeName);
+            options.Actors.RegisterActor<IdempotencyTenantLifecycleActor>(IdempotencyTenantLifecycleActor.ActorTypeName);
+            options.Actors.RegisterActor<IdempotencyLegacyInventoryActor>(IdempotencyLegacyInventoryActor.ActorTypeName);
             options.Actors.RegisterActor<ETagActor>();
             options.Actors.RegisterActor<GlobalPositionActor>(GlobalPositionActor.ActorTypeName);
             options.Actors.RegisterActor<EventReplayProjectionActor>(QueryRouter.ProjectionActorTypeName);

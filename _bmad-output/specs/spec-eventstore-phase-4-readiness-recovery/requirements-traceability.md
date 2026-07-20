@@ -43,7 +43,7 @@
 | FR24 | Global-position allocation must be renegotiated toward tenant/domain sharding, and the frozen global-ordering spec must be updated before implementation. |
 | FR25 | EventStore workflows must use shared Hexalith.Builds security gates through `@main`, keep third-party actions SHA-pinned through shared workflows, and define NuGet publish scope in `tools/release-packages.json`. |
 | FR26 | Phase 0 remediation must clear staged state on infrastructure failure, protect anonymous admin endpoints, strip committed admin secrets, enforce production auth guards, add tenant-filter parity, gate admin Swagger, require destructive CLI confirmation, use ULID-safe admin correlation middleware, and correct stale test-baseline docs. |
-| FR27 | Pipeline remediation must use `MessageId`, `CausationId`, and `CommandType` for resume/idempotency matching; key command status/archive by message id; preserve transient retryability; validate tenant access before idempotency reads. |
+| FR27 | Pipeline and idempotency remediation must use exact command identity for resume; provide EventStore-owned tenant-scoped durable admission accepting only trusted versioned canonical intent and a fixed retention tier; reject live conflict and expired-key reuse before downstream execution; separate replay retention from consumed-key evidence; and never turn consumed, unavailable, corrupt, or unsafe legacy state into a fresh miss. Command status/archive identity, transient retryability, and tenant-before-state validation remain required. |
 | FR28 | Trust-boundary remediation must require app-layer credentials for internal, domain-service, projection-notification, and admin-computation endpoints and remove wire-asserted administrator trust. |
 | FR29 | Replay and dispatch remediation must make apply-method resolution boundary-safe and ambiguity-detecting and use one shared `JsonSerializerOptions` path for command, rehydrate, project, and pub/sub payloads. |
 | FR30 | Crash recovery must detect committed-but-unpublished events and complete publication or drain/recover them without resubmission using the same correlation id. |
@@ -64,7 +64,7 @@
 | NFR4 | Committed configuration must not contain forgeable administrator signing keys, credentials, bearer tokens, decoded JWT payloads, or operational secrets. |
 | NFR5 | SignalR detail metadata must remain bounded and metadata-only; framework logs must not expose metadata values above Debug level. |
 | NFR6 | Event delivery is at-least-once and unordered; production dispatch, persistence, marker, and checkpoint paths must prove `MessageId` deduplication and scope-correct sequence handling. |
-| NFR7 | Event persistence and command processing must avoid silent data loss from staged-state flushes, stale pipeline records, append races, and committed-but-unpublished events. |
+| NFR7 | Event persistence and command processing must avoid silent data loss from staged-state flushes, stale pipeline records, append races, and committed-but-unpublished events, and must prevent duplicate side effects across admission, fencing, execution, recovery, expiry, compaction, restart, and concurrent hosts. |
 | NFR8 | Snapshot/projection cost must remain bounded; only projection-backed routes may expose authoritative lifecycle evidence, and paged rebuild output must equal canonical replay without replacing live state with page-only state. |
 | NFR9 | Release behavior must be reproducible and independent of local submodule checkout state. |
 | NFR10 | CI/CD must separate deterministic release-gate tests from live-sidecar/integration tests while preserving live-sidecar coverage in a dedicated lane. |
@@ -73,7 +73,7 @@
 | NFR13 | Generated code and source-generator packages must build cleanly under warnings-as-errors and follow EventStore style, nullable, ULID, and `ConfigureAwait(false)` rules. |
 | NFR14 | Interactive UI hosts must not expose generated or hand-written per-message MVC command/query controllers; UI flows consume client libraries. |
 | NFR15 | Admin UX must not present deferred backup, restore, import, compaction, or other unavailable operations as functional. |
-| NFR16 | Integration and higher-tier tests must assert persisted state-store/read-model/end-state evidence. Erasure, batch recovery, handler idempotency, and rebuild equivalence require production-path detail, index, marker, lifecycle, and checkpoint proof. |
+| NFR16 | Integration and higher-tier tests must assert persisted state-store/read-model/end-state evidence. Erasure, batch recovery, handler idempotency, and rebuild equivalence require production-path detail, index, marker, lifecycle, and checkpoint proof; Story 4.8 additionally proves restart, multi-host serialization, expiry, compaction, leakage absence, and zero downstream work on non-execute outcomes. |
 | NFR17 | Operational hardening must support secret stores, DAPR app health checks, readiness-tagged health checks, resiliency targets, immutable image tags, and documented crypto-shred boundaries. |
 | NFR18 | AOT/trimming is explicitly not a target while reflection conventions remain load-bearing. |
 

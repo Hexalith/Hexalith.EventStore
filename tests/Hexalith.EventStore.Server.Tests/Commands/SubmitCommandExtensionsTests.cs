@@ -14,7 +14,8 @@ public class SubmitCommandExtensionsTests {
     private static SubmitCommand CreateTestCommand(
         string userId = "test-user",
         Dictionary<string, string>? extensions = null,
-        bool isGlobalAdmin = false) => new(
+        bool isGlobalAdmin = false,
+        string? idempotencyKey = null) => new(
         MessageId: Guid.NewGuid().ToString(),
         Tenant: "test-tenant",
         Domain: "test-domain",
@@ -24,7 +25,8 @@ public class SubmitCommandExtensionsTests {
         CorrelationId: "corr-123",
         UserId: userId,
         Extensions: extensions,
-        IsGlobalAdmin: isGlobalAdmin);
+        IsGlobalAdmin: isGlobalAdmin,
+        IdempotencyKey: idempotencyKey);
 
     [Fact]
     public void ToCommandEnvelope_ValidCommand_MapsAllFields() {
@@ -67,6 +69,18 @@ public class SubmitCommandExtensionsTests {
         var envelope = command.ToCommandEnvelope();
 
         // Assert — CausationId is the MessageId of the originating SubmitCommand
+        envelope.CausationId.ShouldBe(command.MessageId);
+    }
+
+    [Fact]
+    public void ToCommandEnvelope_RealOpaqueIdempotencyKey_DoesNotCrossActorBoundary() {
+        const string opaqueKey = "opaque-key-that-must-not-leak";
+        SubmitCommand command = CreateTestCommand(idempotencyKey: opaqueKey);
+
+        var envelope = command.ToCommandEnvelope();
+
+        System.Text.Json.JsonSerializer.Serialize(envelope).ShouldNotContain(opaqueKey);
+        envelope.MessageId.ShouldBe(command.MessageId);
         envelope.CausationId.ShouldBe(command.MessageId);
     }
 

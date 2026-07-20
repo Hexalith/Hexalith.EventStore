@@ -2,21 +2,22 @@
 
 # Command Lifecycle Deep Dive
 
-When you send a command to Hexalith.EventStore, it passes through a precise pipeline: REST authentication, validation, actor-based processing, event persistence, and pub/sub distribution. This page traces that entire journey step by step using the `IncrementCounter` command from the quickstart, so you can see exactly what happens between your HTTP request and the persisted event that appears in the state store.
+When you send a command to Hexalith.EventStore, it passes through a precise pipeline: REST authentication, current authorization, validation, optional trusted idempotency admission, actor-based processing, event persistence, and pub/sub distribution. This page traces that entire journey step by step using the `IncrementCounter` command from the quickstart, so you can see exactly what happens between your HTTP request and the persisted event that appears in the state store.
 
 > **Prerequisites:** [Architecture Overview](architecture-overview.md) — understand the system topology and DAPR building blocks before diving into the command flow
 
 ## What Happens When You Send a Command?
 
-When you sent `IncrementCounter` in the quickstart, here is what happened behind the scenes. The command traveled through seven distinct phases, each with a clear responsibility. The pipeline ensures that every command is authenticated, validated, processed exactly once, and that the resulting events are safely persisted before they are broadcast to subscribers.
+When you sent `IncrementCounter` in the quickstart, here is what happened behind the scenes. The command traveled through eight distinct phases, each with a clear responsibility. The pipeline ensures that every command is authenticated and validated, that an eligible opaque-key first writer receives one protected execution, and that resulting events are safely persisted before publication.
 
-1. **REST API Entry Point** — the Command API Gateway receives your HTTP request, authenticates the JWT, and generates a correlation ID
-2. **MediatR Pipeline** — three behaviors run in sequence: logging, authorization, and validation
-3. **Command Routing** — the handler archives the command and routes it to the correct DAPR actor based on the aggregate identity
-4. **Actor Activation** — DAPR activates the `AggregateActor` for your specific aggregate, guaranteeing single-threaded processing
-5. **Domain Processing** — the actor runs a 5-step internal pipeline: idempotency check, tenant validation, state rehydration, domain service invocation, and event persistence
-6. **Event Publishing** — persisted events are published to DAPR pub/sub as CloudEvents 1.0 messages
-7. **Terminal State** — the command reaches a final status (Completed, Rejected, PublishFailed, or Failed) and an idempotency record is stored for safe retries
+1. **REST API Entry Point** — the Command API Gateway receives your HTTP request, authenticates the JWT, and establishes the current-request correlation ID
+2. **MediatR Pipeline** — logging, current tenant/operation authorization, structural validation, and canonical domain validation run before admission-state access
+3. **Trusted Admission** — when an opaque `idempotencyKey` is supplied, a registered server adapter derives canonical intent and the tenant/key actor returns replay, conflict, expiry, pending/recovery, or one signed execution fence
+4. **Command Routing** — only an eligible writer may create advisory command state and route a fence-bound command to the aggregate actor
+5. **Actor Activation** — DAPR activates the `AggregateActor` for your specific aggregate, guaranteeing single-threaded processing
+6. **Domain Processing** — the actor validates the execution fence and runs its aggregate-local checkpoint, tenant validation, state rehydration, domain service invocation, and event persistence pipeline
+7. **Event Publishing** — persisted events are published to DAPR pub/sub as CloudEvents 1.0 messages
+8. **Terminal State** — the exact logical result is finalized under the same fence for authorized replay
 
 The rest of this page walks through each phase in detail, with diagrams and code examples grounded in the Counter domain.
 
@@ -30,6 +31,7 @@ sequenceDiagram
     participant API as Command API
     participant MediatR as MediatR Pipeline
     participant Handler as SubmitCommandHandler
+    participant Admission as Idempotency Admission Actor
     participant Router as CommandRouter
     participant Actor as AggregateActor
     participant Domain as Domain Service
@@ -38,15 +40,19 @@ sequenceDiagram
 
     Client->>API: POST /api/v1/commands (IncrementCounter)
     API->>MediatR: Dispatch command
-    MediatR->>MediatR: Log, Authorize, Validate
+    MediatR->>MediatR: Log, current authorize, validate
     MediatR->>Handler: SubmitCommand
-    Handler->>Handler: Write "Received" status
-    Handler->>Router: Route to actor
-    Router->>Actor: ProcessCommandAsync via DAPR proxy
+    opt opaque idempotencyKey supplied
+        Handler->>Admission: Trusted canonical intent + protected key identity
+        Admission-->>Handler: Replay / reject / pending / signed current fence
+    end
+    Handler->>Handler: Validate fence; write advisory state/outbox
+    Handler->>Router: Route signed-fence command
+    Router->>Actor: ProcessFencedCommandAsync via DAPR proxy
 
     rect rgb(240, 248, 255)
-        Note right of Actor: Step 1: Idempotency Check
-        Actor->>Actor: Lookup CausationId in state
+        Note right of Actor: Step 1: Fence + checkpoint validation
+        Actor->>Actor: Validate current fence and exact MessageId checkpoint
         Note right of Actor: Step 2: Tenant Validation
         Actor->>Actor: Assert command tenant matches actor
         Note right of Actor: Step 3: State Rehydration
@@ -60,8 +66,9 @@ sequenceDiagram
         Actor->>PubSub: Publish CloudEvents
     end
 
-    Actor-->>Router: Command result
+    Actor-->>Router: Exact command result
     Router-->>Handler: Result
+    Handler->>Admission: Complete exact result under current fence
     Handler-->>MediatR: Result
     MediatR-->>API: Result
     API-->>Client: 202 Accepted + correlationId
@@ -70,9 +77,9 @@ sequenceDiagram
 <details>
 <summary>Diagram text description</summary>
 
-The sequence begins when an HTTP Client sends a POST request to the Command API with an IncrementCounter command. The Command API dispatches the command into the MediatR Pipeline, which runs logging, authorization, and validation behaviors in sequence. After passing validation, MediatR forwards the command to the SubmitCommandHandler, which writes an advisory "Received" status and passes the command to the CommandRouter. The CommandRouter derives the actor ID from the aggregate identity and invokes ProcessCommandAsync on the AggregateActor through a DAPR actor proxy.
+The sequence begins when an HTTP Client submits IncrementCounter. The MediatR pipeline authenticates, currently authorizes, and validates the command before the SubmitCommandHandler can inspect admission state. When an opaque idempotency key is present, a registered server adapter creates canonical intent and the tenant/key admission actor either returns a non-executing classification or grants one signed current fence. The handler validates executable authority before writing advisory state or projection-activation work, then the CommandRouter invokes the fence-bound AggregateActor through DAPR.
 
-Inside the AggregateActor pipeline (shown in the highlighted block), five steps execute in order. Step 1: the actor checks for an existing idempotency record by looking up the command's CausationId in its state. Step 2: the actor validates that the command's tenant matches the actor's tenant. Step 3: the actor rehydrates the aggregate's current state by loading the latest snapshot from the State Store and replaying any subsequent events. Step 4: the actor sends the command and current state to the Domain Service via a POST /process call; the Domain Service returns a DomainResult containing a CounterIncremented event. Step 5: the actor persists the new events atomically to the State Store and publishes them to the Pub/Sub topic as CloudEvents.
+Inside the AggregateActor pipeline, the actor first validates the signed fence and exact stable `MessageId` checkpoint, then validates tenant identity, rehydrates state, invokes the domain service, and persists and publishes the result. The exact logical outcome is returned to the handler and finalized by the admission actor under the same fence.
 
 The result propagates back through the CommandRouter, SubmitCommandHandler, MediatR Pipeline, and Command API, which responds to the client with HTTP 202 Accepted and a correlationId for status tracking.
 
@@ -87,11 +94,13 @@ $ curl -X POST https://localhost:8080/api/v1/commands \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
+    "messageId": "01J00000000000000000000000",
     "tenant": "demo",
     "domain": "counter",
     "aggregateId": "counter-1",
     "commandType": "IncrementCounter",
-    "payload": { "amount": 1 }
+    "payload": { "amount": 1 },
+    "idempotencyKey": "opaque-client-retry-scope"
   }'
 ```
 
@@ -117,11 +126,13 @@ The [MediatR](https://github.com/jbogard/MediatR) pipeline runs three behaviors 
 
 Having passed all checks, the command moves to routing.
 
-## Phase 3: Command Routing
+## Phase 3: Trusted Admission and Command Routing
 
-The `SubmitCommandHandler` receives the validated command and performs two actions: it writes an advisory "Received" status (for command status tracking) and archives the original command payload. Then it hands the command to the `CommandRouter`.
+The `SubmitCommandHandler` receives an authenticated, currently authorized, structurally valid command. If the request contains an opaque `idempotencyKey`, the handler first asks the server-owned adapter registry for the operation's canonical intent. Unknown adapters or invalid canonical input fail closed before any admission record is read or created. The raw key is never used as an actor ID, logged, or persisted.
 
-The `CommandRouter` derives the actor ID from the command's aggregate identity using the format `tenant:domain:aggregateId`. For your `IncrementCounter` command targeting tenant `demo`, domain `counter`, aggregate `counter-1`, the actor ID becomes `demo:counter:counter-1`. The router creates a [DAPR actor proxy](https://docs.dapr.io/developing-applications/building-blocks/actors/) for `IAggregateActor` with that ID and invokes `ProcessCommandAsync`.
+The tenant-scoped admission actor serializes equivalent first writers and durably grants one current fencing token. Replay, conflict, expired, pending, corrupt, unsafe-legacy, and unreconciled unknown outcomes do not reach domain execution. Only after an executable decision does the handler validate the signed fence before advisory status/archive writes, projection-activation scheduling, aggregate routing, and terminal completion.
+
+The `CommandRouter` derives the actor ID from the command's aggregate identity using the format `tenant:domain:aggregateId`. For your `IncrementCounter` command targeting tenant `demo`, domain `counter`, aggregate `counter-1`, the actor ID becomes `demo:counter:counter-1`. The router creates a [DAPR actor proxy](https://docs.dapr.io/developing-applications/building-blocks/actors/) for `IAggregateActor`; admitted commands use `ProcessFencedCommandAsync`, while commands without an opaque idempotency key retain the ordinary command path.
 
 This actor ID format is central to tenant isolation — every piece of state the actor reads or writes is scoped to that composite key. Two tenants can have identically named aggregates without any risk of cross-contamination. The full identity scheme is covered in the [Identity Scheme Documentation](identity-scheme.md).
 
@@ -131,13 +142,11 @@ The actor proxy activates the AggregateActor — and this is where the real work
 
 The `AggregateActor`, which manages one aggregate instance with single-threaded safety, executes a 5-step internal pipeline. This is the heart of Hexalith.EventStore — every command passes through these exact steps in this exact order.
 
-### Step 1: Idempotency Check
+### Step 1: Fence and Aggregate Checkpoint Validation
 
-First, the actor checks whether it has already processed this exact command.
+For an admitted request, the actor first validates the internal capability against the admission actor ID, current fencing token, digest-key version, stable execution `MessageId`, stable execution correlation, tenant, domain, aggregate, and command type. A zero, missing, stale, forged, or boundary-mismatched fence fails before side effects. The same validation is repeated at protected side-effect and completion boundaries.
 
-The actor looks up the command's `CausationId` in its state. If an idempotency record exists, this is a duplicate — the actor returns the cached result from the previous execution without re-processing. This makes command submission safe to retry: network timeouts, client crashes, or load balancer retries will never cause double-processing.
-
-The `CausationId` identifies a specific command instance (one execution attempt), while the `CorrelationId` tracks the entire request across services (for distributed tracing). The idempotency check also detects in-flight pipeline resumption — if the actor crashed mid-pipeline, it picks up from the last checkpoint rather than starting over.
+The aggregate-local `MessageId` checkpoint remains an authoritative recovery guard for event mutation and read-only unknown-outcome reconciliation. It is not the caller's opaque idempotency key. `MessageId` identifies command/status/archive/event records; `CorrelationId` traces a request; `idempotencyKey` identifies a logical retry scope through protected tenant/key admission. Equivalent retries reuse the first writer's persisted execution identities and fence rather than manufacturing a new downstream command identity.
 
 ### Step 2: Tenant Validation
 
@@ -194,7 +203,9 @@ After the actor pipeline completes, the command reaches one of four terminal sta
 | **PublishFailed** | Events persisted but pub/sub delivery failed — an `UnpublishedEventsRecord` is stored for background drain recovery |
 | **Failed** | An infrastructure error prevented processing (state store unavailable, actor crash, etc.) |
 
-At terminal state, an idempotency record is stored with the result. If the same command arrives again (same `CausationId`), the actor returns the cached result from Step 1 without re-processing — this is what makes retries safe.
+At terminal state, admission stores the exact logical result, including deterministic rejection/failure classification and whether a public payload was withheld. An authorized equivalent retry receives that exact mapping without consulting advisory status or archive stores.
+
+Mutation results remain replayable for exactly 86,400 seconds and commit-class results use a seven-year calendar boundary. At the inclusive expiry instant, the live intent and result are atomically replaced with a metadata-only consumed-key tombstone. Equivalent and different intents then receive the same non-retryable `idempotency_key_expired` response; the key is not deleted or made executable again. Tenant deletion starts a separate 400-day governed retention interval, which legal hold can pause, before final purge is eligible.
 
 You can poll the command's progress at `GET /api/v1/commands/status/{correlationId}`, which returns the current pipeline stage: Received -> EventsStored -> EventsPublished -> Completed/Rejected. Status records have a 24-hour TTL. The full endpoint documentation will be available in the [Command API Reference](../reference/command-api.md).
 
@@ -206,9 +217,15 @@ The flowchart below shows the AggregateActor pipeline as a decision tree, making
 
 ```mermaid
 flowchart TD
-    Start([Command received]) --> Idempotency{Duplicate?<br/>CausationId found?}
-    Idempotency -->|Yes| Cached([Return cached result])
-    Idempotency -->|No| Tenant{Tenant match?<br/>command.Tenant == actor.Tenant?}
+    Start([Authenticated, authorized,<br/>validated command]) --> Admission{Opaque key?}
+    Admission -->|Yes| Classify{Trusted admission decision}
+    Classify -->|Replay| Cached([Return exact logical result])
+    Classify -->|Conflict / expired / unsafe| Stop([Fail closed; no domain work])
+    Classify -->|Pending / unresolved unknown| Wait([Return or reconcile read-only])
+    Classify -->|Execute / recoverable| Fence[Validate signed current fence]
+    Admission -->|No| Checkpoint[Aggregate MessageId checkpoint]
+    Fence --> Checkpoint
+    Checkpoint --> Tenant{Tenant match?<br/>command.Tenant == actor.Tenant?}
     Tenant -->|No| TenantReject([Reject: tenant mismatch])
     Tenant -->|Yes| Rehydrate[Rehydrate state<br/>snapshot + tail events]
     Rehydrate --> Domain{Domain result?}
@@ -225,7 +242,7 @@ flowchart TD
 <details>
 <summary>Diagram text description</summary>
 
-The decision tree starts when a command is received by the AggregateActor. The first decision is the idempotency check: if the command's CausationId is found in the actor's state, the command is a duplicate and the actor returns the cached result from the previous execution. If the CausationId is not found, the command is new and proceeds to tenant validation.
+The decision tree starts only after authentication, current authorization, and canonical validation. An opaque-key request is classified by trusted admission: replay returns the exact logical result; conflict, expiry, unsafe, corrupt, and unavailable outcomes do no domain work; unknown outcome permits only read-only reconciliation; and executable outcomes must carry a valid current fence. The aggregate then checks the stable `MessageId` checkpoint before tenant validation and processing.
 
 The second decision checks whether the command's tenant matches the actor's tenant. If they do not match, the command is rejected with a tenant mismatch error. If they match, the actor proceeds to rehydrate the aggregate state by loading the latest snapshot and replaying tail events.
 

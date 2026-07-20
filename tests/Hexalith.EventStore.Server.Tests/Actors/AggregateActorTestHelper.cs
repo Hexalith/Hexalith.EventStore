@@ -57,7 +57,8 @@ internal static class AggregateActorTestHelper {
     internal static ActorTestContext CreateActor(
         IEventPayloadProtectionService? payloadProtectionService = null,
         CommandConcurrencyOptions? concurrencyOptions = null,
-        TimeProvider? timeProvider = null) {
+        TimeProvider? timeProvider = null,
+        IdempotencyExecutionContextProtector? executionContextProtector = null) {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
         _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
@@ -76,7 +77,7 @@ internal static class AggregateActorTestHelper {
             Arg.Any<DeadLetterMessage>(),
             Arg.Any<CancellationToken>())
             .Returns(true);
-        var actor = new AggregateActor(host, logger, invoker, snapshotManager, payloadProtectionService ?? new NoOpEventPayloadProtectionService(), commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()), deadLetterPublisher, commandAggregateTypeResolver: aggregateTypeResolver, concurrencyOptions: Options.Create(concurrencyOptions ?? new CommandConcurrencyOptions()), timeProvider: timeProvider);
+        var actor = new AggregateActor(host, logger, invoker, snapshotManager, payloadProtectionService ?? new NoOpEventPayloadProtectionService(), commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()), deadLetterPublisher, commandAggregateTypeResolver: aggregateTypeResolver, concurrencyOptions: Options.Create(concurrencyOptions ?? new CommandConcurrencyOptions()), timeProvider: timeProvider, executionContextProtector: executionContextProtector);
 
         // Set the mock state manager via reflection (Dapr runtime normally sets this)
         ActorStateManagerTestHelper.SetStateManager(actor, stateManager);

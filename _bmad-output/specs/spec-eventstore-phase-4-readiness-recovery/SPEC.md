@@ -11,6 +11,7 @@ sources:
   - ../../planning-artifacts/prd.md
   - ../../planning-artifacts/implementation-readiness-report-2026-07-15.md
   - ../../planning-artifacts/sprint-change-proposal-2026-07-15.md
+  - ../../planning-artifacts/sprint-change-proposal-2026-07-20-oq8-durable-idempotency-admission.md
 ---
 
 > **Canonical contract.** This SPEC and the files in `companions:` are the complete, preservation-validated contract for what to build, test, and validate. Source documents listed in frontmatter are for traceability only.
@@ -20,6 +21,12 @@ sources:
 ## Why
 
 Hexalith.EventStore Phase 4 must turn a working DAPR-native event-sourcing platform into a safer reusable developer platform before full implementation resumes. The pressure is both product and readiness: domain authors need platform-owned seams instead of copied boilerplate, operators need fail-closed trust and persisted evidence, and the planning set must stop using `epics.md` as a proxy for PRD, architecture, UX, and implementation slicing.
+
+Story 4.8 is governed first by the approved 2026-07-20 OQ8 proposal and the
+Architecture + Security + Test-approved OQ8 design version 1.0.0 (SHA-256
+`1a55b0302e91233e12db91e6e245f0a22d6bf13fcf6cdf5ee0cbe5759f08dcd8`),
+then by this reconciled SPEC package. Pre-change FR27/NFR7/NFR16 and
+architecture wording is historical context only.
 
 ## Capabilities
 
@@ -36,8 +43,8 @@ Hexalith.EventStore Phase 4 must turn a working DAPR-native event-sourcing platf
   - **success:** Release validation cannot publish submodule packages, and CI separates deterministic release-gate tests from live-sidecar tests.
 
 - **CAP-4**
-  - **intent:** Operators and consumers can trust event identity, idempotency, replay dispatch, append behavior, global-position semantics, and crash recovery under duplicates, concurrency, and failures.
-  - **success:** Tests prove CloudEvent id stability, duplicate result fidelity, stale pipeline rejection, replay ambiguity handling, stored-but-unpublished recovery, and real DAPR conflict behavior.
+  - **intent:** Operators and consumers can trust event identity, trusted tenant/key admission, fencing, exact replay, terminal expired-key precedence, replay/tombstone separation, replay dispatch, append behavior, global-position semantics, and crash recovery under duplicates, concurrency, and failures.
+  - **success:** Tests prove CloudEvent id stability, duplicate result fidelity, stale pipeline rejection, trusted semantic equivalence, one current fence, inclusive expiry, minimal tombstone compaction, rotation/migration fail-closed behavior, stored-but-unpublished recovery, and multi-host production-path durable evidence with exactly one eligible execution and zero later duplicate side effects.
 
 - **CAP-5**
   - **intent:** Public, internal, domain-service, projection-notification, admin, and generated REST surfaces fail closed and preserve tenant isolation.
@@ -62,6 +69,11 @@ Hexalith.EventStore Phase 4 must turn a working DAPR-native event-sourcing platf
 - The platform remains DAPR-backed hexagonal event sourcing: the EventStore gateway is the policy edge, DAPR actors own aggregate write serialization, domain services are pure domain adapters, and external adapters call platform seams.
 - Generated REST controllers live only in dedicated external API hosts and delegate to `IEventStoreGatewayClient`; interactive UI hosts consume EventStore Client libraries directly and host no generated or hand-written per-message MVC command/query controllers.
 - `AggregateActor` owns durable event mutation; domain code returns `DomainResult` and never writes EventStore state directly.
+- AD-25 admission precedes `AggregateActor`: authentication, current authorization, and canonical validation precede a trusted adapter; the tenant/key admission directory selects exactly one canonical actor; and only its current non-zero fence may cross a protected side-effect boundary.
+- Public requests carry only the opaque idempotency key. Canonical intent and fixed retention are server-owned; raw keys and protected intent never enter persistent or diagnostic surfaces.
+- Mutation replay retention is exactly 86,400 seconds and commit replay retention uses `DateTimeOffset.AddYears(7)`. Inclusive expiry atomically compacts to the approved fence-free minimal tombstone; unresolved states never age into fresh work.
+- Unavailable, corrupt/collision, unknown-version, ambiguous/uninventoried legacy, and unsafe promotion state fail closed. Directory-mediated rotation and versioned legacy migration preserve one canonical authority or remain blocked.
+- Story 4.4 retains committed-event publication recovery. Story 4.8 produces `_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml` against the `oq8-postgresql-v1` multi-host DAPR profile; Folders owns canonical OQ8 evidence and final closure.
 - Read models use `IReadModelStore` plus `ReadModelWritePolicy`; cursors use `IQueryCursorCodec` plus `QueryCursorScope` and remain opaque, bounded, scoped, and fail safe.
 - Projection and pub/sub delivery are at-least-once and unordered; notifications are freshness signals, not proof of success; consumers deduplicate by EventStore `MessageId`.
 - Runtime topology changes must update AppHost, DAPR component/configuration YAML, app IDs, sidecar options, ACLs, topics, component and secret scopes, the canonical secret contract, and topology tests together.
@@ -98,7 +110,7 @@ Hexalith.EventStore Phase 4 must turn a working DAPR-native event-sourcing platf
 
 ## Success signal
 
-Implementation readiness can be re-run against this package and finds complete Phase 4 FR1-FR36/NFR1-NFR18 coverage, no later-epic prerequisite, no oversized active parent, and deterministic owner/evidence gates. The resulting plan preserves architecture AD-1 through AD-24, separately gated post-MVP FR37/NFR19, canonical UX, exact story migration history, and persisted-evidence validation.
+Implementation readiness can be re-run against this package and finds complete Phase 4 FR1-FR36/NFR1-NFR18 coverage, no later-epic prerequisite, no oversized active parent, and deterministic owner/evidence gates. The resulting plan preserves architecture AD-1 through AD-25, separately gated post-MVP FR37/NFR19, canonical UX, exact story migration history, OQ8 platform evidence ownership, and persisted-evidence validation.
 
 ## Assumptions
 

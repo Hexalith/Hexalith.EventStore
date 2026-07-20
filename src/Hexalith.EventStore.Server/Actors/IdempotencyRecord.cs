@@ -18,6 +18,9 @@ namespace Hexalith.EventStore.Server.Actors;
 /// <param name="CommandType">The command type, or <c>null</c> for a legacy record.</param>
 /// <param name="ExpiresAt">The application-visible expiration time, or <c>null</c> for a legacy record.</param>
 /// <param name="Disposition">The processing disposition, or <c>null</c> for a legacy record.</param>
+/// <param name="RejectionEventType">The stable domain rejection event type.</param>
+/// <param name="FailureReason">The stable deterministic failure classification.</param>
+/// <param name="ResultPayloadWithheld">Whether public result-payload projection was withheld.</param>
 public record IdempotencyRecord(
     string CausationId,
     string? CorrelationId,
@@ -32,7 +35,10 @@ public record IdempotencyRecord(
     string? MessageId = null,
     string? CommandType = null,
     DateTimeOffset? ExpiresAt = null,
-    IdempotencyRecordDisposition? Disposition = null)
+    IdempotencyRecordDisposition? Disposition = null,
+    string? RejectionEventType = null,
+    string? FailureReason = null,
+    bool ResultPayloadWithheld = false)
 {
     /// <summary>
     /// Creates an <see cref="IdempotencyRecord"/> from a <see cref="CommandProcessingResult"/>.
@@ -95,7 +101,10 @@ public record IdempotencyRecord(
             identity.MessageId,
             identity.CommandType,
             expiresAt,
-            disposition);
+            disposition,
+            result.RejectionEventType,
+            result.FailureReason,
+            result.ResultPayloadWithheld);
     }
 
     /// <summary>
@@ -111,5 +120,8 @@ public record IdempotencyRecord(
             ResultPayload,
             BackpressureExceeded,
             BackpressurePendingCount,
-            BackpressureThreshold);
+            BackpressureThreshold,
+            RejectionEventType,
+            FailureReason,
+            ResultPayloadWithheld);
 }

@@ -34,7 +34,7 @@ public sealed class CommandExampleTransformer : IOpenApiOperationTransformer {
             mediaType.Examples ??= new Dictionary<string, IOpenApiExample>();
             mediaType.Examples["IncrementCounter"] = new OpenApiExample {
                 Summary = "Increment Counter (Counter domain)",
-                Description = "A valid Counter domain IncrementCounter command. Generate a unique ULID for messageId on each submission. Reusing the same messageId triggers idempotency detection and returns a silent success without processing a new command. Replace 'tenant-a' with your actual tenant identifier. If JWT authentication is disabled for local development (EventStore:Auth:Enabled = false), you can test without obtaining a token first.",
+                Description = "A valid Counter domain IncrementCounter command. Generate a unique ULID for messageId on each submission; messageId is command/status/event identity, not an opaque idempotency key. Deployments that register a trusted IncrementCounter adapter may also supply the separate idempotencyKey field for logical retries. Replace 'tenant-a' with your actual tenant identifier. If JWT authentication is disabled for local development (EventStore:Auth:Enabled = false), you can test without obtaining a token first.",
                 Value = JsonNode.Parse("""
                     {
                       "messageId": "01JAXYZ1234567890ABCDEFGHJ",

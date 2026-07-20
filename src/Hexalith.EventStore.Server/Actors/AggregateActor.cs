@@ -57,7 +57,8 @@ public partial class AggregateActor(
     IOptions<CommandConcurrencyOptions>? concurrencyOptions = null,
     IGlobalPositionAllocator? globalPositionAllocator = null,
     IOptions<IdempotencyRetentionOptions>? idempotencyRetentionOptions = null,
-    TimeProvider? timeProvider = null)
+    TimeProvider? timeProvider = null,
+    IdempotencyExecutionContextProtector? executionContextProtector = null)
     : Actor(host), IAggregateActor, IRemindable {
     private const string TraceParentExtensionKey = "traceparent";
     private const string TraceStateExtensionKey = "tracestate";
@@ -75,8 +76,36 @@ public partial class AggregateActor(
 
     private TimeProvider IdempotencyTimeProvider { get; } = timeProvider ?? TimeProvider.System;
     /// <inheritdoc/>
+    public Task<CommandProcessingResult> ProcessFencedCommandAsync(FencedCommandEnvelope request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(request.Command);
+        ArgumentNullException.ThrowIfNull(request.ExecutionContext);
+        return ProcessCommandCoreAsync(request.Command, request.ExecutionContext, CancellationToken.None);
+    }
+
+    /// <inheritdoc/>
+    public async Task<IdempotencyCheckResult> ReconcileFencedCommandAsync(FencedCommandEnvelope request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(request.Command);
+        ArgumentNullException.ThrowIfNull(request.ExecutionContext);
+        await EnsureExecutionFenceAsync(request.ExecutionContext, request.Command, CancellationToken.None)
+            .ConfigureAwait(false);
+        var tenantValidator = new TenantValidator(Host.LoggerFactory.CreateLogger<TenantValidator>());
+        tenantValidator.Validate(request.Command.TenantId, Host.Id.GetId());
+        var checker = new IdempotencyChecker(
+            StateManager,
+            Host.LoggerFactory.CreateLogger<IdempotencyChecker>(),
+            IdempotencyTimeProvider);
+        return await checker
+            .InspectAsync(CreateCommandProcessingIdentity(request.Command))
+            .ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
     public Task<CommandProcessingResult> ProcessCommandAsync(CommandEnvelope command)
-        => ProcessCommandAsync(command, CancellationToken.None);
+        => ProcessCommandCoreAsync(command, executionContext: null, CancellationToken.None);
 
     /// <summary>
     /// Processes a command envelope within the aggregate actor context.
@@ -84,9 +113,16 @@ public partial class AggregateActor(
     /// <param name="command">The command envelope to process.</param>
     /// <param name="cancellationToken">Cancellation token for local/in-process callers.</param>
     /// <returns>The result of processing the command.</returns>
-    public async Task<CommandProcessingResult> ProcessCommandAsync(CommandEnvelope command, CancellationToken cancellationToken) {
+    public Task<CommandProcessingResult> ProcessCommandAsync(CommandEnvelope command, CancellationToken cancellationToken)
+        => ProcessCommandCoreAsync(command, executionContext: null, cancellationToken);
+
+    private async Task<CommandProcessingResult> ProcessCommandCoreAsync(
+        CommandEnvelope command,
+        IdempotencyExecutionContext? executionContext,
+        CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(command);
         cancellationToken.ThrowIfCancellationRequested();
+        await EnsureExecutionFenceAsync(executionContext, command, cancellationToken).ConfigureAwait(false);
 
         Activity? processActivity;
         if (Activity.Current is null && TryGetFallbackParentContext(command, out ActivityContext fallbackParent)) {
@@ -359,13 +395,14 @@ public partial class AggregateActor(
 
                         _ = (activity?.SetStatus(ActivityStatusCode.Error, "BackpressureExceeded"));
                         _ = (processActivity?.SetStatus(ActivityStatusCode.Error, "BackpressureExceeded"));
-                        return new CommandProcessingResult(
-                            Accepted: false,
-                            ErrorMessage: $"Backpressure exceeded: {pendingCount} pending commands (threshold: {bpOptions.MaxPendingCommandsPerAggregate})",
-                            CorrelationId: command.CorrelationId,
-                            BackpressureExceeded: true,
-                            BackpressurePendingCount: pendingCount,
-                            BackpressureThreshold: bpOptions.MaxPendingCommandsPerAggregate);
+                    return new CommandProcessingResult(
+                        Accepted: false,
+                        ErrorMessage: $"Backpressure exceeded: {pendingCount} pending commands (threshold: {bpOptions.MaxPendingCommandsPerAggregate})",
+                        CorrelationId: command.CorrelationId,
+                        BackpressureExceeded: true,
+                        BackpressurePendingCount: pendingCount,
+                        BackpressureThreshold: bpOptions.MaxPendingCommandsPerAggregate,
+                        FailureReason: "BackpressureExceeded");
                     }
 
                     await StagePendingCommandCountAsync(pendingCount + 1).ConfigureAwait(false);
@@ -472,6 +509,7 @@ public partial class AggregateActor(
                     SetActivityTags(activity, command);
 
                     try {
+                        await EnsureExecutionFenceAsync(executionContext, command, cancellationToken).ConfigureAwait(false);
                         domainResult = await domainServiceInvoker
                             .InvokeAsync(command, currentState)
                             .ConfigureAwait(false);
@@ -498,6 +536,7 @@ public partial class AggregateActor(
 
                 // Handle no-op path (AC #12): Processing -> Completed directly
                 if (domainResult.IsNoOp) {
+                    await EnsureExecutionFenceAsync(executionContext, command, cancellationToken).ConfigureAwait(false);
                     return await CompleteTerminalAsync(
                         command, causationId, idempotencyChecker, stateMachine, pipelineKeyPrefix,
                         accepted: true, eventCount: 0, errorMessage: null,
@@ -521,6 +560,7 @@ public partial class AggregateActor(
 
                         string aggregateType = await ResolveAggregateTypeAsync(command, cancellationToken).ConfigureAwait(false);
 
+                        await EnsureExecutionFenceAsync(executionContext, command, cancellationToken).ConfigureAwait(false);
                         persistResult = await eventPersister
                             .PersistEventsAsync(
                                 identity: command.AggregateIdentity,
@@ -537,6 +577,7 @@ public partial class AggregateActor(
                                 .ConfigureAwait(false);
 
                             if (shouldSnapshot) {
+                                await EnsureExecutionFenceAsync(executionContext, command, cancellationToken).ConfigureAwait(false);
                                 long preEventSequence = persistResult.NewSequenceNumber - domainResult.Events.Count;
                                 await snapshotManager
                                     .CreateSnapshotAsync(command.AggregateIdentity, preEventSequence, currentState, StateManager, command.CorrelationId)
@@ -563,6 +604,7 @@ public partial class AggregateActor(
 
                         // Atomic commit: events + snapshot + EventsStored checkpoint (AC #9)
                         try {
+                            await EnsureExecutionFenceAsync(executionContext, command, cancellationToken).ConfigureAwait(false);
                             await StateManager.SaveStateAsync().ConfigureAwait(false);
                         }
                         catch (InvalidOperationException ex) {
@@ -619,6 +661,7 @@ public partial class AggregateActor(
 
                 // Story 4.1: Publish events via DAPR pub/sub with CloudEvents 1.0
                 // Rejection events ARE published (D3: rejection events are normal events).
+                await EnsureExecutionFenceAsync(executionContext, command, cancellationToken).ConfigureAwait(false);
                 EventPublishResult publishResult = await eventPublisher
                     .PublishEventsAsync(
                         command.AggregateIdentity,
@@ -654,6 +697,7 @@ public partial class AggregateActor(
                         ? $"Domain rejection: {rejectionType}"
                         : null;
 
+                    await EnsureExecutionFenceAsync(executionContext, command, cancellationToken).ConfigureAwait(false);
                     return await CompleteTerminalAsync(
                         command, causationId, idempotencyChecker, stateMachine, pipelineKeyPrefix,
                         accepted, domainResult.Events.Count, errorMessage,
@@ -1968,7 +2012,10 @@ public partial class AggregateActor(
             ErrorMessage: errorMessage,
             CorrelationId: correlationId,
             EventCount: eventCount,
-            ResultPayload: resultPayload);
+            ResultPayload: resultPayload,
+            RejectionEventType: rejectionEventType,
+            FailureReason: failureReason,
+            ResultPayloadWithheld: !accepted || !string.IsNullOrWhiteSpace(failureReason));
     }
 
     private async Task<EventEnvelope[]> ReadEventsRangeAsync(
@@ -2122,6 +2169,21 @@ public partial class AggregateActor(
             command.CommandType);
     }
 
+    private async ValueTask EnsureExecutionFenceAsync(
+        IdempotencyExecutionContext? executionContext,
+        CommandEnvelope command,
+        CancellationToken cancellationToken)
+    {
+        if (executionContext is null)
+        {
+            return;
+        }
+
+        IdempotencyExecutionContextProtector protector = executionContextProtector
+            ?? throw new InvalidOperationException("Idempotency execution-fence validation is unavailable.");
+        await protector.ValidateAsync(executionContext, command, cancellationToken).ConfigureAwait(false);
+    }
+
     private Task RecordIdempotencyAsync(
         IdempotencyChecker idempotencyChecker,
         CommandProcessingIdentity identity,
@@ -2197,7 +2259,9 @@ public partial class AggregateActor(
             Accepted: false,
             ErrorMessage: safeFailureReason,
             CorrelationId: command.CorrelationId,
-            EventCount: 0);
+            EventCount: 0,
+            FailureReason: safeFailureReason,
+            ResultPayloadWithheld: true);
 
         await StateManager.SaveStateAsync().ConfigureAwait(false);
 
@@ -2228,7 +2292,9 @@ public partial class AggregateActor(
             Accepted: false,
             ErrorMessage: "ConcurrencyConflict",
             CorrelationId: command.CorrelationId,
-            EventCount: 0);
+            EventCount: 0,
+            FailureReason: "ConcurrencyConflict",
+            ResultPayloadWithheld: true);
 
         await stateMachine.CleanupPipelineAsync(pipelineKeyPrefix, command.CorrelationId)
             .ConfigureAwait(false);
@@ -2286,7 +2352,10 @@ public partial class AggregateActor(
             ErrorMessage: errorMessage,
             CorrelationId: command.CorrelationId,
             EventCount: eventCount,
-            ResultPayload: resultPayload);
+            ResultPayload: resultPayload,
+            RejectionEventType: rejectionEventType,
+            FailureReason: accepted ? null : "DomainRejected",
+            ResultPayloadWithheld: !accepted);
 
         await RecordIdempotencyAsync(
             idempotencyChecker,

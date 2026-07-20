@@ -32,6 +32,7 @@ inputDocuments:
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-18-story-3-5-reconciliation.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-19.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-19-openbao-secret-store.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-20-oq8-durable-idempotency-admission.md
   - _bmad-output/specs/spec-eventstore-phase-4-readiness-recovery/SPEC.md
 ---
 
@@ -42,6 +43,13 @@ inputDocuments:
 This document provides the complete epic and story breakdown for eventstore, decomposing the formal PRD, architecture, UX handoff, and approved sprint change proposals into implementable stories.
 
 The current Phase 4 planning baseline is `_bmad-output/planning-artifacts/prd.md`, `_bmad-output/planning-artifacts/architecture.md`, `_bmad-output/planning-artifacts/ux.md`, `_bmad-output/specs/spec-eventstore-phase-4-readiness-recovery/SPEC.md` with its companions, and the approved sprint change proposals in `_bmad-output/planning-artifacts`. The PRD owns FR/NFR truth, the architecture artifact owns implementation invariants and decision gates, the UX handoff owns UI governance and journeys, the SPEC preserves the complete downstream contract, and this epics document owns implementation slicing and story acceptance criteria. PRD section 7 is authoritative whenever copied NFR text drifts.
+
+For Story 4.8, the approved 2026-07-20 OQ8 proposal and the Architecture +
+Security + Test-approved OQ8 design version 1.0.0 (SHA-256
+`1a55b0302e91233e12db91e6e245f0a22d6bf13fcf6cdf5ee0cbe5759f08dcd8`)
+govern. The reconciled PRD, architecture, epics, and canonical SPEC package
+project that authority; pre-change FR27/NFR7/NFR16 and architecture wording is
+historical context only.
 
 ## Implementation Readiness Execution Gates
 
@@ -193,7 +201,7 @@ FR25: EventStore workflows must use shared Hexalith.Builds security gates throug
 
 FR26: Phase 0 architecture remediation must close immediate safe fixes: clear staged state on infrastructure failure, protect anonymous admin endpoints, strip committed admin secrets, enforce production auth guards, add tenant-filter parity, gate admin Swagger, require destructive CLI confirmation, use ULID-safe admin correlation middleware, and correct stale test-baseline documentation.
 
-FR27: Pipeline correctness remediation must make resume/idempotency matching use `MessageId`, `CausationId`, and `CommandType`; key command status/archive by message id; preserve retryability for transient failures; and validate tenant access before idempotency reads.
+FR27: Pipeline and idempotency correctness remediation must use exact command identity for resume; provide EventStore-owned tenant-scoped durable admission accepting only a trusted versioned canonical-intent descriptor and fixed retention tier; reject live conflict and all expired-key reuse before aggregate, domain, or external execution; separate replay retention from metadata-only consumed evidence; and never turn consumed, unavailable, corrupt, or unsafe legacy state into a fresh miss. Command status/archive identity, transient retryability, and tenant-before-state validation remain required.
 
 FR28: Trust-boundary remediation must require app-layer credentials for internal, domain-service, projection-notification, and admin-computation endpoints, and must remove trust in wire-asserted administrator flags.
 
@@ -229,7 +237,7 @@ NFR5: SignalR detail metadata must remain bounded and metadata-only; framework l
 
 NFR6: Event delivery semantics are at-least-once and unordered; subscribers must deduplicate by `MessageId` and order only where domain semantics make `SequenceNumber` meaningful. Duplicate and out-of-order safety must be enforced and proven through the production projection dispatcher, handler, persistence, marker, and checkpoint path rather than only aggregate replay or transport-level tests.
 
-NFR7: Event persistence and command processing must avoid silent data loss: staged-state flushes, stale pipeline records, append races, and committed-but-unpublished events must be explicitly guarded or recovered.
+NFR7: Event persistence and command processing must avoid silent data loss: staged-state flushes, stale pipeline records, append races, and committed-but-unpublished events must be explicitly guarded or recovered. Command processing must prevent duplicate side effects across reservation, fencing, execution, recovery, expiry, compaction, restart, and concurrent hosts; consumed keys never become fresh work when replay expires or storage is unreadable.
 
 NFR8: Snapshot and projection behavior must have a bounded cost model as streams grow, must avoid unnecessary full-stream replay when already current, and must expose projection freshness/version evidence through platform query metadata when callers depend on lifecycle decisions; freshness/version evidence is authoritative only for query responses whose route provenance is projection-backed, and handler-computed or unknown-provenance responses must not be presented as authoritative lifecycle evidence. Paged rebuild output must equal canonical aggregate replay and must never overwrite a complete live model with page-only state.
 
@@ -247,7 +255,7 @@ NFR14: Interactive UI hosts must not expose generated or hand-written per-messag
 
 NFR15: Admin UX must not present deferred backup, restore, import, compaction, or other unavailable operations as functional; unavailable operations must be hidden/disabled or return 501.
 
-NFR16: Integration and higher-tier tests must assert persisted state-store/read-model/end-state evidence, not only HTTP status codes or mock call counts. Erasure, batch recovery, handler idempotency, and rebuild equivalence require persisted detail, index, marker, lifecycle, and checkpoint evidence through their production paths.
+NFR16: Integration and higher-tier tests must assert persisted state-store/read-model/end-state evidence, not only HTTP status codes or mock call counts. Erasure, batch recovery, handler idempotency, and rebuild equivalence require persisted detail, index, marker, lifecycle, and checkpoint evidence through their production paths. Durable-admission evidence proves restart survival, multi-host serialization, inclusive expiry, tombstone compaction, leakage constraints, and zero downstream execution for replay, conflict, expired, corrupt, and unsafe legacy outcomes.
 
 NFR17: Operational hardening must support secret stores, DAPR app health checks, readiness-tagged health checks, resiliency targets, immutable image tags, and documented crypto-shred boundaries.
 
@@ -338,7 +346,7 @@ FR25: Epic 3 - Shared Hexalith.Builds gates and manifest-driven package scope.
 
 FR26: Epic 5 - Phase 0 security and safe-remediation fixes.
 
-FR27: Epic 4 - Resume/idempotency integrity and command status re-keying.
+FR27: Epic 4 - Resume/idempotency integrity, command status re-keying, and Story 4.8 durable tenant/key admission.
 
 FR28: Epic 5 - Defense-in-depth trust boundary.
 
@@ -390,7 +398,7 @@ Maintainers can release reproducibly with one authoritative, latest-compatible s
 
 **Epic type:** Correctness Remediation
 
-Operators and consumers can trust persisted event metadata, idempotency, command status, replay dispatch, append behavior, global-position allocation, and crash recovery semantics under duplicate, concurrent, and failure conditions.
+Operators and consumers can trust persisted event metadata, tenant/key idempotency admission, command status, replay dispatch, append behavior, global-position allocation, and crash recovery semantics under duplicate, concurrent, expired-key, and failure conditions.
 
 **Sequencing note:** Prioritize data-loss, idempotency, replay, and recovery slices before global-position sharding.
 
@@ -2153,6 +2161,60 @@ So that Tenants never presents an opaque ETag as projection version or current/s
 **When** authority and runtime identity are checked
 **Then** the evidence names the Tenants maintainer-approved PR/commit, exact Tenants SHA, accepted scope, source/package mode, and focused production-path validation
 **And** without that evidence the story remains `backlog` or `review`; EventStore closes the platform risk through the `Unknown` fallback contract rather than silently declaring the producer fixed.
+
+### Story 4.8: Durable Tenant-Scoped Idempotency Admission And Expired-Key Precedence
+
+**Requirements covered:** FR27, NFR7, NFR16
+
+As a platform operator,
+I want every admitted mutation key to remain durably consumed after its replay
+result expires,
+So that retries, conflicts, crashes, concurrent hosts, and old-key reuse cannot
+duplicate aggregate, domain, provider, repository, or other external effects.
+
+**Acceptance Criteria:**
+
+**Given** an authenticated and currently authorized mutation passed canonical validation
+**When** admission begins
+**Then** a registered server-trusted adapter supplies the versioned canonical intent and fixed retention class
+**And** public requests or extensions cannot select or override descriptor, digest, actor, fence, state, expiry, policy, or tier authority.
+
+**Given** a caller supplies an opaque idempotency key
+**When** EventStore derives admission identity
+**Then** identity is partitioned by managed tenant, digest-key version, and protected key digest independently of MessageId and aggregate identity
+**And** cross-operation, aggregate, target, task-scope, or behavior-affecting credential reuse conflicts within one tenant while another tenant remains isolated.
+
+**Given** protected admission values are derived
+**When** they are compared, persisted, observed, or reported
+**Then** domain-separated HMAC-SHA-256 digests, collision verification, constant-time comparison, and buffer zeroing are used
+**And** raw keys and protected intent never enter persistent or diagnostic surfaces.
+
+**Given** execution authority is first granted
+**When** admission reserves, transitions, retries, resumes, or finalizes work
+**Then** actor-serialized durable state issues one monotonic current fence and reuses it for safe resume
+**And** only that fence crosses aggregate, domain-service, provider, repository, projection, audit, or scheduling side-effect boundaries.
+
+**Given** current authorization succeeds for a later request
+**When** its key is live, conflicting, pending, recoverable, unknown, terminal, or expired
+**Then** the approved behavior matrix applies without unauthorized state mutation or disclosure
+**And** at `now >= expiresAt`, equivalent and different intent return indistinguishable non-retryable `idempotency_key_expired` before any downstream work.
+
+**Given** a terminal result is durably finalized
+**When** its fixed replay retention elapses
+**Then** mutation results expire at exactly 86,400 seconds and commit results at `DateTimeOffset.AddYears(7)`
+**And** the replay payload and live intent compact atomically to the AD-25 minimal fence-free tombstone retained for tenant lifetime plus the governed 400-day post-deletion period with legal-hold pause/resume.
+
+**Given** recovery, rotation, collision, unavailable, corrupt, unknown-schema/key-version, or legacy state is encountered
+**When** admission cannot prove one safe current authority and checkpoint
+**Then** it fails closed, performs only approved bounded resume or read-only reconciliation, and never converts the state to missing
+**And** directory-mediated key promotion and versioned legacy migration preserve one authority or remain safely blocked.
+
+**Given** Story 4.8 production evidence is assembled
+**When** two EventStore hosts with independent sidecars share the approved `oq8-postgresql-v1` DAPR state profile
+**Then** persisted before/after state proves time boundaries, compaction, fencing, rotation, collision, migration, restart, failover, leakage absence, exactly one eligible first execution, and zero later duplicate side effects
+**And** `_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml` binds the OQ8 design digest, source/artifact identity, commands, counts, environment, reviewers, and approvals without claiming Folders-owned OQ8 closure.
+
+**Ownership boundary:** Story 4.2 remains done; Story 4.4 retains committed-event publication recovery. Folders owns its adapter, generated C13 matrix, canonical `oq8-idempotency-evidence.yaml`, final closure, and consumption of a separately authorized EventStore release or exact pin.
 
 ## Epic 5: Security And Tenant Isolation
 

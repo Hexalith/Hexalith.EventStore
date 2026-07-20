@@ -21,8 +21,9 @@ spec:
   version: v1
   metadata:
     - name: connectionString
-      # PostgreSQL connection string. Format: host=<host>;port=5432;username=<user>;password=<pass>;database=<db>;sslmode=require
-      # Provide via environment variable -- NEVER hardcode secrets in this file (NFR14).
+      # PostgreSQL pgx/libpq connection string. Format: host=<host> port=5432 user=<user> password=<pass> dbname=<db> sslmode=require
+      # The deployment pipeline resolves this placeholder from its environment/secret provider.
+      # NEVER hardcode secrets in this file (NFR14).
       value: "{env:POSTGRES_CONNECTION_STRING}"
     - name: actorStateStore
       value: "true"

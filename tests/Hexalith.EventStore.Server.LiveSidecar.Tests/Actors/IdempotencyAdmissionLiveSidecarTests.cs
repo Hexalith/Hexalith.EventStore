@@ -2,8 +2,13 @@ using Dapr.Actors;
 using Dapr.Actors.Client;
 
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Server.Actors;
+using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures;
+using Hexalith.EventStore.Server.Pipeline.Commands;
+
+using Microsoft.Extensions.DependencyInjection;
 
 using Shouldly;
 
@@ -14,6 +19,111 @@ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Actors;
 [Trait("Category", "LiveSidecar")]
 public class IdempotencyAdmissionLiveSidecarTests(DaprTestContainerFixture fixture)
 {
+    [Fact]
+    public async Task MultiHostAdmission_PrimaryHostRemovedBeforeExecution_ExecutesAndReplaysExactlyOnceOnReplica()
+    {
+        const string RawKey = "live-multi-host-idempotency-key";
+        fixture.ResetTestState();
+        fixture.SetupCounterDomain();
+        await fixture.EnsureReplicaAsync();
+
+        bool primaryStopped = false;
+        try
+        {
+            IIdempotencyAdmissionCoordinator primaryCoordinator = fixture.Services
+                .GetRequiredService<IIdempotencyAdmissionCoordinator>();
+            IIdempotencyAdmissionCoordinator replicaCoordinator = fixture.ReplicaServices
+                .GetRequiredService<IIdempotencyAdmissionCoordinator>();
+            string aggregateId = $"multi-host-{Guid.NewGuid():N}";
+            var firstRequest = new SubmitCommand(
+                MessageId: "01J88888888888888888888888",
+                Tenant: "tenant-multi-host",
+                Domain: "counter",
+                AggregateId: aggregateId,
+                CommandType: "IncrementCounter",
+                Payload: "{}"u8.ToArray(),
+                CorrelationId: "multi-host-correlation-0",
+                UserId: "live-test-user",
+                IdempotencyKey: RawKey);
+
+            IdempotencyAdmissionSession[] admissions = await Task.WhenAll(
+                Enumerable.Range(0, 8).Select(async index =>
+                {
+                    IIdempotencyAdmissionCoordinator coordinator = index % 2 == 0
+                        ? primaryCoordinator
+                        : replicaCoordinator;
+                    return await coordinator.AdmitAsync(
+                        firstRequest with
+                        {
+                            MessageId = $"01J8888888888888888888888{index}",
+                            CorrelationId = $"multi-host-correlation-{index}",
+                        }) ?? throw new InvalidOperationException("Idempotency admission returned no session.");
+                }));
+
+            admissions.Count(result => result.Decision == IdempotencyAdmissionDecision.Execute).ShouldBe(1);
+            admissions.Count(result => result.Decision == IdempotencyAdmissionDecision.Pending).ShouldBe(7);
+            IdempotencyAdmissionSession executable = admissions.Single(result =>
+                result.Decision == IdempotencyAdmissionDecision.Execute);
+            admissions.Select(result => result.FencingToken).Distinct().ShouldBe([executable.FencingToken]);
+            admissions.Select(result => result.ExecutionMessageId).Distinct().ShouldBe([executable.ExecutionMessageId]);
+            admissions.Select(result => result.ExecutionCorrelationId).Distinct().ShouldBe([executable.ExecutionCorrelationId]);
+
+            // Remove one complete application host and sidecar after the durable reservation but
+            // before Begin/domain execution. The replica must finish the same fenced workflow.
+            await fixture.StopPrimaryHostAndSidecarAsync();
+            primaryStopped = true;
+            await Task.Delay(2000);
+
+            var executionRequest = firstRequest with
+            {
+                MessageId = executable.ExecutionMessageId!,
+                CorrelationId = executable.ExecutionCorrelationId!,
+                IdempotencyKey = null,
+            };
+            await replicaCoordinator.BeginAsync(executable);
+            await replicaCoordinator.ValidateExecutionAsync(executable, executionRequest);
+            ICommandRouter replicaRouter = fixture.ReplicaServices.GetRequiredService<ICommandRouter>();
+            CommandProcessingResult terminal = await replicaRouter.RouteFencedCommandAsync(
+                executionRequest,
+                executable.ExecutionContext!);
+            await replicaCoordinator.CompleteAsync(executable, terminal);
+
+            var retry = firstRequest with
+            {
+                MessageId = "01J99999999999999999999999",
+                CorrelationId = "retry-after-primary-removal",
+            };
+            IdempotencyAdmissionSession replay = (await replicaCoordinator.AdmitAsync(retry))!;
+            replay.Decision.ShouldBe(IdempotencyAdmissionDecision.Replay);
+            replay.ReplayResult.ShouldBe(terminal);
+            replay.ExecutionMessageId.ShouldBe(executable.ExecutionMessageId);
+            replay.ExecutionCorrelationId.ShouldBe(executable.ExecutionCorrelationId);
+
+            fixture.DomainServiceInvoker.Invocations.Count.ShouldBe(1);
+            fixture.EventPublisher.PublishCalls.Count.ShouldBe(1);
+            fixture.EventPublisher.TotalEventsPublished.ShouldBe(1);
+            terminal.Accepted.ShouldBeTrue();
+            terminal.EventCount.ShouldBe(1);
+
+            string persisted = await fixture.GetActorStateJsonAsync(
+                IdempotencyAdmissionActor.ActorTypeName,
+                executable.ActorId,
+                IdempotencyAdmissionActor.StateName);
+            persisted.ShouldContain("\"replayExpiresAt\"");
+            persisted.ShouldContain("\"replayResult\"");
+            persisted.ShouldContain(executable.ExecutionMessageId!);
+            persisted.ShouldNotContain(RawKey);
+        }
+        finally
+        {
+            await fixture.StopReplicaHostAndSidecarAsync();
+            if (primaryStopped)
+            {
+                await fixture.RestartHostAndSidecarAsync();
+            }
+        }
+    }
+
     [Fact]
     public async Task ConcurrentEquivalentAdmissions_ExecuteOnceAndPersistReplayableTerminalState()
     {
@@ -35,7 +145,9 @@ public class IdempotencyAdmissionLiveSidecarTests(DaprTestContainerFixture fixtu
             keyDigest,
             $"tag-{Guid.NewGuid():N}",
             $"intent-{Guid.NewGuid():N}",
-            IdempotencyReplayRetentionTier.Mutation);
+            IdempotencyReplayRetentionTier.Mutation,
+            "01J00000000000000000000000",
+            "trace-concurrent");
 
         IdempotencyAdmissionResult[] concurrent = await Task.WhenAll(
             Enumerable.Range(0, 8).Select(_ => proxy.AdmitAsync(request)));
@@ -83,7 +195,9 @@ public class IdempotencyAdmissionLiveSidecarTests(DaprTestContainerFixture fixtu
             keyDigest,
             $"tag-{Guid.NewGuid():N}",
             $"intent-{Guid.NewGuid():N}",
-            IdempotencyReplayRetentionTier.Mutation);
+            IdempotencyReplayRetentionTier.Mutation,
+            "01J11111111111111111111111",
+            "trace-restart");
         IIdempotencyAdmissionActor proxy = CreateProxy(actorId);
 
         IdempotencyAdmissionResult admitted = await proxy.AdmitAsync(request);

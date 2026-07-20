@@ -13,6 +13,9 @@ namespace Hexalith.EventStore.Server.Actors;
 /// <param name="BackpressureExceeded">Whether the command was rejected due to per-aggregate backpressure (Story 4.3, FR67).</param>
 /// <param name="BackpressurePendingCount">The pending command count observed when backpressure rejected the command.</param>
 /// <param name="BackpressureThreshold">The configured pending command threshold for backpressure rejection.</param>
+/// <param name="RejectionEventType">The stable domain rejection event type when rejected by domain policy.</param>
+/// <param name="FailureReason">The stable deterministic failure classification when one exists.</param>
+/// <param name="ResultPayloadWithheld">Whether public result-payload projection was durably withheld.</param>
 [DataContract]
 public record CommandProcessingResult(
     [property: DataMember] bool Accepted,
@@ -22,4 +25,7 @@ public record CommandProcessingResult(
     [property: DataMember] string? ResultPayload = null,
     [property: DataMember] bool BackpressureExceeded = false,
     [property: DataMember] int? BackpressurePendingCount = null,
-    [property: DataMember] int? BackpressureThreshold = null);
+    [property: DataMember] int? BackpressureThreshold = null,
+    [property: DataMember] string? RejectionEventType = null,
+    [property: DataMember] string? FailureReason = null,
+    [property: DataMember] bool ResultPayloadWithheld = false);
