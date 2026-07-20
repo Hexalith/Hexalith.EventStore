@@ -8,7 +8,7 @@ Hexalith CI/CD standards and reusable workflow guidance live in
 
 | Workflow | File | Triggers | Purpose |
 |----------|------|----------|---------|
-| **CI** | `.github/workflows/ci.yml` | `push` and `pull_request` to `main` | Calls `Hexalith.Builds` `domain-ci.yml@main` for the solution and deterministic tests, then independently runs the EventStore-owned semantic-release governance fixture from a clean Node 22 lockfile install. Both jobs are blocking. |
+| **CI** | `.github/workflows/ci.yml` | `push` and `pull_request` to `main` | Runs three blocking jobs: shared `domain-ci.yml@main` for the solution and deterministic tests, the EventStore-owned semantic-release governance fixture from a clean Node 22 lockfile install, and the Tenants source-mode topology guardrails. |
 | **Advisory Tests** | `.github/workflows/advisory-tests.yml` | `push`, `pull_request` to `main`, manual dispatch | Visible non-release-blocking browser/governance/evidence scaffolding suites. It installs Chromium before Playwright E2E tests, runs with `continue-on-error`, and release does not listen to this workflow. |
 | **Integration Tests** | `.github/workflows/integration.yml` | `push`, `pull_request` to `main`, manual dispatch | Dedicated DAPR lane for `tests/Hexalith.EventStore.Server.LiveSidecar.Tests`. It is intentionally separate from the release trigger. |
 | **CodeQL** | `.github/workflows/codeql.yml` | `push`, `pull_request` to `main`, weekly schedule | Thin caller to the shared CodeQL reusable workflow using `@main`. |
@@ -52,7 +52,7 @@ workflows.
 | Lane | Projects | Workflow behavior |
 |------|----------|-------------------|
 | Deterministic release gate | Contracts, Client, Testing, SignalR, Admin, AppHost, DomainService, QueryRouting, Sample, Testing.Integration, RestApi.Generators, and `tests/Hexalith.EventStore.Server.Tests` | Blocking in shared `domain-ci.yml@main` through `unit-test-projects`. `Server.Tests` runs unfiltered because live-sidecar tests moved out. |
-| Semantic-release governance | `tests/Hexalith.EventStore.Contracts.Tests/Packaging/Fixtures/semantic-release-github-success.mjs` | Blocking EventStore-owned CI job. It provisions Node 22, installs exactly `package-lock.json` with `npm ci`, and exercises both release-history cases against a loopback-only fake GitHub boundary. |
+| Semantic-release governance | `tests/Hexalith.EventStore.Contracts.Tests/Packaging/Fixtures/semantic-release-github-success.mjs` | Blocking EventStore-owned CI job. It provisions Node 22, installs exactly `package-lock.json` with `npm ci`, and exercises both release-history cases against an Undici-guarded loopback-only fake GitHub boundary. |
 | Live-sidecar DAPR lane | `tests/Hexalith.EventStore.Server.LiveSidecar.Tests` | Dedicated `Integration Tests` workflow after `dapr init`. This lane is visible but not part of the semantic-release gate. |
 | Advisory browser/governance/evidence scaffolds | `tests/Hexalith.EventStore.Admin.UI.E2E`, `tests/Hexalith.EventStore.DeferredWorkGovernance.Tests`, `tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests` | Separate `Advisory Tests` workflow. It installs Playwright Chromium for the browser suite and runs with `continue-on-error`, preserving push/PR signal without making semantic-release depend on these suites. |
 | Full Aspire E2E | `tests/Hexalith.EventStore.IntegrationTests` | Deferred until a reliable Aspire-in-CI topology exists. |
@@ -149,8 +149,9 @@ branch-name fragments embedded in merge commit messages, such as
 `fix/gh-<run-id>`, cannot be mistaken for issue-closing references and turn an
 otherwise successful publication red. A dedicated blocking CI lane proves this
 behavior for issue-like and ordinary histories using the installed lockfile
-version. Required build, validation, package, container, smoke, and GitHub
-publication failures remain blocking.
+version. Shared deterministic CI, this governance lane, and the Tenants
+source-mode lane are all blocking. Required build, validation, package,
+container, smoke, and GitHub publication failures remain blocking.
 
 The reusable-workflow reference and `builds-execution-sha` input contain the
 same reviewed 40-character Builds commit, currently

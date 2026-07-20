@@ -3,8 +3,14 @@ import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-import { success as githubSuccess } from "@semantic-release/github";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { isDeepStrictEqual } from "node:util";
+import {
+    Dispatcher,
+    fetch as undiciFetch,
+    getGlobalDispatcher,
+    setGlobalDispatcher,
+} from "undici";
 
 const fixtureDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(fixtureDirectory, "../../../..");
@@ -24,6 +30,10 @@ assert.ok(
     "The GitHub semantic-release plugin must be configured.",
 );
 const githubOptions = githubPlugin[1];
+assert.deepEqual(Object.keys(githubOptions).sort(), [
+    "assets",
+    "successCommentCondition",
+]);
 assert.deepEqual(githubOptions.assets, ["nupkgs/*.nupkg"]);
 assert.equal(githubOptions.successCommentCondition, false);
 assert.equal(Object.hasOwn(githubOptions, "successComment"), false);
@@ -37,6 +47,15 @@ assert.ok(
 );
 const require = createRequire(import.meta.url);
 const installedEntry = require.resolve("@semantic-release/github");
+const fixtureUndiciEntry = require.resolve("undici");
+const pluginUndiciEntry = require.resolve("undici", {
+    paths: [dirname(installedEntry)],
+});
+assert.equal(
+    pluginUndiciEntry,
+    fixtureUndiciEntry,
+    "The fixture must guard the same Undici module resolved by the installed GitHub plugin.",
+);
 const installedPackage = JSON.parse(
     await readFile(resolve(dirname(installedEntry), "package.json"), "utf8"),
 );
@@ -47,12 +66,36 @@ assert.equal(
     "The installed GitHub plugin must match package-lock.json.",
 );
 
-const repository = "Hexalith/Hexalith.EventStore";
-const repositoryPath = "/repos/Hexalith/Hexalith.EventStore";
+const owner = "Hexalith";
+const repo = "Hexalith.EventStore";
+const repository = `${owner}/${repo}`;
+const repositoryPath = `/repos/${repository}`;
 const repositoryUrl = `https://github.com/${repository}.git`;
 const runIds = ["29738838856", "29720431798"];
+const expectedGetSRIssuesQuery = `#graphql
+  query getSRIssues($owner: String!, $repo: String!, $filter: IssueFilters) {
+    repository(owner: $owner, name: $repo) {
+      issues(first: 100, states: OPEN, filterBy: $filter) {
+        nodes {
+          number
+          title
+          body
+        }
+      }
+    }
+  }
+`;
+const expectedGetSRIssuesRequest = {
+    query: expectedGetSRIssuesQuery,
+    variables: {
+        filter: { labels: ["semantic-release", "semantic-release"] },
+        owner,
+        repo,
+    },
+};
 const requests = [];
 const forbiddenRequests = [];
+let selectedOrigin;
 
 const respondJson = (response, status, value) => {
     response.writeHead(status, { "content-type": "application/json" });
@@ -68,12 +111,25 @@ const readRequestBody = async (request) => {
     return Buffer.concat(chunks).toString("utf8");
 };
 
-const server = createServer(async (request, response) => {
+const rejectRequest = (response, record, reason) => {
+    forbiddenRequests.push(`${record.method} ${record.rawUrl}: ${reason}`);
+    respondJson(response, 418, {
+        message: `Forbidden fixture request: ${reason}`,
+    });
+};
+
+const handleRequest = async (request, response) => {
     const method = request.method ?? "UNKNOWN";
-    const pathname = new URL(request.url ?? "/", "http://fixture.invalid")
-        .pathname;
+    const rawUrl = request.url ?? "/";
+    const requestUrl = new URL(rawUrl, selectedOrigin);
     const body = await readRequestBody(request);
-    const record = { body, method, pathname };
+    const record = {
+        body,
+        method,
+        pathname: requestUrl.pathname,
+        rawUrl,
+        search: requestUrl.search,
+    };
     requests.push(record);
 
     const remoteAddress = request.socket.remoteAddress ?? "";
@@ -81,14 +137,34 @@ const server = createServer(async (request, response) => {
         remoteAddress,
     );
     if (!isLoopbackPeer) {
-        forbiddenRequests.push(
-            `${method} ${pathname}: non-loopback peer ${remoteAddress}`,
-        );
-        respondJson(response, 418, { message: "Non-loopback fixture request" });
+        rejectRequest(response, record, `non-loopback peer ${remoteAddress}`);
         return;
     }
 
-    if (method === "GET" && pathname === repositoryPath && body.length === 0) {
+    if (
+        requestUrl.origin !== selectedOrigin ||
+        request.headers.host !== new URL(selectedOrigin).host
+    ) {
+        rejectRequest(
+            response,
+            record,
+            "request did not use the selected origin",
+        );
+        return;
+    }
+
+    const serializedRequest = `${rawUrl}\n${body}`;
+    if (runIds.some((runId) => serializedRequest.includes(runId))) {
+        rejectRequest(response, record, "URL or body contains a CI run ID");
+        return;
+    }
+
+    if (requestUrl.search.length > 0) {
+        rejectRequest(response, record, "query strings are not allowed");
+        return;
+    }
+
+    if (method === "GET" && rawUrl === repositoryPath && body.length === 0) {
         respondJson(response, 200, {
             clone_url: repositoryUrl,
             default_branch: "main",
@@ -98,36 +174,21 @@ const server = createServer(async (request, response) => {
         return;
     }
 
-    if (method === "POST" && pathname.endsWith("/graphql")) {
+    if (method === "POST" && rawUrl === "/graphql") {
         let graphql;
         try {
             graphql = JSON.parse(body);
         } catch {
-            forbiddenRequests.push(`${method} ${pathname}: invalid JSON body`);
-            respondJson(response, 418, {
-                message: "Invalid GraphQL fixture request",
-            });
+            rejectRequest(response, record, "GraphQL body is not valid JSON");
             return;
         }
 
-        const serializedRequest = JSON.stringify(graphql);
-        const query = typeof graphql.query === "string" ? graphql.query : "";
-        const containsRunId = runIds.some((runId) =>
-            serializedRequest.includes(runId),
-        );
-        const isStaleFailureCleanup = /\bquery\s+getSRIssues\b/.test(query);
-        const isReferenceResolution =
-            /associatedPullRequests|associatedPR|relatedIssues|relatedPR/i.test(
-                query,
+        if (!isDeepStrictEqual(graphql, expectedGetSRIssuesRequest)) {
+            rejectRequest(
+                response,
+                record,
+                `GraphQL document or variables differ: ${JSON.stringify(graphql)}`,
             );
-
-        if (containsRunId || isReferenceResolution || !isStaleFailureCleanup) {
-            forbiddenRequests.push(
-                `${method} ${pathname}: forbidden GraphQL operation`,
-            );
-            respondJson(response, 418, {
-                message: "Forbidden GraphQL fixture request",
-            });
             return;
         }
 
@@ -139,13 +200,26 @@ const server = createServer(async (request, response) => {
 
     const isNumericNotificationMutation =
         ["DELETE", "PATCH", "POST", "PUT"].includes(method) &&
-        /\/(?:issues|pulls)\/\d+(?:\/(?:comments|labels))?$/.test(pathname);
-    const reason = isNumericNotificationMutation
-        ? "numeric comment or label mutation"
-        : "unexpected endpoint";
-    forbiddenRequests.push(`${method} ${pathname}: ${reason}`);
-    respondJson(response, 418, {
-        message: `Forbidden fixture request: ${reason}`,
+        /\/(?:issues|pulls)\/\d+(?:\/(?:comments|labels))?$/.test(
+            requestUrl.pathname,
+        );
+    const reason = requestUrl.pathname.includes("graphql", 1)
+        ? "unexpected GraphQL endpoint"
+        : isNumericNotificationMutation
+          ? "numeric comment or label mutation"
+          : "unexpected endpoint";
+    rejectRequest(response, record, reason);
+};
+
+const server = createServer((request, response) => {
+    void handleRequest(request, response).catch((error) => {
+        const record = `${request.method ?? "UNKNOWN"} ${request.url ?? "/"}`;
+        forbiddenRequests.push(`${record}: handler error ${error.message}`);
+        if (!response.headersSent) {
+            respondJson(response, 500, { message: "Fixture handler failed" });
+        } else {
+            response.destroy(error);
+        }
     });
 });
 
@@ -156,8 +230,50 @@ await new Promise((resolveListen, rejectListen) => {
 
 const address = server.address();
 assert.ok(address && typeof address === "object");
-const githubApiUrl = `http://127.0.0.1:${address.port}`;
-assert.equal(new URL(githubApiUrl).hostname, "127.0.0.1");
+selectedOrigin = `http://127.0.0.1:${address.port}`;
+assert.equal(new URL(selectedOrigin).origin, selectedOrigin);
+
+class SelectedOriginDispatcher extends Dispatcher {
+    constructor(delegate, allowedOrigin, delegatedRequests, blockedRequests) {
+        super();
+        this.delegate = delegate;
+        this.allowedOrigin = allowedOrigin;
+        this.delegatedRequests = delegatedRequests;
+        this.blockedRequests = blockedRequests;
+    }
+
+    dispatch(options, handler) {
+        const origin = new URL(String(options.origin)).origin;
+        const target = new URL(options.path, `${origin}/`);
+        if (origin !== this.allowedOrigin) {
+            this.blockedRequests.push(target.href);
+            throw new Error(`Undici egress blocked before I/O: ${target.href}`);
+        }
+
+        this.delegatedRequests.push(target.href);
+        return this.delegate.dispatch(options, handler);
+    }
+
+    close(callback) {
+        if (callback) {
+            queueMicrotask(callback);
+            return undefined;
+        }
+
+        return Promise.resolve();
+    }
+
+    destroy(errorOrCallback, callback) {
+        const completion =
+            typeof errorOrCallback === "function" ? errorOrCallback : callback;
+        if (completion) {
+            queueMicrotask(completion);
+            return undefined;
+        }
+
+        return Promise.resolve();
+    }
+}
 
 const histories = [
     {
@@ -190,32 +306,41 @@ const logger = {
     log() {},
     warn() {},
 };
-const nativeFetch = globalThis.fetch;
+const delegatedRequests = [];
+const blockedRequests = [];
+const publicSuccessWrappers = [];
+const originalDispatcher = getGlobalDispatcher();
+const guardedDispatcher = new SelectedOriginDispatcher(
+    originalDispatcher,
+    selectedOrigin,
+    delegatedRequests,
+    blockedRequests,
+);
+const externalProbe = "https://api.github.com/semantic-release-egress-probe";
 let executionError;
 
-globalThis.fetch = async (input, init) => {
-    const target = new URL(
-        typeof input === "string" || input instanceof URL ? input : input.url,
-    );
-    if (
-        target.hostname !== "127.0.0.1" ||
-        target.port !== String(address.port)
-    ) {
-        const record = `non-loopback fetch ${target.href}`;
-        forbiddenRequests.push(record);
-        throw new Error(record);
-    }
-
-    return nativeFetch(input, init);
-};
-
+setGlobalDispatcher(guardedDispatcher);
 try {
-    for (const history of histories) {
+    await assert.rejects(
+        undiciFetch(externalProbe),
+        "The actual Undici dispatcher guard must block an external probe.",
+    );
+    assert.deepEqual(blockedRequests, [externalProbe]);
+
+    for (const [historyIndex, history] of histories.entries()) {
+        const pluginWrapperUrl = pathToFileURL(installedEntry);
+        pluginWrapperUrl.searchParams.set(
+            "fixture-history",
+            String(historyIndex),
+        );
+        const { success: githubSuccess } = await import(pluginWrapperUrl.href);
+        publicSuccessWrappers.push(githubSuccess);
+
         const requestCountBeforeHistory = requests.length;
         await githubSuccess(
             {
                 ...githubOptions,
-                githubApiUrl,
+                githubApiUrl: selectedOrigin,
             },
             {
                 branch: { name: "main" },
@@ -236,31 +361,38 @@ try {
         );
 
         const historyRequests = requests.slice(requestCountBeforeHistory);
-        assert.ok(
-            historyRequests.some(
+        assert.equal(
+            historyRequests.length,
+            3,
+            `${history.name} must independently verify the public wrapper, read repository metadata, and clean stale failures.`,
+        );
+        assert.equal(
+            historyRequests.filter(
                 (request) =>
                     request.method === "GET" &&
-                    request.pathname === repositoryPath,
-            ),
-            `${history.name} must read repository metadata through loopback.`,
+                    request.rawUrl === repositoryPath,
+            ).length,
+            2,
+            `${history.name} must use a fresh public plugin wrapper with independent verified state.`,
         );
         assert.equal(
             historyRequests.filter(
                 (request) =>
                     request.method === "POST" &&
-                    request.pathname.endsWith("/graphql") &&
-                    /\bquery\s+getSRIssues\b/.test(
-                        JSON.parse(request.body).query,
+                    request.rawUrl === "/graphql" &&
+                    isDeepStrictEqual(
+                        JSON.parse(request.body),
+                        expectedGetSRIssuesRequest,
                     ),
             ).length,
             1,
-            `${history.name} must perform only the stale-failure cleanup query.`,
+            `${history.name} must perform exactly one pinned stale-failure cleanup query.`,
         );
     }
 } catch (error) {
     executionError = error;
 } finally {
-    globalThis.fetch = nativeFetch;
+    setGlobalDispatcher(originalDispatcher);
     await new Promise((resolveClose, rejectClose) => {
         server.close((error) => (error ? rejectClose(error) : resolveClose()));
     });
@@ -271,22 +403,30 @@ assert.deepEqual(
     [],
     `The success hook crossed a forbidden GitHub boundary: ${forbiddenRequests.join(", ")}`,
 );
+assert.deepEqual(
+    blockedRequests,
+    [externalProbe],
+    "Only the intentional external dispatcher probe may reach the egress guard.",
+);
 if (executionError) {
     throw executionError;
 }
 
-assert.equal(
-    requests.filter((request) => request.method === "POST").length,
-    histories.length,
+assert.equal(new Set(publicSuccessWrappers).size, histories.length);
+assert.equal(requests.length, histories.length * 3);
+assert.equal(delegatedRequests.length, requests.length);
+assert.ok(
+    delegatedRequests.every(
+        (requestUrl) => new URL(requestUrl).origin === selectedOrigin,
+    ),
 );
 assert.ok(
     requests.every(
         (request) =>
-            (request.method === "GET" && request.pathname === repositoryPath) ||
-            (request.method === "POST" &&
-                request.pathname.endsWith("/graphql")),
+            (request.method === "GET" && request.rawUrl === repositoryPath) ||
+            (request.method === "POST" && request.rawUrl === "/graphql"),
     ),
 );
 console.log(
-    `semantic-release GitHub success fixture passed ${histories.length} histories with @semantic-release/github ${installedPackage.version} through ${requests.length} loopback requests`,
+    `semantic-release GitHub success fixture passed ${histories.length} isolated histories with @semantic-release/github ${installedPackage.version} through ${requests.length} selected-origin requests and blocked 1 external Undici probe`,
 );

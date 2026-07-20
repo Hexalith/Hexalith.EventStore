@@ -7,13 +7,16 @@ namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 
 public sealed class ReleasePackageManifestTests
 {
+    private const string CheckoutActionSha = "9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0";
     private const string DomainServicePackageId = "Hexalith.EventStore.DomainService";
     private const string DomainServiceProjectPath = "src/Hexalith.EventStore.DomainService/Hexalith.EventStore.DomainService.csproj";
     private const int ExpectedManifestPackageCount = 14;
     private const string GeneratorPackageId = "Hexalith.EventStore.RestApi.Generators";
     private const string GeneratorProjectPath = "src/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.csproj";
+    private const string SemanticReleaseFixture = "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Fixtures/semantic-release-github-success.mjs";
     private const string ServiceDefaultsPackageId = "Hexalith.EventStore.ServiceDefaults";
     private const string ServiceDefaultsProjectPath = "src/Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj";
+    private const string SetupNodeActionSha = "820762786026740c76f36085b0efc47a31fe5020";
     private static readonly TimeSpan MsBuildPropertyTimeout = TimeSpan.FromSeconds(60);
 
     [Fact]
@@ -182,7 +185,56 @@ public sealed class ReleasePackageManifestTests
         ciJob.ShouldNotContain("runs-on:");
         ciJob.ShouldNotContain("steps:");
 
+        AssertWorkflowJobCannotBeSkippedOrTolerated(ciJob, "Shared deterministic CI");
         AssertTenantsSourceModeJobIsBlocking(tenantsSourceModeJob);
+    }
+
+    [Fact]
+    public void Semantic_release_governance_job_is_unique_unconditional_and_blocking()
+    {
+        string root = FindRepositoryRoot();
+        string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "ci.yml"));
+        string job = ExtractTopLevelWorkflowJobBlock(workflow, "semantic-release-governance");
+
+        AssertSemanticReleaseGovernanceJobIsBlocking(job);
+    }
+
+    [Theory]
+    [InlineData("job-skip")]
+    [InlineData("step-skip")]
+    [InlineData("dependency-skip")]
+    [InlineData("job-tolerance")]
+    [InlineData("step-tolerance")]
+    public void Semantic_release_governance_validation_rejects_skip_or_tolerance_mutations(string mutation)
+    {
+        string job = CreateValidSemanticReleaseGovernanceJobBlock();
+        string mutatedJob = mutation switch
+        {
+            "job-skip" => job.Replace(
+                "    runs-on: ubuntu-latest",
+                "    if: ${{ false }}\n    runs-on: ubuntu-latest",
+                StringComparison.Ordinal),
+            "step-skip" => job.Replace(
+                "        run: npm ci",
+                "        if: ${{ false }}\n        run: npm ci",
+                StringComparison.Ordinal),
+            "dependency-skip" => job.Replace(
+                "    runs-on: ubuntu-latest",
+                "    needs: ci\n    runs-on: ubuntu-latest",
+                StringComparison.Ordinal),
+            "job-tolerance" => job.Replace(
+                "    runs-on: ubuntu-latest",
+                "    continue-on-error: true\n    runs-on: ubuntu-latest",
+                StringComparison.Ordinal),
+            "step-tolerance" => job.Replace(
+                "        run: npm ci",
+                "        continue-on-error: true\n        run: npm ci",
+                StringComparison.Ordinal),
+            _ => throw new InvalidOperationException($"Unknown mutation: {mutation}"),
+        };
+
+        _ = Should.Throw<Shouldly.ShouldAssertException>(
+            () => AssertSemanticReleaseGovernanceJobIsBlocking(mutatedJob));
     }
 
     [Fact]
@@ -654,10 +706,64 @@ public sealed class ReleasePackageManifestTests
         trimmedLines.ShouldContain("-m:1");
         lines.ShouldContain("      - name: Verify Tenants source-mode topology guardrails");
         trimmedLines.ShouldContain("--filter FullyQualifiedName~TenantsApiLaunchSettingsTests");
+        AssertWorkflowJobCannotBeSkippedOrTolerated(jobBlock, "Tenants source-mode");
+    }
+
+    private static void AssertSemanticReleaseGovernanceJobIsBlocking(string jobBlock)
+    {
+        string normalizedJob = jobBlock
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n');
+        string[] lines = normalizedJob.Split('\n');
+        string[] trimmedLines = lines.Select(static line => line.Trim()).ToArray();
+        Match[] checkoutActions = Regex
+            .Matches(
+                normalizedJob,
+                @"(?m)^      - uses: actions/checkout@(?<sha>[0-9a-f]{40})(?: # .*)?$")
+            .Cast<Match>()
+            .ToArray();
+        Match[] setupNodeActions = Regex
+            .Matches(
+                normalizedJob,
+                @"(?m)^        uses: actions/setup-node@(?<sha>[0-9a-f]{40})(?: # .*)?$")
+            .Cast<Match>()
+            .ToArray();
+
+        lines.ShouldContain("  semantic-release-governance:");
+        lines.ShouldContain("    runs-on: ubuntu-latest");
+        lines.ShouldContain("    timeout-minutes: 10");
+        checkoutActions.Length.ShouldBe(1);
+        checkoutActions[0].Groups["sha"].Value.ShouldBe(CheckoutActionSha);
+        setupNodeActions.Length.ShouldBe(1);
+        setupNodeActions[0].Groups["sha"].Value.ShouldBe(SetupNodeActionSha);
+        lines.ShouldContain("          node-version: '22'");
+        lines.ShouldContain("          cache: npm");
+        trimmedLines.ShouldContain("run: npm ci");
+        trimmedLines.ShouldContain($"run: node {SemanticReleaseFixture}");
+        AssertWorkflowJobCannotBeSkippedOrTolerated(jobBlock, "Semantic-release governance");
+
+        int checkout = normalizedJob.IndexOf("uses: actions/checkout@", StringComparison.Ordinal);
+        int setupNode = normalizedJob.IndexOf("uses: actions/setup-node@", StringComparison.Ordinal);
+        int npmInstall = normalizedJob.IndexOf("run: npm ci", StringComparison.Ordinal);
+        int fixture = normalizedJob.IndexOf($"run: node {SemanticReleaseFixture}", StringComparison.Ordinal);
+        checkout.ShouldBeLessThan(setupNode);
+        setupNode.ShouldBeLessThan(npmInstall);
+        npmInstall.ShouldBeLessThan(fixture);
+    }
+
+    private static void AssertWorkflowJobCannotBeSkippedOrTolerated(string jobBlock, string jobName)
+    {
+        string[] lines = jobBlock
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n')
+            .Split('\n');
+
         lines.Any(static line => line.TrimStart().StartsWith("continue-on-error:", StringComparison.Ordinal))
-            .ShouldBeFalse("The blocking Tenants source-mode job must not tolerate step failures.");
+            .ShouldBeFalse($"The blocking {jobName} job must not tolerate failures.");
         lines.Any(static line => line.TrimStart().StartsWith("if:", StringComparison.Ordinal))
-            .ShouldBeFalse("The blocking Tenants source-mode job and its required steps must not be conditionally skipped.");
+            .ShouldBeFalse($"The blocking {jobName} job and its required steps must not be conditionally skipped.");
+        lines.Any(static line => line.TrimStart().StartsWith("needs:", StringComparison.Ordinal))
+            .ShouldBeFalse($"The unconditional {jobName} job must not depend on another job's outcome.");
     }
 
     private static string CreateValidTenantsSourceModeJobBlock()
@@ -678,6 +784,26 @@ public sealed class ReleasePackageManifestTests
                 "        run: >-",
                 "          dotnet test tests/Hexalith.EventStore.AppHost.Tests/Hexalith.EventStore.AppHost.Tests.csproj",
                 "          --filter FullyQualifiedName~TenantsApiLaunchSettingsTests",
+            ]);
+
+    private static string CreateValidSemanticReleaseGovernanceJobBlock()
+        => string.Join(
+            '\n',
+            [
+                "  semantic-release-governance:",
+                "    runs-on: ubuntu-latest",
+                "    timeout-minutes: 10",
+                "    steps:",
+                $"      - uses: actions/checkout@{CheckoutActionSha} # v7.0.0",
+                "      - name: Set up supported Node",
+                $"        uses: actions/setup-node@{SetupNodeActionSha} # v7.0.0",
+                "        with:",
+                "          node-version: '22'",
+                "          cache: npm",
+                "      - name: Install locked npm dependencies",
+                "        run: npm ci",
+                "      - name: Verify semantic-release GitHub success lifecycle",
+                $"        run: node {SemanticReleaseFixture}",
             ]);
 
     private static string FindRepositoryRoot()

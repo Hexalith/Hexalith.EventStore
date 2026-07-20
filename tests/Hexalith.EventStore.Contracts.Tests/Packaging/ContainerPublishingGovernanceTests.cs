@@ -62,6 +62,11 @@ public sealed class ContainerPublishingGovernanceTests
             .Select(asset => asset.GetString().ShouldNotBeNull())
             .ToArray();
         assets.ShouldBe(["nupkgs/*.nupkg"]);
+        githubConfiguration
+            .EnumerateObject()
+            .Select(property => property.Name)
+            .Order(StringComparer.Ordinal)
+            .ShouldBe(["assets", "successCommentCondition"]);
         JsonElement successCommentCondition = githubConfiguration.GetProperty("successCommentCondition");
         successCommentCondition.ValueKind.ShouldBe(JsonValueKind.False);
         successCommentCondition.GetBoolean().ShouldBeFalse();
