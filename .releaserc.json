@@ -15,8 +15,7 @@
     [
       "@semantic-release/github",
       {
-        "assets": ["nupkgs/*.nupkg"],
-        "successCommentCondition": false
+        "assets": ["nupkgs/*.nupkg"]
       }
     ]
   ]

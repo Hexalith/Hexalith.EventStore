@@ -2,9 +2,9 @@
 title: 'Fix false failure after successful release publication'
 type: 'bugfix'
 created: '2026-07-20'
-status: 'in-review'
-review_loop_iteration: 1
-baseline_commit: 'a21517e3b66458e997d1ea2f4df5072c4abde628'
+status: 'in-progress'
+review_loop_iteration: 2
+baseline_commit: 'af66f6c46b1356bb569e7192d15105be47bc5a19'
 context:
   - '{project-root}/docs/ci.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-simplify-release-architecture.md'
@@ -41,17 +41,19 @@ context:
 
 - `.releaserc.json` -- configures GitHub Release/assets publication and the currently default-enabled success notification hook.
 - `tests/Hexalith.EventStore.Contracts.Tests/Packaging/Fixtures/semantic-release-github-success.mjs` -- invokes the installed GitHub plugin's success lifecycle behind a fake GitHub HTTP boundary.
-- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs` -- owns structural contracts and runs the behavioral fixture in the normal governance test lane.
+- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs` -- owns structural contracts for the exact GitHub plugin options and blocking publication commands.
+- `.github/workflows/ci.yml` -- owns a blocking Node governance job with an explicit supported runtime and clean lockfile install.
 - `docs/ci.md` -- documents the active manual release flow, mutation boundary, and operator expectations.
 - `package-lock.json` -- pins the `@semantic-release/github` implementation exercised by the behavioral fixture.
 
 ## Tasks & Acceptance
 
 **Execution:**
-- [x] `.releaserc.json` -- set `successCommentCondition` to JSON `false` on the existing `@semantic-release/github` options while retaining the `nupkgs/*.nupkg` asset mapping -- prevents false post-publication failures without removing GitHub Releases.
-- [x] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/Fixtures/semantic-release-github-success.mjs` -- load the real plugin options, invoke the installed plugin's success hook for issue-like and ordinary commit histories, fake every GitHub HTTP response, and fail on GraphQL or numeric issue/PR comment/label calls -- proves the pinned implementation skips the failure path without external mutation.
-- [x] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs` -- assert the exact asset and non-deprecated condition configuration, then execute the Node fixture in the normal xUnit governance lane -- prevents a config-only test from overstating runtime behavior.
-- [x] `docs/ci.md` -- state that release completion intentionally omits referenced issue/PR comments and labels because branch-name fragments embedded in merge commit messages can resemble issue references -- aligns operator expectations with the reliable status contract.
+- [ ] `.releaserc.json` -- set `successCommentCondition` to JSON `false` on the existing `@semantic-release/github` options while retaining the `nupkgs/*.nupkg` asset mapping -- prevents the identified numeric-reference failure without removing GitHub Releases.
+- [ ] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/Fixtures/semantic-release-github-success.mjs` -- verify the installed version matches `package-lock.json`; invoke the success hook for issue-like and ordinary histories with production-equivalent functional options; route all HTTP to loopback; allow only repository reads and the unrelated `getSRIssues` cleanup query; reject associated-PR/related-issue GraphQL and numeric comment/label mutations -- proves the pinned path skips run-ID resolution.
+- [ ] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs` -- retain exact structural option/asset assertions and prove the surrounding publish commands stay blocking, without starting Node from xUnit -- keeps the .NET lane dependency-pure.
+- [ ] `.github/workflows/ci.yml` -- add a blocking EventStore-owned semantic-release governance job using the SHA-pinned setup-node action, explicit supported Node 22, `npm ci`, and the behavioral fixture -- makes the proof reproducible from a clean hosted checkout without changing shared Builds.
+- [ ] `docs/ci.md` -- document the notification choice, merge-message trigger, and dedicated blocking governance lane -- aligns operator expectations with the reliable status contract.
 
 **Acceptance Criteria:**
 - Given release history containing `fix/gh-<run-id>` fragments, when semantic-release completes GitHub publication, then optional issue/PR notification cannot turn the successful release job red.
@@ -62,28 +64,21 @@ context:
 ## Spec Change Log
 
 - Review loop 1: parallel review found that a structural JSON assertion did not prove the frozen issue-like and ordinary-history behaviors. The plan now executes the installed, lockfile-pinned GitHub success hook with real `.releaserc.json` options and a fake HTTP boundary, and registers that fixture through xUnit. Avoid the known-bad config-only claim that unconditional JSON alone covers runtime histories. KEEP the exact `successCommentCondition: false` setting, asset mapping, manual/exact-source/protected-production/immutable-publication gates, documentation rationale, and prohibition on release dispatch or external mutation.
+- Review loop 2: hosted CI run `29766169684` proved the xUnit wrapper lacked npm dependencies, and review found the fixture disabled production's stale-failure cleanup. The plan now runs the fixture in a dedicated blocking CI job after explicit Node setup and `npm ci`, verifies the installed lockfile version, and permits only the cleanup GraphQL operation while rejecting run-ID resolution. Avoid the known-bad dependency-populated local-only result and `failCommentCondition: false` test override. KEEP the exact notification setting and assets, structural assertions, loopback-only HTTP boundary, both history cases, documentation rationale, all release gates, and no dispatch/external mutation.
 
 ## Design Notes
 
-The fixture verifies the installed, lockfile-pinned `@semantic-release/github` success lifecycle rather than inferring behavior from configuration alone. It supplies the real plugin options and deterministic fake GitHub responses, permits only unrelated repository and stale-failure cleanup reads, and rejects GraphQL plus numeric issue/PR comment or label mutations. The plugin's publish phase remains responsible for the GitHub Release and package assets; the change is limited to its optional success notification path.
+The fixture changes only transport options to target loopback; functional plugin options remain those in `.releaserc.json`. The pinned plugin's success lifecycle still performs unrelated stale-failure cleanup, so the fake boundary recognizes only its `getSRIssues` query and returns no stale issues. Associated-PR or related-issue queries, run-ID variables, numeric notification mutations, and non-loopback traffic fail closed. The publish phase remains responsible for the GitHub Release and assets.
 
 ## Verification
 
 **Commands:**
 - `node -e "JSON.parse(require('fs').readFileSync('.releaserc.json', 'utf8'))"` -- expected: configuration parses successfully.
-- `node tests/Hexalith.EventStore.Contracts.Tests/Packaging/Fixtures/semantic-release-github-success.mjs` -- expected: both histories complete with no GraphQL or numeric issue/PR notification calls and no external network.
+- `npm ci` followed by `node tests/Hexalith.EventStore.Contracts.Tests/Packaging/Fixtures/semantic-release-github-success.mjs` -- expected: the locked plugin version and both histories pass with only allowed loopback requests.
 - `dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -warnaserror -m:1` -- expected: zero warnings and errors.
 - `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests` -- expected: all focused governance tests pass.
-- `actionlint .github/workflows/release.yml` -- expected: surrounding release workflow remains valid and unchanged in behavior.
-- `git diff --check` -- expected: no whitespace errors.
-- `git diff --no-index --check -- /dev/null _bmad-output/implementation-artifacts/spec-gh-29763400936-fix-release-post-publish-status.md` -- expected: exit 1 for the content difference from `/dev/null`, with no whitespace diagnostics.
+- `actionlint .github/workflows/ci.yml .github/workflows/release.yml` -- expected: CI provisioning and the unchanged release workflow are valid.
+- `git diff a21517e3b66458e997d1ea2f4df5072c4abde628 --check` -- expected: no whitespace errors across the baseline diff.
 
 **Manual checks:**
 - Read back the `v3.78.0` tag, GitHub Release, 14 assets, NuGet publication, OCI manifests/digest, and target SHA without dispatching a workflow; expect the existing publication to remain unchanged.
-
-**Results:**
-- `.releaserc.json` parsed successfully. The standalone Node fixture passed both issue-like and ordinary histories through three loopback-only fake GitHub repository reads; no GraphQL, numeric issue/PR notification mutation, or external request occurred.
-- The focused Contracts Tests Release build succeeded with zero warnings and zero errors. The direct `ContainerPublishingGovernanceTests` run passed 10/10, including execution of the Node fixture through the normal xUnit lane.
-- `actionlint .github/workflows/release.yml` and `git diff --check` passed. The fixture and spec no-index whitespace checks returned their expected content-difference statuses with no diagnostics.
-- Frozen matrix audit: issue-like and ordinary histories both passed the behavioral fixture; required build, preflight, package, container, smoke, and GitHub publication gates remain blocking and unchanged; and no release workflow or external mutation was executed.
-- The approved read-only evidence for run `29763400936` remains authoritative: `v3.78.0` targets `a21517e3b66458e997d1ea2f4df5072c4abde628`, has 14 GitHub assets and 14 published NuGet packages, and its two-platform OCI validation and smoke checks passed. This review loop performed no remote operation under its explicit execution boundary.

@@ -139,14 +139,6 @@ commit to `main`. Any tracked `CHANGELOG.md` update must arrive through its own
 reviewed pull request; GitHub Releases are the current machine-generated release
 record.
 
-GitHub Release and package-asset publication remain enabled, but release
-completion intentionally does not comment on or label referenced issues and
-pull requests. The GitHub plugin uses `successCommentCondition: false` so
-branch-name fragments embedded in merge commit messages, such as
-`fix/gh-<run-id>`, cannot be mistaken for issue-closing references and turn an
-otherwise successful publication red. Required build, validation, package,
-container, smoke, and GitHub publication failures remain blocking.
-
 The reusable-workflow reference and `builds-execution-sha` input contain the
 same reviewed 40-character Builds commit, currently
 `cf04c419378dfe1bd3c41a9244b5e3283092056e`. The reusable workflow verifies its
