@@ -1,24 +1,24 @@
 # PRD Quality Review — eventstore Phase 4 Implementation Readiness Recovery
 
+Review date: 2026-07-19. Scope: post-reconciliation re-validation after the 2026-07-19 update that absorbed six approved sprint-change proposals. The PRD passed a full rubric walk at its 2026-07-16 finalize; owner-deferred refinements from that walk (correctness-gate binding in §11.3, product-bet outcome metrics in §10, glossary cross-references, the structural front-load proposal, G5/goldens prose expansions, the OCI image-index promotion, optional 3.12 traceability additions, and the stale §11.3 coordinated-slice list) are acknowledged as dispositioned and are not re-raised below.
+
 ## Overall verdict
 
-The PRD is a credible, source-grounded brownfield platform baseline: its product bet, MVP/post-MVP boundary, requirement inventory, and July proposal provenance are clear enough to support planning decisions. It is not yet self-sufficient as an engineering definition of done, because several omnibus FRs and qualitative NFR bounds still push material acceptance decisions into `epics.md` or future specifications; the document is therefore adequate for readiness recovery but thin at the acceptance boundary.
+The 2026-07-19 delta is verified correct: the three new `source_artifacts` entries (`sprint-change-proposal-2026-07-17.md`, `sprint-change-proposal-2026-07-18-story-3-1-live-sidecar-topology.md`, `sprint-change-proposal-2026-07-19.md`) match the reconciled proposals and resolve on disk, and the §11.2 NFR10/NFR16 corrections now point at Story 7.10 "Integration CI Recovery", which is exactly the story in `epics.md` that declares NFR10 and NFR16 coverage. The PRD as a whole still holds together — vision, requirement inventory, MVP boundary, metrics, and FR traceability remain coherent and source-grounded. The one material residue is that §11.2 is now internally inconsistent about story numbering: the two corrected rows use post-2026-07-15 numbers while five sibling citations in the same table still carry pre-renumbering numbers, including an NFR15 row that now points at a story that does not cover NFR15.
 
-## Decision-readiness — adequate
+## Decision-readiness — strong
 
-The central decision is explicit in §2: platform reuse and operational hardening must ship together, and §1 clearly assigns requirement intent to the PRD while architecture, UX, and implementation slicing remain separate artifacts. Sections 9.2–9.3 also make the consequential MVP decision visible: FR37/NFR19 are committed post-MVP work and do not expand Phase 4.
+The load-bearing decisions read as decisions. §0 states flatly that FR37/NFR19 are "a committed post-MVP capability" and that "this capability does not enlarge the Phase 4 MVP"; §1 assigns artifact ownership in four unambiguous bullets; §9.3 gives the post-MVP commitment teeth ("Story 8.2 blocks Parties Story 8.7 migration until the engine is implemented, reviewed, released or pinned, and proven"). Where design is unresolved, the PRD gates rather than hand-waves: FR24 requires the frozen global-ordering spec to be "updated before implementation," and FR31 mandates a verify-first spike "before choosing an optimistic-concurrency fencing design." §12 closes Open Questions honestly by pointing at the Story 8.1 gate rather than pretending nothing is undecided. The 2026-07-19 NFR17 rewrite strengthened this further — it commits to a named component posture (`auth.secretStore: openbao`, default-deny per-application access) instead of the earlier generic "must support secret stores."
 
-The PRD is honest that some design decisions remain gated, but two correctness choices in FR24 and FR31 are expressed as work to renegotiate or investigate rather than as resolved product contracts. That is acceptable for a gated readiness document only if the gate is as explicit and source-extractable as the Story 8.1 gate described elsewhere.
+The finalize-walk refinement about binding FR24/FR31 gate owners into §11.3 remains owner-deferred; it does not undermine the judgment above.
 
 ### Findings
 
-- **medium** Correctness design gates are not fully bound (§6.4 FR24/FR31, §11.3, §12) — FR24 leaves the allocation scope at “per tenant or domain,” and FR31 defers the fencing decision until a spike, yet §11.3 does not name the decision owner, required decision artifact, or acceptance condition for either gate. Section 12 says no PRD-level questions are open, which is defensible on scope but makes these unresolved contract decisions easy to miss. *Fix:* add explicit FR24/FR31 decision-gate entries to §11.3 with owner, output path/ADR, evidence required, and the stories blocked by each decision.
+No new findings.
 
 ## Substance over theater — strong
 
-The content is earned. The user/job framing in §3 directly drives the feature groups, the glossary supports the platform boundary, and the NFRs name EventStore-specific failure and evidence paths rather than generic “secure/scalable/reliable” aspirations. There are no decorative personas or novelty claims.
-
-The July additions reinforce this strength. FR12 states an absolute, gateway-authoritative, fail-closed `Location` contract; FR27 separates the gateway-owned status key from any `CorrelationId == MessageId` coincidence; and NFR2 adds the concrete reserved-tenant rejection rule. All 33 July proposal files are now listed in frontmatter, with no missing or extra July proposal source.
+The content is earned throughout. NFRs carry product-specific bounds, not boilerplate: NFR1 pins the exact anonymous exception ("`/health`, `/alive`, `/ready` … explicitly pinned `AllowAnonymous`"), NFR6 names the dedup key (`MessageId`) and the production proof path, and the updated NFR17 specifies `secretKeyRef` wiring and the Kubernetes-Secrets bootstrap carve-out. §3 uses role lists and jobs-to-be-done rather than decorative personas — appropriate for a platform PRD, and every listed role maps to a §6 feature family. The Vision's central bet (§2: reuse and hardening "delivered together" or the phase fails) is falsifiable and specific to this product; it could not be swapped into another PRD unchanged.
 
 ### Findings
 
@@ -26,28 +26,23 @@ No findings.
 
 ## Strategic coherence — adequate
 
-The feature groups form a coherent arc from domain-author self-service through external APIs, release reliability, correctness, security, bounded cost, operator trust, consumer parity, and optional payload protection. The explicit central bet in §2 prevents the PRD from reading as an arbitrary backlog, and the counter-metrics guard against three plausible readiness shortcuts.
-
-The metrics are less coherent with that thesis than the requirements are. SM1–SM5 primarily prove that planning artifacts, mappings, and story shapes exist; SM6–SM7 prove two downstream gates. None directly measures whether domains actually shed boilerplate or whether the hardened platform produces the intended operational outcome.
+The thesis is stated and the feature arc follows it: §6.1 (self-service seams) is the reuse half, §6.4–§6.7 are the hardening half, and §6.8–§6.9 close the consumer-parity and payload-protection gates that make the reuse claim honest. Counter-metrics SM-C1–SM-C3 are real counterweights (e.g., SM-C2: "Do not count API smoke responses as integration evidence"). The residual weakness — SM1–SM5 largely validate planning-artifact completion rather than the product bet's outcome — was raised at finalize and owner-deferred; nothing in the 2026-07-19 delta changes that picture, so the dimension stays adequate rather than strong, with no new finding warranted.
 
 ### Findings
 
-- **medium** Primary metrics validate planning completion more than the product bet (§2, §10) — a readiness rerun and complete traceability are necessary for this recovery effort, but they do not establish that reusable seams work for domain authors or that security, recovery, and release behavior improved in production paths. *Fix:* retain the readiness metrics and add at least one adoption/reuse outcome and one operational-proof outcome, each with an explicit target and evidence source.
+No new findings.
 
-## Done-ness clarity — thin
+## Done-ness clarity — adequate
 
-Many requirements have concrete observable consequences, and the July edits are notably stronger than the surrounding baseline. FR12 specifies absolute versus omitted `Location` behavior, FR27 names the three resume-match fields and forbids reliance on correlation/message equality, and NFR2 gives tenant provisioning an exact rejection case. Feature-level “Done evidence” and the high-risk NFR story table also provide useful validation anchors.
-
-However, this chain-top PRD delegates too much completion detail to `epics.md`. A downstream engineer can understand the intended capability but cannot consistently determine whether every clause of every FR or qualitative NFR is complete from the PRD alone.
+Each §6 feature family ends in a "Done evidence" block with observable consequences (e.g., §6.5: "Anonymous and cross-tenant admin access fails closed"; §6.8: Story 1.20 "names the exact EventStore runtime SHA"). §11.3 carries genuinely concrete acceptance detail — request-size limits of "`1_048_576` bytes" and "`10 * 1024 * 1024` bytes" for Story 5.2, and named spec output paths gating Stories 6.2/6.4/6.6. The omnibus FRs (FR26, FR33, FR34) bundle many clauses, but each clause is individually verifiable, and §1 deliberately delegates per-story acceptance criteria to `epics.md`, which the epic file honors with Given/When/Then criteria per story. Within the PRD's declared ownership split this is sufficient; it is "adequate" rather than "strong" only because an engineer still needs `epics.md` open to know done-ness for any single story — which is the design, not a defect.
 
 ### Findings
 
-- **high** Omnibus FRs lack clause-level completion evidence (§6.5 FR26, §6.6 FR33, §6.7 FR34) — these requirements bundle respectively nine, six, and roughly ten independently failing behaviors, while each feature has only one aggregate “Done evidence” paragraph. Partial delivery could therefore be reported as FR-complete without a stable per-clause consequence. *Fix:* split each omnibus FR into nested, stably identified clauses or add a clause-level acceptance list that maps every behavior to its evidence and story.
-- **high** Several NFR bounds remain adjectives rather than testable contracts (§7 NFR5, NFR7, NFR8, NFR17) — “bounded metadata,” “explicitly guarded or recovered,” “bounded cost model,” and “resiliency targets” do not state limits, failure budgets, measurement points, or the specification that owns them. NFR2’s `system`-tenant rejection is testable, but its broader cross-surface isolation clause likewise depends on downstream test interpretation. *Fix:* give each qualitative bound a numeric/finite rule or a named spec/ADR owner and require a production-path test matrix for cross-surface tenant isolation.
+No new findings.
 
 ## Scope honesty — strong
 
-Sections 9.1–9.3 clearly distinguish Phase 4 MVP, explicit non-goals, and committed post-MVP payload protection. The document also states what it does not own, names the readiness conditions that remain, and distinguishes generic projection erasure from full GDPR aggregate/event erasure. There are no hidden assumption tags or rhetorical open questions; remaining payload-protection design is openly assigned to Story 8.1.
+§9.2 does real work: each exclusion names its disposition ("Admin interactive OIDC login implementation; backlog artifact only") and the GDPR bullet carefully separates what stays out (tombstoning, broker-history deletion) from what is in scope under FR5/Story 1.14 — a distinction that would otherwise be silently assumed wrong. §9.3 prevents the classic post-MVP dodge by binding Epic 8 to a concrete blocking relationship instead of "later." §13 asserts "No inline `[ASSUMPTION]` tags are present," and that claim is verifiably true (the only occurrence of the tag in the document is that sentence). Open-items density is appropriately near zero for a `status: final` baseline whose remaining decisions are explicitly gated.
 
 ### Findings
 
@@ -55,17 +50,18 @@ No findings.
 
 ## Downstream usability — adequate
 
-The PRD is structured for source extraction: FR1–FR37 and NFR1–NFR19 are unique and gap-free, feature groups are cohesive, traceability is explicit, and no user journeys are needed for this capability-oriented brownfield platform. The 33-entry July source inventory also gives downstream reviewers complete proposal provenance.
+The Glossary anchors the load-bearing nouns (External API Host vs Interactive UI Host, Support-Safe State, Projection-Confirmed Success) and they are used consistently across FRs, constraints, and done-evidence blocks. FR1–FR37 and NFR1–NFR19 are contiguous and unique; §11.1 maps all 37 FRs with no gaps; all 44 frontmatter `source_artifacts` paths resolve. The corrected NFR10/NFR16 rows now land on the right story.
 
-The main weakness is vocabulary at the newest and most cross-repository boundaries. Several load-bearing references require readers to consult architecture, epics, or Parties context before they can interpret an extracted requirement correctly.
+The residue is in §11.2's other rows. The 2026-07-15 renumbering split old Story 7.2 "Admin Claims, Audit, And Honest Deferred Operations" into 7.2/7.3/7.4, old 7.3 "Production Deployment Hardening" into 7.6–7.9, and old 2.4 "Tenants External API Host Adoption" into 2.4/2.5/2.6 — but only the 7.4→7.10 citations were corrected on 2026-07-19. Five citations still use pre-split numbers, and one of them is now factually wrong: NFR15's sole cited story, 7.2, is today "Admin Claims Normalization," which declares NFR1/NFR2 and contains nothing about deferred-operation honesty; the story that covers NFR15 is 7.4 "Honest Deferred Admin Operations" (with 7.3 and 7.14 also declaring it). Since SM3 makes this table the gate evidence for high-risk NFR coverage "before Phase 4 implementation resumes," a readiness re-run consuming §11.2 as written would follow NFR15 to the wrong story.
 
 ### Findings
 
-- **medium** Load-bearing terms and cross-references are undefined locally (§4, §6.4 FR27, §6.8–6.9, §7 NFR1, §11.3) — “gateway-owned status key,” “G5,” `pdenc-v2`, `AD-16`, and “Parties Story 8.6/8.7” are not defined or fully qualified in the glossary. An extracted FR27, FR37, or NFR1 can therefore lose its contract context. *Fix:* add glossary entries for the status key, G5, and payload formats, and qualify external ADR/story references with owning artifact paths or stable links.
+- **medium** §11.2 residual pre-renumbering story citations, inconsistent with the corrected rows (§11.2 NFR2, NFR4, NFR14, NFR15, NFR17) — the 2026-07-19 correction moved NFR10/NFR16 from 7.4 to 7.10 but left the same renumbering debt in sibling rows: NFR15 cites only "7.2" (now claims normalization; honest-deferred-admin is 7.4), NFR4 and NFR17 cite "7.3" (now admin audit; the deployment-hardening content those rows meant lives in 7.6–7.9, and 7.6 was already added alongside), and NFR2/NFR14 cite "2.4" (now contract metadata/routes; the Tenants external-host and UI client-library stories are 2.5/2.6). *Fix:* fold these five citations into the already-owed 2026-07-15 renumbering reconciliation (the same pass that owes the §11.3 coordinated-slice list): NFR15 → 7.4 (optionally +7.3, 7.14), NFR4 → replace 7.3 with 7.6, NFR17 → replace 7.3 with 7.7–7.9 as judged, NFR2 → 2.5 (or 2.4+2.5), NFR14 → 2.5/2.6.
+- **low** NFR8 row cites stories that do not carry its content (§11.2 NFR8: "1.11, 1.14, 6.3, 6.4") — Story 1.11 is "Domain-Module Adoption Guardrails" (declares NFR14) and 1.14 is checkpoint erasure (declares NFR2/NFR16); the epic-side NFR8 declarations sit on 1.2, 1.9, 1.13, 1.16, 1.19, 2.11, and 4.7. The 6.3/6.4 citations carry the core bounded-cost intent, and NFR8 is outside SM3's high-risk set, so impact is low. *Fix:* correct alongside the medium finding in the same reconciliation pass.
 
 ## Shape fit — strong
 
-The capability-spec shape matches the declared brownfield developer-platform and operations-hardening product in §3.3. User journeys would add little for library, runtime, CI/CD, and governance seams; the PRD appropriately keeps UI governance at requirement level and routes detailed interaction work to `ux.md`. Its higher rigor on traceability and production-path evidence is appropriate because it feeds architecture, UX, epics, and implementation readiness.
+This is a brownfield developer-platform and operations-hardening PRD (§3.3 says so explicitly), and the document is shaped accordingly: capability-spec FR tables grouped by audience-facing feature family, jobs-to-be-done instead of user-journey narratives, operational rather than user-facing success metrics, and UI concerns reduced to governance boundaries with design delegated to `ux.md`. Forcing UJs with named protagonists onto this product would have been overhead; the PRD correctly declined. As a chain-top document feeding epics, stories, and readiness re-runs, its traceability investment (§11) is proportionate — which is also why the §11.2 residue above is scored medium rather than shrugged off.
 
 ### Findings
 
@@ -73,9 +69,9 @@ No findings.
 
 ## Mechanical notes
 
-- Source provenance is complete for the requested July set: 33 matching proposal files exist and all 33 appear exactly once in `source_artifacts`; there are no missing or extra July proposal entries.
-- FR IDs are unique and continuous from FR1 through FR37. Their presentation is intentionally grouped by concern rather than numeric order: FR25 appears in §6.3, FR26/FR28/FR32 in §6.5, and FR27/FR29–FR31 in §6.4.
-- NFR IDs are unique and continuous from NFR1 through NFR19. The high-risk traceability table intentionally covers a subset, not every NFR.
-- The Assumptions Index roundtrips: there are no actual inline `[ASSUMPTION: …]` tags; the only literal `[ASSUMPTION]` occurrence is the explanatory sentence in §13.
-- No UJs are present, which fits this capability-oriented platform PRD; protagonist naming is therefore not applicable.
-- No broken internal section references were found. External identifiers such as AD-16 and Parties story numbers resolve only through sibling/external artifacts and are covered by the downstream-usability finding above.
+- Frontmatter roundtrip: all 44 `source_artifacts` paths exist on disk. The three 2026-07-19 additions are correct and non-duplicative — `2026-07-18.md`, `2026-07-18-story-3-5-reconciliation.md`, and `2026-07-19-openbao-secret-store.md` were already listed from prior reconciliations, so the six reconciled proposals are all represented exactly once. `updated: 2026-07-19` matches.
+- Delta cross-check against `epics.md`: Story 7.10 "Integration CI Recovery" declares "FR34, NFR10, NFR16" — both corrected §11.2 rows resolve to a story that actually owns the content. Story 3.1 (also cited by NFR10) does not declare NFR10 in its header but its content ("Re-Tier Live-Sidecar Tests From Release Gate") is the NFR10 behavior itself; acceptable as primary coverage.
+- ID continuity: FR1–FR37 and NFR1–NFR19 each appear, contiguous, no duplicates. FR IDs are non-sequential across §6 subsections (FR25 sits in §6.3, FR26 in §6.5) because tables group by epic ownership rather than ID order — cosmetic only, and §11.1 disambiguates.
+- Assumptions Index roundtrip: trivially clean; §13's "no inline tags" assertion is the document's only `[ASSUMPTION]` occurrence. No `[NOTE FOR PM]` or `[NON-GOAL]` tags remain — consistent with `status: final`.
+- Glossary drift: none observed; "Support-Safe", "Projection-Confirmed Success", "External API Host" / "Interactive UI Host" are used with consistent casing and meaning across §4, §6, §8.3, and NFRs.
+- Known-deferred, verified still-present but intentionally not re-raised: the stale §11.3 coordinated-slice list (still cites pre-split "7.2, 7.3, and 7.4"); the OCI image-index requirement absent from PRD text (approved proposal disposed `prd.md` as no-change); optional 3.12 traceability additions (epic-side NFR9/NFR11 declarations include 3.12; PRD rows do not).

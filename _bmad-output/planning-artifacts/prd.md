@@ -38,9 +38,12 @@ source_artifacts:
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-16-story-1-16-review-and-story-1-20-proof-closure.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-16.md
-  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-18.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-17.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-18-story-3-1-live-sidecar-topology.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-18-story-3-5-reconciliation.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-18.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-19-openbao-secret-store.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-19.md
   - _bmad-output/planning-artifacts/implementation-readiness-report-2026-07-05.md
   - _bmad-output/planning-artifacts/epics.md
 ---
@@ -281,6 +284,7 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 - Keep the shared Builds catalog on the latest validated compatible versions from configured package sources. Prefer the latest stable release for stable pins; validate intentional prerelease channels, aligned families, framework/SDK coupling, and major upgrades as units. Document every retained exception with its reason, evidence, and removal trigger, and never downgrade because search omits or unlists a package.
 - Require explicit `UseHexalithProjectReferences=true` for source intent; unset or explicit `false` remains package intent in Debug, Release, and configuration-less evaluation.
 - Use .NET SDK container support, not Dockerfiles.
+- Publish the EventStore container as one immutable OCI image index containing exactly the supported platform set, `linux/amd64` and `linux/arm64`; release validation must fail closed on any other manifest shape or platform set.
 - Never initialize nested submodules; only root-declared submodules under `references/` are valid.
 
 ### 8.2 Identity And Authorization
@@ -398,22 +402,24 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 
 ### 11.2 High-Risk NFR Story Coverage
 
+SM3's Phase 4 gate covers NFR1-NFR4, NFR7, NFR10-NFR11, and NFR14-NFR17. The table also tracks NFR6, NFR8, and NFR9 for completeness and NFR19 for the separately gated post-MVP commitment validated by SM7.
+
 | NFR | Primary story coverage |
 | --- | --- |
 | NFR1 | 5.2, 5.3, 5.5, 7.2, 7.3 |
-| NFR2 | 2.4, 5.2, 5.5, 5.6 |
+| NFR2 | 2.5, 5.2, 5.5, 5.6 |
 | NFR3 | 5.3 |
-| NFR4 | 5.3, 7.3, 7.6 |
+| NFR4 | 5.3, 7.6 |
 | NFR6 | 1.13, 7.1 |
 | NFR7 | 4.1, 4.2, 4.4, 4.5, 5.1 |
-| NFR8 | 1.11, 1.14, 6.3, 6.4 |
-| NFR9 | 3.5, 3.8, 3.11 |
-| NFR10 | 3.1, 3.11, 7.4 |
-| NFR11 | 3.6 |
-| NFR14 | 2.3, 2.4 |
-| NFR15 | 7.2 |
-| NFR16 | 1.9, 1.10, 1.11, 1.12, 1.13, 1.14, 1.15, 3.11, 7.4 |
-| NFR17 | 5.6, 7.3, 7.6 |
+| NFR8 | 1.16, 1.19, 6.3, 6.4 |
+| NFR9 | 3.5, 3.8, 3.11, 3.12 |
+| NFR10 | 3.1, 3.11, 7.10 |
+| NFR11 | 3.6, 3.12 |
+| NFR14 | 2.3, 2.5, 2.6 |
+| NFR15 | 7.3, 7.4, 7.14 |
+| NFR16 | 1.9, 1.10, 1.11, 1.12, 1.13, 1.14, 1.15, 3.11, 3.12, 7.10 |
+| NFR17 | 3.12, 5.6, 7.6, 7.7, 7.8, 7.9 |
 | NFR19 | 8.1, 8.2 |
 
 ### 11.3 Required Follow-On Readiness Work
@@ -424,13 +430,13 @@ The PRD, architecture, UX, and epics artifacts now exist under `_bmad-output/pla
 
 - Parties payload-protection G5 remains `needs-additive-api` until Story 8.1's approved security specification gates Story 8.2, and Story 8.2 supplies an owner/security-approved `available` packet with exact source/package/backend identities, EventStore goldens, Parties dual-provider compatibility, and rollback after `pdenc-v2` writes.
 
-- `epics.md` contains coordinated-slice gates for Stories 1.3, 1.6, 2.4, 3.7, 5.6, 7.2, 7.3, and 7.4, including owners, review boundaries, and validation commands. Implementation story files must either split those stories or carry the coordinated-slice gate forward.
+- The former coordinated-slice parents (pre-renumbering Stories 1.3, 1.6, 2.4, 3.7, 5.6, 7.2, 7.3, and 7.4) are superseded by focused child stories under the approved 2026-07-15 restructuring: 1.3-1.5, 1.8-1.11, 2.4-2.7 plus 2.12, 3.7-3.9, 5.6-5.9, 7.2-7.5, 7.6-7.9, and 7.10-7.13. `epics.md` retains the migration gates — every child names one owner, one review boundary, deterministic acceptance criteria, and focused validation — and `story-id-migration-2026-07-15.md` is the audit authority for identifier mapping, status inheritance, and evidence.
 - Story 5.2 now requires concrete request-size limits: `1_048_576` bytes for representative admin JSON write/sandbox bodies and `10 * 1024 * 1024` bytes for `AdminBackupsController.ImportStream`, with bounded rejection tests and no upstream service invocation on excessive requests.
 - Stories 6.1, 6.3, and 6.5 now name required spec output paths and approval evidence before Stories 6.2, 6.4, and 6.6 can start:
   - `_bmad-output/implementation-artifacts/spec-folded-snapshot.md`
   - `_bmad-output/implementation-artifacts/spec-projection-cost-sequence-guard.md`
   - `_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md`
-- Story 7.5 is reclassified as a planning/backlog artifact story with exact deliverables:
+- The former Story 7.5 backlog reclassification is carried by Stories 7.15-7.18, one per planning/backlog artifact, with exact deliverables:
   - `_bmad-output/planning-artifacts/backlog/gdpr-1-aggregate-erasure.md`
   - `_bmad-output/planning-artifacts/backlog/iam-1-admin-oidc-login.md`
   - `_bmad-output/planning-artifacts/backlog/kit-1-aggregate-test-kit.md`

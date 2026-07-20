@@ -7,7 +7,7 @@ paradigm: DAPR-backed hexagonal event-sourcing platform
 scope: Hexalith.EventStore Phase 4 implementation readiness recovery
 status: final
 created: 2026-07-05
-updated: 2026-07-19
+updated: 2026-07-20
 binds:
   - FR1-FR37
   - NFR1-NFR19
@@ -18,9 +18,12 @@ sources:
   - _bmad-output/planning-artifacts/implementation-readiness-report-2026-07-15.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-16.md
-  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-18.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-17.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-18-story-3-1-live-sidecar-topology.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-18-story-3-5-reconciliation.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-18.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-19-openbao-secret-store.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-19.md
   - _bmad-output/implementation-artifacts/spec-dapr-global-event-ordering.md
   - docs/brownfield/architecture.md
   - docs/brownfield/integration-architecture.md
@@ -121,15 +124,17 @@ flowchart LR
 
 ### AD-11 - Release Is Manifest-Governed [ADOPTED]
 
-- **Binds:** FR10, FR21-FR22, FR25, NFR9-NFR11
-- **Prevents:** local submodule checkout state, Debug source references, or hard-coded package loops changing released package output.
+- **Binds:** FR10, FR21-FR22, FR25, NFR9-NFR11, NFR16-NFR17
+- **Prevents:** local submodule checkout state, Debug source references, or hard-coded package loops changing released package output; and single-platform or otherwise nonconforming container registry objects being reported as successful releases.
 - **Rule:** `tools/release-packages.json` is the EventStore release inventory. Release/package validation uses package-reference mode by default. Source project references require explicit `UseHexalithProjectReferences=true` and are never used for package publication. Unset or explicit `UseHexalithProjectReferences=false` is package intent in every configuration, including Debug. Explicit `true` is source intent, but each external edge still requires its root-declared source path to exist; missing source falls back to the centrally pinned package edge. Empty or unset configuration remains package-safe. Submodule packages are not produced by EventStore release jobs. `references/Hexalith.Builds/Props/Directory.Packages.props` is the sole source-owned NuGet version catalog for Hexalith repositories; consumer props only configure CPM and import it. The catalog moves to latest validated compatible versions using configured-source evidence, grouped restore/build/test validation, and representative-consumer proof. Hexalith release families, .NET/ASP.NET patch bands, OpenTelemetry packages, test adapters, and other coupled sets move coherently. Major upgrades and channel changes require explicit proof. Compatibility exceptions record rationale and a removal trigger; missing, unlisted, or older search results never cause a downgrade. The repository SDK seed and verified security baseline are `10.0.302` and ASP.NET `10.0.10` respectively.
+
+The EventStore container release is one immutable OCI image index. Released container repositories are exactly the release workflow's `container-projects` mapping - currently the single `eventstore` repository. Any future externally released container image, including `eventstore-admin-ui`, adopts this same index/platform/validation contract and an AD-22 identity mapping before its first release; until then AD-21's `eventstore-admin-ui` is an AppHost/deployment topology identity, not a released registry artifact, and deployment profiles must not require a platform of any released registry image that no release evidence proves. The conforming registry shape has one authority - the SHA-pinned shared Hexalith.Builds publisher/validator the release workflow consumes; neither Builds nor the EventStore caller reinterprets it locally, and shape changes route through an approved proposal and a Builds change, never a validation weakening. That shape: the release version tag resolves to media type `application/vnd.oci.image.index.v1+json` (a Docker manifest list or single-image manifest served for the tag is nonconforming) containing exactly one descriptor per supported platform - `linux/amd64` and `linux/arm64` - each directly referencing an image manifest (nested indexes are nonconforming), with no duplicate, extra, or `unknown` platform and no non-empty platform `variant` value. Index-level annotations and repository co-objects outside the validated descriptor graph confer no release evidence. Platform children are produced by .NET SDK container support, never Dockerfiles. Release validation reads the raw registry bytes, binds their SHA-256 and byte length to the registry-reported index digest and to every descriptor, resolves every descriptor, verifies each child config's `os`/`architecture` equals its descriptor, and runs the same bounded support-safe health smoke on both immutable child digests under the declared minimal configuration of the smoke contract, which is owned by that same shared publisher/validator authority; a dependency absent from the declared configuration is part of the contract, not grounds to skip or substitute the check. Every validation failure fails the release evidence gate closed - wrong media type, platform-set mismatch, digest or size mismatch, unresolved descriptor, config mismatch, or product smoke failure - and emulation or environment setup failure is classified separately from a product-image failure but blocks the gate equally: a platform whose smoke cannot run is unproven, not passed. Published artifacts are immutable: release tags, conforming and failed, are never re-pointed or deleted; a nonconforming release (v3.75.0) remains resolvable as non-authorizing failed evidence and is corrected only by a conforming later semantic version. Tag resolution never authorizes deployment; only the recorded validated index digest does (AD-22).
 
 ### AD-12 - High-Risk Verification Requires Persisted Evidence [ADOPTED]
 
 - **Binds:** NFR7, NFR10, NFR16, SM-C2
 - **Prevents:** API smoke responses or mock call counts being accepted as integration proof for data-loss, topology, tenant isolation, release, or delivery behavior.
-- **Rule:** Tier 2/3 and readiness-critical tests inspect persisted Redis/state-store/read-model/CloudEvent bodies, topology YAML or sidecar arguments, package outputs, and security denials where applicable. `202`, `200`, and mock calls are smoke signals only.
+- **Rule:** Tier 2/3 and readiness-critical tests inspect persisted Redis/state-store/read-model/CloudEvent bodies, topology YAML or sidecar arguments, package outputs, container release registry and smoke evidence, and security denials where applicable. `202`, `200`, and mock calls are smoke signals only.
 
 ### AD-13 - Cost And Evolution Changes Are Spec-First
 
@@ -278,17 +283,17 @@ Existing synchronous single-projection consumers continue through an explicitly 
 
 - **Binds:** FR13, FR15, FR34, NFR14-NFR15, Story 7.14
 - **Prevents:** parallel EventStore UI hosts choosing different shells, resource identities, module navigation, client boundaries, or legacy-route behavior.
-- **Rule:** `src/Hexalith.EventStore.Admin.UI` evolves in place into the consolidated EventStore UI service. Its AppHost resource and container identity remain `eventstore-admin-ui`; no additional EventStore UI host is created. The UI composes matching `3.2.2` versions of `Hexalith.FrontComposer.Shell` and `Hexalith.FrontComposer.Contracts.UI` plus Fluent UI Blazor V5; Debug source and Release package modes resolve the same package boundary. `Admin.UI` owns one canonical dashboard route table and the stable FrontComposer module identity `event-store-admin` with label **Event Store Admin**. Existing canonical deep links remain; every other legacy route redirects to a canonical dashboard deep link rather than preserving a second page implementation, and the `event-store-admin` entry stays selected. UI command/query flows remain typed-client consumers and do not acquire generated or hand-written per-message MVC controllers.
+- **Rule:** `src/Hexalith.EventStore.Admin.UI` evolves in place into the consolidated EventStore UI service. Its AppHost resource and container identity remain `eventstore-admin-ui`; no additional EventStore UI host is created. The UI composes `Hexalith.FrontComposer.Shell` and `Hexalith.FrontComposer.Contracts.UI` plus Fluent UI Blazor V5. Every consumed FrontComposer package resolves from the Builds catalog's single `HexalithFrontComposerVersion` variable (current value in the Stack table), so all FrontComposer packages move together; a consumed package absent from the catalog (`Contracts.UI` today) is added there under that variable before adoption, never pinned locally. Debug source and Release package modes resolve the same package boundary at the same version. `Admin.UI` owns one canonical dashboard route table and the stable FrontComposer module identity `event-store-admin` with label **Event Store Admin**. Existing canonical deep links remain; every other legacy route redirects to a canonical dashboard deep link rather than preserving a second page implementation, and the `event-store-admin` entry stays selected. UI command/query flows remain typed-client consumers and do not acquire generated or hand-written per-message MVC controllers.
 
 ### AD-22 - Consumer Infrastructure Removal Requires Owner-Approved Exact-SHA Parity [ADOPTED]
 
 - **Binds:** FR36, NFR12, NFR16
 - **Prevents:** persisted evidence from one EventStore runtime authorizing a consuming module to delete local projection/query infrastructure against a different source commit, package build, or deployed image.
-- **Rule:** A consuming module removes local projection/query infrastructure only after an EventStore-owner-reviewed parity packet marks every required capability `available`, cites persisted production-path evidence, records the exact approved EventStore source/runtime commit SHA, and maps that SHA to the released artifact identities: exact consumed package versions and hashes plus the deployed EventStore container image digest when applicable.
+- **Rule:** A consuming module removes local projection/query infrastructure only after an EventStore-owner-reviewed parity packet marks every required capability `available`, cites persisted production-path evidence, records the exact approved EventStore source/runtime commit SHA, and maps that SHA to the released artifact identities: exact consumed package versions and hashes plus, when applicable, the deployed EventStore container identity, which is the validated OCI image index digest under AD-11.
 
   - Source mode proves the checked-out **EventStore submodule** SHA equals the approved EventStore SHA.
   - Package mode proves the resolved EventStore package versions and hashes equal the packet's manifest-governed artifacts.
-  - Deployed mode proves the running EventStore image digest maps through release provenance to the approved EventStore SHA.
+  - Deployed mode proves the running EventStore image maps through release provenance to the approved EventStore SHA. The approved container identity is the OCI image index digest recorded by the AD-11 release evidence gate; the packet records the full identity chain - index digest, both child manifest digests, and both child config digests. A deployed-mode verifier may observe any chain member and maps it to the approved index digest only through that recorded chain; it never re-derives identity from an alternate representation of the tag, and an observed identity absent from the chain fails closed.
 
 The consuming repository's own commit SHA is never compared to the EventStore SHA. Without owner approval or a matching dependency/runtime identity, the consumer keeps its local infrastructure and the adoption child remains non-`done`; generic EventStore platform work may continue independently.
 
@@ -341,9 +346,9 @@ AD-24 governs operational and application secret retrieval. It does not approve,
 | Payload protection | EventStore owns the optional engine, stable formats, shared mechanics, production-backend conformance, and G5 proof; provider/operators own production key custody and credentials; domains retain legal policy per AD-23. The no-op provider remains the default until the optional engine is explicitly registered. |
 | Secrets | Production operational/application secrets resolve through the DAPR `openbao` component and `secretKeyRef`; application code uses the DAPR Secrets API. The platform overlay owns provider metadata and logical names. Component/app access is allowlisted and default-deny, production TLS verification is enabled, bootstrap-token rotation rolls the sidecar, required-secret validation gates readiness, and payload-protection KEK custody remains separate per AD-24. |
 | Sidecar control-plane headers | Outbound `dapr-app-id` / `dapr-api-token` are handler-owned, **replaced not appended**, set authoritatively from config by the single platform handler; caller/inbound-forwarded values are never routed (AD-18). |
-| UI | `src/Hexalith.EventStore.Admin.UI` is the single consolidated EventStore UI and retains the `eventstore-admin-ui` resource/container identity. It composes matching FrontComposer `3.2.2` Shell/Contracts.UI dependencies and Fluent UI Blazor V5. `Admin.UI` owns the canonical dashboard route table; non-canonical legacy routes redirect to canonical deep links under the selected `event-store-admin` / **Event Store Admin** module entry. UI success is projection-confirmed, support-safe, accessible, and localized; detailed UX flows live in the canonical UX artifacts. |
-| Runtime topology | AppHost resource names, DAPR app IDs, component scopes, secret scopes, ACL policies, pub/sub topics, and deployment overlays remain aligned by tests. |
-| Release | Restore/build use `Hexalith.EventStore.slnx`; unit tests run per project; every source-owned NuGet dependency version resolves from `references/Hexalith.Builds/Props/Directory.Packages.props`; release output is manifest-driven. Catalog families and central .NET/ASP.NET security patch pins move together under the latest-compatible evidence rules in AD-11. The inventory remains 14 packages until Story 8.2 creates an approved packable engine project; engine and any approved companion adapter then update the manifest, inventory guidance, package governance, and package-only consumer validation atomically. |
+| UI | `src/Hexalith.EventStore.Admin.UI` is the single consolidated EventStore UI and retains the `eventstore-admin-ui` resource/container identity. It composes FrontComposer Shell/Contracts.UI dependencies at the Builds catalog's single `HexalithFrontComposerVersion` and Fluent UI Blazor V5. `Admin.UI` owns the canonical dashboard route table; non-canonical legacy routes redirect to canonical deep links under the selected `event-store-admin` / **Event Store Admin** module entry. UI success is projection-confirmed, support-safe, accessible, and localized; detailed UX flows live in the canonical UX artifacts. |
+| Runtime topology | AppHost resource names, DAPR app IDs, component scopes, secret scopes, ACL policies, pub/sub topics, and deployment overlays remain aligned by tests. Deployment profiles reference the released EventStore image by its validated OCI image index digest, not by a mutable tag (AD-11, AD-22). |
+| Release | Restore/build use `Hexalith.EventStore.slnx`; unit tests run per project; every source-owned NuGet dependency version resolves from `references/Hexalith.Builds/Props/Directory.Packages.props`; release output is manifest-driven. Catalog families and central .NET/ASP.NET security patch pins move together under the latest-compatible evidence rules in AD-11. The inventory remains 14 packages until Story 8.2 creates an approved packable engine project; engine and any approved companion adapter then update the manifest, inventory guidance, package governance, and package-only consumer validation atomically. Released container repositories are exactly the release workflow's `container-projects` mapping (currently the single `eventstore`); each publishes as one immutable OCI image index containing exactly `linux/amd64` and `linux/arm64` children built with .NET SDK container support and validated fail-closed by the SHA-pinned shared Builds validator (AD-11). |
 
 ## Stack
 
@@ -355,22 +360,22 @@ The table records the current planning baseline. Story 3.11 updates version rows
 | Target framework | net10.0 |
 | Aspire.Hosting | 13.4.6 |
 | Aspire.Hosting.Keycloak / Kubernetes | 13.4.6-preview.1.26319.6 |
-| CommunityToolkit.Aspire.Hosting.Dapr | 13.4.0-preview.1.260602-0230 |
+| CommunityToolkit.Aspire.Hosting.Dapr | 13.4.1-beta.686 |
 | DAPR runtime | Repository CI/deployment seed `1.18.0`; production profiles pin a compatible 1.18.x release |
 | Dapr .NET SDK packages | 1.18.4 |
 | DAPR OpenBao secret store | Stable component v1 since DAPR runtime 1.16; `secretstores.hashicorp.vault` |
 | MediatR | 14.2.0 |
 | FluentValidation | 12.1.1 |
-| ASP.NET Core / SignalR packages | Repository seed `10.0.9`; required security baseline `10.0.10` |
+| ASP.NET Core / SignalR packages | `10.0.10` (catalog and security baseline aligned) |
 | Microsoft.CodeAnalysis packages | 5.6.0 |
 | Microsoft.FluentUI.AspNetCore.Components | 5.0.0-rc.4-26180.1 |
-| Hexalith.FrontComposer.Shell / Contracts.UI | `3.2.2`; matching root-declared source in Debug and centrally pinned NuGet packages in Release |
-| OpenTelemetry exporter/hosting/ASP.NET/HTTP packages | 1.16.0 |
-| OpenTelemetry runtime instrumentation | 1.15.1 |
-| Hexalith.Commons.UniqueIds | 2.28.1 |
+| Hexalith.FrontComposer packages | Catalog `HexalithFrontComposerVersion` `4.0.1`; matching root-declared source in Debug and centrally pinned NuGet packages in Release |
+| OpenTelemetry exporter/hosting/ASP.NET/HTTP packages | 1.17.0 |
+| OpenTelemetry runtime instrumentation | 1.17.0 (StackExchangeRedis instrumentation `1.16.0-beta.1`) |
+| Hexalith.Commons.UniqueIds | 2.28.2 |
 | xUnit v3 | 3.2.2 |
 | Shouldly | 4.3.0 |
-| NSubstitute | 6.0.0-rc.1 |
+| NSubstitute | 6.0.0 |
 
 ## Structural Seed
 
