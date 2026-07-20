@@ -43,13 +43,11 @@ public class SubmitCommandHandlerResultPayloadTests {
     }
 
     [Fact]
-    public async Task Handle_ResultPayloadWithheld_NonCompletedFinalStatusLogged_DropsPayloadAndLogsAllowedMetadataOnce() {
+    public async Task Handle_NonCompletedFinalStatus_DropsPayloadAndLogsAllowedMetadataOnce() {
         // Arrange
         var logs = new List<CapturedLogEntry>();
         var statusStore = Substitute.For<ICommandStatusStore>();
-        // ResultPayloadWithheld is the sole drop trigger (durably decided by AggregateActor, e.g. on
-        // PublishFailed); the mocked status below only feeds the log's FinalStatus/StatusReadSucceeded properties.
-        var router = CreateRouter(SensitiveResultPayload, resultPayloadWithheld: true);
+        var router = CreateRouter(SensitiveResultPayload);
         SubmitCommand command = CreateCommand();
 
         _ = statusStore.ReadStatusAsync(command.Tenant, command.MessageId, Arg.Any<CancellationToken>())
@@ -73,13 +71,11 @@ public class SubmitCommandHandlerResultPayloadTests {
     }
 
     [Fact]
-    public async Task Handle_ResultPayloadWithheld_StatusReadFailure_DropsPayloadAndLogsReadFailureAndDropWarning() {
+    public async Task Handle_StatusReadFailure_DropsPayloadAndLogsReadFailureAndDropWarning() {
         // Arrange
         var logs = new List<CapturedLogEntry>();
         var statusStore = Substitute.For<ICommandStatusStore>();
-        // ResultPayloadWithheld is the sole drop trigger; the status-read failure below only feeds the
-        // log's FinalStatus/StatusReadSucceeded properties, not the drop decision itself.
-        var router = CreateRouter(SensitiveResultPayload, resultPayloadWithheld: true);
+        var router = CreateRouter(SensitiveResultPayload);
         SubmitCommand command = CreateCommand();
 
         _ = statusStore.ReadStatusAsync(command.Tenant, command.MessageId, Arg.Any<CancellationToken>())
@@ -104,13 +100,11 @@ public class SubmitCommandHandlerResultPayloadTests {
     }
 
     [Fact]
-    public async Task Handle_ResultPayloadWithheld_MissingFinalStatus_DropsPayloadAndLogsSuccessfulReadWithUnavailableStatus() {
+    public async Task Handle_MissingFinalStatus_DropsPayloadAndLogsSuccessfulReadWithUnavailableStatus() {
         // Arrange
         var logs = new List<CapturedLogEntry>();
         var statusStore = Substitute.For<ICommandStatusStore>();
-        // ResultPayloadWithheld is the sole drop trigger; the missing status below only feeds the
-        // log's FinalStatus/StatusReadSucceeded properties, not the drop decision itself.
-        var router = CreateRouter(SensitiveResultPayload, resultPayloadWithheld: true);
+        var router = CreateRouter(SensitiveResultPayload);
         SubmitCommand command = CreateCommand();
 
         _ = statusStore.ReadStatusAsync(command.Tenant, command.MessageId, Arg.Any<CancellationToken>())
@@ -132,29 +126,6 @@ public class SubmitCommandHandlerResultPayloadTests {
         warning.ExceptionText.ShouldBeNull();
         AssertAllowedDropProperties(warning, command, "Unavailable", statusReadSucceeded: true);
         AssertSensitiveResultPayloadNotLogged(logs);
-    }
-
-    [Fact]
-    public async Task Handle_ResultPayloadNotWithheld_ReturnsPayloadRegardlessOfFailedStatusRead() {
-        // Arrange: proves ResultPayloadWithheld is authoritative in both directions — a failing/unreadable
-        // tracked status must NOT gate the payload when the router did not durably withhold it.
-        var logs = new List<CapturedLogEntry>();
-        var statusStore = Substitute.For<ICommandStatusStore>();
-        var router = CreateRouter(SensitiveResultPayload, resultPayloadWithheld: false);
-        SubmitCommand command = CreateCommand();
-
-        _ = statusStore.ReadStatusAsync(command.Tenant, command.MessageId, Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("Status store unavailable"));
-
-        var handler = CreateHandler(statusStore, router, logs);
-
-        // Act
-        SubmitCommandResult result = await handler.Handle(command, CancellationToken.None);
-
-        // Assert
-        result.CorrelationId.ShouldBe(command.CorrelationId);
-        result.ResultPayload.ShouldBe(SensitiveResultPayload);
-        logs.ShouldNotContain(static entry => entry.EventId.Id == ResultPayloadDroppedEventId);
     }
 
     [Fact]
@@ -183,14 +154,13 @@ public class SubmitCommandHandlerResultPayloadTests {
         List<CapturedLogEntry> logs) =>
         new(statusStore, new InMemoryCommandArchiveStore(), router, new CapturingLogger<SubmitCommandHandler>(logs));
 
-    private static ICommandRouter CreateRouter(string? resultPayload, bool resultPayloadWithheld = false) {
+    private static ICommandRouter CreateRouter(string? resultPayload) {
         ICommandRouter router = Substitute.For<ICommandRouter>();
         _ = router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
             .Returns(callInfo => new CommandProcessingResult(
                 Accepted: true,
                 CorrelationId: callInfo.Arg<SubmitCommand>().CorrelationId,
-                ResultPayload: resultPayload,
-                ResultPayloadWithheld: resultPayloadWithheld));
+                ResultPayload: resultPayload));
         return router;
     }
 

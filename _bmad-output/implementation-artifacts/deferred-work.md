@@ -439,6 +439,21 @@ _All items LOW / non-blocking. Story 2.7 accepted (all AC1–AC7 met; Release bu
   summary: Correct the nonexistent baseline SHA recorded by the Story 4.8 implementation artifact.
   evidence: `_bmad-output/implementation-artifacts/4-8-durable-tenant-scoped-idempotency-admission-and-expired-key-precedence.md:2` records `afcc167ef277...`, while the valid baseline is `afcc167e0c539b09ecad978a58da2f756123f34e`; this originated in commit `73140382` and is unrelated to the CI gitlink repair.
 
+## Deferred from: idempotency result-payload gating CI fix (2026-07-20)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-29745475099-idempotency-result-payload-gating.md`
+  summary: `idempotency-conflict` and `idempotency-key-expired` error-catalog entries in `ErrorReferenceEndpoints.ErrorModels` omit `detail`/`reasonCode` example fields that their real exception handlers (`IdempotencyConflictExceptionHandler`, `IdempotencyKeyExpiredExceptionHandler`) actually set.
+  evidence: Adversarial review of the CI fix -- pre-existing gap unrelated to today's regression; the new `idempotency-admission-failure` entry added by this fix includes both fields (matching its handler), highlighting the sibling entries' inconsistency.
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-29745475099-idempotency-result-payload-gating.md`
+  summary: No test verifies `ErrorReferenceEndpoints.ErrorModels` example content (status code, fields) against what each real `IExceptionHandler` actually emits at runtime -- only slug presence/absence is asserted.
+  evidence: Adversarial review of the CI fix -- `AllProblemTypeUris_HaveCorrespondingErrorModel` / `AllErrorModels_HaveCorrespondingProblemTypeUri` would not have caught this fix's own status-code simplification (503 documented as primary while `idempotency_outcome_unknown` returns 409), a class of drift the catalog exists to prevent.
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-29745475099-idempotency-result-payload-gating.md`
+  summary: `SubmitCommandResult` has no field distinguishing why `ResultPayload` is null (still in-flight, domain-rejected, or a durable non-retryable `PublishFailed`) -- all three look identical to callers from the response body alone.
+  evidence: Adversarial review of the CI fix -- pre-existing API design gap in the exact code path this fix restores gating for; not caused by this change.
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-29745475099-idempotency-result-payload-gating.md`
+  summary: `docs/reference/command-api.md` § "Stable Idempotency Outcomes" and `ErrorReferenceEndpoints.ErrorModels` are two independently maintained sources of truth for the same idempotency-admission failure taxonomy, with no cross-link between them.
+  evidence: Adversarial review of the CI fix -- introduced when today's `19465ef8` commit added `ProblemTypeUris.IdempotencyAdmissionFailure` and the docs table without updating the error catalog; this fix closes the catalog gap but does not unify the two sources.
+
 ## Deferred from: code review of spec-gh-29740868410-fix-ci-cd.md (2026-07-20)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-gh-29740868410-fix-ci-cd.md`
@@ -446,4 +461,4 @@ _All items LOW / non-blocking. Story 2.7 accepted (all AC1–AC7 met; Release bu
   evidence: PR #319 (`6945714b`) made `CommandProcessingResult.ResultPayloadWithheld` the sole authority for whether `SubmitCommandHandler` returns a command's result payload, but only the consumer side (`SubmitCommandHandlerResultPayloadTests`) has coverage; the producer side in `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs` (around lines 2018, 2264, 2297, 2358) has no test proving its withheld formula is correct per branch, so a regression there would go undetected by any current suite.
 - source_spec: `_bmad-output/implementation-artifacts/spec-gh-29740868410-fix-ci-cd.md`
   summary: `SubmitCommandHandler.Log.ResultPayloadDropped`'s message text ("...because final command status was not Completed...") is stale under the flag-driven withholding logic and can be logged even when the reported `FinalStatus` is `Completed`.
-  evidence: PR #319 (`6945714b`) changed the drop decision from `finalStatus?.Status == CommandStatus.Completed` to `!processingResult.ResultPayloadWithheld` (`src/Hexalith.EventStore.Server/Pipeline/SubmitCommandHandler.cs:538`) but left the EventId=1107 log message template (line 777) referencing the old status-based reasoning, so the warning can misstate why the payload was withheld.
+  evidence: PR #319 (`6945714b`) changed the drop decision from `finalStatus?.Status == CommandStatus.Completed` to `!processingResult.ResultPayloadWithheld` (`src/Hexalith.EventStore.Server/Pipeline/SubmitCommandHandler.cs:538`) but left the EventId=1107 log message template (line 777) referencing the old status-based reasoning, so the warning can misstate why the payload was withheld. NOTE: superseded 2026-07-20 by the idempotency result-payload gating fix above, which reverted the drop decision back to the durable status-store read -- this item no longer applies to current code but is kept for historical trace.
