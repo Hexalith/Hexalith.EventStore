@@ -14,7 +14,7 @@ Hexalith CI/CD standards and reusable workflow guidance live in
 | **CodeQL** | `.github/workflows/codeql.yml` | `push`, `pull_request` to `main`, weekly schedule | Thin caller to the shared CodeQL reusable workflow using `@main`. |
 | **Dependency Review** | `.github/workflows/dependency-review.yml` | `pull_request` to `main` | Thin caller to the shared dependency-review gate using `@main`. |
 | **Commitlint** | `.github/workflows/commitlint.yml` | `push` and `pull_request` to `main` | Thin caller to the shared Conventional Commits gate using `@main`. |
-| **Release** | `.github/workflows/release.yml` | successful `CI` workflow completion for a `push` to `main` | Thin caller to an exact immutable `Hexalith.Builds` `domain-release.yml` commit for semantic-release, NuGet publish, GitHub Release, and the approved EventStore container publish. |
+| **Release** | `.github/workflows/release.yml` | manual dispatch from the current green `main` tip | Exact-source preflight followed by a protected `production` environment and an immutable `Hexalith.Builds` release workflow for semantic-release, NuGet, GitHub Release, and the approved EventStore container. |
 
 ## Shared CI/CD Boundary
 
@@ -92,29 +92,39 @@ python3 tools/validate-release-packages.py ./nupkgs <version>
 
 ## Release Flow
 
-The release workflow starts only after the `CI` workflow completes successfully
-for a push to `main`. The job also requires `github.sha` to equal the completed
-CI workflow's `head_sha`, so a queued release does not publish a newer `main`
-tip than the commit whose CI passed. It delegates to
-an exact 40-character `Hexalith/Hexalith.Builds` commit embedded in `release.yml`.
+Release is an intentional operator action. Ordinary pushes and pull requests
+run CI but never start Release. Before requesting environment approval, the
+manual workflow fails closed unless all of these are true:
 
-Semantic-release still decides from commit history whether a release is
-warranted. NuGet publishing remains scoped to the 14 packages listed in
+- the dispatch ref is exactly `refs/heads/main`;
+- the dispatch SHA still equals the live `main` ref returned by GitHub;
+- the exact SHA has a completed, successful `CI` workflow run whose event was a
+  push to `main`.
+
+The release concurrency group is `release-production` with cancellation
+disabled, so a later request cannot silently replace an approved publication.
+Only after source verification does the reusable release job enter the
+`production` environment. That environment requires reviewer `jpiquot`, permits
+deployments from `main` only, and gates use of the three explicitly mapped
+repository publication secrets. No duplicate environment-secret copy is needed.
+
+Semantic-release decides from commit history whether a release is warranted.
+NuGet publishing remains scoped to the 14 packages listed in
 [`tools/release-packages.json`](../tools/release-packages.json). Container
 publishing is enabled only for the approved EventStore host mapping. Before any
 NuGet package is pushed, semantic-release validates `NUGET_API_KEY`, the
 container publisher helper, and the required Zot registry credentials so a
 missing container secret cannot create a partial NuGet-only release. The
-semantic-release `verifyRelease` phase then fetches a separate durable GitHub
-issue-comment authority record, verifies its author against the checked-in
-release-owner allowlist, freezes its exact bytes, and proves the new version is
-absent for all 14 NuGet IDs and the container tag before Git-tag creation. The `publish` phase
-requires exact equality with the frozen authority and repeats destination
-absence immediately before NuGet. The shared publisher repeats the authority,
-expiry, and multi-media-type container-tag absence check immediately before the
-SDK registry write. Existing versions are collisions: the release path does not
-use `--skip-duplicate` and never overwrites an existing package, tag, manifest,
-or registry object.
+semantic-release `verifyRelease` phase freezes exact repository, version,
+source, environment, workflow run, approved Builds, helper-hash, package,
+container, and platform identity. It also proves the new version is absent for
+all 14 NuGet IDs and the container tag before Git-tag creation. The `publish`
+phase requires exact frozen-identity equality and repeats every destination
+check immediately before NuGet. The shared publisher requires both earlier
+phases and repeats multi-media-type container-tag absence immediately before
+the SDK registry write. Existing versions are collisions: the release path does
+not use `--skip-duplicate` and never overwrites an existing package, tag,
+manifest, or registry object.
 
 The `main` branch accepts changes only through pull requests. Release automation
 therefore does not use `@semantic-release/changelog` or `@semantic-release/git`:
@@ -124,19 +134,15 @@ commit to `main`. Any tracked `CHANGELOG.md` update must arrive through its own
 reviewed pull request; GitHub Releases are the current machine-generated release
 record.
 
-The authority record binds the EventStore repository, proposed version,
-workflow source SHA, `registry.hexalith.com/eventstore`, exact platform set,
-named owner, authorization and expiry times, rationale, durable source, and one
-maintainer-approved Hexalith.Builds execution SHA. The reusable workflow checks
-its resolved workflow SHA, checks out the nested action at that exact commit,
-and invokes it locally. The action then verifies its own action and helper bytes
-against the same commit before semantic-release can run. The repository
-embedded Builds SHA and repository variable `HEXALITH_RELEASE_AUTHORITY_URL`
-provide those non-secret inputs. The reusable-workflow reference and
-`builds-execution-sha` input must contain the same literal SHA. This gate
-validates authority evidence; it does not create human publication authority.
-The `GITHUB_TOKEN` is attached only to the exact GitHub API origin; cross-origin
-redirects drop authorization and HTTPS downgrade redirects fail closed.
+The reusable-workflow reference and `builds-execution-sha` input contain the
+same reviewed 40-character Builds commit. The reusable workflow verifies its
+resolved SHA, checks out the nested action at that exact commit, and invokes it
+locally; the action then verifies its own action and helper bytes against the
+same commit before semantic-release can run. This immutable release-tool pin is
+independent of the development `references/Hexalith.Builds` gitlink, so routine
+submodule updates do not rotate publication authority. Environment approval is
+the human authority; the comment-free preflight supplies machine-verifiable
+source and destination safety.
 
 The `publishCmd` calls the helper installed by the shared `publish-containers`
 action only after the authority gate and NuGet publication:
@@ -188,8 +194,8 @@ hashes/excerpts preserve the earliest failure. Only two `pass` results complete
 container publication. Evidence records the
 source SHA separately from the later semantic-release tag commit, workflow run
 and approved Builds identity, repository/version, index digest and raw hash,
-child manifest/config identities, exact platforms, authority bytes/source/hash
-and checked-at time, and both smoke logs/hashes. Registry, authentication,
+child manifest/config identities, exact platforms, frozen publication identity
+and destination checks, and both smoke logs/hashes. Registry, authentication,
 emulation, product, or evidence failure leaves the release non-authorizing.
 The reusable workflow uploads the complete hidden evidence directory with
 `always()` so partial publication remains visible.
@@ -197,7 +203,9 @@ The reusable workflow uploads the complete hidden evidence directory with
 Story 3.12 may hand a corrective release to Story 1.20 only as observed
 candidate evidence. Story 1.20 independently revalidates the full package and
 container identity and retains sole authority over its approval fields and
-consumer-migration decision.
+consumer-migration decision. Its checked-in GitHub approval-role allowlist is
+retained for that independent proof-packet use; the release workflow does not
+consume it.
 
 ## Submodules
 

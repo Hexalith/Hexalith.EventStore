@@ -275,20 +275,27 @@ public sealed class ReleasePackageManifestTests
     {
         string root = FindRepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
+        string releaseJob = ExtractTopLevelWorkflowJobBlock(workflow, "release");
 
         Match releaseWorkflow = Regex.Match(
-            workflow,
+            releaseJob,
             @"uses: Hexalith/Hexalith\.Builds/\.github/workflows/domain-release\.yml@(?<sha>[0-9a-f]{40})");
         releaseWorkflow.Success.ShouldBeTrue();
-        workflow.ShouldContain($"builds-execution-sha: {releaseWorkflow.Groups["sha"].Value}");
-        workflow.ShouldContain("github.sha == github.event.workflow_run.head_sha");
-        workflow.ShouldContain("publish-containers: true");
-        workflow.ShouldContain("src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore");
-        workflow.ShouldContain("NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}");
-        workflow.ShouldNotContain("src/Hexalith.EventStore.Admin");
-        workflow.ShouldNotContain("samples/");
-        workflow.ShouldNotContain("runs-on:");
-        workflow.ShouldNotContain("steps:");
+        releaseJob.ShouldContain($"builds-execution-sha: {releaseWorkflow.Groups["sha"].Value}");
+        releaseJob.ShouldContain("needs: verify-source");
+        releaseJob.ShouldContain("environment-name: production");
+        releaseJob.ShouldContain("publish-containers: true");
+        releaseJob.ShouldContain("src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore");
+        releaseJob.ShouldNotContain("src/Hexalith.EventStore.Admin");
+        releaseJob.ShouldNotContain("samples/");
+        releaseJob.ShouldNotContain("runs-on:");
+        releaseJob.ShouldNotContain("steps:");
+        workflow.ShouldContain("  workflow_dispatch:");
+        workflow.ShouldNotContain("workflow_run:");
+        releaseJob.ShouldContain("NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}");
+        releaseJob.ShouldContain("HEXALITH_ZOT_USERNAME: ${{ secrets.HEXALITH_ZOT_USERNAME }}");
+        releaseJob.ShouldContain("HEXALITH_ZOT_API_KEY: ${{ secrets.HEXALITH_ZOT_API_KEY }}");
+        releaseJob.ShouldNotContain("secrets: inherit");
     }
 
     [Fact]
@@ -304,6 +311,8 @@ public sealed class ReleasePackageManifestTests
         dependencyReview.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/dependency-review.yml@main");
         commitlint.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/commitlint.yml@main");
         commitlint.ShouldContain("pull_request:");
+        commitlint.ShouldContain("types: [opened, synchronize, reopened, edited]");
+        commitlint.ShouldContain("pull-request-title: ${{ github.event.pull_request.title }}");
         commitlint.ShouldContain("push:");
     }
 

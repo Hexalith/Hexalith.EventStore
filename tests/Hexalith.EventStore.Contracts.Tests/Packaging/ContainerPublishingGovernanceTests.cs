@@ -9,6 +9,8 @@ namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 /// </summary>
 public sealed class ContainerPublishingGovernanceTests
 {
+    private const string ApprovedBuildsReleaseSha = "2c2fd14ac6418d5758662aac8cfbe7df68615e12";
+
     /// <summary>
     /// Verifies that release automation never attempts to bypass the pull-request-only main branch.
     /// </summary>
@@ -35,10 +37,10 @@ public sealed class ContainerPublishingGovernanceTests
     }
 
     /// <summary>
-    /// Verifies that full publication authority runs before the first irreversible command.
+    /// Verifies that the publication preflight runs before the first irreversible command.
     /// </summary>
     [Fact]
-    public void SemanticReleaseRequiresAuthorityBeforeTagNuGetAndContainerPublication()
+    public void SemanticReleaseRequiresPreflightBeforeTagNuGetAndContainerPublication()
     {
         string root = FindRepositoryRoot();
         using JsonDocument configuration = JsonDocument.Parse(
@@ -64,55 +66,58 @@ public sealed class ContainerPublishingGovernanceTests
         int verifySecretPreflight = verifyReleaseCommand.IndexOf(
             "scripts/validate-release-secrets.sh",
             StringComparison.Ordinal);
-        int verifyAuthorityPreflight = verifyReleaseCommand.IndexOf(
-            "scripts/validate-release-authority.sh",
+        int verifyPublicationPreflight = verifyReleaseCommand.IndexOf(
+            "scripts/validate-publication-preflight.sh",
             StringComparison.Ordinal);
         verifySecretPreflight.ShouldBeGreaterThanOrEqualTo(0);
-        verifyAuthorityPreflight.ShouldBeGreaterThan(verifySecretPreflight);
+        verifyPublicationPreflight.ShouldBeGreaterThan(verifySecretPreflight);
         verifyReleaseCommand.ShouldContain("${nextRelease.version} verify");
         verifyReleaseCommand.ShouldNotContain("dotnet nuget push");
         verifyReleaseCommand.ShouldNotContain("publish-containers.sh");
 
         int secretPreflight = publishCommand.IndexOf("scripts/validate-release-secrets.sh", StringComparison.Ordinal);
-        int authorityPreflight = publishCommand.IndexOf("scripts/validate-release-authority.sh", StringComparison.Ordinal);
+        int publicationPreflight = publishCommand.IndexOf(
+            "scripts/validate-publication-preflight.sh",
+            StringComparison.Ordinal);
         int nugetPublish = publishCommand.IndexOf("dotnet nuget push", StringComparison.Ordinal);
         int containerPublish = publishCommand.IndexOf("./.hexalith/release/publish-containers.sh", StringComparison.Ordinal);
 
         secretPreflight.ShouldBeGreaterThanOrEqualTo(0);
-        authorityPreflight.ShouldBeGreaterThan(secretPreflight);
+        publicationPreflight.ShouldBeGreaterThan(secretPreflight);
         publishCommand.ShouldContain("${nextRelease.version} publish");
-        nugetPublish.ShouldBeGreaterThan(authorityPreflight);
+        nugetPublish.ShouldBeGreaterThan(publicationPreflight);
         containerPublish.ShouldBeGreaterThan(nugetPublish);
         publishCommand.ShouldNotContain("--skip-duplicate");
     }
 
     /// <summary>
-    /// Verifies that the local wrapper delegates durable authority and destination checks to the shared validator.
+    /// Verifies that the local wrapper delegates immutable identity and destination checks to the shared preflight.
     /// </summary>
     [Fact]
-    public void AuthorityWrapperBindsReleaseIdentityAndSharedContract()
+    public void PublicationPreflightWrapperBindsReleaseIdentityAndSharedContract()
     {
         string root = FindRepositoryRoot();
-        string scriptPath = Path.Combine(root, "scripts", "validate-release-authority.sh");
+        string scriptPath = Path.Combine(root, "scripts", "validate-publication-preflight.sh");
         File.Exists(scriptPath).ShouldBeTrue();
         string script = File.ReadAllText(scriptPath);
 
-        script.ShouldContain("./.hexalith/release/publication_authority.py");
-        script.ShouldContain("HEXALITH_RELEASE_AUTHORITY_URL");
+        script.ShouldContain("./.hexalith/release/publication_preflight.py");
         script.ShouldContain("HEXALITH_BUILDS_EXECUTION_SHA");
+        script.ShouldContain("HEXALITH_RELEASE_ENVIRONMENT");
         script.ShouldContain("GITHUB_SHA");
         script.ShouldNotContain("git rev-parse HEAD");
         script.ShouldContain("tools/release-packages.json");
-        script.ShouldContain("1-20-github-approval-role-allowlist.json");
+        script.ShouldNotContain("HEXALITH_RELEASE_AUTHORITY_URL");
+        script.ShouldNotContain("1-20-github-approval-role-allowlist.json");
         script.ShouldContain("--phase \"$phase\"");
         script.ShouldContain("registry.hexalith.com/eventstore");
     }
 
     /// <summary>
-    /// Verifies that the thin caller supplies exact authority inputs without widening secrets or mappings.
+    /// Verifies that the caller uses one immutable release pin independently of the development gitlink.
     /// </summary>
     [Fact]
-    public void ThinReleaseCallerSuppliesExactAuthorityInputsAndOneMapping()
+    public void ReleaseCallerPinsSharedExecutionAndOneMappingWithoutCommentAuthority()
     {
         string root = FindRepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
@@ -122,12 +127,14 @@ public sealed class ContainerPublishingGovernanceTests
             @"uses: Hexalith/Hexalith\.Builds/\.github/workflows/domain-release\.yml@(?<sha>[0-9a-f]{40})");
         releaseWorkflow.Success.ShouldBeTrue();
         string buildsSha = releaseWorkflow.Groups["sha"].Value;
+        buildsSha.ShouldBe(ApprovedBuildsReleaseSha);
         workflow.ShouldContain($"builds-execution-sha: {buildsSha}");
         workflow.ShouldNotContain("domain-release.yml@main");
         workflow.ShouldNotContain("vars.HEXALITH_BUILDS_RELEASE_SHA");
-        workflow.ShouldContain("release-authority-url: ${{ vars.HEXALITH_RELEASE_AUTHORITY_URL }}");
-        workflow.ShouldContain(
-            "release-owner-allowlist: _bmad-output/implementation-artifacts/1-20-github-approval-role-allowlist.json");
+        workflow.ShouldContain("environment-name: production");
+        workflow.ShouldNotContain("release-authority-url:");
+        workflow.ShouldNotContain("release-owner-allowlist:");
+        workflow.ShouldNotContain("references/Hexalith.Builds");
         workflow.ShouldNotContain("secrets: inherit");
 
         string inputsBlock = ExtractYamlBlock(workflow, "    with:");
@@ -136,12 +143,6 @@ public sealed class ContainerPublishingGovernanceTests
             @"(?m)^\s{6}timeout-minutes:\s*(?<minutes>\d+)\s*$");
         timeoutInputs.Count.ShouldBe(1);
         timeoutInputs[0].Groups["minutes"].Value.ShouldBe("60");
-
-        string buildsRoot = Path.Combine(root, "references", "Hexalith.Builds");
-        ReadGitHead(buildsRoot).ShouldBe(buildsSha);
-        string sharedWorkflow = File.ReadAllText(
-            Path.Combine(buildsRoot, ".github", "workflows", "domain-release.yml"));
-        sharedWorkflow.ShouldContain("timeout-minutes: ${{ inputs.timeout-minutes }}");
 
         string mappingBlock = ExtractYamlBlock(workflow, "      container-projects: |");
         mappingBlock
@@ -158,48 +159,37 @@ public sealed class ContainerPublishingGovernanceTests
     }
 
     /// <summary>
-    /// Verifies the exact shared multi-platform invocation and post-publish gates.
+    /// Verifies that release is manual and invalid source cannot reach the protected release job.
     /// </summary>
     [Fact]
-    public void SharedPublisherContractIsExactTwoPlatformAndValidationGated()
+    public void ReleaseWorkflowRequiresExactGreenMainBeforeProtectedReleaseJob()
     {
         string root = FindRepositoryRoot();
-        string publisher = File.ReadAllText(
-            Path.Combine(root, "references", "Hexalith.Builds", "Github", "publish-containers", "publish-containers.sh"));
-        string smoke = File.ReadAllText(
-            Path.Combine(
-                root,
-                "references",
-                "Hexalith.Builds",
-                "Github",
-                "publish-containers",
-                "smoke_container_platforms.py"));
+        string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
 
-        publisher.ShouldContain("linux-musl-x64;linux-musl-arm64");
-        publisher.ShouldContain("\"-p:RuntimeIdentifiers=\\\"$runtime_identifiers\\\"\"");
-        publisher.ShouldContain("\"-p:ContainerRuntimeIdentifiers=\\\"$runtime_identifiers\\\"\"");
-        publisher.ShouldContain("-p:ContainerImageFormat=OCI");
-        publisher.ShouldContain("-p:UseHexalithProjectReferences=false");
-        publisher.ShouldNotContain("--os linux");
-        publisher.ShouldNotContain("--arch x64");
-        publisher.IndexOf("\n  \"$authority_validator\"", StringComparison.Ordinal).ShouldBeLessThan(
-            publisher.IndexOf("dotnet publish", StringComparison.Ordinal));
-        publisher.LastIndexOf("\n  \"$validator\"", StringComparison.Ordinal).ShouldBeGreaterThan(
-            publisher.IndexOf("dotnet publish", StringComparison.Ordinal));
-        publisher.LastIndexOf("\n  \"$smoke\"", StringComparison.Ordinal).ShouldBeGreaterThan(
-            publisher.LastIndexOf("\n  \"$validator\"", StringComparison.Ordinal));
-        smoke.ShouldContain("DEFAULT_SMOKE_TIMEOUT_SECONDS = \"180\"");
-        smoke.ShouldContain("Authentication__JwtBearer__Issuer=");
-        smoke.ShouldContain("Authentication__JwtBearer__Audience=");
-        smoke.ShouldContain("Authentication__JwtBearer__SigningKey=");
-        smoke.ShouldContain("Authentication__JwtBearer__AllowInsecureSymmetricKey=true");
+        workflow.ShouldContain("  workflow_dispatch:");
+        workflow.ShouldNotContain("workflow_run:");
+        workflow.ShouldNotContain("  push:");
+        workflow.ShouldContain("group: release-production");
+        workflow.ShouldContain("cancel-in-progress: false");
+        workflow.ShouldContain("DISPATCH_REF: ${{ github.ref }}");
+        workflow.ShouldContain("DISPATCH_SHA: ${{ github.sha }}");
+        workflow.ShouldContain("refs/heads/main");
+        workflow.ShouldContain("git/ref/heads/main");
+        workflow.ShouldContain("actions/workflows/ci.yml/runs");
+        workflow.ShouldContain(".head_sha == $sha");
+        workflow.ShouldContain(".event == \"push\"");
+        workflow.ShouldContain(".conclusion == \"success\"");
+        workflow.ShouldContain("release:\n    needs: verify-source");
+        workflow.IndexOf("verify-source:", StringComparison.Ordinal).ShouldBeLessThan(
+            workflow.IndexOf("  release:", StringComparison.Ordinal));
     }
 
     /// <summary>
-    /// Verifies that an authority rejection prevents both external mutation commands.
+    /// Verifies the manual source preflight rejects wrong refs, stale heads, and missing exact-source CI.
     /// </summary>
     [Fact]
-    public void RejectedAuthorityBehaviorallyBlocksNuGetAndContainerMutation()
+    public void ReleaseSourcePreflightFailsClosedAndAcceptsOnlyExactSuccessfulPushCi()
     {
         if (OperatingSystem.IsWindows())
         {
@@ -207,11 +197,53 @@ public sealed class ContainerPublishingGovernanceTests
         }
 
         string root = FindRepositoryRoot();
-        string temporary = Path.Combine(Path.GetTempPath(), $"hexalith-authority-{Guid.NewGuid():N}");
+        string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
+        string script = ExtractNamedWorkflowRunBlock(
+            workflow,
+            "Require current main with successful exact-source CI");
+        string dispatchSha = new('a', 40);
+        string staleMainSha = new('b', 40);
+
+        RunReleaseSourcePreflight(script, "refs/heads/release", dispatchSha, dispatchSha, []).ShouldNotBe(0);
+        RunReleaseSourcePreflight(script, "refs/heads/main", dispatchSha, staleMainSha, []).ShouldNotBe(0);
+        RunReleaseSourcePreflight(script, "refs/heads/main", dispatchSha, dispatchSha, []).ShouldNotBe(0);
+
+        object[] successfulRun =
+        [
+            new
+            {
+                head_sha = dispatchSha,
+                head_branch = "main",
+                @event = "push",
+                status = "completed",
+                conclusion = "success",
+            },
+        ];
+        RunReleaseSourcePreflight(
+            script,
+            "refs/heads/main",
+            dispatchSha,
+            dispatchSha,
+            successfulRun).ShouldBe(0);
+    }
+
+    /// <summary>
+    /// Verifies that a preflight rejection prevents both external mutation commands.
+    /// </summary>
+    [Fact]
+    public void RejectedPreflightBehaviorallyBlocksNuGetAndContainerMutation()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        string root = FindRepositoryRoot();
+        string temporary = Path.Combine(Path.GetTempPath(), $"hexalith-preflight-{Guid.NewGuid():N}");
         Directory.CreateDirectory(temporary);
         try
         {
-            string rejectingValidator = Path.Combine(temporary, "reject-authority.sh");
+            string rejectingValidator = Path.Combine(temporary, "reject-preflight.sh");
             File.WriteAllText(rejectingValidator, "#!/usr/bin/env bash\nexit 1\n");
             File.SetUnixFileMode(
                 rejectingValidator,
@@ -227,15 +259,14 @@ public sealed class ContainerPublishingGovernanceTests
             };
             start.ArgumentList.Add("-c");
             start.ArgumentList.Add("bash \"$1\" 99.0.0 publish && touch \"$2\" && touch \"$3\"");
-            start.ArgumentList.Add("authority-test");
-            start.ArgumentList.Add(Path.Combine(root, "scripts", "validate-release-authority.sh"));
+            start.ArgumentList.Add("preflight-test");
+            start.ArgumentList.Add(Path.Combine(root, "scripts", "validate-publication-preflight.sh"));
             start.ArgumentList.Add(nugetMarker);
             start.ArgumentList.Add(containerMarker);
-            start.Environment["HEXALITH_RELEASE_AUTHORITY_URL"] =
-                "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/comments/1";
             start.Environment["HEXALITH_BUILDS_EXECUTION_SHA"] = new string('a', 40);
+            start.Environment["HEXALITH_RELEASE_ENVIRONMENT"] = "production";
             start.Environment["GITHUB_SHA"] = new string('b', 40);
-            start.Environment["HEXALITH_PUBLICATION_AUTHORITY_VALIDATOR"] = rejectingValidator;
+            start.Environment["HEXALITH_PUBLICATION_PREFLIGHT"] = rejectingValidator;
             start.Environment["HEXALITH_ZOT_REGISTRY"] = "registry.hexalith.com";
 
             using Process process = Process.Start(start).ShouldNotBeNull();
@@ -300,6 +331,89 @@ public sealed class ContainerPublishingGovernanceTests
         return string.Join('\n', block);
     }
 
+    private static string ExtractNamedWorkflowRunBlock(string source, string stepName)
+    {
+        string[] lines = source.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+        int stepIndex = Array.FindIndex(lines, line => line.Trim().Equals($"- name: {stepName}", StringComparison.Ordinal));
+        stepIndex.ShouldBeGreaterThanOrEqualTo(0);
+        int runIndex = Array.FindIndex(
+            lines,
+            stepIndex + 1,
+            line => line.Trim().Equals("run: |", StringComparison.Ordinal));
+        runIndex.ShouldBeGreaterThan(stepIndex);
+        int runIndent = lines[runIndex].TakeWhile(char.IsWhiteSpace).Count();
+        List<string> block = [];
+        for (int index = runIndex + 1; index < lines.Length; index++)
+        {
+            string line = lines[index];
+            int indent = line.TakeWhile(char.IsWhiteSpace).Count();
+            if (line.Length > 0 && indent <= runIndent)
+            {
+                break;
+            }
+
+            block.Add(line.Length == 0 ? string.Empty : line[(runIndent + 2)..]);
+        }
+
+        return string.Join('\n', block) + "\n";
+    }
+
+    private static int RunReleaseSourcePreflight(
+        string script,
+        string dispatchRef,
+        string dispatchSha,
+        string liveMainSha,
+        object[] workflowRuns)
+    {
+        string temporary = Path.Combine(Path.GetTempPath(), $"hexalith-release-source-{Guid.NewGuid():N}");
+        string fakeBin = Path.Combine(temporary, "bin");
+        Directory.CreateDirectory(fakeBin);
+        try
+        {
+            string fakeGh = Path.Combine(fakeBin, "gh");
+            File.WriteAllText(
+                fakeGh,
+                "#!/usr/bin/env bash\n" +
+                "set -euo pipefail\n" +
+                "if [[ \"$*\" == *\"/git/ref/heads/main\"* ]]; then\n" +
+                "  printf '%s\\n' \"$FAKE_LIVE_MAIN_SHA\"\n" +
+                "else\n" +
+                "  printf '%s\\n' \"$FAKE_CI_RUNS\"\n" +
+                "fi\n");
+            if (!OperatingSystem.IsWindows())
+            {
+                File.SetUnixFileMode(
+                    fakeGh,
+                    UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            }
+
+            ProcessStartInfo start = new("bash")
+            {
+                WorkingDirectory = temporary,
+                RedirectStandardError = true,
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+            };
+            start.ArgumentList.Add("-c");
+            start.ArgumentList.Add(script);
+            start.Environment["PATH"] = $"{fakeBin}:{start.Environment["PATH"]}";
+            start.Environment["GH_TOKEN"] = "test-token";
+            start.Environment["REPOSITORY"] = "Hexalith/Hexalith.EventStore";
+            start.Environment["DISPATCH_REF"] = dispatchRef;
+            start.Environment["DISPATCH_SHA"] = dispatchSha;
+            start.Environment["FAKE_LIVE_MAIN_SHA"] = liveMainSha;
+            start.Environment["FAKE_CI_RUNS"] = JsonSerializer.Serialize(new { workflow_runs = workflowRuns });
+
+            using Process process = Process.Start(start).ShouldNotBeNull();
+            process.WaitForExit();
+            return process.ExitCode;
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
     private static string FindRepositoryRoot()
     {
         DirectoryInfo? directory = new(AppContext.BaseDirectory);
@@ -314,29 +428,5 @@ public sealed class ContainerPublishingGovernanceTests
         }
 
         throw new DirectoryNotFoundException("Could not locate the Hexalith.EventStore repository root.");
-    }
-
-    private static string ReadGitHead(string repository)
-    {
-        using Process process = new()
-        {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = "git",
-                RedirectStandardError = true,
-                RedirectStandardOutput = true,
-                UseShellExecute = false,
-                WorkingDirectory = repository,
-            },
-        };
-        process.StartInfo.ArgumentList.Add("rev-parse");
-        process.StartInfo.ArgumentList.Add("HEAD");
-
-        process.Start().ShouldBeTrue();
-        string output = process.StandardOutput.ReadToEnd();
-        string error = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-        process.ExitCode.ShouldBe(0, $"Could not resolve the Builds submodule HEAD: {error}");
-        return output.Trim();
     }
 }

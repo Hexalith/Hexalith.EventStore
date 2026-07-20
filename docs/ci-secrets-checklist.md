@@ -4,9 +4,15 @@ This is the canonical inventory of GitHub Actions secrets used by the Hexalith.E
 
 ## Where secrets live
 
-GitHub repository **Settings → Secrets and variables → Actions → Repository secrets**.
+User-managed credentials live under GitHub repository **Settings → Secrets and
+variables → Actions → Repository secrets**. The `production` environment holds
+release approval and branch policy only; it does not duplicate credential
+values.
 
-URL: `https://github.com/Hexalith/Hexalith.EventStore/settings/secrets/actions`
+URLs:
+
+- `https://github.com/Hexalith/Hexalith.EventStore/settings/environments`
+- `https://github.com/Hexalith/Hexalith.EventStore/settings/secrets/actions`
 
 ## Inventory
 
@@ -38,12 +44,12 @@ URL: `https://github.com/Hexalith/Hexalith.EventStore/settings/secrets/actions`
 - `HEXALITH_ZOT_API_KEY` — Zot credential for publish and immutable registry inspection
 - No npm registry token is needed. `npm ci` installs the committed release
   tooling lockfile before semantic-release runs.
-- The non-secret repository variable `HEXALITH_RELEASE_AUTHORITY_URL` binds the
-  exact GitHub issue-comment API authority record. The release workflow embeds
-  the same immutable Builds commit for its reusable workflow and execution input,
-  and the caller also supplies the checked-in Story 1.20 GitHub role allowlist
-  path. These are required for a container release but are not part of this
-  secrets inventory.
+- These three repository credentials are mapped explicitly to the reusable
+  release workflow; `secrets: inherit` is forbidden. The preflight job has no
+  secret mapping, and GitHub does not start the protected reusable job until the
+  required `production` reviewer approves a current-green-`main` request.
+- The release workflow embeds the same immutable Builds commit for its reusable
+  workflow and execution input. No issue-comment authority variable is used.
 
 ### `deploy-staging.yml`
 
@@ -67,7 +73,12 @@ URL: `https://github.com/Hexalith/Hexalith.EventStore/settings/secrets/actions`
 To get CI green on a fork that wants to publish:
 
 1. **Mandatory** — none. Public PR CI works with only the auto-provisioned `GITHUB_TOKEN`.
-2. **For releases** — set `NUGET_API_KEY` to a NuGet.org API key with push rights to every package listed in `tools/release-packages.json`, plus `HEXALITH_ZOT_USERNAME` and `HEXALITH_ZOT_API_KEY` for `registry.hexalith.com/eventstore`. Configure `HEXALITH_RELEASE_AUTHORITY_URL` for each approved corrective release identity and verify that its authority record names the exact Builds commit embedded in `release.yml`.
+2. **For releases** — create a `production` environment, require the designated
+   release reviewer, and restrict deployments to `main`. Store `NUGET_API_KEY`,
+   `HEXALITH_ZOT_USERNAME`, and `HEXALITH_ZOT_API_KEY` as repository secrets; the
+   release caller maps only those names. The NuGet key needs push rights to every
+   package in `tools/release-packages.json`; the Zot credentials target
+   `registry.hexalith.com/eventstore`.
 3. **For staging deploys** — set the 5 deploy-staging secrets (`REGISTRY_USERNAME`, `REGISTRY_PASSWORD`, `STAGING_SSH_HOST`, `STAGING_SSH_USER`, `STAGING_SSH_KEY`).
 4. Confirm by opening a PR — `commitlint`, `secret-scan`, `build-and-test` should pass.
 
@@ -77,14 +88,16 @@ For any of `NUGET_API_KEY`, `HEXALITH_ZOT_API_KEY`, `REGISTRY_PASSWORD`,
 `STAGING_SSH_KEY`:
 
 1. Generate the new credential at the upstream system (NuGet.org, registry, server).
-2. Update the GitHub secret in **Settings → Secrets and variables → Actions**.
-3. Trigger a no-op CI run (e.g. push a docs-only commit) to confirm the new credential works.
-4. Revoke the old credential at the upstream system.
+2. Update the repository secret in **Settings → Secrets and variables →
+   Actions**.
+3. Read back the configured secret names and `production` protection; never
+   dispatch or publish merely to test a credential rotation.
+4. Revoke the old credential at the upstream system after the new credential is
+   confirmed through the next intentional operation.
 
 If the Zot release account itself changes, update `HEXALITH_ZOT_USERNAME` in
-the same maintenance window and reissue the durable release authority for the
-new execution context. Never reuse the staging registry credentials as release
-publisher credentials.
+repository secrets during the same maintenance window. Never reuse the staging
+registry credentials as release publisher credentials.
 
 ## Hygiene rules
 
