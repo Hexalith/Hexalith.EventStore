@@ -87,9 +87,9 @@ public static class ErrorReferenceEndpoints {
             ["Refresh current state.", "Submit the intended mutation with a new idempotency key."]),
 
         new("idempotency-admission-failure", "Idempotency Admission Failed", 503,
-            "Trusted idempotency admission failed closed: the coordinator could not safely admit, reconcile, or verify the request's idempotency key state.",
+            "Trusted idempotency admission failed closed: the coordinator could not safely admit, reconcile, or verify the request's idempotency key state. This type is shared by several outcomes — most return 503 (retryable or contact-support), but an unresolved reconciliation returns 409 with a poll-first action. See 'Stable Idempotency Outcomes' in the command API reference for the full code/status mapping.",
             """{"type":"https://hexalith.io/problems/idempotency-admission-failure","title":"Idempotency Admission Failed","status":503,"detail":"Idempotency admission is temporarily unavailable. Retry later.","reasonCode":"idempotency_admission_unavailable","code":"idempotency_admission_unavailable","category":"service_unavailable","retryable":true,"clientAction":"retry_later","correlationId":"01JAXYZ1234567890ABCDEFGH"}""",
-            ["If retryable is true, retry after a short delay.", "If retryable is false, contact support with the correlationId — the idempotency state cannot be safely resolved automatically."]),
+            ["Check the response's code, retryable, and clientAction fields — this type covers several distinct outcomes.", "For clientAction poll_status_then_retry (409), poll command status before retrying; for retry_later (503), retry after a short delay; for contact_support (503), contact support with the correlationId."]),
 
         new("command-correlation-ambiguous", "Ambiguous Command Correlation", 409,
             "The tenant-scoped correlation identifier maps to multiple live commands, so compatibility lookup cannot select one safely.",
