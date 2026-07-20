@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -33,6 +34,38 @@ public sealed class ContainerPublishingGovernanceTests
         pluginNames.ShouldNotContain("@semantic-release/changelog");
         pluginNames.ShouldContain("@semantic-release/exec");
         pluginNames.ShouldContain("@semantic-release/github");
+    }
+
+    /// <summary>
+    /// Verifies that GitHub assets remain published without optional issue or pull-request success notifications.
+    /// </summary>
+    [Fact]
+    public void SemanticReleasePublishesGitHubAssetsWithoutSuccessNotifications()
+    {
+        string root = FindRepositoryRoot();
+        using JsonDocument configuration = JsonDocument.Parse(
+            File.ReadAllText(Path.Combine(root, ".releaserc.json")));
+        JsonElement[] githubPlugin = configuration.RootElement
+            .GetProperty("plugins")
+            .EnumerateArray()
+            .Where(plugin => plugin.ValueKind == JsonValueKind.Array)
+            .Select(plugin => plugin.EnumerateArray().ToArray())
+            .Single(plugin => plugin.Length == 2 &&
+                plugin[0].ValueKind == JsonValueKind.String &&
+                string.Equals(plugin[0].GetString(), "@semantic-release/github", StringComparison.Ordinal));
+        JsonElement githubConfiguration = githubPlugin[1];
+
+        githubConfiguration.ValueKind.ShouldBe(JsonValueKind.Object);
+        string[] assets = githubConfiguration
+            .GetProperty("assets")
+            .EnumerateArray()
+            .Select(asset => asset.GetString().ShouldNotBeNull())
+            .ToArray();
+        assets.ShouldBe(["nupkgs/*.nupkg"]);
+        JsonElement successCommentCondition = githubConfiguration.GetProperty("successCommentCondition");
+        successCommentCondition.ValueKind.ShouldBe(JsonValueKind.False);
+        successCommentCondition.GetBoolean().ShouldBeFalse();
+        githubConfiguration.TryGetProperty("successComment", out _).ShouldBeFalse();
     }
 
     /// <summary>

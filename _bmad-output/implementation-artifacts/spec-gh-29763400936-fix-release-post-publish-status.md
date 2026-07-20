@@ -2,7 +2,7 @@
 title: 'Fix false failure after successful release publication'
 type: 'bugfix'
 created: '2026-07-20'
-status: 'in-progress'
+status: 'in-review'
 review_loop_iteration: 2
 baseline_commit: 'af66f6c46b1356bb569e7192d15105be47bc5a19'
 context:
@@ -49,11 +49,11 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `.releaserc.json` -- set `successCommentCondition` to JSON `false` on the existing `@semantic-release/github` options while retaining the `nupkgs/*.nupkg` asset mapping -- prevents the identified numeric-reference failure without removing GitHub Releases.
-- [ ] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/Fixtures/semantic-release-github-success.mjs` -- verify the installed version matches `package-lock.json`; invoke the success hook for issue-like and ordinary histories with production-equivalent functional options; route all HTTP to loopback; allow only repository reads and the unrelated `getSRIssues` cleanup query; reject associated-PR/related-issue GraphQL and numeric comment/label mutations -- proves the pinned path skips run-ID resolution.
-- [ ] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs` -- retain exact structural option/asset assertions and prove the surrounding publish commands stay blocking, without starting Node from xUnit -- keeps the .NET lane dependency-pure.
-- [ ] `.github/workflows/ci.yml` -- add a blocking EventStore-owned semantic-release governance job using the SHA-pinned setup-node action, explicit supported Node 22, `npm ci`, and the behavioral fixture -- makes the proof reproducible from a clean hosted checkout without changing shared Builds.
-- [ ] `docs/ci.md` -- document the notification choice, merge-message trigger, and dedicated blocking governance lane -- aligns operator expectations with the reliable status contract.
+- [x] `.releaserc.json` -- set `successCommentCondition` to JSON `false` on the existing `@semantic-release/github` options while retaining the `nupkgs/*.nupkg` asset mapping -- prevents the identified numeric-reference failure without removing GitHub Releases.
+- [x] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/Fixtures/semantic-release-github-success.mjs` -- verify the installed version matches `package-lock.json`; invoke the success hook for issue-like and ordinary histories with production-equivalent functional options; route all HTTP to loopback; allow only repository reads and the unrelated `getSRIssues` cleanup query; reject associated-PR/related-issue GraphQL and numeric comment/label mutations -- proves the pinned path skips run-ID resolution.
+- [x] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs` -- retain exact structural option/asset assertions and prove the surrounding publish commands stay blocking, without starting Node from xUnit -- keeps the .NET lane dependency-pure.
+- [x] `.github/workflows/ci.yml` -- add a blocking EventStore-owned semantic-release governance job using the SHA-pinned setup-node action, explicit supported Node 22, `npm ci`, and the behavioral fixture -- makes the proof reproducible from a clean hosted checkout without changing shared Builds.
+- [x] `docs/ci.md` -- document the notification choice, merge-message trigger, and dedicated blocking governance lane -- aligns operator expectations with the reliable status contract.
 
 **Acceptance Criteria:**
 - Given release history containing `fix/gh-<run-id>` fragments, when semantic-release completes GitHub publication, then optional issue/PR notification cannot turn the successful release job red.
@@ -82,3 +82,10 @@ The fixture changes only transport options to target loopback; functional plugin
 
 **Manual checks:**
 - Read back the `v3.78.0` tag, GitHub Release, 14 assets, NuGet publication, OCI manifests/digest, and target SHA without dispatching a workflow; expect the existing publication to remain unchanged.
+
+**Results:**
+- Hosted CI run `29766169684` failed before this correction because the xUnit wrapper started Node without installing npm dependencies; the local-only fixture also overrode `failCommentCondition`, so it did not exercise production's stale-failure cleanup. Loop 2 removes Node startup from xUnit and places the production-equivalent fixture in a dedicated blocking CI job after SHA-pinned Node 22 setup and `npm ci`.
+- `.releaserc.json` parsed successfully. A clean `npm ci` installed the lockfile dependencies, after which the fixture confirmed installed `@semantic-release/github` `12.0.8` matches `package-lock.json` and passed both histories through five loopback requests. Only repository metadata reads and one `getSRIssues` cleanup query per history were allowed; associated-PR/related-issue GraphQL, both run IDs, numeric comment/label mutations, unexpected endpoints, and non-loopback fetches fail closed. `npm ci` also reported the repository's existing one high-severity audit finding without failing installation.
+- The focused Contracts Tests Release build succeeded with zero warnings and zero errors. The direct `ContainerPublishingGovernanceTests` run passed 9/9; it retains the exact GitHub option/asset and blocking publication-command assertions and contains no Node child-process invocation.
+- `actionlint .github/workflows/ci.yml .github/workflows/release.yml`, `git diff a21517e3b66458e997d1ea2f4df5072c4abde628 --check`, and the final `git diff --check` passed. The new fixture's no-index whitespace check returned the expected content-difference status with no diagnostics. The release workflow remained unchanged during this loop.
+- Frozen matrix audit — **Release notes contain issue-like CI run IDs:** the issue-like fixture history completed without associated-PR/related-issue resolution or numeric notification. **Normal successful release:** the ordinary Conventional Commit history completed under the same comment-free behavior. **Publication fails before success notification:** structural governance kept secret/publication preflight, NuGet, container, and collision failures blocking, and neither workflow uses `continue-on-error` for this path. **Existing release validation:** the approved read-only evidence for run `29763400936` remains authoritative: `v3.78.0` targets `a21517e3b66458e997d1ea2f4df5072c4abde628`, has 14 GitHub assets and 14 published NuGet packages, and its two-platform OCI validation and smoke checks passed. This loop did not dispatch Release or mutate any external artifact.
