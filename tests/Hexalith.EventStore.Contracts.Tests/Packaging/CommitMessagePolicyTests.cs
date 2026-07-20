@@ -199,6 +199,7 @@ public sealed class CommitMessagePolicyTests
             .GetProperty("version")
             .GetString()
             .ShouldBe("21.1.0");
+        lockPackages.GetProperty("node_modules/cosmiconfig").GetProperty("version").GetString().ShouldBe("9.0.2");
     }
 
     /// <summary>
@@ -227,6 +228,64 @@ public sealed class CommitMessagePolicyTests
         string attributes = ReadRepositoryFile(".gitattributes");
         attributes.ShouldContain(".husky/* text eol=lf");
         attributes.ShouldContain("commitlint.config.mjs text eol=lf");
+    }
+
+    /// <summary>
+    /// Verifies no direct or meta-configuration source can shadow the canonical commitlint configuration.
+    /// </summary>
+    [Fact]
+    public void CanonicalCommitlintConfigurationHasNoCompetingRootDiscoverySources()
+    {
+        const string canonicalConfig = "commitlint.config.mjs";
+        string repositoryRoot = FindRepositoryRoot();
+
+        File.Exists(Path.Combine(repositoryRoot, canonicalConfig)).ShouldBeTrue(
+            $"The canonical {canonicalConfig} must exist at the repository root.");
+
+        List<string> competingSources = Directory
+            .EnumerateFiles(repositoryRoot, ".commitlintrc*", SearchOption.TopDirectoryOnly)
+            .Concat(Directory.EnumerateFiles(repositoryRoot, "commitlint.config.*", SearchOption.TopDirectoryOnly))
+            .Select(filePath => new FileInfo(filePath).Name)
+            .Where(fileName => !string.Equals(fileName, canonicalConfig, StringComparison.Ordinal))
+            .ToList();
+
+        if (File.Exists(Path.Combine(repositoryRoot, "package.yaml")))
+        {
+            competingSources.Add("package.yaml");
+        }
+
+        string[] cosmiconfigMetaFileNames =
+        [
+            "config.json",
+            "config.yaml",
+            "config.yml",
+            "config.js",
+            "config.ts",
+            "config.cjs",
+            "config.mjs",
+        ];
+        foreach (string fileName in cosmiconfigMetaFileNames)
+        {
+            if (File.Exists(Path.Combine(repositoryRoot, ".config", fileName)))
+            {
+                competingSources.Add($".config/{fileName}");
+            }
+        }
+
+        using JsonDocument package = ParseRepositoryJson("package.json");
+        string[] packageConfigProperties = ["commitlint", "cosmiconfig"];
+        foreach (string propertyName in packageConfigProperties)
+        {
+            if (package.RootElement.TryGetProperty(propertyName, out _))
+            {
+                competingSources.Add($"package.json#{propertyName}");
+            }
+        }
+
+        competingSources.Sort(StringComparer.Ordinal);
+        competingSources.ShouldBeEmpty(
+            $"Remove competing root commitlint source(s) so {canonicalConfig} remains authoritative: "
+            + string.Join(", ", competingSources));
     }
 
     /// <summary>
