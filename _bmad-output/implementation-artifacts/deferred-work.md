@@ -2,13 +2,13 @@
 
 ## Deferred from: immutable manual release hardening (2026-07-20)
 
-- source_spec: none
+- source_spec: `_bmad-output/implementation-artifacts/spec-simplify-release-architecture.md`
   summary: Generalize the reusable publication preflight's hard-coded EventStore package count of exactly 14 so other callers can supply their own immutable expected inventory size without weakening EventStore's manifest contract.
   evidence: The shared validator currently enforces `len(package_ids) == 14`; that is correct for EventStore but makes the otherwise reusable release workflow product-specific.
-- source_spec: none
+- source_spec: `_bmad-output/implementation-artifacts/spec-simplify-release-architecture.md`
   summary: Give each container mapping its own frozen repository identity and phase evidence when multiple container mappings share one release invocation.
   evidence: The current EventStore caller has one approved mapping, while the shared publisher reuses one preflight evidence directory and frozen identity; a second mapping would collide with the first mapping's repository identity.
-- source_spec: none
+- source_spec: `_bmad-output/implementation-artifacts/spec-simplify-release-architecture.md`
   summary: Close the non-atomic gap between the final Zot tag-absence proof and the subsequent registry write.
   evidence: The final read-only `HEAD` check fails closed on collisions and ambiguous responses, but another writer can still create the tag after absence is observed and before .NET SDK publication begins; Zot absence and write are not atomic.
 
