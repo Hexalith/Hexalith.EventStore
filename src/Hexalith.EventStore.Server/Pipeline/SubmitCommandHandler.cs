@@ -535,6 +535,9 @@ public partial class SubmitCommandHandler(
 
         string? resultPayload = null;
         if (processingResult.Accepted && processingResult.ResultPayload is not null) {
+            // Gate on the durable status-store read (finalStatus), not processingResult.ResultPayloadWithheld:
+            // that flag is the actor's synchronous, in-memory accept/reject decision (used only for idempotency
+            // replay below), not confirmation that the async advisory status write reached Completed.
             if (finalStatus?.Status == CommandStatus.Completed) {
                 resultPayload = processingResult.ResultPayload;
             }
