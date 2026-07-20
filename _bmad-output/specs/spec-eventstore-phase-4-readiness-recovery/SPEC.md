@@ -60,7 +60,7 @@ architecture wording is historical context only.
 
 - **CAP-8**
   - **intent:** Phase 4 has a coherent planning baseline before full implementation resumes.
-  - **success:** The seven-epic plan has no forward dependency, all eight oversized parents are replaced by focused children, active identifiers and evidence are auditably migrated, and a fresh implementation-readiness assessment reports no structural blocker.
+  - **success:** The seven-epic plan has no unconditional forward dependency; Story 1.20's deployed-mode identity path carries the explicit conditional Story 3.12 release gate while source/package paths remain independently closable. All eight oversized parents are replaced by focused children, active identifiers and evidence are auditably migrated, and a fresh implementation-readiness assessment reports no structural blocker.
 
 ## Constraints
 
@@ -110,7 +110,7 @@ architecture wording is historical context only.
 
 ## Success signal
 
-Implementation readiness can be re-run against this package and finds complete Phase 4 FR1-FR36/NFR1-NFR18 coverage, no later-epic prerequisite, no oversized active parent, and deterministic owner/evidence gates. The resulting plan preserves architecture AD-1 through AD-25, separately gated post-MVP FR37/NFR19, canonical UX, exact story migration history, OQ8 platform evidence ownership, and persisted-evidence validation.
+Implementation readiness can be re-run against this package and finds complete Phase 4 FR1-FR36/NFR1-NFR18 coverage, no ungoverned or unconditional later-epic prerequisite, no oversized active parent, and deterministic owner/evidence gates. The resulting plan preserves architecture AD-1 through AD-25, separately gated post-MVP FR37/NFR19, canonical UX, exact story migration history, OQ8 platform evidence ownership, and persisted-evidence validation.
 
 ## Assumptions
 

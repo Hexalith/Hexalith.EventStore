@@ -69,9 +69,9 @@ The former query-metadata Story 7.6 remains superseded; its acceptance criteria 
 
 ### Query Response Provenance Gate
 
-Query-response provenance is governed by architecture invariants AD-14 and AD-15. Story 1.2 owns the EventStore platform contract, route stamping, route-aware gateway enforcement, typed-client propagation, and real-gateway-path evidence before any consumer may claim current/stale projection state. Story 2.11 owns generated REST and Tenants consumption only.
+Query-response provenance is governed by architecture invariants AD-14 and AD-15. Story 1.2 owns the EventStore platform contract, route stamping, route-aware gateway enforcement, typed-client propagation, and real-gateway-path platform evidence before any consumer may claim projection-backed state. Story 2.6 owns Tenants UI client-library/host alignment and canonical UX presentation of an already-classified evidence state only. Story 2.11 exclusively owns generated REST and Tenants consumption of the provenance contract, including preservation, authoritative lifecycle/header selection, the fail-closed `Unknown` fallback, and real-gateway/persisted-read-model consumer proof.
 
-No UI or generated-API story may render current/stale state or projection version unless provenance is `ProjectionBacked`; handler-computed and unknown routes render `Unknown`. Story 4.7 remains the maintainer-approved Tenants producer follow-up and does not block the EventStore platform prerequisite.
+No UI or generated-API story may render authoritative lifecycle state or projection version unless provenance is `ProjectionBacked`; handler-computed and unknown routes render `Unknown`. Story 4.7 remains the maintainer-approved Tenants producer follow-up and does not block the EventStore platform prerequisite.
 
 ### Focused Story And Migration Gates
 
@@ -133,6 +133,8 @@ Story 1.13 completed its investigation and correctly produced a `still blocked` 
 The numbered capability sequence governs evidence acceptance and final parity closure; it is not a serial execution lock. Stories 1.14-1.19 may be implemented and reviewed in parallel once the contracts they directly consume exist. An unresolved review item in one story blocks Story 1.20 closure, but does not block another implementation story unless it exposes a direct contract contradiction; a direct contradiction must halt the affected story and be routed through change control.
 
 Cursor scope compatibility may reuse Story 1.13 evidence. Every other blocked item must be reclassified `available` by Story 1.20. Source-mode consumers verify the EventStore submodule SHA; package-mode consumers verify exact package versions and hashes; deployed consumers verify the image digest maps to the approved EventStore SHA. The consuming repository SHA is never compared to the EventStore SHA.
+
+Runtime-identity closure is mode-specific. Source mode may close against the approved EventStore source SHA, and package mode may close against the approved package versions and hashes, without waiting for Story 3.12 when every gate applicable to the selected mode is satisfied. If Story 1.20 selects deployed mode, Story 3.12 is the intentional conditional cross-epic prerequisite: it must produce a conforming two-platform EventStore release and Story 1.20 must independently revalidate its identity and record the required EventStore/release-owner approvals. This conditional dependency does not resequence the epics or block source/package parity closure.
 
 Story 1.20 closes the projection/query SDK prerequisite for Parties Story 8.6 only. It does not deliver or approve the G5 payload-protection engine, `pdenc-v2`, key mechanics, production backend, or Parties Story 8.7 migration.
 
@@ -1098,7 +1100,7 @@ So that rebuilding a long stream cannot replace correct state with a partial-pag
 
 **Requirements covered:** FR36, NFR12, NFR16
 
-**Cross-epic dependency (intentional, governed):** Recording an approved runtime identity with a *deployed EventStore image digest* is satisfiable only by a conforming two-platform container release. **Story 3.12 (Epic 3)** is the scoped corrective item that produces that release; Story 1.20 independently revalidates and selects its identity under its A/B/C authorization gates. **Epic 1 cannot reach `done` until Story 3.12 delivers a conforming release *and* named EventStore/release-owner approval is recorded.** This forward dependency is deliberate — it is not resolved by reordering epics or rolling back completed work.
+**Deployed-mode cross-epic dependency (intentional, governed):** When Story 1.20 selects a *deployed EventStore image identity*, a conforming two-platform container release is required. **Story 3.12 (Epic 3)** is the scoped corrective item that produces that release; Story 1.20 independently revalidates and selects its identity under the applicable A/B/C authorization gates. **Epic 1 cannot reach `done` on the deployed-mode path until Story 3.12 delivers a conforming release and named EventStore/release-owner approval is recorded.** Source and package paths may close against their approved exact identities without Story 3.12 when every gate applicable to the selected mode is satisfied. This conditional forward dependency is deliberate; it is not resolved by reordering epics or rolling back completed work.
 
 As an EventStore platform owner,
 I want a reviewed parity-closure packet tied to an exact runtime commit,
@@ -1302,7 +1304,7 @@ So that gateway policy remains the front door and domain/UI hosts expose no per-
 ### Story 2.6: Tenants UI Client-Library Alignment And UX Evidence
 
 **Requirements covered:** FR13, FR15, FR34, NFR14, NFR15
-**Owner / review boundary:** Amelia (Developer); Sally (UX Designer) and the Tenants maintainer review UI-host and evidence-state behavior.
+**Owner / review boundary:** Amelia (Developer); Sally (UX Designer) and the Tenants maintainer review the UI-host boundary, typed-client usage, and canonical presentation of already-classified evidence states only. Provenance preservation, authoritative state selection, fail-closed `Unknown`, and gateway-path proof are owned exclusively by Story 2.11.
 **Focused validation:** Tenants UI tests, canonical UX conformance checks, and structural controller/analyzer scans.
 
 As a Tenants operator,
@@ -1316,10 +1318,10 @@ So that it remains an interactive host rather than a second external API surface
 **Then** it uses Tenants/EventStore client libraries
 **And** it has no REST generator analyzer, assembly opt-in, generated controller mapping, or hand-written per-message MVC controller.
 
-**Given** query provenance is `ProjectionBacked`, `HandlerComputed`, or `Unknown`
-**When** lifecycle is rendered
-**Then** only projection-backed evidence may show `Current`, `Stale`, `Rebuilding`, `Degraded`, `Unavailable`, or `LocalOnly`
-**And** handler-computed, missing, or invalid provenance renders `Unknown` without claiming projection-confirmed success.
+**Given** the Tenants typed-client boundary supplies an already-classified canonical evidence state under the Story 2.11 provenance contract
+**When** focused UI acceptance renders that state
+**Then** the UI applies the canonical support-safe and accessible treatment for the supplied lifecycle state
+**And** Story 2.6 cites Story 2.11 for provenance preservation, authoritative state selection, fail-closed `Unknown`, and real-gateway/persisted-read-model proof rather than re-proving or signing off those behaviors.
 
 **Given** UI acceptance is recorded
 **When** Sally and the Tenants maintainer review the focused evidence
@@ -1473,6 +1475,8 @@ So that a caller- or inbound-supplied `dapr-app-id` / `dapr-api-token` can never
 ### Story 2.11: Query Provenance Consumption In Generated REST And Tenants
 
 **Requirements covered:** FR12, FR15, FR34, NFR8, NFR14, NFR16; consumes Story 1.2 and is governed by AD-14/AD-15.
+**Owner / review boundary:** Amelia (Developer); an EventStore reviewer verifies generated REST and Tenants provenance preservation, while the Tenants maintainer verifies consumer compatibility against the accepted Tenants identity. Story 2.6 retains Sally's UX-presentation review and cannot substitute for this provenance proof.
+**Focused validation:** generated REST runtime tests and Tenants consumer integration tests covering projection-backed, handler-computed, unknown, missing, and invalid provenance through the real gateway and persisted read-model path; mock-only metadata cannot close the story.
 
 As an external API and Tenants UI consumer,
 I want route provenance from Story 1.2 preserved and rendered safely,

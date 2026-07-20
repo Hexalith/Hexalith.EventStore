@@ -5,7 +5,7 @@
 | Gate | Required evidence |
 | --- | --- |
 | Planning baseline | `prd.md`, reviewed `architecture.md`, canonical `ux.md`, restructured `epics.md`, and this SPEC exist and are mutually referenced; PRD and canonical UX remain unchanged by the July 15 replan. |
-| Dependency direction | Story 1.2 owns the platform provenance prerequisite; Stories 1.16 and 1.20 depend only on Epic 1 work, while Story 2.11 consumes the contract for generated REST/Tenants behavior. |
+| Dependency direction | Story 1.2 owns the platform provenance prerequisite. Story 1.16 and Story 1.20 source/package closure depend only on Epic 1 work; Story 1.20 deployed-mode closure has the explicit conditional Story 3.12 release gate. Story 2.6 owns typed-client/UI presentation of already-classified states, while Story 2.11 exclusively owns generated REST/Tenants provenance consumption and production-path proof. |
 | Focused story slicing | Former Stories 1.3, 1.6, 2.4, 3.7, 5.6, 7.2, 7.3, 7.4, and the four-product 7.5 umbrella are replaced by focused children with one owner, one review boundary, deterministic acceptance, and focused validation. |
 | Migration audit | A story-ID/evidence crosswalk preserves old-to-new identities, statuses, active-file supersession, implementation evidence, focused tests, review results, and external approval/SHA evidence. |
 | Tenants authority | Stories 1.9-1.10, 2.4-2.7, and 4.7 cannot become `done` without maintainer-approved PR/commit evidence, exact Tenants SHA, accepted scope, source/package-mode validation, and an explicit no-approval disposition. |
@@ -20,7 +20,7 @@
 | Secret profile conformance | Local substitutes do not count as production proof, and Azure Container Apps managed DAPR cannot claim AD-24 compliance until a separately approved profile proves OpenBao support and equivalent least-privilege scoping. |
 | High-risk NFR traceability | NFR1-NFR4, NFR7, NFR10-NFR11, and NFR14-NFR17 map to concrete story coverage and persisted-evidence validation. |
 | UX readiness | `ux.md` covers Sample accepted-submission behavior, Tenants projection-confirmed states, Admin unavailable-operation behavior, support-safe states, accessibility/localization evidence, and FrontComposer/Fluent UI V5 governance. |
-| Readiness rerun | A fresh assessment reports complete FR1-FR36/NFR1-NFR18 coverage and no forward-dependency or oversized-parent structural blocker before broad remaining Phase 4 work resumes. |
+| Readiness rerun | A fresh assessment reports complete FR1-FR36/NFR1-NFR18 coverage and no ungoverned or unconditional forward-dependency or oversized-parent structural blocker before broad remaining Phase 4 work resumes. |
 
 ## Approved Story Migration
 
