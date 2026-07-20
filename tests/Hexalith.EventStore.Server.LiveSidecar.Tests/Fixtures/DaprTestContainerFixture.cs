@@ -250,6 +250,28 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
     }
 
     /// <summary>
+    /// Restarts both the application host and its Dapr sidecar while preserving the Redis state store.
+    /// </summary>
+    public async Task RestartHostAndSidecarAsync()
+    {
+        await StopDaprSidecarAsync().ConfigureAwait(false);
+        await StopTestHostAsync().ConfigureAwait(false);
+
+        _hostStopping = false;
+        _hostStopStackTrace = null;
+
+        await StartTestHostAsync().ConfigureAwait(false);
+        await VerifyAppListeningAsync().ConfigureAwait(false);
+
+        StartDaprSidecar();
+        await WaitForDaprHealthAsync().ConfigureAwait(false);
+        await Task.Delay(2000).ConfigureAwait(false);
+        await VerifyAppListeningAsync().ConfigureAwait(false);
+        await ActivateProjectionDeliveryWriterProtocolAsync().ConfigureAwait(false);
+        await WarmUpActorRuntimeAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Configures the domain service invoker with Counter domain responses for integration tests.
     /// </summary>
     public void SetupCounterDomain()
@@ -304,23 +326,39 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
             $"Redis actor state for key '{key}' did not become available after retries. Redis key: '{redisKey}'.");
     }
 
+    /// <summary>Reads one named actor-state entry directly from the fixture Redis store.</summary>
+    /// <param name="actorType">The registered Dapr actor type.</param>
+    /// <param name="actorId">The actor identifier.</param>
+    /// <param name="stateName">The actor state entry name.</param>
+    /// <returns>The raw JSON persisted by Dapr.</returns>
+    public async Task<string> GetActorStateJsonAsync(string actorType, string actorId, string stateName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(actorType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(actorId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(stateName);
+
+        string redisKey = $"{AppId}||{actorType}||{actorId}||{stateName}";
+        RedisConnectionMultiplexer multiplexer = await RedisConnection.Value.ConfigureAwait(false);
+        RedisDatabase database = multiplexer.GetDatabase();
+        for (int attempt = 0; attempt < 10; attempt++)
+        {
+            RedisValue json = await database.HashGetAsync(redisKey, "data").ConfigureAwait(false);
+            if (!json.IsNullOrEmpty)
+            {
+                return json.ToString();
+            }
+
+            await Task.Delay(50).ConfigureAwait(false);
+        }
+
+        throw new InvalidOperationException(
+            $"Redis actor state did not become available for actor type '{actorType}' and state '{stateName}'.");
+    }
+
     private async ValueTask DisposeTestResourcesAsync()
     {
-        if (_testHost is not null)
-        {
-            await _testHost.StopAsync().ConfigureAwait(false);
-            await _testHost.DisposeAsync().ConfigureAwait(false);
-            _testHost = null;
-        }
-
-        if (_daprProcess is not null && !_daprProcess.HasExited)
-        {
-            _daprProcess.Kill(entireProcessTree: true);
-            await _daprProcess.WaitForExitAsync().ConfigureAwait(false);
-        }
-
-        _daprProcess?.Dispose();
-        _daprProcess = null;
+        await StopDaprSidecarAsync().ConfigureAwait(false);
+        await StopTestHostAsync().ConfigureAwait(false);
 
         if (_componentsDir is not null && Directory.Exists(_componentsDir))
         {
@@ -335,6 +373,30 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         }
 
         _componentsDir = null;
+    }
+
+    private async Task StopDaprSidecarAsync()
+    {
+        if (_daprProcess is not null && !_daprProcess.HasExited)
+        {
+            _daprProcess.Kill(entireProcessTree: true);
+            await _daprProcess.WaitForExitAsync().ConfigureAwait(false);
+        }
+
+        _daprProcess?.Dispose();
+        _daprProcess = null;
+    }
+
+    private async Task StopTestHostAsync()
+    {
+        if (_testHost is null)
+        {
+            return;
+        }
+
+        await _testHost.StopAsync().ConfigureAwait(false);
+        await _testHost.DisposeAsync().ConfigureAwait(false);
+        _testHost = null;
     }
 
     private void RestoreDaprPortEnvironment()

@@ -13,6 +13,7 @@ namespace Hexalith.EventStore.Models;
 /// <param name="Payload">The serialized command payload.</param>
 /// <param name="CorrelationId">Optional correlation identifier for cross-system tracing (FR4). Defaults to MessageId when not provided.</param>
 /// <param name="Extensions">Optional extension metadata.</param>
+/// <param name="Idempotency">Optional trusted canonical idempotency descriptor supplied by a registered domain adapter.</param>
 public record SubmitCommandRequest(
     string MessageId,
     string Tenant,
@@ -21,7 +22,8 @@ public record SubmitCommandRequest(
     string CommandType,
     JsonElement Payload,
     string? CorrelationId = null,
-    Dictionary<string, string>? Extensions = null)
+    Dictionary<string, string>? Extensions = null,
+    Hexalith.EventStore.Contracts.Commands.CanonicalIdempotencyDescriptor? Idempotency = null)
     : Hexalith.EventStore.Contracts.Commands.SubmitCommandRequest(
         MessageId,
         Tenant,
@@ -30,4 +32,5 @@ public record SubmitCommandRequest(
         CommandType,
         Payload,
         CorrelationId,
-        Extensions);
+        Extensions,
+        Idempotency);

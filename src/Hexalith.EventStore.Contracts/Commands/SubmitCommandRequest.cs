@@ -13,6 +13,7 @@ namespace Hexalith.EventStore.Contracts.Commands;
 /// <param name="Payload">The serialized command payload.</param>
 /// <param name="CorrelationId">Optional correlation identifier. Defaults to <paramref name="MessageId"/> when omitted by the gateway.</param>
 /// <param name="Extensions">Optional extension metadata.</param>
+/// <param name="Idempotency">Optional trusted canonical idempotency descriptor supplied by a registered domain adapter.</param>
 public record SubmitCommandRequest(
     string MessageId,
     string Tenant,
@@ -21,4 +22,5 @@ public record SubmitCommandRequest(
     string CommandType,
     JsonElement Payload,
     string? CorrelationId = null,
-    Dictionary<string, string>? Extensions = null);
+    Dictionary<string, string>? Extensions = null,
+    CanonicalIdempotencyDescriptor? Idempotency = null);

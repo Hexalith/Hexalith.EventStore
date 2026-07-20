@@ -4,6 +4,18 @@ namespace Hexalith.EventStore.Contracts.Problems;
 /// Stable RFC 7807 ProblemDetails extension names used by EventStore gateway clients.
 /// </summary>
 public static class GatewayProblemDetailsExtensions {
+    /// <summary>Extension name carrying a stable canonical error code.</summary>
+    public const string Code = "code";
+
+    /// <summary>Extension name carrying a stable canonical error category.</summary>
+    public const string Category = "category";
+
+    /// <summary>Extension name indicating whether repeating the same request may succeed.</summary>
+    public const string Retryable = "retryable";
+
+    /// <summary>Extension name carrying stable client remediation guidance.</summary>
+    public const string ClientAction = "clientAction";
+
     /// <summary>
     /// Extension name carrying the cross-system correlation identifier.
     /// </summary>

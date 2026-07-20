@@ -11,7 +11,7 @@ public enum IdempotencyCheckOutcome
     /// <summary>An exact terminal record exists and its original result may be returned.</summary>
     ExactTerminalDuplicate,
 
-    /// <summary>An exact record expired and its removal was staged.</summary>
+    /// <summary>An exact record expired and remains consumed.</summary>
     Expired,
 
     /// <summary>An exact recoverable record exists and domain execution must not restart.</summary>

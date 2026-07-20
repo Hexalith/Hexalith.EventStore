@@ -118,7 +118,8 @@ public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer e
             CorrelationId: string.IsNullOrWhiteSpace(request.CorrelationId) ? request.MessageId : request.CorrelationId,
             UserId: userId,
             Extensions: extensions,
-            IsGlobalAdmin: IsGlobalAdministrator(User));
+            IsGlobalAdmin: IsGlobalAdministrator(User),
+            Idempotency: request.Idempotency);
 
         SubmitCommandResult result = await mediator.Send(command, cancellationToken).ConfigureAwait(false);
 

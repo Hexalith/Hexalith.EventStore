@@ -20,6 +20,63 @@ namespace Hexalith.EventStore.Server.Tests.Commands;
 public class CommandIdentityConflictTests
 {
     [Fact]
+    public async Task SubmitCommandHandler_ExpiredKey_ThrowsDedicatedExceptionWithoutAdvisoryMutation()
+    {
+        var statusStore = new InMemoryCommandStatusStore();
+        var archiveStore = new InMemoryCommandArchiveStore();
+        ICommandRouter router = Substitute.For<ICommandRouter>();
+        _ = router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new CommandProcessingResult(
+                false,
+                ErrorMessage: "idempotency_key_expired",
+                CorrelationId: "trace-correlation"));
+        var handler = new SubmitCommandHandler(
+            statusStore,
+            archiveStore,
+            router,
+            NullLogger<SubmitCommandHandler>.Instance);
+        SubmitCommand command = CreateCommand();
+
+        IdempotencyKeyExpiredException exception = await Should.ThrowAsync<IdempotencyKeyExpiredException>(
+            () => handler.Handle(command, CancellationToken.None));
+
+        exception.CorrelationId.ShouldBe(command.CorrelationId);
+        statusStore.GetStatusHistory(command.Tenant, command.MessageId).ShouldBeEmpty();
+        (await archiveStore.ReadCommandAsync(command.Tenant, command.MessageId, CancellationToken.None))
+            .ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task ExceptionHandler_ExpiredKey_ReturnsApprovedSafe409Contract()
+    {
+        var handler = new IdempotencyKeyExpiredExceptionHandler(
+            NullLogger<IdempotencyKeyExpiredExceptionHandler>.Instance);
+        var context = new DefaultHttpContext();
+        context.Response.Body = new MemoryStream();
+        context.Response.Headers.RetryAfter = "9";
+        var exception = new IdempotencyKeyExpiredException("trace-correlation");
+
+        bool handled = await handler.TryHandleAsync(context, exception, CancellationToken.None);
+
+        handled.ShouldBeTrue();
+        context.Response.StatusCode.ShouldBe(StatusCodes.Status409Conflict);
+        context.Response.Headers.ContainsKey("Retry-After").ShouldBeFalse();
+        context.Response.Body.Position = 0;
+        using JsonDocument document = await JsonDocument.ParseAsync(context.Response.Body);
+        JsonElement root = document.RootElement;
+        root.GetProperty("type").GetString().ShouldBe(ProblemTypeUris.IdempotencyKeyExpired);
+        root.GetProperty("code").GetString().ShouldBe("idempotency_key_expired");
+        root.GetProperty("category").GetString().ShouldBe("idempotency_key_expired");
+        root.GetProperty("retryable").GetBoolean().ShouldBeFalse();
+        root.GetProperty("clientAction").GetString()
+            .ShouldBe("refresh_state_then_submit_with_new_key");
+        root.GetProperty("correlationId").GetString().ShouldBe("trace-correlation");
+        string json = root.GetRawText();
+        json.ShouldNotContain("incoming-message-id");
+        json.ShouldNotContain("tenant-a");
+    }
+
+    [Fact]
     public async Task SubmitCommandHandler_IdentityConflict_ThrowsDedicatedExceptionWithoutRejectedStatus()
     {
         var statusStore = new InMemoryCommandStatusStore();

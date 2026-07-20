@@ -171,7 +171,7 @@ public class IdempotencyCheckerTests
     }
 
     [Fact]
-    public async Task CheckAsync_ExpiredExactRecord_StagesRemovalAndReturnsExpired()
+    public async Task CheckAsync_ExpiredExactRecord_PreservesConsumedEvidenceAndReturnsExpired()
     {
         var now = new DateTimeOffset(2026, 7, 12, 10, 0, 0, TimeSpan.Zero);
         var timeProvider = new FakeTimeProvider(now);
@@ -193,10 +193,10 @@ public class IdempotencyCheckerTests
         IdempotencyCheckResult result = await checker.CheckAsync(identity);
 
         result.Outcome.ShouldBe(IdempotencyCheckOutcome.Expired);
-        result.StateMutationStaged.ShouldBeTrue();
+        result.StateMutationStaged.ShouldBeFalse();
         result.Result.ShouldBeNull();
-        _ = await _stateManager.Received(1).TryRemoveStateAsync(
-            "idempotency:message-123",
+        _ = await _stateManager.DidNotReceive().TryRemoveStateAsync(
+            Arg.Any<string>(),
             Arg.Any<CancellationToken>());
     }
 

@@ -26,7 +26,8 @@ public partial class SubmitCommandHandler(
     IProjectionUpdateOrchestrator projectionOrchestrator,
     ILogger<SubmitCommandHandler> logger,
     ICommandCorrelationIndex? correlationIndex = null,
-    IProjectionActivationOutbox? projectionActivationOutbox = null) : IRequestHandler<SubmitCommand, SubmitCommandResult> {
+    IProjectionActivationOutbox? projectionActivationOutbox = null,
+    IIdempotencyAdmissionCoordinator? idempotencyAdmissionCoordinator = null) : IRequestHandler<SubmitCommand, SubmitCommandResult> {
 
     public SubmitCommandHandler(
         ICommandStatusStore statusStore,
@@ -35,25 +36,125 @@ public partial class SubmitCommandHandler(
         ILogger<SubmitCommandHandler> logger)
         : this(statusStore, archiveStore, commandRouter, null, null, new NoOpProjectionUpdateOrchestrator(), logger) { }
 
+    public SubmitCommandHandler(
+        ICommandStatusStore statusStore,
+        ICommandArchiveStore archiveStore,
+        ICommandRouter commandRouter,
+        ILogger<SubmitCommandHandler> logger,
+        IIdempotencyAdmissionCoordinator idempotencyAdmissionCoordinator)
+        : this(
+            statusStore,
+            archiveStore,
+            commandRouter,
+            null,
+            null,
+            new NoOpProjectionUpdateOrchestrator(),
+            logger,
+            idempotencyAdmissionCoordinator: idempotencyAdmissionCoordinator) { }
+
     public async Task<SubmitCommandResult> Handle(SubmitCommand request, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(request);
 
-        string causationId = request.MessageId;
-
-        Log.CommandReceived(logger, request.MessageId, request.CorrelationId, causationId, request.CommandType, request.Tenant, request.Domain, request.AggregateId);
+        string diagnosticCausationId = request.Idempotency is null ? request.MessageId : "protected";
+        Log.CommandReceived(logger, request.CorrelationId, diagnosticCausationId, request.CommandType, request.Tenant, request.Domain, request.AggregateId);
 
         var result = new SubmitCommandResult(request.CorrelationId, MessageId: request.MessageId);
 
-        if (projectionActivationOutbox is not null) {
-            // Write-ahead is mandatory: an aggregate commit must never become visible before its
-            // payload-free projection activation can be recovered by another replica.
-            await projectionActivationOutbox.EnsureAsync(
-                new AggregateIdentity(request.Tenant, request.Domain, request.AggregateId),
-                cancellationToken).ConfigureAwait(false);
+        IdempotencyAdmissionSession? admissionSession = null;
+        if (request.Idempotency is not null)
+        {
+            if (idempotencyAdmissionCoordinator is null)
+            {
+                throw new InvalidOperationException("Trusted idempotency admission is unavailable.");
+            }
+
+            admissionSession = await idempotencyAdmissionCoordinator
+                .AdmitAsync(request, cancellationToken)
+                .ConfigureAwait(false)
+                ?? throw new InvalidOperationException("Trusted idempotency admission returned no session.");
+            switch (admissionSession.Decision)
+            {
+                case IdempotencyAdmissionDecision.Conflict:
+                    throw new IdempotencyConflictException(request.CorrelationId);
+                case IdempotencyAdmissionDecision.Expired:
+                    throw new IdempotencyKeyExpiredException(request.CorrelationId);
+                case IdempotencyAdmissionDecision.Replay:
+                    return CreateReplayResult(request, admissionSession);
+                case IdempotencyAdmissionDecision.Execute:
+                    break;
+                case IdempotencyAdmissionDecision.Pending:
+                case IdempotencyAdmissionDecision.Recoverable:
+                case IdempotencyAdmissionDecision.UnknownProviderOutcome:
+                case IdempotencyAdmissionDecision.Corrupt:
+                default:
+                    throw new InvalidOperationException(
+                        $"Idempotency admission denied execution with decision '{admissionSession.Decision}'.");
+            }
         }
 
-        CommandProcessingResult processingResult = await commandRouter.RouteCommandAsync(request, cancellationToken)
-            .ConfigureAwait(false);
+        string diagnosticMessageId = admissionSession is null ? request.MessageId : "protected";
+
+        CommandProcessingResult processingResult;
+        bool sideEffectBoundaryCrossed = false;
+        try
+        {
+            if (projectionActivationOutbox is not null)
+            {
+                // Write-ahead is mandatory: an aggregate commit must never become visible before its
+                // payload-free projection activation can be recovered by another replica.
+                await projectionActivationOutbox.EnsureAsync(
+                    new AggregateIdentity(request.Tenant, request.Domain, request.AggregateId),
+                    cancellationToken).ConfigureAwait(false);
+            }
+
+            if (admissionSession is not null && idempotencyAdmissionCoordinator is not null)
+            {
+                await idempotencyAdmissionCoordinator
+                    .BeginAsync(admissionSession, cancellationToken)
+                    .ConfigureAwait(false);
+                sideEffectBoundaryCrossed = true;
+            }
+
+            SubmitCommand routedRequest = admissionSession is null
+                ? request
+                : request with
+                {
+                    MessageId = admissionSession.ExecutionMessageId
+                        ?? throw new InvalidOperationException("Executable idempotency admission returned no downstream message identifier."),
+                };
+            processingResult = await commandRouter.RouteCommandAsync(routedRequest, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception) when (admissionSession is not null && idempotencyAdmissionCoordinator is not null)
+        {
+            await MarkRecoveryStateAsync(
+                idempotencyAdmissionCoordinator,
+                admissionSession,
+                sideEffectBoundaryCrossed
+                    ? IdempotencyAdmissionState.UnknownProviderOutcome
+                    : IdempotencyAdmissionState.Recoverable,
+                logger).ConfigureAwait(false);
+            throw;
+        }
+
+        if (admissionSession is not null && idempotencyAdmissionCoordinator is not null)
+        {
+            try
+            {
+                await idempotencyAdmissionCoordinator
+                    .CompleteAsync(admissionSession, processingResult, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                await MarkRecoveryStateAsync(
+                    idempotencyAdmissionCoordinator,
+                    admissionSession,
+                    IdempotencyAdmissionState.UnknownProviderOutcome,
+                    logger).ConfigureAwait(false);
+                throw;
+            }
+        }
 
         if (!processingResult.Accepted
             && string.Equals(processingResult.ErrorMessage, "command_identity_conflict", StringComparison.Ordinal)) {
@@ -61,6 +162,12 @@ public partial class SubmitCommandHandler(
                 request.MessageId,
                 request.CorrelationId,
                 request.Tenant);
+        }
+
+        if (!processingResult.Accepted
+            && string.Equals(processingResult.ErrorMessage, "idempotency_key_expired", StringComparison.Ordinal))
+        {
+            throw new IdempotencyKeyExpiredException(request.CorrelationId);
         }
 
         CommandStatusRecord? observedStatus = null;
@@ -160,7 +267,7 @@ public partial class SubmitCommandHandler(
                     or CommandCorrelationIndexAddOutcome.RetryExhausted) {
                     Log.CorrelationIndexMaintenanceFailed(
                         logger,
-                        request.MessageId,
+                        diagnosticMessageId,
                         request.CorrelationId,
                         request.Tenant,
                         indexOutcome.ToString());
@@ -173,7 +280,7 @@ public partial class SubmitCommandHandler(
                 Log.CorrelationIndexWriteFailed(
                     logger,
                     ex,
-                    request.MessageId,
+                    diagnosticMessageId,
                     request.CorrelationId,
                     request.Tenant);
             }
@@ -303,6 +410,57 @@ public partial class SubmitCommandHandler(
         }
     }
 
+    private static SubmitCommandResult CreateReplayResult(
+        SubmitCommand request,
+        IdempotencyAdmissionSession session)
+    {
+        CommandProcessingResult replay = session.ReplayResult
+            ?? throw new InvalidOperationException("Replay admission did not contain a command result.");
+        if (!replay.Accepted)
+        {
+            if (string.Equals(replay.ErrorMessage, "command_identity_conflict", StringComparison.Ordinal))
+            {
+                throw new CommandIdentityConflictException(
+                    request.MessageId,
+                    request.CorrelationId,
+                    request.Tenant);
+            }
+
+            if (string.Equals(replay.ErrorMessage, "idempotency_key_expired", StringComparison.Ordinal))
+            {
+                throw new IdempotencyKeyExpiredException(request.CorrelationId);
+            }
+
+            throw new InvalidOperationException(replay.ErrorMessage ?? "The replayed command was rejected.");
+        }
+
+        return new SubmitCommandResult(
+            request.CorrelationId,
+            replay.ResultPayload,
+            request.MessageId);
+    }
+
+    private static async Task MarkRecoveryStateAsync(
+        IIdempotencyAdmissionCoordinator coordinator,
+        IdempotencyAdmissionSession session,
+        IdempotencyAdmissionState state,
+        ILogger logger)
+    {
+        try
+        {
+            await coordinator.MarkRecoveryAsync(
+                session,
+                state,
+                CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception recoveryException)
+        {
+            logger.LogError(
+                recoveryException,
+                "Unable to persist unknown idempotency outcome. Stage=IdempotencyUnknownOutcomePersistenceFailed");
+        }
+    }
+
     private static partial class Log {
 
         [LoggerMessage(
@@ -350,10 +508,9 @@ public partial class SubmitCommandHandler(
         [LoggerMessage(
                             EventId = 1100,
             Level = LogLevel.Information,
-            Message = "Command received: MessageId={MessageId}, CorrelationId={CorrelationId}, CausationId={CausationId}, CommandType={CommandType}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Stage=CommandReceived")]
+            Message = "Command received: CorrelationId={CorrelationId}, CausationId={CausationId}, CommandType={CommandType}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Stage=CommandReceived")]
         public static partial void CommandReceived(
             ILogger logger,
-            string messageId,
             string correlationId,
             string causationId,
             string commandType,

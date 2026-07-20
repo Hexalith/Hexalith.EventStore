@@ -5,6 +5,7 @@ using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Actors;
 
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 
 using NSubstitute;
 
@@ -15,6 +16,36 @@ using static Hexalith.EventStore.Server.Tests.Actors.AggregateActorTestHelper;
 namespace Hexalith.EventStore.Server.Tests.Actors;
 
 public class AggregateActorIdempotencyTests {
+    [Fact]
+    public async Task ProcessCommandAsync_ExpiredCommand_ReturnsTerminalExpiredWithoutDomainExecution() {
+        var now = new DateTimeOffset(2026, 7, 19, 12, 0, 0, TimeSpan.Zero);
+        var timeProvider = new FakeTimeProvider(now);
+        ActorTestContext ctx = CreateActor(timeProvider: timeProvider);
+        CommandEnvelope envelope = CreateTestEnvelope(correlationId: "corr-expired", causationId: "cause-expired");
+        var record = new IdempotencyRecord(
+            "cause-expired",
+            "corr-original",
+            true,
+            null,
+            now.AddHours(-24),
+            MessageId: envelope.MessageId,
+            CommandType: envelope.CommandType,
+            ExpiresAt: now,
+            Disposition: IdempotencyRecordDisposition.Terminal);
+        _ = ctx.StateManager.TryGetStateAsync<IdempotencyRecord>(
+                $"idempotency:{envelope.MessageId}",
+                Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyRecord>(true, record));
+
+        CommandProcessingResult result = await ctx.Actor.ProcessCommandAsync(envelope);
+
+        result.Accepted.ShouldBeFalse();
+        result.ErrorMessage.ShouldBe("idempotency_key_expired");
+        await ctx.Invoker.DidNotReceive().InvokeAsync(
+            Arg.Any<CommandEnvelope>(),
+            Arg.Any<object?>());
+    }
+
     [Fact]
     public async Task ProcessCommandAsync_NewCommand_StoresIdempotencyRecord() {
         // Arrange

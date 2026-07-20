@@ -36,7 +36,7 @@ public partial class IdempotencyChecker(
 
         if (string.Equals(identity.MessageId, identity.CausationId, StringComparison.Ordinal))
         {
-            Log.IdempotencyCacheMiss(logger, identity.MessageId);
+            Log.IdempotencyCacheMiss(logger);
             return new IdempotencyCheckResult(IdempotencyCheckOutcome.Miss);
         }
 
@@ -46,7 +46,7 @@ public partial class IdempotencyChecker(
             .ConfigureAwait(false);
         if (!legacyResult.HasValue)
         {
-            Log.IdempotencyCacheMiss(logger, identity.MessageId);
+            Log.IdempotencyCacheMiss(logger);
             return new IdempotencyCheckResult(IdempotencyCheckOutcome.Miss);
         }
 
@@ -77,7 +77,7 @@ public partial class IdempotencyChecker(
             .SetStateAsync(GetKey(identity.MessageId), record)
             .ConfigureAwait(false);
 
-        Log.IdempotencyRecordStored(logger, identity.MessageId);
+        Log.IdempotencyRecordStored(logger);
     }
 
     private async Task<IdempotencyCheckResult> ClassifyAsync(
@@ -90,31 +90,28 @@ public partial class IdempotencyChecker(
             || record.Disposition is null
             || record.ExpiresAt is null)
         {
-            Log.IdempotencyIdentityConflict(logger, identity.MessageId);
+            Log.IdempotencyIdentityConflict(logger);
             return new IdempotencyCheckResult(IdempotencyCheckOutcome.IdentityConflict);
         }
 
         if (record.ExpiresAt <= TimeProvider.GetUtcNow())
         {
-            _ = await stateManager.TryRemoveStateAsync(sourceKey).ConfigureAwait(false);
-            Log.IdempotencyRecordExpired(logger, identity.MessageId);
-            return new IdempotencyCheckResult(
-                IdempotencyCheckOutcome.Expired,
-                StateMutationStaged: true);
+            Log.IdempotencyRecordExpired(logger);
+            return new IdempotencyCheckResult(IdempotencyCheckOutcome.Expired);
         }
 
         if (isLegacyLookup)
         {
             await stateManager.SetStateAsync(GetKey(identity.MessageId), record).ConfigureAwait(false);
             _ = await stateManager.TryRemoveStateAsync(sourceKey).ConfigureAwait(false);
-            Log.IdempotencyLegacyMigrated(logger, identity.MessageId);
+            Log.IdempotencyLegacyMigrated(logger);
             return new IdempotencyCheckResult(
                 IdempotencyCheckOutcome.LegacyMigration,
                 record.ToResult(),
                 StateMutationStaged: true);
         }
 
-        Log.IdempotencyCacheHit(logger, identity.MessageId);
+        Log.IdempotencyCacheHit(logger);
         return record.Disposition == IdempotencyRecordDisposition.Recoverable
             ? new IdempotencyCheckResult(IdempotencyCheckOutcome.RetryableRecoverable, record.ToResult())
             : new IdempotencyCheckResult(IdempotencyCheckOutcome.ExactTerminalDuplicate, record.ToResult());
@@ -127,37 +124,37 @@ public partial class IdempotencyChecker(
         [LoggerMessage(
             EventId = 5000,
             Level = LogLevel.Debug,
-            Message = "Idempotency cache hit: MessageId={MessageId}, Stage=IdempotencyCacheHit")]
-        public static partial void IdempotencyCacheHit(ILogger logger, string messageId);
+            Message = "Idempotency cache hit. Stage=IdempotencyCacheHit")]
+        public static partial void IdempotencyCacheHit(ILogger logger);
 
         [LoggerMessage(
             EventId = 5001,
             Level = LogLevel.Debug,
-            Message = "Idempotency cache miss: MessageId={MessageId}, Stage=IdempotencyCacheMiss")]
-        public static partial void IdempotencyCacheMiss(ILogger logger, string messageId);
+            Message = "Idempotency cache miss. Stage=IdempotencyCacheMiss")]
+        public static partial void IdempotencyCacheMiss(ILogger logger);
 
         [LoggerMessage(
             EventId = 5002,
             Level = LogLevel.Debug,
-            Message = "Idempotency record stored: MessageId={MessageId}, Stage=IdempotencyRecordStored")]
-        public static partial void IdempotencyRecordStored(ILogger logger, string messageId);
+            Message = "Idempotency record stored. Stage=IdempotencyRecordStored")]
+        public static partial void IdempotencyRecordStored(ILogger logger);
 
         [LoggerMessage(
             EventId = 5003,
             Level = LogLevel.Warning,
-            Message = "Idempotency identity conflict: MessageId={MessageId}, Stage=IdempotencyIdentityConflict")]
-        public static partial void IdempotencyIdentityConflict(ILogger logger, string messageId);
+            Message = "Idempotency identity conflict. Stage=IdempotencyIdentityConflict")]
+        public static partial void IdempotencyIdentityConflict(ILogger logger);
 
         [LoggerMessage(
             EventId = 5004,
             Level = LogLevel.Debug,
-            Message = "Idempotency record expired: MessageId={MessageId}, Stage=IdempotencyRecordExpired")]
-        public static partial void IdempotencyRecordExpired(ILogger logger, string messageId);
+            Message = "Idempotency record expired. Stage=IdempotencyRecordExpired")]
+        public static partial void IdempotencyRecordExpired(ILogger logger);
 
         [LoggerMessage(
             EventId = 5005,
             Level = LogLevel.Information,
-            Message = "Idempotency legacy record migrated: MessageId={MessageId}, Stage=IdempotencyLegacyMigrated")]
-        public static partial void IdempotencyLegacyMigrated(ILogger logger, string messageId);
+            Message = "Idempotency legacy record migrated. Stage=IdempotencyLegacyMigrated")]
+        public static partial void IdempotencyLegacyMigrated(ILogger logger);
     }
 }

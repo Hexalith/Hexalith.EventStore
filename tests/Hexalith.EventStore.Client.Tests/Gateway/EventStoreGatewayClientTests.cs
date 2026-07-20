@@ -542,6 +542,40 @@ public class EventStoreGatewayClientTests {
     }
 
     [Fact]
+    public async Task SubmitCommandAsync_WithExpiredIdempotencyKey_PreservesCanonicalContract() {
+        const string ProblemJson = """
+            {
+              "type": "https://hexalith.io/problems/idempotency-key-expired",
+              "title": "Idempotency Key Expired",
+              "status": 409,
+              "detail": "Refresh current state, then submit the intended mutation with a new idempotency key.",
+              "correlationId": "corr-current",
+              "reasonCode": "idempotency_key_expired",
+              "code": "idempotency_key_expired",
+              "category": "idempotency_key_expired",
+              "retryable": false,
+              "clientAction": "refresh_state_then_submit_with_new_key"
+            }
+            """;
+        using HttpClient httpClient = CreateClient(
+            _ => Task.FromResult(Json(HttpStatusCode.Conflict, ProblemJson, "application/problem+json")));
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        EventStoreGatewayException exception = await Should.ThrowAsync<EventStoreGatewayException>(
+            () => client.SubmitCommandAsync(CreateCommandRequest()));
+
+        exception.StatusCode.ShouldBe(409);
+        exception.ReasonCode.ShouldBe("idempotency_key_expired");
+        exception.CorrelationId.ShouldBe("corr-current");
+        exception.RetryAfter.ShouldBeNull();
+        exception.Extensions["code"].GetString().ShouldBe("idempotency_key_expired");
+        exception.Extensions["category"].GetString().ShouldBe("idempotency_key_expired");
+        exception.Extensions["retryable"].GetBoolean().ShouldBeFalse();
+        exception.Extensions["clientAction"].GetString()
+            .ShouldBe("refresh_state_then_submit_with_new_key");
+    }
+
+    [Fact]
     public async Task SubmitCommandAsync_WithRawPayloadTooLargeResponse_ThrowsStatusOnlyGatewayException() {
         using HttpClient httpClient = CreateClient(
             _ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.RequestEntityTooLarge) {

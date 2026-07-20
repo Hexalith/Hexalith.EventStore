@@ -35,6 +35,8 @@ public static class EventStoreServerServiceCollectionExtensions {
 
         _ = services.AddEventStoreReadModelStore();
         services.TryAddSingleton<ICommandRouter, CommandRouter>();
+        services.TryAddSingleton<IdempotencyKeyProtector>();
+        services.TryAddSingleton<IIdempotencyAdmissionCoordinator, IdempotencyAdmissionCoordinator>();
         services.TryAddScoped<IQueryRouter, QueryRouter>();
         services.TryAddScoped<IETagService, DaprETagService>();
         services.TryAddSingleton<IDomainServiceResolver, DomainServiceResolver>();
@@ -80,6 +82,10 @@ public static class EventStoreServerServiceCollectionExtensions {
         services.TryAddSingleton<IValidateOptions<IdempotencyRetentionOptions>, ValidateIdempotencyRetentionOptions>();
         _ = services.AddOptions<IdempotencyRetentionOptions>()
             .Bind(configuration.GetSection("EventStore:Idempotency"))
+            .ValidateOnStart();
+        services.TryAddSingleton<IValidateOptions<IdempotencyAdmissionOptions>, ValidateIdempotencyAdmissionOptions>();
+        _ = services.AddOptions<IdempotencyAdmissionOptions>()
+            .Bind(configuration.GetSection("EventStore:IdempotencyAdmission"))
             .ValidateOnStart();
         services.TryAddSingleton<IValidateOptions<ProjectionChangeNotifierOptions>, ValidateProjectionChangeNotifierOptions>();
         _ = services.AddOptions<DomainServiceOptions>()
@@ -179,6 +185,7 @@ public static class EventStoreServerServiceCollectionExtensions {
                 string.IsNullOrWhiteSpace(aggregateActorTypeName)
                     ? nameof(AggregateActor)
                     : aggregateActorTypeName);
+            options.Actors.RegisterActor<IdempotencyAdmissionActor>(IdempotencyAdmissionActor.ActorTypeName);
             options.Actors.RegisterActor<ETagActor>();
             options.Actors.RegisterActor<GlobalPositionActor>(GlobalPositionActor.ActorTypeName);
             options.Actors.RegisterActor<EventReplayProjectionActor>(QueryRouter.ProjectionActorTypeName);

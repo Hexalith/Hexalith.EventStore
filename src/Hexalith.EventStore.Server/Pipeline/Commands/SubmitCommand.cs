@@ -1,6 +1,8 @@
 
 using MediatR;
 
+using Hexalith.EventStore.Contracts.Commands;
+
 namespace Hexalith.EventStore.Server.Pipeline.Commands;
 /// <summary>
 /// MediatR command for submitting a domain command through the pipeline.
@@ -15,7 +17,8 @@ public record SubmitCommand(
     string CorrelationId,
     string UserId,
     Dictionary<string, string>? Extensions = null,
-    bool IsGlobalAdmin = false) : IRequest<SubmitCommandResult>;
+    bool IsGlobalAdmin = false,
+    CanonicalIdempotencyDescriptor? Idempotency = null) : IRequest<SubmitCommandResult>;
 
 /// <summary>
 /// Result of processing a <see cref="SubmitCommand"/>.

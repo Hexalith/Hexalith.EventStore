@@ -203,6 +203,16 @@ public partial class AggregateActor(
                         CorrelationId: command.CorrelationId);
                 }
 
+                if (idempotencyCheck.Outcome == IdempotencyCheckOutcome.Expired)
+                {
+                    _ = (activity?.SetStatus(ActivityStatusCode.Error, "IdempotencyKeyExpired"));
+                    _ = (processActivity?.SetStatus(ActivityStatusCode.Error, "IdempotencyKeyExpired"));
+                    return new CommandProcessingResult(
+                        Accepted: false,
+                        ErrorMessage: "idempotency_key_expired",
+                        CorrelationId: command.CorrelationId);
+                }
+
                 // Step 1b: Check for in-flight pipeline state (resume detection -- AC #8)
                 PipelineState? existingPipeline = await stateMachine
                     .LoadPipelineStateAsync(pipelineKeyPrefix, command.CorrelationId)

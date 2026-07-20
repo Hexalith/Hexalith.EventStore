@@ -53,4 +53,38 @@ public class SubmitCommandRequestTests {
         roundTripped.MessageId.ShouldBe("message-1");
         roundTripped.Payload.GetProperty("name").GetString().ShouldBe("Demo");
     }
+
+    [Fact]
+    public void JsonRoundTrip_PreservesTrustedCanonicalIdempotencyDescriptor() {
+        JsonElement payload = JsonDocument.Parse("{\"name\":\"Demo\"}").RootElement;
+        var descriptor = new CanonicalIdempotencyDescriptor(
+            "folders",
+            "CreateFolder",
+            3,
+            [1, 2, 3, 4],
+            IdempotencyReplayRetentionTier.Mutation);
+        var request = new SubmitCommandRequest(
+            "message-1",
+            "tenant-a",
+            "folders",
+            "folder-1",
+            "CreateFolderCommand",
+            payload,
+            "correlation-1",
+            Idempotency: descriptor);
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+
+        string json = JsonSerializer.Serialize(request, options);
+        SubmitCommandRequest roundTripped = JsonSerializer
+            .Deserialize<SubmitCommandRequest>(json, options)
+            .ShouldNotBeNull();
+
+        CanonicalIdempotencyDescriptor roundTrippedDescriptor = roundTripped.Idempotency.ShouldNotBeNull();
+        roundTrippedDescriptor.AdapterId.ShouldBe(descriptor.AdapterId);
+        roundTrippedDescriptor.OperationId.ShouldBe(descriptor.OperationId);
+        roundTrippedDescriptor.DescriptorVersion.ShouldBe(descriptor.DescriptorVersion);
+        roundTrippedDescriptor.RetentionTier.ShouldBe(descriptor.RetentionTier);
+        roundTrippedDescriptor.CanonicalIntent.ShouldBe([1, 2, 3, 4]);
+        json.ShouldContain("\"retentionTier\":1");
+    }
 }
