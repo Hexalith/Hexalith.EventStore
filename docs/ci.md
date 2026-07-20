@@ -105,8 +105,9 @@ The release concurrency group is `release-production` with cancellation
 disabled, so a later request cannot silently replace an approved publication.
 Only after source verification does the reusable release job enter the
 `production` environment. That environment requires reviewer `jpiquot`, permits
-deployments from `main` only, and gates use of the three explicitly mapped
-repository publication secrets. No duplicate environment-secret copy is needed.
+deployments from `main` only, disables administrator bypass, and gates use of
+the three explicitly mapped repository publication secrets. No duplicate
+environment-secret copy is needed.
 
 Semantic-release decides from commit history whether a release is warranted.
 NuGet publishing remains scoped to the 14 packages listed in
@@ -115,16 +116,20 @@ publishing is enabled only for the approved EventStore host mapping. Before any
 NuGet package is pushed, semantic-release validates `NUGET_API_KEY`, the
 container publisher helper, and the required Zot registry credentials so a
 missing container secret cannot create a partial NuGet-only release. The
-semantic-release `verifyRelease` phase freezes exact repository, version,
-source, environment, workflow run, approved Builds, helper-hash, package,
-container, and platform identity. It also proves the new version is absent for
-all 14 NuGet IDs and the container tag before Git-tag creation. The `publish`
-phase requires exact frozen-identity equality and repeats every destination
-check immediately before NuGet. The shared publisher requires both earlier
-phases and repeats multi-media-type container-tag absence immediately before
-the SDK registry write. Existing versions are collisions: the release path does
-not use `--skip-duplicate` and never overwrites an existing package, tag,
-manifest, or registry object.
+semantic-release `verifyRelease` phase re-proves that the source is still the
+live `main` tip with exact successful push CI, then freezes exact repository,
+version, source proof, environment, workflow run, approved Builds, helper
+hashes, normalized package IDs, canonical manifest hash, container, and
+platform identity. It also proves the new version is absent for all 14 NuGet
+IDs and the container tag before Git-tag creation. The `publish` phase requires
+exact frozen-identity equality and repeats both live source proof and every
+destination check immediately before NuGet. The shared publisher requires both
+earlier phases and repeats live source proof plus multi-media-type container-tag
+absence immediately before the SDK registry write. NuGet and OCI probes use
+exact read-only `HEAD` requests; redirects and ambiguous statuses fail closed.
+Existing versions are collisions: the release path does not use
+`--skip-duplicate` and never overwrites an existing package, tag, manifest, or
+registry object.
 
 The `main` branch accepts changes only through pull requests. Release automation
 therefore does not use `@semantic-release/changelog` or `@semantic-release/git`:
@@ -135,12 +140,14 @@ reviewed pull request; GitHub Releases are the current machine-generated release
 record.
 
 The reusable-workflow reference and `builds-execution-sha` input contain the
-same reviewed 40-character Builds commit. The reusable workflow verifies its
+same reviewed 40-character Builds commit, currently
+`cf04c419378dfe1bd3c41a9244b5e3283092056e`. The reusable workflow verifies its
 resolved SHA, checks out the nested action at that exact commit, and invokes it
 locally; the action then verifies its own action and helper bytes against the
 same commit before semantic-release can run. This immutable release-tool pin is
 independent of the development `references/Hexalith.Builds` gitlink, so routine
-submodule updates do not rotate publication authority. Environment approval is
+submodule updates do not rotate publication authority and publication upgrades
+do not create pointer churn in development dependencies. Environment approval is
 the human authority; the comment-free preflight supplies machine-verifiable
 source and destination safety.
 

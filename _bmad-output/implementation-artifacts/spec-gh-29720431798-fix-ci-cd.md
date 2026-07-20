@@ -98,3 +98,15 @@ The workflow pin is security-sensitive release authority, while the Builds advan
 
 - Inspect the unrelated Story 4.8 baseline typo recorded for later repair.
   [`deferred-work.md:406`](deferred-work.md#L406)
+
+## Superseding Release-Tool Evidence (2026-07-20)
+
+A later explicit maintainer authorization supersedes this historical repair's
+release-pin/gitlink coupling without rewriting its frozen intent. Publication
+now pins both `domain-release.yml` and `builds-execution-sha` to reviewed Builds
+commit `cf04c419378dfe1bd3c41a9244b5e3283092056e`, whose protected PR #24 passed
+Commitlint, Codacy, and Sonar before ordinary squash merge. The development
+`references/Hexalith.Builds` gitlink remains independently pinned at
+`ffa1662829b28d1d90554980c87f23bd9d4e25e7`; routine development dependency
+updates no longer rotate release authority, and publication-tool upgrades no
+longer require pointer churn.

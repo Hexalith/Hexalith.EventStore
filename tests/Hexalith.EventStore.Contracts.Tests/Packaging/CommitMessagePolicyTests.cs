@@ -177,6 +177,12 @@ public sealed class CommitMessagePolicyTests
             .ShouldBe("^22.14.0 || >=24.10.0");
         package.RootElement.GetProperty("scripts").GetProperty("prepare").GetString().ShouldBe("husky");
         package.RootElement.GetProperty("devDependencies").GetProperty("husky").GetString().ShouldBe("^9.1.7");
+        package.RootElement.GetProperty("devDependencies").GetProperty("@commitlint/cli").GetString().ShouldBe("21.1.0");
+        package.RootElement
+            .GetProperty("devDependencies")
+            .GetProperty("@commitlint/config-conventional")
+            .GetString()
+            .ShouldBe("21.1.0");
 
         JsonElement lockPackages = packageLock.RootElement.GetProperty("packages");
         lockPackages
@@ -187,6 +193,12 @@ public sealed class CommitMessagePolicyTests
             .ShouldBe("^22.14.0 || >=24.10.0");
         lockPackages.GetProperty("").GetProperty("devDependencies").GetProperty("husky").GetString().ShouldBe("^9.1.7");
         lockPackages.GetProperty("node_modules/husky").GetProperty("version").GetString().ShouldBe("9.1.7");
+        lockPackages.GetProperty("node_modules/@commitlint/cli").GetProperty("version").GetString().ShouldBe("21.1.0");
+        lockPackages
+            .GetProperty("node_modules/@commitlint/config-conventional")
+            .GetProperty("version")
+            .GetString()
+            .ShouldBe("21.1.0");
     }
 
     /// <summary>
@@ -202,7 +214,9 @@ public sealed class CommitMessagePolicyTests
 
         hook.ShouldBe("#!/bin/sh\nnpx --no -- commitlint --edit \"$1\"\n");
         hookBytes.ShouldNotContain((byte)'\r', "Husky hooks must remain LF-only so /bin/sh can execute the shebang.");
-        commitlintConfig.ShouldBe("export default {\n  extends: ['@commitlint/config-conventional'],\n};\n");
+        commitlintConfig.ShouldContain("extends: ['@commitlint/config-conventional']");
+        commitlintConfig.ShouldContain("'type-enum'");
+        commitlintConfig.ShouldNotContain("'chore'");
 
         if (!OperatingSystem.IsWindows())
         {
@@ -212,6 +226,7 @@ public sealed class CommitMessagePolicyTests
 
         string attributes = ReadRepositoryFile(".gitattributes");
         attributes.ShouldContain(".husky/* text eol=lf");
+        attributes.ShouldContain("commitlint.config.mjs text eol=lf");
     }
 
     /// <summary>
@@ -229,6 +244,7 @@ public sealed class CommitMessagePolicyTests
         contributing.ShouldContain("100 characters or fewer");
         contributing.ShouldContain("near 50 characters");
         contributing.ShouldContain("`revert`");
+        contributing.ShouldContain("Do not use `chore`");
         contributing.ShouldContain("^22.14.0");
         contributing.ShouldContain(">=24.10.0");
         contributing.ShouldContain("npx commitlint --edit <message-file> --verbose");

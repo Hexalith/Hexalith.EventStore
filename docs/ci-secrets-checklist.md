@@ -48,8 +48,12 @@ URLs:
   release workflow; `secrets: inherit` is forbidden. The preflight job has no
   secret mapping, and GitHub does not start the protected reusable job until the
   required `production` reviewer approves a current-green-`main` request.
+- The `production` environment permits only `main` and has administrator bypass
+  disabled.
 - The release workflow embeds the same immutable Builds commit for its reusable
-  workflow and execution input. No issue-comment authority variable is used.
+  workflow and execution input: `cf04c419378dfe1bd3c41a9244b5e3283092056e`.
+  This publication pin is deliberately independent of the development Builds
+  gitlink. No issue-comment authority variable is used.
 
 ### `deploy-staging.yml`
 
