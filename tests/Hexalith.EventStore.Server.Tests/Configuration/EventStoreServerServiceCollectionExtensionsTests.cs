@@ -3,6 +3,7 @@ using Dapr.Client;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Events;
+using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Projections;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -74,9 +75,41 @@ public class EventStoreServerServiceCollectionExtensionsTests {
         registration.Tags.ShouldContain("ready");
     }
 
-    private static ServiceProvider BuildProvider(bool registerDaprClient) {
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(0)]
+    [InlineData(DomainServiceOptions.MaximumInvocationTimeoutSeconds + 1)]
+    public void AddEventStoreServerRejectsInvocationTimeoutOutsideSupportedRange(int timeoutSeconds) {
+        using ServiceProvider provider = BuildProvider(
+            registerDaprClient: false,
+            new Dictionary<string, string?> {
+                ["EventStore:DomainServices:InvocationTimeoutSeconds"] = timeoutSeconds.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture),
+            });
+
+        _ = Should.Throw<OptionsValidationException>(
+            () => provider.GetRequiredService<IOptions<DomainServiceOptions>>().Value);
+    }
+
+    [Fact]
+    public void AddEventStoreServerAcceptsMaximumInvocationTimeout() {
+        using ServiceProvider provider = BuildProvider(
+            registerDaprClient: false,
+            new Dictionary<string, string?> {
+                ["EventStore:DomainServices:InvocationTimeoutSeconds"]
+                    = DomainServiceOptions.MaximumInvocationTimeoutSeconds.ToString(
+                        System.Globalization.CultureInfo.InvariantCulture),
+            });
+
+        provider.GetRequiredService<IOptions<DomainServiceOptions>>()
+            .Value.InvocationTimeoutSeconds.ShouldBe(DomainServiceOptions.MaximumInvocationTimeoutSeconds);
+    }
+
+    private static ServiceProvider BuildProvider(
+        bool registerDaprClient,
+        IEnumerable<KeyValuePair<string, string?>>? configurationValues = null) {
         IConfiguration configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection([])
+            .AddInMemoryCollection(configurationValues ?? [])
             .Build();
         var services = new ServiceCollection();
         _ = services.AddLogging();

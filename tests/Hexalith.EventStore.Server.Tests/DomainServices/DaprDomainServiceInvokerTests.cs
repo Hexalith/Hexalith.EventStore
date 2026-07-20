@@ -1,3 +1,4 @@
+using System.Diagnostics;
 
 using Dapr.Client;
 
@@ -111,6 +112,74 @@ public class DaprDomainServiceInvokerTests {
         options.InvocationTimeoutSeconds.ShouldBe(5);
         options.MaxEventsPerResult.ShouldBe(1000);
         options.MaxEventSizeBytes.ShouldBe(1_048_576);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_InvocationExceedsConfiguredTimeout_ThrowsDomainServiceExceptionAsync() {
+        // Arrange
+        using DaprClient daprClient = new DaprClientBuilder().Build();
+        _ = _resolver.ResolveAsync("test-tenant", "test-domain", Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(TestRegistration);
+        using var httpClient = new HttpClient(new NeverCompletingHandler());
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        _ = httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
+        var options = Options.Create(new DomainServiceOptions { InvocationTimeoutSeconds = 1 });
+        var invoker = new DaprDomainServiceInvoker(daprClient, httpClientFactory, _resolver, options, _logger);
+
+        // Act
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        DomainServiceException exception = await Should.ThrowAsync<DomainServiceException>(
+            () => invoker.InvokeAsync(CreateTestEnvelope(), null));
+        stopwatch.Stop();
+
+        // Assert
+        exception.Message.ShouldContain("timed out after 1s");
+        exception.InnerException.ShouldBeOfType<TaskCanceledException>();
+        exception.TenantId.ShouldBe("test-tenant");
+        exception.Domain.ShouldBe("test-domain");
+        stopwatch.Elapsed.ShouldBeGreaterThan(TimeSpan.FromMilliseconds(750));
+        stopwatch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(2.5));
+    }
+
+    [Fact]
+    public async Task InvokeAsync_HttpPipelineCancelsBeforeConfiguredTimeout_ThrowsDomainServiceExceptionAsync() {
+        // Arrange
+        using DaprClient daprClient = new DaprClientBuilder().Build();
+        _ = _resolver.ResolveAsync("test-tenant", "test-domain", Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(TestRegistration);
+        using var httpClient = new HttpClient(new ImmediatelyCanceledHandler());
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        _ = httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
+        var options = Options.Create(new DomainServiceOptions { InvocationTimeoutSeconds = 5 });
+        var invoker = new DaprDomainServiceInvoker(daprClient, httpClientFactory, _resolver, options, _logger);
+
+        // Act
+        DomainServiceException exception = await Should.ThrowAsync<DomainServiceException>(
+            () => invoker.InvokeAsync(CreateTestEnvelope(), null));
+
+        // Assert
+        exception.Message.ShouldContain("was canceled before completion");
+        exception.InnerException.ShouldBeOfType<TaskCanceledException>();
+        exception.TenantId.ShouldBe("test-tenant");
+        exception.Domain.ShouldBe("test-domain");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_CallerCancels_PropagatesOperationCanceledExceptionAsync() {
+        // Arrange
+        using DaprClient daprClient = new DaprClientBuilder().Build();
+        _ = _resolver.ResolveAsync("test-tenant", "test-domain", Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(TestRegistration);
+        using var httpClient = new HttpClient(new NeverCompletingHandler());
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        _ = httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
+        var options = Options.Create(new DomainServiceOptions { InvocationTimeoutSeconds = 5 });
+        var invoker = new DaprDomainServiceInvoker(daprClient, httpClientFactory, _resolver, options, _logger);
+        using var callerCancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+
+        // Act & Assert
+        _ = await Should.ThrowAsync<OperationCanceledException>(
+            () => invoker.InvokeAsync(CreateTestEnvelope(), null, callerCancellation.Token));
     }
 
     [Fact]
@@ -448,4 +517,23 @@ public class DaprDomainServiceInvokerTests {
     private sealed record LargeTestEvent(string Data) : IEventPayload;
 
     private sealed record TestRejectionEvent : IRejectionEvent;
+
+    private sealed class NeverCompletingHandler : HttpMessageHandler {
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken) {
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken).ConfigureAwait(false);
+            return new HttpResponseMessage(System.Net.HttpStatusCode.OK);
+        }
+    }
+
+    private sealed class ImmediatelyCanceledHandler : HttpMessageHandler {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken) {
+            using var cancellation = new CancellationTokenSource();
+            cancellation.Cancel();
+            return Task.FromCanceled<HttpResponseMessage>(cancellation.Token);
+        }
+    }
 }

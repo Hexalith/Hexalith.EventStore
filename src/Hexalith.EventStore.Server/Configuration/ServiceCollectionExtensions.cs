@@ -82,7 +82,14 @@ public static class EventStoreServerServiceCollectionExtensions {
             .Bind(configuration.GetSection("EventStore:Idempotency"))
             .ValidateOnStart();
         services.TryAddSingleton<IValidateOptions<ProjectionChangeNotifierOptions>, ValidateProjectionChangeNotifierOptions>();
-        _ = services.Configure<DomainServiceOptions>(configuration.GetSection("EventStore:DomainServices"));
+        _ = services.AddOptions<DomainServiceOptions>()
+            .Bind(configuration.GetSection("EventStore:DomainServices"))
+            .Validate(
+                static options => options.InvocationTimeoutSeconds > 0
+                    && options.InvocationTimeoutSeconds <= DomainServiceOptions.MaximumInvocationTimeoutSeconds,
+                $"{nameof(DomainServiceOptions.InvocationTimeoutSeconds)} must be between 1 and "
+                    + $"{DomainServiceOptions.MaximumInvocationTimeoutSeconds} seconds.")
+            .ValidateOnStart();
         _ = services.AddOptions<ProjectionChangeNotifierOptions>()
             .Bind(configuration.GetSection("EventStore:ProjectionChanges"))
             .ValidateOnStart();

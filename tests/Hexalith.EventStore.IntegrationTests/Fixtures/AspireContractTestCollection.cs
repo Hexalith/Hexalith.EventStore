@@ -5,6 +5,6 @@ namespace Hexalith.EventStore.IntegrationTests.Fixtures;
 /// across all Tier 3 contract test classes. Starts the Aspire topology (EventStore,
 /// sample domain service, Redis, DAPR sidecars) ONCE without Keycloak for fast execution.
 /// </summary>
-[CollectionDefinition("AspireContractTests")]
+[CollectionDefinition("AspireContractTests", DisableParallelization = true)]
 public class AspireContractTestCollection : ICollectionFixture<AspireContractTestFixture> {
 }
