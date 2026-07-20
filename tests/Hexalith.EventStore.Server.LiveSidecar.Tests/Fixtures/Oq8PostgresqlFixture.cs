@@ -25,7 +25,7 @@ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures;
 public sealed class Oq8PostgresqlFixture : IAsyncLifetime
 {
     private const string AppId = "eventstore";
-    private const string PostgresImage = "postgres:17.6";
+    private const string PostgresImage = "postgres:18.4";
     private const int PlacementPort = 50005;
     private const int SchedulerPort = 50006;
     private const int HealthTimeoutSeconds = 60;
@@ -138,9 +138,13 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
         {
             try
             {
+                // Force the TCP listener check (-h/-p) rather than the default Unix socket: the
+                // Unix socket accepts connections before the TCP listener does, and during that
+                // gap Docker's published port still completes the client handshake then resets it,
+                // surfacing as a Dapr "connection reset by peer" state-store init failure.
                 _ = await RunProcessAsync(
                     "docker",
-                    ["exec", _postgresContainerName, "pg_isready", "-U", "postgres", "-d", "eventstore"])
+                    ["exec", _postgresContainerName, "pg_isready", "-h", "127.0.0.1", "-p", "5432", "-U", "postgres", "-d", "eventstore"])
                     .ConfigureAwait(false);
                 return;
             }

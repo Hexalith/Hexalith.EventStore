@@ -1,5 +1,23 @@
 # Deferred Work
 
+## Deferred from: live-sidecar PostgreSQL image pull CI fix (2026-07-20)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-29738838856-fix-ci-cd.md`
+  summary: Add a guardrail test asserting the `postgres:18.4` tag in `.github/workflows/integration.yml`'s "Pull PostgreSQL container image" step matches `Oq8PostgresqlFixture.PostgresImage`, so the two literals cannot silently drift.
+  evidence: Blind-hunter review of the CI fix -- the workflow comment asks a human to keep the tag in sync but nothing enforces it; the repo already has this pattern for release authority (`ContainerPublishingGovernanceTests.cs`) but not for this image tag.
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-29738838856-fix-ci-cd.md`
+  summary: Add a `docker` ecosystem entry to `.github/dependabot.yml` so `postgres:18.4` bumps get automated PRs like the existing `nuget`/`npm`/`github-actions` ecosystems.
+  evidence: Blind-hunter review of the CI fix -- Dependabot currently cannot see or bump the Postgres image tag in either the workflow or the fixture, so the sync in the item above would otherwise be 100% manual forever.
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-29738838856-fix-ci-cd.md`
+  summary: Pin the live-sidecar PostgreSQL image by digest (`postgres@sha256:...`) instead of the mutable `18.4` tag, with a documented rotation process.
+  evidence: Blind-hunter review of the CI fix -- a mutable tag gives no guarantee the bits pulled today match the bits validated previously; digest pinning needs coordinated changes to both the workflow and `Oq8PostgresqlFixture.cs`, out of scope for the minimal unblock-CI fix.
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-29738838856-fix-ci-cd.md`
+  summary: Cache the pulled `postgres:18.4` image (or layer) across `integration.yml` runs instead of re-pulling on every push/PR to `main`.
+  evidence: Blind-hunter review of the CI fix -- the image rarely changes but is currently re-pulled in full on every job run with no `actions/cache` or registry mirror.
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-29738838856-fix-ci-cd.md`
+  summary: Evaluate replacing `Oq8PostgresqlFixture`'s manual `docker run`/`docker image inspect` orchestration with GitHub Actions' native `services:` container support (or an equivalent declarative approach), which would pull, health-check, and manage the Postgres container without a hand-rolled prerequisite check.
+  evidence: Blind-hunter review of the CI fix -- this fix patches the one workflow that currently exercises the fixture; the next new workflow, self-hosted runner, or Tier-3 job that reuses `Oq8PostgresqlFixture` will hit the identical "no such image" failure unless the fixture's own contract is revisited.
+
 ## Deferred from: immutable manual release hardening (2026-07-20)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-simplify-release-architecture.md`

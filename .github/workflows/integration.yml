@@ -57,6 +57,18 @@ jobs:
         with:
           version: ${{ env.DAPR_VERSION }}
 
+      # Story 4.8's Oq8PostgresqlFixture fails fast via `docker image inspect` instead of
+      # pulling on demand (fail-closed by design), so the image must already be present.
+      # Keep this tag in sync with PostgresImage in
+      # tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs.
+      - name: Pull PostgreSQL container image
+        uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_wait_seconds: 15
+          command: docker pull postgres:18.4
+
       - name: Run Live-Sidecar Integration Tests
         run: |
           dotnet test tests/Hexalith.EventStore.Server.LiveSidecar.Tests/ --configuration Release --no-restore -p:UseHexalithProjectReferences=false --logger "trx;LogFileName=live-sidecar-results.trx" --results-directory TestResults/live-sidecar --collect:"XPlat Code Coverage"
