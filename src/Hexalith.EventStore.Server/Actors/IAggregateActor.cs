@@ -9,6 +9,14 @@ namespace Hexalith.EventStore.Server.Actors;
 /// DAPR actor interface for aggregate command processing.
 /// </summary>
 public interface IAggregateActor : IActor {
+    /// <summary>Processes a protected command through the internal signed-fence boundary.</summary>
+    /// <param name="request">The command and current-fence capability.</param>
+    /// <returns>The exact command processing result.</returns>
+    Task<CommandProcessingResult> ProcessFencedCommandAsync(FencedCommandEnvelope request);
+
+    /// <summary>Reads authoritative aggregate idempotency outcome under a signed fence without executing work.</summary>
+    Task<IdempotencyCheckResult> ReconcileFencedCommandAsync(FencedCommandEnvelope request);
+
     /// <summary>
     /// Processes a command envelope within the aggregate actor context.
     /// </summary>

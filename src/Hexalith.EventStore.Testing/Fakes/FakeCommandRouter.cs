@@ -28,4 +28,48 @@ public class FakeCommandRouter : ICommandRouter {
 
         return Task.FromResult(new CommandProcessingResult(Accepted: true, CorrelationId: command.CorrelationId));
     }
+
+    /// <inheritdoc/>
+    public Task<CommandProcessingResult> RouteFencedCommandAsync(
+        SubmitCommand command,
+        IdempotencyExecutionContext executionContext,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        ArgumentNullException.ThrowIfNull(executionContext);
+        if (executionContext.FencingToken <= 0
+            || !string.Equals(executionContext.MessageId, command.MessageId, StringComparison.Ordinal)
+            || !string.Equals(executionContext.CorrelationId, command.CorrelationId, StringComparison.Ordinal)
+            || !string.Equals(executionContext.Tenant, command.Tenant, StringComparison.Ordinal)
+            || !string.Equals(executionContext.Domain, command.Domain, StringComparison.Ordinal)
+            || !string.Equals(executionContext.AggregateId, command.AggregateId, StringComparison.Ordinal)
+            || !string.Equals(executionContext.CommandType, command.CommandType, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("The idempotency execution fence is missing, stale, or invalid.");
+        }
+
+        if (FakeActor is not null)
+        {
+            return FakeActor.ProcessFencedCommandAsync(
+                new FencedCommandEnvelope(command.ToCommandEnvelope(), executionContext),
+                cancellationToken);
+        }
+
+        return Task.FromResult(new CommandProcessingResult(Accepted: true, CorrelationId: command.CorrelationId));
+    }
+
+    /// <inheritdoc/>
+    public Task<IdempotencyCheckResult> ReconcileFencedCommandAsync(
+        SubmitCommand command,
+        IdempotencyExecutionContext executionContext,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        ArgumentNullException.ThrowIfNull(executionContext);
+        cancellationToken.ThrowIfCancellationRequested();
+        return FakeActor is not null
+            ? FakeActor.ReconcileFencedCommandAsync(
+                new FencedCommandEnvelope(command.ToCommandEnvelope(), executionContext))
+            : Task.FromResult(new IdempotencyCheckResult(IdempotencyCheckOutcome.Miss));
+    }
 }

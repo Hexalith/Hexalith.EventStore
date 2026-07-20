@@ -183,6 +183,57 @@ Configuration section: `EventStore:CommandConcurrency`
 
 > **Warning:** Values must be between `0` and `10`. A value of `0` disables automatic persistence-conflict retries and surfaces the first conflict as HTTP `409`.
 
+### Trusted Idempotency Admission
+
+Opaque command idempotency is opt-in per deployment and per command type. Configuration supplies only the protected digest-key boundary; a server-owned adapter supplies operation authority and canonical intent after authentication, current authorization, and validation.
+
+Configuration section: `EventStore:IdempotencyAdmission`
+
+| Setting | Type | Default | Description |
+| ------- | ---- | ------- | ----------- |
+| `Enabled` | bool | `false` | Enables protected opaque-key admission. Commands without `idempotencyKey` retain the ordinary command path. |
+| `RequireLegacyInventory` | bool | `false` | Set `true` for upgrades until every presented legacy key is inventoried. Missing or unsafe evidence then fails closed as `idempotency_unsafe_legacy_state`. Leave `false` only when a clean-install assertion is valid. |
+| `ActiveDigestKeyVersion` | string | `""` | Sole writer key version for new protected aliases. Required when enabled. |
+| `ReaderDigestKeyVersions` | string[] | `[]` | Ordered retained versions used to discover and promote existing authority before creating active-version state. Must be named, distinct, and exclude the active version. |
+| `DigestKeySource` | enum | `Configuration` | `DaprSecret` for deployed environments; `Configuration` is for local development and tests only. |
+| `DigestKeySecretStoreName` | string | `""` | DAPR secret-store component used by `DaprSecret`. |
+| `DigestKeySecretName` | string | `""` | Secret map containing `generation` plus one Base64 value per configured version. |
+| `DigestKeySecretGeneration` | string | `""` | Required non-secret generation marker; a mismatch fails closed without exposing secret data. |
+| `DigestKeys:{version}` | string | — | Base64 key material for the local `Configuration` source. Exactly one key of at least 32 decoded bytes is required per active/reader version. Forbidden with `DaprSecret`. |
+
+Production example (key values live in the DAPR secret store, not JSON):
+
+```json
+{
+  "EventStore": {
+    "IdempotencyAdmission": {
+      "Enabled": true,
+      "RequireLegacyInventory": true,
+      "ActiveDigestKeyVersion": "2026-07",
+      "ReaderDigestKeyVersions": [ "2026-01" ],
+      "DigestKeySource": "DaprSecret",
+      "DigestKeySecretStoreName": "secretstore",
+      "DigestKeySecretName": "eventstore-idempotency-ring",
+      "DigestKeySecretGeneration": "generation-12"
+    }
+  }
+}
+```
+
+Register exactly one trusted adapter for every command type that accepts `idempotencyKey`:
+
+```csharp
+builder.Services.AddIdempotencyIntentAdapter<IncrementCounterIdempotencyAdapter>();
+```
+
+The adapter fixes `CommandType`, adapter ID, operation ID, descriptor version, and `IdempotencyReplayRetentionTier`; callers cannot override them. It returns the canonical target, normalized semantic JSON/options, policy version, and any behavior-affecting delegated or credential scope. It must exclude correlation IDs, bearer/provider tokens, clocks, traces, delivery attempts, and retry metadata. Unknown or duplicate adapters fail closed before admission-state access.
+
+Retention is policy, not a configuration knob: mutation results remain replayable for 86,400 seconds and commit results use `completion.AddYears(7)`. Inclusive expiry atomically replaces live intent/result data with a metadata-only tombstone. Tombstones remain for the managed tenant lifetime, then for exactly 400 days after approved deletion entry. Legal hold persists the remaining interval and resumes it on release. Final purge is a bounded operator workflow; Story 4.8 adds no admin UI.
+
+Digest-key rotation is additive. Deploy the new active version while retaining every referenced reader, allow the directory's prepare → redirect → pointer flip → activation protocol to converge, and remove a reader only after live records, tombstones, directory aliases, migration inventory, and legal-hold references all report zero. Removing referenced material is an invalid retirement and must be refused.
+
+Invalid enabled configuration fails options validation at startup without printing key material. A missing, malformed, unavailable, or generation-mismatched runtime secret fails admission with support-safe metadata. Never place raw keys, protected digests, intent, fences, or secret-map values in configuration diagnostics or support output.
+
 ### Domain Services
 
 Domain services are the aggregate processors that handle commands and produce events. They are resolved by static registrations first, then by an opt-in DAPR configuration store, and finally by convention. The version field in registrations enables running multiple versions of the same domain service simultaneously - see [Event Versioning - Domain Service Version Routing](../concepts/event-versioning.md#domain-service-version-routing) for deployment patterns and rollback strategy.
@@ -607,6 +658,15 @@ This table lists every configurable setting for quick scanning, including explic
 | `EventStore:CommandStatus:TtlSeconds` | int | `86400` | Integer `> 0` | Application |
 | `EventStore:CommandStatus:StateStoreName` | string | `"statestore"` | Non-empty string | Application |
 | `EventStore:CommandConcurrency:MaxPersistenceConflictRetries` | int | `1` | Integer `0`-`10` | Application |
+| `EventStore:IdempotencyAdmission:Enabled` | bool | `false` | `true` or `false` | Application |
+| `EventStore:IdempotencyAdmission:RequireLegacyInventory` | bool | `false` | `true` for upgrades until inventory is complete | Application |
+| `EventStore:IdempotencyAdmission:ActiveDigestKeyVersion` | string | `""` | Non-empty when enabled | Application |
+| `EventStore:IdempotencyAdmission:ReaderDigestKeyVersions` | string[] | `[]` | Ordered distinct versions excluding active | Application |
+| `EventStore:IdempotencyAdmission:DigestKeySource` | enum | `Configuration` | `Configuration`, `DaprSecret` | Application |
+| `EventStore:IdempotencyAdmission:DigestKeySecretStoreName` | string | `""` | Non-empty for `DaprSecret` | Application |
+| `EventStore:IdempotencyAdmission:DigestKeySecretName` | string | `""` | Non-empty for `DaprSecret` | Application |
+| `EventStore:IdempotencyAdmission:DigestKeySecretGeneration` | string | `""` | Non-empty for `DaprSecret` | Application |
+| `EventStore:IdempotencyAdmission:DigestKeys:{version}` | string | — | Base64, decoded length `>= 32`; local configuration source only | Application |
 | `EventStore:DomainServices:ConfigStoreName` | string? | `null` | `null` or non-empty string | Application |
 | `EventStore:DomainServices:InvocationTimeoutSeconds` | int | `5` | Integer `> 0` | Application |
 | `EventStore:DomainServices:MaxEventsPerResult` | int | `1000` | Integer `> 0` | Application |

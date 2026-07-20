@@ -99,7 +99,7 @@ development_status:
   # Story 2.7 corrected the EventStore stale-registration/source-topology prerequisite and
   # passed focused configuration, CI-guard, and live persisted-provenance evidence with no
   # net Tenants, EventStore, or Builds dependency-identity change.
-  2-7-tenants-compatibility-and-package-mode-validation: done
+  2-7-pre-authorization-registration-and-provenance-correction: done
   2-8-scoped-metadata-rich-projection-notifications: done
   2-9-generated-command-status-location-policy: done
   2-10-outbound-dapr-routing-header-ownership: done
@@ -146,7 +146,7 @@ development_status:
   # Approved by sprint-change-proposal-2026-07-20-oq8-durable-idempotency-admission.md.
   # EventStore owns the durable tenant/key admission prerequisite consumed by Folders Story 12.6;
   # create and validate the dedicated story artifact before moving this row to ready-for-dev.
-  4-8-durable-tenant-scoped-idempotency-admission-and-expired-key-precedence: ready-for-dev
+  4-8-durable-tenant-scoped-idempotency-admission-and-expired-key-precedence: in-progress
   epic-4-retrospective: optional
 
   epic-5: backlog
@@ -179,7 +179,7 @@ development_status:
   7-3-state-mutating-admin-audit: backlog
   7-4-honest-deferred-admin-operations: backlog
   7-5-shared-typed-admin-client: backlog
-  7-6-secret-store-configuration: backlog
+  7-6-openbao-backed-dapr-secret-store: backlog
   7-7-readiness-and-dapr-app-health: backlog
   7-8-dapr-resiliency: backlog
   7-9-immutable-production-images: backlog

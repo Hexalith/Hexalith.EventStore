@@ -188,7 +188,7 @@ public class ProductionDaprComponentValidationTests {
     [Fact]
     public void ProductionResiliency_SidecarTimeoutIsFiveSeconds() {
         Dictionary<string, object> doc = LoadYaml(Path.Combine(DeployDaprDir, "resiliency.yaml"));
-        Nav(doc, "spec", "policies", "timeouts", "daprSidecar", "general")?.ToString()
+        Nav(doc, "spec", "policies", "timeouts", "daprSidecar")?.ToString()
             .ShouldBe("5s", "Production DAPR sidecar general timeout must be 5 seconds (Rule #14)");
     }
 

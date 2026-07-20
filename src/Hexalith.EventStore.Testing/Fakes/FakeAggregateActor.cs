@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Actors;
+using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Events;
 
 namespace Hexalith.EventStore.Testing.Fakes;
@@ -12,10 +13,15 @@ namespace Hexalith.EventStore.Testing.Fakes;
 /// </summary>
 public class FakeAggregateActor : IAggregateActor {
     private readonly ConcurrentQueue<CommandEnvelope> _receivedCommands = new();
+    private readonly ConcurrentQueue<IdempotencyExecutionContext> _receivedExecutionContexts = new();
     private readonly ConcurrentDictionary<string, CommandProcessingResult> _processedCausationIds = new();
 
     /// <summary>Gets the list of received commands for assertion.</summary>
     public IReadOnlyCollection<CommandEnvelope> ReceivedCommands => [.. _receivedCommands];
+
+    /// <summary>Gets internal execution contexts received through the fenced boundary.</summary>
+    public IReadOnlyCollection<IdempotencyExecutionContext> ReceivedExecutionContexts
+        => [.. _receivedExecutionContexts];
 
     /// <summary>Gets or sets the result to return from ProcessCommandAsync.</summary>
     public CommandProcessingResult? ConfiguredResult { get; set; }
@@ -69,6 +75,30 @@ public class FakeAggregateActor : IAggregateActor {
     /// <inheritdoc/>
     public Task<CommandProcessingResult> ProcessCommandAsync(CommandEnvelope command)
         => ProcessCommandAsync(command, CancellationToken.None);
+
+    /// <inheritdoc/>
+    public Task<CommandProcessingResult> ProcessFencedCommandAsync(FencedCommandEnvelope request)
+        => ProcessFencedCommandAsync(request, CancellationToken.None);
+
+    /// <inheritdoc/>
+    public Task<IdempotencyCheckResult> ReconcileFencedCommandAsync(FencedCommandEnvelope request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        string causationId = request.Command.CausationId ?? request.Command.MessageId;
+        return Task.FromResult(_processedCausationIds.TryGetValue(causationId, out CommandProcessingResult? result)
+            ? new IdempotencyCheckResult(IdempotencyCheckOutcome.ExactTerminalDuplicate, result)
+            : new IdempotencyCheckResult(IdempotencyCheckOutcome.Miss));
+    }
+
+    /// <summary>Processes a fenced command while honoring local cancellation.</summary>
+    public Task<CommandProcessingResult> ProcessFencedCommandAsync(
+        FencedCommandEnvelope request,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        _receivedExecutionContexts.Enqueue(request.ExecutionContext);
+        return ProcessCommandAsync(request.Command, cancellationToken);
+    }
 
     /// <summary>
     /// Processes a command envelope while honoring local/in-process cancellation.

@@ -14,4 +14,16 @@ public interface ICommandRouter {
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The result from the actor.</returns>
     Task<CommandProcessingResult> RouteCommandAsync(SubmitCommand command, CancellationToken cancellationToken = default);
+
+    /// <summary>Routes an admitted command through the internal signed-fence actor boundary.</summary>
+    Task<CommandProcessingResult> RouteFencedCommandAsync(
+        SubmitCommand command,
+        IdempotencyExecutionContext executionContext,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Routes a read-only authoritative outcome reconciliation through the fenced actor boundary.</summary>
+    Task<IdempotencyCheckResult> ReconcileFencedCommandAsync(
+        SubmitCommand command,
+        IdempotencyExecutionContext executionContext,
+        CancellationToken cancellationToken = default);
 }

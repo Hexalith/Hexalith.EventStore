@@ -1,3 +1,5 @@
+using System.Runtime.Serialization;
+
 using Hexalith.EventStore.Contracts.Commands;
 
 namespace Hexalith.EventStore.Server.Actors;
@@ -16,21 +18,26 @@ namespace Hexalith.EventStore.Server.Actors;
 /// <param name="ReplayExpiresAt">The inclusive replay expiry boundary.</param>
 /// <param name="FencingToken">The current fence.</param>
 /// <param name="ReplayResult">The live replay result, removed after expiry.</param>
+/// <param name="ExecutionMessageId">The stable live execution identity, removed on tombstone compaction.</param>
+/// <param name="ExecutionCorrelationId">The stable live aggregate-checkpoint identity, removed on tombstone compaction.</param>
+[DataContract]
 public sealed record IdempotencyAdmissionRecord(
-    int SchemaVersion,
-    IdempotencyAdmissionState State,
-    string TenantPartition,
-    string DigestKeyVersion,
-    string KeyDigest,
-    string VerificationTag,
-    string? IntentDigest,
-    IdempotencyReplayRetentionTier RetentionTier,
-    DateTimeOffset FirstConsumedAt,
-    DateTimeOffset LastObservedAt,
-    DateTimeOffset? ReplayExpiresAt,
-    long FencingToken,
-    CommandProcessingResult? ReplayResult)
+    [property: DataMember] int SchemaVersion,
+    [property: DataMember] IdempotencyAdmissionState State,
+    [property: DataMember] string TenantPartition,
+    [property: DataMember] string DigestKeyVersion,
+    [property: DataMember] string KeyDigest,
+    [property: DataMember] string VerificationTag,
+    [property: DataMember] string? IntentDigest,
+    [property: DataMember] IdempotencyReplayRetentionTier RetentionTier,
+    [property: DataMember] DateTimeOffset FirstConsumedAt,
+    [property: DataMember] DateTimeOffset LastObservedAt,
+    [property: DataMember] DateTimeOffset? ReplayExpiresAt,
+    [property: DataMember] long FencingToken,
+    [property: DataMember] CommandProcessingResult? ReplayResult,
+    [property: DataMember] string? ExecutionMessageId = null,
+    [property: DataMember] string? ExecutionCorrelationId = null)
 {
     /// <summary>Gets the only record schema understood by this implementation.</summary>
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 }

@@ -21,8 +21,7 @@ spec:
         maxInterval: 30s
         maxRetries: 10
     timeouts:
-      daprSidecar:
-        general: 5s
+      daprSidecar: 5s
       # Pub/sub outbound: prevent hung sidecar->broker calls from blocking actor turns
       pubsubTimeout: 10s
       # Pub/sub inbound: allow more time for subscriber processing

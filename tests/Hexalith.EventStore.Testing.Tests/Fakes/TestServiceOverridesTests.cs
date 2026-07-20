@@ -76,6 +76,18 @@ public class TestServiceOverridesTests {
             SubmitCommand command,
             CancellationToken cancellationToken = default)
             => throw new InvalidOperationException("The production command router was not replaced.");
+
+        public Task<CommandProcessingResult> RouteFencedCommandAsync(
+            SubmitCommand command,
+            IdempotencyExecutionContext executionContext,
+            CancellationToken cancellationToken = default)
+            => throw new InvalidOperationException("The production command router was not replaced.");
+
+        public Task<IdempotencyCheckResult> ReconcileFencedCommandAsync(
+            SubmitCommand command,
+            IdempotencyExecutionContext executionContext,
+            CancellationToken cancellationToken = default)
+            => throw new InvalidOperationException("The production command router was not replaced.");
     }
 
     private sealed class ThrowingProjectionActivationOutbox : IProjectionActivationOutbox {

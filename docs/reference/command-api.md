@@ -63,9 +63,13 @@ All request and response JSON properties use **camelCase** (e.g., `aggregateId`,
 
 ### Idempotency
 
-`messageId` is the command idempotency key. The gateway maps it to the command envelope's `causationId`, and the aggregate actor records terminal outcomes by that key. Resubmitting the same `messageId` returns the cached terminal result and does not append duplicate events.
+`messageId` and `idempotencyKey` have different contracts:
 
-Use a fresh `messageId` for every new intended command. Use `correlationId` or the `X-Correlation-ID` header for tracing; correlation IDs do not make two different commands idempotent.
+- `messageId` is the ULID-safe identity used by command status, archive, event metadata, and aggregate-local recovery checkpoints. It is not treated as opaque secret material.
+- `idempotencyKey` is an optional opaque logical retry scope. EventStore derives tenant/key digests and canonical intent through a registered server-owned adapter; it never persists, logs, returns, or sends the raw value downstream.
+- `correlationId` identifies the current request for tracing. It does not define idempotency.
+
+For one opaque key, equivalent retries may carry fresh public `messageId` and `correlationId` values. EventStore reuses the first writer's durable internal execution identities and current fence. A different canonical mutation conflicts. After result expiry, both equivalent and different intents receive the same consumed-key response; the key never becomes fresh again.
 
 ### API Versioning
 
@@ -89,7 +93,7 @@ Submit a command for asynchronous processing.
 
 | Field         | Type   | Required | Constraints                                                                                                                                                                                                                                     |
 | ------------- | ------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| messageId     | string | Yes      | 1-128 chars, alphanumeric + hyphens, regex `^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$`. Unique command identifier (ULID recommended). Client owns generation; used as the idempotency key.                                                       |
+| messageId     | string | Yes      | 1-128 chars, alphanumeric + hyphens, regex `^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$`. ULID-safe command, status, archive, and event identity. Client owns generation.                                                   |
 | tenant        | string | Yes      | 1-64 chars, lowercase alphanumeric + hyphens, regex `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`. Identifies the tenant context.                                                                                                                           |
 | domain        | string | Yes      | 1-64 chars, same regex as tenant. Identifies which aggregate type handles the command (e.g., `counter`, `inventory`). See [Identity Scheme](../concepts/identity-scheme.md).                                                                    |
 | aggregateId   | string | Yes      | 1-256 chars, alphanumeric + dots/hyphens/underscores, regex `^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?$`. Identifies the specific entity instance (e.g., `counter-1`, `order-42`). See [Identity Scheme](../concepts/identity-scheme.md).       |
@@ -97,6 +101,7 @@ Submit a command for asynchronous processing.
 | payload       | object | Yes      | JSON object matching the command's constructor parameters. Non-object payloads (`null`, strings, numbers, arrays, booleans) are rejected with `400`.                                                                                            |
 | correlationId | string | No       | 1-128 chars, same regex as `messageId`. Optional cross-system tracing identifier. **Defaults to `messageId` when omitted.**                                                                                                                     |
 | extensions    | object | No       | Validator first gate: max **50** entries, keys max **100** chars, values max **1000** chars, total max **64 KB**. Sanitizer second gate (stricter): max **32** entries, keys max **128** chars, values max **2048** chars, total max **4096 bytes**. No `<`, `>`, `&`, `'`, `"` characters. Blocked injection regex (alternation pipes escaped for table rendering): `` (?i)(javascript\s*:\|on\w+\s*=\|<\s*script) ``. |
+| idempotencyKey | string | No       | Opaque non-blank UTF-8 value, maximum 4,096 bytes. Accepted only for command types with a trusted server adapter. Never place this value in `messageId`, `correlationId`, `extensions`, logs, or support tickets. |
 
 ### Examples
 
@@ -114,7 +119,8 @@ $ curl -X POST https://localhost:5001/api/v1/commands \
     "domain": "counter",
     "aggregateId": "counter-1",
     "commandType": "IncrementCounter",
-    "payload": {}
+    "payload": {},
+    "idempotencyKey": "opaque-counter-adjustment-2026-07-20"
   }'
 ```
 
@@ -177,12 +183,30 @@ Content-Type: application/json
 | 403 Forbidden              | User lacks `eventstore:tenant` claim for requested tenant                                                | RFC 7807 ProblemDetails                           |
 | 404 Not Found              | Routing rejected the request before reaching the controller (e.g., unknown sub-path or pipeline 404)     | RFC 7807 ProblemDetails                           |
 | 409 Conflict               | Optimistic concurrency violation (concurrent writes to same aggregate)                                   | RFC 7807 ProblemDetails                           |
+| 409 Conflict               | Opaque key conflicts, is consumed with an expired replay, or has an unresolved provider outcome          | RFC 9457 Problem Details with stable idempotency fields |
 | 413 Payload Too Large      | Request body exceeds 1 MB limit                                                                          | —                                                 |
 | 415 Unsupported Media Type | Missing or incorrect `Content-Type` header (must be `application/json`)                                  | —                                                 |
 | 422 Unprocessable Entity   | Command was rejected by domain business rules at submit-time (synchronous rejection path)                | RFC 7807 ProblemDetails                           |
 | 429 Too Many Requests      | Per-tenant rate limit exceeded                                                                           | RFC 7807 ProblemDetails with `Retry-After` header |
 | 500 Internal Server Error  | Unhandled server exception (rare)                                                                        | RFC 7807 ProblemDetails                           |
-| 503 Service Unavailable    | Processing pipeline is temporarily unavailable (DAPR sidecar or downstream dependency down)              | RFC 7807 ProblemDetails                           |
+| 503 Service Unavailable    | Processing or admission is unavailable, corrupt/colliding, or unsafe to migrate                          | RFC 9457 Problem Details with stable idempotency fields |
+
+### Stable Idempotency Outcomes
+
+Every idempotency Problem Details response carries `code`, `category`, `retryable`, and, when applicable, `clientAction`. It contains only the current request correlation and support-safe metadata. The .NET client exposes these as typed `EventStoreGatewayException` properties; callers do not need to parse the extension bag.
+
+| HTTP | `code` | `retryable` | `clientAction` | Meaning |
+| ---- | ------ | ----------- | -------------- | ------- |
+| 409 | `idempotency_conflict` | `false` | — | The live key is bound to a different trusted canonical intent. Use the original intent or a new key. |
+| 409 | `idempotency_key_expired` | `false` | `refresh_state_then_submit_with_new_key` | The key remains consumed but its exact replay result expired. No `Retry-After` header is returned. |
+| 409 | `idempotency_outcome_unknown` | `true` | `poll_status_then_retry` | Read-only aggregate reconciliation could not yet prove the original outcome. No new execution occurred. |
+| 503 | `idempotency_admission_unavailable` | `true` | `retry_later` | Protected admission authority is temporarily unavailable. |
+| 503 | `idempotency_reconciliation_unavailable` | `true` | `retry_later` | Read-only outcome reconciliation is temporarily unavailable. |
+| 503 | `idempotency_admission_corrupt` | `false` | `contact_support` | Durable admission state cannot be interpreted safely. |
+| 503 | `idempotency_key_collision` | `false` | `contact_support` | A partition digest did not match its independent verification tag. |
+| 503 | `idempotency_unsafe_legacy_state` | `false` | `contact_support` | Legacy evidence cannot preserve consumed-key knowledge and the exact result safely. |
+
+An equivalent `pending` admission returns `202 Accepted` with the current request correlation and the first writer's stable execution `messageId`; it performs no additional domain work. A recoverable admission resumes only its persisted checkpoint under the existing fence.
 
 ### Optimistic Concurrency Retry
 
@@ -190,7 +214,7 @@ EventStore retries state-store optimistic concurrency conflicts that occur befor
 
 On each retry, the aggregate actor clears uncommitted state-manager changes, rehydrates the latest aggregate state, and invokes the domain service again. This lets domain logic observe the winning command's events before deciding whether the retried command should succeed, return `NoOp`, persist a domain rejection event, or still fail with a terminal concurrency conflict. EventStore does not retry conflicts after `EventsStored`, because the event sequence has already been committed and publication/terminal-status recovery must not re-persist events.
 
-When the retry limit is exhausted, command status is recorded as `Rejected` with `failureReason: "ConcurrencyConflict"`, and the HTTP boundary returns `409 Conflict` with `Retry-After: 1`. Idempotency records are written only for terminal outcomes; duplicate causation IDs return the cached terminal result and do not produce duplicate events.
+When the retry limit is exhausted, command status is recorded as `Rejected` with `failureReason: "ConcurrencyConflict"`, and the HTTP boundary returns `409 Conflict` with `Retry-After: 1`. For an opaque-key request, the deterministic failure is finalized as the exact replayable admission result under the current fence.
 
 **Example 400 — validation error:**
 
@@ -457,7 +481,7 @@ Health and readiness endpoints (`/health`, `/alive`, `/ready`) are excluded from
 
 ## Error Response Format
 
-All error responses use the [RFC 7807 ProblemDetails](https://tools.ietf.org/html/rfc9457) format:
+Application error responses use the [RFC 9457 Problem Details](https://www.rfc-editor.org/rfc/rfc9457.html) format:
 
 ```json
 {
@@ -491,7 +515,7 @@ All error responses use the [RFC 7807 ProblemDetails](https://tools.ietf.org/htm
 
 > **Note on shape:** `errors` is a `Dictionary<string, string>` (single message per field, not an array). Field keys are camelCase, matching the request body property casing. Deserialize as `Dictionary<string, string>` — not `Dictionary<string, string[]>`.
 >
-> Stable gateway ProblemDetails extension names are `correlationId`, `tenantId`, `errors`, `reason`, and `retryAfter`. The .NET gateway client exposes these through `EventStoreGatewayException` and preserves unknown extensions for diagnostics.
+> Stable gateway Problem Details extension names include `correlationId`, `tenantId`, `errors`, `reason`, `retryAfter`, `code`, `category`, `retryable`, and `clientAction`. The .NET gateway client exposes the idempotency fields as typed `EventStoreGatewayException` properties and preserves unknown extensions for diagnostics.
 >
 > **Note on 413/415:** `413 Payload Too Large` and `415 Unsupported Media Type` are returned by the ASP.NET Core framework before the application runs — these are raw HTTP responses, not RFC 7807 ProblemDetails.
 

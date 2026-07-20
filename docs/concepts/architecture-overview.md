@@ -8,7 +8,7 @@ This page explains how Hexalith.EventStore components work together — the serv
 
 ## What Happens When You Send a Command?
 
-When you send a command like `IncrementCounter`, it travels through a layered pipeline: the Command API Gateway authenticates and validates the request, a DAPR Actor processes it with single-threaded safety, a domain service applies your business logic as a pure function, and DAPR handles all the infrastructure work — persisting events, publishing to subscribers, and managing state. Those published events can then refresh projections that are queried through the same gateway, with ETag-based cache validation and optional SignalR notifications for real-time UIs. Your domain code never touches a database, never opens a network connection, and never knows what backend is running underneath.
+When you send a command like `IncrementCounter`, it travels through a layered pipeline: the Command API Gateway authenticates, currently authorizes, and validates the request; optional trusted idempotency admission grants one tenant/key-scoped execution fence; an Aggregate Actor processes the fence-bound command with single-threaded safety; and a domain service applies business logic as a pure function. DAPR handles durable actor state, event persistence, and publication. Those events can then refresh projections queried through the same gateway, with ETag-based cache validation and optional SignalR notifications. Your domain code never handles opaque idempotency keys, fences, databases, or brokers.
 
 The rest of this page breaks down each layer of that pipeline: the static topology (what components exist and how they connect), the DAPR building blocks (what infrastructure DAPR abstracts), and the dynamic flow (how a single command moves through the system step by step).
 
@@ -26,6 +26,7 @@ flowchart TB
         CmdSidecar(DAPR Sidecar<br/>eventstore)
         Sample[Domain Service<br/>Counter Sample]
         SampleSidecar(DAPR Sidecar<br/>sample)
+        Admission[Idempotency Admission Actors]
         Actor[Aggregate Actor]
         Query[Query Handling / Projection Access]
         SignalRHub[Projection Changed Hub]
@@ -34,8 +35,11 @@ flowchart TB
         Client -->|REST| EventStore
         ReadClient -->|REST queries| EventStore
         ReadClient <-.->|SignalR| SignalRHub
+        EventStore --> Admission
+        Admission -. signed current fence .-> Actor
         EventStore --> Actor
         EventStore --> Query
+        Admission --- CmdSidecar
         Actor --- CmdSidecar
         CmdSidecar -->|Service Invocation| SampleSidecar
         SampleSidecar --> Sample
@@ -45,6 +49,7 @@ flowchart TB
         CmdSidecar -->|Publish| PubSub{{Pub/Sub}}
         PubSub -->|Projection changed| EventStore
         CmdSidecar -->|Resolve| ConfigStore[/Config Store/]
+        Placement -->|Assign| Admission
         Placement -->|Assign| Actor
     end
 ```
@@ -54,7 +59,7 @@ flowchart TB
 
 The diagram shows the complete Hexalith.EventStore topology running inside the Aspire AppHost boundary — the same boundary you see on the Aspire dashboard when you run the quickstart.
 
-An HTTP Client (shown as a rounded shape) sends REST requests to the Command API Gateway (rectangle), which is the system's single entry point. A read-model client can call the same gateway for query execution and optionally connect to the Projection Changed Hub for lightweight refresh signals. The Command API Gateway routes commands to the Aggregate Actor (rectangle), which is the core processing unit for each aggregate identity.
+An HTTP Client sends REST requests to the Command API Gateway, which is the system's single entry point. A read-model client can call the same gateway for query execution and optionally connect to the Projection Changed Hub. For a request with an opaque idempotency key, the gateway first reaches tenant-scoped admission authority. Only an executable decision carries an internal signed fence to the Aggregate Actor; every other decision returns or fails closed without domain work.
 
 The Aggregate Actor communicates through its DAPR Sidecar (rounded rectangle, labeled "eventstore"), which handles all infrastructure interactions on the actor's behalf. The eventstore sidecar connects to three infrastructure components: a State Store (cylinder shape) for persisting events, snapshots, and actor state; a Pub/Sub component (hexagon shape) for publishing domain events to downstream subscribers; and a Config Store (parallelogram shape) for resolving which domain service handles commands for a given tenant and domain.
 
@@ -90,7 +95,8 @@ Hexalith uses the state store for:
 - **Event streams** — the ordered sequence of domain events for each aggregate, keyed by tenant, domain, and aggregate identity
 - **Snapshots** — periodic snapshots of aggregate state to speed up rehydration when the event stream grows long
 - **Command status** — tracking whether a command is pending, succeeded, or failed, with a 24-hour time-to-live
-- **Idempotency records** — detecting duplicate commands by causation ID to prevent double-processing
+- **Idempotency admission** — protected tenant/key authority, exact replay results, monotonic fences, rotation directories, legacy inventory, and metadata-only consumed-key tombstones
+- **Aggregate command checkpoints** — exact `MessageId`-keyed recovery evidence for event mutation and read-only outcome reconciliation
 
 When you sent `IncrementCounter` in the quickstart, the Aggregate Actor persisted the resulting `CounterIncremented` event to the state store through its DAPR sidecar.
 
@@ -121,7 +127,7 @@ Hexalith uses service invocation when the Command API Gateway needs to call a do
 
 The virtual actor pattern assigns a unique actor instance to each entity in your system. Actors are single-threaded — only one operation runs on a given actor at a time — which eliminates concurrency bugs for aggregate state management. DAPR manages actor lifecycle automatically: actors activate when needed and deactivate after idle periods.
 
-Hexalith uses a single actor type, `AggregateActor`, where each actor instance represents one aggregate identity (tenant + domain + aggregate ID). When you sent `IncrementCounter`, DAPR's Actor Placement service assigned the actor for your counter aggregate, and that actor processed the command exclusively — no locks, no race conditions.
+Hexalith uses several actor types with unidirectional ownership. `IdempotencyAdmissionActor` owns one protected tenant/key authority; the tenant directory serializes digest-key promotion; lifecycle and legacy-inventory actors govern deletion and migration; and `AggregateActor` alone owns event mutation for one tenant + domain + aggregate identity. Admission never calls back from the aggregate or holds an actor turn across domain/provider I/O. The handler carries a signed fence forward and validates it at each protected boundary.
 
 [Learn more about DAPR Actors](https://docs.dapr.io/developing-applications/building-blocks/actors/)
 
@@ -150,11 +156,19 @@ The Command API Gateway also hosts the DAPR Actor runtime, making it the home fo
 
 It also fronts the read side: `POST /api/v1/queries` executes a query and returns the projection payload, `POST /api/v1/queries/validate` and `POST /api/v1/commands/validate` provide preflight authorization checks, and `POST /projections/changed` invalidates cached validators after projection updates.
 
+### Idempotency Admission Authority
+
+Opaque-key admission is separate from aggregate event ownership. After authentication, current authorization, structural validation, and server-owned canonical validation, the handler derives protected tenant/key aliases with a versioned HMAC key ring. The tenant directory chooses one canonical actor across active and retained digest-key versions. That actor serializes `reserved`, `pending`, `recoverable`, `unknown_provider_outcome`, `terminal`, and `expired` classifications and persists the first writer's stable execution identities and monotonic fence.
+
+The flow is deliberately one way: handler → admission → signed execution context → router → aggregate/domain/provider → handler → admission completion. Unknown provider outcomes can ask the Aggregate Actor for an exact, read-only `MessageId` checkpoint; they cannot execute until reconciliation proves the outcome or a persisted recoverable checkpoint exists. The Aggregate Actor never calls admission, so no actor turn is held across external I/O and there is no admission/aggregate call cycle.
+
+At replay expiry, the live intent and result are atomically compacted to a fence-free metadata tombstone. Final removal is governed by tenant deletion approval, an exact 400-day interval, legal-hold pause/resume, and explicit bounded purge. Digest keys cannot retire while any live record, tombstone, directory, migration inventory, or legal-hold reference still needs them.
+
 ### Aggregate Actor
 
 The `AggregateActor` is the core processing unit. Each actor instance handles commands for exactly one aggregate identity. When a command arrives, the actor executes a 5-step pipeline:
 
-1. **Idempotency check** — look up the command's causation ID in actor state. If found, the command was already processed; return the previous result
+1. **Fence and checkpoint validation** — for an admitted command, validate the signed current fence and exact stable `MessageId`; use the aggregate-local checkpoint for recovery and read-only reconciliation
 2. **Tenant validation** — verify that the requesting tenant matches the aggregate's tenant
 3. **State rehydration** — load the most recent snapshot, then replay any events after that snapshot to reconstruct the current aggregate state
 4. **Domain service invocation** — call the domain service through DAPR service invocation, passing the command and current state. The domain service returns a result containing new events
@@ -162,7 +176,7 @@ The `AggregateActor` is the core processing unit. Each actor instance handles co
 
 This pipeline runs with single-threaded actor guarantees — no concurrent commands can execute for the same aggregate at the same time. This eliminates an entire category of concurrency bugs that are common in traditional event sourcing implementations. You do not need to implement locking, optimistic concurrency retries, or conflict resolution — the actor model handles it for you.
 
-When you sent `IncrementCounter` in the quickstart, this exact 5-step pipeline executed: the actor checked for duplicates, validated the tenant, loaded the counter state, called the Counter domain service to produce a `CounterIncremented` event, and then persisted and published that event — all within a single actor turn.
+When you sent `IncrementCounter` in the quickstart, this pipeline validated execution authority and tenant identity, loaded counter state, called the Counter domain service to produce a `CounterIncremented` event, and then persisted and published that event. The admission actor was not held during the domain call; terminal admission was completed afterward under the same fence.
 
 ### Domain Service
 
@@ -208,6 +222,7 @@ sequenceDiagram
     participant Client as HTTP Client
     participant API as Command API Gateway
     participant MediatR as MediatR Pipeline
+    participant Admission as Idempotency Admission
     participant Router as Command Router
     participant Actor as Aggregate Actor
     participant Sidecar as DAPR Sidecar
@@ -215,10 +230,14 @@ sequenceDiagram
 
     Client->>API: POST /api/v1/commands (IncrementCounter)
     API->>MediatR: Dispatch command
-    MediatR->>MediatR: Validate (FluentValidation)
+    MediatR->>MediatR: Authenticate, authorize, validate
+    opt opaque idempotencyKey supplied
+        MediatR->>Admission: Protected key + trusted canonical intent
+        Admission-->>MediatR: Exact replay / non-execute / signed fence
+    end
     MediatR->>Router: Route to actor
-    Router->>Actor: Invoke AggregateActor
-    Actor->>Actor: 1. Idempotency check
+    Router->>Actor: Invoke fence-bound AggregateActor
+    Actor->>Actor: 1. Validate fence + MessageId checkpoint
     Actor->>Actor: 2. Tenant validation
     Actor->>Actor: 3. Rehydrate state (snapshot + events)
     Actor->>Sidecar: 4. Invoke domain service
@@ -230,6 +249,7 @@ sequenceDiagram
     Actor->>Sidecar: 5c. Create snapshot (if threshold reached)
     Actor-->>Router: Command result
     Router-->>MediatR: Result
+    MediatR->>Admission: Complete exact result under same fence
     MediatR-->>API: Result
     API-->>Client: 202 Accepted + correlation ID
 ```
@@ -237,7 +257,7 @@ sequenceDiagram
 <details>
 <summary>Command flow diagram text description</summary>
 
-The flow begins when an HTTP Client sends a POST request to the Command API Gateway with an IncrementCounter command. The Command API Gateway dispatches the command into the MediatR pipeline, which first validates the command using FluentValidation rules. After validation passes, MediatR routes the command to the Command Router, which identifies the target Aggregate Actor based on the command's aggregate identity. The Command Router invokes the Aggregate Actor, which executes its 5-step pipeline: (1) idempotency check to detect duplicate commands, (2) tenant validation to confirm authorization, (3) state rehydration by loading the latest snapshot and replaying subsequent events. For step 4, the actor asks its DAPR Sidecar to invoke the Counter domain service, which receives a POST /process request containing the IncrementCounter command and the current aggregate state. The domain service processes the command with pure business logic and returns a CounterIncremented event. The event travels back through the sidecar to the actor, which then executes step 5 in three parts: (5a) persist the new event to the state store, (5b) publish the event to the pub/sub topic, and (5c) create a snapshot if the configured interval threshold has been reached. The result propagates back through the Command Router, MediatR pipeline, and Command API Gateway, which responds to the client with HTTP 202 Accepted and a correlation ID for status tracking.
+The flow begins when a client submits IncrementCounter. Authentication, current authorization, and validation precede admission-state access. If an opaque idempotency key is present, a server-owned adapter supplies canonical intent and admission either returns without execution or grants a signed current fence. The router carries that fence to the Aggregate Actor, which validates it and the exact stable `MessageId` checkpoint before tenant validation, rehydration, domain invocation, persistence, and publication. The exact result propagates back through the router and is finalized by admission under the same fence before the gateway maps the response.
 
 </details>
 

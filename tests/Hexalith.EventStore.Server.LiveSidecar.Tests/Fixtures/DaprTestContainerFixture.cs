@@ -9,6 +9,7 @@ using Dapr.Actors;
 using Dapr.Actors.Client;
 using Dapr.Client;
 
+using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Contracts.Projections;
@@ -18,6 +19,7 @@ using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
+using Hexalith.EventStore.Server.Pipeline.Commands;
 using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Testing.Fakes;
 
@@ -54,23 +56,38 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
 
     private Process? _daprProcess;
     private WebApplication? _testHost;
+    private Process? _replicaDaprProcess;
+    private WebApplication? _replicaTestHost;
     private int _appPort;
     private int _daprHttpPort;
     private int _daprGrpcPort;
     private int _daprInternalGrpcPort;
     private int _daprMetricsPort;
     private int _daprProfilePort;
+    private int _replicaAppPort;
+    private int _replicaDaprHttpPort;
+    private int _replicaDaprGrpcPort;
+    private int _replicaDaprInternalGrpcPort;
+    private int _replicaDaprMetricsPort;
+    private int _replicaDaprProfilePort;
     private string? _componentsDir;
 
     private string? _previousDaprHttpPort;
     private string? _previousDaprGrpcPort;
     private readonly StringBuilder _daprStdout = new();
     private readonly StringBuilder _daprStderr = new();
+    private readonly StringBuilder _replicaDaprStdout = new();
+    private readonly StringBuilder _replicaDaprStderr = new();
     private volatile bool _hostStopping;
     private string? _hostStopStackTrace;
 
     /// <summary>Gets the Dapr HTTP endpoint for test clients.</summary>
     public string DaprHttpEndpoint => $"http://localhost:{_daprHttpPort}";
+
+    /// <summary>Gets the second Dapr HTTP endpoint after <see cref="EnsureReplicaAsync"/> completes.</summary>
+    public string ReplicaDaprHttpEndpoint => _replicaDaprProcess is not null
+        ? $"http://localhost:{_replicaDaprHttpPort}"
+        : throw new InvalidOperationException("The live-sidecar replica has not started.");
 
     /// <summary>Gets the isolated Dapr application ID used by this fixture run.</summary>
     public string AppId { get; } = $"eventstore-live-{Guid.NewGuid():N}";
@@ -99,6 +116,10 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
     /// <summary>Gets the running test host services.</summary>
     public IServiceProvider Services => _testHost?.Services
         ?? throw new InvalidOperationException("The live-sidecar test host has not started.");
+
+    /// <summary>Gets the second host services after <see cref="EnsureReplicaAsync"/> completes.</summary>
+    public IServiceProvider ReplicaServices => _replicaTestHost?.Services
+        ?? throw new InvalidOperationException("The live-sidecar replica host has not started.");
 
     /// <inheritdoc/>
     public async ValueTask InitializeAsync()
@@ -154,9 +175,12 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         }
     }
 
-    private async Task ActivateProjectionDeliveryWriterProtocolAsync()
+    private Task ActivateProjectionDeliveryWriterProtocolAsync()
+        => ActivateProjectionDeliveryWriterProtocolAsync(Services);
+
+    private static async Task ActivateProjectionDeliveryWriterProtocolAsync(IServiceProvider services)
     {
-        IProjectionDeliveryCutover cutover = Services.GetRequiredService<IProjectionDeliveryCutover>();
+        IProjectionDeliveryCutover cutover = services.GetRequiredService<IProjectionDeliveryCutover>();
         ProjectionDeliveryCutoverStatus status = await cutover.ActivateAsync(
             new ProjectionDeliveryCutoverRequest(
                 "2794ecba4c435de5e53603aa6080b8d32d669858",
@@ -272,6 +296,59 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
     }
 
     /// <summary>
+    /// Starts a second application host and sidecar under the same Dapr application identity and
+    /// actor state store. The replica is created only for tests that require a real multi-host
+    /// placement topology.
+    /// </summary>
+    public async Task EnsureReplicaAsync()
+    {
+        if (_replicaTestHost is not null || _replicaDaprProcess is not null)
+        {
+            return;
+        }
+
+        int[] ports = GetAvailablePorts(6);
+        _replicaAppPort = ports[0];
+        _replicaDaprHttpPort = ports[1];
+        _replicaDaprGrpcPort = ports[2];
+        _replicaDaprInternalGrpcPort = ports[3];
+        _replicaDaprMetricsPort = ports[4];
+        _replicaDaprProfilePort = ports[5];
+
+        Environment.SetEnvironmentVariable("DAPR_HTTP_PORT", _replicaDaprHttpPort.ToString());
+        Environment.SetEnvironmentVariable("DAPR_GRPC_PORT", _replicaDaprGrpcPort.ToString());
+        try
+        {
+            await StartReplicaTestHostAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("DAPR_HTTP_PORT", _daprHttpPort.ToString());
+            Environment.SetEnvironmentVariable("DAPR_GRPC_PORT", _daprGrpcPort.ToString());
+        }
+
+        StartReplicaDaprSidecar();
+        await WaitForReplicaDaprHealthAsync().ConfigureAwait(false);
+        await Task.Delay(2000).ConfigureAwait(false);
+        await VerifyReplicaAppListeningAsync().ConfigureAwait(false);
+        await ActivateProjectionDeliveryWriterProtocolAsync(ReplicaServices).ConfigureAwait(false);
+    }
+
+    /// <summary>Removes the primary host and sidecar while leaving the shared durable state intact.</summary>
+    public async Task StopPrimaryHostAndSidecarAsync()
+    {
+        await StopDaprSidecarAsync().ConfigureAwait(false);
+        await StopTestHostAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>Stops the on-demand replica without removing shared durable state.</summary>
+    public async Task StopReplicaHostAndSidecarAsync()
+    {
+        await StopReplicaDaprSidecarAsync().ConfigureAwait(false);
+        await StopReplicaTestHostAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Configures the domain service invoker with Counter domain responses for integration tests.
     /// </summary>
     public void SetupCounterDomain()
@@ -357,6 +434,8 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
 
     private async ValueTask DisposeTestResourcesAsync()
     {
+        await StopReplicaDaprSidecarAsync().ConfigureAwait(false);
+        await StopReplicaTestHostAsync().ConfigureAwait(false);
         await StopDaprSidecarAsync().ConfigureAwait(false);
         await StopTestHostAsync().ConfigureAwait(false);
 
@@ -387,6 +466,18 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         _daprProcess = null;
     }
 
+    private async Task StopReplicaDaprSidecarAsync()
+    {
+        if (_replicaDaprProcess is not null && !_replicaDaprProcess.HasExited)
+        {
+            _replicaDaprProcess.Kill(entireProcessTree: true);
+            await _replicaDaprProcess.WaitForExitAsync().ConfigureAwait(false);
+        }
+
+        _replicaDaprProcess?.Dispose();
+        _replicaDaprProcess = null;
+    }
+
     private async Task StopTestHostAsync()
     {
         if (_testHost is null)
@@ -397,6 +488,18 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         await _testHost.StopAsync().ConfigureAwait(false);
         await _testHost.DisposeAsync().ConfigureAwait(false);
         _testHost = null;
+    }
+
+    private async Task StopReplicaTestHostAsync()
+    {
+        if (_replicaTestHost is null)
+        {
+            return;
+        }
+
+        await _replicaTestHost.StopAsync().ConfigureAwait(false);
+        await _replicaTestHost.DisposeAsync().ConfigureAwait(false);
+        _replicaTestHost = null;
     }
 
     private void RestoreDaprPortEnvironment()
@@ -511,6 +614,69 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         }
     }
 
+    private void StartReplicaDaprSidecar()
+    {
+        string daprdPath = ResolveDaprdPath();
+
+        _replicaDaprProcess = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = daprdPath,
+                Arguments = string.Join(' ',
+                    "--app-id", AppId,
+                    "--app-port", _replicaAppPort.ToString(),
+                    "--app-protocol", "http",
+                    "--app-channel-address", "127.0.0.1",
+                    "--dapr-http-port", _replicaDaprHttpPort.ToString(),
+                    "--dapr-grpc-port", _replicaDaprGrpcPort.ToString(),
+                    "--dapr-internal-grpc-port", _replicaDaprInternalGrpcPort.ToString(),
+                    "--metrics-port", _replicaDaprMetricsPort.ToString(),
+                    "--profile-port", _replicaDaprProfilePort.ToString(),
+                    "--resources-path", $"\"{_componentsDir}\"",
+                    "--log-level", "info",
+                    "--placement-host-address", $"localhost:{PlacementPort}",
+                    "--scheduler-host-address", $"localhost:{SchedulerPort}"),
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+            },
+            EnableRaisingEvents = true,
+        };
+
+        _replicaDaprProcess.OutputDataReceived += (_, e) =>
+        {
+            if (e.Data is not null)
+            {
+                lock (_replicaDaprStdout)
+                {
+                    _ = _replicaDaprStdout.AppendLine(e.Data);
+                }
+            }
+        };
+        _replicaDaprProcess.ErrorDataReceived += (_, e) =>
+        {
+            if (e.Data is not null)
+            {
+                lock (_replicaDaprStderr)
+                {
+                    _ = _replicaDaprStderr.AppendLine(e.Data);
+                }
+            }
+        };
+
+        _ = _replicaDaprProcess.Start();
+        _replicaDaprProcess.BeginOutputReadLine();
+        _replicaDaprProcess.BeginErrorReadLine();
+        if (_replicaDaprProcess.HasExited)
+        {
+            throw new InvalidOperationException(
+                $"Replica daprd exited immediately with code {_replicaDaprProcess.ExitCode}.\n" +
+                $"stderr: {GetCapturedReplicaStderr()}");
+        }
+    }
+
     private static string ResolveDaprdPath()
     {
         string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
@@ -536,6 +702,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         builder.Configuration["EventStore:ProjectionDispatch:RetryWorkerInterval"] = "00:10:00";
         builder.Configuration["EventStore:DomainService:AppId"] = AppId;
         builder.Configuration["EventStore:DomainService:ServiceVersion"] = "v1";
+        ConfigureIdempotencyAdmission(builder);
 
         _ = builder.WebHost.ConfigureKestrel(serverOptions => serverOptions.ListenLocalhost(_appPort, listenOptions => listenOptions.Protocols = HttpProtocols.Http1));
 
@@ -544,6 +711,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
                 .UseHttpEndpoint(DaprHttpEndpoint)
                 .UseGrpcEndpoint(DaprGrpcEndpoint)
                 .Build());
+        _ = builder.Services.AddSingleton<IIdempotencyIntentAdapter, LiveIncrementCounterIdempotencyIntentAdapter>();
         _ = builder.Services.AddEventStoreServer(builder.Configuration);
         _ = builder.Services.AddSingleton<DomainProjectionCatalogRegistry>();
         _ = builder.Services.AddOptions<DomainProjectionIdentityOptions>()
@@ -669,6 +837,52 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         }
     }
 
+    private async Task StartReplicaTestHostAsync()
+    {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions());
+
+        builder.Configuration["DAPR_HTTP_PORT"] = _replicaDaprHttpPort.ToString();
+        builder.Configuration["DAPR_GRPC_PORT"] = _replicaDaprGrpcPort.ToString();
+        builder.Configuration["Dapr:HttpPort"] = _replicaDaprHttpPort.ToString();
+        builder.Configuration["Dapr:GrpcPort"] = _replicaDaprGrpcPort.ToString();
+        builder.Configuration["EventStore:Actors:AggregateActorTypeName"] = AggregateActorTypeName;
+        builder.Configuration["EventStore:ProjectionDispatch:RetryWorkerInterval"] = "00:10:00";
+        builder.Configuration["EventStore:DomainService:AppId"] = AppId;
+        builder.Configuration["EventStore:DomainService:ServiceVersion"] = "v1";
+        ConfigureIdempotencyAdmission(builder);
+
+        _ = builder.WebHost.ConfigureKestrel(serverOptions => serverOptions.ListenLocalhost(
+            _replicaAppPort,
+            listenOptions => listenOptions.Protocols = HttpProtocols.Http1));
+
+        _ = builder.Services.AddSingleton(
+            new DaprClientBuilder()
+                .UseHttpEndpoint($"http://localhost:{_replicaDaprHttpPort}")
+                .UseGrpcEndpoint($"http://localhost:{_replicaDaprGrpcPort}")
+                .Build());
+        _ = builder.Services.AddSingleton<IIdempotencyIntentAdapter, LiveIncrementCounterIdempotencyIntentAdapter>();
+        _ = builder.Services.AddEventStoreServer(builder.Configuration);
+        _ = builder.Services.AddSingleton<IDomainServiceInvoker>(DomainServiceInvoker);
+        _ = builder.Services.AddSingleton<IEventPublisher>(EventPublisher);
+        _ = builder.Services.AddSingleton<IDeadLetterPublisher>(DeadLetterPublisher);
+        _ = builder.Services.AddSingleton<ICommandStatusStore>(CommandStatusStore);
+        _ = builder.Services.Configure<SnapshotOptions>(o => o.DomainIntervals["counter"] = 15);
+
+        _replicaTestHost = builder.Build();
+        _ = _replicaTestHost.MapActorsHandlers();
+        _ = _replicaTestHost.MapGet("/healthz", () => Microsoft.AspNetCore.Http.Results.Ok("healthy"));
+        await _replicaTestHost.StartAsync().ConfigureAwait(false);
+    }
+
+    private static void ConfigureIdempotencyAdmission(WebApplicationBuilder builder)
+    {
+        builder.Configuration["EventStore:IdempotencyAdmission:Enabled"] = "true";
+        builder.Configuration["EventStore:IdempotencyAdmission:ActiveDigestKeyVersion"] = "live-v1";
+        builder.Configuration["EventStore:IdempotencyAdmission:DigestKeySource"] = "Configuration";
+        builder.Configuration["EventStore:IdempotencyAdmission:DigestKeys:live-v1"] =
+            "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=";
+    }
+
     private string GetAggregateActorRedisKey(string key)
     {
         string[] segments = key.Split(':', 4);
@@ -783,6 +997,48 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         throw new InvalidOperationException(diagnostics);
     }
 
+    private async Task WaitForReplicaDaprHealthAsync()
+    {
+        using var httpClient = new HttpClient();
+        string healthUrl = $"http://localhost:{_replicaDaprHttpPort}/v1.0/healthz/outbound";
+        HttpStatusCode lastStatus = default;
+        string? lastError = null;
+        for (int i = 0; i < HealthTimeoutSeconds; i++)
+        {
+            if (_replicaDaprProcess?.HasExited == true)
+            {
+                throw new InvalidOperationException(
+                    $"Replica daprd exited with code {_replicaDaprProcess.ExitCode} during health check.\n" +
+                    $"stdout:\n{GetCapturedReplicaStdout()}\n" +
+                    $"stderr:\n{GetCapturedReplicaStderr()}");
+            }
+
+            try
+            {
+                HttpResponseMessage response = await httpClient.GetAsync(healthUrl).ConfigureAwait(false);
+                lastStatus = response.StatusCode;
+                if (response.IsSuccessStatusCode)
+                {
+                    return;
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                lastError = ex.Message;
+            }
+
+            await Task.Delay(1000).ConfigureAwait(false);
+        }
+
+        throw new InvalidOperationException(
+            $"Replica Dapr sidecar did not become healthy within {HealthTimeoutSeconds} seconds.\n" +
+            $"Health endpoint: {healthUrl}\n" +
+            $"Last HTTP status: {lastStatus}\n" +
+            $"Last connection error: {lastError ?? "(none)"}\n" +
+            $"--- replica daprd stdout (last 2000 chars) ---\n{TailString(GetCapturedReplicaStdout(), 2000)}\n" +
+            $"--- replica daprd stderr (last 2000 chars) ---\n{TailString(GetCapturedReplicaStderr(), 2000)}");
+    }
+
     private string GetCapturedStdout()
     {
         lock (_daprStdout)
@@ -796,6 +1052,22 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         lock (_daprStderr)
         {
             return _daprStderr.ToString();
+        }
+    }
+
+    private string GetCapturedReplicaStdout()
+    {
+        lock (_replicaDaprStdout)
+        {
+            return _replicaDaprStdout.ToString();
+        }
+    }
+
+    private string GetCapturedReplicaStderr()
+    {
+        lock (_replicaDaprStderr)
+        {
+            return _replicaDaprStderr.ToString();
         }
     }
 
@@ -887,5 +1159,69 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
             $"Ports: app={_appPort}, daprHttp={_daprHttpPort}, daprGrpc={_daprGrpcPort}\n" +
             $"--- daprd stdout (last 2000 chars) ---\n{TailString(GetCapturedStdout(), 2000)}\n" +
             $"--- daprd stderr (last 2000 chars) ---\n{TailString(GetCapturedStderr(), 2000)}");
+    }
+
+    private async Task VerifyReplicaAppListeningAsync()
+    {
+        using var httpClient = new HttpClient
+        {
+            Timeout = TimeSpan.FromSeconds(3),
+        };
+        string healthUrl = $"http://127.0.0.1:{_replicaAppPort}/healthz";
+        string? lastError = null;
+        for (int i = 0; i < 30; i++)
+        {
+            try
+            {
+                HttpResponseMessage response = await httpClient.GetAsync(healthUrl).ConfigureAwait(false);
+                if (response.IsSuccessStatusCode)
+                {
+                    return;
+                }
+
+                lastError = $"HTTP {(int)response.StatusCode}";
+            }
+            catch (HttpRequestException ex)
+            {
+                lastError = ex.Message;
+            }
+            catch (TaskCanceledException)
+            {
+                lastError = "Request timed out";
+            }
+
+            await Task.Delay(200).ConfigureAwait(false);
+        }
+
+        throw new InvalidOperationException(
+            $"Replica test host HTTP check failed on {healthUrl} after 30 attempts.\n" +
+            $"Last HTTP error: {lastError}\n" +
+            $"--- replica daprd stdout (last 2000 chars) ---\n{TailString(GetCapturedReplicaStdout(), 2000)}\n" +
+            $"--- replica daprd stderr (last 2000 chars) ---\n{TailString(GetCapturedReplicaStderr(), 2000)}");
+    }
+}
+
+internal sealed class LiveIncrementCounterIdempotencyIntentAdapter : IIdempotencyIntentAdapter
+{
+    public string CommandType => "IncrementCounter";
+
+    public string AdapterId => "live-counter";
+
+    public string OperationId => "increment-counter";
+
+    public int DescriptorVersion => 1;
+
+    public IdempotencyReplayRetentionTier RetentionTier => IdempotencyReplayRetentionTier.Mutation;
+
+    public IdempotencyCanonicalIntent CreateIntent(SubmitCommand command)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        return new IdempotencyCanonicalIntent(
+            $"{command.Tenant}/{command.Domain}/{command.AggregateId}",
+            command.Payload,
+            SemanticOptions: null,
+            PolicyVersion: "live-test-v1",
+            DelegatedTaskScope: null,
+            CredentialScope: null);
     }
 }

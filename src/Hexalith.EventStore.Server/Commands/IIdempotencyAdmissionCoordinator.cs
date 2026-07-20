@@ -16,6 +16,12 @@ public interface IIdempotencyAdmissionCoordinator
         IdempotencyAdmissionSession session,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Validates the signed current-fence capability against an exact execution boundary.</summary>
+    Task ValidateExecutionAsync(
+        IdempotencyAdmissionSession session,
+        SubmitCommand command,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Finalizes the command result under the active fence.</summary>
     Task CompleteAsync(
         IdempotencyAdmissionSession session,

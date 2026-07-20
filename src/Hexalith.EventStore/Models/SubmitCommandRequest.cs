@@ -5,7 +5,7 @@ namespace Hexalith.EventStore.Models;
 /// <summary>
 /// Compatibility wrapper for the public command gateway request contract.
 /// </summary>
-/// <param name="MessageId">The unique command identity and idempotency key (ULID string). Required — client owns generation (FR49).</param>
+/// <param name="MessageId">The unique ULID-safe command, status, archive, and event identity. Required — client owns generation (FR49).</param>
 /// <param name="Tenant">The tenant identifier.</param>
 /// <param name="Domain">The domain name.</param>
 /// <param name="AggregateId">The aggregate identifier.</param>
@@ -13,7 +13,7 @@ namespace Hexalith.EventStore.Models;
 /// <param name="Payload">The serialized command payload.</param>
 /// <param name="CorrelationId">Optional correlation identifier for cross-system tracing (FR4). Defaults to MessageId when not provided.</param>
 /// <param name="Extensions">Optional extension metadata.</param>
-/// <param name="Idempotency">Optional trusted canonical idempotency descriptor supplied by a registered domain adapter.</param>
+/// <param name="IdempotencyKey">Optional caller-supplied opaque idempotency key. EventStore never interprets or persists the raw value.</param>
 public record SubmitCommandRequest(
     string MessageId,
     string Tenant,
@@ -23,7 +23,7 @@ public record SubmitCommandRequest(
     JsonElement Payload,
     string? CorrelationId = null,
     Dictionary<string, string>? Extensions = null,
-    Hexalith.EventStore.Contracts.Commands.CanonicalIdempotencyDescriptor? Idempotency = null)
+    string? IdempotencyKey = null)
     : Hexalith.EventStore.Contracts.Commands.SubmitCommandRequest(
         MessageId,
         Tenant,
@@ -33,4 +33,4 @@ public record SubmitCommandRequest(
         Payload,
         CorrelationId,
         Extensions,
-        Idempotency);
+        IdempotencyKey);

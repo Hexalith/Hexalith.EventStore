@@ -5,10 +5,14 @@ namespace Hexalith.EventStore.Server.Commands;
 /// <param name="FencingToken">The active fence.</param>
 /// <param name="Decision">The admission decision.</param>
 /// <param name="ReplayResult">The optional replay result.</param>
-/// <param name="ExecutionMessageId">An opaque per-execution downstream message identifier unrelated to protected key material.</param>
+/// <param name="ExecutionContext">The internal signed current-fence capability for execute decisions.</param>
+/// <param name="ExecutionMessageId">The persisted stable execution identity for live states.</param>
+/// <param name="ExecutionCorrelationId">The persisted stable aggregate-checkpoint identity for live states.</param>
 public sealed record IdempotencyAdmissionSession(
     string ActorId,
     long FencingToken,
     Actors.IdempotencyAdmissionDecision Decision,
     Actors.CommandProcessingResult? ReplayResult = null,
-    string? ExecutionMessageId = null);
+    IdempotencyExecutionContext? ExecutionContext = null,
+    string? ExecutionMessageId = null,
+    string? ExecutionCorrelationId = null);

@@ -77,6 +77,37 @@ public class CommandIdentityConflictTests
     }
 
     [Fact]
+    public async Task ExceptionHandler_AdmissionFailure_ReturnsTypedSupportSafeContract()
+    {
+        var handler = new IdempotencyAdmissionFailureExceptionHandler(
+            NullLogger<IdempotencyAdmissionFailureExceptionHandler>.Instance);
+        var context = new DefaultHttpContext();
+        context.Response.Body = new MemoryStream();
+        var exception = new IdempotencyAdmissionFailureException(
+            "trace-current",
+            "idempotency_outcome_unknown",
+            "idempotency_outcome_unknown",
+            retryable: true,
+            "poll_status_then_retry",
+            StatusCodes.Status409Conflict,
+            "The original mutation outcome remains unknown. Poll status before retrying.");
+
+        bool handled = await handler.TryHandleAsync(context, exception, CancellationToken.None);
+
+        handled.ShouldBeTrue();
+        context.Response.StatusCode.ShouldBe(StatusCodes.Status409Conflict);
+        context.Response.Headers.RetryAfter.ToString().ShouldBe("1");
+        context.Response.Body.Position = 0;
+        using JsonDocument document = await JsonDocument.ParseAsync(context.Response.Body);
+        JsonElement root = document.RootElement;
+        root.GetProperty("code").GetString().ShouldBe("idempotency_outcome_unknown");
+        root.GetProperty("category").GetString().ShouldBe("idempotency_outcome_unknown");
+        root.GetProperty("retryable").GetBoolean().ShouldBeTrue();
+        root.GetProperty("clientAction").GetString().ShouldBe("poll_status_then_retry");
+        root.GetProperty("correlationId").GetString().ShouldBe("trace-current");
+    }
+
+    [Fact]
     public async Task SubmitCommandHandler_IdentityConflict_ThrowsDedicatedExceptionWithoutRejectedStatus()
     {
         var statusStore = new InMemoryCommandStatusStore();

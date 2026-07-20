@@ -55,6 +55,37 @@ public partial class IdempotencyChecker(
     }
 
     /// <inheritdoc/>
+    public async Task<IdempotencyCheckResult> InspectAsync(CommandProcessingIdentity identity)
+    {
+        ArgumentNullException.ThrowIfNull(identity);
+        identity.Validate();
+        ConditionalValue<IdempotencyRecord> stored = await stateManager
+            .TryGetStateAsync<IdempotencyRecord>(GetKey(identity.MessageId))
+            .ConfigureAwait(false);
+        if (!stored.HasValue)
+        {
+            return new IdempotencyCheckResult(IdempotencyCheckOutcome.Miss);
+        }
+
+        IdempotencyRecord record = stored.Value;
+        if (!identity.Matches(record.MessageId, record.CausationId, record.CommandType)
+            || record.Disposition is null
+            || record.ExpiresAt is null)
+        {
+            return new IdempotencyCheckResult(IdempotencyCheckOutcome.IdentityConflict);
+        }
+
+        if (record.ExpiresAt <= TimeProvider.GetUtcNow())
+        {
+            return new IdempotencyCheckResult(IdempotencyCheckOutcome.Expired);
+        }
+
+        return record.Disposition == IdempotencyRecordDisposition.Recoverable
+            ? new IdempotencyCheckResult(IdempotencyCheckOutcome.RetryableRecoverable, record.ToResult())
+            : new IdempotencyCheckResult(IdempotencyCheckOutcome.ExactTerminalDuplicate, record.ToResult());
+    }
+
+    /// <inheritdoc/>
     public async Task RecordAsync(
         CommandProcessingIdentity identity,
         CommandProcessingResult result,
