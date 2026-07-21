@@ -379,7 +379,7 @@ _All items LOW / non-blocking. Story 2.7 accepted (all AC1–AC7 met; Release bu
 ## Deferred from: Story 1.20 current-HEAD source-topology gate (2026-07-17)
 
 - source_spec: `_bmad-output/implementation-artifacts/2-7-tenants-compatibility-and-package-mode-validation.md`
-  status: open-blocking
+  status: implementation-complete/evidence-confirmed
   owner: EventStore Story 2.7
   summary: Reconcile stale sample domain registrations and prove Tenants handler routing in the real source topology before selecting the Story 1.20 runtime.
   evidence:
@@ -387,6 +387,14 @@ _All items LOW / non-blocking. Story 2.7 accepted (all AC1–AC7 met; Release bu
     - the corrected exact-source run at `772cdfefa8163704de0f57042af5b0507c1ac771` compiled the Tenants resource and reproduced twice as 0/1 with HTTP 404 / `query_projection_missing`;
     - Tenants operational-metadata calls returned HTTP 200, but merged base configuration still registers `orders` and `inventory` against the sample service while the current sample discovers only `counter` and `greeting`;
     - an absent configured binding makes `AdminOperationalIndexHostedService` log Event 6101 and skip every derived index write, including `admin:query-types:tenants`, so `list-tenants` falls back to a nonexistent projection.
+  closure_evidence:
+    - root cause fixed on `main` by commit `fd8ab24da230058f2f239765b68d5e0a135b4b76`, which removed the stale `tenant-a|orders|v1` and `tenant-b|inventory|v1` registrations from `src/Hexalith.EventStore/appsettings.Development.json` (no `orders`/`inventory` remain in the EventStore host `DomainServices:Registrations`; the residual `orders`/`inventory` in `KeycloakRealms/hexalith-realm.json` are unrelated JWT auth attributes);
+    - proved 2026-07-20 on clean source SHA `4f4906b3f30a3d4ed2658effc1c4f189f2f647c0` (contains `fd8ab24d`) in Debug/project-reference mode with only root-declared submodules initialized;
+    - command: `dotnet test tests/Hexalith.EventStore.IntegrationTests/Hexalith.EventStore.IntegrationTests.csproj -p:UseHexalithProjectReferences=true -p:UseSharedCompilation=false --filter "FullyQualifiedName~QueryResponseProvenanceE2ETests"`;
+    - build compiled `Hexalith.Tenants` and the `tenants` AppHost resource from source (project references, not package mode); topology started on a placement freed of the concurrent Tenants Aspire session;
+    - result: `QueryResponseProvenanceE2ETests.LiveHandlerRoute_WithCurrentProjectionValidator_NeutralizesProjectionEvidence` PASSED (Total 1, Passed 1, Failed 0, Skipped 0); the test restarts EventStore with `admin:query-types:tenants` cleared, waits for the `tenants` resource healthy, then asserts `list-tenants` returns HTTP 200 with `HandlerComputed` provenance and no ETag/projection-version/is-stale evidence, and that persisted Redis `admin:query-types:tenants` rebuilt from live metadata contains `list-tenants`;
+    - raw artifacts captured this session as `source-topology-provenance.trx` / `source-topology-provenance.2.log` (ephemeral scratchpad); re-capture durably if `4f4906b3` (or a descendant preserving this behavior) is the selected Story 1.20 runtime.
+  consequence: The stale-registration / `query_projection_missing` blocker no longer prevents crediting the handler-provenance lane at source SHA `4f4906b3`. This closure records prerequisite evidence only; it does NOT authorize Story 1.20 consumer migration, and all Tenants/EventStore/Builds identity changes remain blocked per closure step 4. Per reopen_trigger, any Story 1.20 runtime selection of a different SHA must re-run this exact-source proof against that SHA.
   closure:
     1. Compile the query-provenance E2E with `UseHexalithProjectReferences=true` and only root-declared submodules initialized.
     2. Remove or correctly environment-scope stale sample registrations, or otherwise reconcile absent configured bindings without weakening fail-closed handling for genuine metadata failures.
