@@ -551,6 +551,32 @@ writer-protocol-v2 marker for exact source commit `97665d4606725478f60f55cfc285d
 This review closure validates only the separately scoped prerequisite corrections and does not
 override Story 1.20's external evidence and named-approval gates.
 
+#### 2026-07-21 — Docker/Dapr exact-gate unblock
+
+- Confirmed Docker 29.6.1, Dapr CLI 1.18.0/runtime 1.18.1, the four self-hosted Dapr
+  infrastructure containers, and the complete source Aspire topology were healthy before the
+  detached gate attempt. The Aspire application topology was then stopped cleanly so no reserved
+  app ID could contaminate the proof.
+- Clean official-main candidate `4cb7738d6cfad8a9a99638644ac5de77f902245e` passed AD-11,
+  all Story 1.11-1.19 capability lanes, the warning-free Release solution build, broad project
+  suites, and the browser E2E lane. Its 258-test Debug/source integration assembly failed only
+  `TenantBootstrapHealthTests` after the Redis chaos collection: 257 passed, one failed, zero
+  skipped. The same bootstrap test passed 1/1 in isolation.
+- A deterministic same-fixture sequence reproduced the failure at 3/4 passed. Redis container
+  logs established that the default Docker stop deadline killed Redis while it was saving the
+  final snapshot for a roughly 2 GB, 1,017,331-key data set. Restart then loaded an older RDB and
+  lost the just-persisted bootstrap event.
+- Corrected the chaos harness to allow a 90-second graceful Redis stop and to wait for
+  `redis-cli PING`/`PONG`, not merely an open TCP port. The deterministic sequence then passed
+  4/4 in 97.347 seconds.
+- Added an optional `R10A2_EVIDENCE_DIRECTORY` boundary to the SignalR runtime proof and set it
+  to the detached evidence root in the mandatory harness. The proof passed 1/1 in 187.403 seconds
+  and left no generated file in the candidate checkout.
+- The complete patched Debug/source integration assembly passed 258/258 with zero skips in
+  1,450.691 seconds. The proof-packet integrity suite passed 3/3, and every fenced Bash block
+  passed `bash -n`. This is corrective working-tree evidence, not an exact committed runtime
+  authorization: a fresh committed candidate must rerun the protocol from zero.
+
 ### Completion Notes
 
 - Story remains fail-closed and non-authorizing. Runtime and test corrections in the candidate
@@ -588,6 +614,11 @@ override Story 1.20's external evidence and named-approval gates.
   live-sidecar persistence proof passed 1/1. xUnit test methods use `ConfigureAwait(true)` as
   required by xUnit1030, while fixture and non-test helper awaits retain `ConfigureAwait(false)`.
   This review closure does not satisfy the external Story 1.20 gates.
+- Completed the user-requested Docker/Dapr unblock. The Redis chaos/tenant-bootstrap regression
+  now passes both its deterministic 4-test sequence and the complete 258-test source-topology
+  assembly, and SignalR evidence can be routed outside the candidate checkout. The corrections
+  remain uncommitted, so no clean exact runtime SHA, publication, approval, or migration authority
+  is claimed.
 
 ## File List
 
@@ -621,6 +652,8 @@ traceability; it does not reclassify that path as a Story 1.20 implementation de
 - `src/Hexalith.EventStore.Server/DomainServices/DomainServiceOptions.cs`
 - `src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj`
 - `src/Hexalith.EventStore.Testing/Fakes/TestServiceOverrides.cs`
+- `tests/Hexalith.EventStore.IntegrationTests/ContractTests/ChaosResilienceTests.cs`
+- `tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRRedisBackplaneRuntimeProofTests.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/ContractTests/TenantBootstrapHealthTests.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/EventStore/ConcurrencyConflictIntegrationTests.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspireContractTestCollection.cs`
@@ -644,6 +677,7 @@ traceability; it does not reclassify that path as a Story 1.20 implementation de
 
 | Date | Phase | Test-method delta | Verification | File-list reconciliation |
 | --- | --- | ---: | --- | --- |
+| 2026-07-21 | Docker/Dapr exact-gate unblock on official-main base `4cb7738d6cfad8a9a99638644ac5de77f902245e` | `+0` | RED: deterministic Redis-chaos/bootstrap sequence 3/4; GREEN: 4/4 in 97.347s. SignalR external-evidence proof 1/1 in 187.403s. Complete patched Debug/source integration assembly 258/258, zero skipped, in 1,450.691s. Integration project source-mode Debug build: 0 warnings/errors. Proof-packet integrity 3/3; all fenced Bash passed `bash -n`. | Added the Redis chaos harness, SignalR runtime-proof evidence boundary, and proof-packet harness paths. Story remains `blocked`; the working-tree corrections require a new committed exact candidate and a full restart of the protocol. |
 | 2026-07-21 | Ledger adoption baseline for the user-approved direct Story 1.20 corrective pass at `014bd00a9ef6d3eac2e4900feedbedc093fab188` | `+0` (planned `+6..+9`) | Release builds passed with 0 warnings/errors. Runner discovery: Server `2560` methods (`DaprDomainServiceInvokerTests=28`, `EventStoreServerServiceCollectionExtensionsTests=7`); Integration `234` methods (`TenantBootstrapHealthTests=1`, `ConcurrencyConflictIntegrationTests=11`). Commands: `dotnet exec tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll -list methods -noLogo`; `dotnet exec tests/Hexalith.EventStore.IntegrationTests/bin/Release/net10.0/Hexalith.EventStore.IntegrationTests.dll -list methods -noLogo`. | Current adoption delta `0/0` paths against `014bd00a...`; the existing File List remains the legacy pre-adoption traceability inventory. Story remains `blocked` / sprint `in-progress`; this phase cannot authorize migration. |
 
 ### Legacy narrative

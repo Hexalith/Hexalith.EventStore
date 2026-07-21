@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 
@@ -213,7 +212,14 @@ public class ChaosResilienceTests {
     private static async Task StopDaprRedisAsync(CancellationToken cancellationToken) {
         await EnsureDockerRedisContainerAvailableAsync(cancellationToken);
 
-        ProcessResult result = await RunDockerAsync(cancellationToken, "stop", DaprRedisContainerName);
+        // Redis persists its final RDB snapshot during graceful shutdown. The Docker default
+        // stop timeout can kill a large local Dapr data set before that save completes, which
+        // silently rolls the next start back to an older snapshot and invalidates the chaos proof.
+        ProcessResult result = await RunDockerAsync(
+            cancellationToken,
+            "stop",
+            "--timeout=90",
+            DaprRedisContainerName);
         result.ExitCode.ShouldBe(
             0,
             $"Unable to stop {DaprRedisContainerName}. stdout: {result.StandardOutput}; stderr: {result.StandardError}");
@@ -227,7 +233,7 @@ public class ChaosResilienceTests {
             0,
             $"Unable to start {DaprRedisContainerName}. stdout: {result.StandardOutput}; stderr: {result.StandardError}");
 
-        await WaitForRedisPortAsync(cancellationToken);
+        await WaitForRedisReadyAsync(cancellationToken);
     }
 
     private static async Task EnsureDockerRedisContainerAvailableAsync(CancellationToken cancellationToken) {
@@ -239,29 +245,28 @@ public class ChaosResilienceTests {
         }
     }
 
-    private static async Task WaitForRedisPortAsync(CancellationToken cancellationToken) {
+    private static async Task WaitForRedisReadyAsync(CancellationToken cancellationToken) {
         DateTimeOffset deadline = DateTimeOffset.UtcNow.Add(s_resourceRecoveryTimeout);
-        Exception? lastError = null;
+        ProcessResult? lastResult = null;
 
         while (DateTimeOffset.UtcNow < deadline) {
-            try {
-                using var client = new TcpClient();
-                await client.ConnectAsync(RedisHost, RedisPort, cancellationToken);
+            lastResult = await TryRunDockerAsync(
+                cancellationToken,
+                "exec",
+                DaprRedisContainerName,
+                "redis-cli",
+                "PING");
+            if (lastResult is { ExitCode: 0 }
+                && string.Equals(lastResult.StandardOutput.Trim(), "PONG", StringComparison.Ordinal)) {
                 return;
-            }
-            catch (OperationCanceledException) {
-                throw;
-            }
-            catch (Exception ex) {
-                lastError = ex;
             }
 
             await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
         }
 
         throw new TimeoutException(
-            $"Redis did not accept TCP connections on {RedisHost}:{RedisPort} within {s_resourceRecoveryTimeout}.",
-            lastError);
+            $"Redis did not report PONG on {RedisHost}:{RedisPort} within {s_resourceRecoveryTimeout}. "
+            + $"Last stdout: {lastResult?.StandardOutput}; stderr: {lastResult?.StandardError}");
     }
 
     private static async Task<ProcessResult?> TryRunDockerAsync(

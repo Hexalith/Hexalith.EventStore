@@ -591,11 +591,14 @@ public sealed class SignalRRedisBackplaneRuntimeProofTests {
         public string QueryRefreshBoundary { get; set; } = "";
 
         public async Task SaveAsync() {
-            string outputDirectory = Path.Combine(
-                EventStoreProofProcess.RepoRoot,
-                "_bmad-output",
-                "test-artifacts",
-                "post-epic-10-r10a2-redis-backplane-runtime-proof");
+            string? configuredOutputDirectory = Environment.GetEnvironmentVariable("R10A2_EVIDENCE_DIRECTORY");
+            string outputDirectory = string.IsNullOrWhiteSpace(configuredOutputDirectory)
+                ? Path.Combine(
+                    EventStoreProofProcess.RepoRoot,
+                    "_bmad-output",
+                    "test-artifacts",
+                    "post-epic-10-r10a2-redis-backplane-runtime-proof")
+                : Path.GetFullPath(configuredOutputDirectory);
             _ = Directory.CreateDirectory(outputDirectory);
 
             string filePath = Path.Combine(outputDirectory, $"evidence-{DateTimeOffset.UtcNow:yyyy-MM-dd-HHmmss}Z.md");

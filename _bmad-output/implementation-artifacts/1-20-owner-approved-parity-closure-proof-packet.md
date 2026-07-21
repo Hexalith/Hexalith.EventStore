@@ -919,7 +919,9 @@ fi
 export DOTNET_CLI_HOME="$GATE_ROOT/dotnet-home"
 export NUGET_PACKAGES="$GATE_ROOT/nuget-packages"
 export NUGET_HTTP_CACHE_PATH="$GATE_ROOT/nuget-http-cache"
-mkdir -p "$DOTNET_CLI_HOME" "$NUGET_PACKAGES" "$NUGET_HTTP_CACHE_PATH"
+export R10A2_EVIDENCE_DIRECTORY="$EVIDENCE_ROOT/r10a2-runtime-proof"
+mkdir -p "$DOTNET_CLI_HOME" "$NUGET_PACKAGES" "$NUGET_HTTP_CACHE_PATH" \
+  "$R10A2_EVIDENCE_DIRECTORY"
 
 fresh_release() {
   local project="$1"
@@ -5508,14 +5510,41 @@ to `candidate_source_sha` or `tested_runtime_sha`.
 - No NuGet package, container, WORM object, evidence commit, or migration authorization was
   produced by any failed attempt. A new candidate must run the complete protocol from zero.
 
+### 2026-07-21 Docker/Dapr gate unblock
+
+- Docker 29.6.1, Dapr CLI 1.18.0/runtime 1.18.1, the self-hosted Dapr infrastructure, and
+  the source Aspire topology were verified operational. The Aspire application topology was
+  stopped before exact-gate execution to preserve the reserved-app-ID precondition.
+- Clean detached official-main candidate `4cb7738d6cfad8a9a99638644ac5de77f902245e` passed
+  AD-11, every focused capability lane reached, the warning-free Release solution build, broad
+  project suites, and browser E2E. The complete Debug/source integration assembly then stopped
+  the fail-fast run at 257 passed, one failed, zero skipped: the Tenant bootstrap persisted-event
+  assertion failed after the Redis chaos collection. No publication occurred.
+- The bootstrap test passed alone, while a deterministic same-fixture chaos/bootstrap sequence
+  reproduced the loss. Redis logs showed Docker's default stop deadline killing a roughly 2 GB,
+  1,017,331-key Redis instance during its final RDB save; the subsequent start loaded an older
+  snapshot.
+- The corrective working tree gives Redis up to 90 seconds for graceful stop and waits for an
+  actual `redis-cli PING`/`PONG` readiness response. The deterministic sequence passed 4/4, and
+  the complete patched Debug/source integration assembly passed 258/258 with zero skips in
+  1,450.691 seconds.
+- `R10A2_EVIDENCE_DIRECTORY` now routes the SignalR runtime proof to
+  `$EVIDENCE_ROOT/r10a2-runtime-proof`. The focused proof passed 1/1 and the complete patched run
+  emitted its evidence there without dirtying the detached checkout.
+- The proof-packet integrity suite passed 3/3 after the harness change, all fenced Bash passed
+  `bash -n`, and `git diff --check` passed.
+- These results unblock creation of a corrected candidate but do not select one. The corrections
+  are uncommitted, so all exact-SHA gates must restart from zero after a new clean official-main
+  SHA exists. Story 1.16 follow-up review, release-publication authority, durable owner approvals,
+  immutable artifacts, and A/B/C remain open.
+
 ## Final Decision
 
 `still blocked`
 
-Story 1.20 and Epic 1 remain `in-progress`. The lifecycle and AD-11 implementation blockers
-are cleared at commit `772cdfef...`, and Story 2.7's committed `fd8ab24d...` correction passes
-the source-topology implementation prerequisite. It is not yet evidence from the exact clean
-committed Story 1.20 candidate. Story 3.12's v3.77.2 package/container identity is a
-conforming observed candidate but remains unselected and unapproved. Every parity row remains
-non-authorizing; Story 1.16's named follow-up disposition, the complete exact-SHA gate,
-durable evidence/limitations, owner approvals, and the A/B/C authorization chain remain open.
+Story 1.20 and Epic 1 remain `in-progress`. The Docker/Dapr runtime is available and the
+corrected working tree passes the deterministic Redis-chaos sequence plus the complete 258-test
+source-topology assembly, but the corrections are not a clean committed candidate. Every parity
+row remains non-authorizing; a fresh official-main SHA must rerun the complete protocol from zero,
+and Story 1.16's named follow-up disposition, publication authority, immutable package/container
+evidence, durable owner approvals, and the A/B/C authorization chain remain open.
