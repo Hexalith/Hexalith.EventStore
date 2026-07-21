@@ -135,16 +135,16 @@ from this proposal inventory and remains owned by its existing changes.
 
 #### 2026-07-21 — Code review of landed corrective commit `bccc2560`
 
-- [ ] [Review][Patch] Production resilience timeouts override the configured domain-service invocation timeout [src/Hexalith.EventStore.Server/DomainServices/DaprDomainServiceInvoker.cs:56]
-- [ ] [Review][Patch] The disposable security topology reuses and leaves behind a store-global writer-protocol marker [tests/Hexalith.EventStore.IntegrationTests/Security/AspireTopologyFixture.cs:269]
-- [ ] [Review][Patch] The claimed conflict-status persistence proof still reads only an in-memory fake instead of persisted DAPR state [tests/Hexalith.EventStore.IntegrationTests/EventStore/ConcurrencyConflictIntegrationTests.cs:106]
-- [ ] [Review][Patch] The tenant-bootstrap test proves event persistence but not the hosted service's terminal success outcome [tests/Hexalith.EventStore.IntegrationTests/ContractTests/TenantBootstrapHealthTests.cs:71]
-- [ ] [Review][Patch] The timeout regression test bypasses the production resilience pipeline and relies on a flaky wall-clock ceiling [tests/Hexalith.EventStore.Server.Tests/DomainServices/DaprDomainServiceInvokerTests.cs:123]
-- [ ] [Review][Patch] Eager startup validation and the accepted one-second timeout boundary are not pinned by host-level tests [tests/Hexalith.EventStore.Server.Tests/Configuration/EventStoreServerServiceCollectionExtensionsTests.cs:78]
-- [ ] [Review][Patch] Unsafe command-POST retry suppression has no deterministic attempt-count verification [tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspireContractTestFixture.cs:90]
-- [ ] [Review][Patch] Writer-protocol retries for 408, 429, and 5xx activation responses have no deterministic coverage [tests/Hexalith.EventStore.IntegrationTests/Security/AspireTopologyFixture.cs:316]
-- [ ] [Review][Patch] Newly added integration-test awaits omit the repository-required `ConfigureAwait(false)` [tests/Hexalith.EventStore.IntegrationTests/ContractTests/TenantBootstrapHealthTests.cs:46]
-- [ ] [Review][Patch] New domain-service cancellation telemetry bypasses the required source-generated logging pattern [src/Hexalith.EventStore.Server/DomainServices/DaprDomainServiceInvoker.cs:82]
+- [x] [Review][Patch] Production resilience timeouts override the configured domain-service invocation timeout [src/Hexalith.EventStore.Server/DomainServices/DaprDomainServiceInvoker.cs:56]
+- [x] [Review][Patch] The disposable security topology reuses and leaves behind a store-global writer-protocol marker [tests/Hexalith.EventStore.IntegrationTests/Security/AspireTopologyFixture.cs:269]
+- [x] [Review][Patch] The claimed conflict-status persistence proof still reads only an in-memory fake instead of persisted DAPR state [tests/Hexalith.EventStore.IntegrationTests/EventStore/ConcurrencyConflictIntegrationTests.cs:106]
+- [x] [Review][Patch] The tenant-bootstrap test proves event persistence but not the hosted service's terminal success outcome [tests/Hexalith.EventStore.IntegrationTests/ContractTests/TenantBootstrapHealthTests.cs:71]
+- [x] [Review][Patch] The timeout regression test bypasses the production resilience pipeline and relies on a flaky wall-clock ceiling [tests/Hexalith.EventStore.Server.Tests/DomainServices/DaprDomainServiceInvokerTests.cs:123]
+- [x] [Review][Patch] Eager startup validation and the accepted one-second timeout boundary are not pinned by host-level tests [tests/Hexalith.EventStore.Server.Tests/Configuration/EventStoreServerServiceCollectionExtensionsTests.cs:78]
+- [x] [Review][Patch] Unsafe command-POST retry suppression has no deterministic attempt-count verification [tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspireContractTestFixture.cs:90]
+- [x] [Review][Patch] Writer-protocol retries for 408, 429, and 5xx activation responses have no deterministic coverage [tests/Hexalith.EventStore.IntegrationTests/Security/AspireTopologyFixture.cs:316]
+- [x] [Review][Patch] Newly added integration-test awaits omit the repository-required `ConfigureAwait(false)` [tests/Hexalith.EventStore.IntegrationTests/ContractTests/TenantBootstrapHealthTests.cs:46]
+- [x] [Review][Patch] New domain-service cancellation telemetry bypasses the required source-generated logging pattern [src/Hexalith.EventStore.Server/DomainServices/DaprDomainServiceInvoker.cs:82]
 
 #### 2026-07-19 — Exact-SHA execution corrections
 
@@ -579,6 +579,15 @@ override Story 1.20's external evidence and named-approval gates.
   Tenant bootstrap and conflict persistence focused proofs pass without skips, and the security
   fixture persists and reads back the exact runtime cutover marker. Story status remains `blocked`
   because code-review closure is not named owner approval or immutable authorization evidence.
+- Resolved all 10 findings from the 2026-07-21 review of `bccc2560`: domain invocation now owns
+  its validated timeout independently of host-wide HTTP resilience; disposable cutover state is
+  snapshotted and restored; retry classifiers and unsafe-method behavior have deterministic tests;
+  Tenant bootstrap requires a buffered terminal-success log; and conflict rejection has a compiled
+  production DAPR persistence proof. Focused Server tests passed 45/45, deterministic retry-policy
+  tests passed 12/12, the in-process conflict test passed 1/1, and the production DAPR
+  live-sidecar persistence proof passed 1/1. xUnit test methods use `ConfigureAwait(true)` as
+  required by xUnit1030, while fixture and non-test helper awaits retain `ConfigureAwait(false)`.
+  This review closure does not satisfy the external Story 1.20 gates.
 
 ## File List
 
@@ -592,6 +601,7 @@ traceability; it does not reclassify that path as a Story 1.20 implementation de
 - `_bmad-output/implementation-artifacts/1-20-deferred-xunit-skip-allowlist.json`
 - `_bmad-output/implementation-artifacts/spec-1-16-1-20-sprint-change-proposal.md`
 - `_bmad-output/implementation-artifacts/deferred-work.md`
+- `docs/guides/configuration-reference.md`
 - `src/Hexalith.EventStore.Admin.Cli/Commands/Config/ConfigCompletionCommand.cs`
 - `samples/Hexalith.EventStore.Sample.BlazorUI/Components/CounterCommandForm.razor`
 - `samples/Hexalith.EventStore.Sample.BlazorUI/Components/CounterHistoryGrid.razor`
@@ -609,18 +619,25 @@ traceability; it does not reclassify that path as a Story 1.20 implementation de
 - `src/Hexalith.EventStore.Server/DomainServices/DaprDomainServiceInvoker.cs`
 - `src/Hexalith.EventStore.Server/DomainServices/DomainServiceException.cs`
 - `src/Hexalith.EventStore.Server/DomainServices/DomainServiceOptions.cs`
+- `src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj`
 - `src/Hexalith.EventStore.Testing/Fakes/TestServiceOverrides.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/ContractTests/TenantBootstrapHealthTests.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/EventStore/ConcurrencyConflictIntegrationTests.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspireContractTestCollection.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspireContractTestFixture.cs`
+- `tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspireContractHttpResilience.cs`
+- `tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspireContractHttpResilienceTests.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspireProjectionFaultTestCollection.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspirePubSubProofTestCollection.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/Fixtures/KeycloakAuthFixture.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/Security/AspireTopologyCollection.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/Security/AspireTopologyFixture.cs`
+- `tests/Hexalith.EventStore.IntegrationTests/Security/ProjectionDeliveryWriterProtocolCutoverPolicy.cs`
+- `tests/Hexalith.EventStore.IntegrationTests/Security/ProjectionDeliveryWriterProtocolCutoverPolicyTests.cs`
+- `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Commands/ConcurrencyConflictStatusPersistenceLiveSidecarTests.cs`
 - `tests/Hexalith.EventStore.Server.Tests/Configuration/EventStoreServerServiceCollectionExtensionsTests.cs`
 - `tests/Hexalith.EventStore.Server.Tests/DomainServices/DaprDomainServiceInvokerTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj`
 - `tests/Hexalith.EventStore.Testing.Tests/Fakes/TestServiceOverridesTests.cs`
 
 ## Change Log
@@ -682,3 +699,8 @@ traceability; it does not reclassify that path as a Story 1.20 implementation de
   fail-closed Story 1.20 status.
 - 2026-07-19: Repaired the Sample Blazor UI's .NET 10 Razor control-flow markup transitions after
   the exact-SHA proof correctly stopped its Sample test-project build before publication.
+- 2026-07-21: Applied all 10 patches from the review of landed corrective commit `bccc2560`,
+  including production timeout isolation, disposable Redis-state restoration, persisted DAPR
+  conflict proof, terminal bootstrap verification, and deterministic retry behavior. Retained the
+  fail-closed story and sprint states because external evidence, exact-runtime, and named-approval
+  gates remain outstanding.

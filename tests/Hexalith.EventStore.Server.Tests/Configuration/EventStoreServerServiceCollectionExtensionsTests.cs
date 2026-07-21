@@ -95,17 +95,34 @@ public class EventStoreServerServiceCollectionExtensionsTests {
     }
 
     [Fact]
-    public void AddEventStoreServerAcceptsMaximumInvocationTimeout() {
+    public async Task AddEventStoreServerRejectsInvalidInvocationTimeoutAtHostStartupAsync() {
+        using IHost host = Host.CreateDefaultBuilder()
+            .ConfigureAppConfiguration(static configuration => configuration.AddInMemoryCollection(
+                new Dictionary<string, string?> {
+                    ["EventStore:DomainServices:InvocationTimeoutSeconds"] = "0",
+                }))
+            .ConfigureServices(static (context, services) =>
+                _ = services.AddEventStoreServer(context.Configuration))
+            .Build();
+
+        _ = await Should.ThrowAsync<OptionsValidationException>(
+            () => host.StartAsync()).ConfigureAwait(true);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(DomainServiceOptions.MaximumInvocationTimeoutSeconds)]
+    public void AddEventStoreServerAcceptsInvocationTimeoutBoundaries(int timeoutSeconds) {
         using ServiceProvider provider = BuildProvider(
             registerDaprClient: false,
             new Dictionary<string, string?> {
                 ["EventStore:DomainServices:InvocationTimeoutSeconds"]
-                    = DomainServiceOptions.MaximumInvocationTimeoutSeconds.ToString(
+                    = timeoutSeconds.ToString(
                         System.Globalization.CultureInfo.InvariantCulture),
             });
 
         provider.GetRequiredService<IOptions<DomainServiceOptions>>()
-            .Value.InvocationTimeoutSeconds.ShouldBe(DomainServiceOptions.MaximumInvocationTimeoutSeconds);
+            .Value.InvocationTimeoutSeconds.ShouldBe(timeoutSeconds);
     }
 
     [Fact]

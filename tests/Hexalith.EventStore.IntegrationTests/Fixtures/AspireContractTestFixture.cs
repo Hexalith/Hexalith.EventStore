@@ -195,11 +195,6 @@ public class AspireContractTestFixture : IAsyncLifetime {
     }
 
     internal static void ConfigureTestClientResilience(HttpStandardResilienceOptions options) {
-        ArgumentNullException.ThrowIfNull(options);
-
-        options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(60);
-        options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(180);
-        options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(120);
-        options.Retry.DisableForUnsafeHttpMethods();
+        AspireContractHttpResilience.Configure(options);
     }
 }

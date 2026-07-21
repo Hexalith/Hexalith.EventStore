@@ -9,6 +9,9 @@ namespace Hexalith.EventStore.Server.DomainServices;
 /// Config store poisoning can redirect domain service registrations to malicious endpoints.</para>
 /// </remarks>
 public record DomainServiceOptions {
+    /// <summary>
+    /// Gets the maximum supported invocation timeout in seconds.
+    /// </summary>
     internal const int MaximumInvocationTimeoutSeconds = 3600;
 
     /// <summary>

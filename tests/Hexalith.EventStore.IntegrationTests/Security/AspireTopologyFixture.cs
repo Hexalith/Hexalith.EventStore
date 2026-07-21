@@ -322,7 +322,9 @@ public class AspireTopologyFixture : IAsyncLifetime {
                     string healthBody = await health.Content
                         .ReadAsStringAsync(cancellationToken)
                         .ConfigureAwait(false);
-                    if (!WriterProtocolIsOnlyUnhealthyCheck(healthBody)) {
+                    if (!ProjectionDeliveryWriterProtocolCutoverPolicy.WriterProtocolIsOnlyUnhealthyCheck(
+                        healthBody,
+                        ProjectionDeliveryWriterProtocolHealthCheck)) {
                         lastDiagnostic = $"EventStore dependencies are not ready for cutover. "
                             + $"Status={(int)health.StatusCode} ({health.StatusCode}); Body={healthBody}";
                         await Task.Delay(s_cutoverRetryDelay, cancellationToken).ConfigureAwait(false);
@@ -394,9 +396,7 @@ public class AspireTopologyFixture : IAsyncLifetime {
     internal static bool ShouldRetryActivationResponse(HttpStatusCode statusCode)
         => statusCode == HttpStatusCode.OK
             || statusCode == HttpStatusCode.Conflict
-            || statusCode == HttpStatusCode.RequestTimeout
-            || statusCode == HttpStatusCode.TooManyRequests
-            || (int)statusCode >= 500;
+            || ProjectionDeliveryWriterProtocolCutoverPolicy.IsTransientActivationStatus(statusCode);
 
     private async Task IsolateWriterProtocolMarkerAsync(
         IDatabase database,
@@ -513,36 +513,6 @@ public class AspireTopologyFixture : IAsyncLifetime {
         }
 
         return commit.ToLowerInvariant();
-    }
-
-    private static bool WriterProtocolIsOnlyUnhealthyCheck(string healthBody) {
-        try {
-            using JsonDocument document = JsonDocument.Parse(healthBody);
-            if (!document.RootElement.TryGetProperty("results", out JsonElement results)
-                || results.ValueKind != JsonValueKind.Object) {
-                return false;
-            }
-
-            bool markerIsUnhealthy = false;
-            foreach (JsonProperty result in results.EnumerateObject()) {
-                if (!result.Value.TryGetProperty("status", out JsonElement statusElement)) {
-                    return false;
-                }
-
-                string? status = statusElement.GetString();
-                if (string.Equals(result.Name, ProjectionDeliveryWriterProtocolHealthCheck, StringComparison.Ordinal)) {
-                    markerIsUnhealthy = string.Equals(status, "Unhealthy", StringComparison.Ordinal);
-                }
-                else if (string.Equals(status, "Unhealthy", StringComparison.Ordinal)) {
-                    return false;
-                }
-            }
-
-            return markerIsUnhealthy;
-        }
-        catch (JsonException) {
-            return false;
-        }
     }
 
     private sealed record ProjectionDeliveryWriterProtocolMarker(

@@ -668,7 +668,7 @@ This table lists every configurable setting for quick scanning, including explic
 | `EventStore:IdempotencyAdmission:DigestKeySecretGeneration` | string | `""` | Non-empty for `DaprSecret` | Application |
 | `EventStore:IdempotencyAdmission:DigestKeys:{version}` | string | — | Base64, decoded length `>= 32`; local configuration source only | Application |
 | `EventStore:DomainServices:ConfigStoreName` | string? | `null` | `null` or non-empty string | Application |
-| `EventStore:DomainServices:InvocationTimeoutSeconds` | int | `5` | Integer `> 0` | Application |
+| `EventStore:DomainServices:InvocationTimeoutSeconds` | int | `5` | Integer `1`-`3600` | Application |
 | `EventStore:DomainServices:MaxEventsPerResult` | int | `1000` | Integer `> 0` | Application |
 | `EventStore:DomainServices:MaxEventSizeBytes` | int | `1048576` | Integer `> 0` | Application |
 | `EventStore:DomainServices:Registrations:{key}` | object | - | Object keyed by `tenant|domain|version`, `tenant:domain:version`, `*|domain|version`, or `wildcard_{domain}_{version}` | Application |

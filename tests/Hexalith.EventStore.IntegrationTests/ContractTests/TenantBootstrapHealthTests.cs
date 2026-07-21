@@ -40,7 +40,7 @@ public class TenantBootstrapHealthTests {
     /// Asserts both the persisted bootstrap result and the hosted service's success outcome.
     /// </summary>
     [Fact]
-    public async Task TenantBootstrap_FirstSixtySeconds_PersistsConfiguredGlobalAdministrator() {
+    public async Task TenantBootstrap_FirstSixtySeconds_PersistsAdministratorAndReportsTerminalSuccess() {
         using var overallCts = new CancellationTokenSource(s_overallGuard);
 
         if (!_fixture.App.ResourceNotifications.TryGetCurrentState("tenants", out _)) {
@@ -139,5 +139,4 @@ public class TenantBootstrapHealthTests {
             await redis.CloseAsync(allowCommandsToComplete: true).ConfigureAwait(true);
         }
     }
-
 }

@@ -30,6 +30,10 @@ public partial class DaprDomainServiceInvoker(
     /// </summary>
     public const string DomainServiceVersionExtensionKey = "domain-service-version";
 
+    /// <summary>
+    /// Gets the named HTTP client whose timeout is owned exclusively by
+    /// <see cref="DomainServiceOptions.InvocationTimeoutSeconds"/> and DAPR resiliency.
+    /// </summary>
     internal const string HttpClientName = "domain-service-invocation";
 
     private const string DefaultVersion = "v1";
