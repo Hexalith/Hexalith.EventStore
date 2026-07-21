@@ -1,5 +1,12 @@
 # Deferred Work
 
+## Deferred from: release-skip race diagnosis (2026-07-21, run 29799288142)
+
+- source_spec: none
+  owner_repo: `Hexalith.Builds` — reusable `.github/workflows/domain-release.yml` (currently pinned in this repo as `builds-execution-sha: cf04c419378dfe1bd3c41a9244b5e3283092056e`). NOT owned by `Hexalith.EventStore`; the EventStore `release.yml` only calls the reusable workflow, so this fix cannot land here.
+  summary: The reusable release workflow silently produces a **green run that publishes nothing** when `main` advances between release dispatch and the `Semantic Release` step. `actions/checkout` pins the dispatched `github.sha`; semantic-release then does its own `git fetch`, sees the live `origin/main` is ahead, prints `ℹ The local branch main is behind the remote one, therefore a new version won't be published.`, and exits 0. The operator sees a successful Release run and reasonably assumes a release was cut. Harden `domain-release.yml` to **fail loudly** (or emit an unmissable error annotation + non-success outcome) when the checked-out release SHA is no longer the live `main` tip at semantic-release time, instead of a silent no-op green.
+  evidence: Run https://github.com/Hexalith/Hexalith.EventStore/actions/runs/29799288142 — dispatched 03:43:45Z on `41f5ed0f` (then the live tip; `verify-source` passed). At 03:52:04Z an automated submodule-bump commit `4245f0f8` ("fix: update submodule references…") landed on `main` (the concurrent bmad-loop auto-push hazard — see project memory `concurrent-bmad-loop-git`). At 04:04:06Z the release job checked out the pinned `41f5ed0f`; at 04:06:33Z semantic-release aborted with the "branch is behind remote" message. Job conclusion: success. No `v3.79.0` tag/release/packages were produced despite releasable `feat:`/`fix:` commits since `v3.78.0`. EventStore's own `verify-source` gate only re-checks the tip at run *start*, leaving a ~20-min window; closing the race durably requires a re-assert-tip-then-fail step inside the reusable workflow (Builds), or preventing pushes to `main` during a release. Immediate remediation for this incident was an operator re-dispatch once `main` was quiescent (run 29800856877).
+
 ## Deferred from: live-sidecar PostgreSQL image pull CI fix (2026-07-20)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-gh-29738838856-fix-ci-cd.md`
