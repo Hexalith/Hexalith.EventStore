@@ -31,7 +31,7 @@ source_files:
 
 # Story 3.12: Multi-Platform EventStore Container Publishing Correction
 
-Status: review
+Status: done
 
 <!-- Ultimate context engine analysis completed - comprehensive developer guide created. -->
 
@@ -401,6 +401,87 @@ mark Story 1.20/Epic 1 done.
 - [x] [Review][Consistency] Describe approved package hashes as not selected rather than not
   produced now that v3.77.2 observed hashes exist
   [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md]
+
+### Review Findings — Code Review (2026-07-21)
+
+> **Scope caveat (read first):** This adversarial review (4 parallel layers) targeted Story 3.12
+> **as implemented** at its stated final SHAs — Hexalith.Builds `9ec0a032` and EventStore
+> `8273c65c` — NOT current `main`. That artifact has since been **superseded on `main`** by a later
+> release-governance-coherence rework (Builds `909abb3`/`2c2fd14`/`cf04c41`; EventStore
+> `40251917`/`4f592b5b`/`539dca2b`): `publication_authority.py` → `publication_preflight.py`, and
+> `scripts/validate-release-authority.sh` → `scripts/validate-publication-preflight.sh`. Where a
+> finding was re-checked against live HEAD, its current status is noted. The adversarial "HIGH"
+> (identity gate non-functional) was **refuted by production evidence**: v3.77.2 release run
+> `29694935552` shows the "Validate approved Builds execution identity" step concluded `success`.
+
+**Decision-needed (resolve first):**
+
+- [x] [Review][Decision] Reviewed 3.12 artifact is superseded on `main` — disposition integrity
+  [MEDIUM/HIGH]. The `publication_authority.py` / `validate-release-authority.sh` / Builds pin
+  `@9ec0a032` in this diff are not live code (now `publication_preflight.py` /
+  `validate-publication-preflight.sh` / pin `@cf04c419`). **RESOLVED 2026-07-21 (owner):** accept
+  3.12 as historically-correct (it shipped v3.77.2 clean) and mark it `done` as-is; **no follow-up
+  review of the live preflight rework was requested** — the live pipeline therefore remains
+  un-reviewed by this workflow.
+- [x] [Review][Decision] CHANGELOG automation intentionally discontinued [LOW]. `.releaserc.json`
+  removes both `@semantic-release/changelog` and `@semantic-release/git`; documented in `docs/ci.md`
+  as a consequence of protected `main`. **RESOLVED 2026-07-21 (owner): ratified as intentional** —
+  automated CHANGELOG generation is deliberately dropped; updates now arrive via their own PR.
+  Dismissed [.releaserc.json:7,20].
+- [x] [Review][Decision] Shared `domain-release.yml`/authority validator hardcodes EventStore
+  identity [MEDIUM]. `REQUIRED_OWNER_ROLE = "EventStore release owner"` + EventStore-only
+  issue-comment URL regexes live in the *shared* Builds reusable workflow, so no other domain can use
+  its `publish-containers` path. **RESOLVED 2026-07-21 (owner): closed — resolved live** (the reworked
+  `publication_preflight.py` on HEAD shows no hardcoded EventStore strings)
+  [references/Hexalith.Builds/Github/publish-containers/publication_authority.py:34,47 @9ec0a032].
+
+**Deferred (owned by the Hexalith.Builds maintainer; not patchable from EventStore — shared submodule + superseded reviewed SHA):**
+
+- [x] [Review][Defer] Fail-closed publisher/validator/authority/smoke suite is not a PR/required
+  check [MEDIUM] — deferred, Builds-owned. `test-publish-containers.ps1` runs only in
+  `build-release.yml` (push-to-main at `9ec0a032`; **`workflow_dispatch`-only, i.e. worse, at HEAD**);
+  no `pull_request`-triggered Builds workflow runs it, so a PR breaking a fail-closed validator merges
+  green. Persists live [references/Hexalith.Builds/.github/workflows/build-release.yml].
+- [x] [Review][Defer] Unbounded registry response read (no size cap) [MEDIUM] — deferred, Builds-owned.
+  `RegistryClient._get` does `response.read()` with no limit (vs 256/128 KiB caps in the authority
+  fetch) — memory-exhaustion vector from a hostile/malfunctioning registry. **Persists at live HEAD**
+  [references/Hexalith.Builds/Github/publish-containers/oci_registry_validator.py:420].
+- [x] [Review][Defer] No negative test proves a failing OCI validator/smoke aborts the publish
+  [MEDIUM] — deferred, Builds-owned. Gating relies on `set -euo pipefail` (present & functional), but
+  no test drives a nonzero validator/smoke through `publish-containers.sh`; a regression to
+  `|| true`/backgrounding would ship an invalid/single-arch image undetected
+  [references/Hexalith.Builds/Github/publish-containers/publish-containers.sh].
+- [x] [Review][Defer] Validator→smoke evidence schema contract is untested (producer/consumer drift)
+  [MEDIUM] — deferred, Builds-owned. `oci_registry_validator.write_evidence` and smoke
+  `_load_children` are each tested only against their own hand-written fixtures; a key rename on
+  either side ships undetected [references/Hexalith.Builds/Github/publish-containers/smoke_container_platforms.py].
+- [x] [Review][Defer] Identity-gate guard behaviorally tests only the SHA-mismatch branch [LOW] —
+  deferred, Builds-owned. Repo-identity, authority-URL, and owner-allowlist branches are only
+  substring-asserted, not provoked [references/Hexalith.Builds/Github/publish-containers/tests/test_publish_script_contract.py].
+- [x] [Review][Defer] Redirect Location with invalid/out-of-range port raises uncaught `ValueError`
+  [LOW] — deferred, Builds-owned. `parsed.port` can raise `ValueError`; only `URLError`/`TimeoutError`
+  are caught → raw traceback instead of a clean `unresolved-*` result (still fail-closed)
+  [references/Hexalith.Builds/Github/publish-containers/oci_registry_validator.py:41-71].
+- [x] [Review][Defer] Several fail-closed reason codes are unexercised by fixtures [LOW] — deferred,
+  Builds-owned. `wrong-schema-version`, `child-media-type-mismatch`, `unsupported-child/config-media-type`,
+  `malformed-config-descriptor`, `config-digest-mismatch`, and the immutable-side content-type/body
+  branches lack negative fixtures [references/Hexalith.Builds/test/fixtures/publish-containers/validation-cases.json].
+- [x] [Review][Defer] Non-domain exceptions (OSError/TypeError from file I/O) escape the deterministic
+  reason-code handlers [LOW] — deferred, Builds-owned. `main()` catches only domain errors; evidence/log
+  writes emit raw tracebacks (still exit≠0)
+  [references/Hexalith.Builds/Github/publish-containers/oci_registry_validator.py].
+- [x] [Review][Defer] Support-safe log redaction misses JSON-shaped secrets; evidence retained 30 days
+  [LOW] — deferred, Builds-owned. `_support_safe` redacts only `Bearer`/`key=value`, not
+  `"password": "…"` JSON; low exposure today (smoke container carries only the non-secret JWT key)
+  [references/Hexalith.Builds/Github/publish-containers/smoke_container_platforms.py].
+
+**Dismissed as noise / refuted (7):** identity gate "non-functional" (refuted — v3.77.2 gate step
+succeeded); variant-ban/index-mediaType "blocks every release" (refuted — v3.77.2 musl-arm64 validated
++ smoked clean); hardcoded 14-package count (by-design AC6 invariant); RID literal-quote workaround
+(prod-proven + red/green test); smoke `/bin/uname`+anonymous `/alive` assumptions (prod-proven; JWT-startup
+gap already fixed pre-`9ec0a032`); no `docker logout`/pid container-name reuse (ephemeral-runner scope);
+diff omits 2 File-List doc entries (artifact of code-only diff scoping — constraint verified satisfied
+on disk: `approved_*: null`, `final_decision: still blocked`).
 
 ## Dev Notes
 
