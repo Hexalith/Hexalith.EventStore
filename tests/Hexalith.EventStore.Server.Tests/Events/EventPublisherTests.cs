@@ -1,5 +1,6 @@
 
 using System.Diagnostics;
+using System.Text;
 
 using Dapr.Client;
 
@@ -8,6 +9,7 @@ using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Server.Telemetry;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -52,11 +54,16 @@ public class EventPublisherTests {
         return env;
     }
 
-    private static (EventPublisher Publisher, DaprClient DaprClient, ILogger<EventPublisher> Logger) CreatePublisher(string pubSubName = "pubsub") {
+    private static (EventPublisher Publisher, DaprClient DaprClient, ILogger<EventPublisher> Logger) CreatePublisher(
+        string pubSubName = "pubsub",
+        ILogger<EventPublisher>? logger = null) {
         DaprClient daprClient = Substitute.For<DaprClient>();
         IOptions<EventPublisherOptions> options = Options.Create(new EventPublisherOptions { PubSubName = pubSubName });
-        ILogger<EventPublisher> logger = Substitute.For<ILogger<EventPublisher>>();
-        _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        if (logger is null) {
+            logger = Substitute.For<ILogger<EventPublisher>>();
+            _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        }
+
         var publisher = new EventPublisher(daprClient, options, logger, new NoOpEventPayloadProtectionService(), new NoOpProjectionUpdateOrchestrator(), hostEnvironment: CreateDevelopmentEnvironment());
         return (publisher, daprClient, logger);
     }
@@ -541,24 +548,29 @@ public class EventPublisherTests {
     [Fact]
     public async Task PublishEventsAsync_LogsSuccess_WithoutPayloadData() {
         // Arrange
-        (EventPublisher publisher, _, ILogger<EventPublisher> logger) = CreatePublisher();
-        EventEnvelope envelope = CreateTestEnvelope();
+        const string payloadMarker = "sensitive-payload-marker-4111111111111111";
+        byte[] payload = Encoding.UTF8.GetBytes(payloadMarker);
+        string base64PayloadMarker = Convert.ToBase64String(payload);
+        var logEntries = new List<LogEntry>();
+        (EventPublisher publisher, _, _) = CreatePublisher(logger: new TestLogger<EventPublisher>(logEntries));
+        EventEnvelope envelope = CreateTestEnvelope() with { Payload = payload };
 
         // Act
         _ = await publisher.PublishEventsAsync(TestIdentity, [envelope], "corr-log");
 
         // Assert -- logs at Information level
-        logger.Received().Log(
-            LogLevel.Information,
-            Arg.Any<EventId>(),
-            Arg.Is<object>(o =>
-                o.ToString()!.Contains("Events published") &&
-                o.ToString()!.Contains("corr-log") &&
-                o.ToString()!.Contains("test-tenant") &&
-                o.ToString()!.Contains("test-domain") &&
-                !o.ToString()!.Contains("Payload")),
-            Arg.Any<Exception?>(),
-            Arg.Any<Func<object, Exception?, string>>());
+        logEntries.ShouldContain(entry =>
+            entry.Level == LogLevel.Information
+            && entry.Message.Contains("Events published", StringComparison.Ordinal)
+            && entry.Message.Contains("corr-log", StringComparison.Ordinal)
+            && entry.Message.Contains("test-tenant", StringComparison.Ordinal)
+            && entry.Message.Contains("test-domain", StringComparison.Ordinal));
+
+        foreach (LogEntry entry in logEntries) {
+            entry.Message.Contains("Payload", StringComparison.Ordinal).ShouldBeFalse();
+            entry.Message.Contains(payloadMarker, StringComparison.Ordinal).ShouldBeFalse();
+            entry.Message.Contains(base64PayloadMarker, StringComparison.Ordinal).ShouldBeFalse();
+        }
     }
 
     // --- Story 4.1 Gap 6.1: Multi-tenant topic derivation ---
@@ -663,7 +675,8 @@ public class EventPublisherTests {
     [Fact]
     public async Task PublishEventsAsync_LogsFailure_WithCorrelationIdAndTopic() {
         // Arrange
-        (EventPublisher publisher, DaprClient daprClient, ILogger<EventPublisher> logger) = CreatePublisher();
+        var logEntries = new List<LogEntry>();
+        (EventPublisher publisher, DaprClient daprClient, _) = CreatePublisher(logger: new TestLogger<EventPublisher>(logEntries));
         _ = daprClient.PublishEventAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<EventEnvelope>(),
             Arg.Any<Dictionary<string, string>>(), Arg.Any<CancellationToken>())
@@ -674,14 +687,10 @@ public class EventPublisherTests {
         _ = await publisher.PublishEventsAsync(TestIdentity, [envelope], "corr-fail");
 
         // Assert -- logs at Error level
-        logger.Received().Log(
-            LogLevel.Error,
-            Arg.Any<EventId>(),
-            Arg.Is<object>(o =>
-                o.ToString()!.Contains("publication failed") &&
-                o.ToString()!.Contains("corr-fail") &&
-                o.ToString()!.Contains("test-tenant.test-domain.events")),
-            Arg.Any<Exception?>(),
-            Arg.Any<Func<object, Exception?, string>>());
+        logEntries.ShouldContain(entry =>
+            entry.Level == LogLevel.Error
+            && entry.Message.Contains("publication failed", StringComparison.Ordinal)
+            && entry.Message.Contains("corr-fail", StringComparison.Ordinal)
+            && entry.Message.Contains("test-tenant.test-domain.events", StringComparison.Ordinal));
     }
 }
