@@ -23,11 +23,14 @@ public partial class DaprDomainServiceInvoker(
     IHttpClientFactory httpClientFactory,
     IDomainServiceResolver resolver,
     IOptions<DomainServiceOptions> options,
+    TimeProvider timeProvider,
     ILogger<DaprDomainServiceInvoker> logger) : IDomainServiceInvoker {
     /// <summary>
     /// The command extension key used to specify the domain service version.
     /// </summary>
     public const string DomainServiceVersionExtensionKey = "domain-service-version";
+
+    internal const string HttpClientName = "domain-service-invocation";
 
     private const string DefaultVersion = "v1";
 
@@ -52,14 +55,18 @@ public partial class DaprDomainServiceInvoker(
         var request = new DomainServiceRequest(command, currentState);
 
         DomainServiceWireResult wireResult;
-        using var invocationCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        invocationCancellation.CancelAfter(TimeSpan.FromSeconds(options.Value.InvocationTimeoutSeconds));
+        using var timeoutCancellation = new CancellationTokenSource(
+            TimeSpan.FromSeconds(options.Value.InvocationTimeoutSeconds),
+            timeProvider);
+        using var invocationCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken,
+            timeoutCancellation.Token);
         try {
             using HttpRequestMessage httpRequest = daprClient.CreateInvokeMethodRequest(
                 registration.AppId,
                 registration.MethodName,
                 request);
-            HttpClient httpClient = httpClientFactory.CreateClient();
+            HttpClient httpClient = httpClientFactory.CreateClient(HttpClientName);
             httpClient.Timeout = Timeout.InfiniteTimeSpan;
             using HttpResponseMessage httpResponse = await httpClient
                 .SendAsync(httpRequest, invocationCancellation.Token)
@@ -74,14 +81,14 @@ public partial class DaprDomainServiceInvoker(
                     $"Null response from domain service '{registration.AppId}/{registration.MethodName}'");
         }
         catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested) {
-            bool configuredTimeoutElapsed = invocationCancellation.IsCancellationRequested;
+            bool configuredTimeoutElapsed = timeoutCancellation.IsCancellationRequested;
             string reason = configuredTimeoutElapsed
                 ? $"Invocation timed out after {options.Value.InvocationTimeoutSeconds}s for service "
                     + $"'{registration.AppId}/{registration.MethodName}'."
                 : $"Invocation of service '{registration.AppId}/{registration.MethodName}' was canceled before completion.";
-            logger.LogError(
+            Log.DomainServiceInvocationCanceled(
+                logger,
                 ex,
-                "Domain service invocation was canceled: ConfiguredTimeoutElapsed={ConfiguredTimeoutElapsed}, TimeoutSeconds={TimeoutSeconds}, AppId={AppId}, Method={MethodName}, TenantId={TenantId}, Domain={Domain}, CorrelationId={CorrelationId}",
                 configuredTimeoutElapsed,
                 options.Value.InvocationTimeoutSeconds,
                 registration.AppId,
@@ -97,9 +104,9 @@ public partial class DaprDomainServiceInvoker(
                 ex);
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
-            logger.LogError(
+            Log.DomainServiceInvocationFailed(
+                logger,
                 ex,
-                "Domain service invocation failed: AppId={AppId}, Method={MethodName}, TenantId={TenantId}, Domain={Domain}, CorrelationId={CorrelationId}",
                 registration.AppId,
                 registration.MethodName,
                 command.TenantId,
@@ -208,6 +215,34 @@ public partial class DaprDomainServiceInvoker(
         public static partial void DefaultVersionUsed(
             ILogger logger,
             string version,
+            string tenantId,
+            string domain,
+            string correlationId);
+
+        [LoggerMessage(
+            EventId = 3004,
+            Level = LogLevel.Error,
+            Message = "Domain service invocation was canceled: ConfiguredTimeoutElapsed={ConfiguredTimeoutElapsed}, TimeoutSeconds={TimeoutSeconds}, AppId={AppId}, Method={MethodName}, TenantId={TenantId}, Domain={Domain}, CorrelationId={CorrelationId}")]
+        public static partial void DomainServiceInvocationCanceled(
+            ILogger logger,
+            Exception exception,
+            bool configuredTimeoutElapsed,
+            int timeoutSeconds,
+            string appId,
+            string methodName,
+            string tenantId,
+            string domain,
+            string correlationId);
+
+        [LoggerMessage(
+            EventId = 3005,
+            Level = LogLevel.Error,
+            Message = "Domain service invocation failed: AppId={AppId}, Method={MethodName}, TenantId={TenantId}, Domain={Domain}, CorrelationId={CorrelationId}")]
+        public static partial void DomainServiceInvocationFailed(
+            ILogger logger,
+            Exception exception,
+            string appId,
+            string methodName,
             string tenantId,
             string domain,
             string correlationId);

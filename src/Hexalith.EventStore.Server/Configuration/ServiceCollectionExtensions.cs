@@ -15,6 +15,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -54,7 +55,10 @@ public static class EventStoreServerServiceCollectionExtensions {
         services.TryAddSingleton<IDomainServiceResolver, DomainServiceResolver>();
         services.TryAddTransient<IDomainServiceInvoker, DaprDomainServiceInvoker>();
         services.TryAddTransient<IAggregateStateReconstructor, DaprAggregateStateReconstructor>();
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IHttpMessageHandlerBuilderFilter, DomainServiceHttpClientBuilderFilter>());
         _ = services.AddHttpClient();
+        _ = services.AddHttpClient(DaprDomainServiceInvoker.HttpClientName);
         services.TryAddSingleton<IEventPayloadProtectionService, NoOpEventPayloadProtectionService>();
         services.TryAddSingleton<IGlobalPositionAllocator, DaprGlobalPositionAllocator>();
         services.TryAddSingleton<ISnapshotManager, SnapshotManager>();

@@ -625,6 +625,12 @@ traceability; it does not reclassify that path as a Story 1.20 implementation de
 
 ## Change Log
 
+| Date | Phase | Test-method delta | Verification | File-list reconciliation |
+| --- | --- | ---: | --- | --- |
+| 2026-07-21 | Ledger adoption baseline for the user-approved direct Story 1.20 corrective pass at `014bd00a9ef6d3eac2e4900feedbedc093fab188` | `+0` (planned `+6..+9`) | Release builds passed with 0 warnings/errors. Runner discovery: Server `2560` methods (`DaprDomainServiceInvokerTests=28`, `EventStoreServerServiceCollectionExtensionsTests=7`); Integration `234` methods (`TenantBootstrapHealthTests=1`, `ConcurrencyConflictIntegrationTests=11`). Commands: `dotnet exec tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll -list methods -noLogo`; `dotnet exec tests/Hexalith.EventStore.IntegrationTests/bin/Release/net10.0/Hexalith.EventStore.IntegrationTests.dll -list methods -noLogo`. | Current adoption delta `0/0` paths against `014bd00a...`; the existing File List remains the legacy pre-adoption traceability inventory. Story remains `blocked` / sprint `in-progress`; this phase cannot authorize migration. |
+
+### Legacy narrative
+
 - 2026-07-16: Recorded the failed exact-SHA completion attempt and kept Story 1.20
   fail-closed pending a scoped lifecycle-cleanup fix, remaining review disposition, release
   identity gates, and named owner approval.

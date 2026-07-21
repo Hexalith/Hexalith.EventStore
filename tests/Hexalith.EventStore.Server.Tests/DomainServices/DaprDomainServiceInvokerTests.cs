@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 using Dapr.Client;
 
 using Hexalith.EventStore.Contracts.Commands;
@@ -10,6 +8,7 @@ using Hexalith.EventStore.Server.DomainServices;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Time.Testing;
 
 using NSubstitute;
 
@@ -44,7 +43,13 @@ public class DaprDomainServiceInvokerTests {
         DaprClient daprClient = Substitute.For<DaprClient>();
         _ = _resolver.ResolveAsync("test-tenant", "test-domain", Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns((DomainServiceRegistration?)null);
-        var invoker = new DaprDomainServiceInvoker(daprClient, Substitute.For<IHttpClientFactory>(), _resolver, _options, _logger);
+        var invoker = new DaprDomainServiceInvoker(
+            daprClient,
+            Substitute.For<IHttpClientFactory>(),
+            _resolver,
+            _options,
+            TimeProvider.System,
+            _logger);
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act & Assert
@@ -57,7 +62,13 @@ public class DaprDomainServiceInvokerTests {
     public async Task InvokeAsync_NullCommand_ThrowsArgumentNullException() {
         // Arrange
         DaprClient daprClient = Substitute.For<DaprClient>();
-        var invoker = new DaprDomainServiceInvoker(daprClient, Substitute.For<IHttpClientFactory>(), _resolver, _options, _logger);
+        var invoker = new DaprDomainServiceInvoker(
+            daprClient,
+            Substitute.For<IHttpClientFactory>(),
+            _resolver,
+            _options,
+            TimeProvider.System,
+            _logger);
 
         // Act & Assert
         _ = await Should.ThrowAsync<ArgumentNullException>(() => invoker.InvokeAsync(null!, null));
@@ -69,7 +80,13 @@ public class DaprDomainServiceInvokerTests {
         DaprClient daprClient = Substitute.For<DaprClient>();
         _ = _resolver.ResolveAsync("my-tenant", "my-domain", Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns((DomainServiceRegistration?)null);
-        var invoker = new DaprDomainServiceInvoker(daprClient, Substitute.For<IHttpClientFactory>(), _resolver, _options, _logger);
+        var invoker = new DaprDomainServiceInvoker(
+            daprClient,
+            Substitute.For<IHttpClientFactory>(),
+            _resolver,
+            _options,
+            TimeProvider.System,
+            _logger);
         CommandEnvelope envelope = CreateTestEnvelope(tenantId: "my-tenant", domain: "my-domain");
 
         // Act & Assert -- expect exception since null registration, but verify resolver was called
@@ -120,25 +137,32 @@ public class DaprDomainServiceInvokerTests {
         using DaprClient daprClient = new DaprClientBuilder().Build();
         _ = _resolver.ResolveAsync("test-tenant", "test-domain", Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(TestRegistration);
-        using var httpClient = new HttpClient(new NeverCompletingHandler());
+        var handler = new NeverCompletingHandler();
+        using var httpClient = new HttpClient(handler);
         IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
         _ = httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
         var options = Options.Create(new DomainServiceOptions { InvocationTimeoutSeconds = 1 });
-        var invoker = new DaprDomainServiceInvoker(daprClient, httpClientFactory, _resolver, options, _logger);
+        var timeProvider = new FakeTimeProvider();
+        var invoker = new DaprDomainServiceInvoker(
+            daprClient,
+            httpClientFactory,
+            _resolver,
+            options,
+            timeProvider,
+            _logger);
 
         // Act
-        Stopwatch stopwatch = Stopwatch.StartNew();
+        Task<DomainResult> invocation = invoker.InvokeAsync(CreateTestEnvelope(), null);
+        await handler.RequestStarted.ConfigureAwait(true);
+        timeProvider.Advance(TimeSpan.FromSeconds(1));
         DomainServiceException exception = await Should.ThrowAsync<DomainServiceException>(
-            () => invoker.InvokeAsync(CreateTestEnvelope(), null));
-        stopwatch.Stop();
+            () => invocation).ConfigureAwait(true);
 
         // Assert
         exception.Message.ShouldContain("timed out after 1s");
         exception.InnerException.ShouldBeOfType<TaskCanceledException>();
         exception.TenantId.ShouldBe("test-tenant");
         exception.Domain.ShouldBe("test-domain");
-        stopwatch.Elapsed.ShouldBeGreaterThan(TimeSpan.FromMilliseconds(750));
-        stopwatch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(2.5));
     }
 
     [Fact]
@@ -151,7 +175,13 @@ public class DaprDomainServiceInvokerTests {
         IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
         _ = httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
         var options = Options.Create(new DomainServiceOptions { InvocationTimeoutSeconds = 5 });
-        var invoker = new DaprDomainServiceInvoker(daprClient, httpClientFactory, _resolver, options, _logger);
+        var invoker = new DaprDomainServiceInvoker(
+            daprClient,
+            httpClientFactory,
+            _resolver,
+            options,
+            TimeProvider.System,
+            _logger);
 
         // Act
         DomainServiceException exception = await Should.ThrowAsync<DomainServiceException>(
@@ -170,16 +200,29 @@ public class DaprDomainServiceInvokerTests {
         using DaprClient daprClient = new DaprClientBuilder().Build();
         _ = _resolver.ResolveAsync("test-tenant", "test-domain", Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(TestRegistration);
-        using var httpClient = new HttpClient(new NeverCompletingHandler());
+        var handler = new NeverCompletingHandler();
+        using var httpClient = new HttpClient(handler);
         IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
         _ = httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
         var options = Options.Create(new DomainServiceOptions { InvocationTimeoutSeconds = 5 });
-        var invoker = new DaprDomainServiceInvoker(daprClient, httpClientFactory, _resolver, options, _logger);
-        using var callerCancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+        var invoker = new DaprDomainServiceInvoker(
+            daprClient,
+            httpClientFactory,
+            _resolver,
+            options,
+            TimeProvider.System,
+            _logger);
+        using var callerCancellation = new CancellationTokenSource();
 
         // Act & Assert
+        Task<DomainResult> invocation = invoker.InvokeAsync(
+            CreateTestEnvelope(),
+            null,
+            callerCancellation.Token);
+        await handler.RequestStarted.ConfigureAwait(true);
+        callerCancellation.Cancel();
         _ = await Should.ThrowAsync<OperationCanceledException>(
-            () => invoker.InvokeAsync(CreateTestEnvelope(), null, callerCancellation.Token));
+            () => invocation).ConfigureAwait(true);
     }
 
     [Fact]
@@ -465,7 +508,13 @@ public class DaprDomainServiceInvokerTests {
         DaprClient daprClient = Substitute.For<DaprClient>();
         _ = _resolver.ResolveAsync("test-tenant", "test-domain", "v2", Arg.Any<CancellationToken>())
             .Returns((DomainServiceRegistration?)null);
-        var invoker = new DaprDomainServiceInvoker(daprClient, Substitute.For<IHttpClientFactory>(), _resolver, _options, _logger);
+        var invoker = new DaprDomainServiceInvoker(
+            daprClient,
+            Substitute.For<IHttpClientFactory>(),
+            _resolver,
+            _options,
+            TimeProvider.System,
+            _logger);
         var envelope = new CommandEnvelope(
             MessageId: "msg-version-resolver-1",
             TenantId: "test-tenant",
@@ -489,7 +538,13 @@ public class DaprDomainServiceInvokerTests {
         DaprClient daprClient = Substitute.For<DaprClient>();
         _ = _resolver.ResolveAsync("test-tenant", "test-domain", "v1", Arg.Any<CancellationToken>())
             .Returns((DomainServiceRegistration?)null);
-        var invoker = new DaprDomainServiceInvoker(daprClient, Substitute.For<IHttpClientFactory>(), _resolver, _options, _logger);
+        var invoker = new DaprDomainServiceInvoker(
+            daprClient,
+            Substitute.For<IHttpClientFactory>(),
+            _resolver,
+            _options,
+            TimeProvider.System,
+            _logger);
         CommandEnvelope envelope = CreateTestEnvelope();
 
         // Act & Assert
@@ -519,9 +574,14 @@ public class DaprDomainServiceInvokerTests {
     private sealed record TestRejectionEvent : IRejectionEvent;
 
     private sealed class NeverCompletingHandler : HttpMessageHandler {
+        private readonly TaskCompletionSource _requestStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task RequestStarted => _requestStarted.Task;
+
         protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken) {
+            _requestStarted.TrySetResult();
             await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken).ConfigureAwait(false);
             return new HttpResponseMessage(System.Net.HttpStatusCode.OK);
         }

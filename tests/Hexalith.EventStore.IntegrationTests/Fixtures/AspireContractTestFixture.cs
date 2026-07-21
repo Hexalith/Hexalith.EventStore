@@ -49,6 +49,12 @@ public class AspireContractTestFixture : IAsyncLifetime {
     public DistributedApplication App => _app ?? throw new InvalidOperationException(
         "Test infrastructure not initialized. Ensure InitializeAsync has completed.");
 
+    /// <summary>Gets the live EventStore DAPR HTTP endpoint for persisted-state proofs.</summary>
+    public Uri EventStoreDaprHttpEndpoint => App.GetEndpoint("eventstore-dapr-cli", "http");
+
+    /// <summary>Gets the live EventStore DAPR gRPC endpoint for DAPR client state operations.</summary>
+    public Uri EventStoreDaprGrpcEndpoint => App.GetEndpoint("eventstore-dapr-cli", "grpc");
+
     /// <summary>Gets the unique aggregate actor type used by this topology.</summary>
     public string AggregateActorTypeName => _aggregateActorTypeName ?? throw new InvalidOperationException(
         "Test infrastructure not initialized. Ensure InitializeAsync has completed.");
@@ -87,12 +93,8 @@ public class AspireContractTestFixture : IAsyncLifetime {
         // Raise per-attempt and total timeouts above the standard defaults — Tier 3 runs all
         // Aspire collections serially, so the shared Docker/Redis/DAPR stack can take longer
         // than the 10s/30s defaults under back-to-back topology startup/teardown pressure.
-        _ = _builder.Services.ConfigureHttpClientDefaults(clientBuilder => _ = clientBuilder.AddStandardResilienceHandler(options => {
-            options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(60);
-            options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(180);
-            options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(120);
-            options.Retry.DisableForUnsafeHttpMethods();
-        }));
+        _ = _builder.Services.ConfigureHttpClientDefaults(clientBuilder =>
+            _ = clientBuilder.AddStandardResilienceHandler(ConfigureTestClientResilience));
 
         _app = await _builder.BuildAsync().ConfigureAwait(false);
         await _app.StartAsync(cts.Token).ConfigureAwait(false);
@@ -190,5 +192,14 @@ public class AspireContractTestFixture : IAsyncLifetime {
             .WaitAsync(cancellationToken)
             .ConfigureAwait(false);
         await redis.CloseAsync(allowCommandsToComplete: true).ConfigureAwait(false);
+    }
+
+    internal static void ConfigureTestClientResilience(HttpStandardResilienceOptions options) {
+        ArgumentNullException.ThrowIfNull(options);
+
+        options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(60);
+        options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(180);
+        options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(120);
+        options.Retry.DisableForUnsafeHttpMethods();
     }
 }

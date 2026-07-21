@@ -38,6 +38,10 @@ public class AspireTopologyFixture : IAsyncLifetime {
     private IDistributedApplicationTestingBuilder? _builder;
     private HttpClient? _eventStoreClient;
     private string? _keycloakBaseUrl;
+    private byte[]? _writerProtocolMarkerSnapshot;
+    private TimeSpan? _writerProtocolMarkerSnapshotExpiry;
+    private string? _writerProtocolMarkerSourceCommit;
+    private bool _writerProtocolMarkerIsolated;
 
     /// <summary>
     /// Gets the HTTP client for the EventStore service.
@@ -149,12 +153,25 @@ public class AspireTopologyFixture : IAsyncLifetime {
                 timeout: TimeSpan.FromMinutes(3),
                 pollInterval: TimeSpan.FromSeconds(2)).ConfigureAwait(false);
         }
-        catch {
+        catch (Exception initializationException) {
             // xUnit does not invoke DisposeAsync when InitializeAsync throws (e.g. the 5-min topology
             // timeout), so restore the env-var snapshot here to keep this fixture's process-wide
             // mutations from leaking into the next serially-run collection.
-            await SafeShutdownAsync().ConfigureAwait(false);
-            RestoreEnvironmentSnapshot();
+            Exception? cleanupException = null;
+            try {
+                await SafeShutdownAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex) {
+                cleanupException = ex;
+            }
+            finally {
+                RestoreEnvironmentSnapshot();
+            }
+
+            if (cleanupException is not null) {
+                throw new AggregateException(initializationException, cleanupException);
+            }
+
             throw;
         }
     }
@@ -170,6 +187,14 @@ public class AspireTopologyFixture : IAsyncLifetime {
     }
 
     private async Task SafeShutdownAsync() {
+        Exception? markerRestorationException = null;
+        try {
+            await RestoreWriterProtocolMarkerAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex) {
+            markerRestorationException = ex;
+        }
+
         _eventStoreClient?.Dispose();
         _eventStoreClient = null;
 
@@ -193,6 +218,12 @@ public class AspireTopologyFixture : IAsyncLifetime {
             }
 
             _builder = null;
+        }
+
+        if (markerRestorationException is not null) {
+            throw new InvalidOperationException(
+                "The disposable security topology could not restore the store-global writer-protocol marker.",
+                markerRestorationException);
         }
     }
 
@@ -260,6 +291,9 @@ public class AspireTopologyFixture : IAsyncLifetime {
             AbortOnConnectFail = false,
             AllowAdmin = false,
         }).ConfigureAwait(false);
+        IDatabase database = redis.GetDatabase();
+        await IsolateWriterProtocolMarkerAsync(database, sourceCommit, cancellationToken)
+            .ConfigureAwait(false);
         string lastDiagnostic = "No activation attempt completed.";
 
         try {
@@ -268,7 +302,7 @@ public class AspireTopologyFixture : IAsyncLifetime {
 
                 try {
                     ProjectionDeliveryWriterProtocolMarker? marker = await ReadWriterProtocolMarkerAsync(
-                        redis.GetDatabase(),
+                        database,
                         cancellationToken).ConfigureAwait(false);
                     if (marker is not null) {
                         AssertWriterProtocolMarker(marker, sourceCommit);
@@ -313,9 +347,7 @@ public class AspireTopologyFixture : IAsyncLifetime {
                     string body = await response.Content
                         .ReadAsStringAsync(cancellationToken)
                         .ConfigureAwait(false);
-                    if (response.StatusCode == HttpStatusCode.OK
-                        || response.StatusCode == HttpStatusCode.Conflict
-                        || IsTransientActivationStatus(response.StatusCode)) {
+                    if (ShouldRetryActivationResponse(response.StatusCode)) {
                         lastDiagnostic = $"Activation has not produced a verified marker yet. "
                             + $"Status={(int)response.StatusCode} ({response.StatusCode}); Body={body}";
                         await Task.Delay(s_cutoverRetryDelay, cancellationToken).ConfigureAwait(false);
@@ -359,10 +391,81 @@ public class AspireTopologyFixture : IAsyncLifetime {
         }
     }
 
-    private static bool IsTransientActivationStatus(HttpStatusCode statusCode)
-        => statusCode == HttpStatusCode.RequestTimeout
+    internal static bool ShouldRetryActivationResponse(HttpStatusCode statusCode)
+        => statusCode == HttpStatusCode.OK
+            || statusCode == HttpStatusCode.Conflict
+            || statusCode == HttpStatusCode.RequestTimeout
             || statusCode == HttpStatusCode.TooManyRequests
             || (int)statusCode >= 500;
+
+    private async Task IsolateWriterProtocolMarkerAsync(
+        IDatabase database,
+        string sourceCommit,
+        CancellationToken cancellationToken) {
+        if (_writerProtocolMarkerIsolated) {
+            throw new InvalidOperationException(
+                "The disposable topology attempted to isolate the writer-protocol marker more than once.");
+        }
+
+        _writerProtocolMarkerSnapshot = await database
+            .KeyDumpAsync(ProjectionDeliveryWriterProtocolStateKey)
+            .WaitAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (_writerProtocolMarkerSnapshot is not null) {
+            _writerProtocolMarkerSnapshotExpiry = await database
+                .KeyTimeToLiveAsync(ProjectionDeliveryWriterProtocolStateKey)
+                .WaitAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        _writerProtocolMarkerSourceCommit = sourceCommit;
+        _writerProtocolMarkerIsolated = true;
+        _ = await database
+            .KeyDeleteAsync(ProjectionDeliveryWriterProtocolStateKey)
+            .WaitAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task RestoreWriterProtocolMarkerAsync() {
+        if (!_writerProtocolMarkerIsolated) {
+            return;
+        }
+
+        using IConnectionMultiplexer redis = await ConnectionMultiplexer.ConnectAsync(new ConfigurationOptions {
+            EndPoints = { RedisEndpoint },
+            ConnectTimeout = 5_000,
+            SyncTimeout = 5_000,
+            AbortOnConnectFail = false,
+            AllowAdmin = false,
+        }).ConfigureAwait(false);
+        IDatabase database = redis.GetDatabase();
+        ProjectionDeliveryWriterProtocolMarker? current = await ReadWriterProtocolMarkerAsync(
+            database,
+            CancellationToken.None).ConfigureAwait(false);
+        if (current is not null
+            && !string.Equals(
+                current.CutoverCommit,
+                _writerProtocolMarkerSourceCommit,
+                StringComparison.Ordinal)) {
+            throw new InvalidOperationException(
+                "The store-global writer-protocol marker changed after fixture isolation; "
+                + "refusing to overwrite state owned by another topology.");
+        }
+
+        _ = await database.KeyDeleteAsync(ProjectionDeliveryWriterProtocolStateKey).ConfigureAwait(false);
+        if (_writerProtocolMarkerSnapshot is not null) {
+            await database.KeyRestoreAsync(
+                ProjectionDeliveryWriterProtocolStateKey,
+                _writerProtocolMarkerSnapshot,
+                _writerProtocolMarkerSnapshotExpiry).ConfigureAwait(false);
+        }
+
+        await redis.CloseAsync(allowCommandsToComplete: true).ConfigureAwait(false);
+        _writerProtocolMarkerSnapshot = null;
+        _writerProtocolMarkerSnapshotExpiry = null;
+        _writerProtocolMarkerSourceCommit = null;
+        _writerProtocolMarkerIsolated = false;
+    }
 
     private static async Task<ProjectionDeliveryWriterProtocolMarker?> ReadWriterProtocolMarkerAsync(
         IDatabase database,

@@ -101,7 +101,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
     }
 
     [Fact]
-    public async Task PostCommands_ConcurrencyConflict_StatusUpdatedToRejected() {
+    public async Task PostCommands_ConcurrencyConflict_StatusWriteUsesSubmittedIdentityInMemoryContract() {
         // Arrange
         var statusStore = new Testing.Fakes.InMemoryCommandStatusStore();
         using WebApplicationFactory<EventStoreProgram> customFactory = CreateConflictFactory(statusStore);
@@ -114,9 +114,11 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
 
-        // The status store should have a Rejected entry under the submitted message identity.
+        // Fast middleware-contract proof. The live DAPR persistence boundary is covered by
+        // ConcurrencyConflictStatusPersistenceE2ETests in the Aspire contract topology.
         CommandStatusRecord? rejectedStatus = await statusStore
-            .ReadStatusAsync(request.Tenant, request.MessageId);
+            .ReadStatusAsync(request.Tenant, request.MessageId)
+            .ConfigureAwait(true);
         _ = rejectedStatus.ShouldNotBeNull();
         rejectedStatus.Status.ShouldBe(CommandStatus.Rejected);
         rejectedStatus.FailureReason.ShouldBe("ConcurrencyConflict");
