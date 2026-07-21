@@ -133,6 +133,19 @@ from this proposal inventory and remains owned by its existing changes.
 
 ### Review Findings
 
+#### 2026-07-21 — Code review of landed corrective commit `bccc2560`
+
+- [ ] [Review][Patch] Production resilience timeouts override the configured domain-service invocation timeout [src/Hexalith.EventStore.Server/DomainServices/DaprDomainServiceInvoker.cs:56]
+- [ ] [Review][Patch] The disposable security topology reuses and leaves behind a store-global writer-protocol marker [tests/Hexalith.EventStore.IntegrationTests/Security/AspireTopologyFixture.cs:269]
+- [ ] [Review][Patch] The claimed conflict-status persistence proof still reads only an in-memory fake instead of persisted DAPR state [tests/Hexalith.EventStore.IntegrationTests/EventStore/ConcurrencyConflictIntegrationTests.cs:106]
+- [ ] [Review][Patch] The tenant-bootstrap test proves event persistence but not the hosted service's terminal success outcome [tests/Hexalith.EventStore.IntegrationTests/ContractTests/TenantBootstrapHealthTests.cs:71]
+- [ ] [Review][Patch] The timeout regression test bypasses the production resilience pipeline and relies on a flaky wall-clock ceiling [tests/Hexalith.EventStore.Server.Tests/DomainServices/DaprDomainServiceInvokerTests.cs:123]
+- [ ] [Review][Patch] Eager startup validation and the accepted one-second timeout boundary are not pinned by host-level tests [tests/Hexalith.EventStore.Server.Tests/Configuration/EventStoreServerServiceCollectionExtensionsTests.cs:78]
+- [ ] [Review][Patch] Unsafe command-POST retry suppression has no deterministic attempt-count verification [tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspireContractTestFixture.cs:90]
+- [ ] [Review][Patch] Writer-protocol retries for 408, 429, and 5xx activation responses have no deterministic coverage [tests/Hexalith.EventStore.IntegrationTests/Security/AspireTopologyFixture.cs:316]
+- [ ] [Review][Patch] Newly added integration-test awaits omit the repository-required `ConfigureAwait(false)` [tests/Hexalith.EventStore.IntegrationTests/ContractTests/TenantBootstrapHealthTests.cs:46]
+- [ ] [Review][Patch] New domain-service cancellation telemetry bypasses the required source-generated logging pattern [src/Hexalith.EventStore.Server/DomainServices/DaprDomainServiceInvoker.cs:82]
+
 #### 2026-07-19 — Exact-SHA execution corrections
 
 - [x] [Review][Patch] [high] Add the tracked executable provider adapter required by the hybrid
