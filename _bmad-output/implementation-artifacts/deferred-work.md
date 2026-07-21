@@ -504,3 +504,9 @@ _All items LOW / non-blocking. Story 2.7 accepted (all AC1–AC7 met; Release bu
 - source_spec: `_bmad-output/implementation-artifacts/3-12-multi-platform-eventstore-container-publishing-correction.md`
   summary: [LOW] Non-domain exceptions (OSError/TypeError from evidence/log file I/O, `path.read_bytes()`) can escape the `main()` handlers that catch only `ValidationError`/`AuthorityError`/`SmokeFailure`, emitting raw tracebacks; and support-safe log redaction (`_support_safe`) misses JSON-shaped secrets (`"password": "..."`) with 30-day evidence-artifact retention.
   evidence: Story 3.12 code review (blind-hunter). Both still fail-closed (exit != 0) and low-exposure today (smoke container carries only the non-secret JWT key), but neither matches the "deterministic support-safe" contract. Owned by the Hexalith.Builds maintainer.
+
+## Deferred from: Story 2.10 Tier 1 logging regression unblock (2026-07-21)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-10-unblock-server-logging-regressions.md`
+  summary: Make `InformationLevelOnly_TracingChainStillComplete` exercise an actor logger that actually disables Debug logging instead of capturing every level and filtering the resulting list afterward.
+  evidence: Review confirmed the pre-existing test's `TestLogger<T>.IsEnabled` always returns true, so it cannot detect incorrect runtime gating through `IsEnabled(Debug)` even though its post-capture assertions exclude Debug entries; this limitation predates and is not caused by the pooled-state capture correction.

@@ -58,10 +58,14 @@ internal static class AggregateActorTestHelper {
         IEventPayloadProtectionService? payloadProtectionService = null,
         CommandConcurrencyOptions? concurrencyOptions = null,
         TimeProvider? timeProvider = null,
-        IdempotencyExecutionContextProtector? executionContextProtector = null) {
+        IdempotencyExecutionContextProtector? executionContextProtector = null,
+        ILogger<AggregateActor>? logger = null) {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
-        ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
-        _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        if (logger is null) {
+            logger = Substitute.For<ILogger<AggregateActor>>();
+            _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        }
+
         IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
         ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
         ICommandAggregateTypeResolver aggregateTypeResolver = Substitute.For<ICommandAggregateTypeResolver>();

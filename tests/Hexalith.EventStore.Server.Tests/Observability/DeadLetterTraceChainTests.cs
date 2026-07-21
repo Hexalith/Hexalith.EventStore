@@ -1,6 +1,5 @@
 
 using System.Diagnostics;
-using System.Reflection;
 
 using Dapr.Actors;
 using Dapr.Actors.Runtime;
@@ -108,11 +107,11 @@ public class DeadLetterTraceChainTests {
         return (actor, stateManager, logger, invoker, fakeDeadLetter);
     }
 
-    private static (AggregateActor Actor, IActorStateManager StateManager, ILogger<AggregateActor> Logger, IDomainServiceInvoker Invoker, IDeadLetterPublisher MockDeadLetterPublisher)
+    private static (AggregateActor Actor, IActorStateManager StateManager, List<LogEntry> LogEntries, IDomainServiceInvoker Invoker, IDeadLetterPublisher MockDeadLetterPublisher)
         CreateActorWithMockDeadLetter(string actorId = "test-tenant:test-domain:agg-001") {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
-        ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
-        _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        var logEntries = new List<LogEntry>();
+        var logger = new TestLogger<AggregateActor>(logEntries);
         IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
         ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
         ICommandStatusStore commandStatusStore = Substitute.For<ICommandStatusStore>();
@@ -160,7 +159,7 @@ public class DeadLetterTraceChainTests {
             Arg.Any<CancellationToken>())
             .Returns(new EventPublishResult(true, 0, null));
 
-        return (actor, stateManager, logger, invoker, deadLetterPublisher);
+        return (actor, stateManager, logEntries, invoker, deadLetterPublisher);
     }
 
     private static (AggregateActor Actor, IActorStateManager StateManager, ILogger<AggregateActor> Logger, IDomainServiceInvoker Invoker)
@@ -213,37 +212,6 @@ public class DeadLetterTraceChainTests {
             .Returns(new EventPublishResult(true, 0, null));
 
         return (actor, stateManager, logger, invoker);
-    }
-
-    /// <summary>
-    /// Extracts all log messages from an NSubstitute ILogger mock by inspecting received calls.
-    /// </summary>
-    private static IReadOnlyList<(LogLevel Level, string Message)> GetLogEntries(ILogger logger) {
-        var entries = new List<(LogLevel Level, string Message)>();
-        foreach (NSubstitute.Core.ICall call in logger.ReceivedCalls()) {
-            if (call.GetMethodInfo().Name == "Log" && call.GetArguments().Length >= 5) {
-                object?[] args = call.GetArguments();
-                var level = (LogLevel)args[0]!;
-                object? state = args[2];
-                var exception = args[3] as Exception;
-                object? formatter = args[4];
-                string? message = null;
-                if (formatter is not null && state is not null) {
-                    try {
-                        MethodInfo? invokeMethod = formatter.GetType().GetMethod("Invoke");
-                        message = invokeMethod?.Invoke(formatter, [state, exception])?.ToString();
-                    }
-                    catch {
-                        message = state.ToString();
-                    }
-                }
-
-                message ??= state?.ToString() ?? string.Empty;
-                entries.Add((level, message));
-            }
-        }
-
-        return entries;
     }
 
     #endregion
@@ -579,7 +547,7 @@ public class DeadLetterTraceChainTests {
         // Arrange: Dead-letter publication returns false (sidecar unavailable)
         string correlationId = $"trace-sidecar-{Guid.NewGuid()}";
 
-        (AggregateActor actor, _, ILogger<AggregateActor> logger, IDomainServiceInvoker invoker, IDeadLetterPublisher mockDeadLetter) =
+        (AggregateActor actor, _, List<LogEntry> logEntries, IDomainServiceInvoker invoker, IDeadLetterPublisher mockDeadLetter) =
             CreateActorWithMockDeadLetter();
 
         // Simulate dead-letter publication failure
@@ -598,8 +566,6 @@ public class DeadLetterTraceChainTests {
         _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert: Error log for DL publication failure contains correlation context
-        IReadOnlyList<(LogLevel Level, string Message)> logEntries = GetLogEntries(logger);
-
         // Should have the InfrastructureFailure Error log
         logEntries.Any(e => e.Level == LogLevel.Error
                  && e.Message.Contains(correlationId, StringComparison.Ordinal)
@@ -613,15 +579,15 @@ public class DeadLetterTraceChainTests {
             .ShouldBeTrue("Dead-letter publication failure Error log should contain correlation ID");
 
         // Verify the DL failure log also contains tenant and domain context
-        IReadOnlyList<(LogLevel Level, string Message)> dlFailureLogs = logEntries
+        IReadOnlyList<LogEntry> dlFailureLogs = logEntries
             .Where(e => e.Level == LogLevel.Error
                    && e.Message.Contains("Dead-letter publication failed", StringComparison.Ordinal))
             .ToList();
 
         dlFailureLogs.ShouldNotBeEmpty();
-        dlFailureLogs[0].Message.Contains("test-tenant", StringComparison.Ordinal)
+        dlFailureLogs[0].Message.Contains("TenantId=test-tenant,", StringComparison.Ordinal)
             .ShouldBeTrue("DL failure log should contain TenantId for operator diagnosis");
-        dlFailureLogs[0].Message.Contains("test-domain", StringComparison.Ordinal)
+        dlFailureLogs[0].Message.Contains("Domain=test-domain,", StringComparison.Ordinal)
             .ShouldBeTrue("DL failure log should contain Domain for operator diagnosis");
     }
 

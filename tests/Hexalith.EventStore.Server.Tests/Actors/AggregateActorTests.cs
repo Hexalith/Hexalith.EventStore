@@ -1,5 +1,6 @@
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Actors;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 using Microsoft.Extensions.Logging;
 
@@ -45,7 +46,8 @@ public class AggregateActorTests {
     [Fact]
     public async Task ProcessCommandAsync_ValidCommand_LogsCommandReceipt() {
         // Arrange
-        ActorTestContext ctx = CreateActor();
+        var logEntries = new List<LogEntry>();
+        ActorTestContext ctx = CreateActor(logger: new TestLogger<AggregateActor>(logEntries));
         ConfigureNoDuplicate(ctx.StateManager);
         CommandEnvelope envelope = CreateTestEnvelope();
 
@@ -53,12 +55,9 @@ public class AggregateActorTests {
         _ = await ctx.Actor.ProcessCommandAsync(envelope);
 
         // Assert
-        ctx.Logger.Received().Log(
-            LogLevel.Debug,
-            Arg.Any<EventId>(),
-            Arg.Is<object>(o => o.ToString()!.Contains("Actor activated")),
-            Arg.Any<Exception?>(),
-            Arg.Any<Func<object, Exception?, string>>());
+        logEntries.ShouldContain(entry =>
+            entry.Level == LogLevel.Debug
+            && entry.Message == $"Actor activated: ActorId=test-tenant:test-domain:agg-001, CorrelationId={envelope.CorrelationId}, CausationId={envelope.MessageId}, TenantId=test-tenant, Domain=test-domain, AggregateId=agg-001, CommandType=CreateOrder, Stage=ActorActivated");
     }
 
     [Fact]

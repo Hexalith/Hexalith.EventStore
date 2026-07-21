@@ -1,5 +1,4 @@
 
-using System.Reflection;
 using System.Security.Claims;
 
 using Dapr.Actors;
@@ -28,7 +27,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using NSubstitute;
-using NSubstitute.Core;
 using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
@@ -59,11 +57,17 @@ public class DeadLetterOriginTracingTests {
         UserId: "system",
         Extensions: null);
 
-    private static (AggregateActor Actor, IActorStateManager StateManager, ILogger<AggregateActor> Logger, IDomainServiceInvoker Invoker, FakeDeadLetterPublisher DeadLetterPublisher, ICommandStatusStore StatusStore)
+    private static bool ContainsExactField(string message, string fieldName, string value) {
+        string field = $"{fieldName}={value}";
+        return message.Contains(field + ",", StringComparison.Ordinal)
+            || message.EndsWith(field, StringComparison.Ordinal);
+    }
+
+    private static (AggregateActor Actor, IActorStateManager StateManager, List<LogEntry> LogEntries, IDomainServiceInvoker Invoker, FakeDeadLetterPublisher DeadLetterPublisher, ICommandStatusStore StatusStore)
         CreateActorWithFakeDeadLetter(string actorId = "test-tenant:test-domain:agg-001") {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
-        ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
-        _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        var logEntries = new List<LogEntry>();
+        var logger = new TestLogger<AggregateActor>(logEntries);
         IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
         ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
         ICommandStatusStore commandStatusStore = Substitute.For<ICommandStatusStore>();
@@ -109,38 +113,7 @@ public class DeadLetterOriginTracingTests {
             Arg.Any<CancellationToken>())
             .Returns(new EventPublishResult(true, 0, null));
 
-        return (actor, stateManager, logger, invoker, fakeDeadLetter, commandStatusStore);
-    }
-
-    /// <summary>
-    /// Extracts all log messages from an NSubstitute ILogger mock by inspecting received calls.
-    /// </summary>
-    private static IReadOnlyList<(LogLevel Level, string Message)> GetLogEntries(ILogger logger) {
-        var entries = new List<(LogLevel Level, string Message)>();
-        foreach (ICall call in logger.ReceivedCalls()) {
-            if (call.GetMethodInfo().Name == "Log" && call.GetArguments().Length >= 5) {
-                object?[] args = call.GetArguments();
-                var level = (LogLevel)args[0]!;
-                object? state = args[2];
-                var exception = args[3] as Exception;
-                object? formatter = args[4];
-                string? message = null;
-                if (formatter is not null && state is not null) {
-                    try {
-                        MethodInfo? invokeMethod = formatter.GetType().GetMethod("Invoke");
-                        message = invokeMethod?.Invoke(formatter, [state, exception])?.ToString();
-                    }
-                    catch {
-                        message = state.ToString();
-                    }
-                }
-
-                message ??= state?.ToString() ?? string.Empty;
-                entries.Add((level, message));
-            }
-        }
-
-        return entries;
+        return (actor, stateManager, logEntries, invoker, fakeDeadLetter, commandStatusStore);
     }
 
     #endregion
@@ -151,7 +124,7 @@ public class DeadLetterOriginTracingTests {
     public async Task DomainServiceFailure_CorrelationIdTracesBackThroughAllStages() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
-        (AggregateActor actor, _, ILogger<AggregateActor> logger, IDomainServiceInvoker invoker, FakeDeadLetterPublisher fakeDeadLetter, _) =
+        (AggregateActor actor, _, List<LogEntry> logEntries, IDomainServiceInvoker invoker, FakeDeadLetterPublisher fakeDeadLetter, _) =
             CreateActorWithFakeDeadLetter();
 
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId);
@@ -168,20 +141,21 @@ public class DeadLetterOriginTracingTests {
         dlMessages[0].Message.CorrelationId.ShouldBe(correlationId);
 
         // Assert: Verify logs contain the correlation ID at multiple stages
-        IReadOnlyList<(LogLevel Level, string Message)> logEntries = GetLogEntries(logger);
-        IReadOnlyList<(LogLevel Level, string Message)> correlatedLogs = logEntries
-            .Where(e => e.Message.Contains(correlationId, StringComparison.Ordinal))
+        IReadOnlyList<LogEntry> correlatedLogs = logEntries
+            .Where(e => ContainsExactField(e.Message, "CorrelationId", correlationId))
             .ToList();
 
-        // Should have logs for: ActorActivated, Processing stage transition, InfrastructureFailure, Rejected stage transition
-        correlatedLogs.Count.ShouldBeGreaterThanOrEqualTo(3);
+        correlatedLogs.ShouldContain(e => ContainsExactField(e.Message, "Stage", "ActorActivated"));
+        correlatedLogs.ShouldContain(e => ContainsExactField(e.Message, "Stage", "Processing"));
+        correlatedLogs.ShouldContain(e => ContainsExactField(e.Message, "Stage", "InfrastructureFailure"));
+        correlatedLogs.ShouldContain(e => ContainsExactField(e.Message, "Stage", "Rejected"));
     }
 
     [Fact]
     public async Task DomainServiceFailure_OriginatingRequestIdentifiable() {
         // Arrange: build a realistic API->pipeline->actor flow sharing one correlation ID
         string correlationId = Guid.NewGuid().ToString();
-        var behaviorLogs = new List<ObservabilityLogEntry>();
+        var behaviorLogs = new List<LogEntry>();
         var behaviorLogger = new TestLogger<LoggingBehavior<SubmitCommand, SubmitCommandResult>>(behaviorLogs);
         IHttpContextAccessor httpContextAccessor = Substitute.For<IHttpContextAccessor>();
         var httpContext = new DefaultHttpContext();
@@ -193,7 +167,7 @@ public class DeadLetterOriginTracingTests {
 
         var behavior = new LoggingBehavior<SubmitCommand, SubmitCommandResult>(behaviorLogger, httpContextAccessor);
 
-        (AggregateActor actor, _, ILogger<AggregateActor> logger, IDomainServiceInvoker invoker, _, _) =
+        (AggregateActor actor, _, List<LogEntry> logEntries, IDomainServiceInvoker invoker, _, _) =
             CreateActorWithFakeDeadLetter();
 
         var submitCommand = new SubmitCommand(
@@ -238,8 +212,7 @@ public class DeadLetterOriginTracingTests {
             .ShouldBeTrue("Origin tracing requires source IP, endpoint, user identity, timestamp, and command type in the API receipt log");
 
         // Assert: actor-side log trail still carries same correlation ID
-        IReadOnlyList<(LogLevel Level, string Message)> logEntries = GetLogEntries(logger);
-        IReadOnlyList<(LogLevel Level, string Message)> correlatedLogs = logEntries
+        IReadOnlyList<LogEntry> correlatedLogs = logEntries
             .Where(e => e.Message.Contains(correlationId, StringComparison.Ordinal))
             .ToList();
 
@@ -256,7 +229,7 @@ public class DeadLetterOriginTracingTests {
     public async Task StateRehydrationFailure_CorrelationIdTracesBackThroughAllStages() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
-        (AggregateActor actor, IActorStateManager stateManager, ILogger<AggregateActor> logger, _, FakeDeadLetterPublisher fakeDeadLetter, _) =
+        (AggregateActor actor, IActorStateManager stateManager, List<LogEntry> logEntries, _, FakeDeadLetterPublisher fakeDeadLetter, _) =
             CreateActorWithFakeDeadLetter();
 
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId);
@@ -279,16 +252,20 @@ public class DeadLetterOriginTracingTests {
         dlMessages[0].Message.CorrelationId.ShouldBe(correlationId);
 
         // Assert: Log trail has correlation ID
-        IReadOnlyList<(LogLevel Level, string Message)> logEntries = GetLogEntries(logger);
-        int correlatedCount = logEntries.Count(e => e.Message.Contains(correlationId, StringComparison.Ordinal));
-        correlatedCount.ShouldBeGreaterThanOrEqualTo(3);
+        IReadOnlyList<LogEntry> correlatedLogs = logEntries
+            .Where(e => ContainsExactField(e.Message, "CorrelationId", correlationId))
+            .ToList();
+        correlatedLogs.ShouldContain(e => ContainsExactField(e.Message, "Stage", "ActorActivated"));
+        correlatedLogs.ShouldContain(e => ContainsExactField(e.Message, "Stage", "Processing"));
+        correlatedLogs.ShouldContain(e => ContainsExactField(e.Message, "Stage", "InfrastructureFailure"));
+        correlatedLogs.ShouldContain(e => ContainsExactField(e.Message, "Stage", "Rejected"));
     }
 
     [Fact]
     public async Task EventPersistenceFailure_CorrelationIdTracesBackThroughAllStages() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
-        (AggregateActor actor, IActorStateManager stateManager, ILogger<AggregateActor> logger, IDomainServiceInvoker invoker, FakeDeadLetterPublisher fakeDeadLetter, _) =
+        (AggregateActor actor, IActorStateManager stateManager, List<LogEntry> logEntries, IDomainServiceInvoker invoker, FakeDeadLetterPublisher fakeDeadLetter, _) =
             CreateActorWithFakeDeadLetter();
 
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId);
@@ -317,16 +294,20 @@ public class DeadLetterOriginTracingTests {
         dlMessages[0].Message.CorrelationId.ShouldBe(correlationId);
 
         // Assert: Log trail has correlation ID
-        IReadOnlyList<(LogLevel Level, string Message)> logEntries = GetLogEntries(logger);
-        int correlatedCount = logEntries.Count(e => e.Message.Contains(correlationId, StringComparison.Ordinal));
-        correlatedCount.ShouldBeGreaterThanOrEqualTo(3);
+        IReadOnlyList<LogEntry> correlatedLogs = logEntries
+            .Where(e => ContainsExactField(e.Message, "CorrelationId", correlationId))
+            .ToList();
+        correlatedLogs.ShouldContain(e => ContainsExactField(e.Message, "Stage", "ActorActivated"));
+        correlatedLogs.ShouldContain(e => ContainsExactField(e.Message, "Stage", "Processing"));
+        correlatedLogs.ShouldContain(e => ContainsExactField(e.Message, "Stage", "InfrastructureFailure"));
+        correlatedLogs.ShouldContain(e => ContainsExactField(e.Message, "Stage", "Rejected"));
     }
 
     [Fact]
     public async Task DeadLetterLog_ContainsCorrelationIdMatchingOrigin() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
-        (AggregateActor actor, _, ILogger<AggregateActor> logger, IDomainServiceInvoker invoker, FakeDeadLetterPublisher fakeDeadLetter, _) =
+        (AggregateActor actor, _, List<LogEntry> logEntries, IDomainServiceInvoker invoker, FakeDeadLetterPublisher fakeDeadLetter, _) =
             CreateActorWithFakeDeadLetter();
 
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId);
@@ -342,7 +323,6 @@ public class DeadLetterOriginTracingTests {
         dl.CorrelationId.ShouldBe(correlationId);
 
         // Assert: InfrastructureFailure log contains correlation ID and Stage
-        IReadOnlyList<(LogLevel Level, string Message)> logEntries = GetLogEntries(logger);
         logEntries.Any(e => e.Level == LogLevel.Error
                  && e.Message.Contains(correlationId, StringComparison.Ordinal)
                  && e.Message.Contains("InfrastructureFailure", StringComparison.Ordinal))
@@ -353,7 +333,7 @@ public class DeadLetterOriginTracingTests {
     public async Task AllLogsBetweenOriginAndDeadLetter_ContainConsistentCorrelationId() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
-        (AggregateActor actor, _, ILogger<AggregateActor> logger, IDomainServiceInvoker invoker, _, _) =
+        (AggregateActor actor, _, List<LogEntry> logEntries, IDomainServiceInvoker invoker, _, _) =
             CreateActorWithFakeDeadLetter();
 
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId);
@@ -365,19 +345,17 @@ public class DeadLetterOriginTracingTests {
         _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert: ALL logs that contain the CorrelationId field contain the CORRECT correlation ID
-        IReadOnlyList<(LogLevel Level, string Message)> logEntries = GetLogEntries(logger);
-
         // Filter to logs that reference a CorrelationId field
-        IReadOnlyList<(LogLevel Level, string Message)> logsWithCorrelation = logEntries
+        IReadOnlyList<LogEntry> logsWithCorrelation = logEntries
             .Where(e => e.Message.Contains("CorrelationId=", StringComparison.Ordinal))
             .ToList();
 
         logsWithCorrelation.ShouldNotBeEmpty();
 
         // Every log with CorrelationId= should have the correct value
-        foreach ((_, string message) in logsWithCorrelation) {
-            message.Contains(correlationId, StringComparison.Ordinal).ShouldBeTrue(
-                $"Log message contains CorrelationId field but with wrong value: {message}");
+        foreach (LogEntry entry in logsWithCorrelation) {
+            ContainsExactField(entry.Message, "CorrelationId", correlationId).ShouldBeTrue(
+                $"Log message contains CorrelationId field but with wrong value: {entry.Message}");
         }
     }
 
@@ -385,7 +363,7 @@ public class DeadLetterOriginTracingTests {
     public async Task InformationLevelOnly_TracingChainStillComplete() {
         // Arrange: Simulate production scenario where Debug logs are filtered
         string correlationId = Guid.NewGuid().ToString();
-        (AggregateActor actor, _, ILogger<AggregateActor> logger, IDomainServiceInvoker invoker, _, _) =
+        (AggregateActor actor, _, List<LogEntry> logEntries, IDomainServiceInvoker invoker, _, _) =
             CreateActorWithFakeDeadLetter();
 
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId);
@@ -397,25 +375,20 @@ public class DeadLetterOriginTracingTests {
         _ = await actor.ProcessCommandAsync(envelope);
 
         // Assert: Even with only Information+ logs, the tracing chain is complete
-        IReadOnlyList<(LogLevel Level, string Message)> logEntries = GetLogEntries(logger);
-
         // Filter to Information level and above (production scenario)
-        IReadOnlyList<(LogLevel Level, string Message)> infoAndAboveLogs = logEntries
-            .Where(e => e.Level >= LogLevel.Information && e.Message.Contains(correlationId, StringComparison.Ordinal))
+        IReadOnlyList<LogEntry> infoAndAboveLogs = logEntries
+            .Where(e => e.Level >= LogLevel.Information && ContainsExactField(e.Message, "CorrelationId", correlationId))
             .ToList();
 
-        // Should have at minimum: Processing stage transition (Info), InfrastructureFailure (Error), Rejected stage transition (Warning)
-        infoAndAboveLogs.Count.ShouldBeGreaterThanOrEqualTo(2);
-
-        // Should contain the Error-level InfrastructureFailure log
-        infoAndAboveLogs.Any(e => e.Level == LogLevel.Error)
-            .ShouldBeTrue("InfrastructureFailure Error log should be present at Information+ level");
+        infoAndAboveLogs.ShouldContain(e => ContainsExactField(e.Message, "Stage", "Processing"));
+        infoAndAboveLogs.ShouldContain(e => ContainsExactField(e.Message, "Stage", "InfrastructureFailure"));
+        infoAndAboveLogs.ShouldContain(e => ContainsExactField(e.Message, "Stage", "Rejected"));
     }
 
     [Fact]
     public async Task CommandReceived_LogIncludesSourceIP() {
         // Arrange: Test that LoggingBehavior's PipelineEntry log includes SourceIP
-        var logEntries = new List<ObservabilityLogEntry>();
+        var logEntries = new List<LogEntry>();
         var testLogger = new TestLogger<LoggingBehavior<SubmitCommand, SubmitCommandResult>>(logEntries);
         IHttpContextAccessor httpContextAccessor = Substitute.For<IHttpContextAccessor>();
         var httpContext = new DefaultHttpContext();
@@ -460,7 +433,7 @@ public class DeadLetterOriginTracingTests {
         string correlationB = Guid.NewGuid().ToString();
 
         // Tenant A
-        (AggregateActor actorA, _, ILogger<AggregateActor> loggerA, IDomainServiceInvoker invokerA, FakeDeadLetterPublisher fakeDeadLetterA, _) =
+        (AggregateActor actorA, _, List<LogEntry> logsA, IDomainServiceInvoker invokerA, FakeDeadLetterPublisher fakeDeadLetterA, _) =
             CreateActorWithFakeDeadLetter("tenant-a:orders:agg-001");
 
         CommandEnvelope envelopeA = CreateTestEnvelope(
@@ -471,7 +444,7 @@ public class DeadLetterOriginTracingTests {
             .ThrowsAsync(new InvalidOperationException("Tenant A failure"));
 
         // Tenant B
-        (AggregateActor actorB, _, ILogger<AggregateActor> loggerB, IDomainServiceInvoker invokerB, FakeDeadLetterPublisher fakeDeadLetterB, _) =
+        (AggregateActor actorB, _, List<LogEntry> logsB, IDomainServiceInvoker invokerB, FakeDeadLetterPublisher fakeDeadLetterB, _) =
             CreateActorWithFakeDeadLetter("tenant-b:inventory:agg-002");
 
         CommandEnvelope envelopeB = CreateTestEnvelope(
@@ -496,13 +469,15 @@ public class DeadLetterOriginTracingTests {
         dlB[0].Message.CorrelationId.ShouldBe(correlationB);
         dlB[0].Message.TenantId.ShouldBe("tenant-b");
 
-        // Assert: Tenant A logs don't contain tenant B's correlation ID
-        IReadOnlyList<(LogLevel Level, string Message)> logsA = GetLogEntries(loggerA);
+        // Assert: Tenant A logs contain their own correlation ID and not Tenant B's correlation ID
+        logsA.Any(e => ContainsExactField(e.Message, "CorrelationId", correlationA))
+            .ShouldBeTrue("Tenant A logs should contain Tenant A's correlation ID");
         logsA.Any(e => e.Message.Contains(correlationB, StringComparison.Ordinal))
             .ShouldBeFalse("Tenant A logs should not contain Tenant B's correlation ID");
 
-        // Assert: Tenant B logs don't contain tenant A's correlation ID
-        IReadOnlyList<(LogLevel Level, string Message)> logsB = GetLogEntries(loggerB);
+        // Assert: Tenant B logs contain their own correlation ID and not Tenant A's correlation ID
+        logsB.Any(e => ContainsExactField(e.Message, "CorrelationId", correlationB))
+            .ShouldBeTrue("Tenant B logs should contain Tenant B's correlation ID");
         logsB.Any(e => e.Message.Contains(correlationA, StringComparison.Ordinal))
             .ShouldBeFalse("Tenant B logs should not contain Tenant A's correlation ID");
     }
@@ -804,15 +779,5 @@ public class DeadLetterOriginTracingTests {
 
     private sealed record TestEvent : Hexalith.EventStore.Contracts.Events.IEventPayload;
 
-    private sealed class TestLogger<T>(List<ObservabilityLogEntry> entries) : ILogger<T> {
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-
-        public bool IsEnabled(LogLevel logLevel) => true;
-
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) => entries.Add(new ObservabilityLogEntry(logLevel, formatter(state, exception)));
-    }
-
     #endregion
 }
-
-internal record ObservabilityLogEntry(LogLevel Level, string Message);
