@@ -1,8 +1,8 @@
 namespace Hexalith.EventStore.Server.DomainServices;
 
 /// <summary>
-/// Exception thrown when a domain service response violates configured limits (AC #6).
-/// Examples: too many events, event payload too large.
+/// Exception thrown when domain-service invocation fails or a response violates configured limits (AC #6).
+/// Examples include invocation cancellation, too many events, and an oversized event payload.
 /// </summary>
 public class DomainServiceException : InvalidOperationException {
     /// <summary>
@@ -47,6 +47,13 @@ public class DomainServiceException : InvalidOperationException {
         EventSizeBytes = eventSizeBytes;
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="DomainServiceException"/> class for an invocation failure.
+    /// </summary>
+    /// <param name="tenantId">The tenant identifier.</param>
+    /// <param name="domain">The domain name.</param>
+    /// <param name="reason">A description of the invocation failure.</param>
+    /// <param name="innerException">The underlying invocation exception.</param>
     internal DomainServiceException(string tenantId, string domain, string reason, Exception innerException)
         : base($"Domain service invocation failed for tenant '{tenantId}', domain '{domain}': {reason}", innerException) {
         TenantId = tenantId;
@@ -60,7 +67,7 @@ public class DomainServiceException : InvalidOperationException {
     /// <summary>Gets the domain name.</summary>
     public string? Domain { get; }
 
-    /// <summary>Gets the reason for the rejection.</summary>
+    /// <summary>Gets the reason for the invocation failure or response rejection.</summary>
     public string? Reason { get; }
 
     /// <summary>Gets the event count that triggered the rejection (if applicable).</summary>

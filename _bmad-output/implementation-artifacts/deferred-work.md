@@ -510,3 +510,9 @@ _All items LOW / non-blocking. Story 2.7 accepted (all AC1–AC7 met; Release bu
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-10-unblock-server-logging-regressions.md`
   summary: Make `InformationLevelOnly_TracingChainStillComplete` exercise an actor logger that actually disables Debug logging instead of capturing every level and filtering the resulting list afterward.
   evidence: Review confirmed the pre-existing test's `TestLogger<T>.IsEnabled` always returns true, so it cannot detect incorrect runtime gating through `IsEnabled(Debug)` even though its post-capture assertions exclude Debug entries; this limitation predates and is not caused by the pooled-state capture correction.
+
+## Deferred from: code review of 1-20-owner-approved-parity-closure-and-runtime-pin (2026-07-22, runtime/unit chunk)
+
+- source_spec: `_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md`
+  summary: Validate `DomainServiceOptions.MaxEventsPerResult` and `MaxEventSizeBytes` bounds during startup instead of allowing zero or negative limits to reject otherwise valid responses at invocation time.
+  evidence: The fields and response-limit behavior predate this review range. The new startup validation at `src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs:107` covers only `InvocationTimeoutSeconds`; adding the two existing bounds is real hardening but is not caused by the Story 1.20 corrective change.

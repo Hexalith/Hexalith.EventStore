@@ -133,6 +133,28 @@ from this proposal inventory and remains owned by its existing changes.
 
 ### Review Findings
 
+#### 2026-07-22 — Code review chunk 1: production runtime and unit tests
+
+- [x] [Review][Patch] [high] Preserve the public `DaprDomainServiceInvoker` constructor contract when injecting `TimeProvider` [src/Hexalith.EventStore.Server/DomainServices/DaprDomainServiceInvoker.cs:21]
+- [x] [Review][Patch] [medium] Configure the named domain-service client's infinite timeout during registration instead of mutating each factory-created client [src/Hexalith.EventStore.Server/DomainServices/DaprDomainServiceInvoker.cs:73]
+- [x] [Review][Patch] [low] Reconcile `DomainServiceException` documentation with invocation failures and document the new internal constructor [src/Hexalith.EventStore.Server/DomainServices/DomainServiceException.cs:3]
+- [x] [Review][Patch] [medium] Resolve and exercise both digest-key provider branches through the `AddEventStoreServer` service graph [src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs:39]
+- [x] [Review][Patch] [medium] Verify the four idempotency actor registrations and their stable actor type names [src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs:204]
+- [x] [Review][Patch] [medium] Prove the invoker requests exactly the dedicated no-retry HTTP client [tests/Hexalith.EventStore.Server.Tests/DomainServices/DaprDomainServiceInvokerTests.cs:143]
+- [x] [Review][Patch] [low] Bind host-startup timeout assertions to `DomainServiceOptions` and the expected validation failure [tests/Hexalith.EventStore.Server.Tests/Configuration/EventStoreServerServiceCollectionExtensionsTests.cs:97]
+- [x] [Review][Patch] [low] Move `NoOpProjectionActivationOutbox` to its own source file to preserve the one-type-per-file rule [src/Hexalith.EventStore.Testing/Fakes/TestServiceOverrides.cs:51]
+- [x] [Review][Patch] [medium] Register the built-in idempotency admission validator additively so a consumer validator cannot replace it [src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs:102]
+- [x] [Review][Patch] [medium] Reject undefined `DigestKeySource` values during startup validation [src/Hexalith.EventStore.Server/Configuration/ValidateIdempotencyAdmissionOptions.cs:31]
+- [x] [Review][Patch] [medium] Fail deterministically when direct invoker construction supplies an unsupported invocation timeout [src/Hexalith.EventStore.Server/DomainServices/DaprDomainServiceInvoker.cs:62]
+- [x] [Review][Patch] [medium] Pin the named HTTP client's infinite timeout with a regression test covering accepted long invocation windows [tests/Hexalith.EventStore.Server.Tests/Configuration/EventStoreServerServiceCollectionExtensionsTests.cs:158]
+- [x] [Review][Patch] [medium] Prove invalid idempotency admission configuration fails through `AddEventStoreServer` at host startup [src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs:103]
+- [x] [Review][Patch] [medium] Assert event 3004 and its timeout-classification fields for configured and upstream cancellations [src/Hexalith.EventStore.Server/DomainServices/DaprDomainServiceInvoker.cs:226]
+- [x] [Review][Defer] [medium] Validate pre-existing `MaxEventsPerResult` and `MaxEventSizeBytes` bounds during startup [src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs:107] — deferred, pre-existing
+
+Applied and verified all 14 patch findings on 2026-07-23. The pre-existing response-limit
+validation gap remains owned by the deferred-work ledger. Story status remains `blocked`
+because the acceptance boundary's external exact-SHA and owner-approval gates remain open.
+
 #### 2026-07-22 — Follow-up adversarial review of the hot-reload readiness correction
 
 - [x] [Review][Patch] [high] Bind the retained corrective-run claims to the fresh explicit three-method-plus-class rerun commands, XML/log timestamps, result locations, and SHA-256 digests under `/tmp/story-1-20-code-review-final-evidence-20260722` [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:5562]
@@ -801,11 +823,13 @@ traceability; it does not reclassify that path as a Story 1.20 implementation de
 - `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/NamedProjectionDispatchLiveSidecarTests.cs`
 - `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ReadModelBatchLiveSidecarTests.cs`
 - `src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs`
+- `src/Hexalith.EventStore.Server/Configuration/ValidateIdempotencyAdmissionOptions.cs`
 - `src/Hexalith.EventStore.Server/DomainServices/DaprDomainServiceInvoker.cs`
 - `src/Hexalith.EventStore.Server/DomainServices/DomainServiceException.cs`
 - `src/Hexalith.EventStore.Server/DomainServices/DomainServiceOptions.cs`
 - `src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj`
 - `src/Hexalith.EventStore.Testing/Fakes/TestServiceOverrides.cs`
+- `src/Hexalith.EventStore.Testing/Fakes/NoOpProjectionActivationOutbox.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/ContractTests/ChaosResilienceTests.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/ContractTests/HotReloadTests.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/Helpers/DaprInvocationReadinessProbe.cs`
@@ -834,6 +858,7 @@ traceability; it does not reclassify that path as a Story 1.20 implementation de
 
 | Date | Phase | Test-method delta | Verification | File-list reconciliation |
 | --- | --- | ---: | --- | --- |
+| 2026-07-23 | Code-review chunk 1 patch application: production runtime and unit tests | `+8` test methods / `+10` cases | Release builds: Server.Tests and Testing.Tests 0 warnings/errors. Focused xUnit v3: registration 20/20, invoker 38/38, testing overrides 2/2. Complete assemblies: Server 2,859 passed / 25 existing skips / 0 failed; Testing 152/152. | Applied all 14 patch findings, retained the one pre-existing deferred item, added the extracted no-op outbox and idempotency validator paths, and preserved `blocked` / sprint `in-progress`. |
 | 2026-07-22 | Integration-lane isolation + root-cause after Redis/placement clean (candidate `440ff4cb...`) | `+0` (read-only investigation; no source change) | After stopping the concurrent loop, `FLUSHALL`-ed the 1.94 GB shared Redis and restarted `dapr_placement`/`dapr_scheduler`; a pristine full-assembly re-run reduced 28 failures to a single-rooted cascade at `AspireContractTestFixture.RestartEventStoreWithClearedHandlerQueryTypesStateAsync` ("Failed to stop resource"). Root cause = Aspire-DCP/daprd resource-stop flake (infinite actor graceful-shutdown timeout + fixed-name actors on shared placement/scheduler), NOT a candidate defect: root test + cascaded neighbours PASS 5/5 and 1/1 in ISOLATION; `440ff4cb` leaves `AspireContractTestFixture.cs`/`QueryResponseProvenanceE2ETests.cs` unchanged; failure also present in run-1 before any restart and at pristine Redis. | No repository file changed; evidence under the scratchpad proof root. Integration full-assembly gate blocked by the ledgered Tier-3 DCP-stop-cascade constraint (needs finite daprd shutdown timeout / per-collection app-id isolation or dedicated Dapr infra), not by `440ff4cb`. Story stays `blocked`; human-authority gates remain open. |
 | 2026-07-22 | Exact-SHA closure gate run (Closure Execution Order steps 3-6) against committed candidate `440ff4cb36a9ea1446024f3906c132b0398e881f` | `+0` (read-only verification; no source change) | PASS: Release solution build 0W/0E; 22/23 mandatory lanes green with exactly 126 allowlisted skips / 0 unexpected; Story 1.16 technical re-verification (LiveSidecar 49/49, Server 2849/2874, Contracts 756/756); 14-package build+SHA-256+consumer-validation. INCONCLUSIVE at the time: full Debug/source `IntegrationTests` 241/269 (28 timeout-signature failures) from a concurrent, unrelated `Hexalith.Works` Aspire session contending for the shared `eventstore`/`eventstore-admin` Dapr app-ids and placement/scheduler/Redis (root cause later isolated — see row above). Container step 7 not entered. | No repository file changed (verification-only against committed HEAD); evidence retained under the scratchpad proof root. Story remains `blocked`; all human-authority gates remain open. |
 | 2026-07-22 | Exact-gate hot-reload readiness correction after rejected candidate `c6b72caa4ed90ea55a29644f0e40a0e5c44cf791` | `+4` test methods / `+11` deterministic cases | RED: exact Debug/source integration assembly 257/258; repeated direct-health attempt still failed 1/1 after `/health` returned 200. GREEN after review patches: source-mode Debug build 0 warnings/errors; readiness parser/polling 11/11; formerly failing method 3/3 across fresh topologies; complete `HotReloadTests` 3/3 in 117.017s. | Added the hot-reload contract-test path plus the readiness helper and deterministic test paths. The correction proves EventStore-to-sample Dapr invocation unavailable after stop and ready after start without retrying command POSTs. Exact commands/artifact hashes are bound in the proof packet. Story remains `blocked`; a new clean candidate must restart every exact gate. |

@@ -9,6 +9,11 @@ internal sealed class ValidateIdempotencyAdmissionOptions : IValidateOptions<Ide
     public ValidateOptionsResult Validate(string? name, IdempotencyAdmissionOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
+        if (!Enum.IsDefined(options.DigestKeySource))
+        {
+            return ValidateOptionsResult.Fail("The idempotency digest-key source is invalid.");
+        }
+
         if (!options.Enabled)
         {
             return ValidateOptionsResult.Success;

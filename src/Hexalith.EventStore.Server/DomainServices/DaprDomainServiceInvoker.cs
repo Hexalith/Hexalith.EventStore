@@ -37,6 +37,24 @@ public partial class DaprDomainServiceInvoker(
     internal const string HttpClientName = "domain-service-invocation";
 
     private const string DefaultVersion = "v1";
+    private readonly DomainServiceOptions _options = ValidateOptions(options);
+
+    /// <summary>
+    /// Initializes an invoker using the system time provider.
+    /// </summary>
+    /// <param name="daprClient">The DAPR client used to build invocation requests.</param>
+    /// <param name="httpClientFactory">The HTTP client factory used to send invocation requests.</param>
+    /// <param name="resolver">The domain-service registration resolver.</param>
+    /// <param name="options">The domain-service invocation options.</param>
+    /// <param name="logger">The invocation logger.</param>
+    public DaprDomainServiceInvoker(
+        DaprClient daprClient,
+        IHttpClientFactory httpClientFactory,
+        IDomainServiceResolver resolver,
+        IOptions<DomainServiceOptions> options,
+        ILogger<DaprDomainServiceInvoker> logger)
+        : this(daprClient, httpClientFactory, resolver, options, TimeProvider.System, logger) {
+    }
 
     [GeneratedRegex(@"^v[0-9]+$")]
     private static partial Regex VersionFormatRegex();
@@ -60,7 +78,7 @@ public partial class DaprDomainServiceInvoker(
 
         DomainServiceWireResult wireResult;
         using var timeoutCancellation = new CancellationTokenSource(
-            TimeSpan.FromSeconds(options.Value.InvocationTimeoutSeconds),
+            TimeSpan.FromSeconds(_options.InvocationTimeoutSeconds),
             timeProvider);
         using var invocationCancellation = CancellationTokenSource.CreateLinkedTokenSource(
             cancellationToken,
@@ -71,7 +89,6 @@ public partial class DaprDomainServiceInvoker(
                 registration.MethodName,
                 request);
             HttpClient httpClient = httpClientFactory.CreateClient(HttpClientName);
-            httpClient.Timeout = Timeout.InfiniteTimeSpan;
             using HttpResponseMessage httpResponse = await httpClient
                 .SendAsync(httpRequest, invocationCancellation.Token)
                 .ConfigureAwait(false);
@@ -87,14 +104,14 @@ public partial class DaprDomainServiceInvoker(
         catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested) {
             bool configuredTimeoutElapsed = timeoutCancellation.IsCancellationRequested;
             string reason = configuredTimeoutElapsed
-                ? $"Invocation timed out after {options.Value.InvocationTimeoutSeconds}s for service "
+                ? $"Invocation timed out after {_options.InvocationTimeoutSeconds}s for service "
                     + $"'{registration.AppId}/{registration.MethodName}'."
                 : $"Invocation of service '{registration.AppId}/{registration.MethodName}' was canceled before completion.";
             Log.DomainServiceInvocationCanceled(
                 logger,
                 ex,
                 configuredTimeoutElapsed,
-                options.Value.InvocationTimeoutSeconds,
+                _options.InvocationTimeoutSeconds,
                 registration.AppId,
                 registration.MethodName,
                 command.TenantId,
@@ -126,7 +143,7 @@ public partial class DaprDomainServiceInvoker(
         DomainResult result = ToDomainResult(wireResult);
 
         // Validate response size limits (AC #6)
-        ValidateResponseLimits(result, command.TenantId, command.Domain, options.Value);
+        ValidateResponseLimits(result, command.TenantId, command.Domain, _options);
 
         // Log no-op results as warning for telemetry (silent failure detection)
         if (result.IsNoOp) {
@@ -171,6 +188,21 @@ public partial class DaprDomainServiceInvoker(
         return result.IsSuccess && !string.IsNullOrWhiteSpace(wireResult.ResultPayload)
             ? new PayloadDomainResult(events, wireResult.ResultPayload)
             : result;
+    }
+
+    private static DomainServiceOptions ValidateOptions(IOptions<DomainServiceOptions> configuredOptions) {
+        ArgumentNullException.ThrowIfNull(configuredOptions);
+        DomainServiceOptions value = configuredOptions.Value;
+        if (value.InvocationTimeoutSeconds <= 0
+            || value.InvocationTimeoutSeconds > DomainServiceOptions.MaximumInvocationTimeoutSeconds) {
+            throw new OptionsValidationException(
+                Microsoft.Extensions.Options.Options.DefaultName,
+                typeof(DomainServiceOptions),
+                [$"{nameof(DomainServiceOptions.InvocationTimeoutSeconds)} must be between 1 and "
+                    + $"{DomainServiceOptions.MaximumInvocationTimeoutSeconds} seconds."]);
+        }
+
+        return value;
     }
 
     private static partial class Log {

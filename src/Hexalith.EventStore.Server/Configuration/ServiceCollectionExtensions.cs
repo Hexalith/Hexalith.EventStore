@@ -58,7 +58,9 @@ public static class EventStoreServerServiceCollectionExtensions {
         services.TryAddEnumerable(
             ServiceDescriptor.Singleton<IHttpMessageHandlerBuilderFilter, DomainServiceHttpClientBuilderFilter>());
         _ = services.AddHttpClient();
-        _ = services.AddHttpClient(DaprDomainServiceInvoker.HttpClientName);
+        _ = services.AddHttpClient(
+            DaprDomainServiceInvoker.HttpClientName,
+            static client => client.Timeout = Timeout.InfiniteTimeSpan);
         services.TryAddSingleton<IEventPayloadProtectionService, NoOpEventPayloadProtectionService>();
         services.TryAddSingleton<IGlobalPositionAllocator, DaprGlobalPositionAllocator>();
         services.TryAddSingleton<ISnapshotManager, SnapshotManager>();
@@ -99,7 +101,8 @@ public static class EventStoreServerServiceCollectionExtensions {
         _ = services.AddOptions<IdempotencyRetentionOptions>()
             .Bind(configuration.GetSection("EventStore:Idempotency"))
             .ValidateOnStart();
-        services.TryAddSingleton<IValidateOptions<IdempotencyAdmissionOptions>, ValidateIdempotencyAdmissionOptions>();
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IValidateOptions<IdempotencyAdmissionOptions>, ValidateIdempotencyAdmissionOptions>());
         _ = services.AddOptions<IdempotencyAdmissionOptions>()
             .Bind(configuration.GetSection("EventStore:IdempotencyAdmission"))
             .ValidateOnStart();
