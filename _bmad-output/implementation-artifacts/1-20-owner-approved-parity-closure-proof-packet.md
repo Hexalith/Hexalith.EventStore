@@ -3,7 +3,7 @@ schema: hexalith.eventstore.parity-closure-proof-packet/v1
 story_id: "1.20"
 story_key: 1-20-owner-approved-parity-closure-and-runtime-pin
 created: 2026-07-16T05:09:20+02:00
-updated: 2026-07-19T22:44:23+02:00
+updated: 2026-07-22T09:34:24+02:00
 historical_packet: 1-8-projection-query-sdk-owner-proof-packet.md
 candidate_source_sha: 85877902f8d60a466ab90cd8b68b53838863db1c
 tested_runtime_sha: null
@@ -5538,13 +5538,78 @@ to `candidate_source_sha` or `tested_runtime_sha`.
   SHA exists. Story 1.16 follow-up review, release-publication authority, durable owner approvals,
   immutable artifacts, and A/B/C remain open.
 
+### 2026-07-22 exact-SHA hot-reload stop
+
+- Clean detached official-main candidate `c6b72caa4ed90ea55a29644f0e40a0e5c44cf791` passed
+  AD-11, all focused capability gates, the warning-free Release solution build, and the
+  configured cross-cutting project suites through the complete Debug/source integration run.
+- That 258-test assembly stopped at 257 passed, one failed, zero skipped because
+  `HotReloadTests.ProcessCommand_AfterDomainServiceRestart_CompletesSuccessfully` received HTTP
+  500 instead of 202 on its first post-restart command. The fail-fast protocol did not execute
+  the remaining provenance, live-sidecar, package, container, evidence, approval, or publication
+  operations.
+- The root cause is a false-positive restart boundary: Aspire can retain the pre-stop healthy
+  snapshot, and the sample's direct health endpoint can become reachable before Dapr re-enables
+  service invocation. A direct-health corrective attempt reproduced the 500 after `/health`
+  returned 200, while the sample sidecar logged its app channel unhealthy.
+- The corrected test helper now observes the side-effect-free operational-index metadata POST
+  through EventStore's Dapr sidecar, requiring an unavailable transition after stop and a
+  successful invocation after start. It does not retry command POSTs. The follow-up review moved
+  the parser/polling state machine into a deterministically testable helper, guarded valid
+  non-object/non-string JSON, preserved bounded-cancellation and response-body diagnostics, and
+  raised the outer restart budget above the three possible 60-second readiness waits.
+
+#### 2026-07-22 review-patched corrective verification
+
+- Environment: Ubuntu 26.04 on WSL2 x64; .NET SDK `10.0.302`;
+  `Microsoft.NETCore.App 10.0.10`; Docker client/server `29.6.1`; Dapr CLI `1.18.0` and runtime
+  `1.18.1`.
+- Source boundary: root HEAD `c6b72caa4ed90ea55a29644f0e40a0e5c44cf791` with the reviewed
+  working-tree changes. The root-declared Tenants checkout was independently fast-forwarded to
+  `b73093bd10608afe4e6036439a48a08924d0358b`, so this is explicitly dirty corrective evidence,
+  not an unchanged exact-SHA candidate.
+- Build command: `dotnet build tests/Hexalith.EventStore.IntegrationTests/Hexalith.EventStore.IntegrationTests.csproj --configuration Debug --no-restore -p:UseHexalithProjectReferences=true -m:1` — PASS, zero warnings/errors.
+- Deterministic command: `dotnet exec tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.IntegrationTests.dll -class Hexalith.EventStore.IntegrationTests.Helpers.DaprInvocationReadinessProbeTests -noLogo` — PASS, 11/11 in 0.124 seconds.
+- Exact live commands, run from the repository root:
+
+```text
+dotnet exec /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.IntegrationTests.dll -method Hexalith.EventStore.IntegrationTests.ContractTests.HotReloadTests.ProcessCommand_AfterDomainServiceRestart_CompletesSuccessfully -xml /tmp/story-1-20-code-review-final-evidence-20260722/method-1.xml -noLogo > /tmp/story-1-20-code-review-final-evidence-20260722/method-1.log 2>&1
+dotnet exec /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.IntegrationTests.dll -method Hexalith.EventStore.IntegrationTests.ContractTests.HotReloadTests.ProcessCommand_AfterDomainServiceRestart_CompletesSuccessfully -xml /tmp/story-1-20-code-review-final-evidence-20260722/method-2.xml -noLogo > /tmp/story-1-20-code-review-final-evidence-20260722/method-2.log 2>&1
+dotnet exec /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.IntegrationTests.dll -method Hexalith.EventStore.IntegrationTests.ContractTests.HotReloadTests.ProcessCommand_AfterDomainServiceRestart_CompletesSuccessfully -xml /tmp/story-1-20-code-review-final-evidence-20260722/method-3.xml -noLogo > /tmp/story-1-20-code-review-final-evidence-20260722/method-3.log 2>&1
+dotnet exec /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.IntegrationTests.dll -class Hexalith.EventStore.IntegrationTests.ContractTests.HotReloadTests -xml /tmp/story-1-20-code-review-final-evidence-20260722/class.xml -noLogo > /tmp/story-1-20-code-review-final-evidence-20260722/class.log 2>&1
+```
+
+| Result | Started | Outcome | XML SHA-256 | Log SHA-256 |
+| --- | --- | --- | --- | --- |
+| `method-1` | `2026-07-22T09:26:56.6652337+02:00` | 1/1 in 40.554s | `a6980326519cc3bb70ae09c1108a9c85c62b85548b188d8699fea37af8a1c2fb` | `97bf2d47e84312ed2198c775704a9f2b5dd9008dc0db09ec9017450f7643150a` |
+| `method-2` | `2026-07-22T09:27:37.4692312+02:00` | 1/1 in 45.506s | `18551542ccbdaaf9393acc3e0aebd08f44ea8b37db30870bf4fc0cc3469263fa` | `62ba030999f386e1725dcf9e886a24371b234e4b14a82041ba8ce61305edb0c8` |
+| `method-3` | `2026-07-22T09:28:23.2321195+02:00` | 1/1 in 55.702s | `a553a2d62d69ed82138848f078b55524e90baa0022db2eb8d628e8896dd0e903` | `4b2fe76b00076a7bc4970aa5a573a3d08187264db65ef8a3e023b8bb99e0fa46` |
+| `class` | `2026-07-22T09:29:19.1779211+02:00` | 3/3 in 117.017s | `42e38002d99c80ee2fe4a8dc3a7ddfbe86340438f5689126d11ddcd7cbd9f96f` | `bbb660a9f9fcd6ca7ff7c4f75e4d214cad4e9e94417301eed8769e964a149845` |
+
+- Bound inputs: `HotReloadTests.cs` SHA-256
+  `0afbe83844af061bcf4bbd9ea72d9ce8ed705f5aaac7ed391faee8ecf159c761`;
+  `DaprInvocationReadinessProbe.cs`
+  `c1cd46f6e42f0cf39d2c2a9409c43668c07fa34f203bc4d595ac5a80a5d6a3bd`;
+  `DaprInvocationReadinessProbeTests.cs`
+  `2c3ff65251a59da3d3b8b8084678bd88ec2f71b68ff995f425f846a4984270aa`;
+  executed assembly `9ca909a243c461f1f6cced606dfca60f236de4642cb5965aa36181f8a24afec8`.
+- Limitations and rollback: the `/tmp` files are local review artifacts, not immutable closure
+  evidence; the run credits no persisted-state parity row and cannot authorize publication or
+  migration. If the readiness correction must be rolled back after a reproducible regression,
+  revert the probe helper/callers/tests together; restoring the Aspire-health-only boundary would
+  knowingly reintroduce the observed stale-readiness race.
+- This is corrective working-tree evidence only. A new clean candidate must rerun this packet from
+  zero; Story 1.16's named follow-up disposition, release-publication authority, immutable
+  artifacts, durable owner approvals, and A/B/C remain open.
+
 ## Final Decision
 
 `still blocked`
 
-Story 1.20 and Epic 1 remain `in-progress`. The Docker/Dapr runtime is available and the
-corrected working tree passes the deterministic Redis-chaos sequence plus the complete 258-test
-source-topology assembly, but the corrections are not a clean committed candidate. Every parity
-row remains non-authorizing; a fresh official-main SHA must rerun the complete protocol from zero,
-and Story 1.16's named follow-up disposition, publication authority, immutable package/container
-evidence, durable owner approvals, and the A/B/C authorization chain remain open.
+Story 1.20 and Epic 1 remain `in-progress`. The Docker/Dapr runtime is available, but clean
+candidate `c6b72caa...` is rejected by its 257/258 integration result. The hot-reload readiness
+correction passes repeated focused and class-level validation but is not yet a clean committed
+candidate. Every parity row remains non-authorizing; a fresh official-main SHA must rerun the
+complete protocol from zero, and Story 1.16's named follow-up disposition, publication authority,
+immutable package/container evidence, durable owner approvals, and the A/B/C authorization chain
+remain open.

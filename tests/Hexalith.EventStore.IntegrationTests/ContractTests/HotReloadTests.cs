@@ -21,7 +21,8 @@ namespace Hexalith.EventStore.IntegrationTests.ContractTests;
 [Trait("Tier", "3")]
 [Trait("Feature", "HotReload")]
 public class HotReloadTests {
-    private static readonly TimeSpan s_resourceRecoveryTimeout = TimeSpan.FromSeconds(60);
+    private static readonly TimeSpan _hotReloadOperationTimeout = TimeSpan.FromMinutes(4);
+    private static readonly TimeSpan _resourceRecoveryTimeout = TimeSpan.FromSeconds(60);
 
     // ------------------------------------------------------------------
     // Task 2: Independent restart test (AC #1, #2)
@@ -35,7 +36,7 @@ public class HotReloadTests {
     [Fact]
     public async Task ProcessCommand_AfterDomainServiceRestart_CompletesSuccessfully() {
         await WithIsolatedFixtureAsync(async fixture => {
-            using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
+            using var cts = new CancellationTokenSource(_hotReloadOperationTimeout);
             CancellationToken ct = cts.Token;
             HttpClient client = fixture.EventStoreClient;
 
@@ -108,7 +109,7 @@ public class HotReloadTests {
     [Fact]
     public async Task ProcessCommand_DuringDomainServiceRestart_HandledByResiliency() {
         await WithIsolatedFixtureAsync(async fixture => {
-            using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
+            using var cts = new CancellationTokenSource(_hotReloadOperationTimeout);
             CancellationToken ct = cts.Token;
             HttpClient client = fixture.EventStoreClient;
 
@@ -134,7 +135,7 @@ public class HotReloadTests {
 
             // Poll the in-flight command with extended timeout (DAPR retries may take time)
             JsonElement status = await ContractTestHelpers.PollUntilTerminalStatusAsync(
-                client, correlationId, "tenant-a", timeout: s_resourceRecoveryTimeout);
+                client, correlationId, "tenant-a", timeout: _resourceRecoveryTimeout);
 
             // AC #4: Command should reach a terminal state -- either Completed (DAPR retried)
             // or a terminal failure (PublishFailed/TimedOut). No hung commands.
@@ -156,7 +157,7 @@ public class HotReloadTests {
     [Fact]
     public async Task EventStore_DuringDomainServiceRestart_RemainsResponsive() {
         await WithIsolatedFixtureAsync(async fixture => {
-            using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
+            using var cts = new CancellationTokenSource(_hotReloadOperationTimeout);
             CancellationToken ct = cts.Token;
             HttpClient client = fixture.EventStoreClient;
 
@@ -192,43 +193,79 @@ public class HotReloadTests {
         AspireContractTestFixture fixture = new();
 
         try {
-            await fixture.InitializeAsync();
-            await test(fixture);
+            await fixture.InitializeAsync().ConfigureAwait(false);
+            await test(fixture).ConfigureAwait(false);
         }
         finally {
-            await fixture.DisposeAsync();
+            await fixture.DisposeAsync().ConfigureAwait(false);
         }
     }
 
     private static async Task StopSampleAsync(AspireContractTestFixture fixture, CancellationToken cancellationToken) {
         ExecuteCommandResult result = await fixture.App.ResourceCommands
-            .ExecuteCommandAsync("sample", KnownResourceCommands.StopCommand, cancellationToken);
+            .ExecuteCommandAsync("sample", KnownResourceCommands.StopCommand, cancellationToken)
+            .ConfigureAwait(false);
         result.Success.ShouldBeTrue(
             $"Unable to stop sample. Message: {result.Message}; Error: {result.ErrorMessage}");
+
+        // The sample process can stop between Dapr's periodic app-health probes. Observe
+        // the sidecar's unavailable state before starting a replacement process so a stale
+        // pre-stop healthy result cannot satisfy the subsequent readiness wait.
+        await WaitForSampleDaprInvocationReadinessAsync(fixture, expectedReady: false, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private static async Task StartSampleAndWaitHealthyAsync(
         AspireContractTestFixture fixture,
         CancellationToken cancellationToken) {
         ExecuteCommandResult result = await fixture.App.ResourceCommands
-            .ExecuteCommandAsync("sample", KnownResourceCommands.StartCommand, cancellationToken);
+            .ExecuteCommandAsync("sample", KnownResourceCommands.StartCommand, cancellationToken)
+            .ConfigureAwait(false);
         result.Success.ShouldBeTrue(
             $"Unable to start sample. Message: {result.Message}; Error: {result.ErrorMessage}");
 
         _ = await fixture.App.ResourceNotifications
             .WaitForResourceHealthyAsync("sample", cancellationToken)
-            .WaitAsync(s_resourceRecoveryTimeout, cancellationToken);
+            .WaitAsync(_resourceRecoveryTimeout, cancellationToken)
+            .ConfigureAwait(false);
+
+        // Aspire can briefly retain the pre-stop healthy snapshot after the start command
+        // succeeds. Probe a side-effect-free sample capability through EventStore's Dapr
+        // sidecar, which is the exact boundary required for domain-service invocation.
+        await WaitForSampleDaprInvocationReadinessAsync(fixture, expectedReady: true, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private static async Task WaitForSampleDaprInvocationReadinessAsync(
+        AspireContractTestFixture fixture,
+        bool expectedReady,
+        CancellationToken cancellationToken) {
+        using var eventStoreDaprClient = new HttpClient {
+            BaseAddress = fixture.EventStoreDaprHttpEndpoint,
+            Timeout = TimeSpan.FromSeconds(5),
+        };
+
+        await DaprInvocationReadinessProbe.WaitAsync(
+                expectedReady,
+                probeAsync: probeCancellationToken => eventStoreDaprClient.PostAsJsonAsync(
+                        "/v1.0/invoke/sample/method/admin/operational-index-metadata",
+                        new { Domains = Array.Empty<string>() },
+                        probeCancellationToken),
+                timeout: _resourceRecoveryTimeout,
+                retryDelay: TimeSpan.FromMilliseconds(250),
+                cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private static async Task EnsureSampleStartedAsync(AspireContractTestFixture fixture) {
-        using var restoreCts = new CancellationTokenSource(s_resourceRecoveryTimeout);
+        using var restoreCts = new CancellationTokenSource(_resourceRecoveryTimeout);
         try {
             if (fixture.App.ResourceNotifications.TryGetCurrentState("sample", out ResourceEvent? current)
                 && string.Equals(current.Snapshot.State?.Text, KnownResourceStates.Running, StringComparison.Ordinal)) {
                 return;
             }
 
-            await StartSampleAndWaitHealthyAsync(fixture, restoreCts.Token);
+            await StartSampleAndWaitHealthyAsync(fixture, restoreCts.Token).ConfigureAwait(false);
         }
         catch {
             // Preserve the original assertion failure. The next test/fixture disposal will surface

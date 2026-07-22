@@ -133,6 +133,27 @@ from this proposal inventory and remains owned by its existing changes.
 
 ### Review Findings
 
+#### 2026-07-22 — Follow-up adversarial review of the hot-reload readiness correction
+
+- [x] [Review][Patch] [high] Bind the retained corrective-run claims to the fresh explicit three-method-plus-class rerun commands, XML/log timestamps, result locations, and SHA-256 digests under `/tmp/story-1-20-code-review-final-evidence-20260722` [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:5562]
+- [x] [Review][Patch] [medium] Treat valid non-object JSON and non-string `errorCode` values as unrecognized Dapr responses instead of throwing `InvalidOperationException` [tests/Hexalith.EventStore.IntegrationTests/Helpers/DaprInvocationReadinessProbe.cs:101]
+- [x] [Review][Patch] [low] Catch the documented `OperationCanceledException` family for internally bounded HTTP cancellation so timeout failures retain the readiness helper's diagnostics [tests/Hexalith.EventStore.IntegrationTests/Helpers/DaprInvocationReadinessProbe.cs:74]
+- [x] [Review][Patch] [medium] Preserve the last unexpected response body or Dapr error code in readiness-timeout diagnostics instead of reporting only HTTP 500 [tests/Hexalith.EventStore.IntegrationTests/Helpers/DaprInvocationReadinessProbe.cs:91]
+- [x] [Review][Patch] [medium] Give the outer hot-reload operation a budget greater than the newly possible stop-readiness plus Aspire-health plus start-readiness waits [tests/Hexalith.EventStore.IntegrationTests/ContractTests/HotReloadTests.cs:24]
+- [x] [Review][Patch] [medium] Add deterministic coverage for wrong status, malformed/non-object JSON, non-string/wrong `errorCode`, timeout, and parent-cancellation branches in the new readiness state machine [tests/Hexalith.EventStore.IntegrationTests/Helpers/DaprInvocationReadinessProbeTests.cs:11]
+- [x] [Review][Patch] [low] Repair the completed-review traceability links and narrow the false claim of app-id independence to the fixed `sample` AppHost topology actually probed [tests/Hexalith.EventStore.IntegrationTests/ContractTests/HotReloadTests.cs:239]
+- [x] [Review][Patch] [medium] Consolidate the duplicate Tier-3 CI defer into the original deferred-work item and reconcile that item's obsolete shared-fixture, two-test, and unresolved-DCP-stop description [_bmad-output/implementation-artifacts/deferred-work.md:114]
+- [x] [Review][Defer] [high] Tier-3 hot-reload readiness still has no PR/push workflow that executes the changed stop/restart path [.github/workflows/integration.yml:87] — deferred, pre-existing; owned by the dedicated Aspire-in-CI follow-up
+
+#### 2026-07-22 — Code review of hot-reload readiness correction
+
+- [x] [Review][Patch] Require the exact HTTP 500 Dapr `ERR_DIRECT_INVOKE` object/string response instead of accepting every non-success response [tests/Hexalith.EventStore.IntegrationTests/Helpers/DaprInvocationReadinessProbe.cs:101]
+- [x] [Review][Patch] Use a side-effect-free operational-index request with an empty domain filter while explicitly retaining the AppHost's fixed `sample` Dapr target [tests/Hexalith.EventStore.IntegrationTests/ContractTests/HotReloadTests.cs:248]
+- [x] [Review][Patch] Use repository-required `ConfigureAwait(false)` in the non-test readiness helper and its callers [tests/Hexalith.EventStore.IntegrationTests/Helpers/DaprInvocationReadinessProbe.cs:55]
+- [x] [Review][Patch] Keep timeout diagnostics bound to the most recent response or transport failure [tests/Hexalith.EventStore.IntegrationTests/Helpers/DaprInvocationReadinessProbe.cs:45]
+- [x] [Review][Patch] Refresh the proof-packet frontmatter update timestamp for the 2026-07-22 audit entry [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:6]
+- [x] [Review][Defer] Tier-3 hot-reload readiness remains outside PR/push CI [.github/workflows/integration.yml:87] — deferred, pre-existing; the dedicated Aspire-in-CI follow-up and existing HotReload deferred-work entry retain ownership
+
 #### 2026-07-21 — Code review of landed corrective commit `bccc2560`
 
 - [x] [Review][Patch] Production resilience timeouts override the configured domain-service invocation timeout [src/Hexalith.EventStore.Server/DomainServices/DaprDomainServiceInvoker.cs:56]
@@ -577,6 +598,33 @@ override Story 1.20's external evidence and named-approval gates.
   passed `bash -n`. This is corrective working-tree evidence, not an exact committed runtime
   authorization: a fresh committed candidate must rerun the protocol from zero.
 
+#### 2026-07-22 — Exact-gate hot-reload readiness correction
+
+- Clean official-main candidate `c6b72caa4ed90ea55a29644f0e40a0e5c44cf791` passed AD-11,
+  every focused capability lane, the warning-free Release solution build, and the configured
+  cross-cutting project suites through the Debug/source integration assembly.
+- The complete 258-test integration assembly stopped the fail-fast run at 257 passed, one failed,
+  zero skipped. `HotReloadTests.ProcessCommand_AfterDomainServiceRestart_CompletesSuccessfully`
+  received HTTP 500 instead of 202 on the first command submitted after the sample restart; no
+  package, container, external-evidence, approval, or publication operation followed.
+- An isolated clean-candidate rerun passed, confirming an intermittent readiness race. The
+  passing trace showed the start command completing at `23:06:45.435`, the command POST beginning
+  at `23:06:45.440`, and the replacement sample not listening until `23:06:46.375`.
+- A direct sample `/health` probe was insufficient: a repeated run returned 200 while the sample
+  Dapr sidecar simultaneously classified its app channel unhealthy, and the following command
+  still failed 500. Dapr's own `/v1.0/healthz` also remained 204 across the stopped-app window.
+- The corrected restart helper now observes a side-effect-free
+  `POST /admin/operational-index-metadata` through EventStore's Dapr sidecar. It requires the
+  invocation to become unavailable after stop and successful after start before issuing any
+  non-idempotent command; command POSTs are never retried by the correction.
+- The integration project source-mode Debug build passed with zero warnings/errors. The formerly
+  failing method passed three consecutive review-patched fresh-topology runs (40.554, 45.506, and
+  55.702 seconds), and the complete `HotReloadTests` class passed 3/3 in 117.017 seconds. The pure
+  readiness parser/polling suite also passed 11/11. Exact commands, timestamps, result/log paths,
+  input hashes, and artifact SHA-256 values are recorded in the proof packet's
+  `2026-07-22 review-patched corrective verification` section. These are corrective working-tree
+  results; a new committed candidate must restart the exact protocol from zero.
+
 ### Completion Notes
 
 - Story remains fail-closed and non-authorizing. Runtime and test corrections in the candidate
@@ -619,6 +667,10 @@ override Story 1.20's external evidence and named-approval gates.
   assembly, and SignalR evidence can be routed outside the candidate checkout. The corrections
   remain uncommitted, so no clean exact runtime SHA, publication, approval, or migration authority
   is claimed.
+- Candidate `c6b72caa...` remains rejected after its 257/258 integration result. The hot-reload
+  correction passes three consecutive focused cycles and the complete class without unsafe POST
+  retry, but remains non-authorizing until it is committed and every exact-SHA gate restarts from
+  zero. Story 1.16's named disposition and Story 1.20's durable owner approval remain human gates.
 
 ## File List
 
@@ -653,6 +705,9 @@ traceability; it does not reclassify that path as a Story 1.20 implementation de
 - `src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj`
 - `src/Hexalith.EventStore.Testing/Fakes/TestServiceOverrides.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/ContractTests/ChaosResilienceTests.cs`
+- `tests/Hexalith.EventStore.IntegrationTests/ContractTests/HotReloadTests.cs`
+- `tests/Hexalith.EventStore.IntegrationTests/Helpers/DaprInvocationReadinessProbe.cs`
+- `tests/Hexalith.EventStore.IntegrationTests/Helpers/DaprInvocationReadinessProbeTests.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRRedisBackplaneRuntimeProofTests.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/ContractTests/TenantBootstrapHealthTests.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/EventStore/ConcurrencyConflictIntegrationTests.cs`
@@ -677,6 +732,7 @@ traceability; it does not reclassify that path as a Story 1.20 implementation de
 
 | Date | Phase | Test-method delta | Verification | File-list reconciliation |
 | --- | --- | ---: | --- | --- |
+| 2026-07-22 | Exact-gate hot-reload readiness correction after rejected candidate `c6b72caa4ed90ea55a29644f0e40a0e5c44cf791` | `+4` test methods / `+11` deterministic cases | RED: exact Debug/source integration assembly 257/258; repeated direct-health attempt still failed 1/1 after `/health` returned 200. GREEN after review patches: source-mode Debug build 0 warnings/errors; readiness parser/polling 11/11; formerly failing method 3/3 across fresh topologies; complete `HotReloadTests` 3/3 in 117.017s. | Added the hot-reload contract-test path plus the readiness helper and deterministic test paths. The correction proves EventStore-to-sample Dapr invocation unavailable after stop and ready after start without retrying command POSTs. Exact commands/artifact hashes are bound in the proof packet. Story remains `blocked`; a new clean candidate must restart every exact gate. |
 | 2026-07-21 | Docker/Dapr exact-gate unblock on official-main base `4cb7738d6cfad8a9a99638644ac5de77f902245e` | `+0` | RED: deterministic Redis-chaos/bootstrap sequence 3/4; GREEN: 4/4 in 97.347s. SignalR external-evidence proof 1/1 in 187.403s. Complete patched Debug/source integration assembly 258/258, zero skipped, in 1,450.691s. Integration project source-mode Debug build: 0 warnings/errors. Proof-packet integrity 3/3; all fenced Bash passed `bash -n`. | Added the Redis chaos harness, SignalR runtime-proof evidence boundary, and proof-packet harness paths. Story remains `blocked`; the working-tree corrections require a new committed exact candidate and a full restart of the protocol. |
 | 2026-07-21 | Ledger adoption baseline for the user-approved direct Story 1.20 corrective pass at `014bd00a9ef6d3eac2e4900feedbedc093fab188` | `+0` (planned `+6..+9`) | Release builds passed with 0 warnings/errors. Runner discovery: Server `2560` methods (`DaprDomainServiceInvokerTests=28`, `EventStoreServerServiceCollectionExtensionsTests=7`); Integration `234` methods (`TenantBootstrapHealthTests=1`, `ConcurrencyConflictIntegrationTests=11`). Commands: `dotnet exec tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll -list methods -noLogo`; `dotnet exec tests/Hexalith.EventStore.IntegrationTests/bin/Release/net10.0/Hexalith.EventStore.IntegrationTests.dll -list methods -noLogo`. | Current adoption delta `0/0` paths against `014bd00a...`; the existing File List remains the legacy pre-adoption traceability inventory. Story remains `blocked` / sprint `in-progress`; this phase cannot authorize migration. |
 
