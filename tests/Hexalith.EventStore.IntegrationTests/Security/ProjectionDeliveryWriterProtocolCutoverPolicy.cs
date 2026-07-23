@@ -44,7 +44,8 @@ internal static class ProjectionDeliveryWriterProtocolCutoverPolicy {
                 if (string.Equals(result.Name, writerProtocolHealthCheck, StringComparison.Ordinal)) {
                     markerIsUnhealthy = string.Equals(status, "Unhealthy", StringComparison.Ordinal);
                 }
-                else if (!string.Equals(status, "Healthy", StringComparison.Ordinal)) {
+                else if (!string.Equals(status, "Healthy", StringComparison.Ordinal)
+                    && !string.Equals(status, "Degraded", StringComparison.Ordinal)) {
                     return false;
                 }
             }

@@ -1,6 +1,9 @@
 using Aspire.Hosting;
 using Aspire.Hosting.Testing;
 
+using Hexalith.EventStore.IntegrationTests.Helpers;
+using Hexalith.EventStore.IntegrationTests.Security;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -15,6 +18,7 @@ public class KeycloakAuthFixture : IAsyncLifetime {
     private const string SecurityResourceName = "security";
 
     private readonly Dictionary<string, string?> _envSnapshot = new(StringComparer.Ordinal);
+    private readonly ProjectionDeliveryWriterProtocolTestLease _writerProtocolLease = new();
 
     private DistributedApplication? _app;
     private IDistributedApplicationTestingBuilder? _builder;
@@ -81,6 +85,24 @@ public class KeycloakAuthFixture : IAsyncLifetime {
                 .WaitAsync(TimeSpan.FromMinutes(4), cts.Token)
                 .ConfigureAwait(false);
 
+            _eventStoreClient = _app.CreateHttpClient("eventstore");
+            _eventStoreClient.Timeout = TimeSpan.FromSeconds(60);
+
+            // Resolve the token endpoint and acquire a real administrator token before EventStore
+            // can be healthy; the production writer-protocol cutover itself requires that role.
+            HttpClient keycloakClient = _app.CreateHttpClient(SecurityResourceName);
+            KeycloakTokenEndpoint = $"{keycloakClient.BaseAddress}realms/hexalith/protocol/openid-connect/token";
+            string administratorToken = await AcquireAdministratorTokenAsync(cts.Token).ConfigureAwait(false);
+            string sourceCommit = await ProjectionDeliveryWriterProtocolTestLease
+                .ReadExactSourceCommitAsync(cts.Token)
+                .ConfigureAwait(false);
+            await _writerProtocolLease.ActivateAsync(
+                _eventStoreClient,
+                administratorToken,
+                sourceCommit,
+                "disposable-keycloak-auth-fixture-backup",
+                cts.Token).ConfigureAwait(false);
+
             // Wait for EventStore to be healthy (depends on Keycloak for OIDC discovery).
             _ = await _app.ResourceNotifications
                 .WaitForResourceHealthyAsync("eventstore", cts.Token)
@@ -93,12 +115,6 @@ public class KeycloakAuthFixture : IAsyncLifetime {
                 .WaitAsync(TimeSpan.FromMinutes(3), cts.Token)
                 .ConfigureAwait(false);
 
-            _eventStoreClient = _app.CreateHttpClient("eventstore");
-            _eventStoreClient.Timeout = TimeSpan.FromSeconds(60);
-
-            // Resolve Keycloak token endpoint from the running container.
-            HttpClient keycloakClient = _app.CreateHttpClient(SecurityResourceName);
-            KeycloakTokenEndpoint = $"{keycloakClient.BaseAddress}realms/hexalith/protocol/openid-connect/token";
         }
         catch {
             // xUnit does not invoke DisposeAsync when InitializeAsync throws (e.g. the 5-min topology
@@ -120,6 +136,14 @@ public class KeycloakAuthFixture : IAsyncLifetime {
     }
 
     private async Task SafeShutdownAsync() {
+        Exception? markerRestorationException = null;
+        try {
+            await _writerProtocolLease.RestoreAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex) {
+            markerRestorationException = ex;
+        }
+
         _eventStoreClient?.Dispose();
         _eventStoreClient = null;
 
@@ -144,6 +168,33 @@ public class KeycloakAuthFixture : IAsyncLifetime {
 
             _builder = null;
         }
+
+        if (markerRestorationException is not null) {
+            throw new InvalidOperationException(
+                "The disposable Keycloak topology could not restore the store-global writer-protocol marker.",
+                markerRestorationException);
+        }
+    }
+
+    private async Task<string> AcquireAdministratorTokenAsync(CancellationToken cancellationToken) {
+        Exception? lastException = null;
+        while (!cancellationToken.IsCancellationRequested) {
+            try {
+                return await KeycloakTokenHelper.AcquireTokenAsync(
+                    KeycloakTokenEndpoint,
+                    "hexalith-eventstore",
+                    "admin-user",
+                    "admin-pass").ConfigureAwait(false);
+            }
+            catch (Exception ex) {
+                lastException = ex;
+                await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        throw new TimeoutException(
+            "Keycloak administrator token acquisition did not complete within the topology startup budget.",
+            lastException);
     }
 
     private void SnapshotAndSet(string name, string? newValue) {

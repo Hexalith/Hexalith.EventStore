@@ -37,8 +37,19 @@ public class ProjectionDeliveryWriterProtocolCutoverPolicyTests {
             "projection-delivery-writer-protocol").ShouldBeTrue();
     }
 
+    [Fact]
+    public void WriterProtocolIsOnlyUnhealthyCheck_DegradedSibling_ReturnsTrue() {
+        const string healthBody =
+            """
+            {"results":{"projection-delivery-writer-protocol":{"status":"Unhealthy"},"configstore":{"status":"Degraded"}}}
+            """;
+
+        ProjectionDeliveryWriterProtocolCutoverPolicy.WriterProtocolIsOnlyUnhealthyCheck(
+            healthBody,
+            "projection-delivery-writer-protocol").ShouldBeTrue();
+    }
+
     [Theory]
-    [InlineData("Degraded")]
     [InlineData("Unhealthy")]
     [InlineData("healthy")]
     public void WriterProtocolIsOnlyUnhealthyCheck_NonHealthySibling_ReturnsFalse(string siblingStatus) {

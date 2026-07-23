@@ -53,7 +53,7 @@ public class AspireFixtureResilienceTests {
     public void WriterProtocolActivationResponseHasDeterministicRetryDecision(
         HttpStatusCode statusCode,
         bool expected) {
-        AspireTopologyFixture.ShouldRetryActivationResponse(statusCode).ShouldBe(expected);
+        ProjectionDeliveryWriterProtocolTestLease.ShouldRetryActivationResponse(statusCode).ShouldBe(expected);
     }
 
     private sealed class CountingFailureHandler : HttpMessageHandler {

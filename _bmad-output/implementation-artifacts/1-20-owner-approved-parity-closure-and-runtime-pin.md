@@ -755,6 +755,39 @@ override Story 1.20's external evidence and named-approval gates.
   daprd graceful-shutdown timeout for the test topology, or per-collection unique app-ids as the
   live-sidecar lane already uses).
 
+#### 2026-07-23 — Clean-store cutover and full-assembly restart unblock
+
+- A fresh detached attempt at clean candidate
+  `8fe161c08649a8cee850306c21801fa380e8e571` passed the source-mode Debug build with zero
+  warnings/errors, then could not produce an integration result because every Aspire fixture
+  waited for EventStore health while clean Redis correctly lacked the global writer-protocol
+  marker. The attempt also caught the packet's Dapr conflict monitor reporting a gate-owned
+  `sample` process during teardown.
+- Added one shared disposable-topology lease that acquires an atomic Redis lock, snapshots and
+  removes the marker, invokes the production administrator cutover endpoint, verifies schema 1 /
+  protocol 2 / commit identity, and restores the exact prior dump and TTL before releasing the
+  lock. All five shared Aspire fixture families now cut over before their first EventStore-health
+  wait and clean up marker/environment state after partial initialization as well as normal exit.
+- Corrected health parsing to allow healthy or degraded sibling checks only when the exact
+  writer-protocol check is the sole unhealthy dependency. Malformed JSON, case drift, and any
+  additional unhealthy check still fail closed.
+- Live process inspection showed Aspire DCP stopping/reparenting its monitor while the EventStore
+  child remained alive. Added a Development-only shutdown endpoint that is mapped only with an
+  explicit 32-character-or-longer token, conceals wrong tokens with 404, and requests application
+  shutdown only after the accepted response completes. The restart fixture now waits for the
+  authoritative terminal state before deleting Redis state and restarting; DCP stop remains a
+  bounded diagnostic fallback.
+- Focused endpoint/lease/cutover tests passed 19/19. The formerly failing restart-based query
+  provenance method passed 1/1. The complete corrected Debug/source integration assembly then
+  passed 278/278 with zero failed, errors, skips, or not-run cases in 1,613.834 seconds; its build
+  had zero warnings/errors. Post-run checks found no Dapr/DCP/daprd/EventStore residue and neither
+  the writer marker nor isolation lock in Redis.
+- Hardened the exact-gate Dapr monitor with an inherited per-run ownership token plus live/zombie
+  checks, eliminating the teardown ancestry race without accepting a live external reserved app.
+  Its extracted behavioral contract and the three existing packet-integrity tests pass 4/4.
+  All evidence in this entry is local corrective working-tree evidence on base `999b36ca...`, not
+  a selected exact runtime, immutable upload, owner approval, or migration authorization.
+
 ### Completion Notes
 
 - Story remains fail-closed and non-authorizing. Runtime and test corrections in the candidate
@@ -812,17 +845,13 @@ override Story 1.20's external evidence and named-approval gates.
   fail-closed: the integration lane must be re-run in isolation, and the human-only gates (named
   Story 1.16 disposition, named EventStore-owner proof approval, release-owner authority record,
   immutable/WORM raw-evidence upload, and the A/B/C authorization chain) remain outstanding.
-- Root-cause investigation closed the integration-lane question: the residual full-assembly failure
-  is an Aspire-DCP / daprd resource-stop flake (infinite actor graceful-shutdown timeout colliding
-  with fixed-name actors on shared Tier-3 placement/scheduler), rooted in the restart-based
-  `QueryResponseProvenanceE2ETests.LiveHandlerRoute` test and cascading to the rest of its
-  collection. It is not a `440ff4cb` defect (the affected path is candidate-unchanged; the root test
-  and cascaded neighbours pass 5/5 and 1/1 in isolation). The full 269-test assembly cannot be
-  shown green as one run in this shared environment; a definitive full-assembly pass needs the
-  ledgered Tier-3 test-infra fix (finite daprd shutdown timeout or per-collection unique app-ids) or
-  dedicated isolated Dapr infrastructure. This does not change Story 1.20's fail-closed status; it
-  characterizes the one remaining technical gate as blocked by a known, non-candidate Tier-3
-  constraint rather than by any defect in `440ff4cb`.
+- The 2026-07-22 DCP-stop diagnosis is now superseded as an open technical blocker. A token-gated
+  Development-only application shutdown gives the restart proof an authoritative terminal state,
+  the clean-store marker lease lets every Aspire fixture start without pre-seeded global state, and
+  the corrected complete integration assembly passes 278/278. The next step is a new committed
+  candidate and full exact-SHA rerun; named Story 1.16 disposition, EventStore and release-owner
+  approvals, immutable evidence, publication, and A/B/C remain human/external blockers. Story
+  status therefore stays `blocked` and sprint tracking stays `in-progress`.
 
 ## File List
 
@@ -837,6 +866,9 @@ traceability; it does not reclassify that path as a Story 1.20 implementation de
 - `_bmad-output/implementation-artifacts/spec-1-16-1-20-sprint-change-proposal.md`
 - `_bmad-output/implementation-artifacts/deferred-work.md`
 - `docs/guides/configuration-reference.md`
+- `src/Hexalith.EventStore.AppHost/Program.cs`
+- `src/Hexalith.EventStore/Program.cs`
+- `src/Hexalith.EventStore/Extensions/ApplicationRuntimeProofEndpoints.cs`
 - `src/Hexalith.EventStore.Admin.Cli/Commands/Config/ConfigCompletionCommand.cs`
 - `samples/Hexalith.EventStore.Sample.BlazorUI/Components/CounterCommandForm.razor`
 - `samples/Hexalith.EventStore.Sample.BlazorUI/Components/CounterHistoryGrid.razor`
@@ -846,6 +878,7 @@ traceability; it does not reclassify that path as a Story 1.20 implementation de
 - `tests/Hexalith.EventStore.Admin.Cli.Tests/Commands/Config/ConfigCompletionCommandTests.cs`
 - `tests/Hexalith.EventStore.Admin.Cli.Tests/ConsoleTestCollection.cs`
 - `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ProofPacketValidatorIntegrityTests.cs`
+- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ProofPacketDaprConflictProcessContractTests.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/ContractTests/QueryResponseProvenanceE2ETests.cs`
 - `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DaprTestContainerFixture.cs`
 - `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/NamedProjectionDispatchLiveSidecarTests.cs`
@@ -865,17 +898,23 @@ traceability; it does not reclassify that path as a Story 1.20 implementation de
 - `tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRRedisBackplaneRuntimeProofTests.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/ContractTests/TenantBootstrapHealthTests.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/EventStore/ConcurrencyConflictIntegrationTests.cs`
+- `tests/Hexalith.EventStore.IntegrationTests/EventStore/ApplicationRuntimeProofEndpointTests.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspireContractTestCollection.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspireContractTestFixture.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspireContractHttpResilience.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspireContractHttpResilienceTests.cs`
+- `tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspireFixtureResilienceTests.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspireProjectionFaultTestCollection.cs`
+- `tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspireProjectionFaultTestFixture.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspirePubSubProofTestCollection.cs`
+- `tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspirePubSubProofTestFixture.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/Fixtures/KeycloakAuthFixture.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/Security/AspireTopologyCollection.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/Security/AspireTopologyFixture.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/Security/ProjectionDeliveryWriterProtocolCutoverPolicy.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/Security/ProjectionDeliveryWriterProtocolCutoverPolicyTests.cs`
+- `tests/Hexalith.EventStore.IntegrationTests/Security/ProjectionDeliveryWriterProtocolTestLease.cs`
+- `tests/Hexalith.EventStore.IntegrationTests/Security/ProjectionDeliveryWriterProtocolTestLeaseTests.cs`
 - `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Commands/ConcurrencyConflictStatusPersistenceLiveSidecarTests.cs`
 - `tests/Hexalith.EventStore.Server.Tests/Configuration/EventStoreServerServiceCollectionExtensionsTests.cs`
 - `tests/Hexalith.EventStore.Server.Tests/DomainServices/DaprDomainServiceInvokerTests.cs`
@@ -886,6 +925,7 @@ traceability; it does not reclassify that path as a Story 1.20 implementation de
 
 | Date | Phase | Test-method delta | Verification | File-list reconciliation |
 | --- | --- | ---: | --- | --- |
+| 2026-07-23 | Clean-store writer cutover, restart, and Dapr-monitor unblock | `+5` test methods / `+5` cases | RED: clean detached `8fe161c0...` could not produce a full integration result without a pre-seeded writer marker; first corrective full run isolated one DCP-stop failure at 274/275. GREEN: endpoint/lease/cutover 19/19; restart provenance 1/1; final complete Debug/source assembly 278/278, 0 skipped, 0 warnings/errors, 1,613.834s; packet integrity/monitor contract 4/4; no Dapr/process/Redis-marker residue. | Added the shared atomic marker lease, Development/token-gated graceful shutdown, fixture integration and regressions, and race-safe exact-gate Dapr ownership detection. Recorded only corrective working-tree evidence; preserved `blocked` / sprint `in-progress` and every external authorization gate. |
 | 2026-07-23 | Code-review chunk 1 patch application: production runtime and unit tests | `+8` test methods / `+10` cases | Release builds: Server.Tests and Testing.Tests 0 warnings/errors. Focused xUnit v3: registration 20/20, invoker 38/38, testing overrides 2/2. Complete assemblies: Server 2,859 passed / 25 existing skips / 0 failed; Testing 152/152. | Applied all 14 patch findings, retained the one pre-existing deferred item, added the extracted no-op outbox and idempotency validator paths, and preserved `blocked` / sprint `in-progress`. |
 | 2026-07-22 | Integration-lane isolation + root-cause after Redis/placement clean (candidate `440ff4cb...`) | `+0` (read-only investigation; no source change) | After stopping the concurrent loop, `FLUSHALL`-ed the 1.94 GB shared Redis and restarted `dapr_placement`/`dapr_scheduler`; a pristine full-assembly re-run reduced 28 failures to a single-rooted cascade at `AspireContractTestFixture.RestartEventStoreWithClearedHandlerQueryTypesStateAsync` ("Failed to stop resource"). Root cause = Aspire-DCP/daprd resource-stop flake (infinite actor graceful-shutdown timeout + fixed-name actors on shared placement/scheduler), NOT a candidate defect: root test + cascaded neighbours PASS 5/5 and 1/1 in ISOLATION; `440ff4cb` leaves `AspireContractTestFixture.cs`/`QueryResponseProvenanceE2ETests.cs` unchanged; failure also present in run-1 before any restart and at pristine Redis. | No repository file changed; evidence under the scratchpad proof root. Integration full-assembly gate blocked by the ledgered Tier-3 DCP-stop-cascade constraint (needs finite daprd shutdown timeout / per-collection app-id isolation or dedicated Dapr infra), not by `440ff4cb`. Story stays `blocked`; human-authority gates remain open. |
 | 2026-07-22 | Exact-SHA closure gate run (Closure Execution Order steps 3-6) against committed candidate `440ff4cb36a9ea1446024f3906c132b0398e881f` | `+0` (read-only verification; no source change) | PASS: Release solution build 0W/0E; 22/23 mandatory lanes green with exactly 126 allowlisted skips / 0 unexpected; Story 1.16 technical re-verification (LiveSidecar 49/49, Server 2849/2874, Contracts 756/756); 14-package build+SHA-256+consumer-validation. INCONCLUSIVE at the time: full Debug/source `IntegrationTests` 241/269 (28 timeout-signature failures) from a concurrent, unrelated `Hexalith.Works` Aspire session contending for the shared `eventstore`/`eventstore-admin` Dapr app-ids and placement/scheduler/Redis (root cause later isolated — see row above). Container step 7 not entered. | No repository file changed (verification-only against committed HEAD); evidence retained under the scratchpad proof root. Story remains `blocked`; all human-authority gates remain open. |

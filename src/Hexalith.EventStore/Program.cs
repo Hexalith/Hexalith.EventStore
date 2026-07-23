@@ -1,3 +1,4 @@
+using Hexalith.EventStore;
 using Hexalith.EventStore.Extensions;
 using Hexalith.EventStore.HealthChecks;
 using Hexalith.EventStore.Middleware;
@@ -44,6 +45,7 @@ app.MapErrorReferences();
 app.MapApiVersionFallback();
 app.MapSubscribeHandler();
 app.MapActorsHandlers();
+app.MapApplicationRuntimeProofEndpoints();
 
 // SignalR hub for real-time projection change notifications (conditional)
 SignalROptions? signalROptions = app.Configuration

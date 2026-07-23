@@ -3,7 +3,7 @@ schema: hexalith.eventstore.parity-closure-proof-packet/v1
 story_id: "1.20"
 story_key: 1-20-owner-approved-parity-closure-and-runtime-pin
 created: 2026-07-16T05:09:20+02:00
-updated: 2026-07-23T01:52:38+02:00
+updated: 2026-07-23T08:55:21+02:00
 historical_packet: 1-8-projection-query-sdk-owner-proof-packet.md
 candidate_source_sha: 85877902f8d60a466ab90cd8b68b53838863db1c
 tested_runtime_sha: null
@@ -41,7 +41,7 @@ projection, query, rebuild, freshness, erasure, or rollback infrastructure. It i
 successor to the historical Story 1.8 packet; it does not rewrite that packet's decision
 or treat its historical runtime SHA as current evidence.
 
-The packet remains blocked after two historical exact-SHA attempts; neither reached
+The packet remains blocked after the historical exact-SHA attempts; none reached
 container publication or owner review:
 
 1. Story 1.19 is now `done` with an approved review disposition, so the previously
@@ -98,6 +98,43 @@ keeps `tested_runtime_sha: null`, and leaves every approval and migration field 
 The exact gate must start again from a new clean committed candidate after these review patches;
 the named Story 1.16 disposition, EventStore-owner approval, release-owner disposition,
 immutable evidence, and A/B/C authorization chain remain external blockers.
+
+### 2026-07-23 Corrective Working-Tree Unblock
+
+The next detached attempt against clean candidate
+`8fe161c08649a8cee850306c21801fa380e8e571` stopped before the integration assembly could
+produce a result: a clean shared Redis correctly had no `projection-delivery-writer-protocol` marker, while
+the Aspire fixtures waited for EventStore to become healthy before invoking the production
+cutover endpoint. The same attempt also exposed a Dapr conflict-monitor race during teardown.
+No exact-SHA result is credited from that stopped attempt.
+
+Corrective work on base `999b36ca9fa63524df690d0cfb6f5ad5c02bee4b` now:
+
+- takes an exclusive Redis lease, atomically snapshots/deletes the store-global marker, activates
+  the disposable topology through the production administrator endpoint, verifies schema 1 /
+  writer protocol 2 / current commit, and restores the exact prior Redis value and TTL;
+- performs that cutover before every shared Aspire fixture waits for EventStore health and accepts
+  healthy or degraded sibling checks only when the exact writer-protocol check is the sole
+  unhealthy dependency;
+- gives the contract fixture a Development-only, 32-character-token-gated self-shutdown endpoint,
+  waits for an authoritative terminal resource state, mutates persisted state only after shutdown,
+  and retains the DCP stop command as a diagnostic fallback;
+- tags gate-owned Dapr descendants with an inherited per-run token and ignores disappeared/zombie
+  inventory rows, preventing teardown reparenting from being reported as external contention.
+
+The focused endpoint/lease/cutover suite passed 19/19. The formerly failing restart-based query
+provenance method passed 1/1. A complete Debug/source integration assembly then passed 278/278,
+with zero failures, errors, skips, or not-run cases in 1,613.834 seconds. It used isolated restore
+caches and routed runtime-proof output outside the checkout; the build completed with zero warnings
+and errors. Post-run checks found no Dapr applications, no DCP/daprd/EventStore process residue,
+no writer marker, and no isolation lock. The XML result SHA-256 is
+`972a5ba43f65791826a4ace3719e1813f1c1a82e95ee7d7b068890aa90bd405d`.
+
+This proves the previously described full-assembly and monitor constraints have technical fixes;
+it does not select `999b36ca...` (the runtime included uncommitted corrections), populate
+`tested_runtime_sha`, or authorize publication/migration. A new committed candidate must rerun the
+entire exact-SHA harness. The named Story 1.16 disposition, EventStore-owner approval,
+release-owner disposition, WORM evidence publication, and A/B/C authorization chain remain open.
 
 ### Scoped corrective item
 
@@ -930,14 +967,25 @@ assert_candidate_tree_clean
 capture_source_state "$EVIDENCE_ROOT/source-state-before.txt"
 RESERVED_DAPR_APP_IDS='["eventstore","eventstore-admin","eventstore-admin-ui","eventstore-test-subscriber","sample","sample-api","sample-blazor-ui","tenants","tenants-api"]'
 DAPR_GATE_PROCESS_ROOT_PID="$$"
+DAPR_GATE_PROCESS_TOKEN="story-1-20-$$-$(date +%s%N)-$RANDOM"
+export STORY_1_20_DAPR_GATE_TOKEN="$DAPR_GATE_PROCESS_TOKEN"
 DAPR_CONFLICT_LOG="$EVIDENCE_ROOT/conflicting-dapr-apps.jsonl"
 DAPR_MONITOR_FAILURE="$EVIDENCE_ROOT/conflicting-dapr-apps.detected"
 : > "$DAPR_CONFLICT_LOG"
+
+# dapr-conflict-process-contract-start
+dapr_pid_has_gate_token() {
+  local pid="$1"
+  [[ "$pid" =~ ^[0-9]+$ ]] || return 1
+  tr '\0' '\n' < "/proc/$pid/environ" 2>/dev/null \
+    | grep -Fqx "STORY_1_20_DAPR_GATE_TOKEN=$DAPR_GATE_PROCESS_TOKEN"
+}
 
 dapr_pid_belongs_to_gate() {
   local pid="$1"
   local parent_pid
   [[ "$pid" =~ ^[0-9]+$ ]] || return 1
+  dapr_pid_has_gate_token "$pid" && return 0
   while test "$pid" -gt 1; do
     test "$pid" = "$DAPR_GATE_PROCESS_ROOT_PID" && return 0
     parent_pid="$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d '[:space:]')"
@@ -946,6 +994,17 @@ dapr_pid_belongs_to_gate() {
   done
   return 1
 }
+
+dapr_pid_is_live_external() {
+  local pid="$1"
+  local process_state
+  [[ "$pid" =~ ^[0-9]+$ ]] || return 1
+  process_state="$(ps -o stat= -p "$pid" 2>/dev/null | tr -d '[:space:]')"
+  test -n "$process_state" || return 1
+  [[ "$process_state" != Z* ]] || return 1
+  ! dapr_pid_belongs_to_gate "$pid"
+}
+# dapr-conflict-process-contract-end
 
 find_external_conflicting_dapr_apps() {
   local inventory
@@ -958,7 +1017,7 @@ find_external_conflicting_dapr_apps() {
   while IFS= read -r row; do
     cli_pid="$(jq -r '.cliPid // empty' <<<"$row")"
     daprd_pid="$(jq -r '.daprdPid // empty' <<<"$row")"
-    if ! dapr_pid_belongs_to_gate "$cli_pid" && ! dapr_pid_belongs_to_gate "$daprd_pid"; then
+    if dapr_pid_is_live_external "$cli_pid" || dapr_pid_is_live_external "$daprd_pid"; then
       conflicts="$(jq -c --argjson row "$row" '. + [$row]' <<<"$conflicts")"
     fi
   done < <(jq -c --argjson reserved "$RESERVED_DAPR_APP_IDS" \
@@ -5714,14 +5773,44 @@ dotnet exec /home/administrator/projects/hexalith/eventstore/tests/Hexalith.Even
   zero; Story 1.16's named follow-up disposition, release-publication authority, immutable
   artifacts, durable owner approvals, and A/B/C remain open.
 
+### 2026-07-23 writer-cutover and restart corrective verification
+
+- A detached run at clean candidate `8fe161c08649a8cee850306c21801fa380e8e571`
+  passed the source-mode Debug build with zero warnings/errors, then exposed the clean-store
+  writer-marker startup deadlock before the integration assembly could execute.
+- The corrective working tree based on
+  `999b36ca9fa63524df690d0cfb6f5ad5c02bee4b` centralizes disposable marker ownership across all
+  shared Aspire fixtures and restores the exact pre-run Redis dump/TTL under an atomic lock.
+- Focused endpoint, lease, and cutover-policy verification passed 19/19. The restart-based
+  `QueryResponseProvenanceE2ETests.LiveHandlerRoute_WithCurrentProjectionValidator_NeutralizesProjectionEvidence`
+  regression passed 1/1 in 14 seconds.
+- Full command shape: isolated `DOTNET_CLI_HOME`, `NUGET_PACKAGES`, and
+  `NUGET_HTTP_CACHE_PATH`; `UseHexalithProjectReferences=true`; `NuGetAudit=false`;
+  `MinVerVersionOverride=1.0.0`; source-mode Debug clean/restore/build; complete xUnit v3 assembly
+  with method inventory and XML output. Build result: zero warnings/errors. Test result: 278 total,
+  278 passed, zero failed/errors/skipped/not-run, 1,613.834 seconds.
+- Local scratchpad evidence root:
+  `/tmp/story-1-20-local-full-fixed-qQl2QZ`. SHA-256 values: build log
+  `ec822fc5defe974fc3edcfcb0e181350219bdcd49af628511940e52d7eb0b0d9`; method inventory
+  `f2f3274c6caa5b08db7424069274662826185e4a2802b569adef980689faf64b`; xUnit XML
+  `972a5ba43f65791826a4ace3719e1813f1c1a82e95ee7d7b068890aa90bd405d`; test log
+  `27f50387afdcb384e183ae492fe78010a40d005c1f1eb72b9b227942fc1cbf58`.
+- Post-run state: `dapr list --output json` returned `[]`; no DCP, daprd, Dapr-run, or EventStore
+  application process remained; Redis reported neither the writer marker nor its isolation lock.
+- All fenced Bash passed `bash -n`; the three existing packet-integrity cases and the extracted
+  Dapr ownership behavior contract passed 4/4 with a zero-warning/zero-error Contracts test build.
+- The scratchpad is mutable local evidence and the runtime was not a clean committed SHA. These
+  results unblock creation of a corrected candidate only; they do not satisfy any external
+  approval, immutable-evidence, publication, or A/B/C authorization gate.
+
 ## Final Decision
 
 `still blocked`
 
-Story 1.20 and Epic 1 remain `in-progress`. The Docker/Dapr runtime is available, but clean
-candidate `c6b72caa...` is rejected by its 257/258 integration result. The hot-reload readiness
-correction passes repeated focused and class-level validation but is not yet a clean committed
-candidate. Every parity row remains non-authorizing; a fresh official-main SHA must rerun the
-complete protocol from zero, and Story 1.16's named follow-up disposition, publication authority,
+Story 1.20 and Epic 1 remain `in-progress`. The previously blocking clean-store writer cutover,
+full-assembly restart, and Dapr-monitor races now have corrective working-tree fixes, and the full
+integration assembly passes 278/278. Those fixes are not yet an exact clean committed candidate,
+so every parity row remains non-authorizing and the complete protocol must restart from zero at a
+fresh official-main SHA. Story 1.16's named follow-up disposition, publication authority,
 immutable package/container evidence, durable owner approvals, and the A/B/C authorization chain
 remain open.

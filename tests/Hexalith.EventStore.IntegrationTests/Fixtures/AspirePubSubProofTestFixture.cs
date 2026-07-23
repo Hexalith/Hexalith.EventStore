@@ -1,6 +1,9 @@
 using global::Aspire.Hosting;
 using global::Aspire.Hosting.Testing;
 
+using Hexalith.EventStore.IntegrationTests.Helpers;
+using Hexalith.EventStore.IntegrationTests.Security;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -11,6 +14,8 @@ namespace Hexalith.EventStore.IntegrationTests.Fixtures;
 public sealed class AspirePubSubProofTestFixture : IAsyncLifetime {
     private const string AuthHeaderName = "X-Test-Auth";
     private const string RedisEndpoint = "localhost:6379";
+
+    private readonly ProjectionDeliveryWriterProtocolTestLease _writerProtocolLease = new();
 
     private DistributedApplication? _app;
     private IDistributedApplicationTestingBuilder? _builder;
@@ -76,6 +81,21 @@ public sealed class AspirePubSubProofTestFixture : IAsyncLifetime {
             _app = await _builder.BuildAsync().ConfigureAwait(false);
             await _app.StartAsync(cts.Token).ConfigureAwait(false);
 
+            _eventStoreClient = _app.CreateHttpClient("eventstore");
+            _eventStoreClient.Timeout = TimeSpan.FromSeconds(60);
+            string sourceCommit = await ProjectionDeliveryWriterProtocolTestLease
+                .ReadExactSourceCommitAsync(cts.Token)
+                .ConfigureAwait(false);
+            string administratorToken = TestJwtTokenGenerator.GenerateToken(
+                subject: "fixture-admin",
+                role: "GlobalAdministrator");
+            await _writerProtocolLease.ActivateAsync(
+                _eventStoreClient,
+                administratorToken,
+                sourceCommit,
+                "disposable-aspire-pubsub-proof-fixture-backup",
+                cts.Token).ConfigureAwait(false);
+
             _ = await _app.ResourceNotifications
                 .WaitForResourceHealthyAsync("eventstore", cts.Token)
                 .WaitAsync(TimeSpan.FromMinutes(3), cts.Token)
@@ -90,9 +110,6 @@ public sealed class AspirePubSubProofTestFixture : IAsyncLifetime {
                 .WaitForResourceHealthyAsync("eventstore-test-subscriber", cts.Token)
                 .WaitAsync(TimeSpan.FromMinutes(3), cts.Token)
                 .ConfigureAwait(false);
-
-            _eventStoreClient = _app.CreateHttpClient("eventstore");
-            _eventStoreClient.Timeout = TimeSpan.FromSeconds(60);
 
             _subscriberClient = _app.CreateHttpClient("eventstore-test-subscriber");
             _subscriberClient.Timeout = TimeSpan.FromSeconds(60);
@@ -127,6 +144,14 @@ public sealed class AspirePubSubProofTestFixture : IAsyncLifetime {
     }
 
     private async Task SafeShutdownAsync() {
+        Exception? markerRestorationException = null;
+        try {
+            await _writerProtocolLease.RestoreAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex) {
+            markerRestorationException = ex;
+        }
+
         TryDeleteFaultFile();
 
         if (_redis is not null) {
@@ -166,6 +191,12 @@ public sealed class AspirePubSubProofTestFixture : IAsyncLifetime {
             }
 
             _builder = null;
+        }
+
+        if (markerRestorationException is not null) {
+            throw new InvalidOperationException(
+                "The disposable pub/sub topology could not restore the store-global writer-protocol marker.",
+                markerRestorationException);
         }
     }
 

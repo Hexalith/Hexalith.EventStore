@@ -1,17 +1,11 @@
 
 using System.Net;
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
-using System.Diagnostics;
 using System.Text;
-using System.Text.Json;
 
 using global::Aspire.Hosting;
 using global::Aspire.Hosting.Testing;
 
 using Hexalith.EventStore.IntegrationTests.Helpers;
-
-using StackExchange.Redis;
 
 namespace Hexalith.EventStore.IntegrationTests.Security;
 /// <summary>
@@ -22,30 +16,15 @@ namespace Hexalith.EventStore.IntegrationTests.Security;
 /// <see cref="App"/>, and <see cref="GetTokenAsync"/>.
 /// </summary>
 public class AspireTopologyFixture : IAsyncLifetime {
-    private const string ProjectionDeliveryWriterProtocolStateKey = "projection-delivery-writer-protocol";
-    private const string ProjectionDeliveryWriterProtocolIsolationLockKey =
-        "projection-delivery-writer-protocol:test-isolation-lock";
-    private const string ProjectionDeliveryWriterProtocolHealthCheck = "projection-delivery-writer-protocol";
-    private const string RedisEndpoint = "localhost:6379";
     private const string SecurityResourceName = "security";
-    private const int ProjectionDeliveryWriterProtocolSchemaVersion = 1;
-    private const int ProjectionDeliveryWriterProtocolVersion = 2;
-
-    private static readonly TimeSpan s_cutoverRetryDelay = TimeSpan.FromSeconds(1);
-    private static readonly TimeSpan s_writerProtocolMarkerLockLease = TimeSpan.FromHours(2);
-    private static readonly JsonSerializerOptions s_jsonSerializerOptions = new(JsonSerializerDefaults.Web);
 
     private readonly Dictionary<string, string?> _envSnapshot = new(StringComparer.Ordinal);
+    private readonly ProjectionDeliveryWriterProtocolTestLease _writerProtocolLease = new();
 
     private DistributedApplication? _app;
     private IDistributedApplicationTestingBuilder? _builder;
     private HttpClient? _eventStoreClient;
     private string? _keycloakBaseUrl;
-    private byte[]? _writerProtocolMarkerSnapshot;
-    private TimeSpan? _writerProtocolMarkerSnapshotExpiry;
-    private string? _writerProtocolMarkerSourceCommit;
-    private string? _writerProtocolMarkerLockToken;
-    private bool _writerProtocolMarkerIsolated;
 
     /// <summary>
     /// Gets the HTTP client for the EventStore service.
@@ -132,9 +111,15 @@ public class AspireTopologyFixture : IAsyncLifetime {
             // Production correctly stays fail-closed until an operator records the v2 writer
             // cutover. This disposable topology has no legacy writers or durable production data,
             // so perform the equivalent explicit test cutover before requiring /health to be 200.
-            string sourceCommit = await ReadExactSourceCommitAsync(cts.Token).ConfigureAwait(false);
-            await EnsureProjectionDeliveryWriterProtocolAsync(adminToken, sourceCommit, cts.Token)
+            string sourceCommit = await ProjectionDeliveryWriterProtocolTestLease
+                .ReadExactSourceCommitAsync(cts.Token)
                 .ConfigureAwait(false);
+            await _writerProtocolLease.ActivateAsync(
+                _eventStoreClient,
+                adminToken,
+                sourceCommit,
+                "disposable-aspire-security-fixture-backup",
+                cts.Token).ConfigureAwait(false);
 
             // Wait for EventStore health endpoint (includes Dapr sidecar, state store, pub/sub checks).
             // Without this, actor invocations fail because the Dapr sidecar/placement service isn't ready.
@@ -193,7 +178,7 @@ public class AspireTopologyFixture : IAsyncLifetime {
     private async Task SafeShutdownAsync() {
         Exception? markerRestorationException = null;
         try {
-            await RestoreWriterProtocolMarkerAsync().ConfigureAwait(false);
+            await _writerProtocolLease.RestoreAsync().ConfigureAwait(false);
         }
         catch (Exception ex) {
             markerRestorationException = ex;
@@ -283,324 +268,6 @@ public class AspireTopologyFixture : IAsyncLifetime {
             + Environment.NewLine
             + keycloakLogs);
     }
-
-    private async Task EnsureProjectionDeliveryWriterProtocolAsync(
-        string adminToken,
-        string sourceCommit,
-        CancellationToken cancellationToken) {
-        using IConnectionMultiplexer redis = await ConnectionMultiplexer.ConnectAsync(new ConfigurationOptions {
-            EndPoints = { RedisEndpoint },
-            ConnectTimeout = 5_000,
-            SyncTimeout = 5_000,
-            AbortOnConnectFail = false,
-            AllowAdmin = false,
-        }).ConfigureAwait(false);
-        IDatabase database = redis.GetDatabase();
-        await IsolateWriterProtocolMarkerAsync(database, sourceCommit, cancellationToken)
-            .ConfigureAwait(false);
-        string lastDiagnostic = "No activation attempt completed.";
-
-        try {
-            while (true) {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                try {
-                    ProjectionDeliveryWriterProtocolMarker? marker = await ReadWriterProtocolMarkerAsync(
-                        database,
-                        cancellationToken).ConfigureAwait(false);
-                    if (marker is not null) {
-                        AssertWriterProtocolMarker(marker, sourceCommit);
-                        return;
-                    }
-                }
-                catch (RedisException ex) {
-                    lastDiagnostic = $"Redis marker read is not ready: {ex.Message}";
-                    await Task.Delay(s_cutoverRetryDelay, cancellationToken).ConfigureAwait(false);
-                    continue;
-                }
-
-                try {
-                    using HttpResponseMessage health = await _eventStoreClient!
-                        .GetAsync("/health", cancellationToken)
-                        .ConfigureAwait(false);
-                    string healthBody = await health.Content
-                        .ReadAsStringAsync(cancellationToken)
-                        .ConfigureAwait(false);
-                    if (!ProjectionDeliveryWriterProtocolCutoverPolicy.WriterProtocolIsOnlyUnhealthyCheck(
-                        healthBody,
-                        ProjectionDeliveryWriterProtocolHealthCheck)) {
-                        lastDiagnostic = $"EventStore dependencies are not ready for cutover. "
-                            + $"Status={(int)health.StatusCode} ({health.StatusCode}); Body={healthBody}";
-                        await Task.Delay(s_cutoverRetryDelay, cancellationToken).ConfigureAwait(false);
-                        continue;
-                    }
-
-                    using var request = new HttpRequestMessage(
-                        HttpMethod.Post,
-                        "/api/v1/admin/projections/delivery-writer-protocol/activate");
-                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
-                    request.Content = JsonContent.Create(new {
-                        CutoverCommit = sourceCommit,
-                        BackupReference = "disposable-aspire-security-fixture-backup",
-                        WritersQuiesced = true,
-                        RetryWorkersQuiesced = true,
-                        DowngradeProhibitedAcknowledged = true,
-                    });
-
-                    using HttpResponseMessage response = await _eventStoreClient
-                        .SendAsync(request, cancellationToken)
-                        .ConfigureAwait(false);
-                    string body = await response.Content
-                        .ReadAsStringAsync(cancellationToken)
-                        .ConfigureAwait(false);
-                    if (ShouldRetryActivationResponse(response.StatusCode)) {
-                        lastDiagnostic = $"Activation has not produced a verified marker yet. "
-                            + $"Status={(int)response.StatusCode} ({response.StatusCode}); Body={body}";
-                        await Task.Delay(s_cutoverRetryDelay, cancellationToken).ConfigureAwait(false);
-                        continue;
-                    }
-
-                    throw new InvalidOperationException(
-                        $"Unable to activate the disposable topology's projection delivery writer protocol. "
-                        + $"Status={(int)response.StatusCode} ({response.StatusCode}); Body={body}");
-                }
-                catch (HttpRequestException ex) {
-                    lastDiagnostic = $"EventStore cutover transport is not ready: {ex.Message}";
-                    await Task.Delay(s_cutoverRetryDelay, cancellationToken).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested) {
-                    lastDiagnostic = $"EventStore cutover request timed out before the startup budget elapsed: {ex.Message}";
-                    await Task.Delay(s_cutoverRetryDelay, cancellationToken).ConfigureAwait(false);
-                }
-            }
-        }
-        catch (OperationCanceledException ex) when (cancellationToken.IsCancellationRequested) {
-            throw new TimeoutException(
-                "Projection delivery writer-protocol activation did not complete within the topology startup budget. "
-                + lastDiagnostic,
-                ex);
-        }
-    }
-
-    private static void AssertWriterProtocolMarker(
-        ProjectionDeliveryWriterProtocolMarker marker,
-        string sourceCommit) {
-        if (marker.SchemaVersion != ProjectionDeliveryWriterProtocolSchemaVersion
-            || marker.WriterProtocolVersion != ProjectionDeliveryWriterProtocolVersion
-            || !string.Equals(marker.CutoverCommit, sourceCommit, StringComparison.Ordinal)) {
-            throw new InvalidOperationException(
-                "The persisted projection delivery writer-protocol marker does not identify the exact test runtime. "
-                + $"Expected schema={ProjectionDeliveryWriterProtocolSchemaVersion}, "
-                + $"protocol={ProjectionDeliveryWriterProtocolVersion}, commit={sourceCommit}; "
-                + $"actual schema={marker.SchemaVersion}, protocol={marker.WriterProtocolVersion}, "
-                + $"commit={marker.CutoverCommit}.");
-        }
-    }
-
-    internal static bool ShouldRetryActivationResponse(HttpStatusCode statusCode)
-        => statusCode == HttpStatusCode.OK
-            || statusCode == HttpStatusCode.Conflict
-            || ProjectionDeliveryWriterProtocolCutoverPolicy.IsTransientActivationStatus(statusCode);
-
-    private async Task IsolateWriterProtocolMarkerAsync(
-        IDatabase database,
-        string sourceCommit,
-        CancellationToken cancellationToken) {
-        if (_writerProtocolMarkerIsolated) {
-            throw new InvalidOperationException(
-                "The disposable topology attempted to isolate the writer-protocol marker more than once.");
-        }
-
-        string lockToken = Guid.NewGuid().ToString("N");
-        _writerProtocolMarkerLockToken = lockToken;
-        bool lockAcquired = await database
-            .LockTakeAsync(
-                ProjectionDeliveryWriterProtocolIsolationLockKey,
-                lockToken,
-                s_writerProtocolMarkerLockLease)
-            .WaitAsync(cancellationToken)
-            .ConfigureAwait(false);
-        if (!lockAcquired) {
-            _writerProtocolMarkerLockToken = null;
-            throw new InvalidOperationException(
-                "Another topology owns the store-global writer-protocol marker isolation lease.");
-        }
-
-        try {
-            ITransaction transaction = database.CreateTransaction();
-            _ = transaction.AddCondition(Condition.StringEqual(
-                ProjectionDeliveryWriterProtocolIsolationLockKey,
-                lockToken));
-            Task<byte[]?> snapshot = transaction.KeyDumpAsync(ProjectionDeliveryWriterProtocolStateKey);
-            Task<TimeSpan?> snapshotExpiry = transaction.KeyTimeToLiveAsync(
-                ProjectionDeliveryWriterProtocolStateKey);
-            Task<bool> markerDeleted = transaction.KeyDeleteAsync(
-                ProjectionDeliveryWriterProtocolStateKey);
-            bool committed = await transaction
-                .ExecuteAsync()
-                .WaitAsync(cancellationToken)
-                .ConfigureAwait(false);
-            if (!committed) {
-                throw new InvalidOperationException(
-                    "The writer-protocol marker isolation lease changed before the atomic snapshot completed.");
-            }
-
-            _writerProtocolMarkerSnapshot = await snapshot.ConfigureAwait(false);
-            _writerProtocolMarkerSnapshotExpiry = await snapshotExpiry.ConfigureAwait(false);
-            _ = await markerDeleted.ConfigureAwait(false);
-            _writerProtocolMarkerSourceCommit = sourceCommit;
-            _writerProtocolMarkerIsolated = true;
-        }
-        catch {
-            _ = await database.LockReleaseAsync(
-                ProjectionDeliveryWriterProtocolIsolationLockKey,
-                lockToken).ConfigureAwait(false);
-            _writerProtocolMarkerLockToken = null;
-            throw;
-        }
-    }
-
-    private async Task RestoreWriterProtocolMarkerAsync() {
-        if (!_writerProtocolMarkerIsolated) {
-            return;
-        }
-
-        using IConnectionMultiplexer redis = await ConnectionMultiplexer.ConnectAsync(new ConfigurationOptions {
-            EndPoints = { RedisEndpoint },
-            ConnectTimeout = 5_000,
-            SyncTimeout = 5_000,
-            AbortOnConnectFail = false,
-            AllowAdmin = false,
-        }).ConfigureAwait(false);
-        IDatabase database = redis.GetDatabase();
-        string lockToken = _writerProtocolMarkerLockToken
-            ?? throw new InvalidOperationException("The writer-protocol marker isolation lease is missing.");
-        bool leaseExtended = await database.LockExtendAsync(
-            ProjectionDeliveryWriterProtocolIsolationLockKey,
-            lockToken,
-            s_writerProtocolMarkerLockLease).ConfigureAwait(false);
-        if (!leaseExtended) {
-            throw new InvalidOperationException(
-                "The writer-protocol marker isolation lease expired before restoration.");
-        }
-
-        try {
-            RedisValue currentPayload = await database
-                .HashGetAsync(ProjectionDeliveryWriterProtocolStateKey, "data")
-                .ConfigureAwait(false);
-            ProjectionDeliveryWriterProtocolMarker? current = DeserializeWriterProtocolMarker(currentPayload);
-            if (current is not null
-                && !string.Equals(
-                    current.CutoverCommit,
-                    _writerProtocolMarkerSourceCommit,
-                    StringComparison.Ordinal)) {
-                throw new InvalidOperationException(
-                    "The store-global writer-protocol marker changed after fixture isolation; "
-                    + "refusing to overwrite state owned by another topology.");
-            }
-
-            ITransaction transaction = database.CreateTransaction();
-            _ = transaction.AddCondition(Condition.StringEqual(
-                ProjectionDeliveryWriterProtocolIsolationLockKey,
-                lockToken));
-            _ = transaction.AddCondition(currentPayload.HasValue
-                ? Condition.HashEqual(ProjectionDeliveryWriterProtocolStateKey, "data", currentPayload)
-                : Condition.KeyNotExists(ProjectionDeliveryWriterProtocolStateKey));
-            Task<bool> markerDeleted = transaction.KeyDeleteAsync(ProjectionDeliveryWriterProtocolStateKey);
-            Task? markerRestored = null;
-            if (_writerProtocolMarkerSnapshot is not null) {
-                markerRestored = transaction.KeyRestoreAsync(
-                    ProjectionDeliveryWriterProtocolStateKey,
-                    _writerProtocolMarkerSnapshot,
-                    _writerProtocolMarkerSnapshotExpiry);
-            }
-
-            bool committed = await transaction.ExecuteAsync().ConfigureAwait(false);
-            if (!committed) {
-                throw new InvalidOperationException(
-                    "The writer-protocol marker or its isolation lease changed before atomic restoration.");
-            }
-
-            _ = await markerDeleted.ConfigureAwait(false);
-            if (markerRestored is not null) {
-                await markerRestored.ConfigureAwait(false);
-            }
-        }
-        finally {
-            _ = await database.LockReleaseAsync(
-                ProjectionDeliveryWriterProtocolIsolationLockKey,
-                lockToken).ConfigureAwait(false);
-        }
-
-        await redis.CloseAsync(allowCommandsToComplete: true).ConfigureAwait(false);
-        _writerProtocolMarkerSnapshot = null;
-        _writerProtocolMarkerSnapshotExpiry = null;
-        _writerProtocolMarkerSourceCommit = null;
-        _writerProtocolMarkerLockToken = null;
-        _writerProtocolMarkerIsolated = false;
-    }
-
-    private static async Task<ProjectionDeliveryWriterProtocolMarker?> ReadWriterProtocolMarkerAsync(
-        IDatabase database,
-        CancellationToken cancellationToken) {
-        RedisValue payload = await database
-            .HashGetAsync(ProjectionDeliveryWriterProtocolStateKey, "data")
-            .WaitAsync(cancellationToken)
-            .ConfigureAwait(false);
-        if (!payload.HasValue) {
-            return null;
-        }
-
-        return DeserializeWriterProtocolMarker(payload);
-    }
-
-    private static ProjectionDeliveryWriterProtocolMarker? DeserializeWriterProtocolMarker(
-        RedisValue payload) {
-        if (!payload.HasValue) {
-            return null;
-        }
-
-        return JsonSerializer.Deserialize<ProjectionDeliveryWriterProtocolMarker>(
-            payload.ToString(),
-            s_jsonSerializerOptions)
-            ?? throw new InvalidOperationException(
-                "Redis returned an empty projection delivery writer-protocol marker payload.");
-    }
-
-    private static async Task<string> ReadExactSourceCommitAsync(CancellationToken cancellationToken) {
-        var startInfo = new ProcessStartInfo {
-            FileName = "git",
-            WorkingDirectory = Directory.GetCurrentDirectory(),
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-        startInfo.ArgumentList.Add("rev-parse");
-        startInfo.ArgumentList.Add("HEAD");
-
-        using Process process = Process.Start(startInfo)
-            ?? throw new InvalidOperationException("Unable to start git for exact source identity resolution.");
-        Task<string> standardOutput = process.StandardOutput.ReadToEndAsync(cancellationToken);
-        Task<string> standardError = process.StandardError.ReadToEndAsync(cancellationToken);
-        await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
-        string commit = (await standardOutput.ConfigureAwait(false)).Trim();
-        string error = (await standardError.ConfigureAwait(false)).Trim();
-        if (process.ExitCode != 0
-            || commit.Length != 40
-            || commit.Any(static character => !Uri.IsHexDigit(character))) {
-            throw new InvalidOperationException(
-                $"Unable to resolve the exact runtime source commit. ExitCode={process.ExitCode}; "
-                + $"Output={commit}; Error={error}");
-        }
-
-        return commit.ToLowerInvariant();
-    }
-
-    private sealed record ProjectionDeliveryWriterProtocolMarker(
-        int SchemaVersion,
-        int WriterProtocolVersion,
-        string CutoverCommit);
 
     private static async Task<string> CaptureContainerLogsAsync(string nameFilter) {
         try {
