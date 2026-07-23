@@ -881,6 +881,12 @@ override Story 1.20's external evidence and named-approval gates.
   candidate and full exact-SHA rerun; named Story 1.16 disposition, EventStore and release-owner
   approvals, immutable evidence, publication, and A/B/C remain human/external blockers. Story
   status therefore stays `blocked` and sprint tracking stays `in-progress`.
+- Candidate `4d130efb...` passed its warning-free Release build and complete Debug/source
+  integration assembly (278/278, zero skipped, 1,568.556s), but the exact gate rejected it after
+  the Dapr monitor independently classified the two PIDs in one gate-owned `tenants` registration.
+  The row-level ownership correction now treats a CLI/sidecar pair as one Dapr registration while
+  preserving fail-closed rejection when neither live member belongs to the gate. The candidate must
+  be recommitted and every exact-SHA gate rerun; no publication or authorization followed.
 
 ## File List
 
@@ -954,6 +960,7 @@ traceability; it does not reclassify that path as a Story 1.20 implementation de
 
 | Date | Phase | Test-method delta | Verification | File-list reconciliation |
 | --- | --- | ---: | --- | --- |
+| 2026-07-23 | Exact-gate Dapr pair-ownership correction | `+0` test methods / strengthened existing case | Candidate `4d130efb...`: Release and focused lanes passed; complete source topology 278/278, 0 skipped, 1,568.556s. RED: monitor recorded the gate-owned `tenants` CLI/sidecar pair as external during fixture turnover and stopped before package/publication. GREEN pending: executable process-contract regression now requires either owned member to own the logical row while a wholly external live row remains rejected. | Updated the proof packet, its existing Dapr process-contract test, and this story record only. Preserved `blocked` / sprint `in-progress`; a replacement committed SHA must restart the protocol. |
 | 2026-07-23 | Exact-SHA pre-publication pass and Alpine multi-RID packet correction | `+1` test method / `+1` case | Candidate `0b12950f...`: 77 XML results, 9,071 passed, exactly 126 allowlisted skips, 0 failed/errors/not-run; complete source topology 278/278; live-sidecar 49/49; Release build 0 warnings/errors; exact 14-package consumer/tool gate passed. RED: authorized publication command stopped before push with `MSB1006` on the unescaped RID separator; registry tag absent. GREEN: property evaluation preserves both corrected `linux-musl-*` lists as single values; packet-integrity regression pending committed-candidate run. | Updated only the proof packet plus its existing integrity-test and story-record paths. Preserved `blocked` / sprint `in-progress`; invalidated the old SHA-bound publication authority for any replacement candidate. |
 | 2026-07-23 | Clean-store writer cutover, restart, and Dapr-monitor unblock | `+5` test methods / `+5` cases | RED: clean detached `8fe161c0...` could not produce a full integration result without a pre-seeded writer marker; first corrective full run isolated one DCP-stop failure at 274/275. GREEN: endpoint/lease/cutover 19/19; restart provenance 1/1; final complete Debug/source assembly 278/278, 0 skipped, 0 warnings/errors, 1,613.834s; packet integrity/monitor contract 4/4; no Dapr/process/Redis-marker residue. | Added the shared atomic marker lease, Development/token-gated graceful shutdown, fixture integration and regressions, and race-safe exact-gate Dapr ownership detection. Recorded only corrective working-tree evidence; preserved `blocked` / sprint `in-progress` and every external authorization gate. |
 | 2026-07-23 | Code-review chunk 1 patch application: production runtime and unit tests | `+8` test methods / `+10` cases | Release builds: Server.Tests and Testing.Tests 0 warnings/errors. Focused xUnit v3: registration 20/20, invoker 38/38, testing overrides 2/2. Complete assemblies: Server 2,859 passed / 25 existing skips / 0 failed; Testing 152/152. | Applied all 14 patch findings, retained the one pre-existing deferred item, added the extracted no-op outbox and idempotency validator paths, and preserved `blocked` / sprint `in-progress`. |

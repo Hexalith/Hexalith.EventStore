@@ -1021,6 +1021,19 @@ dapr_pid_is_live_external() {
   test -n "$process_cmdline" || return 1
   ! dapr_pid_belongs_to_gate "$pid"
 }
+
+dapr_row_is_live_external() {
+  local cli_pid="$1"
+  local daprd_pid="$2"
+  # `dapr list` reports one logical registration as a CLI/sidecar PID pair. During Aspire DCP
+  # restart and teardown, one member can already be reparented or stale while the other still
+  # carries this gate's token or unique checkout identity. One owned member therefore owns the
+  # registration; evaluating the pair as two independent conflicts creates a false positive.
+  if dapr_pid_belongs_to_gate "$cli_pid" || dapr_pid_belongs_to_gate "$daprd_pid"; then
+    return 1
+  fi
+  dapr_pid_is_live_external "$cli_pid" || dapr_pid_is_live_external "$daprd_pid"
+}
 # dapr-conflict-process-contract-end
 
 find_external_conflicting_dapr_apps() {
@@ -1034,7 +1047,7 @@ find_external_conflicting_dapr_apps() {
   while IFS= read -r row; do
     cli_pid="$(jq -r '.cliPid // empty' <<<"$row")"
     daprd_pid="$(jq -r '.daprdPid // empty' <<<"$row")"
-    if dapr_pid_is_live_external "$cli_pid" || dapr_pid_is_live_external "$daprd_pid"; then
+    if dapr_row_is_live_external "$cli_pid" "$daprd_pid"; then
       conflicts="$(jq -c --argjson row "$row" '. + [$row]' <<<"$conflicts")"
     fi
   done < <(jq -c --argjson reserved "$RESERVED_DAPR_APP_IDS" \

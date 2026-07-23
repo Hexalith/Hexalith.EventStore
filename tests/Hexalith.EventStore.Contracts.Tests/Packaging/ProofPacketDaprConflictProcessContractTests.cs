@@ -57,18 +57,22 @@ public sealed class ProofPacketDaprConflictProcessContractTests {
 
             ! dapr_pid_is_live_external "$owned_pid"
             dapr_pid_is_live_external "$external_pid"
+            ! dapr_row_is_live_external "$owned_pid" "$external_pid"
+            ! dapr_row_is_live_external "$external_pid" "$owned_pid"
+            dapr_row_is_live_external "$external_pid" ''
             exited_pid="$external_pid"
             kill "$external_pid"
             wait "$external_pid" 2>/dev/null || true
             external_pid=''
             ! dapr_pid_is_live_external "$exited_pid"
+            ! dapr_row_is_live_external "$exited_pid" ''
             """ + "\n";
         script = script.Replace("\r\n", "\n", StringComparison.Ordinal);
 
         ProcessResult result = RunBashScript(script);
         result.ExitCode.ShouldBe(
             0,
-            "The packet must distinguish tagged ownership, live external processes, and stale inventory PIDs. "
+            "The packet must distinguish owned PID pairs, live external processes, and stale inventory PIDs. "
                 + $"Standard output: {result.StandardOutput}; standard error: {result.StandardError}");
     }
 
