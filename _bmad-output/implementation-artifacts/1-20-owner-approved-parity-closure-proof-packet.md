@@ -2310,8 +2310,12 @@ smoke_published_platform() (
   if container_id="$(docker run --detach --rm --platform "$platform" \
       --publish 127.0.0.1::8080 \
       --env ASPNETCORE_URLS=http://+:8080 \
+      --env Authentication__JwtBearer__Issuer=hexalith-container-smoke \
+      --env Authentication__JwtBearer__Audience=hexalith-eventstore \
+      --env Authentication__JwtBearer__SigningKey=hexalith-container-smoke-only-key-not-a-secret \
+      --env Authentication__JwtBearer__AllowInsecureSymmetricKey=true \
       "$repository@$digest" 2>> "$evidence_file")"; then
-    for _ in $(seq 1 90); do
+    for _ in $(seq 1 180); do
       if ! test "$(docker inspect -f '{{.State.Running}}' "$container_id" 2>/dev/null)" = 'true'; then
         break
       fi
@@ -2424,7 +2428,9 @@ if dotnet publish "$CONTAINER_PROJECT" \
     -p:ContainerRegistry="$PUBLISH_CONTAINER_REGISTRY" \
     -p:ContainerRepository="$PUBLISH_CONTAINER_REPOSITORY" \
     -p:ContainerImageTag="$IMAGE_TAG" \
-    "-p:ContainerRuntimeIdentifiers=linux-x64;linux-arm64" \
+    "-p:RuntimeIdentifiers=\"linux-musl-x64;linux-musl-arm64\"" \
+    "-p:ContainerRuntimeIdentifiers=\"linux-musl-x64;linux-musl-arm64\"" \
+    -p:ContainerImageFormat=OCI \
     -p:CustomAfterMicrosoftCommonTargets="$CAPTURE_TARGETS" \
     -p:ContainerImageIndexOutputPath="$GENERATED_IMAGE_INDEX" \
     -p:ContainerImageIndexDigestOutputPath="$GENERATED_IMAGE_INDEX_DIGEST" \
@@ -2488,7 +2494,8 @@ jq -n \
   --arg manifest_sha256 "$MANIFEST_SHA256" \
   --arg container_registry "$PUBLISH_CONTAINER_REGISTRY" \
   --arg container_repository "$PUBLISH_CONTAINER_REPOSITORY" \
-  --arg runtime_identifiers 'linux-x64;linux-arm64' \
+  --arg runtime_identifiers 'linux-musl-x64;linux-musl-arm64' \
+  --arg container_image_format 'OCI' \
   --arg authority_file "$(basename "$AUTHORITY_EVIDENCE")" \
   --arg authority_sha256 "$AUTHORITY_SHA256" \
   --arg authority_github_metadata_file "$(basename "$AUTHORITY_GITHUB_METADATA")" \
@@ -2523,7 +2530,9 @@ jq -n \
       container_registry: $container_registry,
       container_repository: $container_repository,
       container_image_tag: $tag,
-      container_runtime_identifiers: $runtime_identifiers
+      runtime_identifiers: $runtime_identifiers,
+      container_runtime_identifiers: $runtime_identifiers,
+      container_image_format: $container_image_format
     },
     publication_authority: {
       file: $authority_file,
@@ -4576,7 +4585,11 @@ jq -e \
     .publish_properties.container_registry == "registry.hexalith.com" and
     .publish_properties.container_repository == "eventstore" and
     .publish_properties.container_image_tag == $tag and
-    .publish_properties.container_runtime_identifiers == "linux-x64;linux-arm64" and
+    .publish_properties.runtime_identifiers ==
+      "linux-musl-x64;linux-musl-arm64" and
+    .publish_properties.container_runtime_identifiers ==
+      "linux-musl-x64;linux-musl-arm64" and
+    .publish_properties.container_image_format == "OCI" and
     .publication_authority.file == "release-owner-publication-authority.json" and
     .publication_authority.sha256 == $authority_sha256 and
     .publication_authority.github_metadata_file ==

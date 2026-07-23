@@ -32,6 +32,34 @@ public sealed class ProofPacketValidatorIntegrityTests
         RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.Multiline | RegexOptions.Singleline);
 
     /// <summary>
+    /// Verifies the frozen publication command preserves the Alpine-compatible multi-RID
+    /// contract as single MSBuild arguments and gives the Production smoke its explicit,
+    /// non-secret authentication configuration.
+    /// </summary>
+    [Fact]
+    public void PacketContainerPublicationUsesAlpineCompatibleMultiRidAndProductionSmokeContract()
+    {
+        string root = FindRepositoryRoot();
+        string packet = File.ReadAllText(Path.Combine(root, PacketRelativePath));
+        const string runtimeIdentifiers = "linux-musl-x64;linux-musl-arm64";
+
+        packet.ShouldContain(
+            $"\"-p:RuntimeIdentifiers=\\\"{runtimeIdentifiers}\\\"\"");
+        packet.ShouldContain(
+            $"\"-p:ContainerRuntimeIdentifiers=\\\"{runtimeIdentifiers}\\\"\"");
+        packet.ShouldContain("-p:ContainerImageFormat=OCI");
+        packet.ShouldNotContain("\"-p:ContainerRuntimeIdentifiers=linux-x64;linux-arm64\"");
+        packet.ShouldContain("--env Authentication__JwtBearer__Issuer=hexalith-container-smoke");
+        packet.ShouldContain("--env Authentication__JwtBearer__Audience=hexalith-eventstore");
+        packet.ShouldContain(
+            "--env Authentication__JwtBearer__SigningKey=hexalith-container-smoke-only-key-not-a-secret");
+        packet.ShouldContain("--env Authentication__JwtBearer__AllowInsecureSymmetricKey=true");
+        packet.ShouldContain("for _ in $(seq 1 180); do");
+        packet.ShouldContain(".publish_properties.runtime_identifiers ==");
+        packet.ShouldContain(".publish_properties.container_image_format == \"OCI\"");
+    }
+
+    /// <summary>
     /// Verifies both allowlist validators are executable, bound to their expected inputs, accept
     /// the approved allowlist, and reject malformed or over-authorized variants.
     /// </summary>

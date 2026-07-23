@@ -788,11 +788,40 @@ override Story 1.20's external evidence and named-approval gates.
   All evidence in this entry is local corrective working-tree evidence on base `999b36ca...`, not
   a selected exact runtime, immutable upload, owner approval, or migration authorization.
 
+#### 2026-07-23 — Exact-SHA pre-publication pass and container-command correction
+
+- Clean official-main candidate `0b12950f12e9365fd48e3fe085ab626f9d09dfc5` passed the
+  complete detached pre-publication protocol: warning-free Release solution build, all focused
+  capability lanes, 77 identity-bound xUnit results with 9,071 passed and exactly 126 allowlisted
+  deferred skips, the complete Debug/source integration assembly at 278/278, the complete
+  live-sidecar assembly at 49/49, and the exact 14-package build/hash/consumer/tool-install gate.
+  The conflict monitor recorded zero external Dapr app-ID conflicts, and both the candidate and
+  source worktrees remained clean.
+- The named Story 1.16 follow-up record and a distinct, scoped release-owner publication record
+  were validated from issue 324. Immediately before the first publication-capable command, the
+  authority bytes and action timestamp were frozen and revalidated against the exact candidate,
+  registry repository, and quarantine tag.
+- Publication stopped before build or registry write because the packet passed
+  `ContainerRuntimeIdentifiers=linux-x64;linux-arm64` without preserving quotes inside the
+  MSBuild argument. MSBuild treated `linux-arm64` as a second property switch and returned
+  `MSB1006`. Read-only registry inspection confirmed that the quarantine tag does not exist.
+- Reconciled the executable packet with the landed Story 3.12 container contract: both
+  `RuntimeIdentifiers` and `ContainerRuntimeIdentifiers` now receive the Alpine-compatible
+  `linux-musl-x64;linux-musl-arm64` set as one argument, OCI format is explicit, provenance binds
+  both properties and the image format, and the Production smoke receives the fixed non-secret
+  JWT override with the shared 180-second startup budget. Added a packet-integrity regression
+  test for those exact invariants. This correction requires a new committed candidate, a full
+  exact-SHA rerun, and replacement human records bound to the new SHA and quarantine tag.
+
 ### Completion Notes
 
 - Story remains fail-closed and non-authorizing. Runtime and test corrections in the candidate
   lineage are separately scoped prerequisite corrective work; they are not credited as
   implementation of this evidence-only story and do not grant owner approval.
+- Candidate `0b12950f...` supplied a complete green pre-publication proof but is rejected for
+  final closure because its frozen container command fails MSBuild argument parsing before
+  publication. No registry tag was created. The corrected packet must become a new official-main
+  candidate and restart every gate from zero with fresh SHA-bound authority records.
 - Updated the proof packet with the current exact-SHA results and recorded a scoped
   corrective item in `deferred-work.md`.
 - Package, container, provenance E2E, and owner-approval gates were not run after the
@@ -925,6 +954,7 @@ traceability; it does not reclassify that path as a Story 1.20 implementation de
 
 | Date | Phase | Test-method delta | Verification | File-list reconciliation |
 | --- | --- | ---: | --- | --- |
+| 2026-07-23 | Exact-SHA pre-publication pass and Alpine multi-RID packet correction | `+1` test method / `+1` case | Candidate `0b12950f...`: 77 XML results, 9,071 passed, exactly 126 allowlisted skips, 0 failed/errors/not-run; complete source topology 278/278; live-sidecar 49/49; Release build 0 warnings/errors; exact 14-package consumer/tool gate passed. RED: authorized publication command stopped before push with `MSB1006` on the unescaped RID separator; registry tag absent. GREEN: property evaluation preserves both corrected `linux-musl-*` lists as single values; packet-integrity regression pending committed-candidate run. | Updated only the proof packet plus its existing integrity-test and story-record paths. Preserved `blocked` / sprint `in-progress`; invalidated the old SHA-bound publication authority for any replacement candidate. |
 | 2026-07-23 | Clean-store writer cutover, restart, and Dapr-monitor unblock | `+5` test methods / `+5` cases | RED: clean detached `8fe161c0...` could not produce a full integration result without a pre-seeded writer marker; first corrective full run isolated one DCP-stop failure at 274/275. GREEN: endpoint/lease/cutover 19/19; restart provenance 1/1; final complete Debug/source assembly 278/278, 0 skipped, 0 warnings/errors, 1,613.834s; packet integrity/monitor contract 4/4; no Dapr/process/Redis-marker residue. | Added the shared atomic marker lease, Development/token-gated graceful shutdown, fixture integration and regressions, and race-safe exact-gate Dapr ownership detection. Recorded only corrective working-tree evidence; preserved `blocked` / sprint `in-progress` and every external authorization gate. |
 | 2026-07-23 | Code-review chunk 1 patch application: production runtime and unit tests | `+8` test methods / `+10` cases | Release builds: Server.Tests and Testing.Tests 0 warnings/errors. Focused xUnit v3: registration 20/20, invoker 38/38, testing overrides 2/2. Complete assemblies: Server 2,859 passed / 25 existing skips / 0 failed; Testing 152/152. | Applied all 14 patch findings, retained the one pre-existing deferred item, added the extracted no-op outbox and idempotency validator paths, and preserved `blocked` / sprint `in-progress`. |
 | 2026-07-22 | Integration-lane isolation + root-cause after Redis/placement clean (candidate `440ff4cb...`) | `+0` (read-only investigation; no source change) | After stopping the concurrent loop, `FLUSHALL`-ed the 1.94 GB shared Redis and restarted `dapr_placement`/`dapr_scheduler`; a pristine full-assembly re-run reduced 28 failures to a single-rooted cascade at `AspireContractTestFixture.RestartEventStoreWithClearedHandlerQueryTypesStateAsync` ("Failed to stop resource"). Root cause = Aspire-DCP/daprd resource-stop flake (infinite actor graceful-shutdown timeout + fixed-name actors on shared placement/scheduler), NOT a candidate defect: root test + cascaded neighbours PASS 5/5 and 1/1 in ISOLATION; `440ff4cb` leaves `AspireContractTestFixture.cs`/`QueryResponseProvenanceE2ETests.cs` unchanged; failure also present in run-1 before any restart and at pristine Redis. | No repository file changed; evidence under the scratchpad proof root. Integration full-assembly gate blocked by the ledgered Tier-3 DCP-stop-cascade constraint (needs finite daprd shutdown timeout / per-collection app-id isolation or dedicated Dapr infra), not by `440ff4cb`. Story stays `blocked`; human-authority gates remain open. |
