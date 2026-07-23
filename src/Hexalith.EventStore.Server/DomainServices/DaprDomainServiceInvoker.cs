@@ -66,16 +66,7 @@ public partial class DaprDomainServiceInvoker(
         // Extract version from command extensions, default to "v1" (AC #7, ADR-4)
         string version = ExtractVersion(command, logger);
 
-        // Resolve domain service registration with extracted version
-        DomainServiceRegistration? registration = await resolver
-            .ResolveAsync(command.TenantId, command.Domain, version, cancellationToken)
-            .ConfigureAwait(false) ?? throw new DomainServiceNotFoundException(command.TenantId, command.Domain, version);
-        Log.InvokingDomainService(logger, registration.AppId, registration.MethodName, command.TenantId, command.Domain, command.CorrelationId);
-
-        // Invoke via DAPR service invocation (D7)
-        // DAPR resiliency policies handle retries, circuit breaker, timeout (rule #4)
-        var request = new DomainServiceRequest(command, currentState);
-
+        DomainServiceRegistration? registration = null;
         DomainServiceWireResult wireResult;
         using var timeoutCancellation = new CancellationTokenSource(
             TimeSpan.FromSeconds(_options.InvocationTimeoutSeconds),
@@ -84,6 +75,17 @@ public partial class DaprDomainServiceInvoker(
             cancellationToken,
             timeoutCancellation.Token);
         try {
+            // Registration lookup can call the DAPR configuration store, so it shares the
+            // configured operation budget with the subsequent service invocation.
+            registration = await resolver
+                .ResolveAsync(command.TenantId, command.Domain, version, invocationCancellation.Token)
+                .ConfigureAwait(false)
+                ?? throw new DomainServiceNotFoundException(command.TenantId, command.Domain, version);
+            Log.InvokingDomainService(logger, registration.AppId, registration.MethodName, command.TenantId, command.Domain, command.CorrelationId);
+
+            // Invoke via DAPR service invocation (D7)
+            // DAPR resiliency policies handle retries and circuit breaking (rule #4).
+            var request = new DomainServiceRequest(command, currentState);
             using HttpRequestMessage httpRequest = daprClient.CreateInvokeMethodRequest(
                 registration.AppId,
                 registration.MethodName,
@@ -103,17 +105,19 @@ public partial class DaprDomainServiceInvoker(
         }
         catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested) {
             bool configuredTimeoutElapsed = timeoutCancellation.IsCancellationRequested;
+            string appId = registration?.AppId ?? command.Domain;
+            string methodName = registration?.MethodName ?? "registration-resolution";
             string reason = configuredTimeoutElapsed
-                ? $"Invocation timed out after {_options.InvocationTimeoutSeconds}s for service "
-                    + $"'{registration.AppId}/{registration.MethodName}'."
-                : $"Invocation of service '{registration.AppId}/{registration.MethodName}' was canceled before completion.";
+                ? $"Invocation timed out after {_options.InvocationTimeoutSeconds}s while resolving or invoking service "
+                    + $"'{appId}/{methodName}'."
+                : $"Invocation of service '{appId}/{methodName}' was canceled before completion.";
             Log.DomainServiceInvocationCanceled(
                 logger,
                 ex,
                 configuredTimeoutElapsed,
                 _options.InvocationTimeoutSeconds,
-                registration.AppId,
-                registration.MethodName,
+                appId,
+                methodName,
                 command.TenantId,
                 command.Domain,
                 command.CorrelationId);
@@ -124,22 +128,31 @@ public partial class DaprDomainServiceInvoker(
                 reason,
                 ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException) {
+        catch (DomainServiceException) when (registration is null) {
+            // Preserve configuration-store corruption diagnostics from the resolver.
+            throw;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException
+            and not DomainServiceNotFoundException) {
+            string appId = registration?.AppId ?? command.Domain;
+            string methodName = registration?.MethodName ?? "registration-resolution";
             Log.DomainServiceInvocationFailed(
                 logger,
                 ex,
-                registration.AppId,
-                registration.MethodName,
+                appId,
+                methodName,
                 command.TenantId,
                 command.Domain,
                 command.CorrelationId);
 
             string detail = ex.InnerException?.Message ?? ex.Message;
             throw new DomainServiceException(
-                $"Domain service invocation failed for tenant '{command.TenantId}', domain '{command.Domain}', service '{registration.AppId}/{registration.MethodName}': {detail}",
+                $"Domain service invocation failed for tenant '{command.TenantId}', domain '{command.Domain}', service '{appId}/{methodName}': {detail}",
                 ex);
         }
 
+        DomainServiceRegistration resolvedRegistration = registration
+            ?? throw new InvalidOperationException("Domain-service invocation completed without a resolved registration.");
         DomainResult result = ToDomainResult(wireResult);
 
         // Validate response size limits (AC #6)
@@ -147,7 +160,7 @@ public partial class DaprDomainServiceInvoker(
 
         // Log no-op results as warning for telemetry (silent failure detection)
         if (result.IsNoOp) {
-            Log.DomainServiceNoOp(logger, registration.AppId, command.TenantId, command.Domain, command.CorrelationId);
+            Log.DomainServiceNoOp(logger, resolvedRegistration.AppId, command.TenantId, command.Domain, command.CorrelationId);
         }
 
         string causationId = command.CausationId ?? command.CorrelationId;
@@ -155,7 +168,7 @@ public partial class DaprDomainServiceInvoker(
 
         Log.DomainServiceCompleted(
             logger,
-            registration.AppId,
+            resolvedRegistration.AppId,
             resultType,
             result.Events.Count,
             command.TenantId,

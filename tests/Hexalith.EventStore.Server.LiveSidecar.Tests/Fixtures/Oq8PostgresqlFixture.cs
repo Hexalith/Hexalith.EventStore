@@ -205,6 +205,7 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
         try
         {
             WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions());
+            builder.Environment.EnvironmentName = "Testing";
             builder.Configuration["DAPR_HTTP_PORT"] = node.DaprHttpPort.ToString();
             builder.Configuration["DAPR_GRPC_PORT"] = node.DaprGrpcPort.ToString();
             builder.Configuration["Dapr:HttpPort"] = node.DaprHttpPort.ToString();

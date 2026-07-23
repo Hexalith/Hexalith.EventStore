@@ -146,7 +146,7 @@ public partial class DomainServiceResolver(
                     }
                 }
             }
-            catch (Exception ex) when (ex is not DomainServiceException) {
+            catch (Exception ex) when (ex is not DomainServiceException and not OperationCanceledException) {
                 // Config store unavailable — fall through to convention-based resolution.
                 logger.LogDebug(
                     ex,

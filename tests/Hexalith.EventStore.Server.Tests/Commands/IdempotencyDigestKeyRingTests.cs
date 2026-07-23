@@ -153,6 +153,23 @@ public class IdempotencyDigestKeyRingTests
         result.Failed.ShouldBeTrue();
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void OptionsValidator_SecretSource_RejectsReservedGenerationVersion(bool active)
+    {
+        IdempotencyAdmissionOptions options = SecretOptions() with
+        {
+            ActiveDigestKeyVersion = active ? "generation" : "v2",
+            ReaderDigestKeyVersions = active ? ["v1"] : ["generation"],
+        };
+
+        ValidateOptionsResult result = new ValidateIdempotencyAdmissionOptions().Validate(null, options);
+
+        result.Failed.ShouldBeTrue();
+        result.FailureMessage.ShouldContain("reserved");
+    }
+
     private static IdempotencyAdmissionOptions SecretOptions()
         => new()
         {

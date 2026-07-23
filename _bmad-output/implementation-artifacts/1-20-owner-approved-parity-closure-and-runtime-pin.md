@@ -133,6 +133,32 @@ from this proposal inventory and remains owned by its existing changes.
 
 ### Review Findings
 
+#### 2026-07-23 — Focused code review: proof harness and runtime prerequisites
+
+- [x] [Review][Patch] [high] Reconcile the proof packet with the committed `440ff4cb...` exact-SHA run, its 22/23 passing lanes, package evidence, and integration limitation [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:44]
+- [x] [Review][Patch] [high] Reject configuration-backed idempotency digest keys outside local development and test environments [src/Hexalith.EventStore.Server/Configuration/ValidateIdempotencyAdmissionOptions.cs:36]
+- [x] [Review][Patch] [high] Reserve the Dapr secret map's `generation` field so it cannot also be selected as an active or reader digest-key version [src/Hexalith.EventStore.Server/Configuration/ValidateIdempotencyAdmissionOptions.cs:28]
+- [x] [Review][Patch] [high] Propagate the aggregate command's caller cancellation token into domain-service invocation [src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:513]
+- [x] [Review][Patch] [medium] Bound domain-service registration resolution as part of the configured invocation operation instead of starting the timeout only after resolution [src/Hexalith.EventStore.Server/DomainServices/DaprDomainServiceInvoker.cs:69]
+- [x] [Review][Patch] [high] Detect conflicting reserved Dapr application IDs throughout the exact gate rather than only once before the long-running lanes [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:899]
+- [x] [Review][Patch] [high] Make the mandatory full integration lane suite-safe when Aspire stops actor-hosting resources instead of allowing the DCP stop failure to wedge the remaining collection [tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspireContractTestFixture.cs:132]
+- [x] [Review][Patch] [high] Make writer-protocol marker isolation and restoration atomic so a concurrent topology at the same source commit cannot have its state overwritten [tests/Hexalith.EventStore.IntegrationTests/Security/AspireTopologyFixture.cs:401]
+- [x] [Review][Patch] [medium] Clean up partial replica host or sidecar initialization and retry only when both replica components are healthy [tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DaprTestContainerFixture.cs:303]
+- [x] [Review][Patch] [medium] Require every non-marker health result to be exactly `Healthy` before the disposable writer-protocol cutover proceeds [tests/Hexalith.EventStore.IntegrationTests/Security/ProjectionDeliveryWriterProtocolCutoverPolicy.cs:37]
+- [x] [Review][Patch] [medium] Bind the tenant-bootstrap terminal status to the persisted event's correlation ID and expected aggregate identity [tests/Hexalith.EventStore.IntegrationTests/ContractTests/TenantBootstrapHealthTests.cs:133]
+- [x] [Review][Patch] [medium] Add host-start regression cases for malformed Base64 and decoded digest keys shorter than 32 bytes [tests/Hexalith.EventStore.Server.Tests/Configuration/EventStoreServerServiceCollectionExtensionsTests.cs:240]
+- [x] [Review][Patch] [medium] Exercise the completion command's real command-dispatch and process-output path instead of testing only the writer-injected helper [tests/Hexalith.EventStore.Admin.Cli.Tests/Commands/Config/ConfigCompletionCommandTests.cs:83]
+- [x] [Review][Patch] [low] Reconcile stale completion notes that still call the hot-reload and Docker/Dapr corrections uncommitted before recording their committed candidate runs [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md:769]
+
+Applied and focused-verified on 2026-07-23: all 14 review patches are resolved. Server-focused
+tests passed 148/148, Admin CLI completion tests 11/11, cutover-policy tests 15/15, proof-packet
+integrity tests 3/3, and package-mode Integration plus LiveSidecar builds completed with zero
+warnings/errors. The previously wedging source-mode Tier-3 query-provenance method passed 1/1 on
+the corrected stop/restart fixture and left no running Aspire or Dapr application. These working-tree
+results remove the reviewed implementation blockers but do not create a clean exact runtime SHA,
+immutable evidence, named owner approval, or migration authority; story status therefore remains
+`blocked` and sprint tracking remains `in-progress`.
+
 #### 2026-07-22 — Code review chunk 1: production runtime and unit tests
 
 - [x] [Review][Patch] [high] Preserve the public `DaprDomainServiceInvoker` constructor contract when injecting `TimeProvider` [src/Hexalith.EventStore.Server/DomainServices/DaprDomainServiceInvoker.cs:21]
@@ -766,15 +792,17 @@ override Story 1.20's external evidence and named-approval gates.
   live-sidecar persistence proof passed 1/1. xUnit test methods use `ConfigureAwait(true)` as
   required by xUnit1030, while fixture and non-test helper awaits retain `ConfigureAwait(false)`.
   This review closure does not satisfy the external Story 1.20 gates.
-- Completed the user-requested Docker/Dapr unblock. The Redis chaos/tenant-bootstrap regression
-  now passes both its deterministic 4-test sequence and the complete 258-test source-topology
-  assembly, and SignalR evidence can be routed outside the candidate checkout. The corrections
-  remain uncommitted, so no clean exact runtime SHA, publication, approval, or migration authority
-  is claimed.
-- Candidate `c6b72caa...` remains rejected after its 257/258 integration result. The hot-reload
-  correction passes three consecutive focused cycles and the complete class without unsafe POST
-  retry, but remains non-authorizing until it is committed and every exact-SHA gate restarts from
-  zero. Story 1.16's named disposition and Story 1.20's durable owner approval remain human gates.
+- At the 2026-07-21 corrective-working-tree stage, the user-requested Docker/Dapr unblock made the
+  Redis chaos/tenant-bootstrap regression pass both its deterministic 4-test sequence and the
+  complete 258-test source-topology assembly, and routed SignalR evidence outside the candidate
+  checkout. Those results were non-authorizing while uncommitted. The corrections were subsequently
+  committed in the lineage tested by candidate `440ff4cb...`; that later committed run is recorded
+  separately below and still produced no publication, approval, or migration authority.
+- Candidate `c6b72caa...` remains rejected after its 257/258 integration result. At that corrective
+  working-tree stage, the hot-reload change passed three consecutive focused cycles and the complete
+  class without unsafe POST retry. It was later committed as `440ff4cb...`, whose fresh exact-SHA run
+  is recorded next; neither stage satisfies Story 1.16's named disposition or Story 1.20's durable
+  owner approval.
 - Exact-SHA gate run against committed candidate `440ff4cb...` (2026-07-22) passed the Release
   build, the Story 1.16 technical re-verification, all twenty-two other mandatory test lanes with
   zero unexpected skips, and the 14-package build+hash+consumer-validation gate. It did NOT obtain a

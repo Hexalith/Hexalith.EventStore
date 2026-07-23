@@ -98,6 +98,25 @@ public class DomainServiceResolverTests {
     }
 
     [Fact]
+    public async Task ResolveAsync_ConfigStoreLookupCanceled_PropagatesCancellation() {
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        _ = _daprClient.GetConfiguration(
+                Arg.Any<string>(),
+                Arg.Any<IReadOnlyList<string>>(),
+                Arg.Any<IReadOnlyDictionary<string, string>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromCanceled<GetConfigurationResponse>(cancellation.Token));
+        DomainServiceResolver resolver = CreateResolverWithConfigStore();
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(() =>
+            resolver.ResolveAsync(
+                "tenant-a",
+                "orders",
+                cancellationToken: cancellation.Token));
+    }
+
+    [Fact]
     public async Task ResolveAsync_ConventionRouting_UsesVersionFromParameter() {
         // Arrange
         DomainServiceResolver resolver = CreateResolver();

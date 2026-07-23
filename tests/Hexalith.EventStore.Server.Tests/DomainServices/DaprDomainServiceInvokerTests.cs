@@ -209,6 +209,40 @@ public class DaprDomainServiceInvokerTests {
     }
 
     [Fact]
+    public async Task InvokeAsync_RegistrationResolutionExceedsConfiguredTimeout_ThrowsDomainServiceExceptionAsync() {
+        using DaprClient daprClient = new DaprClientBuilder().Build();
+        var resolutionStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _ = _resolver.ResolveAsync(
+                "test-tenant",
+                "test-domain",
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns(callInfo => WaitForResolutionCancellationAsync(
+                callInfo.ArgAt<CancellationToken>(3),
+                resolutionStarted));
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        var options = Options.Create(new DomainServiceOptions { InvocationTimeoutSeconds = 1 });
+        var timeProvider = new FakeTimeProvider();
+        var invoker = new DaprDomainServiceInvoker(
+            daprClient,
+            httpClientFactory,
+            _resolver,
+            options,
+            timeProvider,
+            _logger);
+
+        Task<DomainResult> invocation = invoker.InvokeAsync(CreateTestEnvelope(), null);
+        await resolutionStarted.Task.ConfigureAwait(true);
+        timeProvider.Advance(TimeSpan.FromSeconds(1));
+        DomainServiceException exception = await Should.ThrowAsync<DomainServiceException>(
+            () => invocation).ConfigureAwait(true);
+
+        exception.Message.ShouldContain("timed out after 1s");
+        exception.Message.ShouldContain("registration-resolution");
+        _ = httpClientFactory.DidNotReceive().CreateClient(Arg.Any<string>());
+    }
+
+    [Fact]
     public async Task InvokeAsync_HttpPipelineCancelsBeforeConfiguredTimeout_ThrowsDomainServiceExceptionAsync() {
         // Arrange
         using DaprClient daprClient = new DaprClientBuilder().Build();
@@ -301,6 +335,14 @@ public class DaprDomainServiceInvokerTests {
 
         // Assert
         request.CurrentState.ShouldBeNull();
+    }
+
+    private static async Task<DomainServiceRegistration?> WaitForResolutionCancellationAsync(
+        CancellationToken cancellationToken,
+        TaskCompletionSource<bool> resolutionStarted) {
+        _ = resolutionStarted.TrySetResult(true);
+        await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken).ConfigureAwait(false);
+        return TestRegistration;
     }
 
     // --- Task 7: Domain service response size validation ---

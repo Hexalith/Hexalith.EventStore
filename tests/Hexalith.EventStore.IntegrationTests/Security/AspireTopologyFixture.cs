@@ -23,6 +23,8 @@ namespace Hexalith.EventStore.IntegrationTests.Security;
 /// </summary>
 public class AspireTopologyFixture : IAsyncLifetime {
     private const string ProjectionDeliveryWriterProtocolStateKey = "projection-delivery-writer-protocol";
+    private const string ProjectionDeliveryWriterProtocolIsolationLockKey =
+        "projection-delivery-writer-protocol:test-isolation-lock";
     private const string ProjectionDeliveryWriterProtocolHealthCheck = "projection-delivery-writer-protocol";
     private const string RedisEndpoint = "localhost:6379";
     private const string SecurityResourceName = "security";
@@ -30,6 +32,7 @@ public class AspireTopologyFixture : IAsyncLifetime {
     private const int ProjectionDeliveryWriterProtocolVersion = 2;
 
     private static readonly TimeSpan s_cutoverRetryDelay = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan s_writerProtocolMarkerLockLease = TimeSpan.FromHours(2);
     private static readonly JsonSerializerOptions s_jsonSerializerOptions = new(JsonSerializerDefaults.Web);
 
     private readonly Dictionary<string, string?> _envSnapshot = new(StringComparer.Ordinal);
@@ -41,6 +44,7 @@ public class AspireTopologyFixture : IAsyncLifetime {
     private byte[]? _writerProtocolMarkerSnapshot;
     private TimeSpan? _writerProtocolMarkerSnapshotExpiry;
     private string? _writerProtocolMarkerSourceCommit;
+    private string? _writerProtocolMarkerLockToken;
     private bool _writerProtocolMarkerIsolated;
 
     /// <summary>
@@ -407,23 +411,53 @@ public class AspireTopologyFixture : IAsyncLifetime {
                 "The disposable topology attempted to isolate the writer-protocol marker more than once.");
         }
 
-        _writerProtocolMarkerSnapshot = await database
-            .KeyDumpAsync(ProjectionDeliveryWriterProtocolStateKey)
+        string lockToken = Guid.NewGuid().ToString("N");
+        _writerProtocolMarkerLockToken = lockToken;
+        bool lockAcquired = await database
+            .LockTakeAsync(
+                ProjectionDeliveryWriterProtocolIsolationLockKey,
+                lockToken,
+                s_writerProtocolMarkerLockLease)
             .WaitAsync(cancellationToken)
             .ConfigureAwait(false);
-        if (_writerProtocolMarkerSnapshot is not null) {
-            _writerProtocolMarkerSnapshotExpiry = await database
-                .KeyTimeToLiveAsync(ProjectionDeliveryWriterProtocolStateKey)
-                .WaitAsync(cancellationToken)
-                .ConfigureAwait(false);
+        if (!lockAcquired) {
+            _writerProtocolMarkerLockToken = null;
+            throw new InvalidOperationException(
+                "Another topology owns the store-global writer-protocol marker isolation lease.");
         }
 
-        _writerProtocolMarkerSourceCommit = sourceCommit;
-        _writerProtocolMarkerIsolated = true;
-        _ = await database
-            .KeyDeleteAsync(ProjectionDeliveryWriterProtocolStateKey)
-            .WaitAsync(cancellationToken)
-            .ConfigureAwait(false);
+        try {
+            ITransaction transaction = database.CreateTransaction();
+            _ = transaction.AddCondition(Condition.StringEqual(
+                ProjectionDeliveryWriterProtocolIsolationLockKey,
+                lockToken));
+            Task<byte[]?> snapshot = transaction.KeyDumpAsync(ProjectionDeliveryWriterProtocolStateKey);
+            Task<TimeSpan?> snapshotExpiry = transaction.KeyTimeToLiveAsync(
+                ProjectionDeliveryWriterProtocolStateKey);
+            Task<bool> markerDeleted = transaction.KeyDeleteAsync(
+                ProjectionDeliveryWriterProtocolStateKey);
+            bool committed = await transaction
+                .ExecuteAsync()
+                .WaitAsync(cancellationToken)
+                .ConfigureAwait(false);
+            if (!committed) {
+                throw new InvalidOperationException(
+                    "The writer-protocol marker isolation lease changed before the atomic snapshot completed.");
+            }
+
+            _writerProtocolMarkerSnapshot = await snapshot.ConfigureAwait(false);
+            _writerProtocolMarkerSnapshotExpiry = await snapshotExpiry.ConfigureAwait(false);
+            _ = await markerDeleted.ConfigureAwait(false);
+            _writerProtocolMarkerSourceCommit = sourceCommit;
+            _writerProtocolMarkerIsolated = true;
+        }
+        catch {
+            _ = await database.LockReleaseAsync(
+                ProjectionDeliveryWriterProtocolIsolationLockKey,
+                lockToken).ConfigureAwait(false);
+            _writerProtocolMarkerLockToken = null;
+            throw;
+        }
     }
 
     private async Task RestoreWriterProtocolMarkerAsync() {
@@ -439,31 +473,70 @@ public class AspireTopologyFixture : IAsyncLifetime {
             AllowAdmin = false,
         }).ConfigureAwait(false);
         IDatabase database = redis.GetDatabase();
-        ProjectionDeliveryWriterProtocolMarker? current = await ReadWriterProtocolMarkerAsync(
-            database,
-            CancellationToken.None).ConfigureAwait(false);
-        if (current is not null
-            && !string.Equals(
-                current.CutoverCommit,
-                _writerProtocolMarkerSourceCommit,
-                StringComparison.Ordinal)) {
+        string lockToken = _writerProtocolMarkerLockToken
+            ?? throw new InvalidOperationException("The writer-protocol marker isolation lease is missing.");
+        bool leaseExtended = await database.LockExtendAsync(
+            ProjectionDeliveryWriterProtocolIsolationLockKey,
+            lockToken,
+            s_writerProtocolMarkerLockLease).ConfigureAwait(false);
+        if (!leaseExtended) {
             throw new InvalidOperationException(
-                "The store-global writer-protocol marker changed after fixture isolation; "
-                + "refusing to overwrite state owned by another topology.");
+                "The writer-protocol marker isolation lease expired before restoration.");
         }
 
-        _ = await database.KeyDeleteAsync(ProjectionDeliveryWriterProtocolStateKey).ConfigureAwait(false);
-        if (_writerProtocolMarkerSnapshot is not null) {
-            await database.KeyRestoreAsync(
-                ProjectionDeliveryWriterProtocolStateKey,
-                _writerProtocolMarkerSnapshot,
-                _writerProtocolMarkerSnapshotExpiry).ConfigureAwait(false);
+        try {
+            RedisValue currentPayload = await database
+                .HashGetAsync(ProjectionDeliveryWriterProtocolStateKey, "data")
+                .ConfigureAwait(false);
+            ProjectionDeliveryWriterProtocolMarker? current = DeserializeWriterProtocolMarker(currentPayload);
+            if (current is not null
+                && !string.Equals(
+                    current.CutoverCommit,
+                    _writerProtocolMarkerSourceCommit,
+                    StringComparison.Ordinal)) {
+                throw new InvalidOperationException(
+                    "The store-global writer-protocol marker changed after fixture isolation; "
+                    + "refusing to overwrite state owned by another topology.");
+            }
+
+            ITransaction transaction = database.CreateTransaction();
+            _ = transaction.AddCondition(Condition.StringEqual(
+                ProjectionDeliveryWriterProtocolIsolationLockKey,
+                lockToken));
+            _ = transaction.AddCondition(currentPayload.HasValue
+                ? Condition.HashEqual(ProjectionDeliveryWriterProtocolStateKey, "data", currentPayload)
+                : Condition.KeyNotExists(ProjectionDeliveryWriterProtocolStateKey));
+            Task<bool> markerDeleted = transaction.KeyDeleteAsync(ProjectionDeliveryWriterProtocolStateKey);
+            Task? markerRestored = null;
+            if (_writerProtocolMarkerSnapshot is not null) {
+                markerRestored = transaction.KeyRestoreAsync(
+                    ProjectionDeliveryWriterProtocolStateKey,
+                    _writerProtocolMarkerSnapshot,
+                    _writerProtocolMarkerSnapshotExpiry);
+            }
+
+            bool committed = await transaction.ExecuteAsync().ConfigureAwait(false);
+            if (!committed) {
+                throw new InvalidOperationException(
+                    "The writer-protocol marker or its isolation lease changed before atomic restoration.");
+            }
+
+            _ = await markerDeleted.ConfigureAwait(false);
+            if (markerRestored is not null) {
+                await markerRestored.ConfigureAwait(false);
+            }
+        }
+        finally {
+            _ = await database.LockReleaseAsync(
+                ProjectionDeliveryWriterProtocolIsolationLockKey,
+                lockToken).ConfigureAwait(false);
         }
 
         await redis.CloseAsync(allowCommandsToComplete: true).ConfigureAwait(false);
         _writerProtocolMarkerSnapshot = null;
         _writerProtocolMarkerSnapshotExpiry = null;
         _writerProtocolMarkerSourceCommit = null;
+        _writerProtocolMarkerLockToken = null;
         _writerProtocolMarkerIsolated = false;
     }
 
@@ -474,6 +547,15 @@ public class AspireTopologyFixture : IAsyncLifetime {
             .HashGetAsync(ProjectionDeliveryWriterProtocolStateKey, "data")
             .WaitAsync(cancellationToken)
             .ConfigureAwait(false);
+        if (!payload.HasValue) {
+            return null;
+        }
+
+        return DeserializeWriterProtocolMarker(payload);
+    }
+
+    private static ProjectionDeliveryWriterProtocolMarker? DeserializeWriterProtocolMarker(
+        RedisValue payload) {
         if (!payload.HasValue) {
             return null;
         }

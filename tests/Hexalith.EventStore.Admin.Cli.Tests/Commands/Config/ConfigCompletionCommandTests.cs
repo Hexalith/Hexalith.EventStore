@@ -1,7 +1,10 @@
+using System.CommandLine;
+
 using Hexalith.EventStore.Admin.Cli.Commands.Config;
 
 namespace Hexalith.EventStore.Admin.Cli.Tests.Commands.Config;
 
+[Collection("ConsoleTests")]
 public class ConfigCompletionCommandTests {
     [Theory]
     [InlineData("bash")]
@@ -77,6 +80,31 @@ public class ConfigCompletionCommandTests {
             foreach (string subcmd in expectedSubcommands) {
                 output.ShouldContain(subcmd);
             }
+        }
+    }
+
+    [Fact]
+    public async Task Create_BashArgument_DispatchesActionAndWritesProcessOutput() {
+        TextWriter originalOutput = Console.Out;
+        TextWriter originalError = Console.Error;
+        using var stdout = new StringWriter();
+        using var stderr = new StringWriter();
+        try {
+            Console.SetOut(stdout);
+            Console.SetError(stderr);
+
+            int exitCode = await ConfigCompletionCommand.Create()
+                .Parse(["bash"])
+                .InvokeAsync()
+                .ConfigureAwait(true);
+
+            exitCode.ShouldBe(ExitCodes.Success);
+            stdout.ToString().ShouldContain("complete -F");
+            stderr.ToString().ShouldBeEmpty();
+        }
+        finally {
+            Console.SetOut(originalOutput);
+            Console.SetError(originalError);
         }
     }
 

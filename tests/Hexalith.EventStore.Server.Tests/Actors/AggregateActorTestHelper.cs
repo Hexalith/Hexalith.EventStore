@@ -87,7 +87,10 @@ internal static class AggregateActorTestHelper {
         ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
 
         // Default: domain service returns NoOp
-        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+        _ = invoker.InvokeAsync(
+                Arg.Any<CommandEnvelope>(),
+                Arg.Any<object?>(),
+                Arg.Any<CancellationToken>())
             .Returns(DomainResult.NoOp());
 
         // Default: no pipeline state (fresh command, not a resume)

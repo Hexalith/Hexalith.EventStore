@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-07-22
+# last_updated: 2026-07-23
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T20:01:46+02:00
-last_updated: 2026-07-22
+last_updated: 2026-07-23
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -77,6 +77,10 @@ development_status:
   # - Story 2.7's reviewed working-tree correction now passes the exact source-topology
   #   query-provenance E2E and persisted admin-index assertion;
   # - no later clean committed runtime SHA has passed all detached production gates;
+  # - candidate 440ff4cb... passed 22/23 mandatory lanes and package validation, but the
+  #   full source integration lane did not produce a clean single-run result;
+  # - the 2026-07-23 review patches are focused-green but remain uncommitted and therefore
+  #   require a new exact-SHA closure run from zero;
   # - v3.75.0 has observed exact 14-package hashes, but its immutable container is a
   #   single linux/amd64 Docker manifest and fails AC8;
   # - Story 3.12 produced observed v3.77.2 with an exact linux/amd64 + linux/arm64 OCI index;

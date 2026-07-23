@@ -112,6 +112,7 @@ public class EventStoreServerServiceCollectionExtensionsTests {
             .Build();
         var services = new ServiceCollection();
         _ = services.AddLogging();
+        RegisterDevelopmentEnvironment(services);
         IValidateOptions<IdempotencyAdmissionOptions> consumerValidator =
             Substitute.For<IValidateOptions<IdempotencyAdmissionOptions>>();
         _ = consumerValidator.Validate(Arg.Any<string?>(), Arg.Any<IdempotencyAdmissionOptions>())
@@ -240,6 +241,7 @@ public class EventStoreServerServiceCollectionExtensionsTests {
     [Fact]
     public async Task AddEventStoreServerRejectsInvalidIdempotencyAdmissionAtHostStartAsync() {
         HostApplicationBuilder builder = Host.CreateApplicationBuilder();
+        builder.Environment.EnvironmentName = Environments.Development;
         _ = builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?> {
             ["EventStore:IdempotencyAdmission:Enabled"] = "true",
             ["EventStore:IdempotencyAdmission:ActiveDigestKeyVersion"] = "v1",
@@ -253,6 +255,41 @@ public class EventStoreServerServiceCollectionExtensionsTests {
 
         exception.OptionsType.ShouldBe(typeof(IdempotencyAdmissionOptions));
         exception.Failures.ShouldContain(failure => failure.Contains("strong key", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("not-base64")]
+    [InlineData("c2hvcnQ=")]
+    public async Task AddEventStoreServerRejectsWeakConfiguredDigestKeyAtHostStartAsync(string encodedKey) {
+        HostApplicationBuilder builder = Host.CreateApplicationBuilder();
+        builder.Environment.EnvironmentName = Environments.Development;
+        Dictionary<string, string?> settings = CreateConfigurationDigestKeySettings();
+        settings["EventStore:IdempotencyAdmission:DigestKeys:v1"] = encodedKey;
+        _ = builder.Configuration.AddInMemoryCollection(settings);
+        _ = builder.Services.AddEventStoreServer(builder.Configuration);
+        using IHost host = builder.Build();
+
+        OptionsValidationException exception = await Should.ThrowAsync<OptionsValidationException>(
+            () => host.StartAsync()).ConfigureAwait(true);
+
+        exception.OptionsType.ShouldBe(typeof(IdempotencyAdmissionOptions));
+        exception.Failures.ShouldContain(failure => failure.Contains("strong key", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task AddEventStoreServerRejectsConfiguredDigestKeyInProductionAtHostStartAsync() {
+        HostApplicationBuilder builder = Host.CreateApplicationBuilder();
+        builder.Environment.EnvironmentName = Environments.Production;
+        _ = builder.Configuration.AddInMemoryCollection(CreateConfigurationDigestKeySettings());
+        _ = builder.Services.AddEventStoreServer(builder.Configuration);
+        using IHost host = builder.Build();
+
+        OptionsValidationException exception = await Should.ThrowAsync<OptionsValidationException>(
+            () => host.StartAsync()).ConfigureAwait(true);
+
+        exception.OptionsType.ShouldBe(typeof(IdempotencyAdmissionOptions));
+        exception.Failures.ShouldContain(failure =>
+            failure.Contains("permitted only in Development or test environments", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -308,12 +345,19 @@ public class EventStoreServerServiceCollectionExtensionsTests {
             .Build();
         var services = new ServiceCollection();
         _ = services.AddLogging();
+        RegisterDevelopmentEnvironment(services);
         if (registerDaprClient) {
             _ = services.AddSingleton(Substitute.For<DaprClient>());
         }
 
         _ = services.AddEventStoreServer(configuration);
         return services.BuildServiceProvider();
+    }
+
+    private static void RegisterDevelopmentEnvironment(IServiceCollection services) {
+        IHostEnvironment environment = Substitute.For<IHostEnvironment>();
+        _ = environment.EnvironmentName.Returns(Environments.Development);
+        _ = services.AddSingleton(environment);
     }
 
     private static Dictionary<string, string?> CreateConfigurationDigestKeySettings() => new() {

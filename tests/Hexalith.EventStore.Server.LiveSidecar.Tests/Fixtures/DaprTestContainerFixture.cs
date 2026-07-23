@@ -302,36 +302,59 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
     /// </summary>
     public async Task EnsureReplicaAsync()
     {
-        if (_replicaTestHost is not null || _replicaDaprProcess is not null)
+        if (_replicaTestHost is not null
+            && _replicaDaprProcess is not null
+            && !_replicaDaprProcess.HasExited)
         {
-            return;
+            try
+            {
+                await VerifyReplicaAppListeningAsync().ConfigureAwait(false);
+                await WaitForReplicaDaprHealthAsync().ConfigureAwait(false);
+                return;
+            }
+            catch
+            {
+                await CleanupReplicaAsync().ConfigureAwait(false);
+            }
+        }
+        else if (_replicaTestHost is not null || _replicaDaprProcess is not null)
+        {
+            await CleanupReplicaAsync().ConfigureAwait(false);
         }
 
-        int[] ports = GetAvailablePorts(6);
-        _replicaAppPort = ports[0];
-        _replicaDaprHttpPort = ports[1];
-        _replicaDaprGrpcPort = ports[2];
-        _replicaDaprInternalGrpcPort = ports[3];
-        _replicaDaprMetricsPort = ports[4];
-        _replicaDaprProfilePort = ports[5];
-
-        Environment.SetEnvironmentVariable("DAPR_HTTP_PORT", _replicaDaprHttpPort.ToString());
-        Environment.SetEnvironmentVariable("DAPR_GRPC_PORT", _replicaDaprGrpcPort.ToString());
         try
         {
-            await StartReplicaTestHostAsync().ConfigureAwait(false);
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable("DAPR_HTTP_PORT", _daprHttpPort.ToString());
-            Environment.SetEnvironmentVariable("DAPR_GRPC_PORT", _daprGrpcPort.ToString());
-        }
+            int[] ports = GetAvailablePorts(6);
+            _replicaAppPort = ports[0];
+            _replicaDaprHttpPort = ports[1];
+            _replicaDaprGrpcPort = ports[2];
+            _replicaDaprInternalGrpcPort = ports[3];
+            _replicaDaprMetricsPort = ports[4];
+            _replicaDaprProfilePort = ports[5];
 
-        StartReplicaDaprSidecar();
-        await WaitForReplicaDaprHealthAsync().ConfigureAwait(false);
-        await Task.Delay(2000).ConfigureAwait(false);
-        await VerifyReplicaAppListeningAsync().ConfigureAwait(false);
-        await ActivateProjectionDeliveryWriterProtocolAsync(ReplicaServices).ConfigureAwait(false);
+            Environment.SetEnvironmentVariable("DAPR_HTTP_PORT", _replicaDaprHttpPort.ToString());
+            Environment.SetEnvironmentVariable("DAPR_GRPC_PORT", _replicaDaprGrpcPort.ToString());
+            try
+            {
+                await StartReplicaTestHostAsync().ConfigureAwait(false);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("DAPR_HTTP_PORT", _daprHttpPort.ToString());
+                Environment.SetEnvironmentVariable("DAPR_GRPC_PORT", _daprGrpcPort.ToString());
+            }
+
+            StartReplicaDaprSidecar();
+            await WaitForReplicaDaprHealthAsync().ConfigureAwait(false);
+            await Task.Delay(2000).ConfigureAwait(false);
+            await VerifyReplicaAppListeningAsync().ConfigureAwait(false);
+            await ActivateProjectionDeliveryWriterProtocolAsync(ReplicaServices).ConfigureAwait(false);
+        }
+        catch
+        {
+            await CleanupReplicaAsync().ConfigureAwait(false);
+            throw;
+        }
     }
 
     /// <summary>Removes the primary host and sidecar while leaving the shared durable state intact.</summary>
@@ -500,6 +523,18 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         await _replicaTestHost.StopAsync().ConfigureAwait(false);
         await _replicaTestHost.DisposeAsync().ConfigureAwait(false);
         _replicaTestHost = null;
+    }
+
+    private async Task CleanupReplicaAsync()
+    {
+        try
+        {
+            await StopReplicaDaprSidecarAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            await StopReplicaTestHostAsync().ConfigureAwait(false);
+        }
     }
 
     private void RestoreDaprPortEnvironment()
@@ -693,6 +728,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
     private async Task StartTestHostAsync()
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions());
+        builder.Environment.EnvironmentName = "Testing";
 
         builder.Configuration["DAPR_HTTP_PORT"] = _daprHttpPort.ToString();
         builder.Configuration["DAPR_GRPC_PORT"] = _daprGrpcPort.ToString();
@@ -840,6 +876,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
     private async Task StartReplicaTestHostAsync()
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions());
+        builder.Environment.EnvironmentName = "Testing";
 
         builder.Configuration["DAPR_HTTP_PORT"] = _replicaDaprHttpPort.ToString();
         builder.Configuration["DAPR_GRPC_PORT"] = _replicaDaprGrpcPort.ToString();

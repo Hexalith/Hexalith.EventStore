@@ -2,6 +2,8 @@ using global::Aspire.Hosting;
 using global::Aspire.Hosting.ApplicationModel;
 using global::Aspire.Hosting.Testing;
 
+using System.Runtime.ExceptionServices;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Logging;
@@ -18,6 +20,7 @@ namespace Hexalith.EventStore.IntegrationTests.Fixtures;
 public class AspireContractTestFixture : IAsyncLifetime {
     private const string HandlerQueryTypesStateKey = "admin:query-types:tenants";
     private const string RedisEndpoint = "localhost:6379";
+    private static readonly TimeSpan s_resourceCommandTimeout = TimeSpan.FromMinutes(1);
 
     private DistributedApplication? _app;
     private IDistributedApplicationTestingBuilder? _builder;
@@ -130,35 +133,100 @@ public class AspireContractTestFixture : IAsyncLifetime {
     /// next healthy EventStore instance rebuilt the index from live operational metadata.
     /// </summary>
     public async Task RestartEventStoreWithClearedHandlerQueryTypesStateAsync(CancellationToken cancellationToken) {
-        ExecuteCommandResult stopResult = await App.ResourceCommands
-            .ExecuteCommandAsync("eventstore", KnownResourceCommands.StopCommand, cancellationToken)
-            .ConfigureAwait(false);
-        if (!stopResult.Success) {
-            throw new InvalidOperationException(
-                $"Unable to stop EventStore before clearing {HandlerQueryTypesStateKey}. "
-                + $"Message: {stopResult.Message}; Error: {stopResult.ErrorMessage}");
+        Exception? stopException = null;
+        try {
+            ExecuteCommandResult stopResult = await App.ResourceCommands
+                .ExecuteCommandAsync("eventstore", KnownResourceCommands.StopCommand, cancellationToken)
+                .WaitAsync(s_resourceCommandTimeout, cancellationToken)
+                .ConfigureAwait(false);
+            if (!stopResult.Success) {
+                throw new InvalidOperationException(
+                    $"Unable to stop EventStore before clearing {HandlerQueryTypesStateKey}. "
+                    + $"Message: {stopResult.Message}; Error: {stopResult.ErrorMessage}");
+            }
+        }
+        catch (Exception ex) {
+            stopException = ex;
         }
 
-        _ = await App.ResourceNotifications
-            .WaitForResourceAsync("eventstore", KnownResourceStates.TerminalStates, cancellationToken)
-            .WaitAsync(TimeSpan.FromMinutes(1), cancellationToken)
-            .ConfigureAwait(false);
+        if (stopException is not null) {
+            Exception? recoveryException = await TryRestoreHealthyEventStoreAsync().ConfigureAwait(false);
+            if (recoveryException is not null) {
+                throw new AggregateException(
+                    "The EventStore stop command failed and the fixture could not restore a healthy resource.",
+                    stopException,
+                    recoveryException);
+            }
 
-        await DeleteHandlerQueryTypesStateAsync(cancellationToken).ConfigureAwait(false);
-
-        ExecuteCommandResult startResult = await App.ResourceCommands
-            .ExecuteCommandAsync("eventstore", KnownResourceCommands.StartCommand, cancellationToken)
-            .ConfigureAwait(false);
-        if (!startResult.Success) {
-            throw new InvalidOperationException(
-                $"Unable to restart EventStore after clearing {HandlerQueryTypesStateKey}. "
-                + $"Message: {startResult.Message}; Error: {startResult.ErrorMessage}");
+            ExceptionDispatchInfo.Capture(stopException).Throw();
         }
 
-        _ = await App.ResourceNotifications
-            .WaitForResourceHealthyAsync("eventstore", cancellationToken)
-            .WaitAsync(TimeSpan.FromMinutes(3), cancellationToken)
-            .ConfigureAwait(false);
+        Exception? mutationException = null;
+        try {
+            _ = await App.ResourceNotifications
+                .WaitForResourceAsync("eventstore", KnownResourceStates.TerminalStates, cancellationToken)
+                .WaitAsync(s_resourceCommandTimeout, cancellationToken)
+                .ConfigureAwait(false);
+
+            await DeleteHandlerQueryTypesStateAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) {
+            mutationException = ex;
+        }
+
+        Exception? restartException = null;
+        try {
+            Exception? recoveryException = await TryRestoreHealthyEventStoreAsync().ConfigureAwait(false);
+            if (recoveryException is not null) {
+                ExceptionDispatchInfo.Capture(recoveryException).Throw();
+            }
+        }
+        catch (Exception ex) {
+            restartException = ex;
+        }
+
+        if (mutationException is not null && restartException is not null) {
+            throw new AggregateException(
+                "EventStore state mutation failed and the fixture could not restore a healthy EventStore resource.",
+                mutationException,
+                restartException);
+        }
+
+        if (restartException is not null) {
+            ExceptionDispatchInfo.Capture(restartException).Throw();
+        }
+
+        if (mutationException is not null) {
+            ExceptionDispatchInfo.Capture(mutationException).Throw();
+        }
+    }
+
+    private async Task<Exception?> TryRestoreHealthyEventStoreAsync() {
+        using var recoveryCancellation = new CancellationTokenSource(TimeSpan.FromMinutes(3));
+        ExecuteCommandResult? startResult = null;
+        try {
+            startResult = await App.ResourceCommands
+                .ExecuteCommandAsync(
+                    "eventstore",
+                    KnownResourceCommands.StartCommand,
+                    recoveryCancellation.Token)
+                .WaitAsync(s_resourceCommandTimeout, recoveryCancellation.Token)
+                .ConfigureAwait(false);
+
+            _ = await App.ResourceNotifications
+                .WaitForResourceHealthyAsync("eventstore", recoveryCancellation.Token)
+                .WaitAsync(TimeSpan.FromMinutes(3), recoveryCancellation.Token)
+                .ConfigureAwait(false);
+            return null;
+        }
+        catch (Exception ex) {
+            return startResult is null || startResult.Success
+                ? ex
+                : new InvalidOperationException(
+                    "Unable to restore a healthy EventStore resource after the restart probe. "
+                    + $"Message: {startResult.Message}; Error: {startResult.ErrorMessage}",
+                    ex);
+        }
     }
 
     public async ValueTask DisposeAsync() {

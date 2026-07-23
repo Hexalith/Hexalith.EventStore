@@ -3,7 +3,7 @@ schema: hexalith.eventstore.parity-closure-proof-packet/v1
 story_id: "1.20"
 story_key: 1-20-owner-approved-parity-closure-and-runtime-pin
 created: 2026-07-16T05:09:20+02:00
-updated: 2026-07-22T09:34:24+02:00
+updated: 2026-07-23T01:52:38+02:00
 historical_packet: 1-8-projection-query-sdk-owner-proof-packet.md
 candidate_source_sha: 85877902f8d60a466ab90cd8b68b53838863db1c
 tested_runtime_sha: null
@@ -41,7 +41,8 @@ projection, query, rebuild, freshness, erasure, or rollback infrastructure. It i
 successor to the historical Story 1.8 packet; it does not rewrite that packet's decision
 or treat its historical runtime SHA as current evidence.
 
-The exact-SHA gate failed before package/container publication and owner review:
+The packet remains blocked after two historical exact-SHA attempts; neither reached
+container publication or owner review:
 
 1. Story 1.19 is now `done` with an approved review disposition, so the previously
    recorded Story 1.19 prerequisite blocker is resolved.
@@ -66,6 +67,37 @@ The exact-SHA gate failed before package/container publication and owner review:
    identities are recorded below as observed evidence only: v3.77.2 has not been selected
    as this packet's approved package/container identity, does not establish a tested
    runtime SHA, and has no final Story 1.20 owner disposition.
+
+### Later Exact-SHA Attempt — Candidate `440ff4cb36a9ea1446024f3906c132b0398e881f`
+
+The later committed candidate supersedes the older `85877902...` attempt as the most recent
+technical gate history, but it is not selected as `tested_runtime_sha` and grants no authority:
+
+- a clean detached checkout at the exact candidate passed the AD-11 preflight with SDK
+  `10.0.302`, effective ASP.NET `10.0.10`, and installed .NET/ASP.NET runtime `10.0.10`;
+- the warning-free Release solution build and 22 of 23 mandatory test lanes passed with zero
+  failures, exactly 126 allowlisted skips, and no unexpected skips;
+- Story 1.16 technical re-verification passed: named-projection lifecycle 6/6,
+  `Server.LiveSidecar.Tests` 49/49, `Server.Tests` 2849/2874 with 25 allowlisted skips, and
+  `Contracts.Tests` 756/756;
+- the exact 14-package inventory built, was SHA-256 hashed in the scratchpad evidence root,
+  and passed package plus consumer-restore validation;
+- the full Debug/source integration lane did not produce an approvable result. Its first run
+  was polluted by an unrelated Aspire topology using the same reserved Dapr app IDs. After
+  that contention was removed and shared Dapr state was cleaned, the residual failure was
+  isolated to the Aspire/Dapr actor resource-stop path in
+  `AspireContractTestFixture.RestartEventStoreWithClearedHandlerQueryTypesStateAsync`, which
+  wedged the shared fixture and cascaded into later timeouts. Focused isolated reruns passed,
+  but the mandatory full assembly was not green as one run;
+- package evidence remained scratchpad-only, the container lane was not entered, and no
+  registry publication, immutable evidence upload, GitHub approval lookup, or A/B/C evidence
+  chain occurred.
+
+Accordingly, the frontmatter keeps the older failed candidate as historical packet identity,
+keeps `tested_runtime_sha: null`, and leaves every approval and migration field non-authorizing.
+The exact gate must start again from a new clean committed candidate after these review patches;
+the named Story 1.16 disposition, EventStore-owner approval, release-owner disposition,
+immutable evidence, and A/B/C authorization chain remain external blockers.
 
 ### Scoped corrective item
 
@@ -896,17 +928,77 @@ capture_source_state() {
 
 assert_candidate_tree_clean
 capture_source_state "$EVIDENCE_ROOT/source-state-before.txt"
+RESERVED_DAPR_APP_IDS='["eventstore","eventstore-admin","eventstore-admin-ui","eventstore-test-subscriber","sample","sample-api","sample-blazor-ui","tenants","tenants-api"]'
+DAPR_GATE_PROCESS_ROOT_PID="$$"
+DAPR_CONFLICT_LOG="$EVIDENCE_ROOT/conflicting-dapr-apps.jsonl"
+DAPR_MONITOR_FAILURE="$EVIDENCE_ROOT/conflicting-dapr-apps.detected"
+: > "$DAPR_CONFLICT_LOG"
+
+dapr_pid_belongs_to_gate() {
+  local pid="$1"
+  local parent_pid
+  [[ "$pid" =~ ^[0-9]+$ ]] || return 1
+  while test "$pid" -gt 1; do
+    test "$pid" = "$DAPR_GATE_PROCESS_ROOT_PID" && return 0
+    parent_pid="$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d '[:space:]')"
+    [[ "$parent_pid" =~ ^[0-9]+$ ]] || return 1
+    pid="$parent_pid"
+  done
+  return 1
+}
+
+find_external_conflicting_dapr_apps() {
+  local inventory
+  local row
+  local cli_pid
+  local daprd_pid
+  local conflicts='[]'
+  inventory="$(dapr list --output json)"
+  jq -e 'type == "array"' <<<"$inventory" >/dev/null
+  while IFS= read -r row; do
+    cli_pid="$(jq -r '.cliPid // empty' <<<"$row")"
+    daprd_pid="$(jq -r '.daprdPid // empty' <<<"$row")"
+    if ! dapr_pid_belongs_to_gate "$cli_pid" && ! dapr_pid_belongs_to_gate "$daprd_pid"; then
+      conflicts="$(jq -c --argjson row "$row" '. + [$row]' <<<"$conflicts")"
+    fi
+  done < <(jq -c --argjson reserved "$RESERVED_DAPR_APP_IDS" \
+    '.[] | select(.appId as $id | $reserved | index($id)) | {appId, daprdPid, cliPid}' \
+    <<<"$inventory")
+  printf '%s\n' "$conflicts"
+}
+
+assert_no_external_conflicting_dapr_apps() {
+  local conflicts
+  conflicts="$(find_external_conflicting_dapr_apps)"
+  if test "$(jq 'length' <<<"$conflicts")" -ne 0; then
+    jq -cn --arg captured_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+      --argjson conflicts "$conflicts" '{captured_at: $captured_at, conflicts: $conflicts}' \
+      | tee -a "$DAPR_CONFLICT_LOG" > "$DAPR_MONITOR_FAILURE"
+    printf 'external processes registered reserved Dapr application IDs during the exact gate: %s\n' \
+      "$conflicts" >&2
+    return 1
+  fi
+}
+
+assert_dapr_conflict_monitor_clean() {
+  if test -s "$DAPR_MONITOR_FAILURE"; then
+    cat "$DAPR_MONITOR_FAILURE" >&2
+    return 1
+  fi
+  assert_no_external_conflicting_dapr_apps
+}
+
+monitor_external_dapr_conflicts() {
+  while true; do
+    if ! assert_no_external_conflicting_dapr_apps; then
+      return 1
+    fi
+    sleep 1
+  done
+}
+
+assert_no_external_conflicting_dapr_apps
 DAPR_APP_INVENTORY="$(dapr list --output json)"
-jq -e 'type == "array"' <<<"$DAPR_APP_INVENTORY" >/dev/null
-CONFLICTING_DAPR_APPS="$(jq -c \
-  --argjson reserved '["eventstore","eventstore-admin","eventstore-admin-ui","eventstore-test-subscriber","sample","sample-api","sample-blazor-ui","tenants","tenants-api"]' \
-  '[.[] | select(.appId as $id | $reserved | index($id)) | {appId, daprdPid, cliPid}]' \
-  <<<"$DAPR_APP_INVENTORY")"
-if test "$(jq 'length' <<<"$CONFLICTING_DAPR_APPS")" -ne 0; then
-  printf 'conflicting Dapr application IDs must be stopped before the exact gate: %s\n' \
-    "$CONFLICTING_DAPR_APPS" >&2
-  exit 1
-fi
 {
   printf 'captured_at=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   uname -a
@@ -915,6 +1007,9 @@ fi
   docker version
   printf 'dapr_app_inventory_before=%s\n' "$DAPR_APP_INVENTORY"
 } > "$EVIDENCE_ROOT/environment.txt" 2>&1
+
+monitor_external_dapr_conflicts &
+DAPR_CONFLICT_MONITOR_PID=$!
 
 export DOTNET_CLI_HOME="$GATE_ROOT/dotnet-home"
 export NUGET_PACKAGES="$GATE_ROOT/nuget-packages"
@@ -929,6 +1024,7 @@ fresh_release() {
   local evidence_name="${3:-$(basename "${project%.csproj}")}"
   local project_directory="${project%/*}"
   local gate_status
+  assert_dapr_conflict_monitor_clean
   assert_ad11_current
   assert_candidate_tree_clean
   if rm -rf "$project_directory/bin/Release" "$project_directory/obj/Release" &&
@@ -951,6 +1047,7 @@ fresh_release() {
   else
     gate_status=$?
   fi
+  assert_dapr_conflict_monitor_clean
   assert_candidate_tree_clean
   return "$gate_status"
 }
@@ -960,6 +1057,7 @@ fresh_debug_source() {
   local evidence_name="$2"
   local project_directory="${project%/*}"
   local gate_status
+  assert_dapr_conflict_monitor_clean
   assert_ad11_current
   assert_candidate_tree_clean
   if rm -rf "$project_directory/bin/Debug" "$project_directory/obj/Debug" &&
@@ -983,6 +1081,7 @@ fresh_debug_source() {
   else
     gate_status=$?
   fi
+  assert_dapr_conflict_monitor_clean
   assert_candidate_tree_clean
   return "$gate_status"
 }
@@ -1147,6 +1246,7 @@ run_xunit_class() {
   local results="$EVIDENCE_ROOT/$evidence_name.xml"
   local gate_status
   record_test_identity "$evidence_name" "$assembly" class "$class_name"
+  assert_dapr_conflict_monitor_clean
   assert_ad11_current
   assert_candidate_tree_clean
   if test -f "$assembly" &&
@@ -1158,6 +1258,7 @@ run_xunit_class() {
   else
     gate_status=$?
   fi
+  assert_dapr_conflict_monitor_clean
   assert_candidate_tree_clean
   return "$gate_status"
 }
@@ -1170,6 +1271,7 @@ run_xunit_method() {
   local results="$EVIDENCE_ROOT/$evidence_name.xml"
   local gate_status
   record_test_identity "$evidence_name" "$assembly" method "$method_name"
+  assert_dapr_conflict_monitor_clean
   assert_ad11_current
   assert_candidate_tree_clean
   if test -f "$assembly" &&
@@ -1181,6 +1283,7 @@ run_xunit_method() {
   else
     gate_status=$?
   fi
+  assert_dapr_conflict_monitor_clean
   assert_candidate_tree_clean
   return "$gate_status"
 }
@@ -1192,6 +1295,7 @@ run_xunit_all() {
   local results="$EVIDENCE_ROOT/$evidence_name.xml"
   local gate_status
   record_test_identity "$evidence_name" "$assembly" all
+  assert_dapr_conflict_monitor_clean
   assert_ad11_current
   assert_candidate_tree_clean
   if test -f "$assembly" &&
@@ -1203,6 +1307,7 @@ run_xunit_all() {
   else
     gate_status=$?
   fi
+  assert_dapr_conflict_monitor_clean
   assert_candidate_tree_clean
   return "$gate_status"
 }
@@ -1220,9 +1325,16 @@ Full-assembly runs retain their complete method list as well. Each runner record
 under its evidence name for later XML/method-list identity verification. `fresh_release` and `fresh_debug_source` delete the
 configuration-specific `bin`/`obj`, restore through committed inputs into a new cache, and
 build before an assembly is invoked. Every build and test revalidates AD-11 plus regular,
-untracked, and ignored source inputs. After all gates, the runtime-source proof is:
+untracked, and ignored source inputs. A one-second Dapr inventory monitor runs for the entire
+gate, permits only reserved app-ID processes descended from the exact-gate shell, records any
+external conflict, and makes every runner plus the final proof fail closed if contention appears.
+After all gates, the runtime-source proof is:
 
 ```bash
+assert_dapr_conflict_monitor_clean
+kill "$DAPR_CONFLICT_MONITOR_PID" 2>/dev/null || true
+wait "$DAPR_CONFLICT_MONITOR_PID" 2>/dev/null || true
+assert_no_external_conflicting_dapr_apps
 assert_ad11_current
 assert_candidate_tree_clean
 capture_source_state "$EVIDENCE_ROOT/source-state-after.txt"

@@ -197,6 +197,26 @@ public class AggregateActorDomainResultTests {
     // === Story 3.5: Domain Service Invocation Tests ===
 
     [Fact]
+    public async Task ProcessCommandAsync_DomainInvocation_UsesCallerCancellationToken() {
+        ActorTestContext ctx = CreateActor();
+        ConfigureNoDuplicate(ctx.StateManager);
+        using var cancellation = new CancellationTokenSource();
+        _ = ctx.Invoker.InvokeAsync(
+                Arg.Any<CommandEnvelope>(),
+                Arg.Any<object?>(),
+                cancellation.Token)
+            .Returns(DomainResult.NoOp());
+        CommandEnvelope envelope = CreateTestEnvelope();
+
+        _ = await ctx.Actor.ProcessCommandAsync(envelope, cancellation.Token);
+
+        _ = await ctx.Invoker.Received(1).InvokeAsync(
+            envelope,
+            Arg.Any<object?>(),
+            cancellation.Token);
+    }
+
+    [Fact]
     public async Task ProcessCommandAsync_DomainSuccess_PersistsEventsViaStep5() {
         // Arrange
         ActorTestContext ctx = CreateActor();

@@ -1,9 +1,11 @@
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.Server.Configuration;
 
 /// <summary>Validates trusted idempotency admission configuration.</summary>
-internal sealed class ValidateIdempotencyAdmissionOptions : IValidateOptions<IdempotencyAdmissionOptions>
+internal sealed class ValidateIdempotencyAdmissionOptions(IHostEnvironment? environment = null)
+    : IValidateOptions<IdempotencyAdmissionOptions>
 {
     /// <inheritdoc/>
     public ValidateOptionsResult Validate(string? name, IdempotencyAdmissionOptions options)
@@ -35,6 +37,12 @@ internal sealed class ValidateIdempotencyAdmissionOptions : IValidateOptions<Ide
 
         if (options.DigestKeySource == IdempotencyDigestKeySource.DaprSecret)
         {
+            if (versions.Contains("generation"))
+            {
+                return ValidateOptionsResult.Fail(
+                    "The secret map key 'generation' is reserved and cannot be an active or reader digest-key version.");
+            }
+
             return string.IsNullOrWhiteSpace(options.DigestKeySecretStoreName)
                 || string.IsNullOrWhiteSpace(options.DigestKeySecretName)
                 || string.IsNullOrWhiteSpace(options.DigestKeySecretGeneration)
@@ -42,6 +50,15 @@ internal sealed class ValidateIdempotencyAdmissionOptions : IValidateOptions<Ide
                 ? ValidateOptionsResult.Fail(
                     "Secret-backed idempotency admission requires store, map, and generation metadata and forbids inline keys.")
                 : ValidateOptionsResult.Success;
+        }
+
+        if (environment is null
+            || (!environment.IsDevelopment()
+                && !environment.IsEnvironment("Test")
+                && !environment.IsEnvironment("Testing")))
+        {
+            return ValidateOptionsResult.Fail(
+                "Configuration-backed idempotency digest keys are permitted only in Development or test environments.");
         }
 
         if (options.DigestKeys.Count != versions.Count

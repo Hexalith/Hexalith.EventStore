@@ -35,7 +35,8 @@ internal static class ProjectionDeliveryWriterProtocolCutoverPolicy {
 
             bool markerIsUnhealthy = false;
             foreach (JsonProperty result in results.EnumerateObject()) {
-                if (!result.Value.TryGetProperty("status", out JsonElement statusElement)) {
+                if (!result.Value.TryGetProperty("status", out JsonElement statusElement)
+                    || statusElement.ValueKind != JsonValueKind.String) {
                     return false;
                 }
 
@@ -43,7 +44,7 @@ internal static class ProjectionDeliveryWriterProtocolCutoverPolicy {
                 if (string.Equals(result.Name, writerProtocolHealthCheck, StringComparison.Ordinal)) {
                     markerIsUnhealthy = string.Equals(status, "Unhealthy", StringComparison.Ordinal);
                 }
-                else if (string.Equals(status, "Unhealthy", StringComparison.Ordinal)) {
+                else if (!string.Equals(status, "Healthy", StringComparison.Ordinal)) {
                     return false;
                 }
             }

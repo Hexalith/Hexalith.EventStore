@@ -511,7 +511,7 @@ public partial class AggregateActor(
                     try {
                         await EnsureExecutionFenceAsync(executionContext, command, cancellationToken).ConfigureAwait(false);
                         domainResult = await domainServiceInvoker
-                            .InvokeAsync(command, currentState)
+                            .InvokeAsync(command, currentState, cancellationToken)
                             .ConfigureAwait(false);
 
                         logger.LogInformation(

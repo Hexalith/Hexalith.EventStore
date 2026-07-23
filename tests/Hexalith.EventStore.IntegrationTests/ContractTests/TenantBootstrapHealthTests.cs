@@ -133,6 +133,8 @@ public class TenantBootstrapHealthTests {
             _ = terminalStatus.ShouldNotBeNull();
             terminalStatus.Status.ShouldBe(EventStoreCommandStatus.Completed);
             terminalStatus.MessageId.ShouldBe(messageId);
+            terminalStatus.CorrelationId.ShouldBe(correlationId);
+            terminalStatus.AggregateId.ShouldBe("global-administrators");
             terminalStatus.EventCount.ShouldBe(1);
         }
         finally {
