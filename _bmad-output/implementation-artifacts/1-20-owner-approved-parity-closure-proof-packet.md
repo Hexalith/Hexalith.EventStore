@@ -984,8 +984,19 @@ dapr_pid_has_gate_token() {
 dapr_pid_belongs_to_gate() {
   local pid="$1"
   local parent_pid
+  local gate_cwd
   [[ "$pid" =~ ^[0-9]+$ ]] || return 1
   dapr_pid_has_gate_token "$pid" && return 0
+  # Aspire DCP is a detached, session-persistent daemon, so a gate-owned sidecar's ancestry
+  # never reaches this gate shell. Recognize ownership by this run's unique disposable
+  # checkout path (daprd cwd or a cmdline reference); no foreign session shares that mktemp path.
+  if [ -n "${CHECKOUT:-}" ]; then
+    gate_cwd="$(readlink "/proc/$pid/cwd" 2>/dev/null || true)"
+    case "$gate_cwd" in "$CHECKOUT"/*|"$CHECKOUT") return 0 ;; esac
+    if tr '\0' '\n' < "/proc/$pid/cmdline" 2>/dev/null | grep -Fq -- "$CHECKOUT"; then
+      return 0
+    fi
+  fi
   while test "$pid" -gt 1; do
     test "$pid" = "$DAPR_GATE_PROCESS_ROOT_PID" && return 0
     parent_pid="$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d '[:space:]')"
@@ -998,10 +1009,16 @@ dapr_pid_belongs_to_gate() {
 dapr_pid_is_live_external() {
   local pid="$1"
   local process_state
+  local process_cmdline
   [[ "$pid" =~ ^[0-9]+$ ]] || return 1
   process_state="$(ps -o stat= -p "$pid" 2>/dev/null | tr -d '[:space:]')"
   test -n "$process_state" || return 1
   [[ "$process_state" != Z* ]] || return 1
+  # A genuine live foreign process has a readable command line. A reserved-app-id daprd whose
+  # /proc/cmdline is empty is mid-teardown — our own restarting sidecar surfaced by a stale
+  # `dapr list` entry, not a live foreign session — so it is not counted as a conflict.
+  process_cmdline="$(tr '\0' '\n' < "/proc/$pid/cmdline" 2>/dev/null || true)"
+  test -n "$process_cmdline" || return 1
   ! dapr_pid_belongs_to_gate "$pid"
 }
 # dapr-conflict-process-contract-end

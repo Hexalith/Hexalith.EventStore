@@ -204,8 +204,15 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
         Environment.SetEnvironmentVariable("DAPR_GRPC_PORT", node.DaprGrpcPort.ToString());
         try
         {
-            WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions());
-            builder.Environment.EnvironmentName = "Testing";
+            // Set the environment at builder creation so it propagates to the DI-registered
+            // IHostEnvironment. WebApplicationBuilder does not honor a post-CreateBuilder
+            // builder.Environment.EnvironmentName mutation for DI resolution, so the
+            // idempotency-admission validator (which permits configuration-backed digest keys
+            // only in Development/Test/Testing) would otherwise observe "Production" and fail.
+            WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions
+            {
+                EnvironmentName = "Testing",
+            });
             builder.Configuration["DAPR_HTTP_PORT"] = node.DaprHttpPort.ToString();
             builder.Configuration["DAPR_GRPC_PORT"] = node.DaprGrpcPort.ToString();
             builder.Configuration["Dapr:HttpPort"] = node.DaprHttpPort.ToString();
