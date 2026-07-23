@@ -727,8 +727,10 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
 
     private async Task StartTestHostAsync()
     {
-        WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions());
-        builder.Environment.EnvironmentName = "Testing";
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            EnvironmentName = "Testing",
+        });
 
         builder.Configuration["DAPR_HTTP_PORT"] = _daprHttpPort.ToString();
         builder.Configuration["DAPR_GRPC_PORT"] = _daprGrpcPort.ToString();
@@ -764,6 +766,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         _ = builder.Services.Configure<SnapshotOptions>(o => o.DomainIntervals["counter"] = 15);
 
         _testHost = builder.Build();
+        EnsureTestingEnvironment(_testHost.Services, "primary");
 
         _ = _testHost.Lifetime.ApplicationStopping.Register(() =>
         {
@@ -875,8 +878,10 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
 
     private async Task StartReplicaTestHostAsync()
     {
-        WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions());
-        builder.Environment.EnvironmentName = "Testing";
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            EnvironmentName = "Testing",
+        });
 
         builder.Configuration["DAPR_HTTP_PORT"] = _replicaDaprHttpPort.ToString();
         builder.Configuration["DAPR_GRPC_PORT"] = _replicaDaprGrpcPort.ToString();
@@ -906,6 +911,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         _ = builder.Services.Configure<SnapshotOptions>(o => o.DomainIntervals["counter"] = 15);
 
         _replicaTestHost = builder.Build();
+        EnsureTestingEnvironment(_replicaTestHost.Services, "replica");
         _ = _replicaTestHost.MapActorsHandlers();
         _ = _replicaTestHost.MapGet("/healthz", () => Microsoft.AspNetCore.Http.Results.Ok("healthy"));
         await _replicaTestHost.StartAsync().ConfigureAwait(false);
@@ -918,6 +924,18 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         builder.Configuration["EventStore:IdempotencyAdmission:DigestKeySource"] = "Configuration";
         builder.Configuration["EventStore:IdempotencyAdmission:DigestKeys:live-v1"] =
             "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=";
+    }
+
+    private static void EnsureTestingEnvironment(IServiceProvider services, string hostName)
+    {
+        string environmentName = services
+            .GetRequiredService<Microsoft.Extensions.Hosting.IHostEnvironment>()
+            .EnvironmentName;
+        if (!string.Equals(environmentName, "Testing", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"The {hostName} live-sidecar host resolved environment '{environmentName}' instead of 'Testing'.");
+        }
     }
 
     private string GetAggregateActorRedisKey(string key)
