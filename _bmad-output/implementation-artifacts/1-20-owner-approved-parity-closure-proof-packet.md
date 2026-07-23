@@ -2406,7 +2406,8 @@ dotnet restore "$CONTAINER_PROJECT" \
   --packages "$NUGET_PACKAGES" \
   -p:UseHexalithProjectReferences=false \
   -p:NuGetAudit=false \
-  -p:MinVerVersionOverride=1.0.0
+  -p:MinVerVersionOverride=1.0.0 \
+  "-p:RuntimeIdentifiers=\"linux-musl-x64;linux-musl-arm64\""
 
 # Immediately before publication, recompute one final action-time readiness decision. The
 # function's last command is the authority predicate; no build, hash, or other mutable action

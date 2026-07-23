@@ -42,9 +42,12 @@ public sealed class ProofPacketValidatorIntegrityTests
         string root = FindRepositoryRoot();
         string packet = File.ReadAllText(Path.Combine(root, PacketRelativePath));
         const string runtimeIdentifiers = "linux-musl-x64;linux-musl-arm64";
+        string runtimeIdentifiersArgument =
+            $"\"-p:RuntimeIdentifiers=\\\"{runtimeIdentifiers}\\\"\"";
 
-        packet.ShouldContain(
-            $"\"-p:RuntimeIdentifiers=\\\"{runtimeIdentifiers}\\\"\"");
+        Regex.Matches(packet, Regex.Escape(runtimeIdentifiersArgument)).Count.ShouldBe(
+            2,
+            "Both restore and no-restore publish must receive the same multi-RID graph.");
         packet.ShouldContain(
             $"\"-p:ContainerRuntimeIdentifiers=\\\"{runtimeIdentifiers}\\\"\"");
         packet.ShouldContain("-p:ContainerImageFormat=OCI");

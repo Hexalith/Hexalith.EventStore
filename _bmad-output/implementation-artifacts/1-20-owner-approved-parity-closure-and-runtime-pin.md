@@ -813,6 +813,31 @@ override Story 1.20's external evidence and named-approval gates.
   test for those exact invariants. This correction requires a new committed candidate, a full
   exact-SHA rerun, and replacement human records bound to the new SHA and quarantine tag.
 
+#### 2026-07-24 — Exact-SHA gate pass and restore-graph correction
+
+- Clean official-main candidate `9cbefb310d2d2676654f3d8edadd770c84f47a11` passed the
+  complete detached pre-publication protocol from a fresh checkout: warning-free Release solution
+  build; 77 identity-bound xUnit results with 9,072 passed, exactly 126 allowlisted deferred skips,
+  and zero failed/errors/not-run; complete Debug/source integration assembly 278/278 with zero
+  skips in 1,595.887 seconds; exact 14-package inventory and consumer/tool-install gates; and zero
+  external Dapr registration conflicts. Both candidate worktrees remained clean.
+- The owner corrected the Story 1.16 durable review record, and the packet validated it and the
+  separate release-owner publication authority directly from issue 324 against the exact candidate
+  SHA, repository, and quarantine tag. The action-time authority bytes and check timestamp were
+  frozen before the publication-capable command.
+- Publication again stopped before registry write. Restore created only the portable `net10.0`
+  assets graph, while the subsequent `--no-restore` multi-architecture publish required
+  `net10.0/linux-musl-x64` and `net10.0/linux-musl-arm64`; the SDK returned `NETSDK1047` for both
+  missing targets. Read-only registry inspection confirmed the exact quarantine tag is absent.
+- The frozen restore command now receives the same single-argument Alpine multi-RID set as publish,
+  and the existing packet-integrity test requires exactly those two occurrences. A direct restore
+  with the frozen arguments produced both `net10.0/linux-musl-x64` and
+  `net10.0/linux-musl-arm64` targets; the Release solution build passed with zero warnings/errors,
+  the focused regression passed 1/1, the integrity class passed 4/4, and every packet Bash block
+  passed `bash -n`. This is another packet-only corrective change: a newly committed SHA must
+  restart the entire exact protocol and obtain replacement SHA-bound Story 1.16 review and
+  publication-authority records.
+
 ### Completion Notes
 
 - Story remains fail-closed and non-authorizing. Runtime and test corrections in the candidate
@@ -887,6 +912,12 @@ override Story 1.20's external evidence and named-approval gates.
   The row-level ownership correction now treats a CLI/sidecar pair as one Dapr registration while
   preserving fail-closed rejection when neither live member belongs to the gate. The candidate must
   be recommitted and every exact-SHA gate rerun; no publication or authorization followed.
+- Candidate `9cbefb31...` passed every pre-publication gate, including 9,072/9,198 passing test
+  cases with exactly 126 allowlisted skips and the complete 278/278 source-topology lane. Its
+  authorized container operation failed before registry write because restore did not create the
+  two Alpine RID-specific assets targets required by `publish --no-restore`. The packet now binds
+  the same multi-RID property into restore and publish, but this working-tree correction is not an
+  exact candidate: it must be committed and the full protocol and human records restarted.
 
 ## File List
 
@@ -960,6 +991,7 @@ traceability; it does not reclassify that path as a Story 1.20 implementation de
 
 | Date | Phase | Test-method delta | Verification | File-list reconciliation |
 | --- | --- | ---: | --- | --- |
+| 2026-07-24 | Exact-SHA gate pass and restore multi-RID graph correction | `+0` test methods / strengthened existing case | Candidate `9cbefb31...`: 77 XML results, 9,072 passed, exactly 126 allowlisted skips, 0 failed/errors/not-run; complete source topology 278/278, 0 skipped, 1,595.887s; Release build 0 warnings/errors; exact 14-package and consumer/tool gates passed; Dapr conflicts empty. RED: authorized `publish --no-restore` stopped with `NETSDK1047` because restore lacked both `linux-musl-*` target graphs; exact registry tag remains absent. GREEN: the packet gives restore and publish the identical single-argument RuntimeIdentifiers value; direct restore produced both RID-specific assets targets, focused/integrity tests passed 1/1 and 4/4, and every Bash block passed `bash -n`. | Updated only the proof packet, its existing integrity test, and this story record. Preserved `blocked` / sprint `in-progress`; a replacement committed SHA must rerun all gates and obtain replacement SHA-bound human records. |
 | 2026-07-23 | Exact-gate Dapr pair-ownership correction | `+0` test methods / strengthened existing case | Candidate `4d130efb...`: Release and focused lanes passed; complete source topology 278/278, 0 skipped, 1,568.556s. RED: monitor recorded the gate-owned `tenants` CLI/sidecar pair as external during fixture turnover and stopped before package/publication. GREEN pending: executable process-contract regression now requires either owned member to own the logical row while a wholly external live row remains rejected. | Updated the proof packet, its existing Dapr process-contract test, and this story record only. Preserved `blocked` / sprint `in-progress`; a replacement committed SHA must restart the protocol. |
 | 2026-07-23 | Exact-SHA pre-publication pass and Alpine multi-RID packet correction | `+1` test method / `+1` case | Candidate `0b12950f...`: 77 XML results, 9,071 passed, exactly 126 allowlisted skips, 0 failed/errors/not-run; complete source topology 278/278; live-sidecar 49/49; Release build 0 warnings/errors; exact 14-package consumer/tool gate passed. RED: authorized publication command stopped before push with `MSB1006` on the unescaped RID separator; registry tag absent. GREEN: property evaluation preserves both corrected `linux-musl-*` lists as single values; packet-integrity regression pending committed-candidate run. | Updated only the proof packet plus its existing integrity-test and story-record paths. Preserved `blocked` / sprint `in-progress`; invalidated the old SHA-bound publication authority for any replacement candidate. |
 | 2026-07-23 | Clean-store writer cutover, restart, and Dapr-monitor unblock | `+5` test methods / `+5` cases | RED: clean detached `8fe161c0...` could not produce a full integration result without a pre-seeded writer marker; first corrective full run isolated one DCP-stop failure at 274/275. GREEN: endpoint/lease/cutover 19/19; restart provenance 1/1; final complete Debug/source assembly 278/278, 0 skipped, 0 warnings/errors, 1,613.834s; packet integrity/monitor contract 4/4; no Dapr/process/Redis-marker residue. | Added the shared atomic marker lease, Development/token-gated graceful shutdown, fixture integration and regressions, and race-safe exact-gate Dapr ownership detection. Recorded only corrective working-tree evidence; preserved `blocked` / sprint `in-progress` and every external authorization gate. |
