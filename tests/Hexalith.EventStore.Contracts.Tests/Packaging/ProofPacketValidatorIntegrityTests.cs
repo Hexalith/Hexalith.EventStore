@@ -69,6 +69,18 @@ public sealed class ProofPacketValidatorIntegrityTests
             "IMAGE_DIGEST=\"$(tr -d '\\357\\273\\277' < \"$GENERATED_IMAGE_INDEX_DIGEST\")\"");
         packet.ShouldNotContain("IMAGE_DIGEST=\"$(cat \"$GENERATED_IMAGE_INDEX_DIGEST\")\"");
         packet.ShouldContain("Encoding=\"ASCII\" />");
+
+        // Regression: publish via the /t:PublishContainer target, NOT the DefaultContainer profile.
+        // Only the target form emits per-platform tags (<tag>-<rid>) that persist through this
+        // registry's GC and keep the index's child manifests pullable. The profile form pushed both
+        // architectures to a single tag, leaving the children untagged and GC-removed so the
+        // published index could not be pulled (candidate bcab5253).
+        packet.ShouldContain("/t:PublishContainer");
+        packet.ShouldNotContain("-p:PublishProfile=DefaultContainer");
+
+        // Regression: the literal package-inventory validator must print on success so its tee'd
+        // log is non-empty and passes the raw-evidence bundle's required-log `test -s` check.
+        packet.ShouldContain("print(f\"literal package inventory verified:");
     }
 
     /// <summary>

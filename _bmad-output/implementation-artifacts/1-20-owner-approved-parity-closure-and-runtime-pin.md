@@ -861,6 +861,24 @@ override Story 1.20's external evidence and named-approval gates.
   is a packet-only correction: a new committed SHA must restart the entire exact protocol from zero,
   and the orphaned `quarantine-proof-f0a72928...` tag is superseded.
 
+#### 2026-07-24 — Multi-arch publish method + package-log corrections (validated on a working image)
+
+- With the BOM fix on candidate `bcab5253`, the container publish reached post-push validation for
+  the first time and exposed two further latent defects, both fixed and regression-tested against a
+  working published image rather than one restart per bug.
+- The `-p:PublishProfile=DefaultContainer` form pushed both architectures to the single
+  `quarantine-proof-<sha>` tag, leaving the platform manifests untagged; this registry's GC removed
+  them, so the published index referenced 404 child manifests and `docker pull --platform` failed.
+  Switching to the Builds-proven `/t:PublishContainer` target (with an inline RID restore) emits
+  persistent per-platform tags (`<tag>-linux-musl-x64` / `-arm64`); the republished `bcab5253` index
+  (`sha256:b83dd2ce...`) then passed child-config validation, both platform smokes, and
+  `docker pull --platform` for `linux/amd64` and `linux/arm64`.
+- `validate_literal_package_inventory` printed nothing on success, so its tee'd
+  `literal-package-inventory.log` was empty and the raw-evidence bundle's required-log `test -s`
+  check failed; it now prints a success line, and the raw-evidence bundle (block 14) built cleanly.
+- Both corrections carry `ProofPacketValidatorIntegrityTests` regression assertions (class 4/4).
+  Packet-only changes: a new committed SHA must restart the full protocol from zero.
+
 ### Completion Notes
 
 - Story remains fail-closed and non-authorizing. Runtime and test corrections in the candidate
@@ -1014,6 +1032,7 @@ traceability; it does not reclassify that path as a Story 1.20 implementation de
 
 | Date | Phase | Test-method delta | Verification | File-list reconciliation |
 | --- | --- | ---: | --- | --- |
+| 2026-07-24 | Multi-arch publish method (`/t:PublishContainer`) + package-log corrections | `+0` methods / `+3` assertions | Validated on working image `bcab5253`: `/t:PublishContainer` emits persistent per-platform tags → republished index `sha256:b83dd2ce...` passed child-config + both smokes + `docker pull --platform` amd64/arm64. `literal-package-inventory.log` now non-empty on success → raw-evidence bundle (block 14) built (sha256 `ccc7ac72...`). `ProofPacketValidatorIntegrityTests` 4/4. | Updated the proof packet + integrity test + this record. Preserved `blocked` / sprint `in-progress`; a replacement committed SHA must rerun all gates and obtain replacement SHA-bound human records. |
 | 2026-07-24 | First successful container publish + BOM digest-capture correction | `+0` methods / `+3` assertions | Candidate `f0a72928...`: full Phase-1 gate GREEN (source topology 278/278 after one transient-flake re-run, live-sidecar 49/49, 9,072 passed / exactly 126 allowlisted skips, 14-package build+SHA-256). Container publish SUCCEEDED (OCI index `sha256:fbb5664f...`, exactly `linux/amd64`+`linux/arm64`). RED: post-push digest-identity check failed on a UTF-8 BOM from the capture target's `WriteLinesToFile Encoding="UTF-8"`. GREEN: capture target now writes `ASCII` and the read strips any BOM; `ProofPacketValidatorIntegrityTests` 4/4. | Updated only the proof packet and its integrity test (+ this record). Preserved `blocked` / sprint `in-progress`; a replacement committed SHA must rerun all gates and obtain replacement SHA-bound human records; the `quarantine-proof-f0a72928...` tag is superseded. |
 | 2026-07-24 | Exact-SHA gate pass and restore multi-RID graph correction | `+0` test methods / strengthened existing case | Candidate `9cbefb31...`: 77 XML results, 9,072 passed, exactly 126 allowlisted skips, 0 failed/errors/not-run; complete source topology 278/278, 0 skipped, 1,595.887s; Release build 0 warnings/errors; exact 14-package and consumer/tool gates passed; Dapr conflicts empty. RED: authorized `publish --no-restore` stopped with `NETSDK1047` because restore lacked both `linux-musl-*` target graphs; exact registry tag remains absent. GREEN: the packet gives restore and publish the identical single-argument RuntimeIdentifiers value; direct restore produced both RID-specific assets targets, focused/integrity tests passed 1/1 and 4/4, and every Bash block passed `bash -n`. | Updated only the proof packet, its existing integrity test, and this story record. Preserved `blocked` / sprint `in-progress`; a replacement committed SHA must rerun all gates and obtain replacement SHA-bound human records. |
 | 2026-07-23 | Exact-gate Dapr pair-ownership correction | `+0` test methods / strengthened existing case | Candidate `4d130efb...`: Release and focused lanes passed; complete source topology 278/278, 0 skipped, 1,568.556s. RED: monitor recorded the gate-owned `tenants` CLI/sidecar pair as external during fixture turnover and stopped before package/publication. GREEN pending: executable process-contract regression now requires either owned member to own the logical row while a wholly external live row remains rejected. | Updated the proof packet, its existing Dapr process-contract test, and this story record only. Preserved `blocked` / sprint `in-progress`; a replacement committed SHA must restart the protocol. |

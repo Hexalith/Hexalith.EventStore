@@ -2173,6 +2173,7 @@ for package in packages:
 
 if len(actual_ids) != len(set(actual_ids)) or set(actual_ids) != set(expected_ids):
     raise SystemExit("embedded nuspec IDs do not match the literal approved inventory")
+print(f"literal package inventory verified: {len(actual_ids)} packages at version {expected_version}")
 PY
 }
 
@@ -2434,8 +2435,9 @@ prepare_publication_action() {
 prepare_publication_action
 if dotnet publish "$CONTAINER_PROJECT" \
     --configuration Release \
-    --no-restore \
-    -p:PublishProfile=DefaultContainer \
+    --configfile nuget.config \
+    --packages "$NUGET_PACKAGES" \
+    /t:PublishContainer \
     -p:UseHexalithProjectReferences=false \
     -p:NuGetAudit=false \
     -p:MinVerVersionOverride=1.0.0 \
