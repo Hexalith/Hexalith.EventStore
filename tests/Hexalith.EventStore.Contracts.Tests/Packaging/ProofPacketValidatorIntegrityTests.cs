@@ -60,6 +60,15 @@ public sealed class ProofPacketValidatorIntegrityTests
         packet.ShouldContain("for _ in $(seq 1 180); do");
         packet.ShouldContain(".publish_properties.runtime_identifiers ==");
         packet.ShouldContain(".publish_properties.container_image_format == \"OCI\"");
+
+        // Regression: the SDK-captured image-index digest file must be read BOM-safe. MSBuild
+        // WriteLinesToFile Encoding="UTF-8" emits a UTF-8 BOM on SDK 10.0.302, which failed the
+        // ^sha256: digest regex the first time a container publish actually succeeded
+        // (candidate f0a72928). The capture target writes ASCII and the read strips any BOM.
+        packet.ShouldContain(
+            "IMAGE_DIGEST=\"$(tr -d '\\357\\273\\277' < \"$GENERATED_IMAGE_INDEX_DIGEST\")\"");
+        packet.ShouldNotContain("IMAGE_DIGEST=\"$(cat \"$GENERATED_IMAGE_INDEX_DIGEST\")\"");
+        packet.ShouldContain("Encoding=\"ASCII\" />");
     }
 
     /// <summary>

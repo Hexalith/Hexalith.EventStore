@@ -2392,7 +2392,7 @@ cat > "$CAPTURE_TARGETS" <<'MSBUILD'
     <WriteLinesToFile File="$(ContainerImageIndexDigestOutputPath)"
                       Lines="$(CapturedImageIndexDigest)"
                       Overwrite="true"
-                      Encoding="UTF-8" />
+                      Encoding="ASCII" />
   </Target>
 </Project>
 MSBUILD
@@ -2461,7 +2461,7 @@ done
 test "$(sha256sum "$CAPTURE_TARGETS" | awk '{print $1}')" = "$CAPTURE_TARGETS_SHA256"
 test -s "$GENERATED_IMAGE_INDEX"
 test -s "$GENERATED_IMAGE_INDEX_DIGEST"
-IMAGE_DIGEST="$(cat "$GENERATED_IMAGE_INDEX_DIGEST")"
+IMAGE_DIGEST="$(tr -d '\357\273\277' < "$GENERATED_IMAGE_INDEX_DIGEST")"
 [[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
 test "sha256:$(sha256sum "$GENERATED_IMAGE_INDEX" | awk '{print $1}')" = "$IMAGE_DIGEST"
 jq -e '.manifests | type == "array" and length > 0' "$GENERATED_IMAGE_INDEX" >/dev/null
