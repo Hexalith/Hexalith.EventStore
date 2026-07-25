@@ -3,7 +3,7 @@ schema: hexalith.eventstore.parity-closure-proof-packet/v1
 story_id: "1.20"
 story_key: 1-20-owner-approved-parity-closure-and-runtime-pin
 created: 2026-07-16T05:09:20+02:00
-updated: 2026-07-25T21:59:17+02:00
+updated: 2026-07-25T23:25:16+02:00
 historical_packet: 1-8-projection-query-sdk-owner-proof-packet.md
 candidate_source_sha: 38f85086fc2513e06fe85482dfade96578d649e5
 tested_runtime_sha: 38f85086fc2513e06fe85482dfade96578d649e5
@@ -4960,7 +4960,7 @@ awk '
     skip_decision_section = 1
     next
   }
-  skip_decision_section && $0 == "### Scoped corrective item" {
+  skip_decision_section && $0 == "## Prerequisite And Review Ledger" {
     print ""
     print
     skip_decision_section = 0

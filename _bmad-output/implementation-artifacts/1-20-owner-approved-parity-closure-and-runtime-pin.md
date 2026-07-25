@@ -530,6 +530,22 @@ evidence; named owner approval remains absent. No consumer migration is authoriz
 
 ### Debug Log
 
+- 2026-07-25: Entered Closure Execution Order step 11 at official pointer-only commit B
+  `0d492e33104a19d7380e9047085a5b6520546608` over evidence commit A
+  `e25eb2d861e63e73fc03a6a647c58666605d7637`. Pre-commit audit proved the immutable C
+  reconstruction could never complete: it skipped the B packet's Decision section until
+  `### Scoped corrective item`, but evidence commit A had removed that runtime-only heading.
+  No authorizing C commit or migration-state edit was attempted.
+- Added `PacketAuthorizingDecisionTransformUsesEvidencePacketAnchor` first and confirmed RED
+  0/1 against the stale anchor. The packet now resumes at its retained
+  `## Prerequisite And Review Ledger` heading; the focused regression passes 1/1, the complete
+  packet-integrity class passes 8/8, the complete Contracts assembly passes 763/763, its Release
+  build has zero warnings/errors, and all 23 fenced Bash blocks pass `bash -n`.
+- Reset Story 1.16's SHA-bound follow-up disposition to its required fail-closed runtime input
+  (`followup_review_recommended: true`, no prior candidate disposition suffix). The published
+  A/B chain remains immutable audit history but cannot authorize migration; this packet/test
+  correction must become a new candidate and restart the exact protocol from zero with fresh
+  candidate-bound review, publication authority, evidence, approvals, and A/B/C commits.
 - 2026-07-16: Re-read current sprint/story evidence. Story 1.19 is now `done` with an
   approved review disposition; Story 1.16 still retains an undispositioned follow-up flag.
 - Selected clean candidate `85877902f8d60a466ab90cd8b68b53838863db1c` and created a
@@ -1060,6 +1076,14 @@ override Story 1.20's external evidence and named-approval gates.
 
 ### Completion Notes
 
+- Authorizing-C preflight rejected the official `e25eb2d8`/`0d492e33` A/B chain before any
+  migration mutation because the verifier's Decision-section resume anchor no longer existed
+  in A. The regression now binds the transform to an evidence-packet heading that survives A.
+- The correction is focused-green (new regression 1/1, packet-integrity class 8/8, complete
+  Contracts assembly 763/763, Release build 0 warnings/errors, 23/23 Bash blocks parse), but it
+  necessarily invalidates the old chain for closure. Story 1.20 remains fail-closed until a new
+  committed candidate reruns all exact-SHA gates and obtains fresh human/external records,
+  immutable evidence, and verified A/B/C.
 - Candidate `eb59649b...` is the first in this lineage to pass the read-only Phase-1 exact-SHA gate on
   a single run, with the full Tier-3 source-topology assembly green at 279/279 and an empty conflict
   monitor. This establishes the candidate as gate-worthy but authorizes nothing: Closure Execution
@@ -1246,6 +1270,7 @@ traceability; it does not reclassify that path as a Story 1.20 implementation de
 
 | Date | Phase | Test-method delta | Verification | File-list reconciliation |
 | --- | --- | ---: | --- | --- |
+| 2026-07-25 | Authorizing-C preflight rejection + evidence-packet anchor correction | `+1` test method / `+1` case | Official A/B ancestry was exact (`38f85086...` → `e25eb2d8...` → `0d492e33...`), but RED proved the immutable C transform waited for the runtime-only `### Scoped corrective item` heading that A had removed, so every possible C failed its END guard. GREEN: resume at retained `## Prerequisite And Review Ledger`; new regression 1/1; complete `ProofPacketValidatorIntegrityTests` 8/8; complete Contracts assembly 763/763; Release build 0 warnings/errors; all 23 packet Bash blocks parse. | Updated the packet anchor and integrity test, reset the Story 1.16 follow-up spec to its fail-closed pre-A state, and recorded this restart boundary. Preserved Story `blocked` / sprint `in-progress`; the prior A/B commits remain non-authorizing history and a new candidate requires a complete exact-SHA and human-approval restart. |
 | 2026-07-25 | Second single-run Phase-1 pass (`ed5af0f6`) + front-matter-scoped follow-up transform correction | `+1` test method / `+1` case | Candidate `ed5af0f6` (docs-only child of `eb59649b`; packet byte-identical, no source drift): Phase-1 clean on the FIRST run again — 77 results, 9,202 cases, 9,076 passed, 0 failed/errors/not-run, exactly 126 allowlisted skips, integration 279/279 in 1,581.334s, live-sidecar 49/49, AD-11 exact, 14 packages at `999.1.20-proof.ed5af0f650a1`, conflict monitor empty. RED (caught statically, pre-publication): the Story 1.16 transform in blocks 15 AND 16 aborted unless `followup_review_recommended: true` occurred exactly once document-wide, but `spec-1-11` carried it twice (front matter line 9 + disposition prose line 113) — block 15 runs AFTER the irreversible WORM lock and the region had never executed. Also caught the publication-authority `authorized_at` being local CEST labelled `Z` (+1.83 h future vs `authorized_at <= checked_at`) and four surviving placeholder strings in the Story 1.16 record that `nonblank` would have passed straight into the WORM bundle and commit A. GREEN: prose reworded; both transform copies now resolve the flag inside the YAML front matter; hardened logic executed against the real spec (resolves correctly, immune to a re-added prose mention, still fails closed when already resolved); `ProofPacketValidatorIntegrityTests` 7/7; 23/23 Bash blocks parse; `git diff --check` clean. | Updated the proof packet (both transforms), `spec-1-11` prose, the integrity test, `deferred-work.md`, and this record. Preserved `blocked` / sprint `in-progress`. The `sort -u` vs `sort` limitation-ID asymmetry was deliberately deferred rather than spending a dedicated re-gate. Both issue-324 records must be rebound to the candidate SHA this commit produces. |
 | 2026-07-25 | Pre-gate paired-contract audit + first single-run Phase-1 pass (candidate `eb59649b`) | `+0` (read-only verification; no source change) | Static audit BEFORE running: both PR #330 fixes verified in place (4 adapter `--output` sites directory-scoped + `test ! -e` guarded; verifier smoke matches publication smoke on the four `Authentication__JwtBearer__*` vars and the 180-poll budget) plus six untouched block-15/16 twins consistent (retention, WORM schema v2, bundle archive, manifest/child-config/platform set, GitHub `jq -j` + `body_sha256`, and derived-vs-hardcoded capability/limitation IDs matching exactly at 9/32 with no duplicates). Packet integrity 6/6; 23/23 blocks `bash -n`. GATE: Phase-1 clean on the FIRST run — AD-11 exact (SDK 10.0.302 / ASP.NET + runtime 10.0.10); 77 identity-bound results, 9,202 cases, 9,076 passed, 0 failed/errors/not-run, exactly 126 allowlisted skips in their frozen distribution; complete Debug/source integration 279/279, 0 skips, 1,573.534s; live-sidecar 49/49; Release build 0W/0E; 14-package build/validate/consumer/tool-install/SHA-256 at `999.1.20-proof.eb59649b29a0`; Dapr conflict monitor empty; candidate identity unchanged before and after every gate. | No repository file changed by the gate (read-only against the committed candidate); evidence retained at gate root `tmp.3JcRFJBxed`. This story record is intentionally left UNCOMMITTED so `eb59649b` stays eligible as commit A's sole direct parent. Preserved `blocked` / sprint `in-progress`; steps 7-11 not entered, so no publication, WORM upload, owner approval, or migration authority exists. One latent block-15/16 `sort -u` vs `sort` limitation-ID asymmetry logged for a future packet pass. |
 | 2026-07-25 | Exact-SHA gate + first WORM lock; adapter-output and verifier-smoke corrections | `+2` test methods / `+2` cases | Candidate `f692f903...`: Phase-1 clean on run 3 (77 results, 9,200 cases, 9,074 passed, 0 failed, exactly 126 allowlisted skips, integration 279/279 in 1,584.878s, live-sidecar 49/49, 14-package hash); runs 1-2 failed only on isolated-passing Tier-3 flakes with an empty Dapr conflict monitor. Publication green after registering `qemu-aarch64` emulation: index `sha256:bad8c4fa...`, exactly `linux/amd64`+`linux/arm64`, both smokes. Bundle `sha256:e0cbfb2c...` WORM-locked (version `2026-07-25T15:25:17.4330510Z`, retention `2033-07-26`). RED: block 15 failed closed because adapter `--output` paths came from bare `mktemp` against the adapter's `test ! -e` contract (3 sites + 1 unguarded target); owner review found the A/B/C verifier smoke omitting the four `Authentication__JwtBearer__*` settings and polling 90s vs 180s. GREEN: both corrected; `ProofPacketValidatorIntegrityTests` 6/6, 23/23 Bash blocks parse, `git diff --check` clean. | Updated the proof packet, its integrity test, and this record. Preserved `blocked` / sprint `in-progress`; a replacement committed SHA must rerun all gates and obtain replacement SHA-bound human records. |

@@ -167,6 +167,44 @@ public sealed class ProofPacketValidatorIntegrityTests
     }
 
     /// <summary>
+    /// Verifies the authorizing-C decision transform resumes at a heading that remains present in
+    /// evidence commit A after its completed decision replaces the runtime packet's discovery text.
+    /// </summary>
+    [Fact]
+    public void PacketAuthorizingDecisionTransformUsesEvidencePacketAnchor()
+    {
+        string root = FindRepositoryRoot();
+        string packet = File.ReadAllText(Path.Combine(root, PacketRelativePath));
+        const string legacyTransformAnchor =
+            "skip_decision_section && $0 == \"### Scoped corrective item\" {";
+        const string evidenceTransformAnchor =
+            "skip_decision_section && $0 == \"## Prerequisite And Review Ledger\" {";
+        const string evidenceAnchorHeading = "\n## Prerequisite And Review Ledger\n";
+
+        // Regression: the runtime packet contained "### Scoped corrective item", but evidence
+        // commit A replaced that discovery-only section. Pointer B therefore has no such heading,
+        // and the immutable authorizing-C transform could never stop skipping or pass its END
+        // guard. Resume at the first stable heading retained in the completed evidence packet.
+        packet.Contains(legacyTransformAnchor, StringComparison.Ordinal).ShouldBeFalse(
+            "The C transform must not depend on a heading removed by evidence commit A.");
+        Regex.Matches(packet, Regex.Escape(evidenceTransformAnchor)).Count.ShouldBe(
+            1,
+            "The C transform must resume exactly once at the completed evidence packet's prerequisite ledger.");
+
+        int decision = packet.IndexOf("\n## Decision\n", StringComparison.Ordinal);
+        int evidenceAnchor = packet.IndexOf(evidenceAnchorHeading, decision + 1, StringComparison.Ordinal);
+        int verifier = packet.IndexOf(
+            "\n### Evidence Commit A, Pointer-Only Commit B, And Authorizing Commit C Verification\n",
+            evidenceAnchor + 1,
+            StringComparison.Ordinal);
+        decision.ShouldBeGreaterThanOrEqualTo(0, "The packet must retain its Decision section.");
+        (evidenceAnchor > decision).ShouldBeTrue(
+            "The completed evidence packet must retain the transform's resume heading after Decision.");
+        (verifier > evidenceAnchor).ShouldBeTrue(
+            "The resume heading must be packet content, not text found only inside the verifier itself.");
+    }
+
+    /// <summary>
     /// Verifies every evidence-provider adapter invocation in the packet writes to a path that
     /// does not already exist, as the adapter's own non-overwrite contract requires.
     /// </summary>
