@@ -1,0 +1,13 @@
+{
+  "action": "container-publication",
+  "owner": "jpiquot",
+  "authorized_at": "2026-07-25T18:53:39Z",
+  "durable_source": "https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5079402382",
+  "rationale": "Phase-1 exact-SHA gate passed clean on a single run at 38f85086: 77 identity-bound results, 9,203 cases, 9,077 passed, zero failed/errored/not-run, exactly the 126 allowlisted deferred skips, complete Debug/source integration 279/279, live-sidecar 49/49, warning-free Release build, and an empty Dapr conflict monitor. Authorizes the quarantined proof publication only, for digest-verified two-platform container evidence; it does not authorize any deployment or consumer migration.",
+  "expires_at": "2026-08-24T00:00:00Z",
+  "scope": {
+    "repository": "registry.hexalith.com/eventstore",
+    "tag": "quarantine-proof-38f85086fc2513e06fe85482dfade96578d649e5",
+    "source_sha": "38f85086fc2513e06fe85482dfade96578d649e5"
+  }
+}

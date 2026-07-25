@@ -1,0 +1,182 @@
+{
+  "action": "story-1-20-proof-approval",
+  "owner": "jpiquot",
+  "approved_at": "2026-07-25T19:01:44Z",
+  "durable_source": "https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5080203234",
+  "accepted_scope": "Accepts the complete exact-SHA parity evidence for Story 1.20 at the tested runtime SHA: all nine capability rows, the identity-bound test evidence, the 14-package inventory and its byte identities, the digest-pinned two-platform container, and the WORM-retained raw evidence bundle. Authorizes consumer migration away from consumer-owned projection, query, rebuild, freshness, erasure, and rollback infrastructure onto the approved EventStore identities, subject to every limitation accepted below.",
+  "decision": "authorize-consumer-migration",
+  "limitations": [
+    {
+      "id": "erasure-admission-write-fence-races",
+      "disposition": "accepted",
+      "rationale": "Admission and write-fence interleavings are proven at the exercised live concurrency only; the consumer erasure and checkpoint-reset implementation is retained as the documented rollback."
+    },
+    {
+      "id": "erasure-caller-slot-completeness",
+      "disposition": "accepted",
+      "rationale": "Per-slot erasure is proven by the live-sidecar lane; completeness of the caller-owned slot inventory remains the caller's responsibility."
+    },
+    {
+      "id": "erasure-authenticated-stitched-e2e",
+      "disposition": "accepted",
+      "rationale": "Authenticated stitched end-to-end erasure is evidenced through the live-sidecar path rather than a full authenticated UI traversal."
+    },
+    {
+      "id": "erasure-global-administrator-boundary",
+      "disposition": "accepted",
+      "rationale": "The global-administrator boundary is accepted as documented; erasure authority outside that boundary is unchanged by this closure."
+    },
+    {
+      "id": "batch-store-transaction-capability",
+      "disposition": "accepted",
+      "rationale": "Batch atomicity is bounded by the configured state store's transaction capability; non-transactional stores retain the consumer's coordinated detail/index write path."
+    },
+    {
+      "id": "batch-etag-behavior",
+      "disposition": "accepted",
+      "rationale": "ETag behaviour under batched writes is accepted as specified; callers continue to treat ETags as opaque validators."
+    },
+    {
+      "id": "batch-corrupt-or-abandoned-envelope",
+      "disposition": "accepted",
+      "rationale": "Corrupt and abandoned envelope handling remains a retry and cleanup concern with the documented consumer rollback retained."
+    },
+    {
+      "id": "batch-terminal-receipt-retention",
+      "disposition": "accepted",
+      "rationale": "Terminal receipt retention is bounded by the configured retention policy rather than proven indefinite."
+    },
+    {
+      "id": "batch-cross-profile-boundary",
+      "disposition": "accepted",
+      "rationale": "Cross-profile batching boundaries are unchanged by this evidence-only closure."
+    },
+    {
+      "id": "lifecycle-unknown-compatibility",
+      "disposition": "accepted",
+      "rationale": "Preserve `Unknown` as a valid provenance outcome; handler-computed responses continue to resolve lifecycle evidence to `Unknown`."
+    },
+    {
+      "id": "lifecycle-operational-value-abi",
+      "disposition": "accepted",
+      "rationale": "All six operational values are preserved as the stable ABI."
+    },
+    {
+      "id": "lifecycle-legacy-metadata-abi",
+      "disposition": "accepted",
+      "rationale": "The legacy query metadata ABI is preserved unchanged."
+    },
+    {
+      "id": "lifecycle-etag-evidence-boundary",
+      "disposition": "accepted",
+      "rationale": "ETag never supplies lifecycle or version evidence; it remains an opaque validator per AD-15."
+    },
+    {
+      "id": "delivery-legacy-project-route-boundary",
+      "disposition": "accepted",
+      "rationale": "Legacy `/project` remains outside the v2 no-mixed-writer guarantee."
+    },
+    {
+      "id": "delivery-mixed-writer-cutover-boundary",
+      "disposition": "accepted",
+      "rationale": "Mixed-writer protection covers exact named v2 routes only; the complete pre-cutover fleet and backup boundary are retained and no writer is rolled back across the global v2 marker."
+    },
+    {
+      "id": "rebuild-complete-prefix-resource-bounds",
+      "disposition": "accepted",
+      "rationale": "Complete-prefix rebuild is bounded by the documented memory and byte limits."
+    },
+    {
+      "id": "rebuild-coordinated-promotion-boundary",
+      "disposition": "accepted",
+      "rationale": "The coordinated promotion boundary is accepted; page-only or incomplete staged output is never promoted."
+    },
+    {
+      "id": "rebuild-cancellation-resume-semantics",
+      "disposition": "accepted",
+      "rationale": "Cancellation and resume semantics are accepted as documented."
+    },
+    {
+      "id": "rebuild-deferred-review-items",
+      "disposition": "accepted",
+      "rationale": "Every deferred Story 1.19 review item remains owned and tracked in the deferred-work ledger."
+    },
+    {
+      "id": "cursor-key-ring-loss-or-replacement",
+      "disposition": "accepted",
+      "rationale": "Routine retained-key rotation is supported; key-ring loss or replacement remains a distinct documented recovery scenario, with opaque cursor handling and the consumer compatibility path preserved."
+    },
+    {
+      "id": "async-hand-written-state-writes",
+      "disposition": "accepted",
+      "rationale": "State writes made outside the projection handler contract remain the consumer's responsibility."
+    },
+    {
+      "id": "async-stable-work-identity",
+      "disposition": "accepted",
+      "rationale": "Stable work identity is accepted as specified for dispatch, retry, and ledger convergence."
+    },
+    {
+      "id": "async-dead-letter-terminal-cleanup",
+      "disposition": "accepted",
+      "rationale": "Dead-letter and terminal cleanup behaviour is accepted as documented."
+    },
+    {
+      "id": "async-null-metadata",
+      "disposition": "accepted",
+      "rationale": "Null metadata behaviour is accepted as documented."
+    },
+    {
+      "id": "multiprojection-versioned-route-boundary",
+      "disposition": "accepted",
+      "rationale": "Versioned `/project/v2` is retained as the protected route."
+    },
+    {
+      "id": "multiprojection-legacy-route-boundary",
+      "disposition": "accepted",
+      "rationale": "Legacy `/project` is retained for compatibility and remains outside the v2 guarantee."
+    },
+    {
+      "id": "multiprojection-exact-route-identity",
+      "disposition": "accepted",
+      "rationale": "Exact `(Domain, ProjectionType)` routing identity is preserved."
+    },
+    {
+      "id": "multiprojection-bounded-result-contract",
+      "disposition": "accepted",
+      "rationale": "The AD-19 bounded result contract is preserved."
+    },
+    {
+      "id": "release-package-inventory-and-byte-identity",
+      "disposition": "accepted",
+      "rationale": "The manifest-owned 14-package inventory and its byte identities are pinned by this run's SHA-256 manifest."
+    },
+    {
+      "id": "release-container-registry-and-platform-provenance",
+      "disposition": "accepted",
+      "rationale": "Container identity is pinned to the immutable index digest with exactly `linux/amd64` and `linux/arm64`, and provenance maps that digest to the tested runtime SHA."
+    },
+    {
+      "id": "release-durable-evidence-retention",
+      "disposition": "accepted",
+      "rationale": "Raw evidence is retained under an irreversible seven-year version-level WORM lock, bound by HTTPS URL and SHA-256."
+    },
+    {
+      "id": "release-owner-authority-and-migration",
+      "disposition": "accepted",
+      "rationale": "Publication authority and the final migration decision are recorded in durable, role-bound GitHub records created before the operations they authorize."
+    }
+  ],
+  "scope": {
+    "repository": "https://github.com/Hexalith/Hexalith.EventStore.git",
+    "tested_runtime_sha": "38f85086fc2513e06fe85482dfade96578d649e5",
+    "raw_evidence_bundle_sha256": "d92dec6ec625d82f426ba2f1e7c661585fabf6088d34cbbd30c4b4b855967fc3",
+    "package_version": "999.1.20-proof.38f85086fc25",
+    "package_hash_manifest_sha256": "e65cc1ab9c5999b57226a2400c74219c462ef9affdb9fdb4e1da8b81e0f57c18",
+    "container_repository": "registry.hexalith.com/eventstore",
+    "container_digest": "sha256:26bd454a5fbc68443ec50e946fd4aa582b83b8a8a93418999a93080de6e608cc",
+    "evidence_manifest_sha256": "0e00db812aa09c5886f02646e66dd867bb9799a3af77dae1dfcbe70d16b9e633",
+    "approval_subject_sha256": "d2b2c484b2fee8afa9854072b12fb2d811f22b118757751bd965eca440032886",
+    "latest_successful_gate_completed_at": "2026-07-25T19:00:51Z"
+  }
+}

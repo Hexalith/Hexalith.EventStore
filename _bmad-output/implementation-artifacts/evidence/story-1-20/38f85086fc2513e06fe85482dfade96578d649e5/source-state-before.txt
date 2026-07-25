@@ -1,0 +1,159 @@
+candidate=38f85086fc2513e06fe85482dfade96578d649e5
+root-status:
+root-ignored:
+!! perf/Hexalith.EventStore.LoadTests/bin/Release/
+!! perf/Hexalith.EventStore.LoadTests/obj/
+!! samples/Hexalith.EventStore.Sample.Api/bin/Debug/
+!! samples/Hexalith.EventStore.Sample.Api/bin/Release/
+!! samples/Hexalith.EventStore.Sample.Api/obj/
+!! samples/Hexalith.EventStore.Sample.BlazorUI/bin/Debug/
+!! samples/Hexalith.EventStore.Sample.BlazorUI/bin/Release/
+!! samples/Hexalith.EventStore.Sample.BlazorUI/obj/
+!! samples/Hexalith.EventStore.Sample.Contracts/bin/Debug/
+!! samples/Hexalith.EventStore.Sample.Contracts/bin/Release/
+!! samples/Hexalith.EventStore.Sample.Contracts/obj/
+!! samples/Hexalith.EventStore.Sample.Tests/bin/Release/
+!! samples/Hexalith.EventStore.Sample.Tests/obj/
+!! samples/Hexalith.EventStore.Sample/bin/Debug/
+!! samples/Hexalith.EventStore.Sample/bin/Release/
+!! samples/Hexalith.EventStore.Sample/obj/
+!! src/Hexalith.EventStore.Admin.Abstractions/bin/Debug/
+!! src/Hexalith.EventStore.Admin.Abstractions/bin/Release/
+!! src/Hexalith.EventStore.Admin.Abstractions/obj/
+!! src/Hexalith.EventStore.Admin.Cli/bin/Release/
+!! src/Hexalith.EventStore.Admin.Cli/obj/
+!! src/Hexalith.EventStore.Admin.Mcp/obj/
+!! src/Hexalith.EventStore.Admin.Server.Host/bin/Debug/
+!! src/Hexalith.EventStore.Admin.Server.Host/obj/
+!! src/Hexalith.EventStore.Admin.Server/bin/Debug/
+!! src/Hexalith.EventStore.Admin.Server/bin/Release/
+!! src/Hexalith.EventStore.Admin.Server/obj/
+!! src/Hexalith.EventStore.Admin.UI/bin/Debug/
+!! src/Hexalith.EventStore.Admin.UI/obj/
+!! src/Hexalith.EventStore.AppHost/bin/Debug/
+!! src/Hexalith.EventStore.AppHost/obj/
+!! src/Hexalith.EventStore.Aspire/bin/Debug/
+!! src/Hexalith.EventStore.Aspire/bin/Release/
+!! src/Hexalith.EventStore.Aspire/obj/
+!! src/Hexalith.EventStore.Client/bin/Debug/
+!! src/Hexalith.EventStore.Client/bin/Release/
+!! src/Hexalith.EventStore.Client/obj/
+!! src/Hexalith.EventStore.Contracts/bin/Debug/
+!! src/Hexalith.EventStore.Contracts/bin/Release/
+!! src/Hexalith.EventStore.Contracts/obj/
+!! src/Hexalith.EventStore.DomainService/bin/Debug/
+!! src/Hexalith.EventStore.DomainService/bin/Release/
+!! src/Hexalith.EventStore.DomainService/obj/
+!! src/Hexalith.EventStore.Gateway/bin/Debug/
+!! src/Hexalith.EventStore.Gateway/bin/Release/
+!! src/Hexalith.EventStore.Gateway/obj/
+!! src/Hexalith.EventStore.RestApi.Generators/bin/Debug/
+!! src/Hexalith.EventStore.RestApi.Generators/bin/Release/
+!! src/Hexalith.EventStore.RestApi.Generators/obj/
+!! src/Hexalith.EventStore.Server/bin/Debug/
+!! src/Hexalith.EventStore.Server/bin/Release/
+!! src/Hexalith.EventStore.Server/obj/
+!! src/Hexalith.EventStore.ServiceDefaults/bin/Debug/
+!! src/Hexalith.EventStore.ServiceDefaults/bin/Release/
+!! src/Hexalith.EventStore.ServiceDefaults/obj/
+!! src/Hexalith.EventStore.SignalR/bin/Debug/
+!! src/Hexalith.EventStore.SignalR/bin/Release/
+!! src/Hexalith.EventStore.SignalR/obj/
+!! src/Hexalith.EventStore.Testing.Integration/bin/Release/
+!! src/Hexalith.EventStore.Testing.Integration/obj/
+!! src/Hexalith.EventStore.Testing/bin/Debug/
+!! src/Hexalith.EventStore.Testing/bin/Release/
+!! src/Hexalith.EventStore.Testing/obj/
+!! src/Hexalith.EventStore/bin/Debug/
+!! src/Hexalith.EventStore/bin/Release/
+!! src/Hexalith.EventStore/obj/
+!! tests/Hexalith.EventStore.Admin.Abstractions.Tests/bin/Release/
+!! tests/Hexalith.EventStore.Admin.Abstractions.Tests/obj/
+!! tests/Hexalith.EventStore.Admin.Cli.Tests/bin/Release/
+!! tests/Hexalith.EventStore.Admin.Cli.Tests/obj/
+!! tests/Hexalith.EventStore.Admin.Mcp.Tests/bin/Release/
+!! tests/Hexalith.EventStore.Admin.Mcp.Tests/obj/
+!! tests/Hexalith.EventStore.Admin.Server.Host.Tests/bin/Release/
+!! tests/Hexalith.EventStore.Admin.Server.Host.Tests/obj/
+!! tests/Hexalith.EventStore.Admin.Server.Tests/bin/Release/
+!! tests/Hexalith.EventStore.Admin.Server.Tests/obj/
+!! tests/Hexalith.EventStore.Admin.UI.E2E/bin/
+!! tests/Hexalith.EventStore.Admin.UI.E2E/obj/
+!! tests/Hexalith.EventStore.Admin.UI.Tests/bin/Release/
+!! tests/Hexalith.EventStore.Admin.UI.Tests/obj/
+!! tests/Hexalith.EventStore.AppHost.Tests/bin/Debug/
+!! tests/Hexalith.EventStore.AppHost.Tests/bin/Release/
+!! tests/Hexalith.EventStore.AppHost.Tests/obj/
+!! tests/Hexalith.EventStore.Client.Tests/bin/Release/
+!! tests/Hexalith.EventStore.Client.Tests/obj/
+!! tests/Hexalith.EventStore.Contracts.Tests/bin/Release/
+!! tests/Hexalith.EventStore.Contracts.Tests/obj/
+!! tests/Hexalith.EventStore.DeferredWorkGovernance.Tests/bin/Release/
+!! tests/Hexalith.EventStore.DeferredWorkGovernance.Tests/obj/
+!! tests/Hexalith.EventStore.DomainService.Tests/bin/Release/
+!! tests/Hexalith.EventStore.DomainService.Tests/obj/
+!! tests/Hexalith.EventStore.IntegrationTests/bin/Debug/
+!! tests/Hexalith.EventStore.IntegrationTests/bin/Release/
+!! tests/Hexalith.EventStore.IntegrationTests/obj/
+!! tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests/bin/Release/
+!! tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests/obj/
+!! tests/Hexalith.EventStore.QueryRouting.Tests/bin/Release/
+!! tests/Hexalith.EventStore.QueryRouting.Tests/obj/
+!! tests/Hexalith.EventStore.RestApi.Generators.Tests/bin/Release/
+!! tests/Hexalith.EventStore.RestApi.Generators.Tests/obj/
+!! tests/Hexalith.EventStore.Sample.Tests/bin/Release/
+!! tests/Hexalith.EventStore.Sample.Tests/obj/
+!! tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/
+!! tests/Hexalith.EventStore.Server.LiveSidecar.Tests/obj/
+!! tests/Hexalith.EventStore.Server.Tests/bin/Release/
+!! tests/Hexalith.EventStore.Server.Tests/obj/
+!! tests/Hexalith.EventStore.SignalR.Tests/bin/Release/
+!! tests/Hexalith.EventStore.SignalR.Tests/obj/
+!! tests/Hexalith.EventStore.TestSubscriber/bin/Debug/
+!! tests/Hexalith.EventStore.TestSubscriber/bin/Release/
+!! tests/Hexalith.EventStore.TestSubscriber/obj/
+!! tests/Hexalith.EventStore.Testing.Integration.Tests/bin/Release/
+!! tests/Hexalith.EventStore.Testing.Integration.Tests/obj/
+!! tests/Hexalith.EventStore.Testing.Tests/bin/Release/
+!! tests/Hexalith.EventStore.Testing.Tests/obj/
+root-submodules:
+ 991e8ea1b39bfb8170aea9a6857c25c7c69176c1 references/Hexalith.AI.Tools (heads/main)
+ 0d8e4652b978d71d5e1ee33181b1515f5dd5413e references/Hexalith.Builds (v4.21.7-30-g0d8e465)
+ ea1fc4551dcaf8ee63fd562d77dfe0f18c57a94c references/Hexalith.Commons (v2.28.2-4-gea1fc45)
+ 7870526090a8596082e3df034ecacf4c07881a04 references/Hexalith.FrontComposer (v4.0.1-89-g78705260)
+ 1f95a72b7ab1e0224c40c45dab7dee798d380370 references/Hexalith.Memories (v2.16.2-6-g1f95a72b)
+ a5dd24f5e66324d18241de7d5521ee124eab4877 references/Hexalith.PolymorphicSerializations (v1.18.0-3-ga5dd24f)
+ ec7ec8c51eb2ccaa093ae008d2f69c1006220d5a references/Hexalith.Tenants (v3.2.18-26-gec7ec8c)
+submodule=references/Hexalith.AI.Tools head=991e8ea1b39bfb8170aea9a6857c25c7c69176c1
+submodule-status=references/Hexalith.AI.Tools:
+submodule-ignored=references/Hexalith.AI.Tools:
+submodule=references/Hexalith.Builds head=0d8e4652b978d71d5e1ee33181b1515f5dd5413e
+submodule-status=references/Hexalith.Builds:
+submodule-ignored=references/Hexalith.Builds:
+submodule=references/Hexalith.Commons head=ea1fc4551dcaf8ee63fd562d77dfe0f18c57a94c
+submodule-status=references/Hexalith.Commons:
+submodule-ignored=references/Hexalith.Commons:
+!! src/libraries/Hexalith.Commons.ServiceDefaults/bin/
+!! src/libraries/Hexalith.Commons.ServiceDefaults/obj/
+!! src/libraries/Hexalith.Commons.UniqueIds/bin/
+!! src/libraries/Hexalith.Commons.UniqueIds/obj/
+submodule=references/Hexalith.FrontComposer head=7870526090a8596082e3df034ecacf4c07881a04
+submodule-status=references/Hexalith.FrontComposer:
+submodule-ignored=references/Hexalith.FrontComposer:
+submodule=references/Hexalith.Memories head=1f95a72b7ab1e0224c40c45dab7dee798d380370
+submodule-status=references/Hexalith.Memories:
+submodule-ignored=references/Hexalith.Memories:
+submodule=references/Hexalith.PolymorphicSerializations head=a5dd24f5e66324d18241de7d5521ee124eab4877
+submodule-status=references/Hexalith.PolymorphicSerializations:
+submodule-ignored=references/Hexalith.PolymorphicSerializations:
+submodule=references/Hexalith.Tenants head=ec7ec8c51eb2ccaa093ae008d2f69c1006220d5a
+submodule-status=references/Hexalith.Tenants:
+submodule-ignored=references/Hexalith.Tenants:
+!! src/Hexalith.Tenants.Api/bin/Debug/
+!! src/Hexalith.Tenants.Api/obj/
+!! src/Hexalith.Tenants.Contracts/bin/Debug/
+!! src/Hexalith.Tenants.Contracts/obj/
+!! src/Hexalith.Tenants.Server/bin/Debug/
+!! src/Hexalith.Tenants.Server/obj/
+!! src/Hexalith.Tenants/bin/Debug/
+!! src/Hexalith.Tenants/obj/

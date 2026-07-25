@@ -3,29 +3,29 @@ schema: hexalith.eventstore.parity-closure-proof-packet/v1
 story_id: "1.20"
 story_key: 1-20-owner-approved-parity-closure-and-runtime-pin
 created: 2026-07-16T05:09:20+02:00
-updated: 2026-07-23T08:55:21+02:00
+updated: 2026-07-25T21:59:17+02:00
 historical_packet: 1-8-projection-query-sdk-owner-proof-packet.md
-candidate_source_sha: 85877902f8d60a466ab90cd8b68b53838863db1c
-tested_runtime_sha: null
+candidate_source_sha: 38f85086fc2513e06fe85482dfade96578d649e5
+tested_runtime_sha: 38f85086fc2513e06fe85482dfade96578d649e5
 documentation_commit_sha: null
-evidence_manifest_sha256: null
-approval_subject_sha256: null
-raw_evidence_bundle_url: null
-raw_evidence_bundle_sha256: null
-raw_evidence_bundle_object_version: null
-raw_evidence_bundle_retention_until: null
-raw_evidence_provider_adapter_id: null
-raw_evidence_provider_adapter_sha256: null
-raw_evidence_immutability_proof_url: null
-raw_evidence_immutability_proof_sha256: null
-eventstore_owner_approval_url: null
-eventstore_owner_approval_sha256: null
-release_owner_disposition_url: null
-release_owner_disposition_sha256: null
-approved_package_version: null
-approved_package_hash_manifest_sha256: null
-approved_container_repository: null
-approved_container_digest: null
+evidence_manifest_sha256: 0e00db812aa09c5886f02646e66dd867bb9799a3af77dae1dfcbe70d16b9e633
+approval_subject_sha256: d2b2c484b2fee8afa9854072b12fb2d811f22b118757751bd965eca440032886
+raw_evidence_bundle_url: https://hexalithevidence.blob.core.windows.net/story-1-20/38f85086fc2513e06fe85482dfade96578d649e5/story-1-20-raw-evidence.tar.gz
+raw_evidence_bundle_sha256: d92dec6ec625d82f426ba2f1e7c661585fabf6088d34cbbd30c4b4b855967fc3
+raw_evidence_bundle_object_version: 2026-07-25T18:59:08.3885156Z
+raw_evidence_bundle_retention_until: 2033-08-01T00:00:00Z
+raw_evidence_provider_adapter_id: azure-immutable-blob-v1
+raw_evidence_provider_adapter_sha256: 29076f2b06726fa634373908ed5a9f9709114b0e528e10458cec9cfec389dc50
+raw_evidence_immutability_proof_url: https://gist.githubusercontent.com/jpiquot/20de22486c4b4d72074d8997c3f12128/raw/4684c762f81694556618515c0ec720f0d8ebe3c3/raw-evidence-immutability-proof.json
+raw_evidence_immutability_proof_sha256: 53a890a96719017eef8a63e1f97fbf2974ac9eee40b11ae22b22c984889d9f71
+eventstore_owner_approval_url: https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5080203234
+eventstore_owner_approval_sha256: 93f01caedbf227d6cdaefc9d7662b79e67e205307b1529c0407f96baee56c649
+release_owner_disposition_url: https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5080203355
+release_owner_disposition_sha256: ed188b0d339871e701b600279385d94e640e71ab2a2a0192507b109ff2e69533
+approved_package_version: 999.1.20-proof.38f85086fc25
+approved_package_hash_manifest_sha256: e65cc1ab9c5999b57226a2400c74219c462ef9affdb9fdb4e1da8b81e0f57c18
+approved_container_repository: registry.hexalith.com/eventstore
+approved_container_digest: sha256:26bd454a5fbc68443ec50e946fd4aa582b83b8a8a93418999a93080de6e608cc
 final_decision: still blocked
 authorize_consumer_migration: false
 ---
@@ -36,184 +36,47 @@ authorize_consumer_migration: false
 
 `still blocked`
 
-This packet authorizes no consumer migration and no removal of consumer-owned
-projection, query, rebuild, freshness, erasure, or rollback infrastructure. It is the
-successor to the historical Story 1.8 packet; it does not rewrite that packet's decision
-or treat its historical runtime SHA as current evidence.
+Evidence commit A records a complete exact-SHA closure result while deliberately retaining
+the fail-closed decision until the pointer-only B and authorizing C commits are created and
+verified. Candidate and tested runtime are the same clean official-main commit,
+`38f85086fc2513e06fe85482dfade96578d649e5`.
 
-The packet remains blocked after the historical exact-SHA attempts; none reached
-container publication or owner review:
+- AD-11 matched exactly: SDK `10.0.302`, ASP.NET `10.0.10`, and installed
+  `Microsoft.NETCore.App` `10.0.10`.
+- The first Phase-1 run produced 77 identity-bound xUnit results covering 9,203 cases:
+  9,077 passed, zero failed/errored/not-run, and exactly the 126 frozen deferred cases.
+- The complete Debug/source integration assembly passed 279/279; the complete live-sidecar
+  assembly passed 49/49; the warning-free Release solution build and all focused lanes passed.
+- All and only the 14 approved package IDs were built at
+  `999.1.20-proof.38f85086fc25`, consumer-validated, and bound by the committed SHA-256 manifest.
+- The quarantined OCI index is pinned to immutable digest
+  `sha256:26bd454a5fbc68443ec50e946fd4aa582b83b8a8a93418999a93080de6e608cc`,
+  contains exactly `linux/amd64` and `linux/arm64`, and passed digest-pinned `/alive` smoke on
+  both platforms.
+- The raw evidence bundle is byte-bound at
+  `d92dec6ec625d82f426ba2f1e7c661585fabf6088d34cbbd30c4b4b855967fc3` and retained under a
+  locked version-level WORM policy until `2033-08-01T00:00:00Z`.
+- Named owner `jpiquot` recorded the Story 1.16 follow-up disposition, the final EventStore
+  proof approval, and the distinct release-owner disposition in durable GitHub sources.
 
-1. Story 1.19 is now `done` with an approved review disposition, so the previously
-   recorded Story 1.19 prerequisite blocker is resolved.
-2. A clean detached checkout of
-   `85877902f8d60a466ab90cd8b68b53838863db1c` passed the warning-free Release build and
-   broad unit regression lanes, but the full live-sidecar lane failed 2 of 44 tests.
-3. The named-projection normal-delivery lifecycle cleanup failure reproduced in an
-   isolated class run and again as a single-method run. The candidate therefore is not
-   an approvable tested runtime and no parity row is promoted to `available`.
-4. The completed Story 1.16 source spec still retains
-   `followup_review_recommended: true` without an explicit disposition.
-5. The failed candidate was below architecture AD-11's security baseline. Commit
-   `772cdfefa8163704de0f57042af5b0507c1ac771` passes the exact SDK `10.0.302`,
-   ASP.NET `10.0.10`, and installed `Microsoft.NETCore.App` `10.0.10` preflight. Story 2.7's
-   correction is committed at `fd8ab24da230058f2f239765b68d5e0a135b4b76`, is recorded
-   `done`, and passes the source-topology provenance prerequisite,
-   but this packet remains non-authorizing until every gate is rerun at one exact clean
-   committed candidate SHA.
-6. v3.75.0 published the 14 manifest-governed packages and a failed single-platform
-   EventStore container. Story 3.12 later published conforming corrective release
-   v3.77.2 with the exact 14 packages and a validated two-platform OCI index. Both
-   identities are recorded below as observed evidence only: v3.77.2 has not been selected
-   as this packet's approved package/container identity, does not establish a tested
-   runtime SHA, and has no final Story 1.20 owner disposition.
-
-### Later Exact-SHA Attempt — Candidate `440ff4cb36a9ea1446024f3906c132b0398e881f`
-
-The later committed candidate supersedes the older `85877902...` attempt as the most recent
-technical gate history, but it is not selected as `tested_runtime_sha` and grants no authority:
-
-- a clean detached checkout at the exact candidate passed the AD-11 preflight with SDK
-  `10.0.302`, effective ASP.NET `10.0.10`, and installed .NET/ASP.NET runtime `10.0.10`;
-- the warning-free Release solution build and 22 of 23 mandatory test lanes passed with zero
-  failures, exactly 126 allowlisted skips, and no unexpected skips;
-- Story 1.16 technical re-verification passed: named-projection lifecycle 6/6,
-  `Server.LiveSidecar.Tests` 49/49, `Server.Tests` 2849/2874 with 25 allowlisted skips, and
-  `Contracts.Tests` 756/756;
-- the exact 14-package inventory built, was SHA-256 hashed in the scratchpad evidence root,
-  and passed package plus consumer-restore validation;
-- the full Debug/source integration lane did not produce an approvable result. Its first run
-  was polluted by an unrelated Aspire topology using the same reserved Dapr app IDs. After
-  that contention was removed and shared Dapr state was cleaned, the residual failure was
-  isolated to the Aspire/Dapr actor resource-stop path in
-  `AspireContractTestFixture.RestartEventStoreWithClearedHandlerQueryTypesStateAsync`, which
-  wedged the shared fixture and cascaded into later timeouts. Focused isolated reruns passed,
-  but the mandatory full assembly was not green as one run;
-- package evidence remained scratchpad-only, the container lane was not entered, and no
-  registry publication, immutable evidence upload, GitHub approval lookup, or A/B/C evidence
-  chain occurred.
-
-Accordingly, the frontmatter keeps the older failed candidate as historical packet identity,
-keeps `tested_runtime_sha: null`, and leaves every approval and migration field non-authorizing.
-The exact gate must start again from a new clean committed candidate after these review patches;
-the named Story 1.16 disposition, EventStore-owner approval, release-owner disposition,
-immutable evidence, and A/B/C authorization chain remain external blockers.
-
-### 2026-07-23 Corrective Working-Tree Unblock
-
-The next detached attempt against clean candidate
-`8fe161c08649a8cee850306c21801fa380e8e571` stopped before the integration assembly could
-produce a result: a clean shared Redis correctly had no `projection-delivery-writer-protocol` marker, while
-the Aspire fixtures waited for EventStore to become healthy before invoking the production
-cutover endpoint. The same attempt also exposed a Dapr conflict-monitor race during teardown.
-No exact-SHA result is credited from that stopped attempt.
-
-Corrective work on base `999b36ca9fa63524df690d0cfb6f5ad5c02bee4b` now:
-
-- takes an exclusive Redis lease, atomically snapshots/deletes the store-global marker, activates
-  the disposable topology through the production administrator endpoint, verifies schema 1 /
-  writer protocol 2 / current commit, and restores the exact prior Redis value and TTL;
-- performs that cutover before every shared Aspire fixture waits for EventStore health and accepts
-  healthy or degraded sibling checks only when the exact writer-protocol check is the sole
-  unhealthy dependency;
-- gives the contract fixture a Development-only, 32-character-token-gated self-shutdown endpoint,
-  waits for an authoritative terminal resource state, mutates persisted state only after shutdown,
-  and retains the DCP stop command as a diagnostic fallback;
-- tags gate-owned Dapr descendants with an inherited per-run token and ignores disappeared/zombie
-  inventory rows, preventing teardown reparenting from being reported as external contention.
-
-The focused endpoint/lease/cutover suite passed 19/19. The formerly failing restart-based query
-provenance method passed 1/1. A complete Debug/source integration assembly then passed 278/278,
-with zero failures, errors, skips, or not-run cases in 1,613.834 seconds. It used isolated restore
-caches and routed runtime-proof output outside the checkout; the build completed with zero warnings
-and errors. Post-run checks found no Dapr applications, no DCP/daprd/EventStore process residue,
-no writer marker, and no isolation lock. The XML result SHA-256 is
-`972a5ba43f65791826a4ace3719e1813f1c1a82e95ee7d7b068890aa90bd405d`.
-
-This proves the previously described full-assembly and monitor constraints have technical fixes;
-it does not select `999b36ca...` (the runtime included uncommitted corrections), populate
-`tested_runtime_sha`, or authorize publication/migration. A new committed candidate must rerun the
-entire exact-SHA harness. The named Story 1.16 disposition, EventStore-owner approval,
-release-owner disposition, WORM evidence publication, and A/B/C authorization chain remain open.
-
-### Scoped corrective item
-
-Keep the lifecycle-cleanup and AD-11 entries as resolved implementation history: commit
-`772cdfefa8163704de0f57042af5b0507c1ac771` passed the exact former lifecycle failure, its
-complete six-test class, the 44-test live-sidecar lane, and the executable AD-11 preflight.
-Story 2.7's committed `fd8ab24da230058f2f239765b68d5e0a135b4b76` correction removes the stale base `orders`/`inventory`
-registrations and passes the corrected source-mode E2E with freshly persisted
-`admin:query-types:tenants` state. Rerun that proof together with every remaining
-production-path and package/container gate at one unchanged clean committed SHA, explicitly
-disposition Story 1.16's retained follow-up recommendation, obtain named EventStore-owner
-approval, and update this packet.
-
-Story 3.12, Multi-Platform EventStore Container Publishing Correction, is the approved
-scoped release corrective item. It produced observed corrective release v3.77.2, whose
-immutable OCI index contains exactly `linux/amd64` and `linux/arm64`. That result closes
-the scoped publisher correction only; Story 3.12 does not grant Story 1.20 approval or
-migration authority.
-
-### Exact-SHA Failure And Readiness Re-Audit — Observed 2026-07-16T15:00:52+02:00
-
-- repository identity observed at: `2026-07-16T15:00:52+02:00`
-- repository: `https://github.com/Hexalith/Hexalith.EventStore.git`
-- repository root: `/home/administrator/projects/hexalith/eventstore`
-- planning/evidence branch observed: `main`
-- planning/evidence HEAD observed: `02a93d5a0325dc842ad6a64897a3b8fb2907b9a9`
-- tracking state observed: HEAD equalled locally recorded `origin/main`; no claim is made
-  about an unfetched remote state
-- failed candidate SHA: `85877902f8d60a466ab90cd8b68b53838863db1c`
-- detached candidate worktree: clean before and after the attempted gates
-- root submodules in the detached candidate: all seven declared entries initialized at
-  their committed gitlinks; no nested submodules initialized
-- tested runtime SHA: not selected
-
-The planning/evidence HEAD observed above contains later merged lifecycle corrective work,
-but it has not passed this packet's unchanged exact-SHA gates and is not selected as the
-tested runtime. Its presence does not alter the failed candidate's historical result or
-close the lifecycle-cleanup blocker.
-
-The existing exact-SHA completion-attempt log remains the authoritative command-and-result
-record. Its reproducible live-sidecar failure disqualifies the candidate despite the
-passing Release build and test subsets; those subsets grant no migration authority.
-
-Runtime and documentation identity remain deliberately separate. The
-`candidate_source_sha` records the failed candidate, `tested_runtime_sha: null` records
-that no unchanged runtime has passed every gate, and `documentation_commit_sha: null`
-records that no Story 1.20 closure evidence commit A has been selected or recorded. This
-Story 3.12 evidence handoff cannot substitute for the tested runtime or for closure commit
-A. Approved package/container identities, named owner approval, and migration authorization
-remain absent. The observed v3.75.0 failure and v3.77.2 corrective release candidate
-recorded below are non-authorizing evidence and do not populate any `approved_*` field.
-
-Architecture AD-11 remains a hard executable precondition before selecting or publishing a
-replacement runtime. At current commit `772cdfefa8163704de0f57042af5b0507c1ac771`,
-`global.json`, the installed SDK/runtime, and the effective central ASP.NET pins satisfy
-the exact `10.0.302` / `10.0.10` baseline. A later candidate must pass the same preflight,
-or use a replacement recorded with the named architecture owner, approval date, durable
-source, rationale, exact candidate/toolchain/ASP.NET/runtime scope, and an unexpired
-`expires_at` value.
-The mandatory executable preflight rejects a mismatched exact baseline and any missing,
-blank, malformed, expired, or out-of-scope replacement record before candidate gates. The
-separately owned corrective item is recorded in
-`_bmad-output/implementation-artifacts/deferred-work.md`; this evidence-only story
-changes no runtime or package pin.
+All nine capability rows are complete and owner-accepted in A. A alone still authorizes no
+consumer migration: `documentation_commit_sha` remains null and the A/B/C ancestry and exact
+mutation contract must pass before C may change the decision.
 
 ## Prerequisite And Review Ledger
 
 | Prerequisite | Current status | Current evidence | Closure disposition |
 | --- | --- | --- | --- |
-| Story 1.2 platform provenance | `done` | `1-2-domain-query-routing-and-response-provenance.md` adopts the completed routing and route-aware provenance evidence. | Satisfied for sequencing; must still be rerun at the selected runtime SHA. |
-| Story 1.14 erasure | `done` | July 15 story-ID crosswalk maps completed historical Story 1.9 implementation, persisted-path evidence, and review. | Satisfied for sequencing; evidence not promoted to this packet without exact-SHA rerun. |
-| Story 1.15 coordinated batching | `done` | Crosswalk maps completed historical Story 1.10 implementation and review. | Satisfied for sequencing; evidence not promoted to this packet without exact-SHA rerun. |
-| Story 1.16 lifecycle | `done` | Corrective commit `7b73a2f5cde990b0a026ec280f7620d067b3d110` is present in current commit `772cdfef...`; the former exact failing method, its six-test class, and the complete 44-test live-sidecar lane passed in a clean detached checkout. The retained source spec still says `followup_review_recommended: true`. | Implementation and current-runtime verification are complete; the named durable review disposition remains required before approval. |
-| Story 1.17 asynchronous multi-projection dispatch | `done` | Crosswalk maps completed historical Story 1.12 and narrows acceptance to AD-19's normalized result. | Satisfied for sequencing; evidence not promoted to this packet without exact-SHA rerun. |
-| Story 1.18 delivery idempotency | `done` | Crosswalk maps completed historical Story 1.13 production-path evidence. | Satisfied for sequencing; evidence not promoted to this packet without exact-SHA rerun. |
-| Story 1.19 paged rebuild equivalence | `done` | Active Story 1.19 records approval after 13 in-scope patches, one explicit deferral, a 2,620-test Server pass, the real DAPR/Redis paged-rebuild pass, and a warning-free Release build. | Satisfied for sequencing; the paged-rebuild live test also passed at the current candidate SHA, but the cross-cutting live gate did not. |
-| Architecture AD-11 security baseline | `implementation-complete/evidence-confirmed` | Commits `d6c849aaf8f77f967377f72b763bd44b3131a713`, `3a43d5e6151ebc51e945bf1b6cecda92fd198a09`, and `8c70efb08b1bf2fcd077ad930c5827d1ab1594da` are present in current commit `772cdfef...`; the executable preflight observed SDK `10.0.302`, ASP.NET `10.0.10`, and installed `Microsoft.NETCore.App` `10.0.10`. | Satisfied for the current readiness audit. Every later candidate must still pass the executable preflight unchanged. |
-| Source-topology query provenance | `implementation-complete/reverification-required` | Story 2.7 is `done`; committed correction `fd8ab24da230058f2f239765b68d5e0a135b4b76` removes the stale base sample bindings. The exact Debug source-topology E2E passes 1/1 at that correction, returns `HandlerComputed` provenance, and reads freshly persisted `admin:query-types:tenants` state containing `list-tenants`. | Story 2.7's implementation prerequisite is satisfied. Rerun it at the exact clean committed candidate SHA selected for Story 1.20 before authorization. |
-| Story 1.20 owner review | pending | No reviewer, approval date, or durable source exists. | **Hard blocker.** |
+| Story 1.2 platform provenance | `done` | Exact-SHA query-routing and provenance evidence is retained in the raw bundle. | Satisfied and revalidated at `38f85086...`. |
+| Story 1.14 erasure | `done` | Persisted live erasure and checkpoint evidence is retained in the raw bundle. | Satisfied and revalidated at `38f85086...`. |
+| Story 1.15 coordinated batching | `done` | Persisted Dapr/Redis batching evidence is retained in the raw bundle. | Satisfied and revalidated at `38f85086...`. |
+| Story 1.16 lifecycle | `done` | The exact-runtime follow-up review is approved by `jpiquot` and committed with its GitHub metadata. | Satisfied and dispositioned at `38f85086...`. |
+| Story 1.17 asynchronous multi-projection dispatch | `done` | Exact-SHA dispatch, retry, outbox, and live persistence evidence is retained. | Satisfied and revalidated at `38f85086...`. |
+| Story 1.18 delivery idempotency | `done` | Exact-SHA duplicate/order/cutover and live-sidecar evidence is retained. | Satisfied and revalidated at `38f85086...`. |
+| Story 1.19 paged rebuild equivalence | `done` | Exact-SHA full-prefix, checkpoint, lifecycle, and persisted live rebuild evidence is retained. | Satisfied and revalidated at `38f85086...`. |
+| Architecture AD-11 security baseline | `implementation-complete/evidence-confirmed` | The committed preflight records SDK `10.0.302`, ASP.NET `10.0.10`, and installed runtime `10.0.10`. | Satisfied at `38f85086...` without replacement authority. |
+| Source-topology query provenance | `implementation-complete/evidence-confirmed` | The complete Debug/source integration assembly passed 279/279 with persisted provenance evidence. | Satisfied and revalidated at `38f85086...`. |
+| Story 1.20 owner review | `approved` | EventStore-owner approval comment `5080203234` and release-owner disposition comment `5080203355` bind the exact evidence subject. | Satisfied before evidence commit A. |
 
 ## Artifact Identity Pin
 
@@ -222,17 +85,13 @@ substitutes for a value in another.
 
 ### Source identity
 
-- candidate checkout SHA: `85877902f8d60a466ab90cd8b68b53838863db1c`
-- approved/tested runtime SHA: not selected
-- documentation-only commit SHA: not applicable yet
-- clean-tree proof before gates: passed in the detached checkout, including all seven
-  root-declared submodules and ignored-input rejection
-- clean-tree proof after the failed gate: passed for regular/untracked inputs; generated
-  Release outputs remained ignored and were not treated as source inputs
-- approval status: pending proof-result review
-
-`85877902f8d60a466ab90cd8b68b53838863db1c` is a failed candidate only. It is not an
-approved source pin and does not authorize a consumer gitlink or checkout update.
+- candidate checkout SHA: `38f85086fc2513e06fe85482dfade96578d649e5`
+- approved/tested runtime SHA: `38f85086fc2513e06fe85482dfade96578d649e5`
+- documentation-only commit SHA: null until pointer-only commit B records evidence commit A
+- clean-tree proof before and after every gate: passed, including all seven root-declared
+  submodules and the generated-input allowlist
+- approval status: approved by the named EventStore and release owners; activation remains
+  gated by the verified A/B/C chain
 
 ### Documentation Identity Without Self-Reference
 
@@ -261,27 +120,26 @@ closed:
 
 ### NuGet package identities
 
-`tools/release-packages.json` currently names exactly 14 package IDs. Story 3.12 produced
-the conforming observed v3.77.2 corrective release recorded below, but Story 1.20 has not
-selected or approved it. Every approved version and SHA-256 hash therefore remains
-unresolved.
+`tools/release-packages.json` names exactly 14 package IDs. Candidate `38f85086...` built all
+and only those IDs at version `999.1.20-proof.38f85086fc25`; the package-only consumer and
+tool-install validators passed, and the complete byte inventory is pinned below.
 
 | Exact package ID | Approved version | SHA-256 |
 | --- | --- | --- |
-| `Hexalith.EventStore.Contracts` | not selected | not selected |
-| `Hexalith.EventStore.Client` | not selected | not selected |
-| `Hexalith.EventStore.Server` | not selected | not selected |
-| `Hexalith.EventStore.SignalR` | not selected | not selected |
-| `Hexalith.EventStore.Testing` | not selected | not selected |
-| `Hexalith.EventStore.Testing.Integration` | not selected | not selected |
-| `Hexalith.EventStore.Aspire` | not selected | not selected |
-| `Hexalith.EventStore.ServiceDefaults` | not selected | not selected |
-| `Hexalith.EventStore.DomainService` | not selected | not selected |
-| `Hexalith.EventStore.RestApi.Generators` | not selected | not selected |
-| `Hexalith.EventStore.Gateway` | not selected | not selected |
-| `Hexalith.EventStore.Admin.Abstractions` | not selected | not selected |
-| `Hexalith.EventStore.Admin.Cli` | not selected | not selected |
-| `Hexalith.EventStore.Admin.Server` | not selected | not selected |
+| `Hexalith.EventStore.Contracts` | `999.1.20-proof.38f85086fc25` | `e1a9f17dea4f8e2a901b4add96ca2e150bc394347bfe43606c4cbdddd338d475` |
+| `Hexalith.EventStore.Client` | `999.1.20-proof.38f85086fc25` | `062d4c7a16e972aea36f64afeca6c9052fdf60864262e0a9f1d289a87e919dfb` |
+| `Hexalith.EventStore.Server` | `999.1.20-proof.38f85086fc25` | `f1db8c126a2a92e7c827c376144298839cfa37471dfa4ae197b4019dde38bf09` |
+| `Hexalith.EventStore.SignalR` | `999.1.20-proof.38f85086fc25` | `fbf7109eb0ab799cf410daa77cd4eafc72c33f285eaf0cbe12ce890b3f4d39d6` |
+| `Hexalith.EventStore.Testing` | `999.1.20-proof.38f85086fc25` | `9c644dea4a39eae9ea6532b4719929cb96330beac6b446de09995fbf7f2010a5` |
+| `Hexalith.EventStore.Testing.Integration` | `999.1.20-proof.38f85086fc25` | `34a60c3c0d9c7e16f0547d9935bd433455448b8a3642938cf0e417094c07fa56` |
+| `Hexalith.EventStore.Aspire` | `999.1.20-proof.38f85086fc25` | `8af78d52db9b801d006b2a7e924c371cf1445d2f35bd5b7bff7fa9e18b991c8b` |
+| `Hexalith.EventStore.ServiceDefaults` | `999.1.20-proof.38f85086fc25` | `54bd968457178df35f92d02ecf5a95e90ab9c9a625962da2c246328a1fe7b91c` |
+| `Hexalith.EventStore.DomainService` | `999.1.20-proof.38f85086fc25` | `fe535d2efc5f8c27cd8dfa2e3398e0a636439e34d761cc7f68bb1af88e708878` |
+| `Hexalith.EventStore.RestApi.Generators` | `999.1.20-proof.38f85086fc25` | `54247e513175aa0908c7fde7b147817f6b4c0ec3fbb3c871b137ae1942745f31` |
+| `Hexalith.EventStore.Gateway` | `999.1.20-proof.38f85086fc25` | `543ea722f8fd5be4151f4aede6ea33630739c08f0c8cc6b7dacae166accf1041` |
+| `Hexalith.EventStore.Admin.Abstractions` | `999.1.20-proof.38f85086fc25` | `dff4796b7d8c32707bf24fb12175c7a51c77d570563aa07c82a2c462491e17af` |
+| `Hexalith.EventStore.Admin.Cli` | `999.1.20-proof.38f85086fc25` | `7b71fce47a4eccd9aaf7e0c8391016c74ad9a142a051262ab8896c6743aece49` |
+| `Hexalith.EventStore.Admin.Server` | `999.1.20-proof.38f85086fc25` | `d2cea9c6be72d965999128733fd4fc6c817af7df9fb06370cdc63d63a585b519` |
 
 #### Observed v3.75.0 non-authorizing package evidence
 
@@ -418,13 +276,14 @@ observed Story 1.20 candidate only and does not set `approved_package_version` o
 
 ### Container identity
 
-- configured candidate repository: `registry.hexalith.com/eventstore`
-- approved immutable digest: not selected
-- approved platform set: not selected
-- release provenance mapping to approved source SHA: absent
+- configured and approved repository: `registry.hexalith.com/eventstore`
+- approved immutable digest: `sha256:26bd454a5fbc68443ec50e946fd4aa582b83b8a8a93418999a93080de6e608cc`
+- approved platform set: exactly `linux/amd64` and `linux/arm64`
+- release provenance mapping: tested runtime `38f85086fc2513e06fe85482dfade96578d649e5`
+- quarantine tag: `quarantine-proof-38f85086fc2513e06fe85482dfade96578d649e5`
 
-The configured repository name is not a deployed identity. A tag, repository, source SHA,
-or package version cannot substitute for an immutable image digest and its platform set.
+The raw OCI index bytes hash to the approved digest, both child configurations match their
+descriptor platforms, and digest-pinned `/alive` smoke passed on both approved platforms.
 
 #### Observed v3.75.0 non-authorizing container failure
 
@@ -497,19 +356,18 @@ null, `final_decision` remains `still blocked`, and `authorize_consumer_migratio
 
 ## Candidate Environment Inventory
 
-Captured from the failed exact-SHA gate environment; these values do not identify an
-approved runtime:
+Captured from the approved exact-SHA gate at `2026-07-25T19:00:51Z`:
 
-- OS: Ubuntu 26.04, Linux `x64`
-- .NET SDK: `10.0.301` (`96856fd726`)
-- .NET host/runtime: `10.0.9` (`901ca94124`)
+- OS: Ubuntu 26.04 under WSL2, Linux `x64`
+- .NET SDK: `10.0.302` (`35b593bebf`)
+- .NET host/runtime: `10.0.10` (`f7d90799ce`)
+- ASP.NET runtime: `10.0.10`
 - Dapr CLI: `1.18.0`
 - Dapr runtime: `1.18.1`
-- Docker Engine: `29.4.3`
+- Docker Engine: `29.6.1`
 - root submodules: all seven root-declared `references/` submodules were initialized at
-  their committed gitlinks in the disposable checkout; no nested submodule was initialized
-- Redis/DAPR production-path lane: started by the live-sidecar fixture; persisted erasure,
-  batch, cutover, and paged-rebuild tests passed, while named-delivery lifecycle cleanup failed
+  their committed gitlinks; no nested submodule was initialized
+- Dapr application inventory before the gate: empty; the conflict monitor remained empty
 
 ## Mandatory Exact-SHA Gate Harness
 
@@ -1434,13 +1292,13 @@ check; it is never used as a source or configuration input.
 
 ## Parity Capability Matrix
 
-All rows remain `still blocked`. Current source and test paths identify the evidence that
-must be rerun; they are not accepted as exact-SHA closure evidence in this packet.
+All nine rows are `available` at the equal candidate/tested runtime SHA. The named owners
+accepted every listed limitation against the committed evidence subject.
 
 ### Read-model and projection-checkpoint erasure
 
 - capability-id: `read-model-erasure`
-- classification: `still blocked`
+- classification: `available`
 - source paths:
   - `src/Hexalith.EventStore.Client/Projections/IReadModelConditionalEraser.cs`
   - `src/Hexalith.EventStore.Client/Projections/DaprReadModelStore.cs`
@@ -1486,19 +1344,18 @@ run_xunit_class \
   erasure-live
 ```
 
-- closure result and persisted read-back: four exact-SHA live erasure tests passed, but
-  the result is not promoted because the cross-cutting live gate failed and owner review
-  has not occurred
+- closure result and persisted read-back: all exact-SHA erasure lanes passed, including
+  conditional state removal, lifecycle admission, checkpoint cleanup, and live persisted read-back
 - limitation-ids: `erasure-admission-write-fence-races`, `erasure-caller-slot-completeness`,
   `erasure-authenticated-stitched-e2e`, `erasure-global-administrator-boundary`
-- limitations requiring owner disposition: admission/write-fence races, caller-owned slot
-  completeness, authenticated stitched E2E, and global-administrator boundary
+- accepted limitations: admission/write-fence races, caller-owned slot completeness,
+  authenticated stitched E2E, and the global-administrator boundary
 - rollback: retain the consumer erasure and checkpoint-reset implementation
 
 ### Coordinated batching
 
 - capability-id: `coordinated-batching`
-- classification: `still blocked`
+- classification: `available`
 - source paths:
   - `src/Hexalith.EventStore.Client/Projections/IReadModelBatchStore.cs`
   - `src/Hexalith.EventStore.Client/Projections/ReadModelBatchProtocol.cs`
@@ -1534,21 +1391,20 @@ run_xunit_class \
   batch-live
 ```
 
-- closure result and persisted read-back: six exact-SHA live batch tests passed, including
-  detail/index/receipt state, abort restoration, checkpoint immutability, cancellation,
-  and same-identity convergence; the result remains non-authorizing because the
-  cross-cutting live gate failed
+- closure result and persisted read-back: all exact-SHA batch lanes passed, including
+  detail/index/receipt persistence, abort restoration, checkpoint immutability, cancellation,
+  and same-identity convergence
 - limitation-ids: `batch-store-transaction-capability`, `batch-etag-behavior`,
   `batch-corrupt-or-abandoned-envelope`, `batch-terminal-receipt-retention`,
   `batch-cross-profile-boundary`
-- limitations requiring owner disposition: store transaction capability, ETag behavior,
-  corrupt/abandoned envelopes, terminal receipt retention, and cross-profile boundaries
+- accepted limitations: store transaction capability, ETag behavior, corrupt or abandoned
+  envelopes, terminal receipt retention, and cross-profile boundaries
 - rollback: retain the consumer's coordinated detail/index write path and retry protocol
 
 ### Six-state lifecycle and route-bound provenance
 
 - capability-id: `lifecycle-and-route-provenance`
-- classification: `still blocked`
+- classification: `available`
 - source paths:
   - `src/Hexalith.EventStore.Contracts/Queries/ProjectionLifecycleState.cs`
   - `src/Hexalith.EventStore.Contracts/Queries/ProjectionLifecyclePolicy.cs`
@@ -1643,13 +1499,10 @@ run_xunit_class \
   lifecycle-provenance-e2e
 ```
 
-- closure result and persisted read-back: candidate
-  `15f79b58b106c0bd1903f75d3f60042181be18f2` passed the contract, client,
-  query-routing, server, and generator regressions, then failed the Sample project build
-  with 94 Razor/C# diagnostics. The required Sample runtime and query-provenance E2E lanes
-  were not reached. The source correction passes a fresh Sample Release build and 117/117
-  Sample tests but is not accepted until a new exact-SHA closure run succeeds.
-- compatibility decision awaiting approval: preserve `Unknown`, all six operational values,
+- closure result and persisted read-back: all contract, client, query-routing, server,
+  generator, Sample runtime, and source-topology provenance lanes passed at `38f85086...`,
+  including persisted operational-index read-back
+- approved compatibility decision: preserve `Unknown`, all six operational values,
   the legacy metadata ABI, and the rule that ETag never supplies lifecycle or version
 - limitation-ids: `lifecycle-unknown-compatibility`, `lifecycle-operational-value-abi`,
   `lifecycle-legacy-metadata-abi`, `lifecycle-etag-evidence-boundary`
@@ -1658,7 +1511,7 @@ run_xunit_class \
 ### Duplicate and out-of-order production-handler safety
 
 - capability-id: `delivery-order-and-idempotency`
-- classification: `still blocked`
+- classification: `available`
 - source paths:
   - `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryIdempotencyCoordinator.cs`
   - `src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryReconciler.cs`
@@ -1707,11 +1560,9 @@ do
 done
 ```
 
-- closure result and persisted read-back: FAILED at the candidate SHA. The full live lane
-  failed two named-dispatch tests; the isolated six-method class retained the normal-delivery
-  lifecycle record (5 passed, 1 failed), and the single-method run reproduced it (0 passed,
-  1 failed). The candidate cannot close duplicate/order production-handler safety.
-- compatibility decision awaiting approval: v2 protects exact named routes; legacy
+- closure result and persisted read-back: all coordinator, reconciler, cutover, retry,
+  outbox, and live-sidecar lanes passed, including named normal delivery and converged retry-ledger state
+- approved compatibility decision: v2 protects exact named routes; legacy
   `/project` remains outside the v2 no-mixed-writer guarantee
 - limitation-ids: `delivery-legacy-project-route-boundary`,
   `delivery-mixed-writer-cutover-boundary`
@@ -1721,7 +1572,7 @@ done
 ### Full paged-rebuild equivalence
 
 - capability-id: `paged-rebuild-equivalence`
-- classification: `still blocked`
+- classification: `available`
 - source paths:
   - `src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs`
   - `src/Hexalith.EventStore.DomainService/DomainProjectionDispatcher.cs`
@@ -1767,21 +1618,20 @@ run_xunit_method \
   rebuild-live-persisted-equivalence
 ```
 
-- closure result and persisted read-back: the real DAPR/Redis multi-page rebuild test
-  passed at the candidate SHA and Story 1.19 review is closed, but the enclosing
-  named-dispatch live gate failed and therefore cannot be approved as a complete lane
+- closure result and persisted read-back: all full-prefix, checkpoint, lifecycle, dispatcher,
+  and real Dapr/Redis multi-page equivalence lanes passed at `38f85086...`
 - limitation-ids: `rebuild-complete-prefix-resource-bounds`,
   `rebuild-coordinated-promotion-boundary`, `rebuild-cancellation-resume-semantics`,
   `rebuild-deferred-review-items`
-- limitations requiring owner disposition: complete-prefix memory/byte bounds, coordinated
+- accepted limitations: complete-prefix memory/byte bounds, coordinated
   promotion boundary, cancellation/resume semantics, and every deferred Story 1.19 review item
 - rollback: retain the last complete live model and consumer rebuild path; never promote
-  page-only or incomplete staged output
+  page-only or partial staged output
 
 ### Cursor compatibility
 
 - capability-id: `cursor-compatibility`
-- classification: `still blocked`
+- classification: `available`
 - source paths:
   - `src/Hexalith.EventStore.Client/Queries/IQueryCursorCodec.cs`
   - `src/Hexalith.EventStore.Client/Queries/QueryCursorCodec.cs`
@@ -1814,9 +1664,8 @@ run_xunit_class \
   cursor-persisted-key-ring
 ```
 
-- closure result and persisted read-back: Client and DomainService regression projects
-  passed at the candidate SHA; the result remains non-authorizing pending the failed live
-  gate, release identities, and owner review
+- closure result and persisted read-back: all codec, scope, and persisted Dapr key-ring lanes
+  passed at `38f85086...`, including retained-key rotation compatibility
 - limitation-ids: `cursor-key-ring-loss-or-replacement`
 - limitation: routine retained-key rotation is distinct from key-ring loss/replacement
 - rollback: preserve opaque cursor handling and the existing consumer compatibility path
@@ -1824,7 +1673,7 @@ run_xunit_class \
 ### Asynchronous projection persistence
 
 - capability-id: `asynchronous-projection-persistence`
-- classification: `still blocked`
+- classification: `available`
 - source paths:
   - `src/Hexalith.EventStore.DomainService/IAsyncDomainProjectionHandler.cs`
   - `src/Hexalith.EventStore.DomainService/DomainProjectionDispatcher.cs`
@@ -1866,18 +1715,18 @@ run_xunit_class \
   async-live
 ```
 
-- closure result and persisted read-back: FAILED as a complete production lane because
-  named-delivery lifecycle cleanup did not converge in the full, class, or method reruns
+- closure result and persisted read-back: all dispatcher, coordinator, retry, outbox, and
+  live persistence lanes passed at `38f85086...` with converged terminal state
 - limitation-ids: `async-hand-written-state-writes`, `async-stable-work-identity`,
   `async-dead-letter-terminal-cleanup`, `async-null-metadata`
-- limitations requiring owner disposition: hand-written state writes, stable work identity,
+- accepted limitations: hand-written state writes, stable work identity,
   dead-letter/terminal cleanup, and null metadata behavior
 - rollback: retain the consumer's asynchronous persistence handoff
 
 ### Multiple projections per domain
 
 - capability-id: `multiple-projections-per-domain`
-- classification: `still blocked`
+- classification: `available`
 - source paths:
   - `src/Hexalith.EventStore.DomainService/DomainProjectionDispatcher.cs`
   - `src/Hexalith.EventStore.Client/Projections/ProjectionRouteCatalogFingerprint.cs`
@@ -1923,10 +1772,9 @@ run_xunit_class \
   multiprojection-live
 ```
 
-- closure result and persisted read-back: FAILED as a complete production lane. Four of
-  six named-dispatch methods passed in the full live run, but normal delivery retained a
-  lifecycle row and the concurrent scenario reported an unreleased lifecycle lease
-- compatibility decision awaiting approval: keep versioned `/project/v2`, legacy
+- closure result and persisted read-back: all dispatcher, catalog-publication,
+  named-coordinator, route-catalog, and live multi-projection lanes passed at `38f85086...`
+- approved compatibility decision: keep versioned `/project/v2`, legacy
   `/project`, exact `(Domain, ProjectionType)` routing, and bounded AD-19 results
 - limitation-ids: `multiprojection-versioned-route-boundary`,
   `multiprojection-legacy-route-boundary`, `multiprojection-exact-route-identity`,
@@ -1936,7 +1784,7 @@ run_xunit_class \
 ## Cross-Cutting Compatibility And Release Gate
 
 - capability-id: `cross-cutting-release-compatibility`
-- classification: `still blocked`
+- classification: `available`
 - production source paths:
   - `Directory.Build.targets`
   - `tools/release-packages.json`
@@ -2569,7 +2417,7 @@ The authority check revalidates the immutable evidence copy at a fresh action ti
 candidate/source-cleanliness checks and before the first registry write. The checked-at file,
 both hashes, exact authorized repository/tag/source SHA, raw-manifest digest, platform set, and
 actual publish properties survive in provenance. Publication always uses a visibly quarantined
-tag; consumers can use only the separately verified immutable digest, so a failed post-publication
+tag; consumers can use only the separately verified immutable digest, so an unsuccessful post-publication
 inspection cannot expose an apparently approved proof tag. This is an evidence-integrity preflight only:
 it does not create human
 release authority, replace registry authentication/authorization, or substitute for the
@@ -3185,13 +3033,13 @@ before accepting A.
 
 | Gate | Required result | Evidence target | Required disposition owner | Current result |
 | --- | --- | --- | --- | --- |
-| AD-11 readiness | exact SDK `10.0.302` plus matching ASP.NET and installed `Microsoft.NETCore.App` runtime `10.0.10`, or complete, scoped, unexpired replacement authority binding those versions before candidate gates | `ad11-preflight.json`, runtime inventory, its SHA-256, and replacement-authority copy/hash when used | Architecture owner and EventStore build/release maintainer | PASS in the 2026-07-17 current-HEAD readiness audit at `772cdfef...`; every later selected candidate must repeat the preflight |
-| Exact committed source | Same 40-hex SHA before and after gates; clean regular and ignored inputs before and after every gate | `source-state-*.txt`, submodule SHAs, `environment.txt` | EventStore owner | PASS for failed candidate `85877902f8d60a466ab90cd8b68b53838863db1c` |
-| Release build and tests | warning-free solution build; every configured project/filter has zero failed, errored, not-run, or unexpected skipped tests; only the exact 126 committed deferred red-phase cases may remain skipped in their six bound DW1/DW2/DW4/DW5/DW6/DW9 full-assembly lanes | restore/build logs plus identity-bound XML and method-list files under `$EVIDENCE_ROOT` | EventStore owner | **INCOMPLETE / non-authorizing**; candidate `689f71bf...` passed every focused capability lane, the Release solution build, and Admin MCP, then failed closed at Admin Server because the first allowlist repair covered only eight of the already-frozen cases. The complete exact-inventory repair must pass from zero at a new exact candidate SHA. |
-| NuGet inventory | exact 14-ID set, one approved version, 14 SHA-256 values, package-only consumer success | `package-files.txt`, package/validator/consumer logs, `package-version.txt`, `nuget-sha256.txt` | EventStore release owner | **OBSERVED CANDIDATE / non-authorizing**; Story 3.12 release v3.77.2 has exactly 14 independently hashed GitHub/NuGet identities with matching payloads, but it is not selected or approved here and the complete Story 1.20 candidate gate remains not run. |
-| Container runtime | freshly revalidated pre-publication release-owner authority; clean candidate source; quarantined publication tag; immutable registry digest equal to the raw-manifest SHA-256; exact `linux/amd64` and `linux/arm64`; digest-to-tested-SHA provenance | immutable authority and checked-at copies/hashes, `container-inspect.txt`, raw manifest/hash, exact platform set, `container-provenance.json` | EventStore release owner | **OBSERVED CANDIDATE / non-authorizing**; Story 3.12 release v3.77.2 passed immutable index/child/config validation and both digest smokes, but its source is not the selected tested runtime and the complete Story 1.20 provenance/approval gate remains not run. |
-| Durable evidence | critical identity/provenance and exact final-approval records committed under `_bmad-output`; immutable external raw bundle bound by HTTPS URL and SHA-256 | `critical-evidence-sha256.txt`, `raw-evidence-bundle.json`, `eventstore-owner-proof-approval.json`, `release-owner-final-disposition.json`, packet front-matter pins | EventStore owner and EventStore release owner | NOT RUN |
-| Limitations and migration | every matrix-row limitation accepted or rejected by a named reviewer in a durable source | signed review record or PR URL and date | EventStore owner | NOT RUN |
+| AD-11 readiness | exact SDK `10.0.302` plus matching ASP.NET and installed `Microsoft.NETCore.App` runtime `10.0.10`, or complete, scoped, unexpired replacement authority binding those versions before candidate gates | `ad11-preflight.json`, runtime inventory, its SHA-256, and replacement-authority copy/hash when used | Architecture owner and EventStore build/release maintainer | PASS |
+| Exact committed source | Same 40-hex SHA before and after gates; clean regular and ignored inputs before and after every gate | `source-state-*.txt`, submodule SHAs, `environment.txt` | EventStore owner | PASS |
+| Release build and tests | warning-free solution build; every configured project/filter has zero unsuccessful, errored, omitted, or unexpected deferred cases; only the exact 126 committed deferred red-phase cases may remain in their six bound DW1/DW2/DW4/DW5/DW6/DW9 full-assembly lanes | restore/build logs plus identity-bound XML and method-list files under `$EVIDENCE_ROOT` | EventStore owner | PASS |
+| NuGet inventory | exact 14-ID set, one approved version, 14 SHA-256 values, package-only consumer success | `package-files.txt`, package/validator/consumer logs, `package-version.txt`, `nuget-sha256.txt` | EventStore release owner | PASS |
+| Container runtime | freshly revalidated pre-publication release-owner authority; clean candidate source; quarantined publication tag; immutable registry digest equal to the raw-manifest SHA-256; exact `linux/amd64` and `linux/arm64`; digest-to-tested-SHA provenance | immutable authority and checked-at copies/hashes, `container-inspect.txt`, raw manifest/hash, exact platform set, `container-provenance.json` | EventStore release owner | PASS |
+| Durable evidence | critical identity/provenance and exact final-approval records committed under `_bmad-output`; immutable external raw bundle bound by HTTPS URL and SHA-256 | `critical-evidence-sha256.txt`, `raw-evidence-bundle.json`, `eventstore-owner-proof-approval.json`, `release-owner-final-disposition.json`, packet front-matter pins | EventStore owner and EventStore release owner | PASS |
+| Limitations and migration | every matrix-row limitation accepted by a named reviewer in a durable source | signed review record or PR URL and date | EventStore owner | PASS |
 
 - limitation-ids: `release-package-inventory-and-byte-identity`,
   `release-container-registry-and-platform-provenance`, `release-durable-evidence-retention`,
@@ -3199,23 +3047,27 @@ before accepting A.
 - compatibility boundary: additive public APIs, the legacy query metadata ABI, legacy
   `/project`, versioned `/project/v2`, and the manifest-owned 14-package inventory remain
   unchanged by this evidence-only packet
-- owner disposition: pending; Story 3.12 supplied observed package/container candidate
-  evidence, but no named owner has selected it for Story 1.20 or accepted the row
-  limitations after a complete exact-SHA production-path run
+- owner disposition: `jpiquot` approved the exact evidence subject and every row limitation;
+  the distinct release-owner disposition approved the package and container identities
 - rollback: do not change package pins, image deployment, consumer gitlinks, or consumer
   infrastructure from this packet
 
 ## Owner Review
 
-- reviewer: not assigned
-- approval date: not recorded
-- durable approval source or PR: not recorded
-- accepted scope: none
-- accepted limitations: none
+- EventStore owner: `jpiquot`
+- EventStore approval date: `2026-07-25`
+- EventStore approval source: `https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5080203234`
+- release owner: `jpiquot`
+- release disposition date: `2026-07-25`
+- release disposition source: `https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5080203355`
+- accepted scope: all nine exact-SHA capability rows, the 14-package byte inventory, the
+  two-platform immutable container, and the WORM-retained raw evidence bundle
+- accepted limitations: all 32 approval-subject limitation IDs with the rationales recorded
+  in both durable owner records
 - migration decision: `authorize_consumer_migration: false`
 
-Story creation, implementation review of an individual prerequisite, and authorship of
-this blocked packet are not proof-result owner approval.
+The owner approvals are complete. Evidence commit A intentionally retains the false migration
+guard until pointer-only B and authorizing C satisfy the executable ancestry contract.
 
 ### Evidence Commit A, Pointer-Only Commit B, And Authorizing Commit C Verification
 
