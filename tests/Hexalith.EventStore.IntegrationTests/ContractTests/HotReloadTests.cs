@@ -239,23 +239,13 @@ public class HotReloadTests {
     private static async Task WaitForSampleDaprInvocationReadinessAsync(
         AspireContractTestFixture fixture,
         bool expectedReady,
-        CancellationToken cancellationToken) {
-        using var eventStoreDaprClient = new HttpClient {
-            BaseAddress = fixture.EventStoreDaprHttpEndpoint,
-            Timeout = TimeSpan.FromSeconds(5),
-        };
-
-        await DaprInvocationReadinessProbe.WaitAsync(
+        CancellationToken cancellationToken)
+        => await DaprInvocationReadinessProbe.WaitForSampleInvocationAsync(
+                fixture.EventStoreDaprHttpEndpoint,
                 expectedReady,
-                probeAsync: probeCancellationToken => eventStoreDaprClient.PostAsJsonAsync(
-                        "/v1.0/invoke/sample/method/admin/operational-index-metadata",
-                        new { Domains = Array.Empty<string>() },
-                        probeCancellationToken),
-                timeout: _resourceRecoveryTimeout,
-                retryDelay: TimeSpan.FromMilliseconds(250),
+                _resourceRecoveryTimeout,
                 cancellationToken)
             .ConfigureAwait(false);
-    }
 
     private static async Task EnsureSampleStartedAsync(AspireContractTestFixture fixture) {
         using var restoreCts = new CancellationTokenSource(_resourceRecoveryTimeout);
