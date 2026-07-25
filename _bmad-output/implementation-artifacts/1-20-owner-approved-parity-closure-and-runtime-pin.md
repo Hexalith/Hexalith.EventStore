@@ -959,7 +959,79 @@ override Story 1.20's external evidence and named-approval gates.
   SHA-bound human records, and the `f692f903` quarantine tag, WORM object, and records are
   superseded.
 
+#### 2026-07-25 — Pre-gate paired-contract audit and first single-run Phase-1 pass (candidate `eb59649b`)
+
+- Applied the standing lesson from the previous cycle before running anything: statically diff every
+  paired contract in the never-executed blocks 15/16 against its block-13/14 twin *before* any WORM
+  upload. Both PR #330 corrections verified present — all four provider-adapter `--output` paths are
+  directory-scoped and preceded by explicit `test ! -e` absence guards, and the A/B/C verifier smoke
+  now matches the publication smoke exactly (same four `Authentication__JwtBearer__*` settings, same
+  180-poll readiness budget).
+- Audited six further twins that PR #330 did not touch, all consistent: the seven-year retention
+  helpers are logically identical; both WORM validators require
+  `hexalith.eventstore.provider-worm-object-proof/v2` with `locked == true`; block 16's archive check
+  is stricter than block 15's but compatible with block 14's flat regular-file bundle; the container
+  manifest/child-config/platform contracts agree on exactly `linux/amd64` + `linux/arm64`; and the
+  GitHub record round-trip agrees on `jq -j` (no-trailing-newline) bytes for both the stored record
+  and `body_sha256`. The capability/limitation contract was verified by extraction rather than
+  inspection: block 15 derives the expected IDs from the approval subject while block 16 compares a
+  hard-coded literal, and the two sets match exactly at 9 capabilities / 32 limitations with no
+  duplicates.
+- Recorded one latent, non-blocking asymmetry for a future packet pass: block 15 dedupes limitation
+  IDs with `sort -u` while block 16 uses plain `sort` plus a jq uniqueness assertion, so a record
+  carrying duplicate IDs would pass approval and only fail after the irreversible WORM lock. It
+  cannot fire today because the approval subject is a packet literal with no duplicates.
+- Confirmed Phase-1 requires no human authority record: the Story 1.16 follow-up disposition and the
+  container publication authority are consumed only in blocks 13/15, so the read-only gate is
+  unattended-runnable. Environment verified first — `qemu-aarch64` `binfmt_misc` still registered (no
+  reboot since the last cycle), Dapr infrastructure containers up with no registered apps, no
+  competing Aspire AppHost, 758 GB free.
+- Regenerated the driver from the packet for this cycle rather than reusing a banked copy
+  (1,372 lines, `sha256:9d1bf5fb8c204d5eab51cf3573b352fb3d282d732be6e03e899cd9b28645ad52`), blocks
+  `[1, 3-10, 11, 12, 2]` concatenated into one shell under
+  `TMPDIR=/home/administrator/tmp-story-1-20`.
+- Phase-1 passed **clean on the first run** — the first candidate in this lineage to do so
+  (`bae137d9` and `f692f903` each needed three). AD-11 verified exact at the candidate: SDK
+  `10.0.302`, effective and installed ASP.NET `10.0.10`, installed runtime `10.0.10`, no
+  replacement-authority record required. 77 identity-bound xUnit results, 9,202 cases, 9,076 passed,
+  **0 failed / 0 errors / 0 not-run**, and exactly the 126 allowlisted deferred skips in their exact
+  frozen distribution (Server 25 DW1, Admin MCP 8 + Admin Server 18 DW2, operational evidence 54
+  DW4/DW9, Admin UI E2E 2 DW5, deferred-work governance 19 DW6).
+- The historically flaky lanes were green on the first attempt: the complete Debug/source
+  `Hexalith.EventStore.IntegrationTests` assembly passed 279/279 with zero skips in 1,573.534 seconds,
+  and the complete live-sidecar assembly passed 49/49. The Dapr conflict monitor recorded zero
+  external app-ID registrations (`conflicting-dapr-apps.jsonl` empty), so no foreign contention was
+  masked. The Release solution build completed with zero warnings and zero errors.
+- The exact 14-package inventory built with no extra and none missing at version
+  `999.1.20-proof.eb59649b29a0`, passed the literal-inventory, package-consumer restore, and
+  tool-install validators, and was SHA-256 hashed. `git rev-parse HEAD` equalled the candidate before
+  and after every gate; the only source-state delta across the run is generated `bin`/`obj` ignored
+  input, which the acceptance boundary explicitly permits. All seven root-declared submodules stayed
+  at their committed gitlinks and no nested submodule was initialized.
+- Nothing irreversible occurred: no container build or registry write, no evidence bundle, no WORM
+  upload, no GitHub approval-API call, no commit. Story 1.20 remains fail-closed — publication, both
+  named durable approvals, immutable raw-evidence retention, and the A/B/C chain are all still open.
+
 ### Completion Notes
+
+- Candidate `eb59649b...` is the first in this lineage to pass the read-only Phase-1 exact-SHA gate on
+  a single run, with the full Tier-3 source-topology assembly green at 279/279 and an empty conflict
+  monitor. This establishes the candidate as gate-worthy but authorizes nothing: Closure Execution
+  Order steps 7-11 (container publication, immutable evidence retention, both named owner approvals,
+  and the A/B/C authorization chain) were deliberately not entered, so `final_decision` stays
+  `still blocked`, `authorize_consumer_migration` stays `false`, and `status` stays `blocked`.
+- The pre-gate paired-contract audit found both PR #330 corrections correctly in place and six
+  further block-15/16 twins consistent, materially reducing the risk that the next post-WORM
+  execution fails on a never-run contract. One latent `sort -u` versus `sort` asymmetry in the
+  limitation-ID comparison is documented above and cannot fire against the current packet literal.
+- Phase-1 evidence is retained outside the repository at gate root
+  `/home/administrator/tmp-story-1-20/tmp.3JcRFJBxed` (4.3 GB; 248 evidence files, detached worktree
+  still pinned at the candidate). A post-gate continuation must re-enter with that `GATE_ROOT` pinned
+  and must first restore write permission on `evaluate-package-versions.proj` and
+  `evidence/ad11-preflight.json`, which block 1 sets read-only.
+- Recording constraint observed: this record is intentionally left uncommitted. Commit A must be the
+  sole direct child of `tested_runtime_sha`, so any commit landing on `main` ahead of the A/B/C chain
+  would displace `eb59649b` as the candidate and force a complete Phase-1 re-run.
 
 - Candidate `f692f903...` produced the first fully green Phase-1 gate, the first digest-verified
   two-platform publication of this lineage, and the first irreversible seven-year WORM lock of a
@@ -1128,6 +1200,7 @@ traceability; it does not reclassify that path as a Story 1.20 implementation de
 
 | Date | Phase | Test-method delta | Verification | File-list reconciliation |
 | --- | --- | ---: | --- | --- |
+| 2026-07-25 | Pre-gate paired-contract audit + first single-run Phase-1 pass (candidate `eb59649b`) | `+0` (read-only verification; no source change) | Static audit BEFORE running: both PR #330 fixes verified in place (4 adapter `--output` sites directory-scoped + `test ! -e` guarded; verifier smoke matches publication smoke on the four `Authentication__JwtBearer__*` vars and the 180-poll budget) plus six untouched block-15/16 twins consistent (retention, WORM schema v2, bundle archive, manifest/child-config/platform set, GitHub `jq -j` + `body_sha256`, and derived-vs-hardcoded capability/limitation IDs matching exactly at 9/32 with no duplicates). Packet integrity 6/6; 23/23 blocks `bash -n`. GATE: Phase-1 clean on the FIRST run — AD-11 exact (SDK 10.0.302 / ASP.NET + runtime 10.0.10); 77 identity-bound results, 9,202 cases, 9,076 passed, 0 failed/errors/not-run, exactly 126 allowlisted skips in their frozen distribution; complete Debug/source integration 279/279, 0 skips, 1,573.534s; live-sidecar 49/49; Release build 0W/0E; 14-package build/validate/consumer/tool-install/SHA-256 at `999.1.20-proof.eb59649b29a0`; Dapr conflict monitor empty; candidate identity unchanged before and after every gate. | No repository file changed by the gate (read-only against the committed candidate); evidence retained at gate root `tmp.3JcRFJBxed`. This story record is intentionally left UNCOMMITTED so `eb59649b` stays eligible as commit A's sole direct parent. Preserved `blocked` / sprint `in-progress`; steps 7-11 not entered, so no publication, WORM upload, owner approval, or migration authority exists. One latent block-15/16 `sort -u` vs `sort` limitation-ID asymmetry logged for a future packet pass. |
 | 2026-07-25 | Exact-SHA gate + first WORM lock; adapter-output and verifier-smoke corrections | `+2` test methods / `+2` cases | Candidate `f692f903...`: Phase-1 clean on run 3 (77 results, 9,200 cases, 9,074 passed, 0 failed, exactly 126 allowlisted skips, integration 279/279 in 1,584.878s, live-sidecar 49/49, 14-package hash); runs 1-2 failed only on isolated-passing Tier-3 flakes with an empty Dapr conflict monitor. Publication green after registering `qemu-aarch64` emulation: index `sha256:bad8c4fa...`, exactly `linux/amd64`+`linux/arm64`, both smokes. Bundle `sha256:e0cbfb2c...` WORM-locked (version `2026-07-25T15:25:17.4330510Z`, retention `2033-07-26`). RED: block 15 failed closed because adapter `--output` paths came from bare `mktemp` against the adapter's `test ! -e` contract (3 sites + 1 unguarded target); owner review found the A/B/C verifier smoke omitting the four `Authentication__JwtBearer__*` settings and polling 90s vs 180s. GREEN: both corrected; `ProofPacketValidatorIntegrityTests` 6/6, 23/23 Bash blocks parse, `git diff --check` clean. | Updated the proof packet, its integrity test, and this record. Preserved `blocked` / sprint `in-progress`; a replacement committed SHA must rerun all gates and obtain replacement SHA-bound human records. |
 | 2026-07-24 | Multi-arch publish method (`/t:PublishContainer`) + package-log corrections | `+0` methods / `+3` assertions | Validated on working image `bcab5253`: `/t:PublishContainer` emits persistent per-platform tags → republished index `sha256:b83dd2ce...` passed child-config + both smokes + `docker pull --platform` amd64/arm64. `literal-package-inventory.log` now non-empty on success → raw-evidence bundle (block 14) built (sha256 `ccc7ac72...`). `ProofPacketValidatorIntegrityTests` 4/4. | Updated the proof packet + integrity test + this record. Preserved `blocked` / sprint `in-progress`; a replacement committed SHA must rerun all gates and obtain replacement SHA-bound human records. |
 | 2026-07-24 | First successful container publish + BOM digest-capture correction | `+0` methods / `+3` assertions | Candidate `f0a72928...`: full Phase-1 gate GREEN (source topology 278/278 after one transient-flake re-run, live-sidecar 49/49, 9,072 passed / exactly 126 allowlisted skips, 14-package build+SHA-256). Container publish SUCCEEDED (OCI index `sha256:fbb5664f...`, exactly `linux/amd64`+`linux/arm64`). RED: post-push digest-identity check failed on a UTF-8 BOM from the capture target's `WriteLinesToFile Encoding="UTF-8"`. GREEN: capture target now writes `ASCII` and the read strips any BOM; `ProofPacketValidatorIntegrityTests` 4/4. | Updated only the proof packet and its integrity test (+ this record). Preserved `blocked` / sprint `in-progress`; a replacement committed SHA must rerun all gates and obtain replacement SHA-bound human records; the `quarantine-proof-f0a72928...` tag is superseded. |
