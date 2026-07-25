@@ -879,6 +879,39 @@ override Story 1.20's external evidence and named-approval gates.
 - Both corrections carry `ProofPacketValidatorIntegrityTests` regression assertions (class 4/4).
   Packet-only changes: a new committed SHA must restart the full protocol from zero.
 
+#### 2026-07-21 — User-approved direct closure of the ten new review findings
+
+- Checked the EventStore plan before editing. Stories 2.7 and 3.12 already own the older routing,
+  harness, and publication prerequisites, but no separate planned story owns the ten findings
+  added at `014bd00a9ef6d3eac2e4900feedbedc093fab188`; the user therefore approved direct correction
+  under Story 1.20. No Story 28.1 or consumer migration was created or authorized.
+- Removed the global standard-resilience handlers only from the named domain-service invocation
+  client, retained DAPR as the resiliency owner, and made the configured timeout deterministic
+  through `TimeProvider`. Cancellation/failure telemetry now uses source-generated logger methods.
+- Isolated the security fixture from the store-global writer-protocol marker by snapshotting and
+  deleting prior state before activation, refusing to overwrite a marker subsequently owned by a
+  different source commit, and restoring the prior state on every shutdown path. Remediation
+  checklist category 3 applies; the ownership/refusal path and transient retry classifications are
+  explicit, while unrelated remediation categories are not applicable to this delta.
+- Replaced the conflict claim with a live DAPR state-store proof, and strengthened the tenant
+  bootstrap proof to follow the persisted event correlation through the production DAPR command
+  index to its message-primary terminal `Completed` status.
+- Added host-start validation for the accepted one-second boundary and invalid zero value,
+  deterministic unsafe-POST attempt counts, deterministic 408/429/5xx activation decisions, and
+  explicit `ConfigureAwait(true)` in xUnit methods as required by the active analyzer.
+- Validation: Server and both source/package Integration Release builds completed with zero
+  warnings/errors; runner discovery moved from Server `2560` to `2563` methods and Integration
+  `234` to `237`; focused Server passed 15/15, package-mode Integration passed 11/11, live DAPR
+  conflict persistence passed 1/1, and source-topology tenant bootstrap passed 1/1 without skips.
+- The complete Server assembly remains non-authorizing: 2,836 passed, 25 frozen ATDD cases
+  skipped, and 11 existing logging assertions failed of 2,872. All 11 expect `Log<object>` while
+  the runtime emits source-generated `Log<LoggerMessageState>`; the failures reproduce in
+  isolation and do not include a changed Story 1.20 test. The exact-SHA closure, immutable
+  evidence, package/container identities, named approvals, and A/B/C chain remain outstanding.
+- While validation was running, an external process authored and pushed the 14-path corrective
+  delta as `e7629a51f241442259dda98555db026f34bfdc31` (`fix: 1.20 blocked`). This agent did not stage,
+  commit, or push that change and preserved the externally advanced `main`/`origin/main` state.
+
 ### Completion Notes
 
 - Story remains fail-closed and non-authorizing. Runtime and test corrections in the candidate
@@ -959,6 +992,11 @@ override Story 1.20's external evidence and named-approval gates.
   two Alpine RID-specific assets targets required by `publish --no-restore`. The packet now binds
   the same multi-RID property into restore and publish, but this working-tree correction is not an
   exact candidate: it must be committed and the full protocol and human records restarted.
+- Applied the user-approved direct corrections for the ten findings added at `014bd00a...`; all
+  focused changed-surface gates and both live DAPR proofs pass. The complete Server assembly still
+  has 11 isolated logging-assertion failures, so this corrective pass is not a green exact-SHA gate.
+- Story remains `blocked` and non-authorizing after landed commit `e7629a51...`. No package or
+  container publication, named approval, evidence A/B/C mutation, or consumer migration occurred.
 
 ## File List
 
@@ -993,6 +1031,7 @@ traceability; it does not reclassify that path as a Story 1.20 implementation de
 - `src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs`
 - `src/Hexalith.EventStore.Server/Configuration/ValidateIdempotencyAdmissionOptions.cs`
 - `src/Hexalith.EventStore.Server/DomainServices/DaprDomainServiceInvoker.cs`
+- `src/Hexalith.EventStore.Server/DomainServices/DomainServiceHttpClientBuilderFilter.cs`
 - `src/Hexalith.EventStore.Server/DomainServices/DomainServiceException.cs`
 - `src/Hexalith.EventStore.Server/DomainServices/DomainServiceOptions.cs`
 - `src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj`
@@ -1003,6 +1042,7 @@ traceability; it does not reclassify that path as a Story 1.20 implementation de
 - `tests/Hexalith.EventStore.IntegrationTests/Helpers/DaprInvocationReadinessProbe.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/Helpers/DaprInvocationReadinessProbeTests.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRRedisBackplaneRuntimeProofTests.cs`
+- `tests/Hexalith.EventStore.IntegrationTests/ContractTests/ConcurrencyConflictStatusPersistenceE2ETests.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/ContractTests/TenantBootstrapHealthTests.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/EventStore/ConcurrencyConflictIntegrationTests.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/EventStore/ApplicationRuntimeProofEndpointTests.cs`
@@ -1044,6 +1084,7 @@ traceability; it does not reclassify that path as a Story 1.20 implementation de
 | 2026-07-22 | Exact-gate hot-reload readiness correction after rejected candidate `c6b72caa4ed90ea55a29644f0e40a0e5c44cf791` | `+4` test methods / `+11` deterministic cases | RED: exact Debug/source integration assembly 257/258; repeated direct-health attempt still failed 1/1 after `/health` returned 200. GREEN after review patches: source-mode Debug build 0 warnings/errors; readiness parser/polling 11/11; formerly failing method 3/3 across fresh topologies; complete `HotReloadTests` 3/3 in 117.017s. | Added the hot-reload contract-test path plus the readiness helper and deterministic test paths. The correction proves EventStore-to-sample Dapr invocation unavailable after stop and ready after start without retrying command POSTs. Exact commands/artifact hashes are bound in the proof packet. Story remains `blocked`; a new clean candidate must restart every exact gate. |
 | 2026-07-21 | Docker/Dapr exact-gate unblock on official-main base `4cb7738d6cfad8a9a99638644ac5de77f902245e` | `+0` | RED: deterministic Redis-chaos/bootstrap sequence 3/4; GREEN: 4/4 in 97.347s. SignalR external-evidence proof 1/1 in 187.403s. Complete patched Debug/source integration assembly 258/258, zero skipped, in 1,450.691s. Integration project source-mode Debug build: 0 warnings/errors. Proof-packet integrity 3/3; all fenced Bash passed `bash -n`. | Added the Redis chaos harness, SignalR runtime-proof evidence boundary, and proof-packet harness paths. Story remains `blocked`; the working-tree corrections require a new committed exact candidate and a full restart of the protocol. |
 | 2026-07-21 | Ledger adoption baseline for the user-approved direct Story 1.20 corrective pass at `014bd00a9ef6d3eac2e4900feedbedc093fab188` | `+0` (planned `+6..+9`) | Release builds passed with 0 warnings/errors. Runner discovery: Server `2560` methods (`DaprDomainServiceInvokerTests=28`, `EventStoreServerServiceCollectionExtensionsTests=7`); Integration `234` methods (`TenantBootstrapHealthTests=1`, `ConcurrencyConflictIntegrationTests=11`). Commands: `dotnet exec tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll -list methods -noLogo`; `dotnet exec tests/Hexalith.EventStore.IntegrationTests/bin/Release/net10.0/Hexalith.EventStore.IntegrationTests.dll -list methods -noLogo`. | Current adoption delta `0/0` paths against `014bd00a...`; the existing File List remains the legacy pre-adoption traceability inventory. Story remains `blocked` / sprint `in-progress`; this phase cannot authorize migration. |
+| 2026-07-21 | User-approved direct closure of the ten review findings; externally landed as `e7629a51f241442259dda98555db026f34bfdc31` | `+3` methods (Server `2560` to `2563`; Integration `234` to `237`) | Zero-warning Release builds: Server, source-topology Integration with `UseHexalithProjectReferences=true` and serial `-m:1`, and restored default package-mode Integration. Focused results: Server 15/15; package-mode Integration 11/11; live DAPR conflict 1/1; source-topology tenant bootstrap 1/1. Full Server: 2,836 passed, 11 existing source-generated-logging assertion failures, 25 frozen skips, total 2,872; remains non-authorizing. | Reconciled all 14 paths in `014bd00a...e7629a51`; added the four previously absent runtime/test paths to the cumulative File List. Story remains `blocked` / sprint `in-progress`; no migration or publication authorized. |
 
 ### Legacy narrative
 
