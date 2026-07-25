@@ -14,6 +14,8 @@ namespace Hexalith.EventStore.IntegrationTests.Fixtures;
 /// in the sample domain service.
 /// </summary>
 public sealed class AspireProjectionFaultTestFixture : IAsyncLifetime {
+    private static readonly TimeSpan s_sampleInvocationReadinessTimeout = TimeSpan.FromSeconds(90);
+
     private readonly ProjectionDeliveryWriterProtocolTestLease _writerProtocolLease = new();
 
     private DistributedApplication? _app;
@@ -91,6 +93,16 @@ public sealed class AspireProjectionFaultTestFixture : IAsyncLifetime {
             _ = await _app.ResourceNotifications
                 .WaitForResourceHealthyAsync("sample", cts.Token)
                 .WaitAsync(TimeSpan.FromMinutes(3), cts.Token)
+                .ConfigureAwait(false);
+
+            // Resource health alone does not prove the Dapr invocation boundary is usable; the
+            // fixed `sample` app-id can still resolve to a torn-down instance from a previous
+            // collection. Probe the exact boundary before any test issues a command.
+            await DaprInvocationReadinessProbe.WaitForSampleInvocationAsync(
+                    _app.GetEndpoint("eventstore-dapr-cli", "http"),
+                    expectedReady: true,
+                    s_sampleInvocationReadinessTimeout,
+                    cts.Token)
                 .ConfigureAwait(false);
         }
         catch (Exception initializationException) {

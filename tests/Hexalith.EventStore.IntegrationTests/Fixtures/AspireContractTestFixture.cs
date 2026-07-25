@@ -21,6 +21,7 @@ public class AspireContractTestFixture : IAsyncLifetime {
     private const string RedisEndpoint = "localhost:6379";
     private static readonly TimeSpan s_resourceCommandTimeout = TimeSpan.FromMinutes(1);
     private static readonly TimeSpan s_gracefulShutdownTimeout = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan s_sampleInvocationReadinessTimeout = TimeSpan.FromSeconds(90);
 
     private readonly ProjectionDeliveryWriterProtocolTestLease _writerProtocolLease = new();
 
@@ -149,6 +150,17 @@ public class AspireContractTestFixture : IAsyncLifetime {
             _ = await _app.ResourceNotifications
                 .WaitForResourceHealthyAsync("sample", cts.Token)
                 .WaitAsync(TimeSpan.FromMinutes(3), cts.Token)
+                .ConfigureAwait(false);
+
+            // Resource health alone does not prove the Dapr invocation boundary is usable: the
+            // topology reuses the fixed `sample` app-id, so placement can still route to a
+            // torn-down instance from a previous collection and the first command fails with
+            // HTTP 500. Probe the exact boundary before any test issues a command.
+            await DaprInvocationReadinessProbe.WaitForSampleInvocationAsync(
+                    EventStoreDaprHttpEndpoint,
+                    expectedReady: true,
+                    s_sampleInvocationReadinessTimeout,
+                    cts.Token)
                 .ConfigureAwait(false);
         }
         catch (Exception initializationException) {

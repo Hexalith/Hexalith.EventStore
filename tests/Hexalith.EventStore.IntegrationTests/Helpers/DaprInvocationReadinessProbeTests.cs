@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Sockets;
 using System.Text;
 
 using Shouldly;
@@ -103,6 +104,76 @@ public class DaprInvocationReadinessProbeTests {
             .ConfigureAwait(true);
 
         attemptCount.ShouldBe(0);
+    }
+
+    /// <summary>
+    /// Verifies the shared fixture readiness wait polls the exact sample invocation boundary
+    /// through EventStore's Dapr sidecar until it stops reporting direct-invocation failure.
+    /// </summary>
+    /// <returns>A task representing the asynchronous test.</returns>
+    [Fact]
+    public async Task WaitForSampleInvocationAsync_UnavailableThenReady_PollsExactInvokeBoundary() {
+        List<string> requestedPaths = [];
+        var unavailableResponsesRemaining = 2;
+
+        using var stub = new HttpListener();
+        int port = GetFreeTcpPort();
+        stub.Prefixes.Add($"http://127.0.0.1:{port}/");
+        stub.Start();
+
+        using var cancellationSource = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        // The loop owns its shutdown: stopping the listener faults the pending GetContextAsync,
+        // which is the expected way this stub ends rather than a test failure.
+        Task stubLoop = Task.Run(
+            async () => {
+                try {
+                    while (true) {
+                        HttpListenerContext context = await stub.GetContextAsync().ConfigureAwait(false);
+                        requestedPaths.Add(context.Request.Url!.AbsolutePath);
+                        byte[] payload;
+                        if (unavailableResponsesRemaining > 0) {
+                            unavailableResponsesRemaining--;
+                            context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                            payload = Encoding.UTF8.GetBytes("{\"errorCode\":\"ERR_DIRECT_INVOKE\"}");
+                        }
+                        else {
+                            context.Response.StatusCode = (int)HttpStatusCode.OK;
+                            payload = Encoding.UTF8.GetBytes("{}");
+                        }
+
+                        context.Response.ContentType = "application/json";
+                        await context.Response.OutputStream.WriteAsync(payload).ConfigureAwait(false);
+                        context.Response.Close();
+                    }
+                }
+                catch (ObjectDisposedException) {
+                }
+                catch (HttpListenerException) {
+                }
+            },
+            CancellationToken.None);
+
+        await DaprInvocationReadinessProbe.WaitForSampleInvocationAsync(
+                new Uri($"http://127.0.0.1:{port}"),
+                expectedReady: true,
+                timeout: TimeSpan.FromSeconds(20),
+                cancellationSource.Token)
+            .ConfigureAwait(true);
+
+        stub.Stop();
+        await stubLoop.ConfigureAwait(true);
+
+        requestedPaths.Count.ShouldBe(3);
+        requestedPaths.ShouldAllBe(path
+            => path == "/v1.0/invoke/sample/method/admin/operational-index-metadata");
+    }
+
+    private static int GetFreeTcpPort() {
+        using var probe = new TcpListener(IPAddress.Loopback, 0);
+        probe.Start();
+        int port = ((IPEndPoint)probe.LocalEndpoint).Port;
+        probe.Stop();
+        return port;
     }
 
     private static HttpResponseMessage CreateResponse(HttpStatusCode statusCode, string body)

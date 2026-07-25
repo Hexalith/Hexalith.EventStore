@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Text.Json;
 
 namespace Hexalith.EventStore.IntegrationTests.Helpers;
@@ -7,8 +8,16 @@ namespace Hexalith.EventStore.IntegrationTests.Helpers;
 /// Polls a Dapr service-invocation boundary until it reaches the expected availability state.
 /// </summary>
 internal static class DaprInvocationReadinessProbe {
+    /// <summary>
+    /// The side-effect-free sample capability invoked through EventStore's Dapr sidecar.
+    /// </summary>
+    internal const string SampleInvocationPath
+        = "/v1.0/invoke/sample/method/admin/operational-index-metadata";
+
     private const string _directInvokeErrorCode = "ERR_DIRECT_INVOKE";
     private const int _maxDiagnosticBodyLength = 512;
+    private static readonly TimeSpan _probeRequestTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan _probeRetryDelay = TimeSpan.FromMilliseconds(250);
 
     /// <summary>
     /// Waits until the supplied probe observes the expected Dapr invocation state.
@@ -90,6 +99,45 @@ internal static class DaprInvocationReadinessProbe {
             + $"Last status: {lastStatusCode?.ToString() ?? "no response"}. "
             + $"Last body: {(lastResponseBody is null ? "not available" : JsonSerializer.Serialize(lastResponseBody))}.",
             lastError);
+    }
+
+    /// <summary>
+    /// Waits until EventStore's Dapr sidecar reports the expected availability of the sample
+    /// domain service.
+    /// </summary>
+    /// <remarks>
+    /// Aspire resource health is not sufficient on its own. The topology reuses the fixed
+    /// <c>sample</c> app-id across fixtures, so placement can still route to a torn-down
+    /// instance after the resource reports healthy, and the first command a fixture issues then
+    /// fails with HTTP 500. This probes the exact boundary domain-service invocation depends on.
+    /// </remarks>
+    /// <param name="eventStoreDaprHttpEndpoint">EventStore's Dapr sidecar HTTP endpoint.</param>
+    /// <param name="expectedReady">Whether a successful invocation is expected.</param>
+    /// <param name="timeout">The complete polling timeout.</param>
+    /// <param name="cancellationToken">The caller cancellation token.</param>
+    /// <returns>A task that completes when the expected state is observed.</returns>
+    internal static async Task WaitForSampleInvocationAsync(
+        Uri eventStoreDaprHttpEndpoint,
+        bool expectedReady,
+        TimeSpan timeout,
+        CancellationToken cancellationToken) {
+        ArgumentNullException.ThrowIfNull(eventStoreDaprHttpEndpoint);
+
+        using var eventStoreDaprClient = new HttpClient {
+            BaseAddress = eventStoreDaprHttpEndpoint,
+            Timeout = _probeRequestTimeout,
+        };
+
+        await WaitAsync(
+                expectedReady,
+                probeAsync: probeCancellationToken => eventStoreDaprClient.PostAsJsonAsync(
+                        SampleInvocationPath,
+                        new { Domains = Array.Empty<string>() },
+                        probeCancellationToken),
+                timeout,
+                retryDelay: _probeRetryDelay,
+                cancellationToken)
+            .ConfigureAwait(false);
     }
 
     /// <summary>

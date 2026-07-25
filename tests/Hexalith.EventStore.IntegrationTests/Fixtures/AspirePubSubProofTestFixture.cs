@@ -14,6 +14,7 @@ namespace Hexalith.EventStore.IntegrationTests.Fixtures;
 public sealed class AspirePubSubProofTestFixture : IAsyncLifetime {
     private const string AuthHeaderName = "X-Test-Auth";
     private const string RedisEndpoint = "localhost:6379";
+    private static readonly TimeSpan s_sampleInvocationReadinessTimeout = TimeSpan.FromSeconds(90);
 
     private readonly ProjectionDeliveryWriterProtocolTestLease _writerProtocolLease = new();
 
@@ -109,6 +110,16 @@ public sealed class AspirePubSubProofTestFixture : IAsyncLifetime {
             _ = await _app.ResourceNotifications
                 .WaitForResourceHealthyAsync("eventstore-test-subscriber", cts.Token)
                 .WaitAsync(TimeSpan.FromMinutes(3), cts.Token)
+                .ConfigureAwait(false);
+
+            // Resource health alone does not prove the Dapr invocation boundary is usable; the
+            // fixed `sample` app-id can still resolve to a torn-down instance from a previous
+            // collection. Probe the exact boundary before any test issues a command.
+            await DaprInvocationReadinessProbe.WaitForSampleInvocationAsync(
+                    _app.GetEndpoint("eventstore-dapr-cli", "http"),
+                    expectedReady: true,
+                    s_sampleInvocationReadinessTimeout,
+                    cts.Token)
                 .ConfigureAwait(false);
 
             _subscriberClient = _app.CreateHttpClient("eventstore-test-subscriber");
