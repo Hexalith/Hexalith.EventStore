@@ -154,7 +154,7 @@ if actual_version != object_version:
     raise SystemExit("provider returned a different object version")
 if not isinstance(sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", sha256):
     raise SystemExit("blob metadata lacks the canonical sha256 value")
-if blob_mode != "Locked":
+if not isinstance(blob_mode, str) or blob_mode.strip().casefold() != "locked":
     raise SystemExit("object immutability policy must be locked")
 if not isinstance(expiry, str):
     raise SystemExit("blob metadata lacks an immutability expiry")
