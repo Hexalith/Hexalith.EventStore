@@ -110,9 +110,9 @@ warnings: [oversized]
   1/1, its `NamedProjectionDispatchLiveSidecarTests` class passed 6/6, and the complete
   live-sidecar lane passed 44/44.
 - disposition: implementation and current-runtime evidence are reconciled. The frontmatter
-  remains `followup_review_recommended: true` because no named reviewer and durable approval
-  source has yet accepted that committed runtime; this is now a review-authority blocker,
-  not an unresolved lifecycle implementation defect.
+  flag `followup_review_recommended` remains `true` because no named reviewer and durable
+  approval source has yet accepted that committed runtime; this is now a review-authority
+  blocker, not an unresolved lifecycle implementation defect.
 
 ### 2026-07-11 — Review pass
 - intent_gap: 0

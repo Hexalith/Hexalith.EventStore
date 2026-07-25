@@ -2868,13 +2868,24 @@ import sys
 
 runtime_path, output_path, record_path, metadata_path, runtime_sha = sys.argv[1:]
 runtime = pathlib.Path(runtime_path).read_text(encoding="utf-8")
-if runtime.count("followup_review_recommended: true") != 1:
-    raise SystemExit("runtime follow-up spec lacks one unresolved recommendation")
-runtime = runtime.replace(
-    "followup_review_recommended: true",
-    "followup_review_recommended: false",
-    1,
+runtime_lines = runtime.split("\n")
+if not runtime_lines or runtime_lines[0] != "---":
+    raise SystemExit("runtime follow-up spec has no YAML front matter")
+front_matter_end = next(
+    (index for index, line in enumerate(runtime_lines[1:], 1) if line == "---"),
+    -1,
 )
+if front_matter_end < 0:
+    raise SystemExit("runtime follow-up spec front matter is unterminated")
+unresolved_flag_lines = [
+    index
+    for index in range(1, front_matter_end)
+    if runtime_lines[index] == "followup_review_recommended: true"
+]
+if len(unresolved_flag_lines) != 1:
+    raise SystemExit("runtime follow-up spec lacks one unresolved recommendation")
+runtime_lines[unresolved_flag_lines[0]] = "followup_review_recommended: false"
+runtime = "\n".join(runtime_lines)
 record = json.loads(pathlib.Path(record_path).read_text(encoding="utf-8"))
 metadata = json.loads(pathlib.Path(metadata_path).read_text(encoding="utf-8"))
 review_date = record["reviewed_at"].split("T", 1)[0]
@@ -4421,13 +4432,24 @@ import sys
 
 runtime_path, expected_path, record_path, metadata_path, review_date, runtime_sha = sys.argv[1:]
 runtime = pathlib.Path(runtime_path).read_text(encoding="utf-8")
-if runtime.count("followup_review_recommended: true") != 1:
-    raise SystemExit("runtime follow-up spec lacks one unresolved recommendation")
-runtime = runtime.replace(
-    "followup_review_recommended: true",
-    "followup_review_recommended: false",
-    1,
+runtime_lines = runtime.split("\n")
+if not runtime_lines or runtime_lines[0] != "---":
+    raise SystemExit("runtime follow-up spec has no YAML front matter")
+front_matter_end = next(
+    (index for index, line in enumerate(runtime_lines[1:], 1) if line == "---"),
+    -1,
 )
+if front_matter_end < 0:
+    raise SystemExit("runtime follow-up spec front matter is unterminated")
+unresolved_flag_lines = [
+    index
+    for index in range(1, front_matter_end)
+    if runtime_lines[index] == "followup_review_recommended: true"
+]
+if len(unresolved_flag_lines) != 1:
+    raise SystemExit("runtime follow-up spec lacks one unresolved recommendation")
+runtime_lines[unresolved_flag_lines[0]] = "followup_review_recommended: false"
+runtime = "\n".join(runtime_lines)
 record = json.loads(pathlib.Path(record_path).read_text(encoding="utf-8"))
 metadata = json.loads(pathlib.Path(metadata_path).read_text(encoding="utf-8"))
 scope = record["scope"]

@@ -23,6 +23,9 @@ public sealed class ProofPacketValidatorIntegrityTests
     private const string DeferredSkipAllowlistRelativePath =
         "_bmad-output/implementation-artifacts/1-20-deferred-xunit-skip-allowlist.json";
 
+    private const string FollowupSpecRelativePath =
+        "_bmad-output/implementation-artifacts/spec-1-11-complete-projection-freshness-lifecycle.md";
+
     private static readonly Regex BashBlockPattern = new(
         @"^```bash\r?\n(?<body>.*?)^```\s*$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.Multiline | RegexOptions.Singleline);
@@ -127,6 +130,40 @@ public sealed class ProofPacketValidatorIntegrityTests
             "The verifier smoke must allow the same readiness budget as the publication smoke.");
         verifierSmoke.Contains("seq 1 90", StringComparison.Ordinal).ShouldBeFalse(
             "The verifier smoke must not keep the shorter readiness budget.");
+    }
+
+    /// <summary>
+    /// Verifies both copies of the Story 1.16 follow-up transform resolve the disposition flag
+    /// from the YAML front matter instead of counting a literal across the whole document.
+    /// </summary>
+    [Fact]
+    public void PacketFollowupSpecTransformResolvesFrontMatterFlagOnly()
+    {
+        string root = FindRepositoryRoot();
+        string packet = File.ReadAllText(Path.Combine(root, PacketRelativePath));
+
+        // Regression: the transform aborted unless "followup_review_recommended: true" occurred
+        // exactly once in the entire document, but the spec's own disposition prose quoted the
+        // flag. Block 15 runs after the irreversible WORM upload and block 16 carries the same
+        // transform, so the count guard would have failed at the protocol's most expensive point.
+        packet.Contains("runtime.count(\"followup_review_recommended: true\")", StringComparison.Ordinal)
+            .ShouldBeFalse("Neither transform may resolve the flag by counting whole-document literals.");
+
+        const string frontMatterScopedResolution =
+            "runtime_lines[unresolved_flag_lines[0]] = \"followup_review_recommended: false\"";
+        Regex.Matches(packet, Regex.Escape(frontMatterScopedResolution)).Count.ShouldBe(
+            2,
+            "Block 15 and the block 16 verifier must both resolve the flag inside the front matter.");
+
+        string spec = File.ReadAllText(Path.Combine(root, FollowupSpecRelativePath));
+        string[] lines = spec.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+        lines[0].ShouldBe("---", "The follow-up spec must begin with YAML front matter.");
+        int frontMatterEnd = Array.IndexOf(lines, "---", 1);
+        frontMatterEnd.ShouldBeGreaterThan(0, "The follow-up spec front matter must be terminated.");
+        lines
+            .Take(frontMatterEnd)
+            .Count(line => line == "followup_review_recommended: true")
+            .ShouldBe(1, "The spec must carry exactly one unresolved front-matter recommendation.");
     }
 
     /// <summary>

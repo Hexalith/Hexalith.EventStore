@@ -1,5 +1,13 @@
 # Deferred Work
 
+## Deferred from: Story 1.20 pre-gate paired-contract audit (2026-07-25)
+
+- source_spec: `_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md`
+  summary: The final owner-record limitation-ID comparison is asymmetric across the WORM boundary. Block 15's `validate_final_owner_record` dedupes the record's IDs with `LC_ALL=C sort -u` before diffing them against the expected set, while block 16's `validate_committed_owner_record` uses a plain `LC_ALL=C sort` and separately asserts uniqueness in jq (`length == (map(.id) | unique | length)`). A final approval record carrying a duplicate limitation ID therefore passes approval validation and only fails during A/B/C verification.
+  evidence: Block 15 `diff -u "$EXPECTED_LIMITATION_IDS" <(jq -er '.limitations[].id' "$record" | LC_ALL=C sort -u)` versus block 16 `diff -u "$A_EXPECTED_LIMITATION_IDS" <(jq -er '.limitations[].id' "$record" | LC_ALL=C sort)`. Block 15 also derives its expected set from the generated approval subject while block 16 compares against a hard-coded literal list; the two were verified equal on 2026-07-25 at 9 capability IDs and 32 limitation IDs with no duplicates, so the asymmetry cannot fire against the current packet literal.
+  severity: low
+  status: accepted (deliberate acceptance 2026-07-25) — not fixed during the Story 1.20 closure run because the defect is unreachable with the committed approval-subject literal, and every packet edit forces a new candidate SHA and a complete ~50-minute Phase-1 re-gate. Fix by making block 15 use the same plain `sort` plus an explicit jq uniqueness assertion, so a duplicate ID is rejected before the irreversible WORM upload rather than after it. Fold into the next packet change rather than spending a dedicated cycle.
+
 ## Deferred from: release-skip race diagnosis (2026-07-21, run 29799288142)
 
 - source_spec: none

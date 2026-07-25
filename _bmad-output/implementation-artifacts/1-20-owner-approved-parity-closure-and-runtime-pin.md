@@ -1012,6 +1012,52 @@ override Story 1.20's external evidence and named-approval gates.
   upload, no GitHub approval-API call, no commit. Story 1.20 remains fail-closed — publication, both
   named durable approvals, immutable raw-evidence retention, and the A/B/C chain are all still open.
 
+#### 2026-07-25 — Second clean Phase-1 pass and three pre-publication defects caught before the WORM lock
+
+- The owner committed the previous Phase-1 record as `ed5af0f6` (documentation-only: one file, +73
+  lines). That displaced `eb59649b` as a viable commit-A parent, so the protocol restarted against
+  `ed5af0f6`. Verified first that the delta was inert: no non-`_bmad-output` path changed, the proof
+  packet was byte-identical, and no test reads the story record, so the compiled and test surface was
+  unchanged.
+- Phase-1 passed clean on a single run again — a second consecutive first-attempt pass, which
+  establishes the lineage as genuinely stable rather than one fortunate run. Identical counters to
+  `eb59649b`: 77 identity-bound results, 9,202 cases, 9,076 passed, 0 failed/errors/not-run, exactly
+  126 allowlisted deferred skips, complete Debug/source integration 279/279 in 1,581.334 seconds,
+  live-sidecar 49/49, AD-11 exact, 14 packages at `999.1.20-proof.ed5af0f650a1`, and an empty Dapr
+  conflict monitor. Gate root `tmp.kx5WDx9NDm`.
+- Validating the owner's issue-324 records against the executable predicates before the gate could
+  consume them found three defects, one of which would have aborted the protocol after the
+  irreversible WORM lock:
+  1. **Block 15 would have aborted after the WORM upload.** Its Story 1.16 transform required the
+     literal `followup_review_recommended: true` to occur exactly once in the whole follow-up spec,
+     but `spec-1-11-complete-projection-freshness-lifecycle.md` contained it twice — the real front
+     matter flag at line 9 and the disposition prose at line 113 quoting the flag in backticks. The
+     region has never executed: `f692f903` died at the adapter invocation roughly 130 lines earlier
+     in the same block. Block 16 carries the identical transform to re-derive the expected spec, so
+     both copies would have failed.
+  2. **The publication-authority record would have failed block 13.** Its `authorized_at` of
+     `2026-07-25T19:04:14Z` is local CEST written as UTC — 1.83 hours in the future — against the
+     predicate `authorized_at <= checked_at`.
+  3. **The Story 1.16 record still carried drafting placeholders** in `summary`,
+     `findings_and_resolutions`, `verification`, and `residual_limitations`. Because the validator
+     only tests `nonblank`, the placeholders would have passed and then been written verbatim into
+     the permanently retained WORM bundle and appended to the follow-up spec by the transform,
+     landing in commit A.
+- Fixed (1) at both ends rather than only unblocking it: the disposition prose now reads
+  ``flag `followup_review_recommended` remains `true` ``, and both transform copies were replaced
+  with a front-matter-scoped resolution that locates the flag inside the YAML header instead of
+  counting a whole-document literal. Verified by extracting the hardened logic and executing it
+  against the real spec: it resolves the flag correctly, remains correct when a prose mention is
+  deliberately re-added, and still fails closed when the front-matter flag is already resolved.
+  Added `PacketFollowupSpecTransformResolvesFrontMatterFlagOnly` binding the absence of the legacy
+  count guard, the presence of exactly two front-matter-scoped copies, and exactly one unresolved
+  front-matter flag in the spec; the integrity class passes 7/7 and all 23 packet Bash blocks parse.
+- Deliberately did not fix the block-15/16 limitation-ID `sort -u` versus `sort` asymmetry; it cannot
+  fire against the committed approval-subject literal, and every packet edit costs a new candidate
+  SHA plus a full re-gate. Recorded in `deferred-work.md` for the next packet change.
+- Defects (2) and (3) are GitHub-side and require no commit; both records must additionally be
+  rebound to the candidate SHA this correction produces.
+
 ### Completion Notes
 
 - Candidate `eb59649b...` is the first in this lineage to pass the read-only Phase-1 exact-SHA gate on
@@ -1200,6 +1246,7 @@ traceability; it does not reclassify that path as a Story 1.20 implementation de
 
 | Date | Phase | Test-method delta | Verification | File-list reconciliation |
 | --- | --- | ---: | --- | --- |
+| 2026-07-25 | Second single-run Phase-1 pass (`ed5af0f6`) + front-matter-scoped follow-up transform correction | `+1` test method / `+1` case | Candidate `ed5af0f6` (docs-only child of `eb59649b`; packet byte-identical, no source drift): Phase-1 clean on the FIRST run again — 77 results, 9,202 cases, 9,076 passed, 0 failed/errors/not-run, exactly 126 allowlisted skips, integration 279/279 in 1,581.334s, live-sidecar 49/49, AD-11 exact, 14 packages at `999.1.20-proof.ed5af0f650a1`, conflict monitor empty. RED (caught statically, pre-publication): the Story 1.16 transform in blocks 15 AND 16 aborted unless `followup_review_recommended: true` occurred exactly once document-wide, but `spec-1-11` carried it twice (front matter line 9 + disposition prose line 113) — block 15 runs AFTER the irreversible WORM lock and the region had never executed. Also caught the publication-authority `authorized_at` being local CEST labelled `Z` (+1.83 h future vs `authorized_at <= checked_at`) and four surviving placeholder strings in the Story 1.16 record that `nonblank` would have passed straight into the WORM bundle and commit A. GREEN: prose reworded; both transform copies now resolve the flag inside the YAML front matter; hardened logic executed against the real spec (resolves correctly, immune to a re-added prose mention, still fails closed when already resolved); `ProofPacketValidatorIntegrityTests` 7/7; 23/23 Bash blocks parse; `git diff --check` clean. | Updated the proof packet (both transforms), `spec-1-11` prose, the integrity test, `deferred-work.md`, and this record. Preserved `blocked` / sprint `in-progress`. The `sort -u` vs `sort` limitation-ID asymmetry was deliberately deferred rather than spending a dedicated re-gate. Both issue-324 records must be rebound to the candidate SHA this commit produces. |
 | 2026-07-25 | Pre-gate paired-contract audit + first single-run Phase-1 pass (candidate `eb59649b`) | `+0` (read-only verification; no source change) | Static audit BEFORE running: both PR #330 fixes verified in place (4 adapter `--output` sites directory-scoped + `test ! -e` guarded; verifier smoke matches publication smoke on the four `Authentication__JwtBearer__*` vars and the 180-poll budget) plus six untouched block-15/16 twins consistent (retention, WORM schema v2, bundle archive, manifest/child-config/platform set, GitHub `jq -j` + `body_sha256`, and derived-vs-hardcoded capability/limitation IDs matching exactly at 9/32 with no duplicates). Packet integrity 6/6; 23/23 blocks `bash -n`. GATE: Phase-1 clean on the FIRST run — AD-11 exact (SDK 10.0.302 / ASP.NET + runtime 10.0.10); 77 identity-bound results, 9,202 cases, 9,076 passed, 0 failed/errors/not-run, exactly 126 allowlisted skips in their frozen distribution; complete Debug/source integration 279/279, 0 skips, 1,573.534s; live-sidecar 49/49; Release build 0W/0E; 14-package build/validate/consumer/tool-install/SHA-256 at `999.1.20-proof.eb59649b29a0`; Dapr conflict monitor empty; candidate identity unchanged before and after every gate. | No repository file changed by the gate (read-only against the committed candidate); evidence retained at gate root `tmp.3JcRFJBxed`. This story record is intentionally left UNCOMMITTED so `eb59649b` stays eligible as commit A's sole direct parent. Preserved `blocked` / sprint `in-progress`; steps 7-11 not entered, so no publication, WORM upload, owner approval, or migration authority exists. One latent block-15/16 `sort -u` vs `sort` limitation-ID asymmetry logged for a future packet pass. |
 | 2026-07-25 | Exact-SHA gate + first WORM lock; adapter-output and verifier-smoke corrections | `+2` test methods / `+2` cases | Candidate `f692f903...`: Phase-1 clean on run 3 (77 results, 9,200 cases, 9,074 passed, 0 failed, exactly 126 allowlisted skips, integration 279/279 in 1,584.878s, live-sidecar 49/49, 14-package hash); runs 1-2 failed only on isolated-passing Tier-3 flakes with an empty Dapr conflict monitor. Publication green after registering `qemu-aarch64` emulation: index `sha256:bad8c4fa...`, exactly `linux/amd64`+`linux/arm64`, both smokes. Bundle `sha256:e0cbfb2c...` WORM-locked (version `2026-07-25T15:25:17.4330510Z`, retention `2033-07-26`). RED: block 15 failed closed because adapter `--output` paths came from bare `mktemp` against the adapter's `test ! -e` contract (3 sites + 1 unguarded target); owner review found the A/B/C verifier smoke omitting the four `Authentication__JwtBearer__*` settings and polling 90s vs 180s. GREEN: both corrected; `ProofPacketValidatorIntegrityTests` 6/6, 23/23 Bash blocks parse, `git diff --check` clean. | Updated the proof packet, its integrity test, and this record. Preserved `blocked` / sprint `in-progress`; a replacement committed SHA must rerun all gates and obtain replacement SHA-bound human records. |
 | 2026-07-24 | Multi-arch publish method (`/t:PublishContainer`) + package-log corrections | `+0` methods / `+3` assertions | Validated on working image `bcab5253`: `/t:PublishContainer` emits persistent per-platform tags → republished index `sha256:b83dd2ce...` passed child-config + both smokes + `docker pull --platform` amd64/arm64. `literal-package-inventory.log` now non-empty on success → raw-evidence bundle (block 14) built (sha256 `ccc7ac72...`). `ProofPacketValidatorIntegrityTests` 4/4. | Updated the proof packet + integrity test + this record. Preserved `blocked` / sprint `in-progress`; a replacement committed SHA must rerun all gates and obtain replacement SHA-bound human records. |
