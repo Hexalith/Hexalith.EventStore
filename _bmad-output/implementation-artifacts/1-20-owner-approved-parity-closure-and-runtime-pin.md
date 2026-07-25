@@ -912,8 +912,64 @@ override Story 1.20's external evidence and named-approval gates.
   delta as `e7629a51f241442259dda98555db026f34bfdc31` (`fix: 1.20 blocked`). This agent did not stage,
   commit, or push that change and preserved the externally advanced `main`/`origin/main` state.
 
+#### 2026-07-25 — Exact-SHA gate, first WORM lock, and two never-run block defects (candidate `f692f903`)
+
+- Candidate `f692f903d31bf818a71e045747ef89601c8483cb` (PR #329, the Tier-3 Aspire fixture
+  Dapr-invocation-readiness gate) superseded `ba0418e9`, so the protocol restarted from zero with
+  fresh SHA-bound human records: Story 1.16 follow-up disposition (issue 324 comment `5078584209`)
+  and pre-publication container authority (comment `5078585228`, expiring 2026-08-24).
+- Phase-1 needed three runs. Run 1 failed the full source-topology assembly 277/279 when the
+  `tenants` resource died on an ephemeral-port collision (`Failed to bind to address
+  https://127.0.0.1:46283: address already in use`); its two tests passed 2/2 in 45.211s in
+  isolation. Run 2 failed 278/279 on
+  `HttpStaleETagProofE2ETests.IncrementCounter_CurrentETagReturns304_StaleETagRequeriesAfterProjectionChange`
+  with an immediate `500 actor-exception`; it passed 1/1 in 32.612s in isolation. The Dapr conflict
+  monitor was empty in both runs, so neither was foreign contention. Run 3 was clean: 77
+  identity-bound results, 9,200 cases, 9,074 passed, 0 failed/errors/not-run, exactly the 126
+  allowlisted deferred skips, complete Debug/source integration 279/279 in 1,584.878 seconds,
+  live-sidecar 49/49, and the exact 14-package build/validate/SHA-256 gate.
+- The first container publication pushed OCI index
+  `sha256:f74a4ee89a9b5c839214858f64f3c0352bab1d4c9825a26cea1f29b19b7c42ff` but failed its
+  post-push `linux/arm64` smoke: this host had rebooted, so no `qemu-aarch64` `binfmt_misc` handler
+  was registered and the digest-pinned arm64 container died with `exec /usr/bin/dotnet: exec format
+  error`. After registering emulation the re-published index
+  `sha256:bad8c4fae6edaf1a9c0fbc3cec4d5b936480d671dde8ce4eed8c758f96105755` passed manifest,
+  child-config, and both platform smokes for exactly `linux/amd64` and `linux/arm64`.
+- The raw-evidence bundle (`sha256:e0cbfb2cea0f0c7a0bac50f8fd7534443e0f77cf07c1e768ff7962a0de9ede30`)
+  was uploaded to `hexalithevidence/story-1-20`, byte-verified against the local bundle through the
+  adapter before locking, and then given an irreversible version-level WORM policy: object version
+  `2026-07-25T15:25:17.4330510Z`, mode `locked`, retention `2033-07-26T00:00:00Z`.
+- Block 15 then failed closed on its first-ever execution: it assigns the provider adapter's
+  `--output` paths from bare `mktemp`, which creates the file, while the adapter asserts
+  `test ! -e "$OUTPUT"` so a partial or stale artefact can never be credited. Three invocations were
+  affected (block 15 download, block 16 describe and download) and a fourth describe target carried
+  no absence guard at all. The never-executed approval and A/B/C blocks were therefore unreachable.
+- Owner review of the same never-run region found a second defect: the A/B/C verifier's container
+  smoke started the image with `ASPNETCORE_URLS` only, omitting the four
+  `Authentication__JwtBearer__*` settings the publication smoke injects — the exact cause of the
+  v3.77.1 amd64 failure — and bounded readiness at 90 seconds against publication's 180, which is
+  fragile for emulated `linux/arm64` (75 polls observed). Both defects would have failed the
+  protocol after the irreversible WORM upload and both owner approvals.
+- Corrected both: adapter outputs are now directory-scoped, non-existent paths with explicit
+  absence guards, and the verifier smoke matches the publication smoke's startup environment and
+  readiness budget. Added two `ProofPacketValidatorIntegrityTests` regressions binding the adapter
+  non-overwrite contract and the two smokes' shared startup contract; the class passes 6/6, all 23
+  packet Bash blocks pass `bash -n`, and `git diff --check` is clean. This is a packet-only
+  correction: a new committed SHA must restart the entire protocol from zero with replacement
+  SHA-bound human records, and the `f692f903` quarantine tag, WORM object, and records are
+  superseded.
+
 ### Completion Notes
 
+- Candidate `f692f903...` produced the first fully green Phase-1 gate, the first digest-verified
+  two-platform publication of this lineage, and the first irreversible seven-year WORM lock of a
+  raw-evidence bundle, then stopped fail-closed inside the never-executed evidence-retention block.
+  Two independent defects in never-run blocks were found and corrected: provider-adapter outputs
+  assigned from bare `mktemp` against the adapter's non-overwrite contract, and an A/B/C verifier
+  container smoke that omitted the publication smoke's JWT startup environment and used half its
+  readiness budget. Both would have failed after the WORM lock and both owner approvals. No owner
+  approval, A/B/C commit, or consumer migration followed; the `f692f903` artefacts are superseded
+  while its WORM object remains permanently retained until 2033-07-26.
 - Story remains fail-closed and non-authorizing. Runtime and test corrections in the candidate
   lineage are separately scoped prerequisite corrective work; they are not credited as
   implementation of this evidence-only story and do not grant owner approval.
@@ -1072,6 +1128,7 @@ traceability; it does not reclassify that path as a Story 1.20 implementation de
 
 | Date | Phase | Test-method delta | Verification | File-list reconciliation |
 | --- | --- | ---: | --- | --- |
+| 2026-07-25 | Exact-SHA gate + first WORM lock; adapter-output and verifier-smoke corrections | `+2` test methods / `+2` cases | Candidate `f692f903...`: Phase-1 clean on run 3 (77 results, 9,200 cases, 9,074 passed, 0 failed, exactly 126 allowlisted skips, integration 279/279 in 1,584.878s, live-sidecar 49/49, 14-package hash); runs 1-2 failed only on isolated-passing Tier-3 flakes with an empty Dapr conflict monitor. Publication green after registering `qemu-aarch64` emulation: index `sha256:bad8c4fa...`, exactly `linux/amd64`+`linux/arm64`, both smokes. Bundle `sha256:e0cbfb2c...` WORM-locked (version `2026-07-25T15:25:17.4330510Z`, retention `2033-07-26`). RED: block 15 failed closed because adapter `--output` paths came from bare `mktemp` against the adapter's `test ! -e` contract (3 sites + 1 unguarded target); owner review found the A/B/C verifier smoke omitting the four `Authentication__JwtBearer__*` settings and polling 90s vs 180s. GREEN: both corrected; `ProofPacketValidatorIntegrityTests` 6/6, 23/23 Bash blocks parse, `git diff --check` clean. | Updated the proof packet, its integrity test, and this record. Preserved `blocked` / sprint `in-progress`; a replacement committed SHA must rerun all gates and obtain replacement SHA-bound human records. |
 | 2026-07-24 | Multi-arch publish method (`/t:PublishContainer`) + package-log corrections | `+0` methods / `+3` assertions | Validated on working image `bcab5253`: `/t:PublishContainer` emits persistent per-platform tags → republished index `sha256:b83dd2ce...` passed child-config + both smokes + `docker pull --platform` amd64/arm64. `literal-package-inventory.log` now non-empty on success → raw-evidence bundle (block 14) built (sha256 `ccc7ac72...`). `ProofPacketValidatorIntegrityTests` 4/4. | Updated the proof packet + integrity test + this record. Preserved `blocked` / sprint `in-progress`; a replacement committed SHA must rerun all gates and obtain replacement SHA-bound human records. |
 | 2026-07-24 | First successful container publish + BOM digest-capture correction | `+0` methods / `+3` assertions | Candidate `f0a72928...`: full Phase-1 gate GREEN (source topology 278/278 after one transient-flake re-run, live-sidecar 49/49, 9,072 passed / exactly 126 allowlisted skips, 14-package build+SHA-256). Container publish SUCCEEDED (OCI index `sha256:fbb5664f...`, exactly `linux/amd64`+`linux/arm64`). RED: post-push digest-identity check failed on a UTF-8 BOM from the capture target's `WriteLinesToFile Encoding="UTF-8"`. GREEN: capture target now writes `ASCII` and the read strips any BOM; `ProofPacketValidatorIntegrityTests` 4/4. | Updated only the proof packet and its integrity test (+ this record). Preserved `blocked` / sprint `in-progress`; a replacement committed SHA must rerun all gates and obtain replacement SHA-bound human records; the `quarantine-proof-f0a72928...` tag is superseded. |
 | 2026-07-24 | Exact-SHA gate pass and restore multi-RID graph correction | `+0` test methods / strengthened existing case | Candidate `9cbefb31...`: 77 XML results, 9,072 passed, exactly 126 allowlisted skips, 0 failed/errors/not-run; complete source topology 278/278, 0 skipped, 1,595.887s; Release build 0 warnings/errors; exact 14-package and consumer/tool gates passed; Dapr conflicts empty. RED: authorized `publish --no-restore` stopped with `NETSDK1047` because restore lacked both `linux-musl-*` target graphs; exact registry tag remains absent. GREEN: the packet gives restore and publish the identical single-argument RuntimeIdentifiers value; direct restore produced both RID-specific assets targets, focused/integrity tests passed 1/1 and 4/4, and every Bash block passed `bash -n`. | Updated only the proof packet, its existing integrity test, and this story record. Preserved `blocked` / sprint `in-progress`; a replacement committed SHA must rerun all gates and obtain replacement SHA-bound human records. |

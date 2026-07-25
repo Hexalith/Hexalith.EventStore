@@ -2720,7 +2720,9 @@ test "$(git ls-files -s -- "$RAW_EVIDENCE_PROVIDER_ADAPTER" | awk '{print $1}')"
 test -f "$RAW_EVIDENCE_PROVIDER_ADAPTER" && test ! -L "$RAW_EVIDENCE_PROVIDER_ADAPTER"
 RAW_EVIDENCE_PROVIDER_ADAPTER_SHA256="$({ sha256sum "$RAW_EVIDENCE_PROVIDER_ADAPTER"; } | awk '{print $1}')"
 [[ "$RAW_EVIDENCE_PROVIDER_ADAPTER_SHA256" =~ ^[0-9a-f]{64}$ ]]
-FETCHED_RAW_EVIDENCE_BUNDLE="$(mktemp)"
+FETCHED_RAW_EVIDENCE_BUNDLE_DIRECTORY="$(mktemp -d)"
+FETCHED_RAW_EVIDENCE_BUNDLE="$FETCHED_RAW_EVIDENCE_BUNDLE_DIRECTORY/story-1-20-raw-evidence.tar.gz"
+test ! -e "$FETCHED_RAW_EVIDENCE_BUNDLE"
 "$RAW_EVIDENCE_PROVIDER_ADAPTER" download \
   --object-url "$RAW_EVIDENCE_BUNDLE_URL" \
   --object-version "$RAW_EVIDENCE_BUNDLE_OBJECT_VERSION" \
@@ -2729,6 +2731,7 @@ test "$(sha256sum "$FETCHED_RAW_EVIDENCE_BUNDLE" | awk '{print $1}')" \
   = "$RAW_EVIDENCE_BUNDLE_SHA256"
 cmp --silent "$RAW_EVIDENCE_BUNDLE_FILE" "$FETCHED_RAW_EVIDENCE_BUNDLE"
 RAW_EVIDENCE_IMMUTABILITY_PROOF="$EVIDENCE_ROOT/raw-evidence-immutability-proof.json"
+test ! -e "$RAW_EVIDENCE_IMMUTABILITY_PROOF"
 "$RAW_EVIDENCE_PROVIDER_ADAPTER" describe \
   --object-url "$RAW_EVIDENCE_BUNDLE_URL" \
   --object-version "$RAW_EVIDENCE_BUNDLE_OBJECT_VERSION" \
@@ -2806,7 +2809,7 @@ for required_log in "${REQUIRED_RAW_LOGS[@]}"; do
   test -s "$RAW_BUNDLE_INSPECTION_DIRECTORY/$required_log"
 done
 rm -rf -- "$RAW_BUNDLE_INSPECTION_DIRECTORY"
-rm -f -- "$FETCHED_RAW_EVIDENCE_BUNDLE"
+rm -rf -- "$FETCHED_RAW_EVIDENCE_BUNDLE_DIRECTORY"
 assert_ad11_current
 assert_candidate_tree_clean
 capture_source_state "$EVIDENCE_ROOT/source-state-after.txt"
@@ -3283,7 +3286,8 @@ A_RELEASE_PACKAGES="$(mktemp)"
 A_EXPECTED_PACKAGE_IDS="$(mktemp)"
 A_EXPECTED_PACKAGE_FILES="$(mktemp)"
 A_EVIDENCE_MANIFEST="$(mktemp)"
-A_RAW_EVIDENCE_BUNDLE="$(mktemp)"
+A_RAW_EVIDENCE_BUNDLE_DIRECTORY="$(mktemp -d)"
+A_RAW_EVIDENCE_BUNDLE="$A_RAW_EVIDENCE_BUNDLE_DIRECTORY/story-1-20-raw-evidence.tar.gz"
 A_RAW_EVIDENCE_DIRECTORY="$(mktemp -d)"
 A_EXPECTED_FILTERED_RESULTS="$(mktemp)"
 A_EXPECTED_FULL_RESULTS="$(mktemp)"
@@ -3587,7 +3591,9 @@ require_committed_seven_year_retention \
   "$A_RAW_EVIDENCE_RETENTION_UNTIL" "$A_WORM_CHECKED_AT"
 require_committed_seven_year_retention \
   "$A_RAW_EVIDENCE_RETENTION_UNTIL" "$A_AUTHORIZATION_COMMIT_AT"
-A_PROVIDER_PROOF_CURRENT="$(mktemp)"
+A_PROVIDER_PROOF_DIRECTORY="$(mktemp -d)"
+A_PROVIDER_PROOF_CURRENT="$A_PROVIDER_PROOF_DIRECTORY/raw-evidence-immutability-proof.json"
+test ! -e "$A_PROVIDER_PROOF_CURRENT"
 "$A_PROVIDER_ADAPTER" describe \
   --object-url "$A_RAW_EVIDENCE_BUNDLE_URL" \
   --object-version "$A_RAW_EVIDENCE_OBJECT_VERSION" \
@@ -3599,7 +3605,9 @@ curl --fail --silent --show-error --location "$A_RAW_EVIDENCE_PROOF_URL" \
 test "$(sha256sum "$A_FETCHED_RAW_EVIDENCE_PROOF" | awk '{print $1}')" \
   = "$A_RAW_EVIDENCE_PROOF_SHA256"
 cmp --silent "$A_RAW_EVIDENCE_PROOF" "$A_FETCHED_RAW_EVIDENCE_PROOF"
-rm -f -- "$A_FETCHED_RAW_EVIDENCE_PROOF" "$A_PROVIDER_PROOF_CURRENT"
+rm -f -- "$A_FETCHED_RAW_EVIDENCE_PROOF"
+rm -rf -- "$A_PROVIDER_PROOF_DIRECTORY"
+test ! -e "$A_RAW_EVIDENCE_BUNDLE"
 "$A_PROVIDER_ADAPTER" download \
   --object-url "$A_RAW_EVIDENCE_BUNDLE_URL" \
   --object-version "$A_RAW_EVIDENCE_OBJECT_VERSION" \
@@ -4663,8 +4671,12 @@ verify_container_platform_smoke() (
   if container_id="$(docker run --detach --rm --platform "$platform" \
       --publish 127.0.0.1::8080 \
       --env ASPNETCORE_URLS=http://+:8080 \
+      --env Authentication__JwtBearer__Issuer=hexalith-container-smoke \
+      --env Authentication__JwtBearer__Audience=hexalith-eventstore \
+      --env Authentication__JwtBearer__SigningKey=hexalith-container-smoke-only-key-not-a-secret \
+      --env Authentication__JwtBearer__AllowInsecureSymmetricKey=true \
       "$repository@$digest" 2>> "$smoke_log")"; then
-    for _ in $(seq 1 90); do
+    for _ in $(seq 1 180); do
       if ! test "$(docker inspect -f '{{.State.Running}}' "$container_id" 2>/dev/null)" = 'true'; then
         break
       fi

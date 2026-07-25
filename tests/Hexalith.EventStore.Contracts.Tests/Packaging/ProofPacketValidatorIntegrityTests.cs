@@ -27,6 +27,10 @@ public sealed class ProofPacketValidatorIntegrityTests
         @"^```bash\r?\n(?<body>.*?)^```\s*$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.Multiline | RegexOptions.Singleline);
 
+    private static readonly Regex AdapterOutputPattern = new(
+        @"^""\$(?:RAW_EVIDENCE_PROVIDER_ADAPTER|A_PROVIDER_ADAPTER)""[ \t]+(?:download|describe)[ \t]*\\\r?\n(?:.*\r?\n)*?[ \t]*--output[ \t]+""\$(?<output>[A-Z0-9_]+)""",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.Multiline);
+
     private static readonly Regex ValidatorPattern = new(
         @"^[ \t]*jq[ \t]+-e[ \t]+-s[ \t]+'(?<program>.*?)'[ \t\r\n]+""(?<input>\$(?:APPROVAL_ROLE_ALLOWLIST|A_APPROVAL_ROLE_ALLOWLIST))""[ \t]+>/dev/null[ \t]*$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.Multiline | RegexOptions.Singleline);
@@ -81,6 +85,87 @@ public sealed class ProofPacketValidatorIntegrityTests
         // Regression: the literal package-inventory validator must print on success so its tee'd
         // log is non-empty and passes the raw-evidence bundle's required-log `test -s` check.
         packet.ShouldContain("print(f\"literal package inventory verified:");
+    }
+
+    /// <summary>
+    /// Verifies the A/B/C verifier's container smoke starts the image under the same startup
+    /// contract as the publication smoke, so a digest that smoked green at publication cannot
+    /// fail closed during authorization.
+    /// </summary>
+    [Fact]
+    public void PacketVerifierContainerSmokeMatchesPublicationStartupContract()
+    {
+        string root = FindRepositoryRoot();
+        string packet = File.ReadAllText(Path.Combine(root, PacketRelativePath));
+        string publicationSmoke = ExtractContract(packet, "container-smoke-contract");
+        string verifierSmoke = ExtractContract(packet, "container-smoke-verifier-contract");
+
+        // Regression: the verifier started the container with ASPNETCORE_URLS only. The host then
+        // failed startup for want of JWT bearer configuration — the v3.77.1 amd64 failure — so the
+        // A/B/C chain would have failed AFTER the irreversible WORM upload and both owner
+        // approvals, the most expensive point in the protocol.
+        string[] requiredStartupEnvironment =
+        [
+            "--env ASPNETCORE_URLS=http://+:8080",
+            "--env Authentication__JwtBearer__Issuer=hexalith-container-smoke",
+            "--env Authentication__JwtBearer__Audience=hexalith-eventstore",
+            "--env Authentication__JwtBearer__SigningKey=hexalith-container-smoke-only-key-not-a-secret",
+            "--env Authentication__JwtBearer__AllowInsecureSymmetricKey=true",
+        ];
+
+        foreach (string setting in requiredStartupEnvironment)
+        {
+            publicationSmoke.Contains(setting, StringComparison.Ordinal).ShouldBeTrue(
+                $"The publication smoke must keep injecting {setting}.");
+            verifierSmoke.Contains(setting, StringComparison.Ordinal).ShouldBeTrue(
+                $"The verifier smoke must inject the same {setting} as the publication smoke.");
+        }
+
+        // Regression: the verifier polled for 90 seconds against the publication smoke's 180. The
+        // emulated arm64 platform has been observed needing 75 polls, leaving no useful margin.
+        verifierSmoke.Contains("for _ in $(seq 1 180); do", StringComparison.Ordinal).ShouldBeTrue(
+            "The verifier smoke must allow the same readiness budget as the publication smoke.");
+        verifierSmoke.Contains("seq 1 90", StringComparison.Ordinal).ShouldBeFalse(
+            "The verifier smoke must not keep the shorter readiness budget.");
+    }
+
+    /// <summary>
+    /// Verifies every evidence-provider adapter invocation in the packet writes to a path that
+    /// does not already exist, as the adapter's own non-overwrite contract requires.
+    /// </summary>
+    [Fact]
+    public void PacketProviderAdapterInvocationsTargetNonExistentOutputPaths()
+    {
+        string root = FindRepositoryRoot();
+        string packet = File.ReadAllText(Path.Combine(root, PacketRelativePath));
+        string adapter = File.ReadAllText(
+            Path.Combine(root, "tools", "evidence-provider-adapters", "azure-immutable-blob-v1.sh"));
+
+        // The adapter refuses to overwrite an existing output so a partial or stale artefact can
+        // never be credited as retrieved evidence. That guard is the contract this test binds to.
+        adapter.Contains("test ! -e \"$OUTPUT\"", StringComparison.Ordinal).ShouldBeTrue(
+            "The adapter must keep refusing to overwrite an existing output path.");
+
+        MatchCollection invocations = AdapterOutputPattern.Matches(packet);
+        invocations.Count.ShouldBe(
+            4,
+            "The packet must invoke the provider adapter exactly four times (block 15 download and "
+            + "describe, block 16 describe and download).");
+
+        foreach (Match invocation in invocations)
+        {
+            string variable = invocation.Groups["output"].Value;
+
+            // Regression: block 15 and block 16 assigned these output paths from a bare `mktemp`,
+            // which CREATES the file. The adapter then failed closed on its own non-overwrite
+            // guard, so the WORM proof could never be retrieved and the never-executed approval
+            // and A/B/C blocks were unreachable (found on the first real run, candidate f692f903).
+            packet.Contains($"{variable}=\"$(mktemp)\"", StringComparison.Ordinal).ShouldBeFalse(
+                $"{variable} must not be assigned an existing mktemp file; the adapter refuses to "
+                + "overwrite it.");
+            packet.Contains($"test ! -e \"${variable}\"", StringComparison.Ordinal).ShouldBeTrue(
+                $"{variable} must be proven absent before the adapter writes it.");
+        }
     }
 
     /// <summary>
@@ -429,6 +514,17 @@ public sealed class ProofPacketValidatorIntegrityTests
         _ = process.StandardOutput.ReadToEnd();
         _ = process.StandardError.ReadToEnd();
         return process.ExitCode;
+    }
+
+    private static string ExtractContract(string packet, string marker)
+    {
+        string start = $"# {marker}-start";
+        string end = $"# {marker}-end";
+        int startIndex = packet.IndexOf(start, StringComparison.Ordinal);
+        startIndex.ShouldBeGreaterThanOrEqualTo(0, $"The packet must declare {start}.");
+        int endIndex = packet.IndexOf(end, startIndex, StringComparison.Ordinal);
+        endIndex.ShouldBeGreaterThan(startIndex, $"The packet must declare {end} after {start}.");
+        return packet[(startIndex + start.Length)..endIndex];
     }
 
     private static string FindRepositoryRoot()
