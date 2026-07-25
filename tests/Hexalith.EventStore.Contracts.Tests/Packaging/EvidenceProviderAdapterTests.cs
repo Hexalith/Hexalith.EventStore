@@ -15,8 +15,15 @@ public sealed class EvidenceProviderAdapterTests
     /// <summary>
     /// Verifies authenticated version-bound download and locked immutability proof generation.
     /// </summary>
-    [Fact]
-    public async Task AzureAdapterBindsTheExactVersionHashAndLockedRetention()
+    /// <param name="policyMode">
+    /// The immutability policy mode value returned by the provider. Azure's Get Blob Properties
+    /// REST API returns lowercase <c>locked</c>; the SDK enum surfaces <c>Locked</c>. The adapter
+    /// must accept both, so the proof is generated regardless of provider casing.
+    /// </param>
+    [Theory]
+    [InlineData("locked")]
+    [InlineData("Locked")]
+    public async Task AzureAdapterBindsTheExactVersionHashAndLockedRetention(string policyMode)
     {
         if (OperatingSystem.IsWindows())
         {
@@ -72,7 +79,7 @@ public sealed class EvidenceProviderAdapterTests
                     'x-ms-version-id: 2026-07-19T20:00:00.0000000Z' \
                     'x-ms-meta-sha256: {{{payloadHash}}}' \
                     'x-ms-immutability-policy-until-date: Wed, 20 Jul 2033 20:00:00 GMT' \
-                    'x-ms-immutability-policy-mode: Locked' \
+                    'x-ms-immutability-policy-mode: {{{policyMode}}}' \
                     '' > "$headers"
                 else
                   cp -- '{{{payload}}}' "$output"
