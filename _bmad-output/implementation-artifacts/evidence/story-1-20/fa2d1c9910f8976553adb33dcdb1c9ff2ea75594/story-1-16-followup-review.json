@@ -1,0 +1,15 @@
+{
+    "action": "story-1-16-followup-review",
+    "owner": "jpiquot",
+    "reviewed_at": "2026-07-26T10:38:22Z",
+    "durable_source": "https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5083115178",
+    "disposition": "approved",
+    "scope": {
+      "repository": "https://github.com/Hexalith/Hexalith.EventStore.git",
+      "reviewed_runtime_sha": "fa2d1c9910f8976553adb33dcdb1c9ff2ea75594",
+      "summary": "Reviewed the corrected Story 1.16 runtime candidate.",
+      "findings_and_resolutions": "Candidate binding is corrected; no unresolved findings remain.",
+      "verification": "The mandatory exact-SHA proof gate passed.",
+      "residual_limitations": "Documented Story 1.16 limitations remain accepted."
+    }
+  }

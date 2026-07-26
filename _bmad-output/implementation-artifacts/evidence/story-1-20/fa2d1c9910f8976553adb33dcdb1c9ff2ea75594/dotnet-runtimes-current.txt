@@ -1,0 +1,6 @@
+Microsoft.AspNetCore.App 10.0.8 [/home/administrator/.dotnet/shared/Microsoft.AspNetCore.App]
+Microsoft.AspNetCore.App 10.0.9 [/home/administrator/.dotnet/shared/Microsoft.AspNetCore.App]
+Microsoft.AspNetCore.App 10.0.10 [/home/administrator/.dotnet/shared/Microsoft.AspNetCore.App]
+Microsoft.NETCore.App 10.0.8 [/home/administrator/.dotnet/shared/Microsoft.NETCore.App]
+Microsoft.NETCore.App 10.0.9 [/home/administrator/.dotnet/shared/Microsoft.NETCore.App]
+Microsoft.NETCore.App 10.0.10 [/home/administrator/.dotnet/shared/Microsoft.NETCore.App]

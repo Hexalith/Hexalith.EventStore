@@ -1,0 +1,18 @@
+{
+  "object": {
+    "sha256": "76d9d02e9d75017f5d2b952d36c76e243968f037739a56c3ed18e34be3bf68ec",
+    "url": "https://hexalithevidence.blob.core.windows.net/story-1-20/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/story-1-20-raw-evidence.tar.gz",
+    "version": "2026-07-26T10:36:02.8785061Z"
+  },
+  "policy": {
+    "locked": true,
+    "mode": "WORM",
+    "retention_until": "2033-08-01T00:00:00Z"
+  },
+  "provider": {
+    "adapter_id": "azure-immutable-blob-v1",
+    "adapter_sha256": "29076f2b06726fa634373908ed5a9f9709114b0e528e10458cec9cfec389dc50",
+    "authenticated_api": true
+  },
+  "schema": "hexalith.eventstore.provider-worm-object-proof/v2"
+}
