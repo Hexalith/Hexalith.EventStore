@@ -7,7 +7,7 @@ updated: 2026-07-26T11:10:33+02:00
 historical_packet: 1-8-projection-query-sdk-owner-proof-packet.md
 candidate_source_sha: ec0d35a082bcc70b090afa1c1544306008d767da
 tested_runtime_sha: ec0d35a082bcc70b090afa1c1544306008d767da
-documentation_commit_sha: null
+documentation_commit_sha: bf0ce01602b7714078817c5b673278da2ac7da30
 evidence_manifest_sha256: e1f087062ca805df8b86e2a46d54448fb93d31e974b17a2f0c6154e8831ab3e0
 approval_subject_sha256: aac85bf94b15880b225cd8c938330e1f54cc0529b06988786150afb622205c4d
 raw_evidence_bundle_url: https://hexalithevidence.blob.core.windows.net/story-1-20/ec0d35a082bcc70b090afa1c1544306008d767da/story-1-20-raw-evidence.tar.gz
