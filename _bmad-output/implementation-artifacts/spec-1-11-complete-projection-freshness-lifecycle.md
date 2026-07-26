@@ -6,7 +6,7 @@ status: 'done'
 baseline_revision: 'f6aafb38e81969ab7ca04be484b60b857f0f7a86'
 final_revision: '6aa29af6af13c76631c4122a96ddef8b3da47fb7'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/project-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-1-context.md'
@@ -223,16 +223,3 @@ Added a stable seven-state projection lifecycle contract, provenance-safe normal
 
 - Story 2.8 remains formally `in-review`; this story consumes its implemented provenance invariants but does not claim that separate owner-review closure.
 - Consumer-specific UI rendering/localization and actual operational producer wiring remain owned by their respective consumer and later projection stories; this change supplies and verifies the EventStore contract/carrier/default-policy surface.
-
-### 2026-07-26 — Follow-up review disposition
-
-- reviewed_runtime_sha: `4983299103bfa5bbbd40e695767eb5ddbc1369d5`
-- reviewer: `jpiquot`
-- reviewer_login: `jpiquot`
-- durable_source_api: `https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/comments/5082152746`
-- durable_source: `https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5082152746`
-- scope: "Follow-up review of the Story 1.16 complete projection freshness lifecycle specification against the exact committed runtime, covering the lifecycle-cleanup correction and the Story 2.7 source-topology query-provenance correction that the original disposition could not tie to a committed candidate."
-- findings_and_resolutions: "The original disposition was incomplete because it relied on candidate 8aa6d0f0 plus an uncommitted patch, so no committed runtime contained both the reviewed behaviour and its evidence. Both corrections are ancestors of the reviewed runtime: lifecycle handling at 7b73a2f5cde990b0a026ec280f7620d067b3d110 and the Story 2.7 tenant/source-topology correction at fd8ab24da230058f2f239765b68d5e0a135b4b76. This resolves the sole outstanding finding. No new findings were raised."
-- verification: "Exact-SHA gate at 4983299103bfa5bbbd40e695767eb5ddbc1369d5: complete Server.LiveSidecar.Tests 49/49; complete Debug/source Hexalith.EventStore.IntegrationTests 279/279 with zero skips; 77 identity-bound xUnit results totalling 9,204 cases with 9,078 passed, zero failed, errored or not-run, and exactly the 126 allowlisted deferred skips; warning-free Release solution build; AD-11 exact baseline with SDK 10.0.302 and ASP.NET/runtime 10.0.10; Dapr conflict monitor empty."
-- residual_limitations: "Handler-computed provenance continues to resolve lifecycle evidence to Unknown; the ETag evidence boundary and the operational-value and legacy-metadata ABI constraints remain accepted as documented in the Epic 1 capability matrix. This disposition covers the Story 1.16 follow-up review only and does not authorize consumer migration."
-- disposition: `approved`

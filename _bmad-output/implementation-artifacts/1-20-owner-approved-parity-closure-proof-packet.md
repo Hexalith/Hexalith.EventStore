@@ -5745,3 +5745,8 @@ so every parity row remains non-authorizing and the complete protocol must resta
 fresh official-main SHA. Story 1.16's named follow-up disposition, publication authority,
 immutable package/container evidence, durable owner approvals, and the A/B/C authorization chain
 remain open.
+
+## Authorization Record Boundary
+
+This stable trailing heading terminates the mutable Final Decision section for the executable
+authorizing-C transform. It carries no independent migration authority.

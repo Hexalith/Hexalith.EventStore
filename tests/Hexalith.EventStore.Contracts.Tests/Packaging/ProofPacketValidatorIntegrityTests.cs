@@ -205,6 +205,29 @@ public sealed class ProofPacketValidatorIntegrityTests
     }
 
     /// <summary>
+    /// Verifies the authorizing-C final-decision transform can leave its skip state before EOF.
+    /// </summary>
+    [Fact]
+    public void PacketAuthorizingFinalDecisionTransformUsesStableTrailingAnchor()
+    {
+        string root = FindRepositoryRoot();
+        string packet = File.ReadAllText(Path.Combine(root, PacketRelativePath));
+        const string finalDecisionHeading = "\n## Final Decision\n";
+        const string authorizationBoundaryHeading = "\n## Authorization Record Boundary\n";
+
+        int finalDecision = packet.LastIndexOf(finalDecisionHeading, StringComparison.Ordinal);
+        int authorizationBoundary = packet.IndexOf(
+            authorizationBoundaryHeading,
+            finalDecision + finalDecisionHeading.Length,
+            StringComparison.Ordinal);
+
+        finalDecision.ShouldBeGreaterThanOrEqualTo(0, "The packet must retain its Final Decision section.");
+        (authorizationBoundary > finalDecision).ShouldBeTrue(
+            "A stable level-two heading must follow Final Decision so the C transform clears "
+            + "skip_final_section before its END guard.");
+    }
+
+    /// <summary>
     /// Verifies every evidence-provider adapter invocation in the packet writes to a path that
     /// does not already exist, as the adapter's own non-overwrite contract requires.
     /// </summary>
