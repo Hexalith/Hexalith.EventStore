@@ -1,0 +1,14 @@
+Hexalith.EventStore.Admin.Abstractions.999.1.20-proof.ec0d35a082bc.nupkg
+Hexalith.EventStore.Admin.Cli.999.1.20-proof.ec0d35a082bc.nupkg
+Hexalith.EventStore.Admin.Server.999.1.20-proof.ec0d35a082bc.nupkg
+Hexalith.EventStore.Aspire.999.1.20-proof.ec0d35a082bc.nupkg
+Hexalith.EventStore.Client.999.1.20-proof.ec0d35a082bc.nupkg
+Hexalith.EventStore.Contracts.999.1.20-proof.ec0d35a082bc.nupkg
+Hexalith.EventStore.DomainService.999.1.20-proof.ec0d35a082bc.nupkg
+Hexalith.EventStore.Gateway.999.1.20-proof.ec0d35a082bc.nupkg
+Hexalith.EventStore.RestApi.Generators.999.1.20-proof.ec0d35a082bc.nupkg
+Hexalith.EventStore.Server.999.1.20-proof.ec0d35a082bc.nupkg
+Hexalith.EventStore.ServiceDefaults.999.1.20-proof.ec0d35a082bc.nupkg
+Hexalith.EventStore.SignalR.999.1.20-proof.ec0d35a082bc.nupkg
+Hexalith.EventStore.Testing.999.1.20-proof.ec0d35a082bc.nupkg
+Hexalith.EventStore.Testing.Integration.999.1.20-proof.ec0d35a082bc.nupkg

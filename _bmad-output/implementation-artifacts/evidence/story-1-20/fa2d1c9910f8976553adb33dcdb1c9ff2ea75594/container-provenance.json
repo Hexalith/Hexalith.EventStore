@@ -1,0 +1,51 @@
+{
+  "source_sha": "fa2d1c9910f8976553adb33dcdb1c9ff2ea75594",
+  "repository": "registry.hexalith.com/eventstore",
+  "tag": "quarantine-proof-fa2d1c9910f8976553adb33dcdb1c9ff2ea75594",
+  "digest": "sha256:523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87",
+  "manifest_sha256": "523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87",
+  "sdk_generated_index": {
+    "file": "generated-image-index.json",
+    "digest": "sha256:523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87",
+    "capture_targets_file": "capture-generated-image-index.targets",
+    "capture_targets_sha256": "c5dd9efdf63a28c1a5598e3289aff34715fc833f446d9c9d8eeda3d720f039fa"
+  },
+  "platforms": [
+    "linux/amd64",
+    "linux/arm64"
+  ],
+  "runtime_smoke": {
+    "health_path": "/alive",
+    "platforms": [
+      "linux/amd64",
+      "linux/arm64"
+    ],
+    "logs": {
+      "linux/amd64": {
+        "file": "container-smoke-linux-amd64.log",
+        "sha256": "d674a8700732a54a44ef7811c1e490418f412928d3517524b00a3e8dd1c834e4"
+      },
+      "linux/arm64": {
+        "file": "container-smoke-linux-arm64.log",
+        "sha256": "a2982feb1014213da06c6e420be68b4dd0284ffef29d1e214e1076934a0b7b1a"
+      }
+    }
+  },
+  "publish_properties": {
+    "container_registry": "registry.hexalith.com",
+    "container_repository": "eventstore",
+    "container_image_tag": "quarantine-proof-fa2d1c9910f8976553adb33dcdb1c9ff2ea75594",
+    "runtime_identifiers": "linux-musl-x64;linux-musl-arm64",
+    "container_runtime_identifiers": "linux-musl-x64;linux-musl-arm64",
+    "container_image_format": "OCI"
+  },
+  "publication_authority": {
+    "file": "release-owner-publication-authority.json",
+    "sha256": "2fd6a43fd92e5209e7f85d8310fda1fef66eaa2ae7f6b2fedaae6d697201246b",
+    "github_metadata_file": "release-owner-publication-authority.github.json",
+    "github_metadata_sha256": "cfff8d02bb56b0dda13d10742c3d3effce0cdba5dc12ce597245cb588cbd9864",
+    "checked_at": "2026-07-26T10:32:22Z",
+    "checked_at_file": "release-owner-publication-authority.checked-at.txt",
+    "checked_at_sha256": "bec76662b7964985d7a5b6b862318430cea825cd72603cb877aa0dfb816ced01"
+  }
+}

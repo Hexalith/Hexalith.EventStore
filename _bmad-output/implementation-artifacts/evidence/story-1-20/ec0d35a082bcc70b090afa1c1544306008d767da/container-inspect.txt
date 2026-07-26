@@ -1,0 +1,12 @@
+Name:      registry.hexalith.com/eventstore:quarantine-proof-ec0d35a082bcc70b090afa1c1544306008d767da
+MediaType: application/vnd.oci.image.index.v1+json
+Digest:    sha256:b85549523cfedf449d2ecdd6c784a2fe4704e6312b079f2d652041efc3b5cf2b
+           
+Manifests: 
+  Name:      registry.hexalith.com/eventstore:quarantine-proof-ec0d35a082bcc70b090afa1c1544306008d767da@sha256:09b1b50efa0b642ba0e7e826489b4c03b70a7325fa585e325f7c8e126ef2dc4d
+  MediaType: application/vnd.oci.image.manifest.v1+json
+  Platform:  linux/amd64
+             
+  Name:      registry.hexalith.com/eventstore:quarantine-proof-ec0d35a082bcc70b090afa1c1544306008d767da@sha256:e9fc5c871a3f2ba3a9836f4f4de8ec24a5bc571bb6d16cbd165132bf3f8dc5c4
+  MediaType: application/vnd.oci.image.manifest.v1+json
+  Platform:  linux/arm64

@@ -1,0 +1,32 @@
+candidate=ec0d35a082bcc70b090afa1c1544306008d767da
+root-status:
+root-ignored:
+root-submodules:
+ 991e8ea1b39bfb8170aea9a6857c25c7c69176c1 references/Hexalith.AI.Tools (heads/main)
+ 0d8e4652b978d71d5e1ee33181b1515f5dd5413e references/Hexalith.Builds (v4.21.7-30-g0d8e465)
+ ea1fc4551dcaf8ee63fd562d77dfe0f18c57a94c references/Hexalith.Commons (v2.28.2-4-gea1fc45)
+ 7870526090a8596082e3df034ecacf4c07881a04 references/Hexalith.FrontComposer (v4.0.1-89-g78705260)
+ 1f95a72b7ab1e0224c40c45dab7dee798d380370 references/Hexalith.Memories (v2.16.2-6-g1f95a72b)
+ a5dd24f5e66324d18241de7d5521ee124eab4877 references/Hexalith.PolymorphicSerializations (v1.18.0-3-ga5dd24f)
+ ec7ec8c51eb2ccaa093ae008d2f69c1006220d5a references/Hexalith.Tenants (v3.2.18-26-gec7ec8c)
+submodule=references/Hexalith.AI.Tools head=991e8ea1b39bfb8170aea9a6857c25c7c69176c1
+submodule-status=references/Hexalith.AI.Tools:
+submodule-ignored=references/Hexalith.AI.Tools:
+submodule=references/Hexalith.Builds head=0d8e4652b978d71d5e1ee33181b1515f5dd5413e
+submodule-status=references/Hexalith.Builds:
+submodule-ignored=references/Hexalith.Builds:
+submodule=references/Hexalith.Commons head=ea1fc4551dcaf8ee63fd562d77dfe0f18c57a94c
+submodule-status=references/Hexalith.Commons:
+submodule-ignored=references/Hexalith.Commons:
+submodule=references/Hexalith.FrontComposer head=7870526090a8596082e3df034ecacf4c07881a04
+submodule-status=references/Hexalith.FrontComposer:
+submodule-ignored=references/Hexalith.FrontComposer:
+submodule=references/Hexalith.Memories head=1f95a72b7ab1e0224c40c45dab7dee798d380370
+submodule-status=references/Hexalith.Memories:
+submodule-ignored=references/Hexalith.Memories:
+submodule=references/Hexalith.PolymorphicSerializations head=a5dd24f5e66324d18241de7d5521ee124eab4877
+submodule-status=references/Hexalith.PolymorphicSerializations:
+submodule-ignored=references/Hexalith.PolymorphicSerializations:
+submodule=references/Hexalith.Tenants head=ec7ec8c51eb2ccaa093ae008d2f69c1006220d5a
+submodule-status=references/Hexalith.Tenants:
+submodule-ignored=references/Hexalith.Tenants:

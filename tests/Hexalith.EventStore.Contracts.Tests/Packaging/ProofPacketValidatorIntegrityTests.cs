@@ -26,6 +26,9 @@ public sealed class ProofPacketValidatorIntegrityTests
     private const string FollowupSpecRelativePath =
         "_bmad-output/implementation-artifacts/spec-1-11-complete-projection-freshness-lifecycle.md";
 
+    private const string SprintStatusRelativePath =
+        "_bmad-output/implementation-artifacts/sprint-status.yaml";
+
     private static readonly Regex BashBlockPattern = new(
         @"^```bash\r?\n(?<body>.*?)^```\s*$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.Multiline | RegexOptions.Singleline);
@@ -225,6 +228,37 @@ public sealed class ProofPacketValidatorIntegrityTests
         (authorizationBoundary > finalDecision).ShouldBeTrue(
             "A stable level-two heading must follow Final Decision so the C transform clears "
             + "skip_final_section before its END guard.");
+    }
+
+    /// <summary>
+    /// Verifies the authorizing-C sprint transform matches and preserves the indentation of
+    /// comments nested under the development-status mapping.
+    /// </summary>
+    [Fact]
+    public void PacketAuthorizingSprintTransformMatchesNestedBlockerComments()
+    {
+        string root = FindRepositoryRoot();
+        string packet = File.ReadAllText(Path.Combine(root, PacketRelativePath));
+        string sprintStatus = File.ReadAllText(Path.Combine(root, SprintStatusRelativePath));
+        const string blockerStart =
+            "  # Story 1.19 review is complete. Story 1.20 remains in progress while:";
+        const string blockerEnd =
+            "  # `final_decision: still blocked` cannot transition this story or Epic 1 to done.";
+        const string completedStart =
+            "  # Story 1.20 owner-approved parity closure is complete; authorizing commit C";
+        const string completedEnd =
+            "  # verified every pinned artifact, approval, prerequisite, and migration decision.";
+
+        sprintStatus.ShouldContain(blockerStart);
+        sprintStatus.ShouldContain(blockerEnd);
+        packet.ShouldContain($"$0 == \"{blockerStart}\" {{");
+        packet.ShouldContain($"in_blocker && $0 == \"{blockerEnd}\" {{");
+        packet.ShouldContain($"print \"{completedStart}\"");
+        packet.ShouldContain($"print \"{completedEnd}\"");
+        packet.ShouldNotContain(
+            "$0 == \"# Story 1.19 review is complete. Story 1.20 remains in progress while:\" {");
+        packet.ShouldNotContain(
+            "in_blocker && $0 == \"# `final_decision: still blocked` cannot transition this story or Epic 1 to done.\" {");
     }
 
     /// <summary>

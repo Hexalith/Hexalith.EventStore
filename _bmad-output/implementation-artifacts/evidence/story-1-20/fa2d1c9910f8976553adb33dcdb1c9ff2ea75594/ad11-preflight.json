@@ -1,0 +1,12 @@
+{
+  "mode": "exact-baseline",
+  "checked_at": "2026-07-26T09:25:25Z",
+  "repository": "https://github.com/Hexalith/Hexalith.EventStore.git",
+  "source_sha": "fa2d1c9910f8976553adb33dcdb1c9ff2ea75594",
+  "sdk_version": "10.0.302",
+  "sdk_roll_forward": "latestPatch",
+  "installed_sdk_version": "10.0.302",
+  "aspnet_version": "10.0.10",
+  "installed_aspnet_version": "10.0.10",
+  "runtime_version": "10.0.10"
+}
