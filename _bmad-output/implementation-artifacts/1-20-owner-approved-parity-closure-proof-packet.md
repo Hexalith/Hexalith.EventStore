@@ -5031,12 +5031,12 @@ test "$B_LAST_UPDATED_COMMENT" = "$B_LAST_UPDATED"
 test "$C_LAST_UPDATED_COMMENT" = "$C_LAST_UPDATED"
 [[ "$C_LAST_UPDATED" == "$B_LAST_UPDATED" || "$C_LAST_UPDATED" > "$B_LAST_UPDATED" ]]
 awk -v last_updated="$C_LAST_UPDATED" '
-  $0 == "# Story 1.19 review is complete. Story 1.20 remains in progress while:" {
-    print "# Story 1.20 owner-approved parity closure is complete; authorizing commit C"
-    print "# verified every pinned artifact, approval, prerequisite, and migration decision."
+  $0 == "  # Story 1.19 review is complete. Story 1.20 remains in progress while:" {
+    print "  # Story 1.20 owner-approved parity closure is complete; authorizing commit C"
+    print "  # verified every pinned artifact, approval, prerequisite, and migration decision."
     blocker_start++; in_blocker = 1; next
   }
-  in_blocker && $0 == "# `final_decision: still blocked` cannot transition this story or Epic 1 to done." {
+  in_blocker && $0 == "  # `final_decision: still blocked` cannot transition this story or Epic 1 to done." {
     blocker_end++; in_blocker = 0; next
   }
   in_blocker { next }

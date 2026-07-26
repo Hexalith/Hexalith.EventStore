@@ -531,6 +531,17 @@ evidence; named owner approval remains absent. No consumer migration is authoriz
 ### Debug Log
 
 - 2026-07-26: Entered authorizing-C construction over official evidence commit A
+  `bf0ce01602b7714078817c5b673278da2ac7da30` and pointer-only commit B
+  `e0949996e55d7dfab59e79d780004f66f56edad6`. The exact pre-commit reconstruction caught a
+  third fail-closed defect: the AWK sprint transform searched for unindented blocker comments,
+  while those comments are nested by two spaces under `development_status`. The transform's
+  END guard therefore exits 1 for every possible C. No authorizing C was committed.
+- Corrected the verifier to match and preserve the two-space YAML indentation and added
+  `PacketAuthorizingSprintTransformMatchesNestedBlockerComments` to bind both sentinel inputs
+  and both replacement lines. The prior A/B chain remains non-authorizing history; this
+  executable verifier correction must become a new candidate and restart every exact-SHA,
+  publication, immutable-evidence, owner-approval, and A/B/C gate.
+- 2026-07-26: Entered authorizing-C construction over official evidence commit A
   `7e34153d92b5081bbae65b00370b026b8e2bd540` and pointer-only commit B
   `a1afa56d8af205600d8282a299d94cd163d44d98`. The immutable transform reproduced a second
   fail-closed defect before C was created: `## Final Decision` was the packet's last heading,
@@ -1313,6 +1324,7 @@ traceability; it does not reclassify that path as a Story 1.20 implementation de
 
 | Date | Phase | Test-method delta | Verification | File-list reconciliation |
 | --- | --- | ---: | --- | --- |
+| 2026-07-26 | Third authorizing-C preflight rejection + nested sprint-comment correction | `+1` test method / `+1` case | Official A/B ancestry was exact (`ec0d35a0...` → `bf0ce016...` → `e0949996...`), but the immutable sprint transform matched unindented blocker comments while the YAML stores them with two-space mapping indentation; RED reconstruction exited 1 for every possible C. GREEN: corrected transform execution passes against the actual B-state sprint file; focused regression 1/1; complete packet-integrity class 10/10; Release build 0 warnings/errors; all 23 Bash blocks parse. | Updated the packet verifier, integrity test, Story 1.16 reset, and this record. Preserved Story `blocked` / sprint `in-progress`; no C or migration mutation occurred, and the prior A/B commits remain non-authorizing history. |
 | 2026-07-26 | Reproducible saturated admin-index visibility-oracle correction | renamed `1` method / `0` net cases | RED: two clean exact-SHA runs at `e969e588...` each failed only `AdminCommandVisibilityTests` at 278/279 because the tenant-filtered count stayed one below the impossible `baseline + 1` expectation while the 1,000-entry global index was saturated. GREEN: the corrected test polls for the exact submitted correlation ID and validates its identity; Debug/source build 0 warnings/errors and focused live method 1/1 in 31.778s against the saturated store. | Added the admin visibility test path and recorded both rejected gate roots. Preserved Story `blocked` / sprint `in-progress`; no publication occurred, and comment `5082239874` must be replaced for the new candidate SHA. |
 | 2026-07-26 | Second authorizing-C preflight rejection + final-section boundary correction | `+1` test method / `+1` case | Official A/B ancestry was exact (`49832991...` → `7e34153d...` → `a1afa56d...`), but the immutable transform set `skip_final_section=1` at the packet's last heading and therefore exited 1 at EOF for every possible C. GREEN: added retained `## Authorization Record Boundary`; focused regression and complete packet-integrity verification pass; Story 1.16 reset to its fail-closed pre-A state. | Updated the packet, integrity test, Story 1.16 spec, and this record. Preserved Story `blocked` / sprint `in-progress`; no C or migration mutation occurred, and the prior A/B commits remain non-authorizing history. |
 | 2026-07-25 | Authorizing-C preflight rejection + evidence-packet anchor correction | `+1` test method / `+1` case | Official A/B ancestry was exact (`38f85086...` → `e25eb2d8...` → `0d492e33...`), but RED proved the immutable C transform waited for the runtime-only `### Scoped corrective item` heading that A had removed, so every possible C failed its END guard. GREEN: resume at retained `## Prerequisite And Review Ledger`; new regression 1/1; complete `ProofPacketValidatorIntegrityTests` 8/8; complete Contracts assembly 763/763; Release build 0 warnings/errors; all 23 packet Bash blocks parse. | Updated the packet anchor and integrity test, reset the Story 1.16 follow-up spec to its fail-closed pre-A state, and recorded this restart boundary. Preserved Story `blocked` / sprint `in-progress`; the prior A/B commits remain non-authorizing history and a new candidate requires a complete exact-SHA and human-approval restart. |
