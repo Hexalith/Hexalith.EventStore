@@ -163,12 +163,16 @@ public sealed class ProofPacketValidatorIntegrityTests
         lines[0].ShouldBe("---", "The follow-up spec must begin with YAML front matter.");
         int frontMatterEnd = Array.IndexOf(lines, "---", 1);
         frontMatterEnd.ShouldBeGreaterThan(0, "The follow-up spec front matter must be terminated.");
-        lines
-            .Take(frontMatterEnd)
+        string[] frontMatterLines = lines.Take(frontMatterEnd).ToArray();
+        Regex.Matches(
+            string.Join('\n', frontMatterLines),
+            @"^[ \t]*followup_review_recommended[ \t]*:",
+            RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.Multiline)
+            .Count.ShouldBe(1, "The spec must carry exactly one front-matter recommendation key without case variants.");
+        frontMatterLines
             .Count(line => line == "followup_review_recommended: false")
             .ShouldBe(1, "The spec must carry exactly one resolved front-matter recommendation.");
-        lines
-            .Take(frontMatterEnd)
+        frontMatterLines
             .Count(line => line == "followup_review_recommended: true")
             .ShouldBe(0, "The spec must not carry an unresolved front-matter recommendation.");
     }
@@ -243,18 +247,63 @@ public sealed class ProofPacketValidatorIntegrityTests
     {
         string root = FindRepositoryRoot();
         string packet = File.ReadAllText(Path.Combine(root, PacketRelativePath));
-        string sprintStatus = File.ReadAllText(Path.Combine(root, SprintStatusRelativePath));
+        string sprintStatus = File
+            .ReadAllText(Path.Combine(root, SprintStatusRelativePath))
+            .Replace("\r\n", "\n", StringComparison.Ordinal);
+        string[] sprintStatusLines = sprintStatus.Split('\n');
         const string blockerStart =
             "  # Story 1.19 review is complete. Story 1.20 remains in progress while:";
         const string blockerEnd =
             "  # `final_decision: still blocked` cannot transition this story or Epic 1 to done.";
+        const string epicOneDone = "  epic-1: done";
+        const string storyOneNineteenDone =
+            "  1-19-correct-paged-rebuild-and-replay-equivalence: done";
         const string completedStart =
             "  # Story 1.20 owner-approved parity closure is complete; authorizing commit C";
         const string completedEnd =
             "  # verified every pinned artifact, approval, prerequisite, and migration decision.";
+        const string explicitExclusions =
+            "  # Explicitly excludes payload-protection G5 and Parties Story 8.7; those are Epic 8.";
+        const string storyOneTwentyDone =
+            "  1-20-owner-approved-parity-closure-and-runtime-pin: done";
 
-        sprintStatus.ShouldContain(completedStart);
-        sprintStatus.ShouldContain(completedEnd);
+        Regex.Matches(
+            sprintStatus,
+            @"^[ \t]*epic-1[ \t]*:",
+            RegexOptions.CultureInvariant | RegexOptions.Multiline)
+            .Count.ShouldBe(1, "Sprint status must contain the Epic 1 key exactly once.");
+        sprintStatusLines.Count(line => line == epicOneDone)
+            .ShouldBe(1, "Epic 1 must be done.");
+        Regex.Matches(
+            sprintStatus,
+            @"^[ \t]*1-20-owner-approved-parity-closure-and-runtime-pin[ \t]*:",
+            RegexOptions.CultureInvariant | RegexOptions.Multiline)
+            .Count.ShouldBe(1, "Sprint status must contain the Story 1.20 key exactly once.");
+        sprintStatusLines.Count(line => line == storyOneTwentyDone)
+            .ShouldBe(1, "Story 1.20 must be done.");
+
+        string[] closureLines =
+        [
+            storyOneNineteenDone,
+            completedStart,
+            completedEnd,
+            explicitExclusions,
+            storyOneTwentyDone,
+        ];
+        foreach (string closureLine in closureLines)
+        {
+            sprintStatusLines.Count(line => line == closureLine).ShouldBe(
+                1,
+                $"The Story 1.19-to-Story 1.20 closure line must appear exactly once: {closureLine}");
+        }
+
+        string closureBlock = string.Join('\n', closureLines);
+        Regex.Matches(
+            sprintStatus,
+            $"^{Regex.Escape(closureBlock)}$",
+            RegexOptions.CultureInvariant | RegexOptions.Multiline)
+            .Count.ShouldBe(1, "Sprint status must retain one exact, ordered Story 1.19-to-Story 1.20 closure block.");
+
         sprintStatus.ShouldNotContain(blockerStart);
         sprintStatus.ShouldNotContain(blockerEnd);
         packet.ShouldContain($"$0 == \"{blockerStart}\" {{");

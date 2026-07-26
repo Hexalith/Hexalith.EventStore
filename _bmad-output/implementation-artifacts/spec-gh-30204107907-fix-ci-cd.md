@@ -2,7 +2,7 @@
 title: 'Fix stale CI governance expectations after approved changes'
 type: 'bugfix'
 created: '2026-07-26'
-status: 'in-progress'
+status: 'done'
 baseline_commit: '15604a64344fc31e3cdc004fbb1e5744266692dd'
 review_loop_iteration: 0
 context:
@@ -46,8 +46,8 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs` -- replace the obsolete approved release SHA expectation with the intentional `f75daebd…` pin so the guard matches the fail-closed release caller.
-- [ ] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ProofPacketValidatorIntegrityTests.cs` -- assert one resolved front-matter flag and no unresolved flag; assert completed sprint comments are present and obsolete blocker boundaries absent, without removing packet-transform integrity checks.
+- [x] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs` -- replace the obsolete approved release SHA expectation with the intentional `f75daebd…` pin so the guard matches the fail-closed release caller.
+- [x] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ProofPacketValidatorIntegrityTests.cs` -- assert one resolved front-matter flag and no unresolved flag; assert completed sprint comments are present and obsolete blocker boundaries absent, without removing packet-transform integrity checks.
 
 **Acceptance Criteria:**
 - Given current `main`, when the three tests that failed in run `30204107907` execute, then all three pass without changing workflow or proof artifacts.
@@ -64,3 +64,23 @@ context:
 - `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -method '*PacketFollowupSpecTransformResolvesFrontMatterFlagOnly'` -- expected: one passing test.
 - `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -method '*PacketAuthorizingSprintTransformMatchesNestedBlockerComments'` -- expected: one passing test.
 - `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll` -- expected: the complete Contracts assembly passes with zero failures and zero skips.
+
+## Suggested Review Order
+
+**Immutable release authority**
+
+- Bind governance to the intentional fail-closed shared release revision.
+  [`ContainerPublishingGovernanceTests.cs:12`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs#L12)
+
+**Authorized proof closure**
+
+- Require one resolved recommendation key while preserving both frozen transforms.
+  [`ProofPacketValidatorIntegrityTests.cs:143`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/ProofPacketValidatorIntegrityTests.cs#L143)
+
+- Bind completion comments, Epic 1, and Story 1.20 into one exact closure block.
+  [`ProofPacketValidatorIntegrityTests.cs:246`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/ProofPacketValidatorIntegrityTests.cs#L246)
+
+**Review follow-up**
+
+- Record stale operator SHA guidance without expanding this repair's approved boundary.
+  [`deferred-work.md:570`](deferred-work.md#L570)
