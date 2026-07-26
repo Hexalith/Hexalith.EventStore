@@ -3,29 +3,29 @@ schema: hexalith.eventstore.parity-closure-proof-packet/v1
 story_id: "1.20"
 story_key: 1-20-owner-approved-parity-closure-and-runtime-pin
 created: 2026-07-16T05:09:20+02:00
-updated: 2026-07-26T07:33:46+02:00
+updated: 2026-07-26T11:10:33+02:00
 historical_packet: 1-8-projection-query-sdk-owner-proof-packet.md
-candidate_source_sha: 4983299103bfa5bbbd40e695767eb5ddbc1369d5
-tested_runtime_sha: 4983299103bfa5bbbd40e695767eb5ddbc1369d5
-documentation_commit_sha: 7e34153d92b5081bbae65b00370b026b8e2bd540
-evidence_manifest_sha256: 49abfc73d3ad1a5c14383a8e309ecbaafb228f42e3d583a9411876f2c811f8a2
-approval_subject_sha256: fdabd33281b6aecac1a9127f82362bcd7a78caed65c35644b280d904980f1bb0
-raw_evidence_bundle_url: https://hexalithevidence.blob.core.windows.net/story-1-20/4983299103bfa5bbbd40e695767eb5ddbc1369d5/story-1-20-raw-evidence.tar.gz
-raw_evidence_bundle_sha256: e167ed88afc80dcfc4d81c745ddc714a7dd1ce9e1a97074b5b00e79677c09ca7
-raw_evidence_bundle_object_version: 2026-07-26T05:08:12.6021876Z
+candidate_source_sha: ec0d35a082bcc70b090afa1c1544306008d767da
+tested_runtime_sha: ec0d35a082bcc70b090afa1c1544306008d767da
+documentation_commit_sha: null
+evidence_manifest_sha256: e1f087062ca805df8b86e2a46d54448fb93d31e974b17a2f0c6154e8831ab3e0
+approval_subject_sha256: aac85bf94b15880b225cd8c938330e1f54cc0529b06988786150afb622205c4d
+raw_evidence_bundle_url: https://hexalithevidence.blob.core.windows.net/story-1-20/ec0d35a082bcc70b090afa1c1544306008d767da/story-1-20-raw-evidence.tar.gz
+raw_evidence_bundle_sha256: 8aa86be5f09e57575992a94820df242cdfee6fffb9d162a07e2040b06c4e9b38
+raw_evidence_bundle_object_version: 2026-07-26T08:17:19.6905183Z
 raw_evidence_bundle_retention_until: 2033-08-01T00:00:00Z
 raw_evidence_provider_adapter_id: azure-immutable-blob-v1
 raw_evidence_provider_adapter_sha256: 29076f2b06726fa634373908ed5a9f9709114b0e528e10458cec9cfec389dc50
-raw_evidence_immutability_proof_url: https://gist.githubusercontent.com/jpiquot/5321a48c2cf2cd30d037aa2703f140b3/raw/8a6c5a568b8461dc6cb6e19d883d0823530aaeee/raw-evidence-immutability-proof.json
-raw_evidence_immutability_proof_sha256: 331e68139692bd03f06ee4066acad887422a6c452b33b2863314a5052a9ca252
-eventstore_owner_approval_url: https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5082188161
-eventstore_owner_approval_sha256: b4d06e2aa2e8b015fcc9f40f60847c63d4acb5f6b4a9c4e8b5fa0d39a7e91e23
-release_owner_disposition_url: https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5082200165
-release_owner_disposition_sha256: ae77c945145ba58fbdf86651d34db337b711190797ec21c8cea848974e7e6bcf
-approved_package_version: 999.1.20-proof.4983299103bf
-approved_package_hash_manifest_sha256: 5039492eeee852838a14a71239e4ac6ccb30e875f7f646d1299a0ba63a3b3707
+raw_evidence_immutability_proof_url: https://gist.githubusercontent.com/jpiquot/7b1ad0696744c30f7c2a939ed0fb3c4c/raw/6f99c7ee8975295ed6893b3892e632ffdb82c856/raw-evidence-immutability-proof.json
+raw_evidence_immutability_proof_sha256: f87a56dee5bc65bb64bdb95ef94f2acfcd357d1e9711adf8ac408d4e9fb01cbd
+eventstore_owner_approval_url: https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5082835215
+eventstore_owner_approval_sha256: 38d4d15808d3a67847c474aa9549789a39c2af958ed27d3d75347016d8aebef1
+release_owner_disposition_url: https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5082837131
+release_owner_disposition_sha256: 826e64173f73b2255cd45197d56b740a7769b6d15fad3184f5a5d45350c76626
+approved_package_version: 999.1.20-proof.ec0d35a082bc
+approved_package_hash_manifest_sha256: 13c8ec97828fb755773194521a671506d08b09d0b36953ed14629429e4ca9c22
 approved_container_repository: registry.hexalith.com/eventstore
-approved_container_digest: sha256:2b7425c89347f16db37599c51bf7f90a04cfe15be502b6628862dc65cddc364c
+approved_container_digest: sha256:b85549523cfedf449d2ecdd6c784a2fe4704e6312b079f2d652041efc3b5cf2b
 final_decision: still blocked
 authorize_consumer_migration: false
 ---
@@ -39,22 +39,22 @@ authorize_consumer_migration: false
 Evidence commit A records a complete exact-SHA closure result while deliberately retaining
 the fail-closed decision until the pointer-only B and authorizing C commits are created and
 verified. Candidate and tested runtime are the same clean official-main commit,
-`4983299103bfa5bbbd40e695767eb5ddbc1369d5`.
+`ec0d35a082bcc70b090afa1c1544306008d767da`.
 
 - AD-11 matched exactly: SDK `10.0.302`, ASP.NET `10.0.10`, and installed
   `Microsoft.NETCore.App` `10.0.10`.
-- The successful retained Phase-1 run produced 77 identity-bound xUnit results covering 9,204
-  cases: 9,078 passed, zero failed/errored/not-run, and exactly the 126 frozen deferred cases.
+- The successful retained Phase-1 run produced 77 identity-bound xUnit results covering 9,205
+  cases: 9,079 passed, zero failed/errored/not-run, and exactly the 126 frozen deferred cases.
 - The complete Debug/source integration assembly passed 279/279; the complete live-sidecar
   assembly passed 49/49; the warning-free Release solution build and all focused lanes passed.
 - All and only the 14 approved package IDs were built at
-  `999.1.20-proof.4983299103bf`, consumer-validated, and bound by the committed SHA-256 manifest.
+  `999.1.20-proof.ec0d35a082bc`, consumer-validated, and bound by the committed SHA-256 manifest.
 - The quarantined OCI index is pinned to immutable digest
-  `sha256:2b7425c89347f16db37599c51bf7f90a04cfe15be502b6628862dc65cddc364c`,
+  `sha256:b85549523cfedf449d2ecdd6c784a2fe4704e6312b079f2d652041efc3b5cf2b`,
   contains exactly `linux/amd64` and `linux/arm64`, and passed digest-pinned `/alive` smoke on
   both platforms.
 - The raw evidence bundle is byte-bound at
-  `e167ed88afc80dcfc4d81c745ddc714a7dd1ce9e1a97074b5b00e79677c09ca7` and retained under a
+  `8aa86be5f09e57575992a94820df242cdfee6fffb9d162a07e2040b06c4e9b38` and retained under a
   locked version-level WORM policy until `2033-08-01T00:00:00Z`.
 - Named owner `jpiquot` recorded the Story 1.16 follow-up disposition, the final EventStore
   proof approval, and the distinct release-owner disposition in durable GitHub sources.
@@ -67,16 +67,16 @@ mutation contract must pass before C may change the decision.
 
 | Prerequisite | Current status | Current evidence | Closure disposition |
 | --- | --- | --- | --- |
-| Story 1.2 platform provenance | `done` | Exact-SHA query-routing and provenance evidence is retained in the raw bundle. | Satisfied and revalidated at `49832991...`. |
-| Story 1.14 erasure | `done` | Persisted live erasure and checkpoint evidence is retained in the raw bundle. | Satisfied and revalidated at `49832991...`. |
-| Story 1.15 coordinated batching | `done` | Persisted Dapr/Redis batching evidence is retained in the raw bundle. | Satisfied and revalidated at `49832991...`. |
-| Story 1.16 lifecycle | `done` | The exact-runtime follow-up review is approved by `jpiquot` and committed with its GitHub metadata. | Satisfied and dispositioned at `49832991...`. |
-| Story 1.17 asynchronous multi-projection dispatch | `done` | Exact-SHA dispatch, retry, outbox, and live persistence evidence is retained. | Satisfied and revalidated at `49832991...`. |
-| Story 1.18 delivery idempotency | `done` | Exact-SHA duplicate/order/cutover and live-sidecar evidence is retained. | Satisfied and revalidated at `49832991...`. |
-| Story 1.19 paged rebuild equivalence | `done` | Exact-SHA full-prefix, checkpoint, lifecycle, and persisted live rebuild evidence is retained. | Satisfied and revalidated at `49832991...`. |
-| Architecture AD-11 security baseline | `implementation-complete/evidence-confirmed` | The committed preflight records SDK `10.0.302`, ASP.NET `10.0.10`, and installed runtime `10.0.10`. | Satisfied at `49832991...` without replacement authority. |
-| Source-topology query provenance | `implementation-complete/evidence-confirmed` | The complete Debug/source integration assembly passed 279/279 with persisted provenance evidence. | Satisfied and revalidated at `49832991...`. |
-| Story 1.20 owner review | `approved` | EventStore-owner approval comment `5082188161` and release-owner disposition comment `5082200165` bind the exact evidence subject. | Satisfied before evidence commit A. |
+| Story 1.2 platform provenance | `done` | Exact-SHA query-routing and provenance evidence is retained in the raw bundle. | Satisfied and revalidated at `ec0d35a0...`. |
+| Story 1.14 erasure | `done` | Persisted live erasure and checkpoint evidence is retained in the raw bundle. | Satisfied and revalidated at `ec0d35a0...`. |
+| Story 1.15 coordinated batching | `done` | Persisted Dapr/Redis batching evidence is retained in the raw bundle. | Satisfied and revalidated at `ec0d35a0...`. |
+| Story 1.16 lifecycle | `done` | The exact-runtime follow-up review is approved by `jpiquot` and committed with its GitHub metadata. | Satisfied and dispositioned at `ec0d35a0...`. |
+| Story 1.17 asynchronous multi-projection dispatch | `done` | Exact-SHA dispatch, retry, outbox, and live persistence evidence is retained. | Satisfied and revalidated at `ec0d35a0...`. |
+| Story 1.18 delivery idempotency | `done` | Exact-SHA duplicate/order/cutover and live-sidecar evidence is retained. | Satisfied and revalidated at `ec0d35a0...`. |
+| Story 1.19 paged rebuild equivalence | `done` | Exact-SHA full-prefix, checkpoint, lifecycle, and persisted live rebuild evidence is retained. | Satisfied and revalidated at `ec0d35a0...`. |
+| Architecture AD-11 security baseline | `implementation-complete/evidence-confirmed` | The committed preflight records SDK `10.0.302`, ASP.NET `10.0.10`, and installed runtime `10.0.10`. | Satisfied at `ec0d35a0...` without replacement authority. |
+| Source-topology query provenance | `implementation-complete/evidence-confirmed` | The complete Debug/source integration assembly passed 279/279 with persisted provenance evidence. | Satisfied and revalidated at `ec0d35a0...`. |
+| Story 1.20 owner review | `approved` | EventStore-owner approval comment `5082835215` and release-owner disposition comment `5082837131` bind the exact evidence subject. | Satisfied before evidence commit A. |
 
 ## Artifact Identity Pin
 
@@ -85,8 +85,8 @@ substitutes for a value in another.
 
 ### Source identity
 
-- candidate checkout SHA: `4983299103bfa5bbbd40e695767eb5ddbc1369d5`
-- approved/tested runtime SHA: `4983299103bfa5bbbd40e695767eb5ddbc1369d5`
+- candidate checkout SHA: `ec0d35a082bcc70b090afa1c1544306008d767da`
+- approved/tested runtime SHA: `ec0d35a082bcc70b090afa1c1544306008d767da`
 - documentation-only commit SHA: null until pointer-only commit B records evidence commit A
 - clean-tree proof before and after every gate: passed, including all seven root-declared
   submodules and the generated-input allowlist
@@ -120,26 +120,26 @@ closed:
 
 ### NuGet package identities
 
-`tools/release-packages.json` names exactly 14 package IDs. Candidate `49832991...` built all
-and only those IDs at version `999.1.20-proof.4983299103bf`; the package-only consumer and
+`tools/release-packages.json` names exactly 14 package IDs. Candidate `ec0d35a0...` built all
+and only those IDs at version `999.1.20-proof.ec0d35a082bc`; the package-only consumer and
 tool-install validators passed, and the complete byte inventory is pinned below.
 
 | Exact package ID | Approved version | SHA-256 |
 | --- | --- | --- |
-| `Hexalith.EventStore.Contracts` | `999.1.20-proof.4983299103bf` | `581022181c99d5e70bc52b116dc8037dcd1aec2df014a081f0369e0a84362bb8` |
-| `Hexalith.EventStore.Client` | `999.1.20-proof.4983299103bf` | `539e6404c33b5b8e9a4adb8b1fd3cebb937e5da19c8191a58b447407d56e8ef8` |
-| `Hexalith.EventStore.Server` | `999.1.20-proof.4983299103bf` | `488ad01803dcf71c5b6ed87e1a13ffa2d615cbfa67e9c0f429c651d36c47f55f` |
-| `Hexalith.EventStore.SignalR` | `999.1.20-proof.4983299103bf` | `07b0a7eb994df781c23a16314ec13580d253de862a3d0e1920653254f4ddd0f8` |
-| `Hexalith.EventStore.Testing` | `999.1.20-proof.4983299103bf` | `85d9ac31c8dd523c9e9ed807d57417f1bca8dcd6dec4c89ffa86b5cbe8aa5931` |
-| `Hexalith.EventStore.Testing.Integration` | `999.1.20-proof.4983299103bf` | `7905f2853b3b511ffd84b5f188346e6a68f82f618ee0027395ba5a694cff603e` |
-| `Hexalith.EventStore.Aspire` | `999.1.20-proof.4983299103bf` | `a2eb21400067f50322b6adade5c0d68a82c50ba5bf29899ec1e9f119251f9a4b` |
-| `Hexalith.EventStore.ServiceDefaults` | `999.1.20-proof.4983299103bf` | `3af78900fe74389aded6e95662ac7daae9f86fc371fb3730ca2165a6704336fe` |
-| `Hexalith.EventStore.DomainService` | `999.1.20-proof.4983299103bf` | `95ea307b5b398a15e72256a0978154627161edc926df07946370850b4853ceac` |
-| `Hexalith.EventStore.RestApi.Generators` | `999.1.20-proof.4983299103bf` | `98e4bd326c705e077780cda43e99c56f70b3b29d92349c45b4a55dc6ad2ae67d` |
-| `Hexalith.EventStore.Gateway` | `999.1.20-proof.4983299103bf` | `06baeb40c288d60de16f8f76f6c82846245b759067ce17b48c2c7171a7c20660` |
-| `Hexalith.EventStore.Admin.Abstractions` | `999.1.20-proof.4983299103bf` | `416bb5b5c4bc3d0b01360d0cf3863b909d11544694422bf041f0fb5b1d68ffc3` |
-| `Hexalith.EventStore.Admin.Cli` | `999.1.20-proof.4983299103bf` | `d895d81b63ee642b2a14abb402dab875e6d7eb9c6098fb731c5f4c0ec329d9a4` |
-| `Hexalith.EventStore.Admin.Server` | `999.1.20-proof.4983299103bf` | `46674d5ca4c4c3b61533f44f32c12b9c6361b6320783379bdaf0dc97a986c845` |
+| `Hexalith.EventStore.Contracts` | `999.1.20-proof.ec0d35a082bc` | `f8446266b2425ffbe6f12c71fc5ef9eb13d5cd277ec4bf9509a835f24ed5710a` |
+| `Hexalith.EventStore.Client` | `999.1.20-proof.ec0d35a082bc` | `5424e3670d9fb4f4f23132ff74580ff737a72b1f210ae74d9ec8602ec98ffc90` |
+| `Hexalith.EventStore.Server` | `999.1.20-proof.ec0d35a082bc` | `9a90b581c6de76fb5a29fdf3c3e6b245afffc552c060b076601621006f604b16` |
+| `Hexalith.EventStore.SignalR` | `999.1.20-proof.ec0d35a082bc` | `01f576acdcace8c0035ab3366bf792233a882a029e32b1f6f85cfa4e89ac504c` |
+| `Hexalith.EventStore.Testing` | `999.1.20-proof.ec0d35a082bc` | `7bdf9245e36bdcee5ad66e99b940f5d3849ebc186c4f65f2406b1285b5226619` |
+| `Hexalith.EventStore.Testing.Integration` | `999.1.20-proof.ec0d35a082bc` | `d8dc9b3d61144c77b745dea8255d150e9247f6c14d4e9f19f0b124a22a67f4de` |
+| `Hexalith.EventStore.Aspire` | `999.1.20-proof.ec0d35a082bc` | `1b0219bb21e9a419864d6d7c86a835d7a34c0d1ee2010e7c4b284e20cc77c5b2` |
+| `Hexalith.EventStore.ServiceDefaults` | `999.1.20-proof.ec0d35a082bc` | `cdca1f70c405daf8355481976321e15bca3bd1c612c0ddf260db12889d4e486d` |
+| `Hexalith.EventStore.DomainService` | `999.1.20-proof.ec0d35a082bc` | `77b946bcf642a41e81bc9d135ec13b67f9a46bed7a18f9e572373aff4d3f9eb8` |
+| `Hexalith.EventStore.RestApi.Generators` | `999.1.20-proof.ec0d35a082bc` | `5c9633937f41b17963c3fda9d1b5fc4cce52353ba77ea34c2d4deb35124ce140` |
+| `Hexalith.EventStore.Gateway` | `999.1.20-proof.ec0d35a082bc` | `4300458a6ade794437e33bc2d330b9ecf84ab98d9f5adbc7134da4fc0627695e` |
+| `Hexalith.EventStore.Admin.Abstractions` | `999.1.20-proof.ec0d35a082bc` | `48df9507a48644607cfd1f857820ca4dab41d78d1f67bafab81a25c19a7b6065` |
+| `Hexalith.EventStore.Admin.Cli` | `999.1.20-proof.ec0d35a082bc` | `3d76eb01052ea8313085f54372c0e6bd52052925e3b6ce665addfb7317e0c0ca` |
+| `Hexalith.EventStore.Admin.Server` | `999.1.20-proof.ec0d35a082bc` | `9d2f9d32e08451e31d1f038bce646ecd7cb6c9bacd08e8ec2a145d3b46f8148a` |
 
 #### Observed v3.75.0 non-authorizing package evidence
 
@@ -277,10 +277,10 @@ observed Story 1.20 candidate only and does not set `approved_package_version` o
 ### Container identity
 
 - configured and approved repository: `registry.hexalith.com/eventstore`
-- approved immutable digest: `sha256:2b7425c89347f16db37599c51bf7f90a04cfe15be502b6628862dc65cddc364c`
+- approved immutable digest: `sha256:b85549523cfedf449d2ecdd6c784a2fe4704e6312b079f2d652041efc3b5cf2b`
 - approved platform set: exactly `linux/amd64` and `linux/arm64`
-- release provenance mapping: tested runtime `4983299103bfa5bbbd40e695767eb5ddbc1369d5`
-- quarantine tag: `quarantine-proof-4983299103bfa5bbbd40e695767eb5ddbc1369d5`
+- release provenance mapping: tested runtime `ec0d35a082bcc70b090afa1c1544306008d767da`
+- quarantine tag: `quarantine-proof-ec0d35a082bcc70b090afa1c1544306008d767da`
 
 The raw OCI index bytes hash to the approved digest, both child configurations match their
 descriptor platforms, and digest-pinned `/alive` smoke passed on both approved platforms.
@@ -348,14 +348,14 @@ for the emulation preflight.
 This closes Story 3.12's scoped multi-platform publishing defect, but it is not a Story
 1.20 approval. Release source `77a9a442...` has not been selected as this packet's equal
 candidate/tested runtime and did not run the complete Story 1.20 production-path harness.
-The equal `4983299103bfa5bbbd40e695767eb5ddbc1369d5` candidate now supplies that complete gate,
+The equal `ec0d35a082bcc70b090afa1c1544306008d767da` candidate now supplies that complete gate,
 approved package and container identities, durable WORM evidence, and named owner records.
 Evidence commit A remains fail closed until the pointer-only B and exact authorizing C commits
 satisfy the executable ancestry contract.
 
 ## Candidate Environment Inventory
 
-Captured from the approved exact-SHA gate at `2026-07-25T22:10:38Z`:
+Captured from the approved exact-SHA gate at `2026-07-26T07:21:55Z`:
 
 - OS: Ubuntu 26.04 under WSL2, Linux `x64`
 - .NET SDK: `10.0.302` (`35b593bebf`)
@@ -1499,7 +1499,7 @@ run_xunit_class \
 ```
 
 - closure result and persisted read-back: all contract, client, query-routing, server,
-  generator, Sample runtime, and source-topology provenance lanes passed at `49832991...`,
+  generator, Sample runtime, and source-topology provenance lanes passed at `ec0d35a0...`,
   including persisted operational-index read-back
 - approved compatibility decision: preserve `Unknown`, all six operational values,
   the legacy metadata ABI, and the rule that ETag never supplies lifecycle or version
@@ -1618,7 +1618,7 @@ run_xunit_method \
 ```
 
 - closure result and persisted read-back: all full-prefix, checkpoint, lifecycle, dispatcher,
-  and real Dapr/Redis multi-page equivalence lanes passed at `49832991...`
+  and real Dapr/Redis multi-page equivalence lanes passed at `ec0d35a0...`
 - limitation-ids: `rebuild-complete-prefix-resource-bounds`,
   `rebuild-coordinated-promotion-boundary`, `rebuild-cancellation-resume-semantics`,
   `rebuild-deferred-review-items`
@@ -1664,7 +1664,7 @@ run_xunit_class \
 ```
 
 - closure result and persisted read-back: all codec, scope, and persisted Dapr key-ring lanes
-  passed at `49832991...`, including retained-key rotation compatibility
+  passed at `ec0d35a0...`, including retained-key rotation compatibility
 - limitation-ids: `cursor-key-ring-loss-or-replacement`
 - limitation: routine retained-key rotation is distinct from key-ring loss/replacement
 - rollback: preserve opaque cursor handling and the existing consumer compatibility path
@@ -1715,7 +1715,7 @@ run_xunit_class \
 ```
 
 - closure result and persisted read-back: all dispatcher, coordinator, retry, outbox, and
-  live persistence lanes passed at `49832991...` with converged terminal state
+  live persistence lanes passed at `ec0d35a0...` with converged terminal state
 - limitation-ids: `async-hand-written-state-writes`, `async-stable-work-identity`,
   `async-dead-letter-terminal-cleanup`, `async-null-metadata`
 - accepted limitations: hand-written state writes, stable work identity,
@@ -1772,7 +1772,7 @@ run_xunit_class \
 ```
 
 - closure result and persisted read-back: all dispatcher, catalog-publication,
-  named-coordinator, route-catalog, and live multi-projection lanes passed at `49832991...`
+  named-coordinator, route-catalog, and live multi-projection lanes passed at `ec0d35a0...`
 - approved compatibility decision: keep versioned `/project/v2`, legacy
   `/project`, exact `(Domain, ProjectionType)` routing, and bounded AD-19 results
 - limitation-ids: `multiprojection-versioned-route-boundary`,
@@ -3055,10 +3055,10 @@ before accepting A.
 
 - EventStore owner: `jpiquot`
 - EventStore approval date: `2026-07-26`
-- EventStore approval source: `https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5082188161`
+- EventStore approval source: `https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5082835215`
 - release owner: `jpiquot`
 - release disposition date: `2026-07-26`
-- release disposition source: `https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5082200165`
+- release disposition source: `https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5082837131`
 - accepted scope: all nine exact-SHA capability rows, the 14-package byte inventory, the
   two-platform immutable container, and the WORM-retained raw evidence bundle
 - accepted limitations: all 32 approval-subject limitation IDs with the rationales recorded

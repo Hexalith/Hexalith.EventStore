@@ -1,0 +1,81 @@
+captured_at=2026-07-26T07:21:55Z
+Linux DESKTOP-VIOG240 6.6.87.2-microsoft-standard-WSL2 #1 SMP PREEMPT_DYNAMIC Thu Jun  5 18:30:46 UTC 2025 x86_64 GNU/Linux
+.NET SDK:
+ Version:           10.0.302
+ Commit:            35b593bebf
+ Workload version:  10.0.300-manifests.1641d827
+ MSBuild version:   18.6.11+35b593beb
+
+Runtime Environment:
+ OS Name:     ubuntu
+ OS Version:  26.04
+ OS Platform: Linux
+ RID:         linux-x64
+ Base Path:   /home/administrator/.dotnet/sdk/10.0.302/
+
+.NET workloads installed:
+There are no installed workloads to display.
+Configured to use workload sets when installing new manifests.
+No workload sets are installed. Run "dotnet workload restore" to install a workload set.
+
+Host:
+  Version:      10.0.10
+  Architecture: x64
+  Commit:       f7d90799ce
+
+.NET SDKs installed:
+  10.0.302 [/home/administrator/.dotnet/sdk]
+
+.NET runtimes installed:
+  Microsoft.AspNetCore.App 10.0.8 [/home/administrator/.dotnet/shared/Microsoft.AspNetCore.App]
+  Microsoft.AspNetCore.App 10.0.9 [/home/administrator/.dotnet/shared/Microsoft.AspNetCore.App]
+  Microsoft.AspNetCore.App 10.0.10 [/home/administrator/.dotnet/shared/Microsoft.AspNetCore.App]
+  Microsoft.NETCore.App 10.0.8 [/home/administrator/.dotnet/shared/Microsoft.NETCore.App]
+  Microsoft.NETCore.App 10.0.9 [/home/administrator/.dotnet/shared/Microsoft.NETCore.App]
+  Microsoft.NETCore.App 10.0.10 [/home/administrator/.dotnet/shared/Microsoft.NETCore.App]
+
+Other architectures found:
+  None
+
+Environment variables:
+  DOTNET_BUNDLE_EXTRACT_BASE_DIR           [/home/administrator/.cache/dotnet_bundle_extract]
+  DOTNET_ROOT                              [/home/administrator/.dotnet]
+
+global.json file:
+  /tmp/tmp.qMEvCvCxKq/eventstore/global.json
+
+Learn more:
+  https://aka.ms/dotnet/info
+
+Download .NET:
+  https://aka.ms/dotnet/download
+CLI version: 1.18.0 
+Runtime version: 1.18.1
+Client:
+ Version:           29.6.1
+ API version:       1.55
+ Go version:        go1.26.4
+ Git commit:        8900f1d
+ Built:             Fri Jun 26 11:39:39 2026
+ OS/Arch:           linux/amd64
+ Context:           default
+
+Server: Docker Desktop 4.82.0 (233772)
+ Engine:
+  Version:          29.6.1
+  API version:      1.55 (minimum version 1.40)
+  Go version:       go1.26.4
+  Git commit:       8ec5ab3
+  Built:            Fri Jun 26 11:41:04 2026
+  OS/Arch:          linux/amd64
+  Experimental:     false
+ containerd:
+  Version:          v2.2.5
+  GitCommit:        e53c7c1516c3b2bff98eb76f1f4117477e6f4e66
+ runc:
+  Version:          1.3.6
+  GitCommit:        v1.3.6-0-g491b69ba
+ docker-init:
+  Version:          0.19.0
+  GitCommit:        de40ad0
+dapr_app_inventory_before=[]

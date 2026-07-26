@@ -1,0 +1,104 @@
+{
+  "schema": "hexalith.eventstore.story-1-20-approval-subject/v1",
+  "repository": "https://github.com/Hexalith/Hexalith.EventStore.git",
+  "tested_runtime_sha": "ec0d35a082bcc70b090afa1c1544306008d767da",
+  "evidence_manifest_sha256": "e1f087062ca805df8b86e2a46d54448fb93d31e974b17a2f0c6154e8831ab3e0",
+  "raw_evidence_bundle_sha256": "8aa86be5f09e57575992a94820df242cdfee6fffb9d162a07e2040b06c4e9b38",
+  "raw_evidence_object_version": "2026-07-26T08:17:19.6905183Z",
+  "raw_evidence_retention_until": "2033-08-01T00:00:00Z",
+  "raw_evidence_provider_adapter_id": "azure-immutable-blob-v1",
+  "raw_evidence_provider_adapter_sha256": "29076f2b06726fa634373908ed5a9f9709114b0e528e10458cec9cfec389dc50",
+  "raw_evidence_immutability_proof_sha256": "f87a56dee5bc65bb64bdb95ef94f2acfcd357d1e9711adf8ac408d4e9fb01cbd",
+  "package_version": "999.1.20-proof.ec0d35a082bc",
+  "package_hash_manifest_sha256": "13c8ec97828fb755773194521a671506d08b09d0b36953ed14629429e4ca9c22",
+  "container_repository": "registry.hexalith.com/eventstore",
+  "container_digest": "sha256:b85549523cfedf449d2ecdd6c784a2fe4704e6312b079f2d652041efc3b5cf2b",
+  "capabilities": [
+    {
+      "id": "read-model-erasure",
+      "limitations": [
+        "erasure-admission-write-fence-races",
+        "erasure-caller-slot-completeness",
+        "erasure-authenticated-stitched-e2e",
+        "erasure-global-administrator-boundary"
+      ],
+      "classification": "available"
+    },
+    {
+      "id": "coordinated-batching",
+      "limitations": [
+        "batch-store-transaction-capability",
+        "batch-etag-behavior",
+        "batch-corrupt-or-abandoned-envelope",
+        "batch-terminal-receipt-retention",
+        "batch-cross-profile-boundary"
+      ],
+      "classification": "available"
+    },
+    {
+      "id": "lifecycle-and-route-provenance",
+      "limitations": [
+        "lifecycle-unknown-compatibility",
+        "lifecycle-operational-value-abi",
+        "lifecycle-legacy-metadata-abi",
+        "lifecycle-etag-evidence-boundary"
+      ],
+      "classification": "available"
+    },
+    {
+      "id": "delivery-order-and-idempotency",
+      "limitations": [
+        "delivery-legacy-project-route-boundary",
+        "delivery-mixed-writer-cutover-boundary"
+      ],
+      "classification": "available"
+    },
+    {
+      "id": "paged-rebuild-equivalence",
+      "limitations": [
+        "rebuild-complete-prefix-resource-bounds",
+        "rebuild-coordinated-promotion-boundary",
+        "rebuild-cancellation-resume-semantics",
+        "rebuild-deferred-review-items"
+      ],
+      "classification": "available"
+    },
+    {
+      "id": "cursor-compatibility",
+      "limitations": [
+        "cursor-key-ring-loss-or-replacement"
+      ],
+      "classification": "available"
+    },
+    {
+      "id": "asynchronous-projection-persistence",
+      "limitations": [
+        "async-hand-written-state-writes",
+        "async-stable-work-identity",
+        "async-dead-letter-terminal-cleanup",
+        "async-null-metadata"
+      ],
+      "classification": "available"
+    },
+    {
+      "id": "multiple-projections-per-domain",
+      "limitations": [
+        "multiprojection-versioned-route-boundary",
+        "multiprojection-legacy-route-boundary",
+        "multiprojection-exact-route-identity",
+        "multiprojection-bounded-result-contract"
+      ],
+      "classification": "available"
+    },
+    {
+      "id": "cross-cutting-release-compatibility",
+      "limitations": [
+        "release-package-inventory-and-byte-identity",
+        "release-container-registry-and-platform-provenance",
+        "release-durable-evidence-retention",
+        "release-owner-authority-and-migration"
+      ],
+      "classification": "available"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+    "action": "container-publication",
+    "owner": "jpiquot",
+    "authorized_at": "2026-07-26T08:06:00Z",
+    "durable_source": "https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5082667512",
+    "rationale": "Authorizes quarantined two-platform proof publication for the exact Phase-1-passing SHA only; no deployment or consumer migration.",
+    "expires_at": "2026-08-25T00:00:00Z",
+    "scope": {
+      "repository": "registry.hexalith.com/eventstore",
+      "tag": "quarantine-proof-ec0d35a082bcc70b090afa1c1544306008d767da",
+      "source_sha": "ec0d35a082bcc70b090afa1c1544306008d767da"
+    }
+  }

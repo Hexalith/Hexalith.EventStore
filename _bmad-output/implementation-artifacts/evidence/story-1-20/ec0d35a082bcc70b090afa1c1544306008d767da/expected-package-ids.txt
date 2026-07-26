@@ -1,0 +1,14 @@
+Hexalith.EventStore.Admin.Abstractions
+Hexalith.EventStore.Admin.Cli
+Hexalith.EventStore.Admin.Server
+Hexalith.EventStore.Aspire
+Hexalith.EventStore.Client
+Hexalith.EventStore.Contracts
+Hexalith.EventStore.DomainService
+Hexalith.EventStore.Gateway
+Hexalith.EventStore.RestApi.Generators
+Hexalith.EventStore.Server
+Hexalith.EventStore.ServiceDefaults
+Hexalith.EventStore.SignalR
+Hexalith.EventStore.Testing
+Hexalith.EventStore.Testing.Integration
