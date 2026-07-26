@@ -165,8 +165,12 @@ public sealed class ProofPacketValidatorIntegrityTests
         frontMatterEnd.ShouldBeGreaterThan(0, "The follow-up spec front matter must be terminated.");
         lines
             .Take(frontMatterEnd)
+            .Count(line => line == "followup_review_recommended: false")
+            .ShouldBe(1, "The spec must carry exactly one resolved front-matter recommendation.");
+        lines
+            .Take(frontMatterEnd)
             .Count(line => line == "followup_review_recommended: true")
-            .ShouldBe(1, "The spec must carry exactly one unresolved front-matter recommendation.");
+            .ShouldBe(0, "The spec must not carry an unresolved front-matter recommendation.");
     }
 
     /// <summary>
@@ -249,8 +253,10 @@ public sealed class ProofPacketValidatorIntegrityTests
         const string completedEnd =
             "  # verified every pinned artifact, approval, prerequisite, and migration decision.";
 
-        sprintStatus.ShouldContain(blockerStart);
-        sprintStatus.ShouldContain(blockerEnd);
+        sprintStatus.ShouldContain(completedStart);
+        sprintStatus.ShouldContain(completedEnd);
+        sprintStatus.ShouldNotContain(blockerStart);
+        sprintStatus.ShouldNotContain(blockerEnd);
         packet.ShouldContain($"$0 == \"{blockerStart}\" {{");
         packet.ShouldContain($"in_blocker && $0 == \"{blockerEnd}\" {{");
         packet.ShouldContain($"print \"{completedStart}\"");

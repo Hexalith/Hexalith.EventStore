@@ -9,7 +9,7 @@ namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 /// </summary>
 public sealed class ContainerPublishingGovernanceTests
 {
-    private const string ApprovedBuildsReleaseSha = "cf04c419378dfe1bd3c41a9244b5e3283092056e";
+    private const string ApprovedBuildsReleaseSha = "f75daebd4c522c081a6f62e274cf25e07971de69";
 
     /// <summary>
     /// Verifies that release automation never attempts to bypass the pull-request-only main branch.

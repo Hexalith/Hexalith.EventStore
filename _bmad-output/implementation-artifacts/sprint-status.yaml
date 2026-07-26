@@ -84,6 +84,10 @@ development_status:
   2-4-tenants-rest-contract-metadata-and-routes: done
   # AD-18 host patch accepted at Tenants 846f988a (pinned 6cc9eb3a); 2026-07-26 code review closed the acceptance gate and hardened the AD-18 guards.
   2-5-dedicated-external-tenants-api-host: done
+  # 2026-07-26 code review: 3 decisions resolved (2.11 overlap ratified; SHA record corrected to
+  # Tenants 56c506c/8ab537e at 42f0c5c; four-of-seven lifecycle states deferred to a platform story).
+  # 11 patch findings stay open as action items -- all are edits under references/Hexalith.Tenants,
+  # withheld pending Tenants maintainer approval. Sally's focused UX review also still open.
   2-6-tenants-ui-client-library-alignment-and-ux-evidence: in-progress
   # Story 2.7 corrected the EventStore stale-registration/source-topology prerequisite and
   # passed focused configuration, CI-guard, and live persisted-provenance evidence with no

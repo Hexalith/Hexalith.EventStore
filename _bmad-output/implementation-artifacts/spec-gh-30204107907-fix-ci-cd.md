@@ -2,7 +2,8 @@
 title: 'Fix stale CI governance expectations after approved changes'
 type: 'bugfix'
 created: '2026-07-26'
-status: 'draft'
+status: 'in-progress'
+baseline_commit: '15604a64344fc31e3cdc004fbb1e5744266692dd'
 review_loop_iteration: 0
 context:
   - '{project-root}/_bmad-output/project-context.md'
