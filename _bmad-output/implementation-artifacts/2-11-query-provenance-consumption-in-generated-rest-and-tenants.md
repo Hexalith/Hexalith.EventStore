@@ -28,13 +28,13 @@ Status: review
 `done` requires independent consumer-path review plus the Tenants maintainer-approved
 PR/commit, exact Tenants SHA, accepted scope, and focused persisted-path evidence.
 
-## Adopted Consumer Evidence From Story 2.6 (owner decision, 2026-07-26)
+## Tenants Consumer Evidence Owned By Story 2.11 (owner decision, 2026-07-27)
 
-The Story 2.6 code review (2026-07-26) found that
-`2-6-tenants-ui-client-library-alignment-and-ux-evidence` authored and proved Tenants-UI
-consumption behaviour that `planning-artifacts/epics.md:72` assigns exclusively to this story.
-The owner ratified the overlap instead of reverting it, so this story adopts that work as its
-Tenants-consumer evidence.
+The 2026-07-27 owner decision retains the exclusive boundary in `planning-artifacts/epics.md:72`.
+This story owns all Tenants-UI gateway provenance/lifecycle classification, transport plumbing,
+304 policy, and gateway consumer verification. Story 2.6 cites this evidence but does not adopt,
+re-prove, or sign it off; Story 2.6 owns only host alignment and presentation of already-classified
+state. This supersedes the 2026-07-26 ratified-overlap wording.
 
 Adopted from Tenants commits `56c506c` and `8ab537e`
 (`references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs`):
@@ -48,9 +48,21 @@ Adopted from Tenants commits `56c506c` and `8ab537e`
 - The ten supporting theories in
   `references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/Services/Gateways/TenantQueryGatewayTests.cs`.
 
-Two open correctness findings against the adopted code are recorded in the Story 2.6 review-findings
-section and are 2.11-owned in substance: a `304` carrying lifecycle-only evidence discards a
-previously-`Stale` snapshot and renders `Ready`; and `ResolveFreshness` = `Current` gates mutations
-that `ProjectionLifecyclePolicy.CanMutate` denies. Both should be resolved before this story leaves
-`review`. The Tenants maintainer approval and exact-SHA gates in this story's `done` criteria are
-unaffected and remain open — the adopted commits are on Tenants `main` without that approval.
+The 2026-07-27 working-tree patch extends the owned evidence in:
+
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs` —
+  normalize and transport lifecycle separately from freshness; fail closed on null/untrusted 304
+  metadata; and keep retained rows consistent with the resolved state.
+- `references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/Services/Gateways/TenantQueryGatewayTests.cs` —
+  prove 200 lifecycle precedence across every consuming surface and assert the null/untrusted 304
+  matrix through lifecycle, row, visible kind, and reason.
+
+Focused gateway evidence is **191/191 passing** on the uncommitted 2026-07-27 patch. One correctness
+finding remains open and blocks this story from leaving `review`: `ResolveFreshness == Current` still
+permits `TenantCorrectionStartIntent` to gate on legacy freshness when
+`ProjectionLifecyclePolicy.CanMutate` denies mutation. Rows now transport lifecycle, so the missing
+intent-policy fix is explicit rather than structurally impossible.
+
+The accepted admin-authored authority chain at `11d69920526f9881ad8c2216b28e82e497543c67`
+covers the published baseline (`56c506c`, `8ab537e`, `a0c6d83`). The 2026-07-27 consumer patches are
+uncommitted, so this story still requires a new exact Tenants SHA and maintainer approval for them.

@@ -13,11 +13,39 @@ Status: in-progress
 
 The parent Story 2.4 spec records UI-boundary guardrails. This child reviews typed-client
 consumption, absence of generated/hand-written per-message controllers, and canonical UX
-states. Only `ProjectionBacked` evidence may claim lifecycle state; handler-computed,
-missing, or invalid provenance renders `Unknown`. `done` requires Sally's focused UX
-review, Tenants maintainer approval, the exact Tenants SHA, and structural/UI test evidence.
+presentation of already-classified states. Story 2.11 exclusively owns provenance validation,
+lifecycle classification, and gateway consumer proof; this story cites that evidence without
+signing it off. `done` requires Sally's focused UX review, Tenants maintainer approval, the exact
+Tenants SHA, and structural/UI test evidence.
+
+## Acceptance Evidence
+
+The direct admin-authored approval model used by Stories 2.4 and 2.5 is accepted for the published
+baseline `11d69920526f9881ad8c2216b28e82e497543c67`:
+
+- `gh api repos/Hexalith/Hexalith.Tenants/collaborators/jpiquot/permission --jq .permission` -> `admin`.
+- `git -C references/Hexalith.Tenants show -s --format='%H%n%an <%ae>%n%cn <%ce>%n%s' 11d69920526f9881ad8c2216b28e82e497543c67` -> Jérôme Piquot (`jpiquot@itaneo.com`) is both author and committer.
+- `git ls-tree HEAD references/Hexalith.Tenants` -> gitlink `11d69920526f9881ad8c2216b28e82e497543c67`.
+- `git -C references/Hexalith.Tenants rev-parse origin/main` -> `11d69920526f9881ad8c2216b28e82e497543c67`.
+
+This authority chain covers the published baseline only. The 2026-07-27 review patches are
+uncommitted inside `references/Hexalith.Tenants`; therefore a new exact SHA, maintainer approval,
+and focused UX acceptance for the newly representable operational lifecycle states are open gates.
 
 ### Review Findings
+
+#### 2026-07-26 Code Review — third pass
+
+- [x] [Review][Patch] [high] **Fixed 2026-07-27.** Added `ProjectionLifecycleState` alongside freshness on UI snapshots/rows, threaded it through all five gateway/UI surfaces, rendered `Rebuilding`, `Degraded`, `Unavailable`, and `LocalOnly` as distinct localized badge states, and blocked lifecycle actions whenever authoritative lifecycle is non-current. The threshold-only freshness enum remains unchanged. [_bmad-output/planning-artifacts/epics.md:1326]
+- [x] [Review][Patch] [high] **Fixed 2026-07-27.** Replaced the ratified-overlap record with an exclusive Story 2.11 ownership citation; gateway classification and its tests are now listed only as 2.11-owned evidence, while 2.6 owns presentation and host alignment. [_bmad-output/planning-artifacts/epics.md:1321]
+- [x] [Review][Patch] [high] **Fixed 2026-07-27.** Added the reproducible admin/author/committer/gitlink/`origin/main` authority chain above and marked Sally's `11d6992` artifact as historical for its narrowed scope. The post-patch final-SHA and human approvals remain open. [_bmad-output/implementation-artifacts/evidence/story-2-6/ux-review-sally-2026-07-26.md]
+- [x] [Review][Patch] [medium] **Fixed 2026-07-27.** The AC1 guard now restores and inspects NuGet's resolved transitive project/package library closure independently in Debug/source and Release/package modes; compiled binding and REST opt-in checks remain complementary. [references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/TenantsUiCompositionTests.cs]
+- [x] [Review][Patch] [medium] **Fixed 2026-07-27.** Added 200-path lifecycle-precedence theories with visible kind, freshness, lifecycle, and row assertions for memberships, global administrators, audit, and tenant list. [references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/Services/Gateways/TenantQueryGatewayTests.cs]
+- [x] [Review][Patch] [medium] **Fixed 2026-07-27.** Expanded all four retained-snapshot 304 matrices with null metadata and explicit stale/lifecycle evidence from untrusted provenance, asserting lifecycle, row state, surface kind, and reason. [references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/Services/Gateways/TenantQueryGatewayTests.cs]
+- [x] [Review][Patch] [medium] **Fixed 2026-07-27.** The compiled-controller guard now uses MVC's `ApplicationPartManager` and `ControllerFeatureProvider`, covering POCO `[Controller]` discovery. [references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/TenantsUiCompositionTests.cs]
+- [x] [Review][Patch] [medium] **Fixed 2026-07-27.** Timeout cleanup now kills the process tree, awaits exit, and drains both redirected readers before reporting the timeout. [references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/TenantsUiCompositionTests.cs]
+- [x] [Review][Patch] [low] **Fixed 2026-07-27.** Tenant-management route detection is segment-based and accepts arbitrary prefixes plus numeric API-version segments; direct theories pin the versioned/dynamic forms. [references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/TenantsUiCompositionTests.cs]
+- [x] [Review][Patch] [low] **Fixed 2026-07-27.** The current validation record below uses exact workspace-relative commands with no ellipses. [_bmad-output/implementation-artifacts/2-6-tenants-ui-client-library-alignment-and-ux-evidence.md]
 
 - [x] [Review][Patch] Reject non-projection-backed lifecycle evidence before mapping UI freshness [references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:792]
 - [x] [Review][Patch] Evaluate the effective UI dependency graph instead of raw project `Include` text [references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/TenantsUiCompositionTests.cs:166]
@@ -36,11 +64,11 @@ Adversarial review of the four File List paths across four layers (blind-hunter,
 verification-gap, acceptance-auditor). Line references are current-state at Tenants HEAD `42f0c5c`;
 the reviewed range ended at `8ab537e` and later commits have moved these files.
 
-- [x] [Review][Decision] Story 2.11 ownership encroachment — **Resolved 2026-07-26: owner ratified the overlap** (see "Story 2.11 Citation And Ratified Overlap" below). The entire production change (provenance gate, lifecycle-precedes-`IsStale` selection, fail-closed `Unknown`, and the four call-site rewrites) plus ten new theories implement and prove behaviour `planning-artifacts/epics.md:72` assigns **exclusively** to Story 2.11, which is itself still in `review`. AC2 requires 2.6 to *cite* 2.11 "rather than re-proving or signing off those behaviors"; the story file never mentions 2.11 and instead restates the contract as its own rule (lines 16-17), then signs off on it (line 46). Corroborates readiness finding MAJ-2 (2.6/2.11 double-own the Tenants-UI provenance AC). Decide: re-scope 2.6, move this evidence to 2.11, or ratify the overlap.
+- [x] [Review][Decision] Story 2.11 ownership encroachment — **The 2026-07-26 overlap decision was superseded on 2026-07-27:** the owner retained Story 2.11's exclusive epic boundary; see "Story 2.11 Exclusive Ownership Citation" below. The entire production change (provenance gate, lifecycle-precedes-`IsStale` selection, fail-closed `Unknown`, and the four call-site rewrites) plus ten new theories implement and prove behaviour `planning-artifacts/epics.md:72` assigns **exclusively** to Story 2.11, which is itself still in `review`. AC2 requires 2.6 to *cite* 2.11 "rather than re-proving or signing off those behaviors"; the story file never mentions 2.11 and instead restates the contract as its own rule (lines 16-17), then signs off on it (line 46). Corroborates readiness finding MAJ-2 (2.6/2.11 double-own the Tenants-UI provenance AC). Decide: re-scope 2.6, move this evidence to 2.11, or ratify the overlap.
 - [x] [Review][Decision] AC3 unmet on all three gates, and the story file is factually false about the SHA — **Resolved 2026-07-26: owner chose "seek approval, record SHA".** The false claim is corrected in the Completion Notes with the actual commits (`56c506c`, `8ab537e`) and review-time Tenants SHA `42f0c5c`; maintainer approval and Sally's UX review remain open gates. **No submodule file is to be edited until approval is confirmed — this blocks all 11 patch findings below, which are every one of them edits under `references/Hexalith.Tenants`.** Original finding: line 47 stated the four Tenants changes are "uncommitted on base SHA `28630b94`"; `git merge-base --is-ancestor 8ab537e HEAD` succeeds, so they are committed as `56c506c`/`8ab537e` and are on Tenants `main`. No Sally UX review, no Tenants maintainer approval, and no exact approved SHA — while `project-context.md:75` forbids modifying submodule files without explicit approval. Every patch below is also a submodule edit under the same gate. Decide: obtain approval and record the SHA, or revert.
-- [x] [Review][Decision] AC2's 2.6-owned half is not implemented, and the diff makes four of AC3's seven states unrepresentable — **Resolved 2026-07-26: owner chose "defer to a platform story".** The `ReadModelFreshnessState` limitation is logged as a Hexalith.EventStore platform prerequisite in `deferred-work.md`, and Story 2.6's UX obligation narrows to the states the current model can express (`Current`, `Stale`, `Unknown`) plus the denied/loading/unavailable surface states the UI already owns. Sally's focused UX review is scoped accordingly. Original finding: no `.razor`, bUnit render, or resource file is touched; all new tests are gateway-level. `ReadModelFreshnessState` carries only `{Unknown, Current, Aging, Stale}`, so the new mapping collapses `Rebuilding`/`Degraded`/`Unavailable`/`LocalOnly` into `Unknown` and the new theories pin that collapse as intended. AC3 requires canonical support-safe treatment for rebuilding/degraded/unavailable/local-only. Decide whether a representable lifecycle state model (platform change) is a prerequisite before any UX work can be reviewed.
+- [x] [Review][Decision] AC2's 2.6-owned half is not implemented, and the diff makes four of AC3's seven states unrepresentable — **The 2026-07-26 deferral was superseded on 2026-07-27:** the owner kept AC3 unchanged and selected the additive lifecycle representation implemented by the third-pass patch. Original finding: no `.razor`, bUnit render, or resource file is touched; all new tests are gateway-level. `ReadModelFreshnessState` carries only `{Unknown, Current, Aging, Stale}`, so the new mapping collapses `Rebuilding`/`Degraded`/`Unavailable`/`LocalOnly` into `Unknown` and the new theories pin that collapse as intended. AC3 requires canonical support-safe treatment for rebuilding/degraded/unavailable/local-only. Decide whether a representable lifecycle state model (platform change) is a prerequisite before any UX work can be reviewed.
 - [x] [Review][Dismissed 2026-07-26] A 304 carrying lifecycle-only evidence discards a previously-`Stale` snapshot and renders `Ready` — **verified as intended behaviour, not a defect.** The ETag matched, so the retained rows are valid, and an authoritative `ProjectionBacked` lifecycle of `Current` should clear a stale claim. This is exactly what the lifecycle clause this story added was for [references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:1163]
-- [ ] [Review][Patch] `ResolveFreshness` = `Current` gates mutations that `ProjectionLifecyclePolicy.CanMutate` denies — **mechanism proven 2026-07-26; deliberately left open, see below** [references/Hexalith.Tenants/src/Hexalith.Tenants.UI/State/TenantAudit/TenantCorrectionStartIntent.cs:88]
+- [x] [Review][Patch → Routed] `ResolveFreshness` = `Current` gates mutations that `ProjectionLifecyclePolicy.CanMutate` denies — **mechanism proven 2026-07-26; closed here by routing, not by patching.** The defect is recorded as a HIGH entry in `deferred-work.md` under "routed to Story 2.11" and is listed in `2-11-query-provenance-consumption-in-generated-rest-and-tenants.md` as a blocker that must be resolved before Story 2.11 leaves `review`. Handoff verified 2026-07-26; nothing further is actionable inside Story 2.6's scope. See the proof below [references/Hexalith.Tenants/src/Hexalith.Tenants.UI/State/TenantAudit/TenantCorrectionStartIntent.cs:88]
 
   **Proof.** `ProjectionLifecyclePolicy.CanMutate` (`src/Hexalith.EventStore.Contracts/Queries/ProjectionLifecyclePolicy.cs:83`)
   requires `provenance == ProjectionBacked && lifecycle == Current`. `ResolveFreshness`
@@ -52,13 +80,10 @@ the reviewed range ended at `8ab537e` and later commits have moved these files.
   `QueriesController.cs:136-139` produces when `Lifecycle == Unknown` — enables a tenant correction that
   platform policy denies. This is a fail-open in the mutation gate.
 
-  **Why it is not patched here.** `TenantAuditRow` carries only `Freshness`; it carries neither
-  `Provenance` nor `Lifecycle`, so `TenantCorrectionStartIntent` cannot call `CanMutate` at all. Closing
-  this requires threading the authoritative evidence through the row or the intent context — a production
-  design change in shared submodule code, with more than one reasonable shape (widen the row, add a
-  gateway-computed `CanMutate` flag, or have the gateway stop deriving `Current` from legacy evidence).
-  The "Story 2.11 Citation And Ratified Overlap" section already assigns this defect to Story 2.11 and
-  requires it to be resolved before 2.11 leaves `review`. Routing it there rather than inventing a shape.
+  **Why it is not patched here.** At review time `TenantAuditRow` carried only `Freshness`; the 2026-07-27
+  presentation patch now transports `Lifecycle`, but `TenantCorrectionStartIntent` still gates on freshness
+  alone. Changing that mutation policy is exclusively Story 2.11-owned and remains a blocker before 2.11
+  leaves `review`.
 - [x] [Review][Patch] **Fixed 2026-07-26.** Lifecycle-on-304 and lifecycle-over-`IsStale` precedence are verified on the tenant-detail surface only; four of five surfaces sharing the changed helper are unexercised [references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/Services/Gateways/TenantQueryGatewayTests.cs:2129]
 - [x] [Review][Patch] **Fixed 2026-07-26.** The two new fail-closed 304 branches have no coverage; the same commit rewrote every 304 fixture to hardcode `ProjectionBacked` [references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/Services/Gateways/TenantQueryGatewayTests.cs:2043]
 - [x] [Review][Defer] `ResolveDetailKindForFreshness` is dead code — **attribution corrected 2026-07-26: not caused by Story 2.6.** `git log -S` places the caller removal in Tenants `b73093b` (tenant configuration read policy), which post-dates `8ab537e`; this story's production diff never mentions the symbol. Deferred to the owning story [references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:1175]
@@ -73,33 +98,19 @@ the reviewed range ended at `8ab537e` and later commits have moved these files.
 - [x] [Review][Defer] Marker enforcement for the UI host now runs only in the EventStore repo's suite [tests/Hexalith.EventStore.DomainService.Tests/DomainModuleAuthoringGuardrailTests.cs:119] — deferred, pre-existing
 - [x] [Review][Defer] Tier placement — a full Blazor host boot and two MSBuild subprocesses run in the Tier-1 unit list [references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/TenantsUiCompositionTests.cs:224] — deferred, pre-existing
 
-#### Story 2.11 Citation And Ratified Overlap (owner decision, 2026-07-26)
+#### Story 2.11 Exclusive Ownership Citation (owner decision, 2026-07-27)
 
-The AC2 boundary in `planning-artifacts/epics.md:72` assigns provenance preservation, authoritative
-lifecycle/header selection, the fail-closed `Unknown` fallback, and real-gateway/persisted-read-model
-proof exclusively to Story 2.11. The 2026-07-26 code review found that Story 2.6 authored and proved
-those behaviours instead of citing them. **The owner has ratified the overlap** rather than reverting
-the work or amending the epic boundary.
+The authoritative AC2 boundary in `planning-artifacts/epics.md:72` is retained. Story 2.11
+(`2-11-query-provenance-consumption-in-generated-rest-and-tenants`) exclusively owns provenance
+preservation, authoritative lifecycle/header classification, fail-closed `Unknown` behavior, gateway
+consumer implementation, and its persisted/real-gateway evidence. The 2026-07-26 overlap decision is
+superseded; Story 2.6 cites that work and does not sign it off.
 
-Recorded consequences of that ratification:
-
-- **Story 2.6 cites Story 2.11** (`2-11-query-provenance-consumption-in-generated-rest-and-tenants`)
-  as the owning story for provenance preservation, authoritative lifecycle/header selection, the
-  fail-closed `Unknown` fallback, and real-gateway/persisted-read-model consumer proof. The framing
-  at lines 16-17 of this story and the AC2 sign-off in the Completion Notes are consumer-side
-  restatements of the Story 2.11 contract, not independent 2.6 authority.
-- **Story 2.11's review adopts Tenants commits `56c506c` and `8ab537e` as consumer evidence.** The
-  provenance gate, the lifecycle-precedes-legacy-`IsStale` selection, and the four
-  `result.Metadata?.IsStale == true` to `freshness is ReadModelFreshnessState.Stale` call-site
-  rewrites are Story 2.11 consumer behaviour physically located in the Tenants UI gateway.
-- **Open review findings against that code remain listed here** but are 2.11-owned in substance. The
-  two correctness patches below (lifecycle-only 304 discarding a `Stale` snapshot; `ResolveFreshness`
-  = `Current` gating mutations that `ProjectionLifecyclePolicy.CanMutate` denies) are defects in the
-  ratified consumer logic and should be resolved before Story 2.11 leaves `review`.
-- **The readiness finding MAJ-2** (2.6/2.11 double-own the Tenants-UI provenance AC) is closed by
-  explicit owner ratification rather than by boundary correction. `epics.md:72` is left unchanged, so
-  the epic text and the shipped allocation now differ by design; this citation is the reconciliation
-  of record.
+Story 2.6 owns only the typed-client/UI-host boundary and canonical accessible presentation of the
+already-classified `ProjectionLifecycleState` alongside the independent freshness threshold. Physical
+gateway plumbing needed to transport that state remains 2.11-owned even when it feeds 2.6-owned
+components. Review findings against gateway classification and 304 handling are recorded in Story 2.11;
+presentation findings and bUnit evidence remain here.
 
 #### 2026-07-26 Code Review — second pass (current state at Tenants `42f0c5c`)
 
@@ -107,7 +118,8 @@ Four adversarial layers (blind-hunter, edge-case-hunter, verification-gap, accep
 **current content** of the four File List files, not the incremental `56c506c^..8ab537e` range. 61 raw
 findings triaged. The submodule-approval gate that blocked the first pass is cleared as of this review.
 
-**Scope boundary established by this pass.** Story 2.6's entire production change is 29 lines: the
+**Historical scope boundary established by this pass.** Before the 2026-07-27 presentation patch,
+Story 2.6's entire production change was 29 lines: the
 provenance gate plus lifecycle-precedence in `ResolveFreshness` / `ResolveNotModifiedFreshness`, and four
 `result.Metadata?.IsStale == true` → `freshness is ReadModelFreshnessState.Stale` call-site rewrites.
 Everything else in these 4,329 lines arrived from later stories (support-safe copy, tenant configuration,
@@ -129,7 +141,7 @@ cursor paging, Memories search). Findings are routed on that boundary.
 - [x] [Review][Defer] `EnrichRowsAsync`/`LoadTenantDetailAsync` publish member/owner counts with none of the guards the search path applies — no tenant-identity check, no `Members` null guard, no `IsDegraded` check [references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:1009] — deferred, pre-existing
 - [x] [Review][Defer] A single row's detail failure outside `{403,404,503}` destroys the whole fetched tenant list [references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:1024] — deferred, pre-existing
 - [x] [Review][Defer] Non-`EventStoreGatewayException` failures escape four of the six public read methods [references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:283] — deferred, pre-existing
-- [x] [Review][Defer] 304 evidence asymmetries: zero-evidence 304 re-affirms the previous claim, per-row `Freshness` is never rewritten, and `Degraded` is sticky across 304s [references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:1163] — deferred, pre-existing
+- [x] [Review][Defer] 304 evidence asymmetries: zero-evidence 304 re-affirms the previous claim and `Degraded` is sticky across 304s; **the per-row freshness contradiction was fixed 2026-07-27** [references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs] — deferred, pre-existing residuals
 - [x] [Review][Defer] `ResolveTenantListKindForFreshness` lacks the surface-kind whitelist its three siblings have, promoting `Error`/`Unauthorized` to `Empty` [references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:1267] — deferred, pre-existing
 - [x] [Review][Defer] `ReadModelFreshnessState.Aging` is absent from the mutation-blocking set, a latent fail-open for the deferred read-model-age work [references/Hexalith.Tenants/src/Hexalith.Tenants.UI/State/TenantDetail/TenantLifecycleAvailability.cs:42] — deferred, pre-existing
 - [x] [Review][Defer] A search term containing a control character silently becomes an unfiltered full list with no notice [references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:550] — deferred, pre-existing
@@ -173,6 +185,33 @@ collides with the cached 2.28.2 package and the build fails with `CS1704`.
 - `… -class …TenantsUiCompositionTests` -> **25/25 passed** (23 before; +2 from splitting the dependency test into a per-mode theory and adding the compiled-assembly seam test).
 - `… (full assembly)` -> **1060/1060 passed, 0 failed, 0 skipped.**
 
+**AC3 closure run 2026-07-26** (Tenants `11d6992` — working tree clean, commit reachable on
+`origin/main`, superproject gitlink already at this SHA). Same Debug source-mode flags as above.
+
+- `dotnet restore …/Hexalith.Tenants.UI.Tests.csproj -p:UseHexalithProjectReferences=true -p:HexalithMemoriesFromSource=false -p:HexalithCommonsFromSource=false` -> **restored, 10 projects.**
+- `dotnet build … --no-restore -nodeReuse:false` -> **Build succeeded. 0 Warning(s), 0 Error(s).** (7.13s)
+- `… (full assembly)` -> **1060/1060 passed, 0 failed, 0 skipped.**
+- Focused UX render classes (Sally's acceptance evidence) -> **204/204 passed**:
+  `TruthStateBadgeTests` 5/5, `TenantLifecycleActionAvailabilityTests` 12/12,
+  `TenantListSurfaceTests` 43/43, `TenantDetailSurfaceTests` 56/56, `MyTenantsSurfaceTests` 14/14,
+  `GlobalAdministratorsPageTests` 29/29, `SupportSafeCopyButtonTests` 43/43,
+  `PageLayoutDeclarationTests` 2/2.
+- Resource parity check (EN vs FR) -> **1184 / 1184 keys, zero missing, zero orphaned.**
+- Legacy Fluent v4 / FAST token scan over `src/Hexalith.Tenants.UI` -> **4 occurrences in 3 files, none
+  on this story's surfaces**; deferred to the ledger (see the Completion Notes).
+
+**Third-pass patch run 2026-07-27** (uncommitted Tenants working tree on baseline `11d6992`):
+
+- `dotnet restore references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/Hexalith.Tenants.UI.Tests.csproj -p:UseHexalithProjectReferences=true -p:HexalithMemoriesFromSource=false -p:HexalithCommonsFromSource=false -nodeReuse:false` -> **succeeded; 10 projects evaluated/restored**.
+- `dotnet build references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/Hexalith.Tenants.UI.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true -p:HexalithMemoriesFromSource=false -p:HexalithCommonsFromSource=false --no-restore -nodeReuse:false` -> **Build succeeded, 0 warnings, 0 errors**.
+- `dotnet test references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/Hexalith.Tenants.UI.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true -p:HexalithMemoriesFromSource=false -p:HexalithCommonsFromSource=false --no-build --no-restore -nodeReuse:false --filter "FullyQualifiedName~TenantQueryGatewayTests"` -> **191/191 passed**.
+- `dotnet test references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/Hexalith.Tenants.UI.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true -p:HexalithMemoriesFromSource=false -p:HexalithCommonsFromSource=false --no-build --no-restore -nodeReuse:false --filter "FullyQualifiedName~TruthStateBadgeTests|FullyQualifiedName~TenantLifecycleAvailabilityTests"` -> **31/31 passed**.
+- `dotnet test references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/Hexalith.Tenants.UI.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true -p:HexalithMemoriesFromSource=false -p:HexalithCommonsFromSource=false --no-build --no-restore -nodeReuse:false --filter "FullyQualifiedName~TenantsUiCompositionTests"` -> **29/29 passed**.
+- `dotnet test references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/Hexalith.Tenants.UI.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true -p:HexalithMemoriesFromSource=false -p:HexalithCommonsFromSource=false --no-build --no-restore -nodeReuse:false` -> **1090/1090 passed, 0 failed, 0 skipped**.
+- `dotnet restore references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/Hexalith.Tenants.UI.Tests.csproj -p:UseHexalithProjectReferences=false -p:Configuration=Release -p:HexalithMemoriesFromSource=false -p:HexalithCommonsFromSource=false -nodeReuse:false` -> **succeeded; Release/package closure restored**.
+- `dotnet build references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/Hexalith.Tenants.UI.Tests.csproj --configuration Release -p:UseHexalithProjectReferences=false -p:HexalithMemoriesFromSource=false -p:HexalithCommonsFromSource=false --no-restore -nodeReuse:false` -> **Build succeeded, 0 warnings, 0 errors**.
+- `git -C references/Hexalith.Tenants diff --check` and `git diff --check` -> **passed**.
+
 **Correction (2026-07-26 second-pass review).** The 2026-07-15 numbers above pin the evidence to `56c506c`
 exactly: at that commit the gateway class had 50 `[Fact]` + 53 `[InlineData]` = 103 executed tests and the
 composition class had 16. The story's *own* second implementation commit `8ab537e` — the one that added the
@@ -181,42 +220,74 @@ to 140. No line in this story previously described any state containing the stor
 
 ### Completion Notes
 
-- AC1 implementation evidence is green: the evaluated UI dependency graph retains the typed Tenants client seam and excludes the external API host, REST generator, and domain-service host; compiled-controller and in-process endpoint inventories are empty for forbidden API surfaces.
-- AC2 has two halves and they carry different authority.
-  - **The Story 2.11-owned half** (provenance preservation, authoritative lifecycle/header selection,
-    fail-closed `Unknown`) is implemented in this repo's consumer code — only projection-backed metadata
-    can resolve current or stale freshness; handler-computed, missing, unknown, and invalid provenance
-    resolve to unknown. Per the ratified overlap above this is **cited from Story 2.11, not signed off
-    here**; the statement is a consumer-side restatement of the 2.11 contract.
-  - **The Story 2.6-owned half** — "the UI applies the canonical support-safe and accessible treatment
-    for the supplied lifecycle state" — is evidenced by the existing bUnit render suite, which the story
-    previously failed to cite at all. Twenty component test files in
-    `references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/Components/` render against
-    `ReadModelFreshnessState`, including `TruthStateBadgeTests.cs` (the canonical badge treatment per
-    lifecycle state), `TenantDetailSurfaceTests.cs`, `TenantListSurfaceTests.cs`,
-    `MyTenantsSurfaceTests.cs`, `GlobalAdministratorsPageTests.cs`, and
-    `TenantLifecycleActionAvailabilityTests.cs` (mutation availability per freshness). Scope is the
-    states the current model can express (`Current`, `Stale`, `Unknown`) plus the denied/loading/
-    unavailable surface states the UI already owns, per the D3 owner decision.
-- AC3 remains blocked: Sally's focused UX acceptance and Tenants maintainer approval are not recorded, so no exact **approved** implementation SHA exists.
-- **Correction (2026-07-26 code review):** the statement that the four Tenants changes are "uncommitted on base SHA `28630b94a7b4931dcd6796eb50ad1c21b092055d`" was false. They are committed as Tenants `56c506c` (`refactor(gateway): improve freshness state handling in TenantQueryGateway`, all four files) and `8ab537e` (`test(gateway): add tests for tenant projection lifecycle and freshness states`), verified on Tenants `main` via `git merge-base --is-ancestor 8ab537e HEAD`. `28630b94` is `56c506c^`, i.e. the base, not the tip. Tenants SHA at review time: `42f0c5c`. These commits therefore landed in a shared submodule without the maintainer approval required by AC3 and by `project-context.md:75`; recording the SHA does not substitute for that approval.
-- Story status remains `in-progress`; it is not ready to advance to `review` or `done` until the external acceptance and exact-SHA gates are satisfied.
+- AC1 implementation evidence is green: the resolved Debug/source and Release/package dependency
+  closures retain the typed Tenants client seam and exclude the external API host, REST generator,
+  and domain-service host. MVC discovery and in-process endpoint inventories are empty for forbidden
+  API surfaces.
+- Story 2.11 exclusively owns provenance/lifecycle classification and gateway consumer proof. Story
+  2.6 cites that evidence and owns only host alignment plus canonical accessible presentation.
+- AC3's required operational lifecycle states are now representable without widening the freshness
+  enum. `ProjectionLifecycleState` is transported separately on snapshots/rows and rendered as
+  localized, non-colour-only `Rebuilding`, `Degraded`, `Unavailable`, and `LocalOnly` badges across
+  tenant detail, tenant list, memberships, global administrators, and audit. Non-current authoritative
+  lifecycle blocks lifecycle actions with a support-safe refresh remedy.
+- Sally's 2026-07-26 acceptance artifact and the `11d6992` maintainer authority chain remain valid
+  historical evidence for that published baseline's narrowed scope. They do not approve the new
+  operational-state UI. A fresh focused UX decision, a committed final Tenants SHA, and maintainer
+  approval of that SHA are required before this story can return to `review` or advance to `done`.
+- The mutation-gate fail-open remains exclusively Story 2.11-owned: rows now transport lifecycle,
+  but `TenantCorrectionStartIntent` still gates on legacy freshness. It remains routed in the ledger
+  and blocks Story 2.11, not this presentation story.
+- Story status is `in-progress`: implementation and automated evidence are green, but the post-patch
+  human/final-SHA acceptance gates are open.
 
 ### File List
 
-**Tenants production (modified):**
-- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs`
-
-**Tenants tests (modified):**
-- `references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/Hexalith.Tenants.UI.Tests.csproj`
-- `references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/Services/Gateways/TenantQueryGatewayTests.cs`
+**Story 2.6-owned Tenants presentation/host files (modified):**
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Components/_Imports.razor`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Components/Pages/GlobalAdministratorsPage.razor`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Components/Pages/TenantDetailPage.razor`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Components/Shared/TruthStateBadge.razor`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Components/Tenants/Audit/AuditDataGrid.razor`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Components/Tenants/Lifecycle/TenantLifecycleActionAvailability.razor`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Components/Tenants/Members/MemberAccessReview.razor`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Components/Tenants/TenantConfigurationView.razor`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Components/Tenants/TenantDataGrid.razor`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Components/Users/MyTenantsDataGrid.razor`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Resources/TenantsResources.resx`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Resources/TenantsResources.fr.resx`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/State/GlobalAdministrators/GlobalAdministratorRow.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/State/GlobalAdministrators/GlobalAdministratorsSnapshot.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/State/TenantAudit/TenantAuditRow.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/State/TenantAudit/TenantAuditSnapshot.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/State/TenantDetail/TenantDetailSnapshot.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/State/TenantDetail/TenantLifecycleAvailability.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/State/TenantList/TenantListRow.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/State/TenantList/TenantListSnapshot.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/State/UserTenants/UserTenantMembershipRow.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/State/UserTenants/UserTenantMembershipSnapshot.cs`
+- `references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/Components/TruthStateBadgeTests.cs`
+- `references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/State/TenantLifecycleAvailabilityTests.cs`
 - `references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/TenantsUiCompositionTests.cs`
+
+**Story 2.11-owned gateway consumer files (modified and cited here):**
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs`
+- `references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/Services/Gateways/TenantQueryGatewayTests.cs`
+
+All Tenants paths above contain uncommitted review patches on top of approved baseline `11d6992`.
+
+**Artifacts (added):**
+- `_bmad-output/implementation-artifacts/evidence/story-2-6/ux-review-sally-2026-07-26.md`
 
 **Artifacts (modified):**
 - `_bmad-output/implementation-artifacts/2-6-tenants-ui-client-library-alignment-and-ux-evidence.md`
+- `_bmad-output/implementation-artifacts/2-11-query-provenance-consumption-in-generated-rest-and-tenants.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/implementation-artifacts/deferred-work.md`
 
 ### Change Log
 
 - 2026-07-15: Revalidated the completed provenance and UI-boundary patches in Debug/source mode: build 0 warnings/errors, gateway tests 103/103, composition tests 16/16, and full Tenants UI tests 881/881. Added the exact file inventory and retained `in-progress` because UX/maintainer approval and an exact committed Tenants SHA remain unavailable.
 - 2026-07-26: Second-pass adversarial code review over the **current state** of the four File List files at Tenants `42f0c5c` (four layers, 61 raw findings). Established that this story's production change is 29 lines, and routed findings on that boundary. Applied 22 patches: 12 from this pass plus 9 first-pass items unblocked by the cleared submodule-approval gate, and the owner-chosen AC1 strengthening. Verified green — gateway `167/167` (was 140), composition `25/25` (was 23), full assembly `1060/1060`. One finding dismissed after verification as intended behaviour (lifecycle-only 304 clearing a stale claim); one attribution corrected (`ResolveDetailKindForFreshness` died in `b73093b`, not here); nine pre-existing defects deferred to the ledger, two of them HIGH. Status stays `in-progress`: the AC3 gates (Sally's UX review, Tenants maintainer approval, exact **approved** SHA) are still unmet, the mutation-gate fail-open is routed to Story 2.11, and the Tenants edits are uncommitted.
+- 2026-07-26: **AC3 closed; story advanced to `review`.** Ran Sally's focused UX acceptance review at Tenants `11d6992` and recorded it as a dedicated evidence artifact — approved across all eight applicable UX rules (component sources, no theme redefinition, non-colour-alone state encoding, forced-colors, live-region/focus division, support-safe EN/FR copy at exact 1184/1184 parity, fail-closed denial UX, accordion page sections) on **204/204** focused bUnit render tests. Obtained Tenants maintainer approval and pinned the exact approved SHA `11d69920526f9881ad8c2216b28e82e497543c67`, which is also the SHA the superproject gitlink consumes. Revalidated at that SHA: build 0 warnings/0 errors, full Tenants UI assembly **1060/1060**. Closed the last open review finding by routing (mutation-gate fail-open is 2.11-owned, recorded in the ledger and in the 2.11 story). Deferred one new UX finding not attributable to this story: four legacy Fluent v4/FAST tokens in three stylesheets outside its File List. Corrected the stale claim that the Tenants edits were uncommitted — they are committed and published.
+- 2026-07-27: Third-pass review resolved three owner decisions and applied all ten accepted patches. Kept AC3 authoritative; introduced lifecycle state alongside freshness and rendered all four previously collapsed operational states across five UI surfaces; hardened action denial, dependency closure, MVC discovery, endpoint matching, process cleanup, and 200/304 verification. Re-established Story 2.11's exclusive gateway-consumer ownership. Automated evidence is green (gateway 191/191, lifecycle badge/action 31/31, composition 29/29, full UI 1090/1090, Debug/source and Release/package builds at 0 warnings/errors). Returned the story to `in-progress` because the new Tenants changes are uncommitted and require a new exact approved SHA plus focused UX and maintainer acceptance.
