@@ -29,13 +29,10 @@ public class AdminCommandVisibilityTests {
     public AdminCommandVisibilityTests(AspireContractTestFixture fixture) => _fixture = fixture;
 
     /// <summary>
-    /// AC-1: Submit IncrementCounter → wait for Completed → admin commands count should increase by 1.
+    /// AC-1: Submit IncrementCounter → wait for Completed → the exact command should appear in the admin index.
     /// </summary>
     [Fact]
-    public async Task IncrementCounter_AdminCommandsCount_IncrementsByOne() {
-        // Arrange — get baseline command count from admin API
-        int baselineCount = await GetAdminCommandCountAsync("tenant-a");
-
+    public async Task IncrementCounter_AdminCommandsIndex_ContainsExactCommand() {
         string aggregateId = $"counter-admin-vis-{Guid.NewGuid():N}";
 
         // Act — submit IncrementCounter and wait for completion
@@ -49,33 +46,50 @@ public class AdminCommandVisibilityTests {
         terminalStatus.GetProperty("status").GetString().ShouldBe("Completed",
             "IncrementCounter should complete before checking admin visibility");
 
-        // Assert — poll admin commands count (eventual consistency via DAPR service invocation)
-        _ = await PollUntilAdminCountReachesAsync("tenant-a", baselineCount + 1);
+        // Assert — poll for the exact command (eventual consistency via DAPR service invocation).
+        // The global activity index has bounded retention, so its tenant-filtered count does not
+        // necessarily increase when the newly inserted command evicts an older command for the
+        // same tenant.
+        JsonElement adminCommand = await PollUntilAdminCommandVisibleAsync("tenant-a", correlationId);
+        adminCommand.GetProperty("tenantId").GetString().ShouldBe("tenant-a");
+        adminCommand.GetProperty("domain").GetString().ShouldBe("counter");
+        adminCommand.GetProperty("aggregateId").GetString().ShouldBe(aggregateId);
+        adminCommand.GetProperty("commandType").GetString().ShouldBe("IncrementCounter");
     }
 
     // ------------------------------------------------------------------
     // Admin API helpers
     // ------------------------------------------------------------------
 
-    private async Task<int> PollUntilAdminCountReachesAsync(string tenantId, int expectedCount) {
+    private async Task<JsonElement> PollUntilAdminCommandVisibleAsync(
+        string tenantId,
+        string correlationId) {
         DateTimeOffset deadline = DateTimeOffset.UtcNow.Add(s_statusPollTimeout);
         int lastCount = -1;
 
         while (DateTimeOffset.UtcNow < deadline) {
-            lastCount = await GetAdminCommandCountAsync(tenantId).ConfigureAwait(false);
-            if (lastCount >= expectedCount) {
-                return lastCount;
+            JsonElement result = await GetAdminCommandsAsync(tenantId).ConfigureAwait(false);
+            if (result.TryGetProperty("items", out JsonElement items)
+                && items.ValueKind == JsonValueKind.Array) {
+                lastCount = items.GetArrayLength();
+                foreach (JsonElement command in items.EnumerateArray()) {
+                    if (command.TryGetProperty("correlationId", out JsonElement candidate)
+                        && candidate.ValueKind == JsonValueKind.String
+                        && candidate.GetString() == correlationId) {
+                        return command.Clone();
+                    }
+                }
             }
 
             await Task.Delay(s_statusPollInterval).ConfigureAwait(false);
         }
 
         throw new TimeoutException(
-            $"Admin commands count did not reach {expectedCount} within {s_statusPollTimeout}. "
-            + $"Last count: {lastCount}");
+            $"Admin command {correlationId} did not become visible within {s_statusPollTimeout}. "
+            + $"Last returned item count: {lastCount}");
     }
 
-    private async Task<int> GetAdminCommandCountAsync(string tenantId) {
+    private async Task<JsonElement> GetAdminCommandsAsync(string tenantId) {
         string token = TestJwtTokenGenerator.GenerateToken(
             tenants: [tenantId],
             domains: ["counter"],
@@ -95,21 +109,7 @@ public class AdminCommandVisibilityTests {
                 $"Admin commands query failed with {(int)response.StatusCode} {response.StatusCode}.\nBody:\n{body}");
         }
 
-        JsonElement result = await response.Content.ReadFromJsonAsync<JsonElement>().ConfigureAwait(false);
-
-        // PagedResult<CommandSummary> has Items array and TotalCount
-        if (result.TryGetProperty("totalCount", out JsonElement totalCountProp)
-            && totalCountProp.ValueKind == JsonValueKind.Number) {
-            return totalCountProp.GetInt32();
-        }
-
-        // Fallback: count items array
-        if (result.TryGetProperty("items", out JsonElement itemsProp)
-            && itemsProp.ValueKind == JsonValueKind.Array) {
-            return itemsProp.GetArrayLength();
-        }
-
-        return 0;
+        return await response.Content.ReadFromJsonAsync<JsonElement>().ConfigureAwait(false);
     }
 
     // ------------------------------------------------------------------

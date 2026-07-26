@@ -1084,6 +1084,29 @@ override Story 1.20's external evidence and named-approval gates.
 - Defects (2) and (3) are GitHub-side and require no commit; both records must additionally be
   rebound to the candidate SHA this correction produces.
 
+#### 2026-07-26 — Saturated admin-index visibility oracle correction
+
+- Candidate `e969e5889b5ac0855bbf6d32866dff9ea0221b01` passed AD-11, all eight focused
+  capability blocks, the warning-free Release solution build, every configured Release assembly,
+  and Admin UI E2E. Its first complete Debug/source integration run stopped fail-closed at 278/279
+  in 1,610.855 seconds: `AdminCommandVisibilityTests` expected tenant `tenant-a`'s count to rise
+  from 855 to 856, but it remained 855 for 30 seconds. The exact method then passed alone 1/1 in
+  34.800 seconds; this diagnostic was not credited as closure evidence.
+- A completely fresh detached run at the same candidate repeated the sole failure at 278/279 in
+  1,601.230 seconds. This time the tenant count remained 854 instead of reaching 855. Both runs had
+  an empty Dapr-conflict ledger, and neither reached package, container, WORM, approval, evidence
+  commit, or migration operations.
+- Root cause is the test oracle, not missing command completion: the durable admin activity index
+  is globally capped at 1,000 entries. At capacity, inserting a new `tenant-a` command can evict an
+  older `tenant-a` command, leaving the filtered tenant count unchanged even though the exact new
+  command is present. The test now polls the bounded response for the newly submitted correlation
+  ID and validates its tenant, domain, aggregate, and command-type identity.
+- The corrected source-mode Debug build passed with zero warnings/errors. The renamed exact method
+  passed 1/1 in 31.778 seconds against the already saturated persistent index. This is corrective
+  working-tree evidence only; a new committed official-main candidate must restart the complete
+  protocol from zero, and publication-authority comment `5082239874` cannot authorize the
+  replacement SHA.
+
 ### Completion Notes
 
 - The `7e34153d`/`a1afa56d` A/B chain is proven non-authorizing: its final-decision transform
@@ -1209,6 +1232,11 @@ override Story 1.20's external evidence and named-approval gates.
   has 11 isolated logging-assertion failures, so this corrective pass is not a green exact-SHA gate.
 - Story remains `blocked` and non-authorizing after landed commit `e7629a51...`. No package or
   container publication, named approval, evidence A/B/C mutation, or consumer migration occurred.
+- Candidate `e969e588...` remains rejected after two independent 278/279 exact-SHA integration
+  results reproduced the saturated admin-index count-oracle defect. The exact-correlation
+  visibility correction has focused working-tree proof only, so Story 1.20 remains fail-closed and
+  every exact-SHA, publication, immutable-evidence, owner-approval, and A/B/C gate must restart on
+  the replacement candidate produced by this correction.
 
 ## File List
 
@@ -1237,6 +1265,7 @@ traceability; it does not reclassify that path as a Story 1.20 implementation de
 - `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ProofPacketValidatorIntegrityTests.cs`
 - `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ProofPacketDaprConflictProcessContractTests.cs`
 - `tests/Hexalith.EventStore.IntegrationTests/ContractTests/QueryResponseProvenanceE2ETests.cs`
+- `tests/Hexalith.EventStore.IntegrationTests/ContractTests/AdminCommandVisibilityTests.cs`
 - `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DaprTestContainerFixture.cs`
 - `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/NamedProjectionDispatchLiveSidecarTests.cs`
 - `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ReadModelBatchLiveSidecarTests.cs`
@@ -1284,6 +1313,7 @@ traceability; it does not reclassify that path as a Story 1.20 implementation de
 
 | Date | Phase | Test-method delta | Verification | File-list reconciliation |
 | --- | --- | ---: | --- | --- |
+| 2026-07-26 | Reproducible saturated admin-index visibility-oracle correction | renamed `1` method / `0` net cases | RED: two clean exact-SHA runs at `e969e588...` each failed only `AdminCommandVisibilityTests` at 278/279 because the tenant-filtered count stayed one below the impossible `baseline + 1` expectation while the 1,000-entry global index was saturated. GREEN: the corrected test polls for the exact submitted correlation ID and validates its identity; Debug/source build 0 warnings/errors and focused live method 1/1 in 31.778s against the saturated store. | Added the admin visibility test path and recorded both rejected gate roots. Preserved Story `blocked` / sprint `in-progress`; no publication occurred, and comment `5082239874` must be replaced for the new candidate SHA. |
 | 2026-07-26 | Second authorizing-C preflight rejection + final-section boundary correction | `+1` test method / `+1` case | Official A/B ancestry was exact (`49832991...` → `7e34153d...` → `a1afa56d...`), but the immutable transform set `skip_final_section=1` at the packet's last heading and therefore exited 1 at EOF for every possible C. GREEN: added retained `## Authorization Record Boundary`; focused regression and complete packet-integrity verification pass; Story 1.16 reset to its fail-closed pre-A state. | Updated the packet, integrity test, Story 1.16 spec, and this record. Preserved Story `blocked` / sprint `in-progress`; no C or migration mutation occurred, and the prior A/B commits remain non-authorizing history. |
 | 2026-07-25 | Authorizing-C preflight rejection + evidence-packet anchor correction | `+1` test method / `+1` case | Official A/B ancestry was exact (`38f85086...` → `e25eb2d8...` → `0d492e33...`), but RED proved the immutable C transform waited for the runtime-only `### Scoped corrective item` heading that A had removed, so every possible C failed its END guard. GREEN: resume at retained `## Prerequisite And Review Ledger`; new regression 1/1; complete `ProofPacketValidatorIntegrityTests` 8/8; complete Contracts assembly 763/763; Release build 0 warnings/errors; all 23 packet Bash blocks parse. | Updated the packet anchor and integrity test, reset the Story 1.16 follow-up spec to its fail-closed pre-A state, and recorded this restart boundary. Preserved Story `blocked` / sprint `in-progress`; the prior A/B commits remain non-authorizing history and a new candidate requires a complete exact-SHA and human-approval restart. |
 | 2026-07-25 | Second single-run Phase-1 pass (`ed5af0f6`) + front-matter-scoped follow-up transform correction | `+1` test method / `+1` case | Candidate `ed5af0f6` (docs-only child of `eb59649b`; packet byte-identical, no source drift): Phase-1 clean on the FIRST run again — 77 results, 9,202 cases, 9,076 passed, 0 failed/errors/not-run, exactly 126 allowlisted skips, integration 279/279 in 1,581.334s, live-sidecar 49/49, AD-11 exact, 14 packages at `999.1.20-proof.ed5af0f650a1`, conflict monitor empty. RED (caught statically, pre-publication): the Story 1.16 transform in blocks 15 AND 16 aborted unless `followup_review_recommended: true` occurred exactly once document-wide, but `spec-1-11` carried it twice (front matter line 9 + disposition prose line 113) — block 15 runs AFTER the irreversible WORM lock and the region had never executed. Also caught the publication-authority `authorized_at` being local CEST labelled `Z` (+1.83 h future vs `authorized_at <= checked_at`) and four surviving placeholder strings in the Story 1.16 record that `nonblank` would have passed straight into the WORM bundle and commit A. GREEN: prose reworded; both transform copies now resolve the flag inside the YAML front matter; hardened logic executed against the real spec (resolves correctly, immune to a re-added prose mention, still fails closed when already resolved); `ProofPacketValidatorIntegrityTests` 7/7; 23/23 Bash blocks parse; `git diff --check` clean. | Updated the proof packet (both transforms), `spec-1-11` prose, the integrity test, `deferred-work.md`, and this record. Preserved `blocked` / sprint `in-progress`. The `sort -u` vs `sort` limitation-ID asymmetry was deliberately deferred rather than spending a dedicated re-gate. Both issue-324 records must be rebound to the candidate SHA this commit produces. |
