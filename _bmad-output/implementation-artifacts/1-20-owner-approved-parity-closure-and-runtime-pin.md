@@ -2,7 +2,7 @@
 created: 2026-07-15
 story_id: "1.20"
 story_key: 1-20-owner-approved-parity-closure-and-runtime-pin
-status: blocked
+status: done
 baseline_revision: 26842d284f2da91399b7891bf7b5880ce2f6b561
 followup_review_recommended: true
 supersedes: 1-15-owner-approved-parity-closure-and-runtime-pin.md
@@ -11,7 +11,7 @@ crosswalk: ../planning-artifacts/story-id-migration-2026-07-15.md
 
 # Story 1.20: Owner-Approved Parity Closure And Runtime Pin
 
-Status: blocked
+Status: done
 
 ## Reissue Decision
 

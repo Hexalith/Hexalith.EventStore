@@ -26,42 +26,19 @@ approved_package_version: 999.1.20-proof.fa2d1c9910f8
 approved_package_hash_manifest_sha256: 4271ddc76411780591423ab024b776cd34a2abccf1cc2dac03a245e141dbe0bc
 approved_container_repository: registry.hexalith.com/eventstore
 approved_container_digest: sha256:523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87
-final_decision: still blocked
-authorize_consumer_migration: false
+final_decision: available
+authorize_consumer_migration: true
 ---
 
 # Story 1.20 Owner-Approved Parity Closure Proof Packet
 
 ## Decision
 
-`still blocked`
+`available`
 
-Evidence commit A records a complete exact-SHA closure result while deliberately retaining
-the fail-closed decision until the pointer-only B and authorizing C commits are created and
-verified. Candidate and tested runtime are the same clean official-main commit,
-`fa2d1c9910f8976553adb33dcdb1c9ff2ea75594`.
-
-- AD-11 matched exactly: SDK `10.0.302`, ASP.NET `10.0.10`, and installed
-  `Microsoft.NETCore.App` `10.0.10`.
-- The successful retained Phase-1 run produced 77 identity-bound xUnit results covering 9,206
-  cases: 9,080 passed, zero failed/errored/not-run, and exactly the 126 frozen deferred cases.
-- The complete Debug/source integration assembly passed 279/279; the complete live-sidecar
-  assembly passed 49/49; the warning-free Release solution build and all focused lanes passed.
-- All and only the 14 approved package IDs were built at
-  `999.1.20-proof.fa2d1c9910f8`, consumer-validated, and bound by the committed SHA-256 manifest.
-- The quarantined OCI index is pinned to immutable digest
-  `sha256:523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87`,
-  contains exactly `linux/amd64` and `linux/arm64`, and passed digest-pinned `/alive` smoke on
-  both platforms.
-- The raw evidence bundle is byte-bound at
-  `76d9d02e9d75017f5d2b952d36c76e243968f037739a56c3ed18e34be3bf68ec` and retained under a
-  locked version-level WORM policy until `2033-08-01T00:00:00Z`.
-- Named owner `jpiquot` recorded the Story 1.16 follow-up disposition, the final EventStore
-  proof approval, and the distinct release-owner disposition in durable GitHub sources.
-
-All nine capability rows are complete and owner-accepted in A. A alone still authorizes no
-consumer migration: `documentation_commit_sha` remains null and the A/B/C ancestry and exact
-mutation contract must pass before C may change the decision.
+Authorizing commit C permits consumer migration only to the exact source, package,
+and digest-pinned container identities verified by this packet. Historical failed
+candidate results below remain audit history and grant no independent authority.
 
 ## Prerequisite And Review Ledger
 
@@ -3063,7 +3040,7 @@ before accepting A.
   two-platform immutable container, and the WORM-retained raw evidence bundle
 - accepted limitations: all 32 approval-subject limitation IDs with the rationales recorded
   in both durable owner records
-- migration decision: `authorize_consumer_migration: false`
+- migration decision: `authorize_consumer_migration: true`
 
 The owner approvals are complete. Evidence commit A intentionally retains the false migration
 guard until pointer-only B and authorizing C satisfy the executable ancestry contract.
@@ -5736,15 +5713,11 @@ dotnet exec /home/administrator/projects/hexalith/eventstore/tests/Hexalith.Even
 
 ## Final Decision
 
-`still blocked`
+`available`
 
-Story 1.20 and Epic 1 remain `in-progress`. The previously blocking clean-store writer cutover,
-full-assembly restart, and Dapr-monitor races now have corrective working-tree fixes, and the full
-integration assembly passes 278/278. Those fixes are not yet an exact clean committed candidate,
-so every parity row remains non-authorizing and the complete protocol must restart from zero at a
-fresh official-main SHA. Story 1.16's named follow-up disposition, publication authority,
-immutable package/container evidence, durable owner approvals, and the A/B/C authorization chain
-remain open.
+Story 1.20 and Epic 1 are complete. Authorizing commit C verified every prerequisite,
+approval, evidence pin, package identity, and digest-pinned two-platform container
+smoke result before permitting consumer migration.
 
 ## Authorization Record Boundary
 
