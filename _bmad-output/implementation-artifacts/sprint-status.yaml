@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-07-26
+# last_updated: 2026-07-27
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T20:01:46+02:00
-last_updated: 2026-07-26
+last_updated: 2026-07-27
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -84,13 +84,11 @@ development_status:
   2-4-tenants-rest-contract-metadata-and-routes: done
   # AD-18 host patch accepted at Tenants 846f988a (pinned 6cc9eb3a); 2026-07-26 code review closed the acceptance gate and hardened the AD-18 guards.
   2-5-dedicated-external-tenants-api-host: done
-  # 2026-07-27 third-pass review: all 10 accepted patches applied. Lifecycle is now transported
-  # alongside freshness and canonically presents Rebuilding/Degraded/Unavailable/LocalOnly across
-  # five UI surfaces; full UI 1090/1090, Debug/source and Release/package builds green. Story 2.11
-  # exclusively owns gateway provenance/lifecycle classification. Historical UX/maintainer approval
-  # covers baseline 11d6992 only; the uncommitted patch needs a final SHA plus fresh UX and maintainer
-  # acceptance, so Story 2.6 returns to in-progress.
-  2-6-tenants-ui-client-library-alignment-and-ux-evidence: in-progress
+  # 2026-07-27 final acceptance: operational lifecycle presentation is committed at Tenants
+  # 55e6000a, published on origin/main, and consumed by the EventStore gitlink. Fresh Sally UX
+  # acceptance and the accepted admin-authored maintainer authority chain are recorded; the complete
+  # project test matrix is green through individual-project fallback validation.
+  2-6-tenants-ui-client-library-alignment-and-ux-evidence: review
   # Story 2.7 corrected the EventStore stale-registration/source-topology prerequisite and
   # passed focused configuration, CI-guard, and live persisted-provenance evidence with no
   # net Tenants, EventStore, or Builds dependency-identity change.

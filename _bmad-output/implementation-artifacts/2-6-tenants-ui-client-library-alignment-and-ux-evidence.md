@@ -2,14 +2,14 @@
 created: 2026-07-15
 story_id: "2.6"
 story_key: 2-6-tenants-ui-client-library-alignment-and-ux-evidence
-status: in-progress
+status: review
 split_from: 2-4-tenants-external-api-host-adoption
 crosswalk: ../planning-artifacts/story-id-migration-2026-07-15.md
 ---
 
 # Story 2.6: Tenants UI Client-Library Alignment And UX Evidence
 
-Status: in-progress
+Status: review
 
 The parent Story 2.4 spec records UI-boundary guardrails. This child reviews typed-client
 consumption, absence of generated/hand-written per-message controllers, and canonical UX
@@ -212,6 +212,23 @@ collides with the cached 2.28.2 package and the build fails with `CS1704`.
 - `dotnet build references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/Hexalith.Tenants.UI.Tests.csproj --configuration Release -p:UseHexalithProjectReferences=false -p:HexalithMemoriesFromSource=false -p:HexalithCommonsFromSource=false --no-restore -nodeReuse:false` -> **Build succeeded, 0 warnings, 0 errors**.
 - `git -C references/Hexalith.Tenants diff --check` and `git diff --check` -> **passed**.
 
+**Final acceptance and regression run 2026-07-27** (clean Tenants
+`55e6000a41e7846868ff7512b79e5f7a36464a37`, published at `origin/main`, and consumed by the
+superproject gitlink):
+
+- `gh api repos/Hexalith/Hexalith.Tenants/collaborators/jpiquot/permission --jq .permission` -> **admin**; `git -C references/Hexalith.Tenants show -s --format='%H%n%an <%ae>%n%cn <%ce>%n%s' 55e6000a41e7846868ff7512b79e5f7a36464a37` confirms Jérôme Piquot is author and committer.
+- `dotnet restore tests/Hexalith.Tenants.UI.Tests/Hexalith.Tenants.UI.Tests.csproj -p:UseHexalithProjectReferences=true -p:HexalithMemoriesFromSource=false -p:HexalithCommonsFromSource=false -nodeReuse:false` -> **succeeded**.
+- `dotnet build tests/Hexalith.Tenants.UI.Tests/Hexalith.Tenants.UI.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true -p:HexalithMemoriesFromSource=false -p:HexalithCommonsFromSource=false --no-restore -nodeReuse:false -m:1` -> **Build succeeded, 0 warnings, 0 errors**. The first non-serialized attempt hit a transient `GenerateDepsFile` output lock; the prescribed serialized retry passed.
+- Focused Debug/source tests -> **badge/action 31/31**, **composition 29/29**, **gateway 191/191**, and **focused UX render classes 209/209** passed.
+- Full Debug/source UI assembly -> **1090/1090 passed, 0 failed, 0 skipped**.
+- Release/package restore and serialized build -> **succeeded, 0 warnings, 0 errors**; full Release/package UI assembly -> **1090/1090 passed**.
+- Configured Release/package unit projects -> **1473/1473 passed**: Contracts 113, Client 50, Testing 181, Sample 39, UI 1090.
+- Serialized Release/package Server lane -> **738/738 passed**.
+- Release/package DAPR/Aspire integration lane -> **167 passed, 1 scheduled 500K-event performance test skipped, 0 failed**.
+- EN/FR resource parity -> **1189/1189 keys**, zero missing and zero orphaned. Six legacy Fluent v4/FAST token occurrences remain outside Story 2.6-owned surfaces and stay deferred.
+- `dotnet restore Hexalith.Tenants.slnx -p:UseHexalithProjectReferences=false -p:Configuration=Release -p:HexalithMemoriesFromSource=false -p:HexalithCommonsFromSource=false -nodeReuse:false` remains a broad-gate environment blocker because the solution explicitly lists uninitialized nested `references/*` projects; repository policy forbids initializing those nested submodules. Every configured test project was therefore built and run individually through the fallback ladder above.
+- `git -C references/Hexalith.Tenants diff --check`, root `git diff --check`, the new-artifact no-index whitespace check, and File List reconciliation -> **passed**.
+
 **Correction (2026-07-26 second-pass review).** The 2026-07-15 numbers above pin the evidence to `56c506c`
 exactly: at that commit the gateway class had 50 `[Fact]` + 53 `[InlineData]` = 103 executed tests and the
 composition class had 16. The story's *own* second implementation commit `8ab537e` — the one that added the
@@ -231,15 +248,17 @@ to 140. No line in this story previously described any state containing the stor
   localized, non-colour-only `Rebuilding`, `Degraded`, `Unavailable`, and `LocalOnly` badges across
   tenant detail, tenant list, memberships, global administrators, and audit. Non-current authoritative
   lifecycle blocks lifecycle actions with a support-safe refresh remedy.
-- Sally's 2026-07-26 acceptance artifact and the `11d6992` maintainer authority chain remain valid
-  historical evidence for that published baseline's narrowed scope. They do not approve the new
-  operational-state UI. A fresh focused UX decision, a committed final Tenants SHA, and maintainer
-  approval of that SHA are required before this story can return to `review` or advance to `done`.
+- Sally's fresh 2026-07-27 acceptance artifact approves the newly representable operational-state
+  UI at exact Tenants SHA `55e6000a41e7846868ff7512b79e5f7a36464a37`; the older `11d6992`
+  artifact remains historical evidence for its narrower baseline only.
+- The exact-SHA maintainer gate is satisfied under the accepted direct admin-authored model:
+  `jpiquot` has repository admin permission, authored and committed `55e6000a`, published it at
+  `origin/main`, and the EventStore gitlink consumes exactly that identity.
 - The mutation-gate fail-open remains exclusively Story 2.11-owned: rows now transport lifecycle,
   but `TenantCorrectionStartIntent` still gates on legacy freshness. It remains routed in the ledger
   and blocks Story 2.11, not this presentation story.
-- Story status is `in-progress`: implementation and automated evidence are green, but the post-patch
-  human/final-SHA acceptance gates are open.
+- Story status is `review`: implementation, automated evidence, focused UX acceptance, maintainer
+  approval, and the final committed SHA gate are all recorded.
 
 ### File List
 
@@ -274,10 +293,12 @@ to 140. No line in this story previously described any state containing the stor
 - `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs`
 - `references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/Services/Gateways/TenantQueryGatewayTests.cs`
 
-All Tenants paths above contain uncommitted review patches on top of approved baseline `11d6992`.
+All Tenants paths above are committed at approved SHA
+`55e6000a41e7846868ff7512b79e5f7a36464a37`.
 
 **Artifacts (added):**
 - `_bmad-output/implementation-artifacts/evidence/story-2-6/ux-review-sally-2026-07-26.md`
+- `_bmad-output/implementation-artifacts/evidence/story-2-6/ux-review-sally-2026-07-27.md`
 
 **Artifacts (modified):**
 - `_bmad-output/implementation-artifacts/2-6-tenants-ui-client-library-alignment-and-ux-evidence.md`
@@ -291,3 +312,4 @@ All Tenants paths above contain uncommitted review patches on top of approved ba
 - 2026-07-26: Second-pass adversarial code review over the **current state** of the four File List files at Tenants `42f0c5c` (four layers, 61 raw findings). Established that this story's production change is 29 lines, and routed findings on that boundary. Applied 22 patches: 12 from this pass plus 9 first-pass items unblocked by the cleared submodule-approval gate, and the owner-chosen AC1 strengthening. Verified green — gateway `167/167` (was 140), composition `25/25` (was 23), full assembly `1060/1060`. One finding dismissed after verification as intended behaviour (lifecycle-only 304 clearing a stale claim); one attribution corrected (`ResolveDetailKindForFreshness` died in `b73093b`, not here); nine pre-existing defects deferred to the ledger, two of them HIGH. Status stays `in-progress`: the AC3 gates (Sally's UX review, Tenants maintainer approval, exact **approved** SHA) are still unmet, the mutation-gate fail-open is routed to Story 2.11, and the Tenants edits are uncommitted.
 - 2026-07-26: **AC3 closed; story advanced to `review`.** Ran Sally's focused UX acceptance review at Tenants `11d6992` and recorded it as a dedicated evidence artifact — approved across all eight applicable UX rules (component sources, no theme redefinition, non-colour-alone state encoding, forced-colors, live-region/focus division, support-safe EN/FR copy at exact 1184/1184 parity, fail-closed denial UX, accordion page sections) on **204/204** focused bUnit render tests. Obtained Tenants maintainer approval and pinned the exact approved SHA `11d69920526f9881ad8c2216b28e82e497543c67`, which is also the SHA the superproject gitlink consumes. Revalidated at that SHA: build 0 warnings/0 errors, full Tenants UI assembly **1060/1060**. Closed the last open review finding by routing (mutation-gate fail-open is 2.11-owned, recorded in the ledger and in the 2.11 story). Deferred one new UX finding not attributable to this story: four legacy Fluent v4/FAST tokens in three stylesheets outside its File List. Corrected the stale claim that the Tenants edits were uncommitted — they are committed and published.
 - 2026-07-27: Third-pass review resolved three owner decisions and applied all ten accepted patches. Kept AC3 authoritative; introduced lifecycle state alongside freshness and rendered all four previously collapsed operational states across five UI surfaces; hardened action denial, dependency closure, MVC discovery, endpoint matching, process cleanup, and 200/304 verification. Re-established Story 2.11's exclusive gateway-consumer ownership. Automated evidence is green (gateway 191/191, lifecycle badge/action 31/31, composition 29/29, full UI 1090/1090, Debug/source and Release/package builds at 0 warnings/errors). Returned the story to `in-progress` because the new Tenants changes are uncommitted and require a new exact approved SHA plus focused UX and maintainer acceptance.
+- 2026-07-27: **Final acceptance gates closed; story advanced to `review`.** Pinned committed Tenants SHA `55e6000a41e7846868ff7512b79e5f7a36464a37`, verified it at `origin/main` and in the EventStore gitlink, and confirmed the accepted admin-authored maintainer authority chain. Sally's fresh SHA-bound review approved the four operational lifecycle presentations across the five required UI surfaces. Fresh validation passed 209/209 focused UX renders, 1090/1090 UI tests in both dependency modes, 1473/1473 configured unit tests, 738/738 Server tests, and 167 integration tests with only the scheduled performance case skipped. The broad `.slnx` restore remains environment-blocked by intentionally uninitialized nested submodules, so the complete project matrix was validated individually per the fallback policy.
