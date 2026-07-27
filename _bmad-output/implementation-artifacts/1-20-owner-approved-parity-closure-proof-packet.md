@@ -3389,7 +3389,8 @@ test "$(sha256sum "$A_RAW_EVIDENCE_PROOF" | awk '{print $1}')" \
 A_PROVIDER_ADAPTER_RELATIVE="tools/evidence-provider-adapters/$A_RAW_EVIDENCE_PROVIDER_ADAPTER_ID.sh"
 test "$(git ls-tree "$A_TESTED_RUNTIME_COMMIT" -- "$A_PROVIDER_ADAPTER_RELATIVE" | awk '{print $1}')" \
   = '100755'
-A_PROVIDER_ADAPTER="$(mktemp)"
+A_PROVIDER_ADAPTER_DIRECTORY="$(mktemp -d)"
+A_PROVIDER_ADAPTER="$A_PROVIDER_ADAPTER_DIRECTORY/$A_RAW_EVIDENCE_PROVIDER_ADAPTER_ID.sh"
 git show "$A_TESTED_RUNTIME_COMMIT:$A_PROVIDER_ADAPTER_RELATIVE" > "$A_PROVIDER_ADAPTER"
 chmod 700 "$A_PROVIDER_ADAPTER"
 test "$(sha256sum "$A_PROVIDER_ADAPTER" | awk '{print $1}')" \
@@ -4310,7 +4311,7 @@ awk '
   }
   /^## Deferred from:/ {
     finish_section()
-    relevant = ($0 ~ /Story 1\.20/ || $0 ~ /1-20-owner-approved-parity-closure/)
+    relevant = $0 ~ /^## Deferred from: exact-SHA gate of 1-20-owner-approved-parity-closure-and-runtime-pin / || $0 ~ /^## Deferred from: Story 1\.20 correct-course readiness audit / || $0 ~ /^## Deferred from: Story 1\.20 current-HEAD source-topology gate /
     status_count = 0
     status_value = ""
     next
@@ -4321,7 +4322,7 @@ awk '
   }
   END {
     finish_section()
-    exit !(sections > 0 && invalid == 0)
+    exit !(sections == 3 && invalid == 0)
   }
 ' "$A_DEFERRED_WORK"
 
@@ -4782,7 +4783,7 @@ validate_committed_owner_record \
   story-1-20-release-disposition \
   approve-release-identities \
   release_owner_disposition
-A_OWNER_REVIEW="$(awk '/^## Owner Review$/{inside=1; next} inside && /^## /{exit} inside{print}' "$A_PACKET")"
+A_OWNER_REVIEW="$(awk '/^## Owner Review$/{inside=1; next} inside && /^##[#]? /{exit} inside{print}' "$A_PACKET")"
 A_EVENTSTORE_OWNER_LOGIN="$(jq -er '.login' \
   "$A_EVIDENCE_ROOT/eventstore-owner-proof-approval.github.json")"
 A_RELEASE_OWNER_LOGIN="$(jq -er '.login' \
@@ -5095,6 +5096,7 @@ if test "$AUTHORIZATION_VERIFICATION_PHASE" = 'official-main'; then
     "$CURRENT_AUTHORITY_PACKET" "$CURRENT_AUTHORITY_STORY" \
     "$CURRENT_AUTHORITY_SPRINT_STATUS"
 fi
+rm -rf -- "$A_PROVIDER_ADAPTER_DIRECTORY"
 ```
 
 A missing or non-unique opening field, unequal candidate/runtime identity, unresolved tested
