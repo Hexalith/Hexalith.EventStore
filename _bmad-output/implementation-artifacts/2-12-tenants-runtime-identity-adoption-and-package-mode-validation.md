@@ -4,8 +4,10 @@ baseline_commit: 73589770b14888b703d78d37325b066befa0689c
 story_id: "2.12"
 story_key: 2-12-tenants-runtime-identity-adoption-and-package-mode-validation
 status: ready-for-dev
-package_lane_status: blocked
+package_lane_status: re-scoped
 package_lane_prerequisite_receipt: evidence/story-2-12/prerequisites.md
+rescope_decision: evidence/story-2-12/rescope-decision-2026-07-27.md
+sprint_change_proposal: ../planning-artifacts/sprint-change-proposal-2026-07-27-story-2-12-runtime-identity-rescope.md
 split_from: 2-7-tenants-compatibility-and-package-mode-validation
 authorization_story: 1-20-owner-approved-parity-closure-and-runtime-pin
 crosswalk: ../planning-artifacts/story-id-migration-2026-07-15.md
@@ -32,14 +34,21 @@ so that consumer migration is reproducible, maintainer-approved, and tied to the
    version plus SHA-256 inventory, when Story 2.12 activation is evaluated, then it remains
    `backlog`, no implementation story file is created, and no Tenants, EventStore, or Builds
    dependency identity changes.
-2. **Source identity is exact.** Given Story 1.20 authorizes migration and names the approved
-   EventStore source SHA, when Debug/source mode is adopted, then Tenants'
-   `references/Hexalith.EventStore` gitlink and checkout both equal that SHA, no EventStore
-   submodule content is edited, and only Tenants-root-declared submodules are initialized.
-3. **Package identity is exact.** Given the approved package version and hashes, when
-   Release/package mode restores from an isolated cache, then every resolved
-   `Hexalith.EventStore*` asset is a package at the exact approved version, the fetched bytes
-   match the approved hashes, and the selected Builds commit already exposes that version.
+2. **Source identity is tracked and internally consistent.** Given Tenants tracks EventStore
+   `main` through its automated `build(deps)` submodule bump rather than a frozen owner-approved
+   pin, when Debug/source mode is validated, then Tenants' `references/Hexalith.EventStore`
+   gitlink equals the checked-out submodule `HEAD`, that commit is reachable from EventStore
+   `origin/main`, no EventStore submodule content is edited, only Tenants-root-declared submodules
+   are initialized, and the recorded evidence names the exact EventStore SHA the validation matrix
+   was run against.
+3. **Package identity is the published catalog version.** Given the Tenants-pinned Builds commit
+   declares a single published `HexalithEventStoreVersion` and centrally declares every consumed
+   `Hexalith.EventStore*` package under it, when Release/package mode restores, then every
+   resolved `Hexalith.EventStore*` asset is `type: package` at exactly that catalog version, that
+   version is resolvable from the configured public package source, zero EventStore project edges
+   remain including transitive ones, no `Version`, `VersionOverride`, fallback property, or
+   Tenants-local `PackageVersion` entry supplies that version, and the evaluated
+   `project.assets.json` files are the recorded evidence.
 4. **Gateway cannot create a mixed graph.** Given `Hexalith.EventStore.Gateway` is in the
    EventStore release manifest, when the dependency graph is aligned, then Gateway follows the
    same conditional source/package policy as DomainService, and Release assets contain neither a
@@ -50,71 +59,62 @@ so that consumer migration is reproducible, maintainer-approved, and tied to the
    package-compatibility evidence; completion records the Tenants maintainer-approved commit and
    exact accepted Tenants SHA.
 
-## Activation Decision And Immutable Pins
+## Activation Decision And Historical Pins
 
-AC1 is satisfied for story creation on 2026-07-27. Re-run the Story 1.20 A/B/C verifier and its
-consumer handoff in the same shell before changing an identity; this summary is not a replacement
-authority.
+AC1 is satisfied for story creation on 2026-07-27 and remains the fail-closed activation gate.
+Re-run the Story 1.20 A/B/C verifier before claiming activation authority; this summary is not a
+replacement authority.
 
-| Pin | Authorized value |
-| --- | --- |
-| Story 1.20 decision | `available` |
-| Consumer migration | `true` |
-| Approved/tested EventStore source SHA | `fa2d1c9910f8976553adb33dcdb1c9ff2ea75594` |
-| Approved package version | `999.1.20-proof.fa2d1c9910f8` |
-| Package hash-manifest SHA-256 | `4271ddc76411780591423ab024b776cd34a2abccf1cc2dac03a245e141dbe0bc` |
-| EventStore owner approval | `jpiquot`, issue comment `5083143163` |
-| Release-owner disposition | `jpiquot`, issue comment `5083164122` |
-| Authorizing commit C | `1b219d39cfa8f0349175c356001ba539bfb4aa92` |
+**The pins below are a historical record of the Story 1.20 authorization, not binding identity
+targets.** The sprint change proposal
+`../planning-artifacts/sprint-change-proposal-2026-07-27-story-2-12-runtime-identity-rescope.md`
+re-scoped AC2 and AC3 on 2026-07-27, and the AD-22 scoped exception records why. Do not derive
+AC2 or AC3 pass/fail from this table.
 
-The approved hash inventory contains exactly 14 packages. The two dependencies whose conditional
-alignment is central to this story are:
+| Historical record | Value | Status under the amended criteria |
+| --- | --- | --- |
+| Story 1.20 decision | `available` | **Binding** — AC1 activation authority |
+| Consumer migration | `true` | **Binding** — AC1 activation authority |
+| Approved/tested EventStore source SHA | `fa2d1c9910f8976553adb33dcdb1c9ff2ea75594` | **Historical** — AC2 now tracks EventStore `main` |
+| Approved package version | `999.1.20-proof.fa2d1c9910f8` | **Retired** — bytes proved unrecoverable |
+| Package hash-manifest SHA-256 | `4271ddc76411780591423ab024b776cd34a2abccf1cc2dac03a245e141dbe0bc` | **Retired** — no byte-equality check in AC3 |
+| EventStore owner approval | `jpiquot`, issue comment `5083143163` | **Binding** — AC1 activation authority |
+| Release-owner disposition | `jpiquot`, issue comment `5083164122` | **Binding** — AC1 activation authority |
+| Authorizing commit C | `1b219d39cfa8f0349175c356001ba539bfb4aa92` | **Binding** — AC1 activation authority |
 
-- `Hexalith.EventStore.DomainService`:
-  `e4419446724a8ab0fadc4650a0b7c8c1c64a5564585d02a44c0229c0a735dd87`
-- `Hexalith.EventStore.Gateway`:
-  `32fdab1f307e184498d1921242053f929c335048cd537fe4a6f88f5e6fd1d57d`
+The 14-package SHA-256 inventory in `nuget-sha256.txt` remains a checked-in Story 1.20 artifact and
+must not be reconstructed, shortened, or replaced. It is no longer a Story 2.12 acceptance target.
 
-Use the complete checked-in `nuget-sha256.txt`; never reconstruct, shorten, or replace the
-inventory from this story.
+### Completion Gate At Creation — Superseded
 
-### Known Completion Gate At Creation
+The three coordination conditions recorded at creation (approved-SHA gitlink, a Builds commit
+exposing `999.1.20-proof.fa2d1c9910f8`, and a retrievable source for the 14 `.nupkg` files) are
+**superseded** by the amended AC2 and AC3. The surviving useful part of the Builds prerequisite is
+the central `Hexalith.EventStore.Gateway` catalog entry from PR #47 — it is retained in the current
+Builds pins and is still required by AC4.
 
-The activation authority exists, but the current Tenants dependency graph is not yet eligible for
-completion:
+At the accepted Tenants `main` these conditions resolve as follows: the EventStore gitlink is
+whatever `main` carries and must satisfy the amended AC2 reachability/equality check; the Builds
+pin must expose a **published** `HexalithEventStoreVersion` plus the Gateway entry. It remains
+forbidden to add a version in a Tenants project or edit Builds without its owner/release change
+control.
 
-- EventStore root pins Tenants `f8aff935cdfbc9d9d394c4b4c0e2861d191f6107`; that Tenants commit
-  pins nested EventStore `56acc0788e00388038eb1889f3d77c7730a65c94`, not the approved SHA.
-- Tenants pins Builds `4e5c2a3ea6510f38121f718fa122e7b92489821c`. Its catalog exposes
-  `HexalithEventStoreVersion` `3.82.0`, not the approved proof version, and has no
-  `PackageVersion` entry for `Hexalith.EventStore.Gateway`.
-- No currently available Builds commit was found that exposes
-  `999.1.20-proof.fa2d1c9910f8` and the Gateway entry.
-- The Story 1.20 raw evidence bundle retains logs and identity manifests, not the 14 `.nupkg` files;
-  its URL is not an approved package source by itself.
+### External Prerequisite Contract — Retired
 
-This is a fail-closed coordination gate, not permission to use `3.82.0`, add a version in a Tenants
-project, or edit Builds without its owner/release change control. An already-approved Builds commit
-and approved package bytes/source must exist before package-mode implementation can close AC3-AC5.
+**This contract is retired as of 2026-07-27.** It required (1) a Builds commit setting
+`HexalithEventStoreVersion` to `999.1.20-proof.fa2d1c9910f8`, and (2) a retrievable source for the
+original 14 Story 1.20 `.nupkg` files proved byte-equal against the approved manifest.
 
-### External Prerequisite Contract
+Deliverable 1 was satisfied (Builds `8f32f127`, PR #47, approval comment `5088870151`) and then
+correctly rolled back to a published catalog version; its Gateway entry survives and is retained.
+Deliverable 2 was proved **unsatisfiable** — every avenue the contract named returned negative, so
+0 of the 14 approved `Hexalith.EventStore*` `.nupkg` files exist anywhere. The complete negative
+audit is preserved in `evidence/story-2-12/prerequisites.md` and is the recorded justification for
+the AD-22 scoped exception.
 
-EventStore release owner `jpiquot` owns both prerequisite deliverables. Record them in EventStore's
-`_bmad-output/implementation-artifacts/evidence/story-2-12/prerequisites.md` before the package lane:
-
-1. A published Hexalith.Builds commit reachable from `origin/main` that sets
-   `HexalithEventStoreVersion` to `999.1.20-proof.fa2d1c9910f8`, adds
-   `Hexalith.EventStore.Gateway` under that variable, and has a durable approval URL binding the
-   exact Builds SHA, two catalog changes, author, approver, date, and accepted scope.
-2. A retrievable directory, immutable archive, or source-mapped feed containing the original 14
-   Story 1.20 `.nupkg` files. Its receipt names the retrieval URL/path, object/feed version, retention
-   or availability boundary, archive hash when applicable, and proves every extracted/fetched file
-   against the approved 14-line manifest. A feed/version match without byte equality is insufficient.
-
-If supplying either deliverable would rebuild, republish, or otherwise replace the approved bytes,
-route that work through release-owner change control; a newly built artifact cannot inherit Story
-1.20 authority. Until both receipts pass, work may proceed on source pinning, conditional Gateway
-code, and tests, but no package identity is adopted and the story cannot enter `review`.
+Under the amended AC3 the package lane is no longer blocked on external deliverables: it validates
+against the published Builds-catalog version already pinned by Tenants. A rebuild of the retired
+proof packages is no longer required and must not be undertaken to satisfy this story.
 
 ## Tasks / Subtasks
 
@@ -132,33 +132,40 @@ code, and tests, but no package identity is adopted and the story cannot enter `
   - [x] Stop the affected lane without its identity change if its authority or artifact cannot be
         proved. Do not use success in the source lane to claim package evidence or story review.
 
-- [ ] Satisfy the release-owner prerequisite contract (AC: 3, 4)
+- [x] Satisfy the release-owner prerequisite contract (AC: 3, 4) — **retired 2026-07-27**
   - [x] Obtain and verify the approved Builds commit and durable approval record defined above.
-  - [ ] Obtain and verify a retrievable source for the original approved package bytes; do not treat
-        the Story 1.20 raw-log bundle, version string, or hash manifest alone as package availability.
+        (Builds `8f32f127`, PR #47, approval comment `5088870151`. Its proof-version pin was
+        correctly rolled back; its central `Hexalith.EventStore.Gateway` entry survives and is
+        still required by AC4.)
+  - [x] Prove whether a retrievable source for the original approved package bytes exists.
+        (Proved **negative and closed**: 0 of 14 across whole-filesystem scan, nuget.org, the
+        locked Azure WORM archive, retained Actions artifacts, and GitHub Packages with
+        `read:packages` granted. This negative audit is the recorded justification for the AD-22
+        scoped exception; the contract is retired, not satisfied.)
   - [x] Store the prerequisite receipt in EventStore `_bmad-output`, outside the Tenants commit.
 
-- [ ] Adopt the exact source identity in Tenants (AC: 2)
-  - [ ] Change only Tenants' `references/Hexalith.EventStore` gitlink to
-        `fa2d1c9910f8976553adb33dcdb1c9ff2ea75594`; do not edit EventStore content.
-        (Regressed 2026-07-27: the `/pushall` merge `230a533d` discarded the approved pin on
-        published `main`. Restored and proved only in an unpublished proof clone.)
-  - [ ] Verify the Tenants gitlink and checked-out EventStore `HEAD` both equal the approved SHA and
-        both repositories are clean, including ignored generated/configuration inputs covered by
-        the Story 1.20 consumer guard.
-        (Green in the proof clone; fails closed on published Tenants `main`.)
+- [ ] Validate the tracked source identity in Tenants (AC: 2)
+  - [ ] On a **pristine checkout, before the lane's restore**, verify Tenants'
+        `references/Hexalith.EventStore` gitlink equals the checked-out submodule `HEAD`, that this
+        commit is reachable from EventStore `origin/main`, that no EventStore submodule content is
+        edited, and that only Tenants-root-declared submodules are initialized. Record the exact
+        EventStore SHA validated.
+        (Ordering is load-bearing: MSBuild writes ignored `obj/` artifacts into the EventStore
+        submodule and trips the `--ignored=matching` cleanliness assertion after any restore/build.)
+  - [ ] Do not restore, re-pin, or freeze the gitlink. The automated `build(deps)` bump is the
+        expected mechanism; a receipt is bound to the SHA it names, not to a permanent pin.
   - [x] Prove Debug source intent uses `UseHexalithProjectReferences=true` plus the existing source
         path and resolves EventStore edges as projects. Do not force
         `HexalithEventStoreFromSource` directly or infer source intent from Debug configuration.
 
-- [ ] Consume an owner-approved Builds catalog identity (AC: 3, 4)
-  - [x] Require an approved Builds commit that already sets the central
-        `HexalithEventStoreVersion` to `999.1.20-proof.fa2d1c9910f8` and centrally declares
-        `Hexalith.EventStore.Gateway` under that variable.
-  - [ ] Update only the Tenants Builds gitlink to that accepted commit after Builds/release-owner
-        approval; do not add `Version`, `VersionOverride`, fallback properties, or local
-        `PackageVersion` entries in Tenants.
-  - [x] Record the selected Builds SHA and its approval/evidence in the Story 2.12 evidence receipt.
+- [ ] Consume the published Builds catalog identity (AC: 3, 4)
+  - [x] Require the Tenants-pinned Builds commit to centrally declare
+        `Hexalith.EventStore.Gateway` under the single `HexalithEventStoreVersion` variable.
+        (Retained in the current pin `1b1c0b0` from the approved `8f32f127`.)
+  - [ ] Verify that pin's `HexalithEventStoreVersion` is a **published** version resolvable from the
+        configured public package source. Do not add `Version`, `VersionOverride`, fallback
+        properties, or local `PackageVersion` entries in Tenants.
+  - [ ] Record the selected Builds SHA and its resolved catalog version in the evidence receipt.
 
 - [x] Align Gateway with the existing EventStore dependency-mode policy (AC: 3, 4)
   - [x] In `src/Hexalith.Tenants/Hexalith.Tenants.csproj`, give the Gateway project reference the
@@ -175,35 +182,56 @@ code, and tests, but no package identity is adopted and the story cannot enter `
 - [ ] Prove separate source and package dependency graphs (AC: 2, 3, 4)
   - [ ] Use separate clean working copies or isolated intermediate/output directories for the two
         modes. Rerun restore after every mode change; never reuse a prior `project.assets.json`.
+        (Partial 2026-07-27: a full `--force-evaluate` restore was rerun after every mode change and
+        no prior assets file was reused, but one working copy served both modes rather than separate
+        copies/isolated output directories. Left unchecked until the package lane runs for real.)
   - [x] Source lane: isolated restore, Debug, explicit
         `UseHexalithProjectReferences=true`; assert every selected EventStore dependency is a
-        project rooted at the exact approved checkout and no EventStore package substitutes for it.
-  - [ ] Package lane: isolated global-packages and HTTP-cache directories, Release, explicit
-        `UseHexalithProjectReferences=false`, `--force-evaluate`, and a temporary `nuget.config`
-        whose source mapping sends `Hexalith.EventStore*` only to the approved package directory.
+        project rooted at the validated checkout and no EventStore package substitutes for it.
+  - [ ] Package lane: Release, explicit `UseHexalithProjectReferences=false`, `--force-evaluate`,
+        restoring the pinned Builds catalog version from the configured public package source.
+        (Isolated global-packages/HTTP-cache directories and a source-mapped temporary
+        `nuget.config` are no longer required: with byte equality retired there are no approved
+        bytes to isolate or map, and the catalog version is publicly published.)
   - [ ] Parse the evaluated dependency items and every relevant `project.assets.json`. Require every
-        selected `Hexalith.EventStore*` library to have `type: package` and the exact approved
-        version; require zero EventStore project references, including transitive ones.
-  - [ ] Verify the approved package directory against the complete 14-line manifest, then byte-compare
-        each restored EventStore `.nupkg` used by Tenants to its already hash-verified approved file.
-        A matching filename/version without matching bytes does not pass.
-  - [ ] Run unattended with bounded execution and `-nodeReuse:false`. Do not add `--interactive`,
-        ignore a failed source, or allow a credential prompt to turn the gate into an indefinite wait.
+        selected `Hexalith.EventStore*` library to have `type: package` and exactly the pinned
+        Builds catalog version; require zero EventStore project references, including transitive
+        ones. These evaluated assets are the recorded AC3 evidence.
+  - [x] Byte-compare each restored EventStore `.nupkg` against the approved 14-line manifest.
+        (**Retired 2026-07-27** with the External Prerequisite Contract — the approved bytes were
+        proved unrecoverable, so there is nothing to compare against. Do not reintroduce this check
+        or substitute a rebuilt artifact for it.)
+  - [ ] Run unattended with bounded execution and `-nodeReuse:false -m:1`. Do not add
+        `--interactive`, ignore a failed source, or allow a credential prompt to turn the gate into
+        an indefinite wait. (`-m:1` is required: parallel MSBuild instances race on the same
+        EventStore `.deps.json`.)
 
 - [ ] Run the compatibility and regression matrix in both modes (AC: 4, 5)
-  - [ ] Restore and build `Hexalith.Tenants.slnx` separately in Debug/source and Release/package mode
+  - [ ] **Re-run at the accepted Tenants `main` commit under the amended AC2/AC3.** The subtasks
+        below were proved on a proof clone pinned back to the now-historical
+        `fa2d1c9910f8`. Under the amended AC2 the binding identity is whatever Tenants `main`
+        carries, so the whole matrix must be re-run there and the exact validated EventStore SHA
+        recorded. Every result below is retained as prior evidence, not as closure.
+  - [x] Restore and build `Hexalith.Tenants.slnx` separately in Debug/source and Release/package mode
         with warnings as errors and zero warnings/errors.
-  - [ ] Run, by project rather than solution-level `dotnet test`, the Contracts, Integration, UI,
+        (Both lanes exit 0 with **0 Warning(s), 0 Error(s)**. The Release lane validates
+        *compatibility* against the published `3.82.0` catalog; it does **not** close AC3, whose
+        exact approved-version/byte requirement stays blocked.)
+  - [x] Run, by project rather than solution-level `dotnet test`, the Contracts, Integration, UI,
         and Server test projects in each freshly restored mode.
-  - [ ] Preserve the dedicated external API host, generated-controller gateway boundary, domain
+        (Both modes: Contracts 115/115, Server 738/738, UI 1266/1266, Integration 167 passed /
+        1 skipped / 0 failed. Zero failures in either mode.)
+  - [x] Preserve the dedicated external API host, generated-controller gateway boundary, domain
         service and AppHost registrations, typed-client-only UI, and package/source conditional
         topology established by Stories 2.4-2.7.
-  - [ ] Preserve Story 2.10's platform-owned
+  - [x] Preserve Story 2.10's platform-owned
         `AddEventStoreDaprServiceInvocation("eventstore", daprApiToken)` handler order and the guards
         forbidding a Tenants-local DAPR routing-header handler.
-  - [ ] Preserve Story 2.11's fail-closed provenance/lifecycle behavior. Exercise the existing
+  - [x] Preserve Story 2.11's fail-closed provenance/lifecycle behavior. Exercise the existing
         projection/query/provenance/freshness tests; do not weaken production policy to accommodate
         fixtures and do not accept mock-only proof for a persisted-path assertion.
+        (Carried by the passing `IntegrationTests`, `Server.Tests`, and `UI.Tests` suites in both
+        modes. No production policy, guard, or fixture was weakened.)
   - [x] Record commands, SDK/package inputs, mode, results, resolved dependency inventory, exact
         hashes, and persisted-path evidence in temporary/CI artifacts until an exact Tenants commit
         exists. Do not place SHA-named evidence inside the commit whose SHA it claims to identify.
@@ -233,9 +261,14 @@ code, and tests, but no package identity is adopted and the story cannot enter `
 - **AD-12 / NFR16:** HTTP success, compilation alone, or mock calls do not close high-risk
   compatibility. Persist package bytes, evaluated assets, exact identities, and relevant persisted
   projection/query evidence.
-- **AD-22:** Source mode compares the EventStore gitlink and checkout to the approved EventStore SHA;
-  package mode compares versions and bytes to the approved manifest. Never compare the consuming
-  Tenants SHA with the EventStore SHA.
+- **AD-22 (as amended 2026-07-27 by its scoped Story 2.12 exception):** Source mode proves the
+  EventStore gitlink equals the submodule checkout `HEAD` and is reachable from EventStore
+  `origin/main`, recording the validated SHA; package mode proves every resolved
+  `Hexalith.EventStore*` asset is `type: package` at exactly the pinned Builds catalog's published
+  `HexalithEventStoreVersion`, with zero project edges and no consumer-local version authority.
+  Byte equality against the retired 14-package manifest is waived; AD-11's central-catalog rule and
+  AD-12's persisted-path requirement are **not**. Never compare the consuming Tenants SHA with the
+  EventStore SHA. This relief is scoped to this story and this consumer and extends to no other.
 - **AD-2/AD-3/AD-4:** Do not recreate hosting, gateway, controller, or transport infrastructure in
   Tenants. Generated REST remains in `Hexalith.Tenants.Api`; UI remains a typed client consumer.
 - **AD-14/AD-15:** Preserve query metadata and explicit route provenance. Only valid
@@ -530,6 +563,44 @@ GPT-5 Codex (sessions through 2026-07-27), Claude Opus 5 (2026-07-27 verificatio
   `fa2d1c9910f8` under change control with a new manifest and approval — are release-owner
   decisions recorded in `prerequisites.md`.
 
+- 2026-07-27 (Claude Opus 5, second session) — Re-ran the complete official-main A/B/C verifier
+  from EventStore `main` `c8c70030`: **exit 0**, `A_TESTED_RUNTIME_SHA` derived from the verified
+  packet rather than prose. In the same shell the source consumer procedure was run against
+  published Tenants `main` `4ca5f86` and **failed closed on identity only** (gitlink and checkout
+  both `b2d34025`); all three cleanliness assertions passed.
+- 2026-07-27 — **The AC2 pin is being overwritten on a recurring automated cadence, not by one
+  merge.** Beyond the `230a533d` `/pushall` clobber, `build(deps)` submodule bumps advanced the
+  gitlink to `b2d34025` (`4ca5f86`) and then, **observed live mid-session**, to `c8c70030`
+  (`f1053a31`). The approved SHA is now 46 commits behind EventStore `main`. Any restore of the
+  pin will regress again unless `references/Hexalith.EventStore` is excluded from the automated
+  bump or a Tenants CI check fails when the gitlink leaves the approved SHA.
+- 2026-07-27 — **Prior blockers B1 and B2 are resolved, and not by this session.** Tenants `main`
+  now pins Builds at `bb02cdc8` (`fix(deps): restore published EventStore package pin`), which
+  returns `HexalithEventStoreVersion` to the published `3.82.0` while retaining the approved
+  central `Hexalith.EventStore.Gateway` entry. Solution-level Debug/source restore at unmodified
+  `main` now exits 0, `IntegrationTests` restores and runs, and `UI.Tests` is 1266/1266 (was
+  1260/1261). The premature package-identity adoption that contradicted the External Prerequisite
+  Contract has therefore been rolled back in Tenants.
+- 2026-07-27 — Approved pin restored in a fresh clean proof clone as unpublished commit
+  `b8698e9d` (content identical to Tenants `main` `4ca5f86`). Complete A/B/C verifier plus source
+  consumer procedure in one shell: **`VERIFIER_OK` / `SOURCE_CONSUMER_OK` / exit 0**. Ordering
+  defect found and recorded: the guard's `--ignored=matching` assertion fails after any
+  restore/build because MSBuild writes ignored `obj/` artifacts into the EventStore submodule, so
+  the guard must run on a pristine checkout **before** the lane's restore.
+- 2026-07-27 — **Dual-mode graphs proved.** Source lane: `src/Hexalith.Tenants` resolves 7
+  EventStore edges, all `type: project` under the approved checkout, **0** package edges (Api 3/3,
+  UI 2/2, Client 2/2, Contracts 1/1, all projects). Package lane: **0** project edges and **7**
+  package edges, so Release assets contain zero EventStore `ProjectReference`. Gateway and
+  DomainService resolve identically in both directions, so no mixed graph is reachable — AC4's
+  structural requirement is satisfied in both modes. The package lane resolves `3.82.0`; the
+  approved `999.1.20-proof.fa2d1c9910f8` is absent, so AC3 is not claimed.
+- 2026-07-27 — **Full compatibility matrix green in both modes**, solution build `--warnaserror`
+  0 Warning(s) / 0 Error(s) each: Contracts 115/115, Server 738/738, UI 1266/1266, Integration
+  167 passed / 1 skipped / 0 failed — identical counts in Debug/source and Release/package. Every
+  lane restored fresh with `--force-evaluate`, run unattended with `-nodeReuse:false -m:1` and no
+  `--interactive`. `-m:1` is required because parallel MSBuild instances race on the same
+  EventStore `.deps.json`. Details in `evidence/story-2-12/dual-mode-2026-07-27.md`.
+
 ### Completion Notes List
 
 - Ultimate context engine analysis completed - comprehensive developer guide created.
@@ -566,6 +637,38 @@ GPT-5 Codex (sessions through 2026-07-27), Claude Opus 5 (2026-07-27 verificatio
   rather than reusing it.
 - Story status remains `in-progress`. No dependency identity was changed in any published
   repository, nothing was pushed, and no production policy or test was weakened.
+- **2026-07-27 second-session disposition.** One of the two blocking conditions recorded above is
+  **closed**: the premature proof-version package identity was rolled back in Tenants (Builds
+  `bb02cdc8` → `3.82.0`), so `main` restores, builds, and tests cleanly in both modes again. The
+  full compatibility matrix now passes in Debug/source **and** Release/package with zero failures
+  and zero warnings, and AC4's structural no-mixed-graph requirement is proved in both directions.
+- **AC2 is proven achievable at current Tenants content but is not adopted, and restoring it is now
+  a policy decision rather than a one-line fix.** The pin is not merely stale; it is actively
+  overwritten by a recurring automated `build(deps)` submodule bump, observed advancing again
+  during this session. Publishing a restore without also excluding
+  `references/Hexalith.EventStore` from that automation — or adding a Tenants CI check that fails
+  when the gitlink leaves the approved SHA — would regress within hours, for the third time.
+- **AC3 remains blocked and unsatisfiable as literally specified**, unchanged from the exhaustive
+  audit: 0 of the 14 approved `Hexalith.EventStore*` `.nupkg` files exist in any avenue the
+  External Prerequisite Contract names. The package lane was therefore run only as a
+  *compatibility* lane against the published `3.82.0` catalog — with no isolated `--packages`
+  directory, no source-mapped `nuget.config`, no manifest verification and no byte comparison,
+  because there are no approved bytes to map, verify, or compare. None of those steps is claimed
+  as passed, and AC3, the identity half of AC4, and AC5 stay open.
+- The story therefore **cannot enter `review`** this session by its own External Prerequisite
+  Contract. Both remaining gates are release-owner decisions, not implementation work.
+- **2026-07-27 — the owner decided both gates by re-scoping, and the story is HALTED pending
+  `bmad-correct-course`.** Decision 1: AC2 is re-scoped so Tenants tracks EventStore `main`
+  through its normal automated submodule bump instead of pinning the frozen approved SHA.
+  Decision 2: AC3 is re-scoped so package mode validates against a published catalog version
+  instead of the unpublished proof version, with no byte-equality check. Both decisions rewrite
+  acceptance criteria and contradict **AD-22**; Decision 2 also retires the External Prerequisite
+  Contract and the 14-package manifest. `bmad-dev-story` may not modify acceptance criteria,
+  `epics.md`, or `architecture.md`, so no AC, epic, or architecture text was touched. The verbatim
+  decisions, their consequences, and the required re-validation are recorded in
+  `evidence/story-2-12/rescope-decision-2026-07-27.md`. Next action is
+  `bmad-correct-course`, then a re-run of the dual-mode matrix at the accepted Tenants `main`
+  commit under the amended criteria.
 
 ### File List
 
@@ -573,6 +676,8 @@ GPT-5 Codex (sessions through 2026-07-27), Claude Opus 5 (2026-07-27 verificatio
 - _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
 - _bmad-output/implementation-artifacts/evidence/story-2-12/prerequisites.md
 - _bmad-output/implementation-artifacts/evidence/story-2-12/source-lane-2026-07-27.md
+- _bmad-output/implementation-artifacts/evidence/story-2-12/dual-mode-2026-07-27.md
+- _bmad-output/implementation-artifacts/evidence/story-2-12/rescope-decision-2026-07-27.md
 - _bmad-output/implementation-artifacts/sprint-status.yaml
 - references/Hexalith.Tenants/references/Hexalith.EventStore
 - references/Hexalith.Tenants/src/Hexalith.Tenants/Hexalith.Tenants.csproj
@@ -594,3 +699,29 @@ GPT-5 Codex (sessions through 2026-07-27), Claude Opus 5 (2026-07-27 verificatio
   filesystem scan proving 0 of 14 approved packages exist locally. Unchecked the source-identity
   task to match the published state. No identity changed, nothing pushed, story stays
   `in-progress`.
+- 2026-07-27 — Second session: re-ran the official-main A/B/C verifier (pass) and the source
+  consumer guard (fails on identity only). Recorded that blockers B1/B2 are **resolved** by the
+  Builds rollback to `3.82.0`, and that the AC2 pin is being overwritten by a **recurring**
+  automated submodule bump — observed advancing again mid-session. Completed the full dual-mode
+  compatibility matrix with zero failures and zero warnings (Contracts 115, Server 738, UI 1266,
+  Integration 167+1 skipped, in each mode) and proved AC4's no-mixed-graph requirement in both
+  directions. Checked off the compatibility/regression task; AC2, AC3, and AC5 stay open pending
+  release-owner decisions. No identity changed, nothing pushed, story stays `in-progress`.
+- 2026-07-27 — Owner re-scoped both blocked gates: AC2 to track EventStore `main` instead of the
+  frozen approved SHA, and AC3 to a published catalog version instead of the unpublished proof
+  version. Recorded verbatim in `evidence/story-2-12/rescope-decision-2026-07-27.md`. Story
+  HALTED for `bmad-correct-course`, which owns the AC, `epics.md`, and AD-22 amendments that
+  `bmad-dev-story` may not make. No acceptance criterion or planning artifact was modified here.
+- 2026-07-27 — **`bmad-correct-course` applied the re-scope.** Approved sprint change proposal:
+  `../planning-artifacts/sprint-change-proposal-2026-07-27-story-2-12-runtime-identity-rescope.md`
+  (Direct Adjustment; scope Moderate). AC2 replaced with tracked-`main` identity (gitlink ==
+  checkout `HEAD`, reachable from EventStore `origin/main`, validated SHA recorded); AC3 replaced
+  with published-Builds-catalog package identity (`type: package` at the exact catalog version,
+  zero project edges, no consumer-local version authority, evaluated `project.assets.json` as
+  evidence). `epics.md` Story 2.12 AC2/AC3 and focused validation amended; a dated **scoped
+  exception** added to **AD-22** in `architecture.md` with matching non-extension statements at
+  `epics.md:135` (Parties gate) and `epics.md:290` (Guardrails). The Activation Decision table is
+  now a historical record, the External Prerequisite Contract is retired, and the byte-comparison
+  subtask is retired. AC1, AC4, AC5, AD-11, and AD-12 are unchanged. No code, test, dependency
+  identity, or published repository state changed; PRD and `sprint-status.yaml` needed no edit.
+  Story stays `in-progress` pending the dual-mode matrix re-run at the accepted Tenants `main`.

@@ -197,3 +197,58 @@ this story's current session, and neither was worked around.
 
 Detailed commands, exit codes, resolved graph, and test counts are in
 `source-lane-2026-07-27.md`.
+
+## Update 2026-07-27 (Second Session)
+
+Re-verified against Tenants `main` `4ca5f86fa777db62efaafb2f305f96a3a548b993`. Full commands,
+exit codes, graphs, and counts are in `dual-mode-2026-07-27.md`.
+
+**Condition 2 above is CLOSED.** Tenants `main` now pins Builds at
+`bb02cdc85735062de3a606f069ec714c9a398032`
+(`fix(deps): restore published EventStore package pin`), returning `HexalithEventStoreVersion`
+to the published `3.82.0` while retaining the approved central `Hexalith.EventStore.Gateway`
+entry from `8f32f127`. The premature proof-version package identity is therefore no longer
+adopted in Tenants. Solution-level restore exits 0 in both modes, `IntegrationTests` restores
+and runs, and the `TenantsUiCompositionTests` package-mode case passes.
+
+**Condition 1 above is UNCHANGED and has worsened.** The approved source pin is not simply
+stale — it is overwritten repeatedly by an automated `build(deps)` submodule bump on Tenants
+`main`: `4ca5f86` moved it to `b2d34025`, and `f1053a31` moved it to `c8c70030` while this
+session was running. The approved SHA is now 46 commits behind EventStore `main`. Restoring the
+pin is proven green (unpublished proof commit `b8698e9d`, verifier + source consumer exit 0,
+full dual-mode matrix passing) but will regress again unless the automation excludes
+`references/Hexalith.EventStore` or a Tenants CI check enforces the approved SHA.
+
+**The original package-byte prerequisite is UNCHANGED: still `blocked`.** No new avenue was
+found or attempted; the audit disposition after check 8 stands in full. The Release lane run in
+this session used the published `3.82.0` catalog and is explicitly a *compatibility* lane, not
+package-identity evidence: no isolated `--packages` directory, no source-mapped `nuget.config`,
+no manifest verification, and no byte comparison were performed, because no approved bytes
+exist to map, verify, or compare.
+
+Overall status remains `blocked`. Package lane remains `blocked`.
+
+## Closing Disposition 2026-07-27 — SUPERSEDED
+
+- Overall status: `blocked` → **`superseded`**
+- Superseded by:
+  `../../../planning-artifacts/sprint-change-proposal-2026-07-27-story-2-12-runtime-identity-rescope.md`
+- Owner decision record: `rescope-decision-2026-07-27.md`
+
+The External Prerequisite Contract this receipt serves was **retired** by an approved sprint change
+proposal on 2026-07-27. This receipt is not rewritten and nothing above is withdrawn: the negative
+package-byte audit is the recorded justification for the AD-22 scoped exception, and it must remain
+readable exactly as proved.
+
+| Prerequisite | Final disposition |
+| --- | --- |
+| Approved Builds catalog commit | `passed`, then **partly retired**. `HexalithEventStoreVersion = 999.1.20-proof.fa2d1c9910f8` is retired with the proof version. The central `Hexalith.EventStore.Gateway` entry **survives**, is retained in the Tenants Builds pin, and is still required by AC4. |
+| Original package bytes (14 `.nupkg`) | **Retired, not satisfied.** Proved unrecoverable from every avenue the contract named (0 of 14). Neither of the two remaining dispositions was exercised: the owner re-scoped AC3 instead. A rebuild inheriting Story 1.20 authority remains forbidden and is no longer required by any acceptance criterion. |
+| Source lane | `verified` against the historical pin; **re-validation required** at the accepted Tenants `main` under the amended AC2 (gitlink == checkout `HEAD`, reachable from EventStore `origin/main`, validated SHA recorded). |
+
+Under the amended AC3, the package lane validates against the published Builds-catalog version
+already pinned by Tenants (`1b1c0b0` → `3.83.0`, published on nuget.org) rather than the retired
+proof version. The package lane is therefore **no longer blocked on external deliverables**.
+
+The Story 1.20 authority chain, its A/B/C verifier result, and the Tenants scope approval recorded
+above are unaffected and remain binding for AC1 and AC5.

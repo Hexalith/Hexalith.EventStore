@@ -132,7 +132,7 @@ Story 1.13 completed its investigation and correctly produced a `still blocked` 
 
 The numbered capability sequence governs evidence acceptance and final parity closure; it is not a serial execution lock. Stories 1.14-1.19 may be implemented and reviewed in parallel once the contracts they directly consume exist. An unresolved review item in one story blocks Story 1.20 closure, but does not block another implementation story unless it exposes a direct contract contradiction; a direct contradiction must halt the affected story and be routed through change control.
 
-Cursor scope compatibility may reuse Story 1.13 evidence. Every other blocked item must be reclassified `available` by Story 1.20. Source-mode consumers verify the EventStore submodule SHA; package-mode consumers verify exact package versions and hashes; deployed consumers verify the image digest maps to the approved EventStore SHA. The consuming repository SHA is never compared to the EventStore SHA.
+Cursor scope compatibility may reuse Story 1.13 evidence. Every other blocked item must be reclassified `available` by Story 1.20. Source-mode consumers verify the EventStore submodule SHA; package-mode consumers verify exact package versions and hashes; deployed consumers verify the image digest maps to the approved EventStore SHA. The consuming repository SHA is never compared to the EventStore SHA. The dated Story 2.12 tracked-`main` / published-catalog exception recorded in AD-22 is scoped to Tenants and does not relax these rules for Parties Story 8.6 or any other consumer.
 
 Runtime-identity closure is mode-specific. Source mode may close against the approved EventStore source SHA, and package mode may close against the approved package versions and hashes, without waiting for Story 3.12 when every gate applicable to the selected mode is satisfied. If Story 1.20 selects deployed mode, Story 3.12 is the intentional conditional cross-epic prerequisite: it must produce a conforming two-platform EventStore release and Story 1.20 must independently revalidate its identity and record the required EventStore/release-owner approvals. This conditional dependency does not resequence the epics or block source/package parity closure.
 
@@ -287,7 +287,7 @@ NFR19: Payload protection must fail closed and preserve byte-stable, versioned c
 - Full aggregate/event GDPR tombstoning, broker-history deletion, physical backup erasure, audit-record deletion, and provider/operator key-custody operations remain outside Phase 4 MVP and must not be hidden inside unrelated remediation stories. Generic projection read-model/checkpoint erasure is active Story 1.14 scope. The optional EventStore-owned shared payload-protection engine is separately committed under post-MVP Epic 8; Stories 22.7a-d supplied prerequisites, not that engine.
 - AD-19 fixes the normalized server result as `ProjectionDispatchResult` Version 1 with bounded ordinal route entries, stable status codes, and explicit checkpoint-advance state; no equivalent result shape is accepted without a new architecture decision.
 - AD-21 makes `src/Hexalith.EventStore.Admin.UI` the single consolidated EventStore UI under resource `eventstore-admin-ui`, FrontComposer module `event-store-admin`, with all consumed FrontComposer packages (`Shell`, `Contracts.UI`) resolved from the Builds catalog's single `HexalithFrontComposerVersion` (currently `4.0.1`; `Contracts.UI` is added to that catalog under the same variable before adoption, never pinned locally), and Fluent UI V5. No additional UI host is created.
-- AD-22 requires owner-approved exact EventStore artifact identity before consumer infrastructure removal; use source SHA, package versions/hashes, or deployed image digest as applicable, never the consumer repository SHA.
+- AD-22 requires owner-approved exact EventStore artifact identity before consumer infrastructure removal; use source SHA, package versions/hashes, or deployed image digest as applicable, never the consumer repository SHA. One dated, scoped exception exists: Story 2.12 (Tenants) validates a tracked-`main` source commit and the published Builds-catalog package version because the Story 1.20 approved package bytes were proved unrecoverable. The exception is recorded in AD-22, is limited to that story and that consumer, and extends to no other consumer or mode.
 - AD-23 makes EventStore the owner of the optional shared payload-protection engine, stable formats, shared key mechanics, production-backend conformance, release provenance, and G5 proof while provider/operators retain production key custody and credentials and domains retain legal policy.
 
 ### UX Design Requirements
@@ -1513,7 +1513,7 @@ So that generated REST and UI surfaces never present an opaque ETag or handler-c
 
 **Requirements covered:** FR15, FR21, FR22, NFR9, NFR12, NFR16
 **Owner / review boundary:** Amelia (Developer); the Tenants maintainer reviews compatibility, the exact Tenants commit, and exact dependency identities. EventStore and release-owner approvals come from Story 1.20 and are not recreated here.
-**Focused validation:** separate Debug/source and Release/package restores/builds; scoped Tenants Contracts, Integration, UI, and Server tests; exact package-byte/hash verification; and no mixed source/package EventStore graph.
+**Focused validation:** separate Debug/source and Release/package restores/builds; scoped Tenants Contracts, Integration, UI, and Server tests; evaluated `project.assets.json` dependency-type and version verification in each mode; and no mixed source/package EventStore graph.
 
 As a Tenants release maintainer,
 I want Tenants to adopt only the owner-approved EventStore runtime identity in source and package modes,
@@ -1525,15 +1525,15 @@ So that consumer migration is reproducible, maintainer-approved, and tied to the
 **When** Story 2.12 activation is evaluated
 **Then** it remains `backlog`, no implementation story file is created, and no Tenants, EventStore, or Builds dependency identity changes.
 
-**Given** Story 1.20 authorizes migration and names the approved EventStore source SHA
-**When** Debug/source mode is adopted
-**Then** `references/Hexalith.EventStore` gitlink and checkout both equal that SHA, no EventStore submodule content is edited
-**And** only Tenants-root-declared submodules are initialized.
+**Given** Tenants tracks EventStore `main` through its automated `build(deps)` submodule bump rather than a frozen owner-approved pin
+**When** Debug/source mode is validated
+**Then** `references/Hexalith.EventStore` gitlink equals the checked-out submodule `HEAD`, that commit is reachable from EventStore `origin/main`, and no EventStore submodule content is edited
+**And** only Tenants-root-declared submodules are initialized, and the recorded evidence names the exact EventStore SHA the validation matrix was run against.
 
-**Given** the approved package version and hashes
-**When** Release/package mode restores from an isolated cache
-**Then** every resolved `Hexalith.EventStore*` asset is a package at the exact version, fetched bytes match the approved hashes
-**And** the selected Builds commit already exposes that version.
+**Given** the Tenants-pinned Builds commit declares a single published `HexalithEventStoreVersion` and centrally declares every consumed `Hexalith.EventStore*` package under it
+**When** Release/package mode restores
+**Then** every resolved `Hexalith.EventStore*` asset is `type: package` at exactly that catalog version, that version is resolvable from the configured public package source, and zero EventStore project edges remain, including transitive ones
+**And** no `Version`, `VersionOverride`, fallback property, or Tenants-local `PackageVersion` entry supplies that version, and the evaluated `project.assets.json` files are the recorded evidence.
 
 **Given** Gateway is in the EventStore release manifest
 **When** the dependency graph is aligned
