@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -10,6 +11,8 @@ namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 public sealed class ContainerPublishingGovernanceTests
 {
     private const string ApprovedBuildsReleaseSha = "f75daebd4c522c081a6f62e274cf25e07971de69";
+    private const int ExpectedPackageCount = 14;
+    private static readonly TimeSpan PublicationPreflightTimeout = TimeSpan.FromSeconds(10);
 
     /// <summary>
     /// Verifies that release automation never attempts to bypass the pull-request-only main branch.
@@ -153,7 +156,124 @@ public sealed class ContainerPublishingGovernanceTests
         script.ShouldContain("--source-branch \"$source_branch\"");
         script.ShouldContain("--source-ci-workflow \"$source_ci_workflow\"");
         script.ShouldContain("--package-manifest \"$package_manifest\"");
+        script.ShouldContain("${HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT-}");
+        script.ShouldContain("--expected-package-count \"$expected_package_count\"");
         script.ShouldContain("registry.hexalith.com/eventstore");
+    }
+
+    /// <summary>
+    /// Verifies that the manifest, release caller, and wrapper independently agree on the package inventory count.
+    /// </summary>
+    [Fact]
+    public void ReleasePackageCountContractMatchesManifestCallerAndWrapper()
+    {
+        string root = FindRepositoryRoot();
+        using JsonDocument manifest = JsonDocument.Parse(
+            File.ReadAllText(Path.Combine(root, "tools", "release-packages.json")));
+        int manifestPackageCount = manifest.RootElement.GetProperty("packages").GetArrayLength();
+        string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
+        string wrapper = File.ReadAllText(Path.Combine(root, "scripts", "validate-publication-preflight.sh"));
+        string releaseInputs = ExtractYamlBlock(workflow, "    with:");
+
+        manifestPackageCount.ShouldBe(ExpectedPackageCount);
+        MatchCollection callerPackageCounts = Regex.Matches(
+            releaseInputs,
+            @"(?m)^\s*expected-package-count\s*:\s*(?<count>[0-9]+)\s*(?:#.*)?$");
+        callerPackageCounts.Count.ShouldBe(1);
+        int.Parse(callerPackageCounts[0].Groups["count"].Value, CultureInfo.InvariantCulture)
+            .ShouldBe(manifestPackageCount);
+        MatchCollection wrapperPackageCounts = Regex.Matches(
+            wrapper,
+            @"(?m)^\s*readonly\s+expected_package_count\s*=\s*(?<count>[0-9]+)\s*(?:#.*)?$");
+        wrapperPackageCounts.Count.ShouldBe(1);
+        int.Parse(wrapperPackageCounts[0].Groups["count"].Value, CultureInfo.InvariantCulture)
+            .ShouldBe(manifestPackageCount);
+        wrapper.ShouldContain(
+            "[[ \"${HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT-}\" = \"$expected_package_count\" ]]");
+        wrapper.ShouldContain("--expected-package-count \"$expected_package_count\"");
+    }
+
+    /// <summary>
+    /// Verifies that a matching workflow count reaches the shared preflight with the exact reviewed count.
+    /// </summary>
+    /// <param name="phase">The publication preflight phase.</param>
+    [Theory]
+    [InlineData("verify")]
+    [InlineData("publish")]
+    public void PublicationPreflightWrapperForwardsExactReviewedPackageCount(string phase)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        string root = FindRepositoryRoot();
+        (int exitCode, string _, string _, bool preflightInvoked, string[] arguments) =
+            RunPublicationPreflightWrapper(
+                root,
+                phase,
+                ExpectedPackageCount.ToString(CultureInfo.InvariantCulture));
+
+        exitCode.ShouldBe(0);
+        preflightInvoked.ShouldBeTrue();
+        arguments.Count(argument => argument == "--expected-package-count").ShouldBe(1);
+        int expectedCountArgument = Array.IndexOf(arguments, "--expected-package-count");
+        expectedCountArgument.ShouldBeGreaterThanOrEqualTo(0);
+        int expectedCountValueArgument = expectedCountArgument + 1;
+        expectedCountValueArgument.ShouldBeLessThan(arguments.Length);
+        arguments[expectedCountValueArgument].ShouldBe(ExpectedPackageCount.ToString(CultureInfo.InvariantCulture));
+        arguments[^1].ShouldBe(phase);
+    }
+
+    /// <summary>
+    /// Verifies that missing and empty workflow counts fail before the shared preflight is invoked.
+    /// </summary>
+    /// <param name="workflowPackageCount">The missing or empty workflow package-count value.</param>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void PublicationPreflightWrapperRejectsMissingOrEmptyPackageCount(string? workflowPackageCount)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        string root = FindRepositoryRoot();
+        (int exitCode, string _, string error, bool preflightInvoked, string[] arguments) =
+            RunPublicationPreflightWrapper(root, "verify", workflowPackageCount);
+
+        exitCode.ShouldNotBe(0);
+        error.ShouldContain("workflow expected-package-count input must be exactly 14");
+        preflightInvoked.ShouldBeFalse();
+        arguments.ShouldBeEmpty();
+    }
+
+    /// <summary>
+    /// Verifies that non-exact workflow counts fail before the shared preflight is invoked.
+    /// </summary>
+    /// <param name="workflowPackageCount">The mismatched workflow package-count text.</param>
+    [Theory]
+    [InlineData("13")]
+    [InlineData("15")]
+    [InlineData("014")]
+    [InlineData("14 ")]
+    [InlineData("abc")]
+    public void PublicationPreflightWrapperRejectsMismatchedPackageCount(string workflowPackageCount)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        string root = FindRepositoryRoot();
+        (int exitCode, string _, string error, bool preflightInvoked, string[] arguments) =
+            RunPublicationPreflightWrapper(root, "verify", workflowPackageCount);
+
+        exitCode.ShouldNotBe(0);
+        error.ShouldContain("workflow expected-package-count input must be exactly 14");
+        preflightInvoked.ShouldBeFalse();
+        arguments.ShouldBeEmpty();
     }
 
     /// <summary>
@@ -296,7 +416,13 @@ public sealed class ContainerPublishingGovernanceTests
         try
         {
             string rejectingValidator = Path.Combine(temporary, "reject-preflight.sh");
-            File.WriteAllText(rejectingValidator, "#!/usr/bin/env bash\nexit 1\n");
+            string preflightInvocationMarker = Path.Combine(temporary, "preflight-invoked");
+            File.WriteAllText(
+                rejectingValidator,
+                "#!/usr/bin/env bash\n" +
+                "set -euo pipefail\n" +
+                ": > \"$PREFLIGHT_INVOCATION_MARKER\"\n" +
+                "exit 1\n");
             File.SetUnixFileMode(
                 rejectingValidator,
                 UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
@@ -320,14 +446,18 @@ public sealed class ContainerPublishingGovernanceTests
             start.Environment["HEXALITH_RELEASE_SOURCE_BRANCH"] = "main";
             start.Environment["HEXALITH_RELEASE_SOURCE_CI_WORKFLOW"] = "ci.yml";
             start.Environment["HEXALITH_RELEASE_PACKAGE_MANIFEST"] = "tools/release-packages.json";
+            start.Environment["HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT"] =
+                ExpectedPackageCount.ToString(CultureInfo.InvariantCulture);
             start.Environment["GITHUB_SHA"] = new string('b', 40);
             start.Environment["HEXALITH_PUBLICATION_PREFLIGHT"] = rejectingValidator;
             start.Environment["HEXALITH_ZOT_REGISTRY"] = "registry.hexalith.com";
+            start.Environment["PREFLIGHT_INVOCATION_MARKER"] = preflightInvocationMarker;
 
             using Process process = Process.Start(start).ShouldNotBeNull();
             process.WaitForExit();
 
             process.ExitCode.ShouldNotBe(0);
+            File.Exists(preflightInvocationMarker).ShouldBeTrue();
             File.Exists(nugetMarker).ShouldBeFalse();
             File.Exists(containerMarker).ShouldBeFalse();
         }
@@ -462,6 +592,86 @@ public sealed class ContainerPublishingGovernanceTests
             using Process process = Process.Start(start).ShouldNotBeNull();
             process.WaitForExit();
             return process.ExitCode;
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    private static (int ExitCode, string Output, string Error, bool PreflightInvoked, string[] Arguments)
+        RunPublicationPreflightWrapper(string root, string phase, string? workflowPackageCount)
+    {
+        string temporary = Path.Combine(Path.GetTempPath(), $"hexalith-package-count-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(temporary);
+        try
+        {
+            string invocationMarker = Path.Combine(temporary, "preflight-invoked");
+            string argumentsPath = Path.Combine(temporary, "preflight-arguments");
+            string recordingPreflight = Path.Combine(temporary, "record-preflight.sh");
+            File.WriteAllText(
+                recordingPreflight,
+                "#!/usr/bin/env bash\n" +
+                "set -euo pipefail\n" +
+                ": > \"$PREFLIGHT_INVOCATION_MARKER\"\n" +
+                "printf '%s\\n' \"$@\" > \"$PREFLIGHT_ARGUMENTS\"\n");
+            if (!OperatingSystem.IsWindows())
+            {
+                File.SetUnixFileMode(
+                    recordingPreflight,
+                    UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            }
+
+            ProcessStartInfo start = new("bash")
+            {
+                WorkingDirectory = root,
+                RedirectStandardError = true,
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+            };
+            start.ArgumentList.Add(Path.Combine(root, "scripts", "validate-publication-preflight.sh"));
+            start.ArgumentList.Add("99.0.0");
+            start.ArgumentList.Add(phase);
+            start.Environment["HEXALITH_BUILDS_EXECUTION_SHA"] = new string('a', 40);
+            start.Environment["HEXALITH_RELEASE_ENVIRONMENT"] = "production";
+            start.Environment["HEXALITH_RELEASE_SOURCE_BRANCH"] = "main";
+            start.Environment["HEXALITH_RELEASE_SOURCE_CI_WORKFLOW"] = "ci.yml";
+            start.Environment["HEXALITH_RELEASE_PACKAGE_MANIFEST"] = "tools/release-packages.json";
+            start.Environment["GITHUB_SHA"] = new string('b', 40);
+            start.Environment["HEXALITH_PUBLICATION_PREFLIGHT"] = recordingPreflight;
+            start.Environment["HEXALITH_ZOT_REGISTRY"] = "registry.hexalith.com";
+            start.Environment["PREFLIGHT_INVOCATION_MARKER"] = invocationMarker;
+            start.Environment["PREFLIGHT_ARGUMENTS"] = argumentsPath;
+            start.Environment.Remove("HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT");
+            if (workflowPackageCount is not null)
+            {
+                start.Environment["HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT"] = workflowPackageCount;
+            }
+
+            using Process process = new() { StartInfo = start };
+            process.Start().ShouldBeTrue("Could not start the publication preflight wrapper.");
+            Task<string> outputTask = process.StandardOutput.ReadToEndAsync();
+            Task<string> errorTask = process.StandardError.ReadToEndAsync();
+            bool exited = process.WaitForExit((int)PublicationPreflightTimeout.TotalMilliseconds);
+            if (!exited)
+            {
+                process.Kill(entireProcessTree: true);
+                process.WaitForExit();
+            }
+
+            string output = outputTask.GetAwaiter().GetResult();
+            string error = errorTask.GetAwaiter().GetResult();
+            if (!exited)
+            {
+                throw new TimeoutException(
+                    $"Publication preflight wrapper timed out after {PublicationPreflightTimeout}. " +
+                    $"Output: {output} Error: {error}");
+            }
+
+            string[] arguments = File.Exists(argumentsPath)
+                ? File.ReadAllLines(argumentsPath)
+                : [];
+            return (process.ExitCode, output, error, File.Exists(invocationMarker), arguments);
         }
         finally
         {

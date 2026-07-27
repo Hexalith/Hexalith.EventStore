@@ -14,6 +14,11 @@ contract_directory="${HEXALITH_RELEASE_CONTRACT_DIRECTORY:-$PWD/.hexalith/releas
 publication_preflight="${HEXALITH_PUBLICATION_PREFLIGHT:-./.hexalith/release/publication_preflight.py}"
 evidence_directory="${HEXALITH_RELEASE_EVIDENCE_DIRECTORY:-$PWD/.hexalith/release-evidence/$version/preflight}"
 
+# Hexalith.EventStore publishes exactly these 14 NuGet packages. The count is declared
+# here rather than counted from the manifest so that adding or dropping a package fails
+# closed until the change is reviewed alongside tools/release-packages.json.
+readonly expected_package_count=14
+
 fail() {
   echo "[publication-preflight] $1" >&2
   exit 1
@@ -37,6 +42,10 @@ fail() {
   fail "HEXALITH_RELEASE_ENVIRONMENT must identify the protected production environment."
 [[ "$registry" = "registry.hexalith.com" ]] ||
   fail "The EventStore container registry must be registry.hexalith.com."
+# Use ${VAR-} so set -u treats an unset value as empty without supplying a fallback.
+# Unset and set-but-empty values therefore both compare unequal to the reviewed declaration.
+[[ "${HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT-}" = "$expected_package_count" ]] ||
+  fail "The workflow expected-package-count input must be exactly $expected_package_count."
 [[ -x "$publication_preflight" ]] ||
   fail "The shared publication preflight is unavailable."
 [[ -f "$package_manifest" ]] ||
@@ -52,6 +61,7 @@ exec "$publication_preflight" \
   --builds-execution-sha "$builds_execution_sha" \
   --environment-name "$release_environment" \
   --package-manifest "$package_manifest" \
+  --expected-package-count "$expected_package_count" \
   --contract-directory "$contract_directory" \
   --evidence-directory "$evidence_directory" \
   --phase "$phase"
