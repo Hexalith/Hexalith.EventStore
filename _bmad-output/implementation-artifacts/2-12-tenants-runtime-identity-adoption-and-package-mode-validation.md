@@ -13,9 +13,9 @@ crosswalk: ../planning-artifacts/story-id-migration-2026-07-15.md
 
 # Story 2.12: Tenants Runtime Identity Adoption And Package-Mode Validation
 
-Status: ready-for-dev
+Status: in-progress
 
-`ready-for-dev` means authorized source/code work and prerequisite coordination may begin. The
+`in-progress` means authorized source/code work and prerequisite coordination are under way. The
 package lane and story review remain fail-closed until the external deliverables named below exist.
 
 ## Story
@@ -138,12 +138,15 @@ code, and tests, but no package identity is adopted and the story cannot enter `
         the Story 1.20 raw-log bundle, version string, or hash manifest alone as package availability.
   - [x] Store the prerequisite receipt in EventStore `_bmad-output`, outside the Tenants commit.
 
-- [x] Adopt the exact source identity in Tenants (AC: 2)
-  - [x] Change only Tenants' `references/Hexalith.EventStore` gitlink to
+- [ ] Adopt the exact source identity in Tenants (AC: 2)
+  - [ ] Change only Tenants' `references/Hexalith.EventStore` gitlink to
         `fa2d1c9910f8976553adb33dcdb1c9ff2ea75594`; do not edit EventStore content.
-  - [x] Verify the Tenants gitlink and checked-out EventStore `HEAD` both equal the approved SHA and
+        (Regressed 2026-07-27: the `/pushall` merge `230a533d` discarded the approved pin on
+        published `main`. Restored and proved only in an unpublished proof clone.)
+  - [ ] Verify the Tenants gitlink and checked-out EventStore `HEAD` both equal the approved SHA and
         both repositories are clean, including ignored generated/configuration inputs covered by
         the Story 1.20 consumer guard.
+        (Green in the proof clone; fails closed on published Tenants `main`.)
   - [x] Prove Debug source intent uses `UseHexalithProjectReferences=true` plus the existing source
         path and resolves EventStore edges as projects. Do not force
         `HexalithEventStoreFromSource` directly or infer source intent from Debug configuration.
@@ -172,7 +175,7 @@ code, and tests, but no package identity is adopted and the story cannot enter `
 - [ ] Prove separate source and package dependency graphs (AC: 2, 3, 4)
   - [ ] Use separate clean working copies or isolated intermediate/output directories for the two
         modes. Rerun restore after every mode change; never reuse a prior `project.assets.json`.
-  - [ ] Source lane: isolated restore, Debug, explicit
+  - [x] Source lane: isolated restore, Debug, explicit
         `UseHexalithProjectReferences=true`; assert every selected EventStore dependency is a
         project rooted at the exact approved checkout and no EventStore package substitutes for it.
   - [ ] Package lane: isolated global-packages and HTTP-cache directories, Release, explicit
@@ -201,7 +204,7 @@ code, and tests, but no package identity is adopted and the story cannot enter `
   - [ ] Preserve Story 2.11's fail-closed provenance/lifecycle behavior. Exercise the existing
         projection/query/provenance/freshness tests; do not weaken production policy to accommodate
         fixtures and do not accept mock-only proof for a persisted-path assertion.
-  - [ ] Record commands, SDK/package inputs, mode, results, resolved dependency inventory, exact
+  - [x] Record commands, SDK/package inputs, mode, results, resolved dependency inventory, exact
         hashes, and persisted-path evidence in temporary/CI artifacts until an exact Tenants commit
         exists. Do not place SHA-named evidence inside the commit whose SHA it claims to identify.
 
@@ -425,7 +428,7 @@ Official references checked 2026-07-27:
 
 ### Agent Model Used
 
-GPT-5 Codex
+GPT-5 Codex (sessions through 2026-07-27), Claude Opus 5 (2026-07-27 verification session)
 
 ### Debug Log References
 
@@ -480,6 +483,41 @@ GPT-5 Codex
   packages. These conditional code/test edits remain uncommitted while the package prerequisite is
   blocked because the existing complete package-governance suite correctly requires the approved
   Builds gitlink before accepting the new package reference.
+- 2026-07-27 (Claude Opus 5 session) — The complete official-main A/B/C verifier was re-run from
+  EventStore `main` `347e0df0` and passed (exit 0); the earlier AWK defect did not recur. The
+  source consumer procedure was then run in the same shell.
+- 2026-07-27 — **AC2 regressed on published Tenants `main`.** The conditional Gateway work
+  (`a7ca142`) reached `main`, but the mechanical merge `230a533d`
+  (`build: merge feat/story-2-12-runtime-identity-adoption into main via /pushall`) resolved
+  `references/Hexalith.EventStore` to the main-side `737b3e5a`, discarding the approved
+  `fa2d1c9910f8` adopted by `902065e`/`db09a84`. The source consumer guard fails closed on `main`
+  at `test "$GITLINK_SHA" = "$APPROVED_EVENTSTORE_SHA"`; cleanliness assertions pass, so the
+  identity mismatch is the sole failure. Restoring the pin in a separate clean proof clone
+  (unpublished local commit `3c2aeaa2`) made the verifier plus source consumer procedure pass in
+  one shell.
+- 2026-07-27 — Source-lane graph proved. `src/Hexalith.Tenants` resolves 7 EventStore edges, all
+  `type: project` rooted at the approved checkout, and **0** EventStore package edges, so Gateway
+  and DomainService are aligned with no reachable mixed graph. Debug build with `--warnaserror`
+  produced 0 warnings / 0 errors and compiled all seven EventStore assemblies from source.
+  Focused Debug/source suites: Contracts 115/115 and Server 738/738 passed; UI 1260/1261.
+- 2026-07-27 — **Package identity was already adopted on `main` ahead of its receipt.** Tenants
+  `main` points Builds at `0e464b5410b487cee50b9523da3eedd0eec74589` (a descendant of the approved
+  `8f32f127`) whose catalog sets `HexalithEventStoreVersion` to `999.1.20-proof.fa2d1c9910f8`.
+  Because those bytes were never published, `dotnet restore Hexalith.Tenants.slnx` fails `NU1102`
+  for `Hexalith.EventStore.Client` via `Hexalith.Memories.Server`,
+  `Hexalith.Tenants.IntegrationTests` cannot restore, and the single UI failure is
+  `TenantsUiCompositionTests` failing closed on its own package-mode restore. All three reproduce
+  at unmodified `main` `230a533d`, so they are pre-existing and independent of the pin restore.
+  The Builds gitlink was not changed in either direction.
+- 2026-07-27 — Second package-byte audit extended and corrected the first. A whole-filesystem
+  scan found five surviving Story 1.20 transient package directories under
+  `/home/administrator/tmp-story-1-20/` holding complete proof sets for runtimes `38f85086fc25`,
+  `bae137d9e931`, `eb59649b29a0`, `ed5af0f650a1`, and `f692f903d31b`, plus
+  `999.1.20-proof.440ff4cb36a9` artifacts in the NuGet global cache. **None is the approved
+  runtime.** The only `.nupkg` at `999.1.20-proof.fa2d1c9910f8` anywhere on the machine is a
+  collateral `Hexalith.Commons.UniqueIds`; `Hexalith.EventStore*` coverage is 0 of 14. nuget.org
+  has no such version, and GitHub Packages remains unprovable because the token scopes are
+  `gist`, `read:org`, `repo`, `workflow` (403, needs `read:packages`).
 
 ### Completion Notes List
 
@@ -496,12 +534,31 @@ GPT-5 Codex
 - Gateway conditional alignment and its focused governance test are implemented locally and green
   in source mode. They are intentionally not published as a commit whose default package-governance
   checks would fail before the authorized Builds gitlink can be adopted.
+- 2026-07-27 update: the Gateway conditional alignment and its governance test **are now published**
+  on Tenants `main` (`a7ca142`, merged by `230a533d`), and the Contracts suite covering them passes
+  115/115 in Debug/source mode.
+- The authority chain is green: the complete official-main A/B/C verifier passes, and with the
+  approved pin restored the source consumer procedure passes in the same shell.
+- **Two blocking conditions now exist on published Tenants `main`, and both are owner decisions.**
+  First, AC2 is violated because a mechanical `/pushall` merge discarded the approved EventStore
+  pin. Second, the Builds catalog pinning `999.1.20-proof.fa2d1c9910f8` was adopted before the
+  byte-availability receipt passed, so Tenants `main` cannot restore its solution in either
+  dependency mode. Neither was introduced by this session, and neither was worked around.
+- The package lane remains blocked and is now proved unsatisfiable from local state: 0 of the 14
+  approved `Hexalith.EventStore*` `.nupkg` files exist anywhere on this machine, on nuget.org, in
+  the WORM archive, or in the retained Actions artifacts. Package bytes must come from the release
+  owner, or the packaging must be re-run from the approved source SHA under release-owner change
+  control with a new manifest and approval — the story forbids a rebuild inheriting Story 1.20
+  authority.
+- Story status remains `in-progress`. No dependency identity was changed in any published
+  repository, nothing was pushed, and no production policy or test was weakened.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/2-12-tenants-runtime-identity-adoption-and-package-mode-validation.md
 - _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
 - _bmad-output/implementation-artifacts/evidence/story-2-12/prerequisites.md
+- _bmad-output/implementation-artifacts/evidence/story-2-12/source-lane-2026-07-27.md
 - _bmad-output/implementation-artifacts/sprint-status.yaml
 - references/Hexalith.Tenants/references/Hexalith.EventStore
 - references/Hexalith.Tenants/src/Hexalith.Tenants/Hexalith.Tenants.csproj
@@ -515,3 +572,11 @@ GPT-5 Codex
 - 2026-07-27 — Repaired and published the Story 1.20 AWK verifier, established durable Tenants and
   Builds approvals, proved the exact source pin, and recorded the unresolved original-package-byte
   prerequisite without advancing the package lane or story status.
+- 2026-07-27 — Re-ran the complete official-main A/B/C verifier (pass), proved the Debug/source
+  dependency graph and focused test matrix, and recorded two blocking conditions found on
+  published Tenants `main`: the approved EventStore pin was discarded by a mechanical `/pushall`
+  merge, and the proof-version Builds catalog was adopted before its byte-availability receipt,
+  breaking restore in both dependency modes. Extended the package-byte audit to an exhaustive
+  filesystem scan proving 0 of 14 approved packages exist locally. Unchecked the source-identity
+  task to match the published state. No identity changed, nothing pushed, story stays
+  `in-progress`.

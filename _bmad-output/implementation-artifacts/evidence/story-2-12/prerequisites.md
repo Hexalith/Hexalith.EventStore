@@ -80,6 +80,8 @@ Recovery checks performed on 2026-07-27:
 1. The original build log identifies transient directory `/tmp/tmp.FdPTcyt3L7/packages`, but the
    directory no longer exists and no exact package file remains under `/tmp`, `/var/tmp`, the
    administrator home, the project workspace, or the NuGet global-packages directory.
+   **Corrected and extended 2026-07-27 (second audit):** proof-version package bytes *do*
+   survive in the administrator home, but never for the approved runtime. See check 7.
 2. Azure storage account `hexalithevidence`, container `story-1-20`, contains only
    `fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/story-1-20-raw-evidence.tar.gz` for this runtime.
    Object version `2026-07-26T10:36:02.8785061Z` is covered by a locked immutability policy through
@@ -96,8 +98,62 @@ Recovery checks performed on 2026-07-27:
    `read:packages` scope. No GitHub Packages source is configured locally.
 6. No deleted-but-open local package handle was found.
 
+7. **Exhaustive filesystem scan (2026-07-27, second audit).** A whole-filesystem search for
+   `*999.1.20-proof*` (excluding `/proc`, including the mounted Windows volumes) returned 65
+   matching paths. Five surviving Story 1.20 transient package directories were found under
+   `/home/administrator/tmp-story-1-20/`, each holding a complete 19-file proof set:
+
+   | Transient directory | Proof version present |
+   | --- | --- |
+   | `tmp.3JcRFJBxed/packages` | one of the five suffixes below |
+   | `tmp.8QeVFDgstJ/packages` | one of the five suffixes below |
+   | `tmp.Tg9CMiwIaN/packages` | one of the five suffixes below |
+   | `tmp.XIiKfvEBwv/packages` | one of the five suffixes below |
+   | `tmp.kx5WDx9NDm/packages` | one of the five suffixes below |
+
+   Suffixes present: `38f85086fc25`, `bae137d9e931`, `eb59649b29a0`, `ed5af0f650a1`,
+   `f692f903d31b`. The NuGet global-packages folder additionally retains five
+   `999.1.20-proof.440ff4cb36a9` artifacts.
+
+   **None of these is the approved runtime.** The only `.nupkg` anywhere on the machine at
+   version `999.1.20-proof.fa2d1c9910f8` is `Hexalith.Commons.UniqueIds` — a collateral
+   artifact from a `Hexalith.Commons` build that inherited the version override, not a member
+   of the approved 14-package EventStore inventory. Distinct `Hexalith.EventStore*` `.nupkg`
+   files at the approved version found on this machine: **0 of 14**.
+
+8. The GitHub Packages gap in check 5 is unchanged and was re-confirmed. `gh auth status`
+   reports token scopes `gist`, `read:org`, `repo`, `workflow`; the packages listing returns
+   `HTTP 403 — You need at least read:packages scope to list packages.`
+
 The raw evidence archive, version string, build log, and hash manifest do not satisfy package
 availability. Required next state is a release-owner-provided retrievable source containing the
 original 14 files, followed by the packet's NuGet consumer procedure in the same verified shell.
 A rebuild, feed version match without byte equality, or locally assigned package version remains
 rejected.
+
+## Published-Main Regression Recorded 2026-07-27
+
+Two conditions on published Tenants `main` (`230a533d`) were proved during the second audit.
+Both are recorded here because they change the prerequisite disposition; neither was created by
+this story's current session, and neither was worked around.
+
+1. **The approved source pin was mechanically discarded.** The `/pushall` merge `230a533d`
+   resolved `references/Hexalith.EventStore` to `737b3e5a`, discarding the approved
+   `fa2d1c9910f8976553adb33dcdb1c9ff2ea75594` adopted by `902065e`/`db09a84`. AC2 is therefore
+   violated on `main`, and the source consumer guard fails closed there.
+
+2. **Package identity was adopted before this receipt passed.** Tenants `main` already points
+   `references/Hexalith.Builds` at `0e464b5410b487cee50b9523da3eedd0eec74589`, a descendant of
+   the approved `8f32f127` whose catalog sets `HexalithEventStoreVersion` to
+   `999.1.20-proof.fa2d1c9910f8`. Because those bytes were never published, Tenants `main`
+   cannot restore its own solution in **either** mode: `dotnet restore Hexalith.Tenants.slnx`
+   fails `NU1102` for `Hexalith.EventStore.Client`, `Hexalith.Tenants.IntegrationTests` cannot
+   restore, and one `TenantsUiCompositionTests` package-mode case fails closed.
+
+   This contradicts the External Prerequisite Contract, which permits source pinning,
+   conditional Gateway code, and tests while the byte receipt is blocked, but forbids adopting
+   any package identity. The Builds gitlink was **not** changed by this session in either
+   direction; resolving it is a release-owner decision.
+
+Detailed commands, exit codes, resolved graph, and test counts are in
+`source-lane-2026-07-27.md`.
