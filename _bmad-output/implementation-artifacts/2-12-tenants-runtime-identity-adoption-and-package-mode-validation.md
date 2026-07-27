@@ -518,6 +518,17 @@ GPT-5 Codex (sessions through 2026-07-27), Claude Opus 5 (2026-07-27 verificatio
   collateral `Hexalith.Commons.UniqueIds`; `Hexalith.EventStore*` coverage is 0 of 14. nuget.org
   has no such version, and GitHub Packages remains unprovable because the token scopes are
   `gist`, `read:org`, `repo`, `workflow` (403, needs `read:packages`).
+- 2026-07-27 — **The last open recovery avenue is now closed, negatively.** The release owner
+  granted `read:packages`. With the scope in place, `/orgs/Hexalith/packages?package_type=nuget`
+  enumerates 185 packages across two pages and contains **no** `Hexalith.EventStore*` package at
+  any version (nearest names are `Hexalith.Infrastructure.DaprEventStore` and the typo package
+  `Hehalith.Infrastructure.DaprEventStore`); `/users/jpiquot/packages` and `/user/packages` return
+  0. Every avenue named by the External Prerequisite Contract has now been executed and returned
+  negative, so the original approved bytes are **not recoverable** and AC3, the package half of
+  AC4, and AC5 cannot be closed as literally specified. The two remaining dispositions — owner
+  supplies the files from outside this environment, or the packaging is re-run from
+  `fa2d1c9910f8` under change control with a new manifest and approval — are release-owner
+  decisions recorded in `prerequisites.md`.
 
 ### Completion Notes List
 
@@ -544,12 +555,15 @@ GPT-5 Codex (sessions through 2026-07-27), Claude Opus 5 (2026-07-27 verificatio
   pin. Second, the Builds catalog pinning `999.1.20-proof.fa2d1c9910f8` was adopted before the
   byte-availability receipt passed, so Tenants `main` cannot restore its solution in either
   dependency mode. Neither was introduced by this session, and neither was worked around.
-- The package lane remains blocked and is now proved unsatisfiable from local state: 0 of the 14
-  approved `Hexalith.EventStore*` `.nupkg` files exist anywhere on this machine, on nuget.org, in
-  the WORM archive, or in the retained Actions artifacts. Package bytes must come from the release
-  owner, or the packaging must be re-run from the approved source SHA under release-owner change
-  control with a new manifest and approval — the story forbids a rebuild inheriting Story 1.20
-  authority.
+- The package lane remains blocked and is now proved unsatisfiable from **every** avenue the
+  prerequisite contract names: 0 of the 14 approved `Hexalith.EventStore*` `.nupkg` files exist on
+  this machine, on nuget.org, in the WORM archive, in retained Actions artifacts, or in GitHub
+  Packages (checked with `read:packages` granted — the org has 185 NuGet packages and none is an
+  EventStore package). The original approved bytes are not recoverable. Package bytes must come
+  from the release owner from outside this environment, or the packaging must be re-run from the
+  approved source SHA under release-owner change control with a new manifest and approval — the
+  story forbids a rebuild inheriting Story 1.20 authority, so that path amends the pinned manifest
+  rather than reusing it.
 - Story status remains `in-progress`. No dependency identity was changed in any published
   repository, nothing was pushed, and no production policy or test was weakened.
 

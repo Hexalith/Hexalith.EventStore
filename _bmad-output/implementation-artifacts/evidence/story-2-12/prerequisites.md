@@ -121,15 +121,55 @@ Recovery checks performed on 2026-07-27:
    of the approved 14-package EventStore inventory. Distinct `Hexalith.EventStore*` `.nupkg`
    files at the approved version found on this machine: **0 of 14**.
 
-8. The GitHub Packages gap in check 5 is unchanged and was re-confirmed. `gh auth status`
-   reports token scopes `gist`, `read:org`, `repo`, `workflow`; the packages listing returns
-   `HTTP 403 — You need at least read:packages scope to list packages.`
+8. **The GitHub Packages gap in check 5 is now closed — negatively.** The release owner granted
+   `read:packages` on 2026-07-27 (`gh auth refresh -h github.com -s read:packages`; scopes are
+   now `gist`, `read:org`, `read:packages`, `repo`, `workflow`). With the scope in place:
+
+   - `/orgs/Hexalith/packages?package_type=nuget` enumerates **185** packages across two pages.
+     Filtering for `^Hexalith\.EventStore` returns **none**. The only near matches are
+     `Hexalith.Infrastructure.DaprEventStore` and the typo package
+     `Hehalith.Infrastructure.DaprEventStore`, neither of which is in the approved inventory.
+   - `/users/jpiquot/packages?package_type=nuget` and `/user/packages?package_type=nuget` return
+     **0** packages.
+
+   No `Hexalith.EventStore*` package exists in GitHub Packages at any version, so the approved
+   proof version cannot be there either.
 
 The raw evidence archive, version string, build log, and hash manifest do not satisfy package
 availability. Required next state is a release-owner-provided retrievable source containing the
 original 14 files, followed by the packet's NuGet consumer procedure in the same verified shell.
 A rebuild, feed version match without byte equality, or locally assigned package version remains
 rejected.
+
+### Audit Disposition After Check 8
+
+Every retrieval avenue named by the External Prerequisite Contract has now been executed and
+returned negative. No avenue remains that could be tested without new external state:
+
+| Avenue | Result |
+| --- | --- |
+| Original transient build directory | Deleted; five other candidate runtimes survive, approved one does not |
+| Whole-filesystem scan | 0 of 14 approved `Hexalith.EventStore*` `.nupkg` |
+| nuget.org | Approved proof version absent (143 versions, nearest `3.82.0`) |
+| Azure WORM raw-evidence archive | Logs and manifests only, no `.nupkg`; no other stored blob version |
+| GitHub Actions retained artifacts | Test-result bundles only |
+| GitHub Packages (org and user) | No `Hexalith.EventStore*` package at any version |
+
+The original approved bytes are therefore **not recoverable**. Closing AC3, the package half of
+AC4, and AC5 as literally specified is impossible, because the story pins byte equality against a
+manifest whose artifacts no longer exist anywhere.
+
+Only two dispositions remain, and both are release-owner decisions outside this story's authority:
+
+1. The release owner produces the original 14 files from a location not visible to this
+   environment, after which the packet's NuGet consumer procedure runs unchanged.
+2. The packaging is re-run from the approved source SHA `fa2d1c9910f8976553adb33dcdb1c9ff2ea75594`
+   under release-owner change control, producing a **new** hash manifest and a **new** durable
+   approval. The story explicitly refuses to let a rebuilt artifact inherit Story 1.20 authority,
+   so this path requires amending the pinned manifest and approval record rather than reusing
+   `4271ddc76411780591423ab024b776cd34a2abccf1cc2dac03a245e141dbe0bc`.
+
+Until one of these lands, the package lane stays `blocked` and the story stays below `review`.
 
 ## Published-Main Regression Recorded 2026-07-27
 
