@@ -21,6 +21,8 @@ public class DomainModuleAspireExtensionTests {
         options.EnableAppHealthCheck.ShouldBe(true);
         options.AppHealthCheckPath.ShouldBe("/alive");
         GetReferencedComponentNames(sidecar).ShouldBe(["pubsub", "statestore"]);
+        GetReferencedResourceNames(domainModule).ShouldContain("eventstore");
+        GetWaitedResourceNames(domainModule).ShouldContain("eventstore");
     }
 
     [Fact]
@@ -41,6 +43,8 @@ public class DomainModuleAspireExtensionTests {
         options.AppHealthCheckPath.ShouldBe("/alive");
         options.ResourcesPaths.ShouldContain(IsolatedResourcesPath);
         GetReferencedComponentNames(sidecar).ShouldBe([]);
+        GetReferencedResourceNames(domainModule).ShouldContain("eventstore");
+        GetWaitedResourceNames(domainModule).ShouldContain("eventstore");
     }
 
     [Theory]
@@ -94,4 +98,16 @@ public class DomainModuleAspireExtensionTests {
                 .ToArray()
             : [];
     }
+
+    private static string[] GetReferencedResourceNames(IResourceBuilder<ProjectResource> project)
+        => [.. project.Resource.Annotations
+            .OfType<ResourceRelationshipAnnotation>()
+            .Select(static annotation => annotation.Resource.Name)
+            .Order(StringComparer.Ordinal)];
+
+    private static string[] GetWaitedResourceNames(IResourceBuilder<ProjectResource> project)
+        => [.. project.Resource.Annotations
+            .OfType<WaitAnnotation>()
+            .Select(static annotation => annotation.Resource.Name)
+            .Order(StringComparer.Ordinal)];
 }

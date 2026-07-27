@@ -3,6 +3,8 @@ using System.Diagnostics.Metrics;
 using System.Text;
 using System.Text.Json;
 
+using Dapr.Client;
+
 using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Client.Discovery;
 using Hexalith.EventStore.Client.Handlers;
@@ -30,6 +32,30 @@ namespace Hexalith.EventStore.DomainService.Tests;
 /// Tier 1 coverage of the domain-service SDK host extensions and the moved router/metadata helpers.
 /// </summary>
 public sealed class EventStoreDomainServiceExtensionsTests {
+    /// <summary>Proves the canonical domain-service registration supplies the shared DAPR client.</summary>
+    [Fact]
+    public void AddEventStoreDomainService_RegistersDaprClient() {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+
+        _ = builder.AddEventStoreDomainService();
+
+        ServiceDescriptor descriptor = builder.Services
+            .Single(service => service.ServiceType == typeof(DaprClient));
+        descriptor.Lifetime.ShouldBe(ServiceLifetime.Singleton);
+    }
+
+    /// <summary>Proves an existing DAPR registration is retained without adding another client.</summary>
+    [Fact]
+    public void AddEventStoreDomainService_PreservesExistingDaprClientRegistration() {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        builder.Services.AddDaprClient();
+        int before = builder.Services.Count(service => service.ServiceType == typeof(DaprClient));
+
+        _ = builder.AddEventStoreDomainService();
+
+        builder.Services.Count(service => service.ServiceType == typeof(DaprClient)).ShouldBe(before);
+    }
+
     /// <summary>
     /// Proves the no-argument overload discovers domains in the <b>calling</b> assembly (this test
     /// assembly), not the SDK assembly — the critical <c>GetCallingAssembly</c> capture contract.

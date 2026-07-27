@@ -304,6 +304,12 @@ public static class EventStoreDomainServiceExtensions {
         // Observability, health checks, service discovery, and HTTP resilience.
         _ = builder.AddServiceDefaults();
 
+        // Domain services use DAPR-backed SDK facilities such as persisted read models. Keep this canonical
+        // registration idempotent so a host-supplied client remains authoritative.
+        if (!builder.Services.Any(static service => service.ServiceType == typeof(Dapr.Client.DaprClient))) {
+            builder.Services.AddDaprClient();
+        }
+
         // Convention discovery + keyed IDomainProcessor registration for the domain assemblies.
         // The explicit-assemblies overload is used (never the calling-assembly one) so discovery targets
         // the domain — not this SDK assembly.
