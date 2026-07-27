@@ -97,6 +97,10 @@ development_status:
   2-9-generated-command-status-location-policy: done
   2-10-outbound-dapr-routing-header-ownership: done
   # EventStore platform enforcement moved to Story 1.2; this is consumer-only review scope.
+  # 2026-07-27: the blocking mutation-gate fail-open is closed — audit rows transport declared route
+  # provenance and the correction start gate applies ProjectionLifecyclePolicy. Committed on the
+  # unpushed Tenants branch fix/story-2-11-mutation-gate-lifecycle at 5eed7a9; stays in review until
+  # that SHA is pushed, maintainer-approved, and the EventStore gitlink is bumped to it.
   2-11-query-provenance-consumption-in-generated-rest-and-tenants: review
   # Story 1.20 must be available and authorize migration before this adoption story activates;
   # no implementation story file or dependency-identity change exists before that gate.
