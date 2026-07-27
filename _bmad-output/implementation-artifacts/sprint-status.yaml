@@ -101,9 +101,10 @@ development_status:
   # d2e5a121, which the EventStore gitlink pins. Review patches add complete provenance coverage and
   # passing Tier-3 persisted-path consumer evidence; the broader sibling gates remain deferred.
   2-11-query-provenance-consumption-in-generated-rest-and-tenants: done
-  # Story 1.20 must be available and authorize migration before this adoption story activates;
-  # no implementation story file or dependency-identity change exists before that gate.
-  2-12-tenants-runtime-identity-adoption-and-package-mode-validation: backlog
+  # Story 1.20 is available and authorizes migration at exact runtime fa2d1c99 and proof package
+  # 999.1.20-proof.fa2d1c9910f8. Approved Builds catalog commit 8f32f127 exists; the package lane
+  # remains blocked until the original 14 package bytes are retrievable and both modes pass.
+  2-12-tenants-runtime-identity-adoption-and-package-mode-validation: in-progress
   epic-2-retrospective: done
 
   epic-3: in-progress
