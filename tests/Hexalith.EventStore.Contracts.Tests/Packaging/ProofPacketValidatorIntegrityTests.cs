@@ -356,6 +356,59 @@ public sealed class ProofPacketValidatorIntegrityTests
     }
 
     /// <summary>
+    /// Verifies the A/B/C verifier preserves the pinned evidence-provider adapter identity when it
+    /// extracts the executable from the tested runtime commit.
+    /// </summary>
+    [Fact]
+    public void PacketVerifierExtractsProviderAdapterWithItsCanonicalFileName()
+    {
+        string root = FindRepositoryRoot();
+        string packet = File.ReadAllText(Path.Combine(root, PacketRelativePath));
+
+        packet.ShouldContain("A_PROVIDER_ADAPTER_DIRECTORY=\"$(mktemp -d)\"");
+        packet.ShouldContain(
+            "A_PROVIDER_ADAPTER=\"$A_PROVIDER_ADAPTER_DIRECTORY/$A_RAW_EVIDENCE_PROVIDER_ADAPTER_ID.sh\"");
+        packet.ShouldNotContain("A_PROVIDER_ADAPTER=\"$(mktemp)\"");
+        packet.ShouldContain("rm -rf -- \"$A_PROVIDER_ADAPTER_DIRECTORY\"");
+    }
+
+    /// <summary>
+    /// Verifies the A/B/C verifier distinguishes named closure prerequisites from accepted
+    /// limitations and ordinary Story 1.20 review follow-ups in the deferred-work ledger.
+    /// </summary>
+    [Fact]
+    public void PacketVerifierScopesDeferredWorkToNamedClosurePrerequisites()
+    {
+        string root = FindRepositoryRoot();
+        string packet = File.ReadAllText(Path.Combine(root, PacketRelativePath));
+
+        packet.ShouldContain(
+            "relevant = $0 ~ /^## Deferred from: exact-SHA gate of 1-20-owner-approved-parity-closure-and-runtime-pin / || "
+            + "$0 ~ /^## Deferred from: Story 1\\.20 correct-course readiness audit / || "
+            + "$0 ~ /^## Deferred from: Story 1\\.20 current-HEAD source-topology gate /");
+        packet.ShouldContain("exit !(sections == 3 && invalid == 0)");
+        packet.ShouldNotContain("relevant = (\n");
+        packet.ShouldNotContain(
+            "relevant = ($0 ~ /Story 1\\.20/ || $0 ~ /1-20-owner-approved-parity-closure/)");
+    }
+
+    /// <summary>
+    /// Verifies the A/B/C verifier limits the Owner Review body to that section instead of
+    /// scanning the following executable verifier subsection as review prose.
+    /// </summary>
+    [Fact]
+    public void PacketVerifierStopsOwnerReviewAtTheNextHeading()
+    {
+        string root = FindRepositoryRoot();
+        string packet = File.ReadAllText(Path.Combine(root, PacketRelativePath));
+
+        packet.ShouldContain(
+            "A_OWNER_REVIEW=\"$(awk '/^## Owner Review$/{inside=1; next} inside && /^##[#]? /{exit} inside{print}' \"$A_PACKET\")\"");
+        packet.ShouldNotContain(
+            "A_OWNER_REVIEW=\"$(awk '/^## Owner Review$/{inside=1; next} inside && /^## /{exit} inside{print}' \"$A_PACKET\")\"");
+    }
+
+    /// <summary>
     /// Verifies both allowlist validators are executable, bound to their expected inputs, accept
     /// the approved allowlist, and reject malformed or over-authorized variants.
     /// </summary>
