@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-07-27
+# last_updated: 2026-07-28
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T20:01:46+02:00
-last_updated: 2026-07-27
+last_updated: 2026-07-28
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -101,10 +101,12 @@ development_status:
   # d2e5a121, which the EventStore gitlink pins. Review patches add complete provenance coverage and
   # passing Tier-3 persisted-path consumer evidence; the broader sibling gates remain deferred.
   2-11-query-provenance-consumption-in-generated-rest-and-tenants: done
-  # Story 1.20 is available and authorizes migration at exact runtime fa2d1c99 and proof package
-  # 999.1.20-proof.fa2d1c9910f8. Approved Builds catalog commit 8f32f127 exists; the package lane
-  # remains blocked until the original 14 package bytes are retrievable and both modes pass.
-  2-12-tenants-runtime-identity-adoption-and-package-mode-validation: in-progress
+  # 2026-07-28: re-scoped by the approved sprint change proposal — AC2 now tracks EventStore main
+  # and AC3 validates the published Builds catalog, so the unrecoverable 999.1.20-proof bytes no
+  # longer gate this story. Both modes pass at accepted Tenants 578770679b9d (EventStore c8c70030,
+  # Builds 1b1c0b0 -> catalog 3.83.0); maintainer accepted that exact SHA. Awaiting independent
+  # review; note that AC5's approval has no external GitHub record by maintainer choice.
+  2-12-tenants-runtime-identity-adoption-and-package-mode-validation: review
   epic-2-retrospective: done
 
   epic-3: in-progress

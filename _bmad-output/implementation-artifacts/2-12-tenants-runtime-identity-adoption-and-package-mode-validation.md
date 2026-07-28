@@ -3,8 +3,13 @@ created: 2026-07-27
 baseline_commit: 73589770b14888b703d78d37325b066befa0689c
 story_id: "2.12"
 story_key: 2-12-tenants-runtime-identity-adoption-and-package-mode-validation
-status: ready-for-dev
-package_lane_status: re-scoped
+status: review
+accepted_tenants_sha: 578770679b9d3bc3fdf2a8a78190f24cdad8576e
+validated_eventstore_sha: c8c7003052a7f811d3b821f3442379ca5f3a9c65
+validated_builds_sha: 1b1c0b0360715b82de48b618fc4e94e7e01e8092
+resolved_catalog_version: 3.83.0
+final_receipt: evidence/story-2-12/578770679b9d3bc3fdf2a8a78190f24cdad8576e/receipt.md
+package_lane_status: closed-against-published-catalog
 package_lane_prerequisite_receipt: evidence/story-2-12/prerequisites.md
 rescope_decision: evidence/story-2-12/rescope-decision-2026-07-27.md
 sprint_change_proposal: ../planning-artifacts/sprint-change-proposal-2026-07-27-story-2-12-runtime-identity-rescope.md
@@ -15,10 +20,13 @@ crosswalk: ../planning-artifacts/story-id-migration-2026-07-15.md
 
 # Story 2.12: Tenants Runtime Identity Adoption And Package-Mode Validation
 
-Status: in-progress
+Status: review
 
-`in-progress` means authorized source/code work and prerequisite coordination are under way. The
-package lane and story review remain fail-closed until the external deliverables named below exist.
+`review` means every acceptance criterion has durable evidence at the accepted Tenants SHA
+`578770679b9d3bc3fdf2a8a78190f24cdad8576e` under the amended AC2/AC3 and the AD-22 scoped
+exception, and the Tenants maintainer has accepted that exact SHA. The External Prerequisite
+Contract that previously held this story fail-closed is retired; `done` remains gated on
+independent review of both dependency modes and the maintainer authority chain.
 
 ## Story
 
@@ -118,10 +126,15 @@ proof packages is no longer required and must not be undertaken to satisfy this 
 
 ## Tasks / Subtasks
 
-- [ ] Revalidate authorization and establish the Tenants-owned change boundary (AC: 1, 2, 3, 5)
-  - [ ] Run the complete Story 1.20 A/B/C verifier and continue directly into its source and NuGet
+- [x] Revalidate authorization and establish the Tenants-owned change boundary (AC: 1, 2, 3, 5)
+  - [x] Run the complete Story 1.20 A/B/C verifier and continue directly into its source and NuGet
         consumer procedures; derive all pins from the verified packet rather than assigning them
         from prose.
+        (Verifier **exit 0** from EventStore `main` `49987454`; every authority field read from the
+        verified commit A/C blobs, not prose. The two consumer procedures' *frozen-SHA* and
+        *approved-byte* assertions are precisely what the amended AC2/AC3 and the AD-22 scoped
+        exception replace, so they are not re-run as written; the source procedure's cleanliness
+        assertions are retained verbatim in the AC2 guard. Substitution recorded in the receipt.)
   - [x] Confirm the EventStore and release-owner approvals still bind the exact runtime, package
         version, 14-package hash inventory, accepted scope, and migration authorization.
   - [x] Work from a clean Tenants repository checkout where `references/Hexalith.EventStore` and
@@ -144,28 +157,37 @@ proof packages is no longer required and must not be undertaken to satisfy this 
         scoped exception; the contract is retired, not satisfied.)
   - [x] Store the prerequisite receipt in EventStore `_bmad-output`, outside the Tenants commit.
 
-- [ ] Validate the tracked source identity in Tenants (AC: 2)
-  - [ ] On a **pristine checkout, before the lane's restore**, verify Tenants'
+- [x] Validate the tracked source identity in Tenants (AC: 2)
+  - [x] On a **pristine checkout, before the lane's restore**, verify Tenants'
         `references/Hexalith.EventStore` gitlink equals the checked-out submodule `HEAD`, that this
         commit is reachable from EventStore `origin/main`, that no EventStore submodule content is
         edited, and that only Tenants-root-declared submodules are initialized. Record the exact
         EventStore SHA validated.
         (Ordering is load-bearing: MSBuild writes ignored `obj/` artifacts into the EventStore
-        submodule and trips the `--ignored=matching` cleanliness assertion after any restore/build.)
-  - [ ] Do not restore, re-pin, or freeze the gitlink. The automated `build(deps)` bump is the
+        submodule and trips the `--ignored=matching` cleanliness assertion after any restore/build.
+        Ran on both pristine lane copies before their restores: gitlink == checkout ==
+        `c8c7003052a7f811d3b821f3442379ca5f3a9c65`, reachable from EventStore `origin/main`
+        `49987454`, all cleanliness assertions PASS, only root-declared submodules initialized.)
+  - [x] Do not restore, re-pin, or freeze the gitlink. The automated `build(deps)` bump is the
         expected mechanism; a receipt is bound to the SHA it names, not to a permanent pin.
+        (Honored: no gitlink was restored, re-pinned, or frozen in any repository.)
   - [x] Prove Debug source intent uses `UseHexalithProjectReferences=true` plus the existing source
         path and resolves EventStore edges as projects. Do not force
         `HexalithEventStoreFromSource` directly or infer source intent from Debug configuration.
 
-- [ ] Consume the published Builds catalog identity (AC: 3, 4)
+- [x] Consume the published Builds catalog identity (AC: 3, 4)
   - [x] Require the Tenants-pinned Builds commit to centrally declare
         `Hexalith.EventStore.Gateway` under the single `HexalithEventStoreVersion` variable.
         (Retained in the current pin `1b1c0b0` from the approved `8f32f127`.)
-  - [ ] Verify that pin's `HexalithEventStoreVersion` is a **published** version resolvable from the
+  - [x] Verify that pin's `HexalithEventStoreVersion` is a **published** version resolvable from the
         configured public package source. Do not add `Version`, `VersionOverride`, fallback
         properties, or local `PackageVersion` entries in Tenants.
-  - [ ] Record the selected Builds SHA and its resolved catalog version in the evidence receipt.
+        (Builds `1b1c0b0` declares `3.83.0`; all 11 consumed packages are published on nuget.org —
+        the sole registered source — and were downloaded into a fresh isolated `--packages`
+        directory. `CentralPackageVersionOverrideEnabled=false`; no Tenants-local version authority
+        of any kind exists.)
+  - [x] Record the selected Builds SHA and its resolved catalog version in the evidence receipt.
+        (`1b1c0b0360715b82de48b618fc4e94e7e01e8092` → `3.83.0`.)
 
 - [x] Align Gateway with the existing EventStore dependency-mode policy (AC: 3, 4)
   - [x] In `src/Hexalith.Tenants/Hexalith.Tenants.csproj`, give the Gateway project reference the
@@ -179,48 +201,66 @@ proof packages is no longer required and must not be undertaken to satisfy this 
         any EventStore project in Release/package mode. Do not hide this host-graph rule in an API- or
         UI-only test.
 
-- [ ] Prove separate source and package dependency graphs (AC: 2, 3, 4)
-  - [ ] Use separate clean working copies or isolated intermediate/output directories for the two
+- [x] Prove separate source and package dependency graphs (AC: 2, 3, 4)
+  - [x] Use separate clean working copies or isolated intermediate/output directories for the two
         modes. Rerun restore after every mode change; never reuse a prior `project.assets.json`.
-        (Partial 2026-07-27: a full `--force-evaluate` restore was rerun after every mode change and
-        no prior assets file was reused, but one working copy served both modes rather than separate
-        copies/isolated output directories. Left unchecked until the package lane runs for real.)
+        (Closed 2026-07-27: two **separate clean clones** (`src-lane`, `pkg-lane`), each detached at
+        the accepted SHA with only root-declared submodules initialized and no shared object store
+        — verified by the absence of any `objects/info/alternates`. Each lane ran its own
+        `--force-evaluate` restore; no assets file was reused or shared across modes.)
   - [x] Source lane: isolated restore, Debug, explicit
         `UseHexalithProjectReferences=true`; assert every selected EventStore dependency is a
         project rooted at the validated checkout and no EventStore package substitutes for it.
-  - [ ] Package lane: Release, explicit `UseHexalithProjectReferences=false`, `--force-evaluate`,
+  - [x] Package lane: Release, explicit `UseHexalithProjectReferences=false`, `--force-evaluate`,
         restoring the pinned Builds catalog version from the configured public package source.
         (Isolated global-packages/HTTP-cache directories and a source-mapped temporary
         `nuget.config` are no longer required: with byte equality retired there are no approved
-        bytes to isolate or map, and the catalog version is publicly published.)
-  - [ ] Parse the evaluated dependency items and every relevant `project.assets.json`. Require every
+        bytes to isolate or map, and the catalog version is publicly published.
+        An isolated `--packages` directory was nevertheless used — not for byte isolation, but so
+        that resolvability from nuget.org is proved by a real download rather than a warm cache.
+        Restore exit 0, no `NU*` diagnostic; all 11 packages fetched at `3.83.0`.)
+  - [x] Parse the evaluated dependency items and every relevant `project.assets.json`. Require every
         selected `Hexalith.EventStore*` library to have `type: package` and exactly the pinned
         Builds catalog version; require zero EventStore project references, including transitive
         ones. These evaluated assets are the recorded AC3 evidence.
+        (17 assets files per lane. Package lane: **61 edges, 0 `type: project`, 61 `type: package`,
+        single resolved version `3.83.0`**. Source lane: **60 edges, 60 `type: project`, 0
+        packages, 0 outside the validated checkout**. Gateway and DomainService resolve identically
+        in both directions, so no mixed graph is reachable.)
   - [x] Byte-compare each restored EventStore `.nupkg` against the approved 14-line manifest.
         (**Retired 2026-07-27** with the External Prerequisite Contract — the approved bytes were
         proved unrecoverable, so there is nothing to compare against. Do not reintroduce this check
         or substitute a rebuilt artifact for it.)
-  - [ ] Run unattended with bounded execution and `-nodeReuse:false -m:1`. Do not add
+  - [x] Run unattended with bounded execution and `-nodeReuse:false -m:1`. Do not add
         `--interactive`, ignore a failed source, or allow a credential prompt to turn the gate into
         an indefinite wait. (`-m:1` is required: parallel MSBuild instances race on the same
         EventStore `.deps.json`.)
+        (Every restore, build, and test invocation in both lanes ran with `-nodeReuse:false -m:1`,
+        unattended, with no `--interactive` and no ignored source failure.)
 
-- [ ] Run the compatibility and regression matrix in both modes (AC: 4, 5)
-  - [ ] **Re-run at the accepted Tenants `main` commit under the amended AC2/AC3.** The subtasks
+- [x] Run the compatibility and regression matrix in both modes (AC: 4, 5)
+  - [x] **Re-run at the accepted Tenants `main` commit under the amended AC2/AC3.** The subtasks
         below were proved on a proof clone pinned back to the now-historical
         `fa2d1c9910f8`. Under the amended AC2 the binding identity is whatever Tenants `main`
         carries, so the whole matrix must be re-run there and the exact validated EventStore SHA
         recorded. Every result below is retained as prior evidence, not as closure.
+        (Re-run 2026-07-27 at accepted Tenants `578770679b9d3bc3fdf2a8a78190f24cdad8576e`,
+        EventStore `c8c7003052a7f811d3b821f3442379ca5f3a9c65`, Builds `1b1c0b0` → `3.83.0`.
+        Both lanes: restore exit 0, build `--warnaserror` **0 Warning(s), 0 Error(s)**;
+        Contracts 115/115, Server 738/738, UI 1276/1276, Integration 167 passed / 1 skipped /
+        0 failed — identical counts in Debug/source and Release/package. Receipt:
+        `evidence/story-2-12/578770679b9d3bc3fdf2a8a78190f24cdad8576e/receipt.md`.)
   - [x] Restore and build `Hexalith.Tenants.slnx` separately in Debug/source and Release/package mode
         with warnings as errors and zero warnings/errors.
-        (Both lanes exit 0 with **0 Warning(s), 0 Error(s)**. The Release lane validates
-        *compatibility* against the published `3.82.0` catalog; it does **not** close AC3, whose
-        exact approved-version/byte requirement stays blocked.)
+        (Both lanes exit 0 with **0 Warning(s), 0 Error(s)**. Superseded annotation: that earlier
+        run validated compatibility only, against `3.82.0`, and could not close the pre-amendment
+        AC3. Re-run at the accepted `578770679b9d…` against Builds `1b1c0b0` → `3.83.0`, the
+        Release lane now closes the **amended** AC3 on its own terms.)
   - [x] Run, by project rather than solution-level `dotnet test`, the Contracts, Integration, UI,
         and Server test projects in each freshly restored mode.
         (Both modes: Contracts 115/115, Server 738/738, UI 1266/1266, Integration 167 passed /
-        1 skipped / 0 failed. Zero failures in either mode.)
+        1 skipped / 0 failed. Zero failures in either mode. Re-run at the accepted Tenants SHA:
+        identical except UI 1276/1276, Tenants `main` having gained ten UI tests since.)
   - [x] Preserve the dedicated external API host, generated-controller gateway boundary, domain
         service and AppHost registrations, typed-client-only UI, and package/source conditional
         topology established by Stories 2.4-2.7.
@@ -236,19 +276,34 @@ proof packages is no longer required and must not be undertaken to satisfy this 
         hashes, and persisted-path evidence in temporary/CI artifacts until an exact Tenants commit
         exists. Do not place SHA-named evidence inside the commit whose SHA it claims to identify.
 
-- [ ] Close through the Tenants maintainer and update the EventStore pointer (AC: 5)
-  - [ ] Obtain a maintainer-approved Tenants commit/PR containing the exact gitlinks, conditional
+- [x] Close through the Tenants maintainer and update the EventStore pointer (AC: 5)
+  - [x] Obtain a maintainer-approved Tenants commit/PR containing the exact gitlinks, conditional
         Gateway change, and tests. Bind its CI/evidence URLs in the approval; record the exact
         accepted Tenants SHA and accepted scope.
-  - [ ] Verify the accepted Tenants commit is published and contains the approved EventStore and
+        (Maintainer `jpiquot` accepted `578770679b9d3bc3fdf2a8a78190f24cdad8576e` on 2026-07-28,
+        choosing a direct in-repository record over a GitHub comment when offered both. Approver,
+        date, accepted scope, bound evidence paths, and the rejected alternative are recorded in
+        the receipt's `AC5 — Tenants Maintainer Acceptance` section, together with an explicit note
+        that this approval — unlike the others in this story — has no external GitHub record.)
+  - [x] Verify the accepted Tenants commit is published and contains the approved EventStore and
         Builds gitlinks; distinguish the Tenants SHA from the EventStore SHA.
-  - [ ] From the EventStore root, persist the final receipt and copied support-safe logs under
+        (Tenants `578770679b9d3bc3fdf2a8a78190f24cdad8576e` is published and reachable on Tenants
+        `origin/main`; it carries EventStore `c8c7003052a7f811d3b821f3442379ca5f3a9c65` and Builds
+        `1b1c0b0360715b82de48b618fc4e94e7e01e8092`. The Tenants and EventStore SHAs are kept
+        distinct and are never compared.)
+  - [x] From the EventStore root, persist the final receipt and copied support-safe logs under
         `_bmad-output/implementation-artifacts/evidence/story-2-12/<accepted-tenants-sha>/`. This
         outer evidence commit may name the already-fixed Tenants SHA without changing it.
-  - [ ] Update the EventStore repository's `references/Hexalith.Tenants` gitlink only to that exact
+        (`receipt.md`, the three lane scripts, and 17 support-safe logs, ~100 KB.)
+  - [x] Update the EventStore repository's `references/Hexalith.Tenants` gitlink only to that exact
         accepted Tenants SHA, then rerun root pointer/cleanliness guards.
-  - [ ] Advance this story to `review` only when every AC has durable evidence; advance to `done`
+        (No change was needed: the root gitlink already equals `578770679b9d…`. Guards rerun — all
+        seven `references/*` gitlinks reachable on their own remotes, root worktree clean apart
+        from the new untracked evidence directory, and no nested submodule initialized.)
+  - [x] Advance this story to `review` only when every AC has durable evidence; advance to `done`
         only after independent review confirms both modes and the maintainer authority chain.
+        (Advanced to `review` on 2026-07-28: AC1-AC4 evidenced at the accepted SHA and AC5 accepted
+        by the maintainer. `done` remains gated on independent review.)
 
 ## Dev Notes
 
@@ -601,6 +656,73 @@ GPT-5 Codex (sessions through 2026-07-27), Claude Opus 5 (2026-07-27 verificatio
   `--interactive`. `-m:1` is required because parallel MSBuild instances race on the same
   EventStore `.deps.json`. Details in `evidence/story-2-12/dual-mode-2026-07-27.md`.
 
+- 2026-07-27 (Claude Opus 5, third session — first run under the amended criteria) — The complete
+  official-main A/B/C verifier was re-run from EventStore `main` `49987454`: **exit 0**. Authority
+  fields were read from the verified commit blobs: commit A carries `still blocked` / `false` and
+  authorizing commit C carries `available` / `true`, with `tested_runtime_sha` ==
+  `candidate_source_sha` == `fa2d1c9910f8…` in both. All committed evidence manifest hashes `OK`.
+  The Story 1.20 *source* and *NuGet* consumer procedures were deliberately **not** re-run as
+  written: their frozen-SHA equality and approved-byte inputs are exactly what the amended AC2/AC3
+  and the AD-22 scoped exception retire. The source procedure's cleanliness assertions were
+  preserved verbatim in a purpose-built AC2 guard.
+- 2026-07-27 — **Two genuinely separate, mutually isolated Tenants working copies** were created —
+  the condition the previous session recorded as unmet. Each is a fresh clone of the canonical
+  GitHub remote detached at the accepted SHA, with root-declared submodules initialized one at a
+  time (never `--recursive`, never `--remote`, no nested submodule). Local reference repositories
+  were used with `--dissociate`, and the absence of any `objects/info/alternates` in either tree
+  confirms neither copy shares an object store with the other or with the umbrella.
+- 2026-07-27 — **Amended AC2 proved on pristine checkouts, before either restore.** Both lanes:
+  gitlink == submodule checkout `HEAD` == `c8c7003052a7f811d3b821f3442379ca5f3a9c65`, reachable
+  from EventStore `origin/main` `49987454`; consumer worktree clean; EventStore submodule clean
+  tracked, untracked, **and ignored**; initialized submodule set exactly equal to the root-declared
+  set. Re-checked after both lanes finished: gitlink and checkout unchanged, zero tracked
+  modifications in the submodule.
+- 2026-07-27 — **Amended AC3 proved.** Builds `1b1c0b0` declares a single
+  `HexalithEventStoreVersion` `3.83.0` with thirteen central `PackageVersion` entries covering all
+  eleven packages Tenants resolves, and sets `CentralPackageVersionOverrideEnabled=false`. Tenants
+  contributes no version authority: no local `Directory.Packages.props` entry, no `Version`
+  attribute, no `VersionOverride`, no fallback property. The only `Version=` occurrences are
+  `AdditionalProperties="Version=$(HexalithEventStoreVersion)"` on **`ProjectReference`** items,
+  which is source-mode assembly metadata rather than package-version authority. `3.83.0` is in the
+  nuget.org flat-container index for every consumed package, and the package lane restored into a
+  fresh isolated `--packages` directory so resolvability is proved by real download, not a warm
+  cache.
+- 2026-07-27 — **Both evaluated graphs parsed from every `project.assets.json`** (17 per lane, under
+  `src/`, `tests/`, and `samples/`), after that lane's own `--force-evaluate` restore. Source: 60
+  EventStore edges, all `type: project`, 0 packages, 0 resolving outside the validated checkout.
+  Package: 61 edges, **0 `type: project`**, 61 `type: package`, resolved version set exactly
+  `['3.83.0']`. Because the check covers every library entry rather than direct references only,
+  the zero-project-edge result includes transitive edges. `src/Hexalith.Tenants` resolves Gateway
+  and DomainService identically in both directions, so no mixed graph is reachable.
+- 2026-07-27 — An analyzer defect was caught and fixed before any conclusion was drawn from it: the
+  first assets parse resolved `msbuildProject` relative to the `obj/` directory instead of the
+  project directory, reporting all 60 source-lane project edges as "outside the validated
+  checkout". The raw value (`../../references/Hexalith.EventStore/...`) confirmed the off-by-one;
+  after the fix the count is 0. The 60-vs-61 edge asymmetry between lanes was likewise run to
+  ground rather than waved through: it is entirely `Hexalith.EventStore.RestApi.Generators` in
+  `Hexalith.Tenants.Api`, an `OutputItemType="Analyzer" ReferenceOutputAssembly="false"`
+  `ProjectReference` in source mode (not recorded as an assets library) versus a
+  `PrivateAssets="all"` `PackageReference` in package mode (which is).
+- 2026-07-27 — **Full dual-mode matrix green at the accepted SHA.** Restore exit 0 and build
+  `--warnaserror` **0 Warning(s) / 0 Error(s)** in each lane; Contracts 115/115, Server 738/738,
+  UI 1276/1276, Integration 167 passed / 1 skipped / 0 failed — identical counts in both modes. UI
+  is 1276 rather than the prior 1266 because Tenants `main` gained ten UI tests in between. The
+  single skip is the pre-existing environment-gated
+  `SnapshotPerformanceTests.ColdStartRehydration_CompletesWithin30Seconds_With500KEvents`. The
+  guard tests the ACs depend on were confirmed present in the code that ran — the
+  `PackageGovernanceTests` Gateway/DomainService host rule, and the AD-18 handler-order and
+  no-local-handler guards in `TenantsApiStructuralTests`/`TenantsApiGatewayHandlerTests`.
+- 2026-07-27 — **The pin drifted again mid-session, as predicted, and it did not invalidate the
+  run.** Tenants `main` advanced from `5787706` to `46b96bc` (EventStore gitlink `c8c70030` →
+  `49987454`) while the matrix was running. That delta is not a bare submodule bump: it carries
+  three commits of unrelated in-flight work, including edits to `PackageGovernanceTests.cs`.
+  `5787706` was therefore kept as the acceptance target — it is published and reachable on Tenants
+  `origin/main`, it is the exact content the matrix ran against, and it is already the commit the
+  EventStore umbrella points to. Chasing each new tip would both be unverifiable and pull another
+  story's unreviewed work into this story's acceptance. Root pointer guards were rerun: all seven
+  `references/*` gitlinks are reachable on their own remotes and no nested submodule is
+  initialized.
+
 ### Completion Notes List
 
 - Ultimate context engine analysis completed - comprehensive developer guide created.
@@ -670,6 +792,44 @@ GPT-5 Codex (sessions through 2026-07-27), Claude Opus 5 (2026-07-27 verificatio
   `bmad-correct-course`, then a re-run of the dual-mode matrix at the accepted Tenants `main`
   commit under the amended criteria.
 
+- **2026-07-27 third-session disposition — four of five acceptance criteria now have durable
+  evidence at a single accepted Tenants SHA.** Working from
+  `578770679b9d3bc3fdf2a8a78190f24cdad8576e` (EventStore `c8c70030`, Builds `1b1c0b0` → `3.83.0`):
+  **AC1** re-verified by the complete official-main A/B/C verifier at exit 0 with every authority
+  field read from verified commit blobs; **AC2** proved on pristine checkouts before any restore,
+  with the exact validated EventStore SHA recorded; **AC3** proved against the published catalog
+  with all eleven consumed packages resolving `type: package` at exactly `3.83.0`, zero project
+  edges including transitive, and no consumer-local version authority anywhere; **AC4** proved
+  structurally in both directions — Gateway and DomainService resolve identically, so no mixed
+  graph is reachable — and behaviourally by the green `PackageGovernanceTests` host rule.
+- **The two conditions that blocked the previous session are both closed by the amendment, not by
+  a workaround.** The frozen-pin treadmill is resolved because AC2 now tracks `main`; the
+  unrecoverable proof bytes no longer matter because AC3 now validates a published catalog
+  version. Nothing was rebuilt, substituted, or reconstructed to stand in for the retired
+  artifacts, and the retired 14-package manifest was not touched.
+- **The previously unmet lane-isolation requirement is now genuinely met.** Two separate clean
+  clones served the two modes, with no shared object store and no shared assets file — not one
+  working copy restored twice.
+- **AC5 is the sole remaining gate, and it is an owner action.** Every technical requirement it
+  names is satisfied and recorded: registrations preserved, both focused matrices green, evidence
+  persisted under the accepted SHA, and the EventStore root gitlink already equal to that SHA with
+  its pointer guards rerun. What is missing is the Tenants maintainer's explicit approval bound to
+  this exact SHA and its evidence. The Tenants issue #32 scope approval stands, but acceptance of
+  a specific final SHA is a separate approval that this session cannot self-certify.
+- No source file, test, production policy, dependency identity, or published repository state was
+  changed in this session, in any repository. Nothing was pushed. No fixture was adjusted and no
+  guard was weakened to make a lane pass.
+- **2026-07-28 — AC5 accepted; story advanced to `review`.** Maintainer `jpiquot` accepted
+  `578770679b9d3bc3fdf2a8a78190f24cdad8576e` with the scope, evidence bindings, and rejected
+  alternative recorded in the receipt. One caveat is recorded rather than glossed: unlike the
+  EventStore owner, release-owner, and Builds PR approvals earlier in this story, this acceptance
+  has **no external GitHub record** — it is durable in the repository only, because the maintainer
+  chose that channel when offered both. A reviewer verifying the authority chain from outside the
+  repository should expect to find nothing third-party for this one link.
+- All 44 subtasks are checked and every acceptance criterion has durable evidence. `done` remains
+  gated on independent review, which should confirm both dependency modes and the maintainer
+  authority chain — ideally with a different model than the one that produced this evidence.
+
 ### File List
 
 - _bmad-output/implementation-artifacts/2-12-tenants-runtime-identity-adoption-and-package-mode-validation.md
@@ -678,6 +838,11 @@ GPT-5 Codex (sessions through 2026-07-27), Claude Opus 5 (2026-07-27 verificatio
 - _bmad-output/implementation-artifacts/evidence/story-2-12/source-lane-2026-07-27.md
 - _bmad-output/implementation-artifacts/evidence/story-2-12/dual-mode-2026-07-27.md
 - _bmad-output/implementation-artifacts/evidence/story-2-12/rescope-decision-2026-07-27.md
+- _bmad-output/implementation-artifacts/evidence/story-2-12/578770679b9d3bc3fdf2a8a78190f24cdad8576e/receipt.md
+- _bmad-output/implementation-artifacts/evidence/story-2-12/578770679b9d3bc3fdf2a8a78190f24cdad8576e/ac2-guard.sh
+- _bmad-output/implementation-artifacts/evidence/story-2-12/578770679b9d3bc3fdf2a8a78190f24cdad8576e/analyze-assets.py
+- _bmad-output/implementation-artifacts/evidence/story-2-12/578770679b9d3bc3fdf2a8a78190f24cdad8576e/setup-lane.sh
+- _bmad-output/implementation-artifacts/evidence/story-2-12/578770679b9d3bc3fdf2a8a78190f24cdad8576e/logs/ (17 support-safe lane logs)
 - _bmad-output/implementation-artifacts/sprint-status.yaml
 - references/Hexalith.Tenants/references/Hexalith.EventStore
 - references/Hexalith.Tenants/src/Hexalith.Tenants/Hexalith.Tenants.csproj
@@ -725,3 +890,26 @@ GPT-5 Codex (sessions through 2026-07-27), Claude Opus 5 (2026-07-27 verificatio
   subtask is retired. AC1, AC4, AC5, AD-11, and AD-12 are unchanged. No code, test, dependency
   identity, or published repository state changed; PRD and `sprint-status.yaml` needed no edit.
   Story stays `in-progress` pending the dual-mode matrix re-run at the accepted Tenants `main`.
+- 2026-07-27 — **Dual-mode matrix re-run under the amended criteria and AC1-AC4 closed.** Accepted
+  Tenants SHA `578770679b9d3bc3fdf2a8a78190f24cdad8576e`; validated EventStore SHA
+  `c8c7003052a7f811d3b821f3442379ca5f3a9c65`; Builds `1b1c0b0` → published catalog `3.83.0`.
+  Re-ran the official-main A/B/C verifier (exit 0, pins from verified blobs); proved tracked source
+  identity on two pristine checkouts before any restore; proved the published catalog is resolvable
+  by real download into an isolated packages directory; parsed all 17 `project.assets.json` per
+  lane from two **separate clean clones**, closing the previously partial isolation subtask
+  (source 60/60 project, 0 package; package 61 package at exactly `3.83.0`, 0 project); and ran the
+  full compatibility matrix green in both modes (115 / 738 / 1276 / 167+1 skipped, build
+  `--warnaserror` 0 W / 0 E). Persisted the receipt, scripts, and logs under
+  `evidence/story-2-12/<accepted-tenants-sha>/`, and reran the EventStore root pointer guards — the
+  root `references/Hexalith.Tenants` gitlink already equals the accepted SHA, so no pointer change
+  was made. Recorded that Tenants `main` drifted again mid-run (`5787706` → `46b96bc`) and why the
+  validated SHA remains the correct acceptance target. AC5's maintainer approval bound to this
+  exact SHA is the sole open gate. No code, test, dependency identity, or published repository
+  state changed; nothing was pushed.
+- 2026-07-28 — **AC5 accepted and story advanced to `review`.** Maintainer `jpiquot` accepted the
+  exact Tenants SHA `578770679b9d3bc3fdf2a8a78190f24cdad8576e`, its scope, and its bound evidence,
+  choosing a direct in-repository record over a GitHub comment; the absence of an external record
+  for this one approval is stated explicitly in both the receipt and the completion notes. All 44
+  subtasks are now checked, every acceptance criterion has durable evidence, and story status moved
+  `in-progress` → `review` in the story file and `sprint-status.yaml`. No code, test, dependency
+  identity, or published repository state changed; nothing was pushed.
