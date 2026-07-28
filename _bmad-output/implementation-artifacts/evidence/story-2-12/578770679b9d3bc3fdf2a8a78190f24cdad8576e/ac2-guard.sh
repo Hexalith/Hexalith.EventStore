@@ -43,11 +43,18 @@ test -z "$(git -C "$EVENTSTORE_SUBMODULE" status --porcelain=v1 --ignored=matchi
   || fail "EventStore submodule has ignored/build artifacts (guard must run before restore)"
 
 # 5. only Tenants-root-declared submodules are initialized — no nested submodule initialized
+# `git submodule status` lists EVERY declared submodule; an uninitialized one is marked only by a
+# leading '-' on field 1, so filtering on that prefix is required. Without it the comparison below
+# is a tautology that can never fail (2026-07-28 code review).
 ROOT_DECLARED="$(git config -f .gitmodules --get-regexp '^submodule\..*\.path$' | awk '{print $2}' | sort)"
-INITIALIZED="$(git submodule status | awk '{print $2}' | sort)"
+INITIALIZED="$(git submodule status | awk '$1 !~ /^-/ {print $2}' | sort)"
+test -n "$ROOT_DECLARED" || fail "no root-declared submodules found in .gitmodules"
 test "$ROOT_DECLARED" = "$INITIALIZED" \
   || fail "initialized submodule set != root-declared set"
 NESTED_INIT=0
+# Iterate the declared set, not the initialized set: an uninitialized submodule cannot hold a
+# nested checkout, but iterating INITIALIZED would skip nothing useful and would break when
+# INITIALIZED is legitimately empty.
 while read -r sub; do
   [ -f "$sub/.gitmodules" ] || continue
   while read -r nested; do
@@ -56,13 +63,18 @@ while read -r sub; do
       NESTED_INIT=1
     fi
   done < <(git -C "$sub" config -f .gitmodules --get-regexp '^submodule\..*\.path$' | awk '{print $2}')
-done <<< "$INITIALIZED"
+done <<< "$ROOT_DECLARED"
 test "$NESTED_INIT" -eq 0 || fail "a nested submodule was initialized"
+
+# 6. the Builds gitlink must exist and be a 40-hex sha — it is reported below as evidence
+BUILDS_GITLINK_SHA="$(git ls-tree --object-only HEAD references/Hexalith.Builds)"
+[[ "$BUILDS_GITLINK_SHA" =~ ^[0-9a-f]{40}$ ]] \
+  || fail "Builds gitlink is not a 40-hex sha: '$BUILDS_GITLINK_SHA'"
 
 printf 'AC2_GUARD_OK\n'
 printf 'TENANTS_SHA=%s\n' "$TENANTS_SHA"
 printf 'EVENTSTORE_GITLINK_SHA=%s\n' "$GITLINK_SHA"
 printf 'EVENTSTORE_CHECKOUT_SHA=%s\n' "$CHECKOUT_SHA"
 printf 'EVENTSTORE_ORIGIN_MAIN=%s\n' "$OFFICIAL_MAIN"
-printf 'BUILDS_GITLINK_SHA=%s\n' "$(git ls-tree --object-only HEAD references/Hexalith.Builds)"
+printf 'BUILDS_GITLINK_SHA=%s\n' "$BUILDS_GITLINK_SHA"
 printf 'ROOT_DECLARED_SUBMODULES=%s\n' "$(echo "$ROOT_DECLARED" | tr '\n' ' ')"

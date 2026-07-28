@@ -21,18 +21,48 @@ ref_for() {
   esac
 }
 
+die() { printf 'SETUP_LANE_FAIL: %s\n' "$1" >&2; exit 1; }
+
+# `rm -rf` on an unvalidated $1 is unrecoverable. `set -u` only catches an *unset* variable, not a
+# mistyped path, an existing repository, or a home directory. Confine the destructive step to the
+# scratch tree this story uses (2026-07-28 code review).
+case "$DEST" in
+  /home/*/tmp-story-2-12/*) ;;
+  *) die "refusing to rm -rf a destination outside /home/*/tmp-story-2-12/: '$DEST'" ;;
+esac
+[ -e "$DEST" ] && [ ! -e "$DEST/.git" ] \
+  && die "refusing to rm -rf '$DEST': it exists but is not a git working copy"
+
+# A branch, tag, or ambiguous abbreviation would silently build the lane at a different commit
+# than the SHA the receipt names. Require a full 40-hex commit id.
+[[ "$TENANTS_SHA" =~ ^[0-9a-f]{40}$ ]] || die "tenants sha must be a full 40-hex commit: '$TENANTS_SHA'"
+
 rm -rf -- "$DEST"
 git clone --quiet --dissociate --reference "$REFS/tenants" "$TEN_URL" "$DEST"
 cd "$DEST"
-git checkout --quiet --detach "$TENANTS_SHA"
+git checkout --quiet --detach "$(git rev-parse --verify --end-of-options "${TENANTS_SHA}^{commit}")"
+test "$(git rev-parse HEAD)" = "$TENANTS_SHA" \
+  || die "checkout landed on $(git rev-parse HEAD), not $TENANTS_SHA"
 
 # Root-declared submodules only. One at a time, never --recursive, never --remote.
+# Read the declared *path* rather than deriving it from the submodule name: the two need not match,
+# and a mismatch would silently skip that submodule.
 git submodule init >/dev/null
-while read -r name; do
-  path="references/$name"
-  refrepo="$(ref_for "$name")"
-  git submodule update --init --reference "$refrepo" --dissociate -- "$path" >/dev/null
-done < <(git config -f .gitmodules --get-regexp '^submodule\..*\.path$' \
-          | sed 's/^submodule\.//; s/\.path .*$//')
+declared=0
+while read -r key path; do
+  name="${key#submodule.}"; name="${name%.path}"
+  refrepo="$(ref_for "$(basename "$path")")" \
+    || die "no local reference repository configured for submodule '$name' (path '$path')"
+  git submodule update --init --reference "$refrepo" --dissociate -- "$path" >/dev/null \
+    || die "submodule update failed for '$path'"
+  declared=$((declared + 1))
+done < <(git config -f .gitmodules --get-regexp '^submodule\..*\.path$')
+test "$declared" -gt 0 || die "no root-declared submodules found in .gitmodules"
 
-echo "LANE_READY $DEST @ $(git rev-parse HEAD)"
+# The receipt's lane-isolation claim rests on --dissociate having completed. Assert it here rather
+# than asserting it in prose afterwards.
+if find "$DEST" -path '*/objects/info/alternates' -print -quit | grep -q .; then
+  die "lane shares an object store — objects/info/alternates survived --dissociate"
+fi
+
+echo "LANE_READY $DEST @ $(git rev-parse HEAD) submodules=$declared alternates=none"
