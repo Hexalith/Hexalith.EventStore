@@ -141,8 +141,8 @@ development_status:
   # it is recorded as an environment blocker with a lane-isolation entry deferred (AC7 forbids patching).
   # AC7 inventory re-taken: 6 modified paths, not 4 (deferred-work.md and docs/ci.md were missing); the
   # excluded Tenants advance is now 4 commits / 71 files / +6,734 / -703, still zero non-UI src/ files.
-  # Open owner action: commit with the explicit pathspec in the File List - never `git commit -a` - on a
-  # branch, since project-context.md forbids direct commits to main.
+  # Committed with an explicit pathspec as 15a1b32e on branch docs/story-3-1-closure (project-context.md
+  # forbids direct commits to main); references/Hexalith.Tenants left dirty per D2. Not pushed.
   3-1-re-tier-live-sidecar-tests-from-release-gate: review
   3-2-harden-dapr-etag-timeout-for-integration-conditions: ready-for-dev
   3-3-references-based-submodule-layout: ready-for-dev
