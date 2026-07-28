@@ -1,0 +1,25 @@
+== downloaded EventStore package versions in the isolated --packages directory ==
+hexalith.eventstore.admin.abstractions: 3.83.0
+hexalith.eventstore.aspire: 3.83.0
+hexalith.eventstore.client: 3.83.0
+hexalith.eventstore.contracts: 3.83.0
+hexalith.eventstore.domainservice: 3.83.0
+hexalith.eventstore.gateway: 3.83.0
+hexalith.eventstore.restapi.generators: 3.83.0
+hexalith.eventstore.server: 3.83.0
+hexalith.eventstore.servicedefaults: 3.83.0
+hexalith.eventstore.testing: 3.83.0
+hexalith.eventstore.testing.integration: 3.83.0
+
+== nupkg files actually fetched ==
+hexalith.eventstore.admin.abstractions/3.83.0/hexalith.eventstore.admin.abstractions.3.83.0.nupkg
+hexalith.eventstore.aspire/3.83.0/hexalith.eventstore.aspire.3.83.0.nupkg
+hexalith.eventstore.client/3.83.0/hexalith.eventstore.client.3.83.0.nupkg
+hexalith.eventstore.contracts/3.83.0/hexalith.eventstore.contracts.3.83.0.nupkg
+hexalith.eventstore.domainservice/3.83.0/hexalith.eventstore.domainservice.3.83.0.nupkg
+hexalith.eventstore.gateway/3.83.0/hexalith.eventstore.gateway.3.83.0.nupkg
+hexalith.eventstore.restapi.generators/3.83.0/hexalith.eventstore.restapi.generators.3.83.0.nupkg
+hexalith.eventstore.server/3.83.0/hexalith.eventstore.server.3.83.0.nupkg
+hexalith.eventstore.servicedefaults/3.83.0/hexalith.eventstore.servicedefaults.3.83.0.nupkg
+hexalith.eventstore.testing.integration/3.83.0/hexalith.eventstore.testing.integration.3.83.0.nupkg
+hexalith.eventstore.testing/3.83.0/hexalith.eventstore.testing.3.83.0.nupkg

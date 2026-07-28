@@ -1,0 +1,89 @@
+== Builds gitlink ==
+53d53ae42abf7c87d385a078ab260531480bbf8a
+
+== HexalithEventStoreVersion declarations in Builds catalog ==
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Builds/Props/Directory.Packages.props:8:    <HexalithEventStoreVersion Condition="'$(HexalithEventStoreVersion)' == ''">3.83.0</HexalithEventStoreVersion>
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Builds/Props/Directory.Packages.props:40:    <PackageVersion Include="Hexalith.EventStore.Admin.Abstractions" Version="$(HexalithEventStoreVersion)" />
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Builds/Props/Directory.Packages.props:41:    <PackageVersion Include="Hexalith.EventStore.Admin.Server" Version="$(HexalithEventStoreVersion)" />
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Builds/Props/Directory.Packages.props:42:    <PackageVersion Include="Hexalith.EventStore.Aspire" Version="$(HexalithEventStoreVersion)" />
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Builds/Props/Directory.Packages.props:43:    <PackageVersion Include="Hexalith.EventStore.Client" Version="$(HexalithEventStoreVersion)" />
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Builds/Props/Directory.Packages.props:44:    <PackageVersion Include="Hexalith.EventStore.Contracts" Version="$(HexalithEventStoreVersion)" />
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Builds/Props/Directory.Packages.props:45:    <PackageVersion Include="Hexalith.EventStore.DomainService" Version="$(HexalithEventStoreVersion)" />
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Builds/Props/Directory.Packages.props:46:    <PackageVersion Include="Hexalith.EventStore.Gateway" Version="$(HexalithEventStoreVersion)" />
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Builds/Props/Directory.Packages.props:47:    <PackageVersion Include="Hexalith.EventStore.RestApi.Generators" Version="$(HexalithEventStoreVersion)" />
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Builds/Props/Directory.Packages.props:48:    <PackageVersion Include="Hexalith.EventStore.Server" Version="$(HexalithEventStoreVersion)" />
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Builds/Props/Directory.Packages.props:49:    <PackageVersion Include="Hexalith.EventStore.ServiceDefaults" Version="$(HexalithEventStoreVersion)" />
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Builds/Props/Directory.Packages.props:50:    <PackageVersion Include="Hexalith.EventStore.SignalR" Version="$(HexalithEventStoreVersion)" />
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Builds/Props/Directory.Packages.props:51:    <PackageVersion Include="Hexalith.EventStore.Testing" Version="$(HexalithEventStoreVersion)" />
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Builds/Props/Directory.Packages.props:52:    <PackageVersion Include="Hexalith.EventStore.Testing.Integration" Version="$(HexalithEventStoreVersion)" />
+
+== count of central Hexalith.EventStore* PackageVersion entries ==
+13
+
+== CentralPackageVersionOverrideEnabled (Builds) ==
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Builds/Props/Directory.Packages.props:3:    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Builds/Props/Directory.Packages.props:4:    <CentralPackageVersionOverrideEnabled>false</CentralPackageVersionOverrideEnabled>
+
+== ANY HexalithEventStoreVersion definition anywhere OUTSIDE Builds in the lane ==
+(none)
+
+== Tenants-local Directory.Packages.props? ==
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/Directory.Packages.props
+
+== Version= / VersionOverride on any Hexalith.EventStore* reference in Tenants-owned projects ==
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/src/Hexalith.Tenants.Contracts/Hexalith.Tenants.Contracts.csproj:5:    <ProjectReference Include="$(HexalithEventStoreRoot)\src\Hexalith.EventStore.Contracts\Hexalith.EventStore.Contracts.csproj" AdditionalProperties="Version=$(HexalithEventStoreVersion)" Condition="'$(HexalithEventStoreFromSource)' == 'true'" />
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/src/Hexalith.Tenants.Server/Hexalith.Tenants.Server.csproj:6:    <ProjectReference Include="$(HexalithEventStoreRoot)\src\Hexalith.EventStore.Server\Hexalith.EventStore.Server.csproj" AdditionalProperties="Version=$(HexalithEventStoreVersion)" Condition="'$(HexalithEventStoreFromSource)' == 'true'" />
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/src/Hexalith.Tenants.Aspire/Hexalith.Tenants.Aspire.csproj:17:    <ProjectReference Include="$(HexalithEventStoreRoot)\src\Hexalith.EventStore.Aspire\Hexalith.EventStore.Aspire.csproj" AdditionalProperties="Version=$(HexalithEventStoreVersion)" Condition="'$(HexalithEventStoreFromSource)' == 'true'" />
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/src/Hexalith.Tenants.AppHost/Hexalith.Tenants.AppHost.csproj:15:    <ProjectReference Include="$(HexalithEventStoreRoot)\src\Hexalith.EventStore.Aspire\Hexalith.EventStore.Aspire.csproj" AdditionalProperties="Version=$(HexalithEventStoreVersion)" IsAspireProjectResource="false" Condition="'$(HexalithEventStoreFromSource)' == 'true'" />
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/src/Hexalith.Tenants.Api/Hexalith.Tenants.Api.csproj:12:    <ProjectReference Include="$(HexalithEventStoreRoot)\src\Hexalith.EventStore.Client\Hexalith.EventStore.Client.csproj" AdditionalProperties="Version=$(HexalithEventStoreVersion)" Condition="'$(HexalithEventStoreFromSource)' == 'true'" />
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/src/Hexalith.Tenants.Api/Hexalith.Tenants.Api.csproj:22:    <ProjectReference Include="$(HexalithEventStoreRoot)\src\Hexalith.EventStore.ServiceDefaults\Hexalith.EventStore.ServiceDefaults.csproj" AdditionalProperties="Version=$(HexalithEventStoreVersion)" Condition="'$(HexalithEventStoreFromSource)' == 'true'" />
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/src/Hexalith.Tenants/Hexalith.Tenants.csproj:24:    <ProjectReference Include="$(HexalithEventStoreRoot)\src\Hexalith.EventStore.DomainService\Hexalith.EventStore.DomainService.csproj" AdditionalProperties="Version=$(HexalithEventStoreVersion)" Condition="'$(HexalithEventStoreFromSource)' == 'true'" />
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/tests/Hexalith.Tenants.IntegrationTests/Hexalith.Tenants.IntegrationTests.csproj:13:    <ProjectReference Include="$(HexalithEventStoreRoot)\src\Hexalith.EventStore.Testing\Hexalith.EventStore.Testing.csproj" AdditionalProperties="Version=$(HexalithEventStoreVersion)" Condition="'$(HexalithEventStoreFromSource)' == 'true'" />
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/tests/Hexalith.Tenants.IntegrationTests/Hexalith.Tenants.IntegrationTests.csproj:18:    <ProjectReference Include="$(HexalithEventStoreRoot)\src\Hexalith.EventStore.Testing.Integration\Hexalith.EventStore.Testing.Integration.csproj" AdditionalProperties="Version=$(HexalithEventStoreVersion)" Condition="'$(HexalithEventStoreFromSource)' == 'true'" />
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/src/Hexalith.Tenants.Client/Hexalith.Tenants.Client.csproj:14:    <ProjectReference Include="$(HexalithEventStoreRoot)\src\Hexalith.EventStore.Client\Hexalith.EventStore.Client.csproj" AdditionalProperties="Version=$(HexalithEventStoreVersion)" Condition="'$(HexalithEventStoreFromSource)' == 'true'" />
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/samples/Hexalith.Tenants.Sample/Hexalith.Tenants.Sample.csproj:12:    <ProjectReference Include="$(HexalithEventStoreRoot)\src\Hexalith.EventStore.DomainService\Hexalith.EventStore.DomainService.csproj" AdditionalProperties="Version=$(HexalithEventStoreVersion)" Condition="'$(HexalithEventStoreFromSource)' == 'true'" />
+
+== CORRECTED: any element definition of HexalithEventStoreVersion outside Builds ==
+(none outside Builds)
+
+== CORRECTED: same, INSIDE Builds (should be exactly 1) ==
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Builds/Props/Directory.Packages.props:8:    <HexalithEventStoreVersion Condition="'$(HexalithEventStoreVersion)' == ''">3.83.0</HexalithEventStoreVersion>
+
+== VersionOverride anywhere in Tenants-owned projects ==
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/tests/Hexalith.Tenants.Contracts.Tests/PackageGovernanceTests.cs:122:                if (packageReference.Attribute("Version") is not null || packageReference.Attribute("VersionOverride") is not null) {
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/tests/Hexalith.Tenants.Contracts.Tests/PackageGovernanceTests.cs:306:        || packageReference.Attribute("VersionOverride") is not null
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/tests/Hexalith.Tenants.Contracts.Tests/PackageGovernanceTests.cs:307:        || packageReference.Elements().Any(child => child.Name.LocalName is "Version" or "VersionOverride");
+
+== Tenants-root Directory.Packages.props: any Hexalith.EventStore entry? ==
+(none)
+
+== Tenants-root Directory.Packages.props head ==
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <!-- Define paths of the Hexalith packages props. -->
+    <Hexalith1BuildPackageProps>$(MSBuildThisFileDirectory)references/Hexalith.Builds/Props/Directory.Packages.props</Hexalith1BuildPackageProps>
+    <Hexalith2BuildPackageProps>$(MSBuildThisFileDirectory)../Hexalith.Builds/Props/Directory.Packages.props</Hexalith2BuildPackageProps>
+    <Hexalith3BuildPackageProps>$(MSBuildThisFileDirectory)../../Hexalith.Builds/Props/Directory.Packages.props</Hexalith3BuildPackageProps>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+  <!-- Import the required Hexalith.Packages.props file. -->
+  <Import Project="$(Hexalith1BuildPackageProps)" Condition="Exists('$(Hexalith1BuildPackageProps)') And '$(HexalithVersionsLoaded)' != 'true'" />
+  <Import Project="$(Hexalith2BuildPackageProps)" Condition="Exists('$(Hexalith2BuildPackageProps)') And '$(HexalithVersionsLoaded)' != 'true'" />
+
+== PackageReference to Hexalith.EventStore* in Tenants-owned projects (must be version-less) ==
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/src/Hexalith.Tenants.Client/Hexalith.Tenants.Client.csproj:15:    <PackageReference Include="Hexalith.EventStore.Client" Condition="'$(HexalithEventStoreFromSource)' != 'true'" />
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/samples/Hexalith.Tenants.Sample/Hexalith.Tenants.Sample.csproj:13:    <PackageReference Include="Hexalith.EventStore.DomainService" Condition="'$(HexalithEventStoreFromSource)' != 'true'" />
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/src/Hexalith.Tenants.Server/Hexalith.Tenants.Server.csproj:7:    <PackageReference Include="Hexalith.EventStore.Server" Condition="'$(HexalithEventStoreFromSource)' != 'true'" />
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/src/Hexalith.Tenants.Aspire/Hexalith.Tenants.Aspire.csproj:18:    <PackageReference Include="Hexalith.EventStore.Aspire" Condition="'$(HexalithEventStoreFromSource)' != 'true'" />
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/src/Hexalith.Tenants.Contracts/Hexalith.Tenants.Contracts.csproj:6:    <PackageReference Include="Hexalith.EventStore.Contracts" Condition="'$(HexalithEventStoreFromSource)' != 'true'" />
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/src/Hexalith.Tenants.AppHost/Hexalith.Tenants.AppHost.csproj:16:    <PackageReference Include="Hexalith.EventStore.Aspire" Condition="'$(HexalithEventStoreFromSource)' != 'true'" />
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/src/Hexalith.Tenants/Hexalith.Tenants.csproj:22:    <PackageReference Include="Hexalith.EventStore.Gateway" Condition="'$(HexalithEventStoreFromSource)' != 'true'" />
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/src/Hexalith.Tenants/Hexalith.Tenants.csproj:25:    <PackageReference Include="Hexalith.EventStore.DomainService" Condition="'$(HexalithEventStoreFromSource)' != 'true'" />
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/tests/Hexalith.Tenants.IntegrationTests/Hexalith.Tenants.IntegrationTests.csproj:14:    <PackageReference Include="Hexalith.EventStore.Testing" Condition="'$(HexalithEventStoreFromSource)' != 'true'" />
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/tests/Hexalith.Tenants.IntegrationTests/Hexalith.Tenants.IntegrationTests.csproj:19:    <PackageReference Include="Hexalith.EventStore.Testing.Integration" Condition="'$(HexalithEventStoreFromSource)' != 'true'" />
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/src/Hexalith.Tenants.Api/Hexalith.Tenants.Api.csproj:13:    <PackageReference Include="Hexalith.EventStore.Client" Condition="'$(HexalithEventStoreFromSource)' != 'true'" />
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/src/Hexalith.Tenants.Api/Hexalith.Tenants.Api.csproj:19:    <PackageReference Include="Hexalith.EventStore.RestApi.Generators"
+/home/administrator/tmp-story-2-12/src-lane-f9e51c6/src/Hexalith.Tenants.Api/Hexalith.Tenants.Api.csproj:23:    <PackageReference Include="Hexalith.EventStore.ServiceDefaults" Condition="'$(HexalithEventStoreFromSource)' != 'true'" />
+
+== configured nuget sources ==

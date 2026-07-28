@@ -1,0 +1,5 @@
+########## SOURCE MODE — the two AC4 guard tests, named ##########
+Passed!  - Failed:     0, Passed:     2, Skipped:     0, Total:     2, Duration: 33 ms - Hexalith.Tenants.Contracts.Tests.dll (net10.0)
+
+########## PACKAGE MODE — the two AC4 guard tests, named ##########
+Passed!  - Failed:     0, Passed:     2, Skipped:     0, Total:     2, Duration: 32 ms - Hexalith.Tenants.Contracts.Tests.dll (net10.0)

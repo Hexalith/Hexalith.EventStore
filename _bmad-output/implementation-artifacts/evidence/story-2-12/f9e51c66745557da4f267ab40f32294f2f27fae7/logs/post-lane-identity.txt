@@ -1,0 +1,19 @@
+== src-lane-f9e51c6 (AFTER both restores/builds) ==
+  tenants HEAD:        f9e51c66745557da4f267ab40f32294f2f27fae7
+  ES gitlink:          150216c3831370146814fc23d6b1437e3c97a6d5
+  ES checkout:         150216c3831370146814fc23d6b1437e3c97a6d5
+  ES tracked modified: 0 file(s)
+  Builds gitlink:      53d53ae42abf7c87d385a078ab260531480bbf8a
+
+== pkg-lane-f9e51c6 (AFTER both restores/builds) ==
+  tenants HEAD:        f9e51c66745557da4f267ab40f32294f2f27fae7
+  ES gitlink:          150216c3831370146814fc23d6b1437e3c97a6d5
+  ES checkout:         150216c3831370146814fc23d6b1437e3c97a6d5
+  ES tracked modified: 0 file(s)
+  Builds gitlink:      53d53ae42abf7c87d385a078ab260531480bbf8a
+
+== umbrella (EventStore root) at this moment ==
+  HEAD:                     e7de0da91f7fe0e947d1b37dfb7554761eca9fa7
+  references/Hexalith.Tenants gitlink: f9e51c66745557da4f267ab40f32294f2f27fae7
+== Tenants origin/main at this moment ==
+  f9e51c66745557da4f267ab40f32294f2f27fae7

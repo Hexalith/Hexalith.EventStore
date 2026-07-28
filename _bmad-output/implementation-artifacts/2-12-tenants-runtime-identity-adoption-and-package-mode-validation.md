@@ -3,12 +3,14 @@ created: 2026-07-27
 baseline_commit: 73589770b14888b703d78d37325b066befa0689c
 story_id: "2.12"
 story_key: 2-12-tenants-runtime-identity-adoption-and-package-mode-validation
-status: in-progress
-accepted_tenants_sha: 578770679b9d3bc3fdf2a8a78190f24cdad8576e
-validated_eventstore_sha: c8c7003052a7f811d3b821f3442379ca5f3a9c65
-validated_builds_sha: 1b1c0b0360715b82de48b618fc4e94e7e01e8092
+status: review
+accepted_tenants_sha: f9e51c66745557da4f267ab40f32294f2f27fae7
+validated_eventstore_sha: 150216c3831370146814fc23d6b1437e3c97a6d5
+validated_builds_sha: 53d53ae42abf7c87d385a078ab260531480bbf8a
 resolved_catalog_version: 3.83.0
-final_receipt: evidence/story-2-12/578770679b9d3bc3fdf2a8a78190f24cdad8576e/receipt.md
+final_receipt: evidence/story-2-12/f9e51c66745557da4f267ab40f32294f2f27fae7/receipt.md
+prior_accepted_tenants_sha: 578770679b9d3bc3fdf2a8a78190f24cdad8576e
+prior_receipt: evidence/story-2-12/578770679b9d3bc3fdf2a8a78190f24cdad8576e/receipt.md
 package_lane_status: closed-against-published-catalog
 package_lane_prerequisite_receipt: evidence/story-2-12/prerequisites.md
 rescope_decision: evidence/story-2-12/rescope-decision-2026-07-27.md
@@ -20,13 +22,20 @@ crosswalk: ../planning-artifacts/story-id-migration-2026-07-15.md
 
 # Story 2.12: Tenants Runtime Identity Adoption And Package-Mode Validation
 
-Status: in-progress
+Status: review
 
 `review` means every acceptance criterion has durable evidence at the accepted Tenants SHA
-`578770679b9d3bc3fdf2a8a78190f24cdad8576e` under the amended AC2/AC3 and the AD-22 scoped
+`f9e51c66745557da4f267ab40f32294f2f27fae7` under the amended AC2/AC3 and the AD-22 scoped
 exception, and the Tenants maintainer has accepted that exact SHA. The External Prerequisite
 Contract that previously held this story fail-closed is retired; `done` remains gated on
 independent review of both dependency modes and the maintainer authority chain.
+
+**Acceptance moved from `578770679b9d3bc3fdf2a8a78190f24cdad8576e` to
+`f9e51c66745557da4f267ab40f32294f2f27fae7` on 2026-07-28** because the code review's AC4 guard fix
+is published only at the latter. Evidence is split across two receipts by owner decision: the
+`578770679b9d` receipt holds the full dual-mode matrix, and
+`evidence/story-2-12/f9e51c66745557da4f267ab40f32294f2f27fae7/receipt.md` re-proves AC2, AC3 and AC4
+at the new SHA and states exactly what it carries forward instead of re-running. Read both.
 
 ## Story
 
@@ -323,6 +332,15 @@ working-tree edit**. It needs a Tenants commit and the same maintainer acceptanc
 before this story can be `done`. Everything in the EventStore repository is complete and verified:
 `Hexalith.EventStore.Contracts.Tests` **778/778**.
 
+**Closed 2026-07-28 (delta session).** The blocking condition above is resolved: the AC4 guard patch
+is committed and published as Tenants `f9e51c66745557da4f267ab40f32294f2f27fae7`
+(`feat(tests): enhance PackageGovernanceTests with EventStore reference validation`, +162 / −30),
+which is also exactly what the EventStore umbrella's `references/Hexalith.Tenants` gitlink points to.
+Because the previously accepted `578770679b9d` does **not** contain that patch, acceptance moved to
+`f9e51c6` and AC2/AC3/AC4 were re-proved there under an owner-authorized **focused delta**:
+`evidence/story-2-12/f9e51c66745557da4f267ab40f32294f2f27fae7/receipt.md`. The maintainer accepted
+`f9e51c6` on 2026-07-28. Story advanced `in-progress` → `review`.
+
 **Drift observed live during this review, for the third recorded time.** While the review ran, the
 umbrella's `references/Hexalith.Tenants` working tree moved `f279cb13` → `85e24d5` (11 commits,
 now pinning Builds `53d53ae` and EventStore `150216c3` — neither the validated `c8c70030` nor the
@@ -581,7 +599,8 @@ Official references checked 2026-07-27:
 
 ### Agent Model Used
 
-GPT-5 Codex (sessions through 2026-07-27), Claude Opus 5 (2026-07-27 verification session)
+GPT-5 Codex (sessions through 2026-07-27), Claude Opus 5 (2026-07-27 verification sessions,
+2026-07-28 code review, 2026-07-28 delta session)
 
 ### Debug Log References
 
@@ -788,6 +807,48 @@ GPT-5 Codex (sessions through 2026-07-27), Claude Opus 5 (2026-07-27 verificatio
   `references/*` gitlinks are reachable on their own remotes and no nested submodule is
   initialized.
 
+- 2026-07-28 (Claude Opus 5, delta session) — **The code review's blocking condition is closed by a
+  Tenants commit, not by a workaround.** The strengthened AC4 guard is published as
+  `f9e51c66745557da4f267ab40f32294f2f27fae7`, verified reachable on Tenants `origin/main` (0 ahead /
+  0 behind at the tip) rather than assumed from the working tree. Because the accepted
+  `578770679b9d` does not carry that patch, acceptance had to move, which changes the tracked source
+  identity (`c8c70030` → `150216c3`) and the Builds pin (`1b1c0b0` → `53d53ae`). The catalog version
+  is **unchanged at `3.83.0`**, checked before any lane was built.
+- 2026-07-28 — Owner authorized a **focused delta** over a full matrix re-run, on the recorded
+  ground that the package lane's identity did not move. Two fresh mutually isolated clones were
+  created at `f9e51c6` (`LANE_READY … submodules=7 alternates=none` each), and the AC2 guard ran on
+  both **pristine, before either restore** — `AC2_GUARD_OK` exit 0 twice, gitlink == checkout ==
+  `150216c3`, reachable from EventStore `origin/main` `e7de0da9`. Re-checked after both lanes: 0
+  tracked modifications in the EventStore submodule.
+- 2026-07-28 — AC3 re-proved at Builds `53d53ae`: exactly one `<HexalithEventStoreVersion>`
+  definition in the whole lane (`3.83.0`), 13 central `PackageVersion` entries including Gateway,
+  `CentralPackageVersionOverrideEnabled=false`, and **zero** Tenants-local version authority — no
+  local catalog entry, no `Version` attribute, no `VersionOverride`, no fallback property. Restore
+  exit 0 with **0** `NU####` diagnostic lines; all 11 consumed packages downloaded at `3.83.0` into
+  a fresh isolated `--packages` directory, so resolvability is proved by real download.
+- 2026-07-28 — **An initial AC3 check was wrong and was corrected before anything was concluded from
+  it.** The first "no local version authority" grep used the pattern `HexalithEventStoreVersion *>`,
+  which cannot match `<HexalithEventStoreVersion Condition="…">3.83.0</…>` — it would have reported
+  "(none)" even in the Builds catalog that does define it. Re-run with `<HexalithEventStoreVersion`,
+  the result is 1 definition inside Builds and 0 outside. Both the flawed and the corrected checks
+  are retained in `logs/ac3-catalog.txt`.
+- 2026-07-28 — Both evaluated graphs re-parsed from **all 17** `project.assets.json` per lane after
+  that lane's own `--force-evaluate` restore. Source: 60 edges, 60 `type: project`, 0 packages, 0
+  resolving outside the validated checkout. Package: 61 edges, **0 `type: project`**, 61
+  `type: package`, resolved version set exactly `['3.83.0']`, and **0** raw `ProjectReference`
+  items — the check that reads `project.restore.frameworks[].projectReferences` rather than
+  `libraries`, so the zero-project-edge result covers the `ReferenceOutputAssembly="false"` class
+  too. Counts and the 60↔61 analyzer asymmetry are identical to the prior validated run.
+- 2026-07-28 — AC4 green in both modes: `Hexalith.Tenants.Contracts.Tests` **120/120** in
+  Debug/source and **120/120** in Release/package, solution build `--warnaserror` **0 Warning(s) /
+  0 Error(s)** in each lane. Non-vacuity was proved rather than assumed: the two guard tests were
+  re-run **by name** with `--filter` in both modes (2/2 passed each), because a green suite does not
+  by itself prove a specific test executed.
+- 2026-07-28 — **No drift occurred during this run — the first time in this story.** Tenants
+  `origin/main` was `f9e51c6` before the lanes were created, while they ran, and at the moment of
+  acceptance; the EventStore umbrella gitlink equals it. Recorded as a point-in-time fact, not a
+  guarantee — the `build(deps)` automation is unchanged.
+
 ### Completion Notes List
 
 - Ultimate context engine analysis completed - comprehensive developer guide created.
@@ -895,6 +956,45 @@ GPT-5 Codex (sessions through 2026-07-27), Claude Opus 5 (2026-07-27 verificatio
   gated on independent review, which should confirm both dependency modes and the maintainer
   authority chain — ideally with a different model than the one that produced this evidence.
 
+- **2026-07-28 delta-session disposition — the review's blocking condition is closed and acceptance
+  has moved to a SHA that carries the fix.** The AC4 guard patch is published as Tenants
+  `f9e51c66745557da4f267ab40f32294f2f27fae7`; the previously accepted `578770679b9d` does not
+  contain it, so leaving acceptance there would have left AC4's durable guard at a SHA no acceptance
+  covers — precisely the defect the review raised. AC2, AC3 and AC4 are re-proved at `f9e51c6`
+  (guard exit 0 on both pristine lanes; catalog `3.83.0` unchanged with zero consumer-local version
+  authority and 11 real downloads; graphs 60/60-project and 61/61-package at exactly `3.83.0` with 0
+  raw project references; Contracts.Tests 120/120 in both modes with the two guard tests proved to
+  have executed). Maintainer `jpiquot` accepted `f9e51c6` on 2026-07-28.
+- **The delta is genuinely partial, and the gap is stated rather than glossed.** `Server.Tests`
+  (738/738), `UI.Tests` (1276/1276) and `IntegrationTests` (167 passed / 1 skipped) were **not**
+  re-run at `f9e51c6`; they remain bound to the `578770679b9d` receipt, where the source lane was
+  EventStore `c8c70030`. This SHA's source lane is `150216c3` — three commits ahead, one of them
+  functional (`feat: add IReadModelBulkStore…`). The solution-wide `--warnaserror` build at
+  `f9e51c6` covers compilation in both modes, not behaviour. The owner accepted that gap explicitly
+  when choosing the focused delta over a full re-run; a reviewer wanting behavioural closure at this
+  exact SHA should re-run those three suites.
+- **A coherence property the code review recorded does not survive this delta.** At `578770679b9d`,
+  `git rev-list -n1 v3.83.0` equalled the source lane's EventStore SHA `c8c70030`, so both lanes
+  happened to validate identical EventStore code. At `f9e51c6` the source lane is 3 commits ahead of
+  the `v3.83.0` tag, so that is no longer true. This is permitted — the amended AC2/AC3 deliberately
+  decoupled the lanes and the re-scope decision accepted losing the exact-tested-runtime guarantee —
+  but it must not be carried forward as a strength.
+- **Deferred item 2 (drift detection) is narrowed, not closed.** Tenants `c407c9e`/`85e24d5` added
+  `scripts/validate-story-gitlinks.py` and Tenants-local `bmad` customizations. Checked directly:
+  it is a *story-authoring* gate that fails undeclared `references/` gitlink moves between a story's
+  `baseline_commit` and HEAD; it is not a CI job, it does not detect EventStore gitlink drift on
+  `main` or a wrong-but-resolvable catalog version, and it lives in Hexalith.Tenants only —
+  EventStore has no such script and no `bmad-dev-story` customization, so it did not bind this run.
+- Its substance was applied by hand anyway: between `baseline_commit` `73589770` and EventStore HEAD
+  `e7de0da9`, three `references/` gitlinks moved — `Hexalith.Builds` (`4e5c2a3e`→`53d53ae4`),
+  `Hexalith.Memories` (`6e6d3fb9`→`327d1a9d`) and `Hexalith.Tenants` (`f8aff935`→`f9e51c66`) — all
+  by automated `build(deps)` bumps and other stories' merges. **No gitlink was moved by a Story 2.12
+  commit.** Declared in the File List rather than claimed untouched.
+- Regression outside the lanes: `Hexalith.EventStore.Contracts.Tests` **778/778** at EventStore
+  `e7de0da9`. No source file, test, production policy, dependency identity, or published repository
+  state was changed in this session in any repository; nothing was pushed, no fixture was adjusted
+  and no guard was weakened to make a lane pass.
+
 ### File List
 
 - _bmad-output/implementation-artifacts/2-12-tenants-runtime-identity-adoption-and-package-mode-validation.md
@@ -926,6 +1026,29 @@ was changed in any repository" and "No Builds gitlink was changed"):
   `references/Hexalith.Builds/Tools/test-authoritative-package-catalog.ps1` — owned by Hexalith.Builds
   and changed under its own release change control (PR #47), not by a Tenants or EventStore commit
   in this story.
+
+**Added by the 2026-07-28 delta session** (acceptance moved to Tenants `f9e51c6`):
+
+- `_bmad-output/implementation-artifacts/evidence/story-2-12/f9e51c66745557da4f267ab40f32294f2f27fae7/receipt.md`
+  — delta identity receipt, AC5 acceptance, and the explicit carry-forward statement.
+- `_bmad-output/implementation-artifacts/evidence/story-2-12/f9e51c66745557da4f267ab40f32294f2f27fae7/run-lanes.sh`
+  — the lane driver actually executed.
+- `_bmad-output/implementation-artifacts/evidence/story-2-12/f9e51c66745557da4f267ab40f32294f2f27fae7/logs/`
+  — 18 support-safe logs (AC2 guards, AC3 catalog, both restores/builds, both Contracts.Tests runs,
+  both assets analyses, downloaded package versions, named-guard-test proof, post-lane identity,
+  EventStore gitlink delta, lane setup, driver).
+
+The three shared lane scripts (`setup-lane.sh`, `ac2-guard.sh`, `analyze-assets.py`) were **reused
+unchanged** from the `578770679b9d…` directory and are bound by sha256 in the delta receipt rather
+than duplicated.
+
+**`references/` gitlinks that moved since `baseline_commit` `73589770`** — declared, not claimed
+untouched. **None was moved by a Story 2.12 commit**; all moved via automated `build(deps)` bumps
+and other stories' merges:
+
+- `references/Hexalith.Builds` — `4e5c2a3e` → `53d53ae4` (carries the `3.83.0` catalog this story validates)
+- `references/Hexalith.Memories` — `6e6d3fb9` → `327d1a9d` (unrelated to this story)
+- `references/Hexalith.Tenants` — `f8aff935` → `f9e51c66` (now equals the accepted Tenants SHA)
 
 **Added by the 2026-07-28 code review:**
 
@@ -998,4 +1121,30 @@ was changed in any repository" and "No Builds gitlink was changed"):
   for this one approval is stated explicitly in both the receipt and the completion notes. All 44
   subtasks are now checked, every acceptance criterion has durable evidence, and story status moved
   `in-progress` → `review` in the story file and `sprint-status.yaml`. No code, test, dependency
+  identity, or published repository state changed; nothing was pushed.
+- 2026-07-28 — **Adversarial code review returned the story to `in-progress`.** Four independent
+  no-context layers; outcome 3 owner decisions resolved, 13 patches applied, 2 items deferred, 12
+  dismissed. Not one finding was left unresolved — the single reason for the status change was that
+  the patch fixing the HIGH AC4 finding lived in `Hexalith.Tenants` as an **uncommitted working-tree
+  edit**, so it needed a Tenants commit and the same SHA-bound maintainer acceptance AC5 requires.
+  Everything in the EventStore repository was complete and verified at that point
+  (`Hexalith.EventStore.Contracts.Tests` 778/778).
+- 2026-07-28 — **Acceptance moved to Tenants `f9e51c6` and the story returned to `review`.** The AC4
+  guard patch is now published as `f9e51c66745557da4f267ab40f32294f2f27fae7`, which the previously
+  accepted `578770679b9d` does not contain, so acceptance moved to the SHA that carries it. Under an
+  owner-authorized **focused delta**, AC2/AC3/AC4 were re-proved at `f9e51c6`: AC2 guard exit 0 on
+  two mutually isolated pristine lanes before either restore (gitlink == checkout == EventStore
+  `150216c3`, reachable from `origin/main`); AC3 at Builds `53d53ae` with the catalog version
+  **unchanged at `3.83.0`**, one version definition, 13 central entries,
+  `CentralPackageVersionOverrideEnabled=false`, zero consumer-local version authority, and 11
+  packages fetched by real download with 0 `NU####` diagnostics; both graphs re-parsed from all 17
+  assets files per lane (source 60/60 project, 0 outside; package 61/61 package at exactly `3.83.0`,
+  0 project edges, 0 raw project references); and AC4 green with `Contracts.Tests` 120/120 in
+  **both** modes plus a by-name `--filter` run proving the two guard tests actually executed (2/2
+  each). Builds `--warnaserror` 0 W / 0 E in each lane; `Hexalith.EventStore.Contracts.Tests`
+  778/778. Maintainer `jpiquot` accepted `f9e51c6`. Recorded rather than glossed: `Server.Tests`,
+  `UI.Tests` and `IntegrationTests` were **not** re-run and stay bound to the `578770679b9d`
+  receipt, and the prior coincidence that both lanes validated identical EventStore code no longer
+  holds. New evidence in
+  `evidence/story-2-12/f9e51c66745557da4f267ab40f32294f2f27fae7/`. No code, test, dependency
   identity, or published repository state changed; nothing was pushed.

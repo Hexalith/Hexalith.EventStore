@@ -113,7 +113,7 @@ development_status:
   # Corrected en route: the umbrella gitlink claim was false at HEAD (owner decision D1 = keep the
   # pointer, record the delta), the 17 bound lane logs were gitignored and are now tracked, and the
   # AC2 guard's "only root-declared submodules" assertion was a tautology.
-  2-12-tenants-runtime-identity-adoption-and-package-mode-validation: in-progress
+  2-12-tenants-runtime-identity-adoption-and-package-mode-validation: review
   epic-2-retrospective: done
 
   epic-3: in-progress

@@ -1,0 +1,78 @@
+
+  Hexalith.Commons.Aspire -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Commons/src/libraries/Hexalith.Commons.Aspire/bin/Debug/net10.0/Hexalith.Commons.Aspire.dll
+  The package Hexalith.Commons.Aspire.1.0.0 is missing a readme. Go to https://aka.ms/nuget/authoring-best-practices/readme to learn why package readmes are important.
+  Successfully created package '/home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Commons/src/libraries/Hexalith.Commons.Aspire/bin/Debug/Hexalith.Commons.Aspire.1.0.0.nupkg'.
+  Successfully created package '/home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Commons/src/libraries/Hexalith.Commons.Aspire/bin/Debug/Hexalith.Commons.Aspire.1.0.0.snupkg'.
+  Hexalith.Commons.ServiceDefaults -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Commons/src/libraries/Hexalith.Commons.ServiceDefaults/bin/Debug/net10.0/Hexalith.Commons.ServiceDefaults.dll
+  The package Hexalith.Commons.ServiceDefaults.1.0.0 is missing a readme. Go to https://aka.ms/nuget/authoring-best-practices/readme to learn why package readmes are important.
+  Successfully created package '/home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Commons/src/libraries/Hexalith.Commons.ServiceDefaults/bin/Debug/Hexalith.Commons.ServiceDefaults.1.0.0.nupkg'.
+  Successfully created package '/home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Commons/src/libraries/Hexalith.Commons.ServiceDefaults/bin/Debug/Hexalith.Commons.ServiceDefaults.1.0.0.snupkg'.
+  Hexalith.Commons.UniqueIds -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/bin/Debug/net10.0/Hexalith.Commons.UniqueIds.dll
+  Successfully created package '/home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/bin/Debug/Hexalith.Commons.UniqueIds.1.0.0.nupkg'.
+  Successfully created package '/home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/bin/Debug/Hexalith.Commons.UniqueIds.1.0.0.snupkg'.
+  Hexalith.EventStore.Contracts -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.EventStore/src/Hexalith.EventStore.Contracts/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll
+  Hexalith.EventStore.Admin.Abstractions -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Abstractions/bin/Debug/net10.0/Hexalith.EventStore.Admin.Abstractions.dll
+  Hexalith.EventStore.Contracts -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.EventStore/src/Hexalith.EventStore.Contracts/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll
+  Hexalith.Tenants.Contracts -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/src/Hexalith.Tenants.Contracts/bin/Debug/net10.0/Hexalith.Tenants.Contracts.dll
+  Hexalith.EventStore.Admin.Server -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Server/bin/Debug/net10.0/Hexalith.EventStore.Admin.Server.dll
+  Hexalith.EventStore.ServiceDefaults -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.EventStore/src/Hexalith.EventStore.ServiceDefaults/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll
+  Hexalith.EventStore.Admin.Server.Host -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Server.Host/bin/Debug/net10.0/Hexalith.EventStore.Admin.Server.Host.dll
+  Hexalith.EventStore.Client -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.EventStore/src/Hexalith.EventStore.Client/bin/Debug/net10.0/Hexalith.EventStore.Client.dll
+  Hexalith.EventStore.SignalR -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.EventStore/src/Hexalith.EventStore.SignalR/bin/Debug/net10.0/Hexalith.EventStore.SignalR.dll
+  Hexalith.EventStore.Admin.UI -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.UI/bin/Debug/net10.0/Hexalith.EventStore.Admin.UI.dll
+  Hexalith.EventStore.Aspire -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.EventStore/src/Hexalith.EventStore.Aspire/bin/Debug/net10.0/Hexalith.EventStore.Aspire.dll
+  Hexalith.EventStore.DomainService -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.EventStore/src/Hexalith.EventStore.DomainService/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll
+  Hexalith.EventStore.Server -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.EventStore/src/Hexalith.EventStore.Server/bin/Debug/net10.0/Hexalith.EventStore.Server.dll
+  Hexalith.EventStore.Gateway -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.EventStore/src/Hexalith.EventStore.Gateway/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll
+  Hexalith.EventStore -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.EventStore/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.dll
+  Hexalith.FrontComposer.Contracts -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.FrontComposer/src/Hexalith.FrontComposer.Contracts/bin/Debug/net10.0/Hexalith.FrontComposer.Contracts.dll
+  Hexalith.FrontComposer.Contracts -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.FrontComposer/src/Hexalith.FrontComposer.Contracts/bin/Debug/netstandard2.0/Hexalith.FrontComposer.Contracts.dll
+  Hexalith.FrontComposer.Contracts.UI -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.FrontComposer/src/Hexalith.FrontComposer.Contracts.UI/bin/Debug/net10.0/Hexalith.FrontComposer.Contracts.UI.dll
+  Hexalith.FrontComposer.Shell -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.FrontComposer/src/Hexalith.FrontComposer.Shell/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.dll
+  Hexalith.Memories.AccessTelemetry.Contracts -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Memories/src/Hexalith.Memories.AccessTelemetry.Contracts/bin/Debug/net10.0/Hexalith.Memories.AccessTelemetry.Contracts.dll
+  Hexalith.Memories.Aspire -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Memories/src/Hexalith.Memories.Aspire/bin/Debug/net10.0/Hexalith.Memories.Aspire.dll
+  Hexalith.Memories.Contracts -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Memories/src/Hexalith.Memories.Contracts/bin/Debug/net10.0/Hexalith.Memories.Contracts.dll
+  Hexalith.Memories.EventStore -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Memories/src/Hexalith.Memories.EventStore/bin/Debug/net10.0/Hexalith.Memories.EventStore.dll
+  Hexalith.Memories.Redis -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Memories/src/Hexalith.Memories.Redis/bin/Debug/net10.0/Hexalith.Memories.Redis.dll
+  Hexalith.Memories.Telemetry -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Memories/src/Hexalith.Memories.Telemetry/bin/Debug/net10.0/Hexalith.Memories.Telemetry.dll
+  Hexalith.Memories.ServiceDefaults -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Memories/src/Hexalith.Memories.ServiceDefaults/bin/Debug/net10.0/Hexalith.Memories.ServiceDefaults.dll
+  Hexalith.Memories.Server -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.Memories/src/Hexalith.Memories.Server/bin/Debug/net10.0/Hexalith.Memories.Server.dll
+  Hexalith.EventStore.Client -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.EventStore/src/Hexalith.EventStore.Client/bin/Debug/net10.0/Hexalith.EventStore.Client.dll
+  Hexalith.Tenants.Client -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/src/Hexalith.Tenants.Client/bin/Debug/net10.0/Hexalith.Tenants.Client.dll
+  Hexalith.EventStore.ServiceDefaults -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.EventStore/src/Hexalith.EventStore.ServiceDefaults/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll
+  Hexalith.EventStore.DomainService -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.EventStore/src/Hexalith.EventStore.DomainService/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll
+  Hexalith.Tenants.Sample -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/samples/Hexalith.Tenants.Sample/bin/Debug/net10.0/Hexalith.Tenants.Sample.dll
+  Hexalith.EventStore.Server -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.EventStore/src/Hexalith.EventStore.Server/bin/Debug/net10.0/Hexalith.EventStore.Server.dll
+  Hexalith.Tenants.Server -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/src/Hexalith.Tenants.Server/bin/Debug/net10.0/Hexalith.Tenants.Server.dll
+  Hexalith.Tenants.Testing -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/src/Hexalith.Tenants.Testing/bin/Debug/net10.0/Hexalith.Tenants.Testing.dll
+  Hexalith.Tenants.Sample.Tests -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/samples/Hexalith.Tenants.Sample.Tests/bin/Debug/net10.0/Hexalith.Tenants.Sample.Tests.dll
+  Hexalith.EventStore.RestApi.Generators -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.EventStore/src/Hexalith.EventStore.RestApi.Generators/bin/Debug/netstandard2.0/Hexalith.EventStore.RestApi.Generators.dll
+  Hexalith.Tenants.Api -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/src/Hexalith.Tenants.Api/bin/Debug/net10.0/Hexalith.Tenants.Api.dll
+  Hexalith.EventStore.Aspire -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.EventStore/src/Hexalith.EventStore.Aspire/bin/Debug/net10.0/Hexalith.EventStore.Aspire.dll
+  Hexalith.Tenants.Aspire -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/src/Hexalith.Tenants.Aspire/bin/Debug/net10.0/Hexalith.Tenants.Aspire.dll
+  Hexalith.EventStore.Admin.Abstractions -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Abstractions/bin/Debug/net10.0/Hexalith.EventStore.Admin.Abstractions.dll
+  Hexalith.EventStore.Gateway -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.EventStore/src/Hexalith.EventStore.Gateway/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll
+  Hexalith.EventStore -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.EventStore/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.dll
+  Hexalith.Tenants.Contracts -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/src/Hexalith.Tenants.Contracts/bin/Debug/net10.0/Hexalith.Tenants.Contracts.dll
+  Hexalith.EventStore.Admin.Server -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Server/bin/Debug/net10.0/Hexalith.EventStore.Admin.Server.dll
+  Hexalith.EventStore.Admin.Server.Host -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Server.Host/bin/Debug/net10.0/Hexalith.EventStore.Admin.Server.Host.dll
+  Hexalith.EventStore.SignalR -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.EventStore/src/Hexalith.EventStore.SignalR/bin/Debug/net10.0/Hexalith.EventStore.SignalR.dll
+  Hexalith.EventStore.Admin.UI -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.UI/bin/Debug/net10.0/Hexalith.EventStore.Admin.UI.dll
+  Hexalith.Tenants -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/src/Hexalith.Tenants/bin/Debug/net10.0/Hexalith.Tenants.dll
+  Hexalith.Tenants.UI -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/src/Hexalith.Tenants.UI/bin/Debug/net10.0/Hexalith.Tenants.UI.dll
+  Hexalith.Tenants.AppHost -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/src/Hexalith.Tenants.AppHost/bin/Debug/net10.0/Hexalith.Tenants.AppHost.dll
+  Hexalith.Tenants.Client.Tests -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/tests/Hexalith.Tenants.Client.Tests/bin/Debug/net10.0/Hexalith.Tenants.Client.Tests.dll
+  Hexalith.Tenants.Contracts.Tests -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/tests/Hexalith.Tenants.Contracts.Tests/bin/Debug/net10.0/Hexalith.Tenants.Contracts.Tests.dll
+  Hexalith.EventStore.Testing -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.EventStore/src/Hexalith.EventStore.Testing/bin/Debug/net10.0/Hexalith.EventStore.Testing.dll
+  Hexalith.EventStore.Testing.Integration -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.EventStore/src/Hexalith.EventStore.Testing.Integration/bin/Debug/net10.0/Hexalith.EventStore.Testing.Integration.dll
+  Hexalith.Tenants.IntegrationTests -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/tests/Hexalith.Tenants.IntegrationTests/bin/Debug/net10.0/Hexalith.Tenants.IntegrationTests.dll
+  Hexalith.Tenants.Server.Tests -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/tests/Hexalith.Tenants.Server.Tests/bin/Debug/net10.0/Hexalith.Tenants.Server.Tests.dll
+  Hexalith.Tenants.Testing.Tests -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/tests/Hexalith.Tenants.Testing.Tests/bin/Debug/net10.0/Hexalith.Tenants.Testing.Tests.dll
+  Hexalith.FrontComposer.Testing -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/references/Hexalith.FrontComposer/src/Hexalith.FrontComposer.Testing/bin/Debug/net10.0/Hexalith.FrontComposer.Testing.dll
+  Hexalith.Tenants.UI.Tests -> /home/administrator/tmp-story-2-12/src-lane-f9e51c6/tests/Hexalith.Tenants.UI.Tests/bin/Debug/net10.0/Hexalith.Tenants.UI.Tests.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:23.11

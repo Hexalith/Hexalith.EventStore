@@ -1,0 +1,39 @@
+
+>>>>> SRC restore
+SRC_RESTORE_EXIT=0
+
+>>>>> SRC build
+SRC_BUILD_EXIT=0
+    0 Warning(s)
+    0 Error(s)
+
+>>>>> SRC test Contracts.Tests
+SRC_TEST_EXIT=0
+Passed!  - Failed:     0, Passed:   120, Skipped:     0, Total:   120, Duration: 1 s - Hexalith.Tenants.Contracts.Tests.dll (net10.0)
+
+>>>>> PKG restore
+PKG_RESTORE_EXIT=0
+NU_DIAGNOSTIC_LINES=0
+
+>>>>> PKG build
+PKG_BUILD_EXIT=0
+    0 Warning(s)
+    0 Error(s)
+
+>>>>> PKG test Contracts.Tests
+PKG_TEST_EXIT=0
+Passed!  - Failed:     0, Passed:   120, Skipped:     0, Total:   120, Duration: 1 s - Hexalith.Tenants.Contracts.Tests.dll (net10.0)
+
+>>>>> downloaded EventStore packages in the isolated packages directory
+hexalith.eventstore.admin.abstractions
+hexalith.eventstore.aspire
+hexalith.eventstore.client
+hexalith.eventstore.contracts
+hexalith.eventstore.domainservice
+hexalith.eventstore.gateway
+hexalith.eventstore.restapi.generators
+hexalith.eventstore.server
+hexalith.eventstore.servicedefaults
+hexalith.eventstore.testing
+hexalith.eventstore.testing.integration
+LANES_DONE

@@ -1,0 +1,11 @@
+baseline_commit: 73589770b14888b703d78d37325b066befa0689c
+HEAD:            e7de0da91f7fe0e947d1b37dfb7554761eca9fa7
+
+submodule path                                 baseline                                   HEAD                                       moved?
+references/Hexalith.AI.Tools                   991e8ea1b39bfb8170aea9a6857c25c7c69176c1   991e8ea1b39bfb8170aea9a6857c25c7c69176c1   no
+references/Hexalith.Builds                     4e5c2a3ea6510f38121f718fa122e7b92489821c   53d53ae42abf7c87d385a078ab260531480bbf8a   YES
+references/Hexalith.Commons                    427530e27eab40b12e85832698da6962fd0c5a48   427530e27eab40b12e85832698da6962fd0c5a48   no
+references/Hexalith.FrontComposer              7870526090a8596082e3df034ecacf4c07881a04   7870526090a8596082e3df034ecacf4c07881a04   no
+references/Hexalith.Memories                   6e6d3fb9cb04678a0a1994f43c00804523ed1a26   327d1a9d7eaef063c656a6af9df4eea84f47ca30   YES
+references/Hexalith.PolymorphicSerializations  f3b23304283b0e7a35ffa66bf8d9bf2499e35e66   f3b23304283b0e7a35ffa66bf8d9bf2499e35e66   no
+references/Hexalith.Tenants                    f8aff935cdfbc9d9d394c4b4c0e2861d191f6107   f9e51c66745557da4f267ab40f32294f2f27fae7   YES
