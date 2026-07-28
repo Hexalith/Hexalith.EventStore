@@ -1,0 +1,6 @@
+Test run for /home/administrator/tmp-story-2-12/pkg-lane/tests/Hexalith.Tenants.IntegrationTests/bin/Release/net10.0/Hexalith.Tenants.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:50.40]     Hexalith.Tenants.IntegrationTests.SnapshotPerformanceTests.ColdStartRehydration_CompletesWithin30Seconds_With500KEvents [SKIP]
+  Skipped Hexalith.Tenants.IntegrationTests.SnapshotPerformanceTests.ColdStartRehydration_CompletesWithin30Seconds_With500KEvents [1 ms]
+
+Passed!  - Failed:     0, Passed:   167, Skipped:     1, Total:   168, Duration: 56 s - Hexalith.Tenants.IntegrationTests.dll (net10.0)

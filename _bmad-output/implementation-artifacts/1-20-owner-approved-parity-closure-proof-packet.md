@@ -4304,14 +4304,17 @@ cmp --silent "$EXPECTED_A_FOLLOWUP_SPEC" "$A_FOLLOWUP_SPEC"
 awk '
   function finish_section() {
     if (!relevant) return
-    sections++
+    seen[relevant]++
     if (status_count != 1 || status_value != "implementation-complete/evidence-confirmed") {
       invalid++
     }
   }
   /^## Deferred from:/ {
     finish_section()
-    relevant = $0 ~ /^## Deferred from: exact-SHA gate of 1-20-owner-approved-parity-closure-and-runtime-pin / || $0 ~ /^## Deferred from: Story 1\.20 correct-course readiness audit / || $0 ~ /^## Deferred from: Story 1\.20 current-HEAD source-topology gate /
+    relevant = 0
+    if ($0 ~ /^## Deferred from: exact-SHA gate of 1-20-owner-approved-parity-closure-and-runtime-pin /) relevant = 1
+    if ($0 ~ /^## Deferred from: Story 1\.20 correct-course readiness audit /) relevant = 2
+    if ($0 ~ /^## Deferred from: Story 1\.20 current-HEAD source-topology gate /) relevant = 3
     status_count = 0
     status_value = ""
     next
@@ -4322,7 +4325,7 @@ awk '
   }
   END {
     finish_section()
-    exit !(sections == 3 && invalid == 0)
+    exit !(seen[1] == 1 && seen[2] == 1 && seen[3] == 1 && invalid == 0)
   }
 ' "$A_DEFERRED_WORK"
 

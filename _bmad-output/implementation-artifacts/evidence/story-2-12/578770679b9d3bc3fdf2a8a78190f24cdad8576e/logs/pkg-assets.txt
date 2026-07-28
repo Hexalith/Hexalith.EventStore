@@ -1,0 +1,42 @@
+assets files evaluated: 17
+consuming project                          edges project package outside
+Hexalith.Tenants.Sample.Tests                  5       0       5       0
+Hexalith.Tenants.Sample                        4       0       4       0
+Hexalith.Tenants.Api                           4       0       4       0
+Hexalith.Tenants.AppHost                       1       0       1       0
+Hexalith.Tenants.Aspire                        1       0       1       0
+Hexalith.Tenants.Client                        2       0       2       0
+Hexalith.Tenants.Contracts                     1       0       1       0
+Hexalith.Tenants.Server                        3       0       3       0
+Hexalith.Tenants.Testing                       3       0       3       0
+Hexalith.Tenants.UI                            2       0       2       0
+Hexalith.Tenants                               7       0       7       0
+Hexalith.Tenants.Client.Tests                  3       0       3       0
+Hexalith.Tenants.Contracts.Tests               3       0       3       0
+Hexalith.Tenants.IntegrationTests             10       0      10       0
+Hexalith.Tenants.Server.Tests                  7       0       7       0
+Hexalith.Tenants.Testing.Tests                 3       0       3       0
+Hexalith.Tenants.UI.Tests                      2       0       2       0
+TOTAL                                         61       0      61       0
+resolved package version(s): ['3.83.0']
+
+per-project EventStore ids:
+  Hexalith.Tenants.Sample.Tests: Hexalith.EventStore.Client@3.83.0[package], Hexalith.EventStore.Contracts@3.83.0[package], Hexalith.EventStore.DomainService@3.83.0[package], Hexalith.EventStore.Server@3.83.0[package], Hexalith.EventStore.ServiceDefaults@3.83.0[package]
+  Hexalith.Tenants.Sample: Hexalith.EventStore.Client@3.83.0[package], Hexalith.EventStore.Contracts@3.83.0[package], Hexalith.EventStore.DomainService@3.83.0[package], Hexalith.EventStore.ServiceDefaults@3.83.0[package]
+  Hexalith.Tenants.Api: Hexalith.EventStore.Client@3.83.0[package], Hexalith.EventStore.Contracts@3.83.0[package], Hexalith.EventStore.RestApi.Generators@3.83.0[package], Hexalith.EventStore.ServiceDefaults@3.83.0[package]
+  Hexalith.Tenants.AppHost: Hexalith.EventStore.Aspire@3.83.0[package]
+  Hexalith.Tenants.Aspire: Hexalith.EventStore.Aspire@3.83.0[package]
+  Hexalith.Tenants.Client: Hexalith.EventStore.Client@3.83.0[package], Hexalith.EventStore.Contracts@3.83.0[package]
+  Hexalith.Tenants.Contracts: Hexalith.EventStore.Contracts@3.83.0[package]
+  Hexalith.Tenants.Server: Hexalith.EventStore.Client@3.83.0[package], Hexalith.EventStore.Contracts@3.83.0[package], Hexalith.EventStore.Server@3.83.0[package]
+  Hexalith.Tenants.Testing: Hexalith.EventStore.Client@3.83.0[package], Hexalith.EventStore.Contracts@3.83.0[package], Hexalith.EventStore.Server@3.83.0[package]
+  Hexalith.Tenants.UI: Hexalith.EventStore.Client@3.83.0[package], Hexalith.EventStore.Contracts@3.83.0[package]
+  Hexalith.Tenants: Hexalith.EventStore.Admin.Abstractions@3.83.0[package], Hexalith.EventStore.Client@3.83.0[package], Hexalith.EventStore.Contracts@3.83.0[package], Hexalith.EventStore.DomainService@3.83.0[package], Hexalith.EventStore.Gateway@3.83.0[package], Hexalith.EventStore.Server@3.83.0[package], Hexalith.EventStore.ServiceDefaults@3.83.0[package]
+  Hexalith.Tenants.Client.Tests: Hexalith.EventStore.Client@3.83.0[package], Hexalith.EventStore.Contracts@3.83.0[package], Hexalith.EventStore.Server@3.83.0[package]
+  Hexalith.Tenants.Contracts.Tests: Hexalith.EventStore.Client@3.83.0[package], Hexalith.EventStore.Contracts@3.83.0[package], Hexalith.EventStore.Server@3.83.0[package]
+  Hexalith.Tenants.IntegrationTests: Hexalith.EventStore.Admin.Abstractions@3.83.0[package], Hexalith.EventStore.Aspire@3.83.0[package], Hexalith.EventStore.Client@3.83.0[package], Hexalith.EventStore.Contracts@3.83.0[package], Hexalith.EventStore.DomainService@3.83.0[package], Hexalith.EventStore.Gateway@3.83.0[package], Hexalith.EventStore.Server@3.83.0[package], Hexalith.EventStore.ServiceDefaults@3.83.0[package], Hexalith.EventStore.Testing@3.83.0[package], Hexalith.EventStore.Testing.Integration@3.83.0[package]
+  Hexalith.Tenants.Server.Tests: Hexalith.EventStore.Admin.Abstractions@3.83.0[package], Hexalith.EventStore.Client@3.83.0[package], Hexalith.EventStore.Contracts@3.83.0[package], Hexalith.EventStore.DomainService@3.83.0[package], Hexalith.EventStore.Gateway@3.83.0[package], Hexalith.EventStore.Server@3.83.0[package], Hexalith.EventStore.ServiceDefaults@3.83.0[package]
+  Hexalith.Tenants.Testing.Tests: Hexalith.EventStore.Client@3.83.0[package], Hexalith.EventStore.Contracts@3.83.0[package], Hexalith.EventStore.Server@3.83.0[package]
+  Hexalith.Tenants.UI.Tests: Hexalith.EventStore.Client@3.83.0[package], Hexalith.EventStore.Contracts@3.83.0[package]
+
+ASSETS_OK mode=package

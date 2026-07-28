@@ -40,7 +40,12 @@ esac
 rm -rf -- "$DEST"
 git clone --quiet --dissociate --reference "$REFS/tenants" "$TEN_URL" "$DEST"
 cd "$DEST"
-git checkout --quiet --detach "$(git rev-parse --verify --end-of-options "${TENANTS_SHA}^{commit}")"
+# Resolve first: a failing command substitution inside the checkout argument would otherwise pass an
+# empty string to `git checkout` rather than aborting (`set -e` does not fail the outer command).
+RESOLVED_SHA="$(git rev-parse --verify --end-of-options "${TENANTS_SHA}^{commit}")" \
+  || die "commit $TENANTS_SHA does not exist in $TEN_URL"
+test -n "$RESOLVED_SHA" || die "could not resolve $TENANTS_SHA to a commit"
+git checkout --quiet --detach "$RESOLVED_SHA"
 test "$(git rev-parse HEAD)" = "$TENANTS_SHA" \
   || die "checkout landed on $(git rev-parse HEAD), not $TENANTS_SHA"
 

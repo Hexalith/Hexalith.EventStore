@@ -383,13 +383,64 @@ public sealed class ProofPacketValidatorIntegrityTests
         string packet = File.ReadAllText(Path.Combine(root, PacketRelativePath));
 
         packet.ShouldContain(
-            "relevant = $0 ~ /^## Deferred from: exact-SHA gate of 1-20-owner-approved-parity-closure-and-runtime-pin / || "
-            + "$0 ~ /^## Deferred from: Story 1\\.20 correct-course readiness audit / || "
-            + "$0 ~ /^## Deferred from: Story 1\\.20 current-HEAD source-topology gate /");
-        packet.ShouldContain("exit !(sections == 3 && invalid == 0)");
+            "if ($0 ~ /^## Deferred from: exact-SHA gate of 1-20-owner-approved-parity-closure-and-runtime-pin /) relevant = 1");
+        packet.ShouldContain(
+            "if ($0 ~ /^## Deferred from: Story 1\\.20 correct-course readiness audit /) relevant = 2");
+        packet.ShouldContain(
+            "if ($0 ~ /^## Deferred from: Story 1\\.20 current-HEAD source-topology gate /) relevant = 3");
+        packet.ShouldContain("exit !(seen[1] == 1 && seen[2] == 1 && seen[3] == 1 && invalid == 0)");
         packet.ShouldNotContain("relevant = (\n");
         packet.ShouldNotContain(
             "relevant = ($0 ~ /Story 1\\.20/ || $0 ~ /1-20-owner-approved-parity-closure/)");
+
+        // Text assertions alone cannot distinguish a working program from one carrying a syntax
+        // error or an off-by-one gate - both defects this block has actually shipped before. Extract
+        // the AWK program and run it against fixtures.
+        string program = ExtractDeferredWorkAwkProgram(packet);
+        string temporaryDirectory = Path.Combine(
+            Path.GetTempPath(),
+            $"hexalith-deferred-gate-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(temporaryDirectory);
+
+        try
+        {
+            RunDeferredWorkGate(program, temporaryDirectory, "all-three.md", ConfirmedLedger(NamedPrerequisiteHeadings))
+                .ShouldBe(0, "All three named prerequisites, each confirmed exactly once, must pass the gate.");
+
+            RunDeferredWorkGate(
+                program,
+                temporaryDirectory,
+                "duplicate-and-missing.md",
+                ConfirmedLedger([NamedPrerequisiteHeadings[0], NamedPrerequisiteHeadings[0], NamedPrerequisiteHeadings[1]]))
+                .ShouldNotBe(0, "A duplicated prerequisite plus a missing one must fail even though three sections match.");
+
+            RunDeferredWorkGate(
+                program,
+                temporaryDirectory,
+                "only-two.md",
+                ConfirmedLedger([NamedPrerequisiteHeadings[0], NamedPrerequisiteHeadings[1]]))
+                .ShouldNotBe(0, "A ledger missing one named prerequisite must fail the gate.");
+
+            RunDeferredWorkGate(
+                program,
+                temporaryDirectory,
+                "unconfirmed-status.md",
+                ConfirmedLedger(NamedPrerequisiteHeadings)
+                    .Replace("implementation-complete/evidence-confirmed", "accepted", StringComparison.Ordinal))
+                .ShouldNotBe(0, "A named prerequisite whose status is not evidence-confirmed must fail the gate.");
+
+            RunDeferredWorkGate(
+                program,
+                temporaryDirectory,
+                "with-decoy.md",
+                ConfirmedLedger(NamedPrerequisiteHeadings)
+                    + DeferredWorkSection("## Deferred from: code review of an-unrelated-story (2026-07-28)", "accepted"))
+                .ShouldBe(0, "An unrelated deferred-work section must not affect the named-prerequisite gate.");
+        }
+        finally
+        {
+            Directory.Delete(temporaryDirectory, recursive: true);
+        }
     }
 
     /// <summary>
@@ -753,6 +804,81 @@ public sealed class ProofPacketValidatorIntegrityTests
         process.WaitForExit(5000).ShouldBeTrue("The xUnit validator must finish within five seconds.");
         _ = process.StandardOutput.ReadToEnd();
         _ = process.StandardError.ReadToEnd();
+        return process.ExitCode;
+    }
+
+    /// <summary>
+    /// The three closure prerequisites the deferred-work gate is scoped to, in gate order.
+    /// </summary>
+    private static readonly string[] NamedPrerequisiteHeadings =
+    [
+        "## Deferred from: exact-SHA gate of 1-20-owner-approved-parity-closure-and-runtime-pin (2026-07-16)",
+        "## Deferred from: Story 1.20 correct-course readiness audit (2026-07-16)",
+        "## Deferred from: Story 1.20 current-HEAD source-topology gate (2026-07-17)",
+    ];
+
+    private static string DeferredWorkSection(string heading, string status)
+        => $"{heading}\n\n- source_spec: `fixture.md`\n  summary: gate fixture\n  status: {status}\n\n";
+
+    private static string ConfirmedLedger(string[] headings)
+        => string.Concat(headings.Select(heading =>
+            DeferredWorkSection(heading, "implementation-complete/evidence-confirmed")));
+
+    /// <summary>
+    /// Extracts the deferred-work AWK program from the packet's executable verifier block so it can
+    /// be run rather than only pattern-matched.
+    /// </summary>
+    private static string ExtractDeferredWorkAwkProgram(string packet)
+    {
+        const string bodyMarker = "  function finish_section() {";
+        const string endMarker = "' \"$A_DEFERRED_WORK\"";
+
+        int bodyIndex = packet.IndexOf(bodyMarker, StringComparison.Ordinal);
+        bodyIndex.ShouldBeGreaterThanOrEqualTo(0, "The packet must declare the deferred-work AWK gate.");
+
+        int startIndex = packet.LastIndexOf("awk '", bodyIndex, StringComparison.Ordinal);
+        startIndex.ShouldBeGreaterThanOrEqualTo(0, "The deferred-work gate must be an awk invocation.");
+        startIndex += "awk '".Length;
+
+        int endIndex = packet.IndexOf(endMarker, bodyIndex, StringComparison.Ordinal);
+        endIndex.ShouldBeGreaterThan(
+            startIndex,
+            "The deferred-work AWK program must be applied to \"$A_DEFERRED_WORK\".");
+
+        return packet[startIndex..endIndex];
+    }
+
+    private static int RunDeferredWorkGate(
+        string program,
+        string directory,
+        string fileName,
+        string ledger)
+    {
+        string fixturePath = Path.Combine(directory, fileName);
+        File.WriteAllText(fixturePath, ledger);
+        using var process = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = "awk",
+                RedirectStandardError = true,
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+            },
+        };
+        process.StartInfo.ArgumentList.Add(program);
+        process.StartInfo.ArgumentList.Add(fixturePath);
+        process.StartInfo.WorkingDirectory = FindRepositoryRoot();
+
+        process.Start().ShouldBeTrue("awk must be available to execute the deferred-work gate.");
+        process.WaitForExit(5000).ShouldBeTrue("The deferred-work gate must finish within five seconds.");
+        _ = process.StandardOutput.ReadToEnd();
+        string standardError = process.StandardError.ReadToEnd();
+
+        // A malformed program exits non-zero too, which would read as a correct rejection.
+        standardError.Contains("awk:", StringComparison.Ordinal).ShouldBeFalse(
+            $"The extracted AWK program must be valid for this awk implementation. stderr: {standardError}");
+
         return process.ExitCode;
     }
 

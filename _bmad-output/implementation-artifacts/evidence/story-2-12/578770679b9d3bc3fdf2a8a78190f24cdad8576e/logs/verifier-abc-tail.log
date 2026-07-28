@@ -1,0 +1,30 @@
+discovered-test-projects.txt: OK
+dotnet-runtimes-current.txt: OK
+dotnet-runtimes.txt: OK
+effective-package-versions-debug.txt: OK
+effective-package-versions-release.txt: OK
+environment.txt: OK
+expected-package-ids.txt: OK
+generated-image-index.digest.txt: OK
+generated-image-index.json: OK
+latest-successful-gate-completed-at.txt: OK
+mandatory-test-projects.txt: OK
+nuget-sha256.txt: OK
+package-files.txt: OK
+package-version.txt: OK
+raw-evidence-bundle.json: OK
+raw-evidence-immutability-proof.json: OK
+release-owner-publication-authority.checked-at.txt: OK
+release-owner-publication-authority.github.json: OK
+release-owner-publication-authority.json: OK
+source-state-after-publication.txt: OK
+source-state-after.txt: OK
+source-state-before-publication.txt: OK
+source-state-before.txt: OK
+story-1-16-followup-review.github.json: OK
+story-1-16-followup-review.json: OK
+true
+true
+true
+true
+true

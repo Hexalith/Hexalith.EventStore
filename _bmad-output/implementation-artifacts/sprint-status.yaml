@@ -106,7 +106,14 @@ development_status:
   # longer gate this story. Both modes pass at accepted Tenants 578770679b9d (EventStore c8c70030,
   # Builds 1b1c0b0 -> catalog 3.83.0); maintainer accepted that exact SHA. Awaiting independent
   # review; note that AC5's approval has no external GitHub record by maintainer choice.
-  2-12-tenants-runtime-identity-adoption-and-package-mode-validation: review
+  # 2026-07-28 code review (4 layers): 3 owner decisions resolved, 13 patches applied, 2 deferred,
+  # 12 dismissed. Back to in-progress for ONE reason only — the AC4 guard fix (a HIGH finding) is an
+  # uncommitted working-tree edit in Hexalith.Tenants and needs a Tenants commit plus the same
+  # maintainer acceptance AC5 required. EventStore side is complete: Contracts.Tests 778/778.
+  # Corrected en route: the umbrella gitlink claim was false at HEAD (owner decision D1 = keep the
+  # pointer, record the delta), the 17 bound lane logs were gitignored and are now tracked, and the
+  # AC2 guard's "only root-declared submodules" assertion was a tautology.
+  2-12-tenants-runtime-identity-adoption-and-package-mode-validation: in-progress
   epic-2-retrospective: done
 
   epic-3: in-progress

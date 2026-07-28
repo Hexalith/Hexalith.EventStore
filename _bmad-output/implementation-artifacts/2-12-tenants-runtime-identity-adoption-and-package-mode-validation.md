@@ -3,7 +3,7 @@ created: 2026-07-27
 baseline_commit: 73589770b14888b703d78d37325b066befa0689c
 story_id: "2.12"
 story_key: 2-12-tenants-runtime-identity-adoption-and-package-mode-validation
-status: review
+status: in-progress
 accepted_tenants_sha: 578770679b9d3bc3fdf2a8a78190f24cdad8576e
 validated_eventstore_sha: c8c7003052a7f811d3b821f3442379ca5f3a9c65
 validated_builds_sha: 1b1c0b0360715b82de48b618fc4e94e7e01e8092
@@ -20,7 +20,7 @@ crosswalk: ../planning-artifacts/story-id-migration-2026-07-15.md
 
 # Story 2.12: Tenants Runtime Identity Adoption And Package-Mode Validation
 
-Status: review
+Status: in-progress
 
 `review` means every acceptance criterion has durable evidence at the accepted Tenants SHA
 `578770679b9d3bc3fdf2a8a78190f24cdad8576e` under the amended AC2/AC3 and the AD-22 scoped
@@ -297,13 +297,78 @@ proof packages is no longer required and must not be undertaken to satisfy this 
         (`receipt.md`, the three lane scripts, and 17 support-safe logs, ~100 KB.)
   - [x] Update the EventStore repository's `references/Hexalith.Tenants` gitlink only to that exact
         accepted Tenants SHA, then rerun root pointer/cleanliness guards.
-        (No change was needed: the root gitlink already equals `578770679b9d…`. Guards rerun — all
-        seven `references/*` gitlinks reachable on their own remotes, root worktree clean apart
-        from the new untracked evidence directory, and no nested submodule initialized.)
+        (No change was needed at the time: the root gitlink then equalled `578770679b9d…`. Guards
+        rerun — all seven `references/*` gitlinks reachable on their own remotes, root worktree clean
+        apart from the new untracked evidence directory, and no nested submodule initialized.
+        **Corrected 2026-07-28 by code review:** this parenthetical was true when written and is
+        false at the commit that carries it. EventStore `57143dd3` — the commit that publishes this
+        story's receipt and advances it to `review` — moved the root gitlink from the accepted
+        `578770679b9d` to `f279cb13`, whose own `references/Hexalith.EventStore` gitlink is
+        `49987454`, not the validated `c8c70030`. Owner decision D1 (2026-07-28): keep the pointer
+        where the automated bump put it, consistent with the amended AC2 which makes tracking `main`
+        the intended mechanism, and record the delta rather than re-pinning it. The full statement
+        of what this costs is in the receipt's "Umbrella Pointer Correction" section; the absence of
+        any drift detector is filed in `deferred-work.md`.)
   - [x] Advance this story to `review` only when every AC has durable evidence; advance to `done`
         only after independent review confirms both modes and the maintainer authority chain.
         (Advanced to `review` on 2026-07-28: AC1-AC4 evidenced at the accepted SHA and AC5 accepted
         by the maintainer. `done` remains gated on independent review.)
+
+### Review Findings
+
+**Outcome: 3 decisions resolved by the owner, 13 patches applied, 2 items deferred, 12 dismissed.**
+Story returned to `in-progress` — not because a finding is unresolved, but because the single patch
+that fixes a HIGH finding (the AC4 guard) lives in `Hexalith.Tenants` and is **an uncommitted
+working-tree edit**. It needs a Tenants commit and the same maintainer acceptance AC5 required
+before this story can be `done`. Everything in the EventStore repository is complete and verified:
+`Hexalith.EventStore.Contracts.Tests` **778/778**.
+
+**Drift observed live during this review, for the third recorded time.** While the review ran, the
+umbrella's `references/Hexalith.Tenants` working tree moved `f279cb13` → `85e24d5` (11 commits,
+now pinning Builds `53d53ae` and EventStore `150216c3` — neither the validated `c8c70030` nor the
+`49987454` recorded an hour earlier). This is the same mechanism as finding D1 and is further
+evidence for the deferred drift-detector item. Notably two of those commits
+(`c407c9e`, `85e24d5`) add a *story gitlink declaration guard* in Tenants, which may already
+address part of that deferred item — worth checking before the follow-up story is scoped.
+
+Adversarial code review 2026-07-28 (Claude Opus 5), four independent no-context review layers:
+Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor. Every finding below was
+re-verified against the live repositories before rating; subagent severities were discarded.
+
+**Independently confirmed as sound** (recorded so they are not re-litigated): AC2's five guard
+assertions at `c8c70030` reachable from EventStore `origin/main`; AC3's published-catalog identity
+(Builds `1b1c0b0` → `3.83.0`, 13 central entries, `CentralPackageVersionOverrideEnabled=false`, zero
+Tenants-local version authority, all 11 packages really downloaded); edge counts 60 source-project /
+61 package at exactly `3.83.0` and the 60↔61 analyzer-reference asymmetry; **zero EventStore project
+edges from all 17 Tenants projects in the package lane**; lane isolation (no `objects/info/alternates`
+in either clone); test counts 115 / 738 / 1276 / 167+1-skipped identical in both modes with
+`0 Warning(s) / 0 Error(s)`; and the AD-22 exception's own scoping — dated, one story, one consumer,
+explicit non-extension to Parties 8.6, with AD-11 and AD-12 byte-unchanged.
+
+**Unclaimed strength worth recording:** `git rev-list -n1 v3.83.0` → `c8c7003052a7f811d3b821f3442379ca5f3a9c65`.
+The published catalog version validated by the package lane was tagged from *exactly* the EventStore
+SHA validated by the source lane. The amendment nominally decoupled the two lanes' identities and the
+re-scope decision accepts "losing the exact-tested-runtime guarantee" — in fact both lanes validated
+the same EventStore code. No artifact notices this; it materially strengthens AC2/AC3 coherence.
+
+- [x] [Review][Decision] Root `references/Hexalith.Tenants` gitlink no longer equals the accepted SHA, and the commit that says otherwise is the commit that moved it — All four layers converged on this. `git ls-tree 57143dd3 references/Hexalith.Tenants` → `f279cb13`, while the preceding `49987454` carried the accepted `578770679b9d`. `f279cb13`'s own `references/Hexalith.EventStore` gitlink is `49987454`, **not** the validated `c8c70030`, so the umbrella now composes a Tenants commit that no AC2 guard and no dual-mode matrix ever covered. The final subtask records "No change was needed: the root gitlink already equals `578770679b9d…`" and `receipt.md:251` repeats it — both false at HEAD. `f279cb13` is a superset of `46b96bc`, the tip the receipt explicitly rejected for pulling another story's unreviewed work into acceptance. Options: (a) move the root gitlink back to `578770679b9d` and accept that automation will overwrite it again, (b) re-run the matrix at the current tip and obtain fresh maintainer acceptance, or (c) keep the pointer and amend the claim to state that the umbrella tracks `main` by design under the amended AC2, recording the delta explicitly. This is exactly the treadmill the re-scope was meant to escape, so it is an owner call. **Resolved 2026-07-28 — owner chose option (c):** keep the pointer, and amend the story and receipt to state that the umbrella tracks `main` by design under the amended AC2, recording the `578770679b9d` → `f279cb13` delta and the resulting EventStore identity difference explicitly. Converted to a patch below.
+- [x] [Review][Decision] The only externally durable maintainer approval covers the pre-amendment scope — Tenants issue #32 (`jpiquot`, **0 comments**, still open, unchanged since 2026-07-27T08:01:12Z) approves scope item 1 "pin the EventStore gitlink to `fa2d1c9910f8`" and item 2 a Builds catalog at `999.1.20-proof.fa2d1c9910f8`, and lists among its **rejected alternatives** "retaining the non-authorizing EventStore `3.82.0` catalog pin". The delivered work does neither approved item and does the rejected-class thing (a published catalog pin, `3.83.0`). `receipt.md` nonetheless states the #32 approval "stands … and it supersedes nothing in that boundary." Combined with AC5's SHA acceptance having no external record (`gh search issues "578770679b9d" --owner Hexalith` → `[]`), the entire *post-amendment* maintainer authority chain is repository-internal, in a repo where every commit carries the same git identity. Options: obtain a fresh external approval bound to the amended scope + accepted SHA, or record an explicit owner decision that the in-repo record suffices. **Resolved 2026-07-28 — owner chose to accept the in-repository record as sufficient**, and to correct the receipt's inaccurate "supersedes nothing in that boundary" claim about issue #32. Converted to a patch below.
+- [x] [Review][Decision] The architect ratification the approved change proposal assigned was never recorded — SCP §5 assigns "Winston (Architect) — Ratify the AD-22 scoped exception text and confirm the Parties 8.6 non-extension sentence is sufficient". `grep -rn "Winston"` across the story file and every `evidence/story-2-12/*.md` returns nothing. The exception is already committed to `architecture.md:308` and the story advanced to `review` without it. The exception text itself reads as correctly scoped on inspection, so this is a process gate, not a content defect: either obtain the ratification before `done`, or record that the owner's SCP approval subsumes it. **Resolved 2026-07-28 — owner decided the SCP approval subsumes the architect ratification**; the assigned-but-unperformed step is closed by written note rather than by a separate Winston pass. Converted to a patch below.
+- [x] [Review][Patch] Record the three owner decisions above in the story and receipt: (D1) the umbrella tracks `main` by design under the amended AC2 — replace the false "root gitlink already equals `578770679b9d…`" claim with the recorded `578770679b9d` → `f279cb13` delta and its EventStore identity difference (`c8c70030` → `49987454`); (D2) the in-repository AC5 record is accepted as sufficient and issue #32's "supersedes nothing" claim is corrected to state the amendment replaced most of that boundary; (D3) the owner's SCP approval subsumes the assigned architect ratification [_bmad-output/implementation-artifacts/evidence/story-2-12/578770679b9d3bc3fdf2a8a78190f24cdad8576e/receipt.md:251]
+- [x] [Review][Patch] All 17 "support-safe lane logs" bound as AC3/AC5 evidence are gitignored and were never committed [_bmad-output/implementation-artifacts/evidence/story-2-12/578770679b9d3bc3fdf2a8a78190f24cdad8576e/logs/]
+- [x] [Review][Patch] AC4's durable guard is XML-shape-only and hardcoded to two package IDs, so it cannot reject "any EventStore project resolved in Release/package mode" [references/Hexalith.Tenants/tests/Hexalith.Tenants.Contracts.Tests/PackageGovernanceTests.cs:126] — **Applied 2026-07-28 with explicit owner approval to edit the submodule. NOT YET COMMITTED OR PUBLISHED in Hexalith.Tenants.** `EventStore_host_dependencies_follow_one_complementary_source_package_policy` now enumerates every `Hexalith.EventStore*` reference in the domain host instead of resolving four literal names, asserts set-equality of the project and package id sets, detects duplicates, and reads the **effective** condition (item plus every ancestor `ItemGroup`). A new `No_EventStore_project_reference_is_reachable_in_package_mode` extends the rule to all owned projects: every EventStore `ProjectReference` must be gated on source intent (`HexalithEventStoreFromSource` or `UseHexalithProjectReferences`), and no EventStore `PackageReference` may carry a version as attribute **or** child element. Both guard against vacuous passes. Red/green proof at Tenants `85e24d5` in an isolated lane: baseline 119/119; patched 120/120; with an unconditional `Hexalith.EventStore.Admin.Server` `ProjectReference` injected into the host the **old** suite still passed 119/119 while the patched suite failed both tests with exact messages — confirming the original guard could not see the mixed graph AC4 forbids.
+- [x] [Review][Patch] `ac2-guard.sh` assertion 5 ("only root-declared submodules are initialized") is a tautology that can never fail, yet the receipt reports it as PASS [_bmad-output/implementation-artifacts/evidence/story-2-12/578770679b9d3bc3fdf2a8a78190f24cdad8576e/ac2-guard.sh:47]
+- [x] [Review][Patch] `analyze-assets.py` has three silent-pass paths: a lane resolving zero EventStore edges prints `ASSETS_OK`, the exact-version gate is optional, and a mis-cased mode disables both mode assertions [_bmad-output/implementation-artifacts/evidence/story-2-12/578770679b9d3bc3fdf2a8a78190f24cdad8576e/analyze-assets.py:14,76-79,101]
+- [x] [Review][Patch] The "zero project edges, including transitive" proof reads `libraries`, which structurally cannot see `ReferenceOutputAssembly="false"` ProjectReferences — and three such EventStore references exist in the AppHost [_bmad-output/implementation-artifacts/evidence/story-2-12/578770679b9d3bc3fdf2a8a78190f24cdad8576e/analyze-assets.py:43-52]
+- [x] [Review][Patch] The Release lane compiled 13 EventStore projects from source, and "every `project.assets.json`" is 17 of 45 [_bmad-output/implementation-artifacts/evidence/story-2-12/578770679b9d3bc3fdf2a8a78190f24cdad8576e/receipt.md:140]
+- [x] [Review][Patch] No deferred-work entry exists for the follow-up the change proposal named, and the receipt states "Open Items: None for this story" [_bmad-output/implementation-artifacts/evidence/story-2-12/578770679b9d3bc3fdf2a8a78190f24cdad8576e/receipt.md:296]
+- [x] [Review][Patch] AD-12's persisted-path requirement — explicitly preserved by the AD-22 exception — is discharged by assertion, naming no persisted-path test and quoting no result [_bmad-output/implementation-artifacts/evidence/story-2-12/578770679b9d3bc3fdf2a8a78190f24cdad8576e/receipt.md]
+- [x] [Review][Patch] The three new proof-packet regressions assert packet *text*, not verifier *behaviour*, though the file already has a working `bash` execution harness [tests/Hexalith.EventStore.Contracts.Tests/Packaging/ProofPacketValidatorIntegrityTests.cs:362-408]
+- [x] [Review][Patch] The repaired deferred-work AWK gate counts sections without tracking which, so a duplicated heading plus a missing one still totals 3 and exits 0 [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:4322]
+- [x] [Review][Patch] `setup-lane.sh` hardening: unguarded `rm -rf -- "$DEST"`, `$2` accepted without full-SHA verification or a post-checkout assertion, submodule path derived from name rather than the declared path, and no `objects/info/alternates` assertion despite the receipt's isolation claim resting on it; all three scripts are committed `100644` though documented as directly executed [_bmad-output/implementation-artifacts/evidence/story-2-12/578770679b9d3bc3fdf2a8a78190f24cdad8576e/setup-lane.sh:24,27,32]
+- [x] [Review][Patch] Evidence-document corrections: `prerequisites.md:4` still opens "Overall status: `blocked`" while `:233` says `superseded`; the receipt's rejected-alternative rationale for declining `46b96bc` applies verbatim to the accepted `5787706` (itself a Story 1.6 docs commit, 26 commits and ~2443 insertions past the baseline); `architecture.md:308` attributes five pin overwrites to "a `/pushall` merge and recurring `build(deps)` bumps" when only 2 of the 5 are `build(deps)` and the named merge is not among them; no CI URL is bound in the AC5 approval although the subtask requires it and `release / release` is **failing** on the accepted SHA (pre-existing — it fails on `f279cb13` too); and the File List claims Builds and gitlink files as story-owned while every scope statement says no gitlink was changed
+- [x] [Review][Defer] No blocking CI job restores, builds, or tests the source lane, so the source half of the new Gateway conditional is never evaluated [references/Hexalith.Tenants/src/Hexalith.Tenants/Hexalith.Tenants.csproj:20-22] — deferred, pre-existing; Tenants-repo CI work outside this story's scope
+- [x] [Review][Defer] Nothing durably detects EventStore gitlink drift or a wrong-but-resolvable catalog version; the amended AC2/AC3 gate lives only in hand-run scripts [_bmad-output/implementation-artifacts/evidence/story-2-12/578770679b9d3bc3fdf2a8a78190f24cdad8576e/ac2-guard.sh] — deferred, pre-existing; the approved SCP §5 explicitly placed the Tenants CI reachability check out of scope as a candidate follow-up
 
 ## Dev Notes
 
@@ -844,12 +909,33 @@ GPT-5 Codex (sessions through 2026-07-27), Claude Opus 5 (2026-07-27 verificatio
 - _bmad-output/implementation-artifacts/evidence/story-2-12/578770679b9d3bc3fdf2a8a78190f24cdad8576e/setup-lane.sh
 - _bmad-output/implementation-artifacts/evidence/story-2-12/578770679b9d3bc3fdf2a8a78190f24cdad8576e/logs/ (17 support-safe lane logs)
 - _bmad-output/implementation-artifacts/sprint-status.yaml
-- references/Hexalith.Tenants/references/Hexalith.EventStore
-- references/Hexalith.Tenants/src/Hexalith.Tenants/Hexalith.Tenants.csproj
-- references/Hexalith.Tenants/tests/Hexalith.Tenants.Contracts.Tests/PackageGovernanceTests.cs
-- references/Hexalith.Builds/Props/Directory.Packages.props
-- references/Hexalith.Builds/Tools/test-authoritative-package-catalog.ps1
 - tests/Hexalith.EventStore.Contracts.Tests/Packaging/ProofPacketValidatorIntegrityTests.cs
+
+**Files this story consumed but did not change** (corrected 2026-07-28 by code review — these were
+previously listed above as if they were story-owned edits, contradicting every Scope Statement in the
+receipt, `dual-mode-2026-07-27.md`, and `source-lane-2026-07-27.md`, all of which state "No gitlink
+was changed in any repository" and "No Builds gitlink was changed"):
+
+- `references/Hexalith.Tenants/references/Hexalith.EventStore` — read as evidence; moved by Tenants'
+  own automated `build(deps)` bumps, never by this story.
+- `references/Hexalith.Tenants/src/Hexalith.Tenants/Hexalith.Tenants.csproj` — the conditional
+  Gateway pair, published on Tenants `main` as `a7ca142` before this story's validation sessions.
+- `references/Hexalith.Tenants/tests/Hexalith.Tenants.Contracts.Tests/PackageGovernanceTests.cs` —
+  the AC4 host rule, published in the same `a7ca142`.
+- `references/Hexalith.Builds/Props/Directory.Packages.props` and
+  `references/Hexalith.Builds/Tools/test-authoritative-package-catalog.ps1` — owned by Hexalith.Builds
+  and changed under its own release change control (PR #47), not by a Tenants or EventStore commit
+  in this story.
+
+**Added by the 2026-07-28 code review:**
+
+- `.gitignore` — evidence-log negation so `evidence/**/logs/` is no longer silently excluded.
+- `_bmad-output/implementation-artifacts/deferred-work.md` — two deferred entries.
+- `_bmad-output/implementation-artifacts/evidence/story-2-12/prerequisites.md` — header status correction.
+- `_bmad-output/planning-artifacts/architecture.md` — AD-22 pin-overwrite attribution correction.
+- `_bmad-output/implementation-artifacts/evidence/story-2-12/578770679b9d3bc3fdf2a8a78190f24cdad8576e/`
+  — receipt corrections, the three hardened lane scripts (now `100755`), and the 17 previously
+  untracked lane logs.
 
 ## Change Log
 

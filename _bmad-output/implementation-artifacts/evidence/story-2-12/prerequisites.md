@@ -1,9 +1,17 @@
 # Story 2.12 Prerequisite Receipt
 
 - Receipt date: `2026-07-27`
-- Overall status: `blocked`
-- Package lane: `blocked`
+- Overall status: `superseded` (was `blocked` — see "Disposition" at the end of this file)
+- Package lane: `superseded` (was `blocked`)
 - Source lane: `verified`
+
+> **Read this first (status corrected 2026-07-28 by code review).** This header previously read
+> `blocked` while the disposition appended at the end of the file recorded `blocked` → `superseded`,
+> so a reader stopping at the header drew the wrong conclusion. The External Prerequisite Contract
+> this receipt enforces was **retired** on 2026-07-27 by the approved sprint change proposal and the
+> AD-22 scoped exception. The negative package-byte audit below stands as the recorded justification
+> for that exception; its *blocking* conclusions no longer apply. Everything from here to the
+> disposition section is preserved verbatim as the historical fail-closed record.
 
 This receipt is intentionally fail closed. The approved Builds catalog prerequisite exists, but
 no retrievable source for the original 14 Story 1.20 package files has been proved. The Builds

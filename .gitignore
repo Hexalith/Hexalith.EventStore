@@ -469,3 +469,11 @@ _bmad-output/implementation-artifacts/*-fresh-review.diff
 .bmad-loop/runs/
 .bmad-loop/cache/
 .bmad-loop/policy.toml
+
+# Story evidence logs are durable acceptance artifacts, not build output. The `[Ll]ogs/` and `*.log`
+# rules above silently excluded them, so evidence receipts bound maintainer acceptance to files that
+# were never committed and would vanish on `git clean -xdf` (found in the Story 2.12 code review,
+# 2026-07-28). These negations must stay LAST — the last matching pattern wins, and git cannot
+# re-include a file whose parent directory is still excluded, so the directory is re-included first.
+!_bmad-output/implementation-artifacts/evidence/**/logs/
+!_bmad-output/implementation-artifacts/evidence/**/logs/**
