@@ -475,5 +475,16 @@ _bmad-output/implementation-artifacts/*-fresh-review.diff
 # were never committed and would vanish on `git clean -xdf` (found in the Story 2.12 code review,
 # 2026-07-28). These negations must stay LAST — the last matching pattern wins, and git cannot
 # re-include a file whose parent directory is still excluded, so the directory is re-included first.
-!_bmad-output/implementation-artifacts/evidence/**/logs/
-!_bmad-output/implementation-artifacts/evidence/**/logs/**
+#
+# Corrected 2026-07-28 (delta code review). The first version was both too narrow and too broad:
+#   too narrow — it matched only a lowercase `logs/` directory under `implementation-artifacts`, so
+#                `evidence/<sha>/run.log` (a log beside the receipt rather than inside `logs/`),
+#                `evidence/<sha>/Logs/run.log`, and anything under `planning-artifacts/evidence/`
+#                were all still silently excluded. That is the same defect class this fix exists to
+#                close.
+#   too broad  — `!…/logs/**` re-included *everything* beneath an evidence `logs/` directory,
+#                including `.dll` and `.nupkg` build output, which `git add -A` would then track.
+# Re-include the directory first (git cannot re-include a file whose parent directory is excluded),
+# then re-include only the log files themselves.
+!_bmad-output/**/evidence/**/[Ll]ogs/
+!_bmad-output/**/evidence/**/*.log

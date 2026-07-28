@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
@@ -436,6 +437,57 @@ public sealed class ProofPacketValidatorIntegrityTests
                 ConfirmedLedger(NamedPrerequisiteHeadings)
                     + DeferredWorkSection("## Deferred from: code review of an-unrelated-story (2026-07-28)", "accepted"))
                 .ShouldBe(0, "An unrelated deferred-work section must not affect the named-prerequisite gate.");
+
+            // The three branches `status_count != 1` exists to catch had no fixture at all, so the
+            // gate's central condition was only ever exercised on its passing side
+            // (2026-07-28 delta code review).
+            RunDeferredWorkGate(
+                program,
+                temporaryDirectory,
+                "zero-status.md",
+                ConfirmedLedger(NamedPrerequisiteHeadings)
+                    .Replace("  status: implementation-complete/evidence-confirmed\n", string.Empty, StringComparison.Ordinal))
+                .ShouldNotBe(0, "A named prerequisite with no status line at all must fail the gate.");
+
+            RunDeferredWorkGate(
+                program,
+                temporaryDirectory,
+                "two-status.md",
+                ConfirmedLedger(NamedPrerequisiteHeadings)
+                    .Replace(
+                        "  status: implementation-complete/evidence-confirmed\n",
+                        "  status: implementation-complete/evidence-confirmed\n  status: implementation-complete/evidence-confirmed\n",
+                        StringComparison.Ordinal))
+                .ShouldNotBe(0, "A named prerequisite carrying two status lines must fail the gate.");
+
+            // A foreign heading INSIDE a relevant section must end that section. Before the fix
+            // `relevant` was reset only on `## Deferred from:`, so a `  status:` line under a `###`
+            // sub-heading was still attributed to the preceding named prerequisite.
+            //
+            // This fixture is deliberately built so the DONATED status is the confirmed value: the
+            // prerequisite itself has none, and the sub-heading supplies one. Under the old program
+            // that reads as a valid section and the whole gate exits 0; under the fixed program the
+            // prerequisite has zero status lines of its own and the gate exits non-zero. A fixture
+            // donating some *other* status value would fail under both programs and prove nothing.
+            RunDeferredWorkGate(
+                program,
+                temporaryDirectory,
+                "foreign-heading-inside.md",
+                ConfirmedLedger(NamedPrerequisiteHeadings)
+                    .Replace(
+                        "  status: implementation-complete/evidence-confirmed\n",
+                        "### DW-9: an unrelated sub-heading\n  status: implementation-complete/evidence-confirmed\n",
+                        StringComparison.Ordinal))
+                .ShouldNotBe(0, "A sub-heading must end the section, leaving the prerequisite with no status of its own.");
+
+            // A CRLF ledger is still a valid ledger; the trailing \r must not be captured into
+            // status_value and rejected.
+            RunDeferredWorkGate(
+                program,
+                temporaryDirectory,
+                "crlf.md",
+                ConfirmedLedger(NamedPrerequisiteHeadings).Replace("\n", "\r\n", StringComparison.Ordinal))
+                .ShouldBe(0, "A ledger with CRLF line endings must pass; \\r must be stripped from the status value.");
         }
         finally
         {
@@ -870,10 +922,42 @@ public sealed class ProofPacketValidatorIntegrityTests
         process.StartInfo.ArgumentList.Add(fixturePath);
         process.StartInfo.WorkingDirectory = FindRepositoryRoot();
 
-        process.Start().ShouldBeTrue("awk must be available to execute the deferred-work gate.");
-        process.WaitForExit(5000).ShouldBeTrue("The deferred-work gate must finish within five seconds.");
-        _ = process.StandardOutput.ReadToEnd();
-        string standardError = process.StandardError.ReadToEnd();
+        // Start() with UseShellExecute=false throws Win32Exception when awk is absent rather than
+        // returning false, so the old ShouldBeTrue message was unreachable. Translate it.
+        try
+        {
+            process.Start();
+        }
+        catch (Win32Exception exception)
+        {
+            throw new InvalidOperationException(
+                "awk must be available to execute the deferred-work gate.",
+                exception);
+        }
+
+        // Drain both pipes concurrently with the wait. Reading only after WaitForExit deadlocks the
+        // moment the child writes more than a pipe buffer, and the previous code then deleted the
+        // fixture directory out from under a process it had never killed (2026-07-28 delta review).
+        Task<string> standardOutputTask = process.StandardOutput.ReadToEndAsync();
+        Task<string> standardErrorTask = process.StandardError.ReadToEndAsync();
+
+        if (!process.WaitForExit(5000))
+        {
+            try
+            {
+                process.Kill(entireProcessTree: true);
+                process.WaitForExit(5000);
+            }
+            catch (InvalidOperationException)
+            {
+                // The process exited between the timeout and the kill; nothing to clean up.
+            }
+
+            throw new ShouldAssertException("The deferred-work gate must finish within five seconds.");
+        }
+
+        _ = standardOutputTask.GetAwaiter().GetResult();
+        string standardError = standardErrorTask.GetAwaiter().GetResult();
 
         // A malformed program exits non-zero too, which would read as a correct rejection.
         standardError.Contains("awk:", StringComparison.Ordinal).ShouldBeFalse(

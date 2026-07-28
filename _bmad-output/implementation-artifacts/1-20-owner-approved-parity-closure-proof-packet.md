@@ -4309,7 +4309,11 @@ awk '
       invalid++
     }
   }
-  /^## Deferred from:/ {
+  # Reset on ANY heading, not only `## Deferred from:`. Scoping the reset to that one prefix let
+  # `relevant` leak across `## Existing deferred work` and `### DW-n` headings, so a `  status:`
+  # line under a foreign heading was attributed to the last named prerequisite — flipping
+  # status_count to 2 or overwriting status_value (2026-07-28 delta code review).
+  /^#+[ \t]/ {
     finish_section()
     relevant = 0
     if ($0 ~ /^## Deferred from: exact-SHA gate of 1-20-owner-approved-parity-closure-and-runtime-pin /) relevant = 1
@@ -4322,6 +4326,8 @@ awk '
   relevant && /^  status: / {
     status_count++
     status_value = substr($0, length("  status: ") + 1)
+    # A CRLF ledger would otherwise capture the trailing \r into status_value and fail a valid file.
+    sub(/\r$/, "", status_value)
   }
   END {
     finish_section()

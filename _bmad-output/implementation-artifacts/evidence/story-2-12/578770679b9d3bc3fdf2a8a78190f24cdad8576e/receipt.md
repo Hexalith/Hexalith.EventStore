@@ -335,6 +335,33 @@ Nothing detects further drift — that gap is filed in `deferred-work.md` under
 "code review of 2-12-… (2026-07-28)" and is a Tenants/Builds CI item, explicitly out of scope here
 per the approved change proposal.
 
+**SUPERSEDED 2026-07-28 — this table went stale two commits after it was written, exactly as its own
+last paragraph predicted.** The delta code review found it still stopping at `f279cb13` while the
+umbrella had moved to a fourth value. The pointer history is now:
+
+| EventStore commit | `references/Hexalith.Tenants` | that Tenants commit's `references/Hexalith.EventStore` |
+| --- | --- | --- |
+| `49987454` | `578770679b9d` (accepted by THIS receipt, validated) | `c8c70030` (validated) |
+| `57143dd3` (publishes this receipt) | `f279cb13` | `49987454` |
+| `e7de0da9` .. HEAD | **`f9e51c66`** (the currently accepted SHA) | **`150216c3`** |
+
+**This receipt is no longer the acceptance record.** Acceptance moved to Tenants
+`f9e51c66745557da4f267ab40f32294f2f27fae7` on 2026-07-28 because the AC4 guard patch exists only
+there; see `../f9e51c66745557da4f267ab40f32294f2f27fae7/receipt.md`. The umbrella gitlink now equals
+that accepted SHA, so the divergence this section described is closed — not by re-pinning, but
+because acceptance moved forward onto the pointer.
+
+One correction to the paragraph above: the `f279cb13` hop was recorded by an automated bump, but the
+subsequent `f279cb13`→`f9e51c66` hop was committed by Story 2.12 commit `e7de0da9` itself, as the
+closure subtask requires. The blanket "no gitlink was moved by a Story 2.12 commit" claim carried
+elsewhere in this story was false and has been corrected in both the story file and the delta
+receipt.
+
+The three suites this receipt recorded (`Server.Tests` 738, `UI.Tests` **1276**, `IntegrationTests`
+167+1) were carried forward into the delta and have since been **re-run at `f9e51c66`**: 738 /
+**1325** / 167+1 in both modes. The `UI.Tests` figure recorded here is therefore superseded — the
+suite grew by 49 tests between the two SHAs.
+
 ## Scope Statement
 
 Nothing was pushed to any remote. No gitlink was changed in any repository. No package identity

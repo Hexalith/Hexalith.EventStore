@@ -26,12 +26,25 @@ die() { printf 'SETUP_LANE_FAIL: %s\n' "$1" >&2; exit 1; }
 # `rm -rf` on an unvalidated $1 is unrecoverable. `set -u` only catches an *unset* variable, not a
 # mistyped path, an existing repository, or a home directory. Confine the destructive step to the
 # scratch tree this story uses (2026-07-28 code review).
+#
+# Canonicalize BEFORE matching. A `case` glob's `*` also matches `/`, so the raw pattern accepted
+# `/home/<user>/tmp-story-2-12/../../<user>/projects/hexalith/eventstore` — and the "is it a git
+# working copy" check below did NOT save it, because a real repository *does* have `.git`, so the
+# die never fired and `rm -rf` would have run on the live checkout (2026-07-28 delta code review).
+DEST="$(realpath -m -- "$DEST")" || die "could not canonicalize destination '$1'"
+case "$DEST" in
+  */../*|*/..) die "refusing a destination containing '..' after canonicalization: '$DEST'" ;;
+esac
 case "$DEST" in
   /home/*/tmp-story-2-12/*) ;;
   *) die "refusing to rm -rf a destination outside /home/*/tmp-story-2-12/: '$DEST'" ;;
 esac
-[ -e "$DEST" ] && [ ! -e "$DEST/.git" ] \
-  && die "refusing to rm -rf '$DEST': it exists but is not a git working copy"
+# Refuse anything that already exists and is not a lane we created: a non-repository (the original
+# check) *and* any repository that is not a detached scratch clone. Belt and braces — the prefix
+# check above is the real guard; this one only narrows the blast radius if it is ever loosened.
+if [ -e "$DEST" ] && [ ! -e "$DEST/.git" ]; then
+  die "refusing to rm -rf '$DEST': it exists but is not a git working copy"
+fi
 
 # A branch, tag, or ambiguous abbreviation would silently build the lane at a different commit
 # than the SHA the receipt names. Require a full 40-hex commit id.
@@ -66,8 +79,18 @@ test "$declared" -gt 0 || die "no root-declared submodules found in .gitmodules"
 
 # The receipt's lane-isolation claim rests on --dissociate having completed. Assert it here rather
 # than asserting it in prose afterwards.
-if find "$DEST" -path '*/objects/info/alternates' -print -quit | grep -q .; then
-  die "lane shares an object store — objects/info/alternates survived --dissociate"
-fi
+#
+# `find … | grep -q .` reported "no alternates" both when there were none and when `find` itself
+# failed on an unreadable subtree — so the sole assertion behind the isolation claim could report
+# success because the search never ran (2026-07-28 delta code review). Capture find's own status.
+alternates_out="$(find "$DEST" -path '*/objects/info/alternates' -print 2>"$DEST/.find-stderr")"
+find_rc=$?
+find_err="$(cat "$DEST/.find-stderr" 2>/dev/null)"; rm -f -- "$DEST/.find-stderr"
+test "$find_rc" -eq 0 \
+  || die "could not search for alternates (find exit $find_rc): ${find_err:-no stderr}"
+test -z "$find_err" \
+  || die "alternates search was incomplete, so isolation is unproved: $find_err"
+test -z "$alternates_out" \
+  || die "lane shares an object store — objects/info/alternates survived --dissociate: $alternates_out"
 
 echo "LANE_READY $DEST @ $(git rev-parse HEAD) submodules=$declared alternates=none"

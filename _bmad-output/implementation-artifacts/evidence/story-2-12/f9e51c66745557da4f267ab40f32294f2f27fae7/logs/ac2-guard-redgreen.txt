@@ -1,0 +1,30 @@
+Story 2.12 — red/green proof for the two ac2-guard.sh repairs.
+Added 2026-07-28 by the delta code review. The AC4 guard patch received an explicit red/green
+proof; the AC2 guard repairs did not, and both recorded lane runs had all seven submodules
+initialized, so the corrected awk filter removed no lines and could not have demonstrated itself.
+
+########## assertion 5 — "only root-declared submodules are initialized" ##########
+Fix under test: INITIALIZED must filter on the leading '-' that `git submodule status` uses to mark
+an uninitialized submodule. Without the filter the comparison is a tautology that can never fail.
+
+declared set: references/Hexalith.Builds, references/Hexalith.EventStore
+
+  input                             old (awk '{print $2}')   new (awk '$1 !~ /^-/ {print $2}')
+  --------------------------------  -----------------------  ---------------------------------
+  all initialized                   PASS                     PASS
+  one uninitialized ("-cccc ...")   PASS  <-- the defect      FAIL  <-- correct
+
+The old filter reports the declared and initialized sets as equal even when a submodule is NOT
+initialized, which is precisely the condition assertion 5 exists to reject.
+
+########## assertion 6 — the Builds gitlink is a gitlink ##########
+Fix under test: `git ls-tree --object-only` returns a 40-hex sha for ANY entry, so a shape-only
+regex accepts a tree or a blob as a gitlink and prints it as identity evidence.
+
+  entry                        mode     type    shape-only check   mode+type check
+  ---------------------------  -------  ------  -----------------  ---------------
+  tests/ (ordinary directory)  040000   tree    ACCEPTED (wrong)   REJECTED (correct)
+  references/Hexalith.Builds   160000   commit  ACCEPTED           ACCEPTED
+
+Real gitlink at EventStore HEAD:
+  160000 commit 53d53ae42abf7c87d385a078ab260531480bbf8a	references/Hexalith.Builds

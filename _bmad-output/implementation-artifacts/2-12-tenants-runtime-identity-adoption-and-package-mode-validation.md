@@ -3,7 +3,7 @@ created: 2026-07-27
 baseline_commit: 73589770b14888b703d78d37325b066befa0689c
 story_id: "2.12"
 story_key: 2-12-tenants-runtime-identity-adoption-and-package-mode-validation
-status: review
+status: done
 accepted_tenants_sha: f9e51c66745557da4f267ab40f32294f2f27fae7
 validated_eventstore_sha: 150216c3831370146814fc23d6b1437e3c97a6d5
 validated_builds_sha: 53d53ae42abf7c87d385a078ab260531480bbf8a
@@ -22,13 +22,22 @@ crosswalk: ../planning-artifacts/story-id-migration-2026-07-15.md
 
 # Story 2.12: Tenants Runtime Identity Adoption And Package-Mode Validation
 
-Status: review
+Status: done
 
-`review` means every acceptance criterion has durable evidence at the accepted Tenants SHA
+`done` means every acceptance criterion has durable evidence at the accepted Tenants SHA
 `f9e51c66745557da4f267ab40f32294f2f27fae7` under the amended AC2/AC3 and the AD-22 scoped
-exception, and the Tenants maintainer has accepted that exact SHA. The External Prerequisite
-Contract that previously held this story fail-closed is retired; `done` remains gated on
-independent review of both dependency modes and the maintainer authority chain.
+exception; the Tenants maintainer has accepted that exact SHA; and independent adversarial review has
+confirmed **both dependency modes measured at that SHA** and examined the maintainer authority chain.
+The External Prerequisite Contract that previously held this story fail-closed is retired.
+
+Closed 2026-07-28 by the delta code review (four no-context layers; 2 owner decisions, 16 patches
+applied, 5 deferred, 6 dismissed). The last substantive gap — three suites carried forward from a
+superseded SHA, which also left AD-12's persisted-path requirement discharged by compilation — was
+closed by re-running them at `f9e51c6` in both modes: `Server.Tests` 738/738, `UI.Tests` 1325/1325,
+`IntegrationTests` 167 passed / 1 skipped, zero failures either mode. Every patch is in the EventStore
+repository; **no Tenants file was changed**, so the maintainer's acceptance of `f9e51c6` still binds
+and no third acceptance cycle was triggered. Four AC4-guard bypasses are deferred to a follow-up
+Tenants story by explicit owner decision, recorded in `deferred-work.md`.
 
 **Acceptance moved from `578770679b9d3bc3fdf2a8a78190f24cdad8576e` to
 `f9e51c66745557da4f267ab40f32294f2f27fae7` on 2026-07-28** because the code review's AC4 guard fix
@@ -387,6 +396,74 @@ the same EventStore code. No artifact notices this; it materially strengthens AC
 - [x] [Review][Patch] Evidence-document corrections: `prerequisites.md:4` still opens "Overall status: `blocked`" while `:233` says `superseded`; the receipt's rejected-alternative rationale for declining `46b96bc` applies verbatim to the accepted `5787706` (itself a Story 1.6 docs commit, 26 commits and ~2443 insertions past the baseline); `architecture.md:308` attributes five pin overwrites to "a `/pushall` merge and recurring `build(deps)` bumps" when only 2 of the 5 are `build(deps)` and the named merge is not among them; no CI URL is bound in the AC5 approval although the subtask requires it and `release / release` is **failing** on the accepted SHA (pre-existing — it fails on `f279cb13` too); and the File List claims Builds and gitlink files as story-owned while every scope statement says no gitlink was changed
 - [x] [Review][Defer] No blocking CI job restores, builds, or tests the source lane, so the source half of the new Gateway conditional is never evaluated [references/Hexalith.Tenants/src/Hexalith.Tenants/Hexalith.Tenants.csproj:20-22] — deferred, pre-existing; Tenants-repo CI work outside this story's scope
 - [x] [Review][Defer] Nothing durably detects EventStore gitlink drift or a wrong-but-resolvable catalog version; the amended AC2/AC3 gate lives only in hand-run scripts [_bmad-output/implementation-artifacts/evidence/story-2-12/578770679b9d3bc3fdf2a8a78190f24cdad8576e/ac2-guard.sh] — deferred, pre-existing; the approved SCP §5 explicitly placed the Tenants CI reachability check out of scope as a candidate follow-up
+
+### Review Findings — Delta Review 2026-07-28 (second pass)
+
+Adversarial code review of the delta session (EventStore `57143dd3..5a1d277e` minus the unrelated
+`150216c3`, plus Tenants `85e24d5..f9e51c6`). Four independent no-context layers: Blind Hunter, Edge
+Case Hunter, Verification Gap, Acceptance Auditor. Every finding was re-verified against the live
+repositories before rating; subagent severities were discarded.
+**Outcome: 2 decisions resolved by the owner, 16 patches, 5 deferred, 6 dismissed.**
+
+**Independently confirmed as sound** (recorded so they are not re-litigated): the identity chain is
+correct and internally consistent — root gitlink == accepted `f9e51c66`, which carries EventStore
+`150216c3` (reachable from EventStore `origin/main`) and Builds `53d53ae4`; Builds `53d53ae4`
+declares exactly one `HexalithEventStoreVersion` (`3.83.0`) with 13 central entries including
+Gateway; all three lane-script sha256 bindings in the delta receipt match the on-disk files
+byte-for-byte and all three are now `100755`; both AC4 guard tests exist under the names claimed,
+carry genuine non-vacuity assertions, and `OwnedProjectRoots` (`src`/`tests`/`samples`) really does
+cover all 17 Tenants projects; the by-name `--filter` proof that the two guard tests executed is
+sound. **CI at the accepted SHA is green** — `gh api …/commits/f9e51c66…/check-runs` returns
+`ci / build-and-test: success`, `ci / aspire-tests: success`, `codeql / analyze: success`,
+`commitlint: success`, `ci / performance-tests: skipped`.
+
+- [x] [Review][Decision] The carried-forward behavioural evidence is bound to a Tenants tree 16 commits and ~4,000 lines behind the accepted SHA, and AD-12's persisted-path requirement is discharged at `f9e51c6` by compilation alone — `git log 578770679b9d..f9e51c66` in Hexalith.Tenants is **16 commits**; `git diff --shortstat` is **53 files, 4006 insertions / 367 deletions**, of which **19 files under `src/` (+451 / −197)** are production changes on exactly the surfaces this story's own subtask says to preserve: `Services/Configuration/TenantConfigurationReadPolicyProvider.cs` (+161), new `TenantConfigurationValidatedPolicy.cs`, new `Services/Gateways/TenantsBffComposition.cs`, `Services/Gateways/TenantQueryGateway.cs` (+27), deleted `LegacyConfigurationDisplaySanitizer.cs`, and six Razor components. `tests/Hexalith.Tenants.UI.Tests` went from **792 to 829** `[Fact]`/`[Theory]` attributes, so the carried-forward "UI.Tests 1276/1276" describes a suite that does not exist at the accepted SHA — the same reasoning the receipt itself accepts for `Contracts.Tests` (115 → 120). The delta receipt attributes the whole carry-forward gap to EventStore ("this SHA's source lane is `150216c3`, three commits ahead, one of them functional") and calls the prior evidence "strong prior evidence at a near-identical tree"; **neither the receipt nor the story discloses that the Tenants tree moved at all**. Separately, the AD-22 scoped exception at `architecture.md:308` waives byte equality only and preserves AD-12 unchanged, and AD-12/NFR16 states that compilation alone does not close high-risk compatibility — yet the only behavioural evidence at `f9e51c6` is `Contracts.Tests` 120/120 plus a `--warnaserror` build, and `IntegrationTests` (the persisted-path lane the prior receipt named as discharging AD-12) was not run. The owner authorized the focused delta on the recorded ground that "the package lane's identity did not move", not on the ground that 16 Tenants commits of production change were being carried over unmeasured. Options: (a) re-run `Server.Tests` / `UI.Tests` / `IntegrationTests` in both modes at `f9e51c6`; (b) re-run only `IntegrationTests` to close AD-12 and correctly restate the Tenants-side carry-forward gap; (c) accept as-is, rewrite the carry-forward section to state the real 16-commit / 4006-line delta, and record an explicit dated AD-12 exception. **Resolved 2026-07-28 — owner chose option (a): re-run all three suites in both modes at `f9e51c6`**, closing AD-12's persisted-path requirement at the accepted SHA rather than waiving it, and replacing the carried-forward counts with measured ones. Converted to a patch below [_bmad-output/implementation-artifacts/evidence/story-2-12/f9e51c66745557da4f267ab40f32294f2f27fae7/receipt.md:229]
+- [x] [Review][Decision] Hardening the AC4 guard requires a fourth Tenants commit and a third maintainer acceptance — the strengthened guard is a real improvement, but it has concrete bypasses (see the patch items below: shared `Directory.Build.*` files are never read though the sibling rule in the same file reads them and the repo already declares 6 `PackageReference` items there; `condition.Contains(...)` accepts a negated or disjunctive condition; `Update=`-form references are skipped entirely; `UseHexalithProjectReferences` is accepted as equivalent to `HexalithEventStoreFromSource` though `Directory.Build.props:60` also requires `Exists(...)`). The guard lives in `Hexalith.Tenants`, and the previous review reopened this story precisely because a guard patch was an uncommitted Tenants edit — so patching it moves acceptance off `f9e51c6` and re-triggers AC5 for a third time. Options: (a) patch the guard in Tenants now, commit, and obtain fresh maintainer acceptance at a new SHA; (b) apply only the one-line file-set fix (`GetOwnedProjectFiles` → `GetPackageReferenceGovernanceFiles`) and re-accept; (c) file all guard gaps as a follow-up Tenants story and close 2.12 at `f9e51c6`. **Resolved 2026-07-28 — owner chose option (c): follow-up Tenants story**, on the ground that it avoids a third acceptance cycle and that the guard as shipped is already a large improvement over the four-literal-name version it replaced. Converted to a deferral below [references/Hexalith.Tenants/tests/Hexalith.Tenants.Contracts.Tests/PackageGovernanceTests.cs:217]
+- [x] [Review][Patch] **Re-run `Server.Tests`, `UI.Tests` and `IntegrationTests` in both modes at the accepted Tenants `f9e51c6`** and replace the carried-forward counts with measured ones — resolves decision (a) above. The two lane clones from the delta session are retained and already restored/built at `f9e51c6` (`/home/administrator/tmp-story-2-12/{src,pkg}-lane-f9e51c6`), so this is a `--no-build --no-restore` run of three projects per lane, not a fresh matrix. Record the results in the delta receipt, restate the carry-forward section to name the real 16-commit / 4006-line Tenants delta, and cite `IntegrationTests` explicitly as the AD-12 persisted-path evidence [_bmad-output/implementation-artifacts/evidence/story-2-12/f9e51c66745557da4f267ab40f32294f2f27fae7/receipt.md:229]
+- [x] [Review][Patch] Two Story 2.12 commits moved three `references/` gitlinks, so both receipts' "No gitlink was moved by a Story 2.12 commit" and the delta Scope Statement's "No gitlink was changed in any repository" are false at the commits that carry them — `e7de0da9` moved `references/Hexalith.Builds` (`1b1c0b03`→`53d53ae4`) **and** `references/Hexalith.Tenants` (`f279cb13`→`f9e51c66`, which is the move the story's own subtask required); `5a1d277e` moved `references/Hexalith.Memories` (`327d1a9d`→`1868c8f9`). This is owner decision D1 recurring inside the commits that document D1 [_bmad-output/implementation-artifacts/evidence/story-2-12/f9e51c66745557da4f267ab40f32294f2f27fae7/receipt.md:324]
+- [x] [Review][Patch] The bound gitlink-delta log and the prior receipt's "Umbrella Pointer Correction" are both already stale at HEAD — `logs/eventstore-gitlink-delta.txt` names `HEAD: e7de0da9` and records Memories as `327d1a9d`, but it is introduced by `5a1d277e` where Memories is `1868c8f9`; the prior receipt's correction table stops at `57143dd3`→`f279cb13` and concludes "anyone building the umbrella at or after `57143dd3` is not building what this receipt validates", while HEAD is a fourth value, `f9e51c66` [_bmad-output/implementation-artifacts/evidence/story-2-12/f9e51c66745557da4f267ab40f32294f2f27fae7/logs/eventstore-gitlink-delta.txt:9]
+- [x] [Review][Patch] The final receipt claims the new `projectReferences` parse closes the `ReferenceOutputAssembly="false"` blind spot; it does not, and this was a prior-review finding marked applied — proved empirically: the AppHost's three EventStore `ProjectReference`s carrying `ReferenceOutputAssembly="false"` sit in an `ItemGroup Condition="'$(Configuration)' == 'Debug' and '$(UseHexalithProjectReferences)' == 'true'"`, both satisfied in the source lane, and `logs/src-build.log` shows all three assemblies compiled from the lane's submodule — yet `logs/src-assets.txt` lists 12 raw refs with the AppHost contributing only `Hexalith.EventStore.Aspire`, and the lane's own `project.assets.json` records only 3 `projectReferences` (Commons.Aspire, EventStore.Aspire, Tenants.Aspire). `project.restore.frameworks[].projectReferences` omits that class exactly as `libraries` does, so the package lane's "0 raw ProjectReference items" is vacuous for it. The actual coverage for that class is the XML guard `No_EventStore_project_reference_is_reachable_in_package_mode`, which reads the effective `ItemGroup` condition — say so instead [_bmad-output/implementation-artifacts/evidence/story-2-12/578770679b9d3bc3fdf2a8a78190f24cdad8576e/analyze-assets.py:69]
+- [x] [Review][Patch] `setup-lane.sh`'s new `rm -rf` scope guard is bypassed by `..`, and the second guard makes it worse — verified by dry run: `DEST=/home/administrator/tmp-story-2-12/../../administrator/projects/hexalith/eventstore` matches the `case` arm (a `case` glob `*` matches `/`), and the `[ -e "$DEST" ] && [ ! -e "$DEST/.git" ]` die does **not** fire because a real repository *does* have `.git` — so `rm -rf -- "$DEST"` would run on the live EventStore working copy. Needs `realpath -m` canonicalization plus a prefix re-check [_bmad-output/implementation-artifacts/evidence/story-2-12/578770679b9d3bc3fdf2a8a78190f24cdad8576e/setup-lane.sh:29]
+- [x] [Review][Patch] `setup-lane.sh` reports `alternates=none` when the `find` itself fails — with `pipefail`, `find … | grep -q .` returns 1 both when there are no alternates and when `find` aborts on an unreadable subtree; that single assertion is what the receipt's entire lane-isolation claim rests on [_bmad-output/implementation-artifacts/evidence/story-2-12/578770679b9d3bc3fdf2a8a78190f24cdad8576e/setup-lane.sh:69]
+- [x] [Review][Patch] `run-lanes.sh` never branches on an exit code and omits the two gates the receipt says it contains — `set -uo pipefail` without `-e`, and no step's status is checked, so a failed restore still proceeds to `dotnet test --no-build` and still prints `LANES_DONE` and exits 0; `NU_DIAGNOSTIC_LINES=0` is likewise computed unconditionally and reads the same whether the restore was clean or died before emitting diagnostics. The receipt calls it "the full driver", but it contains no reference to `setup-lane.sh`, `ac2-guard.sh`, or `analyze-assets.py` — the AC2 guard and both graph analyses were hand-typed and only `analyze-assets.py`'s own `invocation:` line records their arguments [_bmad-output/implementation-artifacts/evidence/story-2-12/f9e51c66745557da4f267ab40f32294f2f27fae7/run-lanes.sh:4]
+- [x] [Review][Patch] `analyze-assets.py`'s vacuity guard fires only at exactly zero edges, so a partial restore still prints `ASSETS_OK` — the "17 assets files / 60 edges / 61 edges" invariants every receipt leans on are compared only by a human reading the table; the script accepts any count ≥ 1. Also: raw refs are matched by path substring while `libraries` entries are matched by package id (two identity keys for one rule), raw refs are counted per (project, framework) with no dedup, and the usage branch uses `sys.exit(<str>)` which exits **1** — the code the script's own contract line reserves for "graph violated" [_bmad-output/implementation-artifacts/evidence/story-2-12/578770679b9d3bc3fdf2a8a78190f24cdad8576e/analyze-assets.py:34]
+- [x] [Review][Patch] The `.gitignore` evidence negation is both too narrow and too broad, and nothing guards it — verified with `git check-ignore`: `evidence/<sha>/logs/a.log` is now tracked, but `evidence/<sha>/a.log` is still ignored by `*.log`, `evidence/<sha>/Logs/a.log` still ignored by `[Ll]ogs/` (the negation is lowercase-only), and the same path under `planning-artifacts/` is still ignored — so the exact defect class recurs for any evidence log not placed in a lowercase `logs/` directory. Conversely `!…/logs/**` re-includes *anything* under an evidence `logs/` directory, including `.dll` and `.nupkg`. The "these negations must stay LAST" comment is enforced by nothing, and no test asserts that files a receipt binds are actually tracked [.gitignore:478]
+- [x] [Review][Patch] `sprint-status.yaml`'s comment block contradicts the value it annotates and still names the superseded acceptance — it reads "Both modes pass at accepted Tenants 578770679b9d … maintainer accepted that exact SHA" and "Back to in-progress for ONE reason only …" directly above `2-12-…: review`. The story file and the sprint tracker now disagree about which SHA is accepted. The same stale framing survives at the head of the previous Review Findings section [_bmad-output/implementation-artifacts/sprint-status.yaml:106]
+- [x] [Review][Patch] The final receipt drops the prior receipt's disclosure that the Release lane compiles 13 EventStore projects from submodule source — `logs/pkg-build.log` shows 13 `Hexalith.EventStore.*` assemblies built from `pkg-lane-f9e51c6/references/Hexalith.EventStore/src/**/bin/Release`. The `578770679b9d` receipt carried an explicit caveat for exactly this; the `f9e51c66…` receipt — now `final_receipt` in the front matter — presents the package-lane `0 Warning(s) / 0 Error(s)` with no caveat, which matters against AD-11's "Release/package validation may not compile a source edge" [_bmad-output/implementation-artifacts/evidence/story-2-12/f9e51c66745557da4f267ab40f32294f2f27fae7/logs/pkg-build.log]
+- [x] [Review][Patch] The repaired deferred-work AWK gate still leaks `relevant` across non-`## Deferred from:` headings, and none of the new fixtures covers the three branches it guards — `relevant` is reset only on `/^## Deferred from:/`, while the real ledger contains `## Existing deferred work` and `### DW-n` headings, so a `status:` line under a sub-heading inside a named prerequisite section is attributed to that section. No fixture exercises a foreign heading inside a relevant section, a section with zero `status:` lines, or one with two — the three cases `status_count != 1` exists to catch. The gate also rejects a valid CRLF ledger because `status_value` captures the trailing `\r`, and all new fixtures write LF [_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md:4324]
+- [x] [Review][Patch] `ac3-catalog.txt` ends at the heading `== configured nuget sources ==` with no content, yet the receipt cites that section for "nuget.org — the sole registered source (`dotnet nuget list source`: 1 source)" — the claim is true (independently re-run in the retained `pkg-lane-f9e51c6`: one source, `https://api.nuget.org/v3/index.json`), but the bound evidence does not contain it, so a second local or private feed serving a same-named `3.83.0` would be indistinguishable from the retained log [_bmad-output/implementation-artifacts/evidence/story-2-12/f9e51c66745557da4f267ab40f32294f2f27fae7/logs/ac3-catalog.txt:89]
+- [x] [Review][Patch] AC5's CI binding is absent by explicit declaration although the check was available and is green — the delta receipt states "CI at the accepted SHA: not separately re-queried for this delta … expected to be unchanged in kind", while the AC5 subtask requires binding CI/evidence URLs and the prior receipt records `release / release` failing on `578770679b9d`. Verified during this review: `gh api repos/Hexalith/Hexalith.Tenants/commits/f9e51c66…/check-runs` returns `ci / build-and-test: success`, `ci / aspire-tests: success`, `codeql / analyze: success`, `commitlint: success`, `ci / performance-tests: skipped`. Bind those results [_bmad-output/implementation-artifacts/evidence/story-2-12/f9e51c66745557da4f267ab40f32294f2f27fae7/receipt.md:367]
+- [x] [Review][Patch] The `ac2-guard.sh` tautology fix received no red/green proof, and its new assertion 6 cannot tell a gitlink from a tree — the AC4 guard patch got an explicit red/green (119/119 baseline, 120/120 patched, injected violation failing both tests); the AC2 assertion-5 repair got none, and both recorded runs had all seven submodules initialized, so the new `$1 !~ /^-/` filter removed no lines and the logs are byte-identical to what the tautology would have produced. Assertion 6 checks only `^[0-9a-f]{40}$`; verified that `git ls-tree --object-only HEAD tests` returns a 40-hex **tree** SHA, so a `references/Hexalith.Builds` that was an ordinary directory would pass and its tree SHA would be printed as `BUILDS_GITLINK_SHA` identity evidence. Add a `160000 commit` mode check and one deliberately-uninitialized run [_bmad-output/implementation-artifacts/evidence/story-2-12/578770679b9d3bc3fdf2a8a78190f24cdad8576e/ac2-guard.sh:50]
+- [x] [Review][Patch] The new proof-packet execution harness reads the child's pipes only after `WaitForExit` and never kills a timed-out process — if the extracted program ever writes more than a pipe buffer the child blocks, `WaitForExit(5000)` returns false, the awk process leaks, and the `finally` deletes the directory the live process still holds open. Also `process.Start().ShouldBeTrue("awk must be available…")` never produces that message when `awk` is absent, because `Process.Start` with `UseShellExecute=false` throws `Win32Exception` instead [tests/Hexalith.EventStore.Contracts.Tests/Packaging/ProofPacketValidatorIntegrityTests.cs:873]
+- [x] [Review][Defer] The strengthened AC4 guard has four bypasses: shared `Directory.Build.*` files are never inspected though the sibling rule in the same file inspects them and the repo already declares 6 `PackageReference` items there; `condition.Contains(...)` accepts a negated or disjunctive condition that leaves the reference live in package mode; `Update=`-form references are skipped entirely so `HasLocalVersionAuthority` never sees them; and `UseHexalithProjectReferences` is accepted as equivalent source intent though `Directory.Build.props:60` also requires `Exists(...)` [references/Hexalith.Tenants/tests/Hexalith.Tenants.Contracts.Tests/PackageGovernanceTests.cs:217] — deferred by owner decision 2026-07-28: the fix lives in Hexalith.Tenants and would move acceptance off `f9e51c6` and re-trigger AC5 for a third time; the guard as shipped is already a large improvement over the four-literal-name version it replaced
+- [x] [Review][Defer] The retained `578770679b9d` lane logs are pre-fix output committed beside the post-fix scripts, with no marker distinguishing them [_bmad-output/implementation-artifacts/evidence/story-2-12/578770679b9d3bc3fdf2a8a78190f24cdad8576e/logs/ac2-guard-src-lane.log] — deferred, pre-existing; the receipt states it in prose, and the SHA is superseded
+- [x] [Review][Defer] `ac3-catalog.txt`'s line-oriented grep cannot fail for `Hexalith.EventStore.RestApi.Generators`, whose condition sits on a continuation line, and no guard asserts `PackageReference` conditions outside the domain host [_bmad-output/implementation-artifacts/evidence/story-2-12/f9e51c66745557da4f267ab40f32294f2f27fae7/logs/ac3-catalog.txt:81] — deferred, pre-existing; the condition does exist and the host rule covers the host
+- [x] [Review][Defer] `setup-lane.sh` hardcodes `REFS=/home/administrator/projects/hexalith` and restricts destinations to `/home/*/tmp-story-2-12/*`, so the deferred "promote `ac2-guard.sh` into Tenants CI" item cannot be executed as written [_bmad-output/implementation-artifacts/evidence/story-2-12/578770679b9d3bc3fdf2a8a78190f24cdad8576e/setup-lane.sh:8] — deferred, pre-existing; belongs to the drift-detector follow-up
+- [x] [Review][Defer] Nothing in EventStore invokes `analyze-assets.py`, `ac2-guard.sh`, or `setup-lane.sh`, and none of their fail-closed branches has ever executed — every retained run ends `ASSETS_OK` / `AC2_GUARD_OK` [_bmad-output/implementation-artifacts/evidence/story-2-12/578770679b9d3bc3fdf2a8a78190f24cdad8576e/analyze-assets.py] — deferred, pre-existing; same root as the already-deferred drift-detector item
+
+**Drift observed live during this review, for the fourth recorded time — and it is a commit hazard
+right now.** While the patches were being applied, the `references/Hexalith.Tenants` submodule
+*working tree* moved `f9e51c66` → `8d64563` (`feat: enhance submodule pointer validation and add
+baseline capture`), and `references/Hexalith.Memories` moved `1868c8f9` → `115d30b5`. Neither was
+touched by this review.
+
+What is and is not affected:
+
+- **The recorded gitlinks are still correct.** `git ls-tree HEAD references/Hexalith.Tenants` is
+  `f9e51c66…`, the accepted SHA. Only the checked-out submodule worktrees drifted, and nothing is
+  staged.
+- **The re-run evidence is unaffected.** `rerun-carried-suites.sh` asserts lane identity before any
+  suite runs, and both lanes reported `LANE_IDENTITY_OK … = f9e51c66…`. That assertion — added
+  because of this exact hazard — earned its keep on its first use.
+- **The hazard:** committing these review patches with `git commit -a` or `git add -A` would absorb
+  both worktree moves and silently push the umbrella's Tenants gitlink off the accepted SHA to
+  `8d64563`, breaking AC2's recorded identity and invalidating AC5's SHA-bound acceptance. That is
+  precisely how `e7de0da9` and `5a1d277e` absorbed their gitlink moves. **Stage explicit paths.**
+
+This is further evidence for the deferred drift-detector item, which remains the correct home for a
+durable fix.
+
+**Dismissed as noise (6).** (1) "`ac2-guard.sh` cannot detect drift because it only asserts self-consistency" — this misreads the amended AC2, which requires exactly gitlink == checkout, reachability from `origin/main`, and a recorded SHA; the guard implements that. (2) A whitespace-containing submodule path truncating both `awk` extractions identically — no such path exists or is plausible. (3) A csproj in the legacy MSBuild XML namespace escaping `Descendants("ProjectReference")` — the repository is SDK-style throughout. (4) `inspected.ShouldBeGreaterThan(0)` failing a repository that legitimately consumes EventStore purely as packages — that is the intended non-vacuity design, not a defect. (5) Duplicate detection applied to project edges but not package edges — central versioning makes a duplicate `PackageReference` a no-op. (6) "The two new `deferred-work.md` entries omit the `status:`/`owner:` fields every other entry carries" — refuted by measurement: only **8** of ~98 `summary:` entries carry `status:` and only **2** carry `owner:`, and those belong to the Story 1.20 closure prerequisites the proof-packet AWK gate specifically validates. Running `scripts/check-deferred-work.py` classifies essentially the whole ledger as `dw6-unclassified-legacy-advisory` (exit 0), so the two new entries match the prevailing convention exactly and introduced nothing.
 
 ## Dev Notes
 
@@ -965,14 +1042,20 @@ GPT-5 Codex (sessions through 2026-07-27), Claude Opus 5 (2026-07-27 verificatio
   authority and 11 real downloads; graphs 60/60-project and 61/61-package at exactly `3.83.0` with 0
   raw project references; Contracts.Tests 120/120 in both modes with the two guard tests proved to
   have executed). Maintainer `jpiquot` accepted `f9e51c6` on 2026-07-28.
-- **The delta is genuinely partial, and the gap is stated rather than glossed.** `Server.Tests`
-  (738/738), `UI.Tests` (1276/1276) and `IntegrationTests` (167 passed / 1 skipped) were **not**
-  re-run at `f9e51c6`; they remain bound to the `578770679b9d` receipt, where the source lane was
-  EventStore `c8c70030`. This SHA's source lane is `150216c3` — three commits ahead, one of them
-  functional (`feat: add IReadModelBulkStore…`). The solution-wide `--warnaserror` build at
-  `f9e51c6` covers compilation in both modes, not behaviour. The owner accepted that gap explicitly
-  when choosing the focused delta over a full re-run; a reviewer wanting behavioural closure at this
-  exact SHA should re-run those three suites.
+- **The delta was partial, the gap as stated was itself understated, and it is now CLOSED.** The
+  original note here said `Server.Tests` (738/738), `UI.Tests` (1276/1276) and `IntegrationTests`
+  (167 passed / 1 skipped) were not re-run at `f9e51c6`, and attributed the gap solely to EventStore
+  being "three commits ahead". The delta code review found the **Tenants** tree had also moved —
+  16 commits, 53 files, 4006 insertions / 367 deletions, including 19 production files under `src/`
+  on the configuration-policy and gateway surfaces this story's own subtask requires preserving —
+  and that AD-12's persisted-path requirement, preserved unchanged by the AD-22 exception, was being
+  discharged by compilation alone. By owner decision the three suites were **re-run at `f9e51c6` in
+  both modes** on 2026-07-28: `Server.Tests` **738/738**, `UI.Tests` **1325/1325**,
+  `IntegrationTests` **167 passed / 1 skipped / 0 failed** — zero failures in either mode, every
+  lane exit 0. The carried-forward `UI.Tests` figure of 1276 was wrong by 49 tests. `IntegrationTests`
+  is now named explicitly as the AD-12 persisted-path evidence at the accepted SHA. Driver:
+  `evidence/story-2-12/f9e51c66…/rerun-carried-suites.sh`; results in `logs/rerun-driver.log` and the
+  six `{src,pkg}-test-*.log` files.
 - **A coherence property the code review recorded does not survive this delta.** At `578770679b9d`,
   `git rev-list -n1 v3.83.0` equalled the source lane's EventStore SHA `c8c70030`, so both lanes
   happened to validate identical EventStore code. At `f9e51c6` the source lane is 3 commits ahead of
@@ -1043,12 +1126,52 @@ unchanged** from the `578770679b9d…` directory and are bound by sha256 in the 
 than duplicated.
 
 **`references/` gitlinks that moved since `baseline_commit` `73589770`** — declared, not claimed
-untouched. **None was moved by a Story 2.12 commit**; all moved via automated `build(deps)` bumps
-and other stories' merges:
+untouched. **Corrected 2026-07-28 by the delta code review:** this list previously asserted "**None
+was moved by a Story 2.12 commit**; all moved via automated `build(deps)` bumps and other stories'
+merges". That was false at the commits carrying it. Two Story 2.12 commits performed the final hop
+of all three moves:
 
-- `references/Hexalith.Builds` — `4e5c2a3e` → `53d53ae4` (carries the `3.83.0` catalog this story validates)
-- `references/Hexalith.Memories` — `6e6d3fb9` → `327d1a9d` (unrelated to this story)
-- `references/Hexalith.Tenants` — `f8aff935` → `f9e51c66` (now equals the accepted Tenants SHA)
+- `references/Hexalith.Builds` — `4e5c2a3e` → `53d53ae4` (carries the `3.83.0` catalog this story
+  validates). Content originated in Builds release change control; **the final hop
+  `1b1c0b03`→`53d53ae4` was committed by Story 2.12 commit `e7de0da9`.**
+- `references/Hexalith.Memories` — `6e6d3fb9` → **`1868c8f9`** (unrelated to this story; the prior
+  text also stopped at the stale intermediate value `327d1a9d`). Content originated in `build(deps)`
+  automation; **the final hop `327d1a9d`→`1868c8f9` was committed by Story 2.12 commit `5a1d277e`.**
+- `references/Hexalith.Tenants` — `f8aff935` → `f9e51c66` (equals the accepted Tenants SHA).
+  **Moved by Story 2.12 commit `e7de0da9`, which is exactly what the closure subtask "update the
+  EventStore repository's `references/Hexalith.Tenants` gitlink only to that exact accepted Tenants
+  SHA" requires.** This one is a required story action, not incidental absorption.
+
+All three targets are reachable on their own remotes (verified 2026-07-28), and neither the Builds
+nor the Memories hop changes what EventStore builds — Builds `53d53ae4` still declares the same
+catalog version `3.83.0` this story validated. What was wrong was the *claim*, not the pointers.
+
+**Added or changed by the 2026-07-28 delta code review** (all in EventStore — no Tenants file was
+touched, so the maintainer's acceptance of `f9e51c6` is unaffected):
+
+- `evidence/story-2-12/f9e51c66…/rerun-carried-suites.sh` — the re-run driver, with per-step exit-code
+  gating and a lane-identity assertion before any suite runs.
+- `evidence/story-2-12/f9e51c66…/logs/` — six re-run suite logs, `rerun-driver.log`, and
+  `ac2-guard-redgreen.txt` (the red/green proof the AC2 guard repairs never had); `ac3-catalog.txt`
+  regenerated to fill its empty `configured nuget sources` section.
+- `evidence/story-2-12/f9e51c66…/receipt.md` — carry-forward closed with measured results; declared
+  gitlink table and Scope Statement corrected; the false `ReferenceOutputAssembly="false"` coverage
+  claim replaced with the empirical disproof and a pointer to the guard that does cover it; the AD-11
+  Release-lane source-compile caveat restored; CI check-runs bound; as-run vs hardened script hashes
+  separated.
+- `evidence/story-2-12/578770679b9d…/{setup-lane.sh,ac2-guard.sh,analyze-assets.py}` — hardened
+  (`..` traversal, alternates-search failure, gitlink mode check, exit-code contract, raw-ref identity
+  key and de-duplication, `--expect-assets`/`--expect-edges`).
+- `evidence/story-2-12/578770679b9d…/receipt.md` — Umbrella Pointer Correction marked superseded and
+  brought up to HEAD.
+- `.gitignore` — evidence-log negation corrected in both directions.
+- `_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md` — AWK gate
+  resets on any heading and tolerates CRLF.
+- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ProofPacketValidatorIntegrityTests.cs` — four
+  new fixtures (zero-status, two-status, foreign-heading donation, CRLF) and a pipe-drain/kill fix in
+  the execution harness.
+- `_bmad-output/implementation-artifacts/deferred-work.md` — five deferrals.
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — stale comment block replaced.
 
 **Added by the 2026-07-28 code review:**
 
@@ -1148,3 +1271,27 @@ and other stories' merges:
   holds. New evidence in
   `evidence/story-2-12/f9e51c66745557da4f267ab40f32294f2f27fae7/`. No code, test, dependency
   identity, or published repository state changed; nothing was pushed.
+- 2026-07-28 — **Delta code review closed the story to `done`.** Four independent no-context layers
+  over the delta (EventStore `57143dd3..5a1d277e` plus Tenants `85e24d5..f9e51c6`); outcome 2 owner
+  decisions resolved, 16 patches applied, 5 deferred, 6 dismissed. The identity chain was
+  independently re-verified and holds: root gitlink == accepted `f9e51c66` → EventStore `150216c3`
+  (reachable from `origin/main`) → Builds `53d53ae4` → single catalog `3.83.0`; all three lane-script
+  sha256 bindings matched byte-for-byte; both AC4 guard tests present, non-vacuous, and covering all
+  17 Tenants projects; CI on the accepted SHA green. Two findings mattered. First, the focused
+  delta's carry-forward gap was **understated** — it named only EventStore's 3 commits while the
+  Tenants tree had moved 16 commits / 4006 insertions including 19 production files on the
+  configuration-policy and gateway surfaces, and AD-12's persisted-path requirement (preserved
+  unchanged by the AD-22 exception) was being discharged by compilation alone; the owner directed a
+  re-run, and all three suites are now measured at `f9e51c6` in both modes (738 / **1325** / 167+1,
+  zero failures), correcting the carried-forward `UI.Tests` figure by 49 tests. Second, the receipt's
+  claim that the new `projectReferences` parse closes the `ReferenceOutputAssembly="false"` blind
+  spot was **false** and was proved so empirically — the coverage for that class is the Tenants XML
+  guard, and the receipt now says so. Also corrected: the "no gitlink was moved by a Story 2.12
+  commit" claim (false — `e7de0da9` moved two, `5a1d277e` moved one), the delta Scope Statement, the
+  prior receipt's stale Umbrella Pointer Correction, a `..` traversal that let `setup-lane.sh`
+  `rm -rf` the live repository, `run-lanes.sh` never checking an exit code, `analyze-assets.py`
+  passing on a partial restore, the `.gitignore` evidence negation being both too narrow and too
+  broad, an AWK-gate heading leak plus CRLF rejection, and a pipe-deadlock in the gate's test
+  harness. `Hexalith.EventStore.Contracts.Tests` 778/778 after all patches. Every change is in the
+  EventStore repository — no Tenants file was touched, so AC5's acceptance of `f9e51c6` is
+  undisturbed. Four AC4-guard bypasses deferred to a follow-up Tenants story by owner decision.

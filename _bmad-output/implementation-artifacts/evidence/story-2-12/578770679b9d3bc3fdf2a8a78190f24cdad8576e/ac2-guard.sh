@@ -66,8 +66,17 @@ while read -r sub; do
 done <<< "$ROOT_DECLARED"
 test "$NESTED_INIT" -eq 0 || fail "a nested submodule was initialized"
 
-# 6. the Builds gitlink must exist and be a 40-hex sha — it is reported below as evidence
-BUILDS_GITLINK_SHA="$(git ls-tree --object-only HEAD references/Hexalith.Builds)"
+# 6. the Builds gitlink must exist, be a real gitlink, and be a 40-hex sha — reported below as
+# evidence. The mode check is load-bearing: `git ls-tree --object-only` returns a 40-hex *tree* sha
+# for an ordinary directory and a *blob* sha for a file, so the shape test alone would accept a
+# submodule that had been replaced by a plain directory and print its tree sha as identity evidence
+# (2026-07-28 delta code review).
+BUILDS_GITLINK_ENTRY="$(git ls-tree HEAD references/Hexalith.Builds)"
+BUILDS_GITLINK_MODE="$(printf '%s' "$BUILDS_GITLINK_ENTRY" | awk '{print $1}')"
+BUILDS_GITLINK_TYPE="$(printf '%s' "$BUILDS_GITLINK_ENTRY" | awk '{print $2}')"
+BUILDS_GITLINK_SHA="$(printf '%s' "$BUILDS_GITLINK_ENTRY" | awk '{print $3}')"
+test "$BUILDS_GITLINK_MODE" = "160000" && test "$BUILDS_GITLINK_TYPE" = "commit" \
+  || fail "references/Hexalith.Builds is not a gitlink (mode='$BUILDS_GITLINK_MODE' type='$BUILDS_GITLINK_TYPE')"
 [[ "$BUILDS_GITLINK_SHA" =~ ^[0-9a-f]{40}$ ]] \
   || fail "Builds gitlink is not a 40-hex sha: '$BUILDS_GITLINK_SHA'"
 

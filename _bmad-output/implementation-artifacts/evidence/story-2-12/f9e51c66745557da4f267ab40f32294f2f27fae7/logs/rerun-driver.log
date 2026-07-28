@@ -1,0 +1,29 @@
+LANE_IDENTITY_OK /home/administrator/tmp-story-2-12/src-lane-f9e51c6 = f9e51c66745557da4f267ab40f32294f2f27fae7
+LANE_IDENTITY_OK /home/administrator/tmp-story-2-12/pkg-lane-f9e51c6 = f9e51c66745557da4f267ab40f32294f2f27fae7
+
+>>>>> src / Server.Tests
+src_Server.Tests_EXIT=0
+Passed!  - Failed:     0, Passed:   738, Skipped:     0, Total:   738, Duration: 570 ms - Hexalith.Tenants.Server.Tests.dll (net10.0)
+
+>>>>> src / UI.Tests
+src_UI.Tests_EXIT=0
+Passed!  - Failed:     0, Passed:  1325, Skipped:     0, Total:  1325, Duration: 3 s - Hexalith.Tenants.UI.Tests.dll (net10.0)
+
+>>>>> src / IntegrationTests
+src_IntegrationTests_EXIT=0
+Passed!  - Failed:     0, Passed:   167, Skipped:     1, Total:   168, Duration: 59 s - Hexalith.Tenants.IntegrationTests.dll (net10.0)
+
+>>>>> pkg / Server.Tests
+pkg_Server.Tests_EXIT=0
+Passed!  - Failed:     0, Passed:   738, Skipped:     0, Total:   738, Duration: 548 ms - Hexalith.Tenants.Server.Tests.dll (net10.0)
+
+>>>>> pkg / UI.Tests
+pkg_UI.Tests_EXIT=0
+Passed!  - Failed:     0, Passed:  1325, Skipped:     0, Total:  1325, Duration: 4 s - Hexalith.Tenants.UI.Tests.dll (net10.0)
+
+>>>>> pkg / IntegrationTests
+pkg_IntegrationTests_EXIT=0
+Passed!  - Failed:     0, Passed:   167, Skipped:     1, Total:   168, Duration: 59 s - Hexalith.Tenants.IntegrationTests.dll (net10.0)
+
+RERUN_ANY_FAILURE=0
+RERUN_OK

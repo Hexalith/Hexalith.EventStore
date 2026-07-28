@@ -87,3 +87,11 @@
 /home/administrator/tmp-story-2-12/src-lane-f9e51c6/src/Hexalith.Tenants.Api/Hexalith.Tenants.Api.csproj:23:    <PackageReference Include="Hexalith.EventStore.ServiceDefaults" Condition="'$(HexalithEventStoreFromSource)' != 'true'" />
 
 == configured nuget sources ==
+(SECTION WAS EMPTY — regenerated 2026-07-28 by the delta code review. The heading was written but
+captured no output, while the receipt cited this section for "nuget.org — the sole registered
+source". Re-run in the retained package lane:)
+
+$ cd /home/administrator/tmp-story-2-12/pkg-lane-f9e51c6 && dotnet nuget list source
+Registered Sources:
+  1.  nuget.org [Enabled]
+      https://api.nuget.org/v3/index.json

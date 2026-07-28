@@ -149,12 +149,38 @@ recorded as an assets library) versus a `PrivateAssets="all"` `PackageReference`
 project edges in source, 7 package edges in package), so **no mixed graph is reachable** — AC4's
 structural requirement holds at this SHA.
 
-The package lane's **0** raw `ProjectReference` items is the check that reads
-`project.restore.frameworks[].projectReferences` rather than `libraries`, so "zero project edges
-including transitive" also covers the `ReferenceOutputAssembly="false"` class that `libraries`
-structurally cannot represent.
+**CORRECTED 2026-07-28 by the delta code review — this claim was false.** The text here previously
+read: "The package lane's **0** raw `ProjectReference` items is the check that reads
+`project.restore.frameworks[].projectReferences` rather than `libraries`, so 'zero project edges
+including transitive' also covers the `ReferenceOutputAssembly="false"` class that `libraries`
+structurally cannot represent."
 
-Evidence: `logs/src-assets.txt`, `logs/pkg-assets.txt`.
+NuGet omits `ReferenceOutputAssembly="false"` project references from **both** structures, so the
+second parse closes nothing. Proved directly in the retained source lane at this SHA:
+
+- `src/Hexalith.Tenants.AppHost/Hexalith.Tenants.AppHost.csproj:32` opens an
+  `ItemGroup Condition="'$(Configuration)' == 'Debug' and '$(UseHexalithProjectReferences)' == 'true'"`
+  — both true in the source lane — containing three EventStore `ProjectReference`s marked
+  `ReferenceOutputAssembly="false"` (`Hexalith.EventStore`, `…Admin.Server.Host`, `…Admin.UI`).
+- They were genuinely live: `logs/src-build.log` shows all three assemblies compiled from
+  `src-lane-f9e51c6/references/Hexalith.EventStore/src/**/bin/Debug`.
+- Yet that project's `project.assets.json` records only **three** `projectReferences` —
+  `Hexalith.Commons.Aspire`, `Hexalith.EventStore.Aspire`, `Hexalith.Tenants.Aspire` — none of the
+  three. Correspondingly `logs/src-assets.txt` attributes only `Hexalith.EventStore.Aspire` to the
+  AppHost among its 12 raw items.
+
+So the package lane's **0** carries no information about that class, and the figure must not be
+cited as if it did. `analyze-assets.py` has been corrected to say so in its own output and comments.
+
+**Where that class is actually covered:** the Tenants XML guard
+`No_EventStore_project_reference_is_reachable_in_package_mode`, which reads each item's *effective*
+condition including every ancestor `ItemGroup` — so it does see the AppHost's ItemGroup-gated
+references and requires them to be gated on source intent. That guard, not the assets parse, is the
+durable AC3/AC4 coverage for `ReferenceOutputAssembly="false"` edges. (The delta code review also
+recorded four bypasses in that guard; they are deferred to a follow-up Tenants story by owner
+decision — see `deferred-work.md`.)
+
+Evidence: `logs/src-assets.txt`, `logs/pkg-assets.txt`, `logs/src-build.log`.
 
 ## AC4 — The Strengthened Guard, Green In Both Modes
 
@@ -195,6 +221,18 @@ Solution build with `--warnaserror` in each lane:
 | source | Debug | exit 0 — **0 Warning(s), 0 Error(s)** |
 | package | Release | exit 0 — **0 Warning(s), 0 Error(s)** |
 
+**AD-11 caveat, restored 2026-07-28 by the delta code review.** The `578770679b9d` receipt carried an
+explicit note for this and the note was dropped here, even though this receipt is the story's
+`final_receipt`. The Release lane's clean build is **not** a build of packages only:
+`logs/pkg-build.log` shows **13** `Hexalith.EventStore.*` assemblies compiled from
+`pkg-lane-f9e51c6/references/Hexalith.EventStore/src/**/bin/Release`. The EventStore submodule is
+present in the lane and MSBuild builds it as part of the solution, independently of how Tenants
+*resolves* its EventStore dependencies. AC3 is about resolution, and resolution is clean — all 61
+edges are `type: package` at exactly `3.83.0` with zero project edges. But AD-11's "Release/package
+validation may not compile a source edge" should be read against this fact, not around it: the lane
+compiles EventStore source it does not consume. Removing the submodule from the package lane
+entirely would be the stronger proof and is not what was done here.
+
 Evidence: `logs/src-build.log`, `logs/pkg-build.log`, `logs/lane-driver.log`.
 
 ## Lane Isolation
@@ -227,13 +265,58 @@ exception and its Parties 8.6 non-extension, the retired External Prerequisite C
 negative package-byte audit in `../prerequisites.md`, owner decisions D1–D3, and the architect
 ratification disposition.
 
-**What this costs, stated plainly.** The three carried-forward suites were green against EventStore
-`c8c70030` in source mode; this SHA's source lane is `150216c3`, three commits ahead including one
-functional commit (`IReadModelBulkStore`). Their results are therefore *strong prior evidence at a
-near-identical tree*, not fresh evidence at this tree. The solution-wide `--warnaserror` build did
-compile every project in both modes at this SHA with zero warnings and zero errors, which covers
-compilation but not behaviour. A reviewer who wants behavioural closure at this exact SHA should
-re-run those three suites; the owner accepted that gap when choosing the focused delta.
+**The carry-forward is CLOSED — the three suites were re-run at this SHA on 2026-07-28.** See
+"Carried-Forward Gap Closed" below. The table above is retained as the historical record of what the
+focused delta originally carried; it is no longer the evidence for those three suites.
+
+## Carried-Forward Gap Closed (2026-07-28 delta code review)
+
+The delta code review found that the paragraph previously printed here understated the gap
+materially, and the owner directed a re-run rather than a restatement.
+
+**What the understatement was.** The original text attributed the whole gap to EventStore — "this
+SHA's source lane is `150216c3`, three commits ahead" — and called the prior evidence "a
+near-identical tree". The **Tenants** tree also moved, and by far more:
+
+```text
+git log  578770679b9d..f9e51c66   ->  16 commits
+git diff --shortstat              ->  53 files changed, 4006 insertions(+), 367 deletions(-)
+git diff --stat -- src/           ->  19 files changed,  451 insertions(+), 197 deletions(-)
+```
+
+Those 19 production files are on the surfaces this story's own subtask requires preserving:
+`Services/Configuration/TenantConfigurationReadPolicyProvider.cs` (+161), new
+`TenantConfigurationValidatedPolicy.cs`, new `Services/Gateways/TenantsBffComposition.cs`,
+`Services/Gateways/TenantQueryGateway.cs` (+27), deleted `LegacyConfigurationDisplaySanitizer.cs`,
+and six Razor components. `tests/Hexalith.Tenants.UI.Tests` went from 792 to 829 `[Fact]`/`[Theory]`
+attributes. Neither this receipt nor the story disclosed that the Tenants tree had moved at all.
+
+Independently, AD-22's scoped exception preserves **AD-12 unchanged**, and AD-12/NFR16 states that
+compilation alone does not close high-risk compatibility — so discharging the persisted-path lane by
+a `--warnaserror` build was not available as an option regardless of the carry-forward question.
+
+**Measured results at Tenants `f9e51c66…`, both modes, `--no-build --no-restore` in the two retained
+isolated lanes** (each verified to be at the accepted SHA before any suite ran; driver
+`rerun-carried-suites.sh`, log `logs/rerun-driver.log`):
+
+| suite | Debug/source | Release/package | vs. carried-forward |
+| --- | --- | --- | --- |
+| `Hexalith.Tenants.Server.Tests` | 738 / 738 | 738 / 738 | unchanged |
+| `Hexalith.Tenants.UI.Tests` | **1325 / 1325** | **1325 / 1325** | **was 1276 — the carried-forward count was wrong** |
+| `Hexalith.Tenants.IntegrationTests` | 167 passed / 1 skipped / 0 failed | 167 passed / 1 skipped / 0 failed | unchanged |
+
+Zero failures in either mode; every lane exited 0 (`RERUN_OK`, `RERUN_ANY_FAILURE=0`). The single
+skip is the pre-existing environment-gated
+`SnapshotPerformanceTests.ColdStartRehydration_CompletesWithin30Seconds_With500KEvents`.
+
+**AD-12 persisted-path evidence, named explicitly:** `Hexalith.Tenants.IntegrationTests`, 167 passed
+/ 1 skipped in **both** dependency modes at the accepted SHA. That is the lane that exercises
+persisted projection/query/provenance/freshness behaviour rather than asserting it; it is no longer
+carried forward and no longer discharged by compilation.
+
+The UI delta is the substantive correction: 1325 − 1276 = **49 tests that the carried-forward figure
+never covered**, on exactly the configuration-policy and gateway surfaces the 16 intervening commits
+changed.
 
 ## Commands
 
@@ -270,14 +353,38 @@ source failure, and no reachable credential prompt. `-m:1` is required because p
 instances race on the same EventStore `.deps.json`. The full driver is retained as `run-lanes.sh`.
 
 The three shared lane scripts were **reused unchanged** from the prior evidence directory rather than
-duplicated here; their sha256 values are recorded above and in
-`../578770679b9d3bc3fdf2a8a78190f24cdad8576e/`:
+duplicated here. These are the **as-run** hashes — the exact bytes that produced the evidence in this
+directory:
 
 ```text
-f4d2339892420444771fec2004b092adb348fa77505380e56507ce6817dd8b8e  setup-lane.sh
-2ca8e48774e20fba6eca3e3d88e09aeafb8e12ef80924e93ff42b557a700a073  ac2-guard.sh
-da7a88fc67eecebf9ed7ee228cd3cbabc1e798143603845952f1df5fae50e748  analyze-assets.py
+f4d2339892420444771fec2004b092adb348fa77505380e56507ce6817dd8b8e  setup-lane.sh      (as run)
+2ca8e48774e20fba6eca3e3d88e09aeafb8e12ef80924e93ff42b557a700a073  ac2-guard.sh       (as run)
+da7a88fc67eecebf9ed7ee228cd3cbabc1e798143603845952f1df5fae50e748  analyze-assets.py  (as run)
 ```
+
+**The scripts were hardened after this evidence was produced** (2026-07-28 delta code review), so the
+files on disk no longer match the hashes above. That is intentional and the distinction is preserved
+rather than papered over: the hashes above identify the instruments that produced these logs; the
+hashes below identify the instruments a future lane will use.
+
+```text
+61ee8d563f09f07492b76c4fcb29dceb5df7d1a663ab6b155ab320d856dbe30a  setup-lane.sh      (hardened)
+e1ca51e23f44b5692800aca1b859d076e230e5ef05322d334269ddef7ef72a9d  ac2-guard.sh       (hardened)
+d8cf1a314a12098edf6d0c9ebb667e6c566ad1f1b2c52bf66336376f18853c00  analyze-assets.py  (hardened)
+```
+
+What the hardening changed, and why none of it invalidates the recorded results: `setup-lane.sh` now
+canonicalizes its destination before the scratch-prefix check (the old `case` glob accepted a `..`
+traversal out of the scratch tree, and the "is it a git working copy" check did not catch it because
+a real repository *does* have `.git`) and distinguishes a failed alternates search from a clean one;
+`ac2-guard.sh` now asserts the Builds gitlink is mode `160000` type `commit` rather than merely
+40-hex; `analyze-assets.py` now exits 2 rather than 1 on a usage error, keys raw project references
+by project id instead of path substring, de-duplicates them across target frameworks, accepts
+`--expect-assets` / `--expect-edges` so a partial restore cannot pass, and no longer claims to cover
+the `ReferenceOutputAssembly="false"` class. Re-running the hardened `analyze-assets.py` against both
+retained lanes reproduces this receipt's graph results exactly, now with `--expect-assets 17`
+asserted rather than eyeballed. A red/green proof for the two `ac2-guard.sh` repairs — absent when
+they were made — is in `logs/ac2-guard-redgreen.txt`.
 
 ## Drift During This Run — None
 
@@ -313,24 +420,53 @@ Its substance was nonetheless applied to this story by hand
 
 | submodule | baseline | HEAD | moved by |
 | --- | --- | --- | --- |
-| `references/Hexalith.Builds` | `4e5c2a3e` | `53d53ae4` | automated `build(deps)` / Builds change control — not this story |
-| `references/Hexalith.Memories` | `6e6d3fb9` | `327d1a9d` | automated `build(deps)` — not this story, unrelated |
-| `references/Hexalith.Tenants` | `f8aff935` | `f9e51c66` | automated `build(deps)` bumps and other stories' merges — not this story |
+| `references/Hexalith.Builds` | `4e5c2a3e` | `53d53ae4` | Builds change control upstream; **the final hop `1b1c0b03`→`53d53ae4` was committed by Story 2.12 commit `e7de0da9`** |
+| `references/Hexalith.Memories` | `6e6d3fb9` | `1868c8f9` | automated `build(deps)` upstream; **the final hop `327d1a9d`→`1868c8f9` was committed by Story 2.12 commit `5a1d277e`** |
+| `references/Hexalith.Tenants` | `f8aff935` | `f9e51c66` | **moved to the accepted SHA by Story 2.12 commit `e7de0da9`, as the story's own closure subtask requires** |
 
-Declared here rather than claimed untouched. **No gitlink was moved by a Story 2.12 commit.**
+**CORRECTED 2026-07-28 by the delta code review.** This table previously read "automated
+`build(deps)` … not this story" for all three rows and concluded "**No gitlink was moved by a Story
+2.12 commit.**" That conclusion was false at the commits carrying it, and it is owner decision D1
+recurring inside the commits that document D1:
+
+```text
+git diff e7de0da9^ e7de0da9 -- references/   ->  Hexalith.Builds  1b1c0b03 -> 53d53ae4
+                                                 Hexalith.Tenants f279cb13 -> f9e51c66
+git diff 5a1d277e^ 5a1d277e -- references/   ->  Hexalith.Memories 327d1a9d -> 1868c8f9
+```
+
+The distinction that matters: the *content* of each move originated upstream (Builds release change
+control, `build(deps)` automation, and the Tenants maintainer's own commits), but the *act of
+recording* the Builds and Memories hops, and the whole of the Tenants hop, was performed by Story
+2.12 commits. The Tenants move is not a defect — it is exactly what the closure subtask "update the
+EventStore repository's `references/Hexalith.Tenants` gitlink only to that exact accepted Tenants
+SHA" requires, and it lands on the accepted SHA. The Builds and Memories hops were absorbed
+incidentally by evidence commits. All three targets are reachable on their own remotes; verified
+2026-07-28. Neither `Hexalith.Memories` nor the Builds hop changes what EventStore builds — Builds
+`53d53ae4` still declares the same catalog version `3.83.0` this story validated.
 
 ## Scope Statement
 
-Nothing was pushed to any remote. No gitlink was changed in any repository. No package identity was
-adopted or altered. No EventStore submodule content was edited. No `Version`, `VersionOverride`,
-fallback property, or local `PackageVersion` entry was added to Tenants. No nested submodule was
-initialized; no recursive or remote submodule update was used. No production policy, guard, or
-fixture was weakened, and no test was adjusted to make a lane pass. No source file was modified in
-any repository during this session. The complete set of writes is: this evidence directory (20
-files), the story file
-`_bmad-output/implementation-artifacts/2-12-tenants-runtime-identity-adoption-and-package-mode-validation.md`,
-and the `2-12-…` status line in `_bmad-output/implementation-artifacts/sprint-status.yaml`. Nothing
-is committed by this session; the working tree is left for the owner to review and commit.
+**Scoped to the delta session as authored, then corrected 2026-07-28 by the delta code review.** The
+original text claimed "No gitlink was changed in any repository" and enumerated "the complete set of
+writes" as this evidence directory, the story file, and one `sprint-status.yaml` line. Both
+statements were false of the commits that published this receipt, so they are replaced:
+
+- **Gitlinks did change in the EventStore umbrella.** `e7de0da9` moved `references/Hexalith.Builds`
+  and `references/Hexalith.Tenants`; `5a1d277e` moved `references/Hexalith.Memories`. See the
+  corrected declared-gitlink table above for what each move means.
+- **The write set was larger than enumerated.** `e7de0da9` also rewrote `.gitignore`,
+  `deferred-work.md`, `_bmad-output/planning-artifacts/architecture.md`, `../prerequisites.md`, the
+  Story 1.20 proof packet, `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ProofPacketValidatorIntegrityTests.cs`,
+  and the three shared lane scripts.
+
+What remains true, and was re-verified on 2026-07-28: **no package identity was adopted or altered**
+(Builds `53d53ae4` still resolves the same catalog version `3.83.0`); **no EventStore submodule
+content was edited**; **no `Version`, `VersionOverride`, fallback property, or local
+`PackageVersion` entry was added to Tenants**; **no nested submodule was initialized** and no
+recursive or remote submodule update was used; and **no production policy, guard, or fixture was
+weakened, and no test was adjusted to make a lane pass**. No Tenants or EventStore *product* source
+file was modified by this story in any repository.
 
 ## AC5 — Tenants Maintainer Acceptance
 
@@ -364,11 +500,23 @@ is committed by this session; the working tree is left for the owner to review a
   approvals (AC1 activation authority), Builds PR #47 comment `5088870151` (the surviving central
   Gateway catalog entry AC4 requires), and the `578770679b9d` acceptance, which remains the binding
   record for the three carried-forward suites.
-- CI at the accepted SHA: not separately re-queried for this delta. The prior receipt's finding
-  stands and is expected to be unchanged in kind — `release / release` fails on Tenants `main`
-  commits for pre-existing release-pipeline reasons independent of Story 2.12. Recorded rather than
-  omitted, because the AC5 subtask asks for CI/evidence URLs to be bound and this delta binds
-  in-repository evidence only.
+- **CI at the accepted SHA — bound 2026-07-28 by the delta code review.** This entry previously read
+  "not separately re-queried for this delta … expected to be unchanged in kind", which left AC5's
+  "bind its CI/evidence URLs" subtask unmet on an assumption. The check was one API call and it is
+  **green**. `gh api repos/Hexalith/Hexalith.Tenants/commits/f9e51c66745557da4f267ab40f32294f2f27fae7/check-runs`:
+
+  ```text
+  ci / build-and-test        success
+  ci / aspire-tests          success
+  codeql / analyze           success
+  commitlint / commitlint    success
+  ci / performance-tests     skipped
+  ```
+
+  Note this supersedes the pessimistic expectation carried from the prior receipt: no check run on
+  the accepted SHA is failing. `release / release` does not appear as a check run on this commit —
+  it is a `main`-push workflow, not a per-commit check — so the prior receipt's `release / release`
+  observation neither applies to nor blocks this SHA.
 
 **Channel durability.** Every approval in this story except the two SHA acceptances has an external
 GitHub record (EventStore issue comment `5083143163`, release-owner comment `5083164122`, Builds
