@@ -128,7 +128,22 @@ development_status:
   epic-2-retrospective: done
 
   epic-3: in-progress
-  3-1-re-tier-live-sidecar-tests-from-release-gate: in-progress
+  # 3.1 moved review -> in-progress on 2026-07-28 (bmad-code-review; four layers, 5 decisions + 16 patches
+  # applied. AC1 amended to require a live-sidecar collection binding after a 17th live class was found bound
+  # to the second live collection Oq8Postgresql. CA1707 ledger re-attestation vindicated by an independent
+  # Roslyn census reproducing all three checkpoint values; all 8 tokens are legitimate test-scope identifiers.
+  # An undeclared Hexalith.Tenants gitlink bump is excluded from this story.)
+  # 3.1 moved in-progress -> review on 2026-07-28 (bmad-dev-story). AC6 fully re-run against the candidate
+  # workspace (FrontComposer b6efcad5, Tenants 7d7b7012): build 0W/0E, Server.Tests 2867/0/25, preflight
+  # exit 3, LiveSidecar 49/49 - deterministic counts byte-identical to the pre-bump run. The first live run
+  # failed 3/49 on actor calls refused by a dead app port; dapr_placement logs show 8 foreign EventStore
+  # app-ids sharing the ring in namespace default, and 3 re-runs on un-rebuilt binaries were 49/49 each, so
+  # it is recorded as an environment blocker with a lane-isolation entry deferred (AC7 forbids patching).
+  # AC7 inventory re-taken: 6 modified paths, not 4 (deferred-work.md and docs/ci.md were missing); the
+  # excluded Tenants advance is now 4 commits / 71 files / +6,734 / -703, still zero non-UI src/ files.
+  # Open owner action: commit with the explicit pathspec in the File List - never `git commit -a` - on a
+  # branch, since project-context.md forbids direct commits to main.
+  3-1-re-tier-live-sidecar-tests-from-release-gate: review
   3-2-harden-dapr-etag-timeout-for-integration-conditions: ready-for-dev
   3-3-references-based-submodule-layout: ready-for-dev
   3-4-aspire-security-resource-naming: backlog
