@@ -27,7 +27,7 @@ namespace Hexalith.EventStore.Client.Projections;
 /// resumable batch's commit marker is durable, and the committed value afterwards.
 /// </para>
 /// </remarks>
-public sealed class DaprReadModelStore : IReadModelStore, IReadModelBatchStore, IReadModelBatchStagingStore, IReadModelConditionalEraser {
+public sealed class DaprReadModelStore : IReadModelStore, IReadModelBulkStore, IReadModelBatchStore, IReadModelBatchStagingStore, IReadModelConditionalEraser {
     private readonly DaprClient _daprClient;
     private readonly ReadModelBatchOptions _options;
     private readonly ILogger _logger;
@@ -65,6 +65,69 @@ public sealed class DaprReadModelStore : IReadModelStore, IReadModelBatchStore, 
 
         TValue? value = JsonSerializer.Deserialize<TValue>(visible.Value.Span, _daprClient.JsonSerializerOptions);
         return new ReadModelEntry<TValue>(value, visible.ETag);
+    }
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlyList<ReadModelBulkEntry<TValue>>> GetManyAsync<TValue>(
+        string storeName,
+        IReadOnlyList<string> keys,
+        int parallelism,
+        CancellationToken cancellationToken = default)
+        where TValue : class {
+        ArgumentException.ThrowIfNullOrWhiteSpace(storeName);
+        ArgumentNullException.ThrowIfNull(keys);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(parallelism);
+        if (keys.Any(string.IsNullOrWhiteSpace)
+            || keys.Distinct(StringComparer.Ordinal).Count() != keys.Count) {
+            throw new ArgumentException("Bulk read-model keys must be distinct and non-empty.", nameof(keys));
+        }
+
+        if (keys.Count == 0) {
+            return [];
+        }
+
+        IReadOnlyList<BulkStateItem<JsonElement>> items = await _daprClient
+            .GetBulkStateAsync<JsonElement>(
+                storeName,
+                keys,
+                parallelism,
+                cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+        Dictionary<string, BulkStateItem<JsonElement>> byKey = items
+            .Where(static item => !string.IsNullOrWhiteSpace(item.Key))
+            .GroupBy(static item => item.Key, StringComparer.Ordinal)
+            .ToDictionary(static group => group.Key, static group => group.Single(), StringComparer.Ordinal);
+
+        var result = new List<ReadModelBulkEntry<TValue>>(keys.Count);
+        var accessor = new DaprReadModelBatchStateAccessor(_daprClient, storeName);
+        foreach (string key in keys) {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!byKey.TryGetValue(key, out BulkStateItem<JsonElement> item)
+                || item.Value.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null) {
+                result.Add(new ReadModelBulkEntry<TValue>(key, null, null));
+                continue;
+            }
+
+            ReadOnlyMemory<byte> raw = JsonSerializer.SerializeToUtf8Bytes(item.Value);
+            if (ReadModelBatchEnvelope.IsEnvelope(raw.Span)) {
+                RawStateEntry visible = await ReadModelBatchProtocol
+                    .ResolveVisibleAsync(accessor, key, cancellationToken)
+                    .ConfigureAwait(false);
+                TValue? visibleValue = visible.Exists
+                    ? JsonSerializer.Deserialize<TValue>(visible.Value.Span, _daprClient.JsonSerializerOptions)
+                    : null;
+                result.Add(new ReadModelBulkEntry<TValue>(
+                    key,
+                    visibleValue,
+                    visible.Exists ? visible.ETag : null));
+                continue;
+            }
+
+            TValue? value = item.Value.Deserialize<TValue>(_daprClient.JsonSerializerOptions);
+            result.Add(new ReadModelBulkEntry<TValue>(key, value, item.ETag));
+        }
+
+        return result;
     }
 
     /// <inheritdoc/>

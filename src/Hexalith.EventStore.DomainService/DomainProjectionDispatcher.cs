@@ -388,6 +388,13 @@ public static class DomainProjectionDispatcher {
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
                 throw;
             }
+            catch (DomainProjectionRebuildRejectedException exception) {
+                outcomes[handler.ProjectionType] = new ProjectionDispatchOutcome(
+                    handler.ProjectionType,
+                    ProjectionDispatchStatus.Failed,
+                    null,
+                    exception.ReasonCode);
+            }
             catch (Exception) {
                 outcomes[handler.ProjectionType] = new ProjectionDispatchOutcome(
                     handler.ProjectionType,
@@ -556,7 +563,7 @@ public static class DomainProjectionDispatcher {
     private static void ValidateRebuildEventHistory(
         IReadOnlyList<ProjectionEventDto> events,
         int maxEventCount) {
-        if (events.Count > maxEventCount) {
+        if (events.Count == 0 || events.Count > maxEventCount) {
             throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.MalformedOutcome);
         }
 

@@ -13,7 +13,7 @@ public static class ReadModelStoreServiceCollectionExtensions {
     /// <summary>
     /// Registers the DAPR-backed read-model store for domain modules that maintain persisted,
     /// incrementally-updated read models. One <see cref="DaprReadModelStore"/> singleton backs
-    /// <see cref="IReadModelStore"/>, <see cref="IReadModelBatchStore"/>, and the additive
+    /// <see cref="IReadModelStore"/>, <see cref="IReadModelBulkStore"/>, <see cref="IReadModelBatchStore"/>, and the additive
     /// <see cref="IReadModelBatchStagingStore"/>. Requires a registered <c>DaprClient</c>
     /// (e.g. via <c>AddDaprClient</c>).
     /// </summary>
@@ -37,6 +37,9 @@ public static class ReadModelStoreServiceCollectionExtensions {
 
         services.TryAddSingleton<DaprReadModelStore>();
         services.TryAddSingleton<IReadModelStore>(static sp => sp.GetRequiredService<DaprReadModelStore>());
+        services.TryAddSingleton<IReadModelBulkStore>(static sp =>
+            sp.GetService<IReadModelStore>() as IReadModelBulkStore
+            ?? sp.GetRequiredService<DaprReadModelStore>());
         services.TryAddSingleton<IReadModelBatchStore>(static sp =>
             sp.GetService<IReadModelStore>() as IReadModelBatchStore
             ?? sp.GetRequiredService<DaprReadModelStore>());

@@ -452,6 +452,59 @@ public sealed class DomainProjectionDispatcherV2Tests {
     }
 
     [Fact]
+    public async Task RebuildAsync_TypedDeterministicRejectionMapsToTerminalFailure() {
+        IAsyncDomainProjectionRebuildHandler handler = CreateRebuildHandler("widget", "widget-detail");
+        handler.PrepareRebuildAsync(Arg.Any<ProjectionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns<Task<DomainProjectionRebuildPlan>>(_ => throw new DomainProjectionRebuildRejectedException(
+                ProjectionDispatchReasonCodes.HandlerFailure));
+        IReadModelBatchStore batchStore = Substitute.For<IReadModelBatchStore>();
+        using ServiceProvider provider = BuildRebuildProvider(batchStore, handler);
+        string fingerprint = ProjectionRouteCatalogFingerprint.Compute(
+            "widget-service",
+            "v1",
+            [new ProjectionDispatchRoute("widget", "widget-detail")]);
+
+        ProjectionDispatchResponse response = await DomainProjectionDispatcher.RebuildAsync(
+            provider,
+            CreateRequest(fingerprint, "widget-detail"),
+            new ProjectionDispatchOptions(),
+            new DomainProjectionIdentityOptions { AppId = "widget-service", ServiceVersion = "v1" },
+            CancellationToken.None);
+
+        ProjectionDispatchOutcome outcome = response.Outcomes.ShouldHaveSingleItem();
+        outcome.Status.ShouldBe(ProjectionDispatchStatus.Failed);
+        outcome.ReasonCode.ShouldBe(ProjectionDispatchReasonCodes.HandlerFailure);
+        _ = await batchStore.DidNotReceiveWithAnyArgs().ExecuteAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task RebuildAsync_EmptyFullReplayHistoryIsRejectedBeforePreparation() {
+        IAsyncDomainProjectionRebuildHandler handler = CreateRebuildHandler("widget", "widget-detail");
+        IReadModelBatchStore batchStore = Substitute.For<IReadModelBatchStore>();
+        using ServiceProvider provider = BuildRebuildProvider(batchStore, handler);
+        string fingerprint = ProjectionRouteCatalogFingerprint.Compute(
+            "widget-service",
+            "v1",
+            [new ProjectionDispatchRoute("widget", "widget-detail")]);
+        var request = new ProjectionDispatchRequest(
+            new ProjectionRequest("tenant-a", "widget", "widget-1", []),
+            ["widget-detail"],
+            "dispatch-empty",
+            fingerprint);
+
+        ProjectionDispatchValidationException exception = await Should.ThrowAsync<ProjectionDispatchValidationException>(() =>
+            DomainProjectionDispatcher.RebuildAsync(
+                provider,
+                request,
+                new ProjectionDispatchOptions(),
+                new DomainProjectionIdentityOptions { AppId = "widget-service", ServiceVersion = "v1" },
+                CancellationToken.None));
+
+        exception.ReasonCode.ShouldBe(ProjectionDispatchReasonCodes.MalformedOutcome);
+        _ = handler.DidNotReceiveWithAnyArgs().PrepareRebuildAsync(default!, default!, default);
+    }
+
+    [Fact]
     public async Task RebuildAsync_SubsetOfAuthoritativeRoutesIsRejectedBeforePreparation() {
         IAsyncDomainProjectionRebuildHandler detail = CreateRebuildHandler("widget", "widget-detail");
         IAsyncDomainProjectionRebuildHandler index = CreateRebuildHandler("widget", "widget-index");
@@ -630,7 +683,7 @@ public sealed class DomainProjectionDispatcherV2Tests {
 
     private static ProjectionDispatchRequest CreateRequest(string fingerprint, params string[] projectionTypes)
         => new(
-            new ProjectionRequest("tenant-a", "widget", "widget-1", []),
+            new ProjectionRequest("tenant-a", "widget", "widget-1", [ProjectionEvent(1)]),
             projectionTypes,
             "dispatch-1",
             fingerprint);

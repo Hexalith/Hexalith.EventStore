@@ -9,6 +9,26 @@ namespace Hexalith.EventStore.Client.Tests.Projections;
 public class DaprReadModelStoreTests {
     private const string StoreName = "statestore";
 
+    [Fact]
+    public async Task GetManyAsync_UsesOneBoundedBulkCallAndReturnsMissingKeysInRequestOrder() {
+        var daprClient = new RecordingDaprClient();
+        daprClient.SeedByteStore("read-model:1", "{\"value\":42}"u8.ToArray());
+        daprClient.SeedByteStore("read-model:3", "{\"value\":84}"u8.ToArray());
+        var store = new DaprReadModelStore(daprClient);
+
+        IReadOnlyList<ReadModelBulkEntry<DaprReadModelStoreTestModel>> entries = await store.GetManyAsync<DaprReadModelStoreTestModel>(
+            StoreName,
+            ["read-model:1", "read-model:2", "read-model:3"],
+            parallelism: 7);
+
+        entries.Select(static item => item.Key).ShouldBe(["read-model:1", "read-model:2", "read-model:3"]);
+        entries[0].Value!.Value.ShouldBe(42);
+        entries[1].Value.ShouldBeNull();
+        entries[2].Value!.Value.ShouldBe(84);
+        daprClient.BulkStateCallCount.ShouldBe(1);
+        daprClient.BulkStateParallelism.ShouldBe(7);
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]

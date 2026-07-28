@@ -24,6 +24,10 @@ internal sealed class RecordingDaprClient : DaprClient
 
     public int DeleteStateCallCount { get; private set; }
 
+    public int BulkStateCallCount { get; private set; }
+
+    public int? BulkStateParallelism { get; private set; }
+
     public Action<string, ReadOnlyMemory<byte>> BeforeTrySaveByteState { get; set; }
 
     public IReadOnlyList<(string Key, byte[] Value, string ETag, ConcurrencyMode Concurrency)> TrySaveByteOperations => _trySaveByteOperations;
@@ -159,7 +163,22 @@ internal sealed class RecordingDaprClient : DaprClient
 
     public override Task<IReadOnlyList<BulkStateItem>> GetBulkStateAsync(string storeName, IReadOnlyList<string> keys, int? parallelism, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken) => throw new NotSupportedException();
 
-    public override Task<IReadOnlyList<BulkStateItem<TValue>>> GetBulkStateAsync<TValue>(string storeName, IReadOnlyList<string> keys, int? parallelism, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken) => throw new NotSupportedException();
+    public override Task<IReadOnlyList<BulkStateItem<TValue>>> GetBulkStateAsync<TValue>(string storeName, IReadOnlyList<string> keys, int? parallelism, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        StoreName = storeName;
+        BulkStateCallCount++;
+        BulkStateParallelism = parallelism;
+        IReadOnlyList<BulkStateItem<TValue>> items = [.. keys
+            .Where(_byteStore.ContainsKey)
+            .Select(key =>
+            {
+                (byte[] bytes, string etag) = _byteStore[key];
+                TValue value = JsonSerializer.Deserialize<TValue>(bytes, JsonSerializerOptions)!;
+                return new BulkStateItem<TValue>(key, value, etag);
+            })];
+        return Task.FromResult(items);
+    }
 
     public override Task<(ReadOnlyMemory<byte>, string)> GetByteStateAndETagAsync(string storeName, string key, ConsistencyMode? consistencyMode, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken)
     {

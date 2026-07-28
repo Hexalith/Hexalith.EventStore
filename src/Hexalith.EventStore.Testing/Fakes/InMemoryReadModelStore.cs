@@ -30,7 +30,7 @@ namespace Hexalith.EventStore.Testing.Fakes;
 /// protocol phase.
 /// </para>
 /// </remarks>
-public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelBatchStore, IReadModelBatchStagingStore, IReadModelConditionalEraser {
+public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelBulkStore, IReadModelBatchStore, IReadModelBatchStagingStore, IReadModelConditionalEraser {
     private static readonly JsonSerializerOptions s_json = new(JsonSerializerDefaults.Web);
 
     private readonly ConcurrentDictionary<string, Entry> _entries = new(StringComparer.Ordinal);
@@ -80,6 +80,30 @@ public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelBatchSto
         return visible.Exists
             ? new ReadModelEntry<TValue>(Deserialize<TValue>(visible.Value), visible.ETag)
             : new ReadModelEntry<TValue>(null, null);
+    }
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlyList<ReadModelBulkEntry<TValue>>> GetManyAsync<TValue>(
+        string storeName,
+        IReadOnlyList<string> keys,
+        int parallelism,
+        CancellationToken cancellationToken = default)
+        where TValue : class {
+        ArgumentException.ThrowIfNullOrWhiteSpace(storeName);
+        ArgumentNullException.ThrowIfNull(keys);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(parallelism);
+        if (keys.Any(string.IsNullOrWhiteSpace)
+            || keys.Distinct(StringComparer.Ordinal).Count() != keys.Count) {
+            throw new ArgumentException("Bulk read-model keys must be distinct and non-empty.", nameof(keys));
+        }
+
+        var entries = new List<ReadModelBulkEntry<TValue>>(keys.Count);
+        foreach (string key in keys) {
+            ReadModelEntry<TValue> entry = await GetAsync<TValue>(storeName, key, cancellationToken).ConfigureAwait(false);
+            entries.Add(new ReadModelBulkEntry<TValue>(key, entry.Value, entry.ETag));
+        }
+
+        return entries;
     }
 
     /// <inheritdoc/>
