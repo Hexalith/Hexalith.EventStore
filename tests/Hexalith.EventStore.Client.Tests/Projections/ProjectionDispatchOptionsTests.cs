@@ -17,6 +17,7 @@ public class ProjectionDispatchOptionsTests {
         options.RetryBaseDelay.ShouldBe(TimeSpan.FromSeconds(1));
         options.RetryMaxDelay.ShouldBe(TimeSpan.FromMinutes(5));
         options.RetryWorkerInterval.ShouldBe(TimeSpan.FromSeconds(1));
+        options.RedeliveryWindow.ShouldBe(TimeSpan.FromHours(24));
         Should.NotThrow(options.Validate);
     }
 
@@ -30,6 +31,7 @@ public class ProjectionDispatchOptionsTests {
         options => options.RetryMaxDelay = TimeSpan.Zero,
         options => options.RetryWorkerInterval = TimeSpan.Zero,
         options => options.RetryLeaseDuration = TimeSpan.Zero,
+        options => options.RedeliveryWindow = TimeSpan.Zero,
         options => options.CatalogRefreshInterval = TimeSpan.Zero,
     };
 
@@ -58,6 +60,15 @@ public class ProjectionDispatchOptionsTests {
         var options = new ProjectionDispatchOptions {
             RetryBaseDelay = TimeSpan.FromSeconds(2),
             RetryMaxDelay = TimeSpan.FromSeconds(1),
+        };
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(options.Validate);
+    }
+
+    [Fact]
+    public void Validate_RejectsRedeliveryWindowBelowOneRetryAndLeaseCycle() {
+        var options = new ProjectionDispatchOptions {
+            RedeliveryWindow = TimeSpan.FromMinutes(5),
         };
 
         _ = Should.Throw<ArgumentOutOfRangeException>(options.Validate);

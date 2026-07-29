@@ -30,7 +30,7 @@ namespace Hexalith.EventStore.Testing.Fakes;
 /// protocol phase.
 /// </para>
 /// </remarks>
-public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelBulkStore, IReadModelBatchStore, IReadModelBatchStagingStore, IReadModelConditionalEraser {
+public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelExpiringStore, IReadModelBulkStore, IReadModelBatchStore, IReadModelBatchStagingStore, IReadModelConditionalEraser {
     private static readonly JsonSerializerOptions s_json = new(JsonSerializerDefaults.Web);
 
     private readonly ConcurrentDictionary<string, Entry> _entries = new(StringComparer.Ordinal);
@@ -59,6 +59,9 @@ public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelBulkStor
     /// simulate a crash/transport failure, or cancel to simulate post-dispatch cancellation.
     /// </summary>
     public Func<ReadModelBatchPhase, int, CancellationToken, Task>? BatchFaultHook { get; set; }
+
+    /// <summary>Gets the retention period supplied to the most recent expiring write.</summary>
+    public TimeSpan? LastTimeToLive { get; private set; }
 
     /// <summary>Gets the number of stored keys across all stores (including batch markers/envelopes).</summary>
     public int Count => _entries.Count;
@@ -152,6 +155,23 @@ public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelBulkStor
 
         _entries[composite] = new Entry(Serialize(value), NextETag());
         return Task.FromResult(true);
+    }
+
+    /// <inheritdoc/>
+    public Task<bool> TrySaveWithTimeToLiveAsync<TValue>(
+        string storeName,
+        string key,
+        TValue value,
+        string etag,
+        TimeSpan timeToLive,
+        CancellationToken cancellationToken = default)
+        where TValue : class {
+        if (timeToLive <= TimeSpan.Zero) {
+            throw new ArgumentOutOfRangeException(nameof(timeToLive), "Time-to-live must be greater than zero.");
+        }
+
+        LastTimeToLive = timeToLive;
+        return TrySaveAsync(storeName, key, value, etag, cancellationToken);
     }
 
     /// <inheritdoc/>

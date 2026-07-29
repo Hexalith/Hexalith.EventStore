@@ -16,12 +16,14 @@ public sealed class ReadModelBatchOperation {
         ReadModelBatchOperationKind kind,
         string valueTypeName,
         ReadOnlyMemory<byte> canonicalValue,
-        ReadModelBatchConcurrency concurrency) {
+        ReadModelBatchConcurrency concurrency,
+        TimeSpan? timeToLive) {
         Key = key;
         Kind = kind;
         ValueTypeName = valueTypeName;
         CanonicalValue = canonicalValue;
         Concurrency = concurrency;
+        TimeToLive = timeToLive;
     }
 
     /// <summary>Gets the logical state key the operation targets.</summary>
@@ -39,6 +41,9 @@ public sealed class ReadModelBatchOperation {
     /// <summary>Gets the optimistic-concurrency policy for the operation.</summary>
     public ReadModelBatchConcurrency Concurrency { get; }
 
+    /// <summary>Gets the optional retention period applied when the final write becomes visible.</summary>
+    public TimeSpan? TimeToLive { get; }
+
     /// <summary>
     /// Creates a write operation, serializing <paramref name="value"/> immediately into immutable
     /// canonical bytes.
@@ -50,13 +55,15 @@ public sealed class ReadModelBatchOperation {
     /// The concurrency policy. Must be <see cref="ReadModelBatchConcurrencyMode.Unconditional"/> or
     /// <see cref="ReadModelBatchConcurrencyMode.ExpectedETag"/>; idempotent-absent is delete-only.
     /// </param>
+    /// <param name="timeToLive">Optional positive retention applied when the final write becomes visible.</param>
     /// <returns>An immutable write operation.</returns>
     /// <exception cref="ArgumentException">The key is null/whitespace or the concurrency mode is invalid for a write.</exception>
     /// <exception cref="ArgumentNullException"><paramref name="value"/> or <paramref name="concurrency"/> is null.</exception>
     public static ReadModelBatchOperation Write<TValue>(
         string key,
         TValue value,
-        ReadModelBatchConcurrency concurrency)
+        ReadModelBatchConcurrency concurrency,
+        TimeSpan? timeToLive = null)
         where TValue : class {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
         ArgumentNullException.ThrowIfNull(value);
@@ -67,6 +74,10 @@ public sealed class ReadModelBatchOperation {
                 nameof(concurrency));
         }
 
+        if (timeToLive is { } retention && retention <= TimeSpan.Zero) {
+            throw new ArgumentOutOfRangeException(nameof(timeToLive), "Time-to-live must be greater than zero.");
+        }
+
         ReadOnlyMemory<byte> canonical = ReadModelBatchCanonicalJson.Serialize(value);
         string typeName = typeof(TValue).FullName ?? typeof(TValue).Name;
         return new ReadModelBatchOperation(
@@ -74,7 +85,8 @@ public sealed class ReadModelBatchOperation {
             ReadModelBatchOperationKind.Write,
             typeName,
             canonical,
-            concurrency);
+            concurrency,
+            timeToLive);
     }
 
     /// <summary>
@@ -107,6 +119,7 @@ public sealed class ReadModelBatchOperation {
             ReadModelBatchOperationKind.Delete,
             string.Empty,
             ReadOnlyMemory<byte>.Empty,
-            concurrency);
+            concurrency,
+            null);
     }
 }

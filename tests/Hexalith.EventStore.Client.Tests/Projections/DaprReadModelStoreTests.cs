@@ -48,6 +48,22 @@ public class DaprReadModelStoreTests {
         options.Concurrency.ShouldBe(ConcurrencyMode.FirstWrite);
     }
 
+    [Fact]
+    public async Task TrySaveWithTimeToLiveAsync_RoundsUpAndPassesDaprTtlMetadata() {
+        var daprClient = new RecordingDaprClient { TrySaveResult = true };
+        var store = new DaprReadModelStore(daprClient);
+
+        bool saved = await store.TrySaveWithTimeToLiveAsync(
+            StoreName,
+            "dispatch-ledger:1",
+            new DaprReadModelStoreTestModel { Value = 42 },
+            string.Empty,
+            TimeSpan.FromMilliseconds(1500));
+
+        saved.ShouldBeTrue();
+        daprClient.Metadata["ttlInSeconds"].ShouldBe("2");
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]

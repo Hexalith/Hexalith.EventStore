@@ -50,6 +50,9 @@ internal static class ReadModelBatchFingerprint {
                 writer.WriteString("type", operation.ValueTypeName);
                 writer.WriteString("cmode", operation.Concurrency.Mode.ToString());
                 writer.WriteString("etag", operation.Concurrency.ExpectedETag);
+                if (operation.TimeToLive is { } timeToLive) {
+                    writer.WriteNumber("ttl", checked((long)Math.Ceiling(timeToLive.TotalSeconds)));
+                }
                 writer.WriteBase64String("val", operation.CanonicalValue.Span);
                 writer.WriteEndObject();
             }

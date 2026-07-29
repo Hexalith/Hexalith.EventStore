@@ -46,9 +46,16 @@ internal sealed class RecordingDaprClient : DaprClient
 
     public StateOptions StateOptions { get; private set; }
 
+    public IReadOnlyDictionary<string, string> Metadata { get; private set; }
+
+    public IReadOnlyDictionary<string, string> LastTrySaveByteMetadata { get; private set; }
+
+    public IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> TrySaveByteMetadata => _trySaveByteMetadata;
+
     private readonly Dictionary<string, (byte[] Value, string ETag)> _byteStore = new(StringComparer.Ordinal);
     private readonly List<(string Key, byte[] Value, string ETag, ConcurrencyMode Concurrency)> _trySaveByteOperations = [];
     private readonly List<(string Key, string ETag, ConcurrencyMode Concurrency)> _tryDeleteByteOperations = [];
+    private readonly Dictionary<string, IReadOnlyDictionary<string, string>> _trySaveByteMetadata = new(StringComparer.Ordinal);
     private long _byteEtag;
 
     // When set, ExecuteStateTransactionAsync throws before applying, simulating an ambiguous dispatch.
@@ -82,6 +89,7 @@ internal sealed class RecordingDaprClient : DaprClient
         Value = value;
         ETag = etag;
         StateOptions = stateOptions;
+        Metadata = metadata;
         return Task.FromResult(TrySaveResult);
     }
 
@@ -287,6 +295,8 @@ internal sealed class RecordingDaprClient : DaprClient
     public override Task<bool> TrySaveByteStateAsync(string storeName, string key, ReadOnlyMemory<byte> binaryValue, string etag, StateOptions stateOptions, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        LastTrySaveByteMetadata = metadata;
+        _trySaveByteMetadata[key] = metadata;
         _trySaveByteOperations.Add((
             key,
             binaryValue.ToArray(),

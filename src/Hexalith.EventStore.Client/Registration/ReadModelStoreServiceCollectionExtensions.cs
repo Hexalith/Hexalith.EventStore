@@ -37,6 +37,9 @@ public static class ReadModelStoreServiceCollectionExtensions {
 
         services.TryAddSingleton<DaprReadModelStore>();
         services.TryAddSingleton<IReadModelStore>(static sp => sp.GetRequiredService<DaprReadModelStore>());
+        services.TryAddSingleton<IReadModelExpiringStore>(static sp =>
+            sp.GetService<IReadModelStore>() as IReadModelExpiringStore
+            ?? sp.GetRequiredService<DaprReadModelStore>());
         services.TryAddSingleton<IReadModelBulkStore>(static sp =>
             sp.GetService<IReadModelStore>() as IReadModelBulkStore
             ?? sp.GetRequiredService<DaprReadModelStore>());

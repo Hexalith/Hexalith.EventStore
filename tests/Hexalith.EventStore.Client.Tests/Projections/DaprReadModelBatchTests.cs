@@ -65,6 +65,24 @@ public class DaprReadModelBatchTests {
     }
 
     [Fact]
+    public async Task ExecuteAsync_ResumableProfile_AppliesTtlOnlyToCompactedCandidate() {
+        var client = new RecordingDaprClient();
+        DaprReadModelStore store = CreateStore(client);
+        var batch = new ReadModelBatch(
+            Scope(),
+            [ReadModelBatchOperation.Write(
+                "dispatch-ledger:1",
+                new Detail(2),
+                ReadModelBatchConcurrency.LastWrite,
+                TimeSpan.FromHours(24))]);
+
+        ReadModelBatchResult result = await store.ExecuteAsync(batch);
+
+        result.Status.ShouldBe(ReadModelBatchStatus.Completed);
+        client.TrySaveByteMetadata["dispatch-ledger:1"]["ttlInSeconds"].ShouldBe("86400");
+    }
+
+    [Fact]
     public async Task ExecuteAsync_TransactionQualifiedProfile_IssuesExactlyOneOrderedTransaction() {
         var client = new RecordingDaprClient();
         DaprReadModelStore store = CreateStore(client, ReadModelBatchStoreProfile.TransactionQualified);
@@ -81,6 +99,24 @@ public class DaprReadModelBatchTests {
         operations[0].Value.ShouldBe(ReadModelBatchCanonicalJson.Serialize(new Detail(2)).ToArray());
         operations[1].Key.ShouldBe("index:counterView");
         operations[2].Key.ShouldBe(ReadModelBatchKeys.MarkerKey(Scope().ComputeScopeHash()));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_TransactionQualifiedProfile_CarriesOperationTtlMetadata() {
+        var client = new RecordingDaprClient();
+        DaprReadModelStore store = CreateStore(client, ReadModelBatchStoreProfile.TransactionQualified);
+        var batch = new ReadModelBatch(
+            Scope(),
+            [ReadModelBatchOperation.Write(
+                "dispatch-ledger:1",
+                new Detail(2),
+                ReadModelBatchConcurrency.LastWrite,
+                TimeSpan.FromHours(24))]);
+
+        ReadModelBatchResult result = await store.ExecuteAsync(batch);
+
+        result.Status.ShouldBe(ReadModelBatchStatus.Completed);
+        client.TransactionOperations[0].Metadata["ttlInSeconds"].ShouldBe("86400");
     }
 
     [Fact]

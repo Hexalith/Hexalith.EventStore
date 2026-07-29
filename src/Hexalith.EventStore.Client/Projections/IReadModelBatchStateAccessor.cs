@@ -26,6 +26,15 @@ internal interface IReadModelBatchStateAccessor {
     /// <returns><see langword="true"/> when the write succeeded; <see langword="false"/> on ETag conflict.</returns>
     Task<bool> TryWriteAsync(string key, ReadOnlyMemory<byte> value, string expectedETag, CancellationToken cancellationToken);
 
+    /// <summary>Writes a value under first-write concurrency with an optional state-store time-to-live.</summary>
+    Task<bool> TryWriteAsync(
+        string key,
+        ReadOnlyMemory<byte> value,
+        string expectedETag,
+        TimeSpan? timeToLive,
+        CancellationToken cancellationToken) =>
+        TryWriteAsync(key, value, expectedETag, cancellationToken);
+
     /// <summary>Deletes a value under first-write optimistic concurrency.</summary>
     /// <param name="key">The state key.</param>
     /// <param name="expectedETag">The expected ETag.</param>

@@ -27,6 +27,15 @@ internal sealed class DaprReadModelBatchStateAccessor(DaprClient daprClient, str
 
     /// <inheritdoc/>
     public async Task<bool> TryWriteAsync(string key, ReadOnlyMemory<byte> value, string expectedETag, CancellationToken cancellationToken) =>
+        await TryWriteAsync(key, value, expectedETag, timeToLive: null, cancellationToken).ConfigureAwait(false);
+
+    /// <inheritdoc/>
+    public async Task<bool> TryWriteAsync(
+        string key,
+        ReadOnlyMemory<byte> value,
+        string expectedETag,
+        TimeSpan? timeToLive,
+        CancellationToken cancellationToken) =>
         await daprClient
             .TrySaveByteStateAsync(
                 storeName,
@@ -34,6 +43,11 @@ internal sealed class DaprReadModelBatchStateAccessor(DaprClient daprClient, str
                 value,
                 expectedETag,
                 new StateOptions { Concurrency = ConcurrencyMode.FirstWrite },
+                metadata: timeToLive is null
+                    ? null!
+                    : new Dictionary<string, string>(StringComparer.Ordinal) {
+                        ["ttlInSeconds"] = ToTtlSeconds(timeToLive.Value),
+                    },
                 cancellationToken: cancellationToken)
             .ConfigureAwait(false);
 
@@ -57,12 +71,25 @@ internal sealed class DaprReadModelBatchStateAccessor(DaprClient daprClient, str
                 operation.IsDelete ? [] : operation.Value.ToArray(),
                 operation.IsDelete ? StateOperationType.Delete : StateOperationType.Upsert,
                 operation.FirstWrite ? operation.ETag : null,
-                metadata: null,
+                metadata: operation.TimeToLive is null
+                    ? null
+                    : new Dictionary<string, string>(StringComparer.Ordinal) {
+                        ["ttlInSeconds"] = ToTtlSeconds(operation.TimeToLive.Value),
+                    },
                 options: operation.FirstWrite ? new StateOptions { Concurrency = ConcurrencyMode.FirstWrite } : null));
         }
 
         await daprClient
             .ExecuteStateTransactionAsync(storeName, requests, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    private static string ToTtlSeconds(TimeSpan timeToLive) {
+        if (timeToLive <= TimeSpan.Zero) {
+            throw new ArgumentOutOfRangeException(nameof(timeToLive), "Time-to-live must be greater than zero.");
+        }
+
+        return checked((long)Math.Ceiling(timeToLive.TotalSeconds))
+            .ToString(System.Globalization.CultureInfo.InvariantCulture);
     }
 }

@@ -25,6 +25,9 @@ public sealed class ProjectionDispatchOptions {
     /// <summary>The default maximum number of due work items drained in one worker scan.</summary>
     public const int DefaultRetryScanBatchSize = 64;
 
+    /// <summary>The default horizon during which a domain must retain dispatch-level idempotency records.</summary>
+    public static readonly TimeSpan DefaultRedeliveryWindow = TimeSpan.FromHours(24);
+
     /// <summary>Gets or sets the maximum handlers registered for one domain.</summary>
     public int MaxHandlersPerDomain { get; set; } = DefaultMaxHandlersPerDomain;
 
@@ -57,6 +60,11 @@ public sealed class ProjectionDispatchOptions {
 
     /// <summary>Gets or sets the cross-replica aggregate lease duration.</summary>
     public TimeSpan RetryLeaseDuration { get; set; } = TimeSpan.FromMinutes(1);
+
+    /// <summary>
+    /// Gets or sets the supported redelivery horizon for domain-owned ephemeral dispatch ledgers.
+    /// </summary>
+    public TimeSpan RedeliveryWindow { get; set; } = DefaultRedeliveryWindow;
 
     /// <summary>Gets or sets the interval for refreshing verified named route catalogs.</summary>
     public TimeSpan CatalogRefreshInterval { get; set; } = TimeSpan.FromMinutes(1);
@@ -112,6 +120,8 @@ public sealed class ProjectionDispatchOptions {
         ArgumentOutOfRangeException.ThrowIfLessThan(RetryMaxDelay, RetryBaseDelay);
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(RetryWorkerInterval, TimeSpan.Zero);
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(RetryLeaseDuration, TimeSpan.Zero);
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(RedeliveryWindow, TimeSpan.Zero);
+        ArgumentOutOfRangeException.ThrowIfLessThan(RedeliveryWindow, RetryMaxDelay + RetryLeaseDuration);
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(CatalogRefreshInterval, TimeSpan.Zero);
         if (EnableLegacyRetryLedgerMigration
             && (!LegacyRetryLedgerWritersQuiesced

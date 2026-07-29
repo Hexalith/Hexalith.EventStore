@@ -566,7 +566,12 @@ internal sealed class ReadModelBatchProtocol {
                 }
                 else {
                     _ = await _accessor
-                        .TryWriteAsync(operation.Key, envelope.CandidateBytes(), current.ETag, cancellationToken)
+                        .TryWriteAsync(
+                            operation.Key,
+                            envelope.CandidateBytes(),
+                            current.ETag,
+                            operation.TimeToLive,
+                            cancellationToken)
                         .ConfigureAwait(false);
                 }
 
@@ -591,7 +596,12 @@ internal sealed class ReadModelBatchProtocol {
                 }
                 else {
                     _ = await _accessor
-                        .TryWriteAsync(operation.Key, operation.CanonicalValue, current.ETag, cancellationToken)
+                        .TryWriteAsync(
+                            operation.Key,
+                            operation.CanonicalValue,
+                            current.ETag,
+                            operation.TimeToLive,
+                            cancellationToken)
                         .ConfigureAwait(false);
                 }
 
@@ -770,7 +780,8 @@ internal sealed class ReadModelBatchProtocol {
                 operation.CanonicalValue,
                 operation.Kind == ReadModelBatchOperationKind.Delete,
                 firstWrite ? operation.Concurrency.ExpectedETag : string.Empty,
-                firstWrite));
+                firstWrite,
+                operation.TimeToLive));
         }
 
         var receipt = new ReadModelBatchMarker {

@@ -27,7 +27,7 @@ namespace Hexalith.EventStore.Client.Projections;
 /// resumable batch's commit marker is durable, and the committed value afterwards.
 /// </para>
 /// </remarks>
-public sealed class DaprReadModelStore : IReadModelStore, IReadModelBulkStore, IReadModelBatchStore, IReadModelBatchStagingStore, IReadModelConditionalEraser {
+public sealed class DaprReadModelStore : IReadModelStore, IReadModelExpiringStore, IReadModelBulkStore, IReadModelBatchStore, IReadModelBatchStagingStore, IReadModelConditionalEraser {
     private readonly DaprClient _daprClient;
     private readonly ReadModelBatchOptions _options;
     private readonly ILogger _logger;
@@ -171,6 +171,35 @@ public sealed class DaprReadModelStore : IReadModelStore, IReadModelBulkStore, I
     }
 
     /// <inheritdoc/>
+    public async Task<bool> TrySaveWithTimeToLiveAsync<TValue>(
+        string storeName,
+        string key,
+        TValue value,
+        string etag,
+        TimeSpan timeToLive,
+        CancellationToken cancellationToken = default)
+        where TValue : class {
+        ArgumentException.ThrowIfNullOrWhiteSpace(storeName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        ArgumentNullException.ThrowIfNull(value);
+        ArgumentNullException.ThrowIfNull(etag);
+        long ttlSeconds = ToTtlSeconds(timeToLive);
+
+        return await _daprClient
+            .TrySaveStateAsync(
+                storeName,
+                key,
+                value,
+                etag,
+                new StateOptions { Concurrency = ConcurrencyMode.FirstWrite },
+                metadata: new Dictionary<string, string>(StringComparer.Ordinal) {
+                    ["ttlInSeconds"] = ttlSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                },
+                cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
     public async Task<bool> TryEraseAsync(
         string storeName,
         string key,
@@ -257,5 +286,13 @@ public sealed class DaprReadModelStore : IReadModelStore, IReadModelBulkStore, I
         var accessor = new DaprReadModelBatchStateAccessor(_daprClient, batch.Scope.StoreName);
         var protocol = new ReadModelBatchProtocol(accessor, _options, _logger);
         return await protocol.VerifyStagedAsync(batch, injector: null, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static long ToTtlSeconds(TimeSpan timeToLive) {
+        if (timeToLive <= TimeSpan.Zero) {
+            throw new ArgumentOutOfRangeException(nameof(timeToLive), "Time-to-live must be greater than zero.");
+        }
+
+        return checked((long)Math.Ceiling(timeToLive.TotalSeconds));
     }
 }

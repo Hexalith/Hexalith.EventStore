@@ -59,11 +59,13 @@ public class ReadModelAndCursorRegistrationTests {
 
         using ServiceProvider provider = services.BuildServiceProvider();
         IReadModelStore single = provider.GetRequiredService<IReadModelStore>();
+        IReadModelExpiringStore expiring = provider.GetRequiredService<IReadModelExpiringStore>();
         IReadModelBulkStore bulk = provider.GetRequiredService<IReadModelBulkStore>();
         IReadModelBatchStore batch = provider.GetRequiredService<IReadModelBatchStore>();
         IReadModelBatchStagingStore staging = provider.GetRequiredService<IReadModelBatchStagingStore>();
 
         _ = single.ShouldBeOfType<DaprReadModelStore>();
+        ReferenceEquals(single, expiring).ShouldBeTrue("one DaprReadModelStore singleton must back expiring writes");
         ReferenceEquals(single, bulk).ShouldBeTrue("one DaprReadModelStore singleton must back bulk reads");
         ReferenceEquals(single, batch).ShouldBeTrue("one DaprReadModelStore singleton must back both interfaces");
         ReferenceEquals(single, staging).ShouldBeTrue("the same singleton must back phased staging");
@@ -79,6 +81,9 @@ public class ReadModelAndCursorRegistrationTests {
 
         using ServiceProvider provider = services.BuildServiceProvider();
         provider.GetServices<IReadModelStore>().Count().ShouldBe(1);
+        ReferenceEquals(
+            provider.GetRequiredService<IReadModelStore>(),
+            provider.GetRequiredService<IReadModelExpiringStore>()).ShouldBeTrue();
         ReferenceEquals(
             provider.GetRequiredService<IReadModelStore>(),
             provider.GetRequiredService<IReadModelBulkStore>()).ShouldBeTrue();
@@ -103,6 +108,7 @@ public class ReadModelAndCursorRegistrationTests {
         provider.GetRequiredService<IReadModelStore>().ShouldBeSameAs(custom);
         // The custom store is not batch-capable, so the default DAPR batch store provides batching.
         _ = provider.GetRequiredService<IReadModelBulkStore>().ShouldBeOfType<DaprReadModelStore>();
+        _ = provider.GetRequiredService<IReadModelExpiringStore>().ShouldBeOfType<DaprReadModelStore>();
         _ = provider.GetRequiredService<IReadModelBatchStore>().ShouldBeOfType<DaprReadModelStore>();
         _ = provider.GetRequiredService<IReadModelBatchStagingStore>().ShouldBeOfType<DaprReadModelStore>();
     }
