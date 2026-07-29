@@ -33,6 +33,19 @@ persistent_facts = [
 
 on_complete = ""
 
+# Handoff for the implementation subagent in step 03. The whole execution
+# recipe — a subagent by default, but an override may run it any other way
+# (a different model, an external coding tool via bash). {spec_file} is
+# substituted at run time.
+
+implementation_handoff = """
+Launch a subagent with no prior conversation context, with this prompt:
+
+> Read {spec_file} fully and implement it — the spec is the sole source of truth. Load every file listed in its frontmatter `context:` before you start.
+>
+> When done, report what you changed, how you verified it, and anything left incomplete or risky.
+"""
+
 # Review layers for the review step. `instruction` is the layer's whole
 # execution recipe — subagents by default, but an override may run anything
 # (e.g. an external reviewer via bash). {diff_output} is substituted at run
@@ -42,33 +55,48 @@ on_complete = ""
 id = "blind-hunter"
 name = "Blind Hunter"
 instruction = """
-Launch a subagent with no prior conversation context, with this prompt:
+Launch a context-free subagent with this prompt:
 
-> Invoke the `bmad-review-adversarial-general` skill on this diff:
->
-> {diff_output}
+Read `{skill-root}/review-prompts/adversarial.md` completely and follow it as your review instructions.
+
+Review content:
+
+{diff_output}
+
+Do not invoke any skill. If the instruction file is unreadable, report that exact failure and stop. Return only the review result.
+
 """
 
 [[workflow.review_layers]]
 id = "edge-case-hunter"
 name = "Edge Case Hunter"
 instruction = """
-Launch a subagent with no prior conversation context, with this prompt:
+Launch a context-free subagent with this prompt:
 
-> Invoke the `bmad-review-edge-case-hunter` skill on this diff:
->
-> {diff_output}
+Read `{skill-root}/review-prompts/edge-case-hunter.md` completely and follow it as your review instructions.
+
+Review content:
+
+{diff_output}
+
+Do not invoke any skill. If the instruction file is unreadable, report that exact failure and stop. Return only the review result.
+
 """
 
 [[workflow.review_layers]]
 id = "verification-gap"
 name = "Verification Gap Reviewer"
 instruction = """
-Launch a subagent with no prior conversation context, with this prompt:
+Launch a context-free subagent with this prompt:
 
-> Invoke the `bmad-review-verification-gap` skill on this diff:
->
-> {diff_output}
+Read `{skill-root}/review-prompts/verification-gap.md` completely and follow it as your review instructions.
+
+Review content:
+
+{diff_output}
+
+Do not invoke any skill. If the instruction file is unreadable, report that exact failure and stop. Return only the review result.
+
 """
 
 # Review layers for the one-shot route.
@@ -77,7 +105,12 @@ Launch a subagent with no prior conversation context, with this prompt:
 id = "blind-hunter"
 name = "Blind Hunter"
 instruction = """
-Launch a subagent with no prior conversation context, with this prompt:
+Launch a context-free subagent with this prompt:
 
-> Invoke the `bmad-review-adversarial-general` skill on the changed files.
+Read `{skill-root}/review-prompts/adversarial.md` completely and follow it as your review instructions.
+
+Review content: the changed files in the current worktree. Inspect them directly before reviewing.
+
+Do not invoke any skill. If the instruction file is unreadable, report that exact failure and stop. Return only the review result.
+
 """

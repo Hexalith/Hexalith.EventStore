@@ -18,11 +18,11 @@ Do NOT `git add` anything — this is read-only inspection.
 
 ### Review
 
-Execute these review layers in parallel wherever their execution methods allow: substitute the runtime placeholders (e.g. `{diff_output}`) into each layer's instruction, then follow it verbatim. Parallel means several blocking calls awaited together in this turn — never backgrounded or detached, never ending the turn to await results. When running layers as subagents, spawn every reviewer before reading or reacting to any of their output; begin collection and triage only once all are launched.
+Execute these review layers in parallel wherever their execution methods allow: substitute the runtime placeholders (e.g. `{diff_output}`) into each layer's instruction. When an instruction launches a reviewer subagent, launch that child with the prompt text after placeholder substitution; do not load the reviewer instruction file yourself. For any other customized instruction, execute it as written. Parallel means several blocking calls awaited together in this turn — never backgrounded or detached, never ending the turn to await results. When running layers as subagents, spawn every reviewer before reading or reacting to any of their output; begin collection and triage only once all are launched.
 
 {workflow.review_layers}
 
-If a layer's instruction requires subagents and none are available, generate one review prompt file per such layer in `{{.implementation_artifacts}}` and HALT. Ask the human to run each in a separate session (ideally a different LLM) and paste back the findings.
+If a layer's instruction requires subagents and none are available, for each such layer read its reviewer instruction file, write a self-contained prompt under `{{.implementation_artifacts}}` (full instruction body + `## REVIEW TARGET` with the review content — not a path-only pointer), then HALT. Ask the human to run each in a separate session (ideally a different LLM) and paste back the findings. This is the only allowed parent-side read of a reviewer instruction file.
 
 ### Classify
 
