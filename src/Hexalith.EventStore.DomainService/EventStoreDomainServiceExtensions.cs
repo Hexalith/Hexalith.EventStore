@@ -13,6 +13,7 @@ using Hexalith.EventStore.Contracts.Replay;
 using Hexalith.EventStore.ServiceDefaults;
 
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
@@ -308,6 +309,15 @@ public static class EventStoreDomainServiceExtensions {
         // registration idempotent so a host-supplied client remains authoritative.
         if (!builder.Services.Any(static service => service.ServiceType == typeof(Dapr.Client.DaprClient))) {
             builder.Services.AddDaprClient();
+        }
+
+        // The query dispatch path constructs the platform-owned IQueryCursorCodec, whose cursor integrity is
+        // Data Protection backed. That provider is generic host capability, so the canonical domain-service
+        // registration owns it here rather than leaving every domain module to discover the gap and patch it
+        // in its own composition root. Idempotent for the same reason as the DAPR client above: a host that
+        // has already configured a key ring (persistence, protection at rest) stays authoritative.
+        if (!builder.Services.Any(static service => service.ServiceType == typeof(IDataProtectionProvider))) {
+            _ = builder.Services.AddDataProtection();
         }
 
         // Convention discovery + keyed IDomainProcessor registration for the domain assemblies.
