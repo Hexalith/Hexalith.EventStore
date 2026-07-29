@@ -153,8 +153,8 @@ development_status:
   # and needs a follow-up PR to land on main.)
   3-1-re-tier-live-sidecar-tests-from-release-gate: done
   # 2026-07-29: FR18 remains satisfied by PR #271/13320952; Story 3.2 adds the missing
-  # deterministic 30-second override guard. Source-mode Server.Tests passed 2868/0/25 and
-  # LiveSidecar passed 49/49; fresh package restore is blocked by unpublished Tenants.Contracts 5.1.0.
+  # deterministic 30-second override guard. Fresh CI/package-mode builds passed with 0W/0E;
+  # Server.Tests passed 2868/0/25 and LiveSidecar passed 49/49.
   3-2-harden-dapr-etag-timeout-for-integration-conditions: review
   3-3-references-based-submodule-layout: ready-for-dev
   3-4-aspire-security-resource-naming: backlog

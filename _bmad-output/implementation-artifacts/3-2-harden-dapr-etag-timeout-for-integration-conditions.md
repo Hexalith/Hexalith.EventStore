@@ -302,7 +302,7 @@ GPT-5 Codex
 
 - Verify the shipped FR18 seam and current physical test-project topology before changing tests.
 - Add only the deterministic 30-second override mapping test required by AC4; use a temporary ignored-parameter mutation to prove the test's red phase, then restore the shipped production source unchanged.
-- Validate Release builds and both physical test projects; use the repository fallback ladder when a fresh package-mode restore is blocked by an unpublished dependency, and classify unavailable runtime prerequisites separately from product failures.
+- Validate the exact Release/package-mode commands against both physical test projects and classify unavailable runtime prerequisites separately from product failures.
 
 ### Debug Log References
 
@@ -312,9 +312,10 @@ GPT-5 Codex
 - 2026-07-29 Task 2: verified that the constructor-derived `_proxyOptions` instance is passed directly to `CreateActorProxy<IETagActor>`. Both tests in the dedicated live-sidecar project supply 30 seconds; `AfterRegenerate` asserts the exact ETag persisted through the real actor path.
 - 2026-07-29 Task 3: enumerated the deterministic cases for default timeout, null-return, throw-to-null, pre-cancellation, propagated OCE, colon actor ID, self-routing format, remoting invocation, and projection/tenant argument validation. Before Task 4, every deterministic construction used the two-argument/default path; the only explicit 30-second constructions were the two `Category=LiveSidecar` tests in the physically separate live project.
 - 2026-07-29 Task 4 red/green proof: with a temporary ignored-override mutation that forced 3 seconds, `GetCurrentETagAsync_UsesSuppliedRequestTimeout_WhenOverrideProvided` failed on the expected NSubstitute call mismatch; after restoring the shipped source unchanged, the focused test passed 1/1 and the complete `DaprETagServiceTests` class passed 15/15.
-- 2026-07-29 Task 5 deterministic gates: the source-reference Release build completed with 0 warnings and 0 errors under `-warnaserror`; the final completion rerun passed 2,868, skipped 25, failed 0 (2,893 total, 4m15s). A fresh CI/package-mode restore is independently blocked before compilation by `NU1102`: `Hexalith.Tenants.Contracts >= 5.1.0` is unavailable from NuGet (nearest 5.0.0); the source-reference fallback was restored before validation.
-- 2026-07-29 Task 5 live gates: Story 3.8 preflight reported Docker, DAPR, placement, and scheduler healthy but no discoverable Aspire topology (exit 3). The dedicated fixture-owned live-sidecar class nevertheless passed 2/2, including exact equality with the Redis-backed ETag seeded by `RegenerateAsync`; the full live-sidecar project passed 49/49.
+- 2026-07-29 Task 5 deterministic gates: a forced no-cache CI/package-mode restore resolved `Hexalith.Tenants.Contracts 5.1.0` from NuGet; the Release build completed with 0 warnings and 0 errors under `-warnaserror`; `DaprETagServiceTests` passed 15/15 and the complete `Category!=LiveSidecar` project passed 2,868, skipped 25, failed 0 (2,893 total, 3m56s). This supersedes an earlier transient `NU1102` result.
+- 2026-07-29 Task 5 live gates: Story 3.8 preflight reported Docker, DAPR, placement, and scheduler healthy but no discoverable Aspire topology (exit 3). The dedicated project then restored and built cleanly in CI/package mode; the fixture-owned ETag class passed 2/2, including exact equality with the Redis-backed ETag seeded by `RegenerateAsync`, and the full live-sidecar project passed 49/49.
 - 2026-07-29 Task 6 scope audit: production `src/**`, live-sidecar tests/fixtures, and CI/release lane files have no story diff; no `IOptions`/appsettings binding, new live class, or identifier `Guid.TryParse` was introduced. The 3-second default, per-instance options, fail-open/rethrow contract, and both existing 30-second live values are unchanged.
+- 2026-07-29 concurrency note: while package-mode validation ran, external workspace automation committed and pushed the test and then-current story/ledger edits to `main` as `c21a0bfc`; the corrected package-availability evidence remains an unstaged story/ledger delta.
 
 ### Completion Notes List
 
@@ -322,7 +323,7 @@ GPT-5 Codex
 - Task 2 complete: the explicit timeout is threaded into actor-proxy creation and the dedicated live lane retains its persisted-ETag end-state assertion.
 - Task 3 complete: fail-open and cancellation coverage remains green, and the missing deterministic override-to-`RequestTimeout` assertion is confirmed as the sole code gap.
 - Task 4 complete: added a deterministic release-gate fact that pins an explicit 30-second constructor override to the exact `ActorProxyOptions` passed to `ETagActor`; mutation testing proved it detects an ignored override without retaining any production change.
-- Task 5 complete: FR18 remains satisfied by PR #271/commit `13320952`; this story adds the missing deterministic guard and records clean source-mode deterministic/live regression evidence. Fresh package-mode reproduction remains externally blocked by the unpublished Tenants 5.1.0 dependency and is explicitly preserved as validation evidence.
+- Task 5 complete: FR18 remains satisfied by PR #271/commit `13320952`; this story adds the missing deterministic guard and records clean CI/package-mode builds plus deterministic and live regression evidence.
 - Task 6 complete: the change is test-and-ledger only; runtime tuning, production defaults/behavior, lane wiring, live fixtures, and identifier parsing remain untouched.
 
 ### File List
@@ -334,3 +335,5 @@ GPT-5 Codex
 ### Change Log
 
 - 2026-07-29: Verified the shipped FR18 seam, added deterministic 30-second timeout override coverage, validated deterministic and live-sidecar suites, and reconciled Story 3.2 to review.
+- 2026-07-29: Corrected transient package-availability evidence after a forced no-cache restore resolved Tenants.Contracts 5.1.0; the complete CI/package-mode matrix is green.
+- 2026-07-29: Recorded concurrent absorption of the implementation into pushed commit `c21a0bfc`; retained the package-evidence correction as an unstaged documentation delta.
