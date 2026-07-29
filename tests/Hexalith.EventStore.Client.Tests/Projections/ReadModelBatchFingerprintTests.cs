@@ -121,6 +121,30 @@ public class ReadModelBatchFingerprintTests {
     }
 
     [Fact]
+    public void Compute_ChangesWhenTimeToLiveChanges() {
+        string withoutTtl = ReadModelBatchFingerprint.Compute(new(
+            Scope(),
+            [ReadModelBatchOperation.Write("a", new Doc(1, "x"), ReadModelBatchConcurrency.LastWrite)]));
+        string oneDay = ReadModelBatchFingerprint.Compute(new(
+            Scope(),
+            [ReadModelBatchOperation.Write(
+                "a",
+                new Doc(1, "x"),
+                ReadModelBatchConcurrency.LastWrite,
+                TimeSpan.FromDays(1))]));
+        string twoDays = ReadModelBatchFingerprint.Compute(new(
+            Scope(),
+            [ReadModelBatchOperation.Write(
+                "a",
+                new Doc(1, "x"),
+                ReadModelBatchConcurrency.LastWrite,
+                TimeSpan.FromDays(2))]));
+
+        oneDay.ShouldNotBe(withoutTtl);
+        twoDays.ShouldNotBe(oneDay);
+    }
+
+    [Fact]
     public void ScopeHash_ChangesWithAnyComponent() {
         string baseline = Scope().ComputeScopeHash();
         string differentTenant = (Scope() with { TenantId = "tenant-2" }).ComputeScopeHash();

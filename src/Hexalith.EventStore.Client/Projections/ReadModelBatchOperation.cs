@@ -8,7 +8,8 @@ namespace Hexalith.EventStore.Client.Projections;
 /// bytes. Callers therefore cannot mutate a payload after the fact in a way that would change the batch
 /// fingerprint. Deletes carry no value. The logical <see cref="Key"/> and the serialized
 /// <see cref="CanonicalValue"/> participate in the batch fingerprint together with the ordinal position,
-/// <see cref="Kind"/>, <see cref="ValueTypeName"/>, and <see cref="Concurrency"/> policy.
+/// <see cref="Kind"/>, <see cref="ValueTypeName"/>, <see cref="Concurrency"/> policy, and optional
+/// <see cref="TimeToLive"/>.
 /// </remarks>
 public sealed class ReadModelBatchOperation {
     private ReadModelBatchOperation(

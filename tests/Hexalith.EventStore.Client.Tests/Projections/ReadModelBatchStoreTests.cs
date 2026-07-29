@@ -81,6 +81,22 @@ public class ReadModelBatchStoreTests {
             ReadModelBatchOperation.Write("k", new Detail(1), ReadModelBatchConcurrency.IdempotentAbsent));
 
     [Fact]
+    public void WriteOperation_WithNonPositiveTimeToLive_Throws() {
+        _ = Should.Throw<ArgumentOutOfRangeException>(() =>
+            ReadModelBatchOperation.Write(
+                "k",
+                new Detail(1),
+                ReadModelBatchConcurrency.LastWrite,
+                TimeSpan.Zero));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() =>
+            ReadModelBatchOperation.Write(
+                "k",
+                new Detail(1),
+                ReadModelBatchConcurrency.LastWrite,
+                TimeSpan.FromSeconds(-1)));
+    }
+
+    [Fact]
     public void DeleteOperation_WithUnconditionalConcurrency_Throws() =>
         Should.Throw<ArgumentException>(() =>
             ReadModelBatchOperation.Delete("k", ReadModelBatchConcurrency.LastWrite));

@@ -210,6 +210,11 @@ Contract highlights (Story 1.10):
 - **Post-dispatch cancellation is never a rollback.** After a request may have reached the store,
   cancellation triggers bounded, caller-token-independent reconciliation and returns a proven
   completed/conflict/incomplete result or `Indeterminate`.
+- **Optional operation TTL.** A write operation may carry `TimeToLive` when the read-model value is
+  intentionally ephemeral, such as a domain-owned dispatch ledger. TTL participates in the canonical batch
+  fingerprint and is applied only to the final compacted value/transaction operation, never to staging
+  envelopes. Independent conditional TTL writes use `IReadModelExpiringStore`. Durable detail and index
+  values normally omit TTL.
 - **Indefinite terminal receipts.** Completed receipts (scope hash, batch identity, fingerprint, terminal
   time, protocol version) are retained indefinitely so the completed-retry and conflicting-identity
   guarantees hold; a bounded retention horizon is deferred to the production delivery dedup contract.

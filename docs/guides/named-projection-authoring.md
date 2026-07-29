@@ -49,6 +49,14 @@ Treat `dispatchId` as the stable idempotency identity. Pass it as `ReadModelBatc
 
 Use `IReadModelStore` for an independent ETag-aware read-model update. Use `IReadModelBatchStore` when several same-store writes or deletes must converge as one coordinated unit. Domain code must not use a raw DAPR state client, invent batch marker keys, or add projection/query actors; those are platform responsibilities.
 
+For a domain-owned dispatch ledger that is needed only during the supported redelivery horizon, use
+`IReadModelExpiringStore.TrySaveAsync(..., timeToLive, ...)` for an independent conditional write, or set
+`ReadModelBatchOperation.TimeToLive` on that ledger's batch operation. TTL applies only to the final
+read-model value; the batch protocol's staging envelopes and terminal receipts retain their own platform
+lifecycle. Do not put TTL on durable detail/index projections unless the product intentionally expires them.
+The domain should size dispatch-ledger TTL from `ProjectionDispatchOptions.RedeliveryWindow` so retries and
+ledger retention share one validated operational contract.
+
 ## Compatibility and rebuild boundary
 
 `IDomainProjectionHandler.Project(ProjectionRequest)` remains the synchronous, domain-only full-replay compatibility seam used by the released `/project` endpoint and the current rebuild flow. Existing handlers do not need to migrate.
@@ -61,5 +69,6 @@ Normal delivery invokes named handlers only after the server admits the exact me
 
 - `IAsyncDomainProjectionHandler` and `DomainProjectionHandlerResult` — named asynchronous handler seam and closed outcome contract
 - `IReadModelStore` — independent ETag-aware persistence
+- `IReadModelExpiringStore` — independent ETag-aware persistence with a per-write TTL
 - `IReadModelBatchStore` and `ReadModelBatchProjectionResultMapper` — coordinated persistence and truthful outcome mapping
 - `AddLegacyProjectionHandlerAdapter<THandler>` — explicit compatibility bridge for one legacy handler and one named route

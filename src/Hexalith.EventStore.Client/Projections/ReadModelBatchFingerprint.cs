@@ -10,8 +10,10 @@ namespace Hexalith.EventStore.Client.Projections;
 /// <remarks>
 /// The fingerprint material includes, for every operation in ordinal order: the ordinal, logical key,
 /// write/delete kind, stable value type identity, concurrency mode and expected ETag, and the canonical
-/// DAPR-compatible JSON value bytes. The scope components participate as well. The algorithm is frozen at
-/// v1 and covered by golden-vector tests; changing it is a versioned contract change.
+/// DAPR-compatible JSON value bytes. A configured operation TTL participates as rounded-up whole seconds;
+/// an omitted TTL adds no field, preserving the original v1 golden vector. The scope components participate
+/// as well. The algorithm is frozen at v1 and covered by golden-vector tests; changing it is a versioned
+/// contract change.
 /// </remarks>
 internal static class ReadModelBatchFingerprint {
     /// <summary>The frozen fingerprint algorithm version.</summary>

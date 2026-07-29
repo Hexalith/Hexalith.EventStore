@@ -183,6 +183,30 @@ Configuration section: `EventStore:CommandConcurrency`
 
 > **Warning:** Values must be between `0` and `10`. A value of `0` disables automatic persistence-conflict retries and surfaces the first conflict as HTTP `409`.
 
+### Projection Dispatch Redelivery
+
+Named projection handlers may retain domain-owned dispatch ledgers for the same bounded interval in which
+EventStore supports durable redelivery. Configure that shared horizon under
+`EventStore:ProjectionDispatch`; the default is 24 hours.
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `RedeliveryWindow` | TimeSpan | `1.00:00:00` | Minimum retention horizon for domain-owned ephemeral dispatch ledgers. Must be positive and at least `RetryMaxDelay + RetryLeaseDuration`. |
+
+```json
+{
+  "EventStore": {
+    "ProjectionDispatch": {
+      "RedeliveryWindow": "1.00:00:00"
+    }
+  }
+}
+```
+
+Handlers can consume the validated `ProjectionDispatchOptions` value and pass this duration to
+`IReadModelExpiringStore` or an ephemeral `ReadModelBatchOperation`. Platform delivery receipts remain a
+separate correctness boundary and are not expired by this setting.
+
 ### Trusted Idempotency Admission
 
 Opaque command idempotency is opt-in per deployment and per command type. Configuration supplies only the protected digest-key boundary; a server-owned adapter supplies operation authority and canonical intent after authentication, current authorization, and validation.
