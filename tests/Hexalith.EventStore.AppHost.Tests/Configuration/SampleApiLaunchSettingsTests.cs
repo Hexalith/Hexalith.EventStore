@@ -38,7 +38,7 @@ public class SampleApiLaunchSettingsTests
     [Fact]
     public void AppHost_RegistersSampleApiAsExternalServiceInvocationOnlyHost()
     {
-        string program = File.ReadAllText(Path.Combine(
+        string program = ReadRepositorySource(Path.Combine(
             RepositoryProjectPaths.GetRepositoryRoot(),
             "src",
             "Hexalith.EventStore.AppHost",
@@ -59,12 +59,57 @@ public class SampleApiLaunchSettingsTests
 
         program.ShouldContain("_ = sampleApi.WithEventStoreAuthenticationValidation(security);");
         program.ShouldNotContain("_ = sampleApi.WithEventStoreClientCredentials(security);");
+
+        // The block above ends at the security section, so it cannot see a later grant. These whole-file
+        // guards keep the "zero direct infrastructure access" invariant enforced across all of Program.cs.
+        program.ShouldNotContain("sampleApi.WithReference(eventStoreResources");
+        program.ShouldNotContain("sampleApi.WithReference(eventStore.StateStore");
+        program.ShouldNotContain("sampleApi.WithReference(eventStore.PubSub");
+    }
+
+    [Fact]
+    public void ReadRepositorySource_NormalizesCrlfSourceToLf()
+    {
+        // Pins the read-site normalization: without it, every marker containing "\n" silently stops
+        // matching on a CRLF working tree, which no CI lane can reproduce (the index is LF).
+        string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        try
+        {
+            File.WriteAllText(path, "sampleApi;\r\n\r\nif (security is not null)\r\n");
+
+            ReadRepositorySource(path).ShouldBe("sampleApi;\n\nif (security is not null)\n");
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Theory]
+    [InlineData("\n")]
+    [InlineData("\r\n")]
+    public void ExtractBlock_ReturnsTheSameBlockForEitherLineEnding(string lineEnding)
+    {
+        string source = string.Join(lineEnding, [
+            "IResourceBuilder<ProjectResource> sampleApi =",
+            "    builder.AddProject<Projects.Hexalith_EventStore_Sample_Api>(\"sample-api\");",
+            string.Empty,
+            "if (security is not null)",
+        ]);
+
+        string block = ExtractBlock(
+            source.Replace("\r\n", "\n", StringComparison.Ordinal),
+            "IResourceBuilder<ProjectResource> sampleApi =");
+
+        block.ShouldBe(
+            "IResourceBuilder<ProjectResource> sampleApi =\n"
+            + "    builder.AddProject<Projects.Hexalith_EventStore_Sample_Api>(\"sample-api\");");
     }
 
     [Fact]
     public void EventStoreAccessControl_SampleApiPolicyDocumentsGatewayPostOperations()
     {
-        string accessControl = File.ReadAllText(Path.Combine(
+        string accessControl = ReadRepositorySource(Path.Combine(
             RepositoryProjectPaths.GetRepositoryRoot(),
             "src",
             "Hexalith.EventStore.AppHost",
@@ -85,9 +130,16 @@ public class SampleApiLaunchSettingsTests
         });
     }
 
+    /// <summary>
+    /// Reads a repository source file, normalizing CRLF to LF so markers containing "\n" match on any
+    /// checkout. Normalization happens here rather than in the block extractors so callers that assert
+    /// against the whole file get the same line endings as callers that assert against an extracted block.
+    /// </summary>
+    private static string ReadRepositorySource(string path)
+        => File.ReadAllText(path).Replace("\r\n", "\n", StringComparison.Ordinal);
+
     private static string ExtractBlock(string text, string startMarker)
     {
-        text = text.ReplaceLineEndings("\n");
         int start = text.IndexOf(startMarker, StringComparison.Ordinal);
         start.ShouldBeGreaterThanOrEqualTo(0, $"Expected to find '{startMarker}'.");
         int end = text.IndexOf(";\n\nif (security is not null)", start, StringComparison.Ordinal);

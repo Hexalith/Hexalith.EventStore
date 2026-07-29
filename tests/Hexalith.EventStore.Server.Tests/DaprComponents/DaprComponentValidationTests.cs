@@ -52,8 +52,8 @@ public class DaprComponentValidationTests {
 
     [Fact]
     public void StateStoreComponent_IsLoadedFromIsolatedYamlByAppHost() {
-        string appHost = File.ReadAllText(Path.Combine(ProjectRoot, "src", "Hexalith.EventStore.AppHost", "Program.cs"));
-        string extension = File.ReadAllText(Path.Combine(ProjectRoot, "src", "Hexalith.EventStore.Aspire", "HexalithEventStoreExtensions.cs"));
+        string appHost = ReadSource(Path.Combine(ProjectRoot, "src", "Hexalith.EventStore.AppHost", "Program.cs"));
+        string extension = ReadSource(Path.Combine(ProjectRoot, "src", "Hexalith.EventStore.Aspire", "HexalithEventStoreExtensions.cs"));
 
         appHost.ShouldContain("stateStoreComponentPath = ResolveDaprConfigPath(\"statestore.yaml\")");
         appHost.ShouldContain("isolatedStateStoreComponentPath = ResolveIsolatedDaprComponentPath(stateStoreComponentPath)");
@@ -65,7 +65,7 @@ public class DaprComponentValidationTests {
     [Fact]
     public void StateStoreFallbackMetadata_MatchesAuthoritativeYaml() {
         Dictionary<string, object> doc = LoadYaml(StateStorePath);
-        string extension = File.ReadAllText(Path.Combine(ProjectRoot, "src", "Hexalith.EventStore.Aspire", "HexalithEventStoreExtensions.cs"));
+        string extension = ReadSource(Path.Combine(ProjectRoot, "src", "Hexalith.EventStore.Aspire", "HexalithEventStoreExtensions.cs"));
         string? redisHostFallback = GetComponentMetadataValue(doc, "redisHost")
             ?.Replace("{env:REDIS_HOST|", string.Empty, StringComparison.Ordinal)
             .Replace("}", string.Empty, StringComparison.Ordinal);
@@ -92,7 +92,7 @@ public class DaprComponentValidationTests {
 
     [Fact]
     public void DomainServiceSidecars_DoNotReferenceStateStoreOrPubSubComponents() {
-        string appHost = File.ReadAllText(Path.Combine(ProjectRoot, "src", "Hexalith.EventStore.AppHost", "Program.cs"));
+        string appHost = ReadSource(Path.Combine(ProjectRoot, "src", "Hexalith.EventStore.AppHost", "Program.cs"));
 
         // A4: the per-sidecar wiring now lives in the AddEventStoreDomainModule extension, so the AppHost
         // expresses isolation vs. sharing through the isolatedDaprResourcesPath opt-in argument. Sample passes
@@ -108,7 +108,7 @@ public class DaprComponentValidationTests {
         // Verify the isolation mechanism itself in the A4 extension: the public EventStore facade now delegates
         // to the shared Aspire helper while still selecting isolated mode with only the empty resources path and
         // shared mode with the EventStore state-store / pub-sub references.
-        string moduleExtension = File.ReadAllText(Path.Combine(ProjectRoot, "src", "Hexalith.EventStore.Aspire", "HexalithEventStoreDomainModuleExtensions.cs"));
+        string moduleExtension = ReadSource(Path.Combine(ProjectRoot, "src", "Hexalith.EventStore.Aspire", "HexalithEventStoreDomainModuleExtensions.cs"));
         moduleExtension.ShouldContain("AddAspireDaprDomainModule");
         moduleExtension.ShouldContain("isolated ? AspireDaprInfrastructureMode.Isolated : AspireDaprInfrastructureMode.Shared");
         moduleExtension.ShouldContain("ResourcesPaths = isolated ? [isolatedDaprResourcesPath!] : []");
@@ -119,7 +119,7 @@ public class DaprComponentValidationTests {
         sampleBlazorBlock.ShouldNotContain("eventStoreResources.PubSub");
 
         string adminUiBlock = GetBlock(
-            File.ReadAllText(Path.Combine(ProjectRoot, "src", "Hexalith.EventStore.Aspire", "HexalithEventStoreExtensions.cs")),
+            ReadSource(Path.Combine(ProjectRoot, "src", "Hexalith.EventStore.Aspire", "HexalithEventStoreExtensions.cs")),
             "if (adminUI is not null)",
             "return new HexalithEventStoreResources");
         adminUiBlock.ShouldNotContain("WithReference(stateStore)");
@@ -375,6 +375,13 @@ public class DaprComponentValidationTests {
         AssertDomainServicePrecedenceOrder(configurationReference);
         AssertDomainServicePrecedenceOrder(eventVersioning);
     }
+
+    /// <summary>
+    /// Reads a repository source file, normalizing CRLF to LF so markers containing "\n" match on any
+    /// checkout. Kept in step with the identical helpers in the AppHost launch-settings tests.
+    /// </summary>
+    private static string ReadSource(string path)
+        => File.ReadAllText(path).Replace("\r\n", "\n", StringComparison.Ordinal);
 
     private static string GetBlock(string content, string startMarker, string endMarker) {
         int start = content.IndexOf(startMarker, StringComparison.Ordinal);

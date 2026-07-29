@@ -81,7 +81,7 @@ public class TenantsApiLaunchSettingsTests
     [Fact]
     public void AppHost_RegistersTenantsApiAsExternalServiceInvocationOnlyHost()
     {
-        string program = File.ReadAllText(Path.Combine(
+        string program = ReadRepositorySource(Path.Combine(
             RepositoryProjectPaths.GetRepositoryRoot(),
             "src",
             "Hexalith.EventStore.AppHost",
@@ -149,6 +149,13 @@ public class TenantsApiLaunchSettingsTests
             ["/api/v1/commands"] = new("POST", "allow"),
         });
     }
+
+    /// <summary>
+    /// Reads a repository source file, normalizing CRLF to LF so markers containing "\n" match on any
+    /// checkout. Kept in step with the identical helper in <see cref="SampleApiLaunchSettingsTests"/>.
+    /// </summary>
+    private static string ReadRepositorySource(string path)
+        => File.ReadAllText(path).Replace("\r\n", "\n", StringComparison.Ordinal);
 
     private static string ExtractBlock(string text, string startMarker)
     {

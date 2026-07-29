@@ -1,4 +1,8 @@
 * text=auto
+# .editorconfig sets end_of_line = crlf for [*], so an EditorConfig-honouring editor rewrites
+# C# sources to CRLF while `text=auto` keeps the index at LF. That drift is invisible to
+# `git status` and breaks source-inspection tests that match newline-bearing markers.
+*.cs text eol=lf
 *.md text eol=lf
 *.sh text eol=lf
 commitlint.config.mjs text eol=lf

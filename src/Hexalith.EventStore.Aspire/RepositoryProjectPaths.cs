@@ -42,12 +42,11 @@ public static class RepositoryProjectPaths {
 
     /// <summary>
     /// Resolves the on-disk path to a project file inside a sibling Hexalith platform module
-    /// (e.g. <c>Hexalith.EventStore</c>, <c>Hexalith.Memories</c>), probing every checkout layout in the same
-    /// order as the <c>$(Hexalith*Root)</c> auto-detection in <c>Directory.Build.props</c>. This keeps the
-    /// launched project path (resolved here at runtime) identical to the build-time <c>&lt;ProjectReference&gt;</c>
-    /// the AppHost uses to force a Debug build of the same project — so the AppHost never compiles one csproj and
-    /// launches another. Returns the first candidate that exists; if none do, returns the standalone
-    /// <c>&lt;root&gt;/references/&lt;module&gt;/…</c> path so the error names a diagnosable location.
+    /// (e.g. <c>Hexalith.EventStore</c>, <c>Hexalith.Memories</c>), probing the supported checkout layouts.
+    /// This keeps the launched project path (resolved here at runtime) identical to the build-time
+    /// <c>&lt;ProjectReference&gt;</c> the AppHost uses to force a Debug build of the same project — so the AppHost
+    /// never compiles one csproj and launches another. Returns the first candidate that exists; if none do,
+    /// returns the standalone <c>&lt;root&gt;/references/&lt;module&gt;/…</c> path so the error names a diagnosable location.
     /// </summary>
     /// <param name="moduleDirectory">The dependency module's directory name (e.g. <c>Hexalith.EventStore</c>).</param>
     /// <param name="moduleRelativePath">Path segments inside the module, ending in the target project file.</param>
@@ -63,7 +62,7 @@ public static class RepositoryProjectPaths {
         string root = GetRepositoryRoot();
         string relative = Path.Combine(moduleRelativePath);
 
-        // Candidate module locations, mirroring Directory.Build.props $(Hexalith*Root) precedence:
+        // Candidate module locations:
         //   1. dependency is the current repository                   (module src under this root)
         //   2. this repo nested directly inside the dependency repo   (module src one level up)
         //   3. this repo nested two levels inside the dependency repo
@@ -71,6 +70,12 @@ public static class RepositoryProjectPaths {
         //   5. dependency under this repo's references/                (standalone dev)
         //   6. dependency is a sibling of this repo                    (e.g. both under a parent's references/)
         //   7. dependency under the parent's references/
+        //
+        // NOTE: this order is NOT the same as Directory.Build.props $(Hexalith*Root) auto-detection, which
+        // probes references/ FIRST and has no root-level candidate at all. Candidate 4 here is a legacy
+        // root-level layout that outranks references/ (candidate 5), so a stray <root>/Hexalith.<Module>/
+        // directory would shadow references/Hexalith.<Module>. No such directory exists in this repository
+        // (FR19), and reordering is tracked as deferred work from the Story 3.3 code review.
         string standalone = Path.GetFullPath(Path.Combine(root, "references", moduleDirectory, relative));
         string[] candidates =
         [

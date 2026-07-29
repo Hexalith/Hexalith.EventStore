@@ -1,5 +1,12 @@
 ---
 baseline_commit: 0f428d0c914f2151aab15bb262f956a9630041dc
+verified_at_commit: 1d42528b
+verified_at_note: >-
+  `baseline_commit` is the story-creation reading baseline and is 399 commits behind the commit this story
+  was actually implemented and verified against. Six of the sixteen `source_files` changed in between, so
+  some cited line ranges are stale (notably AGENTS.md / CLAUDE.md / copilot-instructions.md, where the
+  references/Hexalith.AI.Tools path is now at line 18, and Hexalith.EventStore.slnx, now 68 lines). Every
+  substantive AC1-AC4 fact was re-verified at 1d42528b by the 2026-07-29 code review and still holds.
 created: 2026-07-09
 story_key: 3-3-references-based-submodule-layout
 epic: "Epic 3 - Release And Repository Reliability"
@@ -37,7 +44,7 @@ source_files:
 
 # Story 3.3: References-Based Submodule Layout
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -160,21 +167,37 @@ The approved 2026-07-09 CI/CD proposal affects Story 3.7, not Story 3.3. Do not 
 
 ### Review Findings
 
+> **AC5 exception raised during review — needs an owner call.** While this review was running, a concurrent
+> automated loop committed `afb90369 fix: update story 3.3 status to review and enhance line-ending handling in
+> tests` directly to `main`. That commit bundles **two submodule pointer bumps** — `references/Hexalith.Memories`
+> `7d298205` → `ccd8efa3` and `references/Hexalith.Tenants` `96bdfd8a` → `09947a24` — into a commit titled for
+> this story. AC5 requires that "any intentional future submodule pointer bump is isolated as a conventional
+> `chore(deps): ...` change, not bundled into this verification", so the commit as it stands contradicts AC5 and
+> the Task 6 attestation "Confirm no submodule pointer changes were introduced by this story". Both gitlinks
+> **are reachable on their submodules' `origin/main`**, so there is no dangling-pointer hazard. Note also that
+> AC5's prescribed `chore(deps):` type conflicts with the repo rule "Never use `chore`" — the repo's actual
+> convention is `build(deps):` (cf. `1d42528b`).
+>
+> **RATIFIED 2026-07-29 by Administrator.** The AC5 isolation requirement was violated by an out-of-band
+> automated commit, not by this story's work, and both gitlinks are reachable on their remotes. The bundling is
+> accepted retroactively; no commit split is required. AC5's `chore(deps):` wording remains inconsistent with
+> the repo's `build(deps):` convention and should be corrected the next time this AC is edited.
+
 <!-- Added 2026-07-29 by bmad-code-review (four layers: blind-hunter, edge-case-hunter,
      verification-gap, acceptance-auditor). Every AC1-AC4 cheap gate was independently re-run
      and matched the Dev Agent Record; AppHost re-ran 51/51 at HEAD 1d42528b. -->
 
-- [ ] [Review][Decision] Repo-wide line-ending policy conflict is the real root cause — `.editorconfig:8` sets `end_of_line = crlf` for `[*]` while `.gitattributes:1` sets `* text=auto`, so editors write CRLF and git normalizes to LF in the index. 117 tracked files are currently `i/lf w/crlf` with a clean `git status`. The story patched one symptom. Fix direction is a shared-convention decision (set `.editorconfig` to `lf`, add `*.cs text eol=lf`, or accept the drift) and affects all Hexalith repos.
-- [ ] [Review][Decision] The only code change sits outside the story's declared change permission, on an unverifiable authorization — the Verification stance (`:82`) and Task 5 (`:155`) permit patching "the narrow resolver/**test** mismatch" when "AppHost **path** tests fail". `RepositoryProjectPathsTests` (the path tests) passed 9/9 and were untouched; the patched test asserts DAPR service-invocation registration. The story concedes this at `:281` ("unrelated to the Story 3.3 resolver/path acceptance criteria"), and `:282` rests the change on "Administrator authorized", which exists only as a self-attestation with no commit trailer or external artifact.
-- [ ] [Review][Patch] Move line-ending normalization to the file-read site so the caller's text is normalized too — `program` stays raw, and a future multi-line `ShouldNotContain` would pass vacuously (fail-open) [tests/Hexalith.EventStore.AppHost.Tests/Configuration/SampleApiLaunchSettingsTests.cs:41-45,60-61,90]
-- [ ] [Review][Patch] Use the repo's established idiom `.Replace("\r\n", "\n", StringComparison.Ordinal)` instead of `ReplaceLineEndings("\n")` — the latter is the only such call in the repo and also collapses FF/NEL/LS/PS, which Microsoft's docs explicitly caution against for parsers [tests/Hexalith.EventStore.AppHost.Tests/Configuration/SampleApiLaunchSettingsTests.cs:90]
-- [ ] [Review][Patch] Converge the two un-hardened sibling copies of the same block extractor, which read the same `Program.cs` and now carry divergent contracts [tests/Hexalith.EventStore.AppHost.Tests/Configuration/TenantsApiLaunchSettingsTests.cs:153; tests/Hexalith.EventStore.Server.Tests/DaprComponents/DaprComponentValidationTests.cs:379]
-- [ ] [Review][Patch] Add a CRLF/LF equivalence test pinning the fix — nothing currently reddens if the normalization line is deleted, because every CI lane is `ubuntu-latest` and the index blob is LF [tests/Hexalith.EventStore.AppHost.Tests/Configuration/SampleApiLaunchSettingsTests.cs:88-97]
-- [ ] [Review][Patch] Add a whole-file assertion that `sampleApi` never receives an infrastructure reference — the "zero direct infrastructure access" guard is enforced only inside the extracted 10-line slice, so a later `sampleApi.WithReference(eventStoreResources.StateStore)` ships undetected [tests/Hexalith.EventStore.AppHost.Tests/Configuration/SampleApiLaunchSettingsTests.cs:56-58]
-- [ ] [Review][Patch] Correct the false resolver docstring — it claims the candidates probe "in the same order as the `$(Hexalith*Root)` auto-detection in `Directory.Build.props`", but `Directory.Build.props` checks `references/` **first** for both Tenants and Commons and contains no root-level probe at all [src/Hexalith.EventStore.Aspire/RepositoryProjectPaths.cs:44-51,80-81]
-- [ ] [Review][Patch] Correct AC2 evidence: `dotnet sln list` reads **46** projects, not 48 (48 is the raw line count including the `Project(s)` header and separator) [_bmad-output/implementation-artifacts/3-3-references-based-submodule-layout.md:279,290]
-- [ ] [Review][Patch] Record the actual verification baseline in the Dev Agent Record — frontmatter `baseline_commit: 0f428d0c` is 399 commits behind the verified HEAD `1d42528b`; 6 of 16 `source_files` changed since, making several cited line ranges stale (the substantive facts still hold, re-verified) [_bmad-output/implementation-artifacts/3-3-references-based-submodule-layout.md:2]
-- [ ] [Review][Patch] Add a ledger rationale comment for the `review` transition — every neighbouring row carries an evidence/decision comment; line 168 flips with none [_bmad-output/implementation-artifacts/sprint-status.yaml:168]
+- [x] [Review][Decision] **RESOLVED — add `*.cs text eol=lf` to `.gitattributes`.** Repo-wide line-ending policy conflict is the real root cause — `.editorconfig:8` sets `end_of_line = crlf` for `[*]` while `.gitattributes:1` sets `* text=auto`, so editors write CRLF and git normalizes to LF in the index. 117 tracked files are currently `i/lf w/crlf` with a clean `git status`. The story patched one symptom. Fix direction is a shared-convention decision (set `.editorconfig` to `lf`, add `*.cs text eol=lf`, or accept the drift) and affects all Hexalith repos.
+- [x] [Review][Decision] **RESOLVED — ratified as an accepted, recorded exception (see the Task 5 scope-ratification entry in the Debug Log).** The only code change sits outside the story's declared change permission, on an unverifiable authorization — the Verification stance (`:82`) and Task 5 (`:155`) permit patching "the narrow resolver/**test** mismatch" when "AppHost **path** tests fail". `RepositoryProjectPathsTests` (the path tests) passed 9/9 and were untouched; the patched test asserts DAPR service-invocation registration. The story concedes this at `:281` ("unrelated to the Story 3.3 resolver/path acceptance criteria"), and `:282` rests the change on "Administrator authorized", which exists only as a self-attestation with no commit trailer or external artifact.
+- [x] [Review][Patch] Move line-ending normalization to the file-read site so the caller's text is normalized too — `program` stays raw, and a future multi-line `ShouldNotContain` would pass vacuously (fail-open) [tests/Hexalith.EventStore.AppHost.Tests/Configuration/SampleApiLaunchSettingsTests.cs:41-45,60-61,90]
+- [x] [Review][Patch] Use the repo's established idiom `.Replace("\r\n", "\n", StringComparison.Ordinal)` instead of `ReplaceLineEndings("\n")` — the latter is the only such call in the repo and also collapses FF/NEL/LS/PS, which Microsoft's docs explicitly caution against for parsers [tests/Hexalith.EventStore.AppHost.Tests/Configuration/SampleApiLaunchSettingsTests.cs:90]
+- [x] [Review][Patch] Converge the two un-hardened sibling copies of the same block extractor, which read the same `Program.cs` and now carry divergent contracts [tests/Hexalith.EventStore.AppHost.Tests/Configuration/TenantsApiLaunchSettingsTests.cs:153; tests/Hexalith.EventStore.Server.Tests/DaprComponents/DaprComponentValidationTests.cs:379]
+- [x] [Review][Patch] Add a CRLF/LF equivalence test pinning the fix — nothing currently reddens if the normalization line is deleted, because every CI lane is `ubuntu-latest` and the index blob is LF [tests/Hexalith.EventStore.AppHost.Tests/Configuration/SampleApiLaunchSettingsTests.cs:88-97]
+- [x] [Review][Patch] Add a whole-file assertion that `sampleApi` never receives an infrastructure reference — the "zero direct infrastructure access" guard is enforced only inside the extracted 10-line slice, so a later `sampleApi.WithReference(eventStoreResources.StateStore)` ships undetected [tests/Hexalith.EventStore.AppHost.Tests/Configuration/SampleApiLaunchSettingsTests.cs:56-58]
+- [x] [Review][Patch] Correct the false resolver docstring — it claims the candidates probe "in the same order as the `$(Hexalith*Root)` auto-detection in `Directory.Build.props`", but `Directory.Build.props` checks `references/` **first** for both Tenants and Commons and contains no root-level probe at all [src/Hexalith.EventStore.Aspire/RepositoryProjectPaths.cs:44-51,80-81]
+- [x] [Review][Patch] Correct AC2 evidence: `dotnet sln list` reads **46** projects, not 48 (48 is the raw line count including the `Project(s)` header and separator) [_bmad-output/implementation-artifacts/3-3-references-based-submodule-layout.md:279,290]
+- [x] [Review][Patch] Record the actual verification baseline in the Dev Agent Record — frontmatter `baseline_commit: 0f428d0c` is 399 commits behind the verified HEAD `1d42528b`; 6 of 16 `source_files` changed since, making several cited line ranges stale (the substantive facts still hold, re-verified) [_bmad-output/implementation-artifacts/3-3-references-based-submodule-layout.md:2]
+- [x] [Review][Patch] Add a ledger rationale comment for the `review` transition — every neighbouring row carries an evidence/decision comment; line 168 flips with none [_bmad-output/implementation-artifacts/sprint-status.yaml:168]
 - [x] [Review][Defer] Resolver probes a root-level `<root>/Hexalith.<Module>/` layout at higher precedence than `references/` [src/Hexalith.EventStore.Aspire/RepositoryProjectPaths.cs:80-81] — deferred, pre-existing; reordering is a design change the story explicitly scoped out (Dev Notes `:169`) and no such directory exists today (AC1 verified)
 - [x] [Review][Defer] AC4 has no test that a **present** module under `references/` resolves; resolver candidates 2, 3, 4, 6 and 7 are entirely uncovered [tests/Hexalith.EventStore.AppHost.Tests/Configuration/RepositoryProjectPathsTests.cs:31-46] — deferred, pre-existing; needs filesystem fixtures since `GetRepositoryRoot()` derives from `AppContext.BaseDirectory`
 - [x] [Review][Defer] `GetReferencedModuleProjectPath` skips the `ValidateRelativePathSegments` guard that `GetProjectPath` enforces, so a rooted segment would escape the repository root [src/Hexalith.EventStore.Aspire/RepositoryProjectPaths.cs:55-64 vs :30,38-40] — deferred, pre-existing; all current callers pass literals
@@ -299,9 +322,16 @@ OpenAI Codex (GPT-5)
 
 - 2026-07-29 Task 1: June 26 proposal records the completed migration, restore/build/AppHost validation, and Administrator approval on 2026-07-01. July 9 proposal is scoped to Story 3.7 CI/CD alignment. No Story 3.3 task requires a `references/**` edit. `git diff --check` passed.
 - 2026-07-29 Task 2: `.gitmodules` reports 7 root-declared submodule paths and all 7 begin with `references/`; the root-level `Hexalith.*` directory scan returned no output. No submodule update command was run. `git diff --check` passed.
-- 2026-07-29 Task 3: inspected the `.slnx` and both root MSBuild props; active local/default Hexalith paths use `references/`. `dotnet sln ... list` read 48 projects. Package-mode restore succeeded (48/48 projects) and the Release solution build succeeded with 0 warnings and 0 errors. `git diff --check` passed.
+- 2026-07-29 Task 3: inspected the `.slnx` and both root MSBuild props; active local/default Hexalith paths use `references/`. `dotnet sln ... list` read 46 projects. Package-mode restore succeeded and the Release solution build succeeded with 0 warnings and 0 errors. `git diff --check` passed. (Corrected by the 2026-07-29 code review: the original entry recorded "48 projects" and "48/48", which counted the `Project(s)` header and the `----------` separator as projects. `grep -c '<Project Path=' Hexalith.EventStore.slnx` = 46. The Release build additionally compiles `Hexalith.EventStore.Gateway` and `Hexalith.EventStore.TestSubscriber`, which are pulled in transitively but are absent from the `.slnx`.)
 - 2026-07-29 Task 4: all three shared instruction entry points are byte-identical and use `<workspace>/references/Hexalith.AI.Tools/hexalith-llm-instructions.md`. The first stale-scan invocation exited 2 because of shell quote construction; the corrected equivalent scan exited 0 and returned only the seven expected tree children at `docs/brownfield/source-tree-analysis.md:30-36`, visibly nested below `references/`. No stale root-owned path required a patch. `git diff --check` passed.
 - 2026-07-29 Task 5 validation blocker: resolver/metadata inspection passed, including the flexible current-repository probes and `references/<module>/...` fallback. The focused `RepositoryProjectPathsTests` class passed 9/9. The required full AppHost project command failed 1/51 (`SampleApiLaunchSettingsTests.AppHost_RegistersSampleApiAsExternalServiceInvocationOnlyHost`; 50 passed) because `ExtractBlock` searches for `;\n\nif (security is not null)` while the checked-out `Program.cs` has CRLF working-tree endings (`git ls-files --eol`: `i/lf w/crlf`) and the test file has LF endings (`i/lf w/lf`). This is unrelated to the Story 3.3 resolver/path acceptance criteria, and the verification-only scope permits patches only for confirmed stale root-level paths or a resolver/test mismatch; Task 5 remains unchecked pending maintainer authorization or external resolution.
+- 2026-07-29 Task 5 scope ratification (added by the 2026-07-29 code review): the patched test,
+  `SampleApiLaunchSettingsTests.AppHost_RegistersSampleApiAsExternalServiceInvocationOnlyHost`, asserts DAPR
+  service-invocation registration, not path resolution. It therefore falls outside the literal wording of the
+  Task 5 permission ("If AppHost **path** tests fail, patch the narrow resolver/test mismatch") — the actual
+  path tests, `RepositoryProjectPathsTests`, passed 9/9 and were untouched. Administrator confirmed the
+  authorization at review time and **explicitly ratified the change as an accepted, recorded exception** rather
+  than widening the AC. This paragraph is the audit record; the attestation below is retained as written.
 - 2026-07-29 Task 5 resolution: Administrator authorized the narrow test-only correction. `ExtractBlock` now normalizes source text to LF before locating its block boundary. Red evidence was the deterministic 1/51 failure above; the formerly failing method then passed 1/1, `RepositoryProjectPathsTests` remained 9/9, and the complete AppHost project passed 51/51 after its Release/package-mode build succeeded with 0 warnings and 0 errors. `git diff --check` passed.
 - 2026-07-29 Task 6: `git status --short` and `git diff --name-status` show exactly the story, sprint ledger, and authorized AppHost test file. `git diff --submodule=short -- .gitmodules references` returned no output. Root-owned `*.sln` scan and root-level `Hexalith.*` directory scan both returned no matches. Direct execution of `./scripts/ci-local.sh --tier 1 --skip-build` was environment-blocked with exit 126 because the tracked script lacks its executable bit; invoking the same script through Bash passed all 17 deterministic Tier 1 projects: 7,678 passed, 51 skipped, 0 failed.
 - 2026-07-29 Completion gate: re-scanned the story with zero unchecked tasks/subtasks, confirmed the File List exactly matches `git diff --name-only`, and reran the full deterministic Tier 1 regression matrix after all implementation edits. Final result: 17/17 projects passed, 7,678 passed tests, 51 intentional skips, 0 failures. `git diff --check` passed; Release/package-mode build evidence remains 0 warnings and 0 errors.
@@ -310,7 +340,7 @@ OpenAI Codex (GPT-5)
 
 - Task 1 complete: confirmed the shipped correction and approval, excluded Story 3.7 CI/CD work, and fixed the story boundary at root-owned verification only.
 - Task 2 complete: verified all seven root submodules use `references/` and no root-level `Hexalith.*` directory exists.
-- Task 3 complete: verified `.slnx` tooling and all package-mode restore/build paths; the 48-project Release build is clean.
+- Task 3 complete: verified `.slnx` tooling and all package-mode restore/build paths; the 46-project Release build is clean.
 - Task 4 complete: verified synchronized `references/` instructions and reviewed all seven scan hits as valid nested tree entries; no stale-path fix was needed.
 - Task 5 complete: preserved the flexible resolver and `references/` fallback, verified all resolver facts, and made the source-inspection test line-ending independent with maintainer authorization.
 - Task 6 complete: recorded all AC1-AC4 evidence and validation recovery, confirmed zero submodule/gitlink changes, and confirmed the repository remains `.slnx`-only with no root-level Hexalith module directory.
@@ -321,6 +351,14 @@ OpenAI Codex (GPT-5)
 - `_bmad-output/implementation-artifacts/3-3-references-based-submodule-layout.md` (modified)
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` (modified)
 - `tests/Hexalith.EventStore.AppHost.Tests/Configuration/SampleApiLaunchSettingsTests.cs` (modified)
+
+Added by the 2026-07-29 code review (11 applied patches):
+
+- `.gitattributes` (modified) — `*.cs text eol=lf`, closing the root cause
+- `src/Hexalith.EventStore.Aspire/RepositoryProjectPaths.cs` (modified) — corrected a false precedence docstring
+- `tests/Hexalith.EventStore.AppHost.Tests/Configuration/TenantsApiLaunchSettingsTests.cs` (modified) — converged sibling extractor
+- `tests/Hexalith.EventStore.Server.Tests/DaprComponents/DaprComponentValidationTests.cs` (modified) — converged third extractor
+- `_bmad-output/implementation-artifacts/deferred-work.md` (modified) — 5 deferred entries
 
 ### Change Log
 

@@ -165,7 +165,21 @@ development_status:
   # raises HexalithTenantsVersion 5.0.0 -> 5.1.0 repo-wide, and accepted the direct-to-main
   # commits plus the patch release armed by 8ce58f83's `fix:` type.
   3-2-harden-dapr-etag-timeout-for-integration-conditions: done
-  3-3-references-based-submodule-layout: review
+  # 3.3 is verification-and-reconciliation: FR19's references/ layout already shipped via the approved
+  # 2026-06-26 correction, so the deliverable is evidence, not a migration. All AC1-AC4 cheap gates were
+  # independently re-run by the 2026-07-29 code review and matched the Dev Agent Record exactly (7/7
+  # references/ submodule paths, no root-level Hexalith.* directory, 7 stale-scan hits all nested under the
+  # references/ tree node, no gitlink change, no .sln); AppHost re-ran 51/51 in Release/package mode.
+  # Review outcome: 2 owner decisions resolved, 11 patches applied, 5 deferred, 4 dismissed. The one code
+  # change (line-ending normalization in an AppHost source-inspection test) was ratified as an accepted
+  # exception to the Task 5 permission. Root cause of that failure was a repo-wide .editorconfig(crlf) vs
+  # .gitattributes(text=auto) conflict leaving 117 files drifted; closed by adding `*.cs text eol=lf`.
+  # Post-patch evidence, Release/package mode 0W/0E: AppHost 54/54 (3 new line-ending pinning tests, the
+  # temp-file one mutation-proven to fail in CI), Server.Tests 2869/0/25 (unchanged baseline).
+  # Owner ratified one AC5 exception: concurrent commit afb90369 bundled two gitlink bumps
+  # (Memories 7d298205->ccd8efa3, Tenants 96bdfd8a->09947a24, both reachable on their remotes) into a
+  # commit titled for this story. Accepted retroactively; no split required. Closed review -> done.
+  3-3-references-based-submodule-layout: done
   3-4-aspire-security-resource-naming: backlog
   # Story 3.5 establishes Builds as the sole package-version authority before
   # Story 3.11 may refresh the ecosystem-wide catalog.
