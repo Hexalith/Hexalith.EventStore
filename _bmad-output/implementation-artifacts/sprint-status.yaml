@@ -153,9 +153,18 @@ development_status:
   # and needs a follow-up PR to land on main.)
   3-1-re-tier-live-sidecar-tests-from-release-gate: done
   # 2026-07-29: FR18 remains satisfied by PR #271/13320952; Story 3.2 adds the missing
-  # deterministic 30-second override guard. Fresh CI/package-mode builds passed with 0W/0E;
-  # Server.Tests passed 2868/0/25 and LiveSidecar passed 49/49.
-  3-2-harden-dapr-etag-timeout-for-integration-conditions: review
+  # deterministic override guard. Closed to done the same day by adversarial code review
+  # (4 decisions resolved, 9 patches applied, 4 deferred, 6 dismissed): the original AC4
+  # assertion could not detect a shared static ActorProxyOptions, so it was hardened into a
+  # call-time-capture fact plus a per-instance-independence fact (mutation-proven, 1F/15P
+  # under the static regression). The duplicated commit-policy block was removed from the
+  # three shared entry points and the missing `revert` type added to the canonical
+  # hexalith-git-instructions.md instead. Post-review CI/package-mode evidence, 0W/0E:
+  # Server.Tests 2869/0/25, Contracts.Tests 778/778, LiveSidecar 49/49, ETag class 2/2 with
+  # the persisted Redis ETag cited by value. Owner ratified the Builds gitlink bump that
+  # raises HexalithTenantsVersion 5.0.0 -> 5.1.0 repo-wide, and accepted the direct-to-main
+  # commits plus the patch release armed by 8ce58f83's `fix:` type.
+  3-2-harden-dapr-etag-timeout-for-integration-conditions: done
   3-3-references-based-submodule-layout: ready-for-dev
   3-4-aspire-security-resource-naming: backlog
   # Story 3.5 establishes Builds as the sole package-version authority before

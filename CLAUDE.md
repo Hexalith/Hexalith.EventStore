@@ -48,11 +48,6 @@ Before working in a Hexalith repository, locate, read, and follow
   remotes, and recent history.
 - Use Conventional Commits whenever a commit is requested. Never bypass commit
   validation.
-- Commit subjects must use `<type>[scope][!]: <description>`. Allowed types are
-  exactly `build`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`,
-  `style`, and `test`. Never use `chore`; use `build(deps)` for dependency or
-  submodule pointer updates. Start descriptions with a lowercase imperative verb
-  and do not end them with a period.
 - In an umbrella workspace, initialize or update only dependencies declared by
   the top-level workspace `.gitmodules` file.
 - Never initialize or update a submodule's nested submodules unless the user

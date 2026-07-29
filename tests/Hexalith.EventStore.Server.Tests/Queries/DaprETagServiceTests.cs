@@ -50,10 +50,20 @@ public class DaprETagServiceTests {
         IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
         IETagActor actor = Substitute.For<IETagActor>();
         _ = actor.GetCurrentETagAsync().Returns(selfRoutingETag);
+
+        // The timeout is snapshotted INSIDE the factory callback, i.e. at call time. Asserting it
+        // through Arg.Is<ActorProxyOptions> on Received() would instead evaluate the predicate at
+        // assert time against the captured reference, so an implementation that hands over the
+        // right object and mutates it afterwards - or shares one ActorProxyOptions across
+        // instances - would still pass. See GetCurrentETagAsync_KeepsRequestTimeoutPerInstance.
+        TimeSpan? observedRequestTimeout = null;
         _ = factory.CreateActorProxy<IETagActor>(
-            Arg.Any<ActorId>(),
+            Arg.Is<ActorId>(id => id.GetId() == "counter:tenant1"),
             ETagActor.ETagActorTypeName,
-            Arg.Any<ActorProxyOptions>()).Returns(actor);
+            Arg.Any<ActorProxyOptions>()).Returns(callInfo => {
+                observedRequestTimeout = callInfo.Arg<ActorProxyOptions>().RequestTimeout;
+                return actor;
+            });
 
         var service = new DaprETagService(
             factory,
@@ -61,13 +71,53 @@ public class DaprETagServiceTests {
             requestTimeout: TimeSpan.FromSeconds(30));
 
         // Act
-        _ = await service.GetCurrentETagAsync("counter", "tenant1");
+        string? result = await service.GetCurrentETagAsync("counter", "tenant1");
 
         // Assert
+        observedRequestTimeout.ShouldBe(TimeSpan.FromSeconds(30));
+
+        // Mirror the default-path test: the override must not cost the fetch its result.
+        result.ShouldBe(selfRoutingETag);
+        _ = result.ShouldNotBeNull();
+        result.ShouldContain('.');
+        _ = await actor.Received(1).GetCurrentETagAsync();
+
         _ = factory.Received(1).CreateActorProxy<IETagActor>(
+            Arg.Is<ActorId>(id => id.GetId() == "counter:tenant1"),
+            ETagActor.ETagActorTypeName,
+            Arg.Any<ActorProxyOptions>());
+    }
+
+    [Fact]
+    public async Task GetCurrentETagAsync_KeepsRequestTimeoutPerInstance() {
+        // Arrange - both services are constructed BEFORE either is invoked. That ordering is what
+        // makes the assertion detect a shared (static) ActorProxyOptions: with per-instance options
+        // each call still carries its own timeout, while a shared field would hand the last
+        // constructed value to both calls.
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        IETagActor actor = Substitute.For<IETagActor>();
+        _ = actor.GetCurrentETagAsync().Returns(SelfRoutingETag.GenerateNew("counter"));
+
+        List<TimeSpan?> observedRequestTimeouts = [];
+        _ = factory.CreateActorProxy<IETagActor>(
             Arg.Any<ActorId>(),
             ETagActor.ETagActorTypeName,
-            Arg.Is<ActorProxyOptions>(options => options.RequestTimeout == TimeSpan.FromSeconds(30)));
+            Arg.Any<ActorProxyOptions>()).Returns(callInfo => {
+                observedRequestTimeouts.Add(callInfo.Arg<ActorProxyOptions>().RequestTimeout);
+                return actor;
+            });
+
+        var shortTimeoutService = new DaprETagService(
+            factory, NullLogger<DaprETagService>.Instance, requestTimeout: TimeSpan.FromSeconds(5));
+        var longTimeoutService = new DaprETagService(
+            factory, NullLogger<DaprETagService>.Instance, requestTimeout: TimeSpan.FromSeconds(30));
+
+        // Act
+        _ = await shortTimeoutService.GetCurrentETagAsync("counter", "tenant1");
+        _ = await longTimeoutService.GetCurrentETagAsync("counter", "tenant2");
+
+        // Assert
+        observedRequestTimeouts.ShouldBe([TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(30)]);
     }
 
     [Fact]
