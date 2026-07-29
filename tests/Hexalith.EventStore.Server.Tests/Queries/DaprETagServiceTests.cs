@@ -44,6 +44,33 @@ public class DaprETagServiceTests {
     }
 
     [Fact]
+    public async Task GetCurrentETagAsync_UsesSuppliedRequestTimeout_WhenOverrideProvided() {
+        // Arrange
+        string selfRoutingETag = SelfRoutingETag.GenerateNew("counter");
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        IETagActor actor = Substitute.For<IETagActor>();
+        _ = actor.GetCurrentETagAsync().Returns(selfRoutingETag);
+        _ = factory.CreateActorProxy<IETagActor>(
+            Arg.Any<ActorId>(),
+            ETagActor.ETagActorTypeName,
+            Arg.Any<ActorProxyOptions>()).Returns(actor);
+
+        var service = new DaprETagService(
+            factory,
+            NullLogger<DaprETagService>.Instance,
+            requestTimeout: TimeSpan.FromSeconds(30));
+
+        // Act
+        _ = await service.GetCurrentETagAsync("counter", "tenant1");
+
+        // Assert
+        _ = factory.Received(1).CreateActorProxy<IETagActor>(
+            Arg.Any<ActorId>(),
+            ETagActor.ETagActorTypeName,
+            Arg.Is<ActorProxyOptions>(options => options.RequestTimeout == TimeSpan.FromSeconds(30)));
+    }
+
+    [Fact]
     public async Task GetCurrentETagAsync_ReturnsNull_WhenActorReturnsNull() {
         // Arrange
         IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();

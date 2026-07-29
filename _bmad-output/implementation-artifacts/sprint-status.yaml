@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-07-28
+# last_updated: 2026-07-29
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T20:01:46+02:00
-last_updated: 2026-07-28
+last_updated: 2026-07-29
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -152,7 +152,10 @@ development_status:
   # 1 defer - unguarded docs/ci.md pin literal; 2 dismissed. Patched content is working-tree-only
   # and needs a follow-up PR to land on main.)
   3-1-re-tier-live-sidecar-tests-from-release-gate: done
-  3-2-harden-dapr-etag-timeout-for-integration-conditions: ready-for-dev
+  # 2026-07-29: FR18 remains satisfied by PR #271/13320952; Story 3.2 adds the missing
+  # deterministic 30-second override guard. Source-mode Server.Tests passed 2868/0/25 and
+  # LiveSidecar passed 49/49; fresh package restore is blocked by unpublished Tenants.Contracts 5.1.0.
+  3-2-harden-dapr-etag-timeout-for-integration-conditions: review
   3-3-references-based-submodule-layout: ready-for-dev
   3-4-aspire-security-resource-naming: backlog
   # Story 3.5 establishes Builds as the sole package-version authority before

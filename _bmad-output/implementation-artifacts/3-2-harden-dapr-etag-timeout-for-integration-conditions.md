@@ -36,7 +36,7 @@ source_files:
 
 # Story 3.2: Harden DAPR ETag Timeout For Integration Conditions
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -141,26 +141,26 @@ Source of truth:
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 — Verify the production default and registration (AC1).**
-  - [ ] Read `src/Hexalith.EventStore.Server/Queries/DaprETagService.cs`; confirm the `TimeSpan? requestTimeout = null` parameter and `_proxyOptions.RequestTimeout = requestTimeout ?? TimeSpan.FromSeconds(3)` (and that `_proxyOptions` is a per-instance `readonly` field, not `static`).
-  - [ ] Confirm `ServiceCollectionExtensions.cs:37` registers `TryAddScoped<IETagService, DaprETagService>()` and that no `TimeSpan`/`ActorProxyOptions` service is registered that would override the default.
-  - [ ] Confirm `DaprETagServiceTests.cs:43` still asserts the 3s default. Record the enumeration as evidence.
-- [ ] **Task 2 — Verify the override threads into proxy creation (AC2).**
-  - [ ] Confirm `_proxyOptions` (built from `requestTimeout`) is the exact instance passed to `CreateActorProxy<IETagActor>(…, _proxyOptions)` (`DaprETagService.cs:45-46`).
-  - [ ] Confirm both live-sidecar tests construct with `requestTimeout: TimeSpan.FromSeconds(30)` and that `AfterRegenerate` asserts the persisted ETag (`ShouldBe(expectedETag)`), not a fail-open null.
-- [ ] **Task 3 — Verify path coverage and fail-open preservation; record the gap (AC3).**
-  - [ ] Enumerate the deterministic `DaprETagServiceTests` (default 3s, null-return, throw→null, pre-cancelled, OCE-not-fail-open, actor-id colon, self-routing format, remoting-interface, arg validation) and the live-sidecar override tests.
-  - [ ] Explicitly record that the override→`RequestTimeout` mapping is asserted **only** under `Category=LiveSidecar`, which the deterministic gate excludes — the motivation for Task 4.
-- [ ] **Task 4 — Add the deterministic override-path unit test (AC4).**
-  - [ ] In `tests/Hexalith.EventStore.Server.Tests/Queries/DaprETagServiceTests.cs`, add a `[Fact]` (no `LiveSidecar` trait) that mirrors `GetCurrentETagAsync_ReturnsETag_WhenActorReturnsValue` but constructs the service with `requestTimeout: TimeSpan.FromSeconds(30)` and asserts `Arg.Is<ActorProxyOptions>(o => o.RequestTimeout == TimeSpan.FromSeconds(30))` on the captured `CreateActorProxy<IETagActor>` call.
-  - [ ] Keep the assertion on `ETagActor.ETagActorTypeName` (not `Arg.Any<string>()`) to match the existing default-path test's precision.
-  - [ ] Confirm the test fails against a hypothetical revert (parameter ignored / `static` 3s) and passes against the shipped code — the durable guard for the override contract in the deterministic gate. Do **not** modify production code to make it pass.
-- [ ] **Task 5 — Validate and record evidence (AC5).**
-  - [ ] Run the Dev Notes validation commands; record the build result and the deterministic (`Category!=LiveSidecar`) pass counts, including the new AC4 test.
-  - [ ] For the live-sidecar subset: run `DaprETagServiceLiveSidecarTests` against a live sidecar (VM bootstrap in Dev Notes) and record results **with persisted-ETag evidence**, or classify the environment as `blocked` via `scripts/generated-api-smoke-preflight.sh` / the fixture preflight. Never treat a missing control plane as a product failure.
-  - [ ] Reconcile FR18 done-evidence in the Dev Agent Record (satisfied-by-#271 + this verification + AC4 close) and flip the `sprint-status.yaml` `3-2-…` entry out of `backlog` on completion.
-- [ ] **Task 6 — Enforce scope boundaries (AC6).**
-  - [ ] Confirm no `IOptions`/appsettings binding was added, the 3s default and fail-open contract are unchanged, no NFR10 lane wiring was touched, no new live-sidecar class was added, and no `Guid.TryParse` of an id field was introduced.
+- [x] **Task 1 — Verify the production default and registration (AC1).**
+  - [x] Read `src/Hexalith.EventStore.Server/Queries/DaprETagService.cs`; confirm the `TimeSpan? requestTimeout = null` parameter and `_proxyOptions.RequestTimeout = requestTimeout ?? TimeSpan.FromSeconds(3)` (and that `_proxyOptions` is a per-instance `readonly` field, not `static`).
+  - [x] Confirm `ServiceCollectionExtensions.cs:37` registers `TryAddScoped<IETagService, DaprETagService>()` and that no `TimeSpan`/`ActorProxyOptions` service is registered that would override the default.
+  - [x] Confirm `DaprETagServiceTests.cs:43` still asserts the 3s default. Record the enumeration as evidence.
+- [x] **Task 2 — Verify the override threads into proxy creation (AC2).**
+  - [x] Confirm `_proxyOptions` (built from `requestTimeout`) is the exact instance passed to `CreateActorProxy<IETagActor>(…, _proxyOptions)` (`DaprETagService.cs:45-46`).
+  - [x] Confirm both live-sidecar tests construct with `requestTimeout: TimeSpan.FromSeconds(30)` and that `AfterRegenerate` asserts the persisted ETag (`ShouldBe(expectedETag)`), not a fail-open null.
+- [x] **Task 3 — Verify path coverage and fail-open preservation; record the gap (AC3).**
+  - [x] Enumerate the deterministic `DaprETagServiceTests` (default 3s, null-return, throw→null, pre-cancelled, OCE-not-fail-open, actor-id colon, self-routing format, remoting-interface, arg validation) and the live-sidecar override tests.
+  - [x] Explicitly record that the override→`RequestTimeout` mapping is asserted **only** under `Category=LiveSidecar`, which the deterministic gate excludes — the motivation for Task 4.
+- [x] **Task 4 — Add the deterministic override-path unit test (AC4).**
+  - [x] In `tests/Hexalith.EventStore.Server.Tests/Queries/DaprETagServiceTests.cs`, add a `[Fact]` (no `LiveSidecar` trait) that mirrors `GetCurrentETagAsync_ReturnsETag_WhenActorReturnsValue` but constructs the service with `requestTimeout: TimeSpan.FromSeconds(30)` and asserts `Arg.Is<ActorProxyOptions>(o => o.RequestTimeout == TimeSpan.FromSeconds(30))` on the captured `CreateActorProxy<IETagActor>` call.
+  - [x] Keep the assertion on `ETagActor.ETagActorTypeName` (not `Arg.Any<string>()`) to match the existing default-path test's precision.
+  - [x] Confirm the test fails against a hypothetical revert (parameter ignored / `static` 3s) and passes against the shipped code — the durable guard for the override contract in the deterministic gate. Do **not** modify production code to make it pass.
+- [x] **Task 5 — Validate and record evidence (AC5).**
+  - [x] Run the Dev Notes validation commands; record the build result and the deterministic (`Category!=LiveSidecar`) pass counts, including the new AC4 test.
+  - [x] For the live-sidecar subset: run `DaprETagServiceLiveSidecarTests` against a live sidecar (VM bootstrap in Dev Notes) and record results **with persisted-ETag evidence**, or classify the environment as `blocked` via `scripts/generated-api-smoke-preflight.sh` / the fixture preflight. Never treat a missing control plane as a product failure.
+  - [x] Reconcile FR18 done-evidence in the Dev Agent Record (satisfied-by-#271 + this verification + AC4 close) and flip the `sprint-status.yaml` `3-2-…` entry out of `backlog` on completion.
+- [x] **Task 6 — Enforce scope boundaries (AC6).**
+  - [x] Confirm no `IOptions`/appsettings binding was added, the 3s default and fail-open contract are unchanged, no NFR10 lane wiring was touched, no new live-sidecar class was added, and no `Guid.TryParse` of an id field was introduced.
 
 ## Dev Notes
 
@@ -296,14 +296,41 @@ Expected baselines from #271 (for comparison, not a hard gate): release-gate sub
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+GPT-5 Codex
 
 ### Implementation Plan / Decisions
 
+- Verify the shipped FR18 seam and current physical test-project topology before changing tests.
+- Add only the deterministic 30-second override mapping test required by AC4; use a temporary ignored-parameter mutation to prove the test's red phase, then restore the shipped production source unchanged.
+- Validate Release builds and both physical test projects; use the repository fallback ladder when a fresh package-mode restore is blocked by an unpublished dependency, and classify unavailable runtime prerequisites separately from product failures.
+
 ### Debug Log References
+
+- 2026-07-29 Task 1: verified `requestTimeout ?? TimeSpan.FromSeconds(3)`, per-instance `readonly ActorProxyOptions`, unchanged scoped DI registration, and the existing 3-second unit assertion. Commit `13320952` is an ancestor of HEAD.
+- 2026-07-29 topology reconciliation: Story 3.1 moved `DaprETagServiceLiveSidecarTests` to `tests/Hexalith.EventStore.Server.LiveSidecar.Tests`; current validation uses physical project separation rather than the superseded trait filters in this story's original command examples.
+- 2026-07-29 Task 1 gates: Release/package-mode Server.Tests build succeeded with 0 warnings and 0 errors; focused default-path test passed 1/1; full deterministic project passed 2,867, skipped 25, failed 0 (2,892 total).
+- 2026-07-29 Task 2: verified that the constructor-derived `_proxyOptions` instance is passed directly to `CreateActorProxy<IETagActor>`. Both tests in the dedicated live-sidecar project supply 30 seconds; `AfterRegenerate` asserts the exact ETag persisted through the real actor path.
+- 2026-07-29 Task 3: enumerated the deterministic cases for default timeout, null-return, throw-to-null, pre-cancellation, propagated OCE, colon actor ID, self-routing format, remoting invocation, and projection/tenant argument validation. Before Task 4, every deterministic construction used the two-argument/default path; the only explicit 30-second constructions were the two `Category=LiveSidecar` tests in the physically separate live project.
+- 2026-07-29 Task 4 red/green proof: with a temporary ignored-override mutation that forced 3 seconds, `GetCurrentETagAsync_UsesSuppliedRequestTimeout_WhenOverrideProvided` failed on the expected NSubstitute call mismatch; after restoring the shipped source unchanged, the focused test passed 1/1 and the complete `DaprETagServiceTests` class passed 15/15.
+- 2026-07-29 Task 5 deterministic gates: the source-reference Release build completed with 0 warnings and 0 errors under `-warnaserror`; the final completion rerun passed 2,868, skipped 25, failed 0 (2,893 total, 4m15s). A fresh CI/package-mode restore is independently blocked before compilation by `NU1102`: `Hexalith.Tenants.Contracts >= 5.1.0` is unavailable from NuGet (nearest 5.0.0); the source-reference fallback was restored before validation.
+- 2026-07-29 Task 5 live gates: Story 3.8 preflight reported Docker, DAPR, placement, and scheduler healthy but no discoverable Aspire topology (exit 3). The dedicated fixture-owned live-sidecar class nevertheless passed 2/2, including exact equality with the Redis-backed ETag seeded by `RegenerateAsync`; the full live-sidecar project passed 49/49.
+- 2026-07-29 Task 6 scope audit: production `src/**`, live-sidecar tests/fixtures, and CI/release lane files have no story diff; no `IOptions`/appsettings binding, new live class, or identifier `Guid.TryParse` was introduced. The 3-second default, per-instance options, fail-open/rethrow contract, and both existing 30-second live values are unchanged.
 
 ### Completion Notes List
 
+- Task 1 complete: the shipped 3-second production default and normal DI construction remain intact, with no `TimeSpan` or `ActorProxyOptions` registration overriding the optional constructor default.
+- Task 2 complete: the explicit timeout is threaded into actor-proxy creation and the dedicated live lane retains its persisted-ETag end-state assertion.
+- Task 3 complete: fail-open and cancellation coverage remains green, and the missing deterministic override-to-`RequestTimeout` assertion is confirmed as the sole code gap.
+- Task 4 complete: added a deterministic release-gate fact that pins an explicit 30-second constructor override to the exact `ActorProxyOptions` passed to `ETagActor`; mutation testing proved it detects an ignored override without retaining any production change.
+- Task 5 complete: FR18 remains satisfied by PR #271/commit `13320952`; this story adds the missing deterministic guard and records clean source-mode deterministic/live regression evidence. Fresh package-mode reproduction remains externally blocked by the unpublished Tenants 5.1.0 dependency and is explicitly preserved as validation evidence.
+- Task 6 complete: the change is test-and-ledger only; runtime tuning, production defaults/behavior, lane wiring, live fixtures, and identifier parsing remain untouched.
+
 ### File List
 
+- `_bmad-output/implementation-artifacts/3-2-harden-dapr-etag-timeout-for-integration-conditions.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `tests/Hexalith.EventStore.Server.Tests/Queries/DaprETagServiceTests.cs`
+
 ### Change Log
+
+- 2026-07-29: Verified the shipped FR18 seam, added deterministic 30-second timeout override coverage, validated deterministic and live-sidecar suites, and reconciled Story 3.2 to review.
