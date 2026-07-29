@@ -165,7 +165,7 @@ development_status:
   # raises HexalithTenantsVersion 5.0.0 -> 5.1.0 repo-wide, and accepted the direct-to-main
   # commits plus the patch release armed by 8ce58f83's `fix:` type.
   3-2-harden-dapr-etag-timeout-for-integration-conditions: done
-  3-3-references-based-submodule-layout: ready-for-dev
+  3-3-references-based-submodule-layout: review
   3-4-aspire-security-resource-naming: backlog
   # Story 3.5 establishes Builds as the sole package-version authority before
   # Story 3.11 may refresh the ecosystem-wide catalog.

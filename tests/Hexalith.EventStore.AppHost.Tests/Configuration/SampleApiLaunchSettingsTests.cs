@@ -87,6 +87,7 @@ public class SampleApiLaunchSettingsTests
 
     private static string ExtractBlock(string text, string startMarker)
     {
+        text = text.ReplaceLineEndings("\n");
         int start = text.IndexOf(startMarker, StringComparison.Ordinal);
         start.ShouldBeGreaterThanOrEqualTo(0, $"Expected to find '{startMarker}'.");
         int end = text.IndexOf(";\n\nif (security is not null)", start, StringComparison.Ordinal);
