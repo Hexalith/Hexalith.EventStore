@@ -465,6 +465,18 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
             }
 
             if (admittedRoutes.Count == 0) {
+                IReadOnlySet<string> reconciledRoutes = await ReconcileTerminalRoutesAsync(
+                        registration.AppId,
+                        identity,
+                        projectionEvents,
+                        scheduledWork,
+                        terminalRoutes,
+                        dispatchOptions,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+                terminalRoutes.ExceptWith(reconciledRoutes);
+                settledRoutes.UnionWith(reconciledRoutes);
+
                 // Nothing to dispatch this round. Prune settled (drift-ahead) routes: if only lifecycle-
                 // deferred routes remain this re-schedules with backoff, otherwise it deletes the item.
                 await ReconcileRetryLedgerAsync(
@@ -598,6 +610,18 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                     lifecycleLeases)
                 .ConfigureAwait(false);
 
+            IReadOnlySet<string> reconciledTerminalRoutes = await ReconcileTerminalRoutesAsync(
+                    registration.AppId,
+                    identity,
+                    projectionEvents,
+                    scheduledWork,
+                    terminalRoutes,
+                    dispatchOptions,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            terminalRoutes.ExceptWith(reconciledTerminalRoutes);
+            settledRoutes.UnionWith(reconciledTerminalRoutes);
+
             await ReconcileRetryLedgerAsync(
                     scheduledWork,
                     completedRoutes,
@@ -697,6 +721,49 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                 "One or more named projection delivery lifecycle leases could not be completed.",
                 lifecycleCompletionFailure);
         }
+    }
+
+    private async Task<IReadOnlySet<string>> ReconcileTerminalRoutesAsync(
+        string appId,
+        AggregateIdentity identity,
+        ProjectionEventDto[] projectionEvents,
+        ProjectionDeliveryRetryWorkItem scheduledWork,
+        IReadOnlySet<string> terminalRoutes,
+        ProjectionDispatchOptions dispatchOptions,
+        CancellationToken cancellationToken) {
+        if (terminalRoutes.Count == 0) {
+            return new HashSet<string>(StringComparer.Ordinal);
+        }
+
+        string[] orderedRoutes = [.. terminalRoutes.Order(StringComparer.Ordinal)];
+        var request = new ProjectionDispatchRequest(
+            new ProjectionRequest(
+                identity.TenantId,
+                identity.Domain,
+                identity.AggregateId,
+                projectionEvents),
+            orderedRoutes,
+            scheduledWork.DispatchId,
+            scheduledWork.CatalogFingerprint);
+        ProjectionDispatchResponse? response = await InvokeAsync(
+                appId,
+                "project/v2/reconcile",
+                request,
+                dispatchOptions,
+                cancellationToken)
+            .ConfigureAwait(false);
+        if (response is null) {
+            return new HashSet<string>(StringComparer.Ordinal);
+        }
+
+        Dictionary<string, ProjectionDispatchOutcome> outcomes = ValidateOutcomes(
+            response,
+            orderedRoutes,
+            dispatchOptions);
+        return outcomes
+            .Where(static pair => pair.Value.Status is ProjectionDispatchStatus.Completed or ProjectionDispatchStatus.AlreadyCompleted)
+            .Select(static pair => pair.Key)
+            .ToHashSet(StringComparer.Ordinal);
     }
 
     /// <summary>

@@ -205,6 +205,29 @@ public static class EventStoreDomainServiceExtensions {
                         return Results.BadRequest(exception.ReasonCode);
                     }
                 });
+
+            _ = app.MapPost(
+                "/project/v2/reconcile",
+                async (ProjectionDispatchRequest request,
+                       IServiceProvider serviceProvider,
+                       IOptions<ProjectionDispatchOptions> projectionDispatchOptions,
+                       IOptions<DomainProjectionIdentityOptions> projectionIdentityOptions,
+                       CancellationToken cancellationToken) => {
+                    try {
+                        ProjectionDispatchResponse response = await DomainProjectionDispatcher
+                            .ReconcileAsync(
+                                serviceProvider,
+                                request,
+                                projectionDispatchOptions.Value,
+                                projectionIdentityOptions.Value,
+                                cancellationToken)
+                            .ConfigureAwait(false);
+                        return (IResult)Results.Ok(response);
+                    }
+                    catch (ProjectionDispatchValidationException exception) {
+                        return Results.BadRequest(exception.ReasonCode);
+                    }
+                });
         }
 
         MapNamedProjectionRebuildEndpoint(app, "/project/rebuild/v1", DomainProjectionRebuildBatchAction.Execute);

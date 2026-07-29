@@ -842,6 +842,7 @@ public sealed class EventStoreDomainServiceExtensionsTests {
             "/project/rebuild/v1",
             "/project/rebuild/verify/v1",
             "/project/v2",
+            "/project/v2/reconcile",
             "/query",
             "/replay-state"]);
     }

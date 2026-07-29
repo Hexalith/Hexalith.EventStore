@@ -70,6 +70,87 @@ public static class DomainProjectionDispatcher {
             .ConfigureAwait(false);
     }
 
+    /// <summary>Reconciles terminal named routes against the authoritative stable dispatch input.</summary>
+    /// <param name="serviceProvider">The scoped request service provider.</param>
+    /// <param name="dispatchRequest">The terminal routes and their original dispatch input.</param>
+    /// <param name="options">The validated dispatch bounds.</param>
+    /// <param name="identityOptions">The authoritative local service binding.</param>
+    /// <param name="cancellationToken">Propagates reconciliation cancellation.</param>
+    /// <returns>One bounded reconciliation outcome per requested terminal route.</returns>
+    public static async Task<ProjectionDispatchResponse> ReconcileAsync(
+        IServiceProvider serviceProvider,
+        ProjectionDispatchRequest dispatchRequest,
+        ProjectionDispatchOptions options,
+        DomainProjectionIdentityOptions identityOptions,
+        CancellationToken cancellationToken) {
+        ArgumentNullException.ThrowIfNull(serviceProvider);
+        ArgumentNullException.ThrowIfNull(dispatchRequest);
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(identityOptions);
+        options.Validate();
+        identityOptions.Validate();
+        ValidateRequest(dispatchRequest, options);
+
+        IAsyncDomainProjectionHandler[] allHandlers = DomainProjectionHandlerRouteValidator
+            .MaterializeAndValidateNamed(serviceProvider.GetServices<IAsyncDomainProjectionHandler>(), options);
+        ProjectionDispatchRoute[] authoritativeRoutes = [.. allHandlers
+            .Where(handler => string.Equals(handler.Domain, dispatchRequest.Request.Domain, StringComparison.Ordinal))
+            .Select(handler => new ProjectionDispatchRoute(handler.Domain, handler.ProjectionType))];
+        if (authoritativeRoutes.Length == 0
+            || !string.Equals(
+                ProjectionRouteCatalogFingerprint.Compute(
+                    identityOptions.AppId,
+                    identityOptions.ServiceVersion,
+                    authoritativeRoutes),
+                dispatchRequest.CatalogFingerprint,
+                StringComparison.Ordinal)) {
+            throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedCapability);
+        }
+
+        HashSet<string> requestedTypes = new(dispatchRequest.ProjectionTypes, StringComparer.Ordinal);
+        IAsyncDomainProjectionHandler[] handlers = [.. allHandlers.Where(handler =>
+            string.Equals(handler.Domain, dispatchRequest.Request.Domain, StringComparison.Ordinal)
+            && requestedTypes.Contains(handler.ProjectionType))];
+        if (handlers.Length != requestedTypes.Count) {
+            throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedRoute);
+        }
+
+        var outcomes = new List<ProjectionDispatchOutcome>(handlers.Length);
+        foreach (IAsyncDomainProjectionHandler handler in handlers) {
+            cancellationToken.ThrowIfCancellationRequested();
+            ProjectionDispatchOutcome outcome;
+            if (handler is not IAsyncDomainProjectionReconciliationHandler reconciliationHandler) {
+                outcome = new ProjectionDispatchOutcome(
+                    handler.ProjectionType,
+                    ProjectionDispatchStatus.Failed,
+                    null,
+                    ProjectionDispatchReasonCodes.UnsupportedCapability);
+            }
+            else {
+                try {
+                    DomainProjectionHandlerResult result = await reconciliationHandler
+                        .ReconcileAsync(dispatchRequest.Request, dispatchRequest.DispatchId, cancellationToken)
+                        .ConfigureAwait(false);
+                    outcome = NormalizeOutcome(handler.ProjectionType, result, options);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+                    throw;
+                }
+                catch (Exception) {
+                    outcome = new ProjectionDispatchOutcome(
+                        handler.ProjectionType,
+                        ProjectionDispatchStatus.Indeterminate,
+                        null,
+                        ProjectionDispatchReasonCodes.HandlerFailure);
+                }
+            }
+
+            outcomes.Add(outcome);
+        }
+
+        return new ProjectionDispatchResponse(ProjectionDispatchProtocol.Version, outcomes);
+    }
+
     /// <summary>
     /// Plans every required named full-replay projection and promotes the candidates through one
     /// coordinated read-model batch.

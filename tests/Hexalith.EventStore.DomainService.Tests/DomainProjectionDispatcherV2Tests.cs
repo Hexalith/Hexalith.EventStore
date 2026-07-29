@@ -325,6 +325,35 @@ public sealed class DomainProjectionDispatcherV2Tests {
     }
 
     [Fact]
+    public async Task ReconcileAsync_InvokesOnlyExplicitReconciliationHandlers() {
+        IAsyncDomainProjectionReconciliationHandler handler =
+            Substitute.For<IAsyncDomainProjectionReconciliationHandler>();
+        handler.Domain.Returns("widget");
+        handler.ProjectionType.Returns("widget-detail");
+        handler.ReconcileAsync(Arg.Any<ProjectionRequest>(), "dispatch-1", Arg.Any<CancellationToken>())
+            .Returns(DomainProjectionHandlerResult.Completed());
+        using ServiceProvider provider = BuildProvider(handler);
+        string fingerprint = ProjectionRouteCatalogFingerprint.Compute(
+            "widget-service",
+            "v1",
+            [new ProjectionDispatchRoute("widget", "widget-detail")]);
+
+        ProjectionDispatchResponse response = await DomainProjectionDispatcher.ReconcileAsync(
+            provider,
+            CreateRequest(fingerprint, "widget-detail"),
+            new ProjectionDispatchOptions(),
+            new DomainProjectionIdentityOptions { AppId = "widget-service", ServiceVersion = "v1" },
+            CancellationToken.None);
+
+        response.Outcomes.ShouldHaveSingleItem().Status.ShouldBe(ProjectionDispatchStatus.Completed);
+        _ = await handler.Received(1).ReconcileAsync(
+            Arg.Any<ProjectionRequest>(),
+            "dispatch-1",
+            Arg.Any<CancellationToken>());
+        _ = handler.DidNotReceiveWithAnyArgs().ProjectAsync(default!, default!, default);
+    }
+
+    [Fact]
     public async Task DispatchAsync_NullEventArrayIsRejectedBeforeHandlerInvocation() {
         IAsyncDomainProjectionHandler handler = CreateHandler("widget", "widget-detail");
         using ServiceProvider provider = BuildProvider(handler);

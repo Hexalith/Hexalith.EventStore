@@ -422,6 +422,52 @@ public sealed class NamedProjectionDispatchCoordinatorTests {
     }
 
     [Fact]
+    public async Task TryDispatchAsync_ReconciledTerminalRouteDeletesDurableRetryWork() {
+        IProjectionDeliveryRetryScheduler scheduler = Substitute.For<IProjectionDeliveryRetryScheduler>();
+        _ = scheduler.ScheduleAsync(Arg.Any<ProjectionDeliveryRetryWorkItem>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.ArgAt<ProjectionDeliveryRetryWorkItem>(0));
+        string failed = JsonSerializer.Serialize(new ProjectionDispatchResponse(
+            ProjectionDispatchProtocol.Version,
+            [new ProjectionDispatchOutcome(
+                "widget-detail",
+                ProjectionDispatchStatus.Failed,
+                null,
+                ProjectionDispatchReasonCodes.HandlerFailure)]));
+        string reconciled = JsonSerializer.Serialize(new ProjectionDispatchResponse(
+            ProjectionDispatchProtocol.Version,
+            [new ProjectionDispatchOutcome("widget-detail", ProjectionDispatchStatus.Completed, null, null)]));
+        var handler = new ProjectionDispatchHttpMessageHandler(
+            failed,
+            responsesByPath: new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["/project/v2/reconcile"] = reconciled,
+            });
+        NamedProjectionDispatchCoordinator coordinator = CreateCoordinator(
+            Snapshot("fingerprint", "widget-detail"),
+            handler,
+            out IProjectionDeliveryCheckpointStore checkpoints,
+            out IProjectionLifecycleGateway lifecycle,
+            scheduler);
+        _ = checkpoints.ReadDeliveredSequenceAsync(Identity, "widget-detail", Arg.Any<CancellationToken>()).Returns(0);
+        _ = lifecycle.BeginDeliveryWriteAsync(Identity, "widget-detail", Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
+
+        _ = await coordinator.TryDispatchAsync(
+            Identity,
+            Registration(),
+            [Envelope(1), Envelope(2)],
+            [],
+            CancellationToken.None);
+
+        handler.CallCount.ShouldBe(2);
+        _ = await scheduler.Received(1).TryDeleteAsync(
+            Arg.Is<ProjectionDeliveryRetryWorkItem>(item =>
+                item.PendingRoutes.SequenceEqual(new[] { "widget-detail" })),
+            Arg.Any<CancellationToken>());
+        _ = await scheduler.DidNotReceiveWithAnyArgs().TryUpdateAsync(default!, default);
+        _ = await checkpoints.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default!, default, default);
+    }
+
+    [Fact]
     public async Task TryDispatchAsync_ExhaustedAttemptRemainsPendingAtBoundedBackoff() {
         DateTimeOffset now = new(2026, 7, 13, 12, 0, 0, TimeSpan.Zero);
         IProjectionDeliveryRetryScheduler scheduler = Substitute.For<IProjectionDeliveryRetryScheduler>();
