@@ -90,7 +90,7 @@ and drive them (the project also expects a Playwright MCP for browser flows).
 | `eventstore` | REST/gRPC command API gateway (port 8080); SignalR hub enabled |
 | `eventstore-admin` | Admin server host (Swagger) |
 | `eventstore-admin-ui` | Admin Blazor UI |
-| `keycloak` | OIDC identity provider — **container, default ON**; disable with `EnableKeycloak=false` |
+| `security` | OIDC identity provider, Keycloak-backed — **container, default ON**; disable with `EnableKeycloak=false` |
 | `tenants` | Tenants domain service + DAPR sidecar (shares state store + pub/sub) |
 | `sample` | Counter sample domain service — **zero infra access** (no state store / pub/sub / Redis by design, D4) |
 | `sample-blazor-ui` | Blazor UI sample; external endpoints; service-invokes eventstore |

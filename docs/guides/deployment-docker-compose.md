@@ -26,7 +26,7 @@ flowchart TB
         end
 
         Redis[(Redis<br/>:6379)]
-        Keycloak[Keycloak<br/>:8180]
+        Security[security<br/>Keycloak-backed<br/>:8080]
         Placement([DAPR Placement<br/>Service])
 
         Client -->|REST| EventStore
@@ -36,7 +36,7 @@ flowchart TB
         CmdSidecar -->|State Store| Redis
         CmdSidecar -->|Pub/Sub| Redis
         Placement -->|Actor Assignment| CmdSidecar
-        Client -.->|OIDC Tokens| Keycloak
+        Client -.->|OIDC Tokens| Security
     end
 ```
 
@@ -51,7 +51,7 @@ The Counter Sample domain service runs in a separate container with its own DAPR
 
 A DAPR Placement Service container manages actor assignment, ensuring each aggregate identity is processed by exactly one actor instance at a time.
 
-An optional Keycloak container (port 8180) provides OIDC authentication. The HTTP Client obtains JWT tokens from Keycloak before calling the Command API Gateway. Keycloak can be disabled by setting `EnableKeycloak=false`, in which case the system falls back to symmetric key authentication.
+An optional `security` service, implemented by a Keycloak container, provides OIDC authentication. It listens on container target port 8080 and is published to host port 8180 in the example below. The HTTP Client obtains JWT tokens from it before calling the Command API Gateway. The service can be disabled by setting `EnableKeycloak=false`, in which case the system falls back to symmetric key authentication.
 
 All containers run within the Docker Compose network boundary.
 

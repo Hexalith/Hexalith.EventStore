@@ -62,7 +62,7 @@ Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docke
 System.IO.IOException: Failed to bind to address http://localhost:8080: address already in use.
 ```
 
-**Probable Cause:** Another process is using an application or infrastructure port. The Aspire AppHost allocates ports for the Command API (8080), the Keycloak-backed security resource, Redis (6379), and PostgreSQL (5432). The default non-persistent security resource selects available proxyless host ports dynamically; persistent mode defaults to 8180 for HTTP and 8543 for management.
+**Probable Cause:** Another process is using an application or infrastructure port. The Aspire AppHost allocates ports for the Command API (8080), the Keycloak-backed `security` resource, Redis (6379), and PostgreSQL (5432). The `security` endpoints are proxyless host ports in **both** modes: the default non-persistent mode *prefers* `8180` (HTTP) and `8543` (management) and moves forward to the next free port only when one is busy, while persistent mode pins those same defaults and fails fast on a collision.
 
 **Resolution:**
 
@@ -76,9 +76,9 @@ System.IO.IOException: Failed to bind to address http://localhost:8080: address 
     $ netstat -ano | findstr :8080
     ```
 
-2. Stop the conflicting process. In persistent Keycloak mode, choose supported fixed-port values rather than editing AppHost source.
+2. Stop the conflicting process. Port `8080` belongs to the Command API and is not relocatable through configuration; free it or stop the other process. A conflict on the `security` ports needs no action in the default mode — it walks forward to the next free port on its own.
 
-3. Restart the AppHost with those same values so the relocation remains effective:
+3. Only in persistent mode (`KeycloakPersistent=true`) are the `security` ports fixed. Relocate them with `KeycloakHttpPort` / `KeycloakManagementPort` instead of editing AppHost source, and pass the same values on every restart so the relocation stays effective:
 
     ```bash
     $ KeycloakPersistent=true KeycloakHttpPort=8280 KeycloakManagementPort=8643 \
@@ -538,7 +538,7 @@ IDX20803: Unable to obtain configuration from: 'http://security:8080/realms/hexa
     $ EnableKeycloak=false aspire run --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --non-interactive
     ```
 
-For `aspire run`, do not assume host port 8180 in the default non-persistent mode. Aspire chooses available proxyless host endpoints dynamically. Run `aspire wait security --non-interactive`, then inspect the `security` URLs with `aspire describe --format Json`; only persistent mode pins the default host ports to 8180 and 8543.
+For `aspire run`, the `security` endpoints are proxyless host ports in both modes. The default non-persistent mode *prefers* `8180` (HTTP) and `8543` (management), so those are the usual local values, but it walks forward to the next free port when one is already taken — do not treat `8180` as guaranteed. Persistent mode pins the same defaults instead of walking. To read the actual values for a run, use `aspire wait security --non-interactive`, then inspect the `security` URLs with `aspire describe --format Json`.
 
 ### Keycloak Slow Startup (Dev Fast-Start)
 
