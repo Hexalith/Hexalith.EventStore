@@ -784,3 +784,11 @@ unless stated otherwise.
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-4-aspire-security-resource-naming.md`
   summary: [MEDIUM] Building the real AppHost model inside a unit test mutates a machine-wide temp directory, so the AppHost suite can disturb a concurrently running `aspire run`.
   evidence: Story 3.4 review pass 5 (blind-hunter, verified 2026-07-30). `AspireSecurityResourceNamingTests` calls `DistributedApplicationTestingBuilder.CreateAsync<Projects.Hexalith_EventStore_AppHost>()`, which executes `src/Hexalith.EventStore.AppHost/Program.cs` top to bottom, including `ResolveIsolatedDaprComponentPath` at `Program.cs:249-266`. That helper deletes every `*.yaml` under `Path.GetTempPath()/hexalith-eventstore-dapr-components/statestore` (`:259-261`) and re-copies the component. The path is isolated from the repository, not per process, and `AspireEnvironmentMutationCollection` serialises only in-process environment mutation. Running the AppHost test assembly while a live topology is up therefore deletes and recreates the component file the running sidecars were started from; the end state is byte-identical, so the window is narrow, but a sidecar starting inside it can fail to read its state-store component. Pre-existing AppHost behaviour; the new exposure is that a normal test run now executes it. Suggested durable fix: give `ResolveIsolatedDaprComponentPath` a per-instance subdirectory (or an env-var override the test can point at a temp path), which requires touching production AppHost source and so falls outside this story's boundary.
+
+### DW-4: Follow-up review still recommended for 3-4-aspire-security-resource-naming after the damping cap was spent
+origin: review-budget-followup
+location: n/a
+source_spec: `spec-3-4-aspire-security-resource-naming.md`
+severity: low
+reason: The follow-up-review damping cap (limits.max_followup_reviews = 1) was spent with the story finalized (status: done, verify green) while the review pass still recommended an independent follow-up. The work was committed by bmad-loop run 20260730-064902-1608; this entry preserves the lingering recommendation for a deliberate later review.
+status: open
