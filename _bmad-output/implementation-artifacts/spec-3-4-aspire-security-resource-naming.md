@@ -4,9 +4,9 @@ type: 'refactor'
 created: '2026-07-29'
 baseline_revision: 'a40ab8a63271b1d186b75a0d8181f66893fe91d4'
 baseline_commit: 'a40ab8a63271b1d186b75a0d8181f66893fe91d4'
-final_revision: '59301827fea0e9a5a68b76bc9e114fc0dad2bf2c'
+final_revision: '671bde1ec5e86e353d3191409053e52e2c7d4700'
 status: 'done'
-review_loop_iteration: 2
+review_loop_iteration: 0
 followup_review_recommended: true
 context: []
 warnings: ['oversized']
@@ -24,6 +24,27 @@ deferred:
       docs/guides/deployment-docker-compose.md still shows Keycloak 26.4 and Aspire 13.1.x examples, while the verified generated artifact uses Keycloak 26.6 and the active Aspire CLI/AppHost is 13.4.6. Updating dependency-version guidance is pre-existing maintenance, not a role-identity change.
     location: >-
       docs/guides/deployment-docker-compose.md:144
+    severity: medium
+  - summary: >-
+      No CI lane executes the source-mode (`HEXALITH_TENANTS_SOURCE`) AppHost topology, so the Tenants security dependents asserted by the new naming test are never exercised anywhere.
+    evidence: |-
+      `.github/workflows/ci.yml` runs `tests/Hexalith.EventStore.AppHost.Tests` only in package mode, where `tenants`/`tenants-api` do not exist; the single source-mode job filters to `FullyQualifiedName~TenantsApiLaunchSettingsTests`, which excludes `AspireSecurityResourceNamingTests`. The pre-existing condition is the narrow source-mode filter, not the new test: its `if (builder.Resources.Any(... "tenants" ...))` guard silently shrinks the expected set rather than failing. Removing `tenants.WithJwtBearerSecurity(security)` from `Program.cs` leaves both CI jobs green.
+    location: >-
+      .github/workflows/ci.yml:99
+    severity: medium
+  - summary: >-
+      Documentation and agent guidance invoke `aspire run --project`, which the pinned Aspire CLI 13.4.6 does not accept.
+    evidence: |-
+      `aspire run --help` and `aspire publish --help` on 13.4.6 list only `--apphost`. `--project` remains at roughly fifteen sites including `deploy/README.md`, `docs/getting-started/quickstart.md`, `docs/getting-started/first-domain-service.md`, `docs/brownfield/development-guide.md`, `docs/guides/deployment-*.md`, `docs/guides/troubleshooting.md:552`, and `.claude/agents/aspire.md:62`. This is CLI-flag drift across the documentation set, unrelated to the security role identity, and nothing in the repository verifies documented CLI invocations.
+    location: >-
+      docs/getting-started/quickstart.md:29
+    severity: medium
+  - summary: >-
+      New evidence bearing on the first deferred entry -- the premise that the default non-persistent AppHost picks Keycloak host ports dynamically is contradicted by the implementation.
+    evidence: |-
+      `KeycloakFastStartPorts.ResolveDynamic` calls `FindAvailablePort(8180, ...)` / `FindAvailablePort(8543, ...)`, and `HexalithEventStoreSecurityExtensions` binds both endpoints proxyless in the non-persistent branch as well; its own source comment states the default "prefers 8180/8543 and moves forward when either port is busy". Quickstart's `localhost:8180` is therefore correct for the default topology in the ordinary case. Recorded as new information only -- the orchestrator owns entry one's status and resolution. Review pass 4 corrected the same wrong premise where this run had introduced it into `docs/guides/troubleshooting.md`.
+    location: >-
+      src/Hexalith.EventStore.Aspire/KeycloakFastStartPorts.cs:72
     severity: medium
 ---
 
@@ -63,9 +84,11 @@ deferred:
 - `src/Hexalith.EventStore.AppHost/Program.cs` -- default helper use and all security-dependent project wiring; runtime evidence surface.
 - `tests/Hexalith.EventStore.AppHost.Tests/Hexalith.EventStore.AppHost.Tests.csproj` -- add only the existing centrally-versioned Aspire testing dependency if actual AppHost model inspection requires it.
 - `tests/Hexalith.EventStore.AppHost.Tests/Configuration/HexalithEventStoreSecurityExtensionsTests.cs` -- pin deterministic helper naming and distinguish `Reference` from `WaitFor` relationships.
-- `tests/Hexalith.EventStore.AppHost.Tests/Configuration/AspireSecurityResourceNamingTests.cs` -- durable guard for the actual AppHost registration and exact stale role-identity forms across root-owned source, fixtures, and operator docs.
+- `tests/Hexalith.EventStore.AppHost.Tests/Configuration/AspireSecurityResourceNamingTests.cs` -- durable guard for the actual AppHost registration (enabled and disabled) and exact stale role-identity forms across root-owned source, fixtures, and operator/agent docs.
+- `tests/Hexalith.EventStore.AppHost.Tests/Configuration/AspireEnvironmentMutationCollection.cs` -- non-parallel xUnit collection isolating process-wide environment mutation during AppHost model construction.
 - `tests/Hexalith.EventStore.IntegrationTests/{Fixtures/KeycloakAuthFixture.cs,Security/AspireTopologyFixture.cs}` -- existing `security` endpoint/client lookups and Keycloak-specific token logic; verification-only.
-- `deploy/README.md`, `docs/assets/regenerate-demo-checklist.md`, `docs/brownfield/project-parts.json`, `docs/guides/deployment-docker-compose.md`, `docs/guides/troubleshooting.md` -- correct stale resource/service/DNS examples while retaining implementation terminology.
+- `tests/Hexalith.EventStore.Admin.UI.Tests/{Layout/MainLayoutTests.cs,Services/AdminApiAccessTokenProviderRoleTests.cs}` -- authority fixtures carrying an obsolete HTTPS role hostname; correct to the `security` role.
+- `deploy/README.md`, `docs/assets/regenerate-demo-checklist.md`, `docs/brownfield/integration-architecture.md`, `docs/brownfield/project-parts.json`, `docs/guides/deployment-docker-compose.md`, `docs/guides/troubleshooting.md`, `.claude/agents/aspire.md` -- correct stale resource/service/DNS examples while retaining implementation terminology.
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` -- move Story 3.4 through the implementation/review ledger states and record the final story disposition.
 
 ## Tasks & Acceptance
@@ -135,6 +158,23 @@ deferred:
   - `[medium]` `[patch]` Compose and live verification claims lacked exact inspection and safe-cleanup commands; record reproducible secret-safe checks and validated scratch cleanup.
   - `[medium]` `[patch]` The hardened audit exposed two Admin UI fixtures using an obsolete HTTPS role hostname; update them to the `security` role and run both focused UI classes.
 
+### 2026-07-30 — Review pass 4
+- intent_gap: 0
+- bad_spec: 0
+- patch: 9: (high 0, medium 6, low 3)
+- defer: 3: (high 0, medium 3, low 0)
+- reject: 8: (high 0, medium 5, low 3)
+- addressed_findings:
+  - `[medium]` `[patch]` Troubleshooting claimed the default non-persistent mode picks host ports "dynamically" and that only persistent mode uses 8180/8543, contradicting `KeycloakFastStartPorts.ResolveDynamic` (prefers 8180/8543, walks forward only on collision) and deleting previously accurate guidance; restored the correct behaviour in both the Port Conflicts cause and the `aspire run` note.
+  - `[medium]` `[patch]` The Compose guide renamed its service key to `security` but left its own Mermaid topology node and OIDC edge as `Keycloak[...:8180]`, so the diagram contradicted the service definition two hunks below; reconciled the node, the edge, and the accessible text description.
+  - `[medium]` `[patch]` `.claude/agents/aspire.md` still listed resource `` `keycloak` `` in its "Topology (app model in Program.cs)" table — the only stale role identity left repo-wide, and the file that configures the Aspire agent; renamed to `security` (Keycloak-backed).
+  - `[medium]` `[patch]` The audit pathspec `src tests deploy docs` structurally could not reach the file above; widened it to the root-owned agent/CI/sample/script/tool trees plus root markdown, excluding submodules, BMAD artifacts, generated API docs, and the generated `CHANGELOG.md`.
+  - `[medium]` `[patch]` `git grep` exit 1 made "no stale identity" indistinguishable from "scanned nothing", so a mis-resolved repository root or dead pathspec would pass vacuously; added a positive control asserted before the negative result.
+  - `[medium]` `[patch]` No coverage existed for the `EnableKeycloak=false` branch the reconciled documentation now asserts; added AppHost-model and helper tests proving no `security` resource and no Reference/WaitFor edges, plus a test pinning the public `ResourceName` override.
+  - `[low]` `[patch]` The audit shelled out to git with sequential `ReadToEnd` calls before `WaitForExit` (pipe-deadlock ordering) and a null-check that could never fire when git is absent from PATH; switched to concurrent async draining and explicit `Win32Exception` handling.
+  - `[low]` `[patch]` The deliberate `"key" + "cloak"` self-evasion was unexplained, so any maintainer inlining the literal would turn the audit permanently red; extracted it behind a documented helper.
+  - `[low]` `[patch]` `AddHexalithEventStoreSecurity_WhenDefault_...` forced `EnableKeycloak=true`, so a test named for the default no longer exercised it; added a test that clears the switch entirely, keeping the hermetic tests as they are.
+
 ## Design Notes
 
 The public `ResourceName` option remains configurable for consuming AppHosts; FR20 is pinned at EventStore's default topology boundary. Negative scanning must target resource identity forms, not the general word “Keycloak,” because implementation-specific names are explicitly required to survive.
@@ -164,7 +204,8 @@ The public `ResourceName` option remains configurable for consuming AppHosts; FR
     -e '"to"\s*:\s*"keycloak"' \
     -e 'SecurityResourceName\s*=\s*"keycloak"' \
     -e '^\s*\|\s*All\s+services\s*\|\s*Keycloak\s*\|' \
-    -- src tests deploy docs ':(exclude)docs/api/**'
+    -- .agents .claude .codex .github .opencode deploy docs perf samples scripts src tests tools \
+       ':(glob,top)*.md' ':(exclude)docs/api/**' ':(exclude,glob,top)CHANGELOG.md'
   scan_status=$?
   if [ "$scan_status" -eq 0 ]; then exit 1; fi
   if [ "$scan_status" -ne 1 ]; then exit "$scan_status"; fi
@@ -241,37 +282,42 @@ The public `ResourceName` option remains configurable for consuming AppHosts; FR
 **Results:** Re-derived at baseline `a40ab8a63271b1d186b75a0d8181f66893fe91d4` on 2026-07-30.
 
 - Package-mode solution restore passed. The Release solution build passed with zero warnings and zero errors.
-- `HexalithEventStoreSecurityExtensionsTests` passed 5/5; `AspireSecurityResourceNamingTests` passed 2/2; the complete AppHost test assembly passed 57/57 with no failures or skips.
+- `HexalithEventStoreSecurityExtensionsTests` passed 8/8; `AspireSecurityResourceNamingTests` passed 3/3; the complete AppHost test assembly passed 61/61 with no failures or skips (5/5, 2/2 and 57/57 before the review-pass-4 coverage patches).
 - The Admin UI project built with zero warnings/errors; `MainLayoutTests` passed 9/9 and `AdminApiAccessTokenProviderRoleTests` passed 7/7 after correcting their role-authority fixtures.
 - The exact hardened Git-tracked stale-role audit returned no matches, `docs/brownfield/project-parts.json` parsed successfully with `jq empty`, and `git diff --check` was clean.
 - Scratch-only Docker Compose publish passed all 7 pipeline steps and the exact checks above. The generated service key, internal authority/DNS references, and `OTEL_SERVICE_NAME` were `security`; exactly the five security-enabled application services depended on it; no `keycloak` service key or DNS identity was generated. The validated scratch files and then-empty directory were removed explicitly after inspection.
 - Fresh live proof passed through the specified foreground lifecycle: `aspire wait security --non-interactive` reported healthy in 24.0 seconds; JSON inspection verified display name `security`, state `Running`, health `Healthy`, `OTEL_SERVICE_NAME=security`, wait edges from `eventstore`, `eventstore-admin`, `eventstore-admin-ui`, `sample-api`, and `sample-blazor-ui`, and no `keycloak` display name. The reproducible command above captures that JSON without printing environment secrets, and `aspire stop --non-interactive` stopped the topology cleanly.
 - Environment note: `aspire start` on CLI 13.4.6 returned a detached PID but its orphan detector immediately stopped the AppHost when the launcher exited, so `aspire wait` could not discover it. The required foreground `aspire run` lifecycle remained stable and produced the successful evidence above; this CLI-specific limitation did not weaken any acceptance gate.
 
+**Review pass 4 re-verification (2026-07-30), after the nine patches:**
+
+- Package-mode restore and the Release solution build passed with zero warnings and zero errors.
+- `HexalithEventStoreSecurityExtensionsTests` 8/8, `AspireSecurityResourceNamingTests` 3/3, full AppHost assembly 61/61 — no failures, no skips. Admin UI `MainLayoutTests` 9/9 and `AdminApiAccessTokenProviderRoleTests` 7/7 after a zero-warning Release build.
+- The widened stale-role audit returned no matches (`git grep` exit 1). Its non-vacuity was proven by mutation: appending `` `keycloak` `` to `.claude/settings.json` — a path only reachable through the widened pathspec — failed the test with `[".claude/settings.json:77:`keycloak`"]`, and the file was restored clean.
+- `jq empty docs/brownfield/project-parts.json` passed; `git diff --check` reported no whitespace errors.
+- The scratch-only Docker Compose proof was re-run at the current tree and passed every check: one `security:` service key, exactly five dependents, `OTEL_SERVICE_NAME: "security"`, `http://security:8080` internal DNS, and no `keycloak` service key or DNS identity. Scratch output was removed by its validated cleanup trap.
+- The live-topology gate was not re-executed. `git diff --stat <baseline> -- src samples` is empty for the whole story: no production source changed at any point, so the recorded live `aspire describe` evidence still describes the current model, and the re-run Compose proof independently confirms the runtime-facing identity at HEAD.
+
 ## Auto Run Result
 
-Summary: Verified and reconciled the already-shipped Aspire security role name. Added deterministic helper and real-AppHost model guards, hardened the tracked-source stale-identity audit, corrected root-owned operator guidance, and left production security behavior unchanged.
+Summary: Follow-up review pass over the shipped Story 3.4 reconciliation. The Aspire service role remains `security` and no production source changed at any point in the story; this pass corrected a factually wrong port claim the previous run had introduced into operator guidance, closed the last stale role identity in the repository, removed the structural blind spots that let it survive, and added the missing disabled-path and override coverage.
 
-Files changed:
+Files changed (whole story, since baseline `a40ab8a63271b1d186b75a0d8181f66893fe91d4`):
 
-- `_bmad-output/implementation-artifacts/spec-3-4-aspire-security-resource-naming.md` -- repaired invalid prior evidence, recorded three review passes, verification, deferrals, and the final run result.
-- `_bmad-output/implementation-artifacts/sprint-status.yaml` -- reconciled Story 3.4 from backlog through review to done.
-- `tests/Hexalith.EventStore.AppHost.Tests/Configuration/HexalithEventStoreSecurityExtensionsTests.cs` -- pinned literal `security` naming and separate helper Reference/WaitFor edges.
-- `tests/Hexalith.EventStore.AppHost.Tests/Configuration/AspireSecurityResourceNamingTests.cs` -- added actual-AppHost topology/cardinality coverage and a Git-tracked stale-role audit.
-- `tests/Hexalith.EventStore.AppHost.Tests/Configuration/AspireEnvironmentMutationCollection.cs` -- isolated process-environment mutation from parallel test execution.
-- `tests/Hexalith.EventStore.AppHost.Tests/Hexalith.EventStore.AppHost.Tests.csproj` -- added the centrally versioned Aspire testing package.
-- `tests/Hexalith.EventStore.Admin.UI.Tests/Layout/MainLayoutTests.cs` and `tests/Hexalith.EventStore.Admin.UI.Tests/Services/AdminApiAccessTokenProviderRoleTests.cs` -- corrected obsolete HTTPS role-host fixtures exposed by the hardened audit.
-- `deploy/README.md`, `docs/assets/regenerate-demo-checklist.md`, `docs/brownfield/integration-architecture.md`, `docs/brownfield/project-parts.json`, `docs/guides/deployment-docker-compose.md`, and `docs/guides/troubleshooting.md` -- reconciled operator-visible role identities and clarified dependency/port/container semantics while retaining Keycloak implementation terminology.
+- `tests/Hexalith.EventStore.AppHost.Tests/Configuration/AspireSecurityResourceNamingTests.cs` -- actual-AppHost topology and cardinality coverage for the enabled *and* disabled paths, plus a widened, positive-controlled, deadlock-free tracked stale-role audit.
+- `tests/Hexalith.EventStore.AppHost.Tests/Configuration/HexalithEventStoreSecurityExtensionsTests.cs` -- literal `security` naming, separate helper Reference/WaitFor edges, the genuinely-default (switch cleared) case, the disabled case, and the public `ResourceName` override.
+- `tests/Hexalith.EventStore.AppHost.Tests/Configuration/AspireEnvironmentMutationCollection.cs` -- non-parallel collection isolating process-wide environment mutation.
+- `tests/Hexalith.EventStore.AppHost.Tests/Hexalith.EventStore.AppHost.Tests.csproj` -- centrally versioned `Aspire.Hosting.Testing` reference.
+- `tests/Hexalith.EventStore.Admin.UI.Tests/Layout/MainLayoutTests.cs`, `.../Services/AdminApiAccessTokenProviderRoleTests.cs` -- obsolete HTTPS role-host fixtures corrected to `security`.
+- `docs/guides/troubleshooting.md` -- corrected the default-mode host-port behaviour (prefers 8180/8543, walks forward on collision), gave the Port Conflicts remedy a real antecedent, and stopped steering operators into persistent mode to resolve an 8080 conflict.
+- `docs/guides/deployment-docker-compose.md` -- Compose service key, internal authority/DNS, Mermaid topology node and edge, and the accessible text description now agree on `security` with Keycloak named as the implementation.
+- `.claude/agents/aspire.md` -- app-model topology table lists `security`, not `keycloak`.
+- `deploy/README.md`, `docs/assets/regenerate-demo-checklist.md`, `docs/brownfield/integration-architecture.md`, `docs/brownfield/project-parts.json` -- operator-visible role identities reconciled; symmetric-key fallback modelled as in-process validation rather than a network edge.
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` -- Story 3.4 reconciled to `done`.
+- `_bmad-output/implementation-artifacts/spec-3-4-aspire-security-resource-naming.md` -- Code Map completed, audit command aligned with the test, four review passes, verification, deferrals, and this result.
 
-Review findings: 10 patches applied (high 1, medium 8, low 1); 2 pre-existing medium items deferred; 4 findings rejected as duplicate, already-covered, or outside the naming intent. Follow-up review recommendation: `true`; patched-finding score is `3 × 8 + 1 × 1 = 25`, and one patched finding was high severity.
+Review findings: 9 patches applied (high 0, medium 6, low 3); 3 items deferred as new ledger entries; 8 rejected. Follow-up review recommendation: `true`; no patched finding was high severity, but the patched score is `3 × 6 + 1 × 3 = 21`.
 
-Verification performed:
+Verification performed: package-mode restore and zero-warning Release solution build; AppHost helper 8/8, naming/audit 3/3, full AppHost assembly 61/61; Admin UI `MainLayoutTests` 9/9 and `AdminApiAccessTokenProviderRoleTests` 7/7; widened stale-role audit clean and mutation-proven non-vacuous via `.claude/settings.json`; `jq empty` on the brownfield inventory; `git diff --check` clean; scratch-only Docker Compose publish re-run at HEAD proving one `security:` service key, five dependents, `OTEL_SERVICE_NAME: "security"`, `http://security:8080` DNS and no `keycloak` identity.
 
-- Package-mode solution restore passed; Release solution build passed with zero warnings and errors.
-- AppHost helper tests passed 5/5, actual topology/audit tests passed 2/2, and the full AppHost assembly passed 57/57.
-- Admin UI `MainLayoutTests` passed 9/9 and `AdminApiAccessTokenProviderRoleTests` passed 7/7.
-- Hardened Git-tracked stale-role scan, brownfield JSON parse, and `git diff --check` passed.
-- Scratch Docker Compose publishing passed 7/7 steps and proved the `security` service/DNS/OTEL identity plus five dependent edges; validated scratch output was removed.
-- Live Aspire proof reported `security` Running and Healthy with `OTEL_SERVICE_NAME=security`, the five expected WaitFor dependents, and no `keycloak` display name; the topology stopped cleanly.
-
-Residual risks: the two frontmatter deferrals remain for separate documentation maintenance. Aspire CLI 13.4.6 `aspire start` orphaned its detached AppHost in this environment; the stable foreground `aspire run` path produced the required evidence. No acceptance criterion requires an external human/operator action, so no `operator_actions` are owed.
+Residual risks: the live `aspire describe` gate was not re-executed this pass — justified because `git diff -- src samples` is empty for the whole story and the Compose proof was re-run, but it remains prose evidence from the baseline run. Three new deferrals are open: the source-mode CI lane never exercises the Tenants security dependents the new test conditionally asserts; `aspire run --project` is stale across roughly fifteen documentation sites; and deferred entry one's premise is contradicted by `KeycloakFastStartPorts.ResolveDynamic` — recorded as new evidence only, since the orchestrator owns that entry. No acceptance criterion requires an external human or operator action, so no `operator_actions` are owed.
