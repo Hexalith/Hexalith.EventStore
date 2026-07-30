@@ -4,7 +4,7 @@ type: 'refactor'
 created: '2026-07-29'
 baseline_revision: 'a40ab8a63271b1d186b75a0d8181f66893fe91d4'
 baseline_commit: 'a40ab8a63271b1d186b75a0d8181f66893fe91d4'
-final_revision: '671bde1ec5e86e353d3191409053e52e2c7d4700'
+final_revision: '1f59b3f09fe7137c849fd52516e727f7c70a297b'
 status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: true
@@ -45,6 +45,20 @@ deferred:
       `KeycloakFastStartPorts.ResolveDynamic` calls `FindAvailablePort(8180, ...)` / `FindAvailablePort(8543, ...)`, and `HexalithEventStoreSecurityExtensions` binds both endpoints proxyless in the non-persistent branch as well; its own source comment states the default "prefers 8180/8543 and moves forward when either port is busy". Quickstart's `localhost:8180` is therefore correct for the default topology in the ordinary case. Recorded as new information only -- the orchestrator owns entry one's status and resolution. Review pass 4 corrected the same wrong premise where this run had introduced it into `docs/guides/troubleshooting.md`.
     location: >-
       src/Hexalith.EventStore.Aspire/KeycloakFastStartPorts.cs:72
+    severity: medium
+  - summary: >-
+      New evidence only, no status change -- the `aspire run --project` drift also exists in production source and at more sites than the earlier entry counts.
+    evidence: |-
+      `src/Hexalith.EventStore.Admin.UI/AdminUIServiceExtensions.cs:150` emits `aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj` inside a runtime diagnostic message, so the flag the pinned CLI 13.4.6 rejects reaches users from shipped code, not only from documentation; a documentation-only sweep would miss it. `docs/guides/configuration-reference.md:597,600,610` additionally use `dotnet run --project src/Hexalith.EventStore.AppHost`, and `scripts/generated-api-smoke-preflight.sh` passes `--project` at three sites, so the tracked total exceeds the "roughly fifteen sites" already recorded. Recorded as new information only -- the orchestrator owns the earlier entry's status and resolution.
+    location: >-
+      src/Hexalith.EventStore.Admin.UI/AdminUIServiceExtensions.cs:150
+    severity: medium
+  - summary: >-
+      Building the real AppHost model inside a unit test mutates a machine-wide temp directory, so the AppHost suite can disturb a concurrently running `aspire run`.
+    evidence: |-
+      `AspireSecurityResourceNamingTests` builds the actual model through `DistributedApplicationTestingBuilder.CreateAsync<Projects.Hexalith_EventStore_AppHost>()`, which executes `src/Hexalith.EventStore.AppHost/Program.cs` top to bottom, including `ResolveIsolatedDaprComponentPath` at `Program.cs:249-266`. That helper deletes every `*.yaml` under `Path.GetTempPath()/hexalith-eventstore-dapr-components/statestore` and re-copies the component; the path is isolated from the repository, not per process, and `AspireEnvironmentMutationCollection` serialises only in-process environment mutation. The end state is byte-identical, so the window is narrow, but a sidecar starting inside it can fail to read its state-store component. Pre-existing AppHost behaviour; the new exposure is that a normal test run now executes it. A durable fix needs a per-instance subdirectory or an env-var override in production AppHost source, outside this story's zero-production-source boundary.
+    location: >-
+      src/Hexalith.EventStore.AppHost/Program.cs:257
     severity: medium
 ---
 
@@ -175,6 +189,25 @@ deferred:
   - `[low]` `[patch]` The deliberate `"key" + "cloak"` self-evasion was unexplained, so any maintainer inlining the literal would turn the audit permanently red; extracted it behind a documented helper.
   - `[low]` `[patch]` `AddHexalithEventStoreSecurity_WhenDefault_...` forced `EnableKeycloak=true`, so a test named for the default no longer exercised it; added a test that clears the switch entirely, keeping the hermetic tests as they are.
 
+### 2026-07-30 — Review pass 5
+- intent_gap: 0
+- bad_spec: 0
+- patch: 11: (high 0, medium 5, low 6)
+- defer: 3: (high 0, medium 3, low 0)
+- reject: 13: (high 0, medium 6, low 7)
+- addressed_findings:
+  - `[medium]` `[patch]` The Port Conflicts cause claimed persistent mode "fails fast on a collision", but `KeycloakFastStartPorts.Resolve` validates only value range, distinctness and the reserved `8080` and never probes availability -- an occupied pinned port wedges the container in `Created` instead. Corrected the claim and cross-linked the fast-start section.
+  - `[medium]` `[patch]` Three further sites in the same file still described the default mode as random/dynamic-port (`*random* host ports`, `(non-persistent, dynamic-port) topology`, `uses dynamic ports and never has this problem`), contradicting the pass-4 correction fifteen lines above; reconciled all three to the real preferred-port-then-walk-forward model.
+  - `[medium]` `[patch]` "A conflict on the `security` ports needs no action in the default mode" over-stated the guarantee: the probe is a build-time loopback bind released before the container starts, so a port claimed in between still wedges it. Qualified the advice and restored a remedy.
+  - `[medium]` `[patch]` The audit's positive control could not detect a re-narrowed pathspec -- `HexalithEventStoreSecurityOptions` occurs only under `src`/`tests`, so reverting to `src tests deploy docs` would have kept it green while re-opening `.claude`. Added a coverage control requiring every audited tree plus root Markdown to contribute tracked files; proven non-vacuous by mutation.
+  - `[medium]` `[patch]` The default-mode preferred-port behaviour the reconciled guidance now asserts was pinned by no test (`ResolveDynamic` had zero coverage; the `WhenDefault` helper test only checks `> 0` and `!= 8080`). Added two walk-forward-from-the-preferred-port facts that reject an ephemeral-port implementation.
+  - `[low]` `[patch]` The `git grep` audit scanned tracked build/restore output (`**/.artifacts/**`, `**/bin/**`, `**/obj/**`, `**/*.lscache`) that the superseded `rg` command excluded and that carries the implementation name; restored those excludes for the same reason `CHANGELOG.md` is excluded.
+  - `[low]` `[patch]` `AddHexalithEventStoreSecurity_WhenPersistent_...` never pinned `EnableKeycloak`, so an ambient `EnableKeycloak=false` turned its null-forgiving dereference into a `NullReferenceException`; pinned it like its siblings.
+  - `[low]` `[patch]` The Compose Mermaid `security` node dropped the host port and showed `:8080`, colliding with the Command API node while the external client edge needs `8180`; relabelled as `host :8180 → :8080`.
+  - `[low]` `[patch]` Two pass-3 deferrals never reached `deferred-work.md`; appended the still-valid one (stale Compose dependency-version examples) as a new ledger entry. The other -- quickstart's `localhost:8180` -- was deliberately not propagated because pass 4's own evidence refutes its premise; the orchestrator owns that entry's status in this spec's frontmatter.
+  - `[low]` `[patch]` The per-dependent Reference cardinalities were undocumented magic numbers, so an added realm-URL-valued environment variable would read as identity drift; documented the derivation (one `WithReference` plus one per realm-URL `ReferenceExpression`).
+  - `[low]` `[patch]` The spec's documented audit shell block lacked the positive control the committed test has and omitted the generated-output excludes, advertising a weaker check than the gate; added the control, the excludes, and a note naming the test as authoritative.
+
 ## Design Notes
 
 The public `ResourceName` option remains configurable for consuming AppHosts; FR20 is pinned at EventStore's default topology boundary. Negative scanning must target resource identity forms, not the general word “Keycloak,” because implementation-specific names are explicitly required to survive.
@@ -188,9 +221,15 @@ The public `ResourceName` option remains configurable for consuming AppHosts; FR
 - `dotnet tests/Hexalith.EventStore.AppHost.Tests/bin/Release/net10.0/Hexalith.EventStore.AppHost.Tests.dll -class Hexalith.EventStore.AppHost.Tests.Configuration.AspireSecurityResourceNamingTests` -- expected: focused actual-AppHost/audit class passes.
 - `dotnet tests/Hexalith.EventStore.AppHost.Tests/bin/Release/net10.0/Hexalith.EventStore.AppHost.Tests.dll` -- expected: complete AppHost test assembly passes with no failures or skips.
 - `dotnet build tests/Hexalith.EventStore.Admin.UI.Tests/Hexalith.EventStore.Admin.UI.Tests.csproj --configuration Release -p:UseHexalithProjectReferences=false -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0`, followed by the two `dotnet ...Admin.UI.Tests.dll -class` invocations for `Hexalith.EventStore.Admin.UI.Tests.Layout.MainLayoutTests` and `Hexalith.EventStore.Admin.UI.Tests.Services.AdminApiAccessTokenProviderRoleTests` -- expected: the corrected authority fixtures compile and both focused classes pass.
-- The deterministic stale-role audit is this Git-tracked, text-only command; exit `1` from `git grep` means clean, while matches or a Git error fail the command:
+- `dotnet tests/Hexalith.EventStore.AppHost.Tests/bin/Release/net10.0/Hexalith.EventStore.AppHost.Tests.dll -class Hexalith.EventStore.AppHost.Tests.Configuration.KeycloakFastStartPortsTests` -- expected: the fast-start port class passes, including the default-mode preferred-port walk-forward behaviour the operator guidance asserts.
+- The deterministic stale-role audit is this Git-tracked, text-only command; exit `1` from `git grep` means clean, while matches or a Git error fail the command. The committed `AspireSecurityResourceNamingTests` audit is the authoritative gate: it runs the same patterns *plus* two controls this shell form cannot express -- a pattern control (the scan reached tracked text) and a coverage control (every audited tree still contributes tracked files, so re-narrowing the pathspec fails loudly). Run the positive control alongside the negative scan so a mis-resolved root or dead pathspec cannot pass vacuously:
 
   ```bash
+  # Positive control: must exit 0 with matches before the negative result is meaningful.
+  git grep -l --ignore-case -I -e 'HexalithEventStoreSecurityOptions' \
+    -- .agents .claude .codex .github .opencode deploy docs perf samples scripts src tests tools \
+       ':(glob,top)*.md' || exit 1
+
   set +e
   git grep --line-number --full-name --ignore-case --perl-regexp -I \
     -e 'AddKeycloak\s*\(\s*(?:[A-Za-z_][A-Za-z0-9_]*\s*:\s*)?"keycloak"' \
@@ -205,7 +244,9 @@ The public `ResourceName` option remains configurable for consuming AppHosts; FR
     -e 'SecurityResourceName\s*=\s*"keycloak"' \
     -e '^\s*\|\s*All\s+services\s*\|\s*Keycloak\s*\|' \
     -- .agents .claude .codex .github .opencode deploy docs perf samples scripts src tests tools \
-       ':(glob,top)*.md' ':(exclude)docs/api/**' ':(exclude,glob,top)CHANGELOG.md'
+       ':(glob,top)*.md' ':(exclude)docs/api/**' ':(exclude,glob,top)CHANGELOG.md' \
+       ':(exclude,glob)**/.artifacts/**' ':(exclude,glob)**/bin/**' ':(exclude,glob)**/obj/**' \
+       ':(exclude,glob)**/*.lscache'
   scan_status=$?
   if [ "$scan_status" -eq 0 ]; then exit 1; fi
   if [ "$scan_status" -ne 1 ]; then exit "$scan_status"; fi
@@ -298,26 +339,35 @@ The public `ResourceName` option remains configurable for consuming AppHosts; FR
 - The scratch-only Docker Compose proof was re-run at the current tree and passed every check: one `security:` service key, exactly five dependents, `OTEL_SERVICE_NAME: "security"`, `http://security:8080` internal DNS, and no `keycloak` service key or DNS identity. Scratch output was removed by its validated cleanup trap.
 - The live-topology gate was not re-executed. `git diff --stat <baseline> -- src samples` is empty for the whole story: no production source changed at any point, so the recorded live `aspire describe` evidence still describes the current model, and the re-run Compose proof independently confirms the runtime-facing identity at HEAD.
 
+**Review pass 5 re-verification (2026-07-30), after the eleven patches:**
+
+- Package-mode restore and the Release solution build passed with zero warnings and zero errors.
+- `HexalithEventStoreSecurityExtensionsTests` 8/8, `AspireSecurityResourceNamingTests` 3/3, `KeycloakFastStartPortsTests` 20/20 (18 before this pass), full AppHost assembly **63/63** — no failures, no skips. Admin UI `MainLayoutTests` 9/9 and `AdminApiAccessTokenProviderRoleTests` 7/7 after a zero-warning Release build.
+- The new pathspec coverage control was proven non-vacuous by mutation: removing `".claude"` from `_auditPathspec` failed the audit with `The stale-identity audit no longer reaches '.claude'; obsolete role identities there would pass unnoticed.` The file was restored and the suite re-run green.
+- The documented shell audit ran with its new positive control: the control matched three tracked files and the negative scan returned `git grep` exit 1 over the widened pathspec including the new generated-output excludes.
+- `jq empty docs/brownfield/project-parts.json` passed. `python3 scripts/check-deferred-work.py` exited 0 with the three appended story-3.4 entries classified `dw6-unclassified-legacy-advisory`, as the existing section is.
+- The scratch-only Docker Compose proof was re-run at the patched tree and passed every check: one `security:` service key, exactly five dependents, `OTEL_SERVICE_NAME: "security"`, `http://security:8080` internal DNS, and no `keycloak` service key or DNS identity. Scratch output was removed by its validated cleanup trap.
+- The live-topology gate was again not re-executed, on the same evidence: `git diff --stat a40ab8a6 -- src samples` remains empty at the end of this pass, so no runtime-facing behaviour changed. `ResolveDynamic`'s preferred-port behaviour, previously only asserted in prose, is now pinned by two executable facts.
+
 ## Auto Run Result
 
-Summary: Follow-up review pass over the shipped Story 3.4 reconciliation. The Aspire service role remains `security` and no production source changed at any point in the story; this pass corrected a factually wrong port claim the previous run had introduced into operator guidance, closed the last stale role identity in the repository, removed the structural blind spots that let it survive, and added the missing disabled-path and override coverage.
+Status: done
+Blocking condition: none
 
-Files changed (whole story, since baseline `a40ab8a63271b1d186b75a0d8181f66893fe91d4`):
+Summary: Fifth review pass over the shipped Story 3.4 reconciliation. The Aspire service role remains `security` and zero production source changed at any point in the story. This pass repaired the operator guidance the previous pass had left self-contradictory — the same file described the default port model three different ways and credited persistent mode with a fail-fast it does not have — closed the structural hole in the new stale-identity guard (its positive control could not see a re-narrowed pathspec, the exact regression it was written for), and pinned the default-mode port behaviour the documentation asserts.
 
-- `tests/Hexalith.EventStore.AppHost.Tests/Configuration/AspireSecurityResourceNamingTests.cs` -- actual-AppHost topology and cardinality coverage for the enabled *and* disabled paths, plus a widened, positive-controlled, deadlock-free tracked stale-role audit.
-- `tests/Hexalith.EventStore.AppHost.Tests/Configuration/HexalithEventStoreSecurityExtensionsTests.cs` -- literal `security` naming, separate helper Reference/WaitFor edges, the genuinely-default (switch cleared) case, the disabled case, and the public `ResourceName` override.
-- `tests/Hexalith.EventStore.AppHost.Tests/Configuration/AspireEnvironmentMutationCollection.cs` -- non-parallel collection isolating process-wide environment mutation.
-- `tests/Hexalith.EventStore.AppHost.Tests/Hexalith.EventStore.AppHost.Tests.csproj` -- centrally versioned `Aspire.Hosting.Testing` reference.
-- `tests/Hexalith.EventStore.Admin.UI.Tests/Layout/MainLayoutTests.cs`, `.../Services/AdminApiAccessTokenProviderRoleTests.cs` -- obsolete HTTPS role-host fixtures corrected to `security`.
-- `docs/guides/troubleshooting.md` -- corrected the default-mode host-port behaviour (prefers 8180/8543, walks forward on collision), gave the Port Conflicts remedy a real antecedent, and stopped steering operators into persistent mode to resolve an 8080 conflict.
-- `docs/guides/deployment-docker-compose.md` -- Compose service key, internal authority/DNS, Mermaid topology node and edge, and the accessible text description now agree on `security` with Keycloak named as the implementation.
-- `.claude/agents/aspire.md` -- app-model topology table lists `security`, not `keycloak`.
-- `deploy/README.md`, `docs/assets/regenerate-demo-checklist.md`, `docs/brownfield/integration-architecture.md`, `docs/brownfield/project-parts.json` -- operator-visible role identities reconciled; symmetric-key fallback modelled as in-process validation rather than a network edge.
-- `_bmad-output/implementation-artifacts/sprint-status.yaml` -- Story 3.4 reconciled to `done`.
-- `_bmad-output/implementation-artifacts/spec-3-4-aspire-security-resource-naming.md` -- Code Map completed, audit command aligned with the test, four review passes, verification, deferrals, and this result.
+Files changed in this pass:
 
-Review findings: 9 patches applied (high 0, medium 6, low 3); 3 items deferred as new ledger entries; 8 rejected. Follow-up review recommendation: `true`; no patched finding was high severity, but the patched score is `3 × 6 + 1 × 3 = 21`.
+- `docs/guides/troubleshooting.md` — corrected the persistent-mode "fails fast on a collision" claim (validation covers port *values*, never availability), reconciled the three remaining random/dynamic-port statements with the preferred-then-walk-forward model, and qualified the "needs no action" advice with the build-time-probe race.
+- `docs/guides/deployment-docker-compose.md` — Mermaid `security` node relabelled `host :8180 → :8080` so the externally reachable port is visible and does not read as a second service on `:8080`.
+- `tests/Hexalith.EventStore.AppHost.Tests/Configuration/AspireSecurityResourceNamingTests.cs` — added a pathspec coverage control (every audited tree plus root Markdown must contribute tracked files), excluded tracked generated build/restore output, documented the derived Reference cardinalities, and factored the git plumbing into a shared `RunGitAsync`.
+- `tests/Hexalith.EventStore.AppHost.Tests/Configuration/KeycloakFastStartPortsTests.cs` — two `ResolveDynamic` facts pinning the preferred-port walk-forward behaviour against an ephemeral-port implementation.
+- `tests/Hexalith.EventStore.AppHost.Tests/Configuration/HexalithEventStoreSecurityExtensionsTests.cs` — the persistent-mode test now pins `EnableKeycloak`, so an ambient `EnableKeycloak=false` cannot turn it into a `NullReferenceException`.
+- `_bmad-output/implementation-artifacts/deferred-work.md` — three new append-only entries (the un-propagated pass-3 Compose-version deferral, plus two new-evidence records).
+- `_bmad-output/implementation-artifacts/spec-3-4-aspire-security-resource-naming.md` — pass-5 triage log, two new deferrals, the strengthened audit command, and this result.
 
-Verification performed: package-mode restore and zero-warning Release solution build; AppHost helper 8/8, naming/audit 3/3, full AppHost assembly 61/61; Admin UI `MainLayoutTests` 9/9 and `AdminApiAccessTokenProviderRoleTests` 7/7; widened stale-role audit clean and mutation-proven non-vacuous via `.claude/settings.json`; `jq empty` on the brownfield inventory; `git diff --check` clean; scratch-only Docker Compose publish re-run at HEAD proving one `security:` service key, five dependents, `OTEL_SERVICE_NAME: "security"`, `http://security:8080` DNS and no `keycloak` identity.
+Review findings: 11 patches applied (high 0, medium 5, low 6); 3 items deferred; 13 rejected; 0 bad_spec; 0 intent_gap. Follow-up review recommendation: `true` — no patched finding was high severity, but the patched score is `3 × 5 + 1 × 6 = 21`.
 
-Residual risks: the live `aspire describe` gate was not re-executed this pass — justified because `git diff -- src samples` is empty for the whole story and the Compose proof was re-run, but it remains prose evidence from the baseline run. Three new deferrals are open: the source-mode CI lane never exercises the Tenants security dependents the new test conditionally asserts; `aspire run --project` is stale across roughly fifteen documentation sites; and deferred entry one's premise is contradicted by `KeycloakFastStartPorts.ResolveDynamic` — recorded as new evidence only, since the orchestrator owns that entry. No acceptance criterion requires an external human or operator action, so no `operator_actions` are owed.
+Verification performed: package-mode restore and zero-warning Release solution build; AppHost assembly 63/63 with focused classes 8/8, 3/3 and 20/20; Admin UI 9/9 and 7/7; coverage control proven non-vacuous by mutation; documented audit clean with its positive control matching; `jq empty` on the brownfield inventory; deferred-work checker exit 0; scratch-only Compose publish re-run proving one `security:` key, five dependents, `OTEL_SERVICE_NAME: "security"` and `http://security:8080`; `git diff --check` clean.
+
+Residual risks: the live `aspire describe` gate remains baseline prose evidence — justified because `git diff a40ab8a6 -- src samples` is empty for the entire story and the Compose proof was re-run at the patched tree, but it has not been re-executed since. The two new `ResolveDynamic` facts occupy a loopback port; they tolerate an already-busy `8180`/`8543` by treating it as the same precondition, but they assume the walk forward stays within 100 ports. Three deferrals were opened: the shared-temp DAPR component mutation that AppHost-model tests now trigger, the `--project` drift reaching production source in `AdminUIServiceExtensions.cs:150`, and the stale Compose dependency-version examples. Deferred entry one (quickstart `localhost:8180`) was deliberately not propagated to the durable ledger because pass 4's evidence refutes its premise; its status remains the orchestrator's to resolve. No acceptance criterion requires an external human or operator action, so no `operator_actions` are owed.
