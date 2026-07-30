@@ -1,5 +1,6 @@
 namespace Hexalith.EventStore.AppHost.Tests.Configuration;
 
+using System.ComponentModel;
 using System.Diagnostics;
 
 using global::Aspire.Hosting.ApplicationModel;
@@ -12,6 +13,34 @@ public sealed class AspireSecurityResourceNamingTests
 {
     private const string ReferenceRelationshipType = "Reference";
     private const string SecurityResourceName = "security";
+
+    // A pattern guaranteed to match tracked text inside the audited pathspec. Without it, a
+    // mis-resolved repository root or a pathspec that no longer matches any file would make
+    // `git grep` exit 1 (no match) and the negative audit would pass vacuously.
+    private const string PositiveControlPattern = "HexalithEventStoreSecurityOptions";
+
+    // Root-owned trees that carry operator- and agent-facing guidance. `references` (submodules)
+    // and `_bmad`/`_bmad-output` (workflow artifacts that quote these patterns as data) are out of
+    // scope. `CHANGELOG.md` is generated from commit subjects and is not hand-correctable.
+    private static readonly string[] _auditPathspec =
+    [
+        ".agents",
+        ".claude",
+        ".codex",
+        ".github",
+        ".opencode",
+        "deploy",
+        "docs",
+        "perf",
+        "samples",
+        "scripts",
+        "src",
+        "tests",
+        "tools",
+        ":(glob,top)*.md",
+        ":(exclude)docs/api/**",
+        ":(exclude,glob,top)CHANGELOG.md",
+    ];
 
     [Fact]
     public async Task AppHostModel_WhenSecurityEnabled_UsesSecurityResourceAndDependencyEdges()
@@ -40,7 +69,7 @@ public sealed class AspireSecurityResourceNamingTests
             HexalithEventStoreSecurityOptions.DefaultResourceName.ShouldBe(SecurityResourceName);
             security.ShouldBeOfType<KeycloakResource>();
             builder.Resources.ShouldNotContain(
-                static resource => string.Equals(resource.Name, "key" + "cloak", StringComparison.OrdinalIgnoreCase));
+                static resource => string.Equals(resource.Name, ObsoleteRoleName(), StringComparison.OrdinalIgnoreCase));
 
             Dictionary<string, int> expectedReferenceCounts = new(StringComparer.Ordinal)
             {
@@ -104,10 +133,55 @@ public sealed class AspireSecurityResourceNamingTests
     }
 
     [Fact]
-    public void RootOwnedSources_WhenScanned_ContainNoStaleSecurityRoleIdentities()
+    public async Task AppHostModel_WhenSecurityDisabled_HasNoSecurityResourceOrDependencyEdges()
+    {
+        string? originalSkipPrerequisiteCheck = Environment.GetEnvironmentVariable("SKIP_PREREQUISITE_CHECK");
+        string? originalEnableKeycloak = Environment.GetEnvironmentVariable(
+            HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey);
+
+        try
+        {
+            Environment.SetEnvironmentVariable("SKIP_PREREQUISITE_CHECK", "true");
+            Environment.SetEnvironmentVariable(
+                HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey,
+                "false");
+
+            await using IDistributedApplicationTestingBuilder builder = await DistributedApplicationTestingBuilder
+                .CreateAsync<Projects.Hexalith_EventStore_AppHost>()
+                .ConfigureAwait(true);
+
+            builder.Resources.ShouldNotContain(
+                static resource => string.Equals(resource.Name, SecurityResourceName, StringComparison.Ordinal));
+
+            builder.Resources
+                .SelectMany(static resource => resource.Annotations
+                    .OfType<ResourceRelationshipAnnotation>()
+                    .Select(annotation => new { Dependent = resource.Name, Target = annotation.Resource.Name }))
+                .Where(static edge => string.Equals(edge.Target, SecurityResourceName, StringComparison.Ordinal))
+                .Select(static edge => edge.Dependent)
+                .ShouldBeEmpty();
+            builder.Resources
+                .SelectMany(static resource => resource.Annotations
+                    .OfType<WaitAnnotation>()
+                    .Select(annotation => new { Dependent = resource.Name, Target = annotation.Resource.Name }))
+                .Where(static edge => string.Equals(edge.Target, SecurityResourceName, StringComparison.Ordinal))
+                .Select(static edge => edge.Dependent)
+                .ShouldBeEmpty();
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("SKIP_PREREQUISITE_CHECK", originalSkipPrerequisiteCheck);
+            Environment.SetEnvironmentVariable(
+                HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey,
+                originalEnableKeycloak);
+        }
+    }
+
+    [Fact]
+    public async Task RootOwnedSources_WhenScanned_ContainNoStaleSecurityRoleIdentities()
     {
         string repositoryRoot = RepositoryProjectPaths.GetRepositoryRoot();
-        string implementationName = "key" + "cloak";
+        string implementationName = ObsoleteRoleName();
         string optionalNamedArgument = @"(?:[A-Za-z_][A-Za-z0-9_]*\s*:\s*)?";
         string[] staleIdentityPatterns =
         [
@@ -124,12 +198,27 @@ public sealed class AspireSecurityResourceNamingTests
             $@"^\s*\|\s*All\s+services\s*\|\s*{implementationName}\s*\|",
         ];
 
-        string[] staleMatches = FindTrackedStaleIdentityMatches(repositoryRoot, staleIdentityPatterns);
+        // Positive control first: prove the scan actually reaches tracked repository text, so a
+        // clean negative result cannot be produced by a scan that inspected nothing.
+        string[] controlMatches = await FindTrackedMatchesAsync(repositoryRoot, [PositiveControlPattern])
+            .ConfigureAwait(true);
+        controlMatches.ShouldNotBeEmpty(
+            "The stale-identity audit scanned no tracked text; its repository root or pathspec is wrong.");
+
+        string[] staleMatches = await FindTrackedMatchesAsync(repositoryRoot, staleIdentityPatterns)
+            .ConfigureAwait(true);
 
         staleMatches.ShouldBeEmpty();
     }
 
-    private static string[] FindTrackedStaleIdentityMatches(string repositoryRoot, IEnumerable<string> patterns)
+    /// <summary>
+    /// Builds the obsolete role identity at run time. The audit's own patterns are interpolated
+    /// from this value for the same reason: a literal in this file would match the patterns it
+    /// defines and turn the audit permanently red against itself. Do not inline it.
+    /// </summary>
+    private static string ObsoleteRoleName() => "key" + "cloak";
+
+    private static async Task<string[]> FindTrackedMatchesAsync(string repositoryRoot, IEnumerable<string> patterns)
     {
         var startInfo = new ProcessStartInfo("git")
         {
@@ -152,31 +241,45 @@ public sealed class AspireSecurityResourceNamingTests
         }
 
         startInfo.ArgumentList.Add("--");
-        startInfo.ArgumentList.Add("src");
-        startInfo.ArgumentList.Add("tests");
-        startInfo.ArgumentList.Add("deploy");
-        startInfo.ArgumentList.Add("docs");
-        startInfo.ArgumentList.Add(":(exclude)docs/api/**");
-
-        using Process process = Process.Start(startInfo)
-            ?? throw new InvalidOperationException("Could not start git for the tracked stale-identity audit.");
-        string standardOutput = process.StandardOutput.ReadToEnd();
-        string standardError = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-
-        if (process.ExitCode == 1)
+        foreach (string pathspec in _auditPathspec)
         {
-            return [];
+            startInfo.ArgumentList.Add(pathspec);
         }
 
-        if (process.ExitCode != 0)
+        Process process;
+        try
+        {
+            process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Could not start git for the tracked stale-identity audit.");
+        }
+        catch (Win32Exception exception)
         {
             throw new InvalidOperationException(
-                $"Tracked stale-identity audit failed with git exit code {process.ExitCode}: {standardError.Trim()}");
+                "git must be available on PATH to run the tracked stale-identity audit.",
+                exception);
         }
 
-        return standardOutput.Split(
-            ['\r', '\n'],
-            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        using (process)
+        {
+            // Drain both pipes concurrently before waiting: reading them one after the other
+            // deadlocks whenever the unread pipe fills its buffer.
+            Task<string> standardOutputTask = process.StandardOutput.ReadToEndAsync();
+            Task<string> standardErrorTask = process.StandardError.ReadToEndAsync();
+            await process.WaitForExitAsync().ConfigureAwait(true);
+            string standardOutput = await standardOutputTask.ConfigureAwait(true);
+            string standardError = await standardErrorTask.ConfigureAwait(true);
+
+            if (process.ExitCode == 1)
+            {
+                return [];
+            }
+
+            return process.ExitCode == 0
+                ? standardOutput.Split(
+                    ['\r', '\n'],
+                    StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                : throw new InvalidOperationException(
+                    $"Tracked stale-identity audit failed with git exit code {process.ExitCode}: {standardError.Trim()}");
+        }
     }
 }

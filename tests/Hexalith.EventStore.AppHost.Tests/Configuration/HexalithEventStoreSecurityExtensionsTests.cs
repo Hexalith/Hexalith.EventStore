@@ -34,6 +34,44 @@ public class HexalithEventStoreSecurityExtensionsTests {
     }
 
     [Fact]
+    public void AddHexalithEventStoreSecurity_WhenEnableKeycloakUnset_CreatesTheSecurityResource() {
+        IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder();
+
+        // Clear rather than set: the other tests pin the switch to "true" for hermeticity, which
+        // would also pass if the resource ever became opt-in. This is the genuinely default case.
+        builder.Configuration[HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey] = null;
+
+        HexalithEventStoreSecurityResources? security = builder.AddHexalithEventStoreSecurity();
+
+        security.ShouldNotBeNull();
+        security.Keycloak.Resource.Name.ShouldBe(SecurityResourceName);
+    }
+
+    [Fact]
+    public void AddHexalithEventStoreSecurity_WhenDisabled_CreatesNoSecurityResource() {
+        IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder();
+        builder.Configuration[HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey] = "false";
+
+        HexalithEventStoreSecurityResources? security = builder.AddHexalithEventStoreSecurity();
+
+        security.ShouldBeNull();
+        builder.Resources.ShouldNotContain(
+            static resource => string.Equals(resource.Name, SecurityResourceName, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void AddHexalithEventStoreSecurity_WhenResourceNameOverridden_UsesTheOverride() {
+        IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder();
+        builder.Configuration[HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey] = "true";
+
+        HexalithEventStoreSecurityResources security = builder.AddHexalithEventStoreSecurity(
+            new HexalithEventStoreSecurityOptions { ResourceName = "identity" })!;
+
+        security.Keycloak.Resource.Name.ShouldBe("identity");
+        HexalithEventStoreSecurityOptions.DefaultResourceName.ShouldBe(SecurityResourceName);
+    }
+
+    [Fact]
     public void WithSecurityDependency_WhenConfigured_AddsReferenceAndWaitEdgesToSecurity() {
         IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder();
         builder.Configuration[HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey] = "true";
