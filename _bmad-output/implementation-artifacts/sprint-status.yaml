@@ -88,7 +88,7 @@ development_status:
   # 55e6000a, published on origin/main, and consumed by the EventStore gitlink. Fresh Sally UX
   # acceptance and the accepted admin-authored maintainer authority chain are recorded; the complete
   # project test matrix is green through individual-project fallback validation.
-  2-6-tenants-ui-client-library-alignment-and-ux-evidence: review
+  2-6-tenants-ui-client-library-alignment-and-ux-evidence: done
   # Story 2.7 corrected the EventStore stale-registration/source-topology prerequisite and
   # passed focused configuration, CI-guard, and live persisted-provenance evidence with no
   # net Tenants, EventStore, or Builds dependency-identity change.

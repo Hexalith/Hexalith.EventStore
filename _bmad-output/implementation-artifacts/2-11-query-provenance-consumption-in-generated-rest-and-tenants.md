@@ -20,7 +20,9 @@ Status: done
 - `HandlerComputed`, `Unknown`, missing, or invalid provenance omits projection-backed
   headers and renders `Unknown`; no consumer derives lifecycle from ETag, HTTP success,
   payload fields, or SignalR.
-- `304` requires a strong gateway-authoritative validator permitted by Story 1.2.
+- `304` requires a strong gateway-authoritative validator permitted by Story 1.2. That validator
+  proves representation identity, not current lifecycle state: a projection-backed `304` with no
+  valid lifecycle header resolves lifecycle to `Unknown` and never inherits the retained value.
 - Persisted-state real-gateway tests must prove evidence origin. Existing platform tests
   remain historical Story 2.8 evidence now adopted by Story 1.2.
 - Until Story 4.7 has Tenants maintainer approval, affected Tenants aliases remain
@@ -58,6 +60,11 @@ The 2026-07-27 working-tree patch extends the owned evidence in:
   prove 200 lifecycle precedence across every consuming surface and assert the null/untrusted 304
   matrix through lifecycle, row, visible kind, and reason.
 
+The 2026-07-30 Story 2.6 fourth-pass review makes the retained-snapshot rule explicit: valid
+projection provenance and a strong validator are necessary for `304` reuse, but they do not attest
+to lifecycle. Missing or `Unknown` lifecycle evidence therefore fails closed to `Unknown`; only an
+explicit valid lifecycle value on the `304` can establish the new lifecycle state.
+
 Review-patch evidence is **292/292 passing** in the affected UI suites and **1226/1226 passing** in
 the full UI suite. The correctness finding that blocked this story is **closed**:
 `TenantCorrectionStartIntent` no longer gates on legacy freshness alone. `TenantAuditRow` transports
@@ -71,8 +78,9 @@ The accepted admin-authored authority chain at `11d69920526f9881ad8c2216b28e82e4
 covers the published baseline (`56c506c`, `8ab537e`, `a0c6d83`). The mutation-gate fix
 `5eed7a97b87988e2f1e286a0483490ca7ef75d2b` is a parent of the maintainer-authored Tenants merge
 `d2e5a1211f469041fdc593fd4e4678755f6863c8`, which is published on `origin/main`. The EventStore
-gitlink pins that exact approved merge. The current Tenants checkout is the later unrelated
-`origin/main` commit `7e445f3d5b5c065057600802aaf3a4f802c5035e`; it does not alter the accepted Story 2.11 identity.
+gitlink pinned that exact approved merge at acceptance. The current EventStore gitlink and Tenants
+checkout are the later commit `fc9a5d86436f95ace77930c0ec522fe2b3afdb45`; that does not alter the
+accepted Story 2.11 identity.
 
 ## Tasks / Subtasks
 
@@ -129,11 +137,11 @@ gitlink pins that exact approved merge. The current Tenants checkout is the late
 - [x] [Review][Patch] LOW — Add the modified `sprint-status.yaml` artifact to the story File List.
   [`_bmad-output/implementation-artifacts/2-11-query-provenance-consumption-in-generated-rest-and-tenants.md:161`] —
   resolved
-- [x] [Review][Defer] HIGH — Member, configuration, metadata, tenant-lifecycle, and
+- [x] [Review][Patch] HIGH — Member, configuration, metadata, tenant-lifecycle, and
   global-administrator projection gates still accept `Freshness == Current` without requiring
   projection-confirmed lifecycle/provenance, so legacy-current/unknown-lifecycle responses can still
   arm mutations outside the correction-start surface.
-  [`_bmad-output/implementation-artifacts/2-11-query-provenance-consumption-in-generated-rest-and-tenants.md:145`] — deferred, pre-existing
+  [`_bmad-output/implementation-artifacts/2-11-query-provenance-consumption-in-generated-rest-and-tenants.md:145`] — resolved 2026-07-30 by the owner-approved Story 2.6 scope expansion; all affected gates now require current lifecycle evidence and fail closed for `Unknown`
 
 ## Dev Agent Record
 
@@ -192,27 +200,24 @@ live topology, asserts persisted tenant identity and projection timestamp plus `
 route metadata, and proves the incompatible pre-Story-4.7 audit alias degrades to unknown, empty,
 non-actionable evidence.
 
-Scope was confirmed with the owner before implementation: correction-start gate only. The broader
-mutation gates in the member, configuration, and lifecycle command flows still gate on `Freshness is
-Current` and remain exposed to the same class of fail-open; that is recorded as follow-up below, not
-silently fixed here.
+The original 2026-07-27 scope decision limited this story's implementation to correction start. On
+2026-07-30 the owner explicitly expanded Story 2.6's review-remediation scope: member,
+configuration, metadata, tenant-lifecycle, and global-administrator gates now require current
+lifecycle evidence and reject `Unknown` or any other non-current lifecycle.
 
-### Follow-Ups
+### Follow-Up Resolution (2026-07-30)
 
-- The member (`AddTenantMemberFlow`, `ChangeTenantMemberRoleFlow`, `RemoveTenantMemberFlow`),
-  configuration (`SetTenantConfigurationFlow`, `RemoveTenantConfigurationFlow`,
-  `TenantConfigurationManagement`), metadata (`EditTenantMetadataFlow`), and lifecycle
-  (`TenantLifecycleCommandFlow`) surfaces, plus
-  `GlobalAdministratorCorrectionSnapshot.ProjectionIsReadable` and `ConfirmProjection`, still gate on
-  `Freshness is ReadModelFreshnessState.Current` alone. Their snapshots already carry `Lifecycle`, so
-  the same policy gate applies; closing them touches Story 2.6-owned presentation components and needs
-  its own scope decision.
+- The scope decision was made and the follow-up is closed. Existing member and global-administrator
+  lifecycle gates remain in force; configuration set/remove and metadata edit flows now consume the
+  detail lifecycle; lifecycle availability treats every value except `Current` as unavailable and
+  re-evaluates open flows whenever parent evidence changes.
 
 ## File List
 
 - `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/State/TenantAudit/TenantAuditRow.cs` (modified)
 - `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/State/TenantAudit/TenantCorrectionStartIntent.cs` (modified)
 - `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs` (modified)
+- `references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/Services/Gateways/TenantQueryGatewayTests.cs` (modified)
 - `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Hexalith.Tenants.UI.csproj` (modified)
 - `references/Hexalith.Tenants/tests/Hexalith.Tenants.IntegrationTests/AspireTopologyTests.cs` (modified)
 - `references/Hexalith.Tenants/tests/Hexalith.Tenants.IntegrationTests/Hexalith.Tenants.IntegrationTests.csproj` (modified)
@@ -231,7 +236,8 @@ silently fixed here.
 
 The accepted Tenants change `5eed7a97b87988e2f1e286a0483490ca7ef75d2b` is contained by the
 maintainer-authored and published merge `d2e5a1211f469041fdc593fd4e4678755f6863c8`. The EventStore
-gitlink pins that exact merge. Review patches remain uncommitted in the Tenants working tree.
+gitlink pinned that merge at acceptance and now points to later Tenants commit `fc9a5d86436f95ace77930c0ec522fe2b3afdb45`.
+The 2026-07-30 review patches remain uncommitted in the Tenants working tree.
 
 ## Change Log
 
@@ -243,3 +249,7 @@ gitlink pins that exact merge. Review patches remain uncommitted in the Tenants 
 - 2026-07-27 — Applied all code-review patches: added exhaustive provenance/invariant coverage,
   public API documentation, live persisted-path consumer proof, safe handling of the pre-Story-4.7
   producer shape, and reconciled the accepted Tenants merge/gitlink identity. Story advanced to `done`.
+- 2026-07-30 — Reconciled the fourth-pass `304` policy: validator/provenance evidence permits retained
+  representation reuse but cannot establish lifecycle, so absent or `Unknown` lifecycle fails closed
+  instead of inheriting the previous value. Added the regression test and recorded closure of the
+  broader mutation-gate follow-up under the owner-approved Story 2.6 scope expansion.
