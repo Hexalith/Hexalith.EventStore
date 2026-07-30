@@ -22,6 +22,8 @@ public sealed class AspireSecurityResourceNamingTests
     // Root-owned trees that carry operator- and agent-facing guidance. `references` (submodules)
     // and `_bmad`/`_bmad-output` (workflow artifacts that quote these patterns as data) are out of
     // scope. `CHANGELOG.md` is generated from commit subjects and is not hand-correctable.
+    // `.artifacts`, `bin`, `obj` and `*.lscache` hold tracked build/restore output: generated for
+    // the same reason `CHANGELOG.md` is excluded, so a stale identity there is not hand-correctable.
     private static readonly string[] _auditPathspec =
     [
         ".agents",
@@ -40,6 +42,33 @@ public sealed class AspireSecurityResourceNamingTests
         ":(glob,top)*.md",
         ":(exclude)docs/api/**",
         ":(exclude,glob,top)CHANGELOG.md",
+        ":(exclude,glob)**/.artifacts/**",
+        ":(exclude,glob)**/bin/**",
+        ":(exclude,glob)**/obj/**",
+        ":(exclude,glob)**/*.lscache",
+    ];
+
+    // The pathspec — not the pattern list — is the load-bearing half of this audit: the stale
+    // identity it was widened for lived in `.claude`, which the original `src tests deploy docs`
+    // pathspec structurally could not reach. `PositiveControlPattern` cannot detect that
+    // regression on its own, because it occurs only under `src` and `tests`, so a re-narrowed
+    // pathspec would keep the control green. Every tree below must therefore still contribute
+    // tracked files to the scan, which makes re-narrowing fail loudly instead of silently.
+    private static readonly string[] _requiredAuditTrees =
+    [
+        ".agents",
+        ".claude",
+        ".codex",
+        ".github",
+        ".opencode",
+        "deploy",
+        "docs",
+        "perf",
+        "samples",
+        "scripts",
+        "src",
+        "tests",
+        "tools",
     ];
 
     [Fact]
@@ -71,6 +100,13 @@ public sealed class AspireSecurityResourceNamingTests
             builder.Resources.ShouldNotContain(
                 static resource => string.Equals(resource.Name, ObsoleteRoleName(), StringComparison.OrdinalIgnoreCase));
 
+            // Reference-edge counts are derived, not chosen: each dependent gets exactly one from
+            // `WithSecurityDependency`'s own `WithReference`, plus one per environment variable
+            // whose value is a `ReferenceExpression` over the realm URL. `WithJwtBearerSecurity`
+            // supplies two such variables (authority and issuer) and
+            // `WithEventStoreAuthenticationValidation` one (authority) -- hence 3 and 2. Adding or
+            // removing a realm-URL-valued variable legitimately changes these numbers; update them
+            // deliberately rather than assuming identity drift.
             Dictionary<string, int> expectedReferenceCounts = new(StringComparer.Ordinal)
             {
                 ["eventstore"] = 3,
@@ -205,6 +241,23 @@ public sealed class AspireSecurityResourceNamingTests
         controlMatches.ShouldNotBeEmpty(
             "The stale-identity audit scanned no tracked text; its repository root or pathspec is wrong.");
 
+        // Coverage control second: the pattern control above only proves `src`/`tests` are
+        // reachable, so it cannot see a pathspec re-narrowed away from the agent-, CI- and
+        // operator-facing trees. Require every audited tree to still contribute tracked files.
+        string[] trackedPaths = await ListTrackedPathsAsync(repositoryRoot).ConfigureAwait(true);
+        foreach (string tree in _requiredAuditTrees)
+        {
+            string prefix = tree + "/";
+            trackedPaths.ShouldContain(
+                path => path.StartsWith(prefix, StringComparison.Ordinal),
+                $"The stale-identity audit no longer reaches '{tree}'; obsolete role identities there would pass unnoticed.");
+        }
+
+        trackedPaths.ShouldContain(
+            static path => !path.Contains('/', StringComparison.Ordinal)
+                && path.EndsWith(".md", StringComparison.OrdinalIgnoreCase),
+            "The stale-identity audit no longer reaches root-level Markdown.");
+
         string[] staleMatches = await FindTrackedMatchesAsync(repositoryRoot, staleIdentityPatterns)
             .ConfigureAwait(true);
 
@@ -220,6 +273,51 @@ public sealed class AspireSecurityResourceNamingTests
 
     private static async Task<string[]> FindTrackedMatchesAsync(string repositoryRoot, IEnumerable<string> patterns)
     {
+        List<string> arguments = ["grep", "--line-number", "--full-name", "--ignore-case", "--perl-regexp", "-I"];
+        foreach (string pattern in patterns)
+        {
+            arguments.Add("-e");
+            arguments.Add(pattern);
+        }
+
+        (int exitCode, string standardOutput, string standardError) = await RunGitAsync(repositoryRoot, arguments)
+            .ConfigureAwait(true);
+
+        // `git grep` exits 1 when nothing matched, which is the clean result for a negative audit.
+        return exitCode switch
+        {
+            1 => [],
+            0 => SplitLines(standardOutput),
+            _ => throw new InvalidOperationException(
+                $"Tracked stale-identity audit failed with git exit code {exitCode}: {standardError.Trim()}"),
+        };
+    }
+
+    private static async Task<string[]> ListTrackedPathsAsync(string repositoryRoot)
+    {
+        (int exitCode, string standardOutput, string standardError) = await RunGitAsync(repositoryRoot, ["ls-files"])
+            .ConfigureAwait(true);
+
+        return exitCode == 0
+            ? SplitLines(standardOutput)
+            : throw new InvalidOperationException(
+                $"Listing the audited pathspec failed with git exit code {exitCode}: {standardError.Trim()}");
+    }
+
+    private static string[] SplitLines(string output) => output.Split(
+        ['\r', '\n'],
+        StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    /// <summary>
+    /// Runs git over the audited pathspec and returns its exit code with both drained streams.
+    /// </summary>
+    /// <param name="repositoryRoot">Working directory for the git invocation.</param>
+    /// <param name="arguments">Git subcommand and options, without the pathspec separator.</param>
+    /// <returns>The exit code, standard output and standard error of the git process.</returns>
+    private static async Task<(int ExitCode, string StandardOutput, string StandardError)> RunGitAsync(
+        string repositoryRoot,
+        IEnumerable<string> arguments)
+    {
         var startInfo = new ProcessStartInfo("git")
         {
             WorkingDirectory = repositoryRoot,
@@ -228,16 +326,9 @@ public sealed class AspireSecurityResourceNamingTests
             UseShellExecute = false,
             CreateNoWindow = true,
         };
-        startInfo.ArgumentList.Add("grep");
-        startInfo.ArgumentList.Add("--line-number");
-        startInfo.ArgumentList.Add("--full-name");
-        startInfo.ArgumentList.Add("--ignore-case");
-        startInfo.ArgumentList.Add("--perl-regexp");
-        startInfo.ArgumentList.Add("-I");
-        foreach (string pattern in patterns)
+        foreach (string argument in arguments)
         {
-            startInfo.ArgumentList.Add("-e");
-            startInfo.ArgumentList.Add(pattern);
+            startInfo.ArgumentList.Add(argument);
         }
 
         startInfo.ArgumentList.Add("--");
@@ -269,17 +360,7 @@ public sealed class AspireSecurityResourceNamingTests
             string standardOutput = await standardOutputTask.ConfigureAwait(true);
             string standardError = await standardErrorTask.ConfigureAwait(true);
 
-            if (process.ExitCode == 1)
-            {
-                return [];
-            }
-
-            return process.ExitCode == 0
-                ? standardOutput.Split(
-                    ['\r', '\n'],
-                    StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                : throw new InvalidOperationException(
-                    $"Tracked stale-identity audit failed with git exit code {process.ExitCode}: {standardError.Trim()}");
+            return (process.ExitCode, standardOutput, standardError);
         }
     }
 }

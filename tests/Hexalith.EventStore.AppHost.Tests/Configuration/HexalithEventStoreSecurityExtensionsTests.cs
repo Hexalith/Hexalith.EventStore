@@ -94,6 +94,7 @@ public class HexalithEventStoreSecurityExtensionsTests {
     [Fact]
     public void AddHexalithEventStoreSecurity_WhenPersistent_UsesProxylessFixedKeycloakEndpoints() {
         IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder();
+        builder.Configuration[HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey] = "true";
         builder.Configuration[HexalithEventStoreSecurityOptions.DefaultPersistentConfigurationKey] = "true";
         builder.Configuration[HexalithEventStoreSecurityOptions.DefaultHttpPortConfigurationKey] = "9180";
         builder.Configuration[HexalithEventStoreSecurityOptions.DefaultManagementPortConfigurationKey] = "9543";

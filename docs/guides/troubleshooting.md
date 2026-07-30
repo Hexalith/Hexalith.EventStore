@@ -62,7 +62,7 @@ Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docke
 System.IO.IOException: Failed to bind to address http://localhost:8080: address already in use.
 ```
 
-**Probable Cause:** Another process is using an application or infrastructure port. The Aspire AppHost allocates ports for the Command API (8080), the Keycloak-backed `security` resource, Redis (6379), and PostgreSQL (5432). The `security` endpoints are proxyless host ports in **both** modes: the default non-persistent mode *prefers* `8180` (HTTP) and `8543` (management) and moves forward to the next free port only when one is busy, while persistent mode pins those same defaults and fails fast on a collision.
+**Probable Cause:** Another process is using an application or infrastructure port. The Aspire AppHost allocates ports for the Command API (8080), the Keycloak-backed `security` resource, Redis (6379), and PostgreSQL (5432). The `security` endpoints are proxyless host ports in **both** modes: the default non-persistent mode *prefers* `8180` (HTTP) and `8543` (management) and moves forward to the next free port only when one is busy, while persistent mode pins those same defaults. Persistent mode validates only the *values* of `KeycloakHttpPort` / `KeycloakManagementPort` at AppHost build — it never probes availability, so an occupied pinned port is not reported as a configuration error; the container simply wedges in `Created` (see [Keycloak Slow Startup](#keycloak-slow-startup-dev-fast-start)).
 
 **Resolution:**
 
@@ -76,7 +76,7 @@ System.IO.IOException: Failed to bind to address http://localhost:8080: address 
     $ netstat -ano | findstr :8080
     ```
 
-2. Stop the conflicting process. Port `8080` belongs to the Command API and is not relocatable through configuration; free it or stop the other process. A conflict on the `security` ports needs no action in the default mode — it walks forward to the next free port on its own.
+2. Stop the conflicting process. Port `8080` belongs to the Command API and is not relocatable through configuration; free it or stop the other process. In the default mode a `security` port conflict usually resolves itself — the AppHost probes `8180`/`8543` at build time and walks forward to the next free port. That probe is a loopback bind that is released again before the container starts, so a port claimed in between (or held only on a non-loopback interface) can still leave the `security` container wedged in `Created`; free the port and restart if that happens.
 
 3. Only in persistent mode (`KeycloakPersistent=true`) are the `security` ports fixed. Relocate them with `KeycloakHttpPort` / `KeycloakManagementPort` instead of editing AppHost source, and pass the same values on every restart so the relocation stays effective:
 
@@ -554,7 +554,7 @@ $ KeycloakPersistent=true aspire run --project src/Hexalith.EventStore.AppHost/H
 
 For Tier 3 integration tests, set `KEYCLOAK_TEST_REUSE=true` to keep the container warm between `dotnet test` runs.
 
-**How it works:** `ContainerLifetime.Persistent` alone is **not** enough. Aspire assigns Keycloak's `http`/`management` endpoints *random* host ports on every run, which churns DCP's container-reuse hash (`lifecycle-key`) and forces a delete + recreate — i.e. a full cold-start every time. So `KeycloakPersistent=true` *also* pins those endpoints **proxyless to fixed host ports** (`http`→`8180`, `management`→`8543`) so the reuse hash stays stable and the warm container is genuinely reattached. (Verified: two consecutive `aspire run` reuse the same container; OIDC discovery returns 200 through `http://localhost:8180/realms/hexalith`.)
+**How it works:** `ContainerLifetime.Persistent` alone is **not** enough. DCP's container-reuse hash (`lifecycle-key`) covers the endpoint host ports, and the default mode re-resolves them on every run — it prefers `8180`/`8543` but walks forward whenever either is busy — so a single shift churns the hash and forces a delete + recreate, i.e. a full cold-start. So `KeycloakPersistent=true` *also* pins those endpoints **proxyless to deterministic host ports** (`http`→`8180`, `management`→`8543`) that are never relocated automatically, so the reuse hash stays byte-stable and the warm container is genuinely reattached. (Verified: two consecutive `aspire run` reuse the same container; OIDC discovery returns 200 through `http://localhost:8180/realms/hexalith`.)
 
 > **Relocating the fixed ports:** The two pinned ports are configurable. If `8180` or `8543` collides with other host software, set `KeycloakHttpPort` and/or `KeycloakManagementPort` to free ports instead of editing source:
 >
@@ -563,7 +563,7 @@ For Tier 3 integration tests, set `KEYCLOAK_TEST_REUSE=true` to keep the contain
 >     aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj
 > ```
 >
-> The realm/authority URL the services use is derived from the resolved `http` port, so it tracks the override automatically. Both values are validated at AppHost build: each must be an integer in `1..65535`, the two must differ, and neither may equal the EventStore app port `8080`. An invalid value fails fast with an actionable message (naming the key and bad value) instead of letting Keycloak wedge in `Created`. These knobs are read **only** when `KeycloakPersistent=true`; the default (non-persistent, dynamic-port) topology ignores them.
+> The realm/authority URL the services use is derived from the resolved `http` port, so it tracks the override automatically. Both values are validated at AppHost build: each must be an integer in `1..65535`, the two must differ, and neither may equal the EventStore app port `8080`. An invalid value fails fast with an actionable message (naming the key and bad value) instead of letting Keycloak wedge in `Created`. That validation covers the value only — an out-of-range or duplicated port is rejected, an *occupied* one is not. These knobs are read **only** when `KeycloakPersistent=true`; the default (non-persistent) topology resolves its own preferred ports and ignores them.
 
 > **Realm edits:** A reused container does **not** re-import the realm. After editing `KeycloakRealms/hexalith-realm.json`, first inspect the matching containers and identify the exact `security` container for this AppHost. Only then remove that exact container so it re-imports on the next start:
 >
@@ -572,7 +572,7 @@ For Tier 3 integration tests, set `KEYCLOAK_TEST_REUSE=true` to keep the contain
 > $ docker rm -f <exact-security-container-name>
 > ```
 
-> **Fixed-port fragility:** In fast-start mode Keycloak binds host ports `8180` and `8543` **directly** (proxyless). If either is already taken — by an unrelated host process (a desktop app can own a port; e.g. `9180` is used by Logitech G Hub on some machines), a second AppHost, or a concurrent `KEYCLOAK_TEST_REUSE=true dotnet test` — Keycloak cannot bind and the container hangs in `Created`, stalling the whole topology. If Keycloak is stuck in `Created`, confirm which ports are taken with `Get-NetTCPConnection -LocalPort 8180,8543` (PowerShell), then either free them or relocate Keycloak with `KeycloakHttpPort`/`KeycloakManagementPort` (see "Relocating the fixed ports" above). Before removing a wedged container, use the inspection command above and target only the exact `security` container for this AppHost. Do not run two fast-start topologies at once. The default (non-persistent) mode uses dynamic ports and never has this problem.
+> **Fixed-port fragility:** In fast-start mode Keycloak binds host ports `8180` and `8543` **directly** (proxyless). If either is already taken — by an unrelated host process (a desktop app can own a port; e.g. `9180` is used by Logitech G Hub on some machines), a second AppHost, or a concurrent `KEYCLOAK_TEST_REUSE=true dotnet test` — Keycloak cannot bind and the container hangs in `Created`, stalling the whole topology. If Keycloak is stuck in `Created`, confirm which ports are taken with `Get-NetTCPConnection -LocalPort 8180,8543` (PowerShell), then either free them or relocate Keycloak with `KeycloakHttpPort`/`KeycloakManagementPort` (see "Relocating the fixed ports" above). Before removing a wedged container, use the inspection command above and target only the exact `security` container for this AppHost. Do not run two fast-start topologies at once. The default (non-persistent) mode binds proxyless host ports too, but it probes for a free one at AppHost build and walks forward, so it usually avoids this wedge — it is not immune, because that probe is released before the container binds.
 
 ## Kubernetes Deployment Issues
 

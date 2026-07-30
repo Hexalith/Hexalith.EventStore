@@ -26,7 +26,7 @@ flowchart TB
         end
 
         Redis[(Redis<br/>:6379)]
-        Security[security<br/>Keycloak-backed<br/>:8080]
+        Security[security<br/>Keycloak-backed<br/>host :8180 → :8080]
         Placement([DAPR Placement<br/>Service])
 
         Client -->|REST| EventStore
