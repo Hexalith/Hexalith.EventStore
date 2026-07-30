@@ -24,7 +24,7 @@ Before recording, ensure you have:
    ```
 
 3. Wait for the Aspire dashboard to open automatically (typically `https://localhost:15888` or as displayed in the terminal output).
-4. Verify all services are healthy in the Aspire dashboard: eventstore, sample, redis, and keycloak (if enabled).
+4. Verify the core resources are healthy in the Aspire dashboard, including eventstore, sample, redis, and security (the Keycloak-backed resource, if enabled), then confirm the remaining AppHost project resources are healthy too.
 5. Open Swagger UI at the CommandAPI port (typically `https://localhost:8080/swagger` — check `launchSettings.json` for the exact port).
 
 ## Capture the Recording

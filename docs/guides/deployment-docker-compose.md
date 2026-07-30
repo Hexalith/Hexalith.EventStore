@@ -115,7 +115,7 @@ $ PUBLISH_TARGET=docker aspire publish --project src/Hexalith.EventStore.AppHost
 
 This generates:
 
-- `publish-output/docker/docker-compose.yaml` — service definitions for `eventstore`, `sample`, `keycloak` (when enabled), and an Aspire dashboard
+- `publish-output/docker/docker-compose.yaml` — service definitions including `eventstore`, `sample`, `security` (Keycloak-backed when enabled), and an Aspire dashboard; additional AppHost project resources are generated too
 - `publish-output/docker/.env` — parameterized placeholders for container images, ports, and secrets
 
 > **Important:** The generated `docker-compose.yaml` does **not** include DAPR sidecar containers. The `CommunityToolkit.Aspire.Hosting.Dapr` package is a local development orchestration tool — its DAPR configuration does not carry through to Docker Compose publishing. You must add DAPR sidecars manually, as described in the next sections.
@@ -140,7 +140,7 @@ services:
         environment:
             - ASPNETCORE_ENVIRONMENT=Production
 
-    keycloak:
+    security:
         image: "quay.io/keycloak/keycloak:26.4"
         command: ["start-dev", "--import-realm"]
         ports:
@@ -324,8 +324,9 @@ REDIS_PASSWORD=
 # If Redis is shared, include a non-empty sanitized channelPrefix value.
 EVENTSTORE_SIGNALR_REDIS=redis-signalr:6379,channelPrefix=hesr.local.eventstore.compose
 
-# Keycloak (if enabled)
-AUTH_AUTHORITY=http://keycloak:8080/realms/hexalith
+# Keycloak-backed security service (if enabled). Compose uses target port 8080;
+# host-side token requests use the published port 8180.
+AUTH_AUTHORITY=http://security:8080/realms/hexalith
 ```
 
 > **Tip:** Build the container images from source using the .NET SDK container publishing feature (no Dockerfile required):
@@ -692,7 +693,7 @@ Common causes:
 **Fix:**
 
 - Verify Keycloak is running: `curl -s http://localhost:8180/realms/hexalith/.well-known/openid-configuration | jq .issuer`
-- Ensure the `Authentication__JwtBearer__Authority` environment variable on `eventstore` points to `http://keycloak:8080/realms/hexalith` (Docker service name, not `localhost`)
+- Ensure the `Authentication__JwtBearer__Authority` environment variable on `eventstore` points to `http://security:8080/realms/hexalith` (the Compose service name and container target port, not `localhost:8180`)
 - Check token expiry — Keycloak tokens expire after 5 minutes by default. Request a fresh token.
 
 ## Next Steps

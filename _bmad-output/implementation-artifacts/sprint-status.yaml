@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-07-29
+# last_updated: 2026-07-30
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T20:01:46+02:00
-last_updated: 2026-07-29
+last_updated: 2026-07-30
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -180,7 +180,7 @@ development_status:
   # (Memories 7d298205->ccd8efa3, Tenants 96bdfd8a->09947a24, both reachable on their remotes) into a
   # commit titled for this story. Accepted retroactively; no split required. Closed review -> done.
   3-3-references-based-submodule-layout: done
-  3-4-aspire-security-resource-naming: backlog
+  3-4-aspire-security-resource-naming: done
   # Story 3.5 establishes Builds as the sole package-version authority before
   # Story 3.11 may refresh the ecosystem-wide catalog.
   # Explicit source opt-in and ecosystem-wide AC6 responsibility are approved;

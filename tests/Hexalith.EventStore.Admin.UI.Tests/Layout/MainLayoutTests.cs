@@ -95,7 +95,7 @@ public class MainLayoutTests : AdminUITestContext {
 
     [Theory]
     [InlineData("Production", null)]
-    [InlineData("Development", "https://keycloak/realms/test")]
+    [InlineData("Development", "https://security/realms/test")]
     public void MainLayout_HidesDevelopmentRoleSelector_WhenGateFails(string environmentName, string? authority) {
         ConfigureRoleSwitcher(environmentName, authority);
 

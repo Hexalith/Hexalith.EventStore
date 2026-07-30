@@ -5,15 +5,20 @@ using global::Aspire.Hosting.ApplicationModel;
 using Hexalith.EventStore.Aspire;
 
 public class HexalithEventStoreSecurityExtensionsTests {
+    private const string SecurityResourceName = "security";
+
     [Fact]
     public void AddHexalithEventStoreSecurity_WhenDefault_UsesProxylessDynamicKeycloakEndpoints() {
         IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder();
+        builder.Configuration[HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey] = "true";
         builder.Configuration[HexalithEventStoreSecurityOptions.DefaultPersistentConfigurationKey] = "false";
         builder.Configuration[HexalithEventStoreSecurityOptions.DefaultHttpPortConfigurationKey] = "not-a-port";
         builder.Configuration[HexalithEventStoreSecurityOptions.DefaultManagementPortConfigurationKey] = "not-a-port";
 
         HexalithEventStoreSecurityResources security = builder.AddHexalithEventStoreSecurity()!;
 
+        HexalithEventStoreSecurityOptions.DefaultResourceName.ShouldBe(SecurityResourceName);
+        security.Keycloak.Resource.Name.ShouldBe(SecurityResourceName);
         EndpointAnnotation http = GetEndpoint(security, "http");
         EndpointAnnotation management = GetEndpoint(security, "management");
         http.Port.ShouldNotBeNull();
@@ -26,6 +31,26 @@ public class HexalithEventStoreSecurityExtensionsTests {
         management.Port.ShouldNotBe(http.Port);
         management.TargetPort.ShouldBe(9000);
         management.IsExplicitlyProxied.ShouldBe(false);
+    }
+
+    [Fact]
+    public void WithSecurityDependency_WhenConfigured_AddsReferenceAndWaitEdgesToSecurity() {
+        IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder();
+        builder.Configuration[HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey] = "true";
+        HexalithEventStoreSecurityResources security = builder.AddHexalithEventStoreSecurity()!;
+        IResourceBuilder<ProjectResource> dependent = builder.AddProject<EventStoreProjectMetadata>("dependent");
+
+        _ = dependent.WithSecurityDependency(security);
+
+        dependent.Resource.Annotations
+            .OfType<ResourceRelationshipAnnotation>()
+            .Where(static annotation => string.Equals(annotation.Type, "Reference", StringComparison.Ordinal))
+            .Select(static annotation => annotation.Resource.Name)
+            .ShouldBe([SecurityResourceName]);
+        dependent.Resource.Annotations
+            .OfType<WaitAnnotation>()
+            .Select(static annotation => annotation.Resource.Name)
+            .ShouldBe([SecurityResourceName]);
     }
 
     [Fact]

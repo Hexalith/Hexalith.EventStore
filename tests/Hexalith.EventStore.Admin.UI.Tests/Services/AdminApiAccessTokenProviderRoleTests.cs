@@ -53,7 +53,7 @@ public class AdminApiAccessTokenProviderRoleTests {
 
     [Theory]
     [InlineData("Production", null, false)]
-    [InlineData("Development", "https://keycloak/realms/test", false)]
+    [InlineData("Development", "https://security/realms/test", false)]
     [InlineData("Development", null, true)]
     public void IsRoleSwitcherAvailable_RequiresDevelopmentWithoutAuthority(string environmentName, string? authority, bool expected) {
         Dictionary<string, string?> values = CreateConfigValues();

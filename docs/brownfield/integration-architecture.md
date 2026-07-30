@@ -28,7 +28,7 @@ flowchart LR
     AdminSrv -->|state reads, metadata| DAPR
     ES -.->|SignalR projection-changed| UIc
     ES -.->|SignalR| AdminUI
-    KC[Keycloak] -->|OIDC tokens| Clients
+    SECURITY[security<br/>Keycloak-backed] -->|OIDC tokens when enabled| Clients
 ```
 
 ## Integration points
@@ -45,7 +45,8 @@ flowchart LR
 | `eventstore` | Clients | SignalR (`ProjectionChangedHub`) + Redis backplane | Real-time read-model refresh per `{projectionType}:{tenantId}` group |
 | `eventstore-admin` | `eventstore` | DAPR service invocation + state reads | Admin **writes are delegated** to the gateway (ADR-P4); reads go direct to state store (`keyPrefix=none`) |
 | Admin.UI / Cli / Mcp | `eventstore-admin` | REST (JWT) | All admin operations via the Admin.Server REST API |
-| All services | Keycloak | OIDC (HTTP) | JWT issuance/validation (or symmetric-key fallback when `EnableKeycloak=false`) |
+| Security-enabled services | `security` (Keycloak-backed) | OIDC (HTTP) | JWT issuance and validation when `EnableKeycloak` is not `false` |
+| Security-enabled services | In-process JWT validation | Symmetric key | Fallback when `EnableKeycloak=false`; no `security` resource or network edge exists |
 
 ## DAPR sidecar wiring (from `HexalithEventStoreExtensions`)
 

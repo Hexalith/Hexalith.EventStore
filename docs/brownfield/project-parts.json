@@ -32,6 +32,7 @@
     { "from": "eventstore", "to": "clients", "type": "SignalR (ProjectionChangedHub, Redis backplane)" },
     { "from": "admin-server", "to": "eventstore", "type": "DAPR service invocation (write delegation) + state reads" },
     { "from": "admin-ui/admin-cli/admin-mcp", "to": "admin-server", "type": "REST (JWT)" },
-    { "from": "all services", "to": "keycloak", "type": "OIDC (or symmetric-key fallback)" }
+    { "from": "security-enabled services", "to": "security", "type": "OIDC through Keycloak when enabled" },
+    { "from": "security-enabled services", "to": "in-process JWT validation", "type": "symmetric-key fallback when EnableKeycloak=false; no security resource" }
   ]
 }

@@ -204,7 +204,7 @@ aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.App
 
 **Generated output:** `docker-compose.yaml` + `.env` file containing parameterized placeholders for container images, ports, and secrets.
 
-**Services generated:** `eventstore`, `eventstore-admin`, `sample`, `keycloak` (when `EnableKeycloak` is not `false`), `docker-dashboard`.
+**Generated services include:** `eventstore`, `eventstore-admin`, `sample`, `security` (Keycloak-backed when `EnableKeycloak` is not `false`), and `docker-dashboard`; additional AppHost project resources are generated too.
 
 **DAPR sidecar handling:** `CommunityToolkit.Aspire.Hosting.Dapr` is a local dev orchestration tool. The Docker Compose publisher does **NOT** generate DAPR sidecar containers. To add DAPR support:
 
