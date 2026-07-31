@@ -131,6 +131,87 @@ public sealed class EventStoreDomainServiceExtensionsTests {
     }
 
     /// <summary>
+    /// Proves the SDK owns DAPR event-subscription plumbing for a domain that consumes domain events, so a
+    /// domain module never has to re-implement it. Without the subscription route the registered consumer is
+    /// unreachable, and without <c>/dapr/subscribe</c> the sidecar never learns the topic exists — either way
+    /// the module's projection stays empty and any authorization it gates fails closed indefinitely.
+    /// </summary>
+    [Fact]
+    public void UseEventStoreDomainService_ConsumingDomain_MapsSubscriptionSurface() {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.AddEventStoreDomainService();
+        _ = builder.Services.AddEventStoreDomainEvents(
+            typeof(EventStoreDomainServiceExtensionsTests).Assembly,
+            options => options.SubscriptionRoute = "/widget/events");
+        WebApplication app = builder.Build();
+
+        _ = app.UseEventStoreDomainService();
+
+        AssertRouteSupports(app, "/widget/events", HttpMethods.Post);
+
+        // DAPR's own MapSubscribeHandler registers the pattern WITHOUT a leading slash, so match on the
+        // normalized form rather than the pretty one.
+        GetRouteEndpoints(app)
+            .Any(static endpoint => string.Equals(
+                endpoint.RoutePattern.RawText?.TrimStart('/'),
+                "dapr/subscribe",
+                StringComparison.OrdinalIgnoreCase))
+            .ShouldBeTrue("the sidecar cannot discover the topic without a subscribe handler");
+    }
+
+    /// <summary>
+    /// Proves the subscription surface is wired only for domains that actually consume events. A domain
+    /// service registering no consumer must gain no routes and no middleware from this activation.
+    /// </summary>
+    [Fact]
+    public void UseEventStoreDomainService_NonConsumingDomain_MapsNoSubscriptionSurface() {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.AddEventStoreDomainService();
+        WebApplication app = builder.Build();
+
+        _ = app.UseEventStoreDomainService();
+
+        GetRouteEndpoints(app)
+            .Any(static endpoint => string.Equals(
+                endpoint.RoutePattern.RawText?.TrimStart('/'),
+                "dapr/subscribe",
+                StringComparison.OrdinalIgnoreCase))
+            .ShouldBeFalse("a domain service that consumes no events must not gain a subscription surface");
+    }
+
+    /// <summary>
+    /// Proves the host stays authoritative: a host that already mapped its own subscription surface keeps
+    /// exactly one endpoint per route, mirroring the DAPR client and Data Protection registration rule.
+    /// </summary>
+    [Fact]
+    public void UseEventStoreDomainService_PreMappedSubscriptionSurface_IsNotDuplicated() {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.AddEventStoreDomainService();
+        _ = builder.Services.AddEventStoreDomainEvents(
+            typeof(EventStoreDomainServiceExtensionsTests).Assembly,
+            options => options.SubscriptionRoute = "/widget/events");
+        WebApplication app = builder.Build();
+
+        _ = app.MapPost("/widget/events", () => "bespoke subscription handler");
+        _ = app.MapSubscribeHandler();
+
+        _ = app.UseEventStoreDomainService();
+
+        GetRouteEndpoints(app)
+            .Count(static endpoint => string.Equals(
+                endpoint.RoutePattern.RawText,
+                "/widget/events",
+                StringComparison.OrdinalIgnoreCase))
+            .ShouldBe(1);
+        GetRouteEndpoints(app)
+            .Count(static endpoint => string.Equals(
+                endpoint.RoutePattern.RawText?.TrimStart('/'),
+                "dapr/subscribe",
+                StringComparison.OrdinalIgnoreCase))
+            .ShouldBe(1);
+    }
+
+    /// <summary>
     /// Proves the SDK yields when an app maps its own exact <c>/project</c> endpoint before the canonical
     /// endpoint set, preserving bespoke projection wire behavior without creating ambiguous route matches.
     /// </summary>

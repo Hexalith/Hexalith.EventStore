@@ -6,6 +6,7 @@ using Hexalith.EventStore.Client.Configuration;
 using Hexalith.EventStore.Client.Discovery;
 using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Client.Registration;
+using Hexalith.EventStore.Client.Subscriptions;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Contracts.Queries;
@@ -42,6 +43,18 @@ namespace Hexalith.EventStore.DomainService;
 /// </code>
 /// </remarks>
 public static class EventStoreDomainServiceExtensions {
+    /// <summary>
+    /// The DAPR topic-discovery route the sidecar reads to learn a service's subscriptions, stored without a
+    /// leading slash because that is the form DAPR's own MapSubscribeHandler registers.
+    /// </summary>
+    private const string DaprSubscribeRoute = "dapr/subscribe";
+
+    /// <summary>
+    /// Marks CloudEvents unwrapping as already registered on this application, so a second activation call
+    /// cannot add the middleware twice. Middleware exposes no route to inspect, unlike the mapped endpoints.
+    /// </summary>
+    private const string CloudEventsRegisteredKey = "Hexalith.EventStore.DomainService.CloudEventsRegistered";
+
     /// <summary>
     /// Configures the host to run the EventStore domain types discovered in the <b>calling assembly</b>:
     /// wires Aspire service defaults and registers the discovered aggregates and projections.
@@ -111,11 +124,52 @@ public static class EventStoreDomainServiceExtensions {
         // Populate the activation manifest (cascade-resolved DAPR resource names) from discovered domains.
         _ = app.UseEventStore();
 
+        // DAPR pub/sub delivery for consumed domain events. Event-subscription plumbing is generic host
+        // capability a domain module must not re-implement, so the canonical activation owns it instead of
+        // leaving every module to rediscover the same gap: DAPR publishes application/cloudevents+json by
+        // default, so a consumed envelope cannot bind without CloudEvents unwrapping, and the sidecar never
+        // learns the topic exists without /dapr/subscribe. A module that registers a consumer and omits any
+        // of the three has an unreachable consumer, an empty access projection, and — where that projection
+        // gates authorization — every authorized read failing closed indefinitely.
+        //
+        // Wired only when a consumer is actually registered. EventStoreDomainEventProcessor is the singleton
+        // the consumer registration adds, so a domain service that consumes nothing gains no routes and no
+        // middleware, and its composed pipeline is unchanged.
+        bool consumesDomainEvents = app.Services.GetService<EventStoreDomainEventProcessor>() is not null;
+
+        // Unwrapping is middleware, so it must be registered before endpoint execution — hence here, ahead
+        // of the mapping calls below rather than beside them.
+        // WebApplication implements IApplicationBuilder explicitly, so the shared property bag — the only
+        // place a middleware registration can leave a marker — is reached through the interface.
+        IDictionary<string, object?> applicationProperties = ((IApplicationBuilder)app).Properties;
+
+        if (consumesDomainEvents && !applicationProperties.ContainsKey(CloudEventsRegisteredKey)) {
+            applicationProperties[CloudEventsRegisteredKey] = true;
+            _ = app.UseCloudEvents();
+        }
+
         // Health endpoints (/health, /alive, /ready) from ServiceDefaults.
         _ = app.MapDefaultEndpoints();
 
         // Canonical domain-service endpoints invoked by the EventStore gateway.
         _ = app.MapEventStoreDomainService();
+
+        if (consumesDomainEvents) {
+            EventStoreDomainEventsOptions domainEvents = app.Services
+                .GetRequiredService<IOptions<EventStoreDomainEventsOptions>>()
+                .Value;
+
+            // Each mapping is skipped when the host already mapped it, so a host that wired its own
+            // subscription surface stays authoritative — the same rule the DAPR client and Data Protection
+            // registrations follow in AddEventStoreDomainServiceCore.
+            if (!IsRouteMapped(app, domainEvents.SubscriptionRoute, HttpMethods.Post)) {
+                _ = app.MapEventStoreDomainEvents();
+            }
+
+            if (!IsDaprSubscribeMapped(app)) {
+                _ = app.MapSubscribeHandler();
+            }
+        }
 
         return app;
     }
@@ -480,6 +534,28 @@ public static class EventStoreDomainServiceExtensions {
         foreach (ProjectionReadModelSlotDeclaration slot in slots) {
             _ = services.AddSingleton(slot);
         }
+    }
+
+    /// <summary>
+    /// Detects an already-mapped DAPR topic-discovery endpoint, tolerating both spellings of the pattern.
+    /// DAPR's own <c>MapSubscribeHandler</c> registers <c>dapr/subscribe</c> with no leading slash, while a
+    /// host mapping its own handler typically writes <c>/dapr/subscribe</c> — verified against both, because
+    /// an exact-text comparison silently misses one form and double-maps the route.
+    /// </summary>
+    private static bool IsDaprSubscribeMapped(IEndpointRouteBuilder endpoints) {
+        foreach (EndpointDataSource dataSource in endpoints.DataSources) {
+            foreach (Endpoint endpoint in dataSource.Endpoints) {
+                if (endpoint is RouteEndpoint routeEndpoint
+                    && string.Equals(
+                        routeEndpoint.RoutePattern.RawText?.TrimStart('/'),
+                        DaprSubscribeRoute,
+                        StringComparison.OrdinalIgnoreCase)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private static bool IsRouteMapped(IEndpointRouteBuilder endpoints, string route, string httpMethod) {
