@@ -191,7 +191,7 @@ development_status:
   # 0 deferred, 9 dismissed. Post-patch Contracts validation passed 817/817 in
   # Release/package mode; the DAPR documentation guard and diff hygiene checks are green.
   3-5-shared-package-catalog-and-source-package-reference-modes: done
-  3-6-manifest-driven-release-packaging: backlog
+  3-6-manifest-driven-release-packaging: done
   3-7-shared-workflow-caller-migration: done
   3-8-workflow-reference-and-validation-safety: done
   3-9-supply-chain-publishing-backlog: review

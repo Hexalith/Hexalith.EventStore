@@ -78,12 +78,21 @@ python3 scripts/validate-consumer-package-references.py ./nupkgs
 - `scripts/pack-release-packages.py` delegates to the existing manifest packer
   under `tools/`. When shared CI passes `0.0.0-ci-test`, this wrapper packs
   `999.0.0-ci-test` instead so synthetic validation packages still satisfy
-  current package dependency floors.
-- `scripts/validate-nuget-packages.py` validates that the `.nupkg` directory
-  contains exactly the manifest-listed EventStore packages at one version.
-- `scripts/validate-consumer-package-references.py` creates a temporary
-  package-only consumer, restores from the local package directory, builds it,
-  and rejects project-reference resolution.
+  current package dependency floors. Before the first pack command, the packer
+  also proves that every manifest entry resolves beneath the root `src/`
+  directory, evaluates as packable, and produces its declared `PackageId` in
+  Release/package mode.
+- `scripts/validate-nuget-packages.py` uses the shared contract in
+  `tools/release_package_contract.py` to inspect each archive's embedded
+  `.nuspec`. Filenames, embedded IDs, versions, dependencies, and the exact
+  manifest inventory must agree; renamed, foreign, duplicate, mixed-version,
+  source-path-bearing, and incomplete internal dependency metadata fail closed.
+- `scripts/validate-consumer-package-references.py` creates one temporary
+  package-only consumer per library package. Each consumer has exactly one
+  direct manifest package reference, restores only from the local package
+  directory plus NuGet.org, builds independently, and rejects project-backed
+  assets. Dotnet tool packages are installed separately in isolated tool
+  manifests.
 
 The release prepare step in [`.releaserc.json`](../.releaserc.json) still uses
 the `tools/` scripts so semantic-release remains manifest-driven:
@@ -92,6 +101,16 @@ the `tools/` scripts so semantic-release remains manifest-driven:
 python3 tools/pack-release-packages.py ./nupkgs <version>
 python3 tools/validate-release-packages.py ./nupkgs <version>
 ```
+
+The release validator consumes the same archive parser as CI and additionally
+requires every embedded version to equal semantic-release's requested version.
+Every root-owned manifest `ProjectReference` must become a canonical,
+same-release NuGet dependency in each applicable target-framework group. The
+Gateway archive has an additional explicit four-edge guard for
+`Hexalith.EventStore.Admin.Abstractions`,
+`Hexalith.EventStore.Contracts`, `Hexalith.EventStore.Server`, and
+`Hexalith.EventStore.ServiceDefaults`. Project paths and checkout-local source
+metadata are never accepted as package dependency evidence.
 
 ## Release Flow
 

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO.Compression;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
@@ -13,10 +14,19 @@ public sealed class ReleasePackageManifestTests
     private const int ExpectedManifestPackageCount = 14;
     private const string GeneratorPackageId = "Hexalith.EventStore.RestApi.Generators";
     private const string GeneratorProjectPath = "src/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.csproj";
+    private const string GatewayPackageId = "Hexalith.EventStore.Gateway";
+    private const string PackageFixtureVersion = "999.3.6-fixture";
     private const string SemanticReleaseFixture = "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Fixtures/semantic-release-github-success.mjs";
     private const string ServiceDefaultsPackageId = "Hexalith.EventStore.ServiceDefaults";
     private const string ServiceDefaultsProjectPath = "src/Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj";
     private const string SetupNodeActionSha = "820762786026740c76f36085b0efc47a31fe5020";
+    private static readonly string[] GatewayRequiredDependencies =
+    [
+        "Hexalith.EventStore.Admin.Abstractions",
+        "Hexalith.EventStore.Contracts",
+        "Hexalith.EventStore.Server",
+        "Hexalith.EventStore.ServiceDefaults",
+    ];
     private static readonly TimeSpan MsBuildPropertyTimeout = TimeSpan.FromSeconds(60);
 
     [Fact]
@@ -86,8 +96,19 @@ public sealed class ReleasePackageManifestTests
 
         foreach (ReleasePackage package in packages)
         {
-            File.Exists(Path.Combine(root, package.Project)).ShouldBeTrue(
+            string projectPath = Path.Combine(root, package.Project);
+            File.Exists(projectPath).ShouldBeTrue(
                 $"Release package project must exist: {package.Project}");
+            Path.GetFullPath(projectPath).StartsWith(
+                Path.Combine(root, "src") + Path.DirectorySeparatorChar,
+                StringComparison.Ordinal).ShouldBeTrue(
+                $"Release package project must be owned by the root src directory: {package.Project}");
+            EvaluatedProjectProperty(projectPath, "IsPackable").ShouldBe(
+                "true",
+                $"Release package project must evaluate as packable: {package.Project}");
+            EvaluatedProjectProperty(projectPath, "PackageId").ShouldBe(
+                package.Id,
+                $"Release package project identity must match its manifest entry: {package.Project}");
         }
     }
 
@@ -161,10 +182,145 @@ public sealed class ReleasePackageManifestTests
 
         publishCommand.ShouldContain("scripts/validate-release-secrets.sh");
         publishCommand.ShouldContain("dotnet nuget push");
+        publishCommand.ShouldContain("dotnet nuget push \"./nupkgs/Hexalith.EventStore.*.nupkg\"");
+        publishCommand.ShouldNotContain("dotnet nuget push \"./nupkgs/*.nupkg\"");
+        Regex.Matches(
+            publishCommand,
+            "\\\"\\./nupkgs/Hexalith\\.EventStore\\.\\*\\.nupkg\\\"",
+            RegexOptions.CultureInvariant).Count.ShouldBe(
+                1,
+                "Semantic-release must expose exactly one EventStore-scoped NuGet publication glob.");
         publishCommand.ShouldContain("./.hexalith/release/publish-containers.sh ${nextRelease.version}");
         publishCommand.IndexOf("scripts/validate-release-secrets.sh", StringComparison.Ordinal).ShouldBeLessThan(
             publishCommand.IndexOf("dotnet nuget push", StringComparison.Ordinal),
             "Release secrets must be validated before any irreversible NuGet publish command runs.");
+    }
+
+    [Fact]
+    public void ManifestPackerDryRunEmitsExactReleasePackageCommands()
+    {
+        ReleasePackage[] packages = LoadReleasePackages();
+        string packageDirectory = Path.Combine(
+            Path.GetTempPath(),
+            $"eventstore-release-manifest-test-{Guid.NewGuid():N}");
+
+        (int exitCode, string output, string error) = RunPythonScript(
+            "tools/pack-release-packages.py",
+            packageDirectory,
+            PackageFixtureVersion,
+            "--dry-run");
+
+        exitCode.ShouldBe(0, error);
+        string[] commands = output
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(line => line.StartsWith("dotnet pack ", StringComparison.Ordinal))
+            .ToArray();
+        commands.Length.ShouldBe(ExpectedManifestPackageCount);
+        commands.Select((command, index) => (command, package: packages[index])).ToList().ForEach(item =>
+        {
+            item.command.ShouldStartWith($"dotnet pack {item.package.Project} ");
+            Regex.Matches(item.command, "--configuration Release", RegexOptions.CultureInvariant).Count.ShouldBe(1);
+            Regex.Matches(item.command, "-p:GeneratePackageOnBuild=false", RegexOptions.CultureInvariant).Count.ShouldBe(1);
+            Regex.Matches(item.command, "-p:UseHexalithProjectReferences=false", RegexOptions.CultureInvariant).Count.ShouldBe(1);
+            Regex.Matches(item.command, $"-p:Version={PackageFixtureVersion}", RegexOptions.CultureInvariant).Count.ShouldBe(1);
+        });
+
+        Directory.Exists(packageDirectory).ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData("tools/validate-release-packages.py")]
+    [InlineData("scripts/validate-nuget-packages.py")]
+    public void ArchiveValidatorsAcceptExactEmbeddedInventory(string validator)
+    {
+        ArgumentNullException.ThrowIfNull(validator);
+        string packageDirectory = Directory.CreateTempSubdirectory("eventstore-valid-packages-").FullName;
+        try
+        {
+            CreateSyntheticReleaseOutput(packageDirectory, "valid");
+
+            (int exitCode, _, string error) = RunPackageValidator(validator, packageDirectory);
+
+            exitCode.ShouldBe(0, error);
+        }
+        finally
+        {
+            Directory.Delete(packageDirectory, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData("tools/validate-release-packages.py", "missing", "Missing release packages")]
+    [InlineData("scripts/validate-nuget-packages.py", "missing", "Missing release packages")]
+    [InlineData("tools/validate-release-packages.py", "extra", "Unexpected release packages")]
+    [InlineData("scripts/validate-nuget-packages.py", "extra", "Unexpected release packages")]
+    [InlineData("tools/validate-release-packages.py", "foreign", "Unexpected release packages")]
+    [InlineData("scripts/validate-nuget-packages.py", "foreign", "Unexpected release packages")]
+    [InlineData("tools/validate-release-packages.py", "renamed", "Renamed package archive")]
+    [InlineData("scripts/validate-nuget-packages.py", "renamed", "Renamed package archive")]
+    [InlineData("tools/validate-release-packages.py", "duplicate", "Duplicate package output")]
+    [InlineData("scripts/validate-nuget-packages.py", "duplicate", "Duplicate package output")]
+    [InlineData("tools/validate-release-packages.py", "mixed", "embedded version")]
+    [InlineData("scripts/validate-nuget-packages.py", "mixed", "must share one version")]
+    [InlineData("tools/validate-release-packages.py", "case", "canonical manifest casing")]
+    [InlineData("scripts/validate-nuget-packages.py", "case", "canonical manifest casing")]
+    [InlineData("tools/validate-release-packages.py", "archive-extension-case", "Renamed package archive")]
+    [InlineData("scripts/validate-nuget-packages.py", "archive-extension-case", "Renamed package archive")]
+    public void ArchiveValidatorsRejectInventoryAndIdentityMutations(
+        string validator,
+        string mutation,
+        string expectedError)
+    {
+        ArgumentNullException.ThrowIfNull(validator);
+        ArgumentNullException.ThrowIfNull(mutation);
+        ArgumentNullException.ThrowIfNull(expectedError);
+        string packageDirectory = Directory.CreateTempSubdirectory("eventstore-invalid-packages-").FullName;
+        try
+        {
+            CreateSyntheticReleaseOutput(packageDirectory, mutation);
+
+            (int exitCode, _, string error) = RunPackageValidator(validator, packageDirectory);
+
+            exitCode.ShouldNotBe(0);
+            error.ShouldContain(expectedError);
+        }
+        finally
+        {
+            Directory.Delete(packageDirectory, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData("tools/validate-release-packages.py", "metadata-leak", "local project or source-path metadata")]
+    [InlineData("scripts/validate-nuget-packages.py", "metadata-leak", "local project or source-path metadata")]
+    [InlineData("tools/validate-release-packages.py", "gateway-dependency-loss", "internal dependency contract failed")]
+    [InlineData("scripts/validate-nuget-packages.py", "gateway-dependency-loss", "internal dependency contract failed")]
+    [InlineData("tools/validate-release-packages.py", "client-dependency-loss", "internal dependency contract failed")]
+    [InlineData("scripts/validate-nuget-packages.py", "client-dependency-loss", "internal dependency contract failed")]
+    [InlineData("tools/validate-release-packages.py", "gateway-dependency-version-drift", "expected version")]
+    [InlineData("scripts/validate-nuget-packages.py", "gateway-dependency-version-drift", "expected version")]
+    public void ArchiveValidatorsRejectSourceMetadataAndGatewayDependencyLoss(
+        string validator,
+        string mutation,
+        string expectedError)
+    {
+        ArgumentNullException.ThrowIfNull(validator);
+        ArgumentNullException.ThrowIfNull(mutation);
+        ArgumentNullException.ThrowIfNull(expectedError);
+        string packageDirectory = Directory.CreateTempSubdirectory("eventstore-metadata-packages-").FullName;
+        try
+        {
+            CreateSyntheticReleaseOutput(packageDirectory, mutation);
+
+            (int exitCode, _, string error) = RunPackageValidator(validator, packageDirectory);
+
+            exitCode.ShouldNotBe(0);
+            error.ShouldContain(expectedError);
+        }
+        finally
+        {
+            Directory.Delete(packageDirectory, recursive: true);
+        }
     }
 
     [Fact]
@@ -466,13 +622,17 @@ public sealed class ReleasePackageManifestTests
             text.ShouldContain("release-packages.json");
             if (script.Contains("validate", StringComparison.Ordinal))
             {
-                text.ShouldContain("package_id == \"Hexalith.EventStore\" or package_id.startswith(\"Hexalith.EventStore.\")");
+                text.ShouldContain("release_package_contract");
             }
 
             text.ShouldNotContain("references/Hexalith.");
             text.Contains("NU1605", StringComparison.Ordinal).ShouldBeFalse(
                 "Package-consumer validation must not suppress package downgrade conflicts.");
         }
+
+        string sharedContract = File.ReadAllText(Path.Combine(root, "tools", "release_package_contract.py"));
+        sharedContract.ShouldContain("package_id == \"Hexalith.EventStore\"");
+        sharedContract.ShouldContain("package_id.startswith(EVENTSTORE_PACKAGE_PREFIX)");
     }
 
     [Fact]
@@ -555,6 +715,223 @@ public sealed class ReleasePackageManifestTests
 
         offenders.ShouldBeEmpty(
             "Active docs must describe the July 2 external API host/client-library split, not the superseded UI-host controller model.");
+    }
+
+    private static void CreateSyntheticReleaseOutput(string packageDirectory, string mutation)
+    {
+        ReleasePackage[] packages = LoadReleasePackages();
+        for (int index = 0; index < packages.Length; index++)
+        {
+            ReleasePackage package = packages[index];
+            if (mutation == "missing" && index == packages.Length - 1)
+            {
+                continue;
+            }
+
+            string version = mutation == "mixed" && index == 0
+                ? "999.3.7-fixture"
+                : PackageFixtureVersion;
+            string embeddedId = mutation == "case" && index == 0
+                ? package.Id.ToLowerInvariant()
+                : package.Id;
+            string archiveName = mutation == "renamed" && index == 0
+                ? "renamed-package.nupkg"
+                : $"{embeddedId}.{version}.{(mutation == "archive-extension-case" && index == 0 ? "NUPKG" : "nupkg")}";
+            string[] dependencies =
+            [
+                .. ExpectedInternalDependencies(package.Id),
+                .. ExpectedExternalHexalithDependencies(package.Id),
+            ];
+            if (mutation == "gateway-dependency-loss" && package.Id == GatewayPackageId)
+            {
+                dependencies = GatewayRequiredDependencies[..^1];
+            }
+            else if (mutation == "client-dependency-loss" && package.Id == "Hexalith.EventStore.Client")
+            {
+                dependencies = [];
+            }
+
+            string dependencyVersion = mutation == "gateway-dependency-version-drift" && package.Id == GatewayPackageId
+                ? "999.3.5-fixture"
+                : version;
+
+            WriteSyntheticPackage(
+                Path.Combine(packageDirectory, archiveName),
+                embeddedId,
+                version,
+                dependencies,
+                dependencyVersion,
+                includeMetadataLeak: mutation == "metadata-leak" && index == 0);
+        }
+
+        if (mutation == "extra")
+        {
+            WriteSyntheticPackage(
+                Path.Combine(packageDirectory, $"Hexalith.EventStore.Unlisted.{PackageFixtureVersion}.nupkg"),
+                "Hexalith.EventStore.Unlisted",
+                PackageFixtureVersion,
+                [],
+                PackageFixtureVersion,
+                includeMetadataLeak: false);
+        }
+        else if (mutation == "foreign")
+        {
+            WriteSyntheticPackage(
+                Path.Combine(packageDirectory, $"Hexalith.Commons.Foreign.{PackageFixtureVersion}.nupkg"),
+                "Hexalith.Commons.Foreign",
+                PackageFixtureVersion,
+                [],
+                PackageFixtureVersion,
+                includeMetadataLeak: false);
+        }
+        else if (mutation == "duplicate")
+        {
+            WriteSyntheticPackage(
+                Path.Combine(packageDirectory, "ZZZ-duplicate.nupkg"),
+                packages[0].Id,
+                PackageFixtureVersion,
+                [],
+                PackageFixtureVersion,
+                includeMetadataLeak: false);
+        }
+    }
+
+    private static void WriteSyntheticPackage(
+        string archivePath,
+        string packageId,
+        string version,
+        IEnumerable<string> dependencies,
+        string dependencyVersion,
+        bool includeMetadataLeak)
+    {
+        XElement metadata = new(
+            "metadata",
+            new XElement("id", packageId),
+            new XElement("version", version),
+            new XElement("authors", "Hexalith Tests"),
+            new XElement("description", "Synthetic release contract fixture"),
+            new XElement(
+                "dependencies",
+                new XElement(
+                    "group",
+                    new XAttribute("targetFramework", "net10.0"),
+                    dependencies.Select(dependency => new XElement(
+                        "dependency",
+                        new XAttribute("id", dependency),
+                        new XAttribute("version", dependencyVersion))))));
+        if (packageId == "Hexalith.EventStore.Admin.Cli")
+        {
+            metadata.Add(
+                new XElement(
+                    "packageTypes",
+                    new XElement(
+                        "packageType",
+                        new XAttribute("name", "DotnetTool"),
+                        new XAttribute("version", "1.0.0"))));
+        }
+
+        if (includeMetadataLeak)
+        {
+            metadata.Add(new XElement("repository", new XAttribute("url", "src/LocalProject.csproj")));
+        }
+
+        XDocument nuspec = new(
+            new XElement(
+                "package",
+                metadata));
+        using ZipArchive archive = ZipFile.Open(archivePath, ZipArchiveMode.Create);
+        ZipArchiveEntry entry = archive.CreateEntry($"{packageId}.nuspec");
+        using Stream stream = entry.Open();
+        nuspec.Save(stream);
+    }
+
+    private static string[] ExpectedInternalDependencies(string packageId)
+        => packageId switch
+        {
+            "Hexalith.EventStore.Admin.Abstractions" => ["Hexalith.EventStore.Contracts"],
+            "Hexalith.EventStore.Admin.Server" =>
+            [
+                "Hexalith.EventStore.Admin.Abstractions",
+                "Hexalith.EventStore.Contracts",
+            ],
+            "Hexalith.EventStore.Client" => ["Hexalith.EventStore.Contracts"],
+            "Hexalith.EventStore.DomainService" =>
+            [
+                "Hexalith.EventStore.Client",
+                "Hexalith.EventStore.ServiceDefaults",
+            ],
+            GatewayPackageId => GatewayRequiredDependencies,
+            "Hexalith.EventStore.Server" =>
+            [
+                "Hexalith.EventStore.Client",
+                "Hexalith.EventStore.Contracts",
+            ],
+            "Hexalith.EventStore.SignalR" => ["Hexalith.EventStore.Contracts"],
+            "Hexalith.EventStore.Testing" =>
+            [
+                "Hexalith.EventStore.Client",
+                "Hexalith.EventStore.Contracts",
+                "Hexalith.EventStore.Server",
+            ],
+            "Hexalith.EventStore.Testing.Integration" =>
+            [
+                "Hexalith.EventStore.Client",
+                "Hexalith.EventStore.DomainService",
+                "Hexalith.EventStore.Server",
+                "Hexalith.EventStore.Testing",
+            ],
+            _ => [],
+        };
+
+    private static string[] ExpectedExternalHexalithDependencies(string packageId)
+        => packageId switch
+        {
+            "Hexalith.EventStore.Admin.Server" => ["Hexalith.Tenants.Contracts"],
+            "Hexalith.EventStore.Contracts" => ["Hexalith.Commons.UniqueIds"],
+            _ => [],
+        };
+
+    private static (int ExitCode, string Output, string Error) RunPackageValidator(
+        string validator,
+        string packageDirectory)
+        => validator.StartsWith("tools/", StringComparison.Ordinal)
+            ? RunPythonScript(validator, packageDirectory, PackageFixtureVersion)
+            : RunPythonScript(validator, packageDirectory);
+
+    private static (int ExitCode, string Output, string Error) RunPythonScript(
+        string script,
+        params string[] arguments)
+    {
+        using Process process = new()
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = "python3",
+                RedirectStandardError = true,
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                WorkingDirectory = FindRepositoryRoot(),
+            },
+        };
+        process.StartInfo.ArgumentList.Add(script);
+        foreach (string argument in arguments)
+        {
+            process.StartInfo.ArgumentList.Add(argument);
+        }
+
+        process.Start().ShouldBeTrue($"Could not start {script}.");
+        Task<string> outputTask = process.StandardOutput.ReadToEndAsync();
+        Task<string> errorTask = process.StandardError.ReadToEndAsync();
+        if (!process.WaitForExit((int)MsBuildPropertyTimeout.TotalMilliseconds))
+        {
+            process.Kill(entireProcessTree: true);
+            throw new TimeoutException($"{script} timed out after {MsBuildPropertyTimeout}.");
+        }
+
+        return (
+            process.ExitCode,
+            outputTask.GetAwaiter().GetResult(),
+            errorTask.GetAwaiter().GetResult());
     }
 
     private static ReleasePackage[] LoadReleasePackages()
