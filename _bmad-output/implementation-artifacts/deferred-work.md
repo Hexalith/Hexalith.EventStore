@@ -808,3 +808,11 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-6-manifest-driven-release-packaging.md`
   summary: [LOW] New evidence only, no status change: the 2026-07-31 story-3.6 asset-glob entry above cites a test name that does not exist, so its evidence trail is unfollowable.
   evidence: Story 3.6 follow-up review pass 2 (2026-07-31, verified against `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs`). That entry attributes the exact-scope publish assertion to `ReleasePackageManifestTests.Semantic_release_publish_command_pushes_scoped_packages`; no test of that name exists in the repository. The assertion is real but lives in `Semantic_release_delegates_package_inventory_to_manifest_scripts`, which now also pins that `tools/pack-release-packages.py` precedes `tools/validate-release-packages.py` in `prepareCmd` — the command ordering the earlier entry's stated mitigation depends on and which nothing previously asserted. The deferred finding itself (the unscoped `nupkgs/*.nupkg` GitHub asset glob at `.releaserc.json:18`) is unchanged and still open. Recorded as new evidence against that entry; the orchestrator owns its status and resolution.
+
+### DW-5: Follow-up review still recommended for 3-6-manifest-driven-release-packaging after the damping cap was spent
+origin: review-budget-followup
+location: n/a
+source_spec: `spec-3-6-manifest-driven-release-packaging.md`
+severity: low
+reason: The follow-up-review damping cap (limits.max_followup_reviews = 1) was spent with the story finalized (status: done, verify green) while the review pass still recommended an independent follow-up. The work was committed by bmad-loop run 20260731-203343-5b29; this entry preserves the lingering recommendation for a deliberate later review.
+status: open
