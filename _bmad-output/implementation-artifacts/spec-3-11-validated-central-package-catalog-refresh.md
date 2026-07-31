@@ -2,11 +2,15 @@
 title: 'Validated Central Package Catalog Refresh'
 type: 'feature'
 created: '2026-07-31'
-status: 'in-review'
+status: 'awaiting-operator'
 baseline_revision: '9b9c776791c149cab26c795a476d23d3d11f7796'
 baseline_commit: '9b9c776791c149cab26c795a476d23d3d11f7796'
+final_revision: 'caef47fcff54ade19f50cf752c25aeb74e639afa'
 review_loop_iteration: 0
 followup_review_recommended: true
+operator_actions:
+  - 'Approve Hexalith.Builds catalog commit 9dc0fe1ffbf33269fddf195fd12317def86728f0 as the Hexalith.Builds maintainer.'
+  - 'Approve EventStore implementation commit caef47fcff54ade19f50cf752c25aeb74e639afa and its representative-consumer compatibility evidence as the EventStore maintainer.'
 context:
   - '_bmad-output/project-context.md'
   - '_bmad-output/implementation-artifacts/epic-3-context.md'
@@ -80,6 +84,7 @@ deferred: []
 
 - 2026-07-31 -- Created the executable catalog-refresh contract from the approved Story 3.11 scope.
 - 2026-07-31 -- Implemented the complete live audit, offline validation, accepted rollback groups, retained exceptions, consumer evidence, and four-layer review hardening.
+- 2026-07-31 -- Finalized the agent-complete implementation at `caef47fcff54ade19f50cf752c25aeb74e639afa` for the two required maintainer approvals.
 
 ## Review Triage Log
 
@@ -115,7 +120,7 @@ The live audit may use network sources, but CI validates a checked-in evidence c
 
 ## Auto Run Result
 
-Status: review complete; operator handoff pending finalization
+Status: awaiting-operator
 
 Summary: Story 3.11 now provides a source-aware live generator and deterministic offline contract for every one of the 284 evaluated catalog rows. The validated catalog accepts 13 rows in five rollback groups, retains 271 rows with explicit evidence, records eight feed-missing IDs without downgrade, and proves the selected state in Builds plus EventStore package mode. Review hardening also withdrew two candidates whose representative compatibility evidence was insufficient.
 
