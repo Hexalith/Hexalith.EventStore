@@ -435,9 +435,9 @@ The table records the current planning baseline. Story 3.11 updates version rows
 | Target framework | net10.0 |
 | Aspire.Hosting | 13.4.6 |
 | Aspire.Hosting.Keycloak / Kubernetes | 13.4.6-preview.1.26319.6 |
-| CommunityToolkit.Aspire.Hosting.Dapr | 13.4.1-beta.686 |
+| CommunityToolkit.Aspire.Hosting.Dapr | 13.4.1-beta.687 |
 | DAPR runtime | Repository CI/deployment seed `1.18.0`; production profiles pin a compatible 1.18.x release |
-| Dapr .NET SDK packages | 1.18.4 |
+| Dapr .NET SDK packages | 1.18.5 |
 | DAPR OpenBao secret store | Stable component v1 since DAPR runtime 1.16; `secretstores.hashicorp.vault` |
 | MediatR | 14.2.0 |
 | FluentValidation | 12.1.1 |
