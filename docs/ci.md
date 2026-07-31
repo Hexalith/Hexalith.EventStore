@@ -108,13 +108,19 @@ requires every embedded version to equal semantic-release's requested version.
 Every root-owned manifest `ProjectReference` must become a canonical,
 same-release NuGet dependency in each applicable target-framework group, and
 each direct external `Hexalith.*` `PackageReference` must appear as a versioned
-dependency. Both dependency contracts are waived only for `DotnetTool`
-packages, which ship a self-contained closure and emit no dependency metadata.
-The Gateway archive has an additional explicit four-edge guard for
+dependency. Both dependency contracts are waived only for the manifest tool
+packages listed in `TOOL_PACKAGE_IDS`, which ship a self-contained closure and
+emit no dependency metadata. The waiver is keyed on that manifest-owned list,
+never on the archive's own `<packageTypes>`, so an archive cannot switch off the
+proof it is subject to; a package that declares `DotnetTool` without being a
+manifest tool package — or a manifest tool package that omits it — fails closed.
+The Gateway project graph carries an additional explicit four-edge guard for
 `Hexalith.EventStore.Admin.Abstractions`,
 `Hexalith.EventStore.Contracts`, `Hexalith.EventStore.Server`, and
-`Hexalith.EventStore.ServiceDefaults`. Project paths and checkout-local source
-metadata are never accepted as package dependency evidence.
+`Hexalith.EventStore.ServiceDefaults`, so the derived expectation the Gateway
+archive is measured against cannot silently shrink. Project paths, build-output
+paths (`bin/`, `obj/`, `artifacts/`) and checkout-local source metadata are
+never accepted as package dependency evidence, anywhere in the nuspec.
 
 ## Release Flow
 

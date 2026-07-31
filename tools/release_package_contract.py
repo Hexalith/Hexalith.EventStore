@@ -7,6 +7,7 @@ import json
 import pathlib
 import re
 import subprocess
+import time
 import xml.etree.ElementTree as ET
 import zipfile
 from collections.abc import Iterable
@@ -25,11 +26,25 @@ GATEWAY_REQUIRED_DEPENDENCIES = frozenset(
         "Hexalith.EventStore.ServiceDefaults",
     }
 )
+DOTNET_TOOL_PACKAGE_TYPE = "DotnetTool"
+TOOL_PACKAGE_IDS = frozenset({"Hexalith.EventStore.Admin.Cli"})
+"""Manifest packages that ship as .NET tools.
+
+Tool packages emit a self-contained closure instead of dependency metadata, so
+the dependency contracts are waived for them. Membership is decided here rather
+than from the archive's own ``<packageTypes>`` element: a waiver keyed on
+attacker- or accident-controlled metadata would let any archive switch off the
+proof it is being subjected to.
+"""
+
 PROJECT_EVALUATION_TIMEOUT_SECONDS = 300
+MANIFEST_EVALUATION_BUDGET_SECONDS = 900
 _PACKAGE_ID_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+$")
+_DRIVE_QUALIFIED_PATTERN = re.compile(r"^[A-Za-z]:")
 _PROJECT_METADATA_PATTERN = re.compile(
     r"(?:ProjectReference|\.(?:cs|fs|vb)proj(?:\b|$)|"
-    r"(?:^|[\s;=\"'>])(?:\.\.[\\/]|src[\\/]|references[\\/]|[A-Za-z]:[\\/]|/(?![/\s>])))",
+    r"(?:^|[\s;=\"'>])(?:\.\.[\\/]|~[\\/]|(?:src|references|bin|obj|artifacts)[\\/]"
+    r"|[A-Za-z]:[\\/]|\\\\[^\\/\s]|/(?![/\s>])))",
     re.IGNORECASE,
 )
 """Reject source paths in attribute values and in element text.
@@ -37,7 +52,9 @@ _PROJECT_METADATA_PATTERN = re.compile(
 The boundary class includes ``>`` because serialized XML always places a
 closing angle bracket immediately before element text; without it a checkout
 path in element position (``<description>``, ``<icon>``, ``<projectUrl>``)
-would never be examined.
+would never be examined. ``bin/``, ``obj/`` and ``artifacts/`` are the output
+directories a real ``dotnet pack`` leak would carry, and none of them is
+rooted, so the rooted-path alternatives alone would accept them.
 """
 
 
@@ -144,6 +161,7 @@ def load_release_manifest(
 def evaluate_project_properties(
     package: ManifestPackage,
     properties: Iterable[str],
+    timeout_seconds: float = PROJECT_EVALUATION_TIMEOUT_SECONDS,
 ) -> dict[str, str]:
     """Evaluate project properties using the same safe release-mode inputs as packing."""
 
@@ -165,12 +183,12 @@ def evaluate_project_properties(
             capture_output=True,
             check=False,
             text=True,
-            timeout=PROJECT_EVALUATION_TIMEOUT_SECONDS,
+            timeout=timeout_seconds,
         )
     except subprocess.TimeoutExpired as error:
         raise ValueError(
             f"Evaluating {package.project} timed out after "
-            f"{PROJECT_EVALUATION_TIMEOUT_SECONDS} seconds."
+            f"{timeout_seconds:.0f} seconds."
         ) from error
     if completed.returncode != 0:
         detail = completed.stderr.strip() or completed.stdout.strip()
@@ -189,8 +207,21 @@ def validate_manifest_projects(packages: Iterable[ManifestPackage]) -> None:
     """Prove all manifest projects are packable and produce their declared IDs."""
 
     failures: list[str] = []
+    # The per-project timeout alone lets a whole-inventory sweep stall semantic-release
+    # prepare for fourteen times that budget, so the sweep carries its own deadline.
+    deadline = time.monotonic() + MANIFEST_EVALUATION_BUDGET_SECONDS
     for package in packages:
-        properties = evaluate_project_properties(package, ("IsPackable", "PackageId"))
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise ValueError(
+                "Release package project evaluation exceeded its whole-inventory budget of "
+                f"{MANIFEST_EVALUATION_BUDGET_SECONDS} seconds at {package.project}."
+            )
+        properties = evaluate_project_properties(
+            package,
+            ("IsPackable", "PackageId"),
+            min(PROJECT_EVALUATION_TIMEOUT_SECONDS, remaining),
+        )
         if properties["IsPackable"].casefold() != "true":
             failures.append(f"{package.project} evaluates IsPackable={properties['IsPackable'] or '<empty>'}")
         if properties["PackageId"] != package.package_id:
@@ -225,6 +256,9 @@ def _validate_archive_paths(archive: zipfile.ZipFile, package_path: pathlib.Path
             name != normalized
             or pathlib.PurePosixPath(normalized).is_absolute()
             or pathlib.PureWindowsPath(normalized).is_absolute()
+            # A drive-relative entry such as `C:leak.txt` is absolute under neither
+            # flavour, yet it still escapes the package root when extracted on Windows.
+            or _DRIVE_QUALIFIED_PATTERN.match(normalized) is not None
             or ".." in parts
             or normalized.casefold().endswith((".csproj", ".fsproj", ".vbproj"))
         ):
@@ -254,9 +288,15 @@ def read_package_metadata(package_path: pathlib.Path) -> PackageMetadata:
     if not _PACKAGE_ID_PATTERN.fullmatch(package_id):
         raise ValueError(f"{package_path.name} contains an invalid embedded package id: {package_id}")
 
-    nuspec_text = ET.tostring(metadata, encoding="unicode")
-    if _PROJECT_METADATA_PATTERN.search(nuspec_text):
-        raise ValueError(f"{package_path.name} nuspec contains local project or source-path metadata.")
+    # Scan the whole document, not just <metadata>: a sibling element such as
+    # <files> is equally part of the shipped nuspec.
+    nuspec_text = ET.tostring(root, encoding="unicode")
+    leak = _PROJECT_METADATA_PATTERN.search(nuspec_text)
+    if leak is not None:
+        raise ValueError(
+            f"{package_path.name} nuspec contains local project or source-path metadata: "
+            f"{leak.group(0).strip()!r}"
+        )
 
     dependencies: list[PackageDependency] = []
     dependency_groups: list[str | None] = []
@@ -367,6 +407,23 @@ def _manifest_external_hexalith_dependencies(
     return expected
 
 
+def _validate_package_type_contract(package: PackageMetadata) -> None:
+    """Bind the tool-package waiver to the manifest instead of to archive metadata."""
+
+    declares_tool = DOTNET_TOOL_PACKAGE_TYPE in package.package_types
+    is_tool_package = package.package_id in TOOL_PACKAGE_IDS
+    if declares_tool and not is_tool_package:
+        raise ValueError(
+            f"{package.package_id} declares the {DOTNET_TOOL_PACKAGE_TYPE} package type but is not a "
+            "manifest tool package; dependency proof must not be waived by archive metadata."
+        )
+    if is_tool_package and not declares_tool:
+        raise ValueError(
+            f"{package.package_id} is a manifest tool package but does not declare the "
+            f"{DOTNET_TOOL_PACKAGE_TYPE} package type."
+        )
+
+
 def _validate_internal_dependencies(
     package: PackageMetadata,
     expected_dependencies: frozenset[str],
@@ -375,7 +432,7 @@ def _validate_internal_dependencies(
 ) -> None:
     """Require canonical, same-release internal edges in every dependency group."""
 
-    if "DotnetTool" in package.package_types:
+    if package.package_id in TOOL_PACKAGE_IDS:
         expected_dependencies = frozenset()
 
     dependencies_by_group: dict[str | None, list[PackageDependency]] = {
@@ -431,7 +488,7 @@ def _validate_external_hexalith_dependencies(
 ) -> None:
     """Require direct external Hexalith package-mode references in every dependency group."""
 
-    if "DotnetTool" in package.package_types:
+    if package.package_id in TOOL_PACKAGE_IDS:
         # Tool packages ship a self-contained closure and emit no dependency
         # metadata, exactly as the internal-edge contract already allows.
         return
@@ -505,6 +562,8 @@ def validate_package_directory(
                 f"{canonical_id}: {metadata.package_id}"
             )
 
+        _validate_package_type_contract(metadata)
+
         expected_name = f"{metadata.package_id}.{metadata.version}.nupkg"
         if nupkg.name != expected_name:
             raise ValueError(f"Renamed package archive {nupkg.name}; embedded metadata requires {expected_name}.")
@@ -548,6 +607,13 @@ def validate_package_directory(
     if expected_dependencies.get(GATEWAY_PACKAGE_ID) != GATEWAY_REQUIRED_DEPENDENCIES:
         raise ValueError(
             f"{GATEWAY_PACKAGE_ID} project graph does not match its explicit four-edge release contract."
+        )
+
+    unknown_tool_packages = sorted(TOOL_PACKAGE_IDS - {package.package_id for package in manifest})
+    if unknown_tool_packages:
+        raise ValueError(
+            "Tool package contract names packages outside the manifest: "
+            + ", ".join(unknown_tool_packages)
         )
 
     ordered = [actual_by_key[package.package_id.casefold()] for package in manifest]

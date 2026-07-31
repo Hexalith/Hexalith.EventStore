@@ -20,6 +20,23 @@ public sealed class ReleasePackageManifestTests
     private const string ServiceDefaultsPackageId = "Hexalith.EventStore.ServiceDefaults";
     private const string ServiceDefaultsProjectPath = "src/Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj";
     private const string SetupNodeActionSha = "820762786026740c76f36085b0efc47a31fe5020";
+    private const string ToolPackageId = "Hexalith.EventStore.Admin.Cli";
+
+    /// <summary>
+    /// Loads the shared contract and exercises its manifest normalizer against an
+    /// injected manifest and repository root, which no CLI entry point exposes.
+    /// </summary>
+    private const string ManifestLoaderProbe = """
+        import pathlib, sys
+        sys.path.insert(0, 'tools')
+        from release_package_contract import load_release_manifest
+        try:
+            load_release_manifest(pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2]))
+        except Exception as error:
+            print(error, file=sys.stderr)
+            raise SystemExit(1)
+        """;
+
     private static readonly string[] GatewayRequiredDependencies =
     [
         "Hexalith.EventStore.Admin.Abstractions",
@@ -122,6 +139,106 @@ public sealed class ReleasePackageManifestTests
     }
 
     [Fact]
+    public void Non_manifest_src_projects_cannot_produce_release_packages()
+    {
+        string root = FindRepositoryRoot();
+        HashSet<string> manifestProjects = LoadReleasePackages()
+            .Select(package => Path.GetFullPath(Path.Combine(root, package.Project)))
+            .ToHashSet(StringComparer.Ordinal);
+
+        string[] unlistedProjects = Directory
+            .GetFiles(Path.Combine(root, "src"), "*.csproj", SearchOption.AllDirectories)
+            .Where(project => !manifestProjects.Contains(Path.GetFullPath(project)))
+            .ToArray();
+
+        unlistedProjects.ShouldNotBeEmpty(
+            "The complement must be non-empty, otherwise this assertion proves nothing.");
+
+        // Directory.Build.props defaults IsPackable to true, so a new src project is
+        // packable unless it opts out. Without this the manifest only proves
+        // manifest => packable, never packable => manifest.
+        foreach (string project in unlistedProjects)
+        {
+            File.ReadAllText(project)
+                .Replace("\r\n", "\n", StringComparison.Ordinal)
+                .ShouldContain(
+                    "<IsPackable>false</IsPackable>",
+                    Case.Sensitive,
+                    $"A src project outside tools/release-packages.json must be explicitly unpackable: "
+                    + Path.GetRelativePath(root, project));
+        }
+    }
+
+    [Theory]
+    [InlineData("empty-packages", "non-empty 'packages' array")]
+    [InlineData("non-object-entry", "must be an object")]
+    [InlineData("missing-fields", "string 'id' and 'project' values")]
+    [InlineData("foreign-scope", "outside EventStore scope")]
+    [InlineData("unnormalized-project", "must be normalized as")]
+    [InlineData("traversal-project", "not a normalized relative .csproj path")]
+    [InlineData("outside-src", "outside the root-owned src directory")]
+    [InlineData("missing-project", "does not exist")]
+    [InlineData("duplicate-id", "Duplicate package id")]
+    [InlineData("duplicate-project", "Duplicate project")]
+    public void Manifest_loader_fails_closed_before_packing(string mutation, string expectedDiagnostic)
+    {
+        string sandbox = Directory.CreateTempSubdirectory("eventstore-manifest-mutation-").FullName;
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(sandbox, "src", "First"));
+            Directory.CreateDirectory(Path.Combine(sandbox, "src", "Second"));
+            Directory.CreateDirectory(Path.Combine(sandbox, "outside"));
+            File.WriteAllText(Path.Combine(sandbox, "src", "First", "First.csproj"), "<Project />");
+            File.WriteAllText(Path.Combine(sandbox, "src", "Second", "Second.csproj"), "<Project />");
+            File.WriteAllText(Path.Combine(sandbox, "outside", "Other.csproj"), "<Project />");
+
+            string manifestPath = Path.Combine(sandbox, "release-packages.json");
+            File.WriteAllText(manifestPath, MutatedManifestJson(mutation));
+
+            (int exitCode, _, string error) = RunPythonScript(
+                "-c",
+                ManifestLoaderProbe,
+                manifestPath,
+                sandbox);
+
+            exitCode.ShouldBe(1, $"The '{mutation}' manifest must be rejected before any pack command.");
+            error.ShouldContain(expectedDiagnostic);
+        }
+        finally
+        {
+            Directory.Delete(sandbox, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Manifest_loader_accepts_the_normalized_control_manifest()
+    {
+        string sandbox = Directory.CreateTempSubdirectory("eventstore-manifest-control-").FullName;
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(sandbox, "src", "First"));
+            Directory.CreateDirectory(Path.Combine(sandbox, "src", "Second"));
+            File.WriteAllText(Path.Combine(sandbox, "src", "First", "First.csproj"), "<Project />");
+            File.WriteAllText(Path.Combine(sandbox, "src", "Second", "Second.csproj"), "<Project />");
+
+            string manifestPath = Path.Combine(sandbox, "release-packages.json");
+            File.WriteAllText(manifestPath, MutatedManifestJson("valid"));
+
+            (int exitCode, _, string error) = RunPythonScript(
+                "-c",
+                ManifestLoaderProbe,
+                manifestPath,
+                sandbox);
+
+            exitCode.ShouldBe(0, error);
+        }
+        finally
+        {
+            Directory.Delete(sandbox, recursive: true);
+        }
+    }
+
+    [Fact]
     public void Rest_api_generator_project_packs_analyzer_assets_without_runtime_lib_output()
     {
         string root = FindRepositoryRoot();
@@ -177,6 +294,10 @@ public sealed class ReleasePackageManifestTests
         prepareCommand.ShouldContain("tools/pack-release-packages.py");
         prepareCommand.ShouldContain("tools/validate-release-packages.py");
         prepareCommand.ShouldNotContain("dotnet pack");
+        prepareCommand.IndexOf("tools/pack-release-packages.py", StringComparison.Ordinal).ShouldBeLessThan(
+            prepareCommand.IndexOf("tools/validate-release-packages.py", StringComparison.Ordinal),
+            "Packing must precede validation; the GitHub asset glob is unscoped, so the fail-closed "
+            + "validator running over the packed output is what keeps release assets manifest-only.");
 
         string publishCommand = releaseConfig
             .RootElement
@@ -309,6 +430,16 @@ public sealed class ReleasePackageManifestTests
     [InlineData("scripts/validate-nuget-packages.py", "archive-project-entry", "local or unsafe archive path")]
     [InlineData("tools/validate-release-packages.py", "archive-traversal-entry", "local or unsafe archive path")]
     [InlineData("scripts/validate-nuget-packages.py", "archive-traversal-entry", "local or unsafe archive path")]
+    [InlineData("tools/validate-release-packages.py", "archive-drive-relative-entry", "local or unsafe archive path")]
+    [InlineData("scripts/validate-nuget-packages.py", "archive-drive-relative-entry", "local or unsafe archive path")]
+    [InlineData("tools/validate-release-packages.py", "output-path-metadata-leak", "local project or source-path metadata")]
+    [InlineData("scripts/validate-nuget-packages.py", "output-path-metadata-leak", "local project or source-path metadata")]
+    [InlineData("tools/validate-release-packages.py", "sibling-metadata-leak", "local project or source-path metadata")]
+    [InlineData("scripts/validate-nuget-packages.py", "sibling-metadata-leak", "local project or source-path metadata")]
+    [InlineData("tools/validate-release-packages.py", "tool-type-forgery", "declares the DotnetTool package type")]
+    [InlineData("scripts/validate-nuget-packages.py", "tool-type-forgery", "declares the DotnetTool package type")]
+    [InlineData("tools/validate-release-packages.py", "tool-type-missing", "does not declare the DotnetTool package type")]
+    [InlineData("scripts/validate-nuget-packages.py", "tool-type-missing", "does not declare the DotnetTool package type")]
     [InlineData("tools/validate-release-packages.py", "gateway-dependency-loss", "internal dependency contract failed")]
     [InlineData("scripts/validate-nuget-packages.py", "gateway-dependency-loss", "internal dependency contract failed")]
     [InlineData("tools/validate-release-packages.py", "client-dependency-loss", "internal dependency contract failed")]
@@ -785,6 +916,12 @@ public sealed class ReleasePackageManifestTests
             {
                 dependencies = ExpectedInternalDependencies(package.Id);
             }
+            else if (mutation == "tool-type-forgery" && package.Id == GatewayPackageId)
+            {
+                // A library that declares itself a tool must not thereby waive its
+                // dependency proof, so the forged archive also drops every edge.
+                dependencies = [];
+            }
 
             string dependencyVersion = mutation == "gateway-dependency-version-drift" && package.Id == GatewayPackageId
                 ? "999.3.5-fixture"
@@ -800,6 +937,10 @@ public sealed class ReleasePackageManifestTests
                 {
                     IncludeAttributeMetadataLeak = mutation == "metadata-leak" && index == 0,
                     IncludeElementMetadataLeak = mutation == "element-metadata-leak" && index == 0,
+                    IncludeOutputPathMetadataLeak = mutation == "output-path-metadata-leak" && index == 0,
+                    IncludeSiblingMetadataLeak = mutation == "sibling-metadata-leak" && index == 0,
+                    ForgeToolPackageType = mutation == "tool-type-forgery" && package.Id == GatewayPackageId,
+                    OmitToolPackageType = mutation == "tool-type-missing" && package.Id == ToolPackageId,
                     DuplicateDependencies =
                         (mutation is "duplicate-dependency" or "ungrouped-duplicate-dependency")
                         && package.Id == GatewayPackageId,
@@ -811,6 +952,7 @@ public sealed class ReleasePackageManifestTests
                         {
                             "archive-project-entry" => ["src/Leaked/Leaked.csproj"],
                             "archive-traversal-entry" => ["../escaped-from-package.txt"],
+                            "archive-drive-relative-entry" => ["C:leaked-from-package.txt"],
                             _ => [],
                         },
                 });
@@ -881,7 +1023,9 @@ public sealed class ReleasePackageManifestTests
             new XElement(NuspecNamespace + "description", "Synthetic release contract fixture"),
             new XElement(NuspecNamespace + "projectUrl", "https://github.com/Hexalith/Hexalith.EventStore"),
             dependenciesElement);
-        if (packageId == "Hexalith.EventStore.Admin.Cli")
+        bool declaresToolPackageType = fixture.ForgeToolPackageType
+            || (packageId == ToolPackageId && !fixture.OmitToolPackageType);
+        if (declaresToolPackageType)
         {
             metadata.Add(
                 new XElement(
@@ -906,10 +1050,27 @@ public sealed class ReleasePackageManifestTests
                 "../../artifacts/checkout/icon.png"));
         }
 
-        XDocument nuspec = new(
-            new XElement(
-                NuspecNamespace + "package",
-                metadata));
+        if (fixture.IncludeOutputPathMetadataLeak)
+        {
+            // Unrooted build-output paths are the shape a real pack leak carries;
+            // the rooted and traversal alternatives never see them.
+            metadata.Add(new XElement(
+                NuspecNamespace + "icon",
+                "bin/Release/net10.0/icon.png"));
+        }
+
+        XElement packageElement = new(NuspecNamespace + "package", metadata);
+        if (fixture.IncludeSiblingMetadataLeak)
+        {
+            // A leak outside <metadata> is still shipped nuspec content.
+            packageElement.Add(new XElement(
+                NuspecNamespace + "files",
+                new XElement(
+                    NuspecNamespace + "file",
+                    new XAttribute("src", "src/LocalProject.csproj"))));
+        }
+
+        XDocument nuspec = new(packageElement);
         using ZipArchive archive = ZipFile.Open(archivePath, ZipArchiveMode.Create);
         foreach (string extraEntry in fixture.ExtraArchiveEntries)
         {
@@ -927,11 +1088,47 @@ public sealed class ReleasePackageManifestTests
 
         public bool IncludeElementMetadataLeak { get; init; }
 
+        public bool IncludeOutputPathMetadataLeak { get; init; }
+
+        public bool IncludeSiblingMetadataLeak { get; init; }
+
+        public bool ForgeToolPackageType { get; init; }
+
+        public bool OmitToolPackageType { get; init; }
+
         public bool DuplicateDependencies { get; init; }
 
         public bool UngroupedDependencies { get; init; }
 
         public string[] ExtraArchiveEntries { get; init; } = [];
+    }
+
+    private static string MutatedManifestJson(string mutation)
+    {
+        const string first = "Hexalith.EventStore.First";
+        const string second = "Hexalith.EventStore.Second";
+        const string firstProject = "src/First/First.csproj";
+        const string secondProject = "src/Second/Second.csproj";
+
+        string entries = mutation switch
+        {
+            "empty-packages" => string.Empty,
+            "non-object-entry" => "\"Hexalith.EventStore.First\"",
+            "missing-fields" => $$"""{"id": "{{first}}"}""",
+            "foreign-scope" => $$"""{"id": "Hexalith.Commons.Foreign", "project": "{{firstProject}}"}""",
+            "unnormalized-project" => $$"""{"id": "{{first}}", "project": "./{{firstProject}}"}""",
+            "traversal-project" => $$"""{"id": "{{first}}", "project": "src/../outside/Other.csproj"}""",
+            "outside-src" => $$"""{"id": "{{first}}", "project": "outside/Other.csproj"}""",
+            "missing-project" => $$"""{"id": "{{first}}", "project": "src/Absent/Absent.csproj"}""",
+            "duplicate-id" =>
+                $$"""{"id": "{{first}}", "project": "{{firstProject}}"}, {"id": "{{first}}", "project": "{{secondProject}}"}""",
+            "duplicate-project" =>
+                $$"""{"id": "{{first}}", "project": "{{firstProject}}"}, {"id": "{{second}}", "project": "{{firstProject}}"}""",
+            _ =>
+                $$"""{"id": "{{first}}", "project": "{{firstProject}}"}, {"id": "{{second}}", "project": "{{secondProject}}"}""",
+        };
+
+        return $$"""{"packages": [{{entries}}]}""";
     }
 
     private static string[] ExpectedInternalDependencies(string packageId)

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import pathlib
 import subprocess
 import sys
@@ -16,7 +17,11 @@ from xml.sax.saxutils import quoteattr
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
-from release_package_contract import PackageMetadata, validate_package_directory  # noqa: E402
+from release_package_contract import (  # noqa: E402
+    TOOL_PACKAGE_IDS,
+    PackageMetadata,
+    validate_package_directory,
+)
 
 
 def write_nuget_config(consumer_dir: pathlib.Path, package_source: pathlib.Path) -> pathlib.Path:
@@ -91,10 +96,17 @@ def write_consumer_project(
     return project_path
 
 
-def run(command: list[str], cwd: pathlib.Path = ROOT) -> None:
+def run(
+    command: list[str],
+    cwd: pathlib.Path = ROOT,
+    packages_folder: pathlib.Path | None = None,
+) -> None:
     """Run one consumer command and preserve its diagnostic output."""
 
-    completed = subprocess.run(command, cwd=cwd, check=False)
+    env = None
+    if packages_folder is not None:
+        env = {**os.environ, "NUGET_PACKAGES": str(packages_folder)}
+    completed = subprocess.run(command, cwd=cwd, check=False, env=env)
     if completed.returncode != 0:
         raise subprocess.CalledProcessError(completed.returncode, completed.args)
 
@@ -172,6 +184,11 @@ def validate_dotnet_tool_package(
     with tempfile.TemporaryDirectory(prefix="eventstore-package-tool-consumer-") as temp_dir_name:
         consumer_dir = pathlib.Path(temp_dir_name)
         config_path = write_nuget_config(consumer_dir, package_path)
+        # `dotnet tool install` has no `--packages` switch, so the global packages
+        # folder is redirected instead. Without it a cached archive at the same
+        # fixed CI version would satisfy the install and the archive under test
+        # would never be read.
+        packages_folder = consumer_dir / "packages"
         run(["dotnet", "new", "tool-manifest", "--force"], cwd=consumer_dir)
         run(
             [
@@ -185,6 +202,7 @@ def validate_dotnet_tool_package(
                 str(config_path),
             ],
             cwd=consumer_dir,
+            packages_folder=packages_folder,
         )
 
 
@@ -196,8 +214,11 @@ def main() -> int:
     package_dir = pathlib.Path(args.package_directory)
     package_path = package_dir if package_dir.is_absolute() else ROOT / package_dir
     packages, version = validate_package_directory(package_path)
-    tool_packages = [package for package in packages if "DotnetTool" in package.package_types]
-    library_packages = [package for package in packages if package not in tool_packages]
+    # Route on the manifest tool contract, not on the archive's own <packageTypes>:
+    # a library archive that declared DotnetTool would otherwise skip the
+    # restore/build proof entirely and only be installed as a tool.
+    tool_packages = [package for package in packages if package.package_id in TOOL_PACKAGE_IDS]
+    library_packages = [package for package in packages if package.package_id not in TOOL_PACKAGE_IDS]
 
     for package in library_packages:
         print(f"Validating isolated package-only consumer for {package.package_id}...", flush=True)
