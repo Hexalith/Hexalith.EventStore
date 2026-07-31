@@ -2,8 +2,9 @@
 title: 'Manifest-Driven Release Packaging'
 type: 'feature'
 created: '2026-07-31'
-status: 'in-review'
+status: 'done'
 baseline_revision: 'ef7c81e81a9f9c2beb17ad9b046408302b56250c'
+final_revision: '5c62abafc68e21423495889494760685a2e147e8'
 review_loop_iteration: 0
 followup_review_recommended: true
 context:
@@ -106,7 +107,7 @@ Use one shared Python contract for manifest normalization and `.nuspec` parsing,
 
 ## Auto Run Result
 
-Status: in-review
+Status: done
 
 Summary: Added a shared fail-closed release-package contract, made both release and CI validators inspect real embedded identities and dependency metadata, and changed consumer validation to restore every manifest library independently with local EventStore source mapping.
 
