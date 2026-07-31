@@ -53,7 +53,7 @@ source_files:
 
 # Story 3.5: Shared Package Catalog And Source/Package Reference Modes
 
-Status: ready-for-dev
+Status: done
 
 <!-- Ultimate context engine analysis completed - comprehensive developer guide created. -->
 
@@ -193,73 +193,87 @@ The explicit exception satisfies only the alternative in AC4's first `Then`; it 
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 - Apply the approved decisions and protect ownership boundaries (AC1-AC10).**
-  - [ ] Re-read `git status --short --branch`, `git log -5 --oneline`, the relevant planning artifacts, and every affected repository's tracked guidance before editing; preserve all user changes made after this story's baseline.
-  - [ ] Apply the approved explicit-opt-in rule consistently: unset or explicit `false` remains package mode in every configuration, while explicit `true` selects available source and otherwise falls back to packages.
-  - [ ] Enforce ecosystem-wide AC6. Inventory every source-owned Hexalith repository that retains local versions, obtain its maintainer's authority before editing it, and keep Story 3.5 blocked until each migration is complete and validated.
-  - [ ] Confirm Story 3.3 has reached `done` with current verification evidence before treating its references-layout guarantee as a completed prerequisite.
-  - [ ] Confirm the EventStore root owns consumer-mode logic, tests, scripts, docs, and its wrapper; confirm `references/Hexalith.Builds` owns the shared catalog, catalog validator, samples, shared workflows, and dependency-update automation.
-  - [ ] Confirm Story 2.12 is still gated by Story 1.20. If authorization has not changed, treat Tenants/Gateway as the documented source-only exception and make no dependency-identity change.
-  - [ ] Record AC4 as a completion gate while the Gateway source edge still mixes with package-mode EventStore dependencies; do not move this story to `done` based on documentation alone.
-  - [ ] Do not initialize/update nested submodules, perform broad dependency upgrades, generate lock files, prune packages, change release-manifest scope, or stage/commit/push unless separately authorized.
+- [x] **Task 1 - Apply the approved decisions and protect ownership boundaries (AC1-AC10).**
+  - [x] Re-read `git status --short --branch`, `git log -5 --oneline`, the relevant planning artifacts, and every affected repository's tracked guidance before editing; preserve all user changes made after this story's baseline.
+  - [x] Apply the approved explicit-opt-in rule consistently: unset or explicit `false` remains package mode in every configuration, while explicit `true` selects available source and otherwise falls back to packages.
+  - [x] Enforce ecosystem-wide AC6. Inventory every source-owned Hexalith repository that retains local versions, obtain its maintainer's authority before editing it, and keep Story 3.5 blocked until each migration is complete and validated.
+  - [x] Confirm Story 3.3 has reached `done` with current verification evidence before treating its references-layout guarantee as a completed prerequisite.
+  - [x] Confirm the EventStore root owns consumer-mode logic, tests, scripts, docs, and its wrapper; confirm `references/Hexalith.Builds` owns the shared catalog, catalog validator, samples, shared workflows, and dependency-update automation.
+  - [x] Confirm Story 2.12 is still gated by Story 1.20. If authorization has not changed, treat Tenants/Gateway as the documented source-only exception and make no dependency-identity change.
+  - [x] Record AC4 as a completion gate while the Gateway source edge still mixes with package-mode EventStore dependencies; do not move this story to `done` based on documentation alone.
+  - [x] Do not initialize/update nested submodules, perform broad dependency upgrades, generate lock files, prune packages, change release-manifest scope, or stage/commit/push unless separately authorized.
 
-- [ ] **Task 2 - Implement and prove the approved dependency-mode truth table (AC1-AC5).**
-  - [ ] Keep `Directory.Build.props` package-safe for unset or explicit `false` in Debug, Release, and empty/unset Configuration; activate source only for explicit `true` when the root-declared path exists.
-  - [ ] Preserve explicit `UseHexalithProjectReferences=true|false` as the highest-precedence override and keep the legacy `UseNuGetDeps` mapping coherent for existing callers.
-  - [ ] Add contradictory-input cases where both properties are supplied. Explicit `UseHexalithProjectReferences` is authoritative and `UseNuGetDeps` must not activate the opposite edge.
-  - [ ] Preserve `Exists(...)` guards: source intent with a missing root-declared source path must activate the package fallback, not leave both edges inactive.
-  - [ ] Add focused evaluation coverage for at least: Debug/unset/source-present (package), Debug/explicit-false, Release/unset, Release/explicit-true/source-present, empty-configuration/unset, and requested-source/source-missing.
-  - [ ] Evaluate all conditional external pairs and prove exactly one active `ProjectReference` or `PackageReference` per dependency and mode. Preserve same-repository EventStore project references as project references.
-  - [ ] Preserve genuine source-only application-host edges in `Hexalith.EventStore.AppHost`; do not invent package identities for non-package applications.
-  - [ ] Reconcile `Hexalith.EventStore.ServiceDefaults` separately: it is a packable library, and `Hexalith.Commons.ServiceDefaults` has a central package identity. Determine whether the current Commons project edge is required; if required, add a mutually exclusive versionless package edge in package mode, otherwise remove the redundant project edge. Validate resulting package metadata.
-  - [ ] Ensure shared Builds CI/release workflows restore with explicit Release/package intent before any `--no-restore` build/test so mode switches cannot reuse stale assets.
+- [x] **Task 2 - Implement and prove the approved dependency-mode truth table (AC1-AC5).**
+  - [x] Keep `Directory.Build.props` package-safe for unset or explicit `false` in Debug, Release, and empty/unset Configuration; activate source only for explicit `true` when the root-declared path exists.
+  - [x] Preserve explicit `UseHexalithProjectReferences=true|false` as the highest-precedence override and keep the legacy `UseNuGetDeps` mapping coherent for existing callers.
+  - [x] Add contradictory-input cases where both properties are supplied. Explicit `UseHexalithProjectReferences` is authoritative and `UseNuGetDeps` must not activate the opposite edge.
+  - [x] Preserve `Exists(...)` guards: source intent with a missing root-declared source path must activate the package fallback, not leave both edges inactive.
+  - [x] Add focused evaluation coverage for at least: Debug/unset/source-present (package), Debug/explicit-false, Release/unset, Release/explicit-true/source-present, empty-configuration/unset, and requested-source/source-missing.
+  - [x] Evaluate all conditional external pairs and prove exactly one active `ProjectReference` or `PackageReference` per dependency and mode. Preserve same-repository EventStore project references as project references.
+  - [x] Preserve genuine source-only application-host edges in `Hexalith.EventStore.AppHost`; do not invent package identities for non-package applications.
+  - [x] Reconcile `Hexalith.EventStore.ServiceDefaults` separately: it is a packable library, and `Hexalith.Commons.ServiceDefaults` has a central package identity. Determine whether the current Commons project edge is required; if required, add a mutually exclusive versionless package edge in package mode, otherwise remove the redundant project edge. Validate resulting package metadata.
+  - [x] Ensure shared Builds CI/release workflows restore with explicit Release/package intent before any `--no-restore` build/test so mode switches cannot reuse stale assets.
 
-- [ ] **Task 3 - Complete catalog ownership in Hexalith.Builds (AC6-AC10).**
-  - [ ] In the Builds repository, add exactly one central `PackageVersion` row for `NBomber.Http` `6.2.1` and exactly one for `xunit.v3.extensibility.core` `3.2.2` at their already-adopted EventStore versions.
-  - [ ] Do not change unrelated catalog versions. In particular, use current Builds values for System.CommandLine, ModelContextProtocol, TimeProvider testing, NBomber, and Playwright without widening this task into Story 3.11.
-  - [ ] Strengthen `Tools/validate-central-package-versions.ps1` and its focused fixture tests so duplicate effective IDs, missing/blank versions, unresolved properties, and malformed declarations fail closed.
-  - [ ] Update `README.md`, `DEVELOPMENT.md`, and `Samples/Module.Directory.Packages.props` so consumers import the catalog and contribute version changes to Builds; remove examples inviting consumer-local `PackageVersion` entries.
-  - [ ] Move centralized NuGet dependency-update ownership to Builds. Preserve consumer npm and GitHub Actions automation.
-  - [ ] Update the shared domain CI/release workflows and their workflow-contract tests to force a fresh Release/package-mode restore before build/test/package operations.
-  - [ ] Apply that workflow work in `.github/workflows/domain-ci.yml`, `.github/workflows/domain-release.yml`, and `.github/workflows/build-release.yml`, with contract coverage in `Tools/test-domain-workflow-test-platforms.ps1`.
-  - [ ] Validate and, when commits are authorized, commit Builds first. Record the exact Builds SHA before changing the EventStore gitlink; do not bundle unrelated submodule dirt.
+- [x] **Task 3 - Complete catalog ownership in Hexalith.Builds (AC6-AC10).**
+  - [x] In the Builds repository, add exactly one central `PackageVersion` row for `NBomber.Http` `6.2.1` and exactly one for `xunit.v3.extensibility.core` `3.2.2` at their already-adopted EventStore versions.
+  - [x] Do not change unrelated catalog versions. In particular, use current Builds values for System.CommandLine, ModelContextProtocol, TimeProvider testing, NBomber, and Playwright without widening this task into Story 3.11.
+  - [x] Strengthen `Tools/validate-central-package-versions.ps1` and its focused fixture tests so duplicate effective IDs, missing/blank versions, unresolved properties, and malformed declarations fail closed.
+  - [x] Update `README.md`, `DEVELOPMENT.md`, and `Samples/Module.Directory.Packages.props` so consumers import the catalog and contribute version changes to Builds; remove examples inviting consumer-local `PackageVersion` entries.
+  - [x] Move centralized NuGet dependency-update ownership to Builds. Preserve consumer npm and GitHub Actions automation.
+  - [x] Update the shared domain CI/release workflows and their workflow-contract tests to force a fresh Release/package-mode restore before build/test/package operations.
+  - [x] Apply that workflow work in `.github/workflows/domain-ci.yml`, `.github/workflows/domain-release.yml`, and `.github/workflows/build-release.yml`, with contract coverage in `Tools/test-domain-workflow-test-platforms.ps1`.
+  - [x] Validate and, when commits are authorized, commit Builds first. Record the exact Builds SHA before changing the EventStore gitlink; do not bundle unrelated submodule dirt.
 
-- [ ] **Task 4 - Make EventStore an import-only catalog consumer (AC2, AC6-AC8).**
-  - [ ] Remove the `HexalithCommonsVersion` fallback and every local `PackageVersion` Include/Update from `Directory.Packages.props`, including the remaining NBomber.Http, Playwright, and xUnit extensibility entries.
-  - [ ] Preserve the CPM configuration and the supported Builds import paths; do not add `VersionOverride` or replacement fallback properties elsewhere.
-  - [ ] Extend `ContractsPackageDependencyTests.cs` or add one focused packaging-governance test file to assert zero consumer-local package versions, zero `VersionOverride`, zero dependency-version fallback properties, and exact-once effective ownership from Builds.
-  - [ ] Remove the temporary Microsoft.Playwright allowlist and prove the effective version is inherited from Builds.
-  - [ ] Add effective MSBuild/restore assertions for `NBomber.Http`, `xunit.v3.extensibility.core`, System.CommandLine, ModelContextProtocol, Microsoft.Extensions.TimeProvider.Testing, NBomber, and Playwright without hard-coding versions that merely duplicate the catalog. Where adoption itself matters, compare evaluated values to the Builds source of truth.
-  - [ ] Preserve the completed removals in baseline commit `f7b2aa1c`; do not recreate prior consumer-local pins.
+- [x] **Task 4 - Make EventStore an import-only catalog consumer (AC2, AC6-AC8).**
+  - [x] Remove the `HexalithCommonsVersion` fallback and every local `PackageVersion` Include/Update from `Directory.Packages.props`, including the remaining NBomber.Http, Playwright, and xUnit extensibility entries.
+  - [x] Preserve the CPM configuration and the supported Builds import paths; do not add `VersionOverride` or replacement fallback properties elsewhere.
+  - [x] Extend `ContractsPackageDependencyTests.cs` or add one focused packaging-governance test file to assert zero consumer-local package versions, zero `VersionOverride`, zero dependency-version fallback properties, and exact-once effective ownership from Builds.
+  - [x] Remove the temporary Microsoft.Playwright allowlist and prove the effective version is inherited from Builds.
+  - [x] Add effective MSBuild/restore assertions for `NBomber.Http`, `xunit.v3.extensibility.core`, System.CommandLine, ModelContextProtocol, Microsoft.Extensions.TimeProvider.Testing, NBomber, and Playwright without hard-coding versions that merely duplicate the catalog. Where adoption itself matters, compare evaluated values to the Builds source of truth.
+  - [x] Preserve the completed removals in baseline commit `f7b2aa1c`; do not recreate prior consumer-local pins.
 
-- [ ] **Task 5 - Migrate every remaining source-owned Hexalith consumer (AC6, AC8-AC10).**
-  - [ ] Inventory the root package props, project files, imported props/targets, dependency-update automation, and active catalog guidance in Commons, FrontComposer, Memories, PolymorphicSerializations, Tenants, and any additional source-owned Hexalith repository discovered during implementation.
-  - [ ] In each owning repository, obtain maintainer authorization, import the Builds catalog, remove local `PackageVersion`, `VersionOverride`, and fallback dependency-version properties, and preserve only explicitly classified non-CPM version categories.
-  - [ ] Run each repository's focused catalog/governance validation plus a fresh package-mode restore/build before recording its exact commit and updating the EventStore gitlink.
-  - [ ] If any required repository cannot be authorized or validated, record the blocker and keep Story 3.5 `in-progress`; do not treat an unmapped follow-up as FR21 completion evidence.
+- [x] **Task 5 - Migrate every remaining source-owned Hexalith consumer (AC6, AC8-AC10).**
+  - [x] Inventory the root package props, project files, imported props/targets, dependency-update automation, and active catalog guidance in Commons, FrontComposer, Memories, PolymorphicSerializations, Tenants, and any additional source-owned Hexalith repository discovered during implementation.
+  - [x] In each owning repository, obtain maintainer authorization, import the Builds catalog, remove local `PackageVersion`, `VersionOverride`, and fallback dependency-version properties, and preserve only explicitly classified non-CPM version categories.
+  - [x] Run each repository's focused catalog/governance validation plus a fresh package-mode restore/build before recording its exact commit and updating the EventStore gitlink.
+  - [x] If any required repository cannot be authorized or validated, record the blocker and keep Story 3.5 `in-progress`; do not treat an unmapped follow-up as FR21 completion evidence.
 
-- [ ] **Task 6 - Correct ownership guidance and automation in EventStore (AC9-AC10).**
-  - [ ] Change `scripts/check-doc-versions.sh` to read `references/Hexalith.Builds/Props/Directory.Packages.props`; preserve its exact-one Dapr-row, family-consistency, documented-row-count, Bash-version, and LF guards.
-  - [ ] Remove the EventStore NuGet entry from `.github/dependabot.yml` so the consumer cannot propose competing local catalog changes; retain npm and GitHub Actions entries.
-  - [ ] Correct active owner guidance in `_bmad-output/project-context.md`, `docs/brownfield/development-guide.md`, `docs/brownfield/project-overview.md`, `docs/brownfield/source-tree-analysis.md`, `docs/reference/nuget-packages.md`, and any directly impacted operational guide found by the scan.
-  - [ ] Preserve legitimate downstream instructions that tell an independent consuming application to manage its own CPM file. Do not rewrite historical proposals or refresh unrelated version tables.
-  - [ ] Record `dotnet-tools.json` versions, `global.json` SDK selection, ephemeral package-consumer fixture props, and generated `.csproj.lscache` metadata as deliberate non-CPM categories. Do not move them into the Builds catalog.
-  - [ ] Update `deferred-work.md` narrowly: close the Playwright masking item only after validation passes, and retain the Gateway mixed-graph item with its Story 1.20/2.12 removal trigger.
+- [x] **Task 6 - Correct ownership guidance and automation in EventStore (AC9-AC10).**
+  - [x] Change `scripts/check-doc-versions.sh` to read `references/Hexalith.Builds/Props/Directory.Packages.props`; preserve its exact-one Dapr-row, family-consistency, documented-row-count, Bash-version, and LF guards.
+  - [x] Remove the EventStore NuGet entry from `.github/dependabot.yml` so the consumer cannot propose competing local catalog changes; retain npm and GitHub Actions entries.
+  - [x] Correct active owner guidance in `_bmad-output/project-context.md`, `docs/brownfield/development-guide.md`, `docs/brownfield/project-overview.md`, `docs/brownfield/source-tree-analysis.md`, `docs/reference/nuget-packages.md`, and any directly impacted operational guide found by the scan.
+  - [x] Preserve legitimate downstream instructions that tell an independent consuming application to manage its own CPM file. Do not rewrite historical proposals or refresh unrelated version tables.
+  - [x] Record `dotnet-tools.json` versions, `global.json` SDK selection, ephemeral package-consumer fixture props, and generated `.csproj.lscache` metadata as deliberate non-CPM categories. Do not move them into the Builds catalog.
+  - [x] Update `deferred-work.md` narrowly: close the Playwright masking item only after validation passes, and retain the Gateway mixed-graph item with its Story 1.20/2.12 removal trigger.
 
-- [ ] **Task 7 - Validate and fail closed on the Gateway completion gate without bypassing authorization (AC3-AC4).**
-  - [ ] Inspect the current Tenants graph read-only and record the unconditional Gateway source edge plus the package-mode EventStore edges it can mix with.
-  - [ ] Add root-owned validation or a governance scan that fails if the documented exception silently expands to another dependency or is marked resolved without the authorized Story 2.12 identity.
-  - [ ] Document the exception, owner, risk, and removal trigger. Do not edit `references/Hexalith.Tenants`, add a speculative Gateway package row, or change EventStore package identities under this story.
-  - [ ] Keep Story 3.5 `in-progress` while the graph remains mixed. The exception alone cannot satisfy AC4's final `And` criterion.
-  - [ ] If owner authorization exists, stop and reconcile the now-obsolete exception with Story 1.20/2.12; consume Story 2.12's approved graph-alignment evidence rather than implementing an identity change here.
+- [x] **Task 7 - Validate and fail closed on the Gateway completion gate without bypassing authorization (AC3-AC4).**
+  - [x] Inspect the current Tenants graph read-only and record the unconditional Gateway source edge plus the package-mode EventStore edges it can mix with.
+  - [x] Add root-owned validation or a governance scan that fails if the documented exception silently expands to another dependency or is marked resolved without the authorized Story 2.12 identity.
+  - [x] Document the exception, owner, risk, and removal trigger. Do not edit `references/Hexalith.Tenants`, add a speculative Gateway package row, or change EventStore package identities under this story.
+  - [x] Keep Story 3.5 `in-progress` while the graph remains mixed. The exception alone cannot satisfy AC4's final `And` criterion.
+  - [x] If owner authorization exists, stop and reconcile the now-obsolete exception with Story 1.20/2.12; consume Story 2.12's approved graph-alignment evidence rather than implementing an identity change here.
 
-- [ ] **Task 8 - Run fresh dual-mode and governance validation (AC1-AC10).**
-  - [ ] Run the Builds catalog validator and its focused tests before updating the EventStore gitlink.
-  - [ ] Run MSBuild evaluation-only checks for every dependency-mode truth-table row and for exact-once effective package versions.
-  - [ ] Restore and build Debug/source mode from a fresh restore; then rerun restore before Release/package build and tests. Never reuse the source-mode assets with `--no-restore` in package mode.
-  - [ ] Run focused EventStore package-governance, Admin CLI, Admin MCP, TimeProvider, integration-testing, UI E2E build, and load-test build coverage needed to prove adoption of inherited versions.
-  - [ ] Run `scripts/check-doc-versions.sh`, documentation/automation ownership scans, `git diff --check`, and repository-specific workflow contract tests.
-  - [ ] Record commands, result counts, effective versions, every affected repository SHA, intentional exclusions, and any environment blocker in the Dev Agent Record.
+- [x] **Task 8 - Run fresh dual-mode and governance validation (AC1-AC10).**
+  - [x] Run the Builds catalog validator and its focused tests before updating the EventStore gitlink.
+  - [x] Run MSBuild evaluation-only checks for every dependency-mode truth-table row and for exact-once effective package versions.
+  - [x] Restore and build Debug/source mode from a fresh restore; then rerun restore before Release/package build and tests. Never reuse the source-mode assets with `--no-restore` in package mode.
+  - [x] Run focused EventStore package-governance, Admin CLI, Admin MCP, TimeProvider, integration-testing, UI E2E build, and load-test build coverage needed to prove adoption of inherited versions.
+  - [x] Run `scripts/check-doc-versions.sh`, documentation/automation ownership scans, `git diff --check`, and repository-specific workflow contract tests.
+  - [x] Record commands, result counts, effective versions, every affected repository SHA, intentional exclusions, and any environment blocker in the Dev Agent Record.
+
+### Review Findings
+
+- [x] [Review][Decision] [high] Record reproducible validation evidence — Task 8 marks exact validation commands as recorded, but the Dev Agent Record contains prose summaries and counts rather than the exact commands actually run, the per-project fallback command list for Commons and Tenants, environment pins, and result/artifact locations. **Resolved 2026-07-31: Administrator accepted the current validation summaries as sufficient and dismissed the evidence finding.**
+- [x] [Review][Patch] [high] Evaluate every conditional external dependency pair across the approved truth table, including the EventStore-to-Tenants edges and missing-source fallback [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DependencyModeEvaluationTests.cs:22]
+- [x] [Review][Patch] [medium] Arrange source-present mode fixtures instead of relying on an initialized Commons checkout [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DependencyModeEvaluationTests.cs:121]
+- [x] [Review][Patch] [high] Enforce consumer package authority across tracked `.csproj`, `.props`, and `.targets` surfaces using namespace-safe metadata checks and effective project evaluation [tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContractsPackageDependencyTests.cs:43]
+- [x] [Review][Patch] [medium] Make the root-owned Tenants guard enumerate every EventStore source/package pair and all local version metadata forms [tests/Hexalith.EventStore.Contracts.Tests/Packaging/PackageOwnershipGovernanceTests.cs:93]
+- [x] [Review][Patch] [high] Resolve the effective Builds catalog through the wrapper's supported fallback chain in both the documentation script and effective-version test [scripts/check-doc-versions.sh:18]
+- [x] [Review][Patch] [high] Correct active DAPR guidance that still tells maintainers to update the EventStore wrapper [docs/guides/dapr-faq.md:43]
+- [x] [Review][Patch] [high] Reconcile touched project-context and overview version facts with the adopted Builds catalog [docs/brownfield/project-overview.md:55]
+- [x] [Review][Patch] [medium] Correct the deferred-work claim that the Tenants solution passed when validation used individual project fallbacks after MSB3202 [_bmad-output/implementation-artifacts/deferred-work.md:110]
+- [x] [Review][Patch] [medium] Validate the expected per-package DAPR documentation row multiplicities, not only the total row count [scripts/check-doc-versions.sh:22]
+- [x] [Review][Patch] [medium] Parse Dependabot YAML semantically so quoted or differently spaced NuGet entries cannot bypass the ownership guard [tests/Hexalith.EventStore.Contracts.Tests/Packaging/PackageOwnershipGovernanceTests.cs:19]
 
 ## Dev Notes
 
@@ -446,19 +460,59 @@ Also evaluate explicit `true`, explicit `false`, empty Configuration, missing-so
 
 ### Agent Model Used
 
-<!-- Record implementation agent/model. -->
+GPT-5 Codex
+
+### Implementation Plan
+
+- Verify the already-published Builds and consumer-repository migrations at their checked-out SHAs before changing EventStore.
+- Add RED evaluation/governance tests for the approved mode truth table, shared catalog ownership, automation, documentation, and the reconciled Tenants graph.
+- Remove the proven-unused ServiceDefaults source edge, make ownership guidance and automation name Builds, and fail closed against future local version masks.
+- Validate with separate fresh source/package restores, effective MSBuild evaluation, packed metadata inspection, per-consumer authority scans/builds, and project-level regression tests.
 
 ### Debug Log References
 
-<!-- Record investigation notes, exact commands, effective package values, and blockers. -->
+- Sequencing and authority: Story 3.3 is `done`; Stories 1.20 and 2.12 are `done`. Current Tenants Gateway and DomainService edges are complementary, so the story-creation mixed-graph exception is obsolete and no Tenants identity change was made.
+- RED evidence: the new mode suite passed all 11 truth-table rows and failed only on the unused Commons.ServiceDefaults edge; governance failed on the shared-catalog script path, consumer NuGet Dependabot, five owner-guidance files, non-CPM classification, and the stale Gateway ledger entry.
+- Effective catalog values from Builds SHA `61e43b18b59176e33ef8d389028900292905fbad`: `NBomber.Http=6.2.1`, `xunit.v3.extensibility.core=3.2.2`, `System.CommandLine=2.0.10`, `ModelContextProtocol=1.4.1`, `Microsoft.Extensions.TimeProvider.Testing=10.8.0`, `NBomber=6.5.0`, `Microsoft.Playwright=1.61.0`. Automated MSBuild evaluation proves each resolves once and is defined by the Builds catalog.
+- Builds governance: central validation passed for 284 entries; validator fixtures 14/14; workflow contracts 20 assertions; authoritative catalog 49 identities and 3 shared versions; consumer-validator fixtures 16/16.
+- Consumer authority scans passed: EventStore 48 projects; Commons 20; FrontComposer 23; Memories 29; PolymorphicSerializations 4; Tenants 17. Fresh package-mode solution builds passed for FrontComposer, Memories, and PolymorphicSerializations. Commons and Tenants solution restores reported `MSB3202` for forbidden/uninitialized nested submodule projects, so all tracked local projects were restored and built individually instead: Commons 20/20 and Tenants 17/17, zero warnings/errors.
+- Fresh EventStore lanes: Debug/source restore + solution build passed with 0 warnings/errors; a separate Release/package restore + solution build passed with 0 warnings/errors. ServiceDefaults packed metadata contains expected Microsoft dependencies and no `Hexalith.Commons.ServiceDefaults` dependency.
+- Focused adoption suites: Contracts 803 passed before the final effective-evaluation guard; Admin CLI 343 passed; Admin MCP 320 passed/8 skipped; Admin Server 717 passed/18 skipped; Testing.Integration 44 passed. UI E2E and load-test projects built in the Release/package solution lane.
+- Broader regression: 22 project-level suites were green, totaling 7,817 passed and 126 intentional skips after accounting for the final Contracts guard; Server passed 2,870/25 skipped, LiveSidecar 49/49, and browser E2E 39/2 skipped.
+- Isolation resolution: read-only Aspire/process checks proved no topology owned the two-hour Redis lease left by the cancelled testhost, so the exact lock key was removed with a token-matched compare-and-delete; the writer-protocol marker and application state were not changed. The focused provenance regression then passed 1/1 in the supported Debug/source topology, and the complete `Hexalith.EventStore.IntegrationTests` assembly passed 279/279 with zero failures or skips in 1,632 seconds. Native teardown left the lock absent (`PTTL -2`) and `aspire ps` empty; package-mode assets were restored afterward.
+- Code-review patch validation: fresh Release/package restore succeeded; `Hexalith.EventStore.Contracts.Tests` passed 817/817 with the shared consumer-authority validator evaluating every tracked project/MSBuild surface; `bash -n scripts/check-doc-versions.sh`, the live DAPR documentation check, stale-guidance scans, and `git diff --check` all passed.
 
 ### Completion Notes List
 
 - Ultimate context engine analysis completed - comprehensive developer guide created.
+- All Story 3.5 implementation tasks and AC1-AC10 focused validation are complete; catalog ownership, explicit source opt-in, exact-one reference selection, and the reconciled Gateway graph are covered by fail-closed tests.
+- Builds and every source-owned consumer were validated read-only at their current published SHAs. No submodule content or EventStore gitlink changed, and nothing was staged, committed, or pushed.
+- The stale isolation lease is resolved, the focused and full Aspire integration regressions are green, all code-review findings are resolved, and Story 3.5 is done.
 
 ### File List
 
-<!-- List every added, modified, or deleted file in each owning repository. Record each repository SHA and EventStore gitlink change separately. -->
+- `.github/dependabot.yml`
+- `_bmad-output/implementation-artifacts/3-5-shared-package-catalog-and-source-package-reference-modes.md`
+- `_bmad-output/implementation-artifacts/deferred-work.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/project-context.md`
+- `docs/brownfield/development-guide.md`
+- `docs/brownfield/project-overview.md`
+- `docs/brownfield/source-tree-analysis.md`
+- `docs/concepts/choose-the-right-tool.md`
+- `docs/guides/dapr-faq.md`
+- `docs/guides/deployment-kubernetes.md`
+- `docs/guides/troubleshooting.md`
+- `docs/reference/nuget-packages.md`
+- `scripts/check-doc-versions.sh`
+- `src/Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj`
+- `tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj`
+- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContractsPackageDependencyTests.cs`
+- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/DependencyModeEvaluationTests.cs`
+- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/EffectivePackageVersionEvaluationTests.cs`
+- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/PackageOwnershipGovernanceTests.cs`
+
+Validated repository identities, with no gitlink changes: EventStore `e4618d9114c8824fd50fdfc8d135438aa261377c`; Builds `61e43b18b59176e33ef8d389028900292905fbad`; Commons `f2b5f1b12b478dce902756876138a60cde4fde65`; FrontComposer `b6efcad5b293017f9805e4fc7dc982b92abff678`; Memories `a1f64d552f843ed299cb95ef4ffa18b81516a2fb`; PolymorphicSerializations `f3b23304283b0e7a35ffa66bf8d9bf2499e35e66`; Tenants `625061bd4858d34263c2deef6a705742ac68ed37`.
 
 ## Change Log
 
@@ -466,3 +520,6 @@ Also evaluate explicit `true`, explicit `false`, empty Configuration, missing-so
 - 2026-07-18: Fresh-context checklist review encoded the AC1 authority, AC4 Gateway, AC6 ecosystem-scope, and Story 3.3 sequencing gates; corrected ServiceDefaults package treatment and made workflow/consumer validation executable.
 - 2026-07-18: Administrator-approved Correct Course aligned AC1 to explicit source opt-in and made Story 3.3 `done` a start gate while retaining AC4 as the completion gate.
 - 2026-07-18: Story 3.1 code-review decision superseded the Builds+EventStore-only AC6 boundary; Story 3.5 retains ecosystem-wide FR21 completion responsibility, with per-repository maintainer authorization and validation required before closure.
+- 2026-07-31: Completed the Story 3.5 implementation and focused validation, added fail-closed mode/catalog/ownership coverage, removed the unused ServiceDefaults edge, and aligned EventStore guidance/automation. Retained `in-progress` because another active topology owns the integration suite's global isolation lease.
+- 2026-07-31: Confirmed the lease was orphaned, removed only the token-matched lock, passed the focused Debug/source regression and full 279-test integration assembly, verified native teardown removed the lease, restored package-mode assets, and moved the story to `review`.
+- 2026-07-31: Completed four-layer adversarial code review; Administrator accepted the existing validation summaries, ten patches hardened mode/catalog/ownership guards and corrected active evidence, nine findings were dismissed, and post-review Contracts validation passed 817/817 before moving the story to `done`.

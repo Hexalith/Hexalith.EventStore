@@ -17,14 +17,14 @@ _This file contains critical rules and patterns that AI agents must follow when 
 ## Technology Stack & Versions
 
 - **.NET 10** — SDK pinned `10.0.302` (`rollForward: latestPatch`) in `global.json`; all projects target `net10.0`, `Nullable`+`ImplicitUsings` enabled, **`TreatWarningsAsErrors=true`**
-- **DAPR SDK 1.17.9** — `Dapr.Client`, `Dapr.AspNetCore`, `Dapr.Actors(.AspNetCore)` (state store, pub/sub, actors)
+- **DAPR SDK 1.18.5** — `Dapr.Client`, `Dapr.AspNetCore`, `Dapr.Actors(.AspNetCore)` (state store, pub/sub, actors)
 - **.NET Aspire 13.4.0** — Hosting, Redis, Docker, Azure AppContainers, K8s, Testing; Keycloak/K8s are **preview** builds; DAPR orchestration via `CommunityToolkit.Aspire.Hosting.Dapr` (preview)
-- **MediatR 14.1.0** (CQRS), **FluentValidation 12.1.1**, JWT Bearer auth, OpenAPI/Swashbuckle
+- **MediatR 14.2.0** (CQRS), **FluentValidation 12.1.1**, JWT Bearer auth, OpenAPI/Swashbuckle
 - **OpenTelemetry 1.15.x**, `Microsoft.Extensions.*` 10.0.x, **SignalR** 10.0.8 (+ StackExchange.Redis backplane)
 - **Blazor FluentUI `5.0.0-rc.3`** + Icons 4.14.2 (admin/sample UIs)
-- **Testing:** xUnit **v3** (`xunit.v3` 3.2.2), Shouldly 4.3.0, NSubstitute 5.3.0, bunit 2.7.2, Testcontainers 4.10.0, Playwright 1.60.0, coverlet 10.0.1; NBomber 6.4.1 (load)
-- **Identity helper:** `Hexalith.Commons.UniqueIds` 2.18.0 (ULID generation)
-- **All versions centralized** in `Directory.Packages.props` — `ManagePackageVersionsCentrally=true`
+- **Testing:** xUnit **v3** (`xunit.v3` 3.2.2), Shouldly 4.3.0, NSubstitute 5.3.0, bunit 2.7.2, Testcontainers 4.10.0, Playwright 1.61.0, coverlet 10.0.1; NBomber 6.5.0 (load)
+- **Identity helper:** `Hexalith.Commons.UniqueIds` 2.29.0 (ULID generation)
+- **All source-owned package versions centralized** in `references/Hexalith.Builds/Props/Directory.Packages.props`; the root `Directory.Packages.props` is an import-only wrapper — `ManagePackageVersionsCentrally=true`
 
 ## Critical Implementation Rules
 
@@ -49,7 +49,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - **Domain-owned contracts library exception:** a domain-service host references `Hexalith.EventStore.DomainService` for platform hosting, but the domain may also own a contracts-only library when command/query contract identities must be shared with a dedicated generated API host and UI metadata consumers. That library must contain contracts only — no hosting, DAPR, telemetry, state-store, query/projection actor, or UI code
 - **Domain modules are domain-centric:** they must not ship their own `*.AppHost`, `*.Aspire`, or `*.ServiceDefaults` projects and must not re-implement projection/query actors, DAPR state-store wrappers, cursor codecs, telemetry sources/meters, health checks, or canonical SDK endpoint mapping. Persist named projections through scoped `IAsyncDomainProjectionHandler` implementations using `IReadModelStore`/`IReadModelBatchStore` and the stable dispatch ID; retain `IDomainProjectionHandler` only for synchronous full-replay compatibility. Use DomainService plus `IQueryCursorCodec`, `EventStoreDomainDiagnostics`, and the EventStore AppHost/Aspire extensions.
 - `Hexalith.Tenants` source path is resolved by root `Directory.Build.props`; EventStore's own submodule path is `references/Hexalith.Tenants` — don't hardcode old root-level paths
-- **Cross-repo Hexalith libraries are Debug-source / Release-package** — Debug uses `ProjectReference` when root-declared submodule source is present; Release uses `PackageReference` pinned in `Directory.Packages.props`. Use `-p:UseHexalithProjectReferences=true` only for intentional source-debug sessions, never for package publication
+- **Cross-repo Hexalith libraries use package mode by default in every configuration** — use `-p:UseHexalithProjectReferences=true` only for an intentional source session; source is selected only when the root-declared submodule project exists, otherwise evaluation falls back to `PackageReference`. Package publication must remain in package mode. Versions are owned by `references/Hexalith.Builds/Props/Directory.Packages.props`
 - **Rerun restore after switching dependency modes** — `--no-restore` can reuse stale project-reference assets from a previous Debug/source restore
 
 ### Identity Rules (ULID, not GUID)
@@ -84,7 +84,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 
 ### Critical Don't-Miss Rules
 
-- **Never** add package versions to `.csproj` — all versions in `Directory.Packages.props`
+- **Never** add package versions to `.csproj` or the root import wrapper — source-owned versions belong in `references/Hexalith.Builds/Props/Directory.Packages.props`
 - **Never** use `.sln`; **never** run solution-level `dotnet test`
 - **Never** `Guid.TryParse` an id field — ULIDs only
 - **Never** reorder the MediatR behavior pipeline (Auth → Log → Validate)

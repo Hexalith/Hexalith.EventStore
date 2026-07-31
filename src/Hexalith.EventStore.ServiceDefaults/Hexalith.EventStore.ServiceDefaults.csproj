@@ -14,7 +14,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="$(HexalithCommonsRoot)\src\libraries\Hexalith.Commons.ServiceDefaults\Hexalith.Commons.ServiceDefaults.csproj" Condition="'$(HexalithCommonsFromSource)' == 'true' and Exists('$(HexalithCommonsRoot)\src\libraries\Hexalith.Commons.ServiceDefaults\Hexalith.Commons.ServiceDefaults.csproj')" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
     <PackageReference Include="Microsoft.Extensions.ServiceDiscovery" />
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />

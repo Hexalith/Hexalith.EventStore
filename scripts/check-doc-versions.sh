@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # DAPR SDK version pin consistency check — asserts that the four Dapr.*
 # table cells in docs/reference/nuget-packages.md match the version
-# pinned in Directory.Packages.props (the single source of truth).
+# pinned in the effective Hexalith.Builds catalog imported by the root
+# Directory.Packages.props wrapper (the shared source of truth for source-owned
+# Hexalith repositories).
 #
 # Assumptions (rewrite to xmllint or `dotnet msbuild -getProperty:` if violated):
-#   1. Directory.Packages.props uses single-line <PackageVersion ... /> entries
+#   1. The shared Builds catalog uses single-line <PackageVersion ... /> entries
 #      (multi-line wraps not supported; Condition attributes on the same line are fine).
 #   2. Each Dapr.* package appears EXACTLY once in the props file.
 #   3. The nuget-packages.md DAPR table rows use the pipe-delimited pattern
@@ -14,11 +16,34 @@
 set -euo pipefail
 (( BASH_VERSINFO[0] >= 4 )) || { echo "ERROR: bash 4+ required (found $BASH_VERSION); use WSL or upgrade Git Bash" >&2; exit 1; }
 
-PROPS="Directory.Packages.props"
+resolve_effective_builds_catalog() {
+  local candidate
+  for candidate in \
+    "references/Hexalith.Builds/Props/Directory.Packages.props" \
+    "../references/Hexalith.Builds/Props/Directory.Packages.props" \
+    "../../references/Hexalith.Builds/Props/Directory.Packages.props"
+  do
+    if [[ -f "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+if ! PROPS=$(resolve_effective_builds_catalog); then
+  echo "ERROR: no supported Hexalith.Builds package catalog found (cwd=$PWD) — run from the EventStore repository root in a supported workspace layout" >&2
+  exit 1
+fi
 DOC="docs/reference/nuget-packages.md"
-[[ -f "$PROPS" ]] || { echo "ERROR: $PROPS not found (cwd=$PWD) — run from repo root" >&2; exit 1; }
 [[ -f "$DOC" ]]   || { echo "ERROR: $DOC not found (cwd=$PWD) — run from repo root" >&2; exit 1; }
-EXPECTED_DAPR_ROWS=5   # Dapr.Actors x2 (Contracts + Server) + Dapr.Client x2 (Client + Server) + Dapr.Actors.AspNetCore
+declare -A EXPECTED_DOC_ROWS=(
+  [Dapr.Client]=2
+  [Dapr.AspNetCore]=0
+  [Dapr.Actors]=1
+  [Dapr.Actors.AspNetCore]=1
+)
 
 # Pre-flight: detect multi-line <PackageVersion> elements (regex can't handle them).
 multiline=$(grep -cE "<PackageVersion[^/]*$" "$PROPS" || true)
@@ -30,6 +55,7 @@ fi
 
 # Extract the four Dapr.* versions from the props file.
 declare -A PINS
+declare -A DOC_ROWS
 for pkg in Dapr.Client Dapr.AspNetCore Dapr.Actors Dapr.Actors.AspNetCore; do
   # Anchor to start-of-line + optional whitespace so commented-out
   # (<!-- <PackageVersion ... /> -->) and otherwise-wrapped lines do NOT match.
@@ -44,6 +70,7 @@ for pkg in Dapr.Client Dapr.AspNetCore Dapr.Actors Dapr.Actors.AspNetCore; do
   fi
   PINS[$pkg]=$(grep -oE "^[[:space:]]*<PackageVersion Include=\"$pkg\" Version=\"[^\"]+\"" "$PROPS" \
               | sed -E "s/.*Version=\"([^\"]+)\".*/\\1/")
+  DOC_ROWS[$pkg]=0
 done
 
 # Internal consistency: all four Dapr.* must share the same version.
@@ -66,15 +93,18 @@ while IFS= read -r line; do
   row="${line#*:}"
   pkg=$(echo "$row" | sed -E "s/^\|[[:space:]]+([A-Za-z.]+)[[:space:]]+\|.*$/\\1/")
   ver=$(echo "$row" | sed -E "s/^\|[[:space:]]+[A-Za-z.]+[[:space:]]+\|[[:space:]]+([0-9.]+)[[:space:]]+\|.*$/\\1/")
+  DOC_ROWS[$pkg]=$((DOC_ROWS[$pkg] + 1))
   if [[ "$ver" != "$EXPECTED" ]]; then
     echo "MISMATCH at $DOC:$ln: '$pkg' cell shows '$ver', $PROPS pins '$EXPECTED'" >&2
     fail=1
   fi
 done < <(grep -nE "^\|[[:space:]]+Dapr\.(Client|Actors|AspNetCore|Actors\.AspNetCore)[[:space:]]+\|[[:space:]]+[0-9.]+[[:space:]]+\|" "$DOC" || true)
 
-if [[ "$rows_seen" -ne "$EXPECTED_DAPR_ROWS" ]]; then
-  echo "ERROR: expected exactly $EXPECTED_DAPR_ROWS Dapr.* table rows in $DOC, found $rows_seen" >&2
-  exit 1
-fi
+for pkg in "${!EXPECTED_DOC_ROWS[@]}"; do
+  if [[ "${DOC_ROWS[$pkg]}" -ne "${EXPECTED_DOC_ROWS[$pkg]}" ]]; then
+    echo "ERROR: expected ${EXPECTED_DOC_ROWS[$pkg]} $pkg table row(s) in $DOC, found ${DOC_ROWS[$pkg]}" >&2
+    fail=1
+  fi
+done
 if [[ "$fail" -ne 0 ]]; then exit 1; fi
 echo "PASSED: DAPR SDK version pin consistency ($EXPECTED, $rows_seen rows verified)"

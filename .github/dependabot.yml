@@ -1,33 +1,7 @@
-# Dependabot keeps dependencies patched across the three ecosystems this repo ships.
-# NuGet uses Central Package Management (Directory.Packages.props); Dependabot understands it.
+# Dependabot keeps local npm and GitHub Actions dependencies patched. NuGet catalog
+# updates are owned centrally by Hexalith.Builds and intentionally excluded here.
 version: 2
 updates:
-  - package-ecosystem: nuget
-    directory: "/"
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 10
-    commit-message:
-      prefix: "build(deps)"
-    groups:
-      dotnet-and-aspire:
-        patterns:
-          - "Microsoft.*"
-          - "System.*"
-          - "Aspire.*"
-      dapr:
-        patterns:
-          - "Dapr.*"
-      opentelemetry:
-        patterns:
-          - "OpenTelemetry*"
-      test-stack:
-        patterns:
-          - "xunit*"
-          - "Shouldly"
-          - "NSubstitute"
-          - "coverlet.*"
-
   - package-ecosystem: npm
     directory: "/"
     schedule:

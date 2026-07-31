@@ -173,7 +173,7 @@ The current .NET SDK does not support targeting .NET 10.0. Either target .NET 9.
 error NU1101: Unable to find package Hexalith.EventStore.Contracts.
 ```
 
-**Probable Cause:** NuGet packages have not been restored, the local package cache is stale, or package versions in `Directory.Packages.props` are outdated.
+**Probable Cause:** NuGet packages have not been restored, the local package cache is stale, or the shared versions imported from `references/Hexalith.Builds/Props/Directory.Packages.props` are outdated.
 
 **Resolution:**
 
@@ -196,7 +196,7 @@ error NU1101: Unable to find package Hexalith.EventStore.Contracts.
     $ dotnet build Hexalith.EventStore.slnx --configuration Release
     ```
 
-4. If specific package versions are not found, check `Directory.Packages.props` at the repository root for the centralized version definitions.
+4. If specific package versions are not found, check `references/Hexalith.Builds/Props/Directory.Packages.props`, the shared catalog imported by the root `Directory.Packages.props` wrapper.
 
 ## DAPR Integration Issues
 

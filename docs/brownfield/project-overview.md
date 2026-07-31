@@ -34,7 +34,7 @@ state.Apply(Event)                          // fold events back into state
 | Primary language | **C#** (`net10.0`, `LangVersion=latest`, Nullable + ImplicitUsings enabled) |
 | Solution projects | **35 projects** (15 `src/`, 3 `samples/`, 1 `perf/`, 17 `tests/`) + 5 submodule projects |
 | Source files | ~900 C# files across `src/` alone |
-| Package management | **Centralized** via `Directory.Packages.props` (`ManagePackageVersionsCentrally=true`) |
+| Package management | **Centralized** via `references/Hexalith.Builds/Props/Directory.Packages.props`; root `Directory.Packages.props` is import-only (`ManagePackageVersionsCentrally=true`) |
 | Build conventions | `TreatWarningsAsErrors=true`, Allman braces, file-scoped namespaces, `_camelCase` fields |
 | Submodules | `references/Hexalith.Tenants`, `references/Hexalith.Commons`, `references/Hexalith.AI.Tools`, `references/Hexalith.Builds`, `references/Hexalith.FrontComposer`, `references/Hexalith.Memories`, `references/Hexalith.PolymorphicSerializations` (root-declared only) |
 
@@ -43,22 +43,22 @@ state.Apply(Event)                          // fold events back into state
 | Category | Technology | Version | Role |
 |----------|-----------|---------|------|
 | Runtime | .NET | `net10.0` (SDK 10.0.302) | Target framework |
-| Distributed runtime | DAPR (Client, AspNetCore, Actors, Actors.AspNetCore) | `1.17.9` | State store, pub/sub, actors, service invocation |
+| Distributed runtime | DAPR (Client, AspNetCore, Actors, Actors.AspNetCore) | `1.18.5` | State store, pub/sub, actors, service invocation |
 | Orchestration | .NET Aspire (`Aspire.Hosting`, Redis, Keycloak, Docker, K8s, Azure AppContainers) | `13.4.0` | Local topology + publish targets |
 | DAPR for Aspire | `CommunityToolkit.Aspire.Hosting.Dapr` | `13.4.0-preview` | DAPR sidecar wiring in AppHost |
-| Mediation | MediatR | `14.1.0` | CQRS command/query pipeline |
+| Mediation | MediatR | `14.2.0` | CQRS command/query pipeline |
 | Validation | FluentValidation (+ DI extensions) | `12.1.1` | Command/query/options validation |
 | Auth | `Microsoft.AspNetCore.Authentication.JwtBearer` | `10.0.8` | JWT bearer (Keycloak OIDC or symmetric-key fallback) |
 | API docs | `Microsoft.AspNetCore.OpenApi`, `Swashbuckle.AspNetCore.SwaggerUI` | `10.0.8` / `10.2.1` | OpenAPI 3.1 + Swagger UI |
 | Real-time | SignalR Client + `SignalR.StackExchangeRedis` | `10.0.8` | Projection-changed notifications + Redis backplane |
 | UI | `Microsoft.FluentUI.AspNetCore.Components` (+ Icons) | `5.0.0-rc.3` / `4.14.2` | Blazor admin + sample UI |
-| CLI | `System.CommandLine` | `2.0.8` | Admin CLI tool |
-| AI integration | `ModelContextProtocol` | `1.3.0` | Admin MCP server (AI-callable tools) |
+| CLI | `System.CommandLine` | `2.0.10` | Admin CLI tool |
+| AI integration | `ModelContextProtocol` | `1.4.1` | Admin MCP server (AI-callable tools) |
 | Observability | OpenTelemetry (OTLP exporter + ASP.NET/HTTP/runtime instrumentation) | `1.15.x` | Traces, metrics, structured logs |
 | Resilience | `Microsoft.Extensions.Http.Resilience`, `ServiceDiscovery` | `10.6.0` | HTTP resilience + service discovery |
-| Identifiers | `Hexalith.Commons.UniqueIds` | `2.23.0` | ULID generation |
-| Testing | xUnit v3 `3.2.2`, Shouldly `4.3.0`, NSubstitute `5.3.0`, bunit `2.7.2`, Playwright `1.60.0`, Testcontainers `4.10.0`, coverlet `10.0.1` | — | Unit → integration → E2E |
-| Load testing | NBomber + NBomber.Http | `6.4.1` / `6.2.0` | Throughput/latency perf tests |
+| Identifiers | `Hexalith.Commons.UniqueIds` | `2.29.0` | ULID generation |
+| Testing | xUnit v3 `3.2.2`, Shouldly `4.3.0`, NSubstitute `5.3.0`, bunit `2.7.2`, Playwright `1.61.0`, Testcontainers `4.10.0`, coverlet `10.0.1` | — | Unit → integration → E2E |
+| Load testing | NBomber + NBomber.Http | `6.5.0` / `6.2.1` | Throughput/latency perf tests |
 | Release | semantic-release (Conventional Commits) | npm `^24.2.3` | Automated versioning + NuGet publish |
 
 ## What's in the Box (high-level)

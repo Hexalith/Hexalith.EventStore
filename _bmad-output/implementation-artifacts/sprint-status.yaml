@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-07-30
+# last_updated: 2026-07-31
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T20:01:46+02:00
-last_updated: 2026-07-30
+last_updated: 2026-07-31
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -185,8 +185,12 @@ development_status:
   # Story 3.11 may refresh the ecosystem-wide catalog.
   # Explicit source opt-in and ecosystem-wide AC6 responsibility are approved;
   # each affected repository still requires its maintainer's authorization and validation.
-  # Story 3.3 must reach done before implementation; Story 1.20/2.12 still gates AC4 closure.
-  3-5-shared-package-catalog-and-source-package-reference-modes: ready-for-dev
+  # Story 3.3 and Story 1.20/2.12 gates are satisfied. Full Debug/source integration validation
+  # passed 279/279 on 2026-07-31, and native teardown released the store-global isolation lease.
+  # 2026-07-31 code review (4 layers): 1 owner decision resolved, 10 patches applied,
+  # 0 deferred, 9 dismissed. Post-patch Contracts validation passed 817/817 in
+  # Release/package mode; the DAPR documentation guard and diff hygiene checks are green.
+  3-5-shared-package-catalog-and-source-package-reference-modes: done
   3-6-manifest-driven-release-packaging: backlog
   3-7-shared-workflow-caller-migration: done
   3-8-workflow-reference-and-validation-safety: done

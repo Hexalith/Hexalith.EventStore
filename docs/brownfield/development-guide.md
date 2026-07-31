@@ -24,11 +24,11 @@ Build settings (enforced repo-wide via `Directory.Build.props`): `net10.0`, `Nul
 file-scoped namespaces, Allman braces, `_camelCase` private fields, `Async` suffix, `I` interface
 prefix, 4-space indent, CRLF, UTF-8.
 
-Cross-repo Hexalith library dependencies use package mode for Release and source mode for Debug:
+Cross-repo Hexalith library dependencies use package mode by default in every configuration:
 
-- Debug builds use `ProjectReference` when the root-declared submodule source is present.
-- Release builds use `PackageReference` versions pinned in `Directory.Packages.props`.
-- Use `-p:UseHexalithProjectReferences=true` only when intentionally debugging external Hexalith source in a Release build. Do not use it for package publication.
+- Use `-p:UseHexalithProjectReferences=true` only for an intentional source session. A `ProjectReference` is selected only when the root-declared submodule project exists; otherwise evaluation falls back to `PackageReference`.
+- Package publication must use `-p:UseHexalithProjectReferences=false`.
+- Source-owned package versions are pinned in `references/Hexalith.Builds/Props/Directory.Packages.props`; the root `Directory.Packages.props` is an import-only wrapper.
 
 Rerun `dotnet restore` when switching between these modes. Build assets restored in source mode can keep stale
 project-reference edges if reused with `--no-restore` in package mode.

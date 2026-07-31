@@ -93,12 +93,12 @@ graph TD
 
 ## Source vs Package Dependencies
 
-Inside this repository, cross-repo Hexalith library dependencies are configuration-keyed:
+Inside this repository, cross-repo Hexalith library dependencies use package mode by default in every configuration:
 
-- Debug builds use `ProjectReference` when the root-declared submodule source is present.
-- Release builds and package publication use `PackageReference` versions pinned in `Directory.Packages.props`.
+- Set `-p:UseHexalithProjectReferences=true` for an intentional source session. A `ProjectReference` is selected only when the root-declared submodule project exists; otherwise evaluation falls back to `PackageReference`.
+- Package publication must use `-p:UseHexalithProjectReferences=false`.
+- Source-owned package versions are pinned in `references/Hexalith.Builds/Props/Directory.Packages.props`; the root `Directory.Packages.props` is an import-only wrapper.
 
-Use `-p:UseHexalithProjectReferences=true` only for intentional source-debug sessions. Published
 `Hexalith.EventStore.*` packages must describe external Hexalith libraries as NuGet package dependencies, not
 as source project edges.
 
@@ -297,7 +297,7 @@ Pure domain types plus stable public gateway wire contracts. This package contai
 
 | Package                    | Version |
 | -------------------------- | ------- |
-| Hexalith.Commons.UniqueIds | see `Directory.Packages.props` |
+| Hexalith.Commons.UniqueIds | see `references/Hexalith.Builds/Props/Directory.Packages.props` |
 
 ```bash
 $ dotnet add package Hexalith.EventStore.Contracts
@@ -327,7 +327,7 @@ DI registration, domain processor abstractions, the fluent `AddEventStore` exten
 
 | Package                                   | Version |
 | ----------------------------------------- | ------- |
-| Dapr.Client                               | 1.17.9  |
+| Dapr.Client                               | 1.18.5  |
 | Microsoft.Extensions.Configuration.Binder | 10.0.0  |
 | Microsoft.Extensions.Hosting.Abstractions | 10.0.0  |
 
@@ -351,10 +351,10 @@ Aggregate actors, command routing, event persistence, state rehydration, and DAP
 
 | Package                | Version |
 | ---------------------- | ------- |
-| Dapr.Client            | 1.17.9  |
-| Dapr.Actors            | 1.17.9  |
-| Dapr.Actors.AspNetCore | 1.17.9  |
-| MediatR                | 14.0.0  |
+| Dapr.Client            | 1.18.5  |
+| Dapr.Actors            | 1.18.5  |
+| Dapr.Actors.AspNetCore | 1.18.5  |
+| MediatR                | 14.2.0  |
 
 ```bash
 $ dotnet add package Hexalith.EventStore.Server
@@ -522,7 +522,9 @@ $ dotnet add package Hexalith.EventStore.Admin.Server
 
 The release package inventory is manifest-driven by `tools/release-packages.json`. Every package in that manifest uses automated semantic versioning via semantic-release. Release versions are derived from Conventional Commit history on `main`, then published under `v`-prefixed Git tags (for example, release `1.2.0` is tagged as `v1.2.0`).
 
-All package versions are centralized in `Directory.Packages.props` at the repository root. Every package always ships at the same version — there is no mix-and-match between package versions.
+Source-owned package versions are centralized in `references/Hexalith.Builds/Props/Directory.Packages.props`; the repository-root `Directory.Packages.props` is an import-only wrapper. Every EventStore package in a release always ships at the same semantic version — there is no mix-and-match between release-package versions.
+
+Versions outside Central Package Management are intentionally separate: `dotnet-tools.json` pins local .NET tools, `global.json` pins the SDK, the ephemeral package-consumer fixture generates an isolated project for package validation, and `.csproj.lscache` files are generated IDE caches rather than dependency declarations.
 
 Browse all published packages on [NuGet.org](https://www.nuget.org/packages?q=Hexalith.EventStore).
 

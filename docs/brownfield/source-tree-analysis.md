@@ -11,7 +11,7 @@ eventstore/
 ├── Directory.Build.props           # Shared build settings: net10.0, Nullable, TreatWarningsAsErrors,
 │                                   #   NuGet metadata, references/Hexalith.Tenants path resolution
 ├── Directory.Build.targets         # Container image defaults (.NET SDK container support, opt-in)
-├── Directory.Packages.props        # Centralized package versions (ManagePackageVersionsCentrally)
+├── Directory.Packages.props        # Import-only CPM wrapper; versions live in references/Hexalith.Builds/Props/Directory.Packages.props
 ├── nuget.config / package.json     # NuGet feeds; semantic-release devDependencies
 ├── .editorconfig                   # Allman braces, file-scoped ns, _camelCase, 4-space, CRLF
 ├── .releaserc.json / commitlint.config.mjs   # semantic-release + Conventional Commits enforcement

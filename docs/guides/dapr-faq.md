@@ -40,13 +40,13 @@ That replacement is significant — the Server package is not trivial — but it
 
 ## How Does DAPR Versioning Affect Hexalith?
 
-> **TL;DR:** DAPR follows SemVer with 5+ years of v1.x backward compatibility. Hexalith pins to a specific SDK version in [`Directory.Packages.props`](../../Directory.Packages.props) and CI verifies on every commit.
+> **TL;DR:** DAPR follows SemVer with 5+ years of v1.x backward compatibility. Hexalith pins to a specific SDK version in `references/Hexalith.Builds/Props/Directory.Packages.props`; the root [`Directory.Packages.props`](../../Directory.Packages.props) only imports that shared catalog, and CI verifies the pin on every commit.
 
 DAPR has been on v1.x since February 2021. In over five years of releases, DAPR has maintained backward compatibility within the major version — minor releases add features, patch releases fix bugs, and neither breaks existing API contracts. DAPR's [versioning policy](https://docs.dapr.io/operations/support/support-versioning/) follows semantic versioning: breaking changes are reserved for major version bumps.
 
-Hexalith pins the DAPR SDK version in [`Directory.Packages.props`](../../Directory.Packages.props) — that file is the single source of truth. The CI pipeline tests against the pinned version on every commit. To upgrade DAPR:
+Hexalith pins the DAPR SDK version in `references/Hexalith.Builds/Props/Directory.Packages.props`, the shared source of truth for source-owned Hexalith repositories. The root [`Directory.Packages.props`](../../Directory.Packages.props) is an import-only consumer wrapper. The CI pipeline tests against the pinned version on every commit. To upgrade DAPR:
 
-1. Bump the version in `Directory.Packages.props` on a feature branch
+1. Propose the version change in the Hexalith.Builds catalog on a feature branch
 2. Run the full test suite (Tier 1 unit tests, Tier 2 integration tests with DAPR slim, Tier 3 end-to-end with Aspire)
 3. If tests pass, merge. If they fail, investigate the DAPR release notes for breaking behavior
 
