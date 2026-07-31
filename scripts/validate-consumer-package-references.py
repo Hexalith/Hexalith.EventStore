@@ -14,7 +14,6 @@ from xml.sax.saxutils import quoteattr
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-MANIFEST = ROOT / "tools" / "release-packages.json"
 sys.path.insert(0, str(ROOT / "tools"))
 
 from release_package_contract import PackageMetadata, validate_package_directory  # noqa: E402
@@ -35,6 +34,7 @@ def write_nuget_config(consumer_dir: pathlib.Path, package_source: pathlib.Path)
           </packageSources>
           <packageSourceMapping>
             <packageSource key="local-release-packages">
+              <package pattern="Hexalith.EventStore" />
               <package pattern="Hexalith.EventStore.*" />
             </packageSource>
             <packageSource key="nuget.org">

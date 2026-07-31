@@ -9,8 +9,8 @@ import re
 import subprocess
 import xml.etree.ElementTree as ET
 import zipfile
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -25,12 +25,20 @@ GATEWAY_REQUIRED_DEPENDENCIES = frozenset(
         "Hexalith.EventStore.ServiceDefaults",
     }
 )
+PROJECT_EVALUATION_TIMEOUT_SECONDS = 300
 _PACKAGE_ID_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+$")
 _PROJECT_METADATA_PATTERN = re.compile(
     r"(?:ProjectReference|\.(?:cs|fs|vb)proj(?:\b|$)|"
-    r"(?:^|[\s;=\"'])(?:\.\.[\\/]|src[\\/]|references[\\/]|[A-Za-z]:[\\/]|/(?![/\s>])))",
+    r"(?:^|[\s;=\"'>])(?:\.\.[\\/]|src[\\/]|references[\\/]|[A-Za-z]:[\\/]|/(?![/\s>])))",
     re.IGNORECASE,
 )
+"""Reject source paths in attribute values and in element text.
+
+The boundary class includes ``>`` because serialized XML always places a
+closing angle bracket immediately before element text; without it a checkout
+path in element position (``<description>``, ``<icon>``, ``<projectUrl>``)
+would never be examined.
+"""
 
 
 @dataclass(frozen=True)
@@ -150,13 +158,20 @@ def evaluate_project_properties(
         "-p:UseHexalithProjectReferences=false",
         "--nologo",
     ]
-    completed = subprocess.run(
-        command,
-        cwd=ROOT,
-        capture_output=True,
-        check=False,
-        text=True,
-    )
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=ROOT,
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=PROJECT_EVALUATION_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired as error:
+        raise ValueError(
+            f"Evaluating {package.project} timed out after "
+            f"{PROJECT_EVALUATION_TIMEOUT_SECONDS} seconds."
+        ) from error
     if completed.returncode != 0:
         detail = completed.stderr.strip() or completed.stdout.strip()
         raise ValueError(f"Could not evaluate {package.project}: {detail}")
@@ -247,6 +262,10 @@ def read_package_metadata(package_path: pathlib.Path) -> PackageMetadata:
     dependency_groups: list[str | None] = []
     dependencies_element = metadata.find(_qualified("dependencies", namespace))
     if dependencies_element is not None:
+        # Keyed by target framework so duplicates are caught across repeated groups
+        # and across ungrouped <dependency> children, which each arrive as their
+        # own child element.
+        seen_ids_by_framework: dict[str | None, set[str]] = {}
         for child in dependencies_element:
             if child.tag == _qualified("dependency", namespace):
                 dependency_elements = [child]
@@ -260,7 +279,7 @@ def read_package_metadata(package_path: pathlib.Path) -> PackageMetadata:
             if target_framework not in dependency_groups:
                 dependency_groups.append(target_framework)
 
-            seen_group_ids: set[str] = set()
+            seen_group_ids = seen_ids_by_framework.setdefault(target_framework, set())
             for dependency in dependency_elements:
                 dependency_id = (dependency.attrib.get("id") or "").strip()
                 dependency_version = (dependency.attrib.get("version") or "").strip() or None
@@ -412,6 +431,10 @@ def _validate_external_hexalith_dependencies(
 ) -> None:
     """Require direct external Hexalith package-mode references in every dependency group."""
 
+    if "DotnetTool" in package.package_types:
+        # Tool packages ship a self-contained closure and emit no dependency
+        # metadata, exactly as the internal-edge contract already allows.
+        return
     if not expected_dependencies:
         return
 
@@ -522,7 +545,7 @@ def validate_package_directory(
             expected_external_dependencies[metadata.package_id],
         )
 
-    if expected_dependencies[GATEWAY_PACKAGE_ID] != GATEWAY_REQUIRED_DEPENDENCIES:
+    if expected_dependencies.get(GATEWAY_PACKAGE_ID) != GATEWAY_REQUIRED_DEPENDENCIES:
         raise ValueError(
             f"{GATEWAY_PACKAGE_ID} project graph does not match its explicit four-edge release contract."
         )

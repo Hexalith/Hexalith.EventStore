@@ -25,7 +25,14 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("output", help="Directory that receives packed .nupkg files.")
     parser.add_argument("version", help="Semantic-release version to stamp into packages.")
-    parser.add_argument("--dry-run", action="store_true", help="Validate and print package commands without packing.")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help=(
+            "Validate and print package commands without packing. Still evaluates every "
+            "manifest project with the .NET SDK, so a restorable checkout is required."
+        ),
+    )
     args = parser.parse_args()
 
     packages = load_release_manifest()

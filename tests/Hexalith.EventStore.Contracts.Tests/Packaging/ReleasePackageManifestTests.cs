@@ -29,6 +29,15 @@ public sealed class ReleasePackageManifestTests
     ];
     private static readonly TimeSpan MsBuildPropertyTimeout = TimeSpan.FromSeconds(60);
 
+    /// <summary>
+    /// The packer evaluates every manifest project with MSBuild before printing any
+    /// command, so it needs a whole-inventory budget rather than the single-property one.
+    /// </summary>
+    private static readonly TimeSpan ManifestEvaluationTimeout = TimeSpan.FromMinutes(5);
+
+    private static readonly XNamespace NuspecNamespace =
+        "http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd";
+
     [Fact]
     public void Release_manifest_includes_rest_api_generator_package()
     {
@@ -206,6 +215,7 @@ public sealed class ReleasePackageManifestTests
 
         (int exitCode, string output, string error) = RunPythonScript(
             "tools/pack-release-packages.py",
+            ManifestEvaluationTimeout,
             packageDirectory,
             PackageFixtureVersion,
             "--dry-run");
@@ -293,12 +303,24 @@ public sealed class ReleasePackageManifestTests
     [Theory]
     [InlineData("tools/validate-release-packages.py", "metadata-leak", "local project or source-path metadata")]
     [InlineData("scripts/validate-nuget-packages.py", "metadata-leak", "local project or source-path metadata")]
+    [InlineData("tools/validate-release-packages.py", "element-metadata-leak", "local project or source-path metadata")]
+    [InlineData("scripts/validate-nuget-packages.py", "element-metadata-leak", "local project or source-path metadata")]
+    [InlineData("tools/validate-release-packages.py", "archive-project-entry", "local or unsafe archive path")]
+    [InlineData("scripts/validate-nuget-packages.py", "archive-project-entry", "local or unsafe archive path")]
+    [InlineData("tools/validate-release-packages.py", "archive-traversal-entry", "local or unsafe archive path")]
+    [InlineData("scripts/validate-nuget-packages.py", "archive-traversal-entry", "local or unsafe archive path")]
     [InlineData("tools/validate-release-packages.py", "gateway-dependency-loss", "internal dependency contract failed")]
     [InlineData("scripts/validate-nuget-packages.py", "gateway-dependency-loss", "internal dependency contract failed")]
     [InlineData("tools/validate-release-packages.py", "client-dependency-loss", "internal dependency contract failed")]
     [InlineData("scripts/validate-nuget-packages.py", "client-dependency-loss", "internal dependency contract failed")]
+    [InlineData("tools/validate-release-packages.py", "external-dependency-loss", "external Hexalith dependency contract failed")]
+    [InlineData("scripts/validate-nuget-packages.py", "external-dependency-loss", "external Hexalith dependency contract failed")]
     [InlineData("tools/validate-release-packages.py", "gateway-dependency-version-drift", "expected version")]
     [InlineData("scripts/validate-nuget-packages.py", "gateway-dependency-version-drift", "expected version")]
+    [InlineData("tools/validate-release-packages.py", "duplicate-dependency", "duplicate dependency")]
+    [InlineData("scripts/validate-nuget-packages.py", "duplicate-dependency", "duplicate dependency")]
+    [InlineData("tools/validate-release-packages.py", "ungrouped-duplicate-dependency", "duplicate dependency")]
+    [InlineData("scripts/validate-nuget-packages.py", "ungrouped-duplicate-dependency", "duplicate dependency")]
     public void ArchiveValidatorsRejectSourceMetadataAndGatewayDependencyLoss(
         string validator,
         string mutation,
@@ -619,10 +641,15 @@ public sealed class ReleasePackageManifestTests
 
             string text = File.ReadAllText(path);
             text.ShouldContain("tools");
-            text.ShouldContain("release-packages.json");
             if (script.Contains("validate", StringComparison.Ordinal))
             {
+                // Manifest backing is inherited from the shared contract, which is asserted
+                // below; requiring the literal filename here would only reward a dead constant.
                 text.ShouldContain("release_package_contract");
+            }
+            else
+            {
+                text.ShouldContain("release-packages.json");
             }
 
             text.ShouldNotContain("references/Hexalith.");
@@ -631,8 +658,12 @@ public sealed class ReleasePackageManifestTests
         }
 
         string sharedContract = File.ReadAllText(Path.Combine(root, "tools", "release_package_contract.py"));
+        sharedContract.ShouldContain("release-packages.json");
         sharedContract.ShouldContain("package_id == \"Hexalith.EventStore\"");
         sharedContract.ShouldContain("package_id.startswith(EVENTSTORE_PACKAGE_PREFIX)");
+        sharedContract.ShouldNotContain("references/Hexalith.");
+        sharedContract.Contains("NU1605", StringComparison.Ordinal).ShouldBeFalse(
+            "The shared release contract must not suppress package downgrade conflicts.");
     }
 
     [Fact]
@@ -750,6 +781,10 @@ public sealed class ReleasePackageManifestTests
             {
                 dependencies = [];
             }
+            else if (mutation == "external-dependency-loss" && package.Id == "Hexalith.EventStore.Contracts")
+            {
+                dependencies = ExpectedInternalDependencies(package.Id);
+            }
 
             string dependencyVersion = mutation == "gateway-dependency-version-drift" && package.Id == GatewayPackageId
                 ? "999.3.5-fixture"
@@ -761,7 +796,24 @@ public sealed class ReleasePackageManifestTests
                 version,
                 dependencies,
                 dependencyVersion,
-                includeMetadataLeak: mutation == "metadata-leak" && index == 0);
+                new SyntheticPackageOptions
+                {
+                    IncludeAttributeMetadataLeak = mutation == "metadata-leak" && index == 0,
+                    IncludeElementMetadataLeak = mutation == "element-metadata-leak" && index == 0,
+                    DuplicateDependencies =
+                        (mutation is "duplicate-dependency" or "ungrouped-duplicate-dependency")
+                        && package.Id == GatewayPackageId,
+                    UngroupedDependencies =
+                        mutation == "ungrouped-duplicate-dependency" && package.Id == GatewayPackageId,
+                    ExtraArchiveEntries = index != 0
+                        ? []
+                        : mutation switch
+                        {
+                            "archive-project-entry" => ["src/Leaked/Leaked.csproj"],
+                            "archive-traversal-entry" => ["../escaped-from-package.txt"],
+                            _ => [],
+                        },
+                });
         }
 
         if (mutation == "extra")
@@ -771,8 +823,7 @@ public sealed class ReleasePackageManifestTests
                 "Hexalith.EventStore.Unlisted",
                 PackageFixtureVersion,
                 [],
-                PackageFixtureVersion,
-                includeMetadataLeak: false);
+                PackageFixtureVersion);
         }
         else if (mutation == "foreign")
         {
@@ -781,8 +832,7 @@ public sealed class ReleasePackageManifestTests
                 "Hexalith.Commons.Foreign",
                 PackageFixtureVersion,
                 [],
-                PackageFixtureVersion,
-                includeMetadataLeak: false);
+                PackageFixtureVersion);
         }
         else if (mutation == "duplicate")
         {
@@ -791,8 +841,7 @@ public sealed class ReleasePackageManifestTests
                 packages[0].Id,
                 PackageFixtureVersion,
                 [],
-                PackageFixtureVersion,
-                includeMetadataLeak: false);
+                PackageFixtureVersion);
         }
     }
 
@@ -802,47 +851,87 @@ public sealed class ReleasePackageManifestTests
         string version,
         IEnumerable<string> dependencies,
         string dependencyVersion,
-        bool includeMetadataLeak)
+        SyntheticPackageOptions? options = null)
     {
-        XElement metadata = new(
-            "metadata",
-            new XElement("id", packageId),
-            new XElement("version", version),
-            new XElement("authors", "Hexalith Tests"),
-            new XElement("description", "Synthetic release contract fixture"),
-            new XElement(
-                "dependencies",
+        SyntheticPackageOptions fixture = options ?? new SyntheticPackageOptions();
+        string[] declaredDependencies = fixture.DuplicateDependencies
+            ? [.. dependencies, .. dependencies]
+            : [.. dependencies];
+        IEnumerable<XElement> dependencyElements = declaredDependencies.Select(dependency => new XElement(
+            NuspecNamespace + "dependency",
+            new XAttribute("id", dependency),
+            new XAttribute("version", dependencyVersion)));
+
+        // Real `dotnet pack` output always groups dependencies by target framework;
+        // the ungrouped shape is a nuspec-legal alternative the parser must also police.
+        XElement dependenciesElement = fixture.UngroupedDependencies
+            ? new XElement(NuspecNamespace + "dependencies", dependencyElements)
+            : new XElement(
+                NuspecNamespace + "dependencies",
                 new XElement(
-                    "group",
+                    NuspecNamespace + "group",
                     new XAttribute("targetFramework", "net10.0"),
-                    dependencies.Select(dependency => new XElement(
-                        "dependency",
-                        new XAttribute("id", dependency),
-                        new XAttribute("version", dependencyVersion))))));
+                    dependencyElements));
+
+        XElement metadata = new(
+            NuspecNamespace + "metadata",
+            new XElement(NuspecNamespace + "id", packageId),
+            new XElement(NuspecNamespace + "version", version),
+            new XElement(NuspecNamespace + "authors", "Hexalith Tests"),
+            new XElement(NuspecNamespace + "description", "Synthetic release contract fixture"),
+            new XElement(NuspecNamespace + "projectUrl", "https://github.com/Hexalith/Hexalith.EventStore"),
+            dependenciesElement);
         if (packageId == "Hexalith.EventStore.Admin.Cli")
         {
             metadata.Add(
                 new XElement(
-                    "packageTypes",
+                    NuspecNamespace + "packageTypes",
                     new XElement(
-                        "packageType",
+                        NuspecNamespace + "packageType",
                         new XAttribute("name", "DotnetTool"),
                         new XAttribute("version", "1.0.0"))));
         }
 
-        if (includeMetadataLeak)
+        if (fixture.IncludeAttributeMetadataLeak)
         {
-            metadata.Add(new XElement("repository", new XAttribute("url", "src/LocalProject.csproj")));
+            metadata.Add(new XElement(
+                NuspecNamespace + "repository",
+                new XAttribute("url", "src/LocalProject.csproj")));
+        }
+
+        if (fixture.IncludeElementMetadataLeak)
+        {
+            metadata.Add(new XElement(
+                NuspecNamespace + "icon",
+                "../../artifacts/checkout/icon.png"));
         }
 
         XDocument nuspec = new(
             new XElement(
-                "package",
+                NuspecNamespace + "package",
                 metadata));
         using ZipArchive archive = ZipFile.Open(archivePath, ZipArchiveMode.Create);
+        foreach (string extraEntry in fixture.ExtraArchiveEntries)
+        {
+            archive.CreateEntry(extraEntry);
+        }
+
         ZipArchiveEntry entry = archive.CreateEntry($"{packageId}.nuspec");
         using Stream stream = entry.Open();
         nuspec.Save(stream);
+    }
+
+    private sealed record SyntheticPackageOptions
+    {
+        public bool IncludeAttributeMetadataLeak { get; init; }
+
+        public bool IncludeElementMetadataLeak { get; init; }
+
+        public bool DuplicateDependencies { get; init; }
+
+        public bool UngroupedDependencies { get; init; }
+
+        public string[] ExtraArchiveEntries { get; init; } = [];
     }
 
     private static string[] ExpectedInternalDependencies(string packageId)
@@ -901,6 +990,12 @@ public sealed class ReleasePackageManifestTests
     private static (int ExitCode, string Output, string Error) RunPythonScript(
         string script,
         params string[] arguments)
+        => RunPythonScript(script, MsBuildPropertyTimeout, arguments);
+
+    private static (int ExitCode, string Output, string Error) RunPythonScript(
+        string script,
+        TimeSpan timeout,
+        params string[] arguments)
     {
         using Process process = new()
         {
@@ -922,10 +1017,10 @@ public sealed class ReleasePackageManifestTests
         process.Start().ShouldBeTrue($"Could not start {script}.");
         Task<string> outputTask = process.StandardOutput.ReadToEndAsync();
         Task<string> errorTask = process.StandardError.ReadToEndAsync();
-        if (!process.WaitForExit((int)MsBuildPropertyTimeout.TotalMilliseconds))
+        if (!process.WaitForExit((int)timeout.TotalMilliseconds))
         {
             process.Kill(entireProcessTree: true);
-            throw new TimeoutException($"{script} timed out after {MsBuildPropertyTimeout}.");
+            throw new TimeoutException($"{script} timed out after {timeout}.");
         }
 
         return (

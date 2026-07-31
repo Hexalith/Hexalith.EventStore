@@ -81,7 +81,8 @@ python3 scripts/validate-consumer-package-references.py ./nupkgs
   current package dependency floors. Before the first pack command, the packer
   also proves that every manifest entry resolves beneath the root `src/`
   directory, evaluates as packable, and produces its declared `PackageId` in
-  Release/package mode.
+  Release/package mode. Those checks run MSBuild, so `--dry-run` also needs a
+  working .NET SDK and a restorable checkout.
 - `scripts/validate-nuget-packages.py` uses the shared contract in
   `tools/release_package_contract.py` to inspect each archive's embedded
   `.nuspec`. Filenames, embedded IDs, versions, dependencies, and the exact
@@ -105,8 +106,11 @@ python3 tools/validate-release-packages.py ./nupkgs <version>
 The release validator consumes the same archive parser as CI and additionally
 requires every embedded version to equal semantic-release's requested version.
 Every root-owned manifest `ProjectReference` must become a canonical,
-same-release NuGet dependency in each applicable target-framework group. The
-Gateway archive has an additional explicit four-edge guard for
+same-release NuGet dependency in each applicable target-framework group, and
+each direct external `Hexalith.*` `PackageReference` must appear as a versioned
+dependency. Both dependency contracts are waived only for `DotnetTool`
+packages, which ship a self-contained closure and emit no dependency metadata.
+The Gateway archive has an additional explicit four-edge guard for
 `Hexalith.EventStore.Admin.Abstractions`,
 `Hexalith.EventStore.Contracts`, `Hexalith.EventStore.Server`, and
 `Hexalith.EventStore.ServiceDefaults`. Project paths and checkout-local source
