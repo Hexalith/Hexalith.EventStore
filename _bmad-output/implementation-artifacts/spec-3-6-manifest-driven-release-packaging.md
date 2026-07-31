@@ -4,7 +4,7 @@ type: 'feature'
 created: '2026-07-31'
 status: 'done'
 baseline_revision: 'ef7c81e81a9f9c2beb17ad9b046408302b56250c'
-final_revision: 'daf7021ea20c146444ce24fbf86afc0ba5da3b46'
+final_revision: '13ccd4fdf6f3b9cc5f85c6747ca62566dd45204f'
 review_loop_iteration: 0
 followup_review_recommended: true
 context:
@@ -29,6 +29,19 @@ deferred:
     location: >-
       .releaserc.json:18
     severity: medium
+  - summary: >-
+      The prior pass's deferred-work ledger entry cites a test name that does not
+      exist, so a maintainer following its evidence finds nothing.
+    evidence: |-
+      The 2026-07-31 ledger entry for the unscoped GitHub asset glob attributes the
+      exact-scope assertion to `ReleasePackageManifestTests.Semantic_release_publish_command_pushes_scoped_packages`.
+      No such test exists; the assertion lives in
+      `Semantic_release_delegates_package_inventory_to_manifest_scripts`. The finding the
+      entry records is real and unchanged — only its pointer is wrong. Recorded as new
+      evidence rather than an edit, because the orchestrator owns existing ledger entries.
+    location: >-
+      _bmad-output/implementation-artifacts/deferred-work.md
+    severity: low
 ---
 
 <intent-contract>
@@ -91,6 +104,24 @@ deferred:
 
 ## Review Triage Log
 
+### 2026-07-31 — Review pass (follow-up 2)
+- intent_gap: 0
+- bad_spec: 0
+- patch: 10: (high 1, medium 4, low 5)
+- defer: 1: (high 0, medium 0, low 1)
+- reject: 13: (high 0, medium 4, low 9)
+- addressed_findings:
+  - `[high]` `[patch]` The dependency contract could be switched off by the archive it was judging: both `_validate_internal_dependencies` and `_validate_external_hexalith_dependencies` waived their proof whenever the nuspec declared `<packageType name="DotnetTool"/>`, and the consumer script routed on the same self-declared value. Proved by construction that a Gateway archive declaring `DotnetTool` with **zero** dependency edges was accepted by the full validator — the exact defect AC4 exists to prevent — and would then be `dotnet tool install`ed instead of restore/build proven. Waivers are now keyed on the manifest-owned `TOOL_PACKAGE_IDS`; a non-tool package declaring `DotnetTool`, or a tool package omitting it, fails closed, and the constant is guarded against naming non-manifest packages. Pinned with `tool-type-forgery`/`tool-type-missing` rows.
+  - `[medium]` `[patch]` The source-path leak pattern only matched rooted or traversal paths, so the unrooted build-output shapes a real pack leak carries (`bin/`, `obj/`, `artifacts/`), plus `~/` and UNC roots, were accepted in both attribute and element position. Extended the alternation and re-verified by replaying the new pattern over 2,261 real cached nuspecs — 0 false positives. Added an `output-path-metadata-leak` row and made the diagnostic name the matched text.
+  - `[medium]` `[patch]` The leak scan serialized only the `<metadata>` subtree, so a checkout path in a sibling element such as `<files>` was never examined. Scans the whole nuspec document now; pinned with a `sibling-metadata-leak` row.
+  - `[medium]` `[patch]` AC1's exclusivity was proven in one direction only (manifest ⇒ packable); a new packable `src/` project omitted from the manifest was invisible to every check. Added `Non_manifest_src_projects_cannot_produce_release_packages`, which asserts each of the five non-manifest `src/` projects explicitly opts out of the `Directory.Build.props` `IsPackable=true` default, with a non-empty-complement control.
+  - `[medium]` `[patch]` The matrix's "fail before packing on malformed, duplicate, out-of-scope, missing, or mismatched entries" had zero coverage — `load_release_manifest`'s injectable parameters had no caller. Added ten parameterized rejection rows plus an accepting control, driven through a sandbox repository root.
+  - `[low]` `[patch]` `docs/ci.md` described the Gateway guard as an archive guard (it compares the derived project graph) and described the dependency waiver as applying to `DotnetTool` packages rather than to manifest-listed tool packages. Corrected both, and documented the build-output leak shapes.
+  - `[low]` `[patch]` Nothing asserted that `prepareCmd` packs before it validates, even though the deferred asset-glob finding's entire stated mitigation rests on that ordering. Added the index assertion, mirroring the existing secrets-before-push one.
+  - `[low]` `[patch]` The 14-project MSBuild sweep had a per-project timeout but no whole-inventory budget, so semantic-release `prepare` could stall for fourteen times that budget. Added a shared deadline that also shortens each remaining per-project timeout.
+  - `[low]` `[patch]` The tool consumer installed through the shared global packages folder while every library consumer used a private one, so a cached archive at the fixed CI version could satisfy the only tool proof without the archive under test being read. Redirected `NUGET_PACKAGES` for the tool install.
+  - `[low]` `[patch]` `_validate_archive_paths` accepted drive-relative entries such as `C:leak.txt`, which are absolute under neither path flavour, and its Windows-rooted and backslash clauses had no mutation row. Added the rejection and an `archive-drive-relative-entry` row.
+
 ### 2026-07-31 — Review pass (follow-up)
 - intent_gap: 0
 - bad_spec: 0
@@ -145,32 +176,34 @@ Use one shared Python contract for manifest normalization and `.nuspec` parsing,
 
 Status: done
 
-Summary: Story 3.6 delivers a shared fail-closed release-package contract that governs both semantic-release and CI validation from embedded NuGet metadata, plus per-package isolated consumers that prove consumability from package metadata alone. This follow-up review pass hardened two guards that were provably inoperative and closed the coverage gaps that let them stay green.
+Summary: Story 3.6 delivers a shared fail-closed release-package contract that governs both semantic-release and CI validation from embedded NuGet metadata, plus per-package isolated consumers that prove consumability from package metadata alone. This second follow-up review pass closed a fail-open in that contract — an archive could waive its own dependency proof by declaring itself a .NET tool — tightened source-path leak detection to the unrooted build-output shapes, and gave the manifest's own fail-closed branches and AC1's exclusivity claim their first coverage.
 
 Files changed (this pass):
-- `tools/release_package_contract.py` — closed the element-text source-path leak hole, made duplicate-dependency detection accumulate per target framework, added a bounded MSBuild evaluation timeout, exempted `DotnetTool` packages from the external dependency contract, and replaced the Gateway guard's bare index with a diagnostic.
-- `tools/pack-release-packages.py` — documented the dry run's new .NET SDK prerequisite.
-- `scripts/validate-consumer-package-references.py` — removed the dead manifest constant and extended the package-source mapping to the bare `Hexalith.EventStore` id.
-- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs` — fixtures now emit the real nuspec namespace; added element-leak, archive-path, external-dependency-loss, and duplicate-dependency mutations; re-anchored the manifest-backed governance assertion; gave the packer dry run a whole-inventory timeout.
-- `docs/ci.md` — documented the external dependency contract, its `DotnetTool` exemption, and the dry-run SDK prerequisite.
-- `_bmad-output/implementation-artifacts/deferred-work.md` — recorded the deferred publication-scope finding as a new entry.
+- `tools/release_package_contract.py` — bound the tool-package dependency waiver to the manifest-owned `TOOL_PACKAGE_IDS` instead of the archive's self-declared `<packageTypes>`, added the bidirectional package-type contract and a guard against the constant naming non-manifest packages, extended the leak pattern to `bin/`, `obj/`, `artifacts/`, `~/` and UNC roots, scanned the whole nuspec document rather than only `<metadata>`, named the matched text in the leak diagnostic, rejected drive-relative archive entries, and added a whole-inventory MSBuild evaluation budget.
+- `scripts/validate-consumer-package-references.py` — routed library and tool consumers by `TOOL_PACKAGE_IDS` rather than archive metadata, and isolated the tool install's package folder.
+- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs` — added `tool-type-forgery`, `tool-type-missing`, `output-path-metadata-leak`, `sibling-metadata-leak` and `archive-drive-relative-entry` mutation rows; added eleven manifest fail-closed cases plus an accepting control; added the non-manifest `src/` packability assertion; pinned pack-before-validate ordering in `prepareCmd`.
+- `docs/ci.md` — corrected the Gateway guard and tool-waiver descriptions, and documented the build-output leak shapes.
+- `_bmad-output/implementation-artifacts/deferred-work.md` — recorded new evidence against the prior pass's asset-glob entry (wrong test name), as a new entry.
 
-Review findings: 11 patches applied (high 1, medium 5, low 5); 1 item deferred (medium); 9 items rejected (medium 3, low 6) as intent-scoped, latent-without-current-defect, or cosmetic.
+Review findings: 10 patches applied (high 1, medium 4, low 5); 1 item deferred (low); 13 items rejected (medium 4, low 9) as intent-scoped, design-level-and-already-recorded, or latent-without-current-defect.
 
-Follow-up review recommendation: `true`; a high-severity patch was applied. Patched counts were high 1, medium 5, low 5, for a weighted score of 20.
+Follow-up review recommendation: `true`; a high-severity patch was applied. Patched counts were high 1, medium 4, low 5, for a weighted score of 17.
 
 Verification performed:
-- `python3 tools/pack-release-packages.py /tmp/eventstore-3-6-dry 999.3.6-ci --dry-run` — 14 pack commands, all 14 carrying `GeneratePackageOnBuild=false` and `UseHexalithProjectReferences=false`; no output directory created.
-- `dotnet build tests/Hexalith.EventStore.Contracts.Tests/... --configuration Release -p:UseHexalithProjectReferences=false` — 0 warnings, 0 errors.
-- Focused `ReleasePackageManifestTests` — 67/67 passed, 0 skipped (55 before this pass; the 12 added mutation rows all reject as specified).
-- Full `Hexalith.EventStore.Contracts.Tests` — 856/856 passed, 0 failed, 0 skipped.
+- `python3 tools/pack-release-packages.py /tmp/eventstore-3-6-dry 999.3.6-ci --dry-run` — 14 pack commands, each carrying `GeneratePackageOnBuild=false` and `UseHexalithProjectReferences=false`; no output directory created.
+- `dotnet build tests/Hexalith.EventStore.Contracts.Tests/... --configuration Release -m:1 -p:UseHexalithProjectReferences=false` — 0 warnings, 0 errors.
+- Focused `ReleasePackageManifestTests` — 89/89 passed, 0 skipped (67 before this pass; the 22 added rows all behave as specified).
+- Full `Hexalith.EventStore.Contracts.Tests` — 878/878 passed, 0 failed, 0 skipped.
 - Real pack of all 14 projects at `999.0.0-ci-test`, then `scripts/validate-nuget-packages.py` and `tools/validate-release-packages.py` — both validated exactly 14 archives; `scripts/validate-consumer-package-references.py` — 13 isolated library consumers plus 1 isolated tool consumer, all green.
-- Leak-pattern regression probe over 873 real published Hexalith archives — 0 false positives, while all three element-position leak shapes (`<description>` checkout path, `<projectUrl>` Windows root, `<icon>` traversal) are now rejected.
-- Duplicate-guard probe — both the ungrouped and repeated-same-framework shapes now reject; neither did before this pass.
+- Before/after probe of the fail-open: a Gateway archive declaring `DotnetTool` with zero dependency edges was **accepted** by the pre-patch validator and is now rejected; the same probe confirms rejection of a tool package omitting the type, a `<files>`-sibling leak, and a drive-relative archive entry, while the honest baseline still validates.
+- Leak-pattern replay over 2,261 real cached nuspecs using the new whole-document scan — 0 false positives, while `bin/`, `obj/`, `artifacts/`, `~/` and UNC shapes are now rejected.
+- Confirmed real `dotnet pack` output for `Hexalith.EventStore.Admin.Cli` does emit `<packageType name="DotnetTool" />`, so the new "tool package must declare it" direction cannot break a real release.
 - `git diff --check` — no whitespace errors.
 
-Residual risks:
-- `_manifest_project_dependencies` derives expected edges from raw csproj XML rather than evaluated MSBuild: it silently skips `ProjectReference` includes containing `$`, ignores `Condition` and `PrivateAssets`, and cannot see references injected by imported props/targets. No manifest project trips this today (all 14 pack and validate cleanly), but a root-owned edge expressed through a property would be dropped from the expectation set, and a correct archive could then be rejected for declaring an "unexpected" dependency. A faithful fix requires MSBuild item evaluation, which is a design change rather than a patch.
+Residual risks (carried forward from the previous pass, still accurate):
+- `_manifest_project_dependencies` derives expected edges from raw csproj XML rather than evaluated MSBuild: it silently skips `ProjectReference` includes containing `$`, ignores `Condition` and `PrivateAssets`, and cannot see references injected by imported props/targets. `_manifest_external_hexalith_dependencies` ignores `Condition` on `PackageReference` for the same reason. No manifest project trips this today — verified that no `src/` `ProjectReference` carries `PrivateAssets`/`ExcludeAssets`, and that the packer forcing `UseHexalithProjectReferences=false` makes the conditional Hexalith package references unconditional in practice — but a root-owned edge expressed through a property would be dropped from the expectation set, and a correct archive could then be rejected for declaring an "unexpected" dependency. A faithful fix requires MSBuild item evaluation, which is a design change rather than a patch.
+- The internal dependency expectation and the archive under test both derive from the same working tree, so removing a `ProjectReference` shrinks both in lockstep. The Gateway four-edge literal is the only independent anchor; it covers the metadata-critical entry the intent names and nothing else.
 - Internal dependency versions are compared as exact strings, so a legitimate NuGet range such as `[1.0.0, )` would read as drift. Current `dotnet pack` output emits plain versions for these edges only.
 - Isolated consumers no longer exercise combined consumption, so a downgrade conflict visible only when two manifest packages are referenced together would go undetected. This is the intent's own scoping (`One manifest library at a time`), and it multiplies the shared-CI restore cost by 13.
 - The archive-metadata contract is proven in-repo against synthetic archives; real `dotnet pack` output is exercised only by the Builds-owned shared CI step and by the manual command chain re-run in this pass.
+- `assert_assets_use_packages`'s project-backed-library branch cannot fire for the consumers this script generates, since each writes exactly one `PackageReference` and no `ProjectReference`. It is retained as a cheap invariant; the live proof in that function is the adjacent resolved-package assertion.
