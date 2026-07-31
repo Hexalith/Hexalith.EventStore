@@ -792,3 +792,7 @@ source_spec: `spec-3-4-aspire-security-resource-naming.md`
 severity: low
 reason: The follow-up-review damping cap (limits.max_followup_reviews = 1) was spent with the story finalized (status: done, verify green) while the review pass still recommended an independent follow-up. The work was committed by bmad-loop run 20260730-064902-1608; this entry preserves the lingering recommendation for a deliberate later review.
 status: open
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-fix-mcp-startup.md`
+  summary: The vendor-managed WSL `codex-node-repl` launcher has no process-group shutdown contract for its Windows `node_repl.exe` descendant, so a native runtime that ignores forwarded termination could outlive a forcibly killed JavaScript launcher.
+  evidence: Review of the MCP startup fix found that `/mnt/c/Users/JeromePiquot/AppData/Roaming/npm/codex-node-repl.js` spawns `node_repl.exe` and forwards only SIGINT, SIGTERM, and SIGHUP to that immediate child; the user-scoped proxy now maps SIGQUIT, preserves caller signal status, and bounds its own immediate-child shutdown, but cannot guarantee descendant cleanup without modifying the vendor bridge or establishing a tested cross-WSL process-group mechanism, both outside this fix's boundary.
