@@ -9,6 +9,23 @@ namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 public sealed class CommitMessagePolicyTests
 {
     private const string CommitHeaderFormat = "<type>[optional scope][!]: <description>";
+    private const string GitMessagePreflightBlock = """
+        ### Git Message Preflight
+
+        Before an assistant commits, creates or updates a squashable pull request, or
+        merges, it must treat every commit, merge, or squash subject and every
+        squashable pull-request title it authors, selects, receives, or uses—including
+        an existing live title—as an untrusted Git history candidate. It must draft any
+        replacement locally and validate the exact candidate with the repository's
+        authoritative commitlint configuration before the corresponding commit or
+        pull-request create, update, or merge mutation.
+
+        Reject branch-derived, UI-generated, CLI-generated, and other generated
+        defaults; draft an explicit replacement locally and validate it. If validation
+        rejects any candidate, replace it and revalidate the replacement; if validation
+        cannot run, report the exact blocker and stop. Do not perform the mutation until
+        the exact candidate passes.
+        """;
     private const string SharedGitInstructionsRelativePath = "hexalith-git-instructions.md";
 
     private static readonly Regex MarkdownDestinationPattern = new(
@@ -82,6 +99,78 @@ public sealed class CommitMessagePolicyTests
     }
 
     /// <summary>
+    /// Verifies the shared Git section contains one operative preflight for every prospective
+    /// history subject without duplicating the repository's detailed commit-message policy.
+    /// </summary>
+    [Fact]
+    public void SharedGitInstructionsContainOneOperativeCommitlintPreflightBlock()
+    {
+        string instructions = NormalizeLineEndings(ReadRepositoryFile("AGENTS.md"));
+        string expectedPreflightBlock = NormalizeLineEndings(GitMessagePreflightBlock);
+        MatchCollection preflightBlocks = Regex.Matches(
+            instructions,
+            Regex.Escape(expectedPreflightBlock),
+            RegexOptions.CultureInvariant);
+
+        preflightBlocks.Count.ShouldBe(
+            1,
+            "The normalized shared baseline must contain exactly one canonical Git-message preflight block.");
+
+        string operativeInstructions = MaskNonOperativeMarkdown(instructions);
+        MatchCollection operativePreflightBlocks = Regex.Matches(
+            operativeInstructions,
+            Regex.Escape(expectedPreflightBlock),
+            RegexOptions.CultureInvariant);
+        operativePreflightBlocks.Count.ShouldBe(
+            1,
+            "The canonical Git-message preflight must be operative Markdown outside comments and fenced code.");
+
+        string gitSection = ReadLevelTwoSection(operativeInstructions, "Git and Submodules");
+        gitSection.ShouldContain(expectedPreflightBlock);
+    }
+
+    /// <summary>
+    /// Verifies commented and fenced copies cannot satisfy the operative preflight requirement.
+    /// </summary>
+    /// <param name="prefix">Markdown that opens a non-operative region.</param>
+    /// <param name="suffix">Markdown that closes the non-operative region.</param>
+    [Theory]
+    [InlineData("<!--\n", "\n-->")]
+    [InlineData("```markdown\n", "\n```")]
+    [InlineData("~~~~ markdown\n", "\n~~~~")]
+    public void HiddenGitMessagePreflightBlocksAreNotOperative(string prefix, string suffix)
+    {
+        string markdown = prefix + NormalizeLineEndings(GitMessagePreflightBlock) + suffix;
+        string operativeMarkdown = MaskNonOperativeMarkdown(markdown);
+
+        operativeMarkdown.ShouldNotContain(NormalizeLineEndings(GitMessagePreflightBlock));
+    }
+
+    /// <summary>
+    /// Verifies canonical block comparison is stable when the expected source uses CRLF.
+    /// </summary>
+    [Fact]
+    public void GitMessagePreflightComparisonNormalizesWindowsLineEndings()
+    {
+        string lfBlock = NormalizeLineEndings(GitMessagePreflightBlock);
+        string crlfBlock = lfBlock.Replace("\n", "\r\n", StringComparison.Ordinal);
+
+        NormalizeLineEndings(crlfBlock).ShouldBe(lfBlock);
+    }
+
+    /// <summary>
+    /// Verifies a final level-two section extends to the end of the Markdown document.
+    /// </summary>
+    [Fact]
+    public void FinalGitSectionUsesEndOfFileAsItsBoundary()
+    {
+        string expectedPreflightBlock = NormalizeLineEndings(GitMessagePreflightBlock);
+        string markdown = $"# Baseline\n\n## Git and Submodules\n\n{expectedPreflightBlock}";
+
+        ReadLevelTwoSection(markdown, "Git and Submodules").ShouldContain(expectedPreflightBlock);
+    }
+
+    /// <summary>
     /// Verifies normalized inline and reference-style Markdown destinations cannot bypass the
     /// shared-entry-point link guard through whitespace, angle brackets, or parent traversal.
     /// </summary>
@@ -121,6 +210,161 @@ public sealed class CommitMessagePolicyTests
         => MarkdownDestinationPattern
             .Matches(markdown)
             .Any(match => IsAnchoredReferencesDestination(match.Groups["destination"].Value));
+
+    private static string MaskNonOperativeMarkdown(string markdown)
+    {
+        char[] operative = markdown.ToCharArray();
+        bool insideHtmlComment = false;
+        bool insideFence = false;
+        char fenceMarker = '\0';
+        int fenceLength = 0;
+        int lineStart = 0;
+
+        while (lineStart < markdown.Length)
+        {
+            int newlineIndex = markdown.IndexOf('\n', lineStart);
+            int lineEnd = newlineIndex >= 0 ? newlineIndex : markdown.Length;
+            ReadOnlySpan<char> line = markdown.AsSpan(lineStart, lineEnd - lineStart);
+
+            if (insideFence)
+            {
+                MaskRange(operative, lineStart, lineEnd);
+                if (IsClosingFence(line, fenceMarker, fenceLength))
+                {
+                    insideFence = false;
+                }
+            }
+            else if (!insideHtmlComment && TryReadOpeningFence(line, out fenceMarker, out fenceLength))
+            {
+                MaskRange(operative, lineStart, lineEnd);
+                insideFence = true;
+            }
+            else
+            {
+                MaskHtmlComments(markdown, operative, lineStart, lineEnd, ref insideHtmlComment);
+            }
+
+            lineStart = newlineIndex >= 0 ? newlineIndex + 1 : markdown.Length;
+        }
+
+        return new string(operative);
+    }
+
+    private static void MaskHtmlComments(
+        string markdown,
+        char[] operative,
+        int lineStart,
+        int lineEnd,
+        ref bool insideHtmlComment)
+    {
+        int cursor = lineStart;
+        while (cursor < lineEnd)
+        {
+            if (insideHtmlComment)
+            {
+                int commentEnd = markdown.IndexOf("-->", cursor, StringComparison.Ordinal);
+                if (commentEnd < 0 || commentEnd + 3 > lineEnd)
+                {
+                    MaskRange(operative, cursor, lineEnd);
+                    return;
+                }
+
+                MaskRange(operative, cursor, commentEnd + 3);
+                cursor = commentEnd + 3;
+                insideHtmlComment = false;
+                continue;
+            }
+
+            int commentStart = markdown.IndexOf("<!--", cursor, StringComparison.Ordinal);
+            if (commentStart < 0 || commentStart + 4 > lineEnd)
+            {
+                return;
+            }
+
+            cursor = commentStart;
+            insideHtmlComment = true;
+        }
+    }
+
+    private static bool TryReadOpeningFence(
+        ReadOnlySpan<char> line,
+        out char fenceMarker,
+        out int fenceLength)
+    {
+        int markerStart = CountLeadingSpaces(line);
+        fenceMarker = markerStart < line.Length ? line[markerStart] : '\0';
+        if (fenceMarker is not ('`' or '~'))
+        {
+            fenceLength = 0;
+            return false;
+        }
+
+        fenceLength = CountRun(line[markerStart..], fenceMarker);
+        if (fenceLength < 3)
+        {
+            return false;
+        }
+
+        return fenceMarker != '`' || !line[(markerStart + fenceLength)..].Contains('`');
+    }
+
+    private static bool IsClosingFence(ReadOnlySpan<char> line, char fenceMarker, int fenceLength)
+    {
+        int markerStart = CountLeadingSpaces(line);
+        if (markerStart >= line.Length || line[markerStart] != fenceMarker)
+        {
+            return false;
+        }
+
+        int markerLength = CountRun(line[markerStart..], fenceMarker);
+        return markerLength >= fenceLength
+            && line[(markerStart + markerLength)..].Trim().IsEmpty;
+    }
+
+    private static int CountLeadingSpaces(ReadOnlySpan<char> line)
+    {
+        int count = 0;
+        while (count < line.Length && count < 3 && line[count] == ' ')
+        {
+            count++;
+        }
+
+        return count;
+    }
+
+    private static int CountRun(ReadOnlySpan<char> text, char value)
+    {
+        int count = 0;
+        while (count < text.Length && text[count] == value)
+        {
+            count++;
+        }
+
+        return count;
+    }
+
+    private static void MaskRange(char[] text, int start, int end)
+        => Array.Fill(text, ' ', start, end - start);
+
+    private static string NormalizeLineEndings(string value)
+        => value
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n');
+
+    private static string ReadLevelTwoSection(string markdown, string heading)
+    {
+        string sectionHeading = $"## {heading}\n";
+        int sectionStart = markdown.IndexOf(sectionHeading, StringComparison.Ordinal);
+        sectionStart.ShouldBeGreaterThanOrEqualTo(0);
+        int sectionEnd = markdown.IndexOf("\n## ", sectionStart + sectionHeading.Length, StringComparison.Ordinal);
+        if (sectionEnd < 0)
+        {
+            sectionEnd = markdown.Length;
+        }
+
+        sectionEnd.ShouldBeGreaterThan(sectionStart);
+        return markdown[sectionStart..sectionEnd];
+    }
 
     private static bool IsAnchoredReferencesDestination(string destination)
     {

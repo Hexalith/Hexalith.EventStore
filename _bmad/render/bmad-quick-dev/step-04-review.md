@@ -18,33 +18,45 @@ Do NOT `git add` anything — this is read-only inspection.
 
 ### Review
 
-Execute these review layers in parallel wherever their execution methods allow: substitute the runtime placeholders (e.g. `{diff_output}`) into each layer's instruction, then follow it verbatim. Parallel means several blocking calls awaited together in this turn — never backgrounded or detached, never ending the turn to await results. When running layers as subagents, spawn every reviewer before reading or reacting to any of their output; begin collection and triage only once all are launched.
+Execute these review layers in parallel wherever their execution methods allow: substitute the runtime placeholders (e.g. `{diff_output}`) into each layer's instruction. When an instruction launches a reviewer subagent, launch that child with the prompt text after placeholder substitution; do not load the reviewer instruction file yourself. For any other customized instruction, execute it as written. Parallel means several blocking calls awaited together in this turn — never backgrounded or detached, never ending the turn to await results. When running layers as subagents, spawn every reviewer before reading or reacting to any of their output; begin collection and triage only once all are launched.
 
 #### Blind Hunter
 
-Launch a subagent with no prior conversation context, with this prompt:
+Launch a context-free subagent with this prompt:
 
-> Invoke the `bmad-review-adversarial-general` skill on this diff:
->
-> {diff_output}
+Read `/home/administrator/projects/hexalith/eventstore/.agents/skills/bmad-quick-dev/review-prompts/adversarial.md` completely and follow it as your review instructions.
+
+Review content:
+
+{diff_output}
+
+Do not invoke any skill. If the instruction file is unreadable, report that exact failure and stop. Return only the review result.
 
 #### Edge Case Hunter
 
-Launch a subagent with no prior conversation context, with this prompt:
+Launch a context-free subagent with this prompt:
 
-> Invoke the `bmad-review-edge-case-hunter` skill on this diff:
->
-> {diff_output}
+Read `/home/administrator/projects/hexalith/eventstore/.agents/skills/bmad-quick-dev/review-prompts/edge-case-hunter.md` completely and follow it as your review instructions.
+
+Review content:
+
+{diff_output}
+
+Do not invoke any skill. If the instruction file is unreadable, report that exact failure and stop. Return only the review result.
 
 #### Verification Gap Reviewer
 
-Launch a subagent with no prior conversation context, with this prompt:
+Launch a context-free subagent with this prompt:
 
-> Invoke the `bmad-review-verification-gap` skill on this diff:
->
-> {diff_output}
+Read `/home/administrator/projects/hexalith/eventstore/.agents/skills/bmad-quick-dev/review-prompts/verification-gap.md` completely and follow it as your review instructions.
 
-If a layer's instruction requires subagents and none are available, generate one review prompt file per such layer in `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts` and HALT. Ask the human to run each in a separate session (ideally a different LLM) and paste back the findings.
+Review content:
+
+{diff_output}
+
+Do not invoke any skill. If the instruction file is unreadable, report that exact failure and stop. Return only the review result.
+
+If a layer's instruction requires subagents and none are available, for each such layer read its reviewer instruction file, write a self-contained prompt under `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts` (full instruction body + `## REVIEW TARGET` with the review content — not a path-only pointer), then HALT. Ask the human to run each in a separate session (ideally a different LLM) and paste back the findings. This is the only allowed parent-side read of a reviewer instruction file.
 
 ### Classify
 

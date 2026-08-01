@@ -1,0 +1,187 @@
+{
+  "schemaVersion": 1,
+  "storyId": "3-11-validated-central-package-catalog-refresh",
+  "auditedAtUtc": "2026-07-31T21:36:18.4123148+00:00",
+  "eventStoreBaselineRevision": "9b9c776791c149cab26c795a476d23d3d11f7796",
+  "buildsAuditGeneratedFromRevision": "b529b665a6f076d07d218266ab74ca211f34f5a7",
+  "buildsCatalogRevision": "9dc0fe1ffbf33269fddf195fd12317def86728f0",
+  "sources": [
+    {
+      "uri": "https://api.nuget.org/v3/index.json",
+      "resolution": "resolved",
+      "evidence": "NuGet V3 registration and flat-container resources resolved."
+    }
+  ],
+  "completePackageAudit": {
+    "repository": "Hexalith.Builds",
+    "revision": "9dc0fe1ffbf33269fddf195fd12317def86728f0",
+    "path": "Tools/package-version-audit.json",
+    "sha256": "507496549651a66f17dac221b2632b5ff9c5f4eb40055fbfeafcfd3c93e9bffa",
+    "packageCount": 284,
+    "familyCount": 139,
+    "listedCount": 276,
+    "missingCount": 8,
+    "unlistedCount": 0,
+    "unresolvedCount": 0,
+    "acceptedPackageCount": 13,
+    "retainedPackageCount": 271
+  },
+  "acceptedRollbackGroups": [
+    {
+      "group": "identity-model",
+      "packages": [
+        "Microsoft.Identity.Web",
+        "Microsoft.IdentityModel.Abstractions",
+        "Microsoft.IdentityModel.JsonWebTokens",
+        "Microsoft.IdentityModel.Logging",
+        "Microsoft.IdentityModel.Protocols",
+        "Microsoft.IdentityModel.Protocols.OpenIdConnect",
+        "Microsoft.IdentityModel.Tokens",
+        "System.IdentityModel.Tokens.Jwt"
+      ],
+      "changes": [
+        "Microsoft.Identity.Web 4.13.2 -> 4.14.2",
+        "IdentityModel and JWT rows 8.21.0 -> 8.22.0"
+      ],
+      "compatibilityEvidence": "All eight identity rows select their latest listed stable candidates; the Builds gates, EventStore Release build, Contracts tests, and Server tests validate them together.",
+      "representativeConsumers": ["Hexalith.EventStore.Contracts.Tests", "Hexalith.EventStore.Server.Tests"],
+      "rollback": "Roll back Microsoft.Identity.Web and all seven IdentityModel/JWT rows together if authentication, token acquisition, or token validation regresses."
+    },
+    {
+      "group": "bunit-html",
+      "packages": ["AngleSharp", "bunit"],
+      "changes": ["AngleSharp 1.5.2 -> 1.6.0", "bunit 2.8.4-preview -> 2.8.6"],
+      "compatibilityEvidence": "Both latest listed releases pass the complete EventStore Admin UI test suite together.",
+      "representativeConsumers": ["Hexalith.EventStore.Admin.UI.Tests"],
+      "rollback": "Roll back AngleSharp and bUnit together if HTML parsing, discovery, rendering, or component tests regress."
+    },
+    {
+      "group": "package:communitytoolkit.aspire.hosting.dapr",
+      "packages": ["CommunityToolkit.Aspire.Hosting.Dapr"],
+      "from": "13.4.1-beta.686",
+      "to": "13.4.1-beta.687",
+      "compatibilityEvidence": "The candidate preserves the intentional 13.4.1 beta channel and passes the Aspire 13.4.6 AppHost build and tests.",
+      "representativeConsumers": ["Hexalith.EventStore.AppHost.Tests"],
+      "rollback": "Roll back the package if AppHost Dapr resource composition regresses."
+    },
+    {
+      "group": "package:scriban",
+      "packages": ["Scriban"],
+      "from": "7.2.5",
+      "to": "7.2.6",
+      "compatibilityEvidence": "The latest listed patch remains on minor 7.2 and passes the generator and solution builds plus REST generator tests.",
+      "representativeConsumers": ["Hexalith.EventStore.RestApi.Generators.Tests"],
+      "rollback": "Roll back Scriban if template parsing or generated output regresses."
+    },
+    {
+      "group": "package:sonaranalyzer.csharp",
+      "packages": ["SonarAnalyzer.CSharp"],
+      "from": "10.30.0.144632",
+      "to": "10.31.0.145097",
+      "compatibilityEvidence": "The analyzer-only candidate passes warning-as-error Builds and EventStore Release builds with no warnings.",
+      "representativeConsumers": ["Hexalith.Builds.slnx", "Hexalith.EventStore.slnx"],
+      "rollback": "Roll back the analyzer if it creates an unresolvable false-positive build failure."
+    }
+  ],
+  "retainedExceptions": [
+    {
+      "group": "package:azure.monitor.opentelemetry.aspnetcore",
+      "selected": "1.5.0",
+      "reason": "No checked-out source project consumes this catalog row, so the 1.6.0 candidate has no representative compatibility proof.",
+      "removalTrigger": "Accept a later candidate only after an actual consumer is identified and its telemetry startup and export path pass validation."
+    },
+    {
+      "group": "fluent-ui",
+      "selected": "5.0.0-rc.4-26180.1",
+      "reason": "The listed stable 4.14.4 line is an older major; both component rows remain aligned on the intentional v5 release candidate.",
+      "removalTrigger": "Move both rows together when a newer compatible v5 candidate or stable release passes UI consumer validation."
+    },
+    {
+      "group": "package:stackexchange.redis",
+      "selected": "3.0.17",
+      "reason": "The 3.1.0 candidate's focused two-instance runtime proof timed out before readiness, so unit/build evidence alone is insufficient.",
+      "removalTrigger": "Accept 3.1.0 or later only after the focused Redis backplane proof passes cross-instance delivery and negative controls."
+    },
+    {
+      "group": "hexalith-eventstore",
+      "selected": "3.86.0",
+      "reason": "The source-owned family remains at its rollback baseline pending owner approval of the complete replacement inventory.",
+      "removalTrigger": "Accept a later family only after the EventStore release owner confirms the full inventory and package-mode evidence."
+    },
+    {
+      "group": "hexalith-memories",
+      "selected": "2.19.4",
+      "reason": "The 2.19.8 candidate is not accepted without cross-repository owner validation for all three catalog rows.",
+      "removalTrigger": "Accept the complete family after Memories Release validation and owner approval are recorded."
+    },
+    {
+      "group": "hexalith-tenants",
+      "selected": "5.3.0",
+      "reason": "All six rows retain the approved common version because this story has no Tenants release-owner replacement inventory.",
+      "removalTrigger": "Change the family only after the Tenants release owner approves the common inventory or a documented split."
+    },
+    {
+      "group": "package:microsoft.openapi",
+      "selected": "2.11.0",
+      "reason": "ASP.NET Core 10 is compiled against the Microsoft.OpenApi 2.x API and the listed 3.x family is runtime-incompatible.",
+      "removalTrigger": "Move to 3.x only after ASP.NET Core 10 OpenAPI generation passes explicit runtime compatibility tests."
+    },
+    {
+      "group": "package:microsoft.sourcelink.github",
+      "selected": "10.0.302",
+      "reason": "Configured source metadata reports only older candidates and must not cause a downgrade.",
+      "removalTrigger": "Re-evaluate when a configured source lists a version newer than 10.0.302 and SDK/source-link validation remains aligned."
+    }
+  ],
+  "missingPackageIdsRetainedWithoutDowngrade": [
+    "Hexalith.Chatbot.Contracts",
+    "Hexalith.Parties.Server",
+    "Hexalith.Parties.ServiceDefaults",
+    "Hexalith.Parties.UI",
+    "Hexalith.Tenants.UI",
+    "Microsoft.Extensions.Identity.Http",
+    "Microsoft.SourceLink.GitHub",
+    "Serilog.Sinks.Browser"
+  ],
+  "validation": {
+    "builds": [
+      {"command": "pwsh -NoProfile -File ./Tools/validate-central-package-versions.ps1", "result": "PASS: 284 entries"},
+      {"command": "pwsh -NoProfile -File ./Tools/test-authoritative-package-catalog.ps1", "result": "PASS: 49 identities and 3 shared versions"},
+      {"command": "pwsh -NoProfile -File ./Tools/test-central-package-version-validator.ps1", "result": "PASS: 14 scenarios"},
+      {"command": "pwsh -NoProfile -File ./Tools/validate-package-version-audit.ps1", "result": "PASS: 284 packages, 139 families, 1 source"},
+      {"command": "pwsh -NoProfile -File ./Tools/test-package-version-audit-generator.ps1", "result": "PASS: 14 scenarios"},
+      {"command": "pwsh -NoProfile -File ./Tools/test-package-version-audit-validator.ps1", "result": "PASS: 18 scenarios"},
+      {"command": "pwsh -NoProfile -File ./Tools/validate-consumer-package-authority.ps1 -RepositoryRoot . -CatalogPath ./Props/Directory.Packages.props", "result": "PASS: 6 projects"},
+      {"command": "pwsh -NoProfile -File ./Tools/test-consumer-package-authority-validator.ps1", "result": "PASS: 16 scenarios"},
+      {"command": "pwsh -NoProfile -File ./Tools/validate-package-version-exceptions.ps1 -InventoryPath ./Tools/package-version-exceptions.json -CatalogPath ./Props/Directory.Packages.props", "result": "PASS: 15 allowlisted exceptions"},
+      {"command": "pwsh -NoProfile -File ./Tools/test-package-version-exception-validator.ps1", "result": "PASS: 7 scenarios"},
+      {"command": "pwsh -NoProfile -File ./Tools/validate-dapr-package-versions.ps1", "result": "PASS: 8 Dapr package IDs at 1.18.5"},
+      {"command": "pwsh -NoProfile -File ./Tools/test-dapr-package-version-validator.ps1", "result": "PASS: 29 scenarios"},
+      {"command": "dotnet restore Hexalith.Builds.slnx --verbosity minimal", "result": "PASS"},
+      {"command": "dotnet build Hexalith.Builds.slnx --configuration Release --no-restore -warnaserror -p:GeneratePackageOnBuild=false --verbosity minimal", "result": "PASS: 0 warnings, 0 errors"},
+      {"command": "dotnet test test/Hexalith.Builds.Module.Tests/Hexalith.Builds.Module.Tests.csproj --configuration Release --no-restore --verbosity minimal", "result": "PASS: 106/106"},
+      {"command": "dotnet test test/Hexalith.Builds.Evidence.Tests/Hexalith.Builds.Evidence.Tests.csproj --configuration Release --no-restore --verbosity minimal", "result": "PASS: 24/24"},
+      {"command": "dotnet test test/Hexalith.Builds.Tooling.IntegrationTests/Hexalith.Builds.Tooling.IntegrationTests.csproj --configuration Release --no-restore --verbosity minimal", "result": "PASS: 1/1"}
+    ],
+    "eventStore": [
+      {"command": "dotnet restore Hexalith.EventStore.slnx -p:UseHexalithProjectReferences=false --force --no-cache --verbosity minimal", "result": "PASS: NuGet audit enabled"},
+      {"command": "dotnet build Hexalith.EventStore.slnx --configuration Release --no-restore -warnaserror -p:UseHexalithProjectReferences=false -p:GeneratePackageOnBuild=false --verbosity minimal", "result": "PASS: 0 warnings, 0 errors"},
+      {"command": "dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release --no-restore -p:UseHexalithProjectReferences=false --verbosity minimal", "result": "PASS: 878/878"},
+      {"command": "dotnet test tests/Hexalith.EventStore.SignalR.Tests/Hexalith.EventStore.SignalR.Tests.csproj --configuration Release --no-restore -p:UseHexalithProjectReferences=false --verbosity minimal", "result": "PASS: 44/44"},
+      {"command": "dotnet test tests/Hexalith.EventStore.Admin.UI.Tests/Hexalith.EventStore.Admin.UI.Tests.csproj --configuration Release --no-restore -p:UseHexalithProjectReferences=false --verbosity minimal", "result": "PASS: 841/841"},
+      {"command": "dotnet test tests/Hexalith.EventStore.AppHost.Tests/Hexalith.EventStore.AppHost.Tests.csproj --configuration Release --no-restore -p:UseHexalithProjectReferences=false --verbosity minimal", "result": "PASS: 63/63"},
+      {"command": "dotnet test tests/Hexalith.EventStore.RestApi.Generators.Tests/Hexalith.EventStore.RestApi.Generators.Tests.csproj --configuration Release --no-restore -p:UseHexalithProjectReferences=false --verbosity minimal", "result": "PASS: 124/124"},
+      {"command": "dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --configuration Release --no-restore -p:UseHexalithProjectReferences=false --verbosity minimal", "result": "PASS: 2870 passed, 25 skipped, 0 failed"},
+      {"command": "bash scripts/check-doc-versions.sh", "result": "PASS: 4 Dapr rows at 1.18.5"},
+      {"command": "jq empty 3-11-central-package-audit.json; compare its audit SHA-256, counts, and Builds revision with git object 9dc0fe1ffbf33269fddf195fd12317def86728f0", "result": "PASS: SHA-256 507496549651a66f17dac221b2632b5ff9c5f4eb40055fbfeafcfd3c93e9bffa; 284 packages; 139 families; exact Builds revision"}
+    ]
+  },
+  "candidateChecks": [
+    {
+      "candidate": "StackExchange.Redis 3.1.0",
+      "command": "dotnet test tests/Hexalith.EventStore.IntegrationTests/Hexalith.EventStore.IntegrationTests.csproj --configuration Release --no-restore -p:UseHexalithProjectReferences=false --filter FullyQualifiedName~SignalRRedisBackplaneRuntimeProofTests --verbosity minimal",
+      "result": "NOT ACCEPTED: 1 test failed after the EventStore proof host did not become ready within 45 seconds; no cross-instance delivery proof was obtained.",
+      "disposition": "Retain 3.0.17."
+    }
+  ]
+}
