@@ -1,0 +1,10 @@
+{
+  "actions": [
+    "Approve Hexalith.Builds catalog commit 9dc0fe1ffbf33269fddf195fd12317def86728f0 as the Hexalith.Builds maintainer.",
+    "Approve EventStore implementation commit caef47fcff54ade19f50cf752c25aeb74e639afa and its representative-consumer compatibility evidence as the EventStore maintainer."
+  ],
+  "parked_at": "2026-08-01",
+  "run_id": "20260731-203343-5b29",
+  "spec_file": "_bmad-output/implementation-artifacts/spec-3-11-validated-central-package-catalog-refresh.md",
+  "story_key": "3-11-validated-central-package-catalog-refresh"
+}
