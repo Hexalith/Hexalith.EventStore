@@ -2,15 +2,23 @@
 title: 'Validated Central Package Catalog Refresh'
 type: 'feature'
 created: '2026-07-31'
-status: 'awaiting-operator'
+status: 'done'
 baseline_revision: '9b9c776791c149cab26c795a476d23d3d11f7796'
 baseline_commit: '9b9c776791c149cab26c795a476d23d3d11f7796'
 final_revision: 'caef47fcff54ade19f50cf752c25aeb74e639afa'
 review_loop_iteration: 0
 followup_review_recommended: true
-operator_actions:
-  - 'Approve Hexalith.Builds catalog commit 9dc0fe1ffbf33269fddf195fd12317def86728f0 as the Hexalith.Builds maintainer.'
-  - 'Approve EventStore implementation commit caef47fcff54ade19f50cf752c25aeb74e639afa and its representative-consumer compatibility evidence as the EventStore maintainer.'
+operator_approvals:
+  - role: 'Hexalith.Builds maintainer'
+    approved_by: 'Administrator'
+    approved_at: '2026-08-01'
+    approved_commit: '9dc0fe1ffbf33269fddf195fd12317def86728f0'
+    decision: 'approved'
+  - role: 'EventStore maintainer'
+    approved_by: 'Administrator'
+    approved_at: '2026-08-01'
+    approved_commit: 'caef47fcff54ade19f50cf752c25aeb74e639afa'
+    decision: 'approved'
 context:
   - '_bmad-output/project-context.md'
   - '_bmad-output/implementation-artifacts/epic-3-context.md'
@@ -85,6 +93,7 @@ deferred: []
 - 2026-07-31 -- Created the executable catalog-refresh contract from the approved Story 3.11 scope.
 - 2026-07-31 -- Implemented the complete live audit, offline validation, accepted rollback groups, retained exceptions, consumer evidence, and four-layer review hardening.
 - 2026-07-31 -- Finalized the agent-complete implementation at `caef47fcff54ade19f50cf752c25aeb74e639afa` for the two required maintainer approvals.
+- 2026-08-01 -- Administrator approved the exact Hexalith.Builds and EventStore implementation revisions; Story 3.11 moved to `done`.
 
 ## Review Triage Log
 
@@ -120,7 +129,7 @@ The live audit may use network sources, but CI validates a checked-in evidence c
 
 ## Auto Run Result
 
-Status: awaiting-operator
+Status: done
 
 Summary: Story 3.11 now provides a source-aware live generator and deterministic offline contract for every one of the 284 evaluated catalog rows. The validated catalog accepts 13 rows in five rollback groups, retains 271 rows with explicit evidence, records eight feed-missing IDs without downgrade, and proves the selected state in Builds plus EventStore package mode. Review hardening also withdrew two candidates whose representative compatibility evidence was insufficient.
 
@@ -143,4 +152,4 @@ Verification performed:
 - `bash scripts/check-doc-versions.sh` -- 4 Dapr rows verified at 1.18.5.
 - Root evidence reconciliation -- JSON valid; audit SHA-256 `507496549651a66f17dac221b2632b5ff9c5f4eb40055fbfeafcfd3c93e9bffa`; 284 packages; 139 families; exact Builds revision `9dc0fe1ffbf33269fddf195fd12317def86728f0`.
 
-Residual risks: eight packages remain absent from the configured feed and are retained without downgrade; source metadata remains time-varying outside deterministic CI; Azure Monitor and StackExchange.Redis candidates remain intentionally unaccepted until their stated consumer/runtime triggers pass; the two exact implementation revisions still require their respective maintainers' human approval.
+Residual risks: eight packages remain absent from the configured feed and are retained without downgrade; source metadata remains time-varying outside deterministic CI; Azure Monitor and StackExchange.Redis candidates remain intentionally unaccepted until their stated consumer/runtime triggers pass. Administrator approved the exact Builds and EventStore implementation revisions on 2026-08-01.

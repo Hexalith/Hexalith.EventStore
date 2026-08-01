@@ -200,15 +200,15 @@ development_status:
   # No publishing, workflow, credential, repository-setting, registry, or runtime change authorized.
   3-9-supply-chain-publishing-backlog: done
   3-10-generated-api-dapr-aspire-smoke-preflight: done
-  # Agent-capable work is complete; exact Builds and EventStore implementation
-  # revisions await their respective maintainers' approval.
-  3-11-validated-central-package-catalog-refresh: awaiting-operator
+  # Administrator approved the exact Builds and EventStore implementation
+  # revisions on 2026-08-01; Story 3.11 is complete.
+  3-11-validated-central-package-catalog-refresh: done
   # v3.75.0 remains failed single-platform evidence; failed partial v3.77.1 is quarantined.
   # Story 3.12 produced observed candidate v3.77.2 with exactly linux/amd64 and linux/arm64.
   # Story 1.20 is already done on source/package parity. Story 3.13 independently maps that
   # identity to the deployed OCI index, child manifests/configs, and release provenance.
   3-12-multi-platform-eventstore-container-publishing-correction: done
-  3-13-deployed-runtime-parity-closure: backlog
+  3-13-deployed-runtime-parity-closure: ready-for-dev
   epic-3-retrospective: optional
 
   epic-4: in-progress
