@@ -144,6 +144,86 @@ public static class HexalithEventStoreSecurityExtensions
     }
 
     /// <summary>
+    /// Wires audience-aware JWT bearer validation settings for the current Aspire execution mode.
+    /// </summary>
+    /// <param name="resource">The project resource to configure.</param>
+    /// <param name="localSecurity">
+    /// The local Keycloak resources returned by <see cref="AddHexalithEventStoreSecurity"/>.
+    /// Required in run mode and ignored in publish mode.
+    /// </param>
+    /// <param name="options">The validation-only JWT bearer settings.</param>
+    /// <returns>The same project resource builder for chaining.</returns>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="resource"/> or <paramref name="options"/> is <see langword="null"/>,
+    /// or when <paramref name="localSecurity"/> is <see langword="null"/> in run mode.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// Thrown when an audience is blank, or when a publish authority or issuer is missing or is not an
+    /// absolute HTTPS URI without user information, a query, or a fragment.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the Aspire execution mode is unsupported or the helper has already configured the resource.
+    /// </exception>
+    public static IResourceBuilder<ProjectResource> WithEventStoreJwtAuthentication(
+        this IResourceBuilder<ProjectResource> resource,
+        HexalithEventStoreSecurityResources? localSecurity,
+        HexalithEventStoreJwtAuthenticationOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(resource);
+        ArgumentNullException.ThrowIfNull(options);
+
+        string[] audiences = ResolveAudiences(options);
+        bool isRunMode = resource.ApplicationBuilder.ExecutionContext.IsRunMode;
+        string authority;
+        string issuer;
+        bool requireHttpsMetadata;
+
+        if (isRunMode)
+        {
+            ArgumentNullException.ThrowIfNull(localSecurity);
+            authority = string.Empty;
+            issuer = string.Empty;
+            requireHttpsMetadata = localSecurity.RequireHttpsMetadata;
+        }
+        else if (resource.ApplicationBuilder.ExecutionContext.IsPublishMode)
+        {
+            authority = ResolveExternalEndpoint(options.ExternalAuthority, nameof(options.ExternalAuthority));
+            issuer = ResolveExternalEndpoint(options.ExternalIssuer, nameof(options.ExternalIssuer));
+            requireHttpsMetadata = true;
+        }
+        else
+        {
+            throw new InvalidOperationException("The Aspire execution mode must be run or publish.");
+        }
+
+        if (resource.Resource.Annotations.OfType<EventStoreJwtAuthenticationAnnotation>().Any())
+        {
+            throw new InvalidOperationException(
+                "EventStore JWT authentication can be configured only once per project resource.");
+        }
+
+        _ = resource.WithAnnotation(
+            new EventStoreJwtAuthenticationAnnotation(),
+            ResourceAnnotationMutationBehavior.Append);
+
+        if (isRunMode)
+        {
+            return AddLocalJwtAuthenticationEnvironment(
+                resource.WithSecurityDependency(localSecurity!),
+                localSecurity!.RealmUrl,
+                audiences,
+                requireHttpsMetadata);
+        }
+
+        return AddExternalJwtAuthenticationEnvironment(
+            resource,
+            authority,
+            issuer,
+            audiences,
+            requireHttpsMetadata);
+    }
+
+    /// <summary>
     /// Wires EventStore bearer-token validation settings without injecting service-account credentials.
     /// </summary>
     /// <param name="resource">The project resource to configure.</param>
@@ -245,5 +325,99 @@ public static class HexalithEventStoreSecurityExtensions
         return value;
     }
 
+    private static IResourceBuilder<ProjectResource> AddExternalJwtAuthenticationEnvironment(
+        IResourceBuilder<ProjectResource> resource,
+        string authority,
+        string issuer,
+        IReadOnlyList<string> audiences,
+        bool requireHttpsMetadata)
+    {
+        _ = resource
+            .WithEnvironment("Authentication__JwtBearer__Authority", authority)
+            .WithEnvironment("Authentication__JwtBearer__Issuer", issuer);
+
+        return AddJwtAudienceEnvironment(resource, audiences, requireHttpsMetadata);
+    }
+
+    private static IResourceBuilder<ProjectResource> AddJwtAudienceEnvironment(
+        IResourceBuilder<ProjectResource> resource,
+        IReadOnlyList<string> audiences,
+        bool requireHttpsMetadata)
+    {
+        _ = resource.WithEnvironment("Authentication__JwtBearer__Audience", audiences[0]);
+
+        for (int index = 0; index < audiences.Count; index++)
+        {
+            _ = resource.WithEnvironment(
+                $"Authentication__JwtBearer__TokenValidationParameters__ValidAudiences__{index}",
+                audiences[index]);
+        }
+
+        return resource
+            .WithEnvironment("Authentication__JwtBearer__RequireHttpsMetadata", ToConfigurationValue(requireHttpsMetadata))
+            .WithEnvironment("Authentication__JwtBearer__SigningKey", string.Empty);
+    }
+
+    private static IResourceBuilder<ProjectResource> AddLocalJwtAuthenticationEnvironment(
+        IResourceBuilder<ProjectResource> resource,
+        ReferenceExpression realmUrl,
+        IReadOnlyList<string> audiences,
+        bool requireHttpsMetadata)
+    {
+        _ = resource
+            .WithEnvironment("Authentication__JwtBearer__Authority", realmUrl)
+            .WithEnvironment("Authentication__JwtBearer__Issuer", realmUrl);
+
+        return AddJwtAudienceEnvironment(resource, audiences, requireHttpsMetadata);
+    }
+
+    private static string[] ResolveAudiences(HexalithEventStoreJwtAuthenticationOptions options)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(options.PrimaryAudience);
+        ArgumentNullException.ThrowIfNull(options.ValidAudiences);
+
+        var audiences = new List<string>(options.ValidAudiences.Count + 1);
+        var uniqueAudiences = new HashSet<string>(StringComparer.Ordinal);
+        AddAudience(options.PrimaryAudience);
+
+        foreach (string audience in options.ValidAudiences)
+        {
+            AddAudience(audience);
+        }
+
+        return [.. audiences];
+
+        void AddAudience(string audience)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(audience, nameof(options.ValidAudiences));
+            string trimmedAudience = audience.Trim();
+            if (uniqueAudiences.Add(trimmedAudience))
+            {
+                audiences.Add(trimmedAudience);
+            }
+        }
+    }
+
+    private static string ResolveExternalEndpoint(string? endpoint, string parameterName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(endpoint, parameterName);
+        string trimmedEndpoint = endpoint.Trim();
+        if (!Uri.TryCreate(trimmedEndpoint, UriKind.Absolute, out Uri? uri)
+            || !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
+            || string.IsNullOrWhiteSpace(uri.Host)
+            || !string.IsNullOrEmpty(uri.UserInfo)
+            || !string.IsNullOrEmpty(uri.Query)
+            || !string.IsNullOrEmpty(uri.Fragment))
+        {
+            throw new ArgumentException(
+                "The endpoint must be an absolute HTTPS URI without user information, a query, or a fragment.",
+                parameterName);
+        }
+
+        return trimmedEndpoint;
+    }
+
     private static string ToConfigurationValue(bool value) => value ? "true" : "false";
+
+    private sealed record EventStoreJwtAuthenticationAnnotation : IResourceAnnotation;
 }

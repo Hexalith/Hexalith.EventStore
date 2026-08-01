@@ -263,6 +263,49 @@ Aspire provides the `AddEventStore` hosting extension for orchestrating the full
 $ dotnet add package Hexalith.EventStore.Aspire
 ```
 
+For resource-server JWT application-model composition that must select local run or external publish
+settings, add the local security resource only in run mode and compose each project once with
+`WithEventStoreJwtAuthentication`:
+
+```csharp
+HexalithEventStoreSecurityResources? localSecurity = builder.ExecutionContext.IsRunMode
+    ? builder.AddHexalithEventStoreSecurity()
+    : null;
+
+parties.WithEventStoreJwtAuthentication(
+    localSecurity,
+    new HexalithEventStoreJwtAuthenticationOptions
+    {
+        PrimaryAudience = "hexalith-parties",
+        ValidAudiences = ["hexalith-eventstore"],
+        ExternalAuthority = "https://identity.example.com/realms/hexalith",
+        ExternalIssuer = "https://identity.example.com/realms/hexalith",
+    });
+```
+
+In run mode, the helper requires `localSecurity`, uses its Keycloak realm for authority and issuer,
+adds the Keycloak reference/wait dependency, and follows the local `RequireHttpsMetadata` setting. In
+publish mode, it does not add a Keycloak dependency and requires explicit absolute HTTPS authority and
+issuer URIs without embedded user information. The primary audience is always emitted first in
+`TokenValidationParameters__ValidAudiences`; duplicate audiences are removed in first-seen order and
+blank audiences fail before the resource model is changed. Publish mode always requires HTTPS metadata,
+and both modes clear `Authentication__JwtBearer__SigningKey` to prevent a configured symmetric key from
+competing with authority-based validation. Authority and issuer URIs containing user information, a query,
+or a fragment are rejected. Applying the helper more than once to the same project fails before the second
+application changes the resource model, preventing stale indexed audiences from retaining unintended trust.
+
+`HexalithEventStoreJwtAuthenticationOptions` is validation-only: it has no password, client secret,
+signing key, or token fields. Operators must supply the external authority and issuer from non-secret
+deployment configuration. This helper does not acquire tokens, configure service credentials, change
+runtime JWT option binding, or prove that a particular AppHost publisher produces a secret-free deployable
+manifest. Runtime consumption of the emitted valid-audience entries and publisher-specific manifest
+hardening require separate host/runtime evidence.
+
+Existing consumers can continue to use `WithJwtBearerSecurity` unchanged for local Keycloak composition.
+To roll back adoption of the mode-aware surface, restore that legacy call and the previously selected
+package version or source commit; retain the consumer's existing AppHost wiring until run and publish parity
+has been accepted.
+
 ### Full stack (domain service + hosting + testing)
 
 Install packages across your projects based on their role:
@@ -424,14 +467,21 @@ $ dotnet add package Hexalith.EventStore.Testing.Integration
 
 **Key namespace and types:**
 
-- `Hexalith.EventStore.Aspire` — `HexalithEventStoreExtensions`, `HexalithEventStoreResources`
+- `Hexalith.EventStore.Aspire` — `HexalithEventStoreExtensions`, `HexalithEventStoreResources`,
+  `HexalithEventStoreSecurityExtensions`, `HexalithEventStoreSecurityResources`,
+  `HexalithEventStoreJwtAuthenticationOptions`
+
+`HexalithEventStoreSecurityExtensions.WithEventStoreJwtAuthentication` selects local Keycloak validation
+or explicit external validation from the Aspire execution mode, emits the primary and ordered unique valid
+audiences, requires HTTPS metadata for publishing, and clears the signing-key override. The legacy
+`WithJwtBearerSecurity` API remains available with its existing signature and local behavior.
 
 **External dependencies:**
 
 | Package                              | Version |
 | ------------------------------------ | ------- |
-| Aspire.Hosting                       | 13.1.2  |
-| CommunityToolkit.Aspire.Hosting.Dapr | 13.0.0  |
+| Aspire.Hosting                       | 13.4.6  |
+| CommunityToolkit.Aspire.Hosting.Dapr | 13.4.1-beta.687 |
 
 ```bash
 $ dotnet add package Hexalith.EventStore.Aspire
