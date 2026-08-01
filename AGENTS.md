@@ -56,6 +56,22 @@ Before working in a Hexalith repository, locate, read, and follow
 - If nested submodules were initialized accidentally, deinitialize them before
   continuing.
 
+### Git Message Preflight
+
+Before an assistant commits, creates or updates a squashable pull request, or
+merges, it must treat every commit, merge, or squash subject and every
+squashable pull-request title it authors, selects, receives, or uses—including
+an existing live title—as an untrusted Git history candidate. It must draft any
+replacement locally and validate the exact candidate with the repository's
+authoritative commitlint configuration before the corresponding commit or
+pull-request create, update, or merge mutation.
+
+Reject branch-derived, UI-generated, CLI-generated, and other generated
+defaults; draft an explicit replacement locally and validate it. If validation
+rejects any candidate, replace it and revalidate the replacement; if validation
+cannot run, report the exact blocker and stop. Do not perform the mutation until
+the exact candidate passes.
+
 ## Shared Entry Points
 
 - Keep `AGENTS.md`, `CLAUDE.md`, and `.github/copilot-instructions.md`
