@@ -941,7 +941,7 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         string fingerprint = ProjectionRouteCatalogFingerprint.Compute(
             "sample",
             "v1",
-            [new ProjectionDispatchRoute("widget", "widget-detail")]);
+            [new ProjectionDispatchRoute("widget", "widget-detail"), new ProjectionDispatchRoute("widget", "widget-index")]);
         var metadataRequest = new AdminOperationalIndexMetadata.Request(["widget"]) {
             AppId = "sample",
             ServiceVersion = "v1",
@@ -953,7 +953,9 @@ public sealed class EventStoreDomainServiceExtensionsTests {
             metadataRequest);
 
         metadataStatus.ShouldBe(StatusCodes.Status200OK, metadataBody);
-        app.Services.GetRequiredService<DomainProjectionCatalogRegistry>().Contains(fingerprint).ShouldBeTrue();
+        DomainProjectionCatalogRegistry catalogRegistry = app.Services.GetRequiredService<DomainProjectionCatalogRegistry>();
+        catalogRegistry.Contains(fingerprint).ShouldBeTrue();
+        catalogRegistry.Authorizes(fingerprint, "widget", ["widget-index"]).ShouldBeTrue();
 
         var validDispatch = new ProjectionDispatchRequest(
             new ProjectionRequest("tenant-a", "widget", "widget-1", []),
