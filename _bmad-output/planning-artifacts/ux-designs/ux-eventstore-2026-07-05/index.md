@@ -1,12 +1,17 @@
 # Hexalith.EventStore UX Index
 
 Status: final
-Updated: 2026-07-09
+Updated: 2026-08-01
 
 This folder is the canonical UX source for Hexalith.EventStore. The archived
 top-level UX handoff is retained only for audit history at:
 
 - ../../archive/ux-superseded-2026-07-05.md
+
+The current top-level handoff is `../../ux.md`. The implementation target is
+the existing `src/Hexalith.EventStore.Admin.UI`, evolved in place under
+`eventstore-admin-ui`; “EventStore UI service” in older evidence never means a
+second host.
 
 ## Canonical Documents
 

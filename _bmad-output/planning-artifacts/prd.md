@@ -2,7 +2,7 @@
 title: eventstore Phase 4 Implementation Readiness Recovery PRD
 status: final
 created: 2026-07-05
-updated: 2026-07-20
+updated: 2026-08-01
 project: eventstore
 source_artifacts:
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-02-global-event-ordering.md
@@ -45,6 +45,8 @@ source_artifacts:
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-19-openbao-secret-store.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-19.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-20-oq8-durable-idempotency-admission.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-08-01.md
+  - _bmad-output/planning-artifacts/implementation-readiness-report-2026-08-01.md
   - _bmad-output/planning-artifacts/implementation-readiness-report-2026-07-05.md
   - _bmad-output/planning-artifacts/epics.md
 ---
@@ -72,12 +74,12 @@ Implementation should not resume as a full Phase 4 package until this PRD, the a
 
 ### 1.1 OQ8 Authority Order
 
-For Story 4.8, the approved 2026-07-20 OQ8 sprint change proposal and the
+For the Story 4.8 evidence ledger and active Stories 4.9-4.15, the approved 2026-07-20 OQ8 sprint change proposal and the
 Architecture + Security + Test-approved OQ8 design version 1.0.0 (SHA-256
 `1a55b0302e91233e12db91e6e245f0a22d6bf13fcf6cdf5ee0cbe5759f08dcd8`)
 govern. This reconciled PRD, architecture, epics, and canonical SPEC package
 project that authority into EventStore. Any pre-change FR27, NFR7, NFR16, or
-architecture wording is historical context only and cannot weaken Story 4.8.
+architecture wording is historical context only and cannot weaken the 4.9-4.15 sequence or its Story 4.15 closure gate.
 
 ## 2. Vision
 
@@ -342,7 +344,7 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 ### 9.3 Committed Post-MVP Scope
 
 - Epic 8 owns the optional shared payload-protection security specification and implementation under FR37/NFR19.
-- Epic 8 does not block Phase 4 MVP completion, but Story 8.2 blocks Parties Story 8.7 migration until the engine is implemented, reviewed, released or pinned, and proven through dual-provider compatibility and rollback after `pdenc-v2` writes.
+- Epic 8 does not block Phase 4 MVP completion. Story 8.1 approval authorizes only Story 8.2 to begin, Stories 8.2-8.11 implement and prove the capability in sequence, and Story 8.11 blocks Parties Story 8.7 migration until the engine is implemented, reviewed, released or pinned, proven through dual-provider compatibility, and successfully rolled back after `pdenc-v2` writes.
 - Provider/operator root-key custody, production credentials, KMS/HSM/secret-store service operation, and environment policy remain operational responsibilities rather than EventStore-owned secret material.
 
 ## 10. Success Metrics
@@ -355,10 +357,10 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 
 **Secondary**
 
-- **SM4:** Oversized stories identified by the readiness report are split or explicitly accepted as coordinated slices with named owners and validation commands. Validates implementation readiness and reviewability.
+- **SM4:** Oversized Stories 4.8, 7.14, and 8.2 identified by readiness review are replaced by focused children with named owners, backward-only dependencies, closed inventories, and focused validation. Validates implementation readiness and reviewability.
 - **SM5:** Required architecture and UX artifacts exist under `_bmad-output/planning-artifacts` and are referenced by the epic plan. Validates downstream usability.
 - **SM6:** The projection/query SDK parity packet is owner-approved as `available`, every required production-path proof passes, and the consuming Parties checkout matches the approved EventStore runtime SHA before Story 8.6 resumes. Validates FR36 and the parity implementation gate.
-- **SM7:** The payload-protection G5 packet is owner/security-approved as `available`, exact source/package/backend identities are recorded, EventStore goldens and Parties dual-provider parity pass, and rollback succeeds after `pdenc-v2` writes before Parties Story 8.7 resumes. Validates FR37/NFR19.
+- **SM7:** Story 8.11 records the payload-protection G5 packet as owner/security-approved `available`, exact source/package/backend identities are recorded, EventStore goldens and Parties dual-provider parity pass, and Story 8.10 rollback succeeds after `pdenc-v2` writes before Parties Story 8.7 resumes. Validates FR37/NFR19.
 
 **Counter-Metrics**
 
@@ -398,7 +400,7 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 | FR24 | Epic 4 - Global-position sharding spec renegotiation |
 | FR25 | Epic 3 - Shared Hexalith.Builds gates and manifest-driven package scope |
 | FR26 | Epic 5 - Phase 0 security and safe-remediation fixes |
-| FR27 | Epic 4 - Resume/idempotency integrity, command status re-keying, and Story 4.8 durable tenant/key admission |
+| FR27 | Epic 4 - Resume/idempotency integrity, command status re-keying, and Stories 4.9-4.15 durable tenant/key admission and closure |
 | FR28 | Epic 5 - Defense-in-depth trust boundary |
 | FR29 | Epic 4 - Replay and dispatch determinism |
 | FR30 | Epic 4 - Crash recovery for committed-but-unpublished events |
@@ -407,8 +409,8 @@ Phase 4 carries these concerns and the PRD must preserve them through downstream
 | FR33 | Epic 6 - Bounded cost and event evolution |
 | FR34 | Epic 7 - Delivery, admin, deploy, and IntegrationTests recovery |
 | FR35 | Epic 7 - Backlog capability tracking |
-| FR36 | Epic 1 - Projection/query parity implementation and owner-approved runtime-pin closure |
-| FR37 | Epic 8 - Shared payload-protection security specification, engine implementation, production backend, and Parties G5 parity |
+| FR36 | Epic 1 - Projection/query parity source/package closure; Epic 3 - deployed runtime parity closure in Story 3.13 |
+| FR37 | Epic 8 - Shared payload-protection security specification and Stories 8.2-8.11 implementation, production backend, release, Parties parity, rollback, and G5 closure |
 
 ### 11.2 High-Risk NFR Story Coverage
 
@@ -417,30 +419,30 @@ SM3's Phase 4 gate covers NFR1-NFR4, NFR7, NFR10-NFR11, and NFR14-NFR17. The tab
 | NFR | Primary story coverage |
 | --- | --- |
 | NFR1 | 5.2, 5.3, 5.5, 7.2, 7.3 |
-| NFR2 | 2.5, 5.2, 5.5, 5.6 |
+| NFR2 | 2.5, 5.2, 5.5, 5.6, 5.10 |
 | NFR3 | 5.3 |
 | NFR4 | 5.3, 7.6 |
 | NFR6 | 1.13, 7.1 |
-| NFR7 | 4.1, 4.2, 4.4, 4.5, 4.8, 5.1 |
-| NFR8 | 1.16, 1.19, 6.3, 6.4 |
-| NFR9 | 3.5, 3.8, 3.11, 3.12 |
+| NFR7 | 4.1, 4.2, 4.4, 4.5, 4.9-4.15, 5.1 |
+| NFR8 | 1.16, 1.19, 6.2-6.4 |
+| NFR9 | 3.5, 3.8, 3.11-3.13 |
 | NFR10 | 3.1, 3.11, 7.10 |
-| NFR11 | 3.6, 3.12 |
-| NFR14 | 2.3, 2.5, 2.6 |
-| NFR15 | 7.3, 7.4, 7.14 |
-| NFR16 | 1.9, 1.10, 1.11, 1.12, 1.13, 1.14, 1.15, 3.11, 3.12, 4.8, 7.10 |
+| NFR11 | 3.6, 3.12, 8.8 |
+| NFR14 | 2.3, 2.5, 2.6, 7.14, 7.19 |
+| NFR15 | 7.3, 7.4, 7.19 |
+| NFR16 | 1.9-1.15, 3.11-3.13, 4.9-4.15, 7.10, 8.2-8.11 |
 | NFR17 | 3.12, 5.6, 7.6, 7.7, 7.8, 7.9 |
-| NFR19 | 8.1, 8.2 |
+| NFR19 | 8.1-8.11 |
 
 ### 11.3 Required Follow-On Readiness Work
 
 The PRD, architecture, UX, and epics artifacts now exist under `_bmad-output/planning-artifacts` and reference each other. The remaining readiness gate is verification: re-run implementation readiness after the story-quality corrections below are reviewed.
 
-- Parties projection/query parity remains blocked until Stories 1.14-1.19 complete and Story 1.20 records an owner-approved `available` packet tied to the exact runtime SHA consumed by Parties. Stories 1.14-1.19 may be implemented and reviewed in parallel once the contracts they directly consume exist; the approved capability sequence governs evidence acceptance and final parity closure, not serial story execution. Story 1.20 must still verify that Stories 1.14-1.19 are complete and reviewed before it may close the Story 8.6 gate. Story 1.20 does not close G5.
+- Parties projection/query parity remains blocked until Stories 1.14-1.19 complete and Story 1.20 records an owner-approved `available` packet tied to the exact source or package identity consumed by Parties. Stories 1.14-1.19 may be implemented and reviewed in parallel once the contracts they directly consume exist; the approved capability sequence governs evidence acceptance and final parity closure, not serial story execution. Story 1.20 must still verify that Stories 1.14-1.19 are complete and reviewed before it may close the Parties Story 8.6 gate. Deployed runtime parity is a separate backward-only Story 3.13 closure and neither gates nor reopens completed Story 1.20. Story 1.20 does not close G5.
 
-- Parties payload-protection G5 remains `needs-additive-api` until Story 8.1's approved security specification gates Story 8.2, and Story 8.2 supplies an owner/security-approved `available` packet with exact source/package/backend identities, EventStore goldens, Parties dual-provider compatibility, and rollback after `pdenc-v2` writes.
+- Parties payload-protection G5 remains `needs-additive-api` until Story 8.1's approved security specification authorizes Story 8.2, Stories 8.2-8.10 complete their gated implementation and evidence, and Story 8.11 supplies an owner/security-approved `available` packet with exact source/package/backend identities, EventStore goldens, Parties dual-provider compatibility, and rollback after `pdenc-v2` writes.
 
-- The former coordinated-slice parents (pre-renumbering Stories 1.3, 1.6, 2.4, 3.7, 5.6, 7.2, 7.3, and 7.4) are superseded by focused child stories under the approved 2026-07-15 restructuring: 1.3-1.5, 1.8-1.11, 2.4-2.7 plus 2.12, 3.7-3.9, 5.6-5.9, 7.2-7.5, 7.6-7.9, and 7.10-7.13. `epics.md` retains the migration gates — every child names one owner, one review boundary, deterministic acceptance criteria, and focused validation — and `story-id-migration-2026-07-15.md` is the audit authority for identifier mapping, status inheritance, and evidence.
+- The former coordinated-slice parents are superseded by focused children under the dated restructurings. The pre-2026-07-15 legacy Story 1.6 means Sample/Tenants coordinated adoption; current Story 1.6 means Projection And Domain Event Consumer Seams. `story-id-migration-2026-07-15.md` remains the July audit authority, and `story-id-migration-2026-08-01.md` governs Story 3.13, the 4.9-4.15 OQ8 split, Story 5.10, the 7.14/7.19/7.20 Admin UI split, and the 8.2-8.11 payload-protection sequence.
 - Story 5.2 now requires concrete request-size limits: `1_048_576` bytes for representative admin JSON write/sandbox bodies and `10 * 1024 * 1024` bytes for `AdminBackupsController.ImportStream`, with bounded rejection tests and no upstream service invocation on excessive requests.
 - Stories 6.1, 6.3, and 6.5 now name required spec output paths and approval evidence before Stories 6.2, 6.4, and 6.6 can start:
   - `_bmad-output/implementation-artifacts/spec-folded-snapshot.md`

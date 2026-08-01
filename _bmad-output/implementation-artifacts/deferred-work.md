@@ -816,3 +816,9 @@ source_spec: `spec-3-6-manifest-driven-release-packaging.md`
 severity: low
 reason: The follow-up-review damping cap (limits.max_followup_reviews = 1) was spent with the story finalized (status: done, verify green) while the review pass still recommended an independent follow-up. The work was committed by bmad-loop run 20260731-203343-5b29; this entry preserves the lingering recommendation for a deliberate later review.
 status: open
+
+## Deferred from: code review of 8-1-shared-payload-protection-security-spec-and-adr (2026-08-01)
+
+- [MEDIUM] Reconcile `epic-2: in-progress` with all listed Epic 2 stories and its retrospective marked `done`. Source: `_bmad-output/implementation-artifacts/sprint-status.yaml:79`. Pre-existing sprint-tracking inconsistency outside Story 8.1.
+- [LOW] Add the intentionally preserved `awaiting-operator` value to the sprint-status schema comments. Source: `_bmad-output/implementation-artifacts/sprint-status.yaml:19,205`. Pre-existing schema-comment drift outside Story 8.1.
+- [MEDIUM] Separate unrelated Epic 1-7 tracking changes from the Story 8.1 baseline evidence so scope attribution is reviewable. Source: `_bmad-output/implementation-artifacts/sprint-status.yaml:51`. The shared sprint file accumulated concurrent story updates after the recorded baseline.

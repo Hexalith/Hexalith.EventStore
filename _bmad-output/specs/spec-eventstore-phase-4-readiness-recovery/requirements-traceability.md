@@ -1,85 +1,90 @@
 # Requirements Traceability
 
-## Capability To FR Coverage
+The authoritative requirement text is in [`prd.md`](../../planning-artifacts/prd.md): functional requirements in section 6 and non-functional requirements in section 7. This companion intentionally contains identifiers, anchors, capability ownership, and story coverage only; it does not duplicate requirement prose.
 
-| Capability | Functional requirements |
+## Capability To Requirement Coverage
+
+| Capability | Requirement identifiers |
 | --- | --- |
-| CAP-1 Domain author self-service platform | FR1-FR10, FR36 |
-| CAP-2 External integration surfaces | FR11-FR16 |
-| CAP-3 Release and repository reliability | FR17-FR22, FR25 |
-| CAP-4 Event correctness and recovery | FR23-FR24, FR27, FR29-FR31 |
-| CAP-5 Security and tenant isolation | FR26, FR28, FR32 |
-| CAP-6 Bounded cost and event evolution | FR33 |
-| CAP-7 Operator trust, admin honesty, and future backlog | FR34-FR35 |
-| CAP-8 Readiness recovery package | Readiness gates and success metrics |
+| CAP-1 Domain author self-service platform | FR1-FR10, FR36; supporting NFR2, NFR6-NFR9, NFR12, NFR14, NFR16 |
+| CAP-2 External integration surfaces | FR11-FR16; supporting NFR2, NFR5, NFR8, NFR12-NFR16 |
+| CAP-3 Release and repository reliability | FR17-FR22, FR25; supporting NFR9-NFR11, NFR16-NFR17 |
+| CAP-4 Event correctness and recovery | FR23-FR24, FR27, FR29-FR31; supporting NFR7, NFR16 |
+| CAP-5 Security and tenant isolation | FR26, FR28, FR32; supporting NFR1-NFR4, NFR16-NFR17 |
+| CAP-6 Bounded cost and event evolution | FR33; supporting NFR8, NFR12-NFR13, NFR16 |
+| CAP-7 Operator trust, admin honesty, and future backlog | FR34-FR35; supporting NFR1-NFR2, NFR4, NFR7, NFR10-NFR17 |
+| CAP-8 Readiness recovery package | Readiness gates, both dated migration crosswalks, and the implementation-readiness assessment |
+| CAP-9 Shared payload protection | FR37/NFR19; supporting NFR1-NFR4, NFR7, NFR9-NFR12, NFR16-NFR17 |
 
-## Functional Requirements
+## Functional Requirement Registry
 
-| FR | Requirement |
-| --- | --- |
-| FR1 | Domain modules built on Hexalith.EventStore must be domain-centric and contain domain code while EventStore libraries supply platform boilerplate. |
-| FR2 | The platform must provide `AddEventStoreDomainService`, `UseEventStoreDomainService`, and `MapEventStoreDomainService`. |
-| FR3 | The domain-service SDK must expose `/process`, `/replay-state`, `/query`, `/project`, and `/admin/operational-index-metadata`. |
-| FR4 | The platform must provide `IDomainQueryHandler` discovery, dispatch, operational metadata, handler-aware `/query` routing, end-to-end query metadata, route-bound provenance, and lossless projection lifecycle evidence. |
-| FR5 | The platform must provide persisted read-model lifecycle and write contracts with ETag-aware operations, coordinated erasure, detail/index batches or an approved resumable equivalent, deterministic DAPR behavior, and deterministic in-memory testing semantics. |
-| FR6 | The platform must provide a DataProtection-backed query cursor codec with scope validation, payload limits, tamper/key-rotation handling, and caller-supplied purpose isolation. |
-| FR7 | The platform must provide asynchronous cancellation-aware named projection dispatch, coordinated detail/index persistence, correct duplicate/out-of-order handling, replay-equivalent paged rebuilds, and generic domain-event consumer plumbing. |
-| FR8 | The platform must provide Aspire, telemetry, and health-check extensions for domain modules. |
-| FR9 | Sample and Tenants must adopt platform SDK seams so duplicated routers, projection actors, cursor codecs, state-store plumbing, telemetry, health checks, and per-domain Aspire wiring are removed or reduced to domain logic. |
-| FR10 | The EventStore package set must include domain-service and service-default packages and publish only the manifest-governed EventStore package set. |
-| FR11 | The platform must provide REST API generator contracts with `ICommandContract`, `IQueryContract`, optional `RestRouteAttribute`, and assembly-level `RestApiAttribute`. |
-| FR12 | The REST API generator must emit typed OpenAPI-visible controllers that delegate to `IEventStoreGatewayClient`, with tests for discovery, routing, diagnostics, and output. |
-| FR13 | Generated REST controllers must live in dedicated external API hosts, not interactive UI hosts. |
-| FR14 | Sample must introduce a contracts-only library and external API host that proves generated query and command controllers. |
-| FR15 | Tenants must move generated controllers to an external API host while Tenants UI consumes client libraries. |
-| FR16 | Projection-changed transport must add metadata-rich detail with optional group scope, bounded metadata, scoped SignalR groups, optional DAPR notification support, and signal-only compatibility. |
-| FR17 | Live DAPR sidecar tests must move out of the per-push release gate into a dedicated integration workflow with warm-up and readiness retry. |
-| FR18 | `DaprETagService` must allow an overridable actor request timeout while preserving the production default. |
-| FR19 | Root-declared Git submodules must live under `references/`, and solution, project, docs, Aspire metadata, and LLM paths must resolve through that layout. |
-| FR20 | The Aspire Keycloak resource must be named `security` while preserving Keycloak implementation behavior. |
-| FR21 | Cross-repo Hexalith dependencies must use Debug source project references only when explicitly enabled and Release package references by default. |
-| FR22 | Release restore, build, test, pack, and semantic-release commands must assert package-reference mode and avoid packaging submodule projects. |
-| FR23 | Persisted events must receive non-zero actor-allocated global positions; CloudEvent ids must use event `MessageId`; duplicate command replies must preserve original result fields. |
-| FR24 | Global-position allocation must be renegotiated toward tenant/domain sharding, and the frozen global-ordering spec must be updated before implementation. |
-| FR25 | EventStore workflows must use shared Hexalith.Builds security gates through `@main`, keep third-party actions SHA-pinned through shared workflows, and define NuGet publish scope in `tools/release-packages.json`. |
-| FR26 | Phase 0 remediation must clear staged state on infrastructure failure, protect anonymous admin endpoints, strip committed admin secrets, enforce production auth guards, add tenant-filter parity, gate admin Swagger, require destructive CLI confirmation, use ULID-safe admin correlation middleware, and correct stale test-baseline docs. |
-| FR27 | Pipeline and idempotency remediation must use exact command identity for resume; provide EventStore-owned tenant-scoped durable admission accepting only trusted versioned canonical intent and a fixed retention tier; reject live conflict and expired-key reuse before downstream execution; separate replay retention from consumed-key evidence; and never turn consumed, unavailable, corrupt, or unsafe legacy state into a fresh miss. Command status/archive identity, transient retryability, and tenant-before-state validation remain required. |
-| FR28 | Trust-boundary remediation must require app-layer credentials for internal, domain-service, projection-notification, and admin-computation endpoints and remove wire-asserted administrator trust. |
-| FR29 | Replay and dispatch remediation must make apply-method resolution boundary-safe and ambiguity-detecting and use one shared `JsonSerializerOptions` path for command, rehydrate, project, and pub/sub payloads. |
-| FR30 | Crash recovery must detect committed-but-unpublished events and complete publication or drain/recover them without resubmission using the same correlation id. |
-| FR31 | Append durability remediation must start with a live-sidecar two-writer race test and DAPR conflict-exception spike before choosing optimistic-concurrency fencing. |
-| FR32 | Runtime topology remediation must align AppHost-loaded DAPR pub/sub, ACL, and key-prefix posture with tests and production templates. |
-| FR33 | Cost/evolution remediation must introduce folded snapshots, lower projection replay cost, projection sequence guards, event versioning/upcasting, event metadata identity validation, and cancellation-token seams. |
-| FR34 | Delivery/admin/deployment remediation must document at-least-once unordered delivery, add poison/dead-letter handling, bound in-memory deduplication, normalize admin claims, audit state-mutating admin actions, hide deferred admin operations, add secret-store-backed config, add readiness/app-health checks, and restore meaningful IntegrationTests coverage. |
-| FR35 | Backlog capabilities must be tracked for GDPR aggregate erasure/tombstoning, Admin interactive OIDC login, aggregate test kit, and REST generator hardening. |
-| FR36 | Consumer projection/query infrastructure may be removed only after an EventStore-owner-reviewed parity packet proves every required production path and the consumed EventStore source, package, or image identity matches the approved runtime. |
+| ID | PRD anchor | Capability | Primary story coverage |
+| --- | --- | --- | --- |
+| FR1 | PRD §6 | CAP-1 | 1.1, 1.11 |
+| FR2 | PRD §6 | CAP-1 | 1.1 |
+| FR3 | PRD §6 | CAP-1 | 1.1 |
+| FR4 | PRD §6 | CAP-1 | 1.2, 1.9, 1.13, 1.16, 2.7 |
+| FR5 | PRD §6 | CAP-1 | 1.3-1.4, 1.9, 1.13-1.15 |
+| FR6 | PRD §6 | CAP-1 | 1.5, 1.9, 1.13 |
+| FR7 | PRD §6 | CAP-1 | 1.6, 1.10, 1.13, 1.17-1.19 |
+| FR8 | PRD §6 | CAP-1 | 1.7 |
+| FR9 | PRD §6 | CAP-1 | 1.8-1.11, 1.13 |
+| FR10 | PRD §6 | CAP-1 | 1.11-1.12 |
+| FR11 | PRD §6 | CAP-2 | 2.1, 2.4 |
+| FR12 | PRD §6 | CAP-2 | 2.2, 2.9, 2.11 |
+| FR13 | PRD §6 | CAP-2 | 2.3, 2.5-2.6, 2.10, 7.14 |
+| FR14 | PRD §6 | CAP-2 | 2.3, 2.10 |
+| FR15 | PRD §6 | CAP-2 | 2.4-2.7, 2.11-2.12, 4.7, 7.19 |
+| FR16 | PRD §6 | CAP-2 | 2.8 |
+| FR17 | PRD §6 | CAP-3 | 3.1, 3.10 |
+| FR18 | PRD §6 | CAP-3 | 3.2 |
+| FR19 | PRD §6 | CAP-3 | 3.3 |
+| FR20 | PRD §6 | CAP-3 | 3.4 |
+| FR21 | PRD §6 | CAP-3 | 2.12, 3.5, 3.11 |
+| FR22 | PRD §6 | CAP-3 | 2.12, 3.6, 3.8, 3.11-3.12 |
+| FR23 | PRD §6 | CAP-4 | 4.1 |
+| FR24 | PRD §6 | CAP-4 | 4.6 |
+| FR25 | PRD §6 | CAP-3 | 3.7-3.9, 3.11-3.12 |
+| FR26 | PRD §6 | CAP-5 | 2.10, 5.1-5.4 |
+| FR27 | PRD §6 | CAP-4 | 4.2, ledger 4.8, implementation 4.9-4.15 |
+| FR28 | PRD §6 | CAP-5 | 2.10, 5.5 |
+| FR29 | PRD §6 | CAP-4 | 4.3 |
+| FR30 | PRD §6 | CAP-4 | 4.4 |
+| FR31 | PRD §6 | CAP-4 | 4.5 |
+| FR32 | PRD §6 | CAP-5 | 5.6-5.9 |
+| FR33 | PRD §6 | CAP-6 | 1.19, 6.1-6.6 |
+| FR34 | PRD §6 | CAP-7 | 2.6, 2.11, 3.10, 7.1-7.14, 7.19-7.20 |
+| FR35 | PRD §6 | CAP-7 | 7.15-7.18 |
+| FR36 | PRD §6 | CAP-1 | 1.2-1.4, 1.9-1.10, 1.14-1.20; deployed closure 3.13 |
+| FR37 | PRD §6 | CAP-9 | 8.1-8.11 |
 
-## Non-Functional Requirements
+## Non-Functional Requirement Registry
 
-| NFR | Requirement |
-| --- | --- |
-| NFR1 | Security must fail closed for public, internal, domain-service, projection-notification, and admin surfaces. Only support-safe `/health`, `/alive`, and `/ready` probes are explicitly anonymous; the fail-closed default is never weakened to reach them. |
-| NFR2 | Tenant isolation must be preserved across state keys, actor IDs, topics, admin queries, generated REST APIs, SignalR groups, and deployment configuration. |
-| NFR3 | Production authentication must reject insecure symmetric-key mode unless explicitly break-glassed, require HTTPS metadata where appropriate, and pin accepted JWT algorithms. |
-| NFR4 | Committed configuration must not contain forgeable administrator signing keys, credentials, bearer tokens, decoded JWT payloads, or operational secrets. |
-| NFR5 | SignalR detail metadata must remain bounded and metadata-only; framework logs must not expose metadata values above Debug level. |
-| NFR6 | Event delivery is at-least-once and unordered; production dispatch, persistence, marker, and checkpoint paths must prove `MessageId` deduplication and scope-correct sequence handling. |
-| NFR7 | Event persistence and command processing must avoid silent data loss from staged-state flushes, stale pipeline records, append races, and committed-but-unpublished events, and must prevent duplicate side effects across admission, fencing, execution, recovery, expiry, compaction, restart, and concurrent hosts. |
-| NFR8 | Snapshot/projection cost must remain bounded; only projection-backed routes may expose authoritative lifecycle evidence, and paged rebuild output must equal canonical replay without replacing live state with page-only state. |
-| NFR9 | Release behavior must be reproducible and independent of local submodule checkout state. |
-| NFR10 | CI/CD must separate deterministic release-gate tests from live-sidecar/integration tests while preserving live-sidecar coverage in a dedicated lane. |
-| NFR11 | Package publishing must be manifest-driven and must not publish submodule packages or packages outside EventStore release inventory. |
-| NFR12 | Backward compatibility must be preserved for additive framework changes such as SignalR signal-only notifications and existing generic gateway APIs. |
-| NFR13 | Generated code and source-generator packages must build cleanly under warnings-as-errors and follow EventStore style, nullable, ULID, and `ConfigureAwait(false)` rules. |
-| NFR14 | Interactive UI hosts must not expose generated or hand-written per-message MVC command/query controllers; UI flows consume client libraries. |
-| NFR15 | Admin UX must not present deferred backup, restore, import, compaction, or other unavailable operations as functional. |
-| NFR16 | Integration and higher-tier tests must assert persisted state-store/read-model/end-state evidence. Erasure, batch recovery, handler idempotency, and rebuild equivalence require production-path detail, index, marker, lifecycle, and checkpoint proof; Story 4.8 additionally proves restart, multi-host serialization, expiry, compaction, leakage absence, and zero downstream work on non-execute outcomes. |
-| NFR17 | Operational hardening must support secret stores, DAPR app health checks, readiness-tagged health checks, resiliency targets, immutable image tags, and documented crypto-shred boundaries. |
-| NFR18 | AOT/trimming is explicitly not a target while reflection conventions remain load-bearing. |
+| ID | PRD anchor | Primary story coverage or governing gate |
+| --- | --- | --- |
+| NFR1 | PRD §7 | 5.2, 5.3, 5.5, 7.2, 7.3, 7.7, 8.3, 8.5-8.7, 8.9, 8.11 |
+| NFR2 | PRD §7 | 1.5, 1.9-1.10, 2.5, 5.2, 5.5-5.8, 5.10, 7.2-7.3, 8.5, 8.7, 8.9, 8.11 |
+| NFR3 | PRD §7 | 5.3, 8.3, 8.6, 8.9, 8.11 |
+| NFR4 | PRD §7 | 5.3, 7.6, 8.5-8.6, 8.9, 8.11 |
+| NFR5 | PRD §7 | 2.8 |
+| NFR6 | PRD §7 | 1.10, 1.18, 7.1 |
+| NFR7 | PRD §7 | 1.3, 1.15, 1.17-1.18, 4.1-4.2, 4.4-4.5, 4.9-4.15, 5.1, 7.11, 8.4-8.5, 8.7, 8.9-8.11 |
+| NFR8 | PRD §7 | 1.2, 1.9, 1.13, 1.16, 1.19, 2.11, 4.7, 6.2-6.4 |
+| NFR9 | PRD §7 | 2.12, 3.5, 3.8, 3.11-3.13, 8.8, 8.11 |
+| NFR10 | PRD §7 | 3.7, 3.11, 7.10, 7.12-7.13, 8.8, 8.11 |
+| NFR11 | PRD §7 | 3.8-3.9, 3.12, 7.9, 8.8, 8.11 |
+| NFR12 | PRD §7 | 1.17, 1.20, 2.7, 2.12, 3.13, 7.5, 8.2, 8.4, 8.9-8.11 |
+| NFR13 | PRD §7 | 2.1-2.4 and generated-code validation gates |
+| NFR14 | PRD §7 | 1.8, 1.11, 2.5-2.6, 2.11, 7.5, 7.14, 7.19 |
+| NFR15 | PRD §7 | 1.16, 2.6, 7.3-7.4, 7.19 |
+| NFR16 | PRD §7 | 1.2-1.5, 1.9-1.10, 1.13-1.15, 1.18-1.20, 2.7, 2.11-2.12, 3.10-3.13, 4.7, 4.9-4.15, 5.8, 7.3, 7.10-7.12, 8.7-8.11 |
+| NFR17 | PRD §7 | 3.12, 5.6-5.9, 7.6-7.9, 8.6, 8.11 |
+| NFR18 | PRD §7 | Architecture/project-context AOT exclusion; applies to all reflection-based seams |
+| NFR19 | PRD §7 | 8.1-8.7, 8.9-8.11 |
 
 ## AD-24 Operational Secret Invariant
 
-Architecture AD-24 is an adopted companion invariant for FR34, NFR4, NFR17, and current Story 7.6. The architecture companion owns the full decision; these consequences are binding:
+Architecture AD-24 is an adopted companion invariant for FR34, NFR4, NFR17, and Story 7.6. The architecture companion owns the full decision; these consequences are binding:
 
 | Concern | Binding consequence |
 | --- | --- |
@@ -90,4 +95,4 @@ Architecture AD-24 is an adopted companion invariant for FR34, NFR4, NFR17, and 
 | Readiness and failure | Hosts resolve declared required secrets before readiness. Missing startup inputs fail startup; runtime lookup or refresh failure fails closed, disables the dependent operation, expires unusable cached values, and holds readiness false until bounded recovery. |
 | Rotation | Atomic secret maps carry a non-secret generation. Rotation publishes a new generation, preserves overlap, waits for every cataloged consumer to acknowledge while ready, and only then revokes old material; incomplete acknowledgement retains old validity or publishes a restored generation. |
 | Evidence and profiles | Release evidence includes a real-OpenBao integration lane. Development substitutes preserve the same logical contract and default-deny behavior; Azure Container Apps managed DAPR is non-conforming until an approved compatible profile proves equivalent support and scoping. |
-| Key-custody separation | AD-24 does not approve or modify AD-23 or the draft payload-protection Azure Key Vault Premium RSA-HSM KEK proposal. DAPR secret stores are not production `pdenc-v2` key custody. |
+| Key-custody separation | AD-24 does not approve or modify AD-23 or the payload-protection Azure Key Vault Premium RSA-HSM KEK design. DAPR secret stores are not production `pdenc-v2` key custody. |

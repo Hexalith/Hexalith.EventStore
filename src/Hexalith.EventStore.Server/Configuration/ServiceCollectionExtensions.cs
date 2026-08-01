@@ -48,6 +48,11 @@ public static class EventStoreServerServiceCollectionExtensions {
         services.TryAddSingleton<IdempotencyExecutionContextProtector>();
         services.TryAddSingleton<CanonicalIdempotencyIntentEncoder>();
         services.TryAddSingleton<IIdempotencyIntentAdapterRegistry, IdempotencyIntentAdapterRegistry>();
+        _ = services.AddSingleton<IHostedService>(serviceProvider =>
+        {
+            _ = serviceProvider.GetRequiredService<IIdempotencyIntentAdapterRegistry>();
+            return NoOpHostedService.Instance;
+        });
         services.TryAddSingleton<IIdempotencyAdmissionCoordinator, IdempotencyAdmissionCoordinator>();
         services.TryAddSingleton<IdempotencyTenantLifecyclePurger>();
         services.TryAddScoped<IQueryRouter, QueryRouter>();

@@ -42,7 +42,8 @@ public class CommandsControllerTenantTests {
         string domain = "test-domain",
         string commandType = "CreateOrder",
         string aggregateId = "agg-001",
-        Dictionary<string, string>? extensions = null) =>
+        Dictionary<string, string>? extensions = null,
+        string? idempotencyKey = null) =>
         new(
             MessageId: Guid.NewGuid().ToString(),
             Tenant: tenant,
@@ -50,7 +51,8 @@ public class CommandsControllerTenantTests {
             AggregateId: aggregateId,
             CommandType: commandType,
             Payload: JsonSerializer.SerializeToElement(new { Value = 1 }),
-            Extensions: extensions);
+            Extensions: extensions,
+            IdempotencyKey: idempotencyKey);
 
     private static (CommandsController Controller, IMediator Mediator) CreateControllerWithMediator(ClaimsPrincipal? principal = null) {
         IMediator mediator = Substitute.For<IMediator>();
@@ -202,6 +204,20 @@ public class CommandsControllerTenantTests {
                 cmd.Domain == "test-domain" &&
                 cmd.CommandType == "CreateOrder" &&
                 cmd.AggregateId == "agg-001"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Submit_OpaqueIdempotencyKey_SendsExactValueToMediatR() {
+        const string opaqueKey = "caller opaque/key:with spaces?yes";
+        ClaimsPrincipal principal = CreateAuthenticatedPrincipal("test-tenant");
+        (CommandsController controller, IMediator mediator) = CreateControllerWithMediator(principal);
+        SubmitCommandRequest request = CreateTestRequest(idempotencyKey: opaqueKey);
+
+        _ = await controller.Submit(request, CancellationToken.None);
+
+        _ = await mediator.Received(1).Send(
+            Arg.Is<SubmitCommand>(command => command.IdempotencyKey == opaqueKey),
             Arg.Any<CancellationToken>());
     }
 

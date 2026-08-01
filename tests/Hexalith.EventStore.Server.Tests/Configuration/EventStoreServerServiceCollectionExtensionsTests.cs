@@ -2,6 +2,8 @@ using System.Net;
 
 using Dapr.Actors.Runtime;
 using Dapr.Client;
+
+using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
@@ -257,6 +259,23 @@ public class EventStoreServerServiceCollectionExtensionsTests {
         exception.Failures.ShouldContain(failure => failure.Contains("strong key", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task AddEventStoreServerRejectsDuplicateTrustedAdaptersAtHostStartAsync() {
+        HostApplicationBuilder builder = Host.CreateApplicationBuilder();
+        IIdempotencyIntentAdapter first = CreateTrustedAdapter("CreateFolderCommand", "folders-v1");
+        IIdempotencyIntentAdapter second = CreateTrustedAdapter("CreateFolderCommand", "folders-v2");
+        _ = builder.Services.AddSingleton(first);
+        _ = builder.Services.AddSingleton(second);
+        _ = builder.Services.AddEventStoreServer(builder.Configuration);
+        using IHost host = builder.Build();
+
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(
+            () => host.StartAsync()).ConfigureAwait(true);
+
+        exception.Message.ShouldBe(
+            "Multiple trusted idempotency adapters are registered for one command type.");
+    }
+
     [Theory]
     [InlineData("not-base64")]
     [InlineData("c2hvcnQ=")]
@@ -375,6 +394,16 @@ public class EventStoreServerServiceCollectionExtensionsTests {
         ["EventStore:IdempotencyAdmission:DigestKeySecretName"] = "eventstore-idempotency",
         ["EventStore:IdempotencyAdmission:DigestKeySecretGeneration"] = "generation-1",
     };
+
+    private static IIdempotencyIntentAdapter CreateTrustedAdapter(string commandType, string adapterId) {
+        IIdempotencyIntentAdapter adapter = Substitute.For<IIdempotencyIntentAdapter>();
+        adapter.CommandType.Returns(commandType);
+        adapter.AdapterId.Returns(adapterId);
+        adapter.OperationId.Returns("create-folder");
+        adapter.DescriptorVersion.Returns(1);
+        adapter.RetentionTier.Returns(IdempotencyReplayRetentionTier.Mutation);
+        return adapter;
+    }
 
     private sealed class CountingFailureHandler : HttpMessageHandler {
         public int AttemptCount { get; private set; }

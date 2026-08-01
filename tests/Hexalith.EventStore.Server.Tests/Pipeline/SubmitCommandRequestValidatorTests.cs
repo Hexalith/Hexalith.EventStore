@@ -62,6 +62,39 @@ public class SubmitCommandRequestValidatorTests {
     }
 
     [Fact]
+    public void SubmitCommandRequestValidator_MultibyteOpaqueIdempotencyKeyAtExactByteBound_Passes() {
+        var request = new SubmitCommandRequest(
+            MessageId: "msg-idempotency-multibyte-boundary",
+            Tenant: "test-tenant",
+            Domain: "test-domain",
+            AggregateId: "agg-001",
+            CommandType: "CreateOrder",
+            Payload: JsonDocument.Parse("{}").RootElement,
+            IdempotencyKey: new string('é', 2_048));
+
+        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+
+        result.IsValid.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void SubmitCommandRequestValidator_MultibyteOpaqueIdempotencyKeyAboveByteBound_ReturnsValidationError() {
+        var request = new SubmitCommandRequest(
+            MessageId: "msg-idempotency-multibyte-too-large",
+            Tenant: "test-tenant",
+            Domain: "test-domain",
+            AggregateId: "agg-001",
+            CommandType: "CreateOrder",
+            Payload: JsonDocument.Parse("{}").RootElement,
+            IdempotencyKey: new string('é', 2_049));
+
+        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(error => error.PropertyName == "IdempotencyKey");
+    }
+
+    [Fact]
     public void SubmitCommandRequestValidator_NullMessageId_ReturnsValidationError() {
         // Regression test: CounterCommandForm.razor was missing messageId, causing 400 Bad Request.
         var request = new SubmitCommandRequest(

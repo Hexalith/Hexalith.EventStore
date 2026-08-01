@@ -2,13 +2,45 @@
 baseline_commit: afcc167ef277d9b95566e380228551037e4c3920
 source_candidate_commit: 4fd0c34ff24c26dd6435f341eebe969a09bfc929
 approved_change: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-20-oq8-durable-idempotency-admission.md
+reclassified_by: _bmad-output/planning-artifacts/sprint-change-proposal-2026-08-01.md
+classification: evidence-ledger
+status: non-executable
+implementation_stories:
+  - "4.9"
+  - "4.10"
+  - "4.11"
+  - "4.12"
+  - "4.13"
+  - "4.14"
+  - "4.15"
 ---
 
-# Story 4.8: Durable Tenant-Scoped Idempotency Admission And Expired-Key Precedence
+# Story 4.8: Durable Admission Evidence Ledger
 
-Status: ready-for-dev
+Status: evidence-ledger (non-executable)
 
-<!-- The source candidate at commit 4fd0c34f is release-blocked and is the UPDATE baseline, not completed Story 4.8. -->
+<!-- The source candidate at commit 4fd0c34f is release-blocked evidence, not completed Story 4.8 or inherited completion for any child. -->
+
+## Ledger Classification And Child Mapping
+
+This artifact preserves the original umbrella acceptance criteria, task history,
+source-candidate evidence, and unresolved work. It is not an executable sprint
+story and carries no implementation status. The 2026-08-01 migration crosswalk
+and these focused children own all further work:
+
+| Preserved ledger scope | Executable owner | Migrated status |
+| --- | --- | --- |
+| Tasks 2-3: trusted adapter, canonical intent, opaque-key identity, and leakage boundary | Story 4.9 | review |
+| Task 4: digest-key ring, tenant directory, rotation/promotion, collision, and retirement | Story 4.10 | review |
+| Tasks 5 and recovery portion of 6: state machine, current fence, execution, replay, and reconciliation | Story 4.11 | ready-for-dev |
+| Expiry portion of Task 6 and compaction/deletion/legal-hold portion of Task 7 | Story 4.12 | backlog |
+| Legacy inventory/migration portion of Task 7 | Story 4.13 | backlog |
+| Task 8 implementation evidence and packet production | Story 4.14 | backlog |
+| Task 8 review/release handoff plus final documentation closure | Story 4.15 | backlog |
+
+Task 1 is preserved planning history. Task 9 documentation follows the child
+that owns each behavior and is finally reconciled by Story 4.15. Checked boxes
+below record prior candidate work only; they do not grant a child `done` status.
 
 ## Story
 
@@ -16,7 +48,7 @@ As a platform operator,
 I want every admitted mutation key to remain durably consumed after its replay result expires,
 so that retries, conflicts, crashes, concurrent hosts, and old-key reuse cannot duplicate aggregate, domain, provider, repository, or other external effects.
 
-## Acceptance Criteria
+## Preserved Umbrella Acceptance Criteria
 
 1. **Trusted admission.** A registered server-trusted adapter supplies the versioned canonical-intent descriptor and fixed retention class only after authentication, current authorization, and canonical validation. Public requests and extensions cannot select or override the descriptor bytes, digest, partition, actor state, fence, expiry, adapter authority, descriptor version, operation policy, or retention class.
 
@@ -34,7 +66,7 @@ so that retries, conflicts, crashes, concurrent hosts, and old-key reuse cannot 
 
 8. **Production evidence and release identity.** Verification proves persisted before/after state, exact time boundaries, replay compaction, current-fence enforcement, key rotation and collision handling, legacy migration, restart, at least two EventStore hosts sharing the approved production-equivalent DAPR state component, host failover, and leakage constraints. Every later non-execute request causes zero additional or duplicate mutation/side-effect execution; the eligible first writer executes exactly once, and permitted unknown-outcome reconciliation remains read-only. A machine-readable EventStore platform evidence packet binds the OQ8 design digest, source SHA, produced artifact identities, commands and counts, durable observations, environment, date, and approvals. The capability is not considered available to Folders until senior review and a separately authorized release or exact source/package/runtime pin.
 
-## Tasks / Subtasks
+## Preserved Task And Evidence Ledger
 
 - [x] **Task 1 — Reconcile the approved authority before freezing implementation contracts** (AC: 1-8)
   - [x] Apply the approved July 20 planning handoff to prd.md, architecture.md, epics.md, and the canonical Phase 4 SPEC companions: strengthen FR27, NFR7, and NFR16; add Story 4.8; add AD-25 and the refined AD-5 command flow; update traceability and readiness gates. Preserve Story 4.2 as done and Story 4.4 as publication-recovery owner.
@@ -111,10 +143,10 @@ so that retries, conflicts, crashes, concurrent hosts, and old-key reuse cannot 
 
 ### Authority, Current Baseline, And Completion Boundary
 
-- The approved July 20 change proposal is the normative Story 4.8 contract. The current epics.md, prd.md, architecture.md, and canonical Phase 4 SPEC still contain the pre-OQ8 baseline and must be reconciled under Task 1.
+- The approved July 20 change proposal and OQ8 design remain the technical authority. The approved August 1 correction reclassifies Story 4.8 as this evidence ledger and makes Stories 4.9-4.15 the executable owners; the PRD, architecture, epics, and canonical SPEC now reflect that structure.
 - HEAD was clean at afcc167e during story creation. Commit 4fd0c34f added a substantial source candidate across 50 files, but its own approved work item marks the capability release-blocked. Treat all candidate files as UPDATE baselines; do not create parallel actors, protectors, coordinators, or public problem contracts.
 - The source candidate is not proof of completion. Its documented release gates are the trusted-adapter boundary, separate opaque-key identity, reader-key rotation/promotion, cross-aggregate legacy migration, exact replay/recovery, multi-host/failover evidence, governed deletion/legal hold, senior review, and authorized release/pin.
-- Story 4.8 can enter review only after all eight acceptance criteria have implementation and evidence. It cannot be marked done merely because focused unit tests pass or because the current candidate types exist.
+- Story 4.8 cannot enter review or become `done` because it is non-executable. Stories 4.9-4.15 advance only against their focused criteria and the August migration crosswalk; the current candidate types and checked ledger tasks do not grant inherited completion.
 - Folders owns its adapter, Contract Spine equivalence, generated SDK/C13 matrix, REST/CLI/MCP projection, canonical OQ8 evidence manifest, final OQ8 closure, and two unrelated NFR traceability failures. Do not mutate the Folders repository or build a parallel Folders DAPR ledger in this story.
 
 ### Current Candidate: UPDATE Map And Preservation Constraints
@@ -175,7 +207,7 @@ Do not add a new project, package, AppHost resource, DAPR component, UI host, or
 - Story 4.2 established exact identity as MessageId plus normalized CausationId plus CommandType, tenant-before-state ordering, retryable/recoverable separation, message-primary status/archive storage, and exact committed-range checkpoints.
 - Story 4.2 review found that deriving a committed range from the mutable stream tail caused data loss/duplicate publication; the fix persists exact start/end sequences. Do not reconstruct or overwrite those checkpoints during admission recovery.
 - Story 4.2 explicitly deferred recoverable-record expiry and actor-level expired mutation coverage. Story 4.8 closes the broader tenant/key residual; an AggregateActor-only return-on-expired patch is insufficient.
-- Stories 4.3-4.7 do not gate Story 4.8. Story 4.4 retains publication-recovery ownership, Story 4.5's append-race evidence remains separate, and Story 4.7 is unrelated Tenants query-provenance work.
+- Stories 4.3-4.7 do not gate the focused 4.9-4.15 chain. Story 4.4 retains publication-recovery ownership, Story 4.5's append-race evidence remains separate, and Story 4.7 is unrelated Tenants query-provenance work.
 - Historical test counts in prior story files are context, not current Story 4.8 evidence.
 
 ### Git Intelligence
@@ -353,3 +385,19 @@ To be recorded by the implementing agent.
 - 2026-07-20: Replaced public descriptor authority with an opaque key and trusted, deterministic server adapter/registry boundary that fails closed before admission-state access.
 - 2026-07-20: Preserved the original ULID command identity, removed generated downstream identities, stripped opaque keys before routing, and added real-key leakage coverage across protected and advisory boundaries.
 - 2026-07-20: Added the versioned secret-backed digest key ring, reader-first tenant directory, crash-resumable promotion/redirect flow, dedicated collision decision, and reference-gated key retirement.
+- 2026-08-01: Reclassified Story 4.8 as a non-executable evidence ledger; mapped completed candidate evidence to Stories 4.9-4.10 at `review`, remaining implementation to Story 4.11 at `ready-for-dev`, and later work to Stories 4.12-4.15 at `backlog` without inheriting `done`.
+
+### Review Findings
+
+Story 4.9 code review, Chunk 1 — trusted contracts, adapters, canonical encoding,
+registration/configuration, and public API/gateway boundaries:
+
+- [x] [Review][Patch] HIGH — Snapshot validated adapter metadata so fixed authority cannot change between canonical encoding and descriptor construction [src/Hexalith.EventStore.Server/Commands/IdempotencyIntentAdapterRegistry.cs:22]
+- [x] [Review][Patch] HIGH — Add public-controller verification that an opaque idempotency key reaches the mediated command unchanged [src/Hexalith.EventStore/Controllers/CommandsController.cs:111]
+- [x] [Review][Patch] HIGH — Prove canonical-target changes produce different canonical intent bytes and protected intent digests [src/Hexalith.EventStore.Server/Commands/CanonicalIdempotencyIntentEncoder.cs:37]
+- [x] [Review][Patch] MEDIUM — Bound the complete canonical intent and each adapter-controlled metadata/option field after serialization [src/Hexalith.EventStore.Server/Commands/CanonicalIdempotencyIntentEncoder.cs:33]
+- [x] [Review][Patch] MEDIUM — Eagerly validate the trusted-adapter registry during host startup instead of first idempotent use [src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs:50]
+- [x] [Review][Patch] MEDIUM — Add multibyte acceptance/rejection tests at the exact 4,096-byte opaque-key boundary [src/Hexalith.EventStore/Validation/SubmitCommandRequestValidator.cs:93]
+
+Chunk 1 patch verification: 69 focused tests and the complete server test project passed
+(2,881 passed, 25 skipped, 0 failed).

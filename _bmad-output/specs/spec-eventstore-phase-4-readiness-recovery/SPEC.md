@@ -12,6 +12,9 @@ sources:
   - ../../planning-artifacts/implementation-readiness-report-2026-07-15.md
   - ../../planning-artifacts/sprint-change-proposal-2026-07-15.md
   - ../../planning-artifacts/sprint-change-proposal-2026-07-20-oq8-durable-idempotency-admission.md
+  - ../../planning-artifacts/implementation-readiness-report-2026-08-01.md
+  - ../../planning-artifacts/sprint-change-proposal-2026-08-01.md
+  - ../../planning-artifacts/story-id-migration-2026-08-01.md
 ---
 
 > **Canonical contract.** This SPEC and the files in `companions:` are the complete, preservation-validated contract for what to build, test, and validate. Source documents listed in frontmatter are for traceability only.
@@ -22,7 +25,7 @@ sources:
 
 Hexalith.EventStore Phase 4 must turn a working DAPR-native event-sourcing platform into a safer reusable developer platform before full implementation resumes. The pressure is both product and readiness: domain authors need platform-owned seams instead of copied boilerplate, operators need fail-closed trust and persisted evidence, and the planning set must stop using `epics.md` as a proxy for PRD, architecture, UX, and implementation slicing.
 
-Story 4.8 is governed first by the approved 2026-07-20 OQ8 proposal and the
+The Story 4.8 evidence ledger and implementing Stories 4.9-4.15 are governed first by the approved 2026-07-20 OQ8 proposal and the
 Architecture + Security + Test-approved OQ8 design version 1.0.0 (SHA-256
 `1a55b0302e91233e12db91e6e245f0a22d6bf13fcf6cdf5ee0cbe5759f08dcd8`),
 then by this reconciled SPEC package. Pre-change FR27/NFR7/NFR16 and
@@ -60,7 +63,11 @@ architecture wording is historical context only.
 
 - **CAP-8**
   - **intent:** Phase 4 has a coherent planning baseline before full implementation resumes.
-  - **success:** The seven-epic plan has no unconditional forward dependency; Story 1.20's deployed-mode identity path carries the explicit conditional Story 3.12 release gate while source/package paths remain independently closable. All eight oversized parents are replaced by focused children, active identifiers and evidence are auditably migrated, and a fresh implementation-readiness assessment reports no structural blocker.
+  - **success:** The eight-epic plan has no forward dependency: Story 1.20 owns completed source/package parity and Story 3.13 independently proves deployed-runtime parity after completed Stories 1.20 and 3.12 without reopening either. Oversized Stories 4.8 and 8.2 are replaced by focused children, active identifiers and evidence are auditably migrated, and a fresh implementation-readiness assessment reports no structural blocker.
+
+- **CAP-9**
+  - **intent:** EventStore can provide an optional, reusable, byte-stable payload-protection engine with fail-closed cryptographic and key-lifecycle behavior for Parties and later consumers.
+  - **success:** Stories 8.2-8.11 execute only after Story 8.1 authorization and their immediate predecessors, prove FR37/NFR19 contracts through goldens, core crypto, compatibility, policy/key lifecycle, production adapter, server, package, Parties, rollback, and G5 closure, and leave Parties Story 8.7 blocked until Story 8.11 records an approved `available` packet.
 
 ## Constraints
 
@@ -73,7 +80,7 @@ architecture wording is historical context only.
 - Public requests carry only the opaque idempotency key. Canonical intent and fixed retention are server-owned; raw keys and protected intent never enter persistent or diagnostic surfaces.
 - Mutation replay retention is exactly 86,400 seconds and commit replay retention uses `DateTimeOffset.AddYears(7)`. Inclusive expiry atomically compacts to the approved fence-free minimal tombstone; unresolved states never age into fresh work.
 - Unavailable, corrupt/collision, unknown-version, ambiguous/uninventoried legacy, and unsafe promotion state fail closed. Directory-mediated rotation and versioned legacy migration preserve one canonical authority or remain blocked.
-- Story 4.4 retains committed-event publication recovery. Story 4.8 produces `_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml` against the `oq8-postgresql-v1` multi-host DAPR profile; Folders owns canonical OQ8 evidence and final closure.
+- Story 4.4 retains committed-event publication recovery. Story 4.8 is the non-executable evidence ledger; Story 4.14 produces `_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml` against the `oq8-postgresql-v1` multi-host DAPR profile and Story 4.15 owns EventStore platform closure and handoff. Folders owns canonical cross-repository OQ8 evidence and final closure.
 - Read models use `IReadModelStore` plus `ReadModelWritePolicy`; cursors use `IQueryCursorCodec` plus `QueryCursorScope` and remain opaque, bounded, scoped, and fail safe.
 - Projection and pub/sub delivery are at-least-once and unordered; notifications are freshness signals, not proof of success; consumers deduplicate by EventStore `MessageId`.
 - Runtime topology changes must update AppHost, DAPR component/configuration YAML, app IDs, sidecar options, ACLs, topics, component and secret scopes, the canonical secret contract, and topology tests together.
@@ -82,14 +89,16 @@ architecture wording is historical context only.
 - The AD-24 contract drives singleton component scopes, per-app DAPR `defaultAccess: deny` plus explicit `allowedSecrets`, and least-privilege OpenBao ACLs; mismatches fail validation, while the OpenBao token, DAPR API token, and TLS trust material remain acyclic out-of-band bootstrap inputs.
 - AD-24 required secrets gate readiness, runtime lookup failure disables the dependent operation until bounded recovery, and rotation is generation-aware publish-overlap-acknowledge-revoke. Release evidence must use real OpenBao; Azure Container Apps managed DAPR is non-conforming until a separately approved compatible profile exists.
 - AD-24 governs operational and application secret retrieval only. It does not approve, replace, or modify AD-23 or the draft payload-protection Azure Key Vault Premium RSA-HSM KEK proposal; DAPR secret stores are not production `pdenc-v2` key custody.
-- Release is manifest-governed through `tools/release-packages.json`; Release/package validation uses package-reference mode by default; submodule packages are not produced by EventStore release jobs.
+- Release is manifest-governed through `tools/release-packages.json`; Release/package validation uses package-reference mode by default; submodule packages are not produced by EventStore release jobs. Story 8.8 alone owns payload-protection package creation and release-manifest authority, updates the manifest atomically from 14 to 16 packages, and does not modify assistant entry-point files.
 - High-risk verification must assert persisted Redis/state-store/read-model/CloudEvent bodies, topology YAML or sidecar arguments, package outputs, and security denials.
-- Folded snapshots, projection delivery cost, projection sequence guards, event versioning/upcasting, identity metadata validation, cancellation-token public seams, and global-position sharding require approved specs before implementation stories start.
+- Folded snapshots, projection delivery cost, projection sequence guards, event versioning/upcasting, identity metadata validation, cancellation-token public seams, and global-position sharding require approved specs before implementation stories start. Story 6.2 must prove `snapshot size <= folded-state payload size + MaxSnapshotEnvelopeOverheadBytes` using the numeric bound approved by Story 6.1.
 - Preserve the frozen `/project/v2` wire response and emit one server-owned `ProjectionDispatchResult` Version 1 with bounded ordinal route entries, stable status codes, and explicit `Advanced` or `NotAdvanced` checkpoint state; no equivalent shape is allowed without a new architecture decision.
-- `src/Hexalith.EventStore.Admin.UI` remains the only EventStore UI host and the `eventstore-admin-ui` resource. It composes matching FrontComposer Shell and Contracts.UI `3.2.2` packages with Fluent UI V5, owns the `event-store-admin` module, and redirects legacy routes to canonical dashboard deep links.
-- Consumer infrastructure removal requires an EventStore-owner-approved parity packet and exact identity evidence for the consumed EventStore source SHA, package versions and hashes, or deployed image digest; never compare a consumer repository SHA to the EventStore SHA.
-- The approved replan preserves seven-epic order and MVP scope, rehomes platform provenance into Story 1.2, and leaves generated REST/Tenants provenance consumption in Epic 2.
-- A split child inherits `done` only through an evidence crosswalk naming implementation, focused tests, review results, and external approval/exact SHA where applicable; otherwise it remains `review`.
+- `src/Hexalith.EventStore.Admin.UI` remains the only EventStore UI host and the `eventstore-admin-ui` resource. It composes matching FrontComposer Shell and Contracts.UI `4.0.1` packages with Fluent UI V5, owns the `event-store-admin` module, and distributes shell/routes, typed-client/evidence-state integration, and accessibility/localization/responsive conformance across Stories 7.14, 7.19, and 7.20.
+- Consumer infrastructure removal requires an EventStore-owner-approved parity packet. Story 1.20 closes the source/package identity; Story 3.13 independently maps it to the deployed OCI index, child image/config identities, and release provenance; never compare a consumer repository SHA to the EventStore SHA.
+- `AddEventStoreGatewayClient(...)` registers the typed client only. DAPR service invocation is opt-in and must be the last/innermost decorator by explicitly chaining `.AddEventStoreDaprServiceInvocation(appId, apiToken)`; omitting the chain fails open to no transport rather than silently selecting DAPR.
+- Tenant provisioning rejects the reserved `system` tenant before any state or side effect; Story 5.10 owns the guard and evidence.
+- The approved replan preserves eight-epic order and MVP scope, rehomes platform provenance into Story 1.2, leaves generated REST/Tenants production provenance in Story 2.11, and makes Story 2.6 independently testable with deterministic presentation fixtures.
+- A split child inherits `done` only through an evidence crosswalk naming implementation, focused tests, review results, and external approval/exact SHA where applicable; otherwise it remains `review`. The 2026-07-15 and 2026-08-01 crosswalks together are authoritative for migrated status and evidence.
 - Tenants adoption requires maintainer approval, approved PR/commit evidence, exact Tenants SHA, repository boundary, source/package-mode validation, and an explicit disposition when approval is unavailable.
 - Use `Hexalith.EventStore.slnx` for restore/build; run unit tests by project; keep package versions centralized; do not recurse submodules or modify submodule files without explicit approval.
 - EventStore envelope identifiers use ULID-safe handling where required; `Guid.TryParse` is forbidden for `messageId`, `correlationId`, `aggregateId`, and `causationId`.
@@ -110,7 +119,7 @@ architecture wording is historical context only.
 
 ## Success signal
 
-Implementation readiness can be re-run against this package and finds complete Phase 4 FR1-FR36/NFR1-NFR18 coverage, no ungoverned or unconditional later-epic prerequisite, no oversized active parent, and deterministic owner/evidence gates. The resulting plan preserves architecture AD-1 through AD-25, separately gated post-MVP FR37/NFR19, canonical UX, exact story migration history, OQ8 platform evidence ownership, and persisted-evidence validation.
+Implementation readiness can be re-run against this package and finds complete FR1-FR37/NFR1-NFR19 coverage, no ungoverned or forward prerequisite, no oversized active parent, and deterministic owner/evidence gates. The resulting plan preserves architecture AD-1 through AD-25, keeps FR37/NFR19 separately gated post-MVP work, preserves canonical UX and exact story migration history, assigns OQ8 platform evidence ownership to Stories 4.14-4.15, and requires persisted-evidence validation.
 
 ## Assumptions
 

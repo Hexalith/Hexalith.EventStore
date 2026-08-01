@@ -1,3 +1,6 @@
+using System.Security.Cryptography;
+using System.Text;
+
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Pipeline.Commands;
@@ -45,6 +48,64 @@ public class TrustedIdempotencyIntentTests
         first.OperationId.ShouldBe("create-folder");
         first.DescriptorVersion.ShouldBe(1);
         first.RetentionTier.ShouldBe(IdempotencyReplayRetentionTier.Mutation);
+    }
+
+    [Fact]
+    public void Resolve_AdapterMetadataChangesAfterRegistration_UsesValidatedSnapshot()
+    {
+        IIdempotencyIntentAdapter adapter = CreateAdapter(
+            "CreateFolderCommand",
+            "{\"name\":\"demo\"}");
+        var registry = new IdempotencyIntentAdapterRegistry(
+            [adapter],
+            new CanonicalIdempotencyIntentEncoder());
+        TrustedIdempotencyDescriptor expected = new IdempotencyIntentAdapterRegistry(
+            [CreateAdapter("CreateFolderCommand", "{\"name\":\"demo\"}")],
+            new CanonicalIdempotencyIntentEncoder()).Resolve(CreateCommand("CreateFolderCommand"));
+        adapter.AdapterId.Returns("changed-adapter");
+        adapter.OperationId.Returns("changed-operation");
+        adapter.DescriptorVersion.Returns(2);
+        adapter.RetentionTier.Returns(IdempotencyReplayRetentionTier.Commit);
+
+        TrustedIdempotencyDescriptor actual = registry.Resolve(CreateCommand("CreateFolderCommand"));
+
+        actual.AdapterId.ShouldBe("folders");
+        actual.OperationId.ShouldBe("create-folder");
+        actual.DescriptorVersion.ShouldBe(1);
+        actual.RetentionTier.ShouldBe(IdempotencyReplayRetentionTier.Mutation);
+        actual.CanonicalIntent.ShouldBe(expected.CanonicalIntent);
+    }
+
+    [Fact]
+    public async Task Resolve_DifferentCanonicalTargets_ProducesDifferentIntentDigestsAsync()
+    {
+        TrustedIdempotencyDescriptor first = new IdempotencyIntentAdapterRegistry(
+            [CreateAdapter("CreateFolderCommand", "{\"name\":\"demo\"}", "folders/folder-1")],
+            new CanonicalIdempotencyIntentEncoder()).Resolve(CreateCommand("CreateFolderCommand"));
+        TrustedIdempotencyDescriptor second = new IdempotencyIntentAdapterRegistry(
+            [CreateAdapter("CreateFolderCommand", "{\"name\":\"demo\"}", "folders/folder-2")],
+            new CanonicalIdempotencyIntentEncoder()).Resolve(CreateCommand("CreateFolderCommand"));
+        using var keyProvider = new StaticIdempotencyDigestKeyProvider(
+            "v1",
+            new Dictionary<string, byte[]>(StringComparer.Ordinal)
+            {
+                ["v1"] = Enumerable.Repeat((byte)0x2A, 32).ToArray(),
+            },
+            []);
+        var protector = new IdempotencyKeyProtector(keyProvider);
+
+        IdempotencyProtectedIdentitySet firstIdentity = await protector
+            .ProtectAsync("tenant-a", "opaque-key", first)
+            .ConfigureAwait(true);
+        IdempotencyProtectedIdentitySet secondIdentity = await protector
+            .ProtectAsync("tenant-a", "opaque-key", second)
+            .ConfigureAwait(true);
+
+        first.CanonicalIntent.ShouldNotBe(second.CanonicalIntent);
+        firstIdentity.Active.KeyDigest.ShouldBe(secondIdentity.Active.KeyDigest);
+        firstIdentity.Active.IntentDigest.ShouldNotBe(secondIdentity.Active.IntentDigest);
+        CryptographicOperations.ZeroMemory(first.CanonicalIntent);
+        CryptographicOperations.ZeroMemory(second.CanonicalIntent);
     }
 
     [Fact]
@@ -125,7 +186,116 @@ public class TrustedIdempotencyIntentTests
         exception.Message.ShouldBe("The trusted canonical intent is incomplete.");
     }
 
-    private static IIdempotencyIntentAdapter CreateAdapter(string commandType, string semanticJson)
+    [Fact]
+    public void Resolve_CanonicalPayloadExceedsBoundAfterSerialization_FailsClosed()
+    {
+        string semanticJson = $"{{\"value\":\"{new string('é', 20_000)}\"}}";
+        IIdempotencyIntentAdapter adapter = CreateAdapter("CreateFolderCommand", semanticJson);
+        var registry = new IdempotencyIntentAdapterRegistry(
+            [adapter],
+            new CanonicalIdempotencyIntentEncoder());
+
+        InvalidOperationException exception = Should.Throw<InvalidOperationException>(
+            () => registry.Resolve(CreateCommand("CreateFolderCommand")));
+
+        exception.Message.ShouldBe(
+            "Trusted canonical intent payload exceeds the supported size after canonicalization.");
+    }
+
+    [Fact]
+    public void Resolve_AdapterControlledMetadataFieldExceedsBound_FailsClosed()
+    {
+        IIdempotencyIntentAdapter adapter = CreateAdapter(
+            "CreateFolderCommand",
+            "{\"name\":\"demo\"}",
+            new string('é', 2_049));
+        var registry = new IdempotencyIntentAdapterRegistry(
+            [adapter],
+            new CanonicalIdempotencyIntentEncoder());
+
+        InvalidOperationException exception = Should.Throw<InvalidOperationException>(
+            () => registry.Resolve(CreateCommand("CreateFolderCommand")));
+
+        exception.Message.ShouldBe("Trusted canonical intent canonical target exceeds the supported size.");
+    }
+
+    [Fact]
+    public void Resolve_SemanticOptionFieldExceedsBound_FailsClosed()
+    {
+        IReadOnlyDictionary<string, string> options = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["mode"] = new string('é', 2_049),
+        };
+        IIdempotencyIntentAdapter adapter = CreateAdapter(
+            "CreateFolderCommand",
+            "{\"name\":\"demo\"}",
+            semanticOptions: options);
+        var registry = new IdempotencyIntentAdapterRegistry(
+            [adapter],
+            new CanonicalIdempotencyIntentEncoder());
+
+        InvalidOperationException exception = Should.Throw<InvalidOperationException>(
+            () => registry.Resolve(CreateCommand("CreateFolderCommand")));
+
+        exception.Message.ShouldBe("Trusted canonical intent semantic option value exceeds the supported size.");
+    }
+
+    [Fact]
+    public void Resolve_SemanticOptionsExceedTotalBound_FailsClosed()
+    {
+        IReadOnlyDictionary<string, string> options = Enumerable.Range(0, 16)
+            .ToDictionary(
+                static index => $"option-{index:D2}",
+                static _ => new string('o', 4_090),
+                StringComparer.Ordinal);
+        IIdempotencyIntentAdapter adapter = CreateAdapter(
+            "CreateFolderCommand",
+            "{\"name\":\"demo\"}",
+            semanticOptions: options);
+        var registry = new IdempotencyIntentAdapterRegistry(
+            [adapter],
+            new CanonicalIdempotencyIntentEncoder());
+
+        InvalidOperationException exception = Should.Throw<InvalidOperationException>(
+            () => registry.Resolve(CreateCommand("CreateFolderCommand")));
+
+        exception.Message.ShouldBe("Trusted canonical intent semantic options exceed the supported size.");
+    }
+
+    [Fact]
+    public void Resolve_CompleteCanonicalIntentExceedsBound_FailsClosed()
+    {
+        IReadOnlyDictionary<string, string> options = Enumerable.Range(0, 15)
+            .ToDictionary(
+                static index => $"option-{index:D2}",
+                static _ => new string('o', 4_000),
+                StringComparer.Ordinal);
+        IIdempotencyIntentAdapter adapter = CreateAdapter(
+            "CreateFolderCommand",
+            $"{{\"value\":\"{new string('p', 59_000)}\"}}",
+            new string('t', 3_000),
+            options,
+            new string('v', 3_000),
+            new string('d', 3_000),
+            new string('c', 3_000));
+        var registry = new IdempotencyIntentAdapterRegistry(
+            [adapter],
+            new CanonicalIdempotencyIntentEncoder());
+
+        InvalidOperationException exception = Should.Throw<InvalidOperationException>(
+            () => registry.Resolve(CreateCommand("CreateFolderCommand")));
+
+        exception.Message.ShouldBe("Trusted canonical intent exceeds the supported size.");
+    }
+
+    private static IIdempotencyIntentAdapter CreateAdapter(
+        string commandType,
+        string semanticJson,
+        string canonicalTarget = "folders/folder-1",
+        IReadOnlyDictionary<string, string>? semanticOptions = null,
+        string policyVersion = "policy-v1",
+        string delegatedTaskScope = "task-scope",
+        string credentialScope = "credential-scope")
     {
         IIdempotencyIntentAdapter adapter = Substitute.For<IIdempotencyIntentAdapter>();
         adapter.CommandType.Returns(commandType);
@@ -135,12 +305,13 @@ public class TrustedIdempotencyIntentTests
         adapter.RetentionTier.Returns(IdempotencyReplayRetentionTier.Mutation);
         adapter.CreateIntent(Arg.Any<SubmitCommand>()).Returns(
             new IdempotencyCanonicalIntent(
-                "folders/folder-1",
-                System.Text.Encoding.UTF8.GetBytes(semanticJson),
-                new Dictionary<string, string>(StringComparer.Ordinal) { ["mode"] = "strict" },
-                "policy-v1",
-                "task-scope",
-                "credential-scope"));
+                canonicalTarget,
+                Encoding.UTF8.GetBytes(semanticJson),
+                semanticOptions
+                    ?? new Dictionary<string, string>(StringComparer.Ordinal) { ["mode"] = "strict" },
+                policyVersion,
+                delegatedTaskScope,
+                credentialScope));
         return adapter;
     }
 

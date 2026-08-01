@@ -3,7 +3,7 @@ name: Hexalith.EventStore Admin
 description: Brownfield operations UX for administrators and platform operators. FrontComposer on Blazor Fluent UI V5, visually aligned to the Microsoft Fluent UI Blazor V5 documentation shell.
 status: final
 created: 2026-07-05
-updated: 2026-07-11
+updated: 2026-08-01
 sources:
   - docs/brownfield/architecture.md
   - _bmad-output/planning-artifacts/prd.md
@@ -161,7 +161,7 @@ Hexalith.EventStore Admin is an operations surface, not a marketing product and 
 
 The product expression is operational honesty. Surfaces must make state evidence clear: accepted, processing, projection-confirmed, stale, unavailable, deferred, denied, and failed are different states. The interface must not soften those distinctions with decorative success language.
 
-The future EventStore UI service is the target. Legacy `Admin.UI` is source evidence, not the final IA. All EventStore admin features move under one Hexalith module menu item: **Event Store Admin**. That menu item opens a dashboard with tabbed child pages.
+The existing `src/Hexalith.EventStore.Admin.UI` evolves in place as the target. It retains resource/container identity `eventstore-admin-ui`; no second EventStore UI host or duplicate page implementation is created. All EventStore admin features move under one Hexalith module menu item: **Event Store Admin**. That menu item opens a dashboard with tabbed child pages.
 
 Visual references: [Fluent UI V5 desktop capture](imports/fluent-ui-v5-home-desktop.png), [Fluent UI V5 mobile capture](imports/fluent-ui-v5-home-mobile.png), [dashboard overview mock](mockups/dashboard-overview.html), and [command investigation mock](mockups/command-investigation.html). These are reference artifacts only; `DESIGN.md` and `EXPERIENCE.md` win on conflict.
 

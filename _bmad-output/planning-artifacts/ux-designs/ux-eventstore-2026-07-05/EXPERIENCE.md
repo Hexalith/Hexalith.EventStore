@@ -2,7 +2,7 @@
 name: Hexalith.EventStore Admin
 status: final
 created: 2026-07-05
-updated: 2026-07-11
+updated: 2026-08-01
 sources:
   - docs/brownfield/architecture.md
   - _bmad-output/planning-artifacts/prd.md
@@ -18,7 +18,7 @@ sources:
 
 Responsive web inside the Hexalith module shell. The UI system is FrontComposer with Blazor Fluent UI V5. `DESIGN.md` is the visual identity reference; this spine owns information architecture, behavior, states, interactions, accessibility, localization evidence, and journeys.
 
-This is brownfield UX. Legacy `src/Hexalith.EventStore.Admin.UI` proves the current feature inventory, but the target is the EventStore UI service. All EventStore admin features appear under one Hexalith module menu item: **Event Store Admin**. The opened surface is a dashboard with tabbed child pages.
+This is brownfield UX. The existing `src/Hexalith.EventStore.Admin.UI` proves the current feature inventory and evolves in place as the target under resource/container identity `eventstore-admin-ui`; no second EventStore UI host or duplicate page implementation is created. All EventStore admin features appear under one Hexalith module menu item: **Event Store Admin**. The opened surface is a dashboard with tabbed child pages.
 
 Primary users are administrators and platform operators. Stakes include internal operations, customer-facing administration, and regulated/support-critical production support. The default posture is support-safe, auditable, and fail-closed for sensitive actions.
 
@@ -30,7 +30,7 @@ All Hexalith module UIs expose exactly one host-level menu entry. Child pages li
 
 | UI host/module | Host menu item | Opens | UX responsibility |
 |---|---|---|---|
-| EventStore UI service | Event Store Admin | EventStore dashboard | Administer and diagnose EventStore operational surfaces |
+| `Hexalith.EventStore.Admin.UI` | Event Store Admin | EventStore dashboard | Administer and diagnose EventStore operational surfaces in the existing host |
 | Sample Blazor UI | Sample | Sample dashboard | Demonstrate command accepted submission without implying downstream completion |
 | Tenants UI | Tenants | Tenants dashboard | Preserve projection-confirmed success and support-safe tenant access states |
 
@@ -297,6 +297,6 @@ Failure: Priya lacks access or freshness is unknown -> the mutation is hidden or
 
 ## Non-Blocking Assumptions
 
-- The EventStore UI service will provide the FrontComposer host integration point for the single **Event Store Admin** module entry.
+- `src/Hexalith.EventStore.Admin.UI` provides the FrontComposer host integration point for the single **Event Store Admin** module entry and retains `eventstore-admin-ui` identity.
 - Dashboard tab names may change, but the grouping must preserve the same feature coverage and single-menu-entry rule.
 - Mobile/narrow support is for triage and read workflows first; full operational mutation ergonomics remain desktop-first.

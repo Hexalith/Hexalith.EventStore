@@ -16,6 +16,8 @@ source_files:
   - _bmad-output/planning-artifacts/architecture.md
   - _bmad-output/planning-artifacts/ux.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-16.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-08-01.md
+  - _bmad-output/planning-artifacts/story-id-migration-2026-08-01.md
   - _bmad-output/implementation-artifacts/sprint-status.yaml
   - docs/guides/payload-protection-and-crypto-shredding.md
   - src/Hexalith.EventStore.Contracts/Security/IEventPayloadProtectionService.cs
@@ -41,7 +43,8 @@ source_files:
 Status: in-progress
 
 <!-- Note: Validation is mandatory for this security gate. Story 8.2 remains blocked until the
-     exact specification is complete, independently reviewed, and explicitly authorized. -->
+     exact specification is complete, independently reviewed, and explicitly authorized;
+     Stories 8.3-8.11 remain blocked by their recorded predecessors. -->
 
 ## Story
 
@@ -53,7 +56,7 @@ so that the engine cannot make story-local choices that strand persisted history
 
 This is a **security/architecture specification gate**, not a runtime implementation story. It creates one authoritative decision artifact at `_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md`. That file must carry the specification, ADR decisions, threat model, deterministic vectors, migration/rollback contract, approval evidence, and the explicit decision whether Story 8.2 is authorized.
 
-Epic 8 is committed post-MVP work. It does not block the Phase 4 MVP, but Story 8.2 blocks Parties Story 8.7. Story 1.20 is projection/query parity for Parties Story 8.6 only; it neither blocks nor authorizes payload-protection G5. Historical Stories 22.7a-d delivered provider-neutral hooks, metadata, typed unreadable outcomes, workflow/restore contracts, and no-leak behavior—not an encryption engine, `pdenc-v2`, policy seams, reusable key mechanics, or a production backend.
+Epic 8 is committed post-MVP work. It does not block the Phase 4 MVP, but Story 8.11 blocks Parties Story 8.7. Story 1.20 is projection/query parity for Parties Story 8.6 only; it neither blocks nor authorizes payload-protection G5. Historical Stories 22.7a-d delivered provider-neutral hooks, metadata, typed unreadable outcomes, workflow/restore contracts, and no-leak behavior—not an encryption engine, `pdenc-v2`, policy seams, reusable key mechanics, or a production backend.
 
 AD-23 has already settled the ownership boundary:
 
@@ -193,11 +196,11 @@ The July 16 planning approval did **not** approve this security specification, a
   - [x] Use constructive safe-output allowlists for logs, traces, metrics, exceptions, ProblemDetails, evidence, exports, Art.20/Art.30 processing records, certificates, and reports. Never serialize broadly and scrub afterward.
   - [x] Extend—not replace—the existing `ProtectedDataLeakSentinel`, metadata/outcome, readability-decision, and no-leak verification model in the future implementation plan.
 
-- [x] **Task 8 — Define Story 8.2 implementation and verification handoff (AC1-AC7).**
+- [x] **Task 8 — Define Stories 8.2-8.11 implementation and verification handoff (AC1-AC7).**
   - [x] Map each frozen decision to likely NEW/UPDATE source, test, package, topology, documentation, release, and consumer-proof artifacts without editing them in Story 8.1.
   - [x] Define owner goldens, real-backend integration, persisted-state evidence, package-only consumer validation, SBOM/provenance, Parties dual-provider tests, and post-v2-write rollback gates.
-  - [x] Keep the future release inventory at 14 until Story 8.2 creates approved packable projects; require manifest, inventory guidance/tests, metadata, SBOM/provenance, and package-only consumer checks to change atomically then.
-  - [x] Require Story 8.2 code tasks to cite the exact approved spec sections they implement.
+  - [x] Keep the future release inventory at 14 until Story 8.8 creates both approved packable projects; require the manifest, inventory guidance/tests, metadata, SBOM/provenance, and package-only consumer checks to change atomically then without modifying assistant entry-point files.
+  - [x] Require every Story 8.2-8.11 task to cite the exact approved spec sections it implements and obey `8.2 -> 8.3 -> (8.4 and 8.5) -> 8.6 -> 8.7 -> 8.8 -> 8.9 -> 8.10 -> 8.11`.
 
 - [ ] **Task 9 — Record ADR disposition and approvals (AC7).**
   - [x] Record decision status, accepted scope, non-goals, rejected alternatives, limitations, migration posture, and every open decision with owner and blocking/non-blocking classification.
@@ -207,9 +210,43 @@ The July 16 planning approval did **not** approve this security specification, a
 
 - [ ] **Task 10 — Validate scope integrity and the completed gate (AC1-AC7).**
   - [ ] Run an independent structure/traceability review, an independent security/threat-model review, independent vector reproduction, and approval-evidence validation; record reviewer identity, date, method, findings, and disposition.
-  - [ ] Require Story 8.2 preflight to recompute and match the approved spec/fixture digests and source identities before implementation starts; mismatch means `not authorized`.
+  - [ ] Require Story 8.2 preflight to recompute and match the approved spec/fixture digests and source identities before implementation starts; mismatch means `not authorized`. Each successor must then validate its immediate predecessor's evidence.
   - [ ] Confirm Story 8.1 changed no runtime source, solution/project/package file, package manifest, DAPR/AppHost/deployment topology, provider resource, credential, Parties source, or persisted data.
   - [ ] Confirm no engine/G5 availability claim was issued and the Parties local provider/DI rollback path remains retained.
+
+### Review Findings
+
+- [ ] [Review][Patch] [High] Bind every protected envelope to the aggregate-local event or snapshot sequence through additive protect/unprotect context; freeze the sequence as an unsigned 64-bit AAD field so copied same-scope records fail authentication [_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md:409] — decision: option 1 selected 2026-08-01
+- [ ] [Review][Patch] [High] Authenticate a SHA-256 commitment over the complete count-prefixed, length-delimited, sorted canonical protected-path manifest in every wrapper's AAD so wrapper removal or plaintext substitution fails authentication [_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md:409] — decision: option 1 selected 2026-08-01
+- [ ] [Review][Patch] [High] Replace the CLR-derived snapshot type name with an explicit versioned `SnapshotTypeId` registry whose bounded durable identifiers are independent of assemblies and whose rename aliases resolve to one canonical ID [_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md:322] — decision: option 1 selected 2026-08-01
+- [ ] [Review][Patch] [High] Define `Pending` as always readable while blocking new protected writes, remove the nonexistent domain-policy read override, and require transition to `Invalidating` before reads are denied [_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md:735] — decision: option 1 selected 2026-08-01
+- [ ] [Review][Patch] [High] Make the exact serialized JSON plus its configured `JsonTypeInfo` metadata authoritative for policy traversal and attribute mapping; reject opaque custom-converter shapes unless an explicit policy supplies validated canonical JSON pointers [_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md:701] — decision: option 1 selected 2026-08-01
+- [ ] [Review][Patch] [High] Freeze the conservative traversal profile: depth 64, 65,536 total JSON nodes, 4,096 protected values, 16 MiB serialized payload, 8 MiB total selected plaintext, checked cumulative arithmetic, and periodic cancellation checks with exact maxima/max+1 vectors [_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md:1347] — decision: option 1 selected 2026-08-01
+- [ ] [Review][Patch] [High] Define approved deployment generations with short-TTL per-instance capability leases and require current-generation capability admission before an instance receives traffic; freeze lease keys, schemas, renewal, expiry, retirement, and stale-instance rejection [_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md:1217] — decision: option 1 selected 2026-08-01
+- [ ] [Review][Patch] [High] Split the tenant/domain fence into operator-set `ApprovedWriteMode`/approval epoch and monotonic `HighestWrittenFormat`; bind both CAS values to reservation and freeze first-write plus rollback transitions [_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md:1217] — decision: option 1 selected 2026-08-01
+- [ ] [Review][Decision] [High] Put Stories 8.3-8.6 in compilable owning projects — Core-engine and Azure-adapter implementation precede Story 8.8, but Story 8.8 is assigned creation of both projects. Choose whether project creation moves to Stories 8.3/8.6 while packaging/release stays in 8.8, or reorder the story chain.
+- [ ] [Review][Decision] [High] Define plaintext input-buffer ownership and zeroing — The current hook receives caller-owned serialized event bytes, while the spec claims the engine owns plaintext buffers only inside the call. Choose transfer-of-ownership, caller-zeroing, or an additive buffer contract and state the unavoidable snapshot/object limits accurately.
+- [ ] [Review][Patch] [High] Split legacy writing into an approved pre-v2 `CompatibilityLegacy` mode and a post-v2 `RollbackLegacy` mode that requires named rollback approval while retaining v2 readers and the monotonic watermark [_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md:243] — decision: option 1 selected 2026-08-01
+- [ ] [Review][Decision] [High] Prove repeated-DEK detection or revise nonce construction — A fresh key reference does not detect a CSPRNG returning the same 256-bit DEK, yet the deterministic ordinal nonce restarts at zero and V041-V048 require injected repeated-DEK rejection. Choose a durable reuse proof/detection mechanism or a nonce design that remains unique when key material repeats.
+- [ ] [Review][Patch] [High] Apply the immutable v2 format maximum to reads and use `MaxProtectedValueBytes` only for new writes [_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md:245]
+- [ ] [Review][Patch] [High] Replace unrestricted erasure `ReasonCode` telemetry with a closed, bounded constructive mapping [_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md:681]
+- [ ] [Review][Patch] [High] Freeze canonical versioned value schemas for every durable index, lifecycle, fence, operation, lease, reconciliation, and audit record [_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md:792]
+- [ ] [Review][Patch] [Medium] Treat the state-store ETag as store metadata rather than a field required inside the initially created wrapped-DEK value [_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md:809]
+- [ ] [Review][Patch] [High] Make orphan cleanup safe against paused writers and define an executable no-reference proof before key deletion [_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md:824]
+- [ ] [Review][Patch] [Medium] Replace the contradictory Azure `include only/at least` operation check with one exact allowed-operation rule [_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md:1028]
+- [ ] [Review][Patch] [High] Split transient managed-identity token acquisition failures from permanent authentication denial [_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md:1077]
+- [ ] [Review][Patch] [High] Expand V001-V138 into exact named cases or machine-readable fixtures with deterministic inputs and expected outcomes [_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md:1429]
+- [ ] [Review][Patch] [Medium] Make normative digest markers unambiguous and publish an exact recomputation command [_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md:40]
+- [ ] [Review][Patch] [High] Add two independent G-001 reproducers that construct AAD, envelope, wrapper, and every recorded hash from atomic fields [_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md:599]
+- [ ] [Review][Patch] [Medium] Correct the story reference that says Azure is not selected despite the completed Azure Key Vault decision [_bmad-output/implementation-artifacts/8-1-shared-payload-protection-security-spec-and-adr.md:362]
+- [ ] [Review][Patch] [High] Require exactly one authoritative erasure-state provider per protected domain and fail startup on zero or ambiguity [_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md:687]
+- [ ] [Review][Patch] [High] Reject negative or regressed lifecycle epochs before cache, lease, read, or write authorization [_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md:681]
+- [ ] [Review][Patch] [High] Include lifecycle and fence ETag comparisons in the reservation transaction to close the validation-to-create race [_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md:824]
+- [ ] [Review][Patch] [High] Define a complete KEK-version-to-scope/key inventory so rotation can prove every retained DEK was rewrapped [_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md:804]
+- [ ] [Review][Patch] [Medium] Replace the invalid semicolon-only `PersonalDataAttribute` class declaration with valid normative C# [_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md:629]
+- [x] [Review][Defer] [Medium] Reconcile `epic-2: in-progress` with all listed Epic 2 stories and its retrospective marked `done` [_bmad-output/implementation-artifacts/sprint-status.yaml:79] — deferred, pre-existing
+- [x] [Review][Defer] [Low] Add the intentionally preserved `awaiting-operator` value to the sprint-status schema comments [_bmad-output/implementation-artifacts/sprint-status.yaml:19] — deferred, pre-existing
+- [x] [Review][Defer] [Medium] Separate unrelated Epic 1-7 tracking changes from the Story 8.1 baseline evidence so scope attribution is reviewable [_bmad-output/implementation-artifacts/sprint-status.yaml:51] — deferred, pre-existing
 
 ## Dev Notes
 
@@ -242,7 +279,7 @@ The exact output should be scannable and include at least:
 11. Compatibility/read-routing matrix and typed outcomes.
 12. Rollout, mixed history, historical reads, downgrade, migration, and rollback after v2 writes.
 13. Threat model, no-leak matrix, positive/negative vectors, and expected evidence.
-14. Story 8.2 source/test/package/release/Parties handoff.
+14. Stories 8.2-8.11 source/test/package/release/Parties handoff and predecessor sequence.
 15. Accepted/rejected alternatives, limitations, open decisions, named approvals, date, and explicit `authorized`/`not authorized` decision.
 
 ### Existing Implementation Baseline — Reuse And Preserve
@@ -278,9 +315,9 @@ The exact output should be scannable and include at least:
 
 ### Current Cryptographic And Provider Guidance
 
-These are design inputs verified from the linked official sources on 2026-07-16, not pre-approved architecture choices. Story 8.1 must record its own retrieval/version evidence and Story 8.2 must reverify it:
+These are design inputs verified from the linked official sources on 2026-07-16, not pre-approved architecture choices. Story 8.1 records its retrieval/version evidence, and each implementing child must reverify the sources it consumes:
 
-- NIST SP 800-38D remains the current final GCM standard. It recommends 96-bit IVs, requires nonce uniqueness, fixes the tag length per key, and bounds RBG-based use across instances. NIST opened a second pre-draft revision call on 2026-06-01; recheck Rev.1 before Story 8.2 implementation. Use the current final as normative until a replacement is final.
+- NIST SP 800-38D remains the current final GCM standard. It recommends 96-bit IVs, requires nonce uniqueness, fixes the tag length per key, and bounds RBG-based use across instances. NIST opened a second pre-draft revision call on 2026-06-01; Story 8.3 must recheck Rev.1 before core implementation. Use the current final as normative until a replacement is final.
 - On .NET 10, `AesGcm` uses a 12-byte nonce. Cross-platform tag support converges on 16 bytes because Apple supports only 16 while Windows/Linux support 12-16. If the ADR adopts this portable choice, use the tag-size constructor and check `AesGcm.IsSupported`; the story must still approve key length and algorithm ID.
 - RFC 5116 requires nonce uniqueness and authenticated decryption to yield plaintext or FAIL. AAD must be injective/uniquely parseable, which rules out delimiter concatenation.
 - If RFC 6901 JSON Pointer is selected for property paths, freeze escaping, arrays, duplicates, Unicode, and non-resolving behavior exactly. If JCS, deterministic CBOR, or a binary schema is selected for canonical bytes, name the standard/profile and application schema explicitly.
@@ -311,7 +348,7 @@ The spec must define expected inputs, outputs, typed failure, retry/permanence, 
 - Story 8.1 validation is document/security review: structure and traceability, threat-model review, independent vector reproduction, compatibility/rollback review, provider/operations review, package/release review, and named approval validation.
 - Runtime/build tests do not substitute for this approval gate. Conversely, Story 8.1 should not edit runtime code merely to make vectors executable.
 - Machine-readable vector companions are allowed only when their exact digests are incorporated into the approved spec. Record reproducible result hashes for both independent toolchains.
-- The future Story 8.2 plan must extend, not replace, the existing Contract, Server, Client, Testing, and Integration security suites. Tests use xUnit v3, Shouldly, and NSubstitute; run projects individually and use `.slnx` only for restore/build.
+- Stories 8.2-8.10 must extend, not replace, the existing Contract, Server, Client, Testing, and Integration security suites within their assigned slices. Tests use xUnit v3, Shouldly, and NSubstitute; run projects individually and use `.slnx` only for restore/build.
 - Real-backend and G5 evidence must inspect persisted state, provider state/identity, package outputs, and rollback results—not only HTTP status, mock calls, interface shape, or LocalDev.
 - Future code must use centralized package versions, `ConfigureAwait(false)`, nullable/analyzer rules, one C# type per file, source-generated logging, and no secret/raw payload logging.
 - Record exact commands, tool/library/provider versions, environment identity, result counts, persisted evidence paths, limitations, and reviewer disposition in the spec.
@@ -322,11 +359,11 @@ The spec must define expected inputs, outputs, typed failure, retry/permanence, 
 - **UPDATE during execution record only:** this story file's Dev Agent Record and normal sprint tracking performed by the development workflow.
 - **No source/package/topology/consumer files are expected to change.** If a frozen decision contradicts AD-23 or requires a scope/ownership change, stop and run formal change control instead of editing architecture or code ad hoc.
 
-### Story 8.2 Planning Targets — Do Not Create Here
+### Stories 8.2-8.11 Planning Targets — Do Not Create Here
 
-Depending on approved decisions, the later implementation will likely create the engine project, optional adapter project, test projects, options/DI, codecs, policy discovery, key lifecycle/cache/resilience, real-backend integration, vectors, package-only consumer proof, release evidence, and G5 packet. It may update contracts and current persist/snapshot/publish/read paths only where the frozen additive design requires it.
+The approved decomposition assigns contracts/goldens to 8.2, the core engine to 8.3, compatibility readers to 8.4, policy/key lifecycle to 8.5, Azure conformance to 8.6, Server persistence/snapshots to 8.7, packages/release to 8.8, Parties parity to 8.9, post-v2 rollback to 8.10, and G5 closure to 8.11. Each child may update only the artifacts required by its frozen boundary.
 
-When Story 8.2 creates approved packable projects, it must update the manifest, all inventory statements/tests, package metadata, package-only consumer validation, SBOM/provenance, and release evidence atomically. The inventory remains exactly 14 during Story 8.1.
+When Story 8.8 creates both approved packable projects, it must update `tools/release-packages.json`, all inventory statements/tests, package metadata, package-only consumer validation, SBOM/provenance, and release evidence atomically from 14 to 16. `AGENTS.md`, `CLAUDE.md`, and `.github/copilot-instructions.md` are not package authorities and remain unchanged. The inventory remains exactly 14 through Story 8.7.
 
 ### Project Structure Notes
 
@@ -334,7 +371,7 @@ When Story 8.2 creates approved packable projects, it must update the manifest, 
 - `docs/` is product documentation, not scratch space. Story 8.1 does not revise the already-correct delivery-boundary guide unless a separately approved documentation correction is discovered.
 - No UX file is changed: the July 16 decision has no EventStore UX surface; Parties UX remains consumer evidence.
 - Do not initialize or modify an undeclared Parties checkout. Record an exact separately supplied source identity for review.
-- Release inventory is manifest-driven and remains the 14 packages listed in `tools/release-packages.json` until Story 8.2 creates approved projects.
+- Release inventory is manifest-driven and remains the 14 packages listed in `tools/release-packages.json` until Story 8.8 creates both approved projects.
 
 ### References
 
@@ -379,7 +416,7 @@ OpenAI Codex (GPT-5)
 - 2026-07-16: RED gate confirmed the required spec artifact was absent before implementation.
 - 2026-07-16: Inspected EventStore HEAD `b200305978577530ee2e6ba9e92b886d26dc6f6f`, Story 22.7 contracts and every persist/read/publish/projection/admin/snapshot/restore/no-leak path.
 - 2026-07-16: Resolved official Parties `main` SHA `4378dede55d92e489caf7aad63d6c2892e6f856d` and commit-pinned blob identities without initializing an undeclared checkout.
-- 2026-07-16: Verified NIST, RFC, .NET 10, ASP.NET Core 10, and Azure Key Vault facts from primary sources; registered retrieval/revision/supersession posture and Story 8.2 reverification requirement.
+- 2026-07-16: Verified NIST, RFC, .NET 10, ASP.NET Core 10, and Azure Key Vault facts from primary sources; registered retrieval/revision/supersession posture for the implementing child that consumes each source.
 - 2026-07-16: Task 1 focused document gate passed (281 lines, 19 unique external URLs, FR37/NFR19/AD-23/AC1-AC7 coverage, 14-package baseline).
 - 2026-07-16: Task 2 RED gate confirmed ownership/package placeholders; focused green gate then verified the responsibility matrix, two-package graph, explicit opt-in/no-op behavior, fail-start environment matrix, and unchanged 14-package manifest.
 - 2026-07-16: Task 3 RED gate confirmed wire-contract placeholders; Node.js 26.4.0/OpenSSL 3.5.7 and Python 3.14.4/cryptography 46.0.5 independently reproduced identical G-001 ciphertext/tag/envelope hashes and the NIST CAVP AES-256-GCM Count 0 tag.
@@ -390,6 +427,7 @@ OpenAI Codex (GPT-5)
 - 2026-07-16: Task 7 RED gate confirmed threat/no-leak placeholders; focused green gate verified 18 threat/misuse classes, constructive allowlists for every AC6 surface, the authenticated plaintext-or-failure invariant, G-001 key-record companion, and 138 named vector cases/families.
 - 2026-07-16: Task 8 RED gate confirmed the handoff placeholder; focused green gate verified the source/test/package/topology/docs/consumer map, section-cited implementation sequence, atomic 14-to-16 package gate, and exact G5 evidence/Parties rollback packet.
 - 2026-07-16: Task 9 disposition gate froze accepted/rejected decisions, limitations, migration posture, blocking approval/evidence register, authorization algorithm, and normative digest `efb419b5fa05d0b1d9bbf463261172cce181d5ada2c0c8d305751cc57497f440`; named independent reviews/approvals are absent, so the workflow halted with Story 8.2 not authorized.
+- 2026-08-01: Rebound normative ownership to Stories 8.2-8.11 and recomputed the exact LF normative byte range as `0e45b08890039bdc16a53718cdc664bede18254656b44751863813b3bc1f50e8`; the recorded field matches. No approval existed to carry forward, all approval rows remain pending, Story 8.2 remains `NOT AUTHORIZED`, and Stories 8.3-8.11 remain blocked.
 
 ### Completion Notes List
 
@@ -400,7 +438,7 @@ OpenAI Codex (GPT-5)
 - Task 5 complete: froze exact policy/erasure public contracts and precedence, deterministic event/snapshot selection, key identities/state keys/reservation protocol, lifecycle/rotation/deletion/restore ownership, cache/lease invalidation, resilience/reconciliation, telemetry/audit names, and honest zeroing guarantees.
 - Task 6 complete: selected and constrained the ordinary Premium Azure Key Vault production adapter, RSA-HSM-3072/RSA-OAEP-256 profile, deterministic managed identity and least-privilege RBAC, private network, startup probe, failure mapping, backup-aware erasure limits, and real-service conformance evidence.
 - Task 7 complete: froze assets/actors/attacker capabilities and 18 owned threat classes, authenticated plaintext-or-bounded-failure behavior, constructive no-leak allowlists across all required surfaces, an extended sentinel corpus, and 138 positive/negative/mutation/lifecycle/provider/rollback vectors.
-- Task 8 complete: mapped every frozen decision to likely Story 8.2 artifacts, required exact section citations and ordered gates, defined the atomic two-package release/provenance/package-only proof, and froze the complete real-provider/Parties/G5 evidence packet.
+- Task 8 complete: mapped every frozen decision to Stories 8.2-8.11, required exact section citations and predecessor gates, assigned the atomic two-package release/provenance/package-only proof to Story 8.8, and assigned the complete real-provider/Parties/rollback/G5 evidence chain through Story 8.11.
 - Task 9 partially complete: the ADR disposition and content-bound authorization rule are frozen, but mandatory named approvals and independent review evidence were not invented; Story 8.2 remains explicitly not authorized.
 
 ### File List
@@ -420,3 +458,4 @@ OpenAI Codex (GPT-5)
 - 2026-07-16: Completed the threat/misuse register, no-leak contract, fixed key-record companion, and exhaustive named verification-vector handoff.
 - 2026-07-16: Froze the Story 8.2 implementation, package/release, real-backend, consumer, rollback, and G5 evidence handoff without changing runtime or release inventory.
 - 2026-07-16: Froze ADR digest/disposition and recorded a hard approval-gate halt; no named approval, independent-review claim, or Story 8.2 authorization was fabricated.
+- 2026-08-01: Rebound the former Story 8.2 umbrella handoff to Stories 8.2-8.11, assigned package/manifest authority solely to Story 8.8, recomputed the normative digest, and preserved `NOT AUTHORIZED` status pending all named approvals.

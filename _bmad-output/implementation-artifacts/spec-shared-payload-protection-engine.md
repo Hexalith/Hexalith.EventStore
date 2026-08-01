@@ -5,7 +5,7 @@ status: draft-not-authorized
 decision: proposed
 story_8_2_authorized: false
 created: 2026-07-16
-last_updated: 2026-07-16
+last_updated: 2026-08-01
 eventstore_source_sha: b200305978577530ee2e6ba9e92b886d26dc6f6f
 story_baseline_sha: 76f122332216cc5d9b44a421bdbed3ab20d35f5e
 parties_source_sha: 4378dede55d92e489caf7aad63d6c2892e6f856d
@@ -25,14 +25,15 @@ content digest.
 | Field | Value |
 | --- | --- |
 | ADR status | Proposed; not approved |
-| Story 8.2 authorization | **NOT AUTHORIZED** |
+| Story 8.2 initial authorization | **NOT AUTHORIZED** |
+| Successor authorization | Stories 8.3-8.11 remain blocked by the approved predecessor sequence. |
 | Reason | Normative technical decisions are frozen; mandatory independent reviews and named content-bound approvals are absent. |
 | Required artifact | `_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md` |
 | EventStore inspected source | `b200305978577530ee2e6ba9e92b886d26dc6f6f` (`main`, tag `v3.67.3`) |
 | Story baseline | `76f122332216cc5d9b44a421bdbed3ab20d35f5e` |
 | Parties inspected source | `4378dede55d92e489caf7aad63d6c2892e6f856d` (`Hexalith/Hexalith.Parties`, `main` retrieved 2026-07-16) |
 | Current release inventory | 14 packages; `tools/release-packages.json` SHA-256 `6b0b70b856839d4117bcd969f6a2de0093c477c109cb79f3f2882b1f05effcae` |
-| Normative content SHA-256 | `efb419b5fa05d0b1d9bbf463261172cce181d5ada2c0c8d305751cc57497f440` |
+| Normative content SHA-256 | `0e45b08890039bdc16a53718cdc664bede18254656b44751863813b3bc1f50e8` |
 | Embedded golden wrapper SHA-256 | `a032a68a60eeb442941dc59b0470f2e88195469d2a5db8626952dacd8b50b8a4` |
 | Last source verification | 2026-07-16 |
 
@@ -45,7 +46,7 @@ The markers and all text outside them are excluded. The frozen artifact must use
 LF (`0A`) line endings and no UTF-8 BOM. Approval evidence lives outside the
 normative markers so adding detached approval records does not create a
 self-referential digest. Any byte change inside the markers invalidates every
-approval and resets Story 8.2 to `NOT AUTHORIZED`.
+approval, resets Story 8.2 to `NOT AUTHORIZED`, and blocks Stories 8.3-8.11.
 
 Fixture files, if introduced, are separately hashed. Their exact SHA-256 values
 are normative fields inside the markers; changing a fixture therefore changes
@@ -103,6 +104,7 @@ handoff, and Parties compatibility/rollback gates.
 | NFR19 | Fail closed; byte-stable versioning; bounded typed outcomes; zeroing; cache invalidation; production startup restrictions; tested rollout/downgrade/rollback | 6-15 | Negative/mutation vectors, lifecycle/cache/provider tests, startup matrix, no-leak evidence, rollback rehearsal |
 | AD-23 | EventStore owns engine/contracts; providers/operators own custody; Parties retains domain policy | 4-5, 9-11, 16 | Responsibility approval, dependency guardrails, provider/custody review, consumer approval |
 | July 16 ownership decision | Planning only; no Story 8.2 authorization, provider provisioning, manifest change, Parties edit, or rollback deletion | 1-2, 16-17 | Scope diff and approval-evidence validation |
+| August 1 story decomposition | Planning only; rebinds implementation ownership to Stories 8.2-8.11 without approving this digest or any implementation story | 1, 5, 9, 11, 14-17 | Story crosswalk, sequence validation, and digest recomputation |
 | AC1 | Ownership/package/dependency/backend/custody boundaries | 4-5, 11 | Architecture and package/release review |
 | AC2 | Test-vector-ready v2 envelope, AES-GCM, nonce/tag, AAD, paths, format | 6-8, 14 | Two-toolchain goldens plus parser/mutation vectors |
 | AC3 | Exact historical routing, rollout, downgrade, rollback | 12-13 | Compatibility review and persisted post-v2 rollback rehearsal |
@@ -111,14 +113,17 @@ handoff, and Parties compatibility/rollback gates.
 | AC6 | Threat/misuse/no-leak model and vectors | 14-15 | Independent threat review, mutation corpus, leak sentinel extension |
 | AC7 | Exact approved artifact, decisions, approvals, authorization | 1, 16-17 | Digest recomputation and named content-bound approvals |
 
-Planning input identities inspected on 2026-07-16:
+Planning input identities rebound on 2026-08-01:
 
 | Artifact | SHA-256 |
 | --- | --- |
-| `_bmad-output/planning-artifacts/prd.md` | `9b714861dbbe5d680928cccf674bcb87d4f22d9d5ed9796a6cff0f05a9589fa7` |
-| `_bmad-output/planning-artifacts/architecture.md` | `e4ace5de57de6a72807e1bc1b690917afb3cea73b191aa4723e991cd6be5ad51` |
-| `_bmad-output/planning-artifacts/epics.md` | `3b896d16afe22a39598f071eb12203c4675d81b572e81323287adc66662944aa` |
+| `_bmad-output/planning-artifacts/prd.md` | `4b0510f72a2ea69891e3b937ac33bd52107851fd033d7bac32f15adfaadaa8ea` |
+| `_bmad-output/planning-artifacts/architecture.md` | `e12a60d2c2e41baae41fd845c2e54ed0b885a6b2a9fa443d6e1f95739f52b265` |
+| `_bmad-output/planning-artifacts/epics.md` | `2b5512408fa12c4df522626aac7d46912c29d47c0284f1d9a70d6927f3547a03` |
+| `_bmad-output/planning-artifacts/ux.md` | `3c827e922c2a05559eac09ad3bff638fed0e2aca789eacd733dbb904e4a42c8c` |
 | `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-16.md` | `9d2bc1d9a60b816795461eb0b5852cce486dae04638bb1281a9fc32355700fa1` |
+| `_bmad-output/planning-artifacts/sprint-change-proposal-2026-08-01.md` | `ba054c82d8855366279a4c7dea51b54870cb562a3e4361afe08146502c1dacfe` |
+| `_bmad-output/planning-artifacts/story-id-migration-2026-08-01.md` | `d421a91531a0713195dddb514bfe83f8b0f0dc51e54553803febfb8a371f7766` |
 | `docs/guides/payload-protection-and-crypto-shredding.md` | `2b4e9eb0a6659d72f5feab4fbe5ef92e7066c0b195db6a540f34cf23eb87e2fc` |
 
 ## 4. Ownership, Trust Boundaries, And Responsibility
@@ -134,7 +139,7 @@ Planning input identities inspected on 2026-07-16:
 | Legal basis, retention, erasure decision/orchestration, certificates/reports, Art.20/Art.30, UX/copy | Provides generic seams and bounded outcomes only | Executes approved key operation; no legal decision | **Accountable and responsible** | Consulted | Executes approved runbook | Informed | Parties owns consumer evidence |
 | Production enablement and environment policy | Validates fail-start matrix | **Accountable** for explicit enablement and approved backend configuration | Consumes only approved artifacts | Approves exceptions | **Responsible** for deployment/incident handling | Verifies immutable configuration provenance | Verifies startup matrix |
 | Package inventory, SBOM, hashes, source-to-package provenance | Supplies projects/metadata | No package ownership | Pins exact approved packages | Reviews dependencies | Reviews deployability | **Accountable and responsible** | Package-only consumer checks |
-| Approval and Story 8.2 authorization | Architect owns architecture disposition | Approves custody/operations boundary | Maintainer approves consumer boundary | Named reviewer approves security | Approves operability | Approves release delta | Independent reviewer approves vectors/evidence |
+| Approval and initial Story 8.2 authorization | Architect owns architecture disposition | Approves custody/operations boundary | Maintainer approves consumer boundary | Named reviewer approves security | Approves operability | Approves release delta | Independent reviewer approves vectors/evidence |
 
 No row transfers production keys, credentials, provider private error detail, or
 environment policy into EventStore. No row transfers reusable encryption,
@@ -184,7 +189,7 @@ Two future packable projects are selected:
 The adapter is a companion package because Azure SDK, credential, network, and
 provider failure concerns must not become transitive dependencies of the
 provider-neutral engine. The exact Azure package versions are deliberately not
-guessed in Story 8.1: Story 8.2 must select centrally managed versions after the
+guessed in Story 8.1: Story 8.6 must select centrally managed versions after the
 mandatory source/API reverification, record them in its evidence, and keep every
 `.csproj` reference versionless.
 
@@ -208,8 +213,8 @@ Hexalith.EventStore.PayloadProtection
 Hexalith.EventStore.PayloadProtection.AzureKeyVault  ---> Azure Key Vault vault
 ```
 
-The current manifest remains exactly 14 packages throughout Story 8.1. Story
-8.2 creates both approved packable projects and changes the manifest and every
+The current manifest remains exactly 14 packages throughout Stories 8.1-8.7. Story
+8.8 creates both approved packable projects and changes the manifest and every
 inventory statement/test atomically from **14 to 16**. A one-package partial
 release, an engine without its selected production adapter, or an adapter hidden
 inside another package is forbidden.
@@ -1055,7 +1060,7 @@ bypass, outbound allowlisting to the vault data plane and Entra token endpoint,
 and diagnostic logs routed to the approved security sink. TLS interception that
 changes endpoint identity is forbidden.
 
-Story 8.2 uses centrally versioned stable (non-preview) `Azure.Identity` and
+Story 8.6 uses centrally versioned stable (non-preview) `Azure.Identity` and
 `Azure.Security.KeyVault.Keys` releases that support `net10.0`. Its preflight
 must reverify the official service/SDK documentation, record exact NuGet
 versions and hashes, dependency lock/SBOM, Azure SDK assembly/file versions, and
@@ -1354,7 +1359,7 @@ retention, and incident controls; they never justify plaintext fallback.
 | T18 False readiness, G5, erasure, or rollback claim based on mocks/status only | Evidence must inspect real persisted payload/key/provider/fence/cache state and exact hashes; approvals are content-bound. | Gate remains not authorized/incomplete. | Evidence pipeline compromise; independent reviewer and Release own reproduction/provenance. |
 
 Threat acceptance is not implicit. Every residual listed above must be accepted by
-the named owner in the content-bound approval record or Story 8.2 remains blocked.
+the named owner in the content-bound approval record or Story 8.2 and its successor chain remain blocked.
 
 ## 15. No-Leak Contract And Verification Matrix
 
@@ -1423,7 +1428,7 @@ exercise record serialization but cannot claim RSA-OAEP or production evidence.
 
 ### 15.4 Normative vector families
 
-Every row is implemented in Story 8.2 as named test cases/fixtures. Unless a row
+Every row is implemented across Stories 8.2-8.10 as named test cases/fixtures. Unless a row
 says otherwise, expected behavior is: no plaintext/output mutation, no retry,
 owned buffers zeroed, bounded safe diagnostics, and no provider call if the
 failure is locally decidable.
@@ -1453,52 +1458,54 @@ based fuzzing supplements but never replaces the named corpus. Every failure tes
 records provider/state call counts, retry timing, buffer-zero observation method,
 typed outcome, and leak-scan disposition.
 
-## 16. Story 8.2 Implementation, Release, And Consumer Handoff
+## 16. Stories 8.2-8.11 Implementation, Release, And Consumer Handoff
 
 ### 16.1 Change map (planning only)
 
-Story 8.2 must refine this inventory against its exact authorized baseline, but
-may not silently move a concern across the frozen boundaries:
+Each owning story must refine this inventory against its exact authorized
+baseline but may not silently move a concern across the frozen boundaries:
 
 | Class | Likely NEW/UPDATE artifacts | Frozen decisions implemented / evidence |
 | --- | --- | --- |
-| Contracts UPDATE | One type per file under `src/Hexalith.EventStore.Contracts/Security`: `PersonalDataAttribute`, `PayloadProtectionPayloadKind`, `PersonalDataPolicyDecision`, `PersonalDataPolicyContext`, `IPersonalDataPolicy`, `PayloadErasureState*`, `IErasureStateProvider`, stable v2 snapshot carrier/context/completion contracts; additive defaults on `IEventPayloadProtectionService` where compatibility requires | Sections 6-7 and 9; API approval/source compatibility and contract tests. Existing providers compile unchanged. |
-| Engine NEW | `src/Hexalith.EventStore.PayloadProtection/Hexalith.EventStore.PayloadProtection.csproj`; one-type files for codec/AAD/path/policy traversal, options/DI, CSPRNG/AES, backend SPI, DAPR scoped record/index/fence/lease/operation/audit stores, lifecycle/cache/retry/breaker/reconciler, safe logs/telemetry | Sections 5-10 and 12-15; no Azure/domain dependency; analyzers/XML docs/`ConfigureAwait(false)`; owner goldens and named vectors. |
-| Azure adapter NEW | `src/Hexalith.EventStore.PayloadProtection.AzureKeyVault/Hexalith.EventStore.PayloadProtection.AzureKeyVault.csproj`; options/validator, managed-identity factory, exact-version `CryptographyClient`, response classifier, startup capability probe, source-generated logs | Section 11; only stable centrally versioned Azure dependencies; mock classification plus real-vault conformance. |
-| Server UPDATE | `ServiceCollectionExtensions`, `EventPersister`, `SnapshotManager`, and the smallest existing readability/restore boundary changes necessary for additive context, Reserved-to-Active completion, v2 fence/watermark, deterministic snapshot carrier, and exact typed routing | Sections 5, 8.2, 10.3, 12-13; preserve all-protection-before-write, event atomic flush, snapshot advisory semantics, fail-closed publish/rehydrate/projection/admin paths. |
-| Testing UPDATE | Extend `src/Hexalith.EventStore.Testing/Security/ProtectedDataLeakSentinel.cs`; additive provider/state fault fixtures only | Section 15.2; reusable canary/structured-output inspection without embedding production behavior in fakes. |
-| Unit tests NEW/UPDATE | New `tests/Hexalith.EventStore.PayloadProtection.Tests` and `tests/Hexalith.EventStore.PayloadProtection.AzureKeyVault.Tests`; extend Contracts/Server/Client/Testing/Admin tests listed in Appendix A | Sections 6-15; G-001, V004-V138, API/metadata/readability/snapshot/persist/no-leak regression. xUnit v3, Shouldly, NSubstitute. |
-| Real integration NEW/UPDATE | Adapter integration collection under `tests/Hexalith.EventStore.IntegrationTests/Security/PayloadProtection`; isolated Azure fixture/provisioning descriptor outside unit-test defaults; extend Aspire/DAPR topology only where the real test requires state capabilities | Sections 10-11 and 13-15; real persisted v2 event/snapshot/key/index/fence/provider evidence, restart, rewrap, failures, cache invalidation, restore, rollback. No secret/resource ID committed. |
-| Solution/packages UPDATE | `Hexalith.EventStore.slnx`, `Directory.Packages.props`, project references, package metadata, `tools/release-packages.json`, validation scripts/tests, pack workflow inputs, SBOM/provenance | Sections 5.1 and 16.3; exactly two packable projects; atomic 14-to-16 inventory; package-only proof. |
-| Documentation UPDATE | `docs/guides/payload-protection-and-crypto-shredding.md`, generated package inventory/readme/release notes and operator deployment/rotation/outage/restore/rollback runbooks at repository-standard approved paths | Sections 4-15; describe only implemented/proven behavior, distinguish no-op/configured/conformant/G5 states, link exact spec digest. |
-| Parties consumer (separate authorized work) | EventStore attribute/policy and erasure adapters, retained `parties-pdenc-v1` reader/writer, dual-provider DI/fence, consumer fixtures/tests/runbook/certificate wording in exact Parties commit/PR | Sections 9, 11.5, 12-13, Appendix B; no direct EventStore-to-Parties dependency and no deletion of legacy path before G5. |
+| Story 8.2 contracts/goldens | One type per file under `src/Hexalith.EventStore.Contracts/Security`: `PersonalDataAttribute`, `PayloadProtectionPayloadKind`, `PersonalDataPolicyDecision`, `PersonalDataPolicyContext`, `IPersonalDataPolicy`, `PayloadErasureState*`, `IErasureStateProvider`, stable v2 snapshot carrier/context/completion contracts; additive defaults on `IEventPayloadProtectionService` where compatibility requires; frozen fixtures | Sections 6-9 and 14-15; API approval/source compatibility, two-toolchain goldens, and negative/mutation vectors. Existing providers compile unchanged. |
+| Story 8.3 core engine | Provider-neutral codec/AAD/path traversal, CSPRNG/AES, typed outcomes, bounds, cancellation, safe logs/telemetry, and owned-buffer zeroing under the future engine package boundary | Sections 6-8 and 14-15; no Azure/domain/Server dependency; G-001 and applicable named vectors. Packability remains owned by Story 8.8. |
+| Story 8.4 compatibility | Historical and mixed-version readers/routing for legacy-unprotected, redacted, `pdenc-v1`, Story 22.7 metadata, protected snapshots, `pdenc-v2`, and unknown/opaque state | Sections 12-13 and Appendix A; no silent plaintext, downgrade, or checkpoint advance on unreadable input. |
+| Story 8.5 policy/key lifecycle | Policy discovery, backend SPI, DAPR scoped record/index/fence/lease/operation/audit stores, lifecycle/cache/retry/breaker/reconciler, erasure state, and fault fixtures under the future engine package boundary | Sections 9-10 and 14-15; deterministic ownership, state capabilities, lifecycle/cache/resilience, zeroing, and no-leak evidence. Packability remains owned by Story 8.8. |
+| Story 8.6 Azure adapter | Future Azure adapter boundary with options/validator, managed-identity factory, exact-version `CryptographyClient`, response classifier, startup capability probe, source-generated logs, and isolated real-service fixture | Section 11 and applicable sections 14-15; stable centrally versioned dependencies, mock classification, and real-vault conformance. Package creation/release remains owned by Story 8.8. |
+| Story 8.7 Server integration | `ServiceCollectionExtensions`, `EventPersister`, `SnapshotManager`, and the smallest existing readability/restore changes necessary for additive context, Reserved-to-Active completion, v2 fence/watermark, deterministic snapshot carrier, exact typed routing, and persisted integration evidence | Sections 5, 8.2, 10.3, 12-15; preserve all-protection-before-write, event atomic flush, snapshot advisory semantics, and fail-closed publish/rehydrate/projection/admin paths. |
+| Story 8.8 packages/release | `Hexalith.EventStore.PayloadProtection` and `Hexalith.EventStore.PayloadProtection.AzureKeyVault` packable projects; `Hexalith.EventStore.slnx`, central versions, references, package metadata, `tools/release-packages.json`, validation/tests, pack inputs, SBOM/provenance | Sections 5.1 and 16.3; exactly two packages, atomic 14-to-16 manifest transition, and package-only proof without assistant entry-point changes. |
+| Story 8.9 Parties parity | EventStore attribute/policy and erasure adapters, retained `parties-pdenc-v1` reader/writer, dual-provider DI/fence, consumer fixtures/tests/runbook/certificate wording in an exact separately authorized Parties commit/PR | Sections 9, 11.5, 12-13, and Appendix B; no direct EventStore-to-Parties dependency and no deletion of the legacy path before G5. |
+| Story 8.10 rollback | Real post-`pdenc-v2` persisted event/snapshot history, retained-reader routing, mixed history, configuration reversal, restart/projection/admin proof, and no-leak transcript | Sections 13-15; rollback before any v2 write or mock-only data is insufficient. |
+| Story 8.11 documentation/G5 | `docs/guides/payload-protection-and-crypto-shredding.md`, generated inventory/readme/release notes, operator deployment/rotation/outage/restore/rollback runbooks, and the immutable closure packet | Sections 4-16; describe only proven behavior, distinguish no-op/configured/conformant/G5 states, bind exact identities/digest, and record named approvals. |
 
-No AppHost/DAPR/deployment edit is automatic. Story 8.2 may add only the state
-capability and isolated integration resources proven necessary by sections 10
-and 11; production provisioning remains operator/IaC work under separate
+No AppHost/DAPR/deployment edit is automatic. Stories 8.5-8.7 may add only the
+state capability and isolated integration resources proven necessary by sections
+10 and 11; production provisioning remains operator/IaC work under separate
 authority. No Story 8.1 planning filename is a license to create credentials or
 Azure resources.
 
 ### 16.2 Required implementation sequence and spec citations
 
-Every Story 8.2 task/PR description and material code file must cite the exact
-approved normative digest and the section(s) it implements. At minimum, work is
-ordered behind these gates:
+Every Story 8.2-8.11 task/PR description and material code file must cite the
+exact approved normative digest and the section(s) it implements. Work follows
+this predecessor sequence:
 
-1. Recompute the spec digest/source identities and reverify living sources/SDK;
-   mismatch stops all implementation.
-2. Add compile-compatible Contracts and owner golden fixtures (sections 6-9,
-   15.3); contract/API review must pass before engine wiring.
-3. Implement strict parsers/AAD/policy/crypto with local negative vectors
-   (sections 6-9, 14-15) before persistence or DI enablement.
-4. Implement state hierarchy/reservation/lifecycle/cache/resilience/audit
-   (section 10) with crash/fault tests before a real provider.
-5. Implement the Azure adapter/profile and real isolated conformance (section
-   11); a mock-only green build cannot advance the gate.
-6. Wire Server additive context/completion/fence/snapshot/read routes (sections
-   10, 12-13) and run all existing plus new project suites individually.
-7. Produce package-only consumer and real persisted G5/Parties dual-provider/
-   rollback evidence before release or legacy-path removal.
+1. Story 8.2 rechecks the digest/source identities, adds compile-compatible
+   contracts and owner golden fixtures, and passes contract/API/vector review.
+2. Story 8.3 implements strict parsers, AAD, core cryptography, bounds, zeroing,
+   and local negative vectors against Story 8.2 evidence.
+3. Stories 8.4 and 8.5 may then proceed in parallel: 8.4 owns historical/mixed
+   readers and routing; 8.5 owns policy, state hierarchy, reservation, lifecycle,
+   cache, resilience, audit, and crash/fault tests.
+4. Story 8.6 starts only after both 8.4 and 8.5 and owns stable Azure SDK/API
+   reverification, adapter implementation, and real isolated conformance.
+5. Story 8.7 wires Server context/completion/fence/snapshot/read routes and proves
+   persisted fail-closed behavior through the production path.
+6. Story 8.8 creates the two governed packages and atomically performs the
+   release-manifest transition with package-only evidence.
+7. Story 8.9 proves separately authorized Parties dual-provider parity; Story
+   8.10 then rehearses rollback after real v2 writes; Story 8.11 finally assembles
+   the content- and identity-bound G5 packet and approvals.
 
 Source files that implement multiple concerns cite all applicable sections in
 their XML/design documentation; tests encode vector IDs in names/traits so a
@@ -1509,7 +1516,7 @@ approval after any content change, and blocks code depending on it.
 ### 16.3 Atomic package and provenance gate
 
 The release inventory remains the manifest-driven **14 packages** until both
-approved packable projects exist and pass their tests. The same Story 8.2 change
+approved packable projects exist and pass their tests. The same Story 8.8 change
 then atomically:
 
 - adds `Hexalith.EventStore.PayloadProtection` and
@@ -1517,6 +1524,8 @@ then atomically:
   `tools/release-packages.json` (exact total 16), solution/project/package
   references, inventory assertions/guidance, pack validation, and release notes;
 - keeps every `.csproj` versionless and pins Azure dependencies centrally;
+- leaves `AGENTS.md`, `CLAUDE.md`, and `.github/copilot-instructions.md`
+  unchanged because they are not package-inventory authorities;
 - records source commit, approved spec digest, package IDs/versions, `.nupkg` and
   symbol-package SHA-256, dependency lock, license/vulnerability scan, SBOM and
   signed provenance/attestation for all released artifacts; and
@@ -1532,7 +1541,7 @@ later independent versions require compatibility policy approval.
 
 ### 16.4 Evidence packet and G5 closure
 
-The immutable evidence packet is indexed by source SHA and normative spec
+Story 8.11 assembles the immutable evidence packet indexed by source SHA and normative spec
 digest and contains:
 
 1. owner golden/fixture bytes, hashes and Node/Python/.NET reproduction outputs;
@@ -1657,8 +1666,8 @@ remaining evidence decisions block Story 8.1 completion and Story 8.2:
 | OD-04 | Atomic two-package inventory, stable Azure dependency policy, SBOM/provenance/package-only and release-gate acceptance | Named Release owner | **Blocking**; approve/reject sections 5/16 for the frozen digest. |
 | OD-05 | Parties policy/erasure/certificate ownership, exact v1 compatibility, retained legacy reader/writer and post-v2 rollback acceptance | Named Parties maintainer | **Blocking**; approve/reject sections 9 and 11-16 against the pinned Parties SHA. |
 | OD-06 | Independent compatibility/rollback and complete structure/traceability review | Named independent reviewer(s) | **Blocking**; record review evidence and close every material finding against the frozen digest. |
-| PF-01 | Select/reverify exact stable Azure SDK/NuGet and emitted service API versions under section 11.3 | Story 8.2 implementer, Security and Release | Implementation **preflight**, not an open architecture choice; any unsupported/preview-only result returns to ADR change control. |
-| PF-02 | Verify the chosen DAPR state component actually supplies strong consistency, ETags, transactions and TTL | Story 8.2 implementer and Operations | Implementation **preflight**; a capability gap returns to ADR change control rather than weakening section 10. |
+| PF-01 | Select/reverify exact stable Azure SDK/NuGet and emitted service API versions under section 11.3 | Story 8.6 implementer, Security and Release | Implementation **preflight**, not an open architecture choice; any unsupported/preview-only result returns to ADR change control. |
+| PF-02 | Verify the chosen DAPR state component actually supplies strong consistency, ETags, transactions and TTL | Story 8.5 implementer and Operations | Implementation **preflight**, not an open architecture choice; a capability gap returns to ADR change control rather than weakening section 10. |
 
 ### 17.5 Content-bound approval and authorization algorithm
 
@@ -1683,7 +1692,7 @@ all named/dated `Approved` for the same digest; all required residual risks are
 explicitly accepted; and the digest/source/fixture validation passes. Otherwise
 the only valid decision is **NOT AUTHORIZED**. At this freeze, approvals and
 independent reviews are absent, so Story 8.2 is **NOT AUTHORIZED**, Story 8.1
-must remain non-`done`, and sprint Story 8.2 remains blocked.
+must remain non-`done`, and sprint Stories 8.2-8.11 remain blocked.
 
 ## Appendix A. Existing Story 22.7 Baseline And Preservation Inventory
 
@@ -1702,7 +1711,7 @@ must remain non-`done`, and sprint Story 8.2 remains blocked.
 
 | Path | Current protection boundary | Frozen preservation requirement |
 | --- | --- | --- |
-| Persist | `EventPersister` (`a3bf264f…`) serializes and protects every event before allocating global positions, then stages protected bytes plus metadata and atomically flushes through the actor turn. | All protection succeeds before any event is staged; never plaintext-fallback. AAD cannot bind later fields unless Story 8.2 deliberately changes call order through an additive context and proves atomicity/idempotency. |
+| Persist | `EventPersister` (`a3bf264f…`) serializes and protects every event before allocating global positions, then stages protected bytes plus metadata and atomically flushes through the actor turn. | All protection succeeds before any event is staged; never plaintext-fallback. AAD cannot bind later fields unless Story 8.7 deliberately changes call order through an additive context and proves atomicity/idempotency. |
 | Command rehydrate | `AggregateActor.EnsureEventsReadableForDomainAsync` reads metadata, rejects opaque state, calls typed unprotect, and throws support-safe `ProtectedDataUnreadableException` before domain use. | No parse/apply before authenticated decryption succeeds. |
 | Publish | `EventPublisher` (`4a8c5670…`) rejects opaque metadata, calls typed unprotect, builds canonical readability decisions, re-stamps safe metadata, and only then publishes plaintext. | No plaintext or protected opaque bytes published; cancellation propagates; safe reason only. |
 | Projection live/rebuild/retry | `ProjectionEventWireBuilder`, `ProjectionUpdateOrchestrator`, `EventStoreProjectionDeliveryHistoryReader`, and retry worker call the same typed unprotect boundary before projection delivery. | Live, retry, and rebuild use identical routing and failure semantics. No checkpoint advance for unreadable input. |
@@ -1711,7 +1720,7 @@ must remain non-`done`, and sprint Story 8.2 remains blocked.
 | Snapshot persist/read/inspection | `SnapshotManager` (`83c0e047…`) protects before staging, validates metadata, treats creation as advisory, retains opaque/unreadable protected snapshots, and falls back to replay. Manual inspection fails closed without deletion. | V2 gets deterministic snapshot serialization/wrapper. Protected unreadable snapshots remain retained. Story 8.1 must decide whether advisory creation remains acceptable. |
 | Restore/governance | Restored-backup admission and crypto-shredding transitions preserve irreversible watermarks, quarantine, and operator decisions. | Restored protected keys/data never silently reactivate; restored backups pass admission before reads/writes. |
 | Diagnostics/errors | `ProtectedDataDiagnosticRedactor` (`ff53be1f…`), global error mapping, source-generated logs, and safe ProblemDetails expose bounded identifiers/reasons. | Construct safe outputs; do not serialize then scrub. |
-| Testing | `ProtectedDataLeakSentinel` (`0beac709…`), contract/server/testing suites, fake unreadable provider, and integration harness cover existing boundaries. | Story 8.2 extends rather than replaces these tests and adds persisted/provider-state/rollback evidence. |
+| Testing | `ProtectedDataLeakSentinel` (`0beac709…`), contract/server/testing suites, fake unreadable provider, and integration harness cover existing boundaries. | Stories 8.2-8.10 extend rather than replace these tests and add persisted/provider-state/rollback evidence within their assigned slices. |
 
 `EventStreamReader` itself reads stored envelopes only; command-time plaintext is
 enforced later by the aggregate actor. This distinction is intentional and must
@@ -1738,7 +1747,7 @@ official repository at exact commit
 
 No type named `IPersonalDataPolicy` or `IErasureStateProvider` exists at this
 Parties commit. Story 8.2 must therefore introduce generic EventStore-owned
-interfaces and a Parties adapter; it must not falsely describe current
+interfaces and Story 8.9 must introduce the separately authorized Parties adapter; neither may falsely describe current
 Parties-local interfaces as those contracts. `PersonalDataAttribute` is exact
 consumer evidence, but direct EventStore dependency on a Parties assembly is
 forbidden. Section 9 freezes an EventStore marker/policy seam and explicit
@@ -1752,13 +1761,14 @@ Official source links are commit-pinned, for example:
 
 ## Appendix C. Authoritative External Source Register
 
-All sources were retrieved on 2026-07-16. Story 8.2 MUST reverify every living
-platform/provider source and record the resolved SDK/API versions before code.
+All sources were retrieved on 2026-07-16. Each implementing Story 8.2-8.10 MUST
+reverify the living platform/provider sources it consumes and record resolved
+SDK/API versions before its code or evidence is accepted.
 
 | Authority and URL | Applicable revision/profile | Supersession status on retrieval | Decision use |
 | --- | --- | --- | --- |
 | NIST SP 800-38D, `https://csrc.nist.gov/pubs/sp/800/38/d/final` | Final, November 2007 | Current final; NIST revision is in progress | GCM security, 96-bit IV guidance, invocation bounds |
-| NIST 2026 second pre-draft call, `https://csrc.nist.gov/News/2026/gcm-and-gmac-block-cipher-modes-of-operation` | Notice dated 2026-06-01; comments through 2026-07-31 | Not a final replacement | Mandatory Story 8.2 recheck; no draft-only behavior adopted |
+| NIST 2026 second pre-draft call, `https://csrc.nist.gov/News/2026/gcm-and-gmac-block-cipher-modes-of-operation` | Notice dated 2026-06-01; comments through 2026-07-31 | Not a final replacement | Mandatory Story 8.3 recheck; no draft-only behavior adopted |
 | RFC 5116, `https://www.rfc-editor.org/rfc/rfc5116.html` | Standards Track, January 2008 | No superseding RFC identified | AEAD plaintext-or-FAIL, nonce uniqueness, injective application encoding |
 | RFC 6901, `https://www.rfc-editor.org/rfc/rfc6901.html` | Proposed Standard, April 2013 | No superseding RFC identified | Candidate property-path grammar; application restrictions in section 7 |
 | RFC 4648, `https://www.rfc-editor.org/rfc/rfc4648.html` | October 2006 | No superseding RFC identified | Canonical base64url spelling |
@@ -1784,7 +1794,7 @@ platform/provider source and record the resolved SDK/API versions before code.
 
 No independent review or approval has yet been recorded. This section is
 intentionally non-normative evidence bound to normative digest
-`efb419b5fa05d0b1d9bbf463261172cce181d5ada2c0c8d305751cc57497f440`.
+`0e45b08890039bdc16a53718cdc664bede18254656b44751863813b3bc1f50e8`.
 
 Author verification is recorded for reproducibility but is explicitly **not**
 the independent evidence required by OD-02/OD-06:
@@ -1794,6 +1804,7 @@ the independent evidence required by OD-02/OD-06:
 | 2026-07-16 | OpenAI Codex (GPT-5), structural/traceability/source/scope checks | Sections 2-17 populated; all AC/FR/NFR/AD references present; current package manifest remains 14 | Author self-check only; mandatory independent review remains open. |
 | 2026-07-16 | Node.js 26.4.0/OpenSSL 3.5.7 and Python 3.14.4/cryptography 46.0.5 | Both reproduced G-001 ciphertext+tag and NIST AES-256-GCM Count 0 tag exactly | Two toolchains operated by the author; independent person/reviewer reproduction remains open. |
 | 2026-07-16 | SHA-256 over section 1.2 LF byte range | `efb419b5fa05d0b1d9bbf463261172cce181d5ada2c0c8d305751cc57497f440` | Frozen approval subject; no approval implied. |
+| 2026-08-01 | SHA-256 over section 1.2 LF byte range after approved story decomposition | `0e45b08890039bdc16a53718cdc664bede18254656b44751863813b3bc1f50e8` | Rebound approval subject; no approval implied and implementation remains not authorized. |
 
 ## 19. Change History
 
@@ -1801,3 +1812,4 @@ the independent evidence required by OD-02/OD-06:
 | --- | --- | --- |
 | 2026-07-16 | Created authoritative baseline, traceability, EventStore path inventory, exact Parties provenance, and source register. | Draft remains not authorized. |
 | 2026-07-16 | Froze ownership/packages, v2 wire/AAD, compatibility/rollback, policy/lifecycle, Azure backend, threat/no-leak/vectors, Story 8.2 handoff, ADR disposition and authorization algorithm. | Normative digest frozen; remains not authorized pending independent review and named approvals. |
+| 2026-08-01 | Rebound implementation, package, consumer, rollback, and closure ownership from the former Story 8.2 umbrella to Stories 8.2-8.11 and recorded the predecessor chain. | Normative digest changed; all approvals remain absent, Story 8.2 remains not authorized, and Stories 8.3-8.11 remain blocked. |

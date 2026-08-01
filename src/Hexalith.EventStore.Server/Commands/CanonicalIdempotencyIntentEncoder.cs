@@ -1,15 +1,21 @@
 using System.Buffers;
 using System.Buffers.Binary;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+
+using Hexalith.EventStore.Contracts.Commands;
 
 namespace Hexalith.EventStore.Server.Commands;
 
 /// <summary>Encodes trusted semantic intent with deterministic type tags and length prefixes.</summary>
 public sealed class CanonicalIdempotencyIntentEncoder
 {
+    private const int MaxCanonicalIntentBytes = 131_072;
     private const int MaxCanonicalPayloadBytes = 65_536;
+    private const int MaxMetadataFieldBytes = 4_096;
     private const int MaxSemanticOptions = 128;
+    private const int MaxSemanticOptionsBytes = 65_536;
     private readonly JsonDocumentOptions _documentOptions = new()
     {
         AllowTrailingCommas = false,
@@ -17,34 +23,69 @@ public sealed class CanonicalIdempotencyIntentEncoder
     };
 
     /// <summary>Encodes one trusted adapter result into canonical bytes.</summary>
-    /// <param name="adapter">The registered adapter supplying fixed authority metadata.</param>
+    /// <param name="adapterId">The snapshotted server-owned adapter identifier.</param>
+    /// <param name="operationId">The snapshotted server-owned operation identifier.</param>
+    /// <param name="descriptorVersion">The snapshotted canonical descriptor version.</param>
+    /// <param name="retentionTier">The snapshotted replay retention tier.</param>
     /// <param name="intent">The schema-normalized semantic intent.</param>
     /// <returns>Deterministic canonical bytes.</returns>
-    public byte[] Encode(IIdempotencyIntentAdapter adapter, IdempotencyCanonicalIntent intent)
+    public byte[] Encode(
+        string adapterId,
+        string operationId,
+        int descriptorVersion,
+        IdempotencyReplayRetentionTier retentionTier,
+        IdempotencyCanonicalIntent intent)
     {
-        ArgumentNullException.ThrowIfNull(adapter);
+        ArgumentNullException.ThrowIfNull(adapterId);
+        ArgumentNullException.ThrowIfNull(operationId);
         ArgumentNullException.ThrowIfNull(intent);
 
         byte[] canonicalPayload = CanonicalizeJson(intent.SemanticPayload);
+        byte[]? encodedOptions = null;
         try
         {
             var output = new ArrayBufferWriter<byte>();
-            WriteField(output, 1, "hexalith-eventstore-idempotency-intent-v1"u8);
-            WriteField(output, 2, Encoding.UTF8.GetBytes(adapter.AdapterId));
-            WriteField(output, 3, Encoding.UTF8.GetBytes(adapter.OperationId));
-            WriteIntegerField(output, 4, adapter.DescriptorVersion);
-            WriteIntegerField(output, 5, (int)adapter.RetentionTier);
-            WriteField(output, 6, Encoding.UTF8.GetBytes(intent.CanonicalTarget));
-            WriteField(output, 7, canonicalPayload);
-            WriteField(output, 8, EncodeOptions(intent.SemanticOptions));
-            WriteField(output, 9, Encoding.UTF8.GetBytes(intent.PolicyVersion));
-            WriteField(output, 10, Encoding.UTF8.GetBytes(intent.DelegatedTaskScope ?? string.Empty));
-            WriteField(output, 11, Encoding.UTF8.GetBytes(intent.CredentialScope ?? string.Empty));
-            return output.WrittenSpan.ToArray();
+            try
+            {
+                WriteField(output, 1, "hexalith-eventstore-idempotency-intent-v1"u8);
+                WriteStringField(output, 2, adapterId, "adapter identifier");
+                WriteStringField(output, 3, operationId, "operation identifier");
+                WriteIntegerField(output, 4, descriptorVersion);
+                WriteIntegerField(output, 5, (int)retentionTier);
+                WriteStringField(output, 6, intent.CanonicalTarget, "canonical target");
+                WriteField(output, 7, canonicalPayload);
+                encodedOptions = EncodeOptions(intent.SemanticOptions);
+                WriteField(output, 8, encodedOptions);
+                WriteStringField(output, 9, intent.PolicyVersion, "policy version");
+                WriteStringField(
+                    output,
+                    10,
+                    intent.DelegatedTaskScope ?? string.Empty,
+                    "delegated task scope");
+                WriteStringField(
+                    output,
+                    11,
+                    intent.CredentialScope ?? string.Empty,
+                    "credential scope");
+                if (output.WrittenCount > MaxCanonicalIntentBytes)
+                {
+                    throw new InvalidOperationException("Trusted canonical intent exceeds the supported size.");
+                }
+
+                return output.WrittenSpan.ToArray();
+            }
+            finally
+            {
+                output.Clear();
+            }
         }
         finally
         {
-            System.Security.Cryptography.CryptographicOperations.ZeroMemory(canonicalPayload);
+            CryptographicOperations.ZeroMemory(canonicalPayload);
+            if (encodedOptions is not null)
+            {
+                CryptographicOperations.ZeroMemory(encodedOptions);
+            }
         }
     }
 
@@ -64,7 +105,16 @@ public sealed class CanonicalIdempotencyIntentEncoder
                 WriteCanonicalElement(writer, document.RootElement);
             }
 
-            return output.WrittenSpan.ToArray();
+            if (output.WrittenCount > MaxCanonicalPayloadBytes)
+            {
+                output.Clear();
+                throw new InvalidOperationException(
+                    "Trusted canonical intent payload exceeds the supported size after canonicalization.");
+            }
+
+            byte[] result = output.WrittenSpan.ToArray();
+            output.Clear();
+            return result;
         }
         catch (JsonException exception)
         {
@@ -141,19 +191,56 @@ public sealed class CanonicalIdempotencyIntentEncoder
         }
 
         var output = new ArrayBufferWriter<byte>();
-        WriteInteger(output, options.Count);
-        foreach (KeyValuePair<string, string> option in options.OrderBy(static option => option.Key, StringComparer.Ordinal))
+        try
         {
-            if (string.IsNullOrWhiteSpace(option.Key) || option.Value is null)
+            WriteInteger(output, options.Count);
+            foreach (KeyValuePair<string, string> option in options.OrderBy(static option => option.Key, StringComparer.Ordinal))
             {
-                throw new InvalidOperationException("Trusted canonical intent contains an invalid semantic option.");
+                if (string.IsNullOrWhiteSpace(option.Key) || option.Value is null)
+                {
+                    throw new InvalidOperationException("Trusted canonical intent contains an invalid semantic option.");
+                }
+
+                int keyLength = GetBoundedUtf8Length(option.Key, "semantic option key");
+                int valueLength = GetBoundedUtf8Length(option.Value, "semantic option value");
+                if (output.WrittenCount + (2 * sizeof(int)) + keyLength + valueLength > MaxSemanticOptionsBytes)
+                {
+                    throw new InvalidOperationException(
+                        "Trusted canonical intent semantic options exceed the supported size.");
+                }
+
+                byte[] keyBytes = Encoding.UTF8.GetBytes(option.Key);
+                byte[] valueBytes = Encoding.UTF8.GetBytes(option.Value);
+                try
+                {
+                    WriteLengthPrefixed(output, keyBytes);
+                    WriteLengthPrefixed(output, valueBytes);
+                }
+                finally
+                {
+                    CryptographicOperations.ZeroMemory(keyBytes);
+                    CryptographicOperations.ZeroMemory(valueBytes);
+                }
             }
 
-            WriteLengthPrefixed(output, Encoding.UTF8.GetBytes(option.Key));
-            WriteLengthPrefixed(output, Encoding.UTF8.GetBytes(option.Value));
+            return output.WrittenSpan.ToArray();
+        }
+        finally
+        {
+            output.Clear();
+        }
+    }
+
+    private static int GetBoundedUtf8Length(string value, string fieldName)
+    {
+        int length = Encoding.UTF8.GetByteCount(value);
+        if (length > MaxMetadataFieldBytes)
+        {
+            throw new InvalidOperationException(
+                $"Trusted canonical intent {fieldName} exceeds the supported size.");
         }
 
-        return output.WrittenSpan.ToArray();
+        return length;
     }
 
     private static void WriteIntegerField(ArrayBufferWriter<byte> output, byte tag, int value)
@@ -161,6 +248,24 @@ public sealed class CanonicalIdempotencyIntentEncoder
         Span<byte> bytes = stackalloc byte[sizeof(int)];
         BinaryPrimitives.WriteInt32BigEndian(bytes, value);
         WriteField(output, tag, bytes);
+    }
+
+    private static void WriteStringField(
+        ArrayBufferWriter<byte> output,
+        byte tag,
+        string value,
+        string fieldName)
+    {
+        _ = GetBoundedUtf8Length(value, fieldName);
+        byte[] bytes = Encoding.UTF8.GetBytes(value);
+        try
+        {
+            WriteField(output, tag, bytes);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(bytes);
+        }
     }
 
     private static void WriteField(ArrayBufferWriter<byte> output, byte tag, ReadOnlySpan<byte> value)

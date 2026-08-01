@@ -33,6 +33,7 @@ inputDocuments:
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-19.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-19-openbao-secret-store.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-20-oq8-durable-idempotency-admission.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-08-01.md
   - _bmad-output/specs/spec-eventstore-phase-4-readiness-recovery/SPEC.md
 ---
 
@@ -42,18 +43,18 @@ inputDocuments:
 
 This document provides the complete epic and story breakdown for eventstore, decomposing the formal PRD, architecture, UX handoff, and approved sprint change proposals into implementable stories.
 
-The current Phase 4 planning baseline is `_bmad-output/planning-artifacts/prd.md`, `_bmad-output/planning-artifacts/architecture.md`, `_bmad-output/planning-artifacts/ux.md`, `_bmad-output/specs/spec-eventstore-phase-4-readiness-recovery/SPEC.md` with its companions, and the approved sprint change proposals in `_bmad-output/planning-artifacts`. The PRD owns FR/NFR truth, the architecture artifact owns implementation invariants and decision gates, the UX handoff owns UI governance and journeys, the SPEC preserves the complete downstream contract, and this epics document owns implementation slicing and story acceptance criteria. PRD section 7 is authoritative whenever copied NFR text drifts.
+The current Phase 4 planning baseline is `_bmad-output/planning-artifacts/prd.md`, `_bmad-output/planning-artifacts/architecture.md`, `_bmad-output/planning-artifacts/ux.md`, `_bmad-output/specs/spec-eventstore-phase-4-readiness-recovery/SPEC.md` with its companions, and the approved sprint change proposals in `_bmad-output/planning-artifacts`. The PRD owns all FR/NFR wording, the architecture artifact owns implementation invariants and decision gates, the UX handoff owns UI governance and journeys, the SPEC preserves the complete downstream contract, and this epics document owns implementation slicing and story acceptance criteria. Requirement references below are identifiers into PRD sections 6 and 7, never independent copies.
 
-For Story 4.8, the approved 2026-07-20 OQ8 proposal and the Architecture +
+For the Story 4.8 evidence ledger and active Stories 4.9-4.15, the approved 2026-07-20 OQ8 proposal and the Architecture +
 Security + Test-approved OQ8 design version 1.0.0 (SHA-256
 `1a55b0302e91233e12db91e6e245f0a22d6bf13fcf6cdf5ee0cbe5759f08dcd8`)
 govern. The reconciled PRD, architecture, epics, and canonical SPEC package
 project that authority; pre-change FR27/NFR7/NFR16 and architecture wording is
-historical context only.
+historical context only and cannot weaken the Story 4.15 closure gate.
 
 ## Implementation Readiness Execution Gates
 
-The 2026-07-15 implementation readiness assessment found complete FR1-FR36 traceability but blocked broad Phase 4 implementation on a later-epic prerequisite and eight oversized implementation stories. The approved July 15 direct adjustment preserves the seven-epic MVP while replacing those parents with focused children.
+The 2026-08-01 implementation readiness assessment found complete FR1-FR37 traceability but blocked broad remaining Phase 4 implementation on two forward dependencies and oversized Stories 4.8 and 8.2. The approved direct adjustment preserves all eight top-level epics and MVP scope while replacing those dependencies and parents with focused, backward-only children.
 
 ### Query Metadata Sequencing Gate
 
@@ -78,7 +79,7 @@ No UI or generated-API story may render authoritative lifecycle state or project
 The former coordinated-slice parents are superseded and must not be recreated as active implementation stories. Their replacements are:
 
 - Story 1.3 -> Stories 1.3-1.5.
-- Story 1.6 -> Stories 1.8-1.11.
+- Legacy Story 1.6 (Sample And Tenants Domain-Centric Adoption, before 2026-07-15) -> Stories 1.8-1.11. Current Story 1.6 is Projection And Domain Event Consumer Seams.
 - Story 2.4 -> Stories 2.4-2.7.
 - Story 2.7 -> retained pre-authorization scope in Story 2.7 plus authorized adoption in Story 2.12.
 - Story 3.7 -> Stories 3.7-3.9.
@@ -86,9 +87,12 @@ The former coordinated-slice parents are superseded and must not be recreated as
 - Story 7.2 -> Stories 7.2-7.5.
 - Story 7.3 -> Stories 7.6-7.9.
 - Story 7.4 -> Stories 7.10-7.13.
-- Story 7.5 -> Stories 7.15-7.18, with new Story 7.14 owning the consolidated EventStore Admin dashboard migration.
+- Story 7.5 -> Stories 7.15-7.18, with Story 7.14 later narrowed to shell/route migration and Stories 7.19-7.20 owning evidence-state integration and UX conformance.
+- Story 4.8 -> evidence ledger plus active Stories 4.9-4.15.
+- Story 8.2 -> Stories 8.2-8.11.
+- New focused follow-ups: Story 3.13 deployed runtime parity closure and Story 5.10 reserved-system-tenant provisioning guard.
 
-Every child names one owner, one review boundary, deterministic acceptance criteria, and focused validation. `_bmad-output/planning-artifacts/story-id-migration-2026-07-15.md` is the audit authority for old/new identifiers, status inheritance, evidence, and active-file supersession. A child inherits `done` only when that crosswalk names existing implementation, focused tests, and review results. Tenants children that cross the Tenants repository boundary additionally require maintainer approval and an exact SHA; the EventStore-only Story 2.7 prerequisite does not. Missing evidence leaves a child in `review`, not `done`.
+Every child names one owner, one review boundary, deterministic acceptance criteria, and focused validation. `_bmad-output/planning-artifacts/story-id-migration-2026-07-15.md` remains the audit authority for the July change; `_bmad-output/planning-artifacts/story-id-migration-2026-08-01.md` owns this correction's mappings and status inheritance. A child inherits `done` only when its governing crosswalk names existing implementation, focused tests, and review results. Tenants children that cross the Tenants repository boundary additionally require maintainer approval and an exact SHA; the EventStore-only Story 2.7 prerequisite does not. Missing evidence leaves a child in `review`, not `done`.
 
 | Child stories | Owner / review boundary | Focused validation |
 | --- | --- | --- |
@@ -97,8 +101,10 @@ Every child names one owner, one review boundary, deterministic acceptance crite
 | 2.4-2.7, 2.12 | Amelia / Sally reviews UI evidence; EventStore reviewers own the Story 2.7 prerequisite and the Tenants maintainer approves Story 2.12 identity adoption | RestApi.Generators plus scoped Tenants Contracts, Integration, UI, live source-topology, and package/source-mode builds |
 | 3.7-3.9 | Amelia / Paige reviews workflow migration, safety validation, and backlog separately | Workflow scans, manifest governance tests, Release build, and documented supply-chain evidence |
 | 5.6-5.9 | Winston / Amelia reviews AppHost, production YAML, drift tests, and docs separately | AppHost tests, topology scans, dedicated integration lane, and docs checks |
-| 7.2-7.14 | Owner/reviewer named by each Admin, deployment, testing, workflow, or UI child | Focused Admin, AppHost, integration, workflow, and UI suites named by each child |
+| 4.9-4.15 | Amelia / named Architecture, Security, Test, and downstream reviewers by child | Focused admission, directory, fencing, expiry/compaction, migration, multi-host, and closure evidence |
+| 7.2-7.14, 7.19-7.20 | Owner/reviewer named by each Admin, deployment, testing, workflow, or UI child | Focused Admin, AppHost, integration, workflow, route, evidence-state, and UX conformance suites |
 | 7.15-7.18 | John / specialist reviewer named by backlog domain | Independent artifact-structure validation for each backlog product |
+| 8.2-8.11 | Amelia / named Architecture, Security, Test, Release, Operations, and Parties reviewers by child | Contracts/goldens, crypto, compatibility, lifecycle, real backend, Server, package, Parties, rollback, and G5 evidence |
 
 ### Spec-Gated Story Outputs
 
@@ -111,6 +117,8 @@ Epic 6 implementation stories are blocked until their paired specs exist and car
 | 6.5 | `_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md` | 6.6 |
 
 Approval evidence must include approver, date, accepted scope, rejected alternatives, open decisions, and explicit authorization for the dependent implementation story to start.
+
+Stories 6.1, 6.3, and 6.5 are architecture/readiness enablers and do not count as runtime-capability completion. Stories 6.2, 6.4, and 6.6 are the independently demonstrable runtime outcomes; Epic 6 runtime value completes only when all three implementation stories complete.
 
 ### Backlog Artifact Outputs
 
@@ -128,13 +136,13 @@ Story 1.13 completed its investigation and correctly produced a `still blocked` 
 1. Stories 1.14-1.16 establish read-model lifecycle, coordinated writes, and complete lifecycle metadata.
 2. Story 1.17 establishes asynchronous named multi-projection dispatch.
 3. Stories 1.18 and 1.19 prove production-path delivery idempotency and replay-equivalent paged rebuilds.
-4. Story 1.20 re-runs parity, records explicit EventStore owner approval, and binds exact source, package, or deployed-image identity.
+4. Story 1.20 re-runs parity, records explicit EventStore owner approval, and binds exact source or package identity.
 
 The numbered capability sequence governs evidence acceptance and final parity closure; it is not a serial execution lock. Stories 1.14-1.19 may be implemented and reviewed in parallel once the contracts they directly consume exist. An unresolved review item in one story blocks Story 1.20 closure, but does not block another implementation story unless it exposes a direct contract contradiction; a direct contradiction must halt the affected story and be routed through change control.
 
-Cursor scope compatibility may reuse Story 1.13 evidence. Every other blocked item must be reclassified `available` by Story 1.20. Source-mode consumers verify the EventStore submodule SHA; package-mode consumers verify exact package versions and hashes; deployed consumers verify the image digest maps to the approved EventStore SHA. The consuming repository SHA is never compared to the EventStore SHA. The dated Story 2.12 tracked-`main` / published-catalog exception recorded in AD-22 is scoped to Tenants and does not relax these rules for Parties Story 8.6 or any other consumer.
+Cursor scope compatibility may reuse Story 1.13 evidence. Every other blocked item must be reclassified `available` by Story 1.20. Source-mode consumers verify the EventStore submodule SHA and package-mode consumers verify exact package versions and hashes. The consuming repository SHA is never compared to the EventStore SHA. The dated Story 2.12 tracked-`main` / published-catalog exception recorded in AD-22 is scoped to Tenants and does not relax these rules for Parties Story 8.6 or any other consumer.
 
-Runtime-identity closure is mode-specific. Source mode may close against the approved EventStore source SHA, and package mode may close against the approved package versions and hashes, without waiting for Story 3.12 when every gate applicable to the selected mode is satisfied. If Story 1.20 selects deployed mode, Story 3.12 is the intentional conditional cross-epic prerequisite: it must produce a conforming two-platform EventStore release and Story 1.20 must independently revalidate its identity and record the required EventStore/release-owner approvals. This conditional dependency does not resequence the epics or block source/package parity closure.
+Deployed runtime parity is owned by Story 3.13 after completed Stories 1.20 and 3.12. Story 3.13 independently maps the approved source/package parity identity to the conforming OCI index, both child images/configs, package hashes, and release provenance. Its failure cannot gate or reopen Story 1.20 or Epic 1.
 
 Story 1.20 closes the projection/query SDK prerequisite for Parties Story 8.6 only. It does not deliver or approve the G5 payload-protection engine, `pdenc-v2`, key mechanics, production backend, or Parties Story 8.7 migration.
 
@@ -142,128 +150,32 @@ Story 1.20 closes the projection/query SDK prerequisite for Parties Story 8.6 on
 
 The optional shared payload-protection engine is committed post-MVP work under Epic 8 and is independent from Story 1.20.
 
-- Story 8.2 cannot start until Story 8.1 produces `_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md` with named architecture and security approval plus explicit implementation authorization.
+- Story 8.2 cannot start until Story 8.1 produces `_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md` with named approvals plus explicit authorization. Each Story 8.3-8.11 then requires the predecessor evidence defined by its dependency chain.
 - No EventStore hook, Story 22.7 artifact, custom-provider example, LocalDev/in-memory backend, or interface-only backend counts as the G5 engine or as production proof.
 - Story 1.20 cannot classify G5 and does not block or authorize Story 8.2.
-- Parties keeps G5 `needs-additive-api`, Story 8.7 in backlog, and its local provider/DI rollback path until Story 8.2 is implemented, reviewed, released or pinned, and proven through dual-provider compatibility and rollback after `pdenc-v2` writes.
+- Parties keeps G5 `needs-additive-api`, its Story 8.7 in backlog, and its local provider/DI rollback path until EventStore Stories 8.2-8.11 are complete and Story 8.11 records `available`.
 
 ## Requirements Inventory
 
-### Functional Requirements
+The authoritative requirement wording is in PRD sections 6 and 7. This document retains identifiers and delivery categories only; story headers and the coverage map below bind those identifiers to implementation slices.
 
-FR1: Domain modules built on Hexalith.EventStore must be domain-centric, containing domain code such as aggregates, commands, events, projections, query handlers, validators, and contracts, while platform boilerplate is supplied by EventStore libraries.
+### Functional Requirement IDs
 
-FR2: The platform must provide a domain-service SDK with `AddEventStoreDomainService`, `UseEventStoreDomainService`, and `MapEventStoreDomainService` so a domain service host can be reduced to the canonical SDK host shape.
+| IDs | Delivery category |
+| --- | --- |
+| FR1-FR10 | Epic 1 domain-author platform and consumer adoption |
+| FR11-FR16 | Epic 2 external integration surfaces |
+| FR17-FR22, FR25 | Epic 3 release and repository reliability |
+| FR23-FR24, FR27, FR29-FR31 | Epic 4 event correctness and recovery |
+| FR26, FR28, FR32 | Epic 5 security and tenant isolation |
+| FR33 | Epic 6 bounded cost and event evolution |
+| FR34-FR35 | Epic 7 operator trust and future-capability backlog |
+| FR36 | Epic 1 source/package parity and Epic 3 deployed runtime closure |
+| FR37 | Epic 8 post-MVP shared payload protection and G5 closure |
 
-FR3: The domain-service SDK must expose the canonical DAPR-facing endpoints `/process`, `/replay-state`, `/query`, `/project`, and `/admin/operational-index-metadata`.
+### Non-Functional Requirement IDs
 
-FR4: The platform must provide a domain query-handler seam using `IDomainQueryHandler`, discovery, dispatch, operational metadata reporting, gateway-side query-type capture, handler-aware routing to domain `/query` endpoints, and end-to-end `QueryResponseMetadata` propagation for freshness, projection version, ETag, served-at, degraded/warning state, and paging evidence, carrying an explicit query-response provenance classification (projection-backed, handler-computed, or unknown) that governs whether that evidence is projection-backed. Projection-backed responses must additionally preserve a lossless lifecycle representation or owner-approved mapping for `Current`, `Stale`, `Rebuilding`, `Degraded`, `Unavailable`, and `LocalOnly`; consumers must not infer lifecycle from ETags or claim projection-confirmed success without projection-backed provenance.
-
-FR5: The platform must provide generic persisted read-model lifecycle and write contracts with ETag-aware reads/writes, coordinated read-model and sequence/checkpoint erasure, and detail/index batch writes or an approved equivalent. Batch behavior must define partial-failure recovery, idempotency, ordering, flush completion, optimistic concurrency, DAPR behavior, and deterministic in-memory testing semantics.
-
-FR6: The platform must provide a reusable DataProtection-backed query cursor codec with scope validation, payload limits, tamper/key-rotation handling, and caller-supplied purpose isolation.
-
-FR7: The platform must provide an asynchronous, cancellation-aware projection-handler seam supporting multiple named projections per domain and coordinated detail/index persistence, plus a generic domain-event subscription/consumer pipeline with deduplication and endpoint mapping. Projection delivery must tolerate duplicate and out-of-order events through the actual handler path, and full rebuilds must remain correct across paging boundaries.
-
-FR8: The platform must provide Aspire, telemetry, and health-check extensions for domain modules, including `AddEventStoreDomainModule`, convention telemetry, and DAPR state-store health checks.
-
-FR9: The Sample domain and Tenants domain must adopt platform SDK seams so duplicated request routers, projection actors, cursor codecs, state-store plumbing, telemetry, health checks, and per-domain Aspire wiring are removed or reduced to domain-specific logic.
-
-FR10: The EventStore package set must include the domain-service and service-default packages as publishable packages, and release packaging must publish only the manifest-governed EventStore package set.
-
-FR11: The platform must provide a REST API source-generator contract seam with `ICommandContract`, `IQueryContract`, optional `RestRouteAttribute`, and assembly-level `RestApiAttribute`.
-
-FR12: The REST API generator must discover command/query contracts and emit typed, OpenAPI-visible controllers that delegate to `IEventStoreGatewayClient`, forward canonical query metadata headers when supplied by the gateway, and include tests covering discovery, routing conventions, diagnostics, generated output, query metadata headers, `304`, and safe problem-detail behavior.
-
-FR13: Generated REST controllers must live in dedicated external-facing API hosts, not interactive UI hosts; interactive UI hosts must consume EventStore client libraries directly.
-
-FR14: The Sample proof must introduce a contracts-only Sample contracts library and an external Sample API host, move shared contracts there, and prove generated query and command controllers through that external API host.
-
-FR15: The Tenants proof must move generated Tenants controllers to an external Tenants API host, while Tenants UI consumes client libraries and no longer hosts hand-written per-message controllers; any Tenants freshness, projection-version, ETag, or paging evidence shown by generated APIs or UI must come from the platform query metadata path.
-
-FR16: The projection-changed transport must add an additive metadata-rich detail path with optional group scope, bounded metadata, scoped SignalR groups, DAPR notification support where needed, and preserved signal-only compatibility.
-
-FR17: Live DAPR sidecar tests must be tagged and removed from the per-push release gate, then run in a dedicated integration workflow with sidecar warm-up and readiness retry.
-
-FR18: `DaprETagService` must allow an overridable actor request timeout while preserving the production default.
-
-FR19: Root-declared Git submodules must live under `references/`, and solution, project, documentation, Aspire metadata, and LLM instruction paths must resolve through the `references/` layout.
-
-FR20: The Aspire Keycloak resource must be named `security` while preserving Keycloak as the implementation technology and updating fixtures/resource lookups accordingly.
-
-FR21: Cross-repo Hexalith library dependencies use source project references only when `UseHexalithProjectReferences=true` is explicitly supplied and the root-declared source exists. An unset or explicit `false` value selects package references in every configuration, including Debug; Release and configuration-less evaluation therefore remain package-safe. Every source-owned NuGet dependency version used by a Hexalith repository must be declared in `references/Hexalith.Builds/Props/Directory.Packages.props`; consuming `Directory.Packages.props` files import that catalog and declare no local `PackageVersion`, version override, or fallback version property.
-
-FR22: Release restore, build, test, pack, and semantic-release commands must assert package-reference mode and avoid packaging submodule projects.
-
-FR23: Persisted events must receive non-zero, actor-allocated global positions; CloudEvent ids must use the event `MessageId`; duplicate command replies must preserve the original command result fields.
-
-FR24: The global-position allocation strategy must be renegotiated toward sharding per tenant or domain, and the frozen global-ordering spec must be updated before implementation.
-
-FR25: EventStore workflows must use shared Hexalith.Builds security gates through `@main`, keep third-party actions SHA-pinned through shared workflows, and define NuGet package publish scope in `tools/release-packages.json`.
-
-FR26: Phase 0 architecture remediation must close immediate safe fixes: clear staged state on infrastructure failure, protect anonymous admin endpoints, strip committed admin secrets, enforce production auth guards, add tenant-filter parity, gate admin Swagger, require destructive CLI confirmation, use ULID-safe admin correlation middleware, and correct stale test-baseline documentation.
-
-FR27: Pipeline and idempotency correctness remediation must use exact command identity for resume; provide EventStore-owned tenant-scoped durable admission accepting only a trusted versioned canonical-intent descriptor and fixed retention tier; reject live conflict and all expired-key reuse before aggregate, domain, or external execution; separate replay retention from metadata-only consumed evidence; and never turn consumed, unavailable, corrupt, or unsafe legacy state into a fresh miss. Command status/archive identity, transient retryability, and tenant-before-state validation remain required.
-
-FR28: Trust-boundary remediation must require app-layer credentials for internal, domain-service, projection-notification, and admin-computation endpoints, and must remove trust in wire-asserted administrator flags.
-
-FR29: Replay and dispatch remediation must make event apply-method resolution boundary-safe and ambiguity-detecting, and must use one shared `JsonSerializerOptions` path for command, rehydrate, project, and pub/sub payload serialization.
-
-FR30: Crash recovery remediation must detect events committed but not published and complete publication or drain/recover them without requiring resubmission with the same correlation id.
-
-FR31: Append durability remediation must start with a live-sidecar two-writer race test and DAPR conflict-exception spike before choosing an optimistic-concurrency fencing design.
-
-FR32: Runtime topology remediation must make the AppHost-loaded DAPR pub/sub, ACL, and key-prefix posture match the posture asserted by tests and production deploy templates.
-
-FR33: Cost and evolution remediation must introduce folded snapshots, reduce projection replay cost, add projection sequence guards, support event schema versioning/upcasting, validate event metadata identity components, and add cancellation-token seams to published processing/query/projection interfaces.
-
-FR34: Delivery, admin, and deployment remediation must document at-least-once unordered delivery, add poison/dead-letter handling, bound in-memory deduplication, normalize admin claims, audit every state-mutating admin action, hide deferred admin operations, add secret-store-backed configuration, add readiness/app-health checks, and restore meaningful IntegrationTests CI coverage.
-
-FR35: Backlog capabilities must be tracked for GDPR aggregate erasure/tombstoning, Admin interactive OIDC login, an aggregate test kit, and REST generator hardening.
-
-FR36: Before a consuming module deletes local projection/query infrastructure, EventStore must produce an owner-reviewed parity packet proving every required capability through production paths, record an approved runtime SHA, and require the consumer's checked-out EventStore SHA to match that approval.
-
-FR37: EventStore must provide an optional shared payload-protection engine package built on `IEventPayloadProtectionService` and the existing provider-neutral metadata, outcome, workflow, and redaction contracts. The engine must implement the approved `pdenc-v2` format and byte-stable authenticated-data contract, preserve `json+pdenc-v1`, `json-redacted`, legacy-unprotected, and snapshot read compatibility, expose `IPersonalDataPolicy` and `IErasureStateProvider` extension seams, supply reusable key-lifecycle and resilience mechanics behind shared contracts, include at least one integration-proven production backend, and produce EventStore-owner plus Parties dual-provider parity and rollback evidence before G5 is available.
-
-### NonFunctional Requirements
-
-NFR1: Security must fail closed for public, internal, domain-service, projection-notification, and admin surfaces; no endpoint may rely only on network posture or caller-supplied admin flags. The only anonymous exception is the health/liveness/readiness probe endpoints (`/health`, `/alive`, `/ready`), which are explicitly pinned `AllowAnonymous` and support-safe (AD-16); the fail-closed default is never weakened to reach probes.
-
-NFR2: Tenant isolation must be preserved across state keys, actor IDs, topics, admin queries, generated REST APIs, SignalR groups, and deployment configuration.
-
-NFR3: Production authentication must reject insecure symmetric-key mode unless explicitly break-glassed, require HTTPS metadata where appropriate, and pin accepted JWT algorithms.
-
-NFR4: Committed configuration must not contain forgeable administrator signing keys, credentials, bearer tokens, decoded JWT payloads, or other operational secrets.
-
-NFR5: SignalR detail metadata must remain bounded and metadata-only; framework logs must not expose metadata values above Debug level.
-
-NFR6: Event delivery semantics are at-least-once and unordered; subscribers must deduplicate by `MessageId` and order only where domain semantics make `SequenceNumber` meaningful. Duplicate and out-of-order safety must be enforced and proven through the production projection dispatcher, handler, persistence, marker, and checkpoint path rather than only aggregate replay or transport-level tests.
-
-NFR7: Event persistence and command processing must avoid silent data loss: staged-state flushes, stale pipeline records, append races, and committed-but-unpublished events must be explicitly guarded or recovered. Command processing must prevent duplicate side effects across reservation, fencing, execution, recovery, expiry, compaction, restart, and concurrent hosts; consumed keys never become fresh work when replay expires or storage is unreadable.
-
-NFR8: Snapshot and projection behavior must have a bounded cost model as streams grow, must avoid unnecessary full-stream replay when already current, and must expose projection freshness/version evidence through platform query metadata when callers depend on lifecycle decisions; freshness/version evidence is authoritative only for query responses whose route provenance is projection-backed, and handler-computed or unknown-provenance responses must not be presented as authoritative lifecycle evidence. Paged rebuild output must equal canonical aggregate replay and must never overwrite a complete live model with page-only state.
-
-NFR9: Release behavior must be reproducible and independent of local submodule checkout state; Release builds must use package references for external Hexalith libraries unless intentionally overridden.
-
-NFR10: CI/CD must separate deterministic release-gate tests from live-sidecar/integration tests while preserving live-sidecar coverage in a dedicated lane.
-
-NFR11: Package publishing must be manifest-driven and must not publish submodule packages or packages outside the EventStore release inventory.
-
-NFR12: Backward compatibility must be preserved for additive framework changes such as SignalR signal-only projection notifications and existing generic gateway APIs.
-
-NFR13: Generated code and source-generator packages must build cleanly under warnings-as-errors and must follow EventStore code style, nullable, ULID, and `ConfigureAwait(false)` rules.
-
-NFR14: Interactive UI hosts must not expose generated or hand-written per-message MVC command/query controllers; UI command/query flows consume client libraries.
-
-NFR15: Admin UX must not present deferred backup, restore, import, compaction, or other unavailable operations as functional; unavailable operations must be hidden/disabled or return 501.
-
-NFR16: Integration and higher-tier tests must assert persisted state-store/read-model/end-state evidence, not only HTTP status codes or mock call counts. Erasure, batch recovery, handler idempotency, and rebuild equivalence require persisted detail, index, marker, lifecycle, and checkpoint evidence through their production paths. Durable-admission evidence proves restart survival, multi-host serialization, inclusive expiry, tombstone compaction, leakage constraints, and zero downstream execution for replay, conflict, expired, corrupt, and unsafe legacy outcomes.
-
-NFR17: Operational hardening must support secret stores, DAPR app health checks, readiness-tagged health checks, resiliency targets, immutable image tags, and documented crypto-shred boundaries.
-
-NFR18: AOT/trimming is explicitly not a target while reflection conventions remain load-bearing, and that constraint must be documented.
-
-NFR19: Payload protection must fail closed and preserve byte-stable, versioned cryptographic semantics. Deleted, missing, denied, unavailable, malformed, tampered, and opaque states must remain bounded typed outcomes. Key material must be zeroed when no longer needed; caches must be invalidated on lifecycle changes; development-only backends must not start as production proof; and rollout, historical reads, downgrade, and rollback after writing the newest format must be integration-tested.
+The committed set is NFR1-NFR19. Story coverage is recorded in each story header and the high-risk coverage maps in the PRD and canonical SPEC companions. A planning validation must reject a missing ID, an ID outside FR1-FR37 or NFR1-NFR19, or a story reference that does not exist in the current epic plan.
 
 ### Additional Requirements
 
@@ -348,7 +260,7 @@ FR25: Epic 3 - Shared Hexalith.Builds gates and manifest-driven package scope.
 
 FR26: Epic 5 - Phase 0 security and safe-remediation fixes.
 
-FR27: Epic 4 - Resume/idempotency integrity, command status re-keying, and Story 4.8 durable tenant/key admission.
+FR27: Epic 4 - Resume/idempotency integrity, command status re-keying, and Stories 4.9-4.15 durable tenant/key admission and closure.
 
 FR28: Epic 5 - Defense-in-depth trust boundary.
 
@@ -366,9 +278,9 @@ FR34: Epic 7 - Delivery, admin, deploy, and IntegrationTests recovery.
 
 FR35: Epic 7 - Backlog capability tracking.
 
-FR36: Epic 1 - Projection/query parity implementation and owner-approved runtime-pin closure.
+FR36: Epic 1 - Projection/query source/package parity closure; Epic 3 Story 3.13 - deployed runtime parity closure.
 
-FR37: Epic 8 - Shared payload-protection security specification, engine implementation, production backend, and Parties G5 parity.
+FR37: Epic 8 - Story 8.1 security approval and Stories 8.2-8.11 contracts, engine, compatibility, lifecycle, production backend, Server integration, package release, Parties parity, rollback, and G5 closure.
 
 ## Epic List
 
@@ -440,7 +352,7 @@ Operators get honest admin UX, attributable admin actions, production deployment
 
 Platform security owners and domain modules can use an optional, reusable, production-proven payload-protection engine without duplicating cryptographic formats and key-lifecycle mechanics, while providers/operators retain key custody and domains retain legal policy.
 
-**Sequencing note:** Story 8.1 is an approval gate for Story 8.2. Epic 8 does not block Phase 4 MVP, but Story 8.2 blocks Parties Story 8.7 migration.
+**Sequencing note:** Story 8.1 approval authorizes only Story 8.2. The gated sequence is `8.2 → 8.3 → (8.4 and 8.5) → 8.6 → 8.7 → 8.8 → 8.9 → 8.10 → 8.11`. Epic 8 does not block Phase 4 MVP; Story 8.11 blocks Parties Story 8.7 migration and alone closes G5/Epic 8.
 
 **FRs covered:** FR37
 
@@ -1100,7 +1012,7 @@ So that rebuilding a long stream cannot replace correct state with a partial-pag
 
 **Requirements covered:** FR36, NFR12, NFR16
 
-**Deployed-mode cross-epic dependency (intentional, governed):** When Story 1.20 selects a *deployed EventStore image identity*, a conforming two-platform container release is required. **Story 3.12 (Epic 3)** is the scoped corrective item that produces that release; Story 1.20 independently revalidates and selects its identity under the applicable A/B/C authorization gates. **Epic 1 cannot reach `done` on the deployed-mode path until Story 3.12 delivers a conforming release and named EventStore/release-owner approval is recorded.** Source and package paths may close against their approved exact identities without Story 3.12 when every gate applicable to the selected mode is satisfied. This conditional forward dependency is deliberate; it is not resolved by reordering epics or rolling back completed work.
+**Closure boundary:** Story 1.20 owns source/package parity closure within Epic 1. Deployed-runtime parity is the backward-only Story 3.13 follow-up after Stories 1.20 and 3.12; it neither gates nor reopens this completed story or Epic 1.
 
 As an EventStore platform owner,
 I want a reviewed parity-closure packet tied to an exact runtime commit,
@@ -1134,15 +1046,15 @@ So that Parties Story 8.6 resumes only against capabilities that are implemented
 
 **Given** the packet is handed to Parties
 **When** Parties evaluates its prerequisite
-**Then** source mode verifies `references/Hexalith.EventStore` resolves to the approved EventStore SHA, package mode verifies exact package identities, and deployed mode verifies the image digest maps to that SHA
-**And** a mismatch leaves Story 8.6 blocked, the Parties repository SHA is never compared to the EventStore SHA, and EventStore approval does not itself modify Parties or delete rollback code.
+**Then** source mode verifies `references/Hexalith.EventStore` resolves to the approved EventStore SHA and package mode verifies the exact approved package identities
+**And** a mismatch leaves Parties Story 8.6 blocked, the Parties repository SHA is never compared to the EventStore SHA, and EventStore approval does not itself modify Parties or delete rollback code.
 
 **Given** Story 1.20 completion is requested
 **When** the packet still says `still blocked`
 **Then** the story remains `in-progress` with the blocking condition recorded and a scoped corrective item is created
 **And** Story 1.20 and Epic 1 become `done` only after the final decision is `available`.
 
-**Explicit exclusion:** Story 1.20 closes the EventStore projection/query SDK prerequisite for Parties Story 8.6 only. It does not deliver or approve the G5 payload-protection engine, `pdenc-v2`, reusable key mechanics, a production backend, or Parties Story 8.7 migration. Only Story 8.2's approved `available` proof packet may close G5.
+**Explicit exclusion:** Story 1.20 closes the EventStore projection/query SDK prerequisite for Parties Story 8.6 only. It does not deliver deployed-runtime parity, the G5 payload-protection engine, `pdenc-v2`, reusable key mechanics, a production backend, or Parties Story 8.7 migration. Story 3.13 owns deployed-runtime parity and only EventStore Story 8.11's approved `available` packet may close G5.
 
 ## Epic 2: External Integration Surfaces
 
@@ -1304,8 +1216,8 @@ So that gateway policy remains the front door and domain/UI hosts expose no per-
 ### Story 2.6: Tenants UI Client-Library Alignment And UX Evidence
 
 **Requirements covered:** FR13, FR15, FR34, NFR14, NFR15
-**Owner / review boundary:** Amelia (Developer); Sally (UX Designer) and the Tenants maintainer review the UI-host boundary, typed-client usage, and canonical presentation of already-classified evidence states only. Provenance preservation, authoritative state selection, fail-closed `Unknown`, and gateway-path proof are owned exclusively by Story 2.11.
-**Focused validation:** Tenants UI tests, canonical UX conformance checks, and structural controller/analyzer scans.
+**Owner / review boundary:** Amelia (Developer); Sally (UX Designer) and the Tenants maintainer review the UI-host boundary, typed-client usage, and canonical presentation fixtures only. Story 2.11 separately owns production provenance preservation and gateway/read-model evidence.
+**Focused validation:** deterministic typed-client fixtures for `Current`, `Stale`, `Rebuilding`, `Degraded`, `Unavailable`, `LocalOnly`, and `Unknown`; Tenants UI tests; canonical UX conformance; and structural controller/analyzer scans.
 
 As a Tenants operator,
 I want the interactive UI to consume typed client libraries and display honest evidence states,
@@ -1318,10 +1230,10 @@ So that it remains an interactive host rather than a second external API surface
 **Then** it uses Tenants/EventStore client libraries
 **And** it has no REST generator analyzer, assembly opt-in, generated controller mapping, or hand-written per-message MVC controller.
 
-**Given** the Tenants typed-client boundary supplies an already-classified canonical evidence state under the Story 2.11 provenance contract
+**Given** the focused typed-client fixture supplies one canonical lifecycle state
 **When** focused UI acceptance renders that state
 **Then** the UI applies the canonical support-safe and accessible treatment for the supplied lifecycle state
-**And** Story 2.6 cites Story 2.11 for provenance preservation, authoritative state selection, fail-closed `Unknown`, and real-gateway/persisted-read-model proof rather than re-proving or signing off those behaviors.
+**And** the fixture covers each state independently without claiming real-gateway provenance or persisted-read-model proof.
 
 **Given** UI acceptance is recorded
 **When** Sally and the Tenants maintainer review the focused evidence
@@ -1447,10 +1359,10 @@ So that a caller- or inbound-supplied `dapr-app-id` / `dapr-api-token` can never
 **Then** it removes any pre-existing `dapr-app-id` and sets the configured app id as the single value, removes any pre-existing `dapr-api-token` and sets the configured token only when present (else leaves none)
 **And** it runs as the innermost handler in the gateway-client chain.
 
-**Given** the handler is wired through `AddEventStoreGatewayClient(appId, apiToken?)`
+**Given** the typed client is registered through `AddEventStoreGatewayClient(...)`
 **When** Sample.Api, Sample.BlazorUI, and Admin.UI build
 **Then** their three local `DaprAppIdHandler` copies are deleted
-**And** each host wires only the platform extension.
+**And** each sidecar-routed host explicitly chains `.AddEventStoreDaprServiceInvocation(appId, apiToken)` last so the platform handler is innermost.
 
 **Given** a request already carries a conflicting `dapr-app-id` / `dapr-api-token`
 **When** the outbound handler runs
@@ -1666,6 +1578,7 @@ So that the topology exposes the service role instead of the Keycloak implementa
 
 **Requirements covered:** FR21
 **Activation gate:** Story 3.3 must reach `done` with current references-layout verification evidence before Story 3.5 starts.
+**Closed repository inventory:** `Hexalith.Builds`, `Hexalith.EventStore`, `Hexalith.Commons`, `Hexalith.FrontComposer`, `Hexalith.Memories`, `Hexalith.PolymorphicSerializations`, and `Hexalith.Tenants`, as recorded by the accepted Story 3.5 evidence. A repository discovered after that snapshot requires a named follow-up and does not reopen this completed story.
 
 As a package maintainer,
 I want external Hexalith dependencies selected by build intent,
@@ -1708,10 +1621,15 @@ So that Debug builds can source-debug while Release builds depend on published p
 **Then** every source-owned dependency version originates from `references/Hexalith.Builds/Props/Directory.Packages.props`
 **And** consuming props contain no local `PackageVersion`, `VersionOverride`, or fallback dependency-version property.
 
-**Given** an affected repository has not authorized or completed its migration
+**Given** one of the seven inventoried repositories has not authorized or completed its migration
 **When** Story 3.5 completion is evaluated
-**Then** the repository, owner/approval requirement, scope, rollback boundary, and prescribed validation remain recorded as an open Story 3.5 blocker
-**And** the story remains `in-progress` without editing that repository outside its maintainer's authority.
+**Then** its owner/approval requirement, scope, rollback boundary, and prescribed validation remain an open Story 3.5 blocker
+**And** no repository is edited outside its maintainer's authority.
+
+**Given** another source-owned repository is discovered after the accepted inventory snapshot
+**When** its catalog posture is classified
+**Then** a named follow-up story records its owner, scope, rollback boundary, and validation
+**And** the discovery does not reopen Story 3.5 or expand its accepted inventory retroactively.
 
 **Given** EventStore's existing local package-version entries
 **When** the catalog migration is applied
@@ -1871,6 +1789,7 @@ So that runtime blockers are classified support-safely before they are accepted 
 **Requirements covered:** FR21, FR22, FR25, NFR9, NFR10, NFR16
 **Owner / review boundary:** Amelia (Developer) coordinates the Builds and EventStore changes; the Hexalith.Builds maintainer approves the catalog and exact Builds commit; affected repository maintainers approve coupled-family compatibility; Murat (Test Architect) reviews grouped validation evidence.
 **Focused validation:** Builds catalog validator and restore/build/test; EventStore Release/package-mode restore, build, focused tests, pack validation, and documentation-version checks; affected representative-consumer validation for every changed family.
+**Closed audit boundary:** Builds catalog revision `9dc0fe1ffbf33269fddf195fd12317def86728f0`, 284 package entries, 139 classified families, and the five changed rollback groups recorded in `_bmad-output/implementation-artifacts/3-11-central-package-audit.json`: IdentityModel, bUnit/AngleSharp, Aspire DAPR hosting, Scriban, and SonarAnalyzer.
 
 As a Hexalith release maintainer,
 I want the shared NuGet catalog refreshed to latest validated compatible package versions,
@@ -1913,9 +1832,14 @@ So that all consuming repositories inherit current dependencies from one reprodu
 **Then** it identifies the exact Builds commit, package-source audit timestamp, accepted versions, retained exceptions, validation commands/results, and rollback grouping for each family
 **And** Builds owns NuGet catalog update proposals while consumer repositories do not open competing local-version updates.
 
+**Given** a package row or family is added after the recorded audit timestamp
+**When** Story 3.11's frozen packet is evaluated
+**Then** the new row is routed to a named follow-up unless the owner explicitly supersedes and reruns the complete audit packet
+**And** the operator decision remains bounded to the exact recorded catalog revision rather than an expanding inventory.
+
 ### Story 3.12: Multi-Platform EventStore Container Publishing Correction
 
-**Requirements covered:** FR22, FR25, NFR9, NFR11, NFR16, NFR17; governed by AD-11, AD-12, AD-22, and Story 1.20 Acceptance Boundary 8.
+**Requirements covered:** FR22, FR25, NFR9, NFR11, NFR16, NFR17; governed by AD-11, AD-12, AD-22, and the Story 3.13 deployed-runtime handoff.
 
 **Owner / review boundary:** Amelia (Developer) coordinates EventStore and the shared publishing integration; the Hexalith.Builds maintainer approves the shared publisher implementation and exact Builds commit; Murat (Test Architect) reviews platform-set, digest, child-config, and smoke evidence; the release owner alone authorizes external publication and disposes the resulting artifact identity.
 
@@ -1923,7 +1847,7 @@ So that all consuming repositories inherit current dependencies from one reprodu
 
 As an EventStore release owner,
 I want the shared release path to publish an exact two-platform OCI index,
-So that a corrective EventStore release can satisfy Story 1.20 AC8 without changing package scope or overwriting v3.75.0.
+So that a corrective EventStore release can supply Story 3.13 without changing package scope or overwriting v3.75.0.
 
 **Acceptance Criteria:**
 
@@ -1958,13 +1882,46 @@ So that a corrective EventStore release can satisfy Story 1.20 AC8 without chang
 **And** the package inventory remains 14, only `eventstore` is published as a container, and package/container version provenance is coherent.
 
 **Given** Story 3.12 has produced a conforming release
-**When** its handoff reaches Story 1.20
-**Then** Story 1.20 independently revalidates every package/container identity, remaining production-path result, approval, and A/B/C authorization gate before selecting approved fields or authorizing migration
-**And** Story 3.12 does not modify Parties or Tenants, approve G5, authorize consumer migration, or mark Story 1.20/Epic 1 done.
+**When** its handoff reaches Story 3.13
+**Then** Story 3.13 independently revalidates the source, package, container-index, child-manifest/config, and release-provenance identity chain
+**And** Story 3.12 does not modify Parties or Tenants, approve G5, authorize consumer migration, or change Story 1.20/Epic 1 status.
 
-**Explicit exclusions:** no Dockerfile; no EventStore runtime behavior change; no new package or container mapping; no v3.75.0 mutation; no trusted-publishing, signing, SBOM, attestation, or credential-modernization expansion; no consumer dependency update; and no Story 1.20 proof-result approval.
+**Explicit exclusions:** no Dockerfile; no EventStore runtime behavior change; no new package or container mapping; no v3.75.0 mutation; no trusted-publishing, signing, SBOM, attestation, or credential-modernization expansion; no consumer dependency update; and no Story 1.20 status change.
 
-**Rationale:** A focused release story fixes the shared publishing defect while preserving the independent evidence and human-approval boundaries of Story 1.20.
+**Rationale:** A focused release story fixes the shared publishing defect while preserving the independent evidence and human-approval boundary of Story 3.13.
+
+### Story 3.13: Deployed Runtime Parity Closure
+
+**Requirements covered:** FR36, NFR12, NFR16
+**Owner / review boundary:** Amelia (Developer) assembles the identity crosswalk; the EventStore owner and Release owner approve the exact deployed identity; Murat (Test Architect) reviews immutable index/child/config and runtime evidence.
+**Focused validation:** Story 1.20 source/package packet; Story 3.12 release packet; registry index and child-manifest/config inspection; exact package/hash inventory; source-to-release provenance; and support-safe deployed smoke evidence.
+**Dependencies:** Completed Stories 1.20 and 3.12. This backward-only closure never changes their status.
+
+As an EventStore release owner,
+I want deployed runtime identity mapped back to the approved source/package parity evidence,
+So that operators can select a conforming image without creating a forward dependency in Epic 1.
+
+**Acceptance Criteria:**
+
+**Given** Stories 1.20 and 3.12 are complete
+**When** deployed-runtime closure begins
+**Then** their exact evidence packets and immutable identities are referenced without modification
+**And** no missing field is inferred from a tag, branch, consumer SHA, or mutable registry reference.
+
+**Given** an EventStore OCI index is proposed as deployed parity evidence
+**When** the identity crosswalk is assembled
+**Then** it maps the approved EventStore source SHA and package IDs/versions/hashes to the exact OCI index digest, both required child digests/configs, release version, workflow run, and release-owner authority
+**And** every digest and platform relation is independently revalidated.
+
+**Given** any source, package, index, child, config, approval, or runtime result is missing or inconsistent
+**When** closure is evaluated
+**Then** Story 3.13 fails closed and remains non-`done`
+**And** Story 1.20, Story 3.12, and Epic 1 remain unchanged.
+
+**Given** the complete packet is reviewed
+**When** both named owners and the Test Architect accept it
+**Then** Story 3.13 may become `done` with the exact deployed identity recorded
+**And** it authorizes no consumer migration, package publication, registry mutation, or G5 classification.
 
 ## Epic 4: Event Correctness And Recovery
 
@@ -2168,61 +2125,198 @@ So that Tenants never presents an opaque ETag as projection version or current/s
 **Then** the evidence names the Tenants maintainer-approved PR/commit, exact Tenants SHA, accepted scope, source/package mode, and focused production-path validation
 **And** without that evidence the story remains `backlog` or `review`; EventStore closes the platform risk through the `Unknown` fallback contract rather than silently declaring the producer fixed.
 
-### Story 4.8: Durable Tenant-Scoped Idempotency Admission And Expired-Key Precedence
+### Story 4.8: Durable Admission Evidence Ledger
 
 **Requirements covered:** FR27, NFR7, NFR16
+**Classification:** Historical planning and implementation-evidence ledger; not an active sprint story.
+**Superseded by:** Stories 4.9-4.15 under `story-id-migration-2026-08-01.md`.
 
-**Sizing / delivery note:** Story 4.8 is an intentionally multi-slice story governed by `sprint-change-proposal-2026-07-20-oq8-durable-idempotency-admission.md`. It is delivered by decomposing its acceptance criteria into tracked task slices inside its dedicated story file, not as a single dev-loop unit. Its scope and coverage map (FR27, NFR7, NFR16) are not re-partitioned by this proposal.
+Story 4.8 preserves the approved OQ8 authority, design digest, completed work,
+review findings, and incomplete task history. Former Task 1 remains shared
+planning history; Tasks 2-3 map to Story 4.9; Task 4 maps to Story 4.10; and
+unfinished Tasks 5-9 map only to Stories 4.11-4.15. No unfinished work inherits
+`done`, and only Story 4.15 closes the EventStore OQ8 platform gate.
 
-As a platform operator,
-I want every admitted mutation key to remain durably consumed after its replay
-result expires,
-So that retries, conflicts, crashes, concurrent hosts, and old-key reuse cannot
-duplicate aggregate, domain, provider, repository, or other external effects.
+### Story 4.9: Trusted Admission Contract And Protected Identity
+
+**Requirements covered:** FR27, NFR7, NFR16
+**Owner / review boundary:** Amelia (Developer); Winston (Architect) and the Security Reviewer independently review the trusted-adapter and protected-identity boundary.
+**Focused validation:** accepted Story 4.8 Tasks 2-3 tests/evidence, adapter-registration guards, cross-scope conflict fixtures, HMAC/leakage scans, and focused review disposition.
+**Dependency:** Approved OQ8 design and the Story 4.8 evidence ledger.
+
+As a platform security maintainer,
+I want admission identity derived only from trusted canonical intent and an opaque caller key,
+So that public input cannot choose execution authority or leak protected material.
 
 **Acceptance Criteria:**
 
-**Given** an authenticated and currently authorized mutation passed canonical validation
+**Given** authentication, current authorization, and canonical validation succeed
 **When** admission begins
 **Then** a registered server-trusted adapter supplies the versioned canonical intent and fixed retention class
-**And** public requests or extensions cannot select or override descriptor, digest, actor, fence, state, expiry, policy, or tier authority.
+**And** public requests/extensions cannot select descriptor, digest, actor, fence, state, expiry, policy, or tier authority.
 
 **Given** a caller supplies an opaque idempotency key
 **When** EventStore derives admission identity
-**Then** identity is partitioned by managed tenant, digest-key version, and protected key digest independently of MessageId and aggregate identity
+**Then** identity is partitioned by managed tenant and protected key digest independently of MessageId and aggregate identity
 **And** cross-operation, aggregate, target, task-scope, or behavior-affecting credential reuse conflicts within one tenant while another tenant remains isolated.
 
-**Given** protected admission values are derived
-**When** they are compared, persisted, observed, or reported
-**Then** domain-separated HMAC-SHA-256 digests, collision verification, constant-time comparison, and buffer zeroing are used
-**And** raw keys and protected intent never enter persistent or diagnostic surfaces.
+**Given** protected values are processed
+**When** persistence, comparison, logging, diagnostics, or evidence runs
+**Then** raw keys and canonical intent never enter persistent or diagnostic surfaces
+**And** approved no-leak and zeroing evidence passes before review closes.
+
+### Story 4.10: Digest Directory Rotation And Key Retirement
+
+**Requirements covered:** FR27, NFR7, NFR16
+**Owner / review boundary:** Amelia (Developer); the Security Reviewer approves digest/key lifecycle behavior and Murat reviews collision/rotation evidence.
+**Focused validation:** accepted Story 4.8 Task 4 directory, HMAC, collision, rotation, promotion, retirement, constant-time comparison, and zeroing evidence.
+**Dependency:** Story 4.9.
+
+As a platform security maintainer,
+I want one versioned digest directory to govern key rotation and retirement,
+So that rotation cannot create multiple admission authorities or expose caller keys.
+
+**Acceptance Criteria:**
+
+**Given** an opaque key is admitted
+**When** its protected identity is derived
+**Then** domain-separated HMAC-SHA-256 uses the active managed digest-key version
+**And** collision verification uses constant-time comparison and zeroes sensitive buffers.
+
+**Given** a digest key rotates or retires
+**When** existing and new keys are resolved
+**Then** directory-mediated promotion preserves exactly one canonical authority
+**And** unavailable, unknown, colliding, or retired versions fail closed without becoming a fresh miss.
+
+**Given** rotation evidence is reviewed
+**When** current/previous version, collision, promotion, and retirement fixtures run
+**Then** persisted directory state and bounded outcomes match the approved design
+**And** raw keys or protected intent appear in no log, trace, metric, error, or evidence artifact.
+
+### Story 4.11: Admission State Machine And Current-Fence Enforcement
+
+**Requirements covered:** FR27, NFR7, NFR16
+**Owner / review boundary:** Amelia (Developer); Winston reviews state/fence invariants and Murat reviews replay, recovery, and zero-downstream-work evidence.
+**Focused validation:** state-transition, retry/resume, replay/conflict, current-fence, side-effect-boundary, recovery, and persisted-state tests.
+**Dependency:** Story 4.10.
+
+As a platform operator,
+I want one durable admission state machine and one current fence,
+So that retries, recovery, and concurrent hosts cannot duplicate side effects.
+
+**Acceptance Criteria:**
 
 **Given** execution authority is first granted
 **When** admission reserves, transitions, retries, resumes, or finalizes work
-**Then** actor-serialized durable state issues one monotonic current fence and reuses it for safe resume
-**And** only that fence crosses aggregate, domain-service, provider, repository, projection, audit, or scheduling side-effect boundaries.
+**Then** actor-serialized durable state issues one monotonic current fence and reuses it only for safe resume
+**And** only that current non-zero fence crosses aggregate, domain-service, provider, repository, projection, audit, or scheduling side-effect boundaries.
 
-**Given** current authorization succeeds for a later request
-**When** its key is live, conflicting, pending, recoverable, unknown, terminal, or expired
-**Then** the approved behavior matrix applies without unauthorized state mutation or disclosure
-**And** at `now >= expiresAt`, equivalent and different intent return indistinguishable non-retryable `idempotency_key_expired` before any downstream work.
+**Given** a live equivalent, conflicting, pending, recoverable, unknown, or terminal key is presented
+**When** the state machine evaluates it
+**Then** the approved bounded outcome and retry/permanence semantics apply
+**And** replay, conflict, unavailable, corrupt, or non-execute outcomes perform zero downstream work.
 
-**Given** a terminal result is durably finalized
+**Given** restart or recoverable interruption occurs before expiry
+**When** the same admission is resumed
+**Then** persisted state identifies one safe checkpoint and current authority
+**And** uncertainty fails closed rather than converting state to missing.
+
+### Story 4.12: Expiry Compaction And Tombstone Retention
+
+**Requirements covered:** FR27, NFR7, NFR16
+**Owner / review boundary:** Amelia (Developer); Winston reviews retention/compaction invariants and Murat reviews exact boundary evidence.
+**Focused validation:** inclusive-expiry, fixed-retention, atomic compaction, minimal-tombstone, legal-hold pause/resume, and zero-downstream-work tests.
+**Dependency:** Story 4.11.
+
+As a platform operator,
+I want expired admissions compacted to durable non-executable evidence,
+So that old-key reuse never becomes fresh work as replay payloads age out.
+
+**Acceptance Criteria:**
+
+**Given** a finalized mutation or commit result
 **When** its fixed replay retention elapses
 **Then** mutation results expire at exactly 86,400 seconds and commit results at `DateTimeOffset.AddYears(7)`
-**And** the replay payload and live intent compact atomically to the AD-25 minimal fence-free tombstone retained for tenant lifetime plus the governed 400-day post-deletion period with legal-hold pause/resume.
+**And** replay payload and live intent compact atomically to the approved fence-free minimal tombstone.
 
-**Given** recovery, rotation, collision, unavailable, corrupt, unknown-schema/key-version, or legacy state is encountered
-**When** admission cannot prove one safe current authority and checkpoint
-**Then** it fails closed, performs only approved bounded resume or read-only reconciliation, and never converts the state to missing
-**And** directory-mediated key promotion and versioned legacy migration preserve one authority or remain safely blocked.
+**Given** `now >= expiresAt`
+**When** equivalent or different intent reuses the key
+**Then** both return the indistinguishable non-retryable `idempotency_key_expired` outcome before downstream work
+**And** the tombstone remains for tenant lifetime plus the governed 400-day post-deletion period.
 
-**Given** Story 4.8 production evidence is assembled
-**When** two EventStore hosts with independent sidecars share the approved `oq8-postgresql-v1` DAPR state profile
-**Then** persisted before/after state proves time boundaries, compaction, fencing, rotation, collision, migration, restart, failover, leakage absence, exactly one eligible first execution, and zero later duplicate side effects
-**And** `_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml` binds the OQ8 design digest, source/artifact identity, commands, counts, environment, reviewers, and approvals without claiming Folders-owned OQ8 closure.
+**Given** an approved legal hold starts, pauses, resumes, or ends
+**When** tombstone retention is evaluated
+**Then** compaction and deletion obey the approved hold semantics
+**And** no timing boundary can recreate executable admission state.
 
-**Ownership boundary:** Story 4.2 remains done; Story 4.4 retains committed-event publication recovery. Folders owns its adapter, generated C13 matrix, canonical `oq8-idempotency-evidence.yaml`, final closure, and consumption of a separately authorized EventStore release or exact pin.
+### Story 4.13: Legacy Admission Migration And Fail-Closed Reconciliation
+
+**Requirements covered:** FR27, NFR7, NFR16
+**Owner / review boundary:** Amelia (Developer); Winston and the Security Reviewer approve the closed legacy inventory and migration safety; Murat reviews reconciliation evidence.
+**Focused validation:** every inventoried legacy schema/key version, ambiguous/uninventoried state, collision, corruption, unavailable storage, promotion, rollback, and read-only reconciliation fixture.
+**Dependency:** Story 4.12.
+
+As a platform maintainer,
+I want legacy admission state migrated only when one authority is provable,
+So that ambiguous history cannot become executable fresh work.
+
+**Acceptance Criteria:**
+
+**Given** a legacy schema/key version appears in the closed migration inventory
+**When** migration or promotion runs
+**Then** it preserves one canonical directory authority and checkpoint
+**And** the result is durable, restart-safe, and independently reversible within the approved rollback boundary.
+
+**Given** unavailable, corrupt/colliding, unknown-version, ambiguous, or uninventoried state is encountered
+**When** reconciliation runs
+**Then** it performs only approved bounded resume or read-only diagnosis and fails closed
+**And** it never converts the state to missing, promotes speculatively, or invokes downstream work.
+
+### Story 4.14: OQ8 Multi-Host Production Evidence
+
+**Requirements covered:** FR27, NFR7, NFR16
+**Owner / review boundary:** Amelia (Developer); Murat owns the production evidence review and the Security Reviewer verifies leakage/fence outcomes.
+**Focused validation:** two EventStore hosts with independent sidecars sharing the approved `oq8-postgresql-v1` DAPR state profile; restart/failover, concurrent admission, expiry, compaction, rotation, migration, leakage, and persisted before/after evidence.
+**Dependency:** Story 4.13.
+
+As a test and operations owner,
+I want durable admission proven across independent EventStore hosts,
+So that single-process fixtures cannot masquerade as production-path idempotency evidence.
+
+**Acceptance Criteria:**
+
+**Given** two EventStore hosts with independent sidecars share `oq8-postgresql-v1`
+**When** concurrent, retry, restart, and failover scenarios execute
+**Then** persisted evidence proves exactly one eligible first execution and zero later duplicate side effects
+**And** every non-execute outcome remains support-safe and fence-correct.
+
+**Given** the full time/rotation/migration matrix runs
+**When** evidence is assembled
+**Then** it proves inclusive boundaries, atomic compaction, directory authority, migration safety, and leakage absence
+**And** commands, counts, environment, source/artifact identity, and raw persisted before/after state are recorded.
+
+### Story 4.15: OQ8 Platform Closure And Handoff
+
+**Requirements covered:** FR27, NFR7, NFR16
+**Owner / review boundary:** Amelia (Developer) assembles the packet; Winston, the Security Reviewer, and Murat approve their boundaries; Folders retains downstream evidence and final-consumer authority.
+**Focused validation:** complete 4.9-4.14 evidence crosswalk, independent source/artifact identity verification, documentation/reference checks, and closure decision review.
+**Dependency:** Story 4.14.
+
+As an EventStore platform owner,
+I want one reviewed OQ8 platform closure packet,
+So that downstream consumers receive an exact, non-overstated durable-admission capability.
+
+**Acceptance Criteria:**
+
+**Given** Stories 4.9-4.14 request closure
+**When** their evidence is crosswalked
+**Then** every approved OQ8 invariant, design-digest reference, validation result, limitation, reviewer, and exact EventStore source/artifact identity is present
+**And** missing or rejected evidence keeps Story 4.15 and Epic 4 non-`done`.
+
+**Given** the packet is approved
+**When** it is handed to Folders
+**Then** `_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml` records EventStore platform completion without claiming Folders-owned OQ8 closure
+**And** this planning/story approval grants no release, registry, package, external-repository, or consumer-migration authority.
 
 ## Epic 5: Security And Tenant Isolation
 
@@ -2491,9 +2585,38 @@ So that runbooks do not direct operators toward stale app IDs, components, topic
 **Then** stale or missing references fail
 **And** no runtime behavior change is hidden in this documentation-only child.
 
+### Story 5.10: Reserved System Tenant Provisioning Guard
+
+**Requirements covered:** NFR2
+**Owner / review boundary:** Amelia (Developer); Winston (Architect) reviews the tenant-identity boundary and Murat reviews zero-state/zero-downstream evidence.
+**Focused validation:** tenant-provisioning validation tests for the reserved canonical identifier, normalization-equivalent inputs, valid nearby identifiers, stable safe errors, and absence of persistence/actor/topic/configuration/domain-service effects.
+
+As a platform security owner,
+I want tenant provisioning to reject the reserved `system` identity,
+So that user-controlled tenants cannot collide with platform-owned scope.
+
+**Acceptance Criteria:**
+
+**Given** a tenant identifier otherwise passes syntax validation
+**When** the platform's canonical tenant normalization produces `system`
+**Then** provisioning is rejected with a stable support-safe validation code
+**And** the response reveals no tenant-existence or internal platform detail.
+
+**Given** the reserved-name rejection occurs
+**When** state and downstream effects are inspected
+**Then** no tenant record, state key, actor identity, topic publication, admin record, or deployment/configuration mutation is created
+**And** no domain-service or other downstream invocation occurs.
+
+**Given** reserved and nearby identifiers are tested
+**When** canonical `system`, normalization-equivalent inputs, and valid non-reserved names run
+**Then** every reserved equivalent is rejected and valid nearby names continue through the existing provisioning contract
+**And** tenant isolation remains fail closed.
+
 ## Epic 6: Bounded Cost And Event Evolution
 
 Platform users can operate long-lived streams with bounded snapshot and projection cost, sequence-safe projection updates, explicit global-position scaling, event schema versioning/upcasting, validated event metadata, and cancellation-aware processing seams.
+
+**Delivery accounting:** Stories 6.1, 6.3, and 6.5 are architecture/readiness enablers and authorize their paired implementations but do not count as runtime-capability progress. Stories 6.2, 6.4, and 6.6 are the runtime outcomes; all three must complete before Epic 6 may claim delivered runtime value.
 
 ### Story 6.1: Folded Snapshot Frozen Spec
 
@@ -2509,7 +2632,7 @@ So that snapshot cost is bounded without changing recovery semantics unexpectedl
 **Given** automatic snapshots currently risk nesting event history
 **When** the folded snapshot spec is written
 **Then** it defines the target folded-state payload shape, keying, replay behavior, migration handling, and compatibility rules
-**And** it explains how the manual replay-state path is reused or aligned.
+**And** it defines a numeric `MaxSnapshotEnvelopeOverheadBytes` and explains how the manual replay-state path is reused or aligned.
 
 **Given** snapshot storage affects recovery and retention
 **When** the spec is reviewed
@@ -2523,7 +2646,7 @@ So that snapshot cost is bounded without changing recovery semantics unexpectedl
 
 ### Story 6.2: Folded Snapshot Implementation
 
-**Requirements covered:** FR33
+**Requirements covered:** FR33, NFR8
 
 As an operator,
 I want automatic snapshots to store folded aggregate state,
@@ -2547,9 +2670,9 @@ So that snapshot payload size stays bounded as event streams grow.
 **And** legacy or absent snapshots continue to work according to the migration plan.
 
 **Given** snapshot cost tests run
-**When** a stream grows across multiple snapshot intervals
-**Then** snapshot payload size remains bounded
-**And** Release build remains clean under warnings-as-errors.
+**When** equivalent folded state is produced after at least three snapshot intervals with materially different source event counts
+**Then** the folded-state payload bytes are identical under the same schema/serializer and `snapshot size <= folded-state payload size + MaxSnapshotEnvelopeOverheadBytes`
+**And** the snapshot contains no event-history collection or nested prior snapshot, while the Release build remains clean under warnings-as-errors.
 
 ### Story 6.3: Projection Delivery Cost And Sequence Guard Spec
 
@@ -2688,6 +2811,16 @@ So that old events can be safely upcast and processed by current domain code.
 
 Operators get honest admin UX, attributable admin actions, production deployment hardening, reliable higher-tier test evidence, and explicit backlog tracks for erasure, admin OIDC, aggregate test kits, and generator hardening.
 
+**Independent delivery tracks:**
+
+- **7A Delivery semantics:** Story 7.1.
+- **7B Admin trust and UX:** Stories 7.2-7.5, 7.14, 7.19, and 7.20.
+- **7C Production operations:** Stories 7.6-7.9.
+- **7D Test evidence:** Stories 7.10-7.13.
+- **7E Planning backlog:** Stories 7.15-7.18.
+
+Each track is independently schedulable and closable. No cross-track dependency exists unless a story states it explicitly; Epic 7 completes only when every required track reaches its own closure condition.
+
 ### Story 7.1: Delivery Contract And Poison Handling
 
 **Requirements covered:** FR34
@@ -2818,14 +2951,25 @@ So that applications remain provider-independent and Kubernetes Secrets are not 
 
 **Acceptance Criteria:**
 
-1. The Aspire AppHost provisions a pinned, health-checked OpenBao resource for local development and registers the canonical DAPR component `openbao` using `secretstores.hashicorp.vault`, version `v1`.
-2. Production configuration connects to externally managed OpenBao with TLS verification enabled. Authentication uses `vaultTokenMountPath` or an equivalent platform-projected bootstrap credential. A Kubernetes Secret is permitted only when no approved bootstrap mechanism is available; it never stores application or operational secrets.
-3. State-store, pub/sub, and other DAPR components obtain credentials through `secretKeyRef` with `auth.secretStore: openbao`; committed production configuration contains no credential-bearing `{env:...}` placeholders.
-4. Application code obtains required secrets through an injected DAPR client using `GetSecretAsync("openbao", ...)`. It contains no OpenBao/Vault client dependency, direct provider HTTP calls, or bulk-secret retrieval.
-5. DAPR secret scopes are default-deny and explicitly allow only the logical secrets required by each application.
-6. Missing, denied, or malformed secrets fail closed, gate readiness where required, identify only the logical key in diagnostics, and never disclose secret values.
-7. Automated verification proves the AppHost resource graph, component references, manifest rules, and a real DAPR-to-OpenBao read against a seeded non-production secret.
-8. Kubernetes deployment samples and operator documentation prefer OpenBao and describe the narrow bootstrap-only Kubernetes Secret exception.
+**Given** the local AppHost composes the secret provider
+**When** its resource graph and DAPR components are inspected
+**Then** it provisions a pinned health-checked OpenBao resource and the canonical DAPR component `openbao` using `secretstores.hashicorp.vault` version `v1`
+**And** structured tests prove the exact component identity and dependency graph.
+
+**Given** production secret configuration is rendered
+**When** custody, transport, and dependent components are inspected
+**Then** OpenBao uses verified TLS and `vaultTokenMountPath` or an approved platform-projected bootstrap credential, while a Kubernetes Secret is allowed only for the documented bootstrap exception
+**And** state-store, pub/sub, and other components use `secretKeyRef` with `auth.secretStore: openbao`, with no committed credential-bearing placeholders or application/operational secret values.
+
+**Given** an application requires a logical secret
+**When** it retrieves or fails to retrieve that value
+**Then** it uses injected DAPR `GetSecretAsync("openbao", ...)` with explicit default-deny per-application allowlists, no Vault client/direct provider HTTP call, and no bulk-secret retrieval
+**And** missing, denied, or malformed values fail closed, gate readiness where required, and identify only the logical key without disclosing values.
+
+**Given** conformance and operator evidence is requested
+**When** automated and documentation validation runs
+**Then** it proves the AppHost graph, component references, scopes, manifest rules, and one real DAPR-to-OpenBao read against a seeded non-production secret
+**And** Kubernetes deployment examples prefer OpenBao and describe only the narrow bootstrap credential exception.
 
 ### Story 7.7: Readiness And DAPR App-Health
 
@@ -2982,37 +3126,37 @@ So that permanently red or never-triggered jobs do not masquerade as quality con
 **Then** it has a green run or a quarantine entry with owner, reason, and expiry
 **And** removal requires an explicit disposition rather than silent deletion.
 
-### Story 7.14: Consolidated EventStore Admin Dashboard Migration
+### Story 7.14: Admin Shell And Canonical Route Migration
 
-**Requirements covered:** FR13, FR15, FR34, NFR14, NFR15
-**Owner / review boundary:** Amelia (Developer); Sally (UX Designer) and Winston (Architect) review the UI/service boundary.
-**Focused validation:** Admin.UI component/route tests, AppHost resource tests, FrontComposer dependency-mode checks, accessibility/localization evidence, and typed-client boundary scans.
+**Requirements covered:** FR13, FR34, NFR14
+**Owner / review boundary:** Amelia (Developer); Sally (UX Designer) and Winston (Architect) review host, shell, and information-architecture ownership.
+**Focused validation:** Admin.UI host/component/route tests, AppHost resource tests, FrontComposer dependency-mode checks, and duplicate-host/page scans.
 
 As an EventStore operator,
-I want one consolidated Event Store Admin dashboard,
-So that operational navigation, evidence states, and legacy deep links remain coherent without creating another UI host.
+I want the existing Admin UI to become one canonical dashboard shell,
+So that operational navigation and legacy deep links remain coherent without creating another host.
 
 **Acceptance Criteria:**
 
 **Given** the consolidated UI is implemented
 **When** project and AppHost ownership are inspected
 **Then** `src/Hexalith.EventStore.Admin.UI` evolves in place and retains resource/container identity `eventstore-admin-ui`
-**And** no additional EventStore UI host is created.
+**And** no additional EventStore UI host or duplicate page implementation is created.
 
 **Given** the UI composes its shell
 **When** Debug/source and Release/package graphs are validated
-**Then** `Hexalith.FrontComposer.Shell` and `Hexalith.FrontComposer.Contracts.UI` both resolve from the Builds catalog's single `HexalithFrontComposerVersion` (currently `4.0.1`), with `Contracts.UI` added to that catalog under the same variable before adoption and never pinned locally, plus Fluent UI V5 are used
+**Then** `Hexalith.FrontComposer.Shell` and `Hexalith.FrontComposer.Contracts.UI` resolve from the Builds catalog's single `HexalithFrontComposerVersion` (currently `4.0.1`) and use Fluent UI V5
 **And** the stable module identity is `event-store-admin` with label **Event Store Admin**.
 
-**Given** canonical and legacy routes are requested
-**When** navigation resolves them
-**Then** canonical dashboard deep links render one page implementation and keep the module selected
-**And** every other legacy route redirects to a canonical deep link rather than preserving duplicate pages.
+**Given** the canonical UX information architecture
+**When** the route inventory is implemented
+**Then** the dashboard owns exactly the ten named tabs Overview, Commands, Streams & Events, Projections, Tenants & Access, Topology, Storage & Snapshots, Recovery, Deferred & Backlog, and Settings
+**And** the closed legacy route set `/`, `/commands`, `/streams`, `/streams/{tenant}/{domain}/{aggregate}`, `/events`, `/projections`, `/tenants`, `/dapr`, `/dapr/actors`, `/dapr/pubsub`, `/dapr/resiliency`, `/dapr/health-history`, `/services`, `/storage`, `/snapshots`, `/health`, `/health/dead-letters`, `/consistency`, `/backups`, `/compaction`, and `/settings` resolves to one canonical tab/detail implementation.
 
-**Given** Admin query/command flows and evidence states are exercised
-**When** UI tests run
-**Then** typed clients remain the only boundary, deferred operations are honest, provenance/lifecycle states follow canonical UX, and output is support-safe, accessible, responsive, and localizable
-**And** no unsupported quantitative performance release gate is invented without a measured production baseline.
+**Given** a canonical or legacy deep link is requested
+**When** navigation resolves it
+**Then** the matching dashboard tab/detail renders and the Event Store Admin module remains selected
+**And** non-canonical routes redirect rather than preserving duplicate legacy pages.
 
 ### Story 7.15: GDPR Aggregate Erasure Backlog
 
@@ -3086,6 +3230,72 @@ So that diagnostics, incrementality, authorization, request limits, safe errors,
 **Then** it contains scope, non-goals, dependencies, risks, validation expectations, resolved first-wave items, and named target source/test artifacts for remaining work
 **And** unsupported shapes, duplicate JSON names, invalid bindings, route constraints, case-insensitive matching, referenced-contract incrementality, generated auth/error semantics, and request-size/status-location follow-ups remain auditable.
 
+### Story 7.19: Admin Typed-Client And Evidence-State Integration
+
+**Requirements covered:** FR15, FR34, NFR14, NFR15
+**Owner / review boundary:** Amelia (Developer); Winston reviews the typed-client/evidence boundary, Sally reviews state semantics and honesty, and Murat reviews authoritative evidence tests.
+**Focused validation:** Admin typed-client contract/component tests; lifecycle/provenance fixtures; polling/SignalR behavior; mutation-confirmation, deferred-operation, denial, stale, unavailable, and support-safety evidence.
+**Dependencies:** Stories 7.2-7.5 and 7.14.
+
+As an EventStore operator,
+I want every dashboard flow to use typed clients and authoritative evidence states,
+So that acceptance, freshness signals, and unavailable operations are never presented as completed work.
+
+**Acceptance Criteria:**
+
+**Given** an Admin query or command flow runs
+**When** its client boundary is inspected
+**Then** the shared typed client is the only UI-to-service boundary and no per-message controller or duplicated HTTP mapping exists in the interactive host
+**And** authorization, validation, denial, not-found, unavailable, and cancellation outcomes remain support-safe.
+
+**Given** projection or command lifecycle evidence is displayed
+**When** provenance is projection-backed, handler-computed, missing, invalid, or unknown
+**Then** canonical lifecycle states render only from authoritative evidence and every other case renders `Unknown` or the applicable non-success state
+**And** an ETag, HTTP `202`, or SignalR notification alone never becomes confirmed success.
+
+**Given** a mutation is accepted
+**When** polling, explicit refresh, or a SignalR freshness nudge runs
+**Then** the UI waits for authoritative end-state evidence before showing completion
+**And** stale/unavailable evidence disables mutations unless a separately approved exception exists.
+
+**Given** an operation is deferred or unavailable
+**When** its route or control is evaluated
+**Then** it is hidden, disabled with an honest reason, or returns `501` according to the canonical matrix
+**And** no mock success, optimistic completion toast, or fabricated evidence is shown.
+
+### Story 7.20: Admin Accessibility Localization And Responsive Conformance
+
+**Requirements covered:** FR34
+**Owner / review boundary:** Amelia (Developer); Sally (UX Designer) owns conformance acceptance and Murat reviews automated evidence.
+**Focused validation:** the closed Story 7.14 route/tab and canonical component inventories across WCAG 2.2 AA, keyboard/focus/live regions, resource-backed localization, stable selectors, and three viewport bands.
+**Dependency:** Story 7.19.
+
+As an EventStore operator,
+I want the canonical dashboard usable across accessibility, locale, and supported viewport conditions,
+So that operational evidence remains understandable without a parallel UI implementation.
+
+**Acceptance Criteria:**
+
+**Given** each canonical tab, detail, dialog, filter, grid, status, and denied/error state
+**When** accessibility conformance runs
+**Then** WCAG 2.2 AA, keyboard operation, one focusable page title, skip-link behavior, accessible names/roles, text-plus-color status, safe denied copy, focus restoration, reduced motion, and defined live-region priorities are verified
+**And** tests use stable `data-testid`/state identifiers rather than translated text as primary selectors.
+
+**Given** UI text is rendered in configured locales
+**When** localization tests inspect the closed surface inventory
+**Then** user-facing strings are resource-backed whole strings with no runtime English sentence assembly
+**And** raw identifiers remain unchanged while their labels are translatable.
+
+**Given** the viewport is `>= 1280px`, `960-1279px`, or `< 960px`
+**When** every canonical surface is exercised
+**Then** it follows the exact full, compact, or narrow behavior in the UX contract and read/triage remains usable
+**And** each narrow-screen mutation is fully usable, disabled with a reason, or presented as desktop-required without an inaccessible dead end.
+
+**Given** conformance closes
+**When** performance evidence is considered
+**Then** no unsupported quantitative performance release gate is invented without a measured production baseline
+**And** the absence of that budget does not weaken accessibility, responsive, evidence-state, or support-safety acceptance.
+
 ## Epic 8: Shared Payload Protection
 
 Platform security owners and domain modules can use an optional, reusable, production-proven payload-protection engine without duplicating cryptographic formats and key-lifecycle mechanics, while providers/operators retain key custody and domains retain legal policy.
@@ -3138,78 +3348,244 @@ So that the engine cannot make story-local choices that strand persisted history
 **Then** the exact path is `_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md`
 **And** it records approvers, date, accepted scope, rejected alternatives, open decisions, threat model, test vectors, migration posture, and explicit authorization for Story 8.2 to start.
 
-### Story 8.2: Shared Payload-Protection Engine And Parties G5 Parity
+### Story 8.2: Payload-Protection Contracts And Golden Vectors
 
-**Requirements covered:** FR37, NFR1-NFR4, NFR7, NFR9-NFR12, NFR16-NFR17, NFR19
-**Owner / review boundary:** Amelia (Developer); a named EventStore owner and Security Reviewer approve implementation; Murat reviews verification; the Release owner approves artifact provenance; the Parties maintainer approves consumer parity.
-**Focused validation:** EventStore contract/engine/server/package suites; ADR-selected production-backend integration; owner golden vectors; Parties local/shared dual-provider compatibility; no-leak scans; package-only consumer validation; post-v2-write rollback rehearsal.
-
-**Sizing / delivery note:** Story 8.2 is post-MVP (Epic 8) and gated on the approved Story 8.1 spec/ADR. Its multi-slice decomposition (engine, key lifecycle, production-backend conformance, Parties dual-provider parity, rollback rehearsal) is authored **at Story 8.1 spec time**, not in this proposal. It does not block broad Phase 4 execution and its G5 proof packet remains a single closure gate.
+**Requirements covered:** FR37, NFR12, NFR19
+**Owner / review boundary:** Amelia (Developer); the EventStore owner and Security Reviewer approve public/durable contracts, while Murat independently reviews vectors.
+**Focused validation:** approved Story 8.1 digest/authorization check; public-contract inventory; two-toolchain owner goldens; negative/mutation vectors; no-leak schema review.
+**Dependency:** Story 8.1 must be fully approved and explicitly authorize this story.
 
 As a platform security owner,
-I want an optional shared payload-protection engine built on EventStore's provider-neutral hooks,
-So that domain modules can protect persisted payloads without implementing reusable cryptographic and key-lifecycle infrastructure.
+I want stable payload-protection contracts and independent golden vectors,
+So that later engine slices implement one byte-exact durable protocol.
 
 **Acceptance Criteria:**
 
-**Given** implementation preflight runs
-**When** Story 8.2 starts
-**Then** the approved Story 8.1 specification exists at the exact required path and explicitly authorizes implementation
-**And** code tasks cite the approved sections they satisfy.
+**Given** Story 8.2 activation is requested
+**When** the content-bound Story 8.1 specification is verified
+**Then** its normative digest matches the approved authorization records and every open decision required by this slice is closed
+**And** missing or stale approval keeps this story and every later child unauthorized.
 
-**Given** the optional engine is packaged
-**When** release/package validation runs
-**Then** `Hexalith.EventStore.PayloadProtection` and any ADR-approved companion adapter are packable, opt-in, centrally versioned, and manifest-governed
-**And** the package cannot replace the current no-op default without explicit DI configuration and production-safe option validation.
+**Given** provider-neutral contracts and pdenc-v2 vectors are produced
+**When** independent toolchains encode and verify them
+**Then** envelope, algorithm, nonce/tag, AAD, canonical property path, type/version, bounded-size, and typed failure fields match byte for byte
+**And** cross-scope substitution, malformed/oversized input, metadata mutation, and nonce misuse fail safely.
 
-**Given** Story 8.2 adds one engine package or an ADR-approved engine/adapter package set
-**When** release inventory is updated
-**Then** `tools/release-packages.json`, `AGENTS.md`, inventory tests, package metadata, SBOM/provenance evidence, and package-only consumer validation agree on the exact set
-**And** the current 14-package inventory changes only in the same implementation slice that creates the approved packable project or projects.
+**Given** the contract/vector packet is reviewed
+**When** closure is requested
+**Then** it records exact contract inventory, fixture hashes, commands/results, owner/security/test approvals, and the governing normative digest
+**And** it creates no production backend, release-manifest change, Server hook, Parties migration, or G5 claim.
 
-**Given** a selected event property or snapshot value is written
-**When** `pdenc-v2` protection runs
-**Then** AES-GCM authenticated data binds tenant, domain, aggregate, event or snapshot type, canonical property path, key version, and format—or the exact approved equivalent—and matches byte-stable golden vectors
-**And** nonce reuse, unbounded input, path ambiguity, and cross-scope ciphertext substitution fail safely.
+### Story 8.3: pdenc-v2 Core Cryptographic Engine
 
-**Given** existing history is read
-**When** the engine encounters `json+pdenc-v1`, `json-redacted`, legacy-unprotected data, current Story 22.7 metadata, protected snapshots, or mixed-version streams
-**Then** every supported form remains readable according to the approved policy
-**And** unreadable history never silently downgrades to plaintext or unprotected state.
+**Requirements covered:** FR37, NFR1, NFR3, NFR19
+**Owner / review boundary:** Amelia (Developer); the Security Reviewer approves cryptographic implementation and Murat reviews vector/mutation/no-leak evidence.
+**Focused validation:** AES-GCM implementation against Story 8.2 goldens, bounds/mutation corpus, nonce behavior, AAD substitution, buffer-zeroing, cancellation, and typed-outcome tests.
+**Dependency:** Story 8.2.
 
-**Given** protection cannot return plaintext
-**When** a key is deleted, missing, denied, or unavailable, or metadata/ciphertext is malformed, tampered, opaque, or version-unknown
-**Then** those conditions remain separate bounded typed outcomes with explicit retry/permanence semantics
-**And** logs, traces, metrics, exceptions, ProblemDetails, evidence, exports, processing records, certificates, and reports pass no-leak scans.
+As a platform security owner,
+I want the provider-neutral pdenc-v2 engine to implement the frozen vectors,
+So that cryptographic behavior is shared without coupling to one key provider.
 
-**Given** reusable key lifecycle is enabled
-**When** keys are created, stored, wrapped, unwrapped, rotated, cached, invalidated, erased, retried, audited, or denied
-**Then** generic behavior is supplied behind shared contracts with bounded retry and circuit-breaker behavior
-**And** cache invalidation and zeroing of plaintext key buffers are verified on success, failure, cancellation, rotation, and erasure paths.
+**Acceptance Criteria:**
 
-**Given** production proof is requested
-**When** backend conformance runs
-**Then** at least one Story 8.1-selected, pluggable non-development backend is exercised against its real service boundary
-**And** LocalDev/in-memory implementations cannot satisfy production proof and fail startup outside their allowed environment.
+**Given** a selected event property or snapshot value is protected
+**When** the core engine runs
+**Then** AES-GCM and byte-stable AAD match every approved Story 8.2 golden
+**And** nonce reuse, path ambiguity, metadata tampering, cross-tenant/cross-aggregate substitution, and unbounded input fail closed.
 
-**Given** policy and erasure behavior vary by domain
-**When** `IPersonalDataPolicy`, `IErasureStateProvider`, and approved discovery metadata are used
-**Then** the engine remains domain-neutral while Parties can retain its legal policy, erasure orchestration, certificates/reports, and UX semantics
-**And** no Parties-specific rule enters EventStore.
+**Given** protection succeeds, fails, or is canceled
+**When** plaintext key or payload buffers leave use
+**Then** required sensitive buffers are zeroed and no plaintext/ciphertext/key detail leaks through logs, traces, metrics, exceptions, or ProblemDetails
+**And** outcomes remain bounded and typed.
 
-**Given** compatibility validation runs
-**When** EventStore owner goldens and Parties dual-provider tests execute
-**Then** protected/redacted/legacy reads, typed unreadable outcomes, key zeroing, no-leak diagnostics, Art.20 exports, Art.30 processing records, erasure reports/certificates, and persisted state pass through both retained Parties-local and shared-provider paths
-**And** HTTP-only, mock-only, or interface-shape evidence cannot close G5.
+**Given** project boundaries are inspected
+**When** the engine slice closes
+**Then** it remains provider-neutral and opt-in, with no Azure SDK, Parties rule, UI, or Server implementation dependency
+**And** packability and release inventory remain owned by Story 8.8.
 
-**Given** rollback is rehearsed
-**When** the shared engine has written `pdenc-v2` data and the approved rollback procedure is executed
-**Then** retained software and configuration can read or safely route that history according to the ADR without data or metadata loss
-**And** switching DI before any v2 write is explicitly insufficient evidence.
+### Story 8.4: Compatibility Readers And Mixed-History Routing
 
-**Given** completion is requested
-**When** the G5 proof packet is reviewed
-**Then** it records exact EventStore source SHA, package IDs/versions/hashes, production-backend identity/version, test commands/results, persisted evidence, named reviewer approvals, limitations, historical-data policy, and rollback instructions
-**And** the packet decision is `available`; otherwise Story 8.2 and Epic 8 remain non-`done` and Parties G5 remains `needs-additive-api`.
+**Requirements covered:** FR37, NFR7, NFR12, NFR19
+**Owner / review boundary:** Amelia (Developer); Winston reviews durable compatibility and Murat reviews historical/mixed-stream evidence.
+**Focused validation:** json+pdenc-v1, json-redacted, legacy-unprotected, Story 22.7 metadata, protected snapshot, pdenc-v2, mixed-history, unknown-format, downgrade, and no-silent-plaintext fixtures.
+**Dependency:** Story 8.3.
 
-**Produces:** `_bmad-output/implementation-artifacts/8-2-shared-payload-protection-engine-and-parties-g5-parity-proof-packet.md`.
+As a platform maintainer,
+I want every approved historical format routed explicitly,
+So that new protection never strands or silently downgrades durable history.
+
+**Acceptance Criteria:**
+
+**Given** existing event or snapshot history is read
+**When** its format/version is recognized
+**Then** json+pdenc-v1, json-redacted, legacy-unprotected, Story 22.7 metadata, protected snapshots, and pdenc-v2 route according to the approved policy
+**And** mixed-version streams preserve ordering, metadata, and typed outcomes.
+
+**Given** history is malformed, opaque, tampered, unsupported, or policy-forbidden
+**When** a reader evaluates it
+**Then** it returns the exact bounded failure/retry classification
+**And** it never treats unreadable protected content as plaintext, redacted success, or missing data.
+
+### Story 8.5: Policy And Key-Lifecycle Mechanics
+
+**Requirements covered:** FR37, NFR1-NFR4, NFR7, NFR19
+**Owner / review boundary:** Amelia (Developer); the Security Reviewer approves shared lifecycle/cache/resilience mechanics and the Operations owner reviews operational semantics.
+**Focused validation:** policy discovery, erasure state, key records/paths, create/wrap/unwrap/rotate/delete, cache invalidation, bounded retry/circuit breaker, audit, cancellation, and zeroing tests.
+**Dependency:** Story 8.3. Story 8.4 may proceed in parallel.
+
+As a platform security owner,
+I want domain-neutral policy and key lifecycle behind stable contracts,
+So that domains retain legal policy while reusable mechanics remain consistent.
+
+**Acceptance Criteria:**
+
+**Given** IPersonalDataPolicy, IErasureStateProvider, and approved discovery metadata are used
+**When** policy is resolved
+**Then** the engine selects exactly one valid policy scope or rejects ambiguity
+**And** no Parties-specific legal rule, certificate/report, UX, or orchestration enters EventStore.
+
+**Given** keys are created, stored, wrapped, unwrapped, rotated, cached, invalidated, erased, retried, audited, or denied
+**When** lifecycle mechanics run
+**Then** state keys, actor/reminder names, versioning, retry, circuit breaker, cache bounds, audit fields, and typed outcomes match the approved specification
+**And** cache invalidation and plaintext-key zeroing are proven on success, failure, cancellation, rotation, and erasure.
+
+### Story 8.6: Azure Key Vault Production Adapter Conformance
+
+**Requirements covered:** FR37, NFR1, NFR3, NFR4, NFR17, NFR19
+**Owner / review boundary:** Amelia (Developer); the Security and Operations owners approve custody/runtime restrictions, while Murat reviews real-service conformance.
+**Focused validation:** real Azure Key Vault service boundary, workload identity, capability probe, wrap/unwrap, denied/missing/deleted/unavailable/throttled states, retry/circuit behavior, provider-state evidence, startup restrictions, and no-leak scans.
+**Dependencies:** Stories 8.4 and 8.5.
+
+As an operations and security owner,
+I want one real production adapter to conform without transferring key custody,
+So that provider-neutral engine claims are proven against an operated service.
+
+**Acceptance Criteria:**
+
+**Given** the Azure adapter starts in an allowed environment
+**When** credential, endpoint, key identity, capability, and custody configuration are validated
+**Then** workload identity and the approved Azure Key Vault key boundary are used without exposing root/KEK material to EventStore
+**And** LocalDevelopment/in-memory backends cannot satisfy production proof or start under production configuration.
+
+**Given** real wrap/unwrap and failure injection run
+**When** Azure returns success, denial, missing/deleted key, unavailability, throttling, or malformed state
+**Then** every result maps to the approved bounded taxonomy and resilience behavior
+**And** provider private detail, credentials, key material, and payloads pass no-leak scans.
+
+### Story 8.7: Server Persistence And Snapshot Integration
+
+**Requirements covered:** FR37, NFR1, NFR2, NFR7, NFR16, NFR19
+**Owner / review boundary:** Amelia (Developer); Winston reviews persistence/hook boundaries, the Security Reviewer reviews fail-closed behavior, and Murat reviews persisted evidence.
+**Focused validation:** event and snapshot write/read hooks; tenant/domain/aggregate/path AAD binding; policy selection; mixed history; typed failures; restart/cancellation; persisted state; no-op default; and production-safe registration matrix.
+**Dependency:** Story 8.6.
+
+As an EventStore operator,
+I want the approved engine integrated into event and snapshot persistence,
+So that protection is opt-in, tenant-safe, durable, and reversible without private serialization paths.
+
+**Acceptance Criteria:**
+
+**Given** no payload-protection provider is explicitly registered
+**When** EventStore starts and persists data
+**Then** the current no-op default and existing durable formats remain unchanged
+**And** no optional package silently becomes the production default.
+
+**Given** the approved engine and adapter are configured
+**When** selected event properties or snapshots are written and read
+**Then** the shared serialization hooks apply exact policy/AAD/format behavior and preserve tenant/domain/aggregate isolation
+**And** persisted evidence proves protected/redacted/legacy/mixed histories, typed failures, restart, cancellation, and no-leak behavior.
+
+### Story 8.8: Package And Release Integration
+
+**Requirements covered:** FR37, NFR9-NFR11, NFR16
+**Owner / review boundary:** Amelia (Developer); the Release owner approves package inventory/provenance and Murat reviews package-only consumer evidence.
+**Focused validation:** packable project/solution inventory, central versions, tools/release-packages.json, package metadata, dependency guardrails, SBOM/provenance, exact hashes, and package-only consumer validation.
+**Dependency:** Story 8.7.
+
+As an EventStore release owner,
+I want the approved engine and Azure adapter released as one governed package-set transition,
+So that optional security capability is reproducible and cannot partially publish.
+
+**Acceptance Criteria:**
+
+**Given** the two approved packable projects are ready
+**When** release inventory changes
+**Then** tools/release-packages.json is the authority and the manifest, project/solution inventory tests, package metadata, SBOM/provenance, and package-only consumer validation agree
+**And** the inventory changes atomically from 14 to 16 only when both packages exist and pass every gate.
+
+**Given** one package, dependency, version, metadata field, hash, or package-only result is missing
+**When** packaging is evaluated
+**Then** neither package-set transition nor release evidence is accepted
+**And** no assistant instruction entry point is used as package inventory or modified for package governance.
+
+### Story 8.9: Parties Dual-Provider Parity
+
+**Requirements covered:** FR37, NFR1-NFR4, NFR7, NFR12, NFR16, NFR19
+**Owner / review boundary:** Amelia coordinates EventStore evidence; the Parties maintainer alone approves Parties changes and exact SHA; Security and Murat review parity/no-leak/persisted evidence.
+**Focused validation:** separately authorized Parties local/shared providers; package-only shared-provider consumption; protected/redacted/legacy reads; Art.20/Art.30 outputs; erasure reports/certificates; typed failures; no-leak scans; and persisted end state.
+**Dependency:** Story 8.8.
+
+As a Parties maintainer,
+I want the retained local provider and shared engine proven against the same domain behavior,
+So that migration does not transfer legal policy or erase the rollback path prematurely.
+
+**Acceptance Criteria:**
+
+**Given** separate Parties maintainer authority and an exact source baseline
+**When** dual-provider validation runs
+**Then** the retained local and package-consumed shared providers produce compatible protected/redacted/legacy behavior and bounded unreadable outcomes
+**And** Parties retains legal policy, erasure orchestration, certificates/reports, Art.20/Art.30 semantics, and UX/copy.
+
+**Given** parity evidence is assembled
+**When** completion is requested
+**Then** it records the exact Parties SHA, EventStore package IDs/versions/hashes, provider configurations, persisted evidence, commands/results, limitations, and maintainer approval
+**And** HTTP-only, mock-only, interface-shape, or unapproved working-tree evidence cannot close the story.
+
+### Story 8.10: Post-v2-Write Rollback Rehearsal
+
+**Requirements covered:** FR37, NFR7, NFR12, NFR16, NFR19
+**Owner / review boundary:** Amelia (Developer) coordinates the rehearsal; Operations approves the procedure, the Parties maintainer approves consumer safety, and Murat reviews durable before/after evidence.
+**Focused validation:** real pdenc-v2 event/snapshot writes followed by the approved rollback procedure, retained-reader routing, mixed history, configuration reversal, persisted metadata, failure injection, and data/no-leak verification.
+**Dependency:** Story 8.9.
+
+As an operations owner,
+I want rollback rehearsed after the newest durable format has been written,
+So that rollback evidence proves history safety rather than only a pre-write DI switch.
+
+**Acceptance Criteria:**
+
+**Given** approved EventStore and Parties paths have written pdenc-v2 events and snapshots
+**When** the approved rollback procedure executes
+**Then** retained software/configuration reads or safely routes all durable history without data or metadata loss
+**And** mixed history, protected snapshots, policy outcomes, and support-safe diagnostics remain correct.
+
+**Given** rollback cannot preserve a required history/path
+**When** evidence is reviewed
+**Then** the rehearsal fails closed with exact bounded limitations and recovery steps
+**And** switching DI before any v2 write or using mock-only data is explicitly insufficient.
+
+### Story 8.11: G5 Evidence And Approval Closure
+
+**Requirements covered:** FR37, NFR1-NFR4, NFR7, NFR9-NFR12, NFR16-NFR17, NFR19
+**Owner / review boundary:** Amelia assembles the packet; the EventStore owner, Security Reviewer, Release owner, Operations owner, Parties maintainer, and Murat approve their named boundaries.
+**Focused validation:** complete 8.2-8.10 evidence crosswalk, independent artifact/source/provider identity verification, approval validation, limitations/historical-policy/rollback review, and final G5 decision.
+**Dependency:** Story 8.10.
+
+As a platform security owner,
+I want one content- and identity-bound G5 closure packet,
+So that Parties migration can proceed only against a proven shared capability.
+
+**Acceptance Criteria:**
+
+**Given** Stories 8.2-8.10 request closure
+**When** their artifacts and approvals are crosswalked
+**Then** every normative section, golden/vector hash, EventStore source SHA, package ID/version/hash, backend identity/version, Parties SHA, test command/result, persisted proof, limitation, historical-data policy, and rollback instruction is present
+**And** missing, stale, rejected, or digest-mismatched evidence keeps Story 8.11 and Epic 8 non-done.
+
+**Given** every named reviewer accepts the exact packet
+**When** the final decision is recorded
+**Then** the packet decision is available, Epic 8 may close, and Parties G5 may leave needs-additive-api
+**And** the decision itself performs no package publication, registry mutation, provider provisioning, deployment, external-repository edit, or rollback-path deletion.
+
+**Produces:** _bmad-output/implementation-artifacts/8-11-g5-evidence-and-approval-closure.md.

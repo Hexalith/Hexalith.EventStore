@@ -205,10 +205,10 @@ development_status:
   3-11-validated-central-package-catalog-refresh: awaiting-operator
   # v3.75.0 remains failed single-platform evidence; failed partial v3.77.1 is quarantined.
   # Story 3.12 produced observed candidate v3.77.2 with exactly linux/amd64 and linux/arm64.
-  # Story 1.20 still requires independent exact-SHA gates, owner review, artifact selection,
-  # A/B/C authorization, and an explicit migration decision before any approved field changes.
-  # Gates Epic 1 done: Story 1.20 AC8 (deployed image digest) selects this release's identity.
+  # Story 1.20 is already done on source/package parity. Story 3.13 independently maps that
+  # identity to the deployed OCI index, child manifests/configs, and release provenance.
   3-12-multi-platform-eventstore-container-publishing-correction: done
+  3-13-deployed-runtime-parity-closure: backlog
   epic-3-retrospective: optional
 
   epic-4: in-progress
@@ -220,10 +220,15 @@ development_status:
   4-6-global-position-sharding-spec-renegotiation: backlog
   # Coordinated Tenants follow-up only; EventStore platform prerequisite is Story 1.2.
   4-7-tenants-query-provenance-follow-up: backlog
-  # Approved by sprint-change-proposal-2026-07-20-oq8-durable-idempotency-admission.md.
-  # EventStore owns the durable tenant/key admission prerequisite consumed by Folders Story 12.6;
-  # create and validate the dedicated story artifact before moving this row to ready-for-dev.
-  4-8-durable-tenant-scoped-idempotency-admission-and-expired-key-precedence: in-progress
+  # Story 4.8 is a non-executable evidence ledger and therefore has no status row.
+  # The August crosswalk maps its checked candidate evidence to focused review stories only.
+  4-9-trusted-admission-contract-and-protected-identity: review
+  4-10-digest-directory-rotation-and-key-retirement: review
+  4-11-admission-state-machine-and-current-fence-enforcement: ready-for-dev
+  4-12-expiry-compaction-and-tombstone-retention: backlog
+  4-13-legacy-admission-migration-and-fail-closed-reconciliation: backlog
+  4-14-oq8-multi-host-production-evidence: backlog
+  4-15-oq8-platform-closure-and-handoff: backlog
   epic-4-retrospective: optional
 
   epic-5: backlog
@@ -236,6 +241,7 @@ development_status:
   5-7-production-dapr-component-and-acl-parity: backlog
   5-8-runtime-topology-drift-tests: backlog
   5-9-deployment-and-operator-documentation-alignment: backlog
+  5-10-reserved-system-tenant-provisioning-guard: backlog
   epic-5-retrospective: optional
 
   epic-6: backlog
@@ -264,19 +270,31 @@ development_status:
   7-11-persisted-state-evidence-and-read-back-helpers: backlog
   7-12-fake-and-integration-test-reclassification: backlog
   7-13-advisory-and-performance-workflow-hygiene: backlog
-  7-14-consolidated-eventstore-admin-dashboard-migration: backlog
+  # Admin.UI is evolved in place across three focused tracks; no second host is authorized.
+  7-14-admin-shell-and-canonical-route-migration: backlog
   # Planning artifacts are complete; these statuses authorize no runtime implementation.
   7-15-gdpr-aggregate-erasure-backlog: done
   7-16-admin-interactive-oidc-backlog: done
   7-17-aggregate-test-kit-backlog: done
   7-18-rest-generator-hardening-backlog: done
+  7-19-admin-typed-client-and-evidence-state-integration: backlog
+  7-20-admin-accessibility-localization-and-responsive-conformance: backlog
   epic-7-retrospective: optional
 
   epic-8: in-progress
-  # Security/architecture gate; authorizes Story 8.2 but no runtime implementation.
+  # Security/architecture gate; when approved, authorizes Story 8.2 only.
   8-1-shared-payload-protection-security-spec-and-adr: in-progress
-  # Post-MVP G5 implementation; blocked until the approved Story 8.1 spec exists.
-  8-2-shared-payload-protection-engine-and-parties-g5-parity: backlog
+  # Post-MVP chain is NOT AUTHORIZED. Successors remain backlog until their exact predecessor closes.
+  8-2-payload-protection-contracts-and-golden-vectors: backlog
+  8-3-pdenc-v2-core-cryptographic-engine: backlog
+  8-4-compatibility-readers-and-mixed-history-routing: backlog
+  8-5-policy-and-key-lifecycle-mechanics: backlog
+  8-6-azure-key-vault-production-adapter-conformance: backlog
+  8-7-server-persistence-and-snapshot-integration: backlog
+  8-8-package-and-release-integration: backlog
+  8-9-parties-dual-provider-parity: backlog
+  8-10-post-v2-write-rollback-rehearsal: backlog
+  8-11-g5-evidence-and-approval-closure: backlog
   epic-8-retrospective: optional
 
 action_items:
