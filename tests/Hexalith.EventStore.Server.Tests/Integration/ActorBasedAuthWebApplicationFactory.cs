@@ -6,6 +6,7 @@ using Dapr.Actors.Client;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Actors.Authorization;
 using Hexalith.EventStore.Server.Projections;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 using Hexalith.EventStore.Testing.Fakes;
 
 using Microsoft.AspNetCore.Hosting;
@@ -53,6 +54,8 @@ public class ActorBasedAuthWebApplicationFactory : WebApplicationFactory<EventSt
         }));
 
         _ = builder.ConfigureTestServices(services => {
+            WebApplicationFactoryServiceOverrides.RemoveAdminOperationalIndexHostedService(services);
+
             // Remove existing IActorProxyFactory registration (from AddDaprClient)
             // and replace with our mock that returns configurable fake actors
             ServiceDescriptor? existingFactory = services.FirstOrDefault(

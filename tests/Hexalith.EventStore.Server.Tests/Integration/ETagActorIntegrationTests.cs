@@ -504,6 +504,8 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
             _ = builder.UseEnvironment("Development");
 
             _ = builder.ConfigureTestServices(services => {
+                WebApplicationFactoryServiceOverrides.RemoveAdminOperationalIndexHostedService(services);
+
                 // Remove existing registrations and replace with mocks.
                 services.RemoveAll<IActorProxyFactory>();
                 services.RemoveAll<IProjectionChangedBroadcaster>();
