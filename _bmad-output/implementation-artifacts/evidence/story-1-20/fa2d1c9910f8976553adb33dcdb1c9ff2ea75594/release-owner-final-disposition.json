@@ -1,8 +1,8 @@
 {
     "action": "story-1-20-release-disposition",
     "owner": "jpiquot",
-    "approved_at": "2026-07-26T10:49:02Z",
-    "durable_source": "https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5083164122",
+    "approved_at": "2026-08-01T10:05:36Z",
+    "durable_source": "https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5150951874",
     "accepted_scope": "Exact release identities and all documented limitations.",
     "limitations": [
       {"id":"erasure-admission-write-fence-races","disposition":"accepted","rationale":"Accepted."},
@@ -47,8 +47,8 @@
       "package_hash_manifest_sha256": "4271ddc76411780591423ab024b776cd34a2abccf1cc2dac03a245e141dbe0bc",
       "container_repository": "registry.hexalith.com/eventstore",
       "container_digest": "sha256:523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87",
-      "evidence_manifest_sha256": "b8dce291d6d9bd3707ce60bdbd307f8c0216c0da418f01ff396154207d101278",
-      "approval_subject_sha256": "0525a3f74d4f293263befa945b3cabdebbb7df6509d8b1be2ae1b1ce5538fc56",
+      "evidence_manifest_sha256": "84097e533b215858c7ecc9eb11e3c3f8a2673b17db3138c911c0f4acd59738e1",
+      "approval_subject_sha256": "7c3165ce4d270bb954536a2051fa00afa512c1ef437abc064f868340b1fd5d0b",
       "latest_successful_gate_completed_at": "2026-07-26T10:34:35Z"
     }
   }

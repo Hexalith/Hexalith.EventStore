@@ -3,25 +3,25 @@ schema: hexalith.eventstore.parity-closure-proof-packet/v1
 story_id: "1.20"
 story_key: 1-20-owner-approved-parity-closure-and-runtime-pin
 created: 2026-07-16T05:09:20+02:00
-updated: 2026-07-26T12:58:12+02:00
+updated: 2026-08-01T12:05:36+02:00
 historical_packet: 1-8-projection-query-sdk-owner-proof-packet.md
 candidate_source_sha: fa2d1c9910f8976553adb33dcdb1c9ff2ea75594
 tested_runtime_sha: fa2d1c9910f8976553adb33dcdb1c9ff2ea75594
-documentation_commit_sha: b695ad3215cd873c41561635e4eb4d7ff29d56a2
-evidence_manifest_sha256: b8dce291d6d9bd3707ce60bdbd307f8c0216c0da418f01ff396154207d101278
-approval_subject_sha256: 0525a3f74d4f293263befa945b3cabdebbb7df6509d8b1be2ae1b1ce5538fc56
+documentation_commit_sha: 21997d1974c4bc7022c77a5065edd9d327435c97
+evidence_manifest_sha256: 84097e533b215858c7ecc9eb11e3c3f8a2673b17db3138c911c0f4acd59738e1
+approval_subject_sha256: 7c3165ce4d270bb954536a2051fa00afa512c1ef437abc064f868340b1fd5d0b
 raw_evidence_bundle_url: https://hexalithevidence.blob.core.windows.net/story-1-20/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/story-1-20-raw-evidence.tar.gz
 raw_evidence_bundle_sha256: 76d9d02e9d75017f5d2b952d36c76e243968f037739a56c3ed18e34be3bf68ec
 raw_evidence_bundle_object_version: 2026-07-26T10:36:02.8785061Z
-raw_evidence_bundle_retention_until: 2033-08-01T00:00:00Z
+raw_evidence_bundle_retention_until: 2036-08-02T00:00:00Z
 raw_evidence_provider_adapter_id: azure-immutable-blob-v1
 raw_evidence_provider_adapter_sha256: 29076f2b06726fa634373908ed5a9f9709114b0e528e10458cec9cfec389dc50
-raw_evidence_immutability_proof_url: https://gist.githubusercontent.com/jpiquot/ad6d3649468f4ddd947ef2c5b62ef2bd/raw/f67f431f73f4957290d3efc73472f1695fd6deb9/raw-evidence-immutability-proof.json
-raw_evidence_immutability_proof_sha256: ba460df9e6d85b294e3c39843d1583fd6ebb7c131c20b6974bd7d9f5a28d4dee
-eventstore_owner_approval_url: https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5083143163
-eventstore_owner_approval_sha256: 29735dc9e8f85179d63e01365dd88d6cf522beb116722bba26a597e8f264bc65
-release_owner_disposition_url: https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5083164122
-release_owner_disposition_sha256: 7ebaeafb6ad7d3f32de855aaae13a3b6b12e4ff335710a41373f578d86e99da2
+raw_evidence_immutability_proof_url: https://gist.githubusercontent.com/jpiquot/9037215f85a20d5417693492f31b9466/raw/58a9ce0efe1645354aaea4790bc39d809472e747/raw-evidence-immutability-proof.json
+raw_evidence_immutability_proof_sha256: 1d1c12c45aef2e77305e26d2315c715be9cae47372ab312aabb583bf475bc8c4
+eventstore_owner_approval_url: https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5150951785
+eventstore_owner_approval_sha256: 6c0cf2f67088c9b00691f0671d931ada43c75dafac62a743e781ccf5d26d40f9
+release_owner_disposition_url: https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5150951874
+release_owner_disposition_sha256: a1860292e717ff0938d1d44209ec86261cfb17bb1cc601c94078926cf46bc1a3
 approved_package_version: 999.1.20-proof.fa2d1c9910f8
 approved_package_hash_manifest_sha256: 4271ddc76411780591423ab024b776cd34a2abccf1cc2dac03a245e141dbe0bc
 approved_container_repository: registry.hexalith.com/eventstore
@@ -53,7 +53,7 @@ candidate results below remain audit history and grant no independent authority.
 | Story 1.19 paged rebuild equivalence | `done` | Exact-SHA full-prefix, checkpoint, lifecycle, and persisted live rebuild evidence is retained. | Satisfied and revalidated at `fa2d1c99...`. |
 | Architecture AD-11 security baseline | `implementation-complete/evidence-confirmed` | The committed preflight records SDK `10.0.302`, ASP.NET `10.0.10`, and installed runtime `10.0.10`. | Satisfied at `fa2d1c99...` without replacement authority. |
 | Source-topology query provenance | `implementation-complete/evidence-confirmed` | The complete Debug/source integration assembly passed 279/279 with persisted provenance evidence. | Satisfied and revalidated at `fa2d1c99...`. |
-| Story 1.20 owner review | `approved` | EventStore-owner approval comment `5083143163` and release-owner disposition comment `5083164122` bind the exact evidence subject. | Satisfied before evidence commit A. |
+| Story 1.20 owner review | `approved` | EventStore-owner approval comment `5150951785` and release-owner disposition comment `5150951874` bind the exact refreshed evidence subject. | Satisfied before evidence commit A. |
 
 ## Artifact Identity Pin
 
@@ -3031,11 +3031,11 @@ before accepting A.
 ## Owner Review
 
 - EventStore owner: `jpiquot`
-- EventStore approval date: `2026-07-26`
-- EventStore approval source: `https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5083143163`
+- EventStore approval date: `2026-08-01`
+- EventStore approval source: `https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5150951785`
 - release owner: `jpiquot`
-- release disposition date: `2026-07-26`
-- release disposition source: `https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5083164122`
+- release disposition date: `2026-08-01`
+- release disposition source: `https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5150951874`
 - accepted scope: all nine exact-SHA capability rows, the 14-package byte inventory, the
   two-platform immutable container, and the WORM-retained raw evidence bundle
 - accepted limitations: all 32 approval-subject limitation IDs with the rationales recorded

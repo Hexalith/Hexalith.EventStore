@@ -7,7 +7,7 @@
   "policy": {
     "locked": true,
     "mode": "WORM",
-    "retention_until": "2033-08-01T00:00:00Z"
+    "retention_until": "2036-08-02T00:00:00Z"
   },
   "provider": {
     "adapter_id": "azure-immutable-blob-v1",
