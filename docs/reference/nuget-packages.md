@@ -430,8 +430,8 @@ $ dotnet add package Hexalith.EventStore.Testing.Integration
 
 | Package                              | Version |
 | ------------------------------------ | ------- |
-| Aspire.Hosting                       | 13.1.2  |
-| CommunityToolkit.Aspire.Hosting.Dapr | 13.0.0  |
+| Aspire.Hosting                       | 13.4.6  |
+| CommunityToolkit.Aspire.Hosting.Dapr | 13.4.1-beta.687 |
 
 ```bash
 $ dotnet add package Hexalith.EventStore.Aspire
