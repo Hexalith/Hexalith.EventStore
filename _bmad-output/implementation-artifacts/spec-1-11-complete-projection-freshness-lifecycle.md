@@ -6,7 +6,7 @@ status: 'done'
 baseline_revision: 'f6aafb38e81969ab7ca04be484b60b857f0f7a86'
 final_revision: '6aa29af6af13c76631c4122a96ddef8b3da47fb7'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/project-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-1-context.md'
@@ -223,3 +223,16 @@ Added a stable seven-state projection lifecycle contract, provenance-safe normal
 
 - Story 2.8 remains formally `in-review`; this story consumes its implemented provenance invariants but does not claim that separate owner-review closure.
 - Consumer-specific UI rendering/localization and actual operational producer wiring remain owned by their respective consumer and later projection stories; this change supplies and verifies the EventStore contract/carrier/default-policy surface.
+
+### 2026-07-26 — Follow-up review disposition
+
+- reviewed_runtime_sha: `fa2d1c9910f8976553adb33dcdb1c9ff2ea75594`
+- reviewer: `jpiquot`
+- reviewer_login: `jpiquot`
+- durable_source_api: `https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/comments/5083115178`
+- durable_source: `https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5083115178`
+- scope: "Reviewed the corrected Story 1.16 runtime candidate."
+- findings_and_resolutions: "Candidate binding is corrected; no unresolved findings remain."
+- verification: "The mandatory exact-SHA proof gate passed."
+- residual_limitations: "Documented Story 1.16 limitations remain accepted."
+- disposition: `approved`

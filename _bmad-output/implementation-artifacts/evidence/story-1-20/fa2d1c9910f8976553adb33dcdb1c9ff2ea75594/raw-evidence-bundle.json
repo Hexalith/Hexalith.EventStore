@@ -1,0 +1,14 @@
+{
+  "url": "https://hexalithevidence.blob.core.windows.net/story-1-20/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/story-1-20-raw-evidence.tar.gz",
+  "sha256": "76d9d02e9d75017f5d2b952d36c76e243968f037739a56c3ed18e34be3bf68ec",
+  "object_version": "2026-07-26T10:36:02.8785061Z",
+  "retention_until": "2036-08-02T00:00:00Z",
+  "provider_adapter": {
+    "id": "azure-immutable-blob-v1",
+    "sha256": "29076f2b06726fa634373908ed5a9f9709114b0e528e10458cec9cfec389dc50"
+  },
+  "immutability_proof": {
+    "url": "https://gist.githubusercontent.com/jpiquot/9037215f85a20d5417693492f31b9466/raw/58a9ce0efe1645354aaea4790bc39d809472e747/raw-evidence-immutability-proof.json",
+    "sha256": "1d1c12c45aef2e77305e26d2315c715be9cae47372ab312aabb583bf475bc8c4"
+  }
+}
