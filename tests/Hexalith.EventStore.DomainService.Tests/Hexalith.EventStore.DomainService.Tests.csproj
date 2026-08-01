@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Hexalith.EventStore.DomainService\Hexalith.EventStore.DomainService.csproj" />
+    <ProjectReference Include="..\..\src\Hexalith.EventStore.Testing\Hexalith.EventStore.Testing.csproj" />
   </ItemGroup>
 
   <ItemGroup>

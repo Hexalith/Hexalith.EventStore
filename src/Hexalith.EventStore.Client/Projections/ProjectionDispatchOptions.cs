@@ -19,6 +19,12 @@ public sealed class ProjectionDispatchOptions {
     /// <summary>The default maximum number of events accepted by the direct rebuild endpoint.</summary>
     public const int DefaultMaxRebuildEventCount = 10_000;
 
+    /// <summary>The default maximum authoritative aggregate entries accepted by one shared rebuild.</summary>
+    public const int DefaultMaxSharedRebuildAggregateCount = 10_000;
+
+    /// <summary>The default maximum opaque candidate size accepted by one shared rebuild.</summary>
+    public const int DefaultMaxSharedRebuildCandidateBytes = 1_048_576;
+
     /// <summary>The default maximum retry attempts per activation.</summary>
     public const int DefaultMaxRetryAttempts = 8;
 
@@ -42,6 +48,12 @@ public sealed class ProjectionDispatchOptions {
 
     /// <summary>Gets or sets the maximum complete-prefix event count accepted for rebuild.</summary>
     public int MaxRebuildEventCount { get; set; } = DefaultMaxRebuildEventCount;
+
+    /// <summary>Gets or sets the maximum authoritative aggregate entries accepted by one shared rebuild.</summary>
+    public int MaxSharedRebuildAggregateCount { get; set; } = DefaultMaxSharedRebuildAggregateCount;
+
+    /// <summary>Gets or sets the maximum opaque candidate byte size accepted by one shared rebuild.</summary>
+    public int MaxSharedRebuildCandidateBytes { get; set; } = DefaultMaxSharedRebuildCandidateBytes;
 
     /// <summary>Gets or sets the maximum retry attempts performed in one worker activation.</summary>
     public int MaxRetryAttempts { get; set; } = DefaultMaxRetryAttempts;
@@ -113,6 +125,8 @@ public sealed class ProjectionDispatchOptions {
             MaxOutcomeEnvelopeBytes,
             GetMinimumOutcomeEnvelopeBytes(MaxOutcomes));
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaxRebuildEventCount);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaxSharedRebuildAggregateCount);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaxSharedRebuildCandidateBytes);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaxRetryAttempts);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(RetryScanBatchSize);
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(RetryBaseDelay, TimeSpan.Zero);

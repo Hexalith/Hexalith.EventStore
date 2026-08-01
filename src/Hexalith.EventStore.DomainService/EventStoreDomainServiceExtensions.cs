@@ -188,6 +188,7 @@ public static class EventStoreDomainServiceExtensions {
     /// <item><description><c>POST /project/rebuild/commit/v1</c> — commits and reads back staged named rebuild candidates.</description></item>
     /// <item><description><c>POST /project/rebuild/abort/v1</c> — compensates an uncommitted named rebuild batch.</description></item>
     /// <item><description><c>POST /project/rebuild/verify/v1</c> — verifies staged or committed named rebuild evidence.</description></item>
+    /// <item><description><c>POST /project/rebuild/shared/v1</c> — advances an additive tenant/domain shared rebuild session.</description></item>
     /// <item><description><c>POST /admin/operational-index-metadata</c> — returns the domain's command/event/projection catalog.</description></item>
     /// </list>
     /// </summary>
@@ -289,6 +290,7 @@ public static class EventStoreDomainServiceExtensions {
         MapNamedProjectionRebuildEndpoint(app, "/project/rebuild/commit/v1", DomainProjectionRebuildBatchAction.Commit);
         MapNamedProjectionRebuildEndpoint(app, "/project/rebuild/abort/v1", DomainProjectionRebuildBatchAction.Abort);
         MapNamedProjectionRebuildEndpoint(app, "/project/rebuild/verify/v1", DomainProjectionRebuildBatchAction.Verify);
+        MapSharedProjectionRebuildEndpoint(app);
 
         _ = app.MapPost(
             "/admin/operational-index-metadata",
@@ -361,6 +363,36 @@ public static class EventStoreDomainServiceExtensions {
                             .RebuildAsync(serviceProvider, request, projectionDispatchOptions.Value, projectionIdentityOptions.Value, cancellationToken)
                             .ConfigureAwait(false),
                     };
+                    return (IResult)Results.Ok(response);
+                }
+                catch (ProjectionDispatchValidationException exception) {
+                    return Results.BadRequest(exception.ReasonCode);
+                }
+            });
+    }
+
+    private static void MapSharedProjectionRebuildEndpoint(WebApplication app) {
+        const string route = "/project/rebuild/shared/v1";
+        if (IsRouteMapped(app, route, HttpMethods.Post)) {
+            return;
+        }
+
+        _ = app.MapPost(
+            route,
+            async (DomainSharedProjectionRebuildRequest request,
+                   IServiceProvider serviceProvider,
+                   IOptions<ProjectionDispatchOptions> projectionDispatchOptions,
+                   IOptions<DomainProjectionIdentityOptions> projectionIdentityOptions,
+                   CancellationToken cancellationToken) => {
+                try {
+                    DomainSharedProjectionRebuildResponse response = await DomainSharedProjectionRebuildDispatcher
+                        .DispatchAsync(
+                            serviceProvider,
+                            request,
+                            projectionDispatchOptions.Value,
+                            projectionIdentityOptions.Value,
+                            cancellationToken)
+                        .ConfigureAwait(false);
                     return (IResult)Results.Ok(response);
                 }
                 catch (ProjectionDispatchValidationException exception) {

@@ -919,6 +919,7 @@ public sealed class EventStoreDomainServiceExtensionsTests {
             "/project",
             "/project/rebuild/abort/v1",
             "/project/rebuild/commit/v1",
+            "/project/rebuild/shared/v1",
             "/project/rebuild/stage/v1",
             "/project/rebuild/v1",
             "/project/rebuild/verify/v1",
