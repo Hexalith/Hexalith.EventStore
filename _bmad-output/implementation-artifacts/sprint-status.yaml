@@ -282,9 +282,9 @@ development_status:
   epic-7-retrospective: optional
 
   epic-8: in-progress
-  # Security/architecture gate; when approved, authorizes Story 8.2 only.
-  8-1-shared-payload-protection-security-spec-and-adr: in-progress
-  # Post-MVP chain is NOT AUTHORIZED. Successors remain backlog until their exact predecessor closes.
+  # Security/architecture gate approved; Story 8.2 alone is authorized for exact-digest/source preflight.
+  8-1-shared-payload-protection-security-spec-and-adr: done
+  # Story 8.2 is authorized but remains backlog until its story file is created; Stories 8.3-8.11 remain predecessor-gated.
   8-2-payload-protection-contracts-and-golden-vectors: backlog
   8-3-pdenc-v2-core-cryptographic-engine: backlog
   8-4-compatibility-readers-and-mixed-history-routing: backlog

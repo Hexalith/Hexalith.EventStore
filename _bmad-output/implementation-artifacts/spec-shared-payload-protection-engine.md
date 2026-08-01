@@ -1,9 +1,9 @@
 ---
 title: Shared Payload-Protection Engine Security Specification And ADR
 story: "8.1"
-status: draft-not-authorized
-decision: proposed
-story_8_2_authorized: false
+status: approved-authorized
+decision: adopted
+story_8_2_authorized: true
 created: 2026-07-16
 last_updated: 2026-08-01
 eventstore_source_sha: b200305978577530ee2e6ba9e92b886d26dc6f6f
@@ -24,29 +24,35 @@ content digest.
 
 | Field | Value |
 | --- | --- |
-| ADR status | Proposed; not approved |
-| Story 8.2 initial authorization | **NOT AUTHORIZED** |
-| Successor authorization | Stories 8.3-8.11 remain blocked by the approved predecessor sequence. |
-| Reason | Normative technical decisions are frozen; mandatory independent reviews and named content-bound approvals are absent. |
+| ADR status | **ADOPTED AND APPROVED** |
+| Story 8.2 initial authorization | **AUTHORIZED** for exact-digest preflight and implementation |
+| Successor authorization | Story 8.2 is authorized; Stories 8.3-8.11 remain blocked until their approved immediate predecessor closes. |
+| Reason | Jérôme Piquot independently reproduced the vectors, reviewed sections 12-17 with no material findings, accepted every documented residual risk, and approved all mandatory roles for the exact normative digest. |
 | Required artifact | `_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md` |
 | EventStore inspected source | `b200305978577530ee2e6ba9e92b886d26dc6f6f` (`main`, tag `v3.67.3`) |
 | Story baseline | `76f122332216cc5d9b44a421bdbed3ab20d35f5e` |
 | Parties inspected source | `4378dede55d92e489caf7aad63d6c2892e6f856d` (`Hexalith/Hexalith.Parties`, `main` retrieved 2026-07-16) |
 | Current release inventory | 14 packages; `tools/release-packages.json` SHA-256 `6b0b70b856839d4117bcd969f6a2de0093c477c109cb79f3f2882b1f05effcae` |
-| Normative content SHA-256 | `0e45b08890039bdc16a53718cdc664bede18254656b44751863813b3bc1f50e8` |
-| Embedded golden wrapper SHA-256 | `a032a68a60eeb442941dc59b0470f2e88195469d2a5db8626952dacd8b50b8a4` |
+| Normative content SHA-256 | `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7` |
+| Embedded golden wrapper SHA-256 | `35388a17c7d950f775378c47b6263d75088be358fbe6372a71f2bec55a3356c3` |
 | Last source verification | 2026-07-16 |
 
 ### 1.2 Content-bound digest rule
 
-The normative approval digest is SHA-256 over the exact UTF-8 bytes from the
-line immediately after `<!-- BEGIN NORMATIVE CONTENT -->` through the line
-immediately before `<!-- END NORMATIVE CONTENT -->`, including line endings.
+The normative approval digest is SHA-256 over the exact UTF-8 bytes between the
+unique full-line begin and end markers surrounding sections 2 through Appendix
+C, excluding both marker lines and including every intervening line ending.
 The markers and all text outside them are excluded. The frozen artifact must use
 LF (`0A`) line endings and no UTF-8 BOM. Approval evidence lives outside the
 normative markers so adding detached approval records does not create a
 self-referential digest. Any byte change inside the markers invalidates every
 approval, resets Story 8.2 to `NOT AUTHORIZED`, and blocks Stories 8.3-8.11.
+
+The exact POSIX recomputation command is:
+
+```bash
+python3 -c "from pathlib import Path; import hashlib; p=Path('_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md').read_bytes(); b=b'<!-- HX-PP-V2-NORMATIVE-BEGIN -->\n'; e=b'<!-- HX-PP-V2-NORMATIVE-END -->\n'; assert p.count(b)==p.count(e)==1 and b'\r' not in p and not p.startswith(b'\xef\xbb\xbf'); s=p.index(b)+len(b); t=p.index(e,s); print(hashlib.sha256(p[s:t]).hexdigest())"
+```
 
 Fixture files, if introduced, are separately hashed. Their exact SHA-256 values
 are normative fields inside the markers; changing a fixture therefore changes
@@ -56,18 +62,19 @@ the normative content and invalidates approval.
 
 | Role | Named approver | Decision | UTC timestamp | Normative SHA-256 | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| Architect | Not recorded | Pending | — | — | Required |
-| Security Reviewer | Not recorded | Pending | — | — | Required |
-| EventStore owner | Not recorded | Pending | — | — | Required |
-| Release owner | Not recorded | Pending | — | — | Required |
-| Operations owner | Not recorded | Pending | — | — | Required |
-| Parties maintainer | Not recorded | Pending | — | — | Required |
-| Test Architect / independent vector reviewer | Not recorded | Pending | — | — | Required |
+| Architect | Jérôme Piquot | Approved | 2026-08-01T16:08:07Z | `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7` | `AR-20260801-01`; OD-01/OD-06 |
+| Security Reviewer | Jérôme Piquot | Approved | 2026-08-01T16:08:07Z | `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7` | `AR-20260801-01`; OD-02/OD-03/OD-06 |
+| EventStore owner | Jérôme Piquot | Approved | 2026-08-01T16:08:07Z | `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7` | `AR-20260801-01`; OD-01 |
+| Release owner | Jérôme Piquot | Approved | 2026-08-01T16:08:07Z | `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7` | `AR-20260801-01`; OD-04 |
+| Operations owner | Jérôme Piquot | Approved | 2026-08-01T16:08:07Z | `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7` | `AR-20260801-01`; OD-03 |
+| Parties maintainer | Jérôme Piquot | Approved | 2026-08-01T16:08:07Z | `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7` | `AR-20260801-01`; OD-05 |
+| Test Architect / independent vector reviewer | Jérôme Piquot | Approved | 2026-08-01T16:08:07Z | `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7` | `AR-20260801-01`; OD-02/OD-06 |
 
-The Administrator approval dated 2026-07-16 applies only to the planning change
-proposal. It does not approve this specification or authorize Story 8.2.
+The Administrator approval dated 2026-07-16 applied only to the planning change
+proposal. The separate content-bound approval `AR-20260801-01` below approves
+this specification and authorizes Story 8.2 for the exact recorded digest.
 
-<!-- BEGIN NORMATIVE CONTENT -->
+<!-- HX-PP-V2-NORMATIVE-BEGIN -->
 
 ## 2. Normative Language, Scope, And Non-Goals
 
@@ -150,9 +157,13 @@ format, key-cache, retry, or backend-conformance code into Parties.
 1. **Domain process boundary:** domain code supplies typed policy decisions and
    values. It never sees KEK material, provider credentials, or wrapped-key
    implementation details.
-2. **EventStore engine boundary:** the engine sees plaintext only inside the
-   protect/authenticated-unprotect call, owns mutable DEK/plaintext buffers, and
-   emits only ciphertext plus constructive safe metadata.
+2. **EventStore engine boundary:** serialized event input is caller-owned. The
+   engine sees it only inside the protect/authenticated-unprotect call, copies
+   each selected plaintext value into engine-owned mutable storage, zeroes only
+   those owned copies, owns every mutable DEK/unprotected output buffer it
+   allocates, and emits only ciphertext plus constructive safe metadata. It
+   never claims to zero a caller-owned CLR object, immutable string, JSON DOM,
+   or aliased input buffer.
 3. **State-store boundary:** immutable events/snapshots contain v2 envelopes;
    mutable key records contain wrapped DEKs and lifecycle state. State storage is
    not trusted with plaintext DEKs.
@@ -179,7 +190,9 @@ operator incident controls.
 
 ### 5.1 Package graph decision
 
-Two future packable projects are selected:
+Two future package boundaries are selected. Story 8.3 creates the provider-
+neutral core project and Story 8.6 creates the Azure adapter project, both with
+`IsPackable=false` until Story 8.8:
 
 | Package ID | Target | Owns | Allowed direct dependencies |
 | --- | --- | --- | --- |
@@ -213,11 +226,12 @@ Hexalith.EventStore.PayloadProtection
 Hexalith.EventStore.PayloadProtection.AzureKeyVault  ---> Azure Key Vault vault
 ```
 
-The current manifest remains exactly 14 packages throughout Stories 8.1-8.7. Story
-8.8 creates both approved packable projects and changes the manifest and every
-inventory statement/test atomically from **14 to 16**. A one-package partial
-release, an engine without its selected production adapter, or an adapter hidden
-inside another package is forbidden.
+The current manifest remains exactly 14 packages throughout Stories 8.1-8.7.
+Story 8.8 alone enables `IsPackable`, completes package metadata, and changes the
+manifest and every inventory statement/test atomically from **14 to 16** for the
+two already-created projects. A one-package partial release, an engine without
+its selected production adapter, or an adapter hidden inside another package is
+forbidden.
 
 ### 5.2 Public registration and options surface
 
@@ -240,8 +254,8 @@ top-level fields:
 | --- | --- | --- |
 | `Mode` | `Disabled` | Closed enum: `Disabled`, `Enabled`. Missing/unknown is invalid when registration is called; omitted registration retains the existing no-op. |
 | `Backend` | null | Closed enum: `LocalDevelopment`, `AzureKeyVault`; required only when enabled. Unknown values fail startup. |
-| `WriteMode` | `V2` when enabled | Closed enum: `V2`, `ReadOnly`, `RegisteredLegacy`. `ReadOnly` rejects protect calls. `RegisteredLegacy` requires an exact named legacy writer and is only the rollback posture in section 13. |
-| `LegacyWriterId` | null | Required only for `RegisteredLegacy`; exact case-sensitive registered ID. It never affects read routing. |
+| `WriteMode` | `V2` when enabled | Closed enum: `V2`, `ReadOnly`, `CompatibilityLegacy`, `RollbackLegacy`. `ReadOnly` rejects protect calls. `CompatibilityLegacy` is permitted only before the durable highest-written watermark reaches v2. `RollbackLegacy` is permitted only after v2 and requires the named approval in section 13. |
+| `LegacyWriterId` | null | Required for either legacy mode; exact case-sensitive registered ID. It never affects read routing. |
 | `MaxProtectedValueBytes` | `1048576` | May be lowered, never raised above the v2 limit. |
 | `KeyCacheTtl` | `00:01:00` | May be lowered; maximum five minutes. Section 10 further bounds lifecycle invalidation. |
 | `KeyCacheEntries` | `1024` | Positive; maximum 4096 per process. |
@@ -284,7 +298,8 @@ and custom names are non-development.
 | `Enabled` | `AzureKeyVault` | `Development` | Allowed only with a real reachable Azure test vault and the same validation; no emulator/mock counts | Real-adapter development/integration run |
 | `Enabled` | any | unsupported `AesGcm` or failed backend validation | **Fail startup** | None |
 | `Enabled` + `ReadOnly` | approved backend | any otherwise-valid environment | Start only with v2 reader/backend healthy; every protect call fails closed | Controlled inspection/recovery only; no new protected or plaintext write |
-| `Enabled` + `RegisteredLegacy` | approved v2 read backend plus exact named legacy writer | environment valid for both providers | Start only after section 13 rollback authorization and dual-reader probes | Explicit rollback writer; v2 remains readable and no plaintext fallback occurs |
+| `Enabled` + `CompatibilityLegacy` | approved readers plus exact named legacy writer | environment valid for both providers | Start only while `HighestWrittenFormat` is below v2 and the approved deployment generation admits this mode | Pre-v2 compatibility writer; no plaintext fallback occurs |
+| `Enabled` + `RollbackLegacy` | approved v2 read backend plus exact named legacy writer | environment valid for both providers | Start only after section 13 rollback authorization and dual-reader probes | Explicit post-v2 rollback writer; v2 remains readable and no plaintext fallback occurs |
 
 Every enabled failure is fail-start. The engine MUST NOT downgrade to no-op,
 plaintext, `json`, LocalDevelopment, stale cache, a different provider, or a
@@ -320,11 +335,18 @@ descendant cannot both be selected; the policy result is rejected rather than
 silently choosing one.
 
 A v2 snapshot uses one `ProtectedSnapshotPayloadV2` object with exactly these
-durable logical fields: `Format="json+pdenc-v2"`, `TypeName` equal to the
-assembly-independent fully qualified snapshot type name, and `Envelope` equal
-to the canonical unpadded base64url binary envelope. Story 8.2 supplies an
-additive stable Contracts type and a converter that recognizes the equivalent
-legacy `JsonElement` object shape after DAPR object deserialization. Unknown or
+durable logical fields: `Format="json+pdenc-v2"`, `SnapshotTypeId` equal to an
+explicit registered stable ID, and `Envelope` equal to the canonical unpadded
+base64url binary envelope. `SnapshotTypeId` is 16..128 printable ASCII bytes,
+begins with `hx-snapshot-v1:`, and has a lowercase ASCII kebab-case suffix. It is
+never derived from a CLR,
+assembly-qualified, or namespace-qualified name. Story 8.2 supplies an additive
+stable Contracts type; Story 8.4 supplies a versioned registry mapping one
+current ID and zero or more historical aliases to each exact `JsonTypeInfo`.
+Duplicate IDs/aliases, alias cycles, or two CLR types sharing an ID fail
+startup. Writers emit only the current ID; readers accept registered aliases
+without rewriting them. The converter recognizes the equivalent legacy
+`JsonElement` object shape after DAPR object deserialization. Unknown or
 duplicate fields are rejected. The snapshot's whole serialized state is the
 plaintext, payload kind is snapshot, property path is the empty JSON Pointer,
 and field ordinal is zero.
@@ -344,7 +366,7 @@ header is exactly 28 bytes:
 | 8 | 2 | Header length | `00 1C` (28); other values are unsupported/malformed |
 | 10 | 2 | Key-reference byte length | `00 1A` (26) |
 | 12 | 4 | DEK version | `1..4294967295`; initial write is 1 |
-| 16 | 4 | Field ordinal | `0..65535`; must match nonce and AAD |
+| 16 | 4 | Field ordinal | `0..4095`; must match nonce and AAD |
 | 20 | 1 | Nonce length | `0C` (12) |
 | 21 | 1 | Tag length | `10` (16) |
 | 22 | 2 | Flags/reserved | `00 00`; nonzero is rejected |
@@ -383,7 +405,9 @@ Parsing is staged and bounded:
    validated envelope fields. Perform authenticated decryption into an owned
    buffer. Expose or parse plaintext only after tag verification succeeds.
 6. Require plaintext to be exactly one valid UTF-8 JSON value with no trailing
-   token. Replacement parsing is bounded by `MaxProtectedValueBytes`.
+   token. A reader always applies the immutable v2 maximum of 1,048,576 bytes;
+   `MaxProtectedValueBytes` may only lower the limit for new writes and never
+   controls whether an existing valid v2 value is readable.
 
 Unknown magic/version/algorithm/nonce/key-reference IDs are never guessed.
 Unknown fields cannot occur because the grammar is positional and the fixed
@@ -403,24 +427,28 @@ values are unsigned big-endian. It starts with this eight-byte header:
 | 0 | 4 | ASCII `HXAD` (`48 58 41 44`) |
 | 4 | 1 | AAD schema version `01` |
 | 5 | 1 | Payload kind: `01` event, `02` snapshot |
-| 6 | 1 | Field count `09` |
+| 6 | 1 | Field count `0B` |
 | 7 | 1 | Reserved `00` |
 
-Nine fields follow in ascending ID order. Each field is `fieldId:u8`,
+Eleven fields follow in ascending ID order. Each field is `fieldId:u8`,
 `typeId:u8`, `length:u32`, then exactly `length` value bytes. Type `01` is
-strict UTF-8; type `02` is a four-byte unsigned integer. No field is optional.
+strict UTF-8; type `02` is a four-byte unsigned integer; type `03` is an
+eight-byte unsigned integer; type `04` is exactly 32 opaque bytes. No field is
+optional.
 
 | ID | Type | Name | Source and bounds |
 | ---: | ---: | --- | --- |
 | 1 | 01 | Tenant | `AggregateIdentity.TenantId`; 1..256 UTF-8 bytes |
 | 2 | 01 | Domain | `AggregateIdentity.Domain`; 1..128 UTF-8 bytes |
 | 3 | 01 | Aggregate | `AggregateIdentity.AggregateId`; 1..256 UTF-8 bytes |
-| 4 | 01 | Payload type | persisted `EventTypeName`, or frozen snapshot `TypeName`; 1..1024 UTF-8 bytes |
+| 4 | 01 | Payload type | persisted `EventTypeName`, or frozen snapshot `SnapshotTypeId`; 1..1024 UTF-8 bytes |
 | 5 | 01 | Property path | section 7.2; event 1..2048 bytes, snapshot exactly zero bytes |
 | 6 | 01 | DEK reference | the envelope's exact 26 ASCII ULID bytes |
 | 7 | 02 | DEK version | exactly four bytes; equals envelope value |
 | 8 | 01 | Serialization format | exact UTF-8 `json+pdenc-v2` (13 bytes) |
 | 9 | 02 | Field ordinal | exactly four bytes; equals envelope value |
+| 10 | 03 | Record sequence | exactly eight bytes; aggregate-local event sequence for an event or snapshot sequence for a snapshot; equals the authenticated storage position supplied through the additive protection context |
+| 11 | 04 | Protected-path manifest commitment | SHA-256 over the complete canonical manifest in section 7.2 |
 
 Total AAD length may not exceed 4096 bytes. Fields, types, order, count, and
 lengths are closed; duplicate, missing, reordered, unknown, or trailing data is
@@ -465,6 +493,21 @@ UTF-8 byte sequence using unsigned lexicographic order, and assigns zero-based
 field ordinals in that order. This makes path-to-ordinal assignment independent
 of reflection, dictionary, or JSON member enumeration order.
 
+The complete selected-path manifest is encoded exactly as ASCII `HXPM`, schema
+byte `01`, a u32 path count, then each sorted path as `length:u32 || strict-UTF8
+path`. Event count is 1..4096. A snapshot manifest contains exactly one
+zero-length root path and count 1. The 32-byte SHA-256 of this complete encoding
+is AAD field 11 for every wrapper in the payload. The encoded manifest is capped
+at 8,405,001 bytes (`9 + 4096 * (4 + 2048)`) with checked cumulative arithmetic.
+Before any unprotect call, the
+reader enumerates every `$pdenc` wrapper location in the exact serialized JSON,
+enforces the traversal limits in section 8, rebuilds the sorted manifest,
+requires wrapper count and unique ordinals `0..count-1` to agree, and supplies
+the same commitment to every tag check. Removing a wrapper, substituting
+plaintext at a protected path, duplicating a wrapper, or changing the complete
+wrapper set therefore changes the commitment and fails authentication. Snapshot
+unprotect uses the one-root manifest without JSON wrapper enumeration.
+
 ## 8. Algorithms, Nonces, Limits, Metadata, And Goldens
 
 ### 8.1 Cryptographic identifiers and checks
@@ -476,9 +519,20 @@ of reflection, dictionary, or JSON member enumeration order.
 | DEK | 32 uniformly random bytes from the platform CSPRNG; fresh for each event or snapshot protection write |
 | Nonce | 12 bytes; nonce construction ID `01` |
 | Tag | fixed 16 bytes |
-| Per-DEK invocation budget | maximum 65,536 selected values, ordinals 0..65,535; no further invocation after the write attempt |
+| Per-DEK invocation budget | maximum 4,096 selected values, ordinals 0..4,095; no further invocation after the write attempt |
+| Serialized payload | maximum 16,777,216 bytes before traversal or protection |
+| JSON traversal | maximum depth 64 and maximum 65,536 scalar/container nodes, counting the root |
+| Selected plaintext | maximum 8,388,608 bytes total and 4,096 selected values; each new-write value also obeys `MaxProtectedValueBytes` |
 | Platform gate | `AesGcm.IsSupported` must be true; instantiate `new AesGcm(dek, 16)`; unsupported platform fails startup |
 | Auth failure | plaintext buffer remains unobserved and is zeroed; bounded `BytesMetadataMismatch`/consistency mapping in section 12 |
+
+The parser, serializer-first policy walk, manifest enumeration, encryption, and
+replacement pass all share these ceilings. They check cancellation before each
+container, every 256 visited nodes, before each selected-value copy, before and
+after every backend/state call, and between wrappers during authenticated
+unprotect. A limit failure occurs before reservation where possible, never
+returns a partially transformed payload, and maps to the bounded format or
+protection failure defined in section 12.
 
 AES-128, variable tag sizes, truncated tags, CBC, unauthenticated encryption,
 provider-selected algorithms, and algorithm negotiation are not v2. Any future
@@ -495,7 +549,7 @@ single payload share that DEK. Their nonce is:
 00 00 00 00 || uint64-big-endian(fieldOrdinal)
 ```
 
-Although the envelope ordinal is u32, v2 caps it at 65,535. The writer validates
+Although the envelope ordinal is u32, v2 caps it at 4,095. The writer validates
 the complete, unique sorted path set and budget before generating/wrapping a DEK
 or invoking AES-GCM. Thus no two invocations under one DEK receive the same
 nonce. A DEK is never reused for a later event, snapshot, retry, migration, or
@@ -511,9 +565,14 @@ active payload. Retry creates a new DEK/reference. Concurrent actor writers
 still use distinct fresh DEKs; cloned/restored instances must pass restore
 admission and key-reference nonexistence checks before write. A key-reference
 collision fails and retries with a wholly new DEK/reference before encryption.
-CSPRNG/key-generation failure, uncertain DEK reuse, an unprovable durable key
-reservation, duplicate path/ordinal, or exhausted budget fails before AES-GCM.
-No random-nonce collision argument or shared persisted nonce counter is required.
+CSPRNG/key-generation failure, an unprovable durable key reservation, duplicate
+path/ordinal/keyRef/reservation, or exhausted budget fails before AES-GCM. An
+undetectable repeated 256-bit CSPRNG output across independent writes is a
+catastrophic residual risk, not a condition the engine can honestly detect or
+reject. Tests therefore inject only observable duplicate keyRef, ordinal, and
+reservation conditions; no conformance claim depends on detecting equal random
+DEK bytes across processes. No random-nonce collision argument or shared
+persisted nonce counter is required.
 
 ### 8.3 DEK versus KEK version semantics
 
@@ -565,49 +624,141 @@ lowercase without separators.
 | Tenant / domain / aggregate | `tenant-a` / `parties` / `party-01` |
 | Payload type | `Hexalith.Parties.Contracts.Events.PartyCreated` |
 | Property path | `/email` |
+| Complete protected-path set | one path: `/email` |
+| Record sequence | `1` |
 | Key reference | `01J00000000000000000000000` |
 | DEK version / ordinal | `1` / `0` |
 | Format | `json+pdenc-v2` |
 | Plaintext UTF-8 | JSON value `"alice@example.com"` |
 | Plaintext hex | `22616c696365406578616d706c652e636f6d22` (19 bytes) |
 
-Exact AAD (184 bytes):
+Exact protected-path manifest (19 bytes):
 
 ```text
-485841440101090001010000000874656e616e742d610201000000077061727469657303010000000870617274792d303104010000002e486578616c6974682e506172746965732e436f6e7472616374732e4576656e74732e5061727479437265617465640501000000062f656d61696c06010000001a30314a30303030303030303030303030303030303030303030300702000000040000000108010000000d6a736f6e2b7064656e632d763209020000000400000000
+4858504d0100000001000000062f656d61696c
+```
+
+Manifest SHA-256:
+`c9eb5924af88fb4ae2d03028e0e6365c5a7e9e3c3f8e1bb228be946541e794f8`.
+
+Exact AAD (236 bytes):
+
+```text
+4858414401010b0001010000000874656e616e742d610201000000077061727469657303010000000870617274792d303104010000002e486578616c6974682e506172746965732e436f6e7472616374732e4576656e74732e5061727479437265617465640501000000062f656d61696c06010000001a30314a30303030303030303030303030303030303030303030300702000000040000000108010000000d6a736f6e2b7064656e632d7632090200000004000000000a030000000800000000000000010b0400000020c9eb5924af88fb4ae2d03028e0e6365c5a7e9e3c3f8e1bb228be946541e794f8
 ```
 
 | Output | Exact value |
 | --- | --- |
 | Ciphertext | `2cddd9b7d649c3d870c9c4457449bffabd2e74` |
-| Tag | `6e0dc9d44bb1b8837a8346859be6e2fa` |
-| AAD SHA-256 | `32a811c9b5f69365c2ecd15d56e991ee680fa90d46b43aac15487692cf5fb4d3` |
+| Tag | `d4796bedb772b2a5f62daa1c34920159` |
+| AAD SHA-256 | `cb83c07f5aee433bdc0a36e70d80e9841063598a1a72a3a72044996245046e7b` |
 
 Exact binary envelope (101 bytes):
 
 ```text
-4858503202010101001c001a00000001000000000c1000000000001330314a30303030303030303030303030303030303030303030300000000000000000000000002cddd9b7d649c3d870c9c4457449bffabd2e746e0dc9d44bb1b8837a8346859be6e2fa
+4858503202010101001c001a00000001000000000c1000000000001330314a30303030303030303030303030303030303030303030300000000000000000000000002cddd9b7d649c3d870c9c4457449bffabd2e74d4796bedb772b2a5f62daa1c34920159
 ```
 
 | Derived artifact | Exact value |
 | --- | --- |
-| Envelope base64url | `SFhQMgIBAQEAHAAaAAAAAQAAAAAMEAAAAAAAEzAxSjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwAAAAAAAAAAAAAAAALN3Zt9ZJw9hwycRFdEm_-r0udG4NydRLsbiDeoNGhZvm4vo` |
-| Envelope SHA-256 | `a8c336f261a0c7d9c1ccea948535889badcba341e2bebb097250c85a48dd9573` |
-| Exact wrapper | `{"$pdenc":"SFhQMgIBAQEAHAAaAAAAAQAAAAAMEAAAAAAAEzAxSjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwAAAAAAAAAAAAAAAALN3Zt9ZJw9hwycRFdEm_-r0udG4NydRLsbiDeoNGhZvm4vo"}` |
-| Wrapper SHA-256 | `a032a68a60eeb442941dc59b0470f2e88195469d2a5db8626952dacd8b50b8a4` |
+| Envelope base64url | `SFhQMgIBAQEAHAAaAAAAAQAAAAAMEAAAAAAAEzAxSjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwAAAAAAAAAAAAAAAALN3Zt9ZJw9hwycRFdEm_-r0udNR5a-23crKl9i2qHDSSAVk` |
+| Envelope SHA-256 | `247381efe70c9c4844af998ddec864b41665461b466bda418beb8edc0e5406be` |
+| Exact wrapper | `{"$pdenc":"SFhQMgIBAQEAHAAaAAAAAQAAAAAMEAAAAAAAEzAxSjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwAAAAAAAAAAAAAAAALN3Zt9ZJw9hwycRFdEm_-r0udNR5a-23crKl9i2qHDSSAVk"}` |
+| Wrapper SHA-256 | `35388a17c7d950f775378c47b6263d75088be358fbe6372a71f2bec55a3356c3` |
 
-Independent reproduction on 2026-07-16 produced identical bytes with Node.js
-`v26.4.0` (`node:crypto`, OpenSSL `3.5.7`) and Python `3.14.4`
-`cryptography 46.0.5` (system OpenSSL `3.5.5`). The crypto-core commands below
-must print ciphertext followed by tag:
+The following two independent reproducers build the manifest, AAD, envelope,
+wrapper, and every hash from atomic fields; neither accepts a preassembled AAD,
+envelope, or wrapper. They were executed on 2026-08-01 with Node.js `v26.4.0`
+(`node:crypto`, OpenSSL `3.5.7`) and Python `3.14.4`
+(`cryptography 46.0.5`, system OpenSSL `3.5.5`). Run each block from the
+repository root.
+
+Node.js:
 
 ```bash
-node -e "const c=require('crypto').createCipheriv('aes-256-gcm',Buffer.from('000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f','hex'),Buffer.alloc(12),{authTagLength:16}),a=Buffer.from('485841440101090001010000000874656e616e742d610201000000077061727469657303010000000870617274792d303104010000002e486578616c6974682e506172746965732e436f6e7472616374732e4576656e74732e5061727479437265617465640501000000062f656d61696c06010000001a30314a30303030303030303030303030303030303030303030300702000000040000000108010000000d6a736f6e2b7064656e632d763209020000000400000000','hex'),p=Buffer.from('22616c696365406578616d706c652e636f6d22','hex');c.setAAD(a,{plaintextLength:p.length});const x=Buffer.concat([c.update(p),c.final()]);console.log(Buffer.concat([x,c.getAuthTag()]).toString('hex'))"
-python3 -c "from cryptography.hazmat.primitives.ciphers.aead import AESGCM; print(AESGCM(bytes.fromhex('000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f')).encrypt(bytes(12),bytes.fromhex('22616c696365406578616d706c652e636f6d22'),bytes.fromhex('485841440101090001010000000874656e616e742d610201000000077061727469657303010000000870617274792d303104010000002e486578616c6974682e506172746965732e436f6e7472616374732e4576656e74732e5061727479437265617465640501000000062f656d61696c06010000001a30314a30303030303030303030303030303030303030303030300702000000040000000108010000000d6a736f6e2b7064656e632d763209020000000400000000')).hex())"
+node <<'JS'
+const crypto = require('node:crypto');
+const u32 = n => { const b=Buffer.alloc(4); b.writeUInt32BE(n); return b; };
+const u64 = n => { const b=Buffer.alloc(8); b.writeBigUInt64BE(BigInt(n)); return b; };
+const field = (id,type,value) => Buffer.concat([Buffer.from([id,type]),u32(value.length),value]);
+const text = value => Buffer.from(value,'utf8');
+const paths=[text('/email')].sort(Buffer.compare);
+const manifest=Buffer.concat([text('HXPM'),Buffer.from([1]),u32(paths.length),...paths.flatMap(p=>[u32(p.length),p])]);
+const manifestHash=crypto.createHash('sha256').update(manifest).digest();
+const aad=Buffer.concat([text('HXAD'),Buffer.from([1,1,11,0]),
+  field(1,1,text('tenant-a')),field(2,1,text('parties')),field(3,1,text('party-01')),
+  field(4,1,text('Hexalith.Parties.Contracts.Events.PartyCreated')),field(5,1,paths[0]),
+  field(6,1,text('01J00000000000000000000000')),field(7,2,u32(1)),
+  field(8,1,text('json+pdenc-v2')),field(9,2,u32(0)),field(10,3,u64(1)),field(11,4,manifestHash)]);
+const key=Buffer.from([...Array(32).keys()]), nonce=Buffer.alloc(12), plaintext=text('"alice@example.com"');
+const cipher=crypto.createCipheriv('aes-256-gcm',key,nonce,{authTagLength:16});
+cipher.setAAD(aad,{plaintextLength:plaintext.length});
+const ciphertext=Buffer.concat([cipher.update(plaintext),cipher.final()]), tag=cipher.getAuthTag();
+const header=Buffer.alloc(28); header.write('HXP2'); header.set([2,1,1,1],4); header.writeUInt16BE(28,8);
+header.writeUInt16BE(26,10); header.writeUInt32BE(1,12); header.writeUInt32BE(0,16);
+header.set([12,16,0,0],20); header.writeUInt32BE(ciphertext.length,24);
+const envelope=Buffer.concat([header,text('01J00000000000000000000000'),nonce,ciphertext,tag]);
+const wrapper=text('{"$pdenc":"' + envelope.toString('base64url') + '"}');
+const sha = b => crypto.createHash('sha256').update(b).digest('hex');
+const actual={manifest:manifest.toString('hex'),manifestSha:sha(manifest),aad:aad.toString('hex'),
+  aadSha:sha(aad),ciphertext:ciphertext.toString('hex'),tag:tag.toString('hex'),
+  envelope:envelope.toString('hex'),envelopeSha:sha(envelope),wrapper:wrapper.toString(),wrapperSha:sha(wrapper)};
+const expected={manifest:'4858504d0100000001000000062f656d61696c',
+  manifestSha:'c9eb5924af88fb4ae2d03028e0e6365c5a7e9e3c3f8e1bb228be946541e794f8',
+  aadSha:'cb83c07f5aee433bdc0a36e70d80e9841063598a1a72a3a72044996245046e7b',
+  ciphertext:'2cddd9b7d649c3d870c9c4457449bffabd2e74',tag:'d4796bedb772b2a5f62daa1c34920159',
+  envelopeSha:'247381efe70c9c4844af998ddec864b41665461b466bda418beb8edc0e5406be',
+  wrapperSha:'35388a17c7d950f775378c47b6263d75088be358fbe6372a71f2bec55a3356c3'};
+for (const [name,value] of Object.entries(expected)) if (actual[name] !== value) throw new Error(name);
+console.log(JSON.stringify(actual,null,2));
+JS
 ```
 
-Expected output from both:
-`2cddd9b7d649c3d870c9c4457449bffabd2e746e0dc9d44bb1b8837a8346859be6e2fa`.
+Python:
+
+```bash
+python3 - <<'PY'
+from base64 import urlsafe_b64encode
+from hashlib import sha256
+from json import dumps
+from struct import pack
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+def field(identifier, type_id, value):
+    return bytes((identifier, type_id)) + pack('>I', len(value)) + value
+def text(value):
+    return value.encode('utf-8')
+paths = sorted([text('/email')])
+manifest = b'HXPM' + b'\x01' + pack('>I', len(paths)) + b''.join(pack('>I', len(p)) + p for p in paths)
+manifest_hash = sha256(manifest).digest()
+aad = b'HXAD' + bytes((1, 1, 11, 0)) + b''.join((
+    field(1, 1, text('tenant-a')), field(2, 1, text('parties')), field(3, 1, text('party-01')),
+    field(4, 1, text('Hexalith.Parties.Contracts.Events.PartyCreated')), field(5, 1, paths[0]),
+    field(6, 1, text('01J00000000000000000000000')), field(7, 2, pack('>I', 1)),
+    field(8, 1, text('json+pdenc-v2')), field(9, 2, pack('>I', 0)),
+    field(10, 3, pack('>Q', 1)), field(11, 4, manifest_hash)))
+key, nonce, plaintext = bytes(range(32)), bytes(12), text('"alice@example.com"')
+ciphertext_tag = AESGCM(key).encrypt(nonce, plaintext, aad)
+ciphertext, tag = ciphertext_tag[:-16], ciphertext_tag[-16:]
+header = b'HXP2' + bytes((2, 1, 1, 1)) + pack('>HHII', 28, 26, 1, 0) + bytes((12, 16, 0, 0)) + pack('>I', len(ciphertext))
+envelope = header + text('01J00000000000000000000000') + nonce + ciphertext + tag
+wrapper = text('{"$pdenc":"' + urlsafe_b64encode(envelope).rstrip(b'=').decode('ascii') + '"}')
+actual = {'manifest': manifest.hex(), 'manifestSha': sha256(manifest).hexdigest(), 'aad': aad.hex(),
+  'aadSha': sha256(aad).hexdigest(), 'ciphertext': ciphertext.hex(), 'tag': tag.hex(),
+  'envelope': envelope.hex(), 'envelopeSha': sha256(envelope).hexdigest(),
+  'wrapper': wrapper.decode(), 'wrapperSha': sha256(wrapper).hexdigest()}
+expected = {'manifest': '4858504d0100000001000000062f656d61696c',
+  'manifestSha': 'c9eb5924af88fb4ae2d03028e0e6365c5a7e9e3c3f8e1bb228be946541e794f8',
+  'aadSha': 'cb83c07f5aee433bdc0a36e70d80e9841063598a1a72a3a72044996245046e7b',
+  'ciphertext': '2cddd9b7d649c3d870c9c4457449bffabd2e74', 'tag': 'd4796bedb772b2a5f62daa1c34920159',
+  'envelopeSha': '247381efe70c9c4844af998ddec864b41665461b466bda418beb8edc0e5406be',
+  'wrapperSha': '35388a17c7d950f775378c47b6263d75088be358fbe6372a71f2bec55a3356c3'}
+assert all(actual[k] == v for k, v in expected.items())
+print(dumps(actual, indent=2))
+PY
+```
+
+Both print the same atomic/derived artifact object and fail if any asserted hash
+or cryptographic value changes.
 
 The independently downloaded NIST CAVP GCM corpus
 `https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/mac/gcmtestvectors.zip`,
@@ -628,13 +779,20 @@ Story 8.2 adds one type per file under
 
 ```csharp
 [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
-public sealed class PersonalDataAttribute : Attribute;
+public sealed class PersonalDataAttribute : Attribute
+{
+}
 
 public enum PayloadProtectionPayloadKind
 {
     Event = 1,
     Snapshot = 2,
 }
+
+public sealed record PayloadProtectionOccurrenceContext(
+    ulong RecordSequence,
+    PayloadProtectionPayloadKind PayloadKind,
+    string PayloadTypeId);
 
 public enum PersonalDataPolicyDecision
 {
@@ -645,9 +803,11 @@ public enum PersonalDataPolicyDecision
 public sealed record PersonalDataPolicyContext(
     AggregateIdentity Identity,
     object Root,
-    object Owner,
-    PropertyInfo Property,
-    object Value,
+    JsonElement SerializedRoot,
+    JsonTypeInfo RootTypeInfo,
+    object? Owner,
+    PropertyInfo? Property,
+    JsonElement SerializedValue,
     string JsonPointer,
     string PayloadTypeName,
     PayloadProtectionPayloadKind PayloadKind);
@@ -659,6 +819,19 @@ public interface IPersonalDataPolicy
     int PolicyVersion { get; }
     int Order { get; }
     PersonalDataPolicyDecision Evaluate(PersonalDataPolicyContext context);
+}
+
+public interface ICanonicalPersonalDataPathPolicy
+{
+    int ContractVersion => 1;
+    string PolicyId { get; }
+    int PolicyVersion { get; }
+    int Order { get; }
+    IReadOnlyList<string> SelectCanonicalJsonPointers(
+        AggregateIdentity identity,
+        JsonElement serializedRoot,
+        JsonTypeInfo rootTypeInfo,
+        PayloadProtectionPayloadKind payloadKind);
 }
 
 public enum PayloadErasureState
@@ -673,6 +846,20 @@ public enum PayloadErasureState
     Denied = 7,
 }
 
+public enum PayloadErasureReasonCode
+{
+    None = 0,
+    DomainPending = 1,
+    DomainInvalidating = 2,
+    DomainInvalidated = 3,
+    DomainDeleted = 4,
+    StateUnavailable = 5,
+    StateDenied = 6,
+    StateUnknown = 7,
+    EpochInvalid = 8,
+    EpochRegressed = 9,
+}
+
 public sealed record PayloadErasureStateRequest(
     AggregateIdentity Identity,
     string? KeyReference,
@@ -680,8 +867,8 @@ public sealed record PayloadErasureStateRequest(
 
 public sealed record PayloadErasureStateResult(
     PayloadErasureState State,
-    long LifecycleEpoch,
-    string ReasonCode,
+    ulong LifecycleEpoch,
+    PayloadErasureReasonCode ReasonCode,
     DateTimeOffset ObservedAtUtc);
 
 public interface IErasureStateProvider
@@ -696,20 +883,36 @@ public interface IErasureStateProvider
 All public/internal members receive project-standard XML documentation in Story
 8.2. `ContractVersion` 1 is exact; a semantic change requires additive types or
 a new version. Context records are call-scoped and never persisted. Policies
-must not retain `Root`, `Owner`, `Value`, or reflection objects.
+must not retain `Root`, `SerializedRoot`, `SerializedValue`, `Owner`,
+`JsonTypeInfo`, or reflection objects.
+
+Story 8.2 adds backward-compatible default overloads on
+`IEventPayloadProtectionService` that require
+`PayloadProtectionOccurrenceContext` for v2 protect and unprotect. Server alone
+constructs it from the aggregate-local event sequence or persisted snapshot
+sequence plus the persisted event type/current registered snapshot type ID.
+The engine rejects v2 when the context is absent, caller-invented, or disagrees
+with the authenticated storage record; legacy providers continue through the
+existing overloads and cannot emit v2.
 
 ### 9.2 Discovery, precedence, and errors
 
-The engine performs deterministic reflection over public readable instance
-properties using the shared EventStore JSON naming policy. It walks objects and
-arrays with reference-cycle detection, resolves the exact JSON value and RFC
-6901 pointer, then evaluates policies.
+The engine serializes exactly once with the caller-configured source-generated
+`JsonTypeInfo`, rejects duplicate names, and walks that exact serialized JSON
+under section 8 limits. It correlates JSON nodes to `JsonPropertyInfo` metadata
+and CLR properties only where the metadata proves the mapping; reflection or CLR
+enumeration never defines output shape, path, or value bytes. A type or property
+using a custom converter is rejected for attribute/ordinary-policy discovery
+unless an explicitly registered `ICanonicalPersonalDataPathPolicy` supplies the
+complete canonical pointers against the exact serialized root. The engine
+validates every supplied pointer and raw value before selection.
 
 1. The built-in attribute policy ID is `eventstore-personal-data-attribute-v1`,
    version 1, order 0. `[PersonalData]` always returns `Protect`.
-2. Explicit `IPersonalDataPolicy` registrations are sorted by `Order` ascending,
-   then `PolicyId` ordinal. IDs are unique printable ASCII kebab-case, 1..64;
-   versions are positive. Duplicate/invalid identities fail startup.
+2. Explicit `IPersonalDataPolicy` and `ICanonicalPersonalDataPathPolicy`
+   registrations share one identity namespace and are sorted by `Order`
+   ascending, then `PolicyId` ordinal. IDs are unique printable ASCII kebab-case,
+   1..64; versions are positive. Duplicate/invalid identities fail startup.
 3. Decisions are monotonic: any `Protect` selects the value; `Abstain` has no
    effect. There is no `DoNotProtect` decision and no policy may override an
    attribute or another positive selection.
@@ -732,15 +935,28 @@ qualified attribute names, so the two `PersonalDataAttribute` types are not
 confused. Removal of that adapter requires Parties dual-provider/path fixtures
 to prove equivalent selections.
 
-`IErasureStateProvider` is checked once before key reservation and on every
-unprotect before a cached or newly unwrapped DEK can be used. Parties supplies an
-adapter from its erasure record/certificate state. An absent Parties erasure
-record maps explicitly to `Active` at the current epoch; it is not `Unknown`.
-`Pending` blocks new writes but permits reads unless domain policy says
-otherwise; `Invalidating`, `Invalidated`, and `Deleted` block reads and writes;
-`Unknown` is consistency failure; `Unavailable` is transient provider failure;
-`Denied` is permanent until authorization changes. Non-cancellation exceptions
-map to `Unavailable` without parsing text.
+Exactly one keyed `IErasureStateProvider` registration is required for each
+protected domain and zero registrations are permitted for an unprotected
+domain. Duplicate, default/fallback, wildcard, or missing provider ownership
+fails startup and traffic admission. The provider is checked once before key
+reservation and on every unprotect before a cached or newly unwrapped DEK can be
+used. Parties supplies an adapter from its erasure record/certificate state. An
+absent Parties erasure record maps explicitly to `Active` at the current epoch;
+it is not `Unknown`. `Pending` always blocks new protected writes and always
+permits reads; `Invalidating` is the first state that blocks reads and writes;
+`Invalidated` and `Deleted` also block both. `Unknown` is consistency failure;
+`Unavailable` is transient provider failure; `Denied` is permanent until
+authorization changes. Non-cancellation exceptions map to `Unavailable` without
+parsing text.
+
+Lifecycle epochs are unsigned. The engine retains the last strongly observed
+epoch per scope: a lower epoch, an epoch that changes without the corresponding
+record transition, or a state transition without a strictly greater epoch is
+`ConsistencyMismatch` with constructive `EpochRegressed`/`EpochInvalid`
+telemetry. The closed public reason enum maps one-to-one to the lowercase metric
+tokens `none`, `domain-pending`, `domain-invalidating`, `domain-invalidated`,
+`domain-deleted`, `state-unavailable`, `state-denied`, `state-unknown`,
+`epoch-invalid`, and `epoch-regressed`; provider/user text is never a reason.
 
 ### 9.3 Selection boundaries
 
@@ -764,7 +980,7 @@ map to `Unavailable` without parsing text.
 | --- | --- | --- |
 | Provider root | Azure service/operator; never exposed | Provider trust anchor only. No EventStore identifier or operation references raw root material. |
 | KEK | Operator-created versioned Azure Key Vault key selected in section 11 | Wraps/unwraps DEKs. Full provider key/version ID exists only in the bounded key record and adapter memory. Rotation creates a new provider version. |
-| DEK | Engine-generated 32-byte value | Fresh per protected event/snapshot write; encrypts at most 65,536 values; always zeroed outside a bounded cache entry/operation. |
+| DEK | Engine-generated 32-byte value | Fresh per protected event/snapshot write; encrypts at most 4,096 values; always zeroed outside a bounded cache entry/operation. |
 | Durable DEK reference | Canonical uppercase ULID `keyRef` plus positive u32 `dekVersion` | Stored in v2 envelopes and key records; tenant/domain/aggregate scope is external and verified. Never a KEK version. |
 | Provider key/version ID | Exact opaque Azure versioned key URI | Stored only in key record. Never placed in event metadata, metric, public error, certificate/report, or log. |
 | Display fingerprint | Lowercase first 16 hex chars of SHA-256 over the exact provider key/version ID | Diagnostic/audit correlation only. Never lookup, selection, authorization, wrap input, state-key segment, or uniqueness proof. |
@@ -794,10 +1010,15 @@ multi-operation transactions. Missing capabilities fail startup. Exact keys:
 | Wrapped DEK | `eventstore:pp:v2:key:{scopeDigest}:{keyRef}:{dekVersion}`; one bounded record |
 | Scope index head | `eventstore:pp:v2:index-head:{scopeDigest}` |
 | Scope index page | `eventstore:pp:v2:index:{scopeDigest}:{page:D10}`; max 256 unique keyRef/version pairs per page |
+| KEK inventory head | `eventstore:pp:v2:kek-index-head:{backendIdDigest}:{providerVersionDigest}` |
+| KEK inventory page | `eventstore:pp:v2:kek-index:{backendIdDigest}:{providerVersionDigest}:{page:D10}`; max 256 entries per page |
 | Lifecycle | `eventstore:pp:v2:lifecycle:{scopeDigest}` |
 | Tenant/domain write fence | `eventstore:pp:v2:fence:{tenantDomainDigest}` |
+| Approved deployment generation | `eventstore:pp:v2:deployment:{tenantDomainDigest}` |
+| Capability lease | `eventstore:pp:v2:capability:{tenantDomainDigest}:{generation:D20}:{instanceId}`; TTL exactly 60 seconds |
 | Operation/idempotency | `eventstore:pp:v2:operation:{operationId}` |
 | Distributed read lease | `eventstore:pp:v2:lease:{scopeDigest}:{operationId}`; maximum TTL 45 seconds |
+| Writer-completion lease | `eventstore:pp:v2:completion:{scopeDigest}:{keyRef}:{dekVersion}:{operationId}`; TTL exactly 60 seconds |
 | Reconciliation work | `eventstore:pp:v2:reconcile:{operationId}` |
 | Audit | `eventstore:pp:v2:audit:{workflowId}:{auditId}` |
 
@@ -806,14 +1027,40 @@ the only enumeration authority and are scope-addressed. Page/head/key creation
 is one ETag transaction. Index overflow, duplicate entry, missing page, or
 record/index disagreement is a consistency failure and blocks deletion proof.
 
-The wrapped-DEK record schema version 1 contains only: full tenant/domain/
-aggregate identity; `keyRef`; `dekVersion`; record state (`Reserved`, `Active`,
-`RewrapPending`, `Invalidating`, `Invalidated`, `Deleted`); backend ID; exact
-provider key/version ID; wrap algorithm ID; wrapped DEK bytes (1..512); lifecycle
-epoch; creating operation ULID; created/updated UTC timestamps; record ETag; and
-SHA-256 integrity hashes of canonical non-secret fields/wrapped bytes. It never
-contains plaintext DEK, event/snapshot plaintext, nonce/tag/ciphertext,
-credential, access token, connection string, provider error, or arbitrary map.
+All durable values use a closed schema version 1 JSON object. Writers emit the
+members in the exact order below as UTF-8 without insignificant whitespace;
+readers accept any member order but reject duplicate, missing, unknown, null, or
+wrong-type members. Enum values are the exact case-sensitive tokens listed in
+this specification; ULIDs are uppercase canonical text; digests are lowercase
+64-hex; binary fields are canonical unpadded base64url; timestamps are UTC RFC
+3339 with exactly seven fractional digits; counters/epochs are nonnegative JSON
+integers within their stated .NET unsigned width. Arrays are ordered as stated
+and contain no duplicates. Every ETag is state-store response/transaction
+metadata and is never a field inside a stored value.
+
+| Value schema | Exact ordered members after `schemaVersion:1` |
+| --- | --- |
+| `WrappedDekV1` | `tenantId:string`, `domain:string`, `aggregateId:string`, `scopeDigest:sha256`, `keyRef:ulid`, `dekVersion:u32`, `state:Reserved\|Active\|RewrapPending\|Invalidating\|Invalidated\|Deleted`, `backendId:ascii-kebab`, `providerKeyVersionId:string`, `wrapAlgorithmId:RSA-OAEP-256`, `wrappedDek:base64url(1..512 bytes)`, `lifecycleEpoch:u64`, `fenceApprovalEpoch:u64`, `highestWrittenEpoch:u64`, `creatingOperationId:ulid`, `createdAtUtc:timestamp`, `updatedAtUtc:timestamp`, `canonicalFieldsSha256:sha256`, `wrappedDekSha256:sha256` |
+| `ScopeIndexHeadV1` | `scopeDigest:sha256`, `generation:u64`, `pageCount:u32`, `entryCount:u32`, `updatedAtUtc:timestamp` |
+| `ScopeIndexPageV1` | `scopeDigest:sha256`, `generation:u64`, `page:u32`, `entries:array` sorted by `(keyRef,dekVersion)`; each entry is exactly `{keyRef:ulid,dekVersion:u32,providerVersionDigest:sha256,state:closed-key-state}` |
+| `KekInventoryHeadV1` | `backendIdDigest:sha256`, `providerVersionDigest:sha256`, `generation:u64`, `pageCount:u32`, `entryCount:u64`, `updatedAtUtc:timestamp` |
+| `KekInventoryPageV1` | `backendIdDigest:sha256`, `providerVersionDigest:sha256`, `generation:u64`, `page:u32`, `entries:array` sorted by `(scopeDigest,keyRef,dekVersion)`; each entry is exactly `{scopeDigest:sha256,keyRef:ulid,dekVersion:u32}` |
+| `LifecycleV1` | `tenantId:string`, `domain:string`, `aggregateId:string`, `scopeDigest:sha256`, `state:Active\|Pending\|Invalidating\|Invalidated\|Deleted`, `epoch:u64`, `reasonCode:closed-section-9-token`, `operationId:ulid`, `observedAtUtc:timestamp` |
+| `FenceV1` | `tenantId:string`, `domain:string`, `tenantDomainDigest:sha256`, `approvedWriteMode:Disabled\|ReadOnly\|CompatibilityLegacy\|V2\|RollbackLegacy`, `approvalEpoch:u64`, `approvalId:ulid`, `approvedSpecDigest:sha256`, `deploymentGeneration:u64`, `highestWrittenFormat:Legacy\|V1\|V2`, `highestWrittenEpoch:u64`, `updatedAtUtc:timestamp` |
+| `DeploymentGenerationV1` | `tenantId:string`, `domain:string`, `tenantDomainDigest:sha256`, `generation:u64`, `approvedSpecDigest:sha256`, `approvedSourceSha:40-hex`, `packageSetSha256:sha256`, `status:Open\|Closed`, `approvedAtUtc:timestamp` |
+| `CapabilityLeaseV1` | `tenantDomainDigest:sha256`, `generation:u64`, `instanceId:ascii(1..128)`, `sourceSha:40-hex`, `packageSetSha256:sha256`, `specDigest:sha256`, `backendId:ascii-kebab`, `readFormats:sorted-array`, `writeModes:sorted-array`, `issuedAtUtc:timestamp`, `expiresAtUtc:timestamp` |
+| `OperationV1` | `operationId:ulid`, `operation:Create\|Activate\|Rewrap\|Invalidate\|Delete\|Reconcile`, `scopeDigest:sha256`, `keyRef:ulid-or-empty`, `dekVersion:u32`, `phase:Started\|Reserved\|PayloadReturned\|Persisted\|Completed\|Ambiguous\|Failed`, `attempt:u32`, `createdAtUtc:timestamp`, `updatedAtUtc:timestamp`, `result:Pending\|Succeeded\|Failed`, `reasonCode:closed-safe-token` |
+| `ReadLeaseV1` / `CompletionLeaseV1` | `operationId:ulid`, `scopeDigest:sha256`, `keyRef:ulid-or-empty`, `dekVersion:u32`, `instanceId:ascii(1..128)`, `lifecycleEpoch:u64`, `issuedAtUtc:timestamp`, `expiresAtUtc:timestamp` |
+| `ReconciliationV1` | `operationId:ulid`, `scopeDigest:sha256`, `keyRef:ulid`, `dekVersion:u32`, `kind:Create\|Activate\|Rewrap\|Invalidate\|Delete`, `notBeforeUtc:timestamp`, `attempt:u32`, `status:Pending\|Running\|Quarantined\|Completed`, `reasonCode:closed-safe-token`, `updatedAtUtc:timestamp` |
+| `AuditV1` | exactly the allowlisted fields in section 10.8, with `schemaVersion` first and no optional field emitted as null; absence encodes an optional value |
+
+`backendIdDigest` and `providerVersionDigest` are SHA-256 over strict UTF-8 of
+the exact backend ID/provider key-version ID and are address components only.
+The full provider key-version ID remains solely in `WrappedDekV1`. Integrity
+hashes use the section 7 length-delimited field grammar over the exact schema
+fields, not JSON serialization order. No value contains plaintext DEK,
+event/snapshot plaintext, nonce/tag/ciphertext, credential, access token,
+connection string, provider error, or arbitrary map.
 
 ### 10.3 Create/persist and orphan protocol
 
@@ -821,20 +1068,38 @@ Because the current provider hook executes before the actor event save and is
 also used outside actor state, the key store is deliberately separate and
 ordered—not falsely described as cross-store atomic:
 
-1. Read erasure/lifecycle state and fence epoch strongly; require an allowed
-   active state.
+1. Strong-read erasure/lifecycle state, `FenceV1`, and approved deployment
+   generation with their ETags; require an allowed state, approved write mode,
+   non-regressed lifecycle/watermark, and a live matching capability lease.
 2. Generate keyRef, DEK, and operation ID; wrap the DEK through the backend.
-3. Transactionally conditional-create `Reserved` wrapped-DEK record, index
-   entry, index head, and operation marker **before** producing a v2 result.
-4. Encrypt and return protected bytes. EventPersister preserves its existing
-   all-protection-before-actor-write behavior and stages no plaintext.
-5. After the actor event/snapshot save succeeds, an additive completion hook
-   conditionally moves the referenced record `Reserved` to `Active`. A stored
+3. Transactionally conditional-create the `Reserved` wrapped-DEK record, scope
+   index entry/head, KEK-inventory entry/head, and operation marker, while also
+   compare-and-swapping the unchanged lifecycle and fence values using the ETags
+   read in step 1. A component without compare-only operations uses no-op writes
+   of the exact unchanged values under those ETags. The same transaction
+   advances `HighestWrittenFormat`/epoch when required. It completes **before**
+   producing a v2 result.
+4. Encrypt and return a distinct protected byte array. `EventPersister`
+   preserves its existing all-protection-before-actor-write behavior and, after
+   confirming the result does not alias the caller-owned serialized input,
+   zeroes that input buffer in `finally`. If the result aliases input, protection
+   fails before staging; CLR event/snapshot objects and immutable/aliased
+   serializer storage are explicitly outside this zeroing claim.
+5. Immediately before actor save the writer acquires the exact completion lease.
+   After the actor event/snapshot save succeeds, an additive completion hook
+   conditionally moves the referenced record `Reserved` to `Active` and releases
+   the lease. A stored
    event that references `Reserved` is readable and schedules reconciliation;
    the stored event itself proves the reservation is not orphaned.
-6. Failure before event save leaves only a `Reserved` orphan. A reconciler may
-   delete it after 24 hours only after a scoped production-path check proves no
-   event/snapshot/fence references it. Uncertainty retains/quarantines it.
+6. Failure before event save leaves only a `Reserved` record. After 24 hours and
+   only when the operation is terminal/expired and no completion lease exists,
+   the reconciler marks it `Quarantined`; v2 automatic deletion is forbidden.
+   The current event/snapshot stores expose no complete reverse-reference index,
+   so scans, missing current events, or fence state are not executable proof of
+   non-reference. A later story may enable deletion only with an approved,
+   transactionally maintained complete reference index whose head/page ETags
+   prove zero references across events and snapshots. Any uncertainty retains
+   the wrapped record indefinitely.
 
 A key record always precedes its v2 payload, so a committed payload never depends
 on a key record that was merely intended. Wrap success followed by state-write
@@ -845,10 +1110,14 @@ persists plaintext or retries with no-op.
 
 - **Create/generate:** engine owns DEK/keyRef/operation generation; adapter owns
   KEK wrap. Conditional state creation supplies idempotency.
-- **KEK rotation/rewrap:** operator rotates KEK. Engine lists scope index pages,
-  unwraps under the recorded old version, wraps under the selected new version,
+- **KEK rotation/rewrap:** operator rotates KEK. Engine enumerates the complete
+  environment-wide KEK-version inventory head/pages, verifies every indexed
+  record and both directions of membership, unwraps under the recorded old
+  version, wraps under the selected new version,
   and conditionally changes one key record through `RewrapPending`. Old version
-  remains usable until every record and audit verifies. Envelope/AAD is unchanged.
+  remains usable until every inventory entry, record, and audit verifies and the
+  old inventory is empty. Scope indexes alone are never rotation completeness
+  evidence. Envelope/AAD is unchanged.
 - **DEK re-encryption:** not authorized for immutable events by this ADR. New
   writes receive new DEKs. Snapshot rebuild receives a new DEK.
 - **Invalidation/deletion:** existing crypto-shredding approval transitions the
@@ -913,10 +1182,13 @@ do not trip the transient breaker but are counted safely. Open breaker maps to
 
 ### 10.7 Zeroing limits
 
-DEKs, decrypted plaintext buffers, and intermediate unwrapped/wrapped-operation
-buffers owned by the engine are mutable arrays rented/allocated to exact bounds.
-Every success, auth failure, provider failure, cancellation, rotation, erasure,
-cache eviction, and disposal path calls
+DEKs, selected-plaintext copies, decrypted plaintext output buffers, and
+intermediate unwrapped/wrapped-operation buffers owned by the engine are mutable
+arrays rented/allocated to exact bounds. Caller-owned serialized input remains
+the caller's responsibility until the `EventPersister` transfer rule in section
+10.3; unprotected pass-through aliases and managed CLR snapshot/event objects
+are never described as engine-owned. Every success, auth failure, provider
+failure, cancellation, rotation, erasure, cache eviction, and disposal path calls
 `CryptographicOperations.ZeroMemory` in `finally` before returning/releasing the
 buffer. Strings, immutable JSON text, exception messages, and log scopes never
 contain key/plaintext material.
@@ -1030,7 +1302,7 @@ Before readiness, the adapter must:
 1. validate the closed URI/options/environment profile and TLS platform;
 2. authenticate and `GetKey(KeyName)` through the data plane;
 3. require an enabled, time-valid, 3072-bit `RSA-HSM` current version whose
-   allowed operations include only/at least wrap and unwrap and whose returned
+   allowed-operation set is exactly `{wrapKey, unwrapKey}` and whose returned
    versioned ID has the configured vault/name;
 4. perform a startup capability probe by wrapping and unwrapping a fresh
    32-byte random probe with `RSA-OAEP-256`, compare in fixed time, and zero both
@@ -1076,7 +1348,8 @@ never message text:
 
 | Observed condition | Public outcome | Retry / breaker / mutation rule |
 | --- | --- | --- |
-| Token acquisition failure or HTTP 401 | `ProviderDenied` | Permanent for the operation; no data-plane retry or breaker trip; readiness false until identity is repaired. |
+| Managed-identity configuration error, credential unavailable because no configured identity exists, invalid-client/invalid-tenant response, or HTTP 401 | `ProviderDenied` | Permanent for the operation; no data-plane retry or breaker trip; readiness false until identity/configuration is repaired. |
+| Token-endpoint timeout, socket/DNS/connect failure, HTTP 408/429/500/502/503/504, or service-unavailable response while acquiring a token | `ProviderUnavailable` | Section 10.6 bounded retry and transient breaker; never relabeled denial from exception text. |
 | HTTP 403 or network-policy denial | `ProviderDenied` | Permanent; no retry. A separately identified DNS/socket reachability failure remains unavailable, not denied. |
 | Versioned key 404, disabled/expired/not-yet-valid key, or service deleted-key response | `MissingKey` or `KeyInvalidatedOrDeleted` only when lifecycle evidence proves deletion; otherwise `ConsistencyMismatch` | No blind retry; strong lifecycle/provider reconciliation. Never fall back to current key version. |
 | 408, 429, 500, 502, 503, 504, transient socket/DNS/TLS-connect failure | `ProviderUnavailable` | Section 10.6 bounded retry/`Retry-After` and transient breaker. TLS certificate/hostname validation failure is permanent configuration/security failure and fails readiness. |
@@ -1191,7 +1464,7 @@ bytes are not classification input.
 | `ProtectionMetadata=null`, ordinary legacy state | Treat as legacy unprotected and return state. |
 | Metadata missing/unprotected but state has a v1/v2 protected wrapper shape | `ConsistencyMismatch`/`BytesMetadataMismatch`; retain snapshot and fall back to replay. |
 | Exact Parties v1 metadata plus its protected snapshot wrapper | Route to `parties-pdenc-v1` snapshot reader. |
-| Exact v2 metadata plus `ProtectedSnapshotPayloadV2` | Validate type/format/envelope, use AAD kind 2/path empty/ordinal 0, authenticate, then deserialize exact declared state type. |
+| Exact v2 metadata plus `ProtectedSnapshotPayloadV2` | Resolve the registered `SnapshotTypeId`/alias and exact `JsonTypeInfo`, validate format/envelope, use AAD kind 2/path empty/ordinal 0 plus snapshot sequence, authenticate, then deserialize that registered type. |
 | Unknown/malformed/opaque/unreadable protected snapshot | Record canonical snapshot-load decision, retain stored snapshot, return no snapshot so canonical event replay can continue or fail closed. |
 | Corrupt unprotected legacy snapshot | Existing behavior may delete it and replay; this deletion exception never applies to protected/opaque state. |
 
@@ -1211,23 +1484,30 @@ There is no dual-write. Deployment is phased:
 1. **Baseline:** no engine registration; existing no-op/Parties provider writes
    current formats.
 2. **Dual-reader dark deploy:** deploy the v2-capable engine/adapter and exact
-   legacy readers with `WriteMode=RegisteredLegacy` (Parties) or `ReadOnly`.
+   legacy readers with `WriteMode=CompatibilityLegacy` (Parties) or `ReadOnly`.
    Exercise legacy, v1, redacted, snapshot, and synthetic v2 reads; no production
    v2 write occurs.
-3. **Fleet/read fence:** every serving instance publishes an immutable capability
-   record containing source SHA, package hashes, normative spec digest, backend
-   ID, and supported read/write versions. Operations verifies no old reader
-   remains. A tenant/domain-scoped write fence is atomically advanced to v2 with
-   an epoch and approval ID.
+3. **Fleet/read fence:** Operations opens one approved deployment generation.
+   Every serving instance must acquire its exact capability lease before traffic
+   admission and renew it every 20 seconds. The lease TTL is 60 seconds; an
+   instance makes readiness false and rejects new traffic 40 seconds after its
+   last successful renewal. Each renewal rechecks the approved generation,
+   source SHA, package-set hash, normative digest, backend ID, and supported
+   read/write modes. Operations closes the previous generation and waits a full
+   60 seconds, verifies no previous-generation lease remains, then atomically
+   sets `ApprovedWriteMode=V2` with a new approval epoch/ID. Static deployment
+   inventory or a one-time startup record is not fleet proof.
 4. **V2 single write:** set `WriteMode=V2`. New selected values write only v2;
    unselected values remain ordinary `json`. Existing history is read in place.
 5. **Soak/expand:** monitor bounded failures, provider/cache state, projection
    checkpoints, and persisted evidence before enabling another tenant/domain.
 
-A v2 writer checks the current fence epoch on every protect operation and binds
-it to the key record. A node missing the approved digest/capability or observing
-an older/newer/ambiguous fence rejects the write. Rolling deployment must never
-enable v2 while a v1-only reader can accept traffic.
+A v2 writer checks `ApprovedWriteMode`, approval epoch, monotonic
+`HighestWrittenFormat`/epoch, approved generation, and its live capability lease
+on every protect operation and binds the fence values to the reservation
+transaction/key record. A node missing the approved digest/capability or
+observing an older/newer/ambiguous value rejects the write. Rolling deployment
+must never enable v2 while a v1-only reader can accept traffic.
 
 ### 13.2 Historical data and migration posture
 
@@ -1248,13 +1528,16 @@ enable v2 while a v1-only reader can accept traffic.
 
 ### 13.3 Downgrade rule and irreversible watermark
 
-Before returning the first v2 payload, the engine conditionally advances the
-tenant/domain fence record to durable `HighestWrittenFormat=v2` and binds its
-epoch to the `Reserved` key record. This state-store transaction precedes the
-separate actor save; if that save later fails, the conservative watermark may
-advance without a committed v2 event. It never decreases, including after
-erasure, restore, or rollback. A binary/package set that cannot read v2 must
-refuse startup or tenant traffic when this watermark exists.
+`ApprovedWriteMode` and `approvalEpoch` are operator-set authorization; a writer
+may never change them. `HighestWrittenFormat` and `highestWrittenEpoch` are the
+separate monotonic observation watermark. Before returning the first v2 payload,
+the reservation transaction conditionally advances only that watermark to `V2`
+and binds both the observed approval and watermark ETags/epochs to the
+`Reserved` key record. This state-store transaction precedes the separate actor
+save; if that save later fails, the conservative watermark may advance without a
+committed v2 event. It never decreases, including after erasure, restore, or
+rollback. A binary/package set that cannot read v2 must refuse startup or tenant
+traffic when this watermark exists.
 
 After a v2 write, **full downgrade to a v1-only/no-op EventStore is impossible**
 without stranding immutable history and is forbidden. A supported rollback
@@ -1270,12 +1553,15 @@ The Parties rollback path is exact:
    lifecycle/provider mutations.
 2. Verify the last-known-good v2-capable release, spec/fixture digests, Azure
    read backend, retained `parties-pdenc-v1` reader/writer, and all v2 key records.
-3. Atomically advance the write fence epoch from `V2` to
-   `RegisteredLegacy(parties-pdenc-v1)` with named operator approval. Never
-   decrement the highest-written watermark.
-4. Deploy/configure `Mode=Enabled`, the Azure backend for v2 reads, and the
-   exact retained Parties legacy provider for new v1 writes. No-op/plaintext is
-   not a fallback.
+3. Open a fresh approved generation containing the retained v2 reader and exact
+   legacy writer, drain the previous generation under the lease protocol, then
+   atomically set `ApprovedWriteMode=RollbackLegacy`, the exact
+   `LegacyWriterId=parties-pdenc-v1`, and a greater approval epoch with named
+   operator approval. Never decrement `HighestWrittenFormat=V2` or its epoch.
+4. Deploy/configure `Mode=Enabled`, `WriteMode=RollbackLegacy`, the Azure backend
+   for v2 reads, and the exact retained Parties legacy provider for new v1
+   writes. `CompatibilityLegacy` is rejected once the watermark is v2;
+   no-op/plaintext is not a fallback.
 5. Read a persisted mixed stream containing legacy, v1, redacted where
    applicable, and a real v2 event; rehydrate domain state; execute a command
    that appends a v1 event; persist, publish, project/rebuild, query/admin-read,
@@ -1340,8 +1626,8 @@ retention, and incident controls; they never justify plaintext fallback.
 | ID / threat or misuse | Required prevention/detection | Bounded failure | Residual risk / owner / verification |
 | --- | --- | --- | --- |
 | T01 Cross-tenant/domain/aggregate ciphertext or key-record substitution | All identity fields are trusted runtime inputs in AAD; scope-addressed records are compared to full identity before unwrap. | `ConsistencyMismatch` or tag failure; no plaintext/provider detail. | Authorized identity/state compromise can rewrite both; Security/Platform own T01 mutation and compromised-store review. |
-| T02 Event/snapshot type, property path, ordinal, format, keyRef, or DEK-version substitution | Closed envelope plus injective AAD and exact runtime type/path reconstruction. | `BytesMetadataMismatch`/`ConsistencyMismatch`. | A caller able to influence trusted identity/type validation is outside codec control; Platform owns field-by-field mutations. |
-| T03 Nonce reuse, duplicate ordinal, DEK reuse across retry/restart/clone, or budget exhaustion | Fresh CSPRNG DEK/reference per attempt, deterministic unique ordinal nonce, full path-set validation, 65,536 bound, durable reservation. | Protect fails before AES or payload persistence. | Catastrophic RNG/platform compromise; Security owns concurrency/crash/injected-RNG tests and platform gate. |
+| T02 Event/snapshot type, record sequence, complete protected-path set, property path, ordinal, format, keyRef, or DEK-version substitution | Closed envelope plus injective AAD, aggregate-local occurrence binding, complete manifest commitment, and exact runtime type/path reconstruction. | `BytesMetadataMismatch`/`ConsistencyMismatch`. | A caller able to influence trusted storage identity/type validation is outside codec control; Platform owns field-by-field mutations. |
+| T03 Nonce reuse, duplicate ordinal, DEK reuse across retry/restart/clone, or budget exhaustion | Fresh CSPRNG DEK/reference per attempt, deterministic unique ordinal nonce, full path-set validation, 4,096 bound, durable reservation, and observable keyRef/ordinal/reservation collision checks. | Protect fails before AES or payload persistence for every detectable conflict. | Equal undetectable 256-bit CSPRNG output is a catastrophic platform residual; Security owns concurrency/crash/observable-collision tests and the platform gate without claiming repeated-random-key detection. |
 | T04 JSON Pointer/Unicode/duplicate-name ambiguity or policy traversal confusion | Strict UTF-8/NFC/RFC6901 profile, duplicate rejection, deterministic sorting, cycle detection, typed-to-serialized value agreement. | Protection/parser failure; no key when selection unresolved. | Serializer evolution may change legitimate names; Platform/Parties own compatibility fixtures and approval for changes. |
 | T05 Metadata tampering, encoded/obfuscated secret fields, wrapper smuggling, or version confusion | Exact metadata/wrapper allowlists, reserved-format precedence, duplicate/unknown rejection, no arbitrary extensions. | `MalformedMetadata`, `UnknownMetadataVersion`, `ProviderOpaqueUnsupportedOperation`, or mismatch before provider. | Novel carrier parser defects; Security owns mutation corpus and leak sentinel. |
 | T06 Malformed, truncated, extended, integer-overflow, deeply nested, or oversized envelope/JSON DoS | Pre-decode text cap, checked fixed header/total lengths, 1 MiB value/AAD bounds, bounded JSON depth/object graph and no lookup before parse validation. | `BytesMetadataMismatch`; bounded allocation/CPU. | Many individually bounded requests can exhaust service; Operations owns external rate/resource limits and load tests. |
@@ -1349,7 +1635,7 @@ retention, and incident controls; they never justify plaintext fallback.
 | T08 Missing/deleted/disabled/wrong-version KEK or wrapped DEK | Exact versioned URI, lifecycle proof, no use-current-version fallback, restore admission. | Missing/deleted/consistency outcome; no plaintext. | Key loss irreversibly loses history; Provider/Ops own backup/rotation/retention and disaster rehearsal. |
 | T09 Provider identity denial, outage, throttle, network partition, TLS substitution, or retry storm | Deterministic managed identity, private endpoint/TLS, least privilege, bounded retry/jitter/breaker/single-flight. | Denied/unavailable; no no-op/alternate backend. | Shared backend outage blocks protected reads/writes; Ops owns SLO/capacity/runbook and injected failures. |
 | T10 Stale cache or in-flight read bypasses accepted erasure | Strong epoch read, distributed lease before cache, invalidation blocks leases, drain/acks/zero before accepted deletion. | Read blocked/pending; completion withheld on uncertainty. | Host suspension past TTL or unknown replicas require conservative operator state; Platform/Ops own race/partition tests. |
-| T11 Crash/timeout between wrap, reservation, event save, activation, rewrap, or delete | Stable operation IDs, durable phases, record-before-payload ordering, reconciliation, retained Reserved readability, proof before orphan cleanup. | No plaintext; ambiguous stays pending/reconcile. | Permanent control-store loss can leave unprovable state; Platform/Ops own crash-point matrix and repair policy. |
+| T11 Crash/timeout between wrap, reservation, event save, activation, rewrap, or delete | Stable operation IDs, durable phases, record-before-payload ordering, completion leases, reconciliation, retained Reserved readability, and no automatic orphan deletion without a future complete reverse-reference index. | No plaintext; ambiguous stays pending/reconcile/quarantined. | Permanent control-store loss can leave unprovable state; Platform/Ops own crash-point matrix and repair policy. |
 | T12 Backup/restore resurrects invalidated key or lowers v2/lifecycle fence | Monotonic external watermark/epoch comparison before readiness; quarantine/operator decision; backup-copy erasure ledger. | Restore quarantined; traffic not served. | Unknown/unindexed backups delay final erasure; Ops/Parties own inventory and certificate truthfulness. |
 | T13 Downgrade, partial fleet, malicious config, or package substitution writes unreadable/plaintext history | Content-bound approved digest, package hashes/capability records, write fence, highest-format watermark, fail-start matrix, retained v2 reader. | Startup/write rejected. | Compromised release/control plane can forge evidence; Release/Security own signing/provenance and rollback rehearsal. |
 | T14 Policy omission, exception, malicious domain adapter, or overbroad selection | Monotonic positive policies, built-in attribute cannot be overridden, deterministic registered IDs, exceptions fail writes; Parties keeps legal policy. | No selected fields leaves bytes unchanged; policy error never plaintext fallback. | Incorrect annotations/abstention can leave intended data unprotected; Parties owns policy tests/review and classification inventory. |
@@ -1438,19 +1724,172 @@ failure is locally decidable.
 | V001-V003 positive | G-001 encrypt/decrypt in owner implementation; exact Node/Python reproduction; NIST CAVP AES-256-GCM Count 0 | Exact AAD/cipher/tag/envelope/wrapper hashes; complete plaintext only after auth; tool/version/command output recorded. |
 | V004-V009 carrier/parser | One-bit change at every header field; truncate at every fixed/variable boundary; append byte; invalid/padded/non-canonical base64url; unknown IDs/flags; declared 0, max, max+1, `uint32` max and actual mismatch | Mismatch/opaque as section 12; bounded allocation, zero Key Vault/state lookups for invalid local grammar, no crash/overflow. |
 | V010-V017 crypto mutation | Flip each bit of nonce, tag, ciphertext; substitute algorithm/version/keyRef/DEK version/ordinal; correct ciphertext with wrong AAD | Authentication/mismatch only, no partial JSON/string, destination zeroed; exact-version lookup only after valid grammar. |
-| V018-V030 AAD identity | Change/missing/null/empty tenant, domain, aggregate, type, path, format, keyRef/version/ordinal; delimiter-bearing values; case change; composed/decomposed Unicode; NUL/control/unpaired surrogate; total 4096 and 4097 | Strict accept only valid exact boundary; every substitution fails auth/validation and cannot cross scope. |
+| V018-V030 AAD identity | Independently change/miss/null/empty tenant, domain, aggregate, type, path, format, keyRef/version/ordinal, record sequence, or protected-path commitment; remove/substitute one wrapper; delimiter/case/Unicode/control boundaries; total 4096/4097 | Strict accept only valid exact boundary; every substitution or incomplete wrapper set fails auth/validation and cannot cross scope/occurrence. |
 | V031-V040 JSON/path/policy | `~0`/`~1`, invalid `~`, `/0` versus `/00`/`/-`, arrays, duplicate JSON names, unresolved/scalar traversal, ancestor+descendant, repeated pointer, cycles, throwing getter/policy, null versus empty selected value | Deterministic UTF-8 path order/ordinal; invalid selection fails before key creation; null skipped; empty protected; no domain assembly dependency. |
-| V041-V048 nonce/concurrency | 0, 1, 65,535, 65,536, and 65,537 selected values; parallel writers; forced keyRef collision; injected repeated DEK; process crash/restart and cloned instance | Ordinals/nonces unique through budget; 65,537 and any uncertainty fail before AES; retry uses wholly fresh DEK/ref; reservations prove crash posture. |
-| V049-V058 create/lifecycle | Crash/timeout after wrap, after Reserved transaction, after encryption return, before/after actor save, before activation; orphan at 23:59/24:00; duplicate operation; record/index disagreement | No payload before durable record; stored Reserved readable/reconciled; cleanup only with no-reference proof; ambiguity stays pending; no plaintext fallback. |
+| V041-V048 nonce/concurrency | 0, 1, 4,095, 4,096, and 4,097 selected values; parallel writers; forced keyRef/ordinal/reservation collision; process crash/restart and cloned instance | Ordinals/nonces unique through budget; 4,097 and every detectable duplicate fail before AES; retry uses wholly fresh DEK/ref; undetectable repeated CSPRNG output remains the stated catastrophic residual. |
+| V049-V058 create/lifecycle | Crash/timeout after wrap, after Reserved transaction, after encryption return, before/after actor save, before activation; Reserved at 23:59/24:00; duplicate operation; record/scope-index/KEK-inventory or lifecycle/fence ETag disagreement | No payload before durable record; stored Reserved readable/reconciled; 24-hour candidate quarantined and never auto-deleted without the future executable complete-reference proof; ambiguity stays pending; no plaintext fallback. |
 | V059-V068 rotation/deletion | Latest-version new wrap, old exact-version read, KEK rewrap unchanged envelope, attempted DEK swap, old KEK disabled/deleted, invalidate during reads, lease expiry/ack loss, denied deletion, recovered key, backup restored after erasure | Correct old read/rewrap identity; invalidation blocks new leases/cache; no completed deletion/erasure on uncertainty; restore quarantined; immutable event unchanged. |
 | V069-V078 cache/memory | Hit/miss/single-flight/thundering herd; TTL/size edges; stale epoch; pub/sub loss; waiter cancellation; global cancellation; eviction/disposal; success/auth/provider/cancel/rotation/erasure zeroing | Strong state+lease precede every hit; one unwrap; no failed entry; all engine-owned DEK/plaintext arrays observed zero at release; claim limited to owned buffers. |
-| V079-V091 Azure failures | Real success/restart; token failure/401; 403; exact-version 404; disabled/expired key; 408/429 (`Retry-After` negative, 0..2s, >2s); timeout/socket/DNS/500/502/503/504; TLS hostname failure; caller cancel | Exact section 11 mapping; max 3 attempts/10s, 200/500ms jitter, no nested SDK retries; cancellation propagates; provider text absent. |
+| V079-V091 Azure failures | Real success/restart; permanent identity/401 versus transient token-endpoint failure; 403; exact-version 404; disabled/expired key; 408/429 (`Retry-After` negative, 0..2s, >2s); timeout/socket/DNS/500/502/503/504; TLS hostname failure; caller cancel; exact operation set/returned identity | Exact section 11 mapping; transient token failures retry as unavailable, identity/configuration/401 denies; max 3 attempts/10s, 200/500ms jitter, no nested SDK retries; cancellation propagates; provider text absent. |
 | V092-V097 breaker/mutation | Five transients/30s, open rejection, concurrent half-open, successful/failed probes, doubled interval cap, timeout during rewrap/delete | Exact state/timing with one probe; no alternate backend; ambiguous mutation reconciles operation rather than blind replay. |
 | V098-V106 startup/config | Registration omitted; Disabled with stale config; Enabled missing/unknown; LocalDevelopment in absent/Development/Test/Staging/Production/custom; unsupported AesGcm; wrong vault suffix/key type/size/ops/algorithm/RBAC/network | Exact section 5/11 start or fail-start result; absent is Production; no readiness/G5 claim from no-op/LocalDev/mock. |
 | V107-V119 compatibility | Legacy missing metadata, explicit unprotected, custom format, redacted, v1 with/without metadata, v2, unknown reserved version, malformed metadata, shape/format disagreement, protected/unreadable snapshots, mixed sequence failure | Exact routing/typed outcomes; per-record route; authenticate before use; no checkpoint/publish after first unreadable; protected snapshot retained. |
 | V120-V126 rollout/rollback | Partial fleet, stale capability/spec/package hash, v2 fence race, first real v2 write, attempt full no-op/v1 downgrade, seven-step Parties rollback, ReadOnly domain rollback | Stale writer/startup rejected; watermark monotonic; v2 remains readable; persisted mixed history and subsequent v1 write/restart/project proof; never plaintext fallback. |
 | V127-V134 no-leak | Each success/failure across all section 15.2 surfaces; hostile metadata/error/URI/canary encodings; authorized admin/export/Art.20/Art.30/certificate/report; support bundle | Only constructive allowlists; recursive structured/rendered scans find none of the sentinel corpus; certificate does not overclaim backup erasure. |
-| V135-V138 limits/load | Envelope/value/AAD/path/graph depth/index page/cache/concurrent request exact maxima and max+1; many bounded hostile inputs | Exact accept/reject boundaries, no unbounded allocation/provider amplification, stable service resource limits/load evidence. |
+| V135-V138 limits/load | Immutable 1 MiB read versus configurable write limit; exact/max+1 for 16 MiB payload, depth 64, 65,536 nodes, 4,096 values, 8 MiB selected plaintext; index/cache maxima; concurrent hostile inputs | Exact accept/reject and cancellation boundaries, checked cumulative arithmetic, no unbounded allocation/provider amplification, stable service resource limits/load evidence. |
+
+The grouped families above are governed by this machine-readable exact case
+registry. Each line is `ID|fixture|exact mutation or boundary|expected`. The
+closed expected tokens mean: `PASS` = exact successful value/state assertions;
+`LOCAL-MM` = `BytesMetadataMismatch` with zero state/backend calls; `AUTH-MM` =
+authenticated mismatch with no exposed plaintext; `PROTECT-REJECT` = protect
+fails before AES/reservation; `CONSISTENCY` = `ConsistencyMismatch` without
+unwrap; `DENIED`, `UNAVAILABLE`, `MISSING`, and `INVALIDATED` are the exact
+public typed outcomes; `CANCEL` propagates `OperationCanceledException`;
+`FAIL-START` leaves readiness false; `BLOCK-WRITE` persists nothing;
+`QUARANTINE` retains durable material; and `NO-LEAK` requires the complete
+section 15 sentinel scan to be empty.
+
+```text
+V001|g001-atomic-owner|encrypt the exact section 8.5 atomic fields|PASS exact manifest AAD ciphertext tag envelope wrapper and hashes
+V002|g001-atomic-owner|decrypt the exact section 8.5 envelope with sequence 1 and one-path manifest|PASS exact 19-byte plaintext only after tag verification
+V003|nist-gcm-256-count0|run the named CAVP Count 0 key IV empty PT and empty AAD|PASS exact bdc1ac884d332457a1d2664f168c76f0 tag
+V004|g001-header-bit-matrix|flip each bit independently at envelope offsets 0 through 27|LOCAL-MM for closed grammar fields and AUTH-MM for ordinal-dependent AAD
+V005|g001-truncation-matrix|truncate the 101-byte envelope to every length 0 through 100|LOCAL-MM
+V006|g001-trailing-byte|append one 00 byte to the 101-byte envelope|LOCAL-MM
+V007|g001-base64url-spelling|test each forbidden alphabet character padding equals length-mod-four 1 and decode-reencode mismatch|LOCAL-MM
+V008|g001-closed-identifiers|set version algorithm nonce-kind key-kind or flags independently to every unsupported nonzero representative 02 and ff|LOCAL-MM
+V009|g001-length-boundaries|declare ciphertext length 0 1048576 1048577 4294967295 and actual-length-minus-or-plus-1|LOCAL-MM except a separately sized exact-max fixture may parse
+V010|g001-nonce-bit-matrix|flip each of 96 nonce bits independently|AUTH-MM
+V011|g001-tag-bit-matrix|flip each of 128 tag bits independently|AUTH-MM
+V012|g001-ciphertext-bit-matrix|flip each of 152 ciphertext bits independently|AUTH-MM
+V013|g001-algorithm-substitution|use a valid grammar clone with algorithm ID 02|LOCAL-MM
+V014|g001-version-substitution|use envelope version 01 or 03|LOCAL-MM
+V015|g001-keyref-substitution|replace one canonical ULID character while a different scoped record exists|AUTH-MM with exact substituted-record lookup only
+V016|g001-key-version-ordinal|independently change DEK version 1 to 2 and ordinal 0 to 1 with otherwise valid grammar|AUTH-MM
+V017|g001-aad-field-matrix|change each of the eleven AAD values independently while retaining envelope bytes|AUTH-MM
+V018|aad-tenant|missing null empty and tenant-b substitutions|PROTECT-REJECT for invalid source and AUTH-MM for valid substitution
+V019|aad-domain|missing null empty and parties-x substitutions|PROTECT-REJECT for invalid source and AUTH-MM for valid substitution
+V020|aad-aggregate|missing null empty and party-02 substitutions|PROTECT-REJECT for invalid source and AUTH-MM for valid substitution
+V021|aad-payload-type|missing null empty and one-case-change substitutions|PROTECT-REJECT for invalid source and AUTH-MM for valid substitution
+V022|aad-property-path|missing null empty event path and /Email substitutions|PROTECT-REJECT for invalid source and AUTH-MM for valid substitution
+V023|aad-format|missing null empty and json+pdenc-v1 substitutions|PROTECT-REJECT for invalid source and AUTH-MM for valid substitution
+V024|aad-keyref-version|missing malformed keyRef and DEK versions 0 2 4294967295|PROTECT-REJECT for invalid source and AUTH-MM for valid substitution
+V025|aad-ordinal|ordinals 0 1 4095 4096 and envelope-AAD disagreement|PASS only matching 0 through 4095 and otherwise LOCAL-MM or AUTH-MM
+V026|aad-record-sequence|event sequence 0 1 2 18446744073709551615 and stored-context disagreement|PASS for exact matching u64 and AUTH-MM for any copied occurrence
+V027|aad-path-manifest|remove plaintext-substitute duplicate or add a wrapper and independently change manifest count length path or digest|PROTECT-REJECT on write and AUTH-MM on read
+V028|aad-delimiter-case|embed colon slash pipe NUL-like printable text and independently change ASCII case|PASS only exact length-delimited printable values and AUTH-MM after substitution
+V029|aad-unicode|use NFC e-acute then decomposed e-plus-combining and unpaired-surrogate sources|PASS for NFC and PROTECT-REJECT for non-NFC or invalid scalar
+V030|aad-total-length|construct exact AAD lengths 4096 and 4097 with valid field bounds|PASS at 4096 and PROTECT-REJECT at 4097
+V031|path-escape|members a~b and a/b produce /a~0b and /a~1b|PASS exact pointers and ordinal ordering
+V032|path-invalid-escape|use /a~2b trailing-tilde and double-escaped variants|PROTECT-REJECT
+V033|path-array-index|use /items/0 /items/10 /items/00 /items/- and /items/+1|PASS first two and PROTECT-REJECT remaining forms
+V034|path-duplicate-json-name|serialize two ordinal-equal object member names|PROTECT-REJECT
+V035|path-resolution|target missing member scalar child and out-of-range array index|PROTECT-REJECT
+V036|path-overlap|select /person and /person/email in either policy order|PROTECT-REJECT
+V037|path-duplicate-selection|two policies return the same canonical pointer|PROTECT-REJECT
+V038|policy-cycle-converter|reference cycle and custom-converter type without canonical-path policy|PROTECT-REJECT within depth and node bounds
+V039|policy-fault|throw from readable getter ordinary policy or canonical-path policy and cancel during walk|PROTECT-REJECT for faults and CANCEL for cancellation
+V040|selected-value-shapes|selected null empty string empty array empty object scalar object and array|PASS with null skipped and all non-null exact raw JSON protected
+V041|selected-count-zero|valid payload with zero selected non-null values|PASS original bytes and format with no key or AES call
+V042|selected-count-one|one selected value at ordinal 0|PASS nonce 000000000000000000000000
+V043|selected-count-4095|4095 selected values with ordinals 0 through 4094|PASS unique nonces and one DEK
+V044|selected-count-4096|4096 selected values with ordinals 0 through 4095|PASS unique nonces and one DEK
+V045|selected-count-4097|4097 selected values|PROTECT-REJECT before key generation reservation or AES
+V046|parallel-writers|two writers receive colliding generated keyRef then regenerated distinct keyRefs|PASS only after loser uses wholly fresh keyRef and DEK
+V047|ordinal-reservation-duplicates|inject duplicate sorted path ordinal keyRef and conditional-create conflict separately|PROTECT-REJECT for duplicate ordinal and retry fresh material for keyRef or reservation conflict
+V048|restart-clone-rng-residual|restart and clone writers with unique observable keyRefs and verify no repeated-random-DEK detector or rejection claim exists|PASS observable reservation uniqueness checks and record equal-CSPRNG output only as catastrophic residual
+V049|create-after-wrap-timeout|backend wrap succeeds then state transaction is not observed|QUARANTINE operation Ambiguous and no payload
+V050|create-after-reservation-crash|crash after atomic Reserved scope index KEK index and operation commit|QUARANTINE readable-if-referenced reservation and no plaintext fallback
+V051|create-after-encryption-return-crash|crash after protected result creation before caller receives it|QUARANTINE reservation and zero all engine-owned buffers
+V052|create-before-actor-save|fail after completion lease acquisition before actor save|QUARANTINE after lease expiry and no payload reference claim
+V053|create-after-actor-save|crash after actor save before Reserved-to-Active transition|PASS stored Reserved remains readable and reconciliation activates it
+V054|reserved-age-2359|reconcile an unreferenced-looking Reserved record aged 23h59m59s|QUARANTINE no state change and no deletion
+V055|reserved-age-2400|reconcile terminal operation at 24h with no completion lease and no complete reverse index|QUARANTINE mark suspected and retain wrapped DEK indefinitely
+V056|duplicate-operation|submit same operation ID with equal then different immutable inputs|PASS idempotent equal replay and CONSISTENCY for different input
+V057|scope-index-disagreement|omit duplicate or alter one scope index head page or key membership|CONSISTENCY and block deletion rotation completion
+V058|kek-cas-disagreement|omit KEK inventory membership or race lifecycle or fence ETag during reservation|CONSISTENCY and transaction aborts with no payload
+V059|kek-current-wrap|strongly select current enabled provider version for a new wrap|PASS record contains exact returned version and both indexes
+V060|kek-old-version-read|read a retained record after current KEK advances|PASS unwrap exact recorded old version only
+V061|kek-rewrap|rewrap one DEK old-to-new through RewrapPending|PASS envelope AAD ciphertext tag keyRef and DEK version byte-identical
+V062|dek-swap|replace wrapped DEK with another valid wrapped value and recompute only wrapped hash|CONSISTENCY or AUTH-MM with no plaintext
+V063|old-kek-unavailable|disable then delete exact old provider version|MISSING or INVALIDATED only with lifecycle proof otherwise CONSISTENCY
+V064|invalidate-inflight|advance Active to Invalidating while reads hold leases|PASS existing leases drain and new reads or writes are blocked
+V065|lease-expiry-ack-loss|suspend one holder past TTL and omit one cache invalidation acknowledgement|QUARANTINE no completed deletion claim
+V066|deletion-denied|provider or state authorization denies delete transition|DENIED and lifecycle remains nonterminal
+V067|provider-key-recovered|recover soft-deleted KEK while EventStore lifecycle is terminal|INVALIDATED with no lifecycle reversal
+V068|restore-after-erasure|restore backup containing lower lifecycle epoch and wrapped key|QUARANTINE before readiness
+V069|cache-miss-hit|first then second read at same exact cache key|PASS one unwrap with strong state and lease before both accesses
+V070|cache-single-flight|100 concurrent reads of one cache key|PASS exactly one unwrap and 100 operation-owned copies
+V071|cache-ttl|read at TTL-minus-1-tick TTL and configured maximum-plus-1|PASS before expiry then miss at expiry and FAIL-START above maximum
+V072|cache-size|insert exactly 4096 then 4097 distinct entries|PASS cap with deterministic eviction and zeroed evictee
+V073|cache-epoch-regression|observe lifecycle epoch N then N-minus-1 and same epoch with changed state|CONSISTENCY with epoch-regressed or epoch-invalid
+V074|cache-pubsub-loss|drop all invalidation messages while strong state advances|INVALIDATED because state and leases not pubsub provide correctness
+V075|cache-waiter-cancel|cancel one of multiple single-flight waiters|CANCEL only that waiter while shared unwrap completes for others
+V076|cache-global-cancel|cancel provider shutdown during single-flight unwrap|CANCEL all waiters and cache no entry
+V077|cache-disposal|exercise eviction expiry replacement invalidation failed construction and service disposal|PASS every owned key array observed zero before release
+V078|plaintext-ownership|exercise protect success auth failure provider failure caller input alias pass-through and CLR snapshot object|PASS zero only engine-owned copies and distinct transferred EventPersister input
+V079|azure-real-roundtrip|real Premium vault wrap persist restart exact-version unwrap|PASS exact 384-byte wrapped record and plaintext after auth
+V080|azure-permanent-token|invalid configured identity invalid tenant invalid client and HTTP 401|DENIED with zero retry and readiness false
+V081|azure-transient-token|token endpoint timeout socket DNS 408 429 and each 500 502 503 504|UNAVAILABLE with section 10.6 retry budget
+V082|azure-forbidden|HTTP 403 typed response|DENIED with zero retry
+V083|azure-version-not-found|HTTP 404 for exact recorded version while lifecycle Active|CONSISTENCY with no current-version fallback
+V084|azure-key-state|exact version disabled expired and not-yet-valid|CONSISTENCY unless lifecycle proves INVALIDATED
+V085|azure-request-timeout|data-plane HTTP 408 for wrap and unwrap|UNAVAILABLE with at most 3 total attempts in 10 seconds
+V086|azure-throttle|HTTP 429 with Retry-After negative zero 2s and greater-than-2s|UNAVAILABLE and honor only zero-through-2s inside remaining budget
+V087|azure-network-service|timeout socket DNS and each HTTP 500 502 503 504|UNAVAILABLE with 200ms then 500ms jitter and transient breaker count
+V088|azure-tls-identity|certificate or hostname validation failure|DENIED configuration-security failure with readiness false and zero retry
+V089|azure-caller-cancel|cancel before request during request and during retry delay|CANCEL with zero breaker count
+V090|azure-key-operations|returned operations exactly wrapKey plus unwrapKey then each missing or extra operation|PASS only exact set and FAIL-START otherwise
+V091|azure-returned-identity|return wrong vault name version key type size or algorithm after successful request|CONSISTENCY and readiness false
+V092|breaker-threshold|record five transient failures inside 30 seconds|PASS breaker opens immediately after fifth
+V093|breaker-open|issue request during 30-second open interval|UNAVAILABLE with zero backend call
+V094|breaker-half-open-concurrency|issue 100 requests when open interval expires|UNAVAILABLE for 99 and exactly one backend probe
+V095|breaker-probe-success|complete the single half-open probe successfully|PASS breaker closes and counters reset
+V096|breaker-probe-failure|fail probes repeatedly across doubled intervals|UNAVAILABLE with intervals 60 120 240 and capped 300 seconds
+V097|ambiguous-mutation-timeout|timeout rewrap and delete after provider may have mutated|QUARANTINE reconcile exact operation and never blind replay
+V098|startup-registration-omitted|install packages but omit registration|PASS concrete no-op and no readiness protection claim
+V099|startup-disabled-stale|register Disabled with stale backend fields|PASS no-op plus one safe information event
+V100|startup-enabled-backend|Enabled with missing and unknown backend values|FAIL-START
+V101|startup-local-development|LocalDevelopment in exact Development with valid options|PASS development-only claim
+V102|startup-local-nondevelopment|LocalDevelopment in missing Dev Test Staging Production and custom environments|FAIL-START for every fixture
+V103|startup-aes-platform|force AesGcm.IsSupported false|FAIL-START
+V104|startup-vault-uri|ordinary valid vault URI then HTTP user-info query fragment path managed-HSM and wrong-cloud suffix|PASS only exact ordinary-vault URI and FAIL-START otherwise
+V105|startup-key-profile|wrong software-RSA EC RSA-HSM-2048 RSA-HSM-4096 extra-op missing-op and RSA-OAEP-SHA1|FAIL-START for every fixture
+V106|startup-rbac-network|missing read wrap or unwrap RBAC and public-network or private-DNS mismatch|FAIL-START
+V107|route-legacy-missing|missing metadata json format valid JSON no marker|PASS legacy plaintext route
+V108|route-unprotected|exact Unprotected metadata json format valid JSON|PASS unprotected route
+V109|route-custom|missing metadata nonreserved custom format no marker|PASS byte-identical legacy route
+V110|route-redacted|missing or unprotected metadata json-redacted without marker|PASS redacted route with no reprotection
+V111|route-v1-metadata|exact Parties protected metadata and json+pdenc-v1 bounded marker|PASS parties-pdenc-v1 route
+V112|route-v1-no-metadata|missing metadata and json+pdenc-v1 bounded marker|PASS parties-pdenc-v1 route or opaque if reader absent
+V113|route-v2|exact v2 metadata format wrappers sequence and complete manifest|PASS shared v2 route
+V114|route-unknown-version|protected reserved json+pdenc-v3|PASS ProviderOpaqueUnsupportedOperation with zero provider call
+V115|route-malformed-metadata|duplicate unknown forbidden or over-version carrier member|PASS MalformedMetadata or UnknownMetadataVersion exactly
+V116|route-shape-mismatch|exercise every v1 v2 redacted json metadata-format-wrapper disagreement|LOCAL-MM
+V117|snapshot-v2-registry|current SnapshotTypeId historical alias unknown ID duplicate alias and alias cycle|PASS current and alias reads and FAIL-START or CONSISTENCY for invalid registry or unknown ID
+V118|snapshot-unreadable|corrupt auth tag missing key and provider outage on protected snapshot|AUTH-MM MISSING or UNAVAILABLE while retaining snapshot and replaying canonically
+V119|mixed-stream-stop|legacy v1 v2-unreadable then later-readable events|PASS stop at unreadable sequence with no later apply publish or checkpoint
+V120|rollout-partial-fleet|leave one v1-only previous-generation instance lease alive|BLOCK-WRITE and do not approve V2
+V121|rollout-capability|expire lease and independently alter generation source SHA package hash spec digest backend or supported formats|BLOCK-WRITE and readiness false
+V122|rollout-fence-race|change lifecycle ApprovedWriteMode approval epoch highest format or watermark ETag after strong read|CONSISTENCY and reservation transaction abort
+V123|rollout-first-v2|reserve first v2 payload under ApprovedWriteMode V2|PASS advance only HighestWrittenFormat to V2 and retain operator approval unchanged
+V124|rollout-full-downgrade|attempt Disabled no-op v1-only binary or CompatibilityLegacy after V2 watermark|FAIL-START or BLOCK-WRITE
+V125|rollout-parties-rollback|execute all seven section 13.4 steps with real persisted legacy v1 redacted v2 event and v2 snapshot|PASS RollbackLegacy writes v1 while every v2 path remains readable across restart projection and admin
+V126|rollout-readonly-domain|rollback a domain without approved legacy writer|BLOCK-WRITE in ReadOnly while v2 reads remain enabled
+V127|leak-logs|run every success and typed failure through source-generated logs|NO-LEAK and only closed event IDs allowlisted fields and bounded reason
+V128|leak-telemetry|run every operation through activities metrics and exporters|NO-LEAK with only section 10.8 names and low-cardinality tags
+V129|leak-problem-details|render every public unreadable provider and metadata failure|NO-LEAK constructive ProblemDetails allowlist only
+V130|leak-admin-query|exercise authorized stream timeline state and snapshot inspection|NO-LEAK and no ciphertext plaintext-on-failure or provider identity
+V131|leak-export-workflows|exercise replay projection publication Art20 Art30 erasure and audit export|NO-LEAK outside explicitly authorized plaintext destination
+V132|leak-encoding-corpus|inject raw percent JSON base64 base64url hex Unicode-confusable and nested canaries into metadata provider errors and URIs|NO-LEAK in structured and rendered recursive scans
+V133|leak-certificate-report|complete online invalidation with one backup copy still retained|NO-LEAK and certificate says pending recoverable-copy expiry rather than completed erasure
+V134|leak-support-bundle|collect configured diagnostics and hostile crash-support artifact request|NO-LEAK and prohibited dump bundle is absent or separately sanitized-approved
+V135|limit-envelope-value|read exact 1048576-byte v2 value with lower write config then read 1048577 and write config-limit-plus-1|PASS immutable-max read and reject oversize read or new write exactly
+V136|limit-json-traversal|test 16777216 and 16777217 payload bytes depth 64 and 65 nodes 65536 and 65537 selected 4096 and 4097 total plaintext 8388608 and 8388609|PASS every exact maximum and PROTECT-REJECT every maximum-plus-1 with checked arithmetic
+V137|limit-index-cache|test 256 and 257 index entries per page plus 4096 and 4097 cache entries|PASS exact maxima with paging or eviction and CONSISTENCY for malformed overfull page
+V138|limit-hostile-load|run bounded concurrent max-size malformed requests and cancel at every periodic checkpoint|LOCAL-MM or CANCEL with stable memory CPU backend-call and latency evidence
+```
 
 Mutation tests must demonstrate that each named field is independently bound;
 sampling one representative bit is insufficient for fixed headers/tags. Property-
@@ -1468,12 +1907,12 @@ baseline but may not silently move a concern across the frozen boundaries:
 | Class | Likely NEW/UPDATE artifacts | Frozen decisions implemented / evidence |
 | --- | --- | --- |
 | Story 8.2 contracts/goldens | One type per file under `src/Hexalith.EventStore.Contracts/Security`: `PersonalDataAttribute`, `PayloadProtectionPayloadKind`, `PersonalDataPolicyDecision`, `PersonalDataPolicyContext`, `IPersonalDataPolicy`, `PayloadErasureState*`, `IErasureStateProvider`, stable v2 snapshot carrier/context/completion contracts; additive defaults on `IEventPayloadProtectionService` where compatibility requires; frozen fixtures | Sections 6-9 and 14-15; API approval/source compatibility, two-toolchain goldens, and negative/mutation vectors. Existing providers compile unchanged. |
-| Story 8.3 core engine | Provider-neutral codec/AAD/path traversal, CSPRNG/AES, typed outcomes, bounds, cancellation, safe logs/telemetry, and owned-buffer zeroing under the future engine package boundary | Sections 6-8 and 14-15; no Azure/domain/Server dependency; G-001 and applicable named vectors. Packability remains owned by Story 8.8. |
+| Story 8.3 core engine | Create non-packable `Hexalith.EventStore.PayloadProtection` (`IsPackable=false`) and implement provider-neutral codec/AAD/path traversal, CSPRNG/AES, typed outcomes, bounds, cancellation, safe logs/telemetry, and owned-buffer zeroing | Sections 5-8 and 14-15; no Azure/domain/Server dependency; G-001 and applicable named vectors. Packability remains owned by Story 8.8. |
 | Story 8.4 compatibility | Historical and mixed-version readers/routing for legacy-unprotected, redacted, `pdenc-v1`, Story 22.7 metadata, protected snapshots, `pdenc-v2`, and unknown/opaque state | Sections 12-13 and Appendix A; no silent plaintext, downgrade, or checkpoint advance on unreadable input. |
 | Story 8.5 policy/key lifecycle | Policy discovery, backend SPI, DAPR scoped record/index/fence/lease/operation/audit stores, lifecycle/cache/retry/breaker/reconciler, erasure state, and fault fixtures under the future engine package boundary | Sections 9-10 and 14-15; deterministic ownership, state capabilities, lifecycle/cache/resilience, zeroing, and no-leak evidence. Packability remains owned by Story 8.8. |
-| Story 8.6 Azure adapter | Future Azure adapter boundary with options/validator, managed-identity factory, exact-version `CryptographyClient`, response classifier, startup capability probe, source-generated logs, and isolated real-service fixture | Section 11 and applicable sections 14-15; stable centrally versioned dependencies, mock classification, and real-vault conformance. Package creation/release remains owned by Story 8.8. |
+| Story 8.6 Azure adapter | Create non-packable `Hexalith.EventStore.PayloadProtection.AzureKeyVault` (`IsPackable=false`) with options/validator, managed-identity factory, exact-version `CryptographyClient`, response classifier, startup capability probe, source-generated logs, and isolated real-service fixture | Sections 5 and 11 plus applicable sections 14-15; stable centrally versioned dependencies, mock classification, and real-vault conformance. Packability/release remains owned by Story 8.8. |
 | Story 8.7 Server integration | `ServiceCollectionExtensions`, `EventPersister`, `SnapshotManager`, and the smallest existing readability/restore changes necessary for additive context, Reserved-to-Active completion, v2 fence/watermark, deterministic snapshot carrier, exact typed routing, and persisted integration evidence | Sections 5, 8.2, 10.3, 12-15; preserve all-protection-before-write, event atomic flush, snapshot advisory semantics, and fail-closed publish/rehydrate/projection/admin paths. |
-| Story 8.8 packages/release | `Hexalith.EventStore.PayloadProtection` and `Hexalith.EventStore.PayloadProtection.AzureKeyVault` packable projects; `Hexalith.EventStore.slnx`, central versions, references, package metadata, `tools/release-packages.json`, validation/tests, pack inputs, SBOM/provenance | Sections 5.1 and 16.3; exactly two packages, atomic 14-to-16 manifest transition, and package-only proof without assistant entry-point changes. |
+| Story 8.8 packages/release | Enable `IsPackable` and complete package/release metadata for the two existing projects; update `Hexalith.EventStore.slnx`, central versions, references, `tools/release-packages.json`, validation/tests, pack inputs, SBOM/provenance | Sections 5.1 and 16.3; exactly two packages, atomic 14-to-16 manifest transition, and package-only proof without assistant entry-point changes. |
 | Story 8.9 Parties parity | EventStore attribute/policy and erasure adapters, retained `parties-pdenc-v1` reader/writer, dual-provider DI/fence, consumer fixtures/tests/runbook/certificate wording in an exact separately authorized Parties commit/PR | Sections 9, 11.5, 12-13, and Appendix B; no direct EventStore-to-Parties dependency and no deletion of the legacy path before G5. |
 | Story 8.10 rollback | Real post-`pdenc-v2` persisted event/snapshot history, retained-reader routing, mixed history, configuration reversal, restart/projection/admin proof, and no-leak transcript | Sections 13-15; rollback before any v2 write or mock-only data is insufficient. |
 | Story 8.11 documentation/G5 | `docs/guides/payload-protection-and-crypto-shredding.md`, generated inventory/readme/release notes, operator deployment/rotation/outage/restore/rollback runbooks, and the immutable closure packet | Sections 4-16; describe only proven behavior, distinguish no-op/configured/conformant/G5 states, bind exact identities/digest, and record named approvals. |
@@ -1492,17 +1931,19 @@ this predecessor sequence:
 
 1. Story 8.2 rechecks the digest/source identities, adds compile-compatible
    contracts and owner golden fixtures, and passes contract/API/vector review.
-2. Story 8.3 implements strict parsers, AAD, core cryptography, bounds, zeroing,
-   and local negative vectors against Story 8.2 evidence.
+2. Story 8.3 creates the non-packable core project and implements strict parsers,
+   AAD, core cryptography, bounds, zeroing, and local negative vectors against
+   Story 8.2 evidence.
 3. Stories 8.4 and 8.5 may then proceed in parallel: 8.4 owns historical/mixed
    readers and routing; 8.5 owns policy, state hierarchy, reservation, lifecycle,
    cache, resilience, audit, and crash/fault tests.
-4. Story 8.6 starts only after both 8.4 and 8.5 and owns stable Azure SDK/API
-   reverification, adapter implementation, and real isolated conformance.
+4. Story 8.6 starts only after both 8.4 and 8.5, creates the non-packable Azure
+   adapter project, and owns stable Azure SDK/API reverification, adapter
+   implementation, and real isolated conformance.
 5. Story 8.7 wires Server context/completion/fence/snapshot/read routes and proves
    persisted fail-closed behavior through the production path.
-6. Story 8.8 creates the two governed packages and atomically performs the
-   release-manifest transition with package-only evidence.
+6. Story 8.8 enables packing for the two governed projects and atomically
+   performs the release-manifest transition with package-only evidence.
 7. Story 8.9 proves separately authorized Parties dual-provider parity; Story
    8.10 then rehearses rollback after real v2 writes; Story 8.11 finally assembles
    the content- and identity-bound G5 packet and approvals.
@@ -1515,9 +1956,9 @@ approval after any content change, and blocks code depending on it.
 
 ### 16.3 Atomic package and provenance gate
 
-The release inventory remains the manifest-driven **14 packages** until both
-approved packable projects exist and pass their tests. The same Story 8.8 change
-then atomically:
+The release inventory remains the manifest-driven **14 packages** while both
+approved projects are non-packable and pass their tests. The same Story 8.8
+change then atomically enables their packability and:
 
 - adds `Hexalith.EventStore.PayloadProtection` and
   `Hexalith.EventStore.PayloadProtection.AzureKeyVault` to
@@ -1627,7 +2068,7 @@ erasure completion, or Parties migration is accepted by this document alone.
   proven. Existing production behavior is unchanged.
 - The current protection hook needs additive context/completion/fence contracts;
   exact source compatibility must be demonstrated in Story 8.2.
-- V2 protects valid JSON values up to 1 MiB and at most 65,536 selected fields;
+- V2 protects valid JSON values up to 1 MiB and at most 4,096 selected fields;
   arbitrary binary field encryption and larger values need another format.
 - Snapshots are whole-state protected when any selected value exists; this may
   cost more than field protection but avoids materialization ambiguity.
@@ -1788,13 +2229,13 @@ SDK/API versions before its code or evidence is accepted.
 | Azure .NET `KeyWrapAlgorithm`, `https://learn.microsoft.com/dotnet/api/azure.security.keyvault.keys.cryptography.keywrapalgorithm` | Living stable Azure SDK API | Reverify exact package version/source | Exact `RsaOaep256` adapter identifier |
 | ASP.NET Core environments, `https://learn.microsoft.com/aspnet/core/fundamentals/environments?view=aspnetcore-10.0` | ASP.NET Core 10 | Living documentation | Exact Development-only provider guard |
 
-<!-- END NORMATIVE CONTENT -->
+<!-- HX-PP-V2-NORMATIVE-END -->
 
 ## 18. Independent Review And Reproduction Evidence
 
-No independent review or approval has yet been recorded. This section is
-intentionally non-normative evidence bound to normative digest
-`0e45b08890039bdc16a53718cdc664bede18254656b44751863813b3bc1f50e8`.
+This section contains the independent review, approval, and author evidence
+bound to normative digest
+`0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7`.
 
 Author verification is recorded for reproducibility but is explicitly **not**
 the independent evidence required by OD-02/OD-06:
@@ -1805,6 +2246,36 @@ the independent evidence required by OD-02/OD-06:
 | 2026-07-16 | Node.js 26.4.0/OpenSSL 3.5.7 and Python 3.14.4/cryptography 46.0.5 | Both reproduced G-001 ciphertext+tag and NIST AES-256-GCM Count 0 tag exactly | Two toolchains operated by the author; independent person/reviewer reproduction remains open. |
 | 2026-07-16 | SHA-256 over section 1.2 LF byte range | `efb419b5fa05d0b1d9bbf463261172cce181d5ada2c0c8d305751cc57497f440` | Frozen approval subject; no approval implied. |
 | 2026-08-01 | SHA-256 over section 1.2 LF byte range after approved story decomposition | `0e45b08890039bdc16a53718cdc664bede18254656b44751863813b3bc1f50e8` | Rebound approval subject; no approval implied and implementation remains not authorized. |
+| 2026-08-01 | BMad four-layer adversarial code review plus Administrator decision resolution | 12 decision findings converted to accepted patches; 16 direct patches accepted; 3 pre-existing items deferred; 5 non-defects dismissed; all 28 patches applied to this specification/story | AI-assisted author review only; no named independent reviewer or approval is implied. |
+| 2026-08-01 | Node.js 26.4.0/OpenSSL 3.5.7 and Python 3.14.4/cryptography 46.0.5 exact embedded commands | Both independently rebuilt the path manifest, 11-field AAD, ciphertext/tag, envelope, wrapper, and hashes from atomic inputs; output SHA-256 `91744a9a620158fa982c0128e88c20eecd81764338e3e71a38eff526fbd53382` matched | Author-operated pre-approval reproduction; independently repeated and closed by `AR-20260801-01`. |
+| 2026-08-01 | Exact registry/marker/digest validation | V001-V138 registry contains 138 ordered unique IDs; full-line digest markers are unique; LF/no-BOM preconditions pass; digest `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7` recomputes exactly | Pre-approval validation checkpoint; later approved by `AR-20260801-01`. |
+
+### 18.1 Independent approval packet `AR-20260801-01`
+
+| Field | Exact evidence |
+| --- | --- |
+| Reviewer/approver | Jérôme Piquot |
+| UTC timestamp | `2026-08-01T16:08:07Z` |
+| Normative digest | `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7` |
+| EventStore source | `b200305978577530ee2e6ba9e92b886d26dc6f6f` |
+| Parties source | `4378dede55d92e489caf7aad63d6c2892e6f856d` |
+| Independent vector environment | Node.js `v26.4.0`, OpenSSL `3.5.7`, Python `3.14.4`, cryptography `46.0.5` |
+| Independent vector result | Exact embedded Node.js and Python commands both completed their atomic-field assertions and each emitted output SHA-256 `91744a9a620158fa982c0128e88c20eecd81764338e3e71a38eff526fbd53382`. |
+| Review method | Independently executed the exact vector reproducers, reviewed the V001-V138 contract, and reviewed sections 12-17 for compatibility, rollback, structure, traceability, custody, release, and residual-risk completeness. |
+| Findings | No open material findings. The 3 recorded deferrals are pre-existing sprint-tracking matters outside the normative artifact and do not weaken authorization. |
+| Residual-risk disposition | Explicitly accepted every residual risk and limitation recorded in sections 4, 8.2, 11.5, 13, 14, and 17.3 for the exact digest. |
+| Roles approved | Architect; Security Reviewer; EventStore owner; Release owner; Operations owner; Parties maintainer; Test Architect / independent vector reviewer |
+| Final disposition | **Approved. Story 8.2 is AUTHORIZED** for exact-digest/source preflight and implementation. |
+
+OD-01 through OD-06 are closed by this packet with no open material finding.
+PF-01 and PF-02 remain mandatory implementation preflights owned by Stories 8.6
+and 8.5 respectively; they are not Story 8.1 approval blockers.
+
+The final pre-approval sentence in normative section 17.5 and the “missing
+evidence” wording in section 17.4 record the state at normative freeze. This
+detached packet supplies the evidence those rules require; the normative bytes
+are intentionally unchanged so the approval remains bound to the reviewed
+digest rather than becoming self-referential.
 
 ## 19. Change History
 
@@ -1813,3 +2284,5 @@ the independent evidence required by OD-02/OD-06:
 | 2026-07-16 | Created authoritative baseline, traceability, EventStore path inventory, exact Parties provenance, and source register. | Draft remains not authorized. |
 | 2026-07-16 | Froze ownership/packages, v2 wire/AAD, compatibility/rollback, policy/lifecycle, Azure backend, threat/no-leak/vectors, Story 8.2 handoff, ADR disposition and authorization algorithm. | Normative digest frozen; remains not authorized pending independent review and named approvals. |
 | 2026-08-01 | Rebound implementation, package, consumer, rollback, and closure ownership from the former Story 8.2 umbrella to Stories 8.2-8.11 and recorded the predecessor chain. | Normative digest changed; all approvals remain absent, Story 8.2 remains not authorized, and Stories 8.3-8.11 remain blocked. |
+| 2026-08-01 | Applied the accepted adversarial-review patches: occurrence/path-set authentication, stable snapshot IDs, serializer-first policy, bounded resources, canonical durable schemas, safe lifecycle/rotation, generation leases and split fences, honest zeroing/RNG claims, exact vector registry, and corrected package/provider handoff. | Normative digest changed to `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7`; all approvals remain absent and every successor remains blocked. |
+| 2026-08-01 | Recorded Jérôme Piquot's independent reproduction, sections 12-17 review, residual-risk acceptance, and approval in every mandatory role as `AR-20260801-01`. | Normative bytes and digest are unchanged; Story 8.2 is authorized, while Stories 8.3-8.11 remain predecessor-gated. |
