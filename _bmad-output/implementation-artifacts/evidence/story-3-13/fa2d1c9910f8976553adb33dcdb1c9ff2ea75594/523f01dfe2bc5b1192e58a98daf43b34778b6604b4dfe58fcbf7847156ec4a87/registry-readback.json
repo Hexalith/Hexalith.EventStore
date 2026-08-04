@@ -1,0 +1,51 @@
+{
+  "schema": "hexalith.eventstore.story-3-13-registry-readback/v1",
+  "checked_at": "2026-08-04T11:48:07Z",
+  "repository": "registry.hexalith.com/eventstore",
+  "discovery_tag": "quarantine-proof-fa2d1c9910f8976553adb33dcdb1c9ff2ea75594",
+  "immutable_index_digest": "sha256:523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87",
+  "tag_response": {
+    "raw_file": "tag-response.raw",
+    "content_type": "application/vnd.oci.image.index.v1+json",
+    "docker_content_digest": "sha256:523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87",
+    "content_length": 493,
+    "raw_sha256": "523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87"
+  },
+  "digest_response": {
+    "raw_file": "digest-response.raw",
+    "content_type": "application/vnd.oci.image.index.v1+json",
+    "docker_content_digest": "sha256:523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87",
+    "content_length": 493,
+    "raw_sha256": "523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87"
+  },
+  "objects": [],
+  "object_response_metadata_result": "missing",
+  "object_response_metadata_blocker": "Child-manifest and config response headers were not retained and cannot be independently replayed from this packet.",
+  "tag_and_digest_bytes_identical": true,
+  "shared_validator": {
+    "path": "references/Hexalith.Builds/Github/publish-containers/oci_registry_validator.py",
+    "sha256": "e1547e31fbdb8a678c99a245510e718c1cb35f6b9ec51264aa7bc1cdae419509",
+    "builds_gitlink_sha": "a53166539bf4441d5e33d04281b14c2d59e950c3",
+    "verification_result": "pass",
+    "cli_candidate_compatibility": "unavailable",
+    "cli_candidate_consequence": "The CLI accepts SemVer tags only; the unchanged validation functions were applied to the immutable proof graph without weakening the contract."
+  },
+  "config_labels": {
+    "version": "3.82.0",
+    "revision": null,
+    "v3_82_0_tag_source_sha": "0b12950f12e9365fd48e3fe085ab626f9d09dfc5",
+    "approved_source_sha": "fa2d1c9910f8976553adb33dcdb1c9ff2ea75594",
+    "exact_source_match": false,
+    "verification_result": "fail",
+    "malformed_provenance_labels": {
+      "org.opencontainers.image.source": "https",
+      "org.opencontainers.image.url": "https",
+      "org.opencontainers.image.documentation": "https"
+    },
+    "provenance_label_result": "fail",
+    "provenance_label_blocker": "The source, URL, and documentation labels are malformed and cannot identify a repository or revision."
+  },
+  "oci_graph_result": "fail",
+  "result": "fail",
+  "scope": "Raw descriptor/body relationships pass, but child/config response metadata, release/source identity, and label provenance remain fail-closed."
+}

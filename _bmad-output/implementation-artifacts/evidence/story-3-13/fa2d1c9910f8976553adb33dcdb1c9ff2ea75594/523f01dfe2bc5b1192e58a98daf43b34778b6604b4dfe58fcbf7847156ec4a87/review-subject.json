@@ -1,0 +1,67 @@
+{
+  "schema": "hexalith.eventstore.story-3-13-review-subject/v2",
+  "created_at": "2026-08-04T19:25:16Z",
+  "proposed_decision": "fail-closed",
+  "identity_crosswalk": {
+    "path": "identity-crosswalk.json",
+    "sha256": "b078cf82946594d91e382270f9ce5b6a36b6331ca1e4728203fe208b25f5d36b"
+  },
+  "evidence_core_manifest": {
+    "path": "evidence-core-sha256.txt",
+    "sha256": "d8323c16993257171817935010a720929ed36d7eba9c2e9fc418c8bd494d11f8"
+  },
+  "proof_packet": {
+    "path": "_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure-proof-packet.md",
+    "sha256": "dfa92b065eebe449d25312a4276e8ff2e1b031e43e3811e23c227ad784599498"
+  },
+  "identity": {
+    "source_sha": "fa2d1c9910f8976553adb33dcdb1c9ff2ea75594",
+    "package_version": "999.1.20-proof.fa2d1c9910f8",
+    "package_hash_manifest_sha256": "4271ddc76411780591423ab024b776cd34a2abccf1cc2dac03a245e141dbe0bc",
+    "release_version": null,
+    "workflow_run": null,
+    "authority_record_sha256": null,
+    "index_digest": "sha256:523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87",
+    "canonical_lineage_id": null
+  },
+  "passing_evidence": [
+    "all predecessor fingerprints and the complete 40-file Story 1.20 tree are unchanged",
+    "the OCI index and independent tag/digest response bodies match their immutable descriptor",
+    "the retained child/config raw byte graph matches its descriptors, but its response metadata was not retained"
+  ],
+  "blockers": [
+    "the 14 original proof package archives remain unavailable for independent byte verification",
+    "the selected lineage has no semantic release tag, workflow run/attempt, Builds execution SHA, or publisher identity",
+    "the config source, URL, and documentation labels equal the malformed value https and the absent revision cannot bind the approved source",
+    "child-manifest and config response metadata was not retained, so the registry response checks cannot be replayed from this packet",
+    "the retained smoke logs lack structured HTTP, redirect, platform, timing, exit-code, and cleanup facts",
+    "the retained liveness execution used Development while the documented equivalent smoke contract requires Production",
+    "the retained publication authority explicitly excludes deployment and consumer migration",
+    "the EventStore owner, Release owner, and Test Architect have not accepted this Story 3.13 subject"
+  ],
+  "limitations": [
+    "No package, release, registry, deployment, consumer, predecessor, Epic 1, or submodule mutation is authorized.",
+    "The selected package hashes are retained evidence, but the original archive bytes are unavailable for independent rehashing.",
+    "The retained smoke artifacts report Development execution while docs/ci.md requires Production; independently proven liveness and equivalent runtime smoke both remain open.",
+    "The image source, URL, and documentation OCI labels are the malformed value https and supply no revision provenance.",
+    "The retained OCI descriptor/body relationships pass, but complete response-metadata replay, semantic-release provenance, and an exact source revision mapping are missing.",
+    "Child-manifest and config response metadata was not retained, so the live registry response checks are not reproducible from the packet.",
+    "The smoke logs do not retain structured HTTP, observed-platform, per-platform timing, or exit-code facts and therefore cannot independently prove executed liveness.",
+    "The current shared validator CLI cannot accept the non-SemVer quarantine tag; the immutable graph was validated with its unchanged validation functions.",
+    "No Story 3.13 owner or Test Architect acceptance has been requested or inferred; future receipts stay outside hashed evidence."
+  ],
+  "required_acceptances": [
+    {
+      "role": "eventstore-owner",
+      "status": "missing"
+    },
+    {
+      "role": "release-owner",
+      "status": "missing"
+    },
+    {
+      "role": "test-architect",
+      "status": "missing"
+    }
+  ]
+}

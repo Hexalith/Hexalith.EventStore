@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-08-01
+# last_updated: 2026-08-04
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T20:01:46+02:00
-last_updated: 2026-08-01
+last_updated: 2026-08-04
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -208,7 +208,14 @@ development_status:
   # Story 1.20 is already done on source/package parity. Story 3.13 independently maps that
   # identity to the deployed OCI index, child manifests/configs, and release provenance.
   3-12-multi-platform-eventstore-container-publishing-correction: done
-  3-13-deployed-runtime-parity-closure: ready-for-dev
+  # 2026-08-04 code review (4 layers): 1 owner decision resolved, 15 patches applied, 0 deferred,
+  # 3 dismissed. The verifier now closes package-byte, lineage, authority, OCI-root/provenance,
+  # runtime, review-subject/receipt, checksum, chronology, and symlink gaps. Returned to in-progress:
+  # child/config response metadata, independently replayable runtime facts, proof-package bytes,
+  # same-lineage release/deployment authority, and all three AC4 acceptances remain missing.
+  # 2026-08-04 second hardening pass added derived fail-closed subject/outer-manifest validation
+  # and 115 focused mutation cases; AC1/AC3 pass, while AC2/AC4 and all 0/3 acceptances remain open.
+  3-13-deployed-runtime-parity-closure: review
   epic-3-retrospective: optional
 
   epic-4: in-progress

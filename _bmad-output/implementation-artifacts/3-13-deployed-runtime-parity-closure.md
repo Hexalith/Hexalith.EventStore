@@ -35,7 +35,7 @@ source_files:
 
 # Story 3.13: Deployed Runtime Parity Closure
 
-Status: ready-for-dev
+Status: in-progress
 
 <!-- Ultimate context engine analysis completed - comprehensive developer guide created. -->
 
@@ -151,73 +151,73 @@ deployment mutation, Story 1.20/3.12 status change, or G5 classification.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 - Reconfirm baseline, predecessors, scope, and authority (AC1-AC4).**
-  - [ ] Re-read root guidance, project context, relevant architecture, `.editorconfig`,
+- [x] **Task 1 - Reconfirm baseline, predecessors, scope, and authority (AC1-AC4).**
+  - [x] Re-read root guidance, project context, relevant architecture, `.editorconfig`,
     `.gitattributes`, current branch/worktree/remotes, and recent history before writing evidence.
-  - [ ] Verify sprint tracking still has Epic 3 `in-progress`, Story 1.20 `done`, Story 3.12 `done`,
+  - [x] Verify sprint tracking still has Epic 3 `in-progress`, Story 1.20 `done`, Story 3.12 `done`,
     and this story no farther than `ready-for-dev`; never change either predecessor or Epic 1.
-  - [ ] Record exact current EventStore and root-declared Builds gitlink/check-out SHAs. Do not
+  - [x] Record exact current EventStore and root-declared Builds gitlink/check-out SHAs. Do not
     initialize nested submodules, update dependencies, or edit submodule content.
-  - [ ] Separate read-only registry/artifact inspection and ephemeral smoke authority from commit,
+  - [x] Separate read-only registry/artifact inspection and ephemeral smoke authority from commit,
     push, publication, registry, deployment, consumer, and approval authority.
 
-- [ ] **Task 2 - Freeze the two predecessor packets as immutable inputs (AC1, AC3).**
-  - [ ] Record Git blob hashes and SHA-256 values for the Story 1.20 story/packet, its selected
+- [x] **Task 2 - Freeze the two predecessor packets as immutable inputs (AC1, AC3).**
+  - [x] Record Git blob hashes and SHA-256 values for the Story 1.20 story/packet, its selected
     `fa2d1c...` committed evidence directory, and the Story 3.12 story record before analysis.
-  - [ ] Run `sha256sum -c` against Story 1.20's committed `critical-evidence-sha256.txt` from the
+  - [x] Run `sha256sum -c` against Story 1.20's committed `critical-evidence-sha256.txt` from the
     correct evidence directory; record missing, renamed, or mismatched files as failure.
-  - [ ] Extract source, package, release, workflow, Builds, authority, index, child, config, smoke,
+  - [x] Extract source, package, release, workflow, Builds, authority, index, child, config, smoke,
     owner, and evidence-retention identities into separate candidate rows. Preserve `v3.75.0` and
     `v3.77.1` as failed/quarantined history and never select them.
-  - [ ] Do not edit, normalize, regenerate, or “correct” either predecessor packet. Later planning
+  - [x] Do not edit, normalize, regenerate, or “correct” either predecessor packet. Later planning
     supersedes old ownership wording, but historical bytes remain evidence.
 
-- [ ] **Task 3 - Create a field-complete, content-bound crosswalk (AC1-AC3).**
-  - [ ] Create
+- [x] **Task 3 - Create a field-complete, content-bound crosswalk (AC1-AC3).**
+  - [x] Create
     `_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure-proof-packet.md`
     as the human-readable decision packet and add one support-safe evidence directory at
     `_bmad-output/implementation-artifacts/evidence/story-3-13/<approved-source-sha>/<validated-index-sha256>/`;
     do not add Story 3.13 output beneath Story 1.20's evidence tree.
-  - [ ] Create `identity-crosswalk.json` with an explicit schema/version and fields for source SHA,
+  - [x] Create `identity-crosswalk.json` with an explicit schema/version and fields for source SHA,
     package manifest path/hash, all 14 package rows, release/version/tag, workflow run/attempt,
     Builds execution SHA, release authority URL/hash/scope, registry/repository, index media type/
     digest/size/raw hash, two child descriptors, two config descriptors/platforms, smoke results,
     predecessor input hashes, limitations, and final `pass` or `fail-closed` verdict.
-  - [ ] Give every field a source citation and independent verification result. A copied value with
+  - [x] Give every field a source citation and independent verification result. A copied value with
     no verification method/result is `unverified`, not `pass`.
-  - [ ] Require all selected fields to belong to one candidate row. Reject union, fallback, or
+  - [x] Require all selected fields to belong to one candidate row. Reject union, fallback, or
     “latest available value” logic across Story 1.20, v3.77.2, later tags, or current `main`.
 
 - [ ] **Task 4 - Revalidate exact source and package identities (AC2, AC3).**
   - [ ] Require the selected release provenance source to equal—not merely contain or descend
     from—the Story 1.20-approved `fa2d1c9910f8976553adb33dcdb1c9ff2ea75594`, unless a new
     owner-reviewed parity packet explicitly approves a different exact SHA outside this story.
-  - [ ] Parse `tools/release-packages.json` structurally and require exactly its current 14 IDs,
+  - [x] Parse `tools/release-packages.json` structurally and require exactly its current 14 IDs,
     no duplicate IDs/projects, one selected version, and no package outside the manifest.
   - [ ] Independently obtain and hash the exact selected package bytes. Require every ID/version/
     SHA-256 tuple to equal the approved packet and bind the sorted per-package manifest bytes to the
     approved manifest hash.
-  - [ ] Treat the recorded unrecoverability of the `999.1.20-proof.fa2d1c9910f8` package bytes as a
+  - [x] Treat the recorded unrecoverability of the `999.1.20-proof.fa2d1c9910f8` package bytes as a
     known blocker unless the exact original bytes are recovered from a content-addressed source and
     rehashed. Rebuilding similar packages or trusting the recorded hash list is not independent
     byte verification.
-  - [ ] Do not apply the Story 2.12 Tenants-only AD-22 exception: it explicitly grants no deployed-
+  - [x] Do not apply the Story 2.12 Tenants-only AD-22 exception: it explicitly grants no deployed-
     mode or other-consumer relief.
 
 - [ ] **Task 5 - Revalidate the immutable OCI graph from registry bytes (AC2, AC3).**
-  - [ ] Resolve the proposed tag only as discovery input; immediately bind all evidence to the
+  - [x] Resolve the proposed tag only as discovery input; immediately bind all evidence to the
     immutable index digest. Re-fetch the index by digest with an OCI-index `Accept` header and
     require the tag and digest responses to be byte-identical when a tag is part of the candidate.
-  - [ ] Verify `Docker-Content-Digest`, exact raw bytes/hash/length, `schemaVersion: 2`, and media
+  - [x] Verify `Docker-Content-Digest`, exact raw bytes/hash/length, `schemaVersion: 2`, and media
     type `application/vnd.oci.image.index.v1+json`.
-  - [ ] Require exactly two direct image descriptors: one `linux/amd64` and one `linux/arm64`, with
+  - [x] Require exactly two direct image descriptors: one `linux/amd64` and one `linux/arm64`, with
     no duplicate, extra, nested index, `unknown`, or non-empty variant entry.
   - [ ] Resolve every child manifest by digest; verify raw digest, size, descriptor/response media
     type, config descriptor digest/size, raw config digest/size, and config `os`/`architecture`
     equality with the parent descriptor.
-  - [ ] Retain support-safe raw index, child-manifest, and config bytes plus a sorted checksum
+  - [x] Retain support-safe raw index, child-manifest, and config bytes plus a sorted checksum
     manifest. Never retain registry credentials or authorization headers.
-  - [ ] Reuse the SHA-pinned Hexalith.Builds validation contract for a semantic release candidate.
+  - [x] Reuse the SHA-pinned Hexalith.Builds validation contract for a semantic release candidate.
     The current validator accepts a SemVer tag for initial resolution; it cannot directly accept
     the non-SemVer `quarantine-proof-*` tag. Do not weaken or fork it in this story. Use an already
     approved immutable-digest verification path or record the tool/candidate incompatibility as a
@@ -227,13 +227,13 @@ deployment mutation, Story 1.20/3.12 status change, or G5 classification.
   - [ ] Run the same bounded support-safe `/alive` smoke against each immutable child digest, with
     the same minimal configuration, timeout, polling, 2xx-without-redirect expectation, cleanup,
     and log-redaction contract for both platforms.
-  - [ ] Run arm64 emulation/runtime readiness before arm64 product smoke. Classify environment/
+  - [x] Run arm64 emulation/runtime readiness before arm64 product smoke. Classify environment/
     emulation setup failure separately from image pull/start failure and liveness failure; every
     non-pass blocks closure.
   - [ ] Record child digest, observed runtime platform, command contract, start/end time, exit code,
     bounded log hash, readiness result, and cleanup result. Do not treat workflow success, image
     pull, process start, or the parent index alone as runtime proof.
-  - [ ] If an actual deployed instance is inspected, observe its image identity and map an observed
+  - [x] If an actual deployed instance is inspected, observe its image identity and map an observed
     index, child, or config digest only through the frozen selected chain. An identity absent from
     the chain fails closed; never derive it from a mutable deployment tag.
 
@@ -241,36 +241,38 @@ deployment mutation, Story 1.20/3.12 status change, or G5 classification.
   - [ ] Bind one release version/tag, workflow run and attempt, source/tag commit relationship,
     Builds execution SHA, publisher/validator identity, package inventory, and container index to
     the same release event.
-  - [ ] Hash and validate the durable release-owner authority record. Require repository, exact
+  - [x] Hash and validate the durable release-owner authority record. Require repository, exact
     source SHA, version/tag, container repository, platform scope, owner, date, rationale, and
     validity at the original action time; an expired record may prove historical authorization but
     cannot authorize a new mutation.
-  - [ ] Require the selected candidate's retained evidence to be durable and content-bound.
+  - [x] Require the selected candidate's retained evidence to be durable and content-bound.
     Expired GitHub Actions artifacts, inaccessible package bytes, mutable issue text without a
     frozen hash, or registry tags without digest read-back are missing evidence.
-  - [ ] Keep signing, SBOM, attestations, trusted publishing, and credential modernization out of
+  - [x] Keep signing, SBOM, attestations, trusted publishing, and credential modernization out of
     scope. Their absence does not weaken this story's required provenance fields and this story
     does not claim to implement them.
 
-- [ ] **Task 8 - Produce the fail-closed verdict before requesting review (AC2, AC3).**
-  - [ ] Run a structural verifier over `identity-crosswalk.json` and the checksum manifest. Require
+- [x] **Task 8 - Produce the fail-closed verdict before requesting review (AC2, AC3).**
+  - [x] Run a structural verifier over `identity-crosswalk.json` and the checksum manifest. Require
     exact field presence, one candidate identity, exact package/platform sets, and all independent
     checks passing.
-  - [ ] Add focused regression coverage in
+  - [x] Add focused regression coverage in
     `tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs`
     for the crosswalk schema, exact 14-package/two-platform sets, selected hashes/verdict, and
     approval-subject binding. Use existing test dependencies; do not change a project file.
-  - [ ] Explicitly test the known prohibited splice: Story 1.20 source/packages plus v3.77.2
+  - [x] Explicitly test the known prohibited splice: Story 1.20 source/packages plus v3.77.2
     release/index must fail. Also reject v3.77.2 source/packages plus the Story 1.20 proof index.
-  - [ ] If no single candidate passes, record `fail-closed`, the exact blockers and evidence
+  - [x] If no single candidate passes, record `fail-closed`, the exact blockers and evidence
     attempted, and the separately owned corrective action needed. Do not invent a release, request
     publication under this story, or change any completed status.
-  - [ ] This story may enter `review` only after the focused crosswalk exists and its verdict is
+  - [x] This story may enter `review` only after the focused crosswalk exists and its verdict is
     reproducible. It may become `done` only for a complete `pass` packet under AC4.
 
 - [ ] **Task 9 - Obtain content-bound owner and Test Architect acceptance (AC4).**
-  - [ ] Freeze a review subject containing the final crosswalk hash, evidence-manifest hash,
+  - [x] Freeze a review subject containing the final crosswalk hash, evidence-manifest hash,
     source/package/release/index identities, limitations, and proposed decision.
+  - [x] Hash-bind the repository-owned reviewer roster and load future receipts only from the
+    subject-hash-addressed evidence path, with exact authorized identities and receipt fields.
   - [ ] Obtain distinct durable acceptance from the EventStore owner and Release owner plus Murat's
     Test Architect review. Verify reviewer roles, exact subject hash, accepted scope, limitations,
     decision, date, and durable source; do not infer approval from story creation or prior approval.
@@ -279,17 +281,17 @@ deployment mutation, Story 1.20/3.12 status change, or G5 classification.
   - [ ] For a passing packet, record only the deployed identity decision. Preserve the explicit
     prohibition on consumer migration, deployment, publication, registry mutation, and G5.
 
-- [ ] **Task 10 - Validate and hand off without scope leakage (AC1-AC4).**
-  - [ ] Validate JSON structure, all checksum manifests, predecessor immutability, support-safe
+- [x] **Task 10 - Validate and hand off without scope leakage (AC1-AC4).**
+  - [x] Validate JSON structure, all checksum manifests, predecessor immutability, support-safe
     output, exact package/platform sets, Git diff hygiene, and the story/sprint status transition.
-  - [ ] Confirm no runtime source, workflow, release configuration, manifest, submodule, Story 1.20,
+  - [x] Confirm no runtime source, workflow, release configuration, manifest, submodule, Story 1.20,
     Story 3.12, consumer, deployment, or registry object changed under Story 3.13.
-  - [ ] Record exact commands/results and environmental blockers in the Dev Agent Record. Do not
+  - [x] Record exact commands/results and environmental blockers in the Dev Agent Record. Do not
     report a blocked or unavailable check as passed.
-  - [ ] Update only the stale Story 3.12-to-Story 1.20 ownership paragraph in `docs/ci.md` to name
+  - [x] Update only the stale Story 3.12-to-Story 1.20 ownership paragraph in `docs/ci.md` to name
     Story 3.13 as the deployed-runtime closure owner. Preserve the documented release mechanics,
     all historical records, and Story 1.20's source/package-only authority.
-  - [ ] If AC4 passes, move this story through review to `done`; otherwise leave it non-`done` with
+  - [x] If AC4 passes, move this story through review to `done`; otherwise leave it non-`done` with
     the focused blocker record. Never change Story 1.20, Story 3.12, or Epic 1.
 
 ## Dev Notes
@@ -532,19 +534,79 @@ OpenAI Codex (GPT-5)
 
 ### Debug Log References
 
+- `sha256sum -c critical-evidence-sha256.txt` from the Story 1.20 evidence directory:
+  33/33 entries passed.
+- Exact predecessor SHA-256 values matched the story-creation fingerprints; the full selected
+  Story 1.20 evidence tree remains Git tree `fcd0c25c9cf6bb0554e208d529f1ef09c223725a`
+  with 40 files.
+- The current shared OCI validation functions read the proof tag and immutable index plus both
+  children/configs from the registry. Raw descriptor/body digests, sizes, media types, and
+  platforms passed, but child/config response content types and digest headers were not retained;
+  complete registry-response replay therefore fails closed.
+- The current shared smoke contract ran from `2026-08-04T11:10:03.248829Z` through
+  `2026-08-04T11:12:03.469486Z` and reported passing polls and cleanup under `Development`.
+  The retained logs omit structured HTTP, redirect, observed-platform, per-platform timing, and
+  exit-code facts, so they do not independently prove liveness. `docs/ci.md` also requires
+  `Production`; runtime evidence and contract equivalence remain blockers.
+- Both retained configs set the OCI source, URL, and documentation labels to the malformed value
+  `https`. The byte graph passes, but provenance-label validation fails closed.
+- Exact local proof-package search found zero archives; all 14 NuGet.org flat-container requests
+  returned HTTP 404. No replacement packages were built.
+- `dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -m:1 --no-restore -p:UseHexalithProjectReferences=false -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0`
+  passed with zero warnings and zero errors.
+- `dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -m:1 --no-restore -p:UseHexalithProjectReferences=false -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0 --filter FullyQualifiedName~DeployedRuntimeParityClosureTests`
+  passed 115/115 tests with zero failed, skipped, or not run.
+- `dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -m:1 --no-restore -p:UseHexalithProjectReferences=false -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0`
+  passed the complete Contracts suite: 999/999 tests with zero failed, skipped, or not run.
+- `jq empty _bmad-output/implementation-artifacts/evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/*.json`
+  exited zero for every retained JSON document.
+- `npx markdownlint-cli2 docs/ci.md` exited zero; the configured selection reported zero issues.
+- `git diff --check 1d6e9321acfc416768c1c78e9facf573c9c41f71 -- .` exited zero.
+
 ### Completion Notes List
 
-- Ultimate context engine analysis completed - comprehensive developer guide created.
+- Frozen and independently hash-checked both predecessors without modifying their bytes or status.
+- Created one content-addressed, schema-versioned identity crosswalk with an exact 14-package set,
+  exact two-platform raw OCI byte graph, separate tag/digest response bodies, retained Development
+  smoke artifacts, rejected v3.77.2 lineage, and both prohibited splice controls.
+- Hardened the structural closure evaluator to verify actual package archives, semantic-release
+  provenance, deployment authority, registry/reference/root identity, exact OCI source revision,
+  structured support-safe runtime facts, checksum closure, full review-subject binding, reviewer
+  roster authorization, receipt chronology, and symlink-safe evidence paths.
+- Added a second review-hardening matrix that independently mutates and rebinds package bytes,
+  baseline/predecessor Git objects, authoritative release and deployment records, canonical lineage,
+  both OCI reports and provenance labels, runtime timing/cadence, support-safe values, and durable
+  receipt sources. The actual fail-closed subject and outer manifest are now derived checks too.
+- Recorded `fail-closed`: original proof packages remain unavailable; semantic-release provenance,
+  valid OCI provenance labels, Production runtime equivalence, exact image-source mapping,
+  deployed authority, and all three Story 3.13 acceptances are absent.
+- Froze the crosswalk, evidence-core manifest, and human proof first, then created a content-bound
+  fail-closed review subject over their raw hashes. Future receipts are external to those hashes;
+  Task 9 remains open because no approval was requested, provided, or inferred.
+- Corrected deployed-runtime closure ownership in `docs/ci.md` without changing release mechanics.
 
 ### File List
 
+- `_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure-proof-packet.md`
 - `_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure.md`
+- `_bmad-output/implementation-artifacts/epic-3-context.md`
+- `_bmad-output/implementation-artifacts/evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/`
+- `_bmad-output/implementation-artifacts/evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/reviewer-roster.json`
+- `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `docs/ci.md`
+- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs`
 
 ## Story Completion Status
 
-- Story file created from the canonical Epic 3.13 contract.
-- Status set to `ready-for-dev`.
-- Predecessor identities and the known cross-lineage mismatch are explicit and fail closed.
-- Implementation must create the focused evidence crosswalk before the story may enter `review`.
-- Ultimate context engine analysis completed - comprehensive developer guide created.
+- Status set to `in-progress` because the reproducible `fail-closed` packet still has external
+  evidence blockers.
+- AC1 and AC3 pass. Raw OCI descriptor/body relationships pass, but child/config response metadata,
+  independently replayable runtime facts, package bytes, release/source authority, valid
+  provenance labels, and Production runtime equivalence are incomplete, so AC2 does not pass.
+- AC4 does not pass: the packet is not a complete passing lineage and has zero of three required
+  content-bound acceptances.
+- Current acceptance status is exactly 0/3; no receipt, approval, publication, registry,
+  deployment, consumer, predecessor, or submodule state was created or changed by hardening.
+- Story 3.13 must remain non-`done` until every blocker is resolved and all three reviewers accept
+  one unchanged replacement review subject.

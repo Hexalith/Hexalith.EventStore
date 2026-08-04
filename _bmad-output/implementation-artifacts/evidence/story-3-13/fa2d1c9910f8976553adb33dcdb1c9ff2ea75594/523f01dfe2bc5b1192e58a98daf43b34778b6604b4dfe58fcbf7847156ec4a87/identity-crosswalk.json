@@ -1,0 +1,534 @@
+{
+  "schema": "hexalith.eventstore.story-3-13-identity-crosswalk/v2",
+  "schema_version": 2,
+  "assembled_at": "2026-08-04T14:55:55Z",
+  "baseline": {
+    "eventstore_head": "1d6e9321acfc416768c1c78e9facf573c9c41f71",
+    "builds_gitlink_sha": "e69891f67578c2f0dec1cd7d7eea113430d31077",
+    "verification": {
+      "method": "git rev-parse HEAD and git ls-files --stage references/Hexalith.Builds",
+      "result": "pass"
+    }
+  },
+  "predecessor_inputs": {
+    "story_1_20_record": {
+      "path": "_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md",
+      "git_blob": "bf644e41a1ac59673329e71dd7ef4daa1591eb49",
+      "sha256": "0feee912874154a3885fbe69ac68419c89b209b8c9c5b9291833604881f34fa5",
+      "verification": "pass"
+    },
+    "story_1_20_proof_packet": {
+      "path": "_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md",
+      "git_blob": "47f09bdf65057fdda1ec1b0a77bb9398675b1de7",
+      "sha256": "cb1ccde9d5cc5ca6cb52cbeab30fb9cd59bd89771e14f4b489e20bd5e3d46743",
+      "verification": "pass"
+    },
+    "story_1_20_evidence_tree": {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-1-20/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/",
+      "git_tree": "fcd0c25c9cf6bb0554e208d529f1ef09c223725a",
+      "file_count": 40,
+      "full_tree_manifest": "predecessor-tree-sha256.txt",
+      "critical_manifest_sha256": "84097e533b215858c7ecc9eb11e3c3f8a2673b17db3138c911c0f4acd59738e1",
+      "critical_manifest_entry_count": 33,
+      "verification": "pass",
+      "full_tree_manifest_sha256": "d76d44291bccce0dbea384d2bf8c0258c6ba847dc4bdfa5150d881f4f5eae092",
+      "expected_entry_count": 40
+    },
+    "story_3_12_record": {
+      "path": "_bmad-output/implementation-artifacts/3-12-multi-platform-eventstore-container-publishing-correction.md",
+      "git_blob": "e420feb72715b726fa421683a829413d80c4a31b",
+      "sha256": "2bfc9ff991c9aeeaf11fd9c1926a17bb44ca290f99bd75b05df68a6edaf3e09c",
+      "verification": "pass"
+    }
+  },
+  "approved_identity": {
+    "source_sha": "fa2d1c9910f8976553adb33dcdb1c9ff2ea75594",
+    "package_version": "999.1.20-proof.fa2d1c9910f8",
+    "package_hash_manifest_sha256": "4271ddc76411780591423ab024b776cd34a2abccf1cc2dac03a245e141dbe0bc",
+    "source": "_bmad-output/implementation-artifacts/evidence/story-1-20/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/approval-subject.json",
+    "verification": {
+      "method": "hash-checked predecessor approval subject and exact Git object lookup",
+      "result": "pass"
+    }
+  },
+  "selected_candidates": [
+    {
+      "candidate_id": "story-1-20-approved-proof",
+      "lineage_id": "fa2d1c9910f8976553adb33dcdb1c9ff2ea75594|999.1.20-proof.fa2d1c9910f8|semantic-release-missing|sha256:523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87",
+      "source": {
+        "sha": "fa2d1c9910f8976553adb33dcdb1c9ff2ea75594",
+        "semantic_tags_pointing_at_source": [],
+        "citation": "_bmad-output/implementation-artifacts/evidence/story-1-20/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/candidate-source-sha.txt",
+        "verification": {
+          "method": "git cat-file and git tag --points-at",
+          "result": "pass"
+        }
+      },
+      "packages": {
+        "release_manifest_path": "tools/release-packages.json",
+        "release_manifest_sha256": "6b0b70b856839d4117bcd969f6a2de0093c477c109cb79f3f2882b1f05effcae",
+        "hash_manifest_scope": "repository",
+        "hash_manifest_path": "_bmad-output/implementation-artifacts/evidence/story-1-20/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/nuget-sha256.txt",
+        "hash_manifest_sha256": "4271ddc76411780591423ab024b776cd34a2abccf1cc2dac03a245e141dbe0bc",
+        "version": "999.1.20-proof.fa2d1c9910f8",
+        "expected_count": 14,
+        "inventory_verification": {
+          "method": "structural JSON parse and retained hash-manifest parse",
+          "result": "pass"
+        },
+        "byte_verification": {
+          "method": "exact-filename local search and NuGet.org flat-container retrieval",
+          "result": "fail",
+          "recovered_count": 0,
+          "citation": "package-availability.json"
+        },
+        "items": [
+          {
+            "id": "Hexalith.EventStore.Contracts",
+            "project": "src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj",
+            "archive": "Hexalith.EventStore.Contracts.999.1.20-proof.fa2d1c9910f8.nupkg",
+            "sha256": "e185637fa77de360f3d5a548e37d150c2eeb0305787fe5e6d4273d7c9f18bfab",
+            "citation": "_bmad-output/implementation-artifacts/evidence/story-1-20/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/nuget-sha256.txt",
+            "byte_verification": "missing"
+          },
+          {
+            "id": "Hexalith.EventStore.Client",
+            "project": "src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj",
+            "archive": "Hexalith.EventStore.Client.999.1.20-proof.fa2d1c9910f8.nupkg",
+            "sha256": "ae67d6650eff783899ce3524d4b5e4b7949b0a6440f74e7c600874c4550d7875",
+            "citation": "_bmad-output/implementation-artifacts/evidence/story-1-20/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/nuget-sha256.txt",
+            "byte_verification": "missing"
+          },
+          {
+            "id": "Hexalith.EventStore.Server",
+            "project": "src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj",
+            "archive": "Hexalith.EventStore.Server.999.1.20-proof.fa2d1c9910f8.nupkg",
+            "sha256": "b627a0cbd4bc06c0fd0eb85759691a2bf7b0e2cec2b901c60e36567ca7bbf8db",
+            "citation": "_bmad-output/implementation-artifacts/evidence/story-1-20/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/nuget-sha256.txt",
+            "byte_verification": "missing"
+          },
+          {
+            "id": "Hexalith.EventStore.SignalR",
+            "project": "src/Hexalith.EventStore.SignalR/Hexalith.EventStore.SignalR.csproj",
+            "archive": "Hexalith.EventStore.SignalR.999.1.20-proof.fa2d1c9910f8.nupkg",
+            "sha256": "1cbaebf02ede95b8610a114ced75176fc7e12cfeb548c4247d69b7e81ee83338",
+            "citation": "_bmad-output/implementation-artifacts/evidence/story-1-20/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/nuget-sha256.txt",
+            "byte_verification": "missing"
+          },
+          {
+            "id": "Hexalith.EventStore.Testing",
+            "project": "src/Hexalith.EventStore.Testing/Hexalith.EventStore.Testing.csproj",
+            "archive": "Hexalith.EventStore.Testing.999.1.20-proof.fa2d1c9910f8.nupkg",
+            "sha256": "611e7a6289d3a7dd67085b898960360c9f0fa0ff4198cf5fa1d7e8e94110405e",
+            "citation": "_bmad-output/implementation-artifacts/evidence/story-1-20/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/nuget-sha256.txt",
+            "byte_verification": "missing"
+          },
+          {
+            "id": "Hexalith.EventStore.Testing.Integration",
+            "project": "src/Hexalith.EventStore.Testing.Integration/Hexalith.EventStore.Testing.Integration.csproj",
+            "archive": "Hexalith.EventStore.Testing.Integration.999.1.20-proof.fa2d1c9910f8.nupkg",
+            "sha256": "085c37bd38966e1d1c7735af63247e6184e84168ce5719986fc6183ea9bca0ad",
+            "citation": "_bmad-output/implementation-artifacts/evidence/story-1-20/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/nuget-sha256.txt",
+            "byte_verification": "missing"
+          },
+          {
+            "id": "Hexalith.EventStore.Aspire",
+            "project": "src/Hexalith.EventStore.Aspire/Hexalith.EventStore.Aspire.csproj",
+            "archive": "Hexalith.EventStore.Aspire.999.1.20-proof.fa2d1c9910f8.nupkg",
+            "sha256": "689468f7a5b8109e58dcb4c2b98baa03b3d90b9de766efbd27708bcb323e0c64",
+            "citation": "_bmad-output/implementation-artifacts/evidence/story-1-20/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/nuget-sha256.txt",
+            "byte_verification": "missing"
+          },
+          {
+            "id": "Hexalith.EventStore.ServiceDefaults",
+            "project": "src/Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj",
+            "archive": "Hexalith.EventStore.ServiceDefaults.999.1.20-proof.fa2d1c9910f8.nupkg",
+            "sha256": "b47caf1644bb46e0f76ebae8285fb791b09f390090dcf464e19ce6cd5b00e969",
+            "citation": "_bmad-output/implementation-artifacts/evidence/story-1-20/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/nuget-sha256.txt",
+            "byte_verification": "missing"
+          },
+          {
+            "id": "Hexalith.EventStore.DomainService",
+            "project": "src/Hexalith.EventStore.DomainService/Hexalith.EventStore.DomainService.csproj",
+            "archive": "Hexalith.EventStore.DomainService.999.1.20-proof.fa2d1c9910f8.nupkg",
+            "sha256": "e4419446724a8ab0fadc4650a0b7c8c1c64a5564585d02a44c0229c0a735dd87",
+            "citation": "_bmad-output/implementation-artifacts/evidence/story-1-20/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/nuget-sha256.txt",
+            "byte_verification": "missing"
+          },
+          {
+            "id": "Hexalith.EventStore.RestApi.Generators",
+            "project": "src/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.csproj",
+            "archive": "Hexalith.EventStore.RestApi.Generators.999.1.20-proof.fa2d1c9910f8.nupkg",
+            "sha256": "4df9a4dda7252b3b291ee8f1bd837bdea1460e0883e597b9f8a6ee1e21aa4e66",
+            "citation": "_bmad-output/implementation-artifacts/evidence/story-1-20/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/nuget-sha256.txt",
+            "byte_verification": "missing"
+          },
+          {
+            "id": "Hexalith.EventStore.Gateway",
+            "project": "src/Hexalith.EventStore.Gateway/Hexalith.EventStore.Gateway.csproj",
+            "archive": "Hexalith.EventStore.Gateway.999.1.20-proof.fa2d1c9910f8.nupkg",
+            "sha256": "32fdab1f307e184498d1921242053f929c335048cd537fe4a6f88f5e6fd1d57d",
+            "citation": "_bmad-output/implementation-artifacts/evidence/story-1-20/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/nuget-sha256.txt",
+            "byte_verification": "missing"
+          },
+          {
+            "id": "Hexalith.EventStore.Admin.Abstractions",
+            "project": "src/Hexalith.EventStore.Admin.Abstractions/Hexalith.EventStore.Admin.Abstractions.csproj",
+            "archive": "Hexalith.EventStore.Admin.Abstractions.999.1.20-proof.fa2d1c9910f8.nupkg",
+            "sha256": "f6615beb8303a67b1a259a218e6a8c115b1ea36eb8ec381f58a3083551718b1a",
+            "citation": "_bmad-output/implementation-artifacts/evidence/story-1-20/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/nuget-sha256.txt",
+            "byte_verification": "missing"
+          },
+          {
+            "id": "Hexalith.EventStore.Admin.Cli",
+            "project": "src/Hexalith.EventStore.Admin.Cli/Hexalith.EventStore.Admin.Cli.csproj",
+            "archive": "Hexalith.EventStore.Admin.Cli.999.1.20-proof.fa2d1c9910f8.nupkg",
+            "sha256": "96c2d774b503b9514f2c1bafa4b1cedc6106c19894b21201a56a0528f1abcc83",
+            "citation": "_bmad-output/implementation-artifacts/evidence/story-1-20/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/nuget-sha256.txt",
+            "byte_verification": "missing"
+          },
+          {
+            "id": "Hexalith.EventStore.Admin.Server",
+            "project": "src/Hexalith.EventStore.Admin.Server/Hexalith.EventStore.Admin.Server.csproj",
+            "archive": "Hexalith.EventStore.Admin.Server.999.1.20-proof.fa2d1c9910f8.nupkg",
+            "sha256": "5fa7034308cbbdd1dd4ff263385f9ec6f3ae9c683c908fe9dcee504b51bab720",
+            "citation": "_bmad-output/implementation-artifacts/evidence/story-1-20/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/nuget-sha256.txt",
+            "byte_verification": "missing"
+          }
+        ]
+      },
+      "release": {
+        "semantic_version": null,
+        "semantic_tag": null,
+        "workflow_run": null,
+        "workflow_attempt": null,
+        "builds_execution_sha": null,
+        "publisher_identity": null,
+        "validator_identity": null,
+        "discovery_tag": "quarantine-proof-fa2d1c9910f8976553adb33dcdb1c9ff2ea75594",
+        "observed_config_version": "3.82.0",
+        "observed_config_revision": null,
+        "v3_82_0_tag_source_sha": "0b12950f12e9365fd48e3fe085ab626f9d09dfc5",
+        "citation": "registry-readback.json",
+        "verification": {
+          "method": "registry config readback plus exact local tag-object lookup",
+          "result": "fail"
+        },
+        "source_sha": null,
+        "source_exact_match": false
+      },
+      "release_authority": {
+        "durable_source": "https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5083092060",
+        "record_scope": "repository",
+        "record_path": "_bmad-output/implementation-artifacts/evidence/story-1-20/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/release-owner-publication-authority.json",
+        "record_sha256": "2fd6a43fd92e5209e7f85d8310fda1fef66eaa2ae7f6b2fedaae6d697201246b",
+        "owner": "jpiquot",
+        "authorized_at": "2026-07-26T10:10:59Z",
+        "expires_at": "2026-08-25T00:00:00Z",
+        "authorized_repository": "registry.hexalith.com/eventstore",
+        "authorized_source_sha": "fa2d1c9910f8976553adb33dcdb1c9ff2ea75594",
+        "authorized_tag": "quarantine-proof-fa2d1c9910f8976553adb33dcdb1c9ff2ea75594",
+        "scope": "quarantined two-platform proof publication only; no deployment or consumer migration",
+        "deployment_authorized": false,
+        "verification": {
+          "method": "hash-checked durable predecessor authority record",
+          "result": "fail"
+        }
+      },
+      "oci": {
+        "registry": "registry.hexalith.com",
+        "repository": "eventstore",
+        "immutable_reference": "registry.hexalith.com/eventstore@sha256:523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87",
+        "index_digest": "sha256:523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87",
+        "index_media_type": "application/vnd.oci.image.index.v1+json",
+        "index_size": 493,
+        "index_raw_file": "index.raw",
+        "index_raw_sha256": "523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87",
+        "tag_and_digest_bytes_identical": true,
+        "children": [
+          {
+            "platform": "linux/amd64",
+            "manifest_digest": "sha256:a47978374abf10a033f6d0b63610b05c13496335324371cbf73b155dd295ff6d",
+            "manifest_size": 1399,
+            "manifest_media_type": "application/vnd.oci.image.manifest.v1+json",
+            "manifest_raw_file": "child-linux-amd64.manifest.raw",
+            "manifest_raw_sha256": "a47978374abf10a033f6d0b63610b05c13496335324371cbf73b155dd295ff6d",
+            "config_digest": "sha256:31d1ed8f2503eae20c026c9ce452525ea77ab453b484b66e1c1f6aab16f545fd",
+            "config_size": 3851,
+            "config_media_type": "application/vnd.oci.image.config.v1+json",
+            "config_raw_file": "child-linux-amd64.config.raw",
+            "config_raw_sha256": "31d1ed8f2503eae20c026c9ce452525ea77ab453b484b66e1c1f6aab16f545fd",
+            "config_platform": "linux/amd64",
+            "verification": "pass"
+          },
+          {
+            "platform": "linux/arm64",
+            "manifest_digest": "sha256:bb245eea690cfe521098441c55a1710f81f722591a245f84c2fa45e4707fdc86",
+            "manifest_size": 1399,
+            "manifest_media_type": "application/vnd.oci.image.manifest.v1+json",
+            "manifest_raw_file": "child-linux-arm64.manifest.raw",
+            "manifest_raw_sha256": "bb245eea690cfe521098441c55a1710f81f722591a245f84c2fa45e4707fdc86",
+            "config_digest": "sha256:10a00fc7c19abb37061a8b86e1b234cbbb2fe7af85728b527f4449a326ac0a20",
+            "config_size": 3852,
+            "config_media_type": "application/vnd.oci.image.config.v1+json",
+            "config_raw_file": "child-linux-arm64.config.raw",
+            "config_raw_sha256": "10a00fc7c19abb37061a8b86e1b234cbbb2fe7af85728b527f4449a326ac0a20",
+            "config_platform": "linux/arm64",
+            "verification": "pass"
+          }
+        ],
+        "citation": "oci-validation.json and registry-readback.json",
+        "verification": {
+          "method": "independent tag/digest/child/config raw-byte validation with unchanged shared validator functions plus retained response-metadata review",
+          "result": "fail",
+          "reason": "Child-manifest and config response headers were validated live but were not retained, so response metadata is not independently reproducible."
+        },
+        "tag_response_raw_file": "tag-response.raw",
+        "tag_response_raw_sha256": "523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87",
+        "tag_response_size": 493,
+        "tag_response_content_type": "application/vnd.oci.image.index.v1+json",
+        "tag_response_docker_content_digest": "sha256:523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87",
+        "digest_response_raw_file": "digest-response.raw",
+        "digest_response_raw_sha256": "523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87",
+        "digest_response_size": 493,
+        "digest_response_content_type": "application/vnd.oci.image.index.v1+json",
+        "digest_response_docker_content_digest": "sha256:523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87",
+        "provenance_labels": {
+          "org.opencontainers.image.source": "https",
+          "org.opencontainers.image.url": "https",
+          "org.opencontainers.image.documentation": "https",
+          "verification": {
+            "method": "parse both retained raw configs and inspect exact OCI label values",
+            "result": "fail",
+            "reason": "The three provenance labels are malformed and do not identify a repository or revision."
+          }
+        }
+      },
+      "runtime": {
+        "execution_result": "unverified",
+        "contract_equivalence": "fail",
+        "result": "fail",
+        "started_at": "2026-08-04T11:10:03.248829Z",
+        "ended_at": "2026-08-04T11:12:03.469486Z",
+        "exit_code": 0,
+        "contract": {
+          "health_path": "/alive",
+          "http_expectation": "2xx-without-redirect",
+          "timeout_seconds": 180,
+          "poll_interval_seconds": 2,
+          "actual_hosting_environment": "Development",
+          "required_hosting_environment": "Production"
+        },
+        "preflight": {
+          "platform": "linux/arm64",
+          "outcome": "pass",
+          "log": "smoke-preflight.log",
+          "log_sha256": "2f021ae8492d4d64c5bdb6c2204047f8e4f60501f3005023eb2a684d689d35fb"
+        },
+        "platforms": [
+          {
+            "platform": "linux/amd64",
+            "child_digest": "sha256:a47978374abf10a033f6d0b63610b05c13496335324371cbf73b155dd295ff6d",
+            "attempts": 18,
+            "outcome": "pass",
+            "cleanup": "pass",
+            "log": "smoke-linux-amd64.log",
+            "log_sha256": "46703e5ada3e1db8b4dea5934562245dd1ec677153052d385b9c435e6011d9bd"
+          },
+          {
+            "platform": "linux/arm64",
+            "child_digest": "sha256:bb245eea690cfe521098441c55a1710f81f722591a245f84c2fa45e4707fdc86",
+            "attempts": 40,
+            "outcome": "pass",
+            "cleanup": "pass",
+            "log": "smoke-linux-arm64.log",
+            "log_sha256": "eb87943c4ee99f1bef0de78d43163c891d7fb391b1e536e6f1eccd83bb416e5c"
+          }
+        ],
+        "citation": "runtime-verification.json",
+        "verification": {
+          "method": "parse structured runtime records, exact child/log bindings, observed platforms, HTTP results, timestamps, cleanup, and docs/ci.md environment contract",
+          "result": "fail",
+          "reason": "The retained logs omit structured /alive status, redirect count, observed platform, per-platform timestamps, and exit codes; the execution also used Development instead of Production."
+        }
+      }
+    }
+  ],
+  "rejected_candidates": [
+    {
+      "candidate_id": "story-3-12-v3.77.2",
+      "source_sha": "77a9a442c0e6d0408957888e10c3a9accd634c99",
+      "package_version": "3.77.2",
+      "release_tag": "v3.77.2",
+      "workflow_run": 29694935552,
+      "workflow_attempt": 1,
+      "builds_execution_sha": "9ec0a032d785dd0abdc14276e8784d6fdd826fd0",
+      "release_authority_url": "https://github.com/Hexalith/Hexalith.EventStore/issues/291#issuecomment-5016454096",
+      "release_authority_sha256": "14648785dea224d9270335393092f12307ad5b1b6572073f91275421735707bf",
+      "index_digest": "sha256:db3ab41e187efc0de397fd1205660a0f685e2c94ecd8f4a8f1843ac567056bf6",
+      "platforms": [
+        {
+          "platform": "linux/amd64",
+          "manifest_digest": "sha256:3b5d2a23e5182aa64974fb23f23f7d358eacf1c1c8d93300b924ddd7df71c9c7",
+          "config_digest": "sha256:973f608b344a8df3e445980f60668ea85df1af0e9169b5b2fbdf329f295892a5"
+        },
+        {
+          "platform": "linux/arm64",
+          "manifest_digest": "sha256:254a57140a6fc0ff02f198ac68ae4236e5b6c00ea9e9811cf777dc45ec19f605",
+          "config_digest": "sha256:3a9703bb1107e88fb8e3324088247ff6a7b57bff588e2ba7c1e634ee51a7a814"
+        }
+      ],
+      "approved_source_sha": "fa2d1c9910f8976553adb33dcdb1c9ff2ea75594",
+      "source_exact_match": false,
+      "ancestor_distance": 103,
+      "citation": "_bmad-output/implementation-artifacts/3-12-multi-platform-eventstore-container-publishing-correction.md and _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md",
+      "verification": {
+        "method": "hash-checked predecessor record plus exact Git tag and ancestry inspection",
+        "result": "rejected",
+        "reason": "Release source is not the approved source; ancestry is not exact provenance."
+      }
+    }
+  ],
+  "excluded_history": [
+    {
+      "release": "v3.75.0",
+      "result": "rejected",
+      "reason": "single-platform non-authorizing release"
+    },
+    {
+      "release": "v3.77.1",
+      "result": "rejected",
+      "reason": "permanently quarantined partial publication with failed product smokes"
+    }
+  ],
+  "prohibited_splices": [
+    {
+      "splice_id": "story-1-20-source-packages-plus-v3.77.2-release-index",
+      "source_package_lineage": "story-1-20-approved-proof",
+      "release_index_lineage": "story-3-12-v3.77.2",
+      "result": "rejected",
+      "reason": "The source/package and release/index fields do not belong to one candidate."
+    },
+    {
+      "splice_id": "v3.77.2-source-packages-plus-story-1-20-proof-index",
+      "source_package_lineage": "story-3-12-v3.77.2",
+      "release_index_lineage": "story-1-20-approved-proof",
+      "result": "rejected",
+      "reason": "The source/package and release/index fields do not belong to one candidate."
+    }
+  ],
+  "limitations": [
+    "No package, release, registry, deployment, consumer, predecessor, Epic 1, or submodule mutation is authorized.",
+    "The selected package hashes are retained evidence, but the original archive bytes are unavailable for independent rehashing.",
+    "The retained smoke artifacts report Development execution while docs/ci.md requires Production; independently proven liveness and equivalent runtime smoke both remain open.",
+    "The image source, URL, and documentation OCI labels are the malformed value https and supply no revision provenance.",
+    "The retained OCI descriptor/body relationships pass, but complete response-metadata replay, semantic-release provenance, and an exact source revision mapping are missing.",
+    "Child-manifest and config response metadata was not retained, so the live registry response checks are not reproducible from the packet.",
+    "The smoke logs do not retain structured HTTP, observed-platform, per-platform timing, or exit-code facts and therefore cannot independently prove executed liveness.",
+    "The current shared validator CLI cannot accept the non-SemVer quarantine tag; the immutable graph was validated with its unchanged validation functions.",
+    "No Story 3.13 owner or Test Architect acceptance has been requested or inferred; future receipts stay outside hashed evidence."
+  ],
+  "verdict": {
+    "decision": "fail-closed",
+    "checks": {
+      "predecessor_integrity": "pass",
+      "exact_source": "pass",
+      "package_inventory": "pass",
+      "package_bytes": "fail",
+      "semantic_release_provenance": "fail",
+      "source_release_exact_match": "fail",
+      "oci_graph": "fail",
+      "oci_provenance_labels": "fail",
+      "runtime_both_platforms": "fail",
+      "deployment_authority": "fail",
+      "content_bound_acceptances": "missing",
+      "single_lineage": "fail"
+    },
+    "blockers": [
+      {
+        "id": "package-bytes-unavailable",
+        "owner": "release-evidence owner",
+        "consequence": "The exact 14 package hashes cannot be independently revalidated from original bytes.",
+        "reopen_trigger": "Recover all 14 original proof archives from a content-addressed durable source."
+      },
+      {
+        "id": "semantic-release-provenance-missing",
+        "owner": "EventStore release owner",
+        "consequence": "The proof index has no semantic release version, workflow run/attempt, Builds execution SHA, or publisher identity in the same lineage.",
+        "reopen_trigger": "Provide a durable semantic release record for the exact approved source and package bytes without rebuilding proof artifacts."
+      },
+      {
+        "id": "source-release-exact-match-missing",
+        "owner": "EventStore release owner",
+        "consequence": "The proof image configs have no revision label and identify version 3.82.0, whose tag resolves to a different source SHA.",
+        "reopen_trigger": "Provide content-bound release provenance that maps the immutable proof index directly to the approved source."
+      },
+      {
+        "id": "deployment-authority-missing",
+        "owner": "Release owner",
+        "consequence": "The retained authority permits quarantined proof publication only and explicitly denies deployment and consumer migration.",
+        "reopen_trigger": "Provide a separately authorized durable deployed-identity decision for the complete exact lineage."
+      },
+      {
+        "id": "story-3-13-acceptances-missing",
+        "owner": "EventStore owner, Release owner, and Test Architect",
+        "consequence": "AC4 cannot pass without three distinct acceptances of one unchanged content-bound subject.",
+        "reopen_trigger": "After every lineage check passes, obtain all three durable acceptances of the same review-subject SHA-256."
+      },
+      {
+        "id": "registry-object-response-metadata-missing",
+        "owner": "Hexalith.Builds OCI-validator owner and EventStore release owner",
+        "consequence": "Child-manifest and config response content types and digest headers cannot be independently replayed from retained evidence.",
+        "reopen_trigger": "Repeat the read-only registry capture and retain support-safe response metadata for every child manifest and config object."
+      },
+      {
+        "id": "runtime-execution-record-incomplete",
+        "owner": "Hexalith.Builds smoke-contract owner and EventStore release owner",
+        "consequence": "Hash-valid status strings do not independently prove the /alive response, observed platform, timing, exit status, or cleanup contract.",
+        "reopen_trigger": "Repeat both digest-pinned smokes and retain structured support-safe execution records for every required fact."
+      },
+      {
+        "id": "runtime-contract-equivalence-mismatch",
+        "owner": "Hexalith.Builds smoke-contract owner and EventStore release owner",
+        "consequence": "The retained execution reports Development; even independently reproduced liveness would not satisfy the documented Production smoke contract.",
+        "reopen_trigger": "Run and retain the equivalent digest-pinned smoke under Production with the same required settings on both children."
+      },
+      {
+        "id": "malformed-oci-provenance-labels",
+        "owner": "EventStore release owner",
+        "consequence": "The source, URL, and documentation labels equal https and cannot identify source or release provenance.",
+        "reopen_trigger": "Provide an immutable release lineage whose retained configs carry valid content-bound source provenance."
+      }
+    ],
+    "external_state_changed": false,
+    "predecessor_state_changed": false,
+    "story_may_be_done": false
+  },
+  "approval_contract": {
+    "review_subject_path": "review-subject.json",
+    "reviewer_roster_path": "reviewer-roster.json",
+    "reviewer_roster_sha256": "6e5f73c0169c0b202f77cfe38ae2d38e12f8b4202173e95a3f2ef23f5a2987ed",
+    "external_receipt_location": "acceptances/{subject_sha256}",
+    "outside_hashed_evidence": true,
+    "required_roles": [
+      "eventstore-owner",
+      "release-owner",
+      "test-architect"
+    ],
+    "required_receipt_fields": [
+      "role",
+      "reviewer_identity",
+      "accepted_at",
+      "durable_source",
+      "accepted_scope",
+      "accepted_limitations",
+      "decision",
+      "subject_sha256"
+    ],
+    "receipt_count": 0,
+    "verification": {
+      "method": "three unique external receipts must accept one unchanged review-subject SHA-256",
+      "result": "missing"
+    }
+  }
+}

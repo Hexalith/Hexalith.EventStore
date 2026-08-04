@@ -1,0 +1,35 @@
+{
+  "schema": "hexalith.eventstore.story-3-13-package-availability/v1",
+  "checked_at": "2026-08-04T11:17:05Z",
+  "package_version": "999.1.20-proof.fa2d1c9910f8",
+  "expected_count": 14,
+  "recovered_count": 0,
+  "local_search_roots": [
+    "/home/administrator/.nuget/packages",
+    "/home/administrator/projects",
+    "/tmp"
+  ],
+  "local_matches": [],
+  "nuget_org": {
+    "http_status_by_package": {
+      "Hexalith.EventStore.Admin.Abstractions": 404,
+      "Hexalith.EventStore.Admin.Cli": 404,
+      "Hexalith.EventStore.Admin.Server": 404,
+      "Hexalith.EventStore.Aspire": 404,
+      "Hexalith.EventStore.Client": 404,
+      "Hexalith.EventStore.Contracts": 404,
+      "Hexalith.EventStore.DomainService": 404,
+      "Hexalith.EventStore.Gateway": 404,
+      "Hexalith.EventStore.RestApi.Generators": 404,
+      "Hexalith.EventStore.Server": 404,
+      "Hexalith.EventStore.ServiceDefaults": 404,
+      "Hexalith.EventStore.SignalR": 404,
+      "Hexalith.EventStore.Testing": 404,
+      "Hexalith.EventStore.Testing.Integration": 404
+    }
+  },
+  "rebuild_attempted": false,
+  "result": "fail",
+  "blocker": "The exact original package archives remain unavailable; retained hashes cannot substitute for independent byte verification.",
+  "reopen_trigger": "Recover all 14 original archives from a content-addressed durable source and rehash them without rebuilding."
+}
