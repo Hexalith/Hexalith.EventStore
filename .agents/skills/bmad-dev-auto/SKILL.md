@@ -1,13 +1,19 @@
 ---
 name: bmad-dev-auto
-description: 'One iteration of an unattended development loop. Use when invoked by name.'
+description: "Deprecated: forwards to bmad-build-auto. Do not use unless invoked by name."
 ---
 
-Run this single command exactly once, substituting the absolute project and skill roots without changing the working directory:
+# Deprecated Build Auto Alias
 
-```bash
-uv run --no-cache "{project-root}/_bmad/scripts/render_skill.py" --project-root "{project-root}" --skill "{skill-root}"
-```
+## On Activation
 
-- On success, read and follow the one absolute `workflow.md` instruction printed to stdout.
-- On failure (including `uv` being unavailable), report the command output and HALT. Do not run any workflow source directly.
+1. Check whether either legacy customization file exists:
+   - `{project-root}/_bmad/custom/bmad-dev-auto.toml`
+   - `{project-root}/_bmad/custom/bmad-dev-auto.user.toml`
+2. If neither legacy file exists, output exactly `bmad-dev-auto is deprecated. Redirecting to bmad-build-auto. Please use bmad-build-auto in the future.`, invoke `bmad-build-auto` exactly once with the user's original input verbatim, then execute no further steps in this shim.
+3. For every legacy file that exists, use its matching new filename:
+   - `{project-root}/_bmad/custom/bmad-dev-auto.toml` becomes `{project-root}/_bmad/custom/bmad-build-auto.toml`.
+   - `{project-root}/_bmad/custom/bmad-dev-auto.user.toml` becomes `{project-root}/_bmad/custom/bmad-build-auto.user.toml`.
+4. If the matching new file does not exist, tell the user that the customization file uses the deprecated name and offer to rename it. Rename it only after explicit approval. If approval is declined or unavailable, or the rename fails, HALT and do not invoke any skill.
+5. If the matching new file already exists, do not overwrite it. Read both files, explain their differences, and propose the exact content for the new file. Resolve conflicting values with the user. Only after the user explicitly approves that content, save and verify the new file, then remove the legacy file. If approval is declined or unavailable, or any operation fails, HALT and do not invoke any skill.
+6. After every detected legacy file has been migrated successfully and no legacy file remains, output exactly `bmad-dev-auto is deprecated. Redirecting to bmad-build-auto. Please use bmad-build-auto in the future.`, invoke `bmad-build-auto` exactly once with the user's original input verbatim, then execute no further steps in this shim.
