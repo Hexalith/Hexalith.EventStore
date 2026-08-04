@@ -66,13 +66,10 @@ cleanup_session_on_finish = true  # kill the run's tmux session when it finishes
 # extra_args are client-specific). Stage tables must come after the [adapter]
 # keys above.
 # [adapter.dev]
-# model = "opus"
-[adapter.review]
-name = "claude"
-model = "opus"
+# model = "gpt-5.6-sol"
 # stop_without_result_nudges = 5     # e.g. a multi-turn review needs more nudges than dev
 # [adapter.triage]
-# model = "opus"
+# model = "gpt-5.6-sol"
 
 [sweep]
 # Deferred-work sweep: triage + execute open deferred-work.md entries.

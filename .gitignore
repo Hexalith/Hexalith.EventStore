@@ -488,3 +488,4 @@ _bmad-output/implementation-artifacts/*-fresh-review.diff
 # then re-include only the log files themselves.
 !_bmad-output/**/evidence/**/[Ll]ogs/
 !_bmad-output/**/evidence/**/*.log
+_bmad/render/
