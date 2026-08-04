@@ -3,7 +3,7 @@ title: 'Story 3.13 Deployed Runtime Parity Closure'
 type: 'chore'
 created: '2026-08-04'
 status: 'done'
-baseline_commit: '98a2c9c772daea99bf8fc68f6d9bff84fd5df956'
+baseline_commit: '1d6e9321acfc416768c1c78e9facf573c9c41f71'
 review_loop_iteration: 1
 context:
   - '{project-root}/_bmad-output/project-context.md'

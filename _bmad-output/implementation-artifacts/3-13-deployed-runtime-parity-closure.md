@@ -561,7 +561,7 @@ OpenAI Codex (GPT-5)
 - `jq empty _bmad-output/implementation-artifacts/evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/*.json`
   exited zero for every retained JSON document.
 - `npx markdownlint-cli2 docs/ci.md` exited zero; the configured selection reported zero issues.
-- `git diff --check 98a2c9c772daea99bf8fc68f6d9bff84fd5df956 -- .` exited zero.
+- `git diff --check 1d6e9321acfc416768c1c78e9facf573c9c41f71 -- .` exited zero.
 
 ### Completion Notes List
 

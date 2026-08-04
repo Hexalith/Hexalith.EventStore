@@ -3,8 +3,8 @@
   "schema_version": 2,
   "assembled_at": "2026-08-04T14:55:55Z",
   "baseline": {
-    "eventstore_head": "98a2c9c772daea99bf8fc68f6d9bff84fd5df956",
-    "builds_gitlink_sha": "a53166539bf4441d5e33d04281b14c2d59e950c3",
+    "eventstore_head": "1d6e9321acfc416768c1c78e9facf573c9c41f71",
+    "builds_gitlink_sha": "e69891f67578c2f0dec1cd7d7eea113430d31077",
     "verification": {
       "method": "git rev-parse HEAD and git ls-files --stage references/Hexalith.Builds",
       "result": "pass"

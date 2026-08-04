@@ -24,7 +24,7 @@ migration, predecessor change, Epic 1 change, submodule change, or G5 decision.
 - Selected immutable OCI index:
   `registry.hexalith.com/eventstore@sha256:523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87`.
 - [Identity crosswalk](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/identity-crosswalk.json)
-  SHA-256: `9bd837c84d80bfe2704b36218f31774aad242150936ea8e8ac8bcd8f2873f2bf`.
+  SHA-256: `b078cf82946594d91e382270f9ce5b6a36b6331ca1e4728203fe208b25f5d36b`.
 - [Evidence manifest](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/evidence-sha256.txt)
   binds the core manifest, crosswalk, and review subject entry-by-entry. Its own hash is not quoted
   here because the review subject binds this proof packet, deliberately avoiding a checksum cycle.

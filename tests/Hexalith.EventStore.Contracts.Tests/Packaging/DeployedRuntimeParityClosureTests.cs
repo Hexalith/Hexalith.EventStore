@@ -28,7 +28,8 @@ public sealed class DeployedRuntimeParityClosureTests
     private const string OciManifestMediaType = "application/vnd.oci.image.manifest.v1+json";
     private const string OciConfigMediaType = "application/vnd.oci.image.config.v1+json";
     private const string ReviewerRosterFile = "reviewer-roster.json";
-    private const string ExpectedBaselineCommit = "98a2c9c772daea99bf8fc68f6d9bff84fd5df956";
+    private const string ExpectedBaselineCommit = "1d6e9321acfc416768c1c78e9facf573c9c41f71";
+    private const string ExpectedBaselineBuildsSha = "e69891f67578c2f0dec1cd7d7eea113430d31077";
     private const string ExpectedBuildsSha = "a53166539bf4441d5e33d04281b14c2d59e950c3";
     private const string ExpectedRepository = "Hexalith/Hexalith.EventStore";
     private const string ExpectedRegistry = "registry.hexalith.com";
@@ -2925,13 +2926,13 @@ public sealed class DeployedRuntimeParityClosureTests
             JsonObject approvedIdentity = crosswalk["approved_identity"]!.AsObject();
             if (!HasExactProperties(baseline, ["eventstore_head", "builds_gitlink_sha", "verification"])
                 || baseline["eventstore_head"]!.GetValue<string>() != ExpectedBaselineCommit
-                || baseline["builds_gitlink_sha"]!.GetValue<string>() != ExpectedBuildsSha
+                || baseline["builds_gitlink_sha"]!.GetValue<string>() != ExpectedBaselineBuildsSha
                 || baseline["verification"]!["method"]!.GetValue<string>() !=
                     "git rev-parse HEAD and git ls-files --stage references/Hexalith.Builds"
                 || baseline["verification"]!["result"]!.GetValue<string>() != "pass"
                 || RunGit(repositoryRoot, "cat-file", "-t", ExpectedBaselineCommit) != "commit"
                 || RunGit(repositoryRoot, "rev-parse", ExpectedBaselineCommit + ":references/Hexalith.Builds") !=
-                    ExpectedBuildsSha
+                    ExpectedBaselineBuildsSha
                 || RunGit(repositoryRoot, "cat-file", "-t", ApprovedSourceSha) != "commit")
             {
                 return false;

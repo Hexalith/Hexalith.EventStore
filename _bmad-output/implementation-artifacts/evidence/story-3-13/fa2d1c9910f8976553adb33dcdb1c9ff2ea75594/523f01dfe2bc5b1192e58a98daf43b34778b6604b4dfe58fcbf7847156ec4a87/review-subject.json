@@ -4,7 +4,7 @@
   "proposed_decision": "fail-closed",
   "identity_crosswalk": {
     "path": "identity-crosswalk.json",
-    "sha256": "9bd837c84d80bfe2704b36218f31774aad242150936ea8e8ac8bcd8f2873f2bf"
+    "sha256": "b078cf82946594d91e382270f9ce5b6a36b6331ca1e4728203fe208b25f5d36b"
   },
   "evidence_core_manifest": {
     "path": "evidence-core-sha256.txt",
@@ -12,7 +12,7 @@
   },
   "proof_packet": {
     "path": "_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure-proof-packet.md",
-    "sha256": "d3b83e2ec01608c3ad7ab61297202501c8de4b081a15650a33b13881286269eb"
+    "sha256": "dfa92b065eebe449d25312a4276e8ff2e1b031e43e3811e23c227ad784599498"
   },
   "identity": {
     "source_sha": "fa2d1c9910f8976553adb33dcdb1c9ff2ea75594",
