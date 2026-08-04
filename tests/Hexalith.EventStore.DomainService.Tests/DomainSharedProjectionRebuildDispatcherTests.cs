@@ -105,6 +105,33 @@ public sealed class DomainSharedProjectionRebuildDispatcherTests {
         (await store.GetAsync<SharedIndex>(StoreName, IndexKey)).Value!.AggregateIds.ShouldBe(["aggregate-z"]);
     }
 
+    [Fact]
+    public async Task Commit_RetryableCompletion_PreservesCanonicalCommitAndRetriesCompletionState() {
+        var store = new InMemoryReadModelStore();
+        await store.SaveAsync(StoreName, IndexKey, new SharedIndex(["stale"]));
+        var handler = new SharedIndexHandler(reconcileAfterCommit: true);
+        using ServiceProvider provider = BuildProvider(store, store, handler);
+        DomainSharedProjectionRebuildIdentity identity = CreateIdentity("operation-reconcile");
+
+        DomainSharedProjectionRebuildResponse current = await DispatchAsync(provider, Begin(identity));
+        current = await DispatchAsync(provider, Accumulate(identity, 0, "aggregate-a", false, ProjectionEvent(1, 1)));
+        current = await DispatchAsync(provider, Finalize(identity, current));
+        _ = await DispatchAsync(provider, Lifecycle(identity, DomainSharedProjectionRebuildAction.Stage));
+
+        current = await DispatchAsync(provider, Lifecycle(identity, DomainSharedProjectionRebuildAction.Commit));
+
+        current.Phase.ShouldBe(DomainSharedProjectionRebuildPhase.Committed);
+        current.Status.ShouldBe(ProjectionDispatchStatus.Retryable);
+        current.ReasonCode.ShouldBe("external-reconciliation-required");
+        (await store.GetAsync<SharedIndex>(StoreName, IndexKey)).Value!.AggregateIds.ShouldBe(["aggregate-a"]);
+
+        current = await DispatchAsync(provider, Lifecycle(identity, DomainSharedProjectionRebuildAction.Commit));
+
+        current.Status.ShouldBe(ProjectionDispatchStatus.AlreadyCompleted);
+        handler.CompletionCalls.ShouldBe(2);
+        handler.ObservedCompletionStates.ShouldAllBe(state => state == "stale");
+    }
+
     private static DomainSharedProjectionRebuildRequest Accumulate(
         DomainSharedProjectionRebuildIdentity identity,
         long ordinal,
@@ -126,7 +153,7 @@ public sealed class DomainSharedProjectionRebuildDispatcherTests {
     private static ServiceProvider BuildProvider(
         IReadModelStore sessionStore,
         IReadModelBatchStagingStore stagingStore,
-        SharedIndexHandler handler) {
+        IAsyncDomainProjectionHandler handler) {
         var services = new ServiceCollection();
         _ = services.AddSingleton(sessionStore);
         _ = services.AddSingleton(stagingStore);
@@ -206,8 +233,18 @@ public sealed class DomainSharedProjectionRebuildDispatcherTests {
 
     private sealed record SharedIndex(IReadOnlyList<string> AggregateIds);
 
-    private sealed class SharedIndexHandler : IAsyncDomainSharedProjectionRebuildHandler {
+    private sealed class SharedIndexHandler : IAsyncDomainSharedProjectionRebuildCompletionHandler {
+        private readonly bool reconcileAfterCommit;
+
+        public SharedIndexHandler(bool reconcileAfterCommit = false) {
+            this.reconcileAfterCommit = reconcileAfterCommit;
+        }
+
         public int AccumulateCalls { get; private set; }
+
+        public int CompletionCalls { get; private set; }
+
+        public List<string> ObservedCompletionStates { get; } = [];
 
         public string Domain => "widget";
 
@@ -235,6 +272,23 @@ public sealed class DomainSharedProjectionRebuildDispatcherTests {
                 JsonSerializer.SerializeToUtf8Bytes(new CandidateState([]))));
         }
 
+        public Task<DomainProjectionHandlerResult> CompleteRebuildAsync(
+            DomainSharedProjectionRebuildIdentity identity,
+            DomainSharedProjectionRebuildCandidate candidate,
+            ReadOnlyMemory<byte> completionState,
+            CancellationToken cancellationToken) {
+            cancellationToken.ThrowIfCancellationRequested();
+            CompletionCalls++;
+            if (!reconcileAfterCommit) {
+                return Task.FromResult(DomainProjectionHandlerResult.Completed());
+            }
+
+            ObservedCompletionStates.Add(JsonSerializer.Deserialize<string>(completionState.Span)!);
+            return Task.FromResult(CompletionCalls == 1
+                ? DomainProjectionHandlerResult.Retryable("external-reconciliation-required")
+                : DomainProjectionHandlerResult.Completed());
+        }
+
         public Task<DomainProjectionRebuildPlan> FinalizeAsync(
             DomainSharedProjectionRebuildIdentity identity,
             DomainSharedProjectionRebuildCandidate candidate,
@@ -246,7 +300,8 @@ public sealed class DomainSharedProjectionRebuildDispatcherTests {
                 [ReadModelBatchOperation.Write(
                     IndexKey,
                     new SharedIndex(state.AggregateIds),
-                    ReadModelBatchConcurrency.LastWrite)]));
+                    ReadModelBatchConcurrency.LastWrite)],
+                reconcileAfterCommit ? JsonSerializer.SerializeToUtf8Bytes("stale") : default));
         }
 
         public Task<DomainProjectionHandlerResult> ProjectAsync(

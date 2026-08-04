@@ -12,4 +12,5 @@ internal sealed record DomainSharedProjectionRebuildSessionState(
     DomainSharedProjectionRebuildReceipt[] Receipts,
     long? ExpectedAggregateCount,
     string? ExpectedInventoryFingerprint,
-    string? BatchFingerprint);
+    string? BatchFingerprint,
+    byte[]? CompletionState);

@@ -293,6 +293,7 @@ public static class DomainSharedProjectionRebuildDispatcher {
                 [],
                 null,
                 null,
+                null,
                 null);
             if (await sessionStore
                 .TrySaveAsync(handler.RebuildStoreName, sessionKey, state, string.Empty, cancellationToken)
@@ -309,15 +310,9 @@ public static class DomainSharedProjectionRebuildDispatcher {
         DomainSharedProjectionRebuildSessionState state,
         string sessionKey,
         CancellationToken cancellationToken) {
-        DomainProjectionRebuildPlan plan = await handler
-            .FinalizeAsync(
-                state.Identity,
-                new DomainSharedProjectionRebuildCandidate(state.CandidateState),
-                cancellationToken)
-            .ConfigureAwait(false);
-        if (!string.Equals(plan.StoreName, handler.RebuildStoreName, StringComparison.Ordinal)
-            || plan.Operations.Any(operation => string.Equals(operation.Key, sessionKey, StringComparison.Ordinal))) {
-            throw new InvalidOperationException("The finalized shared rebuild manifest is outside its admitted store or session boundary.");
+        DomainProjectionRebuildPlan plan = await BuildPlanAsync(handler, state, cancellationToken).ConfigureAwait(false);
+        if (plan.Operations.Any(operation => string.Equals(operation.Key, sessionKey, StringComparison.Ordinal))) {
+            throw new InvalidOperationException("The finalized shared rebuild manifest targets its private session key.");
         }
 
         return new ReadModelBatch(
@@ -329,6 +324,23 @@ public static class DomainSharedProjectionRebuildDispatcher {
                 state.Identity.ProjectionType,
                 state.Identity.OperationId),
             plan.Operations);
+    }
+
+    private static async Task<DomainProjectionRebuildPlan> BuildPlanAsync(
+        IAsyncDomainSharedProjectionRebuildHandler handler,
+        DomainSharedProjectionRebuildSessionState state,
+        CancellationToken cancellationToken) {
+        DomainProjectionRebuildPlan plan = await handler
+            .FinalizeAsync(
+                state.Identity,
+                new DomainSharedProjectionRebuildCandidate(state.CandidateState),
+                cancellationToken)
+            .ConfigureAwait(false);
+        if (!string.Equals(plan.StoreName, handler.RebuildStoreName, StringComparison.Ordinal)) {
+            throw new InvalidOperationException("The finalized shared rebuild manifest is outside its admitted store boundary.");
+        }
+
+        return plan;
     }
 
     private static async Task<DomainSharedProjectionRebuildResponse> CommitAsync(
@@ -354,7 +366,11 @@ public static class DomainSharedProjectionRebuildDispatcher {
             }
 
             if (state!.Phase == DomainSharedProjectionRebuildPhase.Committed) {
-                return FromState(state, ProjectionDispatchStatus.AlreadyCompleted, null);
+                DomainSharedProjectionRebuildResponse? incomplete = await CompleteCommittedRebuildAsync(
+                    handler,
+                    state,
+                    cancellationToken).ConfigureAwait(false);
+                return incomplete ?? FromState(state, ProjectionDispatchStatus.AlreadyCompleted, null);
             }
 
             if (state.Phase != DomainSharedProjectionRebuildPhase.Prepared) {
@@ -380,7 +396,11 @@ public static class DomainSharedProjectionRebuildDispatcher {
             };
             if (await TrySaveAsync(sessionStore, handler.RebuildStoreName, sessionKey, updated, entry.ETag, cancellationToken)
                 .ConfigureAwait(false)) {
-                return FromState(updated, ProjectionDispatchStatus.Completed, null);
+                DomainSharedProjectionRebuildResponse? incomplete = await CompleteCommittedRebuildAsync(
+                    handler,
+                    updated,
+                    cancellationToken).ConfigureAwait(false);
+                return incomplete ?? FromState(updated, ProjectionDispatchStatus.Completed, null);
             }
         }
 
@@ -395,6 +415,57 @@ public static class DomainSharedProjectionRebuildDispatcher {
         }
 
         return candidate.CopyState();
+    }
+
+    private static byte[]? CopyAndValidateCompletionState(
+        ReadOnlyMemory<byte> completionState,
+        ProjectionDispatchOptions options) {
+        if (completionState.IsEmpty) {
+            return null;
+        }
+
+        if (completionState.Length > options.MaxSharedRebuildCandidateBytes) {
+            throw new InvalidOperationException("The shared rebuild handler returned over-limit completion state.");
+        }
+
+        return completionState.ToArray();
+    }
+
+    private static async Task<DomainSharedProjectionRebuildResponse?> CompleteCommittedRebuildAsync(
+        IAsyncDomainSharedProjectionRebuildHandler handler,
+        DomainSharedProjectionRebuildSessionState state,
+        CancellationToken cancellationToken) {
+        if (handler is not IAsyncDomainSharedProjectionRebuildCompletionHandler completionHandler) {
+            return null;
+        }
+
+        DomainProjectionHandlerResult result;
+        try {
+            result = await completionHandler
+                .CompleteRebuildAsync(
+                    state.Identity,
+                    new DomainSharedProjectionRebuildCandidate(state.CandidateState),
+                    state.CompletionState ?? ReadOnlyMemory<byte>.Empty,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+            throw;
+        }
+        catch (Exception) {
+            return FromState(
+                state,
+                ProjectionDispatchStatus.Indeterminate,
+                ProjectionDispatchReasonCodes.HandlerFailure);
+        }
+        if (result.Status is ProjectionDispatchStatus.Completed or ProjectionDispatchStatus.AlreadyCompleted) {
+            return null;
+        }
+
+        string reasonCode = string.IsNullOrWhiteSpace(result.ReasonCode)
+            ? ProjectionDispatchReasonCodes.HandlerFailure
+            : result.ReasonCode;
+        return FromState(state, result.Status, reasonCode);
     }
 
     private static DomainSharedProjectionRebuildResponse CorruptState()
@@ -441,11 +512,16 @@ public static class DomainSharedProjectionRebuildDispatcher {
                 return FromState(state, ProjectionDispatchStatus.Retryable, ProjectionDispatchReasonCodes.DeliveryGap);
             }
 
-            _ = await BuildBatchAsync(handler, state, sessionKey, cancellationToken).ConfigureAwait(false);
+            DomainProjectionRebuildPlan plan = await BuildPlanAsync(handler, state, cancellationToken).ConfigureAwait(false);
+            if (plan.Operations.Any(operation => string.Equals(operation.Key, sessionKey, StringComparison.Ordinal))) {
+                throw new InvalidOperationException("The finalized shared rebuild manifest targets its private session key.");
+            }
+
             DomainSharedProjectionRebuildSessionState updated = state with {
                 Phase = DomainSharedProjectionRebuildPhase.Finalized,
                 ExpectedAggregateCount = request.ExpectedAggregateCount,
                 ExpectedInventoryFingerprint = request.ExpectedInventoryFingerprint,
+                CompletionState = CopyAndValidateCompletionState(plan.CompletionState, options),
             };
             if (await TrySaveAsync(sessionStore, handler.RebuildStoreName, sessionKey, updated, entry.ETag, cancellationToken)
                 .ConfigureAwait(false)) {
@@ -560,7 +636,11 @@ public static class DomainSharedProjectionRebuildDispatcher {
             }
 
             if (state!.Phase == DomainSharedProjectionRebuildPhase.Committed) {
-                return FromState(state, ProjectionDispatchStatus.AlreadyCompleted, null);
+                DomainSharedProjectionRebuildResponse? incomplete = await CompleteCommittedRebuildAsync(
+                    handler,
+                    state,
+                    cancellationToken).ConfigureAwait(false);
+                return incomplete ?? FromState(state, ProjectionDispatchStatus.AlreadyCompleted, null);
             }
 
             if (state.Phase is not DomainSharedProjectionRebuildPhase.Finalized
@@ -587,6 +667,16 @@ public static class DomainSharedProjectionRebuildDispatcher {
             };
             if (await TrySaveAsync(sessionStore, handler.RebuildStoreName, sessionKey, updated, entry.ETag, cancellationToken)
                 .ConfigureAwait(false)) {
+                if (updated.Phase == DomainSharedProjectionRebuildPhase.Committed) {
+                    DomainSharedProjectionRebuildResponse? incomplete = await CompleteCommittedRebuildAsync(
+                        handler,
+                        updated,
+                        cancellationToken).ConfigureAwait(false);
+                    if (incomplete is not null) {
+                        return incomplete;
+                    }
+                }
+
                 ProjectionDispatchStatus status = state.Phase == updated.Phase
                     ? ProjectionDispatchStatus.AlreadyCompleted
                     : ProjectionDispatchStatus.Completed;
@@ -618,6 +708,7 @@ public static class DomainSharedProjectionRebuildDispatcher {
             || !Enum.IsDefined(state.Phase)
             || state.CandidateState is null
             || state.CandidateState.Length > options.MaxSharedRebuildCandidateBytes
+            || state.CompletionState?.Length > options.MaxSharedRebuildCandidateBytes
             || state.AcceptedAggregateCount < 0
             || state.AcceptedAggregateCount > options.MaxSharedRebuildAggregateCount
             || state.Receipts is null
@@ -795,6 +886,16 @@ public static class DomainSharedProjectionRebuildDispatcher {
             };
             if (await TrySaveAsync(sessionStore, handler.RebuildStoreName, sessionKey, updated, entry.ETag, cancellationToken)
                 .ConfigureAwait(false)) {
+                if (updated.Phase == DomainSharedProjectionRebuildPhase.Committed) {
+                    DomainSharedProjectionRebuildResponse? incomplete = await CompleteCommittedRebuildAsync(
+                        handler,
+                        updated,
+                        cancellationToken).ConfigureAwait(false);
+                    if (incomplete is not null) {
+                        return incomplete;
+                    }
+                }
+
                 return FromState(updated, ProjectionDispatchStatus.Completed, null);
             }
         }

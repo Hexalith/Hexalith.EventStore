@@ -59,11 +59,13 @@ ledger retention share one validated operational contract.
 
 ## Compatibility and rebuild boundary
 
-`IDomainProjectionHandler.Project(ProjectionRequest)` remains the synchronous, domain-only full-replay compatibility seam used by the released `/project` endpoint and the current rebuild flow. Existing handlers do not need to migrate.
+`IDomainProjectionHandler.Project(ProjectionRequest)` remains the synchronous, domain-only full-replay compatibility seam used by the released `/project` endpoint. Existing handlers do not need to migrate.
 
 When a legacy handler must participate in named v2 dispatch, map it explicitly with `AddLegacyProjectionHandlerAdapter<THandler>(domain, projectionType)`. Unmapped legacy handlers remain v1-only, and an ambiguous legacy-plus-named registration for the same route is rejected.
 
-Normal delivery invokes named handlers only after the server admits the exact metadata route and lifecycle state. Rebuild does not invoke persistence-capable named handlers yet; incremental rebuild staging, resume, and promotion belong to the dedicated rebuild protocol. Do not call `/project/v2` from a custom rebuild path.
+Normal delivery invokes named handlers only after the server admits the exact metadata route and lifecycle state. A tenant/domain shared projection can implement `IAsyncDomainSharedProjectionRebuildHandler` to participate in the dedicated incremental rebuild protocol. Its `FinalizeAsync` method must remain side-effect-free and return only the canonical replacement plan.
+
+When a committed shared rebuild also needs to reconcile an external index or another non-transactional system, implement `IAsyncDomainSharedProjectionRebuildCompletionHandler`. Put the bounded, opaque reconciliation manifest in `DomainProjectionRebuildPlan.CompletionState`. EventStore retains that state with the rebuild session and calls `CompleteRebuildAsync` only after the canonical batch is committed and verified. The completion operation must be idempotent: a retryable or indeterminate result leaves the canonical read model committed and causes later commit or verification retries to invoke completion again.
 
 ## Related APIs
 
@@ -71,4 +73,5 @@ Normal delivery invokes named handlers only after the server admits the exact me
 - `IReadModelStore` — independent ETag-aware persistence
 - `IReadModelExpiringStore` — independent ETag-aware persistence with a per-write TTL
 - `IReadModelBatchStore` and `ReadModelBatchProjectionResultMapper` — coordinated persistence and truthful outcome mapping
+- `IAsyncDomainSharedProjectionRebuildHandler` and `IAsyncDomainSharedProjectionRebuildCompletionHandler` — atomic shared-view replacement and durable post-commit reconciliation
 - `AddLegacyProjectionHandlerAdapter<THandler>` — explicit compatibility bridge for one legacy handler and one named route
