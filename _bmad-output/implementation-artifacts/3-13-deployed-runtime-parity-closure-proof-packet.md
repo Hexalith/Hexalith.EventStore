@@ -4,12 +4,13 @@
 
 **Verdict: `fail-closed`. Story 3.13 must remain non-`done`.**
 
-The Story 1.20 source/package proof and its immutable OCI graph remain unchanged, and fresh
-read-only validation proves the index plus both platform children/configs and `/alive` executions.
-No single candidate, however, supplies the approved source, independently rehashed original
-package bytes, semantic-release provenance, valid OCI source labels, Production-equivalent runtime,
-deployed authority, and three Story 3.13 acceptances. The conforming v3.77.2 release is a different
-source lineage and cannot fill those gaps.
+The Story 1.20 source/package proof and immutable OCI bytes remain unchanged. Fresh read-only
+validation confirms index/descriptor/body relationships, but the packet does not retain child or
+config response metadata, and its smoke logs omit the structured HTTP/platform/timing facts needed
+to replay the claimed `/alive` result. No single candidate supplies those facts together with the
+approved source, independently rehashed original package bytes, semantic-release provenance, valid
+OCI source labels, Production-equivalent runtime, deployed authority, and three Story 3.13
+acceptances. The conforming v3.77.2 release is a different source lineage and cannot fill those gaps.
 
 This packet authorizes no package publication, registry mutation, deployment mutation, consumer
 migration, predecessor change, Epic 1 change, submodule change, or G5 decision.
@@ -23,15 +24,19 @@ migration, predecessor change, Epic 1 change, submodule change, or G5 decision.
 - Selected immutable OCI index:
   `registry.hexalith.com/eventstore@sha256:523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87`.
 - [Identity crosswalk](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/identity-crosswalk.json)
-  SHA-256: `8ddee2e187a8393c0036fa26dee496d86b6cd36e93d43a6bf63a2b1e840cf63d`.
+  SHA-256: `9bd837c84d80bfe2704b36218f31774aad242150936ea8e8ac8bcd8f2873f2bf`.
 - [Evidence manifest](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/evidence-sha256.txt)
-  SHA-256: `0823a279fc5b115b3ae5f6ed32475a2e79e187d6f03cee153f06f6d95a77de7f`.
+  binds the core manifest, crosswalk, and review subject entry-by-entry. Its own hash is not quoted
+  here because the review subject binds this proof packet, deliberately avoiding a checksum cycle.
+- [Reviewer roster](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/reviewer-roster.json)
+  SHA-256: `6e5f73c0169c0b202f77cfe38ae2d38e12f8b4202173e95a3f2ef23f5a2987ed`.
 - [Review subject](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/review-subject.json)
   is frozen after this packet and binds the raw crosswalk, evidence-core manifest, and this packet.
 
 Any change to the crosswalk, evidence-core manifest, or proof-packet bytes requires a replacement
-review subject. The three missing receipts remain external to the hashed evidence and must cite
-the exact unchanged subject hash.
+review subject. The three missing receipts remain outside the evidence checksum manifests, must be
+stored beneath `acceptances/{subject_sha256}`, and must cite the exact unchanged subject hash and a
+reviewer identity authorized by the hash-bound repository roster.
 
 ## Frozen Predecessor Inputs
 
@@ -65,16 +70,16 @@ release/index, and the inverse—are explicit rejected rows in the crosswalk and
 | --- | --- | --- |
 | Exact release inventory | `tools/release-packages.json`, SHA-256 `6b0b70b8...`, exactly 14 unique IDs/projects | Pass |
 | Original proof package bytes | [package-availability.json](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/package-availability.json) | Fail: 0 of 14 original archives recovered; every NuGet.org lookup returned 404 |
-| Immutable index | Separate raw 493-byte `tag-response.raw` and `digest-response.raw` bodies; byte-identical to `index.raw`; matching content type and `Docker-Content-Digest` | Pass |
-| Platform graph | Exactly `linux/amd64` and `linux/arm64`; every child/config digest, size, media type, and platform matches | Pass |
+| Immutable index | Separate raw 493-byte `tag-response.raw` and `digest-response.raw` bodies; byte-identical to `index.raw`; matching retained index content type and `Docker-Content-Digest` | Pass |
+| Platform graph | Exactly `linux/amd64` and `linux/arm64`; every retained child/config body matches its descriptor, but child/config response content types and digest headers were not retained | Fail: response metadata cannot be independently replayed |
 | Config source provenance | Both configs set source, URL, and documentation to the malformed value `https`; version is `3.82.0`, revision is absent, and `v3.82.0` resolves to `0b12950f...` | Fail: labels are not usable URLs and provide no exact approved-source mapping |
-| Runtime execution | Digest-pinned `/alive`, `2026-08-04T11:10:03Z` through `11:12:03Z` | Both children and cleanup pass under `Development` |
+| Runtime execution | Digest-pinned smoke attempt, `2026-08-04T11:10:03Z` through `11:12:03Z` | Fail: logs omit structured HTTP status, redirects, observed platform, per-platform timestamps, and exit codes |
 | Runtime contract equivalence | `docs/ci.md` requires `Production`; captured execution used `Development` | Fail: Task 6 equivalence remains open |
 | Semantic release | No release tag/version, workflow run/attempt, Builds execution SHA, or publisher identity in selected lineage | Fail |
 | Authority | Hash-checked proof publication authority permits quarantine only and explicitly excludes deployment/migration | Fail for deployed closure |
 | Story 3.13 acceptance | EventStore owner, Release owner, and Test Architect acceptances | Missing: 0 of 3 |
 
-The raw registry graph and support-safe runtime files are retained under the content-addressed
+The raw registry bodies and bounded runtime files are retained under the content-addressed
 [Story 3.13 evidence directory](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/).
 The shared OCI validator bytes hash to
 `e1547e31fbdb8a678c99a245510e718c1cb35f6b9ec51264aa7bc1cdae419509`; its CLI
@@ -92,21 +97,29 @@ not treated as a pass for release provenance.
 3. Supply content-bound provenance that maps the proof index directly to the approved source; the
    malformed source/URL/documentation labels, absent revision, and mismatched v3.82.0 tag are
    insufficient.
-4. Run and retain the same digest-pinned contract for both children under the documented
-   `Production` hosting environment; the retained `Development` executions prove liveness only.
-5. Supply separately authorized deployed-identity authority for the complete exact lineage.
-6. Only after all checks pass, obtain distinct EventStore owner, Release owner, and Test Architect
+4. Repeat the registry capture and retain child-manifest and config response content types, digest
+   headers, byte lengths, and raw-body hashes for independent replay.
+5. Repeat both digest-pinned smokes and retain structured support-safe `/alive`, redirect,
+   observed-platform, timing, exit-code, readiness, and cleanup evidence.
+6. Run and retain that same contract under the documented `Production` hosting environment.
+7. Supply separately authorized deployed-identity authority for the complete exact lineage.
+8. Only after all checks pass, obtain EventStore owner, Release owner, and Test Architect
    acceptance of one unchanged replacement review subject.
 
 ## Verification Record
 
 - Story 1.20 critical manifest: all 33 entries passed `sha256sum -c`.
 - Contracts test project Release build: succeeded with zero warnings and zero errors.
-- Focused `DeployedRuntimeParityClosureTests`: 26 passed, zero failed/skipped/not-run.
-- Both immutable child `/alive` executions and cleanup passed under `Development`; documented
-  `Production` contract equivalence failed closed.
+- Focused `DeployedRuntimeParityClosureTests`: 115 passed, zero failed/skipped/not-run.
+- Complete Contracts suite: 999 passed, zero failed/skipped/not-run.
+- The verifier also derives the actual fail-closed review subject and outer checksum manifest,
+  rejects extra or byte-mutated package archives, validates baseline Git objects, and exercises
+  independently rebound mutations across release, authority, OCI, runtime, roster, and receipts.
+- The prior smoke tool returned pass under `Development`, but the retained logs do not independently
+  prove its HTTP/platform execution facts; Production contract equivalence also failed closed.
 - No runtime source, workflow, release configuration, package manifest, submodule, consumer,
   deployment, registry object, Story 1.20, Story 3.12, or Epic 1 state changed.
 
-Because the evidence is reproducible and explicitly fail-closed, Story 3.13 may enter review. AC4
-does not pass, so Story 3.13 may not become `done`.
+Because the evidence is explicitly fail-closed, Story 3.13 remains non-`done`. The response and
+runtime evidence gaps above must be closed before the packet can claim reproducible partial passes;
+AC4 also remains unsatisfied.

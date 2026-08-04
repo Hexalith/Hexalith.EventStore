@@ -4,7 +4,7 @@ type: 'chore'
 created: '2026-08-04'
 status: 'done'
 baseline_commit: '98a2c9c772daea99bf8fc68f6d9bff84fd5df956'
-review_loop_iteration: 0
+review_loop_iteration: 1
 context:
   - '{project-root}/_bmad-output/project-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-3-context.md'
@@ -57,6 +57,24 @@ context:
 - [x] `DeployedRuntimeParityClosureTests.cs` -- enforce schema, exact sets, hashes, verdict, approval binding, and both prohibited splices without dependencies.
 - [x] `docs/ci.md`, Story 3.13 record, and `sprint-status.yaml` -- correct ownership and record commands/results; move only to `in-review` for reproducible fail-closed evidence, or `done` solely after AC4.
 
+### Review Findings
+
+- [x] [Review][Patch] Add a repository-owned reviewer roster and hash-bound receipt loading [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:926]
+- [x] [Review][Patch] Require all recovered package archives and hash their bytes [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:678]
+- [x] [Review][Patch] Pin the selected package hash manifest to the approved identity [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:627]
+- [x] [Review][Patch] Content-bind semantic-release provenance and the complete single lineage [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:663]
+- [x] [Review][Patch] Validate deployment authority from its retained record, scope, identity, and validity [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:690]
+- [x] [Review][Patch] Bind the OCI graph to its registry, immutable reference, and content-addressed evidence root [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:695]
+- [x] [Review][Patch] Bind OCI provenance labels to the exact approved source revision [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:792]
+- [x] [Review][Patch] Validate structured, support-safe runtime execution evidence instead of declared statuses [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:840]
+- [x] [Review][Patch] Enforce the complete review-subject identity, limitation, blocker, and binding contract [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:949]
+- [x] [Review][Patch] Exercise both prohibited cross-lineage splices through the closure evaluator [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:527]
+- [x] [Review][Patch] Verify the core and predecessor checksum manifests inside the derived closure gate [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:545]
+- [x] [Review][Patch] Retain and validate child-manifest and config response metadata [_bmad-output/implementation-artifacts/evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/registry-readback.json:21]
+- [x] [Review][Patch] Correct the impossible review-subject and registry-evidence chronology [_bmad-output/implementation-artifacts/evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/review-subject.json:3]
+- [x] [Review][Patch] Reject symlink-based evidence paths that escape the allowed root [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:615]
+- [x] [Review][Patch] Record the claimed Markdown and Git diff hygiene command results [_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure.md:533]
+
 **Acceptance Criteria:**
 - Given completed predecessors, when closure begins, then committed identities are hash-checked without modification or inference.
 - Given a candidate, when verified, then every field belongs to one lineage and every package/platform/digest/runtime relation has independent evidence.
@@ -65,12 +83,20 @@ context:
 
 ## Spec Change Log
 
+- 2026-08-04: Applied all 15 code-review patches; kept the story `in-progress` because AC2 and AC4
+  still require externally supplied evidence and acceptance.
+- 2026-08-04: Applied the second review-hardening pass without changing frozen intent. The
+  fail-closed subject, Git-object predecessors, exact package directory, release/authority lineage,
+  OCI reports/provenance, runtime bounds, support-safety rules, roster, and durable receipts now
+  have independent mutation coverage. AC1 and AC3 pass; AC2 and AC4 remain fail-closed with 0/3
+  acceptances, so the story stays non-`done`.
+
 ## Verification
 
 **Commands:**
 - `(cd _bmad-output/implementation-artifacts/evidence/story-1-20/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594 && sha256sum -c critical-evidence-sha256.txt)` -- expected: all 33 listed predecessor files pass.
 - `dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -m:1 -p:UseHexalithProjectReferences=false -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` -- expected: zero warnings/errors.
-- `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.DeployedRuntimeParityClosureTests` -- expected: all focused tests pass.
+- `dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -m:1 --no-restore -p:UseHexalithProjectReferences=false -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0 --filter FullyQualifiedName~DeployedRuntimeParityClosureTests` -- expected: all focused tests pass.
 - `npx markdownlint-cli2 docs/ci.md && git diff --check` -- expected: documentation and diff checks pass.
 
 ## Suggested Review Order
@@ -80,50 +106,64 @@ context:
 - Start with the fail-closed decision and precise closure boundary.
   [`proof-packet.md:5`](3-13-deployed-runtime-parity-closure-proof-packet.md#L5)
 
-- Inspect the single-lineage check matrix and seven owned blockers.
-  [`identity-crosswalk.json:426`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/identity-crosswalk.json#L426)
+- Inspect derived checks and blockers before trusting any declared verdict.
+  [`identity-crosswalk.json:431`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/identity-crosswalk.json#L431)
 
-- Confirm approvals bind immutable hashes without entering the evidence hash cycle.
-  [`review-subject.json:2`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/review-subject.json#L2)
+- Confirm the fail-closed subject content-binds decision, evidence, blockers, and limitations.
+  [`review-subject.json:1`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/review-subject.json#L1)
 
-**Independent evidence**
+**Derived verifier boundaries**
 
-- Verify package recovery fails closed without rebuilding unavailable proof archives.
-  [`package-availability.json:32`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/package-availability.json#L32)
+- Follow the single entry point that derives pass or fail from raw evidence.
+  [`DeployedRuntimeParityClosureTests.cs:1496`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L1496)
 
-- Trace registry bytes through exact index, child, and config descriptors.
-  [`oci-validation.json:2`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/oci-validation.json#L2)
+- Review canonical lineage material before individual release and authority gates.
+  [`DeployedRuntimeParityClosureTests.cs:3558`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3558)
 
-- Separate passing Development execution from failed Production-contract equivalence.
-  [`runtime-verification.json:6`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/runtime-verification.json#L6)
+- Bind semantic-release provenance to one exact retained release event.
+  [`DeployedRuntimeParityClosureTests.cs:1709`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L1709)
 
-- Reproduce the acyclic core evidence manifest before trusting derived conclusions.
+- Enforce durable, scoped authority with explicit chronology and canonical lineage.
+  [`DeployedRuntimeParityClosureTests.cs:1836`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L1836)
+
+**OCI, runtime, and acceptance evidence**
+
+- Derive the exact registry graph from retained raw responses and descriptors.
+  [`DeployedRuntimeParityClosureTests.cs:2000`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L2000)
+
+- Bind bounded Production runtime facts to the selected platform children.
+  [`DeployedRuntimeParityClosureTests.cs:2311`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L2311)
+
+- Require exact, durable, subject-addressed receipts without self-authentication.
+  [`DeployedRuntimeParityClosureTests.cs:2498`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L2498)
+
+**Mutation-proof verification**
+
+- Prove a complete synthetic lineage passes before targeted mutations reject.
+  [`DeployedRuntimeParityClosureTests.cs:452`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L452)
+
+- Exercise release provenance and canonical-lineage mutations with refreshed bindings.
+  [`DeployedRuntimeParityClosureTests.cs:955`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L955)
+
+- Corrupt registry endpoints, statuses, references, and raw response bindings independently.
+  [`DeployedRuntimeParityClosureTests.cs:1083`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L1083)
+
+- Mutate runtime execution, bounds, tool identity, and preflight ordering independently.
+  [`DeployedRuntimeParityClosureTests.cs:1231`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L1231)
+
+- Reject receipt schema, decision, limitation, roster, and durable-source tampering.
+  [`DeployedRuntimeParityClosureTests.cs:1351`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L1351)
+
+**Integrity and lifecycle**
+
+- Reproduce the acyclic core manifest before trusting derived conclusions.
   [`evidence-core-sha256.txt:1`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/evidence-core-sha256.txt#L1)
 
-**Governance and lifecycle**
+- Verify the outer layer anchors crosswalk and review-subject bytes without cycles.
+  [`evidence-sha256.txt:1`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/evidence-sha256.txt#L1)
 
-- Review truthful open tasks and why the story remains non-done.
-  [`story-3-13.md:191`](3-13-deployed-runtime-parity-closure.md#L191)
+- Review truthful open tasks and why AC2 and AC4 remain non-done.
+  [`3-13-deployed-runtime-parity-closure.md:191`](3-13-deployed-runtime-parity-closure.md#L191)
 
-- Check the sole operational-doc correction assigning deployed-runtime closure ownership.
-  [`ci.md:253`](../../docs/ci.md#L253)
-
-- Verify regenerated context preserves live lanes and ecosystem migration responsibility.
-  [`epic-3-context.md:27`](epic-3-context.md#L27)
-
-- Confirm shared CI flexibility remains distinct from immutable release execution pinning.
-  [`epic-3-context.md:41`](epic-3-context.md#L41)
-
-- Confirm sprint tracking advances only to review with blockers retained.
-  [`sprint-status.yaml:214`](sprint-status.yaml#L214)
-
-**Regression coverage**
-
-- Read the derived closure evaluator and declarative-tampering controls first.
-  [`DeployedRuntimeParityClosureTests.cs:284`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L284)
-
-- Review raw OCI response and descriptor content-binding checks.
-  [`DeployedRuntimeParityClosureTests.cs:218`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L218)
-
-- Inspect acceptance uniqueness and prohibited cross-lineage splice rejection.
-  [`DeployedRuntimeParityClosureTests.cs:477`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L477)
+- Confirm sprint tracking preserves the external blockers during review.
+  [`sprint-status.yaml:218`](sprint-status.yaml#L218)

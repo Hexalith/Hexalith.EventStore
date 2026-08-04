@@ -208,9 +208,13 @@ development_status:
   # Story 1.20 is already done on source/package parity. Story 3.13 independently maps that
   # identity to the deployed OCI index, child manifests/configs, and release provenance.
   3-12-multi-platform-eventstore-container-publishing-correction: done
-  # 2026-08-04 reproducible fail-closed packet: predecessor/OCI graph and Development liveness pass,
-  # but proof-package bytes, valid provenance labels, Production runtime equivalence, same-lineage
-  # release/deployment authority, and all three acceptances remain missing. AC4 does not pass.
+  # 2026-08-04 code review (4 layers): 1 owner decision resolved, 15 patches applied, 0 deferred,
+  # 3 dismissed. The verifier now closes package-byte, lineage, authority, OCI-root/provenance,
+  # runtime, review-subject/receipt, checksum, chronology, and symlink gaps. Returned to in-progress:
+  # child/config response metadata, independently replayable runtime facts, proof-package bytes,
+  # same-lineage release/deployment authority, and all three AC4 acceptances remain missing.
+  # 2026-08-04 second hardening pass added derived fail-closed subject/outer-manifest validation
+  # and 115 focused mutation cases; AC1/AC3 pass, while AC2/AC4 and all 0/3 acceptances remain open.
   3-13-deployed-runtime-parity-closure: review
   epic-3-retrospective: optional
 

@@ -259,6 +259,12 @@ consumer migration, deployment, publication, or registry mutation. Its
 checked-in GitHub approval-role allowlist remains historical proof-packet
 evidence; the release workflow does not consume it.
 
+The retained Story 3.13 packet is deliberately `fail-closed`: predecessor integrity
+and fail-closed behavior satisfy AC1 and AC3, while the exact same-lineage deployed
+proof and all three content-bound acceptances required by AC2 and AC4 remain absent.
+The current acceptance count is 0 of 3, so Story 3.13 remains `in-progress` and
+authorizes no release, registry, deployment, consumer, or predecessor mutation.
+
 ## Submodules
 
 Shared workflows initialize root-declared submodules through Hexalith.Builds

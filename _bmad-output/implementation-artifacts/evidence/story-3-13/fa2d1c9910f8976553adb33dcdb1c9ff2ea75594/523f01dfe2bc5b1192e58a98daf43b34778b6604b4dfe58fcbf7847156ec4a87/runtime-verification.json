@@ -3,7 +3,7 @@
   "started_at": "2026-08-04T11:10:03.248829Z",
   "ended_at": "2026-08-04T11:12:03.469486Z",
   "exit_code": 0,
-  "execution_result": "pass",
+  "execution_result": "unverified",
   "contract_equivalence": "fail",
   "result": "fail",
   "contract": {
@@ -48,5 +48,11 @@
     }
   ],
   "cleanup_check": "no hexalith-eventstore-smoke-* container remained after execution",
-  "blocker": "Two immutable-child liveness executions passed, but equivalent Production smoke remains unproved."
+  "evidence_completeness": "fail",
+  "verification": {
+    "method": "parse structured runtime records, exact child/log bindings, observed platforms, HTTP results, timestamps, cleanup, and docs/ci.md environment contract",
+    "result": "fail",
+    "reason": "The retained logs omit structured /alive status, redirect count, observed platform, per-platform timestamps, and exit codes; the execution also used Development instead of Production."
+  },
+  "blocker": "Executed liveness cannot be independently reproduced from the retained fields, and equivalent Production smoke remains unproved."
 }

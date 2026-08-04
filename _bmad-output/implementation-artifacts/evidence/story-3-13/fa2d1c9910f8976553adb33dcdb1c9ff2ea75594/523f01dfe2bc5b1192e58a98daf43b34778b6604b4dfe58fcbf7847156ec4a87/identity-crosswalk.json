@@ -1,7 +1,7 @@
 {
   "schema": "hexalith.eventstore.story-3-13-identity-crosswalk/v2",
   "schema_version": 2,
-  "assembled_at": "2026-08-04T11:17:05Z",
+  "assembled_at": "2026-08-04T14:55:55Z",
   "baseline": {
     "eventstore_head": "98a2c9c772daea99bf8fc68f6d9bff84fd5df956",
     "builds_gitlink_sha": "a53166539bf4441d5e33d04281b14c2d59e950c3",
@@ -67,6 +67,7 @@
       "packages": {
         "release_manifest_path": "tools/release-packages.json",
         "release_manifest_sha256": "6b0b70b856839d4117bcd969f6a2de0093c477c109cb79f3f2882b1f05effcae",
+        "hash_manifest_scope": "repository",
         "hash_manifest_path": "_bmad-output/implementation-artifacts/evidence/story-1-20/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/nuget-sha256.txt",
         "hash_manifest_sha256": "4271ddc76411780591423ab024b776cd34a2abccf1cc2dac03a245e141dbe0bc",
         "version": "999.1.20-proof.fa2d1c9910f8",
@@ -218,6 +219,7 @@
       },
       "release_authority": {
         "durable_source": "https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5083092060",
+        "record_scope": "repository",
         "record_path": "_bmad-output/implementation-artifacts/evidence/story-1-20/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/release-owner-publication-authority.json",
         "record_sha256": "2fd6a43fd92e5209e7f85d8310fda1fef66eaa2ae7f6b2fedaae6d697201246b",
         "owner": "jpiquot",
@@ -277,8 +279,9 @@
         ],
         "citation": "oci-validation.json and registry-readback.json",
         "verification": {
-          "method": "independent tag/digest/child/config raw-byte validation with unchanged shared validator functions",
-          "result": "pass"
+          "method": "independent tag/digest/child/config raw-byte validation with unchanged shared validator functions plus retained response-metadata review",
+          "result": "fail",
+          "reason": "Child-manifest and config response headers were validated live but were not retained, so response metadata is not independently reproducible."
         },
         "tag_response_raw_file": "tag-response.raw",
         "tag_response_raw_sha256": "523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87",
@@ -302,7 +305,7 @@
         }
       },
       "runtime": {
-        "execution_result": "pass",
+        "execution_result": "unverified",
         "contract_equivalence": "fail",
         "result": "fail",
         "started_at": "2026-08-04T11:10:03.248829Z",
@@ -344,9 +347,9 @@
         ],
         "citation": "runtime-verification.json",
         "verification": {
-          "method": "parse runtime record, exact child/log bindings, and docs/ci.md environment contract",
+          "method": "parse structured runtime records, exact child/log bindings, observed platforms, HTTP results, timestamps, cleanup, and docs/ci.md environment contract",
           "result": "fail",
-          "reason": "Both child liveness executions pass, but Production-equivalent smoke is unproved."
+          "reason": "The retained logs omit structured /alive status, redirect count, observed platform, per-platform timestamps, and exit codes; the execution also used Development instead of Production."
         }
       }
     }
@@ -417,9 +420,11 @@
   "limitations": [
     "No package, release, registry, deployment, consumer, predecessor, Epic 1, or submodule mutation is authorized.",
     "The selected package hashes are retained evidence, but the original archive bytes are unavailable for independent rehashing.",
-    "The immutable child liveness executions passed in Development; docs/ci.md requires Production, so equivalent runtime smoke remains unproved.",
+    "The retained smoke artifacts report Development execution while docs/ci.md requires Production; independently proven liveness and equivalent runtime smoke both remain open.",
     "The image source, URL, and documentation OCI labels are the malformed value https and supply no revision provenance.",
-    "The OCI graph passes, but it supplies neither semantic-release provenance nor an exact source revision mapping.",
+    "The retained OCI descriptor/body relationships pass, but complete response-metadata replay, semantic-release provenance, and an exact source revision mapping are missing.",
+    "Child-manifest and config response metadata was not retained, so the live registry response checks are not reproducible from the packet.",
+    "The smoke logs do not retain structured HTTP, observed-platform, per-platform timing, or exit-code facts and therefore cannot independently prove executed liveness.",
     "The current shared validator CLI cannot accept the non-SemVer quarantine tag; the immutable graph was validated with its unchanged validation functions.",
     "No Story 3.13 owner or Test Architect acceptance has been requested or inferred; future receipts stay outside hashed evidence."
   ],
@@ -432,7 +437,7 @@
       "package_bytes": "fail",
       "semantic_release_provenance": "fail",
       "source_release_exact_match": "fail",
-      "oci_graph": "pass",
+      "oci_graph": "fail",
       "oci_provenance_labels": "fail",
       "runtime_both_platforms": "fail",
       "deployment_authority": "fail",
@@ -471,9 +476,21 @@
         "reopen_trigger": "After every lineage check passes, obtain all three durable acceptances of the same review-subject SHA-256."
       },
       {
+        "id": "registry-object-response-metadata-missing",
+        "owner": "Hexalith.Builds OCI-validator owner and EventStore release owner",
+        "consequence": "Child-manifest and config response content types and digest headers cannot be independently replayed from retained evidence.",
+        "reopen_trigger": "Repeat the read-only registry capture and retain support-safe response metadata for every child manifest and config object."
+      },
+      {
+        "id": "runtime-execution-record-incomplete",
+        "owner": "Hexalith.Builds smoke-contract owner and EventStore release owner",
+        "consequence": "Hash-valid status strings do not independently prove the /alive response, observed platform, timing, exit status, or cleanup contract.",
+        "reopen_trigger": "Repeat both digest-pinned smokes and retain structured support-safe execution records for every required fact."
+      },
+      {
         "id": "runtime-contract-equivalence-mismatch",
         "owner": "Hexalith.Builds smoke-contract owner and EventStore release owner",
-        "consequence": "Development liveness passes do not satisfy the documented Production smoke contract.",
+        "consequence": "The retained execution reports Development; even independently reproduced liveness would not satisfy the documented Production smoke contract.",
         "reopen_trigger": "Run and retain the equivalent digest-pinned smoke under Production with the same required settings on both children."
       },
       {
@@ -489,7 +506,9 @@
   },
   "approval_contract": {
     "review_subject_path": "review-subject.json",
-    "external_receipt_location": "_bmad-output/implementation-artifacts/evidence/story-3-13/acceptances/{subject_sha256}/",
+    "reviewer_roster_path": "reviewer-roster.json",
+    "reviewer_roster_sha256": "6e5f73c0169c0b202f77cfe38ae2d38e12f8b4202173e95a3f2ef23f5a2987ed",
+    "external_receipt_location": "acceptances/{subject_sha256}",
     "outside_hashed_evidence": true,
     "required_roles": [
       "eventstore-owner",

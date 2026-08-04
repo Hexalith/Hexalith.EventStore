@@ -35,7 +35,7 @@ source_files:
 
 # Story 3.13: Deployed Runtime Parity Closure
 
-Status: review
+Status: in-progress
 
 <!-- Ultimate context engine analysis completed - comprehensive developer guide created. -->
 
@@ -204,7 +204,7 @@ deployment mutation, Story 1.20/3.12 status change, or G5 classification.
   - [x] Do not apply the Story 2.12 Tenants-only AD-22 exception: it explicitly grants no deployed-
     mode or other-consumer relief.
 
-- [x] **Task 5 - Revalidate the immutable OCI graph from registry bytes (AC2, AC3).**
+- [ ] **Task 5 - Revalidate the immutable OCI graph from registry bytes (AC2, AC3).**
   - [x] Resolve the proposed tag only as discovery input; immediately bind all evidence to the
     immutable index digest. Re-fetch the index by digest with an OCI-index `Accept` header and
     require the tag and digest responses to be byte-identical when a tag is part of the candidate.
@@ -212,7 +212,7 @@ deployment mutation, Story 1.20/3.12 status change, or G5 classification.
     type `application/vnd.oci.image.index.v1+json`.
   - [x] Require exactly two direct image descriptors: one `linux/amd64` and one `linux/arm64`, with
     no duplicate, extra, nested index, `unknown`, or non-empty variant entry.
-  - [x] Resolve every child manifest by digest; verify raw digest, size, descriptor/response media
+  - [ ] Resolve every child manifest by digest; verify raw digest, size, descriptor/response media
     type, config descriptor digest/size, raw config digest/size, and config `os`/`architecture`
     equality with the parent descriptor.
   - [x] Retain support-safe raw index, child-manifest, and config bytes plus a sorted checksum
@@ -252,8 +252,8 @@ deployment mutation, Story 1.20/3.12 status change, or G5 classification.
     scope. Their absence does not weaken this story's required provenance fields and this story
     does not claim to implement them.
 
-- [ ] **Task 8 - Produce the fail-closed verdict before requesting review (AC2, AC3).**
-  - [ ] Run a structural verifier over `identity-crosswalk.json` and the checksum manifest. Require
+- [x] **Task 8 - Produce the fail-closed verdict before requesting review (AC2, AC3).**
+  - [x] Run a structural verifier over `identity-crosswalk.json` and the checksum manifest. Require
     exact field presence, one candidate identity, exact package/platform sets, and all independent
     checks passing.
   - [x] Add focused regression coverage in
@@ -271,6 +271,8 @@ deployment mutation, Story 1.20/3.12 status change, or G5 classification.
 - [ ] **Task 9 - Obtain content-bound owner and Test Architect acceptance (AC4).**
   - [x] Freeze a review subject containing the final crosswalk hash, evidence-manifest hash,
     source/package/release/index identities, limitations, and proposed decision.
+  - [x] Hash-bind the repository-owned reviewer roster and load future receipts only from the
+    subject-hash-addressed evidence path, with exact authorized identities and receipt fields.
   - [ ] Obtain distinct durable acceptance from the EventStore owner and Release owner plus Murat's
     Test Architect review. Verify reviewer roles, exact subject hash, accepted scope, limitations,
     decision, date, and durable source; do not infer approval from story creation or prior approval.
@@ -538,28 +540,43 @@ OpenAI Codex (GPT-5)
   Story 1.20 evidence tree remains Git tree `fcd0c25c9cf6bb0554e208d529f1ef09c223725a`
   with 40 files.
 - The current shared OCI validation functions read the proof tag and immutable index plus both
-  children/configs from the registry; all media types, digests, sizes, and platforms passed.
+  children/configs from the registry. Raw descriptor/body digests, sizes, media types, and
+  platforms passed, but child/config response content types and digest headers were not retained;
+  complete registry-response replay therefore fails closed.
 - The current shared smoke contract ran from `2026-08-04T11:10:03.248829Z` through
-  `2026-08-04T11:12:03.469486Z`: amd64 passed after 18 polls, arm64 passed after 40 polls,
-  and both cleanup paths passed. The run used `Development`, while `docs/ci.md` requires
-  `Production`; runtime contract equivalence therefore remains a blocker.
+  `2026-08-04T11:12:03.469486Z` and reported passing polls and cleanup under `Development`.
+  The retained logs omit structured HTTP, redirect, observed-platform, per-platform timing, and
+  exit-code facts, so they do not independently prove liveness. `docs/ci.md` also requires
+  `Production`; runtime evidence and contract equivalence remain blockers.
 - Both retained configs set the OCI source, URL, and documentation labels to the malformed value
   `https`. The byte graph passes, but provenance-label validation fails closed.
 - Exact local proof-package search found zero archives; all 14 NuGet.org flat-container requests
   returned HTTP 404. No replacement packages were built.
-- `dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -m:1 -p:UseHexalithProjectReferences=false -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0`
+- `dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -m:1 --no-restore -p:UseHexalithProjectReferences=false -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0`
   passed with zero warnings and zero errors.
-- `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.DeployedRuntimeParityClosureTests`
-  passed 26/26 tests with zero failed, skipped, or not run.
-- `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll`
-  passed the complete Contracts suite: 910/910 tests with zero failed, skipped, or not run.
+- `dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -m:1 --no-restore -p:UseHexalithProjectReferences=false -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0 --filter FullyQualifiedName~DeployedRuntimeParityClosureTests`
+  passed 115/115 tests with zero failed, skipped, or not run.
+- `dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -m:1 --no-restore -p:UseHexalithProjectReferences=false -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0`
+  passed the complete Contracts suite: 999/999 tests with zero failed, skipped, or not run.
+- `jq empty _bmad-output/implementation-artifacts/evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/*.json`
+  exited zero for every retained JSON document.
+- `npx markdownlint-cli2 docs/ci.md` exited zero; the configured selection reported zero issues.
+- `git diff --check 98a2c9c772daea99bf8fc68f6d9bff84fd5df956 -- .` exited zero.
 
 ### Completion Notes List
 
 - Frozen and independently hash-checked both predecessors without modifying their bytes or status.
 - Created one content-addressed, schema-versioned identity crosswalk with an exact 14-package set,
-  exact two-platform OCI graph, separate tag/digest response bodies, fresh Development liveness
-  evidence, rejected v3.77.2 lineage, and both prohibited splice controls.
+  exact two-platform raw OCI byte graph, separate tag/digest response bodies, retained Development
+  smoke artifacts, rejected v3.77.2 lineage, and both prohibited splice controls.
+- Hardened the structural closure evaluator to verify actual package archives, semantic-release
+  provenance, deployment authority, registry/reference/root identity, exact OCI source revision,
+  structured support-safe runtime facts, checksum closure, full review-subject binding, reviewer
+  roster authorization, receipt chronology, and symlink-safe evidence paths.
+- Added a second review-hardening matrix that independently mutates and rebinds package bytes,
+  baseline/predecessor Git objects, authoritative release and deployment records, canonical lineage,
+  both OCI reports and provenance labels, runtime timing/cadence, support-safe values, and durable
+  receipt sources. The actual fail-closed subject and outer manifest are now derived checks too.
 - Recorded `fail-closed`: original proof packages remain unavailable; semantic-release provenance,
   valid OCI provenance labels, Production runtime equivalence, exact image-source mapping,
   deployed authority, and all three Story 3.13 acceptances are absent.
@@ -574,6 +591,7 @@ OpenAI Codex (GPT-5)
 - `_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure.md`
 - `_bmad-output/implementation-artifacts/epic-3-context.md`
 - `_bmad-output/implementation-artifacts/evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/`
+- `_bmad-output/implementation-artifacts/evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/reviewer-roster.json`
 - `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
 - `docs/ci.md`
@@ -581,11 +599,14 @@ OpenAI Codex (GPT-5)
 
 ## Story Completion Status
 
-- Status set to `review` for a reproducible `fail-closed` packet.
-- AC1 and AC3 pass. The OCI graph and Development liveness portions of AC2 pass, but package bytes,
-  release/source authority, valid provenance labels, and Production runtime equivalence are
-  incomplete, so AC2 does not pass as a whole.
+- Status set to `in-progress` because the reproducible `fail-closed` packet still has external
+  evidence blockers.
+- AC1 and AC3 pass. Raw OCI descriptor/body relationships pass, but child/config response metadata,
+  independently replayable runtime facts, package bytes, release/source authority, valid
+  provenance labels, and Production runtime equivalence are incomplete, so AC2 does not pass.
 - AC4 does not pass: the packet is not a complete passing lineage and has zero of three required
   content-bound acceptances.
+- Current acceptance status is exactly 0/3; no receipt, approval, publication, registry,
+  deployment, consumer, predecessor, or submodule state was created or changed by hardening.
 - Story 3.13 must remain non-`done` until every blocker is resolved and all three reviewers accept
   one unchanged replacement review subject.

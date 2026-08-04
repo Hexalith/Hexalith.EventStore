@@ -1,0 +1,15 @@
+{
+  "schema": "hexalith.eventstore.story-3-13-reviewer-roster/v1",
+  "repository": "Hexalith/Hexalith.EventStore",
+  "roles": {
+    "eventstore-owner": [
+      "github:jpiquot"
+    ],
+    "release-owner": [
+      "github:jpiquot"
+    ],
+    "test-architect": [
+      "bmad:murat"
+    ]
+  }
+}

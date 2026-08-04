@@ -18,6 +18,9 @@
     "content_length": 493,
     "raw_sha256": "523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87"
   },
+  "objects": [],
+  "object_response_metadata_result": "missing",
+  "object_response_metadata_blocker": "Child-manifest and config response headers were not retained and cannot be independently replayed from this packet.",
   "tag_and_digest_bytes_identical": true,
   "shared_validator": {
     "path": "references/Hexalith.Builds/Github/publish-containers/oci_registry_validator.py",
@@ -42,7 +45,7 @@
     "provenance_label_result": "fail",
     "provenance_label_blocker": "The source, URL, and documentation labels are malformed and cannot identify a repository or revision."
   },
-  "oci_graph_result": "pass",
+  "oci_graph_result": "fail",
   "result": "fail",
-  "scope": "OCI graph passes; release/source and label provenance remain fail-closed."
+  "scope": "Raw descriptor/body relationships pass, but child/config response metadata, release/source identity, and label provenance remain fail-closed."
 }

@@ -1,4 +1,5 @@
 {
+  "schema": "hexalith.eventstore.story-3-13-oci-validation/v2",
   "children": [
     {
       "config_digest": "sha256:31d1ed8f2503eae20c026c9ce452525ea77ab453b484b66e1c1f6aab16f545fd",
@@ -37,5 +38,7 @@
   ],
   "raw_index_file": "index.raw",
   "raw_index_sha256": "523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87",
-  "result": "pass"
+  "raw_graph_result": "pass",
+  "response_metadata_result": "missing",
+  "result": "fail"
 }
