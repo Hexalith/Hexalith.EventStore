@@ -1,0 +1,52 @@
+{
+  "schema": "hexalith.eventstore.story-3-13-runtime-verification/v1",
+  "started_at": "2026-08-04T11:10:03.248829Z",
+  "ended_at": "2026-08-04T11:12:03.469486Z",
+  "exit_code": 0,
+  "execution_result": "pass",
+  "contract_equivalence": "fail",
+  "result": "fail",
+  "contract": {
+    "health_path": "/alive",
+    "http_expectation": "2xx-without-redirect",
+    "timeout_seconds": 180,
+    "poll_interval_seconds": 2,
+    "actual_hosting_environment": "Development",
+    "required_hosting_environment": "Production",
+    "minimal_configuration": "current shared Hexalith.Builds EventStore smoke contract",
+    "equivalence_blocker": "docs/ci.md documents Production smoke, but this execution used Development."
+  },
+  "tool": {
+    "path": "references/Hexalith.Builds/Github/publish-containers/smoke_container_platforms.py",
+    "sha256": "c7ec862fd79bf96be12670d53707e3c8a828e0161e58745e57b652a42243e8a9",
+    "builds_gitlink_sha": "a53166539bf4441d5e33d04281b14c2d59e950c3"
+  },
+  "preflight": {
+    "platform": "linux/arm64",
+    "outcome": "pass",
+    "log": "smoke-preflight.log",
+    "log_sha256": "2f021ae8492d4d64c5bdb6c2204047f8e4f60501f3005023eb2a684d689d35fb"
+  },
+  "platforms": [
+    {
+      "platform": "linux/amd64",
+      "child_digest": "sha256:a47978374abf10a033f6d0b63610b05c13496335324371cbf73b155dd295ff6d",
+      "attempts": 18,
+      "outcome": "pass",
+      "cleanup": "pass",
+      "log": "smoke-linux-amd64.log",
+      "log_sha256": "46703e5ada3e1db8b4dea5934562245dd1ec677153052d385b9c435e6011d9bd"
+    },
+    {
+      "platform": "linux/arm64",
+      "child_digest": "sha256:bb245eea690cfe521098441c55a1710f81f722591a245f84c2fa45e4707fdc86",
+      "attempts": 40,
+      "outcome": "pass",
+      "cleanup": "pass",
+      "log": "smoke-linux-arm64.log",
+      "log_sha256": "eb87943c4ee99f1bef0de78d43163c891d7fb391b1e536e6f1eccd83bb416e5c"
+    }
+  ],
+  "cleanup_check": "no hexalith-eventstore-smoke-* container remained after execution",
+  "blocker": "Two immutable-child liveness executions passed, but equivalent Production smoke remains unproved."
+}

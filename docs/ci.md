@@ -250,12 +250,14 @@ emulation, product, or evidence failure leaves the release non-authorizing.
 The reusable workflow uploads the complete hidden evidence directory with
 `always()` so partial publication remains visible.
 
-Story 3.12 may hand a corrective release to Story 1.20 only as observed
-candidate evidence. Story 1.20 independently revalidates the full package and
-container identity and retains sole authority over its approval fields and
-consumer-migration decision. Its checked-in GitHub approval-role allowlist is
-retained for that independent proof-packet use; the release workflow does not
-consume it.
+Story 3.12 supplies corrective release evidence to Story 3.13, which owns the
+independent deployed-runtime identity crosswalk from Story 1.20's approved
+source/package bytes to one immutable released OCI index. Story 1.20 remains
+complete and authoritative for source/package parity only; Story 3.13 cannot
+rewrite either predecessor, infer identity across lineages, or authorize a
+consumer migration, deployment, publication, or registry mutation. Its
+checked-in GitHub approval-role allowlist remains historical proof-packet
+evidence; the release workflow does not consume it.
 
 ## Submodules
 

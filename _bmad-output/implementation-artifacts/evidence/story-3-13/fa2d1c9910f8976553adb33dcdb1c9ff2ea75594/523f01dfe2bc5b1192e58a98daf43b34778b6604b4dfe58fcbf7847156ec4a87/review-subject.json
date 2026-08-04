@@ -1,0 +1,57 @@
+{
+  "schema": "hexalith.eventstore.story-3-13-review-subject/v2",
+  "created_at": "2026-08-04T11:17:05Z",
+  "proposed_decision": "fail-closed",
+  "identity_crosswalk": {
+    "path": "identity-crosswalk.json",
+    "sha256": "8ddee2e187a8393c0036fa26dee496d86b6cd36e93d43a6bf63a2b1e840cf63d"
+  },
+  "evidence_core_manifest": {
+    "path": "evidence-core-sha256.txt",
+    "sha256": "54cc56210cc4faa3cfc6612b728e986cacc026ff4f02c688259aadb75c1cafd6"
+  },
+  "proof_packet": {
+    "path": "_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure-proof-packet.md",
+    "sha256": "b899ab2ef9bcc02c0a09be282b6d5ca0557c4d4dbc63e7c83d4788420aa56d72"
+  },
+  "identity": {
+    "source_sha": "fa2d1c9910f8976553adb33dcdb1c9ff2ea75594",
+    "package_version": "999.1.20-proof.fa2d1c9910f8",
+    "package_hash_manifest_sha256": "4271ddc76411780591423ab024b776cd34a2abccf1cc2dac03a245e141dbe0bc",
+    "release_version": null,
+    "workflow_run": null,
+    "index_digest": "sha256:523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87"
+  },
+  "passing_evidence": [
+    "all predecessor fingerprints and the complete 40-file Story 1.20 tree are unchanged",
+    "the OCI index, independent tag/digest response bodies, and both child/config byte graphs match their immutable descriptors",
+    "fresh digest-pinned /alive execution and cleanup pass on linux/amd64 and linux/arm64 under Development"
+  ],
+  "blockers": [
+    "the 14 original proof package archives remain unavailable for independent byte verification",
+    "the selected lineage has no semantic release tag, workflow run/attempt, Builds execution SHA, or publisher identity",
+    "the config source, URL, and documentation labels equal the malformed value https and the absent revision cannot bind the approved source",
+    "the retained liveness execution used Development while the documented equivalent smoke contract requires Production",
+    "the retained publication authority explicitly excludes deployment and consumer migration",
+    "the EventStore owner, Release owner, and Test Architect have not accepted this Story 3.13 subject"
+  ],
+  "limitations": [
+    "This subject authorizes no package publication, registry mutation, deployment mutation, consumer migration, predecessor status change, Epic 1 change, or G5 decision.",
+    "Any crosswalk, evidence-core manifest, or proof-packet byte change invalidates acceptance of this subject.",
+    "Acceptance receipts are external to the frozen evidence and a pass decision requires a replacement subject after every lineage check passes."
+  ],
+  "required_acceptances": [
+    {
+      "role": "eventstore-owner",
+      "status": "missing"
+    },
+    {
+      "role": "release-owner",
+      "status": "missing"
+    },
+    {
+      "role": "test-architect",
+      "status": "missing"
+    }
+  ]
+}

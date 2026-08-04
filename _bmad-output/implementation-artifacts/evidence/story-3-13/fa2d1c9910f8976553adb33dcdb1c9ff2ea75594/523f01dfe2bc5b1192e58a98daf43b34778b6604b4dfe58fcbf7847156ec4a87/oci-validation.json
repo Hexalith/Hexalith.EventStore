@@ -1,0 +1,41 @@
+{
+  "children": [
+    {
+      "config_digest": "sha256:31d1ed8f2503eae20c026c9ce452525ea77ab453b484b66e1c1f6aab16f545fd",
+      "config_media_type": "application/vnd.oci.image.config.v1+json",
+      "config_raw_file": "child-linux-amd64.config.raw",
+      "config_raw_sha256": "31d1ed8f2503eae20c026c9ce452525ea77ab453b484b66e1c1f6aab16f545fd",
+      "config_size": 3851,
+      "digest": "sha256:a47978374abf10a033f6d0b63610b05c13496335324371cbf73b155dd295ff6d",
+      "manifest_raw_file": "child-linux-amd64.manifest.raw",
+      "manifest_raw_sha256": "a47978374abf10a033f6d0b63610b05c13496335324371cbf73b155dd295ff6d",
+      "media_type": "application/vnd.oci.image.manifest.v1+json",
+      "platform": "linux/amd64",
+      "size": 1399
+    },
+    {
+      "config_digest": "sha256:10a00fc7c19abb37061a8b86e1b234cbbb2fe7af85728b527f4449a326ac0a20",
+      "config_media_type": "application/vnd.oci.image.config.v1+json",
+      "config_raw_file": "child-linux-arm64.config.raw",
+      "config_raw_sha256": "10a00fc7c19abb37061a8b86e1b234cbbb2fe7af85728b527f4449a326ac0a20",
+      "config_size": 3852,
+      "digest": "sha256:bb245eea690cfe521098441c55a1710f81f722591a245f84c2fa45e4707fdc86",
+      "manifest_raw_file": "child-linux-arm64.manifest.raw",
+      "manifest_raw_sha256": "bb245eea690cfe521098441c55a1710f81f722591a245f84c2fa45e4707fdc86",
+      "media_type": "application/vnd.oci.image.manifest.v1+json",
+      "platform": "linux/arm64",
+      "size": 1399
+    }
+  ],
+  "image": "registry.hexalith.com/eventstore:quarantine-proof-fa2d1c9910f8976553adb33dcdb1c9ff2ea75594",
+  "index_digest": "sha256:523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87",
+  "index_size": 493,
+  "media_type": "application/vnd.oci.image.index.v1+json",
+  "platforms": [
+    "linux/amd64",
+    "linux/arm64"
+  ],
+  "raw_index_file": "index.raw",
+  "raw_index_sha256": "523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87",
+  "result": "pass"
+}
