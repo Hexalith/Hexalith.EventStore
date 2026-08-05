@@ -38,6 +38,10 @@ public sealed class DeployedRuntimeParityClosureTests
         "references/Hexalith.Builds/Github/publish-containers/smoke_container_platforms.py";
     private const string ExpectedSmokeToolSha256 =
         "c7ec862fd79bf96be12670d53707e3c8a828e0161e58745e57b652a42243e8a9";
+    private const string ExpectedOciValidatorPath =
+        "references/Hexalith.Builds/Github/publish-containers/oci_registry_validator.py";
+    private const string ExpectedOciValidatorSha256 =
+        "e1547e31fbdb8a678c99a245510e718c1cb35f6b9ec51264aa7bc1cdae419509";
     private const string ReceiptDirectoryTemplate = "acceptances/{subject_sha256}";
 
     private static readonly string[] ExpectedChecks =
@@ -305,18 +309,18 @@ public sealed class DeployedRuntimeParityClosureTests
         string evidence = Path.Combine(root, EvidenceRelativePath);
         JsonObject crosswalk = LoadCrosswalk(root);
 
-        ValidateOciGraph(crosswalk, evidence).ShouldBeFalse();
+        ValidateOciGraph(crosswalk, root, evidence).ShouldBeFalse();
 
         JsonObject mutated = Clone(crosswalk);
         mutated["selected_candidates"]![0]!["oci"]!["children"]![0]!["manifest_raw_file"] =
             "child-linux-arm64.manifest.raw";
-        ValidateOciGraph(mutated, evidence).ShouldBeFalse();
+        ValidateOciGraph(mutated, root, evidence).ShouldBeFalse();
         mutated = Clone(crosswalk);
         mutated["selected_candidates"]![0]!["oci"]!["index_raw_file"] = "../index.raw";
-        ValidateOciGraph(mutated, evidence).ShouldBeFalse();
+        ValidateOciGraph(mutated, root, evidence).ShouldBeFalse();
         mutated = Clone(crosswalk);
         mutated["selected_candidates"]![0]!["oci"]!["tag_response_raw_file"] = "/tmp/index.raw";
-        ValidateOciGraph(mutated, evidence).ShouldBeFalse();
+        ValidateOciGraph(mutated, root, evidence).ShouldBeFalse();
     }
 
     /// <summary>
@@ -346,7 +350,7 @@ public sealed class DeployedRuntimeParityClosureTests
         string evidence = Path.Combine(root, EvidenceRelativePath);
         JsonObject crosswalk = LoadCrosswalk(root);
 
-        ValidateRuntimeExecution(crosswalk, evidence).ShouldBeFalse();
+        ValidateRuntimeExecution(crosswalk, root, evidence).ShouldBeFalse();
         ValidateRuntimeEquivalence(crosswalk).ShouldBeFalse();
         JsonObject runtime = crosswalk["selected_candidates"]![0]!["runtime"]!.AsObject();
         runtime["contract"]!["actual_hosting_environment"]!.GetValue<string>().ShouldBe("Development");
@@ -355,10 +359,10 @@ public sealed class DeployedRuntimeParityClosureTests
         JsonObject mutated = Clone(crosswalk);
         mutated["selected_candidates"]![0]!["runtime"]!["platforms"]![0]!["child_digest"] =
             "sha256:" + new string('0', 64);
-        ValidateRuntimeExecution(mutated, evidence).ShouldBeFalse();
+        ValidateRuntimeExecution(mutated, root, evidence).ShouldBeFalse();
         mutated = Clone(crosswalk);
         mutated["selected_candidates"]![0]!["runtime"]!["platforms"]![0]!["log"] = "../smoke.log";
-        ValidateRuntimeExecution(mutated, evidence).ShouldBeFalse();
+        ValidateRuntimeExecution(mutated, root, evidence).ShouldBeFalse();
     }
 
     /// <summary>
@@ -377,6 +381,52 @@ public sealed class DeployedRuntimeParityClosureTests
             ["result"] = "pass",
             ["nested"] = new JsonObject { ["client-secret"] = "redacted-but-forbidden" },
         })).ShouldBeFalse();
+    }
+
+    /// <summary>
+    /// Verifies private IPv6 addresses cannot be retained as support-safe evidence values.
+    /// </summary>
+    [Fact]
+    public void SupportSafeValuesRejectPrivateIpv6Addresses()
+    {
+        ValueIsSupportSafe("fd00::1").ShouldBeFalse();
+        ValueIsSupportSafe("fc00::abcd").ShouldBeFalse();
+        ValueIsSupportSafe("fe80::1").ShouldBeFalse();
+        ValueIsSupportSafe("https://[fd00::1]/status").ShouldBeFalse();
+        ValueIsSupportSafe("2606:4700:4700::1111").ShouldBeTrue();
+        ValueIsSupportSafe("10.0.0.1").ShouldBeFalse();
+        ValueIsSupportSafe("8.8.8.8").ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// Verifies re-running the smoke against an unchanged artifact preserves the canonical lineage.
+    /// </summary>
+    [Fact]
+    public void CanonicalLineageIgnoresExecutionOnlyRuntimeFacts()
+    {
+        string root = FindRepositoryRoot();
+        (string cleanupRoot, _, JsonObject crosswalk, _, _, _, _, _) = CreatePassingFixture(root);
+        try
+        {
+            JsonObject candidate = crosswalk["selected_candidates"]![0]!.AsObject();
+            string before = ComputeLineageMaterialSha256(candidate);
+            JsonObject runtime = candidate["runtime"]!.AsObject();
+            runtime["started_at"] = "2030-01-01T00:00:00.0000000+00:00";
+            runtime["ended_at"] = "2030-01-01T00:02:00.0000000+00:00";
+            runtime["platforms"]![0]!["attempts"] = 47;
+            runtime["platforms"]![0]!["started_at"] = "2030-01-01T00:00:20.0000000+00:00";
+            runtime["platforms"]![0]!["log_sha256"] = new string('9', 64);
+            runtime["preflight"]!["log_sha256"] = new string('8', 64);
+            runtime["smoke_results"]!["sha256"] = new string('7', 64);
+            ComputeLineageMaterialSha256(candidate).ShouldBe(before);
+
+            runtime["platforms"]![0]!["child_digest"] = "sha256:" + new string('0', 64);
+            ComputeLineageMaterialSha256(candidate).ShouldNotBe(before);
+        }
+        finally
+        {
+            Directory.Delete(cleanupRoot, recursive: true);
+        }
     }
 
     /// <summary>
@@ -462,9 +512,9 @@ public sealed class DeployedRuntimeParityClosureTests
             ValidatePackages(crosswalk, root, evidence, packageManifestSha256).ShouldBeTrue();
             ValidatePackageBytes(crosswalk["selected_candidates"]![0]!.AsObject(), evidence).ShouldBeTrue();
             ValidateRelease(crosswalk["selected_candidates"]![0]!.AsObject(), root, evidence).ShouldBeTrue();
-            ValidateOciGraph(crosswalk, evidence).ShouldBeTrue();
+            ValidateOciGraph(crosswalk, root, evidence).ShouldBeTrue();
             ValidateOciProvenance(crosswalk, evidence).ShouldBeTrue();
-            ValidateRuntimeExecution(crosswalk, evidence).ShouldBeTrue();
+            ValidateRuntimeExecution(crosswalk, root, evidence).ShouldBeTrue();
             ValidateRuntimeEquivalence(crosswalk).ShouldBeTrue();
             ValidateDeploymentAuthority(crosswalk, root, evidence).ShouldBeTrue();
             LoadReviewerRoster(crosswalk, evidence).ShouldNotBeNull();
@@ -1115,7 +1165,7 @@ public sealed class DeployedRuntimeParityClosureTests
             File.WriteAllBytes(
                 Path.Combine(evidence, "registry-readback.json"),
                 JsonSerializer.SerializeToUtf8Bytes(report));
-            ValidateOciGraph(crosswalk, evidence).ShouldBeFalse();
+            ValidateOciGraph(crosswalk, root, evidence).ShouldBeFalse();
             EvaluateWithFreshReview(
                 crosswalk,
                 root,
@@ -1160,7 +1210,7 @@ public sealed class DeployedRuntimeParityClosureTests
             File.WriteAllBytes(
                 Path.Combine(evidence, "oci-validation.json"),
                 JsonSerializer.SerializeToUtf8Bytes(report));
-            ValidateOciGraph(crosswalk, evidence).ShouldBeFalse();
+            ValidateOciGraph(crosswalk, root, evidence).ShouldBeFalse();
             EvaluateWithFreshReview(
                 crosswalk,
                 root,
@@ -1331,7 +1381,7 @@ public sealed class DeployedRuntimeParityClosureTests
 
             PersistRuntimeBindings(runtime, evidence);
             RefreshReviewBindings(crosswalk, evidence, proofBytes);
-            ValidateRuntimeExecution(crosswalk, evidence).ShouldBeFalse();
+            ValidateRuntimeExecution(crosswalk, root, evidence).ShouldBeFalse();
         }
         finally
         {
@@ -1534,9 +1584,9 @@ public sealed class DeployedRuntimeParityClosureTests
                     expectedPackageManifestSha256)
                 || !ValidatePackageBytes(candidates[0], evidenceRoot)
                 || !ValidateRelease(candidates[0], repositoryRoot, evidenceRoot)
-                || !ValidateOciGraph(crosswalk, evidenceRoot)
+                || !ValidateOciGraph(crosswalk, repositoryRoot, evidenceRoot)
                 || !ValidateOciProvenance(crosswalk, evidenceRoot)
-                || !ValidateRuntimeExecution(crosswalk, evidenceRoot)
+                || !ValidateRuntimeExecution(crosswalk, repositoryRoot, evidenceRoot)
                 || !ValidateRuntimeEquivalence(crosswalk)
                 || !ValidateDeploymentAuthority(crosswalk, repositoryRoot, evidenceRoot))
             {
@@ -1998,7 +2048,27 @@ public sealed class DeployedRuntimeParityClosureTests
         }
     }
 
-    private static bool ValidateOciGraph(JsonObject crosswalk, string evidenceRoot)
+    private static bool ValidateSharedValidatorIdentity(JsonObject sharedValidator, string repositoryRoot)
+    {
+        string[] fields =
+        [
+            "path",
+            "sha256",
+            "builds_gitlink_sha",
+            "verification_result",
+            "cli_candidate_compatibility",
+            "cli_candidate_consequence",
+        ];
+        string path = sharedValidator["path"]!.GetValue<string>();
+        return HasExactProperties(sharedValidator, fields)
+            && path == ExpectedOciValidatorPath
+            && sharedValidator["builds_gitlink_sha"]!.GetValue<string>() == ExpectedBuildsSha
+            && sharedValidator["verification_result"]!.GetValue<string>() == "pass"
+            && sharedValidator["sha256"]!.GetValue<string>() == ExpectedOciValidatorSha256
+            && ComputePinnedBuildsToolSha256(repositoryRoot, path) == ExpectedOciValidatorSha256;
+    }
+
+    private static bool ValidateOciGraph(JsonObject crosswalk, string repositoryRoot, string evidenceRoot)
     {
         try
         {
@@ -2080,7 +2150,10 @@ public sealed class DeployedRuntimeParityClosureTests
                 || oci["index_digest"]!.GetValue<string>() != indexDigest
                 || oci["index_raw_sha256"]!.GetValue<string>() != indexDigest[7..]
                 || oci["index_size"]!.GetValue<int>() != indexBytes.Length
-                || oci["index_media_type"]!.GetValue<string>() != OciIndexMediaType)
+                || oci["index_media_type"]!.GetValue<string>() != OciIndexMediaType
+                || !ValidateSharedValidatorIdentity(
+                    readback["shared_validator"]!.AsObject(),
+                    repositoryRoot))
             {
                 return false;
             }
@@ -2298,6 +2371,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         catch (Exception exception) when (
             exception is InvalidOperationException
+            or NullReferenceException
             or ArgumentException
             or InvalidDataException
             or JsonException
@@ -2309,7 +2383,10 @@ public sealed class DeployedRuntimeParityClosureTests
         }
     }
 
-    private static bool ValidateRuntimeExecution(JsonObject crosswalk, string evidenceRoot)
+    private static bool ValidateRuntimeExecution(
+        JsonObject crosswalk,
+        string repositoryRoot,
+        string evidenceRoot)
     {
         try
         {
@@ -2371,7 +2448,9 @@ public sealed class DeployedRuntimeParityClosureTests
             if (tool["path"]!.GetValue<string>() != ExpectedSmokeToolPath
                 || tool["sha256"]!.GetValue<string>() != ExpectedSmokeToolSha256
                 || tool["builds_gitlink_sha"]!.GetValue<string>() != ExpectedBuildsSha
-                || tool["identity"]!.GetValue<string>() != "hexalith-builds:" + ExpectedBuildsSha)
+                || tool["identity"]!.GetValue<string>() != "hexalith-builds:" + ExpectedBuildsSha
+                || ComputePinnedBuildsToolSha256(repositoryRoot, ExpectedSmokeToolPath) !=
+                    ExpectedSmokeToolSha256)
             {
                 return false;
             }
@@ -2474,6 +2553,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         catch (Exception exception) when (
             exception is InvalidOperationException
+            or NullReferenceException
             or ArgumentException
             or InvalidDataException
             or JsonException
@@ -2642,6 +2722,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         catch (Exception exception) when (
             exception is InvalidOperationException
+            or NullReferenceException
             or ArgumentException
             or InvalidDataException
             or JsonException
@@ -2862,6 +2943,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         catch (Exception exception) when (
             exception is InvalidOperationException
+            or NullReferenceException
             or ArgumentException
             or FormatException
             or InvalidDataException
@@ -3029,6 +3111,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         catch (Exception exception) when (
             exception is InvalidOperationException
+            or NullReferenceException
             or ArgumentException
             or InvalidDataException
             or JsonException
@@ -3462,12 +3545,15 @@ public sealed class DeployedRuntimeParityClosureTests
             return false;
         }
 
-        if (Uri.TryCreate(value, UriKind.Absolute, out Uri? uri))
+        // A bare IPv6 literal also parses as an absolute URI whose scheme is its first group, so the
+        // address form is resolved first to keep such values from bypassing the private-range check.
+        if (IPAddress.TryParse(value, out IPAddress? address))
         {
-            return string.IsNullOrEmpty(uri.UserInfo) && !HostIsPrivate(uri.Host);
+            return !AddressIsPrivate(address);
         }
 
-        return !IPAddress.TryParse(value, out IPAddress? address) || !AddressIsPrivate(address);
+        return !Uri.TryCreate(value, UriKind.Absolute, out Uri? uri)
+            || (string.IsNullOrEmpty(uri.UserInfo) && !HostIsPrivate(uri.Host));
     }
 
     private static bool LooksLikeJwt(string value)
@@ -3479,7 +3565,7 @@ public sealed class DeployedRuntimeParityClosureTests
     }
 
     private static bool HostIsPrivate(string host) =>
-        IPAddress.TryParse(host, out IPAddress? address) && AddressIsPrivate(address);
+        IPAddress.TryParse(host.Trim('[', ']'), out IPAddress? address) && AddressIsPrivate(address);
 
     private static bool AddressIsPrivate(IPAddress address)
     {
@@ -3488,13 +3574,23 @@ public sealed class DeployedRuntimeParityClosureTests
             return true;
         }
 
+        if (address.IsIPv4MappedToIPv6)
+        {
+            return AddressIsPrivate(address.MapToIPv4());
+        }
+
         byte[] bytes = address.GetAddressBytes();
-        return bytes.Length == 4
-            && (bytes[0] == 10
+        return bytes.Length switch
+        {
+            4 => bytes[0] == 10
                 || bytes[0] == 127
                 || (bytes[0] == 169 && bytes[1] == 254)
                 || (bytes[0] == 172 && bytes[1] is >= 16 and <= 31)
-                || (bytes[0] == 192 && bytes[1] == 168));
+                || (bytes[0] == 192 && bytes[1] == 168),
+            16 => (bytes[0] & 0xfe) == 0xfc
+                || (bytes[0] == 0xfe && (bytes[1] & 0xc0) == 0x80),
+            _ => false,
+        };
     }
 
     private static bool HasExactProperties(JsonObject value, IEnumerable<string> expected) =>
@@ -3551,9 +3647,42 @@ public sealed class DeployedRuntimeParityClosureTests
             ["packages"] = candidate["packages"]!.DeepClone(),
             ["release"] = release,
             ["oci"] = candidate["oci"]!.DeepClone(),
-            ["runtime"] = candidate["runtime"]!.DeepClone(),
+            ["runtime"] = StripExecutionOnlyRuntimeFields(candidate["runtime"]!.DeepClone().AsObject()),
         };
         return ComputeSha256(JsonSerializer.SerializeToUtf8Bytes(CanonicalizeJson(material)));
+    }
+
+    // Re-verifying an unchanged artifact must not invalidate a granted authority, so per-execution
+    // values are excluded and only identity-affecting runtime facts determine the lineage.
+    private static JsonObject StripExecutionOnlyRuntimeFields(JsonObject runtime)
+    {
+        string[] executionOnly = ["started_at", "ended_at", "attempts", "log_sha256"];
+        foreach (string field in executionOnly)
+        {
+            runtime.Remove(field);
+        }
+
+        if (runtime["preflight"] is JsonObject preflight)
+        {
+            foreach (string field in executionOnly)
+            {
+                preflight.Remove(field);
+            }
+        }
+
+        if (runtime["platforms"] is JsonArray platforms)
+        {
+            foreach (JsonObject platform in platforms.OfType<JsonObject>())
+            {
+                foreach (string field in executionOnly)
+                {
+                    platform.Remove(field);
+                }
+            }
+        }
+
+        (runtime["smoke_results"] as JsonObject)?.Remove("sha256");
+        return runtime;
     }
 
     private static string ComputeCanonicalLineage(JsonObject candidate, string authorityRecordSha256) =>
@@ -4525,6 +4654,38 @@ public sealed class DeployedRuntimeParityClosureTests
         }
 
         return output.Trim();
+    }
+
+    // The pinned Builds revision is historical, so the tool bytes are read from the submodule
+    // object store rather than the live worktree, which tracks a different gitlink.
+    private static string ComputePinnedBuildsToolSha256(string repositoryRoot, string toolPath)
+    {
+        const string buildsPrefix = "references/Hexalith.Builds/";
+        if (!toolPath.StartsWith(buildsPrefix, StringComparison.Ordinal))
+        {
+            throw new InvalidDataException("Shared tool path is outside the Builds submodule.");
+        }
+
+        using Process process = new()
+        {
+            StartInfo = new ProcessStartInfo("git")
+            {
+                WorkingDirectory = Path.Combine(repositoryRoot, "references", "Hexalith.Builds"),
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+            },
+        };
+        process.StartInfo.ArgumentList.Add("show");
+        process.StartInfo.ArgumentList.Add(ExpectedBuildsSha + ":" + toolPath[buildsPrefix.Length..]);
+        process.Start();
+        using MemoryStream buffer = new();
+        process.StandardOutput.BaseStream.CopyTo(buffer);
+        string error = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+        return process.ExitCode == 0
+            ? ComputeSha256(buffer.ToArray())
+            : throw new InvalidDataException("Shared Builds tool verification failed: " + error.Trim());
     }
 
     private static string FindRepositoryRoot()

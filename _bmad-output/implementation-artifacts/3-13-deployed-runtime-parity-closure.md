@@ -562,6 +562,12 @@ OpenAI Codex (GPT-5)
   exited zero for every retained JSON document.
 - `npx markdownlint-cli2 docs/ci.md` exited zero; the configured selection reported zero issues.
 - `git diff --check 1d6e9321acfc416768c1c78e9facf573c9c41f71 -- .` exited zero.
+- 2026-08-05 code review, after applying six patches: the focused filter passed 117/117 and the
+  complete Contracts suite passed 1001/1001, both with zero failed, skipped, or not run; the Release
+  build reported zero warnings and zero errors.
+- 2026-08-05 guard-effectiveness controls: independently inverting `ExpectedSmokeToolSha256` and
+  `ExpectedOciValidatorSha256` each turned `CompleteDerivedLineagePassesAndMissingChecksOrBlockersFail`
+  red, proving the new real-byte tool checks are reachable rather than vacuous.
 
 ### Completion Notes List
 
@@ -584,6 +590,16 @@ OpenAI Codex (GPT-5)
   fail-closed review subject over their raw hashes. Future receipts are external to those hashes;
   Task 9 remains open because no approval was requested, provided, or inferred.
 - Corrected deployed-runtime closure ownership in `docs/ci.md` without changing release mechanics.
+- 2026-08-05 code review applied six patches: reconciled the lifecycle status to `in-progress`
+  across this record, the spec kernel, and `sprint-status.yaml`; scoped the proof packet's
+  submodule claim to author-controlled state; excluded execution-only runtime facts from
+  `canonical_lineage_id` so re-verifying an unchanged artifact no longer invalidates authority;
+  bound the shared Builds smoke tool and OCI validator to their pinned bytes read from the
+  submodule object store; added `NullReferenceException` to five validator catch filters; and
+  closed the IPv6 support-safety gap, including bare literals that previously parsed as URIs.
+- The proof packet edit changed its bytes, so the content-bound review subject and outer manifest
+  were rehashed. The recorded fail-closed decision, blockers, and 0/3 acceptance count are
+  unchanged, and no approval was requested, provided, or inferred.
 
 ### File List
 

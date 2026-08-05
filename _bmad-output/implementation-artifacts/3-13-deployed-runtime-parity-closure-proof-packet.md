@@ -117,8 +117,12 @@ not treated as a pass for release provenance.
   independently rebound mutations across release, authority, OCI, runtime, roster, and receipts.
 - The prior smoke tool returned pass under `Development`, but the retained logs do not independently
   prove its HTTP/platform execution facts; Production contract equivalence also failed closed.
-- No runtime source, workflow, release configuration, package manifest, submodule, consumer,
-  deployment, registry object, Story 1.20, Story 3.12, or Epic 1 state changed.
+- Story 3.13 authored no change to runtime source, workflow, release configuration, package
+  manifest, submodule content, consumer, deployment, registry object, Story 1.20, Story 3.12, or
+  Epic 1 state. Root-declared submodule gitlink pointers under `references/` are advanced by
+  concurrent repository housekeeping outside this story's authored change set; predecessor identity
+  is therefore pinned to historical Git objects at the recorded baseline commit rather than to the
+  live worktree, so gitlink drift cannot alter the frozen evidence.
 
 Because the evidence is explicitly fail-closed, Story 3.13 remains non-`done`. The response and
 runtime evidence gaps above must be closed before the packet can claim reproducible partial passes;

@@ -12,7 +12,7 @@
   },
   "proof_packet": {
     "path": "_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure-proof-packet.md",
-    "sha256": "dfa92b065eebe449d25312a4276e8ff2e1b031e43e3811e23c227ad784599498"
+    "sha256": "4c193ad2fe90787fe4655400a4449defe30e3e23ea3108324211650ab5ab2710"
   },
   "identity": {
     "source_sha": "fa2d1c9910f8976553adb33dcdb1c9ff2ea75594",

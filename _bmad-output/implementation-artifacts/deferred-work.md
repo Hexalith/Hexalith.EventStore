@@ -822,3 +822,12 @@ status: open
 - [MEDIUM] Reconcile `epic-2: in-progress` with all listed Epic 2 stories and its retrospective marked `done`. Source: `_bmad-output/implementation-artifacts/sprint-status.yaml:79`. Pre-existing sprint-tracking inconsistency outside Story 8.1.
 - [LOW] Add the intentionally preserved `awaiting-operator` value to the sprint-status schema comments. Source: `_bmad-output/implementation-artifacts/sprint-status.yaml:19,205`. Pre-existing schema-comment drift outside Story 8.1.
 - [MEDIUM] Separate unrelated Epic 1-7 tracking changes from the Story 8.1 baseline evidence so scope attribution is reviewable. Source: `_bmad-output/implementation-artifacts/sprint-status.yaml:51`. The shared sprint file accumulated concurrent story updates after the recorded baseline.
+
+## Deferred from: code review of story-3.13 (2026-08-04)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: [LOW] `review_loop_iteration: 1` was not incremented despite two documented hardening passes recorded in the same file's Spec Change Log.
+  evidence: `spec-3-13-deployed-runtime-parity-closure.md:7` frontmatter still reads `review_loop_iteration: 1`, while the Spec Change Log records "Applied all 15 code-review patches" and, separately, "Applied the second review-hardening pass ... 115 focused mutation cases," both dated 2026-08-04. Cosmetic drift, not blocking.
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: [LOW] The story's File List omits several evidence files the tests and crosswalk already depend on and validate.
+  evidence: `3-13-deployed-runtime-parity-closure.md:588` lists only a bare evidence-directory reference plus `reviewer-roster.json`, but `DeployedRuntimeParityClosureTests.cs` and `identity-crosswalk.json` reference and validate additional files (e.g. `deployment-authority.json`, `deployment-authority-source.json`, `release-provenance.json`, and further smoke/log files) not named in the File List. Documentation completeness only, not a functional gap.

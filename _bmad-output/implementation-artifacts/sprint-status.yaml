@@ -215,7 +215,12 @@ development_status:
   # same-lineage release/deployment authority, and all three AC4 acceptances remain missing.
   # 2026-08-04 second hardening pass added derived fail-closed subject/outer-manifest validation
   # and 115 focused mutation cases; AC1/AC3 pass, while AC2/AC4 and all 0/3 acceptances remain open.
-  3-13-deployed-runtime-parity-closure: review
+  # 2026-08-05 code review (4 layers): 3 owner decisions resolved, 6 patches applied, 2 deferred,
+  # 2 dismissed. Reconciled the four-way lifecycle-status disagreement to in-progress, corrected the
+  # proof packet's false no-submodule-change claim, made canonical_lineage_id insensitive to routine
+  # runtime re-verification, bound the shared Builds validator/smoke tool to real script bytes, and
+  # closed NullReferenceException/IPv6 support-safety gaps. AC2/AC4 and 0/3 acceptances still open.
+  3-13-deployed-runtime-parity-closure: in-progress
   epic-3-retrospective: optional
 
   epic-4: in-progress
