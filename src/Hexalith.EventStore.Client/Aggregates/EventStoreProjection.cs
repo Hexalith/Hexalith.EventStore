@@ -1,5 +1,4 @@
 
-using System.Collections.Concurrent;
 using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
@@ -7,6 +6,7 @@ using System.Text.Json;
 using Hexalith.EventStore.Client.Configuration;
 using Hexalith.EventStore.Client.Conventions;
 using Hexalith.EventStore.Client.Projections;
+using Hexalith.EventStore.Contracts.Serialization;
 
 using Microsoft.Extensions.Logging;
 
@@ -20,7 +20,6 @@ namespace Hexalith.EventStore.Client.Aggregates;
 /// <typeparam name="TReadModel">The read model type that this projection builds.</typeparam>
 public abstract class EventStoreProjection<TReadModel> : IEventStoreProjection
     where TReadModel : class, new() {
-    private static readonly ConcurrentDictionary<Type, Dictionary<string, MethodInfo>> _applyCache = new();
     private string? _domainName;
 
     /// <summary>
@@ -76,7 +75,7 @@ public abstract class EventStoreProjection<TReadModel> : IEventStoreProjection
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(events);
 
-        Dictionary<string, MethodInfo> applyMethods = GetOrBuildApplyMethods();
+        ApplyMethodTable applyMethods = GetOrBuildApplyMethods();
         var model = new TReadModel();
 
         foreach (object? evt in events) {
@@ -86,8 +85,11 @@ public abstract class EventStoreProjection<TReadModel> : IEventStoreProjection
                 continue;
             }
 
-            string eventTypeName = evt.GetType().Name;
-            if (applyMethods.TryGetValue(eventTypeName, out MethodInfo? applyMethod)) {
+            // Resolving by runtime CLR type keeps this entry point symmetric with the name-based one:
+            // it binds exactly where the name-based path would throw on a short-name collision, instead
+            // of returning null and silently dropping the event.
+            MethodInfo? applyMethod = ApplyMethodResolver.TryResolve(applyMethods, evt.GetType());
+            if (applyMethod is not null) {
                 _ = applyMethod.Invoke(model, [evt]);
             }
         }
@@ -120,7 +122,7 @@ public abstract class EventStoreProjection<TReadModel> : IEventStoreProjection
                 $"Expected JSON array but received {jsonArray.ValueKind}.", nameof(jsonArray));
         }
 
-        Dictionary<string, MethodInfo> applyMethods = GetOrBuildApplyMethods();
+        ApplyMethodTable applyMethods = GetOrBuildApplyMethods();
         var model = new TReadModel();
 
         foreach (JsonElement eventElement in jsonArray.EnumerateArray()) {
@@ -162,44 +164,15 @@ public abstract class EventStoreProjection<TReadModel> : IEventStoreProjection
         return model;
     }
 
-    private static Dictionary<string, MethodInfo> GetOrBuildApplyMethods() =>
-        _applyCache.GetOrAdd(typeof(TReadModel), static readModelType => {
-            var methods = new Dictionary<string, MethodInfo>(StringComparer.Ordinal);
-
-            foreach (MethodInfo method in readModelType.GetMethods(BindingFlags.Public | BindingFlags.Instance)) {
-                if (!method.Name.Equals("Apply", StringComparison.Ordinal)) {
-                    continue;
-                }
-
-                ParameterInfo[] parameters = method.GetParameters();
-                if (parameters.Length != 1) {
-                    continue;
-                }
-
-                if (method.ReturnType != typeof(void)) {
-                    continue;
-                }
-
-                string eventTypeName = parameters[0].ParameterType.Name;
-                methods[eventTypeName] = method;
-            }
-
-            return methods;
-        });
+    private static ApplyMethodTable GetOrBuildApplyMethods()
+        => ApplyMethodResolver.GetOrBuildTable(typeof(TReadModel));
 
     private static void ApplyEventByName(
         TReadModel model,
         string eventTypeName,
         JsonElement eventElement,
-        Dictionary<string, MethodInfo> applyMethods) {
-        if (!applyMethods.TryGetValue(eventTypeName, out MethodInfo? applyMethod)) {
-            foreach (KeyValuePair<string, MethodInfo> kvp in applyMethods) {
-                if (eventTypeName.EndsWith(kvp.Key, StringComparison.Ordinal)) {
-                    applyMethod = kvp.Value;
-                    break;
-                }
-            }
-        }
+        ApplyMethodTable applyMethods) {
+        MethodInfo? applyMethod = ApplyMethodResolver.TryResolve(applyMethods, eventTypeName);
 
         if (applyMethod is null) {
             throw new InvalidOperationException(
@@ -213,7 +186,7 @@ public abstract class EventStoreProjection<TReadModel> : IEventStoreProjection
         Type eventType = applyMethod.GetParameters()[0].ParameterType;
         try {
             if (eventElement.TryGetProperty("payload", out JsonElement payloadElement)) {
-                object? deserializedEvent = JsonSerializer.Deserialize(payloadElement, eventType) ?? throw new InvalidOperationException(
+                object? deserializedEvent = JsonSerializer.Deserialize(payloadElement, eventType, EventStorePayloadSerialization.Options) ?? throw new InvalidOperationException(
                         string.Format(
                             CultureInfo.InvariantCulture,
                             "Unable to project read model '{0}'. Payload for event type '{1}' could not be deserialized to '{2}'.",
@@ -223,7 +196,7 @@ public abstract class EventStoreProjection<TReadModel> : IEventStoreProjection
                 _ = applyMethod.Invoke(model, [deserializedEvent]);
             }
             else {
-                object? deserializedEvent = JsonSerializer.Deserialize(eventElement, eventType) ?? throw new InvalidOperationException(
+                object? deserializedEvent = JsonSerializer.Deserialize(eventElement, eventType, EventStorePayloadSerialization.Options) ?? throw new InvalidOperationException(
                         string.Format(
                             CultureInfo.InvariantCulture,
                             "Unable to project read model '{0}'. Event '{1}' could not be deserialized to '{2}'.",

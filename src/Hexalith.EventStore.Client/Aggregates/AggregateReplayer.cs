@@ -4,6 +4,7 @@ using System.Text.Json;
 
 using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Contracts.Replay;
+using Hexalith.EventStore.Contracts.Serialization;
 
 namespace Hexalith.EventStore.Client.Aggregates;
 
@@ -25,8 +26,7 @@ public static class AggregateReplayer {
         where TState : class, new() {
         ArgumentNullException.ThrowIfNull(request);
 
-        Dictionary<string, MethodInfo> applyMethods = DomainProcessorStateRehydrator.DiscoverApplyMethods(typeof(TState));
-        JsonSerializerOptions serializerOptions = DomainProcessorStateRehydrator.SerializerOptions;
+        ApplyMethodTable applyMethods = DomainProcessorStateRehydrator.DiscoverApplyMethods(typeof(TState));
         bool includeTimeline = request.IncludeTimeline;
         List<AggregateReconstructionTimelineEntry>? timeline = includeTimeline
             ? new List<AggregateReconstructionTimelineEntry>()
@@ -120,7 +120,34 @@ public static class AggregateReplayer {
                     lastAppliedSequenceNumber: lastApplied);
             }
 
-            MethodInfo? applyMethod = DomainProcessorStateRehydrator.TryResolveApplyMethod(evt.EventTypeName, applyMethods);
+            MethodInfo? applyMethod;
+            try {
+                applyMethod = ApplyMethodResolver.TryResolve(applyMethods, evt.EventTypeName, evt.MessageId);
+            }
+            catch (AmbiguousApplyMethodException ex) {
+                // Replay returns a categorized result by contract. Letting the ambiguity escape would turn a
+                // diagnosable resolution failure into an unhandled 500 on the replay endpoint.
+                //
+                // The wire message is rebuilt rather than forwarding ex.Message verbatim: the exception text
+                // carries the state type's full CLR name plus remediation prose aimed at a developer, while
+                // every other Failed(...) here names the state type by its short name. The candidate names
+                // are kept because they are the whole diagnostic — colliding candidates share a short name
+                // by definition, so short-name candidates would say nothing.
+                return AggregateReconstructionResult.Failed(
+                    AggregateReconstructionErrorCategory.UnknownEventType,
+                    string.Format(
+                        CultureInfo.InvariantCulture,
+                        "Event type '{0}' at sequence {1} matches {2} Apply methods on aggregate state '{3}': {4}. Reconstruction cannot disambiguate them.",
+                        evt.EventTypeName,
+                        evt.SequenceNumber,
+                        ex.CandidateCount,
+                        typeof(TState).Name,
+                        string.Join(", ", ex.CandidateEventTypeNames)),
+                    failedSequenceNumber: evt.SequenceNumber,
+                    failedEventType: evt.EventTypeName,
+                    lastAppliedSequenceNumber: lastApplied);
+            }
+
             if (applyMethod is null) {
                 return AggregateReconstructionResult.Failed(
                     applyMethods.Count == 0
@@ -145,7 +172,7 @@ public static class AggregateReplayer {
                 using JsonDocument doc = evt.Payload is { Length: > 0 }
                     ? JsonDocument.Parse(evt.Payload)
                     : JsonDocument.Parse("{}");
-                deserialized = JsonSerializer.Deserialize(doc.RootElement, eventClrType, serializerOptions);
+                deserialized = JsonSerializer.Deserialize(doc.RootElement, eventClrType, EventStorePayloadSerialization.Options);
             }
             catch (Exception ex) when (ex is JsonException or NotSupportedException or ArgumentException) {
                 return AggregateReconstructionResult.Failed(
@@ -179,7 +206,7 @@ public static class AggregateReplayer {
                 _ = applyMethod.Invoke(state, [deserialized]);
             }
             catch (TargetInvocationException) {
-                string stateJson = SerializeState(state, serializerOptions);
+                string stateJson = SerializeState(state);
                 return AggregateReconstructionResult.Partial(
                     stateJson: stateJson,
                     lastAppliedSequenceNumber: lastApplied,
@@ -199,16 +226,16 @@ public static class AggregateReplayer {
             timeline?.Add(new AggregateReconstructionTimelineEntry(
                     SequenceNumber: evt.SequenceNumber,
                     EventTypeName: evt.EventTypeName,
-                    StateJson: SerializeState(state, serializerOptions)));
+                    StateJson: SerializeState(state)));
         }
 
         return AggregateReconstructionResult.Succeeded(
-            stateJson: SerializeState(state, serializerOptions),
+            stateJson: SerializeState(state),
             lastAppliedSequenceNumber: lastApplied,
             timeline: includeTimeline ? timeline : null);
     }
 
-    private static string SerializeState<TState>(TState state, JsonSerializerOptions options)
+    private static string SerializeState<TState>(TState state)
         where TState : class
-        => JsonSerializer.Serialize(state, options);
+        => JsonSerializer.Serialize(state, EventStorePayloadSerialization.Options);
 }

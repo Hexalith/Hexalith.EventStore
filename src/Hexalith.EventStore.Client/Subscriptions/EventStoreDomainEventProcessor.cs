@@ -4,6 +4,7 @@ using System.Text.Json;
 
 using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Contracts.Events;
+using Hexalith.EventStore.Contracts.Serialization;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -144,7 +145,7 @@ public class EventStoreDomainEventProcessor {
 
             object? deserialized;
             try {
-                deserialized = JsonSerializer.Deserialize(envelope.Payload, eventType);
+                deserialized = JsonSerializer.Deserialize(envelope.Payload, eventType, EventStorePayloadSerialization.Options);
             }
             catch (JsonException exception) {
                 _logger.LogWarning(

@@ -11,6 +11,7 @@ using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Replay;
 using Hexalith.EventStore.Contracts.Results;
+using Hexalith.EventStore.Contracts.Serialization;
 
 namespace Hexalith.EventStore.Client.Aggregates;
 /// <summary>
@@ -78,7 +79,7 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregate
     private AggregateMetadata GetOrBuildMetadata() =>
         _metadataCache.GetOrAdd(GetType(), static aggregateType => {
             Dictionary<string, HandleMethodInfo> handleMethods = DiscoverHandleMethods(aggregateType);
-            Dictionary<string, MethodInfo> applyMethods = DomainProcessorStateRehydrator.DiscoverApplyMethods(typeof(TState));
+            ApplyMethodTable applyMethods = DomainProcessorStateRehydrator.DiscoverApplyMethods(typeof(TState));
             return new AggregateMetadata(handleMethods, applyMethods);
         });
 
@@ -192,7 +193,7 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregate
         object commandPayload = command.Payload.Length == 0
             ? throw new InvalidOperationException(
                 $"Command '{command.CommandType}' has an empty payload. Expected valid JSON for {handleInfo.CommandType.Name}.")
-            : JsonSerializer.Deserialize(command.Payload, handleInfo.CommandType)
+            : JsonSerializer.Deserialize(command.Payload, handleInfo.CommandType, EventStorePayloadSerialization.Options)
               ?? throw new InvalidOperationException(
                   $"Failed to deserialize payload for command '{command.CommandType}' to {handleInfo.CommandType.Name}.");
 
@@ -232,7 +233,7 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregate
 
     private sealed record AggregateMetadata(
         Dictionary<string, HandleMethodInfo> HandleMethods,
-        Dictionary<string, MethodInfo> ApplyMethods);
+        ApplyMethodTable ApplyMethods);
 
     private sealed record HandleMethodInfo(
         MethodInfo Method,

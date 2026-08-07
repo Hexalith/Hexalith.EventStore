@@ -134,7 +134,7 @@ sequenceDiagram
     Reader->>DS: Events + snapshot state
     loop For each event
         DS->>DS: Read eventTypeName
-        DS->>DS: Match type (EndsWith / exact)
+        DS->>DS: Resolve Apply (exact FQN → exact short → longest anchored)
         DS->>DS: Deserialize payload
         alt Safe change (e.g., new optional field)
             DS->>DS: System.Text.Json handles default
@@ -147,6 +147,25 @@ sequenceDiagram
 ```
 
 **The backward compatibility contract applies to all event consumers** — not just domain service rehydration, but also projections, read models, and integration subscribers. Every consumer that deserializes events must handle every event type it may encounter in the stream.
+
+### Apply Method Resolution
+
+Persisters record `Type.FullName`, so a stored event type name is matched against the state or read-model type's `public void Apply(TEvent)` declarations in this fixed order:
+
+1. **Exact full-name match.** Each event type is registered under its normalized `Type.FullName`. Assembly qualification is stripped at every bracket level first, so `Ns.OrderPlaced, MyAsm, Version=1.0.0.0` and a constructed generic's nested argument qualification never affect the match.
+2. **Exact short-name match.** Each event type is also registered under its CLR short name, so legacy streams that recorded only `OrderPlaced` keep replaying.
+3. **Longest boundary-anchored suffix match.** A candidate key `k` matches a stored name `n` only when `n` ends with `"." + k` or `"+" + k` — `.` separates namespace segments and `+` is how `Type.FullName` renders a nested type. Where several keys anchor, the longest one wins.
+
+Matching is never unanchored. `Billing.SubOrderPlaced` does **not** bind `Apply(OrderPlaced)`, because `SubOrderPlaced` does not sit on a name boundary.
+
+**Ambiguity is a hard failure, never a guess.** If a key is claimed by two or more event types — two `OrderPlaced` types in different namespaces, or a `new`-hiding `Apply` overload — resolution throws `AmbiguousApplyMethodException` naming the state type, the stored event type name, and every candidate full name, plus the message and aggregate identifiers when the call site has them. On the `/replay-state` path the same condition is returned as a categorized `UnknownEventType` reconstruction failure rather than an unhandled error.
+
+To remediate a reported ambiguity, do one of the following:
+
+- **Record the event under its full CLR type name.** Full names are matched exactly and before any short-name or suffix candidate, so an aggregate whose events collide only by short name keeps working when each event is addressed precisely.
+- **Remove the colliding `Apply` overload** — rename one of the event types, or drop a `new`-hiding override so exactly one declaration owns the name.
+
+Zero candidates is unchanged and still uses each path's existing not-found behaviour: rehydration throws `MissingApplyMethodException`, projection replay throws, and typed projection of a runtime instance skips the event.
 
 ## Downcasting Considerations
 
