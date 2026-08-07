@@ -227,7 +227,7 @@ development_status:
   4-1-event-identity-and-duplicate-result-fidelity: done
   4-2-resume-and-idempotency-integrity: done
   4-3-deterministic-replay-dispatch-and-serialization: review
-  4-4-committed-event-publication-recovery: backlog
+  4-4-committed-event-publication-recovery: review
   4-5-append-durability-race-evidence: backlog
   4-6-global-position-sharding-spec-renegotiation: backlog
   # Coordinated Tenants follow-up only; EventStore platform prerequisite is Story 1.2.

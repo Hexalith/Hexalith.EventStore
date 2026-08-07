@@ -64,6 +64,23 @@ public partial class AggregateActor(
     private const string TraceStateExtensionKey = "tracestate";
     private const string PendingCommandCountKey = "pending_command_count";
 
+    /// <summary>
+    /// Story 4.4: the maximum number of index entries one activation re-arms. Activation must stay
+    /// cheap (see <c>ITenantValidatorActor</c>: "avoid expensive I/O in OnActivateAsync"), so the
+    /// remainder is carried to the next activation rather than blocking this one on many saves plus
+    /// reminder registrations.
+    /// </summary>
+    private const int MaxActivationRearmEntries = 8;
+
+    /// <summary>
+    /// Story 4.4: the maximum number of index entries one activation may READ state for. Entries
+    /// whose reminder is already confirmed armed cost a single read and no work, so they consume a
+    /// probe rather than the (much scarcer) re-arm budget. The scan always starts at the head of the
+    /// index, which is its oldest entry, so a starved tail is only ever waiting behind older
+    /// outstanding work.
+    /// </summary>
+    private const int MaxActivationProbeEntries = 32;
+
     private int MaxPersistenceConflictRetries
         => Math.Max(
             0,
@@ -75,6 +92,42 @@ public partial class AggregateActor(
             ?? IdempotencyRetentionOptions.DefaultTerminalRetentionSeconds;
 
     private TimeProvider IdempotencyTimeProvider { get; } = timeProvider ?? TimeProvider.System;
+
+    /// <summary>Gets the normalized bounded drain-attempt budget for one committed range.</summary>
+    private int MaxDrainAttempts
+        => EventDrainOptions.NormalizeMaxDrainAttempts(drainOptions.Value.MaxDrainAttempts);
+
+    /// <summary>Gets the normalized bound on outstanding publication-recovery index entries.</summary>
+    private int MaxOutstandingPublicationEntries
+        => EventDrainOptions.NormalizeMaxOutstandingPublicationEntries(
+            drainOptions.Value.MaxOutstandingPublicationEntries,
+            backpressureOptions.Value.MaxPendingCommandsPerAggregate);
+
+    /// <summary>
+    /// Story 4.4: re-arms every committed-but-unpublished command that lost its drain record or its
+    /// reminder to a crash in the window between the event commit and the reminder registration.
+    /// <para>
+    /// Mirrors <see cref="ETagActor"/>: the whole body is wrapped and degrades to a no-op on any
+    /// failure, because a throwing activation bricks the aggregate. Activation only RE-ARMS -- it
+    /// never publishes and never calls another actor (reentrancy is disabled repo-wide, so an
+    /// activation-time actor call would deadlock). The reminder does the publishing.
+    /// </para>
+    /// </summary>
+    protected override async Task OnActivateAsync() {
+        try {
+            UnpublishedPublicationIndex index = await ReadPublicationIndexAsync().ConfigureAwait(false);
+            if (index.Entries.Count == 0) {
+                return;
+            }
+
+            await RearmOutstandingPublicationsAsync(index).ConfigureAwait(false);
+        }
+        catch (Exception ex) {
+            // Degrade, never fail activation. The entries stay durable for the next activation.
+            Log.PublicationRecoveryDegraded(logger, Host.Id.GetId(), ex.GetType().Name);
+        }
+    }
+
     /// <inheritdoc/>
     public Task<CommandProcessingResult> ProcessFencedCommandAsync(FencedCommandEnvelope request)
     {
@@ -585,6 +638,29 @@ public partial class AggregateActor(
                             }
                         }
 
+                        // Story 4.4: stage the publication-recovery entry into the SAME batch that
+                        // commits the events, so it becomes durable at exactly the instant they do.
+                        // FAIL CLOSED on any refusal: committing a range with no recovery entry
+                        // recreates the exact crash window this story exists to remove.
+                        PublicationIndexAddOutcome indexOutcome =
+                            await TryStagePublicationIndexEntryAsync(command.MessageId, command.CorrelationId)
+                                .ConfigureAwait(false);
+                        if (indexOutcome != PublicationIndexAddOutcome.Added) {
+                            _ = (activity?.SetStatus(
+                                ActivityStatusCode.Error,
+                                indexOutcome == PublicationIndexAddOutcome.AtCapacity
+                                    ? "BackpressureExceeded"
+                                    : "PublicationIndexEntryInvalid"));
+                            return await RejectPublicationIndexRefusalAsync(
+                                command,
+                                causationId,
+                                indexOutcome,
+                                stateMachine,
+                                pipelineKeyPrefix,
+                                processActivity,
+                                startTicks).ConfigureAwait(false);
+                        }
+
                         // Checkpoint EventsStored in SAME batch as events (AC #9)
                         string? rejectionEventType = domainResult.IsRejection
                             ? GetEventTypeName(domainResult.Events[0])
@@ -753,8 +829,9 @@ public partial class AggregateActor(
                         RetryCount: 0,
                         LastFailureReason: publishResult.FailureReason,
                         MessageId: command.MessageId);
-                    await StoreDrainRecordAndRegisterReminderAsync(command.MessageId, unpublishedRecord)
-                        .ConfigureAwait(false);
+                    bool recoveryEntryTracked = await StoreDrainRecordAndRegisterReminderAsync(
+                        command.MessageId,
+                        unpublishedRecord).ConfigureAwait(false);
 
                     // Story 4.3: Mark drain record created so try/finally skips decrement
                     drainRecordCreated = true;
@@ -773,15 +850,29 @@ public partial class AggregateActor(
                     }
 
                     // Story 4.2: Register drain reminder AFTER successful commit
-                    await RegisterDrainReminderAsync(command.MessageId).ConfigureAwait(false);
+                    // Story 4.4: and stamp the record so the next activation does not reset its
+                    // schedule or spend a re-arm slot re-registering a reminder that is already live.
+                    bool drainReminderArmed = await ArmDrainReminderAsync(
+                        command.MessageId,
+                        unpublishedRecord).ConfigureAwait(false);
 
                     LogStageTransition(CommandStatus.PublishFailed, command, causationId, startTicks);
+
+                    // Story 4.4 (AC3): the poll endpoint must say whether an automatic retry is
+                    // actually coming. Leaving Retryable null here would report "legacy record" to a
+                    // client polling immediately after a drain was armed. A tracked recovery entry
+                    // is equally sufficient: when registration failed, activation re-arms from it,
+                    // so reporting false would tell the client to abandon a command the platform is
+                    // still going to publish.
                     await WriteAdvisoryStatusAsync(
                         command,
                         CommandStatus.PublishFailed,
                         publishResult.FailureReason,
                         domainResult.Events.Count,
-                        rejectionEventType).ConfigureAwait(false);
+                        rejectionEventType,
+                        retryable: drainReminderArmed || recoveryEntryTracked,
+                        recoveryReasonCode: DrainReasonCodes.PublishFailed,
+                        drainAttemptCount: 0).ConfigureAwait(false);
 
                     _ = (processActivity?.SetTag("eventstore.publish_failed", true));
                     _ = (processActivity?.SetTag("eventstore.drain_scheduled", true));
@@ -1238,7 +1329,10 @@ public partial class AggregateActor(
 
         using Activity? activity = EventStoreActivitySource.Instance.StartActivity(
             EventStoreActivitySource.EventsDrain);
-        _ = (activity?.SetTag("eventstore.message_id", trackingId));
+        // Story 4.4: the reminder suffix is a tracking id -- a message id for records created since
+        // Story 4.2, but a correlation id for legacy records. It gets its own tag; the
+        // eventstore.message_id tag is only set once the record proves a real message identity.
+        _ = (activity?.SetTag("eventstore.drain_tracking_id", trackingId));
         _ = (activity?.SetTag(EventStoreActivitySource.TagTenantId, identity.TenantId));
         _ = (activity?.SetTag(EventStoreActivitySource.TagDomain, identity.Domain));
         _ = (activity?.SetTag(EventStoreActivitySource.TagAggregateId, identity.AggregateId));
@@ -1287,11 +1381,25 @@ public partial class AggregateActor(
 
         UnpublishedEventsRecord record = recordResult.Value;
         string commandCorrelationId = record.CorrelationId;
+        if (!string.IsNullOrWhiteSpace(record.MessageId)) {
+            _ = (activity?.SetTag("eventstore.message_id", record.MessageId));
+        }
+
         _ = (activity?.SetTag(EventStoreActivitySource.TagCorrelationId, commandCorrelationId));
         _ = (activity?.SetTag("eventstore.retry_count", record.RetryCount));
         _ = (activity?.SetTag(EventStoreActivitySource.TagEventCount, record.EventCount));
         _ = (activity?.SetTag("eventstore.drain_start_sequence", record.StartSequence));
         _ = (activity?.SetTag("eventstore.drain_end_sequence", record.EndSequence));
+
+        // Story 4.4: the bound is checked BEFORE publication so it is a real bound -- an
+        // unpublishable range can never consume another attempt once its budget is spent.
+        int maxDrainAttempts = MaxDrainAttempts;
+        _ = (activity?.SetTag("eventstore.max_drain_attempts", maxDrainAttempts));
+        if (record.RetryCount >= maxDrainAttempts) {
+            await CompleteDrainExhaustionAsync(identity, trackingId, record, maxDrainAttempts, activity)
+                .ConfigureAwait(false);
+            return;
+        }
 
         logger.LogInformation(
             "Drain attempt starting: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, RetryCount={RetryCount}, EventCount={EventCount}",
@@ -1348,6 +1456,14 @@ public partial class AggregateActor(
                 await StateManager.RemoveStateAsync(UnpublishedEventsRecord.GetStateKey(trackingId))
                     .ConfigureAwait(false);
 
+                // Story 4.4: release the recovery entry and end the recoverable idempotency
+                // disposition in the SAME batch. Without the Recoverable -> Terminal transition the
+                // record never expires and every later retry of this message id returns
+                // RetryableRecoverable forever, even though the events are now published.
+                string drainedIdentity = record.GetTrackingIdentity(trackingId);
+                _ = await StagePublicationIndexRemovalAsync(drainedIdentity).ConfigureAwait(false);
+                _ = await CompleteRecoverableIdempotencyAsync(drainedIdentity).ConfigureAwait(false);
+
                 // Story 4.3: Decrement pending command counter on drain success (AC #6)
                 _ = await DecrementPendingCommandCountAsync().ConfigureAwait(false);
 
@@ -1379,7 +1495,11 @@ public partial class AggregateActor(
                             FailureReason: null,
                             TimeoutDuration: null,
                             MessageId: record.MessageId,
-                            CorrelationId: commandCorrelationId)).ConfigureAwait(false);
+                            CorrelationId: commandCorrelationId,
+                            // Story 4.4: the drain completed, so no further automatic attempt follows.
+                            Retryable: false,
+                            RecoveryReasonCode: null,
+                            DrainAttemptCount: record.RetryCount)).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException) {
                     throw;
@@ -1427,6 +1547,22 @@ public partial class AggregateActor(
                 _ = (activity?.SetTag("eventstore.retry_count", updatedRecord.RetryCount));
                 _ = (activity?.SetTag("eventstore.failure_reason", DrainReasonCodes.PublishFailed));
                 _ = (activity?.SetStatus(ActivityStatusCode.Error, DrainReasonCodes.PublishFailed));
+
+                // Story 4.4: retryable only while the budget is genuinely left. When THIS attempt
+                // raised the count to the cap, the next firing does nothing but dead-letter, so the
+                // status must already say so rather than promise one more try.
+                bool retryRemains = updatedRecord.RetryCount < maxDrainAttempts;
+                await WriteDrainAdvisoryStatusAsync(
+                    identity,
+                    updatedRecord,
+                    updatedRecord.GetTrackingIdentity(trackingId),
+                    CommandStatus.PublishFailed,
+                    DrainReasonCodes.PublishFailed,
+                    retryable: retryRemains,
+                    recoveryReasonCode: retryRemains
+                        ? DrainReasonCodes.PublishFailed
+                        : DrainReasonCodes.AttemptsExhausted,
+                    attemptCount: updatedRecord.RetryCount).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException) {
@@ -1458,6 +1594,161 @@ public partial class AggregateActor(
                 safeFailureReason);
 
             _ = (activity?.SetTag("eventstore.retry_count", updatedRecord.RetryCount));
+
+            // Story 4.4: retryable only while the budget is genuinely left (see the sibling branch).
+            bool retryRemains = updatedRecord.RetryCount < maxDrainAttempts;
+            await WriteDrainAdvisoryStatusAsync(
+                identity,
+                updatedRecord,
+                updatedRecord.GetTrackingIdentity(trackingId),
+                CommandStatus.PublishFailed,
+                failureReasonCode,
+                retryable: retryRemains,
+                recoveryReasonCode: retryRemains
+                    ? failureReasonCode
+                    : DrainReasonCodes.AttemptsExhausted,
+                attemptCount: updatedRecord.RetryCount).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// Story 4.4: closes out a committed range whose bounded drain budget is spent.
+    /// Ordering is load-bearing: dead-letter first, durably mark the record as dead-lettered, and
+    /// only then perform the post-publish mutations. A fault between the mark and the mutations
+    /// replays only the mutations, so the same range can never be dead-lettered twice; a fault
+    /// before the mark retains record, index entry and reminder, so events are never dropped.
+    /// </summary>
+    private async Task CompleteDrainExhaustionAsync(
+        AggregateIdentity identity,
+        string trackingId,
+        UnpublishedEventsRecord record,
+        int maxDrainAttempts,
+        Activity? activity) {
+        string drainedIdentity = record.GetTrackingIdentity(trackingId);
+        _ = (activity?.SetTag("eventstore.failure_reason", DrainReasonCodes.AttemptsExhausted));
+        _ = (activity?.SetStatus(ActivityStatusCode.Error, DrainReasonCodes.AttemptsExhausted));
+
+        if (!record.DeadLettered) {
+            bool published;
+            try {
+                published = await deadLetterPublisher
+                    .PublishDeadLetterAsync(
+                        identity,
+                        DeadLetterMessage.FromDrainExhaustion(identity, record, trackingId, record.RetryCount))
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) {
+                throw;
+            }
+            catch (Exception ex) {
+                published = false;
+                logger.LogError(
+                    ex,
+                    "Drain exhaustion dead-letter publication threw: CorrelationId={CorrelationId}, TrackingId={TrackingId}",
+                    record.CorrelationId,
+                    drainedIdentity);
+            }
+
+            if (!published) {
+                // Sink unavailable: retain the record, the index entry and the reminder. Committed
+                // events are never dropped just because the exhaustion sink is down.
+                Log.DrainExhaustionRetained(
+                    logger,
+                    record.CorrelationId,
+                    drainedIdentity,
+                    record.RetryCount);
+                return;
+            }
+
+            await StateManager.SetStateAsync(
+                UnpublishedEventsRecord.GetStateKey(trackingId),
+                record.MarkDeadLettered(DrainReasonCodes.AttemptsExhausted)).ConfigureAwait(false);
+            await StateManager.SaveStateAsync().ConfigureAwait(false);
+        }
+
+        // One atomic batch: record removal, index-entry removal, the Recoverable -> Terminal
+        // disposition transition and the pending-slot decrement commit together, which is what
+        // keeps the decrement exactly-once across a retried exhaustion turn.
+        await StateManager.RemoveStateAsync(UnpublishedEventsRecord.GetStateKey(trackingId))
+            .ConfigureAwait(false);
+        _ = await StagePublicationIndexRemovalAsync(drainedIdentity).ConfigureAwait(false);
+        _ = await CompleteRecoverableIdempotencyAsync(drainedIdentity).ConfigureAwait(false);
+        _ = await DecrementPendingCommandCountAsync().ConfigureAwait(false);
+        await StateManager.SaveStateAsync().ConfigureAwait(false);
+
+        try {
+            await UnregisterReminderAsync(UnpublishedEventsRecord.GetReminderName(trackingId))
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            logger.LogWarning(
+                ex,
+                "Failed to unregister drain reminder after attempt exhaustion: CorrelationId={CorrelationId}",
+                record.CorrelationId);
+        }
+
+        await WriteDrainAdvisoryStatusAsync(
+            identity,
+            record,
+            drainedIdentity,
+            CommandStatus.PublishFailed,
+            DrainReasonCodes.AttemptsExhausted,
+            retryable: false,
+            recoveryReasonCode: DrainReasonCodes.AttemptsExhausted,
+            attemptCount: record.RetryCount).ConfigureAwait(false);
+
+        Log.DrainAttemptsExhausted(
+            logger,
+            record.CorrelationId,
+            identity.TenantId,
+            identity.Domain,
+            identity.AggregateId,
+            record.RetryCount,
+            maxDrainAttempts,
+            record.EventCount);
+    }
+
+    /// <summary>
+    /// Writes the advisory recovery status for a drain outcome. Failures are logged, never thrown
+    /// (rule #12).
+    /// </summary>
+    private async Task WriteDrainAdvisoryStatusAsync(
+        AggregateIdentity identity,
+        UnpublishedEventsRecord record,
+        string statusKey,
+        CommandStatus status,
+        string? failureReason,
+        bool retryable,
+        string? recoveryReasonCode,
+        int attemptCount) {
+        try {
+            await commandStatusStore.WriteStatusAsync(
+                identity.TenantId,
+                statusKey,
+                new CommandStatusRecord(
+                    status,
+                    DateTimeOffset.UtcNow,
+                    identity.AggregateId,
+                    EventCount: record.EventCount,
+                    RejectionEventType: null,
+                    FailureReason: failureReason,
+                    TimeoutDuration: null,
+                    MessageId: record.MessageId,
+                    CorrelationId: record.CorrelationId,
+                    Retryable: retryable,
+                    RecoveryReasonCode: recoveryReasonCode,
+                    DrainAttemptCount: attemptCount)).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (Exception ex) {
+            // Rule #12: Advisory status writes -- failure logged, never thrown.
+            logger.LogWarning(
+                ex,
+                "Advisory drain status write failed: CorrelationId={CorrelationId}, Status={Status}",
+                record.CorrelationId,
+                status);
         }
     }
 
@@ -1546,28 +1837,375 @@ public partial class AggregateActor(
         return new AggregateIdentity(parts[0], parts[1], parts[2]);
     }
 
-    private async Task StoreDrainRecordAndRegisterReminderAsync(
-        string correlationId,
-        UnpublishedEventsRecord record) =>
+    /// <returns>
+    /// <c>true</c> when a publication-recovery entry is tracked for this range, meaning activation
+    /// will re-arm the drain even if reminder registration fails.
+    /// </returns>
+    private async Task<bool> StoreDrainRecordAndRegisterReminderAsync(
+        string trackingId,
+        UnpublishedEventsRecord record) {
         // Stage the drain record (committed with the same SaveStateAsync batch)
         await StateManager.SetStateAsync(
-            UnpublishedEventsRecord.GetStateKey(correlationId),
+            UnpublishedEventsRecord.GetStateKey(trackingId),
             record).ConfigureAwait(false);
 
-    private async Task RegisterDrainReminderAsync(string correlationId) {
+        // Story 4.4: this method is the single choke point covering ALL THREE drain-record creation
+        // sites (first-pass publish failure, stale-checkpoint handoff, resume publish failure), so
+        // staging the recovery entry here is what makes every drain record re-armable.
+        if (await TryStagePublicationIndexEntryAsync(trackingId, record.CorrelationId).ConfigureAwait(false)
+            == PublicationIndexAddOutcome.Added) {
+            return true;
+        }
+
+        // The events are already committed on every path that reaches here, so refusing is not
+        // an option; record the loss of the crash-window backstop instead. The drain record and
+        // its reminder still drive publication.
+        Log.PublicationIndexEntryRejected(
+            logger,
+            Host.Id.GetId(),
+            trackingId,
+            MaxOutstandingPublicationEntries);
+        return false;
+    }
+
+    /// <summary>Reads the single fixed publication-recovery index key, defaulting to an empty index.</summary>
+    private async Task<UnpublishedPublicationIndex> ReadPublicationIndexAsync() {
+        ConditionalValue<UnpublishedPublicationIndex> result = await StateManager
+            .TryGetStateAsync<UnpublishedPublicationIndex>(UnpublishedPublicationIndex.StateKey)
+            .ConfigureAwait(false);
+
+        return result.HasValue && result.Value is not null
+            ? result.Value
+            : UnpublishedPublicationIndex.Empty;
+    }
+
+    /// <summary>
+    /// Stages an index entry into the caller's existing batch. Never adds a round trip of its own
+    /// and never commits: the caller's <c>SaveStateAsync</c> does that.
+    /// </summary>
+    /// <returns>Why the entry is tracked, or which of the two distinct refusals applied.</returns>
+    private async Task<PublicationIndexAddOutcome> TryStagePublicationIndexEntryAsync(
+        string messageId,
+        string correlationId) {
+        UnpublishedPublicationIndex index = await ReadPublicationIndexAsync().ConfigureAwait(false);
+        var entry = new UnpublishedPublicationEntry(messageId, correlationId, DateTimeOffset.UtcNow);
+        PublicationIndexAddOutcome outcome = index.TryAdd(
+            entry,
+            MaxOutstandingPublicationEntries,
+            out UnpublishedPublicationIndex updated);
+        if (outcome != PublicationIndexAddOutcome.Added) {
+            return outcome;
+        }
+
+        await StateManager.SetStateAsync(UnpublishedPublicationIndex.StateKey, updated).ConfigureAwait(false);
+        return PublicationIndexAddOutcome.Added;
+    }
+
+    /// <summary>Stages removal of an index entry into the caller's existing batch.</summary>
+    /// <returns><c>true</c> when an entry was present and its removal was staged.</returns>
+    private async Task<bool> StagePublicationIndexRemovalAsync(string messageId) {
+        if (string.IsNullOrWhiteSpace(messageId)) {
+            return false;
+        }
+
+        UnpublishedPublicationIndex index = await ReadPublicationIndexAsync().ConfigureAwait(false);
+        if (!index.TryRemove(messageId, out UnpublishedPublicationIndex updated)) {
+            return false;
+        }
+
+        await StateManager.SetStateAsync(UnpublishedPublicationIndex.StateKey, updated).ConfigureAwait(false);
+        return true;
+    }
+
+    /// <summary>
+    /// Stages the <c>Recoverable</c> -> <c>Terminal</c> idempotency transition for a completed drain.
+    /// </summary>
+    private async Task<bool> CompleteRecoverableIdempotencyAsync(string messageId) {
+        if (string.IsNullOrWhiteSpace(messageId)) {
+            return false;
+        }
+
+        var checker = new IdempotencyChecker(
+            StateManager,
+            Host.LoggerFactory.CreateLogger<IdempotencyChecker>(),
+            IdempotencyTimeProvider);
+        return await checker
+            .TryCompleteRecoverableAsync(
+                messageId,
+                IdempotencyTimeProvider.GetUtcNow().AddSeconds(IdempotencyRetentionSeconds))
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Story 4.4 fail-closed branch: discards the staged events rather than committing a range that
+    /// recovery could never find. At capacity this surfaces the existing backpressure rejection; an
+    /// invalid entry is a data defect and is surfaced under its own reason so operators are never
+    /// told "too many pending commands" while the outstanding count sits far below the threshold.
+    /// </summary>
+    private async Task<CommandProcessingResult> RejectPublicationIndexRefusalAsync(
+        CommandEnvelope command,
+        string causationId,
+        PublicationIndexAddOutcome outcome,
+        ActorStateMachine stateMachine,
+        string pipelineKeyPrefix,
+        Activity? processActivity,
+        long startTicks) {
+        // Discard everything the persistence step staged. These events must NOT commit.
+        await StateManager.ClearCacheAsync().ConfigureAwait(false);
+
+        UnpublishedPublicationIndex index = await ReadPublicationIndexAsync().ConfigureAwait(false);
+        int outstanding = index.Entries.Count;
+        int threshold = MaxOutstandingPublicationEntries;
+        bool atCapacity = outcome == PublicationIndexAddOutcome.AtCapacity;
+        string failureReason = atCapacity ? "BackpressureExceeded" : "PublicationIndexEntryInvalid";
+
+        if (atCapacity) {
+            Log.BackpressureRejected(
+                logger,
+                Host.Id.GetId(),
+                command.CorrelationId,
+                command.TenantId,
+                command.Domain,
+                command.AggregateId,
+                outstanding,
+                threshold);
+        }
+        else {
+            Log.PublicationIndexEntryInvalid(
+                logger, Host.Id.GetId(), command.MessageId, command.CorrelationId);
+        }
+
+        await stateMachine.CleanupPipelineAsync(pipelineKeyPrefix, command.CorrelationId)
+            .ConfigureAwait(false);
+        await StateManager.SaveStateAsync().ConfigureAwait(false);
+
+        await WriteAdvisoryStatusAsync(
+            command,
+            CommandStatus.Rejected,
+            failureReason: failureReason,
+            retryable: false,
+            recoveryReasonCode: failureReason).ConfigureAwait(false);
+        LogStageTransition(CommandStatus.Rejected, command, causationId, startTicks);
+        LogCommandCompletedSummary(command, causationId, CommandStatus.Rejected, startTicks);
+
+        _ = (processActivity?.SetStatus(ActivityStatusCode.Error, failureReason));
+        return atCapacity
+            ? new CommandProcessingResult(
+                Accepted: false,
+                ErrorMessage: $"Backpressure exceeded: {outstanding} pending commands (threshold: {threshold})",
+                CorrelationId: command.CorrelationId,
+                BackpressureExceeded: true,
+                BackpressurePendingCount: outstanding,
+                BackpressureThreshold: threshold,
+                FailureReason: failureReason)
+            : new CommandProcessingResult(
+                Accepted: false,
+                ErrorMessage: "Publication recovery entry could not be recorded for the committed range.",
+                CorrelationId: command.CorrelationId,
+                EventCount: 0,
+                FailureReason: failureReason,
+                ResultPayloadWithheld: true);
+    }
+
+    /// <summary>
+    /// Re-arms outstanding entries found at activation.
+    /// <para>
+    /// Two independent budgets. <see cref="MaxActivationProbeEntries"/> bounds how many entries are
+    /// looked up at all; <see cref="MaxActivationRearmEntries"/> bounds how many actually do WORK
+    /// (a reminder registration plus a save, or a checkpoint-to-drain-record rebuild). An entry
+    /// whose reminder is already confirmed armed costs one read and no work, so a hot aggregate can
+    /// no longer spend its whole re-arm budget on entries that need nothing -- which previously
+    /// starved every entry past the eighth.
+    /// </para>
+    /// <para>
+    /// Malformed entries and entries whose target no longer exists are pruned rather than skipped,
+    /// because skipping permanently consumes index capacity. Pruning is free: it costs no work
+    /// budget, so a run of dead entries can never block the live ones behind it.
+    /// </para>
+    /// </summary>
+    private async Task RearmOutstandingPublicationsAsync(UnpublishedPublicationIndex index) {
+        AggregateIdentity identity = GetAggregateIdentityFromActorId();
+        var stateMachine = new ActorStateMachine(
+            StateManager,
+            Host.LoggerFactory.CreateLogger<ActorStateMachine>());
+        string pipelineKeyPrefix = identity.PipelineKeyPrefix;
+        var stale = new List<string>();
+        int probed = 0;
+        int work = 0;
+
+        foreach (UnpublishedPublicationEntry entry in index.Entries) {
+            if (probed >= MaxActivationProbeEntries || work >= MaxActivationRearmEntries) {
+                break;
+            }
+
+            string messageId = entry.MessageId ?? string.Empty;
+            string correlationId = entry.CorrelationId ?? string.Empty;
+            if (!entry.IsWellFormed) {
+                // Costs no state read and no work: prune and keep scanning.
+                // Story 4.4: pruning ends the "events genuinely outstanding" condition that exempts
+                // the idempotency record from expiry, so release it in the same batch. A blank
+                // message id is handled inside the helper, which returns false without staging.
+                _ = await CompleteRecoverableIdempotencyAsync(messageId).ConfigureAwait(false);
+                stale.Add(messageId);
+                Log.PublicationRecoveryEntryDropped(
+                    logger,
+                    Host.Id.GetId(),
+                    messageId.Length == 0 ? "(none)" : messageId,
+                    "malformed_entry");
+                continue;
+            }
+
+            probed++;
+            ConditionalValue<UnpublishedEventsRecord> drainRecord = await StateManager
+                .TryGetStateAsync<UnpublishedEventsRecord>(UnpublishedEventsRecord.GetStateKey(messageId))
+                .ConfigureAwait(false);
+
+            if (drainRecord.HasValue) {
+                UnpublishedEventsRecord persisted = drainRecord.Value;
+                if (persisted.ReminderArmedAt is not null) {
+                    // A reminder is already confirmed armed. Re-registering it would reset its due
+                    // time to InitialDrainDelay, so an aggregate that activates more often than that
+                    // delay would postpone its own drain forever.
+                    continue;
+                }
+
+                work++;
+
+                // The drain record committed but the reminder registration may not have survived.
+                // Re-register and stamp the record -- RetryCount is left exactly as persisted.
+                if (await RegisterDrainReminderAsync(messageId).ConfigureAwait(false)) {
+                    await StateManager.SetStateAsync(
+                        UnpublishedEventsRecord.GetStateKey(messageId),
+                        persisted.MarkReminderArmed(DateTimeOffset.UtcNow)).ConfigureAwait(false);
+                    await StateManager.SaveStateAsync().ConfigureAwait(false);
+                    Log.PublicationRecoveryReminderRearmed(logger, Host.Id.GetId(), messageId);
+                }
+
+                continue;
+            }
+
+            PipelineState? checkpoint = await stateMachine
+                .LoadPipelineStateAsync(pipelineKeyPrefix, correlationId)
+                .ConfigureAwait(false);
+
+            if (checkpoint is null) {
+                // Nothing left to recover: neither a drain record nor a checkpoint. Drop the entry
+                // instead of skipping it -- skipping permanently consumes index capacity.
+                // Story 4.4: the events are no longer outstanding, so the Recoverable exemption from
+                // bounded expiry must end here too or the record becomes immortal.
+                _ = await CompleteRecoverableIdempotencyAsync(messageId).ConfigureAwait(false);
+                stale.Add(messageId);
+                Log.PublicationRecoveryEntryDropped(
+                    logger, Host.Id.GetId(), messageId, "checkpoint_missing");
+                continue;
+            }
+
+            // Every term can decide on its own. Checking them here means a deterministically
+            // inconsistent checkpoint is PRUNED once instead of throwing on every activation forever
+            // while holding a re-arm slot and an index capacity slot.
+            //
+            // CurrentStage is load-bearing and is NOT enforced downstream:
+            // HandoffStaleCommittedCheckpointAsync validates only identity, event count and range,
+            // and its other caller admits the wider CanRepresentCommittedEvents set (EventsPublished,
+            // Completed, PublishFailed). EventsStored is the only stage that means "committed but not
+            // yet published", so without this term an already-published checkpoint left behind by a
+            // failed terminal batch would be rebuilt into a drain record and republished.
+            bool convertible = checkpoint.CurrentStage == CommandStatus.EventsStored
+                && string.Equals(checkpoint.MessageId, messageId, StringComparison.Ordinal)
+                && checkpoint.EventCount is int checkpointEventCount
+                && checkpointEventCount > 0
+                && checkpoint.StartSequence is long checkpointStart
+                && checkpoint.EndSequence is long checkpointEnd
+                && checkpointStart >= 1
+                && checkpointEnd >= checkpointStart
+                && (checkpointEnd - checkpointStart + 1) == checkpointEventCount;
+
+            if (!convertible) {
+                // Never fabricate a range from the mutable stream head.
+                // Story 4.4: this entry will never be recovered, so end the Recoverable exemption
+                // from bounded expiry along with it.
+                _ = await CompleteRecoverableIdempotencyAsync(messageId).ConfigureAwait(false);
+                stale.Add(messageId);
+                Log.PublicationRecoveryEntryDropped(
+                    logger, Host.Id.GetId(), messageId, "checkpoint_incomplete");
+                continue;
+            }
+
+            work++;
+            try {
+                await HandoffStaleCommittedCheckpointAsync(checkpoint, stateMachine, pipelineKeyPrefix)
+                    .ConfigureAwait(false);
+                Log.PublicationRecoveryDrainRecordRebuilt(logger, Host.Id.GetId(), messageId);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException) {
+                // Leave the entry and the checkpoint intact for the next activation.
+                await StateManager.ClearCacheAsync().ConfigureAwait(false);
+                Log.PublicationRecoveryRearmFailed(
+                    logger, Host.Id.GetId(), messageId, ex.GetType().Name);
+            }
+        }
+
+        if (stale.Count > 0) {
+            UnpublishedPublicationIndex pruned = index.Prune(stale);
+            await StateManager.SetStateAsync(UnpublishedPublicationIndex.StateKey, pruned)
+                .ConfigureAwait(false);
+            await StateManager.SaveStateAsync().ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>Registers the drain reminder, reporting whether it was actually armed.</summary>
+    /// <param name="trackingId">The drain tracking identity.</param>
+    /// <returns><c>true</c> when the reminder is armed; <c>false</c> when registration failed.</returns>
+    /// <summary>
+    /// Story 4.4: registers a drain reminder and, only once registration is CONFIRMED, stamps the
+    /// just-committed record so a later activation knows a reminder is already live.
+    /// <para>
+    /// Two design points. First, the order is fail-closed: stamping BEFORE registration would let a
+    /// crash in the window leave a record claiming to be armed when it is not, and activation would
+    /// skip it forever, so the events would never publish. Stamping only after confirmed success
+    /// means the worst case is a redundant re-registration -- one wasted re-arm slot and a reset due
+    /// time, never a lost drain.
+    /// </para>
+    /// <para>
+    /// Second, the record is passed in rather than re-read. The caller committed this exact instance
+    /// microseconds earlier and an actor turn is single-threaded, so a read could only return the
+    /// same value at the cost of a round trip. The extra SetState/SaveState is accepted here because
+    /// this is the publish-FAILURE path, not the hot success path.
+    /// </para>
+    /// </summary>
+    /// <param name="trackingId">The drain tracking identifier (the command message id).</param>
+    /// <param name="committedRecord">The drain record the caller just committed.</param>
+    /// <returns><c>true</c> when the reminder was registered.</returns>
+    private async Task<bool> ArmDrainReminderAsync(
+        string trackingId,
+        UnpublishedEventsRecord committedRecord) {
+        if (!await RegisterDrainReminderAsync(trackingId).ConfigureAwait(false)) {
+            return false;
+        }
+
+        await StateManager.SetStateAsync(
+            UnpublishedEventsRecord.GetStateKey(trackingId),
+            committedRecord.MarkReminderArmed(DateTimeOffset.UtcNow)).ConfigureAwait(false);
+        await StateManager.SaveStateAsync().ConfigureAwait(false);
+        return true;
+    }
+
+    private async Task<bool> RegisterDrainReminderAsync(string trackingId) {
         try {
             (TimeSpan dueTime, TimeSpan period) = GetDrainReminderSchedule();
             _ = await RegisterReminderAsync(
-                UnpublishedEventsRecord.GetReminderName(correlationId),
+                UnpublishedEventsRecord.GetReminderName(trackingId),
                 null,
                 dueTime,
                 period).ConfigureAwait(false);
+            return true;
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
             logger.LogWarning(
                 ex,
                 "Drain reminder registration failed: CorrelationId={CorrelationId}. Manual recovery may be needed.",
-                correlationId);
+                trackingId);
+            return false;
         }
     }
 
@@ -1699,12 +2337,14 @@ public partial class AggregateActor(
             LastFailureReason: "stale_checkpoint_handoff",
             MessageId: staleMessageId);
 
-        await StoreDrainRecordAndRegisterReminderAsync(staleMessageId, unpublishedRecord)
+        _ = await StoreDrainRecordAndRegisterReminderAsync(staleMessageId, unpublishedRecord)
             .ConfigureAwait(false);
         await stateMachine.CleanupPipelineAsync(pipelineKeyPrefix, stalePipeline.CorrelationId)
             .ConfigureAwait(false);
         await StateManager.SaveStateAsync().ConfigureAwait(false);
-        await RegisterDrainReminderAsync(staleMessageId).ConfigureAwait(false);
+
+        // Story 4.4: stamp on success so activation does not re-register a live reminder.
+        _ = await ArmDrainReminderAsync(staleMessageId, unpublishedRecord).ConfigureAwait(false);
 
         Log.StaleCommittedCheckpointHandedOff(
             logger,
@@ -1916,6 +2556,9 @@ public partial class AggregateActor(
         // Story 4.2: Store drain record for recovery on resume path (committed in same atomic batch)
         int eventCount = existingPipeline.EventCount ?? 0;
         bool shouldRegisterReminder = false;
+        bool recoveryEntryTracked = false;
+        int drainAttemptCount = 0;
+        UnpublishedEventsRecord? committedDrainRecord = null;
         if (eventCount > 0) {
             bool hasRange = false;
             long startSequence = 0;
@@ -1939,6 +2582,19 @@ public partial class AggregateActor(
                 && startSequence >= 1
                 && endSequence >= startSequence
                 && (endSequence - startSequence + 1) == eventCount) {
+                string drainTrackingId = existingPipeline.MessageId ?? command.MessageId;
+
+                // Story 4.4: a drain record for this same range may already exist -- resume can run
+                // repeatedly for one committed range. Carry its attempt count forward instead of
+                // writing 0: resetting it would hand the range a fresh budget on every resume, so
+                // MaxDrainAttempts would never be reached and the bound would not be a bound. The
+                // status below then reports the true count rather than understating it as 0.
+                ConditionalValue<UnpublishedEventsRecord> existingDrain = await StateManager
+                    .TryGetStateAsync<UnpublishedEventsRecord>(
+                        UnpublishedEventsRecord.GetStateKey(drainTrackingId))
+                    .ConfigureAwait(false);
+                drainAttemptCount = existingDrain.HasValue ? existingDrain.Value.RetryCount : 0;
+
                 var unpublishedRecord = new UnpublishedEventsRecord(
                     command.CorrelationId,
                     startSequence,
@@ -1947,12 +2603,13 @@ public partial class AggregateActor(
                     command.CommandType,
                     existingPipeline.RejectionEventType is not null,
                     DateTimeOffset.UtcNow,
-                    RetryCount: 0,
+                    RetryCount: drainAttemptCount,
                     LastFailureReason: failureReason,
-                    MessageId: existingPipeline.MessageId ?? command.MessageId);
-                string drainTrackingId = existingPipeline.MessageId ?? command.MessageId;
-                await StoreDrainRecordAndRegisterReminderAsync(drainTrackingId, unpublishedRecord)
-                    .ConfigureAwait(false);
+                    MessageId: drainTrackingId);
+                recoveryEntryTracked = await StoreDrainRecordAndRegisterReminderAsync(
+                    drainTrackingId,
+                    unpublishedRecord).ConfigureAwait(false);
+                committedDrainRecord = unpublishedRecord;
                 shouldRegisterReminder = true;
             }
             else {
@@ -1975,17 +2632,26 @@ public partial class AggregateActor(
         }
 
         // Story 4.2: Register drain reminder AFTER successful commit
-        if (shouldRegisterReminder) {
-            await RegisterDrainReminderAsync(existingPipeline.MessageId ?? command.MessageId).ConfigureAwait(false);
-        }
+        // Story 4.4: and stamp the record, so activation neither resets its schedule nor spends a
+        // re-arm slot on a reminder that is already live.
+        bool drainReminderArmed = shouldRegisterReminder
+            && committedDrainRecord is not null
+            && await ArmDrainReminderAsync(
+                existingPipeline.MessageId ?? command.MessageId,
+                committedDrainRecord).ConfigureAwait(false);
 
         LogStageTransition(CommandStatus.PublishFailed, command, causationId, startTicks);
+
+        // Story 4.4 (AC3): same retryability contract as the first-pass PublishFailed status.
         await WriteAdvisoryStatusAsync(
             command,
             CommandStatus.PublishFailed,
             failureReason,
             existingPipeline.EventCount,
-            existingPipeline.RejectionEventType).ConfigureAwait(false);
+            existingPipeline.RejectionEventType,
+            retryable: drainReminderArmed || recoveryEntryTracked,
+            recoveryReasonCode: DrainReasonCodes.PublishFailed,
+            drainAttemptCount: drainAttemptCount).ConfigureAwait(false);
         LogCommandCompletedSummary(command, causationId, CommandStatus.PublishFailed, startTicks);
 
         _ = (processActivity?.SetTag("eventstore.publish_failed", true));
@@ -2365,6 +3031,17 @@ public partial class AggregateActor(
         await stateMachine.CleanupPipelineAsync(pipelineKeyPrefix, command.CorrelationId)
             .ConfigureAwait(false);
 
+        // Story 4.4: the events reached the broker, so the recovery entry staged into the commit
+        // batch is released in the same batch as the terminal cleanup. A failure here must not fail
+        // an otherwise successful command -- activation prunes an orphaned entry.
+        try {
+            _ = await StagePublicationIndexRemovalAsync(command.MessageId).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            Log.PublicationIndexReleaseFailed(
+                logger, Host.Id.GetId(), command.MessageId, ex.GetType().Name);
+        }
+
         try {
             await StateManager.SaveStateAsync().ConfigureAwait(false);
         }
@@ -2412,7 +3089,10 @@ public partial class AggregateActor(
         CommandStatus status,
         string? failureReason = null,
         int? eventCount = null,
-        string? rejectionEventType = null) {
+        string? rejectionEventType = null,
+        bool? retryable = null,
+        string? recoveryReasonCode = null,
+        int? drainAttemptCount = null) {
         try {
             await commandStatusStore.WriteStatusAsync(
                 command.TenantId,
@@ -2426,7 +3106,10 @@ public partial class AggregateActor(
                     FailureReason: failureReason,
                     TimeoutDuration: null,
                     MessageId: command.MessageId,
-                    CorrelationId: command.CorrelationId)).ConfigureAwait(false);
+                    CorrelationId: command.CorrelationId,
+                    Retryable: retryable,
+                    RecoveryReasonCode: recoveryReasonCode,
+                    DrainAttemptCount: drainAttemptCount)).ConfigureAwait(false);
         }
         catch (OperationCanceledException) {
             throw;
@@ -2602,5 +3285,106 @@ public partial class AggregateActor(
             string messageId,
             string persistedStage,
             int eventCount);
+
+        [LoggerMessage(
+            EventId = 2010,
+            Level = LogLevel.Warning,
+            Message = "Publication recovery activation degraded: ActorId={ActorId}, ExceptionType={ExceptionType}, Stage=PublicationRecoveryDegraded")]
+        public static partial void PublicationRecoveryDegraded(
+            ILogger logger,
+            string actorId,
+            string exceptionType);
+
+        [LoggerMessage(
+            EventId = 2011,
+            Level = LogLevel.Information,
+            Message = "Publication recovery re-registered a drain reminder: ActorId={ActorId}, MessageId={MessageId}, Stage=PublicationRecoveryReminderRearmed")]
+        public static partial void PublicationRecoveryReminderRearmed(
+            ILogger logger,
+            string actorId,
+            string messageId);
+
+        [LoggerMessage(
+            EventId = 2012,
+            Level = LogLevel.Warning,
+            Message = "Publication recovery rebuilt a drain record from a committed checkpoint: ActorId={ActorId}, MessageId={MessageId}, Stage=PublicationRecoveryDrainRecordRebuilt")]
+        public static partial void PublicationRecoveryDrainRecordRebuilt(
+            ILogger logger,
+            string actorId,
+            string messageId);
+
+        [LoggerMessage(
+            EventId = 2013,
+            Level = LogLevel.Warning,
+            Message = "Publication recovery dropped a stale index entry: ActorId={ActorId}, MessageId={MessageId}, ReasonCode={ReasonCode}, Stage=PublicationRecoveryEntryDropped")]
+        public static partial void PublicationRecoveryEntryDropped(
+            ILogger logger,
+            string actorId,
+            string messageId,
+            string reasonCode);
+
+        [LoggerMessage(
+            EventId = 2014,
+            Level = LogLevel.Warning,
+            Message = "Publication recovery re-arm failed and will retry on the next activation: ActorId={ActorId}, MessageId={MessageId}, ExceptionType={ExceptionType}, Stage=PublicationRecoveryRearmFailed")]
+        public static partial void PublicationRecoveryRearmFailed(
+            ILogger logger,
+            string actorId,
+            string messageId,
+            string exceptionType);
+
+        [LoggerMessage(
+            EventId = 2015,
+            Level = LogLevel.Error,
+            Message = "Publication recovery index refused an entry for an already-committed range: ActorId={ActorId}, MessageId={MessageId}, Threshold={Threshold}, Stage=PublicationIndexEntryRejected")]
+        public static partial void PublicationIndexEntryRejected(
+            ILogger logger,
+            string actorId,
+            string messageId,
+            int threshold);
+
+        [LoggerMessage(
+            EventId = 2019,
+            Level = LogLevel.Error,
+            Message = "Publication recovery entry identity was invalid, committed range refused: ActorId={ActorId}, MessageId={MessageId}, CorrelationId={CorrelationId}, Stage=PublicationIndexEntryInvalid")]
+        public static partial void PublicationIndexEntryInvalid(
+            ILogger logger,
+            string actorId,
+            string messageId,
+            string correlationId);
+
+        [LoggerMessage(
+            EventId = 2016,
+            Level = LogLevel.Warning,
+            Message = "Publication recovery index release failed: ActorId={ActorId}, MessageId={MessageId}, ExceptionType={ExceptionType}, Stage=PublicationIndexReleaseFailed")]
+        public static partial void PublicationIndexReleaseFailed(
+            ILogger logger,
+            string actorId,
+            string messageId,
+            string exceptionType);
+
+        [LoggerMessage(
+            EventId = 2017,
+            Level = LogLevel.Error,
+            Message = "Drain attempts exhausted, events dead-lettered: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, RetryCount={RetryCount}, MaxDrainAttempts={MaxDrainAttempts}, EventCount={EventCount}, Stage=DrainAttemptsExhausted")]
+        public static partial void DrainAttemptsExhausted(
+            ILogger logger,
+            string correlationId,
+            string tenantId,
+            string domain,
+            string aggregateId,
+            int retryCount,
+            int maxDrainAttempts,
+            int eventCount);
+
+        [LoggerMessage(
+            EventId = 2018,
+            Level = LogLevel.Error,
+            Message = "Drain exhaustion sink unavailable, drain record retained: CorrelationId={CorrelationId}, MessageId={MessageId}, RetryCount={RetryCount}, Stage=DrainExhaustionRetained")]
+        public static partial void DrainExhaustionRetained(
+            ILogger logger,
+            string correlationId,
+            string messageId,
+            int retryCount);
     }
 }

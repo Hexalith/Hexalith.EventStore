@@ -17,7 +17,10 @@ public record CommandStatusResponse(
     string? RejectionEventType,
     string? FailureReason,
     string? TimeoutDuration,
-    string? MessageId = null) {
+    string? MessageId = null,
+    bool? Retryable = null,
+    string? RecoveryReasonCode = null,
+    int? DrainAttemptCount = null) {
     /// <summary>
     /// Creates a <see cref="CommandStatusResponse"/> from a <see cref="CommandStatusRecord"/>.
     /// </summary>
@@ -34,6 +37,9 @@ public record CommandStatusResponse(
             RejectionEventType: record.RejectionEventType,
             FailureReason: record.FailureReason,
             TimeoutDuration: record.TimeoutDuration is not null ? XmlConvert.ToString(record.TimeoutDuration.Value) : null,
-            MessageId: record.MessageId);
+            MessageId: record.MessageId,
+            Retryable: record.Retryable,
+            RecoveryReasonCode: record.RecoveryReasonCode,
+            DrainAttemptCount: record.DrainAttemptCount);
     }
 }

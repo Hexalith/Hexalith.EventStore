@@ -11,5 +11,11 @@ internal static class DrainReasonCodes {
     public const string PublishFailed = "drain_publish_failed";
     public const string StateStoreFailure = "drain_state_store_failure";
     public const string DaprUnavailable = "drain_dapr_unavailable";
+
+    /// <summary>
+    /// Story 4.4: the bounded drain-attempt budget was exhausted and the committed range was
+    /// dead-lettered instead of retried forever.
+    /// </summary>
+    public const string AttemptsExhausted = "drain_attempts_exhausted";
     public const string Unknown = "unknown";
 }

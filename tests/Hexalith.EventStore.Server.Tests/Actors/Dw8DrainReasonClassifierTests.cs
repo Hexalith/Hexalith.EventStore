@@ -34,6 +34,11 @@ public class Dw8DrainReasonClassifierTests {
         DrainReasonCodes.PublishFailed.ShouldBe("drain_publish_failed");
         DrainReasonCodes.StateStoreFailure.ShouldBe("drain_state_store_failure");
         DrainReasonCodes.DaprUnavailable.ShouldBe("drain_dapr_unavailable");
+
+        // Story 4.4: every other assertion in the suite compares symbol to symbol or supplies its
+        // own literal, so renaming this constant would keep them all green while silently breaking
+        // operator dashboards and the runbook that key on the wire value.
+        DrainReasonCodes.AttemptsExhausted.ShouldBe("drain_attempts_exhausted");
         DrainReasonCodes.Unknown.ShouldBe("unknown");
     }
 

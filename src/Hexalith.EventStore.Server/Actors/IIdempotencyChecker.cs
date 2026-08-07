@@ -27,4 +27,10 @@ public interface IIdempotencyChecker
         CommandProcessingResult result,
         DateTimeOffset expiresAt,
         IdempotencyRecordDisposition disposition);
+
+    // Story 4.4 deliberately does NOT add TryCompleteRecoverableAsync here. This interface is public
+    // and Hexalith.EventStore.Server ships as a NuGet package, so a new member with no default
+    // implementation would break every external implementer. It would also buy nothing: the only
+    // caller (AggregateActor.CompleteRecoverableIdempotencyAsync) constructs IdempotencyChecker
+    // concretely, so the method lives on the concrete type where it is actually used.
 }
