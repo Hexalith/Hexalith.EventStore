@@ -381,10 +381,25 @@ public sealed class DeployedRuntimeParityClosureTests
             ["result"] = "pass",
             ["nested"] = new JsonObject { ["client-secret"] = "redacted-but-forbidden" },
         })).ShouldBeFalse();
+        LogIsSupportSafe(JsonSerializer.SerializeToUtf8Bytes(new JsonObject
+        {
+            ["result"] = "pass",
+            ["private_key"] = "redacted-but-forbidden",
+        })).ShouldBeFalse();
+        LogIsSupportSafe(JsonSerializer.SerializeToUtf8Bytes(new JsonObject
+        {
+            ["result"] = "pass",
+            ["private-key"] = "redacted-but-forbidden",
+        })).ShouldBeFalse();
+        LogIsSupportSafe(JsonSerializer.SerializeToUtf8Bytes(new JsonObject
+        {
+            ["result"] = "pass",
+            ["privatekey"] = "redacted-but-forbidden",
+        })).ShouldBeFalse();
     }
 
     /// <summary>
-    /// Verifies private IPv6 addresses cannot be retained as support-safe evidence values.
+    /// Verifies private IPv4/IPv6 addresses cannot be retained as support-safe evidence values.
     /// </summary>
     [Fact]
     public void SupportSafeValuesRejectPrivateIpv6Addresses()
@@ -392,10 +407,24 @@ public sealed class DeployedRuntimeParityClosureTests
         ValueIsSupportSafe("fd00::1").ShouldBeFalse();
         ValueIsSupportSafe("fc00::abcd").ShouldBeFalse();
         ValueIsSupportSafe("fe80::1").ShouldBeFalse();
+        ValueIsSupportSafe("fec0::1").ShouldBeFalse();
         ValueIsSupportSafe("https://[fd00::1]/status").ShouldBeFalse();
         ValueIsSupportSafe("2606:4700:4700::1111").ShouldBeTrue();
         ValueIsSupportSafe("10.0.0.1").ShouldBeFalse();
+        ValueIsSupportSafe("100.64.0.1").ShouldBeFalse();
+        ValueIsSupportSafe("100.127.255.254").ShouldBeFalse();
+        ValueIsSupportSafe("100.63.255.255").ShouldBeTrue();
+        ValueIsSupportSafe("100.128.0.1").ShouldBeTrue();
         ValueIsSupportSafe("8.8.8.8").ShouldBeTrue();
+        ValueIsSupportSafe("-----BEGIN EC PRIVATE KEY-----\nabc\n-----END EC PRIVATE KEY-----")
+            .ShouldBeFalse();
+        ValueIsSupportSafe("-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----")
+            .ShouldBeFalse();
+        ValueIsSupportSafe(
+                "-----BEGIN ENCRYPTED PRIVATE KEY-----\nabc\n-----END ENCRYPTED PRIVATE KEY-----")
+            .ShouldBeFalse();
+        ValueIsSupportSafe("-----BEGIN DSA PRIVATE KEY-----\nabc\n-----END DSA PRIVATE KEY-----")
+            .ShouldBeFalse();
     }
 
     /// <summary>
@@ -1130,6 +1159,8 @@ public sealed class DeployedRuntimeParityClosureTests
     [InlineData("object-digest-header")]
     [InlineData("object-content-length")]
     [InlineData("object-raw-sha")]
+    [InlineData("cli-candidate-compatibility")]
+    [InlineData("config-labels-summary")]
     [InlineData("extra-field")]
     public void OciRegistryReportsRejectEndpointStatusAndRawBindingMutations(string mutation)
     {
@@ -1159,6 +1190,14 @@ public sealed class DeployedRuntimeParityClosureTests
                     break;
                 case "object-content-length": report["objects"]![0]!["content_length"] = 0; break;
                 case "object-raw-sha": report["objects"]![0]!["raw_sha256"] = new string('0', 64); break;
+                case "cli-candidate-compatibility":
+                    report["shared_validator"]!["cli_candidate_compatibility"] = "unavailable";
+                    break;
+                case "config-labels-summary":
+                    report["config_labels"]!["verification_result"] = "fail";
+                    report["config_labels"]!["provenance_label_result"] = "fail";
+                    report["config_labels"]!["exact_source_match"] = false;
+                    break;
                 default: report["undeclared"] = true; break;
             }
 
@@ -1279,6 +1318,7 @@ public sealed class DeployedRuntimeParityClosureTests
     [InlineData("minimal-configuration")]
     [InlineData("global-duration")]
     [InlineData("smoke-result")]
+    [InlineData("evidence-completeness")]
     public void RuntimeEvidenceRejectsExecutionAndBoundMutations(string mutation)
     {
         string root = FindRepositoryRoot();
@@ -1342,6 +1382,10 @@ public sealed class DeployedRuntimeParityClosureTests
                 File.WriteAllBytes(
                     Path.Combine(evidence, "smoke-results.json"),
                     JsonSerializer.SerializeToUtf8Bytes(smoke));
+            }
+            else if (mutation == "evidence-completeness")
+            {
+                runtime["evidence_completeness"] = "fail";
             }
             else
             {
@@ -1627,7 +1671,8 @@ public sealed class DeployedRuntimeParityClosureTests
             or JsonException
             or IOException
             or NotSupportedException
-            or UnauthorizedAccessException)
+            or UnauthorizedAccessException
+            or TimeoutException)
         {
             return false;
         }
@@ -2064,6 +2109,7 @@ public sealed class DeployedRuntimeParityClosureTests
             && path == ExpectedOciValidatorPath
             && sharedValidator["builds_gitlink_sha"]!.GetValue<string>() == ExpectedBuildsSha
             && sharedValidator["verification_result"]!.GetValue<string>() == "pass"
+            && sharedValidator["cli_candidate_compatibility"]!.GetValue<string>() == "pass"
             && sharedValidator["sha256"]!.GetValue<string>() == ExpectedOciValidatorSha256
             && ComputePinnedBuildsToolSha256(repositoryRoot, path) == ExpectedOciValidatorSha256;
     }
@@ -2153,7 +2199,8 @@ public sealed class DeployedRuntimeParityClosureTests
                 || oci["index_media_type"]!.GetValue<string>() != OciIndexMediaType
                 || !ValidateSharedValidatorIdentity(
                     readback["shared_validator"]!.AsObject(),
-                    repositoryRoot))
+                    repositoryRoot)
+                || !ValidateConfigLabelSummaries(readback["config_labels"]!.AsObject(), sourceSha))
             {
                 return false;
             }
@@ -2295,11 +2342,19 @@ public sealed class DeployedRuntimeParityClosureTests
             or JsonException
             or IOException
             or NotSupportedException
-            or UnauthorizedAccessException)
+            or UnauthorizedAccessException
+            or TimeoutException)
         {
             return false;
         }
     }
+
+    private static bool ValidateConfigLabelSummaries(JsonObject configLabels, string sourceSha) =>
+        configLabels["verification_result"]!.GetValue<string>() == "pass"
+        && configLabels["provenance_label_result"]!.GetValue<string>() == "pass"
+        && configLabels["exact_source_match"]!.GetValue<bool>()
+        && configLabels["approved_source_sha"]!.GetValue<string>() == sourceSha
+        && configLabels["revision"]!.GetValue<string>() == sourceSha;
 
     private static bool ValidateOciProvenance(JsonObject crosswalk, string evidenceRoot)
     {
@@ -2423,6 +2478,7 @@ public sealed class DeployedRuntimeParityClosureTests
                 || !HasExactProperties(retained, retainedFields)
                 || !DocumentIsSupportSafe(retained)
                 || runtime["execution_result"]!.GetValue<string>() != "pass"
+                || runtime["evidence_completeness"]!.GetValue<string>() != "pass"
                 || runtime["exit_code"]!.GetValue<int>() != 0
                 || !TryParseExplicitOffset(runtime["started_at"]!.GetValue<string>(), out DateTimeOffset started)
                 || !TryParseExplicitOffset(runtime["ended_at"]!.GetValue<string>(), out DateTimeOffset ended)
@@ -2559,7 +2615,8 @@ public sealed class DeployedRuntimeParityClosureTests
             or JsonException
             or IOException
             or NotSupportedException
-            or UnauthorizedAccessException)
+            or UnauthorizedAccessException
+            or TimeoutException)
         {
             return false;
         }
@@ -3117,7 +3174,8 @@ public sealed class DeployedRuntimeParityClosureTests
             or JsonException
             or IOException
             or NotSupportedException
-            or UnauthorizedAccessException)
+            or UnauthorizedAccessException
+            or TimeoutException)
         {
             return false;
         }
@@ -3456,7 +3514,12 @@ public sealed class DeployedRuntimeParityClosureTests
                     && report["result"]!.GetValue<string>() == "fail"
                     && report["local_matches"]!.AsArray().Count == 0
                     && !string.IsNullOrWhiteSpace(report["blocker"]!.GetValue<string>())
-                    && !string.IsNullOrWhiteSpace(report["reopen_trigger"]!.GetValue<string>());
+                    && !string.IsNullOrWhiteSpace(report["reopen_trigger"]!.GetValue<string>())
+                    && ValidateNugetOrgAvailability(
+                        report["nuget_org"],
+                        crosswalk["selected_candidates"]![0]!["packages"]!["items"]!.AsArray()
+                            .Select(item => item!["id"]!.GetValue<string>())
+                            .ToArray());
             }
 
             return schema == "hexalith.eventstore.story-3-13-package-availability/v2"
@@ -3488,6 +3551,24 @@ public sealed class DeployedRuntimeParityClosureTests
         }
     }
 
+    private static bool ValidateNugetOrgAvailability(JsonNode? nugetOrg, string[] expectedPackageIds)
+    {
+        if (nugetOrg is not JsonObject nuget
+            || !HasExactProperties(nuget, ["http_status_by_package"])
+            || nuget["http_status_by_package"] is not JsonObject statuses)
+        {
+            return false;
+        }
+
+        string[] expected = expectedPackageIds.Order(StringComparer.Ordinal).ToArray();
+        string[] actual = statuses.Select(property => property.Key).Order(StringComparer.Ordinal).ToArray();
+        return actual.SequenceEqual(expected, StringComparer.Ordinal)
+            && statuses.All(property =>
+                property.Value is JsonValue value
+                && value.TryGetValue(out int status)
+                && status is >= 100 and <= 599);
+    }
+
     private static bool DocumentIsSupportSafe(JsonNode node) => node switch
     {
         JsonObject value => value.All(property =>
@@ -3512,6 +3593,7 @@ public sealed class DeployedRuntimeParityClosureTests
             "credential",
             "diagnosticexcerpt",
             "password",
+            "privatekey",
             "secret",
             "token",
         ];
@@ -3531,6 +3613,10 @@ public sealed class DeployedRuntimeParityClosureTests
             "client_secret",
             "-----begin private key-----",
             "-----begin rsa private key-----",
+            "-----begin ec private key-----",
+            "-----begin openssh private key-----",
+            "-----begin encrypted private key-----",
+            "-----begin dsa private key-----",
             "raw payload",
             "raw_payload",
             "diagnostic excerpt",
@@ -3586,9 +3672,11 @@ public sealed class DeployedRuntimeParityClosureTests
                 || bytes[0] == 127
                 || (bytes[0] == 169 && bytes[1] == 254)
                 || (bytes[0] == 172 && bytes[1] is >= 16 and <= 31)
-                || (bytes[0] == 192 && bytes[1] == 168),
+                || (bytes[0] == 192 && bytes[1] == 168)
+                || (bytes[0] == 100 && bytes[1] is >= 64 and <= 127),
             16 => (bytes[0] & 0xfe) == 0xfc
-                || (bytes[0] == 0xfe && (bytes[1] & 0xc0) == 0x80),
+                || (bytes[0] == 0xfe && (bytes[1] & 0xc0) == 0x80)
+                || (bytes[0] == 0xfe && (bytes[1] & 0xc0) == 0xc0),
             _ => false,
         };
     }
@@ -4645,9 +4733,16 @@ public sealed class DeployedRuntimeParityClosureTests
         }
 
         process.Start();
-        string output = process.StandardOutput.ReadToEnd();
-        string error = process.StandardError.ReadToEnd();
-        process.WaitForExit();
+        Task<string> outputTask = process.StandardOutput.ReadToEndAsync();
+        Task<string> errorTask = process.StandardError.ReadToEndAsync();
+        if (!WaitForProcessExit(process, TimeSpan.FromSeconds(30)))
+        {
+            throw new TimeoutException(
+                "Git object verification timed out after 30 seconds: " + string.Join(' ', arguments));
+        }
+
+        string output = outputTask.GetAwaiter().GetResult();
+        string error = errorTask.GetAwaiter().GetResult();
         if (process.ExitCode != 0)
         {
             throw new InvalidDataException("Git object verification failed: " + error.Trim());
@@ -4680,12 +4775,47 @@ public sealed class DeployedRuntimeParityClosureTests
         process.StartInfo.ArgumentList.Add(ExpectedBuildsSha + ":" + toolPath[buildsPrefix.Length..]);
         process.Start();
         using MemoryStream buffer = new();
-        process.StandardOutput.BaseStream.CopyTo(buffer);
-        string error = process.StandardError.ReadToEnd();
-        process.WaitForExit();
+        Task copyTask = process.StandardOutput.BaseStream.CopyToAsync(buffer);
+        Task<string> errorTask = process.StandardError.ReadToEndAsync();
+        if (!WaitForProcessExit(process, TimeSpan.FromSeconds(30)))
+        {
+            throw new TimeoutException(
+                "Shared Builds tool verification timed out after 30 seconds: " + toolPath);
+        }
+
+        copyTask.GetAwaiter().GetResult();
+        string error = errorTask.GetAwaiter().GetResult();
         return process.ExitCode == 0
             ? ComputeSha256(buffer.ToArray())
             : throw new InvalidDataException("Shared Builds tool verification failed: " + error.Trim());
+    }
+
+    private static bool WaitForProcessExit(Process process, TimeSpan timeout)
+    {
+        if (process.WaitForExit((int)timeout.TotalMilliseconds))
+        {
+            return true;
+        }
+
+        try
+        {
+            process.Kill(entireProcessTree: true);
+        }
+        catch (InvalidOperationException)
+        {
+            // The process exited between WaitForExit and Kill.
+        }
+
+        try
+        {
+            _ = process.WaitForExit(5_000);
+        }
+        catch (SystemException)
+        {
+            // Best-effort cleanup after a forced kill.
+        }
+
+        return false;
     }
 
     private static string FindRepositoryRoot()

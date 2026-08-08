@@ -919,3 +919,33 @@ status: open
   summary: Forensic note for orphan commits `f3e036bf0cae72b50508a3e729f24a052a7c4e95` / `026b039b237372774d998af8f5b77c58db00d348` that a July draft assumed were unpushed on local `main`. They are not tip ancestors; winning sibling `f6db558c768ae413712560019beab488d9974d66` (same subject/parent) is already on `origin/main`. Closed as obsolete without rebase or cherry-pick — replaying the orphans would regress resilience, fixtures, Story 1.20 status, and submodule pins. Preserve the SHAs if reflog GC later drops tip reachability.
   evidence: `git merge-base --is-ancestor f6db558c768ae413712560019beab488d9974d66 origin/main` succeeds; `main` and `origin/main` both at `37fdcd1fc8a238b676441b1f5a5ef5fd4370d27e`; orphans still exist as objects (`git cat-file -t f3e036bf0cae72b50508a3e729f24a052a7c4e95` / `026b039b237372774d998af8f5b77c58db00d348` → `commit`); tip gitlinks remain Builds `824d7ef100455423aabbcd399c8364074000b2e0`, Memories `da5df10092461e5473d0e8fc09eacbb4a8e08d3a`, Tenants `323baf8871e70be3fde92072f32b758af950bc8c`.
   status: forensic-only (closed obsolete; non-actionable)
+
+## Deferred from: Story 3.13 review (2026-08-08)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: `package-availability.json` embeds machine-local absolute search roots under `/home/administrator/...`, which are non-portable durable evidence.
+  evidence: Blind-hunter review of the Story 3.13 packet; fail-closed package recovery already records 404/unavailable, but retained search roots remain host-specific.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Epic 3 context rewrite thins earlier concrete cross-story constraints without an explicit supersession note.
+  evidence: Review of `epic-3-context.md` in the baseline..HEAD scoped diff; historical live-sidecar/DaprETag specificity was reduced while adding 3.12/3.13 guidance.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Expected AC4 acceptance scaffolding (`acceptances/{subject_sha256}` layout / receipt schema example) is narrative-only and not checked into hashed manifests.
+  evidence: Blind-hunter review; 0/3 acceptances are intentional while fail-closed, but reopen tooling has no committed empty convention.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Support-safety hostname privacy only special-cases `.internal`/`.local`, so other private DNS names can bypass the literal-IP private check.
+  evidence: Edge-case hunter on `HostLooksPrivate` / `AddressIsPrivate` in `DeployedRuntimeParityClosureTests.cs`.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Retained `smoke-results.json` can declare top-level `"result": "pass"` while runtime-verification/crosswalk mark execution unverified/fail.
+  evidence: Blind-hunter review; product gate is already fail-closed via runtime-verification, but the smoke summary over-claims relative to that gate. Fixing requires hash-bound evidence edits beyond this patch pass.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Crosswalk `approval_contract.required_receipt_fields` omits `schema` while the verifier’s `RequiredReceiptFields` requires it.
+  evidence: Blind-hunter review; correcting the crosswalk would rehash core evidence and was deferred to avoid churn while 0/3 acceptances remain.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Review-subject blocker text still claims smoke logs lack cleanup facts after cleanup=pass appears in retained logs/runtime-verification.
+  evidence: Blind-hunter review; blocker wording is hash-bound and should be narrowed only when evidence is intentionally republished.

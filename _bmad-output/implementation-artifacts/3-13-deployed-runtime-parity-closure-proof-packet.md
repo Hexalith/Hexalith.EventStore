@@ -38,6 +38,16 @@ review subject. The three missing receipts remain outside the evidence checksum 
 stored beneath `acceptances/{subject_sha256}`, and must cite the exact unchanged subject hash and a
 reviewer identity authorized by the hash-bound repository roster.
 
+## Builds Identity Pins
+
+Story 3.13 records two distinct Hexalith.Builds identities; they are not interchangeable:
+
+- `baseline.builds_gitlink_sha` (`e69891f67578c2f0dec1cd7d7eea113430d31077`) is the EventStore
+  repository's `references/Hexalith.Builds` gitlink at the Story 3.13 baseline commit. Predecessor
+  Git-object checks bind that historical pointer.
+- Tool pins (`a53166539bf4441d5e33d04281b14c2d59e950c3`) identify the shared OCI validator and
+  smoke-script bytes read from the Builds object store for independent OCI/runtime verification.
+
 ## Frozen Predecessor Inputs
 
 | Input | Git identity | SHA-256 / result |
@@ -110,8 +120,10 @@ not treated as a pass for release provenance.
 
 - Story 1.20 critical manifest: all 33 entries passed `sha256sum -c`.
 - Contracts test project Release build: succeeded with zero warnings and zero errors.
-- Focused `DeployedRuntimeParityClosureTests`: 115 passed, zero failed/skipped/not-run.
-- Complete Contracts suite: 999 passed, zero failed/skipped/not-run.
+- Focused `DeployedRuntimeParityClosureTests`: 120 passed, zero failed/skipped/not-run
+  (recorded after the 2026-08-08 review-hardening mutations; earlier hardening had 117).
+- Complete Contracts suite: last measured at 1001 passed (2026-08-05); not re-measured in this
+  documentation refresh.
 - The verifier also derives the actual fail-closed review subject and outer checksum manifest,
   rejects extra or byte-mutated package archives, validates baseline Git objects, and exercises
   independently rebound mutations across release, authority, OCI, runtime, roster, and receipts.

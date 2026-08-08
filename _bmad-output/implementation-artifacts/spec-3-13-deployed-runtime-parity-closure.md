@@ -2,7 +2,7 @@
 title: 'Story 3.13 Deployed Runtime Parity Closure'
 type: 'chore'
 created: '2026-08-04'
-status: 'in-progress'
+status: 'in-review'
 baseline_commit: '1d6e9321acfc416768c1c78e9facf573c9c41f71'
 review_loop_iteration: 1
 context:
@@ -98,6 +98,16 @@ context:
   OCI reports/provenance, runtime bounds, support-safety rules, roster, and durable receipts now
   have independent mutation coverage. AC1 and AC3 pass; AC2 and AC4 remain fail-closed with 0/3
   acceptances, so the story stays non-`done`.
+- 2026-08-05: Applied the third hardening/lifecycle pass without changing frozen intent. Reconciled
+  trackers to `in-progress`, scoped the proof packet's submodule claim to author-controlled state,
+  excluded execution-only runtime facts from `canonical_lineage_id`, bound shared Builds
+  validator/smoke tools to real script bytes, added `NullReferenceException` catch filters, and
+  closed the IPv6 support-safety gap. AC2/AC4 and 0/3 acceptances remain open.
+- 2026-08-08: Applied a fourth review-hardening pass: gated `evidence_completeness` and
+  `cli_candidate_compatibility` on pass lineages, bound OCI `config_labels` summary fields, extended
+  private-address and PEM/private-key support-safety coverage, required structured `nuget_org`
+  availability shape, bounded Git process waits, refreshed proof-packet verification totals, and
+  documented the dual Builds identity pins. Story remains non-`done` with fail-closed evidence.
 
 ## Verification
 
@@ -111,56 +121,67 @@ context:
 
 **Decision and identity chain**
 
-- Start with the fail-closed decision and precise closure boundary.
+- Start with the fail-closed verdict and non-done boundary.
   [`proof-packet.md:5`](3-13-deployed-runtime-parity-closure-proof-packet.md#L5)
 
-- Inspect derived checks and blockers before trusting any declared verdict.
-  [`identity-crosswalk.json:431`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/identity-crosswalk.json#L431)
+- Confirm dual Builds pins are named as distinct identities.
+  [`proof-packet.md:45`](3-13-deployed-runtime-parity-closure-proof-packet.md#L45)
 
-- Confirm the fail-closed subject content-binds decision, evidence, blockers, and limitations.
+- Inspect derived checks and blockers before trusting any declared verdict.
+  [`identity-crosswalk.json:432`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/identity-crosswalk.json#L432)
+
+- Confirm the fail-closed subject content-binds decision, evidence, and limitations.
   [`review-subject.json:1`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/review-subject.json#L1)
 
 **Derived verifier boundaries**
 
 - Follow the single entry point that derives pass or fail from raw evidence.
-  [`DeployedRuntimeParityClosureTests.cs:1496`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L1496)
+  [`DeployedRuntimeParityClosureTests.cs:1591`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L1591)
 
-- Review canonical lineage material before individual release and authority gates.
-  [`DeployedRuntimeParityClosureTests.cs:3558`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3558)
+- Review canonical lineage material before release and authority gates.
+  [`DeployedRuntimeParityClosureTests.cs:3728`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3728)
 
-- Bind semantic-release provenance to one exact retained release event.
-  [`DeployedRuntimeParityClosureTests.cs:1709`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L1709)
+- Enforce durable, scoped authority with explicit chronology and lineage binding.
+  [`DeployedRuntimeParityClosureTests.cs:1932`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L1932)
 
-- Enforce durable, scoped authority with explicit chronology and canonical lineage.
-  [`DeployedRuntimeParityClosureTests.cs:1836`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L1836)
+- Bind shared Builds validator identity including CLI compatibility.
+  [`DeployedRuntimeParityClosureTests.cs:2096`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L2096)
 
 **OCI, runtime, and acceptance evidence**
 
-- Derive the exact registry graph from retained raw responses and descriptors.
-  [`DeployedRuntimeParityClosureTests.cs:2000`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L2000)
+- Derive the registry graph and require pass config-label summaries.
+  [`DeployedRuntimeParityClosureTests.cs:2117`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L2117)
 
-- Bind bounded Production runtime facts to the selected platform children.
-  [`DeployedRuntimeParityClosureTests.cs:2311`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L2311)
+- Bind config-label summaries to the approved source revision.
+  [`DeployedRuntimeParityClosureTests.cs:2352`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L2352)
+
+- Require structured Production runtime facts including evidence completeness.
+  [`DeployedRuntimeParityClosureTests.cs:2441`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L2441)
 
 - Require exact, durable, subject-addressed receipts without self-authentication.
-  [`DeployedRuntimeParityClosureTests.cs:2498`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L2498)
+  [`DeployedRuntimeParityClosureTests.cs:2636`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L2636)
 
 **Mutation-proof verification**
 
 - Prove a complete synthetic lineage passes before targeted mutations reject.
-  [`DeployedRuntimeParityClosureTests.cs:452`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L452)
+  [`DeployedRuntimeParityClosureTests.cs:532`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L532)
 
-- Exercise release provenance and canonical-lineage mutations with refreshed bindings.
-  [`DeployedRuntimeParityClosureTests.cs:955`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L955)
+- Reject both prohibited cross-lineage splices explicitly.
+  [`DeployedRuntimeParityClosureTests.cs:838`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L838)
 
-- Corrupt registry endpoints, statuses, references, and raw response bindings independently.
-  [`DeployedRuntimeParityClosureTests.cs:1083`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L1083)
+- Corrupt registry endpoints, statuses, references, and CLI compatibility independently.
+  [`DeployedRuntimeParityClosureTests.cs:1165`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L1165)
 
-- Mutate runtime execution, bounds, tool identity, and preflight ordering independently.
-  [`DeployedRuntimeParityClosureTests.cs:1231`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L1231)
+- Mutate runtime execution, evidence completeness, bounds, and tool identity.
+  [`DeployedRuntimeParityClosureTests.cs:1322`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L1322)
 
-- Reject receipt schema, decision, limitation, roster, and durable-source tampering.
-  [`DeployedRuntimeParityClosureTests.cs:1351`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L1351)
+**Support-safety and process hygiene**
+
+- Treat CGNAT and site-local ranges as private in retained evidence.
+  [`DeployedRuntimeParityClosureTests.cs:3656`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3656)
+
+- Bound git process waits and avoid stdout/stderr deadlocks.
+  [`DeployedRuntimeParityClosureTests.cs:4718`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L4718)
 
 **Integrity and lifecycle**
 
@@ -173,5 +194,5 @@ context:
 - Review truthful open tasks and why AC2 and AC4 remain non-done.
   [`3-13-deployed-runtime-parity-closure.md:191`](3-13-deployed-runtime-parity-closure.md#L191)
 
-- Confirm sprint tracking preserves the external blockers during review.
-  [`sprint-status.yaml:218`](sprint-status.yaml#L218)
+- Confirm sprint tracking keeps the story in review while blockers remain.
+  [`sprint-status.yaml:223`](sprint-status.yaml#L223)

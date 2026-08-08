@@ -220,7 +220,7 @@ development_status:
   # proof packet's false no-submodule-change claim, made canonical_lineage_id insensitive to routine
   # runtime re-verification, bound the shared Builds validator/smoke tool to real script bytes, and
   # closed NullReferenceException/IPv6 support-safety gaps. AC2/AC4 and 0/3 acceptances still open.
-  3-13-deployed-runtime-parity-closure: in-progress
+  3-13-deployed-runtime-parity-closure: review
   epic-3-retrospective: optional
 
   epic-4: in-progress
