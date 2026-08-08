@@ -187,7 +187,7 @@ For Story 2.8's Aspire-hosted provenance proof, reuse its documented Integration
 
 ### Stack and current technical notes
 
-- The repository pins .NET SDK `10.0.301` with `rollForward: latestPatch` and targets `net10.0`. Capture `dotnet --info`: `latestPatch` selects the latest installed patch in the 10.0.3xx feature band, so the executed SDK/runtime cannot be inferred from `global.json` alone.
+- The repository pins .NET SDK `10.0.302` with `rollForward: latestPatch` and targets `net10.0`. Capture `dotnet --info`: `latestPatch` selects the latest installed patch in the 10.0.3xx feature band, so the executed SDK/runtime cannot be inferred from `global.json` alone.
 - Used Dapr .NET packages are pinned at `1.18.4`; the integration workflow pins runtime `1.18.0`. Preserve and record the tested combination instead of upgrading during closure. `Dapr.Actors.Next` changes hosting, dispatch, and serialization; actor migration is out of scope.
 - Dapr state transactions are atomic only within one transaction request to a store advertising transaction support. ETags opt into optimistic concurrency; omitted ETags are last-write-wins. Do not claim atomicity across separate Dapr calls or stores.
 - Actor turn serialization is per actor ID, not a global delivery-order guarantee. Service invocation can retry, so persisted duplicate/out-of-order and partial-failure evidence remains mandatory.

@@ -147,7 +147,7 @@ Baseline inspected: `322e3193d22295153c74d16baee32a7e74f6d72a` on 2026-07-12. `m
 
 ### Library / Framework Requirements And Latest Technical Notes
 
-- Keep repository-pinned .NET SDK `10.0.301`, target `net10.0`, DAPR .NET SDK `1.18.4`, Aspire `13.4.6`, xUnit v3 `3.2.2`, Shouldly `4.3.0`, and NSubstitute `6.0.0-rc.1`. No package update is required; versions remain centralized.
+- Keep repository-pinned .NET SDK `10.0.302`, target `net10.0`, DAPR .NET SDK `1.18.4`, Aspire `13.4.6`, xUnit v3 `3.2.2`, Shouldly `4.3.0`, and NSubstitute `6.0.0-rc.1`. No package update is required; versions remain centralized.
 - DAPR 1.18 supports per-state `ttlInSeconds` only for stores that support it. The status/archive DAPR stores already send this metadata; keep their TTL and the in-memory fake aligned. [DAPR state TTL documentation](https://docs.dapr.io/developing-applications/building-blocks/state-management/state-store-ttl/)
 - DAPR actor-state TTL requires the `ActorStateTTL` feature and the actor API warns that SDK caches can retain expired state until actor restart/deactivation. The current repo has no `ActorStateTTL` configuration, so use application-visible expiry for idempotency correctness and treat native actor TTL only as optional secondary cleanup. [DAPR actors API, actor-state TTL](https://docs.dapr.io/reference/api/actors_api/)
 - Do not bypass `IActorStateManager` for aggregate actor state and do not introduce `DaprClient.QueryStateAsync`/Redis scans for correlation resolution. Preserve actor atomic staging + `SaveStateAsync` ownership.

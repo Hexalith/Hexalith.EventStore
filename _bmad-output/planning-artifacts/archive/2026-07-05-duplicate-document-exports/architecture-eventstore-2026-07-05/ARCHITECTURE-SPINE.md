@@ -184,7 +184,7 @@ flowchart TD
 
 | Name | Version |
 | --- | --- |
-| .NET SDK | 10.0.301 (`rollForward: latestPatch`) |
+| .NET SDK | 10.0.302 (`rollForward: latestPatch`) |
 | Target framework | net10.0 |
 | Aspire.Hosting | 13.4.6 |
 | Aspire.Hosting.Keycloak / Kubernetes | 13.4.6-preview.1.26319.6 |

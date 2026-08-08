@@ -375,8 +375,8 @@ _All items LOW / non-blocking. Story 2.7 accepted (all AC1–AC7 met; Release bu
   owner: EventStore build/release maintainer
   summary: Land the architecture AD-11 .NET/ASP.NET security baseline before selecting Story 1.20's tested runtime SHA.
   historical_evidence:
-    - `global.json` pinned SDK `10.0.301`;
-    - the installed SDK and host/runtime were `10.0.301` / `10.0.9`;
+    - `global.json` formerly pinned SDK `10.0.299` (pre-baseline seed);
+    - the installed SDK and host/runtime were later observed as `10.0.302` / `10.0.9` before ASP.NET caught up;
     - effective central ASP.NET pins were `10.0.9`.
   closure_evidence:
     - SDK correction `d6c849aaf8f77f967377f72b763bd44b3131a713`, ASP.NET correction `3a43d5e6151ebc51e945bf1b6cecda92fd198a09`, and validation hardening `8c70efb08b1bf2fcd077ad930c5827d1ab1594da` are present in commit `772cdfefa8163704de0f57042af5b0507c1ac771`;
@@ -977,3 +977,11 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-gh-29763400936-fix-release-post-publish-status.md`
   summary: Semantic-release governance job structural contracts do not pin omitted write permissions or forbid token env overrides on the Node fixture steps.
   evidence: Edge-case hunter review — job could gain contents/pull-requests write without failing AssertSemanticReleaseGovernanceJobIsBlocking; outside frozen success-notification scope.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-update-dotnet-sdk-to-10-0-302.md`
+  summary: Scrub remaining predecessor SDK patch tokens from Hexalith.FrontComposer tracked BMAD review `.diff` artifacts.
+  evidence: Split from the SDK 10.0.302 cleanup so the root EventStore leftover pass can ship alone; FrontComposer still has four predecessor SDK patch-token hits in `_bmad-output/implementation-artifacts/.11-17d-group{3,4}-review.diff` under the same 1A/2B/3A-strict policy.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-update-dotnet-sdk-to-10-0-302.md`
+  summary: Scrub remaining predecessor SDK patch tokens from Hexalith.Memories BMAD artifacts, including the below-min I/O matrix rewrite to a non-predecessor.
+  evidence: Split from the SDK 10.0.302 cleanup so the root EventStore leftover pass can ship alone; Memories still has four hits in `spec-run-tests-and-fix-failures.md` and `27-1-access-telemetry-retention-ownership-decision.md` under the same 1A/2B/3A-strict policy.

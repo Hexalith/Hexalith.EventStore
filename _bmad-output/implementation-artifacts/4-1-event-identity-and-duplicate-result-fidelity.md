@@ -126,7 +126,7 @@ Story-creation verification at baseline `322e3193`: the focused command below pa
 
 ### Library / Framework Requirements And Current Technical Notes
 
-- Keep repository-pinned `.NET SDK 10.0.301`, `net10.0`, and DAPR .NET SDK `1.18.4`; no package update is needed. Versions remain centralized—never add a `Version` to a project `PackageReference`.
+- Keep repository-pinned `.NET SDK 10.0.302`, `net10.0`, and DAPR .NET SDK `1.18.4`; no package update is needed. Versions remain centralized—never add a `Version` to a project `PackageReference`.
 - DAPR actor turn-based access serializes calls per actor instance, which is why one `GlobalPositionActor` with id `global` can reserve unique monotonic ranges. This is per-actor serialization and may be a throughput bottleneck; Story 4.6 owns any sharding decision.
 - DAPR allows publish metadata keys such as `cloudevent.id` to override generated CloudEvent attributes and explicitly notes that DAPR does not automatically deduplicate messages. Keep the application-owned stable `MessageId` contract.
 - CloudEvents requires the `(source, id)` pair to identify distinct events and permits a retransmitted duplicate to retain the same id. Do not use the id for ordering or correlation semantics.

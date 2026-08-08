@@ -3,7 +3,7 @@ Linux DESKTOP-VIOG240 6.6.87.2-microsoft-standard-WSL2 #1 SMP PREEMPT_DYNAMIC Th
 .NET SDK:
  Version:           10.0.302
  Commit:            35b593bebf
- Workload version:  10.0.300-manifests.1641d827
+ Workload version:  10.0.302-manifests.1641d827
  MSBuild version:   18.6.11+35b593beb
 
 Runtime Environment:
