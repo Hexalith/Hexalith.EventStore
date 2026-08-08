@@ -309,10 +309,10 @@ public sealed class ApplyMethodResolverTests {
         model.Applied.ShouldBe("EsFixOuter.EsFixDeep.Foo:deep");
     }
 
-    // --- I/O matrix: two candidates, equal depth (a longest-match tie is genuine ambiguity) ---
+    // --- I/O matrix: two candidates share the same suffix key (genuine ambiguity under that key) ---
 
     [Fact]
-    public void TryResolve_TwoCandidatesEqualDepth_Throws() {
+    public void TryResolve_TwoCandidatesSameSuffixKey_Throws() {
         ApplyMethodTable table = ApplyMethodResolver.GetOrBuildTable(typeof(EqualDepthState));
 
         AmbiguousApplyMethodException exception = Should.Throw<AmbiguousApplyMethodException>(
@@ -326,14 +326,14 @@ public sealed class ApplyMethodResolverTests {
     }
 
     [Fact]
-    public void RehydrateState_TwoCandidatesEqualDepth_Throws() {
+    public void RehydrateState_TwoCandidatesSameSuffixKey_Throws() {
         JsonElement events = EventArray("Outer.Foo", """{"Name":"tie"}""");
 
         _ = Should.Throw<AmbiguousApplyMethodException>(() => Rehydrate<EqualDepthState>(events));
     }
 
     [Fact]
-    public void ProjectFromJson_TwoCandidatesEqualDepth_Throws() {
+    public void ProjectFromJson_TwoCandidatesSameSuffixKey_Throws() {
         JsonElement events = EventArray("Outer.Foo", """{"Name":"tie"}""");
         var projection = new EqualDepthProjection();
 

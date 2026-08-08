@@ -3,7 +3,7 @@ title: 'Story 4.3: Deterministic Replay Dispatch And Serialization'
 type: 'bugfix'
 created: '2026-08-07'
 status: 'done'
-review_loop_iteration: 1
+review_loop_iteration: 3
 story_key: '4-3-deterministic-replay-dispatch-and-serialization'
 baseline_commit: 'bb94d93e9b84132cff83a38fba84f25455820d31'
 context:
@@ -17,13 +17,13 @@ context:
 
 **Problem:** Two independent defects let replay silently apply the wrong event or bind an empty one. (1) Both `Apply`-method resolvers key their dispatch dictionaries by **short** type name while the persister stores the **full** name, so the exact-match lookup *always* misses and every replayed event falls through an unanchored `EndsWith` fallback that takes the first match from an unordered dictionary — `Billing.SubOrderCreated` can bind `Apply(OrderCreated)`, nondeterministically across processes, with no diagnostic. (2) Payload binding uses `JsonSerializerOptions.Default` (PascalCase, case-**sensitive**) on the command, project, and pub/sub paths but Web options (case-insensitive) on the rehydrate path; since no `AddJsonOptions` exists anywhere, a normal camelCase API client's command payload binds **zero** properties and yields a default-constructed command that the `?? throw` guard cannot catch.
 
-**Approach:** Collapse the two copy-pasted resolvers into one shared resolver that registers each event type under **both** its full name and its short name, resolves by exact match first, falls back only to a `.`-anchored suffix match, and throws a typed diagnostic when more than one candidate matches. Promote the existing `DomainProcessorStateRehydrator.SerializerOptions` into `Hexalith.EventStore.Contracts` as the single payload-binding options object and route every event/command payload read through it.
+**Approach:** Collapse the two copy-pasted resolvers into one shared resolver that registers each event type under **both** its full name and its short name, resolves by exact match first, then a longest boundary-anchored suffix match where both `.` and `+` are name boundaries (`+` is how `Type.FullName` renders nested types), and throws a typed diagnostic when more than one candidate matches. Promote the existing `DomainProcessorStateRehydrator.SerializerOptions` into `Hexalith.EventStore.Contracts` as the single payload-binding options object and route every event/command payload read through it.
 
 ## Boundaries & Constraints
 
 **Always:**
 
-- Resolution order is: exact full-name key → exact short-name key → `.`-anchored suffix scan. A candidate `k` matches stored name `n` only when `n == k` or `n.EndsWith("." + k, Ordinal)`.
+- Resolution order is: exact full-name key → exact short-name key → longest boundary-anchored suffix scan. A candidate `k` matches stored name `n` only when `n == k` or the character immediately before a trailing `k` in `n` is `.` or `+` (CLR namespace / nested-type boundaries). When multiple keys anchor, the longest key wins; two or more candidates under that winning key (or under an exact key) are an error.
 - Two or more surviving candidates is an error with a typed exception naming the stored event type and every candidate — never a silent pick. Zero candidates keeps each path's **existing** not-found behavior unchanged.
 - Exactly one resolver implementation exists when done. Deleting one copy and leaving the other is a failed implementation.
 - The shared payload options keep `PropertyNameCaseInsensitive = true`. This is a **backward-compatibility requirement**, not style: PascalCase payload bytes are already at rest and must stay readable.
@@ -60,7 +60,7 @@ context:
 | Nested-type stored name | Stored `A.Order+ItemAdded`; state has `Apply(ItemAdded)` | Binds it — `+` is a type-nesting boundary, same as `.` | N/A |
 | Assembly-qualified stored name | Stored `A.ItemAdded, MyAsm, Version=1.0.0.0` | Binds `Apply(ItemAdded)` — assembly qualification stripped before matching | N/A |
 | Two candidates, different depth | Stored `X.B.A.Foo`; state has `Apply(A.Foo)` and `Apply(B.A.Foo)` | Binds `Apply(B.A.Foo)` — longest anchored match wins | N/A |
-| Two candidates, equal depth | Stored `X.A.Foo`; two distinct types both keyed `A.Foo` | Throws | Typed ambiguity exception — a longest-match tie is genuine ambiguity |
+| Two candidates, same suffix key | Stored `Outer.Foo`; state has `Apply(EsFixA.Foo)` and `Apply(EsFixB.Foo)` (same short/suffix key `Foo`) | Throws | Typed ambiguity — two types share the anchored suffix key (distinct equal-length suffix keys cannot both anchor the same stored name) |
 
 </frozen-after-approval>
 
@@ -164,15 +164,27 @@ Net: both writers emit PascalCase today and keep doing so. Readers must therefor
 - `EventStoreAggregateTests.cs:808-825`, `EventStoreProjectionTests.cs:195-211` and `AggregateReplayerTests.cs` stayed byte-identical. Keep that.
 - Mutation-checking new guards before declaring them green (removing the `.` anchor must fail tests; dropping an options argument must fail the guardrail). Keep that practice and report it.
 
+### 2 — 2026-08-08, code-review loop (`frozen Always/Intent alignment`)
+
+**Trigger.** Review found Always and Intent still described only a `.`-anchored suffix with no longest-match rule, while the ratified I/O matrix and `ApplyMethodResolver` already used `.`/`+` boundaries and longest-anchored wins.
+
+**Amended.** Human chose to amend frozen Always and Intent to match the matrix/resolver. Design Notes sketch, equal-depth matrix wording, and related test labels were corrected in the same pass. `AggregateReplayer` now forwards `request.AggregateId` into ambiguity diagnostics.
+
 ## Design Notes
 
 Registration rule — FQN keys are unique by construction, so they always register. A short name registers only while unambiguous; the second type claiming the same short name marks it ambiguous instead of overwriting (today's silent last-writer-wins). Ambiguity is then reported at *resolution* time, not registration time, so an aggregate whose events collide only by short name still works when addressed by full name.
 
 ```csharp
-// resolve order — exact wins, suffix must be '.'-anchored, ties are fatal
-if (byFullName.TryGetValue(name, out MethodInfo? exact)) { return exact; }
-if (byShortName.TryGetValue(name, out MethodInfo? shortHit)) { return shortHit; }   // null => ambiguous
-List<string> candidates = [.. byFullName.Keys.Where(k => name.EndsWith('.' + k, StringComparison.Ordinal))];
+// resolve order — exact FQN → exact short → longest boundary-anchored suffix ('.' or '+')
+// SuffixKeys is ordered longest-first; the first anchored hit is the unique longest match.
+// Multi-candidate sets under that key (or under an exact key) throw AmbiguousApplyMethodException.
+if (byFullName.TryGetValue(name, out ApplyMethodCandidates? exact)) { return Single(exact); }
+if (byShortName.TryGetValue(name, out ApplyMethodCandidates? shortHit)) { return Single(shortHit); }
+foreach (string key in suffixKeysLongestFirst) {
+    if (IsBoundaryAnchoredSuffix(name, key)) {   // preceding char is '.' or '+'
+        return Single(GetSuffixCandidates(key));
+    }
+}
 ```
 
 Readers only widen — case-insensitive accepts both casings — so no sequencing hazard exists and no persisted or wire byte changes. That is the whole reason the writers stay untouched.
@@ -263,3 +275,12 @@ Run test projects individually — never solution-level `dotnet test`. `--filter
 
 - Resolution order and operator remediation, replacing the stale "EndsWith / exact" claim.
   [`event-versioning.md:137`](../../docs/concepts/event-versioning.md#L137)
+
+### Review Findings
+
+- [x] [Review][Patch] Amend frozen Always/Intent to match ratified matrix (`.`/`+` boundaries + longest-anchored wins) [`_bmad-output/implementation-artifacts/spec-4-3-deterministic-replay-dispatch-and-serialization.md`] — decided: amend
+- [x] [Review][Patch] Replay ambiguity resolve omits AggregateId [`src/Hexalith.EventStore.Client/Aggregates/AggregateReplayer.cs:125`]
+- [x] [Review][Patch] Design Notes resolve sketch still shows `.`-only EndsWith with no longest-key selection [`_bmad-output/implementation-artifacts/spec-4-3-deterministic-replay-dispatch-and-serialization.md:171`]
+- [x] [Review][Patch] Equal-depth matrix row / test label claim a longest-match length tie that the resolver asserts is unreachable; coverage is short-name/suffix-key ambiguity under `Foo` [`tests/Hexalith.EventStore.Client.Tests/Aggregates/ApplyMethodResolverTests.cs:312`]
+- [x] [Review][Patch] PayloadSerializationConsistencyTests section still says “all four reader paths” while the guardrail treats AggregateReplayer as a fifth [`tests/Hexalith.EventStore.Client.Tests/Serialization/PayloadSerializationConsistencyTests.cs`]
+- [x] [Review][Defer] Typed rehydrate MissingApplyMethodException uses short CLR name [`src/Hexalith.EventStore.Client/Handlers/DomainProcessorStateRehydrator.cs:192`] — deferred, pre-existing

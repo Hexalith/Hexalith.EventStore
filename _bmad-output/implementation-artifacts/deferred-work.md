@@ -865,6 +865,12 @@ status: open
   summary: [LOW] `AssemblyScanner` falls back to `GetTypes()` when `GetExportedTypes()` throws, weakening the "internal fixtures cannot leak into discovery tests" assumption.
   evidence: `src/Hexalith.EventStore.Client/Discovery/AssemblyScanner.cs:187` falls back to `GetTypes()` on failure, which returns non-exported types. Test fixtures declared `internal` specifically to stay invisible to assembly-wide discovery tests would become visible on that path. Pre-existing scanner behaviour, not introduced by Story 4.3.
 
+## Deferred from: code review of story-4.3 (2026-08-08)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-3-deterministic-replay-dispatch-and-serialization.md`
+  summary: [LOW] Typed-instance rehydrate path builds `MissingApplyMethodException` with `evt.GetType().Name` instead of the CLR full name.
+  evidence: `DomainProcessorStateRehydrator.cs:192-194` — on the runtime-instance path a cross-namespace near-miss reports the colliding short name. Pre-existing diagnostic shape on this path; Story 4.3 did not own MissingApplyMethodException message fidelity for typed instances. Envelope path already passes the stored full name.
+
 ## Deferred from: code review of 4-4-committed-event-publication-recovery (2026-08-07)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-4-committed-event-publication-recovery.md`

@@ -20,9 +20,10 @@ using Shouldly;
 namespace Hexalith.EventStore.Client.Tests.Serialization;
 
 /// <summary>
-/// Story 4.3: the command, rehydrate, projection and pub/sub payload readers must share one serializer
-/// options definition. Two guarantees are tested: behaviour (camelCase and PascalCase both bind on all
-/// four paths) and a source guardrail that fails if any reader stops naming the shared instance.
+/// Story 4.3: the command, rehydrate, projection, pub/sub, and replay payload readers must share one
+/// serializer options definition. Two guarantees are tested: behaviour (camelCase and PascalCase both
+/// bind on the acceptance paths) and a source guardrail that fails if any of the five readers stops
+/// naming the shared instance.
 /// </summary>
 public sealed class PayloadSerializationConsistencyTests {
     /// <summary>
@@ -53,7 +54,8 @@ public sealed class PayloadSerializationConsistencyTests {
 
     private const string PascalCaseInlineProperties = "\"Name\":\"pascal\",\"Quantity\":9";
 
-    // --- Behaviour: both casings bind on all four reader paths ---
+    // --- Behaviour: both casings bind on the acceptance reader paths (command/rehydrate/project/pubsub);
+    //     AggregateReplayer is covered by the five-path source guardrail below ---
 
     [Theory]
     [InlineData(CamelCasePayload, "camel", 7)]

@@ -81,7 +81,10 @@ internal sealed class DepthState {
 
 internal sealed class DepthProjection : EventStoreProjection<DepthState>;
 
-/// <summary>State whose two candidates can only ever match a stored name at the same depth.</summary>
+/// <summary>
+/// State whose two <c>Foo</c> Apply overloads share one short/suffix key, so an anchored hit on
+/// <c>Outer.Foo</c> is genuine multi-candidate ambiguity (not a longest-key length tie).
+/// </summary>
 internal sealed class EqualDepthState {
     public string? Applied { get; private set; }
 

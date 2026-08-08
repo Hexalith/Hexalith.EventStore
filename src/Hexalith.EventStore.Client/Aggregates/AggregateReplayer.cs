@@ -122,7 +122,11 @@ public static class AggregateReplayer {
 
             MethodInfo? applyMethod;
             try {
-                applyMethod = ApplyMethodResolver.TryResolve(applyMethods, evt.EventTypeName, evt.MessageId);
+                applyMethod = ApplyMethodResolver.TryResolve(
+                    applyMethods,
+                    evt.EventTypeName,
+                    evt.MessageId,
+                    request.AggregateId);
             }
             catch (AmbiguousApplyMethodException ex) {
                 // Replay returns a categorized result by contract. Letting the ambiguity escape would turn a
