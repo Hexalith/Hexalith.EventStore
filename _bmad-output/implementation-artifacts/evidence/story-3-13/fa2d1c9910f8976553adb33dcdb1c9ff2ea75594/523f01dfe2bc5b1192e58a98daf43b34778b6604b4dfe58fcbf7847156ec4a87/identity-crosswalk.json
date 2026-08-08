@@ -516,13 +516,14 @@
       "test-architect"
     ],
     "required_receipt_fields": [
-      "role",
-      "reviewer_identity",
       "accepted_at",
-      "durable_source",
-      "accepted_scope",
       "accepted_limitations",
+      "accepted_scope",
       "decision",
+      "durable_source",
+      "reviewer_identity",
+      "role",
+      "schema",
       "subject_sha256"
     ],
     "receipt_count": 0,

@@ -411,6 +411,10 @@ public sealed class DeployedRuntimeParityClosureTests
         ValueIsSupportSafe("fec0::1").ShouldBeFalse();
         ValueIsSupportSafe("https://[fd00::1]/status").ShouldBeFalse();
         ValueIsSupportSafe("2606:4700:4700::1111").ShouldBeTrue();
+        ValueIsSupportSafe("0.0.0.0").ShouldBeFalse();
+        ValueIsSupportSafe("::").ShouldBeFalse();
+        ValueIsSupportSafe("http://0.0.0.0/alive").ShouldBeFalse();
+        ValueIsSupportSafe("https://[::]/status").ShouldBeFalse();
         ValueIsSupportSafe("10.0.0.1").ShouldBeFalse();
         ValueIsSupportSafe("100.64.0.1").ShouldBeFalse();
         ValueIsSupportSafe("100.127.255.254").ShouldBeFalse();
@@ -900,6 +904,7 @@ public sealed class DeployedRuntimeParityClosureTests
     [Theory]
     [InlineData("extra-archive")]
     [InlineData("mutated-bytes")]
+    [InlineData("sidecar-file")]
     public void PackageArchiveDirectoryRejectsExtraOrMutatedNupkg(string mutation)
     {
         string root = FindRepositoryRoot();
@@ -911,6 +916,10 @@ public sealed class DeployedRuntimeParityClosureTests
             if (mutation == "extra-archive")
             {
                 File.WriteAllText(Path.Combine(archiveRoot, "undeclared.999.1.20-proof.fa2d1c9910f8.nupkg"), "x");
+            }
+            else if (mutation == "sidecar-file")
+            {
+                File.WriteAllText(Path.Combine(archiveRoot, "README.txt"), "sidecar");
             }
             else
             {
@@ -943,6 +952,7 @@ public sealed class DeployedRuntimeParityClosureTests
     [InlineData("status-200")]
     [InlineData("empty-statuses")]
     [InlineData("absolute-root")]
+    [InlineData("dotdot-root")]
     public void PackageAvailabilityRejectsNugetOrgMutations(string mutation)
     {
         string root = FindRepositoryRoot();
@@ -965,6 +975,9 @@ public sealed class DeployedRuntimeParityClosureTests
                     break;
                 case "absolute-root":
                     report["local_search_roots"] = new JsonArray("/tmp", "relative-ok");
+                    break;
+                case "dotdot-root":
+                    report["local_search_roots"] = new JsonArray("../escape", "relative-ok");
                     break;
                 case "status-200":
                     foreach (KeyValuePair<string, JsonNode?> property in
@@ -1455,6 +1468,13 @@ public sealed class DeployedRuntimeParityClosureTests
                 root,
                 "references/Hexalith.Builds/Github/publish-containers/publication_preflight.py")
             .ShouldNotBe(ExpectedOciValidatorSha256);
+
+        // A constant path→hash map that ignores the pinned Builds revision would still return
+        // ExpectedSmokeToolSha256 here; requiring InvalidDataException forces a real git lookup.
+        Should.Throw<InvalidDataException>(() => ComputePinnedBuildsToolSha256(
+            root,
+            ExpectedSmokeToolPath,
+            new string('0', 40)));
     }
 
     /// <summary>
@@ -1933,6 +1953,7 @@ public sealed class DeployedRuntimeParityClosureTests
             or NullReferenceException
             or ArgumentOutOfRangeException
             or ArgumentException
+            or OverflowException
             or FormatException
             or InvalidDataException
             or JsonException
@@ -2016,6 +2037,7 @@ public sealed class DeployedRuntimeParityClosureTests
             exception is InvalidOperationException
             or NullReferenceException
             or ArgumentException
+            or OverflowException
             or InvalidDataException
             or JsonException
             or IOException
@@ -2042,10 +2064,14 @@ public sealed class DeployedRuntimeParityClosureTests
             JsonObject[] items = packages["items"]!.AsArray().Select(item => item!.AsObject()).ToArray();
             string[] expectedArchives = items.Select(item => item["archive"]!.GetValue<string>())
                 .Order(StringComparer.Ordinal).ToArray();
-            string[] actualArchives = Directory.GetFiles(archiveRoot, "*.nupkg", SearchOption.TopDirectoryOnly)
-                .Select(Path.GetFileName).Order(StringComparer.Ordinal).ToArray()!;
+            string[] actualTopLevelFiles = Directory.GetFiles(archiveRoot, "*", SearchOption.TopDirectoryOnly)
+                .Select(Path.GetFileName)
+                .Where(name => name is not null)
+                .Cast<string>()
+                .Order(StringComparer.Ordinal)
+                .ToArray();
             return items.Length == 14
-                && actualArchives.SequenceEqual(expectedArchives, StringComparer.Ordinal)
+                && actualTopLevelFiles.SequenceEqual(expectedArchives, StringComparer.Ordinal)
                 && items.All(item =>
             {
                 string archive = item["archive"]!.GetValue<string>();
@@ -2059,6 +2085,7 @@ public sealed class DeployedRuntimeParityClosureTests
             exception is InvalidOperationException
             or NullReferenceException
             or ArgumentException
+            or OverflowException
             or InvalidDataException
             or JsonException
             or IOException
@@ -2186,6 +2213,7 @@ public sealed class DeployedRuntimeParityClosureTests
             exception is InvalidOperationException
             or NullReferenceException
             or ArgumentException
+            or OverflowException
             or InvalidDataException
             or JsonException
             or IOException
@@ -2349,6 +2377,7 @@ public sealed class DeployedRuntimeParityClosureTests
             exception is InvalidOperationException
             or NullReferenceException
             or ArgumentException
+            or OverflowException
             or FormatException
             or InvalidDataException
             or JsonException
@@ -2613,6 +2642,7 @@ public sealed class DeployedRuntimeParityClosureTests
             exception is InvalidOperationException
             or NullReferenceException
             or ArgumentException
+            or OverflowException
             or InvalidDataException
             or JsonException
             or IOException
@@ -2707,6 +2737,7 @@ public sealed class DeployedRuntimeParityClosureTests
             exception is InvalidOperationException
             or NullReferenceException
             or ArgumentException
+            or OverflowException
             or InvalidDataException
             or JsonException
             or IOException
@@ -2892,6 +2923,7 @@ public sealed class DeployedRuntimeParityClosureTests
             exception is InvalidOperationException
             or NullReferenceException
             or ArgumentException
+            or OverflowException
             or InvalidDataException
             or JsonException
             or IOException
@@ -3064,6 +3096,7 @@ public sealed class DeployedRuntimeParityClosureTests
             exception is InvalidOperationException
             or NullReferenceException
             or ArgumentException
+            or OverflowException
             or InvalidDataException
             or JsonException
             or IOException
@@ -3287,6 +3320,7 @@ public sealed class DeployedRuntimeParityClosureTests
             exception is InvalidOperationException
             or NullReferenceException
             or ArgumentException
+            or OverflowException
             or FormatException
             or InvalidDataException
             or JsonException
@@ -3455,6 +3489,7 @@ public sealed class DeployedRuntimeParityClosureTests
             exception is InvalidOperationException
             or NullReferenceException
             or ArgumentException
+            or OverflowException
             or InvalidDataException
             or JsonException
             or IOException
@@ -3805,7 +3840,8 @@ public sealed class DeployedRuntimeParityClosureTests
                         rootNode is JsonValue rootValue
                         && rootValue.TryGetValue(out string? searchRoot)
                         && !string.IsNullOrWhiteSpace(searchRoot)
-                        && !Path.IsPathRooted(searchRoot))
+                        && !Path.IsPathRooted(searchRoot)
+                        && !searchRoot.Contains("..", StringComparison.Ordinal))
                     && !string.IsNullOrWhiteSpace(report["blocker"]!.GetValue<string>())
                     && !string.IsNullOrWhiteSpace(report["reopen_trigger"]!.GetValue<string>())
                     && ValidateNugetOrgAvailability(
@@ -3834,6 +3870,7 @@ public sealed class DeployedRuntimeParityClosureTests
             exception is InvalidOperationException
             or NullReferenceException
             or ArgumentException
+            or OverflowException
             or InvalidDataException
             or JsonException
             or IOException
@@ -5075,12 +5112,23 @@ public sealed class DeployedRuntimeParityClosureTests
 
     // The pinned Builds revision is historical, so the tool bytes are read from the submodule
     // object store rather than the live worktree, which tracks a different gitlink.
-    private static string ComputePinnedBuildsToolSha256(string repositoryRoot, string toolPath)
+    private static string ComputePinnedBuildsToolSha256(string repositoryRoot, string toolPath) =>
+        ComputePinnedBuildsToolSha256(repositoryRoot, toolPath, ExpectedBuildsSha);
+
+    private static string ComputePinnedBuildsToolSha256(
+        string repositoryRoot,
+        string toolPath,
+        string buildsSha)
     {
         const string buildsPrefix = "references/Hexalith.Builds/";
         if (!toolPath.StartsWith(buildsPrefix, StringComparison.Ordinal))
         {
             throw new InvalidDataException("Shared tool path is outside the Builds submodule.");
+        }
+
+        if (string.IsNullOrWhiteSpace(buildsSha) || buildsSha.Length != 40)
+        {
+            throw new InvalidDataException("Shared Builds tool verification requires a 40-character Builds SHA.");
         }
 
         using Process process = new()
@@ -5094,7 +5142,7 @@ public sealed class DeployedRuntimeParityClosureTests
             },
         };
         process.StartInfo.ArgumentList.Add("show");
-        process.StartInfo.ArgumentList.Add(ExpectedBuildsSha + ":" + toolPath[buildsPrefix.Length..]);
+        process.StartInfo.ArgumentList.Add(buildsSha + ":" + toolPath[buildsPrefix.Length..]);
         try
         {
             process.Start();
@@ -5147,7 +5195,9 @@ public sealed class DeployedRuntimeParityClosureTests
             // Best-effort cleanup after a forced kill.
         }
 
-        return false;
+        // If the process exited during the kill/wait window, treat the work as completed so a
+        // successful late exit is not misreported as a timeout failure.
+        return process.HasExited;
     }
 
     private static string FindRepositoryRoot()

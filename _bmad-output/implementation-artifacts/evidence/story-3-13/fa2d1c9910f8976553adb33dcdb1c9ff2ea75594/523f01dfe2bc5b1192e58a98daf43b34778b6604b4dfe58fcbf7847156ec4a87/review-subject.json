@@ -1,10 +1,10 @@
 {
   "schema": "hexalith.eventstore.story-3-13-review-subject/v2",
-  "created_at": "2026-08-08T14:34:38Z",
+  "created_at": "2026-08-08T14:54:10Z",
   "proposed_decision": "fail-closed",
   "identity_crosswalk": {
     "path": "identity-crosswalk.json",
-    "sha256": "b078cf82946594d91e382270f9ce5b6a36b6331ca1e4728203fe208b25f5d36b"
+    "sha256": "48a0722f0905ca0d98125ede96a760a91685ed76b4d19754c676857239432fec"
   },
   "evidence_core_manifest": {
     "path": "evidence-core-sha256.txt",
