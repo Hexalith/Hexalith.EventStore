@@ -99,6 +99,8 @@ Configuration section: `EventStore:Drain`
 | `InitialDrainDelay` | TimeSpan | `00:00:30` | Delay before the first drain attempt after a publish failure |
 | `DrainPeriod` | TimeSpan | `00:01:00` | Base recurring retry interval |
 | `MaxDrainPeriod` | TimeSpan | `00:30:00` | Upper bound for retry intervals (prevents infinite backoff growth) |
+| `MaxDrainAttempts` | int | `8` | Drain attempts allowed for one committed range before its events are dead-lettered. Checked before each publish attempt |
+| `MaxOutstandingPublicationEntries` | int | derived | Maximum committed-but-unpublished commands tracked per aggregate for crash recovery. Any non-positive value derives from `EventStore:Backpressure:MaxPendingCommandsPerAggregate`, floored at `1`. See the operator note below |
 
 ```json
 {
@@ -106,11 +108,34 @@ Configuration section: `EventStore:Drain`
     "Drain": {
       "InitialDrainDelay": "00:00:15",
       "DrainPeriod": "00:02:00",
-      "MaxDrainPeriod": "01:00:00"
+      "MaxDrainPeriod": "01:00:00",
+      "MaxDrainAttempts": 8,
+      "MaxOutstandingPublicationEntries": 0
     }
   }
 }
 ```
+
+#### Operator note: `MaxOutstandingPublicationEntries` can reject commands
+
+This bound is enforced fail-closed. When an aggregate already tracks the maximum number of
+committed-but-unpublished commands, the next command is **rejected before its events are
+committed**, because committing a range that cannot be recorded for recovery would recreate the
+crash window the index exists to close. Two consequences are easy to misread:
+
+- **The floor is `1`, not the configured value.** Normalization derives the bound from
+  `EventStore:Backpressure:MaxPendingCommandsPerAggregate` for any non-positive value, then applies
+  `Math.Max(1, …)`. If that backpressure ceiling is itself zero, negative, or unset, the effective
+  bound becomes `1` — so a single outstanding unpublished command on an aggregate rejects the next
+  one. If commands are being rejected on a near-idle aggregate, check the backpressure ceiling
+  before anything else.
+- **The rejection reports `BackpressureExceeded`, and the pending count will not explain it.**
+  The pending-command counter and this index are separate: the backpressure read deliberately fails
+  open to zero when its state read throws, so an operator can see a pending count far below
+  `MaxPendingCommandsPerAggregate` alongside a `BackpressureExceeded` rejection. The count is not
+  the number that caused the rejection — the index's outstanding entry count is. A rejection whose
+  cause is a malformed index entry rather than capacity is reported separately as
+  `PublicationIndexEntryInvalid`.
 
 ### Snapshots
 
@@ -677,6 +702,8 @@ This table lists every configurable setting for quick scanning, including explic
 | `EventStore:Drain:InitialDrainDelay` | TimeSpan | `00:00:30` | TimeSpan `>= 00:00:00` | Application |
 | `EventStore:Drain:DrainPeriod` | TimeSpan | `00:01:00` | TimeSpan `> 00:00:00` | Application |
 | `EventStore:Drain:MaxDrainPeriod` | TimeSpan | `00:30:00` | TimeSpan `>= DrainPeriod` | Application |
+| `EventStore:Drain:MaxDrainAttempts` | int | `8` | Integer `> 0` (non-positive falls back to `8`) | Application |
+| `EventStore:Drain:MaxOutstandingPublicationEntries` | int | `0` (derive) | Integer `> 0`; ANY non-positive value derives from `EventStore:Backpressure:MaxPendingCommandsPerAggregate`, floored at `1` | Application |
 | `EventStore:Snapshots:DefaultInterval` | int | `100` | Integer `>= 10` | Application |
 | `EventStore:Snapshots:DomainIntervals:{name}` | int | — | Integer `>= 10` | Application |
 | `EventStore:CommandStatus:TtlSeconds` | int | `86400` | Integer `> 0` | Application |

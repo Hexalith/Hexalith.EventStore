@@ -61,6 +61,11 @@ Do not reintroduce a `Category!=LiveSidecar` filter to make `Server.Tests`
 deterministic. Live-sidecar coverage belongs in the live-sidecar project and
 workflow so the deterministic release gate can remain unfiltered.
 
+Story 4.5's append-durability race and generic ETag control remain in this
+dedicated LiveSidecar lane. Their hash-bound capture is an architecture evidence
+artifact, not a reason to add the project to `unit-test-projects` or the release
+workflow. See the [Story 4.5 evidence report](../_bmad-output/implementation-artifacts/4-5-append-durability-race-evidence.md).
+
 ## Package Validation
 
 Shared `domain-ci.yml@main` calls these EventStore entry points when

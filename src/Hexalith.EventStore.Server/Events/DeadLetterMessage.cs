@@ -1,5 +1,7 @@
 
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Identity;
+using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Diagnostics;
 
 namespace Hexalith.EventStore.Server.Events;
@@ -20,6 +22,17 @@ namespace Hexalith.EventStore.Server.Events;
 /// <param name="CommandType">The fully qualified command type name.</param>
 /// <param name="FailedAt">Timestamp when the failure occurred.</param>
 /// <param name="EventCountAtFailure">Number of events at the time of failure (if applicable).</param>
+/// <param name="ReplayEligible">
+/// Whether <see cref="Command"/> is a faithful, replayable copy of the original command.
+/// Infrastructure dead-letters carry the original envelope and stay replay-eligible; the Story 4.4
+/// drain-exhaustion sink carries a reduced, reconstructed envelope with no original payload and is
+/// therefore explicitly marked <c>false</c>. Trailing-optional so older persisted or in-flight
+/// messages still deserialize as replay-eligible.
+/// </param>
+/// <param name="ReasonCode">The stable bounded reason code, or <c>null</c> for legacy messages.</param>
+/// <param name="StartSequence">The first persisted sequence of the affected range, when known.</param>
+/// <param name="EndSequence">The last persisted sequence of the affected range, when known.</param>
+/// <param name="DrainAttempts">The number of drain attempts made before exhaustion, when applicable.</param>
 public record DeadLetterMessage(
     CommandEnvelope Command,
     string FailureStage,
@@ -32,7 +45,18 @@ public record DeadLetterMessage(
     string AggregateId,
     string CommandType,
     DateTimeOffset FailedAt,
-    int? EventCountAtFailure) {
+    int? EventCountAtFailure,
+    bool ReplayEligible = true,
+    string? ReasonCode = null,
+    long? StartSequence = null,
+    long? EndSequence = null,
+    int? DrainAttempts = null) {
+    /// <summary>
+    /// The payload placeholder carried by a reduced envelope. A drain-exhaustion dead-letter never
+    /// has the original command bytes, so the envelope is empty and not replay-eligible.
+    /// </summary>
+    private static readonly byte[] _reducedPayload = [];
+
     /// <summary>
     /// Creates a DeadLetterMessage from an exception and command context.
     /// Uses outer exception type (not inner) per convention.
@@ -63,5 +87,61 @@ public record DeadLetterMessage(
             CommandType: command.CommandType,
             FailedAt: DateTimeOffset.UtcNow,
             EventCountAtFailure: eventCount);
+    }
+
+    /// <summary>
+    /// Story 4.4: creates the exhaustion-sink message for a committed range whose bounded drain
+    /// budget ran out. The original command envelope is no longer available at drain time, so the
+    /// message carries a <em>reduced</em> envelope reconstructed from the drain record: it has an
+    /// empty payload, no user identity, and is explicitly marked not replay-eligible so no consumer
+    /// mistakes it for a replayable command.
+    /// </summary>
+    /// <param name="identity">The aggregate identity that owns the committed range.</param>
+    /// <param name="record">The exhausted drain record.</param>
+    /// <param name="trackingId">The drain tracking identifier the reminder fired with.</param>
+    /// <param name="drainAttempts">The number of attempts made before exhaustion.</param>
+    /// <returns>A reduced, non-replay-eligible dead-letter message.</returns>
+    public static DeadLetterMessage FromDrainExhaustion(
+        AggregateIdentity identity,
+        UnpublishedEventsRecord record,
+        string trackingId,
+        int drainAttempts) {
+        ArgumentNullException.ThrowIfNull(identity);
+        ArgumentNullException.ThrowIfNull(record);
+        ArgumentException.ThrowIfNullOrWhiteSpace(trackingId);
+
+        // Fall back to the tracking id when the record predates message-keyed drain records.
+        string messageId = record.GetTrackingIdentity(trackingId);
+
+        var reducedCommand = new CommandEnvelope(
+            MessageId: messageId,
+            TenantId: identity.TenantId,
+            Domain: identity.Domain,
+            AggregateId: identity.AggregateId,
+            CommandType: record.CommandType,
+            Payload: _reducedPayload,
+            CorrelationId: record.CorrelationId,
+            CausationId: null,
+            UserId: "system",
+            Extensions: null);
+
+        return new DeadLetterMessage(
+            Command: reducedCommand,
+            FailureStage: CommandStatus.PublishFailed.ToString(),
+            ExceptionType: nameof(DrainPublishException),
+            ErrorMessage: $"Drain attempts exhausted after {drainAttempts} attempt(s); committed events were never published.",
+            CorrelationId: record.CorrelationId,
+            CausationId: null,
+            TenantId: identity.TenantId,
+            Domain: identity.Domain,
+            AggregateId: identity.AggregateId,
+            CommandType: record.CommandType,
+            FailedAt: DateTimeOffset.UtcNow,
+            EventCountAtFailure: record.EventCount,
+            ReplayEligible: false,
+            ReasonCode: DrainReasonCodes.AttemptsExhausted,
+            StartSequence: record.StartSequence,
+            EndSequence: record.EndSequence,
+            DrainAttempts: drainAttempts);
     }
 }

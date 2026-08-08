@@ -472,6 +472,96 @@ public class CommandStatusControllerTests {
         };
     }
 
+    // --- Story 4.4: recovery fields must reach the poll endpoint ---
+
+    [Fact]
+    public async Task GetStatus_ExhaustedPublication_SurfacesNonRetryableRecoveryFields() {
+        const string messageId = "01MESSAGEEXHAUSTED0000000001";
+        const string correlationId = "01CORRELATIONEXHAUSTED000001";
+        var store = new InMemoryCommandStatusStore();
+        await store.WriteStatusAsync(
+            "tenant-a",
+            messageId,
+            new CommandStatusRecord(
+                CommandStatus.PublishFailed,
+                DateTimeOffset.UtcNow,
+                "agg-1",
+                2,
+                null,
+                "drain_attempts_exhausted",
+                null,
+                messageId,
+                correlationId,
+                Retryable: false,
+                RecoveryReasonCode: "drain_attempts_exhausted",
+                DrainAttemptCount: 8),
+            CancellationToken.None);
+        var controller = CreateController(store, new InMemoryCommandCorrelationIndex(), "tenant-a");
+
+        IActionResult result = await controller.GetStatus(messageId, CancellationToken.None);
+
+        CommandStatusResponse response = result.ShouldBeOfType<OkObjectResult>()
+            .Value.ShouldBeOfType<CommandStatusResponse>();
+        response.Retryable.ShouldBe(false);
+        response.RecoveryReasonCode.ShouldBe("drain_attempts_exhausted");
+        response.DrainAttemptCount.ShouldBe(8);
+    }
+
+    [Fact]
+    public async Task GetStatus_ArmedDrain_SurfacesRetryableRecoveryFields() {
+        const string messageId = "01MESSAGEARMEDDRAIN000000001";
+        const string correlationId = "01CORRELATIONARMEDDRAIN00001";
+        var store = new InMemoryCommandStatusStore();
+        await store.WriteStatusAsync(
+            "tenant-a",
+            messageId,
+            new CommandStatusRecord(
+                CommandStatus.PublishFailed,
+                DateTimeOffset.UtcNow,
+                "agg-1",
+                2,
+                null,
+                "drain_publish_failed",
+                null,
+                messageId,
+                correlationId,
+                Retryable: true,
+                RecoveryReasonCode: "drain_publish_failed",
+                DrainAttemptCount: 3),
+            CancellationToken.None);
+        var controller = CreateController(store, new InMemoryCommandCorrelationIndex(), "tenant-a");
+
+        IActionResult result = await controller.GetStatus(messageId, CancellationToken.None);
+
+        CommandStatusResponse response = result.ShouldBeOfType<OkObjectResult>()
+            .Value.ShouldBeOfType<CommandStatusResponse>();
+        response.Retryable.ShouldBe(true);
+        response.RecoveryReasonCode.ShouldBe("drain_publish_failed");
+        response.DrainAttemptCount.ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task GetStatus_LegacyRecordWithoutRecoveryFields_KeepsRetryableNullRatherThanFalse() {
+        // null is "written before the field existed", never "permanently failed".
+        const string messageId = "01MESSAGELEGACYRECOVERY00001";
+        var store = new InMemoryCommandStatusStore();
+        await store.WriteStatusAsync(
+            "tenant-a",
+            messageId,
+            new CommandStatusRecord(
+                CommandStatus.Completed, DateTimeOffset.UtcNow, "agg-1", 1, null, null, null, messageId, messageId),
+            CancellationToken.None);
+        var controller = CreateController(store, new InMemoryCommandCorrelationIndex(), "tenant-a");
+
+        IActionResult result = await controller.GetStatus(messageId, CancellationToken.None);
+
+        CommandStatusResponse response = result.ShouldBeOfType<OkObjectResult>()
+            .Value.ShouldBeOfType<CommandStatusResponse>();
+        response.Retryable.ShouldBeNull();
+        response.RecoveryReasonCode.ShouldBeNull();
+        response.DrainAttemptCount.ShouldBeNull();
+    }
+
     private static CommandStatusController CreateController(
         ICommandStatusStore store,
         ICommandCorrelationIndex index,

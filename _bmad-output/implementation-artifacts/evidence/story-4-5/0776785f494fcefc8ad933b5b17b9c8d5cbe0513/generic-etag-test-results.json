@@ -1,0 +1,75 @@
+{
+  "reportFormat": "CTRF",
+  "specVersion": "0.0.0",
+  "reportId": "d7193b99-8d2f-49cc-a0ca-8e59020b85f6",
+  "timestamp": "2026-08-08T08:50:36Z",
+  "results": {
+    "tool": {
+      "name": "xUnit.net v3",
+      "version": "3.2.2+728c1dce01"
+    },
+    "environment": {
+      "osPlatform": "Linux",
+      "osRelease": "Ubuntu 26.04 LTS"
+    },
+    "extra": {
+      "computer": "<redacted-machine>",
+      "user": "<redacted-machine-user>",
+      "suites": [
+        {
+          "id": "67097239-4023-44ad-b779-0a58bc70de57",
+          "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+          "environment": "64-bit (x64) .NET 10.0.10 [collection-per-class, non-parallel]",
+          "testFramework": "xUnit.net v3 3.2.2+728c1dce01",
+          "targetFramework": ".NETCoreApp,Version=v10.0",
+          "start": 1786179036278,
+          "stop": 1786179036493,
+          "duration": 3702,
+          "collections": [
+            {
+              "id": "163a7525-bf0d-49d2-bdfb-11981185e8db",
+              "name": "DaprTestContainer"
+            }
+          ],
+          "errors": []
+        }
+      ]
+    },
+    "summary": {
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "pending": 0,
+      "skipped": 0,
+      "other": 0,
+      "suites": 1,
+      "start": 1786179036278,
+      "stop": 1786179036493
+    },
+    "tests": [
+      {
+        "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.ActorConcurrencyConflictTests.MetadataKey_StaleEtagUpdate_IsRejected",
+        "status": "passed",
+        "duration": 99,
+        "suite": "67097239-4023-44ad-b779-0a58bc70de57",
+        "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/ActorConcurrencyConflictTests.cs",
+        "line": 129,
+        "tags": [
+          "LiveSidecar"
+        ],
+        "extra": {
+          "id": "dafa4ff2-1722-456b-9e6f-7481eb5924d2",
+          "collection": "163a7525-bf0d-49d2-bdfb-11981185e8db",
+          "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.ActorConcurrencyConflictTests",
+          "method": "MetadataKey_StaleEtagUpdate_IsRejected",
+          "output": "{\n  \"schemaVersion\": 1,\n  \"baselineCommit\": \"0776785f494fcefc8ad933b5b17b9c8d5cbe0513\",\n  \"key\": \"story-4-5-generic-etag-4595aaeae49e473bbb01a0800245ae48\",\n  \"seedStatus\": 204,\n  \"original\": {\n    \"etag\": \"1\",\n    \"value\": {\n      \"writer\": \"seed\",\n      \"version\": 0\n    }\n  },\n  \"interveningUpdate\": {\n    \"status\": 204,\n    \"etag\": \"2\",\n    \"value\": {\n      \"writer\": \"first\",\n      \"version\": 1\n    },\n    \"etagAdvanced\": true\n  },\n  \"staleReplay\": {\n    \"suppliedEtag\": \"1\",\n    \"status\": 409,\n    \"responseBody\": \"{\\u0022errorCode\\u0022:\\u0022ERR_STATE_SAVE\\u0022,\\u0022message\\u0022:\\u0022failed saving state in state store statestore: possible etag mismatch. error from state store: ERR Error running script (call to f_d908b9553add63a82e03589b5c6d01a7654ef0f2): @user_script:14: user_script:14: failed to set key eventstore-live-6a07d006eb7b4430a2b1f7091c92289e||story-4-5-generic-etag-4595aaeae49e473bbb01a0800245ae48\\u0022}\",\n    \"errorCode\": \"ERR_STATE_SAVE\",\n    \"errorMessage\": \"failed saving state in state store statestore: possible etag mismatch. error from state store: ERR Error running script (call to f_d908b9553add63a82e03589b5c6d01a7654ef0f2): @user_script:14: user_script:14: failed to set key eventstore-live-6a07d006eb7b4430a2b1f7091c92289e||story-4-5-generic-etag-4595aaeae49e473bbb01a0800245ae48\",\n    \"parseError\": null\n  },\n  \"redisRetainedValue\": {\n    \"writer\": \"first\",\n    \"version\": 1\n  },\n  \"retainedValueMatchesExpected\": true,\n  \"retainedReadExceptionType\": null,\n  \"retainedReadExceptionMessage\": null\n}\n",
+          "traits": {
+            "Category": [
+              "LiveSidecar"
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

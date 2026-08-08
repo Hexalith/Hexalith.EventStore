@@ -1,4 +1,6 @@
 
+using System.Text.Json;
+
 using Hexalith.EventStore.Contracts.Commands;
 
 namespace Hexalith.EventStore.Contracts.Tests.Commands;
@@ -88,5 +90,79 @@ public class CommandStatusRecordTests {
         record.RejectionEventType.ShouldBeNull();
         record.FailureReason.ShouldBeNull();
         record.TimeoutDuration.ShouldBeNull();
+    }
+
+    // --- Story 4.4: the recovery fields are additive trailing optionals ---
+
+    [Fact]
+    public void Deserialize_LegacyPayloadWithoutRecoveryFields_StillRoundTrips() {
+        // A record persisted before Story 4.4 has no retryable/recovery members at all. It must
+        // still deserialize, and the missing tri-state must read as null -- "written before the
+        // field existed" -- never as false.
+        const string legacyJson = """
+        {
+          "Status": 6,
+          "Timestamp": "2026-07-01T10:00:00+00:00",
+          "AggregateId": "order-123",
+          "EventCount": 2,
+          "RejectionEventType": null,
+          "FailureReason": "Pub/sub broker unavailable",
+          "TimeoutDuration": null,
+          "MessageId": "01MESSAGELEGACY0000000000001",
+          "CorrelationId": "01CORRELATIONLEGACY000000001"
+        }
+        """;
+
+        CommandStatusRecord? record = JsonSerializer.Deserialize<CommandStatusRecord>(legacyJson);
+
+        _ = record.ShouldNotBeNull();
+        record.Status.ShouldBe(CommandStatus.PublishFailed);
+        record.EventCount.ShouldBe(2);
+        record.MessageId.ShouldBe("01MESSAGELEGACY0000000000001");
+        record.CorrelationId.ShouldBe("01CORRELATIONLEGACY000000001");
+        record.Retryable.ShouldBeNull();
+        record.RecoveryReasonCode.ShouldBeNull();
+        record.DrainAttemptCount.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Constructor_WithoutRecoveryArguments_LeavesTheTriStateUnset() {
+        var record = new CommandStatusRecord(
+            Status: CommandStatus.PublishFailed,
+            Timestamp: DateTimeOffset.UtcNow,
+            AggregateId: "order-123",
+            EventCount: 1,
+            RejectionEventType: null,
+            FailureReason: "unavailable",
+            TimeoutDuration: null);
+
+        record.Retryable.ShouldBeNull();
+        record.RecoveryReasonCode.ShouldBeNull();
+        record.DrainAttemptCount.ShouldBeNull();
+    }
+
+    [Fact]
+    public void RoundTrip_WithRecoveryFields_PreservesTheTriStateAndReasonCode() {
+        var original = new CommandStatusRecord(
+            CommandStatus.PublishFailed,
+            DateTimeOffset.UtcNow,
+            "order-123",
+            3,
+            null,
+            "drain_attempts_exhausted",
+            null,
+            "01MESSAGE00000000000000000001",
+            "01CORRELATION0000000000000001",
+            Retryable: false,
+            RecoveryReasonCode: "drain_attempts_exhausted",
+            DrainAttemptCount: 8);
+
+        CommandStatusRecord? roundTripped = JsonSerializer.Deserialize<CommandStatusRecord>(
+            JsonSerializer.Serialize(original));
+
+        _ = roundTripped.ShouldNotBeNull();
+        roundTripped.Retryable.ShouldBe(false);
+        roundTripped.RecoveryReasonCode.ShouldBe("drain_attempts_exhausted");
+        roundTripped.DrainAttemptCount.ShouldBe(8);
     }
 }

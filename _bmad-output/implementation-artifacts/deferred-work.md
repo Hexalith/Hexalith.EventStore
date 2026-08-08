@@ -864,3 +864,52 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-3-deterministic-replay-dispatch-and-serialization.md`
   summary: [LOW] `AssemblyScanner` falls back to `GetTypes()` when `GetExportedTypes()` throws, weakening the "internal fixtures cannot leak into discovery tests" assumption.
   evidence: `src/Hexalith.EventStore.Client/Discovery/AssemblyScanner.cs:187` falls back to `GetTypes()` on failure, which returns non-exported types. Test fixtures declared `internal` specifically to stay invisible to assembly-wide discovery tests would become visible on that path. Pre-existing scanner behaviour, not introduced by Story 4.3.
+
+## Deferred from: code review of 4-4-committed-event-publication-recovery (2026-08-07)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-4-committed-event-publication-recovery.md`
+  summary: [HIGH] Dead-letter `cloudevent.id` is keyed on `CorrelationId`, so two dead-letters sharing a correlation id can be deduplicated away by subscribers.
+  evidence: `src/Hexalith.EventStore.Server/Events/DeadLetterPublisher.cs:56` sets `["cloudevent.id"] = safeMessage.CorrelationId`, unlike event publication which uses the per-event `MessageId` (`EventPublisher.cs:200`). Pre-existing since the dead-letter path was introduced, but Story 4.4 makes it load-bearing: drain exhaustion is now a terminal data-loss sink, so a deduplicated exhaustion dead-letter means committed events vanish with no trace. Fix by carrying a per-message id override so exhaustion publishes with `cloudevent.id` = the reduced command's `MessageId`.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-4-committed-event-publication-recovery.md`
+  summary: [MEDIUM] `ReplayController` accepts `PublishFailed` unconditionally and never consults the new `Retryable` signal, so replaying a command whose drain reminder is still armed can publish the same committed range twice.
+  evidence: `src/Hexalith.EventStore/Controllers/ReplayController.cs:35-40` includes `PublishFailed` in `_replayableStatuses` and the gate at `:204` does not read `Retryable`. Story 4.4 adds the field that would make this decidable but does not wire it into the replay gate. Pre-existing double-publication risk; the new field makes a fix cheap.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-4-committed-event-publication-recovery.md`
+  summary: [MEDIUM] No Tier-3 or live-sidecar proof exists for what is fundamentally a crash-window story; `OnActivateAsync` is reached only by reflection.
+  evidence: All activation coverage is against `Substitute.For<IActorStateManager>()`, and `PublicationRecoveryActivationTests.InvokeOnActivateAsync` resolves the hook via `GetMethod(..., Instance|NonPublic)`, which never proves DAPR invokes it, never exercises real reminder registration, and turns a rename into a runtime rather than compile failure. `tests/Hexalith.EventStore.Server.LiveSidecar.Tests` and `tests/Hexalith.EventStore.IntegrationTests` both exist and received nothing. A real "kill between commit and reminder registration, restart, observe publication" proof belongs there. Tier-3 needs Docker/Aspire and is outside this spec's Verification list.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-4-committed-event-publication-recovery.md`
+  summary: [MEDIUM] `docs/guides/configuration-reference.md` claims exponential backoff between the minimum and maximum drain periods, but drain reminders register a constant period.
+  evidence: `configuration-reference.md:92` documents exponential backoff, while `AggregateActor.GetDrainReminderSchedule` registers a fixed `DrainPeriod` and only clamps it against `MaxDrainPeriod`. Pre-existing drift from Story 4.2. It becomes more consequential with a bounded attempt count, since the wall-clock budget before permanent dead-lettering is then `MaxDrainAttempts * DrainPeriod` (~8 minutes on defaults) rather than a growing backoff window.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-4-committed-event-publication-recovery.md`
+  summary: [LOW] `DrainReasonCodes` is `internal` but its values are now part of the public HTTP and wire contract, forcing consumers and tests to hard-code string literals.
+  evidence: `CommandStatusResponse.RecoveryReasonCode` is returned to external HTTP clients and `DeadLetterMessage.ReasonCode` travels on the dead-letter topic, yet the bounded vocabulary lives only in `internal static class DrainReasonCodes`. The new tests already hard-code `"drain_attempts_exhausted"` and `"drain_publish_failed"` as bare strings. Consider promoting the constants to `Hexalith.EventStore.Contracts` and adding a test pinning the bounded set.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-4-committed-event-publication-recovery.md`
+  summary: [LOW] `DeadLetterEntry` carries no extensions field, so the admin surface cannot see the not-replay-eligible marker on an exhaustion dead-letter and its Retry action has no guard.
+  evidence: `src/Hexalith.EventStore.Admin.Abstractions/Models/DeadLetters/DeadLetterEntry.cs:17` has no extensions property, and `DaprDeadLetterCommandService.RetryDeadLettersAsync` plus the Admin UI Retry action do not consult it. An operator can therefore replay the reduced envelope (empty payload, synthetic user id) as though it were the original command.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-4-committed-event-publication-recovery.md`
+  summary: [LOW] Actor test fixtures are duplicated across test files, so any `AggregateActor` constructor change now requires four synchronized edits.
+  evidence: `CreateActorForBoundedDrain` is copy-pasted with a near-identical body and a parallel context record into both `EventDrainRecoveryTests` and `PublicationRecoveryActivationTests`, alongside the pre-existing `CreateActor`/`CreateActorWithTimerManager`. `AggregateActor` now takes ten constructor arguments. One shared builder in `tests/Hexalith.EventStore.Server.Tests/TestUtilities` would remove the drift risk.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-4-committed-event-publication-recovery.md`
+  summary: [MEDIUM] The two `DeadLetterMessage` producers now disagree about the dead-letter contract, and the suite that encodes it only exercises one of them.
+  evidence: `tests/Hexalith.EventStore.Server.Tests/Observability/DeadLetterMessageCompletenessTests.cs:148` encodes "Dead-letter should contain full command envelope for replay" as an invariant of the contract. Story 4.4's `DeadLetterMessage.FromDrainExhaustion` deliberately emits a reduced, non-replayable envelope, but that suite exercises only `FromException`, so the two producers contradict each other with nothing reconciling them. Either scope the invariant to replay-eligible producers or assert the reduced shape explicitly.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-4-committed-event-publication-recovery.md`
+  summary: [LOW] `Retryable` is left null for every non-drain status, which collides with the documented meaning of null as "written before this field existed".
+  evidence: `CommandStatusRecord` and `docs/operations/drain-failure-reason-codes.md` define null as a legacy record predating the field, but `WriteAdvisoryStatusAsync` writes null for Received, Processing, happy-path Completed and tenant Rejected. A consumer cannot distinguish "legacy record" from "current record, retryability not applicable". `GetStatus_LegacyRecordWithoutRecoveryFields_KeepsRetryableNullRatherThanFalse` cannot observe the collision because its fixture is byte-identical to what the code writes today for a fresh non-drain status.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-4-committed-event-publication-recovery.md`
+  summary: [LOW] Log EventId allocation across the partial `Log` classes is unguarded, so a duplicate EventId can be introduced silently.
+  evidence: Story 4.4 adds EventIds 2010-2019 in `AggregateActor` (with `2019` declared out of order between `2015` and `2016`) and `5006` in `IdempotencyChecker`, but `AggregateActor` is a partial class whose `Log` block is one of several and nothing in the repo asserts uniqueness of EventIds within a category. A cheap reflection test over the `LoggerMessage` attributes would pin the ranges.
+
+## Deferred from: obsolete main-rebase conflict draft closure (2026-08-08)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-resolve-main-rebase-conflicts.md`
+  summary: Forensic note for orphan commits `f3e036bf0cae72b50508a3e729f24a052a7c4e95` / `026b039b237372774d998af8f5b77c58db00d348` that a July draft assumed were unpushed on local `main`. They are not tip ancestors; winning sibling `f6db558c768ae413712560019beab488d9974d66` (same subject/parent) is already on `origin/main`. Closed as obsolete without rebase or cherry-pick — replaying the orphans would regress resilience, fixtures, Story 1.20 status, and submodule pins. Preserve the SHAs if reflog GC later drops tip reachability.
+  evidence: `git merge-base --is-ancestor f6db558c768ae413712560019beab488d9974d66 origin/main` succeeds; `main` and `origin/main` both at `37fdcd1fc8a238b676441b1f5a5ef5fd4370d27e`; orphans still exist as objects (`git cat-file -t f3e036bf0cae72b50508a3e729f24a052a7c4e95` / `026b039b237372774d998af8f5b77c58db00d348` → `commit`); tip gitlinks remain Builds `824d7ef100455423aabbcd399c8364074000b2e0`, Memories `da5df10092461e5473d0e8fc09eacbb4a8e08d3a`, Tenants `323baf8871e70be3fde92072f32b758af950bc8c`.
+  status: forensic-only (closed obsolete; non-actionable)

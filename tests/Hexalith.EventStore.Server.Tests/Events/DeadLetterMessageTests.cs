@@ -1,5 +1,7 @@
 
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Identity;
+using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Events;
 
 using Shouldly;
@@ -169,5 +171,76 @@ public class DeadLetterMessageTests {
         message.ExceptionType.ShouldBe("HttpRequestException");
         message.ErrorMessage.ShouldContain("Protected data diagnostic details were redacted.");
         message.ErrorMessage.ShouldNotContain("Connection failed");
+    }
+
+    // --- Story 4.4: the drain-exhaustion sink envelope ---
+
+    private static readonly AggregateIdentity _identity = new("test-tenant", "test-domain", "agg-001");
+
+    private static UnpublishedEventsRecord CreateExhaustedRecord(string? messageId)
+        => new(
+            CorrelationId: "corr-exhausted",
+            StartSequence: 4,
+            EndSequence: 6,
+            EventCount: 3,
+            CommandType: "CreateOrder",
+            IsRejection: false,
+            FailedAt: DateTimeOffset.UtcNow,
+            RetryCount: 8,
+            LastFailureReason: "Pub/sub unavailable",
+            MessageId: messageId);
+
+    [Fact]
+    public void FromException_KeepsTheOriginalEnvelopeReplayEligible() {
+        var message = DeadLetterMessage.FromException(
+            CreateTestEnvelope(), CommandStatus.Processing, new InvalidOperationException("boom"));
+
+        message.ReplayEligible.ShouldBeTrue();
+        message.ReasonCode.ShouldBeNull();
+    }
+
+    [Fact]
+    public void FromDrainExhaustion_ReducedEnvelopeIsMarkedNotReplayEligible() {
+        DeadLetterMessage message = DeadLetterMessage.FromDrainExhaustion(
+            _identity, CreateExhaustedRecord("msg-exhausted"), "msg-exhausted", 8);
+
+        message.ReplayEligible.ShouldBeFalse();
+        message.ReasonCode.ShouldBe(DrainReasonCodes.AttemptsExhausted);
+        message.FailureStage.ShouldBe(nameof(CommandStatus.PublishFailed));
+        message.Command.Payload.ShouldBeEmpty("the reduced envelope carries no original command bytes");
+    }
+
+    [Fact]
+    public void FromDrainExhaustion_CarriesTheCommittedRangeAndAttemptCount() {
+        DeadLetterMessage message = DeadLetterMessage.FromDrainExhaustion(
+            _identity, CreateExhaustedRecord("msg-exhausted"), "msg-exhausted", 8);
+
+        message.StartSequence.ShouldBe(4);
+        message.EndSequence.ShouldBe(6);
+        message.EventCountAtFailure.ShouldBe(3);
+        message.DrainAttempts.ShouldBe(8);
+        message.CorrelationId.ShouldBe("corr-exhausted");
+        message.TenantId.ShouldBe("test-tenant");
+        message.Domain.ShouldBe("test-domain");
+        message.AggregateId.ShouldBe("agg-001");
+        message.CommandType.ShouldBe("CreateOrder");
+    }
+
+    [Fact]
+    public void FromDrainExhaustion_RecordWithoutMessageId_FallsBackToTheTrackingId() {
+        // Legacy correlation-keyed drain records have no MessageId; the envelope must still carry a
+        // usable identity rather than throwing on the CommandEnvelope validation.
+        DeadLetterMessage message = DeadLetterMessage.FromDrainExhaustion(
+            _identity, CreateExhaustedRecord(messageId: null), "corr-exhausted", 8);
+
+        message.Command.MessageId.ShouldBe("corr-exhausted");
+    }
+
+    [Fact]
+    public void FromDrainExhaustion_RecordWithMessageId_PrefersTheMessageIdOverTheTrackingId() {
+        DeadLetterMessage message = DeadLetterMessage.FromDrainExhaustion(
+            _identity, CreateExhaustedRecord("msg-exhausted"), "legacy-tracking-id", 8);
+
+        message.Command.MessageId.ShouldBe("msg-exhausted");
     }
 }

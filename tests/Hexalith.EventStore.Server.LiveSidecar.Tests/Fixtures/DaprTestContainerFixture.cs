@@ -113,6 +113,12 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
     /// <summary>Gets the in-memory command status store for test assertions.</summary>
     public InMemoryCommandStatusStore CommandStatusStore { get; } = new();
 
+    /// <summary>Gets the opt-in append-durability race gate used by Story 4.5.</summary>
+    public AppendDurabilityRaceControl AppendDurabilityRaceControl { get; } = new();
+
+    /// <summary>Gets the exact generated Redis actor-state component supplied to the live Dapr sidecar.</summary>
+    public string StateStoreComponentYaml { get; private set; } = string.Empty;
+
     /// <summary>Gets the running test host services.</summary>
     public IServiceProvider Services => _testHost?.Services
         ?? throw new InvalidOperationException("The live-sidecar test host has not started.");
@@ -270,6 +276,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         EventPublisher.Reset();
         DeadLetterPublisher.Reset();
         CommandStatusStore.Clear();
+        AppendDurabilityRaceControl.Reset();
         Services.GetRequiredService<LiveNamedProjectionFaultControl>().Reset();
     }
 
@@ -407,6 +414,20 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
 
+        string? json = await TryGetAggregateActorStateJsonAsync(key).ConfigureAwait(false);
+        return json ?? throw new InvalidOperationException(
+            $"Redis actor state for key '{key}' did not become available after retries. Redis key: '{GetAggregateActorRedisKey(key)}'.");
+    }
+
+    /// <summary>
+    /// Tries to read aggregate actor state directly from Redis using the fixture's composite namespace.
+    /// </summary>
+    /// <param name="key">The aggregate state key.</param>
+    /// <returns>The raw JSON, or <see langword="null"/> when the entry is absent after bounded retries.</returns>
+    public async Task<string?> TryGetAggregateActorStateJsonAsync(string key)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+
         string redisKey = GetAggregateActorRedisKey(key);
         RedisConnectionMultiplexer multiplexer = await RedisConnection.Value.ConfigureAwait(false);
         RedisDatabase database = multiplexer.GetDatabase();
@@ -422,8 +443,32 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
             await Task.Delay(50).ConfigureAwait(false);
         }
 
+        return null;
+    }
+
+    /// <summary>Reads a generic Dapr state-store entry directly from the fixture Redis store.</summary>
+    /// <param name="key">The logical generic-state key.</param>
+    /// <returns>The raw JSON persisted by Dapr.</returns>
+    public async Task<string> GetGenericStateJsonAsync(string key)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+
+        string redisKey = $"{AppId}||{key}";
+        RedisConnectionMultiplexer multiplexer = await RedisConnection.Value.ConfigureAwait(false);
+        RedisDatabase database = multiplexer.GetDatabase();
+        for (int attempt = 0; attempt < 10; attempt++)
+        {
+            RedisValue json = await database.HashGetAsync(redisKey, "data").ConfigureAwait(false);
+            if (!json.IsNullOrEmpty)
+            {
+                return json.ToString();
+            }
+
+            await Task.Delay(50).ConfigureAwait(false);
+        }
+
         throw new InvalidOperationException(
-            $"Redis actor state for key '{key}' did not become available after retries. Redis key: '{redisKey}'.");
+            $"Redis generic state for key '{key}' did not become available after retries. Redis key: '{redisKey}'.");
     }
 
     /// <summary>Reads one named actor-state entry directly from the fixture Redis store.</summary>
@@ -749,6 +794,8 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
                 .UseHttpEndpoint(DaprHttpEndpoint)
                 .UseGrpcEndpoint(DaprGrpcEndpoint)
                 .Build());
+        _ = builder.Services.AddSingleton(AppendDurabilityRaceControl);
+        _ = builder.Services.AddSingleton<IGlobalPositionAllocator, LiveSidecarGlobalPositionAllocator>();
         _ = builder.Services.AddSingleton<IIdempotencyIntentAdapter, LiveIncrementCounterIdempotencyIntentAdapter>();
         _ = builder.Services.AddEventStoreServer(builder.Configuration);
         _ = builder.Services.AddSingleton<DomainProjectionCatalogRegistry>();
@@ -902,6 +949,8 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
                 .UseHttpEndpoint($"http://localhost:{_replicaDaprHttpPort}")
                 .UseGrpcEndpoint($"http://localhost:{_replicaDaprGrpcPort}")
                 .Build());
+        _ = builder.Services.AddSingleton(AppendDurabilityRaceControl);
+        _ = builder.Services.AddSingleton<IGlobalPositionAllocator, LiveSidecarGlobalPositionAllocator>();
         _ = builder.Services.AddSingleton<IIdempotencyIntentAdapter, LiveIncrementCounterIdempotencyIntentAdapter>();
         _ = builder.Services.AddEventStoreServer(builder.Configuration);
         _ = builder.Services.AddSingleton<IDomainServiceInvoker>(DomainServiceInvoker);
@@ -975,6 +1024,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
             scopes:
               - {{AppId}}
             """;
+        StateStoreComponentYaml = stateStoreYaml;
 
         string pubSubYaml = $$"""
             apiVersion: dapr.io/v1alpha1

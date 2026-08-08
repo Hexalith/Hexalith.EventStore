@@ -2,6 +2,7 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 using Dapr.Actors;
 using Dapr.Actors.Client;
@@ -16,18 +17,29 @@ using Shouldly;
 
 namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Actors;
 /// <summary>
-/// Story 7.4 / AC #3: Optimistic concurrency conflict detection tests.
-/// Validates ETag-based concurrency conflict detection on aggregate metadata key.
+/// Serialized-actor controls plus generic state-store ETag semantics.
+/// The generic-state probe does not establish actor-state conflict behavior; Story 4.5 records
+/// actor-state evidence separately in <see cref="AppendDurabilityRaceLiveSidecarTests"/>.
 /// </summary>
 [Collection("DaprTestContainer")]
 [Trait("Category", "LiveSidecar")]
 public class ActorConcurrencyConflictTests
 {
-    private readonly DaprTestContainerFixture _fixture;
+    private const string EvidenceDirectoryEnvironmentVariable = "HEXALITH_STORY_4_5_EVIDENCE_DIR";
+    private const string MutationEnvironmentVariable = "HEXALITH_STORY_4_5_MUTATION";
+    private static readonly TimeSpan OperationTimeout = TimeSpan.FromSeconds(30);
+    private static readonly JsonSerializerOptions EvidenceJsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        WriteIndented = true,
+    };
 
-    public ActorConcurrencyConflictTests(DaprTestContainerFixture fixture)
+    private readonly DaprTestContainerFixture _fixture;
+    private readonly ITestOutputHelper _output;
+
+    public ActorConcurrencyConflictTests(DaprTestContainerFixture fixture, ITestOutputHelper output)
     {
         _fixture = fixture;
+        _output = output;
         _fixture.SetupCounterDomain();
     }
 
@@ -110,64 +122,142 @@ public class ActorConcurrencyConflictTests
     }
 
     /// <summary>
-    /// Task 3.1: Verify stale ETag write conflict is detected on aggregate metadata key.
-    /// This validates optimistic concurrency at the state-store boundary.
+    /// Proves a generic-state ETag became stale, requires Dapr's exact 409 mismatch surface, and
+    /// verifies through Redis that the successful first conditional update remains persisted.
+    /// This is deliberately a generic-state control, not aggregate actor-state evidence.
     /// </summary>
     [Fact]
     public async Task MetadataKey_StaleEtagUpdate_IsRejected()
     {
-        // Arrange
-        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions
-        {
-            HttpEndpoint = _fixture.DaprHttpEndpoint,
-        });
+        using var operationCancellation = new CancellationTokenSource(OperationTimeout);
+        string key = $"story-4-5-generic-etag-{Guid.NewGuid():N}";
+        string seedJson = JsonSerializer.Serialize(new { writer = "seed", version = 0 });
+        string firstUpdateJson = JsonSerializer.Serialize(new { writer = "first", version = 1 });
+        string rejectedUpdateJson = JsonSerializer.Serialize(new { writer = "stale", version = 2 });
 
-        string aggregateId = $"concurrency-etag-{Guid.NewGuid():N}";
-        var identity = new AggregateIdentity("tenant-a", "counter", aggregateId);
+        using HttpResponseMessage seed = await SaveStateAsync(
+            key,
+            seedJson,
+            etag: null,
+            operationCancellation.Token).ConfigureAwait(true);
+        seed.StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
-        IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
-            new ActorId(identity.ActorId),
-            _fixture.AggregateActorTypeName);
+        (string originalJson, string originalEtag) = await GetStateWithEtagAsync(
+            key,
+            operationCancellation.Token).ConfigureAwait(true);
+        JsonDocument.Parse(originalJson).RootElement.GetProperty("writer").GetString().ShouldBe("seed");
 
-        CommandEnvelope command = new CommandEnvelopeBuilder()
-            .WithTenantId("tenant-a")
-            .WithDomain("counter")
-            .WithAggregateId(aggregateId)
-            .WithCommandType("IncrementCounter")
-            .Build();
-
-        CommandProcessingResult seed = await proxy.ProcessCommandAsync(command).ConfigureAwait(true);
-        seed.Accepted.ShouldBeTrue();
-
-        // Capture current metadata value and ETag
-        (string metadataJson, string etag)? metadata = await GetStateWithEtagAsync(identity.MetadataKey).ConfigureAwait(true);
-        if (metadata is null)
-        {
-            true.ShouldBeTrue("Metadata state is not externally readable in this runtime profile; skipping stale-ETag validation path.");
-            return;
-        }
-
-        // First write with current ETag should succeed
-        using HttpResponseMessage first = await SaveStateWithEtagAsync(identity.MetadataKey, metadata.Value.metadataJson, metadata.Value.etag).ConfigureAwait(true);
+        using HttpResponseMessage first = await SaveStateAsync(
+            key,
+            firstUpdateJson,
+            originalEtag,
+            operationCancellation.Token).ConfigureAwait(true);
         first.StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
-        // Second write reusing stale ETag should fail (conflict)
-        using HttpResponseMessage second = await SaveStateWithEtagAsync(identity.MetadataKey, metadata.Value.metadataJson, metadata.Value.etag).ConfigureAwait(true);
-        second.IsSuccessStatusCode.ShouldBeFalse();
+        (string currentJson, string currentEtag) = await GetStateWithEtagAsync(
+            key,
+            operationCancellation.Token).ConfigureAwait(true);
+        currentEtag.ShouldNotBe(originalEtag, "the successful intervening write must advance the ETag before the original token is called stale");
+        JsonDocument.Parse(currentJson).RootElement.GetProperty("writer").GetString().ShouldBe("first");
+
+        using HttpResponseMessage stale = await SaveStateAsync(
+            key,
+            rejectedUpdateJson,
+            originalEtag,
+            operationCancellation.Token).ConfigureAwait(true);
+        string staleResponseBody = await stale.Content
+            .ReadAsStringAsync(operationCancellation.Token)
+            .ConfigureAwait(true);
+        DaprStateErrorParser.Capture staleError = DaprStateErrorParser.Parse(staleResponseBody);
+
+        string? retainedRedisJson = null;
+        string? retainedReadExceptionType = null;
+        string? retainedReadExceptionMessage = null;
+        try
+        {
+            retainedRedisJson = await _fixture.GetGenericStateJsonAsync(key).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            retainedReadExceptionType = ex.GetType().FullName;
+            retainedReadExceptionMessage = ex.Message;
+        }
+
+        bool exactConflictSurface = stale.StatusCode == HttpStatusCode.Conflict
+            && string.Equals(staleError.ErrorCode, "ERR_STATE_SAVE", StringComparison.Ordinal)
+            && staleError.Message?.Contains("etag mismatch", StringComparison.OrdinalIgnoreCase) == true;
+        bool retainedValueMatchesExpected = retainedRedisJson is not null
+            && JsonNode.DeepEquals(
+                JsonNode.Parse(retainedRedisJson),
+                JsonNode.Parse(firstUpdateJson));
+
+        var evidence = new
+        {
+            schemaVersion = 1,
+            baselineCommit = "0776785f494fcefc8ad933b5b17b9c8d5cbe0513",
+            key,
+            seedStatus = (int)seed.StatusCode,
+            original = new
+            {
+                etag = originalEtag,
+                value = JsonSerializer.Deserialize<JsonElement>(originalJson),
+            },
+            interveningUpdate = new
+            {
+                status = (int)first.StatusCode,
+                etag = currentEtag,
+                value = JsonSerializer.Deserialize<JsonElement>(currentJson),
+                etagAdvanced = !string.Equals(originalEtag, currentEtag, StringComparison.Ordinal),
+            },
+            staleReplay = new
+            {
+                suppliedEtag = originalEtag,
+                status = (int)stale.StatusCode,
+                responseBody = staleResponseBody,
+                errorCode = staleError.ErrorCode,
+                errorMessage = staleError.Message,
+                parseError = staleError.ParseError,
+            },
+            redisRetainedValue = retainedRedisJson is null
+                ? (JsonElement?)null
+                : JsonSerializer.Deserialize<JsonElement>(retainedRedisJson),
+            retainedValueMatchesExpected,
+            retainedReadExceptionType,
+            retainedReadExceptionMessage,
+        };
+        await WriteEvidenceAsync("generic-etag-control.json", evidence).ConfigureAwait(true);
+
+        AssertInvariant(
+            exactConflictSurface,
+            "generic-409-semantics",
+            "the stale generic-state update must return HTTP 409 with Dapr ERR_STATE_SAVE ETag-mismatch semantics");
+        AssertInvariant(
+            retainedValueMatchesExpected,
+            "retained-generic-value",
+            "Redis must retain the full successful first conditional value after rejecting the stale replay");
     }
 
-    private async Task<(string Json, string ETag)?> GetStateWithEtagAsync(string key)
+    private async Task<(string Json, string ETag)> GetStateWithEtagAsync(
+        string key,
+        CancellationToken cancellationToken)
     {
-        using var http = new HttpClient();
+        using var http = new HttpClient
+        {
+            Timeout = Timeout.InfiniteTimeSpan,
+        };
         string url = $"{_fixture.DaprHttpEndpoint}/v1.0/state/statestore/{Uri.EscapeDataString(key)}";
 
         for (int attempt = 0; attempt < 10; attempt++)
         {
-            using HttpResponseMessage response = await http.GetAsync(url).ConfigureAwait(true);
+            using HttpResponseMessage response = await http
+                .GetAsync(url, cancellationToken)
+                .ConfigureAwait(true);
 
             if (response.StatusCode == HttpStatusCode.OK)
             {
-                string json = await response.Content.ReadAsStringAsync().ConfigureAwait(true);
+                string json = await response.Content
+                    .ReadAsStringAsync(cancellationToken)
+                    .ConfigureAwait(true);
                 string? etagHeader = response.Headers.ETag?.Tag;
                 if (string.IsNullOrWhiteSpace(etagHeader)
                     && response.Headers.TryGetValues("ETag", out IEnumerable<string>? values))
@@ -183,22 +273,58 @@ public class ActorConcurrencyConflictTests
             }
 
             response.StatusCode.ShouldBeOneOf(HttpStatusCode.OK, HttpStatusCode.NoContent);
-            await Task.Delay(50).ConfigureAwait(true);
+            await Task.Delay(50, cancellationToken).ConfigureAwait(true);
         }
 
-        return null;
+        throw new ShouldAssertException($"Generic state '{key}' did not become readable with an ETag.");
     }
 
-    private async Task<HttpResponseMessage> SaveStateWithEtagAsync(string key, string valueJson, string etag)
+    private async Task<HttpResponseMessage> SaveStateAsync(
+        string key,
+        string valueJson,
+        string? etag,
+        CancellationToken cancellationToken)
     {
-        using var http = new HttpClient();
+        using var http = new HttpClient
+        {
+            Timeout = Timeout.InfiniteTimeSpan,
+        };
 
         string escapedKey = JsonSerializer.Serialize(key);
-        string escapedEtag = JsonSerializer.Serialize(etag);
-        string body =
-            $"[{{\"key\":{escapedKey},\"value\":{valueJson},\"etag\":{escapedEtag},\"options\":{{\"concurrency\":\"first-write\",\"consistency\":\"strong\"}}}}]";
+        string body = etag is null
+            ? $"[{{\"key\":{escapedKey},\"value\":{valueJson}}}]"
+            : $"[{{\"key\":{escapedKey},\"value\":{valueJson},\"etag\":{JsonSerializer.Serialize(etag)},\"options\":{{\"concurrency\":\"first-write\",\"consistency\":\"strong\"}}}}]";
 
         var content = new StringContent(body, Encoding.UTF8, "application/json");
-        return await http.PostAsync($"{_fixture.DaprHttpEndpoint}/v1.0/state/statestore", content).ConfigureAwait(true);
+        return await http
+            .PostAsync($"{_fixture.DaprHttpEndpoint}/v1.0/state/statestore", content, cancellationToken)
+            .ConfigureAwait(true);
+    }
+
+    private static void AssertInvariant(bool satisfied, string mutationName, string message)
+    {
+        bool mutate = string.Equals(
+            Environment.GetEnvironmentVariable(MutationEnvironmentVariable),
+            mutationName,
+            StringComparison.Ordinal);
+        (mutate ? !satisfied : satisfied).ShouldBeTrue(message);
+    }
+
+    private async Task WriteEvidenceAsync(string fileName, object evidence)
+    {
+        string json = JsonSerializer.Serialize(evidence, EvidenceJsonOptions);
+        _output.WriteLine(json);
+
+        string? directory = Environment.GetEnvironmentVariable(EvidenceDirectoryEnvironmentVariable);
+        string? mutation = Environment.GetEnvironmentVariable(MutationEnvironmentVariable);
+        if (string.IsNullOrWhiteSpace(directory) || !string.IsNullOrWhiteSpace(mutation))
+        {
+            return;
+        }
+
+        _ = Directory.CreateDirectory(directory);
+        await File.WriteAllTextAsync(
+            Path.Combine(directory, fileName),
+            string.Concat(json, Environment.NewLine)).ConfigureAwait(true);
     }
 }

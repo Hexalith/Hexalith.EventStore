@@ -75,7 +75,7 @@ public partial class IdempotencyChecker(
             return new IdempotencyCheckResult(IdempotencyCheckOutcome.IdentityConflict);
         }
 
-        if (record.ExpiresAt <= TimeProvider.GetUtcNow())
+        if (IsExpired(record))
         {
             return new IdempotencyCheckResult(IdempotencyCheckOutcome.Expired);
         }
@@ -125,7 +125,7 @@ public partial class IdempotencyChecker(
             return new IdempotencyCheckResult(IdempotencyCheckOutcome.IdentityConflict);
         }
 
-        if (record.ExpiresAt <= TimeProvider.GetUtcNow())
+        if (IsExpired(record))
         {
             Log.IdempotencyRecordExpired(logger);
             return new IdempotencyCheckResult(IdempotencyCheckOutcome.Expired);
@@ -147,6 +147,49 @@ public partial class IdempotencyChecker(
             ? new IdempotencyCheckResult(IdempotencyCheckOutcome.RetryableRecoverable, record.ToResult())
             : new IdempotencyCheckResult(IdempotencyCheckOutcome.ExactTerminalDuplicate, record.ToResult());
     }
+
+    /// <inheritdoc/>
+    public async Task<bool> TryCompleteRecoverableAsync(string messageId, DateTimeOffset expiresAt)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(messageId);
+
+        string key = GetKey(messageId);
+        ConditionalValue<IdempotencyRecord> stored = await stateManager
+            .TryGetStateAsync<IdempotencyRecord>(key)
+            .ConfigureAwait(false);
+
+        if (!stored.HasValue
+            || stored.Value is null
+            || stored.Value.Disposition != IdempotencyRecordDisposition.Recoverable)
+        {
+            return false;
+        }
+
+        await stateManager
+            .SetStateAsync(
+                key,
+                stored.Value with
+                {
+                    Disposition = IdempotencyRecordDisposition.Terminal,
+                    ExpiresAt = expiresAt,
+                })
+            .ConfigureAwait(false);
+
+        Log.IdempotencyRecoverableCompleted(logger);
+        return true;
+    }
+
+    /// <summary>
+    /// Story 4.4: a <see cref="IdempotencyRecordDisposition.Recoverable"/> record describes events
+    /// that are committed but not yet published, so it must survive normal retention until the
+    /// drain completes. <see cref="TryCompleteRecoverableAsync"/> transitions it to
+    /// <see cref="IdempotencyRecordDisposition.Terminal"/> on drain success or drain exhaustion, at
+    /// which point normal retention resumes -- without that transition the record would be
+    /// immortal and every later retry would return <c>RetryableRecoverable</c> forever.
+    /// </summary>
+    private bool IsExpired(IdempotencyRecord record)
+        => record.Disposition != IdempotencyRecordDisposition.Recoverable
+            && record.ExpiresAt <= TimeProvider.GetUtcNow();
 
     private static string GetKey(string messageId) => $"{KeyPrefix}{messageId}";
 
@@ -187,5 +230,11 @@ public partial class IdempotencyChecker(
             Level = LogLevel.Information,
             Message = "Idempotency legacy record migrated. Stage=IdempotencyLegacyMigrated")]
         public static partial void IdempotencyLegacyMigrated(ILogger logger);
+
+        [LoggerMessage(
+            EventId = 5006,
+            Level = LogLevel.Information,
+            Message = "Idempotency recoverable record completed. Stage=IdempotencyRecoverableCompleted")]
+        public static partial void IdempotencyRecoverableCompleted(ILogger logger);
     }
 }

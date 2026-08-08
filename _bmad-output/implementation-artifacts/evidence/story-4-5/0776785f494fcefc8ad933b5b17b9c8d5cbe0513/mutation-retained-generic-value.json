@@ -1,0 +1,78 @@
+{
+  "reportFormat": "CTRF",
+  "specVersion": "0.0.0",
+  "reportId": "d5834695-9f26-4b35-914b-d4f26eecf233",
+  "timestamp": "2026-08-08T08:52:01Z",
+  "results": {
+    "tool": {
+      "name": "xUnit.net v3",
+      "version": "3.2.2+728c1dce01"
+    },
+    "environment": {
+      "osPlatform": "Linux",
+      "osRelease": "Ubuntu 26.04 LTS"
+    },
+    "extra": {
+      "computer": "<redacted-machine>",
+      "user": "<redacted-machine-user>",
+      "suites": [
+        {
+          "id": "1216f754-b3ba-4ef4-afd4-104f84074d61",
+          "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+          "environment": "64-bit (x64) .NET 10.0.10 [collection-per-class, non-parallel]",
+          "testFramework": "xUnit.net v3 3.2.2+728c1dce01",
+          "targetFramework": ".NETCoreApp,Version=v10.0",
+          "start": 1786179120943,
+          "stop": 1786179121162,
+          "duration": 3739,
+          "collections": [
+            {
+              "id": "6c492f08-dc8b-4b5d-a489-ea434be6a802",
+              "name": "DaprTestContainer"
+            }
+          ],
+          "errors": []
+        }
+      ]
+    },
+    "summary": {
+      "tests": 1,
+      "passed": 0,
+      "failed": 1,
+      "pending": 0,
+      "skipped": 0,
+      "other": 0,
+      "suites": 1,
+      "start": 1786179120943,
+      "stop": 1786179121162
+    },
+    "tests": [
+      {
+        "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.ActorConcurrencyConflictTests.MetadataKey_StaleEtagUpdate_IsRejected",
+        "status": "failed",
+        "duration": 113,
+        "suite": "1216f754-b3ba-4ef4-afd4-104f84074d61",
+        "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/ActorConcurrencyConflictTests.cs",
+        "line": 129,
+        "message": "Shouldly.ShouldAssertException : mutate ? !satisfied : satisfied\r\n    should be\r\nTrue\r\n    but was\r\nFalse\r\n\r\nAdditional Info:\r\n    Redis must retain the full successful first conditional value after rejecting the stale replay",
+        "trace": "   at Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.ActorConcurrencyConflictTests.AssertInvariant(Boolean satisfied, String mutationName, String message) in <workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/ActorConcurrencyConflictTests.cs:line 310\n   at Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.ActorConcurrencyConflictTests.MetadataKey_StaleEtagUpdate_IsRejected() in <workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/ActorConcurrencyConflictTests.cs:line 234\n   at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()\n   at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)\n   at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)\n--- End of stack trace from previous location ---\n   at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()\n   at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)\n   at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
+        "tags": [
+          "LiveSidecar"
+        ],
+        "extra": {
+          "id": "2e1982d7-4850-402c-ad24-dbb726a5739c",
+          "collection": "6c492f08-dc8b-4b5d-a489-ea434be6a802",
+          "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.ActorConcurrencyConflictTests",
+          "method": "MetadataKey_StaleEtagUpdate_IsRejected",
+          "output": "{\n  \"schemaVersion\": 1,\n  \"baselineCommit\": \"0776785f494fcefc8ad933b5b17b9c8d5cbe0513\",\n  \"key\": \"story-4-5-generic-etag-96bfbc2e64834377beed9221b2ab2898\",\n  \"seedStatus\": 204,\n  \"original\": {\n    \"etag\": \"1\",\n    \"value\": {\n      \"writer\": \"seed\",\n      \"version\": 0\n    }\n  },\n  \"interveningUpdate\": {\n    \"status\": 204,\n    \"etag\": \"2\",\n    \"value\": {\n      \"writer\": \"first\",\n      \"version\": 1\n    },\n    \"etagAdvanced\": true\n  },\n  \"staleReplay\": {\n    \"suppliedEtag\": \"1\",\n    \"status\": 409,\n    \"responseBody\": \"{\\u0022errorCode\\u0022:\\u0022ERR_STATE_SAVE\\u0022,\\u0022message\\u0022:\\u0022failed saving state in state store statestore: possible etag mismatch. error from state store: ERR Error running script (call to f_d908b9553add63a82e03589b5c6d01a7654ef0f2): @user_script:14: user_script:14: failed to set key eventstore-live-d6831b979fb34eb7b5594fd0481f0665||story-4-5-generic-etag-96bfbc2e64834377beed9221b2ab2898\\u0022}\",\n    \"errorCode\": \"ERR_STATE_SAVE\",\n    \"errorMessage\": \"failed saving state in state store statestore: possible etag mismatch. error from state store: ERR Error running script (call to f_d908b9553add63a82e03589b5c6d01a7654ef0f2): @user_script:14: user_script:14: failed to set key eventstore-live-d6831b979fb34eb7b5594fd0481f0665||story-4-5-generic-etag-96bfbc2e64834377beed9221b2ab2898\",\n    \"parseError\": null\n  },\n  \"redisRetainedValue\": {\n    \"writer\": \"first\",\n    \"version\": 1\n  },\n  \"retainedValueMatchesExpected\": true,\n  \"retainedReadExceptionType\": null,\n  \"retainedReadExceptionMessage\": null\n}\n",
+          "traits": {
+            "Category": [
+              "LiveSidecar"
+            ]
+          },
+          "exception": "Shouldly.ShouldAssertException"
+        }
+      }
+    ]
+  }
+}

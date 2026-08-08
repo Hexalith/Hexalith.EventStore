@@ -24,6 +24,129 @@ public class IdempotencyCheckerTests
 
     private IdempotencyChecker CreateChecker() => new(_stateManager, _logger);
 
+    // --- Story 4.4: a Recoverable record describes committed-but-unpublished events, so it is
+    // exempt from bounded expiry until drain success or drain exhaustion makes it Terminal. Failing
+    // it open to Expired would let a later retry read as a fresh miss and re-execute the domain. ---
+
+    private static IdempotencyRecord CreateRecoverableRecord(CommandProcessingIdentity identity, DateTimeOffset expiresAt)
+        => new(
+            identity.CausationId,
+            "corr-recoverable",
+            true,
+            null,
+            expiresAt.AddHours(-24),
+            EventCount: 2,
+            MessageId: identity.MessageId,
+            CommandType: identity.CommandType,
+            ExpiresAt: expiresAt,
+            Disposition: IdempotencyRecordDisposition.Recoverable);
+
+    [Fact]
+    public async Task CheckAsync_RecoverableRecordPastRetention_StaysRetryableRecoverable()
+    {
+        var now = new DateTimeOffset(2026, 8, 7, 10, 0, 0, TimeSpan.Zero);
+        var timeProvider = new FakeTimeProvider(now);
+        CommandProcessingIdentity identity = Identity();
+        _ = _stateManager.TryGetStateAsync<IdempotencyRecord>("idempotency:message-123", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyRecord>(
+                true, CreateRecoverableRecord(identity, now.AddSeconds(-1))));
+        var checker = new IdempotencyChecker(_stateManager, _logger, timeProvider);
+
+        IdempotencyCheckResult result = await checker.CheckAsync(identity);
+
+        result.Outcome.ShouldBe(IdempotencyCheckOutcome.RetryableRecoverable);
+        _ = result.Result.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task InspectAsync_RecoverableRecordPastRetention_StaysRetryableRecoverable()
+    {
+        var now = new DateTimeOffset(2026, 8, 7, 10, 0, 0, TimeSpan.Zero);
+        var timeProvider = new FakeTimeProvider(now);
+        CommandProcessingIdentity identity = Identity();
+        _ = _stateManager.TryGetStateAsync<IdempotencyRecord>("idempotency:message-123", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyRecord>(
+                true, CreateRecoverableRecord(identity, now.AddDays(-30))));
+        var checker = new IdempotencyChecker(_stateManager, _logger, timeProvider);
+
+        IdempotencyCheckResult result = await checker.InspectAsync(identity);
+
+        result.Outcome.ShouldBe(IdempotencyCheckOutcome.RetryableRecoverable);
+    }
+
+    [Fact]
+    public async Task CheckAsync_RecoverableRecordCompletedToTerminal_ExpiresNormallyAgain()
+    {
+        // Once TryCompleteRecoverableAsync has made the record Terminal, normal retention resumes.
+        var now = new DateTimeOffset(2026, 8, 7, 10, 0, 0, TimeSpan.Zero);
+        var timeProvider = new FakeTimeProvider(now);
+        CommandProcessingIdentity identity = Identity();
+        IdempotencyRecord completed = CreateRecoverableRecord(identity, now.AddSeconds(-1)) with {
+            Disposition = IdempotencyRecordDisposition.Terminal,
+        };
+        _ = _stateManager.TryGetStateAsync<IdempotencyRecord>("idempotency:message-123", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyRecord>(true, completed));
+        var checker = new IdempotencyChecker(_stateManager, _logger, timeProvider);
+
+        IdempotencyCheckResult result = await checker.CheckAsync(identity);
+
+        result.Outcome.ShouldBe(IdempotencyCheckOutcome.Expired);
+    }
+
+    [Fact]
+    public async Task TryCompleteRecoverableAsync_RecoverableRecord_StagesTerminalDispositionAndNewHorizon()
+    {
+        var now = new DateTimeOffset(2026, 8, 7, 10, 0, 0, TimeSpan.Zero);
+        var timeProvider = new FakeTimeProvider(now);
+        CommandProcessingIdentity identity = Identity();
+        _ = _stateManager.TryGetStateAsync<IdempotencyRecord>("idempotency:message-123", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyRecord>(
+                true, CreateRecoverableRecord(identity, now.AddSeconds(-1))));
+        var checker = new IdempotencyChecker(_stateManager, _logger, timeProvider);
+
+        bool transitioned = await checker.TryCompleteRecoverableAsync(identity.MessageId, now.AddHours(24));
+
+        transitioned.ShouldBeTrue();
+        await _stateManager.Received(1).SetStateAsync(
+            "idempotency:message-123",
+            Arg.Is<IdempotencyRecord>(r =>
+                r.Disposition == IdempotencyRecordDisposition.Terminal
+                && r.ExpiresAt == now.AddHours(24)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task TryCompleteRecoverableAsync_TerminalRecord_LeavesItUntouched()
+    {
+        CommandProcessingIdentity identity = Identity();
+        IdempotencyRecord terminal = CreateRecoverableRecord(identity, DateTimeOffset.UtcNow.AddHours(1)) with {
+            Disposition = IdempotencyRecordDisposition.Terminal,
+        };
+        _ = _stateManager.TryGetStateAsync<IdempotencyRecord>("idempotency:message-123", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyRecord>(true, terminal));
+        IdempotencyChecker checker = CreateChecker();
+
+        bool transitioned = await checker.TryCompleteRecoverableAsync(identity.MessageId, DateTimeOffset.UtcNow.AddHours(24));
+
+        transitioned.ShouldBeFalse();
+        await _stateManager.DidNotReceive().SetStateAsync(
+            Arg.Any<string>(), Arg.Any<IdempotencyRecord>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task TryCompleteRecoverableAsync_MissingRecord_ReportsNoTransition()
+    {
+        _ = _stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
+        IdempotencyChecker checker = CreateChecker();
+
+        bool transitioned = await checker.TryCompleteRecoverableAsync("message-123", DateTimeOffset.UtcNow.AddHours(24));
+
+        transitioned.ShouldBeFalse();
+        await _stateManager.DidNotReceive().SetStateAsync(
+            Arg.Any<string>(), Arg.Any<IdempotencyRecord>(), Arg.Any<CancellationToken>());
+    }
+
     [Fact]
     public async Task CheckAsync_NoExistingRecord_ReturnsMiss()
     {

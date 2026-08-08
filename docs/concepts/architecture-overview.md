@@ -125,9 +125,9 @@ Hexalith uses service invocation when the Command API Gateway needs to call a do
 
 ### Actors
 
-The virtual actor pattern assigns a unique actor instance to each entity in your system. Actors are single-threaded — only one operation runs on a given actor at a time — which eliminates concurrency bugs for aggregate state management. DAPR manages actor lifecycle automatically: actors activate when needed and deactivate after idle periods.
+The virtual actor pattern assigns a unique actor instance to each entity in your system. Actors are single-threaded — only one actor operation runs on a given actor at a time — which serializes supported aggregate commands. DAPR manages actor lifecycle automatically: actors activate when needed and deactivate after idle periods. Actor turn serialization does not by itself fence an unsupported direct state-store writer.
 
-Hexalith uses several actor types with unidirectional ownership. `IdempotencyAdmissionActor` owns one protected tenant/key authority; the tenant directory serializes digest-key promotion; lifecycle and legacy-inventory actors govern deletion and migration; and `AggregateActor` alone owns event mutation for one tenant + domain + aggregate identity. Admission never calls back from the aggregate or holds an actor turn across domain/provider I/O. The handler carries a signed fence forward and validates it at each protected boundary.
+Hexalith uses several actor types with unidirectional ownership. `IdempotencyAdmissionActor` owns one protected tenant/key authority; the tenant directory serializes digest-key promotion; lifecycle and legacy-inventory actors govern deletion and migration; and the architecture assigns event mutation for one tenant + domain + aggregate identity exclusively to `AggregateActor`. That ownership is a required producer invariant, not an application-supplied storage append fence: Story 4.5 proved that the raw actor-state endpoint can replace the same key without a conflict signal in the observed Dapr `1.18.1` `state.redis` / Redis `6` profile. That result is not generalized to other providers. Admission never calls back from the aggregate or holds an actor turn across domain/provider I/O. The handler carries a signed fence forward and validates it at each protected boundary.
 
 [Learn more about DAPR Actors](https://docs.dapr.io/developing-applications/building-blocks/actors/)
 
@@ -174,7 +174,7 @@ The `AggregateActor` is the core processing unit. Each actor instance handles co
 4. **Domain service invocation** — call the domain service through DAPR service invocation, passing the command and current state. The domain service returns a result containing new events
 5. **Persist and publish** — save new events to the state store, create a snapshot if the interval threshold is reached, and publish events to the pub/sub topic
 
-This pipeline runs with single-threaded actor guarantees — no concurrent commands can execute for the same aggregate at the same time. This eliminates an entire category of concurrency bugs that are common in traditional event sourcing implementations. You do not need to implement locking, optimistic concurrency retries, or conflict resolution — the actor model handles it for you.
+This pipeline runs with single-threaded actor guarantees — no concurrent actor-dispatched commands execute for the same aggregate at the same time. Callers do not add application locks around this supported path. A provider-portable append fence is still required to enforce actor-only ownership against an unsupported second writer: the current actor state commit supplies neither an ETag nor a first-write concurrency option, and the Story 4.5 Dapr/Redis profile surfaced no conflict or retry. Other providers require their own live qualification.
 
 When you sent `IncrementCounter` in the quickstart, this pipeline validated execution authority and tenant identity, loaded counter state, called the Counter domain service to produce a `CounterIncremented` event, and then persisted and published that event. The admission actor was not held during the domain call; terminal admission was completed afterward under the same fence.
 
