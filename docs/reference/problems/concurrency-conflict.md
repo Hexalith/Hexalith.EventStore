@@ -7,21 +7,23 @@
 
 ## What Happened
 
-Another command targeting the same resource was processed just before yours. EventStore automatically retries state-store optimistic concurrency conflicts that occur before the `EventsStored` checkpoint is committed, rehydrating the latest aggregate state before each retry. This response means the configured retry limit was exhausted and the caller must decide whether to resubmit.
+EventStore mapped an `InvalidOperationException` from the guarded pre-`EventsStored` fence-validation/commit block to its concurrency-conflict path and exhausted the configured retry budget. The handler rehydrates before each retry. Do not infer that ordinary same-aggregate concurrency necessarily reaches this response: actor-dispatched commands are serialized, and the Story 4.5 Redis two-writer spike observed a silent same-key overwrite with no exception, retry, or conflict result.
 
 ## Common Causes
 
-- Two clients submitted commands for the same resource at nearly the same time
-- A retry arrived while the original command was still being processed
-- High-frequency updates to a single resource from multiple consumers
+- A backend or actor-state provider rejected an optimistic state transaction and surfaced it as `InvalidOperationException`
+- An execution-fence validation failed through the same guarded commit block
+- Provider-specific concurrency behavior differed from the Redis live-sidecar profile
 
 ## EventStore Behavior
 
-- Retry limit: `EventStore:CommandConcurrency:MaxPersistenceConflictRetries`, default `1`.
-- Retryable source: actor state-store optimistic concurrency conflicts before a successful `EventsStored` checkpoint.
+- Retry budget: `EventStore:CommandConcurrency:MaxPersistenceConflictRetries`, default `1`; this is configured code, not proof that the active provider surfaces a retryable exception.
+- Retryable source in the implemented handler: an `InvalidOperationException` from the guarded pre-`EventsStored` fence validation or actor-state commit.
 - Non-retryable source: any conflict after `EventsStored`, because events are already committed and must not be persisted again.
 - Terminal mapping: command status `Rejected` with `failureReason` set to `ConcurrencyConflict`, HTTP `409`, and `Retry-After: 1`.
 - Idempotency: duplicate causation IDs return cached terminal results and do not append duplicate events.
+
+The [Story 4.5 evidence report](../../../_bmad-output/implementation-artifacts/4-5-append-durability-race-evidence.md) classifies the five current catches and records the observed Redis and generic-state conflict surfaces.
 
 ## Example
 

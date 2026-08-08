@@ -1,0 +1,406 @@
+{
+  "reportFormat": "CTRF",
+  "specVersion": "0.0.0",
+  "reportId": "f5c7ce97-8519-4efd-947c-d4ab6aa471a9",
+  "timestamp": "2026-08-08T08:50:28Z",
+  "results": {
+    "tool": {
+      "name": "xUnit.net v3",
+      "version": "3.2.2+728c1dce01"
+    },
+    "environment": {
+      "osPlatform": "Linux",
+      "osRelease": "Ubuntu 26.04 LTS"
+    },
+    "extra": {
+      "computer": "<redacted-machine>",
+      "user": "<redacted-machine-user>",
+      "suites": [
+        {
+          "id": "8d2ac990-7554-49db-8fab-7c099f8d13f5",
+          "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+          "environment": "64-bit (x64) .NET 10.0.10 [collection-per-class, non-parallel]",
+          "testFramework": "xUnit.net v3 3.2.2+728c1dce01",
+          "targetFramework": ".NETCoreApp,Version=v10.0",
+          "start": 1786179027998,
+          "stop": 1786179028038,
+          "duration": 91,
+          "collections": [
+            {
+              "id": "487fd9f9-9069-4296-b76e-3790b46cc611",
+              "name": "Test collection for Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.DaprStateErrorParserTests (id: eb8bf87a7929e39e400853afaf6c7c4368370f3f5b23bc49afc2e7ec312690e2)"
+            },
+            {
+              "id": "46756475-8a80-4216-a5dd-3a44ebdf2e5e",
+              "name": "Test collection for Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests (id: 188fc4e3bbf3b6f6101919cce7e11cd39bce8f01a54526e20055b4a18eba0854)"
+            }
+          ],
+          "errors": []
+        }
+      ]
+    },
+    "summary": {
+      "tests": 25,
+      "passed": 25,
+      "failed": 0,
+      "pending": 0,
+      "skipped": 0,
+      "other": 0,
+      "suites": 1,
+      "start": 1786179027998,
+      "stop": 1786179028038
+    },
+    "tests": [
+      {
+        "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.DaprStateErrorParserTests.Parse_MalformedOrIncompleteBody_ReturnsDiagnostic(responseBody: \\\"\\\")",
+        "status": "passed",
+        "duration": 6,
+        "suite": "8d2ac990-7554-49db-8fab-7c099f8d13f5",
+        "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/DaprStateErrorParserTests.cs",
+        "line": 23,
+        "extra": {
+          "id": "0b277b29-e71b-4291-979a-3d3b6b326675",
+          "collection": "487fd9f9-9069-4296-b76e-3790b46cc611",
+          "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.DaprStateErrorParserTests",
+          "method": "Parse_MalformedOrIncompleteBody_ReturnsDiagnostic"
+        }
+      },
+      {
+        "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.DaprStateErrorParserTests.Parse_MalformedOrIncompleteBody_ReturnsDiagnostic(responseBody: \\\"not-json\\\")",
+        "status": "passed",
+        "duration": 2,
+        "suite": "8d2ac990-7554-49db-8fab-7c099f8d13f5",
+        "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/DaprStateErrorParserTests.cs",
+        "line": 23,
+        "extra": {
+          "id": "2c7c5c01-6341-4954-b44e-7ff60e8be387",
+          "collection": "487fd9f9-9069-4296-b76e-3790b46cc611",
+          "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.DaprStateErrorParserTests",
+          "method": "Parse_MalformedOrIncompleteBody_ReturnsDiagnostic"
+        }
+      },
+      {
+        "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.DaprStateErrorParserTests.Parse_MalformedOrIncompleteBody_ReturnsDiagnostic(responseBody: \\\"[]\\\")",
+        "status": "passed",
+        "duration": 0,
+        "suite": "8d2ac990-7554-49db-8fab-7c099f8d13f5",
+        "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/DaprStateErrorParserTests.cs",
+        "line": 23,
+        "extra": {
+          "id": "363499a5-8dac-465f-a454-2aec13c45545",
+          "collection": "487fd9f9-9069-4296-b76e-3790b46cc611",
+          "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.DaprStateErrorParserTests",
+          "method": "Parse_MalformedOrIncompleteBody_ReturnsDiagnostic"
+        }
+      },
+      {
+        "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.DaprStateErrorParserTests.Parse_MalformedOrIncompleteBody_ReturnsDiagnostic(responseBody: \\\"{}\\\")",
+        "status": "passed",
+        "duration": 0,
+        "suite": "8d2ac990-7554-49db-8fab-7c099f8d13f5",
+        "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/DaprStateErrorParserTests.cs",
+        "line": 23,
+        "extra": {
+          "id": "ac16241e-5aa7-4047-8dc9-2b48840e2bd2",
+          "collection": "487fd9f9-9069-4296-b76e-3790b46cc611",
+          "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.DaprStateErrorParserTests",
+          "method": "Parse_MalformedOrIncompleteBody_ReturnsDiagnostic"
+        }
+      },
+      {
+        "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.DaprStateErrorParserTests.Parse_MalformedOrIncompleteBody_ReturnsDiagnostic(responseBody: \\\"{\\\\\\\"errorCode\\\\\\\":17,\\\\\\\"message\\\\\\\":null}\\\")",
+        "status": "passed",
+        "duration": 0,
+        "suite": "8d2ac990-7554-49db-8fab-7c099f8d13f5",
+        "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/DaprStateErrorParserTests.cs",
+        "line": 23,
+        "extra": {
+          "id": "0c72a233-4440-470a-887d-be4114023a76",
+          "collection": "487fd9f9-9069-4296-b76e-3790b46cc611",
+          "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.DaprStateErrorParserTests",
+          "method": "Parse_MalformedOrIncompleteBody_ReturnsDiagnostic"
+        }
+      },
+      {
+        "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.DaprStateErrorParserTests.Parse_CompleteError_ReturnsExactFields",
+        "status": "passed",
+        "duration": 7,
+        "suite": "8d2ac990-7554-49db-8fab-7c099f8d13f5",
+        "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/DaprStateErrorParserTests.cs",
+        "line": 11,
+        "extra": {
+          "id": "7cc859b5-9bac-48ec-8762-c51ddd6506ea",
+          "collection": "487fd9f9-9069-4296-b76e-3790b46cc611",
+          "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.DaprStateErrorParserTests",
+          "method": "Parse_CompleteError_ReturnsExactFields"
+        }
+      },
+      {
+        "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 204, RawExceptionType = , RawDurabilityProven = True, RawSurvives = False, ActorSurvives = True, ActorAccepted = False, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 1, RetryCount = 0 }, expectedName: \\\"same-key-overwrite-raw-durable-write-lost\\\", expectedConsistency: True, expectedInfrastructureFailure: False, expectedRecognizedRejection: False)",
+        "status": "passed",
+        "duration": 2,
+        "suite": "8d2ac990-7554-49db-8fab-7c099f8d13f5",
+        "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
+        "line": 40,
+        "extra": {
+          "id": "dbc144bd-7ec4-4da8-bd72-a6603dfa2133",
+          "collection": "46756475-8a80-4216-a5dd-3a44ebdf2e5e",
+          "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
+          "method": "Classify_ReturnsExpectedOutcome"
+        }
+      },
+      {
+        "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 204, RawExceptionType = , RawDurabilityProven = False, RawSurvives = True, ActorSurvives = False, ActorAccepted = True, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 1, RetryCount = 0 }, expectedName: \\\"same-key-overwrite-actor-acknowledged-write-lost\\\", expectedConsistency: True, expectedInfrastructureFailure: False, expectedRecognizedRejection: False)",
+        "status": "passed",
+        "duration": 0,
+        "suite": "8d2ac990-7554-49db-8fab-7c099f8d13f5",
+        "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
+        "line": 40,
+        "extra": {
+          "id": "329ca21f-4c4d-4dd3-b260-4729498d9520",
+          "collection": "46756475-8a80-4216-a5dd-3a44ebdf2e5e",
+          "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
+          "method": "Classify_ReturnsExpectedOutcome"
+        }
+      },
+      {
+        "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 409, RawExceptionType = , RawDurabilityProven = False, RawSurvives = False, ActorSurvives = True, ActorAccepted = False, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 1, RetryCount = 0 }, expectedName: \\\"raw-writer-conflict-rejected\\\", expectedConsistency: True, expectedInfrastructureFailure: False, expectedRecognizedRejection: True)",
+        "status": "passed",
+        "duration": 0,
+        "suite": "8d2ac990-7554-49db-8fab-7c099f8d13f5",
+        "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
+        "line": 40,
+        "extra": {
+          "id": "42b450d6-707c-4ae0-91f1-a24182f7b4a1",
+          "collection": "46756475-8a80-4216-a5dd-3a44ebdf2e5e",
+          "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
+          "method": "Classify_ReturnsExpectedOutcome"
+        }
+      },
+      {
+        "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 412, RawExceptionType = , RawDurabilityProven = False, RawSurvives = False, ActorSurvives = True, ActorAccepted = False, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 1, RetryCount = 0 }, expectedName: \\\"raw-writer-conflict-rejected\\\", expectedConsistency: True, expectedInfrastructureFailure: False, expectedRecognizedRejection: True)",
+        "status": "passed",
+        "duration": 0,
+        "suite": "8d2ac990-7554-49db-8fab-7c099f8d13f5",
+        "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
+        "line": 40,
+        "extra": {
+          "id": "19d6fa4e-6487-4700-948f-9447c8bcbbc8",
+          "collection": "46756475-8a80-4216-a5dd-3a44ebdf2e5e",
+          "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
+          "method": "Classify_ReturnsExpectedOutcome"
+        }
+      },
+      {
+        "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 500, RawExceptionType = , RawDurabilityProven = False, RawSurvives = False, ActorSurvives = False, ActorAccepted = False, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 1, RetryCount = 0 }, expectedName: \\\"raw-writer-infrastructure-error\\\", expectedConsistency: False, expectedInfrastructureFailure: True, expectedRecognizedRejection: False)",
+        "status": "passed",
+        "duration": 0,
+        "suite": "8d2ac990-7554-49db-8fab-7c099f8d13f5",
+        "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
+        "line": 40,
+        "extra": {
+          "id": "bcab54fa-e724-4285-870f-d0924f5c6753",
+          "collection": "46756475-8a80-4216-a5dd-3a44ebdf2e5e",
+          "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
+          "method": "Classify_ReturnsExpectedOutcome"
+        }
+      },
+      {
+        "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 400, RawExceptionType = , RawDurabilityProven = False, RawSurvives = False, ActorSurvives = False, ActorAccepted = False, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 1, RetryCount = 0 }, expectedName: \\\"raw-writer-unrecognized-http-error\\\", expectedConsistency: False, expectedInfrastructureFailure: True, expectedRecognizedRejection: False)",
+        "status": "passed",
+        "duration": 0,
+        "suite": "8d2ac990-7554-49db-8fab-7c099f8d13f5",
+        "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
+        "line": 40,
+        "extra": {
+          "id": "ff5e436d-0cdb-432a-9d24-00483608d1ef",
+          "collection": "46756475-8a80-4216-a5dd-3a44ebdf2e5e",
+          "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
+          "method": "Classify_ReturnsExpectedOutcome"
+        }
+      },
+      {
+        "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = , RawExceptionType = System.Net.Http.HttpRequestException, RawDurabilityProven = False, RawSurvives = False, ActorSurvives = False, ActorAccepted = False, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 1, RetryCount = 0 }, expectedName: \\\"raw-writer-transport-error\\\", expectedConsistency: False, expectedInfrastructureFailure: True, expectedRecognizedRejection: False)",
+        "status": "passed",
+        "duration": 0,
+        "suite": "8d2ac990-7554-49db-8fab-7c099f8d13f5",
+        "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
+        "line": 40,
+        "extra": {
+          "id": "de807bb4-2fdf-4092-9afe-de9c9463cf2f",
+          "collection": "46756475-8a80-4216-a5dd-3a44ebdf2e5e",
+          "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
+          "method": "Classify_ReturnsExpectedOutcome"
+        }
+      },
+      {
+        "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 204, RawExceptionType = , RawDurabilityProven = False, RawSurvives = False, ActorSurvives = False, ActorAccepted = False, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = System.TimeoutException, FinalSequence = 1, RetryCount = 0 }, expectedName: \\\"actor-writer-infrastructure-error\\\", expectedConsistency: False, expectedInfrastructureFailure: True, expectedRecognizedRejection: False)",
+        "status": "passed",
+        "duration": 0,
+        "suite": "8d2ac990-7554-49db-8fab-7c099f8d13f5",
+        "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
+        "line": 40,
+        "extra": {
+          "id": "abeffbfc-c723-4c2f-86a9-6ea6db85f9dd",
+          "collection": "46756475-8a80-4216-a5dd-3a44ebdf2e5e",
+          "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
+          "method": "Classify_ReturnsExpectedOutcome"
+        }
+      },
+      {
+        "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 204, RawExceptionType = , RawDurabilityProven = False, RawSurvives = False, ActorSurvives = False, ActorAccepted = True, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 0, RetryCount = 0 }, expectedName: \\\"inconsistent-both-acknowledged-total-loss\\\", expectedConsistency: False, expectedInfrastructureFailure: False, expectedRecognizedRejection: False)",
+        "status": "passed",
+        "duration": 0,
+        "suite": "8d2ac990-7554-49db-8fab-7c099f8d13f5",
+        "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
+        "line": 40,
+        "extra": {
+          "id": "8061a008-c36f-4f73-a236-7801b0e12e82",
+          "collection": "46756475-8a80-4216-a5dd-3a44ebdf2e5e",
+          "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
+          "method": "Classify_ReturnsExpectedOutcome"
+        }
+      },
+      {
+        "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 204, RawExceptionType = , RawDurabilityProven = False, RawSurvives = False, ActorSurvives = False, ActorAccepted = False, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 0, RetryCount = 0 }, expectedName: \\\"inconsistent-raw-acknowledged-total-loss\\\", expectedConsistency: False, expectedInfrastructureFailure: False, expectedRecognizedRejection: False)",
+        "status": "passed",
+        "duration": 0,
+        "suite": "8d2ac990-7554-49db-8fab-7c099f8d13f5",
+        "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
+        "line": 40,
+        "extra": {
+          "id": "7c345e07-8ef1-49d8-b717-d7e2050f3d2b",
+          "collection": "46756475-8a80-4216-a5dd-3a44ebdf2e5e",
+          "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
+          "method": "Classify_ReturnsExpectedOutcome"
+        }
+      },
+      {
+        "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 409, RawExceptionType = , RawDurabilityProven = False, RawSurvives = False, ActorSurvives = False, ActorAccepted = True, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 0, RetryCount = 0 }, expectedName: \\\"inconsistent-actor-acknowledged-total-loss\\\", expectedConsistency: False, expectedInfrastructureFailure: False, expectedRecognizedRejection: False)",
+        "status": "passed",
+        "duration": 0,
+        "suite": "8d2ac990-7554-49db-8fab-7c099f8d13f5",
+        "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
+        "line": 40,
+        "extra": {
+          "id": "7f716873-6f2b-4424-a6aa-f90c84698ca0",
+          "collection": "46756475-8a80-4216-a5dd-3a44ebdf2e5e",
+          "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
+          "method": "Classify_ReturnsExpectedOutcome"
+        }
+      },
+      {
+        "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 409, RawExceptionType = , RawDurabilityProven = False, RawSurvives = False, ActorSurvives = False, ActorAccepted = False, ActorRejected = True, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 0, RetryCount = 0 }, expectedName: \\\"neither-writer-durable\\\", expectedConsistency: True, expectedInfrastructureFailure: False, expectedRecognizedRejection: True)",
+        "status": "passed",
+        "duration": 0,
+        "suite": "8d2ac990-7554-49db-8fab-7c099f8d13f5",
+        "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
+        "line": 40,
+        "extra": {
+          "id": "fa26776a-d4e5-4034-b0a8-90f22a3bac6d",
+          "collection": "46756475-8a80-4216-a5dd-3a44ebdf2e5e",
+          "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
+          "method": "Classify_ReturnsExpectedOutcome"
+        }
+      },
+      {
+        "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 204, RawExceptionType = , RawDurabilityProven = False, RawSurvives = True, ActorSurvives = True, ActorAccepted = False, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 2, RetryCount = 1 }, expectedName: \\\"conflict-retry-to-sequence-2\\\", expectedConsistency: True, expectedInfrastructureFailure: False, expectedRecognizedRejection: True)",
+        "status": "passed",
+        "duration": 0,
+        "suite": "8d2ac990-7554-49db-8fab-7c099f8d13f5",
+        "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
+        "line": 40,
+        "extra": {
+          "id": "c87f5ff1-c6a1-4098-9c48-8011222825ff",
+          "collection": "46756475-8a80-4216-a5dd-3a44ebdf2e5e",
+          "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
+          "method": "Classify_ReturnsExpectedOutcome"
+        }
+      },
+      {
+        "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 204, RawExceptionType = , RawDurabilityProven = False, RawSurvives = True, ActorSurvives = True, ActorAccepted = False, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 2, RetryCount = 0 }, expectedName: \\\"inconsistent-sequence-2-outcome\\\", expectedConsistency: False, expectedInfrastructureFailure: False, expectedRecognizedRejection: False)",
+        "status": "passed",
+        "duration": 0,
+        "suite": "8d2ac990-7554-49db-8fab-7c099f8d13f5",
+        "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
+        "line": 40,
+        "extra": {
+          "id": "c368b5a2-628a-4e15-b87e-ad189dfcb4b9",
+          "collection": "46756475-8a80-4216-a5dd-3a44ebdf2e5e",
+          "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
+          "method": "Classify_ReturnsExpectedOutcome"
+        }
+      },
+      {
+        "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 204, RawExceptionType = , RawDurabilityProven = False, RawSurvives = True, ActorSurvives = False, ActorAccepted = False, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 2, RetryCount = 1 }, expectedName: \\\"inconsistent-sequence-2-outcome\\\", expectedConsistency: False, expectedInfrastructureFailure: False, expectedRecognizedRejection: False)",
+        "status": "passed",
+        "duration": 0,
+        "suite": "8d2ac990-7554-49db-8fab-7c099f8d13f5",
+        "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
+        "line": 40,
+        "extra": {
+          "id": "f88b7f85-f9bd-484b-aef1-f23fbd6d0f2e",
+          "collection": "46756475-8a80-4216-a5dd-3a44ebdf2e5e",
+          "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
+          "method": "Classify_ReturnsExpectedOutcome"
+        }
+      },
+      {
+        "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 204, RawExceptionType = , RawDurabilityProven = False, RawSurvives = False, ActorSurvives = True, ActorAccepted = False, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 1, RetryCount = 0 }, expectedName: \\\"inconsistent-raw-acknowledgement-not-proven-durabl\\\"···, expectedConsistency: False, expectedInfrastructureFailure: False, expectedRecognizedRejection: False)",
+        "status": "passed",
+        "duration": 0,
+        "suite": "8d2ac990-7554-49db-8fab-7c099f8d13f5",
+        "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
+        "line": 40,
+        "extra": {
+          "id": "303e432b-8552-4145-823b-b54c33181bd4",
+          "collection": "46756475-8a80-4216-a5dd-3a44ebdf2e5e",
+          "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
+          "method": "Classify_ReturnsExpectedOutcome"
+        }
+      },
+      {
+        "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 409, RawExceptionType = , RawDurabilityProven = False, RawSurvives = True, ActorSurvives = False, ActorAccepted = False, ActorRejected = False, ActorConflictSignalled = True, ActorExceptionType = , FinalSequence = 1, RetryCount = 0 }, expectedName: \\\"actor-writer-conflict-rejected\\\", expectedConsistency: True, expectedInfrastructureFailure: False, expectedRecognizedRejection: True)",
+        "status": "passed",
+        "duration": 0,
+        "suite": "8d2ac990-7554-49db-8fab-7c099f8d13f5",
+        "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
+        "line": 40,
+        "extra": {
+          "id": "6a8f0734-ac1c-4f03-89cc-f9148e7be118",
+          "collection": "46756475-8a80-4216-a5dd-3a44ebdf2e5e",
+          "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
+          "method": "Classify_ReturnsExpectedOutcome"
+        }
+      },
+      {
+        "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 409, RawExceptionType = , RawDurabilityProven = False, RawSurvives = False, ActorSurvives = False, ActorAccepted = False, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 3, RetryCount = 0 }, expectedName: \\\"inconsistent-final-sequence\\\", expectedConsistency: False, expectedInfrastructureFailure: False, expectedRecognizedRejection: False)",
+        "status": "passed",
+        "duration": 0,
+        "suite": "8d2ac990-7554-49db-8fab-7c099f8d13f5",
+        "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
+        "line": 40,
+        "extra": {
+          "id": "04171f34-291f-4bb2-b26f-c5d6dc429474",
+          "collection": "46756475-8a80-4216-a5dd-3a44ebdf2e5e",
+          "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
+          "method": "Classify_ReturnsExpectedOutcome"
+        }
+      },
+      {
+        "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 409, RawExceptionType = , RawDurabilityProven = False, RawSurvives = False, ActorSurvives = False, ActorAccepted = False, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 1, RetryCount = 0 }, expectedName: \\\"inconsistent-final-writer-missing\\\", expectedConsistency: False, expectedInfrastructureFailure: False, expectedRecognizedRejection: False)",
+        "status": "passed",
+        "duration": 0,
+        "suite": "8d2ac990-7554-49db-8fab-7c099f8d13f5",
+        "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
+        "line": 40,
+        "extra": {
+          "id": "615b5a2e-7ff3-43d0-bddd-cff079b4d419",
+          "collection": "46756475-8a80-4216-a5dd-3a44ebdf2e5e",
+          "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
+          "method": "Classify_ReturnsExpectedOutcome"
+        }
+      }
+    ]
+  }
+}
