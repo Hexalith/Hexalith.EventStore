@@ -2,77 +2,83 @@
 title: 'Resolve main rebase conflicts'
 type: 'bugfix'
 created: '2026-07-21'
-status: 'draft'
+status: 'done'
+baseline_commit: '2321205baad8724c0508a60f92fd0ecfbca6845d'
 review_loop_iteration: 0
 context:
-  - '{project-root}/_bmad-output/planning-artifacts/architecture.md'
-  - '{project-root}/_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md'
+  - '{project-root}/_bmad-output/project-context.md'
 ---
 
 <frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
 
 ## Intent
 
-**Problem:** Local `main` contains two validated commits that cannot be pushed because `origin/main` advanced with a parallel fix touching the same domain-invocation resilience code, integration fixtures, tests, and Story 1.20 record. A mechanical side selection would discard stronger cancellation, persisted-state, or cleanup guarantees.
+**Problem:** The July draft assumed local `main` held unpushed commits `f3e036bf` / `026b039b` that conflicted with `origin/main`. Those commits are orphans; `origin/main` already contains the stronger sibling `f6db558c` (same subject/parent), and `main` matches `origin/main` at `37fdcd1f`. Replaying the orphans would regress resilience, fixtures, Story 1.20 status, and submodule pins.
 
-**Approach:** Rebase the local commits onto `origin/main`, reconcile each conflict by preserving the strongest compatible behavior from both lineages, verify the integrated implementation, and push the resulting linear history without force.
+**Approach:** Close this draft as obsolete without rebase, cherry-pick, status downgrade, or gitlink replay. Record forensic orphan SHAs and leave unrelated feature-branch work untouched.
 
 ## Boundaries & Constraints
 
-**Always:** Preserve caller cancellation as `OperationCanceledException`; classify only the configured invocation timeout as `DomainServiceException`; keep domain invocation free from host-default HTTP retry/timeout handlers; preserve durable persisted-state assertions, Redis ownership-safe restoration, final root-declared submodule pointers, and Story 1.20's fail-closed `blocked` state.
+**Always:** Treat `origin/main` / `main` tip `37fdcd1f` as authoritative for this closure; keep Story 1.20 `status: done`; keep current Builds/Memories/Tenants gitlinks; leave `feat/story-4-5-append-durability-race-evidence` and its dirty BMAD files untouched; append one deferred-work forensic note for the orphan SHAs.
 
-**Ask First:** Any resolution that changes public contracts, weakens a test or Story 1.20 gate, drops a local or remote capability, requires a merge commit, or cannot retain a linear non-force push.
+**Ask First:** Any request to salvage unique content from `f3e036bf`/`026b039b`, reopen Story 1.20 as `blocked`, or change submodule pins.
 
-**Never:** Force-push, initialize or update nested submodules, stack competing resilience pipelines, use real-time sleeps for timeout tests, authorize consumer migration, mark Story 1.20 or Epic 1 done, or overwrite unrelated user changes.
-
-## I/O & Edge-Case Matrix
-
-| Scenario | Input / State | Expected Output / Behavior | Error Handling |
-|----------|---------------|----------------------------|----------------|
-| Configured timeout | Named domain call exceeds the validated timeout | One attempt is bounded by a `TimeProvider`-driven timeout | Log timeout context and throw `DomainServiceException` |
-| Caller cancellation | Caller token is canceled before completion | Cancellation propagates unchanged | Do not misclassify or wrap it as timeout/failure |
-| Host resilience defaults | Host configures default HTTP retries/timeouts | Domain named client contains no inherited `ResilienceHandler` | Other named clients retain their defaults |
-| Shared Redis cleanup | Topology-owned keys existed before the test or changed ownership | Original value and TTL are restored only while ownership still matches | Aggregate cleanup failures without overwriting foreign state |
+**Never:** Rebase or cherry-pick the orphans onto current tips; force-push; initialize/update nested submodules; stack this closure onto the story-4.5 branch commits; use wall-clock `CancelAfter` or dual resilience pipelines from the orphan lineage.
 
 </frozen-after-approval>
 
 ## Code Map
 
-- `src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs` and `DomainServiceHttpClientBuilderFilter.cs` -- named-client registration and deterministic removal of inherited resilience handlers.
-- `src/Hexalith.EventStore.Server/DomainServices/DaprDomainServiceInvoker.cs` and `DomainServiceOptions.cs` -- cancellation classification, bounded invocation, logging, and option documentation.
-- `tests/Hexalith.EventStore.Server.Tests/` -- deterministic unit and host-registration coverage using `FakeTimeProvider`.
-- `tests/Hexalith.EventStore.IntegrationTests/ContractTests/` and `EventStore/` -- durable bootstrap/status evidence and conflict-contract coverage.
-- `tests/Hexalith.EventStore.IntegrationTests/Fixtures/` and `Security/AspireTopologyFixture.cs` -- shared HTTP policy, DAPR endpoints, activation retry classification, and ownership-safe Redis restoration.
-- `_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md` -- additive conflict merge that must remain blocked.
-- `references/Hexalith.Builds` and `references/Hexalith.Memories` -- final fast-forward gitlinks replayed by the second local commit.
+- `src/Hexalith.EventStore.Server/DomainServices/DomainServiceHttpClientBuilderFilter.cs:6-24` -- remote-winning filter; strips `ResilienceHandler` only for named client `domain-service-invocation` (KEEP; do not replace with orphan `RemoveAllResilienceHandlers`).
+- `src/Hexalith.EventStore.Server/DomainServices/DaprDomainServiceInvoker.cs:71-130` -- `TimeProvider`-backed linked CTS; caller cancel → `OperationCanceledException`; configured timeout → `DomainServiceException` + `ConfiguredTimeoutElapsed` (KEEP; orphan used `CancelAfter`).
+- `src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs:63-68` -- registers filter + named client `Timeout = InfiniteTimeSpan`.
+- `tests/Hexalith.EventStore.Server.Tests/DomainServices/DaprDomainServiceInvokerTests.cs:169+` -- FakeTimeProvider timeout vs caller-cancel coverage already on tip.
+- `tests/Hexalith.EventStore.IntegrationTests/Security/ProjectionDeliveryWriterProtocolTestLease.cs:174-215` -- lease-based Redis ownership restore (stronger than orphan inline snapshot restore).
+- `_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md` -- tip `status: done` (orphan had `blocked`; do not downgrade).
+- Orphan objects (read-only forensic): `f3e036bf0cae72b50508a3e729f24a052a7c4e95`, `026b039b237372774d998af8f5b77c58db00d348`; winning sibling already on tip: `f6db558c`.
+- Gitlinks on tip (KEEP): Builds `824d7ef1…`, Memories `da5df100…`, Tenants `323baf88…` — orphan `026` pins are older.
 
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] Rebase `f3e036bf` onto `origin/main`; retain the remote builder-filter and `TimeProvider` implementation while preserving compatible local documentation and reusable fixture policies.
-- [ ] Resolve test and fixture conflicts in favor of deterministic timeout tests, persisted DAPR evidence, required endpoint properties, and ownership-guarded Redis restoration; keep local helpers only when wired and covered.
-- [ ] Merge the Story 1.20 narratives additively without changing its blocked status or historical evidence meaning.
-- [ ] Replay `026b039b`, verify final Builds/Memories/Tenants gitlinks, and reword the pointer-only commit to the repository-required `build(deps)` type.
-- [ ] Run focused builds/tests, conflict-marker and whitespace checks, inspect the final range, validate all rebased commit messages, then push `main` normally.
+- [x] `_bmad-output/implementation-artifacts/spec-resolve-main-rebase-conflicts.md` -- after approval, set `status: done` and leave frozen intent locked -- closes the obsolete conflict draft without code mutation.
+- [x] `_bmad-output/implementation-artifacts/deferred-work.md` -- append one new entry naming orphan SHAs `f3e036bf` / `026b039b` and sibling `f6db558c` -- preserves forensic value if reflog GC drops tip reachability.
+- [x] Working tree -- verify `git merge-base --is-ancestor f6db558c origin/main`, `main`/`origin/main` alignment, Story 1.20 `done`, and no conflict markers under `src`/`tests`/`_bmad-output` -- proves closure premises still hold at execution time.
+- [x] Branch hygiene -- do not checkout, stash, commit, or push on `feat/story-4-5-append-durability-race-evidence` for this work -- avoids mixing unrelated dirty BMAD edits into closure.
 
 **Acceptance Criteria:**
-- Given host-wide HTTP resilience defaults, when the domain invocation client is built, then only that named client excludes inherited resilience handlers and executes a single bounded attempt.
-- Given configured timeout versus caller cancellation, when either token fires, then deterministic tests prove distinct exception classification and logging behavior.
-- Given bootstrap, concurrency, activation, and topology-cleanup paths, when focused unit/integration tests run, then persisted identities and cleanup ownership guarantees remain covered.
-- Given the completed rebase, when the final range is inspected, then it is linear over `origin/main`, contains no conflict markers, preserves Story 1.20 as blocked and the intended final gitlinks, passes commitlint, and pushes without force.
+- Given the approved obsolete-closure intent, when implementation finishes, then this spec is `done`, no orphan commits are replayed onto `main`/`origin/main`, and Story 1.20 remains `done`.
+- Given tip inspection, when gitlinks and resilience entry points are checked, then current filter/`TimeProvider` shape and Builds/Memories/Tenants pins are unchanged by this work.
+- Given deferred-work append, when the ledger is read, then a new entry cites the orphan and winning-sibling SHAs without editing prior entries.
 
 ## Spec Change Log
 
+- 2026-08-08 — Human chose close-as-obsolete (`[C]`). Replaced frozen intent: original rebase/push narrative → no-op closure after confirming orphans vs winning sibling `f6db558c` on `origin/main`. Avoids regressing tip resilience/fixtures/1.20/`gitlinks`. KEEP tip remote patterns; NEVER replay orphans.
+
 ## Design Notes
 
-The two first commits are parallel implementations of the same review findings. Prefer the remote filter over the experimental order-sensitive removal extension, and the remote `TimeProvider` cancellation source over wall-clock `CancelAfter`. The local contract-test helpers survive only if the merged fixtures consume them; duplicate or orphaned resilience logic is removed.
+`f3e036bf` and `f6db558c` share parent `014bd00a` and the same subject; only `f6` is an ancestor of `origin/main`. Diffing tip → `f3` is a mass regression (~1357 files), not a missing upgrade. Current HEAD may sit on `feat/story-4-5-…` with unrelated dirty BMAD files — closure must not touch that branch.
 
 ## Verification
 
 **Commands:**
-- `git diff --check && ! rg -n '^(<<<<<<<|=======|>>>>>>>)' src tests _bmad-output` -- expected: no whitespace errors or conflict markers.
-- `dotnet build tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --configuration Release -m:1 -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` -- expected: succeeds without warnings/errors.
-- Run the built Server.Tests assembly for configuration, invoker, and isolation classes, then the full assembly -- expected: all tests pass.
-- Build IntegrationTests and run the non-topology resilience/policy/concurrency classes; run live DAPR/Aspire lanes when infrastructure is available -- expected: focused lanes pass or exact environmental blockers are reported.
-- `npx --no-install commitlint --from origin/main --to HEAD --verbose` -- expected: every rebased commit passes.
-- `git push origin main` -- expected: fast-forward push succeeds.
+- `git rev-parse main origin/main` -- expected: both `37fdcd1f…` (or equal tips if main advanced; still no orphan replay).
+- `git merge-base --is-ancestor f6db558c origin/main && git cat-file -t f3e036bf && git cat-file -t 026b039b` -- expected: ancestor check succeeds; orphans still exist as objects (or report missing objects if GC already dropped them).
+- `rg -m1 '^status:' _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md` -- expected: `status: done`.
+- `git ls-tree origin/main references/Hexalith.Builds references/Hexalith.Memories references/Hexalith.Tenants` -- expected: unchanged vs pre-closure pins.
+- `git diff --check && ! rg -n '^(<<<<<<<|=======|>>>>>>>)' src tests _bmad-output` -- expected: clean.
+- `git status -sb` -- expected: no new changes from this closure except the intentional deferred-work append (and this spec status flip); story-4.5 dirty files remain whatever they were.
+
+## Suggested Review Order
+
+- Frozen obsolete-closure intent: no orphan replay; tip stays authoritative.
+  [`spec-resolve-main-rebase-conflicts.md:15`](spec-resolve-main-rebase-conflicts.md#L15)
+
+- Forensic deferred note with full SHAs and non-actionable status.
+  [`deferred-work.md:916`](deferred-work.md#L916)
+
+- Checked tasks prove tip premises and branch hygiene were verified.
+  [`spec-resolve-main-rebase-conflicts.md:43`](spec-resolve-main-rebase-conflicts.md#L43)
+
+- Tip-inspection verification commands (no code rebuild/push).
+  [`spec-resolve-main-rebase-conflicts.md:64`](spec-resolve-main-rebase-conflicts.md#L64)

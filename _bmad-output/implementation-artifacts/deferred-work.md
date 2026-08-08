@@ -906,3 +906,10 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-4-committed-event-publication-recovery.md`
   summary: [LOW] Log EventId allocation across the partial `Log` classes is unguarded, so a duplicate EventId can be introduced silently.
   evidence: Story 4.4 adds EventIds 2010-2019 in `AggregateActor` (with `2019` declared out of order between `2015` and `2016`) and `5006` in `IdempotencyChecker`, but `AggregateActor` is a partial class whose `Log` block is one of several and nothing in the repo asserts uniqueness of EventIds within a category. A cheap reflection test over the `LoggerMessage` attributes would pin the ranges.
+
+## Deferred from: obsolete main-rebase conflict draft closure (2026-08-08)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-resolve-main-rebase-conflicts.md`
+  summary: Forensic note for orphan commits `f3e036bf0cae72b50508a3e729f24a052a7c4e95` / `026b039b237372774d998af8f5b77c58db00d348` that a July draft assumed were unpushed on local `main`. They are not tip ancestors; winning sibling `f6db558c768ae413712560019beab488d9974d66` (same subject/parent) is already on `origin/main`. Closed as obsolete without rebase or cherry-pick — replaying the orphans would regress resilience, fixtures, Story 1.20 status, and submodule pins. Preserve the SHAs if reflog GC later drops tip reachability.
+  evidence: `git merge-base --is-ancestor f6db558c768ae413712560019beab488d9974d66 origin/main` succeeds; `main` and `origin/main` both at `37fdcd1fc8a238b676441b1f5a5ef5fd4370d27e`; orphans still exist as objects (`git cat-file -t f3e036bf0cae72b50508a3e729f24a052a7c4e95` / `026b039b237372774d998af8f5b77c58db00d348` → `commit`); tip gitlinks remain Builds `824d7ef100455423aabbcd399c8364074000b2e0`, Memories `da5df10092461e5473d0e8fc09eacbb4a8e08d3a`, Tenants `323baf8871e70be3fde92072f32b758af950bc8c`.
+  status: forensic-only (closed obsolete; non-actionable)
