@@ -970,3 +970,10 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
   summary: Add missing-key removal mutations for validators whose NullReferenceException catch filters are only exercised by value mutations today.
   evidence: Blind-hunter review of Story 3.13; prior hardening added catch filters but theories still mutate values rather than removing keys.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-gh-29763400936-fix-release-post-publish-status.md`
+  summary: Fixture imports `undici` as a top-level module without a direct package.json dependency, so hoisting/layout changes could bind a different major than the plugin expects.
+  evidence: Blind-hunter review — lockfile already shows multiple undici majors; fixture only asserts resolve-path equality with the plugin.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-gh-29763400936-fix-release-post-publish-status.md`
+  summary: Semantic-release governance job structural contracts do not pin omitted write permissions or forbid token env overrides on the Node fixture steps.
+  evidence: Edge-case hunter review — job could gain contents/pull-requests write without failing AssertSemanticReleaseGovernanceJobIsBlocking; outside frozen success-notification scope.

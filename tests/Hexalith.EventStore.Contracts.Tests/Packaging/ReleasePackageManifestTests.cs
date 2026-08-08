@@ -1403,6 +1403,7 @@ public sealed class ReleasePackageManifestTests
         lines.ShouldContain("    timeout-minutes: 10");
         checkoutActions.Length.ShouldBe(1);
         checkoutActions[0].Groups["sha"].Value.ShouldBe(CheckoutActionSha);
+        lines.ShouldContain("          persist-credentials: false");
         setupNodeActions.Length.ShouldBe(1);
         setupNodeActions[0].Groups["sha"].Value.ShouldBe(SetupNodeActionSha);
         lines.ShouldContain("          node-version: '22'");
@@ -1464,6 +1465,8 @@ public sealed class ReleasePackageManifestTests
                 "    timeout-minutes: 10",
                 "    steps:",
                 $"      - uses: actions/checkout@{CheckoutActionSha} # v7.0.0",
+                "        with:",
+                "          persist-credentials: false",
                 "      - name: Set up supported Node",
                 $"        uses: actions/setup-node@{SetupNodeActionSha} # v7.0.0",
                 "        with:",

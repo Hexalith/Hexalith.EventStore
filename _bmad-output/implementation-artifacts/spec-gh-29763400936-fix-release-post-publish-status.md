@@ -2,7 +2,7 @@
 title: 'Fix false failure after successful release publication'
 type: 'bugfix'
 created: '2026-07-20'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 3
 baseline_commit: 'f435d968eae603bf377809925f78f25fdac5f4f5'
 context:
@@ -93,3 +93,41 @@ The fixture changes only transport options; functional plugin options remain tho
 - The focused Contracts Tests Release build succeeded with zero warnings and zero errors. `ContainerPublishingGovernanceTests` passed 9/9 with exact configuration and blocking publication-command assertions and no Node child process. `ReleasePackageManifestTests` passed 28/28, including the unique unconditional governance-job shape, exact SHA-pinned checkout/setup-node, Node 22/cache/`npm ci`/fixture ordering, and five negative job/step skip, dependency, and tolerance mutations.
 - `actionlint .github/workflows/ci.yml .github/workflows/release.yml`, `git diff f435d968eae603bf377809925f78f25fdac5f4f5 --check`, and the final `git diff --check` passed. The dedicated CI job is restored exactly once; all three CI jobs are structurally blocking. The release workflow, package lock, shared Builds, submodules, permissions, and triggers remained unchanged.
 - Frozen matrix audit — **Release notes contain issue-like CI run IDs:** the isolated issue-like wrapper completed with no URL/body run ID, reference-resolution query, or numeric notification. **Normal successful release:** the isolated ordinary-history wrapper completed under the same exact request contract. **Publication fails before success notification:** structural tests retain blocking preflight/NuGet/container commands and reject CI skip/tolerance mutations. **Existing release validation:** the approved read-only evidence for run `29763400936` remains authoritative: `v3.78.0` targets `a21517e3b66458e997d1ea2f4df5072c4abde628`, has 14 GitHub assets and 14 published NuGet packages, and its two-platform OCI validation and smoke checks passed. This loop did not dispatch Release, perform remote operations, or mutate external artifacts.
+- Review loop 4 patched `AssertSemanticReleaseGovernanceJobIsBlocking` / `CreateValidSemanticReleaseGovernanceJobBlock` to require checkout `persist-credentials: false`. Re-verified: `.releaserc.json` parse, fixture (2 histories + blocked Undici probe), Contracts Release build 0/0, `ContainerPublishingGovernanceTests` 19/19, `ReleasePackageManifestTests` 89/89, `actionlint`, and story-scoped `git diff --check`. Full-tree `git diff f435d968 --check` still hits unrelated historical whitespace outside this story's Code Map.
+
+## Suggested Review Order
+
+**Notification configuration**
+
+- Skip issue/PR success comments while keeping GitHub Release assets.
+  [`.releaserc.json:19`](../../.releaserc.json#L19)
+
+- Document why `fix/gh-<run-id>` merge fragments must not redden publication.
+  [`ci.md:181`](../../docs/ci.md#L181)
+
+**Behavioral proof**
+
+- Production options plus pinned plugin version before any history runs.
+  [`semantic-release-github-success.mjs:33`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/Fixtures/semantic-release-github-success.mjs#L33)
+
+- Undici global-dispatcher allow-list blocks non-selected origins before I/O.
+  [`semantic-release-github-success.mjs:236`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/Fixtures/semantic-release-github-success.mjs#L236)
+
+- External probe must land in `blockedRequests` on the selected-origin guard.
+  [`semantic-release-github-success.mjs:324`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/Fixtures/semantic-release-github-success.mjs#L324)
+
+- Exact `getSRIssues` cleanup allow-list; run-ID GraphQL stays forbidden.
+  [`semantic-release-github-success.mjs:76`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/Fixtures/semantic-release-github-success.mjs#L76)
+
+**CI governance**
+
+- Blocking Node 22 + `npm ci` job runs the fixture unconditionally.
+  [`ci.yml:42`](../../.github/workflows/ci.yml#L42)
+
+- Structural contract pins checkout SHA, credentials, Node, and step order.
+  [`ReleasePackageManifestTests.cs:1381`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs#L1381)
+
+**Supporting assertions**
+
+- .NET lane asserts exact GitHub option keys without spawning Node.
+  [`ContainerPublishingGovernanceTests.cs:46`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs#L46)
