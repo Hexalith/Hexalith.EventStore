@@ -100,6 +100,12 @@ context:
 - [x] [Review][Patch] Enforce LogIsSupportSafe size gates, non-empty cleanup_check, and absolute local_search_roots rejection [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs]
 - [x] [Review][Patch] Lock retained fail-closed verdict.checks map and Production hosting-environment pass-fixture mutations [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs]
 - [x] [Review][Patch] Skip symlink-escape coverage when links are unavailable; redact host paths and rebind fail-closed review subject [_bmad-output/implementation-artifacts/evidence/story-3-13/...]
+- [x] [Review][Patch] Reject contradictory smoke-results overall pass under fail-closed subject validation [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs]
+- [x] [Review][Patch] Lock fail-closed runtime/OCI/registry enums and Development≠Production contract fields [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs]
+- [x] [Review][Patch] Assert retained unstructured smoke logs fail ValidateRuntimeLog [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs]
+- [x] [Review][Patch] Reject IPv4-compatible IPv6 private embeddings in support-safety checks [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs]
+- [x] [Review][Patch] Correct cleanup-overstated review-subject blocker and align Task 1/8 honesty [_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure.md]
+- [x] [Review][Defer] Story 4.5 LiveSidecar prose in docs/ci.md outside Story 3.13 ownership-paragraph scope [docs/ci.md]
 
 **Acceptance Criteria:**
 - Given completed predecessors, when closure begins, then committed identities are hash-checked without modification or inference.
@@ -147,6 +153,12 @@ context:
   docs commit had drifted away from the approved hashes, and pinned the predecessor git-tree
   assertion to `ExpectedBaselineCommit` instead of `HEAD`. Focused verifier coverage is now 140
   passing tests; AC2/AC4 and 0/3 acceptances remain open.
+- 2026-08-08: Applied an eighth review-hardening pass without changing frozen intent. Set retained
+  `smoke-results.json` overall `result` to `fail`, locked fail-closed runtime/OCI/registry/smoke
+  enums in `ValidateActualFailClosedSubject`, asserted retained unstructured logs fail
+  `ValidateRuntimeLog`, rejected IPv4-compatible private embeddings, corrected cleanup-overstated
+  blocker text, and aligned Task 1/8 lifecycle wording. Focused verifier coverage is now 142
+  passing tests; AC2/AC4 and 0/3 acceptances remain open.
 
 ## Verification
 
@@ -160,41 +172,30 @@ context:
 
 **Fail-closed subject honesty**
 
-- Keep the packet non-done while AC2/AC4 remain open.
-  [`3-13-deployed-runtime-parity-closure-proof-packet.md:5`](3-13-deployed-runtime-parity-closure-proof-packet.md#L5)
+- Reject overall smoke-results pass while the packet stays fail-closed.
+  [`DeployedRuntimeParityClosureTests.cs:517`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L517)
 
-- Passing evidence lists only true passes after subject rebind.
-  [`review-subject.json:28`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/review-subject.json#L28)
+- Lock fail-closed runtime, OCI, registry, and smoke enums together.
+  [`DeployedRuntimeParityClosureTests.cs:3335`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3335)
 
-- Lock retained fail-closed verdict check outcomes.
-  [`DeployedRuntimeParityClosureTests.cs:3865`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3865)
+- Retained smoke summary must report overall fail.
+  [`smoke-results.json:17`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/smoke-results.json#L17)
 
-**Path and support-safety gates**
+- Blocker text no longer claims missing cleanup facts.
+  [`review-subject.json:36`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/review-subject.json#L36)
 
-- Pin runtime citation to the core-manifest filename.
-  [`DeployedRuntimeParityClosureTests.cs:2755`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L2755)
+**Runtime evidence gates**
 
-- Pin OCI index raw file and log filenames to hashed evidence names.
-  [`DeployedRuntimeParityClosureTests.cs:2457`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L2457)
+- Assert retained unstructured logs fail ValidateRuntimeLog.
+  [`DeployedRuntimeParityClosureTests.cs:359`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L359)
 
-- Enforce log size limits and reject absolute local search roots.
-  [`DeployedRuntimeParityClosureTests.cs:3723`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3723)
-
-- Redacted host paths stay support-safe in retained availability evidence.
-  [`package-availability.json:7`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/package-availability.json#L7)
-
-**Predecessor freeze**
-
-- Assert the frozen baseline tree, not drifted HEAD.
-  [`DeployedRuntimeParityClosureTests.cs:238`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L238)
-
-- Restored approved Story 1.20 proof-packet bytes.
-  [`1-20-owner-approved-parity-closure-proof-packet.md:5387`](1-20-owner-approved-parity-closure-proof-packet.md#L5387)
+- Reject IPv4-compatible private embeddings in support-safety checks.
+  [`DeployedRuntimeParityClosureTests.cs:4067`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L4067)
 
 **Lifecycle**
 
 - Trackers stay in-review while acceptances remain 0/3.
   [`sprint-status.yaml:223`](sprint-status.yaml#L223)
 
-- Docs ownership prose stays non-done.
-  [`ci.md:270`](../../docs/ci.md#L270)
+- Proof packet records 142 focused tests after this hardening pass.
+  [`3-13-deployed-runtime-parity-closure-proof-packet.md:123`](3-13-deployed-runtime-parity-closure-proof-packet.md#L123)

@@ -1,18 +1,18 @@
 {
   "schema": "hexalith.eventstore.story-3-13-review-subject/v2",
-  "created_at": "2026-08-08T14:54:10Z",
+  "created_at": "2026-08-08T15:20:55Z",
   "proposed_decision": "fail-closed",
   "identity_crosswalk": {
     "path": "identity-crosswalk.json",
-    "sha256": "48a0722f0905ca0d98125ede96a760a91685ed76b4d19754c676857239432fec"
+    "sha256": "11b17fb06f38b6a74ec5077229db1ee80b9a0192641863365fc55c6fd168a0b9"
   },
   "evidence_core_manifest": {
     "path": "evidence-core-sha256.txt",
-    "sha256": "044d6491f671902285e55c878fd9faaa307f91c7ad8d3056b888cd1f143efd4d"
+    "sha256": "5f7a8c7b1cdd85cbfe5469af2b4ff8c1363b92cd79ee964aefecba0bef3d7758"
   },
   "proof_packet": {
     "path": "_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure-proof-packet.md",
-    "sha256": "aca393ead594a3a6f2120eebc23069accb2177fbc64b4746f4676fac7e94a07c"
+    "sha256": "728922bd9554b8b4c98968b64792f615c22e2522ea44cb15e6a6850deeef1553"
   },
   "identity": {
     "source_sha": "fa2d1c9910f8976553adb33dcdb1c9ff2ea75594",
@@ -33,7 +33,7 @@
     "the selected lineage has no semantic release tag, workflow run/attempt, Builds execution SHA, or publisher identity",
     "the config source, URL, and documentation labels equal the malformed value https and the absent revision cannot bind the approved source",
     "child-manifest and config response metadata was not retained, so the registry response checks cannot be replayed from this packet",
-    "the retained smoke logs lack structured HTTP, redirect, platform, timing, exit-code, and cleanup facts",
+    "the retained smoke logs lack structured HTTP, redirect, platform, timing, and exit-code facts",
     "the retained liveness execution used Development while the documented equivalent smoke contract requires Production",
     "the retained publication authority explicitly excludes deployment and consumer migration",
     "the EventStore owner, Release owner, and Test Architect have not accepted this Story 3.13 subject"

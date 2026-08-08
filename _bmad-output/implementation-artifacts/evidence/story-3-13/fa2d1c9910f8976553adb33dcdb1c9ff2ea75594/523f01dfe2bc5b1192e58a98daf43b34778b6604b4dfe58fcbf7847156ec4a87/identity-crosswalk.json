@@ -484,7 +484,7 @@
       {
         "id": "runtime-execution-record-incomplete",
         "owner": "Hexalith.Builds smoke-contract owner and EventStore release owner",
-        "consequence": "Hash-valid status strings do not independently prove the /alive response, observed platform, timing, exit status, or cleanup contract.",
+        "consequence": "Hash-valid status strings do not independently prove the /alive response, observed platform, timing, or exit status.",
         "reopen_trigger": "Repeat both digest-pinned smokes and retain structured support-safe execution records for every required fact."
       },
       {
