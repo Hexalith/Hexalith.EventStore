@@ -1,10 +1,10 @@
 ---
-title: 'Restore CI documentation contracts'
+title: 'Close obsolete CI documentation-contracts restore'
 type: 'bugfix'
 created: '2026-07-12'
-status: 'in-review'
-baseline_commit: '7eb975e0ea59bde713f514f609f090b1c52c2cba'
-review_loop_iteration: 1
+status: 'done'
+baseline_commit: '9034b8988f64139748ed4ed195189f7397edff3d'
+review_loop_iteration: 2
 context:
   - '{project-root}/_bmad-output/project-context.md'
 ---
@@ -13,73 +13,104 @@ context:
 
 ## Intent
 
-**Problem:** GitHub Actions run 29195132839 fails the first Tier 1 project because commit `322e3193` removed repository guidance that two documentation-governance tests still require. `AGENTS.md` lacks the manifest-driven 14-package inventory, `CLAUDE.md` has the same latent defect, and `.github/copilot-instructions.md` lacks the directly embedded commitlint contract.
+**Problem:** Story GH-29195132839 originally restored a 14-package inventory and an embedded Copilot commitlint contract into the three agent entry points. Later main work moved those contracts to repo docs and shared Hexalith.AI.Tools instructions, so the frozen restore intent now conflicts with live packaging tests and the shared-baseline rule that keeps repository-specific guidance out of those entry points.
 
-**Approach:** Restore the exact deleted release-inventory and commit-message guidance from the last successful baseline while preserving all newer submodule instructions. Keep the tests and CI gates unchanged.
+**Approach:** Close this story as obsolete without restoring inventory or commitlint text into `AGENTS.md`, `CLAUDE.md`, or `.github/copilot-instructions.md`. Record that the current homes already satisfy the original CI need, and leave code, tests, and shared instructions untouched.
 
 ## Boundaries & Constraints
 
-**Always:** Treat `tools/release-packages.json` and the existing contract tests as authoritative; keep the root and Copilot instruction links correctly relative; name every current manifest package; preserve the current root-declared-only submodule rules; avoid unrelated dirty story, source, and submodule changes.
+**Always:** Treat current `main` tip as authoritative; keep the three entry points as identical shared baselines; leave `tools/release-packages.json`, inventory docs, packaging tests, and `references/Hexalith.AI.Tools` unchanged; touch only this spec file for closure.
 
-**Ask First:** Any package-manifest change, test-policy change, submodule edit, or rewrite of shared instructions under `references/Hexalith.AI.Tools`.
+**Ask First:** Any request to re-embed package inventory or commitlint markers into the three entry points, change packaging tests, or edit shared Hexalith.AI.Tools instructions.
 
-**Never:** Weaken or delete the failing assertions, hard-code a different package set, initialize nested submodules, or modify the unrelated dirty files approved as protected boundaries.
+**Never:** Re-run the July restore; invent a parallel inventory in the entry points; weaken or delete live packaging assertions; initialize nested submodules; mutate source, tests, or submodule pins for this closure.
 
 ## I/O & Edge-Case Matrix
 
 | Scenario | Input / State | Expected Output / Behavior | Error Handling |
-|----------|---------------|---------------------------|----------------|
-| Package guidance | Manifest contains 14 packages | `AGENTS.md` and `CLAUDE.md` state `14 packages` and name every manifest ID | Contract test fails on any missing count or package |
-| Copilot guidance | Copilot generates a commit message | Instructions directly expose the conventional format, casing, length, release-impact, and `revert` rules | Contract test fails on any missing required phrase |
-| Existing guidance | Newer submodule rules coexist with restored sections | Root-only initialization and nested-submodule safeguards remain intact | Diff review rejects accidental rollback |
+|----------|--------------|---------------------------|----------------|
+| Obsolete close | Approved supersession intent on clean `main` | Spec becomes `done`; entry points and tests unchanged | Stop if unrelated dirty edits appear outside this spec |
+| Inventory proof | Live inventory docs + manifest | Docs still name 14 packages and every manifest ID | Do not move inventory back into entry points |
+| Commitlint proof | Copilot entry point + shared git instructions | Entry points delegate; shared instructions hold policy | Do not re-embed forbidden commitlint markers |
 
 </frozen-after-approval>
 
 ## Code Map
 
-- `AGENTS.md` -- repository agent entry point; must expose the complete manifest-driven release inventory.
-- `CLAUDE.md` -- parallel agent entry point covered by the same inventory contract.
-- `.github/copilot-instructions.md` -- Copilot entry point that must embed the commitlint contract directly.
-- `tools/release-packages.json` -- authoritative 14-package release manifest; read-only for this fix.
-- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs` -- inventory documentation contract.
-- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/CommitMessagePolicyTests.cs` -- Copilot commit-message guidance contract.
+- `tools/release-packages.json` -- authoritative 14-package release manifest (read-only).
+- `docs/reference/nuget-packages.md`, `docs/brownfield/project-overview.md`, `docs/brownfield/architecture.md`, `_bmad-output/project-context.md` -- current inventory documentation homes asserted by packaging tests.
+- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs` -- `Active_package_inventory_docs_match_manifest_package_set` asserts the four doc paths above, not `AGENTS.md`/`CLAUDE.md`.
+- `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md` -- identical shared baselines; Shared Entry Points forbids repo-specific inventory here (`SharedInstructionEntryPointTests`).
+- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/CommitMessagePolicyTests.cs` -- live gate is `CopilotInstructionsDelegateCommitlintContractToSharedInstructions` (forbids duplicated commitlint markers); also `SharedGitInstructionsContainOneOperativeCommitlintPreflightBlock`.
+- `references/Hexalith.AI.Tools/hexalith-llm-instructions.md` → `hexalith-git-instructions.md` -- shared commit-message policy home (read-only for this closure).
+- `_bmad-output/implementation-artifacts/spec-resolve-main-rebase-conflicts.md` -- pattern for no-code obsolete closure via renegotiated frozen intent + `status: done`.
 
 ## Tasks & Acceptance
 
 **Execution:**
-- [x] `AGENTS.md` and `CLAUDE.md` -- restore the deleted 14-package inventory block without replacing current submodule guidance.
-- [x] `.github/copilot-instructions.md` -- restore the deleted direct commitlint contract with all asserted rules.
-- [x] `tests/Hexalith.EventStore.Contracts.Tests` -- run the two focused regressions and the complete project using fresh Release output.
+- [x] `_bmad-output/implementation-artifacts/spec-gh-29195132839-fix-tier-1-doc-contracts.md` -- after approval, set `status: done` and leave frozen intent locked -- closes the obsolete restore story without code mutation.
+- [x] Working tree -- verify entry points lack Release Package Inventory and lack embedded commitlint markers, while inventory docs and shared git instructions remain the live homes -- proves supersession premises hold at execution time.
+- [x] `tests/Hexalith.EventStore.Contracts.Tests` packaging methods -- confirm `CopilotInstructionsDelegateCommitlintContractToSharedInstructions` and `Active_package_inventory_docs_match_manifest_package_set` still exist and the deleted embed method name is absent from test sources -- proves the July verification surface is obsolete.
 
 **Acceptance Criteria:**
-- Given the current release manifest and instruction files, when both documentation-governance tests run, then they pass without changing their assertions.
-- Given a fresh Release build, when the complete Contracts test project runs with the CI-equivalent command, then all 694 tests pass and evidence contains no failures.
-- Given the final scoped diff, when compared with `471ca867`, then only the spec and three intended instruction files changed, and unrelated dirty work remains untouched.
+- Given the approved obsolete-closure intent, when implementation finishes, then this spec is `done` and no entry-point inventory or embedded commitlint restore is applied.
+- Given tip inspection, when the three agent entry points are compared, then they remain identical shared baselines with no repository-specific package inventory block.
+- Given packaging contract homes, when inventory docs and shared git instructions are checked, then they remain the authoritative surfaces named in Code Map without edits from this work.
 
 ## Spec Change Log
 
 - **Review loop 1:** Adversarial review found that the submodule-safeguard verification command contained a literal placeholder, the claimed fresh build did not explicitly clean outputs, and diff-scope evidence conflated failed-run commit `471ca867` with implementation baseline `7eb975e0`. Verification now uses literal fail-closed safeguard checks, an explicit clean-before-build sequence, and separate exact path-set checks for both baselines. This avoids irreproducible evidence and ambiguous scope. **KEEP:** preserve the exact pre-`322e3193` documentation blocks, all current submodule guidance, the unchanged tests and manifest, the 694-test CI-equivalent lane, and the four-file implementation boundary.
+- **Review loop 2 / human [A]:** Adversarial review found frozen Intent required entry-point inventory + embedded commitlint while HEAD shared baselines and live packaging tests forbid that placement. Human chose supersede/close as obsolete. Replaced frozen Intent with no-code closure; current homes are docs + shared git instructions. Avoids fighting Shared Entry Points and live delegation tests. **KEEP:** do not restore July entry-point blocks; do not weaken packaging tests; leave Hexalith.AI.Tools and inventory docs untouched.
+- **Review loop 3 patches:** Closure review found Verification checked inventory count only (not every package ID), omitted embed-marker and entry-point identity checks, and left Review loop 1 KEEP readable as still operative. Verification now asserts package IDs, forbidden embed markers, identical entry points, shared git policy presence, and `main`/diff-scope gates. Design Notes mark Review loop 1 KEEP as superseded by Review loop 2. Avoids false-green closure and accidental July restore. **KEEP:** obsolete-closure frozen Intent; docs + Hexalith.AI.Tools as live homes; no entry-point restore.
 
 ## Design Notes
 
-The failing head commit only bumps `Hexalith.Memories`; it retriggered a defect introduced earlier by `322e3193`. Restoring from that commit's parent is safer than inventing new wording because the existing tests were written against those sections and the last pre-deletion CI passed. `CLAUDE.md` must be repaired with `AGENTS.md`: the current test stops at the first missing document, so fixing only `AGENTS.md` would reveal the same failure on the next loop iteration.
+The original July restore briefly put inventory and commitlint text back into the entry points, then later commits synchronized those files to the location-independent shared baseline and moved contracts to docs / Hexalith.AI.Tools. Replaying the July restore would fail `CopilotInstructionsDelegateCommitlintContractToSharedInstructions` and violate Shared Entry Points. Closure is documentation-only against this spec.
 
-Two baselines serve different checks: `7eb975e0` is the implementation baseline captured after the externally committed planning transition, while failed-run commit `471ca867` remains the frozen acceptance reference. Both must resolve to the same four approved paths when their diffs are explicitly restricted and compared as exact path sets.
+**KEEP supersession:** Review loop 1 KEEP (preserve pre-`322e3193` entry-point blocks / four-file restore boundary) is historical and **superseded** by Review loop 2 / human `[A]` obsolete-closure KEEP. Do not re-apply the July entry-point restore.
 
 ## Verification
 
 **Commands:**
-- `dotnet clean tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -m:1 -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0 && dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -m:1 -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` -- expected: outputs are cleaned, then rebuilt with 0 warnings and 0 errors.
-- `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -method "*Packaging.CommitMessagePolicyTests.CopilotInstructionsExposeTheCommitlintContractDirectly" -method "*Packaging.ReleasePackageManifestTests.Active_package_inventory_docs_match_manifest_package_set"` -- expected: 2 passed.
-- `dotnet test tests/Hexalith.EventStore.Contracts.Tests --no-build --configuration Release --logger "trx;LogFileName=Hexalith.EventStore.Contracts.Tests.trx" --results-directory TestResults/Hexalith.EventStore.Contracts.Tests --collect:"XPlat Code Coverage"` -- expected: all 694 tests pass.
-- ``for file in AGENTS.md CLAUDE.md .github/copilot-instructions.md; do rg -Fq -- '- Initialize root-declared submodules only, using the `references/...` paths declared in the root `.gitmodules` file.' "$file" && rg -Fq -- '- Avoid recursive submodule commands unless they are explicitly scoped so that nested submodules are not initialized.' "$file" && rg -Fq -- '- If nested submodules are initialized accidentally, deinitialize them before continuing.' "$file"; done`` -- expected: all three literal safeguards remain in all three instruction files.
-- `expected=$(printf '%s\n' .github/copilot-instructions.md AGENTS.md CLAUDE.md _bmad-output/implementation-artifacts/spec-gh-29195132839-fix-tier-1-doc-contracts.md | sort); test "$(git diff --name-only 7eb975e0ea59bde713f514f609f090b1c52c2cba -- | sort)" = "$expected" && test "$(git diff --name-only 471ca8670a760bca95dde94dc4d90aecae053d86 -- .github/copilot-instructions.md AGENTS.md CLAUDE.md _bmad-output/implementation-artifacts/spec-gh-29195132839-fix-tier-1-doc-contracts.md | sort)" = "$expected"` -- expected: both the complete implementation diff and failed-run-scoped diff contain exactly the four approved paths.
-- `git diff --check -- AGENTS.md CLAUDE.md .github/copilot-instructions.md _bmad-output/implementation-artifacts/spec-gh-29195132839-fix-tier-1-doc-contracts.md` -- expected: no whitespace errors.
+- `git branch --show-current` -- expected: `main`.
+- `rg -n "Release Package Inventory|14 packages" AGENTS.md CLAUDE.md .github/copilot-instructions.md` -- expected: no matches in the three entry points.
+- `rg -n "@commitlint/config-conventional|Start the description with a lowercase letter|near 50 characters|Choose the type by release impact" AGENTS.md CLAUDE.md .github/copilot-instructions.md` -- expected: no matches (no embedded commitlint markers).
+- `cmp -s AGENTS.md CLAUDE.md && cmp -s AGENTS.md .github/copilot-instructions.md` -- expected: exit 0 (identical shared baselines).
+- `rg -n "CopilotInstructionsExposeTheCommitlintContractDirectly|CopilotInstructionsDelegateCommitlintContractToSharedInstructions|Active_package_inventory_docs_match_manifest_package_set|SharedGitInstructionsContainOneOperativeCommitlintPreflightBlock" tests/Hexalith.EventStore.Contracts.Tests/Packaging` -- expected: embed method absent; delegation, inventory-doc, and shared-preflight methods present.
+- `python3 - <<'PY'
+import json, pathlib
+root = pathlib.Path('.')
+pkgs = [p['id'] for p in json.loads((root/'tools/release-packages.json').read_text())['packages']]
+docs = [
+    root/'docs/reference/nuget-packages.md',
+    root/'docs/brownfield/project-overview.md',
+    root/'docs/brownfield/architecture.md',
+    root/'_bmad-output/project-context.md',
+]
+assert len(pkgs) == 14
+for doc in docs:
+    text = doc.read_text()
+    assert '14 packages' in text, doc
+    for pkg in pkgs:
+        assert pkg in text, (doc, pkg)
+print('inventory-docs-ok', len(pkgs))
+PY` -- expected: prints `inventory-docs-ok 14`.
+- `rg -n "Conventional Commits|Never use the \`chore\` type|<type>\\[optional scope\\]\\[!\\]: <description>" references/Hexalith.AI.Tools/hexalith-git-instructions.md` -- expected: shared git policy markers present.
+- `git diff --name-only` -- expected: only this spec path changed by the closure work.
 
-**Observed Results (2026-07-12):**
-- Explicit Release clean and build completed with exit status 0; both clean and build reported 0 warnings and 0 errors.
-- Direct xUnit v3 execution completed with exit status 0: 2 passed, 0 failed, 0 skipped, and 0 not run.
-- Complete Contracts lane completed with exit status 0: 694 passed, 0 failed, and 0 skipped. The exact retained artifacts are `TestResults/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.trx` and `TestResults/Hexalith.EventStore.Contracts.Tests/ec74b83e-e457-4925-80d9-3c7575a2086f/coverage.cobertura.xml`.
-- Literal submodule-safeguard audit completed with exit status 0; all three safeguards were present in all three instruction files.
-- Exact four-path comparisons against `7eb975e0ea59bde713f514f609f090b1c52c2cba` and scoped `471ca8670a760bca95dde94dc4d90aecae053d86` completed with exit status 0.
-- Scoped `git diff --check` completed with exit status 0 and no output.
+**Manual checks (if no CLI):**
+- After final present/accept, frontmatter `status: done` and frozen Intent still describe obsolete closure only.
+
+## Suggested Review Order
+
+- Frozen obsolete-closure Intent: no entry-point restore; docs + shared git homes win.
+  [`spec-gh-29195132839-fix-tier-1-doc-contracts.md:14`](spec-gh-29195132839-fix-tier-1-doc-contracts.md#L14)
+
+- Code Map names live inventory docs and packaging delegation methods.
+  [`spec-gh-29195132839-fix-tier-1-doc-contracts.md:38`](spec-gh-29195132839-fix-tier-1-doc-contracts.md#L38)
+
+- Spec Change Log and Design Notes supersede Review loop 1 KEEP.
+  [`spec-gh-29195132839-fix-tier-1-doc-contracts.md:60`](spec-gh-29195132839-fix-tier-1-doc-contracts.md#L60)
+
+- Strengthened Verification: IDs, embed markers, identity, main scope.
+  [`spec-gh-29195132839-fix-tier-1-doc-contracts.md:72`](spec-gh-29195132839-fix-tier-1-doc-contracts.md#L72)
