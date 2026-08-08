@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Net;
 using System.Security.Cryptography;
@@ -1394,6 +1395,55 @@ public sealed class DeployedRuntimeParityClosureTests
     }
 
     /// <summary>
+    /// Verifies retained config-raw Labels stay bound even when the provenance summary is unchanged.
+    /// </summary>
+    [Fact]
+    public void OciProvenanceRejectsConfigRawLabelMutationWhileSummaryStaysCorrect()
+    {
+        string root = FindRepositoryRoot();
+        (string cleanupRoot, string evidence, JsonObject crosswalk, _, _, _, byte[] proofBytes,
+            string packageManifestSha256) = CreatePassingFixture(root);
+        try
+        {
+            string configPath = Path.Combine(evidence, "child-linux-amd64.config.raw");
+            JsonObject config = JsonNode.Parse(File.ReadAllBytes(configPath))!.AsObject();
+            config["config"]!["Labels"]!["org.opencontainers.image.revision"] = new string('0', 40);
+            File.WriteAllBytes(configPath, JsonSerializer.SerializeToUtf8Bytes(config));
+
+            ValidateOciProvenance(crosswalk, evidence).ShouldBeFalse();
+            EvaluateWithFreshReview(
+                crosswalk,
+                root,
+                evidence,
+                proofBytes,
+                packageManifestSha256).ShouldBeFalse();
+        }
+        finally
+        {
+            Directory.Delete(cleanupRoot, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies shared Builds tool pins are rehashed from the pinned git object, not JSON alone.
+    /// </summary>
+    [Fact]
+    public void SharedBuildsToolIdentityIsRehashedFromPinnedGitBytes()
+    {
+        string root = FindRepositoryRoot();
+        ComputePinnedBuildsToolSha256(root, ExpectedSmokeToolPath).ShouldBe(ExpectedSmokeToolSha256);
+        ComputePinnedBuildsToolSha256(root, ExpectedOciValidatorPath).ShouldBe(ExpectedOciValidatorSha256);
+        ComputePinnedBuildsToolSha256(
+                root,
+                "references/Hexalith.Builds/Github/publish-containers/publication_preflight.py")
+            .ShouldNotBe(ExpectedSmokeToolSha256);
+        ComputePinnedBuildsToolSha256(
+                root,
+                "references/Hexalith.Builds/Github/publish-containers/publication_preflight.py")
+            .ShouldNotBe(ExpectedOciValidatorSha256);
+    }
+
+    /// <summary>
     /// Verifies runtime logs bind digest, observed platform, HTTP result, timing, cadence, and cleanup.
     /// </summary>
     /// <param name="mutation">The runtime mutation to apply.</param>
@@ -1570,6 +1620,44 @@ public sealed class DeployedRuntimeParityClosureTests
                     }
                 });
             }
+
+            EvaluateClosure(
+                crosswalk,
+                crosswalkBytes,
+                subjectBytes,
+                root,
+                evidence,
+                coreBytes,
+                proofBytes,
+                packageManifestSha256).ShouldBeFalse();
+        }
+        finally
+        {
+            Directory.Delete(cleanupRoot, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies each acceptance receipt filename remains bound to the role field it contains.
+    /// </summary>
+    [Fact]
+    public void AcceptanceReceiptsRejectRoleFilenameMismatch()
+    {
+        string root = FindRepositoryRoot();
+        (string cleanupRoot, string evidence, JsonObject crosswalk, byte[] crosswalkBytes, byte[] subjectBytes,
+            byte[] coreBytes, byte[] proofBytes, string packageManifestSha256) = CreatePassingFixture(root);
+        try
+        {
+            string directory = Path.Combine(evidence, "acceptances", ComputeSha256(subjectBytes));
+            string ownerPath = Path.Combine(directory, "eventstore-owner.json");
+            string releasePath = Path.Combine(directory, "release-owner.json");
+            JsonObject owner = JsonNode.Parse(File.ReadAllBytes(ownerPath))!.AsObject();
+            JsonObject release = JsonNode.Parse(File.ReadAllBytes(releasePath))!.AsObject();
+            string ownerRole = owner["role"]!.GetValue<string>();
+            owner["role"] = release["role"]!.GetValue<string>();
+            release["role"] = ownerRole;
+            File.WriteAllBytes(ownerPath, JsonSerializer.SerializeToUtf8Bytes(owner));
+            File.WriteAllBytes(releasePath, JsonSerializer.SerializeToUtf8Bytes(release));
 
             EvaluateClosure(
                 crosswalk,
@@ -2809,6 +2897,8 @@ public sealed class DeployedRuntimeParityClosureTests
                     || receipt["schema"]!.GetValue<string>() !=
                         "hexalith.eventstore.story-3-13-acceptance-receipt/v1"
                     || !DocumentIsSupportSafe(receipt))
+                || receiptPaths.Zip(receipts).Any(pair =>
+                    Path.GetFileName(pair.First) != pair.Second["role"]!.GetValue<string>() + ".json")
                 || receipts.Select(receipt => receipt["role"]!.GetValue<string>())
                     .Distinct(StringComparer.Ordinal).Count() != 3
                 || !receipts.Select(receipt => receipt["role"]!.GetValue<string>())
@@ -3778,7 +3868,9 @@ public sealed class DeployedRuntimeParityClosureTests
 
     private static bool AddressIsPrivate(IPAddress address)
     {
-        if (IPAddress.IsLoopback(address))
+        if (IPAddress.IsLoopback(address)
+            || address.Equals(IPAddress.Any)
+            || address.Equals(IPAddress.IPv6Any))
         {
             return true;
         }
@@ -4856,7 +4948,15 @@ public sealed class DeployedRuntimeParityClosureTests
             process.StartInfo.ArgumentList.Add(argument);
         }
 
-        process.Start();
+        try
+        {
+            process.Start();
+        }
+        catch (Win32Exception exception)
+        {
+            throw new InvalidDataException("Git object verification failed to start git.", exception);
+        }
+
         Task<string> outputTask = process.StandardOutput.ReadToEndAsync();
         Task<string> errorTask = process.StandardError.ReadToEndAsync();
         if (!WaitForProcessExit(process, TimeSpan.FromSeconds(30)))
@@ -4897,7 +4997,17 @@ public sealed class DeployedRuntimeParityClosureTests
         };
         process.StartInfo.ArgumentList.Add("show");
         process.StartInfo.ArgumentList.Add(ExpectedBuildsSha + ":" + toolPath[buildsPrefix.Length..]);
-        process.Start();
+        try
+        {
+            process.Start();
+        }
+        catch (Win32Exception exception)
+        {
+            throw new InvalidDataException(
+                "Shared Builds tool verification failed to start git: " + toolPath,
+                exception);
+        }
+
         using MemoryStream buffer = new();
         Task copyTask = process.StandardOutput.BaseStream.CopyToAsync(buffer);
         Task<string> errorTask = process.StandardError.ReadToEndAsync();

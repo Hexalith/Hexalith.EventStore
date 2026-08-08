@@ -90,6 +90,12 @@ context:
 - [x] [Review][Patch] Align story record and docs/ci.md lifecycle wording to in-review with sprint-status/spec [_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure.md:38]
 - [x] [Review][Defer] Redact absolute local_search_roots from retained package-availability.json (checksum cascade) [_bmad-output/implementation-artifacts/evidence/story-3-13/.../package-availability.json]
 - [x] [Review][Defer] Add missing-key removal mutations for NullReferenceException catch-filter coverage on validators that currently only mutate values [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs]
+- [x] [Review][Patch] Rebind the fail-closed review subject to the current proof-packet SHA-256 and refresh the outer evidence checksum manifest [_bmad-output/implementation-artifacts/evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/review-subject.json]
+- [x] [Review][Patch] Reject config-raw OCI label mutations while the provenance summary stays correct [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs]
+- [x] [Review][Patch] Prove shared Builds tool pins are rehashed from pinned git bytes [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs]
+- [x] [Review][Patch] Bind each acceptance receipt filename to its role field [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs]
+- [x] [Review][Patch] Map missing-git Process.Start failures to InvalidDataException fail-closed paths [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs]
+- [x] [Review][Patch] Treat IPv4/IPv6 unspecified addresses as private in support-safety checks [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs]
 
 **Acceptance Criteria:**
 - Given completed predecessors, when closure begins, then committed identities are hash-checked without modification or inference.
@@ -121,6 +127,12 @@ context:
   capped fail-closed `created_at`, bound `config_labels.version` and pass-only summary identity
   mutations, required child verification and readback tag/digest identity flags, required
   submodule prohibition text, and aligned story/`docs/ci.md` lifecycle wording to `in-review`.
+- 2026-08-08: Applied a sixth review-hardening pass without changing frozen intent. Rebound the
+  fail-closed review subject to the current proof-packet bytes, rejected config-raw label mutations
+  when the provenance summary stays clean, proved Builds tool pins from pinned git bytes, bound
+  receipt filenames to role fields, mapped missing-git `Process.Start` failures into fail-closed
+  `InvalidDataException` paths, and treated unspecified IPv4/IPv6 addresses as private. Focused
+  verifier coverage is now 132 passing tests; AC2/AC4 and 0/3 acceptances remain open.
 
 ## Verification
 
@@ -132,50 +144,38 @@ context:
 
 ## Suggested Review Order
 
-**Fail-closed identity gates**
+**Fail-closed subject binding**
 
 - Keep the packet non-done while AC2/AC4 remain open.
   [`3-13-deployed-runtime-parity-closure-proof-packet.md:5`](3-13-deployed-runtime-parity-closure-proof-packet.md#L5)
 
-- Bind NuGet unavailability to exact HTTP 404 statuses.
-  [`DeployedRuntimeParityClosureTests.cs:3663`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3663)
+- Rebind proof-packet SHA-256 to current packet bytes.
+  [`review-subject.json:15`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/review-subject.json#L15)
 
-- Reject nuget_org null, missing package, empty map, and 200 statuses.
-  [`DeployedRuntimeParityClosureTests.cs:934`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L934)
+- Cascade the outer evidence checksum after subject rebinding.
+  [`evidence-sha256.txt:1`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/evidence-sha256.txt#L1)
 
-- Require fail-closed verdict.checks keys and non-all-pass values.
-  [`DeployedRuntimeParityClosureTests.cs:3681`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3681)
+**Verifier hardening**
 
-- Cap fail-closed subject created_at with a UtcNow upper bound.
-  [`DeployedRuntimeParityClosureTests.cs:3083`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3083)
+- Reject config-raw label mutations when provenance summary stays clean.
+  [`DeployedRuntimeParityClosureTests.cs:1401`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L1401)
 
-**OCI graph and label binding**
+- Prove Builds tool pins are rehashed from pinned git bytes.
+  [`DeployedRuntimeParityClosureTests.cs:1431`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L1431)
 
-- Require readback tag/digest identity plus version-bound config labels.
-  [`DeployedRuntimeParityClosureTests.cs:2301`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L2301)
+- Bind each acceptance receipt filename to its role field.
+  [`DeployedRuntimeParityClosureTests.cs:1644`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L1644)
 
-- Bind config_labels.version to the release semantic version.
-  [`DeployedRuntimeParityClosureTests.cs:2455`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L2455)
+- Map missing-git Process.Start failures into fail-closed InvalidDataException paths.
+  [`DeployedRuntimeParityClosureTests.cs:4955`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L4955)
 
-- Reject children whose declared verification is not pass.
-  [`DeployedRuntimeParityClosureTests.cs:2399`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L2399)
+- Treat unspecified IPv4/IPv6 addresses as private for support-safety.
+  [`DeployedRuntimeParityClosureTests.cs:3869`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3869)
 
-- Exercise pass-flag-preserving label and identity mutations.
-  [`DeployedRuntimeParityClosureTests.cs:1165`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L1165)
+**Lifecycle**
 
-- Prove child verification failure rejects the graph end-to-end.
-  [`DeployedRuntimeParityClosureTests.cs:982`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L982)
-
-**Mutation limits and lifecycle**
-
-- Require submodule prohibition text in acceptance limitations.
-  [`DeployedRuntimeParityClosureTests.cs:3824`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3824)
-
-- Keep story/docs lifecycle wording aligned to in-review.
-  [`3-13-deployed-runtime-parity-closure.md:38`](3-13-deployed-runtime-parity-closure.md#L38)
+- Confirm trackers remain in-review/review while blockers remain.
+  [`sprint-status.yaml:223`](sprint-status.yaml#L223)
 
 - Confirm docs ownership prose stays non-done.
   [`ci.md:270`](../../docs/ci.md#L270)
-
-- Confirm sprint tracking remains review while blockers remain.
-  [`sprint-status.yaml:223`](sprint-status.yaml#L223)
