@@ -2,7 +2,7 @@
 title: 'Fix mixed-job CI workflow guardrail'
 type: 'bugfix'
 created: '2026-07-17'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 0
 baseline_commit: '20be7872ff877f512d5663978185b5f425002185'
 continuation_baseline_commit: '2ce2d6f3cc725a353ac889513bb26099dcd5f723'
@@ -39,11 +39,11 @@ context:
 
 ## Code Map
 
-- `.github/workflows/ci.yml` -- read-only mixed workflow: shared release-gate caller plus the successful inline Tenants source-mode job.
-- `.github/workflows/release.yml` -- read-only proof that a successful push-event `CI` conclusion gates release.
-- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs` -- stale whole-file assertions and the intended workflow-governance contract.
-- `.github/copilot-instructions.md` -- newer run 29571683933 has an invalid `.github`-relative link after intentional commit-policy deduplication.
-- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/CommitMessagePolicyTests.cs` -- still requires duplicated commitlint prose instead of validating delegation to the shared instruction source.
+- `.github/workflows/ci.yml` -- read-only for this story: mixed workflow with shared `jobs.ci` caller plus blocking inline `tenants-source-mode` (later unrelated commits also added other inline jobs).
+- `.github/workflows/release.yml` -- read-only for this story; do not change release topology while closing the mixed-job false positive.
+- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs` -- job-scoped `jobs.ci` / `tenants-source-mode` workflow-governance contract plus extraction helpers.
+- `.github/copilot-instructions.md` -- shared baseline entry point; commit-message contract is delegated rather than duplicated.
+- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/CommitMessagePolicyTests.cs` -- asserts Copilot delegates commitlint contract to shared LLM/Git instructions.
 - `_bmad-output/implementation-artifacts/2-4-tenants-rest-contract-metadata-and-routes.md` -- records the accepted blocking source-mode topology proof.
 
 ## Tasks & Acceptance
@@ -51,7 +51,7 @@ context:
 **Execution:**
 - [x] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs` -- extract an exact top-level workflow job block independent of line endings/order, scope shared-caller requirements and prohibitions to `jobs.ci`, and assert `tenants-source-mode` remains blocking, source-mode, serialized, and targeted -- fixes the false positive without weakening either gate.
 - [x] `.github/copilot-instructions.md` and `tests/Hexalith.EventStore.Contracts.Tests/Packaging/CommitMessagePolicyTests.cs` -- restore the correct `../references/...` link and verify the entry point delegates to shared LLM/Git instructions that retain the commit-message contract, without restoring duplicated policy prose -- fixes run 29571683933 while preserving commit `20be7872` intent.
-- [ ] `tests/Hexalith.EventStore.Contracts.Tests` and all `.github/workflows/ci.yml` Tier 1 projects -- build with Release warnings-as-errors, run the focused workflow contract, the complete Contracts project, and the remaining configured projects individually -- proves the reported failure is fixed and exposes any cascade-hidden failure.
+- [x] `tests/Hexalith.EventStore.Contracts.Tests` and all `.github/workflows/ci.yml` Tier 1 projects -- build with Release warnings-as-errors, run the focused workflow contract, the complete Contracts project, and the remaining configured projects individually -- proves the reported failure is fixed and exposes any cascade-hidden failure.
 
 **Acceptance Criteria:**
 - Given the current mixed-job workflow, when the focused workflow contract runs, then it passes while retaining no-`runs-on` and no-`steps` enforcement specifically for `jobs.ci`.
@@ -64,6 +64,8 @@ context:
 - 2026-07-17: Implemented the approved job-scoped guardrail and edge-case coverage. Focused evidence is green; the broad Tier 1 task remains open because unrelated existing failures and one bounded timeout prevent claiming the full gate passes.
 - 2026-07-17: User supplied follow-up run 29571683933. That run proves the mixed-job fix passes and exposes one newer Copilot delegation regression; scope now includes repairing the relative link and aligning its contract test with intentional policy deduplication.
 - 2026-07-17: Corrected the Copilot delegation link and replaced the stale direct-policy assertion with a link-following shared-policy contract. Focused and full Contracts verification now pass.
+- 2026-08-08: Re-verified the landed job-scoped CI guardrail and Copilot shared-policy delegation on `main` head `bca7c7ff`. Fresh Contracts Release build, focused contracts, full Contracts (1007/1007), package-mode solution Release build, and all 17 Tier 1 projects individually passed with zero failures (including Server.Tests 2991 passed / 25 skipped — prior 2026-07-17 hang no longer reproduces on current main); workflows unchanged. Spec advanced to review after verification closure.
+- 2026-08-08 review patches: refreshed Code Map to current landed roles; fixed Verification focused-test commands to use `dotnet test`; clarified changelog status wording after premature `done` before review.
 
 ## Design Notes
 
@@ -73,8 +75,8 @@ Use an exact two-space top-level job boundary over normalized line endings, with
 
 **Commands:**
 - `dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -warnaserror -m:1 -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` -- expected: zero warnings and errors.
-- `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -method '*Packaging.ReleasePackageManifestTests.Shared_ci_workflow_uses_domain_ci_with_deterministic_server_tests'` -- expected: focused regression passes.
-- `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -method '*Packaging.CommitMessagePolicyTests.CopilotInstructionsDelegateCommitlintContractToSharedInstructions'` -- expected: the corrected link and delegated shared policy contract pass.
+- `dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --no-build --configuration Release --filter 'FullyQualifiedName~Packaging.ReleasePackageManifestTests.Shared_ci_workflow_uses_domain_ci_with_deterministic_server_tests'` -- expected: focused regression passes.
+- `dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --no-build --configuration Release --filter 'FullyQualifiedName~Packaging.CommitMessagePolicyTests.CopilotInstructionsDelegateCommitlintContractToSharedInstructions'` -- expected: the corrected link and delegated shared policy contract pass.
 - `dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --no-build --configuration Release` -- expected: all Contracts tests pass.
 - `sed -n '/      unit-test-projects: |/,/^$/p' .github/workflows/ci.yml | tail -n +2 | sed 's/^        //' | while IFS= read -r project; do [ -z "$project" ] || dotnet test "$project" --no-build --configuration Release; done` -- expected: every CI Tier 1 project passes individually.
 - `git diff --check && git diff --exit-code -- .github/workflows/ci.yml .github/workflows/release.yml` -- expected: no whitespace errors and no workflow changes.
@@ -92,3 +94,37 @@ Use an exact two-space top-level job boundary over normalized line endings, with
 - Isolated validation at run head `11ba1e73269c52d65fecdbe39462459eeec788b4`: all seven root-declared submodules matched their gitlinks with zero nested submodules initialized; fresh package-mode solution build passed with 0 warnings/errors in 36.67 seconds; Contracts passed 706/706.
 - Isolated Tier 1 evidence: 16 projects completed with 4,719 passed, 26 skipped, and 0 failed. `Hexalith.EventStore.Server.Tests` discovered 2,651 cases but did not complete: VSTest was stopped after 5:45, and the direct xUnit fallback was bounded with exit 124 after repeated `localhost:3500` metadata retries while starting `ErrorReferenceEndpointTests`. No test children remained, and the disposable worktree was removed.
 - Run 29571683933 continuation: strict Contracts Release build passed with 0 warnings/errors; `CopilotInstructionsDelegateCommitlintContractToSharedInstructions` passed 1/1; complete `CommitMessagePolicyTests` passed 5/5; complete Contracts project passed 706/706.
+
+**Results (2026-08-08) at `bca7c7ff`:**
+
+- Focused Contracts Release build (`-warnaserror -m:1`): passed with 0 warnings and 0 errors.
+- Focused mixed-job CI contract + job-extraction edge cases + Copilot delegation contract: passed, 6/6.
+- Complete Contracts project: 1007 passed, 0 failed, 0 skipped.
+- Fresh package-mode `Hexalith.EventStore.slnx` Release build: passed with 0 warnings and 0 errors in 18.69 seconds.
+- All 17 Tier 1 `unit-test-projects` individually: 0 failed. Totals include Contracts 1007, Client 768, Testing 152, SignalR 44, Admin.Abstractions 423, Admin.Cli 343, Admin.Mcp 320 (+8 skipped), Admin.Server 717 (+18 skipped), Admin.Server.Host 20, Admin.UI 841, AppHost 89, DomainService 155, QueryRouting 7, RestApi.Generators 124, Sample 117, Testing.Integration 44, Server.Tests 2991 (+25 skipped).
+- `git diff --check` passed; `.github/workflows/ci.yml` and `.github/workflows/release.yml` have no diff; worktree had no unrelated dirty files at verification start.
+- 2026-08-08 review re-check after doc patches: focused mixed-job + extraction + tenants-source-mode + Copilot contracts passed 8/8; workflows still unchanged.
+
+## Suggested Review Order
+
+**Job-scoped CI guardrail**
+
+- Entry point: assert `jobs.ci` has no `runs-on`/`steps`, sibling stays blocking.
+  [`ReleasePackageManifestTests.cs:480`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs#L480)
+
+- Exact top-level job extraction independent of LF/CRLF and sibling order.
+  [`ReleasePackageManifestTests.cs:1312`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs#L1312)
+
+- Extraction edge cases for reordered/final jobs and fail-closed missing/duplicate.
+  [`ReleasePackageManifestTests.cs:573`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs#L573)
+
+- Source-mode drift rejected when the sibling job is skipped or advisory.
+  [`ReleasePackageManifestTests.cs:550`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs#L550)
+
+**Copilot commit-policy delegation**
+
+- Contract follows the entry point into shared LLM/Git commitlint rules.
+  [`CommitMessagePolicyTests.cs:39`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/CommitMessagePolicyTests.cs#L39)
+
+- Shared baseline entry point; no duplicated commit-policy prose locally.
+  [`copilot-instructions.md:1`](../../.github/copilot-instructions.md#L1)

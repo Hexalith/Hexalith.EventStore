@@ -949,3 +949,18 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
   summary: Review-subject blocker text still claims smoke logs lack cleanup facts after cleanup=pass appears in retained logs/runtime-verification.
   evidence: Blind-hunter review; blocker wording is hash-bound and should be narrowed only when evidence is intentionally republished.
+
+## Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-29567058321-fix-ci-cd.md`
+  summary: Governed inline CI checkouts (`semantic-release-governance`, `tenants-source-mode`) set `persist-credentials: false`, but Contracts helpers never assert it and valid fixtures omit it.
+  evidence: Verification-gap/edge-case review — deleting those lines leaves Shared_ci / Semantic_release_governance / mutation tests green; out of scope for the mixed-job false-positive fix.
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-29567058321-fix-ci-cd.md`
+  summary: `Non_manifest_src_projects_cannot_produce_release_packages` only substring-matches `<IsPackable>false</IsPackable>` instead of evaluating MSBuild packability like the manifest-side check.
+  evidence: Verification-gap review — conditional or later overriding true values can evade the complement gate; unrelated packaging growth since the story baseline.
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-29567058321-fix-ci-cd.md`
+  summary: Release `verify-source` job body and fail-closed release inputs (`expected-package-count`, `timeout-minutes`) lack Contracts assertions comparable to the CI job-scoped guards.
+  evidence: Edge-case review of post-baseline release topology changes — not caused by this mixed-job guardrail story.
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-29567058321-fix-ci-cd.md`
+  summary: CommitMessagePolicy markdown helpers can throw on malformed percent-encoding (`Uri.UnescapeDataString`) and can treat tab-indented fences as operative preflight blocks.
+  evidence: Edge-case review of CommitMessagePolicyTests helper growth after baseline; adjacent to Copilot delegation but not required by frozen intent.
