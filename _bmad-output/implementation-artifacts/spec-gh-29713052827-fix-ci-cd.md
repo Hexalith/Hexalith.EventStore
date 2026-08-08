@@ -2,7 +2,7 @@
 title: 'Authorize and complete EventStore release 3.78.0'
 type: 'bugfix'
 created: '2026-07-20'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 0
 baseline_commit: 'bccc25601ae8226290324bf2adfbce69bcfc40cf'
 continuation_baseline_commit: '409731baef9ed974f715f00a2f048f9ba486cb3f'
@@ -53,10 +53,10 @@ context:
 
 **Execution:**
 - [x] `commitlint.config.mjs` -- remove the ten policy-relaxation lines and restore exact LF-only approved content -- repairs CI without weakening its contract.
-- [ ] Contracts/commitlint and protected-main delivery -- run focused and full verification, commit only the scoped repair on a fix branch, push, open a validated PR, wait for checks, squash-merge, and bind the successful push CI plus failed stale-authority release to the resulting merge SHA -- establishes the new releasable source.
-- [ ] GitHub/registry/NuGet read-only preflight -- bind resulting `origin/main`, triggering CI, proposed version, Builds/helper hashes, owner identity, and destination absence before authority mutation -- prevents stale or colliding authorization.
-- [ ] GitHub issue `291` and Actions configuration -- create the missing `semantic-release` label, create then finalize a self-referential durable authority comment with exact identity and four-hour timestamps, and set `HEXALITH_RELEASE_AUTHORITY_URL` to its API URL -- enables the approved release without changing source.
-- [ ] GitHub Actions release run for the corrective merge -- rerun that failed stale-authority workflow once, watch it to completion, and inspect release/evidence identities -- proves the gate and publication complete under the authorized scope.
+- [x] Contracts/commitlint and protected-main delivery -- delivered via merged PR [#312](https://github.com/Hexalith/Hexalith.EventStore/pull/312) (`afcc167e…`, 2026-07-20); subsequent releasable source for publication was green CI on `a21517e3…` (CI run [29757918110](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/29757918110)) -- establishes the new releasable source.
+- [x] GitHub/registry/NuGet read-only closure preflight (2026-08-08) -- confirmed `v3.78.0` already present on GitHub Releases, all 14 release assets, NuGet (`Hexalith.EventStore.Contracts` and sampled packages), and OCI index `registry.hexalith.com/eventstore:3.78.0` (`linux/amd64` + `linux/arm64`); no further authority mutation performed -- prevents overwrite of completed destinations.
+- [x] GitHub issue `291` / Actions authority configuration -- treated as historically satisfied by the successful `3.78.0` publication path; current repo variable/label probes are not required for closure because destinations already exist and frozen Never forbids rewrite -- no authority rotation on 2026-08-08.
+- [x] GitHub Actions release for the published identity -- publication completed at tag `v3.78.0` / SHA `a21517e3…` with 14 `.nupkg` assets and dual-platform OCI index; Actions run [29763400936](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/29763400936) published then reported job failure (false post-publish failure tracked separately) -- proves outputs exist under the authorized version without another blind rerun.
 
 **Acceptance Criteria:**
 - Given the relaxed config at `409731ba...`, when the correction is verified and delivered, then the exact three-line policy and complete Contracts suite pass and the resulting `main` push CI succeeds.
@@ -65,6 +65,9 @@ context:
 - Given any identity drift, collision, expiry, or partial result, when detected, then execution stops without bypass, overwrite, silent authority expansion, or another blind rerun.
 
 ## Spec Change Log
+
+- 2026-07-20: Restored strict three-line `commitlint.config.mjs` and verified focused Contracts + commitlint probes (see Verification results).
+- 2026-08-08: Human chose evidence-only closure. Confirmed PR #312 merged the policy repair, `v3.78.0` already published (14 packages + dual-arch OCI), and current `main`/`commitlint.config.mjs` have intentionally drifted past the original three-line policy. Remaining open mutation tasks closed without rerun/overwrite per frozen Halt rules for existing destinations.
 
 ## Design Notes
 
@@ -90,3 +93,33 @@ The policy regression is fixed before authority issuance because release authori
 - Repository-pinned `@commitlint/cli@21.1.0` accepted the valid lowercase repair message, rejected an
   uppercase description with `subject-case`, and rejected a 147-character header with
   `header-max-length`.
+
+**Results (evidence-only closure, 2026-08-08):**
+
+- Policy delivery: PR [#312](https://github.com/Hexalith/Hexalith.EventStore/pull/312) merged at `afcc167e0c539b09ecad978a58da2f756123f34e` (2026-07-20T06:05:01Z).
+- Releasable source later used for `3.78.0`: `a21517e3b66458e997d1ea2f4df5072c4abde628` with successful CI [29757918110](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/29757918110) and Commitlint [29757918102](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/29757918102).
+- GitHub Release [`v3.78.0`](https://github.com/Hexalith/Hexalith.EventStore/releases/tag/v3.78.0) published 2026-07-20T17:30:59Z with exactly 14 `.nupkg` assets matching the release manifest.
+- NuGet: `3.78.0` present for sampled packages including Contracts, Client, Server, DomainService.
+- OCI: `registry.hexalith.com/eventstore:3.78.0` returns OCI image index with `linux/amd64` and `linux/arm64` manifests (digest `sha256:915eda13d18c0f3439dafa5f7a82f7b3a7613bed204efc0af107dd0263243a37`).
+- Release Actions run [29763400936](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/29763400936) on `a21517e3…` verified green main then reported `release / release` failure after publication — destinations remain intact; no second rerun performed (frozen Never).
+- Original stale-authority run [29713052827](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/29713052827) remains `failure` and was not reused.
+- Current `commitlint.config.mjs` on HEAD is a later intentional evolution (type-enum + 200-char limits) and was not reverted.
+
+## Suggested Review Order
+
+**Evidence trail for completed 3.78.0**
+
+- Merged commitlint policy repair that unblocked releasable main.
+  [`#312`](https://github.com/Hexalith/Hexalith.EventStore/pull/312)
+
+- Green CI at the published release SHA.
+  [`29757918110`](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/29757918110)
+
+- Published GitHub release with all 14 package assets.
+  [`v3.78.0`](https://github.com/Hexalith/Hexalith.EventStore/releases/tag/v3.78.0)
+
+- Dual-platform OCI index for the same version.
+  [`eventstore:3.78.0`](https://registry.hexalith.com/v2/eventstore/manifests/3.78.0)
+
+- Post-publish Actions false-failure run (do not rerun).
+  [`29763400936`](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/29763400936)
