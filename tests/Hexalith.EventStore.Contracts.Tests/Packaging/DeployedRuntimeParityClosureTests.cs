@@ -923,6 +923,86 @@ public sealed class DeployedRuntimeParityClosureTests
     }
 
     /// <summary>
+    /// Verifies fail-closed NuGet.org availability rejects missing shape and non-404 statuses.
+    /// </summary>
+    /// <param name="mutation">The nuget_org mutation to apply.</param>
+    [Theory]
+    [InlineData("null-nuget")]
+    [InlineData("missing-package")]
+    [InlineData("status-200")]
+    [InlineData("empty-statuses")]
+    public void PackageAvailabilityRejectsNugetOrgMutations(string mutation)
+    {
+        string root = FindRepositoryRoot();
+        string evidence = Path.Combine(root, EvidenceRelativePath);
+        JsonObject crosswalk = LoadCrosswalk(root);
+        string temp = Path.Combine(Path.GetTempPath(), "story-3-13-nuget-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(temp);
+        try
+        {
+            JsonObject report = JsonNode.Parse(
+                File.ReadAllBytes(Path.Combine(evidence, "package-availability.json")))!.AsObject();
+            switch (mutation)
+            {
+                case "null-nuget":
+                    report["nuget_org"] = null;
+                    break;
+                case "missing-package":
+                    report["nuget_org"]!["http_status_by_package"]!.AsObject()
+                        .Remove("Hexalith.EventStore.Contracts");
+                    break;
+                case "status-200":
+                    foreach (KeyValuePair<string, JsonNode?> property in
+                        report["nuget_org"]!["http_status_by_package"]!.AsObject().ToArray())
+                    {
+                        report["nuget_org"]!["http_status_by_package"]![property.Key] = 200;
+                    }
+
+                    break;
+                default:
+                    report["nuget_org"]!["http_status_by_package"] = new JsonObject();
+                    break;
+            }
+
+            File.WriteAllBytes(
+                Path.Combine(temp, "package-availability.json"),
+                JsonSerializer.SerializeToUtf8Bytes(report));
+            ValidatePackageAvailability(crosswalk, temp).ShouldBeFalse();
+        }
+        finally
+        {
+            Directory.Delete(temp, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies OCI graph evaluation rejects a child whose declared verification is not pass.
+    /// </summary>
+    [Fact]
+    public void OciGraphRejectsChildVerificationFailure()
+    {
+        string root = FindRepositoryRoot();
+        (string cleanupRoot, string evidence, JsonObject crosswalk, _, _, _, byte[] proofBytes,
+            string packageManifestSha256) = CreatePassingFixture(root);
+        try
+        {
+            JsonObject mutated = Clone(crosswalk);
+            mutated["selected_candidates"]![0]!["oci"]!["children"]![0]!["verification"] = "fail";
+            ValidateOciGraph(mutated, root, evidence).ShouldBeFalse();
+            EvaluateWithFreshReview(
+                mutated,
+                root,
+                evidence,
+                proofBytes,
+                packageManifestSha256).ShouldBeFalse();
+        }
+        finally
+        {
+            Directory.Delete(cleanupRoot, recursive: true);
+        }
+    }
+
+    /// <summary>
     /// Verifies the package-availability report has an exact schema and support-safe content.
     /// </summary>
     /// <param name="mutation">The report mutation to apply.</param>
@@ -1161,6 +1241,10 @@ public sealed class DeployedRuntimeParityClosureTests
     [InlineData("object-raw-sha")]
     [InlineData("cli-candidate-compatibility")]
     [InlineData("config-labels-summary")]
+    [InlineData("config-labels-revision")]
+    [InlineData("config-labels-approved-source-sha")]
+    [InlineData("config-labels-version")]
+    [InlineData("tag-digest-identical-flag")]
     [InlineData("extra-field")]
     public void OciRegistryReportsRejectEndpointStatusAndRawBindingMutations(string mutation)
     {
@@ -1197,6 +1281,18 @@ public sealed class DeployedRuntimeParityClosureTests
                     report["config_labels"]!["verification_result"] = "fail";
                     report["config_labels"]!["provenance_label_result"] = "fail";
                     report["config_labels"]!["exact_source_match"] = false;
+                    break;
+                case "config-labels-revision":
+                    report["config_labels"]!["revision"] = new string('0', 40);
+                    break;
+                case "config-labels-approved-source-sha":
+                    report["config_labels"]!["approved_source_sha"] = new string('0', 40);
+                    break;
+                case "config-labels-version":
+                    report["config_labels"]!["version"] = "0.0.0-mutated";
+                    break;
+                case "tag-digest-identical-flag":
+                    report["tag_and_digest_bytes_identical"] = false;
                     break;
                 default: report["undeclared"] = true; break;
             }
@@ -2124,6 +2220,8 @@ public sealed class DeployedRuntimeParityClosureTests
             string registry = oci["registry"]!.GetValue<string>();
             string repository = oci["repository"]!.GetValue<string>();
             string sourceSha = crosswalk["selected_candidates"]![0]!["source"]!["sha"]!.GetValue<string>();
+            string releaseVersion = crosswalk["selected_candidates"]![0]!["release"]!["semantic_version"]!
+                .GetValue<string>();
             string? sourceDirectory = Directory.GetParent(evidenceRoot)?.Name;
             JsonObject readback = JsonNode.Parse(ReadEvidenceFile(evidenceRoot, "registry-readback.json"))!.AsObject();
             JsonObject validation = JsonNode.Parse(ReadEvidenceFile(evidenceRoot, "oci-validation.json"))!.AsObject();
@@ -2200,7 +2298,11 @@ public sealed class DeployedRuntimeParityClosureTests
                 || !ValidateSharedValidatorIdentity(
                     readback["shared_validator"]!.AsObject(),
                     repositoryRoot)
-                || !ValidateConfigLabelSummaries(readback["config_labels"]!.AsObject(), sourceSha))
+                || !readback["tag_and_digest_bytes_identical"]!.GetValue<bool>()
+                || !ValidateConfigLabelSummaries(
+                    readback["config_labels"]!.AsObject(),
+                    sourceSha,
+                    releaseVersion))
             {
                 return false;
             }
@@ -2293,7 +2395,8 @@ public sealed class DeployedRuntimeParityClosureTests
                     || validationChild["config_digest"]!.GetValue<string>() !=
                         child["config_digest"]!.GetValue<string>()
                     || validationChild["config_size"]!.GetValue<int>() !=
-                        child["config_size"]!.GetValue<int>())
+                        child["config_size"]!.GetValue<int>()
+                    || child["verification"]!.GetValue<string>() != "pass")
                 {
                     return false;
                 }
@@ -2349,12 +2452,16 @@ public sealed class DeployedRuntimeParityClosureTests
         }
     }
 
-    private static bool ValidateConfigLabelSummaries(JsonObject configLabels, string sourceSha) =>
+    private static bool ValidateConfigLabelSummaries(
+        JsonObject configLabels,
+        string sourceSha,
+        string releaseVersion) =>
         configLabels["verification_result"]!.GetValue<string>() == "pass"
         && configLabels["provenance_label_result"]!.GetValue<string>() == "pass"
         && configLabels["exact_source_match"]!.GetValue<bool>()
         && configLabels["approved_source_sha"]!.GetValue<string>() == sourceSha
-        && configLabels["revision"]!.GetValue<string>() == sourceSha;
+        && configLabels["revision"]!.GetValue<string>() == sourceSha
+        && configLabels["version"]!.GetValue<string>() == releaseVersion;
 
     private static bool ValidateOciProvenance(JsonObject crosswalk, string evidenceRoot)
     {
@@ -2973,6 +3080,7 @@ public sealed class DeployedRuntimeParityClosureTests
                 && !verdict["external_state_changed"]!.GetValue<bool>()
                 && !verdict["predecessor_state_changed"]!.GetValue<bool>()
                 && verdict["blockers"]!.AsArray().Count > 0
+                && ValidateFailClosedVerdictChecks(verdict["checks"]!.AsObject())
                 && subject["blockers"]!.AsArray().Count > 0
                 && subject["passing_evidence"]!.AsArray().Count > 0
                 && limitations.SequenceEqual(
@@ -2996,7 +3104,8 @@ public sealed class DeployedRuntimeParityClosureTests
                 && TryParseExplicitOffset(runtime["ended_at"]!.GetValue<string>(), out DateTimeOffset runtimeEnded)
                 && created >= assembled
                 && created >= registryChecked
-                && created >= runtimeEnded;
+                && created >= runtimeEnded
+                && created <= DateTimeOffset.UtcNow.AddMinutes(5);
         }
         catch (Exception exception) when (
             exception is InvalidOperationException
@@ -3566,7 +3675,21 @@ public sealed class DeployedRuntimeParityClosureTests
             && statuses.All(property =>
                 property.Value is JsonValue value
                 && value.TryGetValue(out int status)
-                && status is >= 100 and <= 599);
+                && status == 404);
+    }
+
+    private static bool ValidateFailClosedVerdictChecks(JsonObject checks)
+    {
+        string[] checkNames = checks.Select(check => check.Key).Order(StringComparer.Ordinal).ToArray();
+        return checkNames.SequenceEqual(ExpectedChecks, StringComparer.Ordinal)
+            && checks.All(check =>
+                check.Value is JsonValue value
+                && value.TryGetValue(out string? result)
+                && result is "pass" or "fail" or "missing")
+            && checks.Any(check => check.Value!.GetValue<string>() != "pass")
+            && checks["content_bound_acceptances"]!.GetValue<string>() == "missing"
+            && checks["package_bytes"]!.GetValue<string>() == "fail"
+            && checks["single_lineage"]!.GetValue<string>() == "fail";
     }
 
     private static bool DocumentIsSupportSafe(JsonNode node) => node switch
@@ -3709,6 +3832,7 @@ public sealed class DeployedRuntimeParityClosureTests
             "consumer",
             "predecessor",
             "epic 1",
+            "submodule",
         ];
         return required.All(text.Contains);
     }
@@ -3912,7 +4036,7 @@ public sealed class DeployedRuntimeParityClosureTests
             }));
 
         crosswalk["limitations"] = new JsonArray(
-            "This acceptance authorizes no package publication, registry mutation, deployment mutation, consumer migration, predecessor change, or Epic 1 change.",
+            "This acceptance authorizes no package publication, registry mutation, deployment mutation, consumer migration, predecessor change, Epic 1 change, or submodule mutation.",
             "Every acceptance is bound to one unchanged review-subject SHA-256.");
         JsonObject verdict = crosswalk["verdict"]!.AsObject();
         verdict["decision"] = "pass";

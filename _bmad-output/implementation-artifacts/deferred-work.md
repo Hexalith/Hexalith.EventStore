@@ -964,3 +964,9 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-gh-29567058321-fix-ci-cd.md`
   summary: CommitMessagePolicy markdown helpers can throw on malformed percent-encoding (`Uri.UnescapeDataString`) and can treat tab-indented fences as operative preflight blocks.
   evidence: Edge-case review of CommitMessagePolicyTests helper growth after baseline; adjacent to Copilot delegation but not required by frozen intent.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Redact absolute local_search_roots from retained package-availability.json (and refresh checksums/bindings) so support-safe evidence does not embed host filesystem paths.
+  evidence: Blind-hunter review of Story 3.13; package-availability.json lists /home/administrator/... roots while JsonEvidenceIsSupportSafe currently accepts them.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Add missing-key removal mutations for validators whose NullReferenceException catch filters are only exercised by value mutations today.
+  evidence: Blind-hunter review of Story 3.13; prior hardening added catch filters but theories still mutate values rather than removing keys.

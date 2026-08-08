@@ -120,8 +120,8 @@ not treated as a pass for release provenance.
 
 - Story 1.20 critical manifest: all 33 entries passed `sha256sum -c`.
 - Contracts test project Release build: succeeded with zero warnings and zero errors.
-- Focused `DeployedRuntimeParityClosureTests`: 120 passed, zero failed/skipped/not-run
-  (recorded after the 2026-08-08 review-hardening mutations; earlier hardening had 117).
+- Focused `DeployedRuntimeParityClosureTests`: 129 passed, zero failed/skipped/not-run
+  (recorded after the 2026-08-08 fifth review-hardening mutations; earlier hardening had 120).
 - Complete Contracts suite: last measured at 1001 passed (2026-08-05); not re-measured in this
   documentation refresh.
 - The verifier also derives the actual fail-closed review subject and outer checksum manifest,

@@ -267,7 +267,7 @@ evidence; the release workflow does not consume it.
 The retained Story 3.13 packet is deliberately `fail-closed`: predecessor integrity
 and fail-closed behavior satisfy AC1 and AC3, while the exact same-lineage deployed
 proof and all three content-bound acceptances required by AC2 and AC4 remain absent.
-The current acceptance count is 0 of 3, so Story 3.13 remains `in-progress` and
+The current acceptance count is 0 of 3, so Story 3.13 remains `in-review` and
 authorizes no release, registry, deployment, consumer, or predecessor mutation.
 
 ## Submodules

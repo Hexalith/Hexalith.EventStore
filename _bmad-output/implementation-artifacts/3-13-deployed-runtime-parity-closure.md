@@ -35,7 +35,7 @@ source_files:
 
 # Story 3.13: Deployed Runtime Parity Closure
 
-Status: in-progress
+Status: in-review
 
 <!-- Ultimate context engine analysis completed - comprehensive developer guide created. -->
 
@@ -615,7 +615,7 @@ OpenAI Codex (GPT-5)
 
 ## Story Completion Status
 
-- Status set to `in-progress` because the reproducible `fail-closed` packet still has external
+- Status set to `in-review` because the reproducible `fail-closed` packet still has external
   evidence blockers.
 - AC1 and AC3 pass. Raw OCI descriptor/body relationships pass, but child/config response metadata,
   independently replayable runtime facts, package bytes, release/source authority, valid
