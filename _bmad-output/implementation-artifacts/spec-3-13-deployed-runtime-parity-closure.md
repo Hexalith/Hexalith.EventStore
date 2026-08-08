@@ -4,7 +4,7 @@ type: 'chore'
 created: '2026-08-04'
 status: 'in-review'
 baseline_commit: '1d6e9321acfc416768c1c78e9facf573c9c41f71'
-review_loop_iteration: 1
+review_loop_iteration: 7
 context:
   - '{project-root}/_bmad-output/project-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-3-context.md'
@@ -46,7 +46,7 @@ context:
 - `tools/release-packages.json` -- read-only exact 14-package inventory and uniqueness authority.
 - `references/Hexalith.Builds/Github/publish-containers/` -- read-only validator/smoke reuse; validation is SemVer/tag-first, while smoke uses bounded local Docker state.
 - `tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs` -- new verifier; reuse JSON mutation/hash/root patterns from adjacent packaging tests.
-- `docs/ci.md:253` -- replace only the stale Story 3.12-to-1.20 deployed-closure ownership paragraph.
+- `docs/ci.md:258` -- replace only the stale Story 3.12-to-1.20 deployed-closure ownership paragraph.
 - Story 3.13 record and `sprint-status.yaml` -- truthful lifecycle only; predecessors and Epic 1 stay unchanged.
 
 ## Tasks & Acceptance
@@ -96,6 +96,10 @@ context:
 - [x] [Review][Patch] Bind each acceptance receipt filename to its role field [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs]
 - [x] [Review][Patch] Map missing-git Process.Start failures to InvalidDataException fail-closed paths [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs]
 - [x] [Review][Patch] Treat IPv4/IPv6 unspecified addresses as private in support-safety checks [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs]
+- [x] [Review][Patch] Pin runtime citation, preflight/platform log filenames, and OCI index_raw_file to core-manifest paths [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs]
+- [x] [Review][Patch] Enforce LogIsSupportSafe size gates, non-empty cleanup_check, and absolute local_search_roots rejection [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs]
+- [x] [Review][Patch] Lock retained fail-closed verdict.checks map and Production hosting-environment pass-fixture mutations [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs]
+- [x] [Review][Patch] Skip symlink-escape coverage when links are unavailable; redact host paths and rebind fail-closed review subject [_bmad-output/implementation-artifacts/evidence/story-3-13/...]
 
 **Acceptance Criteria:**
 - Given completed predecessors, when closure begins, then committed identities are hash-checked without modification or inference.
@@ -133,6 +137,16 @@ context:
   receipt filenames to role fields, mapped missing-git `Process.Start` failures into fail-closed
   `InvalidDataException` paths, and treated unspecified IPv4/IPv6 addresses as private. Focused
   verifier coverage is now 132 passing tests; AC2/AC4 and 0/3 acceptances remain open.
+- 2026-08-08: Applied a seventh review-hardening pass without changing frozen intent. Pinned
+  runtime/OCI/log path bindings to core-manifest filenames, enforced log size support-safety and
+  non-empty cleanup attestation, rejected absolute `local_search_roots`, locked the retained
+  fail-closed verdict check map, rejected Production hosting-environment mutations on the pass
+  fixture, skipped symlink-escape coverage when links are unavailable, redacted host paths from
+  retained package-availability evidence, and cleaned review-subject passing_evidence after
+  rebinding. Restored Story 1.20 `environment.txt` and proof-packet bytes that a later SDK-token
+  docs commit had drifted away from the approved hashes, and pinned the predecessor git-tree
+  assertion to `ExpectedBaselineCommit` instead of `HEAD`. Focused verifier coverage is now 140
+  passing tests; AC2/AC4 and 0/3 acceptances remain open.
 
 ## Verification
 
@@ -144,38 +158,43 @@ context:
 
 ## Suggested Review Order
 
-**Fail-closed subject binding**
+**Fail-closed subject honesty**
 
 - Keep the packet non-done while AC2/AC4 remain open.
   [`3-13-deployed-runtime-parity-closure-proof-packet.md:5`](3-13-deployed-runtime-parity-closure-proof-packet.md#L5)
 
-- Rebind proof-packet SHA-256 to current packet bytes.
-  [`review-subject.json:15`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/review-subject.json#L15)
+- Passing evidence lists only true passes after subject rebind.
+  [`review-subject.json:28`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/review-subject.json#L28)
 
-- Cascade the outer evidence checksum after subject rebinding.
-  [`evidence-sha256.txt:1`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/evidence-sha256.txt#L1)
+- Lock retained fail-closed verdict check outcomes.
+  [`DeployedRuntimeParityClosureTests.cs:3865`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3865)
 
-**Verifier hardening**
+**Path and support-safety gates**
 
-- Reject config-raw label mutations when provenance summary stays clean.
-  [`DeployedRuntimeParityClosureTests.cs:1401`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L1401)
+- Pin runtime citation to the core-manifest filename.
+  [`DeployedRuntimeParityClosureTests.cs:2755`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L2755)
 
-- Prove Builds tool pins are rehashed from pinned git bytes.
-  [`DeployedRuntimeParityClosureTests.cs:1431`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L1431)
+- Pin OCI index raw file and log filenames to hashed evidence names.
+  [`DeployedRuntimeParityClosureTests.cs:2457`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L2457)
 
-- Bind each acceptance receipt filename to its role field.
-  [`DeployedRuntimeParityClosureTests.cs:1644`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L1644)
+- Enforce log size limits and reject absolute local search roots.
+  [`DeployedRuntimeParityClosureTests.cs:3723`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3723)
 
-- Map missing-git Process.Start failures into fail-closed InvalidDataException paths.
-  [`DeployedRuntimeParityClosureTests.cs:4955`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L4955)
+- Redacted host paths stay support-safe in retained availability evidence.
+  [`package-availability.json:7`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/package-availability.json#L7)
 
-- Treat unspecified IPv4/IPv6 addresses as private for support-safety.
-  [`DeployedRuntimeParityClosureTests.cs:3869`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3869)
+**Predecessor freeze**
+
+- Assert the frozen baseline tree, not drifted HEAD.
+  [`DeployedRuntimeParityClosureTests.cs:238`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L238)
+
+- Restored approved Story 1.20 proof-packet bytes.
+  [`1-20-owner-approved-parity-closure-proof-packet.md:5387`](1-20-owner-approved-parity-closure-proof-packet.md#L5387)
 
 **Lifecycle**
 
-- Confirm trackers remain in-review/review while blockers remain.
+- Trackers stay in-review while acceptances remain 0/3.
   [`sprint-status.yaml:223`](sprint-status.yaml#L223)
 
-- Confirm docs ownership prose stays non-done.
+- Docs ownership prose stays non-done.
   [`ci.md:270`](../../docs/ci.md#L270)

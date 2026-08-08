@@ -1,6 +1,6 @@
 {
   "schema": "hexalith.eventstore.story-3-13-review-subject/v2",
-  "created_at": "2026-08-04T19:25:16Z",
+  "created_at": "2026-08-08T14:34:38Z",
   "proposed_decision": "fail-closed",
   "identity_crosswalk": {
     "path": "identity-crosswalk.json",
@@ -8,7 +8,7 @@
   },
   "evidence_core_manifest": {
     "path": "evidence-core-sha256.txt",
-    "sha256": "d8323c16993257171817935010a720929ed36d7eba9c2e9fc418c8bd494d11f8"
+    "sha256": "044d6491f671902285e55c878fd9faaa307f91c7ad8d3056b888cd1f143efd4d"
   },
   "proof_packet": {
     "path": "_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure-proof-packet.md",
@@ -26,8 +26,7 @@
   },
   "passing_evidence": [
     "all predecessor fingerprints and the complete 40-file Story 1.20 tree are unchanged",
-    "the OCI index and independent tag/digest response bodies match their immutable descriptor",
-    "the retained child/config raw byte graph matches its descriptors, but its response metadata was not retained"
+    "the OCI index and independent tag/digest response bodies match their immutable descriptor"
   ],
   "blockers": [
     "the 14 original proof package archives remain unavailable for independent byte verification",

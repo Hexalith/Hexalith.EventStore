@@ -5,9 +5,9 @@
   "expected_count": 14,
   "recovered_count": 0,
   "local_search_roots": [
-    "/home/administrator/.nuget/packages",
-    "/home/administrator/projects",
-    "/tmp"
+    "<redacted-nuget-packages>",
+    "<redacted-projects>",
+    "<redacted-tmp>"
   ],
   "local_matches": [],
   "nuget_org": {

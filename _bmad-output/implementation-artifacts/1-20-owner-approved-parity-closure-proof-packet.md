@@ -5387,7 +5387,7 @@ must not speculate a future EventStore package version.
 | `git rev-parse --verify --end-of-options 'HEAD^{commit}'` | PASS; candidate discovery SHA `26842d284f2da91399b7891bf7b5880ce2f6b561`. |
 | `git status --porcelain=v1 --untracked-files=all --ignore-submodules=none` | CLOSURE BLOCKED; the Story 1.20 specification was already modified, so `HEAD` was not selected as tested runtime. |
 | `git submodule status` | PASS for inventory capture; two root-declared submodules were uninitialized and no nested submodules were initialized. |
-| `dotnet --info` | PASS; SDK `10.0.302`, host/runtime `10.0.9`, Ubuntu 26.04 `linux-x64`. |
+| `dotnet --info` | PASS; SDK `10.0.301`, host/runtime `10.0.9`, Ubuntu 26.04 `linux-x64`. |
 | `dapr --version` | PASS; CLI `1.18.0`, runtime `1.18.1`. |
 
 ### Exact release-package inventory check

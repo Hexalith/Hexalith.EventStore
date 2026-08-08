@@ -985,3 +985,10 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-update-dotnet-sdk-to-10-0-302.md`
   summary: Scrub remaining predecessor SDK patch tokens from Hexalith.Memories BMAD artifacts, including the below-min I/O matrix rewrite to a non-predecessor.
   evidence: Split from the SDK 10.0.302 cleanup so the root EventStore leftover pass can ship alone; Memories still has four hits in `spec-run-tests-and-fix-failures.md` and `27-1-access-telemetry-retention-ownership-decision.md` under the same 1A/2B/3A-strict policy.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Dev Agent Debug Log still cites stale focused/suite test totals that no longer match the 140-test verifier count.
+  evidence: Blind-hunter review of the Story 3.13 record found 115/117 and suite 999/1001 figures while the proof packet and latest hardening pass report 140 focused tests; documentation-only drift, not a verifier defect.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Several Task parent checkboxes remain unchecked while child boxes and later tasks are marked complete.
+  evidence: Blind-hunter review showed Tasks 4–7 and 9 parents unchecked despite checked children; AC2/AC4 intentionally remain open, so this is progress-tracking hygiene rather than a functional gap.
