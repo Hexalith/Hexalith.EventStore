@@ -106,6 +106,13 @@ context:
 - [x] [Review][Patch] Reject IPv4-compatible IPv6 private embeddings in support-safety checks [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs]
 - [x] [Review][Patch] Correct cleanup-overstated review-subject blocker and align Task 1/8 honesty [_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure.md]
 - [x] [Review][Defer] Story 4.5 LiveSidecar prose in docs/ci.md outside Story 3.13 ownership-paragraph scope [docs/ci.md]
+- [x] [Review][Patch] Correct proof-packet identity-crosswalk pin to bound `11b17fb0…` and rebind review subject/outer manifest [_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure-proof-packet.md]
+- [x] [Review][Patch] Align story-record baseline_commit to `1d6e9321` with spec/verifier [_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure.md:2]
+- [x] [Review][Patch] Restore truncated Story 2.12 sprint-status key [_bmad-output/implementation-artifacts/sprint-status.yaml]
+- [x] [Review][Patch] Require shared OCI validator cli_candidate_consequence pass string [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs]
+- [x] [Review][Patch] Assert retained smoke-preflight.log fails ValidatePreflightLog on incomplete-runtime path [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs]
+- [x] [Review][Defer] Add acceptances/{subject_sha256}/ scaffold before AC4 collection [_bmad-output/implementation-artifacts/evidence/story-3-13/...]
+- [x] [Review][Defer] Re-measure full Contracts.Tests suite after ninth hardening pass [tests/Hexalith.EventStore.Contracts.Tests]
 
 **Acceptance Criteria:**
 - Given completed predecessors, when closure begins, then committed identities are hash-checked without modification or inference.
@@ -159,6 +166,13 @@ context:
   `ValidateRuntimeLog`, rejected IPv4-compatible private embeddings, corrected cleanup-overstated
   blocker text, and aligned Task 1/8 lifecycle wording. Focused verifier coverage is now 142
   passing tests; AC2/AC4 and 0/3 acceptances remain open.
+- 2026-08-09: Applied a ninth review-hardening pass without changing frozen intent. Corrected the
+  proof-packet identity-crosswalk pin to the bound `11b17fb0…` digest and rebound the review
+  subject / outer evidence manifest; aligned the story-record `baseline_commit` to `1d6e9321`;
+  restored the truncated Story 2.12 sprint-status key; required the shared OCI validator
+  `cli_candidate_consequence` pass string; and asserted retained `smoke-preflight.log` fails
+  `ValidatePreflightLog` on the incomplete-runtime fail-closed path. AC2/AC4 and 0/3 acceptances
+  remain open.
 
 ## Verification
 
@@ -170,32 +184,32 @@ context:
 
 ## Suggested Review Order
 
-**Fail-closed subject honesty**
+**Identity pin honesty**
 
-- Reject overall smoke-results pass while the packet stays fail-closed.
-  [`DeployedRuntimeParityClosureTests.cs:517`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L517)
+- Proof packet pin must match the bound crosswalk digest after subject rebind.
+  [`3-13-deployed-runtime-parity-closure-proof-packet.md:27`](3-13-deployed-runtime-parity-closure-proof-packet.md#L27)
 
-- Lock fail-closed runtime, OCI, registry, and smoke enums together.
-  [`DeployedRuntimeParityClosureTests.cs:3335`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3335)
+- Review subject binds the rebound proof-packet bytes without a checksum cycle.
+  [`review-subject.json:13`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/review-subject.json#L13)
 
-- Retained smoke summary must report overall fail.
-  [`smoke-results.json:17`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/smoke-results.json#L17)
+- Outer evidence manifest lists the rebound subject digest.
+  [`evidence-sha256.txt:3`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/evidence-sha256.txt#L3)
 
-- Blocker text no longer claims missing cleanup facts.
-  [`review-subject.json:36`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/review-subject.json#L36)
+**Fail-closed runtime gates**
 
-**Runtime evidence gates**
+- Incomplete-runtime path also rejects unstructured smoke-preflight.log.
+  [`DeployedRuntimeParityClosureTests.cs:387`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L387)
 
-- Assert retained unstructured logs fail ValidateRuntimeLog.
-  [`DeployedRuntimeParityClosureTests.cs:359`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L359)
+- Pass-path shared OCI validator consequence string is exact, not free-form.
+  [`DeployedRuntimeParityClosureTests.cs:2479`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L2479)
 
-- Reject IPv4-compatible private embeddings in support-safety checks.
-  [`DeployedRuntimeParityClosureTests.cs:4067`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L4067)
+**Lifecycle / tracker hygiene**
 
-**Lifecycle**
+- Story baseline matches the spec/verifier review baseline.
+  [`3-13-deployed-runtime-parity-closure.md:2`](3-13-deployed-runtime-parity-closure.md#L2)
+
+- Story 2.12 sprint-status key is no longer truncated.
+  [`sprint-status.yaml:87`](sprint-status.yaml#L87)
 
 - Trackers stay in-review while acceptances remain 0/3.
-  [`sprint-status.yaml:223`](sprint-status.yaml#L223)
-
-- Proof packet records 142 focused tests after this hardening pass.
-  [`3-13-deployed-runtime-parity-closure-proof-packet.md:123`](3-13-deployed-runtime-parity-closure-proof-packet.md#L123)
+  [`sprint-status.yaml:103`](sprint-status.yaml#L103)

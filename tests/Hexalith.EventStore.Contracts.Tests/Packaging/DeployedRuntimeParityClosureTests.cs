@@ -382,6 +382,28 @@ public sealed class DeployedRuntimeParityClosureTests
                 "Retained fail-closed smoke logs must not satisfy ValidateRuntimeLog.");
         }
 
+        JsonObject oci = crosswalk["selected_candidates"]![0]!["oci"]!.AsObject();
+        JsonObject preflight = runtime["preflight"]!.AsObject();
+        bool structuredPreflightAccepted;
+        try
+        {
+            structuredPreflightAccepted = ValidatePreflightLog(evidence, preflight, oci, started, ended);
+        }
+        catch (Exception exception) when (
+            exception is JsonException
+            or InvalidOperationException
+            or NullReferenceException
+            or ArgumentException
+            or FormatException
+            or InvalidDataException
+            or IOException)
+        {
+            structuredPreflightAccepted = false;
+        }
+
+        structuredPreflightAccepted.ShouldBeFalse(
+            "Retained fail-closed smoke-preflight.log must not satisfy ValidatePreflightLog.");
+
         JsonObject mutated = Clone(crosswalk);
         mutated["selected_candidates"]![0]!["runtime"]!["platforms"]![0]!["child_digest"] =
             "sha256:" + new string('0', 64);
@@ -2454,6 +2476,8 @@ public sealed class DeployedRuntimeParityClosureTests
             && sharedValidator["builds_gitlink_sha"]!.GetValue<string>() == ExpectedBuildsSha
             && sharedValidator["verification_result"]!.GetValue<string>() == "pass"
             && sharedValidator["cli_candidate_compatibility"]!.GetValue<string>() == "pass"
+            && sharedValidator["cli_candidate_consequence"]!.GetValue<string>() ==
+                "The semantic release tag is accepted by the pinned validator."
             && sharedValidator["sha256"]!.GetValue<string>() == ExpectedOciValidatorSha256
             && ComputePinnedBuildsToolSha256(repositoryRoot, path) == ExpectedOciValidatorSha256;
     }

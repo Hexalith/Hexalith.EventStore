@@ -24,14 +24,18 @@ migration, predecessor change, Epic 1 change, submodule change, or G5 decision.
 - Selected immutable OCI index:
   `registry.hexalith.com/eventstore@sha256:523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87`.
 - [Identity crosswalk](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/identity-crosswalk.json)
-  SHA-256: `b078cf82946594d91e382270f9ce5b6a36b6331ca1e4728203fe208b25f5d36b`.
+  SHA-256: `11b17fb06f38b6a74ec5077229db1ee80b9a0192641863365fc55c6fd168a0b9`.
 - [Evidence manifest](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/evidence-sha256.txt)
   binds the core manifest, crosswalk, and review subject entry-by-entry. Its own hash is not quoted
   here because the review subject binds this proof packet, deliberately avoiding a checksum cycle.
 - [Reviewer roster](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/reviewer-roster.json)
   SHA-256: `6e5f73c0169c0b202f77cfe38ae2d38e12f8b4202173e95a3f2ef23f5a2987ed`.
 - [Review subject](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/review-subject.json)
-  is frozen after this packet and binds the raw crosswalk, evidence-core manifest, and this packet.
+  is frozen after this packet and binds the raw crosswalk SHA-256
+  `11b17fb06f38b6a74ec5077229db1ee80b9a0192641863365fc55c6fd168a0b9`, evidence-core manifest
+  SHA-256 `5f7a8c7b1cdd85cbfe5469af2b4ff8c1363b92cd79ee964aefecba0bef3d7758`, and this packet. The
+  subject file digest and this packet digest are recorded only in `evidence-sha256.txt` and the
+  subject's `proof_packet.sha256` field so this packet does not create a checksum cycle.
 
 Any change to the crosswalk, evidence-core manifest, or proof-packet bytes requires a replacement
 review subject. The three missing receipts remain outside the evidence checksum manifests, must be
