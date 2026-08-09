@@ -119,6 +119,12 @@ public sealed class DeployedRuntimeParityClosureTests
         "smoke-results.json",
     ];
 
+    private static readonly string[] ExpectedSupportSafeUriHosts =
+    [
+        "github.com",
+        ExpectedRegistry,
+    ];
+
     private static readonly string[] ExpectedMutationLimitations =
     [
         "No package, release, registry, deployment, consumer, predecessor, Epic 1, or submodule mutation is authorized.",
@@ -449,7 +455,7 @@ public sealed class DeployedRuntimeParityClosureTests
     }
 
     /// <summary>
-    /// Verifies private IPv4/IPv6 addresses cannot be retained as support-safe evidence values.
+    /// Verifies private addresses and unapproved URI hosts cannot be retained as support-safe evidence values.
     /// </summary>
     [Fact]
     public void SupportSafeValuesRejectPrivateIpv6Addresses()
@@ -470,6 +476,9 @@ public sealed class DeployedRuntimeParityClosureTests
         ValueIsSupportSafe("https://svc.internal/status").ShouldBeFalse();
         ValueIsSupportSafe("https://fileserver.corp/path").ShouldBeFalse();
         ValueIsSupportSafe("http://printer.lan/").ShouldBeFalse();
+        ValueIsSupportSafe("https://apparently-public.example/status").ShouldBeFalse();
+        ValueIsSupportSafe("https://8.8.8.8/status").ShouldBeFalse();
+        ValueIsSupportSafe("https://github.com/Hexalith/Hexalith.EventStore").ShouldBeTrue();
         ValueIsSupportSafe("https://registry.hexalith.com/eventstore").ShouldBeTrue();
         ValueIsSupportSafe("10.0.0.1").ShouldBeFalse();
         ValueIsSupportSafe("100.64.0.1").ShouldBeFalse();
@@ -4212,7 +4221,9 @@ public sealed class DeployedRuntimeParityClosureTests
             return true;
         }
 
-        return IPAddress.TryParse(normalized, out IPAddress? address) && AddressIsPrivate(address);
+        // DNS resolution is mutable and environment-dependent. Fail closed on every absolute-URI
+        // host except the exact public services that this evidence contract is allowed to cite.
+        return !ExpectedSupportSafeUriHosts.Contains(normalized, StringComparer.OrdinalIgnoreCase);
     }
 
     private static bool AddressIsPrivate(IPAddress address)

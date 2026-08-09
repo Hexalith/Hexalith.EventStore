@@ -1017,3 +1017,99 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
   summary: release_authority.verification reports fail under a hash-check method without separating scope failure.
   evidence: The crosswalk marks result fail while the method text says hash-checked durable predecessor authority, even though the concrete blocker is deployment_authorized false / quarantine-only scope rather than a failed hash.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Story 4.4 activation recovery can permanently starve publication-index entries beyond the fixed head scan and work budgets.
+  evidence: `RearmOutstandingPublicationsAsync` always restarts at the first entry, persists no cursor, and schedules no continuation while a continuously active actor may never receive another activation.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Story 4.4 can report `Retryable=true` when only a recovery-index entry exists and reminder registration failed.
+  evidence: The advisory status uses `drainReminderArmed || recoveryEntryTracked`, but an index entry does not itself activate an idle actor or guarantee an automatic retry.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Newly written normal command statuses leave `Retryable` null even though the public contract reserves null for legacy records.
+  evidence: Most `WriteAdvisoryStatusAsync` call sites omit the new recovery parameters while `CommandStatusRecord` and `drain-failure-reason-codes.md` define null as a pre-field compatibility state.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: A successful Story 4.4 drain reports one fewer attempt than was actually executed.
+  evidence: The success status writes `DrainAttemptCount: record.RetryCount`; the current successful reminder attempt is not included.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Story 4.4 defers exhaustion dead-lettering until the reminder after the retry count reaches its configured cap.
+  evidence: Failure handling persists the capped count and returns; `CompleteDrainExhaustionAsync` runs only at the start of the next reminder, leaving terminal work and capacity retained for another interval.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Negative or overflowing persisted drain retry counts can evade or break the bounded-attempt guarantee.
+  evidence: `UnpublishedEventsRecord.IncrementRetry` performs unchecked addition and the reminder path validates only `RetryCount >= MaxDrainAttempts`.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: A crash after dead-letter broker acceptance but before the `DeadLettered` state save can publish the same exhausted range twice.
+  evidence: The dead-letter sink and actor-state update are not atomic or idempotently coupled, despite Story 4.4's claim that the ordering prevents duplicate dead letters.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Persisted duplicate publication-index entries survive normalization and can leave stale capacity behind.
+  evidence: `Normalize` removes only null elements, while refresh and removal operate on the first matching message ID despite the type contract promising de-duplication.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Story 4.4's trailing optional parameters on public positional records are binary-breaking for already compiled consumers.
+  evidence: The changes replace prior constructor and `Deconstruct` signatures on `CommandStatusRecord`, `CommandStatusResponse`, `DeadLetterMessage`, and `UnpublishedEventsRecord` without forwarding compatibility members.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: The Story 4.5 evidence validator hashes current worktree files instead of the source blobs captured by its baseline commit.
+  evidence: `validate_source_binding` reads `workspace / relative`, so ordinary later edits make the committed supposedly re-runnable evidence package fail independently of the captured revision.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: BMAD project-context sync can write `AGENTS.md` outside the selected project through a compass area path.
+  evidence: `cmd_sync` joins unvalidated absolute or parent-traversing `area` values to `project_root` without resolving and enforcing containment.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: BMAD project-context sync can duplicate or remove user-authored text when managed markers are missing, reversed, or duplicated.
+  evidence: `apply_block` validates neither marker cardinality nor ordering before slicing or appending the managed block.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: BMAD project-context sync does not re-anchor relative Markdown links that include fragments or query strings.
+  evidence: `rewrite_links` only processes targets that literally end in `.md`, so links such as `decision.md#rationale` break when moved to another directory.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: The installed BMAD project-context implementation lacks regression coverage for its filesystem-writing and resolution paths.
+  evidence: The local suite contains three smoke tests and conditionally skips the referenced full Layer-1 suite, leaving resolve, sweep, compass, sync, remote, and cache behavior unverified.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Story 4.4 tests do not prove the publication-recovery index is staged before the event commit batch.
+  evidence: The current test verifies only that `SetStateAsync("publication-index", ...)` occurred; moving it after the first `SaveStateAsync` would preserve the assertion while reopening the crash window.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Story 4.4 recovery fields are not verified through the hosted command-status HTTP wire contract.
+  evidence: Tests inspect `OkObjectResult.Value` or persistence JSON but do not assert camel-case `retryable`, `recoveryReasonCode`, and `drainAttemptCount` properties in an actual endpoint response.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Story 4.4 drain-exhaustion safety fields are not verified after production dead-letter serialization.
+  evidence: Tests inspect typed records and mocked publish calls but do not prove the wire payload carries the non-replayable flag, reason, committed range, and attempt count.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: The BMAD renderer's documented empty `customization.workflow.open_spec` override has no regression test.
+  evidence: Restoring the prior empty-value rejection would prevent `bmad-build` activation without failing any discovered renderer test.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: BMAD sprint planning permits the same numeric epic-story identity to produce multiple rows when titles differ.
+  evidence: Duplicate detection compares the full title-derived key instead of the `(epic_num, story_num)` identity.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: BMAD sprint planning can crash outside its structured error contract on a malformed `development_status` value.
+  evidence: `build_status` converts any truthy value with `dict(...)` without first requiring a mapping.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: The Story 4.5 durability-race classifier does not reject contradictory actor acceptance and rejection/conflict signals.
+  evidence: Simultaneous `ActorAccepted` and `ActorRejected` or `ActorConflictSignalled` values can flow into a nominal classification as internally consistent.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: The Story 4.5 evidence validator can report success when Python assertions are disabled.
+  evidence: Validation is implemented with `assert` statements and has no `__debug__` guard, so `python -O validate-evidence.py` removes the checks.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: The Story 4.5 evidence validator accepts truthy non-boolean invariant values.
+  evidence: `assert all(race["invariants"].values())` accepts strings such as `"false"` instead of requiring every value to be exactly `True`.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: The Story 4.5 source-binding validator does not fail when an evidence-relevant source path is omitted.
+  evidence: `validate_source_binding` verifies only the rows present in `source-state.md` and has no exact expected-path set.
