@@ -615,6 +615,12 @@ OpenAI Codex (GPT-5)
   validator `cli_candidate_consequence` pass string; and asserted retained `smoke-preflight.log`
   fails `ValidatePreflightLog` in the incomplete-runtime fail-closed test. Lifecycle remains
   `in-review` / `review` with AC2/AC4 and 0/3 acceptances open.
+- 2026-08-09 tenth review pass: fail-closed subject now rejects recovered package-availability v2
+  pass claims, binds citation hosting-environment fields to `runtime-verification.json`, and locks
+  the unavailable-path OCI validator consequence string; zero poll intervals and private DNS
+  suffixes are rejected; incomplete-runtime catches map `OverflowException`. The earlier
+  2026-08-05 lifecycle note that reconciled trackers to `in-progress` is historical only — live
+  status remains `in-review` / `review`.
 
 ### File List
 

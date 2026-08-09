@@ -113,6 +113,16 @@ context:
 - [x] [Review][Patch] Assert retained smoke-preflight.log fails ValidatePreflightLog on incomplete-runtime path [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs]
 - [x] [Review][Defer] Add acceptances/{subject_sha256}/ scaffold before AC4 collection [_bmad-output/implementation-artifacts/evidence/story-3-13/...]
 - [x] [Review][Defer] Re-measure full Contracts.Tests suite after ninth hardening pass [tests/Hexalith.EventStore.Contracts.Tests]
+- [x] [Review][Patch] Reject recovered package-availability v2 pass under fail-closed subject validation [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs]
+- [x] [Review][Patch] Bind fail-closed citation hosting-environment fields to runtime-verification.json [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs]
+- [x] [Review][Patch] Require fail-closed shared OCI validator cli_candidate_consequence string [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs]
+- [x] [Review][Patch] Reject zero poll_interval_seconds in ValidateRuntimeLog attempts bound [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs]
+- [x] [Review][Patch] Treat private DNS suffixes as private hosts in support-safety checks [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs]
+- [x] [Review][Patch] Map OverflowException into incomplete-runtime log/preflight fail-closed catches [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs]
+- [x] [Review][Defer] Dual-role EventStore/Release owner identities on reviewer roster [evidence/story-3-13/.../reviewer-roster.json]
+- [x] [Review][Defer] Epic 4 tracker and Story 4.5 docs/ci LiveSidecar prose on the same branch as Story 3.13 [docs/ci.md]
+- [x] [Review][Defer] Document reopen migration from retained runtime-verification v1 to pass-path v2 [evidence/story-3-13/.../runtime-verification.json]
+- [x] [Review][Defer] Separate release-authority hash-check success from deployment-authorized scope failure in crosswalk verification method text [identity-crosswalk.json]
 
 **Acceptance Criteria:**
 - Given completed predecessors, when closure begins, then committed identities are hash-checked without modification or inference.
@@ -173,6 +183,12 @@ context:
   `cli_candidate_consequence` pass string; and asserted retained `smoke-preflight.log` fails
   `ValidatePreflightLog` on the incomplete-runtime fail-closed path. AC2/AC4 and 0/3 acceptances
   remain open.
+- 2026-08-09: Applied a tenth review-hardening pass without changing frozen intent. Fail-closed
+  subject validation now rejects recovered package-availability v2 pass claims, binds citation
+  hosting-environment fields to `runtime-verification.json`, and locks the unavailable-path
+  `cli_candidate_consequence` string; `ValidateRuntimeLog` rejects zero poll intervals; private
+  DNS suffixes are treated as private hosts; and incomplete-runtime log/preflight catches map
+  `OverflowException`. AC2/AC4 and 0/3 acceptances remain open.
 
 ## Verification
 
@@ -184,32 +200,34 @@ context:
 
 ## Suggested Review Order
 
-**Identity pin honesty**
+**Fail-closed subject locks**
 
-- Proof packet pin must match the bound crosswalk digest after subject rebind.
-  [`3-13-deployed-runtime-parity-closure-proof-packet.md:27`](3-13-deployed-runtime-parity-closure-proof-packet.md#L27)
+- Reject recovered package-availability v2 pass claims under fail-closed subject.
+  [`DeployedRuntimeParityClosureTests.cs:3421`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3421)
 
-- Review subject binds the rebound proof-packet bytes without a checksum cycle.
-  [`review-subject.json:13`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/review-subject.json#L13)
+- Bind citation hosting-environment fields to `runtime-verification.json`.
+  [`DeployedRuntimeParityClosureTests.cs:3475`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3475)
 
-- Outer evidence manifest lists the rebound subject digest.
-  [`evidence-sha256.txt:3`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/evidence-sha256.txt#L3)
+- Lock unavailable-path OCI validator `cli_candidate_consequence` string.
+  [`DeployedRuntimeParityClosureTests.cs:3459`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3459)
 
-**Fail-closed runtime gates**
+**Runtime and support-safety guards**
 
-- Incomplete-runtime path also rejects unstructured smoke-preflight.log.
-  [`DeployedRuntimeParityClosureTests.cs:387`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L387)
+- Reject zero `poll_interval_seconds` before attempts upper-bound math.
+  [`DeployedRuntimeParityClosureTests.cs:3947`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3947)
 
-- Pass-path shared OCI validator consequence string is exact, not free-form.
-  [`DeployedRuntimeParityClosureTests.cs:2479`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L2479)
+- Treat private DNS suffixes as private hosts without rejecting schema ids.
+  [`DeployedRuntimeParityClosureTests.cs:4196`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L4196)
 
-**Lifecycle / tracker hygiene**
+- Map `OverflowException` into incomplete-runtime log/preflight catches.
+  [`DeployedRuntimeParityClosureTests.cs:369`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L369)
 
-- Story baseline matches the spec/verifier review baseline.
-  [`3-13-deployed-runtime-parity-closure.md:2`](3-13-deployed-runtime-parity-closure.md#L2)
+**Mutation coverage**
 
-- Story 2.12 sprint-status key is no longer truncated.
-  [`sprint-status.yaml:87`](sprint-status.yaml#L87)
+- Exercise recovered-packages, citation drift, and consequence tampering.
+  [`DeployedRuntimeParityClosureTests.cs:561`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L561)
 
-- Trackers stay in-review while acceptances remain 0/3.
-  [`sprint-status.yaml:103`](sprint-status.yaml#L103)
+**Lifecycle honesty**
+
+- Tenth hardening pass recorded; story stays non-`done` with 0/3 acceptances.
+  [`spec-3-13-deployed-runtime-parity-closure.md:176`](spec-3-13-deployed-runtime-parity-closure.md#L176)

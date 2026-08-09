@@ -372,6 +372,7 @@ public sealed class DeployedRuntimeParityClosureTests
                 or NullReferenceException
                 or ArgumentException
                 or FormatException
+                or OverflowException
                 or InvalidDataException
                 or IOException)
             {
@@ -395,6 +396,7 @@ public sealed class DeployedRuntimeParityClosureTests
             or NullReferenceException
             or ArgumentException
             or FormatException
+            or OverflowException
             or InvalidDataException
             or IOException)
         {
@@ -464,6 +466,11 @@ public sealed class DeployedRuntimeParityClosureTests
         ValueIsSupportSafe("::").ShouldBeFalse();
         ValueIsSupportSafe("http://0.0.0.0/alive").ShouldBeFalse();
         ValueIsSupportSafe("https://[::]/status").ShouldBeFalse();
+        ValueIsSupportSafe("http://nas.local/alive").ShouldBeFalse();
+        ValueIsSupportSafe("https://svc.internal/status").ShouldBeFalse();
+        ValueIsSupportSafe("https://fileserver.corp/path").ShouldBeFalse();
+        ValueIsSupportSafe("http://printer.lan/").ShouldBeFalse();
+        ValueIsSupportSafe("https://registry.hexalith.com/eventstore").ShouldBeTrue();
         ValueIsSupportSafe("10.0.0.1").ShouldBeFalse();
         ValueIsSupportSafe("100.64.0.1").ShouldBeFalse();
         ValueIsSupportSafe("100.127.255.254").ShouldBeFalse();
@@ -555,6 +562,82 @@ public sealed class DeployedRuntimeParityClosureTests
         finally
         {
             File.WriteAllBytes(smokePath, originalSmoke);
+        }
+
+        string packageAvailabilityPath = Path.Combine(evidence, "package-availability.json");
+        byte[] originalPackageAvailability = File.ReadAllBytes(packageAvailabilityPath);
+        try
+        {
+            JsonObject recoveredPackages = new()
+            {
+                ["schema"] = "hexalith.eventstore.story-3-13-package-availability/v2",
+                ["checked_at"] = "2026-08-04T11:17:05Z",
+                ["package_version"] = ApprovedPackageVersion,
+                ["expected_count"] = 14,
+                ["recovered_count"] = 14,
+                ["archive_root"] = "packages",
+                ["result"] = "pass",
+            };
+            File.WriteAllBytes(
+                packageAvailabilityPath,
+                JsonSerializer.SerializeToUtf8Bytes(recoveredPackages));
+            ValidateActualFailClosedSubject(
+                crosswalk,
+                crosswalkBytes,
+                subjectBytes,
+                coreBytes,
+                proofBytes,
+                outerBytes,
+                evidence).ShouldBeFalse();
+        }
+        finally
+        {
+            File.WriteAllBytes(packageAvailabilityPath, originalPackageAvailability);
+        }
+
+        string runtimeVerificationPath = Path.Combine(evidence, "runtime-verification.json");
+        byte[] originalRuntimeVerification = File.ReadAllBytes(runtimeVerificationPath);
+        try
+        {
+            JsonObject driftedCitation = JsonNode.Parse(originalRuntimeVerification)!.AsObject();
+            driftedCitation["contract"]!["actual_hosting_environment"] = "Production";
+            File.WriteAllBytes(
+                runtimeVerificationPath,
+                JsonSerializer.SerializeToUtf8Bytes(driftedCitation));
+            ValidateActualFailClosedSubject(
+                crosswalk,
+                crosswalkBytes,
+                subjectBytes,
+                coreBytes,
+                proofBytes,
+                outerBytes,
+                evidence).ShouldBeFalse();
+        }
+        finally
+        {
+            File.WriteAllBytes(runtimeVerificationPath, originalRuntimeVerification);
+        }
+
+        string registryPath = Path.Combine(evidence, "registry-readback.json");
+        byte[] originalRegistry = File.ReadAllBytes(registryPath);
+        try
+        {
+            JsonObject dishonestRegistry = JsonNode.Parse(originalRegistry)!.AsObject();
+            dishonestRegistry["shared_validator"]!["cli_candidate_consequence"] =
+                "Weakened SemVer validation accepted the quarantine tag.";
+            File.WriteAllBytes(registryPath, JsonSerializer.SerializeToUtf8Bytes(dishonestRegistry));
+            ValidateActualFailClosedSubject(
+                crosswalk,
+                crosswalkBytes,
+                subjectBytes,
+                coreBytes,
+                proofBytes,
+                outerBytes,
+                evidence).ShouldBeFalse();
+        }
+        finally
+        {
+            File.WriteAllBytes(registryPath, originalRegistry);
         }
 
         EvaluateClosure(crosswalk, crosswalkBytes, subjectBytes, root, evidence, coreBytes, proofBytes)
@@ -3335,6 +3418,11 @@ public sealed class DeployedRuntimeParityClosureTests
                 && ExpectedSupportSafeJsonReports.All(path =>
                     JsonEvidenceIsSupportSafe(evidenceRoot, path))
                 && ValidatePackageAvailability(crosswalk, evidenceRoot)
+                && JsonNode.Parse(ReadEvidenceFile(evidenceRoot, "package-availability.json"))!
+                    ["schema"]!.GetValue<string>() ==
+                    "hexalith.eventstore.story-3-13-package-availability/v1"
+                && JsonNode.Parse(ReadEvidenceFile(evidenceRoot, "package-availability.json"))!
+                    ["result"]!.GetValue<string>() == "fail"
                 && subject["proposed_decision"]!.GetValue<string>() == "fail-closed"
                 && RawBindingMatches(subject, "identity_crosswalk", "identity-crosswalk.json", crosswalkBytes)
                 && RawBindingMatches(subject, "evidence_core_manifest", "evidence-core-sha256.txt", coreBytes)
@@ -3356,6 +3444,7 @@ public sealed class DeployedRuntimeParityClosureTests
                 && candidate["release"]!["workflow_run"] is null
                 && candidate["release"]!["source_sha"] is null
                 && !candidate["release_authority"]!["deployment_authorized"]!.GetValue<bool>()
+                && runtime["citation"]!.GetValue<string>() == "runtime-verification.json"
                 && runtime["execution_result"]!.GetValue<string>() == "unverified"
                 && runtime["result"]!.GetValue<string>() == "fail"
                 && runtime["contract_equivalence"]!.GetValue<string>() == "fail"
@@ -3367,6 +3456,8 @@ public sealed class DeployedRuntimeParityClosureTests
                 && registry["shared_validator"]!["cli_candidate_compatibility"]!.GetValue<string>() ==
                     "unavailable"
                 && registry["shared_validator"]!["verification_result"]!.GetValue<string>() == "pass"
+                && registry["shared_validator"]!["cli_candidate_consequence"]!.GetValue<string>() ==
+                    "The CLI accepts SemVer tags only; the unchanged validation functions were applied to the immutable proof graph without weakening the contract."
                 && JsonNode.Parse(ReadEvidenceFile(evidenceRoot, "oci-validation.json"))!
                     ["response_metadata_result"]!.GetValue<string>() == "missing"
                 && JsonNode.Parse(ReadEvidenceFile(evidenceRoot, "oci-validation.json"))!
@@ -3381,6 +3472,12 @@ public sealed class DeployedRuntimeParityClosureTests
                     ["contract_equivalence"]!.GetValue<string>() == "fail"
                 && JsonNode.Parse(ReadEvidenceFile(evidenceRoot, "runtime-verification.json"))!
                     ["evidence_completeness"]!.GetValue<string>() == "fail"
+                && JsonNode.Parse(ReadEvidenceFile(evidenceRoot, "runtime-verification.json"))!
+                    ["contract"]!["actual_hosting_environment"]!.GetValue<string>() ==
+                    runtime["contract"]!["actual_hosting_environment"]!.GetValue<string>()
+                && JsonNode.Parse(ReadEvidenceFile(evidenceRoot, "runtime-verification.json"))!
+                    ["contract"]!["required_hosting_environment"]!.GetValue<string>() ==
+                    runtime["contract"]!["required_hosting_environment"]!.GetValue<string>()
                 && verdict["decision"]!.GetValue<string>() == "fail-closed"
                 && !verdict["story_may_be_done"]!.GetValue<bool>()
                 && !verdict["external_state_changed"]!.GetValue<bool>()
@@ -3847,6 +3944,7 @@ public sealed class DeployedRuntimeParityClosureTests
             && endedAt > startedAt
             && endedAt <= executionEnded
             && endedAt - startedAt <= TimeSpan.FromSeconds(contract["timeout_seconds"]!.GetValue<int>())
+            && contract["poll_interval_seconds"]!.GetValue<int>() > 0
             && platform["attempts"]!.GetValue<int>() <=
                 Math.Ceiling((endedAt - startedAt).TotalSeconds /
                     contract["poll_interval_seconds"]!.GetValue<int>()) + 1;
@@ -4095,8 +4193,27 @@ public sealed class DeployedRuntimeParityClosureTests
                 && part.All(character => char.IsLetterOrDigit(character) || character is '-' or '_'));
     }
 
-    private static bool HostIsPrivate(string host) =>
-        IPAddress.TryParse(host.Trim('[', ']'), out IPAddress? address) && AddressIsPrivate(address);
+    private static bool HostIsPrivate(string host)
+    {
+        string normalized = host.Trim().Trim('[', ']');
+        if (string.IsNullOrEmpty(normalized))
+        {
+            // Opaque absolute values such as schema ids parse as URIs with no host.
+            return false;
+        }
+
+        if (normalized.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+            || normalized.EndsWith(".localhost", StringComparison.OrdinalIgnoreCase)
+            || normalized.EndsWith(".local", StringComparison.OrdinalIgnoreCase)
+            || normalized.EndsWith(".internal", StringComparison.OrdinalIgnoreCase)
+            || normalized.EndsWith(".corp", StringComparison.OrdinalIgnoreCase)
+            || normalized.EndsWith(".lan", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return IPAddress.TryParse(normalized, out IPAddress? address) && AddressIsPrivate(address);
+    }
 
     private static bool AddressIsPrivate(IPAddress address)
     {
