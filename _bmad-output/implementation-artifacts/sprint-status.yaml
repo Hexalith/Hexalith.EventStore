@@ -69,6 +69,9 @@ development_status:
   1-17-asynchronous-multi-projection-dispatch: done
   1-18-projection-handler-delivery-idempotency: done
   1-19-correct-paged-rebuild-and-replay-equivalence: done
+  # Story 1.20 owner-approved parity closure is complete; authorizing commit C
+  # verified every pinned artifact, approval, prerequisite, and migration decision.
+  # Explicitly excludes payload-protection G5 and Parties Story 8.7; those are Epic 8.
   1-20-owner-approved-parity-closure-and-runtime-pin: done
   epic-1-retrospective: done
 
