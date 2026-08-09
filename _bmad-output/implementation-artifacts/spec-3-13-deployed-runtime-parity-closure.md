@@ -123,6 +123,8 @@ context:
 - [x] [Review][Defer] Epic 4 tracker and Story 4.5 docs/ci LiveSidecar prose on the same branch as Story 3.13 [docs/ci.md]
 - [x] [Review][Defer] Document reopen migration from retained runtime-verification v1 to pass-path v2 [evidence/story-3-13/.../runtime-verification.json]
 - [x] [Review][Defer] Separate release-authority hash-check success from deployment-authorized scope failure in crosswalk verification method text [identity-crosswalk.json]
+- [x] [Review][Patch] Restrict support-safe absolute URIs to the exact public hosts Story 3.13 is allowed to cite, so private endpoints behind ordinary-looking DNS names fail closed [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs]
+- [x] [Review][Patch] Restore the exact approved Story 1.20 sprint closure comments removed by the prior Story 3.13 YAML rewrite, without changing any Epic 1 status [sprint-status.yaml]
 
 **Acceptance Criteria:**
 - Given completed predecessors, when closure begins, then committed identities are hash-checked without modification or inference.
@@ -189,6 +191,13 @@ context:
   `cli_candidate_consequence` string; `ValidateRuntimeLog` rejects zero poll intervals; private
   DNS suffixes are treated as private hosts; and incomplete-runtime log/preflight catches map
   `OverflowException`. AC2/AC4 and 0/3 acceptances remain open.
+- 2026-08-09: Applied an eleventh review-hardening patch without changing frozen intent. Support-safe
+  absolute URIs now fail closed unless their host is the exact GitHub or Hexalith registry host
+  required by the Story 3.13 evidence contract; arbitrary public-looking DNS names and literal-IP
+  URI hosts are rejected. AC2/AC4 and 0/3 acceptances remain open.
+- 2026-08-09: Restored the exact three-line Story 1.20 closure comment block that the prior Story
+  3.13 sprint-status serialization accidentally removed. This repairs the existing integrity gate
+  without changing any Epic 1 status or predecessor decision. AC2/AC4 and 0/3 acceptances remain open.
 
 ## Verification
 
@@ -200,34 +209,46 @@ context:
 
 ## Suggested Review Order
 
-**Fail-closed subject locks**
+**Decision and identity**
 
-- Reject recovered package-availability v2 pass claims under fail-closed subject.
-  [`DeployedRuntimeParityClosureTests.cs:3421`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3421)
+- Start with the fail-closed decision, missing lineage proof, and non-mutation boundary.
+  [`3-13-deployed-runtime-parity-closure-proof-packet.md:3`](3-13-deployed-runtime-parity-closure-proof-packet.md#L3)
 
-- Bind citation hosting-environment fields to `runtime-verification.json`.
-  [`DeployedRuntimeParityClosureTests.cs:3475`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3475)
+- Inspect the machine-readable verdict, blockers, and explicit non-done result.
+  [`identity-crosswalk.json:431`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/identity-crosswalk.json#L431)
 
-- Lock unavailable-path OCI validator `cli_candidate_consequence` string.
-  [`DeployedRuntimeParityClosureTests.cs:3459`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3459)
+- Confirm operators see truthful in-review ownership and zero acceptances.
+  [`ci.md:267`](../../docs/ci.md#L267)
 
-**Runtime and support-safety guards**
+**Closure enforcement**
 
-- Reject zero `poll_interval_seconds` before attempts upper-bound math.
-  [`DeployedRuntimeParityClosureTests.cs:3947`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3947)
+- Follow the central evaluator joining every identity and acceptance requirement.
+  [`DeployedRuntimeParityClosureTests.cs:2040`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L2040)
 
-- Treat private DNS suffixes as private hosts without rejecting schema ids.
-  [`DeployedRuntimeParityClosureTests.cs:4196`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L4196)
+- Review the retained fail-closed subject's exact locked shape.
+  [`DeployedRuntimeParityClosureTests.cs:3369`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3369)
 
-- Map `OverflowException` into incomplete-runtime log/preflight catches.
-  [`DeployedRuntimeParityClosureTests.cs:369`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L369)
+**Support-safe evidence boundary**
 
-**Mutation coverage**
+- Allow only the two public hosts required by retained evidence.
+  [`DeployedRuntimeParityClosureTests.cs:122`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L122)
 
-- Exercise recovered-packages, citation drift, and consequence tampering.
-  [`DeployedRuntimeParityClosureTests.cs:561`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L561)
+- Exercise private ranges, deceptive hostnames, literal IPs, and approved hosts.
+  [`DeployedRuntimeParityClosureTests.cs:461`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L461)
 
-**Lifecycle honesty**
+- Fail closed without mutable, environment-dependent DNS resolution.
+  [`DeployedRuntimeParityClosureTests.cs:4224`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L4224)
 
-- Tenth hardening pass recorded; story stays non-`done` with 0/3 acceptances.
-  [`spec-3-13-deployed-runtime-parity-closure.md:176`](spec-3-13-deployed-runtime-parity-closure.md#L176)
+**Review disposition and proof**
+
+- Record the accepted patch without weakening frozen acceptance criteria.
+  [`spec-3-13-deployed-runtime-parity-closure.md:126`](spec-3-13-deployed-runtime-parity-closure.md#L126)
+
+- Route validated unrelated findings to their owning future work.
+  [`deferred-work.md:1021`](deferred-work.md#L1021)
+
+- Restore approved Story 1.20 closure context without changing its done status.
+  [`sprint-status.yaml:72`](sprint-status.yaml#L72)
+
+- Re-run predecessor hashes, build, focused tests, and hygiene checks.
+  [`spec-3-13-deployed-runtime-parity-closure.md:202`](spec-3-13-deployed-runtime-parity-closure.md#L202)
