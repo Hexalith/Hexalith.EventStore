@@ -40,12 +40,13 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
-generated: 2026-07-05T20:01:46+02:00
-last_updated: 2026-08-08
+generated: '2026-07-05T20:01:46+02:00'
+last_updated: 08-09-2026 10:18
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
-story_location: /home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts
+story_location:
+  /home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts
 
 development_status:
   epic-1: done
@@ -57,12 +58,10 @@ development_status:
   1-6-projection-and-domain-event-consumer-seams: done
   1-7-domain-module-hosting-observability: done
   1-8-sample-domain-centric-adoption: done
-  # Split children require Tenants maintainer approval and an exact accepted Tenants SHA.
   1-9-tenants-query-and-read-model-adoption: done
   1-10-tenants-projection-and-event-consumer-adoption: done
   1-11-domain-module-adoption-guardrails: done
   1-12-domainservice-packaging-and-guardrails: done
-  # Investigation/proof completed `still blocked`; it does not claim parity availability.
   1-13-projection-query-sdk-owner-parity-proof: done
   1-14-read-model-and-projection-checkpoint-erasure: done
   1-15-coordinated-read-model-batch-writes: done
@@ -70,9 +69,6 @@ development_status:
   1-17-asynchronous-multi-projection-dispatch: done
   1-18-projection-handler-delivery-idempotency: done
   1-19-correct-paged-rebuild-and-replay-equivalence: done
-  # Story 1.20 owner-approved parity closure is complete; authorizing commit C
-  # verified every pinned artifact, approval, prerequisite, and migration decision.
-  # Explicitly excludes payload-protection G5 and Parties Story 8.7; those are Epic 8.
   1-20-owner-approved-parity-closure-and-runtime-pin: done
   epic-1-retrospective: done
 
@@ -80,146 +76,30 @@ development_status:
   2-1-rest-contract-seam-for-command-and-query-messages: done
   2-2-rest-api-generator-discovery-and-controller-emission: done
   2-3-sample-external-api-host-proof: done
-  # Story 2.4 records its accepted Tenants approval/SHA evidence; remaining split children retain their own gates.
   2-4-tenants-rest-contract-metadata-and-routes: done
-  # AD-18 host patch accepted at Tenants 846f988a (pinned 6cc9eb3a); 2026-07-26 code review closed the acceptance gate and hardened the AD-18 guards.
   2-5-dedicated-external-tenants-api-host: done
-  # 2026-07-27 final acceptance: operational lifecycle presentation is committed at Tenants
-  # 55e6000a, published on origin/main, and consumed by the EventStore gitlink. Fresh Sally UX
-  # acceptance and the accepted admin-authored maintainer authority chain are recorded; the complete
-  # project test matrix is green through individual-project fallback validation.
   2-6-tenants-ui-client-library-alignment-and-ux-evidence: done
-  # Story 2.7 corrected the EventStore stale-registration/source-topology prerequisite and
-  # passed focused configuration, CI-guard, and live persisted-provenance evidence with no
-  # net Tenants, EventStore, or Builds dependency-identity change.
   2-7-pre-authorization-registration-and-provenance-correction: done
   2-8-scoped-metadata-rich-projection-notifications: done
   2-9-generated-command-status-location-policy: done
   2-10-outbound-dapr-routing-header-ownership: done
-  # EventStore platform enforcement moved to Story 1.2; this is consumer-only review scope.
-  # 2026-07-27: the mutation-gate fix 5eed7a9 is contained by maintainer-authored published merge
-  # d2e5a121, which the EventStore gitlink pins. Review patches add complete provenance coverage and
-  # passing Tier-3 persisted-path consumer evidence; the broader sibling gates remain deferred.
   2-11-query-provenance-consumption-in-generated-rest-and-tenants: done
-  # 2026-07-28: re-scoped by the approved sprint change proposal — AC2 now tracks EventStore main
-  # and AC3 validates the published Builds catalog, so the unrecoverable 999.1.20-proof bytes no
-  # longer gate this story.
-  # 2026-07-28 code review (4 layers): 3 owner decisions resolved, 13 patches applied, 2 deferred,
-  # 12 dismissed. Returned to in-progress because the AC4 guard fix lived only as an uncommitted
-  # Hexalith.Tenants working-tree edit.
-  # 2026-07-28 delta session: that guard patch was committed and published as Tenants f9e51c6, so
-  # ACCEPTANCE MOVED 578770679b9d -> f9e51c66745557da4f267ab40f32294f2f27fae7. AC2/AC3/AC4 re-proved
-  # there (EventStore 150216c3, Builds 53d53ae -> catalog 3.83.0, unchanged). Maintainer accepted
-  # f9e51c6. Back to review.
-  # 2026-07-28 delta code review (4 layers): 2 owner decisions resolved, 16 patches applied,
-  # 5 deferred, 6 dismissed. The focused delta's carried-forward gap was found to be understated —
-  # the Tenants tree had moved 16 commits / 4006 insertions, not just EventStore's 3 — so by owner
-  # decision the three carried suites were RE-RUN at f9e51c6 in both modes: Server.Tests 738/738,
-  # UI.Tests 1325/1325 (the carried-forward 1276 was wrong), IntegrationTests 167 passed / 1 skipped.
-  # That also closes AD-12's persisted-path requirement at the accepted SHA rather than by
-  # compilation. Also corrected: the "no gitlink was moved by a Story 2.12 commit" claim (false —
-  # e7de0da9 moved two, 5a1d277e moved one), and the receipt's claim that the assets parse covers
-  # ReferenceOutputAssembly="false" edges (false — proved; the Tenants XML guard covers them).
-  # CI on the accepted SHA is green (ci/build-and-test, ci/aspire-tests, codeql, commitlint).
-  # Note AC5's approval has no external GitHub record, by maintainer choice.
-  # Deferred to a follow-up Tenants story by owner decision: four AC4-guard bypasses, because
-  # fixing them would move acceptance off f9e51c6 and re-trigger AC5 a third time.
   2-12-tenants-runtime-identity-adoption-and-package-mode-validation: done
   epic-2-retrospective: done
 
   epic-3: in-progress
-  # 3.1 moved review -> in-progress on 2026-07-28 (bmad-code-review; four layers, 5 decisions + 16 patches
-  # applied. AC1 amended to require a live-sidecar collection binding after a 17th live class was found bound
-  # to the second live collection Oq8Postgresql. CA1707 ledger re-attestation vindicated by an independent
-  # Roslyn census reproducing all three checkpoint values; all 8 tokens are legitimate test-scope identifiers.
-  # An undeclared Hexalith.Tenants gitlink bump is excluded from this story.)
-  # 3.1 moved in-progress -> review on 2026-07-28 (bmad-dev-story). AC6 fully re-run against the candidate
-  # workspace (FrontComposer b6efcad5, Tenants 7d7b7012): build 0W/0E, Server.Tests 2867/0/25, preflight
-  # exit 3, LiveSidecar 49/49 - deterministic counts byte-identical to the pre-bump run. The first live run
-  # failed 3/49 on actor calls refused by a dead app port; dapr_placement logs show 8 foreign EventStore
-  # app-ids sharing the ring in namespace default, and 3 re-runs on un-rebuilt binaries were 49/49 each, so
-  # it is recorded as an environment blocker with a lane-isolation entry deferred (AC7 forbids patching).
-  # AC7 inventory re-taken: 6 modified paths, not 4 (deferred-work.md and docs/ci.md were missing); the
-  # excluded Tenants advance is now 4 commits / 71 files / +6,734 / -703, still zero non-UI src/ files.
-  # Committed with an explicit pathspec as 15a1b32e on branch docs/story-3-1-closure (project-context.md
-  # forbids direct commits to main); references/Hexalith.Tenants left dirty per D2, then committed
-  # separately as b32c9e90 (D2 reversal retroactively ratified at the post-merge review) and the branch
-  # squash-merged to main as PR #334 (7ab1f08d) with the required commitlint check failing (ruleset
-  # bypass); the remote branch was deleted after the merge.
-  # 3.1 moved review -> done on 2026-07-28 (bmad-code-review, post-merge: four layers over main...b32c9e90.
-  # 1 decision resolved - Tenants D2 reversal ratified; 9 patches applied - lifecycle + attestation
-  # supersessions, AC1 wording aligned to D1 intent, deferred/validation-command counts corrected;
-  # 1 defer - unguarded docs/ci.md pin literal; 2 dismissed. Patched content is working-tree-only
-  # and needs a follow-up PR to land on main.)
   3-1-re-tier-live-sidecar-tests-from-release-gate: done
-  # 2026-07-29: FR18 remains satisfied by PR #271/13320952; Story 3.2 adds the missing
-  # deterministic override guard. Closed to done the same day by adversarial code review
-  # (4 decisions resolved, 9 patches applied, 4 deferred, 6 dismissed): the original AC4
-  # assertion could not detect a shared static ActorProxyOptions, so it was hardened into a
-  # call-time-capture fact plus a per-instance-independence fact (mutation-proven, 1F/15P
-  # under the static regression). The duplicated commit-policy block was removed from the
-  # three shared entry points and the missing `revert` type added to the canonical
-  # hexalith-git-instructions.md instead. Post-review CI/package-mode evidence, 0W/0E:
-  # Server.Tests 2869/0/25, Contracts.Tests 778/778, LiveSidecar 49/49, ETag class 2/2 with
-  # the persisted Redis ETag cited by value. Owner ratified the Builds gitlink bump that
-  # raises HexalithTenantsVersion 5.0.0 -> 5.1.0 repo-wide, and accepted the direct-to-main
-  # commits plus the patch release armed by 8ce58f83's `fix:` type.
   3-2-harden-dapr-etag-timeout-for-integration-conditions: done
-  # 3.3 is verification-and-reconciliation: FR19's references/ layout already shipped via the approved
-  # 2026-06-26 correction, so the deliverable is evidence, not a migration. All AC1-AC4 cheap gates were
-  # independently re-run by the 2026-07-29 code review and matched the Dev Agent Record exactly (7/7
-  # references/ submodule paths, no root-level Hexalith.* directory, 7 stale-scan hits all nested under the
-  # references/ tree node, no gitlink change, no .sln); AppHost re-ran 51/51 in Release/package mode.
-  # Review outcome: 2 owner decisions resolved, 11 patches applied, 5 deferred, 4 dismissed. The one code
-  # change (line-ending normalization in an AppHost source-inspection test) was ratified as an accepted
-  # exception to the Task 5 permission. Root cause of that failure was a repo-wide .editorconfig(crlf) vs
-  # .gitattributes(text=auto) conflict leaving 117 files drifted; closed by adding `*.cs text eol=lf`.
-  # Post-patch evidence, Release/package mode 0W/0E: AppHost 54/54 (3 new line-ending pinning tests, the
-  # temp-file one mutation-proven to fail in CI), Server.Tests 2869/0/25 (unchanged baseline).
-  # Owner ratified one AC5 exception: concurrent commit afb90369 bundled two gitlink bumps
-  # (Memories 7d298205->ccd8efa3, Tenants 96bdfd8a->09947a24, both reachable on their remotes) into a
-  # commit titled for this story. Accepted retroactively; no split required. Closed review -> done.
   3-3-references-based-submodule-layout: done
   3-4-aspire-security-resource-naming: done
-  # Story 3.5 establishes Builds as the sole package-version authority before
-  # Story 3.11 may refresh the ecosystem-wide catalog.
-  # Explicit source opt-in and ecosystem-wide AC6 responsibility are approved;
-  # each affected repository still requires its maintainer's authorization and validation.
-  # Story 3.3 and Story 1.20/2.12 gates are satisfied. Full Debug/source integration validation
-  # passed 279/279 on 2026-07-31, and native teardown released the store-global isolation lease.
-  # 2026-07-31 code review (4 layers): 1 owner decision resolved, 10 patches applied,
-  # 0 deferred, 9 dismissed. Post-patch Contracts validation passed 817/817 in
-  # Release/package mode; the DAPR documentation guard and diff hygiene checks are green.
   3-5-shared-package-catalog-and-source-package-reference-modes: done
   3-6-manifest-driven-release-packaging: done
   3-7-shared-workflow-caller-migration: done
   3-8-workflow-reference-and-validation-safety: done
-  # 2026-08-01 code review (4 layers): Administrator accepted delegated Paige/Amelia authority;
-  # 8 patches created and validated the standalone seven-item supply-chain backlog, five-theme
-  # crosswalk, current evidence paths, focused scans, and closed manifest/package safeguards.
-  # No publishing, workflow, credential, repository-setting, registry, or runtime change authorized.
   3-9-supply-chain-publishing-backlog: done
   3-10-generated-api-dapr-aspire-smoke-preflight: done
-  # Administrator approved the exact Builds and EventStore implementation
-  # revisions on 2026-08-01; Story 3.11 is complete.
   3-11-validated-central-package-catalog-refresh: done
-  # v3.75.0 remains failed single-platform evidence; failed partial v3.77.1 is quarantined.
-  # Story 3.12 produced observed candidate v3.77.2 with exactly linux/amd64 and linux/arm64.
-  # Story 1.20 is already done on source/package parity. Story 3.13 independently maps that
-  # identity to the deployed OCI index, child manifests/configs, and release provenance.
   3-12-multi-platform-eventstore-container-publishing-correction: done
-  # 2026-08-04 code review (4 layers): 1 owner decision resolved, 15 patches applied, 0 deferred,
-  # 3 dismissed. The verifier now closes package-byte, lineage, authority, OCI-root/provenance,
-  # runtime, review-subject/receipt, checksum, chronology, and symlink gaps. Returned to in-progress:
-  # child/config response metadata, independently replayable runtime facts, proof-package bytes,
-  # same-lineage release/deployment authority, and all three AC4 acceptances remain missing.
-  # 2026-08-04 second hardening pass added derived fail-closed subject/outer-manifest validation
-  # and 115 focused mutation cases; AC1/AC3 pass, while AC2/AC4 and all 0/3 acceptances remain open.
-  # 2026-08-05 code review (4 layers): 3 owner decisions resolved, 6 patches applied, 2 deferred,
-  # 2 dismissed. Reconciled the four-way lifecycle-status disagreement to in-progress, corrected the
-  # proof packet's false no-submodule-change claim, made canonical_lineage_id insensitive to routine
-  # runtime re-verification, bound the shared Builds validator/smoke tool to real script bytes, and
-  # closed NullReferenceException/IPv6 support-safety gaps. AC2/AC4 and 0/3 acceptances still open.
   3-13-deployed-runtime-parity-closure: review
   epic-3-retrospective: optional
 
@@ -230,10 +110,8 @@ development_status:
   4-4-committed-event-publication-recovery: review
   4-5-append-durability-race-evidence: review
   4-6-global-position-sharding-spec-renegotiation: backlog
-  # Coordinated Tenants follow-up only; EventStore platform prerequisite is Story 1.2.
   4-7-tenants-query-provenance-follow-up: backlog
-  # Story 4.8 is a non-executable evidence ledger and therefore has no status row.
-  # The August crosswalk maps its checked candidate evidence to focused review stories only.
+  4-8-durable-admission-evidence-ledger: backlog
   4-9-trusted-admission-contract-and-protected-identity: review
   4-10-digest-directory-rotation-and-key-retirement: review
   4-11-admission-state-machine-and-current-fence-enforcement: ready-for-dev
@@ -257,13 +135,10 @@ development_status:
   epic-5-retrospective: optional
 
   epic-6: backlog
-  # Architecture/readiness gate; authorizes 6.2 but does not count as runtime implementation progress.
   6-1-folded-snapshot-frozen-spec: backlog
   6-2-folded-snapshot-implementation: backlog
-  # Architecture/readiness gate; authorizes 6.4 but does not count as runtime implementation progress.
   6-3-projection-delivery-cost-and-sequence-guard-spec: backlog
   6-4-projection-cost-and-sequence-guard-implementation: backlog
-  # Architecture/readiness gate; authorizes 6.6 but does not count as runtime implementation progress.
   6-5-event-versioning-and-upcasting-spec: backlog
   6-6-event-versioning-and-upcasting-implementation: backlog
   epic-6-retrospective: optional
@@ -282,9 +157,7 @@ development_status:
   7-11-persisted-state-evidence-and-read-back-helpers: backlog
   7-12-fake-and-integration-test-reclassification: backlog
   7-13-advisory-and-performance-workflow-hygiene: backlog
-  # Admin.UI is evolved in place across three focused tracks; no second host is authorized.
   7-14-admin-shell-and-canonical-route-migration: backlog
-  # Planning artifacts are complete; these statuses authorize no runtime implementation.
   7-15-gdpr-aggregate-erasure-backlog: done
   7-16-admin-interactive-oidc-backlog: done
   7-17-aggregate-test-kit-backlog: done
@@ -294,9 +167,7 @@ development_status:
   epic-7-retrospective: optional
 
   epic-8: in-progress
-  # Security/architecture gate approved; Story 8.2 alone is authorized for exact-digest/source preflight.
   8-1-shared-payload-protection-security-spec-and-adr: done
-  # Story 8.2 is authorized but remains backlog until its story file is created; Stories 8.3-8.11 remain predecessor-gated.
   8-2-payload-protection-contracts-and-golden-vectors: backlog
   8-3-pdenc-v2-core-cryptographic-engine: backlog
   8-4-compatibility-readers-and-mixed-history-routing: backlog
@@ -308,25 +179,30 @@ development_status:
   8-10-post-v2-write-rollback-rehearsal: backlog
   8-11-g5-evidence-and-approval-closure: backlog
   epic-8-retrospective: optional
-
 action_items:
   - epic: D
     action: "Create a dedicated REST generator hardening story from deferred-work.md."
     owner: "John (Product Manager)"
     status: done
   - epic: D
-    action: "Specify query metadata propagation through the gateway for freshness, projection version, ETag, and paging evidence."
+    action: "Specify query metadata propagation through the gateway for freshness,
+      projection version, ETag, and paging evidence."
     owner: "Winston (System Architect)"
     status: done
   - epic: D
-    action: "Add external generated API error-semantics tests for RBAC, gateway failures, invalid cursor/envelope, ETag/304, and route/body mismatch behavior."
+    action: "Add external generated API error-semantics tests for RBAC, gateway failures,
+      invalid cursor/envelope, ETag/304, and route/body mismatch behavior."
     owner: "Murat (Test Architect)"
     status: done
   - epic: D
-    action: "Add a local DAPR/Aspire smoke preflight for generated API proofs. → tracked as Story 3.8 (Epic 3, companion to 3.1)."
+    action: "Add a local DAPR/Aspire smoke preflight for generated API proofs. → tracked
+      as Story 3.8 (Epic 3, companion to 3.1)."
     owner: "Amelia (Developer)"
     status: done
-    note: "Closed by Story 3.8: scripts/generated-api-smoke-preflight.sh. AC10 gate met against a live topology (2026-07-07) — generated API endpoints, DAPR sidecar readiness, placement/scheduler readiness, and support-safe failure details all reported."
+    note: "Closed by Story 3.8: scripts/generated-api-smoke-preflight.sh. AC10 gate
+      met against a live topology (2026-07-07) — generated API endpoints, DAPR sidecar
+      readiness, placement/scheduler readiness, and support-safe failure details all
+      reported."
   - epic: D
     action: "Make correct-course story rewrites mandatory after architectural pivots."
     owner: "John (Product Manager)"
@@ -336,69 +212,134 @@ action_items:
     owner: "Paige (Technical Writer)"
     status: done
   - epic: D
-    action: "Resolve or explicitly track Tenants package-mode and Gateway dependency posture."
+    action: "Resolve or explicitly track Tenants package-mode and Gateway dependency
+      posture."
     owner: "Winston (System Architect)"
     status: done
   - epic: 1
-    action: "Write an explicit handler/projection route-provenance contract before generated REST or UI code treats gateway ETags as projection-backed evidence."
+    action: "Write an explicit handler/projection route-provenance contract before
+      generated REST or UI code treats gateway ETags as projection-backed evidence."
     owner: "Winston (System Architect)"
     status: done
-    note: "Contract authored as architecture invariant AD-15 via sprint-change-proposal-2026-07-07-route-provenance-contract.md. Route-aware gateway enforcement moved earlier to Story 2.8 by sprint-change-proposal-2026-07-09-implementation-readiness-corrections.md; Tenants producer conformance remains Story 4.7 follow-up. Forward UI/generated-API stories are gated by the Query Response Provenance Gate."
+    note: "Contract authored as architecture invariant AD-15 via sprint-change-proposal-2026-07-07-route-provenance-contract.md.
+      Route-aware gateway enforcement moved earlier to Story 2.8 by sprint-change-proposal-2026-07-09-implementation-readiness-corrections.md;
+      Tenants producer conformance remains Story 4.7 follow-up. Forward UI/generated-API
+      stories are gated by the Query Response Provenance Gate."
   - epic: 1
-    action: "Resolve the open follow-up review recommendation for Story 1.7 guardrails or record a deliberate acceptance decision."
+    action: "Resolve the open follow-up review recommendation for Story 1.7 guardrails
+      or record a deliberate acceptance decision."
     owner: "Amelia (Developer)"
     status: done
-    note: "Terminating correct-course review pass 2026-07-07 (sprint-change-proposal-2026-07-07-story-1-7-followup-review-disposition). Suites green — guardrail 25/25, manifest 8/8; deferred-work DW-1 accepted and spec-1-7 followup_review_recommended cleared. Residual regex-scan-completeness risk consolidated under the two substantive 1.7 deferred entries; future closure = scoped Roslyn/convention guardrail story, not another follow-up review."
+    note: "Terminating correct-course review pass 2026-07-07 (sprint-change-proposal-2026-07-07-story-1-7-followup-review-disposition).
+      Suites green — guardrail 25/25, manifest 8/8; deferred-work DW-1 accepted and
+      spec-1-7 followup_review_recommended cleared. Residual regex-scan-completeness
+      risk consolidated under the two substantive 1.7 deferred entries; future closure
+      = scoped Roslyn/convention guardrail story, not another follow-up review."
   - epic: 1
-    action: "Convert the Story 1.4 domain-event marker atomicity and payload-identity misconfiguration findings into scoped backlog or implementation items."
+    action: "Convert the Story 1.4 domain-event marker atomicity and payload-identity
+      misconfiguration findings into scoped backlog or implementation items."
     owner: "Amelia (Developer)"
     status: done
   - epic: 1
-    action: "Define the health endpoint anonymous-access contract before any global fallback authorization policy is introduced."
+    action: "Define the health endpoint anonymous-access contract before any global
+      fallback authorization policy is introduced."
     owner: "Winston (System Architect)"
     status: done
-    note: "Contract authored as architecture invariant AD-16 via sprint-change-proposal-2026-07-07-health-endpoint-anonymous-access-contract.md. Probe endpoints (/health, /alive, /ready) pinned AllowAnonymous + support-safe; fail-closed policy never weakened to reach them. Enforcement gated into Stories 5.3, 5.5, and 7.3."
+    note: "Contract authored as architecture invariant AD-16 via sprint-change-proposal-2026-07-07-health-endpoint-anonymous-access-contract.md.
+      Probe endpoints (/health, /alive, /ready) pinned AllowAnonymous + support-safe;
+      fail-closed policy never weakened to reach them. Enforcement gated into Stories
+      5.3, 5.5, and 7.3."
   - epic: 1
-    action: "Close the existing generated API DAPR/Aspire smoke preflight action before accepting Sample or Tenants generated API live proof blockers. → tracked as Story 3.8."
+    action: "Close the existing generated API DAPR/Aspire smoke preflight action before
+      accepting Sample or Tenants generated API live proof blockers. → tracked as
+      Story 3.8."
     owner: "Amelia (Developer)"
     status: done
-    note: "Closed by Story 3.8: scripts/generated-api-smoke-preflight.sh. The reusable local preflight classifies environment/topology/sidecar readiness and runs the generated Sample API smoke before any live-proof blocker is accepted."
+    note: "Closed by Story 3.8: scripts/generated-api-smoke-preflight.sh. The reusable
+      local preflight classifies environment/topology/sidecar readiness and runs the
+      generated Sample API smoke before any live-proof blocker is accepted."
   - epic: 1
-    action: "Carry Tenants transitional host composition and package/source-mode validation into Epic 2 story specs."
+    action: "Carry Tenants transitional host composition and package/source-mode validation
+      into Epic 2 story specs."
     owner: "John (Product Manager)"
     status: done
   - epic: 2
-    action: "Resolve the open follow-up review recommendations for Story 2.2 and Story 2.3 or record deliberate acceptance decisions."
+    action: "Resolve the open follow-up review recommendations for Story 2.2 and Story
+      2.3 or record deliberate acceptance decisions."
     owner: "Amelia (Developer)"
     status: done
-    note: "Deliberate acceptance recorded 2026-07-07 (sprint-change-proposal-2026-07-07-followup-review-disposition-2-2-2-3). DW-2/DW-3 closed as accepted; reviews converged to 0 HIGH, all substantive residuals tracked under REST-generator-hardening, command-status-Location, and outbound-DAPR-routing-header action items. Evidence: RestApi.Generators.Tests 108/108 + Sample.Tests 115/115 green at HEAD fc0f1de8."
+    note: "Deliberate acceptance recorded 2026-07-07 (sprint-change-proposal-2026-07-07-followup-review-disposition-2-2-2-3).
+      DW-2/DW-3 closed as accepted; reviews converged to 0 HIGH, all substantive residuals
+      tracked under REST-generator-hardening, command-status-Location, and outbound-DAPR-routing-header
+      action items. Evidence: RestApi.Generators.Tests 108/108 + Sample.Tests 115/115
+      green at HEAD fc0f1de8."
   - epic: 2
-    action: "Scope REST generator hardening from the Epic 2 deferred entries into a backlog item or implementation story."
+    action: "Scope REST generator hardening from the Epic 2 deferred entries into
+      a backlog item or implementation story."
     owner: "Winston (System Architect)"
     status: done
-    note: "Scoped into _bmad-output/planning-artifacts/backlog/rest-generator-hardening.md (Second Wave section, 2026-07-07) per sprint-change-proposal-2026-07-07-rest-generator-hardening.md. Each gate item has a named target source+test artifact: request-size limit (S1), command-status Location (S2, policy owned by action item 3), safe query ArgumentException text (S3), command-rejection extension allowlist (S4), invalid tenant-source handling (S5), and invalid RestQueryBinding None/padded-value reconciliation (S6). First-wave items were already resolved by 7-5-rest-generator-hardening.md (done); no completed story reopened."
+    note: "Scoped into _bmad-output/planning-artifacts/backlog/rest-generator-hardening.md
+      (Second Wave section, 2026-07-07) per sprint-change-proposal-2026-07-07-rest-generator-hardening.md.
+      Each gate item has a named target source+test artifact: request-size limit (S1),
+      command-status Location (S2, policy owned by action item 3), safe query ArgumentException
+      text (S3), command-rejection extension allowlist (S4), invalid tenant-source
+      handling (S5), and invalid RestQueryBinding None/padded-value reconciliation
+      (S6). First-wave items were already resolved by 7-5-rest-generator-hardening.md
+      (done); no completed story reopened."
   - epic: 2
     action: "Define the external generated API command-status Location policy."
     owner: "Winston (System Architect)"
     status: done
-    note: "Policy defined as architecture invariant AD-17 (absolute-to-gateway status Location; fail-closed with no header when the gateway status base is unconfigured; single-sourced gateway status key with FR27 re-keying transparent) via sprint-change-proposal-2026-07-07-generated-api-command-status-location-policy.md. Enforcement scheduled as Story 2.9, which absorbs the rest-generator-hardening Second-Wave item S2 (command-status Location) — the S2 gate item was blocked on this policy; point it at Story 2.9. Closes the spec-2-2 and spec-2-3 command-status Location deferred-work entries. Renumber note (2026-07-26 code review): this row previously named \"Story 2.6\", which the 2026-07-15 crosswalk moved to Story 2.9 (story-id-migration-2026-07-15.md:49, `| 2.6 | 2.9 | done |`). The story now keyed 2-6-tenants-ui-client-library-alignment-and-ux-evidence implements no part of AD-17; closing it against this row would have falsely closed the AD-17 tracking item."
+    note: "Policy defined as architecture invariant AD-17 (absolute-to-gateway status
+      Location; fail-closed with no header when the gateway status base is unconfigured;
+      single-sourced gateway status key with FR27 re-keying transparent) via sprint-change-proposal-2026-07-07-generated-api-command-status-location-policy.md.
+      Enforcement scheduled as Story 2.9, which absorbs the rest-generator-hardening
+      Second-Wave item S2 (command-status Location) — the S2 gate item was blocked
+      on this policy; point it at Story 2.9. Closes the spec-2-2 and spec-2-3 command-status
+      Location deferred-work entries. Renumber note (2026-07-26 code review): this
+      row previously named \"Story 2.6\", which the 2026-07-15 crosswalk moved to
+      Story 2.9 (story-id-migration-2026-07-15.md:49, `| 2.6 | 2.9 | done |`). The
+      story now keyed 2-6-tenants-ui-client-library-alignment-and-ux-evidence implements
+      no part of AD-17; closing it against this row would have falsely closed the
+      AD-17 tracking item."
   - epic: 2
-    action: "Close the reusable DAPR/Aspire generated API smoke preflight action. → tracked as Story 3.8; completion gate = preflight reports generated API endpoints, DAPR sidecar readiness, placement/scheduler readiness, and support-safe failure details."
+    action: "Close the reusable DAPR/Aspire generated API smoke preflight action.
+      → tracked as Story 3.8; completion gate = preflight reports generated API endpoints,
+      DAPR sidecar readiness, placement/scheduler readiness, and support-safe failure
+      details."
     owner: "Amelia (Developer)"
     status: done
-    note: "Closed by Story 3.8 (2026-07-07). Live-topology gate satisfied: generated Sample API 202/Location/Retry-After + 200/ETag + 304, eventstore sidecar hostReady=true/placement connected, placement:50005 + scheduler:50006 reachable, persisted Redis state confirmed, all output support-safe."
+    note: "Closed by Story 3.8 (2026-07-07). Live-topology gate satisfied: generated
+      Sample API 202/Location/Retry-After + 200/ETag + 304, eventstore sidecar hostReady=true/placement
+      connected, placement:50005 + scheduler:50006 reachable, persisted Redis state
+      confirmed, all output support-safe."
   - epic: 2
-    action: "Decide and enforce the outbound DAPR routing-header replacement policy for generated API host clients."
+    action: "Decide and enforce the outbound DAPR routing-header replacement policy
+      for generated API host clients."
     owner: "Amelia (Developer)"
     status: done
-    note: "Completed by Story 2.7 on 2026-07-10. AD-18 is implemented by the centralized Client handler; the three in-repository hosts use it and replacement, stripping, ordering, and structural guardrails are verified. Fresh 2026-07-13 Release evidence: Client 651/651, Sample 117/117, Admin UI 841/841. The Tenants submodule copy remains the explicitly coordinated maintainer-approval follow-up."
+    note: "Completed by Story 2.7 on 2026-07-10. AD-18 is implemented by the centralized
+      Client handler; the three in-repository hosts use it and replacement, stripping,
+      ordering, and structural guardrails are verified. Fresh 2026-07-13 Release evidence:
+      Client 651/651, Sample 117/117, Admin UI 841/841. The Tenants submodule copy
+      remains the explicitly coordinated maintainer-approval follow-up."
   - epic: 2
     action: "Patch or explicitly schedule the raw SignalR hub leave validation gap."
     owner: "Amelia (Developer)"
     status: done
-    note: "Patched 2026-07-07 (sprint-change-proposal-2026-07-07-signalr-hub-leave-validation). ProjectionChangedHub.LeaveGroupCoreAsync now applies the same projectionType/tenantId null-blank + colon guards as JoinGroupCoreAsync (leave stays authorization-free by design). 5 new ProjectionChangedHubTests; Server.Tests green (34/34); Release build clean. Deferred-work entry marked RESOLVED. Completion gate met: raw leave calls validate projection type and tenant id using the same safe group rules as join calls."
+    note: "Patched 2026-07-07 (sprint-change-proposal-2026-07-07-signalr-hub-leave-validation).
+      ProjectionChangedHub.LeaveGroupCoreAsync now applies the same projectionType/tenantId
+      null-blank + colon guards as JoinGroupCoreAsync (leave stays authorization-free
+      by design). 5 new ProjectionChangedHubTests; Server.Tests green (34/34); Release
+      build clean. Deferred-work entry marked RESOLVED. Completion gate met: raw leave
+      calls validate projection type and tenant id using the same safe group rules
+      as join calls."
   - epic: 2
-    action: "Reconcile gateway metadata provenance before any UI or generated API claims production-backed current/stale projection evidence."
+    action: "Reconcile gateway metadata provenance before any UI or generated API
+      claims production-backed current/stale projection evidence."
     owner: "Winston (System Architect)"
     status: done
-    note: "Reconciled by the same route-provenance contract (AD-15). EventStore route-aware gateway enforcement is now Story 2.8; Tenants producer conformance remains Story 4.7 follow-up. Deferred-work ledger and the D6 read-model-freshness handoff were updated on 2026-07-07."
+    note: "Reconciled by the same route-provenance contract (AD-15). EventStore route-aware
+      gateway enforcement is now Story 2.8; Tenants producer conformance remains Story
+      4.7 follow-up. Deferred-work ledger and the D6 read-model-freshness handoff
+      were updated on 2026-07-07."

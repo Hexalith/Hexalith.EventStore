@@ -996,3 +996,11 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
   summary: Story 4.5 LiveSidecar ownership prose was added in docs/ci.md within the same baseline range as Story 3.13's ownership rewrite.
   evidence: Spec Code Map allows only the Story 3.12-to-1.20 ownership paragraph change in docs/ci.md; the Story 4.5 paragraph is concurrent scope leakage outside 3.13's single-goal delivery and should be owned by Story 4.5 tracking.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Add an `acceptances/{subject_sha256}/` scaffold or receipt template beside the roster before AC4 collection.
+  evidence: Blind-hunter review on 2026-08-09; AC4 still requires three content-bound receipts and 0/3 remain missing, but fail-closed review does not need the scaffold to stay non-done.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Re-measure the full Contracts.Tests suite after the ninth hardening pass and refresh Dev Agent / proof-packet totals if they drift.
+  evidence: Blind-hunter review on 2026-08-09; last recorded full-suite measurement was 1001 on 2026-08-05 while focused coverage continued to grow.

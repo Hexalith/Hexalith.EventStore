@@ -1,5 +1,5 @@
 ---
-baseline_commit: 4bcf2484a09eb26490cb2d32ceb6df8949f90cc6
+baseline_commit: 1d6e9321acfc416768c1c78e9facf573c9c41f71
 created: 2026-08-01
 story_id: "3.13"
 story_key: 3-13-deployed-runtime-parity-closure
@@ -419,8 +419,10 @@ deployment mutation, Story 1.20/3.12 status change, or G5 classification.
   post-correction readiness report. It is the key planning-history change for this story.
 - `77d6f477` and `dbf81916` refreshed and authorized Story 1.20 evidence. Read current packet bytes;
   do not use earlier review-state assumptions.
-- `4bcf2484` is the current story-creation baseline and updated sprint/submodule state. Preserve
-  unrelated submodule identities and user work.
+- `4bcf2484` was the original story-creation baseline and updated sprint/submodule state. The
+  authoritative review/implementation baseline is now `1d6e9321` (aligned with the spec frontmatter
+  and `DeployedRuntimeParityClosureTests.ExpectedBaselineCommit`). Preserve unrelated submodule
+  identities and user work.
 - Recent runtime/test changes are unrelated to this evidence-only slice. Do not pull them into the
   file list merely because they are newer than the approved runtime.
 - The inspected v3.77.2 source is an ancestor of the approved Story 1.20 source by 103 commits.
@@ -607,6 +609,12 @@ OpenAI Codex (GPT-5)
 - The proof packet edit changed its bytes, so the content-bound review subject and outer manifest
   were rehashed. The recorded fail-closed decision, blockers, and 0/3 acceptance count are
   unchanged, and no approval was requested, provided, or inferred.
+- 2026-08-09 review patches: corrected the proof-packet identity-crosswalk pin to `11b17fb0…` and
+  rebound the review subject / outer evidence manifest; aligned this record's `baseline_commit` to
+  `1d6e9321`; restored the truncated Story 2.12 `sprint-status.yaml` key; required the shared OCI
+  validator `cli_candidate_consequence` pass string; and asserted retained `smoke-preflight.log`
+  fails `ValidatePreflightLog` in the incomplete-runtime fail-closed test. Lifecycle remains
+  `in-review` / `review` with AC2/AC4 and 0/3 acceptances open.
 
 ### File List
 
