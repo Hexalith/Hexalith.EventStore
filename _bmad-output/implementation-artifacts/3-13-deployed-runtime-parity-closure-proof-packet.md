@@ -110,7 +110,7 @@ not treated as a pass for release provenance.
 4. Repeat the registry capture and retain child-manifest and config response content types, digest
    headers, byte lengths, and raw-body hashes for independent replay.
 5. Repeat both digest-pinned smokes and retain structured support-safe `/alive`, redirect,
-   observed-platform, timing, exit-code, readiness, and cleanup evidence.
+   observed-platform, timing, exit-code, and readiness evidence.
 6. Run and retain that same contract under the documented `Production` hosting environment.
 7. Supply separately authorized deployed-identity authority for the complete exact lineage.
 8. Only after all checks pass, obtain EventStore owner, Release owner, and Test Architect
@@ -120,8 +120,8 @@ not treated as a pass for release provenance.
 
 - Story 1.20 critical manifest: all 33 entries passed `sha256sum -c`.
 - Contracts test project Release build: succeeded with zero warnings and zero errors.
-- Focused `DeployedRuntimeParityClosureTests`: 132 passed, zero failed/skipped/not-run
-  (recorded after the 2026-08-08 sixth review-hardening mutations; earlier hardening had 129).
+- Focused `DeployedRuntimeParityClosureTests`: 142 passed, zero failed/skipped/not-run
+  (recorded after the 2026-08-08 eighth review-hardening mutations; seventh hardening had 140).
 - Complete Contracts suite: last measured at 1001 passed (2026-08-05); not re-measured in this
   documentation refresh.
 - The verifier also derives the actual fail-closed review subject and outer checksum manifest,

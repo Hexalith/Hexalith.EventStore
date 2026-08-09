@@ -356,6 +356,31 @@ public sealed class DeployedRuntimeParityClosureTests
         JsonObject runtime = crosswalk["selected_candidates"]![0]!["runtime"]!.AsObject();
         runtime["contract"]!["actual_hosting_environment"]!.GetValue<string>().ShouldBe("Development");
         runtime["contract"]!["required_hosting_environment"]!.GetValue<string>().ShouldBe("Production");
+        DateTimeOffset started = DateTimeOffset.Parse(runtime["started_at"]!.GetValue<string>());
+        DateTimeOffset ended = DateTimeOffset.Parse(runtime["ended_at"]!.GetValue<string>());
+        JsonObject contract = runtime["contract"]!.AsObject();
+        foreach (JsonObject platform in runtime["platforms"]!.AsArray().Select(item => item!.AsObject()))
+        {
+            bool structuredLogAccepted;
+            try
+            {
+                structuredLogAccepted = ValidateRuntimeLog(evidence, platform, contract, started, ended);
+            }
+            catch (Exception exception) when (
+                exception is JsonException
+                or InvalidOperationException
+                or NullReferenceException
+                or ArgumentException
+                or FormatException
+                or InvalidDataException
+                or IOException)
+            {
+                structuredLogAccepted = false;
+            }
+
+            structuredLogAccepted.ShouldBeFalse(
+                "Retained fail-closed smoke logs must not satisfy ValidateRuntimeLog.");
+        }
 
         JsonObject mutated = Clone(crosswalk);
         mutated["selected_candidates"]![0]!["runtime"]!["platforms"]![0]!["child_digest"] =
@@ -408,6 +433,8 @@ public sealed class DeployedRuntimeParityClosureTests
         ValueIsSupportSafe("fd00::1").ShouldBeFalse();
         ValueIsSupportSafe("fc00::abcd").ShouldBeFalse();
         ValueIsSupportSafe("fe80::1").ShouldBeFalse();
+        ValueIsSupportSafe("::192.168.1.10").ShouldBeFalse();
+        ValueIsSupportSafe("::ffff:10.0.0.1").ShouldBeFalse();
         ValueIsSupportSafe("fec0::1").ShouldBeFalse();
         ValueIsSupportSafe("https://[fd00::1]/status").ShouldBeFalse();
         ValueIsSupportSafe("2606:4700:4700::1111").ShouldBeTrue();
@@ -486,6 +513,27 @@ public sealed class DeployedRuntimeParityClosureTests
             proofBytes,
             outerBytes,
             evidence).ShouldBeTrue();
+
+        string smokePath = Path.Combine(evidence, "smoke-results.json");
+        byte[] originalSmoke = File.ReadAllBytes(smokePath);
+        try
+        {
+            JsonObject dishonestSmoke = JsonNode.Parse(originalSmoke)!.AsObject();
+            dishonestSmoke["result"] = "pass";
+            File.WriteAllBytes(smokePath, JsonSerializer.SerializeToUtf8Bytes(dishonestSmoke));
+            ValidateActualFailClosedSubject(
+                crosswalk,
+                crosswalkBytes,
+                subjectBytes,
+                coreBytes,
+                proofBytes,
+                outerBytes,
+                evidence).ShouldBeFalse();
+        }
+        finally
+        {
+            File.WriteAllBytes(smokePath, originalSmoke);
+        }
 
         EvaluateClosure(crosswalk, crosswalkBytes, subjectBytes, root, evidence, coreBytes, proofBytes)
             .ShouldBeFalse();
@@ -3284,6 +3332,31 @@ public sealed class DeployedRuntimeParityClosureTests
                 && candidate["release"]!["workflow_run"] is null
                 && candidate["release"]!["source_sha"] is null
                 && !candidate["release_authority"]!["deployment_authorized"]!.GetValue<bool>()
+                && runtime["execution_result"]!.GetValue<string>() == "unverified"
+                && runtime["result"]!.GetValue<string>() == "fail"
+                && runtime["contract_equivalence"]!.GetValue<string>() == "fail"
+                && runtime["contract"]!["actual_hosting_environment"]!.GetValue<string>() == "Development"
+                && runtime["contract"]!["required_hosting_environment"]!.GetValue<string>() == "Production"
+                && registry["object_response_metadata_result"]!.GetValue<string>() == "missing"
+                && registry["result"]!.GetValue<string>() == "fail"
+                && registry["oci_graph_result"]!.GetValue<string>() == "fail"
+                && registry["shared_validator"]!["cli_candidate_compatibility"]!.GetValue<string>() ==
+                    "unavailable"
+                && registry["shared_validator"]!["verification_result"]!.GetValue<string>() == "pass"
+                && JsonNode.Parse(ReadEvidenceFile(evidenceRoot, "oci-validation.json"))!
+                    ["response_metadata_result"]!.GetValue<string>() == "missing"
+                && JsonNode.Parse(ReadEvidenceFile(evidenceRoot, "oci-validation.json"))!
+                    ["result"]!.GetValue<string>() == "fail"
+                && JsonNode.Parse(ReadEvidenceFile(evidenceRoot, "smoke-results.json"))!
+                    ["result"]!.GetValue<string>() == "fail"
+                && JsonNode.Parse(ReadEvidenceFile(evidenceRoot, "runtime-verification.json"))!
+                    ["execution_result"]!.GetValue<string>() == "unverified"
+                && JsonNode.Parse(ReadEvidenceFile(evidenceRoot, "runtime-verification.json"))!
+                    ["result"]!.GetValue<string>() == "fail"
+                && JsonNode.Parse(ReadEvidenceFile(evidenceRoot, "runtime-verification.json"))!
+                    ["contract_equivalence"]!.GetValue<string>() == "fail"
+                && JsonNode.Parse(ReadEvidenceFile(evidenceRoot, "runtime-verification.json"))!
+                    ["evidence_completeness"]!.GetValue<string>() == "fail"
                 && verdict["decision"]!.GetValue<string>() == "fail-closed"
                 && !verdict["story_may_be_done"]!.GetValue<bool>()
                 && !verdict["external_state_changed"]!.GetValue<bool>()
@@ -4016,6 +4089,12 @@ public sealed class DeployedRuntimeParityClosureTests
         }
 
         byte[] bytes = address.GetAddressBytes();
+        if (bytes.Length == 16
+            && bytes.AsSpan(0, 12).SequenceEqual(new byte[12]))
+        {
+            return AddressIsPrivate(new IPAddress(bytes.AsSpan(12, 4).ToArray()));
+        }
+
         return bytes.Length switch
         {
             4 => bytes[0] == 10

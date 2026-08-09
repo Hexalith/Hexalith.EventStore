@@ -155,7 +155,8 @@ deployment mutation, Story 1.20/3.12 status change, or G5 classification.
   - [x] Re-read root guidance, project context, relevant architecture, `.editorconfig`,
     `.gitattributes`, current branch/worktree/remotes, and recent history before writing evidence.
   - [x] Verify sprint tracking still has Epic 3 `in-progress`, Story 1.20 `done`, Story 3.12 `done`,
-    and this story no farther than `ready-for-dev`; never change either predecessor or Epic 1.
+    and this story no farther than `in-review`/`review` while AC2/AC4 remain open; never change either
+    predecessor or Epic 1.
   - [x] Record exact current EventStore and root-declared Builds gitlink/check-out SHAs. Do not
     initialize nested submodules, update dependencies, or edit submodule content.
   - [x] Separate read-only registry/artifact inspection and ephemeral smoke authority from commit,
@@ -254,8 +255,8 @@ deployment mutation, Story 1.20/3.12 status change, or G5 classification.
 
 - [x] **Task 8 - Produce the fail-closed verdict before requesting review (AC2, AC3).**
   - [x] Run a structural verifier over `identity-crosswalk.json` and the checksum manifest. Require
-    exact field presence, one candidate identity, exact package/platform sets, and all independent
-    checks passing.
+    exact field presence, one candidate identity, exact package/platform sets, and a reproducible
+    fail-closed verdict while AC2/AC4 independent checks remain incomplete.
   - [x] Add focused regression coverage in
     `tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs`
     for the crosswalk schema, exact 14-package/two-platform sets, selected hashes/verdict, and
@@ -568,6 +569,12 @@ OpenAI Codex (GPT-5)
 - 2026-08-05 guard-effectiveness controls: independently inverting `ExpectedSmokeToolSha256` and
   `ExpectedOciValidatorSha256` each turned `CompleteDerivedLineagePassesAndMissingChecksOrBlockersFail`
   red, proving the new real-byte tool checks are reachable rather than vacuous.
+
+- 2026-08-08 eighth review pass: fail-closed smoke-results honesty (`result=fail`),
+  ValidateActualFailClosedSubject runtime/OCI/registry/smoke enum locks, unstructured-log
+  assertions in IncompleteRuntimeEvidenceFailsClosed, and IPv4-compatible private embedding
+  rejection. Focused filter passed 142/142; Release build zero warnings/errors; predecessor
+  critical manifest, markdownlint, and git diff --check passed. AC2/AC4 remain open (0/3).
 
 ### Completion Notes List
 
