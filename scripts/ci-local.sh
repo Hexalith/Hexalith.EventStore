@@ -95,6 +95,7 @@ TIER1_PROJECTS=(
   "tests/Hexalith.EventStore.Sample.Tests"
   "tests/Hexalith.EventStore.Testing.Integration.Tests"
   "tests/Hexalith.EventStore.Server.Tests"
+  "tests/Hexalith.EventStore.ProviderVerification.Tests"
 )
 
 run_test_project() {

@@ -38,6 +38,7 @@ jobs:
         tests/Hexalith.EventStore.Sample.Tests
         tests/Hexalith.EventStore.Testing.Integration.Tests
         tests/Hexalith.EventStore.Server.Tests
+        tests/Hexalith.EventStore.ProviderVerification.Tests
 
   semantic-release-governance:
     name: ci / semantic-release-governance

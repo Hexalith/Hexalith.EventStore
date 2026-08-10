@@ -1,0 +1,22 @@
+{
+  "schema": "hexalith.eventstore.provider-verification-run-evidence.v1",
+  "command": "dotnet run --project tests/Hexalith.EventStore.ProviderVerification/Hexalith.EventStore.ProviderVerification.csproj --configuration Release --no-build -- <validated canonical inputs>",
+  "exitCode": 4,
+  "expectedNonzero": true,
+  "report": {
+    "path": "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/provider-verification/provider-verification.json",
+    "sha256": "75ff572d75d01a88c3ac9393cb533b6ff832f5ee215d1112e28e6e1a85d70af5",
+    "bytes": 17946,
+    "finalVerdict": "failed",
+    "requestedInteractionCount": 19,
+    "reportedInteractionCount": 19,
+    "setupEventCount": 19,
+    "teardownEventCount": 19,
+    "complete": true,
+    "hostStopped": true,
+    "portClosed": true
+  },
+  "nativeVerifierOutputRetained": false,
+  "normalizedPactCopiesRetained": false,
+  "externalInputsModified": false
+}
