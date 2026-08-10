@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "capturedOn": "2026-08-10",
+  "runtime": {
+    "dotnet": "10.0.10",
+    "dapr": "1.18.1",
+    "postgresImage": "postgres:18.4",
+    "postgresImageIdentity": "sha256:3a82e1f56c8f0f5616a11103ac3d47e632c3938698946a7ad26da0df1334744a"
+  },
+  "profile": {
+    "name": "oq8-postgresql-v1",
+    "stateStoreType": "state.postgresql",
+    "stateComponentSha256": "e8024498786765a32b0ea299778248ade35c855f77ede16ee4775162a971d0eb",
+    "resiliencySha256": "115bdb0d3d330c69920692a80654066937e6b2dd3bd18806c0b276e1de011645"
+  },
+  "executionConfiguration": {
+    "shippedReleaseEntryAssemblies": true,
+    "shadowCopiedBeforeLaunch": true,
+    "environmentName": "Testing",
+    "testOnlyHostingStartup": true,
+    "productionConfigurationUntouched": false,
+    "seams": [
+      "deterministic-time",
+      "idempotency-intent-adapter",
+      "boundary-counter"
+    ]
+  },
+  "artifacts": {
+    "eventStoreSha256": "266d50c1f892d9272caff0742440b26212c80d393250f8f493a62d33c92f6248",
+    "sampleSha256": "a2234009ef7f90f8a0039343da6fdf2dbbc6ae5ae2cd534dbcffabc8e574ba7e",
+    "eventStoreRuntimeSetSha256": "437316dfd6a9a190ca3628f8e6a036ad9373cfb01e4228aa08497fa79759dd64",
+    "sampleRuntimeSetSha256": "1c7e94aec71543a5efdd682a22e23a864b6e9a128923504c870ae3b1f9f460cc",
+    "hostingStartupSha256": "59bf0c78ee72d5b9ca4ef71b89aa6acb32995eeca637d7d27d38c6a692e3f810",
+    "additionalDepsSha256": "153199433c7434a4db871d6c56a58956a22a30465aa8299394269a112dc6d393"
+  },
+  "limits": {
+    "healthTimeoutSeconds": 60,
+    "nodeReadinessOverallTimeoutSeconds": 60,
+    "actorRuntimeReadinessRequired": true,
+    "requestTimeoutSeconds": 30,
+    "diagnosticLogCharactersPerStream": 32768,
+    "diagnosticStreamsScanned": 12,
+    "forbiddenTermClassesScanned": 7,
+    "rawDiagnosticsCommitted": false,
+    "postgresqlProjection": "row counts, state-shape counts, schema hash, projection hash, invariant results",
+    "rawPostgresqlValuesCommitted": false
+  }
+}

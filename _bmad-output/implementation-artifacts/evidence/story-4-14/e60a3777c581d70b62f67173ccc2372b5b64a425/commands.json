@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "capturedOn": "2026-08-10",
+  "commands": [
+    {
+      "name": "live-sidecar-release-build",
+      "command": "dotnet build tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj --configuration Release -m:1",
+      "exitCode": 0,
+      "counts": {
+        "warnings": 0,
+        "errors": 0
+      }
+    },
+    {
+      "name": "focused-production-matrix",
+      "command": "dotnet tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll -method Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionOq8PostgresqlTests.ProductionMatrix_IndependentProcessesPreserveAuthorityReplayExpiryAndLeakageInvariants -noColor -ctrf raw-runner-temp",
+      "exitCode": 0,
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "name": "explicit-deterministic-support-oracles",
+      "command": "dotnet tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll -method (21 validator-pinned selectors) -noColor -ctrf raw-runner-temp",
+      "exitCode": 0,
+      "counts": {
+        "methods": 21,
+        "passed": 33,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "name": "deterministic-support-lane",
+      "command": "dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --configuration Release --no-build -m:1",
+      "exitCode": 0,
+      "counts": {
+        "passed": 3103,
+        "failed": 0,
+        "preExistingSkipped": 25
+      }
+    },
+    {
+      "name": "fresh-capture-validator",
+      "command": "python3 tools/validate-oq8-platform-evidence.py --capture-directory runner-temp/oq8-story-4-14 --ctrf runner-temp/oq8-results.json --support-ctrf runner-temp/oq8-support-results.json",
+      "exitCode": 0,
+      "counts": {
+        "validationErrors": 0
+      }
+    },
+    {
+      "name": "committed-packet-validator",
+      "command": "python3 tools/validate-oq8-platform-evidence.py",
+      "exitCode": 0,
+      "counts": {
+        "validationErrors": 0
+      }
+    },
+    {
+      "name": "solution-release-build",
+      "command": "dotnet build Hexalith.EventStore.slnx --configuration Release -m:1",
+      "exitCode": 0,
+      "counts": {
+        "warnings": 0,
+        "errors": 0
+      }
+    },
+    {
+      "name": "diff-whitespace-gate",
+      "command": "git diff --check",
+      "exitCode": 0,
+      "counts": {
+        "errors": 0
+      }
+    }
+  ]
+}
