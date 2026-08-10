@@ -624,11 +624,49 @@ public sealed class ReleasePackageManifestTests
         string integration = File.ReadAllText(Path.Combine(root, ".github", "workflows", "integration.yml"));
         string release = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
 
-        integration.ShouldContain("dotnet test tests/Hexalith.EventStore.Server.LiveSidecar.Tests/");
-        integration.ShouldNotContain("tests/Hexalith.EventStore.Server.Tests/");
-        integration.ShouldNotContain("--filter \"Category=LiveSidecar\"");
-        release.ShouldNotContain("integration.yml");
-        release.ShouldNotContain("Hexalith.EventStore.Server.LiveSidecar.Tests");
+        AssertLiveSidecarWorkflowTargetsLiveProjectOutsideReleaseGate(integration, release);
+    }
+
+    [Theory]
+    [InlineData("full-server-tests")]
+    [InlineData("category-filter")]
+    [InlineData("missing-cli-tag")]
+    [InlineData("release-coupling-workflow")]
+    [InlineData("release-coupling-project")]
+    public void Live_sidecar_workflow_guardrail_rejects_forbidden_mutations(string mutation)
+    {
+        string root = FindRepositoryRoot();
+        string integration = File.ReadAllText(Path.Combine(root, ".github", "workflows", "integration.yml"));
+        string release = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
+
+        string mutatedIntegration = mutation switch
+        {
+            "full-server-tests" => integration + "\n          dotnet test tests/Hexalith.EventStore.Server.Tests/\n",
+            "category-filter" => integration + "\n          --filter \"Category=LiveSidecar\"\n",
+            "missing-cli-tag" => integration.Replace(
+                "DAPR_VERSION: '1.18.0'",
+                "DAPR_VERSION: '1.18.1'",
+                StringComparison.Ordinal),
+            "release-coupling-workflow" => integration,
+            "release-coupling-project" => integration,
+            _ => throw new InvalidOperationException($"Unknown mutation: {mutation}"),
+        };
+        string mutatedRelease = mutation switch
+        {
+            "release-coupling-workflow" => release + "\n# uses integration.yml\n",
+            "release-coupling-project" => release + "\n# Hexalith.EventStore.Server.LiveSidecar.Tests\n",
+            _ => release,
+        };
+
+        if (mutation is "missing-cli-tag")
+        {
+            mutatedIntegration.ShouldNotBe(
+                integration,
+                "Replace mutation must change the integration workflow text before the guardrail is evaluated.");
+        }
+
+        _ = Should.Throw<Shouldly.ShouldAssertException>(
+            () => AssertLiveSidecarWorkflowTargetsLiveProjectOutsideReleaseGate(mutatedIntegration, mutatedRelease));
     }
 
     [Fact]
@@ -1359,6 +1397,41 @@ public sealed class ReleasePackageManifestTests
             : jobsContent.Length;
 
         return jobsContent[targetHeader.Index..jobEnd].TrimEnd('\n');
+    }
+
+    private static void AssertLiveSidecarWorkflowTargetsLiveProjectOutsideReleaseGate(
+        string integration,
+        string release)
+    {
+        integration.ShouldContain("dotnet test tests/Hexalith.EventStore.Server.LiveSidecar.Tests/");
+
+        // Story 4.14 OQ8 support capture builds Server.Tests and invokes pinned -method
+        // support oracles for --support-ctrf. Forbid any `dotnet test` of Server.Tests as
+        // the live suite (build/-method paths remain allowed).
+        integration.ShouldContain("dotnet build tests/Hexalith.EventStore.Server.Tests/");
+        integration.ShouldContain("-method Hexalith.EventStore.Server.Tests.");
+        integration.ShouldContain("--support-ctrf");
+        integration.ShouldNotContain("dotnet test tests/Hexalith.EventStore.Server.Tests/");
+        integration.ShouldNotContain("--filter \"Category=LiveSidecar\"");
+        integration.ShouldNotContain("--filter \"Category!=LiveSidecar\"");
+
+        MatchCollection daprVersions = Regex.Matches(
+            integration,
+            @"(?m)^[ \t]*DAPR_VERSION:[ \t]*'(?<version>[^']+)'[ \t]*(?:#.*)?$");
+        daprVersions.Count.ShouldBeGreaterThan(
+            0,
+            "integration.yml must pin a shared DAPR_VERSION for Builds dapr-init.");
+        foreach (Match daprVersion in daprVersions)
+        {
+            daprVersion.Groups["version"].Value.ShouldBe(
+                "1.18.0",
+                "Every shared DAPR_VERSION pin must be an installable Dapr CLI tag because Builds dapr-init uses one shared value for CLI install and runtime init.");
+        }
+
+        integration.ShouldContain("version: ${{ env.DAPR_VERSION }}");
+
+        release.ShouldNotContain("integration.yml");
+        release.ShouldNotContain("Hexalith.EventStore.Server.LiveSidecar.Tests");
     }
 
     private static void AssertTenantsSourceModeJobIsBlocking(string jobBlock)
