@@ -51,6 +51,34 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
         await context.Router.DidNotReceive().RouteCommandAsync(
             Arg.Any<SubmitCommand>(),
             Arg.Any<CancellationToken>());
+        await context.Router.DidNotReceive().RouteFencedCommandAsync(
+            Arg.Any<SubmitCommand>(),
+            Arg.Any<IdempotencyExecutionContext>(),
+            Arg.Any<CancellationToken>());
+        await context.Router.DidNotReceive().ReconcileFencedCommandAsync(
+            Arg.Any<SubmitCommand>(),
+            Arg.Any<IdempotencyExecutionContext>(),
+            Arg.Any<CancellationToken>());
+        await context.Coordinator.DidNotReceive().BeginAsync(
+            Arg.Any<IdempotencyAdmissionSession>(),
+            Arg.Any<CancellationToken>());
+        await context.Coordinator.DidNotReceive().ValidateExecutionAsync(
+            Arg.Any<IdempotencyAdmissionSession>(),
+            Arg.Any<SubmitCommand>(),
+            Arg.Any<CancellationToken>());
+        await context.Coordinator.DidNotReceive().CompleteAsync(
+            Arg.Any<IdempotencyAdmissionSession>(),
+            Arg.Any<CommandProcessingResult>(),
+            Arg.Any<CancellationToken>());
+        await context.Coordinator.DidNotReceive().MarkRecoveryAsync(
+            Arg.Any<IdempotencyAdmissionSession>(),
+            Arg.Any<IdempotencyAdmissionState>(),
+            Arg.Any<CancellationToken>());
+        context.StatusStore.GetStatusHistory(context.Command.Tenant, context.Command.MessageId).ShouldBeEmpty();
+        (await context.ArchiveStore.ReadCommandAsync(
+            context.Command.Tenant,
+            context.Command.MessageId,
+            CancellationToken.None)).ShouldBeNull();
     }
 
     [Theory]
@@ -167,14 +195,41 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
     }
 
     [Fact]
-    public async Task Handle_NewKey_BeginsBeforeRouteWithOriginalMessageIdentityAndFinalizesReturnedResult()
+    public async Task Handle_NewKey_ValidatesBeforeBeginAndFinalizesAfterLastProtectedValidation()
     {
         TestContext context = CreateContext(IdempotencyAdmissionDecision.Execute);
         var calls = new List<string>();
+        bool terminal = false;
+        _ = context.Coordinator.ValidateExecutionCapabilityAsync(
+                Arg.Any<IdempotencyAdmissionSession>(),
+                Arg.Any<SubmitCommand>(),
+                Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                terminal.ShouldBeFalse();
+                calls.Add("capability");
+                return Task.CompletedTask;
+            });
         _ = context.Coordinator.BeginAsync(Arg.Any<IdempotencyAdmissionSession>(), Arg.Any<CancellationToken>())
             .Returns(_ =>
             {
+                calls.ShouldHaveSingleItem().ShouldBe("capability");
                 calls.Add("begin");
+                return Task.CompletedTask;
+            });
+        _ = context.Coordinator.ValidateExecutionAsync(
+                Arg.Any<IdempotencyAdmissionSession>(),
+                Arg.Any<SubmitCommand>(),
+                Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                if (terminal)
+                {
+                    calls.Add("invalid-post-terminal-validation");
+                    throw new InvalidOperationException("Terminal authority must never be validated for later protected work.");
+                }
+
+                calls.Add("validate");
                 return Task.CompletedTask;
             });
         _ = context.Router.RouteFencedCommandAsync(
@@ -195,13 +250,74 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
                 Arg.Any<CancellationToken>())
             .Returns(_ =>
             {
+                terminal.ShouldBeFalse();
+                terminal = true;
                 calls.Add("complete");
                 return Task.CompletedTask;
             });
 
         _ = await context.Handler.Handle(context.Command, CancellationToken.None);
 
-        calls.ShouldBe(["begin", "route", "complete"]);
+        calls[0].ShouldBe("capability");
+        calls[1].ShouldBe("begin");
+        calls.ShouldContain("route");
+        calls[^1].ShouldBe("complete");
+        calls.ShouldNotContain("invalid-post-terminal-validation");
+        terminal.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task Handle_TamperedCapabilityLeavesAdmissionUnchangedBeforeBegin()
+    {
+        TestContext context = CreateContext(IdempotencyAdmissionDecision.Execute);
+        _ = context.Coordinator.ValidateExecutionCapabilityAsync(
+                Arg.Any<IdempotencyAdmissionSession>(),
+                Arg.Any<SubmitCommand>(),
+                Arg.Any<CancellationToken>())
+            .Returns<Task>(_ => throw new InvalidOperationException("tampered capability"));
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(
+            () => context.Handler.Handle(context.Command, CancellationToken.None));
+
+        await context.Coordinator.DidNotReceive().BeginAsync(
+            Arg.Any<IdempotencyAdmissionSession>(),
+            Arg.Any<CancellationToken>());
+        await context.Coordinator.DidNotReceive().MarkRecoveryAsync(
+            Arg.Any<IdempotencyAdmissionSession>(),
+            Arg.Any<IdempotencyAdmissionState>(),
+            Arg.Any<CancellationToken>());
+        await context.Router.DidNotReceive().RouteFencedCommandAsync(
+            Arg.Any<SubmitCommand>(),
+            Arg.Any<IdempotencyExecutionContext>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ContextThatLostDurableAuthorityPerformsZeroDownstreamWork()
+    {
+        TestContext context = CreateContext(IdempotencyAdmissionDecision.Execute);
+        _ = context.Coordinator.ValidateExecutionAsync(
+                Arg.Any<IdempotencyAdmissionSession>(),
+                Arg.Any<SubmitCommand>(),
+                Arg.Any<CancellationToken>())
+            .Returns<Task>(_ => throw new InvalidOperationException("authority is terminal"));
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(
+            () => context.Handler.Handle(context.Command, CancellationToken.None));
+
+        await context.Coordinator.Received(1).BeginAsync(
+            Arg.Any<IdempotencyAdmissionSession>(),
+            Arg.Any<CancellationToken>());
+        await context.Router.DidNotReceive().RouteFencedCommandAsync(
+            Arg.Any<SubmitCommand>(),
+            Arg.Any<IdempotencyExecutionContext>(),
+            Arg.Any<CancellationToken>());
+        await context.Coordinator.DidNotReceive().CompleteAsync(
+            Arg.Any<IdempotencyAdmissionSession>(),
+            Arg.Any<CommandProcessingResult>(),
+            Arg.Any<CancellationToken>());
+        context.StatusStore.GetAllStatuses().ShouldBeEmpty();
+        context.ArchiveStore.GetAllArchived().ShouldBeEmpty();
     }
 
     [Fact]
@@ -445,6 +561,11 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
             ExecutionCorrelationId: command.CorrelationId);
 
         _ = coordinator.AdmitAsync(command, Arg.Any<CancellationToken>()).Returns(session);
+        _ = coordinator.ValidateExecutionCapabilityAsync(
+                session,
+                Arg.Any<SubmitCommand>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
         _ = coordinator.BeginAsync(session, Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
         _ = coordinator.CompleteAsync(session, Arg.Any<CommandProcessingResult>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
@@ -551,6 +672,11 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
             executionCorrelationId);
         _ = coordinator.AdmitAsync(command, Arg.Any<CancellationToken>())
             .Returns(session);
+        _ = coordinator.ValidateExecutionCapabilityAsync(
+                session,
+                Arg.Any<SubmitCommand>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
         _ = coordinator.BeginAsync(session, Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
         _ = coordinator.CompleteAsync(
                 session,

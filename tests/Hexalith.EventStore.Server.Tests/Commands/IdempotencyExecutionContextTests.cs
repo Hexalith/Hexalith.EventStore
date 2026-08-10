@@ -1,8 +1,14 @@
 using System.Text;
 using System.Text.Json;
 
+using Dapr.Actors;
+using Dapr.Actors.Client;
+
+using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Pipeline.Commands;
+
+using NSubstitute;
 
 using Shouldly;
 
@@ -47,14 +53,25 @@ public class IdempotencyExecutionContextTests
     }
 
     private static IdempotencyExecutionContextProtector CreateProtector()
-        => new(
+    {
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        IIdempotencyAdmissionActor authority = Substitute.For<IIdempotencyAdmissionActor>();
+        _ = factory.CreateActorProxy<IIdempotencyAdmissionActor>(
+                Arg.Any<ActorId>(),
+                IdempotencyAdmissionActor.ActorTypeName)
+            .Returns(authority);
+        _ = authority.ValidateAuthorityAsync(Arg.Any<IdempotencyAdmissionAuthorityRequest>())
+            .Returns(Task.CompletedTask);
+        return new IdempotencyExecutionContextProtector(
             new StaticIdempotencyDigestKeyProvider(
                 "v1",
                 new Dictionary<string, byte[]>(StringComparer.Ordinal)
                 {
                     ["v1"] = Encoding.UTF8.GetBytes("0123456789abcdef0123456789abcdef"),
                 },
-                []));
+                []),
+            factory);
+    }
 
     private static SubmitCommand Command()
         => new(

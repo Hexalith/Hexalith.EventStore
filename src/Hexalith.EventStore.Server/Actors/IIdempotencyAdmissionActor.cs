@@ -20,6 +20,9 @@ public interface IIdempotencyAdmissionActor : IActor
     /// <summary>Persists recoverable or unknown-outcome state under the active fence.</summary>
     Task MarkRecoveryAsync(IdempotencyAdmissionRecoveryRequest request);
 
+    /// <summary>Fails closed unless durable state still authorizes the exact protected operation.</summary>
+    Task ValidateAuthorityAsync(IdempotencyAdmissionAuthorityRequest request);
+
     /// <summary>Durably prepares a copied target record that remains non-executable.</summary>
     Task PreparePromotionAsync(IdempotencyAdmissionPromotionImportRequest request);
 

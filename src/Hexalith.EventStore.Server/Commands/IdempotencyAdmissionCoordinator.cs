@@ -45,8 +45,6 @@ public sealed class IdempotencyAdmissionCoordinator(
         {
             System.Security.Cryptography.CryptographicOperations.ZeroMemory(descriptor.CanonicalIntent);
         }
-        string? existingActorId = await DiscoverExistingAuthorityAsync(identities, cancellationToken)
-            .ConfigureAwait(false);
         IdempotencyAdmissionDirectoryAlias[] aliases = identities.Aliases
             .Select(identity => new IdempotencyAdmissionDirectoryAlias(
                 identity.DigestKeyVersion,
@@ -58,6 +56,8 @@ public sealed class IdempotencyAdmissionCoordinator(
                 alias.ActorId,
                 alias.DigestKeyVersion,
                 alias.KeyDigest)).ToArray()).ConfigureAwait(false);
+        string? existingActorId = await DiscoverExistingAuthorityAsync(identities, cancellationToken)
+            .ConfigureAwait(false);
         IIdempotencyLegacyInventoryActor legacyInventory = CreateLegacyInventoryActor(command.Tenant);
         IdempotencyLegacyInventoryInspection legacy = await legacyInventory
             .InspectAsync(aliases).ConfigureAwait(false);
@@ -100,8 +100,10 @@ public sealed class IdempotencyAdmissionCoordinator(
             IdempotencyProtectedIdentity sourceIdentity = identities.Aliases.SingleOrDefault(candidate =>
                 string.Equals(candidate.ActorId, sourceActorId, StringComparison.Ordinal))
                 ?? throw new InvalidOperationException("The idempotency promotion source is not a protected alias.");
-            IdempotencyAdmissionResult sourceResult = await CreateActor(sourceActorId)
-                .AdmitAsync(CreateRequest(sourceIdentity, command.MessageId, command.CorrelationId)).ConfigureAwait(false);
+            IdempotencyAdmissionResult sourceResult = await AdmitThroughLifecycleAsync(
+                command.Tenant,
+                sourceIdentity,
+                CreateRequest(sourceIdentity, command.MessageId, command.CorrelationId)).ConfigureAwait(false);
             if (sourceResult.Decision is IdempotencyAdmissionDecision.Conflict
                 or IdempotencyAdmissionDecision.Collision
                 or IdempotencyAdmissionDecision.Corrupt)
@@ -125,9 +127,11 @@ public sealed class IdempotencyAdmissionCoordinator(
         IdempotencyProtectedIdentity identity = identities.Aliases.SingleOrDefault(candidate =>
             string.Equals(candidate.ActorId, directoryResult.CanonicalActorId, StringComparison.Ordinal))
             ?? throw new InvalidOperationException("The idempotency directory selected an unknown protected actor alias.");
-        IIdempotencyAdmissionActor actor = CreateActor(identity.ActorId);
         IdempotencyAdmissionRequest request = CreateRequest(identity, command.MessageId, command.CorrelationId);
-        IdempotencyAdmissionResult result = await actor.AdmitAsync(request).ConfigureAwait(false);
+        IdempotencyAdmissionResult result = await AdmitThroughLifecycleAsync(
+            command.Tenant,
+            identity,
+            request).ConfigureAwait(false);
         if (result.Decision == IdempotencyAdmissionDecision.Redirect)
         {
             throw new InvalidOperationException("The canonical idempotency authority redirected unexpectedly.");
@@ -180,6 +184,27 @@ public sealed class IdempotencyAdmissionCoordinator(
     }
 
     /// <inheritdoc/>
+    public async Task ValidateExecutionCapabilityAsync(
+        IdempotencyAdmissionSession session,
+        SubmitCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        ArgumentNullException.ThrowIfNull(command);
+        if (session.Decision is not (IdempotencyAdmissionDecision.Execute
+            or IdempotencyAdmissionDecision.Recoverable))
+        {
+            throw new InvalidOperationException("The idempotency admission session is not executable.");
+        }
+
+        IdempotencyExecutionContext context = RequireSessionBoundContext(session);
+        await (executionContextProtector
+            ?? throw new InvalidOperationException("Idempotency execution-context protection is unavailable."))
+            .ValidateCapabilityAsync(context, command, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
     public async Task ValidateExecutionAsync(
         IdempotencyAdmissionSession session,
         SubmitCommand command,
@@ -187,12 +212,23 @@ public sealed class IdempotencyAdmissionCoordinator(
     {
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(command);
-        IdempotencyExecutionContext context = session.ExecutionContext
-            ?? throw new InvalidOperationException("Executable idempotency admission returned no execution fence.");
-        await (executionContextProtector
-            ?? throw new InvalidOperationException("Idempotency execution-context protection is unavailable."))
-            .ValidateAsync(context, command, cancellationToken)
-            .ConfigureAwait(false);
+        IdempotencyExecutionContext context = RequireSessionBoundContext(session);
+        IdempotencyExecutionContextProtector protector = executionContextProtector
+            ?? throw new InvalidOperationException("Idempotency execution-context protection is unavailable.");
+        if (session.Decision == IdempotencyAdmissionDecision.UnknownProviderOutcome)
+        {
+            await protector.ValidateReconciliationAsync(context, command, cancellationToken)
+                .ConfigureAwait(false);
+            return;
+        }
+
+        if (session.Decision is not (IdempotencyAdmissionDecision.Execute
+            or IdempotencyAdmissionDecision.Recoverable))
+        {
+            throw new InvalidOperationException("The idempotency admission session is not executable.");
+        }
+
+        await protector.ValidateAsync(context, command, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
@@ -248,12 +284,39 @@ public sealed class IdempotencyAdmissionCoordinator(
             IdempotencyTenantLifecycleActor.ActorTypeName);
     }
 
+    private Task<IdempotencyAdmissionResult> AdmitThroughLifecycleAsync(
+        string tenant,
+        IdempotencyProtectedIdentity identity,
+        IdempotencyAdmissionRequest request)
+        => CreateLifecycleActor(tenant).AdmitAsync(
+            new IdempotencyTenantLifecycleAdmissionRequest(
+                new IdempotencyTenantLifecycleReference(
+                    identity.ActorId,
+                    identity.DigestKeyVersion,
+                    identity.KeyDigest),
+                request));
+
     private IIdempotencyLegacyInventoryActor CreateLegacyInventoryActor(string tenant)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenant);
         return actorProxyFactory.CreateActorProxy<IIdempotencyLegacyInventoryActor>(
             new ActorId(tenant),
             IdempotencyLegacyInventoryActor.ActorTypeName);
+    }
+
+    private static IdempotencyExecutionContext RequireSessionBoundContext(IdempotencyAdmissionSession session)
+    {
+        IdempotencyExecutionContext context = session.ExecutionContext
+            ?? throw new InvalidOperationException("Executable idempotency admission returned no execution fence.");
+        if (!string.Equals(context.AdmissionActorId, session.ActorId, StringComparison.Ordinal)
+            || context.FencingToken != session.FencingToken
+            || !string.Equals(context.MessageId, session.ExecutionMessageId, StringComparison.Ordinal)
+            || !string.Equals(context.CorrelationId, session.ExecutionCorrelationId, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("The idempotency execution session does not match its signed capability.");
+        }
+
+        return context;
     }
 
     private async Task<IdempotencyAdmissionDecision?> CompleteLegacyMigrationAsync(

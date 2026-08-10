@@ -1,3 +1,5 @@
+using Dapr.Actors;
+using Dapr.Actors.Client;
 using Dapr.Actors.Runtime;
 
 using Microsoft.Extensions.Logging;
@@ -8,9 +10,13 @@ namespace Hexalith.EventStore.Server.Actors;
 public sealed class IdempotencyTenantLifecycleActor(
     ActorHost host,
     ILogger<IdempotencyTenantLifecycleActor> logger,
-    TimeProvider? timeProvider = null)
+    TimeProvider? timeProvider = null,
+    IActorProxyFactory? actorProxyFactory = null)
     : Actor(host), IIdempotencyTenantLifecycleActor
 {
+    /// <summary>Gets the maximum number of references removed in one serialized actor turn.</summary>
+    public const int MaximumReferencesPerPurgeTurn = 1;
+
     /// <summary>Gets the Dapr actor type name.</summary>
     public const string ActorTypeName = nameof(IdempotencyTenantLifecycleActor);
 
@@ -25,16 +31,18 @@ public sealed class IdempotencyTenantLifecycleActor(
     public async Task RegisterAsync(IdempotencyTenantLifecycleReference[] references)
     {
         ArgumentNullException.ThrowIfNull(references);
-        if (references.Length == 0 || references.Any(static reference =>
-            reference is null
-            || string.IsNullOrWhiteSpace(reference.ActorId)
-            || string.IsNullOrWhiteSpace(reference.DigestKeyVersion)
-            || string.IsNullOrWhiteSpace(reference.KeyDigest)))
+        if (references.Length == 0
+            || references.Any(reference => !IsValidReference(reference, Host.Id.GetId())))
         {
             throw new InvalidOperationException("Idempotency lifecycle references are invalid.");
         }
 
         IdempotencyTenantLifecycleRecord record = await LoadOrCreateAsync().ConfigureAwait(false);
+        if (record.State != IdempotencyTenantLifecycleState.Active)
+        {
+            throw new InvalidOperationException("Tenant deletion lifecycle forbids idempotency admission.");
+        }
+
         IdempotencyTenantLifecycleReference[][] groups = record.References
             .Concat(references)
             .GroupBy(static reference => reference.ActorId, StringComparer.Ordinal)
@@ -51,12 +59,6 @@ public sealed class IdempotencyTenantLifecycleActor(
             .Select(static group => group[0])
             .OrderBy(static reference => reference.ActorId, StringComparer.Ordinal)
             .ToArray();
-        if (merged.Length != record.References.Length
-            && record.State != IdempotencyTenantLifecycleState.Active)
-        {
-            throw new InvalidOperationException("Tenant deletion lifecycle forbids new idempotency state.");
-        }
-
         if (merged.Length != record.References.Length)
         {
             await PersistAsync(record with
@@ -65,6 +67,41 @@ public sealed class IdempotencyTenantLifecycleActor(
                 LastObservedAt = Max(record.LastObservedAt, Clock.GetUtcNow()),
             }).ConfigureAwait(false);
         }
+    }
+
+    /// <inheritdoc/>
+    public async Task<IdempotencyAdmissionResult> AdmitAsync(IdempotencyTenantLifecycleAdmissionRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(request.Reference);
+        ArgumentNullException.ThrowIfNull(request.Admission);
+        IdempotencyTenantLifecycleRecord record = await LoadRequiredAsync().ConfigureAwait(false);
+        if (record.State != IdempotencyTenantLifecycleState.Active)
+        {
+            throw new InvalidOperationException("Tenant deletion lifecycle forbids idempotency admission.");
+        }
+
+        IdempotencyTenantLifecycleReference reference = request.Reference;
+        IdempotencyAdmissionRequest admission = request.Admission;
+        bool registered = record.References.Any(candidate =>
+            string.Equals(candidate.ActorId, reference.ActorId, StringComparison.Ordinal)
+            && string.Equals(candidate.DigestKeyVersion, reference.DigestKeyVersion, StringComparison.Ordinal)
+            && string.Equals(candidate.KeyDigest, reference.KeyDigest, StringComparison.Ordinal));
+        if (!registered
+            || !IsValidReference(reference, record.Tenant)
+            || !string.Equals(admission.TenantPartition, record.Tenant, StringComparison.Ordinal)
+            || !string.Equals(admission.DigestKeyVersion, reference.DigestKeyVersion, StringComparison.Ordinal)
+            || !string.Equals(admission.KeyDigest, reference.KeyDigest, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("The protected admission is not registered for the active tenant lifecycle.");
+        }
+
+        IActorProxyFactory factory = actorProxyFactory
+            ?? throw new InvalidOperationException("Serialized idempotency lifecycle admission is unavailable.");
+        IIdempotencyAdmissionActor actor = factory.CreateActorProxy<IIdempotencyAdmissionActor>(
+            new ActorId(reference.ActorId),
+            IdempotencyAdmissionActor.ActorTypeName);
+        return await actor.AdmitAsync(admission).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
@@ -149,9 +186,16 @@ public sealed class IdempotencyTenantLifecycleActor(
         => await RefreshAsync(await LoadOrCreateAsync().ConfigureAwait(false)).ConfigureAwait(false);
 
     /// <inheritdoc/>
-    public async Task<IdempotencyTenantLifecycleRecord> AcknowledgePurgeAsync(string actorId)
+    public async Task<IdempotencyTenantLifecycleRecord> PurgeAsync(int maximumCount)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(actorId);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumCount);
+        if (maximumCount > MaximumReferencesPerPurgeTurn)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(maximumCount),
+                $"A lifecycle purge turn removes at most {MaximumReferencesPerPurgeTurn} reference.");
+        }
+
         IdempotencyTenantLifecycleRecord record = await RefreshAsync(await LoadRequiredAsync().ConfigureAwait(false))
             .ConfigureAwait(false);
         if (record.State != IdempotencyTenantLifecycleState.PurgeEligible)
@@ -159,6 +203,59 @@ public sealed class IdempotencyTenantLifecycleActor(
             throw new InvalidOperationException("Tenant idempotency state is not purge eligible.");
         }
 
+        if (record.References.Length == 0)
+        {
+            return await PersistAsync(record with
+            {
+                State = IdempotencyTenantLifecycleState.Purged,
+                LastObservedAt = Max(record.LastObservedAt, Clock.GetUtcNow()),
+            }).ConfigureAwait(false);
+        }
+
+        IActorProxyFactory factory = actorProxyFactory
+            ?? throw new InvalidOperationException("Serialized idempotency lifecycle purge is unavailable.");
+        IIdempotencyAdmissionDirectoryActor directory = factory
+            .CreateActorProxy<IIdempotencyAdmissionDirectoryActor>(
+                new ActorId(record.Tenant),
+                IdempotencyAdmissionDirectoryActor.ActorTypeName);
+        foreach (IdempotencyTenantLifecycleReference reference in record.References.Take(maximumCount))
+        {
+            IIdempotencyAdmissionActor admission = factory.CreateActorProxy<IIdempotencyAdmissionActor>(
+                new ActorId(reference.ActorId),
+                IdempotencyAdmissionActor.ActorTypeName);
+            bool purged = await admission.PurgeTombstoneAsync(
+                new IdempotencyAdmissionPurgeRequest(
+                    record.Tenant,
+                    reference.DigestKeyVersion,
+                    reference.KeyDigest)).ConfigureAwait(false);
+            if (!purged)
+            {
+                continue;
+            }
+
+            await directory.PurgeAliasAsync(
+                new IdempotencyAdmissionDirectoryAlias(
+                    reference.DigestKeyVersion,
+                    reference.ActorId,
+                    reference.KeyDigest)).ConfigureAwait(false);
+            record = await AcknowledgePurgeCoreAsync(record, reference.ActorId).ConfigureAwait(false);
+        }
+
+        return record;
+    }
+
+    /// <inheritdoc/>
+    public Task<IdempotencyTenantLifecycleRecord> AcknowledgePurgeAsync(string actorId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(actorId);
+        throw new InvalidOperationException(
+            "Direct purge acknowledgement is forbidden; serialized purge must remove the tombstone and alias first.");
+    }
+
+    private async Task<IdempotencyTenantLifecycleRecord> AcknowledgePurgeCoreAsync(
+        IdempotencyTenantLifecycleRecord record,
+        string actorId)
+    {
         IdempotencyTenantLifecycleReference[] remaining = record.References
             .Where(reference => !string.Equals(reference.ActorId, actorId, StringComparison.Ordinal))
             .ToArray();
@@ -184,8 +281,19 @@ public sealed class IdempotencyTenantLifecycleActor(
             && record.DeleteAfter <= effective
                 ? IdempotencyTenantLifecycleState.PurgeEligible
                 : record.State;
-        return effective > record.LastObservedAt || state != record.State
-            ? await PersistAsync(record with { State = state, LastObservedAt = effective }).ConfigureAwait(false)
+        TimeSpan? remaining = state switch
+        {
+            IdempotencyTenantLifecycleState.Retaining => record.DeleteAfter!.Value - effective,
+            IdempotencyTenantLifecycleState.PurgeEligible or IdempotencyTenantLifecycleState.Purged => TimeSpan.Zero,
+            _ => record.RemainingRetention,
+        };
+        return effective > record.LastObservedAt || state != record.State || remaining != record.RemainingRetention
+            ? await PersistAsync(record with
+            {
+                State = state,
+                LastObservedAt = effective,
+                RemainingRetention = remaining,
+            }).ConfigureAwait(false)
             : record;
     }
 
@@ -239,16 +347,79 @@ public sealed class IdempotencyTenantLifecycleActor(
         return record;
     }
 
-    private static void Validate(IdempotencyTenantLifecycleRecord record)
+    private void Validate(IdempotencyTenantLifecycleRecord record)
     {
         if (record.SchemaVersion != IdempotencyTenantLifecycleRecord.CurrentSchemaVersion
             || string.IsNullOrWhiteSpace(record.Tenant)
+            || !string.Equals(record.Tenant, Host.Id.GetId(), StringComparison.Ordinal)
             || !Enum.IsDefined(record.State)
-            || record.References is null)
+            || record.References is null
+            || record.References.Any(reference => !IsValidReference(reference, record.Tenant))
+            || record.References.Select(static reference => reference.ActorId)
+                .Distinct(StringComparer.Ordinal).Count() != record.References.Length
+            || !HasValidLifecycleShape(record))
         {
             throw new InvalidOperationException("Tenant idempotency lifecycle state is corrupt.");
         }
     }
+
+    private static bool HasValidLifecycleShape(IdempotencyTenantLifecycleRecord record)
+    {
+        if (record.State == IdempotencyTenantLifecycleState.Active)
+        {
+            return record.DeletionApprovedAt is null
+                && record.DeleteAfter is null
+                && record.RemainingRetention is null
+                && record.LegalHoldStartedAt is null;
+        }
+
+        if (record.DeletionApprovedAt is null
+            || record.DeleteAfter is null
+            || record.LastObservedAt < record.DeletionApprovedAt
+            || record.DeleteAfter < record.DeletionApprovedAt.Value.Add(IdempotencyTenantLifecycleRecord.PostDeletionRetention)
+            || record.RemainingRetention is null
+            || record.RemainingRetention < TimeSpan.Zero
+            || record.RemainingRetention > IdempotencyTenantLifecycleRecord.PostDeletionRetention)
+        {
+            return false;
+        }
+
+        return record.State switch
+        {
+            IdempotencyTenantLifecycleState.Retaining
+                => record.RemainingRetention > TimeSpan.Zero
+                    && record.DeleteAfter > record.LastObservedAt
+                    && record.RemainingRetention == record.DeleteAfter - record.LastObservedAt
+                    && record.LegalHoldStartedAt is null,
+            IdempotencyTenantLifecycleState.LegalHold
+                => record.LegalHoldStartedAt is not null
+                    && record.LegalHoldStartedAt >= record.DeletionApprovedAt
+                    && record.LegalHoldStartedAt <= record.LastObservedAt,
+            IdempotencyTenantLifecycleState.PurgeEligible
+                => record.RemainingRetention == TimeSpan.Zero
+                    && record.DeleteAfter <= record.LastObservedAt
+                    && record.LegalHoldStartedAt is null,
+            IdempotencyTenantLifecycleState.Purged
+                => record.RemainingRetention == TimeSpan.Zero
+                    && record.DeleteAfter <= record.LastObservedAt
+                    && record.LegalHoldStartedAt is null
+                    && record.References.Length == 0,
+            _ => false,
+        };
+    }
+
+    private static bool IsValidReference(IdempotencyTenantLifecycleReference? reference, string tenant)
+        => reference is not null
+            && !string.IsNullOrWhiteSpace(reference.ActorId)
+            && !string.IsNullOrWhiteSpace(reference.DigestKeyVersion)
+            && !string.IsNullOrWhiteSpace(reference.KeyDigest)
+            && string.Equals(
+                reference.ActorId,
+                IdempotencyAdmissionActorIdentity.Build(
+                    tenant,
+                    reference.DigestKeyVersion,
+                    reference.KeyDigest),
+                StringComparison.Ordinal);
 
     private static DateTimeOffset Max(DateTimeOffset left, DateTimeOffset right)
         => left >= right ? left : right;

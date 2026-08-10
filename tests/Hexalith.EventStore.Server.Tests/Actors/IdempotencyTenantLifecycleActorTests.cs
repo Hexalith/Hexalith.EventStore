@@ -1,6 +1,8 @@
 using Dapr.Actors;
+using Dapr.Actors.Client;
 using Dapr.Actors.Runtime;
 
+using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Tests.TestUtilities;
 
@@ -45,7 +47,7 @@ public class IdempotencyTenantLifecycleActorTests
     }
 
     [Fact]
-    public async Task RegisterAsync_RejectsConflictingProtectedIdentityForSameActorReference()
+    public async Task RegisterAsync_RejectsActorIdThatIsNotBoundToProtectedIdentity()
     {
         (IdempotencyTenantLifecycleActor actor, _, _) = CreateActor();
         await actor.RegisterAsync(
@@ -59,7 +61,61 @@ public class IdempotencyTenantLifecycleActorTests
                 new IdempotencyTenantLifecycleReference("tenant-a:v1:key-a", "v2", "key-b"),
             ]));
 
-        exception.Message.ShouldContain("conflicting protected identity");
+        exception.Message.ShouldContain("references are invalid");
+    }
+
+    [Fact]
+    public async Task AdmitAsync_ActiveRegisteredReferenceRoutesInsideLifecycleTurn()
+    {
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        IIdempotencyAdmissionActor admission = Substitute.For<IIdempotencyAdmissionActor>();
+        _ = factory.CreateActorProxy<IIdempotencyAdmissionActor>(
+                new ActorId("tenant-a:v1:key-a"),
+                IdempotencyAdmissionActor.ActorTypeName)
+            .Returns(admission);
+        IdempotencyAdmissionResult expected = new(IdempotencyAdmissionDecision.Execute, 3);
+        _ = admission.AdmitAsync(Arg.Any<IdempotencyAdmissionRequest>()).Returns(expected);
+        (IdempotencyTenantLifecycleActor actor, _, _) = CreateActor(factory);
+        var reference = new IdempotencyTenantLifecycleReference("tenant-a:v1:key-a", "v1", "key-a");
+        await actor.RegisterAsync([reference]);
+
+        IdempotencyAdmissionResult result = await actor.AdmitAsync(
+            new IdempotencyTenantLifecycleAdmissionRequest(reference, AdmissionRequest()));
+
+        result.ShouldBe(expected);
+        _ = await admission.Received(1).AdmitAsync(AdmissionRequest());
+    }
+
+    [Fact]
+    public async Task AdmitAsync_DeletionAfterRegistrationCannotCreateAdmissionState()
+    {
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        (IdempotencyTenantLifecycleActor actor, _, _) = CreateActor(factory);
+        var reference = new IdempotencyTenantLifecycleReference("tenant-a:v1:key-a", "v1", "key-a");
+        await actor.RegisterAsync([reference]);
+        _ = await actor.EnterDeletionAsync(_now);
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(
+            () => actor.AdmitAsync(
+                new IdempotencyTenantLifecycleAdmissionRequest(reference, AdmissionRequest())));
+
+        _ = factory.DidNotReceiveWithAnyArgs().CreateActorProxy<IIdempotencyAdmissionActor>(
+            default!,
+            default!);
+    }
+
+    [Fact]
+    public async Task RegisterAsync_ExistingReferenceAfterDeletionIsStillDenied()
+    {
+        (IdempotencyTenantLifecycleActor actor, _, _) = CreateActor();
+        var reference = new IdempotencyTenantLifecycleReference("tenant-a:v1:key-a", "v1", "key-a");
+        await actor.RegisterAsync([reference]);
+        _ = await actor.EnterDeletionAsync(_now);
+
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(
+            () => actor.RegisterAsync([reference]));
+
+        exception.Message.ShouldContain("forbids idempotency admission");
     }
 
     [Fact]
@@ -84,9 +140,21 @@ public class IdempotencyTenantLifecycleActorTests
     }
 
     [Fact]
-    public async Task AcknowledgePurgeAsync_MarksPurgedOnlyAfterEveryProtectedReference()
+    public async Task PurgeAsync_BoundedBatchesMarkPurgedOnlyAfterEveryProtectedReference()
     {
-        (IdempotencyTenantLifecycleActor actor, _, FakeTimeProvider time) = CreateActor();
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        IIdempotencyAdmissionActor admission = Substitute.For<IIdempotencyAdmissionActor>();
+        IIdempotencyAdmissionDirectoryActor directory = Substitute.For<IIdempotencyAdmissionDirectoryActor>();
+        _ = factory.CreateActorProxy<IIdempotencyAdmissionActor>(
+                Arg.Any<ActorId>(),
+                IdempotencyAdmissionActor.ActorTypeName)
+            .Returns(admission);
+        _ = factory.CreateActorProxy<IIdempotencyAdmissionDirectoryActor>(
+                Arg.Any<ActorId>(),
+                IdempotencyAdmissionDirectoryActor.ActorTypeName)
+            .Returns(directory);
+        _ = admission.PurgeTombstoneAsync(Arg.Any<IdempotencyAdmissionPurgeRequest>()).Returns(true);
+        (IdempotencyTenantLifecycleActor actor, _, FakeTimeProvider time) = CreateActor(factory);
         await actor.RegisterAsync(
         [
             new IdempotencyTenantLifecycleReference("tenant-a:v1:key-a", "v1", "key-a"),
@@ -94,15 +162,211 @@ public class IdempotencyTenantLifecycleActorTests
         ]);
         _ = await actor.EnterDeletionAsync(_now);
         time.Advance(TimeSpan.FromDays(400));
-        _ = await actor.GetAsync();
 
-        IdempotencyTenantLifecycleRecord oneRemaining = await actor.AcknowledgePurgeAsync("tenant-a:v1:key-a");
-        IdempotencyTenantLifecycleRecord purged = await actor.AcknowledgePurgeAsync("tenant-a:v1:key-b");
+        IdempotencyTenantLifecycleRecord oneRemaining = await actor.PurgeAsync(1);
+        IdempotencyTenantLifecycleRecord purged = await actor.PurgeAsync(1);
 
         oneRemaining.State.ShouldBe(IdempotencyTenantLifecycleState.PurgeEligible);
         oneRemaining.References.ShouldHaveSingleItem();
         purged.State.ShouldBe(IdempotencyTenantLifecycleState.Purged);
         purged.References.ShouldBeEmpty();
+        await admission.Received(2).PurgeTombstoneAsync(Arg.Any<IdempotencyAdmissionPurgeRequest>());
+        await directory.Received(2).PurgeAliasAsync(Arg.Any<IdempotencyAdmissionDirectoryAlias>());
+    }
+
+    [Fact]
+    public async Task PurgeAsync_EligibleStateDeletesAndAcknowledgesInsideLifecycleTurn()
+    {
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        IIdempotencyAdmissionActor admission = Substitute.For<IIdempotencyAdmissionActor>();
+        IIdempotencyAdmissionDirectoryActor directory = Substitute.For<IIdempotencyAdmissionDirectoryActor>();
+        _ = factory.CreateActorProxy<IIdempotencyAdmissionActor>(
+                Arg.Any<ActorId>(),
+                IdempotencyAdmissionActor.ActorTypeName)
+            .Returns(admission);
+        _ = factory.CreateActorProxy<IIdempotencyAdmissionDirectoryActor>(
+                Arg.Any<ActorId>(),
+                IdempotencyAdmissionDirectoryActor.ActorTypeName)
+            .Returns(directory);
+        _ = admission.PurgeTombstoneAsync(Arg.Any<IdempotencyAdmissionPurgeRequest>()).Returns(true);
+        (IdempotencyTenantLifecycleActor actor, _, FakeTimeProvider time) = CreateActor(factory);
+        await actor.RegisterAsync(
+        [
+            new IdempotencyTenantLifecycleReference("tenant-a:v1:key-a", "v1", "key-a"),
+        ]);
+        _ = await actor.EnterDeletionAsync(_now);
+        time.Advance(TimeSpan.FromDays(400));
+
+        IdempotencyTenantLifecycleRecord result = await actor.PurgeAsync(1);
+
+        result.State.ShouldBe(IdempotencyTenantLifecycleState.Purged);
+        result.References.ShouldBeEmpty();
+        await admission.Received(1).PurgeTombstoneAsync(
+            new IdempotencyAdmissionPurgeRequest("tenant-a", "v1", "key-a"));
+        await directory.Received(1).PurgeAliasAsync(
+            new IdempotencyAdmissionDirectoryAlias("v1", "tenant-a:v1:key-a", "key-a"));
+    }
+
+    [Fact]
+    public async Task PurgeAsync_LegalHoldWinsSerializedEligibilityAndDeletesNothing()
+    {
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        (IdempotencyTenantLifecycleActor actor, _, FakeTimeProvider time) = CreateActor(factory);
+        await actor.RegisterAsync(
+        [
+            new IdempotencyTenantLifecycleReference("tenant-a:v1:key-a", "v1", "key-a"),
+        ]);
+        _ = await actor.EnterDeletionAsync(_now);
+        time.Advance(TimeSpan.FromDays(400));
+        _ = await actor.PlaceLegalHoldAsync(time.GetUtcNow());
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => actor.PurgeAsync(1));
+
+        _ = factory.DidNotReceiveWithAnyArgs().CreateActorProxy<IIdempotencyAdmissionActor>(
+            default!,
+            default!);
+        _ = factory.DidNotReceiveWithAnyArgs().CreateActorProxy<IIdempotencyAdmissionDirectoryActor>(
+            default!,
+            default!);
+    }
+
+    [Fact]
+    public async Task PurgeAsync_LiveAdmissionRetainsGovernedReferenceAndDirectoryAlias()
+    {
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        IIdempotencyAdmissionActor admission = Substitute.For<IIdempotencyAdmissionActor>();
+        IIdempotencyAdmissionDirectoryActor directory = Substitute.For<IIdempotencyAdmissionDirectoryActor>();
+        _ = factory.CreateActorProxy<IIdempotencyAdmissionActor>(
+                Arg.Any<ActorId>(),
+                IdempotencyAdmissionActor.ActorTypeName)
+            .Returns(admission);
+        _ = factory.CreateActorProxy<IIdempotencyAdmissionDirectoryActor>(
+                Arg.Any<ActorId>(),
+                IdempotencyAdmissionDirectoryActor.ActorTypeName)
+            .Returns(directory);
+        _ = admission.PurgeTombstoneAsync(Arg.Any<IdempotencyAdmissionPurgeRequest>()).Returns(false);
+        (IdempotencyTenantLifecycleActor actor, _, FakeTimeProvider time) = CreateActor(factory);
+        await actor.RegisterAsync(
+        [
+            new IdempotencyTenantLifecycleReference("tenant-a:v1:key-a", "v1", "key-a"),
+        ]);
+        _ = await actor.EnterDeletionAsync(_now);
+        time.Advance(TimeSpan.FromDays(400));
+
+        IdempotencyTenantLifecycleRecord result = await actor.PurgeAsync(1);
+
+        result.State.ShouldBe(IdempotencyTenantLifecycleState.PurgeEligible);
+        result.References.ShouldHaveSingleItem();
+        await directory.DidNotReceive().PurgeAliasAsync(Arg.Any<IdempotencyAdmissionDirectoryAlias>());
+    }
+
+    [Fact]
+    public async Task PurgeAsync_CorruptLifecycleDeletesNothing()
+    {
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        (IdempotencyTenantLifecycleActor actor, IActorStateManager stateManager, _) = CreateActor(factory);
+        var corrupt = new IdempotencyTenantLifecycleRecord(
+            IdempotencyTenantLifecycleRecord.CurrentSchemaVersion,
+            "tenant-a",
+            IdempotencyTenantLifecycleState.Active,
+            _now,
+            _now,
+            null,
+            null,
+            null,
+            []);
+        _ = stateManager.TryGetStateAsync<IdempotencyTenantLifecycleRecord>(
+                IdempotencyTenantLifecycleActor.StateName,
+                Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyTenantLifecycleRecord>(true, corrupt));
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => actor.PurgeAsync(1));
+
+        _ = factory.DidNotReceiveWithAnyArgs().CreateActorProxy<IIdempotencyAdmissionActor>(
+            default!,
+            default!);
+    }
+
+    [Fact]
+    public async Task PurgeAsync_ContradictoryEligibleRemainderOrFutureDeadlineDeletesNothing()
+    {
+        IdempotencyTenantLifecycleRecord valid = PurgeEligibleRecord();
+        IdempotencyTenantLifecycleRecord[] corruptVariants =
+        [
+            valid with { RemainingRetention = TimeSpan.FromDays(1) },
+            valid with { DeleteAfter = _now.AddDays(1) },
+        ];
+
+        foreach (IdempotencyTenantLifecycleRecord corrupt in corruptVariants)
+        {
+            IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+            (IdempotencyTenantLifecycleActor actor, IActorStateManager stateManager, _) = CreateActor(factory);
+            _ = stateManager.TryGetStateAsync<IdempotencyTenantLifecycleRecord>(
+                    IdempotencyTenantLifecycleActor.StateName,
+                    Arg.Any<CancellationToken>())
+                .Returns(new ConditionalValue<IdempotencyTenantLifecycleRecord>(true, corrupt));
+
+            _ = await Should.ThrowAsync<InvalidOperationException>(() => actor.PurgeAsync(1));
+
+            _ = factory.DidNotReceiveWithAnyArgs().CreateActorProxy<IIdempotencyAdmissionActor>(
+                default!,
+                default!);
+            _ = factory.DidNotReceiveWithAnyArgs().CreateActorProxy<IIdempotencyAdmissionDirectoryActor>(
+                default!,
+                default!);
+        }
+    }
+
+    [Fact]
+    public async Task PurgeAsync_UnboundReferenceDeletesNothing()
+    {
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        (IdempotencyTenantLifecycleActor actor, IActorStateManager stateManager, _) = CreateActor(factory);
+        IdempotencyTenantLifecycleRecord corrupt = PurgeEligibleRecord() with
+        {
+            References =
+            [
+                new IdempotencyTenantLifecycleReference("tenant-b:v1:key-a", "v1", "key-a"),
+            ],
+        };
+        _ = stateManager.TryGetStateAsync<IdempotencyTenantLifecycleRecord>(
+                IdempotencyTenantLifecycleActor.StateName,
+                Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyTenantLifecycleRecord>(true, corrupt));
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => actor.PurgeAsync(1));
+
+        _ = factory.DidNotReceiveWithAnyArgs().CreateActorProxy<IIdempotencyAdmissionActor>(
+            default!,
+            default!);
+    }
+
+    [Fact]
+    public async Task PurgeAsync_OversizedActorTurnIsRejectedBeforeDeletion()
+    {
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        (IdempotencyTenantLifecycleActor actor, _, _) = CreateActor(factory);
+
+        _ = await Should.ThrowAsync<ArgumentOutOfRangeException>(
+            () => actor.PurgeAsync(IdempotencyTenantLifecycleActor.MaximumReferencesPerPurgeTurn + 1));
+
+        _ = factory.DidNotReceiveWithAnyArgs().CreateActorProxy<IIdempotencyAdmissionActor>(
+            default!,
+            default!);
+    }
+
+    [Fact]
+    public async Task AcknowledgePurgeAsync_DirectCallerCannotBypassSerializedDeletion()
+    {
+        (IdempotencyTenantLifecycleActor actor, IActorStateManager stateManager, _) = CreateActor();
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(
+            () => actor.AcknowledgePurgeAsync("tenant-a:v1:key-a"));
+
+        await stateManager.DidNotReceive().SetStateAsync(
+            Arg.Any<string>(),
+            Arg.Any<object>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -152,7 +416,8 @@ public class IdempotencyTenantLifecycleActorTests
         await stateManager.Received(1).SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
-    private static (IdempotencyTenantLifecycleActor Actor, IActorStateManager StateManager, FakeTimeProvider Time) CreateActor()
+    private static (IdempotencyTenantLifecycleActor Actor, IActorStateManager StateManager, FakeTimeProvider Time) CreateActor(
+        IActorProxyFactory? actorProxyFactory = null)
     {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         var time = new FakeTimeProvider(_now);
@@ -173,8 +438,33 @@ public class IdempotencyTenantLifecycleActorTests
         var actor = new IdempotencyTenantLifecycleActor(
             host,
             NullLogger<IdempotencyTenantLifecycleActor>.Instance,
-            time);
+            time,
+            actorProxyFactory);
         ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
         return (actor, stateManager, time);
     }
+
+    private static IdempotencyAdmissionRequest AdmissionRequest()
+        => new(
+            IdempotencyAdmissionRecord.CurrentSchemaVersion,
+            "tenant-a",
+            "v1",
+            "key-a",
+            "verification-tag",
+            "intent-digest",
+            IdempotencyReplayRetentionTier.Mutation,
+            "01J00000000000000000000000",
+            "trace-a");
+
+    private static IdempotencyTenantLifecycleRecord PurgeEligibleRecord()
+        => new(
+            IdempotencyTenantLifecycleRecord.CurrentSchemaVersion,
+            "tenant-a",
+            IdempotencyTenantLifecycleState.PurgeEligible,
+            _now,
+            _now.AddDays(-401),
+            _now.AddDays(-1),
+            TimeSpan.Zero,
+            null,
+            [new IdempotencyTenantLifecycleReference("tenant-a:v1:key-a", "v1", "key-a")]);
 }

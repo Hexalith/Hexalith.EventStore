@@ -5,9 +5,12 @@ using Hexalith.EventStore.Server.Actors;
 
 namespace Hexalith.EventStore.Server.Commands;
 
-/// <summary>Executes bounded final purge outside actor turns after lifecycle eligibility.</summary>
+/// <summary>Delegates bounded final purge to the tenant lifecycle actor's serialized turn.</summary>
 public sealed class IdempotencyTenantLifecyclePurger(IActorProxyFactory actorProxyFactory)
 {
+    /// <summary>Gets the maximum number of serialized purge turns issued by one call.</summary>
+    public const int MaximumIterationsPerCall = 32;
+
     /// <summary>Purges at most <paramref name="maximumCount"/> protected references.</summary>
     public async Task<IdempotencyTenantLifecycleRecord> PurgeAsync(
         string tenant,
@@ -20,39 +23,28 @@ public sealed class IdempotencyTenantLifecyclePurger(IActorProxyFactory actorPro
             .CreateActorProxy<IIdempotencyTenantLifecycleActor>(
                 new ActorId(tenant),
                 IdempotencyTenantLifecycleActor.ActorTypeName);
-        IdempotencyTenantLifecycleRecord state = await lifecycle.GetAsync().ConfigureAwait(false);
-        if (state.State != IdempotencyTenantLifecycleState.PurgeEligible)
+        cancellationToken.ThrowIfCancellationRequested();
+        IdempotencyTenantLifecycleRecord state = await lifecycle.GetAsync()
+            .ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        int iterationCount = Math.Min(maximumCount, MaximumIterationsPerCall);
+        for (int iteration = 0; iteration < iterationCount; iteration++)
         {
-            throw new InvalidOperationException("Tenant idempotency state is not purge eligible.");
-        }
-
-        IIdempotencyAdmissionDirectoryActor directory = actorProxyFactory
-            .CreateActorProxy<IIdempotencyAdmissionDirectoryActor>(
-                new ActorId(tenant),
-                IdempotencyAdmissionDirectoryActor.ActorTypeName);
-        foreach (IdempotencyTenantLifecycleReference reference in state.References.Take(maximumCount))
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            IIdempotencyAdmissionActor admission = actorProxyFactory
-                .CreateActorProxy<IIdempotencyAdmissionActor>(
-                    new ActorId(reference.ActorId),
-                    IdempotencyAdmissionActor.ActorTypeName);
-            bool purged = await admission.PurgeTombstoneAsync(
-                new IdempotencyAdmissionPurgeRequest(
-                    tenant,
-                    reference.DigestKeyVersion,
-                    reference.KeyDigest)).ConfigureAwait(false);
-            if (!purged)
+            if (state.State == IdempotencyTenantLifecycleState.Purged)
             {
-                continue;
+                break;
             }
 
-            await directory.PurgeAliasAsync(
-                new IdempotencyAdmissionDirectoryAlias(
-                    reference.DigestKeyVersion,
-                    reference.ActorId,
-                    reference.KeyDigest)).ConfigureAwait(false);
-            state = await lifecycle.AcknowledgePurgeAsync(reference.ActorId).ConfigureAwait(false);
+            int previousReferenceCount = state.References.Length;
+            state = await lifecycle
+                .PurgeAsync(IdempotencyTenantLifecycleActor.MaximumReferencesPerPurgeTurn)
+                .ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (state.State == IdempotencyTenantLifecycleState.Purged
+                || state.References.Length >= previousReferenceCount)
+            {
+                break;
+            }
         }
 
         return state;

@@ -23,6 +23,43 @@ namespace Hexalith.EventStore.Server.Tests.Actors;
 
 public class IdempotencyAdmissionActorTests
 {
+    [Theory]
+    [InlineData(IdempotencyAdmissionState.Reserved, IdempotencyAdmissionState.Pending, true)]
+    [InlineData(IdempotencyAdmissionState.Reserved, IdempotencyAdmissionState.Recoverable, true)]
+    [InlineData(IdempotencyAdmissionState.Pending, IdempotencyAdmissionState.UnknownProviderOutcome, true)]
+    [InlineData(IdempotencyAdmissionState.Recoverable, IdempotencyAdmissionState.Pending, true)]
+    [InlineData(IdempotencyAdmissionState.UnknownProviderOutcome, IdempotencyAdmissionState.Terminal, true)]
+    [InlineData(IdempotencyAdmissionState.Terminal, IdempotencyAdmissionState.Pending, false)]
+    [InlineData(IdempotencyAdmissionState.Expired, IdempotencyAdmissionState.Terminal, false)]
+    public void StateTransitions_AllowOnlyApprovedEdges(
+        IdempotencyAdmissionState from,
+        IdempotencyAdmissionState to,
+        bool expected)
+        => IdempotencyAdmissionStateTransitions.IsAllowed(from, to).ShouldBe(expected);
+
+    [Fact]
+    public async Task BeginAsync_StructurallyCorruptRecord_FailsClosedBeforeMutation()
+    {
+        (IdempotencyAdmissionActor actor, IActorStateManager stateManager, _) = CreateActor();
+        IdempotencyAdmissionRecord corrupt = Record(state: IdempotencyAdmissionState.Pending) with
+        {
+            ExecutionMessageId = null,
+        };
+        _ = stateManager.TryGetStateAsync<IdempotencyAdmissionRecord>(
+                IdempotencyAdmissionActor.StateName,
+                Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyAdmissionRecord>(true, corrupt));
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(
+            () => actor.BeginAsync(new IdempotencyAdmissionTransitionRequest(corrupt.FencingToken)));
+
+        await stateManager.DidNotReceive().SetStateAsync(
+            Arg.Any<string>(),
+            Arg.Any<IdempotencyAdmissionRecord>(),
+            Arg.Any<CancellationToken>());
+        await stateManager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
+    }
+
     private static readonly DateTimeOffset _now = new(2026, 7, 19, 12, 0, 0, TimeSpan.Zero);
 
     [Fact]
@@ -62,10 +99,10 @@ public class IdempotencyAdmissionActorTests
                     request.ActiveActorId,
                     IdempotencyAdmissionPromotionPhase.Stable);
             });
-        _ = proxy.AdmitAsync(Arg.Any<IdempotencyAdmissionRequest>())
+        _ = lifecycle.AdmitAsync(Arg.Any<IdempotencyTenantLifecycleAdmissionRequest>())
             .Returns(callInfo =>
             {
-                capturedRequest = callInfo.ArgAt<IdempotencyAdmissionRequest>(0);
+                capturedRequest = callInfo.ArgAt<IdempotencyTenantLifecycleAdmissionRequest>(0).Admission;
                 return new IdempotencyAdmissionResult(
                     IdempotencyAdmissionDecision.Execute,
                     1,
@@ -99,16 +136,186 @@ public class IdempotencyAdmissionActorTests
         _ = factory.Received().CreateActorProxy<IIdempotencyAdmissionActor>(
             Arg.Is<ActorId>(actorId => !actorId.ToString().Contains("opaque-secret-key", StringComparison.Ordinal)),
             IdempotencyAdmissionActor.ActorTypeName);
-        await proxy.Received(1).AdmitAsync(
-            Arg.Is<IdempotencyAdmissionRequest>(request =>
-                !request.KeyDigest.Contains("opaque-secret-key", StringComparison.Ordinal)
-                && !request.VerificationTag.Contains("opaque-secret-key", StringComparison.Ordinal)
-                && !request.IntentDigest.Contains("target-a", StringComparison.Ordinal)));
+        _ = await lifecycle.Received(1).AdmitAsync(
+            Arg.Is<IdempotencyTenantLifecycleAdmissionRequest>(request =>
+                !request.Admission.KeyDigest.Contains("opaque-secret-key", StringComparison.Ordinal)
+                && !request.Admission.VerificationTag.Contains("opaque-secret-key", StringComparison.Ordinal)
+                && !request.Admission.IntentDigest.Contains("target-a", StringComparison.Ordinal)
+                && request.Reference.ActorId == session.ActorId));
         await lifecycle.Received(1).RegisterAsync(
             Arg.Is<IdempotencyTenantLifecycleReference[]>(references =>
                 references.Length == 1
                 && !references[0].ActorId.Contains("opaque-secret-key", StringComparison.Ordinal)
                 && !references[0].KeyDigest.Contains("opaque-secret-key", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public async Task Coordinator_ValidateExecutionAsync_RequiresDurablePendingAuthority()
+    {
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        IIdempotencyAdmissionActor authority = Substitute.For<IIdempotencyAdmissionActor>();
+        _ = factory.CreateActorProxy<IIdempotencyAdmissionActor>(
+                Arg.Any<ActorId>(),
+                IdempotencyAdmissionActor.ActorTypeName)
+            .Returns(authority);
+        _ = authority.ValidateAuthorityAsync(Arg.Any<IdempotencyAdmissionAuthorityRequest>())
+            .Returns(Task.CompletedTask);
+        IdempotencyExecutionContextProtector protector = new(
+            new StaticIdempotencyDigestKeyProvider(
+                "v1",
+                new Dictionary<string, byte[]>(StringComparer.Ordinal)
+                {
+                    ["v1"] = Encoding.UTF8.GetBytes("0123456789abcdef0123456789abcdef"),
+                },
+                []),
+            factory);
+        var command = new Hexalith.EventStore.Server.Pipeline.Commands.SubmitCommand(
+            "01J00000000000000000000000",
+            "tenant-a",
+            "folders",
+            "folder-a",
+            "CreateFolderCommand",
+            [1],
+            "trace-original",
+            "user-a");
+        IdempotencyExecutionContext context = await protector.ProtectAsync(
+            "tenant-a:v1:key-digest",
+            7,
+            "v1",
+            command);
+        var session = new IdempotencyAdmissionSession(
+            context.AdmissionActorId,
+            context.FencingToken,
+            IdempotencyAdmissionDecision.Execute,
+            ExecutionContext: context,
+            ExecutionMessageId: context.MessageId,
+            ExecutionCorrelationId: context.CorrelationId);
+        IIdempotencyIntentAdapterRegistry registry = Substitute.For<IIdempotencyIntentAdapterRegistry>();
+        var coordinator = new IdempotencyAdmissionCoordinator(
+            factory,
+            CreateProtector(),
+            registry,
+            protector);
+
+        await coordinator.ValidateExecutionAsync(session, command);
+
+        await authority.Received(1).ValidateAuthorityAsync(
+            Arg.Is<IdempotencyAdmissionAuthorityRequest>(request =>
+                request.FencingToken == 7
+                && request.ExecutionMessageId == command.MessageId
+                && request.ExecutionCorrelationId == command.CorrelationId
+                && request.Purpose == IdempotencyExecutionPurpose.Execute));
+    }
+
+    [Fact]
+    public async Task Coordinator_ValidateExecutionCapabilityAsync_TamperedProofFailsBeforeActorAccess()
+    {
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        IIdempotencyAdmissionActor authority = Substitute.For<IIdempotencyAdmissionActor>();
+        _ = factory.CreateActorProxy<IIdempotencyAdmissionActor>(
+                Arg.Any<ActorId>(),
+                IdempotencyAdmissionActor.ActorTypeName)
+            .Returns(authority);
+        var protector = new IdempotencyExecutionContextProtector(
+            new StaticIdempotencyDigestKeyProvider(
+                "v1",
+                new Dictionary<string, byte[]>(StringComparer.Ordinal)
+                {
+                    ["v1"] = Encoding.UTF8.GetBytes("0123456789abcdef0123456789abcdef"),
+                },
+                []),
+            factory);
+        var command = new Hexalith.EventStore.Server.Pipeline.Commands.SubmitCommand(
+            "01J00000000000000000000000",
+            "tenant-a",
+            "folders",
+            "folder-a",
+            "CreateFolderCommand",
+            [1],
+            "trace-original",
+            "user-a");
+        IdempotencyExecutionContext signed = await protector.ProtectAsync(
+            "tenant-a:v1:key-digest",
+            7,
+            "v1",
+            command);
+        IdempotencyExecutionContext tampered = signed with { FencingToken = 8 };
+        var session = new IdempotencyAdmissionSession(
+            tampered.AdmissionActorId,
+            tampered.FencingToken,
+            IdempotencyAdmissionDecision.Execute,
+            ExecutionContext: tampered,
+            ExecutionMessageId: tampered.MessageId,
+            ExecutionCorrelationId: tampered.CorrelationId);
+        var coordinator = new IdempotencyAdmissionCoordinator(
+            factory,
+            CreateProtector(),
+            Substitute.For<IIdempotencyIntentAdapterRegistry>(),
+            protector);
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(
+            () => coordinator.ValidateExecutionCapabilityAsync(session, command));
+
+        _ = factory.DidNotReceiveWithAnyArgs().CreateActorProxy<IIdempotencyAdmissionActor>(
+            default!,
+            default!);
+        await authority.DidNotReceive().ValidateAuthorityAsync(
+            Arg.Any<IdempotencyAdmissionAuthorityRequest>());
+    }
+
+    [Fact]
+    public async Task Coordinator_ValidateExecutionAsync_UnknownOutcomeRequiresExactReconciliationAuthority()
+    {
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        IIdempotencyAdmissionActor authority = Substitute.For<IIdempotencyAdmissionActor>();
+        _ = factory.CreateActorProxy<IIdempotencyAdmissionActor>(
+                Arg.Any<ActorId>(),
+                IdempotencyAdmissionActor.ActorTypeName)
+            .Returns(authority);
+        var keyProvider = new StaticIdempotencyDigestKeyProvider(
+            "v1",
+            new Dictionary<string, byte[]>(StringComparer.Ordinal)
+            {
+                ["v1"] = Encoding.UTF8.GetBytes("0123456789abcdef0123456789abcdef"),
+            },
+            []);
+        var protector = new IdempotencyExecutionContextProtector(keyProvider, factory);
+        var command = new Hexalith.EventStore.Server.Pipeline.Commands.SubmitCommand(
+            "01J00000000000000000000000",
+            "tenant-a",
+            "folders",
+            "folder-a",
+            "CreateFolderCommand",
+            [1],
+            "trace-original",
+            "user-a");
+        IdempotencyExecutionContext context = await protector.ProtectAsync(
+            "tenant-a:v1:key-digest",
+            7,
+            "v1",
+            command);
+        var session = new IdempotencyAdmissionSession(
+            context.AdmissionActorId,
+            context.FencingToken,
+            IdempotencyAdmissionDecision.UnknownProviderOutcome,
+            ExecutionContext: context,
+            ExecutionMessageId: context.MessageId,
+            ExecutionCorrelationId: context.CorrelationId);
+        var coordinator = new IdempotencyAdmissionCoordinator(
+            factory,
+            CreateProtector(),
+            Substitute.For<IIdempotencyIntentAdapterRegistry>(),
+            protector);
+
+        await coordinator.ValidateExecutionAsync(session, command);
+
+        await authority.Received(1).ValidateAuthorityAsync(
+            Arg.Is<IdempotencyAdmissionAuthorityRequest>(request =>
+                request.FencingToken == context.FencingToken
+                && request.DigestKeyVersion == context.DigestKeyVersion
+                && request.ExecutionMessageId == context.MessageId
+                && request.ExecutionCorrelationId == context.CorrelationId
+                && request.Purpose == IdempotencyExecutionPurpose.Reconcile));
     }
 
     [Fact]
@@ -136,6 +343,107 @@ public class IdempotencyAdmissionActorTests
         _ = factory.DidNotReceiveWithAnyArgs().CreateActorProxy<IIdempotencyAdmissionActor>(
             default!,
             default!);
+    }
+
+    [Fact]
+    public async Task Coordinator_PostDeletionLifecycleRejectsBeforeAdmissionActorAccess()
+    {
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        IIdempotencyTenantLifecycleActor lifecycle = Substitute.For<IIdempotencyTenantLifecycleActor>();
+        _ = factory.CreateActorProxy<IIdempotencyTenantLifecycleActor>(
+                Arg.Any<ActorId>(),
+                IdempotencyTenantLifecycleActor.ActorTypeName)
+            .Returns(lifecycle);
+        _ = lifecycle.RegisterAsync(Arg.Any<IdempotencyTenantLifecycleReference[]>())
+            .Returns<Task>(_ => throw new InvalidOperationException("tenant deletion"));
+        IIdempotencyIntentAdapterRegistry registry = Substitute.For<IIdempotencyIntentAdapterRegistry>();
+        var command = new Hexalith.EventStore.Server.Pipeline.Commands.SubmitCommand(
+            "01J00000000000000000000000",
+            "tenant-a",
+            "folders",
+            "folder-a",
+            "CreateFolderCommand",
+            [1],
+            "trace-a",
+            "user-a",
+            IdempotencyKey: "opaque-secret-key");
+        registry.Resolve(command).Returns(Descriptor("target-a"));
+        var coordinator = new IdempotencyAdmissionCoordinator(
+            factory,
+            CreateProtector(),
+            registry,
+            CreateExecutionContextProtector());
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => coordinator.AdmitAsync(command));
+
+        _ = factory.DidNotReceiveWithAnyArgs().CreateActorProxy<IIdempotencyAdmissionActor>(
+            default!,
+            default!);
+        _ = factory.DidNotReceiveWithAnyArgs().CreateActorProxy<IIdempotencyAdmissionDirectoryActor>(
+            default!,
+            default!);
+    }
+
+    [Fact]
+    public async Task Coordinator_DeletionAfterRegistrationRejectsInsideSerializedAdmissionTurn()
+    {
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        IIdempotencyAdmissionActor admission = Substitute.For<IIdempotencyAdmissionActor>();
+        IIdempotencyAdmissionDirectoryActor directory = Substitute.For<IIdempotencyAdmissionDirectoryActor>();
+        IIdempotencyTenantLifecycleActor lifecycle = Substitute.For<IIdempotencyTenantLifecycleActor>();
+        IIdempotencyLegacyInventoryActor inventory = Substitute.For<IIdempotencyLegacyInventoryActor>();
+        _ = factory.CreateActorProxy<IIdempotencyAdmissionActor>(
+                Arg.Any<ActorId>(),
+                IdempotencyAdmissionActor.ActorTypeName)
+            .Returns(admission);
+        _ = factory.CreateActorProxy<IIdempotencyAdmissionDirectoryActor>(
+                Arg.Any<ActorId>(),
+                IdempotencyAdmissionDirectoryActor.ActorTypeName)
+            .Returns(directory);
+        _ = factory.CreateActorProxy<IIdempotencyTenantLifecycleActor>(
+                Arg.Any<ActorId>(),
+                IdempotencyTenantLifecycleActor.ActorTypeName)
+            .Returns(lifecycle);
+        _ = factory.CreateActorProxy<IIdempotencyLegacyInventoryActor>(
+                Arg.Any<ActorId>(),
+                IdempotencyLegacyInventoryActor.ActorTypeName)
+            .Returns(inventory);
+        _ = admission.InspectAsync().Returns(new IdempotencyAdmissionInspection(false));
+        _ = inventory.InspectAsync(Arg.Any<IdempotencyAdmissionDirectoryAlias[]>())
+            .Returns(new IdempotencyLegacyInventoryInspection(IdempotencyLegacyInventoryDecision.NoLegacy));
+        _ = directory.ResolveAsync(Arg.Any<IdempotencyAdmissionDirectoryRequest>())
+            .Returns(call => new IdempotencyAdmissionDirectoryResult(
+                call.ArgAt<IdempotencyAdmissionDirectoryRequest>(0).ActiveActorId,
+                IdempotencyAdmissionPromotionPhase.Stable));
+        _ = lifecycle.AdmitAsync(Arg.Any<IdempotencyTenantLifecycleAdmissionRequest>())
+            .Returns<Task<IdempotencyAdmissionResult>>(_ =>
+                throw new InvalidOperationException("tenant deletion won serialized admission"));
+        var command = new Hexalith.EventStore.Server.Pipeline.Commands.SubmitCommand(
+            "01J00000000000000000000000",
+            "tenant-a",
+            "folders",
+            "folder-a",
+            "CreateFolderCommand",
+            [1],
+            "trace-a",
+            "user-a",
+            IdempotencyKey: "opaque-secret-key");
+        IIdempotencyIntentAdapterRegistry registry = Substitute.For<IIdempotencyIntentAdapterRegistry>();
+        registry.Resolve(command).Returns(Descriptor("target-a"));
+        var coordinator = new IdempotencyAdmissionCoordinator(
+            factory,
+            CreateProtector(),
+            registry,
+            CreateExecutionContextProtector());
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => coordinator.AdmitAsync(command));
+
+        await lifecycle.Received(1).RegisterAsync(Arg.Any<IdempotencyTenantLifecycleReference[]>());
+        _ = await lifecycle.Received(1).AdmitAsync(
+            Arg.Is<IdempotencyTenantLifecycleAdmissionRequest>(request =>
+                request.Reference.ActorId.EndsWith(request.Reference.KeyDigest, StringComparison.Ordinal)
+                && request.Admission.KeyDigest == request.Reference.KeyDigest));
+        _ = await admission.DidNotReceive().AdmitAsync(Arg.Any<IdempotencyAdmissionRequest>());
     }
 
     [Fact]
@@ -194,7 +502,8 @@ public class IdempotencyAdmissionActorTests
             .Returns(new IdempotencyLegacyInventoryInspection(IdempotencyLegacyInventoryDecision.NoLegacy));
         _ = source.InspectAsync().Returns(new IdempotencyAdmissionInspection(true, retainedRecord));
         _ = target.InspectAsync().Returns(new IdempotencyAdmissionInspection(false));
-        _ = source.AdmitAsync(Arg.Any<IdempotencyAdmissionRequest>())
+        _ = lifecycle.AdmitAsync(Arg.Is<IdempotencyTenantLifecycleAdmissionRequest>(request =>
+                request.Reference.ActorId == retained.ActorId))
             .Returns(_ =>
             {
                 calls.Add("classify");
@@ -234,7 +543,8 @@ public class IdempotencyAdmissionActorTests
                     next == IdempotencyAdmissionPromotionPhase.Stable ? null : retained.ActorId,
                     next == IdempotencyAdmissionPromotionPhase.Stable ? null : active.ActorId);
             });
-        _ = target.AdmitAsync(Arg.Any<IdempotencyAdmissionRequest>())
+        _ = lifecycle.AdmitAsync(Arg.Is<IdempotencyTenantLifecycleAdmissionRequest>(request =>
+                request.Reference.ActorId == active.ActorId))
             .Returns(_ =>
             {
                 calls.Add("admit");
@@ -363,7 +673,7 @@ public class IdempotencyAdmissionActorTests
             .Returns(new IdempotencyAdmissionDirectoryResult(
                 identity.ActorId,
                 IdempotencyAdmissionPromotionPhase.Stable));
-        _ = target.AdmitAsync(Arg.Any<IdempotencyAdmissionRequest>())
+        _ = lifecycle.AdmitAsync(Arg.Any<IdempotencyTenantLifecycleAdmissionRequest>())
             .Returns(new IdempotencyAdmissionResult(
                 IdempotencyAdmissionDecision.Replay,
                 1,
@@ -484,6 +794,33 @@ public class IdempotencyAdmissionActorTests
         pending.FencingToken.ShouldBe(recoverable.FencingToken);
         pending.ExecutionMessageId.ShouldBe(recoverable.ExecutionMessageId);
         pending.ExecutionCorrelationId.ShouldBe(recoverable.ExecutionCorrelationId);
+    }
+
+    [Fact]
+    public async Task MarkRecoveryAsync_PendingTransitionsDirectlyToRecoverableUnderSameFence()
+    {
+        (IdempotencyAdmissionActor actor, IActorStateManager stateManager, _) = CreateActor();
+        IdempotencyAdmissionRecord pending = Record(state: IdempotencyAdmissionState.Pending);
+        IdempotencyAdmissionRecord? recoverable = null;
+        _ = stateManager.TryGetStateAsync<IdempotencyAdmissionRecord>(
+                IdempotencyAdmissionActor.StateName,
+                Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyAdmissionRecord>(true, pending));
+        _ = stateManager.SetStateAsync(
+                IdempotencyAdmissionActor.StateName,
+                Arg.Do<IdempotencyAdmissionRecord>(record => recoverable = record),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        await actor.MarkRecoveryAsync(
+            new IdempotencyAdmissionRecoveryRequest(
+                pending.FencingToken,
+                IdempotencyAdmissionState.Recoverable));
+
+        recoverable.ShouldNotBeNull().State.ShouldBe(IdempotencyAdmissionState.Recoverable);
+        recoverable.FencingToken.ShouldBe(pending.FencingToken);
+        recoverable.ExecutionMessageId.ShouldBe(pending.ExecutionMessageId);
+        recoverable.ExecutionCorrelationId.ShouldBe(pending.ExecutionCorrelationId);
     }
 
     [Fact]
@@ -863,9 +1200,14 @@ public class IdempotencyAdmissionActorTests
     {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         ILogger<IdempotencyAdmissionActor> logger = Substitute.For<ILogger<IdempotencyAdmissionActor>>();
+        ActorTimerManager timerManager = Substitute.For<ActorTimerManager>();
         var timeProvider = new FakeTimeProvider(now ?? _now);
         ActorHost host = ActorHost.CreateForTest<IdempotencyAdmissionActor>(
-            new ActorTestOptions { ActorId = new ActorId("tenant-a:v1:key-digest") });
+            new ActorTestOptions
+            {
+                ActorId = new ActorId("tenant-a:v1:key-digest"),
+                TimerManager = timerManager,
+            });
         var actor = new IdempotencyAdmissionActor(host, logger, timeProvider);
         ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
         return (actor, stateManager, timeProvider);

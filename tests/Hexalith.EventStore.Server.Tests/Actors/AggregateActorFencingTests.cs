@@ -1,5 +1,8 @@
 using System.Text;
 
+using Dapr.Actors;
+using Dapr.Actors.Client;
+
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
@@ -61,9 +64,43 @@ public class AggregateActorFencingTests
     }
 
     [Fact]
+    public async Task ProcessFencedCommandAsync_NonCurrentDurableAuthorityRejectsBeforeProtectedWork()
+    {
+        IIdempotencyAdmissionActor authority = Substitute.For<IIdempotencyAdmissionActor>();
+        _ = authority.ValidateAuthorityAsync(Arg.Any<IdempotencyAdmissionAuthorityRequest>())
+            .Returns<Task>(_ => throw new InvalidOperationException("terminal authority"));
+        IdempotencyExecutionContextProtector protector = CreateProtector(authority);
+        ActorTestContext actorContext = AggregateActorTestHelper.CreateActor(
+            executionContextProtector: protector);
+        CommandEnvelope envelope = AggregateActorTestHelper.CreateTestEnvelope(correlationId: "trace-a");
+        IdempotencyExecutionContext executionContext = await protector.ProtectAsync(
+            "test-tenant:v1:key-digest",
+            7,
+            "v1",
+            ToSubmitCommand(envelope));
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(
+            () => actorContext.Actor.ProcessFencedCommandAsync(
+                new FencedCommandEnvelope(envelope, executionContext)));
+
+        await authority.Received(1).ValidateAuthorityAsync(
+            Arg.Is<IdempotencyAdmissionAuthorityRequest>(request =>
+                request.FencingToken == 7
+                && request.Purpose == IdempotencyExecutionPurpose.Execute));
+        actorContext.StateManager.ReceivedCalls().ShouldBeEmpty();
+        _ = actorContext.Invoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default);
+    }
+
+    [Fact]
     public async Task ReconcileFencedCommandAsync_ExactResult_ReadsOnlyIdempotencyState()
     {
-        IdempotencyExecutionContextProtector protector = CreateProtector();
+        IIdempotencyAdmissionActor authority = Substitute.For<IIdempotencyAdmissionActor>();
+        _ = authority.ValidateAuthorityAsync(Arg.Is<IdempotencyAdmissionAuthorityRequest>(request =>
+                request.FencingToken == 7
+                && request.DigestKeyVersion == "v1"
+                && request.Purpose == IdempotencyExecutionPurpose.Reconcile))
+            .Returns(Task.CompletedTask);
+        IdempotencyExecutionContextProtector protector = CreateProtector(authority);
         ActorTestContext actorContext = AggregateActorTestHelper.CreateActor(
             executionContextProtector: protector);
         CommandEnvelope envelope = AggregateActorTestHelper.CreateTestEnvelope(
@@ -95,6 +132,13 @@ public class AggregateActorFencingTests
 
         result.Outcome.ShouldBe(IdempotencyCheckOutcome.ExactTerminalDuplicate);
         result.Result.ShouldBe(stored.ToResult());
+        await authority.Received(1).ValidateAuthorityAsync(
+            Arg.Is<IdempotencyAdmissionAuthorityRequest>(request =>
+                request.FencingToken == 7
+                && request.DigestKeyVersion == "v1"
+                && request.ExecutionMessageId == envelope.MessageId
+                && request.ExecutionCorrelationId == envelope.CorrelationId
+                && request.Purpose == IdempotencyExecutionPurpose.Reconcile));
         _ = actorContext.Invoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default);
         await actorContext.StateManager.DidNotReceive().SetStateAsync(
             Arg.Any<string>(),
@@ -103,15 +147,31 @@ public class AggregateActorFencingTests
         await actorContext.StateManager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
-    private static IdempotencyExecutionContextProtector CreateProtector()
-        => new(
+    private static IdempotencyExecutionContextProtector CreateProtector(
+        IIdempotencyAdmissionActor? authority = null)
+    {
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        bool configureDefaultAuthority = authority is null;
+        authority ??= Substitute.For<IIdempotencyAdmissionActor>();
+        _ = factory.CreateActorProxy<IIdempotencyAdmissionActor>(
+                Arg.Any<ActorId>(),
+                IdempotencyAdmissionActor.ActorTypeName)
+            .Returns(authority);
+        if (configureDefaultAuthority)
+        {
+            _ = authority.ValidateAuthorityAsync(Arg.Any<IdempotencyAdmissionAuthorityRequest>())
+                .Returns(Task.CompletedTask);
+        }
+        return new IdempotencyExecutionContextProtector(
             new StaticIdempotencyDigestKeyProvider(
                 "v1",
                 new Dictionary<string, byte[]>(StringComparer.Ordinal)
                 {
                     ["v1"] = Encoding.UTF8.GetBytes("0123456789abcdef0123456789abcdef"),
                 },
-                []));
+                []),
+            factory);
+    }
 
     private static SubmitCommand ToSubmitCommand(CommandEnvelope envelope)
         => new(

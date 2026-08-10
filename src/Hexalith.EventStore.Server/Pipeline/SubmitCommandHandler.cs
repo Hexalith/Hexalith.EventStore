@@ -233,6 +233,13 @@ public partial class SubmitCommandHandler(
 
         string diagnosticMessageId = admissionSession is null ? request.MessageId : "protected";
 
+        if (admissionSession is not null && idempotencyAdmissionCoordinator is not null)
+        {
+            await idempotencyAdmissionCoordinator
+                .ValidateExecutionCapabilityAsync(admissionSession, executionRequest, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
         CommandProcessingResult processingResult;
         bool sideEffectBoundaryCrossed = false;
         try
@@ -286,45 +293,25 @@ public partial class SubmitCommandHandler(
             throw;
         }
 
-        if (admissionSession is not null && idempotencyAdmissionCoordinator is not null)
-        {
-            try
-            {
-                await idempotencyAdmissionCoordinator
-                    .ValidateExecutionAsync(admissionSession, executionRequest, cancellationToken)
-                    .ConfigureAwait(false);
-                await idempotencyAdmissionCoordinator
-                    .CompleteAsync(admissionSession, processingResult, cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            catch (Exception)
-            {
-                await MarkRecoveryStateAsync(
-                    idempotencyAdmissionCoordinator,
-                    admissionSession,
-                    IdempotencyAdmissionState.UnknownProviderOutcome,
-                    logger).ConfigureAwait(false);
-                throw;
-            }
-        }
-
         if (!processingResult.Accepted
-            && string.Equals(processingResult.ErrorMessage, "command_identity_conflict", StringComparison.Ordinal)) {
-            throw new CommandIdentityConflictException(
-                executionMessageId,
-                request.CorrelationId,
-                request.Tenant);
-        }
-
-        if (!processingResult.Accepted
-            && string.Equals(processingResult.ErrorMessage, "idempotency_key_expired", StringComparison.Ordinal))
+            && (string.Equals(processingResult.ErrorMessage, "command_identity_conflict", StringComparison.Ordinal)
+                || string.Equals(processingResult.ErrorMessage, "idempotency_key_expired", StringComparison.Ordinal)))
         {
-            throw new IdempotencyKeyExpiredException(request.CorrelationId);
+            await CompleteAdmissionWithRecoveryAsync(
+                idempotencyAdmissionCoordinator,
+                admissionSession,
+                executionRequest,
+                processingResult,
+                logger,
+                cancellationToken).ConfigureAwait(false);
+            ThrowDeterministicFailure(request, executionMessageId, processingResult);
         }
 
         CommandStatusRecord? observedStatus = null;
         bool statusReadSucceeded = false;
+        CommandStatusRecord? finalStatus = null;
         try {
+            try {
             observedStatus = await statusStore
                 .ReadStatusAsync(request.Tenant, executionMessageId, cancellationToken)
                 .ConfigureAwait(false);
@@ -463,7 +450,7 @@ public partial class SubmitCommandHandler(
         }
 
         // Read final status once for both activity trackers (advisory, rule #12)
-        CommandStatusRecord? finalStatus = observedStatus;
+        finalStatus = observedStatus;
 
         // Track command in admin activity index (advisory, rule #12)
         if (activityTracker is not null) {
@@ -519,16 +506,31 @@ public partial class SubmitCommandHandler(
             }
         }
 
+        }
+        catch (Exception) when (admissionSession is not null && idempotencyAdmissionCoordinator is not null) {
+            await MarkRecoveryStateAsync(
+                idempotencyAdmissionCoordinator,
+                admissionSession,
+                IdempotencyAdmissionState.UnknownProviderOutcome,
+                logger).ConfigureAwait(false);
+            throw;
+        }
+
+        await CompleteAdmissionWithRecoveryAsync(
+            idempotencyAdmissionCoordinator,
+            admissionSession,
+            executionRequest,
+            processingResult,
+            logger,
+            cancellationToken).ConfigureAwait(false);
+
         if (!processingResult.Accepted) {
-            CommandStatusRecord? status = await statusStore
-                .ReadStatusAsync(request.Tenant, executionMessageId, cancellationToken)
-                .ConfigureAwait(false);
             ThrowDeterministicFailure(
                 request,
                 executionMessageId,
                 processingResult,
-                status?.RejectionEventType,
-                status?.FailureReason);
+                finalStatus?.RejectionEventType,
+                finalStatus?.FailureReason);
         }
 
         Log.CommandRouted(logger, request.CorrelationId);
@@ -694,6 +696,35 @@ public partial class SubmitCommandHandler(
             logger.LogError(
                 recoveryException,
                 "Unable to persist unknown idempotency outcome. Stage=IdempotencyUnknownOutcomePersistenceFailed");
+        }
+    }
+
+    private static async Task CompleteAdmissionWithRecoveryAsync(
+        IIdempotencyAdmissionCoordinator? coordinator,
+        IdempotencyAdmissionSession? session,
+        SubmitCommand command,
+        CommandProcessingResult result,
+        ILogger logger,
+        CancellationToken cancellationToken)
+    {
+        if (coordinator is null || session is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await coordinator.ValidateExecutionAsync(session, command, cancellationToken).ConfigureAwait(false);
+            await coordinator.CompleteAsync(session, result, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            await MarkRecoveryStateAsync(
+                coordinator,
+                session,
+                IdempotencyAdmissionState.UnknownProviderOutcome,
+                logger).ConfigureAwait(false);
+            throw;
         }
     }
 

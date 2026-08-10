@@ -143,8 +143,12 @@ public partial class AggregateActor(
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(request.Command);
         ArgumentNullException.ThrowIfNull(request.ExecutionContext);
-        await EnsureExecutionFenceAsync(request.ExecutionContext, request.Command, CancellationToken.None)
-            .ConfigureAwait(false);
+        IdempotencyExecutionContextProtector protector = executionContextProtector
+            ?? throw new InvalidOperationException("Idempotency execution-fence validation is unavailable.");
+        await protector.ValidateReconciliationAsync(
+            request.ExecutionContext,
+            request.Command,
+            CancellationToken.None).ConfigureAwait(false);
         var tenantValidator = new TenantValidator(Host.LoggerFactory.CreateLogger<TenantValidator>());
         tenantValidator.Validate(request.Command.TenantId, Host.Id.GetId());
         var checker = new IdempotencyChecker(

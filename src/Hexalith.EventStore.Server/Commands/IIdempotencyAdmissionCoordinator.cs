@@ -16,6 +16,12 @@ public interface IIdempotencyAdmissionCoordinator
         IdempotencyAdmissionSession session,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Validates only the signed capability and exact command boundary before state mutation.</summary>
+    Task ValidateExecutionCapabilityAsync(
+        IdempotencyAdmissionSession session,
+        SubmitCommand command,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Validates the signed current-fence capability against an exact execution boundary.</summary>
     Task ValidateExecutionAsync(
         IdempotencyAdmissionSession session,

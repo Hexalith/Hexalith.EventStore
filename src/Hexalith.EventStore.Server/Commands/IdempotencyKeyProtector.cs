@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Server.Actors;
 
 namespace Hexalith.EventStore.Server.Commands;
 
@@ -61,7 +62,7 @@ public sealed class IdempotencyKeyProtector(IIdempotencyDigestKeyProvider keyPro
                 string keyDigest = Base64Url(ComputeHmac(tenantKey, _keyDomain, rawKeyBytes));
                 string verificationTag = Base64Url(ComputeHmac(tenantKey, _verificationDomain, rawKeyBytes));
                 string intentDigest = Base64Url(ComputeHmac(tenantKey, _intentDomain, descriptor.CanonicalIntent));
-                string actorId = string.Concat(tenant, ":", version, ":", keyDigest);
+                string actorId = IdempotencyAdmissionActorIdentity.Build(tenant, version, keyDigest);
                 aliases.Add(new IdempotencyProtectedIdentity(
                     actorId,
                     tenant,

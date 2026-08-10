@@ -2,17 +2,24 @@ using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Text;
 
+using Dapr.Actors;
+using Dapr.Actors.Client;
+
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 
 namespace Hexalith.EventStore.Server.Commands;
 
 /// <summary>Creates and validates domain-separated internal fence capabilities.</summary>
-public sealed class IdempotencyExecutionContextProtector(IIdempotencyDigestKeyProvider keyProvider)
+public sealed class IdempotencyExecutionContextProtector(
+    IIdempotencyDigestKeyProvider keyProvider,
+    IActorProxyFactory? actorProxyFactory = null)
 {
     private static readonly byte[] _proofDomain = "execution-fence-v1\0"u8.ToArray();
     private readonly IIdempotencyDigestKeyProvider _keyProvider = keyProvider
         ?? throw new ArgumentNullException(nameof(keyProvider));
+    private readonly IActorProxyFactory? _actorProxyFactory = actorProxyFactory;
 
     /// <summary>Creates a capability bound to the exact protected command boundary.</summary>
     public async ValueTask<IdempotencyExecutionContext> ProtectAsync(
@@ -46,6 +53,20 @@ public sealed class IdempotencyExecutionContextProtector(IIdempotencyDigestKeyPr
         SubmitCommand command,
         CancellationToken cancellationToken = default)
     {
+        await ValidateCapabilityAsync(context, command, cancellationToken).ConfigureAwait(false);
+        await ValidateProofAndAuthorityAsync(
+            context,
+            IdempotencyExecutionPurpose.Execute,
+            cancellationToken,
+            proofAlreadyValidated: true).ConfigureAwait(false);
+    }
+
+    /// <summary>Validates the signed capability and command binding without consulting mutable actor state.</summary>
+    public async ValueTask ValidateCapabilityAsync(
+        IdempotencyExecutionContext context,
+        SubmitCommand command,
+        CancellationToken cancellationToken = default)
+    {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(command);
         ValidateBoundary(
@@ -75,7 +96,79 @@ public sealed class IdempotencyExecutionContextProtector(IIdempotencyDigestKeyPr
             command.Domain,
             command.AggregateId,
             command.CommandType);
-        await ValidateProofAsync(context, cancellationToken).ConfigureAwait(false);
+        await ValidateProofAndAuthorityAsync(
+            context,
+            IdempotencyExecutionPurpose.Execute,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    internal async ValueTask ValidateReconciliationAsync(
+        IdempotencyExecutionContext context,
+        SubmitCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(command);
+        ValidateBoundary(
+            context,
+            command.MessageId,
+            command.CorrelationId,
+            command.Tenant,
+            command.Domain,
+            command.AggregateId,
+            command.CommandType);
+        await ValidateProofAndAuthorityAsync(
+            context,
+            IdempotencyExecutionPurpose.Reconcile,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    internal async ValueTask ValidateReconciliationAsync(
+        IdempotencyExecutionContext context,
+        CommandEnvelope command,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(command);
+        ValidateBoundary(
+            context,
+            command.MessageId,
+            command.CorrelationId,
+            command.TenantId,
+            command.Domain,
+            command.AggregateId,
+            command.CommandType);
+        await ValidateProofAndAuthorityAsync(
+            context,
+            IdempotencyExecutionPurpose.Reconcile,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    private async ValueTask ValidateProofAndAuthorityAsync(
+        IdempotencyExecutionContext context,
+        IdempotencyExecutionPurpose purpose,
+        CancellationToken cancellationToken,
+        bool proofAlreadyValidated = false)
+    {
+        if (!proofAlreadyValidated)
+        {
+            await ValidateProofAsync(context, cancellationToken).ConfigureAwait(false);
+        }
+        cancellationToken.ThrowIfCancellationRequested();
+        IActorProxyFactory factory = _actorProxyFactory
+            ?? throw new InvalidOperationException(
+                "Durable idempotency execution-authority validation is unavailable.");
+        IIdempotencyAdmissionActor authority = factory.CreateActorProxy<IIdempotencyAdmissionActor>(
+            new ActorId(context.AdmissionActorId),
+            IdempotencyAdmissionActor.ActorTypeName);
+        await authority.ValidateAuthorityAsync(
+            new IdempotencyAdmissionAuthorityRequest(
+                context.FencingToken,
+                context.DigestKeyVersion,
+                context.MessageId,
+                context.CorrelationId,
+                purpose)).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
     }
 
     private async ValueTask ValidateProofAsync(
