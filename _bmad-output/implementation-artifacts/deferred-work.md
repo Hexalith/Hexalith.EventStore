@@ -1113,3 +1113,11 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
   summary: The Story 4.5 source-binding validator does not fail when an evidence-relevant source path is omitted.
   evidence: `validate_source_binding` verifies only the rows present in `source-state.md` and has no exact expected-path set.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-31400593510-fix-ci-cd.md`
+  summary: Live-lane packaging guardrail still matches only the exact `dotnet test tests/Hexalith.EventStore.Server.Tests/` substring and does not cover `.csproj`, unquoted alternate path, or `--project` equivalents.
+  evidence: Blind-hunter and edge-case review of the CI fix noted realistic alternate invocation forms that would evade the exact-substring forbid while still running Server.Tests as a suite; hardening was deferred to keep this hotfix scoped to the failing CI assertions and Design Notes golden shapes.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-31400593510-fix-ci-cd.md`
+  summary: Builds `dapr-init` still uses one shared version for CLI install and runtime init, so EventStore cannot pin CLI 1.18.0 with runtime 1.18.1 without a submodule change.
+  evidence: Integration failure 31413307050 and Ask First in the approved spec; restoring shared 1.18.0 unblocks CI but leaves CLI/runtime decoupling as a Builds enhancement.

@@ -21,7 +21,7 @@ permissions:
   contents: read
 
 env:
-  DAPR_VERSION: '1.18.1'
+  DAPR_VERSION: '1.18.0'
   UseHexalithProjectReferences: 'false'
 
 jobs:

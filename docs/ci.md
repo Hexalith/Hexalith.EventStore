@@ -53,13 +53,21 @@ workflows.
 |------|----------|-------------------|
 | Deterministic release gate | Contracts, Client, Testing, SignalR, Admin, AppHost, DomainService, QueryRouting, Sample, Testing.Integration, RestApi.Generators, and `tests/Hexalith.EventStore.Server.Tests` | Blocking in shared `domain-ci.yml@main` through `unit-test-projects`. `Server.Tests` runs unfiltered because live-sidecar tests moved out. |
 | Semantic-release governance | `tests/Hexalith.EventStore.Contracts.Tests/Packaging/Fixtures/semantic-release-github-success.mjs` | Blocking EventStore-owned CI job. It provisions Node 22, installs exactly `package-lock.json` with `npm ci`, and exercises both release-history cases against an Undici-guarded loopback-only fake GitHub boundary. |
-| Live-sidecar DAPR lane | `tests/Hexalith.EventStore.Server.LiveSidecar.Tests` | Dedicated `Integration Tests` workflow after `dapr init`. This lane is visible but not part of the semantic-release gate. |
+| Live-sidecar DAPR lane | `tests/Hexalith.EventStore.Server.LiveSidecar.Tests` | Dedicated `Integration Tests` workflow after `dapr init`. This lane is visible but not part of the semantic-release gate. After the live suite, Integration Tests includes Story 4.14 OQ8 evidence capture: `dotnet build` of `Server.Tests`, pinned `-method` support oracles, and `--support-ctrf`. That is not a full `dotnet test` of `Server.Tests` as the live lane. |
 | Advisory browser/governance/evidence scaffolds | `tests/Hexalith.EventStore.Admin.UI.E2E`, `tests/Hexalith.EventStore.DeferredWorkGovernance.Tests`, `tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests` | Separate `Advisory Tests` workflow. It installs Playwright Chromium for the browser suite and runs with `continue-on-error`, preserving push/PR signal without making semantic-release depend on these suites. |
 | Full Aspire E2E | `tests/Hexalith.EventStore.IntegrationTests` | Deferred until a reliable Aspire-in-CI topology exists. |
 
+`integration.yml` pins a shared `DAPR_VERSION` consumed by `references/Hexalith.Builds/Github/dapr-init`
+for both CLI install (`dapr/setup-dapr`) and `dapr init --runtime-version`. That value must be an
+installable Dapr **CLI** release tag (currently `1.18.0`). It is not the Dapr NuGet
+`PackageVersion` (owned separately in `references/Hexalith.Builds/Props/Directory.Packages.props`,
+currently `1.18.5`). Do not pin a runtime-only tag such as `1.18.1` as `DAPR_VERSION` unless
+Builds gains separate CLI and runtime inputs.
+
 Do not reintroduce a `Category!=LiveSidecar` filter to make `Server.Tests`
 deterministic. Live-sidecar coverage belongs in the live-sidecar project and
-workflow so the deterministic release gate can remain unfiltered.
+workflow so the deterministic release gate can remain unfiltered. Do not run
+`dotnet test tests/Hexalith.EventStore.Server.Tests/` as the live lane.
 
 Story 4.5's append-durability race and generic ETag control remain in this
 dedicated LiveSidecar lane. Their hash-bound capture is an architecture evidence
