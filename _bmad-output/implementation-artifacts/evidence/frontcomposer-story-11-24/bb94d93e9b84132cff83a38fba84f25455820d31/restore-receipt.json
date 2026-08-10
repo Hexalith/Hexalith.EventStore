@@ -1,0 +1,39 @@
+{
+  "schema": "hexalith.eventstore.frontcomposer-runtime-restore.v1",
+  "captured_at": "2026-08-10T07:06:11Z",
+  "source_sha": "bb94d93e9b84132cff83a38fba84f25455820d31",
+  "version": "3.91.1",
+  "environment": {
+    "dotnet_sdk": "10.0.302",
+    "operating_system": "Linux 6.6.87.2-microsoft-standard-WSL2 x86_64"
+  },
+  "retrieval": {
+    "source": "https://api.nuget.org/v3-flatcontainer/",
+    "fresh_download": true,
+    "archive_count": 14,
+    "sha256_manifest": "nuget-sha256.txt",
+    "result": "passed"
+  },
+  "signature_verification": {
+    "command": "dotnet nuget verify --all <isolated-packages>/*.nupkg",
+    "verified_count": 14,
+    "result": "passed"
+  },
+  "inventory_validation": {
+    "command": "python3 tools/validate-release-packages.py <isolated-packages> 3.91.1",
+    "validator_sha256": "c04bcea6193015f0e4c191814d5b59c4b588a503ecce46bc8d8e1c3a22034171",
+    "validated_count": 14,
+    "result": "passed"
+  },
+  "consumer_validation": {
+    "command": "python3 scripts/validate-consumer-package-references.py <isolated-packages>",
+    "validator_sha256": "5672c0642cbbd6db2c69a56680aeb96686852e544b4acf57bfc5a4211f14707e",
+    "fresh_per_consumer_package_cache": true,
+    "project_edges_allowed": false,
+    "library_consumers_passed": 13,
+    "tool_consumers_passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "result": "passed"
+  }
+}

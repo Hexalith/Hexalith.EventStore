@@ -1,0 +1,83 @@
+{
+  "schema": "hexalith.eventstore.frontcomposer-runtime-provenance.v1",
+  "captured_at": "2026-08-10T07:06:11Z",
+  "candidate": {
+    "source_sha": "bb94d93e9b84132cff83a38fba84f25455820d31",
+    "tag": "v3.91.1",
+    "version": "3.91.1",
+    "release_inventory_sha256": "6b0b70b856839d4117bcd969f6a2de0093c477c109cb79f3f2882b1f05effcae",
+    "historical_builds_gitlink_sha": "824d7ef100455423aabbcd399c8364074000b2e0"
+  },
+  "exact_source_ci": {
+    "repository": "Hexalith/Hexalith.EventStore",
+    "workflow": ".github/workflows/ci.yml",
+    "run_id": 30984920450,
+    "run_attempt": 1,
+    "event": "push",
+    "head_branch": "main",
+    "head_sha": "bb94d93e9b84132cff83a38fba84f25455820d31",
+    "conclusion": "success",
+    "created_at": "2026-08-05T07:24:49Z",
+    "completed_at": "2026-08-05T07:33:10Z",
+    "actor": "github:jpiquot",
+    "url": "https://github.com/Hexalith/Hexalith.EventStore/actions/runs/30984920450"
+  },
+  "exact_source_release": {
+    "repository": "Hexalith/Hexalith.EventStore",
+    "workflow": ".github/workflows/release.yml",
+    "workflow_sha256_at_source": "9bd97802674a82f63b4224700489af100348ea61aa82faef20c44a850557afe1",
+    "run_id": 30990565147,
+    "run_attempt": 1,
+    "event": "workflow_dispatch",
+    "head_branch": "main",
+    "head_sha": "bb94d93e9b84132cff83a38fba84f25455820d31",
+    "conclusion": "success",
+    "created_at": "2026-08-05T08:48:42Z",
+    "completed_at": "2026-08-05T08:56:38Z",
+    "actor": "github:jpiquot",
+    "url": "https://github.com/Hexalith/Hexalith.EventStore/actions/runs/30990565147",
+    "release_tag": "v3.91.1",
+    "release_published_at": "2026-08-05T08:56:32Z",
+    "builds_execution_sha": "f75daebd4c522c081a6f62e274cf25e07971de69"
+  },
+  "builds_catalog_exposure": {
+    "repository": "Hexalith/Hexalith.Builds",
+    "commit_sha": "a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a",
+    "catalog_path": "Props/Directory.Packages.props",
+    "catalog_sha256": "cce1b42fb5ed1bcc223f7cc4414c37b38b84379ee54962bf6744f3d04ae9ea3f",
+    "shared_property": "HexalithEventStoreVersion",
+    "exposed_version": "3.91.1",
+    "cataloged_package_count": 13,
+    "manifest_only_package": "Hexalith.EventStore.Admin.Cli",
+    "cataloged_packages": [
+      "Hexalith.EventStore.Admin.Abstractions",
+      "Hexalith.EventStore.Admin.Server",
+      "Hexalith.EventStore.Aspire",
+      "Hexalith.EventStore.Client",
+      "Hexalith.EventStore.Contracts",
+      "Hexalith.EventStore.DomainService",
+      "Hexalith.EventStore.Gateway",
+      "Hexalith.EventStore.RestApi.Generators",
+      "Hexalith.EventStore.Server",
+      "Hexalith.EventStore.ServiceDefaults",
+      "Hexalith.EventStore.SignalR",
+      "Hexalith.EventStore.Testing",
+      "Hexalith.EventStore.Testing.Integration"
+    ]
+  },
+  "distinct_builds_runner_schema_candidate": {
+    "version": "3.88.0",
+    "runner_path": "src/libraries/Hexalith.Builds.Tooling/Manifest/SupportedPlatformPins.cs",
+    "runner_sha256_at_catalog_commit": "553e6a118b7baf85949482945f3a7e094fff7fc70814f395c7656ffb9d8846ad",
+    "schema_path": "schemas/hexalith.module-manifest.v1.json",
+    "schema_sha256_at_catalog_commit": "76c2a6cfd2ad22ac5d652b05c6fef889a1d1dc28e4cdab28c8e933bc2e94adff",
+    "disposition": "separate non-authorizing candidate; not catalog exposure, release execution, or source gitlink identity"
+  },
+  "rejected_bases": [
+    "Story 1.20 retired proof archives",
+    "Git ancestry or current main",
+    "release success without the exact source and package bytes",
+    "catalog presence without the exact package bytes",
+    "Hexalith.Tenants Story 2.12 waiver"
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "schema": "hexalith.eventstore.frontcomposer-runtime-review-subject.v1",
+  "subject_id": "frontcomposer-story-11-24-eventstore-runtime-identity-successor",
+  "frozen_at": "2026-08-10T07:06:11Z",
+  "candidate": {
+    "source_sha": "bb94d93e9b84132cff83a38fba84f25455820d31",
+    "tag": "v3.91.1",
+    "version": "3.91.1",
+    "consumer_scope": "Hexalith.FrontComposer Story 11.24",
+    "package_count": 14,
+    "package_hash_domain": "Exact NuGet.org v3-flatcontainer response body after redirects, including the NuGet.org repository signature"
+  },
+  "builds_identities": {
+    "catalog_exposure_sha": "a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a",
+    "release_execution_sha": "f75daebd4c522c081a6f62e274cf25e07971de69",
+    "historical_source_gitlink_sha": "824d7ef100455423aabbcd399c8364074000b2e0",
+    "runner_schema_candidate_version": "3.88.0"
+  },
+  "bound_evidence": [
+    {
+      "path": "nuget-sha256.txt",
+      "sha256": "08449d50bf9d57c791c87e9768241442a92ec1db69b0f80fc2886529e70abfb0"
+    },
+    {
+      "path": "package-manifest.json",
+      "sha256": "b85b9926482b42fda508b68e26162f256892d2f49c2eab31adbae49cefdd0d12"
+    },
+    {
+      "path": "restore-receipt.json",
+      "sha256": "362761dd0f82c5bb2442f4a8514ee3d15eea2ca155f67fe600fe55dcf6cdb03d"
+    },
+    {
+      "path": "release-catalog-provenance.json",
+      "sha256": "a5821b1002daaf1284387486d14776648f490849717d25b5f3d1cbbe3ca40cef"
+    },
+    {
+      "path": "reviewer-roster.json",
+      "sha256": "a1e55d095f7919dc94a5722e356751ad35b5e86cb4e20da5db7545a6659fa346"
+    }
+  ],
+  "approval_gate": {
+    "required_roles": [
+      "eventstore-owner",
+      "release-owner"
+    ],
+    "authorized_actor": "github:jpiquot",
+    "separate_receipts": true,
+    "receipt_directory": "acceptances/{subject_sha256}",
+    "required_receipt_fields": [
+      "schema",
+      "subject_sha256",
+      "subject_frozen_at",
+      "actor",
+      "role",
+      "decision",
+      "source_sha",
+      "version",
+      "consumer_scope",
+      "accepted_at",
+      "durable_source",
+      "statement"
+    ],
+    "required_decision": "accepted",
+    "receipts_must_postdate_subject": true
+  },
+  "final_record_contract": {
+    "path": "../../../frontcomposer-11-24-runtime-identity-successor.md",
+    "without_both_valid_receipts": {
+      "final_decision": "unavailable",
+      "authorize_consumer_migration": false
+    },
+    "with_both_valid_receipts": {
+      "final_decision": "available",
+      "authorize_consumer_migration": true
+    }
+  },
+  "limitations": [
+    "This frozen subject is not an approval and grants no consumer migration authority.",
+    "The retired Story 1.20 proof packages are not inputs and cannot be reused or rebuilt.",
+    "Git ancestry, current main, release success, and catalog presence are not substitutes for this exact source/package tuple.",
+    "The Hexalith.Tenants Story 2.12 waiver does not apply to Hexalith.FrontComposer Story 11.24.",
+    "The Builds 3.88.0 runner/schema candidate remains distinct and is not changed or approved by this subject.",
+    "Only two valid post-freeze receipts for this unchanged subject and exact consumer scope may authorize the final record transition."
+  ]
+}

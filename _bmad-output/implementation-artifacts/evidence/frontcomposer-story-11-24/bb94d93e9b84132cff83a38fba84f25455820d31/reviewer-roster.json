@@ -1,0 +1,25 @@
+{
+  "schema": "hexalith.eventstore.frontcomposer-runtime-reviewer-roster.v1",
+  "frozen_at": "2026-08-10T07:06:11Z",
+  "repository": "Hexalith/Hexalith.EventStore",
+  "consumer_scope": "Hexalith.FrontComposer Story 11.24",
+  "roles": {
+    "eventstore-owner": [
+      "github:jpiquot"
+    ],
+    "release-owner": [
+      "github:jpiquot"
+    ]
+  },
+  "receipt_policy": {
+    "required_roles": [
+      "eventstore-owner",
+      "release-owner"
+    ],
+    "separate_receipts": true,
+    "decision": "accepted",
+    "subject_hash_algorithm": "SHA-256",
+    "receipts_must_postdate_subject": true,
+    "durable_source_required": true
+  }
+}
