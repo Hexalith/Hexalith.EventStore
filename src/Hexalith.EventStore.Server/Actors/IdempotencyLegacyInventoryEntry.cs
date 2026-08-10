@@ -24,8 +24,15 @@ public sealed record IdempotencyLegacyInventoryEntry(
     [property: DataMember] string ExecutionMessageId,
     [property: DataMember] string ExecutionCorrelationId,
     [property: DataMember] IdempotencyLegacyMigrationPhase Phase,
-    [property: DataMember] string? TargetAdmissionActorId = null)
+    [property: DataMember] string InventoryId,
+    [property: DataMember] int InventoryVersion,
+    [property: DataMember] string MigrationId,
+    [property: DataMember] string? TargetAdmissionActorId = null,
+    [property: DataMember] string? TargetImportDigest = null,
+    [property: DataMember] string? SourceRedirectDigest = null,
+    [property: DataMember] string? LastRolledBackTargetActorId = null,
+    [property: DataMember] string? LastRolledBackTargetImportDigest = null)
 {
     /// <summary>Gets the only legacy inventory schema understood by this implementation.</summary>
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 }

@@ -496,7 +496,10 @@ public class IdempotencyAdmissionExpiryTests
     public async Task ValidateAuthorityAsync_UnactivatedPromotionTargetRejectsBeforeStateAuthority()
     {
         TestContext context = CreateActor();
-        ConfigureState(context.StateManager, Record(IdempotencyAdmissionState.Pending), compacted: null);
+        IdempotencyAdmissionRecord record = Record(IdempotencyAdmissionState.Pending);
+        ConfigureState(context.StateManager, record, compacted: null);
+        string digest = IdempotencyAdmissionPromotionEvidence.Compute(record, null);
+        const string SourceActorId = "tenant-a:v0:source";
         _ = context.StateManager.TryGetStateAsync<IdempotencyAdmissionPromotionRecord>(
                 IdempotencyAdmissionActor.PromotionStateName,
                 Arg.Any<CancellationToken>())
@@ -504,8 +507,14 @@ public class IdempotencyAdmissionExpiryTests
                 true,
                 new IdempotencyAdmissionPromotionRecord(
                     IdempotencyAdmissionPromotionRecord.CurrentSchemaVersion,
-                    "tenant-a:v0:source",
-                    Activated: false)));
+                    SourceActorId,
+                    Activated: false,
+                    IdempotencyAdmissionPromotionEvidence.BuildConventionalMigrationId(
+                        SourceActorId,
+                        "tenant-a:v1:key-digest"),
+                    digest,
+                    digest,
+                    digest)));
 
         _ = await Should.ThrowAsync<InvalidOperationException>(
             () => context.Actor.ValidateAuthorityAsync(Authority()));

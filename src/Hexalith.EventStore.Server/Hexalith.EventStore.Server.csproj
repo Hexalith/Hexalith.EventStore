@@ -12,6 +12,13 @@
     <InternalsVisibleTo Include="Hexalith.EventStore.Server.LiveSidecar.Tests" />
     <InternalsVisibleTo Include="Hexalith.EventStore.Testing" />
     <InternalsVisibleTo Include="Hexalith.EventStore.Testing.Tests" />
+    <!-- Dapr emits one named runtime assembly per internal actor proxy contract. -->
+    <InternalsVisibleTo Include="Hexalith.EventStore.Server.Actors.IIdempotencyLegacySourceActor_.actorV1.proxy" />
+    <InternalsVisibleTo Include="Hexalith.EventStore.Server.Actors.IIdempotencyLegacySourceActor_.actorV1.disp" />
+    <InternalsVisibleTo Include="Hexalith.EventStore.Server.Actors.IIdempotencyTenantLifecycleMigrationActor_.actorV1.proxy" />
+    <InternalsVisibleTo Include="Hexalith.EventStore.Server.Actors.IIdempotencyTenantLifecycleMigrationActor_.actorV1.disp" />
+    <InternalsVisibleTo Include="Hexalith.EventStore.Server.Actors.IIdempotencyAdmissionDirectoryInspectionActor_.actorV1.proxy" />
+    <InternalsVisibleTo Include="Hexalith.EventStore.Server.Actors.IIdempotencyAdmissionDirectoryInspectionActor_.actorV1.disp" />
     <!-- Required so NSubstitute (Castle.DynamicProxy) can generate dynamic proxies for
          internal interfaces such as IProjectionActorInvoker used as test seams. -->
     <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />

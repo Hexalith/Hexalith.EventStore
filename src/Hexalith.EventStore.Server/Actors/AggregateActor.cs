@@ -59,7 +59,7 @@ public partial class AggregateActor(
     IOptions<IdempotencyRetentionOptions>? idempotencyRetentionOptions = null,
     TimeProvider? timeProvider = null,
     IdempotencyExecutionContextProtector? executionContextProtector = null)
-    : Actor(host), IAggregateActor, IRemindable {
+    : Actor(host), IAggregateActor, IIdempotencyLegacySourceActor, IRemindable {
     private const string TraceParentExtensionKey = "traceparent";
     private const string TraceStateExtensionKey = "tracestate";
     private const string PendingCommandCountKey = "pending_command_count";
@@ -158,6 +158,35 @@ public partial class AggregateActor(
         return await checker
             .InspectAsync(CreateCommandProcessingIdentity(request.Command))
             .ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
+    async Task<IdempotencyLegacySourceInspection> IIdempotencyLegacySourceActor.InspectLegacySourceAsync(
+        IdempotencyLegacySourceRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var tenantValidator = new TenantValidator(Host.LoggerFactory.CreateLogger<TenantValidator>());
+        tenantValidator.Validate(request.TenantPartition, Host.Id.GetId());
+        var checker = new IdempotencyChecker(
+            StateManager,
+            Host.LoggerFactory.CreateLogger<IdempotencyChecker>(),
+            IdempotencyTimeProvider);
+        return await checker.InspectLegacySourceAsync(request).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
+    async Task<IdempotencyLegacySourceInspection> IIdempotencyLegacySourceActor.SetLegacySourceRedirectAsync(
+        IdempotencyLegacySourceRedirectRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(request.Source);
+        var tenantValidator = new TenantValidator(Host.LoggerFactory.CreateLogger<TenantValidator>());
+        tenantValidator.Validate(request.Source.TenantPartition, Host.Id.GetId());
+        var checker = new IdempotencyChecker(
+            StateManager,
+            Host.LoggerFactory.CreateLogger<IdempotencyChecker>(),
+            IdempotencyTimeProvider);
+        return await checker.SetLegacySourceRedirectAsync(request).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
@@ -293,6 +322,16 @@ public partial class AggregateActor(
                     return new CommandProcessingResult(
                         Accepted: false,
                         ErrorMessage: "command_identity_conflict",
+                        CorrelationId: command.CorrelationId);
+                }
+
+                if (idempotencyCheck.Outcome == IdempotencyCheckOutcome.RedirectedLegacy)
+                {
+                    _ = (activity?.SetStatus(ActivityStatusCode.Error, "LegacyAuthorityRedirected"));
+                    _ = (processActivity?.SetStatus(ActivityStatusCode.Error, "LegacyAuthorityRedirected"));
+                    return new CommandProcessingResult(
+                        Accepted: false,
+                        ErrorMessage: "idempotency_legacy_redirected",
                         CorrelationId: command.CorrelationId);
                 }
 

@@ -8,10 +8,27 @@ namespace Hexalith.EventStore.Server.Actors;
 public sealed partial class IdempotencyAdmissionDirectoryActor(
     ActorHost host,
     ILogger<IdempotencyAdmissionDirectoryActor> logger)
-    : Actor(host), IIdempotencyAdmissionDirectoryActor
+    : Actor(host), IIdempotencyAdmissionDirectoryActor, IIdempotencyAdmissionDirectoryInspectionActor
 {
     /// <summary>Gets the Dapr actor type name.</summary>
     public const string ActorTypeName = nameof(IdempotencyAdmissionDirectoryActor);
+
+    /// <inheritdoc/>
+    async Task<IdempotencyAdmissionDirectoryResult?> IIdempotencyAdmissionDirectoryInspectionActor.InspectAsync(
+        IdempotencyAdmissionDirectoryAlias[] aliases)
+    {
+        ArgumentNullException.ThrowIfNull(aliases);
+        ValidateAliases(aliases);
+        IdempotencyAdmissionDirectoryEntry? entry = await LoadConsistentAsync(aliases)
+            .ConfigureAwait(false);
+        if (entry is null)
+        {
+            return null;
+        }
+
+        ValidateEntry(entry, aliases.Select(static alias => alias.ActorId).ToArray());
+        return ToResult(entry);
+    }
 
     /// <inheritdoc/>
     public async Task<IdempotencyAdmissionDirectoryResult> ResolveAsync(

@@ -26,6 +26,13 @@ public interface IIdempotencyAdmissionActor : IActor
     /// <summary>Durably prepares a copied target record that remains non-executable.</summary>
     Task PreparePromotionAsync(IdempotencyAdmissionPromotionImportRequest request);
 
+    /// <summary>Returns a hash-bound acknowledgement of the exact non-executable imported target.</summary>
+    Task<IdempotencyAdmissionPromotionAcknowledgement> AcknowledgePromotionAsync(
+        IdempotencyAdmissionPromotionAcknowledgementRequest request);
+
+    /// <summary>Removes only an exact unactivated prepared target before its source redirects.</summary>
+    Task RollbackPromotionAsync(IdempotencyAdmissionPromotionRollbackRequest request);
+
     /// <summary>Durably redirects a source after its target acknowledged the imported record.</summary>
     Task SetRedirectAsync(IdempotencyAdmissionRedirectRequest request);
 

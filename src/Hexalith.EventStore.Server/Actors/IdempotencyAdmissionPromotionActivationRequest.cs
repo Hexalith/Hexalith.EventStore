@@ -6,4 +6,6 @@ namespace Hexalith.EventStore.Server.Actors;
 /// <param name="SourceActorId">The exact prior canonical source actor.</param>
 [DataContract]
 public sealed record IdempotencyAdmissionPromotionActivationRequest(
-    [property: DataMember] string SourceActorId);
+    [property: DataMember] string SourceActorId,
+    [property: DataMember] string? MigrationId = null,
+    [property: DataMember] string? ImportDigest = null);

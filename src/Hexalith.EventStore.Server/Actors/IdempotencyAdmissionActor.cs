@@ -76,6 +76,9 @@ public sealed partial class IdempotencyAdmissionActor(
         ConditionalValue<IdempotencyAdmissionTombstone> tombstone = await StateManager
             .TryGetStateAsync<IdempotencyAdmissionTombstone>(TombstoneStateName)
             .ConfigureAwait(false);
+        ConditionalValue<IdempotencyAdmissionPromotionRecord> promotion = await StateManager
+            .TryGetStateAsync<IdempotencyAdmissionPromotionRecord>(PromotionStateName)
+            .ConfigureAwait(false);
         if (stored.HasValue && tombstone.HasValue)
         {
             throw new InvalidOperationException("The idempotency admission contains both live and compacted state.");
@@ -87,11 +90,30 @@ public sealed partial class IdempotencyAdmissionActor(
             throw new InvalidOperationException("The idempotency admission state is corrupt.");
         }
 
+        IdempotencyAdmissionPromotionAcknowledgement? acknowledgement = null;
+        if (promotion.HasValue)
+        {
+            string currentStateDigest = IdempotencyAdmissionPromotionEvidence.Compute(
+                stored.HasValue ? stored.Value : null,
+                tombstone.HasValue ? tombstone.Value : null);
+            IdempotencyAdmissionPromotionRecord normalized = await NormalizePromotionAsync(
+                promotion.Value,
+                currentStateDigest).ConfigureAwait(false);
+            ValidatePromotion(normalized);
+            if (!string.Equals(normalized.CurrentStateDigest, currentStateDigest, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("The idempotency promotion acknowledgement is corrupt.");
+            }
+
+            acknowledgement = ToAcknowledgement(normalized);
+        }
+
         return new IdempotencyAdmissionInspection(
             stored.HasValue || tombstone.HasValue,
             stored.HasValue ? stored.Value : null,
             redirect.HasValue ? redirect.Value.TargetActorId : null,
-            tombstone.HasValue ? tombstone.Value : null);
+            tombstone.HasValue ? tombstone.Value : null,
+            acknowledgement);
     }
 
     /// <inheritdoc/>
@@ -123,26 +145,39 @@ public sealed partial class IdempotencyAdmissionActor(
         ConditionalValue<IdempotencyAdmissionPromotionRecord> promotion = await StateManager
             .TryGetStateAsync<IdempotencyAdmissionPromotionRecord>(PromotionStateName)
             .ConfigureAwait(false);
-        if (promotion.HasValue)
-        {
-            if (promotion.Value.SchemaVersion != IdempotencyAdmissionPromotionRecord.CurrentSchemaVersion
-                || string.IsNullOrWhiteSpace(promotion.Value.SourceActorId))
-            {
-                return new IdempotencyAdmissionResult(IdempotencyAdmissionDecision.Corrupt);
-            }
-
-            if (!promotion.Value.Activated)
-            {
-                return new IdempotencyAdmissionResult(IdempotencyAdmissionDecision.Pending);
-            }
-        }
-
         ConditionalValue<IdempotencyAdmissionTombstone> compacted = await StateManager
             .TryGetStateAsync<IdempotencyAdmissionTombstone>(TombstoneStateName)
             .ConfigureAwait(false);
         ConditionalValue<IdempotencyAdmissionRecord> stored = await StateManager
             .TryGetStateAsync<IdempotencyAdmissionRecord>(StateName)
             .ConfigureAwait(false);
+        if (promotion.HasValue)
+        {
+            try
+            {
+                string currentStateDigest = IdempotencyAdmissionPromotionEvidence.Compute(
+                    stored.HasValue ? stored.Value : null,
+                    compacted.HasValue ? compacted.Value : null);
+                IdempotencyAdmissionPromotionRecord normalized = await NormalizePromotionAsync(
+                    promotion.Value,
+                    currentStateDigest).ConfigureAwait(false);
+                ValidatePromotion(normalized);
+                if (!string.Equals(normalized.CurrentStateDigest, currentStateDigest, StringComparison.Ordinal))
+                {
+                    return new IdempotencyAdmissionResult(IdempotencyAdmissionDecision.Corrupt);
+                }
+
+                if (!normalized.Activated)
+                {
+                    return new IdempotencyAdmissionResult(IdempotencyAdmissionDecision.Pending);
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                return new IdempotencyAdmissionResult(IdempotencyAdmissionDecision.Corrupt);
+            }
+        }
+
         DateTimeOffset now = Clock.GetUtcNow();
         if (compacted.HasValue)
         {
@@ -393,26 +428,31 @@ public sealed partial class IdempotencyAdmissionActor(
         ConditionalValue<IdempotencyAdmissionPromotionRecord> promotion = await StateManager
             .TryGetStateAsync<IdempotencyAdmissionPromotionRecord>(PromotionStateName)
             .ConfigureAwait(false);
-        if (promotion.HasValue)
-        {
-            if (promotion.Value.SchemaVersion != IdempotencyAdmissionPromotionRecord.CurrentSchemaVersion
-                || string.IsNullOrWhiteSpace(promotion.Value.SourceActorId))
-            {
-                throw new InvalidOperationException("The idempotency execution authority is corrupt.");
-            }
-
-            if (!promotion.Value.Activated)
-            {
-                throw new InvalidOperationException("The idempotency execution authority is no longer current.");
-            }
-        }
-
         ConditionalValue<IdempotencyAdmissionTombstone> tombstone = await StateManager
             .TryGetStateAsync<IdempotencyAdmissionTombstone>(TombstoneStateName)
             .ConfigureAwait(false);
         ConditionalValue<IdempotencyAdmissionRecord> stored = await StateManager
             .TryGetStateAsync<IdempotencyAdmissionRecord>(StateName)
             .ConfigureAwait(false);
+        if (promotion.HasValue)
+        {
+            string currentStateDigest = IdempotencyAdmissionPromotionEvidence.Compute(
+                stored.HasValue ? stored.Value : null,
+                tombstone.HasValue ? tombstone.Value : null);
+            IdempotencyAdmissionPromotionRecord normalized = await NormalizePromotionAsync(
+                promotion.Value,
+                currentStateDigest).ConfigureAwait(false);
+            if (!string.Equals(normalized.CurrentStateDigest, currentStateDigest, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("The idempotency execution authority is corrupt.");
+            }
+
+            if (!normalized.Activated)
+            {
+                throw new InvalidOperationException("The idempotency execution authority is no longer current.");
+            }
+        }
+
         if (tombstone.HasValue || !stored.HasValue)
         {
             if ((tombstone.HasValue && !IsStructurallyValid(tombstone.Value))
@@ -477,6 +517,12 @@ public sealed partial class IdempotencyAdmissionActor(
             throw new InvalidOperationException("The imported idempotency promotion state is corrupt.");
         }
 
+        string importDigest = IdempotencyAdmissionPromotionEvidence.Compute(request.Record, request.Tombstone);
+        string migrationId = request.MigrationId ?? request.SourceActorId;
+        string sourceEvidenceDigest = request.SourceEvidenceDigest ?? importDigest;
+        ArgumentException.ThrowIfNullOrWhiteSpace(migrationId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourceEvidenceDigest);
+
         ConditionalValue<IdempotencyAdmissionRecord> stored = await StateManager
             .TryGetStateAsync<IdempotencyAdmissionRecord>(StateName)
             .ConfigureAwait(false);
@@ -488,13 +534,24 @@ public sealed partial class IdempotencyAdmissionActor(
             .ConfigureAwait(false);
         if (stored.HasValue || tombstone.HasValue || promotion.HasValue)
         {
-            bool samePayload = request.Record is not null
-                ? stored.HasValue && !tombstone.HasValue && SameImportedRecord(stored.Value, request.Record)
-                : tombstone.HasValue && !stored.HasValue && SameImportedTombstone(tombstone.Value, request.Tombstone!);
+            string currentStateDigest = IdempotencyAdmissionPromotionEvidence.Compute(
+                stored.HasValue ? stored.Value : null,
+                tombstone.HasValue ? tombstone.Value : null);
+            IdempotencyAdmissionPromotionRecord? normalized = promotion.HasValue
+                ? await NormalizePromotionAsync(promotion.Value, currentStateDigest).ConfigureAwait(false)
+                : null;
             if (!promotion.HasValue
-                || promotion.Value.SchemaVersion != IdempotencyAdmissionPromotionRecord.CurrentSchemaVersion
-                || !string.Equals(promotion.Value.SourceActorId, request.SourceActorId, StringComparison.Ordinal)
-                || !samePayload)
+                || normalized is null
+                || !IsSamePromotion(
+                    normalized,
+                    request.SourceActorId,
+                    migrationId,
+                    sourceEvidenceDigest,
+                    importDigest)
+                || !string.Equals(
+                    normalized.CurrentStateDigest,
+                    currentStateDigest,
+                    StringComparison.Ordinal))
             {
                 throw new InvalidOperationException("The idempotency promotion target contains different state.");
             }
@@ -521,8 +578,113 @@ public sealed partial class IdempotencyAdmissionActor(
             new IdempotencyAdmissionPromotionRecord(
                 IdempotencyAdmissionPromotionRecord.CurrentSchemaVersion,
                 request.SourceActorId,
-                Activated: false)).ConfigureAwait(false);
+                Activated: false,
+                migrationId,
+                sourceEvidenceDigest,
+                importDigest,
+                importDigest)).ConfigureAwait(false);
         await StateManager.SaveStateAsync().ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
+    public async Task<IdempotencyAdmissionPromotionAcknowledgement> AcknowledgePromotionAsync(
+        IdempotencyAdmissionPromotionAcknowledgementRequest request)
+    {
+        ValidatePromotionRequest(request);
+        await EnsureAdmissionExistsAsync().ConfigureAwait(false);
+        ConditionalValue<IdempotencyAdmissionPromotionRecord> promotion = await StateManager
+            .TryGetStateAsync<IdempotencyAdmissionPromotionRecord>(PromotionStateName)
+            .ConfigureAwait(false);
+        ConditionalValue<IdempotencyAdmissionRecord> record = await StateManager
+            .TryGetStateAsync<IdempotencyAdmissionRecord>(StateName)
+            .ConfigureAwait(false);
+        ConditionalValue<IdempotencyAdmissionTombstone> tombstone = await StateManager
+            .TryGetStateAsync<IdempotencyAdmissionTombstone>(TombstoneStateName)
+            .ConfigureAwait(false);
+        string currentStateDigest = IdempotencyAdmissionPromotionEvidence.Compute(
+            record.HasValue ? record.Value : null,
+            tombstone.HasValue ? tombstone.Value : null);
+        IdempotencyAdmissionPromotionRecord? normalized = promotion.HasValue
+            ? await NormalizePromotionAsync(promotion.Value, currentStateDigest).ConfigureAwait(false)
+            : null;
+        if (normalized is null
+            || !IsSamePromotion(
+                normalized,
+                request.SourceActorId,
+                request.MigrationId,
+                request.SourceEvidenceDigest,
+                request.ImportDigest))
+        {
+            throw new InvalidOperationException("The idempotency promotion target acknowledgement does not match.");
+        }
+
+        if (!string.Equals(normalized.CurrentStateDigest, currentStateDigest, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("The idempotency promotion target payload acknowledgement does not match.");
+        }
+
+        return ToAcknowledgement(normalized);
+    }
+
+    /// <inheritdoc/>
+    public async Task RollbackPromotionAsync(IdempotencyAdmissionPromotionRollbackRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ValidatePromotionRequest(new IdempotencyAdmissionPromotionAcknowledgementRequest(
+            request.SourceActorId,
+            request.MigrationId,
+            request.SourceEvidenceDigest,
+            request.ImportDigest));
+        ConditionalValue<IdempotencyAdmissionRedirectRecord> redirect = await StateManager
+            .TryGetStateAsync<IdempotencyAdmissionRedirectRecord>(RedirectStateName)
+            .ConfigureAwait(false);
+        if (redirect.HasValue)
+        {
+            throw new InvalidOperationException("The idempotency promotion cannot roll back after a redirect.");
+        }
+
+        ConditionalValue<IdempotencyAdmissionPromotionRecord> promotion = await StateManager
+            .TryGetStateAsync<IdempotencyAdmissionPromotionRecord>(PromotionStateName)
+            .ConfigureAwait(false);
+        ConditionalValue<IdempotencyAdmissionRecord> record = await StateManager
+            .TryGetStateAsync<IdempotencyAdmissionRecord>(StateName)
+            .ConfigureAwait(false);
+        ConditionalValue<IdempotencyAdmissionTombstone> tombstone = await StateManager
+            .TryGetStateAsync<IdempotencyAdmissionTombstone>(TombstoneStateName)
+            .ConfigureAwait(false);
+        if (!promotion.HasValue && !record.HasValue && !tombstone.HasValue)
+        {
+            return;
+        }
+
+        string currentStateDigest = IdempotencyAdmissionPromotionEvidence.Compute(
+            record.HasValue ? record.Value : null,
+            tombstone.HasValue ? tombstone.Value : null);
+        IdempotencyAdmissionPromotionRecord? normalized = promotion.HasValue
+            ? await NormalizePromotionAsync(promotion.Value, currentStateDigest).ConfigureAwait(false)
+            : null;
+        if (normalized is null
+            || normalized.Activated
+            || !IsSamePromotion(
+                normalized,
+                request.SourceActorId,
+                request.MigrationId,
+                request.SourceEvidenceDigest,
+                request.ImportDigest))
+        {
+            throw new InvalidOperationException("Only the exact unactivated promotion target may roll back.");
+        }
+
+        if (!string.Equals(normalized.CurrentStateDigest, currentStateDigest, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("The prepared promotion target payload changed before rollback.");
+        }
+
+        _ = await StateManager.TryRemoveStateAsync(StateName).ConfigureAwait(false);
+        _ = await StateManager.TryRemoveStateAsync(TombstoneStateName).ConfigureAwait(false);
+        _ = await StateManager.TryRemoveStateAsync(PromotionStateName).ConfigureAwait(false);
+        await StateManager.SaveStateAsync().ConfigureAwait(false);
+        await UnregisterReminderAsync(CompactionReminderName).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
@@ -562,21 +724,37 @@ public sealed partial class IdempotencyAdmissionActor(
         ConditionalValue<IdempotencyAdmissionPromotionRecord> promotion = await StateManager
             .TryGetStateAsync<IdempotencyAdmissionPromotionRecord>(PromotionStateName)
             .ConfigureAwait(false);
-        if (!promotion.HasValue
-            || promotion.Value.SchemaVersion != IdempotencyAdmissionPromotionRecord.CurrentSchemaVersion
-            || !string.Equals(promotion.Value.SourceActorId, request.SourceActorId, StringComparison.Ordinal))
+        ConditionalValue<IdempotencyAdmissionRecord> record = await StateManager
+            .TryGetStateAsync<IdempotencyAdmissionRecord>(StateName)
+            .ConfigureAwait(false);
+        ConditionalValue<IdempotencyAdmissionTombstone> tombstone = await StateManager
+            .TryGetStateAsync<IdempotencyAdmissionTombstone>(TombstoneStateName)
+            .ConfigureAwait(false);
+        string currentStateDigest = IdempotencyAdmissionPromotionEvidence.Compute(
+            record.HasValue ? record.Value : null,
+            tombstone.HasValue ? tombstone.Value : null);
+        IdempotencyAdmissionPromotionRecord? normalized = promotion.HasValue
+            ? await NormalizePromotionAsync(promotion.Value, currentStateDigest).ConfigureAwait(false)
+            : null;
+        if (normalized is null
+            || !string.Equals(normalized.CurrentStateDigest, currentStateDigest, StringComparison.Ordinal)
+            || !string.Equals(normalized.SourceActorId, request.SourceActorId, StringComparison.Ordinal)
+            || (request.MigrationId is not null
+                && !string.Equals(normalized.MigrationId, request.MigrationId, StringComparison.Ordinal))
+            || (request.ImportDigest is not null
+                && !string.Equals(normalized.ImportDigest, request.ImportDigest, StringComparison.Ordinal)))
         {
             throw new InvalidOperationException("The idempotency promotion target is not prepared for this source.");
         }
 
-        if (promotion.Value.Activated)
+        if (normalized.Activated)
         {
             return;
         }
 
         await StateManager.SetStateAsync(
             PromotionStateName,
-            promotion.Value with { Activated = true }).ConfigureAwait(false);
+            normalized with { Activated = true }).ConfigureAwait(false);
         await StateManager.SaveStateAsync().ConfigureAwait(false);
     }
 
@@ -743,6 +921,96 @@ public sealed partial class IdempotencyAdmissionActor(
             && left.ReplayExpiredAt == right.ReplayExpiredAt
             && left.LastObservedAt == right.LastObservedAt;
 
+    private static bool IsSamePromotion(
+        IdempotencyAdmissionPromotionRecord promotion,
+        string sourceActorId,
+        string migrationId,
+        string sourceEvidenceDigest,
+        string importDigest)
+    {
+        ValidatePromotion(promotion);
+        return string.Equals(promotion.SourceActorId, sourceActorId, StringComparison.Ordinal)
+            && string.Equals(promotion.MigrationId, migrationId, StringComparison.Ordinal)
+            && string.Equals(promotion.SourceEvidenceDigest, sourceEvidenceDigest, StringComparison.Ordinal)
+            && string.Equals(promotion.ImportDigest, importDigest, StringComparison.Ordinal);
+    }
+
+    private static void ValidatePromotion(IdempotencyAdmissionPromotionRecord promotion)
+    {
+        if (promotion.SchemaVersion != IdempotencyAdmissionPromotionRecord.CurrentSchemaVersion
+            || string.IsNullOrWhiteSpace(promotion.SourceActorId)
+            || string.IsNullOrWhiteSpace(promotion.MigrationId)
+            || string.IsNullOrWhiteSpace(promotion.SourceEvidenceDigest)
+            || string.IsNullOrWhiteSpace(promotion.ImportDigest)
+            || string.IsNullOrWhiteSpace(promotion.CurrentStateDigest))
+        {
+            throw new InvalidOperationException("The idempotency promotion target acknowledgement is corrupt.");
+        }
+    }
+
+    private static void ValidatePromotionRequest(
+        IdempotencyAdmissionPromotionAcknowledgementRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (string.IsNullOrWhiteSpace(request.SourceActorId)
+            || string.IsNullOrWhiteSpace(request.MigrationId)
+            || string.IsNullOrWhiteSpace(request.SourceEvidenceDigest)
+            || string.IsNullOrWhiteSpace(request.ImportDigest))
+        {
+            throw new InvalidOperationException("The idempotency promotion acknowledgement request is invalid.");
+        }
+    }
+
+    private static IdempotencyAdmissionPromotionAcknowledgement ToAcknowledgement(
+        IdempotencyAdmissionPromotionRecord promotion)
+    {
+        ValidatePromotion(promotion);
+        return new IdempotencyAdmissionPromotionAcknowledgement(
+            promotion.SchemaVersion,
+            promotion.SourceActorId,
+            promotion.MigrationId!,
+            promotion.SourceEvidenceDigest!,
+            promotion.ImportDigest!,
+            promotion.Activated,
+            promotion.CurrentStateDigest);
+    }
+
+    private async Task<IdempotencyAdmissionPromotionRecord> NormalizePromotionAsync(
+        IdempotencyAdmissionPromotionRecord promotion,
+        string currentStateDigest)
+    {
+        if (promotion.SchemaVersion == IdempotencyAdmissionPromotionRecord.CurrentSchemaVersion)
+        {
+            ValidatePromotion(promotion);
+            return promotion;
+        }
+
+        if (promotion.SchemaVersion != 1
+            || string.IsNullOrWhiteSpace(promotion.SourceActorId)
+            || promotion.MigrationId is not null
+            || promotion.SourceEvidenceDigest is not null
+            || promotion.ImportDigest is not null
+            || promotion.CurrentStateDigest is not null)
+        {
+            throw new InvalidOperationException("The idempotency promotion target acknowledgement is corrupt.");
+        }
+
+        string migrationId = IdempotencyAdmissionPromotionEvidence.BuildConventionalMigrationId(
+            promotion.SourceActorId,
+            Host.Id.GetId());
+        IdempotencyAdmissionPromotionRecord normalized = promotion with
+        {
+            SchemaVersion = IdempotencyAdmissionPromotionRecord.CurrentSchemaVersion,
+            MigrationId = migrationId,
+            SourceEvidenceDigest = currentStateDigest,
+            ImportDigest = currentStateDigest,
+            CurrentStateDigest = currentStateDigest,
+        };
+        await StateManager.SetStateAsync(PromotionStateName, normalized).ConfigureAwait(false);
+        await StateManager.SaveStateAsync().ConfigureAwait(false);
+        return normalized;
+    }
+
     private async Task<IdempotencyAdmissionRecord> LoadRequiredAsync()
     {
         ConditionalValue<IdempotencyAdmissionRecord> stored = await StateManager
@@ -777,14 +1045,51 @@ public sealed partial class IdempotencyAdmissionActor(
 
     private async Task PersistAsync(IdempotencyAdmissionRecord record)
     {
+        await UpdatePromotionCheckpointAsync(record, null).ConfigureAwait(false);
         await StateManager.SetStateAsync(StateName, record).ConfigureAwait(false);
         await StateManager.SaveStateAsync().ConfigureAwait(false);
     }
 
     private async Task PersistAsync(IdempotencyAdmissionTombstone tombstone)
     {
+        await UpdatePromotionCheckpointAsync(null, tombstone).ConfigureAwait(false);
         await StateManager.SetStateAsync(TombstoneStateName, tombstone).ConfigureAwait(false);
         await StateManager.SaveStateAsync().ConfigureAwait(false);
+    }
+
+    private async Task UpdatePromotionCheckpointAsync(
+        IdempotencyAdmissionRecord? updatedRecord,
+        IdempotencyAdmissionTombstone? updatedTombstone)
+    {
+        ConditionalValue<IdempotencyAdmissionPromotionRecord> promotion = await StateManager
+            .TryGetStateAsync<IdempotencyAdmissionPromotionRecord>(PromotionStateName)
+            .ConfigureAwait(false);
+        if (!promotion.HasValue)
+        {
+            return;
+        }
+
+        ConditionalValue<IdempotencyAdmissionRecord> currentRecord = await StateManager
+            .TryGetStateAsync<IdempotencyAdmissionRecord>(StateName)
+            .ConfigureAwait(false);
+        ConditionalValue<IdempotencyAdmissionTombstone> currentTombstone = await StateManager
+            .TryGetStateAsync<IdempotencyAdmissionTombstone>(TombstoneStateName)
+            .ConfigureAwait(false);
+        string currentDigest = IdempotencyAdmissionPromotionEvidence.Compute(
+            currentRecord.HasValue ? currentRecord.Value : null,
+            currentTombstone.HasValue ? currentTombstone.Value : null);
+        IdempotencyAdmissionPromotionRecord normalized = await NormalizePromotionAsync(
+            promotion.Value,
+            currentDigest).ConfigureAwait(false);
+        if (!string.Equals(normalized.CurrentStateDigest, currentDigest, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("The idempotency promotion current-state checkpoint is corrupt.");
+        }
+
+        string updatedDigest = IdempotencyAdmissionPromotionEvidence.Compute(updatedRecord, updatedTombstone);
+        await StateManager.SetStateAsync(
+            PromotionStateName,
+            normalized with { CurrentStateDigest = updatedDigest }).ConfigureAwait(false);
     }
 
     private async Task CompactAsync(IdempotencyAdmissionRecord record, DateTimeOffset observedAt)
@@ -808,6 +1113,28 @@ public sealed partial class IdempotencyAdmissionActor(
             record.FirstConsumedAt,
             replayExpiredAt,
             observedAt);
+        ConditionalValue<IdempotencyAdmissionPromotionRecord> promotion = await StateManager
+            .TryGetStateAsync<IdempotencyAdmissionPromotionRecord>(PromotionStateName)
+            .ConfigureAwait(false);
+        if (promotion.HasValue)
+        {
+            string recordDigest = IdempotencyAdmissionPromotionEvidence.Compute(record, null);
+            IdempotencyAdmissionPromotionRecord normalized = await NormalizePromotionAsync(
+                promotion.Value,
+                recordDigest).ConfigureAwait(false);
+            if (!string.Equals(normalized.CurrentStateDigest, recordDigest, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("The idempotency promotion current-state checkpoint is corrupt.");
+            }
+
+            await StateManager.SetStateAsync(
+                PromotionStateName,
+                normalized with
+                {
+                    CurrentStateDigest = IdempotencyAdmissionPromotionEvidence.Compute(null, tombstone),
+                }).ConfigureAwait(false);
+        }
+
         await StateManager.SetStateAsync(TombstoneStateName, tombstone).ConfigureAwait(false);
         _ = await StateManager.TryRemoveStateAsync(StateName).ConfigureAwait(false);
         await StateManager.SaveStateAsync().ConfigureAwait(false);

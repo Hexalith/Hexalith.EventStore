@@ -1,6 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
-
 using Dapr.Actors;
 using Dapr.Actors.Client;
 
@@ -51,13 +48,6 @@ public sealed class IdempotencyAdmissionCoordinator(
                 identity.ActorId,
                 identity.KeyDigest))
             .ToArray();
-        await CreateLifecycleActor(command.Tenant).RegisterAsync(
-            aliases.Select(alias => new IdempotencyTenantLifecycleReference(
-                alias.ActorId,
-                alias.DigestKeyVersion,
-                alias.KeyDigest)).ToArray()).ConfigureAwait(false);
-        string? existingActorId = await DiscoverExistingAuthorityAsync(identities, cancellationToken)
-            .ConfigureAwait(false);
         IIdempotencyLegacyInventoryActor legacyInventory = CreateLegacyInventoryActor(command.Tenant);
         IdempotencyLegacyInventoryInspection legacy = await legacyInventory
             .InspectAsync(aliases).ConfigureAwait(false);
@@ -70,20 +60,35 @@ public sealed class IdempotencyAdmissionCoordinator(
                 IdempotencyAdmissionDecision.UnsafeLegacy);
         }
 
-        if (legacy.Decision == IdempotencyLegacyInventoryDecision.Migrate)
+        await CreateLifecycleActor(command.Tenant).RegisterAsync(
+            aliases.Select(alias => new IdempotencyTenantLifecycleReference(
+                alias.ActorId,
+                alias.DigestKeyVersion,
+                alias.KeyDigest)).ToArray()).ConfigureAwait(false);
+        string? existingActorId;
+
+        if (legacy.Decision is IdempotencyLegacyInventoryDecision.Migrate
+            or IdempotencyLegacyInventoryDecision.Migrated)
         {
-            IdempotencyAdmissionDecision? denied = await CompleteLegacyMigrationAsync(
-                legacyInventory,
+            IdempotencyLegacyMigrationResult migration = await CompleteLegacyMigrationAsync(
+                command.Tenant,
                 legacy.Entry
                     ?? throw new InvalidOperationException("Legacy migration classification omitted its protected entry."),
                 identities).ConfigureAwait(false);
-            if (denied is not null)
+            if (migration.DeniedDecision is not null)
             {
                 return new IdempotencyAdmissionSession(
                     identities.Active.ActorId,
                     0,
-                    denied.Value);
+                    migration.DeniedDecision.Value);
             }
+
+            existingActorId = migration.TargetAdmissionActorId;
+        }
+        else
+        {
+            existingActorId = await DiscoverExistingAuthorityAsync(identities, cancellationToken)
+                .ConfigureAwait(false);
         }
 
         IIdempotencyAdmissionDirectoryActor directory = CreateDirectoryActor(command.Tenant);
@@ -304,6 +309,14 @@ public sealed class IdempotencyAdmissionCoordinator(
             IdempotencyLegacyInventoryActor.ActorTypeName);
     }
 
+    private IIdempotencyTenantLifecycleMigrationActor CreateLifecycleMigrationActor(string tenant)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenant);
+        return actorProxyFactory.CreateActorProxy<IIdempotencyTenantLifecycleMigrationActor>(
+            new ActorId(tenant),
+            IdempotencyTenantLifecycleActor.ActorTypeName);
+    }
+
     private static IdempotencyExecutionContext RequireSessionBoundContext(IdempotencyAdmissionSession session)
     {
         IdempotencyExecutionContext context = session.ExecutionContext
@@ -319,8 +332,8 @@ public sealed class IdempotencyAdmissionCoordinator(
         return context;
     }
 
-    private async Task<IdempotencyAdmissionDecision?> CompleteLegacyMigrationAsync(
-        IIdempotencyLegacyInventoryActor inventory,
+    private async Task<IdempotencyLegacyMigrationResult> CompleteLegacyMigrationAsync(
+        string tenant,
         IdempotencyLegacyInventoryEntry entry,
         IdempotencyProtectedIdentitySet identities)
     {
@@ -328,76 +341,36 @@ public sealed class IdempotencyAdmissionCoordinator(
             string.Equals(alias.DigestKeyVersion, entry.DigestKeyVersion, StringComparison.Ordinal)
             && string.Equals(alias.KeyDigest, entry.KeyDigest, StringComparison.Ordinal))
             ?? throw new InvalidOperationException("Legacy inventory references an unavailable digest-key alias.");
-        if (!FixedTimeEquals(sourceIdentity.VerificationTag, entry.VerificationTag))
+        string pinnedTargetActorId = entry.TargetAdmissionActorId ?? identities.Active.ActorId;
+        IdempotencyProtectedIdentity target = identities.Aliases.SingleOrDefault(alias =>
+            string.Equals(alias.ActorId, pinnedTargetActorId, StringComparison.Ordinal))
+            ?? throw new InvalidOperationException("Legacy migration pinned target is not a retained digest-key alias.");
+        IdempotencyLegacyMigrationResult result = await CreateLifecycleMigrationActor(tenant)
+            .MigrateLegacyAsync(
+                new IdempotencyLegacyMigrationRequest(
+                    identities.Aliases.Select(identity => new IdempotencyAdmissionDirectoryAlias(
+                        identity.DigestKeyVersion,
+                        identity.ActorId,
+                        identity.KeyDigest)).ToArray(),
+                    new IdempotencyTenantLifecycleReference(
+                        target.ActorId,
+                        target.DigestKeyVersion,
+                        target.KeyDigest),
+                    target.VerificationTag,
+                    target.IntentDigest,
+                    target.RetentionTier,
+                    sourceIdentity.VerificationTag,
+                    sourceIdentity.IntentDigest,
+                    sourceIdentity.RetentionTier)).ConfigureAwait(false);
+        if (!identities.Aliases.Any(alias => string.Equals(
+            result.TargetAdmissionActorId,
+            alias.ActorId,
+            StringComparison.Ordinal)))
         {
-            return IdempotencyAdmissionDecision.Collision;
+            throw new InvalidOperationException("Legacy migration returned an authority outside the retained alias set.");
         }
 
-        if (!FixedTimeEquals(sourceIdentity.IntentDigest, entry.IntentDigest)
-            || sourceIdentity.RetentionTier != entry.RetentionTier)
-        {
-            return IdempotencyAdmissionDecision.Conflict;
-        }
-
-        IdempotencyProtectedIdentity target = identities.Active;
-        string migrationSourceId = string.Concat("legacy:", entry.SourceEvidenceDigest);
-        if (entry.Phase == IdempotencyLegacyMigrationPhase.Inventoried)
-        {
-            var imported = new IdempotencyAdmissionRecord(
-                IdempotencyAdmissionRecord.CurrentSchemaVersion,
-                IdempotencyAdmissionState.Terminal,
-                target.TenantPartition,
-                target.DigestKeyVersion,
-                target.KeyDigest,
-                target.VerificationTag,
-                target.IntentDigest,
-                entry.RetentionTier,
-                entry.FirstConsumedAt,
-                entry.LastObservedAt,
-                entry.ReplayExpiresAt,
-                FencingToken: 1,
-                entry.ReplayResult,
-                entry.ExecutionMessageId,
-                entry.ExecutionCorrelationId);
-            await CreateActor(target.ActorId).PreparePromotionAsync(
-                new IdempotencyAdmissionPromotionImportRequest(
-                    migrationSourceId,
-                    Record: imported)).ConfigureAwait(false);
-            entry = await inventory.AdvanceAsync(
-                entry.DigestKeyVersion,
-                entry.KeyDigest,
-                IdempotencyLegacyMigrationPhase.Inventoried,
-                target.ActorId).ConfigureAwait(false);
-        }
-
-        if (entry.Phase == IdempotencyLegacyMigrationPhase.TargetPrepared)
-        {
-            await CreateActor(target.ActorId).ActivatePromotionAsync(
-                new IdempotencyAdmissionPromotionActivationRequest(migrationSourceId)).ConfigureAwait(false);
-            _ = await inventory.AdvanceAsync(
-                entry.DigestKeyVersion,
-                entry.KeyDigest,
-                IdempotencyLegacyMigrationPhase.TargetPrepared,
-                target.ActorId).ConfigureAwait(false);
-        }
-
-        return null;
-    }
-
-    private static bool FixedTimeEquals(string left, string right)
-    {
-        byte[] leftBytes = Encoding.UTF8.GetBytes(left);
-        byte[] rightBytes = Encoding.UTF8.GetBytes(right);
-        try
-        {
-            return leftBytes.Length == rightBytes.Length
-                && CryptographicOperations.FixedTimeEquals(leftBytes, rightBytes);
-        }
-        finally
-        {
-            CryptographicOperations.ZeroMemory(leftBytes);
-            CryptographicOperations.ZeroMemory(rightBytes);
-        }
+        return result;
     }
 
     private async Task<string?> DiscoverExistingAuthorityAsync(
@@ -474,6 +447,8 @@ public sealed class IdempotencyAdmissionCoordinator(
                     }
 
                     IdempotencyAdmissionPromotionImportRequest importRequest;
+                    string migrationId = IdempotencyAdmissionPromotionEvidence
+                        .BuildConventionalMigrationId(sourceActorId, targetActorId);
                     if (source.Record is not null)
                     {
                         IdempotencyAdmissionRecord imported = source.Record with
@@ -485,7 +460,8 @@ public sealed class IdempotencyAdmissionCoordinator(
                         };
                         importRequest = new IdempotencyAdmissionPromotionImportRequest(
                             sourceActorId,
-                            Record: imported);
+                            Record: imported,
+                            MigrationId: migrationId);
                     }
                     else
                     {
@@ -497,21 +473,53 @@ public sealed class IdempotencyAdmissionCoordinator(
                         };
                         importRequest = new IdempotencyAdmissionPromotionImportRequest(
                             sourceActorId,
-                            Tombstone: imported);
+                            Tombstone: imported,
+                            MigrationId: migrationId);
                     }
 
-                    await CreateActor(targetActorId).PreparePromotionAsync(
-                        importRequest).ConfigureAwait(false);
+                    string importDigest = IdempotencyAdmissionPromotionEvidence.Compute(
+                        importRequest.Record,
+                        importRequest.Tombstone);
+                    importRequest = importRequest with { SourceEvidenceDigest = importDigest };
+                    IIdempotencyAdmissionActor targetActor = CreateActor(targetActorId);
+                    await targetActor.PreparePromotionAsync(importRequest).ConfigureAwait(false);
+                    IdempotencyAdmissionPromotionAcknowledgement acknowledgement = await targetActor
+                        .AcknowledgePromotionAsync(
+                            new IdempotencyAdmissionPromotionAcknowledgementRequest(
+                                sourceActorId,
+                                migrationId,
+                                importDigest,
+                                importDigest)).ConfigureAwait(false);
+                    if (acknowledgement.Activated)
+                    {
+                        throw new InvalidOperationException("The promotion target activated before source redirect.");
+                    }
                     break;
                 case IdempotencyAdmissionPromotionPhase.RedirectSource:
+                    _ = await RequireOrdinaryPromotionAcknowledgementAsync(
+                        sourceActorId,
+                        targetActorId,
+                        activated: false).ConfigureAwait(false);
                     await CreateActor(sourceActorId).SetRedirectAsync(
                         new IdempotencyAdmissionRedirectRequest(targetActorId)).ConfigureAwait(false);
                     break;
                 case IdempotencyAdmissionPromotionPhase.FlipDirectory:
                     break;
                 case IdempotencyAdmissionPromotionPhase.ActivateTarget:
+                    IdempotencyAdmissionPromotionAcknowledgement prepared
+                        = await RequireOrdinaryPromotionAcknowledgementAsync(
+                            sourceActorId,
+                            targetActorId,
+                            activated: null).ConfigureAwait(false);
                     await CreateActor(targetActorId).ActivatePromotionAsync(
-                        new IdempotencyAdmissionPromotionActivationRequest(sourceActorId)).ConfigureAwait(false);
+                        new IdempotencyAdmissionPromotionActivationRequest(
+                            sourceActorId,
+                            prepared.MigrationId,
+                            prepared.ImportDigest)).ConfigureAwait(false);
+                    _ = await RequireOrdinaryPromotionAcknowledgementAsync(
+                        sourceActorId,
+                        targetActorId,
+                        activated: true).ConfigureAwait(false);
                     break;
                 default:
                     throw new InvalidOperationException("The idempotency promotion phase is invalid.");
@@ -525,6 +533,34 @@ public sealed class IdempotencyAdmissionCoordinator(
         return current.PromotionPhase == IdempotencyAdmissionPromotionPhase.Stable
             ? current
             : throw new InvalidOperationException("The idempotency promotion did not reach stable authority.");
+    }
+
+    private async Task<IdempotencyAdmissionPromotionAcknowledgement>
+        RequireOrdinaryPromotionAcknowledgementAsync(
+            string sourceActorId,
+            string targetActorId,
+            bool? activated)
+    {
+        IdempotencyAdmissionInspection inspection = await CreateActor(targetActorId)
+            .InspectAsync().ConfigureAwait(false)
+            ?? throw new InvalidOperationException("The idempotency promotion target returned no inspection.");
+        IdempotencyAdmissionPromotionAcknowledgement acknowledgement = inspection.Promotion
+            ?? throw new InvalidOperationException("The idempotency promotion target acknowledgement is missing.");
+        string migrationId = IdempotencyAdmissionPromotionEvidence.BuildConventionalMigrationId(
+            sourceActorId,
+            targetActorId);
+        if (!string.Equals(acknowledgement.SourceActorId, sourceActorId, StringComparison.Ordinal)
+            || !string.Equals(acknowledgement.MigrationId, migrationId, StringComparison.Ordinal)
+            || !string.Equals(
+                acknowledgement.SourceEvidenceDigest,
+                acknowledgement.ImportDigest,
+                StringComparison.Ordinal)
+            || (activated is not null && acknowledgement.Activated != activated.Value))
+        {
+            throw new InvalidOperationException("The idempotency promotion target proof is stale or corrupt.");
+        }
+
+        return acknowledgement;
     }
 
     private static IdempotencyAdmissionRequest CreateRequest(

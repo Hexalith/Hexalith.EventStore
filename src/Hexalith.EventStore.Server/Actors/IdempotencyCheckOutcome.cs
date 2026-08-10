@@ -22,4 +22,7 @@ public enum IdempotencyCheckOutcome
 
     /// <summary>An exact legacy-keyed record was staged for migration to its message key.</summary>
     LegacyMigration,
+
+    /// <summary>The aggregate-local source is irreversibly redirected and cannot execute.</summary>
+    RedirectedLegacy,
 }

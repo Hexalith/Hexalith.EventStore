@@ -147,6 +147,232 @@ public class AggregateActorFencingTests
         await actorContext.StateManager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task LegacySource_ExactInspectionAndRedirectRetainOriginalEvidenceAndDoNoDomainWork()
+    {
+        ActorTestContext actorContext = AggregateActorTestHelper.CreateActor();
+        DateTimeOffset processedAt = new(2026, 8, 10, 8, 0, 0, TimeSpan.Zero);
+        DateTimeOffset expiresAt = processedAt.AddDays(1);
+        var result = new CommandProcessingResult(
+            true,
+            CorrelationId: "trace-original",
+            EventCount: 1,
+            ResultPayload: "protected-result");
+        var record = new IdempotencyRecord(
+            "01J00000000000000000000000",
+            "trace-original",
+            true,
+            null,
+            processedAt,
+            EventCount: 1,
+            ResultPayload: "protected-result",
+            MessageId: "01J00000000000000000000000",
+            CommandType: "CreateFolderCommand",
+            ExpiresAt: expiresAt,
+            Disposition: IdempotencyRecordDisposition.Terminal);
+        IdempotencyLegacySourceRedirectRecord? redirect = null;
+        _ = actorContext.StateManager.TryGetStateAsync<IdempotencyRecord>(
+                "idempotency:01J00000000000000000000000",
+                Arg.Any<CancellationToken>())
+            .Returns(new Dapr.Actors.Runtime.ConditionalValue<IdempotencyRecord>(true, record));
+        _ = actorContext.StateManager.TryGetStateAsync<IdempotencyLegacySourceRedirectRecord>(
+                IdempotencyChecker.GetLegacyRedirectKey("01J00000000000000000000000"),
+                Arg.Any<CancellationToken>())
+            .Returns(_ => redirect is null
+                ? new Dapr.Actors.Runtime.ConditionalValue<IdempotencyLegacySourceRedirectRecord>(false, default!)
+                : new Dapr.Actors.Runtime.ConditionalValue<IdempotencyLegacySourceRedirectRecord>(true, redirect));
+        _ = actorContext.StateManager.SetStateAsync(
+                IdempotencyChecker.GetLegacyRedirectKey("01J00000000000000000000000"),
+                Arg.Do<IdempotencyLegacySourceRedirectRecord>(value => redirect = value),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        var request = new IdempotencyLegacySourceRequest(
+            IdempotencyLegacySourceRequest.CurrentSchemaVersion,
+            "test-tenant",
+            "inventory-2026-08",
+            "migration-01J00000000000000000000000",
+            1,
+            IdempotencyLegacySourceEvidence.Compute(record),
+            record.MessageId!,
+            record.CorrelationId!,
+            processedAt,
+            expiresAt,
+            result);
+        IIdempotencyLegacySourceActor source = actorContext.Actor;
+
+        IdempotencyLegacySourceInspection exact = await source.InspectLegacySourceAsync(request);
+        IdempotencyLegacySourceInspection redirected = await source.SetLegacySourceRedirectAsync(
+            new IdempotencyLegacySourceRedirectRequest(
+                request,
+                "test-tenant:v1:key-digest"));
+        IdempotencyLegacySourceInspection reproved = await source.InspectLegacySourceAsync(request);
+
+        exact.Decision.ShouldBe(IdempotencyLegacySourceDecision.Exact);
+        redirected.Decision.ShouldBe(IdempotencyLegacySourceDecision.Redirected);
+        reproved.ShouldBe(redirected);
+        redirect.ShouldNotBeNull().TargetAdmissionActorId.ShouldBe("test-tenant:v1:key-digest");
+        await actorContext.StateManager.DidNotReceive().TryRemoveStateAsync(
+            "idempotency:01J00000000000000000000000",
+            Arg.Any<CancellationToken>());
+        _ = actorContext.Invoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task LegacySource_UnsupportedShapeRemainsReadOnlyAndFailClosed()
+    {
+        ActorTestContext actorContext = AggregateActorTestHelper.CreateActor();
+        DateTimeOffset processedAt = new(2026, 8, 10, 8, 0, 0, TimeSpan.Zero);
+        var unsupported = new IdempotencyRecord(
+            "causation",
+            "trace-original",
+            true,
+            null,
+            processedAt);
+        _ = actorContext.StateManager.TryGetStateAsync<IdempotencyRecord>(
+                "idempotency:01J00000000000000000000000",
+                Arg.Any<CancellationToken>())
+            .Returns(new Dapr.Actors.Runtime.ConditionalValue<IdempotencyRecord>(true, unsupported));
+        _ = actorContext.StateManager.TryGetStateAsync<IdempotencyLegacySourceRedirectRecord>(
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new Dapr.Actors.Runtime.ConditionalValue<IdempotencyLegacySourceRedirectRecord>(false, default!));
+        var request = new IdempotencyLegacySourceRequest(
+            IdempotencyLegacySourceRequest.CurrentSchemaVersion,
+            "test-tenant",
+            "inventory-2026-08",
+            "migration-01J00000000000000000000000",
+            1,
+            IdempotencyLegacySourceEvidence.Compute(unsupported),
+            "01J00000000000000000000000",
+            "trace-original",
+            processedAt,
+            processedAt.AddDays(1),
+            unsupported.ToResult());
+
+        IdempotencyLegacySourceInspection inspection = await ((IIdempotencyLegacySourceActor)actorContext.Actor)
+            .InspectLegacySourceAsync(request);
+
+        inspection.Decision.ShouldBe(IdempotencyLegacySourceDecision.Unsupported);
+        await actorContext.StateManager.DidNotReceive().SetStateAsync(
+            Arg.Any<string>(),
+            Arg.Any<object>(),
+            Arg.Any<CancellationToken>());
+        await actorContext.StateManager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
+        _ = actorContext.Invoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task LegacySource_OneProtectedResultMismatchIsReadOnlyConflict()
+    {
+        ActorTestContext actorContext = AggregateActorTestHelper.CreateActor();
+        DateTimeOffset processedAt = new(2026, 8, 10, 8, 0, 0, TimeSpan.Zero);
+        DateTimeOffset expiresAt = processedAt.AddDays(1);
+        var record = new IdempotencyRecord(
+            "01J00000000000000000000000",
+            "trace-original",
+            true,
+            null,
+            processedAt,
+            EventCount: 1,
+            ResultPayload: "protected-result",
+            MessageId: "01J00000000000000000000000",
+            CommandType: "CreateFolderCommand",
+            ExpiresAt: expiresAt,
+            Disposition: IdempotencyRecordDisposition.Terminal);
+        _ = actorContext.StateManager.TryGetStateAsync<IdempotencyLegacySourceRedirectRecord>(
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new Dapr.Actors.Runtime.ConditionalValue<IdempotencyLegacySourceRedirectRecord>(false, default!));
+        _ = actorContext.StateManager.TryGetStateAsync<IdempotencyRecord>(
+                "idempotency:01J00000000000000000000000",
+                Arg.Any<CancellationToken>())
+            .Returns(new Dapr.Actors.Runtime.ConditionalValue<IdempotencyRecord>(true, record));
+        var request = new IdempotencyLegacySourceRequest(
+            IdempotencyLegacySourceRequest.CurrentSchemaVersion,
+            "test-tenant",
+            "inventory-2026-08",
+            "migration-01J00000000000000000000000",
+            1,
+            IdempotencyLegacySourceEvidence.Compute(record),
+            record.MessageId!,
+            record.CorrelationId!,
+            processedAt,
+            expiresAt,
+            record.ToResult() with { ResultPayload = "mismatched-result" });
+
+        IdempotencyLegacySourceInspection inspection = await ((IIdempotencyLegacySourceActor)actorContext.Actor)
+            .InspectLegacySourceAsync(request);
+
+        inspection.Decision.ShouldBe(IdempotencyLegacySourceDecision.Conflict);
+        await actorContext.StateManager.DidNotReceive().SetStateAsync(
+            Arg.Any<string>(),
+            Arg.Any<object>(),
+            Arg.Any<CancellationToken>());
+        await actorContext.StateManager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
+        _ = actorContext.Invoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task ProcessCommandAsync_PersistedLegacyRedirectRejectsBeforeDomainEventOrPipelineWork()
+    {
+        ActorTestContext actorContext = AggregateActorTestHelper.CreateActor();
+        CommandEnvelope command = AggregateActorTestHelper.CreateTestEnvelope(correlationId: "trace-redirected");
+        var redirect = new IdempotencyLegacySourceRedirectRecord(
+            IdempotencyLegacySourceRedirectRecord.CurrentSchemaVersion,
+            command.TenantId,
+            "inventory-2026-08",
+            "migration-redirected",
+            "source-evidence",
+            "test-tenant:v2:target");
+        _ = actorContext.StateManager.TryGetStateAsync<IdempotencyLegacySourceRedirectRecord>(
+                IdempotencyChecker.GetLegacyRedirectKey(command.MessageId),
+                Arg.Any<CancellationToken>())
+            .Returns(new Dapr.Actors.Runtime.ConditionalValue<IdempotencyLegacySourceRedirectRecord>(true, redirect));
+
+        CommandProcessingResult result = await actorContext.Actor.ProcessCommandAsync(command);
+
+        result.Accepted.ShouldBeFalse();
+        result.ErrorMessage.ShouldBe("idempotency_legacy_redirected");
+        _ = actorContext.Invoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default);
+        await actorContext.StateManager.DidNotReceive().SetStateAsync(
+            Arg.Any<string>(),
+            Arg.Any<object>(),
+            Arg.Any<CancellationToken>());
+        await actorContext.StateManager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task LegacySource_StateUnavailableReturnsBoundedDecisionWithoutLeakingStoreError()
+    {
+        const string RawStateKeySentinel = "idempotency:raw-state-key-must-not-leak";
+        ActorTestContext actorContext = AggregateActorTestHelper.CreateActor();
+        _ = actorContext.StateManager.TryGetStateAsync<IdempotencyLegacySourceRedirectRecord>(
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns<Task<Dapr.Actors.Runtime.ConditionalValue<IdempotencyLegacySourceRedirectRecord>>>(_ =>
+                throw new InvalidOperationException(RawStateKeySentinel));
+        DateTimeOffset consumedAt = new(2026, 8, 10, 8, 0, 0, TimeSpan.Zero);
+        var request = new IdempotencyLegacySourceRequest(
+            IdempotencyLegacySourceRequest.CurrentSchemaVersion,
+            "test-tenant",
+            "inventory-2026-08",
+            "migration-01J00000000000000000000000",
+            1,
+            "source-evidence-digest",
+            "01J00000000000000000000000",
+            "trace-original",
+            consumedAt,
+            consumedAt.AddDays(1),
+            new CommandProcessingResult(true, CorrelationId: "trace-original"));
+
+        IdempotencyLegacySourceInspection inspection = await ((IIdempotencyLegacySourceActor)actorContext.Actor)
+            .InspectLegacySourceAsync(request);
+
+        inspection.Decision.ShouldBe(IdempotencyLegacySourceDecision.Unavailable);
+        inspection.ToString().ShouldNotContain(RawStateKeySentinel);
+        _ = actorContext.Invoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default);
+    }
+
     private static IdempotencyExecutionContextProtector CreateProtector(
         IIdempotencyAdmissionActor? authority = null)
     {

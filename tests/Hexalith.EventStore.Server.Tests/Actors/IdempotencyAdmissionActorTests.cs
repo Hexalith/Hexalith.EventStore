@@ -350,10 +350,17 @@ public class IdempotencyAdmissionActorTests
     {
         IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
         IIdempotencyTenantLifecycleActor lifecycle = Substitute.For<IIdempotencyTenantLifecycleActor>();
+        IIdempotencyLegacyInventoryActor inventory = Substitute.For<IIdempotencyLegacyInventoryActor>();
         _ = factory.CreateActorProxy<IIdempotencyTenantLifecycleActor>(
                 Arg.Any<ActorId>(),
                 IdempotencyTenantLifecycleActor.ActorTypeName)
             .Returns(lifecycle);
+        _ = factory.CreateActorProxy<IIdempotencyLegacyInventoryActor>(
+                Arg.Any<ActorId>(),
+                IdempotencyLegacyInventoryActor.ActorTypeName)
+            .Returns(inventory);
+        _ = inventory.InspectAsync(Arg.Any<IdempotencyAdmissionDirectoryAlias[]>())
+            .Returns(new IdempotencyLegacyInventoryInspection(IdempotencyLegacyInventoryDecision.NoLegacy));
         _ = lifecycle.RegisterAsync(Arg.Any<IdempotencyTenantLifecycleReference[]>())
             .Returns<Task>(_ => throw new InvalidOperationException("tenant deletion"));
         IIdempotencyIntentAdapterRegistry registry = Substitute.For<IIdempotencyIntentAdapterRegistry>();
@@ -500,8 +507,14 @@ public class IdempotencyAdmissionActorTests
             .Returns(legacyInventory);
         _ = legacyInventory.InspectAsync(Arg.Any<IdempotencyAdmissionDirectoryAlias[]>())
             .Returns(new IdempotencyLegacyInventoryInspection(IdempotencyLegacyInventoryDecision.NoLegacy));
+        IdempotencyAdmissionPromotionAcknowledgement? targetProof = null;
+        bool targetActivated = false;
         _ = source.InspectAsync().Returns(new IdempotencyAdmissionInspection(true, retainedRecord));
-        _ = target.InspectAsync().Returns(new IdempotencyAdmissionInspection(false));
+        _ = target.InspectAsync().Returns(_ => targetProof is null
+            ? new IdempotencyAdmissionInspection(false)
+            : new IdempotencyAdmissionInspection(
+                true,
+                Promotion: targetProof with { Activated = targetActivated }));
         _ = lifecycle.AdmitAsync(Arg.Is<IdempotencyTenantLifecycleAdmissionRequest>(request =>
                 request.Reference.ActorId == retained.ActorId))
             .Returns(_ =>
@@ -517,10 +530,31 @@ public class IdempotencyAdmissionActorTests
                 active.ActorId));
         _ = target.PreparePromotionAsync(Arg.Any<IdempotencyAdmissionPromotionImportRequest>())
             .Returns(_ => { calls.Add("prepare"); return Task.CompletedTask; });
+        _ = target.AcknowledgePromotionAsync(
+                Arg.Any<IdempotencyAdmissionPromotionAcknowledgementRequest>())
+            .Returns(callInfo =>
+            {
+                IdempotencyAdmissionPromotionAcknowledgementRequest request = callInfo
+                    .ArgAt<IdempotencyAdmissionPromotionAcknowledgementRequest>(0);
+                calls.Add("acknowledge");
+                targetProof = new IdempotencyAdmissionPromotionAcknowledgement(
+                    IdempotencyAdmissionPromotionRecord.CurrentSchemaVersion,
+                    request.SourceActorId,
+                    request.MigrationId,
+                    request.SourceEvidenceDigest,
+                    request.ImportDigest,
+                    Activated: targetActivated);
+                return targetProof;
+            });
         _ = source.SetRedirectAsync(Arg.Any<IdempotencyAdmissionRedirectRequest>())
             .Returns(_ => { calls.Add("redirect"); return Task.CompletedTask; });
         _ = target.ActivatePromotionAsync(Arg.Any<IdempotencyAdmissionPromotionActivationRequest>())
-            .Returns(_ => { calls.Add("activate"); return Task.CompletedTask; });
+            .Returns(_ =>
+            {
+                calls.Add("activate");
+                targetActivated = true;
+                return Task.CompletedTask;
+            });
         _ = directory.AdvanceAsync(Arg.Any<IdempotencyAdmissionDirectoryAdvanceRequest>())
             .Returns(callInfo =>
             {
@@ -571,6 +605,7 @@ public class IdempotencyAdmissionActorTests
         calls.ShouldBe([
             "classify",
             "prepare",
+            "acknowledge",
             "advance:PrepareTarget",
             "redirect",
             "advance:RedirectSource",
@@ -581,6 +616,197 @@ public class IdempotencyAdmissionActorTests
         ]);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Coordinator_OrdinaryActivationResponseLossReprovesExactTargetBeforeAdvance(
+        bool corruptProof)
+    {
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        IIdempotencyAdmissionDirectoryActor directory = Substitute.For<IIdempotencyAdmissionDirectoryActor>();
+        IIdempotencyTenantLifecycleActor lifecycle = Substitute.For<IIdempotencyTenantLifecycleActor>();
+        IIdempotencyLegacyInventoryActor inventory = Substitute.For<IIdempotencyLegacyInventoryActor>();
+        IdempotencyKeyProtector protector = CreateRotatingProtector();
+        IdempotencyProtectedIdentitySet identities = await protector.ProtectAsync(
+            "tenant-a",
+            "opaque-secret-key",
+            Descriptor("target-a"));
+        IdempotencyProtectedIdentity sourceIdentity = identities.Aliases.Single(identity =>
+            identity.DigestKeyVersion == "v1");
+        IdempotencyProtectedIdentity targetIdentity = identities.Active;
+        IIdempotencyAdmissionActor source = Substitute.For<IIdempotencyAdmissionActor>();
+        IIdempotencyAdmissionActor target = Substitute.For<IIdempotencyAdmissionActor>();
+        _ = factory.CreateActorProxy<IIdempotencyAdmissionActor>(
+                Arg.Any<ActorId>(),
+                IdempotencyAdmissionActor.ActorTypeName)
+            .Returns(callInfo => string.Equals(
+                callInfo.ArgAt<ActorId>(0).GetId(),
+                sourceIdentity.ActorId,
+                StringComparison.Ordinal)
+                    ? source
+                    : target);
+        _ = factory.CreateActorProxy<IIdempotencyAdmissionDirectoryActor>(
+                Arg.Any<ActorId>(),
+                IdempotencyAdmissionDirectoryActor.ActorTypeName)
+            .Returns(directory);
+        _ = factory.CreateActorProxy<IIdempotencyTenantLifecycleActor>(
+                Arg.Any<ActorId>(),
+                IdempotencyTenantLifecycleActor.ActorTypeName)
+            .Returns(lifecycle);
+        _ = factory.CreateActorProxy<IIdempotencyLegacyInventoryActor>(
+                Arg.Any<ActorId>(),
+                IdempotencyLegacyInventoryActor.ActorTypeName)
+            .Returns(inventory);
+        _ = inventory.InspectAsync(Arg.Any<IdempotencyAdmissionDirectoryAlias[]>())
+            .Returns(new IdempotencyLegacyInventoryInspection(IdempotencyLegacyInventoryDecision.NoLegacy));
+        string migrationId = IdempotencyAdmissionPromotionEvidence.BuildConventionalMigrationId(
+            sourceIdentity.ActorId,
+            targetIdentity.ActorId);
+        var proof = new IdempotencyAdmissionPromotionAcknowledgement(
+            IdempotencyAdmissionPromotionRecord.CurrentSchemaVersion,
+            sourceIdentity.ActorId,
+            corruptProof ? "stale-migration" : migrationId,
+            "target-import",
+            "target-import",
+            Activated: true,
+            CurrentStateDigest: "current-target-state");
+        _ = source.InspectAsync().Returns(new IdempotencyAdmissionInspection(
+            true,
+            RedirectActorId: targetIdentity.ActorId));
+        _ = target.InspectAsync().Returns(new IdempotencyAdmissionInspection(
+            true,
+            Promotion: proof));
+        _ = directory.ResolveAsync(Arg.Any<IdempotencyAdmissionDirectoryRequest>())
+            .Returns(new IdempotencyAdmissionDirectoryResult(
+                targetIdentity.ActorId,
+                IdempotencyAdmissionPromotionPhase.ActivateTarget,
+                sourceIdentity.ActorId,
+                targetIdentity.ActorId));
+        _ = directory.AdvanceAsync(Arg.Any<IdempotencyAdmissionDirectoryAdvanceRequest>())
+            .Returns(new IdempotencyAdmissionDirectoryResult(
+                targetIdentity.ActorId,
+                IdempotencyAdmissionPromotionPhase.Stable));
+        _ = lifecycle.AdmitAsync(Arg.Is<IdempotencyTenantLifecycleAdmissionRequest>(request =>
+                request.Reference.ActorId == sourceIdentity.ActorId))
+            .Returns(new IdempotencyAdmissionResult(
+                IdempotencyAdmissionDecision.Redirect,
+                RedirectActorId: targetIdentity.ActorId));
+        _ = lifecycle.AdmitAsync(Arg.Is<IdempotencyTenantLifecycleAdmissionRequest>(request =>
+                request.Reference.ActorId == targetIdentity.ActorId))
+            .Returns(new IdempotencyAdmissionResult(
+                IdempotencyAdmissionDecision.Replay,
+                1,
+                new CommandProcessingResult(true)));
+        var command = new Hexalith.EventStore.Server.Pipeline.Commands.SubmitCommand(
+            "01J00000000000000000000000",
+            "tenant-a",
+            "folders",
+            "folder-a",
+            "CreateFolderCommand",
+            [1],
+            "trace-a",
+            "user-a",
+            IdempotencyKey: "opaque-secret-key");
+        IIdempotencyIntentAdapterRegistry registry = Substitute.For<IIdempotencyIntentAdapterRegistry>();
+        registry.Resolve(command).Returns(Descriptor("target-a"));
+        var coordinator = new IdempotencyAdmissionCoordinator(factory, protector, registry);
+
+        if (corruptProof)
+        {
+            _ = await Should.ThrowAsync<InvalidOperationException>(() => coordinator.AdmitAsync(command));
+            await target.DidNotReceive().ActivatePromotionAsync(
+                Arg.Any<IdempotencyAdmissionPromotionActivationRequest>());
+            _ = await directory.DidNotReceive().AdvanceAsync(
+                Arg.Any<IdempotencyAdmissionDirectoryAdvanceRequest>());
+            return;
+        }
+
+        IdempotencyAdmissionSession result = (await coordinator.AdmitAsync(command)).ShouldNotBeNull();
+        result.Decision.ShouldBe(IdempotencyAdmissionDecision.Replay);
+        await target.Received(1).ActivatePromotionAsync(
+            Arg.Is<IdempotencyAdmissionPromotionActivationRequest>(request =>
+                request.SourceActorId == sourceIdentity.ActorId
+                && request.MigrationId == migrationId
+                && request.ImportDigest == proof.ImportDigest));
+        _ = await directory.Received(1).AdvanceAsync(
+            Arg.Is<IdempotencyAdmissionDirectoryAdvanceRequest>(request =>
+                request.ExpectedPhase == IdempotencyAdmissionPromotionPhase.ActivateTarget));
+    }
+
+    [Theory]
+    [InlineData(IdempotencyLegacyInventoryDecision.Uninventoried)]
+    [InlineData(IdempotencyLegacyInventoryDecision.Unsafe)]
+    public async Task Coordinator_UnsafeLegacyInventoryDoesNoLifecycleAdmissionDirectoryOrMigrationWork(
+        IdempotencyLegacyInventoryDecision decision)
+    {
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        IIdempotencyAdmissionActor admission = Substitute.For<IIdempotencyAdmissionActor>();
+        IIdempotencyAdmissionDirectoryActor directory = Substitute.For<IIdempotencyAdmissionDirectoryActor>();
+        IIdempotencyTenantLifecycleActor lifecycle = Substitute.For<IIdempotencyTenantLifecycleActor>();
+        IIdempotencyTenantLifecycleMigrationActor migration = Substitute.For<IIdempotencyTenantLifecycleMigrationActor>();
+        IIdempotencyLegacyInventoryActor inventory = Substitute.For<IIdempotencyLegacyInventoryActor>();
+        _ = factory.CreateActorProxy<IIdempotencyAdmissionActor>(
+                Arg.Any<ActorId>(),
+                IdempotencyAdmissionActor.ActorTypeName)
+            .Returns(admission);
+        _ = factory.CreateActorProxy<IIdempotencyAdmissionDirectoryActor>(
+                Arg.Any<ActorId>(),
+                IdempotencyAdmissionDirectoryActor.ActorTypeName)
+            .Returns(directory);
+        _ = factory.CreateActorProxy<IIdempotencyTenantLifecycleActor>(
+                Arg.Any<ActorId>(),
+                IdempotencyTenantLifecycleActor.ActorTypeName)
+            .Returns(lifecycle);
+        _ = factory.CreateActorProxy<IIdempotencyTenantLifecycleMigrationActor>(
+                Arg.Any<ActorId>(),
+                IdempotencyTenantLifecycleActor.ActorTypeName)
+            .Returns(migration);
+        _ = factory.CreateActorProxy<IIdempotencyLegacyInventoryActor>(
+                Arg.Any<ActorId>(),
+                IdempotencyLegacyInventoryActor.ActorTypeName)
+            .Returns(inventory);
+        _ = inventory.InspectAsync(Arg.Any<IdempotencyAdmissionDirectoryAlias[]>())
+            .Returns(new IdempotencyLegacyInventoryInspection(decision));
+        var command = new Hexalith.EventStore.Server.Pipeline.Commands.SubmitCommand(
+            "01J00000000000000000000000",
+            "tenant-a",
+            "folders",
+            "folder-a",
+            "CreateFolderCommand",
+            [1],
+            "trace-a",
+            "user-a",
+            IdempotencyKey: "opaque-secret-key");
+        IIdempotencyIntentAdapterRegistry registry = Substitute.For<IIdempotencyIntentAdapterRegistry>();
+        registry.Resolve(command).Returns(Descriptor("target-a"));
+        var coordinator = new IdempotencyAdmissionCoordinator(
+            factory,
+            CreateProtector(),
+            registry,
+            CreateExecutionContextProtector());
+
+        IdempotencyAdmissionSession session = (await coordinator.AdmitAsync(command)).ShouldNotBeNull();
+
+        session.Decision.ShouldBe(IdempotencyAdmissionDecision.UnsafeLegacy);
+        _ = await inventory.Received(1).InspectAsync(Arg.Any<IdempotencyAdmissionDirectoryAlias[]>());
+        await lifecycle.DidNotReceive().RegisterAsync(Arg.Any<IdempotencyTenantLifecycleReference[]>());
+        _ = await lifecycle.DidNotReceive().AdmitAsync(Arg.Any<IdempotencyTenantLifecycleAdmissionRequest>());
+        _ = await admission.DidNotReceive().InspectAsync();
+        _ = await admission.DidNotReceive().AdmitAsync(Arg.Any<IdempotencyAdmissionRequest>());
+        await admission.DidNotReceive().PreparePromotionAsync(
+            Arg.Any<IdempotencyAdmissionPromotionImportRequest>());
+        _ = await admission.DidNotReceive().AcknowledgePromotionAsync(
+            Arg.Any<IdempotencyAdmissionPromotionAcknowledgementRequest>());
+        await admission.DidNotReceive().SetRedirectAsync(Arg.Any<IdempotencyAdmissionRedirectRequest>());
+        await admission.DidNotReceive().ActivatePromotionAsync(
+            Arg.Any<IdempotencyAdmissionPromotionActivationRequest>());
+        await admission.DidNotReceive().ValidateAuthorityAsync(
+            Arg.Any<IdempotencyAdmissionAuthorityRequest>());
+        _ = await directory.DidNotReceive().ResolveAsync(Arg.Any<IdempotencyAdmissionDirectoryRequest>());
+        _ = await directory.DidNotReceive().AdvanceAsync(Arg.Any<IdempotencyAdmissionDirectoryAdvanceRequest>());
+        _ = await migration.DidNotReceive().MigrateLegacyAsync(Arg.Any<IdempotencyLegacyMigrationRequest>());
+    }
+
     [Fact]
     public async Task Coordinator_ExactLegacyInventory_PreparesActivatesAndRedirectsBeforeReplay()
     {
@@ -589,6 +815,7 @@ public class IdempotencyAdmissionActorTests
         IIdempotencyAdmissionActor target = Substitute.For<IIdempotencyAdmissionActor>();
         IIdempotencyAdmissionDirectoryActor directory = Substitute.For<IIdempotencyAdmissionDirectoryActor>();
         IIdempotencyTenantLifecycleActor lifecycle = Substitute.For<IIdempotencyTenantLifecycleActor>();
+        IIdempotencyTenantLifecycleMigrationActor migration = Substitute.For<IIdempotencyTenantLifecycleMigrationActor>();
         IIdempotencyLegacyInventoryActor inventory = Substitute.For<IIdempotencyLegacyInventoryActor>();
         IdempotencyKeyProtector protector = CreateProtector();
         TrustedIdempotencyDescriptor descriptor = Descriptor("target-a");
@@ -618,8 +845,11 @@ public class IdempotencyAdmissionActorTests
             replay,
             "01J00000000000000000000000",
             "trace-original",
-            IdempotencyLegacyMigrationPhase.Inventoried);
-        IdempotencyAdmissionRecord? imported = null;
+            IdempotencyLegacyMigrationPhase.Inventoried,
+            "inventory-2026-08",
+            1,
+            "migration-01J00000000000000000000000");
+        IdempotencyLegacyMigrationRequest? migrationRequest = null;
         _ = factory.CreateActorProxy<IIdempotencyAdmissionActor>(
                 Arg.Any<ActorId>(),
                 IdempotencyAdmissionActor.ActorTypeName)
@@ -632,6 +862,10 @@ public class IdempotencyAdmissionActorTests
                 Arg.Any<ActorId>(),
                 IdempotencyTenantLifecycleActor.ActorTypeName)
             .Returns(lifecycle);
+        _ = factory.CreateActorProxy<IIdempotencyTenantLifecycleMigrationActor>(
+                Arg.Any<ActorId>(),
+                IdempotencyTenantLifecycleActor.ActorTypeName)
+            .Returns(migration);
         _ = factory.CreateActorProxy<IIdempotencyLegacyInventoryActor>(
                 Arg.Any<ActorId>(),
                 IdempotencyLegacyInventoryActor.ActorTypeName)
@@ -640,35 +874,14 @@ public class IdempotencyAdmissionActorTests
             .Returns(new IdempotencyLegacyInventoryInspection(
                 IdempotencyLegacyInventoryDecision.Migrate,
                 entry));
-        _ = target.PreparePromotionAsync(Arg.Any<IdempotencyAdmissionPromotionImportRequest>())
+        _ = migration.MigrateLegacyAsync(Arg.Any<IdempotencyLegacyMigrationRequest>())
             .Returns(callInfo =>
             {
-                imported = callInfo.ArgAt<IdempotencyAdmissionPromotionImportRequest>(0).Record;
-                calls.Add("prepare");
-                return Task.CompletedTask;
+                migrationRequest = callInfo.ArgAt<IdempotencyLegacyMigrationRequest>(0);
+                calls.Add("migrate");
+                return new IdempotencyLegacyMigrationResult(identity.ActorId);
             });
-        _ = inventory.AdvanceAsync(
-                entry.DigestKeyVersion,
-                entry.KeyDigest,
-                Arg.Any<IdempotencyLegacyMigrationPhase>(),
-                identity.ActorId)
-            .Returns(callInfo =>
-            {
-                IdempotencyLegacyMigrationPhase expected = callInfo.ArgAt<IdempotencyLegacyMigrationPhase>(2);
-                calls.Add(expected == IdempotencyLegacyMigrationPhase.Inventoried
-                    ? "inventory-prepared"
-                    : "inventory-migrated");
-                return entry with
-                {
-                    Phase = expected == IdempotencyLegacyMigrationPhase.Inventoried
-                        ? IdempotencyLegacyMigrationPhase.TargetPrepared
-                        : IdempotencyLegacyMigrationPhase.Migrated,
-                    TargetAdmissionActorId = identity.ActorId,
-                };
-            });
-        _ = target.ActivatePromotionAsync(Arg.Any<IdempotencyAdmissionPromotionActivationRequest>())
-            .Returns(_ => { calls.Add("activate"); return Task.CompletedTask; });
-        _ = target.InspectAsync().Returns(_ => new IdempotencyAdmissionInspection(true, imported));
+        _ = target.InspectAsync().Returns(new IdempotencyAdmissionInspection(false));
         _ = directory.ResolveAsync(Arg.Any<IdempotencyAdmissionDirectoryRequest>())
             .Returns(new IdempotencyAdmissionDirectoryResult(
                 identity.ActorId,
@@ -698,9 +911,98 @@ public class IdempotencyAdmissionActorTests
 
         session.Decision.ShouldBe(IdempotencyAdmissionDecision.Replay);
         session.ReplayResult.ShouldBe(replay);
-        imported.ShouldNotBeNull().State.ShouldBe(IdempotencyAdmissionState.Terminal);
-        imported.IntentDigest.ShouldBe(identity.IntentDigest);
-        calls.ShouldBe(["prepare", "inventory-prepared", "activate", "inventory-migrated"]);
+        migrationRequest.ShouldNotBeNull().Target.ActorId.ShouldBe(identity.ActorId);
+        migrationRequest.TargetIntentDigest.ShouldBe(identity.IntentDigest);
+        calls.ShouldBe(["migrate"]);
+    }
+
+    [Theory]
+    [InlineData(IdempotencyAdmissionDecision.UnsafeLegacy)]
+    [InlineData(IdempotencyAdmissionDecision.Conflict)]
+    public async Task Coordinator_MigratedFailedReproofStopsBeforeDirectoryOrAdmission(
+        IdempotencyAdmissionDecision denied)
+    {
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        IIdempotencyAdmissionActor admission = Substitute.For<IIdempotencyAdmissionActor>();
+        IIdempotencyAdmissionDirectoryActor directory = Substitute.For<IIdempotencyAdmissionDirectoryActor>();
+        IIdempotencyTenantLifecycleActor lifecycle = Substitute.For<IIdempotencyTenantLifecycleActor>();
+        IIdempotencyTenantLifecycleMigrationActor migration = Substitute.For<IIdempotencyTenantLifecycleMigrationActor>();
+        IIdempotencyLegacyInventoryActor inventory = Substitute.For<IIdempotencyLegacyInventoryActor>();
+        IdempotencyKeyProtector protector = CreateProtector();
+        IdempotencyProtectedIdentity identity = (await protector.ProtectAsync(
+            "tenant-a",
+            "opaque-secret-key",
+            Descriptor("target-a"))).Active;
+        var entry = new IdempotencyLegacyInventoryEntry(
+            IdempotencyLegacyInventoryEntry.CurrentSchemaVersion,
+            "tenant-a",
+            "tenant-a:folders:legacy-folder",
+            "source-evidence",
+            1,
+            identity.DigestKeyVersion,
+            identity.KeyDigest,
+            identity.VerificationTag,
+            identity.IntentDigest,
+            identity.RetentionTier,
+            _now.AddDays(-1),
+            _now,
+            _now.AddDays(1),
+            new CommandProcessingResult(true),
+            "01J00000000000000000000000",
+            "trace-original",
+            IdempotencyLegacyMigrationPhase.Migrated,
+            "inventory-2026-08",
+            1,
+            "migration-01J00000000000000000000000",
+            identity.ActorId,
+            "target-import",
+            "source-redirect");
+        _ = factory.CreateActorProxy<IIdempotencyAdmissionActor>(
+                Arg.Any<ActorId>(),
+                IdempotencyAdmissionActor.ActorTypeName)
+            .Returns(admission);
+        _ = factory.CreateActorProxy<IIdempotencyAdmissionDirectoryActor>(
+                Arg.Any<ActorId>(),
+                IdempotencyAdmissionDirectoryActor.ActorTypeName)
+            .Returns(directory);
+        _ = factory.CreateActorProxy<IIdempotencyTenantLifecycleActor>(
+                Arg.Any<ActorId>(),
+                IdempotencyTenantLifecycleActor.ActorTypeName)
+            .Returns(lifecycle);
+        _ = factory.CreateActorProxy<IIdempotencyTenantLifecycleMigrationActor>(
+                Arg.Any<ActorId>(),
+                IdempotencyTenantLifecycleActor.ActorTypeName)
+            .Returns(migration);
+        _ = factory.CreateActorProxy<IIdempotencyLegacyInventoryActor>(
+                Arg.Any<ActorId>(),
+                IdempotencyLegacyInventoryActor.ActorTypeName)
+            .Returns(inventory);
+        _ = inventory.InspectAsync(Arg.Any<IdempotencyAdmissionDirectoryAlias[]>())
+            .Returns(new IdempotencyLegacyInventoryInspection(
+                IdempotencyLegacyInventoryDecision.Migrated,
+                entry));
+        _ = migration.MigrateLegacyAsync(Arg.Any<IdempotencyLegacyMigrationRequest>())
+            .Returns(new IdempotencyLegacyMigrationResult(identity.ActorId, denied));
+        var command = new Hexalith.EventStore.Server.Pipeline.Commands.SubmitCommand(
+            entry.ExecutionMessageId,
+            "tenant-a",
+            "folders",
+            "folder-a",
+            "CreateFolderCommand",
+            [1],
+            "trace-current",
+            "user-a",
+            IdempotencyKey: "opaque-secret-key");
+        IIdempotencyIntentAdapterRegistry registry = Substitute.For<IIdempotencyIntentAdapterRegistry>();
+        registry.Resolve(command).Returns(Descriptor("target-a"));
+        var coordinator = new IdempotencyAdmissionCoordinator(factory, protector, registry);
+
+        IdempotencyAdmissionSession result = (await coordinator.AdmitAsync(command)).ShouldNotBeNull();
+
+        result.Decision.ShouldBe(denied);
+        _ = await directory.DidNotReceive().ResolveAsync(Arg.Any<IdempotencyAdmissionDirectoryRequest>());
+        _ = await admission.DidNotReceive().InspectAsync();
+        _ = await lifecycle.DidNotReceive().AdmitAsync(Arg.Any<IdempotencyTenantLifecycleAdmissionRequest>());
     }
 
     [Fact]
@@ -1159,6 +1461,263 @@ public class IdempotencyAdmissionActorTests
     }
 
     [Fact]
+    public async Task Promotion_HashBoundAcknowledgementAllowsOnlyExactPreRedirectRollback()
+    {
+        (IdempotencyAdmissionActor actor, IActorStateManager stateManager, _) = CreateActor();
+        IdempotencyAdmissionTombstone? storedTombstone = null;
+        IdempotencyAdmissionPromotionRecord? promotion = null;
+        _ = stateManager.TryGetStateAsync<IdempotencyAdmissionRecord>(
+                IdempotencyAdmissionActor.StateName,
+                Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyAdmissionRecord>(false, default!));
+        _ = stateManager.TryGetStateAsync<IdempotencyAdmissionTombstone>(
+                IdempotencyAdmissionActor.TombstoneStateName,
+                Arg.Any<CancellationToken>())
+            .Returns(_ => storedTombstone is null
+                ? new ConditionalValue<IdempotencyAdmissionTombstone>(false, default!)
+                : new ConditionalValue<IdempotencyAdmissionTombstone>(true, storedTombstone));
+        _ = stateManager.TryGetStateAsync<IdempotencyAdmissionPromotionRecord>(
+                IdempotencyAdmissionActor.PromotionStateName,
+                Arg.Any<CancellationToken>())
+            .Returns(_ => promotion is null
+                ? new ConditionalValue<IdempotencyAdmissionPromotionRecord>(false, default!)
+                : new ConditionalValue<IdempotencyAdmissionPromotionRecord>(true, promotion));
+        _ = stateManager.TryGetStateAsync<IdempotencyAdmissionRedirectRecord>(
+                IdempotencyAdmissionActor.RedirectStateName,
+                Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyAdmissionRedirectRecord>(false, default!));
+        _ = stateManager.SetStateAsync(
+                IdempotencyAdmissionActor.TombstoneStateName,
+                Arg.Do<IdempotencyAdmissionTombstone>(value => storedTombstone = value),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        _ = stateManager.SetStateAsync(
+                IdempotencyAdmissionActor.PromotionStateName,
+                Arg.Do<IdempotencyAdmissionPromotionRecord>(value => promotion = value),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        var tombstone = new IdempotencyAdmissionTombstone(
+            IdempotencyAdmissionTombstone.CurrentSchemaVersion,
+            IdempotencyAdmissionState.Expired,
+            "tenant-a",
+            "key-digest",
+            "verification-tag",
+            "v1",
+            IdempotencyReplayRetentionTier.Mutation,
+            _now.AddDays(-2),
+            _now.AddDays(-1),
+            _now);
+        string importDigest = IdempotencyAdmissionPromotionEvidence.Compute(null, tombstone);
+        var acknowledgementRequest = new IdempotencyAdmissionPromotionAcknowledgementRequest(
+            "tenant-a:folders:legacy-folder",
+            "migration-01J00000000000000000000000",
+            "source-evidence",
+            importDigest);
+
+        await actor.PreparePromotionAsync(
+            new IdempotencyAdmissionPromotionImportRequest(
+                acknowledgementRequest.SourceActorId,
+                Tombstone: tombstone,
+                MigrationId: acknowledgementRequest.MigrationId,
+                SourceEvidenceDigest: acknowledgementRequest.SourceEvidenceDigest));
+        IdempotencyAdmissionPromotionAcknowledgement acknowledgement = await actor
+            .AcknowledgePromotionAsync(acknowledgementRequest);
+        await actor.RollbackPromotionAsync(
+            new IdempotencyAdmissionPromotionRollbackRequest(
+                acknowledgement.SourceActorId,
+                acknowledgement.MigrationId,
+                acknowledgement.SourceEvidenceDigest,
+                acknowledgement.ImportDigest));
+
+        acknowledgement.Activated.ShouldBeFalse();
+        await stateManager.Received(1).TryRemoveStateAsync(
+            IdempotencyAdmissionActor.TombstoneStateName,
+            Arg.Any<CancellationToken>());
+        await stateManager.Received(1).TryRemoveStateAsync(
+            IdempotencyAdmissionActor.PromotionStateName,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Promotion_CompactionPreservesOriginalImportProofAndMovesCurrentCheckpoint()
+    {
+        (IdempotencyAdmissionActor actor, IActorStateManager stateManager, FakeTimeProvider time) = CreateActor();
+        IdempotencyAdmissionRecord importedRecord = Record(
+            IdempotencyAdmissionState.Terminal,
+            replayExpiresAt: _now.AddMinutes(1),
+            replayResult: new CommandProcessingResult(true, ResultPayload: "replay"));
+        IdempotencyAdmissionRecord? record = null;
+        IdempotencyAdmissionTombstone? tombstone = null;
+        IdempotencyAdmissionPromotionRecord? promotion = null;
+        IdempotencyAdmissionRedirectRecord? redirect = null;
+        ConfigurePromotionState(
+            stateManager,
+            () => record,
+            value => record = value,
+            () => tombstone,
+            value => tombstone = value,
+            () => promotion,
+            value => promotion = value,
+            () => redirect);
+        const string SourceActorId = "tenant-a:v0:source";
+        string migrationId = IdempotencyAdmissionPromotionEvidence.BuildConventionalMigrationId(
+            SourceActorId,
+            "tenant-a:v1:key-digest");
+        string importDigest = IdempotencyAdmissionPromotionEvidence.Compute(importedRecord, null);
+        var request = new IdempotencyAdmissionPromotionAcknowledgementRequest(
+            SourceActorId,
+            migrationId,
+            importDigest,
+            importDigest);
+        await actor.PreparePromotionAsync(new IdempotencyAdmissionPromotionImportRequest(
+            SourceActorId,
+            importedRecord,
+            MigrationId: migrationId,
+            SourceEvidenceDigest: importDigest));
+        time.Advance(TimeSpan.FromMinutes(2));
+
+        await actor.ReceiveReminderAsync(
+            IdempotencyAdmissionActor.CompactionReminderName,
+            [],
+            TimeSpan.Zero,
+            TimeSpan.FromHours(1));
+        await actor.PreparePromotionAsync(new IdempotencyAdmissionPromotionImportRequest(
+            SourceActorId,
+            importedRecord,
+            MigrationId: migrationId,
+            SourceEvidenceDigest: importDigest));
+        IdempotencyAdmissionPromotionAcknowledgement compacted = await actor
+            .AcknowledgePromotionAsync(request);
+
+        compacted.ImportDigest.ShouldBe(importDigest);
+        compacted.CurrentStateDigest.ShouldBe(
+            IdempotencyAdmissionPromotionEvidence.Compute(null, tombstone));
+        compacted.CurrentStateDigest.ShouldNotBe(importDigest);
+        await actor.RollbackPromotionAsync(new IdempotencyAdmissionPromotionRollbackRequest(
+            request.SourceActorId,
+            request.MigrationId,
+            request.SourceEvidenceDigest,
+            request.ImportDigest));
+
+        await actor.PreparePromotionAsync(new IdempotencyAdmissionPromotionImportRequest(
+            SourceActorId,
+            importedRecord,
+            MigrationId: migrationId,
+            SourceEvidenceDigest: importDigest));
+        await actor.ActivatePromotionAsync(new IdempotencyAdmissionPromotionActivationRequest(
+            SourceActorId,
+            migrationId,
+            importDigest));
+        await actor.ReceiveReminderAsync(
+            IdempotencyAdmissionActor.CompactionReminderName,
+            [],
+            TimeSpan.Zero,
+            TimeSpan.FromHours(1));
+        IdempotencyAdmissionPromotionAcknowledgement activatedCompacted = await actor
+            .AcknowledgePromotionAsync(request);
+
+        activatedCompacted.Activated.ShouldBeTrue();
+        activatedCompacted.ImportDigest.ShouldBe(importDigest);
+        activatedCompacted.CurrentStateDigest.ShouldBe(
+            IdempotencyAdmissionPromotionEvidence.Compute(null, tombstone));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Promotion_SchemaOneOrdinaryMarkerNormalizesOnReadAcrossUpgrade(bool activated)
+    {
+        (IdempotencyAdmissionActor actor, IActorStateManager stateManager, _) = CreateActor();
+        IdempotencyAdmissionRecord record = Record();
+        IdempotencyAdmissionPromotionRecord marker = new(1, "tenant-a:v0:source", activated);
+        IdempotencyAdmissionPromotionRecord? persisted = marker;
+        _ = stateManager.TryGetStateAsync<IdempotencyAdmissionRecord>(
+                IdempotencyAdmissionActor.StateName,
+                Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyAdmissionRecord>(true, record));
+        _ = stateManager.TryGetStateAsync<IdempotencyAdmissionTombstone>(
+                IdempotencyAdmissionActor.TombstoneStateName,
+                Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyAdmissionTombstone>(false, default!));
+        _ = stateManager.TryGetStateAsync<IdempotencyAdmissionRedirectRecord>(
+                IdempotencyAdmissionActor.RedirectStateName,
+                Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyAdmissionRedirectRecord>(false, default!));
+        _ = stateManager.TryGetStateAsync<IdempotencyAdmissionPromotionRecord>(
+                IdempotencyAdmissionActor.PromotionStateName,
+                Arg.Any<CancellationToken>())
+            .Returns(_ => new ConditionalValue<IdempotencyAdmissionPromotionRecord>(true, persisted!));
+        _ = stateManager.SetStateAsync(
+                IdempotencyAdmissionActor.PromotionStateName,
+                Arg.Do<IdempotencyAdmissionPromotionRecord>(value => persisted = value),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        IdempotencyAdmissionInspection inspection = await actor.InspectAsync();
+
+        inspection.Promotion.ShouldNotBeNull().SchemaVersion.ShouldBe(
+            IdempotencyAdmissionPromotionRecord.CurrentSchemaVersion);
+        inspection.Promotion.Activated.ShouldBe(activated);
+        inspection.Promotion.MigrationId.ShouldBe(
+            IdempotencyAdmissionPromotionEvidence.BuildConventionalMigrationId(
+                marker.SourceActorId,
+                "tenant-a:v1:key-digest"));
+        inspection.Promotion.ImportDigest.ShouldBe(
+            IdempotencyAdmissionPromotionEvidence.Compute(record, null));
+    }
+
+    [Theory]
+    [InlineData("activated")]
+    [InlineData("redirected")]
+    [InlineData("binding")]
+    [InlineData("current")]
+    public async Task Promotion_RollbackRejectsEveryUnsafeTargetWithoutRemovalOrSave(string failure)
+    {
+        (IdempotencyAdmissionActor actor, IActorStateManager stateManager, _) = CreateActor();
+        IdempotencyAdmissionRecord record = Record();
+        string digest = IdempotencyAdmissionPromotionEvidence.Compute(record, null);
+        const string SourceActorId = "tenant-a:v0:source";
+        string migrationId = IdempotencyAdmissionPromotionEvidence.BuildConventionalMigrationId(
+            SourceActorId,
+            "tenant-a:v1:key-digest");
+        var promotion = new IdempotencyAdmissionPromotionRecord(
+            IdempotencyAdmissionPromotionRecord.CurrentSchemaVersion,
+            SourceActorId,
+            failure == "activated",
+            migrationId,
+            digest,
+            digest,
+            failure == "current" ? "tampered-current" : digest);
+        IdempotencyAdmissionRedirectRecord? redirect = failure == "redirected"
+            ? new IdempotencyAdmissionRedirectRecord(
+                IdempotencyAdmissionRedirectRecord.CurrentSchemaVersion,
+                "tenant-a:v2:target")
+            : null;
+        ConfigurePromotionState(
+            stateManager,
+            () => record,
+            _ => { },
+            () => null,
+            _ => { },
+            () => promotion,
+            _ => { },
+            () => redirect);
+        stateManager.ClearReceivedCalls();
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => actor.RollbackPromotionAsync(
+            new IdempotencyAdmissionPromotionRollbackRequest(
+                SourceActorId,
+                migrationId,
+                digest,
+                failure == "binding" ? "different-import" : digest)));
+
+        _ = await stateManager.DidNotReceive().TryRemoveStateAsync(
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+        await stateManager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task AdmitAsync_StateStoreUnavailableFailsClosedWithoutReservation()
     {
         (IdempotencyAdmissionActor actor, IActorStateManager stateManager, _) = CreateActor();
@@ -1211,6 +1770,77 @@ public class IdempotencyAdmissionActorTests
         var actor = new IdempotencyAdmissionActor(host, logger, timeProvider);
         ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
         return (actor, stateManager, timeProvider);
+    }
+
+    private static void ConfigurePromotionState(
+        IActorStateManager stateManager,
+        Func<IdempotencyAdmissionRecord?> getRecord,
+        Action<IdempotencyAdmissionRecord?> setRecord,
+        Func<IdempotencyAdmissionTombstone?> getTombstone,
+        Action<IdempotencyAdmissionTombstone?> setTombstone,
+        Func<IdempotencyAdmissionPromotionRecord?> getPromotion,
+        Action<IdempotencyAdmissionPromotionRecord?> setPromotion,
+        Func<IdempotencyAdmissionRedirectRecord?> getRedirect)
+    {
+        _ = stateManager.TryGetStateAsync<IdempotencyAdmissionRecord>(
+                IdempotencyAdmissionActor.StateName,
+                Arg.Any<CancellationToken>())
+            .Returns(_ => getRecord() is { } value
+                ? new ConditionalValue<IdempotencyAdmissionRecord>(true, value)
+                : new ConditionalValue<IdempotencyAdmissionRecord>(false, default!));
+        _ = stateManager.TryGetStateAsync<IdempotencyAdmissionTombstone>(
+                IdempotencyAdmissionActor.TombstoneStateName,
+                Arg.Any<CancellationToken>())
+            .Returns(_ => getTombstone() is { } value
+                ? new ConditionalValue<IdempotencyAdmissionTombstone>(true, value)
+                : new ConditionalValue<IdempotencyAdmissionTombstone>(false, default!));
+        _ = stateManager.TryGetStateAsync<IdempotencyAdmissionPromotionRecord>(
+                IdempotencyAdmissionActor.PromotionStateName,
+                Arg.Any<CancellationToken>())
+            .Returns(_ => getPromotion() is { } value
+                ? new ConditionalValue<IdempotencyAdmissionPromotionRecord>(true, value)
+                : new ConditionalValue<IdempotencyAdmissionPromotionRecord>(false, default!));
+        _ = stateManager.TryGetStateAsync<IdempotencyAdmissionRedirectRecord>(
+                IdempotencyAdmissionActor.RedirectStateName,
+                Arg.Any<CancellationToken>())
+            .Returns(_ => getRedirect() is { } value
+                ? new ConditionalValue<IdempotencyAdmissionRedirectRecord>(true, value)
+                : new ConditionalValue<IdempotencyAdmissionRedirectRecord>(false, default!));
+        _ = stateManager.SetStateAsync(
+                IdempotencyAdmissionActor.StateName,
+                Arg.Do<IdempotencyAdmissionRecord>(value => setRecord(value)),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        _ = stateManager.SetStateAsync(
+                IdempotencyAdmissionActor.TombstoneStateName,
+                Arg.Do<IdempotencyAdmissionTombstone>(value => setTombstone(value)),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        _ = stateManager.SetStateAsync(
+                IdempotencyAdmissionActor.PromotionStateName,
+                Arg.Do<IdempotencyAdmissionPromotionRecord>(value => setPromotion(value)),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        _ = stateManager.TryRemoveStateAsync(
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                switch (callInfo.ArgAt<string>(0))
+                {
+                    case IdempotencyAdmissionActor.StateName:
+                        setRecord(null);
+                        break;
+                    case IdempotencyAdmissionActor.TombstoneStateName:
+                        setTombstone(null);
+                        break;
+                    case IdempotencyAdmissionActor.PromotionStateName:
+                        setPromotion(null);
+                        break;
+                }
+
+                return true;
+            });
     }
 
     private static IdempotencyKeyProtector CreateProtector()

@@ -1,8 +1,14 @@
+using System.Security.Cryptography;
+using System.Text;
+
 using Dapr.Actors;
 using Dapr.Actors.Client;
 using Dapr.Actors.Runtime;
 
+using Hexalith.EventStore.Server.Configuration;
+
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.Server.Actors;
 
@@ -11,8 +17,9 @@ public sealed class IdempotencyTenantLifecycleActor(
     ActorHost host,
     ILogger<IdempotencyTenantLifecycleActor> logger,
     TimeProvider? timeProvider = null,
-    IActorProxyFactory? actorProxyFactory = null)
-    : Actor(host), IIdempotencyTenantLifecycleActor
+    IActorProxyFactory? actorProxyFactory = null,
+    IOptions<EventStoreActorOptions>? actorOptions = null)
+    : Actor(host), IIdempotencyTenantLifecycleActor, IIdempotencyTenantLifecycleMigrationActor
 {
     /// <summary>Gets the maximum number of references removed in one serialized actor turn.</summary>
     public const int MaximumReferencesPerPurgeTurn = 1;
@@ -26,6 +33,9 @@ public sealed class IdempotencyTenantLifecycleActor(
     private TimeProvider Clock { get; } = timeProvider ?? TimeProvider.System;
 
     private ILogger<IdempotencyTenantLifecycleActor> LifecycleLogger { get; } = logger;
+
+    private string AggregateActorTypeName { get; }
+        = actorOptions?.Value.AggregateActorTypeName ?? nameof(AggregateActor);
 
     /// <inheritdoc/>
     public async Task RegisterAsync(IdempotencyTenantLifecycleReference[] references)
@@ -102,6 +112,326 @@ public sealed class IdempotencyTenantLifecycleActor(
             new ActorId(reference.ActorId),
             IdempotencyAdmissionActor.ActorTypeName);
         return await actor.AdmitAsync(admission).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
+    async Task<IdempotencyLegacyMigrationResult> IIdempotencyTenantLifecycleMigrationActor.MigrateLegacyAsync(
+        IdempotencyLegacyMigrationRequest request)
+    {
+        ValidateMigrationRequest(request);
+        IdempotencyTenantLifecycleRecord lifecycle = await LoadRequiredAsync().ConfigureAwait(false);
+        if (lifecycle.State != IdempotencyTenantLifecycleState.Active)
+        {
+            throw new InvalidOperationException("Tenant deletion lifecycle forbids legacy migration.");
+        }
+
+        if (!lifecycle.References.Any(reference => Equals(reference, request.Target))
+            || !request.Aliases.Any(alias =>
+                string.Equals(alias.ActorId, request.Target.ActorId, StringComparison.Ordinal)
+                && string.Equals(alias.DigestKeyVersion, request.Target.DigestKeyVersion, StringComparison.Ordinal)
+                && string.Equals(alias.KeyDigest, request.Target.KeyDigest, StringComparison.Ordinal)))
+        {
+            throw new InvalidOperationException("The pinned legacy migration target is not registered for this tenant.");
+        }
+
+        IActorProxyFactory factory = actorProxyFactory
+            ?? throw new InvalidOperationException("Serialized legacy migration is unavailable.");
+        IIdempotencyLegacyInventoryActor inventory = factory
+            .CreateActorProxy<IIdempotencyLegacyInventoryActor>(
+                new ActorId(lifecycle.Tenant),
+                IdempotencyLegacyInventoryActor.ActorTypeName);
+        IdempotencyLegacyInventoryInspection inventoryInspection = await inventory
+            .InspectAsync(request.Aliases).ConfigureAwait(false);
+        if (inventoryInspection.Decision is not (IdempotencyLegacyInventoryDecision.Migrate
+            or IdempotencyLegacyInventoryDecision.Migrated)
+            || inventoryInspection.Entry is null)
+        {
+            return new IdempotencyLegacyMigrationResult(
+                request.Target.ActorId,
+                IdempotencyAdmissionDecision.UnsafeLegacy);
+        }
+
+        IdempotencyLegacyInventoryEntry entry = inventoryInspection.Entry;
+        IdempotencyAdmissionDirectoryAlias[] matchingSourceAliases = request.Aliases
+            .Where(alias =>
+                string.Equals(alias.DigestKeyVersion, entry.DigestKeyVersion, StringComparison.Ordinal)
+                && string.Equals(alias.KeyDigest, entry.KeyDigest, StringComparison.Ordinal))
+            .ToArray();
+        if (!string.Equals(entry.TenantPartition, lifecycle.Tenant, StringComparison.Ordinal)
+            || matchingSourceAliases.Length != 1)
+        {
+            return new IdempotencyLegacyMigrationResult(
+                request.Target.ActorId,
+                IdempotencyAdmissionDecision.UnsafeLegacy);
+        }
+
+        if (!FixedTimeEquals(entry.VerificationTag, request.SourceVerificationTag))
+        {
+            return new IdempotencyLegacyMigrationResult(
+                request.Target.ActorId,
+                IdempotencyAdmissionDecision.Collision);
+        }
+
+        if (!FixedTimeEquals(entry.IntentDigest, request.SourceIntentDigest)
+            || entry.RetentionTier != request.SourceRetentionTier
+            || entry.RetentionTier != request.TargetRetentionTier)
+        {
+            return new IdempotencyLegacyMigrationResult(
+                request.Target.ActorId,
+                IdempotencyAdmissionDecision.Conflict);
+        }
+
+        string targetActorId = entry.TargetAdmissionActorId ?? request.Target.ActorId;
+        if (!string.Equals(targetActorId, request.Target.ActorId, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("Legacy migration must resume its pinned target authority.");
+        }
+
+        var sourceRequest = new IdempotencyLegacySourceRequest(
+            IdempotencyLegacySourceRequest.CurrentSchemaVersion,
+            entry.TenantPartition,
+            entry.InventoryId,
+            entry.MigrationId,
+            entry.LegacySchemaVersion,
+            entry.SourceEvidenceDigest,
+            entry.ExecutionMessageId,
+            entry.ExecutionCorrelationId,
+            entry.FirstConsumedAt,
+            entry.ReplayExpiresAt,
+            entry.ReplayResult);
+        IIdempotencyLegacySourceActor source = factory.CreateActorProxy<IIdempotencyLegacySourceActor>(
+            new ActorId(entry.SourceAggregateActorId),
+            AggregateActorTypeName);
+        IIdempotencyAdmissionActor target = factory.CreateActorProxy<IIdempotencyAdmissionActor>(
+            new ActorId(targetActorId),
+            IdempotencyAdmissionActor.ActorTypeName);
+        IdempotencyAdmissionRecord? targetRecord = null;
+        IdempotencyAdmissionTombstone? targetTombstone = null;
+        string targetImportDigest;
+        if (entry.Phase == IdempotencyLegacyMigrationPhase.Inventoried)
+        {
+            (targetRecord, targetTombstone) = CreateTargetState(entry, request);
+            targetImportDigest = IdempotencyAdmissionPromotionEvidence.Compute(
+                targetRecord,
+                targetTombstone);
+        }
+        else
+        {
+            targetImportDigest = entry.TargetImportDigest
+                ?? throw new InvalidOperationException("The pinned legacy migration target digest is missing.");
+        }
+
+        var acknowledgementRequest = new IdempotencyAdmissionPromotionAcknowledgementRequest(
+            entry.SourceAggregateActorId,
+            entry.MigrationId,
+            entry.SourceEvidenceDigest,
+            targetImportDigest);
+        for (int step = 0; step < 6; step++)
+        {
+            switch (entry.Phase)
+            {
+                case IdempotencyLegacyMigrationPhase.Inventoried:
+                    IdempotencyLegacySourceInspection exactSource = await InspectSourceAsync(
+                        source,
+                        sourceRequest).ConfigureAwait(false);
+                    IdempotencyAdmissionDecision? sourceDenial = ClassifySourceProof(
+                        exactSource,
+                        allowRedirect: false,
+                        expectedRedirectDigest: null);
+                    if (sourceDenial is not null)
+                    {
+                        return new IdempotencyLegacyMigrationResult(targetActorId, sourceDenial);
+                    }
+
+                    await target.PreparePromotionAsync(
+                        new IdempotencyAdmissionPromotionImportRequest(
+                            entry.SourceAggregateActorId,
+                            targetRecord,
+                            targetTombstone,
+                            entry.MigrationId,
+                            entry.SourceEvidenceDigest)).ConfigureAwait(false);
+                    entry = await inventory.AdvanceAsync(CreateAdvanceRequest(
+                        entry,
+                        targetActorId,
+                        targetImportDigest)).ConfigureAwait(false);
+                    break;
+                case IdempotencyLegacyMigrationPhase.TargetPrepared:
+                    IdempotencyAdmissionPromotionAcknowledgement acknowledgement = await target
+                        .AcknowledgePromotionAsync(acknowledgementRequest).ConfigureAwait(false);
+                    if (acknowledgement.Activated)
+                    {
+                        throw new InvalidOperationException("Legacy migration target activated before source redirect.");
+                    }
+
+                    entry = await inventory.AdvanceAsync(CreateAdvanceRequest(
+                        entry,
+                        targetActorId,
+                        targetImportDigest)).ConfigureAwait(false);
+                    break;
+                case IdempotencyLegacyMigrationPhase.TargetAcknowledged:
+                    IdempotencyLegacySourceInspection redirected = await RedirectSourceAsync(
+                        source,
+                        new IdempotencyLegacySourceRedirectRequest(
+                            sourceRequest,
+                            targetActorId)).ConfigureAwait(false);
+                    IdempotencyAdmissionDecision? redirectDenial = ClassifySourceProof(
+                        redirected,
+                        allowRedirect: true,
+                        expectedRedirectDigest: null);
+                    if (redirectDenial is not null)
+                    {
+                        return new IdempotencyLegacyMigrationResult(targetActorId, redirectDenial);
+                    }
+
+                    entry = await inventory.AdvanceAsync(CreateAdvanceRequest(
+                        entry,
+                        targetActorId,
+                        targetImportDigest,
+                        redirected.RedirectDigest)).ConfigureAwait(false);
+                    break;
+                case IdempotencyLegacyMigrationPhase.SourceRedirected:
+                    IdempotencyAdmissionDecision? redirectedDenial = await ReproveSourceRedirectAsync(
+                        source,
+                        sourceRequest,
+                        entry).ConfigureAwait(false);
+                    if (redirectedDenial is not null)
+                    {
+                        return new IdempotencyLegacyMigrationResult(targetActorId, redirectedDenial);
+                    }
+
+                    _ = await RequireTargetAcknowledgementAsync(
+                        target,
+                        acknowledgementRequest,
+                        activated: false).ConfigureAwait(false);
+                    await RequireCanonicalDirectoryAsync(
+                        factory,
+                        lifecycle.Tenant,
+                        request.Aliases,
+                        targetActorId).ConfigureAwait(false);
+                    entry = await inventory.AdvanceAsync(CreateAdvanceRequest(
+                        entry,
+                        targetActorId,
+                        targetImportDigest,
+                        entry.SourceRedirectDigest)).ConfigureAwait(false);
+                    break;
+                case IdempotencyLegacyMigrationPhase.AuthorityFlipped:
+                    IdempotencyAdmissionDecision? flippedDenial = await ReproveSourceRedirectAsync(
+                        source,
+                        sourceRequest,
+                        entry).ConfigureAwait(false);
+                    if (flippedDenial is not null)
+                    {
+                        return new IdempotencyLegacyMigrationResult(targetActorId, flippedDenial);
+                    }
+
+                    IdempotencyAdmissionPromotionAcknowledgement activation = await target
+                        .AcknowledgePromotionAsync(acknowledgementRequest).ConfigureAwait(false);
+                    if (!activation.Activated)
+                    {
+                        await target.ActivatePromotionAsync(
+                            new IdempotencyAdmissionPromotionActivationRequest(
+                                entry.SourceAggregateActorId,
+                                entry.MigrationId,
+                                targetImportDigest)).ConfigureAwait(false);
+                    }
+
+                    _ = await RequireTargetAcknowledgementAsync(
+                        target,
+                        acknowledgementRequest,
+                        activated: true).ConfigureAwait(false);
+                    await RequireCanonicalDirectoryAsync(
+                        factory,
+                        lifecycle.Tenant,
+                        request.Aliases,
+                        targetActorId).ConfigureAwait(false);
+                    entry = await inventory.AdvanceAsync(CreateAdvanceRequest(
+                        entry,
+                        targetActorId,
+                        targetImportDigest,
+                        entry.SourceRedirectDigest)).ConfigureAwait(false);
+                    break;
+                case IdempotencyLegacyMigrationPhase.Migrated:
+                    IdempotencyAdmissionDecision? migratedDenial = await ReproveSourceRedirectAsync(
+                        source,
+                        sourceRequest,
+                        entry).ConfigureAwait(false);
+                    if (migratedDenial is not null)
+                    {
+                        return new IdempotencyLegacyMigrationResult(targetActorId, migratedDenial);
+                    }
+
+                    try
+                    {
+                        _ = await RequireTargetAcknowledgementAsync(
+                            target,
+                            acknowledgementRequest,
+                            activated: true).ConfigureAwait(false);
+                        string? currentAuthority = await ReproveCurrentAuthorityAsync(
+                            factory,
+                            lifecycle.Tenant,
+                            request.Aliases,
+                            targetActorId).ConfigureAwait(false);
+                        return currentAuthority is null
+                            ? new IdempotencyLegacyMigrationResult(
+                                targetActorId,
+                                IdempotencyAdmissionDecision.UnsafeLegacy)
+                            : new IdempotencyLegacyMigrationResult(currentAuthority);
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        return new IdempotencyLegacyMigrationResult(
+                            targetActorId,
+                            IdempotencyAdmissionDecision.UnsafeLegacy);
+                    }
+                default:
+                    return new IdempotencyLegacyMigrationResult(
+                        targetActorId,
+                        IdempotencyAdmissionDecision.UnsafeLegacy);
+            }
+        }
+
+        throw new InvalidOperationException("Legacy migration did not reach its stable target authority.");
+    }
+
+    /// <inheritdoc/>
+    async Task IIdempotencyTenantLifecycleMigrationActor.RollbackLegacyAsync(
+        IdempotencyLegacyLifecycleRollbackRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        IdempotencyTenantLifecycleRecord lifecycle = await LoadRequiredAsync().ConfigureAwait(false);
+        if (lifecycle.State != IdempotencyTenantLifecycleState.Active
+            || request.Target is null
+            || !lifecycle.References.Any(reference => Equals(reference, request.Target))
+            || request.ExpectedPhase is not (IdempotencyLegacyMigrationPhase.TargetPrepared
+                or IdempotencyLegacyMigrationPhase.TargetAcknowledged))
+        {
+            throw new InvalidOperationException("Tenant lifecycle forbids this legacy migration rollback.");
+        }
+
+        IActorProxyFactory factory = actorProxyFactory
+            ?? throw new InvalidOperationException("Serialized legacy migration rollback is unavailable.");
+        IIdempotencyAdmissionActor target = factory.CreateActorProxy<IIdempotencyAdmissionActor>(
+            new ActorId(request.Target.ActorId),
+            IdempotencyAdmissionActor.ActorTypeName);
+        await target.RollbackPromotionAsync(
+            new IdempotencyAdmissionPromotionRollbackRequest(
+                request.SourceAggregateActorId,
+                request.MigrationId,
+                request.SourceEvidenceDigest,
+                request.TargetImportDigest)).ConfigureAwait(false);
+        IIdempotencyLegacyInventoryActor inventory = factory
+            .CreateActorProxy<IIdempotencyLegacyInventoryActor>(
+                new ActorId(lifecycle.Tenant),
+                IdempotencyLegacyInventoryActor.ActorTypeName);
+        _ = await inventory.RollbackAsync(
+            new IdempotencyLegacyMigrationRollbackRequest(
+                request.InventoryId,
+                request.MigrationId,
+                request.SourceDigestKeyVersion,
+                request.SourceKeyDigest,
+                request.ExpectedPhase,
+                request.Target.ActorId,
+                request.TargetImportDigest)).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
@@ -218,6 +548,10 @@ public sealed class IdempotencyTenantLifecycleActor(
             .CreateActorProxy<IIdempotencyAdmissionDirectoryActor>(
                 new ActorId(record.Tenant),
                 IdempotencyAdmissionDirectoryActor.ActorTypeName);
+        IIdempotencyLegacyInventoryActor inventory = factory
+            .CreateActorProxy<IIdempotencyLegacyInventoryActor>(
+                new ActorId(record.Tenant),
+                IdempotencyLegacyInventoryActor.ActorTypeName);
         foreach (IdempotencyTenantLifecycleReference reference in record.References.Take(maximumCount))
         {
             IIdempotencyAdmissionActor admission = factory.CreateActorProxy<IIdempotencyAdmissionActor>(
@@ -234,6 +568,11 @@ public sealed class IdempotencyTenantLifecycleActor(
             }
 
             await directory.PurgeAliasAsync(
+                new IdempotencyAdmissionDirectoryAlias(
+                    reference.DigestKeyVersion,
+                    reference.ActorId,
+                    reference.KeyDigest)).ConfigureAwait(false);
+            await inventory.PurgeAsync(
                 new IdempotencyAdmissionDirectoryAlias(
                     reference.DigestKeyVersion,
                     reference.ActorId,
@@ -420,6 +759,309 @@ public sealed class IdempotencyTenantLifecycleActor(
                     reference.DigestKeyVersion,
                     reference.KeyDigest),
                 StringComparison.Ordinal);
+
+    private void ValidateMigrationRequest(IdempotencyLegacyMigrationRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.Aliases is null
+            || request.Aliases.Length == 0
+            || request.Aliases.Any(alias => !IsValidAlias(alias, Host.Id.GetId()))
+            || request.Aliases.Distinct().Count() != request.Aliases.Length
+            || request.Target is null
+            || !IsValidReference(request.Target, Host.Id.GetId())
+            || string.IsNullOrWhiteSpace(request.TargetVerificationTag)
+            || string.IsNullOrWhiteSpace(request.TargetIntentDigest)
+            || string.IsNullOrWhiteSpace(request.SourceVerificationTag)
+            || string.IsNullOrWhiteSpace(request.SourceIntentDigest)
+            || !Enum.IsDefined(request.TargetRetentionTier)
+            || !Enum.IsDefined(request.SourceRetentionTier))
+        {
+            throw new InvalidOperationException("Legacy migration lifecycle request is invalid.");
+        }
+    }
+
+    private static bool IsValidAlias(IdempotencyAdmissionDirectoryAlias? alias, string tenant)
+        => alias is not null
+            && !string.IsNullOrWhiteSpace(alias.ActorId)
+            && !string.IsNullOrWhiteSpace(alias.DigestKeyVersion)
+            && !string.IsNullOrWhiteSpace(alias.KeyDigest)
+            && string.Equals(
+                alias.ActorId,
+                IdempotencyAdmissionActorIdentity.Build(
+                    tenant,
+                    alias.DigestKeyVersion,
+                    alias.KeyDigest),
+                StringComparison.Ordinal);
+
+    private (IdempotencyAdmissionRecord? Record, IdempotencyAdmissionTombstone? Tombstone) CreateTargetState(
+        IdempotencyLegacyInventoryEntry entry,
+        IdempotencyLegacyMigrationRequest request)
+    {
+        DateTimeOffset observedAt = Max(entry.LastObservedAt, Clock.GetUtcNow());
+        if (observedAt >= entry.ReplayExpiresAt)
+        {
+            return (
+                null,
+                new IdempotencyAdmissionTombstone(
+                    IdempotencyAdmissionTombstone.CurrentSchemaVersion,
+                    IdempotencyAdmissionState.Expired,
+                    entry.TenantPartition,
+                    request.Target.KeyDigest,
+                    request.TargetVerificationTag,
+                    request.Target.DigestKeyVersion,
+                    entry.RetentionTier,
+                    entry.FirstConsumedAt,
+                    entry.ReplayExpiresAt,
+                    observedAt));
+        }
+
+        return (
+            new IdempotencyAdmissionRecord(
+                IdempotencyAdmissionRecord.CurrentSchemaVersion,
+                IdempotencyAdmissionState.Terminal,
+                entry.TenantPartition,
+                request.Target.DigestKeyVersion,
+                request.Target.KeyDigest,
+                request.TargetVerificationTag,
+                request.TargetIntentDigest,
+                entry.RetentionTier,
+                entry.FirstConsumedAt,
+                observedAt,
+                entry.ReplayExpiresAt,
+                FencingToken: 1,
+                entry.ReplayResult,
+                entry.ExecutionMessageId,
+                entry.ExecutionCorrelationId),
+            null);
+    }
+
+    private static IdempotencyLegacyMigrationAdvanceRequest CreateAdvanceRequest(
+        IdempotencyLegacyInventoryEntry entry,
+        string targetActorId,
+        string targetImportDigest,
+        string? redirectDigest = null)
+        => new(
+            entry.InventoryId,
+            entry.MigrationId,
+            entry.DigestKeyVersion,
+            entry.KeyDigest,
+            entry.Phase,
+            targetActorId,
+            targetImportDigest,
+            redirectDigest);
+
+    private static IdempotencyAdmissionDecision? ClassifySourceProof(
+        IdempotencyLegacySourceInspection inspection,
+        bool allowRedirect,
+        string? expectedRedirectDigest)
+    {
+        ArgumentNullException.ThrowIfNull(inspection);
+        if (inspection.Decision is IdempotencyLegacySourceDecision.Exact
+            or IdempotencyLegacySourceDecision.Expired)
+        {
+            return null;
+        }
+
+        if (allowRedirect
+            && inspection.Decision == IdempotencyLegacySourceDecision.Redirected
+            && !string.IsNullOrWhiteSpace(inspection.RedirectDigest)
+            && (expectedRedirectDigest is null
+                || string.Equals(
+                    inspection.RedirectDigest,
+                    expectedRedirectDigest,
+                    StringComparison.Ordinal)))
+        {
+            return null;
+        }
+
+        return inspection.Decision switch
+        {
+            IdempotencyLegacySourceDecision.Conflict => IdempotencyAdmissionDecision.Conflict,
+            IdempotencyLegacySourceDecision.Unavailable
+                => throw new InvalidOperationException("Legacy source evidence is temporarily unavailable."),
+            _ => IdempotencyAdmissionDecision.UnsafeLegacy,
+        };
+    }
+
+    private static async Task<IdempotencyAdmissionDecision?> ReproveSourceRedirectAsync(
+        IIdempotencyLegacySourceActor source,
+        IdempotencyLegacySourceRequest sourceRequest,
+        IdempotencyLegacyInventoryEntry entry)
+    {
+        IdempotencyLegacySourceInspection inspection = await InspectSourceAsync(
+            source,
+            sourceRequest).ConfigureAwait(false);
+        if (inspection.Decision == IdempotencyLegacySourceDecision.Redirected
+            && string.Equals(
+                inspection.RedirectDigest,
+                entry.SourceRedirectDigest,
+                StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        return inspection.Decision switch
+        {
+            IdempotencyLegacySourceDecision.Conflict => IdempotencyAdmissionDecision.Conflict,
+            IdempotencyLegacySourceDecision.Unavailable
+                => throw new InvalidOperationException("Legacy source evidence is temporarily unavailable."),
+            _ => IdempotencyAdmissionDecision.UnsafeLegacy,
+        };
+    }
+
+    private static async Task<IdempotencyLegacySourceInspection> InspectSourceAsync(
+        IIdempotencyLegacySourceActor source,
+        IdempotencyLegacySourceRequest request)
+    {
+        try
+        {
+            return await source.InspectLegacySourceAsync(request).ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            throw new InvalidOperationException("Legacy source evidence is unavailable or inconsistent.");
+        }
+    }
+
+    private static async Task<IdempotencyLegacySourceInspection> RedirectSourceAsync(
+        IIdempotencyLegacySourceActor source,
+        IdempotencyLegacySourceRedirectRequest request)
+    {
+        try
+        {
+            return await source.SetLegacySourceRedirectAsync(request).ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            throw new InvalidOperationException("Legacy source evidence is unavailable or inconsistent.");
+        }
+    }
+
+    private static async Task<IdempotencyAdmissionPromotionAcknowledgement> RequireTargetAcknowledgementAsync(
+        IIdempotencyAdmissionActor target,
+        IdempotencyAdmissionPromotionAcknowledgementRequest request,
+        bool activated)
+    {
+        IdempotencyAdmissionPromotionAcknowledgement acknowledgement = await target
+            .AcknowledgePromotionAsync(request).ConfigureAwait(false);
+        if (acknowledgement.Activated != activated)
+        {
+            throw new InvalidOperationException("Legacy migration target activation proof is inconsistent.");
+        }
+
+        return acknowledgement;
+    }
+
+    private static async Task RequireCanonicalDirectoryAsync(
+        IActorProxyFactory factory,
+        string tenant,
+        IdempotencyAdmissionDirectoryAlias[] aliases,
+        string targetActorId)
+    {
+        IIdempotencyAdmissionDirectoryActor directory = factory
+            .CreateActorProxy<IIdempotencyAdmissionDirectoryActor>(
+                new ActorId(tenant),
+                IdempotencyAdmissionDirectoryActor.ActorTypeName);
+        IdempotencyAdmissionDirectoryResult result = await directory.ResolveAsync(
+            new IdempotencyAdmissionDirectoryRequest(
+                IdempotencyAdmissionDirectoryEntry.CurrentSchemaVersion,
+                targetActorId,
+                aliases,
+                targetActorId)).ConfigureAwait(false);
+        if (result.PromotionPhase != IdempotencyAdmissionPromotionPhase.Stable
+            || !string.Equals(result.CanonicalActorId, targetActorId, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("Legacy migration directory authority is inconsistent.");
+        }
+    }
+
+    private static async Task<string?> ReproveCurrentAuthorityAsync(
+        IActorProxyFactory factory,
+        string tenant,
+        IdempotencyAdmissionDirectoryAlias[] aliases,
+        string pinnedTargetActorId)
+    {
+        var visited = new HashSet<string>(StringComparer.Ordinal);
+        string currentActorId = pinnedTargetActorId;
+        string previousActorId = pinnedTargetActorId;
+        for (int hop = 0; hop < aliases.Length; hop++)
+        {
+            if (!visited.Add(currentActorId))
+            {
+                return null;
+            }
+
+            IIdempotencyAdmissionActor actor = factory.CreateActorProxy<IIdempotencyAdmissionActor>(
+                new ActorId(currentActorId),
+                IdempotencyAdmissionActor.ActorTypeName);
+            IdempotencyAdmissionInspection? inspection = await actor.InspectAsync().ConfigureAwait(false);
+            if (inspection is null || !inspection.Exists)
+            {
+                return null;
+            }
+
+            if (!string.Equals(currentActorId, pinnedTargetActorId, StringComparison.Ordinal))
+            {
+                IdempotencyAdmissionPromotionAcknowledgement? promotion = inspection.Promotion;
+                string conventionalMigrationId = IdempotencyAdmissionPromotionEvidence
+                    .BuildConventionalMigrationId(previousActorId, currentActorId);
+                if (promotion is null
+                    || !promotion.Activated
+                    || !string.Equals(promotion.SourceActorId, previousActorId, StringComparison.Ordinal)
+                    || !string.Equals(promotion.MigrationId, conventionalMigrationId, StringComparison.Ordinal)
+                    || !string.Equals(
+                        promotion.SourceEvidenceDigest,
+                        promotion.ImportDigest,
+                        StringComparison.Ordinal))
+                {
+                    return null;
+                }
+            }
+
+            if (inspection.RedirectActorId is null)
+            {
+                IIdempotencyAdmissionDirectoryInspectionActor directory = factory
+                    .CreateActorProxy<IIdempotencyAdmissionDirectoryInspectionActor>(
+                        new ActorId(tenant),
+                        IdempotencyAdmissionDirectoryActor.ActorTypeName);
+                IdempotencyAdmissionDirectoryResult? result = await directory
+                    .InspectAsync(aliases).ConfigureAwait(false);
+                return result is not null
+                    && result.PromotionPhase == IdempotencyAdmissionPromotionPhase.Stable
+                    && string.Equals(result.CanonicalActorId, currentActorId, StringComparison.Ordinal)
+                    ? currentActorId
+                    : null;
+            }
+
+            previousActorId = currentActorId;
+            currentActorId = inspection.RedirectActorId;
+            if (!aliases.Any(alias => string.Equals(
+                alias.ActorId,
+                currentActorId,
+                StringComparison.Ordinal)))
+            {
+                return null;
+            }
+        }
+
+        return null;
+    }
+
+    private static bool FixedTimeEquals(string left, string right)
+    {
+        byte[] leftBytes = Encoding.UTF8.GetBytes(left);
+        byte[] rightBytes = Encoding.UTF8.GetBytes(right);
+        try
+        {
+            return leftBytes.Length == rightBytes.Length
+                && CryptographicOperations.FixedTimeEquals(leftBytes, rightBytes);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(leftBytes);
+            CryptographicOperations.ZeroMemory(rightBytes);
+        }
+    }
 
     private static DateTimeOffset Max(DateTimeOffset left, DateTimeOffset right)
         => left >= right ? left : right;

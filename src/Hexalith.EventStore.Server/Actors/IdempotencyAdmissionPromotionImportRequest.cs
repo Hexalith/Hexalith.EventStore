@@ -10,4 +10,6 @@ namespace Hexalith.EventStore.Server.Actors;
 public sealed record IdempotencyAdmissionPromotionImportRequest(
     [property: DataMember] string SourceActorId,
     [property: DataMember] IdempotencyAdmissionRecord? Record = null,
-    [property: DataMember] IdempotencyAdmissionTombstone? Tombstone = null);
+    [property: DataMember] IdempotencyAdmissionTombstone? Tombstone = null,
+    [property: DataMember] string? MigrationId = null,
+    [property: DataMember] string? SourceEvidenceDigest = null);

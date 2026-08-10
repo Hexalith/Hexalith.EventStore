@@ -1,3 +1,6 @@
+using System.Security.Cryptography;
+using System.Text;
+
 using Dapr.Actors.Runtime;
 
 using Microsoft.Extensions.Logging;
@@ -14,6 +17,7 @@ public partial class IdempotencyChecker(
     TimeProvider? timeProvider = null) : IIdempotencyChecker
 {
     private const string KeyPrefix = "idempotency:";
+    private const string LegacyRedirectPrefix = "idempotency-legacy-redirect:";
 
     private TimeProvider TimeProvider { get; } = timeProvider ?? TimeProvider.System;
 
@@ -22,6 +26,16 @@ public partial class IdempotencyChecker(
     {
         ArgumentNullException.ThrowIfNull(identity);
         identity.Validate();
+
+        ConditionalValue<IdempotencyLegacySourceRedirectRecord> redirect = await stateManager
+            .TryGetStateAsync<IdempotencyLegacySourceRedirectRecord>(GetLegacyRedirectKey(identity.MessageId))
+            .ConfigureAwait(false);
+        if (redirect.HasValue)
+        {
+            return IsValidRedirect(redirect.Value)
+                ? new IdempotencyCheckResult(IdempotencyCheckOutcome.RedirectedLegacy)
+                : new IdempotencyCheckResult(IdempotencyCheckOutcome.IdentityConflict);
+        }
 
         string messageKey = GetKey(identity.MessageId);
         ConditionalValue<IdempotencyRecord> messageResult = await stateManager
@@ -59,6 +73,16 @@ public partial class IdempotencyChecker(
     {
         ArgumentNullException.ThrowIfNull(identity);
         identity.Validate();
+        ConditionalValue<IdempotencyLegacySourceRedirectRecord> redirect = await stateManager
+            .TryGetStateAsync<IdempotencyLegacySourceRedirectRecord>(GetLegacyRedirectKey(identity.MessageId))
+            .ConfigureAwait(false);
+        if (redirect.HasValue)
+        {
+            return IsValidRedirect(redirect.Value)
+                ? new IdempotencyCheckResult(IdempotencyCheckOutcome.RedirectedLegacy)
+                : new IdempotencyCheckResult(IdempotencyCheckOutcome.IdentityConflict);
+        }
+
         ConditionalValue<IdempotencyRecord> stored = await stateManager
             .TryGetStateAsync<IdempotencyRecord>(GetKey(identity.MessageId))
             .ConfigureAwait(false);
@@ -179,6 +203,131 @@ public partial class IdempotencyChecker(
         return true;
     }
 
+    /// <summary>Inspects only the exact supported message-keyed source without mutation.</summary>
+    internal async Task<IdempotencyLegacySourceInspection> InspectLegacySourceAsync(
+        IdempotencyLegacySourceRequest request)
+    {
+        ValidateSourceRequest(request);
+        ConditionalValue<IdempotencyLegacySourceRedirectRecord> redirect;
+        ConditionalValue<IdempotencyRecord> stored;
+        try
+        {
+            redirect = await stateManager
+                .TryGetStateAsync<IdempotencyLegacySourceRedirectRecord>(
+                    GetLegacyRedirectKey(request.ExecutionMessageId))
+                .ConfigureAwait(false);
+            stored = redirect.HasValue
+                ? default
+                : await stateManager
+                    .TryGetStateAsync<IdempotencyRecord>(GetKey(request.ExecutionMessageId))
+                    .ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            return new IdempotencyLegacySourceInspection(IdempotencyLegacySourceDecision.Unavailable);
+        }
+
+        if (redirect.HasValue)
+        {
+            return MatchesRedirect(redirect.Value, request)
+                ? new IdempotencyLegacySourceInspection(
+                    IdempotencyLegacySourceDecision.Redirected,
+                    IdempotencyLegacySourceEvidence.Compute(redirect.Value))
+                : new IdempotencyLegacySourceInspection(IdempotencyLegacySourceDecision.Conflict);
+        }
+
+        if (!stored.HasValue)
+        {
+            return new IdempotencyLegacySourceInspection(IdempotencyLegacySourceDecision.Missing);
+        }
+
+        IdempotencyRecord record = stored.Value;
+        if (!IsSupportedLegacySource(record))
+        {
+            return new IdempotencyLegacySourceInspection(IdempotencyLegacySourceDecision.Unsupported);
+        }
+
+        if (!string.Equals(record.MessageId, request.ExecutionMessageId, StringComparison.Ordinal)
+            || !string.Equals(record.CorrelationId, request.ExecutionCorrelationId, StringComparison.Ordinal)
+            || record.ProcessedAt != request.FirstConsumedAt
+            || record.ExpiresAt != request.ReplayExpiresAt
+            || !Equals(record.ToResult(), request.ReplayResult)
+            || !FixedTimeEquals(
+                IdempotencyLegacySourceEvidence.Compute(record),
+                request.SourceEvidenceDigest))
+        {
+            return new IdempotencyLegacySourceInspection(IdempotencyLegacySourceDecision.Conflict);
+        }
+
+        return new IdempotencyLegacySourceInspection(
+            record.ExpiresAt <= TimeProvider.GetUtcNow()
+                ? IdempotencyLegacySourceDecision.Expired
+                : IdempotencyLegacySourceDecision.Exact);
+    }
+
+    /// <summary>Persists the irreversible payload-free redirect after exact source proof.</summary>
+    internal async Task<IdempotencyLegacySourceInspection> SetLegacySourceRedirectAsync(
+        IdempotencyLegacySourceRedirectRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.TargetAdmissionActorId);
+        ValidateSourceRequest(request.Source);
+        ConditionalValue<IdempotencyLegacySourceRedirectRecord> existing;
+        try
+        {
+            existing = await stateManager
+                .TryGetStateAsync<IdempotencyLegacySourceRedirectRecord>(
+                    GetLegacyRedirectKey(request.Source.ExecutionMessageId))
+                .ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            return new IdempotencyLegacySourceInspection(IdempotencyLegacySourceDecision.Unavailable);
+        }
+        if (existing.HasValue)
+        {
+            return MatchesRedirect(existing.Value, request.Source)
+                && string.Equals(
+                    existing.Value.TargetAdmissionActorId,
+                    request.TargetAdmissionActorId,
+                    StringComparison.Ordinal)
+                ? new IdempotencyLegacySourceInspection(
+                    IdempotencyLegacySourceDecision.Redirected,
+                    IdempotencyLegacySourceEvidence.Compute(existing.Value))
+                : new IdempotencyLegacySourceInspection(IdempotencyLegacySourceDecision.Conflict);
+        }
+
+        IdempotencyLegacySourceInspection inspection = await InspectLegacySourceAsync(request.Source)
+            .ConfigureAwait(false);
+        if (inspection.Decision is not (IdempotencyLegacySourceDecision.Exact
+            or IdempotencyLegacySourceDecision.Expired))
+        {
+            return inspection;
+        }
+
+        var redirect = new IdempotencyLegacySourceRedirectRecord(
+            IdempotencyLegacySourceRedirectRecord.CurrentSchemaVersion,
+            request.Source.TenantPartition,
+            request.Source.InventoryId,
+            request.Source.MigrationId,
+            request.Source.SourceEvidenceDigest,
+            request.TargetAdmissionActorId);
+        try
+        {
+            await stateManager.SetStateAsync(
+                GetLegacyRedirectKey(request.Source.ExecutionMessageId),
+                redirect).ConfigureAwait(false);
+            await stateManager.SaveStateAsync().ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            return new IdempotencyLegacySourceInspection(IdempotencyLegacySourceDecision.Unavailable);
+        }
+        return new IdempotencyLegacySourceInspection(
+            IdempotencyLegacySourceDecision.Redirected,
+            IdempotencyLegacySourceEvidence.Compute(redirect));
+    }
+
     /// <summary>
     /// Story 4.4: a <see cref="IdempotencyRecordDisposition.Recoverable"/> record describes events
     /// that are committed but not yet published, so it must survive normal retention until the
@@ -192,6 +341,69 @@ public partial class IdempotencyChecker(
             && record.ExpiresAt <= TimeProvider.GetUtcNow();
 
     private static string GetKey(string messageId) => $"{KeyPrefix}{messageId}";
+
+    /// <summary>Builds the exact payload-free redirect state name for a message.</summary>
+    internal static string GetLegacyRedirectKey(string messageId)
+        => string.Concat(LegacyRedirectPrefix, messageId);
+
+    private static bool IsSupportedLegacySource(IdempotencyRecord record)
+        => !string.IsNullOrWhiteSpace(record.CausationId)
+            && !string.IsNullOrWhiteSpace(record.CorrelationId)
+            && !string.IsNullOrWhiteSpace(record.MessageId)
+            && !string.IsNullOrWhiteSpace(record.CommandType)
+            && record.ExpiresAt is not null
+            && record.Disposition == IdempotencyRecordDisposition.Terminal;
+
+    private static bool IsValidRedirect(IdempotencyLegacySourceRedirectRecord redirect)
+        => redirect.SchemaVersion == IdempotencyLegacySourceRedirectRecord.CurrentSchemaVersion
+            && !string.IsNullOrWhiteSpace(redirect.TenantPartition)
+            && !string.IsNullOrWhiteSpace(redirect.InventoryId)
+            && !string.IsNullOrWhiteSpace(redirect.MigrationId)
+            && !string.IsNullOrWhiteSpace(redirect.SourceEvidenceDigest)
+            && !string.IsNullOrWhiteSpace(redirect.TargetAdmissionActorId);
+
+    private static bool MatchesRedirect(
+        IdempotencyLegacySourceRedirectRecord redirect,
+        IdempotencyLegacySourceRequest request)
+        => IsValidRedirect(redirect)
+            && string.Equals(redirect.TenantPartition, request.TenantPartition, StringComparison.Ordinal)
+            && string.Equals(redirect.InventoryId, request.InventoryId, StringComparison.Ordinal)
+            && string.Equals(redirect.MigrationId, request.MigrationId, StringComparison.Ordinal)
+            && FixedTimeEquals(redirect.SourceEvidenceDigest, request.SourceEvidenceDigest);
+
+    private static void ValidateSourceRequest(IdempotencyLegacySourceRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.SchemaVersion != IdempotencyLegacySourceRequest.CurrentSchemaVersion
+            || request.LegacySchemaVersion != 1
+            || string.IsNullOrWhiteSpace(request.TenantPartition)
+            || string.IsNullOrWhiteSpace(request.InventoryId)
+            || string.IsNullOrWhiteSpace(request.MigrationId)
+            || string.IsNullOrWhiteSpace(request.SourceEvidenceDigest)
+            || string.IsNullOrWhiteSpace(request.ExecutionMessageId)
+            || string.IsNullOrWhiteSpace(request.ExecutionCorrelationId)
+            || request.ReplayExpiresAt < request.FirstConsumedAt
+            || request.ReplayResult is null)
+        {
+            throw new InvalidOperationException("Legacy source inspection request is invalid.");
+        }
+    }
+
+    private static bool FixedTimeEquals(string left, string right)
+    {
+        byte[] leftBytes = Encoding.UTF8.GetBytes(left);
+        byte[] rightBytes = Encoding.UTF8.GetBytes(right);
+        try
+        {
+            return leftBytes.Length == rightBytes.Length
+                && CryptographicOperations.FixedTimeEquals(leftBytes, rightBytes);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(leftBytes);
+            CryptographicOperations.ZeroMemory(rightBytes);
+        }
+    }
 
     private static partial class Log
     {

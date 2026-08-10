@@ -7,8 +7,12 @@ namespace Hexalith.EventStore.Server.Actors;
 public sealed record IdempotencyAdmissionPromotionRecord(
     int SchemaVersion,
     string SourceActorId,
-    bool Activated)
+    bool Activated,
+    string? MigrationId = null,
+    string? SourceEvidenceDigest = null,
+    string? ImportDigest = null,
+    string? CurrentStateDigest = null)
 {
     /// <summary>Gets the only promotion schema understood by this implementation.</summary>
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 }

@@ -12,4 +12,5 @@ public sealed record IdempotencyAdmissionInspection(
     [property: DataMember] bool Exists,
     [property: DataMember] IdempotencyAdmissionRecord? Record = null,
     [property: DataMember] string? RedirectActorId = null,
-    [property: DataMember] IdempotencyAdmissionTombstone? Tombstone = null);
+    [property: DataMember] IdempotencyAdmissionTombstone? Tombstone = null,
+    [property: DataMember] IdempotencyAdmissionPromotionAcknowledgement? Promotion = null);
