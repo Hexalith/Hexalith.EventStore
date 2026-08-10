@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "records": [
+    {
+      "kind": "implementation-verification",
+      "performedOn": "2026-08-10",
+      "result": "passed",
+      "authority": "development-verification-only"
+    },
+    {
+      "kind": "external-release-authority",
+      "performed": false,
+      "approval": false,
+      "ownedBy": "Story 4.15 and external authority"
+    },
+    {
+      "kind": "production-evidence-review",
+      "performed": false,
+      "approval": false,
+      "ownedBy": "Murat"
+    },
+    {
+      "kind": "leakage-fence-review",
+      "performed": false,
+      "approval": false,
+      "ownedBy": "Security Reviewer"
+    }
+  ],
+  "releaseApproval": false,
+  "foldersOq8Closure": false,
+  "story415Status": "backlog"
+}
