@@ -59,8 +59,10 @@ workflows.
 
 `integration.yml` pins a shared `DAPR_VERSION` consumed by `references/Hexalith.Builds/Github/dapr-init`
 for both CLI install (`dapr/setup-dapr`) and `dapr init --runtime-version`. That value must be an
-installable Dapr CLI release tag (currently `1.18.0`). Do not pin a runtime-only tag such as
-`1.18.1` unless Builds gains separate CLI and runtime inputs.
+installable Dapr **CLI** release tag (currently `1.18.0`). It is not the Dapr NuGet
+`PackageVersion` (owned separately in `references/Hexalith.Builds/Props/Directory.Packages.props`,
+currently `1.18.5`). Do not pin a runtime-only tag such as `1.18.1` as `DAPR_VERSION` unless
+Builds gains separate CLI and runtime inputs.
 
 Do not reintroduce a `Category!=LiveSidecar` filter to make `Server.Tests`
 deterministic. Live-sidecar coverage belongs in the live-sidecar project and

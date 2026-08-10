@@ -1425,7 +1425,7 @@ public sealed class ReleasePackageManifestTests
         {
             daprVersion.Groups["version"].Value.ShouldBe(
                 "1.18.0",
-                "Every shared DAPR_VERSION pin must be an installable Dapr CLI tag because Builds dapr-init uses one shared value for CLI install and runtime init.");
+                "Every shared DAPR_VERSION pin must be an installable Dapr CLI tag (not the Dapr NuGet PackageVersion); Builds dapr-init uses one shared value for CLI install and runtime init.");
         }
 
         integration.ShouldContain("version: ${{ env.DAPR_VERSION }}");
