@@ -1,0 +1,78 @@
+{
+  "schema": "hexalith.eventstore.story-4-15-review-subject/v1",
+  "createdOn": "2026-08-10",
+  "proposedDecision": "eventstore-platform-complete",
+  "design": {
+    "version": "1.0.0",
+    "sha256": "1a55b0302e91233e12db91e6e245f0a22d6bf13fcf6cdf5ee0cbe5759f08dcd8",
+    "bytesAvailableInEventStore": false
+  },
+  "bindings": {
+    "capturePacketV1": {
+      "path": "capture-packet-v1.json",
+      "sha256": "63efacaa686c906c0cab63aef68a01163074914f9983a5874f2bf48d6944eeba"
+    },
+    "closureCrosswalk": {
+      "path": "closure-crosswalk.json",
+      "sha256": "e77d7e6e03f0f2cfdaf57a200fdf69dc216d40e1b416d6f30c78e1754fa27b89"
+    },
+    "sourceArtifactIdentity": {
+      "path": "source-artifact-identity.json",
+      "sha256": "6ee08ea3315573ef81bea62c26a6306e449b6d235de3b0f8d14b0cebf838f9b8"
+    },
+    "limitations": {
+      "path": "limitations.json",
+      "sha256": "bea6f5a38a225f688fe17f5a86d08f23d240e8a9588063fa783c5a9f3986b79b"
+    },
+    "captureManifest": {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425/evidence-sha256.txt",
+      "sha256": "02c3f50778e4b6b2cc2ea422ad00c149884955a113cd6bce9f8c80b24dc1d1fc"
+    }
+  },
+  "identity": {
+    "repository": "Hexalith/Hexalith.EventStore",
+    "landedSourceCommit": "e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec",
+    "landedSourceTree": "e4bb19e5305bbde23563245976b97eb0aaf3c931",
+    "boundPathCount": 26,
+    "captureArtifactCount": 7
+  },
+  "limitations": [
+    "The approved Folders design bytes are not tracked in EventStore; only design version 1.0.0 and its approved SHA-256 reference are preserved.",
+    "The production-path capture used shipped Release entry assemblies with a test-only hosting startup, deterministic time, trusted intent adapter, boundary counter, and Testing environment disclosure.",
+    "Raw PostgreSQL values and raw diagnostics were intentionally excluded; committed evidence contains sanitized structural projections, bounded counts, hashes, and invariant results.",
+    "The original capture bound a dirty candidate against e60a3777c581d70b62f67173ccc2372b5b64a425; this closure independently binds the same 26 paths at landed commit e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec.",
+    "This is a source-only EventStore platform handoff. It grants no release, package, registry, deployment, runtime pin, external-repository, consumer-migration, or final-consumer authority.",
+    "Folders retains its own final cross-repository decision and must independently verify the referenced design and EventStore source before consumption."
+  ],
+  "requiredReviews": [
+    {
+      "role": "architecture",
+      "reviewer": "Winston (System Architect)",
+      "scope": "OQ8 design reference, invariant crosswalk, landed-source identity, architecture boundaries, and source-only handoff",
+      "status": "required"
+    },
+    {
+      "role": "security",
+      "reviewer": "Security Reviewer",
+      "scope": "protected-data leakage gates, current-fence evidence, sanitized-state limitation, and external authority exclusions",
+      "status": "required"
+    },
+    {
+      "role": "test",
+      "reviewer": "Murat (Test Architect)",
+      "scope": "production/deterministic evidence coverage, commands and counts, negative validation, and matrix coverage",
+      "status": "required"
+    }
+  ],
+  "authority": {
+    "eventStorePlatformComplete": true,
+    "handoffMode": "source-only",
+    "releaseApproved": false,
+    "foldersFinalClosure": false,
+    "packageAuthority": false,
+    "registryAuthority": false,
+    "deploymentAuthority": false,
+    "runtimePinAuthority": false,
+    "consumerMigrationAuthority": false
+  }
+}

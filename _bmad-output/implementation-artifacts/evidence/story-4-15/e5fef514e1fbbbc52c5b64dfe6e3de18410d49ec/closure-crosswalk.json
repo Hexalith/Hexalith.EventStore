@@ -1,0 +1,112 @@
+{
+  "schema": "hexalith.eventstore.story-4-15-closure-crosswalk/v1",
+  "story": "4.15",
+  "design": {
+    "version": "1.0.0",
+    "sha256": "1a55b0302e91233e12db91e6e245f0a22d6bf13fcf6cdf5ee0cbe5759f08dcd8",
+    "bytesAvailableInEventStore": false
+  },
+  "invariants": [
+    {
+      "id": "OQ8-1",
+      "name": "trusted-admission",
+      "stories": ["4.9"],
+      "evidence": [
+        "_bmad-output/implementation-artifacts/4-8-durable-tenant-scoped-idempotency-admission-and-expired-key-precedence.md",
+        "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425/deterministic-support.json"
+      ],
+      "result": "approved"
+    },
+    {
+      "id": "OQ8-2",
+      "name": "tenant-key-identity",
+      "stories": ["4.9", "4.10"],
+      "evidence": [
+        "_bmad-output/implementation-artifacts/4-8-durable-tenant-scoped-idempotency-admission-and-expired-key-precedence.md",
+        "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425/observations.json"
+      ],
+      "result": "approved"
+    },
+    {
+      "id": "OQ8-3",
+      "name": "protected-key-handling",
+      "stories": ["4.9", "4.14"],
+      "evidence": [
+        "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425/observations.json",
+        "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425/environment.json"
+      ],
+      "result": "approved"
+    },
+    {
+      "id": "OQ8-4",
+      "name": "atomic-state-and-current-fence",
+      "stories": ["4.10", "4.11", "4.14"],
+      "evidence": [
+        "_bmad-output/implementation-artifacts/spec-4-11-admission-state-machine-and-current-fence-enforcement.md",
+        "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425/deterministic-support.json",
+        "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425/observations.json"
+      ],
+      "result": "approved"
+    },
+    {
+      "id": "OQ8-5",
+      "name": "replay-conflict-and-inclusive-expiry",
+      "stories": ["4.11", "4.12", "4.14"],
+      "evidence": [
+        "_bmad-output/implementation-artifacts/spec-4-12-expiry-compaction-and-tombstone-retention.md",
+        "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425/observations.json"
+      ],
+      "result": "approved"
+    },
+    {
+      "id": "OQ8-6",
+      "name": "retention-and-governed-tombstones",
+      "stories": ["4.12", "4.14"],
+      "evidence": [
+        "_bmad-output/implementation-artifacts/spec-4-12-expiry-compaction-and-tombstone-retention.md",
+        "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425/observations.json"
+      ],
+      "result": "approved"
+    },
+    {
+      "id": "OQ8-7",
+      "name": "fail-closed-recovery-and-migration",
+      "stories": ["4.11", "4.13", "4.14"],
+      "evidence": [
+        "_bmad-output/implementation-artifacts/spec-4-13-legacy-admission-migration-and-fail-closed-reconciliation.md",
+        "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425/deterministic-support.json"
+      ],
+      "result": "approved"
+    },
+    {
+      "id": "OQ8-8",
+      "name": "multi-host-production-evidence",
+      "stories": ["4.14"],
+      "evidence": [
+        "_bmad-output/implementation-artifacts/spec-4-14-oq8-multi-host-production-evidence.md",
+        "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425/evidence-sha256.txt"
+      ],
+      "result": "approved"
+    }
+  ],
+  "storyEvidence": {
+    "4.9": "approved",
+    "4.10": "approved",
+    "4.11": "approved",
+    "4.12": "approved",
+    "4.13": "approved",
+    "4.14": "approved"
+  },
+  "verification": {
+    "commandsFile": "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425/commands.json",
+    "commandsSha256": "29b488e3779192191340f868a4c3f5be3622af51dfa25a26663bb5f49727bd9c",
+    "recordedCommands": 8,
+    "successfulCommands": 8,
+    "focusedProductionCases": 1,
+    "focusedProductionPassed": 1,
+    "deterministicMethods": 21,
+    "deterministicCases": 33,
+    "deterministicPassed": 33,
+    "skipped": 0
+  }
+}

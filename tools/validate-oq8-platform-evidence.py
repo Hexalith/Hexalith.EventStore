@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate or sanitize Story 4.14 OQ8 production evidence using only stdlib."""
+"""Validate Story 4.14 capture and Story 4.15 OQ8 platform closure evidence."""
 
 from __future__ import annotations
 
@@ -13,19 +13,29 @@ from pathlib import Path
 from typing import Any
 
 
-ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_ROOT = Path(__file__).resolve().parents[1]
+ROOT = DEFAULT_ROOT
+GIT_ROOT = DEFAULT_ROOT
 PACKET = ROOT / "_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml"
 EVIDENCE = (
     ROOT
     / "_bmad-output/implementation-artifacts/evidence/story-4-14"
     / "e60a3777c581d70b62f67173ccc2372b5b64a425"
 )
+CLOSURE = (
+    ROOT
+    / "_bmad-output/implementation-artifacts/evidence/story-4-15"
+    / "e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec"
+)
 DESIGN_VERSION = "1.0.0"
 DESIGN_SHA256 = "1a55b0302e91233e12db91e6e245f0a22d6bf13fcf6cdf5ee0cbe5759f08dcd8"
 BASELINE = "e60a3777c581d70b62f67173ccc2372b5b64a425"
+LANDED_SOURCE = "e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec"
+LANDED_TREE = "e4bb19e5305bbde23563245976b97eb0aaf3c931"
 PROFILE = "oq8-postgresql-v1"
 POSTGRES_IMAGE = "postgres:18.4"
 EVIDENCE_DIRECTORY = "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425"
+CLOSURE_DIRECTORY = "_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec"
 FOCUSED_METHOD = "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionOq8PostgresqlTests.ProductionMatrix_IndependentProcessesPreserveAuthorityReplayExpiryAndLeakageInvariants"
 FOCUSED_TRAITS = {
     "Category": ["LiveSidecar"],
@@ -53,6 +63,39 @@ REQUIRED_FILES = {
     "review-records.json",
     "source-state.json",
     "test-results.json",
+}
+CLOSURE_FILES = {
+    "capture-packet-v1.json",
+    "closure-crosswalk.json",
+    "limitations.json",
+    "review-subject.json",
+    "reviews/architecture.json",
+    "reviews/security.json",
+    "reviews/test.json",
+    "source-artifact-identity.json",
+    "source-only-handoff.json",
+    "validator-sha256.txt",
+}
+REVIEW_ROSTER = {
+    "architecture": "Winston (System Architect)",
+    "security": "Security Reviewer",
+    "test": "Murat (Test Architect)",
+}
+EXTERNAL_AUTHORITY_FIELDS = {
+    "releaseApproved",
+    "foldersFinalClosure",
+    "packageAuthority",
+    "registryAuthority",
+    "deploymentAuthority",
+    "runtimePinAuthority",
+    "consumerMigrationAuthority",
+}
+EXPECTED_DOCUMENT_MARKER = "OQ8-SOURCE-ONLY-HANDOFF"
+EXPECTED_DOCUMENTS = {
+    "docs/concepts/command-lifecycle.md",
+    "docs/concepts/architecture-overview.md",
+    "docs/reference/command-api.md",
+    "docs/guides/configuration-reference.md",
 }
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 PRIVATE_PATH_RE = re.compile(r"(?:/home/|/Users/|[A-Za-z]:[\\/]Users[\\/])")
@@ -193,6 +236,50 @@ def sha256_file(path: Path) -> str:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def sha256_bytes(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
+
+
+def run_git(*arguments: str) -> bytes:
+    result = subprocess.run(
+        ["git", *arguments],
+        cwd=GIT_ROOT,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    require(result.returncode == 0, f"Git identity proof failed for {' '.join(arguments[:2])}")
+    return result.stdout
+
+
+def git_file(revision: str, relative: str) -> bytes:
+    require(
+        isinstance(relative, str)
+        and relative
+        and not Path(relative).is_absolute()
+        and ".." not in Path(relative).parts,
+        "Unsafe Git-bound path",
+    )
+    return run_git("show", f"{revision}:{relative}")
+
+
+def configure_roots(root: Path, git_root: Path) -> None:
+    global ROOT, GIT_ROOT, PACKET, EVIDENCE, CLOSURE
+    ROOT = root.resolve()
+    GIT_ROOT = git_root.resolve()
+    PACKET = ROOT / "_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml"
+    EVIDENCE = (
+        ROOT
+        / "_bmad-output/implementation-artifacts/evidence/story-4-14"
+        / BASELINE
+    )
+    CLOSURE = (
+        ROOT
+        / "_bmad-output/implementation-artifacts/evidence/story-4-15"
+        / LANDED_SOURCE
+    )
 
 
 def require(condition: bool, message: str) -> None:
@@ -543,47 +630,17 @@ def validate_manifest() -> dict[str, str]:
     return manifest
 
 
-def changed_candidate_files() -> set[str]:
-    paths: set[str] = set()
-    for arguments in (
-        ["diff", "--name-only", "-z", BASELINE, "--"],
-        ["ls-files", "--others", "--exclude-standard", "-z"],
-    ):
-        result = subprocess.run(
-            ["git", *arguments],
-            cwd=ROOT,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=False,
-        )
-        require(result.returncode == 0, "Git could not derive the complete candidate source set")
-        try:
-            discovered = result.stdout.decode("utf-8").split("\0")
-        except UnicodeDecodeError:
-            fail("Git returned a non-UTF-8 candidate source path")
-        paths.update(
-            relative
-            for relative in discovered
-            if relative and not relative.startswith("_bmad-output/")
-        )
-    return paths
-
-
-def validate_source_state(document: dict[str, Any]) -> None:
+def validate_source_state(document: dict[str, Any], identity: dict[str, Any]) -> None:
     require(document.get("baselineCommit") == BASELINE, "Baseline commit drift")
     candidate_files = document.get("candidateFiles", {})
     source_inputs = document.get("sourceInputs", {})
     require(isinstance(candidate_files, dict) and candidate_files, "Candidate file identities missing")
     require(isinstance(source_inputs, dict) and source_inputs, "Source input identities missing")
-    require(set(candidate_files) == changed_candidate_files(), "Candidate files are not the complete Git-derived changed source/config/tool set")
     require(set(source_inputs) == EXPECTED_SOURCE_INPUTS, "Pinned source-input identity set drift")
     for collection_name, collection in (("candidateFiles", candidate_files), ("sourceInputs", source_inputs)):
         for relative, expected in collection.items():
             require(isinstance(relative, str) and not Path(relative).is_absolute() and ".." not in Path(relative).parts, f"Unsafe {collection_name} path")
             require_sha256(expected, f"{collection_name}:{relative}")
-            path = ROOT / relative
-            require(path.is_file(), f"Bound source file missing: {relative}")
-            require(sha256_file(path) == expected, f"Bound source identity drift: {relative}")
     lines = [f"{relative}:{candidate_files[relative]}" for relative in sorted(candidate_files)]
     candidate_digest = hashlib.sha256(("\n".join(lines) + "\n").encode("utf-8")).hexdigest()
     require(document.get("candidateDiffSha256") == candidate_digest, "Candidate diff identity drift")
@@ -593,6 +650,69 @@ def validate_source_state(document: dict[str, Any]) -> None:
         "Candidate diff algorithm drift",
     )
     require(document.get("dirtySourceCaptured") is True, "Dirty-source condition was not recorded")
+
+    landed = identity.get("landedSource", {})
+    current = identity.get("currentVerification", {})
+    capture_paths = identity.get("captureWorktreePaths", {})
+    landed_overrides = identity.get("landedGitByteOverrides", {})
+    expected_paths = candidate_files | source_inputs
+    require(identity.get("schema") == "hexalith.eventstore.story-4-15-source-artifact-identity/v1", "Source identity schema drift")
+    require(identity.get("repository") == "Hexalith/Hexalith.EventStore", "Source repository identity drift")
+    require(landed.get("commit") == LANDED_SOURCE, "Landed source commit drift")
+    require(landed.get("tree") == LANDED_TREE, "Landed source tree declaration drift")
+    require(landed.get("pathCount") == len(expected_paths) == 26, "Landed source path count drift")
+    require(capture_paths == expected_paths, "Capture worktree path/hash set drift")
+    require(
+        run_git("rev-parse", f"{LANDED_SOURCE}^{{tree}}").decode("ascii").strip() == LANDED_TREE,
+        "Landed source Git tree drift",
+    )
+
+    evolved = current.get("closureEvolvedPaths", {})
+    require(
+        evolved == {
+            ".github/workflows/integration.yml":
+                "The workflow orchestrates evidence capture and may evolve independently; its landed bytes remain historical evidence rather than current capability source.",
+            "tools/validate-oq8-platform-evidence.py":
+                "Story 4.15 evolves the closure validator; its new bytes are bound by validator-sha256.txt rather than treated as unchanged Story 4.14 capability source.",
+        },
+        "Closure-evolved path declaration drift",
+    )
+    require(
+        landed_overrides == {
+            "src/Hexalith.EventStore/Program.cs": {
+                "captureWorktreeSha256": "245f79cc04998118da9caec70cdf290d67fb23e71a91100af46c4a019af5be7f",
+                "landedGitSha256": "7203089f0035e3a45cf7ccf6c6fffdc120e4b2dc2d9fd53b8031ed87e7ad83e9",
+                "reason": "The capture hashed CRLF working-tree bytes while the landed Git blob stores LF bytes under tracked text normalization.",
+            },
+        },
+        "Landed Git-byte override declaration drift",
+    )
+    capability_paths = set(capture_paths) - set(evolved)
+    require(current.get("source") == "current HEAD Git tree", "Current source proof mode drift")
+    require(
+        current.get("rule") == "every capability path must exist and remain byte-equivalent to the landed source",
+        "Current source proof rule drift",
+    )
+    require(current.get("pathCount") == len(capability_paths) == 24, "Current capability path count drift")
+    require(current.get("unboundLaterPathsAllowed") is True, "Later unbound paths are not explicitly allowed")
+
+    for relative, capture_expected in capture_paths.items():
+        override = landed_overrides.get(relative, {})
+        landed_expected = override.get("landedGitSha256", capture_expected)
+        if override:
+            require(override.get("captureWorktreeSha256") == capture_expected, f"Capture/Git override drift: {relative}")
+        require_sha256(landed_expected, f"landedGitPaths:{relative}")
+        require(sha256_bytes(git_file(LANDED_SOURCE, relative)) == landed_expected, f"Landed source identity drift: {relative}")
+        if relative in capability_paths:
+            require(sha256_bytes(git_file("HEAD", relative)) == landed_expected, f"Current bound source identity drift: {relative}")
+
+    capture = identity.get("capture", {})
+    require(capture.get("packetV1Path") == "capture-packet-v1.json", "Capture packet snapshot path drift")
+    require_sha256(capture.get("packetV1Sha256"), "Capture packet snapshot identity")
+    require(capture.get("packetV1Sha256") == sha256_file(CLOSURE / "capture-packet-v1.json"), "Capture packet snapshot drift")
+    require(capture.get("evidenceDirectory") == EVIDENCE_DIRECTORY, "Capture evidence directory identity drift")
+    require(capture.get("manifestSha256") == sha256_file(EVIDENCE / "evidence-sha256.txt"), "Capture manifest identity drift")
+    require(capture.get("artifactCount") == len(REQUIRED_FILES), "Capture artifact count drift")
 
 
 def validate_committed_packet() -> None:

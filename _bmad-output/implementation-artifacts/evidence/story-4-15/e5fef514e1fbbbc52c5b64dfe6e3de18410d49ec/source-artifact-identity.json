@@ -1,0 +1,70 @@
+{
+  "schema": "hexalith.eventstore.story-4-15-source-artifact-identity/v1",
+  "repository": "Hexalith/Hexalith.EventStore",
+  "landedSource": {
+    "commit": "e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec",
+    "tree": "e4bb19e5305bbde23563245976b97eb0aaf3c931",
+    "pathCount": 26,
+    "pathSet": "union of Story 4.14 candidateFiles and sourceInputs"
+  },
+  "currentVerification": {
+    "source": "current HEAD Git tree",
+    "rule": "every capability path must exist and remain byte-equivalent to the landed source",
+    "pathCount": 24,
+    "closureEvolvedPaths": {
+      ".github/workflows/integration.yml": "The workflow orchestrates evidence capture and may evolve independently; its landed bytes remain historical evidence rather than current capability source.",
+      "tools/validate-oq8-platform-evidence.py": "Story 4.15 evolves the closure validator; its new bytes are bound by validator-sha256.txt rather than treated as unchanged Story 4.14 capability source."
+    },
+    "unboundLaterPathsAllowed": true
+  },
+  "captureWorktreePaths": {
+    ".github/workflows/integration.yml": "afb28e703e9b9d51b5144e10c0368cf6ac94ab01cf5e456ef2090a6d444e3205",
+    "deploy/dapr/resiliency.yaml": "115bdb0d3d330c69920692a80654066937e6b2dd3bd18806c0b276e1de011645",
+    "deploy/dapr/statestore-postgresql.yaml": "e8024498786765a32b0ea299778248ade35c855f77ede16ee4775162a971d0eb",
+    "samples/Hexalith.EventStore.Sample/Program.cs": "a2fe52f50ef65d2aa949916ac651c8766bab2658853e95300059b2020d77f3e9",
+    "src/Hexalith.EventStore/Program.cs": "245f79cc04998118da9caec70cdf290d67fb23e71a91100af46c4a019af5be7f",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/IdempotencyAdmissionOq8PostgresqlTests.cs": "98da9160be39f28355cfa0324f3d42cca7b2d57ceb2d3987ad72af522749feb8",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/AssemblyInfo.cs": "20c033d88b2aff5f0648f4368a6aef404e4de16b4e9a62a1b5a7fa6c62e2406c",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DaprTestContainerFixture.cs": "0da109af79cb0ded1c9e7377c4140a561ef682f1cf23b7c0fbb6284b7401c216",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8AdmissionSnapshot.cs": "15e196b6298215c0c7342ac6a159a53b114cc7db885a5b794e27d571f966afda",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8BoundaryCounterStartupFilter.cs": "40ea5264dc0f4f6b2709e02e620c5e3c4a03d0aee12c3f0dd97d58e194041267",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8BoundedLog.cs": "66d35ea0606574d02c29f6b6d29b052339c79786852c6b9ad5e5f02eebbfaf82",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8CommandObservation.cs": "900ed299bd9ea6ec6d6a777be487b166af7dc32c4c44ff90baed173a284252cc",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8FileTimeProvider.cs": "c02d44c0f6c616eb9ce5908c128e9c490892ef6634e6ff117708675f461bea24",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8HostingStartup.cs": "a057b7edcd94bafbc8c0f0d704bc16840ba3207f85df1f662b34ce754c8ea671",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlCollection.cs": "1508197e2281a7ac3eb7ed38fca14ef9d0e43a3779c34fb710112cb0a4a5bd88",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs": "7f29993a470d179288a367c8d877e01b7f0f7be4206faf329f5d889b6171cae6",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlSnapshot.cs": "4dbb0cffcade6866a22c4660bb0f7bebd26031ad34631d5fb09b1433833d698a",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8ProcessNode.cs": "b11ba6318d982f2cd286b5a3accac7c41df628cbdd401972b7f5552a04a36cce",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8RotatedAuthoritySnapshot.cs": "365a62bf8491788c321696069e2d9a8b44206994f1fd937d38c91055feef40ab",
+    "tests/Hexalith.EventStore.Server.Tests/Actors/IdempotencyAdmissionActorTests.cs": "48a6548a7a055eae6d7fd92fcfd8e3a4c12e6855d6e2d3f9ea517b03961ef192",
+    "tests/Hexalith.EventStore.Server.Tests/Actors/IdempotencyAdmissionDirectoryActorTests.cs": "ab7a7fa8474ac126aa4fa9f642ced10aaba3c57b2c21b1948156b38659287366",
+    "tests/Hexalith.EventStore.Server.Tests/Actors/IdempotencyAdmissionExpiryTests.cs": "258aa5e8ddd0983af4beee26dd2562313c4d2b0b38d2750a130db7b598863dfa",
+    "tests/Hexalith.EventStore.Server.Tests/Actors/IdempotencyTenantLifecycleActorTests.cs": "3c193c50616111e239dc752540c71f7931a1fec692ba3ab4040d5c0ba5ecb0f5",
+    "tests/Hexalith.EventStore.Server.Tests/Actors/PublicationRecoveryActivationTests.cs": "7aff4137378e9f2529b1770dd81c6638e8159277b4e92a5653ffc61a65ad2eb4",
+    "tests/Hexalith.EventStore.Server.Tests/Pipeline/SubmitCommandHandlerIdempotencyAdmissionTests.cs": "58eada04ab5309d1e260ab6d7e9fd3c8d947f67f5ead325173dbc89ed5d35fe1",
+    "tools/validate-oq8-platform-evidence.py": "0e9a352e7757f452dbc1f41dbd7036d76088f56be732a03c9b48ba4d6ab1c8b1"
+  },
+  "landedGitByteOverrides": {
+    "src/Hexalith.EventStore/Program.cs": {
+      "captureWorktreeSha256": "245f79cc04998118da9caec70cdf290d67fb23e71a91100af46c4a019af5be7f",
+      "landedGitSha256": "7203089f0035e3a45cf7ccf6c6fffdc120e4b2dc2d9fd53b8031ed87e7ad83e9",
+      "reason": "The capture hashed CRLF working-tree bytes while the landed Git blob stores LF bytes under tracked text normalization."
+    }
+  },
+  "capture": {
+    "packetV1Path": "capture-packet-v1.json",
+    "packetV1Sha256": "63efacaa686c906c0cab63aef68a01163074914f9983a5874f2bf48d6944eeba",
+    "evidenceDirectory": "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425",
+    "manifestSha256": "02c3f50778e4b6b2cc2ea422ad00c149884955a113cd6bce9f8c80b24dc1d1fc",
+    "artifactCount": 7
+  },
+  "runtimeArtifacts": {
+    "eventStoreSha256": "266d50c1f892d9272caff0742440b26212c80d393250f8f493a62d33c92f6248",
+    "sampleSha256": "a2234009ef7f90f8a0039343da6fdf2dbbc6ae5ae2cd534dbcffabc8e574ba7e",
+    "eventStoreRuntimeSetSha256": "437316dfd6a9a190ca3628f8e6a036ad9373cfb01e4228aa08497fa79759dd64",
+    "sampleRuntimeSetSha256": "1c7e94aec71543a5efdd682a22e23a864b6e9a128923504c870ae3b1f9f460cc",
+    "hostingStartupSha256": "59bf0c78ee72d5b9ca4ef71b89aa6acb32995eeca637d7d27d38c6a692e3f810",
+    "additionalDepsSha256": "153199433c7434a4db871d6c56a58956a22a30465aa8299394269a112dc6d393"
+  }
+}

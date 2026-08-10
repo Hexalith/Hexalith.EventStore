@@ -1,0 +1,11 @@
+{
+  "schema": "hexalith.eventstore.story-4-15-limitations/v1",
+  "limitations": [
+    "The approved Folders design bytes are not tracked in EventStore; only design version 1.0.0 and its approved SHA-256 reference are preserved.",
+    "The production-path capture used shipped Release entry assemblies with a test-only hosting startup, deterministic time, trusted intent adapter, boundary counter, and Testing environment disclosure.",
+    "Raw PostgreSQL values and raw diagnostics were intentionally excluded; committed evidence contains sanitized structural projections, bounded counts, hashes, and invariant results.",
+    "The original capture bound a dirty candidate against e60a3777c581d70b62f67173ccc2372b5b64a425; this closure independently binds the same 26 paths at landed commit e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec.",
+    "This is a source-only EventStore platform handoff. It grants no release, package, registry, deployment, runtime pin, external-repository, consumer-migration, or final-consumer authority.",
+    "Folders retains its own final cross-repository decision and must independently verify the referenced design and EventStore source before consumption."
+  ]
+}
