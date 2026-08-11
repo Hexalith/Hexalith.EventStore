@@ -172,8 +172,16 @@ public partial class IdempotencyChecker(
             : new IdempotencyCheckResult(IdempotencyCheckOutcome.ExactTerminalDuplicate, record.ToResult());
     }
 
-    /// <inheritdoc/>
-    public async Task<bool> TryCompleteRecoverableAsync(string messageId, DateTimeOffset expiresAt)
+    /// <summary>
+    /// Story 4.4: transitions a <see cref="IdempotencyRecordDisposition.Recoverable"/> record to
+    /// <see cref="IdempotencyRecordDisposition.Terminal"/> and refreshes its retention horizon.
+    /// Kept off <see cref="IIdempotencyChecker"/> so adding a member does not break external
+    /// interface implementers; <see cref="AggregateActor"/> constructs this concrete type directly.
+    /// </summary>
+    /// <param name="messageId">The command message identifier keying the idempotency record.</param>
+    /// <param name="expiresAt">The new retention expiry for the terminal record.</param>
+    /// <returns><c>true</c> when a Recoverable record was staged as Terminal.</returns>
+    internal async Task<bool> TryCompleteRecoverableAsync(string messageId, DateTimeOffset expiresAt)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(messageId);
 

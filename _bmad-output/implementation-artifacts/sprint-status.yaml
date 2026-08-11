@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-08-10
+# last_updated: 2026-08-11
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '2026-07-05T20:01:46+02:00'
-last_updated: 08-10-2026
+last_updated: 08-11-2026
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -110,7 +110,7 @@ development_status:
   4-1-event-identity-and-duplicate-result-fidelity: done
   4-2-resume-and-idempotency-integrity: done
   4-3-deterministic-replay-dispatch-and-serialization: done
-  4-4-committed-event-publication-recovery: review
+  4-4-committed-event-publication-recovery: done
   4-5-append-durability-race-evidence: review
   4-6-global-position-sharding-spec-renegotiation: backlog
   4-7-tenants-query-provenance-follow-up: backlog

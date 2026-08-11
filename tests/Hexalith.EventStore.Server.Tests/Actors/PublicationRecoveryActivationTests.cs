@@ -278,16 +278,16 @@ public class PublicationRecoveryActivationTests {
             Arg.Any<CancellationToken>());
     }
 
-    // ===== PR6: the probe budget is charged once per entry =====
+    // ===== PR6: already-armed entries must not starve the unarmed tail =====
 
     [Fact]
-    public async Task OnActivate_ArmedEntriesReachTheProbeBound_StopsReadingState() {
-        // 40 already-armed entries: each costs exactly one drain-record read and no work, so the
-        // scan must stop at the 32-entry probe bound rather than reading all 40.
-        const int seeded = 40;
+    public async Task OnActivate_ArmedHeadDoesNotStarveUnarmedTailBeyondFormerProbeBound() {
+        // Regression: charging ReminderArmedAt skips against MaxActivationProbeEntries left every
+        // unarmed entry past index slot 32 permanently unexamined on a continuously active actor.
+        const int armedCount = MaxActivationProbeEntries;
         ActivationContext ctx = CreateActorForBoundedDrain();
         var entries = new List<UnpublishedPublicationEntry>();
-        for (int i = 0; i < seeded; i++) {
+        for (int i = 0; i < armedCount; i++) {
             entries.Add(Entry($"msg-p{i:D3}", $"corr-p{i:D3}"));
             SeedDrainRecord(ctx.StateManager, $"msg-p{i:D3}", new UnpublishedEventsRecord(
                 $"corr-p{i:D3}", 1, 1, 1, "CreateOrder", false, DateTimeOffset.UtcNow,
@@ -295,11 +295,17 @@ public class PublicationRecoveryActivationTests {
                 DeadLettered: false, ReminderArmedAt: DateTimeOffset.UtcNow.AddMinutes(-1)));
         }
 
+        entries.Add(Entry("msg-tail", "corr-tail"));
+        SeedDrainRecord(ctx.StateManager, "msg-tail", new UnpublishedEventsRecord(
+            "corr-tail", 1, 1, 1, "CreateOrder", false, DateTimeOffset.UtcNow,
+            RetryCount: 0, LastFailureReason: null, MessageId: "msg-tail"));
+
         SeedPublicationIndex(ctx.StateManager, [.. entries]);
 
         await InvokeOnActivateAsync(ctx.Actor);
 
-        CountStateReads(ctx.StateManager, "drain:").ShouldBe(MaxActivationProbeEntries);
+        await ctx.TimerManager.Received(1).RegisterReminderAsync(
+            Arg.Is<ActorReminder>(r => r.Name == "drain-unpublished-msg-tail"));
     }
 
     [Fact]
@@ -319,8 +325,10 @@ public class PublicationRecoveryActivationTests {
 
         await InvokeOnActivateAsync(ctx.Actor);
 
-        // Exactly one drain read and one checkpoint read per probed entry, up to the bound.
-        CountStateReads(ctx.StateManager, "drain:").ShouldBe(MaxActivationProbeEntries);
+        // Probe is charged only after the drain classifying read proves the entry is not already
+        // armed. Hitting the bound therefore performs one extra drain peek, then breaks before the
+        // checkpoint load — so drain reads are bound+1 and checkpoint reads equal the bound.
+        CountStateReads(ctx.StateManager, "drain:").ShouldBe(MaxActivationProbeEntries + 1);
         CountStateReads(ctx.StateManager, PipelineKeyPrefix).ShouldBe(MaxActivationProbeEntries);
     }
 
@@ -793,6 +801,102 @@ public class PublicationRecoveryActivationTests {
         await ctx.StateManager.Received().SetStateAsync(
             UnpublishedPublicationIndex.StateKey,
             Arg.Is<UnpublishedPublicationIndex>(i => i.Contains("msg-stale")),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ProcessCommand_StaleHandoffWhenIndexAtCapacity_StillPersistsDrainRecordAndDoesNotReject() {
+        // Post-commit choke point must fail open: already-committed ranges keep their drain record
+        // even when the recovery index refuses a new entry. Pre-commit capacity tests must not be
+        // the only coverage of StoreDrainRecordAndRegisterReminderAsync refusal.
+        ActivationContext ctx = CreateActorForBoundedDrain(
+            new EventDrainOptions { MaxOutstandingPublicationEntries = 1 });
+        ConfigureCommandDefaults(ctx);
+
+        _ = ctx.StateManager.TryGetStateAsync<UnpublishedPublicationIndex>(
+            UnpublishedPublicationIndex.StateKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedPublicationIndex>(
+                true,
+                new UnpublishedPublicationIndex([
+                    new UnpublishedPublicationEntry("msg-other", "corr-other", DateTimeOffset.UtcNow),
+                ])));
+
+        SeedCheckpoint(ctx.StateManager, "corr-shared", new PipelineState(
+            "corr-shared",
+            CommandStatus.EventsStored,
+            "CreateOrder",
+            DateTimeOffset.UtcNow.AddMinutes(-5),
+            EventCount: 2,
+            RejectionEventType: null,
+            MessageId: "msg-stale",
+            CausationId: "msg-stale",
+            StartSequence: 1,
+            EndSequence: 2));
+
+        CommandProcessingResult result = await ctx.Actor.ProcessCommandAsync(
+            CreateEnvelope("msg-incoming", "corr-shared"));
+
+        // The handoff must persist the drain even when the index is full. The incoming command may
+        // still be fail-closed at its own pre-commit index staging — that is a separate path.
+        _ = result;
+        await ctx.StateManager.Received().SetStateAsync(
+            "drain:msg-stale",
+            Arg.Any<UnpublishedEventsRecord>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ProcessCommand_ResumePublishFails_PreservesDeadLetteredAndReminderArmedAt() {
+        ActivationContext ctx = CreateActorForBoundedDrain();
+        ConfigureCommandDefaults(ctx);
+
+        SeedCheckpoint(ctx.StateManager, "corr-resume", new PipelineState(
+            "corr-resume",
+            CommandStatus.EventsStored,
+            "CreateOrder",
+            DateTimeOffset.UtcNow.AddSeconds(-5),
+            EventCount: 2,
+            RejectionEventType: null,
+            MessageId: "msg-resume",
+            CausationId: "msg-resume",
+            StartSequence: 1,
+            EndSequence: 2));
+
+        DateTimeOffset armedAt = new(2026, 8, 1, 12, 0, 0, TimeSpan.Zero);
+        SeedDrainRecord(ctx.StateManager, "msg-resume", new UnpublishedEventsRecord(
+            "corr-resume", 1, 2, 2, "CreateOrder", false, DateTimeOffset.UtcNow.AddMinutes(-10),
+            RetryCount: 3, LastFailureReason: "prior", MessageId: "msg-resume",
+            DeadLettered: true, ReminderArmedAt: armedAt));
+
+        _ = ctx.StateManager.TryGetStateAsync<AggregateMetadata>(
+            "test-tenant:test-domain:agg-001:metadata", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(2, DateTimeOffset.UtcNow, null)));
+        for (int seq = 1; seq <= 2; seq++) {
+            var evt = new EventEnvelope(
+                $"evt-{seq}", "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0,
+                DateTimeOffset.UtcNow, "corr-resume", $"cause-{seq}", "system", "1.0.0", "TestEvent", 1,
+                "json", [1], null);
+            _ = ctx.StateManager.TryGetStateAsync<EventEnvelope>(
+                $"test-tenant:test-domain:agg-001:events:{seq}", Arg.Any<CancellationToken>())
+                .Returns(new ConditionalValue<EventEnvelope>(true, evt));
+        }
+
+        _ = ctx.EventPublisher.PublishEventsAsync(
+            Arg.Any<AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(new EventPublishResult(false, 0, "Pub/sub unavailable"));
+
+        _ = await ctx.Actor.ProcessCommandAsync(CreateEnvelope("msg-resume", "corr-resume"));
+
+        await ctx.StateManager.Received().SetStateAsync(
+            "drain:msg-resume",
+            Arg.Is<UnpublishedEventsRecord>(r =>
+                r.RetryCount == 3
+                && r.DeadLettered
+                && r.ReminderArmedAt == armedAt),
             Arg.Any<CancellationToken>());
     }
 

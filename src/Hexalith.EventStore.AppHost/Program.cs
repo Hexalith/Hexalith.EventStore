@@ -60,6 +60,8 @@ ForwardEventStoreEnvironment("EventStore:Publisher:TestPublishFaultCorrelationId
 ForwardEventStoreEnvironment("EventStore:Drain:InitialDrainDelay", "EventStore__Drain__InitialDrainDelay");
 ForwardEventStoreEnvironment("EventStore:Drain:DrainPeriod", "EventStore__Drain__DrainPeriod");
 ForwardEventStoreEnvironment("EventStore:Drain:MaxDrainPeriod", "EventStore__Drain__MaxDrainPeriod");
+ForwardEventStoreEnvironment("EventStore:Drain:MaxDrainAttempts", "EventStore__Drain__MaxDrainAttempts");
+ForwardEventStoreEnvironment("EventStore:Drain:MaxOutstandingPublicationEntries", "EventStore__Drain__MaxOutstandingPublicationEntries");
 ForwardEventStoreEnvironment("EventStore:Actors:AggregateActorTypeName", "EventStore__Actors__AggregateActorTypeName");
 ForwardEventStoreEnvironment("EventStore:RuntimeProof:ShutdownToken", "EventStore__RuntimeProof__ShutdownToken");
 
