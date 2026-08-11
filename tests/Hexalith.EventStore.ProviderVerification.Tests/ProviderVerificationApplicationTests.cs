@@ -65,7 +65,7 @@ public sealed class ProviderVerificationApplicationTests
     public async Task RunAsync_FatalStartupAfterInputsLoad_ReportsEveryInteractionAsNotRun()
     {
         string eventStoreRoot = FindRepositoryRoot();
-        string frontComposerRoot = Path.GetFullPath(Path.Combine(eventStoreRoot, "..", ".."));
+        string frontComposerRoot = Path.Combine(eventStoreRoot, "references", "Hexalith.FrontComposer");
         string pactDirectory = Path.Combine(
             frontComposerRoot,
             "tests",

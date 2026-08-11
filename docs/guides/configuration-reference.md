@@ -769,6 +769,14 @@ This table lists every configurable setting for quick scanning, including explic
 
 ## Next Steps
 
+<!-- OQ8-SOURCE-ONLY-HANDOFF -->
+
+### OQ8 deployment and handoff limit
+
+Story 4.15 records the reviewed source-only handoff for EventStore source commit `e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec`. The final packet binds the Stories 4.9-4.14 invariant crosswalk, immutable multi-host PostgreSQL evidence, exact landed Git identities, limitations, the test source, the pre-review execution record, and fresh content-bound architecture, security, and test receipts. EventStore platform completion and the source-only handoff are recorded, and the live closure validator passes against the unchanged bound source.
+
+The bound limitations disclose that the approved Folders design bytes are not tracked here, the capture used test-only deterministic-time, intent-adapter, and boundary-counter seams, raw PostgreSQL values and diagnostics were replaced by sanitized structural projections, and the original dirty candidate capture is independently rebound to the 26-path landed source. The reviewed handoff grants no release approval, Folders final closure, package or registry authority, deployment authority, runtime-pin authority, consumer-migration authority, external-repository authority, or final-consumer authority. Consumers may rely on this EventStore source-only handoff only while `python3 tools/validate-oq8-platform-evidence.py` passes against unchanged bound source, and they must obtain the approved design bytes from Folders.
+
 - **Next:** [Deployment Progression](deployment-progression.md) — Choose your deployment target and see how configuration changes per environment
 - **Related:** [DAPR Component Reference](dapr-component-reference.md) — Complete YAML examples for every supported backend
 - **Related:** [Security Model](security-model.md) — Authentication flow, authorization, and secrets management

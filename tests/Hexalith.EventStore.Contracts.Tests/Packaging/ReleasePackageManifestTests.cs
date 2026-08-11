@@ -623,14 +623,18 @@ public sealed class ReleasePackageManifestTests
         string root = FindRepositoryRoot();
         string integration = File.ReadAllText(Path.Combine(root, ".github", "workflows", "integration.yml"));
         string release = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
+        string daprInit = File.ReadAllText(Path.Combine(root, "references", "Hexalith.Builds", "Github", "dapr-init", "action.yml"));
 
-        AssertLiveSidecarWorkflowTargetsLiveProjectOutsideReleaseGate(integration, release);
+        AssertLiveSidecarWorkflowTargetsLiveProjectOutsideReleaseGate(integration, release, daprInit);
     }
 
     [Theory]
     [InlineData("full-server-tests")]
     [InlineData("category-filter")]
     [InlineData("missing-cli-tag")]
+    [InlineData("missing-runtime-tag")]
+    [InlineData("runtime-uses-cli-pin")]
+    [InlineData("missing-legacy-fallback")]
     [InlineData("release-coupling-workflow")]
     [InlineData("release-coupling-project")]
     public void Live_sidecar_workflow_guardrail_rejects_forbidden_mutations(string mutation)
@@ -638,15 +642,25 @@ public sealed class ReleasePackageManifestTests
         string root = FindRepositoryRoot();
         string integration = File.ReadAllText(Path.Combine(root, ".github", "workflows", "integration.yml"));
         string release = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
+        string daprInit = File.ReadAllText(Path.Combine(root, "references", "Hexalith.Builds", "Github", "dapr-init", "action.yml"));
 
         string mutatedIntegration = mutation switch
         {
             "full-server-tests" => integration + "\n          dotnet test tests/Hexalith.EventStore.Server.Tests/\n",
             "category-filter" => integration + "\n          --filter \"Category=LiveSidecar\"\n",
             "missing-cli-tag" => integration.Replace(
-                "DAPR_VERSION: '1.18.0'",
-                "DAPR_VERSION: '1.18.1'",
+                "DAPR_CLI_VERSION: '1.18.0'",
+                "DAPR_CLI_VERSION: '1.18.1'",
                 StringComparison.Ordinal),
+            "missing-runtime-tag" => integration.Replace(
+                "DAPR_RUNTIME_VERSION: '1.18.2'",
+                "DAPR_RUNTIME_VERSION: '1.18.1'",
+                StringComparison.Ordinal),
+            "runtime-uses-cli-pin" => integration.Replace(
+                "runtime-version: ${{ env.DAPR_RUNTIME_VERSION }}",
+                "runtime-version: ${{ env.DAPR_CLI_VERSION }}",
+                StringComparison.Ordinal),
+            "missing-legacy-fallback" => integration,
             "release-coupling-workflow" => integration,
             "release-coupling-project" => integration,
             _ => throw new InvalidOperationException($"Unknown mutation: {mutation}"),
@@ -657,8 +671,14 @@ public sealed class ReleasePackageManifestTests
             "release-coupling-project" => release + "\n# Hexalith.EventStore.Server.LiveSidecar.Tests\n",
             _ => release,
         };
+        string mutatedDaprInit = mutation == "missing-legacy-fallback"
+            ? daprInit.Replace(
+                "DAPR_RUNTIME_VERSION: ${{ inputs.runtime-version || inputs.version }}",
+                "DAPR_RUNTIME_VERSION: ${{ inputs.runtime-version }}",
+                StringComparison.Ordinal)
+            : daprInit;
 
-        if (mutation is "missing-cli-tag")
+        if (mutation is "missing-cli-tag" or "missing-runtime-tag" or "runtime-uses-cli-pin")
         {
             mutatedIntegration.ShouldNotBe(
                 integration,
@@ -666,7 +686,10 @@ public sealed class ReleasePackageManifestTests
         }
 
         _ = Should.Throw<Shouldly.ShouldAssertException>(
-            () => AssertLiveSidecarWorkflowTargetsLiveProjectOutsideReleaseGate(mutatedIntegration, mutatedRelease));
+            () => AssertLiveSidecarWorkflowTargetsLiveProjectOutsideReleaseGate(
+                mutatedIntegration,
+                mutatedRelease,
+                mutatedDaprInit));
     }
 
     [Fact]
@@ -1401,7 +1424,8 @@ public sealed class ReleasePackageManifestTests
 
     private static void AssertLiveSidecarWorkflowTargetsLiveProjectOutsideReleaseGate(
         string integration,
-        string release)
+        string release,
+        string daprInit)
     {
         integration.ShouldContain("dotnet test tests/Hexalith.EventStore.Server.LiveSidecar.Tests/");
 
@@ -1415,20 +1439,28 @@ public sealed class ReleasePackageManifestTests
         integration.ShouldNotContain("--filter \"Category=LiveSidecar\"");
         integration.ShouldNotContain("--filter \"Category!=LiveSidecar\"");
 
-        MatchCollection daprVersions = Regex.Matches(
+        MatchCollection daprCliVersions = Regex.Matches(
             integration,
-            @"(?m)^[ \t]*DAPR_VERSION:[ \t]*'(?<version>[^']+)'[ \t]*(?:#.*)?$");
-        daprVersions.Count.ShouldBeGreaterThan(
-            0,
-            "integration.yml must pin a shared DAPR_VERSION for Builds dapr-init.");
-        foreach (Match daprVersion in daprVersions)
-        {
-            daprVersion.Groups["version"].Value.ShouldBe(
-                "1.18.0",
-                "Every shared DAPR_VERSION pin must be an installable Dapr CLI tag (not the Dapr NuGet PackageVersion); Builds dapr-init uses one shared value for CLI install and runtime init.");
-        }
+            @"(?m)^[ \t]*DAPR_CLI_VERSION:[ \t]*'(?<version>[^']+)'[ \t]*(?:#.*)?$");
+        daprCliVersions.Count.ShouldBe(1, "integration.yml must declare exactly one Dapr CLI pin.");
+        daprCliVersions[0].Groups["version"].Value.ShouldBe(
+            "1.18.0",
+            "The Dapr CLI pin must be the installable CLI release used by dapr/setup-dapr.");
 
-        integration.ShouldContain("version: ${{ env.DAPR_VERSION }}");
+        MatchCollection daprRuntimeVersions = Regex.Matches(
+            integration,
+            @"(?m)^[ \t]*DAPR_RUNTIME_VERSION:[ \t]*'(?<version>[^']+)'[ \t]*(?:#.*)?$");
+        daprRuntimeVersions.Count.ShouldBe(1, "integration.yml must declare exactly one Dapr runtime pin.");
+        daprRuntimeVersions[0].Groups["version"].Value.ShouldBe(
+            "1.18.2",
+            "The fresh live-sidecar and OQ8 runtime must remain independently pinned to Dapr runtime 1.18.2.");
+
+        integration.ShouldContain("version: ${{ env.DAPR_CLI_VERSION }}");
+        integration.ShouldContain("runtime-version: ${{ env.DAPR_RUNTIME_VERSION }}");
+        integration.ShouldContain("--expected-runtime-version \"$DAPR_RUNTIME_VERSION\"");
+        daprInit.ShouldContain("version: ${{ inputs.version }}");
+        daprInit.ShouldContain("DAPR_RUNTIME_VERSION: ${{ inputs.runtime-version || inputs.version }}");
+        daprInit.ShouldContain("dapr init --runtime-version \"$runtime_version\"");
 
         release.ShouldNotContain("integration.yml");
         release.ShouldNotContain("Hexalith.EventStore.Server.LiveSidecar.Tests");

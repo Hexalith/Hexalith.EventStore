@@ -115,13 +115,13 @@ development_status:
   4-6-global-position-sharding-spec-renegotiation: backlog
   4-7-tenants-query-provenance-follow-up: backlog
   4-8-durable-admission-evidence-ledger: backlog
-  4-9-trusted-admission-contract-and-protected-identity: review
-  4-10-digest-directory-rotation-and-key-retirement: review
-  4-11-admission-state-machine-and-current-fence-enforcement: review
-  4-12-expiry-compaction-and-tombstone-retention: review
+  4-9-trusted-admission-contract-and-protected-identity: done
+  4-10-digest-directory-rotation-and-key-retirement: done
+  4-11-admission-state-machine-and-current-fence-enforcement: done
+  4-12-expiry-compaction-and-tombstone-retention: done
   4-13-legacy-admission-migration-and-fail-closed-reconciliation: done
-  4-14-oq8-multi-host-production-evidence: review
-  4-15-oq8-platform-closure-and-handoff: in-progress
+  4-14-oq8-multi-host-production-evidence: done
+  4-15-oq8-platform-closure-and-handoff: review
   epic-4-retrospective: optional
 
   epic-5: backlog

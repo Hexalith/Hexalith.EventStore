@@ -1,0 +1,30 @@
+{
+  "schema": "hexalith.eventstore.story-4-15-review-receipt/v1",
+  "role": "security",
+  "reviewer": "Security Reviewer",
+  "reviewedOn": "2026-08-11",
+  "decision": "approved",
+  "subjectSha256": "5c1ffb39863d8d25d1cf35dc49633a8ac979e2bd858d79fea77586d92a8cded6",
+  "acceptedScope": "protected-data leakage gates, current-fence evidence, sanitized-state limitation, and external authority exclusions",
+  "acceptedLimitationsSha256": "bea6f5a38a225f688fe17f5a86d08f23d240e8a9588063fa783c5a9f3986b79b",
+  "findings": [
+    "No blocking security findings: the Dapr runtime input reaches shell execution only through an environment variable and remains quoted, while fresh evidence accepts exactly one explicit semantic runtime version.",
+    "Pre-review cannot be combined with capture or support arguments; omitted, repeated, and cross-mode runtime identities fail closed, so committed Story 4.14 cannot be relabeled as fresh runtime 1.18.2.",
+    "Provider fixtures remain confined to a declared root submodule path, eliminating accidental reads from attacker- or environment-controlled workspace siblings.",
+    "PostgreSQL image identity now requires exactly 64 lowercase hexadecimal digest characters after sha256, and counters, duration, environment limits, and both protected-match snapshots reject unsafe values.",
+    "The refreshed subject preserves strict duplicate-JSON handling, source identity proofs, sanitized-state limitations, and false external-authority fields."
+  ],
+  "authority": {
+    "eventStorePlatformComplete": true,
+    "handoffMode": "source-only",
+    "releaseApproved": false,
+    "foldersFinalClosure": false,
+    "packageAuthority": false,
+    "registryAuthority": false,
+    "deploymentAuthority": false,
+    "runtimePinAuthority": false,
+    "consumerMigrationAuthority": false,
+    "externalRepositoryAuthority": false,
+    "finalConsumerAuthority": false
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "schema": "hexalith.eventstore.story-4-15-review-receipt/v1",
+  "role": "architecture",
+  "reviewer": "Winston (System Architect)",
+  "reviewedOn": "2026-08-11",
+  "decision": "approved",
+  "subjectSha256": "5c1ffb39863d8d25d1cf35dc49633a8ac979e2bd858d79fea77586d92a8cded6",
+  "acceptedScope": "OQ8 design reference, invariant crosswalk, landed-source identity, architecture boundaries, and source-only handoff",
+  "acceptedLimitationsSha256": "bea6f5a38a225f688fe17f5a86d08f23d240e8a9588063fa783c5a9f3986b79b",
+  "findings": [
+    "The refreshed subject binds validator 5c23fe250f113c40c452eea781b8151d58e2ddc5197baa8d678b33cfad572647, test source b89a2c816456e0140b5d1f582fd90964bc50d30809f91b0157f49fd5e237caa2, and pre-review execution deafc4ad38920882cb60782bd93b65e82699101876e97a92966f6b8b0f05c534.",
+    "The shared Builds action preserves its version input as the CLI and legacy runtime value while optional runtime-version independently controls dapr init, so existing callers retain their previous behavior.",
+    "EventStore wires CLI 1.18.0 and runtime 1.18.2 through the one shared action and passes the same runtime identity into fresh OQ8 validation without duplicating bootstrap logic.",
+    "Fresh and committed OQ8 validation modes are explicitly separated: fresh validation requires one caller-supplied runtime, while immutable Story 4.14 observations remain pinned to 1.18.1.",
+    "Provider Pact inputs now resolve only through the root-declared FrontComposer submodule and no longer depend on the checkout's workspace parent layout.",
+    "The public OQ8 documents now record the reviewed source-only handoff and fresh receipts as complete while retaining every Folders-owned and external-release limitation.",
+    "The receipt-independent record recomputes to 23/23 successful commands and 104/104 passing tests; independent candidate validation passes 1/1.",
+    "The immutable Story 4.14 capture bytes and seven-artifact manifest remain unchanged; only invalidated Story 4.15 bindings and downstream closure artifacts are refreshed.",
+    "Approval establishes EventStore platform completeness only; it grants no release, Folders final closure, package, registry, deployment, runtime-pin, consumer-migration, external-repository, or final-consumer authority."
+  ],
+  "authority": {
+    "eventStorePlatformComplete": true,
+    "handoffMode": "source-only",
+    "releaseApproved": false,
+    "foldersFinalClosure": false,
+    "packageAuthority": false,
+    "registryAuthority": false,
+    "deploymentAuthority": false,
+    "runtimePinAuthority": false,
+    "consumerMigrationAuthority": false,
+    "externalRepositoryAuthority": false,
+    "finalConsumerAuthority": false
+  }
+}

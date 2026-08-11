@@ -36,7 +36,11 @@ public sealed class RuntimeIdentityValidatorTests
         result.ApprovalCount.ShouldBe(0);
         result.ReasonCodes.ShouldContain("identity.approval.unavailable");
         result.ExpectedSourceSha.ShouldBe("bb94d93e9b84132cff83a38fba84f25455820d31");
-        result.ObservedBuildsSha.ShouldBe(result.ExpectedBuildsSha);
+        result.ObservedBuildsSha.ShouldNotBe(
+            result.ExpectedBuildsSha,
+            "The frozen FrontComposer successor remains bound to its historical Builds identity after the Dapr bootstrap pointer advances.");
+        result.ReasonCodes.ShouldContain("identity.builds.mismatch");
+        result.RuntimeMatches.ShouldBeFalse();
         hashes.Count.ShouldBe(5);
     }
 

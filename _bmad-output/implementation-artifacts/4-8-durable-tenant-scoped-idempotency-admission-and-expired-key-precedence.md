@@ -30,13 +30,13 @@ and these focused children own all further work:
 
 | Preserved ledger scope | Executable owner | Migrated status |
 | --- | --- | --- |
-| Tasks 2-3: trusted adapter, canonical intent, opaque-key identity, and leakage boundary | Story 4.9 | review |
-| Task 4: digest-key ring, tenant directory, rotation/promotion, collision, and retirement | Story 4.10 | review |
-| Tasks 5 and recovery portion of 6: state machine, current fence, execution, replay, and reconciliation | Story 4.11 | ready-for-dev |
-| Expiry portion of Task 6 and compaction/deletion/legal-hold portion of Task 7 | Story 4.12 | backlog |
-| Legacy inventory/migration portion of Task 7 | Story 4.13 | backlog |
-| Task 8 implementation evidence and packet production | Story 4.14 | backlog |
-| Task 8 review/release handoff plus final documentation closure | Story 4.15 | backlog |
+| Tasks 2-3: trusted adapter, canonical intent, opaque-key identity, and leakage boundary | Story 4.9 | done |
+| Task 4: digest-key ring, tenant directory, rotation/promotion, collision, and retirement | Story 4.10 | done |
+| Tasks 5 and recovery portion of 6: state machine, current fence, execution, replay, and reconciliation | Story 4.11 | done |
+| Expiry portion of Task 6 and compaction/deletion/legal-hold portion of Task 7 | Story 4.12 | done |
+| Legacy inventory/migration portion of Task 7 | Story 4.13 | done |
+| Task 8 implementation evidence and packet production | Story 4.14 | done |
+| Task 8 review/release handoff plus final documentation closure | Story 4.15 | review |
 
 Task 1 is preserved planning history. Task 9 documentation follows the child
 that owns each behavior and is finally reconciled by Story 4.15. Checked boxes

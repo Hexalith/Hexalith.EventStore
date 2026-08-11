@@ -6,9 +6,13 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
+import os
 import re
+import selectors
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +20,8 @@ from typing import Any
 DEFAULT_ROOT = Path(__file__).resolve().parents[1]
 ROOT = DEFAULT_ROOT
 GIT_ROOT = DEFAULT_ROOT
+GIT_TIMEOUT_SECONDS = 30.0
+GIT_OUTPUT_LIMIT_BYTES = 131072
 PACKET = ROOT / "_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml"
 EVIDENCE = (
     ROOT
@@ -34,6 +40,8 @@ LANDED_SOURCE = "e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec"
 LANDED_TREE = "e4bb19e5305bbde23563245976b97eb0aaf3c931"
 PROFILE = "oq8-postgresql-v1"
 POSTGRES_IMAGE = "postgres:18.4"
+COMMITTED_DAPR_RUNTIME_VERSION = "1.18.1"
+CURRENT_REVIEW_DATE = "2026-08-11"
 EVIDENCE_DIRECTORY = "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425"
 CLOSURE_DIRECTORY = "_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec"
 FOCUSED_METHOD = "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionOq8PostgresqlTests.ProductionMatrix_IndependentProcessesPreserveAuthorityReplayExpiryAndLeakageInvariants"
@@ -55,6 +63,28 @@ EXPECTED_SOURCE_INPUTS = {
     "tests/Hexalith.EventStore.Server.Tests/Actors/PublicationRecoveryActivationTests.cs",
     "tests/Hexalith.EventStore.Server.Tests/Pipeline/SubmitCommandHandlerIdempotencyAdmissionTests.cs",
 }
+EXPECTED_CANDIDATE_FILES = {
+    ".github/workflows/integration.yml",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/IdempotencyAdmissionOq8PostgresqlTests.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/AssemblyInfo.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8AdmissionSnapshot.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8BoundaryCounterStartupFilter.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8BoundedLog.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8CommandObservation.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8FileTimeProvider.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8HostingStartup.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlSnapshot.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8ProcessNode.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8RotatedAuthoritySnapshot.cs",
+    "tools/validate-oq8-platform-evidence.py",
+}
+EXPECTED_CAPTURE_PATHS = EXPECTED_CANDIDATE_FILES | EXPECTED_SOURCE_INPUTS
+EXPECTED_EVOLVED_PATHS = {
+    ".github/workflows/integration.yml",
+    "tools/validate-oq8-platform-evidence.py",
+}
+EXPECTED_CURRENT_BOUND_PATHS = EXPECTED_CAPTURE_PATHS - EXPECTED_EVOLVED_PATHS
 REQUIRED_FILES = {
     "commands.json",
     "deterministic-support.json",
@@ -74,12 +104,18 @@ CLOSURE_FILES = {
     "reviews/test.json",
     "source-artifact-identity.json",
     "source-only-handoff.json",
+    "pre-review-execution.json",
     "validator-sha256.txt",
 }
 REVIEW_ROSTER = {
     "architecture": "Winston (System Architect)",
     "security": "Security Reviewer",
     "test": "Murat (Test Architect)",
+}
+REVIEW_SCOPES = {
+    "architecture": "OQ8 design reference, invariant crosswalk, landed-source identity, architecture boundaries, and source-only handoff",
+    "security": "protected-data leakage gates, current-fence evidence, sanitized-state limitation, and external authority exclusions",
+    "test": "production/deterministic evidence coverage, commands and counts, negative validation, and matrix coverage",
 }
 EXTERNAL_AUTHORITY_FIELDS = {
     "releaseApproved",
@@ -89,6 +125,8 @@ EXTERNAL_AUTHORITY_FIELDS = {
     "deploymentAuthority",
     "runtimePinAuthority",
     "consumerMigrationAuthority",
+    "externalRepositoryAuthority",
+    "finalConsumerAuthority",
 }
 EXPECTED_DOCUMENT_MARKER = "OQ8-SOURCE-ONLY-HANDOFF"
 EXPECTED_DOCUMENTS = {
@@ -97,6 +135,234 @@ EXPECTED_DOCUMENTS = {
     "docs/reference/command-api.md",
     "docs/guides/configuration-reference.md",
 }
+EXPECTED_DOCUMENT_HASHES = {
+    "docs/concepts/architecture-overview.md": "fc18f36a3f7300aba07b90c92e724c65353c0c4dcafbcd44d74ab805729e6627",
+    "docs/concepts/command-lifecycle.md": "fa739de1c11601c4e0b7530fed02b1e1c42d763ecc5346fa68b79f8fca2c44da",
+    "docs/guides/configuration-reference.md": "75b8d45990794e4ab82429bb606b057652fc9214ce4fa8edd2b33fa516774900",
+    "docs/reference/command-api.md": "3ff40db9bba089b80157780bb1deb9d3096aee10e855dae98a2e64335b39c54e",
+}
+DOCUMENT_REQUIRED_TEXT = (
+    "reviewed source-only handoff",
+    LANDED_SOURCE,
+    "approved Folders design bytes are not tracked here",
+    "test-only deterministic-time, intent-adapter, and boundary-counter seams",
+    "raw PostgreSQL values and diagnostics were replaced by sanitized structural projections",
+    "original dirty candidate capture is independently rebound to the 26-path landed source",
+    "no release approval",
+    "Folders final closure",
+    "package or registry authority",
+    "deployment authority",
+    "runtime-pin authority",
+    "consumer-migration authority",
+    "external-repository authority",
+    "final-consumer authority",
+    "fresh content-bound architecture, security, and test receipts",
+    "EventStore platform completion and the source-only handoff are recorded",
+    "only while",
+    "python3 tools/validate-oq8-platform-evidence.py",
+)
+DOCUMENT_FORBIDDEN_TEXT = (
+    "source-only handoff candidate",
+    "are required and are not yet recorded",
+    "only after those receipts",
+)
+CLOSURE_TEST_SOURCE = "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs"
+PRE_REVIEW_EXECUTION = "pre-review-execution.json"
+EXPECTED_LIMITATIONS = [
+    "The approved Folders design bytes are not tracked in EventStore; only design version 1.0.0 and its approved SHA-256 reference are preserved.",
+    "The production-path capture used shipped Release entry assemblies with a test-only hosting startup, deterministic time, trusted intent adapter, boundary counter, and Testing environment disclosure.",
+    "Raw PostgreSQL values and raw diagnostics were intentionally excluded; committed evidence contains sanitized structural projections, bounded counts, hashes, and invariant results.",
+    "The original capture bound a dirty candidate against e60a3777c581d70b62f67173ccc2372b5b64a425; this closure independently binds the same 26 paths at landed commit e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec.",
+    "This is a source-only EventStore platform handoff. It grants no release, package, registry, deployment, runtime pin, external-repository, consumer-migration, or final-consumer authority.",
+    "Folders retains its own final cross-repository decision and must independently verify the referenced design and EventStore source before consumption.",
+]
+PRE_REVIEW_TEST_DLL = "tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll"
+PRE_REVIEW_TEST_CLASS = "Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests"
+PRE_REVIEW_COMMAND_RESULTS = [
+    {
+        "name": "validator-syntax",
+        "command": "python3 -m py_compile tools/validate-oq8-platform-evidence.py",
+        "exitCode": 0,
+        "result": "passed",
+    },
+    {
+        "name": "contracts-build",
+        "command": "dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -m:1",
+        "exitCode": 0,
+        "result": "passed",
+    },
+    *[
+        {
+            "name": name,
+            "command": f"dotnet {PRE_REVIEW_TEST_DLL} -method {PRE_REVIEW_TEST_CLASS}.{method} -noColor",
+            "exitCode": 0,
+            "result": "passed",
+            "tests": tests,
+            "passed": tests,
+            "failed": 0,
+            "skipped": 0,
+        }
+        for name, method, tests in (
+            ("candidate-semantic-mutations", "CandidateSemanticMutationsFailClosed", 46),
+            ("hostile-duplicate-json", "HostileDuplicateJsonKeyIsBoundedAndRedacted", 1),
+            ("candidate-limitations", "CandidateLimitationTextIsExact", 6),
+            ("candidate-authority", "CandidateExternalAuthorityFailsClosed", 9),
+            ("candidate-lifecycle", "RequiredSprintStatusMustBeUnique", 9),
+            ("duplicate-authority-formatting", "DuplicateAuthorityInjectorSupportsJsonFormatting", 4),
+            ("final-lifecycle-review", "FinalLifecycleReviewPassesInIsolation", 1),
+            ("final-lifecycle-drift", "FinalLifecycleRequiresSprintReview", 3),
+            ("changed-deleted-source", "ChangedOrDeletedBoundCapabilityPathFailsClosed", 2),
+            ("hidden-index-flags", "HiddenBoundCapabilityPathFailsClosed", 2),
+            ("non-descendant-head", "NonDescendantHeadFailsClosed", 1),
+            ("replacement-ref-isolation", "ReplacementRefCannotAlterLandedIdentityProof", 1),
+            ("invalid-git-root", "InvalidGitRootFailsSafely", 1),
+            ("git-timeout", "GitSubprocessTimeoutFailsSafely", 1),
+            ("git-output-limit", "GitSubprocessOutputFloodFailsSafely", 1),
+            ("redacted-paths", "CandidatePathFailureIsBoundedAndRedacted", 2),
+            ("process-timeout", "ProcessHarnessEnforcesTimeoutWithoutRedirectDeadlock", 1),
+            ("dual-stream-drain", "ProcessHarnessDrainsLargeStdoutAndStderr", 1),
+            ("runtime-mode-identity", "FreshAndCommittedRuntimeModesRemainExact", 1),
+            ("fresh-observation-semantics", "FreshObservationSchemaAndSemanticMutationsFailClosed", 9),
+            ("pre-review-mode-exclusivity", "PreReviewModeRejectsCaptureAndSupportArguments", 2),
+        )
+    ],
+]
+PRE_REVIEW_FINAL_VALIDATION = {
+    "command": f"dotnet {PRE_REVIEW_TEST_DLL} -class {PRE_REVIEW_TEST_CLASS} -noColor",
+    "status": "not-run-pre-review",
+    "reason": "Final-only receipt, handoff, manifest, and packet tests require three real content-bound review receipts and final assembly.",
+}
+EXPECTED_CAPTURE_COMMAND_RESULTS = {
+    "live-sidecar-release-build": {
+        "command": "dotnet build tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj --configuration Release -m:1",
+        "counts": {"warnings": 0, "errors": 0},
+    },
+    "focused-production-matrix": {
+        "command": f"dotnet tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll -method {FOCUSED_METHOD} -noColor -ctrf raw-runner-temp",
+        "counts": {"passed": 1, "failed": 0, "skipped": 0},
+    },
+    "explicit-deterministic-support-oracles": {
+        "command": "dotnet tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll -method (21 validator-pinned selectors) -noColor -ctrf raw-runner-temp",
+        "counts": {"methods": 21, "passed": 33, "failed": 0, "skipped": 0},
+    },
+    "deterministic-support-lane": {
+        "command": "dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --configuration Release --no-build -m:1",
+        "counts": {"passed": 3103, "failed": 0, "preExistingSkipped": 25},
+    },
+    "fresh-capture-validator": {
+        "command": "python3 tools/validate-oq8-platform-evidence.py --capture-directory runner-temp/oq8-story-4-14 --ctrf runner-temp/oq8-results.json --support-ctrf runner-temp/oq8-support-results.json",
+        "counts": {"validationErrors": 0},
+    },
+    "committed-packet-validator": {
+        "command": "python3 tools/validate-oq8-platform-evidence.py",
+        "counts": {"validationErrors": 0},
+    },
+    "solution-release-build": {
+        "command": "dotnet build Hexalith.EventStore.slnx --configuration Release -m:1",
+        "counts": {"warnings": 0, "errors": 0},
+    },
+    "diff-whitespace-gate": {
+        "command": "git diff --check",
+        "counts": {"errors": 0},
+    },
+}
+EXPECTED_CONSUMER_INSTRUCTIONS = {
+    "mode": "source-only",
+    "verifyCommand": "python3 tools/validate-oq8-platform-evidence.py",
+    "designBytesRequiredFromFolders": True,
+    "sourcePathRule": "Use only the exact landed EventStore commit after the closure validator passes against unchanged capability paths.",
+}
+EXPECTED_CROSSWALK_EVIDENCE_HASHES = {
+    "_bmad-output/implementation-artifacts/4-8-durable-tenant-scoped-idempotency-admission-and-expired-key-precedence.md": "bc19803ebc7e1f1b6b0e0353560d0e6f9c72815b7e0afba35e94d60a1046d904",
+    "_bmad-output/implementation-artifacts/spec-4-11-admission-state-machine-and-current-fence-enforcement.md": "a26090a034e60851b2a518fed6c41de7caf1ecff4931147ff954e4fe45310624",
+    "_bmad-output/implementation-artifacts/spec-4-12-expiry-compaction-and-tombstone-retention.md": "df48f3bc6dfef608190a640193182e07c514798676abd0f50967207f219e652a",
+    "_bmad-output/implementation-artifacts/spec-4-13-legacy-admission-migration-and-fail-closed-reconciliation.md": "7afed1dcb5f0fdf8e7aba12ae3a52c2a4dd13f438d05f85a500e5ee6e0441128",
+    "_bmad-output/implementation-artifacts/spec-4-14-oq8-multi-host-production-evidence.md": "4e6956baac6ff79c9032d57e46ce08f6f0217c63f51523e942c5eb62d9439c8e",
+    f"{EVIDENCE_DIRECTORY}/deterministic-support.json": "de2f76f2662574595c2db3b23af51bd06a7f1f9d194553e748cb1e2c83a238ae",
+    f"{EVIDENCE_DIRECTORY}/environment.json": "2981c6dd2ad81fbde6ece41f2b9dcf1c9f3f26a84d6a7e128a0c50a94e8c7254",
+    f"{EVIDENCE_DIRECTORY}/evidence-sha256.txt": "02c3f50778e4b6b2cc2ea422ad00c149884955a113cd6bce9f8c80b24dc1d1fc",
+    f"{EVIDENCE_DIRECTORY}/observations.json": "7444f4a696e52bbb49a624f576fad8d577a630ca32b57b0fb6eb35b618e7c701",
+}
+EXPECTED_CROSSWALK_INVARIANTS = [
+    {
+        "id": "OQ8-1",
+        "name": "trusted-admission",
+        "stories": ["4.9"],
+        "evidence": [
+            "_bmad-output/implementation-artifacts/4-8-durable-tenant-scoped-idempotency-admission-and-expired-key-precedence.md",
+            f"{EVIDENCE_DIRECTORY}/deterministic-support.json",
+        ],
+        "result": "approved",
+    },
+    {
+        "id": "OQ8-2",
+        "name": "tenant-key-identity",
+        "stories": ["4.9", "4.10"],
+        "evidence": [
+            "_bmad-output/implementation-artifacts/4-8-durable-tenant-scoped-idempotency-admission-and-expired-key-precedence.md",
+            f"{EVIDENCE_DIRECTORY}/observations.json",
+        ],
+        "result": "approved",
+    },
+    {
+        "id": "OQ8-3",
+        "name": "protected-key-handling",
+        "stories": ["4.9", "4.14"],
+        "evidence": [f"{EVIDENCE_DIRECTORY}/observations.json", f"{EVIDENCE_DIRECTORY}/environment.json"],
+        "result": "approved",
+    },
+    {
+        "id": "OQ8-4",
+        "name": "atomic-state-and-current-fence",
+        "stories": ["4.10", "4.11", "4.14"],
+        "evidence": [
+            "_bmad-output/implementation-artifacts/spec-4-11-admission-state-machine-and-current-fence-enforcement.md",
+            f"{EVIDENCE_DIRECTORY}/deterministic-support.json",
+            f"{EVIDENCE_DIRECTORY}/observations.json",
+        ],
+        "result": "approved",
+    },
+    {
+        "id": "OQ8-5",
+        "name": "replay-conflict-and-inclusive-expiry",
+        "stories": ["4.11", "4.12", "4.14"],
+        "evidence": [
+            "_bmad-output/implementation-artifacts/spec-4-12-expiry-compaction-and-tombstone-retention.md",
+            f"{EVIDENCE_DIRECTORY}/observations.json",
+        ],
+        "result": "approved",
+    },
+    {
+        "id": "OQ8-6",
+        "name": "retention-and-governed-tombstones",
+        "stories": ["4.12", "4.14"],
+        "evidence": [
+            "_bmad-output/implementation-artifacts/spec-4-12-expiry-compaction-and-tombstone-retention.md",
+            f"{EVIDENCE_DIRECTORY}/observations.json",
+        ],
+        "result": "approved",
+    },
+    {
+        "id": "OQ8-7",
+        "name": "fail-closed-recovery-and-migration",
+        "stories": ["4.11", "4.13", "4.14"],
+        "evidence": [
+            "_bmad-output/implementation-artifacts/spec-4-13-legacy-admission-migration-and-fail-closed-reconciliation.md",
+            f"{EVIDENCE_DIRECTORY}/deterministic-support.json",
+        ],
+        "result": "approved",
+    },
+    {
+        "id": "OQ8-8",
+        "name": "multi-host-production-evidence",
+        "stories": ["4.14"],
+        "evidence": [
+            "_bmad-output/implementation-artifacts/spec-4-14-oq8-multi-host-production-evidence.md",
+            f"{EVIDENCE_DIRECTORY}/evidence-sha256.txt",
+        ],
+        "result": "approved",
+    },
+]
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 PRIVATE_PATH_RE = re.compile(r"(?:/home/|/Users/|[A-Za-z]:[\\/]Users[\\/])")
 PLACEHOLDER_RE = re.compile(r"(?:\bTBD\b|\bTODO\b|\bUNKNOWN\b|<[^>]+>)", re.IGNORECASE)
@@ -213,12 +479,68 @@ def fail(message: str) -> None:
     raise EvidenceError(message)
 
 
+def display_path(path: Path) -> str:
+    try:
+        return path.relative_to(ROOT).as_posix()
+    except ValueError:
+        return path.name
+
+
+def read_text(path: Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
+        fail(f"Cannot read evidence path {display_path(path)}")
+
+
+def reject_duplicate_json_fields(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    document: dict[str, Any] = {}
+    for name, value in pairs:
+        require(name not in document, "Duplicate JSON field")
+        document[name] = value
+    return document
+
+
+def reject_non_finite_json_constant(value: str) -> Any:
+    fail(f"Non-finite JSON constant is forbidden: {value}")
+
+
 def load_json(path: Path) -> Any:
     try:
         with path.open("r", encoding="utf-8") as stream:
-            return json.load(stream)
-    except (OSError, json.JSONDecodeError) as exception:
-        fail(f"Cannot load JSON evidence {path.relative_to(ROOT) if path.is_relative_to(ROOT) else path.name}: {exception}")
+            return json.load(
+                stream,
+                object_pairs_hook=reject_duplicate_json_fields,
+                parse_constant=reject_non_finite_json_constant,
+            )
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        fail(f"Cannot load JSON evidence {display_path(path)}")
+
+
+def scan_json_protected_content(value: Any) -> None:
+    if isinstance(value, dict):
+        for name, nested in value.items():
+            scan_json_protected_content(name)
+            scan_json_protected_content(nested)
+        return
+    if isinstance(value, list):
+        for nested in value:
+            scan_json_protected_content(nested)
+        return
+    if not isinstance(value, str):
+        return
+    require(PRIVATE_PATH_RE.search(value) is None, "Candidate JSON contains forbidden private-path content")
+    lowered = value.lower()
+    require(
+        all(term.lower() not in lowered for term in FORBIDDEN_CAPTURE_TERMS),
+        "Candidate JSON contains forbidden protected content",
+    )
+
+
+def load_candidate_json(path: Path) -> Any:
+    document = load_json(path)
+    scan_json_protected_content(document)
+    return document
 
 
 def write_json(path: Path, value: Any) -> None:
@@ -232,9 +554,12 @@ def write_json(path: Path, value: Any) -> None:
 
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(chunk)
+    try:
+        with path.open("rb") as stream:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                digest.update(chunk)
+    except OSError:
+        fail(f"Cannot hash evidence path {display_path(path)}")
     return digest.hexdigest()
 
 
@@ -242,16 +567,88 @@ def sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
 
 
+def run_subprocess_bounded(command: list[str], label: str) -> tuple[int, bytes, bytes]:
+    try:
+        process = subprocess.Popen(
+            command,
+            cwd=GIT_ROOT,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+    except OSError:
+        fail(f"{label} could not start")
+
+    require(process.stdout is not None and process.stderr is not None, f"{label} output capture failed")
+    selector = selectors.DefaultSelector()
+    output = bytearray()
+    errors = bytearray()
+    deadline = time.monotonic() + GIT_TIMEOUT_SECONDS
+    try:
+        for stream, destination in ((process.stdout, output), (process.stderr, errors)):
+            os.set_blocking(stream.fileno(), False)
+            selector.register(stream, selectors.EVENT_READ, destination)
+
+        while selector.get_map():
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                process.kill()
+                process.wait()
+                fail(f"{label} timed out")
+            for key, _ in selector.select(min(remaining, 0.1)):
+                try:
+                    chunk = os.read(key.fileobj.fileno(), 8192)
+                except BlockingIOError:
+                    continue
+                if not chunk:
+                    selector.unregister(key.fileobj)
+                    continue
+                key.data.extend(chunk)
+                if len(output) + len(errors) > GIT_OUTPUT_LIMIT_BYTES:
+                    process.kill()
+                    process.wait()
+                    fail(f"{label} exceeded output limit")
+
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            process.kill()
+            process.wait()
+            fail(f"{label} timed out")
+        try:
+            return_code = process.wait(timeout=remaining)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
+            fail(f"{label} timed out")
+    except OSError:
+        if process.poll() is None:
+            process.kill()
+            process.wait()
+        fail(f"{label} failed safely")
+    finally:
+        selector.close()
+        process.stdout.close()
+        process.stderr.close()
+
+    return return_code, bytes(output), bytes(errors)
+
+
 def run_git(*arguments: str) -> bytes:
-    result = subprocess.run(
-        ["git", *arguments],
-        cwd=GIT_ROOT,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
+    label = f"Git identity proof for {' '.join(arguments[:2])}"
+    return_code, output, _ = run_subprocess_bounded(
+        ["git", "--no-replace-objects", *arguments],
+        label,
     )
-    require(result.returncode == 0, f"Git identity proof failed for {' '.join(arguments[:2])}")
-    return result.stdout
+    require(return_code == 0, f"Git identity proof failed for {' '.join(arguments[:2])}")
+    return output
+
+
+def git_diff_is_clean(*arguments: str) -> bool:
+    return_code, _, _ = run_subprocess_bounded(
+        ["git", "--no-replace-objects", *arguments],
+        "Git current-bound-source proof",
+    )
+    require(return_code in (0, 1), "Git current-bound-source proof failed")
+    return return_code == 0
 
 
 def git_file(revision: str, relative: str) -> bytes:
@@ -265,10 +662,12 @@ def git_file(revision: str, relative: str) -> bytes:
     return run_git("show", f"{revision}:{relative}")
 
 
-def configure_roots(root: Path, git_root: Path) -> None:
-    global ROOT, GIT_ROOT, PACKET, EVIDENCE, CLOSURE
+def configure_roots(root: Path, git_root: Path, git_timeout_seconds: float = 30.0) -> None:
+    global ROOT, GIT_ROOT, GIT_TIMEOUT_SECONDS, PACKET, EVIDENCE, CLOSURE
+    require(0 < git_timeout_seconds <= 30, "Git timeout must be greater than zero and no more than 30 seconds")
     ROOT = root.resolve()
     GIT_ROOT = git_root.resolve()
+    GIT_TIMEOUT_SECONDS = git_timeout_seconds
     PACKET = ROOT / "_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml"
     EVIDENCE = (
         ROOT
@@ -288,7 +687,7 @@ def require(condition: bool, message: str) -> None:
 
 
 def scan_support_safe(path: Path) -> None:
-    text = path.read_text(encoding="utf-8")
+    text = read_text(path)
     require(not PRIVATE_PATH_RE.search(text), f"Private path found in {path.name}")
     require(not PLACEHOLDER_RE.search(text), f"Placeholder found in {path.name}")
     require(not FORBIDDEN_CLAIM_RE.search(text), f"Closure/release claim found in {path.name}")
@@ -301,15 +700,43 @@ def require_sha256(value: Any, field: str) -> str:
     return value
 
 
-def validate_observations(path: Path) -> dict[str, Any]:
+def require_exact_integer(value: Any, expected: int, field: str) -> None:
+    require(type(value) is int, f"{field} must be an exact integer")
+    require(value == expected, f"{field} count drift")
+
+
+def require_nonnegative_integer(value: Any, field: str) -> int:
+    require(type(value) is int, f"{field} must be a non-negative integer")
+    require(value >= 0, f"{field} must be a non-negative integer")
+    return value
+
+
+def require_exact_fields(value: Any, fields: set[str], label: str) -> dict[str, Any]:
+    require(isinstance(value, dict) and set(value) == fields, f"{label} field set drift")
+    return value
+
+
+def validate_observations(path: Path, expected_dapr_runtime_version: str) -> dict[str, Any]:
+    require(
+        re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", expected_dapr_runtime_version) is not None,
+        "Expected Dapr runtime version must be one exact semantic version",
+    )
     scan_support_safe(path)
     document = load_json(path)
     require(isinstance(document, dict), "observations.json must be an object")
+    require_exact_fields(
+        document,
+        {"schemaVersion", "captureKind", "capturedOn", "topology", "profile", "runtime", "executionConfiguration", "artifacts", "diagnostics", "observations"},
+        "Observation",
+    )
     require(document.get("schemaVersion") == 1, "Observation schemaVersion drift")
     require(document.get("captureKind") == "release-entry-binaries-test-seams-sidecar-postgresql", "Observation capture kind drift")
     require(re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(document.get("capturedOn", ""))) is not None, "Capture date missing")
 
     topology = document.get("topology", {})
+    require_exact_fields(topology, {"eventStoreProcessCount", "eventStoreSidecarCount", "sampleProcessCount", "sampleSidecarCount", "independentProcessIdentities"}, "Observation topology")
+    for field in ("eventStoreProcessCount", "eventStoreSidecarCount", "sampleProcessCount", "sampleSidecarCount"):
+        require_nonnegative_integer(topology.get(field), f"Observation topology {field}")
     require(topology.get("eventStoreProcessCount") == 2, "Two EventStore processes were not observed")
     require(topology.get("eventStoreSidecarCount") == 2, "Two EventStore sidecars were not observed")
     require(topology.get("sampleProcessCount") == 1, "The Sample process was not observed")
@@ -317,16 +744,22 @@ def validate_observations(path: Path) -> dict[str, Any]:
     require(topology.get("independentProcessIdentities") is True, "Process identities were not independent")
 
     profile = document.get("profile", {})
+    require_exact_fields(profile, {"name", "stateStoreType", "stateComponentSha256", "resiliencySha256"}, "Observation profile")
     require(profile.get("name") == PROFILE, "OQ8 profile drift")
     require(profile.get("stateStoreType") == "state.postgresql", "State store is not PostgreSQL")
     require_sha256(profile.get("stateComponentSha256"), "state component identity")
     require_sha256(profile.get("resiliencySha256"), "resiliency identity")
 
     runtime = document.get("runtime", {})
+    require_exact_fields(runtime, {"dotnet", "dapr", "postgresImage", "postgresImageIdentity"}, "Observation runtime")
     require(isinstance(runtime.get("dotnet"), str) and runtime["dotnet"], ".NET runtime identity missing")
-    require(runtime.get("dapr") == "1.18.1", "Dapr runtime identity drift")
+    require(runtime.get("dapr") == expected_dapr_runtime_version, "Dapr runtime identity drift")
     require(runtime.get("postgresImage") == POSTGRES_IMAGE, "PostgreSQL image tag drift")
-    require(str(runtime.get("postgresImageIdentity", "")).startswith("sha256:"), "PostgreSQL immutable identity missing")
+    require(
+        isinstance(runtime.get("postgresImageIdentity"), str)
+        and re.fullmatch(r"sha256:[0-9a-f]{64}", runtime["postgresImageIdentity"]) is not None,
+        "PostgreSQL immutable identity must be an exact sha256 digest",
+    )
 
     execution_configuration = document.get("executionConfiguration", {})
     require(
@@ -354,6 +787,9 @@ def validate_observations(path: Path) -> dict[str, Any]:
         require_sha256(value, f"runtime artifact identity:{name}")
 
     diagnostics = document.get("diagnostics", {})
+    require_exact_fields(diagnostics, {"streamsScanned", "boundedCharacterLimitPerStream", "forbiddenTermClassesScanned", "postRedactionProtectedMatches", "rawDiagnosticsCommitted", "sanitizedProjectionSha256"}, "Observation diagnostics")
+    for field in ("streamsScanned", "boundedCharacterLimitPerStream", "postRedactionProtectedMatches"):
+        require_nonnegative_integer(diagnostics.get(field), f"Observation diagnostics {field}")
     require(diagnostics.get("streamsScanned") == 12, "All bounded process diagnostic streams were not scanned")
     require(diagnostics.get("boundedCharacterLimitPerStream") == 32768, "Diagnostic stream bound drift")
     require(diagnostics.get("forbiddenTermClassesScanned") == DIAGNOSTIC_FORBIDDEN_CLASSES, "Diagnostic forbidden-term class coverage drift")
@@ -364,6 +800,9 @@ def validate_observations(path: Path) -> dict[str, Any]:
     observations = document.get("observations", {})
     require(set(observations) == {"writers_failover", "expiry_compaction", "authority_change", "capture"}, "Observation matrix is incomplete")
     writers = observations["writers_failover"]
+    require_exact_fields(writers, {"concurrentRequests", "canonicalExecutionIdentities", "durableFencePositive", "sampleExecutions", "ownerStoppedAtTerminalBoundary", "failoverAttempts", "failoverReplayExact", "restartedNodeReplayExact", "conflictStatus", "crossTargetConflictStatus", "nonExecuteAdditionalWork"}, "Writer/failover observation")
+    for field in ("concurrentRequests", "canonicalExecutionIdentities", "sampleExecutions", "failoverAttempts", "nonExecuteAdditionalWork"):
+        require_nonnegative_integer(writers.get(field), f"Writer/failover observation {field}")
     require(writers.get("concurrentRequests", 0) >= 2, "Concurrent writer count is insufficient")
     require(writers.get("canonicalExecutionIdentities") == 1, "Canonical execution identity count is not one")
     require(writers.get("durableFencePositive") is True, "Durable positive fence was not observed")
@@ -372,26 +811,37 @@ def validate_observations(path: Path) -> dict[str, Any]:
     require(writers.get("failoverAttempts", 0) >= 1, "Failover request was not observed")
     require(writers.get("failoverReplayExact") is True, "Failover replay content was not exact")
     require(writers.get("restartedNodeReplayExact") is True, "Restart replay was not exact")
-    require(writers.get("conflictStatus") == 409, "Different-payload conflict was not terminal")
-    require(writers.get("crossTargetConflictStatus") == 409, "Different-target conflict was not terminal")
+    require_exact_integer(writers.get("conflictStatus"), 409, "Writer/failover observation conflictStatus")
+    require_exact_integer(writers.get("crossTargetConflictStatus"), 409, "Writer/failover observation crossTargetConflictStatus")
     require(writers.get("nonExecuteAdditionalWork") == 0, "Writer non-execute path performed work")
 
     expiry = observations["expiry_compaction"]
-    require(expiry.get("oneTickBefore") == 202, "T-1 replay was not accepted")
+    require_exact_fields(expiry, {"oneTickBefore", "oneTickBeforeReplayExact", "inclusiveBoundary", "oneTickAfter", "terminalBecameMinimalTombstone", "equivalentAndDifferentReuseShareOutcome", "nonExecuteAdditionalWork"}, "Expiry observation")
+    require_nonnegative_integer(expiry.get("nonExecuteAdditionalWork"), "Expiry observation nonExecuteAdditionalWork")
+    require_exact_integer(expiry.get("oneTickBefore"), 202, "Expiry observation oneTickBefore")
     require(expiry.get("oneTickBeforeReplayExact") is True, "T-1 replay content was not exact")
-    require(expiry.get("inclusiveBoundary") == 409, "Inclusive T expiry was not terminal")
-    require(expiry.get("oneTickAfter") == 409, "T+1 expiry was not terminal")
+    require_exact_integer(expiry.get("inclusiveBoundary"), 409, "Expiry observation inclusiveBoundary")
+    require_exact_integer(expiry.get("oneTickAfter"), 409, "Expiry observation oneTickAfter")
     require(expiry.get("terminalBecameMinimalTombstone") is True, "Expiry did not compact atomically")
     require(expiry.get("equivalentAndDifferentReuseShareOutcome") is True, "Expired reuse outcomes diverged")
     require(expiry.get("nonExecuteAdditionalWork") == 0, "Expiry non-execute path performed work")
 
     authority = observations["authority_change"]
+    require_exact_fields(authority, {"rotationReplayExact", "canonicalAuthorityCount", "retiredReaderReplayExact", "legalHoldState", "releasedState", "failClosedStatuses", "sampleExecutions", "nonExecuteAdditionalWork", "deterministicSupportOracles"}, "Authority-change observation")
+    for field in ("canonicalAuthorityCount", "sampleExecutions", "nonExecuteAdditionalWork"):
+        require_nonnegative_integer(authority.get(field), f"Authority-change observation {field}")
     require(authority.get("rotationReplayExact") is True, "Rotation replay was not exact")
     require(authority.get("canonicalAuthorityCount") == 1, "Rotated canonical authority count is not one")
     require(authority.get("retiredReaderReplayExact") is True, "Retired-reader replay was not exact")
     require(authority.get("legalHoldState") == "LegalHold", "Legal hold was not serialized")
     require(authority.get("releasedState") == "Retaining", "Hold release did not restore retaining state")
-    require(authority.get("failClosedStatuses") == [503, 503], "Governance unavailable states did not fail closed")
+    fail_closed_statuses = authority.get("failClosedStatuses")
+    require(
+        isinstance(fail_closed_statuses, list)
+        and all(type(status) is int for status in fail_closed_statuses)
+        and fail_closed_statuses == [503, 503],
+        "Governance unavailable states did not fail closed",
+    )
     require(authority.get("sampleExecutions") == 2, "Authority-change eligible execution count is not two")
     require(authority.get("nonExecuteAdditionalWork") == 0, "Authority non-execute path performed work")
     require(
@@ -400,8 +850,17 @@ def validate_observations(path: Path) -> dict[str, Any]:
     )
 
     capture = observations["capture"]
+    require_exact_fields(capture, {"before", "after", "protectedSentinelMatches", "committedProjectionContainsIdentifiers", "closureClaimed"}, "Capture observation")
     before = capture.get("before", {})
     after = capture.get("after", {})
+    capture_snapshot_fields = {"stage", "schemaSha256", "projectionSha256", "totalRows", "admissionRows", "terminalRows", "tombstoneRows", "minimalTombstoneRows", "directoryRows", "lifecycleRows", "aggregateMetadataRows", "aggregateEventRows", "aggregateSequenceTotal", "protectedSentinelMatches"}
+    require_exact_fields(before, capture_snapshot_fields, "Before capture snapshot")
+    require_exact_fields(after, capture_snapshot_fields, "After capture snapshot")
+    capture_snapshot_counters = capture_snapshot_fields - {"stage", "schemaSha256", "projectionSha256"}
+    for label, snapshot in (("Before", before), ("After", after)):
+        for field in capture_snapshot_counters:
+            require_nonnegative_integer(snapshot.get(field), f"{label} capture snapshot {field}")
+    require_nonnegative_integer(capture.get("protectedSentinelMatches"), "Capture observation protectedSentinelMatches")
     require(before.get("stage") == "before" and after.get("stage") == "after", "Before/after snapshot labels drifted")
     require(before.get("schemaSha256") == after.get("schemaSha256"), "PostgreSQL schema changed during capture")
     require_sha256(before.get("schemaSha256"), "PostgreSQL schema identity")
@@ -413,7 +872,12 @@ def validate_observations(path: Path) -> dict[str, Any]:
     require(after.get("minimalTombstoneRows", 0) >= before.get("minimalTombstoneRows", 0) + 1, "Minimal tombstone delta missing")
     require(after.get("directoryRows", 0) > before.get("directoryRows", 0), "Digest directory state missing")
     require(after.get("lifecycleRows", 0) > before.get("lifecycleRows", 0), "Tenant lifecycle state missing")
-    require(after.get("protectedSentinelMatches") == 0 and capture.get("protectedSentinelMatches") == 0, "Protected sentinel leakage detected")
+    require(
+        before.get("protectedSentinelMatches") == 0
+        and after.get("protectedSentinelMatches") == 0
+        and capture.get("protectedSentinelMatches") == 0,
+        "Protected sentinel leakage detected",
+    )
     require(capture.get("committedProjectionContainsIdentifiers") is False, "Committed projection contains identifiers")
     require(capture.get("closureClaimed") is False, "Capture claims closure")
     return document
@@ -475,6 +939,7 @@ def expected_support_classifications() -> dict[str, Any]:
 
 def validate_focused_document(document: Any) -> dict[str, Any]:
     require(isinstance(document, dict), "test-results.json must be an object")
+    require_exact_fields(document, {"schemaVersion", "runner", "command", "summary", "test"}, "Focused result")
     require(document.get("schemaVersion") == 1, "Focused result schemaVersion drift")
     require(document.get("runner") == "xUnit.net v3", "Focused result runner drift")
     require(
@@ -487,15 +952,23 @@ def validate_focused_document(document: Any) -> dict[str, Any]:
         "Focused result is not exactly one green case",
     )
     test = document.get("test", {})
+    require(isinstance(test, dict), "Focused result test must be an object")
+    require_exact_fields(test, {"name", "status", "durationMilliseconds", "traits"}, "Focused result test")
     require(test.get("name") == FOCUSED_METHOD, "Focused result test identity drift")
     require(test.get("status") == "passed", "Focused test status is not passed")
     require(test.get("traits") == FOCUSED_TRAITS, "Focused result Category/Profile traits drift")
-    require(isinstance(test.get("durationMilliseconds"), (int, float)), "Focused result duration is missing")
+    duration = test.get("durationMilliseconds")
+    require(
+        (type(duration) is int and duration >= 0)
+        or (type(duration) is float and math.isfinite(duration) and duration >= 0),
+        "Focused result duration must be a finite non-negative number",
+    )
     return document
 
 
 def validate_support_document(document: Any) -> dict[str, Any]:
     require(isinstance(document, dict), "deterministic-support.json must be an object")
+    require_exact_fields(document, {"schemaVersion", "runner", "command", "selectors", "summary", "methods", "classifications"}, "Deterministic support")
     require(document.get("schemaVersion") == 1, "Deterministic support schemaVersion drift")
     require(document.get("runner") == "xUnit.net v3", "Deterministic support runner drift")
     require(
@@ -581,7 +1054,12 @@ def sanitize_support_ctrf(ctrf_path: Path, destination: Path) -> dict[str, Any]:
     return portable
 
 
-def validate_capture(capture_directory: Path, ctrf_path: Path, support_ctrf_path: Path) -> None:
+def validate_capture(
+    capture_directory: Path,
+    ctrf_path: Path,
+    support_ctrf_path: Path,
+    expected_dapr_runtime_version: str,
+) -> None:
     require(capture_directory.is_dir(), "Capture directory is missing")
     require(not ctrf_path.is_relative_to(capture_directory), "Raw focused CTRF must remain outside the capture directory")
     require(not support_ctrf_path.is_relative_to(capture_directory), "Raw support CTRF must remain outside the capture directory")
@@ -591,7 +1069,7 @@ def validate_capture(capture_directory: Path, ctrf_path: Path, support_ctrf_path
     )
     observations_path = capture_directory / "observations.json"
     require(observations_path.is_file(), "Capture observations.json is missing")
-    validate_observations(observations_path)
+    validate_observations(observations_path, expected_dapr_runtime_version)
     sanitize_ctrf(ctrf_path, capture_directory / "test-results.json")
     sanitize_support_ctrf(support_ctrf_path, capture_directory / "deterministic-support.json")
     receipt = {
@@ -615,7 +1093,7 @@ def validate_manifest() -> dict[str, str]:
     require(manifest_path.is_file(), "Evidence manifest is missing")
     scan_support_safe(manifest_path)
     manifest: dict[str, str] = {}
-    for line in manifest_path.read_text(encoding="utf-8").splitlines():
+    for line in read_text(manifest_path).splitlines():
         parts = line.split("  ", 1)
         require(len(parts) == 2 and SHA256_RE.fullmatch(parts[0]) is not None, "Malformed evidence manifest line")
         digest, name = parts
@@ -631,11 +1109,26 @@ def validate_manifest() -> dict[str, str]:
 
 
 def validate_source_state(document: dict[str, Any], identity: dict[str, Any]) -> None:
+    require(isinstance(document, dict), "Captured source-state must be an object")
+    require(isinstance(identity, dict), "Source identity must be an object")
+    require(
+        set(document) == {
+            "schemaVersion",
+            "baselineCommit",
+            "dirtySourceCaptured",
+            "candidateDiffAlgorithm",
+            "candidateDiffSha256",
+            "candidateFiles",
+            "sourceInputs",
+        },
+        "Captured source-state field set drift",
+    )
     require(document.get("baselineCommit") == BASELINE, "Baseline commit drift")
     candidate_files = document.get("candidateFiles", {})
     source_inputs = document.get("sourceInputs", {})
     require(isinstance(candidate_files, dict) and candidate_files, "Candidate file identities missing")
     require(isinstance(source_inputs, dict) and source_inputs, "Source input identities missing")
+    require(set(candidate_files) == EXPECTED_CANDIDATE_FILES, "Pinned candidate-file identity set drift")
     require(set(source_inputs) == EXPECTED_SOURCE_INPUTS, "Pinned source-input identity set drift")
     for collection_name, collection in (("candidateFiles", candidate_files), ("sourceInputs", source_inputs)):
         for relative, expected in collection.items():
@@ -657,10 +1150,36 @@ def validate_source_state(document: dict[str, Any], identity: dict[str, Any]) ->
     landed_overrides = identity.get("landedGitByteOverrides", {})
     expected_paths = candidate_files | source_inputs
     require(identity.get("schema") == "hexalith.eventstore.story-4-15-source-artifact-identity/v1", "Source identity schema drift")
+    require(
+        set(identity) == {
+            "schema",
+            "repository",
+            "landedSource",
+            "capturedPathSets",
+            "currentVerification",
+            "captureWorktreePaths",
+            "landedGitByteOverrides",
+            "capture",
+            "runtimeArtifacts",
+        },
+        "Source identity field set drift",
+    )
     require(identity.get("repository") == "Hexalith/Hexalith.EventStore", "Source repository identity drift")
+    require(
+        set(landed) == {"commit", "tree", "pathCount", "pathSet"},
+        "Landed source field set drift",
+    )
     require(landed.get("commit") == LANDED_SOURCE, "Landed source commit drift")
     require(landed.get("tree") == LANDED_TREE, "Landed source tree declaration drift")
     require(landed.get("pathCount") == len(expected_paths) == 26, "Landed source path count drift")
+    require(landed.get("pathSet") == "union of Story 4.14 candidateFiles and sourceInputs", "Landed source path-set rule drift")
+    require(
+        identity.get("capturedPathSets") == {
+            "candidateFiles": sorted(EXPECTED_CANDIDATE_FILES),
+            "sourceInputs": sorted(EXPECTED_SOURCE_INPUTS),
+        },
+        "Captured candidate/source path sets drift",
+    )
     require(capture_paths == expected_paths, "Capture worktree path/hash set drift")
     require(
         run_git("rev-parse", f"{LANDED_SOURCE}^{{tree}}").decode("ascii").strip() == LANDED_TREE,
@@ -688,13 +1207,36 @@ def validate_source_state(document: dict[str, Any], identity: dict[str, Any]) ->
         "Landed Git-byte override declaration drift",
     )
     capability_paths = set(capture_paths) - set(evolved)
+    require(capability_paths == EXPECTED_CURRENT_BOUND_PATHS, "Current bound source path set drift")
+    require(
+        set(current) == {
+            "source",
+            "rule",
+            "pathCount",
+            "boundPaths",
+            "headMustDescendFromLandedSource",
+            "sourceAuthorityBoundary",
+            "closureEvolvedPaths",
+            "unboundLaterPathsAllowed",
+        },
+        "Current source verification field set drift",
+    )
     require(current.get("source") == "current HEAD Git tree", "Current source proof mode drift")
     require(
-        current.get("rule") == "every capability path must exist and remain byte-equivalent to the landed source",
+        current.get("rule")
+        == "every non-evolved capability path must exist in HEAD, remain byte-equivalent to the landed source, and have no index or semantic working-tree change",
         "Current source proof rule drift",
     )
     require(current.get("pathCount") == len(capability_paths) == 24, "Current capability path count drift")
+    require(current.get("boundPaths") == sorted(EXPECTED_CURRENT_BOUND_PATHS), "Current bound source path declaration drift")
+    require(current.get("headMustDescendFromLandedSource") is True, "Current source ancestry requirement drift")
+    require(
+        current.get("sourceAuthorityBoundary")
+        == "The exact landed Git tree is the complete source-only authority; current verification is limited to the 24 non-evolved captured capability paths and does not claim that every production path remains unchanged.",
+        "Source-only authority boundary drift",
+    )
     require(current.get("unboundLaterPathsAllowed") is True, "Later unbound paths are not explicitly allowed")
+    run_git("merge-base", "--is-ancestor", LANDED_SOURCE, "HEAD")
 
     for relative, capture_expected in capture_paths.items():
         override = landed_overrides.get(relative, {})
@@ -706,7 +1248,35 @@ def validate_source_state(document: dict[str, Any], identity: dict[str, Any]) ->
         if relative in capability_paths:
             require(sha256_bytes(git_file("HEAD", relative)) == landed_expected, f"Current bound source identity drift: {relative}")
 
+    bound_arguments = tuple(sorted(capability_paths))
+    index_records = run_git("ls-files", "-v", "-z", "--", *bound_arguments).split(b"\0")
+    index_flags: dict[str, str] = {}
+    for raw_record in index_records:
+        if not raw_record:
+            continue
+        require(len(raw_record) > 2 and raw_record[1:2] == b" ", "Current bound source index record is malformed")
+        try:
+            flag = raw_record[:1].decode("ascii")
+            relative = raw_record[2:].decode("utf-8")
+        except UnicodeError:
+            fail("Current bound source index record is malformed")
+        require(relative not in index_flags, "Current bound source index path is duplicated")
+        index_flags[relative] = flag
+    require(set(index_flags) == capability_paths, "Current bound source index path set drift")
+    for relative, flag in index_flags.items():
+        require(flag == "H", f"Current bound source index flags are not normal: {relative}")
+
+    require(
+        git_diff_is_clean("diff", "--quiet", "--", *bound_arguments),
+        "Current bound source has semantic working-tree changes",
+    )
+    require(
+        git_diff_is_clean("diff", "--cached", "--quiet", "HEAD", "--", *bound_arguments),
+        "Current bound source has index changes",
+    )
+
     capture = identity.get("capture", {})
+    require_exact_fields(capture, {"packetV1Path", "packetV1Sha256", "evidenceDirectory", "manifestSha256", "artifactCount"}, "Source identity capture")
     require(capture.get("packetV1Path") == "capture-packet-v1.json", "Capture packet snapshot path drift")
     require_sha256(capture.get("packetV1Sha256"), "Capture packet snapshot identity")
     require(capture.get("packetV1Sha256") == sha256_file(CLOSURE / "capture-packet-v1.json"), "Capture packet snapshot drift")
@@ -715,11 +1285,478 @@ def validate_source_state(document: dict[str, Any], identity: dict[str, Any]) ->
     require(capture.get("artifactCount") == len(REQUIRED_FILES), "Capture artifact count drift")
 
 
-def validate_committed_packet() -> None:
-    require(PACKET.is_file(), "OQ8 packet is missing")
+def validate_closure_manifest() -> dict[str, str]:
+    manifest_path = CLOSURE / "closure-sha256.txt"
+    require(manifest_path.is_file(), "Closure manifest is missing")
+    scan_support_safe(manifest_path)
+    manifest: dict[str, str] = {}
+    lines = read_text(manifest_path).splitlines()
+    require(lines == sorted(lines, key=lambda line: line.split("  ", 1)[-1]), "Closure manifest is not path-sorted")
+    for line in lines:
+        parts = line.split("  ", 1)
+        require(len(parts) == 2 and SHA256_RE.fullmatch(parts[0]) is not None, "Malformed closure manifest line")
+        digest, relative = parts
+        path = Path(relative)
+        require(
+            relative not in manifest
+            and not path.is_absolute()
+            and ".." not in path.parts
+            and path.as_posix() == relative,
+            "Unsafe or duplicate closure manifest path",
+        )
+        manifest[relative] = digest
+    require(set(manifest) == CLOSURE_FILES, "Closure manifest file set drift")
+    for relative, expected in manifest.items():
+        path = CLOSURE / relative
+        require(path.is_file(), f"Closure artifact missing: {relative}")
+        require(not path.is_symlink(), f"Closure artifact cannot be a symlink: {relative}")
+        require(sha256_file(path) == expected, f"Closure checksum mismatch: {relative}")
+        scan_support_safe(path)
+
+    validate_validator_identity()
+    return manifest
+
+
+def validate_validator_identity() -> str:
+    validator_record = read_text(CLOSURE / "validator-sha256.txt").splitlines()
+    require(len(validator_record) == 1, "Closure validator identity record is malformed")
+    validator_parts = validator_record[0].split("  ", 1)
+    require(
+        len(validator_parts) == 2
+        and validator_parts[1] == "tools/validate-oq8-platform-evidence.py"
+        and validator_parts[0] == sha256_file(DEFAULT_ROOT / validator_parts[1]),
+        "Closure validator identity drift",
+    )
+    return validator_parts[0]
+
+
+def validate_crosswalk(document: dict[str, Any]) -> None:
+    require(isinstance(document, dict), "Closure crosswalk must be an object")
+    require(
+        set(document) == {"schema", "story", "design", "invariants", "evidenceBindings", "storyEvidence", "verification"},
+        "Closure crosswalk field set drift",
+    )
+    require(document.get("schema") == "hexalith.eventstore.story-4-15-closure-crosswalk/v1", "Closure crosswalk schema drift")
+    require(document.get("story") == "4.15", "Closure crosswalk story drift")
+    require(
+        document.get("design") == {
+            "version": DESIGN_VERSION,
+            "sha256": DESIGN_SHA256,
+            "bytesAvailableInEventStore": False,
+        },
+        "Closure crosswalk design reference drift",
+    )
+    invariants = document.get("invariants", [])
+    require(invariants == EXPECTED_CROSSWALK_INVARIANTS, "Closure invariant-to-story/evidence mapping drift")
+    referenced_evidence = {relative for invariant in invariants for relative in invariant["evidence"]}
+    require(referenced_evidence == set(EXPECTED_CROSSWALK_EVIDENCE_HASHES), "Closure invariant evidence path set drift")
+    evidence_bindings = document.get("evidenceBindings")
+    require(evidence_bindings == EXPECTED_CROSSWALK_EVIDENCE_HASHES, "Closure evidence binding set or identity drift")
+    for relative, expected in EXPECTED_CROSSWALK_EVIDENCE_HASHES.items():
+        path = Path(relative)
+        require(not path.is_absolute() and ".." not in path.parts and path.as_posix() == relative, "Unsafe crosswalk evidence path")
+        require(sha256_file(ROOT / path) == expected, f"Crosswalk evidence body drift: {relative}")
+    require(
+        document.get("storyEvidence") == {story: "approved" for story in ("4.9", "4.10", "4.11", "4.12", "4.13", "4.14")},
+        "Closure story result crosswalk drift",
+    )
+    verification = document.get("verification", {})
+    expected_verification = {
+        "commandsFile": f"{EVIDENCE_DIRECTORY}/commands.json",
+        "commandsSha256": "29b488e3779192191340f868a4c3f5be3622af51dfa25a26663bb5f49727bd9c",
+        "recordedCommands": 8,
+        "successfulCommands": 8,
+        "focusedProductionCases": 1,
+        "focusedProductionPassed": 1,
+        "deterministicMethods": 21,
+        "deterministicCases": 33,
+        "deterministicPassed": 33,
+        "focusedSkipped": 0,
+        "deterministicSupportSkipped": 0,
+        "broadLanePreExistingSkipped": 25,
+    }
+    require(isinstance(verification, dict) and set(verification) == set(expected_verification), "Closure verification field set drift")
+    for field, expected in expected_verification.items():
+        if type(expected) is int:
+            require_exact_integer(verification.get(field), expected, f"Closure verification {field}")
+        else:
+            require(verification.get(field) == expected, f"Closure verification {field} drift")
+    require(verification["commandsSha256"] == sha256_file(ROOT / verification["commandsFile"]), "Closure commands identity drift")
+
+
+def validate_authority(authority: Any) -> None:
+    require(isinstance(authority, dict), "Closure authority record is missing")
+    require(authority.get("eventStorePlatformComplete") is True, "EventStore platform completion is not recorded")
+    require(authority.get("handoffMode") == "source-only", "OQ8 handoff is not source-only")
+    require(set(authority) == {"eventStorePlatformComplete", "handoffMode", *EXTERNAL_AUTHORITY_FIELDS}, "Closure authority field set drift")
+    for field in EXTERNAL_AUTHORITY_FIELDS:
+        require(authority.get(field) is False, f"External authority overstated: {field}")
+
+
+def validate_limitations(document: Any) -> dict[str, Any]:
+    require(isinstance(document, dict), "Closure limitations must be an object")
+    require(
+        document == {
+            "schema": "hexalith.eventstore.story-4-15-limitations/v1",
+            "limitations": EXPECTED_LIMITATIONS,
+        },
+        "Closure limitation text or order drift",
+    )
+    return document
+
+
+def validate_review_subject(subject: dict[str, Any], crosswalk: dict[str, Any], identity: dict[str, Any], limitations: dict[str, Any]) -> str:
+    require(isinstance(subject, dict), "Review subject must be an object")
+    require(
+        set(subject) == {
+            "schema",
+            "createdOn",
+            "proposedDecision",
+            "design",
+            "bindings",
+            "identity",
+            "reviewedPublicDocs",
+            "handoff",
+            "limitations",
+            "requiredReviews",
+            "authority",
+        },
+        "Review subject field set drift",
+    )
+    require(subject.get("schema") == "hexalith.eventstore.story-4-15-review-subject/v1", "Review subject schema drift")
+    require(subject.get("createdOn") == CURRENT_REVIEW_DATE, "Review subject date drift")
+    require(subject.get("proposedDecision") == "eventstore-platform-complete", "Review subject decision drift")
+    require(subject.get("design") == crosswalk.get("design"), "Review subject design binding drift")
+    bindings = subject.get("bindings", {})
+    expected_bindings = {
+        "capturePacketV1": ("capture-packet-v1.json", CLOSURE / "capture-packet-v1.json"),
+        "closureCrosswalk": ("closure-crosswalk.json", CLOSURE / "closure-crosswalk.json"),
+        "sourceArtifactIdentity": ("source-artifact-identity.json", CLOSURE / "source-artifact-identity.json"),
+        "limitations": ("limitations.json", CLOSURE / "limitations.json"),
+        "closureValidator": ("validator-sha256.txt", CLOSURE / "validator-sha256.txt"),
+        "closureTests": (CLOSURE_TEST_SOURCE, ROOT / CLOSURE_TEST_SOURCE),
+        "preReviewExecution": (PRE_REVIEW_EXECUTION, CLOSURE / PRE_REVIEW_EXECUTION),
+        "captureManifest": (f"{EVIDENCE_DIRECTORY}/evidence-sha256.txt", EVIDENCE / "evidence-sha256.txt"),
+    }
+    require(set(bindings) == set(expected_bindings), "Review subject binding set drift")
+    for name, (relative, path) in expected_bindings.items():
+        require(bindings.get(name) == {"path": relative, "sha256": sha256_file(path)}, f"Review subject binding drift: {name}")
+    require(
+        subject.get("identity") == {
+            "repository": "Hexalith/Hexalith.EventStore",
+            "landedSourceCommit": LANDED_SOURCE,
+            "landedSourceTree": LANDED_TREE,
+            "boundPathCount": 26,
+            "captureArtifactCount": 7,
+        },
+        "Review subject identity drift",
+    )
+    for relative, expected in EXPECTED_DOCUMENT_HASHES.items():
+        validate_document_semantics(relative)
+        require(sha256_file(ROOT / relative) == expected, f"Reviewed public document body drift: {relative}")
+    require(subject.get("reviewedPublicDocs") == EXPECTED_DOCUMENT_HASHES, "Review subject public-document binding drift")
+    require(
+        subject.get("handoff") == {
+            "schema": "hexalith.eventstore.story-4-15-source-only-handoff/v1",
+            "story": "4.15",
+            "landedSourceCommit": LANDED_SOURCE,
+            "consumerInstructions": EXPECTED_CONSUMER_INSTRUCTIONS,
+        },
+        "Review subject handoff semantics drift",
+    )
+    require(subject.get("limitations") == limitations.get("limitations"), "Review subject limitations drift")
+    reviews = subject.get("requiredReviews", [])
+    require(
+        reviews == [
+            {"role": role, "reviewer": REVIEW_ROSTER[role], "scope": REVIEW_SCOPES[role], "status": "required"}
+            for role in ("architecture", "security", "test")
+        ],
+        "Required reviewer roster or scope drift",
+    )
+    validate_authority(subject.get("authority"))
+    return sha256_file(CLOSURE / "review-subject.json")
+
+
+def validate_reviews(subject_sha256: str, limitations_sha256: str) -> dict[str, str]:
+    receipts: dict[str, str] = {}
+    for role, reviewer in REVIEW_ROSTER.items():
+        path = CLOSURE / "reviews" / f"{role}.json"
+        document = load_candidate_json(path)
+        require(isinstance(document, dict), f"{role} review must be an object")
+        require(
+            set(document) == {
+                "schema",
+                "role",
+                "reviewer",
+                "reviewedOn",
+                "decision",
+                "subjectSha256",
+                "acceptedScope",
+                "acceptedLimitationsSha256",
+                "findings",
+                "authority",
+            },
+            f"{role} review field set drift",
+        )
+        require(document.get("schema") == "hexalith.eventstore.story-4-15-review-receipt/v1", f"{role} review schema drift")
+        require(document.get("role") == role, f"{role} review role drift")
+        require(document.get("reviewer") == reviewer, f"{role} reviewer identity drift")
+        require(document.get("reviewedOn") == CURRENT_REVIEW_DATE, f"{role} review date drift")
+        require(document.get("decision") == "approved", f"{role} review is not approved")
+        require(document.get("subjectSha256") == subject_sha256, f"{role} review subject drift")
+        require(document.get("acceptedScope") == REVIEW_SCOPES[role], f"{role} accepted scope drift")
+        require(document.get("acceptedLimitationsSha256") == limitations_sha256, f"{role} limitations acceptance drift")
+        findings = document.get("findings", [])
+        require(
+            isinstance(findings, list)
+            and findings
+            and all(isinstance(item, str) and item.strip() for item in findings),
+            f"{role} review findings missing or blank",
+        )
+        validate_authority(document.get("authority"))
+        receipts[role] = sha256_file(path)
+    return receipts
+
+
+def validate_handoff(
+    document: dict[str, Any],
+    subject: dict[str, Any],
+    subject_sha256: str,
+    receipts: dict[str, str],
+    limitations_sha256: str,
+) -> None:
+    require(isinstance(document, dict), "Source-only handoff must be an object")
+    require(
+        set(document) == {
+            "schema",
+            "story",
+            "landedSourceCommit",
+            "reviewSubjectSha256",
+            "limitationsSha256",
+            "reviewReceipts",
+            "consumerInstructions",
+            "authority",
+        },
+        "Source-only handoff field set drift",
+    )
+    require(document.get("schema") == "hexalith.eventstore.story-4-15-source-only-handoff/v1", "Source-only handoff schema drift")
+    require(document.get("story") == "4.15", "Source-only handoff story drift")
+    require(document.get("landedSourceCommit") == LANDED_SOURCE, "Source-only handoff commit drift")
+    require(document.get("reviewSubjectSha256") == subject_sha256, "Source-only handoff subject drift")
+    require(document.get("limitationsSha256") == limitations_sha256, "Source-only handoff limitations drift")
+    require(document.get("reviewReceipts") == receipts, "Source-only handoff receipt set drift")
+    handoff_subject = subject.get("handoff", {})
+    require(document.get("schema") == handoff_subject.get("schema"), "Source-only handoff reviewed schema drift")
+    require(document.get("story") == handoff_subject.get("story"), "Source-only handoff reviewed story drift")
+    require(document.get("landedSourceCommit") == handoff_subject.get("landedSourceCommit"), "Source-only handoff reviewed commit drift")
+    require(document.get("consumerInstructions") == handoff_subject.get("consumerInstructions"), "Consumer instruction set or value drift")
+    require(document.get("authority") == subject.get("authority"), "Source-only handoff reviewed authority drift")
+    validate_authority(document.get("authority"))
+
+
+def require_unique_sprint_status(document: str, key: str, expected: str) -> None:
+    matches = re.findall(rf"^  {re.escape(key)}:\s*([^\s#]+)\s*(?:#.*)?$", document, re.MULTILINE)
+    require(len(matches) == 1, f"Lifecycle status is missing or ambiguous: {key}")
+    require(matches[0] == expected, f"Lifecycle status drift: {key}")
+
+
+def parse_unique_frontmatter_status(path: Path, story: str) -> str:
+    text = read_text(path)
+    lines = text.splitlines()
+    require(lines and lines[0] == "---", f"Malformed Story {story} frontmatter")
+    closing = next((index for index, line in enumerate(lines[1:], start=1) if line == "---"), None)
+    require(closing is not None, f"Malformed Story {story} frontmatter")
+    matches: list[str] = []
+    for line in lines[1:closing]:
+        match = re.fullmatch(r"status:\s*['\"]?([a-z-]+)['\"]?\s*", line)
+        if match is not None:
+            matches.append(match.group(1))
+    require(len(matches) == 1, f"Story {story} frontmatter status is missing or ambiguous")
+    return matches[0]
+
+
+def validate_document_semantics(relative: str) -> None:
+    text = read_text(ROOT / relative)
+    require(text.count(EXPECTED_DOCUMENT_MARKER) == 1, f"OQ8 source-only handoff marker is missing or ambiguous: {relative}")
+    for required in DOCUMENT_REQUIRED_TEXT:
+        require(required in text, f"OQ8 source-only handoff semantics missing from {relative}: {required}")
+    for forbidden in DOCUMENT_FORBIDDEN_TEXT:
+        require(forbidden not in text, f"Stale OQ8 handoff state remains in {relative}: {forbidden}")
+
+
+def validate_status_and_documents(*, final: bool) -> None:
+    sprint = read_text(ROOT / "_bmad-output/implementation-artifacts/sprint-status.yaml")
+    expected_statuses = {
+        "epic-4": "in-progress",
+        "4-8-durable-admission-evidence-ledger": "backlog",
+        "4-9-trusted-admission-contract-and-protected-identity": "done",
+        "4-10-digest-directory-rotation-and-key-retirement": "done",
+        "4-11-admission-state-machine-and-current-fence-enforcement": "done",
+        "4-12-expiry-compaction-and-tombstone-retention": "done",
+        "4-13-legacy-admission-migration-and-fail-closed-reconciliation": "done",
+        "4-14-oq8-multi-host-production-evidence": "done",
+        "4-15-oq8-platform-closure-and-handoff": "review" if final else "in-progress",
+    }
+    for key, expected in expected_statuses.items():
+        require_unique_sprint_status(sprint, key, expected)
+
+    story_specs = {
+        "4.11": ROOT / "_bmad-output/implementation-artifacts/spec-4-11-admission-state-machine-and-current-fence-enforcement.md",
+        "4.12": ROOT / "_bmad-output/implementation-artifacts/spec-4-12-expiry-compaction-and-tombstone-retention.md",
+        "4.13": ROOT / "_bmad-output/implementation-artifacts/spec-4-13-legacy-admission-migration-and-fail-closed-reconciliation.md",
+        "4.14": ROOT / "_bmad-output/implementation-artifacts/spec-4-14-oq8-multi-host-production-evidence.md",
+        "4.15": ROOT / "_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md",
+    }
+    for story, path in story_specs.items():
+        status = parse_unique_frontmatter_status(path, story)
+        expected = "done" if final or story != "4.15" else "in-review"
+        require(status == expected, f"Story {story} metadata status drift")
+
+    for relative in EXPECTED_DOCUMENTS:
+        validate_document_semantics(relative)
+
+
+def validate_pre_review_candidate() -> None:
     require(EVIDENCE.is_dir(), "OQ8 evidence directory is missing")
-    scan_support_safe(PACKET)
-    packet = load_json(PACKET)
+    require(CLOSURE.is_dir(), "Story 4.15 closure directory is missing")
+    capture_packet = load_candidate_json(CLOSURE / "capture-packet-v1.json")
+    validate_capture_packet(capture_packet)
+    crosswalk = load_candidate_json(CLOSURE / "closure-crosswalk.json")
+    identity = load_candidate_json(CLOSURE / "source-artifact-identity.json")
+    limitations = load_candidate_json(CLOSURE / "limitations.json")
+    execution = load_candidate_json(CLOSURE / PRE_REVIEW_EXECUTION)
+    subject = load_candidate_json(CLOSURE / "review-subject.json")
+    validate_validator_identity()
+    validate_crosswalk(crosswalk)
+    validate_limitations(limitations)
+    validate_pre_review_execution(execution)
+    validate_review_subject(subject, crosswalk, identity, limitations)
+    validate_status_and_documents(final=False)
+
+
+def validate_pre_review_execution(document: Any) -> None:
+    require(isinstance(document, dict), "Pre-review execution record must be an object")
+    require(
+        set(document)
+        == {"schema", "executedOn", "scope", "authority", "validator", "testSource", "finalValidation", "commands", "summary"},
+        "Pre-review execution field set drift",
+    )
+    require(document.get("schema") == "hexalith.eventstore.story-4-15-pre-review-execution/v1", "Pre-review execution schema drift")
+    require(document.get("executedOn") == CURRENT_REVIEW_DATE, "Pre-review execution date drift")
+    require(document.get("scope") == "receipt-independent-isolated-candidate", "Pre-review execution scope drift")
+    require(
+        document.get("authority") == {
+            "reviewReceiptsValidated": False,
+            "finalHandoffValidated": False,
+            "externalAuthorityClaimed": False,
+        },
+        "Pre-review execution authority disclosure drift",
+    )
+    require(
+        document.get("validator") == {
+            "path": "tools/validate-oq8-platform-evidence.py",
+            "sha256": sha256_file(DEFAULT_ROOT / "tools/validate-oq8-platform-evidence.py"),
+        },
+        "Pre-review execution validator identity drift",
+    )
+    require(
+        document.get("testSource") == {
+            "path": CLOSURE_TEST_SOURCE,
+            "sha256": sha256_file(ROOT / CLOSURE_TEST_SOURCE),
+        },
+        "Pre-review execution test-source identity drift",
+    )
+    require(document.get("finalValidation") == PRE_REVIEW_FINAL_VALIDATION, "Pre-review final-validation disclosure drift")
+    commands = document.get("commands")
+    require(isinstance(commands, list) and len(commands) == len(PRE_REVIEW_COMMAND_RESULTS), "Pre-review execution command set drift")
+    expected_names = [expected["name"] for expected in PRE_REVIEW_COMMAND_RESULTS]
+    actual_names = [command.get("name") if isinstance(command, dict) else None for command in commands]
+    require(
+        len(set(expected_names)) == len(expected_names)
+        and actual_names == expected_names
+        and len(set(actual_names)) == len(actual_names),
+        "Pre-review execution command names must be exact and unique",
+    )
+    for index, expected in enumerate(PRE_REVIEW_COMMAND_RESULTS):
+        command = commands[index]
+        require(isinstance(command, dict) and set(command) == set(expected), f"Pre-review execution command field set drift: {index}")
+        require(isinstance(expected.get("command"), str) and expected["command"].strip(), f"Pre-review expected command identity missing: {index}")
+        if "tests" in expected:
+            require(
+                type(expected["tests"]) is int
+                and expected["tests"] > 0
+                and expected.get("passed") == expected["tests"]
+                and expected.get("failed") == 0
+                and expected.get("skipped") == 0,
+                f"Pre-review expected test counts are not meaningful: {index}",
+            )
+        for field, value in expected.items():
+            if type(value) is int:
+                require_exact_integer(command.get(field), value, f"Pre-review execution command {index}:{field}")
+            else:
+                require(command.get(field) == value, f"Pre-review execution command drift: {index}:{field}")
+    expected_test_count = sum(expected.get("tests", 0) for expected in PRE_REVIEW_COMMAND_RESULTS)
+    expected_summary = {
+        "commands": len(PRE_REVIEW_COMMAND_RESULTS),
+        "successfulCommands": len(PRE_REVIEW_COMMAND_RESULTS),
+        "tests": expected_test_count,
+        "passed": expected_test_count,
+        "failed": 0,
+        "skipped": 0,
+    }
+    summary = document.get("summary")
+    require(isinstance(summary, dict) and set(summary) == set(expected_summary), "Pre-review execution summary field set drift")
+    for field, value in expected_summary.items():
+        require_exact_integer(summary.get(field), value, f"Pre-review execution summary {field}")
+
+
+def validate_platform_closure(platform: dict[str, Any]) -> None:
+    require(isinstance(platform, dict), "Platform closure must be an object")
+    require(CLOSURE.is_dir(), "Story 4.15 closure directory is missing")
+    manifest = validate_closure_manifest()
+    crosswalk = load_candidate_json(CLOSURE / "closure-crosswalk.json")
+    identity = load_candidate_json(CLOSURE / "source-artifact-identity.json")
+    limitations = load_candidate_json(CLOSURE / "limitations.json")
+    execution = load_candidate_json(CLOSURE / PRE_REVIEW_EXECUTION)
+    subject = load_candidate_json(CLOSURE / "review-subject.json")
+    validate_crosswalk(crosswalk)
+    validate_limitations(limitations)
+    validate_pre_review_execution(execution)
+    subject_sha256 = validate_review_subject(subject, crosswalk, identity, limitations)
+    limitations_sha256 = sha256_file(CLOSURE / "limitations.json")
+    receipts = validate_reviews(subject_sha256, limitations_sha256)
+    validate_handoff(load_candidate_json(CLOSURE / "source-only-handoff.json"), subject, subject_sha256, receipts, limitations_sha256)
+    require(
+        set(platform) == {
+            "story",
+            "status",
+            "landedSourceCommit",
+            "closureDirectory",
+            "closureManifestSha256",
+            "closureFiles",
+            "reviewSubjectSha256",
+            "authority",
+        },
+        "Platform closure field set drift",
+    )
+    require(platform.get("story") == "4.15", "Platform closure story drift")
+    require(platform.get("status") == "complete", "Platform closure status drift")
+    require(platform.get("landedSourceCommit") == LANDED_SOURCE, "Platform closure source drift")
+    require(platform.get("closureDirectory") == CLOSURE_DIRECTORY, "Platform closure directory drift")
+    require(platform.get("closureManifestSha256") == sha256_file(CLOSURE / "closure-sha256.txt"), "Platform closure manifest drift")
+    require(platform.get("closureFiles") == manifest, "Platform closure file identities drift")
+    require(platform.get("reviewSubjectSha256") == subject_sha256, "Platform closure subject drift")
+    validate_authority(platform.get("authority"))
+    validate_status_and_documents(final=True)
+
+
+def validate_capture_packet(packet: Any) -> None:
+    require(isinstance(packet, dict), "Capture packet must be an object")
+    require_exact_fields(
+        packet,
+        {"schemaVersion", "story", "design", "profile", "baselineCommit", "capturedOn", "evidenceDirectory", "evidenceFiles", "manifestSha256", "matrix", "closureClaimed", "releaseApproved", "story415Status"},
+        "Capture packet",
+    )
     require(packet.get("schemaVersion") == 1, "Packet schemaVersion drift")
     require(packet.get("story") == "4.14", "Packet story drift")
     require(packet.get("design") == {"version": DESIGN_VERSION, "sha256": DESIGN_SHA256}, "OQ8 design identity drift")
@@ -744,7 +1781,7 @@ def validate_committed_packet() -> None:
     require_sha256(packet.get("manifestSha256"), "Manifest identity")
     require(packet["manifestSha256"] == sha256_file(EVIDENCE / "evidence-sha256.txt"), "Packet manifest identity drift")
 
-    observations = validate_observations(EVIDENCE / "observations.json")
+    observations = validate_observations(EVIDENCE / "observations.json", COMMITTED_DAPR_RUNTIME_VERSION)
     deterministic_support_path = EVIDENCE / "deterministic-support.json"
     deterministic_support = validate_support_document(load_json(deterministic_support_path))
     require(
@@ -753,8 +1790,16 @@ def validate_committed_packet() -> None:
         "Observation and deterministic support oracle identities drifted",
     )
     source_state = load_json(EVIDENCE / "source-state.json")
-    validate_source_state(source_state)
+    identity = load_candidate_json(CLOSURE / "source-artifact-identity.json")
+    validate_source_state(source_state, identity)
     environment = load_json(EVIDENCE / "environment.json")
+    require_exact_fields(environment, {"schemaVersion", "capturedOn", "runtime", "profile", "executionConfiguration", "artifacts", "limits"}, "Environment")
+    require(environment.get("schemaVersion") == 1, "Environment schemaVersion drift")
+    require_exact_fields(environment.get("runtime"), {"dotnet", "dapr", "postgresImage", "postgresImageIdentity"}, "Environment runtime")
+    require_exact_fields(environment.get("profile"), {"name", "stateStoreType", "stateComponentSha256", "resiliencySha256"}, "Environment profile")
+    require_exact_fields(environment.get("executionConfiguration"), {"shippedReleaseEntryAssemblies", "shadowCopiedBeforeLaunch", "environmentName", "testOnlyHostingStartup", "productionConfigurationUntouched", "seams"}, "Environment execution configuration")
+    require_exact_fields(environment.get("artifacts"), {"eventStoreSha256", "sampleSha256", "eventStoreRuntimeSetSha256", "sampleRuntimeSetSha256", "hostingStartupSha256", "additionalDepsSha256"}, "Environment runtime artifacts")
+    require(identity.get("runtimeArtifacts") == environment.get("artifacts"), "Closure runtime artifact identities drift")
     require(packet.get("capturedOn") == observations.get("capturedOn"), "Packet capture date crosswalk drift")
     require(environment.get("runtime") == observations.get("runtime"), "Runtime identity crosswalk drift")
     require(environment.get("profile") == observations.get("profile"), "Profile identity crosswalk drift")
@@ -776,29 +1821,47 @@ def validate_committed_packet() -> None:
         "Resiliency identity crosswalk drift",
     )
     limits = environment.get("limits", {})
-    require(limits.get("healthTimeoutSeconds") == 60, "Environment health timeout drift")
-    require(limits.get("nodeReadinessOverallTimeoutSeconds") == 60, "Environment overall node-readiness deadline drift")
+    require_exact_fields(limits, {"healthTimeoutSeconds", "nodeReadinessOverallTimeoutSeconds", "actorRuntimeReadinessRequired", "requestTimeoutSeconds", "diagnosticLogCharactersPerStream", "diagnosticStreamsScanned", "forbiddenTermClassesScanned", "rawDiagnosticsCommitted", "postgresqlProjection", "rawPostgresqlValuesCommitted"}, "Environment limits")
+    require_exact_integer(limits.get("healthTimeoutSeconds"), 60, "Environment healthTimeoutSeconds")
+    require_exact_integer(limits.get("nodeReadinessOverallTimeoutSeconds"), 60, "Environment nodeReadinessOverallTimeoutSeconds")
     require(limits.get("actorRuntimeReadinessRequired") is True, "Environment actor-runtime readiness requirement drift")
-    require(limits.get("diagnosticLogCharactersPerStream") == 32768, "Environment diagnostic bound drift")
-    require(limits.get("diagnosticStreamsScanned") == 12, "Environment diagnostic stream count drift")
-    require(limits.get("forbiddenTermClassesScanned") == len(DIAGNOSTIC_FORBIDDEN_CLASSES), "Environment forbidden-term class count drift")
+    require_exact_integer(limits.get("requestTimeoutSeconds"), 30, "Environment requestTimeoutSeconds")
+    require_exact_integer(limits.get("diagnosticLogCharactersPerStream"), 32768, "Environment diagnosticLogCharactersPerStream")
+    require_exact_integer(limits.get("diagnosticStreamsScanned"), 12, "Environment diagnosticStreamsScanned")
+    require_exact_integer(limits.get("forbiddenTermClassesScanned"), len(DIAGNOSTIC_FORBIDDEN_CLASSES), "Environment forbiddenTermClassesScanned")
     require(limits.get("rawDiagnosticsCommitted") is False, "Environment permits committed raw diagnostics")
+    require(
+        limits.get("postgresqlProjection")
+        == "row counts, state-shape counts, schema hash, projection hash, invariant results",
+        "Environment PostgreSQL projection disclosure drift",
+    )
+    require(limits.get("rawPostgresqlValuesCommitted") is False, "Environment permits committed raw PostgreSQL values")
     test_results = load_json(EVIDENCE / "test-results.json")
     validate_focused_document(test_results)
     commands = load_json(EVIDENCE / "commands.json")
+    require_exact_fields(commands, {"schemaVersion", "capturedOn", "commands"}, "Verification commands")
+    require(commands.get("schemaVersion") == 1, "Verification commands schemaVersion drift")
+    require(isinstance(commands.get("commands"), list), "Verification commands must be a list")
+    for index, command in enumerate(commands["commands"]):
+        require_exact_fields(command, {"name", "command", "exitCode", "counts"}, f"Verification command {index}")
+        require(isinstance(command.get("counts"), dict), f"Verification command {index} counts must be an object")
     require(commands.get("capturedOn") == observations.get("capturedOn"), "Command record capture date crosswalk drift")
-    require(all(item.get("exitCode") == 0 for item in commands.get("commands", [])), "A recorded verification command failed")
-    command_records = {item.get("name"): item for item in commands.get("commands", [])}
-    require(set(command_records) == {
-        "live-sidecar-release-build",
-        "focused-production-matrix",
-        "explicit-deterministic-support-oracles",
-        "deterministic-support-lane",
-        "fresh-capture-validator",
-        "committed-packet-validator",
-        "solution-release-build",
-        "diff-whitespace-gate",
-    }, "Verification command record set drift")
+    command_names = [item.get("name") for item in commands.get("commands", [])]
+    require(
+        len(command_names) == len(EXPECTED_CAPTURE_COMMAND_RESULTS)
+        and len(set(command_names)) == len(command_names)
+        and set(command_names) == set(EXPECTED_CAPTURE_COMMAND_RESULTS),
+        "Verification command names must be exact and unique",
+    )
+    command_records = {item["name"]: item for item in commands["commands"]}
+    for name, expected in EXPECTED_CAPTURE_COMMAND_RESULTS.items():
+        record = command_records[name]
+        require_exact_integer(record.get("exitCode"), 0, f"Verification command {name}:exitCode")
+        require(record.get("command") == expected["command"], f"Verification command identity drift: {name}")
+        counts = record.get("counts")
+        require(isinstance(counts, dict) and set(counts) == set(expected["counts"]), f"Verification command count field set drift: {name}")
+        for field, value in expected["counts"].items():
+            require_exact_integer(counts.get(field), value, f"Verification command {name}:{field}")
     require(
         command_records["focused-production-matrix"].get("command") == test_results.get("command"),
         "Recorded focused method command drift",
@@ -814,6 +1877,17 @@ def validate_committed_packet() -> None:
         "Recorded deterministic support counts drift",
     )
     reviews = load_json(EVIDENCE / "review-records.json")
+    require_exact_fields(reviews, {"schemaVersion", "records", "releaseApproval", "foldersOq8Closure", "story415Status"}, "Capture review records")
+    require(reviews.get("schemaVersion") == 1, "Capture review records schemaVersion drift")
+    require(
+        reviews.get("records") == [
+            {"kind": "implementation-verification", "performedOn": "2026-08-10", "result": "passed", "authority": "development-verification-only"},
+            {"kind": "external-release-authority", "performed": False, "approval": False, "ownedBy": "Story 4.15 and external authority"},
+            {"kind": "production-evidence-review", "performed": False, "approval": False, "ownedBy": "Murat"},
+            {"kind": "leakage-fence-review", "performed": False, "approval": False, "ownedBy": "Security Reviewer"},
+        ],
+        "Capture review record set or field drift",
+    )
     require(any(
         record == {
             "kind": "production-evidence-review",
@@ -837,36 +1911,103 @@ def validate_committed_packet() -> None:
     require(reviews.get("story415Status") == "backlog", "Review record advances Story 4.15")
 
 
+def validate_committed_packet() -> None:
+    require(PACKET.is_file(), "OQ8 packet is missing")
+    require(EVIDENCE.is_dir(), "OQ8 evidence directory is missing")
+    scan_support_safe(PACKET)
+    outer_packet = load_json(PACKET)
+    require(isinstance(outer_packet, dict), "Closure packet must be an object")
+    require(outer_packet.get("schemaVersion") == 2, "Closure packet schemaVersion drift")
+    require(set(outer_packet) == {"schemaVersion", "capture", "platformClosure"}, "Closure packet field set drift")
+    packet = outer_packet.get("capture", {})
+    require(packet == load_candidate_json(CLOSURE / "capture-packet-v1.json"), "Immutable v1 capture packet snapshot drift")
+    validate_capture_packet(packet)
+    validate_platform_closure(outer_packet.get("platformClosure", {}))
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--root", type=Path, default=DEFAULT_ROOT, help="Artifact/document root to validate")
+    parser.add_argument("--git-root", type=Path, default=DEFAULT_ROOT, help="Git repository used for immutable source proof")
+    parser.add_argument("--git-timeout-seconds", type=float, default=30.0, help="Bound each Git identity subprocess")
+    parser.add_argument("--pre-review", action="store_true", help="Validate receipt-independent frozen candidate inputs")
+    parser.add_argument("--lifecycle-mode", choices=("final",), help="Validate the exact final lifecycle/document gate in isolation")
     parser.add_argument("--capture-directory", type=Path, help="Validate one fresh opt-in OQ8 capture")
     parser.add_argument("--ctrf", type=Path, help="Raw CTRF input to sanitize for capture upload")
     parser.add_argument("--support-ctrf", type=Path, help="Raw deterministic-support CTRF input to validate and sanitize")
     parser.add_argument("--support-output", type=Path, help="Write one sanitized deterministic-support document")
+    parser.add_argument(
+        "--expected-runtime-version",
+        action="append",
+        help="Exact Dapr runtime version required for one fresh capture",
+    )
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
     try:
-        if args.capture_directory is not None or args.ctrf is not None:
+        configure_roots(args.root, args.git_root, args.git_timeout_seconds)
+        if args.pre_review:
             require(
-                args.capture_directory is not None and args.ctrf is not None and args.support_ctrf is not None,
-                "Capture mode requires --capture-directory, --ctrf, and --support-ctrf",
+                args.lifecycle_mode is None
+                and args.capture_directory is None
+                and args.ctrf is None
+                and args.support_ctrf is None
+                and args.support_output is None
+                and args.expected_runtime_version is None,
+                "Pre-review mode cannot be combined with capture, support, or lifecycle arguments",
+            )
+        if args.lifecycle_mode is not None:
+            require(
+                not args.pre_review
+                and args.capture_directory is None
+                and args.ctrf is None
+                and args.support_ctrf is None
+                and args.support_output is None
+                and args.expected_runtime_version is None,
+                "Lifecycle mode cannot be combined with another validation mode",
+            )
+            validate_status_and_documents(final=True)
+            print("OQ8 final lifecycle validation passed.")
+        elif (
+            args.capture_directory is not None
+            or args.ctrf is not None
+            or args.expected_runtime_version is not None
+        ):
+            require(
+                args.capture_directory is not None
+                and args.ctrf is not None
+                and args.support_ctrf is not None
+                and args.expected_runtime_version is not None
+                and len(args.expected_runtime_version) == 1,
+                "Capture mode requires --capture-directory, --ctrf, --support-ctrf, and exactly one --expected-runtime-version",
             )
             require(args.support_output is None, "Capture mode writes deterministic support into the capture directory")
-            validate_capture(args.capture_directory.resolve(), args.ctrf.resolve(), args.support_ctrf.resolve())
+            validate_capture(
+                args.capture_directory.resolve(),
+                args.ctrf.resolve(),
+                args.support_ctrf.resolve(),
+                args.expected_runtime_version[0],
+            )
             print("OQ8 capture validation passed.")
         elif args.support_ctrf is not None or args.support_output is not None:
             require(args.support_ctrf is not None and args.support_output is not None, "Support mode requires --support-ctrf and --support-output")
             sanitize_support_ctrf(args.support_ctrf.resolve(), args.support_output.resolve())
             print("OQ8 deterministic support validation passed.")
         else:
-            validate_committed_packet()
-            print("OQ8 platform evidence validation passed.")
+            if args.pre_review:
+                validate_pre_review_candidate()
+            else:
+                validate_committed_packet()
+            print("OQ8 pre-review candidate validation passed." if args.pre_review else "OQ8 platform evidence validation passed.")
         return 0
     except EvidenceError as exception:
         print(f"OQ8 evidence validation failed: {exception}", file=sys.stderr)
+        return 1
+    except Exception as exception:
+        bounded = EvidenceError(f"Unexpected validator failure was safely bounded ({type(exception).__name__})")
+        print(f"OQ8 evidence validation failed: {bounded}", file=sys.stderr)
         return 1
 
 

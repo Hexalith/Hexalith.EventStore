@@ -1,8 +1,8 @@
 ---
-title: 'Admission State Machine And Current-Fence Enforcement'
+title: 'Story 4.11: Admission State Machine And Current-Fence Enforcement'
 type: 'feature'
 created: '2026-08-09'
-status: 'in-review'
+status: 'done'
 baseline_commit: '5bcfdbc8b28ac2706053075cc4e71160ee029ad8'
 review_loop_iteration: 0
 story_key: '4-11-admission-state-machine-and-current-fence-enforcement'

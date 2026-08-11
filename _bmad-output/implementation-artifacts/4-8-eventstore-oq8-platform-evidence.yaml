@@ -1,33 +1,70 @@
 {
-  "schemaVersion": 1,
-  "story": "4.14",
-  "capturedOn": "2026-08-10",
-  "design": {
-    "version": "1.0.0",
-    "sha256": "1a55b0302e91233e12db91e6e245f0a22d6bf13fcf6cdf5ee0cbe5759f08dcd8"
+  "schemaVersion": 2,
+  "capture": {
+    "schemaVersion": 1,
+    "story": "4.14",
+    "capturedOn": "2026-08-10",
+    "design": {
+      "version": "1.0.0",
+      "sha256": "1a55b0302e91233e12db91e6e245f0a22d6bf13fcf6cdf5ee0cbe5759f08dcd8"
+    },
+    "profile": "oq8-postgresql-v1",
+    "baselineCommit": "e60a3777c581d70b62f67173ccc2372b5b64a425",
+    "evidenceDirectory": "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425",
+    "manifestSha256": "02c3f50778e4b6b2cc2ea422ad00c149884955a113cd6bce9f8c80b24dc1d1fc",
+    "evidenceFiles": {
+      "commands.json": "29b488e3779192191340f868a4c3f5be3622af51dfa25a26663bb5f49727bd9c",
+      "deterministic-support.json": "de2f76f2662574595c2db3b23af51bd06a7f1f9d194553e748cb1e2c83a238ae",
+      "environment.json": "2981c6dd2ad81fbde6ece41f2b9dcf1c9f3f26a84d6a7e128a0c50a94e8c7254",
+      "observations.json": "7444f4a696e52bbb49a624f576fad8d577a630ca32b57b0fb6eb35b618e7c701",
+      "review-records.json": "ec68d8bb21812867f0b7e1af3a56022f3f0b6389d0ebe8b86eca6caab3cfc2f1",
+      "source-state.json": "1d722e41a9a3282e8e0268455f89001c53e17e2343031b8c50fedf0f0be085fe",
+      "test-results.json": "9f1e484d39da95479221f153cbb21aa9d9b467297f63b6ae53733298957d4146"
+    },
+    "matrix": {
+      "writersFailover": "passed",
+      "expiryCompaction": "passed",
+      "authorityChange": "passed",
+      "deterministicSupport": "passed",
+      "diagnosticLeakage": "passed",
+      "sanitizedCapture": "passed"
+    },
+    "closureClaimed": false,
+    "releaseApproved": false,
+    "story415Status": "backlog"
   },
-  "profile": "oq8-postgresql-v1",
-  "baselineCommit": "e60a3777c581d70b62f67173ccc2372b5b64a425",
-  "evidenceDirectory": "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425",
-  "manifestSha256": "02c3f50778e4b6b2cc2ea422ad00c149884955a113cd6bce9f8c80b24dc1d1fc",
-  "evidenceFiles": {
-    "commands.json": "29b488e3779192191340f868a4c3f5be3622af51dfa25a26663bb5f49727bd9c",
-    "deterministic-support.json": "de2f76f2662574595c2db3b23af51bd06a7f1f9d194553e748cb1e2c83a238ae",
-    "environment.json": "2981c6dd2ad81fbde6ece41f2b9dcf1c9f3f26a84d6a7e128a0c50a94e8c7254",
-    "observations.json": "7444f4a696e52bbb49a624f576fad8d577a630ca32b57b0fb6eb35b618e7c701",
-    "review-records.json": "ec68d8bb21812867f0b7e1af3a56022f3f0b6389d0ebe8b86eca6caab3cfc2f1",
-    "source-state.json": "1d722e41a9a3282e8e0268455f89001c53e17e2343031b8c50fedf0f0be085fe",
-    "test-results.json": "9f1e484d39da95479221f153cbb21aa9d9b467297f63b6ae53733298957d4146"
-  },
-  "matrix": {
-    "writersFailover": "passed",
-    "expiryCompaction": "passed",
-    "authorityChange": "passed",
-    "deterministicSupport": "passed",
-    "diagnosticLeakage": "passed",
-    "sanitizedCapture": "passed"
-  },
-  "closureClaimed": false,
-  "releaseApproved": false,
-  "story415Status": "backlog"
+  "platformClosure": {
+    "story": "4.15",
+    "status": "complete",
+    "landedSourceCommit": "e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec",
+    "closureDirectory": "_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec",
+    "closureManifestSha256": "a6379872f3f8abc821a270f68085dfab5341a5e7e3b314aef76915d3177fcb03",
+    "closureFiles": {
+      "capture-packet-v1.json": "63efacaa686c906c0cab63aef68a01163074914f9983a5874f2bf48d6944eeba",
+      "closure-crosswalk.json": "b006c03612f63f6c003b55f3e1b1073f81b077bc9816bdfc7e488104af9da9c7",
+      "limitations.json": "bea6f5a38a225f688fe17f5a86d08f23d240e8a9588063fa783c5a9f3986b79b",
+      "pre-review-execution.json": "deafc4ad38920882cb60782bd93b65e82699101876e97a92966f6b8b0f05c534",
+      "review-subject.json": "5c1ffb39863d8d25d1cf35dc49633a8ac979e2bd858d79fea77586d92a8cded6",
+      "reviews/architecture.json": "7a4bbf234b182ff8347cfe87278b2939f0da2281feafed0fe53a3766f2356cbf",
+      "reviews/security.json": "11f173a478fcb9a81a05a38892ca89974216d62b2ea7a47b28cfb165236a38de",
+      "reviews/test.json": "a0cf1b361d7a07b90f904f5cd2a5b2a74700bbfd6339092aaa84dd7130a7705d",
+      "source-artifact-identity.json": "545b09d9b6cb4927ed6783242723b5fe0be234ba4374111a3017cc8b6c322cc8",
+      "source-only-handoff.json": "80ff96262a24e19045bc681d7afcfc4ba4c84cd8709ff452366f32a38e9e427f",
+      "validator-sha256.txt": "91b565d7f8b4a9091f36f24ab090ff4d23c7a8cd1b247322ef83ec42bd94caa4"
+    },
+    "reviewSubjectSha256": "5c1ffb39863d8d25d1cf35dc49633a8ac979e2bd858d79fea77586d92a8cded6",
+    "authority": {
+      "eventStorePlatformComplete": true,
+      "handoffMode": "source-only",
+      "releaseApproved": false,
+      "foldersFinalClosure": false,
+      "packageAuthority": false,
+      "registryAuthority": false,
+      "deploymentAuthority": false,
+      "runtimePinAuthority": false,
+      "consumerMigrationAuthority": false,
+      "externalRepositoryAuthority": false,
+      "finalConsumerAuthority": false
+    }
+  }
 }

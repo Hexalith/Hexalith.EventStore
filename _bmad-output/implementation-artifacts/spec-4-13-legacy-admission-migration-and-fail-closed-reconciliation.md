@@ -1,4 +1,4 @@
-Bonjour, je n'ai reçu ---
+---
 title: 'Story 4.13: Legacy Admission Migration And Fail-Closed Reconciliation'
 type: 'feature'
 created: '2026-08-10'

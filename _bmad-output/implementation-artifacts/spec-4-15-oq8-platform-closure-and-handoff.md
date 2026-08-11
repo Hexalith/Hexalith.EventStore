@@ -2,7 +2,7 @@
 title: 'Story 4.15: OQ8 Platform Closure And Handoff'
 type: 'feature'
 created: '2026-08-10'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 0
 story_key: '4-15-oq8-platform-closure-and-handoff'
 baseline_commit: '699ca71206cd280dc6b770d83c338495bfe70fab'
@@ -51,17 +51,21 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `_bmad-output/implementation-artifacts/evidence/story-4-15/**` and `4-8-eventstore-oq8-platform-evidence.yaml` -- create a checksummed closure subject/crosswalk, exact landed-source and captured-artifact identity record, limitation set, named content-bound review receipts, and source-only handoff with external authorities false.
-- [ ] `tools/validate-oq8-platform-evidence.py` -- validate the immutable v1 capture plus closure layer, replace baseline-to-current diff inference with a pinned commit/path identity proof, and fail closed on drift, missing approvals, unsafe content, or overstated authority.
-- [ ] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs` -- prove manifest/subject/receipt/source/status/document contracts and mutate each critical field to demonstrate rejection.
-- [ ] `docs/**` OQ8 references and Story 4.11-4.14 metadata -- reconcile final behavior, source-only consumption limits, malformed frontmatter, and truthful child status without rewriting approved historical authority.
-- [ ] `_bmad-output/implementation-artifacts/sprint-status.yaml` -- advance only evidence-approved children and Story 4.15; keep Epic 4 `in-progress` and all release/Folders authority external.
+- [x] `_bmad-output/implementation-artifacts/evidence/story-4-15/**` and `4-8-eventstore-oq8-platform-evidence.yaml` -- create a checksummed closure subject/crosswalk, exact landed-source and captured-artifact identity record, limitation set, named content-bound review receipts, and source-only handoff with external authorities false.
+- [x] `tools/validate-oq8-platform-evidence.py` -- validate the immutable v1 capture plus closure layer, replace baseline-to-current diff inference with a pinned commit/path identity proof, and fail closed on drift, missing approvals, unsafe content, or overstated authority.
+- [x] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs` -- prove manifest/subject/receipt/source/status/document contracts and mutate each critical field to demonstrate rejection.
+- [x] `docs/**` OQ8 references and Story 4.11-4.14 metadata -- reconcile final behavior, source-only consumption limits, malformed frontmatter, and truthful child status without rewriting approved historical authority.
+- [x] `_bmad-output/implementation-artifacts/sprint-status.yaml` -- advance only evidence-approved children and Story 4.15; keep Epic 4 `in-progress` and all release/Folders authority external.
 
 **Acceptance Criteria:**
 - Given Stories 4.9-4.14 request closure, when the packet is validated, then every invariant, design-digest reference, command/count, limitation, named reviewer decision, and exact EventStore source/artifact identity has one reproducible crosswalk and any omission keeps Story 4.15 non-done.
 - Given a reviewed packet, when it is handed off, then it records EventStore platform completion against `e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec` and unchanged bound paths while release approval, Folders closure, package/pin authority, and consumer migration remain false.
 
 ## Spec Change Log
+
+- 2026-08-10: Implemented the checksummed source-only closure, exact landed-source proof, content-bound architecture/security/test approvals, fail-closed validator/tests, documentation reconciliation, and truthful lifecycle handoff.
+- 2026-08-10: Hardened review-found evidence-body bindings, exact invariant/path/object contracts, current HEAD/worktree/index proof, reviewed handoff and public-document semantics, unique lifecycle parsing, bounded failures, and adversarial fixture coverage; kept the story in review until fresh content-bound receipts could be recorded.
+- 2026-08-11: Recorded the fresh content-bound architecture, security, and test receipts, finalized and resealed the source-only handoff, and retained release and Folders-owned closure limitations.
 
 ## Design Notes
 
@@ -74,3 +78,49 @@ The Story 4.14 directory is evidence input, not a mutable approval container. St
 - `dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -m:1` then the built xUnit v3 assembly filtered to `Oq8PlatformClosureTests` -- expected: all closure and negative-mutation cases pass with no skips.
 - `dotnet build Hexalith.EventStore.slnx --configuration Release -m:1` -- expected: zero warnings and errors.
 - `git diff --check` -- expected: no whitespace errors; unrelated untracked `spec-gh-31400593510-fix-ci-cd.md` remains untouched.
+
+## Suggested Review Order
+
+**Closure validation**
+
+- Start with the fail-closed entry point joining capture, reviews, handoff, and lifecycle.
+  [`main` in `validate-oq8-platform-evidence.py`](../../tools/validate-oq8-platform-evidence.py)
+
+- Inspect the final platform contract and its exact source-only authority boundary.
+  [`validate_platform_closure` in `validate-oq8-platform-evidence.py`](../../tools/validate-oq8-platform-evidence.py)
+
+- See the assembled v2 packet binding every closure artifact by digest.
+  [`platformClosure` in `4-8-eventstore-oq8-platform-evidence.yaml`](4-8-eventstore-oq8-platform-evidence.yaml)
+
+**Frozen evidence and approvals**
+
+- Review the frozen subject that content-binds source, evidence, tests, and documentation.
+  [`review-subject.json`](evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/review-subject.json)
+
+- Trace landed-tree identity and current unchanged-path verification.
+  [`source-artifact-identity.json`](evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/source-artifact-identity.json)
+
+- Follow OQ8-1 through OQ8-8 into exact story evidence and counts.
+  [`closure-crosswalk.json`](evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/closure-crosswalk.json)
+
+- Confirm consumer instructions retain Folders-owned final verification and decision authority.
+  [`source-only-handoff.json`](evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/source-only-handoff.json)
+
+**Adversarial verification**
+
+- Begin with the isolated candidate and final closure contract suite.
+  [`Oq8PlatformClosureTests`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs)
+
+- Review resealed schema, binding, protected-content, and authority mutations.
+  [`CandidateSemanticMutationsFailClosed`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs)
+
+- Verify hidden index flags cannot conceal changed bound capability paths.
+  [`HiddenBoundCapabilityPathFailsClosed`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs)
+
+**Public boundary and lifecycle**
+
+- Read the concise architecture statement of source-only completion and retained limitations.
+  [OQ8 platform closure boundary](../../docs/concepts/architecture-overview.md#oq8-platform-closure-boundary)
+
+- Finish with Story 4.15 review readiness while Epic 4 remains active.
+  [`sprint-status.yaml`](sprint-status.yaml)

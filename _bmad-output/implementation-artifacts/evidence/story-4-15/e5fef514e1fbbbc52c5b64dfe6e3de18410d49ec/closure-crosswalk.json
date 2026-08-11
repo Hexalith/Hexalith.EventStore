@@ -89,6 +89,17 @@
       "result": "approved"
     }
   ],
+  "evidenceBindings": {
+    "_bmad-output/implementation-artifacts/4-8-durable-tenant-scoped-idempotency-admission-and-expired-key-precedence.md": "bc19803ebc7e1f1b6b0e0353560d0e6f9c72815b7e0afba35e94d60a1046d904",
+    "_bmad-output/implementation-artifacts/spec-4-11-admission-state-machine-and-current-fence-enforcement.md": "a26090a034e60851b2a518fed6c41de7caf1ecff4931147ff954e4fe45310624",
+    "_bmad-output/implementation-artifacts/spec-4-12-expiry-compaction-and-tombstone-retention.md": "df48f3bc6dfef608190a640193182e07c514798676abd0f50967207f219e652a",
+    "_bmad-output/implementation-artifacts/spec-4-13-legacy-admission-migration-and-fail-closed-reconciliation.md": "7afed1dcb5f0fdf8e7aba12ae3a52c2a4dd13f438d05f85a500e5ee6e0441128",
+    "_bmad-output/implementation-artifacts/spec-4-14-oq8-multi-host-production-evidence.md": "4e6956baac6ff79c9032d57e46ce08f6f0217c63f51523e942c5eb62d9439c8e",
+    "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425/deterministic-support.json": "de2f76f2662574595c2db3b23af51bd06a7f1f9d194553e748cb1e2c83a238ae",
+    "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425/environment.json": "2981c6dd2ad81fbde6ece41f2b9dcf1c9f3f26a84d6a7e128a0c50a94e8c7254",
+    "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425/evidence-sha256.txt": "02c3f50778e4b6b2cc2ea422ad00c149884955a113cd6bce9f8c80b24dc1d1fc",
+    "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425/observations.json": "7444f4a696e52bbb49a624f576fad8d577a630ca32b57b0fb6eb35b618e7c701"
+  },
   "storyEvidence": {
     "4.9": "approved",
     "4.10": "approved",
@@ -107,6 +118,8 @@
     "deterministicMethods": 21,
     "deterministicCases": 33,
     "deterministicPassed": 33,
-    "skipped": 0
+    "focusedSkipped": 0,
+    "deterministicSupportSkipped": 0,
+    "broadLanePreExistingSkipped": 25
   }
 }

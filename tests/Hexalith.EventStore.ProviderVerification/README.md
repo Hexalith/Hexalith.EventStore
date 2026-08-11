@@ -10,13 +10,13 @@ dotnet build tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.Event
 dotnet tests/Hexalith.EventStore.ProviderVerification.Tests/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.Tests.dll
 ```
 
-The focused built-DLL suite currently contains 73 tests, including a self-contained one-interaction Pact run through real Kestrel and the production controller/middleware pipeline followed by verified port closure.
+The focused built-DLL suite currently contains 74 tests, including a self-contained one-interaction Pact run through real Kestrel and the production controller/middleware pipeline followed by verified port closure.
 
 Run the committed FrontComposer inputs from the EventStore repository root:
 
 ```bash
 eventstore_root="$(pwd)"
-frontcomposer_root="$(realpath ../..)"
+frontcomposer_root="$eventstore_root/references/Hexalith.FrontComposer"
 dotnet run --project tests/Hexalith.EventStore.ProviderVerification/Hexalith.EventStore.ProviderVerification.csproj --configuration Release --no-build -- \
   --pact-directory "$frontcomposer_root/tests/Hexalith.FrontComposer.Shell.Tests/Pact" \
   --manifest "$frontcomposer_root/tests/Hexalith.FrontComposer.Shell.Tests/Pact/interaction-manifest.json" \

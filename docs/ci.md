@@ -57,12 +57,14 @@ workflows.
 | Advisory browser/governance/evidence scaffolds | `tests/Hexalith.EventStore.Admin.UI.E2E`, `tests/Hexalith.EventStore.DeferredWorkGovernance.Tests`, `tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests` | Separate `Advisory Tests` workflow. It installs Playwright Chromium for the browser suite and runs with `continue-on-error`, preserving push/PR signal without making semantic-release depend on these suites. |
 | Full Aspire E2E | `tests/Hexalith.EventStore.IntegrationTests` | Deferred until a reliable Aspire-in-CI topology exists. |
 
-`integration.yml` pins a shared `DAPR_VERSION` consumed by `references/Hexalith.Builds/Github/dapr-init`
-for both CLI install (`dapr/setup-dapr`) and `dapr init --runtime-version`. That value must be an
-installable Dapr **CLI** release tag (currently `1.18.0`). It is not the Dapr NuGet
+`integration.yml` pins `DAPR_CLI_VERSION` (`1.18.0`) and `DAPR_RUNTIME_VERSION`
+(`1.18.2`) independently. The shared `references/Hexalith.Builds/Github/dapr-init`
+action uses the CLI pin for `dapr/setup-dapr` and the runtime pin for
+`dapr init --runtime-version`; older callers that omit `runtime-version` retain
+the legacy behavior by falling back to `version`. Neither pin is the Dapr NuGet
 `PackageVersion` (owned separately in `references/Hexalith.Builds/Props/Directory.Packages.props`,
-currently `1.18.5`). Do not pin a runtime-only tag such as `1.18.1` as `DAPR_VERSION` unless
-Builds gains separate CLI and runtime inputs.
+currently `1.18.5`). Fresh OQ8 validation receives the same runtime pin explicitly,
+while committed Story 4.14 evidence remains bound to its observed runtime `1.18.1`.
 
 Do not reintroduce a `Category!=LiveSidecar` filter to make `Server.Tests`
 deterministic. Live-sidecar coverage belongs in the live-sidecar project and

@@ -9,6 +9,19 @@ namespace Hexalith.EventStore.ProviderVerification.Tests;
 public sealed class InputHardeningTests
 {
     [Fact]
+    public void Readme_UsesRootDeclaredFrontComposerSubmodulePath()
+    {
+        string readme = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(),
+            "tests",
+            "Hexalith.EventStore.ProviderVerification",
+            "README.md"));
+
+        readme.ShouldContain("frontcomposer_root=\"$eventstore_root/references/Hexalith.FrontComposer\"");
+        readme.ShouldNotContain("frontcomposer_root=\"$(realpath ../..)\"");
+    }
+
+    [Fact]
     public void SafePath_TraversalInput_IsRejected()
     {
         SafePath.TryResolveExistingFile("../hostile.json", 1024, out _, out string code).ShouldBeFalse();
@@ -210,8 +223,8 @@ public sealed class InputHardeningTests
     {
         string source = Path.Combine(
             FindRepositoryRoot(),
-            "..",
-            "..",
+            "references",
+            "Hexalith.FrontComposer",
             "tests",
             "Hexalith.FrontComposer.Shell.Tests",
             "Pact",

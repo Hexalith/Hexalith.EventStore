@@ -1121,3 +1121,47 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-gh-31400593510-fix-ci-cd.md`
   summary: Builds `dapr-init` still uses one shared version for CLI install and runtime init, so EventStore cannot pin CLI 1.18.0 with runtime 1.18.1 without a submodule change.
   evidence: Integration failure 31413307050 and Ask First in the approved spec; restoring shared 1.18.0 unblocks CI but leaves CLI/runtime decoupling as a Builds enhancement.
+  status: resolved 2026-08-11 — `runtime-version` now independently selects the Dapr runtime while omitted callers retain `version` as the legacy fallback.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: The concurrent integration workflow's Dapr 1.18.0 runtime pin cannot reproduce the OQ8 packet's validator-pinned Dapr 1.18.1 fresh capture.
+  evidence: The live fixture records the actual `daprd --version`, while the OQ8 validator requires 1.18.1 and the current workflow passes the shared 1.18.0 pin to `dapr-init`; resolving it requires the separately owned Builds CLI/runtime decoupling change.
+  status: resolved 2026-08-11 — Integration now passes runtime 1.18.2 independently from CLI 1.18.0, fresh validation requires that explicit runtime, and immutable Story 4.14 remains pinned to observed runtime 1.18.1.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: The concurrent live-lane guardrail can miss equivalent full Server.Tests invocations.
+  evidence: Exact substring and selector-presence checks do not reject `.csproj`, `--project`, normalized/quoted paths, or a second unfiltered direct xUnit assembly invocation; robust command-level parsing belongs to the CI guardrail follow-up.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: The concurrent Dapr-version guard can miss job-level or differently quoted YAML overrides.
+  evidence: Its regex inspects only single-quoted definitions and checks the environment-variable reference separately from the initialization step, so an effective override can evade the assertion; structural YAML validation is required.
+
+## Deferred from: Story 4.15 Step 4 review (2026-08-11)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-31415412092-fix-ci-cd.md`
+  summary: Execute the shared `dapr-init` legacy runtime fallback with a fake Dapr executable at action level.
+  evidence: Structural guards prove the fallback expression, but an action-level harness would additionally prove the resolved legacy value reaches the quoted `dapr init --runtime-version` invocation.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Make the selector-based Git subprocess harness portable to Windows.
+  evidence: Current bounded nonblocking pipe handling uses POSIX selector behavior and is exercised only on non-Windows hosts.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Add one overall deadline spanning all Git identity subprocesses.
+  evidence: Each Git call is bounded independently, but many sequential calls can exceed an operator's intended total validation deadline.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Bound every validator input file before parsing or hashing it.
+  evidence: Git output is bounded, but evidence, document, and JSON input sizes are not governed by one fail-closed limit.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Write sanitized fresh-capture outputs atomically.
+  evidence: A process interruption can currently leave a partial test, support, or validation document in the capture directory.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Reject symlinks throughout fresh capture inputs and output directories.
+  evidence: Final closure artifacts reject symlinks, while the fresh capture path and raw CTRF inputs do not apply the same policy.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Add cryptographic reviewer identity and attestation to Story 4.15 receipts.
+  evidence: Receipts are content-bound by hash and exact reviewer text but do not authenticate who produced the approval.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Retain bounded raw execution logs or equivalent replayable command evidence for pre-review commands.
+  evidence: The execution record preserves command identities and counts but not the underlying output needed to independently audit each reported result.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Bind the closure-assembly commit identity after the Story 4.15 artifacts land.
+  evidence: The packet binds the landed OQ8 capability commit and current path equivalence, but not the later commit that contains the closure layer itself.

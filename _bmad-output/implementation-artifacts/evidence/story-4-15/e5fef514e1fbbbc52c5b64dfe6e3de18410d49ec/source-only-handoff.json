@@ -1,0 +1,31 @@
+{
+  "schema": "hexalith.eventstore.story-4-15-source-only-handoff/v1",
+  "story": "4.15",
+  "landedSourceCommit": "e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec",
+  "reviewSubjectSha256": "5c1ffb39863d8d25d1cf35dc49633a8ac979e2bd858d79fea77586d92a8cded6",
+  "limitationsSha256": "bea6f5a38a225f688fe17f5a86d08f23d240e8a9588063fa783c5a9f3986b79b",
+  "reviewReceipts": {
+    "architecture": "7a4bbf234b182ff8347cfe87278b2939f0da2281feafed0fe53a3766f2356cbf",
+    "security": "11f173a478fcb9a81a05a38892ca89974216d62b2ea7a47b28cfb165236a38de",
+    "test": "a0cf1b361d7a07b90f904f5cd2a5b2a74700bbfd6339092aaa84dd7130a7705d"
+  },
+  "consumerInstructions": {
+    "mode": "source-only",
+    "verifyCommand": "python3 tools/validate-oq8-platform-evidence.py",
+    "designBytesRequiredFromFolders": true,
+    "sourcePathRule": "Use only the exact landed EventStore commit after the closure validator passes against unchanged capability paths."
+  },
+  "authority": {
+    "eventStorePlatformComplete": true,
+    "handoffMode": "source-only",
+    "releaseApproved": false,
+    "foldersFinalClosure": false,
+    "packageAuthority": false,
+    "registryAuthority": false,
+    "deploymentAuthority": false,
+    "runtimePinAuthority": false,
+    "consumerMigrationAuthority": false,
+    "externalRepositoryAuthority": false,
+    "finalConsumerAuthority": false
+  }
+}

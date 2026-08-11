@@ -1,6 +1,6 @@
 {
   "schema": "hexalith.eventstore.story-4-15-review-subject/v1",
-  "createdOn": "2026-08-10",
+  "createdOn": "2026-08-11",
   "proposedDecision": "eventstore-platform-complete",
   "design": {
     "version": "1.0.0",
@@ -14,15 +14,27 @@
     },
     "closureCrosswalk": {
       "path": "closure-crosswalk.json",
-      "sha256": "e77d7e6e03f0f2cfdaf57a200fdf69dc216d40e1b416d6f30c78e1754fa27b89"
+      "sha256": "b006c03612f63f6c003b55f3e1b1073f81b077bc9816bdfc7e488104af9da9c7"
     },
     "sourceArtifactIdentity": {
       "path": "source-artifact-identity.json",
-      "sha256": "6ee08ea3315573ef81bea62c26a6306e449b6d235de3b0f8d14b0cebf838f9b8"
+      "sha256": "545b09d9b6cb4927ed6783242723b5fe0be234ba4374111a3017cc8b6c322cc8"
     },
     "limitations": {
       "path": "limitations.json",
       "sha256": "bea6f5a38a225f688fe17f5a86d08f23d240e8a9588063fa783c5a9f3986b79b"
+    },
+    "closureValidator": {
+      "path": "validator-sha256.txt",
+      "sha256": "91b565d7f8b4a9091f36f24ab090ff4d23c7a8cd1b247322ef83ec42bd94caa4"
+    },
+    "closureTests": {
+      "path": "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs",
+      "sha256": "b89a2c816456e0140b5d1f582fd90964bc50d30809f91b0157f49fd5e237caa2"
+    },
+    "preReviewExecution": {
+      "path": "pre-review-execution.json",
+      "sha256": "deafc4ad38920882cb60782bd93b65e82699101876e97a92966f6b8b0f05c534"
     },
     "captureManifest": {
       "path": "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425/evidence-sha256.txt",
@@ -35,6 +47,23 @@
     "landedSourceTree": "e4bb19e5305bbde23563245976b97eb0aaf3c931",
     "boundPathCount": 26,
     "captureArtifactCount": 7
+  },
+  "reviewedPublicDocs": {
+    "docs/concepts/architecture-overview.md": "fc18f36a3f7300aba07b90c92e724c65353c0c4dcafbcd44d74ab805729e6627",
+    "docs/concepts/command-lifecycle.md": "fa739de1c11601c4e0b7530fed02b1e1c42d763ecc5346fa68b79f8fca2c44da",
+    "docs/guides/configuration-reference.md": "75b8d45990794e4ab82429bb606b057652fc9214ce4fa8edd2b33fa516774900",
+    "docs/reference/command-api.md": "3ff40db9bba089b80157780bb1deb9d3096aee10e855dae98a2e64335b39c54e"
+  },
+  "handoff": {
+    "schema": "hexalith.eventstore.story-4-15-source-only-handoff/v1",
+    "story": "4.15",
+    "landedSourceCommit": "e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec",
+    "consumerInstructions": {
+      "mode": "source-only",
+      "verifyCommand": "python3 tools/validate-oq8-platform-evidence.py",
+      "designBytesRequiredFromFolders": true,
+      "sourcePathRule": "Use only the exact landed EventStore commit after the closure validator passes against unchanged capability paths."
+    }
   },
   "limitations": [
     "The approved Folders design bytes are not tracked in EventStore; only design version 1.0.0 and its approved SHA-256 reference are preserved.",
@@ -73,6 +102,8 @@
     "registryAuthority": false,
     "deploymentAuthority": false,
     "runtimePinAuthority": false,
-    "consumerMigrationAuthority": false
+    "consumerMigrationAuthority": false,
+    "externalRepositoryAuthority": false,
+    "finalConsumerAuthority": false
   }
 }
