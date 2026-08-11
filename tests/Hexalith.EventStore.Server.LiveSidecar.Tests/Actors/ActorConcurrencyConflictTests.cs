@@ -160,22 +160,47 @@ public class ActorConcurrencyConflictTests
         currentEtag.ShouldNotBe(originalEtag, "the successful intervening write must advance the ETag before the original token is called stale");
         JsonDocument.Parse(currentJson).RootElement.GetProperty("writer").GetString().ShouldBe("first");
 
+        // Perturbation: replay the token that is still current instead of the stale one, so the
+        // provider has nothing to reject and the 409 surface never appears.
+        string replayedEtag = IsMutation("generic-409-semantics") ? currentEtag : originalEtag;
         using HttpResponseMessage stale = await SaveStateAsync(
             key,
             rejectedUpdateJson,
-            originalEtag,
+            replayedEtag,
             operationCancellation.Token).ConfigureAwait(true);
         string staleResponseBody = await stale.Content
             .ReadAsStringAsync(operationCancellation.Token)
             .ConfigureAwait(true);
         DaprStateErrorParser.Capture staleError = DaprStateErrorParser.Parse(staleResponseBody);
 
+        // Perturbation: overwrite the retained value after the rejection, leaving the 409 surface
+        // intact so attribution stays on the retention invariant.
+        if (IsMutation("retained-generic-value"))
+        {
+            using HttpResponseMessage overwrite = await SaveStateAsync(
+                key,
+                rejectedUpdateJson,
+                etag: null,
+                operationCancellation.Token).ConfigureAwait(true);
+            overwrite.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        }
+
         string? retainedRedisJson = null;
         string? retainedReadExceptionType = null;
         string? retainedReadExceptionMessage = null;
+        JsonNode? retainedRedisNode = null;
+        JsonElement? retainedRedisValue = null;
         try
         {
             retainedRedisJson = await _fixture.GetGenericStateJsonAsync(key).ConfigureAwait(true);
+
+            // Parse inside the guard: a malformed or non-JSON body must be captured as a read
+            // diagnostic, never thrown before the evidence file is written.
+            if (retainedRedisJson is not null)
+            {
+                retainedRedisNode = JsonNode.Parse(retainedRedisJson);
+                retainedRedisValue = JsonSerializer.Deserialize<JsonElement>(retainedRedisJson);
+            }
         }
         catch (Exception ex)
         {
@@ -186,14 +211,12 @@ public class ActorConcurrencyConflictTests
         bool exactConflictSurface = stale.StatusCode == HttpStatusCode.Conflict
             && string.Equals(staleError.ErrorCode, "ERR_STATE_SAVE", StringComparison.Ordinal)
             && staleError.Message?.Contains("etag mismatch", StringComparison.OrdinalIgnoreCase) == true;
-        bool retainedValueMatchesExpected = retainedRedisJson is not null
-            && JsonNode.DeepEquals(
-                JsonNode.Parse(retainedRedisJson),
-                JsonNode.Parse(firstUpdateJson));
+        bool retainedValueMatchesExpected = retainedRedisNode is not null
+            && JsonNode.DeepEquals(retainedRedisNode, JsonNode.Parse(firstUpdateJson));
 
         var evidence = new
         {
-            schemaVersion = 1,
+            schemaVersion = 2,
             baselineCommit = "0776785f494fcefc8ad933b5b17b9c8d5cbe0513",
             key,
             seedStatus = (int)seed.StatusCode,
@@ -211,16 +234,15 @@ public class ActorConcurrencyConflictTests
             },
             staleReplay = new
             {
-                suppliedEtag = originalEtag,
+                suppliedEtag = replayedEtag,
                 status = (int)stale.StatusCode,
                 responseBody = staleResponseBody,
                 errorCode = staleError.ErrorCode,
                 errorMessage = staleError.Message,
                 parseError = staleError.ParseError,
             },
-            redisRetainedValue = retainedRedisJson is null
-                ? (JsonElement?)null
-                : JsonSerializer.Deserialize<JsonElement>(retainedRedisJson),
+            redisRetainedValue = retainedRedisValue,
+            redisRetainedRawJson = retainedRedisJson,
             retainedValueMatchesExpected,
             retainedReadExceptionType,
             retainedReadExceptionMessage,
@@ -301,14 +323,27 @@ public class ActorConcurrencyConflictTests
             .ConfigureAwait(true);
     }
 
-    private static void AssertInvariant(bool satisfied, string mutationName, string message)
-    {
-        bool mutate = string.Equals(
+    /// <summary>
+    /// Asserts one material invariant, tagging the failure message with the invariant name so a
+    /// mutation receipt binds to the invariant that actually failed.
+    /// </summary>
+    /// <param name="satisfied">The observed invariant value.</param>
+    /// <param name="invariantName">The stable invariant name.</param>
+    /// <param name="message">The human-readable requirement.</param>
+    private static void AssertInvariant(bool satisfied, string invariantName, string message)
+        => satisfied.ShouldBeTrue($"[invariant:{invariantName}] {message}");
+
+    /// <summary>
+    /// Indicates whether the named input perturbation is armed. A mutation changes what the
+    /// harness does; it never inverts an assertion.
+    /// </summary>
+    /// <param name="mutationName">The perturbation name.</param>
+    /// <returns><see langword="true"/> when the perturbation is armed.</returns>
+    private static bool IsMutation(string mutationName)
+        => string.Equals(
             Environment.GetEnvironmentVariable(MutationEnvironmentVariable),
             mutationName,
             StringComparison.Ordinal);
-        (mutate ? !satisfied : satisfied).ShouldBeTrue(message);
-    }
 
     private async Task WriteEvidenceAsync(string fileName, object evidence)
     {

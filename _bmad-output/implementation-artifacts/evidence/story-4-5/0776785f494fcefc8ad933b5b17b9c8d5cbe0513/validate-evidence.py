@@ -12,20 +12,30 @@ from pathlib import Path
 
 EVIDENCE = (Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else Path(__file__).resolve().parent)
 MANIFEST = EVIDENCE / "evidence-sha256.txt"
+# filename -> (focused test method, invariant tag that must appear in the failure message).
+# The invariant tag binds each receipt to the assertion that actually failed, so a receipt can no
+# longer be satisfied by any single-test failure that happens to carry the right filename.
 MUTATIONS = {
-    "mutation-gate-timing.json": "SameStreamActorAndRawTransaction_RecordsDurableRaceOutcome",
-    "mutation-intermediate-raw-durability.json": "SameStreamActorAndRawTransaction_RecordsDurableRaceOutcome",
-    "mutation-final-state-consistency.json": "SameStreamActorAndRawTransaction_RecordsDurableRaceOutcome",
-    "mutation-conflict-retry-classification.json": "SameStreamActorAndRawTransaction_RecordsDurableRaceOutcome",
-    "mutation-key-addressability.json": "SameStreamActorAndRawTransaction_RecordsDurableRaceOutcome",
-    "mutation-generic-409-semantics.json": "MetadataKey_StaleEtagUpdate_IsRejected",
-    "mutation-retained-generic-value.json": "MetadataKey_StaleEtagUpdate_IsRejected",
+    "mutation-gate-timing.json": (
+        "SameStreamActorAndRawTransaction_RecordsDurableRaceOutcome", "gate-timing"),
+    "mutation-intermediate-raw-durability.json": (
+        "SameStreamActorAndRawTransaction_RecordsDurableRaceOutcome", "intermediate-raw-durability"),
+    "mutation-final-state-consistency.json": (
+        "SameStreamActorAndRawTransaction_RecordsDurableRaceOutcome", "final-state-consistency"),
+    "mutation-conflict-retry-classification.json": (
+        "SameStreamActorAndRawTransaction_RecordsDurableRaceOutcome", "conflict-retry-classification"),
+    "mutation-key-addressability.json": (
+        "SameStreamActorAndRawTransaction_RecordsDurableRaceOutcome", "key-addressability"),
+    "mutation-generic-409-semantics.json": (
+        "MetadataKey_StaleEtagUpdate_IsRejected", "generic-409-semantics"),
+    "mutation-retained-generic-value.json": (
+        "MetadataKey_StaleEtagUpdate_IsRejected", "retained-generic-value"),
 }
 POSITIVE_RECEIPTS = {
     "race-test-results.json": (1, 1, 0),
     "generic-etag-test-results.json": (1, 1, 0),
-    "classifier-parser-test-results.json": (25, 25, 0),
-    "live-sidecar-test-results.json": (75, 75, 0),
+    "classifier-parser-test-results.json": (28, 28, 0),
+    "live-sidecar-test-results.json": (78, 78, 0),
     "post-mutation-focused-test-results.json": (2, 2, 0),
 }
 
@@ -51,13 +61,19 @@ def validate_receipts() -> None:
         actual = (summary["tests"], summary["passed"], summary["failed"])
         assert actual == expected, f"{name}: expected {expected}, got {actual}"
 
-    for name, expected_method in MUTATIONS.items():
+    for name, (expected_method, expected_invariant) in MUTATIONS.items():
         results = load_json(name)["results"]
         summary = results["summary"]
         assert (summary["tests"], summary["passed"], summary["failed"]) == (1, 0, 1), name
         tests = results["tests"]
         assert len(tests) == 1 and tests[0]["status"] == "failed", name
         assert tests[0]["name"].endswith(expected_method), name
+        failure_text = " ".join(
+            str(tests[0].get(field, "")) for field in ("message", "trace", "status")
+        )
+        assert f"[invariant:{expected_invariant}]" in failure_text, (
+            f"{name}: failure does not attribute to invariant {expected_invariant}"
+        )
 
     full_tests = load_json("live-sidecar-test-results.json")["results"]["tests"]
     allocator_return_proof = (
@@ -73,7 +89,7 @@ def validate_receipts() -> None:
 
 def validate_race() -> None:
     race = load_json("append-durability-race.json")
-    assert race["schemaVersion"] == 2
+    assert race["schemaVersion"] == 3
     provider = race["providerProfile"]
     assert provider["daprRuntime"] == "1.18.1"
     assert provider["stateStoreType"] == "state.redis"
@@ -116,7 +132,14 @@ def validate_race() -> None:
     assert final_event["correlationId"] == race["actorContender"]["messageId"]
     assert final_event["causationId"] == race["actorContender"]["messageId"]
     assert final_event["messageId"] == race["actorContender"]["survivingEventMessageId"]
-    assert all(race["invariants"].values())
+    # The race test now records these two facts instead of requiring them, so the reviewed
+    # capture is pinned here: the validator asserts what was observed, while the test stays
+    # outcome-neutral for any other provider profile.
+    assert race["keyAddressability"]["classification"] == "actor-key-absent-from-generic-namespace"
+    assert race["keyAddressability"]["compositeActorRedisReadable"] is True
+    assert race["final"]["metadataEtagPresent"] is False
+
+    assert all(value is True for value in race["invariants"].values())
     observation = race["observation"]
     assert observation["classification"] == "same-key-overwrite-raw-durable-write-lost"
     assert observation["isInternallyConsistent"] is True
@@ -127,6 +150,7 @@ def validate_race() -> None:
 
 def validate_generic_control() -> None:
     control = load_json("generic-etag-control.json")
+    assert control["schemaVersion"] == 2
     assert control["interveningUpdate"]["etagAdvanced"] is True
     stale = control["staleReplay"]
     assert stale["status"] == 409

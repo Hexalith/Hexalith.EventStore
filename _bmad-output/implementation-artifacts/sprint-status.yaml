@@ -111,7 +111,7 @@ development_status:
   4-2-resume-and-idempotency-integrity: done
   4-3-deterministic-replay-dispatch-and-serialization: done
   4-4-committed-event-publication-recovery: done
-  4-5-append-durability-race-evidence: review
+  4-5-append-durability-race-evidence: in-progress
   4-6-global-position-sharding-spec-renegotiation: backlog
   4-7-tenants-query-provenance-follow-up: backlog
   4-8-durable-admission-evidence-ledger: backlog

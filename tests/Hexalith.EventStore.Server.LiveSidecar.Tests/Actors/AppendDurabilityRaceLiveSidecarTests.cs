@@ -161,6 +161,14 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
                 using var gateCancellation = new CancellationTokenSource(OperationTimeout);
                 await session.WaitForFirstAllocationAsync(gateCancellation.Token).ConfigureAwait(true);
                 actorTaskIncompleteAtGate = !actorTask.IsCompleted;
+
+                // Perturbation: release the gate before the contending writers run, so the actor
+                // is no longer held across the probes. Breaks the observed hold, not an assertion.
+                if (IsMutation("gate-timing"))
+                {
+                    session.Release();
+                    await actorTask.ConfigureAwait(true);
+                }
             }
             catch (Exception ex)
             {
@@ -202,33 +210,42 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
                     actorTaskIncompleteAfterRaw = !actorTask.IsCompleted;
                 }
 
-                try
+                // Perturbation: skip the namespace probe entirely, so the run cannot say which
+                // namespace exposed the key.
+                if (!IsMutation("key-addressability"))
                 {
-                    using var addressCancellation = new CancellationTokenSource(OperationTimeout);
-                    using var addressRequest = new HttpRequestMessage(
-                        HttpMethod.Get,
-                        $"{_fixture.DaprHttpEndpoint}/v1.0/state/statestore/{Uri.EscapeDataString(identity.MetadataKey)}");
-                    using HttpResponseMessage addressResponse = await http
-                        .SendAsync(addressRequest, HttpCompletionOption.ResponseContentRead, addressCancellation.Token)
-                        .ConfigureAwait(true);
-                    genericActorKeyStatusCode = addressResponse.StatusCode;
-                    genericActorKeyResponseBody = await addressResponse.Content
-                        .ReadAsStringAsync(addressCancellation.Token)
-                        .ConfigureAwait(true);
-                }
-                catch (Exception ex)
-                {
-                    genericActorKeyException = ex;
-                }
-                finally
-                {
-                    genericActorKeyCompletedAtUtc = DateTimeOffset.UtcNow;
+                    try
+                    {
+                        using var addressCancellation = new CancellationTokenSource(OperationTimeout);
+                        using var addressRequest = new HttpRequestMessage(
+                            HttpMethod.Get,
+                            $"{_fixture.DaprHttpEndpoint}/v1.0/state/statestore/{Uri.EscapeDataString(identity.MetadataKey)}");
+                        using HttpResponseMessage addressResponse = await http
+                            .SendAsync(addressRequest, HttpCompletionOption.ResponseContentRead, addressCancellation.Token)
+                            .ConfigureAwait(true);
+                        genericActorKeyStatusCode = addressResponse.StatusCode;
+                        genericActorKeyResponseBody = await addressResponse.Content
+                            .ReadAsStringAsync(addressCancellation.Token)
+                            .ConfigureAwait(true);
+                    }
+                    catch (Exception ex)
+                    {
+                        genericActorKeyException = ex;
+                    }
                 }
 
-                intermediateEventCapture = await TryReadActorStateAsync<EventEnvelope>(
-                    $"{identity.EventStreamKeyPrefix}1").ConfigureAwait(true);
-                intermediateMetadataCapture = await TryReadActorStateAsync<AggregateMetadata>(
-                    identity.MetadataKey).ConfigureAwait(true);
+                genericActorKeyCompletedAtUtc = DateTimeOffset.UtcNow;
+
+                // Perturbation: skip the gated readback, so an acknowledged raw write is never
+                // proven durable while the actor is still held.
+                if (!IsMutation("intermediate-raw-durability"))
+                {
+                    intermediateEventCapture = await TryReadActorStateAsync<EventEnvelope>(
+                        $"{identity.EventStreamKeyPrefix}1").ConfigureAwait(true);
+                    intermediateMetadataCapture = await TryReadActorStateAsync<AggregateMetadata>(
+                        identity.MetadataKey).ConfigureAwait(true);
+                }
+
                 intermediateReadAtUtc = DateTimeOffset.UtcNow;
                 actorTaskIncompleteAfterIntermediate = !actorTask.IsCompleted;
             }
@@ -292,13 +309,38 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
             && session.GateInterceptions == 1
             && string.Equals(session.TargetActorId, identity.ActorId, StringComparison.Ordinal)
             && string.Equals(session.TargetMessageId, actorMessageId, StringComparison.Ordinal);
-        bool keyAddressabilityProven = genericActorKeyStatusCode == HttpStatusCode.NoContent
-            && genericActorKeyException is null
-            && string.IsNullOrEmpty(genericActorKeyResponseBody)
-            && (intermediateMetadata is not null || finalMetadata is not null);
+        bool compositeActorKeyReadable = intermediateMetadata is not null || finalMetadata is not null;
+
+        // Outcome-neutral: record which namespace exposed the actor key instead of requiring the
+        // profile-specific answer. The run fails only when the probe cannot be classified at all,
+        // or when neither namespace was readable -- the vacuous pass the I/O matrix forbids.
+        string keyAddressabilityClassification = genericActorKeyException is not null
+            ? "generic-probe-failed"
+            : genericActorKeyStatusCode is null
+                ? "generic-probe-not-attempted"
+                : genericActorKeyStatusCode == HttpStatusCode.NoContent
+                    && string.IsNullOrEmpty(genericActorKeyResponseBody)
+                    ? "actor-key-absent-from-generic-namespace"
+                    : genericActorKeyStatusCode == HttpStatusCode.OK
+                        && !string.IsNullOrEmpty(genericActorKeyResponseBody)
+                        ? "actor-key-readable-through-generic-namespace"
+                        : "generic-probe-unrecognized-response";
+        bool keyAddressabilityProven = genericActorKeyException is null
+            && genericActorKeyStatusCode is not null
+            && !string.Equals(
+                keyAddressabilityClassification,
+                "generic-probe-unrecognized-response",
+                StringComparison.Ordinal)
+            && compositeActorKeyReadable;
+
+        // Perturbation: match the actor contender against an identity no persisted event carries.
+        // Scoped to the exact-contender check so attribution stays on final-state-consistency.
+        string exactMatchActorMessageId = IsMutation("final-state-consistency")
+            ? $"{actorMessageId}-mutated"
+            : actorMessageId;
         bool exactContendersOnly = finalEvents.All(
             item => IsExactRawContender(item, rawEvent)
-                || IsExactActorContender(item, identity, actorMessageId, rawEvent.EventTypeName));
+                || IsExactActorContender(item, identity, exactMatchActorMessageId, rawEvent.EventTypeName));
         bool finalReadsSucceeded = finalMetadataCapture.ExceptionType is null
             && finalEventCaptures.All(item => item.ExceptionType is null)
             && unexpectedNextEventCapture?.ExceptionType is null;
@@ -314,8 +356,11 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
                     && finalEvents.Select(item => item.MessageId).Distinct(StringComparer.Ordinal).Count() == finalEvents.Count
                     && finalEvents.All(item => item.Identity == identity)
                     && (finalSequence == 0 || finalMetadata.LastModified == finalEvents[^1].Timestamp)
-                    && finalMetadata.ETag is null
                     && unexpectedNextEventCapture?.Value is null);
+
+        // Recorded, not required: a provider that populates the metadata ETag is a first-class
+        // observation for the deferred fencing decision, not a test failure.
+        bool finalMetadataEtagPresent = !string.IsNullOrEmpty(finalMetadata?.ETag);
 
         bool rawSurvives = finalEvents.Any(item => IsExactRawContender(item, rawEvent));
         bool actorSurvives = finalEvents.Any(
@@ -326,6 +371,11 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
         bool actorConflictSignalled = actorResult?.FailureReason == "ConcurrencyConflict"
             || actorException is InvalidOperationException
             || actorException?.GetType().Name.Contains("ConcurrencyConflict", StringComparison.Ordinal) == true;
+        // Perturbation: classify against a sequence the final state does not exhibit, so the
+        // classification stops corroborating the observed allocation telemetry.
+        long classifierSequence = IsMutation("conflict-retry-classification")
+            ? finalSequence + 1
+            : finalSequence;
         AppendDurabilityRaceClassifier.Result classification = AppendDurabilityRaceClassifier.Classify(
             new AppendDurabilityRaceClassifier.Input(
                 rawStatusCode is null ? null : (int)rawStatusCode.Value,
@@ -337,7 +387,7 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
                 actorResult is not null && !actorResult.Accepted,
                 actorConflictSignalled,
                 actorException?.GetType().FullName,
-                finalSequence,
+                classifierSequence,
                 retryCount));
         bool retryClassificationConsistent = session.AllocationAttempts >= 1
             && session.GateInterceptions == 1
@@ -357,7 +407,7 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
             SHA256.HashData(Encoding.UTF8.GetBytes(_fixture.StateStoreComponentYaml))).ToLowerInvariant();
         var evidence = new
         {
-            schemaVersion = 2,
+            schemaVersion = 3,
             baselineCommit = "0776785f494fcefc8ad933b5b17b9c8d5cbe0513",
             providerProfile = new
             {
@@ -432,7 +482,8 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
                 genericStateBody = genericActorKeyResponseBody,
                 genericStateExceptionType = genericActorKeyException?.GetType().FullName,
                 genericStateExceptionMessage = genericActorKeyException?.Message,
-                compositeActorRedisReadable = intermediateMetadata is not null || finalMetadata is not null,
+                compositeActorRedisReadable = compositeActorKeyReadable,
+                classification = keyAddressabilityClassification,
             },
             intermediate = new
             {
@@ -449,6 +500,7 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
                 readAtUtc = finalReadAtUtc,
                 metadata = finalMetadata,
                 metadataRead = finalMetadataCapture,
+                metadataEtagPresent = finalMetadataEtagPresent,
                 finalSequenceWithinBounds,
                 eventReads = finalEventCaptures,
                 events = finalEvents,
@@ -613,14 +665,29 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
         }
     }
 
-    private static void AssertInvariant(bool satisfied, string mutationName, string message)
-    {
-        bool mutate = string.Equals(
+    /// <summary>
+    /// Asserts one material invariant. The failure message carries a stable
+    /// <c>[invariant:&lt;name&gt;]</c> tag so a mutation receipt can be bound to the invariant that
+    /// actually failed rather than to the filename the operator chose.
+    /// </summary>
+    /// <param name="satisfied">The observed invariant value.</param>
+    /// <param name="invariantName">The stable invariant name.</param>
+    /// <param name="message">The human-readable requirement.</param>
+    private static void AssertInvariant(bool satisfied, string invariantName, string message)
+        => satisfied.ShouldBeTrue($"[invariant:{invariantName}] {message}");
+
+    /// <summary>
+    /// Indicates whether the named input perturbation is armed. A mutation changes what the
+    /// harness does -- it never inverts an assertion -- so a conjunct that is true by program
+    /// construction cannot produce a passing mutation receipt.
+    /// </summary>
+    /// <param name="mutationName">The perturbation name.</param>
+    /// <returns><see langword="true"/> when the perturbation is armed.</returns>
+    private static bool IsMutation(string mutationName)
+        => string.Equals(
             Environment.GetEnvironmentVariable(MutationEnvironmentVariable),
             mutationName,
             StringComparison.Ordinal);
-        (mutate ? !satisfied : satisfied).ShouldBeTrue(message);
-    }
 
     private async Task WriteEvidenceAsync(string fileName, object evidence)
     {

@@ -32,11 +32,17 @@ public sealed class AppendDurabilityRaceClassifierTests
             { Input(204, rawSurvives: true, finalSequence: 2, retryCount: 1), "inconsistent-sequence-2-outcome", false, false, false },
             { Input(204, actorSurvives: true, rawDurable: false), "inconsistent-raw-acknowledgement-not-proven-durable", false, false, false },
             { Input(409, actorConflict: true, rawSurvives: true), "actor-writer-conflict-rejected", true, false, true },
+            { Input(204, rawSurvives: true, actorSurvives: true), "inconsistent-single-sequence-has-two-writers", false, false, false },
+            { Input(204, rawSurvives: true, actorRejected: true), "actor-writer-rejected", true, false, true },
+            { Input(204, rawSurvives: true), "raw-writer-survived", true, false, false },
             { Input(409, finalSequence: 3), "inconsistent-final-sequence", false, false, false },
             { Input(409), "inconsistent-final-writer-missing", false, false, false },
         };
 
-    /// <summary>Verifies every classifier branch is stable and carries its semantic flags.</summary>
+    /// <summary>
+    /// Verifies every classifier branch is stable and carries its semantic flags. The case table
+    /// covers all twenty reachable classification names; the classifier returns no other name.
+    /// </summary>
     [Theory]
     [MemberData(nameof(Cases))]
     public void Classify_ReturnsExpectedOutcome(

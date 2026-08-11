@@ -145,11 +145,10 @@ public static class AppendDurabilityRaceClassifier
                 return new Result("inconsistent-raw-acknowledgement-not-proven-durable", false, false, false);
             }
 
-            return new Result(
-                rawConflictRejected ? "raw-writer-conflict-rejected" : "actor-writer-survived",
-                true,
-                false,
-                rawConflictRejected);
+            // Reaching here requires a recognized 409/412 raw rejection: the infrastructure gate
+            // above already returned for every other non-2xx shape, and both 2xx cases are
+            // handled by the two branches immediately above.
+            return new Result("raw-writer-conflict-rejected", true, false, true);
         }
 
         return new Result("inconsistent-final-writer-missing", false, false, false);
