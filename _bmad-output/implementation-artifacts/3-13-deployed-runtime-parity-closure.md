@@ -35,7 +35,7 @@ source_files:
 
 # Story 3.13: Deployed Runtime Parity Closure
 
-Status: in-review
+Status: in-progress
 
 <!-- Ultimate context engine analysis completed - comprehensive developer guide created. -->
 
@@ -299,26 +299,28 @@ deployment mutation, Story 1.20/3.12 status change, or G5 classification.
 
 Chunk 1/3 (tests only) — `bmad-code-review` 2026-08-11 against `1d6e9321...HEAD` File List slice `DeployedRuntimeParityClosureTests.cs`.
 
-- [ ] [Review][Decision] ValidateRuntimeEquivalence depth — Today it only asserts Production hosting-environment strings and declarative `result`/`contract_equivalence` fields (`ValidateRuntimeEquivalence` ~3102–3111). Story runtime proof also requires equal bounded `/alive` smoke on both immutable children. Decide whether equivalence must compare per-platform digest/HTTP/readiness/cleanup facts here, or remain a Production-contract gate with platform equality owned only by `ValidateRuntimeExecution`.
-- [ ] [Review][Patch] WaitForProcessExit treats post-kill exit as success and callers hash truncated stdout [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:5404]
-- [ ] [Review][Patch] DerivedClosureRejectsActualIncompleteLineageAndDeclarativeTampering mutates committed evidence in place [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:535]
-- [ ] [Review][Patch] Package exact-set check ignores nested files under archive_root subdirectories [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:2229]
-- [ ] [Review][Patch] Acceptance/control symlink-escape tests hard-fail when links are unavailable [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:990]
-- [ ] [Review][Patch] Missing mutable-tag-only identity negative control required by Testing requirements / AC2
-- [ ] [Review][Patch] Missing OCI platform-set negatives (third child, unknown, nested index, duplicate) [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:2688]
-- [ ] [Review][Patch] Missing config os/architecture mismatch negative against parent descriptor [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:2777]
-- [ ] [Review][Patch] Zero poll_interval_seconds fail-closed guard is unexercised [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:3956]
-- [ ] [Review][Patch] MalformedChecksumManifestsFailClosed omits well-formed entry whose SHA does not match file bytes [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:271]
-- [ ] [Review][Patch] CanonicalLineageIgnoresExecutionOnlyRuntimeFacts never asserts identity-affecting runtime mutations change the lineage [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:504]
-- [ ] [Review][Patch] Missing expired/inaccessible retained-evidence negative control required by Testing requirements
-- [ ] [Review][Patch] Missing environment-vs-product failure-class negatives required by Task 6 / Testing requirements
-- [ ] [Review][Patch] ProhibitedCrossLineageSplicesFailClosed only tweaks a few fields on a synthetic pass fixture [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:1015]
+- [x] [Review][Decision] ValidateRuntimeEquivalence depth — resolved 2026-08-11: keep layered. `ValidateRuntimeEquivalence` stays the Production-contract gate (`contract_equivalence` / hosting env); platform equality remains owned by `ValidateRuntimeExecution`. Finding dismissed (not patched).
+- [x] [Review][Patch] WaitForProcessExit treats post-kill exit as success and callers hash truncated stdout — fixed: timeout/kill always returns false
+- [x] [Review][Patch] DerivedClosureRejectsActualIncompleteLineageAndDeclarativeTampering mutates committed evidence in place — fixed: copy live evidence to temp before mutations
+- [x] [Review][Patch] Package exact-set check ignores nested files under archive_root subdirectories — fixed: reject nested dirs/files; added `nested-archive` theory case
+- [x] [Review][Patch] Acceptance/control symlink-escape tests hard-fail when links are unavailable — fixed: Assert.Skip when symlink creation unsupported
+- [x] [Review][Patch] Missing mutable-tag-only identity negative control — fixed: `MutableTagOnlyIdentityFailsClosed`
+- [x] [Review][Patch] Missing OCI platform-set negatives — fixed: `OciGraphRejectsPlatformSetMutations`
+- [x] [Review][Patch] Missing config os/architecture mismatch negative — fixed: `OciGraphRejectsConfigArchitectureMismatch`
+- [x] [Review][Patch] Zero poll_interval_seconds fail-closed guard is unexercised — fixed: `RuntimeLogRejectsZeroPollInterval`
+- [x] [Review][Patch] MalformedChecksumManifestsFailClosed omits mismatched hash for existing file — fixed: `ChecksumManifestRejectsMismatchedHashForExistingFile`
+- [x] [Review][Patch] CanonicalLineageIgnoresExecutionOnlyRuntimeFacts never asserts identity-affecting mutations — fixed: assert outcome/readiness_result change lineage
+- [x] [Review][Patch] Missing expired/inaccessible retained-evidence negative — fixed: `InaccessibleRetainedEvidenceFailsClosed` (expiry already covered by deployment-authority tests)
+- [x] [Review][Patch] Missing environment-vs-product failure-class negatives — fixed: classification validator + `ClassifiedRuntimeFailuresEachBlockEqually` / `UnclassifiedRuntimeFailureIsRejected`
+- [x] [Review][Patch] ProhibitedCrossLineageSplicesFailClosed only tweaks a few fields — fixed: fuller splice assertions + ValidateRelease check
 - [x] [Review][Defer] ResolveWithin uses Ordinal StartsWith on Path.GetFullPath roots [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:5255] — deferred, pre-existing
 - [x] [Review][Defer] FieldNameIsSupportSafe fragment matching can false-positive legitimate names [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:4134] — deferred, pre-existing
 - [x] [Review][Defer] LimitationsContainMutationProhibitions accepts weak keyword substrings [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:4282] — deferred, pre-existing
 - [x] [Review][Defer] ResolveWithin TOCTOU between RejectReparsePoint and later file open [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:5260] — deferred, pre-existing
 - [x] [Review][Defer] RunGit/ComputePinnedBuildsToolSha256 sync-over-async via GetAwaiter().GetResult() [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:5334] — deferred, pre-existing
 - [x] [Review][Defer] ValueIsSupportSafe misses private IPs embedded in non-URI free text [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:4155] — deferred, pre-existing
+
+Chunk 1 patches applied 2026-08-11. Focused filter passed 156/156. Review chunks 2–3 (evidence JSON/raw, docs/status) remain. Story stays non-`done` (AC2/AC4 open, 0/3 acceptances).
 
 ## Dev Notes
 
@@ -661,8 +663,8 @@ OpenAI Codex (GPT-5)
 
 ## Story Completion Status
 
-- Status set to `in-review` because the reproducible `fail-closed` packet still has external
-  evidence blockers.
+- Status set to `in-progress` after chunk-1 code-review patches (2026-08-11). Fail-closed
+  packet still has external evidence blockers; AC2/AC4 remain open.
 - AC1 and AC3 pass. Raw OCI descriptor/body relationships pass, but child/config response metadata,
   independently replayable runtime facts, package bytes, release/source authority, valid
   provenance labels, and Production runtime equivalence are incomplete, so AC2 does not pass.

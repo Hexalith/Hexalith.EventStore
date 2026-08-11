@@ -275,6 +275,17 @@ public sealed class DeployedRuntimeParityClosureTests
     }
 
     /// <summary>
+    /// Verifies a well-formed checksum entry whose digest does not match the file bytes fails closed.
+    /// </summary>
+    [Fact]
+    public void ChecksumManifestRejectsMismatchedHashForExistingFile()
+    {
+        string evidence = Path.Combine(FindRepositoryRoot(), EvidenceRelativePath);
+        string mismatched = new string('a', 64) + "  index.raw\n";
+        VerifyChecksumManifest(Encoding.UTF8.GetBytes(mismatched), evidence, ["index.raw"]).ShouldBeFalse();
+    }
+
+    /// <summary>
     /// Verifies evidence paths cannot escape their root through a symbolic link.
     /// </summary>
     [Fact]
@@ -521,6 +532,14 @@ public sealed class DeployedRuntimeParityClosureTests
 
             runtime["platforms"]![0]!["child_digest"] = "sha256:" + new string('0', 64);
             ComputeLineageMaterialSha256(candidate).ShouldNotBe(before);
+
+            string afterDigest = ComputeLineageMaterialSha256(candidate);
+            runtime["platforms"]![0]!["outcome"] = "fail";
+            ComputeLineageMaterialSha256(candidate).ShouldNotBe(afterDigest);
+
+            string afterOutcome = ComputeLineageMaterialSha256(candidate);
+            runtime["platforms"]![0]!["readiness_result"] = "fail";
+            ComputeLineageMaterialSha256(candidate).ShouldNotBe(afterOutcome);
         }
         finally
         {
@@ -535,28 +554,30 @@ public sealed class DeployedRuntimeParityClosureTests
     public void DerivedClosureRejectsActualIncompleteLineageAndDeclarativeTampering()
     {
         string root = FindRepositoryRoot();
-        string evidence = Path.Combine(root, EvidenceRelativePath);
-        JsonObject crosswalk = LoadCrosswalk(root);
-        byte[] crosswalkBytes = File.ReadAllBytes(Path.Combine(evidence, "identity-crosswalk.json"));
-        byte[] subjectBytes = File.ReadAllBytes(Path.Combine(evidence, "review-subject.json"));
-        byte[] coreBytes = File.ReadAllBytes(Path.Combine(evidence, "evidence-core-sha256.txt"));
-        byte[] proofBytes = File.ReadAllBytes(Path.Combine(root, ProofRelativePath));
-        byte[] outerBytes = File.ReadAllBytes(Path.Combine(evidence, "evidence-sha256.txt"));
-
-        ValidateActualFailClosedSubject(
-            crosswalk,
-            crosswalkBytes,
-            subjectBytes,
-            coreBytes,
-            proofBytes,
-            outerBytes,
-            evidence).ShouldBeTrue();
-
-        string smokePath = Path.Combine(evidence, "smoke-results.json");
-        byte[] originalSmoke = File.ReadAllBytes(smokePath);
+        string liveEvidence = Path.Combine(root, EvidenceRelativePath);
+        string cleanupRoot = Path.Combine(Path.GetTempPath(), "story-3-13-derived-" + Guid.NewGuid().ToString("N"));
+        string evidence = Path.Combine(cleanupRoot, ApprovedSourceSha, ExpectedIndexDigest[7..]);
+        CopyDirectory(liveEvidence, evidence);
         try
         {
-            JsonObject dishonestSmoke = JsonNode.Parse(originalSmoke)!.AsObject();
+            JsonObject crosswalk = LoadCrosswalk(root);
+            byte[] crosswalkBytes = File.ReadAllBytes(Path.Combine(evidence, "identity-crosswalk.json"));
+            byte[] subjectBytes = File.ReadAllBytes(Path.Combine(evidence, "review-subject.json"));
+            byte[] coreBytes = File.ReadAllBytes(Path.Combine(evidence, "evidence-core-sha256.txt"));
+            byte[] proofBytes = File.ReadAllBytes(Path.Combine(root, ProofRelativePath));
+            byte[] outerBytes = File.ReadAllBytes(Path.Combine(evidence, "evidence-sha256.txt"));
+
+            ValidateActualFailClosedSubject(
+                crosswalk,
+                crosswalkBytes,
+                subjectBytes,
+                coreBytes,
+                proofBytes,
+                outerBytes,
+                evidence).ShouldBeTrue();
+
+            string smokePath = Path.Combine(evidence, "smoke-results.json");
+            JsonObject dishonestSmoke = JsonNode.Parse(File.ReadAllBytes(smokePath))!.AsObject();
             dishonestSmoke["result"] = "pass";
             File.WriteAllBytes(smokePath, JsonSerializer.SerializeToUtf8Bytes(dishonestSmoke));
             ValidateActualFailClosedSubject(
@@ -567,16 +588,12 @@ public sealed class DeployedRuntimeParityClosureTests
                 proofBytes,
                 outerBytes,
                 evidence).ShouldBeFalse();
-        }
-        finally
-        {
-            File.WriteAllBytes(smokePath, originalSmoke);
-        }
+            // Restore honest smoke so later mutations are independent.
+            File.WriteAllBytes(
+                smokePath,
+                File.ReadAllBytes(Path.Combine(liveEvidence, "smoke-results.json")));
 
-        string packageAvailabilityPath = Path.Combine(evidence, "package-availability.json");
-        byte[] originalPackageAvailability = File.ReadAllBytes(packageAvailabilityPath);
-        try
-        {
+            string packageAvailabilityPath = Path.Combine(evidence, "package-availability.json");
             JsonObject recoveredPackages = new()
             {
                 ["schema"] = "hexalith.eventstore.story-3-13-package-availability/v2",
@@ -598,17 +615,12 @@ public sealed class DeployedRuntimeParityClosureTests
                 proofBytes,
                 outerBytes,
                 evidence).ShouldBeFalse();
-        }
-        finally
-        {
-            File.WriteAllBytes(packageAvailabilityPath, originalPackageAvailability);
-        }
+            File.WriteAllBytes(
+                packageAvailabilityPath,
+                File.ReadAllBytes(Path.Combine(liveEvidence, "package-availability.json")));
 
-        string runtimeVerificationPath = Path.Combine(evidence, "runtime-verification.json");
-        byte[] originalRuntimeVerification = File.ReadAllBytes(runtimeVerificationPath);
-        try
-        {
-            JsonObject driftedCitation = JsonNode.Parse(originalRuntimeVerification)!.AsObject();
+            string runtimeVerificationPath = Path.Combine(evidence, "runtime-verification.json");
+            JsonObject driftedCitation = JsonNode.Parse(File.ReadAllBytes(runtimeVerificationPath))!.AsObject();
             driftedCitation["contract"]!["actual_hosting_environment"] = "Production";
             File.WriteAllBytes(
                 runtimeVerificationPath,
@@ -621,17 +633,12 @@ public sealed class DeployedRuntimeParityClosureTests
                 proofBytes,
                 outerBytes,
                 evidence).ShouldBeFalse();
-        }
-        finally
-        {
-            File.WriteAllBytes(runtimeVerificationPath, originalRuntimeVerification);
-        }
+            File.WriteAllBytes(
+                runtimeVerificationPath,
+                File.ReadAllBytes(Path.Combine(liveEvidence, "runtime-verification.json")));
 
-        string registryPath = Path.Combine(evidence, "registry-readback.json");
-        byte[] originalRegistry = File.ReadAllBytes(registryPath);
-        try
-        {
-            JsonObject dishonestRegistry = JsonNode.Parse(originalRegistry)!.AsObject();
+            string registryPath = Path.Combine(evidence, "registry-readback.json");
+            JsonObject dishonestRegistry = JsonNode.Parse(File.ReadAllBytes(registryPath))!.AsObject();
             dishonestRegistry["shared_validator"]!["cli_candidate_consequence"] =
                 "Weakened SemVer validation accepted the quarantine tag.";
             File.WriteAllBytes(registryPath, JsonSerializer.SerializeToUtf8Bytes(dishonestRegistry));
@@ -643,63 +650,69 @@ public sealed class DeployedRuntimeParityClosureTests
                 proofBytes,
                 outerBytes,
                 evidence).ShouldBeFalse();
+            File.WriteAllBytes(
+                registryPath,
+                File.ReadAllBytes(Path.Combine(liveEvidence, "registry-readback.json")));
+
+            EvaluateClosure(crosswalk, crosswalkBytes, subjectBytes, root, evidence, coreBytes, proofBytes)
+                .ShouldBeFalse();
+
+            JsonObject tampered = Clone(crosswalk);
+            JsonObject verdict = tampered["verdict"]!.AsObject();
+            verdict["decision"] = "pass";
+            verdict["story_may_be_done"] = true;
+            verdict["blockers"] = new JsonArray();
+            foreach ((string key, _) in verdict["checks"]!.AsObject())
+            {
+                verdict["checks"]![key] = "pass";
+            }
+
+            byte[] tamperedBytes = JsonSerializer.SerializeToUtf8Bytes(tampered);
+            EvaluateClosure(tampered, tamperedBytes, subjectBytes, root, evidence, coreBytes, proofBytes)
+                .ShouldBeFalse();
+
+            JsonObject tamperedSubject = JsonNode.Parse(subjectBytes)!.AsObject();
+            tamperedSubject["proposed_decision"] = "pass";
+            ValidateActualFailClosedSubject(
+                crosswalk,
+                crosswalkBytes,
+                JsonSerializer.SerializeToUtf8Bytes(tamperedSubject),
+                coreBytes,
+                proofBytes,
+                outerBytes,
+                evidence).ShouldBeFalse();
+
+            JsonObject dishonestChecks = Clone(crosswalk["verdict"]!["checks"]!.AsObject());
+            dishonestChecks["runtime_both_platforms"] = "pass";
+            ValidateFailClosedVerdictChecks(dishonestChecks).ShouldBeFalse();
+            dishonestChecks = Clone(crosswalk["verdict"]!["checks"]!.AsObject());
+            dishonestChecks["oci_graph"] = "pass";
+            ValidateFailClosedVerdictChecks(dishonestChecks).ShouldBeFalse();
+            dishonestChecks = Clone(crosswalk["verdict"]!["checks"]!.AsObject());
+            dishonestChecks["deployment_authority"] = "pass";
+            ValidateFailClosedVerdictChecks(dishonestChecks).ShouldBeFalse();
+
+            byte[] tamperedOuter = Encoding.UTF8.GetBytes(
+                Encoding.UTF8.GetString(outerBytes).Replace(
+                    ComputeSha256(subjectBytes),
+                    new string('0', 64),
+                    StringComparison.Ordinal));
+            ValidateActualFailClosedSubject(
+                crosswalk,
+                crosswalkBytes,
+                subjectBytes,
+                coreBytes,
+                proofBytes,
+                tamperedOuter,
+                evidence).ShouldBeFalse();
         }
         finally
         {
-            File.WriteAllBytes(registryPath, originalRegistry);
+            if (Directory.Exists(cleanupRoot))
+            {
+                Directory.Delete(cleanupRoot, recursive: true);
+            }
         }
-
-        EvaluateClosure(crosswalk, crosswalkBytes, subjectBytes, root, evidence, coreBytes, proofBytes)
-            .ShouldBeFalse();
-
-        JsonObject tampered = Clone(crosswalk);
-        JsonObject verdict = tampered["verdict"]!.AsObject();
-        verdict["decision"] = "pass";
-        verdict["story_may_be_done"] = true;
-        verdict["blockers"] = new JsonArray();
-        foreach ((string key, _) in verdict["checks"]!.AsObject())
-        {
-            verdict["checks"]![key] = "pass";
-        }
-
-        byte[] tamperedBytes = JsonSerializer.SerializeToUtf8Bytes(tampered);
-        EvaluateClosure(tampered, tamperedBytes, subjectBytes, root, evidence, coreBytes, proofBytes)
-            .ShouldBeFalse();
-
-        JsonObject tamperedSubject = JsonNode.Parse(subjectBytes)!.AsObject();
-        tamperedSubject["proposed_decision"] = "pass";
-        ValidateActualFailClosedSubject(
-            crosswalk,
-            crosswalkBytes,
-            JsonSerializer.SerializeToUtf8Bytes(tamperedSubject),
-            coreBytes,
-            proofBytes,
-            outerBytes,
-            evidence).ShouldBeFalse();
-
-        JsonObject dishonestChecks = Clone(crosswalk["verdict"]!["checks"]!.AsObject());
-        dishonestChecks["runtime_both_platforms"] = "pass";
-        ValidateFailClosedVerdictChecks(dishonestChecks).ShouldBeFalse();
-        dishonestChecks = Clone(crosswalk["verdict"]!["checks"]!.AsObject());
-        dishonestChecks["oci_graph"] = "pass";
-        ValidateFailClosedVerdictChecks(dishonestChecks).ShouldBeFalse();
-        dishonestChecks = Clone(crosswalk["verdict"]!["checks"]!.AsObject());
-        dishonestChecks["deployment_authority"] = "pass";
-        ValidateFailClosedVerdictChecks(dishonestChecks).ShouldBeFalse();
-
-        byte[] tamperedOuter = Encoding.UTF8.GetBytes(
-            Encoding.UTF8.GetString(outerBytes).Replace(
-                ComputeSha256(subjectBytes),
-                new string('0', 64),
-                StringComparison.Ordinal));
-        ValidateActualFailClosedSubject(
-            crosswalk,
-            crosswalkBytes,
-            subjectBytes,
-            coreBytes,
-            proofBytes,
-            tamperedOuter,
-            evidence).ShouldBeFalse();
     }
 
     /// <summary>
@@ -987,7 +1000,15 @@ public sealed class DeployedRuntimeParityClosureTests
                 RequiredRoles[0] + ".json");
             string externalReceiptPath = Path.Combine(cleanupRoot, "external-receipt.json");
             File.Move(receiptPath, externalReceiptPath);
-            File.CreateSymbolicLink(receiptPath, externalReceiptPath);
+            try
+            {
+                File.CreateSymbolicLink(receiptPath, externalReceiptPath);
+            }
+            catch (Exception exception) when (
+                exception is PlatformNotSupportedException or UnauthorizedAccessException or IOException)
+            {
+                Assert.Skip("Symbolic links are unavailable in this environment: " + exception.GetType().Name);
+            }
 
             EvaluateClosure(
                 crosswalk,
@@ -1021,20 +1042,43 @@ public sealed class DeployedRuntimeParityClosureTests
         {
             JsonObject mutated = Clone(crosswalk);
             JsonObject candidate = mutated["selected_candidates"]![0]!.AsObject();
+            const string CorrectiveReleaseSource = "77a9a442c0e6d0408957888e10c3a9accd634c99";
+            const string CorrectiveIndexDigest =
+                "sha256:db3ab41e187efc0de397fd1205660a0f685e2c94ecd8f4a8f1843ac567056bf6";
             if (spliceId == "story-1-20-source-packages-plus-v3.77.2-release-index")
             {
+                // Keep Story 1.20 source/package identity; splice in the v3.77.2 release/index half.
+                candidate["source"]!["sha"]!.GetValue<string>().ShouldBe(ApprovedSourceSha);
+                candidate["packages"]!["version"]!.GetValue<string>().ShouldBe(ApprovedPackageVersion);
                 candidate["release"]!["semantic_version"] = "3.77.2";
                 candidate["release"]!["semantic_tag"] = "v3.77.2";
-                candidate["release"]!["source_sha"] = "77a9a442c0e6d0408957888e10c3a9accd634c99";
-                candidate["oci"]!["index_digest"] =
-                    "sha256:db3ab41e187efc0de397fd1205660a0f685e2c94ecd8f4a8f1843ac567056bf6";
+                candidate["release"]!["source_sha"] = CorrectiveReleaseSource;
+                candidate["release"]!["source_exact_match"] = false;
+                candidate["oci"]!["index_digest"] = CorrectiveIndexDigest;
+                candidate["oci"]!["immutable_reference"] =
+                    ExpectedRegistry + "/" + ExpectedContainerRepository + "@" + CorrectiveIndexDigest;
+                candidate["source"]!["sha"]!.GetValue<string>()
+                    .ShouldNotBe(candidate["release"]!["source_sha"]!.GetValue<string>());
             }
             else
             {
-                candidate["source"]!["sha"] = "77a9a442c0e6d0408957888e10c3a9accd634c99";
+                // Keep the Story 1.20 proof index; splice in the v3.77.2 source/package half.
+                string retainedIndex = candidate["oci"]!["index_digest"]!.GetValue<string>();
+                retainedIndex.ShouldBe(
+                    crosswalk["selected_candidates"]![0]!["oci"]!["index_digest"]!.GetValue<string>());
+                candidate["source"]!["sha"] = CorrectiveReleaseSource;
                 candidate["packages"]!["version"] = "3.77.2";
+                foreach (JsonObject item in candidate["packages"]!["items"]!.AsArray()
+                    .Select(item => item!.AsObject()))
+                {
+                    item["version"] = "3.77.2";
+                }
+
+                candidate["source"]!["sha"]!.GetValue<string>().ShouldNotBe(ApprovedSourceSha);
+                candidate["oci"]!["index_digest"]!.GetValue<string>().ShouldBe(retainedIndex);
             }
 
+            ValidateRelease(candidate, root, evidence).ShouldBeFalse();
             byte[] mutatedBytes = JsonSerializer.SerializeToUtf8Bytes(mutated);
             byte[] subjectBytes = JsonSerializer.SerializeToUtf8Bytes(CreatePassingReviewSubject(
                 mutated,
@@ -1067,6 +1111,7 @@ public sealed class DeployedRuntimeParityClosureTests
     [InlineData("extra-archive")]
     [InlineData("mutated-bytes")]
     [InlineData("sidecar-file")]
+    [InlineData("nested-archive")]
     public void PackageArchiveDirectoryRejectsExtraOrMutatedNupkg(string mutation)
     {
         string root = FindRepositoryRoot();
@@ -1083,6 +1128,12 @@ public sealed class DeployedRuntimeParityClosureTests
             {
                 File.WriteAllText(Path.Combine(archiveRoot, "README.txt"), "sidecar");
             }
+            else if (mutation == "nested-archive")
+            {
+                string nested = Path.Combine(archiveRoot, "nested");
+                Directory.CreateDirectory(nested);
+                File.WriteAllText(Path.Combine(nested, "smuggled.nupkg"), "nested-payload");
+            }
             else
             {
                 string archive = crosswalk["selected_candidates"]![0]!["packages"]!["items"]![0]!["archive"]!
@@ -1091,6 +1142,252 @@ public sealed class DeployedRuntimeParityClosureTests
             }
 
             ValidatePackageBytes(crosswalk["selected_candidates"]![0]!.AsObject(), evidence).ShouldBeFalse();
+            EvaluateWithFreshReview(
+                crosswalk,
+                root,
+                evidence,
+                proofBytes,
+                packageManifestSha256).ShouldBeFalse();
+        }
+        finally
+        {
+            Directory.Delete(cleanupRoot, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies a mutable tag-only OCI identity cannot authorize deployment without an index digest.
+    /// </summary>
+    [Fact]
+    public void MutableTagOnlyIdentityFailsClosed()
+    {
+        string root = FindRepositoryRoot();
+        (string cleanupRoot, string evidence, JsonObject crosswalk, _, _, _, byte[] proofBytes,
+            string packageManifestSha256) = CreatePassingFixture(root);
+        try
+        {
+            JsonObject oci = crosswalk["selected_candidates"]![0]!["oci"]!.AsObject();
+            oci["immutable_reference"] =
+                ExpectedRegistry + "/" + ExpectedContainerRepository + ":v" + ApprovedPackageVersion;
+            ValidateOciGraph(crosswalk, root, evidence).ShouldBeFalse();
+            EvaluateWithFreshReview(
+                crosswalk,
+                root,
+                evidence,
+                proofBytes,
+                packageManifestSha256).ShouldBeFalse();
+        }
+        finally
+        {
+            Directory.Delete(cleanupRoot, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies the OCI platform set rejects extras, unknowns, duplicates, and nested-index bindings.
+    /// </summary>
+    /// <param name="mutation">The platform-set mutation.</param>
+    [Theory]
+    [InlineData("third-child")]
+    [InlineData("unknown-platform")]
+    [InlineData("duplicate-platform")]
+    [InlineData("nested-index")]
+    public void OciGraphRejectsPlatformSetMutations(string mutation)
+    {
+        string root = FindRepositoryRoot();
+        (string cleanupRoot, string evidence, JsonObject crosswalk, _, _, _, byte[] proofBytes,
+            string packageManifestSha256) = CreatePassingFixture(root);
+        try
+        {
+            JsonObject oci = crosswalk["selected_candidates"]![0]!["oci"]!.AsObject();
+            JsonArray children = oci["children"]!.AsArray();
+            JsonObject first = children[0]!.AsObject();
+            switch (mutation)
+            {
+                case "third-child":
+                    children.Add(Clone(first));
+                    children[^1]!["platform"] = "linux/ppc64le";
+                    break;
+                case "unknown-platform":
+                    first["platform"] = "unknown/unknown";
+                    break;
+                case "duplicate-platform":
+                    children[1]!["platform"] = first["platform"]!.GetValue<string>();
+                    break;
+                default:
+                    JsonObject readback = JsonNode.Parse(
+                        ReadEvidenceFile(evidence, "registry-readback.json"))!.AsObject();
+                    readback["objects"]![0]!["content_type"] = OciIndexMediaType;
+                    File.WriteAllBytes(
+                        Path.Combine(evidence, "registry-readback.json"),
+                        JsonSerializer.SerializeToUtf8Bytes(readback));
+                    break;
+            }
+
+            ValidateOciGraph(crosswalk, root, evidence).ShouldBeFalse();
+            EvaluateWithFreshReview(
+                crosswalk,
+                root,
+                evidence,
+                proofBytes,
+                packageManifestSha256).ShouldBeFalse();
+        }
+        finally
+        {
+            Directory.Delete(cleanupRoot, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies config os/architecture must equal the parent platform descriptor.
+    /// </summary>
+    [Fact]
+    public void OciGraphRejectsConfigArchitectureMismatch()
+    {
+        string root = FindRepositoryRoot();
+        (string cleanupRoot, string evidence, JsonObject crosswalk, _, _, _, byte[] proofBytes,
+            string packageManifestSha256) = CreatePassingFixture(root);
+        try
+        {
+            string rebound = RebindAmd64ConfigArchitecture(crosswalk, evidence, "ppc64le");
+            ValidateOciGraph(crosswalk, root, rebound).ShouldBeFalse();
+            EvaluateWithFreshReview(
+                crosswalk,
+                root,
+                rebound,
+                proofBytes,
+                packageManifestSha256).ShouldBeFalse();
+        }
+        finally
+        {
+            Directory.Delete(cleanupRoot, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies ValidateRuntimeLog rejects a zero poll interval even when other fields stay valid.
+    /// </summary>
+    [Fact]
+    public void RuntimeLogRejectsZeroPollInterval()
+    {
+        string root = FindRepositoryRoot();
+        (string cleanupRoot, string evidence, JsonObject crosswalk, _, _, _, _, _) = CreatePassingFixture(root);
+        try
+        {
+            JsonObject runtime = crosswalk["selected_candidates"]![0]!["runtime"]!.AsObject();
+            JsonObject contract = Clone(runtime["contract"]!.AsObject());
+            contract["poll_interval_seconds"] = 0;
+            JsonObject platform = runtime["platforms"]![0]!.AsObject();
+            DateTimeOffset started = DateTimeOffset.Parse(runtime["started_at"]!.GetValue<string>());
+            DateTimeOffset ended = DateTimeOffset.Parse(runtime["ended_at"]!.GetValue<string>());
+            ValidateRuntimeLog(evidence, platform, contract, started, ended).ShouldBeFalse();
+        }
+        finally
+        {
+            Directory.Delete(cleanupRoot, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies inaccessible retained evidence bytes keep the OCI graph fail-closed.
+    /// </summary>
+    [Fact]
+    public void InaccessibleRetainedEvidenceFailsClosed()
+    {
+        string root = FindRepositoryRoot();
+        (string cleanupRoot, string evidence, JsonObject crosswalk, _, _, _, byte[] proofBytes,
+            string packageManifestSha256) = CreatePassingFixture(root);
+        try
+        {
+            File.Delete(Path.Combine(evidence, "index.raw"));
+            ValidateOciGraph(crosswalk, root, evidence).ShouldBeFalse();
+            Should.Throw<FileNotFoundException>(() => EvaluateWithFreshReview(
+                crosswalk,
+                root,
+                evidence,
+                proofBytes,
+                packageManifestSha256));
+        }
+        finally
+        {
+            Directory.Delete(cleanupRoot, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies environment, product, and evidence failure classes each block runtime closure.
+    /// </summary>
+    /// <param name="site">Where the classified failure is recorded.</param>
+    /// <param name="failureClass">The failure class under test.</param>
+    [Theory]
+    [InlineData("preflight", "environment")]
+    [InlineData("platform", "product")]
+    [InlineData("platform", "evidence")]
+    public void ClassifiedRuntimeFailuresEachBlockEqually(string site, string failureClass)
+    {
+        string root = FindRepositoryRoot();
+        (string cleanupRoot, string evidence, JsonObject crosswalk, _, _, _, byte[] proofBytes,
+            string packageManifestSha256) = CreatePassingFixture(root);
+        try
+        {
+            JsonObject runtime = crosswalk["selected_candidates"]![0]!["runtime"]!.AsObject();
+            if (site == "preflight")
+            {
+                JsonObject preflight = runtime["preflight"]!.AsObject();
+                preflight["outcome"] = "fail";
+                preflight["failure_class"] = failureClass;
+                JsonObject log = JsonNode.Parse(ReadEvidenceFile(evidence, preflight["log"]!.GetValue<string>()))!
+                    .AsObject();
+                log["outcome"] = "fail";
+                log["failure_class"] = failureClass;
+                byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(log);
+                File.WriteAllBytes(Path.Combine(evidence, preflight["log"]!.GetValue<string>()), bytes);
+                preflight["log_sha256"] = ComputeSha256(bytes);
+            }
+            else
+            {
+                JsonObject platform = runtime["platforms"]![0]!.AsObject();
+                platform["outcome"] = "fail";
+                platform["failure_class"] = failureClass;
+                platform["readiness_result"] = "fail";
+                JsonObject log = JsonNode.Parse(ReadEvidenceFile(evidence, platform["log"]!.GetValue<string>()))!
+                    .AsObject();
+                log["readiness_result"] = "fail";
+                log["failure_class"] = failureClass;
+                byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(log);
+                File.WriteAllBytes(Path.Combine(evidence, platform["log"]!.GetValue<string>()), bytes);
+                platform["log_sha256"] = ComputeSha256(bytes);
+            }
+
+            ValidateRuntimeExecution(crosswalk, root, evidence).ShouldBeFalse();
+            EvaluateWithFreshReview(
+                crosswalk,
+                root,
+                evidence,
+                proofBytes,
+                packageManifestSha256).ShouldBeFalse();
+        }
+        finally
+        {
+            Directory.Delete(cleanupRoot, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies an unclassified runtime failure is rejected rather than silently mapped to pass.
+    /// </summary>
+    [Fact]
+    public void UnclassifiedRuntimeFailureIsRejected()
+    {
+        string root = FindRepositoryRoot();
+        (string cleanupRoot, string evidence, JsonObject crosswalk, _, _, _, byte[] proofBytes,
+            string packageManifestSha256) = CreatePassingFixture(root);
+        try
+        {
+            JsonObject platform = crosswalk["selected_candidates"]![0]!["runtime"]!["platforms"]![0]!.AsObject();
+            platform["outcome"] = "fail";
+            platform.Remove("failure_class");
+            ValidateRuntimeExecution(crosswalk, root, evidence).ShouldBeFalse();
             EvaluateWithFreshReview(
                 crosswalk,
                 root,
@@ -2008,7 +2305,16 @@ public sealed class DeployedRuntimeParityClosureTests
             string releasePath = Path.Combine(evidence, "release-provenance.json");
             string externalPath = Path.Combine(cleanupRoot, "release-provenance.json");
             File.Move(releasePath, externalPath);
-            File.CreateSymbolicLink(releasePath, externalPath);
+            try
+            {
+                File.CreateSymbolicLink(releasePath, externalPath);
+            }
+            catch (Exception exception) when (
+                exception is PlatformNotSupportedException or UnauthorizedAccessException or IOException)
+            {
+                Assert.Skip("Symbolic links are unavailable in this environment: " + exception.GetType().Name);
+            }
+
             ValidateRelease(crosswalk["selected_candidates"]![0]!.AsObject(), root, evidence).ShouldBeFalse();
         }
         finally
@@ -2232,6 +2538,18 @@ public sealed class DeployedRuntimeParityClosureTests
                 .Cast<string>()
                 .Order(StringComparer.Ordinal)
                 .ToArray();
+            // Nested files or subdirectories can smuggle undeclared package payloads past a
+            // top-level-only exact-set comparison.
+            if (Directory.EnumerateDirectories(archiveRoot).Any()
+                || Directory.GetFiles(archiveRoot, "*", SearchOption.AllDirectories).Any(path =>
+                    !string.Equals(
+                        Path.GetDirectoryName(path),
+                        archiveRoot,
+                        StringComparison.Ordinal)))
+            {
+                return false;
+            }
+
             return items.Length == 14
                 && actualTopLevelFiles.SequenceEqual(expectedArchives, StringComparer.Ordinal)
                 && items.All(item =>
@@ -3009,7 +3327,8 @@ public sealed class DeployedRuntimeParityClosureTests
             }
 
             JsonObject preflight = runtime["preflight"]!.AsObject();
-            if (preflight["platform"]!.GetValue<string>() != "linux/arm64"
+            if (!RuntimeFailureClassificationIsValid(preflight)
+                || preflight["platform"]!.GetValue<string>() != "linux/arm64"
                 || preflight["outcome"]!.GetValue<string>() != "pass"
                 || !ValidatePreflightLog(evidenceRoot, preflight, oci, started, ended))
             {
@@ -3029,7 +3348,8 @@ public sealed class DeployedRuntimeParityClosureTests
             {
                 JsonObject child = oci["children"]!.AsArray().Select(item => item!.AsObject()).Single(item =>
                     item["platform"]!.GetValue<string>() == platform["platform"]!.GetValue<string>());
-                if (platform["child_digest"]!.GetValue<string>() != child["manifest_digest"]!.GetValue<string>()
+                if (!RuntimeFailureClassificationIsValid(platform)
+                    || platform["child_digest"]!.GetValue<string>() != child["manifest_digest"]!.GetValue<string>()
                     || platform["attempts"]!.GetValue<int>() <= 0
                     || platform["outcome"]!.GetValue<string>() != "pass"
                     || platform["cleanup"]!.GetValue<string>() != "pass"
@@ -5426,9 +5746,179 @@ public sealed class DeployedRuntimeParityClosureTests
             // Best-effort cleanup after a forced kill.
         }
 
-        // If the process exited during the kill/wait window, treat the work as completed so a
-        // successful late exit is not misreported as a timeout failure.
-        return process.HasExited;
+        // Never treat a timed-out (and possibly truncated) process as success. Callers must not
+        // hash or parse stdout after a kill/timeout window.
+        return false;
+    }
+
+    private static bool RuntimeFailureClassificationIsValid(JsonObject node)
+    {
+        string outcome = node["outcome"]!.GetValue<string>();
+        bool hasClass = node.TryGetPropertyValue("failure_class", out JsonNode? classNode)
+            && classNode is JsonValue;
+        if (outcome == "pass")
+        {
+            return !hasClass;
+        }
+
+        return hasClass
+            && classNode!.GetValue<string>() is "environment" or "product" or "evidence";
+    }
+
+    private static void CopyDirectory(string source, string destination)
+    {
+        Directory.CreateDirectory(destination);
+        foreach (string directory in Directory.GetDirectories(source, "*", SearchOption.AllDirectories))
+        {
+            Directory.CreateDirectory(Path.Combine(destination, Path.GetRelativePath(source, directory)));
+        }
+
+        foreach (string file in Directory.GetFiles(source, "*", SearchOption.AllDirectories))
+        {
+            string target = Path.Combine(destination, Path.GetRelativePath(source, file));
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            File.Copy(file, target, overwrite: true);
+        }
+    }
+
+    private static string RebindAmd64ConfigArchitecture(
+        JsonObject crosswalk,
+        string evidence,
+        string architecture)
+    {
+        JsonObject oci = crosswalk["selected_candidates"]![0]!["oci"]!.AsObject();
+        JsonObject child = oci["children"]!.AsArray().Select(item => item!.AsObject()).Single(item =>
+            item["platform"]!.GetValue<string>() == "linux/amd64");
+        string configFile = child["config_raw_file"]!.GetValue<string>();
+        string manifestFile = child["manifest_raw_file"]!.GetValue<string>();
+        JsonObject config = JsonNode.Parse(File.ReadAllBytes(Path.Combine(evidence, configFile)))!.AsObject();
+        config["architecture"] = architecture;
+        byte[] configBytes = JsonSerializer.SerializeToUtf8Bytes(config);
+        string configDigest = "sha256:" + ComputeSha256(configBytes);
+        File.WriteAllBytes(Path.Combine(evidence, configFile), configBytes);
+
+        JsonObject manifest = new()
+        {
+            ["schemaVersion"] = 2,
+            ["mediaType"] = OciManifestMediaType,
+            ["config"] = new JsonObject
+            {
+                ["mediaType"] = OciConfigMediaType,
+                ["digest"] = configDigest,
+                ["size"] = configBytes.Length,
+            },
+            ["layers"] = new JsonArray(),
+        };
+        byte[] manifestBytes = JsonSerializer.SerializeToUtf8Bytes(manifest);
+        string manifestDigest = "sha256:" + ComputeSha256(manifestBytes);
+        File.WriteAllBytes(Path.Combine(evidence, manifestFile), manifestBytes);
+
+        child["config_digest"] = configDigest;
+        child["config_size"] = configBytes.Length;
+        child["config_raw_sha256"] = configDigest[7..];
+        child["manifest_digest"] = manifestDigest;
+        child["manifest_size"] = manifestBytes.Length;
+        child["manifest_raw_sha256"] = manifestDigest[7..];
+
+        JsonObject index = JsonNode.Parse(File.ReadAllBytes(Path.Combine(evidence, "index.raw")))!.AsObject();
+        JsonObject descriptor = index["manifests"]!.AsArray().Select(item => item!.AsObject()).Single(item =>
+            item["platform"]!["architecture"]!.GetValue<string>() == "amd64");
+        descriptor["digest"] = manifestDigest;
+        descriptor["size"] = manifestBytes.Length;
+        byte[] indexBytes = JsonSerializer.SerializeToUtf8Bytes(index);
+        string indexHash = ComputeSha256(indexBytes);
+        string indexDigest = "sha256:" + indexHash;
+        foreach (string file in new[] { "index.raw", "tag-response.raw", "digest-response.raw" })
+        {
+            File.WriteAllBytes(Path.Combine(evidence, file), indexBytes);
+        }
+
+        oci["index_digest"] = indexDigest;
+        oci["index_raw_sha256"] = indexHash;
+        oci["index_size"] = indexBytes.Length;
+        oci["immutable_reference"] = ExpectedRegistry + "/" + ExpectedContainerRepository + "@" + indexDigest;
+        foreach (string name in new[] { "tag", "digest" })
+        {
+            oci[name + "_response_raw_sha256"] = indexHash;
+            oci[name + "_response_size"] = indexBytes.Length;
+            oci[name + "_response_docker_content_digest"] = indexDigest;
+        }
+
+        JsonObject readback = JsonNode.Parse(ReadEvidenceFile(evidence, "registry-readback.json"))!.AsObject();
+        readback["immutable_index_digest"] = indexDigest;
+        readback["tag_response"] = IndexResponse(
+            "tag",
+            "v" + ApprovedPackageVersion,
+            indexDigest,
+            indexBytes);
+        readback["digest_response"] = IndexResponse("digest", indexDigest, indexDigest, indexBytes);
+        JsonArray objects = readback["objects"]!.AsArray();
+        for (int indexObject = 0; indexObject < objects.Count; indexObject++)
+        {
+            JsonObject response = objects[indexObject]!.AsObject();
+            if (response["raw_file"]!.GetValue<string>() == manifestFile)
+            {
+                objects[indexObject] = ObjectResponse(
+                    "child-manifest",
+                    manifestDigest,
+                    OciManifestMediaType,
+                    manifestFile,
+                    manifestBytes);
+            }
+            else if (response["raw_file"]!.GetValue<string>() == configFile)
+            {
+                objects[indexObject] = ObjectResponse(
+                    "config",
+                    configDigest,
+                    OciConfigMediaType,
+                    configFile,
+                    configBytes);
+            }
+        }
+
+        File.WriteAllBytes(
+            Path.Combine(evidence, "registry-readback.json"),
+            JsonSerializer.SerializeToUtf8Bytes(readback));
+
+        JsonObject validation = JsonNode.Parse(ReadEvidenceFile(evidence, "oci-validation.json"))!.AsObject();
+        validation["index_digest"] = indexDigest;
+        validation["raw_index_sha256"] = indexHash;
+        foreach (JsonObject validationChild in validation["children"]!.AsArray().Select(item => item!.AsObject()))
+        {
+            if (validationChild["platform"]!.GetValue<string>() != "linux/amd64")
+            {
+                continue;
+            }
+
+            validationChild["manifest_digest"] = manifestDigest;
+            validationChild["manifest_size"] = manifestBytes.Length;
+            validationChild["config_digest"] = configDigest;
+            validationChild["config_size"] = configBytes.Length;
+        }
+
+        File.WriteAllBytes(
+            Path.Combine(evidence, "oci-validation.json"),
+            JsonSerializer.SerializeToUtf8Bytes(validation));
+
+        foreach (JsonObject platform in crosswalk["selected_candidates"]![0]!["runtime"]!["platforms"]!
+            .AsArray().Select(item => item!.AsObject()))
+        {
+            if (platform["platform"]!.GetValue<string>() == "linux/amd64")
+            {
+                platform["child_digest"] = manifestDigest;
+                JsonObject log = JsonNode.Parse(ReadEvidenceFile(evidence, platform["log"]!.GetValue<string>()))!
+                    .AsObject();
+                log["child_digest"] = manifestDigest;
+                byte[] logBytes = JsonSerializer.SerializeToUtf8Bytes(log);
+                File.WriteAllBytes(Path.Combine(evidence, platform["log"]!.GetValue<string>()), logBytes);
+                platform["log_sha256"] = ComputeSha256(logBytes);
+            }
+        }
+
+        string parent = Path.GetDirectoryName(evidence)!;
+        string rebound = Path.Combine(parent, indexHash);
+        Directory.Move(evidence, rebound);
+        return rebound;
     }
 
     private static string FindRepositoryRoot()

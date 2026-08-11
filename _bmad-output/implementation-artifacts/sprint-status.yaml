@@ -103,7 +103,7 @@ development_status:
   3-10-generated-api-dapr-aspire-smoke-preflight: done
   3-11-validated-central-package-catalog-refresh: done
   3-12-multi-platform-eventstore-container-publishing-correction: done
-  3-13-deployed-runtime-parity-closure: review
+  3-13-deployed-runtime-parity-closure: in-progress
   epic-3-retrospective: optional
 
   epic-4: in-progress
