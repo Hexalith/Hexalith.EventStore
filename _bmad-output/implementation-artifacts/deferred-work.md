@@ -1177,3 +1177,12 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-4-committed-event-publication-recovery.md`
   summary: [MEDIUM] Commit-batch index staging order is not asserted by tests (reconfirmed, group-1 review).
   evidence: Existing commit-batch test asserts `SetStateAsync(publication-index)` occurred but not before the first commit `SaveStateAsync`. Already on ledger; reconfirmed against `AggregateActor.cs:688-727`.
+
+## Deferred from: code review of 3-13-deployed-runtime-parity-closure.md (2026-08-11)
+
+- ResolveWithin uses Ordinal StartsWith on Path.GetFullPath roots — case-insensitive hosts can theoretically mismatch path identity; Linux CI primary path is Ordinal-correct. [`DeployedRuntimeParityClosureTests.cs:5255`]
+- FieldNameIsSupportSafe fragment matching can false-positive legitimate names (e.g. tokenizer) — no colliding fields in the Story 3.13 evidence schema today. [`DeployedRuntimeParityClosureTests.cs:4134`]
+- LimitationsContainMutationProhibitions accepts weak keyword substrings — unrelated prose containing package/registry can pass. [`DeployedRuntimeParityClosureTests.cs:4282`]
+- ResolveWithin TOCTOU between RejectReparsePoint and later file open — theoretical race after reparse checks. [`DeployedRuntimeParityClosureTests.cs:5260`]
+- RunGit/ComputePinnedBuildsToolSha256 sync-over-async via GetAwaiter().GetResult() — test-helper style; not on product await paths. [`DeployedRuntimeParityClosureTests.cs:5334`]
+- ValueIsSupportSafe misses private IPs embedded in non-URI free text — retained evidence is primarily structured JSON/URI values. [`DeployedRuntimeParityClosureTests.cs:4155`]

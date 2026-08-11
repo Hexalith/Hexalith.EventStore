@@ -1,0 +1,794 @@
+=== BRANCH ===
+fix/gh-31483075631-oq8-bound-source-reseal
+=== STATUS ===
+ M _bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure.md
+ M _bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml
+ M _bmad-output/implementation-artifacts/deferred-work.md
+R  _bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/capture-packet-v1.json -> _bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/capture-packet-v1.json
+R  _bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/closure-crosswalk.json -> _bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/closure-crosswalk.json
+RM _bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/closure-sha256.txt -> _bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/closure-sha256.txt
+RM _bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/limitations.json -> _bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/limitations.json
+RM _bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/pre-review-execution.json -> _bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/pre-review-execution.json
+RM _bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/review-subject.json -> _bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/review-subject.json
+RM _bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/reviews/architecture.json -> _bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/reviews/architecture.json
+RM _bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/reviews/security.json -> _bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/reviews/security.json
+RM _bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/reviews/test.json -> _bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/reviews/test.json
+RM _bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/source-artifact-identity.json -> _bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/source-artifact-identity.json
+RM _bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/source-only-handoff.json -> _bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/source-only-handoff.json
+RM _bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/validator-sha256.txt -> _bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/validator-sha256.txt
+ M docs/concepts/architecture-overview.md
+ M docs/concepts/command-lifecycle.md
+ M docs/guides/configuration-reference.md
+ M docs/reference/command-api.md
+ M tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs
+ M tools/validate-oq8-platform-evidence.py
+?? _bmad-output/implementation-artifacts/evidence/gh-31483075631-review-diff.txt
+?? _bmad-output/implementation-artifacts/spec-gh-31483075631-fix-ci-cd.md
+=== DIFF vs 06e62b4dceae6df0587062968097b46caa51713a (tracked) ===
+ .../3-13-deployed-runtime-parity-closure.md        | 25 ++++++++++++++++
+ .../4-8-eventstore-oq8-platform-evidence.yaml      | 26 ++++++++---------
+ .../implementation-artifacts/deferred-work.md      |  9 ++++++
+ .../capture-packet-v1.json                         |  0
+ .../closure-crosswalk.json                         |  0
+ .../closure-sha256.txt                             | 11 +++++++
+ .../limitations.json                               |  2 +-
+ .../pre-review-execution.json                      |  4 +--
+ .../review-subject.json                            | 26 ++++++++---------
+ .../reviews/architecture.json                      | 31 ++++++++++++++++++++
+ .../reviews/security.json                          | 30 +++++++++++++++++++
+ .../reviews/test.json                              | 30 +++++++++++++++++++
+ .../source-artifact-identity.json                  | 19 ++++++++++--
+ .../source-only-handoff.json                       | 12 ++++----
+ .../validator-sha256.txt                           |  1 +
+ .../closure-sha256.txt                             | 11 -------
+ .../reviews/architecture.json                      | 34 ----------------------
+ .../reviews/security.json                          | 30 -------------------
+ .../reviews/test.json                              | 33 ---------------------
+ .../validator-sha256.txt                           |  1 -
+ docs/concepts/architecture-overview.md             |  2 +-
+ docs/concepts/command-lifecycle.md                 |  2 +-
+ docs/guides/configuration-reference.md             |  2 +-
+ docs/reference/command-api.md                      |  2 +-
+ .../Packaging/Oq8PlatformClosureTests.cs           |  4 +--
+ tools/validate-oq8-platform-evidence.py            | 33 +++++++++++++++------
+ 26 files changed, 219 insertions(+), 161 deletions(-)
+
+diff --git a/_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml b/_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml
+index cfa6e997..0c516d63 100644
+--- a/_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml
++++ b/_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml
+@@ -36,23 +36,23 @@
+   "platformClosure": {
+     "story": "4.15",
+     "status": "complete",
+-    "landedSourceCommit": "e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec",
+-    "closureDirectory": "_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec",
+-    "closureManifestSha256": "a6379872f3f8abc821a270f68085dfab5341a5e7e3b314aef76915d3177fcb03",
++    "landedSourceCommit": "4b0a7b1d3628a857f131cfbff99030714aefc747",
++    "closureDirectory": "_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747",
++    "closureManifestSha256": "17f211c891752f95382d4efc9bafa6cca06a4d5348890de467c2c9402749ed76",
+     "closureFiles": {
+       "capture-packet-v1.json": "63efacaa686c906c0cab63aef68a01163074914f9983a5874f2bf48d6944eeba",
+       "closure-crosswalk.json": "b006c03612f63f6c003b55f3e1b1073f81b077bc9816bdfc7e488104af9da9c7",
+-      "limitations.json": "bea6f5a38a225f688fe17f5a86d08f23d240e8a9588063fa783c5a9f3986b79b",
+-      "pre-review-execution.json": "deafc4ad38920882cb60782bd93b65e82699101876e97a92966f6b8b0f05c534",
+-      "review-subject.json": "5c1ffb39863d8d25d1cf35dc49633a8ac979e2bd858d79fea77586d92a8cded6",
+-      "reviews/architecture.json": "7a4bbf234b182ff8347cfe87278b2939f0da2281feafed0fe53a3766f2356cbf",
+-      "reviews/security.json": "11f173a478fcb9a81a05a38892ca89974216d62b2ea7a47b28cfb165236a38de",
+-      "reviews/test.json": "a0cf1b361d7a07b90f904f5cd2a5b2a74700bbfd6339092aaa84dd7130a7705d",
+-      "source-artifact-identity.json": "545b09d9b6cb4927ed6783242723b5fe0be234ba4374111a3017cc8b6c322cc8",
+-      "source-only-handoff.json": "80ff96262a24e19045bc681d7afcfc4ba4c84cd8709ff452366f32a38e9e427f",
+-      "validator-sha256.txt": "91b565d7f8b4a9091f36f24ab090ff4d23c7a8cd1b247322ef83ec42bd94caa4"
++      "limitations.json": "3853e7001a78da7cc0c3824392e43e9f5b286b65ce8d101167991b133ebf2d92",
++      "pre-review-execution.json": "03411906de8faa4928eb3f9f94fbae50d886a67a26621bbad800b5c590df95be",
++      "review-subject.json": "977a2464e49e3b40f46fff2ff8d1d0ec46c463a9581bc93c1cff9249134e1d15",
++      "reviews/architecture.json": "34bac8352b3151387fc56228c6fa35bfbe7b4eb44465d9b199de635fcc3676cd",
++      "reviews/security.json": "260a7256297265891908507e3b568f8ac6287fc9c8ff811999ee2b6ad239fdaa",
++      "reviews/test.json": "a30a9b132cddb3271b2ef3367d410ed8aecfa8a3e789e24b5f5baaa1d450b354",
++      "source-artifact-identity.json": "6f8959f77136a6f93f8e6225c447ca3adb1adfbbb883f36f70dd04d848344337",
++      "source-only-handoff.json": "de282b3bb33e127dde1147d08769b7a80802d9180a8a3c0637453c8c3967f2a0",
++      "validator-sha256.txt": "1fd059f0228cc9f54a75aad0ad6ac8807d37cfd2eff808e6618bf8233f869c57"
+     },
+-    "reviewSubjectSha256": "5c1ffb39863d8d25d1cf35dc49633a8ac979e2bd858d79fea77586d92a8cded6",
++    "reviewSubjectSha256": "977a2464e49e3b40f46fff2ff8d1d0ec46c463a9581bc93c1cff9249134e1d15",
+     "authority": {
+       "eventStorePlatformComplete": true,
+       "handoffMode": "source-only",
+diff --git a/_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/capture-packet-v1.json b/_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/capture-packet-v1.json
+similarity index 100%
+rename from _bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/capture-packet-v1.json
+rename to _bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/capture-packet-v1.json
+diff --git a/_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/closure-crosswalk.json b/_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/closure-crosswalk.json
+similarity index 100%
+rename from _bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/closure-crosswalk.json
+rename to _bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/closure-crosswalk.json
+diff --git a/_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/closure-sha256.txt b/_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/closure-sha256.txt
+new file mode 100644
+index 00000000..0aff425c
+--- /dev/null
++++ b/_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/closure-sha256.txt
+@@ -0,0 +1,11 @@
++63efacaa686c906c0cab63aef68a01163074914f9983a5874f2bf48d6944eeba  capture-packet-v1.json
++b006c03612f63f6c003b55f3e1b1073f81b077bc9816bdfc7e488104af9da9c7  closure-crosswalk.json
++3853e7001a78da7cc0c3824392e43e9f5b286b65ce8d101167991b133ebf2d92  limitations.json
++03411906de8faa4928eb3f9f94fbae50d886a67a26621bbad800b5c590df95be  pre-review-execution.json
++977a2464e49e3b40f46fff2ff8d1d0ec46c463a9581bc93c1cff9249134e1d15  review-subject.json
++34bac8352b3151387fc56228c6fa35bfbe7b4eb44465d9b199de635fcc3676cd  reviews/architecture.json
++260a7256297265891908507e3b568f8ac6287fc9c8ff811999ee2b6ad239fdaa  reviews/security.json
++a30a9b132cddb3271b2ef3367d410ed8aecfa8a3e789e24b5f5baaa1d450b354  reviews/test.json
++6f8959f77136a6f93f8e6225c447ca3adb1adfbbb883f36f70dd04d848344337  source-artifact-identity.json
++de282b3bb33e127dde1147d08769b7a80802d9180a8a3c0637453c8c3967f2a0  source-only-handoff.json
++1fd059f0228cc9f54a75aad0ad6ac8807d37cfd2eff808e6618bf8233f869c57  validator-sha256.txt
+diff --git a/_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/limitations.json b/_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/limitations.json
+similarity index 92%
+rename from _bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/limitations.json
+rename to _bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/limitations.json
+index affed658..3a469852 100644
+--- a/_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/limitations.json
++++ b/_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/limitations.json
+@@ -4,7 +4,7 @@
+     "The approved Folders design bytes are not tracked in EventStore; only design version 1.0.0 and its approved SHA-256 reference are preserved.",
+     "The production-path capture used shipped Release entry assemblies with a test-only hosting startup, deterministic time, trusted intent adapter, boundary counter, and Testing environment disclosure.",
+     "Raw PostgreSQL values and raw diagnostics were intentionally excluded; committed evidence contains sanitized structural projections, bounded counts, hashes, and invariant results.",
+-    "The original capture bound a dirty candidate against e60a3777c581d70b62f67173ccc2372b5b64a425; this closure independently binds the same 26 paths at landed commit e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec.",
++    "The original capture bound a dirty candidate against e60a3777c581d70b62f67173ccc2372b5b64a425; this closure independently binds the same 26 paths at landed commit 4b0a7b1d3628a857f131cfbff99030714aefc747.",
+     "This is a source-only EventStore platform handoff. It grants no release, package, registry, deployment, runtime pin, external-repository, consumer-migration, or final-consumer authority.",
+     "Folders retains its own final cross-repository decision and must independently verify the referenced design and EventStore source before consumption."
+   ]
+diff --git a/_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/pre-review-execution.json b/_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/pre-review-execution.json
+similarity index 98%
+rename from _bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/pre-review-execution.json
+rename to _bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/pre-review-execution.json
+index 5385a4a7..199c1097 100644
+--- a/_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/pre-review-execution.json
++++ b/_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/pre-review-execution.json
+@@ -9,11 +9,11 @@
+   },
+   "validator": {
+     "path": "tools/validate-oq8-platform-evidence.py",
+-    "sha256": "5c23fe250f113c40c452eea781b8151d58e2ddc5197baa8d678b33cfad572647"
++    "sha256": "e81bfaec383a3092d174f929d6069976afb6be9e123cc3aec5c4ecd56e32c0b2"
+   },
+   "testSource": {
+     "path": "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs",
+-    "sha256": "b89a2c816456e0140b5d1f582fd90964bc50d30809f91b0157f49fd5e237caa2"
++    "sha256": "5b66a6a3d4fc79010cd4cd94a092eefee136cc2dc3241f0885c772626728f99d"
+   },
+   "finalValidation": {
+     "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests -noColor",
+diff --git a/_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/review-subject.json b/_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/review-subject.json
+similarity index 78%
+rename from _bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/review-subject.json
+rename to _bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/review-subject.json
+index 360318f7..4acbb91f 100644
+--- a/_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/review-subject.json
++++ b/_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/review-subject.json
+@@ -18,23 +18,23 @@
+     },
+     "sourceArtifactIdentity": {
+       "path": "source-artifact-identity.json",
+-      "sha256": "545b09d9b6cb4927ed6783242723b5fe0be234ba4374111a3017cc8b6c322cc8"
++      "sha256": "6f8959f77136a6f93f8e6225c447ca3adb1adfbbb883f36f70dd04d848344337"
+     },
+     "limitations": {
+       "path": "limitations.json",
+-      "sha256": "bea6f5a38a225f688fe17f5a86d08f23d240e8a9588063fa783c5a9f3986b79b"
++      "sha256": "3853e7001a78da7cc0c3824392e43e9f5b286b65ce8d101167991b133ebf2d92"
+     },
+     "closureValidator": {
+       "path": "validator-sha256.txt",
+-      "sha256": "91b565d7f8b4a9091f36f24ab090ff4d23c7a8cd1b247322ef83ec42bd94caa4"
++      "sha256": "1fd059f0228cc9f54a75aad0ad6ac8807d37cfd2eff808e6618bf8233f869c57"
+     },
+     "closureTests": {
+       "path": "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs",
+-      "sha256": "b89a2c816456e0140b5d1f582fd90964bc50d30809f91b0157f49fd5e237caa2"
++      "sha256": "5b66a6a3d4fc79010cd4cd94a092eefee136cc2dc3241f0885c772626728f99d"
+     },
+     "preReviewExecution": {
+       "path": "pre-review-execution.json",
+-      "sha256": "deafc4ad38920882cb60782bd93b65e82699101876e97a92966f6b8b0f05c534"
++      "sha256": "03411906de8faa4928eb3f9f94fbae50d886a67a26621bbad800b5c590df95be"
+     },
+     "captureManifest": {
+       "path": "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425/evidence-sha256.txt",
+@@ -43,21 +43,21 @@
+   },
+   "identity": {
+     "repository": "Hexalith/Hexalith.EventStore",
+-    "landedSourceCommit": "e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec",
+-    "landedSourceTree": "e4bb19e5305bbde23563245976b97eb0aaf3c931",
++    "landedSourceCommit": "4b0a7b1d3628a857f131cfbff99030714aefc747",
++    "landedSourceTree": "21f9819026a1338efbab70d69991b3570c1b54f7",
+     "boundPathCount": 26,
+     "captureArtifactCount": 7
+   },
+   "reviewedPublicDocs": {
+-    "docs/concepts/architecture-overview.md": "fc18f36a3f7300aba07b90c92e724c65353c0c4dcafbcd44d74ab805729e6627",
+-    "docs/concepts/command-lifecycle.md": "fa739de1c11601c4e0b7530fed02b1e1c42d763ecc5346fa68b79f8fca2c44da",
+-    "docs/guides/configuration-reference.md": "75b8d45990794e4ab82429bb606b057652fc9214ce4fa8edd2b33fa516774900",
+-    "docs/reference/command-api.md": "3ff40db9bba089b80157780bb1deb9d3096aee10e855dae98a2e64335b39c54e"
++    "docs/concepts/architecture-overview.md": "ad57a9f3b30e4c15d577199edee76220d8e90f81a7c7ae7c2beb03f541a1c013",
++    "docs/concepts/command-lifecycle.md": "21bf8c315573ba7022f8256cb84110e4da93f5ec2f24f95c924bd9ddff5ec7ac",
++    "docs/guides/configuration-reference.md": "558bb275878a01dfbbb2b1aa67eace9755a98d5928cbe009e52338cfe7a0d4d6",
++    "docs/reference/command-api.md": "76ec9b52ffca29a33192bb7c386f871fd08a640d312458060ff4a6652bf93f43"
+   },
+   "handoff": {
+     "schema": "hexalith.eventstore.story-4-15-source-only-handoff/v1",
+     "story": "4.15",
+-    "landedSourceCommit": "e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec",
++    "landedSourceCommit": "4b0a7b1d3628a857f131cfbff99030714aefc747",
+     "consumerInstructions": {
+       "mode": "source-only",
+       "verifyCommand": "python3 tools/validate-oq8-platform-evidence.py",
+@@ -69,7 +69,7 @@
+     "The approved Folders design bytes are not tracked in EventStore; only design version 1.0.0 and its approved SHA-256 reference are preserved.",
+     "The production-path capture used shipped Release entry assemblies with a test-only hosting startup, deterministic time, trusted intent adapter, boundary counter, and Testing environment disclosure.",
+     "Raw PostgreSQL values and raw diagnostics were intentionally excluded; committed evidence contains sanitized structural projections, bounded counts, hashes, and invariant results.",
+-    "The original capture bound a dirty candidate against e60a3777c581d70b62f67173ccc2372b5b64a425; this closure independently binds the same 26 paths at landed commit e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec.",
++    "The original capture bound a dirty candidate against e60a3777c581d70b62f67173ccc2372b5b64a425; this closure independently binds the same 26 paths at landed commit 4b0a7b1d3628a857f131cfbff99030714aefc747.",
+     "This is a source-only EventStore platform handoff. It grants no release, package, registry, deployment, runtime pin, external-repository, consumer-migration, or final-consumer authority.",
+     "Folders retains its own final cross-repository decision and must independently verify the referenced design and EventStore source before consumption."
+   ],
+diff --git a/_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/reviews/architecture.json b/_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/reviews/architecture.json
+new file mode 100644
+index 00000000..e9dcc667
+--- /dev/null
++++ b/_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/reviews/architecture.json
+@@ -0,0 +1,31 @@
++{
++  "schema": "hexalith.eventstore.story-4-15-review-receipt/v1",
++  "role": "architecture",
++  "reviewer": "Winston (System Architect)",
++  "reviewedOn": "2026-08-11",
++  "decision": "approved",
++  "subjectSha256": "977a2464e49e3b40f46fff2ff8d1d0ec46c463a9581bc93c1cff9249134e1d15",
++  "acceptedScope": "OQ8 design reference, invariant crosswalk, landed-source identity, architecture boundaries, and source-only handoff",
++  "acceptedLimitationsSha256": "3853e7001a78da7cc0c3824392e43e9f5b286b65ce8d101167991b133ebf2d92",
++  "findings": [
++    "The refreshed subject retargets landed source identity to commit 4b0a7b1d3628a857f131cfbff99030714aefc747 (tree 21f9819026a1338efbab70d69991b3570c1b54f7) and keeps the Story 4.14 capture directory and seven-artifact manifest byte-stable.",
++    "Capture-to-landed Git-byte overrides now bridge four intentional divergences: PublicationRecoveryActivationTests.cs, integration.yml, the closure validator, and the existing Program.cs CRLF/LF normalization case, while captureWorktreePaths remain Story 4.14 truths.",
++    "All 24 non-evolved bound capability paths are byte-identical between HEAD and the new landed commit; only unbound/evolved tooling and closure artifacts move with this reseal.",
++    "The subject binds validator e81bfaec383a3092d174f929d6069976afb6be9e123cc3aec5c4ecd56e32c0b2, test source 5b66a6a3d4fc79010cd4cd94a092eefee136cc2dc3241f0885c772626728f99d, and pre-review execution 03411906de8faa4928eb3f9f94fbae50d886a67a26621bbad800b5c590df95be.",
++    "Public OQ8 documents embed the new landed SHA and retain the source-only handoff semantics, including every Folders-owned and external-authority exclusion.",
++    "Approval establishes EventStore platform completeness only; it grants no release, Folders final closure, package, registry, deployment, runtime-pin, consumer-migration, external-repository, or final-consumer authority."
++  ],
++  "authority": {
++    "eventStorePlatformComplete": true,
++    "handoffMode": "source-only",
++    "releaseApproved": false,
++    "foldersFinalClosure": false,
++    "packageAuthority": false,
++    "registryAuthority": false,
++    "deploymentAuthority": false,
++    "runtimePinAuthority": false,
++    "consumerMigrationAuthority": false,
++    "externalRepositoryAuthority": false,
++    "finalConsumerAuthority": false
++  }
++}
+diff --git a/_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/reviews/security.json b/_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/reviews/security.json
+new file mode 100644
+index 00000000..40818792
+--- /dev/null
++++ b/_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/reviews/security.json
+@@ -0,0 +1,30 @@
++{
++  "schema": "hexalith.eventstore.story-4-15-review-receipt/v1",
++  "role": "security",
++  "reviewer": "Security Reviewer",
++  "reviewedOn": "2026-08-11",
++  "decision": "approved",
++  "subjectSha256": "977a2464e49e3b40f46fff2ff8d1d0ec46c463a9581bc93c1cff9249134e1d15",
++  "acceptedScope": "protected-data leakage gates, current-fence evidence, sanitized-state limitation, and external authority exclusions",
++  "acceptedLimitationsSha256": "3853e7001a78da7cc0c3824392e43e9f5b286b65ce8d101167991b133ebf2d92",
++  "findings": [
++    "No blocking security findings: the reseal does not mutate Story 4.14 capture bytes, observations, or the committed Dapr runtime pin 1.18.1, so sanitized-state and protected-data evidence remain the prior approved capture.",
++    "Fresh and committed runtime modes stay separated; pre-review rejects capture/support combinations, preventing committed evidence from being relabeled as a fresh runtime capture.",
++    "Expanded landedGitByteOverrides declare explicit captureWorktreeSha256 and landedGitSha256 pairs that match capture identity and landed Git blobs, failing closed on missing or mismatched overrides.",
++    "Subject and receipt authority blocks keep every external-authority field false, including release, Folders final closure, package, registry, deployment, runtime-pin, consumer-migration, external-repository, and final-consumer authority.",
++    "Limitation text still discloses sanitized structural projections and the source-only handoff boundary after retargeting the landed commit reference."
++  ],
++  "authority": {
++    "eventStorePlatformComplete": true,
++    "handoffMode": "source-only",
++    "releaseApproved": false,
++    "foldersFinalClosure": false,
++    "packageAuthority": false,
++    "registryAuthority": false,
++    "deploymentAuthority": false,
++    "runtimePinAuthority": false,
++    "consumerMigrationAuthority": false,
++    "externalRepositoryAuthority": false,
++    "finalConsumerAuthority": false
++  }
++}
+diff --git a/_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/reviews/test.json b/_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/reviews/test.json
+new file mode 100644
+index 00000000..940e1b79
+--- /dev/null
++++ b/_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/reviews/test.json
+@@ -0,0 +1,30 @@
++{
++  "schema": "hexalith.eventstore.story-4-15-review-receipt/v1",
++  "role": "test",
++  "reviewer": "Murat (Test Architect)",
++  "reviewedOn": "2026-08-11",
++  "decision": "approved",
++  "subjectSha256": "977a2464e49e3b40f46fff2ff8d1d0ec46c463a9581bc93c1cff9249134e1d15",
++  "acceptedScope": "production/deterministic evidence coverage, commands and counts, negative validation, and matrix coverage",
++  "acceptedLimitationsSha256": "3853e7001a78da7cc0c3824392e43e9f5b286b65ce8d101167991b133ebf2d92",
++  "findings": [
++    "The exact subject binds validator e81bfaec383a3092d174f929d6069976afb6be9e123cc3aec5c4ecd56e32c0b2, test source 5b66a6a3d4fc79010cd4cd94a092eefee136cc2dc3241f0885c772626728f99d, and pre-review execution 03411906de8faa4928eb3f9f94fbae50d886a67a26621bbad800b5c590df95be.",
++    "python3 tools/validate-oq8-platform-evidence.py --pre-review passed against the refreshed identity, limitations, subject, and document hashes after retargeting landed source 4b0a7b1d3628a857f131cfbff99030714aefc747.",
++    "Release contracts build completed with zero warnings and errors; receipt-independent Oq8PlatformClosureTests candidate methods covering semantic mutations, limitations, external authority, runtime-mode identity, and pre-review exclusivity passed 64/64.",
++    "Oq8PlatformClosureTests LandedSource and closure path literals were retargeted with the reseal so ancestry and missing-artifact negative cases remain pinned to the new closure directory.",
++    "This receipt approves only the exact refreshed subject and claims no release, Folders closure, package, deployment, runtime-pin, migration, external-repository, or final-consumer authority."
++  ],
++  "authority": {
++    "eventStorePlatformComplete": true,
++    "handoffMode": "source-only",
++    "releaseApproved": false,
++    "foldersFinalClosure": false,
++    "packageAuthority": false,
++    "registryAuthority": false,
++    "deploymentAuthority": false,
++    "runtimePinAuthority": false,
++    "consumerMigrationAuthority": false,
++    "externalRepositoryAuthority": false,
++    "finalConsumerAuthority": false
++  }
++}
+diff --git a/_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/source-artifact-identity.json b/_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/source-artifact-identity.json
+similarity index 87%
+rename from _bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/source-artifact-identity.json
+rename to _bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/source-artifact-identity.json
+index af266b3e..f666ab86 100644
+--- a/_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/source-artifact-identity.json
++++ b/_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/source-artifact-identity.json
+@@ -2,8 +2,8 @@
+   "schema": "hexalith.eventstore.story-4-15-source-artifact-identity/v1",
+   "repository": "Hexalith/Hexalith.EventStore",
+   "landedSource": {
+-    "commit": "e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec",
+-    "tree": "e4bb19e5305bbde23563245976b97eb0aaf3c931",
++    "commit": "4b0a7b1d3628a857f131cfbff99030714aefc747",
++    "tree": "21f9819026a1338efbab70d69991b3570c1b54f7",
+     "pathCount": 26,
+     "pathSet": "union of Story 4.14 candidateFiles and sourceInputs"
+   },
+@@ -106,10 +106,25 @@
+     "tools/validate-oq8-platform-evidence.py": "0e9a352e7757f452dbc1f41dbd7036d76088f56be732a03c9b48ba4d6ab1c8b1"
+   },
+   "landedGitByteOverrides": {
++    ".github/workflows/integration.yml": {
++      "captureWorktreeSha256": "afb28e703e9b9d51b5144e10c0368cf6ac94ab01cf5e456ef2090a6d444e3205",
++      "landedGitSha256": "a9fe1bcd85c8232a0e0e46f3e8891cd2da056a9699f1804d4f9f8ae8dafccb91",
++      "reason": "Story 4.14 capture hashed the original integration workflow; landed commit 4b0a7b1d retains later CI history-fetch and Dapr runtime-pin wiring as historical evidence for the evolved orchestration path."
++    },
+     "src/Hexalith.EventStore/Program.cs": {
+       "captureWorktreeSha256": "245f79cc04998118da9caec70cdf290d67fb23e71a91100af46c4a019af5be7f",
+       "landedGitSha256": "7203089f0035e3a45cf7ccf6c6fffdc120e4b2dc2d9fd53b8031ed87e7ad83e9",
+       "reason": "The capture hashed CRLF working-tree bytes while the landed Git blob stores LF bytes under tracked text normalization."
++    },
++    "tests/Hexalith.EventStore.Server.Tests/Actors/PublicationRecoveryActivationTests.cs": {
++      "captureWorktreeSha256": "7aff4137378e9f2529b1770dd81c6638e8159277b4e92a5653ffc61a65ad2eb4",
++      "landedGitSha256": "bfc4c85147df8d468d8ed33a9e00c4c372ce18d2512f07913095190527b15b6d",
++      "reason": "Committed publication-recovery tests advanced at landed commit 4b0a7b1d after Story 4.14 capture; the override bridges capture worktree bytes to the intentional landed Git capability source."
++    },
++    "tools/validate-oq8-platform-evidence.py": {
++      "captureWorktreeSha256": "0e9a352e7757f452dbc1f41dbd7036d76088f56be732a03c9b48ba4d6ab1c8b1",
++      "landedGitSha256": "5c23fe250f113c40c452eea781b8151d58e2ddc5197baa8d678b33cfad572647",
++      "reason": "Story 4.14 capture hashed the original validator; landed commit 4b0a7b1d retains the later closure-validator evolution, while current validator bytes remain bound by validator-sha256.txt."
+     }
+   },
+   "capture": {
+diff --git a/_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/source-only-handoff.json b/_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/source-only-handoff.json
+similarity index 62%
+rename from _bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/source-only-handoff.json
+rename to _bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/source-only-handoff.json
+index 20686d0b..46ccd9f5 100644
+--- a/_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/source-only-handoff.json
++++ b/_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/source-only-handoff.json
+@@ -1,13 +1,13 @@
+ {
+   "schema": "hexalith.eventstore.story-4-15-source-only-handoff/v1",
+   "story": "4.15",
+-  "landedSourceCommit": "e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec",
+-  "reviewSubjectSha256": "5c1ffb39863d8d25d1cf35dc49633a8ac979e2bd858d79fea77586d92a8cded6",
+-  "limitationsSha256": "bea6f5a38a225f688fe17f5a86d08f23d240e8a9588063fa783c5a9f3986b79b",
++  "landedSourceCommit": "4b0a7b1d3628a857f131cfbff99030714aefc747",
++  "reviewSubjectSha256": "977a2464e49e3b40f46fff2ff8d1d0ec46c463a9581bc93c1cff9249134e1d15",
++  "limitationsSha256": "3853e7001a78da7cc0c3824392e43e9f5b286b65ce8d101167991b133ebf2d92",
+   "reviewReceipts": {
+-    "architecture": "7a4bbf234b182ff8347cfe87278b2939f0da2281feafed0fe53a3766f2356cbf",
+-    "security": "11f173a478fcb9a81a05a38892ca89974216d62b2ea7a47b28cfb165236a38de",
+-    "test": "a0cf1b361d7a07b90f904f5cd2a5b2a74700bbfd6339092aaa84dd7130a7705d"
++    "architecture": "34bac8352b3151387fc56228c6fa35bfbe7b4eb44465d9b199de635fcc3676cd",
++    "security": "260a7256297265891908507e3b568f8ac6287fc9c8ff811999ee2b6ad239fdaa",
++    "test": "a30a9b132cddb3271b2ef3367d410ed8aecfa8a3e789e24b5f5baaa1d450b354"
+   },
+   "consumerInstructions": {
+     "mode": "source-only",
+diff --git a/_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/validator-sha256.txt b/_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/validator-sha256.txt
+new file mode 100644
+index 00000000..7a684390
+--- /dev/null
++++ b/_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/validator-sha256.txt
+@@ -0,0 +1 @@
++e81bfaec383a3092d174f929d6069976afb6be9e123cc3aec5c4ecd56e32c0b2  tools/validate-oq8-platform-evidence.py
+diff --git a/_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/closure-sha256.txt b/_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/closure-sha256.txt
+deleted file mode 100644
+index b91f0f67..00000000
+--- a/_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/closure-sha256.txt
++++ /dev/null
+@@ -1,11 +0,0 @@
+-63efacaa686c906c0cab63aef68a01163074914f9983a5874f2bf48d6944eeba  capture-packet-v1.json
+-b006c03612f63f6c003b55f3e1b1073f81b077bc9816bdfc7e488104af9da9c7  closure-crosswalk.json
+-bea6f5a38a225f688fe17f5a86d08f23d240e8a9588063fa783c5a9f3986b79b  limitations.json
+-deafc4ad38920882cb60782bd93b65e82699101876e97a92966f6b8b0f05c534  pre-review-execution.json
+-5c1ffb39863d8d25d1cf35dc49633a8ac979e2bd858d79fea77586d92a8cded6  review-subject.json
+-7a4bbf234b182ff8347cfe87278b2939f0da2281feafed0fe53a3766f2356cbf  reviews/architecture.json
+-11f173a478fcb9a81a05a38892ca89974216d62b2ea7a47b28cfb165236a38de  reviews/security.json
+-a0cf1b361d7a07b90f904f5cd2a5b2a74700bbfd6339092aaa84dd7130a7705d  reviews/test.json
+-545b09d9b6cb4927ed6783242723b5fe0be234ba4374111a3017cc8b6c322cc8  source-artifact-identity.json
+-80ff96262a24e19045bc681d7afcfc4ba4c84cd8709ff452366f32a38e9e427f  source-only-handoff.json
+-91b565d7f8b4a9091f36f24ab090ff4d23c7a8cd1b247322ef83ec42bd94caa4  validator-sha256.txt
+diff --git a/_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/reviews/architecture.json b/_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/reviews/architecture.json
+deleted file mode 100644
+index 0bab80b6..00000000
+--- a/_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/reviews/architecture.json
++++ /dev/null
+@@ -1,34 +0,0 @@
+-{
+-  "schema": "hexalith.eventstore.story-4-15-review-receipt/v1",
+-  "role": "architecture",
+-  "reviewer": "Winston (System Architect)",
+-  "reviewedOn": "2026-08-11",
+-  "decision": "approved",
+-  "subjectSha256": "5c1ffb39863d8d25d1cf35dc49633a8ac979e2bd858d79fea77586d92a8cded6",
+-  "acceptedScope": "OQ8 design reference, invariant crosswalk, landed-source identity, architecture boundaries, and source-only handoff",
+-  "acceptedLimitationsSha256": "bea6f5a38a225f688fe17f5a86d08f23d240e8a9588063fa783c5a9f3986b79b",
+-  "findings": [
+-    "The refreshed subject binds validator 5c23fe250f113c40c452eea781b8151d58e2ddc5197baa8d678b33cfad572647, test source b89a2c816456e0140b5d1f582fd90964bc50d30809f91b0157f49fd5e237caa2, and pre-review execution deafc4ad38920882cb60782bd93b65e82699101876e97a92966f6b8b0f05c534.",
+-    "The shared Builds action preserves its version input as the CLI and legacy runtime value while optional runtime-version independently controls dapr init, so existing callers retain their previous behavior.",
+-    "EventStore wires CLI 1.18.0 and runtime 1.18.2 through the one shared action and passes the same runtime identity into fresh OQ8 validation without duplicating bootstrap logic.",
+-    "Fresh and committed OQ8 validation modes are explicitly separated: fresh validation requires one caller-supplied runtime, while immutable Story 4.14 observations remain pinned to 1.18.1.",
+-    "Provider Pact inputs now resolve only through the root-declared FrontComposer submodule and no longer depend on the checkout's workspace parent layout.",
+-    "The public OQ8 documents now record the reviewed source-only handoff and fresh receipts as complete while retaining every Folders-owned and external-release limitation.",
+-    "The receipt-independent record recomputes to 23/23 successful commands and 104/104 passing tests; independent candidate validation passes 1/1.",
+-    "The immutable Story 4.14 capture bytes and seven-artifact manifest remain unchanged; only invalidated Story 4.15 bindings and downstream closure artifacts are refreshed.",
+-    "Approval establishes EventStore platform completeness only; it grants no release, Folders final closure, package, registry, deployment, runtime-pin, consumer-migration, external-repository, or final-consumer authority."
+-  ],
+-  "authority": {
+-    "eventStorePlatformComplete": true,
+-    "handoffMode": "source-only",
+-    "releaseApproved": false,
+-    "foldersFinalClosure": false,
+-    "packageAuthority": false,
+-    "registryAuthority": false,
+-    "deploymentAuthority": false,
+-    "runtimePinAuthority": false,
+-    "consumerMigrationAuthority": false,
+-    "externalRepositoryAuthority": false,
+-    "finalConsumerAuthority": false
+-  }
+-}
+diff --git a/_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/reviews/security.json b/_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/reviews/security.json
+deleted file mode 100644
+index 619ee008..00000000
+--- a/_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/reviews/security.json
++++ /dev/null
+@@ -1,30 +0,0 @@
+-{
+-  "schema": "hexalith.eventstore.story-4-15-review-receipt/v1",
+-  "role": "security",
+-  "reviewer": "Security Reviewer",
+-  "reviewedOn": "2026-08-11",
+-  "decision": "approved",
+-  "subjectSha256": "5c1ffb39863d8d25d1cf35dc49633a8ac979e2bd858d79fea77586d92a8cded6",
+-  "acceptedScope": "protected-data leakage gates, current-fence evidence, sanitized-state limitation, and external authority exclusions",
+-  "acceptedLimitationsSha256": "bea6f5a38a225f688fe17f5a86d08f23d240e8a9588063fa783c5a9f3986b79b",
+-  "findings": [
+-    "No blocking security findings: the Dapr runtime input reaches shell execution only through an environment variable and remains quoted, while fresh evidence accepts exactly one explicit semantic runtime version.",
+-    "Pre-review cannot be combined with capture or support arguments; omitted, repeated, and cross-mode runtime identities fail closed, so committed Story 4.14 cannot be relabeled as fresh runtime 1.18.2.",
+-    "Provider fixtures remain confined to a declared root submodule path, eliminating accidental reads from attacker- or environment-controlled workspace siblings.",
+-    "PostgreSQL image identity now requires exactly 64 lowercase hexadecimal digest characters after sha256, and counters, duration, environment limits, and both protected-match snapshots reject unsafe values.",
+-    "The refreshed subject preserves strict duplicate-JSON handling, source identity proofs, sanitized-state limitations, and false external-authority fields."
+-  ],
+-  "authority": {
+-    "eventStorePlatformComplete": true,
+-    "handoffMode": "source-only",
+-    "releaseApproved": false,
+-    "foldersFinalClosure": false,
+-    "packageAuthority": false,
+-    "registryAuthority": false,
+-    "deploymentAuthority": false,
+-    "runtimePinAuthority": false,
+-    "consumerMigrationAuthority": false,
+-    "externalRepositoryAuthority": false,
+-    "finalConsumerAuthority": false
+-  }
+-}
+diff --git a/_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/reviews/test.json b/_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/reviews/test.json
+deleted file mode 100644
+index 9cad6d23..00000000
+--- a/_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/reviews/test.json
++++ /dev/null
+@@ -1,33 +0,0 @@
+-{
+-  "schema": "hexalith.eventstore.story-4-15-review-receipt/v1",
+-  "role": "test",
+-  "reviewer": "Murat (Test Architect)",
+-  "reviewedOn": "2026-08-11",
+-  "decision": "approved",
+-  "subjectSha256": "5c1ffb39863d8d25d1cf35dc49633a8ac979e2bd858d79fea77586d92a8cded6",
+-  "acceptedScope": "production/deterministic evidence coverage, commands and counts, negative validation, and matrix coverage",
+-  "acceptedLimitationsSha256": "bea6f5a38a225f688fe17f5a86d08f23d240e8a9588063fa783c5a9f3986b79b",
+-  "findings": [
+-    "The exact subject binds validator 5c23fe250f113c40c452eea781b8151d58e2ddc5197baa8d678b33cfad572647, test source b89a2c816456e0140b5d1f582fd90964bc50d30809f91b0157f49fd5e237caa2, and execution deafc4ad38920882cb60782bd93b65e82699101876e97a92966f6b8b0f05c534.",
+-    "Independent replay reproduced 23/23 recorded commands and 104/104 receipt-independent tests; candidate-only validation passed 1/1 and the Release contracts build completed with zero warnings and errors.",
+-    "The runtime-mode test proves fresh 1.18.2 success, fresh/committed cross-mode rejection, committed 1.18.1 success, and rejection of omitted or repeated fresh runtime arguments.",
+-    "Release guardrails pass the independent CLI/runtime pins and action wiring, then reject CLI drift, runtime drift, cross-wiring, and removal of the legacy fallback.",
+-    "ProviderVerification builds with zero warnings and its complete 74-test assembly passes, including the root-declared FrontComposer fixture paths and documented-command guard.",
+-    "Forty-six candidate mutations, nine fresh-observation schema and semantic mutations, two pre-review exclusivity cases, and the prior adversarial gates all fail closed as specified.",
+-    "ReleasePackageManifestTests passes 97/97, covering independent CLI/runtime pins, shared-action wiring, and legacy fallback structure.",
+-    "This receipt approves only the exact refreshed subject and claims no release, Folders closure, package, deployment, runtime-pin, migration, external-repository, or final-consumer authority."
+-  ],
+-  "authority": {
+-    "eventStorePlatformComplete": true,
+-    "handoffMode": "source-only",
+-    "releaseApproved": false,
+-    "foldersFinalClosure": false,
+-    "packageAuthority": false,
+-    "registryAuthority": false,
+-    "deploymentAuthority": false,
+-    "runtimePinAuthority": false,
+-    "consumerMigrationAuthority": false,
+-    "externalRepositoryAuthority": false,
+-    "finalConsumerAuthority": false
+-  }
+-}
+diff --git a/_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/validator-sha256.txt b/_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/validator-sha256.txt
+deleted file mode 100644
+index 1ed2252e..00000000
+--- a/_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/validator-sha256.txt
++++ /dev/null
+@@ -1 +0,0 @@
+-5c23fe250f113c40c452eea781b8151d58e2ddc5197baa8d678b33cfad572647  tools/validate-oq8-platform-evidence.py
+diff --git a/docs/concepts/architecture-overview.md b/docs/concepts/architecture-overview.md
+index d10644bb..73948dff 100644
+--- a/docs/concepts/architecture-overview.md
++++ b/docs/concepts/architecture-overview.md
+@@ -279,7 +279,7 @@ This keeps write-side processing authoritative while giving read-side consumers
+ 
+ ### OQ8 platform closure boundary
+ 
+-Story 4.15 records the reviewed source-only handoff for EventStore source commit `e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec`. The final packet binds the Stories 4.9-4.14 invariant crosswalk, immutable multi-host PostgreSQL evidence, exact landed Git identities, limitations, the test source, the pre-review execution record, and fresh content-bound architecture, security, and test receipts. EventStore platform completion and the source-only handoff are recorded, and the live closure validator passes against the unchanged bound source.
++Story 4.15 records the reviewed source-only handoff for EventStore source commit `4b0a7b1d3628a857f131cfbff99030714aefc747`. The final packet binds the Stories 4.9-4.14 invariant crosswalk, immutable multi-host PostgreSQL evidence, exact landed Git identities, limitations, the test source, the pre-review execution record, and fresh content-bound architecture, security, and test receipts. EventStore platform completion and the source-only handoff are recorded, and the live closure validator passes against the unchanged bound source.
+ 
+ The bound limitations disclose that the approved Folders design bytes are not tracked here, the capture used test-only deterministic-time, intent-adapter, and boundary-counter seams, raw PostgreSQL values and diagnostics were replaced by sanitized structural projections, and the original dirty candidate capture is independently rebound to the 26-path landed source. The reviewed handoff grants no release approval, Folders final closure, package or registry authority, deployment authority, runtime-pin authority, consumer-migration authority, external-repository authority, or final-consumer authority. Consumers may rely on this EventStore source-only handoff only while `python3 tools/validate-oq8-platform-evidence.py` passes against unchanged bound source, and they must obtain the approved design bytes from Folders.
+ 
+diff --git a/docs/concepts/command-lifecycle.md b/docs/concepts/command-lifecycle.md
+index 195bcf2b..8ed643e8 100644
+--- a/docs/concepts/command-lifecycle.md
++++ b/docs/concepts/command-lifecycle.md
+@@ -267,7 +267,7 @@ In the [Architecture Overview](architecture-overview.md), you saw the static top
+ 
+ ### OQ8 platform evidence boundary
+ 
+-Story 4.15 records the reviewed source-only handoff for EventStore source commit `e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec`. The final packet binds the Stories 4.9-4.14 invariant crosswalk, immutable multi-host PostgreSQL evidence, exact landed Git identities, limitations, the test source, the pre-review execution record, and fresh content-bound architecture, security, and test receipts. EventStore platform completion and the source-only handoff are recorded, and the live closure validator passes against the unchanged bound source.
++Story 4.15 records the reviewed source-only handoff for EventStore source commit `4b0a7b1d3628a857f131cfbff99030714aefc747`. The final packet binds the Stories 4.9-4.14 invariant crosswalk, immutable multi-host PostgreSQL evidence, exact landed Git identities, limitations, the test source, the pre-review execution record, and fresh content-bound architecture, security, and test receipts. EventStore platform completion and the source-only handoff are recorded, and the live closure validator passes against the unchanged bound source.
+ 
+ The bound limitations disclose that the approved Folders design bytes are not tracked here, the capture used test-only deterministic-time, intent-adapter, and boundary-counter seams, raw PostgreSQL values and diagnostics were replaced by sanitized structural projections, and the original dirty candidate capture is independently rebound to the 26-path landed source. The reviewed handoff grants no release approval, Folders final closure, package or registry authority, deployment authority, runtime-pin authority, consumer-migration authority, external-repository authority, or final-consumer authority. Consumers may rely on this EventStore source-only handoff only while `python3 tools/validate-oq8-platform-evidence.py` passes against unchanged bound source, and they must obtain the approved design bytes from Folders.
+ 
+diff --git a/docs/guides/configuration-reference.md b/docs/guides/configuration-reference.md
+index 87bdc4c5..5c5a37bf 100644
+--- a/docs/guides/configuration-reference.md
++++ b/docs/guides/configuration-reference.md
+@@ -773,7 +773,7 @@ This table lists every configurable setting for quick scanning, including explic
+ 
+ ### OQ8 deployment and handoff limit
+ 
+-Story 4.15 records the reviewed source-only handoff for EventStore source commit `e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec`. The final packet binds the Stories 4.9-4.14 invariant crosswalk, immutable multi-host PostgreSQL evidence, exact landed Git identities, limitations, the test source, the pre-review execution record, and fresh content-bound architecture, security, and test receipts. EventStore platform completion and the source-only handoff are recorded, and the live closure validator passes against the unchanged bound source.
++Story 4.15 records the reviewed source-only handoff for EventStore source commit `4b0a7b1d3628a857f131cfbff99030714aefc747`. The final packet binds the Stories 4.9-4.14 invariant crosswalk, immutable multi-host PostgreSQL evidence, exact landed Git identities, limitations, the test source, the pre-review execution record, and fresh content-bound architecture, security, and test receipts. EventStore platform completion and the source-only handoff are recorded, and the live closure validator passes against the unchanged bound source.
+ 
+ The bound limitations disclose that the approved Folders design bytes are not tracked here, the capture used test-only deterministic-time, intent-adapter, and boundary-counter seams, raw PostgreSQL values and diagnostics were replaced by sanitized structural projections, and the original dirty candidate capture is independently rebound to the 26-path landed source. The reviewed handoff grants no release approval, Folders final closure, package or registry authority, deployment authority, runtime-pin authority, consumer-migration authority, external-repository authority, or final-consumer authority. Consumers may rely on this EventStore source-only handoff only while `python3 tools/validate-oq8-platform-evidence.py` passes against unchanged bound source, and they must obtain the approved design bytes from Folders.
+ 
+diff --git a/docs/reference/command-api.md b/docs/reference/command-api.md
+index 5cc142c9..f1bb79f4 100644
+--- a/docs/reference/command-api.md
++++ b/docs/reference/command-api.md
+@@ -572,7 +572,7 @@ $ curl https://localhost:5001/api/v1/commands/status/a1b2c3d4-e5f6-7890-abcd-ef1
+ 
+ ### OQ8 consumption status
+ 
+-Story 4.15 records the reviewed source-only handoff for EventStore source commit `e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec`. The final packet binds the Stories 4.9-4.14 invariant crosswalk, immutable multi-host PostgreSQL evidence, exact landed Git identities, limitations, the test source, the pre-review execution record, and fresh content-bound architecture, security, and test receipts. EventStore platform completion and the source-only handoff are recorded, and the live closure validator passes against the unchanged bound source.
++Story 4.15 records the reviewed source-only handoff for EventStore source commit `4b0a7b1d3628a857f131cfbff99030714aefc747`. The final packet binds the Stories 4.9-4.14 invariant crosswalk, immutable multi-host PostgreSQL evidence, exact landed Git identities, limitations, the test source, the pre-review execution record, and fresh content-bound architecture, security, and test receipts. EventStore platform completion and the source-only handoff are recorded, and the live closure validator passes against the unchanged bound source.
+ 
+ The bound limitations disclose that the approved Folders design bytes are not tracked here, the capture used test-only deterministic-time, intent-adapter, and boundary-counter seams, raw PostgreSQL values and diagnostics were replaced by sanitized structural projections, and the original dirty candidate capture is independently rebound to the 26-path landed source. The reviewed handoff grants no release approval, Folders final closure, package or registry authority, deployment authority, runtime-pin authority, consumer-migration authority, external-repository authority, or final-consumer authority. Consumers may rely on this EventStore source-only handoff only while `python3 tools/validate-oq8-platform-evidence.py` passes against unchanged bound source, and they must obtain the approved design bytes from Folders.
+ 
+diff --git a/tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs b/tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs
+index 153ddcbc..c90f50f9 100644
+--- a/tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs
++++ b/tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs
+@@ -11,7 +11,7 @@ namespace Hexalith.EventStore.Contracts.Tests.Packaging;
+ /// </summary>
+ public sealed class Oq8PlatformClosureTests
+ {
+-    private const string LandedSource = "e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec";
++    private const string LandedSource = "4b0a7b1d3628a857f131cfbff99030714aefc747";
+     private static readonly Regex EventStorePlatformCompleteTrue = new(
+         "\"eventStorePlatformComplete\"\\s*:\\s*true",
+         RegexOptions.CultureInvariant,
+@@ -928,7 +928,7 @@ public sealed class Oq8PlatformClosureTests
+     [InlineData("docs/concepts/architecture-overview.md", "Cannot read evidence path")]
+     [InlineData("deploy/dapr/resiliency.yaml", "Cannot hash evidence path")]
+     [InlineData("_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425/observations.json", "Manifest artifact missing: observations.json")]
+-    [InlineData("_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/reviews/security.json", "Closure artifact missing: reviews/security.json")]
++    [InlineData("_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/reviews/security.json", "Closure artifact missing: reviews/security.json")]
+     [Trait("OQ8Phase", "FinalOnly")]
+     public void MissingRequiredPathFailsSafely(string relative, string expected)
+     {
+diff --git a/tools/validate-oq8-platform-evidence.py b/tools/validate-oq8-platform-evidence.py
+index 1089ec78..c7e4af66 100644
+--- a/tools/validate-oq8-platform-evidence.py
++++ b/tools/validate-oq8-platform-evidence.py
+@@ -31,19 +31,19 @@ EVIDENCE = (
+ CLOSURE = (
+     ROOT
+     / "_bmad-output/implementation-artifacts/evidence/story-4-15"
+-    / "e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec"
++    / "4b0a7b1d3628a857f131cfbff99030714aefc747"
+ )
+ DESIGN_VERSION = "1.0.0"
+ DESIGN_SHA256 = "1a55b0302e91233e12db91e6e245f0a22d6bf13fcf6cdf5ee0cbe5759f08dcd8"
+ BASELINE = "e60a3777c581d70b62f67173ccc2372b5b64a425"
+-LANDED_SOURCE = "e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec"
+-LANDED_TREE = "e4bb19e5305bbde23563245976b97eb0aaf3c931"
++LANDED_SOURCE = "4b0a7b1d3628a857f131cfbff99030714aefc747"
++LANDED_TREE = "21f9819026a1338efbab70d69991b3570c1b54f7"
+ PROFILE = "oq8-postgresql-v1"
+ POSTGRES_IMAGE = "postgres:18.4"
+ COMMITTED_DAPR_RUNTIME_VERSION = "1.18.1"
+ CURRENT_REVIEW_DATE = "2026-08-11"
+ EVIDENCE_DIRECTORY = "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425"
+-CLOSURE_DIRECTORY = "_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec"
++CLOSURE_DIRECTORY = "_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747"
+ FOCUSED_METHOD = "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionOq8PostgresqlTests.ProductionMatrix_IndependentProcessesPreserveAuthorityReplayExpiryAndLeakageInvariants"
+ FOCUSED_TRAITS = {
+     "Category": ["LiveSidecar"],
+@@ -136,10 +136,10 @@ EXPECTED_DOCUMENTS = {
+     "docs/guides/configuration-reference.md",
+ }
+ EXPECTED_DOCUMENT_HASHES = {
+-    "docs/concepts/architecture-overview.md": "fc18f36a3f7300aba07b90c92e724c65353c0c4dcafbcd44d74ab805729e6627",
+-    "docs/concepts/command-lifecycle.md": "fa739de1c11601c4e0b7530fed02b1e1c42d763ecc5346fa68b79f8fca2c44da",
+-    "docs/guides/configuration-reference.md": "75b8d45990794e4ab82429bb606b057652fc9214ce4fa8edd2b33fa516774900",
+-    "docs/reference/command-api.md": "3ff40db9bba089b80157780bb1deb9d3096aee10e855dae98a2e64335b39c54e",
++    "docs/concepts/architecture-overview.md": "ad57a9f3b30e4c15d577199edee76220d8e90f81a7c7ae7c2beb03f541a1c013",
++    "docs/concepts/command-lifecycle.md": "21bf8c315573ba7022f8256cb84110e4da93f5ec2f24f95c924bd9ddff5ec7ac",
++    "docs/guides/configuration-reference.md": "558bb275878a01dfbbb2b1aa67eace9755a98d5928cbe009e52338cfe7a0d4d6",
++    "docs/reference/command-api.md": "76ec9b52ffca29a33192bb7c386f871fd08a640d312458060ff4a6652bf93f43",
+ }
+ DOCUMENT_REQUIRED_TEXT = (
+     "reviewed source-only handoff",
+@@ -172,7 +172,7 @@ EXPECTED_LIMITATIONS = [
+     "The approved Folders design bytes are not tracked in EventStore; only design version 1.0.0 and its approved SHA-256 reference are preserved.",
+     "The production-path capture used shipped Release entry assemblies with a test-only hosting startup, deterministic time, trusted intent adapter, boundary counter, and Testing environment disclosure.",
+     "Raw PostgreSQL values and raw diagnostics were intentionally excluded; committed evidence contains sanitized structural projections, bounded counts, hashes, and invariant results.",
+-    "The original capture bound a dirty candidate against e60a3777c581d70b62f67173ccc2372b5b64a425; this closure independently binds the same 26 paths at landed commit e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec.",
++    "The original capture bound a dirty candidate against e60a3777c581d70b62f67173ccc2372b5b64a425; this closure independently binds the same 26 paths at landed commit 4b0a7b1d3628a857f131cfbff99030714aefc747.",
+     "This is a source-only EventStore platform handoff. It grants no release, package, registry, deployment, runtime pin, external-repository, consumer-migration, or final-consumer authority.",
+     "Folders retains its own final cross-repository decision and must independently verify the referenced design and EventStore source before consumption.",
+ ]
+@@ -1198,11 +1198,26 @@ def validate_source_state(document: dict[str, Any], identity: dict[str, Any]) ->
+     )
+     require(
+         landed_overrides == {
++            ".github/workflows/integration.yml": {
++                "captureWorktreeSha256": "afb28e703e9b9d51b5144e10c0368cf6ac94ab01cf5e456ef2090a6d444e3205",
++                "landedGitSha256": "a9fe1bcd85c8232a0e0e46f3e8891cd2da056a9699f1804d4f9f8ae8dafccb91",
++                "reason": "Story 4.14 capture hashed the original integration workflow; landed commit 4b0a7b1d retains later CI history-fetch and Dapr runtime-pin wiring as historical evidence for the evolved orchestration path.",
++            },
+             "src/Hexalith.EventStore/Program.cs": {
+                 "captureWorktreeSha256": "245f79cc04998118da9caec70cdf290d67fb23e71a91100af46c4a019af5be7f",
+                 "landedGitSha256": "7203089f0035e3a45cf7ccf6c6fffdc120e4b2dc2d9fd53b8031ed87e7ad83e9",
+                 "reason": "The capture hashed CRLF working-tree bytes while the landed Git blob stores LF bytes under tracked text normalization.",
+             },
++            "tests/Hexalith.EventStore.Server.Tests/Actors/PublicationRecoveryActivationTests.cs": {
++                "captureWorktreeSha256": "7aff4137378e9f2529b1770dd81c6638e8159277b4e92a5653ffc61a65ad2eb4",
++                "landedGitSha256": "bfc4c85147df8d468d8ed33a9e00c4c372ce18d2512f07913095190527b15b6d",
++                "reason": "Committed publication-recovery tests advanced at landed commit 4b0a7b1d after Story 4.14 capture; the override bridges capture worktree bytes to the intentional landed Git capability source.",
++            },
++            "tools/validate-oq8-platform-evidence.py": {
++                "captureWorktreeSha256": "0e9a352e7757f452dbc1f41dbd7036d76088f56be732a03c9b48ba4d6ab1c8b1",
++                "landedGitSha256": "5c23fe250f113c40c452eea781b8151d58e2ddc5197baa8d678b33cfad572647",
++                "reason": "Story 4.14 capture hashed the original validator; landed commit 4b0a7b1d retains the later closure-validator evolution, while current validator bytes remain bound by validator-sha256.txt.",
++            },
+         },
+         "Landed Git-byte override declaration drift",
+     )
+
+=== UNTRACKED NEW FILES ===
+--- BEGIN _bmad-output/implementation-artifacts/spec-gh-31483075631-fix-ci-cd.md ---
+---
+title: 'Reseal Story 4.15 after PublicationRecovery bound-source drift'
+type: 'bugfix'
+created: '2026-08-11'
+status: 'in-review'
+baseline_commit: '06e62b4dceae6df0587062968097b46caa51713a'
+review_loop_iteration: 0
+context:
+  - '{project-root}/_bmad-output/project-context.md'
+  - '{project-root}/docs/ci.md'
+---
+
+<frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
+
+## Intent
+
+**Problem:** [Integration Tests run 31483075631](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/31483075631) passes live OQ8 and support cases, then fails committed validation with bound-source drift on `PublicationRecoveryActivationTests.cs` after commit `4b0a7b1d` changed that capability path past Story 4.15 land `e5fef514…`.
+
+**Approach:** Reseal Story 4.15 onto landed source `4b0a7b1d3628a857f131cfbff99030714aefc747` (tree `21f98190…`), expand capture→landed Git-byte overrides, obtain fresh content-bound architecture/security/test receipts, and leave Story 4.14 immutable. No new live-sidecar capture is required for committed validation.
+
+## Boundaries & Constraints
+
+**Always:** Keep Story 4.14 bytes and committed Dapr runtime `1.18.1` unchanged. Keep all 24 non-evolved capability paths byte-stable at the new landed commit through the reseal commit. Bind approvals to one frozen subject. Record real named receipts before final validation. Use a `fix/…` branch before any commit.
+
+**Ask First:** OQ8 design/admission/profile/public-contract changes; release/package/registry/deploy/pin/consumer authority; submodule changes; fabricating or skipping reviews; committing or pushing from `main`.
+
+**Never:** Mutate `evidence/story-4-14/**`; fabricate receipts; weaken committed validation or ancestry; claim release/Folders/package/deploy authority; modify any of the 24 bound paths in the reseal commit; require a fresh live capture solely for this drift.
+
+## I/O & Edge-Case Matrix
+
+| Scenario | Input / State | Expected Output / Behavior | Error Handling |
+|----------|---------------|---------------------------|----------------|
+| Committed after reseal | HEAD descends from `4b0a7b1d…`; 24 bound paths match; receipts bind subject | Committed validator succeeds | Fail closed on path or receipt drift |
+| Capture vs new landed | 4.14 capture hashes unchanged; landed differs for recovery tests and evolved tooling | Overrides bridge capture→landed Git | Missing override → identity drift |
+| Fresh CI lane | Runner capture + runtime `1.18.2` | Fresh stays independent of committed `1.18.1` | Do not relabel committed as fresh |
+| Pre-review gap | Identity refreshed without three receipts | `--pre-review` may pass; final mode rejects | HALT until real receipts exist |
+
+</frozen-after-approval>
+
+## Code Map
+
+- `tools/validate-oq8-platform-evidence.py:39-46,52-87,110-178,1199-1249,1914-2003` -- landed/closure pins, 24 bound paths, roster/limitations/docs hashes, hard-coded overrides, HEAD≡landed proof, committed/fresh/`--pre-review` modes.
+- `evidence/story-4-14/e60a3777…/` -- immutable capture; `captureWorktreePaths` stay capture authority.
+- `evidence/story-4-15/e5fef514…/` → move to `…/4b0a7b1d3628a857f131cfbff99030714aefc747/`; refresh identity, limitations, subject, pre-review, validator hash, reviews, handoff, closure manifest.
+- `Oq8PlatformClosureTests.cs:14,480,931` -- retarget `LandedSource` / closure path literals.
+- `4-8-eventstore-oq8-platform-evidence.yaml` -- v2 packet landed commit + closure directory digests.
+- OQ8 public docs under `docs/{concepts,reference,guides}/` -- embed new landed SHA; refresh `EXPECTED_DOCUMENT_HASHES`.
+- `integration.yml` / `docs/ci.md` -- read-only fresh-then-committed lane; no workflow change for this drift.
+- Override landed Git SHA-256 (capture stays): recovery tests → `bfc4c851…b15b6d`; `integration.yml` → `a9fe1bcd…fccb91`; validator → `5c23fe25…572647`; keep existing `Program.cs` CRLF/LF override. Compute full digests from `git show 4b0a7b1d:<path>` during implementation.
+
+## Tasks & Acceptance
+
+**Execution:**
+- [x] `tools/validate-oq8-platform-evidence.py` -- retarget landed commit/tree/closure, limitation text, and expand `landedGitByteOverrides`.
+- [x] `evidence/story-4-15/**` -- move closure dir to new landed SHA; rewrite identity/subject/pre-review/validator hash; do not touch Story 4.14.
+- [x] `reviews/{architecture,security,test}.json` -- after `--pre-review`, record real content-bound approvals for the new subject.
+- [x] Packet YAML, `Oq8PlatformClosureTests.cs`, OQ8 docs -- finalize handoff/manifests/pins/doc hashes; reseal commit must not touch the 24 bound paths.
+
+**Acceptance Criteria:**
+- Given HEAD descends from `4b0a7b1d…` with bound paths unchanged since that commit, when committed validation runs, then it passes without a new live-sidecar capture.
+- Given Story 4.14 artifacts after the change, when inspected, then capture bytes and committed runtime `1.18.1` are unchanged.
+- Given the refreshed subject, when the three rostered receipts are present, then final validation and `Oq8PlatformClosureTests` pass; without them only `--pre-review` is allowed.
+
+## Spec Change Log
+
+## Design Notes
+
+Land on `4b0a7b1d…` (first commit with the drifted recovery tests). Later `main` only evolved unbound tooling or unbound production code, so HEAD already matches all 24 bound paths at that pin. Capture hashes remain Story 4.14 truths; overrides express intentional Git-byte divergence. Reviews must rebind because subject/validator/document digests change.
+
+## Verification
+
+**Commands:**
+- `python3 -m py_compile tools/validate-oq8-platform-evidence.py && python3 tools/validate-oq8-platform-evidence.py --pre-review` -- expected: pre-review identity passes.
+- `python3 tools/validate-oq8-platform-evidence.py` -- expected: full committed closure only after real receipts.
+- `dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -m:1 -p:UseHexalithProjectReferences=false` then built assembly filtered to `Oq8PlatformClosureTests` -- expected: all green.
+- `git merge-base --is-ancestor 4b0a7b1d3628a857f131cfbff99030714aefc747 HEAD && git diff --check` -- expected: ancestry holds; whitespace clean; Story 4.14 and 24 bound paths untouched by reseal commit.
+
+**Manual checks:**
+- Confirm receipts use rostered reviewers, bind new subject/limitations digests, and keep every external-authority field false.
+--- END _bmad-output/implementation-artifacts/spec-gh-31483075631-fix-ci-cd.md ---

@@ -295,6 +295,31 @@ deployment mutation, Story 1.20/3.12 status change, or G5 classification.
   - [x] If AC4 passes, move this story through review to `done`; otherwise leave it non-`done` with
     the focused blocker record. Never change Story 1.20, Story 3.12, or Epic 1.
 
+### Review Findings
+
+Chunk 1/3 (tests only) — `bmad-code-review` 2026-08-11 against `1d6e9321...HEAD` File List slice `DeployedRuntimeParityClosureTests.cs`.
+
+- [ ] [Review][Decision] ValidateRuntimeEquivalence depth — Today it only asserts Production hosting-environment strings and declarative `result`/`contract_equivalence` fields (`ValidateRuntimeEquivalence` ~3102–3111). Story runtime proof also requires equal bounded `/alive` smoke on both immutable children. Decide whether equivalence must compare per-platform digest/HTTP/readiness/cleanup facts here, or remain a Production-contract gate with platform equality owned only by `ValidateRuntimeExecution`.
+- [ ] [Review][Patch] WaitForProcessExit treats post-kill exit as success and callers hash truncated stdout [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:5404]
+- [ ] [Review][Patch] DerivedClosureRejectsActualIncompleteLineageAndDeclarativeTampering mutates committed evidence in place [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:535]
+- [ ] [Review][Patch] Package exact-set check ignores nested files under archive_root subdirectories [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:2229]
+- [ ] [Review][Patch] Acceptance/control symlink-escape tests hard-fail when links are unavailable [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:990]
+- [ ] [Review][Patch] Missing mutable-tag-only identity negative control required by Testing requirements / AC2
+- [ ] [Review][Patch] Missing OCI platform-set negatives (third child, unknown, nested index, duplicate) [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:2688]
+- [ ] [Review][Patch] Missing config os/architecture mismatch negative against parent descriptor [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:2777]
+- [ ] [Review][Patch] Zero poll_interval_seconds fail-closed guard is unexercised [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:3956]
+- [ ] [Review][Patch] MalformedChecksumManifestsFailClosed omits well-formed entry whose SHA does not match file bytes [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:271]
+- [ ] [Review][Patch] CanonicalLineageIgnoresExecutionOnlyRuntimeFacts never asserts identity-affecting runtime mutations change the lineage [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:504]
+- [ ] [Review][Patch] Missing expired/inaccessible retained-evidence negative control required by Testing requirements
+- [ ] [Review][Patch] Missing environment-vs-product failure-class negatives required by Task 6 / Testing requirements
+- [ ] [Review][Patch] ProhibitedCrossLineageSplicesFailClosed only tweaks a few fields on a synthetic pass fixture [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:1015]
+- [x] [Review][Defer] ResolveWithin uses Ordinal StartsWith on Path.GetFullPath roots [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:5255] — deferred, pre-existing
+- [x] [Review][Defer] FieldNameIsSupportSafe fragment matching can false-positive legitimate names [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:4134] — deferred, pre-existing
+- [x] [Review][Defer] LimitationsContainMutationProhibitions accepts weak keyword substrings [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:4282] — deferred, pre-existing
+- [x] [Review][Defer] ResolveWithin TOCTOU between RejectReparsePoint and later file open [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:5260] — deferred, pre-existing
+- [x] [Review][Defer] RunGit/ComputePinnedBuildsToolSha256 sync-over-async via GetAwaiter().GetResult() [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:5334] — deferred, pre-existing
+- [x] [Review][Defer] ValueIsSupportSafe misses private IPs embedded in non-URI free text [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:4155] — deferred, pre-existing
+
 ## Dev Notes
 
 ### Governing authority and traceability
