@@ -11,7 +11,7 @@ namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 /// </summary>
 public sealed class Oq8PlatformClosureTests
 {
-    private const string LandedSource = "e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec";
+    private const string LandedSource = "4b0a7b1d3628a857f131cfbff99030714aefc747";
     private static readonly Regex EventStorePlatformCompleteTrue = new(
         "\"eventStorePlatformComplete\"\\s*:\\s*true",
         RegexOptions.CultureInvariant,
@@ -928,7 +928,7 @@ public sealed class Oq8PlatformClosureTests
     [InlineData("docs/concepts/architecture-overview.md", "Cannot read evidence path")]
     [InlineData("deploy/dapr/resiliency.yaml", "Cannot hash evidence path")]
     [InlineData("_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425/observations.json", "Manifest artifact missing: observations.json")]
-    [InlineData("_bmad-output/implementation-artifacts/evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/reviews/security.json", "Closure artifact missing: reviews/security.json")]
+    [InlineData("_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/reviews/security.json", "Closure artifact missing: reviews/security.json")]
     [Trait("OQ8Phase", "FinalOnly")]
     public void MissingRequiredPathFailsSafely(string relative, string expected)
     {

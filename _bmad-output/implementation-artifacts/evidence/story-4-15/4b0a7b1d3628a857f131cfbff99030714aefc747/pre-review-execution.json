@@ -9,11 +9,11 @@
   },
   "validator": {
     "path": "tools/validate-oq8-platform-evidence.py",
-    "sha256": "5c23fe250f113c40c452eea781b8151d58e2ddc5197baa8d678b33cfad572647"
+    "sha256": "e81bfaec383a3092d174f929d6069976afb6be9e123cc3aec5c4ecd56e32c0b2"
   },
   "testSource": {
     "path": "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs",
-    "sha256": "b89a2c816456e0140b5d1f582fd90964bc50d30809f91b0157f49fd5e237caa2"
+    "sha256": "5b66a6a3d4fc79010cd4cd94a092eefee136cc2dc3241f0885c772626728f99d"
   },
   "finalValidation": {
     "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests -noColor",

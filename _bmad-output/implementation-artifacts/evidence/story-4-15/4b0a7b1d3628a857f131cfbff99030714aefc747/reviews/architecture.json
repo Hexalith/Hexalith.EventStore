@@ -1,0 +1,31 @@
+{
+  "schema": "hexalith.eventstore.story-4-15-review-receipt/v1",
+  "role": "architecture",
+  "reviewer": "Winston (System Architect)",
+  "reviewedOn": "2026-08-11",
+  "decision": "approved",
+  "subjectSha256": "977a2464e49e3b40f46fff2ff8d1d0ec46c463a9581bc93c1cff9249134e1d15",
+  "acceptedScope": "OQ8 design reference, invariant crosswalk, landed-source identity, architecture boundaries, and source-only handoff",
+  "acceptedLimitationsSha256": "3853e7001a78da7cc0c3824392e43e9f5b286b65ce8d101167991b133ebf2d92",
+  "findings": [
+    "The refreshed subject retargets landed source identity to commit 4b0a7b1d3628a857f131cfbff99030714aefc747 (tree 21f9819026a1338efbab70d69991b3570c1b54f7) and keeps the Story 4.14 capture directory and seven-artifact manifest byte-stable.",
+    "Capture-to-landed Git-byte overrides now bridge four intentional divergences: PublicationRecoveryActivationTests.cs, integration.yml, the closure validator, and the existing Program.cs CRLF/LF normalization case, while captureWorktreePaths remain Story 4.14 truths.",
+    "All 24 non-evolved bound capability paths are byte-identical between HEAD and the new landed commit; only unbound/evolved tooling and closure artifacts move with this reseal.",
+    "The subject binds validator e81bfaec383a3092d174f929d6069976afb6be9e123cc3aec5c4ecd56e32c0b2, test source 5b66a6a3d4fc79010cd4cd94a092eefee136cc2dc3241f0885c772626728f99d, and pre-review execution 03411906de8faa4928eb3f9f94fbae50d886a67a26621bbad800b5c590df95be.",
+    "Public OQ8 documents embed the new landed SHA and retain the source-only handoff semantics, including every Folders-owned and external-authority exclusion.",
+    "Approval establishes EventStore platform completeness only; it grants no release, Folders final closure, package, registry, deployment, runtime-pin, consumer-migration, external-repository, or final-consumer authority."
+  ],
+  "authority": {
+    "eventStorePlatformComplete": true,
+    "handoffMode": "source-only",
+    "releaseApproved": false,
+    "foldersFinalClosure": false,
+    "packageAuthority": false,
+    "registryAuthority": false,
+    "deploymentAuthority": false,
+    "runtimePinAuthority": false,
+    "consumerMigrationAuthority": false,
+    "externalRepositoryAuthority": false,
+    "finalConsumerAuthority": false
+  }
+}
