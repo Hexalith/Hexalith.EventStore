@@ -1165,3 +1165,15 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
   summary: Bind the closure-assembly commit identity after the Story 4.15 artifacts land.
   evidence: The packet binds the landed OQ8 capability commit and current path equivalence, but not the later commit that contains the closure layer itself.
+
+## Deferred from: code review of spec-4-4-committed-event-publication-recovery (2026-08-11)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-4-committed-event-publication-recovery.md`
+  summary: [HIGH] Dead-letter republish if mark-save fails after broker accept (reconfirmed, group-1 review).
+  evidence: `CompleteDrainExhaustionAsync` publishes then `MarkDeadLettered` + `SaveStateAsync`; if save fails after broker acceptance, the next exhaustion turn publishes again. Already on ledger from prior 4.4 / mislabeled 3.13 entries; reconfirmed against `AggregateActor.cs:1674-1709`.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-4-committed-event-publication-recovery.md`
+  summary: [MEDIUM] `Normalize` does not dedupe duplicate MessageIds (reconfirmed, group-1 review).
+  evidence: `UnpublishedPublicationIndex.Normalize` drops nulls only; duplicate MessageIds inflate `Count` toward capacity. Already on ledger; reconfirmed at `UnpublishedPublicationIndex.cs:148-157`.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-4-committed-event-publication-recovery.md`
+  summary: [MEDIUM] Commit-batch index staging order is not asserted by tests (reconfirmed, group-1 review).
+  evidence: Existing commit-batch test asserts `SetStateAsync(publication-index)` occurred but not before the first commit `SaveStateAsync`. Already on ledger; reconfirmed against `AggregateActor.cs:688-727`.

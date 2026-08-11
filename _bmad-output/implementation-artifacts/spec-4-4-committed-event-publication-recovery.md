@@ -145,6 +145,32 @@ Verified at `37fdcd1f`. Story 4.2 already shipped the drain record, its reminder
 - Given each new guard and bound, when it is deliberately mutated (cap raised to `int.MaxValue`; index staging removed from each creation site independently; the capacity fail-closed branch removed; the `Recoverable`→`Terminal` transition removed; `OnActivateAsync` body emptied; the `CommandStatusResponse` mapping arguments dropped), then a named test fails for each. Report which test caught which mutation, and verify each attribution by actually applying that mutation — a claimed attribution that a re-run does not reproduce is a failed acceptance criterion.
 - Given every guard in the change, when each is inspected, then none contains a condition that cannot decide the branch it guards.
 
+### Review Findings
+
+Chunk group 1 (core recovery) — 2026-08-11.
+
+- [x] [Review][Decision] Post-commit index refusal fails open — resolved 2026-08-11: keep documented fail-open (drain+reminder remain the backstop).
+- [x] [Review][Decision] `ReminderArmedAt` treated as proof a live reminder exists — resolved 2026-08-11: keep stamp-as-proof (accept rare lost-reminder stall).
+- [x] [Review][Decision] Default index bound derives from backpressure — resolved 2026-08-11: keep derive-sentinel.
+- [x] [Review][Decision] `Recoverable` expiry is disposition-only — resolved 2026-08-11: keep disposition+completion design; rely on completion-site patches.
+
+- [ ] [Review][Patch] Activation probe budget permanently starves unarmed tail entries [`AggregateActor.cs:2080`]
+- [ ] [Review][Patch] Handoff failure `ClearCache` can drop staged `Recoverable`→`Terminal` completions [`AggregateActor.cs:2185`]
+- [ ] [Review][Patch] Resume drain rewrite clears `DeadLettered` / `ReminderArmedAt` [`AggregateActor.cs:2641`]
+- [ ] [Review][Patch] Failed reminder registration still consumes the activation work budget [`AggregateActor.cs:2115`]
+- [ ] [Review][Patch] AppHost does not forward `MaxDrainAttempts` / `MaxOutstandingPublicationEntries` [`Program.cs:60`]
+- [ ] [Review][Patch] Post-commit index-refusal path has no test coverage [`AggregateActor.cs:1898`]
+- [ ] [Review][Patch] Index `InvalidEntry` refusal is logged as capacity threshold [`AggregateActor.cs:1906`]
+- [ ] [Review][Patch] Split `UnpublishedPublicationIndex.cs` to one type per file [`UnpublishedPublicationIndex.cs:1`]
+- [ ] [Review][Patch] Drain/recovery stamps use `DateTimeOffset.UtcNow` instead of `TimeProvider` [`AggregateActor.cs:1934`]
+- [ ] [Review][Patch] `TryCompleteRecoverableAsync` is public with bogus `inheritdoc` [`IdempotencyChecker.cs:175`]
+- [ ] [Review][Patch] Duplicate/orphaned XML docs on `ArmDrainReminderAsync` [`AggregateActor.cs:2199`]
+- [ ] [Review][Patch] Successful drain-record rebuild logs at Warning [`AggregateActor.cs:2181`]
+
+- [x] [Review][Defer] Dead-letter republish if mark-save fails after broker accept [`AggregateActor.cs:1706`] — deferred, pre-existing on ledger
+- [x] [Review][Defer] `Normalize` does not dedupe duplicate MessageIds [`UnpublishedPublicationIndex.cs:148`] — deferred, pre-existing on ledger
+- [x] [Review][Defer] Commit-batch index staging order is not asserted by tests [`AggregateActor.cs:688`] — deferred, pre-existing on ledger
+
 ## Spec Change Log
 
 ### 1 — 2026-08-07, loop 1 (`bad_spec`)
