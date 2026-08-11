@@ -8,6 +8,8 @@ using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 
+using Microsoft.Extensions.Time.Testing;
+
 using NSubstitute;
 
 using Shouldly;
@@ -150,9 +152,10 @@ public class AggregateActorFencingTests
     [Fact]
     public async Task LegacySource_ExactInspectionAndRedirectRetainOriginalEvidenceAndDoNoDomainWork()
     {
-        ActorTestContext actorContext = AggregateActorTestHelper.CreateActor();
         DateTimeOffset processedAt = new(2026, 8, 10, 8, 0, 0, TimeSpan.Zero);
         DateTimeOffset expiresAt = processedAt.AddDays(1);
+        var timeProvider = new FakeTimeProvider(processedAt.AddHours(1));
+        ActorTestContext actorContext = AggregateActorTestHelper.CreateActor(timeProvider: timeProvider);
         var result = new CommandProcessingResult(
             true,
             CorrelationId: "trace-original",
@@ -214,6 +217,65 @@ public class AggregateActorFencingTests
         await actorContext.StateManager.DidNotReceive().TryRemoveStateAsync(
             "idempotency:01J00000000000000000000000",
             Arg.Any<CancellationToken>());
+        _ = actorContext.Invoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task LegacySource_AtAndAfterExpiryIsExpiredAndRemainsReadOnly()
+    {
+        DateTimeOffset processedAt = new(2026, 8, 10, 8, 0, 0, TimeSpan.Zero);
+        DateTimeOffset expiresAt = processedAt.AddDays(1);
+        var timeProvider = new FakeTimeProvider(expiresAt);
+        ActorTestContext actorContext = AggregateActorTestHelper.CreateActor(timeProvider: timeProvider);
+        var record = new IdempotencyRecord(
+            "01J00000000000000000000000",
+            "trace-original",
+            true,
+            null,
+            processedAt,
+            EventCount: 1,
+            ResultPayload: "protected-result",
+            MessageId: "01J00000000000000000000000",
+            CommandType: "CreateFolderCommand",
+            ExpiresAt: expiresAt,
+            Disposition: IdempotencyRecordDisposition.Terminal);
+        _ = actorContext.StateManager.TryGetStateAsync<IdempotencyLegacySourceRedirectRecord>(
+                IdempotencyChecker.GetLegacyRedirectKey(record.MessageId!),
+                Arg.Any<CancellationToken>())
+            .Returns(new Dapr.Actors.Runtime.ConditionalValue<IdempotencyLegacySourceRedirectRecord>(false, default!));
+        _ = actorContext.StateManager.TryGetStateAsync<IdempotencyRecord>(
+                $"idempotency:{record.MessageId}",
+                Arg.Any<CancellationToken>())
+            .Returns(new Dapr.Actors.Runtime.ConditionalValue<IdempotencyRecord>(true, record));
+        var request = new IdempotencyLegacySourceRequest(
+            IdempotencyLegacySourceRequest.CurrentSchemaVersion,
+            "test-tenant",
+            "inventory-2026-08",
+            "migration-01J00000000000000000000000",
+            1,
+            IdempotencyLegacySourceEvidence.Compute(record),
+            record.MessageId!,
+            record.CorrelationId!,
+            processedAt,
+            expiresAt,
+            record.ToResult());
+
+        IdempotencyLegacySourceInspection inspection = await ((IIdempotencyLegacySourceActor)actorContext.Actor)
+            .InspectLegacySourceAsync(request);
+
+        inspection.Decision.ShouldBe(IdempotencyLegacySourceDecision.Expired);
+        timeProvider.SetUtcNow(expiresAt.AddTicks(1));
+        IdempotencyLegacySourceInspection afterExpiry = await ((IIdempotencyLegacySourceActor)actorContext.Actor)
+            .InspectLegacySourceAsync(request);
+        afterExpiry.Decision.ShouldBe(IdempotencyLegacySourceDecision.Expired);
+        await actorContext.StateManager.DidNotReceive().SetStateAsync(
+            Arg.Any<string>(),
+            Arg.Any<object>(),
+            Arg.Any<CancellationToken>());
+        await actorContext.StateManager.DidNotReceive().TryRemoveStateAsync(
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+        await actorContext.StateManager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
         _ = actorContext.Invoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default);
     }
 

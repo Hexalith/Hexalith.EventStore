@@ -53,7 +53,7 @@ workflows.
 |------|----------|-------------------|
 | Deterministic release gate | Contracts, Client, Testing, SignalR, Admin, AppHost, DomainService, QueryRouting, Sample, Testing.Integration, RestApi.Generators, and `tests/Hexalith.EventStore.Server.Tests` | Blocking in shared `domain-ci.yml@main` through `unit-test-projects`. `Server.Tests` runs unfiltered because live-sidecar tests moved out. |
 | Semantic-release governance | `tests/Hexalith.EventStore.Contracts.Tests/Packaging/Fixtures/semantic-release-github-success.mjs` | Blocking EventStore-owned CI job. It provisions Node 22, installs exactly `package-lock.json` with `npm ci`, and exercises both release-history cases against an Undici-guarded loopback-only fake GitHub boundary. |
-| Live-sidecar DAPR lane | `tests/Hexalith.EventStore.Server.LiveSidecar.Tests` | Dedicated `Integration Tests` workflow after `dapr init`. This lane is visible but not part of the semantic-release gate. After the live suite, Integration Tests includes Story 4.14 OQ8 evidence capture: `dotnet build` of `Server.Tests`, pinned `-method` support oracles, and `--support-ctrf`. That is not a full `dotnet test` of `Server.Tests` as the live lane. |
+| Live-sidecar DAPR lane | `tests/Hexalith.EventStore.Server.LiveSidecar.Tests` | Dedicated `Integration Tests` workflow after `dapr init`. This lane is visible but not part of the semantic-release gate. After the live suite, Integration Tests includes Story 4.14 OQ8 evidence capture: `dotnet build` of `Server.Tests`, pinned `-method` support oracles, and capture-aware validation with `--support-ctrf`. It does not rerun committed historical-evidence closure, and it is not a full `dotnet test` of `Server.Tests` as the live lane. |
 | Advisory browser/governance/evidence scaffolds | `tests/Hexalith.EventStore.Admin.UI.E2E`, `tests/Hexalith.EventStore.DeferredWorkGovernance.Tests`, `tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests` | Separate `Advisory Tests` workflow. It installs Playwright Chromium for the browser suite and runs with `continue-on-error`, preserving push/PR signal without making semantic-release depend on these suites. |
 | Full Aspire E2E | `tests/Hexalith.EventStore.IntegrationTests` | Deferred until a reliable Aspire-in-CI topology exists. |
 
@@ -66,11 +66,10 @@ the legacy behavior by falling back to `version`. Neither pin is the Dapr NuGet
 currently `1.18.5`). Fresh OQ8 validation receives the same runtime pin explicitly,
 while committed Story 4.14 evidence remains bound to its observed runtime `1.18.1`.
 
-The Integration Tests checkout uses `fetch-depth: 0` because committed OQ8
-identity validation resolves the pinned landed commit and tree, proves connected
-ancestry to the current `HEAD`, and reads historical blobs. A fixed positive
-depth is not sufficient: the pinned source recedes as `main` advances, so this
-lane requires complete history rather than a depth value that needs maintenance.
+The Integration Tests checkout uses explicit `fetch-depth: 1` because fresh OQ8
+capture needs only the checked-out commit. Committed OQ8 historical-evidence
+closure is owned by the blocking Tier-1 `Oq8PlatformClosureTests`; Integration
+Tests does not duplicate that current-checkout validation.
 
 Do not reintroduce a `Category!=LiveSidecar` filter to make `Server.Tests`
 deterministic. Live-sidecar coverage belongs in the live-sidecar project and

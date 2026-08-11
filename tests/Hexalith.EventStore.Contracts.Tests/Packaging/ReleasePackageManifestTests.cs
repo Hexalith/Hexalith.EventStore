@@ -628,6 +628,51 @@ public sealed class ReleasePackageManifestTests
         AssertLiveSidecarWorkflowTargetsLiveProjectOutsideReleaseGate(integration, release, daprInit);
     }
 
+    [Fact]
+    public void Oq8WorkflowHasOneCaptureAwareValidatorAndBlockingCommittedClosureOwner()
+    {
+        string root = FindRepositoryRoot();
+        string integration = File.ReadAllText(Path.Combine(root, ".github", "workflows", "integration.yml"))
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n');
+        string ci = File.ReadAllText(Path.Combine(root, ".github", "workflows", "ci.yml"));
+
+        MatchCollection validatorReferences = Regex.Matches(
+            integration,
+            Regex.Escape("validate-oq8-platform-evidence.py"));
+        validatorReferences.Count.ShouldBe(
+            1,
+            "Integration Tests must invoke the OQ8 validator exactly once for the fresh capture.");
+        Match validatorInvocation = Regex.Match(
+            integration,
+            @"(?m)^[ \t]*python3 tools/validate-oq8-platform-evidence\.py(?=[ \t]|$)");
+        validatorInvocation.Success.ShouldBeTrue("The one OQ8 validator reference must be the canonical Python invocation.");
+        int followingStep = integration.IndexOf("\n\n", validatorInvocation.Index, StringComparison.Ordinal);
+        string validatorBlock = integration[
+            validatorInvocation.Index..(followingStep < 0 ? integration.Length : followingStep)];
+
+        validatorBlock.ShouldContain("--capture-directory \"$HEXALITH_OQ8_EVIDENCE_DIRECTORY\"");
+        validatorBlock.ShouldContain("--ctrf \"${RUNNER_TEMP}/oq8-results.json\"");
+        validatorBlock.ShouldContain("--support-ctrf \"${RUNNER_TEMP}/oq8-support-results.json\"");
+        validatorBlock.ShouldContain("--expected-runtime-version \"$DAPR_RUNTIME_VERSION\"");
+
+        string liveSidecarJob = ExtractTopLevelWorkflowJobBlock(integration, "live-sidecar");
+        liveSidecarJob.ShouldNotContain("continue-on-error");
+        liveSidecarJob.ShouldNotContain("|| true");
+        liveSidecarJob.ShouldNotContain("set +e");
+
+        string ciJob = ExtractTopLevelWorkflowJobBlock(ci, "ci");
+        ciJob.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@main");
+        ciJob.ShouldContain("unit-test-projects: |");
+        ciJob.ShouldContain("tests/Hexalith.EventStore.Contracts.Tests");
+        ciJob.ShouldNotContain("continue-on-error");
+
+        System.Reflection.MethodInfo? committedClosure = typeof(Oq8PlatformClosureTests).GetMethod(
+            nameof(Oq8PlatformClosureTests.ApprovedSourceOnlyHandoffPasses));
+        committedClosure.ShouldNotBeNull();
+        committedClosure!.GetCustomAttributes(typeof(FactAttribute), inherit: false).Length.ShouldBe(1);
+    }
+
     [Theory]
     [InlineData("full-server-tests")]
     [InlineData("category-filter")]
@@ -635,9 +680,9 @@ public sealed class ReleasePackageManifestTests
     [InlineData("missing-runtime-tag")]
     [InlineData("runtime-uses-cli-pin")]
     [InlineData("missing-legacy-fallback")]
-    [InlineData("shallow-checkout")]
-    [InlineData("misplaced-full-history")]
-    [InlineData("checkout-env-full-history")]
+    [InlineData("full-history-checkout")]
+    [InlineData("misplaced-shallow-depth")]
+    [InlineData("checkout-env-shallow-depth")]
     [InlineData("release-coupling-workflow")]
     [InlineData("release-coupling-project")]
     public void Live_sidecar_workflow_guardrail_rejects_forbidden_mutations(string mutation)
@@ -664,22 +709,22 @@ public sealed class ReleasePackageManifestTests
                 "runtime-version: ${{ env.DAPR_CLI_VERSION }}",
                 StringComparison.Ordinal),
             "missing-legacy-fallback" => integration,
-            "shallow-checkout" => integration.Replace(
-                "fetch-depth: 0",
+            "full-history-checkout" => integration.Replace(
                 "fetch-depth: 1",
+                "fetch-depth: 0",
                 StringComparison.Ordinal),
-            "misplaced-full-history" => integration
+            "misplaced-shallow-depth" => integration
                 .Replace(
-                    "          fetch-depth: 0\n",
+                    "          fetch-depth: 1\n",
                     string.Empty,
                     StringComparison.Ordinal)
                 .Replace(
                     "          path: ~/.nuget/packages\n",
-                    "          fetch-depth: 0\n          path: ~/.nuget/packages\n",
+                    "          fetch-depth: 1\n          path: ~/.nuget/packages\n",
                     StringComparison.Ordinal),
-            "checkout-env-full-history" => integration.Replace(
-                "        with:\n          fetch-depth: 0\n          submodules: false",
-                "        env:\n          fetch-depth: 0\n        with:\n          submodules: false",
+            "checkout-env-shallow-depth" => integration.Replace(
+                "        with:\n          fetch-depth: 1\n          submodules: false",
+                "        env:\n          fetch-depth: 1\n        with:\n          submodules: false",
                 StringComparison.Ordinal),
             "release-coupling-workflow" => integration,
             "release-coupling-project" => integration,
@@ -698,27 +743,27 @@ public sealed class ReleasePackageManifestTests
                 StringComparison.Ordinal)
             : daprInit;
 
-        if (mutation is "missing-cli-tag" or "missing-runtime-tag" or "runtime-uses-cli-pin" or "shallow-checkout" or "misplaced-full-history" or "checkout-env-full-history")
+        if (mutation is "missing-cli-tag" or "missing-runtime-tag" or "runtime-uses-cli-pin" or "full-history-checkout" or "misplaced-shallow-depth" or "checkout-env-shallow-depth")
         {
             mutatedIntegration.ShouldNotBe(
                 integration,
                 "Replace mutation must change the integration workflow text before the guardrail is evaluated.");
         }
 
-        if (mutation is "misplaced-full-history" or "checkout-env-full-history")
+        if (mutation is "misplaced-shallow-depth" or "checkout-env-shallow-depth")
         {
-            Regex.Matches(mutatedIntegration, @"(?m)^[ \t]*fetch-depth:[ \t]*0[ \t]*(?:#.*)?$")
-                .Count.ShouldBe(1, "The mutation must preserve exactly one misplaced full-history setting.");
+            Regex.Matches(mutatedIntegration, @"(?m)^[ \t]*fetch-depth:[ \t]*1[ \t]*(?:#.*)?$")
+                .Count.ShouldBe(1, "The mutation must preserve exactly one misplaced shallow checkout-depth setting.");
         }
 
-        if (mutation == "misplaced-full-history")
+        if (mutation == "misplaced-shallow-depth")
         {
-            mutatedIntegration.ShouldContain("          fetch-depth: 0\n          path: ~/.nuget/packages");
+            mutatedIntegration.ShouldContain("          fetch-depth: 1\n          path: ~/.nuget/packages");
         }
 
-        if (mutation == "checkout-env-full-history")
+        if (mutation == "checkout-env-shallow-depth")
         {
-            mutatedIntegration.ShouldContain("        env:\n          fetch-depth: 0\n        with:");
+            mutatedIntegration.ShouldContain("        env:\n          fetch-depth: 1\n        with:");
         }
 
         _ = Should.Throw<Shouldly.ShouldAssertException>(
@@ -1527,8 +1572,8 @@ public sealed class ReleasePackageManifestTests
             1,
             "The pinned repository checkout step's with mapping must declare exactly one checkout history depth.");
         repositoryCheckoutFetchDepths[0].Groups["depth"].Value.ShouldBe(
-            "0",
-            "Committed OQ8 evidence validation requires the complete connected Git history.");
+            "1",
+            "Fresh OQ8 capture requires only the explicitly shallow checked-out commit.");
 
         MatchCollection daprCliVersions = Regex.Matches(
             integration,

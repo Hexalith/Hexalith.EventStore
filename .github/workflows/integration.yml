@@ -33,7 +33,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          fetch-depth: 0
+          fetch-depth: 1
           submodules: false
           persist-credentials: false
 
@@ -120,7 +120,6 @@ jobs:
             --ctrf "${RUNNER_TEMP}/oq8-results.json" \
             --support-ctrf "${RUNNER_TEMP}/oq8-support-results.json" \
             --expected-runtime-version "$DAPR_RUNTIME_VERSION"
-          python3 tools/validate-oq8-platform-evidence.py
 
       - name: Upload fresh validated OQ8 capture
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
