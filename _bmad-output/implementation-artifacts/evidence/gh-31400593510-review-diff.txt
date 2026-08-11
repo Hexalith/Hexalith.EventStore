@@ -1,0 +1,227 @@
+=== TRACKED DIFF (intentional paths vs HEAD before uncommitted changes = working tree) ===
+diff --git a/.github/workflows/integration.yml b/.github/workflows/integration.yml
+index 662f4e6e..fbbcd2a0 100644
+--- a/.github/workflows/integration.yml
++++ b/.github/workflows/integration.yml
+@@ -21,7 +21,7 @@ permissions:
+   contents: read
+ 
+ env:
+-  DAPR_VERSION: '1.18.1'
++  DAPR_VERSION: '1.18.0'
+   UseHexalithProjectReferences: 'false'
+ 
+ jobs:
+diff --git a/docs/ci.md b/docs/ci.md
+index 254e720f..959d7ffc 100644
+--- a/docs/ci.md
++++ b/docs/ci.md
+@@ -53,13 +53,19 @@ workflows.
+ |------|----------|-------------------|
+ | Deterministic release gate | Contracts, Client, Testing, SignalR, Admin, AppHost, DomainService, QueryRouting, Sample, Testing.Integration, RestApi.Generators, and `tests/Hexalith.EventStore.Server.Tests` | Blocking in shared `domain-ci.yml@main` through `unit-test-projects`. `Server.Tests` runs unfiltered because live-sidecar tests moved out. |
+ | Semantic-release governance | `tests/Hexalith.EventStore.Contracts.Tests/Packaging/Fixtures/semantic-release-github-success.mjs` | Blocking EventStore-owned CI job. It provisions Node 22, installs exactly `package-lock.json` with `npm ci`, and exercises both release-history cases against an Undici-guarded loopback-only fake GitHub boundary. |
+-| Live-sidecar DAPR lane | `tests/Hexalith.EventStore.Server.LiveSidecar.Tests` | Dedicated `Integration Tests` workflow after `dapr init`. This lane is visible but not part of the semantic-release gate. |
++| Live-sidecar DAPR lane | `tests/Hexalith.EventStore.Server.LiveSidecar.Tests` | Dedicated `Integration Tests` workflow after `dapr init`. This lane is visible but not part of the semantic-release gate. After the live suite, Story 4.14 OQ8 evidence may `dotnet build` `Server.Tests` and invoke pinned `-method` support oracles for `--support-ctrf`; that is not a full `dotnet test` of `Server.Tests` as the live lane. |
+ | Advisory browser/governance/evidence scaffolds | `tests/Hexalith.EventStore.Admin.UI.E2E`, `tests/Hexalith.EventStore.DeferredWorkGovernance.Tests`, `tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests` | Separate `Advisory Tests` workflow. It installs Playwright Chromium for the browser suite and runs with `continue-on-error`, preserving push/PR signal without making semantic-release depend on these suites. |
+ | Full Aspire E2E | `tests/Hexalith.EventStore.IntegrationTests` | Deferred until a reliable Aspire-in-CI topology exists. |
+ 
++`integration.yml` pins a shared `DAPR_VERSION` consumed by `references/Hexalith.Builds/Github/dapr-init`
++for both CLI install (`dapr/setup-dapr`) and `dapr init --runtime-version`. That value must be an
++installable Dapr CLI release tag (currently `1.18.0`). Do not pin a runtime-only tag such as
++`1.18.1` unless Builds gains separate CLI and runtime inputs.
++
+ Do not reintroduce a `Category!=LiveSidecar` filter to make `Server.Tests`
+ deterministic. Live-sidecar coverage belongs in the live-sidecar project and
+-workflow so the deterministic release gate can remain unfiltered.
++workflow so the deterministic release gate can remain unfiltered. Do not run
++`dotnet test tests/Hexalith.EventStore.Server.Tests/` as the live lane.
+ 
+ Story 4.5's append-durability race and generic ETag control remain in this
+ dedicated LiveSidecar lane. Their hash-bound capture is an architecture evidence
+diff --git a/tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs b/tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs
+index 940f0449..d3258986 100644
+--- a/tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs
++++ b/tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs
+@@ -624,11 +624,45 @@ public sealed class ReleasePackageManifestTests
+         string integration = File.ReadAllText(Path.Combine(root, ".github", "workflows", "integration.yml"));
+         string release = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
+ 
+-        integration.ShouldContain("dotnet test tests/Hexalith.EventStore.Server.LiveSidecar.Tests/");
+-        integration.ShouldNotContain("tests/Hexalith.EventStore.Server.Tests/");
+-        integration.ShouldNotContain("--filter \"Category=LiveSidecar\"");
+-        release.ShouldNotContain("integration.yml");
+-        release.ShouldNotContain("Hexalith.EventStore.Server.LiveSidecar.Tests");
++        AssertLiveSidecarWorkflowTargetsLiveProjectOutsideReleaseGate(integration, release);
++    }
++
++    [Theory]
++    [InlineData("full-server-tests")]
++    [InlineData("category-filter")]
++    [InlineData("missing-cli-tag")]
++    [InlineData("release-coupling-workflow")]
++    [InlineData("release-coupling-project")]
++    public void Live_sidecar_workflow_guardrail_rejects_forbidden_mutations(string mutation)
++    {
++        string root = FindRepositoryRoot();
++        string integration = File.ReadAllText(Path.Combine(root, ".github", "workflows", "integration.yml"));
++        string release = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
++
++        string mutatedIntegration = mutation switch
++        {
++            "full-server-tests" => integration.Replace(
++                "dotnet test tests/Hexalith.EventStore.Server.LiveSidecar.Tests/",
++                "dotnet test tests/Hexalith.EventStore.Server.Tests/",
++                StringComparison.Ordinal),
++            "category-filter" => integration + "\n          --filter \"Category=LiveSidecar\"\n",
++            "missing-cli-tag" => integration.Replace(
++                "DAPR_VERSION: '1.18.0'",
++                "DAPR_VERSION: '1.18.1'",
++                StringComparison.Ordinal),
++            "release-coupling-workflow" => integration,
++            "release-coupling-project" => integration,
++            _ => throw new InvalidOperationException($"Unknown mutation: {mutation}"),
++        };
++        string mutatedRelease = mutation switch
++        {
++            "release-coupling-workflow" => release + "\n# uses integration.yml\n",
++            "release-coupling-project" => release + "\n# Hexalith.EventStore.Server.LiveSidecar.Tests\n",
++            _ => release,
++        };
++
++        _ = Should.Throw<Shouldly.ShouldAssertException>(
++            () => AssertLiveSidecarWorkflowTargetsLiveProjectOutsideReleaseGate(mutatedIntegration, mutatedRelease));
+     }
+ 
+     [Fact]
+@@ -1361,6 +1395,30 @@ public sealed class ReleasePackageManifestTests
+         return jobsContent[targetHeader.Index..jobEnd].TrimEnd('\n');
+     }
+ 
++    private static void AssertLiveSidecarWorkflowTargetsLiveProjectOutsideReleaseGate(
++        string integration,
++        string release)
++    {
++        integration.ShouldContain("dotnet test tests/Hexalith.EventStore.Server.LiveSidecar.Tests/");
++
++        // Story 4.14 may build Server.Tests and invoke pinned -method support oracles for
++        // --support-ctrf. Forbid only an unfiltered live-suite run of Server.Tests.
++        integration.ShouldNotContain("dotnet test tests/Hexalith.EventStore.Server.Tests/");
++        integration.ShouldNotContain("--filter \"Category=LiveSidecar\"");
++
++        Match daprVersion = Regex.Match(
++            integration,
++            @"(?m)^[ \t]*DAPR_VERSION:[ \t]*'(?<version>[^']+)'[ \t]*(?:#.*)?$");
++        daprVersion.Success.ShouldBeTrue(
++            "integration.yml must pin a shared DAPR_VERSION for Builds dapr-init.");
++        daprVersion.Groups["version"].Value.ShouldBe(
++            "1.18.0",
++            "DAPR_VERSION must be an installable Dapr CLI tag because Builds dapr-init uses one shared value for CLI install and runtime init.");
++
++        release.ShouldNotContain("integration.yml");
++        release.ShouldNotContain("Hexalith.EventStore.Server.LiveSidecar.Tests");
++    }
++
+     private static void AssertTenantsSourceModeJobIsBlocking(string jobBlock)
+     {
+         string[] lines = jobBlock
+
+=== UNTRACKED SPEC ===
+diff --git a/_bmad-output/implementation-artifacts/spec-gh-31400593510-fix-ci-cd.md b/_bmad-output/implementation-artifacts/spec-gh-31400593510-fix-ci-cd.md
+new file mode 100644
+index 00000000..cabc7d70
+--- /dev/null
++++ b/_bmad-output/implementation-artifacts/spec-gh-31400593510-fix-ci-cd.md
+@@ -0,0 +1,93 @@
++---
++title: 'Fix CI guardrail and Dapr CLI pin breaking EventStore CI/CD'
++type: 'bugfix'
++created: '2026-08-10'
++status: 'in-review'
++baseline_commit: 'e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec'
++review_loop_iteration: 0
++context:
++  - '{project-root}/_bmad-output/project-context.md'
++  - '{project-root}/docs/ci.md'
++---
++
++<frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
++
++## Intent
++
++**Problem:** Two PR #340 regressions break CI/CD on current `main`:
++1. [CI 31400593510](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/31400593510) / [31413307759](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/31413307759) — Tier-1 `Live_sidecar_workflow_targets_live_project_outside_release_gate` fails because OQ8 support capture in `.github/workflows/integration.yml` references `tests/Hexalith.EventStore.Server.Tests/` while the guardrail bans that path substring.
++2. [Integration Tests 31413307050](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/31413307050) — `dapr/setup-dapr` fails downloading CLI **v1.18.1** (404). That tag exists only as the **runtime**; latest CLI is **v1.18.0**. PR #340 changed `DAPR_VERSION` from `1.18.0` → `1.18.1`, and Builds `dapr-init` uses one value for both CLI install and `dapr init --runtime-version`.
++
++**Approach:** (1) Narrow the live-lane guardrail (+ `docs/ci.md`) so OQ8 may build/`-method`-select Server.Tests support oracles without allowing a full `dotnet test` of Server.Tests as the live suite. (2) Restore an installable shared `DAPR_VERSION` (`1.18.0`) in `integration.yml` and pin that with a packaging assertion so the nonexistent CLI tag cannot return.
++
++## Boundaries & Constraints
++
++**Always:** Keep LiveSidecar.Tests as the only unfiltered live `dotnet test` target; keep the 21 Server.Tests OQ8 support oracles and validator/evidence identity intact; keep `release.yml` free of `integration.yml` / LiveSidecar.Tests; use an installable Dapr CLI tag for `dapr/setup-dapr` (currently `1.18.0`); work on a `fix/…` branch; validate Contracts.Tests packaging assertions in Release/package mode.
++
++**Ask First:** Halt if runtime must remain exactly `1.18.1` while CLI stays `1.18.0` (requires separate version inputs in `references/Hexalith.Builds/Github/dapr-init`, a submodule change), if OQ8 support capture must leave `integration.yml`, if the 21 methods must move into LiveSidecar.Tests, or if production/runtime code appears necessary.
++
++**Never:** Allow `dotnet test tests/Hexalith.EventStore.Server.Tests/` as the live lane; reintroduce `--filter "Category=LiveSidecar"`; relocate/duplicate Server.Tests oracles; change `release.yml`/`ci.yml` lane composition; modify Builds/submodules without Ask First approval; weaken upload gates merely to hide init failures; leave `DAPR_VERSION` on a CLI tag that 404s.
++
++## I/O & Edge-Case Matrix
++
++| Scenario | Input / State | Expected Output / Behavior | Error Handling |
++|----------|---------------|---------------------------|----------------|
++| OQ8 integration.yml | LiveSidecar `dotnet test` + Server.Tests build/`-method`/`--support-ctrf` | Guardrail passes | Full-suite Server.Tests live run must still fail closed |
++| Forbidden full Server.Tests live run | `dotnet test tests/Hexalith.EventStore.Server.Tests/` present | Guardrail fails closed | Must keep failing |
++| Category filter regression | `--filter "Category=LiveSidecar"` present | Guardrail fails closed | Must keep failing |
++| Installable Dapr pin | `DAPR_VERSION: '1.18.0'` (or approved installable shared pin) | `dapr/setup-dapr` can download CLI; init proceeds | Nonexistent CLI tag (e.g. `1.18.1`) must fail packaging assertion |
++| Release coupling | `release.yml` references integration/LiveSidecar | Guardrail fails closed | Must keep failing |
++
++</frozen-after-approval>
++
++## Code Map
++
++- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs:621-632` -- failing live-lane fact; refine L628 and add Dapr-version pin assertion(s). Primary edit target.
++- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs:479-499` -- Server.Tests remains on deterministic CI; read-only companion.
++- `.github/workflows/integration.yml:24,57-59,73-119` -- restore `DAPR_VERSION` to installable `1.18.0` (pre-#340); keep OQ8 Server.Tests support capture unless Ask First says otherwise.
++- `references/Hexalith.Builds/Github/dapr-init/action.yml:4-19,95` -- single `version` feeds CLI setup and `--runtime-version`; default `1.18.0`; read-only unless Ask First approves separate CLI/runtime inputs.
++- `tools/validate-oq8-platform-evidence.py:29-96,410-472` -- pins Server.Tests FQNs; read-only evidence identity.
++- `docs/ci.md:50-62` -- clarify OQ8 method-selected Server.Tests support oracles + that `DAPR_VERSION` must be an installable CLI tag because Builds uses one shared value.
++- `_bmad-output/implementation-artifacts/spec-4-14-oq8-multi-host-production-evidence.md` -- reuse Server.Tests oracles; planning evidence only.
++
++## Tasks & Acceptance
++
++**Execution:**
++- [x] `.github/workflows/integration.yml` -- set `DAPR_VERSION` back to installable `1.18.0` (or the Ask First–approved shared pin) -- restore `dapr/setup-dapr` download.
++- [x] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs` -- refine live-lane guardrail for OQ8 support capture; assert `integration.yml` pins an installable shared `DAPR_VERSION` that cannot regress to a missing CLI tag; keep Category-filter and release-coupling fails-closed.
++- [x] `docs/ci.md` -- document OQ8 support-oracle exception and the shared CLI/runtime pin constraint for Integration Tests.
++- [x] Focused packaging assertions -- cover I/O matrix edges (current workflow passes; full-suite/Category/missing-CLI-tag regressions fail closed).
++
++**Acceptance Criteria:**
++- Given HEAD with PR #340's OQ8 `integration.yml` step, when `Live_sidecar_workflow_targets_live_project_outside_release_gate` (refined) runs, then it passes while still forbidding full Server.Tests live runs, Category filters, and release coupling.
++- Given `integration.yml` with an installable shared `DAPR_VERSION`, when packaging assertions run, then they pass; given a nonexistent CLI tag such as `1.18.1`, then they fail closed.
++- Given Contracts.Tests in Release/package mode, when packaging tests for this change execute, then zero failures and warnings-as-errors build succeeds.
++- Given the final diff, when inspected, then production runtime, validator pins, committed evidence hashes, and OQ8 capture command shape remain unchanged unless a recorded Ask First decision says otherwise; Builds submodule unchanged unless Ask First approved.
++
++## Spec Change Log
++
++## Design Notes
++
++**Guardrail:** Story 3.1 policy is “live project owns live coverage; no Category filters,” not “never mention Server.Tests in integration.yml.” Story 4.14 intentionally builds Server.Tests and invokes pinned `-method` oracles for `--support-ctrf`. Prefer refining the assertion over moving 21 methods.
++
++Allowed:
++```yaml
++dotnet build tests/Hexalith.EventStore.Server.Tests/...csproj ...
++dotnet .../Hexalith.EventStore.Server.Tests.dll -method ... -ctrf ...support...
++```
++Forbidden:
++```bash
++dotnet test tests/Hexalith.EventStore.Server.Tests/
++```
++
++**Dapr pin:** `dapr/setup-dapr` installs the **CLI** from `dapr/cli` releases; `dapr init --runtime-version` installs the **runtime** from `dapr/dapr`. CLI has `v1.18.0` only in the 1.18 line; runtime has `v1.18.1`+. With one shared Builds input, EventStore must pin an installable CLI tag. Restoring `1.18.0` matches pre-#340 green Integration Tests and Builds' default. Do not invent CLI `1.18.1`.
++
++## Verification
++
++**Commands:**
++- `dotnet restore tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj -p:Configuration=Release -p:UseHexalithProjectReferences=false` -- expected: restore succeeds.
++- `dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --no-restore --configuration Release -warnaserror -m:1 -p:UseHexalithProjectReferences=false` -- expected: zero warnings/errors.
++- `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -method Hexalith.EventStore.Contracts.Tests.Packaging.ReleasePackageManifestTests.Live_sidecar_workflow_targets_live_project_outside_release_gate` -- expected: 1 passed (after refinement).
++- `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.ReleasePackageManifestTests` -- expected: packaging class zero failures.
++- `rg -n "DAPR_VERSION:" .github/workflows/integration.yml` -- expected: installable shared pin (`1.18.0` unless Ask First changed it).
++- `git diff --check && git status --short` -- expected: no whitespace errors; only intended workflow/guardrail/docs/spec paths differ.
