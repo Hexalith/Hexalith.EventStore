@@ -1911,6 +1911,29 @@ public sealed class DeployedRuntimeParityClosureTests
     }
 
     /// <summary>
+    /// Verifies retained raw OCI configs reject credential-shaped values even when labels remain valid.
+    /// </summary>
+    [Fact]
+    public void OciProvenanceRejectsSensitiveConfigRawValues()
+    {
+        string root = FindRepositoryRoot();
+        (string cleanupRoot, string evidence, JsonObject crosswalk, _, _, _, _, _) = CreatePassingFixture(root);
+        try
+        {
+            string configPath = Path.Combine(evidence, "child-linux-amd64.config.raw");
+            JsonObject config = JsonNode.Parse(File.ReadAllBytes(configPath))!.AsObject();
+            config["config"]!["Env"] = new JsonArray("Authorization: Bearer retained-credential");
+            File.WriteAllBytes(configPath, JsonSerializer.SerializeToUtf8Bytes(config));
+
+            ValidateOciProvenance(crosswalk, evidence).ShouldBeFalse();
+        }
+        finally
+        {
+            Directory.Delete(cleanupRoot, recursive: true);
+        }
+    }
+
+    /// <summary>
     /// Verifies shared Builds tool pins are rehashed from the pinned git object, not JSON alone.
     /// </summary>
     [Fact]
@@ -3093,7 +3116,8 @@ public sealed class DeployedRuntimeParityClosureTests
                     || configDescriptor["digest"]!.GetValue<string>() != child["config_digest"]!.GetValue<string>()
                     || configDescriptor["size"]!.GetValue<int>() != child["config_size"]!.GetValue<int>()
                     || config["os"]!.GetValue<string>() != platformParts[0]
-                    || config["architecture"]!.GetValue<string>() != platformParts[1])
+                    || config["architecture"]!.GetValue<string>() != platformParts[1]
+                    || !DocumentIsSupportSafe(config))
                 {
                     return false;
                 }
@@ -3183,9 +3207,15 @@ public sealed class DeployedRuntimeParityClosureTests
 
             foreach (JsonObject child in oci["children"]!.AsArray().Select(item => item!.AsObject()))
             {
-                JsonObject labels = JsonNode.Parse(ReadEvidenceFile(
+                JsonObject config = JsonNode.Parse(ReadEvidenceFile(
                     evidenceRoot,
-                    child["config_raw_file"]!.GetValue<string>()))!["config"]!["Labels"]!.AsObject();
+                    child["config_raw_file"]!.GetValue<string>()))!.AsObject();
+                if (!DocumentIsSupportSafe(config))
+                {
+                    return false;
+                }
+
+                JsonObject labels = config["config"]!["Labels"]!.AsObject();
                 if (labels["org.opencontainers.image.revision"]!.GetValue<string>() != approvedRevision
                     || labels["org.opencontainers.image.version"]!.GetValue<string>() != releaseVersion)
                 {

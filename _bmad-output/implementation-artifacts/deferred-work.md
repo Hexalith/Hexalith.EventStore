@@ -1207,3 +1207,23 @@ status: open
 - The dead-arm removal substitutes the literal `true` for the `rawConflictRejected` variable in the `RecognizedRejectionOrConflict` position; correct under the current infrastructure gate, but widening that gate would silently report a new status as a recognized conflict rejection, and no table row can cover the unreachable input. [`AppendDurabilityRaceClassifier.cs:151`]
 - No schema history documents the `append-durability-race.json` 2 to 3 or `generic-etag-control.json` 1 to 2 version bumps that `validate-evidence.py` now hard-asserts; a future reader cannot distinguish a schema-3 capture from a schema-2 one without diffing the test source. [`validate-evidence.py:92`]
 - `generic-probe-not-attempted` encodes harness state as a provider observation and can appear in a genuine non-mutation capture when `gateWaitException` short-circuits the probe block, not only when the key-addressability perturbation is armed. [`AppendDurabilityRaceLiveSidecarTests.cs:320`]
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Add an AppHost model test for the two new drain-bound environment forwards.
+  evidence: Direct options-binding tests cover `MaxDrainAttempts` and `MaxOutstandingPublicationEntries`, but no normally run test proves the AppHost forwards either parent value to the `eventstore` resource.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Restrict append-durability race conflict recognition to known concurrency exception identities.
+  evidence: `AppendDurabilityRaceLiveSidecarTests` currently treats every `InvalidOperationException` as a recognized concurrency conflict, so unrelated infrastructure failures can satisfy the evidence gate.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Reject contradictory sequence-two durability classifications when either writer reported rejection.
+  evidence: `AppendDurabilityRaceClassifier` classifies both surviving writes plus one retry as consistent without checking the raw response or actor rejection flags.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Validate provider package signature evidence and canonical NuGet.org URLs.
+  evidence: `RuntimeIdentityValidator.ValidatePackageManifest` requires the signature field and `nuget_url` property names but does not validate their values, allowing arbitrary signature objects or off-domain package URLs.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Fetch enough Git history for OQ8 integration evidence validation.
+  evidence: `.github/workflows/integration.yml` checks out with `fetch-depth: 1`, while `validate-oq8-platform-evidence.py` requires the older landed source object `4b0a7b1d3628a857f131cfbff99030714aefc747` for tree, ancestry, and file checks.

@@ -124,10 +124,9 @@ not treated as a pass for release provenance.
 
 - Story 1.20 critical manifest: all 33 entries passed `sha256sum -c`.
 - Contracts test project Release build: succeeded with zero warnings and zero errors.
-- Focused `DeployedRuntimeParityClosureTests`: 142 passed, zero failed/skipped/not-run
-  (recorded after the 2026-08-08 eighth review-hardening mutations; seventh hardening had 140).
-- Complete Contracts suite: last measured at 1001 passed (2026-08-05); not re-measured in this
-  documentation refresh.
+- Focused `DeployedRuntimeParityClosureTests`: 157 passed, zero failed/skipped/not-run
+  (re-measured after the 2026-08-11 full review patches).
+- Complete Contracts suite: 1260 passed, zero failed/skipped/not-run (re-measured 2026-08-11).
 - The verifier also derives the actual fail-closed review subject and outer checksum manifest,
   rejects extra or byte-mutated package archives, validates baseline Git objects, and exercises
   independently rebound mutations across release, authority, OCI, runtime, roster, and receipts.

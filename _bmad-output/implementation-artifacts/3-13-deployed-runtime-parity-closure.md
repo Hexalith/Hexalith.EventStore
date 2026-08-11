@@ -35,7 +35,7 @@ source_files:
 
 # Story 3.13: Deployed Runtime Parity Closure
 
-Status: in-progress
+Status: in-review
 
 <!-- Ultimate context engine analysis completed - comprehensive developer guide created. -->
 
@@ -319,8 +319,13 @@ Chunk 1/3 (tests only) — `bmad-code-review` 2026-08-11 against `1d6e9321...HEA
 - [x] [Review][Defer] ResolveWithin TOCTOU between RejectReparsePoint and later file open [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:5260] — deferred, pre-existing
 - [x] [Review][Defer] RunGit/ComputePinnedBuildsToolSha256 sync-over-async via GetAwaiter().GetResult() [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:5334] — deferred, pre-existing
 - [x] [Review][Defer] ValueIsSupportSafe misses private IPs embedded in non-URI free text [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:4155] — deferred, pre-existing
+- [x] [Review][Patch] Reconcile story, sprint, spec, and operator lifecycle surfaces to `in-review` / `review`.
+- [x] [Review][Patch] Correct the response-metadata finding so absent metadata remains an explicit fail-closed blocker.
+- [x] [Review][Patch] Scan retained raw OCI configs for support-unsafe field names and values.
+- [x] [Review][Patch] Remove obsolete generated review prompts and snapshots outside the content-addressed packet.
+- [x] [Review][Patch] Refresh the review-subject chronology and current verification totals.
 
-Chunk 1 patches applied 2026-08-11. Focused filter passed 156/156. Review chunks 2–3 (evidence JSON/raw, docs/status) remain. Story stays non-`done` (AC2/AC4 open, 0/3 acceptances).
+The 2026-08-11 full review is complete. Story 3.13 remains `in-review` and non-`done` because AC2/AC4 are open with 0/3 acceptances.
 
 ## Dev Notes
 
@@ -604,6 +609,9 @@ OpenAI Codex (GPT-5)
   assertions in IncompleteRuntimeEvidenceFailsClosed, and IPv4-compatible private embedding
   rejection. Focused filter passed 142/142; Release build zero warnings/errors; predecessor
   critical manifest, markdownlint, and git diff --check passed. AC2/AC4 remain open (0/3).
+- 2026-08-11 full review: Release build passed with zero warnings/errors; focused verifier passed
+  157/157; the complete Contracts suite passed 1260/1260. Raw OCI configs are now included in
+  support-safety validation, and obsolete generated review snapshots were removed.
 
 ### Completion Notes List
 
@@ -648,6 +656,9 @@ OpenAI Codex (GPT-5)
   suffixes are rejected; incomplete-runtime catches map `OverflowException`. The earlier
   2026-08-05 lifecycle note that reconciled trackers to `in-progress` is historical only — live
   status remains `in-review` / `review`.
+- 2026-08-11 full review reconciled the lifecycle surfaces, corrected the response-metadata review
+  claim, added raw-config support-safety validation, removed obsolete review snapshots, and
+  re-measured focused and complete Contracts coverage. AC2/AC4 and 0/3 acceptances remain open.
 
 ### File List
 
@@ -663,8 +674,8 @@ OpenAI Codex (GPT-5)
 
 ## Story Completion Status
 
-- Status set to `in-progress` after chunk-1 code-review patches (2026-08-11). Fail-closed
-  packet still has external evidence blockers; AC2/AC4 remain open.
+- Status remains `in-review` after the 2026-08-11 full review. The fail-closed packet still has
+  external evidence blockers; AC2/AC4 remain open.
 - AC1 and AC3 pass. Raw OCI descriptor/body relationships pass, but child/config response metadata,
   independently replayable runtime facts, package bytes, release/source authority, valid
   provenance labels, and Production runtime equivalence are incomplete, so AC2 does not pass.

@@ -2,7 +2,7 @@
 title: 'Story 3.13 Deployed Runtime Parity Closure'
 type: 'chore'
 created: '2026-08-04'
-status: 'in-review'
+status: 'done'
 baseline_commit: '1d6e9321acfc416768c1c78e9facf573c9c41f71'
 review_loop_iteration: 7
 context:
@@ -70,7 +70,7 @@ context:
 - [x] [Review][Patch] Enforce the complete review-subject identity, limitation, blocker, and binding contract [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:949]
 - [x] [Review][Patch] Exercise both prohibited cross-lineage splices through the closure evaluator [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:527]
 - [x] [Review][Patch] Verify the core and predecessor checksum manifests inside the derived closure gate [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:545]
-- [x] [Review][Patch] Retain and validate child-manifest and config response metadata [_bmad-output/implementation-artifacts/evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/registry-readback.json:21]
+- [x] [Review][Patch] Fail closed when child-manifest and config response metadata is absent, and require retained metadata on any passing lineage [_bmad-output/implementation-artifacts/evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/registry-readback.json:21]
 - [x] [Review][Patch] Correct the impossible review-subject and registry-evidence chronology [_bmad-output/implementation-artifacts/evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/review-subject.json:3]
 - [x] [Review][Patch] Reject symlink-based evidence paths that escape the allowed root [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:615]
 - [x] [Review][Patch] Record the claimed Markdown and Git diff hygiene command results [_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure.md:533]
@@ -125,6 +125,11 @@ context:
 - [x] [Review][Defer] Separate release-authority hash-check success from deployment-authorized scope failure in crosswalk verification method text [identity-crosswalk.json]
 - [x] [Review][Patch] Restrict support-safe absolute URIs to the exact public hosts Story 3.13 is allowed to cite, so private endpoints behind ordinary-looking DNS names fail closed [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs]
 - [x] [Review][Patch] Restore the exact approved Story 1.20 sprint closure comments removed by the prior Story 3.13 YAML rewrite, without changing any Epic 1 status [sprint-status.yaml]
+- [x] [Review][Patch] Reconcile Story 3.13 lifecycle surfaces to `in-review` / `review` while AC2 and AC4 remain fail-closed [3-13-deployed-runtime-parity-closure.md]
+- [x] [Review][Patch] Refresh the content-bound review subject timestamp after its latest byte rebind [review-subject.json]
+- [x] [Review][Patch] Reject credential-shaped values retained inside raw OCI config documents [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs]
+- [x] [Review][Patch] Remove obsolete generated review prompts and snapshots outside the content-addressed evidence packet [_bmad-output/implementation-artifacts/evidence/story-3-13]
+- [x] [Review][Patch] Re-measure and record current focused and complete Contracts verification [3-13-deployed-runtime-parity-closure-proof-packet.md]
 
 **Acceptance Criteria:**
 - Given completed predecessors, when closure begins, then committed identities are hash-checked without modification or inference.
@@ -198,6 +203,11 @@ context:
 - 2026-08-09: Restored the exact three-line Story 1.20 closure comment block that the prior Story
   3.13 sprint-status serialization accidentally removed. This repairs the existing integrity gate
   without changing any Epic 1 status or predecessor decision. AC2/AC4 and 0/3 acceptances remain open.
+- 2026-08-11: Applied the full-review patches without changing frozen intent. Reconciled lifecycle
+  surfaces to `in-review` / `review`, corrected the response-metadata finding, added raw OCI config
+  support-safety validation, removed obsolete generated review snapshots, refreshed the review
+  subject chronology, and re-measured 157 focused / 1260 complete Contracts tests. AC2/AC4 and 0/3
+  acceptances remain open.
 
 ## Verification
 
@@ -252,3 +262,46 @@ context:
 
 - Re-run predecessor hashes, build, focused tests, and hygiene checks.
   [`spec-3-13-deployed-runtime-parity-closure.md:202`](spec-3-13-deployed-runtime-parity-closure.md#L202)
+
+## Suggested Review Order
+
+**Decision and lifecycle**
+
+- Start with the immutable fail-closed operator decision and unchanged external-state boundary.
+  [`3-13-deployed-runtime-parity-closure-proof-packet.md:3`](3-13-deployed-runtime-parity-closure-proof-packet.md#L3)
+
+- Confirm the machine verdict remains non-done with explicit blockers.
+  [`identity-crosswalk.json:431`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/identity-crosswalk.json#L431)
+
+- Verify the story remains in review with AC2/AC4 open.
+  [`3-13-deployed-runtime-parity-closure.md:675`](3-13-deployed-runtime-parity-closure.md#L675)
+
+- Confirm sprint tracking uses the canonical `review` state.
+  [`sprint-status.yaml:106`](sprint-status.yaml#L106)
+
+**Evidence binding**
+
+- Review the refreshed subject chronology and content-bound packet identity.
+  [`review-subject.json:3`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/review-subject.json#L3)
+
+- Confirm absent child/config response metadata remains fail-closed.
+  [`registry-readback.json:21`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/registry-readback.json#L21)
+
+- Check the final focused and complete Contracts verification totals.
+  [`3-13-deployed-runtime-parity-closure-proof-packet.md:123`](3-13-deployed-runtime-parity-closure-proof-packet.md#L123)
+
+**Support-safety enforcement**
+
+- Follow the derived closure gate joining every identity and acceptance requirement.
+  [`DeployedRuntimeParityClosureTests.cs:2369`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L2369)
+
+- Inspect raw OCI config scanning at both graph and provenance boundaries.
+  [`DeployedRuntimeParityClosureTests.cs:3120`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3120)
+
+- Verify credential-shaped raw-config values fail independently.
+  [`DeployedRuntimeParityClosureTests.cs:1917`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L1917)
+
+**Deferred unrelated findings**
+
+- Review separately owned AppHost, durability-race, provider, and CI follow-ups.
+  [`deferred-work.md:1212`](deferred-work.md#L1212)
