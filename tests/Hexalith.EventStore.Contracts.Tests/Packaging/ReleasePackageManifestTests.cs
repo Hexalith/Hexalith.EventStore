@@ -635,6 +635,9 @@ public sealed class ReleasePackageManifestTests
     [InlineData("missing-runtime-tag")]
     [InlineData("runtime-uses-cli-pin")]
     [InlineData("missing-legacy-fallback")]
+    [InlineData("shallow-checkout")]
+    [InlineData("misplaced-full-history")]
+    [InlineData("checkout-env-full-history")]
     [InlineData("release-coupling-workflow")]
     [InlineData("release-coupling-project")]
     public void Live_sidecar_workflow_guardrail_rejects_forbidden_mutations(string mutation)
@@ -661,6 +664,23 @@ public sealed class ReleasePackageManifestTests
                 "runtime-version: ${{ env.DAPR_CLI_VERSION }}",
                 StringComparison.Ordinal),
             "missing-legacy-fallback" => integration,
+            "shallow-checkout" => integration.Replace(
+                "fetch-depth: 0",
+                "fetch-depth: 1",
+                StringComparison.Ordinal),
+            "misplaced-full-history" => integration
+                .Replace(
+                    "          fetch-depth: 0\n",
+                    string.Empty,
+                    StringComparison.Ordinal)
+                .Replace(
+                    "          path: ~/.nuget/packages\n",
+                    "          fetch-depth: 0\n          path: ~/.nuget/packages\n",
+                    StringComparison.Ordinal),
+            "checkout-env-full-history" => integration.Replace(
+                "        with:\n          fetch-depth: 0\n          submodules: false",
+                "        env:\n          fetch-depth: 0\n        with:\n          submodules: false",
+                StringComparison.Ordinal),
             "release-coupling-workflow" => integration,
             "release-coupling-project" => integration,
             _ => throw new InvalidOperationException($"Unknown mutation: {mutation}"),
@@ -678,11 +698,27 @@ public sealed class ReleasePackageManifestTests
                 StringComparison.Ordinal)
             : daprInit;
 
-        if (mutation is "missing-cli-tag" or "missing-runtime-tag" or "runtime-uses-cli-pin")
+        if (mutation is "missing-cli-tag" or "missing-runtime-tag" or "runtime-uses-cli-pin" or "shallow-checkout" or "misplaced-full-history" or "checkout-env-full-history")
         {
             mutatedIntegration.ShouldNotBe(
                 integration,
                 "Replace mutation must change the integration workflow text before the guardrail is evaluated.");
+        }
+
+        if (mutation is "misplaced-full-history" or "checkout-env-full-history")
+        {
+            Regex.Matches(mutatedIntegration, @"(?m)^[ \t]*fetch-depth:[ \t]*0[ \t]*(?:#.*)?$")
+                .Count.ShouldBe(1, "The mutation must preserve exactly one misplaced full-history setting.");
+        }
+
+        if (mutation == "misplaced-full-history")
+        {
+            mutatedIntegration.ShouldContain("          fetch-depth: 0\n          path: ~/.nuget/packages");
+        }
+
+        if (mutation == "checkout-env-full-history")
+        {
+            mutatedIntegration.ShouldContain("        env:\n          fetch-depth: 0\n        with:");
         }
 
         _ = Should.Throw<Shouldly.ShouldAssertException>(
@@ -1438,6 +1474,61 @@ public sealed class ReleasePackageManifestTests
         integration.ShouldNotContain("dotnet test tests/Hexalith.EventStore.Server.Tests/");
         integration.ShouldNotContain("--filter \"Category=LiveSidecar\"");
         integration.ShouldNotContain("--filter \"Category!=LiveSidecar\"");
+
+        string normalizedIntegration = integration
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n');
+        MatchCollection repositoryCheckoutHeaders = Regex.Matches(
+            normalizedIntegration,
+            @"(?m)^      - name: Checkout repository[ \t]*(?:#.*)?$");
+        repositoryCheckoutHeaders.Count.ShouldBe(1, "integration.yml must declare exactly one repository checkout step.");
+        Match repositoryCheckoutHeader = repositoryCheckoutHeaders[0];
+        int repositoryCheckoutContentStart = repositoryCheckoutHeader.Index + repositoryCheckoutHeader.Length;
+        Match followingStep = Regex.Match(
+            normalizedIntegration[repositoryCheckoutContentStart..],
+            @"(?m)^      - ");
+        int repositoryCheckoutEnd = followingStep.Success
+            ? repositoryCheckoutContentStart + followingStep.Index
+            : normalizedIntegration.Length;
+        string repositoryCheckoutStep = normalizedIntegration[repositoryCheckoutHeader.Index..repositoryCheckoutEnd];
+
+        MatchCollection repositoryCheckoutActions = Regex.Matches(
+            repositoryCheckoutStep,
+            @"(?m)^        uses: actions/checkout@(?<sha>[0-9a-f]{40})(?: # .*)?$");
+        repositoryCheckoutActions.Count.ShouldBe(1, "The repository checkout step must use exactly one pinned checkout action.");
+        repositoryCheckoutActions[0].Groups["sha"].Value.ShouldBe(CheckoutActionSha);
+
+        MatchCollection workflowFetchDepths = Regex.Matches(
+            normalizedIntegration,
+            @"(?m)^[ \t]*fetch-depth:[ \t]*(?<depth>[^#\r\n]+?)[ \t]*(?:#.*)?$");
+        workflowFetchDepths.Count.ShouldBe(1, "integration.yml must declare exactly one checkout history depth.");
+
+        MatchCollection repositoryCheckoutWithHeaders = Regex.Matches(
+            repositoryCheckoutStep,
+            @"(?m)^        with:[ \t]*(?:#.*)?$");
+        repositoryCheckoutWithHeaders.Count.ShouldBe(
+            1,
+            "The pinned repository checkout step must declare exactly one with mapping.");
+        Match repositoryCheckoutWithHeader = repositoryCheckoutWithHeaders[0];
+        int repositoryCheckoutWithContentStart = repositoryCheckoutWithHeader.Index + repositoryCheckoutWithHeader.Length;
+        Match followingCheckoutProperty = Regex.Match(
+            repositoryCheckoutStep[repositoryCheckoutWithContentStart..],
+            @"(?m)^        [A-Za-z0-9_-]+:");
+        int repositoryCheckoutWithEnd = followingCheckoutProperty.Success
+            ? repositoryCheckoutWithContentStart + followingCheckoutProperty.Index
+            : repositoryCheckoutStep.Length;
+        string repositoryCheckoutWith = repositoryCheckoutStep[
+            repositoryCheckoutWithHeader.Index..repositoryCheckoutWithEnd];
+
+        MatchCollection repositoryCheckoutFetchDepths = Regex.Matches(
+            repositoryCheckoutWith,
+            @"(?m)^          fetch-depth:[ \t]*(?<depth>[^#\r\n]+?)[ \t]*(?:#.*)?$");
+        repositoryCheckoutFetchDepths.Count.ShouldBe(
+            1,
+            "The pinned repository checkout step's with mapping must declare exactly one checkout history depth.");
+        repositoryCheckoutFetchDepths[0].Groups["depth"].Value.ShouldBe(
+            "0",
+            "Committed OQ8 evidence validation requires the complete connected Git history.");
 
         MatchCollection daprCliVersions = Regex.Matches(
             integration,

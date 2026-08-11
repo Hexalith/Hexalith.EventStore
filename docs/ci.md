@@ -66,6 +66,12 @@ the legacy behavior by falling back to `version`. Neither pin is the Dapr NuGet
 currently `1.18.5`). Fresh OQ8 validation receives the same runtime pin explicitly,
 while committed Story 4.14 evidence remains bound to its observed runtime `1.18.1`.
 
+The Integration Tests checkout uses `fetch-depth: 0` because committed OQ8
+identity validation resolves the pinned landed commit and tree, proves connected
+ancestry to the current `HEAD`, and reads historical blobs. A fixed positive
+depth is not sufficient: the pinned source recedes as `main` advances, so this
+lane requires complete history rather than a depth value that needs maintenance.
+
 Do not reintroduce a `Category!=LiveSidecar` filter to make `Server.Tests`
 deterministic. Live-sidecar coverage belongs in the live-sidecar project and
 workflow so the deterministic release gate can remain unfiltered. Do not run
