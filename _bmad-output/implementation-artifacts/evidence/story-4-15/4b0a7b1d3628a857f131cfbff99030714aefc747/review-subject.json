@@ -1,6 +1,6 @@
 {
   "schema": "hexalith.eventstore.story-4-15-review-subject/v1",
-  "createdOn": "2026-08-11",
+  "createdOn": "2026-08-12",
   "proposedDecision": "eventstore-platform-complete",
   "design": {
     "version": "1.0.0",
@@ -26,15 +26,15 @@
     },
     "closureValidator": {
       "path": "validator-sha256.txt",
-      "sha256": "1fd059f0228cc9f54a75aad0ad6ac8807d37cfd2eff808e6618bf8233f869c57"
+      "sha256": "27e7ab002353a230f48fc065fd586161b21ac8a5a15065b5bd0c792211f6c6c7"
     },
     "closureTests": {
       "path": "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs",
-      "sha256": "5b66a6a3d4fc79010cd4cd94a092eefee136cc2dc3241f0885c772626728f99d"
+      "sha256": "c662d445fa3cfb90641949a3b1b9d4d4f89a41014e467a4062d019fc80ea664e"
     },
     "preReviewExecution": {
       "path": "pre-review-execution.json",
-      "sha256": "03411906de8faa4928eb3f9f94fbae50d886a67a26621bbad800b5c590df95be"
+      "sha256": "320941d614d03cf1d45424542820737a664062712b96b1670f49b4c1a464bb26"
     },
     "captureManifest": {
       "path": "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425/evidence-sha256.txt",

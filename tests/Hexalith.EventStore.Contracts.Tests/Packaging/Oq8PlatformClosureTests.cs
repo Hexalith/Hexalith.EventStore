@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -311,6 +312,7 @@ public sealed class Oq8PlatformClosureTests
     [InlineData("review-limitations")]
     [InlineData("review-findings")]
     [InlineData("review-findings-blank")]
+    [InlineData("review-date")]
     [InlineData("review-authority")]
     [InlineData("review-external-repository-authority")]
     [InlineData("review-field-extra")]
@@ -518,6 +520,8 @@ public sealed class Oq8PlatformClosureTests
     [InlineData("candidate-execution-validator")]
     [InlineData("candidate-execution-test-source")]
     [InlineData("candidate-execution-summary-type")]
+    [InlineData("candidate-subject-date")]
+    [InlineData("candidate-execution-date")]
     [InlineData("candidate-duplicate-subject")]
     [InlineData("candidate-duplicate-authority")]
     [InlineData("candidate-duplicate-execution")]
@@ -685,7 +689,7 @@ public sealed class Oq8PlatformClosureTests
     }
 
     /// <summary>
-    /// Verifies every required Epic 4 sprint status is unique and unambiguous.
+    /// Verifies every executable Epic 4 sprint status is unique and unambiguous and the retired key remains absent.
     /// </summary>
     /// <param name="key">The sprint-status key to duplicate.</param>
     /// <param name="conflictingStatus">A conflicting duplicate value.</param>
@@ -705,17 +709,163 @@ public sealed class Oq8PlatformClosureTests
         string fixture = CreateCandidateFixture(root);
         try
         {
-            string statusPath = Path.Combine(
-                fixture,
-                "_bmad-output",
-                "implementation-artifacts",
-                "sprint-status.yaml");
-            File.AppendAllText(statusPath, $"  {key}: {conflictingStatus}\n");
+            if (key == "4-8-durable-admission-evidence-ledger")
+            {
+                InsertRetiredSprintStatus(fixture, "plain");
+            }
+            else
+            {
+                string statusPath = Path.Combine(
+                    fixture,
+                    "_bmad-output",
+                    "implementation-artifacts",
+                    "sprint-status.yaml");
+                List<string> lines = File.ReadAllLines(statusPath).ToList();
+                int mapping = lines.FindIndex(line => line == "development_status:");
+                mapping.ShouldBeGreaterThanOrEqualTo(0);
+                lines.Insert(mapping + 1, $"  {key}: {conflictingStatus}");
+                File.WriteAllLines(statusPath, lines);
+            }
+
+            (int exitCode, string output) = RunValidator(root, fixture, preReview: true);
+
+            exitCode.ShouldBe(1, output);
+            output.ShouldContain(
+                key == "4-8-durable-admission-evidence-ledger"
+                    ? "Retired lifecycle key is forbidden: 4-8-durable-admission-evidence-ledger"
+                    : $"Lifecycle status is missing or ambiguous: {key}");
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies every supported YAML spelling of the retired Story 4.8 direct entry fails closed.
+    /// </summary>
+    /// <param name="shape">The retired-entry YAML shape.</param>
+    [Theory]
+    [InlineData("plain")]
+    [InlineData("double-quoted-key")]
+    [InlineData("single-quoted-key")]
+    [InlineData("colon-spacing")]
+    [InlineData("alternate-indentation")]
+    [InlineData("empty")]
+    [InlineData("null")]
+    [InlineData("comment-only")]
+    [InlineData("quoted-value")]
+    [InlineData("flow-sequence")]
+    [InlineData("flow-mapping")]
+    [InlineData("block-sequence")]
+    public void RetiredSprintStatusYamlShapesFailClosed(string shape)
+    {
+        string root = FindRepositoryRoot();
+        string fixture = CreateCandidateFixture(root);
+        try
+        {
+            InsertRetiredSprintStatus(fixture, shape);
+
+            (int exitCode, string output) = RunValidator(root, fixture, preReview: true);
+
+            exitCode.ShouldBe(1, output);
+            output.ShouldContain("Retired lifecycle key is forbidden: 4-8-durable-admission-evidence-ledger");
+            output.ShouldNotContain("Traceback");
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies near-match keys and retired-key text outside development_status do not affect lifecycle validation.
+    /// </summary>
+    /// <param name="shape">The non-entry text shape.</param>
+    [Theory]
+    [InlineData("near-match")]
+    [InlineData("outside-mapping")]
+    [InlineData("comment")]
+    public void RetiredSprintStatusTextOutsideExactDirectEntryPasses(string shape)
+    {
+        string root = FindRepositoryRoot();
+        string fixture = CreateCandidateFixture(root);
+        string gitFixture = CreateGitFixture(root);
+        try
+        {
+            InsertNonRetiredSprintStatusText(fixture, shape);
+
+            (int exitCode, string output) = RunValidator(root, fixture, gitFixture, preReview: true);
+
+            exitCode.ShouldBe(0, output);
+            output.ShouldContain("OQ8 pre-review candidate validation passed.");
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+            Directory.Delete(gitFixture, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies YAML merge keys, sequence-shaped content, and ambiguous development-status shapes fail closed.
+    /// </summary>
+    /// <param name="shape">The unsupported mapping shape.</param>
+    [Theory]
+    [InlineData("merge-key")]
+    [InlineData("sequence")]
+    [InlineData("tagged-retired-key")]
+    [InlineData("anchored-retired-key")]
+    [InlineData("duplicate-development-status")]
+    [InlineData("deeper-indented-retired-key")]
+    public void UnsupportedSprintStatusYamlFailsClosed(string shape)
+    {
+        string root = FindRepositoryRoot();
+        string fixture = CreateCandidateFixture(root);
+        try
+        {
+            InsertUnsupportedSprintStatus(fixture, shape);
+
+            (int exitCode, string output) = RunValidator(root, fixture, preReview: true);
+
+            exitCode.ShouldBe(1, output);
+            output.ShouldContain(
+                shape switch
+                {
+                    "merge-key" => "Sprint-status merge keys are forbidden",
+                    "duplicate-development-status" => "Lifecycle development_status mapping is missing or ambiguous",
+                    _ => "Unsupported sprint-status mapping structure",
+                });
+            output.ShouldNotContain("Traceback");
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies removing a required active status preserves the key-specific missing diagnostic.
+    /// </summary>
+    [Fact]
+    public void MissingRequiredSprintStatusFailsClosed()
+    {
+        string root = FindRepositoryRoot();
+        string fixture = CreateCandidateFixture(root);
+        try
+        {
+            const string key = "4-14-oq8-multi-host-production-evidence";
+            string statusPath = Path.Combine(fixture, "_bmad-output", "implementation-artifacts", "sprint-status.yaml");
+            string[] lines = File.ReadAllLines(statusPath);
+            int match = Array.FindIndex(lines, line => line.StartsWith($"  {key}:", StringComparison.Ordinal));
+            match.ShouldBeGreaterThanOrEqualTo(0);
+            File.WriteAllLines(statusPath, lines.Where((_, index) => index != match));
 
             (int exitCode, string output) = RunValidator(root, fixture, preReview: true);
 
             exitCode.ShouldBe(1, output);
             output.ShouldContain($"Lifecycle status is missing or ambiguous: {key}");
+            output.ShouldNotContain("Traceback");
         }
         finally
         {
@@ -1242,8 +1392,23 @@ public sealed class Oq8PlatformClosureTests
                 WriteObject(executionPath, execution);
                 break;
             }
+            case "candidate-subject-date":
+            {
+                JsonObject subject = LoadObject(subjectPath);
+                subject["createdOn"] = PreviousCalendarDay(subject["createdOn"]!.GetValue<string>());
+                WriteObject(subjectPath, subject);
+                break;
+            }
+            case "candidate-execution-date":
+            {
+                JsonObject execution = LoadObject(executionPath);
+                execution["executedOn"] = PreviousCalendarDay(execution["executedOn"]!.GetValue<string>());
+                WriteObject(executionPath, execution);
+                ResealCandidateBinding(fixture, "preReviewExecution");
+                break;
+            }
             case "candidate-duplicate-subject":
-                InsertDuplicateJsonField(subjectPath, "  \"createdOn\": \"2026-08-11\",", "  \"createdOn\": \"2026-08-11\",\n  \"createdOn\": \"2026-08-11\",");
+                InsertDuplicateJsonField(subjectPath, "  \"createdOn\": \"2026-08-12\",", "  \"createdOn\": \"2026-08-12\",\n  \"createdOn\": \"2026-08-12\",");
                 break;
             case "candidate-duplicate-authority":
                 InsertDuplicateJsonField(subjectPath, "    \"releaseApproved\": false,", "    \"releaseApproved\": false,\n    \"releaseApproved\": false,");
@@ -1524,6 +1689,8 @@ public sealed class Oq8PlatformClosureTests
         "candidate-execution-command-name-duplicate" => "Pre-review execution command names must be exact and unique",
         "candidate-execution-command-count-zero" => "Pre-review execution command 2:tests count drift",
         "candidate-execution-command-identity" => "Pre-review execution command drift",
+        "candidate-subject-date" => "Review subject date drift",
+        "candidate-execution-date" => "Pre-review execution date drift",
         "candidate-duplicate-subject" => "Duplicate JSON field",
         "candidate-duplicate-authority" => "Duplicate JSON field",
         "candidate-duplicate-execution" => "Duplicate JSON field",
@@ -1834,6 +2001,20 @@ public sealed class Oq8PlatformClosureTests
                 WriteObject(Path.Combine(closure, "reviews", "security.json"), review);
                 break;
             }
+            case "review-date":
+            {
+                string reviewPath = Path.Combine(closure, "reviews", "security.json");
+                JsonObject review = LoadObject(reviewPath);
+                review["reviewedOn"] = PreviousCalendarDay(review["reviewedOn"]!.GetValue<string>());
+                WriteObject(reviewPath, review);
+                string handoffPath = Path.Combine(closure, "source-only-handoff.json");
+                JsonObject handoff = LoadObject(handoffPath);
+                handoff["reviewReceipts"]!["security"] = ComputeSha256(reviewPath);
+                WriteObject(handoffPath, handoff);
+                ResealClosureArtifact(packetPath, closure, "reviews/security.json");
+                ResealClosureArtifact(packetPath, closure, "source-only-handoff.json");
+                break;
+            }
             case "review-authority":
             {
                 JsonObject review = LoadObject(Path.Combine(closure, "reviews", "security.json"));
@@ -1922,7 +2103,11 @@ public sealed class Oq8PlatformClosureTests
             case "sprint-status-duplicate":
             {
                 string statusPath = Path.Combine(artifacts, "sprint-status.yaml");
-                File.AppendAllText(statusPath, "  4-15-oq8-platform-closure-and-handoff: done\n");
+                List<string> status = File.ReadAllLines(statusPath).ToList();
+                int mapping = status.FindIndex(line => line == "development_status:");
+                mapping.ShouldBeGreaterThanOrEqualTo(0);
+                status.Insert(mapping + 1, "  4-15-oq8-platform-closure-and-handoff: done");
+                File.WriteAllLines(statusPath, status);
                 break;
             }
             case "frontmatter-status-duplicate":
@@ -2033,6 +2218,7 @@ public sealed class Oq8PlatformClosureTests
                 "subject-field-extra" or "document-semantics" => "review-subject.json",
             "review-decision" or "review-reviewer" or "review-role" or "review-scope" or
                 "review-limitations" or "review-findings" or "review-findings-blank" or "review-authority" or
+                "review-date" or
                 "review-external-repository-authority" or
                 "review-field-extra" => "reviews/security.json",
             "review-subject" => "reviews/test.json",
@@ -2076,6 +2262,7 @@ public sealed class Oq8PlatformClosureTests
         "review-scope" => "security accepted scope drift",
         "review-limitations" => "security limitations acceptance drift",
         "review-findings" or "review-findings-blank" => "security review findings missing or blank",
+        "review-date" => "security review date drift",
         "review-authority" => "External authority overstated: releaseApproved",
         "review-external-repository-authority" => "External authority overstated: externalRepositoryAuthority",
         "review-field-extra" => "security review field set drift",
@@ -2135,6 +2322,140 @@ public sealed class Oq8PlatformClosureTests
         duplicated.ShouldNotBe(json, "Duplicate authority injection must change the JSON fixture.");
         return duplicated;
     }
+
+    private static void InsertRetiredSprintStatus(string fixture, string shape)
+    {
+        string statusPath = Path.Combine(fixture, "_bmad-output", "implementation-artifacts", "sprint-status.yaml");
+        List<string> lines = File.ReadAllLines(statusPath).ToList();
+        int mapping = lines.FindIndex(line => line == "development_status:");
+        mapping.ShouldBeGreaterThanOrEqualTo(0);
+        const string key = "4-8-durable-admission-evidence-ledger";
+        string[] inserted = shape switch
+        {
+            "plain" => [$"  {key}: done"],
+            "double-quoted-key" => [$"  \"{key}\": done"],
+            "single-quoted-key" => [$"  '{key}': done"],
+            "colon-spacing" => [$"  {key} :done"],
+            "alternate-indentation" => [$"    {key}: done"],
+            "empty" => [$"  {key}:"],
+            "null" => [$"  {key}: null"],
+            "comment-only" => [$"  {key}: # retired"],
+            "quoted-value" => [$"  {key}: \"done\""],
+            "flow-sequence" => [$"  {key}: [done]"],
+            "flow-mapping" => [$"  {key}: {{ status: done }}"],
+            "block-sequence" => [$"  {key}:", "    - done"],
+            _ => throw new ArgumentOutOfRangeException(nameof(shape), shape, "Unknown retired sprint-status shape."),
+        };
+        if (shape == "alternate-indentation")
+        {
+            for (int index = mapping + 1; index < lines.Count; index++)
+            {
+                if (lines[index].Length > 0 && !lines[index].StartsWith(' '))
+                {
+                    break;
+                }
+
+                if (lines[index].StartsWith("  ", StringComparison.Ordinal))
+                {
+                    lines[index] = "  " + lines[index];
+                }
+            }
+        }
+
+        lines.InsertRange(mapping + 1, inserted);
+        File.WriteAllLines(statusPath, lines);
+    }
+
+    private static void InsertNonRetiredSprintStatusText(string fixture, string shape)
+    {
+        string statusPath = Path.Combine(fixture, "_bmad-output", "implementation-artifacts", "sprint-status.yaml");
+        List<string> lines = File.ReadAllLines(statusPath).ToList();
+        int mapping = lines.FindIndex(line => line == "development_status:");
+        mapping.ShouldBeGreaterThanOrEqualTo(0);
+        const string key = "4-8-durable-admission-evidence-ledger";
+        switch (shape)
+        {
+            case "near-match":
+                lines.Insert(mapping + 1, $"  {key}-near-match: backlog");
+                break;
+            case "outside-mapping":
+                lines.Add($"{key}: backlog");
+                break;
+            case "comment":
+                lines.Insert(mapping + 1, $"  # {key}: backlog");
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(shape), shape, "Unknown non-retired sprint-status text shape.");
+        }
+
+        File.WriteAllLines(statusPath, lines);
+    }
+
+    private static void InsertUnsupportedSprintStatus(string fixture, string shape)
+    {
+        string statusPath = Path.Combine(fixture, "_bmad-output", "implementation-artifacts", "sprint-status.yaml");
+        List<string> lines = File.ReadAllLines(statusPath).ToList();
+        int mapping = lines.FindIndex(line => line == "development_status:");
+        mapping.ShouldBeGreaterThanOrEqualTo(0);
+        switch (shape)
+        {
+            case "duplicate-development-status":
+                lines.Add("development_status:");
+                lines.Add("  4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "deeper-indented-retired-key":
+            {
+                int entry = -1;
+                for (int index = mapping + 1; index < lines.Count; index++)
+                {
+                    string line = lines[index];
+                    if (string.IsNullOrWhiteSpace(line) || line.TrimStart().StartsWith('#'))
+                    {
+                        continue;
+                    }
+
+                    if (!line.StartsWith(' '))
+                    {
+                        break;
+                    }
+
+                    if (line.StartsWith("  ", StringComparison.Ordinal) && !line.StartsWith("   ", StringComparison.Ordinal))
+                    {
+                        entry = index;
+                        break;
+                    }
+                }
+
+                entry.ShouldBeGreaterThanOrEqualTo(0);
+                lines.Insert(entry + 1, "    4-8-durable-admission-evidence-ledger: done");
+                break;
+            }
+            case "merge-key":
+            case "sequence":
+            case "tagged-retired-key":
+            case "anchored-retired-key":
+                lines.Insert(
+                    mapping + 1,
+                    shape switch
+                    {
+                        "merge-key" => "  <<: *shared-statuses",
+                        "sequence" => "  - epic-4: in-progress",
+                        "tagged-retired-key" => "  !!str 4-8-durable-admission-evidence-ledger: done",
+                        "anchored-retired-key" => "  &retired 4-8-durable-admission-evidence-ledger: done",
+                        _ => throw new ArgumentOutOfRangeException(nameof(shape), shape, "Unknown unsupported sprint-status shape."),
+                    });
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(shape), shape, "Unknown unsupported sprint-status shape.");
+        }
+
+        File.WriteAllLines(statusPath, lines);
+    }
+
+    private static string PreviousCalendarDay(string isoDate) =>
+        DateOnly.ParseExact(isoDate, "yyyy-MM-dd", CultureInfo.InvariantCulture)
+            .AddDays(-1)
+            .ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
     private static void SetFinalLifecycle(string fixture)
     {

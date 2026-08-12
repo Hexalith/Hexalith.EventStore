@@ -2,17 +2,17 @@
   "schema": "hexalith.eventstore.story-4-15-review-receipt/v1",
   "role": "security",
   "reviewer": "Security Reviewer",
-  "reviewedOn": "2026-08-11",
+  "reviewedOn": "2026-08-12",
   "decision": "approved",
-  "subjectSha256": "977a2464e49e3b40f46fff2ff8d1d0ec46c463a9581bc93c1cff9249134e1d15",
+  "subjectSha256": "1f0867a67b26728b08849646d1092c7c558c844ab6b59bc8453c38f94a866cbe",
   "acceptedScope": "protected-data leakage gates, current-fence evidence, sanitized-state limitation, and external authority exclusions",
   "acceptedLimitationsSha256": "3853e7001a78da7cc0c3824392e43e9f5b286b65ce8d101167991b133ebf2d92",
   "findings": [
-    "No blocking security findings: the reseal does not mutate Story 4.14 capture bytes, observations, or the committed Dapr runtime pin 1.18.1, so sanitized-state and protected-data evidence remain the prior approved capture.",
-    "Fresh and committed runtime modes stay separated; pre-review rejects capture/support combinations, preventing committed evidence from being relabeled as a fresh runtime capture.",
-    "Expanded landedGitByteOverrides declare explicit captureWorktreeSha256 and landedGitSha256 pairs that match capture identity and landed Git blobs, failing closed on missing or mismatched overrides.",
-    "Subject and receipt authority blocks keep every external-authority field false, including release, Folders final closure, package, registry, deployment, runtime-pin, consumer-migration, external-repository, and final-consumer authority.",
-    "Limitation text still discloses sanitized structural projections and the source-only handoff boundary after retargeting the landed commit reference."
+    "No blocking security findings: Story 4.14 capture bytes, sanitized projections, and committed Dapr runtime pin 1.18.1 remain unchanged.",
+    "Retired Story 4.8 rejection remains scoped to direct development_status entries; NBSP-prefixed and deeper-indented rows fail closed instead of escaping the mapping.",
+    "Fresh versus committed runtime modes stay separated; pre-review still rejects capture/support combinations.",
+    "Subject and receipt authority blocks keep every external-authority field false after resealing to the patched validator and test bytes.",
+    "Limitation text continues to disclose sanitized structural projections and the source-only handoff boundary."
   ],
   "authority": {
     "eventStorePlatformComplete": true,

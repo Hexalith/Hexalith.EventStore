@@ -2,16 +2,16 @@
   "schema": "hexalith.eventstore.story-4-15-review-receipt/v1",
   "role": "test",
   "reviewer": "Murat (Test Architect)",
-  "reviewedOn": "2026-08-11",
+  "reviewedOn": "2026-08-12",
   "decision": "approved",
-  "subjectSha256": "977a2464e49e3b40f46fff2ff8d1d0ec46c463a9581bc93c1cff9249134e1d15",
+  "subjectSha256": "1f0867a67b26728b08849646d1092c7c558c844ab6b59bc8453c38f94a866cbe",
   "acceptedScope": "production/deterministic evidence coverage, commands and counts, negative validation, and matrix coverage",
   "acceptedLimitationsSha256": "3853e7001a78da7cc0c3824392e43e9f5b286b65ce8d101167991b133ebf2d92",
   "findings": [
-    "The exact subject binds validator e81bfaec383a3092d174f929d6069976afb6be9e123cc3aec5c4ecd56e32c0b2, test source 5b66a6a3d4fc79010cd4cd94a092eefee136cc2dc3241f0885c772626728f99d, and pre-review execution 03411906de8faa4928eb3f9f94fbae50d886a67a26621bbad800b5c590df95be.",
-    "python3 tools/validate-oq8-platform-evidence.py --pre-review passed against the refreshed identity, limitations, subject, and document hashes after retargeting landed source 4b0a7b1d3628a857f131cfbff99030714aefc747.",
-    "Release contracts build completed with zero warnings and errors; receipt-independent Oq8PlatformClosureTests candidate methods covering semantic mutations, limitations, external authority, runtime-mode identity, and pre-review exclusivity passed 64/64.",
-    "Oq8PlatformClosureTests LandedSource and closure path literals were retargeted with the reseal so ancestry and missing-artifact negative cases remain pinned to the new closure directory.",
+    "Exact subject binds validator 1bd7afa508977685f40ac3c7ee76999b6974aee7b30cbd4df0aa40b44e7bd213, test source c662d445fa3cfb90641949a3b1b9d4d4f89a41014e467a4062d019fc80ea664e, and pre-review execution 320941d614d03cf1d45424542820737a664062712b96b1670f49b4c1a464bb26.",
+    "Pre-review execution records 27 successful commands and 128 receipt-independent tests, including UnsupportedSprintStatusYamlFailsClosed at 6 cases for duplicate development_status and deeper-indented retired-key shapes.",
+    "Stale createdOn/executedOn/reviewedOn mutations now derive the prior calendar day from the sealed fixture date rather than a hardcoded literal.",
+    "CandidateSemanticMutationsFailClosed remains 48/48 with resealed date-guard coverage under EvidenceDriftAndMissingApprovalFailClosed for final receipts.",
     "This receipt approves only the exact refreshed subject and claims no release, Folders closure, package, deployment, runtime-pin, migration, external-repository, or final-consumer authority."
   ],
   "authority": {
