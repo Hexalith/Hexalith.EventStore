@@ -212,6 +212,11 @@ development_status:
   # Story 1.20 is already done on source/package parity. Story 3.13 independently maps that
   # identity to the deployed OCI index, child manifests/configs, and release provenance.
   3-12-multi-platform-eventstore-container-publishing-correction: done
+  # 2026-08-12 post-handoff disposition: bmad-build halted correctly at its Step 3 gate.
+  # Repository-owned hardening is complete; Tasks 4-7 and 9 still require external evidence.
+  # Story 3.13 remains in-progress: AC1/AC3 pass, AC2/AC4 remain open, acceptances are 0/3.
+  # Do not rerun hardening or bmad-build until the approved follow-up proposal's full restart gate
+  # is satisfied. The approved terminal-closure proposal is preserved on operational hold.
   3-13-deployed-runtime-parity-closure: in-progress
   epic-3-retrospective: optional
 

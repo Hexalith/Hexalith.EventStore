@@ -743,3 +743,17 @@ OpenAI Codex (GPT-5)
   commit `089369bb`; net predecessor state at HEAD is byte-identical to the approved identity.
 - Story 3.13 must remain non-`done` until every blocker is resolved and all three reviewers accept
   one unchanged replacement review subject.
+
+### Post-Handoff Evidence Disposition — `bmad-build` Step 3 Gate (2026-08-12)
+
+- The `bmad-build` handoff halted correctly at Step 3. Repository-owned Story 3.13 hardening is
+  complete and locally verified; the remaining Tasks 4–7 and 9 require external evidence or
+  acceptance that this repository cannot create.
+- Story 3.13 remains `in-progress`. AC1 and AC3 pass; AC2 and AC4 remain open; the acceptance count
+  remains 0/3. Tasks 4–7 and 9 remain unchecked and are not complete, passed, or not applicable.
+- No further Story 3.13 hardening, verifier expansion, evidence rebinding, or `bmad-build` attempt is
+  authorized until every restart condition in the approved follow-up Sprint Change Proposal is
+  satisfied for one unchanged content-bound lineage.
+- The approved terminal-closure proposal dated 2026-08-12 remains preserved but is on operational
+  hold. Terminal-`unavailable` re-scoping remains a possible future governance decision; it cannot
+  currently close because Task 9 content-bound acceptance evidence is unavailable.

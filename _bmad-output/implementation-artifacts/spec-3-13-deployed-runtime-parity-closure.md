@@ -259,6 +259,12 @@ Verification independently reproduced at HEAD: Release build 0 warnings / 0 erro
   package-source query records, authority/roster bindings, honest suite attribution, and corrected
   predecessor/status documentation. Focused verification is 172/172. AC2/AC4 and 0/3 acceptances
   remain open; the unrelated OQ8 aggregate conflict is recorded rather than weakening this spec.
+- 2026-08-12: Recorded the post-handoff `bmad-build` Step 3 evidence disposition without changing
+  frozen intent, acceptance criteria, task completion, proof bytes, or status. Repository-owned
+  hardening is complete; Tasks 4–7 and 9 remain externally blocked and unchecked. Story/spec/sprint/
+  CI lifecycle remains `in-progress`, AC1/AC3 pass, AC2/AC4 remain open, and acceptances remain 0/3.
+  Further hardening or `bmad-build` attempts are prohibited until the approved follow-up proposal's
+  full external restart gate is satisfied. The existing terminal-closure proposal remains on hold.
 
 ## Verification
 

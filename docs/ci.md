@@ -286,6 +286,14 @@ proof and all three content-bound acceptances required by AC2 and AC4 remain abs
 The current acceptance count is 0 of 3, so Story 3.13 remains `in-progress` and
 authorizes no release, registry, deployment, consumer, or predecessor mutation.
 
+The 2026-08-12 post-handoff `bmad-build` run halted correctly at its Step 3 implementation gate.
+Repository-owned Story 3.13 hardening is complete and locally verified; external evidence closure
+is not. Tasks 4–7 and 9 remain incomplete, AC2 and AC4 remain open, and acceptances remain 0/3. Do
+not rerun Story 3.13 hardening or `bmad-build` until all restart conditions in the approved follow-up
+Sprint Change Proposal are satisfied for one unchanged content-bound lineage. The existing approved
+terminal-closure proposal is preserved on operational hold; terminal-`unavailable` re-scoping
+remains a possible future governance decision but cannot currently close without Task 9 evidence.
+
 ## Submodules
 
 Shared workflows initialize root-declared submodules through Hexalith.Builds

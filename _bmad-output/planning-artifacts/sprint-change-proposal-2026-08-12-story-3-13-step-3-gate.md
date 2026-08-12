@@ -4,12 +4,18 @@ date: 2026-08-12
 workflow: bmad-correct-course
 mode: batch
 scope_classification: moderate
-status: draft-pending-explicit-approval
+status: approved-for-documentation-handoff
 trigger: story-3-13-bmad-build-step-3-evidence-gate
 existing_proposal_disposition: on-hold-not-deleted-not-overwritten-not-superseded
 existing_proposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-08-12.md
-handoff_status: not-started
-sprint_tracking_mutation: prohibited-pending-explicit-approval
+final_approved_by: Administrator
+final_approved_on: 2026-08-12
+handoff_status: routed
+handoff_recipients:
+  - Product Owner
+  - Developer/documentation owner
+  - External evidence owners
+sprint_tracking_mutation: additive-comments-only-approved
 ---
 
 # Follow-Up Sprint Change Proposal — Story 3.13 Step 3 Evidence Gate
