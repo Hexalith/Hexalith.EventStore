@@ -1269,3 +1269,21 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
   summary: Reseal or revert Story 4.5's self-invalidating evidence packet.
   evidence: `evidence/story-4-5/0776785f.../validate-evidence.py` was modified by `3e365150` after the packet was sealed at `86308550`; `sha256sum -c evidence-sha256.txt` now reports a genuine content mismatch. Found incidentally during the Story 3.13 evidence-integrity sweep; not a Story 3.13 defect.
+
+## Deferred from: code review of spec-frontcomposer-11-24-runtime-identity-successor (2026-08-12)
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-frontcomposer-11-24-runtime-identity-successor.md`
+  summary: Exercise every provider-state response through the normal provider-verification lane.
+  evidence: The registry test invokes most of the 19 state seams but discards their results, while the sole real-Kestrel Pact test covers only `command-unauthorized`; incorrect HTTP-visible results for the remaining states can therefore remain green.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-frontcomposer-11-24-runtime-identity-successor.md`
+  summary: Add an intentionally mismatching Pact test for contract-failure classification and process exit.
+  evidence: The only executable `PactInteractionVerifier.VerifyAsync` test covers a matching Pact; no test proves native exit code `1` becomes `interaction.contract-failed`, a failed final verdict, and process exit code `4`.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-frontcomposer-11-24-runtime-identity-successor.md`
+  summary: Verify Pact playback continues after runtime-identity drift when host startup succeeds.
+  evidence: Identity tests cover validator flags and the 19-input application test injects startup failure, so no executable test proves a mismatched identity still runs all 19 interactions and retains the identity failure verdict.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-frontcomposer-11-24-runtime-identity-successor.md`
+  summary: Add an AppHost model test for the drain-bound environment forwarding contract.
+  evidence: Direct option-binding tests cover `MaxDrainAttempts` and `MaxOutstandingPublicationEntries`, but no normal test proves AppHost forwards either value to the EventStore resource environment.

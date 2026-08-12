@@ -26,4 +26,4 @@ dotnet run --project tests/Hexalith.EventStore.ProviderVerification/Hexalith.Eve
   --report-output "$eventstore_root/_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/provider-verification/provider-verification.json"
 ```
 
-The current command is expected to return nonzero: the decision record is non-authorizing and binds source `bb94d93e9b84132cff83a38fba84f25455820d31`, while this checkout is a different runtime. Playback still covers all 19 interactions so the report records the actual provider-wire differences.
+The current command is expected to return nonzero even though the decision record now authorizes the exact bound scope with two captured approvals: this checkout is a different runtime and Builds identity, and contract failures may remain. Playback still covers all 19 interactions so the report records the actual provider-wire differences.

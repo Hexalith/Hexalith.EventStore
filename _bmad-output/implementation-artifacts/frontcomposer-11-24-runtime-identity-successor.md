@@ -1,22 +1,22 @@
 ---
 schema: hexalith.eventstore.frontcomposer-runtime-decision.v1
-recorded_at: '2026-08-10T07:06:11Z'
+recorded_at: '2026-08-12T11:32:15Z'
 subject_sha256: '9d074dfd0758a8934f122aab18659627dff1cf5d4c3e548b222cc0d79a881065'
 source_sha: 'bb94d93e9b84132cff83a38fba84f25455820d31'
 tag: 'v3.91.1'
 version: '3.91.1'
 consumer_scope: 'Hexalith.FrontComposer Story 11.24'
-final_decision: unavailable
-authorize_consumer_migration: false
+final_decision: available
+authorize_consumer_migration: true
 ---
 
 # FrontComposer Story 11.24 EventStore Runtime Identity Successor
 
 ## Decision
 
-The exact source/package tuple has complete reproduced evidence, but the two content-bound owner
-receipts do not yet exist. This record is therefore non-authorizing. FrontComposer Story 11.24 must
-remain backlog and must not migrate until the unchanged subject receives both valid receipts.
+The exact source/package tuple has complete reproduced evidence and two separately issued,
+content-bound owner receipts. This record authorizes Hexalith.FrontComposer Story 11.24 to migrate
+to the bound EventStore `3.91.1` package identity and grants no authority beyond that exact scope.
 
 ## Bound Candidate
 
@@ -52,9 +52,11 @@ Required receipts: `eventstore-owner` and `release-owner`, each separately issue
 candidate tuple, scope, and durable GitHub source. The exact actions and receipt shapes are in
 [owner-actions.md](evidence/frontcomposer-story-11-24/bb94d93e9b84132cff83a38fba84f25455820d31/owner-actions.md).
 
+The separately issued receipts are captured under
+`evidence/frontcomposer-story-11-24/bb94d93e9b84132cff83a38fba84f25455820d31/acceptances/9d074dfd0758a8934f122aab18659627dff1cf5d4c3e548b222cc0d79a881065/`.
 No receipt is inferred from the release actor, workflow success, tag, current `main`, ancestry, or
-catalog exposure. Until both receipts validate, the literal frontmatter values remain
-`final_decision: unavailable` and `authorize_consumer_migration: false`.
+catalog exposure. Both captured receipts validate, so the literal frontmatter values are
+`final_decision: available` and `authorize_consumer_migration: true` for the bound scope only.
 
 ## Rejected Bases
 

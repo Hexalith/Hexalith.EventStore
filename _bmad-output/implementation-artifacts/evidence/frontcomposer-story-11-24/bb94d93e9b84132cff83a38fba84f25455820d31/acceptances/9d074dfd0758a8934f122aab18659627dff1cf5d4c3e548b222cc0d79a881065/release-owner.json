@@ -1,0 +1,14 @@
+{
+  "schema": "hexalith.eventstore.frontcomposer-runtime-acceptance.v1",
+  "subject_sha256": "9d074dfd0758a8934f122aab18659627dff1cf5d4c3e548b222cc0d79a881065",
+  "subject_frozen_at": "2026-08-10T07:06:11Z",
+  "actor": "github:jpiquot",
+  "role": "release-owner",
+  "decision": "accepted",
+  "source_sha": "bb94d93e9b84132cff83a38fba84f25455820d31",
+  "version": "3.91.1",
+  "consumer_scope": "Hexalith.FrontComposer Story 11.24",
+  "accepted_at": "2026-08-12T07:06:11Z",
+  "durable_source": "https://github.com/Hexalith/Hexalith.EventStore/issues/342#issuecomment-5265701569",
+  "statement": "I authorize this exact EventStore source and signed NuGet.org package identity for migration by Hexalith.FrontComposer Story 11.24 only."
+}

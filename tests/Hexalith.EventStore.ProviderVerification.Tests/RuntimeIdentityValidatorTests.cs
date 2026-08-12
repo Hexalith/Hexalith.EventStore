@@ -13,7 +13,7 @@ public sealed class RuntimeIdentityValidatorTests
     private const string ExpectedSource = "bb94d93e9b84132cff83a38fba84f25455820d31";
 
     [Fact]
-    public void Validate_NonAuthorizingSuccessor_RecordsApprovalAndRuntimeDrift()
+    public void Validate_AuthorizingSuccessor_RecordsApprovalsAndRuntimeDrift()
     {
         string root = FindRepositoryRoot();
         string identity = Path.Combine(
@@ -32,16 +32,17 @@ public sealed class RuntimeIdentityValidatorTests
 
         IdentityEvidence result = RuntimeIdentityValidator.Validate(identity, evidence, root, hashes);
 
-        result.ApprovalAuthorized.ShouldBeFalse();
-        result.ApprovalCount.ShouldBe(0);
-        result.ReasonCodes.ShouldContain("identity.approval.unavailable");
+        result.ApprovalAuthorized.ShouldBeTrue();
+        result.ApprovalCount.ShouldBe(2);
+        result.ReasonCodes.ShouldNotContain("identity.approval.unavailable");
         result.ExpectedSourceSha.ShouldBe("bb94d93e9b84132cff83a38fba84f25455820d31");
+        result.ReasonCodes.ShouldContain("identity.source.mismatch");
         result.ObservedBuildsSha.ShouldNotBe(
             result.ExpectedBuildsSha,
             "The frozen FrontComposer successor remains bound to its historical Builds identity after the Dapr bootstrap pointer advances.");
         result.ReasonCodes.ShouldContain("identity.builds.mismatch");
         result.RuntimeMatches.ShouldBeFalse();
-        hashes.Count.ShouldBe(5);
+        hashes.Count.ShouldBe(7);
     }
 
     [Fact]

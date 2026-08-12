@@ -101,6 +101,14 @@ public sealed class FrontComposerRuntimeIdentitySuccessorTests
         bool receiptGatePassed = ValidateReceiptGate(subject, roster, receipts);
         decision["final_decision"].ShouldBe(receiptGatePassed ? "available" : "unavailable");
         bool.Parse(decision["authorize_consumer_migration"]).ShouldBe(receiptGatePassed);
+        if (receiptGatePassed)
+        {
+            DateTimeOffset recordedAt = ParseUtcTimestamp(decision["recorded_at"]);
+            receipts
+                .Select(receipt => ParseUtcTimestamp(receipt["accepted_at"]!.GetValue<string>()))
+                .All(acceptedAt => recordedAt > acceptedAt)
+                .ShouldBeTrue("an available decision must be recorded after every captured acceptance");
+        }
     }
 
     [Theory]
@@ -300,6 +308,18 @@ public sealed class FrontComposerRuntimeIdentitySuccessorTests
 
     private static JsonObject ReadObject(string path) =>
         JsonNode.Parse(File.ReadAllText(path))!.AsObject();
+
+    private static DateTimeOffset ParseUtcTimestamp(string value)
+    {
+        value.EndsWith('Z').ShouldBeTrue();
+        DateTimeOffset.TryParse(
+            value,
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.None,
+            out DateTimeOffset timestamp).ShouldBeTrue();
+        timestamp.Offset.ShouldBe(TimeSpan.Zero);
+        return timestamp;
+    }
 
     private static Dictionary<string, string> ReadFrontmatter(string path)
     {

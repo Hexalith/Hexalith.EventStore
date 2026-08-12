@@ -2,11 +2,11 @@
 title: 'FrontComposer Story 11.24 EventStore Runtime Identity Successor'
 type: 'refactor'
 created: '2026-08-10'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 0
 baseline_commit: '8358ffc399bdb1f1574bd049f17b3b6ebf907619'
 context:
-  - '{project-root}/references/Hexalith.EventStore/_bmad-output/project-context.md'
+  - '{project-root}/_bmad-output/project-context.md'
 ---
 
 <frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
@@ -43,7 +43,7 @@ context:
 - `scripts/validate-consumer-package-references.py` -- existing 13-library plus one-tool isolated consumer validator.
 - `references/Hexalith.Builds/Props/Directory.Packages.props` at `a8a50859...` -- exact catalog exposure for `3.91.1`; Admin.Cli remains manifest-owned rather than cataloged.
 - `_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/bb94d93e9b84132cff83a38fba84f25455820d31/` -- new package manifest, restore receipt, release/catalog provenance, roster, review subject, and content-bound approvals.
-- `_bmad-output/implementation-artifacts/frontcomposer-11-24-runtime-identity-successor.md` -- new durable decision record; unavailable until both receipts validate.
+- `_bmad-output/implementation-artifacts/frontcomposer-11-24-runtime-identity-successor.md` -- durable decision record; available only for the exact bound scope after both receipts validated.
 - `tests/Hexalith.EventStore.Contracts.Tests/Packaging/FrontComposerRuntimeIdentitySuccessorTests.cs` -- new fail-closed schema, exact-tuple, hash, scope, and approval gate.
 
 ## Tasks & Acceptance
@@ -51,8 +51,8 @@ context:
 **Execution:**
 - [x] Evidence directory -- retain the 14 NuGet.org SHA-256 values, exact package metadata commit, successful exact-source CI/release identities, Builds identities, and fresh isolated restore/tool-install receipt.
 - [x] Review subject and roster -- hash-bind the exact candidate, evidence, limitations, `github:jpiquot` EventStore/Release roles, and scope `Hexalith.FrontComposer Story 11.24`.
-- [ ] External checkpoint -- obtain separate durable EventStore Owner and Release Owner acceptances of the unchanged subject; do not self-approve or infer approval from workflow actors.
-- [ ] Successor record -- after both receipts validate, record literal `final_decision: available` and `authorize_consumer_migration: true` for only the bound tuple and consumer scope.
+- [x] External checkpoint -- obtain separate durable EventStore Owner and Release Owner acceptances of the unchanged subject; do not self-approve or infer approval from workflow actors.
+- [x] Successor record -- after both receipts validate, record literal `final_decision: available` and `authorize_consumer_migration: true` for only the bound tuple and consumer scope.
 - [x] Focused test -- reject missing/late/wrong-role receipts, subject drift, package/hash/Builds drift, old proof reuse, ancestry, and the Tenants waiver.
 
 **Acceptance Criteria:**
@@ -63,6 +63,11 @@ context:
 
 ## Spec Change Log
 
+- 2026-08-12: Captured the separate EventStore Owner and Release Owner GitHub receipts for the
+  unchanged subject, validated both against the frozen roster and scope, recorded the decision
+  after both approvals, and authorized only Hexalith.FrontComposer Story 11.24 to migrate to the
+  exact EventStore `3.91.1` package tuple. Hardened the timestamp regression gate and refreshed
+  the provider-verification evidence against the authorized state.
 - 2026-08-10: Reproduced the exact signed-feed package tuple, froze review subject
   `9d074dfd0758a8934f122aab18659627dff1cf5d4c3e548b222cc0d79a881065`, recorded the
   non-authorizing approval checkpoint, and added 23 passing focused cases. External owner receipts
@@ -79,8 +84,58 @@ Publication is unnecessary: public `3.91.1` already supplies an exact tested sou
 - `python3 tools/validate-release-packages.py <isolated-packages> 3.91.1` -- exactly 14 packages validate.
 - `python3 scripts/validate-consumer-package-references.py <isolated-packages>` -- 13 library consumers and one tool consumer pass with no project edges.
 - `dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj -c Release -m:1` then run the built test assembly with `-class` -- focused successor tests pass.
+- `dotnet build tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj -c Release -m:1` then run the full built test assembly -- provider-verification tests pass.
+- Run the provider verifier with the documented FrontComposer Pact, manifest, catalog, decision,
+  and evidence inputs -- expected nonzero while the current runtime/Builds identities drift.
 
 **Observed 2026-08-10:** all 14 NuGet.org archives passed repository-signature verification and
 release inventory validation; 13 isolated library consumers and one isolated tool consumer passed;
 the focused Release build completed with zero warnings/errors; and the direct xUnit v3 class run
 executed 23 tests with 23 passed, zero failed, skipped, or not run.
+
+**Observed 2026-08-12:** GitHub issue `Hexalith/Hexalith.EventStore#342` supplied separate,
+content-bound `eventstore-owner` and `release-owner` receipts from roster-authorized
+`github:jpiquot`; both cite the unchanged subject, exact tuple, and FrontComposer Story 11.24 scope.
+The successor Release build and focused class passed 23/23, and the ProviderVerification.Tests
+Release build and full assembly passed 74/74, all with zero warnings or errors. The refreshed real
+provider run exited `4` as expected, retained authorization (`approvalAuthorized: true`, two
+approvals), reported source/version/Builds drift, exercised all 19 interactions (3 passed, 16
+contract-failed), completed cleanup with the port closed, and captured 14 exact input hashes in
+report SHA-256 `7ad9d7199272680a26770f5ea980bce880736a4bd92b3d6b27fb7aed546304c7`.
+
+## Suggested Review Order
+
+**Authorization decision**
+
+- Start with the scoped migration decision and its post-approval timestamp.
+  [`frontcomposer-11-24-runtime-identity-successor.md:3`](frontcomposer-11-24-runtime-identity-successor.md#L3)
+
+- Confirm the EventStore Owner accepted the exact frozen subject and scope.
+  [`eventstore-owner.json:1`](evidence/frontcomposer-story-11-24/bb94d93e9b84132cff83a38fba84f25455820d31/acceptances/9d074dfd0758a8934f122aab18659627dff1cf5d4c3e548b222cc0d79a881065/eventstore-owner.json#L1)
+
+- Confirm the Release Owner independently authorized the same consumer migration.
+  [`release-owner.json:1`](evidence/frontcomposer-story-11-24/bb94d93e9b84132cff83a38fba84f25455820d31/acceptances/9d074dfd0758a8934f122aab18659627dff1cf5d4c3e548b222cc0d79a881065/release-owner.json#L1)
+
+**Fail-closed validation**
+
+- Enforce receipt completeness, bound scope, and decision-after-acceptance ordering.
+  [`FrontComposerRuntimeIdentitySuccessorTests.cs:93`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/FrontComposerRuntimeIdentitySuccessorTests.cs#L93)
+
+- Verify the harness consumes two approvals while preserving runtime-drift failure.
+  [`RuntimeIdentityValidatorTests.cs:16`](../../tests/Hexalith.EventStore.ProviderVerification.Tests/RuntimeIdentityValidatorTests.cs#L16)
+
+**Reproduced provider evidence**
+
+- Inspect the refreshed authorization, identity drift, and 19-interaction outcome.
+  [`provider-verification.json:54`](evidence/frontcomposer-story-11-24/provider-verification/provider-verification.json#L54)
+
+- Check the bounded report hash, counts, and cleanup receipt.
+  [`run-evidence.json:1`](evidence/frontcomposer-story-11-24/provider-verification/run-evidence.json#L1)
+
+- Follow the exact rerun command and authorized-but-drifting expectation.
+  [`README.md:29`](../../tests/Hexalith.EventStore.ProviderVerification/README.md#L29)
+
+**Review follow-up**
+
+- Review separately scoped verification gaps without blocking this authorization.
+  [`deferred-work.md:1273`](deferred-work.md#L1273)
