@@ -142,26 +142,26 @@ Chunk 2/3 (evidence, docs, status) + post-chunk-1 test delta — `bmad-code-revi
 - [x] [Review][Patch] APPLIED 2026-08-12 — restored 116 comment lines across 24 keys from baseline `1d6e9321` (file back to 119 indented comments), including both Epic 1 annotations above `1-9` and `1-13`. Verified comment-only: YAML parses, key set identical, zero status values changed. Restore the sprint-status decision comments destroyed by Story 3.13 commit `2a6c2177` (131 → 0; only the 3 test-pinned Story 1.20 lines were later restored) — the loss includes two Epic 1 annotations above `1-9` and `1-13`, violating "Epic 1 stays unchanged", plus the 2.12 re-scope block, the 3.1 merge/ratification record, the 2.5/2.6/2.7/2.11 acceptance records, and the Epic 6/7/8 gating notes. Only the Story 1.20 block is protected by a test, so the next YAML round-trip will delete the rest again [_bmad-output/implementation-artifacts/sprint-status.yaml]
 - [x] [Review][Patch] APPLIED 2026-08-12 — proof packet now records that Story 3.13 wrote two predecessor files at `3d6dea69` solely to restore approved bytes drifted by unrelated commit `089369bb`, states the net-state sense in which `verdict.predecessor_state_changed` remains `false`, and names the three sibling trees it holds no authority to repair. Hash cascade rebound (proof packet `03f2b59c…` → `8bf27efc…`, review subject and outer manifest refreshed); story Completion Notes corrected. Proof packet and crosswalk attested to no predecessor modification, which was false — "No predecessor file was normalized, regenerated, or modified" and `predecessor_state_changed: false` are contradicted by Story 3.13 commit `3d6dea69`, which modified `1-20-owner-approved-parity-closure-proof-packet.md` and `evidence/story-1-20/fa2d1c99…/environment.txt`. The restoration is disclosed in the Spec Change Log but denied by the content-bound subject reviewers are asked to accept [_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure-proof-packet.md:66]
 - [x] [Review][Patch] APPLIED 2026-08-12 — added `EvidenceDirectoryHasNoUnlistedFiles`, enumerating the evidence directory and rejecting any top-level file no manifest lists, wired into `ValidateEvidenceIntegrity`; new `UnlistedEvidenceDirectoryFileFailsClosed` theory (3 cases) is mutation-verified to go red when the guard is removed. No stray-file detection existed in the content-addressed evidence directory — verified that `Directory.GetFiles` is used only for the package archive root, the receipt directory, and `CopyDirectory`; nothing enumerates the evidence directory, so a file present on disk but listed in no manifest rides inside the packet undetected [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:3789]
-- [ ] [Review][Patch] `4-8-durable-admission-evidence-ledger: backlog` row was added by the same rewrite that deleted the rule forbidding it ("Story 4.8 is a non-executable evidence ledger and therefore has no status row"), leaving an orphan key matching no story file [_bmad-output/implementation-artifacts/sprint-status.yaml:117]
+- [x] [Review][Patch] `4-8-durable-admission-evidence-ledger: backlog` row was added by the same rewrite that deleted the rule forbidding it ("Story 4.8 is a non-executable evidence ledger and therefore has no status row"), leaving an orphan key matching no story file [_bmad-output/implementation-artifacts/sprint-status.yaml:117]
 - [x] [Review][Patch] APPLIED 2026-08-12 (in passing, during the required sprint-status sync) — now `last_updated: '2026-08-12'`. Was unquoted, non-ISO, ambiguous MM-DD-YYYY, and contradicts both the file's own header comment and the correctly-quoted ISO `generated:` on the line above [_bmad-output/implementation-artifacts/sprint-status.yaml:44]
-- [ ] [Review][Patch] The `nested-index` case of `OciGraphRejectsPlatformSetMutations` exercises no nested index — it only flips `registry-readback.json → objects[0].content_type`, a path already covered elsewhere, and never writes an index descriptor, a third descriptor, or a `platform.variant` entry into `index.raw`; the raw-index rejections at `:3052-3053` can be deleted with the suite still green [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:1216]
-- [ ] [Review][Patch] The raw-config support-safety scan added to `ValidateOciGraph` has no covering test — `OciProvenanceRejectsSensitiveConfigRawValues` asserts only `ValidateOciProvenance`, and a plain content edit cannot reach the graph-side scan because `BytesMatchDescriptor` rejects the mismatched digest first; removing `|| !DocumentIsSupportSafe(config)` at `:3120` changes no test result [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:3120]
-- [ ] [Review][Patch] `identity-crosswalk.json` records `"exit_code": 0` for a run whose own verification reason states the retained logs "omit … exit codes", with no citation and no per-field verification result [_bmad-output/implementation-artifacts/evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/identity-crosswalk.json:313]
-- [ ] [Review][Patch] `oci-validation.json` identifies the image by the mutable tag `registry.hexalith.com/eventstore:quarantine-proof-fa2d1c99…` rather than the immutable `@sha256:` reference used everywhere else — the exact mutable-tag identity `MutableTagOnlyIdentityFailsClosed` was added to reject — and is the only evidence document with no `schema_version` and no `verification` block [_bmad-output/implementation-artifacts/evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/oci-validation.json:31]
-- [ ] [Review][Patch] Retained per-platform and preflight `outcome: "pass"` claims are kept in `smoke-results.json`, `runtime-verification.json`, and the crosswalk while the verifier separately asserts those same logs FAIL `ValidateRuntimeLog`/`ValidatePreflightLog`; the eighth-pass honesty fix reached only the top-level `result: "fail"`. Mark preflight and per-platform outcomes `unverified` as `execution_result` already is [_bmad-output/implementation-artifacts/evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/smoke-results.json]
-- [ ] [Review][Patch] `review-subject.json` presents `authority_record_sha256: null` to the three reviewers even though the crosswalk carries a hash-checked authority record (`record_sha256: 2fd6a43f…`, `deployment_authorized: false`, quarantine-only scope); reviewers accept a subject showing no authority identity rather than the quarantine-only one. Its `expires_at: 2026-08-25` is also unmentioned by any blocker or reopen trigger [_bmad-output/implementation-artifacts/evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/review-subject.json:23]
-- [ ] [Review][Patch] `git diff --check` is recorded as passing and cited as scope evidence it cannot supply — it reports whitespace errors only, says nothing about which paths changed, and re-running the recorded command at HEAD exits 2 with hits in two `bundle-contract.md` files and two `gh-*-review-diff.txt` evidence files [_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure.md:440]
-- [ ] [Review][Patch] The spec contains two divergent `## Suggested Review Order` sections with conflicting anchors for the same targets (evaluator cited at `:2040` vs `:2369`, `deferred-work.md:1021` vs `:1212`); the first block's `ci.md:267` pointer lands on the Story 3.12 paragraph and its `3-13-…closure.md:675` pointer lands on the File List [_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md:220]
-- [ ] [Review][Patch] Restore the Story 1.20 sole-authority sentence removed from `docs/ci.md` by Story 3.13 commit `b140a576` — the deleted paragraph stated Story 1.20 "retains sole authority over its approval fields and consumer-migration decision"; Task 10 authorized replacing the stale deployed-closure ownership text, not narrowing the predecessor's documented authority [docs/ci.md]
+- [x] [Review][Patch] The `nested-index` case of `OciGraphRejectsPlatformSetMutations` exercises no nested index — it only flips `registry-readback.json → objects[0].content_type`, a path already covered elsewhere, and never writes an index descriptor, a third descriptor, or a `platform.variant` entry into `index.raw`; the raw-index rejections at `:3052-3053` can be deleted with the suite still green [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:1216]
+- [x] [Review][Patch] The raw-config support-safety scan added to `ValidateOciGraph` has no covering test — `OciProvenanceRejectsSensitiveConfigRawValues` asserts only `ValidateOciProvenance`, and a plain content edit cannot reach the graph-side scan because `BytesMatchDescriptor` rejects the mismatched digest first; removing `|| !DocumentIsSupportSafe(config)` at `:3120` changes no test result [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:3120]
+- [x] [Review][Patch] `identity-crosswalk.json` records `"exit_code": 0` for a run whose own verification reason states the retained logs "omit … exit codes", with no citation and no per-field verification result [_bmad-output/implementation-artifacts/evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/identity-crosswalk.json:313]
+- [x] [Review][Patch] `oci-validation.json` identifies the image by the mutable tag `registry.hexalith.com/eventstore:quarantine-proof-fa2d1c99…` rather than the immutable `@sha256:` reference used everywhere else — the exact mutable-tag identity `MutableTagOnlyIdentityFailsClosed` was added to reject — and is the only evidence document with no `schema_version` and no `verification` block [_bmad-output/implementation-artifacts/evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/oci-validation.json:31]
+- [x] [Review][Patch] Retained per-platform and preflight `outcome: "pass"` claims are kept in `smoke-results.json`, `runtime-verification.json`, and the crosswalk while the verifier separately asserts those same logs FAIL `ValidateRuntimeLog`/`ValidatePreflightLog`; the eighth-pass honesty fix reached only the top-level `result: "fail"`. Mark preflight and per-platform outcomes `unverified` as `execution_result` already is [_bmad-output/implementation-artifacts/evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/smoke-results.json]
+- [x] [Review][Patch] `review-subject.json` presents `authority_record_sha256: null` to the three reviewers even though the crosswalk carries a hash-checked authority record (`record_sha256: 2fd6a43f…`, `deployment_authorized: false`, quarantine-only scope); reviewers accept a subject showing no authority identity rather than the quarantine-only one. Its `expires_at: 2026-08-25` is also unmentioned by any blocker or reopen trigger [_bmad-output/implementation-artifacts/evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/review-subject.json:23]
+- [x] [Review][Patch] `git diff --check` is recorded as passing and cited as scope evidence it cannot supply — it reports whitespace errors only, says nothing about which paths changed, and re-running the recorded command at HEAD exits 2 with hits in two `bundle-contract.md` files and two `gh-*-review-diff.txt` evidence files [_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure.md:440]
+- [x] [Review][Patch] The spec contains two divergent `## Suggested Review Order` sections with conflicting anchors for the same targets (evaluator cited at `:2040` vs `:2369`, `deferred-work.md:1021` vs `:1212`); the first block's `ci.md:267` pointer lands on the Story 3.12 paragraph and its `3-13-…closure.md:675` pointer lands on the File List [_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md:220]
+- [x] [Review][Patch] Restore the Story 1.20 sole-authority sentence removed from `docs/ci.md` by Story 3.13 commit `b140a576` — the deleted paragraph stated Story 1.20 "retains sole authority over its approval fields and consumer-migration decision"; Task 10 authorized replacing the stale deployed-closure ownership text, not narrowing the predecessor's documented authority [docs/ci.md]
 - [x] [Review][Patch] APPLIED 2026-08-12 (in passing) — set to `13`. Was `review_loop_iteration: 7` against twelve dated hardening passes in the Spec Change Log — previously deferred as cosmetic when the gap was smaller; it is now materially wrong and is the only machine-readable loop counter [_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md:7]
-- [ ] [Review][Patch] Several new negative tests have no paired positive control, so they cannot distinguish "the mutation caused the failure" from "this fixture never passed" — `MutableTagOnlyIdentityFailsClosed`, `OciGraphRejectsConfigArchitectureMismatch`, `RuntimeLogRejectsZeroPollInterval`, and `OciProvenanceRejectsSensitiveConfigRawValues` never assert the un-mutated fixture returns true first, unlike `CanonicalLineageIgnoresExecutionOnlyRuntimeFacts` which correctly captures `before` [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:1162]
-- [ ] [Review][Patch] `failure_class` is written into the retained log fixtures but never read by any validator — the only consumer reads it from the crosswalk node, so a crosswalk claiming `failure_class: "environment"` over a log recording `"product"` is undetectable, which is precisely the environment-vs-product separation Task 6 requires [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:5787]
-- [ ] [Review][Patch] The proof packet's headline "complete Contracts suite: 1260 passed" is not attributable to Story 3.13 — the same Debug Log shows 999 on 2026-08-04 and 1001 on 2026-08-05 while the focused verifier grew only 117 → 157; the remaining ~219 tests came from concurrent unrelated work in the same range and the packet does not say so [_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure-proof-packet.md:136]
-- [ ] [Review][Patch] `CopyDirectory` defeats the isolation it was added for — `File.Copy` follows symlinks rather than reproducing them, so symlink-escape conditions vanish in the staged copy, and the first loop over `Directory.GetDirectories(..., AllDirectories)` is dead given the `CreateDirectory` inside the file loop [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:5798]
-- [ ] [Review][Patch] Validator robustness gaps in the fail-closed paths: `ValidateAcceptances` omits `FormatException` from its catch filter so a malformed `created_at` throws instead of returning false; `DateTimeOffset.Parse` is called without `CultureInfo.InvariantCulture`; runtime preflight/platform nodes accept arbitrary undeclared keys (no `HasExactProperties`); a trailing separator on `archive_root` makes the `GetDirectoryName` comparison never match and would reject a fully recovered 14-archive set; the acceptance scan reads only top-level `*.json` so non-JSON or nested receipt material is unchecked; and the `nested-index` branch indexes `objects[0]` without checking the array is populated [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:3609]
-- [ ] [Review][Patch] Record the owner's 2026-08-11 ratification of the dual `eventstore-owner`/`release-owner` identity and the `bmad:murat` Test Architect receipt in the roster, with a `created_at` and an authority source for the roster itself, so future review loops do not re-raise AC4 satisfiability [_bmad-output/implementation-artifacts/evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/reviewer-roster.json]
-- [ ] [Review][Patch] Make the AC2 fail-closed record reproducible — name the durable sources actually queried (NuGet.org flat container, GitHub Packages with `read:packages`, any Hexalith-internal feed) and the query method, so a reviewer can re-derive "unrecoverable" without the absolute host paths that support-safety redacted to `<redacted-*>` [_bmad-output/implementation-artifacts/evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/package-availability.json:7]
-- [ ] [Review][Patch] Make absent retained evidence return a `false` verdict instead of propagating `FileNotFoundException`, and rewrite `InaccessibleRetainedEvidenceFailsClosed` to assert the false verdict — AC3 requires a fail-closed *verdict*, and an escaping exception yields none [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:1295]
+- [x] [Review][Patch] Several new negative tests have no paired positive control, so they cannot distinguish "the mutation caused the failure" from "this fixture never passed" — `MutableTagOnlyIdentityFailsClosed`, `OciGraphRejectsConfigArchitectureMismatch`, `RuntimeLogRejectsZeroPollInterval`, and `OciProvenanceRejectsSensitiveConfigRawValues` never assert the un-mutated fixture returns true first, unlike `CanonicalLineageIgnoresExecutionOnlyRuntimeFacts` which correctly captures `before` [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:1162]
+- [x] [Review][Patch] `failure_class` is written into the retained log fixtures but never read by any validator — the only consumer reads it from the crosswalk node, so a crosswalk claiming `failure_class: "environment"` over a log recording `"product"` is undetectable, which is precisely the environment-vs-product separation Task 6 requires [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:5787]
+- [x] [Review][Patch] The proof packet's headline "complete Contracts suite: 1260 passed" is not attributable to Story 3.13 — the same Debug Log shows 999 on 2026-08-04 and 1001 on 2026-08-05 while the focused verifier grew only 117 → 157; the remaining ~219 tests came from concurrent unrelated work in the same range and the packet does not say so [_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure-proof-packet.md:136]
+- [x] [Review][Patch] `CopyDirectory` defeats the isolation it was added for — `File.Copy` follows symlinks rather than reproducing them, so symlink-escape conditions vanish in the staged copy, and the first loop over `Directory.GetDirectories(..., AllDirectories)` is dead given the `CreateDirectory` inside the file loop [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:5798]
+- [x] [Review][Patch] Validator robustness gaps in the fail-closed paths: `ValidateAcceptances` omits `FormatException` from its catch filter so a malformed `created_at` throws instead of returning false; `DateTimeOffset.Parse` is called without `CultureInfo.InvariantCulture`; runtime preflight/platform nodes accept arbitrary undeclared keys (no `HasExactProperties`); a trailing separator on `archive_root` makes the `GetDirectoryName` comparison never match and would reject a fully recovered 14-archive set; the acceptance scan reads only top-level `*.json` so non-JSON or nested receipt material is unchecked; and the `nested-index` branch indexes `objects[0]` without checking the array is populated [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:3609]
+- [x] [Review][Patch] Record the owner's 2026-08-11 ratification of the dual `eventstore-owner`/`release-owner` identity and the `bmad:murat` Test Architect receipt in the roster, with a `created_at` and an authority source for the roster itself, so future review loops do not re-raise AC4 satisfiability [_bmad-output/implementation-artifacts/evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/reviewer-roster.json]
+- [x] [Review][Patch] Make the AC2 fail-closed record reproducible — name the durable sources actually queried (NuGet.org flat container, GitHub Packages with `read:packages`, any Hexalith-internal feed) and the query method, so a reviewer can re-derive "unrecoverable" without the absolute host paths that support-safety redacted to `<redacted-*>` [_bmad-output/implementation-artifacts/evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/package-availability.json:7]
+- [x] [Review][Patch] Make absent retained evidence return a `false` verdict instead of propagating `FileNotFoundException`, and rewrite `InaccessibleRetainedEvidenceFailsClosed` to assert the false verdict — AC3 requires a fail-closed *verdict*, and an escaping exception yields none [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:1295]
 - [x] [Review][Defer] Story 4.5's evidence packet is self-invalidating — `validate-evidence.py` was modified by `3e365150` after its manifest was sealed at `86308550`, so `evidence-sha256.txt` fails with a genuine content mismatch at HEAD; unrelated to Story 3.13 [_bmad-output/implementation-artifacts/evidence/story-4-5/0776785f494fcefc8ad933b5b17b9c8d5cbe0513/evidence-sha256.txt] — deferred, pre-existing
 - [x] [Review][Defer] OCI layer descriptors are never validated — the retained real manifests carry seven layer descriptors each whose digests and sizes are unchecked, and the pass-path fixtures use layer-less manifests no registry would accept [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:4925] — deferred, pre-existing
 - [x] [Review][Defer] `release-provenance.json`, `deployment-authority.json`, and `deployment-authority-source.json` are validated by code paths that have never met a real artifact — no such file exists in the committed evidence directory [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs] — deferred, pre-existing
@@ -174,7 +174,7 @@ Chunk 2/3 (evidence, docs, status) + post-chunk-1 test delta — `bmad-code-revi
 
 Dismissed (2): a "circular predecessor proof" claim — refuted, the crosswalk pin `47f09bdf` is the value at Story 3.13's own baseline and dates to 2026-08-01, so `3d6dea69` restored approved bytes that the unrelated `089369bb` had drifted, rather than fabricating them; and a `docs/ci.md` Epic-4/OQ8 scope-leak attribution — those paragraphs come from `fe715c70`, `ab1666dd`, `b927472a`, `35a1eecd`, and `86308550`, not from Story 3.13.
 
-Verification independently reproduced at HEAD: Release build 0 warnings / 0 errors; focused verifier 157/157, 0 skipped; complete Contracts suite 1260/1260, 0 skipped; Story 1.20 `critical-evidence-sha256.txt` 33/33 OK for the approved `fa2d1c99…` tree; Story 3.13 `evidence-core-sha256.txt` 17/17 and `evidence-sha256.txt` 3/3 OK; `review-subject.json` binds the live proof-packet hash `03f2b59c…`; `markdownlint docs/ci.md` 0 issues.
+Verification independently reproduced at HEAD: Release build 0 warnings / 0 errors; focused verifier 172/172, 0 skipped; Story 1.20 `critical-evidence-sha256.txt` 33/33 OK for the approved `fa2d1c99…` tree; Story 3.13 `evidence-core-sha256.txt` 17/17 and `evidence-sha256.txt` 3/3 OK; `markdownlint docs/ci.md` 0 issues. The complete Contracts aggregate passed 1254/1275 and failed 21 unrelated OQ8 tests because that verifier still requires the orphan Story 4.8 status row this spec explicitly removes.
 
 **Acceptance Criteria:**
 - Given completed predecessors, when closure begins, then committed identities are hash-checked without modification or inference.
@@ -253,6 +253,12 @@ Verification independently reproduced at HEAD: Release build 0 warnings / 0 erro
   support-safety validation, removed obsolete generated review snapshots, refreshed the review
   subject chronology, and re-measured 157 focused / 1260 complete Contracts tests. AC2/AC4 and 0/3
   acceptances remain open.
+- 2026-08-12: Applied the thirteenth review-hardening pass without changing frozen intent. Closed
+  all remaining review patches: exact fail-closed evidence/receipt/runtime shapes, immutable OCI
+  identity, support-safe raw-config coverage, invariant timestamps, symlink-safe copies, durable
+  package-source query records, authority/roster bindings, honest suite attribution, and corrected
+  predecessor/status documentation. Focused verification is 172/172. AC2/AC4 and 0/3 acceptances
+  remain open; the unrelated OQ8 aggregate conflict is recorded rather than weakening this spec.
 
 ## Verification
 
@@ -264,52 +270,6 @@ Verification independently reproduced at HEAD: Release build 0 warnings / 0 erro
 
 ## Suggested Review Order
 
-**Decision and identity**
-
-- Start with the fail-closed decision, missing lineage proof, and non-mutation boundary.
-  [`3-13-deployed-runtime-parity-closure-proof-packet.md:3`](3-13-deployed-runtime-parity-closure-proof-packet.md#L3)
-
-- Inspect the machine-readable verdict, blockers, and explicit non-done result.
-  [`identity-crosswalk.json:431`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/identity-crosswalk.json#L431)
-
-- Confirm operators see truthful in-review ownership and zero acceptances.
-  [`ci.md:267`](../../docs/ci.md#L267)
-
-**Closure enforcement**
-
-- Follow the central evaluator joining every identity and acceptance requirement.
-  [`DeployedRuntimeParityClosureTests.cs:2040`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L2040)
-
-- Review the retained fail-closed subject's exact locked shape.
-  [`DeployedRuntimeParityClosureTests.cs:3369`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3369)
-
-**Support-safe evidence boundary**
-
-- Allow only the two public hosts required by retained evidence.
-  [`DeployedRuntimeParityClosureTests.cs:122`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L122)
-
-- Exercise private ranges, deceptive hostnames, literal IPs, and approved hosts.
-  [`DeployedRuntimeParityClosureTests.cs:461`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L461)
-
-- Fail closed without mutable, environment-dependent DNS resolution.
-  [`DeployedRuntimeParityClosureTests.cs:4224`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L4224)
-
-**Review disposition and proof**
-
-- Record the accepted patch without weakening frozen acceptance criteria.
-  [`spec-3-13-deployed-runtime-parity-closure.md:126`](spec-3-13-deployed-runtime-parity-closure.md#L126)
-
-- Route validated unrelated findings to their owning future work.
-  [`deferred-work.md:1021`](deferred-work.md#L1021)
-
-- Restore approved Story 1.20 closure context without changing its done status.
-  [`sprint-status.yaml:72`](sprint-status.yaml#L72)
-
-- Re-run predecessor hashes, build, focused tests, and hygiene checks.
-  [`spec-3-13-deployed-runtime-parity-closure.md:202`](spec-3-13-deployed-runtime-parity-closure.md#L202)
-
-## Suggested Review Order
-
 **Decision and lifecycle**
 
 - Start with the immutable fail-closed operator decision and unchanged external-state boundary.
@@ -318,11 +278,11 @@ Verification independently reproduced at HEAD: Release build 0 warnings / 0 erro
 - Confirm the machine verdict remains non-done with explicit blockers.
   [`identity-crosswalk.json:431`](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/identity-crosswalk.json#L431)
 
-- Verify the story remains in review with AC2/AC4 open.
-  [`3-13-deployed-runtime-parity-closure.md:675`](3-13-deployed-runtime-parity-closure.md#L675)
+- Verify the story remains in progress with AC2/AC4 open.
+  [`3-13-deployed-runtime-parity-closure.md:736`](3-13-deployed-runtime-parity-closure.md#L736)
 
-- Confirm sprint tracking uses the canonical `review` state.
-  [`sprint-status.yaml:106`](sprint-status.yaml#L106)
+- Confirm sprint tracking uses the canonical `in-progress` state.
+  [`sprint-status.yaml:215`](sprint-status.yaml#L215)
 
 **Evidence binding**
 
@@ -338,13 +298,13 @@ Verification independently reproduced at HEAD: Release build 0 warnings / 0 erro
 **Support-safety enforcement**
 
 - Follow the derived closure gate joining every identity and acceptance requirement.
-  [`DeployedRuntimeParityClosureTests.cs:2369`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L2369)
+  [`DeployedRuntimeParityClosureTests.cs:2586`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L2586)
 
 - Inspect raw OCI config scanning at both graph and provenance boundaries.
-  [`DeployedRuntimeParityClosureTests.cs:3120`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3120)
+  [`DeployedRuntimeParityClosureTests.cs:3136`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3136)
 
 - Verify credential-shaped raw-config values fail independently.
-  [`DeployedRuntimeParityClosureTests.cs:1917`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L1917)
+  [`DeployedRuntimeParityClosureTests.cs:2096`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L2096)
 
 **Deferred unrelated findings**
 

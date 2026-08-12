@@ -224,7 +224,6 @@ development_status:
   4-6-global-position-sharding-spec-renegotiation: backlog
   # Coordinated Tenants follow-up only; EventStore platform prerequisite is Story 1.2.
   4-7-tenants-query-provenance-follow-up: backlog
-  4-8-durable-admission-evidence-ledger: backlog
   # Story 4.8 is a non-executable evidence ledger and therefore has no status row.
   # The August crosswalk maps its checked candidate evidence to focused review stories only.
   4-9-trusted-admission-contract-and-protected-identity: done

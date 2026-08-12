@@ -1,18 +1,18 @@
 {
   "schema": "hexalith.eventstore.story-3-13-review-subject/v2",
-  "created_at": "2026-08-11T21:56:38Z",
+  "created_at": "2026-08-12T06:29:37Z",
   "proposed_decision": "fail-closed",
   "identity_crosswalk": {
     "path": "identity-crosswalk.json",
-    "sha256": "11b17fb06f38b6a74ec5077229db1ee80b9a0192641863365fc55c6fd168a0b9"
+    "sha256": "6d0ae4054c9c88581309c2643aeb73a6ca4c00bac7849b003d4324609d6b1929"
   },
   "evidence_core_manifest": {
     "path": "evidence-core-sha256.txt",
-    "sha256": "5f7a8c7b1cdd85cbfe5469af2b4ff8c1363b92cd79ee964aefecba0bef3d7758"
+    "sha256": "4088dd1d1ffc0e8c344df06ae3620a2a065e25ff1ba59150c7fc9a9c40b2c6d9"
   },
   "proof_packet": {
     "path": "_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure-proof-packet.md",
-    "sha256": "8bf27efc92f2e8391cb1800f8eedb569472a1ecbad9917af9af48ecf76a5fa48"
+    "sha256": "2ec51a05a0dd69b585c12865bb6559f72a13c200f84ad63e477eee670a6cd130"
   },
   "identity": {
     "source_sha": "fa2d1c9910f8976553adb33dcdb1c9ff2ea75594",
@@ -20,7 +20,7 @@
     "package_hash_manifest_sha256": "4271ddc76411780591423ab024b776cd34a2abccf1cc2dac03a245e141dbe0bc",
     "release_version": null,
     "workflow_run": null,
-    "authority_record_sha256": null,
+    "authority_record_sha256": "2fd6a43fd92e5209e7f85d8310fda1fef66eaa2ae7f6b2fedaae6d697201246b",
     "index_digest": "sha256:523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87",
     "canonical_lineage_id": null
   },
@@ -35,7 +35,7 @@
     "child-manifest and config response metadata was not retained, so the registry response checks cannot be replayed from this packet",
     "the retained smoke logs lack structured HTTP, redirect, platform, timing, and exit-code facts",
     "the retained liveness execution used Development while the documented equivalent smoke contract requires Production",
-    "the retained publication authority explicitly excludes deployment and consumer migration",
+    "the retained publication authority explicitly excludes deployment and consumer migration and expires at 2026-08-25T00:00:00Z; replacement authority is mandatory after expiry",
     "the EventStore owner, Release owner, and Test Architect have not accepted this Story 3.13 subject"
   ],
   "limitations": [

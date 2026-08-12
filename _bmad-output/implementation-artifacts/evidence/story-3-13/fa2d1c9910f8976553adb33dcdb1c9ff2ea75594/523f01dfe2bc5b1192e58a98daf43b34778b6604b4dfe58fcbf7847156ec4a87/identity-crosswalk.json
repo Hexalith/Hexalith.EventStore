@@ -77,7 +77,7 @@
           "result": "pass"
         },
         "byte_verification": {
-          "method": "exact-filename local search and NuGet.org flat-container retrieval",
+          "method": "exact archive search plus NuGet.org, GitHub Packages, Azure WORM, retained Actions artifact, and configured internal-feed inventory",
           "result": "fail",
           "recovered_count": 0,
           "citation": "package-availability.json"
@@ -310,7 +310,12 @@
         "result": "fail",
         "started_at": "2026-08-04T11:10:03.248829Z",
         "ended_at": "2026-08-04T11:12:03.469486Z",
-        "exit_code": 0,
+        "exit_code": null,
+        "exit_code_verification": {
+          "citation": "retained-smoke-output",
+          "result": "fail",
+          "reason": "The retained output does not contain a machine-verifiable process exit code."
+        },
         "contract": {
           "health_path": "/alive",
           "http_expectation": "2xx-without-redirect",
@@ -321,7 +326,7 @@
         },
         "preflight": {
           "platform": "linux/arm64",
-          "outcome": "pass",
+          "outcome": "unverified",
           "log": "smoke-preflight.log",
           "log_sha256": "2f021ae8492d4d64c5bdb6c2204047f8e4f60501f3005023eb2a684d689d35fb"
         },
@@ -330,7 +335,7 @@
             "platform": "linux/amd64",
             "child_digest": "sha256:a47978374abf10a033f6d0b63610b05c13496335324371cbf73b155dd295ff6d",
             "attempts": 18,
-            "outcome": "pass",
+            "outcome": "unverified",
             "cleanup": "pass",
             "log": "smoke-linux-amd64.log",
             "log_sha256": "46703e5ada3e1db8b4dea5934562245dd1ec677153052d385b9c435e6011d9bd"
@@ -339,7 +344,7 @@
             "platform": "linux/arm64",
             "child_digest": "sha256:bb245eea690cfe521098441c55a1710f81f722591a245f84c2fa45e4707fdc86",
             "attempts": 40,
-            "outcome": "pass",
+            "outcome": "unverified",
             "cleanup": "pass",
             "log": "smoke-linux-arm64.log",
             "log_sha256": "eb87943c4ee99f1bef0de78d43163c891d7fb391b1e536e6f1eccd83bb416e5c"
@@ -466,8 +471,8 @@
       {
         "id": "deployment-authority-missing",
         "owner": "Release owner",
-        "consequence": "The retained authority permits quarantined proof publication only and explicitly denies deployment and consumer migration.",
-        "reopen_trigger": "Provide a separately authorized durable deployed-identity decision for the complete exact lineage."
+        "consequence": "The retained authority permits quarantined proof publication only, explicitly denies deployment and consumer migration, and expires at 2026-08-25T00:00:00Z.",
+        "reopen_trigger": "Provide a separately authorized durable deployed-identity decision for the complete exact lineage; after 2026-08-25T00:00:00Z, a replacement authority record is mandatory."
       },
       {
         "id": "story-3-13-acceptances-missing",
@@ -507,7 +512,7 @@
   "approval_contract": {
     "review_subject_path": "review-subject.json",
     "reviewer_roster_path": "reviewer-roster.json",
-    "reviewer_roster_sha256": "6e5f73c0169c0b202f77cfe38ae2d38e12f8b4202173e95a3f2ef23f5a2987ed",
+    "reviewer_roster_sha256": "e63846fe79ff881395ed354a218e04d183f9d02ecc25b0cb15f1b9fef0a463c6",
     "external_receipt_location": "acceptances/{subject_sha256}",
     "outside_hashed_evidence": true,
     "required_roles": [

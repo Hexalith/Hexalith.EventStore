@@ -28,6 +28,43 @@
       "Hexalith.EventStore.Testing.Integration": 404
     }
   },
+  "durable_source_queries": [
+    {
+      "source": "nuget.org-flat-container",
+      "method": "exact-package-version-http-get",
+      "expected_result": "404-per-package",
+      "observed_count": 0,
+      "result": "not-found"
+    },
+    {
+      "source": "github-packages-org-nuget-inventory",
+      "method": "authenticated-org-package-inventory-with-read-packages",
+      "expected_result": "zero-matching-packages",
+      "observed_count": 0,
+      "result": "not-found"
+    },
+    {
+      "source": "azure-worm-archive-inventory",
+      "method": "retained-archive-inventory-and-retrieval",
+      "expected_result": "zero-retrievable-archives",
+      "observed_count": 0,
+      "result": "not-found"
+    },
+    {
+      "source": "github-actions-retained-artifact-inventory",
+      "method": "retained-artifact-inventory-and-extraction",
+      "expected_result": "zero-retrievable-archives",
+      "observed_count": 0,
+      "result": "not-found"
+    },
+    {
+      "source": "hexalith-internal-feed",
+      "method": "configured-nuget-source-inventory",
+      "expected_result": "source-not-configured",
+      "observed_count": 0,
+      "result": "unavailable"
+    }
+  ],
   "rebuild_attempted": false,
   "result": "fail",
   "blocker": "The exact original package archives remain unavailable; retained hashes cannot substitute for independent byte verification.",

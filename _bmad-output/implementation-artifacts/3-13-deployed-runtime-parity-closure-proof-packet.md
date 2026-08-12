@@ -24,16 +24,16 @@ migration, predecessor change, Epic 1 change, submodule change, or G5 decision.
 - Selected immutable OCI index:
   `registry.hexalith.com/eventstore@sha256:523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87`.
 - [Identity crosswalk](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/identity-crosswalk.json)
-  SHA-256: `11b17fb06f38b6a74ec5077229db1ee80b9a0192641863365fc55c6fd168a0b9`.
+  SHA-256: `6d0ae4054c9c88581309c2643aeb73a6ca4c00bac7849b003d4324609d6b1929`.
 - [Evidence manifest](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/evidence-sha256.txt)
   binds the core manifest, crosswalk, and review subject entry-by-entry. Its own hash is not quoted
   here because the review subject binds this proof packet, deliberately avoiding a checksum cycle.
 - [Reviewer roster](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/reviewer-roster.json)
-  SHA-256: `6e5f73c0169c0b202f77cfe38ae2d38e12f8b4202173e95a3f2ef23f5a2987ed`.
+  SHA-256: `e63846fe79ff881395ed354a218e04d183f9d02ecc25b0cb15f1b9fef0a463c6`.
 - [Review subject](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/review-subject.json)
   is frozen after this packet and binds the raw crosswalk SHA-256
-  `11b17fb06f38b6a74ec5077229db1ee80b9a0192641863365fc55c6fd168a0b9`, evidence-core manifest
-  SHA-256 `5f7a8c7b1cdd85cbfe5469af2b4ff8c1363b92cd79ee964aefecba0bef3d7758`, and this packet. The
+  `6d0ae4054c9c88581309c2643aeb73a6ca4c00bac7849b003d4324609d6b1929`, evidence-core manifest
+  SHA-256 `4088dd1d1ffc0e8c344df06ae3620a2a065e25ff1ba59150c7fc9a9c40b2c6d9`, and this packet. The
   subject file digest and this packet digest are recorded only in `evidence-sha256.txt` and the
   subject's `proof_packet.sha256` field so this packet does not create a checksum cycle.
 
@@ -125,7 +125,9 @@ not treated as a pass for release provenance.
 5. Repeat both digest-pinned smokes and retain structured support-safe `/alive`, redirect,
    observed-platform, timing, exit-code, and readiness evidence.
 6. Run and retain that same contract under the documented `Production` hosting environment.
-7. Supply separately authorized deployed-identity authority for the complete exact lineage.
+7. Supply separately authorized deployed-identity authority for the complete exact lineage. The
+   retained quarantine-only authority expires at `2026-08-25T00:00:00Z`, after which a replacement
+   authority record is mandatory.
 8. Only after all checks pass, obtain EventStore owner, Release owner, and Test Architect
    acceptance of one unchanged replacement review subject.
 
@@ -133,9 +135,14 @@ not treated as a pass for release provenance.
 
 - Story 1.20 critical manifest: all 33 entries passed `sha256sum -c`.
 - Contracts test project Release build: succeeded with zero warnings and zero errors.
-- Focused `DeployedRuntimeParityClosureTests`: 157 passed, zero failed/skipped/not-run
+- Focused `DeployedRuntimeParityClosureTests`: 172 passed, zero failed/skipped/not-run
+  (re-measured 2026-08-12); this is the test count attributable to Story 3.13.
   (re-measured after the 2026-08-11 full review patches).
-- Complete Contracts suite: 1260 passed, zero failed/skipped/not-run (re-measured 2026-08-11).
+- Complete Contracts suite: `1260` was the 2026-08-11 workspace aggregate and includes concurrent,
+  unrelated tests; it is not attributable to Story 3.13. The current aggregate is reported only as
+  a regression signal. The 2026-08-12 run passed 1254/1275 and failed 21 unrelated OQ8 tests because
+  that pre-existing verifier still requires the `4-8-durable-admission-evidence-ledger` status row
+  that this story's governing review patch explicitly removes as orphaned.
 - The verifier also derives the actual fail-closed review subject and outer checksum manifest,
   rejects extra or byte-mutated package archives, validates baseline Git objects, and exercises
   independently rebound mutations across release, authority, OCI, runtime, roster, and receipts.

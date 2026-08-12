@@ -275,8 +275,9 @@ independent deployed-runtime identity crosswalk from Story 1.20's approved
 source/package bytes to one immutable released OCI index. Story 1.20 remains
 complete and authoritative for source/package parity only; Story 3.13 cannot
 rewrite either predecessor, infer identity across lineages, or authorize a
-consumer migration, deployment, publication, or registry mutation. Its
-checked-in GitHub approval-role allowlist remains historical proof-packet
+consumer migration, deployment, publication, or registry mutation. Story 1.20
+retains sole authority over its approval fields and consumer-migration decision.
+The checked-in GitHub approval-role allowlist remains historical proof-packet
 evidence; the release workflow does not consume it.
 
 The retained Story 3.13 packet is deliberately `fail-closed`: predecessor integrity

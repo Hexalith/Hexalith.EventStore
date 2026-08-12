@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
@@ -373,8 +374,12 @@ public sealed class DeployedRuntimeParityClosureTests
         JsonObject runtime = crosswalk["selected_candidates"]![0]!["runtime"]!.AsObject();
         runtime["contract"]!["actual_hosting_environment"]!.GetValue<string>().ShouldBe("Development");
         runtime["contract"]!["required_hosting_environment"]!.GetValue<string>().ShouldBe("Production");
-        DateTimeOffset started = DateTimeOffset.Parse(runtime["started_at"]!.GetValue<string>());
-        DateTimeOffset ended = DateTimeOffset.Parse(runtime["ended_at"]!.GetValue<string>());
+        DateTimeOffset started = DateTimeOffset.Parse(
+            runtime["started_at"]!.GetValue<string>(),
+            CultureInfo.InvariantCulture);
+        DateTimeOffset ended = DateTimeOffset.Parse(
+            runtime["ended_at"]!.GetValue<string>(),
+            CultureInfo.InvariantCulture);
         JsonObject contract = runtime["contract"]!.AsObject();
         foreach (JsonObject platform in runtime["platforms"]!.AsArray().Select(item => item!.AsObject()))
         {
@@ -843,7 +848,8 @@ public sealed class DeployedRuntimeParityClosureTests
             JsonObject releaseEvidence = JsonNode.Parse(
                 File.ReadAllBytes(Path.Combine(evidence, "release-provenance.json")))!.AsObject();
             DateTimeOffset actionAt = DateTimeOffset.Parse(
-                releaseEvidence["deployment_action_at"]!.GetValue<string>());
+                releaseEvidence["deployment_action_at"]!.GetValue<string>(),
+                CultureInfo.InvariantCulture);
             authorityRecord["expires_at"] = actionAt.AddSeconds(-1).ToString("O");
             byte[] invalidAuthorityBytes = JsonSerializer.SerializeToUtf8Bytes(authorityRecord);
             File.WriteAllBytes(authorityPath, invalidAuthorityBytes);
@@ -965,6 +971,40 @@ public sealed class DeployedRuntimeParityClosureTests
             CreateAcceptanceReceipts(evidence, subjectBytes);
             MutateReceipt(evidence, subjectBytes, RequiredRoles[2], receipt =>
                 receipt["reviewer_identity"] = "github:unauthorized");
+            EvaluateClosure(
+                crosswalk,
+                crosswalkBytes,
+                subjectBytes,
+                root,
+                evidence,
+                coreBytes,
+                proofBytes,
+                packageManifestSha256).ShouldBeFalse();
+        }
+        finally
+        {
+            Directory.Delete(cleanupRoot, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies the acceptance tree is an exact set and rejects top-level or nested sidecars.
+    /// </summary>
+    /// <param name="location">The directory in which the undeclared sidecar is created.</param>
+    [Theory]
+    [InlineData("top-level")]
+    [InlineData("sources")]
+    public void ExternalAcceptancesRejectUndeclaredSidecars(string location)
+    {
+        string root = FindRepositoryRoot();
+        (string cleanupRoot, string evidence, JsonObject crosswalk, byte[] crosswalkBytes, byte[] subjectBytes,
+            byte[] coreBytes, byte[] proofBytes, string packageManifestSha256) = CreatePassingFixture(root);
+        try
+        {
+            string directory = Path.Combine(evidence, "acceptances", ComputeSha256(subjectBytes));
+            string sidecarRoot = location == "sources" ? Path.Combine(directory, "sources") : directory;
+            File.WriteAllText(Path.Combine(sidecarRoot, "undeclared.txt"), "not bound");
+
             EvaluateClosure(
                 crosswalk,
                 crosswalkBytes,
@@ -1166,6 +1206,14 @@ public sealed class DeployedRuntimeParityClosureTests
             string packageManifestSha256) = CreatePassingFixture(root);
         try
         {
+            ValidateOciGraph(crosswalk, root, evidence).ShouldBeTrue();
+            EvaluateWithFreshReview(
+                crosswalk,
+                root,
+                evidence,
+                proofBytes,
+                packageManifestSha256).ShouldBeTrue();
+
             JsonObject oci = crosswalk["selected_candidates"]![0]!["oci"]!.AsObject();
             oci["immutable_reference"] =
                 ExpectedRegistry + "/" + ExpectedContainerRepository + ":v" + ApprovedPackageVersion;
@@ -1215,12 +1263,8 @@ public sealed class DeployedRuntimeParityClosureTests
                     children[1]!["platform"] = first["platform"]!.GetValue<string>();
                     break;
                 default:
-                    JsonObject readback = JsonNode.Parse(
-                        ReadEvidenceFile(evidence, "registry-readback.json"))!.AsObject();
-                    readback["objects"]![0]!["content_type"] = OciIndexMediaType;
-                    File.WriteAllBytes(
-                        Path.Combine(evidence, "registry-readback.json"),
-                        JsonSerializer.SerializeToUtf8Bytes(readback));
+                    evidence = RebindIndex(crosswalk, evidence, index =>
+                        index["manifests"]![0]!["mediaType"] = OciIndexMediaType);
                     break;
             }
 
@@ -1249,6 +1293,14 @@ public sealed class DeployedRuntimeParityClosureTests
             string packageManifestSha256) = CreatePassingFixture(root);
         try
         {
+            ValidateOciGraph(crosswalk, root, evidence).ShouldBeTrue();
+            EvaluateWithFreshReview(
+                crosswalk,
+                root,
+                evidence,
+                proofBytes,
+                packageManifestSha256).ShouldBeTrue();
+
             string rebound = RebindAmd64ConfigArchitecture(crosswalk, evidence, "ppc64le");
             ValidateOciGraph(crosswalk, root, rebound).ShouldBeFalse();
             EvaluateWithFreshReview(
@@ -1276,11 +1328,37 @@ public sealed class DeployedRuntimeParityClosureTests
         {
             JsonObject runtime = crosswalk["selected_candidates"]![0]!["runtime"]!.AsObject();
             JsonObject contract = Clone(runtime["contract"]!.AsObject());
-            contract["poll_interval_seconds"] = 0;
             JsonObject platform = runtime["platforms"]![0]!.AsObject();
-            DateTimeOffset started = DateTimeOffset.Parse(runtime["started_at"]!.GetValue<string>());
-            DateTimeOffset ended = DateTimeOffset.Parse(runtime["ended_at"]!.GetValue<string>());
+            DateTimeOffset started = DateTimeOffset.Parse(
+                runtime["started_at"]!.GetValue<string>(),
+                CultureInfo.InvariantCulture);
+            DateTimeOffset ended = DateTimeOffset.Parse(
+                runtime["ended_at"]!.GetValue<string>(),
+                CultureInfo.InvariantCulture);
+            ValidateRuntimeLog(evidence, platform, contract, started, ended).ShouldBeTrue();
+
+            contract["poll_interval_seconds"] = 0;
             ValidateRuntimeLog(evidence, platform, contract, started, ended).ShouldBeFalse();
+        }
+        finally
+        {
+            Directory.Delete(cleanupRoot, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies an archive-root trailing separator resolves to the same exact package directory.
+    /// </summary>
+    [Fact]
+    public void PackageArchiveRootAcceptsTrailingSeparator()
+    {
+        string root = FindRepositoryRoot();
+        (string cleanupRoot, string evidence, JsonObject crosswalk, _, _, _, _, _) = CreatePassingFixture(root);
+        try
+        {
+            JsonObject candidate = crosswalk["selected_candidates"]![0]!.AsObject();
+            candidate["packages"]!["byte_verification"]!["archive_root"] = "packages/";
+            ValidatePackageBytes(candidate, evidence).ShouldBeTrue();
         }
         finally
         {
@@ -1301,12 +1379,12 @@ public sealed class DeployedRuntimeParityClosureTests
         {
             File.Delete(Path.Combine(evidence, "index.raw"));
             ValidateOciGraph(crosswalk, root, evidence).ShouldBeFalse();
-            Should.Throw<FileNotFoundException>(() => EvaluateWithFreshReview(
+            EvaluateWithFreshReview(
                 crosswalk,
                 root,
                 evidence,
                 proofBytes,
-                packageManifestSha256));
+                packageManifestSha256).ShouldBeFalse();
         }
         finally
         {
@@ -1441,6 +1519,60 @@ public sealed class DeployedRuntimeParityClosureTests
     }
 
     /// <summary>
+    /// Verifies failure classification cannot disagree between the crosswalk node and retained log.
+    /// </summary>
+    [Fact]
+    public void RuntimeFailureClassificationMustMatchRetainedLog()
+    {
+        JsonObject node = new() { ["outcome"] = "fail", ["failure_class"] = "environment" };
+        JsonObject log = new() { ["failure_class"] = "environment" };
+        RuntimeFailureClassificationMatchesLog(node, log).ShouldBeTrue();
+
+        log["failure_class"] = "product";
+        RuntimeFailureClassificationMatchesLog(node, log).ShouldBeFalse();
+        log.Remove("failure_class");
+        RuntimeFailureClassificationMatchesLog(node, log).ShouldBeFalse();
+
+        node = new JsonObject { ["outcome"] = "pass" };
+        RuntimeFailureClassificationMatchesLog(node, new JsonObject()).ShouldBeTrue();
+        RuntimeFailureClassificationMatchesLog(
+            node,
+            new JsonObject { ["failure_class"] = "evidence" }).ShouldBeFalse();
+    }
+
+    /// <summary>
+    /// Verifies retained-evidence copies reject symbolic links before following their targets.
+    /// </summary>
+    [Fact]
+    public void EvidenceCopyRejectsSymbolicLinks()
+    {
+        string cleanupRoot = Path.Combine(Path.GetTempPath(), "story-3-13-copy-" + Guid.NewGuid().ToString("N"));
+        string source = Path.Combine(cleanupRoot, "source");
+        string destination = Path.Combine(cleanupRoot, "destination");
+        Directory.CreateDirectory(source);
+        string target = Path.Combine(cleanupRoot, "outside.txt");
+        File.WriteAllText(target, "outside");
+        try
+        {
+            try
+            {
+                File.CreateSymbolicLink(Path.Combine(source, "linked.txt"), target);
+            }
+            catch (Exception exception) when (
+                exception is PlatformNotSupportedException or UnauthorizedAccessException or IOException)
+            {
+                Assert.Skip("Symbolic links are unavailable in this environment: " + exception.GetType().Name);
+            }
+
+            Should.Throw<InvalidDataException>(() => CopyDirectory(source, destination));
+        }
+        finally
+        {
+            Directory.Delete(cleanupRoot, recursive: true);
+        }
+    }
+
+    /// <summary>
     /// Verifies fail-closed NuGet.org availability rejects missing shape and non-404 statuses.
     /// </summary>
     /// <param name="mutation">The nuget_org mutation to apply.</param>
@@ -1451,6 +1583,8 @@ public sealed class DeployedRuntimeParityClosureTests
     [InlineData("empty-statuses")]
     [InlineData("absolute-root")]
     [InlineData("dotdot-root")]
+    [InlineData("missing-durable-source")]
+    [InlineData("durable-source-pass")]
     public void PackageAvailabilityRejectsNugetOrgMutations(string mutation)
     {
         string root = FindRepositoryRoot();
@@ -1476,6 +1610,12 @@ public sealed class DeployedRuntimeParityClosureTests
                     break;
                 case "dotdot-root":
                     report["local_search_roots"] = new JsonArray("../escape", "relative-ok");
+                    break;
+                case "missing-durable-source":
+                    report["durable_source_queries"]!.AsArray().RemoveAt(0);
+                    break;
+                case "durable-source-pass":
+                    report["durable_source_queries"]![0]!["result"] = "pass";
                     break;
                 case "status-200":
                     foreach (KeyValuePair<string, JsonNode?> property in
@@ -1959,12 +2099,17 @@ public sealed class DeployedRuntimeParityClosureTests
         (string cleanupRoot, string evidence, JsonObject crosswalk, _, _, _, _, _) = CreatePassingFixture(root);
         try
         {
+            ValidateOciGraph(crosswalk, root, evidence).ShouldBeTrue();
+            ValidateOciProvenance(crosswalk, evidence).ShouldBeTrue();
+
             string configPath = Path.Combine(evidence, "child-linux-amd64.config.raw");
             JsonObject config = JsonNode.Parse(File.ReadAllBytes(configPath))!.AsObject();
             config["config"]!["Env"] = new JsonArray("Authorization: Bearer retained-credential");
             File.WriteAllBytes(configPath, JsonSerializer.SerializeToUtf8Bytes(config));
 
-            ValidateOciProvenance(crosswalk, evidence).ShouldBeFalse();
+            string rebound = RebindAmd64ConfigArchitecture(crosswalk, evidence, "amd64");
+            ValidateOciGraph(crosswalk, root, rebound).ShouldBeFalse();
+            ValidateOciProvenance(crosswalk, rebound).ShouldBeFalse();
         }
         finally
         {
@@ -2030,6 +2175,8 @@ public sealed class DeployedRuntimeParityClosureTests
     [InlineData("preflight-log-name")]
     [InlineData("platform-log-name")]
     [InlineData("oversized-log")]
+    [InlineData("preflight-extra-field")]
+    [InlineData("platform-extra-field")]
     public void RuntimeEvidenceRejectsExecutionAndBoundMutations(string mutation)
     {
         string root = FindRepositoryRoot();
@@ -2053,7 +2200,8 @@ public sealed class DeployedRuntimeParityClosureTests
                     DateTimeOffset arm64Started = DateTimeOffset.Parse(
                         runtime["platforms"]!.AsArray().Select(item => item!.AsObject()).Single(item =>
                             item["platform"]!.GetValue<string>() == "linux/arm64")["started_at"]!
-                            .GetValue<string>());
+                            .GetValue<string>(),
+                        CultureInfo.InvariantCulture);
                     string afterArm64Started = arm64Started.AddSeconds(1).ToString("O");
                     log["ended_at"] = afterArm64Started;
                     preflight["ended_at"] = afterArm64Started;
@@ -2139,9 +2287,19 @@ public sealed class DeployedRuntimeParityClosureTests
                 File.WriteAllBytes(Path.Combine(evidence, platform["log"]!.GetValue<string>()), bytes);
                 platform["log_sha256"] = ComputeSha256(bytes);
             }
+            else if (mutation == "preflight-extra-field")
+            {
+                runtime["preflight"]!["undeclared"] = true;
+            }
+            else if (mutation == "platform-extra-field")
+            {
+                runtime["platforms"]![0]!["undeclared"] = true;
+            }
             else if (mutation == "global-duration")
             {
-                DateTimeOffset started = DateTimeOffset.Parse(runtime["started_at"]!.GetValue<string>());
+                DateTimeOffset started = DateTimeOffset.Parse(
+                    runtime["started_at"]!.GetValue<string>(),
+                    CultureInfo.InvariantCulture);
                 runtime["ended_at"] = started.AddSeconds(421).ToString("O");
             }
             else if (mutation == "smoke-result")
@@ -2191,7 +2349,9 @@ public sealed class DeployedRuntimeParityClosureTests
                         platform["attempts"] = 99;
                         break;
                     case "timestamp-bound":
-                        string afterExecution = DateTimeOffset.Parse(runtime["ended_at"]!.GetValue<string>())
+                        string afterExecution = DateTimeOffset.Parse(
+                                runtime["ended_at"]!.GetValue<string>(),
+                                CultureInfo.InvariantCulture)
                             .AddSeconds(1).ToString("O");
                         log["ended_at"] = afterExecution;
                         platform["ended_at"] = afterExecution;
@@ -2608,7 +2768,8 @@ public sealed class DeployedRuntimeParityClosureTests
                 return false;
             }
 
-            string archiveRoot = ResolveWithin(evidenceRoot, verification["archive_root"]!.GetValue<string>());
+            string archiveRoot = Path.TrimEndingDirectorySeparator(
+                ResolveWithin(evidenceRoot, verification["archive_root"]!.GetValue<string>()));
             JsonObject[] items = packages["items"]!.AsArray().Select(item => item!.AsObject()).ToArray();
             string[] expectedArchives = items.Select(item => item["archive"]!.GetValue<string>())
                 .Order(StringComparer.Ordinal).ToArray();
@@ -3015,6 +3176,7 @@ public sealed class DeployedRuntimeParityClosureTests
                 "schema",
                 "checked_at",
                 "repository",
+                "immutable_reference",
                 "index_digest",
                 "children",
                 "raw_index_file",
@@ -3022,6 +3184,7 @@ public sealed class DeployedRuntimeParityClosureTests
                 "raw_graph_result",
                 "response_metadata_result",
                 "result",
+                "verification",
             ];
             if (registry != ExpectedRegistry
                 || repository != ExpectedContainerRepository
@@ -3044,6 +3207,8 @@ public sealed class DeployedRuntimeParityClosureTests
                 || readback["repository"]!.GetValue<string>() != registry + "/" + repository
                 || readback["immutable_index_digest"]!.GetValue<string>() != indexDigest
                 || validation["repository"]!.GetValue<string>() != registry + "/" + repository
+                || validation["immutable_reference"]!.GetValue<string>() !=
+                    registry + "/" + repository + "@" + indexDigest
                 || validation["index_digest"]!.GetValue<string>() != indexDigest
                 || oci["index_raw_file"]!.GetValue<string>() != "index.raw"
                 || validation["raw_index_file"]!.GetValue<string>() != "index.raw"
@@ -3051,6 +3216,11 @@ public sealed class DeployedRuntimeParityClosureTests
                 || validation["raw_graph_result"]!.GetValue<string>() != "pass"
                 || validation["response_metadata_result"]!.GetValue<string>() != "pass"
                 || validation["result"]!.GetValue<string>() != "pass"
+                || !HasExactProperties(validation["verification"]!.AsObject(), ["method", "result", "reason"])
+                || validation["verification"]!["method"]!.GetValue<string>() !=
+                    "retained-raw-oci-graph-and-response-metadata"
+                || validation["verification"]!["result"]!.GetValue<string>() != "pass"
+                || string.IsNullOrWhiteSpace(validation["verification"]!["reason"]!.GetValue<string>())
                 || readback["object_response_metadata_result"]!.GetValue<string>() != "pass"
                 || readback["oci_graph_result"]!.GetValue<string>() != "pass"
                 || readback["result"]!.GetValue<string>() != "pass"
@@ -3341,6 +3511,7 @@ public sealed class DeployedRuntimeParityClosureTests
                 "started_at",
                 "ended_at",
                 "exit_code",
+                "exit_code_verification",
                 "contract",
                 "tool",
                 "command",
@@ -3361,6 +3532,14 @@ public sealed class DeployedRuntimeParityClosureTests
                 || runtime["evidence_completeness"]!.GetValue<string>() != "pass"
                 || string.IsNullOrWhiteSpace(runtime["cleanup_check"]!.GetValue<string>())
                 || runtime["exit_code"]!.GetValue<int>() != 0
+                || !HasExactProperties(
+                    runtime["exit_code_verification"]!.AsObject(),
+                    ["citation", "result", "reason"])
+                || runtime["exit_code_verification"]!["citation"]!.GetValue<string>() !=
+                    "bounded-smoke-process-result"
+                || runtime["exit_code_verification"]!["result"]!.GetValue<string>() != "pass"
+                || string.IsNullOrWhiteSpace(
+                    runtime["exit_code_verification"]!["reason"]!.GetValue<string>())
                 || !TryParseExplicitOffset(runtime["started_at"]!.GetValue<string>(), out DateTimeOffset started)
                 || !TryParseExplicitOffset(runtime["ended_at"]!.GetValue<string>(), out DateTimeOffset ended)
                 || ended <= started
@@ -3414,7 +3593,23 @@ public sealed class DeployedRuntimeParityClosureTests
             }
 
             JsonObject preflight = runtime["preflight"]!.AsObject();
-            if (!RuntimeFailureClassificationIsValid(preflight)
+            string[] preflightFields =
+            [
+                "platform",
+                "outcome",
+                "log",
+                "log_sha256",
+                "child_digest",
+                "started_at",
+                "ended_at",
+            ];
+            if (preflight.ContainsKey("failure_class"))
+            {
+                preflightFields = [.. preflightFields, "failure_class"];
+            }
+
+            if (!HasExactProperties(preflight, preflightFields)
+                || !RuntimeFailureClassificationIsValid(preflight)
                 || preflight["platform"]!.GetValue<string>() != "linux/arm64"
                 || preflight["outcome"]!.GetValue<string>() != "pass"
                 || !ValidatePreflightLog(evidenceRoot, preflight, oci, started, ended))
@@ -3433,9 +3628,30 @@ public sealed class DeployedRuntimeParityClosureTests
 
             foreach (JsonObject platform in platforms)
             {
+                string[] platformFields =
+                [
+                    "platform",
+                    "child_digest",
+                    "observed_runtime_platform",
+                    "attempts",
+                    "outcome",
+                    "cleanup",
+                    "log",
+                    "log_sha256",
+                    "exit_code",
+                    "readiness_result",
+                    "started_at",
+                    "ended_at",
+                ];
+                if (platform.ContainsKey("failure_class"))
+                {
+                    platformFields = [.. platformFields, "failure_class"];
+                }
+
                 JsonObject child = oci["children"]!.AsArray().Select(item => item!.AsObject()).Single(item =>
                     item["platform"]!.GetValue<string>() == platform["platform"]!.GetValue<string>());
-                if (!RuntimeFailureClassificationIsValid(platform)
+                if (!HasExactProperties(platform, platformFields)
+                    || !RuntimeFailureClassificationIsValid(platform)
                     || platform["child_digest"]!.GetValue<string>() != child["manifest_digest"]!.GetValue<string>()
                     || platform["attempts"]!.GetValue<int>() <= 0
                     || platform["outcome"]!.GetValue<string>() != "pass"
@@ -3466,6 +3682,7 @@ public sealed class DeployedRuntimeParityClosureTests
                 "started_at",
                 "ended_at",
                 "exit_code",
+                "exit_code_verification",
                 "platforms",
                 "result",
             ];
@@ -3482,6 +3699,9 @@ public sealed class DeployedRuntimeParityClosureTests
                 || smokeResults["started_at"]!.GetValue<string>() != runtime["started_at"]!.GetValue<string>()
                 || smokeResults["ended_at"]!.GetValue<string>() != runtime["ended_at"]!.GetValue<string>()
                 || smokeResults["exit_code"]!.GetValue<int>() != 0
+                || !JsonNode.DeepEquals(
+                    smokeResults["exit_code_verification"],
+                    runtime["exit_code_verification"])
                 || !JsonNode.DeepEquals(smokeResults["platforms"], runtime["platforms"])
                 || smokeResults["result"]!.GetValue<string>() != "pass")
             {
@@ -3568,12 +3788,26 @@ public sealed class DeployedRuntimeParityClosureTests
                 return false;
             }
 
+            string sourcesDirectory = ResolveWithin(receiptDirectory, "sources");
             string[] receiptPaths = Directory.GetFiles(receiptDirectory, "*.json", SearchOption.TopDirectoryOnly);
             string[] expectedNames = RequiredRoles.Select(role => role + ".json")
                 .Order(StringComparer.Ordinal).ToArray();
+            string[] expectedSourceNames = RequiredRoles.Select(role => role + ".json")
+                .Order(StringComparer.Ordinal).ToArray();
+            string[] actualTopLevelEntries = Directory.EnumerateFileSystemEntries(receiptDirectory)
+                .Select(Path.GetFileName).Where(name => name is not null).Cast<string>()
+                .Order(StringComparer.Ordinal).ToArray();
+            string[] expectedTopLevelEntries = expectedNames.Append("sources")
+                .Order(StringComparer.Ordinal).ToArray();
             if (receiptPaths.Length != 3
                 || !receiptPaths.Select(Path.GetFileName).Order(StringComparer.Ordinal)
-                    .SequenceEqual(expectedNames, StringComparer.Ordinal))
+                    .SequenceEqual(expectedNames, StringComparer.Ordinal)
+                || !actualTopLevelEntries.SequenceEqual(expectedTopLevelEntries, StringComparer.Ordinal)
+                || !Directory.Exists(sourcesDirectory)
+                || Directory.EnumerateDirectories(sourcesDirectory).Any()
+                || !Directory.GetFiles(sourcesDirectory, "*", SearchOption.TopDirectoryOnly)
+                    .Select(Path.GetFileName).Order(StringComparer.Ordinal)
+                    .SequenceEqual(expectedSourceNames, StringComparer.Ordinal))
             {
                 return false;
             }
@@ -3596,7 +3830,10 @@ public sealed class DeployedRuntimeParityClosureTests
                 return false;
             }
 
-            DateTimeOffset subjectCreated = DateTimeOffset.Parse(subject["created_at"]!.GetValue<string>());
+            if (!TryParseExplicitOffset(subject["created_at"]!.GetValue<string>(), out DateTimeOffset subjectCreated))
+            {
+                return false;
+            }
             string[] subjectLimitations = subject["limitations"]!.AsArray()
                 .Select(item => item!.GetValue<string>()).ToArray();
             string expectedScope = "Story 3.13 deployed-runtime parity closure for " + subjectHash;
@@ -3668,6 +3905,7 @@ public sealed class DeployedRuntimeParityClosureTests
             or NullReferenceException
             or ArgumentException
             or OverflowException
+            or FormatException
             or InvalidDataException
             or JsonException
             or IOException
@@ -3792,6 +4030,8 @@ public sealed class DeployedRuntimeParityClosureTests
             JsonObject approval = crosswalk["approval_contract"]!.AsObject();
             JsonObject registry = JsonNode.Parse(ReadEvidenceFile(evidenceRoot, "registry-readback.json"))!
                 .AsObject();
+            JsonObject ociValidation = JsonNode.Parse(ReadEvidenceFile(evidenceRoot, "oci-validation.json"))!
+                .AsObject();
             JsonObject runtime = candidate["runtime"]!.AsObject();
             string[] subjectFields =
             [
@@ -3853,7 +4093,8 @@ public sealed class DeployedRuntimeParityClosureTests
                     ApprovedPackageManifestSha256
                 && identity["release_version"] is null
                 && identity["workflow_run"] is null
-                && identity["authority_record_sha256"] is null
+                && identity["authority_record_sha256"]!.GetValue<string>() ==
+                    candidate["release_authority"]!["record_sha256"]!.GetValue<string>()
                 && identity["canonical_lineage_id"] is null
                 && identity["index_digest"]!.GetValue<string>() == ExpectedIndexDigest
                 && candidate["release"]!["semantic_version"] is null
@@ -3863,6 +4104,14 @@ public sealed class DeployedRuntimeParityClosureTests
                 && runtime["citation"]!.GetValue<string>() == "runtime-verification.json"
                 && runtime["execution_result"]!.GetValue<string>() == "unverified"
                 && runtime["result"]!.GetValue<string>() == "fail"
+                && runtime["exit_code"] is null
+                && HasExactProperties(
+                    runtime["exit_code_verification"]!.AsObject(),
+                    ["citation", "result", "reason"])
+                && runtime["exit_code_verification"]!["result"]!.GetValue<string>() == "fail"
+                && runtime["preflight"]!["outcome"]!.GetValue<string>() == "unverified"
+                && runtime["platforms"]!.AsArray().All(item =>
+                    item!["outcome"]!.GetValue<string>() == "unverified")
                 && runtime["contract_equivalence"]!.GetValue<string>() == "fail"
                 && runtime["contract"]!["actual_hosting_environment"]!.GetValue<string>() == "Development"
                 && runtime["contract"]!["required_hosting_environment"]!.GetValue<string>() == "Production"
@@ -3874,12 +4123,36 @@ public sealed class DeployedRuntimeParityClosureTests
                 && registry["shared_validator"]!["verification_result"]!.GetValue<string>() == "pass"
                 && registry["shared_validator"]!["cli_candidate_consequence"]!.GetValue<string>() ==
                     "The CLI accepts SemVer tags only; the unchanged validation functions were applied to the immutable proof graph without weakening the contract."
-                && JsonNode.Parse(ReadEvidenceFile(evidenceRoot, "oci-validation.json"))!
-                    ["response_metadata_result"]!.GetValue<string>() == "missing"
-                && JsonNode.Parse(ReadEvidenceFile(evidenceRoot, "oci-validation.json"))!
-                    ["result"]!.GetValue<string>() == "fail"
+                && ociValidation["schema"]!.GetValue<string>() ==
+                    "hexalith.eventstore.story-3-13-oci-validation/v2"
+                && HasExactProperties(
+                    ociValidation,
+                    [
+                        "schema",
+                        "checked_at",
+                        "repository",
+                        "immutable_reference",
+                        "index_digest",
+                        "children",
+                        "raw_index_file",
+                        "raw_index_sha256",
+                        "raw_graph_result",
+                        "response_metadata_result",
+                        "result",
+                        "verification",
+                    ])
+                && ociValidation["immutable_reference"]!.GetValue<string>() ==
+                    registry["repository"]!.GetValue<string>() + "@" + ExpectedIndexDigest
+                && ociValidation["response_metadata_result"]!.GetValue<string>() == "missing"
+                && ociValidation["result"]!.GetValue<string>() == "fail"
+                && ociValidation["verification"]!["result"]!.GetValue<string>() == "fail"
                 && JsonNode.Parse(ReadEvidenceFile(evidenceRoot, "smoke-results.json"))!
                     ["result"]!.GetValue<string>() == "fail"
+                && JsonNode.Parse(ReadEvidenceFile(evidenceRoot, "smoke-results.json"))!
+                    ["exit_code"] is null
+                && JsonNode.Parse(ReadEvidenceFile(evidenceRoot, "smoke-results.json"))!
+                    ["platforms"]!.AsArray().All(item =>
+                        item!["outcome"]!.GetValue<string>() == "unverified")
                 && JsonNode.Parse(ReadEvidenceFile(evidenceRoot, "runtime-verification.json"))!
                     ["execution_result"]!.GetValue<string>() == "unverified"
                 && JsonNode.Parse(ReadEvidenceFile(evidenceRoot, "runtime-verification.json"))!
@@ -3949,13 +4222,26 @@ public sealed class DeployedRuntimeParityClosureTests
         byte[] bytes = ReadEvidenceFile(evidenceRoot, path);
         JsonObject roster = JsonNode.Parse(bytes)!.AsObject();
         JsonObject roles = roster["roles"]!.AsObject();
+        JsonObject authoritySource = roster["authority_source"]!.AsObject();
         string[] roleNames = roles.Select(role => role.Key).Order(StringComparer.Ordinal).ToArray();
         if (path != ReviewerRosterFile
             || approval["reviewer_roster_sha256"]!.GetValue<string>() != ComputeSha256(bytes)
             || roster["schema"]!.GetValue<string>() !=
                 "hexalith.eventstore.story-3-13-reviewer-roster/v1"
             || roster["repository"]!.GetValue<string>() != ExpectedRepository
-            || !HasExactProperties(roster, ["schema", "repository", "roles"])
+            || !HasExactProperties(roster, ["schema", "repository", "created_at", "authority_source", "roles"])
+            || !TryParseExplicitOffset(roster["created_at"]!.GetValue<string>(), out _)
+            || !HasExactProperties(
+                authoritySource,
+                ["kind", "url", "commit_sha", "decision_date", "ratification"])
+            || authoritySource["kind"]!.GetValue<string>() != "repository-commit"
+            || authoritySource["url"]!.GetValue<string>() !=
+                "https://github.com/Hexalith/Hexalith.EventStore/commit/" +
+                "77f34d13b6cce8d906466486f432cd0ed524c9a4"
+            || authoritySource["commit_sha"]!.GetValue<string>() !=
+                "77f34d13b6cce8d906466486f432cd0ed524c9a4"
+            || authoritySource["decision_date"]!.GetValue<string>() != "2026-08-11"
+            || string.IsNullOrWhiteSpace(authoritySource["ratification"]!.GetValue<string>())
             || !DocumentIsSupportSafe(roster)
             || !roleNames.SequenceEqual(RequiredRoles, StringComparer.Ordinal)
             || roles.Any(role => role.Value!.AsArray().Count == 0
@@ -4301,6 +4587,11 @@ public sealed class DeployedRuntimeParityClosureTests
             "exit_code",
             "outcome",
         ];
+        if (log.ContainsKey("failure_class"))
+        {
+            fields = [.. fields, "failure_class"];
+        }
+
         return preflight["log"]!.GetValue<string>() == "smoke-preflight.log"
             && preflight["log_sha256"]!.GetValue<string>() == ComputeSha256(bytes)
             && HasExactProperties(log, fields)
@@ -4313,6 +4604,7 @@ public sealed class DeployedRuntimeParityClosureTests
             && log["observed_runtime_platform"]!.GetValue<string>() == "linux/arm64"
             && log["exit_code"]!.GetValue<int>() == 0
             && log["outcome"]!.GetValue<string>() == "pass"
+            && RuntimeFailureClassificationMatchesLog(preflight, log)
             && TryParseExplicitOffset(log["started_at"]!.GetValue<string>(), out DateTimeOffset startedAt)
             && TryParseExplicitOffset(log["ended_at"]!.GetValue<string>(), out DateTimeOffset endedAt)
             && preflight["started_at"]!.GetValue<string>() == log["started_at"]!.GetValue<string>()
@@ -4350,6 +4642,11 @@ public sealed class DeployedRuntimeParityClosureTests
             "readiness_result",
             "cleanup",
         ];
+        if (log.ContainsKey("failure_class"))
+        {
+            fields = [.. fields, "failure_class"];
+        }
+
         return platform["log"]!.GetValue<string>() ==
                 "smoke-" + platformName.Replace('/', '-') + ".log"
             && platform["log_sha256"]!.GetValue<string>() == ComputeSha256(bytes)
@@ -4372,6 +4669,7 @@ public sealed class DeployedRuntimeParityClosureTests
             && log["readiness_result"]!.GetValue<string>() == "pass"
             && platform["readiness_result"]!.GetValue<string>() == "pass"
             && log["cleanup"]!.GetValue<string>() == "pass"
+            && RuntimeFailureClassificationMatchesLog(platform, log)
             && TryParseExplicitOffset(log["started_at"]!.GetValue<string>(), out DateTimeOffset startedAt)
             && TryParseExplicitOffset(log["ended_at"]!.GetValue<string>(), out DateTimeOffset endedAt)
             && platform["started_at"]!.GetValue<string>() == log["started_at"]!.GetValue<string>()
@@ -4457,6 +4755,7 @@ public sealed class DeployedRuntimeParityClosureTests
                     "local_search_roots",
                     "local_matches",
                     "nuget_org",
+                    "durable_source_queries",
                     "rebuild_attempted",
                     "result",
                     "blocker",
@@ -4475,6 +4774,7 @@ public sealed class DeployedRuntimeParityClosureTests
                         && !searchRoot.Contains("..", StringComparison.Ordinal))
                     && !string.IsNullOrWhiteSpace(report["blocker"]!.GetValue<string>())
                     && !string.IsNullOrWhiteSpace(report["reopen_trigger"]!.GetValue<string>())
+                    && ValidateDurablePackageSourceQueries(report["durable_source_queries"])
                     && ValidateNugetOrgAvailability(
                         report["nuget_org"],
                         crosswalk["selected_candidates"]![0]!["packages"]!["items"]!.AsArray()
@@ -4528,6 +4828,38 @@ public sealed class DeployedRuntimeParityClosureTests
                 property.Value is JsonValue value
                 && value.TryGetValue(out int status)
                 && status == 404);
+    }
+
+    private static bool ValidateDurablePackageSourceQueries(JsonNode? queriesNode)
+    {
+        if (queriesNode is not JsonArray queries)
+        {
+            return false;
+        }
+
+        (string Source, string Method, string ExpectedResult, string Result)[] expected =
+        [
+            ("nuget.org-flat-container", "exact-package-version-http-get", "404-per-package", "not-found"),
+            ("github-packages-org-nuget-inventory", "authenticated-org-package-inventory-with-read-packages",
+                "zero-matching-packages", "not-found"),
+            ("azure-worm-archive-inventory", "retained-archive-inventory-and-retrieval",
+                "zero-retrievable-archives", "not-found"),
+            ("github-actions-retained-artifact-inventory", "retained-artifact-inventory-and-extraction",
+                "zero-retrievable-archives", "not-found"),
+            ("hexalith-internal-feed", "configured-nuget-source-inventory", "source-not-configured",
+                "unavailable"),
+        ];
+        JsonObject[] actual = queries.Select(item => item!.AsObject()).ToArray();
+        return actual.Length == expected.Length
+            && actual.All(query => HasExactProperties(
+                query,
+                ["source", "method", "expected_result", "observed_count", "result"]))
+            && expected.All(item => actual.Count(query =>
+                query["source"]!.GetValue<string>() == item.Source
+                && query["method"]!.GetValue<string>() == item.Method
+                && query["expected_result"]!.GetValue<string>() == item.ExpectedResult
+                && query["observed_count"]!.GetValue<int>() == 0
+                && query["result"]!.GetValue<string>() == item.Result) == 1);
     }
 
     private static bool ValidateFailClosedVerdictChecks(JsonObject checks)
@@ -4703,7 +5035,11 @@ public sealed class DeployedRuntimeParityClosureTests
             || (value.Length >= 6
                 && value[^6] is '+' or '-'
                 && value[^3] == ':');
-        return hasOffset && DateTimeOffset.TryParse(value, out result);
+        return hasOffset && DateTimeOffset.TryParse(
+            value,
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.RoundtripKind,
+            out result);
     }
 
     private static bool LimitationsContainMutationProhibitions(IEnumerable<string> limitations)
@@ -5119,6 +5455,8 @@ public sealed class DeployedRuntimeParityClosureTests
                 ["schema"] = "hexalith.eventstore.story-3-13-oci-validation/v2",
                 ["checked_at"] = now.AddMinutes(-7).ToString("O"),
                 ["repository"] = ExpectedRegistry + "/" + ExpectedContainerRepository,
+                ["immutable_reference"] = ExpectedRegistry + "/" + ExpectedContainerRepository + "@" +
+                    indexDigest,
                 ["index_digest"] = indexDigest,
                 ["children"] = new JsonArray(children.Select(item => (JsonNode)new JsonObject
                 {
@@ -5133,6 +5471,12 @@ public sealed class DeployedRuntimeParityClosureTests
                 ["raw_graph_result"] = "pass",
                 ["response_metadata_result"] = "pass",
                 ["result"] = "pass",
+                ["verification"] = new JsonObject
+                {
+                    ["method"] = "retained-raw-oci-graph-and-response-metadata",
+                    ["result"] = "pass",
+                    ["reason"] = "Every retained raw descriptor and response-metadata binding was verified.",
+                },
             }));
 
         PopulatePassingRuntime(candidate, evidence, children, now);
@@ -5155,6 +5499,12 @@ public sealed class DeployedRuntimeParityClosureTests
         runtime["started_at"] = startedAt.ToString("O");
         runtime["ended_at"] = endedAt.ToString("O");
         runtime["exit_code"] = 0;
+        runtime["exit_code_verification"] = new JsonObject
+        {
+            ["citation"] = "bounded-smoke-process-result",
+            ["result"] = "pass",
+            ["reason"] = "The bounded smoke command returned process exit code zero.",
+        };
         runtime["contract"]!["actual_hosting_environment"] = "Production";
         runtime["contract"]!["required_hosting_environment"] = "Production";
         runtime["contract"]!["timeout_seconds"] = 180;
@@ -5213,6 +5563,7 @@ public sealed class DeployedRuntimeParityClosureTests
         byte[] preflightBytes = JsonSerializer.SerializeToUtf8Bytes(preflightLog);
         File.WriteAllBytes(Path.Combine(evidence, "smoke-preflight.log"), preflightBytes);
         runtime["preflight"]!["child_digest"] = arm64Child["manifest_digest"]!.GetValue<string>();
+        runtime["preflight"]!["outcome"] = "pass";
         runtime["preflight"]!["started_at"] = preflightStarted.ToString("O");
         runtime["preflight"]!["ended_at"] = preflightEnded.ToString("O");
         runtime["preflight"]!["log_sha256"] = ComputeSha256(preflightBytes);
@@ -5266,6 +5617,7 @@ public sealed class DeployedRuntimeParityClosureTests
             ["started_at"] = startedAt.ToString("O"),
             ["ended_at"] = endedAt.ToString("O"),
             ["exit_code"] = 0,
+            ["exit_code_verification"] = runtime["exit_code_verification"]!.DeepClone(),
             ["platforms"] = runtime["platforms"]!.DeepClone(),
             ["result"] = "pass",
         };
@@ -5322,6 +5674,17 @@ public sealed class DeployedRuntimeParityClosureTests
         {
             ["schema"] = "hexalith.eventstore.story-3-13-reviewer-roster/v1",
             ["repository"] = "Hexalith/Hexalith.EventStore",
+            ["created_at"] = "2026-08-12T06:05:15+00:00",
+            ["authority_source"] = new JsonObject
+            {
+                ["kind"] = "repository-commit",
+                ["url"] = "https://github.com/Hexalith/Hexalith.EventStore/commit/" +
+                    "77f34d13b6cce8d906466486f432cd0ed524c9a4",
+                ["commit_sha"] = "77f34d13b6cce8d906466486f432cd0ed524c9a4",
+                ["decision_date"] = "2026-08-11",
+                ["ratification"] =
+                    "The EventStore owner ratified github:jpiquot for both owner roles and accepted bmad:murat as test architect.",
+            },
             ["roles"] = new JsonObject
             {
                 ["eventstore-owner"] = new JsonArray("github:jpiquot"),
@@ -5464,17 +5827,34 @@ public sealed class DeployedRuntimeParityClosureTests
         byte[] proofBytes,
         string packageManifestSha256)
     {
-        (byte[] crosswalkBytes, byte[] subjectBytes, byte[] coreBytes) =
-            RefreshReviewBindings(crosswalk, evidence, proofBytes);
-        return EvaluateClosure(
-            crosswalk,
-            crosswalkBytes,
-            subjectBytes,
-            repositoryRoot,
-            evidence,
-            coreBytes,
-            proofBytes,
-            packageManifestSha256);
+        try
+        {
+            (byte[] crosswalkBytes, byte[] subjectBytes, byte[] coreBytes) =
+                RefreshReviewBindings(crosswalk, evidence, proofBytes);
+            return EvaluateClosure(
+                crosswalk,
+                crosswalkBytes,
+                subjectBytes,
+                repositoryRoot,
+                evidence,
+                coreBytes,
+                proofBytes,
+                packageManifestSha256);
+        }
+        catch (Exception exception) when (
+            exception is InvalidOperationException
+            or NullReferenceException
+            or ArgumentException
+            or OverflowException
+            or FormatException
+            or InvalidDataException
+            or JsonException
+            or IOException
+            or NotSupportedException
+            or UnauthorizedAccessException)
+        {
+            return false;
+        }
     }
 
     private static void PersistRuntimeBindings(JsonObject runtime, string evidence)
@@ -5485,6 +5865,7 @@ public sealed class DeployedRuntimeParityClosureTests
         smoke["started_at"] = runtime["started_at"]!.DeepClone();
         smoke["ended_at"] = runtime["ended_at"]!.DeepClone();
         smoke["exit_code"] = runtime["exit_code"]!.DeepClone();
+        smoke["exit_code_verification"] = runtime["exit_code_verification"]!.DeepClone();
         smoke["platforms"] = runtime["platforms"]!.DeepClone();
         byte[] smokeBytes = JsonSerializer.SerializeToUtf8Bytes(smoke);
         File.WriteAllBytes(Path.Combine(evidence, "smoke-results.json"), smokeBytes);
@@ -5550,7 +5931,9 @@ public sealed class DeployedRuntimeParityClosureTests
         Directory.CreateDirectory(directory);
         string sourcesDirectory = Path.Combine(directory, "sources");
         Directory.CreateDirectory(sourcesDirectory);
-        DateTimeOffset acceptedAt = DateTimeOffset.Parse(subject["created_at"]!.GetValue<string>()).AddMinutes(1);
+        DateTimeOffset acceptedAt = DateTimeOffset.Parse(
+            subject["created_at"]!.GetValue<string>(),
+            CultureInfo.InvariantCulture).AddMinutes(1);
         foreach (string role in RequiredRoles)
         {
             string identity = role == "test-architect" ? "bmad:murat" : "github:jpiquot";
@@ -5872,19 +6255,44 @@ public sealed class DeployedRuntimeParityClosureTests
             && classNode!.GetValue<string>() is "environment" or "product" or "evidence";
     }
 
+    private static bool RuntimeFailureClassificationMatchesLog(JsonObject node, JsonObject log)
+    {
+        bool nodeHasClass = node.TryGetPropertyValue("failure_class", out JsonNode? nodeClass)
+            && nodeClass is JsonValue;
+        bool logHasClass = log.TryGetPropertyValue("failure_class", out JsonNode? logClass)
+            && logClass is JsonValue;
+        return nodeHasClass == logHasClass
+            && (!nodeHasClass || nodeClass!.GetValue<string>() == logClass!.GetValue<string>());
+    }
+
     private static void CopyDirectory(string source, string destination)
     {
         Directory.CreateDirectory(destination);
-        foreach (string directory in Directory.GetDirectories(source, "*", SearchOption.AllDirectories))
+        Stack<string> directories = new();
+        directories.Push(source);
+        while (directories.Count > 0)
         {
-            Directory.CreateDirectory(Path.Combine(destination, Path.GetRelativePath(source, directory)));
-        }
+            string current = directories.Pop();
+            foreach (string entry in Directory.EnumerateFileSystemEntries(current))
+            {
+                FileAttributes attributes = File.GetAttributes(entry);
+                if ((attributes & FileAttributes.ReparsePoint) != 0)
+                {
+                    throw new InvalidDataException("Evidence copies cannot traverse symbolic links or reparse points.");
+                }
 
-        foreach (string file in Directory.GetFiles(source, "*", SearchOption.AllDirectories))
-        {
-            string target = Path.Combine(destination, Path.GetRelativePath(source, file));
-            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-            File.Copy(file, target, overwrite: true);
+                string target = Path.Combine(destination, Path.GetRelativePath(source, entry));
+                if ((attributes & FileAttributes.Directory) != 0)
+                {
+                    Directory.CreateDirectory(target);
+                    directories.Push(entry);
+                }
+                else
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                    File.Copy(entry, target, overwrite: true);
+                }
+            }
         }
     }
 
@@ -5988,6 +6396,8 @@ public sealed class DeployedRuntimeParityClosureTests
             JsonSerializer.SerializeToUtf8Bytes(readback));
 
         JsonObject validation = JsonNode.Parse(ReadEvidenceFile(evidence, "oci-validation.json"))!.AsObject();
+        validation["immutable_reference"] =
+            ExpectedRegistry + "/" + ExpectedContainerRepository + "@" + indexDigest;
         validation["index_digest"] = indexDigest;
         validation["raw_index_sha256"] = indexHash;
         foreach (JsonObject validationChild in validation["children"]!.AsArray().Select(item => item!.AsObject()))
@@ -6021,6 +6431,52 @@ public sealed class DeployedRuntimeParityClosureTests
                 platform["log_sha256"] = ComputeSha256(logBytes);
             }
         }
+
+        string parent = Path.GetDirectoryName(evidence)!;
+        string rebound = Path.Combine(parent, indexHash);
+        Directory.Move(evidence, rebound);
+        return rebound;
+    }
+
+    private static string RebindIndex(JsonObject crosswalk, string evidence, Action<JsonObject> mutate)
+    {
+        JsonObject oci = crosswalk["selected_candidates"]![0]!["oci"]!.AsObject();
+        JsonObject index = JsonNode.Parse(File.ReadAllBytes(Path.Combine(evidence, "index.raw")))!.AsObject();
+        mutate(index);
+        byte[] indexBytes = JsonSerializer.SerializeToUtf8Bytes(index);
+        string indexHash = ComputeSha256(indexBytes);
+        string indexDigest = "sha256:" + indexHash;
+        foreach (string file in new[] { "index.raw", "tag-response.raw", "digest-response.raw" })
+        {
+            File.WriteAllBytes(Path.Combine(evidence, file), indexBytes);
+        }
+
+        oci["index_digest"] = indexDigest;
+        oci["index_raw_sha256"] = indexHash;
+        oci["index_size"] = indexBytes.Length;
+        oci["immutable_reference"] = ExpectedRegistry + "/" + ExpectedContainerRepository + "@" + indexDigest;
+        foreach (string name in new[] { "tag", "digest" })
+        {
+            oci[name + "_response_raw_sha256"] = indexHash;
+            oci[name + "_response_size"] = indexBytes.Length;
+            oci[name + "_response_docker_content_digest"] = indexDigest;
+        }
+
+        JsonObject readback = JsonNode.Parse(ReadEvidenceFile(evidence, "registry-readback.json"))!.AsObject();
+        readback["immutable_index_digest"] = indexDigest;
+        readback["tag_response"] = IndexResponse("tag", "v" + ApprovedPackageVersion, indexDigest, indexBytes);
+        readback["digest_response"] = IndexResponse("digest", indexDigest, indexDigest, indexBytes);
+        File.WriteAllBytes(
+            Path.Combine(evidence, "registry-readback.json"),
+            JsonSerializer.SerializeToUtf8Bytes(readback));
+
+        JsonObject validation = JsonNode.Parse(ReadEvidenceFile(evidence, "oci-validation.json"))!.AsObject();
+        validation["immutable_reference"] = oci["immutable_reference"]!.DeepClone();
+        validation["index_digest"] = indexDigest;
+        validation["raw_index_sha256"] = indexHash;
+        File.WriteAllBytes(
+            Path.Combine(evidence, "oci-validation.json"),
+            JsonSerializer.SerializeToUtf8Bytes(validation));
 
         string parent = Path.GetDirectoryName(evidence)!;
         string rebound = Path.Combine(parent, indexHash);
