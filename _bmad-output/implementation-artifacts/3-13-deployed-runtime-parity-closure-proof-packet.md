@@ -63,7 +63,16 @@ Story 3.13 records two distinct Hexalith.Builds identities; they are not interch
 
 The full 40-file tree is independently bound by
 [predecessor-tree-sha256.txt](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/predecessor-tree-sha256.txt).
-No predecessor file was normalized, regenerated, or modified.
+Story 3.13 wrote two predecessor files at `3d6dea69` solely to restore approved bytes that the
+unrelated commit `089369bb` ("docs: clear remaining root predecessor SDK patch tokens") had
+drifted: `1-20-owner-approved-parity-closure-proof-packet.md` and
+`evidence/story-1-20/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/environment.txt`. No predecessor
+file was normalized, regenerated, or otherwise rewritten toward a new value. Net predecessor
+state at HEAD is byte-identical to the approved identity — blob `47f09bdf65057fdda1ec1b0a77bb9398675b1de7`,
+tree `fcd0c25c9cf6bb0554e208d529f1ef09c223725a`, and all 33 critical-manifest entries pass — which
+is the sense in which `verdict.predecessor_state_changed` remains `false`. Three sibling Story 1.20
+evidence trees (`38f85086…`, `4983299103…`, `ec0d35a0…`) remain drifted by that same commit and are
+recorded as a separate Epic 1 integrity defect; Story 3.13 holds no authority to repair them.
 
 ## Candidate Crosswalk
 

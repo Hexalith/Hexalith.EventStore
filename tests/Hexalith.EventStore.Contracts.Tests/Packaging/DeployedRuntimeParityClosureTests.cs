@@ -1315,6 +1315,45 @@ public sealed class DeployedRuntimeParityClosureTests
     }
 
     /// <summary>
+    /// Verifies an unlisted file dropped into the content-addressed evidence directory fails closed.
+    /// Every other gate reads manifest entries rather than the directory, so without the directory
+    /// enumeration an unbound artifact would ride inside the packet undetected.
+    /// </summary>
+    /// <param name="strayFileName">The unlisted file planted in the evidence directory.</param>
+    [Theory]
+    [InlineData("stray-evidence.json")]
+    [InlineData("smoke-linux-amd64.log.bak")]
+    [InlineData(".hidden-note")]
+    public void UnlistedEvidenceDirectoryFileFailsClosed(string strayFileName)
+    {
+        string root = FindRepositoryRoot();
+        (string cleanupRoot, string evidence, JsonObject crosswalk, _, _, _, byte[] proofBytes,
+            string packageManifestSha256) = CreatePassingFixture(root);
+        try
+        {
+            EvaluateWithFreshReview(
+                crosswalk,
+                root,
+                evidence,
+                proofBytes,
+                packageManifestSha256).ShouldBeTrue();
+
+            File.WriteAllText(Path.Combine(evidence, strayFileName), "unbound artifact");
+
+            EvaluateWithFreshReview(
+                crosswalk,
+                root,
+                evidence,
+                proofBytes,
+                packageManifestSha256).ShouldBeFalse();
+        }
+        finally
+        {
+            Directory.Delete(cleanupRoot, recursive: true);
+        }
+    }
+
+    /// <summary>
     /// Verifies environment, product, and evidence failure classes each block runtime closure.
     /// </summary>
     /// <param name="site">Where the classified failure is recorded.</param>
@@ -1981,6 +2020,9 @@ public sealed class DeployedRuntimeParityClosureTests
     [InlineData("global-duration")]
     [InlineData("smoke-result")]
     [InlineData("evidence-completeness")]
+    [InlineData("preflight-failure-class")]
+    [InlineData("platform-failure-class")]
+    [InlineData("platform-unknown-failure-class")]
     [InlineData("actual-hosting-environment")]
     [InlineData("required-hosting-environment")]
     [InlineData("citation")]
@@ -2113,6 +2155,21 @@ public sealed class DeployedRuntimeParityClosureTests
             else if (mutation == "evidence-completeness")
             {
                 runtime["evidence_completeness"] = "fail";
+            }
+            else if (mutation == "preflight-failure-class")
+            {
+                // A node claiming outcome "pass" must carry no failure class. This is the only
+                // branch RuntimeFailureClassificationIsValid decides on its own: every "fail"
+                // outcome is already rejected by the sibling outcome checks.
+                runtime["preflight"]!.AsObject()["failure_class"] = "environment";
+            }
+            else if (mutation == "platform-failure-class")
+            {
+                runtime["platforms"]![0]!.AsObject()["failure_class"] = "product";
+            }
+            else if (mutation == "platform-unknown-failure-class")
+            {
+                runtime["platforms"]![0]!.AsObject()["failure_class"] = "unknown";
             }
             else
             {
@@ -4068,6 +4125,7 @@ public sealed class DeployedRuntimeParityClosureTests
         byte[] retainedCore = ReadEvidenceFile(evidenceRoot, "evidence-core-sha256.txt");
         byte[] predecessorManifest = ReadEvidenceFile(evidenceRoot, "predecessor-tree-sha256.txt");
         return retainedCore.SequenceEqual(coreManifestBytes)
+            && EvidenceDirectoryHasNoUnlistedFiles(evidenceRoot, crosswalk)
             && VerifyChecksumManifest(
                 coreManifestBytes,
                 evidenceRoot,
@@ -4078,6 +4136,25 @@ public sealed class DeployedRuntimeParityClosureTests
             && ComputeSha256(predecessorManifest) ==
                 "d76d44291bccce0dbea384d2bf8c0258c6ba847dc4bdfa5150d881f4f5eae092"
             && VerifyChecksumManifest(predecessorManifest, repositoryRoot, expectedPredecessorPaths);
+    }
+
+    /// <summary>
+    /// Rejects any file physically present at the top level of the content-addressed evidence
+    /// directory that no manifest lists. Without this, an unbound artifact rides inside the packet
+    /// undetected, because every other gate reads manifest entries rather than the directory.
+    /// </summary>
+    private static bool EvidenceDirectoryHasNoUnlistedFiles(string evidenceRoot, JsonObject crosswalk)
+    {
+        HashSet<string> listed = new(StringComparer.Ordinal) { "evidence-sha256.txt" };
+        foreach (string path in ExpectedCoreFilesFor(crosswalk).Concat(ExpectedOuterFiles))
+        {
+            listed.Add(path.Replace('\\', '/'));
+        }
+
+        return Directory
+            .GetFiles(evidenceRoot, "*", SearchOption.TopDirectoryOnly)
+            .Select(path => Path.GetFileName(path))
+            .All(listed.Contains);
     }
 
     private static string[] ExpectedCoreFilesFor(JsonObject crosswalk)

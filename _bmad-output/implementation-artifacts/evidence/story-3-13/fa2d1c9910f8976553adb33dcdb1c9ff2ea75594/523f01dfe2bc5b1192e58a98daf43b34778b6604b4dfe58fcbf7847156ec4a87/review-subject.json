@@ -1,6 +1,6 @@
 {
   "schema": "hexalith.eventstore.story-3-13-review-subject/v2",
-  "created_at": "2026-08-11T21:11:21Z",
+  "created_at": "2026-08-11T21:56:38Z",
   "proposed_decision": "fail-closed",
   "identity_crosswalk": {
     "path": "identity-crosswalk.json",
@@ -12,7 +12,7 @@
   },
   "proof_packet": {
     "path": "_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure-proof-packet.md",
-    "sha256": "03f2b59ce0859f874dd0329ac8b47f23dd0aba72142fad5b501570f2b73b111f"
+    "sha256": "8bf27efc92f2e8391cb1800f8eedb569472a1ecbad9917af9af48ecf76a5fa48"
   },
   "identity": {
     "source_sha": "fa2d1c9910f8976553adb33dcdb1c9ff2ea75594",
