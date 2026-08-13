@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -311,6 +312,7 @@ public sealed class Oq8PlatformClosureTests
     [InlineData("review-limitations")]
     [InlineData("review-findings")]
     [InlineData("review-findings-blank")]
+    [InlineData("review-date")]
     [InlineData("review-authority")]
     [InlineData("review-external-repository-authority")]
     [InlineData("review-field-extra")]
@@ -518,6 +520,8 @@ public sealed class Oq8PlatformClosureTests
     [InlineData("candidate-execution-validator")]
     [InlineData("candidate-execution-test-source")]
     [InlineData("candidate-execution-summary-type")]
+    [InlineData("candidate-subject-date")]
+    [InlineData("candidate-execution-date")]
     [InlineData("candidate-duplicate-subject")]
     [InlineData("candidate-duplicate-authority")]
     [InlineData("candidate-duplicate-execution")]
@@ -685,7 +689,7 @@ public sealed class Oq8PlatformClosureTests
     }
 
     /// <summary>
-    /// Verifies every required Epic 4 sprint status is unique and unambiguous.
+    /// Verifies every executable Epic 4 sprint status is unique and unambiguous and the retired key remains absent.
     /// </summary>
     /// <param name="key">The sprint-status key to duplicate.</param>
     /// <param name="conflictingStatus">A conflicting duplicate value.</param>
@@ -705,17 +709,321 @@ public sealed class Oq8PlatformClosureTests
         string fixture = CreateCandidateFixture(root);
         try
         {
-            string statusPath = Path.Combine(
-                fixture,
-                "_bmad-output",
-                "implementation-artifacts",
-                "sprint-status.yaml");
-            File.AppendAllText(statusPath, $"  {key}: {conflictingStatus}\n");
+            if (key == "4-8-durable-admission-evidence-ledger")
+            {
+                InsertRetiredSprintStatus(fixture, "plain");
+            }
+            else
+            {
+                string statusPath = Path.Combine(
+                    fixture,
+                    "_bmad-output",
+                    "implementation-artifacts",
+                    "sprint-status.yaml");
+                List<string> lines = File.ReadAllLines(statusPath).ToList();
+                int mapping = lines.FindIndex(line => line == "development_status:");
+                mapping.ShouldBeGreaterThanOrEqualTo(0);
+                lines.Insert(mapping + 1, $"  {key}: {conflictingStatus}");
+                File.WriteAllLines(statusPath, lines);
+            }
+
+            (int exitCode, string output) = RunValidator(root, fixture, preReview: true);
+
+            exitCode.ShouldBe(1, output);
+            output.ShouldContain(
+                key == "4-8-durable-admission-evidence-ledger"
+                    ? "Retired lifecycle key is forbidden: 4-8-durable-admission-evidence-ledger"
+                    : $"Lifecycle status is missing or ambiguous: {key}");
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies every supported YAML spelling of the retired Story 4.8 direct entry fails closed.
+    /// </summary>
+    /// <param name="shape">The retired-entry YAML shape.</param>
+    [Theory]
+    [InlineData("plain")]
+    [InlineData("double-quoted-key")]
+    [InlineData("single-quoted-key")]
+    [InlineData("colon-spacing")]
+    [InlineData("alternate-indentation")]
+    [InlineData("empty")]
+    [InlineData("null")]
+    [InlineData("comment-only")]
+    [InlineData("quoted-value")]
+    [InlineData("flow-sequence")]
+    [InlineData("flow-mapping")]
+    [InlineData("block-sequence")]
+    [InlineData("tagged-value")]
+    [InlineData("anchored-value")]
+    [InlineData("aliased-value")]
+    [InlineData("unicode-colon-spacing")]
+    [InlineData("escaped-key-x")]
+    [InlineData("escaped-key-u")]
+    [InlineData("escaped-key-U")]
+    public void RetiredSprintStatusYamlShapesFailClosed(string shape)
+    {
+        string root = FindRepositoryRoot();
+        string fixture = CreateCandidateFixture(root);
+        try
+        {
+            InsertRetiredSprintStatus(fixture, shape);
+
+            (int exitCode, string output) = RunValidator(root, fixture, preReview: true);
+
+            exitCode.ShouldBe(1, output);
+            output.ShouldContain("Retired lifecycle key is forbidden: 4-8-durable-admission-evidence-ledger");
+            output.ShouldNotContain("Traceback");
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies supported single-quoted and YAML double-quoted active statuses are decoded exactly.
+    /// </summary>
+    /// <param name="shape">The supported active-entry YAML shape.</param>
+    [Theory]
+    [InlineData("single-quoted-scalars")]
+    [InlineData("single-quoted-escape")]
+    [InlineData("double-quoted-escapes")]
+    [InlineData("tab-separator")]
+    public void SupportedActiveSprintStatusYamlPasses(string shape)
+    {
+        string root = FindRepositoryRoot();
+        string fixture = CreateCandidateFixture(root);
+        string gitFixture = CreateGitFixture(root);
+        try
+        {
+            ReplaceActiveSprintStatus(fixture, shape);
+
+            (int exitCode, string output) = RunValidator(root, fixture, gitFixture, preReview: true);
+
+            exitCode.ShouldBe(0, output);
+            output.ShouldContain("OQ8 pre-review candidate validation passed.");
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+            Directory.Delete(gitFixture, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies malformed separators, Unicode whitespace, and unsupported active values fail closed.
+    /// </summary>
+    /// <param name="shape">The unsupported active-entry YAML shape.</param>
+    [Theory]
+    [InlineData("missing-separator")]
+    [InlineData("unicode-separator")]
+    [InlineData("unicode-leading-whitespace")]
+    [InlineData("malformed-single-quoted-key")]
+    [InlineData("malformed-single-quoted-value")]
+    [InlineData("empty-value")]
+    [InlineData("null-value")]
+    [InlineData("tagged-value")]
+    [InlineData("anchored-value")]
+    [InlineData("aliased-value")]
+    [InlineData("flow-sequence-value")]
+    [InlineData("flow-mapping-value")]
+    [InlineData("block-scalar-value")]
+    [InlineData("unrelated-sequence-token")]
+    [InlineData("unrelated-mapping-token")]
+    [InlineData("unrelated-directive-token")]
+    public void UnsupportedActiveSprintStatusYamlFailsClosed(string shape)
+    {
+        string root = FindRepositoryRoot();
+        string fixture = CreateCandidateFixture(root);
+        try
+        {
+            ReplaceActiveSprintStatus(fixture, shape);
+
+            (int exitCode, string output) = RunValidator(root, fixture, preReview: true);
+
+            exitCode.ShouldBe(1, output);
+            output.ShouldContain("Unsupported sprint-status mapping structure");
+            output.ShouldNotContain("Traceback");
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies near-match keys and retired-key text outside development_status do not affect lifecycle validation.
+    /// </summary>
+    /// <param name="shape">The non-entry text shape.</param>
+    [Theory]
+    [InlineData("near-match")]
+    [InlineData("outside-mapping")]
+    [InlineData("comment")]
+    [InlineData("document-markers")]
+    [InlineData("unrelated-top-level-structure")]
+    [InlineData("stream-initial-bom")]
+    [InlineData("unrelated-top-level-alias")]
+    [InlineData("unrelated-top-level-tag-anchor-alias")]
+    [InlineData("unrelated-top-level-anchor-tag-alias")]
+    [InlineData("unrelated-top-level-uri-tag-anchor-alias")]
+    public void RetiredSprintStatusTextOutsideExactDirectEntryPasses(string shape)
+    {
+        string root = FindRepositoryRoot();
+        string fixture = CreateCandidateFixture(root);
+        string gitFixture = CreateGitFixture(root);
+        try
+        {
+            InsertNonRetiredSprintStatusText(fixture, shape);
+
+            (int exitCode, string output) = RunValidator(root, fixture, gitFixture, preReview: true);
+
+            exitCode.ShouldBe(0, output);
+            output.ShouldContain("OQ8 pre-review candidate validation passed.");
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+            Directory.Delete(gitFixture, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies YAML merge keys, sequence-shaped content, and ambiguous development-status shapes fail closed.
+    /// </summary>
+    /// <param name="shape">The unsupported mapping shape.</param>
+    [Theory]
+    [InlineData("merge-key")]
+    [InlineData("sequence")]
+    [InlineData("tagged-retired-key")]
+    [InlineData("anchored-retired-key")]
+    [InlineData("tagged-development-status")]
+    [InlineData("anchored-development-status")]
+    [InlineData("tagged-anchored-development-status")]
+    [InlineData("anchored-tagged-development-status")]
+    [InlineData("uri-tagged-development-status")]
+    [InlineData("tagged-escaped-development-status")]
+    [InlineData("anchored-escaped-development-status")]
+    [InlineData("uri-tagged-escaped-development-status")]
+    [InlineData("tagged-anchored-escaped-development-status")]
+    [InlineData("explicit-development-status")]
+    [InlineData("explicit-escaped-development-status")]
+    [InlineData("explicit-tagged-escaped-development-status")]
+    [InlineData("multiline-explicit-development-status")]
+    [InlineData("multiline-explicit-escaped-development-status")]
+    [InlineData("multiline-explicit-commented-development-status")]
+    [InlineData("multiline-explicit-property-development-status")]
+    [InlineData("literal-explicit-development-status")]
+    [InlineData("folded-explicit-development-status")]
+    [InlineData("continued-quoted-explicit-development-status")]
+    [InlineData("implicit-aliased-development-status")]
+    [InlineData("spaced-implicit-aliased-development-status")]
+    [InlineData("punctuated-implicit-aliased-development-status")]
+    [InlineData("duplicate-development-status")]
+    [InlineData("deeper-indented-retired-key")]
+    [InlineData("normalized-duplicate-x")]
+    [InlineData("normalized-duplicate-u")]
+    [InlineData("normalized-duplicate-U")]
+    [InlineData("multiple-documents")]
+    [InlineData("inline-document-start")]
+    [InlineData("indented-document-start")]
+    [InlineData("indented-inline-document-start")]
+    [InlineData("inline-document-end")]
+    [InlineData("indented-document-end")]
+    [InlineData("non-initial-bom")]
+    [InlineData("non-printable-source")]
+    [InlineData("hostile-duplicate-key")]
+    [InlineData("tagged-development-status-inline")]
+    [InlineData("tagged-anchored-development-status-inline")]
+    [InlineData("anchored-tagged-development-status-inline")]
+    [InlineData("aliased-development-status-inline")]
+    [InlineData("malformed-top-level-token")]
+    [InlineData("malformed-top-level-scalar")]
+    [InlineData("indented-shadow-development-status")]
+    [InlineData("unclosed-top-level-flow")]
+    [InlineData("balanced-top-level-flow-sequence")]
+    [InlineData("balanced-top-level-flow-mapping")]
+    [InlineData("balanced-top-level-flow-double-comma-sequence")]
+    [InlineData("balanced-top-level-flow-leading-comma-sequence")]
+    [InlineData("balanced-top-level-flow-double-comma-mapping")]
+    [InlineData("nested-aliased-development-status-block")]
+    [InlineData("nested-aliased-development-status-inline")]
+    [InlineData("nested-flow-development-status-literal")]
+    [InlineData("nested-flow-development-status-escaped")]
+    [InlineData("nested-flow-development-status-anchor-alias")]
+    [InlineData("nested-sequence-development-status")]
+    [InlineData("nested-sequence-development-status-escaped")]
+    [InlineData("nested-double-sequence-development-status")]
+    [InlineData("nested-double-sequence-development-status-escaped")]
+    [InlineData("nested-triple-sequence-development-status")]
+    [InlineData("nested-triple-sequence-development-status-escaped")]
+    [InlineData("nested-explicit-sequence-development-status")]
+    [InlineData("nested-explicit-sequence-development-status-escaped")]
+    public void UnsupportedSprintStatusYamlFailsClosed(string shape)
+    {
+        string root = FindRepositoryRoot();
+        string fixture = CreateCandidateFixture(root);
+        try
+        {
+            InsertUnsupportedSprintStatus(fixture, shape);
+
+            (int exitCode, string output) = RunValidator(root, fixture, preReview: true);
+
+            exitCode.ShouldBe(1, output);
+            output.ShouldContain(
+                shape switch
+                {
+                    "merge-key" => "Sprint-status merge keys are forbidden",
+                    "duplicate-development-status" => "Lifecycle development_status mapping is missing or ambiguous",
+                    "normalized-duplicate-x" or "normalized-duplicate-u" or "normalized-duplicate-U" =>
+                        "Lifecycle status is missing or ambiguous: epic-4",
+                    "multiple-documents" or "inline-document-start" or "indented-document-start" or
+                        "indented-inline-document-start" or "inline-document-end" or "indented-document-end" =>
+                        "Sprint-status YAML stream must contain exactly one document",
+                    "non-initial-bom" => "Sprint-status BOM is only permitted at stream start",
+                    "non-printable-source" => "Sprint-status YAML source contains forbidden characters",
+                    "hostile-duplicate-key" => "Lifecycle status mapping contains a duplicate key",
+                    _ => "Unsupported sprint-status mapping structure",
+                });
+            output.ShouldNotContain("Traceback");
+            if (shape == "hostile-duplicate-key")
+            {
+                output.Length.ShouldBeLessThan(4096);
+                output.ShouldNotContain(new string('x', 128));
+            }
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies removing a required active status preserves the key-specific missing diagnostic.
+    /// </summary>
+    [Fact]
+    public void MissingRequiredSprintStatusFailsClosed()
+    {
+        string root = FindRepositoryRoot();
+        string fixture = CreateCandidateFixture(root);
+        try
+        {
+            const string key = "4-14-oq8-multi-host-production-evidence";
+            string statusPath = Path.Combine(fixture, "_bmad-output", "implementation-artifacts", "sprint-status.yaml");
+            string[] lines = File.ReadAllLines(statusPath);
+            int match = Array.FindIndex(lines, line => line.StartsWith($"  {key}:", StringComparison.Ordinal));
+            match.ShouldBeGreaterThanOrEqualTo(0);
+            File.WriteAllLines(statusPath, lines.Where((_, index) => index != match));
 
             (int exitCode, string output) = RunValidator(root, fixture, preReview: true);
 
             exitCode.ShouldBe(1, output);
             output.ShouldContain($"Lifecycle status is missing or ambiguous: {key}");
+            output.ShouldNotContain("Traceback");
         }
         finally
         {
@@ -1242,8 +1550,23 @@ public sealed class Oq8PlatformClosureTests
                 WriteObject(executionPath, execution);
                 break;
             }
+            case "candidate-subject-date":
+            {
+                JsonObject subject = LoadObject(subjectPath);
+                subject["createdOn"] = PreviousCalendarDay(subject["createdOn"]!.GetValue<string>());
+                WriteObject(subjectPath, subject);
+                break;
+            }
+            case "candidate-execution-date":
+            {
+                JsonObject execution = LoadObject(executionPath);
+                execution["executedOn"] = PreviousCalendarDay(execution["executedOn"]!.GetValue<string>());
+                WriteObject(executionPath, execution);
+                ResealCandidateBinding(fixture, "preReviewExecution");
+                break;
+            }
             case "candidate-duplicate-subject":
-                InsertDuplicateJsonField(subjectPath, "  \"createdOn\": \"2026-08-11\",", "  \"createdOn\": \"2026-08-11\",\n  \"createdOn\": \"2026-08-11\",");
+                InsertDuplicateJsonField(subjectPath, "  \"createdOn\": \"2026-08-12\",", "  \"createdOn\": \"2026-08-12\",\n  \"createdOn\": \"2026-08-12\",");
                 break;
             case "candidate-duplicate-authority":
                 InsertDuplicateJsonField(subjectPath, "    \"releaseApproved\": false,", "    \"releaseApproved\": false,\n    \"releaseApproved\": false,");
@@ -1524,6 +1847,8 @@ public sealed class Oq8PlatformClosureTests
         "candidate-execution-command-name-duplicate" => "Pre-review execution command names must be exact and unique",
         "candidate-execution-command-count-zero" => "Pre-review execution command 2:tests count drift",
         "candidate-execution-command-identity" => "Pre-review execution command drift",
+        "candidate-subject-date" => "Review subject date drift",
+        "candidate-execution-date" => "Pre-review execution date drift",
         "candidate-duplicate-subject" => "Duplicate JSON field",
         "candidate-duplicate-authority" => "Duplicate JSON field",
         "candidate-duplicate-execution" => "Duplicate JSON field",
@@ -1834,6 +2159,20 @@ public sealed class Oq8PlatformClosureTests
                 WriteObject(Path.Combine(closure, "reviews", "security.json"), review);
                 break;
             }
+            case "review-date":
+            {
+                string reviewPath = Path.Combine(closure, "reviews", "security.json");
+                JsonObject review = LoadObject(reviewPath);
+                review["reviewedOn"] = PreviousCalendarDay(review["reviewedOn"]!.GetValue<string>());
+                WriteObject(reviewPath, review);
+                string handoffPath = Path.Combine(closure, "source-only-handoff.json");
+                JsonObject handoff = LoadObject(handoffPath);
+                handoff["reviewReceipts"]!["security"] = ComputeSha256(reviewPath);
+                WriteObject(handoffPath, handoff);
+                ResealClosureArtifact(packetPath, closure, "reviews/security.json");
+                ResealClosureArtifact(packetPath, closure, "source-only-handoff.json");
+                break;
+            }
             case "review-authority":
             {
                 JsonObject review = LoadObject(Path.Combine(closure, "reviews", "security.json"));
@@ -1922,7 +2261,11 @@ public sealed class Oq8PlatformClosureTests
             case "sprint-status-duplicate":
             {
                 string statusPath = Path.Combine(artifacts, "sprint-status.yaml");
-                File.AppendAllText(statusPath, "  4-15-oq8-platform-closure-and-handoff: done\n");
+                List<string> status = File.ReadAllLines(statusPath).ToList();
+                int mapping = status.FindIndex(line => line == "development_status:");
+                mapping.ShouldBeGreaterThanOrEqualTo(0);
+                status.Insert(mapping + 1, "  4-15-oq8-platform-closure-and-handoff: done");
+                File.WriteAllLines(statusPath, status);
                 break;
             }
             case "frontmatter-status-duplicate":
@@ -2033,6 +2376,7 @@ public sealed class Oq8PlatformClosureTests
                 "subject-field-extra" or "document-semantics" => "review-subject.json",
             "review-decision" or "review-reviewer" or "review-role" or "review-scope" or
                 "review-limitations" or "review-findings" or "review-findings-blank" or "review-authority" or
+                "review-date" or
                 "review-external-repository-authority" or
                 "review-field-extra" => "reviews/security.json",
             "review-subject" => "reviews/test.json",
@@ -2076,6 +2420,7 @@ public sealed class Oq8PlatformClosureTests
         "review-scope" => "security accepted scope drift",
         "review-limitations" => "security limitations acceptance drift",
         "review-findings" or "review-findings-blank" => "security review findings missing or blank",
+        "review-date" => "security review date drift",
         "review-authority" => "External authority overstated: releaseApproved",
         "review-external-repository-authority" => "External authority overstated: externalRepositoryAuthority",
         "review-field-extra" => "security review field set drift",
@@ -2135,6 +2480,476 @@ public sealed class Oq8PlatformClosureTests
         duplicated.ShouldNotBe(json, "Duplicate authority injection must change the JSON fixture.");
         return duplicated;
     }
+
+    private static void InsertRetiredSprintStatus(string fixture, string shape)
+    {
+        string statusPath = Path.Combine(fixture, "_bmad-output", "implementation-artifacts", "sprint-status.yaml");
+        List<string> lines = File.ReadAllLines(statusPath).ToList();
+        int mapping = lines.FindIndex(line => line == "development_status:");
+        mapping.ShouldBeGreaterThanOrEqualTo(0);
+        const string key = "4-8-durable-admission-evidence-ledger";
+        string[] inserted = shape switch
+        {
+            "plain" => [$"  {key}: done"],
+            "double-quoted-key" => [$"  \"{key}\": done"],
+            "single-quoted-key" => [$"  '{key}': done"],
+            "colon-spacing" => [$"  {key} :done"],
+            "alternate-indentation" => [$"    {key}: done"],
+            "empty" => [$"  {key}:"],
+            "null" => [$"  {key}: null"],
+            "comment-only" => [$"  {key}: # retired"],
+            "quoted-value" => [$"  {key}: \"done\""],
+            "flow-sequence" => [$"  {key}: [done]"],
+            "flow-mapping" => [$"  {key}: {{ status: done }}"],
+            "block-sequence" => [$"  {key}:", "    - done"],
+            "tagged-value" => [$"  {key}: !!str done"],
+            "anchored-value" => [$"  {key}: &retired done"],
+            "aliased-value" => [$"  {key}: *retired"],
+            "unicode-colon-spacing" => [$"  {key}:\u00a0done"],
+            "escaped-key-x" => ["  \"4\\x2d8-durable-admission-evidence-ledger\": done"],
+            "escaped-key-u" => ["  \"4\\u002d8-durable-admission-evidence-ledger\": done"],
+            "escaped-key-U" => ["  \"4\\U0000002d8-durable-admission-evidence-ledger\": done"],
+            _ => throw new ArgumentOutOfRangeException(nameof(shape), shape, "Unknown retired sprint-status shape."),
+        };
+        if (shape == "alternate-indentation")
+        {
+            for (int index = mapping + 1; index < lines.Count; index++)
+            {
+                if (lines[index].Length > 0 && !lines[index].StartsWith(' '))
+                {
+                    break;
+                }
+
+                if (lines[index].StartsWith("  ", StringComparison.Ordinal))
+                {
+                    lines[index] = "  " + lines[index];
+                }
+            }
+        }
+
+        lines.InsertRange(mapping + 1, inserted);
+        File.WriteAllLines(statusPath, lines);
+    }
+
+    private static void InsertNonRetiredSprintStatusText(string fixture, string shape)
+    {
+        string statusPath = Path.Combine(fixture, "_bmad-output", "implementation-artifacts", "sprint-status.yaml");
+        List<string> lines = File.ReadAllLines(statusPath).ToList();
+        int mapping = lines.FindIndex(line => line == "development_status:");
+        mapping.ShouldBeGreaterThanOrEqualTo(0);
+        const string key = "4-8-durable-admission-evidence-ledger";
+        switch (shape)
+        {
+            case "near-match":
+                lines.Insert(mapping + 1, $"  {key}-near-match: backlog");
+                break;
+            case "outside-mapping":
+                lines.Add($"{key}: backlog");
+                break;
+            case "comment":
+                lines.Insert(mapping + 1, $"  # {key}: backlog");
+                break;
+            case "document-markers":
+                lines.Insert(0, "---");
+                lines.Add("...");
+                break;
+            case "unrelated-top-level-structure":
+                lines.Insert(0, "top_level_sequence:");
+                lines.Insert(1, "  - first");
+                lines.Insert(2, "  - second");
+                break;
+            case "stream-initial-bom":
+                lines[0] = "\uFEFF" + lines[0];
+                break;
+            case "unrelated-top-level-alias":
+                lines.Insert(0, "alias_source: &alias_source unrelated");
+                lines.Insert(1, "*alias_source:");
+                lines.Insert(2, "  nested: true");
+                break;
+            case "unrelated-top-level-tag-anchor-alias":
+                lines.Insert(0, "alias_source: !!str &alias_source unrelated");
+                lines.Insert(1, "*alias_source: nested");
+                break;
+            case "unrelated-top-level-anchor-tag-alias":
+                lines.Insert(0, "alias_source: &alias_source !!str unrelated");
+                lines.Insert(1, "*alias_source:");
+                lines.Insert(2, "  nested: true");
+                break;
+            case "unrelated-top-level-uri-tag-anchor-alias":
+                lines.Insert(0, "alias_source: !<tag:yaml.org,2002:str> &alias_source unrelated");
+                lines.Insert(1, "*alias_source: nested");
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(shape), shape, "Unknown non-retired sprint-status text shape.");
+        }
+
+        File.WriteAllLines(statusPath, lines);
+    }
+
+    private static void InsertUnsupportedSprintStatus(string fixture, string shape)
+    {
+        string statusPath = Path.Combine(fixture, "_bmad-output", "implementation-artifacts", "sprint-status.yaml");
+        List<string> lines = File.ReadAllLines(statusPath).ToList();
+        int mapping = lines.FindIndex(line => line == "development_status:");
+        mapping.ShouldBeGreaterThanOrEqualTo(0);
+        switch (shape)
+        {
+            case "duplicate-development-status":
+                lines.Add("development_status:");
+                lines.Add("  4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "tagged-development-status":
+                lines.Add("!!str development_status:");
+                lines.Add("  4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "anchored-development-status":
+                lines.Add("&duplicate development_status:");
+                lines.Add("  4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "tagged-anchored-development-status":
+                lines.Add("!!str &duplicate development_status:");
+                lines.Add("  4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "anchored-tagged-development-status":
+                lines.Add("&duplicate !!str development_status:");
+                lines.Add("  4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "uri-tagged-development-status":
+                lines.Add("!<tag:yaml.org,2002:str> development_status:");
+                lines.Add("  4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "tagged-escaped-development-status":
+                lines.Add("!!str \"development\\u005fstatus\":");
+                lines.Add("  4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "anchored-escaped-development-status":
+                lines.Add("&duplicate \"development\\u005fstatus\":");
+                lines.Add("  4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "uri-tagged-escaped-development-status":
+                lines.Add("!<tag:yaml.org,2002:str> \"development\\u005fstatus\":");
+                lines.Add("  4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "tagged-anchored-escaped-development-status":
+                lines.Add("!!str &duplicate \"development\\u005fstatus\":");
+                lines.Add("  4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "explicit-development-status":
+                lines.Add("? development_status");
+                lines.Add(":");
+                lines.Add("  4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "explicit-escaped-development-status":
+                lines.Add("? \"development\\u005fstatus\"");
+                lines.Add(":");
+                lines.Add("  4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "explicit-tagged-escaped-development-status":
+                lines.Add("? !!str \"development\\u005fstatus\"");
+                lines.Add(": { 4-8-durable-admission-evidence-ledger: done }");
+                break;
+            case "multiline-explicit-development-status":
+                lines.Add("?");
+                lines.Add("  development_status");
+                lines.Add(":");
+                lines.Add("  4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "multiline-explicit-escaped-development-status":
+                lines.Add("?");
+                lines.Add("  \"development\\u005fstatus\"");
+                lines.Add(":");
+                lines.Add("  4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "multiline-explicit-commented-development-status":
+                lines.Add("? # explicit key");
+                lines.Add("  !!str development_status # lifecycle");
+                lines.Add(":");
+                lines.Add("  4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "multiline-explicit-property-development-status":
+                lines.Add("?");
+                lines.Add("  !!str");
+                lines.Add("  &duplicate");
+                lines.Add("  development_status");
+                lines.Add(":");
+                lines.Add("  4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "literal-explicit-development-status":
+                lines.Add("? |-");
+                lines.Add("  development_status");
+                lines.Add(":");
+                lines.Add("  4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "folded-explicit-development-status":
+                lines.Add("? >-");
+                lines.Add("  development_status");
+                lines.Add(":");
+                lines.Add("  4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "continued-quoted-explicit-development-status":
+                lines.Add("?");
+                lines.Add("  \"development_\\");
+                lines.Add("    status\"");
+                lines.Add(":");
+                lines.Add("  4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "implicit-aliased-development-status":
+            case "spaced-implicit-aliased-development-status":
+            case "punctuated-implicit-aliased-development-status":
+                lines.Insert(0, "status_key: &status_key development_status");
+                lines.Add(shape switch
+                {
+                    "implicit-aliased-development-status" => "*status_key:",
+                    "spaced-implicit-aliased-development-status" => "*status_key :",
+                    _ => "*status.key :",
+                });
+                lines.Add("  4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "deeper-indented-retired-key":
+            {
+                int entry = -1;
+                for (int index = mapping + 1; index < lines.Count; index++)
+                {
+                    string line = lines[index];
+                    if (string.IsNullOrWhiteSpace(line) || line.TrimStart().StartsWith('#'))
+                    {
+                        continue;
+                    }
+
+                    if (!line.StartsWith(' '))
+                    {
+                        break;
+                    }
+
+                    if (line.StartsWith("  ", StringComparison.Ordinal) && !line.StartsWith("   ", StringComparison.Ordinal))
+                    {
+                        entry = index;
+                        break;
+                    }
+                }
+
+                entry.ShouldBeGreaterThanOrEqualTo(0);
+                lines.Insert(entry + 1, "    4-8-durable-admission-evidence-ledger: done");
+                break;
+            }
+            case "normalized-duplicate-x":
+                lines.Insert(mapping + 1, "  \"epic\\x2d4\": in-progress");
+                break;
+            case "normalized-duplicate-u":
+                lines.Insert(mapping + 1, "  \"epic\\u002d4\": in-progress");
+                break;
+            case "normalized-duplicate-U":
+                lines.Insert(mapping + 1, "  \"epic\\U0000002d4\": in-progress");
+                break;
+            case "multiple-documents":
+                lines.Add("...");
+                lines.Add("---");
+                lines.Add("development_status:");
+                lines.Add("  4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "inline-document-start":
+                lines.Add("--- development_status:");
+                lines.Add("  4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "indented-document-start":
+                lines.Add("  ---");
+                lines.Add("development_status:");
+                lines.Add("  4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "indented-inline-document-start":
+                lines.Add("  --- development_status:");
+                lines.Add("    4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "inline-document-end":
+                lines.Add("... trailing-content");
+                break;
+            case "indented-document-end":
+                lines.Add("  ...");
+                break;
+            case "non-initial-bom":
+                lines.Insert(mapping + 1, "  \uFEFFunrelated: done");
+                break;
+            case "non-printable-source":
+                lines.Insert(mapping + 1, "  # forbidden \u0001 source character");
+                break;
+            case "hostile-duplicate-key":
+            {
+                string hostileKey = "hostile-" + new string('x', 50_000);
+                lines.Insert(mapping + 1, $"  {hostileKey}: done");
+                lines.Insert(mapping + 2, $"  {hostileKey}: done");
+                break;
+            }
+            case "tagged-development-status-inline":
+                lines.Add("!!str development_status: { 4-8-durable-admission-evidence-ledger: done }");
+                break;
+            case "tagged-anchored-development-status-inline":
+                lines.Add("!!str &duplicate development_status: [done]");
+                break;
+            case "anchored-tagged-development-status-inline":
+                lines.Add("&duplicate !!str development_status: null");
+                break;
+            case "aliased-development-status-inline":
+                lines.Insert(0, "status_key: !!str &status_key development_status");
+                lines.Add("*status_key: { 4-8-durable-admission-evidence-ledger: done }");
+                break;
+            case "malformed-top-level-token":
+                lines.Add("%invalid top-level token");
+                break;
+            case "malformed-top-level-scalar":
+                lines.Add("unmapped-top-level-scalar");
+                break;
+            case "indented-shadow-development-status":
+                lines.Add("  development_status:");
+                lines.Add("    4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "unclosed-top-level-flow":
+                lines.Add("unrelated-flow: [first, second");
+                break;
+            case "balanced-top-level-flow-sequence":
+                lines.Add("unrelated-flow: [first, second]");
+                break;
+            case "balanced-top-level-flow-mapping":
+                lines.Add("unrelated-flow: {first: second}");
+                break;
+            case "balanced-top-level-flow-double-comma-sequence":
+                lines.Add("unrelated-flow: [first,,second]");
+                break;
+            case "balanced-top-level-flow-leading-comma-sequence":
+                lines.Add("unrelated-flow: [,first]");
+                break;
+            case "balanced-top-level-flow-double-comma-mapping":
+                lines.Add("unrelated-flow: {first: second,,third: fourth}");
+                break;
+            case "nested-aliased-development-status-block":
+                lines.Add("nested:");
+                lines.Add("  status-key: &status-key development_status");
+                lines.Add("  *status-key:");
+                lines.Add("    4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "nested-aliased-development-status-inline":
+                lines.Add("nested:");
+                lines.Add("  status-key: &status-key development_status");
+                lines.Add("  *status-key: {4-8-durable-admission-evidence-ledger: done}");
+                break;
+            case "nested-flow-development-status-literal":
+                lines.Add("nested:");
+                lines.Add("  shadow: {development_status: {4-8-durable-admission-evidence-ledger: done}}");
+                break;
+            case "nested-flow-development-status-escaped":
+                lines.Add("nested:");
+                lines.Add("  shadow: {\"development\\u005fstatus\": {4-8-durable-admission-evidence-ledger: done}}");
+                break;
+            case "nested-flow-development-status-anchor-alias":
+                lines.Add("nested:");
+                lines.Add("  shadow-source: &shadow-source {development_status: {4-8-durable-admission-evidence-ledger: done}}");
+                lines.Add("  shadow-copy: *shadow-source");
+                break;
+            case "nested-sequence-development-status":
+                lines.Add("nested:");
+                lines.Add("  - development_status:");
+                lines.Add("      4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "nested-sequence-development-status-escaped":
+                lines.Add("nested:");
+                lines.Add("  - \"development\\u005fstatus\":");
+                lines.Add("      4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "nested-double-sequence-development-status":
+                lines.Add("nested:");
+                lines.Add("  - - development_status:");
+                lines.Add("        4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "nested-double-sequence-development-status-escaped":
+                lines.Add("nested:");
+                lines.Add("  - - \"development\\u005fstatus\":");
+                lines.Add("        4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "nested-triple-sequence-development-status":
+                lines.Add("nested:");
+                lines.Add("  - - - development_status:");
+                lines.Add("          4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "nested-triple-sequence-development-status-escaped":
+                lines.Add("nested:");
+                lines.Add("  - - - \"development\\u005fstatus\":");
+                lines.Add("          4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "nested-explicit-sequence-development-status":
+                lines.Add("nested:");
+                lines.Add("  - ?");
+                lines.Add("      development_status");
+                lines.Add("    :");
+                lines.Add("      4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "nested-explicit-sequence-development-status-escaped":
+                lines.Add("nested:");
+                lines.Add("  - ?");
+                lines.Add("      \"development\\u005fstatus\"");
+                lines.Add("    :");
+                lines.Add("      4-8-durable-admission-evidence-ledger: done");
+                break;
+            case "merge-key":
+            case "sequence":
+            case "tagged-retired-key":
+            case "anchored-retired-key":
+                lines.Insert(
+                    mapping + 1,
+                    shape switch
+                    {
+                        "merge-key" => "  <<: *shared-statuses",
+                        "sequence" => "  - epic-4: in-progress",
+                        "tagged-retired-key" => "  !!str 4-8-durable-admission-evidence-ledger: done",
+                        "anchored-retired-key" => "  &retired 4-8-durable-admission-evidence-ledger: done",
+                        _ => throw new ArgumentOutOfRangeException(nameof(shape), shape, "Unknown unsupported sprint-status shape."),
+                    });
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(shape), shape, "Unknown unsupported sprint-status shape.");
+        }
+
+        File.WriteAllLines(statusPath, lines);
+    }
+
+    private static void ReplaceActiveSprintStatus(string fixture, string shape)
+    {
+        string statusPath = Path.Combine(fixture, "_bmad-output", "implementation-artifacts", "sprint-status.yaml");
+        List<string> lines = File.ReadAllLines(statusPath).ToList();
+        const string key = "epic-4";
+        int active = lines.FindIndex(line => line == $"  {key}: in-progress");
+        active.ShouldBeGreaterThanOrEqualTo(0);
+        string[] replacement = shape switch
+        {
+            "single-quoted-scalars" => [$"  '{key}': 'in-progress'"],
+            "single-quoted-escape" => [$"  {key}: in-progress", "  'owner''s-status': done"],
+            "double-quoted-escapes" => ["  \"epic\\u002d4\": \"in\\u002dprogress\""],
+            "tab-separator" => [$"  {key}:\tin-progress"],
+            "missing-separator" => [$"  {key}:in-progress"],
+            "unicode-separator" => [$"  {key}:\u00a0in-progress"],
+            "unicode-leading-whitespace" => [$"\u00a0 {key}: in-progress"],
+            "malformed-single-quoted-key" => ["  'epic'4': in-progress"],
+            "malformed-single-quoted-value" => [$"  {key}: 'in'progress'"],
+            "empty-value" => [$"  {key}:"],
+            "null-value" => [$"  {key}: null"],
+            "tagged-value" => [$"  {key}: !!str in-progress"],
+            "anchored-value" => [$"  {key}: &current in-progress"],
+            "aliased-value" => [$"  {key}: *current"],
+            "flow-sequence-value" => [$"  {key}: [in-progress]"],
+            "flow-mapping-value" => [$"  {key}: {{ status: in-progress }}"],
+            "block-scalar-value" => [$"  {key}: |", "    in-progress"],
+            "unrelated-sequence-token" => [$"  {key}: in-progress", "  unrelated: - item"],
+            "unrelated-mapping-token" => [$"  {key}: in-progress", "  unrelated: done: invalid"],
+            "unrelated-directive-token" => [$"  {key}: in-progress", "  unrelated: %invalid"],
+            _ => throw new ArgumentOutOfRangeException(nameof(shape), shape, "Unknown active sprint-status shape."),
+        };
+        lines.RemoveAt(active);
+        lines.InsertRange(active, replacement);
+        File.WriteAllLines(statusPath, lines);
+    }
+
+    private static string PreviousCalendarDay(string isoDate) =>
+        DateOnly.ParseExact(isoDate, "yyyy-MM-dd", CultureInfo.InvariantCulture)
+            .AddDays(-1)
+            .ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
     private static void SetFinalLifecycle(string fixture)
     {

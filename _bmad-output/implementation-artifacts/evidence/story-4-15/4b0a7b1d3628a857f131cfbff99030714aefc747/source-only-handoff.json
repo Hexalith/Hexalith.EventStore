@@ -2,12 +2,12 @@
   "schema": "hexalith.eventstore.story-4-15-source-only-handoff/v1",
   "story": "4.15",
   "landedSourceCommit": "4b0a7b1d3628a857f131cfbff99030714aefc747",
-  "reviewSubjectSha256": "977a2464e49e3b40f46fff2ff8d1d0ec46c463a9581bc93c1cff9249134e1d15",
+  "reviewSubjectSha256": "e58de2008f00af08e81e99198d42d82e45e2b15b2cdb9cb283f8a93f518d6ea9",
   "limitationsSha256": "3853e7001a78da7cc0c3824392e43e9f5b286b65ce8d101167991b133ebf2d92",
   "reviewReceipts": {
-    "architecture": "34bac8352b3151387fc56228c6fa35bfbe7b4eb44465d9b199de635fcc3676cd",
-    "security": "260a7256297265891908507e3b568f8ac6287fc9c8ff811999ee2b6ad239fdaa",
-    "test": "a30a9b132cddb3271b2ef3367d410ed8aecfa8a3e789e24b5f5baaa1d450b354"
+    "architecture": "202bfbace5651a087cae3749726bea239d267c834c12626d941966e6a761a266",
+    "security": "8cb18071d6d64eba5dc21216339b6080da2adeace917daadd4705492342dbb56",
+    "test": "9310fb6bf97dba07442ac3ce2f4d0b1dc48dd079ea5e2b8d502f505ada9a9203"
   },
   "consumerInstructions": {
     "mode": "source-only",

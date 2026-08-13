@@ -1,6 +1,6 @@
 {
   "schema": "hexalith.eventstore.story-4-15-pre-review-execution/v1",
-  "executedOn": "2026-08-11",
+  "executedOn": "2026-08-12",
   "scope": "receipt-independent-isolated-candidate",
   "authority": {
     "reviewReceiptsValidated": false,
@@ -9,11 +9,11 @@
   },
   "validator": {
     "path": "tools/validate-oq8-platform-evidence.py",
-    "sha256": "e81bfaec383a3092d174f929d6069976afb6be9e123cc3aec5c4ecd56e32c0b2"
+    "sha256": "4a57c79040a0687ea843b8ccbcb01d9a11ae199d8b52a6e9ca2b489aba90f731"
   },
   "testSource": {
     "path": "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs",
-    "sha256": "5b66a6a3d4fc79010cd4cd94a092eefee136cc2dc3241f0885c772626728f99d"
+    "sha256": "36e3a013267a2c7d23fe33261986fabc50510075f66543dc906b07c59fbc5f8c"
   },
   "finalValidation": {
     "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests -noColor",
@@ -38,8 +38,8 @@
       "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -method Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests.CandidateSemanticMutationsFailClosed -noColor",
       "exitCode": 0,
       "result": "passed",
-      "tests": 46,
-      "passed": 46,
+      "tests": 48,
+      "passed": 48,
       "failed": 0,
       "skipped": 0
     },
@@ -80,6 +80,66 @@
       "result": "passed",
       "tests": 9,
       "passed": 9,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "retired-lifecycle-yaml-shapes",
+      "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -method Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests.RetiredSprintStatusYamlShapesFailClosed -noColor",
+      "exitCode": 0,
+      "result": "passed",
+      "tests": 19,
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "supported-active-lifecycle-yaml",
+      "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -method Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests.SupportedActiveSprintStatusYamlPasses -noColor",
+      "exitCode": 0,
+      "result": "passed",
+      "tests": 4,
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "unsupported-active-lifecycle-yaml",
+      "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -method Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests.UnsupportedActiveSprintStatusYamlFailsClosed -noColor",
+      "exitCode": 0,
+      "result": "passed",
+      "tests": 16,
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "retired-lifecycle-scoping",
+      "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -method Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests.RetiredSprintStatusTextOutsideExactDirectEntryPasses -noColor",
+      "exitCode": 0,
+      "result": "passed",
+      "tests": 10,
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "unsupported-lifecycle-yaml",
+      "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -method Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests.UnsupportedSprintStatusYamlFailsClosed -noColor",
+      "exitCode": 0,
+      "result": "passed",
+      "tests": 66,
+      "passed": 66,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "missing-active-lifecycle",
+      "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -method Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests.MissingRequiredSprintStatusFailsClosed -noColor",
+      "exitCode": 0,
+      "result": "passed",
+      "tests": 1,
+      "passed": 1,
       "failed": 0,
       "skipped": 0
     },
@@ -245,10 +305,10 @@
     }
   ],
   "summary": {
-    "commands": 23,
-    "successfulCommands": 23,
-    "tests": 104,
-    "passed": 104,
+    "commands": 29,
+    "successfulCommands": 29,
+    "tests": 222,
+    "passed": 222,
     "failed": 0,
     "skipped": 0
   }
