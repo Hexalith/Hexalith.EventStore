@@ -208,9 +208,11 @@ PRE_REVIEW_COMMAND_RESULTS = [
             ("candidate-limitations", "CandidateLimitationTextIsExact", 6),
             ("candidate-authority", "CandidateExternalAuthorityFailsClosed", 9),
             ("candidate-lifecycle", "RequiredSprintStatusMustBeUnique", 9),
-            ("retired-lifecycle-yaml-shapes", "RetiredSprintStatusYamlShapesFailClosed", 12),
-            ("retired-lifecycle-scoping", "RetiredSprintStatusTextOutsideExactDirectEntryPasses", 3),
-            ("unsupported-lifecycle-yaml", "UnsupportedSprintStatusYamlFailsClosed", 6),
+            ("retired-lifecycle-yaml-shapes", "RetiredSprintStatusYamlShapesFailClosed", 19),
+            ("supported-active-lifecycle-yaml", "SupportedActiveSprintStatusYamlPasses", 4),
+            ("unsupported-active-lifecycle-yaml", "UnsupportedActiveSprintStatusYamlFailsClosed", 16),
+            ("retired-lifecycle-scoping", "RetiredSprintStatusTextOutsideExactDirectEntryPasses", 10),
+            ("unsupported-lifecycle-yaml", "UnsupportedSprintStatusYamlFailsClosed", 66),
             ("missing-active-lifecycle", "MissingRequiredSprintStatusFailsClosed", 1),
             ("duplicate-authority-formatting", "DuplicateAuthorityInjectorSupportsJsonFormatting", 4),
             ("final-lifecycle-review", "FinalLifecycleReviewPassesInIsolation", 1),
@@ -1573,9 +1575,10 @@ def validate_handoff(
     validate_authority(document.get("authority"))
 
 
-def split_yaml_mapping_entry(content: str) -> tuple[str, str]:
+def split_yaml_mapping_entry(content: str) -> tuple[str, str, bool]:
     single_quoted = False
     double_quoted = False
+    verbatim_tag = False
     escaped = False
     skip_next = False
     for index, character in enumerate(content):
@@ -1597,29 +1600,106 @@ def split_yaml_mapping_entry(content: str) -> tuple[str, str]:
                     continue
                 single_quoted = False
             continue
+        if verbatim_tag:
+            if character == ">":
+                verbatim_tag = False
+            continue
         if character == '"':
             double_quoted = True
         elif character == "'":
             single_quoted = True
+        elif character == "!" and index + 1 < len(content) and content[index + 1] == "<":
+            verbatim_tag = True
         elif character == ":":
-            return content[:index].strip(), content[index + 1 :].strip()
+            remainder = content[index + 1 :]
+            has_separator = remainder == "" or remainder.startswith((" ", "\t"))
+            return content[:index].strip(" "), remainder.lstrip(" \t"), has_separator
     raise EvidenceError("Unsupported sprint-status mapping structure")
+
+
+def decode_yaml_double_quoted(value: str) -> str:
+    require(len(value) >= 2 and value.endswith('"'), "Unsupported sprint-status mapping structure")
+    escapes = {
+        "0": "\0",
+        "a": "\a",
+        "b": "\b",
+        "t": "\t",
+        "n": "\n",
+        "v": "\v",
+        "f": "\f",
+        "r": "\r",
+        "e": "\x1b",
+        " ": " ",
+        '"': '"',
+        "/": "/",
+        "\\": "\\",
+        "N": "\u0085",
+        "_": "\u00a0",
+        "L": "\u2028",
+        "P": "\u2029",
+    }
+    decoded: list[str] = []
+    index = 1
+    while index < len(value) - 1:
+        character = value[index]
+        require(character != '"' and ord(character) >= 0x20, "Unsupported sprint-status mapping structure")
+        if character != "\\":
+            decoded.append(character)
+            index += 1
+            continue
+
+        index += 1
+        require(index < len(value) - 1, "Unsupported sprint-status mapping structure")
+        escape = value[index]
+        if escape in escapes:
+            decoded.append(escapes[escape])
+            index += 1
+            continue
+
+        widths = {"x": 2, "u": 4, "U": 8}
+        require(escape in widths, "Unsupported sprint-status mapping structure")
+        width = widths[escape]
+        encoded = value[index + 1 : index + 1 + width]
+        require(len(encoded) == width and all(character in "0123456789abcdefABCDEF" for character in encoded),
+                "Unsupported sprint-status mapping structure")
+        code_point = int(encoded, 16)
+        require(code_point <= 0x10FFFF and not 0xD800 <= code_point <= 0xDFFF,
+                "Unsupported sprint-status mapping structure")
+        decoded.append(chr(code_point))
+        index += width + 1
+    return "".join(decoded)
+
+
+def decode_yaml_single_quoted(value: str) -> str:
+    require(len(value) >= 2 and value.endswith("'"), "Unsupported sprint-status mapping structure")
+    decoded: list[str] = []
+    index = 1
+    while index < len(value) - 1:
+        character = value[index]
+        if character != "'":
+            decoded.append(character)
+            index += 1
+            continue
+        require(index + 1 < len(value) - 1 and value[index + 1] == "'",
+                "Unsupported sprint-status mapping structure")
+        decoded.append("'")
+        index += 2
+    return "".join(decoded)
 
 
 def parse_yaml_string(value: str) -> str:
     require(value != "", "Unsupported sprint-status mapping structure")
+    require(value == value.strip(" ") and not value[0].isspace() and not value[-1].isspace(),
+            "Unsupported sprint-status mapping structure")
     require(not value.startswith(("!", "&", "*")), "Unsupported sprint-status mapping structure")
     if value.startswith('"'):
-        try:
-            parsed = json.loads(value)
-        except (json.JSONDecodeError, UnicodeDecodeError) as error:
-            raise EvidenceError("Unsupported sprint-status mapping structure") from error
-        require(isinstance(parsed, str), "Unsupported sprint-status mapping structure")
-        return parsed
+        return decode_yaml_double_quoted(value)
     if value.startswith("'"):
-        require(len(value) >= 2 and value.endswith("'"), "Unsupported sprint-status mapping structure")
-        return value[1:-1].replace("''", "'")
+        return decode_yaml_single_quoted(value)
     require('"' not in value and "'" not in value, "Unsupported sprint-status mapping structure")
+    require(value[0] not in "-?:,[]{}#&*!|>'\"%@`", "Unsupported sprint-status mapping structure")
+    require(re.search(r":[ \t]|:$", value) is None,
+            "Unsupported sprint-status mapping structure")
     return value
 
 
@@ -1649,67 +1729,417 @@ def strip_yaml_comment(value: str) -> str:
             double_quoted = True
         elif character == "'":
             single_quoted = True
-        elif character == "#" and (index == 0 or value[index - 1].isspace()):
-            return value[:index].rstrip()
+        elif character == "#" and (index == 0 or value[index - 1] in " \t"):
+            return value[:index].rstrip(" \t")
     require(not single_quoted and not double_quoted and not escaped, "Unsupported sprint-status mapping structure")
-    return value.rstrip()
+    return value.rstrip(" \t")
+
+
+def is_yaml_printable(character: str) -> bool:
+    code_point = ord(character)
+    return (
+        character in "\t\n\r"
+        or 0x20 <= code_point <= 0x7E
+        or code_point == 0x85
+        or 0xA0 <= code_point <= 0xD7FF
+        or 0xE000 <= code_point <= 0xFFFD
+        or 0x10000 <= code_point <= 0x10FFFF
+    )
+
+
+def normalize_single_yaml_document(document: str) -> str:
+    if document.startswith("\ufeff"):
+        document = document[1:]
+    require("\ufeff" not in document, "Sprint-status BOM is only permitted at stream start")
+    require(
+        all(is_yaml_printable(character) for character in document),
+        "Sprint-status YAML source contains forbidden characters",
+    )
+
+    document_started = False
+    document_ended = False
+    for line in document.splitlines():
+        if not line or line.strip(" \t") == "" or line.lstrip(" \t").startswith("#"):
+            continue
+        stripped = line.lstrip(" \t")
+        marker = re.match(r"(---|\.\.\.)(?:[ \t]|$)", stripped)
+        if marker is not None:
+            marker_text = marker.group(1)
+            supported_marker = (
+                line == stripped
+                and re.fullmatch(rf"{re.escape(marker_text)}(?:[ \t]+#.*)?[ \t]*", line) is not None
+            )
+            require(supported_marker, "Sprint-status YAML stream must contain exactly one document")
+        if marker is not None and marker.group(1) == "---":
+            require(
+                not document_started and not document_ended,
+                "Sprint-status YAML stream must contain exactly one document",
+            )
+            document_started = True
+            continue
+        if marker is not None and marker.group(1) == "...":
+            require(
+                document_started and not document_ended,
+                "Sprint-status YAML stream must contain exactly one document",
+            )
+            document_ended = True
+            continue
+        require(
+            not document_ended,
+            "Sprint-status YAML stream must contain exactly one document",
+        )
+        document_started = True
+
+    require(document_started, "Sprint-status YAML stream must contain exactly one document")
+    return document
+
+
+def parse_yaml_mapping_entry(content: str) -> tuple[str, str, bool]:
+    key_text, value_text, has_separator = split_yaml_mapping_entry(strip_yaml_comment(content))
+    return parse_yaml_string(key_text), value_text, has_separator
+
+
+def parse_yaml_scalar_node(value: str) -> tuple[str, str | None, bool]:
+    remaining = value.strip(" \t")
+    anchor: str | None = None
+    has_properties = False
+    while remaining.startswith(("!", "&")):
+        has_properties = True
+        if remaining.startswith("!<"):
+            end = remaining.find(">", 2)
+            require(end > 2, "Unsupported sprint-status mapping structure")
+            property_end = end + 1
+        else:
+            match = re.match(r"[!&][^ \t\[\]{},]+", remaining)
+            require(match is not None, "Unsupported sprint-status mapping structure")
+            property_end = match.end()
+        require(
+            property_end < len(remaining) and remaining[property_end] in " \t",
+            "Unsupported sprint-status mapping structure",
+        )
+        if remaining.startswith("&"):
+            require(anchor is None, "Unsupported sprint-status mapping structure")
+            anchor = remaining[1:property_end]
+        remaining = remaining[property_end:].lstrip(" \t")
+    return parse_yaml_string(remaining), anchor, has_properties
+
+
+def register_yaml_anchor(anchors: dict[str, str], anchor: str, value: str) -> None:
+    require(anchor not in anchors, "Unsupported sprint-status mapping structure")
+    anchors[anchor] = value
+
+
+def parse_top_level_mapping_entry(
+    content: str,
+    anchors: dict[str, str],
+) -> tuple[str, str, bool, bool]:
+    key_text, value_text, has_separator = split_yaml_mapping_entry(strip_yaml_comment(content))
+    alias_match = re.fullmatch(r"\*([^ \t\[\]{},:]+)", key_text.strip(" \t"))
+    if alias_match is not None:
+        alias = alias_match.group(1)
+        require(alias in anchors, "Unsupported sprint-status mapping structure")
+        return anchors[alias], value_text, has_separator, True
+
+    key, anchor, has_properties = parse_yaml_scalar_node(key_text)
+    if anchor is not None:
+        register_yaml_anchor(anchors, anchor, key)
+    return key, value_text, has_separator, has_properties
+
+
+def validate_top_level_value(value: str, anchors: dict[str, str]) -> None:
+    value = value.strip(" \t")
+    if value == "":
+        return
+
+    alias_match = re.fullmatch(r"\*([^ \t\[\]{},:]+)", value)
+    if alias_match is not None:
+        require(alias_match.group(1) in anchors, "Unsupported sprint-status mapping structure")
+        return
+
+    if value.startswith(("[", "{")):
+        fail("Unsupported sprint-status mapping structure")
+
+    scalar, anchor, _ = parse_yaml_scalar_node(value)
+    if anchor is not None:
+        register_yaml_anchor(anchors, anchor, scalar)
+
+
+def is_development_status_scalar(declaration: str) -> bool:
+    try:
+        scalar, _, _ = parse_yaml_scalar_node(declaration)
+        return scalar == "development_status"
+    except EvidenceError:
+        return False
+
+
+def strip_nested_sequence_item_prefixes(content: str) -> str:
+    content = content.lstrip(" \t")
+    while content.startswith("- "):
+        content = content[2:].lstrip(" \t")
+    return content
+
+
+def is_unsupported_development_status_declaration(
+    content: str,
+    anchors: dict[str, str],
+) -> bool:
+    try:
+        content = strip_yaml_comment(content)
+    except EvidenceError:
+        return False
+    content = strip_nested_sequence_item_prefixes(content)
+    if content.startswith("? "):
+        return is_development_status_scalar(content[2:].strip(" \t"))
+    try:
+        key, _, _, _ = parse_top_level_mapping_entry(content, anchors.copy())
+        return key == "development_status"
+    except EvidenceError:
+        return False
+
+
+def has_nested_yaml_property_anchor_or_alias(content: str) -> bool:
+    try:
+        content = strip_yaml_comment(content).strip(" \t")
+    except EvidenceError:
+        return False
+    content = strip_nested_sequence_item_prefixes(content)
+    if content.startswith("? "):
+        content = content[2:].lstrip(" \t")
+    if content.startswith(("!", "&", "*")):
+        return True
+    try:
+        key_text, value_text, _ = split_yaml_mapping_entry(content)
+    except EvidenceError:
+        return False
+    return key_text.strip(" \t").startswith(("!", "&", "*")) or value_text.startswith(("!", "&", "*"))
+
+
+def has_unquoted_yaml_flow_collection(content: str) -> bool:
+    try:
+        content = strip_yaml_comment(content)
+    except EvidenceError:
+        return False
+    single_quoted = False
+    double_quoted = False
+    escaped = False
+    skip_next = False
+    for index, character in enumerate(content):
+        if skip_next:
+            skip_next = False
+            continue
+        if double_quoted:
+            if escaped:
+                escaped = False
+            elif character == "\\":
+                escaped = True
+            elif character == '"':
+                double_quoted = False
+            continue
+        if single_quoted:
+            if character == "'":
+                if index + 1 < len(content) and content[index + 1] == "'":
+                    skip_next = True
+                    continue
+                single_quoted = False
+            continue
+        if character == '"':
+            double_quoted = True
+        elif character == "'":
+            single_quoted = True
+        elif character in "[]{}":
+            return True
+    return False
+
+
+def explicit_key_targets_development_status(
+    lines: list[str],
+    start: int,
+    anchors: dict[str, str],
+) -> bool:
+    first = strip_yaml_comment(lines[start]).strip(" \t")
+    declarations: list[str] = []
+    if first.startswith("? "):
+        declarations.append(first[2:].strip(" \t"))
+    for line in lines[start + 1 :]:
+        if not line or line.strip(" ") == "" or line.lstrip(" ").startswith("#"):
+            continue
+        if not line.startswith((" ", "\t")):
+            break
+        declarations.append(strip_yaml_comment(line).strip(" \t"))
+
+    for declaration in declarations:
+        if not declaration:
+            continue
+        alias_match = re.fullmatch(r"\*([^ \t\[\]{},:]+)", declaration)
+        if alias_match is not None:
+            alias = alias_match.group(1)
+            require(alias in anchors, "Unsupported sprint-status mapping structure")
+            if anchors[alias] == "development_status":
+                return True
+            continue
+        if declaration.startswith(("|", ">")):
+            continue
+        if is_development_status_scalar(declaration):
+            return True
+    for index, declaration in enumerate(declarations[:-1]):
+        if declaration.startswith('"') and declaration.endswith("\\"):
+            continuation = declaration[:-1] + declarations[index + 1].lstrip(" \t")
+            if is_development_status_scalar(continuation):
+                return True
+    return False
+
+
+def explicit_mapping_value_index(lines: list[str], start: int) -> int:
+    for index in range(start + 1, len(lines)):
+        line = lines[index]
+        if not line or line.strip(" \t") == "" or line.lstrip(" \t").startswith("#"):
+            continue
+        if line.startswith((" ", "\t")):
+            continue
+        content = strip_yaml_comment(line)
+        require(
+            re.fullmatch(r":[ \t]*(?:.*)?", content) is not None,
+            "Unsupported sprint-status mapping structure",
+        )
+        return index
+    fail("Unsupported sprint-status mapping structure")
 
 
 def parse_development_status(document: str) -> dict[str, str]:
+    document = normalize_single_yaml_document(document)
     lines = document.splitlines()
-    mapping_lines: list[tuple[int, int]] = []
-    for index, line in enumerate(lines):
-        require("\t" not in line[: len(line) - len(line.lstrip())], "Unsupported sprint-status mapping structure")
-        if not line or line.lstrip().startswith("#"):
+    mapping_lines: list[int] = []
+    unsupported_nested_lines: list[int] = []
+    anchored_scalars: dict[str, str] = {}
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        if not line or line.strip(" \t") == "" or line.lstrip(" \t").startswith("#"):
+            index += 1
             continue
-        indentation = len(line) - len(line.lstrip(" "))
-        if indentation != 0:
+        if line.startswith("\t"):
+            fail("Unsupported sprint-status mapping structure")
+        if line.startswith(" "):
+            content = line.lstrip(" ")
+            nested_content = strip_nested_sequence_item_prefixes(content)
+            require(
+                nested_content != "?" and not nested_content.startswith("? "),
+                "Unsupported sprint-status mapping structure",
+            )
+            if has_nested_yaml_property_anchor_or_alias(nested_content) or has_unquoted_yaml_flow_collection(nested_content):
+                unsupported_nested_lines.append(index)
+            require(
+                not is_unsupported_development_status_declaration(nested_content, anchored_scalars),
+                "Unsupported sprint-status mapping structure",
+            )
+            index += 1
             continue
-        key_text, value_text = split_yaml_mapping_entry(strip_yaml_comment(line.strip()))
-        if parse_yaml_string(key_text) == "development_status":
-            require(value_text == "", "Unsupported sprint-status mapping structure")
-            mapping_lines.append((index, indentation))
+        if line in {"---", "..."}:
+            index += 1
+            continue
+        content = strip_yaml_comment(line).strip(" \t")
+        if content == "?" or content.startswith("? "):
+            require(
+                not explicit_key_targets_development_status(lines, index, anchored_scalars),
+                "Unsupported sprint-status mapping structure",
+            )
+            index = explicit_mapping_value_index(lines, index) + 1
+            continue
+        try:
+            key, value_text, has_separator, wrapped_key = parse_top_level_mapping_entry(line, anchored_scalars)
+        except EvidenceError:
+            fail("Unsupported sprint-status mapping structure")
+        require(has_separator, "Unsupported sprint-status mapping structure")
+        if key == "development_status":
+            require(not wrapped_key and value_text == "", "Unsupported sprint-status mapping structure")
+            mapping_lines.append(index)
+        else:
+            validate_top_level_value(value_text, anchored_scalars)
+        index += 1
     require(len(mapping_lines) == 1, "Lifecycle development_status mapping is missing or ambiguous")
 
-    start, mapping_indentation = mapping_lines[0]
+    start = mapping_lines[0]
+    end = next(
+        (
+            index
+            for index in range(start + 1, len(lines))
+            if lines[index]
+            and lines[index].strip(" \t") != ""
+            and not lines[index].lstrip(" \t").startswith("#")
+            and not lines[index].startswith((" ", "\t"))
+        ),
+        len(lines),
+    )
+    require(
+        all(start < index < end for index in unsupported_nested_lines),
+        "Unsupported sprint-status mapping structure",
+    )
     entries: dict[str, str] = {}
     entry_indentation: int | None = None
     unsupported = False
+    retired_key = "4-8-durable-admission-evidence-ledger"
+    bounded_lifecycle_keys = {
+        "epic-4",
+        "4-9-trusted-admission-contract-and-protected-identity",
+        "4-10-digest-directory-rotation-and-key-retirement",
+        "4-11-admission-state-machine-and-current-fence-enforcement",
+        "4-12-expiry-compaction-and-tombstone-retention",
+        "4-13-legacy-admission-migration-and-fail-closed-reconciliation",
+        "4-14-oq8-multi-host-production-evidence",
+        "4-15-oq8-platform-closure-and-handoff",
+    }
     for line in lines[start + 1 :]:
-        if not line.strip() or line.lstrip().startswith("#"):
+        if not line or line.strip(" ") == "" or line.lstrip(" ").startswith("#"):
             continue
-        leading = line[: len(line) - len(line.lstrip())]
-        require(all(character in " \t" for character in leading), "Unsupported sprint-status mapping structure")
+        if line.startswith("\t"):
+            unsupported = True
+            continue
         indentation = len(line) - len(line.lstrip(" "))
-        if indentation <= mapping_indentation:
+        if indentation == 0:
+            if line[0].isspace():
+                unsupported = True
+                continue
             break
+        content = line[indentation:]
+        if content[0].isspace():
+            unsupported = True
+            continue
         if entry_indentation is None:
             entry_indentation = indentation
         if indentation != entry_indentation:
             unsupported = True
             continue
-        content = strip_yaml_comment(line.strip())
         if content.startswith("- "):
             unsupported = True
             continue
-        key_text, value_text = split_yaml_mapping_entry(content)
-        key = parse_yaml_string(key_text)
+        try:
+            key, value_text, has_separator = parse_yaml_mapping_entry(content)
+        except EvidenceError:
+            unsupported = True
+            continue
         require(key != "<<", "Sprint-status merge keys are forbidden")
-        require(key not in entries, f"Lifecycle status is missing or ambiguous: {key}")
-        entries[key] = value_text
-        if value_text == "" or value_text[0] in "[{|>":
+        require(key != retired_key, f"Retired lifecycle key is forbidden: {retired_key}")
+        if key in entries:
+            if key in bounded_lifecycle_keys:
+                fail(f"Lifecycle status is missing or ambiguous: {key}")
+            fail("Lifecycle status mapping contains a duplicate key")
+        try:
+            value = parse_yaml_string(value_text)
+            require(value not in {"~", "null", "Null", "NULL"}, "Unsupported sprint-status mapping structure")
+        except EvidenceError:
+            value = ""
+            unsupported = True
+        entries[key] = value
+        if not has_separator:
             unsupported = True
 
-    retired_key = "4-8-durable-admission-evidence-ledger"
-    require(retired_key not in entries, f"Retired lifecycle key is forbidden: {retired_key}")
     require(not unsupported, "Unsupported sprint-status mapping structure")
     return entries
 
 
 def require_unique_sprint_status(statuses: dict[str, str], key: str, expected: str) -> None:
     require(key in statuses, f"Lifecycle status is missing or ambiguous: {key}")
-    value = parse_yaml_string(statuses[key])
-    require(value == expected, f"Lifecycle status drift: {key}")
+    require(statuses[key] == expected, f"Lifecycle status drift: {key}")
 
 
 def parse_unique_frontmatter_status(path: Path, story: str) -> str:

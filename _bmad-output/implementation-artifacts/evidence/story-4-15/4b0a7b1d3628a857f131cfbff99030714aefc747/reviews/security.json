@@ -4,15 +4,16 @@
   "reviewer": "Security Reviewer",
   "reviewedOn": "2026-08-12",
   "decision": "approved",
-  "subjectSha256": "1f0867a67b26728b08849646d1092c7c558c844ab6b59bc8453c38f94a866cbe",
+  "subjectSha256": "e58de2008f00af08e81e99198d42d82e45e2b15b2cdb9cb283f8a93f518d6ea9",
   "acceptedScope": "protected-data leakage gates, current-fence evidence, sanitized-state limitation, and external authority exclusions",
   "acceptedLimitationsSha256": "3853e7001a78da7cc0c3824392e43e9f5b286b65ce8d101167991b133ebf2d92",
   "findings": [
-    "No blocking security findings: Story 4.14 capture bytes, sanitized projections, and committed Dapr runtime pin 1.18.1 remain unchanged.",
-    "Retired Story 4.8 rejection remains scoped to direct development_status entries; NBSP-prefixed and deeper-indented rows fail closed instead of escaping the mapping.",
-    "Fresh versus committed runtime modes stay separated; pre-review still rejects capture/support combinations.",
-    "Subject and receipt authority blocks keep every external-authority field false after resealing to the patched validator and test bytes.",
-    "Limitation text continues to disclose sanitized structural projections and the source-only handoff boundary."
+    "Exact subject and all eight declared bindings match current bytes; validator SHA-256 is 4a57c79040a0687ea843b8ccbcb01d9a11ae199d8b52a6e9ca2b489aba90f731.",
+    "The independent security review passed 184 focused integrity cases covering lifecycle fail-closed behavior, binding integrity, freshness, manifests, receipts, handoff, and authority boundaries.",
+    "Protected-content scans, private-path rejection, bounded diagnostics, sanitized evidence constraints, and current-fence evidence remain enforced.",
+    "Attacker-controlled duplicate keys produce a generic bounded diagnostic without reflecting the hostile key; known lifecycle diagnostics contain only fixed trusted keys.",
+    "Immutable Story 4.14 capture evidence and the landed capability identity remain unchanged.",
+    "The subject and limitations exclude every external authority class and restrict approval to the exact source-only EventStore subject."
   ],
   "authority": {
     "eventStorePlatformComplete": true,

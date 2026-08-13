@@ -4,15 +4,16 @@
   "reviewer": "Murat (Test Architect)",
   "reviewedOn": "2026-08-12",
   "decision": "approved",
-  "subjectSha256": "1f0867a67b26728b08849646d1092c7c558c844ab6b59bc8453c38f94a866cbe",
+  "subjectSha256": "e58de2008f00af08e81e99198d42d82e45e2b15b2cdb9cb283f8a93f518d6ea9",
   "acceptedScope": "production/deterministic evidence coverage, commands and counts, negative validation, and matrix coverage",
   "acceptedLimitationsSha256": "3853e7001a78da7cc0c3824392e43e9f5b286b65ce8d101167991b133ebf2d92",
   "findings": [
-    "Exact subject binds validator 1bd7afa508977685f40ac3c7ee76999b6974aee7b30cbd4df0aa40b44e7bd213, test source c662d445fa3cfb90641949a3b1b9d4d4f89a41014e467a4062d019fc80ea664e, and pre-review execution 320941d614d03cf1d45424542820737a664062712b96b1670f49b4c1a464bb26.",
-    "Pre-review execution records 27 successful commands and 128 receipt-independent tests, including UnsupportedSprintStatusYamlFailsClosed at 6 cases for duplicate development_status and deeper-indented retired-key shapes.",
-    "Stale createdOn/executedOn/reviewedOn mutations now derive the prior calendar day from the sealed fixture date rather than a hardcoded literal.",
-    "CandidateSemanticMutationsFailClosed remains 48/48 with resealed date-guard coverage under EvidenceDriftAndMissingApprovalFailClosed for final receipts.",
-    "This receipt approves only the exact refreshed subject and claims no release, Folders closure, package, deployment, runtime-pin, migration, external-repository, or final-consumer authority."
+    "All eight subject bindings match current bytes, including validator identity 15e5758572e07bbdf282838ade4b6b1f3915615bc0de6a4d4add8a2d951133eb, tests 36e3a013267a2c7d23fe33261986fabc50510075f66543dc906b07c59fbc5f8c, execution record 33ad16725f01477c75eff8f87abcbc6e303a35ebe73ff34ef862af17500b9e6c, and immutable Story 4.14 evidence.",
+    "Execution evidence is exact: 29 of 29 commands and 222 of 222 tests passed with zero failures or skips; the independent Release build had zero warnings and errors.",
+    "All 66 unsupported lifecycle YAML cases pass, including recursively nested sequence prefixes and deeper plain, escaped, flow, anchor, alias, property, and explicit-key probes.",
+    "Freshness guards cover stale createdOn, resealed stale executedOn, and downstream-resealed stale reviewedOn values.",
+    "Isolated pre-review, final lifecycle, date-drift, active-status, retired-key, scoping, and preservation coverage all pass; the pre-assembly final chain was intentionally stale.",
+    "Approval is limited to production and deterministic evidence coverage, command counts, negative validation, and matrix coverage for this exact source-only subject; no external authority is granted."
   ],
   "authority": {
     "eventStorePlatformComplete": true,

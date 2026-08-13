@@ -9,11 +9,11 @@
   },
   "validator": {
     "path": "tools/validate-oq8-platform-evidence.py",
-    "sha256": "1bd7afa508977685f40ac3c7ee76999b6974aee7b30cbd4df0aa40b44e7bd213"
+    "sha256": "4a57c79040a0687ea843b8ccbcb01d9a11ae199d8b52a6e9ca2b489aba90f731"
   },
   "testSource": {
     "path": "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs",
-    "sha256": "c662d445fa3cfb90641949a3b1b9d4d4f89a41014e467a4062d019fc80ea664e"
+    "sha256": "36e3a013267a2c7d23fe33261986fabc50510075f66543dc906b07c59fbc5f8c"
   },
   "finalValidation": {
     "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests -noColor",
@@ -88,8 +88,28 @@
       "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -method Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests.RetiredSprintStatusYamlShapesFailClosed -noColor",
       "exitCode": 0,
       "result": "passed",
-      "tests": 12,
-      "passed": 12,
+      "tests": 19,
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "supported-active-lifecycle-yaml",
+      "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -method Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests.SupportedActiveSprintStatusYamlPasses -noColor",
+      "exitCode": 0,
+      "result": "passed",
+      "tests": 4,
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "unsupported-active-lifecycle-yaml",
+      "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -method Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests.UnsupportedActiveSprintStatusYamlFailsClosed -noColor",
+      "exitCode": 0,
+      "result": "passed",
+      "tests": 16,
+      "passed": 16,
       "failed": 0,
       "skipped": 0
     },
@@ -98,8 +118,8 @@
       "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -method Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests.RetiredSprintStatusTextOutsideExactDirectEntryPasses -noColor",
       "exitCode": 0,
       "result": "passed",
-      "tests": 3,
-      "passed": 3,
+      "tests": 10,
+      "passed": 10,
       "failed": 0,
       "skipped": 0
     },
@@ -108,8 +128,8 @@
       "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -method Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests.UnsupportedSprintStatusYamlFailsClosed -noColor",
       "exitCode": 0,
       "result": "passed",
-      "tests": 6,
-      "passed": 6,
+      "tests": 66,
+      "passed": 66,
       "failed": 0,
       "skipped": 0
     },
@@ -285,10 +305,10 @@
     }
   ],
   "summary": {
-    "commands": 27,
-    "successfulCommands": 27,
-    "tests": 128,
-    "passed": 128,
+    "commands": 29,
+    "successfulCommands": 29,
+    "tests": 222,
+    "passed": 222,
     "failed": 0,
     "skipped": 0
   }

@@ -26,15 +26,15 @@
     },
     "closureValidator": {
       "path": "validator-sha256.txt",
-      "sha256": "27e7ab002353a230f48fc065fd586161b21ac8a5a15065b5bd0c792211f6c6c7"
+      "sha256": "15e5758572e07bbdf282838ade4b6b1f3915615bc0de6a4d4add8a2d951133eb"
     },
     "closureTests": {
       "path": "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs",
-      "sha256": "c662d445fa3cfb90641949a3b1b9d4d4f89a41014e467a4062d019fc80ea664e"
+      "sha256": "36e3a013267a2c7d23fe33261986fabc50510075f66543dc906b07c59fbc5f8c"
     },
     "preReviewExecution": {
       "path": "pre-review-execution.json",
-      "sha256": "320941d614d03cf1d45424542820737a664062712b96b1670f49b4c1a464bb26"
+      "sha256": "33ad16725f01477c75eff8f87abcbc6e303a35ebe73ff34ef862af17500b9e6c"
     },
     "captureManifest": {
       "path": "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425/evidence-sha256.txt",
