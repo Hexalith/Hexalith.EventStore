@@ -2,16 +2,17 @@
   "schema": "hexalith.eventstore.story-4-15-source-only-handoff/v1",
   "story": "4.15",
   "landedSourceCommit": "4b0a7b1d3628a857f131cfbff99030714aefc747",
-  "reviewSubjectSha256": "e58de2008f00af08e81e99198d42d82e45e2b15b2cdb9cb283f8a93f518d6ea9",
+  "reviewSubjectSha256": "4c4e4674f40477fea9af6513fabe58d6590305dda0816822318596ea23ec9389",
   "limitationsSha256": "3853e7001a78da7cc0c3824392e43e9f5b286b65ce8d101167991b133ebf2d92",
   "reviewReceipts": {
-    "architecture": "202bfbace5651a087cae3749726bea239d267c834c12626d941966e6a761a266",
-    "security": "8cb18071d6d64eba5dc21216339b6080da2adeace917daadd4705492342dbb56",
-    "test": "9310fb6bf97dba07442ac3ce2f4d0b1dc48dd079ea5e2b8d502f505ada9a9203"
+    "architecture": "20cc63a5253260d94441b62e75d9e28761d1bd7eab92efec381995c31d2acc85",
+    "security": "b0b5defacb528403495308e95d99a85019cc3acd92aa13226b541a92137b347c",
+    "test": "39ec79c15decfbaa9bbe16a1ecb94fc2c7009cf8c9cd891c097acecc12764b8b"
   },
   "consumerInstructions": {
     "mode": "source-only",
-    "verifyCommand": "python3 tools/validate-oq8-platform-evidence.py",
+    "installCommand": "python3 -m venv .oq8-python && .oq8-python/bin/python -m pip install --requirement requirements-oq8.txt",
+    "verifyCommand": ".oq8-python/bin/python tools/validate-oq8-platform-evidence.py",
     "designBytesRequiredFromFolders": true,
     "sourcePathRule": "Use only the exact landed EventStore commit after the closure validator passes against unchanged capability paths."
   },

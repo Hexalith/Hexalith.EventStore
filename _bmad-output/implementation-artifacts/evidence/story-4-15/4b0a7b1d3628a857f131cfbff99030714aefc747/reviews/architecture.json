@@ -2,18 +2,18 @@
   "schema": "hexalith.eventstore.story-4-15-review-receipt/v1",
   "role": "architecture",
   "reviewer": "Winston (System Architect)",
-  "reviewedOn": "2026-08-12",
+  "reviewedOn": "2026-08-13",
   "decision": "approved",
-  "subjectSha256": "e58de2008f00af08e81e99198d42d82e45e2b15b2cdb9cb283f8a93f518d6ea9",
+  "subjectSha256": "4c4e4674f40477fea9af6513fabe58d6590305dda0816822318596ea23ec9389",
   "acceptedScope": "OQ8 design reference, invariant crosswalk, landed-source identity, architecture boundaries, and source-only handoff",
   "acceptedLimitationsSha256": "3853e7001a78da7cc0c3824392e43e9f5b286b65ce8d101167991b133ebf2d92",
   "findings": [
-    "All eight subject bindings match current bytes, including validator identity 15e5758572e07bbdf282838ade4b6b1f3915615bc0de6a4d4add8a2d951133eb, tests 36e3a013267a2c7d23fe33261986fabc50510075f66543dc906b07c59fbc5f8c, and pre-review execution 33ad16725f01477c75eff8f87abcbc6e303a35ebe73ff34ef862af17500b9e6c.",
-    "The OQ8 design reference, invariant crosswalk, landed-source identity, architecture boundaries, and source-only handoff are consistent for this exact subject.",
-    "The corrected validator derives active and retired lifecycle decisions from one normalized development_status mapping and fails closed across root, indented, sequence, explicit-key, alias, anchor, property, and flow shadow families.",
-    "Landed source 4b0a7b1d3628a857f131cfbff99030714aefc747 / tree 21f9819026a1338efbab70d69991b3570c1b54f7 and immutable Story 4.14 capture identity remain unchanged.",
-    "Public OQ8 documents and source-only handoff semantics still exclude release, Folders final closure, package, registry, deployment, runtime-pin, consumer-migration, external-repository, and final-consumer authority.",
-    "Approval is limited to EventStore platform completeness for this exact subject; it grants no external or Folders-owned authority."
+    "All twelve subject bindings, four public-document bindings, nested Story 4.14 manifest entries, and nine crosswalk evidence bindings independently match current bytes.",
+    "The 1.0.0 design reference and SHA-256 1a55b0302e91233e12db91e6e245f0a22d6bf13fcf6cdf5ee0cbe5759f08dcd8 are consistent throughout; the unavailable design bytes remain Folders-owned as explicitly limited.",
+    "OQ8-1 through OQ8-8 form a coherent invariant-to-story and evidence crosswalk with no architecture-scope corrective finding.",
+    "Landed commit 4b0a7b1d3628a857f131cfbff99030714aefc747 resolves to tree 21f9819026a1338efbab70d69991b3570c1b54f7; all 26 landed paths reconcile, ancestry holds, and all 24 non-evolved capability paths remain unchanged.",
+    "Architecture boundaries accurately distinguish exact landed-tree authority from limited current-path verification and later unbound repository work, while source-only bootstrap and verification instructions remain explicit and consistent.",
+    "Approval is limited to EventStore platform completeness and the source-only handoff for this exact subject; it grants no release, Folders final closure, package, registry, deployment, runtime-pin, consumer-migration, external-repository, or final-consumer authority."
   ],
   "authority": {
     "eventStorePlatformComplete": true,

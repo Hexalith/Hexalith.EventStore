@@ -41,6 +41,104 @@ public sealed class Oq8PlatformClosureTests
     }
 
     /// <summary>
+    /// Verifies source-only consumers receive one exact dependency bootstrap before validation.
+    /// </summary>
+    [Fact]
+    public void SourceOnlyConsumerBootstrapInstructionsAreExactAndOrdered()
+    {
+        string root = FindRepositoryRoot();
+        string closure = Path.Combine(
+            root,
+            "_bmad-output",
+            "implementation-artifacts",
+            "evidence",
+            "story-4-15",
+            LandedSource);
+        JsonObject subject = LoadObject(Path.Combine(closure, "review-subject.json"));
+        JsonObject handoff = LoadObject(Path.Combine(closure, "source-only-handoff.json"));
+        JsonObject reviewedInstructions = subject["handoff"]!["consumerInstructions"]!.AsObject();
+        JsonObject deliveredInstructions = handoff["consumerInstructions"]!.AsObject();
+        string[] expectedFields = ["mode", "installCommand", "verifyCommand", "designBytesRequiredFromFolders", "sourcePathRule"];
+
+        reviewedInstructions.Select(item => item.Key).ShouldBe(expectedFields, ignoreOrder: true);
+        deliveredInstructions.Select(item => item.Key).ShouldBe(expectedFields, ignoreOrder: true);
+        deliveredInstructions.ToJsonString().ShouldBe(reviewedInstructions.ToJsonString());
+        deliveredInstructions["installCommand"]!.GetValue<string>()
+            .ShouldBe("python3 -m venv .oq8-python && .oq8-python/bin/python -m pip install --requirement requirements-oq8.txt");
+        deliveredInstructions["verifyCommand"]!.GetValue<string>()
+            .ShouldBe(".oq8-python/bin/python tools/validate-oq8-platform-evidence.py");
+
+        string[] documents =
+        [
+            "docs/concepts/architecture-overview.md",
+            "docs/concepts/command-lifecycle.md",
+            "docs/guides/configuration-reference.md",
+            "docs/reference/command-api.md",
+        ];
+        foreach (string relative in documents)
+        {
+            string text = File.ReadAllText(Path.Combine(root, relative));
+            int create = text.IndexOf("python3 -m venv .oq8-python", StringComparison.Ordinal);
+            int install = text.IndexOf(".oq8-python/bin/python -m pip install --requirement requirements-oq8.txt", StringComparison.Ordinal);
+            int verify = text.IndexOf(".oq8-python/bin/python tools/validate-oq8-platform-evidence.py", StringComparison.Ordinal);
+            create.ShouldBeGreaterThanOrEqualTo(0);
+            install.ShouldBeGreaterThan(create);
+            install.ShouldBeGreaterThanOrEqualTo(0);
+            verify.ShouldBeGreaterThan(install);
+        }
+    }
+
+    /// <summary>
+    /// Verifies absent, broken, wrong-version, and shadowed YAML dependencies fail with bounded diagnostics.
+    /// </summary>
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("import-failure")]
+    [InlineData("wrong-version")]
+    [InlineData("shadowed-pinned-version")]
+    public void InvalidPyYamlDependenciesFailClosed(string shape)
+    {
+        string root = FindRepositoryRoot();
+        string fixture = CreateCandidateFixture(root);
+        string shadow = Path.Combine(Path.GetTempPath(), "oq8-yaml-shadow-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(shadow);
+        try
+        {
+            bool disableSitePackages = shape == "missing";
+            if (!disableSitePackages)
+            {
+                File.WriteAllText(
+                    Path.Combine(shadow, "yaml.py"),
+                    shape switch
+                    {
+                        "import-failure" => "raise RuntimeError('hostile import detail must stay hidden')\n",
+                        "wrong-version" => "__version__ = '0.0.0'\n",
+                        "shadowed-pinned-version" => "__version__ = '6.0.3'\n",
+                        _ => throw new ArgumentOutOfRangeException(nameof(shape), shape, "Unknown dependency shape."),
+                    });
+            }
+
+            (int exitCode, string output) = RunValidator(
+                root,
+                fixture,
+                preReview: true,
+                pythonPathPrefix: disableSitePackages ? null : shadow,
+                disableSitePackages: disableSitePackages);
+
+            exitCode.ShouldBe(1, output);
+            output.ShouldContain("Pinned PyYAML 6.0.3 dependency is unavailable or untrusted");
+            output.ShouldNotContain("Traceback");
+            output.ShouldNotContain("hostile import detail");
+            output.Length.ShouldBeLessThan(4096);
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+            Directory.Delete(shadow, recursive: true);
+        }
+    }
+
+    /// <summary>
     /// Verifies fresh capture validation requires exactly one explicit runtime while
     /// committed Story 4.14 evidence remains pinned to its observed runtime.
     /// </summary>
@@ -516,6 +614,7 @@ public sealed class Oq8PlatformClosureTests
     [InlineData("candidate-source-path-set")]
     [InlineData("candidate-subject-binding")]
     [InlineData("candidate-subject-test-binding")]
+    [InlineData("candidate-subject-dependency-binding")]
     [InlineData("candidate-test-source-body")]
     [InlineData("candidate-execution-validator")]
     [InlineData("candidate-execution-test-source")]
@@ -793,7 +892,7 @@ public sealed class Oq8PlatformClosureTests
     [InlineData("single-quoted-scalars")]
     [InlineData("single-quoted-escape")]
     [InlineData("double-quoted-escapes")]
-    [InlineData("tab-separator")]
+    [InlineData("sole-explicit-development-status")]
     public void SupportedActiveSprintStatusYamlPasses(string shape)
     {
         string root = FindRepositoryRoot();
@@ -821,6 +920,7 @@ public sealed class Oq8PlatformClosureTests
     /// <param name="shape">The unsupported active-entry YAML shape.</param>
     [Theory]
     [InlineData("missing-separator")]
+    [InlineData("tab-separator")]
     [InlineData("unicode-separator")]
     [InlineData("unicode-leading-whitespace")]
     [InlineData("malformed-single-quoted-key")]
@@ -871,6 +971,8 @@ public sealed class Oq8PlatformClosureTests
     [InlineData("unrelated-top-level-tag-anchor-alias")]
     [InlineData("unrelated-top-level-anchor-tag-alias")]
     [InlineData("unrelated-top-level-uri-tag-anchor-alias")]
+    [InlineData("balanced-top-level-flow-sequence")]
+    [InlineData("balanced-top-level-flow-mapping")]
     public void RetiredSprintStatusTextOutsideExactDirectEntryPasses(string shape)
     {
         string root = FindRepositoryRoot();
@@ -937,6 +1039,7 @@ public sealed class Oq8PlatformClosureTests
     [InlineData("non-initial-bom")]
     [InlineData("non-printable-source")]
     [InlineData("hostile-duplicate-key")]
+    [InlineData("duplicate-unrelated-key")]
     [InlineData("tagged-development-status-inline")]
     [InlineData("tagged-anchored-development-status-inline")]
     [InlineData("anchored-tagged-development-status-inline")]
@@ -945,8 +1048,6 @@ public sealed class Oq8PlatformClosureTests
     [InlineData("malformed-top-level-scalar")]
     [InlineData("indented-shadow-development-status")]
     [InlineData("unclosed-top-level-flow")]
-    [InlineData("balanced-top-level-flow-sequence")]
-    [InlineData("balanced-top-level-flow-mapping")]
     [InlineData("balanced-top-level-flow-double-comma-sequence")]
     [InlineData("balanced-top-level-flow-leading-comma-sequence")]
     [InlineData("balanced-top-level-flow-double-comma-mapping")]
@@ -963,6 +1064,13 @@ public sealed class Oq8PlatformClosureTests
     [InlineData("nested-triple-sequence-development-status-escaped")]
     [InlineData("nested-explicit-sequence-development-status")]
     [InlineData("nested-explicit-sequence-development-status-escaped")]
+    [InlineData("nested-unclosed-quoted-scalar")]
+    [InlineData("malformed-explicit-key-unclosed-flow")]
+    [InlineData("multiple-tag-properties")]
+    [InlineData("anchored-root-mapping")]
+    [InlineData("tagged-root-mapping")]
+    [InlineData("tagged-anchored-root-mapping")]
+    [InlineData("oversized-source")]
     public void UnsupportedSprintStatusYamlFailsClosed(string shape)
     {
         string root = FindRepositoryRoot();
@@ -978,15 +1086,33 @@ public sealed class Oq8PlatformClosureTests
                 shape switch
                 {
                     "merge-key" => "Sprint-status merge keys are forbidden",
-                    "duplicate-development-status" => "Lifecycle development_status mapping is missing or ambiguous",
+                    "duplicate-development-status" or "tagged-development-status" or
+                        "anchored-development-status" or "tagged-anchored-development-status" or
+                        "anchored-tagged-development-status" or "uri-tagged-development-status" or
+                        "tagged-escaped-development-status" or "anchored-escaped-development-status" or
+                        "uri-tagged-escaped-development-status" or "tagged-anchored-escaped-development-status" or
+                        "explicit-development-status" or "explicit-escaped-development-status" or
+                        "explicit-tagged-escaped-development-status" or "multiline-explicit-development-status" or
+                        "multiline-explicit-escaped-development-status" or
+                        "multiline-explicit-commented-development-status" or
+                        "multiline-explicit-property-development-status" or
+                        "literal-explicit-development-status" or "folded-explicit-development-status" or
+                        "continued-quoted-explicit-development-status" or
+                        "implicit-aliased-development-status" or "spaced-implicit-aliased-development-status" or
+                        "tagged-development-status-inline" or "tagged-anchored-development-status-inline" or
+                        "anchored-tagged-development-status-inline" or "aliased-development-status-inline" =>
+                        "Lifecycle development_status mapping is missing or ambiguous",
+                    "tagged-retired-key" or "anchored-retired-key" =>
+                        "Retired lifecycle key is forbidden: 4-8-durable-admission-evidence-ledger",
                     "normalized-duplicate-x" or "normalized-duplicate-u" or "normalized-duplicate-U" =>
                         "Lifecycle status is missing or ambiguous: epic-4",
-                    "multiple-documents" or "inline-document-start" or "indented-document-start" or
-                        "indented-inline-document-start" or "inline-document-end" or "indented-document-end" =>
+                    "multiple-documents" =>
                         "Sprint-status YAML stream must contain exactly one document",
+                    "inline-document-start" => "Sprint-status YAML stream must contain exactly one document",
                     "non-initial-bom" => "Sprint-status BOM is only permitted at stream start",
                     "non-printable-source" => "Sprint-status YAML source contains forbidden characters",
-                    "hostile-duplicate-key" => "Lifecycle status mapping contains a duplicate key",
+                    "oversized-source" => "Sprint-status YAML source exceeds the bounded size limit",
+                    "duplicate-unrelated-key" => "Lifecycle status mapping contains a duplicate key",
                     _ => "Unsupported sprint-status mapping structure",
                 });
             output.ShouldNotContain("Traceback");
@@ -1503,6 +1629,13 @@ public sealed class Oq8PlatformClosureTests
                 WriteObject(subjectPath, subject);
                 break;
             }
+            case "candidate-subject-dependency-binding":
+            {
+                JsonObject subject = LoadObject(subjectPath);
+                subject["bindings"]!["validatorRequirements"]!["sha256"] = new string('0', 64);
+                WriteObject(subjectPath, subject);
+                break;
+            }
             case "candidate-test-source-body":
                 File.AppendAllText(
                     Path.Combine(fixture, "tests", "Hexalith.EventStore.Contracts.Tests", "Packaging", "Oq8PlatformClosureTests.cs"),
@@ -1539,7 +1672,7 @@ public sealed class Oq8PlatformClosureTests
             case "candidate-execution-command-count-zero":
             {
                 JsonObject execution = LoadObject(executionPath);
-                execution["commands"]![2]!["tests"] = 0;
+                execution["commands"]![3]!["tests"] = 0;
                 WriteObject(executionPath, execution);
                 break;
             }
@@ -1566,7 +1699,7 @@ public sealed class Oq8PlatformClosureTests
                 break;
             }
             case "candidate-duplicate-subject":
-                InsertDuplicateJsonField(subjectPath, "  \"createdOn\": \"2026-08-12\",", "  \"createdOn\": \"2026-08-12\",\n  \"createdOn\": \"2026-08-12\",");
+                InsertDuplicateJsonField(subjectPath, "  \"createdOn\": \"2026-08-13\",", "  \"createdOn\": \"2026-08-13\",\n  \"createdOn\": \"2026-08-13\",");
                 break;
             case "candidate-duplicate-authority":
                 InsertDuplicateJsonField(subjectPath, "    \"releaseApproved\": false,", "    \"releaseApproved\": false,\n    \"releaseApproved\": false,");
@@ -1840,12 +1973,13 @@ public sealed class Oq8PlatformClosureTests
         "candidate-source-path-set" => "Current bound source path declaration drift",
         "candidate-subject-binding" => "Review subject binding drift: closureCrosswalk",
         "candidate-subject-test-binding" => "Review subject binding drift: closureTests",
+        "candidate-subject-dependency-binding" => "Review subject binding drift: validatorRequirements",
         "candidate-test-source-body" => "Pre-review execution test-source identity drift",
         "candidate-execution-validator" => "Pre-review execution validator identity drift",
         "candidate-execution-test-source" => "Pre-review execution test-source identity drift",
         "candidate-execution-summary-type" => "must be an exact integer",
         "candidate-execution-command-name-duplicate" => "Pre-review execution command names must be exact and unique",
-        "candidate-execution-command-count-zero" => "Pre-review execution command 2:tests count drift",
+        "candidate-execution-command-count-zero" => "Pre-review execution command 3:tests count drift",
         "candidate-execution-command-identity" => "Pre-review execution command drift",
         "candidate-subject-date" => "Review subject date drift",
         "candidate-execution-date" => "Pre-review execution date drift",
@@ -2493,7 +2627,7 @@ public sealed class Oq8PlatformClosureTests
             "plain" => [$"  {key}: done"],
             "double-quoted-key" => [$"  \"{key}\": done"],
             "single-quoted-key" => [$"  '{key}': done"],
-            "colon-spacing" => [$"  {key} :done"],
+            "colon-spacing" => [$"  {key}   :    done"],
             "alternate-indentation" => [$"    {key}: done"],
             "empty" => [$"  {key}:"],
             "null" => [$"  {key}: null"],
@@ -2505,7 +2639,7 @@ public sealed class Oq8PlatformClosureTests
             "tagged-value" => [$"  {key}: !!str done"],
             "anchored-value" => [$"  {key}: &retired done"],
             "aliased-value" => [$"  {key}: *retired"],
-            "unicode-colon-spacing" => [$"  {key}:\u00a0done"],
+            "unicode-colon-spacing" => [$"  {key} : \u00a0done"],
             "escaped-key-x" => ["  \"4\\x2d8-durable-admission-evidence-ledger\": done"],
             "escaped-key-u" => ["  \"4\\u002d8-durable-admission-evidence-ledger\": done"],
             "escaped-key-U" => ["  \"4\\U0000002d8-durable-admission-evidence-ledger\": done"],
@@ -2525,6 +2659,12 @@ public sealed class Oq8PlatformClosureTests
                     lines[index] = "  " + lines[index];
                 }
             }
+        }
+
+        if (shape == "aliased-value")
+        {
+            lines.Insert(0, "retired_value: &retired done");
+            mapping++;
         }
 
         lines.InsertRange(mapping + 1, inserted);
@@ -2578,6 +2718,12 @@ public sealed class Oq8PlatformClosureTests
             case "unrelated-top-level-uri-tag-anchor-alias":
                 lines.Insert(0, "alias_source: !<tag:yaml.org,2002:str> &alias_source unrelated");
                 lines.Insert(1, "*alias_source: nested");
+                break;
+            case "balanced-top-level-flow-sequence":
+                lines.Add("unrelated-flow: [first, second]");
+                break;
+            case "balanced-top-level-flow-mapping":
+                lines.Add("unrelated-flow: {first: second}");
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(shape), shape, "Unknown non-retired sprint-status text shape.");
@@ -2805,12 +2951,6 @@ public sealed class Oq8PlatformClosureTests
             case "unclosed-top-level-flow":
                 lines.Add("unrelated-flow: [first, second");
                 break;
-            case "balanced-top-level-flow-sequence":
-                lines.Add("unrelated-flow: [first, second]");
-                break;
-            case "balanced-top-level-flow-mapping":
-                lines.Add("unrelated-flow: {first: second}");
-                break;
             case "balanced-top-level-flow-double-comma-sequence":
                 lines.Add("unrelated-flow: [first,,second]");
                 break;
@@ -2888,7 +3028,39 @@ public sealed class Oq8PlatformClosureTests
                 lines.Add("    :");
                 lines.Add("      4-8-durable-admission-evidence-ledger: done");
                 break;
+            case "nested-unclosed-quoted-scalar":
+                lines.Add("unrelated:");
+                lines.Add("  nested: \"unclosed");
+                break;
+            case "malformed-explicit-key-unclosed-flow":
+                lines.Add("? unrelated-explicit-key");
+                lines.Add(": [first, second");
+                break;
+            case "multiple-tag-properties":
+                lines.Add("unrelated: !!str !!str value");
+                break;
+            case "anchored-root-mapping":
+                lines.Insert(0, "&root");
+                break;
+            case "tagged-root-mapping":
+                lines.Insert(0, "!!map");
+                break;
+            case "tagged-anchored-root-mapping":
+                lines.Insert(0, "!!map &root");
+                break;
+            case "oversized-source":
+                lines.Insert(0, "# " + new string('x', 1_048_576));
+                break;
             case "merge-key":
+                lines.Insert(0, "shared-statuses: &shared-statuses");
+                lines.Insert(1, "  shared: done");
+                mapping += 2;
+                lines.Insert(mapping + 1, "  <<: *shared-statuses");
+                break;
+            case "duplicate-unrelated-key":
+                lines.Insert(mapping + 1, "  duplicate-unrelated: done");
+                lines.Insert(mapping + 2, "  duplicate-unrelated: backlog");
+                break;
             case "sequence":
             case "tagged-retired-key":
             case "anchored-retired-key":
@@ -2896,7 +3068,6 @@ public sealed class Oq8PlatformClosureTests
                     mapping + 1,
                     shape switch
                     {
-                        "merge-key" => "  <<: *shared-statuses",
                         "sequence" => "  - epic-4: in-progress",
                         "tagged-retired-key" => "  !!str 4-8-durable-admission-evidence-ledger: done",
                         "anchored-retired-key" => "  &retired 4-8-durable-admission-evidence-ledger: done",
@@ -2914,6 +3085,16 @@ public sealed class Oq8PlatformClosureTests
     {
         string statusPath = Path.Combine(fixture, "_bmad-output", "implementation-artifacts", "sprint-status.yaml");
         List<string> lines = File.ReadAllLines(statusPath).ToList();
+        if (shape == "sole-explicit-development-status")
+        {
+            int mapping = lines.FindIndex(line => line == "development_status:");
+            mapping.ShouldBeGreaterThanOrEqualTo(0);
+            lines[mapping] = "? development_status";
+            lines.Insert(mapping + 1, ":");
+            File.WriteAllLines(statusPath, lines);
+            return;
+        }
+
         const string key = "epic-4";
         int active = lines.FindIndex(line => line == $"  {key}: in-progress");
         active.ShouldBeGreaterThanOrEqualTo(0);
@@ -3009,7 +3190,11 @@ public sealed class Oq8PlatformClosureTests
             "docs/concepts/command-lifecycle.md",
             "docs/guides/configuration-reference.md",
             "docs/reference/command-api.md",
+            ".github/workflows/ci.yml",
+            ".github/workflows/integration.yml",
+            "requirements-oq8.txt",
             "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs",
+            "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs",
         ];
         foreach (string relative in files)
         {
@@ -3064,7 +3249,11 @@ public sealed class Oq8PlatformClosureTests
             "docs/concepts/command-lifecycle.md",
             "docs/guides/configuration-reference.md",
             "docs/reference/command-api.md",
+            ".github/workflows/ci.yml",
+            ".github/workflows/integration.yml",
+            "requirements-oq8.txt",
             "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs",
+            "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs",
         ];
         foreach (string relative in files)
         {
@@ -3181,7 +3370,9 @@ public sealed class Oq8PlatformClosureTests
         double gitTimeoutSeconds = 30,
         string? executablePathPrefix = null,
         string? lifecycleMode = null,
-        IReadOnlyList<string>? additionalArguments = null)
+        IReadOnlyList<string>? additionalArguments = null,
+        string? pythonPathPrefix = null,
+        bool disableSitePackages = false)
     {
         using Process process = new()
         {
@@ -3193,6 +3384,11 @@ public sealed class Oq8PlatformClosureTests
                 UseShellExecute = false,
             },
         };
+        if (disableSitePackages)
+        {
+            process.StartInfo.ArgumentList.Add("-S");
+        }
+
         process.StartInfo.ArgumentList.Add(Path.Combine(repositoryRoot, "tools", "validate-oq8-platform-evidence.py"));
         process.StartInfo.ArgumentList.Add("--root");
         process.StartInfo.ArgumentList.Add(artifactRoot);
@@ -3224,6 +3420,11 @@ public sealed class Oq8PlatformClosureTests
             process.StartInfo.Environment["PATH"] = executablePathPrefix
                 + Path.PathSeparator
                 + Environment.GetEnvironmentVariable("PATH");
+        }
+
+        if (pythonPathPrefix is not null)
+        {
+            process.StartInfo.Environment["PYTHONPATH"] = pythonPathPrefix;
         }
 
         (int exitCode, string output, bool timedOut) = RunProcess(process, 30_000);

@@ -45,6 +45,12 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Install pinned OQ8 validator dependency
+        run: |
+          python3 -m venv "${RUNNER_TEMP}/oq8-python"
+          "${RUNNER_TEMP}/oq8-python/bin/python" -m pip install --requirement requirements-oq8.txt
+          echo "${RUNNER_TEMP}/oq8-python/bin" >> "$GITHUB_PATH"
+
       - name: Cache NuGet packages
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:

@@ -1,6 +1,6 @@
 {
   "schema": "hexalith.eventstore.story-4-15-review-subject/v1",
-  "createdOn": "2026-08-12",
+  "createdOn": "2026-08-13",
   "proposedDecision": "eventstore-platform-complete",
   "design": {
     "version": "1.0.0",
@@ -26,15 +26,31 @@
     },
     "closureValidator": {
       "path": "validator-sha256.txt",
-      "sha256": "15e5758572e07bbdf282838ade4b6b1f3915615bc0de6a4d4add8a2d951133eb"
+      "sha256": "38ff6b8939dfe7d58ac19ccd62afb1357098a6cabbf03f260355e6363f533e90"
+    },
+    "validatorRequirements": {
+      "path": "requirements-oq8.txt",
+      "sha256": "0969da99a0bc2a1b71ed50584560f4588a37567ac63af3ddbaf3c4617ca5621a"
+    },
+    "ciWorkflow": {
+      "path": ".github/workflows/ci.yml",
+      "sha256": "6a28bd968ad3c865226e3a0c2bccdd75f520ac5455b887f5b7efdaa3b1c0bcce"
+    },
+    "integrationWorkflow": {
+      "path": ".github/workflows/integration.yml",
+      "sha256": "343163fd164bb49252ad2ec67c7fbc90aa2f3aaecafa4d4d51640ccc39e7b777"
+    },
+    "workflowGuardrailTests": {
+      "path": "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs",
+      "sha256": "f30ed72b844b845c04509eb3dddf07ea6cac38571c0998b57687f4b2e3568fe1"
     },
     "closureTests": {
       "path": "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs",
-      "sha256": "36e3a013267a2c7d23fe33261986fabc50510075f66543dc906b07c59fbc5f8c"
+      "sha256": "d546a20ac0c5a11ab7eeccdc1b67dc900070bc69946b39dda7d897b93cb0549f"
     },
     "preReviewExecution": {
       "path": "pre-review-execution.json",
-      "sha256": "33ad16725f01477c75eff8f87abcbc6e303a35ebe73ff34ef862af17500b9e6c"
+      "sha256": "7b3a97c5af2b535b64c3b9ae5e4e84b7b5b89b6ec51ab7f7df12f3ddf5d73eee"
     },
     "captureManifest": {
       "path": "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425/evidence-sha256.txt",
@@ -49,10 +65,10 @@
     "captureArtifactCount": 7
   },
   "reviewedPublicDocs": {
-    "docs/concepts/architecture-overview.md": "ad57a9f3b30e4c15d577199edee76220d8e90f81a7c7ae7c2beb03f541a1c013",
-    "docs/concepts/command-lifecycle.md": "21bf8c315573ba7022f8256cb84110e4da93f5ec2f24f95c924bd9ddff5ec7ac",
-    "docs/guides/configuration-reference.md": "558bb275878a01dfbbb2b1aa67eace9755a98d5928cbe009e52338cfe7a0d4d6",
-    "docs/reference/command-api.md": "76ec9b52ffca29a33192bb7c386f871fd08a640d312458060ff4a6652bf93f43"
+    "docs/concepts/architecture-overview.md": "0a47913a3f491276c962bd97f7271039ed4fc38aec168529efb776383a9a7c94",
+    "docs/concepts/command-lifecycle.md": "04841f013229b1b6c1059f58a137f4500400fb6579b3026e7a68c6cff7e9e8e1",
+    "docs/guides/configuration-reference.md": "f1e5686363b9359f2a82595c10a2a945ab19f203c7a99ed9c8ae5520c967d98a",
+    "docs/reference/command-api.md": "c10319ef39ee00659a3aa4b2056f2e0698c8cbd3f6e57ddb3581889dc24d8d3b"
   },
   "handoff": {
     "schema": "hexalith.eventstore.story-4-15-source-only-handoff/v1",
@@ -60,7 +76,8 @@
     "landedSourceCommit": "4b0a7b1d3628a857f131cfbff99030714aefc747",
     "consumerInstructions": {
       "mode": "source-only",
-      "verifyCommand": "python3 tools/validate-oq8-platform-evidence.py",
+      "installCommand": "python3 -m venv .oq8-python && .oq8-python/bin/python -m pip install --requirement requirements-oq8.txt",
+      "verifyCommand": ".oq8-python/bin/python tools/validate-oq8-platform-evidence.py",
       "designBytesRequiredFromFolders": true,
       "sourcePathRule": "Use only the exact landed EventStore commit after the closure validator passes against unchanged capability paths."
     }

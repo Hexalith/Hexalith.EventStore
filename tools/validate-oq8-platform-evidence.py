@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib
+import importlib.metadata
 import json
 import math
 import os
@@ -15,6 +17,11 @@ import sys
 import time
 from pathlib import Path
 from typing import Any
+
+try:
+    yaml = importlib.import_module("yaml")
+except Exception:
+    yaml = None
 
 
 DEFAULT_ROOT = Path(__file__).resolve().parents[1]
@@ -41,7 +48,10 @@ LANDED_TREE = "21f9819026a1338efbab70d69991b3570c1b54f7"
 PROFILE = "oq8-postgresql-v1"
 POSTGRES_IMAGE = "postgres:18.4"
 COMMITTED_DAPR_RUNTIME_VERSION = "1.18.1"
-CURRENT_REVIEW_DATE = "2026-08-12"
+CURRENT_REVIEW_DATE = "2026-08-13"
+PINNED_PYYAML_VERSION = "6.0.3"
+PINNED_PYYAML_REQUIREMENT = f"PyYAML=={PINNED_PYYAML_VERSION}"
+MAX_SPRINT_STATUS_BYTES = 1_048_576
 EVIDENCE_DIRECTORY = "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425"
 CLOSURE_DIRECTORY = "_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747"
 FOCUSED_METHOD = "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionOq8PostgresqlTests.ProductionMatrix_IndependentProcessesPreserveAuthorityReplayExpiryAndLeakageInvariants"
@@ -136,10 +146,10 @@ EXPECTED_DOCUMENTS = {
     "docs/guides/configuration-reference.md",
 }
 EXPECTED_DOCUMENT_HASHES = {
-    "docs/concepts/architecture-overview.md": "ad57a9f3b30e4c15d577199edee76220d8e90f81a7c7ae7c2beb03f541a1c013",
-    "docs/concepts/command-lifecycle.md": "21bf8c315573ba7022f8256cb84110e4da93f5ec2f24f95c924bd9ddff5ec7ac",
-    "docs/guides/configuration-reference.md": "558bb275878a01dfbbb2b1aa67eace9755a98d5928cbe009e52338cfe7a0d4d6",
-    "docs/reference/command-api.md": "76ec9b52ffca29a33192bb7c386f871fd08a640d312458060ff4a6652bf93f43",
+    "docs/concepts/architecture-overview.md": "0a47913a3f491276c962bd97f7271039ed4fc38aec168529efb776383a9a7c94",
+    "docs/concepts/command-lifecycle.md": "04841f013229b1b6c1059f58a137f4500400fb6579b3026e7a68c6cff7e9e8e1",
+    "docs/guides/configuration-reference.md": "f1e5686363b9359f2a82595c10a2a945ab19f203c7a99ed9c8ae5520c967d98a",
+    "docs/reference/command-api.md": "c10319ef39ee00659a3aa4b2056f2e0698c8cbd3f6e57ddb3581889dc24d8d3b",
 }
 DOCUMENT_REQUIRED_TEXT = (
     "reviewed source-only handoff",
@@ -159,7 +169,9 @@ DOCUMENT_REQUIRED_TEXT = (
     "fresh content-bound architecture, security, and test receipts",
     "EventStore platform completion and the source-only handoff are recorded",
     "only while",
-    "python3 tools/validate-oq8-platform-evidence.py",
+    "python3 -m venv .oq8-python",
+    ".oq8-python/bin/python -m pip install --requirement requirements-oq8.txt",
+    ".oq8-python/bin/python tools/validate-oq8-platform-evidence.py",
 )
 DOCUMENT_FORBIDDEN_TEXT = (
     "source-only handoff candidate",
@@ -180,6 +192,12 @@ PRE_REVIEW_TEST_DLL = "tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net
 PRE_REVIEW_TEST_CLASS = "Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests"
 PRE_REVIEW_COMMAND_RESULTS = [
     {
+        "name": "oq8-validator-dependency",
+        "command": "python3 -m venv /tmp/hexalith-eventstore-oq8-python && /tmp/hexalith-eventstore-oq8-python/bin/python -m pip install --requirement requirements-oq8.txt && /tmp/hexalith-eventstore-oq8-python/bin/python -c \"import importlib.metadata, pathlib, yaml; distribution = importlib.metadata.distribution('PyYAML'); expected = pathlib.Path(distribution.locate_file('yaml/__init__.py')).resolve(); actual = pathlib.Path(yaml.__file__).resolve(); assert distribution.version == yaml.__version__ == '6.0.3' and actual == expected\"",
+        "exitCode": 0,
+        "result": "passed",
+    },
+    {
         "name": "validator-syntax",
         "command": "python3 -m py_compile tools/validate-oq8-platform-evidence.py",
         "exitCode": 0,
@@ -190,6 +208,8 @@ PRE_REVIEW_COMMAND_RESULTS = [
         "command": "dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -m:1",
         "exitCode": 0,
         "result": "passed",
+        "warnings": 0,
+        "errors": 0,
     },
     *[
         {
@@ -203,16 +223,18 @@ PRE_REVIEW_COMMAND_RESULTS = [
             "skipped": 0,
         }
         for name, method, tests in (
-            ("candidate-semantic-mutations", "CandidateSemanticMutationsFailClosed", 48),
+            ("candidate-semantic-mutations", "CandidateSemanticMutationsFailClosed", 49),
+            ("consumer-bootstrap", "SourceOnlyConsumerBootstrapInstructionsAreExactAndOrdered", 1),
+            ("invalid-pyyaml-dependencies", "InvalidPyYamlDependenciesFailClosed", 4),
             ("hostile-duplicate-json", "HostileDuplicateJsonKeyIsBoundedAndRedacted", 1),
             ("candidate-limitations", "CandidateLimitationTextIsExact", 6),
             ("candidate-authority", "CandidateExternalAuthorityFailsClosed", 9),
             ("candidate-lifecycle", "RequiredSprintStatusMustBeUnique", 9),
             ("retired-lifecycle-yaml-shapes", "RetiredSprintStatusYamlShapesFailClosed", 19),
             ("supported-active-lifecycle-yaml", "SupportedActiveSprintStatusYamlPasses", 4),
-            ("unsupported-active-lifecycle-yaml", "UnsupportedActiveSprintStatusYamlFailsClosed", 16),
-            ("retired-lifecycle-scoping", "RetiredSprintStatusTextOutsideExactDirectEntryPasses", 10),
-            ("unsupported-lifecycle-yaml", "UnsupportedSprintStatusYamlFailsClosed", 66),
+            ("unsupported-active-lifecycle-yaml", "UnsupportedActiveSprintStatusYamlFailsClosed", 17),
+            ("retired-lifecycle-scoping", "RetiredSprintStatusTextOutsideExactDirectEntryPasses", 12),
+            ("unsupported-lifecycle-yaml", "UnsupportedSprintStatusYamlFailsClosed", 72),
             ("missing-active-lifecycle", "MissingRequiredSprintStatusFailsClosed", 1),
             ("duplicate-authority-formatting", "DuplicateAuthorityInjectorSupportsJsonFormatting", 4),
             ("final-lifecycle-review", "FinalLifecycleReviewPassesInIsolation", 1),
@@ -274,7 +296,8 @@ EXPECTED_CAPTURE_COMMAND_RESULTS = {
 }
 EXPECTED_CONSUMER_INSTRUCTIONS = {
     "mode": "source-only",
-    "verifyCommand": "python3 tools/validate-oq8-platform-evidence.py",
+    "installCommand": "python3 -m venv .oq8-python && .oq8-python/bin/python -m pip install --requirement requirements-oq8.txt",
+    "verifyCommand": ".oq8-python/bin/python tools/validate-oq8-platform-evidence.py",
     "designBytesRequiredFromFolders": True,
     "sourcePathRule": "Use only the exact landed EventStore commit after the closure validator passes against unchanged capability paths.",
 }
@@ -1455,6 +1478,13 @@ def validate_review_subject(subject: dict[str, Any], crosswalk: dict[str, Any], 
         "sourceArtifactIdentity": ("source-artifact-identity.json", CLOSURE / "source-artifact-identity.json"),
         "limitations": ("limitations.json", CLOSURE / "limitations.json"),
         "closureValidator": ("validator-sha256.txt", CLOSURE / "validator-sha256.txt"),
+        "validatorRequirements": ("requirements-oq8.txt", ROOT / "requirements-oq8.txt"),
+        "ciWorkflow": (".github/workflows/ci.yml", ROOT / ".github/workflows/ci.yml"),
+        "integrationWorkflow": (".github/workflows/integration.yml", ROOT / ".github/workflows/integration.yml"),
+        "workflowGuardrailTests": (
+            "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs",
+            ROOT / "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs",
+        ),
         "closureTests": (CLOSURE_TEST_SOURCE, ROOT / CLOSURE_TEST_SOURCE),
         "preReviewExecution": (PRE_REVIEW_EXECUTION, CLOSURE / PRE_REVIEW_EXECUTION),
         "captureManifest": (f"{EVIDENCE_DIRECTORY}/evidence-sha256.txt", EVIDENCE / "evidence-sha256.txt"),
@@ -1575,508 +1605,150 @@ def validate_handoff(
     validate_authority(document.get("authority"))
 
 
-def split_yaml_mapping_entry(content: str) -> tuple[str, str, bool]:
-    single_quoted = False
-    double_quoted = False
-    verbatim_tag = False
-    escaped = False
-    skip_next = False
-    for index, character in enumerate(content):
-        if skip_next:
-            skip_next = False
-            continue
-        if double_quoted:
-            if escaped:
-                escaped = False
-            elif character == "\\":
-                escaped = True
-            elif character == '"':
-                double_quoted = False
-            continue
-        if single_quoted:
-            if character == "'":
-                if index + 1 < len(content) and content[index + 1] == "'":
-                    skip_next = True
-                    continue
-                single_quoted = False
-            continue
-        if verbatim_tag:
-            if character == ">":
-                verbatim_tag = False
-            continue
-        if character == '"':
-            double_quoted = True
-        elif character == "'":
-            single_quoted = True
-        elif character == "!" and index + 1 < len(content) and content[index + 1] == "<":
-            verbatim_tag = True
-        elif character == ":":
-            remainder = content[index + 1 :]
-            has_separator = remainder == "" or remainder.startswith((" ", "\t"))
-            return content[:index].strip(" "), remainder.lstrip(" \t"), has_separator
-    raise EvidenceError("Unsupported sprint-status mapping structure")
-
-
-def decode_yaml_double_quoted(value: str) -> str:
-    require(len(value) >= 2 and value.endswith('"'), "Unsupported sprint-status mapping structure")
-    escapes = {
-        "0": "\0",
-        "a": "\a",
-        "b": "\b",
-        "t": "\t",
-        "n": "\n",
-        "v": "\v",
-        "f": "\f",
-        "r": "\r",
-        "e": "\x1b",
-        " ": " ",
-        '"': '"',
-        "/": "/",
-        "\\": "\\",
-        "N": "\u0085",
-        "_": "\u00a0",
-        "L": "\u2028",
-        "P": "\u2029",
-    }
-    decoded: list[str] = []
-    index = 1
-    while index < len(value) - 1:
-        character = value[index]
-        require(character != '"' and ord(character) >= 0x20, "Unsupported sprint-status mapping structure")
-        if character != "\\":
-            decoded.append(character)
-            index += 1
-            continue
-
-        index += 1
-        require(index < len(value) - 1, "Unsupported sprint-status mapping structure")
-        escape = value[index]
-        if escape in escapes:
-            decoded.append(escapes[escape])
-            index += 1
-            continue
-
-        widths = {"x": 2, "u": 4, "U": 8}
-        require(escape in widths, "Unsupported sprint-status mapping structure")
-        width = widths[escape]
-        encoded = value[index + 1 : index + 1 + width]
-        require(len(encoded) == width and all(character in "0123456789abcdefABCDEF" for character in encoded),
-                "Unsupported sprint-status mapping structure")
-        code_point = int(encoded, 16)
-        require(code_point <= 0x10FFFF and not 0xD800 <= code_point <= 0xDFFF,
-                "Unsupported sprint-status mapping structure")
-        decoded.append(chr(code_point))
-        index += width + 1
-    return "".join(decoded)
-
-
-def decode_yaml_single_quoted(value: str) -> str:
-    require(len(value) >= 2 and value.endswith("'"), "Unsupported sprint-status mapping structure")
-    decoded: list[str] = []
-    index = 1
-    while index < len(value) - 1:
-        character = value[index]
-        if character != "'":
-            decoded.append(character)
-            index += 1
-            continue
-        require(index + 1 < len(value) - 1 and value[index + 1] == "'",
-                "Unsupported sprint-status mapping structure")
-        decoded.append("'")
-        index += 2
-    return "".join(decoded)
-
-
-def parse_yaml_string(value: str) -> str:
-    require(value != "", "Unsupported sprint-status mapping structure")
-    require(value == value.strip(" ") and not value[0].isspace() and not value[-1].isspace(),
-            "Unsupported sprint-status mapping structure")
-    require(not value.startswith(("!", "&", "*")), "Unsupported sprint-status mapping structure")
-    if value.startswith('"'):
-        return decode_yaml_double_quoted(value)
-    if value.startswith("'"):
-        return decode_yaml_single_quoted(value)
-    require('"' not in value and "'" not in value, "Unsupported sprint-status mapping structure")
-    require(value[0] not in "-?:,[]{}#&*!|>'\"%@`", "Unsupported sprint-status mapping structure")
-    require(re.search(r":[ \t]|:$", value) is None,
-            "Unsupported sprint-status mapping structure")
-    return value
-
-
-def strip_yaml_comment(value: str) -> str:
-    single_quoted = False
-    double_quoted = False
-    escaped = False
-    skip_next = False
-    for index, character in enumerate(value):
-        if skip_next:
-            skip_next = False
-            continue
-        if double_quoted:
-            if escaped:
-                escaped = False
-            elif character == "\\":
-                escaped = True
-            elif character == '"':
-                double_quoted = False
-        elif single_quoted:
-            if character == "'":
-                if index + 1 < len(value) and value[index + 1] == "'":
-                    skip_next = True
-                    continue
-                single_quoted = False
-        elif character == '"':
-            double_quoted = True
-        elif character == "'":
-            single_quoted = True
-        elif character == "#" and (index == 0 or value[index - 1] in " \t"):
-            return value[:index].rstrip(" \t")
-    require(not single_quoted and not double_quoted and not escaped, "Unsupported sprint-status mapping structure")
-    return value.rstrip(" \t")
-
-
-def is_yaml_printable(character: str) -> bool:
-    code_point = ord(character)
-    return (
-        character in "\t\n\r"
-        or 0x20 <= code_point <= 0x7E
-        or code_point == 0x85
-        or 0xA0 <= code_point <= 0xD7FF
-        or 0xE000 <= code_point <= 0xFFFD
-        or 0x10000 <= code_point <= 0x10FFFF
+def validate_pyyaml_dependency() -> None:
+    dependency_valid = False
+    try:
+        distribution = importlib.metadata.distribution("PyYAML")
+        expected_module = Path(distribution.locate_file("yaml/__init__.py")).resolve(strict=True)
+        actual_module = Path(getattr(yaml, "__file__", "")).resolve(strict=True)
+        dependency_valid = (
+            distribution.version == PINNED_PYYAML_VERSION
+            and getattr(yaml, "__version__", None) == PINNED_PYYAML_VERSION
+            and actual_module == expected_module
+        )
+    except Exception:
+        dependency_valid = False
+    require(
+        dependency_valid,
+        f"Pinned PyYAML {PINNED_PYYAML_VERSION} dependency is unavailable or untrusted",
     )
 
+    requirement_path = ROOT / "requirements-oq8.txt"
+    require(
+        read_text(requirement_path).splitlines() == [PINNED_PYYAML_REQUIREMENT],
+        "OQ8 validator dependency requirement drift",
+    )
+    required_workflow_fragments = (
+        'python3 -m venv "${RUNNER_TEMP}/oq8-python"',
+        '"${RUNNER_TEMP}/oq8-python/bin/python" -m pip install --requirement requirements-oq8.txt',
+        'echo "${RUNNER_TEMP}/oq8-python/bin" >> "$GITHUB_PATH"',
+    )
+    for relative in (".github/workflows/ci.yml", ".github/workflows/integration.yml"):
+        workflow = read_text(ROOT / relative)
+        require(
+            all(fragment in workflow for fragment in required_workflow_fragments),
+            f"OQ8 validator dependency bootstrap drift: {relative}",
+        )
 
-def normalize_single_yaml_document(document: str) -> str:
+
+def parse_development_status(document: str) -> dict[str, str]:
+    validate_pyyaml_dependency()
+    require(
+        len(document.encode("utf-8")) <= MAX_SPRINT_STATUS_BYTES,
+        "Sprint-status YAML source exceeds the bounded size limit",
+    )
     if document.startswith("\ufeff"):
         document = document[1:]
     require("\ufeff" not in document, "Sprint-status BOM is only permitted at stream start")
     require(
-        all(is_yaml_printable(character) for character in document),
+        yaml.reader.Reader.NON_PRINTABLE.search(document) is None,
         "Sprint-status YAML source contains forbidden characters",
     )
 
-    document_started = False
-    document_ended = False
-    for line in document.splitlines():
-        if not line or line.strip(" \t") == "" or line.lstrip(" \t").startswith("#"):
-            continue
-        stripped = line.lstrip(" \t")
-        marker = re.match(r"(---|\.\.\.)(?:[ \t]|$)", stripped)
-        if marker is not None:
-            marker_text = marker.group(1)
-            supported_marker = (
-                line == stripped
-                and re.fullmatch(rf"{re.escape(marker_text)}(?:[ \t]+#.*)?[ \t]*", line) is not None
-            )
-            require(supported_marker, "Sprint-status YAML stream must contain exactly one document")
-        if marker is not None and marker.group(1) == "---":
-            require(
-                not document_started and not document_ended,
-                "Sprint-status YAML stream must contain exactly one document",
-            )
-            document_started = True
-            continue
-        if marker is not None and marker.group(1) == "...":
-            require(
-                document_started and not document_ended,
-                "Sprint-status YAML stream must contain exactly one document",
-            )
-            document_ended = True
-            continue
-        require(
-            not document_ended,
-            "Sprint-status YAML stream must contain exactly one document",
-        )
-        document_started = True
+    class SprintStatusSafeLoader(yaml.SafeLoader):
+        def __init__(self, stream: str) -> None:
+            super().__init__(stream)
+            self.node_properties: dict[int, tuple[bool, bool]] = {}
+            self.aliased_nodes: set[int] = set()
 
-    require(document_started, "Sprint-status YAML stream must contain exactly one document")
-    return document
+        def compose_node(self, parent: Any, index: Any) -> Any:
+            is_alias = self.check_event(yaml.events.AliasEvent)
+            event = self.peek_event()
+            node = super().compose_node(parent, index)
+            if is_alias:
+                self.aliased_nodes.add(id(node))
+            else:
+                self.node_properties[id(node)] = (
+                    event.anchor is not None,
+                    event.tag is not None,
+                )
+            return node
 
-
-def parse_yaml_mapping_entry(content: str) -> tuple[str, str, bool]:
-    key_text, value_text, has_separator = split_yaml_mapping_entry(strip_yaml_comment(content))
-    return parse_yaml_string(key_text), value_text, has_separator
-
-
-def parse_yaml_scalar_node(value: str) -> tuple[str, str | None, bool]:
-    remaining = value.strip(" \t")
-    anchor: str | None = None
-    has_properties = False
-    while remaining.startswith(("!", "&")):
-        has_properties = True
-        if remaining.startswith("!<"):
-            end = remaining.find(">", 2)
-            require(end > 2, "Unsupported sprint-status mapping structure")
-            property_end = end + 1
-        else:
-            match = re.match(r"[!&][^ \t\[\]{},]+", remaining)
-            require(match is not None, "Unsupported sprint-status mapping structure")
-            property_end = match.end()
-        require(
-            property_end < len(remaining) and remaining[property_end] in " \t",
-            "Unsupported sprint-status mapping structure",
-        )
-        if remaining.startswith("&"):
-            require(anchor is None, "Unsupported sprint-status mapping structure")
-            anchor = remaining[1:property_end]
-        remaining = remaining[property_end:].lstrip(" \t")
-    return parse_yaml_string(remaining), anchor, has_properties
-
-
-def register_yaml_anchor(anchors: dict[str, str], anchor: str, value: str) -> None:
-    require(anchor not in anchors, "Unsupported sprint-status mapping structure")
-    anchors[anchor] = value
-
-
-def parse_top_level_mapping_entry(
-    content: str,
-    anchors: dict[str, str],
-) -> tuple[str, str, bool, bool]:
-    key_text, value_text, has_separator = split_yaml_mapping_entry(strip_yaml_comment(content))
-    alias_match = re.fullmatch(r"\*([^ \t\[\]{},:]+)", key_text.strip(" \t"))
-    if alias_match is not None:
-        alias = alias_match.group(1)
-        require(alias in anchors, "Unsupported sprint-status mapping structure")
-        return anchors[alias], value_text, has_separator, True
-
-    key, anchor, has_properties = parse_yaml_scalar_node(key_text)
-    if anchor is not None:
-        register_yaml_anchor(anchors, anchor, key)
-    return key, value_text, has_separator, has_properties
-
-
-def validate_top_level_value(value: str, anchors: dict[str, str]) -> None:
-    value = value.strip(" \t")
-    if value == "":
-        return
-
-    alias_match = re.fullmatch(r"\*([^ \t\[\]{},:]+)", value)
-    if alias_match is not None:
-        require(alias_match.group(1) in anchors, "Unsupported sprint-status mapping structure")
-        return
-
-    if value.startswith(("[", "{")):
+    loader = SprintStatusSafeLoader(document)
+    try:
+        root = loader.get_single_node()
+    except yaml.composer.ComposerError as error:
+        if error.context == "expected a single document in the stream":
+            fail("Sprint-status YAML stream must contain exactly one document")
         fail("Unsupported sprint-status mapping structure")
+    except yaml.YAMLError:
+        fail("Unsupported sprint-status mapping structure")
+    finally:
+        loader.dispose()
 
-    scalar, anchor, _ = parse_yaml_scalar_node(value)
-    if anchor is not None:
-        register_yaml_anchor(anchors, anchor, scalar)
-
-
-def is_development_status_scalar(declaration: str) -> bool:
-    try:
-        scalar, _, _ = parse_yaml_scalar_node(declaration)
-        return scalar == "development_status"
-    except EvidenceError:
-        return False
-
-
-def strip_nested_sequence_item_prefixes(content: str) -> str:
-    content = content.lstrip(" \t")
-    while content.startswith("- "):
-        content = content[2:].lstrip(" \t")
-    return content
-
-
-def is_unsupported_development_status_declaration(
-    content: str,
-    anchors: dict[str, str],
-) -> bool:
-    try:
-        content = strip_yaml_comment(content)
-    except EvidenceError:
-        return False
-    content = strip_nested_sequence_item_prefixes(content)
-    if content.startswith("? "):
-        return is_development_status_scalar(content[2:].strip(" \t"))
-    try:
-        key, _, _, _ = parse_top_level_mapping_entry(content, anchors.copy())
-        return key == "development_status"
-    except EvidenceError:
-        return False
-
-
-def has_nested_yaml_property_anchor_or_alias(content: str) -> bool:
-    try:
-        content = strip_yaml_comment(content).strip(" \t")
-    except EvidenceError:
-        return False
-    content = strip_nested_sequence_item_prefixes(content)
-    if content.startswith("? "):
-        content = content[2:].lstrip(" \t")
-    if content.startswith(("!", "&", "*")):
-        return True
-    try:
-        key_text, value_text, _ = split_yaml_mapping_entry(content)
-    except EvidenceError:
-        return False
-    return key_text.strip(" \t").startswith(("!", "&", "*")) or value_text.startswith(("!", "&", "*"))
-
-
-def has_unquoted_yaml_flow_collection(content: str) -> bool:
-    try:
-        content = strip_yaml_comment(content)
-    except EvidenceError:
-        return False
-    single_quoted = False
-    double_quoted = False
-    escaped = False
-    skip_next = False
-    for index, character in enumerate(content):
-        if skip_next:
-            skip_next = False
-            continue
-        if double_quoted:
-            if escaped:
-                escaped = False
-            elif character == "\\":
-                escaped = True
-            elif character == '"':
-                double_quoted = False
-            continue
-        if single_quoted:
-            if character == "'":
-                if index + 1 < len(content) and content[index + 1] == "'":
-                    skip_next = True
-                    continue
-                single_quoted = False
-            continue
-        if character == '"':
-            double_quoted = True
-        elif character == "'":
-            single_quoted = True
-        elif character in "[]{}":
-            return True
-    return False
-
-
-def explicit_key_targets_development_status(
-    lines: list[str],
-    start: int,
-    anchors: dict[str, str],
-) -> bool:
-    first = strip_yaml_comment(lines[start]).strip(" \t")
-    declarations: list[str] = []
-    if first.startswith("? "):
-        declarations.append(first[2:].strip(" \t"))
-    for line in lines[start + 1 :]:
-        if not line or line.strip(" ") == "" or line.lstrip(" ").startswith("#"):
-            continue
-        if not line.startswith((" ", "\t")):
-            break
-        declarations.append(strip_yaml_comment(line).strip(" \t"))
-
-    for declaration in declarations:
-        if not declaration:
-            continue
-        alias_match = re.fullmatch(r"\*([^ \t\[\]{},:]+)", declaration)
-        if alias_match is not None:
-            alias = alias_match.group(1)
-            require(alias in anchors, "Unsupported sprint-status mapping structure")
-            if anchors[alias] == "development_status":
-                return True
-            continue
-        if declaration.startswith(("|", ">")):
-            continue
-        if is_development_status_scalar(declaration):
-            return True
-    for index, declaration in enumerate(declarations[:-1]):
-        if declaration.startswith('"') and declaration.endswith("\\"):
-            continuation = declaration[:-1] + declarations[index + 1].lstrip(" \t")
-            if is_development_status_scalar(continuation):
-                return True
-    return False
-
-
-def explicit_mapping_value_index(lines: list[str], start: int) -> int:
-    for index in range(start + 1, len(lines)):
-        line = lines[index]
-        if not line or line.strip(" \t") == "" or line.lstrip(" \t").startswith("#"):
-            continue
-        if line.startswith((" ", "\t")):
-            continue
-        content = strip_yaml_comment(line)
-        require(
-            re.fullmatch(r":[ \t]*(?:.*)?", content) is not None,
-            "Unsupported sprint-status mapping structure",
-        )
-        return index
-    fail("Unsupported sprint-status mapping structure")
-
-
-def parse_development_status(document: str) -> dict[str, str]:
-    document = normalize_single_yaml_document(document)
-    lines = document.splitlines()
-    mapping_lines: list[int] = []
-    unsupported_nested_lines: list[int] = []
-    anchored_scalars: dict[str, str] = {}
-    index = 0
-    while index < len(lines):
-        line = lines[index]
-        if not line or line.strip(" \t") == "" or line.lstrip(" \t").startswith("#"):
-            index += 1
-            continue
-        if line.startswith("\t"):
-            fail("Unsupported sprint-status mapping structure")
-        if line.startswith(" "):
-            content = line.lstrip(" ")
-            nested_content = strip_nested_sequence_item_prefixes(content)
-            require(
-                nested_content != "?" and not nested_content.startswith("? "),
-                "Unsupported sprint-status mapping structure",
-            )
-            if has_nested_yaml_property_anchor_or_alias(nested_content) or has_unquoted_yaml_flow_collection(nested_content):
-                unsupported_nested_lines.append(index)
-            require(
-                not is_unsupported_development_status_declaration(nested_content, anchored_scalars),
-                "Unsupported sprint-status mapping structure",
-            )
-            index += 1
-            continue
-        if line in {"---", "..."}:
-            index += 1
-            continue
-        content = strip_yaml_comment(line).strip(" \t")
-        if content == "?" or content.startswith("? "):
-            require(
-                not explicit_key_targets_development_status(lines, index, anchored_scalars),
-                "Unsupported sprint-status mapping structure",
-            )
-            index = explicit_mapping_value_index(lines, index) + 1
-            continue
-        try:
-            key, value_text, has_separator, wrapped_key = parse_top_level_mapping_entry(line, anchored_scalars)
-        except EvidenceError:
-            fail("Unsupported sprint-status mapping structure")
-        require(has_separator, "Unsupported sprint-status mapping structure")
-        if key == "development_status":
-            require(not wrapped_key and value_text == "", "Unsupported sprint-status mapping structure")
-            mapping_lines.append(index)
-        else:
-            validate_top_level_value(value_text, anchored_scalars)
-        index += 1
-    require(len(mapping_lines) == 1, "Lifecycle development_status mapping is missing or ambiguous")
-
-    start = mapping_lines[0]
-    end = next(
-        (
-            index
-            for index in range(start + 1, len(lines))
-            if lines[index]
-            and lines[index].strip(" \t") != ""
-            and not lines[index].lstrip(" \t").startswith("#")
-            and not lines[index].startswith((" ", "\t"))
-        ),
-        len(lines),
-    )
+    mapping_tag = yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG
+    scalar_tag = yaml.resolver.BaseResolver.DEFAULT_SCALAR_TAG
     require(
-        all(start < index < end for index in unsupported_nested_lines),
+        isinstance(root, yaml.nodes.MappingNode) and root.tag == mapping_tag,
         "Unsupported sprint-status mapping structure",
     )
-    entries: dict[str, str] = {}
-    entry_indentation: int | None = None
-    unsupported = False
+
+    def has_properties(node: Any) -> bool:
+        anchored, explicitly_tagged = loader.node_properties.get(id(node), (False, False))
+        return anchored or explicitly_tagged or id(node) in loader.aliased_nodes
+
+    require(not has_properties(root), "Unsupported sprint-status mapping structure")
+
+    def contains_nested_lifecycle_mapping(node: Any, visited: set[int]) -> bool:
+        if id(node) in visited:
+            return False
+        visited.add(id(node))
+        if isinstance(node, yaml.nodes.MappingNode):
+            for key_node, value_node in node.value:
+                if isinstance(key_node, yaml.nodes.ScalarNode) and key_node.value == "development_status":
+                    return True
+                if contains_nested_lifecycle_mapping(key_node, visited):
+                    return True
+                if contains_nested_lifecycle_mapping(value_node, visited):
+                    return True
+        elif isinstance(node, yaml.nodes.SequenceNode):
+            return any(contains_nested_lifecycle_mapping(item, visited) for item in node.value)
+        return False
+
+    root_entries: dict[str, tuple[Any, Any]] = {}
+    lifecycle_entries: list[tuple[Any, Any]] = []
+    for key_node, value_node in root.value:
+        require(isinstance(key_node, yaml.nodes.ScalarNode), "Unsupported sprint-status mapping structure")
+        key = key_node.value
+        require(key_node.tag != "tag:yaml.org,2002:merge", "Sprint-status merge keys are forbidden")
+        if key in root_entries:
+            if key == "development_status":
+                fail("Lifecycle development_status mapping is missing or ambiguous")
+            fail("Sprint-status root mapping contains a duplicate key")
+        root_entries[key] = (key_node, value_node)
+        if key == "development_status":
+            lifecycle_entries.append((key_node, value_node))
+    for key, (_, value_node) in root_entries.items():
+        if key != "development_status":
+            require(
+                not contains_nested_lifecycle_mapping(value_node, set()),
+                "Unsupported sprint-status mapping structure",
+            )
+
+    require(len(lifecycle_entries) == 1, "Lifecycle development_status mapping is missing or ambiguous")
+    lifecycle_key, lifecycle_mapping = lifecycle_entries[0]
+    require(
+        lifecycle_key.tag == scalar_tag and not has_properties(lifecycle_key),
+        "Unsupported sprint-status mapping structure",
+    )
+    require(
+        isinstance(lifecycle_mapping, yaml.nodes.MappingNode)
+        and lifecycle_mapping.tag == mapping_tag
+        and lifecycle_mapping.flow_style is False
+        and not has_properties(lifecycle_mapping),
+        "Unsupported sprint-status mapping structure",
+    )
+
     retired_key = "4-8-durable-admission-evidence-ledger"
     bounded_lifecycle_keys = {
         "epic-4",
@@ -2088,52 +1760,40 @@ def parse_development_status(document: str) -> dict[str, str]:
         "4-14-oq8-multi-host-production-evidence",
         "4-15-oq8-platform-closure-and-handoff",
     }
-    for line in lines[start + 1 :]:
-        if not line or line.strip(" ") == "" or line.lstrip(" ").startswith("#"):
-            continue
-        if line.startswith("\t"):
-            unsupported = True
-            continue
-        indentation = len(line) - len(line.lstrip(" "))
-        if indentation == 0:
-            if line[0].isspace():
-                unsupported = True
-                continue
-            break
-        content = line[indentation:]
-        if content[0].isspace():
-            unsupported = True
-            continue
-        if entry_indentation is None:
-            entry_indentation = indentation
-        if indentation != entry_indentation:
-            unsupported = True
-            continue
-        if content.startswith("- "):
-            unsupported = True
-            continue
-        try:
-            key, value_text, has_separator = parse_yaml_mapping_entry(content)
-        except EvidenceError:
-            unsupported = True
-            continue
-        require(key != "<<", "Sprint-status merge keys are forbidden")
-        require(key != retired_key, f"Retired lifecycle key is forbidden: {retired_key}")
-        if key in entries:
+    for key_node, _ in lifecycle_mapping.value:
+        if isinstance(key_node, yaml.nodes.ScalarNode) and key_node.value == retired_key:
+            fail(f"Retired lifecycle key is forbidden: {retired_key}")
+        if isinstance(key_node, yaml.nodes.ScalarNode):
+            require(key_node.tag != "tag:yaml.org,2002:merge", "Sprint-status merge keys are forbidden")
+
+    unique_keys: set[str] = set()
+    for key_node, _ in lifecycle_mapping.value:
+        require(
+            isinstance(key_node, yaml.nodes.ScalarNode),
+            "Unsupported sprint-status mapping structure",
+        )
+        key = key_node.value
+        if key in unique_keys:
             if key in bounded_lifecycle_keys:
                 fail(f"Lifecycle status is missing or ambiguous: {key}")
             fail("Lifecycle status mapping contains a duplicate key")
-        try:
-            value = parse_yaml_string(value_text)
-            require(value not in {"~", "null", "Null", "NULL"}, "Unsupported sprint-status mapping structure")
-        except EvidenceError:
-            value = ""
-            unsupported = True
-        entries[key] = value
-        if not has_separator:
-            unsupported = True
+        unique_keys.add(key)
 
-    require(not unsupported, "Unsupported sprint-status mapping structure")
+    entries: dict[str, str] = {}
+    for key_node, value_node in lifecycle_mapping.value:
+        key = key_node.value
+        require(
+            key_node.tag == scalar_tag and not has_properties(key_node),
+            "Unsupported sprint-status mapping structure",
+        )
+        require(
+            isinstance(value_node, yaml.nodes.ScalarNode)
+            and value_node.tag == scalar_tag
+            and value_node.style in (None, "'", '"')
+            and not has_properties(value_node),
+            "Unsupported sprint-status mapping structure",
+        )
+        entries[key] = value_node.value
     return entries
 
 

@@ -21,7 +21,6 @@ jobs:
       build-timeout-minutes: 40
       run-consumer-validation: true
       unit-test-projects: |
-        tests/Hexalith.EventStore.Contracts.Tests
         tests/Hexalith.EventStore.Client.Tests
         tests/Hexalith.EventStore.Testing.Tests
         tests/Hexalith.EventStore.SignalR.Tests
@@ -39,6 +38,67 @@ jobs:
         tests/Hexalith.EventStore.Testing.Integration.Tests
         tests/Hexalith.EventStore.Server.Tests
         tests/Hexalith.EventStore.ProviderVerification.Tests
+
+  contracts:
+    name: ci / contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          submodules: false
+          persist-credentials: false
+
+      - name: Initialize root-declared submodules
+        run: git -c submodule.recurse=false submodule update --init
+
+      - name: Initialize .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Install pinned OQ8 validator dependency
+        run: |
+          python3 -m venv "${RUNNER_TEMP}/oq8-python"
+          "${RUNNER_TEMP}/oq8-python/bin/python" -m pip install --requirement requirements-oq8.txt
+          echo "${RUNNER_TEMP}/oq8-python/bin" >> "$GITHUB_PATH"
+
+      - name: Restore Contracts tests
+        run: >-
+          dotnet restore tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj
+          -p:Configuration=Release
+          -p:UseHexalithProjectReferences=false
+
+      - name: Build Contracts tests
+        run: >-
+          dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj
+          --no-restore
+          --configuration Release
+          -warnaserror
+          -m:1
+          -p:UseHexalithProjectReferences=false
+
+      - name: Run Contracts tests
+        run: >-
+          dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj
+          --no-build
+          --configuration Release
+          --logger "trx;LogFileName=Hexalith.EventStore.Contracts.Tests.trx"
+          --results-directory "TestResults/Hexalith.EventStore.Contracts.Tests"
+          --collect:"XPlat Code Coverage"
+          -p:UseHexalithProjectReferences=false
+
+      - name: Upload Contracts test results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: contracts-test-results
+          path: |
+            TestResults/**/*.trx
+            TestResults/**/coverage.cobertura.xml
+          if-no-files-found: error
+          retention-days: 7
 
   semantic-release-governance:
     name: ci / semantic-release-governance

@@ -1,6 +1,6 @@
 {
   "schema": "hexalith.eventstore.story-4-15-pre-review-execution/v1",
-  "executedOn": "2026-08-12",
+  "executedOn": "2026-08-13",
   "scope": "receipt-independent-isolated-candidate",
   "authority": {
     "reviewReceiptsValidated": false,
@@ -9,11 +9,11 @@
   },
   "validator": {
     "path": "tools/validate-oq8-platform-evidence.py",
-    "sha256": "4a57c79040a0687ea843b8ccbcb01d9a11ae199d8b52a6e9ca2b489aba90f731"
+    "sha256": "585e4d8634f6862a99a3431da37634a23d3aac5886a83b76f0bc4a7f0d309726"
   },
   "testSource": {
     "path": "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs",
-    "sha256": "36e3a013267a2c7d23fe33261986fabc50510075f66543dc906b07c59fbc5f8c"
+    "sha256": "d546a20ac0c5a11ab7eeccdc1b67dc900070bc69946b39dda7d897b93cb0549f"
   },
   "finalValidation": {
     "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests -noColor",
@@ -21,6 +21,12 @@
     "reason": "Final-only receipt, handoff, manifest, and packet tests require three real content-bound review receipts and final assembly."
   },
   "commands": [
+    {
+      "name": "oq8-validator-dependency",
+      "command": "python3 -m venv /tmp/hexalith-eventstore-oq8-python && /tmp/hexalith-eventstore-oq8-python/bin/python -m pip install --requirement requirements-oq8.txt && /tmp/hexalith-eventstore-oq8-python/bin/python -c \"import importlib.metadata, pathlib, yaml; distribution = importlib.metadata.distribution('PyYAML'); expected = pathlib.Path(distribution.locate_file('yaml/__init__.py')).resolve(); actual = pathlib.Path(yaml.__file__).resolve(); assert distribution.version == yaml.__version__ == '6.0.3' and actual == expected\"",
+      "exitCode": 0,
+      "result": "passed"
+    },
     {
       "name": "validator-syntax",
       "command": "python3 -m py_compile tools/validate-oq8-platform-evidence.py",
@@ -31,15 +37,37 @@
       "name": "contracts-build",
       "command": "dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -m:1",
       "exitCode": 0,
-      "result": "passed"
+      "result": "passed",
+      "warnings": 0,
+      "errors": 0
     },
     {
       "name": "candidate-semantic-mutations",
       "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -method Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests.CandidateSemanticMutationsFailClosed -noColor",
       "exitCode": 0,
       "result": "passed",
-      "tests": 48,
-      "passed": 48,
+      "tests": 49,
+      "passed": 49,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "consumer-bootstrap",
+      "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -method Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests.SourceOnlyConsumerBootstrapInstructionsAreExactAndOrdered -noColor",
+      "exitCode": 0,
+      "result": "passed",
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "invalid-pyyaml-dependencies",
+      "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -method Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests.InvalidPyYamlDependenciesFailClosed -noColor",
+      "exitCode": 0,
+      "result": "passed",
+      "tests": 4,
+      "passed": 4,
       "failed": 0,
       "skipped": 0
     },
@@ -108,8 +136,8 @@
       "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -method Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests.UnsupportedActiveSprintStatusYamlFailsClosed -noColor",
       "exitCode": 0,
       "result": "passed",
-      "tests": 16,
-      "passed": 16,
+      "tests": 17,
+      "passed": 17,
       "failed": 0,
       "skipped": 0
     },
@@ -118,8 +146,8 @@
       "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -method Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests.RetiredSprintStatusTextOutsideExactDirectEntryPasses -noColor",
       "exitCode": 0,
       "result": "passed",
-      "tests": 10,
-      "passed": 10,
+      "tests": 12,
+      "passed": 12,
       "failed": 0,
       "skipped": 0
     },
@@ -128,8 +156,8 @@
       "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -method Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests.UnsupportedSprintStatusYamlFailsClosed -noColor",
       "exitCode": 0,
       "result": "passed",
-      "tests": 66,
-      "passed": 66,
+      "tests": 72,
+      "passed": 72,
       "failed": 0,
       "skipped": 0
     },
@@ -305,10 +333,10 @@
     }
   ],
   "summary": {
-    "commands": 29,
-    "successfulCommands": 29,
-    "tests": 222,
-    "passed": 222,
+    "commands": 32,
+    "successfulCommands": 32,
+    "tests": 237,
+    "passed": 237,
     "failed": 0,
     "skipped": 0
   }

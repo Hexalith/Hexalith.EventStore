@@ -2,18 +2,18 @@
   "schema": "hexalith.eventstore.story-4-15-review-receipt/v1",
   "role": "test",
   "reviewer": "Murat (Test Architect)",
-  "reviewedOn": "2026-08-12",
+  "reviewedOn": "2026-08-13",
   "decision": "approved",
-  "subjectSha256": "e58de2008f00af08e81e99198d42d82e45e2b15b2cdb9cb283f8a93f518d6ea9",
+  "subjectSha256": "4c4e4674f40477fea9af6513fabe58d6590305dda0816822318596ea23ec9389",
   "acceptedScope": "production/deterministic evidence coverage, commands and counts, negative validation, and matrix coverage",
   "acceptedLimitationsSha256": "3853e7001a78da7cc0c3824392e43e9f5b286b65ce8d101167991b133ebf2d92",
   "findings": [
-    "All eight subject bindings match current bytes, including validator identity 15e5758572e07bbdf282838ade4b6b1f3915615bc0de6a4d4add8a2d951133eb, tests 36e3a013267a2c7d23fe33261986fabc50510075f66543dc906b07c59fbc5f8c, execution record 33ad16725f01477c75eff8f87abcbc6e303a35ebe73ff34ef862af17500b9e6c, and immutable Story 4.14 evidence.",
-    "Execution evidence is exact: 29 of 29 commands and 222 of 222 tests passed with zero failures or skips; the independent Release build had zero warnings and errors.",
-    "All 66 unsupported lifecycle YAML cases pass, including recursively nested sequence prefixes and deeper plain, escaped, flow, anchor, alias, property, and explicit-key probes.",
-    "Freshness guards cover stale createdOn, resealed stale executedOn, and downstream-resealed stale reviewedOn values.",
-    "Isolated pre-review, final lifecycle, date-drift, active-status, retired-key, scoping, and preservation coverage all pass; the pre-assembly final chain was intentionally stale.",
-    "Approval is limited to production and deterministic evidence coverage, command counts, negative validation, and matrix coverage for this exact source-only subject; no external authority is granted."
+    "All twelve subject bindings, four public-document hashes, seven immutable Story 4.14 artifacts, 26 landed Git blobs, and the landed tree identity independently match.",
+    "Production evidence covers the exact six-entry writers/failover, expiry/compaction, authority-change, deterministic-support, diagnostic-leakage, and sanitized-capture matrix; deterministic support binds 21 methods and 33 passing cases, and the live PostgreSQL matrix binds one passing case with no skips.",
+    "Pre-review arithmetic confirms 32 of 32 commands and 237 of 237 tests passed with zero failures or skips; Contracts, live-sidecar, and solution Release builds record zero warnings and zero errors.",
+    "Negative coverage includes 49 semantic mutations, 19 retired YAML shapes, 17 invalid active shapes, 72 unsupported YAML structures, four missing or invalid dependency cases, consumer-bootstrap ordering, Git and source failures, bounded diagnostics, and runtime-mode isolation.",
+    "Contracts initializes all root-declared submodules, both workflows use the exact pinned dependency bootstrap before execution, valid sole explicit-key lifecycle syntax remains accepted, and alias, tag, or anchor rejection is scoped to root or lifecycle-affecting constructs.",
+    "Source-only consumer instructions consistently create the virtual environment, install requirements-oq8.txt, and invoke the validator with that interpreter; approval grants no release, Folders final closure, package, registry, deployment, runtime-pin, consumer-migration, external-repository, or final-consumer authority."
   ],
   "authority": {
     "eventStorePlatformComplete": true,

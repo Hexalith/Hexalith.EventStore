@@ -664,8 +664,44 @@ public sealed class ReleasePackageManifestTests
         string ciJob = ExtractTopLevelWorkflowJobBlock(ci, "ci");
         ciJob.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@main");
         ciJob.ShouldContain("unit-test-projects: |");
-        ciJob.ShouldContain("tests/Hexalith.EventStore.Contracts.Tests");
+        ciJob.ShouldNotContain("tests/Hexalith.EventStore.Contracts.Tests");
         ciJob.ShouldNotContain("continue-on-error");
+
+        string contractsJob = ExtractTopLevelWorkflowJobBlock(ci, "contracts");
+        const string allRootSubmodules = "git -c submodule.recurse=false submodule update --init";
+        const string createEnvironment = "python3 -m venv \"${RUNNER_TEMP}/oq8-python\"";
+        const string installDependency = "\"${RUNNER_TEMP}/oq8-python/bin/python\" -m pip install --requirement requirements-oq8.txt";
+        const string publishEnvironment = "echo \"${RUNNER_TEMP}/oq8-python/bin\" >> \"$GITHUB_PATH\"";
+        contractsJob.ShouldContain("- name: Initialize root-declared submodules");
+        contractsJob.ShouldContain(allRootSubmodules);
+        contractsJob.ShouldNotContain("submodule update --init references/");
+        contractsJob.ShouldContain(createEnvironment);
+        contractsJob.ShouldContain(installDependency);
+        contractsJob.ShouldContain(publishEnvironment);
+        contractsJob.ShouldContain("dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj");
+        contractsJob.ShouldNotContain("continue-on-error");
+        contractsJob.IndexOf(createEnvironment, StringComparison.Ordinal)
+            .ShouldBeLessThan(contractsJob.IndexOf(installDependency, StringComparison.Ordinal));
+        contractsJob.IndexOf(installDependency, StringComparison.Ordinal)
+            .ShouldBeLessThan(contractsJob.IndexOf(publishEnvironment, StringComparison.Ordinal));
+        contractsJob.IndexOf(publishEnvironment, StringComparison.Ordinal)
+            .ShouldBeLessThan(contractsJob.IndexOf("dotnet test tests/Hexalith.EventStore.Contracts.Tests", StringComparison.Ordinal));
+
+        liveSidecarJob.ShouldContain(createEnvironment);
+        liveSidecarJob.ShouldContain(installDependency);
+        liveSidecarJob.ShouldContain(publishEnvironment);
+        liveSidecarJob.IndexOf(createEnvironment, StringComparison.Ordinal)
+            .ShouldBeLessThan(liveSidecarJob.IndexOf(installDependency, StringComparison.Ordinal));
+        liveSidecarJob.IndexOf(installDependency, StringComparison.Ordinal)
+            .ShouldBeLessThan(liveSidecarJob.IndexOf(publishEnvironment, StringComparison.Ordinal));
+        liveSidecarJob.IndexOf(publishEnvironment, StringComparison.Ordinal)
+            .ShouldBeLessThan(liveSidecarJob.IndexOf("python3 tools/validate-oq8-platform-evidence.py", StringComparison.Ordinal));
+
+        File.ReadAllText(Path.Combine(root, "requirements-oq8.txt")).Replace("\r\n", "\n", StringComparison.Ordinal)
+            .ShouldBe("PyYAML==6.0.3\n");
+        string validator = File.ReadAllText(Path.Combine(root, "tools", "validate-oq8-platform-evidence.py"));
+        validator.ShouldContain("PINNED_PYYAML_VERSION = \"6.0.3\"");
+        validator.ShouldContain("PINNED_PYYAML_REQUIREMENT = f\"PyYAML=={PINNED_PYYAML_VERSION}\"");
 
         System.Reflection.MethodInfo? committedClosure = typeof(Oq8PlatformClosureTests).GetMethod(
             nameof(Oq8PlatformClosureTests.ApprovedSourceOnlyHandoffPasses));
