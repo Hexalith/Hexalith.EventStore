@@ -24,16 +24,18 @@ migration, predecessor change, Epic 1 change, submodule change, or G5 decision.
 - Selected immutable OCI index:
   `registry.hexalith.com/eventstore@sha256:523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87`.
 - [Identity crosswalk](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/identity-crosswalk.json)
-  SHA-256: `6d0ae4054c9c88581309c2643aeb73a6ca4c00bac7849b003d4324609d6b1929`.
+  SHA-256: `744a6b5af4c381c047d3af2ae8f56e8b7690a57805f9e460db85cf6daa1cc109`.
 - [Evidence manifest](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/evidence-sha256.txt)
   binds the core manifest, crosswalk, and review subject entry-by-entry. Its own hash is not quoted
   here because the review subject binds this proof packet, deliberately avoiding a checksum cycle.
 - [Reviewer roster](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/reviewer-roster.json)
-  SHA-256: `e63846fe79ff881395ed354a218e04d183f9d02ecc25b0cb15f1b9fef0a463c6`.
+  SHA-256: `cac0bc590cb67c65b28f744b74de4a945a92156a8d64dcd6da083d0d6946d6e5`.
+  The roster records its honest repository creation time but remains non-authorizing because no
+  durable external role-ratification decision is retained.
 - [Review subject](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/review-subject.json)
   is frozen after this packet and binds the raw crosswalk SHA-256
-  `6d0ae4054c9c88581309c2643aeb73a6ca4c00bac7849b003d4324609d6b1929`, evidence-core manifest
-  SHA-256 `4088dd1d1ffc0e8c344df06ae3620a2a065e25ff1ba59150c7fc9a9c40b2c6d9`, and this packet. The
+  `744a6b5af4c381c047d3af2ae8f56e8b7690a57805f9e460db85cf6daa1cc109`, evidence-core manifest
+  SHA-256 `7e5107f5314a5bd4ba848012265b6f803152171c3b3e697985dc380d03d5d4de`, and this packet. The
   subject file digest and this packet digest are recorded only in `evidence-sha256.txt` and the
   subject's `proof_packet.sha256` field so this packet does not create a checksum cycle.
 
@@ -130,30 +132,31 @@ not treated as a pass for release provenance.
    authority record is mandatory.
 8. Only after all checks pass, obtain EventStore owner, Release owner, and Test Architect
    acceptance of one unchanged replacement review subject.
+9. Retain a durable external decision that ratifies the exact three-role reviewer roster before
+   collecting acceptance receipts; the repository roster cannot certify its own authority.
 
 ## Verification Record
 
 - Story 1.20 critical manifest: all 33 entries passed `sha256sum -c`.
 - Contracts test project Release build: succeeded with zero warnings and zero errors.
-- Focused `DeployedRuntimeParityClosureTests`: 172 passed, zero failed/skipped/not-run
-  (re-measured 2026-08-12); this is the test count attributable to Story 3.13.
-  (re-measured after the 2026-08-11 full review patches).
+- Focused `DeployedRuntimeParityClosureTests`: 186 passed, zero failed/skipped/not-run
+  (re-measured 2026-08-13); this is the test count attributable to Story 3.13. The zero-skip result
+  was measured on a symlink-capable host; link-restricted hosts skip the reparse-point test.
 - Complete Contracts suite: `1260` was the 2026-08-11 workspace aggregate and includes concurrent,
   unrelated tests; it is not attributable to Story 3.13. The current aggregate is reported only as
-  a regression signal. The 2026-08-12 run passed 1254/1275 and failed 21 unrelated OQ8 tests because
-  that pre-existing verifier still requires the `4-8-durable-admission-evidence-ledger` status row
-  that this story's governing review patch explicitly removes as orphaned.
+  a regression signal. The 2026-08-13 pre-patch aggregate passed 1409/1409 with zero failures and
+  zero skips; the earlier 21 OQ8 failures were caused by this change set's status-row removal and
+  were subsequently reconciled in the OQ8 verifier.
 - The verifier also derives the actual fail-closed review subject and outer checksum manifest,
   rejects extra or byte-mutated package archives, validates baseline Git objects, and exercises
   independently rebound mutations across release, authority, OCI, runtime, roster, and receipts.
 - The prior smoke tool returned pass under `Development`, but the retained logs do not independently
   prove its HTTP/platform execution facts; Production contract equivalence also failed closed.
 - Story 3.13 authored no change to runtime source, workflow, release configuration, package
-  manifest, submodule content, consumer, deployment, registry object, Story 1.20, Story 3.12, or
-  Epic 1 state. Root-declared submodule gitlink pointers under `references/` are advanced by
-  concurrent repository housekeeping outside this story's authored change set; predecessor identity
-  is therefore pinned to historical Git objects at the recorded baseline commit rather than to the
-  live worktree, so gitlink drift cannot alter the frozen evidence.
+  manifest, consumer, deployment, or registry object. Historical Story 3.13 commits did advance
+  root-declared submodule gitlinks under `references/`; those changes are outside this packet's
+  runtime/external-state claims. Predecessor identity is pinned to historical Git objects at the
+  recorded baseline commit, so live gitlink drift cannot alter the frozen evidence.
 
 Because the evidence is explicitly fail-closed, Story 3.13 remains non-`done`. The response and
 runtime evidence gaps above must be closed before the packet can claim reproducible partial passes;

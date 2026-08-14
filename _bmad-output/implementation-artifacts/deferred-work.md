@@ -1287,3 +1287,21 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-frontcomposer-11-24-runtime-identity-successor.md`
   summary: Add an AppHost model test for the drain-bound environment forwarding contract.
   evidence: Direct option-binding tests cover `MaxDrainAttempts` and `MaxOutstandingPublicationEntries`, but no normal test proves AppHost forwards either value to the EventStore resource environment.
+
+## Deferred from: code review of spec-3-13-deployed-runtime-parity-closure (2026-08-13)
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Pin the restored sprint-status decision comments with a guard.
+  evidence: 116 comment lines across 24 keys were restored from baseline `1d6e9321`, but only the three Story 1.20 lines are protected by a test. The restoring finding's own text warns "the next YAML round-trip will delete the rest again". The restoration is correct; the guard gap predates this chunk.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Record a disposition for every checked chunk-2 patch bullet.
+  evidence: Eighteen of the twenty-five `[Review][Patch]` bullets in the chunk-2 block are checked `[x]` while still reading as the raw finding; only seven carry an "APPLIED 2026-08-12" note, so the record does not say what changed for the rest.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Make `RebindIndex` fail loudly instead of throwing from `Directory.Move`.
+  evidence: `DeployedRuntimeParityClosureTests.cs:6441` moves the evidence directory to a digest-named path; when a mutation leaves the index bytes unchanged, or the `manifests` array is empty, the move raises `IOException` rather than exercising the rejection path the case was written for.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Share one `archive_root` separator normalizer between the package validators.
+  evidence: `ValidatePackageBytes` (`DeployedRuntimeParityClosureTests.cs:2771`) and `ExpectedCoreFilesFor` normalize `archive_root` independently, so repeated or platform-alternate trailing separators can make the two validators disagree on the same recovered 14-archive set.

@@ -1,52 +1,52 @@
 installation:
-  version: 6.10.1-next.49
+  version: 6.11.0
   installDate: 2026-07-11T07:55:17.152Z
-  lastUpdated: 2026-08-04T09:49:11.412Z
+  lastUpdated: 2026-08-14T06:06:12.032Z
 modules:
   - name: core
-    version: 6.10.1-next.49
+    version: 6.11.0
     installDate: 2026-07-11T07:55:16.417Z
-    lastUpdated: 2026-08-04T09:49:11.397Z
+    lastUpdated: 2026-08-14T06:06:12.020Z
     source: built-in
     npmPackage: null
     repoUrl: null
   - name: bmm
-    version: 6.10.1-next.49
+    version: 6.11.0
     installDate: 2026-07-11T07:55:16.362Z
-    lastUpdated: 2026-08-04T09:49:11.400Z
+    lastUpdated: 2026-08-14T06:06:12.022Z
     source: built-in
     npmPackage: null
     repoUrl: null
   - name: cis
     version: main
     installDate: 2026-07-11T07:55:17.049Z
-    lastUpdated: 2026-08-04T09:49:11.403Z
+    lastUpdated: 2026-08-14T06:06:12.024Z
     source: external
     npmPackage: bmad-creative-intelligence-suite
     repoUrl: https://github.com/bmad-code-org/bmad-module-creative-intelligence-suite
     channel: next
-    sha: 07a8dd03d196a762f21c241d985293fe5b0f90e7
+    sha: 00191c6eb6357f1045472905e971a5df0507f157
   - name: tea
     version: main
     installDate: 2026-07-11T07:55:17.009Z
-    lastUpdated: 2026-08-04T09:49:11.407Z
+    lastUpdated: 2026-08-14T06:06:12.027Z
     source: external
     npmPackage: bmad-method-test-architecture-enterprise
     repoUrl: https://github.com/bmad-code-org/bmad-method-test-architecture-enterprise
     channel: next
-    sha: b20b7b4dec5aebc663d5066568b7bf3027c7b695
+    sha: 538130ba6866af0469765c5fac17e8cde3182b30
   - name: bmad-loop
     version: main
     installDate: 2026-07-11T07:55:16.441Z
-    lastUpdated: 2026-08-04T09:49:11.412Z
+    lastUpdated: 2026-08-14T06:06:12.032Z
     source: external
     npmPackage: null
     repoUrl: https://github.com/bmad-code-org/bmad-loop
     channel: next
-    sha: dfeead201e45dbe52f0a41d33a86742450cef5ff
+    sha: dd65bb3ce4e6c872b8a827b2e0d5407bb4932944
 ides:
   - claude-code
   - codex
+  - cursor
   - github-copilot
   - opencode
-  - cursor

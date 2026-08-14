@@ -732,7 +732,7 @@ public sealed class DeployedRuntimeParityClosureTests
         try
         {
             ValidateBaselineAndPredecessors(crosswalk, root, evidence, packageManifestSha256).ShouldBeTrue();
-            ValidateEvidenceIntegrity(crosswalk, root, evidence, coreBytes).ShouldBeTrue();
+            ValidateEvidenceIntegrity(crosswalk, root, evidence, coreBytes, subjectBytes).ShouldBeTrue();
             ValidatePackages(crosswalk, root, evidence, packageManifestSha256).ShouldBeTrue();
             ValidatePackageBytes(crosswalk["selected_candidates"]![0]!.AsObject(), evidence).ShouldBeTrue();
             ValidateRelease(crosswalk["selected_candidates"]![0]!.AsObject(), root, evidence).ShouldBeTrue();
@@ -741,7 +741,12 @@ public sealed class DeployedRuntimeParityClosureTests
             ValidateRuntimeExecution(crosswalk, root, evidence).ShouldBeTrue();
             ValidateRuntimeEquivalence(crosswalk).ShouldBeTrue();
             ValidateDeploymentAuthority(crosswalk, root, evidence).ShouldBeTrue();
-            LoadReviewerRoster(crosswalk, evidence).ShouldNotBeNull();
+            LoadReviewerRoster(
+                crosswalk,
+                evidence,
+                DateTimeOffset.Parse(
+                    JsonNode.Parse(subjectBytes)!["created_at"]!.GetValue<string>(),
+                    CultureInfo.InvariantCulture)).ShouldNotBeNull();
             ValidateReviewSubject(
                 crosswalk,
                 JsonNode.Parse(subjectBytes)!.AsObject(),
@@ -1247,6 +1252,7 @@ public sealed class DeployedRuntimeParityClosureTests
             string packageManifestSha256) = CreatePassingFixture(root);
         try
         {
+            ValidateOciGraph(crosswalk, root, evidence).ShouldBeTrue();
             JsonObject oci = crosswalk["selected_candidates"]![0]!["oci"]!.AsObject();
             JsonArray children = oci["children"]!.AsArray();
             JsonObject first = children[0]!.AsObject();
@@ -1263,6 +1269,12 @@ public sealed class DeployedRuntimeParityClosureTests
                     children[1]!["platform"] = first["platform"]!.GetValue<string>();
                     break;
                 default:
+                    evidence = RebindIndex(crosswalk, evidence, index =>
+                        index["annotations"] = new JsonObject
+                        {
+                            ["org.hexalith.story-3-13-control"] = "rebound",
+                        });
+                    ValidateOciGraph(crosswalk, root, evidence).ShouldBeTrue();
                     evidence = RebindIndex(crosswalk, evidence, index =>
                         index["manifests"]![0]!["mediaType"] = OciIndexMediaType);
                     break;
@@ -1293,20 +1305,18 @@ public sealed class DeployedRuntimeParityClosureTests
             string packageManifestSha256) = CreatePassingFixture(root);
         try
         {
-            ValidateOciGraph(crosswalk, root, evidence).ShouldBeTrue();
-            EvaluateWithFreshReview(
+            string rebound = RebindAmd64ConfigArchitecture(
                 crosswalk,
-                root,
                 evidence,
-                proofBytes,
-                packageManifestSha256).ShouldBeTrue();
-
-            string rebound = RebindAmd64ConfigArchitecture(crosswalk, evidence, "ppc64le");
-            ValidateOciGraph(crosswalk, root, rebound).ShouldBeFalse();
+                "amd64",
+                reformatBytes: true);
+            ValidateOciGraph(crosswalk, root, rebound).ShouldBeTrue();
+            string mutated = RebindAmd64ConfigArchitecture(crosswalk, rebound, "ppc64le");
+            ValidateOciGraph(crosswalk, root, mutated).ShouldBeFalse();
             EvaluateWithFreshReview(
                 crosswalk,
                 root,
-                rebound,
+                mutated,
                 proofBytes,
                 packageManifestSha256).ShouldBeFalse();
         }
@@ -1377,12 +1387,17 @@ public sealed class DeployedRuntimeParityClosureTests
             string packageManifestSha256) = CreatePassingFixture(root);
         try
         {
+            (byte[] crosswalkBytes, byte[] subjectBytes, byte[] coreBytes) =
+                RefreshReviewBindings(crosswalk, evidence, proofBytes);
             File.Delete(Path.Combine(evidence, "index.raw"));
             ValidateOciGraph(crosswalk, root, evidence).ShouldBeFalse();
-            EvaluateWithFreshReview(
+            EvaluateClosure(
                 crosswalk,
+                crosswalkBytes,
+                subjectBytes,
                 root,
                 evidence,
+                coreBytes,
                 proofBytes,
                 packageManifestSha256).ShouldBeFalse();
         }
@@ -1402,26 +1417,37 @@ public sealed class DeployedRuntimeParityClosureTests
     [InlineData("stray-evidence.json")]
     [InlineData("smoke-linux-amd64.log.bak")]
     [InlineData(".hidden-note")]
+    [InlineData("nested/stray-evidence.json")]
+    [InlineData("acceptances/other-subject/unbound.json")]
     public void UnlistedEvidenceDirectoryFileFailsClosed(string strayFileName)
     {
         string root = FindRepositoryRoot();
-        (string cleanupRoot, string evidence, JsonObject crosswalk, _, _, _, byte[] proofBytes,
+        (string cleanupRoot, string evidence, JsonObject crosswalk, byte[] crosswalkBytes,
+            byte[] subjectBytes, byte[] coreBytes, byte[] proofBytes,
             string packageManifestSha256) = CreatePassingFixture(root);
         try
         {
-            EvaluateWithFreshReview(
+            EvaluateClosure(
                 crosswalk,
+                crosswalkBytes,
+                subjectBytes,
                 root,
                 evidence,
+                coreBytes,
                 proofBytes,
                 packageManifestSha256).ShouldBeTrue();
 
-            File.WriteAllText(Path.Combine(evidence, strayFileName), "unbound artifact");
+            string strayPath = Path.Combine(evidence, strayFileName);
+            Directory.CreateDirectory(Path.GetDirectoryName(strayPath)!);
+            File.WriteAllText(strayPath, "unbound artifact");
 
-            EvaluateWithFreshReview(
+            EvaluateClosure(
                 crosswalk,
+                crosswalkBytes,
+                subjectBytes,
                 root,
                 evidence,
+                coreBytes,
                 proofBytes,
                 packageManifestSha256).ShouldBeFalse();
         }
@@ -1538,6 +1564,9 @@ public sealed class DeployedRuntimeParityClosureTests
         RuntimeFailureClassificationMatchesLog(
             node,
             new JsonObject { ["failure_class"] = "evidence" }).ShouldBeFalse();
+        RuntimeFailureClassificationMatchesLog(
+            new JsonObject { ["outcome"] = "pass", ["failure_class"] = null },
+            new JsonObject { ["failure_class"] = null }).ShouldBeFalse();
     }
 
     /// <summary>
@@ -1987,8 +2016,10 @@ public sealed class DeployedRuntimeParityClosureTests
     [Theory]
     [InlineData("schema")]
     [InlineData("repository")]
+    [InlineData("immutable-reference")]
     [InlineData("raw-index")]
     [InlineData("child-digest")]
+    [InlineData("verification")]
     [InlineData("extra-field")]
     public void OciValidationReportRejectsSchemaRootAndDescriptorMutations(string mutation)
     {
@@ -2002,9 +2033,14 @@ public sealed class DeployedRuntimeParityClosureTests
             {
                 case "schema": report["schema"] = "oci-validation/v1"; break;
                 case "repository": report["repository"] = "registry.example.invalid/other"; break;
+                case "immutable-reference":
+                    report["immutable_reference"] = ExpectedRegistry + "/" +
+                        ExpectedContainerRepository + ":latest";
+                    break;
                 case "raw-index": report["raw_index_file"] = "tag-response.raw"; break;
                 case "child-digest": report["children"]![0]!["manifest_digest"] =
                     "sha256:" + new string('0', 64); break;
+                case "verification": report["verification"]!["result"] = "fail"; break;
                 default: report["undeclared"] = true; break;
             }
 
@@ -2165,9 +2201,14 @@ public sealed class DeployedRuntimeParityClosureTests
     [InlineData("global-duration")]
     [InlineData("smoke-result")]
     [InlineData("evidence-completeness")]
+    [InlineData("exit-code-citation")]
+    [InlineData("exit-code-verification-result")]
+    [InlineData("smoke-exit-code-verification-drift")]
     [InlineData("preflight-failure-class")]
     [InlineData("platform-failure-class")]
     [InlineData("platform-unknown-failure-class")]
+    [InlineData("platform-null-failure-class")]
+    [InlineData("log-failure-class")]
     [InlineData("actual-hosting-environment")]
     [InlineData("required-hosting-environment")]
     [InlineData("citation")]
@@ -2314,6 +2355,18 @@ public sealed class DeployedRuntimeParityClosureTests
             {
                 runtime["evidence_completeness"] = "fail";
             }
+            else if (mutation == "exit-code-citation")
+            {
+                runtime["exit_code_verification"]!["citation"] = "retained-smoke-output";
+            }
+            else if (mutation == "exit-code-verification-result")
+            {
+                runtime["exit_code_verification"]!["result"] = "fail";
+            }
+            else if (mutation == "smoke-exit-code-verification-drift")
+            {
+                // Applied after PersistRuntimeBindings so only the retained smoke record drifts.
+            }
             else if (mutation == "preflight-failure-class")
             {
                 // A node claiming outcome "pass" must carry no failure class. This is the only
@@ -2328,6 +2381,10 @@ public sealed class DeployedRuntimeParityClosureTests
             else if (mutation == "platform-unknown-failure-class")
             {
                 runtime["platforms"]![0]!.AsObject()["failure_class"] = "unknown";
+            }
+            else if (mutation == "platform-null-failure-class")
+            {
+                runtime["platforms"]![0]!.AsObject()["failure_class"] = null;
             }
             else
             {
@@ -2356,6 +2413,9 @@ public sealed class DeployedRuntimeParityClosureTests
                         log["ended_at"] = afterExecution;
                         platform["ended_at"] = afterExecution;
                         break;
+                    case "log-failure-class":
+                        log["failure_class"] = "evidence";
+                        break;
                     default:
                         log["cleanup"] = "fail";
                         platform["cleanup"] = "fail";
@@ -2368,6 +2428,20 @@ public sealed class DeployedRuntimeParityClosureTests
             }
 
             PersistRuntimeBindings(runtime, evidence);
+            if (mutation == "smoke-exit-code-verification-drift")
+            {
+                JsonObject smoke = JsonNode.Parse(ReadEvidenceFile(evidence, "smoke-results.json"))!.AsObject();
+                smoke["exit_code_verification"]!["citation"] = "retained-smoke-output";
+                byte[] smokeBytes = JsonSerializer.SerializeToUtf8Bytes(smoke);
+                File.WriteAllBytes(Path.Combine(evidence, "smoke-results.json"), smokeBytes);
+                runtime["smoke_results"]!["sha256"] = ComputeSha256(smokeBytes);
+                JsonObject retained = Clone(runtime);
+                retained.Remove("citation");
+                File.WriteAllBytes(
+                    Path.Combine(evidence, runtime["citation"]!.GetValue<string>()),
+                    JsonSerializer.SerializeToUtf8Bytes(retained));
+            }
+
             RefreshReviewBindings(crosswalk, evidence, proofBytes);
             ValidateRuntimeExecution(crosswalk, root, evidence).ShouldBeFalse();
             if (mutation is "actual-hosting-environment" or "required-hosting-environment")
@@ -2486,10 +2560,15 @@ public sealed class DeployedRuntimeParityClosureTests
     [InlineData("wrong-owner")]
     [InlineData("wrong-test-architect")]
     [InlineData("extra-field")]
+    [InlineData("created-after-subject")]
+    [InlineData("missing-authority-source")]
+    [InlineData("authority-source-kind")]
+    [InlineData("authority-source-url")]
+    [InlineData("authority-source-date")]
     public void ReviewerRosterRejectsExtraAndUnauthorizedMappings(string mutation)
     {
         string root = FindRepositoryRoot();
-        (string cleanupRoot, string evidence, JsonObject crosswalk, _, _, _, byte[] proofBytes,
+        (string cleanupRoot, string evidence, JsonObject crosswalk, _, byte[] subjectBytes, _, byte[] proofBytes,
             string packageManifestSha256) = CreatePassingFixture(root);
         try
         {
@@ -2500,12 +2579,38 @@ public sealed class DeployedRuntimeParityClosureTests
                 case "wrong-owner": roster["roles"]!["release-owner"] = new JsonArray("github:unknown"); break;
                 case "wrong-test-architect":
                     roster["roles"]!["test-architect"] = new JsonArray("github:jpiquot"); break;
+                case "created-after-subject":
+                    roster["created_at"] = DateTimeOffset.UtcNow.AddDays(1).ToString("O");
+                    break;
+                case "missing-authority-source":
+                    roster.Remove("authority_source");
+                    break;
+                case "authority-source-kind":
+                    roster["authority_source"]!["kind"] = "repository-commit";
+                    break;
+                case "authority-source-url":
+                    roster["authority_source"]!["url"] =
+                        "https://github.com/Hexalith/Hexalith.EventStore/commit/" + ApprovedSourceSha;
+                    break;
+                case "authority-source-date":
+                    roster["authority_source"]!["decision_date"] = "2999-01-01";
+                    break;
                 default: roster["undeclared"] = true; break;
             }
 
             byte[] rosterBytes = JsonSerializer.SerializeToUtf8Bytes(roster);
             File.WriteAllBytes(Path.Combine(evidence, ReviewerRosterFile), rosterBytes);
             crosswalk["approval_contract"]!["reviewer_roster_sha256"] = ComputeSha256(rosterBytes);
+            if (mutation == "missing-authority-source")
+            {
+                Should.Throw<InvalidDataException>(() => LoadReviewerRoster(
+                    crosswalk,
+                    evidence,
+                    DateTimeOffset.Parse(
+                        JsonNode.Parse(subjectBytes)!["created_at"]!.GetValue<string>(),
+                        CultureInfo.InvariantCulture)));
+            }
+
             EvaluateWithFreshReview(
                 crosswalk,
                 root,
@@ -2615,7 +2720,8 @@ public sealed class DeployedRuntimeParityClosureTests
                     crosswalk,
                     repositoryRoot,
                     evidenceRoot,
-                    evidenceCoreManifestBytes)
+                    evidenceCoreManifestBytes,
+                    reviewSubjectBytes)
                 || !ValidatePackages(
                     crosswalk,
                     repositoryRoot,
@@ -3178,6 +3284,9 @@ public sealed class DeployedRuntimeParityClosureTests
                 "repository",
                 "immutable_reference",
                 "index_digest",
+                "index_size",
+                "media_type",
+                "platforms",
                 "children",
                 "raw_index_file",
                 "raw_index_sha256",
@@ -3210,6 +3319,10 @@ public sealed class DeployedRuntimeParityClosureTests
                 || validation["immutable_reference"]!.GetValue<string>() !=
                     registry + "/" + repository + "@" + indexDigest
                 || validation["index_digest"]!.GetValue<string>() != indexDigest
+                || validation["index_size"]!.GetValue<int>() != indexBytes.Length
+                || validation["media_type"]!.GetValue<string>() != OciIndexMediaType
+                || !validation["platforms"]!.AsArray().Select(item => item!.GetValue<string>())
+                    .SequenceEqual(["linux/amd64", "linux/arm64"], StringComparer.Ordinal)
                 || oci["index_raw_file"]!.GetValue<string>() != "index.raw"
                 || validation["raw_index_file"]!.GetValue<string>() != "index.raw"
                 || validation["raw_index_sha256"]!.GetValue<string>() != indexDigest[7..]
@@ -3321,14 +3434,39 @@ public sealed class DeployedRuntimeParityClosureTests
 
                 JsonObject validationChild = validationChildren.Single(item =>
                     item["platform"]!.GetValue<string>() == platform);
-                if (validationChild["manifest_digest"]!.GetValue<string>() !=
+                if (!HasExactProperties(
+                        validationChild,
+                        [
+                            "platform",
+                            "manifest_digest",
+                            "manifest_size",
+                            "media_type",
+                            "manifest_raw_file",
+                            "manifest_raw_sha256",
+                            "config_digest",
+                            "config_size",
+                            "config_media_type",
+                            "config_raw_file",
+                            "config_raw_sha256",
+                        ])
+                    || validationChild["manifest_digest"]!.GetValue<string>() !=
                         child["manifest_digest"]!.GetValue<string>()
                     || validationChild["manifest_size"]!.GetValue<int>() !=
                         child["manifest_size"]!.GetValue<int>()
+                    || validationChild["media_type"]!.GetValue<string>() != OciManifestMediaType
+                    || validationChild["manifest_raw_file"]!.GetValue<string>() !=
+                        child["manifest_raw_file"]!.GetValue<string>()
+                    || validationChild["manifest_raw_sha256"]!.GetValue<string>() !=
+                        child["manifest_raw_sha256"]!.GetValue<string>()
                     || validationChild["config_digest"]!.GetValue<string>() !=
                         child["config_digest"]!.GetValue<string>()
                     || validationChild["config_size"]!.GetValue<int>() !=
                         child["config_size"]!.GetValue<int>()
+                    || validationChild["config_media_type"]!.GetValue<string>() != OciConfigMediaType
+                    || validationChild["config_raw_file"]!.GetValue<string>() !=
+                        child["config_raw_file"]!.GetValue<string>()
+                    || validationChild["config_raw_sha256"]!.GetValue<string>() !=
+                        child["config_raw_sha256"]!.GetValue<string>()
                     || child["verification"]!.GetValue<string>() != "pass")
                 {
                     return false;
@@ -3753,7 +3891,13 @@ public sealed class DeployedRuntimeParityClosureTests
                 .Select(item => item!.GetValue<string>()).Order(StringComparer.Ordinal).ToArray();
             string[] fields = approval["required_receipt_fields"]!.AsArray()
                 .Select(item => item!.GetValue<string>()).Order(StringComparer.Ordinal).ToArray();
-            JsonObject roster = LoadReviewerRoster(crosswalk, evidenceRoot);
+            JsonObject subject = JsonNode.Parse(subjectBytes)!.AsObject();
+            if (!TryParseExplicitOffset(subject["created_at"]!.GetValue<string>(), out DateTimeOffset subjectCreated))
+            {
+                return false;
+            }
+
+            JsonObject roster = LoadReviewerRoster(crosswalk, evidenceRoot, subjectCreated);
             if (!approval["outside_hashed_evidence"]!.GetValue<bool>()
                 || approval["external_receipt_location"]!.GetValue<string>() != ReceiptDirectoryTemplate
                 || !roles.SequenceEqual(RequiredRoles, StringComparer.Ordinal)
@@ -3767,7 +3911,6 @@ public sealed class DeployedRuntimeParityClosureTests
                 return false;
             }
 
-            JsonObject subject = JsonNode.Parse(subjectBytes)!.AsObject();
             if (!ValidateReviewSubject(
                     crosswalk,
                     subject,
@@ -3792,8 +3935,6 @@ public sealed class DeployedRuntimeParityClosureTests
             string[] receiptPaths = Directory.GetFiles(receiptDirectory, "*.json", SearchOption.TopDirectoryOnly);
             string[] expectedNames = RequiredRoles.Select(role => role + ".json")
                 .Order(StringComparer.Ordinal).ToArray();
-            string[] expectedSourceNames = RequiredRoles.Select(role => role + ".json")
-                .Order(StringComparer.Ordinal).ToArray();
             string[] actualTopLevelEntries = Directory.EnumerateFileSystemEntries(receiptDirectory)
                 .Select(Path.GetFileName).Where(name => name is not null).Cast<string>()
                 .Order(StringComparer.Ordinal).ToArray();
@@ -3807,7 +3948,7 @@ public sealed class DeployedRuntimeParityClosureTests
                 || Directory.EnumerateDirectories(sourcesDirectory).Any()
                 || !Directory.GetFiles(sourcesDirectory, "*", SearchOption.TopDirectoryOnly)
                     .Select(Path.GetFileName).Order(StringComparer.Ordinal)
-                    .SequenceEqual(expectedSourceNames, StringComparer.Ordinal))
+                    .SequenceEqual(expectedNames, StringComparer.Ordinal))
             {
                 return false;
             }
@@ -3830,10 +3971,6 @@ public sealed class DeployedRuntimeParityClosureTests
                 return false;
             }
 
-            if (!TryParseExplicitOffset(subject["created_at"]!.GetValue<string>(), out DateTimeOffset subjectCreated))
-            {
-                return false;
-            }
             string[] subjectLimitations = subject["limitations"]!.AsArray()
                 .Select(item => item!.GetValue<string>()).ToArray();
             string expectedScope = "Story 3.13 deployed-runtime parity closure for " + subjectHash;
@@ -4133,6 +4270,9 @@ public sealed class DeployedRuntimeParityClosureTests
                         "repository",
                         "immutable_reference",
                         "index_digest",
+                        "index_size",
+                        "media_type",
+                        "platforms",
                         "children",
                         "raw_index_file",
                         "raw_index_sha256",
@@ -4152,7 +4292,8 @@ public sealed class DeployedRuntimeParityClosureTests
                     ["exit_code"] is null
                 && JsonNode.Parse(ReadEvidenceFile(evidenceRoot, "smoke-results.json"))!
                     ["platforms"]!.AsArray().All(item =>
-                        item!["outcome"]!.GetValue<string>() == "unverified")
+                        item!["outcome"]!.GetValue<string>() == "unverified"
+                        && item["cleanup"]!.GetValue<string>() == "unverified")
                 && JsonNode.Parse(ReadEvidenceFile(evidenceRoot, "runtime-verification.json"))!
                     ["execution_result"]!.GetValue<string>() == "unverified"
                 && JsonNode.Parse(ReadEvidenceFile(evidenceRoot, "runtime-verification.json"))!
@@ -4161,6 +4302,9 @@ public sealed class DeployedRuntimeParityClosureTests
                     ["contract_equivalence"]!.GetValue<string>() == "fail"
                 && JsonNode.Parse(ReadEvidenceFile(evidenceRoot, "runtime-verification.json"))!
                     ["evidence_completeness"]!.GetValue<string>() == "fail"
+                && runtime["platforms"]!.AsArray().All(item =>
+                    item!["attempts"] is null
+                    && item["cleanup"]!.GetValue<string>() == "unverified")
                 && JsonNode.Parse(ReadEvidenceFile(evidenceRoot, "runtime-verification.json"))!
                     ["contract"]!["actual_hosting_environment"]!.GetValue<string>() ==
                     runtime["contract"]!["actual_hosting_environment"]!.GetValue<string>()
@@ -4215,33 +4359,58 @@ public sealed class DeployedRuntimeParityClosureTests
         }
     }
 
-    private static JsonObject LoadReviewerRoster(JsonObject crosswalk, string evidenceRoot)
+    private static JsonObject LoadReviewerRoster(
+        JsonObject crosswalk,
+        string evidenceRoot,
+        DateTimeOffset? subjectCreatedAt = null)
     {
         JsonObject approval = crosswalk["approval_contract"]!.AsObject();
         string path = approval["reviewer_roster_path"]!.GetValue<string>();
         byte[] bytes = ReadEvidenceFile(evidenceRoot, path);
-        JsonObject roster = JsonNode.Parse(bytes)!.AsObject();
-        JsonObject roles = roster["roles"]!.AsObject();
-        JsonObject authoritySource = roster["authority_source"]!.AsObject();
+        if (JsonNode.Parse(bytes) is not JsonObject roster
+            || roster["roles"] is not JsonObject roles
+            || roster["authority_source"] is not JsonObject authoritySource)
+        {
+            throw new InvalidDataException("Reviewer roster is missing a required object.");
+        }
+
         string[] roleNames = roles.Select(role => role.Key).Order(StringComparer.Ordinal).ToArray();
+        DateTimeOffset assembledAt = default;
+        DateTimeOffset rosterCreatedAt = default;
+        bool temporalBindingIsValid =
+            TryParseExplicitOffset(crosswalk["assembled_at"]!.GetValue<string>(), out assembledAt)
+            && TryParseExplicitOffset(roster["created_at"]!.GetValue<string>(), out rosterCreatedAt)
+            && rosterCreatedAt >= assembledAt
+            && (subjectCreatedAt is null || rosterCreatedAt <= subjectCreatedAt.Value);
+        bool authoritySourceIsValid =
+            HasExactProperties(authoritySource, ["kind", "url", "decision_date", "ratification"])
+            && authoritySource["kind"]?.GetValue<string>() == "github-issue-comment"
+            && authoritySource["url"] is JsonValue authorityUrlValue
+            && Uri.TryCreate(authorityUrlValue.GetValue<string>(), UriKind.Absolute, out Uri? authorityUri)
+            && authorityUri.Scheme == Uri.UriSchemeHttps
+            && authorityUri.Host == "github.com"
+            && authorityUri.AbsolutePath.StartsWith(
+                "/Hexalith/Hexalith.EventStore/issues/",
+                StringComparison.Ordinal)
+            && authorityUri.Fragment.StartsWith("#issuecomment-", StringComparison.Ordinal)
+            && authoritySource["decision_date"] is JsonValue decisionDateValue
+            && DateOnly.TryParseExact(
+                decisionDateValue.GetValue<string>(),
+                "yyyy-MM-dd",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out DateOnly decisionDate)
+            && temporalBindingIsValid
+            && decisionDate <= DateOnly.FromDateTime(rosterCreatedAt.UtcDateTime)
+            && authoritySource["ratification"] is JsonValue ratificationValue
+            && !string.IsNullOrWhiteSpace(ratificationValue.GetValue<string>());
         if (path != ReviewerRosterFile
             || approval["reviewer_roster_sha256"]!.GetValue<string>() != ComputeSha256(bytes)
             || roster["schema"]!.GetValue<string>() !=
                 "hexalith.eventstore.story-3-13-reviewer-roster/v1"
             || roster["repository"]!.GetValue<string>() != ExpectedRepository
             || !HasExactProperties(roster, ["schema", "repository", "created_at", "authority_source", "roles"])
-            || !TryParseExplicitOffset(roster["created_at"]!.GetValue<string>(), out _)
-            || !HasExactProperties(
-                authoritySource,
-                ["kind", "url", "commit_sha", "decision_date", "ratification"])
-            || authoritySource["kind"]!.GetValue<string>() != "repository-commit"
-            || authoritySource["url"]!.GetValue<string>() !=
-                "https://github.com/Hexalith/Hexalith.EventStore/commit/" +
-                "77f34d13b6cce8d906466486f432cd0ed524c9a4"
-            || authoritySource["commit_sha"]!.GetValue<string>() !=
-                "77f34d13b6cce8d906466486f432cd0ed524c9a4"
-            || authoritySource["decision_date"]!.GetValue<string>() != "2026-08-11"
-            || string.IsNullOrWhiteSpace(authoritySource["ratification"]!.GetValue<string>())
+            || !authoritySourceIsValid
             || !DocumentIsSupportSafe(roster)
             || !roleNames.SequenceEqual(RequiredRoles, StringComparer.Ordinal)
             || roles.Any(role => role.Value!.AsArray().Count == 0
@@ -4401,7 +4570,8 @@ public sealed class DeployedRuntimeParityClosureTests
         JsonObject crosswalk,
         string repositoryRoot,
         string evidenceRoot,
-        byte[] coreManifestBytes)
+        byte[] coreManifestBytes,
+        byte[] reviewSubjectBytes)
     {
         string predecessorPrefix =
             "_bmad-output/implementation-artifacts/evidence/story-1-20/" + ApprovedSourceSha + "/";
@@ -4411,7 +4581,7 @@ public sealed class DeployedRuntimeParityClosureTests
         byte[] retainedCore = ReadEvidenceFile(evidenceRoot, "evidence-core-sha256.txt");
         byte[] predecessorManifest = ReadEvidenceFile(evidenceRoot, "predecessor-tree-sha256.txt");
         return retainedCore.SequenceEqual(coreManifestBytes)
-            && EvidenceDirectoryHasNoUnlistedFiles(evidenceRoot, crosswalk)
+            && EvidenceDirectoryHasNoUnlistedFiles(evidenceRoot, crosswalk, reviewSubjectBytes)
             && VerifyChecksumManifest(
                 coreManifestBytes,
                 evidenceRoot,
@@ -4425,11 +4595,13 @@ public sealed class DeployedRuntimeParityClosureTests
     }
 
     /// <summary>
-    /// Rejects any file physically present at the top level of the content-addressed evidence
-    /// directory that no manifest lists. Without this, an unbound artifact rides inside the packet
-    /// undetected, because every other gate reads manifest entries rather than the directory.
+    /// Rejects any recursively present file or directory that is not part of the core packet or the
+    /// exact receipt tree bound to the current review subject.
     /// </summary>
-    private static bool EvidenceDirectoryHasNoUnlistedFiles(string evidenceRoot, JsonObject crosswalk)
+    private static bool EvidenceDirectoryHasNoUnlistedFiles(
+        string evidenceRoot,
+        JsonObject crosswalk,
+        byte[] reviewSubjectBytes)
     {
         HashSet<string> listed = new(StringComparer.Ordinal) { "evidence-sha256.txt" };
         foreach (string path in ExpectedCoreFilesFor(crosswalk).Concat(ExpectedOuterFiles))
@@ -4437,10 +4609,37 @@ public sealed class DeployedRuntimeParityClosureTests
             listed.Add(path.Replace('\\', '/'));
         }
 
-        return Directory
-            .GetFiles(evidenceRoot, "*", SearchOption.TopDirectoryOnly)
-            .Select(path => Path.GetFileName(path))
-            .All(listed.Contains);
+        if (crosswalk["approval_contract"]!["receipt_count"]!.GetValue<int>() == 3)
+        {
+            string receiptRoot = "acceptances/" + ComputeSha256(reviewSubjectBytes);
+            foreach (string role in RequiredRoles)
+            {
+                listed.Add(receiptRoot + "/" + role + ".json");
+                listed.Add(receiptRoot + "/sources/" + role + ".json");
+            }
+        }
+
+        HashSet<string> listedDirectories = new(StringComparer.Ordinal);
+        foreach (string path in listed)
+        {
+            string? parent = Path.GetDirectoryName(path.Replace('/', Path.DirectorySeparatorChar));
+            while (!string.IsNullOrEmpty(parent))
+            {
+                listedDirectories.Add(parent.Replace('\\', '/'));
+                parent = Path.GetDirectoryName(parent);
+            }
+        }
+
+        string[] actualFiles = Directory.GetFiles(evidenceRoot, "*", SearchOption.AllDirectories)
+            .Select(path => Path.GetRelativePath(evidenceRoot, path).Replace('\\', '/'))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        string[] actualDirectories = Directory.GetDirectories(evidenceRoot, "*", SearchOption.AllDirectories)
+            .Select(path => Path.GetRelativePath(evidenceRoot, path).Replace('\\', '/'))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        return actualFiles.All(listed.Contains)
+            && actualDirectories.All(listedDirectories.Contains);
     }
 
     private static string[] ExpectedCoreFilesFor(JsonObject crosswalk)
@@ -4842,10 +5041,6 @@ public sealed class DeployedRuntimeParityClosureTests
             ("nuget.org-flat-container", "exact-package-version-http-get", "404-per-package", "not-found"),
             ("github-packages-org-nuget-inventory", "authenticated-org-package-inventory-with-read-packages",
                 "zero-matching-packages", "not-found"),
-            ("azure-worm-archive-inventory", "retained-archive-inventory-and-retrieval",
-                "zero-retrievable-archives", "not-found"),
-            ("github-actions-retained-artifact-inventory", "retained-artifact-inventory-and-extraction",
-                "zero-retrievable-archives", "not-found"),
             ("hexalith-internal-feed", "configured-nuget-source-inventory", "source-not-configured",
                 "unavailable"),
         ];
@@ -5200,7 +5395,7 @@ public sealed class DeployedRuntimeParityClosureTests
         release["evidence_path"] = "release-provenance.json";
         release["verification"]!["result"] = "pass";
 
-        WriteReviewerRoster(evidence);
+        WriteReviewerRoster(evidence, now.AddMinutes(-4.5));
         JsonObject approval = crosswalk["approval_contract"]!.AsObject();
         approval["reviewer_roster_path"] = ReviewerRosterFile;
         approval["reviewer_roster_sha256"] = ComputeSha256(Path.Combine(evidence, ReviewerRosterFile));
@@ -5458,13 +5653,22 @@ public sealed class DeployedRuntimeParityClosureTests
                 ["immutable_reference"] = ExpectedRegistry + "/" + ExpectedContainerRepository + "@" +
                     indexDigest,
                 ["index_digest"] = indexDigest,
+                ["index_size"] = indexBytes.Length,
+                ["media_type"] = OciIndexMediaType,
+                ["platforms"] = new JsonArray("linux/amd64", "linux/arm64"),
                 ["children"] = new JsonArray(children.Select(item => (JsonNode)new JsonObject
                 {
                     ["platform"] = item!["platform"]!.GetValue<string>(),
                     ["manifest_digest"] = item["manifest_digest"]!.GetValue<string>(),
                     ["manifest_size"] = item["manifest_size"]!.GetValue<int>(),
+                    ["media_type"] = OciManifestMediaType,
+                    ["manifest_raw_file"] = item["manifest_raw_file"]!.GetValue<string>(),
+                    ["manifest_raw_sha256"] = item["manifest_raw_sha256"]!.GetValue<string>(),
                     ["config_digest"] = item["config_digest"]!.GetValue<string>(),
                     ["config_size"] = item["config_size"]!.GetValue<int>(),
+                    ["config_media_type"] = OciConfigMediaType,
+                    ["config_raw_file"] = item["config_raw_file"]!.GetValue<string>(),
+                    ["config_raw_sha256"] = item["config_raw_sha256"]!.GetValue<string>(),
                 }).ToArray()),
                 ["raw_index_file"] = "index.raw",
                 ["raw_index_sha256"] = indexHash,
@@ -5668,22 +5872,21 @@ public sealed class DeployedRuntimeParityClosureTests
         ["raw_sha256"] = ComputeSha256(bytes),
     };
 
-    private static void WriteReviewerRoster(string evidence)
+    private static void WriteReviewerRoster(string evidence, DateTimeOffset createdAt)
     {
         JsonObject roster = new()
         {
             ["schema"] = "hexalith.eventstore.story-3-13-reviewer-roster/v1",
             ["repository"] = "Hexalith/Hexalith.EventStore",
-            ["created_at"] = "2026-08-12T06:05:15+00:00",
+            ["created_at"] = createdAt.ToString("O"),
             ["authority_source"] = new JsonObject
             {
-                ["kind"] = "repository-commit",
-                ["url"] = "https://github.com/Hexalith/Hexalith.EventStore/commit/" +
-                    "77f34d13b6cce8d906466486f432cd0ed524c9a4",
-                ["commit_sha"] = "77f34d13b6cce8d906466486f432cd0ed524c9a4",
-                ["decision_date"] = "2026-08-11",
+                ["kind"] = "github-issue-comment",
+                ["url"] = "https://github.com/Hexalith/Hexalith.EventStore/issues/313" +
+                    "#issuecomment-313",
+                ["decision_date"] = createdAt.UtcDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
                 ["ratification"] =
-                    "The EventStore owner ratified github:jpiquot for both owner roles and accepted bmad:murat as test architect.",
+                    "Synthetic external decision binding the three governing Story 3.13 reviewer roles.",
             },
             ["roles"] = new JsonObject
             {
@@ -5827,34 +6030,17 @@ public sealed class DeployedRuntimeParityClosureTests
         byte[] proofBytes,
         string packageManifestSha256)
     {
-        try
-        {
-            (byte[] crosswalkBytes, byte[] subjectBytes, byte[] coreBytes) =
-                RefreshReviewBindings(crosswalk, evidence, proofBytes);
-            return EvaluateClosure(
-                crosswalk,
-                crosswalkBytes,
-                subjectBytes,
-                repositoryRoot,
-                evidence,
-                coreBytes,
-                proofBytes,
-                packageManifestSha256);
-        }
-        catch (Exception exception) when (
-            exception is InvalidOperationException
-            or NullReferenceException
-            or ArgumentException
-            or OverflowException
-            or FormatException
-            or InvalidDataException
-            or JsonException
-            or IOException
-            or NotSupportedException
-            or UnauthorizedAccessException)
-        {
-            return false;
-        }
+        (byte[] crosswalkBytes, byte[] subjectBytes, byte[] coreBytes) =
+            RefreshReviewBindings(crosswalk, evidence, proofBytes);
+        return EvaluateClosure(
+            crosswalk,
+            crosswalkBytes,
+            subjectBytes,
+            repositoryRoot,
+            evidence,
+            coreBytes,
+            proofBytes,
+            packageManifestSha256);
     }
 
     private static void PersistRuntimeBindings(JsonObject runtime, string evidence)
@@ -5922,12 +6108,13 @@ public sealed class DeployedRuntimeParityClosureTests
     {
         JsonObject subject = JsonNode.Parse(subjectBytes)!.AsObject();
         string subjectHash = ComputeSha256(subjectBytes);
-        string directory = Path.Combine(evidence, "acceptances", subjectHash);
-        if (Directory.Exists(directory))
+        string acceptancesRoot = Path.Combine(evidence, "acceptances");
+        if (Directory.Exists(acceptancesRoot))
         {
-            Directory.Delete(directory, recursive: true);
+            Directory.Delete(acceptancesRoot, recursive: true);
         }
 
+        string directory = Path.Combine(acceptancesRoot, subjectHash);
         Directory.CreateDirectory(directory);
         string sourcesDirectory = Path.Combine(directory, "sources");
         Directory.CreateDirectory(sourcesDirectory);
@@ -6244,25 +6431,26 @@ public sealed class DeployedRuntimeParityClosureTests
     private static bool RuntimeFailureClassificationIsValid(JsonObject node)
     {
         string outcome = node["outcome"]!.GetValue<string>();
-        bool hasClass = node.TryGetPropertyValue("failure_class", out JsonNode? classNode)
-            && classNode is JsonValue;
+        bool hasClass = node.TryGetPropertyValue("failure_class", out JsonNode? classNode);
         if (outcome == "pass")
         {
             return !hasClass;
         }
 
         return hasClass
-            && classNode!.GetValue<string>() is "environment" or "product" or "evidence";
+            && classNode is JsonValue classValue
+            && classValue.GetValue<string>() is "environment" or "product" or "evidence";
     }
 
     private static bool RuntimeFailureClassificationMatchesLog(JsonObject node, JsonObject log)
     {
-        bool nodeHasClass = node.TryGetPropertyValue("failure_class", out JsonNode? nodeClass)
-            && nodeClass is JsonValue;
-        bool logHasClass = log.TryGetPropertyValue("failure_class", out JsonNode? logClass)
-            && logClass is JsonValue;
+        bool nodeHasClass = node.TryGetPropertyValue("failure_class", out JsonNode? nodeClass);
+        bool logHasClass = log.TryGetPropertyValue("failure_class", out JsonNode? logClass);
         return nodeHasClass == logHasClass
-            && (!nodeHasClass || nodeClass!.GetValue<string>() == logClass!.GetValue<string>());
+            && (!nodeHasClass
+                || (nodeClass is JsonValue nodeValue
+                    && logClass is JsonValue logValue
+                    && nodeValue.GetValue<string>() == logValue.GetValue<string>()));
     }
 
     private static void CopyDirectory(string source, string destination)
@@ -6299,7 +6487,8 @@ public sealed class DeployedRuntimeParityClosureTests
     private static string RebindAmd64ConfigArchitecture(
         JsonObject crosswalk,
         string evidence,
-        string architecture)
+        string architecture,
+        bool reformatBytes = false)
     {
         JsonObject oci = crosswalk["selected_candidates"]![0]!["oci"]!.AsObject();
         JsonObject child = oci["children"]!.AsArray().Select(item => item!.AsObject()).Single(item =>
@@ -6308,7 +6497,9 @@ public sealed class DeployedRuntimeParityClosureTests
         string manifestFile = child["manifest_raw_file"]!.GetValue<string>();
         JsonObject config = JsonNode.Parse(File.ReadAllBytes(Path.Combine(evidence, configFile)))!.AsObject();
         config["architecture"] = architecture;
-        byte[] configBytes = JsonSerializer.SerializeToUtf8Bytes(config);
+        byte[] configBytes = JsonSerializer.SerializeToUtf8Bytes(
+            config,
+            new JsonSerializerOptions { WriteIndented = reformatBytes });
         string configDigest = "sha256:" + ComputeSha256(configBytes);
         File.WriteAllBytes(Path.Combine(evidence, configFile), configBytes);
 
@@ -6399,6 +6590,7 @@ public sealed class DeployedRuntimeParityClosureTests
         validation["immutable_reference"] =
             ExpectedRegistry + "/" + ExpectedContainerRepository + "@" + indexDigest;
         validation["index_digest"] = indexDigest;
+        validation["index_size"] = indexBytes.Length;
         validation["raw_index_sha256"] = indexHash;
         foreach (JsonObject validationChild in validation["children"]!.AsArray().Select(item => item!.AsObject()))
         {
@@ -6409,8 +6601,10 @@ public sealed class DeployedRuntimeParityClosureTests
 
             validationChild["manifest_digest"] = manifestDigest;
             validationChild["manifest_size"] = manifestBytes.Length;
+            validationChild["manifest_raw_sha256"] = manifestDigest[7..];
             validationChild["config_digest"] = configDigest;
             validationChild["config_size"] = configBytes.Length;
+            validationChild["config_raw_sha256"] = configDigest[7..];
         }
 
         File.WriteAllBytes(
@@ -6473,6 +6667,7 @@ public sealed class DeployedRuntimeParityClosureTests
         JsonObject validation = JsonNode.Parse(ReadEvidenceFile(evidence, "oci-validation.json"))!.AsObject();
         validation["immutable_reference"] = oci["immutable_reference"]!.DeepClone();
         validation["index_digest"] = indexDigest;
+        validation["index_size"] = indexBytes.Length;
         validation["raw_index_sha256"] = indexHash;
         File.WriteAllBytes(
             Path.Combine(evidence, "oci-validation.json"),

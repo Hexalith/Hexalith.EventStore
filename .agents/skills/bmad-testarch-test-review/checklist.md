@@ -158,9 +158,9 @@ Coverage criteria are intentionally excluded from this checklist.
 #### Test Length (if `check_test_length: true`)
 
 - [ ] File line count calculated
-- [ ] Threshold comparison (≤300 lines ideal)
+- [ ] Threshold comparison (≤1000 lines ideal)
 - [ ] Status assigned (PASS/WARN/FAIL)
-- [ ] Splitting recommendations generated (if >300 lines)
+- [ ] Splitting recommendations generated (if >1000 lines)
 
 #### Test Duration (if `check_test_duration: true`)
 
@@ -335,6 +335,11 @@ Coverage criteria are intentionally excluded from this checklist.
 - [ ] Recommended fixes are implementable
 - [ ] Code examples are correct and runnable
 - [ ] Recommendation (Approve / Approve with Comments / Request Changes / Block) is clear
+- [ ] Recommendation matches what `step-03f` §3b **computes** from the violation counts, and was not chosen by judgment
+- [ ] Every violation carries its `criteria-registry.md` row, and every severity matches that row
+- [ ] Each Convention criterion states its adoption count, and an `absent` or `unknown` convention deducted nothing
+- [ ] Every `✅ PASS (n/a)` row says why its gate was closed
+- [ ] Any changed test artifact excluded from the review set appears under `## Excluded From Review Set`
 
 ---
 

@@ -44,20 +44,6 @@
       "result": "not-found"
     },
     {
-      "source": "azure-worm-archive-inventory",
-      "method": "retained-archive-inventory-and-retrieval",
-      "expected_result": "zero-retrievable-archives",
-      "observed_count": 0,
-      "result": "not-found"
-    },
-    {
-      "source": "github-actions-retained-artifact-inventory",
-      "method": "retained-artifact-inventory-and-extraction",
-      "expected_result": "zero-retrievable-archives",
-      "observed_count": 0,
-      "result": "not-found"
-    },
-    {
       "source": "hexalith-internal-feed",
       "method": "configured-nuget-source-inventory",
       "expected_result": "source-not-configured",

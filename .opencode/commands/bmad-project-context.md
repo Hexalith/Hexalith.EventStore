@@ -1,5 +1,5 @@
 ---
-description: "Curate and maintain verified project context for AI agents. Use when the user says \"project context\", \"document project\", \"generate project context\", \"refresh context\", or \"audit context\""
+description: "Set up, refresh, or audit a repository's agent instructions (the AGENTS.md block) so AI agents work well in that repo. Also records observed agent mistakes as pitfall lines. Must be invoked by name."
 ---
 
 @skills/bmad-project-context
