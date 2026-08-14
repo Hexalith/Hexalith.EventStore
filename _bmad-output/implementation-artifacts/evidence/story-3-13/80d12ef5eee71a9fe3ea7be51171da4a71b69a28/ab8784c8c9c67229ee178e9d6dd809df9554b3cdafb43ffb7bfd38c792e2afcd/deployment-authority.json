@@ -1,0 +1,35 @@
+{
+  "schema": "hexalith.eventstore.story-3-13-deployment-authority/v2",
+  "repository": "Hexalith/Hexalith.EventStore",
+  "action": "deployed-runtime-identity-acceptance",
+  "owner": "github:jpiquot",
+  "authorized_at": "2026-08-14T08:23:00Z",
+  "expires_at": "2026-09-13T00:00:00Z",
+  "rationale": "The 2026-08-14 Sprint Change Proposal replaces the selected Story 3.13 identity with v3.94.1. It does not authorize deployment, consumer migration, publication, or G5.",
+  "deployment_authorized": false,
+  "scope": {
+    "source_sha": "80d12ef5eee71a9fe3ea7be51171da4a71b69a28",
+    "package_manifest_sha256": "56b4f0ef9175f1c8a3a42f9d1a0af7ab3fada64120be07f43e8ee8ebeb59c4d9",
+    "package_version": "3.94.1",
+    "semantic_tag": "v3.94.1",
+    "registry": "registry.hexalith.com",
+    "container_repository": "eventstore",
+    "index_digest": "sha256:ab8784c8c9c67229ee178e9d6dd809df9554b3cdafb43ffb7bfd38c792e2afcd",
+    "platforms": [
+      "linux/amd64",
+      "linux/arm64"
+    ],
+    "workflow_run": 31781920404,
+    "workflow_attempt": 1,
+    "builds_execution_sha": "f75daebd4c522c081a6f62e274cf25e07971de69",
+    "publisher_identity": "github-actions:semantic-release",
+    "validator_identity": "hexalith-builds:f75daebd4c522c081a6f62e274cf25e07971de69"
+  },
+  "lineage_material_sha256": null,
+  "durable_source": {
+    "kind": "planning-artifact",
+    "scope": "repository",
+    "path": "_bmad-output/planning-artifacts/sprint-change-proposal-2026-08-14.md",
+    "sha256": "9844c998a75663fd2cf226e7d91990c741579b723b947aa4f982d5801a7c29fd"
+  }
+}

@@ -1,0 +1,1 @@
+{"schema":"hexalith.eventstore.story-3-13-runtime-preflight/v1","platform":"linux/arm64","child_digest":"sha256:7141af0955899be172cea53fff7ddafd363bf39c9b6d0ea9177a2047d8748b72","observed_runtime_platform":"linux/arm64","started_at":"2026-08-14T08:28:55.922144Z","ended_at":"2026-08-14T08:28:59.684930Z","exit_code":0,"outcome":"pass"}

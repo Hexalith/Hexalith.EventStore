@@ -16,6 +16,14 @@ public sealed class DeployedRuntimeParityClosureTests
 {
     private const string ApprovedSourceSha = "fa2d1c9910f8976553adb33dcdb1c9ff2ea75594";
     private const string ApprovedPackageVersion = "999.1.20-proof.fa2d1c9910f8";
+    private const string SelectedSourceSha = "80d12ef5eee71a9fe3ea7be51171da4a71b69a28";
+    private const string SelectedPackageVersion = "3.94.1";
+    private const string SelectedIndexDigest =
+        "sha256:ab8784c8c9c67229ee178e9d6dd809df9554b3cdafb43ffb7bfd38c792e2afcd";
+    private const string SelectedEvidenceRelativePath =
+        "_bmad-output/implementation-artifacts/evidence/story-3-13/" +
+        SelectedSourceSha +
+        "/ab8784c8c9c67229ee178e9d6dd809df9554b3cdafb43ffb7bfd38c792e2afcd";
     private const string ApprovedPackageManifestSha256 =
         "4271ddc76411780591423ab024b776cd34a2abccf1cc2dac03a245e141dbe0bc";
     private const string EvidenceRelativePath =
@@ -182,6 +190,33 @@ public sealed class DeployedRuntimeParityClosureTests
         "story-1-16-followup-review.github.json",
         "story-1-16-followup-review.json",
     ];
+
+    /// <summary>
+    /// Verifies the owner-approved v3.94.1 selected packet exists beside the historical fail-closed tree.
+    /// </summary>
+    [Fact]
+    public void SelectedV3941PacketIsPresentAndDoesNotSpliceHistoricalProofBytes()
+    {
+        string root = FindRepositoryRoot();
+        string selectedEvidence = Path.Combine(root, SelectedEvidenceRelativePath);
+        Directory.Exists(selectedEvidence).ShouldBeTrue();
+        File.Exists(Path.Combine(root, EvidenceRelativePath, "identity-crosswalk.json")).ShouldBeTrue();
+        JsonObject selected = JsonNode.Parse(
+            File.ReadAllBytes(Path.Combine(selectedEvidence, "identity-crosswalk.json")))!.AsObject();
+        selected["approved_identity"]!["source_sha"]!.GetValue<string>().ShouldBe(SelectedSourceSha);
+        selected["approved_identity"]!["package_version"]!.GetValue<string>().ShouldBe(SelectedPackageVersion);
+        selected["selected_candidates"]![0]!["oci"]!["index_digest"]!.GetValue<string>()
+            .ShouldBe(SelectedIndexDigest);
+        selected["selected_candidates"]![0]!["packages"]!["byte_verification"]!["recovered_count"]!
+            .GetValue<int>().ShouldBe(14);
+        selected["verdict"]!["story_may_be_done"]!.GetValue<bool>().ShouldBeFalse();
+        selected["approval_contract"]!["receipt_count"]!.GetValue<int>().ShouldBe(0);
+        ValidatePackageBytes(selected["selected_candidates"]![0]!.AsObject(), selectedEvidence).ShouldBeTrue();
+        string[] spliceIds = selected["prohibited_splices"]!.AsArray()
+            .Select(item => item!["splice_id"]!.GetValue<string>()).ToArray();
+        spliceIds.ShouldContain("story-1-20-source-packages-plus-v3.94.1-release-index");
+        spliceIds.ShouldContain("v3.94.1-source-packages-plus-story-1-20-proof-index");
+    }
 
     /// <summary>
     /// Verifies exact package identity tuples and every retained archive hash against frozen inputs.
@@ -1078,6 +1113,8 @@ public sealed class DeployedRuntimeParityClosureTests
     [Theory]
     [InlineData("story-1-20-source-packages-plus-v3.77.2-release-index")]
     [InlineData("v3.77.2-source-packages-plus-story-1-20-proof-index")]
+    [InlineData("story-1-20-source-packages-plus-v3.94.1-release-index")]
+    [InlineData("v3.94.1-source-packages-plus-story-1-20-proof-index")]
     public void ProhibitedCrossLineageSplicesFailClosed(string spliceId)
     {
         string root = FindRepositoryRoot();
@@ -1090,33 +1127,43 @@ public sealed class DeployedRuntimeParityClosureTests
             const string CorrectiveReleaseSource = "77a9a442c0e6d0408957888e10c3a9accd634c99";
             const string CorrectiveIndexDigest =
                 "sha256:db3ab41e187efc0de397fd1205660a0f685e2c94ecd8f4a8f1843ac567056bf6";
-            if (spliceId == "story-1-20-source-packages-plus-v3.77.2-release-index")
+            const string SelectedReleaseSource = "80d12ef5eee71a9fe3ea7be51171da4a71b69a28";
+            const string SelectedIndexDigest =
+                "sha256:ab8784c8c9c67229ee178e9d6dd809df9554b3cdafb43ffb7bfd38c792e2afcd";
+            ArgumentException.ThrowIfNullOrWhiteSpace(spliceId);
+            if (spliceId is "story-1-20-source-packages-plus-v3.77.2-release-index"
+                or "story-1-20-source-packages-plus-v3.94.1-release-index")
             {
-                // Keep Story 1.20 source/package identity; splice in the v3.77.2 release/index half.
+                bool useSelectedRelease = spliceId.Contains("v3.94.1", StringComparison.Ordinal);
+                string foreignSource = useSelectedRelease ? SelectedReleaseSource : CorrectiveReleaseSource;
+                string foreignIndex = useSelectedRelease ? SelectedIndexDigest : CorrectiveIndexDigest;
+                string foreignVersion = useSelectedRelease ? "3.94.1" : "3.77.2";
                 candidate["source"]!["sha"]!.GetValue<string>().ShouldBe(ApprovedSourceSha);
                 candidate["packages"]!["version"]!.GetValue<string>().ShouldBe(ApprovedPackageVersion);
-                candidate["release"]!["semantic_version"] = "3.77.2";
-                candidate["release"]!["semantic_tag"] = "v3.77.2";
-                candidate["release"]!["source_sha"] = CorrectiveReleaseSource;
+                candidate["release"]!["semantic_version"] = foreignVersion;
+                candidate["release"]!["semantic_tag"] = "v" + foreignVersion;
+                candidate["release"]!["source_sha"] = foreignSource;
                 candidate["release"]!["source_exact_match"] = false;
-                candidate["oci"]!["index_digest"] = CorrectiveIndexDigest;
+                candidate["oci"]!["index_digest"] = foreignIndex;
                 candidate["oci"]!["immutable_reference"] =
-                    ExpectedRegistry + "/" + ExpectedContainerRepository + "@" + CorrectiveIndexDigest;
+                    ExpectedRegistry + "/" + ExpectedContainerRepository + "@" + foreignIndex;
                 candidate["source"]!["sha"]!.GetValue<string>()
                     .ShouldNotBe(candidate["release"]!["source_sha"]!.GetValue<string>());
             }
             else
             {
-                // Keep the Story 1.20 proof index; splice in the v3.77.2 source/package half.
+                bool useSelectedSource = spliceId.Contains("v3.94.1", StringComparison.Ordinal);
+                string foreignSource = useSelectedSource ? SelectedReleaseSource : CorrectiveReleaseSource;
+                string foreignVersion = useSelectedSource ? "3.94.1" : "3.77.2";
                 string retainedIndex = candidate["oci"]!["index_digest"]!.GetValue<string>();
                 retainedIndex.ShouldBe(
                     crosswalk["selected_candidates"]![0]!["oci"]!["index_digest"]!.GetValue<string>());
-                candidate["source"]!["sha"] = CorrectiveReleaseSource;
-                candidate["packages"]!["version"] = "3.77.2";
+                candidate["source"]!["sha"] = foreignSource;
+                candidate["packages"]!["version"] = foreignVersion;
                 foreach (JsonObject item in candidate["packages"]!["items"]!.AsArray()
                     .Select(item => item!.AsObject()))
                 {
-                    item["version"] = "3.77.2";
+                    item["version"] = foreignVersion;
                 }
 
                 candidate["source"]!["sha"]!.GetValue<string>().ShouldNotBe(ApprovedSourceSha);

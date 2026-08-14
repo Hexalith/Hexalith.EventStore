@@ -1,0 +1,62 @@
+{
+  "schema": "hexalith.eventstore.story-3-13-review-subject/v2",
+  "created_at": "2026-08-14T08:32:00Z",
+  "proposed_decision": "fail-closed",
+  "identity_crosswalk": {
+    "path": "identity-crosswalk.json",
+    "sha256": "ba4e909ea4fd93d0357ccdab1af579e04d4dfd134260cdd6d2db1eea9f28efcc"
+  },
+  "evidence_core_manifest": {
+    "path": "evidence-core-sha256.txt",
+    "sha256": "00136b5336836bb782673c944e7cd98c274f104ff7fec9919d5b27946f538fd5"
+  },
+  "proof_packet": {
+    "path": "_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure-v3.94.1-proof-packet.md",
+    "sha256": "684e5ced0ff0f7dcaa7b942467e035f79219cf804a35a842d800cb4c6dce0e1d"
+  },
+  "identity": {
+    "source_sha": "80d12ef5eee71a9fe3ea7be51171da4a71b69a28",
+    "package_version": "3.94.1",
+    "package_hash_manifest_sha256": "56b4f0ef9175f1c8a3a42f9d1a0af7ab3fada64120be07f43e8ee8ebeb59c4d9",
+    "release_version": "3.94.1",
+    "workflow_run": 31781920404,
+    "authority_record_sha256": "d3831b1e42623f5156ff63ac294db07503cd86bae75f7fe0c4adf96c0d225b28",
+    "index_digest": "sha256:ab8784c8c9c67229ee178e9d6dd809df9554b3cdafb43ffb7bfd38c792e2afcd",
+    "canonical_lineage_id": null
+  },
+  "passing_evidence": [
+    "all predecessor fingerprints and the complete 40-file Story 1.20 tree are unchanged",
+    "all 14 v3.94.1 NuGet.org archives were downloaded and independently SHA-256 hashed",
+    "GitHub release v3.94.1, workflow run 31781920404 attempt 1, and Builds f75daebd bind to 80d12ef5",
+    "the OCI index and both child/config objects retain matching response metadata",
+    "Production /alive returned HTTP 200 with zero redirects on linux/amd64 and linux/arm64"
+  ],
+  "blockers": [
+    "the config source, URL, and documentation labels equal the malformed value https and the absent revision cannot bind 80d12ef5",
+    "the 2026-08-14 proposal authorizes identity replacement only and excludes deployment and consumer migration",
+    "the EventStore owner, Release owner, and Test Architect have not accepted this new Story 3.13 subject"
+  ],
+  "limitations": [
+    "No package, release, registry, deployment, consumer, predecessor, Epic 1, or submodule mutation is authorized.",
+    "The selected v3.94.1 package archives were downloaded from NuGet.org and independently SHA-256 hashed.",
+    "OCI provenance labels remain the malformed value https and supply no revision, so source-label exact match stays fail-closed.",
+    "The 2026-08-14 proposal authorizes the identity replacement only; it does not authorize deployment or consumer migration.",
+    "Prior AC4 comments bound to subject 394292a2 of the historical fa2d1c99 packet are void for this subject.",
+    "The shared smoke CLI hardcodes Development and does not accept --hosting-environment; Production /alive was executed with a digest-pinned docker/curl command and structured logs were retained.",
+    "No Story 3.13 owner or Test Architect acceptance of this new subject has been requested or inferred; future receipts stay outside hashed evidence."
+  ],
+  "required_acceptances": [
+    {
+      "role": "eventstore-owner",
+      "status": "missing"
+    },
+    {
+      "role": "release-owner",
+      "status": "missing"
+    },
+    {
+      "role": "test-architect",
+      "status": "missing"
+    }
+  ]
+}

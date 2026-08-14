@@ -1,0 +1,9 @@
+{
+  "schema": "hexalith.eventstore.story-3-13-package-availability/v2",
+  "checked_at": "2026-08-14T08:23:30Z",
+  "package_version": "3.94.1",
+  "expected_count": 14,
+  "recovered_count": 14,
+  "archive_root": "packages",
+  "result": "pass"
+}

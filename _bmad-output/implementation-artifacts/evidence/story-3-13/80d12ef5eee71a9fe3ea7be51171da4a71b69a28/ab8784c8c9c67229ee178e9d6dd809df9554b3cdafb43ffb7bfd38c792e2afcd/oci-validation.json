@@ -1,0 +1,51 @@
+{
+  "schema": "hexalith.eventstore.story-3-13-oci-validation/v2",
+  "checked_at": "2026-08-14T08:23:48Z",
+  "repository": "registry.hexalith.com/eventstore",
+  "immutable_reference": "registry.hexalith.com/eventstore@sha256:ab8784c8c9c67229ee178e9d6dd809df9554b3cdafb43ffb7bfd38c792e2afcd",
+  "index_digest": "sha256:ab8784c8c9c67229ee178e9d6dd809df9554b3cdafb43ffb7bfd38c792e2afcd",
+  "index_size": 493,
+  "media_type": "application/vnd.oci.image.index.v1+json",
+  "platforms": [
+    "linux/amd64",
+    "linux/arm64"
+  ],
+  "children": [
+    {
+      "platform": "linux/amd64",
+      "manifest_digest": "sha256:a277ec515ce66a0da269240e8a91c82caec1ecd2da4b15396918844f580f8c7b",
+      "manifest_size": 1399,
+      "media_type": "application/vnd.oci.image.manifest.v1+json",
+      "manifest_raw_file": "child-linux-amd64.manifest.raw",
+      "manifest_raw_sha256": "a277ec515ce66a0da269240e8a91c82caec1ecd2da4b15396918844f580f8c7b",
+      "config_digest": "sha256:d8222e67b20afb4fe8b90a20c7b7fdb48dd4ad8dc808e903ea2777d444654327",
+      "config_size": 3851,
+      "config_media_type": "application/vnd.oci.image.config.v1+json",
+      "config_raw_file": "child-linux-amd64.config.raw",
+      "config_raw_sha256": "d8222e67b20afb4fe8b90a20c7b7fdb48dd4ad8dc808e903ea2777d444654327"
+    },
+    {
+      "platform": "linux/arm64",
+      "manifest_digest": "sha256:7141af0955899be172cea53fff7ddafd363bf39c9b6d0ea9177a2047d8748b72",
+      "manifest_size": 1399,
+      "media_type": "application/vnd.oci.image.manifest.v1+json",
+      "manifest_raw_file": "child-linux-arm64.manifest.raw",
+      "manifest_raw_sha256": "7141af0955899be172cea53fff7ddafd363bf39c9b6d0ea9177a2047d8748b72",
+      "config_digest": "sha256:c5c4a51f97a43a9a31d94ca4887d4f7314411e1e278da8cb72b4843f93bad616",
+      "config_size": 3852,
+      "config_media_type": "application/vnd.oci.image.config.v1+json",
+      "config_raw_file": "child-linux-arm64.config.raw",
+      "config_raw_sha256": "c5c4a51f97a43a9a31d94ca4887d4f7314411e1e278da8cb72b4843f93bad616"
+    }
+  ],
+  "raw_index_file": "index.raw",
+  "raw_index_sha256": "ab8784c8c9c67229ee178e9d6dd809df9554b3cdafb43ffb7bfd38c792e2afcd",
+  "raw_graph_result": "pass",
+  "response_metadata_result": "pass",
+  "result": "pass",
+  "verification": {
+    "method": "retained-raw-oci-graph-and-response-metadata",
+    "result": "pass",
+    "reason": "Tag and digest index bodies are identical; both child manifests and configs retain matching response metadata."
+  }
+}

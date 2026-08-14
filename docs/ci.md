@@ -270,9 +270,11 @@ emulation, product, or evidence failure leaves the release non-authorizing.
 The reusable workflow uploads the complete hidden evidence directory with
 `always()` so partial publication remains visible.
 
-Story 3.12 supplies corrective release evidence to Story 3.13, which owns the
-independent deployed-runtime identity crosswalk from Story 1.20's approved
-source/package bytes to one immutable released OCI index. Story 1.20 remains
+Story 3.12 supplies historical corrective-release evidence to Story 3.13. After the
+Story 1.20 proof archives were declared nonexistent, Story 3.13's selected exact
+identity is source `80d12ef5eee71a9fe3ea7be51171da4a71b69a28`, release `v3.94.1`,
+and the 14 manifest packages at version `3.94.1`. The `fa2d1c99` packet remains
+historical fail-closed evidence and is not the selected candidate. Story 1.20 remains
 complete and authoritative for source/package parity only; Story 3.13 cannot
 rewrite either predecessor, infer identity across lineages, or authorize a
 consumer migration, deployment, publication, or registry mutation. Story 1.20
@@ -280,10 +282,8 @@ retains sole authority over its approval fields and consumer-migration decision.
 The checked-in GitHub approval-role allowlist remains historical proof-packet
 evidence; the release workflow does not consume it.
 
-The retained Story 3.13 packet is deliberately `fail-closed`: predecessor integrity
-and fail-closed behavior satisfy AC1 and AC3, while the exact same-lineage deployed
-proof and all three content-bound acceptances required by AC2 and AC4 remain absent.
-The current acceptance count is 0 of 3, so Story 3.13 remains `in-progress` and
+Story 3.13 remains `in-progress` until the `v3.94.1` packet independently satisfies
+AC1–AC4, including three content-bound acceptances of the new review subject. It
 authorizes no release, registry, deployment, consumer, or predecessor mutation.
 
 ## Submodules

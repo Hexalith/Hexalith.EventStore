@@ -24,18 +24,18 @@ migration, predecessor change, Epic 1 change, submodule change, or G5 decision.
 - Selected immutable OCI index:
   `registry.hexalith.com/eventstore@sha256:523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87`.
 - [Identity crosswalk](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/identity-crosswalk.json)
-  SHA-256: `744a6b5af4c381c047d3af2ae8f56e8b7690a57805f9e460db85cf6daa1cc109`.
+  SHA-256: `10c7d96795c311abede34fc9f7ffbc9f93d062de76c5b55fdff97430d13d3669`.
 - [Evidence manifest](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/evidence-sha256.txt)
   binds the core manifest, crosswalk, and review subject entry-by-entry. Its own hash is not quoted
   here because the review subject binds this proof packet, deliberately avoiding a checksum cycle.
 - [Reviewer roster](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/reviewer-roster.json)
-  SHA-256: `cac0bc590cb67c65b28f744b74de4a945a92156a8d64dcd6da083d0d6946d6e5`.
-  The roster records its honest repository creation time but remains non-authorizing because no
-  durable external role-ratification decision is retained.
+  SHA-256: `759afcbe2429638affb8e5ebe4afd26112fc7b4108376fe38e0b103b5701024f`.
+  The roster is authorized by GitHub issue comment 5290564372 on 2026-08-14; that comment
+  ratifies the exact three-role mapping and does not authorize Story 3.13 done status.
 - [Review subject](evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/review-subject.json)
   is frozen after this packet and binds the raw crosswalk SHA-256
-  `744a6b5af4c381c047d3af2ae8f56e8b7690a57805f9e460db85cf6daa1cc109`, evidence-core manifest
-  SHA-256 `7e5107f5314a5bd4ba848012265b6f803152171c3b3e697985dc380d03d5d4de`, and this packet. The
+  `10c7d96795c311abede34fc9f7ffbc9f93d062de76c5b55fdff97430d13d3669`, evidence-core manifest
+  SHA-256 `98ec34537eef70a43194e905a4f35402d4da76bd64322699ddc35d22502bfb26`, and this packet. The
   subject file digest and this packet digest are recorded only in `evidence-sha256.txt` and the
   subject's `proof_packet.sha256` field so this packet does not create a checksum cycle.
 
@@ -132,8 +132,9 @@ not treated as a pass for release provenance.
    authority record is mandatory.
 8. Only after all checks pass, obtain EventStore owner, Release owner, and Test Architect
    acceptance of one unchanged replacement review subject.
-9. Retain a durable external decision that ratifies the exact three-role reviewer roster before
-   collecting acceptance receipts; the repository roster cannot certify its own authority.
+9. After every lineage check passes, obtain EventStore owner, Release owner, and Test Architect
+   acceptance of one unchanged replacement review subject. The reviewer roster is now bound to
+   issue comment 5290564372; earlier acceptances of subject 93d70d51 are invalid for this packet.
 
 ## Verification Record
 

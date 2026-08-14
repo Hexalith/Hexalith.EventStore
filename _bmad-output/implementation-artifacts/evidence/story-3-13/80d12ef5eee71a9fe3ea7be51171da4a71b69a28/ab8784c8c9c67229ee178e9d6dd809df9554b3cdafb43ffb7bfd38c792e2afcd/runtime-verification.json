@@ -1,0 +1,100 @@
+{
+  "schema": "hexalith.eventstore.story-3-13-runtime-verification/v2",
+  "execution_result": "pass",
+  "contract_equivalence": "pass",
+  "result": "pass",
+  "started_at": "2026-08-14T08:28:55.922144Z",
+  "ended_at": "2026-08-14T08:30:11.015368Z",
+  "exit_code": 0,
+  "exit_code_verification": {
+    "citation": "bounded-smoke-process-result",
+    "result": "pass",
+    "reason": "The bounded Production /alive command returned process exit code zero on both children."
+  },
+  "contract": {
+    "health_path": "/alive",
+    "http_expectation": "2xx-without-redirect",
+    "timeout_seconds": 180,
+    "poll_interval_seconds": 2,
+    "actual_hosting_environment": "Production",
+    "required_hosting_environment": "Production",
+    "minimal_configuration": {
+      "container_user": "app",
+      "container_port": 8080,
+      "environment_variables": {
+        "ASPNETCORE_ENVIRONMENT": "Production"
+      },
+      "command_contract": "bounded-digest-pinned-alive-v1"
+    }
+  },
+  "tool": {
+    "path": "references/Hexalith.Builds/Github/publish-containers/smoke_container_platforms.py",
+    "sha256": "c7ec862fd79bf96be12670d53707e3c8a828e0161e58745e57b652a42243e8a9",
+    "builds_gitlink_sha": "f75daebd4c522c081a6f62e274cf25e07971de69",
+    "identity": "hexalith-builds:f75daebd4c522c081a6f62e274cf25e07971de69"
+  },
+  "command": {
+    "executable": "python3",
+    "arguments": [
+      "bounded-digest-pinned-production-alive",
+      "--image",
+      "registry.hexalith.com/eventstore@sha256:ab8784c8c9c67229ee178e9d6dd809df9554b3cdafb43ffb7bfd38c792e2afcd",
+      "--timeout-seconds",
+      "180",
+      "--poll-interval-seconds",
+      "2",
+      "--hosting-environment",
+      "Production"
+    ],
+    "digest_pinned": true
+  },
+  "preflight": {
+    "platform": "linux/arm64",
+    "outcome": "pass",
+    "log": "smoke-preflight.log",
+    "log_sha256": "57b76030ca8fab2b9daaa5b422f3f98dff6e0d46344e811d7e3c0e2cd5a88fe4",
+    "child_digest": "sha256:7141af0955899be172cea53fff7ddafd363bf39c9b6d0ea9177a2047d8748b72",
+    "started_at": "2026-08-14T08:28:55.922144Z",
+    "ended_at": "2026-08-14T08:28:59.684930Z"
+  },
+  "platforms": [
+    {
+      "platform": "linux/amd64",
+      "child_digest": "sha256:a277ec515ce66a0da269240e8a91c82caec1ecd2da4b15396918844f580f8c7b",
+      "observed_runtime_platform": "linux/amd64",
+      "attempts": 8,
+      "outcome": "pass",
+      "cleanup": "pass",
+      "log": "smoke-linux-amd64.log",
+      "log_sha256": "c1655e2ce6e56ef24d72d7415ea487545440c6f17ef39cd059b3a1c44281063a",
+      "exit_code": 0,
+      "readiness_result": "pass",
+      "started_at": "2026-08-14T08:28:59.685357Z",
+      "ended_at": "2026-08-14T08:29:17.775460Z"
+    },
+    {
+      "platform": "linux/arm64",
+      "child_digest": "sha256:7141af0955899be172cea53fff7ddafd363bf39c9b6d0ea9177a2047d8748b72",
+      "observed_runtime_platform": "linux/arm64",
+      "attempts": 26,
+      "outcome": "pass",
+      "cleanup": "pass",
+      "log": "smoke-linux-arm64.log",
+      "log_sha256": "2ece17236edbc4752cdeeabbbc56b8c215be49236a2e45a7755f2042c1814603",
+      "exit_code": 0,
+      "readiness_result": "pass",
+      "started_at": "2026-08-14T08:29:17.775986Z",
+      "ended_at": "2026-08-14T08:30:11.015368Z"
+    }
+  ],
+  "smoke_results": {
+    "path": "smoke-results.json",
+    "sha256": "38f9eefc58734afa503ff0829e07f0363f8b86efc27403c68cd336e01a9647a0"
+  },
+  "cleanup_check": "Every bounded platform container was removed after the Production /alive poll.",
+  "evidence_completeness": "pass",
+  "verification": {
+    "method": "parse structured runtime records, exact child/log bindings, observed platforms, HTTP results, timestamps, cleanup, and docs/ci.md environment contract",
+    "result": "pass"
+  }
+}

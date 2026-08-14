@@ -15,26 +15,26 @@ context:
 
 ## Intent
 
-**Problem:** Operators lack one verified chain from the Story 1.20-approved source/package bytes through a semantic release to a deployed two-platform OCI image. The proof packages are unrecoverable, while v3.77.2 uses a different source SHA.
+**Problem:** Operators need one verified chain from source `80d12ef5eee71a9fe3ea7be51171da4a71b69a28`, release `v3.94.1`, and the 14 manifest packages at version `3.94.1` through the published two-platform OCI image. The Story 1.20 proof archives at `999.1.20-proof.fa2d1c9910f8` do not exist.
 
-**Approach:** Freeze both predecessors and assemble a support-safe, content-addressed crosswalk from independent checks. Produce a reproducible `fail-closed` review packet unless one exact lineage plus three content-bound acceptances satisfies Story 3.13.
+**Approach:** Keep the `fa2d1c99` packet as historical fail-closed evidence. Assemble a new content-addressed packet for the owner-approved `v3.94.1` lineage only. Produce `pass` only when that exact lineage plus three content-bound acceptances of the new subject satisfy Story 3.13.
 
 ## Boundaries & Constraints
 
-**Always:** Preserve Stories 1.20/3.12; bind every field to one candidate and independent result; compare exact source, package, release, OCI, runtime, authority, and approval identities; retain raw registry bytes; distinguish environment from product failures; stay non-`done` unless AC4 passes.
+**Always:** Preserve Stories 1.20/3.12; bind every field to one candidate and independent result; compare exact source, package, release, OCI, runtime, authority, and approval identities; retain raw registry bytes; distinguish environment from product failures; stay non-`done` unless AC4 passes on the new `v3.94.1` subject.
 
 **Ask First:** Any external or remote Git mutation; changes outside evidence/test/docs/story/status files; new authority/approval requests; or credentials beyond configured read-only task access.
 
-**Never:** Splice candidate rows; infer identity from ancestry, tags, labels, branches, consumer SHAs, summaries, or prior approvals; rebuild proof packages; expose credentials; modify predecessors, runtime/release code, the package manifest, submodules, Epic 1, or consumers; claim `pass`/`done` with missing evidence.
+**Never:** Splice 1.20 proof rows with `v3.94.1` or `v3.77.2` artifacts; infer identity from ancestry, tags, labels, branches, consumer SHAs, summaries, or prior approvals; rebuild the missing proof packages; expose credentials; modify predecessors, runtime/release code, the package manifest, submodules, Epic 1, or consumers; claim `pass`/`done` with missing `v3.94.1` evidence.
 
 ## I/O & Edge-Case Matrix
 
 | Scenario | Input / State | Expected Output / Behavior | Error Handling |
 |----------|--------------|---------------------------|----------------|
-| Complete lineage | Exact source/package/release/index chain, two runtime passes, three approvals | `pass`; immutable index recorded | Later byte changes invalidate approvals |
-| Approved proof | `fa2d1c...` hashes, but package bytes or release provenance unavailable | `fail-closed`; blocker and owner recorded | Never substitute bytes |
+| Complete `v3.94.1` lineage | Exact `80d12ef5` / `3.94.1` / `v3.94.1` source/package/release/index chain, two Production runtime passes, three new-subject approvals | `pass`; immutable index recorded | Later byte changes invalidate approvals |
+| Historical proof | `fa2d1c...` hashes, but package bytes or release provenance unavailable | `fail-closed`; historical packet only; never the selected candidate | Never substitute bytes |
 | Corrective release | v3.77.2 chain at source `77a9a442...` | `fail-closed` for source mismatch | Ancestry is insufficient |
-| Splice or tool gap | Mixed candidates or unavailable verification | Reject or record blocker/consequence/rerun trigger | Unavailable never means pass |
+| Splice or tool gap | Mixed 1.20 / `v3.77.2` / `v3.94.1` candidates or unavailable verification | Reject or record blocker/consequence/rerun trigger | Unavailable never means pass |
 
 </frozen-after-approval>
 
@@ -42,7 +42,8 @@ context:
 
 - `_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md`, its proof packet, and `evidence/story-1-20/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/` -- read-only approved identity; freeze the full 40-file tree because the passing 33-entry manifest omits approvals.
 - `_bmad-output/implementation-artifacts/3-12-multi-platform-eventstore-container-publishing-correction.md` -- read-only v3.77.2 release/workflow/index/runtime evidence and historical failed releases.
-- `_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure-proof-packet.md` and the exact evidence directory named below -- new crosswalk, raw evidence, blockers, checksums, and review subject.
+- `_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure-proof-packet.md` and the historical `fa2d1c99` evidence directory -- immutable fail-closed packet.
+- `_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure-v3.94.1-proof-packet.md` and `evidence/story-3-13/80d12ef5eee71a9fe3ea7be51171da4a71b69a28/ab8784c8c9c67229ee178e9d6dd809df9554b3cdafb43ffb7bfd38c792e2afcd/` -- selected `v3.94.1` crosswalk, raw evidence, blockers, checksums, and review subject.
 - `tools/release-packages.json` -- read-only exact 14-package inventory and uniqueness authority.
 - `references/Hexalith.Builds/Github/publish-containers/` -- read-only validator/smoke reuse; validation is SemVer/tag-first, while smoke uses bounded local Docker state.
 - `tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs` -- new verifier; reuse JSON mutation/hash/root patterns from adjacent packaging tests.
@@ -179,7 +180,7 @@ Verification independently reproduced at HEAD before chunk 3: Release build 0 wa
 Chunk 3/3 (post-chunk-2 delta) — `bmad-code-review` 2026-08-13, against `2bc8ee17...HEAD` for the Story 3.13 File List plus `deferred-work.md` and the new Step-3 gate proposal. Four parallel layers; 71 raw findings triaged to 4 decisions / 26 patches / 4 defers / 3 dismissed.
 
 - [x] [Review][Decision] Reviewer-roster `authority_source` is self-certifying and back-dated — it cites commit `77f34d13` as the owner's ratification record, but that commit never touches the roster (its blob there has only `schema`/`repository`/`roles`), the patch that adds the field is still `- [ ]` unapplied at that commit, `created_at: 2026-08-12T06:05:15+00:00` is exactly `77f34d13`'s commit instant although the field was actually written 2h34m later at `be392a3a`, and `decision_date: 2026-08-11` disagrees with the cited commit's 2026-08-12 date. The value is hardcoded at four verifier sites. This is the record AC4's three content-bound acceptances bind to, and the spec forbids inferring identity from "summaries, or prior approvals". Decide what artifact constitutes the owner's authority record: (a) point `authority_source` at a durable external decision record (GitHub review/issue/approval) and re-derive `created_at` honestly; (b) keep the repository-commit form but cite a commit that actually carries the decision and drop the back-dated `created_at`; or (c) accept the story record itself as the authority and say so explicitly, acknowledging it is self-referential [_bmad-output/implementation-artifacts/evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/reviewer-roster.json] — RESOLVED 2026-08-13 by the owner: option (a). `authority_source` must cite a durable EXTERNAL decision record (GitHub review/issue/approval), and `created_at` must be re-derived honestly. The external URL cannot be invented by the review; the owner must supply it, so this splits into an applied part (honest `created_at`, temporal-ordering check, roster mutation coverage) and a blocked part (the external citation itself) recorded as an open action.
-- [ ] [Review][Action] Owner must supply the durable external GitHub decision URL that ratifies the exact reviewer-role roster; the repository now records the missing authority explicitly and cannot collect valid acceptances until this action closes.
+- [x] [Review][Action] Owner must supply the durable external GitHub decision URL that ratifies the exact reviewer-role roster — CLOSED 2026-08-14: bound `authority_source` to https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5290564372 (`github:jpiquot`, `2026-08-14T07:08:46Z`) and rebound the fail-closed subject. Prior commit-comment acceptances of subject `93d70d51…` are invalid for the replacement subject. AC2/AC4 remain open.
 - [x] [Review][Decision] An orphan Epic 1 story row was inserted into a `done` epic — `1-21-frozen-story-1-20-evidence-integrity-repair: backlog` sits between `1-20-…: done` and `epic-1-retrospective: done` inside the `epic-1: done` block. By the file's own legend `done` means "All stories in epic completed" and `backlog` means "Story only exists in epic file", but no `1-21-*` story file exists, `epics.md` has no 1.21, and the key appears nowhere else in the repository. Its authorizing comment claims "Approved 2026-08-12 post-closure evidence maintenance" with no external approval record. This contradicts the frozen "Never … modify predecessors … Epic 1" constraint, the proposal's own §2.4 "No new epic or story is required", and its frontmatter `sprint_tracking_mutation: additive-comments-only-approved`. Decide: (a) revert the row and track the Epic 1 repair only in `deferred-work.md` until a scoped story is authored; (b) author the real `1-21` story file + epics.md entry under its own authority record; or (c) ratify the row as-is with an explicit approval record [_bmad-output/implementation-artifacts/sprint-status.yaml:80] — RESOLVED 2026-08-13 by the owner: option (b). Author the real Story 1.21 file and its `epics.md` entry under its own authority record, so the sprint row stops being an orphan. This work belongs to the new story, not to Story 3.13; Story 3.13 still writes no predecessor bytes.
 - [x] [Review][Decision] `durable_source_queries` mints five source results that no retained evidence supports — `azure-worm-archive-inventory` and `github-actions-retained-artifact-inventory` appear in no story, packet, or spec text; there is no per-query timestamp, operator, or citation; `checked_at` is still `2026-08-04T11:17:05Z`, predating the 2026-08-11 decision these entries encode; and that decision authorized naming only the NuGet.org flat container, GitHub Packages with `read:packages`, and any Hexalith-internal feed, while explicitly saying "do not launch a fresh recovery sweep". All five strings are hardcoded as *required* in the verifier, so AC2's fail-closed reproducibility record now asserts searches that may never have run. Decide: (a) confirm the two extra sweeps were actually performed and record when, by whom, and against what, or (b) remove them and keep the three authorized sources [.../package-availability.json:7] — RESOLVED 2026-08-13 by the owner: option (a). Remove `azure-worm-archive-inventory` and `github-actions-retained-artifact-inventory`, keep only the three authorized sources, and unlock the verifier's required set. The evidence hash cascade must be recomputed.
 - [x] [Review][Decision] Lifecycle token vs. the change's own prohibition — all four surfaces are set to `in-progress`, whose legend is "Developer actively working on implementation", while the same change prohibits all further Story 3.13 work until an external restart gate is satisfied. The four surfaces are mutually consistent and the frozen "stay non-`done`" constraint is respected, but the token misdescribes the state. This is the fourth lifecycle flip in the story. Decide whether to keep `in-progress`, restore `review`/`in-review`, or introduce a blocked/awaiting-evidence token [_bmad-output/implementation-artifacts/sprint-status.yaml:220] — RESOLVED 2026-08-13 by the owner: keep `in-progress` on all four surfaces. The imprecision is accepted; it is the safest non-`done` token and is already consistent across story, spec, sprint row and `docs/ci.md`. No change.
@@ -311,8 +312,13 @@ Verification independently reproduced after chunk-3 implementation at HEAD (`24e
   intent or external state. Hardened recursive evidence closure, runtime failure classification,
   exit-code and OCI validation mutations, roster authority chronology, and retained evidence
   honesty; rebound the core/proof/subject/outer hashes; and passed 186/186 focused plus 1423/1423
-  complete Contracts tests. The durable external reviewer-roster authority URL remains an open
+  complete Contracts tests.   The durable external reviewer-roster authority URL remains an open
   owner action, so the restart gate, AC2/AC4, Tasks 4–7/9, and 0/3 acceptance state remain open.
+- 2026-08-14: Bound the reviewer roster to the owner-supplied GitHub issue comment
+  `https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5290564372`,
+  re-derived roster `created_at` to that comment's timestamp, and rebound the fail-closed
+  review subject. The three 2026-08-14 commit-comment acceptances of subject `93d70d51…`
+  do not bind the replacement subject. AC2/AC4 and 0/3 acceptances remain open.
 
 ## Verification
 

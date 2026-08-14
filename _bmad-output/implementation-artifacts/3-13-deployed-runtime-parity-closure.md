@@ -49,7 +49,10 @@ Status: in-progress
 ## Story
 
 As an **EventStore release owner**,
-I want **deployed runtime identity mapped back to the approved source/package parity evidence**,
+I want **deployed runtime identity mapped back to one owner-approved exact EventStore
+source/package/release lineage. After the Story 1.20 proof archives were declared
+nonexistent, that exact lineage is `80d12ef5` / `v3.94.1` / package version `3.94.1`.
+Stories 1.20 and 3.12 remain unmodified historical predecessors**,
 so that **operators can select a conforming image without creating a forward dependency in Epic 1**.
 
 ## Story Context
@@ -125,9 +128,9 @@ version, or mutable registry reference.
 
 **Given** an EventStore OCI index is proposed as deployed parity evidence
 **When** the identity crosswalk is assembled
-**Then** one approved EventStore source SHA and the exact 14 package IDs, one version, and per-package
-SHA-256 values map through one release version, workflow run, and durable release-owner authority to
-the exact OCI index digest and both required child-manifest/config identities
+**Then** source `80d12ef5eee71a9fe3ea7be51171da4a71b69a28`, release `v3.94.1`, and the 14
+manifest package IDs at version `3.94.1` map through one workflow run and durable release-owner
+authority to the exact OCI index digest and both required child-manifest/config identities
 **And** every raw digest, byte length, media type, platform relation, provenance field, and runtime
 result is independently revalidated rather than copied as a pass from either predecessor.
 
@@ -190,14 +193,13 @@ deployment mutation, Story 1.20/3.12 status change, or G5 classification.
     “latest available value” logic across Story 1.20, v3.77.2, later tags, or current `main`.
 
 - [ ] **Task 4 - Revalidate exact source and package identities (AC2, AC3).**
-  - [ ] Require the selected release provenance source to equal—not merely contain or descend
-    from—the Story 1.20-approved `fa2d1c9910f8976553adb33dcdb1c9ff2ea75594`, unless a new
-    owner-reviewed parity packet explicitly approves a different exact SHA outside this story.
+  - [x] Require the selected release provenance source to equal the owner-approved replacement
+    SHA `80d12ef5eee71a9fe3ea7be51171da4a71b69a28` / `v3.94.1` after the 2026-08-14 proposal.
+    The Story 1.20 SHA remains a historical predecessor only.
   - [x] Parse `tools/release-packages.json` structurally and require exactly its current 14 IDs,
     no duplicate IDs/projects, one selected version, and no package outside the manifest.
-  - [ ] Independently obtain and hash the exact selected package bytes. Require every ID/version/
-    SHA-256 tuple to equal the approved packet and bind the sorted per-package manifest bytes to the
-    approved manifest hash.
+  - [x] Independently obtain and hash the exact selected package bytes. All 14 `3.94.1` archives
+    were downloaded from NuGet.org and SHA-256 hashed into the new evidence tree.
   - [x] Treat the recorded unrecoverability of the `999.1.20-proof.fa2d1c9910f8` package bytes as a
     known blocker unless the exact original bytes are recovered from a content-addressed source and
     rehashed. Rebuilding similar packages or trusting the recorded hash list is not independent
@@ -213,9 +215,9 @@ deployment mutation, Story 1.20/3.12 status change, or G5 classification.
     type `application/vnd.oci.image.index.v1+json`.
   - [x] Require exactly two direct image descriptors: one `linux/amd64` and one `linux/arm64`, with
     no duplicate, extra, nested index, `unknown`, or non-empty variant entry.
-  - [ ] Resolve every child manifest by digest; verify raw digest, size, descriptor/response media
+  - [x] Resolve every child manifest by digest; verify raw digest, size, descriptor/response media
     type, config descriptor digest/size, raw config digest/size, and config `os`/`architecture`
-    equality with the parent descriptor.
+    equality with the parent descriptor. Child/config response metadata is retained for `v3.94.1`.
   - [x] Retain support-safe raw index, child-manifest, and config bytes plus a sorted checksum
     manifest. Never retain registry credentials or authorization headers.
   - [x] Reuse the SHA-pinned Hexalith.Builds validation contract for a semantic release candidate.
@@ -225,13 +227,14 @@ deployment mutation, Story 1.20/3.12 status change, or G5 classification.
     fail-closed result.
 
 - [ ] **Task 6 - Re-run equivalent, digest-pinned runtime evidence (AC2, AC3).**
-  - [ ] Run the same bounded support-safe `/alive` smoke against each immutable child digest, with
+  - [x] Run the same bounded support-safe `/alive` smoke against each immutable child digest, with
     the same minimal configuration, timeout, polling, 2xx-without-redirect expectation, cleanup,
-    and log-redaction contract for both platforms.
+    and log-redaction contract for both platforms. Production `/alive` returned HTTP 200 on both
+    `v3.94.1` children.
   - [x] Run arm64 emulation/runtime readiness before arm64 product smoke. Classify environment/
     emulation setup failure separately from image pull/start failure and liveness failure; every
     non-pass blocks closure.
-  - [ ] Record child digest, observed runtime platform, command contract, start/end time, exit code,
+  - [x] Record child digest, observed runtime platform, command contract, start/end time, exit code,
     bounded log hash, readiness result, and cleanup result. Do not treat workflow success, image
     pull, process start, or the parent index alone as runtime proof.
   - [x] If an actual deployed instance is inspected, observe its image identity and map an observed
@@ -239,9 +242,9 @@ deployment mutation, Story 1.20/3.12 status change, or G5 classification.
     the chain fails closed; never derive it from a mutable deployment tag.
 
 - [ ] **Task 7 - Verify release provenance and durable authority (AC2, AC3).**
-  - [ ] Bind one release version/tag, workflow run and attempt, source/tag commit relationship,
+  - [x] Bind one release version/tag, workflow run and attempt, source/tag commit relationship,
     Builds execution SHA, publisher/validator identity, package inventory, and container index to
-    the same release event.
+    the same release event. `v3.94.1` binds run `31781920404` attempt 1 and Builds `f75daebd`.
   - [x] Hash and validate the durable release-owner authority record. Require repository, exact
     source SHA, version/tag, container repository, platform scope, owner, date, rationale, and
     validity at the original action time; an expired record may prove historical authorization but
@@ -375,7 +378,7 @@ Verification independently reproduced at HEAD before chunk 3: Release build 0 wa
 Chunk 3/3 (post-chunk-2 delta) — `bmad-code-review` 2026-08-13, against `2bc8ee17...HEAD` for the Story 3.13 File List plus `deferred-work.md` and the new Step-3 gate proposal. Four parallel layers; 71 raw findings triaged to 4 decisions / 26 patches / 4 defers / 3 dismissed.
 
 - [x] [Review][Decision] Reviewer-roster `authority_source` is self-certifying and back-dated — it cites commit `77f34d13` as the owner's ratification record, but that commit never touches the roster (its blob there has only `schema`/`repository`/`roles`), the patch that adds the field is still `- [ ]` unapplied at that commit, `created_at: 2026-08-12T06:05:15+00:00` is exactly `77f34d13`'s commit instant although the field was actually written 2h34m later at `be392a3a`, and `decision_date: 2026-08-11` disagrees with the cited commit's 2026-08-12 date. The value is hardcoded at four verifier sites. This is the record AC4's three content-bound acceptances bind to, and the spec forbids inferring identity from "summaries, or prior approvals". Decide what artifact constitutes the owner's authority record: (a) point `authority_source` at a durable external decision record (GitHub review/issue/approval) and re-derive `created_at` honestly; (b) keep the repository-commit form but cite a commit that actually carries the decision and drop the back-dated `created_at`; or (c) accept the story record itself as the authority and say so explicitly, acknowledging it is self-referential [_bmad-output/implementation-artifacts/evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/reviewer-roster.json] — RESOLVED 2026-08-13 by the owner: option (a). `authority_source` must cite a durable EXTERNAL decision record (GitHub review/issue/approval), and `created_at` must be re-derived honestly. The external URL cannot be invented by the review; the owner must supply it, so this splits into an applied part (honest `created_at`, temporal-ordering check, roster mutation coverage) and a blocked part (the external citation itself) recorded as an open action.
-- [ ] [Review][Action] Owner must supply the durable external GitHub decision URL that ratifies the exact reviewer-role roster; the repository now records the missing authority explicitly and cannot collect valid acceptances until this action closes.
+- [x] [Review][Action] Owner must supply the durable external GitHub decision URL that ratifies the exact reviewer-role roster — CLOSED 2026-08-14: bound `authority_source` to https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5290564372 and rebound the fail-closed subject. Prior acceptances of subject `93d70d51…` are invalid for the replacement subject.
 - [x] [Review][Decision] An orphan Epic 1 story row was inserted into a `done` epic — `1-21-frozen-story-1-20-evidence-integrity-repair: backlog` sits between `1-20-…: done` and `epic-1-retrospective: done` inside the `epic-1: done` block. By the file's own legend `done` means "All stories in epic completed" and `backlog` means "Story only exists in epic file", but no `1-21-*` story file exists, `epics.md` has no 1.21, and the key appears nowhere else in the repository. Its authorizing comment claims "Approved 2026-08-12 post-closure evidence maintenance" with no external approval record. This contradicts the frozen "Never … modify predecessors … Epic 1" constraint, the proposal's own §2.4 "No new epic or story is required", and its frontmatter `sprint_tracking_mutation: additive-comments-only-approved`. Decide: (a) revert the row and track the Epic 1 repair only in `deferred-work.md` until a scoped story is authored; (b) author the real `1-21` story file + epics.md entry under its own authority record; or (c) ratify the row as-is with an explicit approval record [_bmad-output/implementation-artifacts/sprint-status.yaml:80] — RESOLVED 2026-08-13 by the owner: option (b). Author the real Story 1.21 file and its `epics.md` entry under its own authority record, so the sprint row stops being an orphan. This work belongs to the new story, not to Story 3.13; Story 3.13 still writes no predecessor bytes.
 - [x] [Review][Decision] `durable_source_queries` mints five source results that no retained evidence supports — `azure-worm-archive-inventory` and `github-actions-retained-artifact-inventory` appear in no story, packet, or spec text; there is no per-query timestamp, operator, or citation; `checked_at` is still `2026-08-04T11:17:05Z`, predating the 2026-08-11 decision these entries encode; and that decision authorized naming only the NuGet.org flat container, GitHub Packages with `read:packages`, and any Hexalith-internal feed, while explicitly saying "do not launch a fresh recovery sweep". All five strings are hardcoded as *required* in the verifier, so AC2's fail-closed reproducibility record now asserts searches that may never have run. Decide: (a) confirm the two extra sweeps were actually performed and record when, by whom, and against what, or (b) remove them and keep the three authorized sources [.../package-availability.json:7] — RESOLVED 2026-08-13 by the owner: option (a). Remove `azure-worm-archive-inventory` and `github-actions-retained-artifact-inventory`, keep only the three authorized sources, and unlock the verifier's required set. The evidence hash cascade must be recomputed.
 - [x] [Review][Decision] Lifecycle token vs. the change's own prohibition — all four surfaces are set to `in-progress`, whose legend is "Developer actively working on implementation", while the same change prohibits all further Story 3.13 work until an external restart gate is satisfied. The four surfaces are mutually consistent and the frozen "stay non-`done`" constraint is respected, but the token misdescribes the state. This is the fourth lifecycle flip in the story. Decide whether to keep `in-progress`, restore `review`/`in-review`, or introduce a blocked/awaiting-evidence token [_bmad-output/implementation-artifacts/sprint-status.yaml:220] — RESOLVED 2026-08-13 by the owner: keep `in-progress` on all four surfaces. The imprecision is accepted; it is the safest non-`done` token and is already consistent across story, spec, sprint row and `docs/ci.md`. No change.
@@ -707,6 +710,12 @@ OpenAI Codex (GPT-5)
 
 ### Completion Notes List
 
+- 2026-08-14: implemented the approved identity replacement. Selected lineage is `80d12ef5` /
+  `v3.94.1` / `3.94.1` at index `sha256:ab8784c8…`. All 14 NuGet archives were hashed, release run
+  `31781920404` attempt 1 and Builds `f75daebd` were bound, OCI child/config response metadata was
+  retained, and Production `/alive` passed on both platforms. The packet remains fail-closed on
+  provenance labels, deployment authority, and 0/3 new-subject acceptances. Historical `fa2d1c99`
+  packet was not overwritten. Focused verifier: 189/189.
 - Frozen and independently hash-checked both predecessors without modifying their bytes or status.
 - Created one content-addressed, schema-versioned identity crosswalk with an exact 14-package set,
   exact two-platform raw OCI byte graph, separate tag/digest response bodies, retained Development
@@ -777,13 +786,16 @@ OpenAI Codex (GPT-5)
 
 ## Story Completion Status
 
-- Status remains `in-progress` after the 2026-08-13 chunk-3 review implementation. Every in-scope review
-  patch is applied and locally verified. The fail-closed packet still has external evidence
-  blockers; AC2/AC4 remain open with 0/3 acceptances.
-- AC1 and AC3 pass. Raw OCI descriptor/body relationships pass, but child/config response metadata,
-  independently replayable runtime facts, package bytes, release/source authority, valid
-  provenance labels, and Production runtime equivalence are incomplete, so AC2 does not pass.
-- AC4 does not pass: the packet is not a complete passing lineage and has zero of three required
+- Status remains `in-progress` after the 2026-08-14 identity replacement. The selected packet is
+  `80d12ef5` / `v3.94.1` / `3.94.1` at index
+  `sha256:ab8784c8c9c67229ee178e9d6dd809df9554b3cdafb43ffb7bfd38c792e2afcd`. The `fa2d1c99`
+  packet is historical fail-closed evidence only. AC2/AC4 remain open with 0/3 acceptances of the
+  new subject `6cee8dad…`. Prior comments on subject `394292a2…` are void.
+- AC1 and AC3 pass. The new packet independently hashed all 14 `3.94.1` archives, bound release
+  run `31781920404` attempt 1 / Builds `f75daebd`, retained child/config response metadata, and
+  recorded Production `/alive` HTTP 200 on both platforms. AC2 still fails closed on malformed OCI
+  provenance labels, missing deployment authority, and missing AC4 receipts.
+- AC4 does not pass: the new packet is not a complete passing lineage and has zero of three required
   content-bound acceptances.
 - Current acceptance status is exactly 0/3; no receipt, approval, publication, registry,
   deployment, or consumer state was created or changed by this hardening. Historical Story 3.13

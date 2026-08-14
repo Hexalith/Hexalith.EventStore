@@ -1,0 +1,104 @@
+{
+  "schema": "hexalith.eventstore.story-3-13-registry-readback/v2",
+  "checked_at": "2026-08-14T08:23:48Z",
+  "repository": "registry.hexalith.com/eventstore",
+  "discovery_tag": "3.94.1",
+  "immutable_index_digest": "sha256:ab8784c8c9c67229ee178e9d6dd809df9554b3cdafb43ffb7bfd38c792e2afcd",
+  "tag_response": {
+    "raw_file": "tag-response.raw",
+    "reference": "3.94.1",
+    "request_url": "https://registry.hexalith.com/v2/eventstore/manifests/3.94.1",
+    "http_status": 200,
+    "content_type": "application/vnd.oci.image.index.v1+json",
+    "docker_content_digest": "sha256:ab8784c8c9c67229ee178e9d6dd809df9554b3cdafb43ffb7bfd38c792e2afcd",
+    "content_length": 493,
+    "raw_sha256": "ab8784c8c9c67229ee178e9d6dd809df9554b3cdafb43ffb7bfd38c792e2afcd"
+  },
+  "digest_response": {
+    "raw_file": "digest-response.raw",
+    "reference": "sha256:ab8784c8c9c67229ee178e9d6dd809df9554b3cdafb43ffb7bfd38c792e2afcd",
+    "request_url": "https://registry.hexalith.com/v2/eventstore/manifests/sha256:ab8784c8c9c67229ee178e9d6dd809df9554b3cdafb43ffb7bfd38c792e2afcd",
+    "http_status": 200,
+    "content_type": "application/vnd.oci.image.index.v1+json",
+    "docker_content_digest": "sha256:ab8784c8c9c67229ee178e9d6dd809df9554b3cdafb43ffb7bfd38c792e2afcd",
+    "content_length": 493,
+    "raw_sha256": "ab8784c8c9c67229ee178e9d6dd809df9554b3cdafb43ffb7bfd38c792e2afcd"
+  },
+  "objects": [
+    {
+      "kind": "child-manifest",
+      "digest": "sha256:a277ec515ce66a0da269240e8a91c82caec1ecd2da4b15396918844f580f8c7b",
+      "reference": "sha256:a277ec515ce66a0da269240e8a91c82caec1ecd2da4b15396918844f580f8c7b",
+      "request_url": "https://registry.hexalith.com/v2/eventstore/manifests/sha256:a277ec515ce66a0da269240e8a91c82caec1ecd2da4b15396918844f580f8c7b",
+      "http_status": 200,
+      "content_type": "application/vnd.oci.image.manifest.v1+json",
+      "docker_content_digest": "sha256:a277ec515ce66a0da269240e8a91c82caec1ecd2da4b15396918844f580f8c7b",
+      "content_length": 1399,
+      "raw_file": "child-linux-amd64.manifest.raw",
+      "raw_sha256": "a277ec515ce66a0da269240e8a91c82caec1ecd2da4b15396918844f580f8c7b"
+    },
+    {
+      "kind": "config",
+      "digest": "sha256:d8222e67b20afb4fe8b90a20c7b7fdb48dd4ad8dc808e903ea2777d444654327",
+      "reference": "sha256:d8222e67b20afb4fe8b90a20c7b7fdb48dd4ad8dc808e903ea2777d444654327",
+      "request_url": "https://registry.hexalith.com/v2/eventstore/blobs/sha256:d8222e67b20afb4fe8b90a20c7b7fdb48dd4ad8dc808e903ea2777d444654327",
+      "http_status": 200,
+      "content_type": "application/vnd.oci.image.config.v1+json",
+      "docker_content_digest": "sha256:d8222e67b20afb4fe8b90a20c7b7fdb48dd4ad8dc808e903ea2777d444654327",
+      "content_length": 3851,
+      "raw_file": "child-linux-amd64.config.raw",
+      "raw_sha256": "d8222e67b20afb4fe8b90a20c7b7fdb48dd4ad8dc808e903ea2777d444654327"
+    },
+    {
+      "kind": "child-manifest",
+      "digest": "sha256:7141af0955899be172cea53fff7ddafd363bf39c9b6d0ea9177a2047d8748b72",
+      "reference": "sha256:7141af0955899be172cea53fff7ddafd363bf39c9b6d0ea9177a2047d8748b72",
+      "request_url": "https://registry.hexalith.com/v2/eventstore/manifests/sha256:7141af0955899be172cea53fff7ddafd363bf39c9b6d0ea9177a2047d8748b72",
+      "http_status": 200,
+      "content_type": "application/vnd.oci.image.manifest.v1+json",
+      "docker_content_digest": "sha256:7141af0955899be172cea53fff7ddafd363bf39c9b6d0ea9177a2047d8748b72",
+      "content_length": 1399,
+      "raw_file": "child-linux-arm64.manifest.raw",
+      "raw_sha256": "7141af0955899be172cea53fff7ddafd363bf39c9b6d0ea9177a2047d8748b72"
+    },
+    {
+      "kind": "config",
+      "digest": "sha256:c5c4a51f97a43a9a31d94ca4887d4f7314411e1e278da8cb72b4843f93bad616",
+      "reference": "sha256:c5c4a51f97a43a9a31d94ca4887d4f7314411e1e278da8cb72b4843f93bad616",
+      "request_url": "https://registry.hexalith.com/v2/eventstore/blobs/sha256:c5c4a51f97a43a9a31d94ca4887d4f7314411e1e278da8cb72b4843f93bad616",
+      "http_status": 200,
+      "content_type": "application/vnd.oci.image.config.v1+json",
+      "docker_content_digest": "sha256:c5c4a51f97a43a9a31d94ca4887d4f7314411e1e278da8cb72b4843f93bad616",
+      "content_length": 3852,
+      "raw_file": "child-linux-arm64.config.raw",
+      "raw_sha256": "c5c4a51f97a43a9a31d94ca4887d4f7314411e1e278da8cb72b4843f93bad616"
+    }
+  ],
+  "object_response_metadata_result": "pass",
+  "tag_and_digest_bytes_identical": true,
+  "shared_validator": {
+    "path": "references/Hexalith.Builds/Github/publish-containers/oci_registry_validator.py",
+    "sha256": "e1547e31fbdb8a678c99a245510e718c1cb35f6b9ec51264aa7bc1cdae419509",
+    "builds_gitlink_sha": "f75daebd4c522c081a6f62e274cf25e07971de69",
+    "verification_result": "pass",
+    "cli_candidate_compatibility": "pass",
+    "cli_candidate_consequence": "The semantic release tag is accepted by the pinned validator."
+  },
+  "config_labels": {
+    "version": "3.94.1",
+    "revision": null,
+    "approved_source_sha": "80d12ef5eee71a9fe3ea7be51171da4a71b69a28",
+    "exact_source_match": false,
+    "verification_result": "fail",
+    "malformed_provenance_labels": {
+      "org.opencontainers.image.source": "https",
+      "org.opencontainers.image.url": "https",
+      "org.opencontainers.image.documentation": "https"
+    },
+    "provenance_label_result": "fail",
+    "provenance_label_blocker": "The source, URL, and documentation labels are malformed and the revision label is absent."
+  },
+  "oci_graph_result": "pass",
+  "result": "fail",
+  "scope": "Raw descriptor, digest, and child/config response metadata pass. Provenance labels remain fail-closed."
+}

@@ -481,12 +481,6 @@
         "reopen_trigger": "After every lineage check passes, obtain all three durable acceptances of the same review-subject SHA-256."
       },
       {
-        "id": "reviewer-roster-authority-missing",
-        "owner": "EventStore owner",
-        "consequence": "The retained reviewer-role mappings do not cite a durable external decision and therefore cannot authorize future acceptance identities.",
-        "reopen_trigger": "Provide a durable external issue-comment decision that ratifies the exact three-role reviewer roster before collecting acceptances."
-      },
-      {
         "id": "registry-object-response-metadata-missing",
         "owner": "Hexalith.Builds OCI-validator owner and EventStore release owner",
         "consequence": "Child-manifest and config response content types and digest headers cannot be independently replayed from retained evidence.",
@@ -518,7 +512,7 @@
   "approval_contract": {
     "review_subject_path": "review-subject.json",
     "reviewer_roster_path": "reviewer-roster.json",
-    "reviewer_roster_sha256": "cac0bc590cb67c65b28f744b74de4a945a92156a8d64dcd6da083d0d6946d6e5",
+    "reviewer_roster_sha256": "759afcbe2429638affb8e5ebe4afd26112fc7b4108376fe38e0b103b5701024f",
     "external_receipt_location": "acceptances/{subject_sha256}",
     "outside_hashed_evidence": true,
     "required_roles": [

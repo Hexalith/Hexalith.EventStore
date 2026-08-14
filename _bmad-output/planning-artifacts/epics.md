@@ -1894,11 +1894,14 @@ So that a corrective EventStore release can supply Story 3.13 without changing p
 
 **Requirements covered:** FR36, NFR12, NFR16
 **Owner / review boundary:** Amelia (Developer) assembles the identity crosswalk; the EventStore owner and Release owner approve the exact deployed identity; Murat (Test Architect) reviews immutable index/child/config and runtime evidence.
-**Focused validation:** Story 1.20 source/package packet; Story 3.12 release packet; registry index and child-manifest/config inspection; exact package/hash inventory; source-to-release provenance; and support-safe deployed smoke evidence.
+**Focused validation:** Story 1.20 source/package packet (historical predecessor); Story 3.12 release packet (historical predecessor); the owner-approved replacement exact lineage `80d12ef5` / `v3.94.1` / package version `3.94.1`; registry index and child-manifest/config inspection; exact package/hash inventory; source-to-release provenance; and support-safe deployed smoke evidence.
 **Dependencies:** Completed Stories 1.20 and 3.12. This backward-only closure never changes their status.
 
 As an EventStore release owner,
-I want deployed runtime identity mapped back to the approved source/package parity evidence,
+I want deployed runtime identity mapped back to one owner-approved exact EventStore
+source/package/release lineage. After the Story 1.20 proof archives were declared
+nonexistent, that exact lineage is `80d12ef5` / `v3.94.1` / package version `3.94.1`.
+Stories 1.20 and 3.12 remain unmodified historical predecessors,
 So that operators can select a conforming image without creating a forward dependency in Epic 1.
 
 **Acceptance Criteria:**
@@ -1910,7 +1913,7 @@ So that operators can select a conforming image without creating a forward depen
 
 **Given** an EventStore OCI index is proposed as deployed parity evidence
 **When** the identity crosswalk is assembled
-**Then** it maps the approved EventStore source SHA and package IDs/versions/hashes to the exact OCI index digest, both required child digests/configs, release version, workflow run, and release-owner authority
+**Then** it maps source `80d12ef5eee71a9fe3ea7be51171da4a71b69a28`, release `v3.94.1`, and the 14 manifest package IDs at version `3.94.1` to the exact OCI index digest, both required child digests/configs, workflow run, and release-owner authority
 **And** every digest and platform relation is independently revalidated.
 
 **Given** any source, package, index, child, config, approval, or runtime result is missing or inconsistent
