@@ -273,8 +273,11 @@ The reusable workflow uploads the complete hidden evidence directory with
 Story 3.12 supplies historical corrective-release evidence to Story 3.13. After the
 Story 1.20 proof archives were declared nonexistent, Story 3.13's selected exact
 identity is source `80d12ef5eee71a9fe3ea7be51171da4a71b69a28`, release `v3.94.1`,
-and the 14 manifest packages at version `3.94.1`. The `fa2d1c99` packet remains
-historical fail-closed evidence and is not the selected candidate. Story 1.20 remains
+and the 14 manifest packages at version `3.94.1`. Those 14 `v3.94.1` archives under
+the selected packet `packages/` are tracked evidence, not restore output, because
+`ValidatePackageBytes` rehashes them when `byte_verification.result` is `pass`. The
+`fa2d1c99` packet remains historical fail-closed evidence and is not the selected
+candidate. Story 1.20 remains
 complete and authoritative for source/package parity only; Story 3.13 cannot
 rewrite either predecessor, infer identity across lineages, or authorize a
 consumer migration, deployment, publication, or registry mutation. Story 1.20

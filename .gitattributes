@@ -8,3 +8,4 @@
 commitlint.config.mjs text eol=lf
 # Husky hooks execute through /bin/sh and must not acquire CRLF line endings.
 .husky/* text eol=lf
+*.nupkg binary

@@ -219,6 +219,70 @@ public sealed class DeployedRuntimeParityClosureTests
     }
 
     /// <summary>
+    /// Verifies .gitignore last patterns re-include evidence packages archives and still exclude generic nupkgs.
+    /// </summary>
+    [Fact]
+    public void GitignoreLastPatternsReincludeEvidencePackageArchivesAndExcludeGenericNupkgs()
+    {
+        string root = FindRepositoryRoot();
+        string[] patterns = ReadSignificantGitignorePatterns(root);
+        patterns.Length.ShouldBeGreaterThanOrEqualTo(4);
+        patterns[^2].ShouldBe("!_bmad-output/**/evidence/**/packages/");
+        patterns[^1].ShouldBe("!_bmad-output/**/evidence/**/packages/*.nupkg");
+        patterns.ShouldContain("*.nupkg");
+        patterns.ShouldContain("!_bmad-output/**/evidence/**/[Ll]ogs/");
+        patterns.ShouldContain("!_bmad-output/**/evidence/**/*.log");
+        patterns.ShouldNotContain(pattern =>
+            pattern.StartsWith('!') && pattern.Contains("/logs/**", StringComparison.OrdinalIgnoreCase));
+
+        string evidenceArchive = Path.Combine(
+            SelectedEvidenceRelativePath,
+            "packages",
+            "Hexalith.EventStore.Contracts.3.94.1.nupkg")
+            .Replace('\\', '/');
+        IsIgnoredByGit(root, evidenceArchive).ShouldBeFalse();
+        IsIgnoredByGit(root, "Hexalith.EventStore.Contracts.3.94.1.nupkg").ShouldBeTrue();
+        IsIgnoredByGit(root, "packages/Hexalith.EventStore.Contracts.3.94.1.nupkg").ShouldBeTrue();
+        IsIgnoredByGit(root, "logs/Hexalith.EventStore.Contracts.3.94.1.nupkg").ShouldBeTrue();
+        IsIgnoredByGit(
+            root,
+            "_bmad-output/implementation-artifacts/evidence/story-3-13/logs/build.nupkg")
+            .ShouldBeTrue();
+
+        string selectedEvidence = Path.Combine(root, SelectedEvidenceRelativePath);
+        string[] requiredArchives = JsonNode.Parse(
+                File.ReadAllBytes(Path.Combine(selectedEvidence, "identity-crosswalk.json")))!
+            .AsObject()["selected_candidates"]![0]!["packages"]!["items"]!.AsArray()
+            .Select(item => item!["archive"]!.GetValue<string>())
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        requiredArchives.Length.ShouldBe(14);
+
+        string[] manifestArchives = File.ReadAllLines(Path.Combine(selectedEvidence, "evidence-core-sha256.txt"))
+            .Select(static line => line.Trim())
+            .Select(static line =>
+            {
+                const string marker = "  packages/";
+                int markerIndex = line.IndexOf(marker, StringComparison.Ordinal);
+                return markerIndex < 0 ? null : line[(markerIndex + "  ".Length)..];
+            })
+            .Where(static relative => relative is not null && relative.EndsWith(".nupkg", StringComparison.Ordinal))
+            .Select(static relative => Path.GetFileName(relative)!)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        manifestArchives.ShouldBe(requiredArchives);
+
+        string packagesRelative = (SelectedEvidenceRelativePath + "/packages").Replace('\\', '/');
+        string[] trackedArchives = RunGit(root, "ls-files", "--", packagesRelative)
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
+            .Select(static path => Path.GetFileName(path.Replace('\\', '/')))
+            .Where(static name => !string.IsNullOrEmpty(name))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        trackedArchives.ShouldBe(requiredArchives);
+    }
+
+    /// <summary>
     /// Verifies exact package identity tuples and every retained archive hash against frozen inputs.
     /// </summary>
     [Fact]
@@ -6724,6 +6788,76 @@ public sealed class DeployedRuntimeParityClosureTests
         string rebound = Path.Combine(parent, indexHash);
         Directory.Move(evidence, rebound);
         return rebound;
+    }
+
+    private static string[] ReadSignificantGitignorePatterns(string root)
+    {
+        return File.ReadAllLines(Path.Combine(root, ".gitignore"))
+            .Select(static line => line.Trim())
+            .Where(static line => line.Length > 0 && !line.StartsWith("#", StringComparison.Ordinal))
+            .ToArray();
+    }
+
+    private static bool IsIgnoredByGit(string root, string relativePath)
+    {
+        using Process process = new()
+        {
+            StartInfo = new ProcessStartInfo("git")
+            {
+                WorkingDirectory = root,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+            },
+        };
+        process.StartInfo.ArgumentList.Add("check-ignore");
+        process.StartInfo.ArgumentList.Add("--no-index");
+        process.StartInfo.ArgumentList.Add("-v");
+        process.StartInfo.ArgumentList.Add("--");
+        process.StartInfo.ArgumentList.Add(relativePath);
+
+        try
+        {
+            process.Start();
+        }
+        catch (Win32Exception exception)
+        {
+            throw new InvalidDataException("Git ignore verification failed to start git.", exception);
+        }
+
+        Task<string> outputTask = process.StandardOutput.ReadToEndAsync();
+        Task<string> errorTask = process.StandardError.ReadToEndAsync();
+        if (!WaitForProcessExit(process, TimeSpan.FromSeconds(30)))
+        {
+            throw new TimeoutException(
+                "Git ignore verification timed out after 30 seconds: check-ignore --no-index -v -- "
+                + relativePath);
+        }
+
+        string output = outputTask.GetAwaiter().GetResult();
+        string error = errorTask.GetAwaiter().GetResult();
+        if (process.ExitCode == 1)
+        {
+            return false;
+        }
+
+        if (process.ExitCode != 0)
+        {
+            throw new InvalidDataException("Git ignore verification failed: " + error.Trim());
+        }
+
+        if (string.IsNullOrWhiteSpace(output))
+        {
+            throw new InvalidDataException(
+                "Git check-ignore reported ignored without a verbose matching line for "
+                + relativePath
+                + ".");
+        }
+
+        string patternField = output.Split('\t', 2)[0];
+        int lastColon = patternField.LastIndexOf(':');
+        string pattern = lastColon >= 0 ? patternField[(lastColon + 1)..] : patternField;
+        return !pattern.StartsWith('!');
     }
 
     private static string FindRepositoryRoot()

@@ -473,8 +473,10 @@ _bmad-output/implementation-artifacts/*-fresh-review.diff
 # Story evidence logs are durable acceptance artifacts, not build output. The `[Ll]ogs/` and `*.log`
 # rules above silently excluded them, so evidence receipts bound maintainer acceptance to files that
 # were never committed and would vanish on `git clean -xdf` (found in the Story 2.12 code review,
-# 2026-07-28). These negations must stay LAST — the last matching pattern wins, and git cannot
-# re-include a file whose parent directory is still excluded, so the directory is re-included first.
+# 2026-07-28). These negations must stay after the `[Ll]ogs/` and `*.log` rules they override —
+# the last matching pattern wins, and git cannot re-include a file whose parent directory is still
+# excluded, so the directory is re-included first. The evidence packages/ block below must remain
+# the last matching patterns.
 #
 # Corrected 2026-07-28 (delta code review). The first version was both too narrow and too broad:
 #   too narrow — it matched only a lowercase `logs/` directory under `implementation-artifacts`, so
@@ -489,3 +491,13 @@ _bmad-output/implementation-artifacts/*-fresh-review.diff
 !_bmad-output/**/evidence/**/[Ll]ogs/
 !_bmad-output/**/evidence/**/*.log
 _bmad/render/
+
+# Story 3.13 selected-packet archives are tracked evidence, not restore output.
+# ValidatePackageBytes rehashes the 14 on-disk *.nupkg files. The *.nupkg rule
+# ignores the archives themselves. **/[Pp]ackages/* ignores children of a
+# packages/ directory, not the directory. Still re-include the directory first,
+# then the archives, because git cannot re-include a file whose parent directory
+# is excluded. These negations must stay LAST. Do not use !…/logs/** — that
+# re-included build nupkgs in 2026-07-28.
+!_bmad-output/**/evidence/**/packages/
+!_bmad-output/**/evidence/**/packages/*.nupkg
