@@ -153,7 +153,7 @@ public sealed class DaprProjectionDeliveryRetrySchedulerTests {
                 consistencyMode: Arg.Any<ConsistencyMode?>(),
                 metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
                 cancellationToken: Arg.Any<CancellationToken>())
-            .Returns((ProjectionDeliveryRetryLedger?)null);
+            .Returns((ProjectionDeliveryRetryLedger)null!);
         _ = daprClient.GetStateAndETagAsync<ProjectionDeliveryRetryLedger>(
                 "statestore",
                 Arg.Any<string>(),

@@ -76,9 +76,9 @@ public class ProjectionDeliveryCheckpointStoreTests {
         string legacyKey = ProjectionCheckpointTracker.GetStateKey(TestIdentity);
 
         _ = daprClient.GetStateAsync<ProjectionCheckpoint>("statestore", scopedKey, cancellationToken: Arg.Any<CancellationToken>())
-            .Returns((ProjectionCheckpoint?)null);
+            .Returns((ProjectionCheckpoint)null!);
         _ = daprClient.GetStateAsync<ProjectionCheckpointTracker.ProjectionCheckpointMigrationMarker>("statestore", markerKey, cancellationToken: Arg.Any<CancellationToken>())
-            .Returns((ProjectionCheckpointTracker.ProjectionCheckpointMigrationMarker?)null);
+            .Returns((ProjectionCheckpointTracker.ProjectionCheckpointMigrationMarker)null!);
         _ = daprClient.GetStateAsync<ProjectionCheckpoint>("statestore", legacyKey, cancellationToken: Arg.Any<CancellationToken>())
             .Returns(new ProjectionCheckpoint("test-tenant", "test-domain", "agg-001", 9, DateTimeOffset.UtcNow));
         SetupGetStateAndEtag(daprClient, scopedKey, null, string.Empty);
@@ -137,7 +137,7 @@ public class ProjectionDeliveryCheckpointStoreTests {
         string legacyKey = ProjectionCheckpointTracker.GetStateKey(TestIdentity);
 
         _ = daprClient.GetStateAsync<ProjectionCheckpoint>("statestore", scopedKey, cancellationToken: Arg.Any<CancellationToken>())
-            .Returns((ProjectionCheckpoint?)null);
+            .Returns((ProjectionCheckpoint)null!);
         _ = daprClient.GetStateAsync<ProjectionCheckpointTracker.ProjectionCheckpointMigrationMarker>("statestore", markerKey, cancellationToken: Arg.Any<CancellationToken>())
             .Returns(new ProjectionCheckpointTracker.ProjectionCheckpointMigrationMarker(true));
         _ = daprClient.GetStateAsync<ProjectionCheckpoint>("statestore", legacyKey, cancellationToken: Arg.Any<CancellationToken>())
