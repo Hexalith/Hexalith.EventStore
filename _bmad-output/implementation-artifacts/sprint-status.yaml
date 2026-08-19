@@ -40,8 +40,8 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
-generated: '2026-07-05T20:01:46+02:00'
-last_updated: '2026-08-12'
+generated: '07-05-2026 20:01'
+last_updated: '08-19-2026 19:41'
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -62,9 +62,9 @@ development_status:
   1-9-tenants-query-and-read-model-adoption: done
   1-10-tenants-projection-and-event-consumer-adoption: done
   1-11-domain-module-adoption-guardrails: done
-  1-12-domainservice-packaging-and-guardrails: done
+  1-12-domainservice-packaging-and-governance: done
   # Investigation/proof completed `still blocked`; it does not claim parity availability.
-  1-13-projection-query-sdk-owner-parity-proof: done
+  1-13-projection-and-query-sdk-owner-parity-proof: done
   1-14-read-model-and-projection-checkpoint-erasure: done
   1-15-coordinated-read-model-batch-writes: done
   1-16-complete-projection-freshness-lifecycle: done
@@ -128,7 +128,7 @@ development_status:
   # Note AC5's approval has no external GitHub record, by maintainer choice.
   # Deferred to a follow-up Tenants story by owner decision: four AC4-guard bypasses, because
   # fixing them would move acceptance off f9e51c6 and re-trigger AC5 a third time.
-  2-12-tenants-runtime-identity-adoption-and-package-mode-validation: done
+  2-12-tenants-runtime-identity-adoption-and-package-mode-validatio: done
   epic-2-retrospective: done
 
   epic-3: in-progress
@@ -155,7 +155,7 @@ development_status:
   # supersessions, AC1 wording aligned to D1 intent, deferred/validation-command counts corrected;
   # 1 defer - unguarded docs/ci.md pin literal; 2 dismissed. Patched content is working-tree-only
   # and needs a follow-up PR to land on main.)
-  3-1-re-tier-live-sidecar-tests-from-release-gate: done
+  3-1-re-tier-live-sidecar-tests-from-the-release-gate: done
   # 2026-07-29: FR18 remains satisfied by PR #271/13320952; Story 3.2 adds the missing
   # deterministic override guard. Closed to done the same day by adversarial code review
   # (4 decisions resolved, 9 patches applied, 4 deferred, 6 dismissed): the original AC4
@@ -209,14 +209,15 @@ development_status:
   3-11-validated-central-package-catalog-refresh: done
   # v3.75.0 remains failed single-platform evidence; failed partial v3.77.1 is quarantined.
   # Story 3.12 produced observed candidate v3.77.2 with exactly linux/amd64 and linux/arm64.
-  # Story 1.20 is already done on source/package parity. Story 3.13 independently maps that
-  # identity to the deployed OCI index, child manifests/configs, and release provenance.
+  # Story 1.20 is already done on source/package parity. Positive deployed-runtime parity is
+  # now the backward-only Story 3.14 -> 3.15 path; Story 3.13 retains only the v3.94.1 rejection.
   3-12-multi-platform-eventstore-container-publishing-correction: done
-  # 2026-08-14 identity replacement: Administrator approved sprint-change-proposal-2026-08-14.md.
-  # Selected exact identity is 80d12ef5 / v3.94.1 / package version 3.94.1. The fa2d1c99 packet
-  # remains historical fail-closed evidence. The 2026-08-12 terminal-unavailable proposal stays
-  # on hold. Story 3.13 remains in-progress until the new packet satisfies AC1-AC4.
-  3-13-deployed-runtime-parity-closure: in-progress
+  # 2026-08-16 planning reconciliation: v3.94.1 is retained as rejected and non-authorizing.
+  # Story 3.13 remains in-progress until its exact negative disposition is accepted. Story 3.14
+  # owns the corrective release; Story 3.15 owns positive deployed-runtime parity closure.
+  3-13-v3-94-1-deployed-runtime-evidence-disposition: in-progress
+  3-14-corrective-oci-provenance-release: backlog
+  3-15-corrected-deployed-runtime-parity-closure: backlog
   epic-3-retrospective: optional
 
   epic-4: in-progress

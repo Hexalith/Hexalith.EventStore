@@ -1263,7 +1263,7 @@ status: open
   evidence: `package-availability.json` declares `checked_at: 2026-08-04T11:17:05Z` and `registry-readback.json` declares `2026-08-04T11:48:07Z`, but both files were rewritten on 2026-08-09 for host-path redaction and the `cli_candidate_consequence` string.
 
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
-  summary: HIGH - repair Epic 1 frozen evidence corrupted by the SDK-token sweep in `089369bb`, under its own authority record.
+  summary: HIGH - Story 1.21 must repair Epic 1 frozen evidence corrupted by the SDK-token sweep in `089369bb`, under its own authority record.
   evidence: `089369bb` ("docs: clear remaining root predecessor SDK patch tokens", 25 files) rewrote `10.0.301` to `10.0.302` inside owner-approved Story 1.20 evidence. Story 3.13 restored only its own `fa2d1c99...` tree at `3d6dea69`. Genuine content mismatches remain at HEAD in `critical-evidence-sha256.txt` for `38f85086fc25...`, `4983299103bf...`, and `ec0d35a082bc...` (one `environment.txt` each). Story 3.13 must not write predecessor bytes again, so this needs a separate scoped story. Verified not affected: Story 3.13's `predecessor-tree-sha256.txt` passes 40/40, and the `nuget-sha256.txt` failures are missing proof packages, not corruption.
 
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`

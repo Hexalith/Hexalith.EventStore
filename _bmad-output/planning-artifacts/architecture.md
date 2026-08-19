@@ -62,6 +62,12 @@ design version 1.0.0 (SHA-256
 govern; this architecture projects those decisions into EventStore; pre-change
 FR27/NFR7/NFR16 and architecture text is historical context only.
 
+For deployed-runtime parity, the approved 2026-08-16 sprint change proposal and the final PRD
+updated 2026-08-16 govern over stale epic, story, specification, and sprint-tracking text.
+Implementation handoff is blocked until those downstream artifacts atomically encode Story 3.13
+as the rejected `v3.94.1` disposition, Story 3.14 as the corrective release, Story 3.15 as positive
+parity closure, and Epic 3 as open. No stale artifact can authorize positive `v3.94.1` closure.
+
 ```mermaid
 flowchart LR
     ExternalApi[External API hosts] -->|IEventStoreGatewayClient| Gateway[EventStore gateway]
@@ -73,7 +79,7 @@ flowchart LR
     Admission -->|current fenced execution context| Actor[AggregateActor]
     Actor -->|DAPR service invocation| DomainSvc[Domain service]
     DomainSvc -->|DomainResult| Actor
-    Actor -->|write-once events, metadata, snapshots| State[(DAPR state store)]
+    Actor -->|event append, metadata, snapshots| State[(DAPR state store)]
     Actor -->|CloudEvents| PubSub{{DAPR pub/sub}}
     PubSub --> Projection[Projection consumers]
     Projection -->|read models / ETags / notifications| Gateway
@@ -110,7 +116,7 @@ flowchart LR
 
 - **Binds:** FR23, FR27, FR29-FR31, NFR7
 - **Prevents:** split-brain persistence where domain code, projections, or external hosts write events or command state independently.
-- **Rule:** `AggregateActor` remains the durable event-mutation coordinator after AD-25 admission. The admission actor owns tenant/key serialization, reservation, and the current fence; `AggregateActor` accepts only an internal current-fence execution context before invoking pure domain processors/domain services, persisting write-once events and metadata, recording recovery state, managing snapshots, or scheduling projection activation. Domain code returns `DomainResult`; it never writes EventStore state directly. Admission orchestration stays unidirectional and does not replace Story 4.4 publication recovery.
+- **Rule:** `AggregateActor` remains the sole event-append path and durable event-mutation coordinator after AD-25 admission. The admission actor owns tenant/key serialization, reservation, and the current fence; `AggregateActor` accepts only an internal current-fence execution context before invoking pure domain processors/domain services, appending events and metadata, recording recovery state, managing snapshots, or scheduling projection activation. Domain code returns `DomainResult`; it never writes EventStore state directly. Physical write-once enforcement remains unavailable until an approved provider-portable ETag/first-write or equivalent fence is production-path proven. Admission orchestration stays unidirectional and does not replace Story 4.4 publication recovery.
 
 ### AD-6 - Persisted Event Identity Is Stable [ADOPTED]
 
@@ -146,11 +152,15 @@ flowchart LR
 
 - **Binds:** FR10, FR21-FR22, FR25, NFR9-NFR11, NFR16-NFR17
 - **Prevents:** local submodule checkout state, Debug source references, or hard-coded package loops changing released package output; and single-platform or otherwise nonconforming container registry objects being reported as successful releases.
-- **Rule:** `tools/release-packages.json` is the EventStore release inventory. Release/package validation uses package-reference mode by default. Source project references require explicit `UseHexalithProjectReferences=true` and are never used for package publication. Unset or explicit `UseHexalithProjectReferences=false` is package intent in every configuration, including Debug. Explicit `true` is source intent, but each external edge still requires its root-declared source path to exist; missing source falls back to the centrally pinned package edge. Empty or unset configuration remains package-safe. Submodule packages are not produced by EventStore release jobs. `references/Hexalith.Builds/Props/Directory.Packages.props` is the sole source-owned NuGet version catalog for Hexalith repositories; consumer props only configure CPM and import it. The catalog moves to latest validated compatible versions using configured-source evidence, grouped restore/build/test validation, and representative-consumer proof. Hexalith release families, .NET/ASP.NET patch bands, OpenTelemetry packages, test adapters, and other coupled sets move coherently. Major upgrades and channel changes require explicit proof. Compatibility exceptions record rationale and a removal trigger; missing, unlisted, or older search results never cause a downgrade. The repository SDK seed and verified security baseline are `10.0.302` and ASP.NET `10.0.10` respectively.
+- **Rule:** `tools/release-packages.json` is the EventStore release inventory. Release/package validation uses package-reference mode by default. Source project references require explicit `UseHexalithProjectReferences=true` and are never used for package publication. Unset or explicit `UseHexalithProjectReferences=false` is package intent in every configuration, including Debug. Explicit `true` is source intent, but each external edge still requires its root-declared source path to exist; missing source falls back to the centrally pinned package edge. Empty or unset configuration remains package-safe. Submodule packages are not produced by EventStore release jobs. `references/Hexalith.Builds/Props/Directory.Packages.props` is the sole source-owned NuGet version catalog for Hexalith repositories; consumer props only configure CPM and import it. The catalog moves to latest validated compatible versions using configured-source evidence, grouped restore/build/test validation, and representative-consumer proof. Hexalith release families, .NET/ASP.NET patch bands, OpenTelemetry packages, test adapters, and other coupled sets move coherently. Major upgrades and channel changes require explicit proof. Compatibility exceptions record rationale and a removal trigger; missing, unlisted, or older search results never cause a downgrade. The repository SDK seed remains `10.0.302` with `rollForward: latestPatch`; the verified current same-band security floor is SDK `10.0.303` and ASP.NET/runtime `10.0.11`.
 
 The EventStore container release is one immutable OCI image index. Released container repositories are exactly the release workflow's `container-projects` mapping - currently the single `eventstore` repository. Any future externally released container image, including `eventstore-admin-ui`, adopts this same index/platform/validation contract and an AD-22 identity mapping before its first release; until then AD-21's `eventstore-admin-ui` is an AppHost/deployment topology identity, not a released registry artifact, and deployment profiles must not require a platform of any released registry image that no release evidence proves. The conforming registry shape has one authority - the SHA-pinned shared Hexalith.Builds publisher/validator the release workflow consumes; neither Builds nor the EventStore caller reinterprets it locally, and shape changes route through an approved proposal and a Builds change, never a validation weakening. That shape: the release version tag resolves to media type `application/vnd.oci.image.index.v1+json` (a Docker manifest list or single-image manifest served for the tag is nonconforming) containing exactly one descriptor per supported platform - `linux/amd64` and `linux/arm64` - each directly referencing an image manifest (nested indexes are nonconforming), with no duplicate, extra, or `unknown` platform and no non-empty platform `variant` value. Index-level annotations and repository co-objects outside the validated descriptor graph confer no release evidence. Platform children are produced by .NET SDK container support, never Dockerfiles.
 
-Both platform child configs carry the same release-bound OCI provenance set: `org.opencontainers.image.source` is the exact public EventStore repository URL; `org.opencontainers.image.url` and `org.opencontainers.image.documentation` are absolute public HTTPS URLs for the project or release and its documentation; `org.opencontainers.image.revision` is the exact 40-character release source SHA; and `org.opencontainers.image.version` is the exact semantic release version. Release validation reads the raw registry bytes, binds their SHA-256 and byte length to the registry-reported index digest and to every descriptor, resolves every descriptor, verifies each child config's `os`/`architecture` equals its descriptor, verifies the provenance set is present, non-empty, well-formed, identical across both children, and consistent with the package/workflow/release lineage, and runs the same bounded support-safe health smoke on both immutable child digests under the declared minimal configuration of the smoke contract, which is owned by that same shared publisher/validator authority; a dependency absent from the declared configuration is part of the contract, not grounds to skip or substitute the check. Every validation failure fails the release evidence gate closed - wrong media type, platform-set mismatch, digest or size mismatch, unresolved descriptor, config mismatch, missing or malformed provenance, mixed lineage, or product smoke failure - and emulation or environment setup failure is classified separately from a product-image failure but blocks the gate equally: a platform whose smoke cannot run is unproven, not passed. Published artifacts are immutable: release tags, conforming and failed, are never re-pointed or deleted; nonconforming releases such as `v3.75.0` and `v3.94.1` remain resolvable as non-authorizing failed evidence and are corrected only by a conforming later semantic version. Tag resolution never authorizes deployment; only the recorded validated index digest does (AD-22).
+Both platform child configs carry the same release-bound OCI provenance set: `org.opencontainers.image.source` is the exact absolute public HTTPS EventStore repository URL; `org.opencontainers.image.url` and `org.opencontainers.image.documentation` are absolute public HTTPS URLs for the project or release and its documentation; `org.opencontainers.image.revision` is the exact 40-character release source SHA; and `org.opencontainers.image.version` is the exact semantic release version. Story 3.14 owns adding this label emission and raw-config label validation to the EventStore release configuration and the SHA-pinned shared Builds publisher/validator; until that work is proven, no corrective release is conforming.
+
+Every candidate emits one canonical `ReleaseIdentity` record binding the EventStore repository, semantic version and tag, source SHA, workflow run and attempt plus workflow revision, Builds execution SHA, one-use release-authority digest, package-manifest digest and every package identity/version/SHA-256 digest, registry and repository, OCI index/child/config digest chain, and smoke-evidence digest. The EventStore platform evidence verifier owns the single versioned `ReleaseEvidenceCodec`; `ReleaseIdentity` records its codec identifier, schema/version, and verifier content digest. Every producer and verifier hashes the retained UTF-8 canonical bytes emitted by that codec without reserialization; alternate codecs fail closed. Story 3.15 independently derives every identity edge from trusted workflow facts and retained raw bytes; labels, hand-authored mappings, and earlier pass flags are never identity evidence by themselves.
+
+Release validation reads the raw registry bytes, binds their SHA-256 and byte length to the registry-reported index digest and to every descriptor, resolves every descriptor, verifies each child config's `os`/`architecture` equals its descriptor, verifies the provenance set is present, non-empty, well-formed, identical across both children, and consistent with the canonical release identity, and runs the same bounded support-safe health smoke on both immutable child digests under the declared minimal configuration of the smoke contract, which is owned by that same shared publisher/validator authority; a dependency absent from the declared configuration is part of the contract, not grounds to skip or substitute the check. Every validation failure fails the release evidence gate closed - wrong media type, platform-set mismatch, digest or size mismatch, unresolved descriptor, config mismatch, missing or malformed provenance, mixed lineage, or product smoke failure - and emulation or environment setup failure is classified separately from a product-image failure but blocks the gate equally: a platform whose smoke cannot run is unproven, not passed. Published artifacts are immutable: release tags, conforming and failed, are never re-pointed or deleted; nonconforming releases such as `v3.75.0` and `v3.94.1` remain resolvable as non-authorizing failed evidence and are corrected only by a conforming later semantic version. Tag resolution never authorizes deployment; only the recorded validated index digest does (AD-22).
 
 ### AD-12 - High-Risk Verification Requires Persisted Evidence [ADOPTED]
 
@@ -312,11 +322,13 @@ Existing synchronous single-projection consumers continue through an explicitly 
 
 - **Binds:** FR36, NFR12, NFR16
 - **Prevents:** persisted evidence from one EventStore runtime authorizing a consuming module to delete local projection/query infrastructure against a different source commit, package build, or deployed image.
-- **Rule:** A consuming module removes local projection/query infrastructure only after an EventStore-owner-reviewed parity packet marks every required capability `available`, cites persisted production-path evidence, records the exact approved EventStore source/runtime commit SHA, and maps that SHA to the released artifact identities: exact consumed package versions and hashes plus, when applicable, the deployed EventStore container identity, which is the validated OCI image index digest under AD-11.
+- **Rule:** A consuming module removes local projection/query infrastructure only after an EventStore-owner-reviewed parity packet marks every required capability `available`, cites persisted production-path evidence, records the exact approved EventStore source/runtime commit SHA, and maps that SHA to the released artifact identities: exact consumed package versions and hashes plus, when applicable, the deployed EventStore container identity, which is the validated OCI image index digest under AD-11. The unchanged packet also binds one authoritative capability catalog and one trusted owner-role registry, each by canonical owner, path, schema, version, and SHA-256 content digest; the consumer repository and commit; the exact removal-subject digest and scope; and an explicit source/package/deployed applicable-mode matrix plus its SHA-256 digest.
 
   - Source mode proves the checked-out **EventStore submodule** SHA equals the approved EventStore SHA.
   - Package mode proves the resolved EventStore package versions and hashes equal the packet's manifest-governed artifacts.
   - Deployed mode proves the running EventStore image maps through release provenance to the approved EventStore SHA. The approved container identity is the OCI image index digest recorded by the AD-11 release evidence gate; the packet records the full identity chain - index digest, both child manifest digests, and both child config digests. A deployed-mode verifier may observe any chain member and maps it to the approved index digest only through that recorded chain; it never re-derives identity from an alternate representation of the tag, and an observed identity absent from the chain fails closed.
+
+When a consumer uses multiple modes, every applicable mode must pass against the same packet. EventStore-owner, Release-owner, and Test-Architect acceptance establishes evidence only. Consumer infrastructure deletion requires an authenticated Consumer-owner receipt containing the consumer repository and commit, packet-subject digest, capability-catalog digest, applicable-mode-matrix digest, exact removal-subject digest, outcome `consumer-removal-authorized`, timestamp, and validity. The platform-owned verifier accepts it only after validating its signature or immutable approval identity against the packet-bound owner-role registry. Any bound change invalidates the receipt. Booleans, free-form approval, self-declared roles, version labels, Story 3.15 completion, EventStore-side receipts, and unverifiable receipts never grant cross-repository mutation authority.
 
 Story 1.20 owns source/package parity closure inside Epic 1. Story 3.13 owns the rejected, non-authorizing disposition of the immutable `v3.94.1` candidate; Story 3.14 owns a separately authorized corrective release; and Story 3.15 owns independent positive deployed-runtime parity closure for that later release. None gates or reopens Story 1.20, Story 3.12, or Epic 1. A complete owner-reviewed negative disposition may terminate its evidence-disposition story, but it never marks deployed-runtime parity `available`, selects an image, authorizes deployment, or permits consumer infrastructure removal.
 
@@ -327,13 +339,29 @@ Story 1.20 owns source/package parity closure inside Epic 1. Story 3.13 owns the
   lineage remains historical evidence: source `80d12ef5eee71a9fe3ea7be51171da4a71b69a28`,
   release `v3.94.1`, and the 14 manifest packages at version `3.94.1`. The immutable candidate is
   `rejected-non-authorizing`, deployed-runtime parity is unavailable for `v3.94.1`, no deployed
-  identity is selected, and deployment remains unauthorized. Story 3.13 may complete only on one
-  content-bound negative disposition accepted by the EventStore owner, Release owner, and Test
-  Architect; that completion does not close positive FR36 parity or substitute for Story 3.15.
-  Story 3.14 requires separate durable release-owner authority before publishing a corrective
-  semantic release. Story 3.15 independently validates one exact new AD-11/AD-22 lineage and its
-  unchanged-subject acceptances. No result reopens Stories 1.20 or 3.12, authorizes Parties 8.6 or
-  G5, permits a lineage splice, or grants deployment or consumer-migration authority.
+  identity is selected, and deployment remains unauthorized. Its disposition stays bound to
+  review subject `6cee8dad34c1233c6184404b409fb65d1a4dd0bccdd0d0ee54e8869120970a97` and preserves
+  the malformed literal `https` in `source`, `url`, and `documentation`, the absent `revision`,
+  and `deployment_authorized: false`; an omitted, changed, or reinterpreted fact fails closed.
+
+  Story 3.13 may complete only on that content-bound negative disposition. Story 3.14 requires a
+  durable one-use pre-publication authority binding repository, version/tag, source SHA,
+  registry/repository, package inventory, platforms, publisher revisions, owner, rationale,
+  timestamp, and validity window. Every attempted external write must match it exactly; missing,
+  expired, replayed, or mismatched authority fails closed. Story 3.15 independently validates one
+  exact new AD-11/AD-22 lineage. Both Stories 3.13 and 3.15 bind acceptances to one canonical
+  SHA-256 review-subject digest; receipts come from exactly the authenticated EventStore owner,
+  Release owner, and Test Architect and record identity, role, subject digest, explicit outcome,
+  and timestamp. Story 3.15's canonical subject contains the exact `ReleaseIdentity` SHA-256
+  digest, selected OCI index digest, release-authority digest, explicit parity outcome, and the
+  SHA-256 digest of every retained evidence object; its subject digest is computed over exact
+  canonical bytes. Every receipt must equal the packet's recomputed subject digest. Missing
+  references or any transitive evidence change invalidates all receipts. The platform-owned
+  verifier validates every receipt's signature or immutable approval identity against the
+  packet-bound owner-role registry; self-declared roles and unverifiable receipts fail closed.
+  Planning approval, release authority, and story completion are not receipts. No result reopens Stories 1.20 or
+  3.12, closes positive FR36 parity without Story 3.15, authorizes Parties 8.6 or G5, permits a
+  lineage splice, or grants deployment or consumer-migration authority.
 
 The consuming repository's own commit SHA is never compared to the EventStore SHA. Without owner approval or a matching dependency/runtime identity, the consumer keeps its local infrastructure and the adoption child remains non-`done`; generic EventStore platform work may continue independently.
 
@@ -455,30 +483,30 @@ closure.
 
 ## Stack
 
-The table records the current planning baseline. Story 3.11 updates version rows only from accepted shared-catalog and compatibility evidence.
+The table is a dated rendering of the current planning baseline; the Builds catalog remains live version authority and always wins. Story 3.11 updates version rows only from accepted shared-catalog and compatibility evidence.
 
 | Name | Version |
 | --- | --- |
-| .NET SDK | Repository seed `10.0.302`; required security baseline `10.0.302` (`rollForward: latestPatch`) |
+| .NET SDK | Repository seed `10.0.302` (`rollForward: latestPatch`); required same-band security baseline `10.0.303` |
 | Target framework | net10.0 |
 | Aspire.Hosting | 13.4.6 |
 | Aspire.Hosting.Keycloak / Kubernetes | 13.4.6-preview.1.26319.6 |
-| CommunityToolkit.Aspire.Hosting.Dapr | 13.4.1-beta.687 |
+| CommunityToolkit.Aspire.Hosting.Dapr | 13.4.1-beta.706 |
 | DAPR runtime | Repository CI/deployment seed `1.18.0`; production profiles pin a compatible 1.18.x release |
 | Dapr .NET SDK packages | 1.18.5 |
 | DAPR OpenBao secret store | Stable component v1 since DAPR runtime 1.16; `secretstores.hashicorp.vault` |
 | MediatR | 14.2.0 |
 | FluentValidation | 12.1.1 |
-| ASP.NET Core / SignalR packages | `10.0.10` (catalog and security baseline aligned) |
+| ASP.NET Core / SignalR packages | `10.0.11` (catalog and security baseline aligned) |
 | Microsoft.CodeAnalysis packages | 5.6.0 |
 | Microsoft.FluentUI.AspNetCore.Components | 5.0.0-rc.4-26180.1 |
-| Hexalith.FrontComposer packages | Catalog `HexalithFrontComposerVersion` `4.0.1`; matching root-declared source in Debug and centrally pinned NuGet packages in Release |
+| Hexalith.FrontComposer packages | Catalog `HexalithFrontComposerVersion` `4.1.1`; matching root-declared source in Debug and centrally pinned NuGet packages in Release |
 | OpenTelemetry exporter/hosting/ASP.NET/HTTP packages | 1.17.0 |
-| OpenTelemetry runtime instrumentation | 1.17.0 (StackExchangeRedis instrumentation `1.16.0-beta.1`) |
-| Hexalith.Commons.UniqueIds | 2.28.2 |
+| OpenTelemetry runtime instrumentation | 1.17.0 (StackExchangeRedis instrumentation `1.17.0-beta.1`) |
+| Hexalith.Commons.UniqueIds | 2.30.0 |
 | xUnit v3 | 3.2.2 |
 | Shouldly | 4.3.0 |
-| NSubstitute | 6.0.0 |
+| NSubstitute | 6.2.0 |
 
 ## Structural Seed
 
@@ -493,7 +521,6 @@ src/
   Hexalith.EventStore.RestApi.Generators/ # analyzer-only typed REST controller generator
   Hexalith.EventStore.Aspire/           # Aspire EventStore and domain-module topology extensions
   Hexalith.EventStore.ServiceDefaults/  # telemetry, health, discovery, resilience defaults
-  Hexalith.EventStore.PayloadProtection/ # optional shared engine and approved production-backend boundary
   Hexalith.EventStore.Admin.*/          # admin abstractions, server, CLI, MCP; Admin.UI is the consolidated EventStore UI
 samples/
   Hexalith.EventStore.Sample/           # domain-centric reference service
@@ -503,7 +530,6 @@ samples/
 tests/
   */                                    # per-project tests; Tier 2/3 assert persisted evidence
 deploy/dapr/
-  openbao-secret-contract.yaml          # value-free source for logical names, scopes, ACL paths, and retrieval lifecycle
 ```
 
 ```mermaid
@@ -571,9 +597,10 @@ flowchart TB
 | --- | --- |
 | `ux.md` user journeys, screen states, component-level patterns, accessibility, and localization evidence | PRD makes UX a separate readiness artifact. This spine binds UI-host boundaries and support-safe/projection-confirmed rules only. |
 | Story splitting, renumbering, evidence crosswalks, and sprint-status migration under the approved 2026-07-15 and 2026-08-01 proposals | `epics.md`, active story specs, dated crosswalks, and sprint planning own implementation identity and sequencing; this spine supplies the shared invariants for every resulting slice. |
+| Atomic 2026-08-16 deployed-parity plan alignment | `epics.md`, Stories 3.13-3.15 specifications, and sprint tracking still present stale positive-`v3.94.1` ownership. Architecture can finalize because the authority order above fails closed, but implementation handoff is blocked until all downstream artifacts atomically encode the PRD split; no stale artifact authorizes release, positive parity, deployment, or consumer removal. |
 | Quantitative EventStore UI performance budgets | No production baseline supports a numerical release gate yet. A future UX-performance backlog item may establish measured budgets without weakening accessibility, responsive layout, evidence-state, or support-safety rules. |
 | Exact tenant-vs-domain global-position sharding design | FR24 requires renegotiating the frozen global-ordering spec before implementation. AD-6 preserves current semantics until then. |
-| Append-path storage fencing and write-once enforcement | **ADD, deferred to a separately approved implementation story.** Story 4.5's Dapr `1.18.1` `state.redis` / Redis `6` profile proved that a raw actor-state transaction can become durable at sequence 1 and then be silently overwritten by the actor at the same key; the actor surfaced no exception and consumed none of its one configured retry. AD-5 remains the desired producer-ownership invariant, but this observed provider profile does not enforce it; no behavior is inferred for another state-store provider. The follow-up must select and prove a provider-portable ETag/first-write or equivalent fence before changing the five current catches or retry budget. |
+| Append-path storage fencing and write-once enforcement | **ADD, deferred to a separately approved implementation story.** Story 4.5's Dapr `1.18.1` `state.redis` / Redis `6` profile proved that a raw actor-state transaction can become durable at sequence 1 and then be silently overwritten by the actor at the same key; the actor surfaced no exception and consumed none of its one configured retry. AD-5 preserves the sole-owner append path but does not claim physical write-once enforcement; no behavior is inferred for another state-store provider. No append-remediation slice may select a local fence or claim write-once durability before an approved provider-portable ETag/first-write or equivalent fence passes production-path proof. |
 | Folded snapshot payload shape, projection sequence guard algorithm, event upcaster ordering, and cancellation contract details | FR33 explicitly requires spec-first stories 6.1, 6.3, and 6.5 before implementation. |
 | Production mTLS trust domain, namespace values, OpenBao server release/HA/storage topology, provider endpoint and engine/prefix values, bootstrap-token acquisition/TTL, logical secret catalog entries, rotation maintenance window, and deployment overlay specifics | AD-24 fixes OpenBao, assigns these values to the platform overlay, and binds DAPR access/scoping/TLS/bootstrap rotation/readiness invariants. The exact environment values and operations belong in deployment hardening stories and deploy templates. |
 | Full aggregate/event GDPR tombstoning, broker-history deletion, physical backup erasure, audit-record deletion, provider/operator key-custody operations, Admin interactive OIDC login, aggregate test kit, and REST generator hardening backlog | These remain outside Phase 4 MVP. Generic projection read-model/checkpoint erasure is active FR5/Story 1.14 scope. The optional EventStore-owned shared payload-protection engine is separately committed as post-MVP Epic 8 and remains unavailable until its ADR, implementation, production backend, release, G5 proof, and consumer rollback complete. |
