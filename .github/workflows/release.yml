@@ -90,9 +90,14 @@ jobs:
 
   release:
     needs: verify-source
+    # GitHub validates the maximum permissions of every job in a called workflow,
+    # including the skipped governed-release job. The explicit false input keeps
+    # EventStore on the legacy job, whose callee-level permissions omit both grants.
     permissions:
       actions: read
+      attestations: write
       contents: write
+      id-token: write
       issues: write
       pull-requests: write
     uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@f271c8aa373307aac21d4f68857aba25442a49a2
@@ -100,6 +105,7 @@ jobs:
       solution: Hexalith.EventStore.slnx
       timeout-minutes: 60
       environment-name: production
+      governed-release: false
       publish-containers: true
       builds-execution-sha: f271c8aa373307aac21d4f68857aba25442a49a2
       source-branch: main

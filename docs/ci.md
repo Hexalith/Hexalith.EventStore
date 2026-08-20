@@ -235,6 +235,14 @@ publication. A changed projection therefore requires a new run and authority;
 The `publishCmd` calls the helper installed by the shared `publish-containers`
 action only after the authority gate and NuGet publication:
 
+GitHub validates reusable-workflow permissions against every nested job before
+it starts the caller, including skipped jobs. The EventStore caller therefore
+allows `attestations: write` and `id-token: write` so the shared workflow can be
+resolved, while explicitly passing `governed-release: false`. The selected
+legacy release job narrows its callee-level permissions and neither receives nor
+uses those capabilities. This compatibility allowance does not enable signing,
+SBOM generation, or attestation for EventStore.
+
 ```text
 src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore
 ```
