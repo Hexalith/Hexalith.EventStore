@@ -210,7 +210,7 @@ container, smoke, and GitHub publication failures remain blocking.
 
 The reusable-workflow reference and `builds-execution-sha` input contain the
 same reviewed 40-character Builds commit, currently
-`bf9af9cb7366c924eb7d5ac9c0316ae4f7936b2c`. The reusable workflow verifies its
+`eadddc7b5d8e9392e5931758ffb608b57b5fdc6c`. The reusable workflow verifies its
 resolved SHA, checks out the nested action at that exact commit, and invokes it
 locally; the action then verifies its own action and helper bytes against the
 same commit before semantic-release can run. This immutable release-tool pin is
@@ -230,6 +230,9 @@ hashes. The `publish` preflight consumes that authority once through an
 authenticated GitHub Actions receipt before the first NuGet write; pagination,
 replay, expiry, excessive validity, wrong-role, changed scope, or mismatched
 helper bytes fail closed.
+The durable consumption evidence retains the authenticated comment-list reread
+rather than GitHub's distinct POST response shape, so the container phase
+rechecks the same record bytes that the publish phase froze.
 
 The reserved version must equal Semantic Release's `nextRelease.version`, must
 be stable, and must be strictly newer than every stable GitHub release/tag, every
