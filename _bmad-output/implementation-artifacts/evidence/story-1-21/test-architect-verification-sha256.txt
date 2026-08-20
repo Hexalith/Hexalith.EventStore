@@ -1,0 +1,1 @@
+183975a600f4a2a66f07672a4eb1e62b6bd5af5139dd2f5ff5e917ee5477366d  test-architect-verification.json

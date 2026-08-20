@@ -9,3 +9,6 @@ commitlint.config.mjs text eol=lf
 # Husky hooks execute through /bin/sh and must not acquire CRLF line endings.
 .husky/* text eol=lf
 *.nupkg binary
+# Story 1.21 hashes canonical evidence bytes; keep those JSON and checksum artifacts LF-stable.
+_bmad-output/implementation-artifacts/evidence/story-1-21/*.json text eol=lf
+_bmad-output/implementation-artifacts/evidence/story-1-21/*.txt text eol=lf

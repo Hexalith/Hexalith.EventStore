@@ -1,0 +1,55 @@
+{
+  "schema": "hexalith.eventstore.story-1-21-test-architect-verification/v1",
+  "verifier": "bmad:murat",
+  "verified_at": "2026-08-20T20:48:33+02:00",
+  "subject_sha256": "ee5fb076bac380faa0b01ccd7aa96ec9f77955faa96f45c34aafc75d7bc8d26e",
+  "result_sha256": "e22e1aef2d24fea81d49ce5e9f495d4ff8d02e989da8b37c1937b517a477e3ab",
+  "focused_test": {
+    "class": "Hexalith.EventStore.Contracts.Tests.Packaging.FrozenStory120EvidenceIntegrityRepairTests",
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0
+  },
+  "manifest_checks": [
+    {
+      "tree": "38f85086fc2513e06fe85482dfade96578d649e5",
+      "entries": 33,
+      "passed": 33,
+      "failed": 0
+    },
+    {
+      "tree": "4983299103bfa5bbbd40e695767eb5ddbc1369d5",
+      "entries": 33,
+      "passed": 33,
+      "failed": 0
+    },
+    {
+      "tree": "ec0d35a082bcc70b090afa1c1544306008d767da",
+      "entries": 33,
+      "passed": 33,
+      "failed": 0
+    }
+  ],
+  "package_availability": [
+    {
+      "tree": "38f85086fc2513e06fe85482dfade96578d649e5",
+      "entries": 14,
+      "available": 0,
+      "missing": 14
+    },
+    {
+      "tree": "4983299103bfa5bbbd40e695767eb5ddbc1369d5",
+      "entries": 14,
+      "available": 0,
+      "missing": 14
+    },
+    {
+      "tree": "ec0d35a082bcc70b090afa1c1544306008d767da",
+      "entries": 14,
+      "available": 0,
+      "missing": 14
+    }
+  ],
+  "outcome": "pass",
+  "conclusion": "The authorized repair is content-bound to the canonical subject and result; all three frozen critical manifests pass 33/33, proof packages remain independently unavailable at 0/14 per tree, no broader Story 1.20 drift exists, and the protected tree remains unchanged."
+}

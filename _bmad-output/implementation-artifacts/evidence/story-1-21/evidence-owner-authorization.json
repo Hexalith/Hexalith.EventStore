@@ -1,0 +1,21 @@
+{
+  "schema": "hexalith.eventstore.story-1-21-evidence-owner-authorization/v1",
+  "actor": "Administrator",
+  "role": "Hexalith.EventStore evidence owner",
+  "decision": "[A] Approve",
+  "source": {
+    "kind": "interactive-workflow-decision",
+    "record": "Administrator's [A] Approve observed before the implementation handoff for the frozen Story 1.21 spec",
+    "timestamp_status": "not recorded"
+  },
+  "subject": {
+    "path": "_bmad-output/implementation-artifacts/evidence/story-1-21/repair-subject.json",
+    "sha256": "ee5fb076bac380faa0b01ccd7aa96ec9f77955faa96f45c34aafc75d7bc8d26e"
+  },
+  "frozen_spec_block": {
+    "path": "_bmad-output/implementation-artifacts/spec-1-21-frozen-story-1-20-evidence-integrity-repair.md",
+    "canonicalization": "UTF-8 without BOM; CRLF normalized to LF; opening frozen-after-approval tag through closing tag inclusive; one trailing LF",
+    "sha256": "26c7a378bffb3a90eee0fe037aeeeec2e16a290ed91fadd5b4a4db6219db7e92"
+  },
+  "scope": "Restore exactly three frozen Story 1.20 environment captures from the sole parent blobs of the introducing commit; add supporting Story 1.21 guardrail and verification artifacts without changing Story 1.20's decision or Epic 1 status."
+}

@@ -1,0 +1,55 @@
+{
+  "schema": "hexalith.eventstore.story-1-21-repair-subject/v1",
+  "story_id": "1.21",
+  "baseline_commit": "1e5abd261339c831347b4717f5d311a214f97059",
+  "authorization": {
+    "receipt_path": "_bmad-output/implementation-artifacts/evidence/story-1-21/evidence-owner-authorization.json",
+    "receipt_sha256_path": "_bmad-output/implementation-artifacts/evidence/story-1-21/evidence-owner-authorization-sha256.txt",
+    "scope": "Restore exactly three frozen Story 1.20 environment captures from the sole parent blobs of the introducing commit; add supporting Story 1.21 guardrail and verification artifacts without changing Story 1.20's decision or Epic 1 status."
+  },
+  "introducing_commit": "089369bb8fa34117c1d5f912f5cbe80ab07fa9a3",
+  "introducing_parent": "f670892f0826de2097e9f47175f5caf5c5ad346a",
+  "repair_scope": [
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-1-20/38f85086fc2513e06fe85482dfade96578d649e5/environment.txt",
+      "mode": "100644",
+      "preimage_git_blob": "e4bfbbf98ea8d3faa91ac8b1bcd0a4be13fa2b77",
+      "preimage_sha256": "79a4c6f3eb05a602c86cbff9d99bcff16fc2792fc6562254f921fc7e60afa2cc",
+      "target_git_blob": "a9fccff513e0c86813ed1edd129df5fc31355ef2",
+      "target_sha256": "ae3a92f39a9149f5cc61ea3d7bdd0ec2d2d40458c3ad92cbb7f03332da985675"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-1-20/4983299103bfa5bbbd40e695767eb5ddbc1369d5/environment.txt",
+      "mode": "100644",
+      "preimage_git_blob": "b1f2274b6f84ce754ac53b62b0a0a94a6ee4c408",
+      "preimage_sha256": "4c54b30bf272c5f17e4ef5ff62fb4af268e43490d127618c65c5f7e36f00f5c2",
+      "target_git_blob": "53122faef296332df79199d2886e45215f84a720",
+      "target_sha256": "a32d875cec09b4e27dc9959b7bc2907ab55558ff58d669056eec014524300faa"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-1-20/ec0d35a082bcc70b090afa1c1544306008d767da/environment.txt",
+      "mode": "100644",
+      "preimage_git_blob": "878ac4b6bb0fa70b5a748666d84070515eae585f",
+      "preimage_sha256": "b1a0203e354a21d8ca119e423829db0fa08fdbd0228db52d141db50663cbf6db",
+      "target_git_blob": "c48af936a2893f0305e9330ec1197c161e841c84",
+      "target_sha256": "9fef028eba774c54e9c9bf072d80c81f803ad4eb8101569cd6861239eaef1422"
+    }
+  ],
+  "already_restored_exclusions": [
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-1-20/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/environment.txt",
+      "mode": "100644",
+      "introducing_preimage_git_blob": "5fa3fd3bb8970832db4e30d2db1109b862e17289",
+      "protected_git_blob": "32f5728dbbd38bfa0a9ee846a57f7e3aec85abc4",
+      "protected_sha256": "fc1c214a90dd2d892e3cc10e5b487ca0b53354b2ad2027f137e5f53d66899c4d",
+      "reason": "This tree was already restored before Story 1.21 and is outside the authorized repair diff."
+    }
+  ],
+  "completion_contract": {
+    "post_repair_parent_drift_paths": [],
+    "critical_manifest_entry_count_per_tree": 33,
+    "proof_package_manifest_entry_count_per_tree": 14,
+    "expected_available_proof_packages_per_tree": 0,
+    "test_architect": "bmad:murat"
+  }
+}

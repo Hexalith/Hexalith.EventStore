@@ -77,7 +77,7 @@ development_status:
   1-20-owner-approved-parity-closure-and-runtime-pin: done
   # Approved 2026-08-12 post-closure evidence maintenance. This backlog row does not reopen
   # Story 1.20 or Epic 1 and grants no predecessor-byte repair authority by itself.
-  1-21-frozen-story-1-20-evidence-integrity-repair: backlog
+  1-21-frozen-story-1-20-evidence-integrity-repair: done
   epic-1-retrospective: done
 
   epic-2: in-progress
