@@ -204,7 +204,7 @@ container, smoke, and GitHub publication failures remain blocking.
 
 The reusable-workflow reference and `builds-execution-sha` input contain the
 same reviewed 40-character Builds commit, currently
-`f75daebd4c522c081a6f62e274cf25e07971de69`. The reusable workflow verifies its
+`a994dc8d338819a23897d977818816991f277279`. The reusable workflow verifies its
 resolved SHA, checks out the nested action at that exact commit, and invokes it
 locally; the action then verifies its own action and helper bytes against the
 same commit before semantic-release can run. This immutable release-tool pin is
@@ -212,13 +212,25 @@ independent of the development `references/Hexalith.Builds` gitlink, so routine
 submodule updates do not rotate publication authority and publication upgrades
 do not create pointer churn in development dependencies. Environment approval
 is necessary but not sufficient for a corrective publication. Story 3.14 also
-requires an unexpired, one-use GitHub issue-comment authority from the pinned
-`github:jpiquot` release-owner identity. Its canonical identity digest binds the
-repository, version, exact green source, workflow run/attempt, package and
-container destinations, platform set, protected environment, Builds revision,
-and all installed helper hashes. The `publish` preflight consumes that authority
-once through an authenticated GitHub receipt before the first NuGet write;
-replay, expiry, wrong-role, changed scope, or mismatched helper bytes fail closed.
+requires a dispatch-reserved stable version and an unexpired, one-use GitHub
+issue-comment authority from the pinned `github:jpiquot` release-owner identity.
+The dispatch names a stable EventStore authority issue, not a comment that would
+have to predict the future run ID. After the run/attempt exists, the release owner
+posts one immutable comment to that issue while the protected release job awaits
+approval. Its canonical identity digest binds the repository, reserved version,
+exact green source, workflow run/attempt, package and container destinations,
+platform set, protected environment, Builds revision, and all installed helper
+hashes. The `publish` preflight consumes that authority once through an
+authenticated GitHub Actions receipt before the first NuGet write; pagination,
+replay, expiry, excessive validity, wrong-role, changed scope, or mismatched
+helper bytes fail closed.
+
+The reserved version must equal Semantic Release's `nextRelease.version`, must
+be stable, and must be strictly newer than every stable GitHub release/tag, every
+version observed for all 14 NuGet IDs, and every stable registry tag. The exact
+candidate must also be absent at all package and container destinations before
+publication. A changed projection therefore requires a new run and authority;
+`3.96.0` is never embedded as release policy.
 
 The `publishCmd` calls the helper installed by the shared `publish-containers`
 action only after the authority gate and NuGet publication:
@@ -256,7 +268,8 @@ Both immutable child references (`repository@sha256:...`) are explicitly pulled
 with bounded timeouts and run the same bounded
 smoke: loopback ephemeral host port, `ASPNETCORE_URLS=http://+:8080`, a fixed
 non-secret JWT issuer/audience/key used only by the ephemeral smoke container,
-and `/alive`. The Production-mode symmetric-key override is explicit, and the
+and `/alive`. The declared Development hosting environment and symmetric-key
+override are explicit, and the
 common 180-second bound accommodates emulated arm64 startup without becoming
 unbounded.
 Arm64 emulation is prepared by a SHA-pinned shared action and checked before the
@@ -285,10 +298,14 @@ Any successful write followed by a later failure permanently quarantines that
 version as immutable non-authorizing evidence. A retry resolves a new version
 newer than every live NuGet, registry, tag, and release destination and requires
 a new authority. `tools/validate-corrective-release-evidence.py` verifies the
-canonical Story 3.14 handoff: exactly 14 manifest packages, one two-platform
-`eventstore` index, exact child labels, both immutable child smokes, and one
-source/run/Builds/authority lineage. Its output explicitly selects no deployed
-identity and grants no mutation authority; Story 3.15 owns that decision.
+canonical Story 3.14 handoff directly from retained bytes: exactly 14 manifest
+packages and their nuspec source commits, one two-platform `eventstore` index,
+raw index/child/config hashes and descriptors, exact child labels, both
+digest-pinned bounded Development liveness smokes, and one source/run/Builds/authority
+lineage. The packet records the selected codec and verifier content hashes and
+must itself use that codec's canonical UTF-8 form. Its output explicitly selects
+no deployed identity and grants no mutation authority; Story 3.15 owns that
+decision.
 
 Story 3.12 supplies historical corrective-release evidence to Story 3.13. After the
 Story 1.20 proof archives were declared nonexistent, Story 3.13's selected exact

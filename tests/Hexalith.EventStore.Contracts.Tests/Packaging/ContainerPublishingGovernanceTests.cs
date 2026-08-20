@@ -10,7 +10,7 @@ namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 /// </summary>
 public sealed class ContainerPublishingGovernanceTests
 {
-    private const string ApprovedBuildsReleaseSha = "f75daebd4c522c081a6f62e274cf25e07971de69";
+    private const string ApprovedBuildsReleaseSha = "a994dc8d338819a23897d977818816991f277279";
     private const int ExpectedPackageCount = 14;
     private static readonly TimeSpan PublicationPreflightTimeout = TimeSpan.FromSeconds(10);
 
@@ -150,7 +150,8 @@ public sealed class ContainerPublishingGovernanceTests
         script.ShouldContain("GITHUB_SHA");
         script.ShouldNotContain("git rev-parse HEAD");
         script.ShouldContain("tools/release-packages.json");
-        script.ShouldContain("HEXALITH_RELEASE_AUTHORITY_URL");
+        script.ShouldContain("HEXALITH_RELEASE_RESERVED_VERSION");
+        script.ShouldContain("HEXALITH_RELEASE_AUTHORITY_ISSUE_URL");
         script.ShouldContain("--authority-owner \"$authority_owner\"");
         script.ShouldNotContain("1-20-github-approval-role-allowlist.json");
         script.ShouldContain("--phase \"$phase\"");
@@ -300,7 +301,9 @@ public sealed class ContainerPublishingGovernanceTests
         workflow.ShouldContain("source-branch: main");
         workflow.ShouldContain("source-ci-workflow: ci.yml");
         workflow.ShouldContain("package-manifest: tools/release-packages.json");
-        workflow.ShouldContain("release-authority-url:");
+        workflow.ShouldContain("release-version:");
+        workflow.ShouldContain("reserved-version: ${{ inputs.release-version }}");
+        workflow.ShouldContain("release-authority-issue-url:");
         workflow.ShouldContain("release-authority-owner: github:jpiquot");
         workflow.ShouldNotContain("release-owner-allowlist:");
         workflow.ShouldNotContain("references/Hexalith.Builds");
@@ -450,8 +453,9 @@ public sealed class ContainerPublishingGovernanceTests
             start.Environment["HEXALITH_RELEASE_PACKAGE_MANIFEST"] = "tools/release-packages.json";
             start.Environment["HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT"] =
                 ExpectedPackageCount.ToString(CultureInfo.InvariantCulture);
-            start.Environment["HEXALITH_RELEASE_AUTHORITY_URL"] =
-                "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/comments/123";
+            start.Environment["HEXALITH_RELEASE_RESERVED_VERSION"] = "99.0.0";
+            start.Environment["HEXALITH_RELEASE_AUTHORITY_ISSUE_URL"] =
+                "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/123";
             start.Environment["GITHUB_SHA"] = new string('b', 40);
             start.Environment["HEXALITH_PUBLICATION_PREFLIGHT"] = rejectingValidator;
             start.Environment["HEXALITH_ZOT_REGISTRY"] = "registry.hexalith.com";
@@ -590,8 +594,9 @@ public sealed class ContainerPublishingGovernanceTests
             start.Environment["REPOSITORY"] = "Hexalith/Hexalith.EventStore";
             start.Environment["DISPATCH_REF"] = dispatchRef;
             start.Environment["DISPATCH_SHA"] = dispatchSha;
-            start.Environment["RELEASE_AUTHORITY_URL"] =
-                "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/comments/123";
+            start.Environment["RELEASE_VERSION"] = "99.0.0";
+            start.Environment["RELEASE_AUTHORITY_ISSUE_URL"] =
+                "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/123";
             start.Environment["FAKE_LIVE_MAIN_SHA"] = liveMainSha;
             start.Environment["FAKE_CI_RUNS"] = JsonSerializer.Serialize(new { workflow_runs = workflowRuns });
 
@@ -648,8 +653,9 @@ public sealed class ContainerPublishingGovernanceTests
             start.Environment["HEXALITH_ZOT_REGISTRY"] = "registry.hexalith.com";
             start.Environment["PREFLIGHT_INVOCATION_MARKER"] = invocationMarker;
             start.Environment["PREFLIGHT_ARGUMENTS"] = argumentsPath;
-            start.Environment["HEXALITH_RELEASE_AUTHORITY_URL"] =
-                "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/comments/123";
+            start.Environment["HEXALITH_RELEASE_RESERVED_VERSION"] = "99.0.0";
+            start.Environment["HEXALITH_RELEASE_AUTHORITY_ISSUE_URL"] =
+                "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/123";
             start.Environment.Remove("HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT");
             if (workflowPackageCount is not null)
             {
