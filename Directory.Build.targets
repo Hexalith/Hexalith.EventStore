@@ -16,14 +16,56 @@
     <ContainerRegistry Condition="'$(ContainerRegistry)' == ''">registry.hexalith.com</ContainerRegistry>
     <ContainerImageTag Condition="'$(ContainerImageTags)' == '' and '$(ContainerImageTag)' == ''">staging-latest</ContainerImageTag>
     <ContainerUser>app</ContainerUser>
+    <!--
+      The .NET SDK 10.0.302 multi-RID target serializes labels as key:value and
+      reconstructs them with String.Split(':')[1]. URL values therefore become
+      only "https" in the child configs. These publisher-owned inputs are
+      rebound after the SDK parse target below so both child configs retain the
+      exact release identity.
+    -->
+    <ContainerGenerateLabelsImageSource>false</ContainerGenerateLabelsImageSource>
+    <ContainerGenerateLabelsImageUrl>false</ContainerGenerateLabelsImageUrl>
+    <ContainerGenerateLabelsImageDocumentation>false</ContainerGenerateLabelsImageDocumentation>
+    <ContainerGenerateLabelsImageRevision>false</ContainerGenerateLabelsImageRevision>
+    <ContainerGenerateLabelsImageVersion>false</ContainerGenerateLabelsImageVersion>
+    <ContainerProvenanceRepositoryUrl>https://github.com/Hexalith/Hexalith.EventStore</ContainerProvenanceRepositoryUrl>
+    <ContainerProvenanceReleaseUrl>$(ContainerProvenanceRepositoryUrl)/releases/tag/v$(ContainerProvenanceReleaseVersion)</ContainerProvenanceReleaseUrl>
+    <ContainerProvenanceDocumentationUrl>$(ContainerProvenanceRepositoryUrl)/blob/$(ContainerProvenanceSourceSha)/README.md</ContainerProvenanceDocumentationUrl>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(EnableContainer)' == 'true'">
     <ContainerPort Include="8080" Type="tcp" />
-    <ContainerLabel Include="org.opencontainers.image.source" Value="https://github.com/Hexalith/Hexalith.EventStore" />
+    <ContainerLabel Include="org.opencontainers.image.source" Value="$(ContainerProvenanceRepositoryUrl)" />
+    <ContainerLabel Include="org.opencontainers.image.url" Value="$(ContainerProvenanceReleaseUrl)" />
+    <ContainerLabel Include="org.opencontainers.image.documentation" Value="$(ContainerProvenanceDocumentationUrl)" />
+    <ContainerLabel Include="org.opencontainers.image.revision" Value="$(ContainerProvenanceSourceSha)" />
+    <ContainerLabel Include="org.opencontainers.image.version" Value="$(ContainerProvenanceReleaseVersion)" />
     <ContainerLabel Include="org.opencontainers.image.licenses" Value="MIT" />
     <ContainerLabel Include="org.opencontainers.image.vendor" Value="Hexalith" />
   </ItemGroup>
+
+  <Target Name="ValidateContainerProvenanceInputs"
+          BeforeTargets="_PublishMultiArchContainers;_PublishSingleContainer"
+          Condition="'$(EnableContainer)' == 'true'">
+    <Error Condition="'$(ContainerProvenanceSourceSha)' == ''"
+           Text="ContainerProvenanceSourceSha is required for container publication." />
+    <Error Condition="'$(ContainerProvenanceReleaseVersion)' == ''"
+           Text="ContainerProvenanceReleaseVersion is required for container publication." />
+  </Target>
+
+  <!-- Correct the SDK multi-RID key:value reconstruction before the child image is created. -->
+  <Target Name="RebindContainerProvenanceLabels"
+          AfterTargets="_ParseItemsForPublishingSingleContainer"
+          Condition="'$(EnableContainer)' == 'true' and '$(_IsSingleRIDBuild)' == 'true'">
+    <ItemGroup>
+      <ContainerLabel Remove="org.opencontainers.image.source;org.opencontainers.image.url;org.opencontainers.image.documentation;org.opencontainers.image.revision;org.opencontainers.image.version" />
+      <ContainerLabel Include="org.opencontainers.image.source" Value="$(ContainerProvenanceRepositoryUrl)" />
+      <ContainerLabel Include="org.opencontainers.image.url" Value="$(ContainerProvenanceReleaseUrl)" />
+      <ContainerLabel Include="org.opencontainers.image.documentation" Value="$(ContainerProvenanceDocumentationUrl)" />
+      <ContainerLabel Include="org.opencontainers.image.revision" Value="$(ContainerProvenanceSourceSha)" />
+      <ContainerLabel Include="org.opencontainers.image.version" Value="$(ContainerProvenanceReleaseVersion)" />
+    </ItemGroup>
+  </Target>
 
   <Target Name="RemoveOpenApiXmlCommentSourceGenerator" AfterTargets="ResolveLockFileAnalyzers">
     <ItemGroup>

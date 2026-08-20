@@ -210,9 +210,15 @@ locally; the action then verifies its own action and helper bytes against the
 same commit before semantic-release can run. This immutable release-tool pin is
 independent of the development `references/Hexalith.Builds` gitlink, so routine
 submodule updates do not rotate publication authority and publication upgrades
-do not create pointer churn in development dependencies. Environment approval is
-the human authority; the comment-free preflight supplies machine-verifiable
-source and destination safety.
+do not create pointer churn in development dependencies. Environment approval
+is necessary but not sufficient for a corrective publication. Story 3.14 also
+requires an unexpired, one-use GitHub issue-comment authority from the pinned
+`github:jpiquot` release-owner identity. Its canonical identity digest binds the
+repository, version, exact green source, workflow run/attempt, package and
+container destinations, platform set, protected environment, Builds revision,
+and all installed helper hashes. The `publish` preflight consumes that authority
+once through an authenticated GitHub receipt before the first NuGet write;
+replay, expiry, wrong-role, changed scope, or mismatched helper bytes fail closed.
 
 The `publishCmd` calls the helper installed by the shared `publish-containers`
 action only after the authority gate and NuGet publication:
@@ -240,6 +246,11 @@ config is then resolved by digest. Manifest descriptor and response media types,
 all descriptor byte sizes and raw hashes, config descriptor media types, and
 config `os`/`architecture` must all agree. Exact raw child-manifest and config
 bytes are retained beside the raw parent index with independent hashes.
+Both configs must also contain identical exact
+`org.opencontainers.image.source`, `.url`, `.documentation`, `.revision`, and
+`.version` labels. EventStore rebinds those five labels after the .NET SDK
+multi-RID inner-build parser so URL colons cannot be truncated to `https` and
+passes source revision and release version as explicit publisher inputs.
 
 Both immutable child references (`repository@sha256:...`) are explicitly pulled
 with bounded timeouts and run the same bounded
@@ -269,6 +280,15 @@ and destination checks, and both smoke logs/hashes. Registry, authentication,
 emulation, product, or evidence failure leaves the release non-authorizing.
 The reusable workflow uploads the complete hidden evidence directory with
 `always()` so partial publication remains visible.
+
+Any successful write followed by a later failure permanently quarantines that
+version as immutable non-authorizing evidence. A retry resolves a new version
+newer than every live NuGet, registry, tag, and release destination and requires
+a new authority. `tools/validate-corrective-release-evidence.py` verifies the
+canonical Story 3.14 handoff: exactly 14 manifest packages, one two-platform
+`eventstore` index, exact child labels, both immutable child smokes, and one
+source/run/Builds/authority lineage. Its output explicitly selects no deployed
+identity and grants no mutation authority; Story 3.15 owns that decision.
 
 Story 3.12 supplies historical corrective-release evidence to Story 3.13. After the
 Story 1.20 proof archives were declared nonexistent, Story 3.13's selected exact

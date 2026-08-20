@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 20:01'
-last_updated: '08-19-2026 19:41'
+last_updated: '08-20-2026 01:22'
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -216,7 +216,7 @@ development_status:
   # Story 3.13 remains in-progress until its exact negative disposition is accepted. Story 3.14
   # owns the corrective release; Story 3.15 owns positive deployed-runtime parity closure.
   3-13-v3-94-1-deployed-runtime-evidence-disposition: in-progress
-  3-14-corrective-oci-provenance-release: backlog
+  3-14-corrective-oci-provenance-release: in-progress
   3-15-corrected-deployed-runtime-parity-closure: backlog
   epic-3-retrospective: optional
 

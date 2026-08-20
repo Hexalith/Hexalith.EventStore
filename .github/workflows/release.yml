@@ -5,6 +5,11 @@ name: Release
 # a successful push CI run before the protected release environment is entered.
 on:
   workflow_dispatch:
+    inputs:
+      release-authority-url:
+        description: 'API URL of the exact expiring one-use release-owner authority comment.'
+        required: true
+        type: string
 
 concurrency:
   group: release-production
@@ -28,6 +33,7 @@ jobs:
           REPOSITORY: ${{ github.repository }}
           DISPATCH_REF: ${{ github.ref }}
           DISPATCH_SHA: ${{ github.sha }}
+          RELEASE_AUTHORITY_URL: ${{ inputs.release-authority-url }}
         run: |
           set -euo pipefail
           if [ "$DISPATCH_REF" != "refs/heads/main" ]; then
@@ -36,6 +42,10 @@ jobs:
           fi
           if [[ ! "$DISPATCH_SHA" =~ ^[0-9a-f]{40}$ ]]; then
             echo "The dispatch source must be an exact lowercase commit SHA." >&2
+            exit 1
+          fi
+          if [[ ! "$RELEASE_AUTHORITY_URL" =~ ^https://api\.github\.com/repos/Hexalith/Hexalith\.EventStore/issues/comments/[1-9][0-9]*$ ]]; then
+            echo "Release authority must be an EventStore GitHub issue-comment API URL." >&2
             exit 1
           fi
 
@@ -89,6 +99,8 @@ jobs:
       # Caller-declared so an accidental change to the manifest fails closed
       # instead of redefining the gate it is checked against.
       expected-package-count: 14
+      release-authority-url: ${{ inputs.release-authority-url }}
+      release-authority-owner: github:jpiquot
       container-projects: |
         src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore
     secrets:

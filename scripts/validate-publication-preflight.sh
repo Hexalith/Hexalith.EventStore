@@ -13,6 +13,8 @@ release_environment="${HEXALITH_RELEASE_ENVIRONMENT:-}"
 contract_directory="${HEXALITH_RELEASE_CONTRACT_DIRECTORY:-$PWD/.hexalith/release}"
 publication_preflight="${HEXALITH_PUBLICATION_PREFLIGHT:-./.hexalith/release/publication_preflight.py}"
 evidence_directory="${HEXALITH_RELEASE_EVIDENCE_DIRECTORY:-$PWD/.hexalith/release-evidence/$version/preflight}"
+authority_url="${HEXALITH_RELEASE_AUTHORITY_URL:-}"
+readonly authority_owner="github:jpiquot"
 
 # Hexalith.EventStore publishes exactly these 14 NuGet packages. The count is declared
 # here rather than counted from the manifest so that adding or dropping a package fails
@@ -50,6 +52,8 @@ fail() {
   fail "The shared publication preflight is unavailable."
 [[ -f "$package_manifest" ]] ||
   fail "The authoritative release package manifest is unavailable."
+[[ "$authority_url" =~ ^https://api\.github\.com/repos/Hexalith/Hexalith\.EventStore/issues/comments/[1-9][0-9]*$ ]] ||
+  fail "HEXALITH_RELEASE_AUTHORITY_URL must identify an EventStore GitHub issue comment."
 
 exec "$publication_preflight" \
   --repository "Hexalith/Hexalith.EventStore" \
@@ -60,6 +64,8 @@ exec "$publication_preflight" \
   --container-repository "registry.hexalith.com/eventstore" \
   --builds-execution-sha "$builds_execution_sha" \
   --environment-name "$release_environment" \
+  --authority-url "$authority_url" \
+  --authority-owner "$authority_owner" \
   --package-manifest "$package_manifest" \
   --expected-package-count "$expected_package_count" \
   --contract-directory "$contract_directory" \
