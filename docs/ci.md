@@ -183,6 +183,12 @@ Existing versions are collisions: the release path does not use
 `--skip-duplicate` and never overwrites an existing package, tag, manifest, or
 registry object.
 
+Semantic Release creates its Git tag before invoking the publish hook. The
+verify preflight therefore requires the reserved tag to be absent, while the
+publish preflight permits exactly one `v<reserved-version>` self-tag only when
+it targets the approved source SHA. The proof is retained in version-floor
+evidence; a missing, duplicate, unprefixed, or wrong-source tag fails closed.
+
 The `main` branch accepts changes only through pull requests. Release automation
 therefore does not use `@semantic-release/changelog` or `@semantic-release/git`:
 it tags the already CI-approved source commit and publishes generated notes and
@@ -204,7 +210,7 @@ container, smoke, and GitHub publication failures remain blocking.
 
 The reusable-workflow reference and `builds-execution-sha` input contain the
 same reviewed 40-character Builds commit, currently
-`c475153c0f533e4a65c956bd84127edf92181e5e`. The reusable workflow verifies its
+`bf9af9cb7366c924eb7d5ac9c0316ae4f7936b2c`. The reusable workflow verifies its
 resolved SHA, checks out the nested action at that exact commit, and invokes it
 locally; the action then verifies its own action and helper bytes against the
 same commit before semantic-release can run. This immutable release-tool pin is
