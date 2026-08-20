@@ -298,6 +298,7 @@ public sealed class ContainerPublishingGovernanceTests
         workflow.ShouldNotContain("vars.HEXALITH_BUILDS_RELEASE_SHA");
         workflow.ShouldContain("environment-name: production");
         workflow.ShouldContain("actions: read");
+        workflow.ShouldContain("governed-release: false");
         workflow.ShouldContain("source-branch: main");
         workflow.ShouldContain("source-ci-workflow: ci.yml");
         workflow.ShouldContain("package-manifest: tools/release-packages.json");
@@ -308,6 +309,13 @@ public sealed class ContainerPublishingGovernanceTests
         workflow.ShouldNotContain("release-owner-allowlist:");
         workflow.ShouldNotContain("references/Hexalith.Builds");
         workflow.ShouldNotContain("secrets: inherit");
+
+        Match releaseJob = Regex.Match(workflow, @"(?ms)^  release:\r?\n(?<block>.*)\z");
+        releaseJob.Success.ShouldBeTrue();
+        string releaseJobBlock = releaseJob.Groups["block"].Value;
+        releaseJobBlock.ShouldContain("attestations: write");
+        releaseJobBlock.ShouldContain("id-token: write");
+        releaseJobBlock.ShouldContain("governed-release: false");
 
         string gitlink = RunGit(root, "ls-tree", "HEAD", "references/Hexalith.Builds");
         Match gitlinkEntry = Regex.Match(gitlink, @"^160000 commit (?<sha>[0-9a-f]{40})\s+references/Hexalith\.Builds$");
