@@ -51,10 +51,10 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectiveOciProvenanceReleaseTests.cs` -- reproduce the real multi-RID `https`/missing-revision archive defect before corrections.
-- [ ] `Directory.Build.targets` and `references/Hexalith.Builds/Github/publish-containers/` -- correct label transport, raw-config validation, and one-use authority with mutation tests.
-- [ ] `tools/release_evidence_codec.py`, `tools/validate-corrective-release-evidence.py`, `.github/workflows/release.yml`, governance tests, and `docs/ci.md` -- add canonical evidence, rotate one Builds identity, and document operation.
-- [ ] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/` and `references/Hexalith.Builds/Github/publish-containers/tests/` -- run the named package-mode, publisher, archive, package, and smoke checks without writes.
+- [x] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectiveOciProvenanceReleaseTests.cs` -- reproduce the real multi-RID `https`/missing-revision archive defect before corrections.
+- [x] `Directory.Build.targets` and `references/Hexalith.Builds/Github/publish-containers/` -- correct label transport, raw-config validation, and one-use authority with mutation tests.
+- [x] `tools/release_evidence_codec.py`, `tools/validate-corrective-release-evidence.py`, `.github/workflows/release.yml`, governance tests, and `docs/ci.md` -- add canonical evidence, rotate one Builds identity, and document operation.
+- [x] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/` and `references/Hexalith.Builds/Github/publish-containers/tests/` -- run the named package-mode, publisher, archive, package, and smoke checks without writes.
 - [ ] `_bmad-output/implementation-artifacts/evidence/story-3-14/` and `_bmad-output/implementation-artifacts/3-14-corrective-oci-provenance-release.md` -- after separate authority, resolve/publish once and retain all bytes; quarantine any partial identity.
 
 **Acceptance Criteria:**
