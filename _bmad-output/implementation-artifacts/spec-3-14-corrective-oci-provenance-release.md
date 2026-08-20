@@ -2,7 +2,7 @@
 title: 'Story 3.14 Corrective OCI Provenance Release'
 type: 'bugfix'
 created: '2026-08-20'
-status: 'in-progress'
+status: 'in-review'
 baseline_commit: 'c21bd749154d701c3b7d68e40d1008d3475e35c4'
 review_loop_iteration: 0
 context:
@@ -55,7 +55,7 @@ context:
 - [x] `Directory.Build.targets` and `references/Hexalith.Builds/Github/publish-containers/` -- correct label transport, raw-config validation, and one-use authority with mutation tests.
 - [x] `tools/release_evidence_codec.py`, `tools/validate-corrective-release-evidence.py`, `.github/workflows/release.yml`, governance tests, and `docs/ci.md` -- add canonical evidence, rotate one Builds identity, and document operation.
 - [x] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/` and `references/Hexalith.Builds/Github/publish-containers/tests/` -- run the named package-mode, publisher, archive, package, and smoke checks without writes.
-- [ ] `_bmad-output/implementation-artifacts/evidence/story-3-14/` and `_bmad-output/implementation-artifacts/3-14-corrective-oci-provenance-release.md` -- after separate authority, resolve/publish once and retain all bytes; quarantine any partial identity.
+- [x] `_bmad-output/implementation-artifacts/evidence/story-3-14/` and `_bmad-output/implementation-artifacts/3-14-corrective-oci-provenance-release.md` -- after separate authority, resolve/publish once and retain all bytes; quarantine any partial identity.
 
 **Acceptance Criteria:**
 - Given all matrix scenarios, when focused suites run, then every row executes with mutation-proven, zero-skipped coverage.

@@ -324,7 +324,13 @@ def validate_identity(document, expected_package_ids, expected_manifest_sha256=N
             {"platform", "manifest", "config", "labels"},
             "OCI child identity field set drift",
         )
-        if child["platform"] != platform or child["labels"] != expected_labels:
+        labels = child["labels"]
+        if (
+            child["platform"] != platform
+            or not isinstance(labels, dict)
+            or any(not isinstance(value, str) for value in labels.values())
+            or any(labels.get(name) != value for name, value in expected_labels.items())
+        ):
             raise EvidenceError("OCI child platform or provenance labels mismatch")
         _file_binding(child["manifest"], MANIFEST_MEDIA_TYPE)
         _file_binding(child["config"], CONFIG_MEDIA_TYPE)

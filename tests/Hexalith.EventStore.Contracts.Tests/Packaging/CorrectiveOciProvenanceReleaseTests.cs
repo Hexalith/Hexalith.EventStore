@@ -205,6 +205,18 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             success.ExitCode.ShouldBe(0, success.Error);
             success.Output.ShouldContain("[corrective-release-evidence] pass: sha256:");
 
+            JsonNode revision = fixture.Identity["oci"]!["children"]![0]!["labels"]![
+                "org.opencontainers.image.revision"]!.DeepClone();
+            fixture.Identity["oci"]!["children"]![0]!["labels"]![
+                "org.opencontainers.image.revision"] = new string('e', 40);
+            WriteSelectedCanonicalJson(root, fixture.IdentityPath, fixture.Identity);
+            ProcessResult labelMutation = RunEvidenceValidator(root, fixture.IdentityPath, temporary);
+            labelMutation.ExitCode.ShouldNotBe(0);
+            labelMutation.Error.ShouldContain("OCI child platform or provenance labels mismatch");
+            fixture.Identity["oci"]!["children"]![0]!["labels"]![
+                "org.opencontainers.image.revision"] = revision;
+            WriteSelectedCanonicalJson(root, fixture.IdentityPath, fixture.Identity);
+
             File.WriteAllBytes(fixture.ConfigPath, [.. fixture.ConfigBytes, (byte)'\n']);
             ProcessResult configMutation = RunEvidenceValidator(root, fixture.IdentityPath, temporary);
             configMutation.ExitCode.ShouldNotBe(0);
@@ -311,6 +323,8 @@ public sealed class CorrectiveOciProvenanceReleaseTests
         {
             string architecture = platform.Split('/')[1];
             JsonObject labels = ExpectedEvidenceLabels();
+            labels["org.opencontainers.image.vendor"] = "Hexalith";
+            labels["org.opencontainers.image.base.digest"] = $"sha256:{new string(architecture[0], 64)}";
             JsonObject config = new()
             {
                 ["architecture"] = architecture,

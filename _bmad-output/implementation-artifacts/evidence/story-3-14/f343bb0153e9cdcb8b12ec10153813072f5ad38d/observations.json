@@ -1,0 +1,144 @@
+{
+  "schema": "hexalith.eventstore.story-3-14-release-observations.v1",
+  "captured_at": "2026-08-20T11:40:26Z",
+  "repository": "Hexalith/Hexalith.EventStore",
+  "successful_release": {
+    "version": "3.96.2",
+    "tag": "v3.96.2",
+    "source_sha": "f343bb0153e9cdcb8b12ec10153813072f5ad38d",
+    "builds_execution_sha": "eadddc7b5d8e9392e5931758ffb608b57b5fdc6c",
+    "ci_run": {
+      "id": 32361196834,
+      "attempt": 1,
+      "number": 1560,
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-08-20T10:54:19Z",
+      "updated_at": "2026-08-20T11:01:55Z",
+      "url": "https://github.com/Hexalith/Hexalith.EventStore/actions/runs/32361196834"
+    },
+    "release_run": {
+      "id": 32361958618,
+      "attempt": 1,
+      "number": 942,
+      "event": "workflow_dispatch",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-08-20T11:03:42Z",
+      "updated_at": "2026-08-20T11:14:47Z",
+      "url": "https://github.com/Hexalith/Hexalith.EventStore/actions/runs/32361958618",
+      "artifact": {
+        "id": 9404158068,
+        "name": "release-evidence-32361958618-1",
+        "size": 17083,
+        "expired": false
+      }
+    },
+    "production_deployment": {
+      "id": 6000909838,
+      "environment": "production",
+      "status": "success",
+      "status_id": 17065334247,
+      "completed_at": "2026-08-20T11:14:46Z"
+    },
+    "github_release": {
+      "id": 373676516,
+      "url": "https://github.com/Hexalith/Hexalith.EventStore/releases/tag/v3.96.2",
+      "published_at": "2026-08-20T11:14:41Z",
+      "draft": false,
+      "prerelease": false,
+      "asset_count": 14,
+      "tag_target_sha": "f343bb0153e9cdcb8b12ec10153813072f5ad38d"
+    },
+    "nuget": {
+      "version": "3.96.2",
+      "visible_count": 14,
+      "expected_count": 14,
+      "manifest_sha256": "6b0b70b856839d4117bcd969f6a2de0093c477c109cb79f3f2882b1f05effcae"
+    },
+    "oci": {
+      "image": "registry.hexalith.com/eventstore:3.96.2",
+      "index_digest": "sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3",
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64"
+      ]
+    },
+    "authority_comment_id": 5355025457,
+    "consumption_comment_id": 5355070052,
+    "canonical_identity_sha256": "926ccfdf9bf3f095211fb37fcdbb8c4f608ad5359cb3636774239992a7751af4"
+  },
+  "quarantined_attempts": [
+    {
+      "run_id": 32347773728,
+      "attempt": 1,
+      "number": 938,
+      "source_sha": "6fb401c21eda4b3f3fb3854dc88752dfc5da7260",
+      "version": null,
+      "result": "no-write",
+      "cause": "startup permission ceiling rejected the reusable workflow before any job ran",
+      "completed_writes": [],
+      "authority_comment_id": null,
+      "artifact": null,
+      "immutable_non_authorizing": false
+    },
+    {
+      "run_id": 32350537607,
+      "attempt": 1,
+      "number": 939,
+      "source_sha": "7cf712c6f9475d7badec44bde3be5bcde0c2fb94",
+      "version": "3.96.0",
+      "result": "no-write",
+      "cause": "authority-wrong-role before publication because the workflow token reported CONTRIBUTOR",
+      "completed_writes": [],
+      "authority_comment_id": 5353620848,
+      "artifact": null,
+      "immutable_non_authorizing": false
+    },
+    {
+      "run_id": 32354815109,
+      "attempt": 1,
+      "number": 940,
+      "source_sha": "8b1a5d50f71dc7934870603e3248a9aee7a0012c",
+      "version": "3.96.0",
+      "result": "partial",
+      "cause": "publish preflight rejected the exact source tag created earlier in the same run as a collision",
+      "completed_writes": [
+        "git-tag:v3.96.0"
+      ],
+      "authority_comment_id": 5354151861,
+      "artifact": {
+        "id": 9401441213,
+        "name": "release-evidence-32354815109-1",
+        "size": 3856
+      },
+      "immutable_non_authorizing": true
+    },
+    {
+      "run_id": 32358676358,
+      "attempt": 1,
+      "number": 941,
+      "source_sha": "1bea5911daf0130747aefc3166e86568b9ad0000",
+      "version": "3.96.1",
+      "result": "partial",
+      "cause": "container phase rejected a POST-vs-list GitHub comment representation mismatch as authority replay",
+      "completed_writes": [
+        "git-tag:v3.96.1",
+        "nuget:14-manifest-packages",
+        "authority-consumption-comment:5354684336"
+      ],
+      "authority_comment_id": 5354631954,
+      "artifact": {
+        "id": 9402886337,
+        "name": "release-evidence-32358676358-1",
+        "size": 7633
+      },
+      "immutable_non_authorizing": true
+    }
+  ],
+  "handoff": {
+    "selects_deployed_identity": false,
+    "grants_mutation_authority": false
+  }
+}

@@ -1,0 +1,230 @@
+{
+  "checked_at": "2026-08-20T11:09:47.944021Z",
+  "destinations": {
+    "absence": {
+      "container_count": 1,
+      "container_repositories": [
+        "registry.hexalith.com/eventstore"
+      ],
+      "container_repository": "registry.hexalith.com/eventstore",
+      "package_count": 14,
+      "package_ids": [
+        "Hexalith.EventStore.Contracts",
+        "Hexalith.EventStore.Client",
+        "Hexalith.EventStore.Server",
+        "Hexalith.EventStore.SignalR",
+        "Hexalith.EventStore.Testing",
+        "Hexalith.EventStore.Testing.Integration",
+        "Hexalith.EventStore.Aspire",
+        "Hexalith.EventStore.ServiceDefaults",
+        "Hexalith.EventStore.DomainService",
+        "Hexalith.EventStore.RestApi.Generators",
+        "Hexalith.EventStore.Gateway",
+        "Hexalith.EventStore.Admin.Abstractions",
+        "Hexalith.EventStore.Admin.Cli",
+        "Hexalith.EventStore.Admin.Server"
+      ],
+      "result": "pass",
+      "version": "3.96.2"
+    },
+    "result": "pass",
+    "version_floor": {
+      "candidate": "3.96.2",
+      "destinations": [
+        {
+          "highest_stable": "3.95.0",
+          "identity": "Hexalith/Hexalith.EventStore",
+          "kind": "github-release",
+          "observed_versions_sha256": "2ce7115cd6327066db0d2417c8a47d94eb47501937b92a317b96cbf0ec1289c0"
+        },
+        {
+          "highest_stable": "3.96.1",
+          "identity": "Hexalith/Hexalith.EventStore",
+          "kind": "git-tag",
+          "observed_versions_sha256": "51188a59b3b4fe8cdfd69816ec883f222664474c33bb0cf734c93d47f0df4c72"
+        },
+        {
+          "highest_stable": "3.96.1",
+          "identity": "Hexalith.EventStore.Contracts",
+          "kind": "nuget",
+          "observed_versions_sha256": "e888a243ee66f7f6f27147a3206f0cc9b7c39a313a075eed159e44f0c91e487f"
+        },
+        {
+          "highest_stable": "3.96.1",
+          "identity": "Hexalith.EventStore.Client",
+          "kind": "nuget",
+          "observed_versions_sha256": "e888a243ee66f7f6f27147a3206f0cc9b7c39a313a075eed159e44f0c91e487f"
+        },
+        {
+          "highest_stable": "3.96.1",
+          "identity": "Hexalith.EventStore.Server",
+          "kind": "nuget",
+          "observed_versions_sha256": "e888a243ee66f7f6f27147a3206f0cc9b7c39a313a075eed159e44f0c91e487f"
+        },
+        {
+          "highest_stable": "3.96.1",
+          "identity": "Hexalith.EventStore.SignalR",
+          "kind": "nuget",
+          "observed_versions_sha256": "e888a243ee66f7f6f27147a3206f0cc9b7c39a313a075eed159e44f0c91e487f"
+        },
+        {
+          "highest_stable": "3.96.1",
+          "identity": "Hexalith.EventStore.Testing",
+          "kind": "nuget",
+          "observed_versions_sha256": "e888a243ee66f7f6f27147a3206f0cc9b7c39a313a075eed159e44f0c91e487f"
+        },
+        {
+          "highest_stable": "3.96.1",
+          "identity": "Hexalith.EventStore.Testing.Integration",
+          "kind": "nuget",
+          "observed_versions_sha256": "c65ced87f8a47335fafe9a9d66c7ddd688296042fe589ddec0c2c172099ccf2b"
+        },
+        {
+          "highest_stable": "3.96.1",
+          "identity": "Hexalith.EventStore.Aspire",
+          "kind": "nuget",
+          "observed_versions_sha256": "e888a243ee66f7f6f27147a3206f0cc9b7c39a313a075eed159e44f0c91e487f"
+        },
+        {
+          "highest_stable": "3.96.1",
+          "identity": "Hexalith.EventStore.ServiceDefaults",
+          "kind": "nuget",
+          "observed_versions_sha256": "c65ced87f8a47335fafe9a9d66c7ddd688296042fe589ddec0c2c172099ccf2b"
+        },
+        {
+          "highest_stable": "3.96.1",
+          "identity": "Hexalith.EventStore.DomainService",
+          "kind": "nuget",
+          "observed_versions_sha256": "c65ced87f8a47335fafe9a9d66c7ddd688296042fe589ddec0c2c172099ccf2b"
+        },
+        {
+          "highest_stable": "3.96.1",
+          "identity": "Hexalith.EventStore.RestApi.Generators",
+          "kind": "nuget",
+          "observed_versions_sha256": "d077b183436c47d2d8a626470f5883f8c2c81686c9b99d791818605eacce02f6"
+        },
+        {
+          "highest_stable": "3.96.1",
+          "identity": "Hexalith.EventStore.Gateway",
+          "kind": "nuget",
+          "observed_versions_sha256": "0ce1d06823636fa2bdb7bf7e00110cf3bf0b797081ebdfbde47ffc7bc1ee8ada"
+        },
+        {
+          "highest_stable": "3.96.1",
+          "identity": "Hexalith.EventStore.Admin.Abstractions",
+          "kind": "nuget",
+          "observed_versions_sha256": "e888a243ee66f7f6f27147a3206f0cc9b7c39a313a075eed159e44f0c91e487f"
+        },
+        {
+          "highest_stable": "3.96.1",
+          "identity": "Hexalith.EventStore.Admin.Cli",
+          "kind": "nuget",
+          "observed_versions_sha256": "e888a243ee66f7f6f27147a3206f0cc9b7c39a313a075eed159e44f0c91e487f"
+        },
+        {
+          "highest_stable": "3.96.1",
+          "identity": "Hexalith.EventStore.Admin.Server",
+          "kind": "nuget",
+          "observed_versions_sha256": "e888a243ee66f7f6f27147a3206f0cc9b7c39a313a075eed159e44f0c91e487f"
+        },
+        {
+          "highest_stable": "3.95.0",
+          "identity": "registry.hexalith.com/eventstore",
+          "kind": "oci-registry",
+          "observed_versions_sha256": "5c33a140898cf167057a456f99d0e513e375d4dbdf9e9f1f736873bace0c8e2c"
+        }
+      ],
+      "result": "pass"
+    }
+  },
+  "identity": {
+    "builds": {
+      "action_sha": "eadddc7b5d8e9392e5931758ffb608b57b5fdc6c",
+      "files": {
+        "oci_registry_validator.py": "0fff2281ecb9d8a46c48d65d1b0de58b724f2439138da43395004232e5942045",
+        "publication_preflight.py": "830af8afb3d2a611d5029133352ecf708511c4e2f4d74aa7e0723420220dfd01",
+        "publish-containers.sh": "f1caa4b2a7baf38ec6ef8906bdcc80ef792c95739da7a3aa3780aac2b0d2a756",
+        "smoke-container-platforms.sh": "f11865658a24ecea906da087d8446c7f631dc5a9328e294676534d590ef0e89e",
+        "smoke_container_platforms.py": "7f1161d6f477c77ddf6a1e2f381df03451168565dd8cabc28010ab23db443491"
+      },
+      "workflow_sha": "eadddc7b5d8e9392e5931758ffb608b57b5fdc6c"
+    },
+    "container_repositories": [
+      "registry.hexalith.com/eventstore"
+    ],
+    "container_repository": "registry.hexalith.com/eventstore",
+    "environment": "production",
+    "packages": {
+      "ids": [
+        "Hexalith.EventStore.Contracts",
+        "Hexalith.EventStore.Client",
+        "Hexalith.EventStore.Server",
+        "Hexalith.EventStore.SignalR",
+        "Hexalith.EventStore.Testing",
+        "Hexalith.EventStore.Testing.Integration",
+        "Hexalith.EventStore.Aspire",
+        "Hexalith.EventStore.ServiceDefaults",
+        "Hexalith.EventStore.DomainService",
+        "Hexalith.EventStore.RestApi.Generators",
+        "Hexalith.EventStore.Gateway",
+        "Hexalith.EventStore.Admin.Abstractions",
+        "Hexalith.EventStore.Admin.Cli",
+        "Hexalith.EventStore.Admin.Server"
+      ],
+      "manifest_sha256": "6b0b70b856839d4117bcd969f6a2de0093c477c109cb79f3f2882b1f05effcae",
+      "normalized_ids": [
+        "hexalith.eventstore.contracts",
+        "hexalith.eventstore.client",
+        "hexalith.eventstore.server",
+        "hexalith.eventstore.signalr",
+        "hexalith.eventstore.testing",
+        "hexalith.eventstore.testing.integration",
+        "hexalith.eventstore.aspire",
+        "hexalith.eventstore.servicedefaults",
+        "hexalith.eventstore.domainservice",
+        "hexalith.eventstore.restapi.generators",
+        "hexalith.eventstore.gateway",
+        "hexalith.eventstore.admin.abstractions",
+        "hexalith.eventstore.admin.cli",
+        "hexalith.eventstore.admin.server"
+      ]
+    },
+    "platforms": [
+      "linux/amd64",
+      "linux/arm64"
+    ],
+    "repository": "Hexalith/Hexalith.EventStore",
+    "run": {
+      "actor": "jpiquot",
+      "attempt": "1",
+      "event": "workflow_dispatch",
+      "id": "32361958618",
+      "number": "942",
+      "ref": "refs/heads/main",
+      "triggering_actor": "jpiquot",
+      "workflow_ref": "Hexalith/Hexalith.EventStore/.github/workflows/release.yml@refs/heads/main",
+      "workflow_sha": "f343bb0153e9cdcb8b12ec10153813072f5ad38d"
+    },
+    "schema": "hexalith.release-publication-preflight.v4",
+    "source": {
+      "branch": "main",
+      "ci_run": {
+        "conclusion": "success",
+        "event": "push",
+        "head_branch": "main",
+        "head_sha": "f343bb0153e9cdcb8b12ec10153813072f5ad38d",
+        "id": 32361196834,
+        "status": "completed"
+      },
+      "ci_workflow": "ci.yml",
+      "live_sha": "f343bb0153e9cdcb8b12ec10153813072f5ad38d",
+      "ref": "refs/heads/main"
+    },
+    "source_sha": "f343bb0153e9cdcb8b12ec10153813072f5ad38d",
+    "version": "3.96.2"
+  },
+  "identity_sha256": "fa2751173bdc88c783525379111beaef8ede858d0662868f9c8313eb17ffda16",
+  "phase": "verify",
+  "result": "pass",
+  "schema": "hexalith.release-publication-preflight.v4"
+}

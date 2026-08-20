@@ -1,0 +1,13 @@
+{
+  "authorized_at": "2026-08-20T10:25:31.726254Z",
+  "comment_id": 5354631954,
+  "created_at": "2026-08-20T10:25:34Z",
+  "expires_at": "2026-08-20T12:25:31.726254Z",
+  "identity_sha256": "b4d719715d12fdad63108dec499116d37cb1ad13a1ea8f22abe035e17d7a8f60",
+  "issue_url": "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/346",
+  "nonce": "NCoc4jIPWdWd3UvN-_gcs9UGFf_QXevU",
+  "owner": "github:jpiquot",
+  "rationale": "Authorize Story 3.14 corrective publication for run 32358676358 attempt 1 from source 1bea5911daf0130747aefc3166e86568b9ad0000 at reserved version 3.96.1.",
+  "record_sha256": "7562349a6adcc862fdd25126cc4383c4787f4b1b6529c074f9a14d7b1fa95521",
+  "url": "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/comments/5354631954"
+}

@@ -216,7 +216,7 @@ development_status:
   # Story 3.13 remains in-progress until its exact negative disposition is accepted. Story 3.14
   # owns the corrective release; Story 3.15 owns positive deployed-runtime parity closure.
   3-13-v3-94-1-deployed-runtime-evidence-disposition: in-progress
-  3-14-corrective-oci-provenance-release: in-progress
+  3-14-corrective-oci-provenance-release: review
   3-15-corrected-deployed-runtime-parity-closure: backlog
   epic-3-retrospective: optional
 
