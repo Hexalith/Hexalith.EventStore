@@ -210,7 +210,7 @@ container, smoke, and GitHub publication failures remain blocking.
 
 The reusable-workflow reference and `builds-execution-sha` input contain the
 same reviewed 40-character Builds commit, currently
-`eadddc7b5d8e9392e5931758ffb608b57b5fdc6c`. The reusable workflow verifies its
+`63409393541f1437e23006b7a4e05174f8b50da7`. The reusable workflow verifies its
 resolved SHA, checks out the nested action at that exact commit, and invokes it
 locally; the action then verifies its own action and helper bytes against the
 same commit before semantic-release can run. This immutable release-tool pin is

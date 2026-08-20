@@ -10,7 +10,7 @@ namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 /// </summary>
 public sealed class ContainerPublishingGovernanceTests
 {
-    private const string ApprovedBuildsReleaseSha = "eadddc7b5d8e9392e5931758ffb608b57b5fdc6c";
+    private const string ApprovedBuildsReleaseSha = "63409393541f1437e23006b7a4e05174f8b50da7";
     private const int ExpectedPackageCount = 14;
     private static readonly TimeSpan PublicationPreflightTimeout = TimeSpan.FromSeconds(10);
 
@@ -276,6 +276,70 @@ public sealed class ContainerPublishingGovernanceTests
         error.ShouldContain("workflow expected-package-count input must be exactly 14");
         preflightInvoked.ShouldBeFalse();
         arguments.ShouldBeEmpty();
+    }
+
+    /// <summary>
+    /// Verifies a reservation mismatch is rejected before preflight or a later publication marker.
+    /// </summary>
+    [Fact]
+    public void ReservedVersionMismatchRejectsBeforePreflightOrPublication()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        string root = FindRepositoryRoot();
+        string temporary = Path.Combine(Path.GetTempPath(), $"hexalith-reservation-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(temporary);
+        try
+        {
+            string preflightMarker = Path.Combine(temporary, "preflight-ran");
+            string publishMarker = Path.Combine(temporary, "publish-ran");
+            string preflight = Path.Combine(temporary, "preflight.sh");
+            File.WriteAllText(preflight, "#!/usr/bin/env bash\nset -euo pipefail\ntouch \"$PREFLIGHT_MARKER\"\n");
+            File.SetUnixFileMode(
+                preflight,
+                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            ProcessStartInfo start = new("bash")
+            {
+                WorkingDirectory = root,
+                RedirectStandardError = true,
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+            };
+            start.ArgumentList.Add("-c");
+            start.ArgumentList.Add("bash \"$1\" 99.0.1 verify && touch \"$2\"");
+            start.ArgumentList.Add("reservation-test");
+            start.ArgumentList.Add(Path.Combine(root, "scripts", "validate-publication-preflight.sh"));
+            start.ArgumentList.Add(publishMarker);
+            start.Environment["HEXALITH_BUILDS_EXECUTION_SHA"] = new string('a', 40);
+            start.Environment["HEXALITH_RELEASE_ENVIRONMENT"] = "production";
+            start.Environment["HEXALITH_RELEASE_SOURCE_BRANCH"] = "main";
+            start.Environment["HEXALITH_RELEASE_SOURCE_CI_WORKFLOW"] = "ci.yml";
+            start.Environment["HEXALITH_RELEASE_PACKAGE_MANIFEST"] = "tools/release-packages.json";
+            start.Environment["HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT"] =
+                ExpectedPackageCount.ToString(CultureInfo.InvariantCulture);
+            start.Environment["HEXALITH_RELEASE_RESERVED_VERSION"] = "99.0.0";
+            start.Environment["HEXALITH_RELEASE_AUTHORITY_ISSUE_URL"] =
+                "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/123";
+            start.Environment["GITHUB_SHA"] = new string('b', 40);
+            start.Environment["HEXALITH_PUBLICATION_PREFLIGHT"] = preflight;
+            start.Environment["HEXALITH_ZOT_REGISTRY"] = "registry.hexalith.com";
+            start.Environment["PREFLIGHT_MARKER"] = preflightMarker;
+
+            using Process process = Process.Start(start).ShouldNotBeNull();
+            process.WaitForExit();
+
+            process.ExitCode.ShouldNotBe(0);
+            process.StandardError.ReadToEnd().ShouldContain("different from the authorized reservation");
+            File.Exists(preflightMarker).ShouldBeFalse();
+            File.Exists(publishMarker).ShouldBeFalse();
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
     }
 
     /// <summary>

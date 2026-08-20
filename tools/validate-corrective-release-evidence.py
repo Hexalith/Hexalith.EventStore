@@ -12,6 +12,7 @@ from release_evidence_codec import (
     SCHEMA,
     EvidenceError,
     load_json_bytes,
+    validate_release_manifest,
     validate_identity,
     validate_packet_files,
 )
@@ -19,10 +20,8 @@ from release_evidence_codec import (
 
 def _read_manifest(path):
     try:
-        manifest = load_json_bytes(path.read_bytes())
-        packages = manifest["packages"]
-        return [item["id"] for item in packages]
-    except (OSError, KeyError, TypeError) as error:
+        return validate_release_manifest(load_json_bytes(path.read_bytes()))
+    except OSError as error:
         raise EvidenceError("release package manifest is invalid") from error
 
 

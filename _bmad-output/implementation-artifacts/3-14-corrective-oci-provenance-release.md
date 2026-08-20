@@ -14,13 +14,20 @@ passed. The stable GitHub Release contains exactly the 14 packages declared by
 smoke under the helper's declared `Development` environment.
 
 The canonical [release identity](evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d/release-identity.json)
-has SHA-256 `926ccfdf9bf3f095211fb37fcdbb8c4f608ad5359cb3636774239992a7751af4`.
+has SHA-256 `92b7479bfac6f61c755a0cb3023ea2db08f4115eb8119ca08ba84765630fdb7b`.
 It binds the repository, `v3.96.2`, source, workflow run/attempt, exact Builds execution and helper
-bytes, one-use authority, all package archives, raw OCI graph/config bytes and labels, and both
-smoke results. Validation re-derived every bound claim from retained bytes.
+bytes, one-use authority and receipt, all package archives, raw OCI graph/config bytes and labels,
+both raw smoke logs and results, and the cycle-free packet inventory. Validation re-derived every
+bound claim from retained bytes.
 
 This record and packet select no deployed identity and grant no mutation authority. Story 3.15
 must independently decide whether this release can satisfy corrected deployed-runtime parity.
+
+Post-release review hardening produced Builds commit
+`63409393541f1437e23006b7a4e05174f8b50da7` and rotates the current EventStore release caller to
+that immutable revision. This does not rewrite the historical release execution: the packet
+correctly remains bound to executed Builds SHA `eadddc7b5d8e9392e5931758ffb608b57b5fdc6c`, while the
+ordinary development gitlink remains independently pinned at `145ab857a50dc6cf22220723604badb28d78cdbc`.
 
 ## Canonical Identity
 
@@ -32,7 +39,9 @@ must independently decide whether this release can satisfy corrected deployed-ru
 | Exact green CI | run `32361196834`, attempt 1, `success` |
 | Release workflow | run `32361958618`, attempt 1, number 942, `success` |
 | Builds execution | `eadddc7b5d8e9392e5931758ffb608b57b5fdc6c` |
-| Authority | `github:jpiquot`, comment `5355025457`, identity SHA-256 `fa2751173bdc88c783525379111beaef8ede858d0662868f9c8313eb17ffda16` |
+| Builds helpers | Five exact files retained under `successful/builds/eadddc7…`; all hashes recomputed |
+| Authority | `github:jpiquot`, comment `5355025457`, raw record SHA-256 `d97629bb…`, identity SHA-256 `fa275117…` |
+| Authority proof | Full issue 346 comment snapshot plus repository permission `admin` |
 | One-use receipt | comment `5355070052`, consumed once |
 | GitHub Release | stable release `373676516`, 14 package assets, published `2026-08-20T11:14:41Z` |
 | NuGet | all 14 manifest IDs visible at `3.96.2` |
@@ -46,12 +55,20 @@ The packet retains the 14 original `.nupkg` release assets under
 and the complete generated workflow artifact under
 [`successful/run-artifact/`](evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d/successful/run-artifact/).
 The artifact includes the raw index, both child manifests, both raw configs, validation summary,
-smoke logs/results, frozen publication identity, authority record, consumption record, and all
-three preflight observations. Supplemental live observations and the partial-attempt ledger are in
+smoke logs/results, frozen publication identity, authority summary, and exact consumption record.
+The packet additionally retains the exact executed Builds helper bytes, the raw GitHub authority
+comment, full relevant issue-comment snapshot, and repository role proof. Supplemental live
+observations and the partial-attempt ledger are in
 [`observations.json`](evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d/observations.json).
 The generated [packet checksum manifest](evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d/packet-sha256.txt)
-binds all 41 preceding packet files and itself hashes to
-`a84323d3af624d2055c1825d223f8b38005799e949d50c72b765dffb3208276c`.
+binds all 62 retained files other than the canonical identity and itself. The identity binds the
+manifest's exact bytes, size, and SHA-256
+`df65325b32bb15b0245f31ca43f3ad32c0e09c80ef7f2d317b90eb35ded9accd`, avoiding a checksum cycle.
+
+The retained raw authority comment is the exact Actions-token `CONTRIBUTOR` representation whose
+publisher-canonical bytes reproduce the original `d97629bb…` record digest. The full issue snapshot
+shows the same immutable comment body/IDs/timestamps with the public `MEMBER` association, while
+the retained collaborator endpoint independently proves repository permission `admin`.
 
 ## Corrected Provenance
 
@@ -80,20 +97,21 @@ comment, receipt, or artifact was deleted, rewritten, or reused.
 | `32358676358/1` (#941) | `3.96.1` | tag, all 14 NuGet packages, receipt | Container phase detected a POST-vs-list comment representation difference as replay. The tag, packages, receipt, and [artifact](evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d/quarantine/run-32358676358-attempt-1/) are quarantined; no OCI image or GitHub Release was produced. |
 
 The partial attempts forced fresh versions and fresh one-use authority. The final run used neither
-quarantined version nor any earlier authority record.
+quarantined version nor any earlier authority record. The packet retains the exact public NuGet
+3.96.1 bytes for all 14 quarantined packages under that attempt's `packages/` directory.
 
 ## Verification
 
 - `python3 tools/validate-corrective-release-evidence.py <release-identity> --manifest tools/release-packages.json --packet-root <packet>` — pass; canonical SHA-256
-  `926ccfdf9bf3f095211fb37fcdbb8c4f608ad5359cb3636774239992a7751af4`.
+  `92b7479bfac6f61c755a0cb3023ea2db08f4115eb8119ca08ba84765630fdb7b`.
 - Contracts Release/package-mode build — pass, zero warnings and zero errors.
-- `CorrectiveOciProvenanceReleaseTests` — 7 passed, zero failed, zero skipped; covers every matrix
-  row and required-label, raw-byte, OCI-media-type, smoke-cleanup, authority, selection, and partial
-  publication mutations.
-- Shared Builds publisher suite — 121 passed, zero skipped after the final one-use comment
-  representation correction.
-- `ContainerPublishingGovernanceTests` — 19 passed, zero skipped.
-- Complete Contracts regression suite — 1434 passed, zero failed, zero skipped.
+- Focused corrective-release and container-governance suite — 31 passed, zero failed, zero skipped;
+  includes the checked-in packet's exact final digest and manifest, package-origin, workflow,
+  checksum, raw-smoke, authority-window/edit, receipt-schema, reservation, and provenance mutations.
+- Shared Builds publication preflight and publisher-contract suite — 54 passed, zero skipped,
+  including registry tag pagination and reservation mismatch before preflight/login/publication.
+- Full shared Builds publisher harness — 123 passed, zero failed, zero skipped.
+- Complete Contracts regression suite — 1439 passed, zero failed, zero skipped.
 - Manifest pack/validation — exactly 14 valid packages.
 - Shell syntax, action lint, and `git diff --check` — pass in both owning repositories.
 

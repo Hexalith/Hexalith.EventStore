@@ -260,9 +260,14 @@ Unlike Docker Compose (where images can be built locally), Kubernetes clusters p
 Use the .NET SDK container publishing feature (no Dockerfile required):
 
 ```bash
-dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalith-eventstore -p:ContainerImageTag=latest
-dotnet publish samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalith-sample -p:ContainerImageTag=latest
+SOURCE_SHA="$(git rev-parse HEAD)"
+RELEASE_VERSION=local
+dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalith-eventstore -p:ContainerImageTag="$RELEASE_VERSION" -p:ContainerProvenanceSourceSha="$SOURCE_SHA" -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION"
+dotnet publish samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalith-sample -p:ContainerImageTag="$RELEASE_VERSION" -p:ContainerProvenanceSourceSha="$SOURCE_SHA" -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION"
 ```
+
+`ContainerProvenanceSourceSha` and `ContainerProvenanceReleaseVersion` are
+mandatory; they bind the image labels to the exact source and published tag.
 
 ### Push to a Container Registry
 

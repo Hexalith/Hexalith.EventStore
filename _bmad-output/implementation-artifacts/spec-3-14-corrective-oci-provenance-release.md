@@ -2,7 +2,7 @@
 title: 'Story 3.14 Corrective OCI Provenance Release'
 type: 'bugfix'
 created: '2026-08-20'
-status: 'in-review'
+status: 'done'
 baseline_commit: 'c21bd749154d701c3b7d68e40d1008d3475e35c4'
 review_loop_iteration: 0
 context:
@@ -76,3 +76,35 @@ Resolve from authorized green `main`; source/destination change invalidates the 
 - `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.CorrectiveOciProvenanceReleaseTests` -- expected: all matrix cases pass, none skipped.
 - `python3 tools/pack-release-packages.py /tmp/eventstore-3-14-packages 0.0.0-ci-test && python3 tools/validate-release-packages.py /tmp/eventstore-3-14-packages 0.0.0-ci-test` -- expected: exactly 14 valid packages.
 - `bash -n scripts/validate-publication-preflight.sh && bash -n references/Hexalith.Builds/Github/publish-containers/publish-containers.sh && git diff --check` -- expected: syntax and hygiene pass in both owning repositories.
+
+## Suggested Review Order
+
+**Canonical evidence boundary**
+
+- Start with the exact identity, authority, package, smoke, and packet invariants.
+  [`release_evidence_codec.py:207`](../../tools/release_evidence_codec.py#L207)
+
+- The CLI independently validates the authoritative 14-package manifest and codec bytes.
+  [`validate-corrective-release-evidence.py:19`](../../tools/validate-corrective-release-evidence.py#L19)
+
+- The completed packet freezes the successful v3.96.2 lineage and cycle-free checksum binding.
+  [`release-identity.json:1`](evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d/release-identity.json#L1)
+
+- Exact release assets, public NuGet inventories, and release-environment execution remain observable.
+  [`observations.json:1`](evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d/observations.json#L1)
+
+**Mutation-proof governance**
+
+- Real packet mutations prove workflow, package, authority, receipt, smoke, and checksum rejection.
+  [`CorrectiveOciProvenanceReleaseTests.cs:248`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectiveOciProvenanceReleaseTests.cs#L248)
+
+- Reservation mismatch is rejected before shared preflight or any later publication marker.
+  [`ContainerPublishingGovernanceTests.cs:286`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs#L286)
+
+**Operator handoff**
+
+- The story record explains retained raw evidence and the final canonical digest.
+  [`3-14-corrective-oci-provenance-release.md:1`](3-14-corrective-oci-provenance-release.md#L1)
+
+- Deployment examples now pass mandatory source and release provenance explicitly.
+  [`deployment-guide.md:22`](../../docs/brownfield/deployment-guide.md#L22)

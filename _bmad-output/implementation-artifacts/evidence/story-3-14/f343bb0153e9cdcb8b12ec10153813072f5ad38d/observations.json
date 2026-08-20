@@ -35,13 +35,6 @@
         "expired": false
       }
     },
-    "production_deployment": {
-      "id": 6000909838,
-      "environment": "production",
-      "status": "success",
-      "status_id": 17065334247,
-      "completed_at": "2026-08-20T11:14:46Z"
-    },
     "github_release": {
       "id": 373676516,
       "url": "https://github.com/Hexalith/Hexalith.EventStore/releases/tag/v3.96.2",
@@ -49,13 +42,241 @@
       "draft": false,
       "prerelease": false,
       "asset_count": 14,
-      "tag_target_sha": "f343bb0153e9cdcb8b12ec10153813072f5ad38d"
+      "tag_target_sha": "f343bb0153e9cdcb8b12ec10153813072f5ad38d",
+      "assets": [
+        {
+          "id": 522150166,
+          "name": "Hexalith.EventStore.Contracts.3.96.2.nupkg",
+          "size": 146214,
+          "digest": "sha256:6afa6c37a62865a1f69d51a6c4b19b46c1747e505eb658fef9a27322fc240043",
+          "url": "https://github.com/Hexalith/Hexalith.EventStore/releases/download/v3.96.2/Hexalith.EventStore.Contracts.3.96.2.nupkg",
+          "created_at": "2026-08-20T11:14:30Z",
+          "updated_at": "2026-08-20T11:14:30Z"
+        },
+        {
+          "id": 522150339,
+          "name": "Hexalith.EventStore.Client.3.96.2.nupkg",
+          "size": 157974,
+          "digest": "sha256:c7ea1bbb7aa612b1e46bb579ef519d0fadcaced3927d69f789f307d93f9ba735",
+          "url": "https://github.com/Hexalith/Hexalith.EventStore/releases/download/v3.96.2/Hexalith.EventStore.Client.3.96.2.nupkg",
+          "created_at": "2026-08-20T11:14:38Z",
+          "updated_at": "2026-08-20T11:14:38Z"
+        },
+        {
+          "id": 522150357,
+          "name": "Hexalith.EventStore.Server.3.96.2.nupkg",
+          "size": 460801,
+          "digest": "sha256:9abc729ca1f04694270a22e4a9b8876f93ea963d7789a4112039ec7b0db0c906",
+          "url": "https://github.com/Hexalith/Hexalith.EventStore/releases/download/v3.96.2/Hexalith.EventStore.Server.3.96.2.nupkg",
+          "created_at": "2026-08-20T11:14:39Z",
+          "updated_at": "2026-08-20T11:14:39Z"
+        },
+        {
+          "id": 522150308,
+          "name": "Hexalith.EventStore.SignalR.3.96.2.nupkg",
+          "size": 21154,
+          "digest": "sha256:819737eb2cef4844eb4afefc80f6c5d358e3caff3324532ead27e15cf054430f",
+          "url": "https://github.com/Hexalith/Hexalith.EventStore/releases/download/v3.96.2/Hexalith.EventStore.SignalR.3.96.2.nupkg",
+          "created_at": "2026-08-20T11:14:35Z",
+          "updated_at": "2026-08-20T11:14:35Z"
+        },
+        {
+          "id": 522150314,
+          "name": "Hexalith.EventStore.Testing.3.96.2.nupkg",
+          "size": 54406,
+          "digest": "sha256:cbf0fed38b301c85e64afe2dca0724c8078f261e363d291236f61ed672f3dcc1",
+          "url": "https://github.com/Hexalith/Hexalith.EventStore/releases/download/v3.96.2/Hexalith.EventStore.Testing.3.96.2.nupkg",
+          "created_at": "2026-08-20T11:14:36Z",
+          "updated_at": "2026-08-20T11:14:36Z"
+        },
+        {
+          "id": 522150330,
+          "name": "Hexalith.EventStore.Testing.Integration.3.96.2.nupkg",
+          "size": 63946,
+          "digest": "sha256:5eab3746bd0adc6b03076b3abbe430a5afe9e26d8322a205723c23f352ee4798",
+          "url": "https://github.com/Hexalith/Hexalith.EventStore/releases/download/v3.96.2/Hexalith.EventStore.Testing.Integration.3.96.2.nupkg",
+          "created_at": "2026-08-20T11:14:37Z",
+          "updated_at": "2026-08-20T11:14:37Z"
+        },
+        {
+          "id": 522150131,
+          "name": "Hexalith.EventStore.Aspire.3.96.2.nupkg",
+          "size": 27925,
+          "digest": "sha256:c0e2de9562f9d8dd5f2a1b9f64b33569990191c353a0a19e580585fc1792ac80",
+          "url": "https://github.com/Hexalith/Hexalith.EventStore/releases/download/v3.96.2/Hexalith.EventStore.Aspire.3.96.2.nupkg",
+          "created_at": "2026-08-20T11:14:27Z",
+          "updated_at": "2026-08-20T11:14:27Z"
+        },
+        {
+          "id": 522150294,
+          "name": "Hexalith.EventStore.ServiceDefaults.3.96.2.nupkg",
+          "size": 16200,
+          "digest": "sha256:4cbe31260db217fd017365bd6181315713c7a0e6a57004f01620df33b10b23ef",
+          "url": "https://github.com/Hexalith/Hexalith.EventStore/releases/download/v3.96.2/Hexalith.EventStore.ServiceDefaults.3.96.2.nupkg",
+          "created_at": "2026-08-20T11:14:34Z",
+          "updated_at": "2026-08-20T11:14:34Z"
+        },
+        {
+          "id": 522150255,
+          "name": "Hexalith.EventStore.DomainService.3.96.2.nupkg",
+          "size": 70218,
+          "digest": "sha256:2ee1c594d6baae0098074257e758749abdfeeb96849f6a1d405e40e0ad6fa8cc",
+          "url": "https://github.com/Hexalith/Hexalith.EventStore/releases/download/v3.96.2/Hexalith.EventStore.DomainService.3.96.2.nupkg",
+          "created_at": "2026-08-20T11:14:31Z",
+          "updated_at": "2026-08-20T11:14:31Z"
+        },
+        {
+          "id": 522150273,
+          "name": "Hexalith.EventStore.RestApi.Generators.3.96.2.nupkg",
+          "size": 36991,
+          "digest": "sha256:40de051a237d0fa251ae5926d9d820bc6eea1595e7fea44859d5073bfa6ad57b",
+          "url": "https://github.com/Hexalith/Hexalith.EventStore/releases/download/v3.96.2/Hexalith.EventStore.RestApi.Generators.3.96.2.nupkg",
+          "created_at": "2026-08-20T11:14:32Z",
+          "updated_at": "2026-08-20T11:14:32Z"
+        },
+        {
+          "id": 522150289,
+          "name": "Hexalith.EventStore.Gateway.3.96.2.nupkg",
+          "size": 234698,
+          "digest": "sha256:c46aa127bc8c4eb60e82e787f4923599a3a5110d5eb3d04202f4a3c1d30c8e3e",
+          "url": "https://github.com/Hexalith/Hexalith.EventStore/releases/download/v3.96.2/Hexalith.EventStore.Gateway.3.96.2.nupkg",
+          "created_at": "2026-08-20T11:14:33Z",
+          "updated_at": "2026-08-20T11:14:33Z"
+        },
+        {
+          "id": 522150142,
+          "name": "Hexalith.EventStore.Admin.Abstractions.3.96.2.nupkg",
+          "size": 111743,
+          "digest": "sha256:7d71668489cbd1931b538817ea67a26a98b1ea753a7d7717c16480d518c193fe",
+          "url": "https://github.com/Hexalith/Hexalith.EventStore/releases/download/v3.96.2/Hexalith.EventStore.Admin.Abstractions.3.96.2.nupkg",
+          "created_at": "2026-08-20T11:14:28Z",
+          "updated_at": "2026-08-20T11:14:28Z"
+        },
+        {
+          "id": 522150366,
+          "name": "Hexalith.EventStore.Admin.Cli.3.96.2.nupkg",
+          "size": 656193,
+          "digest": "sha256:b7b69f42b76a7b661de52d87bd6385d649060d9e4923a41509add617dd1c1046",
+          "url": "https://github.com/Hexalith/Hexalith.EventStore/releases/download/v3.96.2/Hexalith.EventStore.Admin.Cli.3.96.2.nupkg",
+          "created_at": "2026-08-20T11:14:40Z",
+          "updated_at": "2026-08-20T11:14:40Z"
+        },
+        {
+          "id": 522150158,
+          "name": "Hexalith.EventStore.Admin.Server.3.96.2.nupkg",
+          "size": 173428,
+          "digest": "sha256:c068377c127958160bdfdf6366cf7aef60afba2f0f07bb9782be1f1a5ec342ab",
+          "url": "https://github.com/Hexalith/Hexalith.EventStore/releases/download/v3.96.2/Hexalith.EventStore.Admin.Server.3.96.2.nupkg",
+          "created_at": "2026-08-20T11:14:29Z",
+          "updated_at": "2026-08-20T11:14:29Z"
+        }
+      ]
     },
     "nuget": {
       "version": "3.96.2",
       "visible_count": 14,
       "expected_count": 14,
-      "manifest_sha256": "6b0b70b856839d4117bcd969f6a2de0093c477c109cb79f3f2882b1f05effcae"
+      "manifest_sha256": "6b0b70b856839d4117bcd969f6a2de0093c477c109cb79f3f2882b1f05effcae",
+      "packages": [
+        {
+          "id": "Hexalith.EventStore.Contracts",
+          "version": "3.96.2",
+          "content_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.contracts/3.96.2/hexalith.eventstore.contracts.3.96.2.nupkg",
+          "size": 159300,
+          "sha256": "8aa92dbe9a7b5352d5241f46ac6871e1c7774f73fa8a22d165b56820529e411f"
+        },
+        {
+          "id": "Hexalith.EventStore.Client",
+          "version": "3.96.2",
+          "content_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.client/3.96.2/hexalith.eventstore.client.3.96.2.nupkg",
+          "size": 171061,
+          "sha256": "49ec9ea8bd0c2ad665a89d54d8210d8e3ffa81d2d873e9ef73070c9afd7f47bc"
+        },
+        {
+          "id": "Hexalith.EventStore.Server",
+          "version": "3.96.2",
+          "content_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.server/3.96.2/hexalith.eventstore.server.3.96.2.nupkg",
+          "size": 473887,
+          "sha256": "450c06205173e6f04ae8e301f517bd4dd6335e7f685769874d435bd7f4e08e51"
+        },
+        {
+          "id": "Hexalith.EventStore.SignalR",
+          "version": "3.96.2",
+          "content_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.signalr/3.96.2/hexalith.eventstore.signalr.3.96.2.nupkg",
+          "size": 34241,
+          "sha256": "33744065acda18b69f8e5fd3dd057f974370c5ac14a711b00ce79284d1e49d1f"
+        },
+        {
+          "id": "Hexalith.EventStore.Testing",
+          "version": "3.96.2",
+          "content_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.testing/3.96.2/hexalith.eventstore.testing.3.96.2.nupkg",
+          "size": 67493,
+          "sha256": "c9591a6a7ae8654b45dc58f4c68fda155075dbbf8923b8c51c6eb3a62dd0c1e3"
+        },
+        {
+          "id": "Hexalith.EventStore.Testing.Integration",
+          "version": "3.96.2",
+          "content_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.testing.integration/3.96.2/hexalith.eventstore.testing.integration.3.96.2.nupkg",
+          "size": 77032,
+          "sha256": "d2c641bc8fba672fa8567c2fe850f9ea258228c6e233fa8227e3a88524d6aab3"
+        },
+        {
+          "id": "Hexalith.EventStore.Aspire",
+          "version": "3.96.2",
+          "content_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.aspire/3.96.2/hexalith.eventstore.aspire.3.96.2.nupkg",
+          "size": 41011,
+          "sha256": "3e7a7a7b272844c87d20921e40a72b7d834c6dfdd85b59b03cbb6e7013c31878"
+        },
+        {
+          "id": "Hexalith.EventStore.ServiceDefaults",
+          "version": "3.96.2",
+          "content_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.servicedefaults/3.96.2/hexalith.eventstore.servicedefaults.3.96.2.nupkg",
+          "size": 29286,
+          "sha256": "5489d3782de4f4a21ab8083d9a67b6558ae231477eb35c8d0f9da18206c292f1"
+        },
+        {
+          "id": "Hexalith.EventStore.DomainService",
+          "version": "3.96.2",
+          "content_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.domainservice/3.96.2/hexalith.eventstore.domainservice.3.96.2.nupkg",
+          "size": 83304,
+          "sha256": "5193f251ebe5685c51ab97218fa0b35ae7e060295c295b797bee713a66ddaad1"
+        },
+        {
+          "id": "Hexalith.EventStore.RestApi.Generators",
+          "version": "3.96.2",
+          "content_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.restapi.generators/3.96.2/hexalith.eventstore.restapi.generators.3.96.2.nupkg",
+          "size": 50078,
+          "sha256": "a406270153f82e4e330280e0831a150f5ab4b000cd3e56c5f2053bb388d0113e"
+        },
+        {
+          "id": "Hexalith.EventStore.Gateway",
+          "version": "3.96.2",
+          "content_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.gateway/3.96.2/hexalith.eventstore.gateway.3.96.2.nupkg",
+          "size": 247785,
+          "sha256": "a67dbebe0638a4efcb5f4882f82322ace241cfbba6ee8a3a1fe0685f60b5b840"
+        },
+        {
+          "id": "Hexalith.EventStore.Admin.Abstractions",
+          "version": "3.96.2",
+          "content_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.admin.abstractions/3.96.2/hexalith.eventstore.admin.abstractions.3.96.2.nupkg",
+          "size": 124829,
+          "sha256": "41f0613e4014da25c209bc8d97b1ea286b3df1d904ecf856e54cab1c9fd033a8"
+        },
+        {
+          "id": "Hexalith.EventStore.Admin.Cli",
+          "version": "3.96.2",
+          "content_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.admin.cli/3.96.2/hexalith.eventstore.admin.cli.3.96.2.nupkg",
+          "size": 669279,
+          "sha256": "630c024ee4d564b17d0b5596a01b076442e8be36d292de0d591deb0aed799b8c"
+        },
+        {
+          "id": "Hexalith.EventStore.Admin.Server",
+          "version": "3.96.2",
+          "content_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.admin.server/3.96.2/hexalith.eventstore.admin.server.3.96.2.nupkg",
+          "size": 186515,
+          "sha256": "48dab3e989e7094e3281facba4143b7a10bc86f54add486d28a2e7771b0876c2"
+        }
+      ]
     },
     "oci": {
       "image": "registry.hexalith.com/eventstore:3.96.2",
@@ -67,7 +288,13 @@
     },
     "authority_comment_id": 5355025457,
     "consumption_comment_id": 5355070052,
-    "canonical_identity_sha256": "926ccfdf9bf3f095211fb37fcdbb8c4f608ad5359cb3636774239992a7751af4"
+    "release_environment_execution": {
+      "id": 6000909838,
+      "environment": "production",
+      "status": "success",
+      "status_id": 17065334247,
+      "completed_at": "2026-08-20T11:14:46Z"
+    }
   },
   "quarantined_attempts": [
     {
@@ -134,7 +361,121 @@
         "name": "release-evidence-32358676358-1",
         "size": 7633
       },
-      "immutable_non_authorizing": true
+      "immutable_non_authorizing": true,
+      "nuget_inventory": [
+        {
+          "id": "Hexalith.EventStore.Contracts",
+          "version": "3.96.1",
+          "content_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.contracts/3.96.1/hexalith.eventstore.contracts.3.96.1.nupkg",
+          "file": "quarantine/run-32358676358-attempt-1/3.96.1/packages/Hexalith.EventStore.Contracts.3.96.1.nupkg",
+          "size": 159313,
+          "sha256": "9338cb73029124337cc0ecbc3732b916e4d8122eb2255a9b0f5b2fdfcd343f3f"
+        },
+        {
+          "id": "Hexalith.EventStore.Client",
+          "version": "3.96.1",
+          "content_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.client/3.96.1/hexalith.eventstore.client.3.96.1.nupkg",
+          "file": "quarantine/run-32358676358-attempt-1/3.96.1/packages/Hexalith.EventStore.Client.3.96.1.nupkg",
+          "size": 171064,
+          "sha256": "978ff7fb6efc5b5672a511c1d47a52ae164960e7df8e624c03398e41882f86de"
+        },
+        {
+          "id": "Hexalith.EventStore.Server",
+          "version": "3.96.1",
+          "content_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.server/3.96.1/hexalith.eventstore.server.3.96.1.nupkg",
+          "file": "quarantine/run-32358676358-attempt-1/3.96.1/packages/Hexalith.EventStore.Server.3.96.1.nupkg",
+          "size": 473893,
+          "sha256": "1be69b4c67d4b6ad9a5572d738115ce0d2a56c9d65b0e5fcae1ba25abd65b08e"
+        },
+        {
+          "id": "Hexalith.EventStore.SignalR",
+          "version": "3.96.1",
+          "content_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.signalr/3.96.1/hexalith.eventstore.signalr.3.96.1.nupkg",
+          "file": "quarantine/run-32358676358-attempt-1/3.96.1/packages/Hexalith.EventStore.SignalR.3.96.1.nupkg",
+          "size": 34246,
+          "sha256": "4731e85abf9b9ff5e5a779b096aab30753b86a79a648a198a8ecfdcc3ec32b65"
+        },
+        {
+          "id": "Hexalith.EventStore.Testing",
+          "version": "3.96.1",
+          "content_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.testing/3.96.1/hexalith.eventstore.testing.3.96.1.nupkg",
+          "file": "quarantine/run-32358676358-attempt-1/3.96.1/packages/Hexalith.EventStore.Testing.3.96.1.nupkg",
+          "size": 67501,
+          "sha256": "0b53d0126134e877f76dca9f657c327d1739fdcd4d72c9d2e70eb080f70433cd"
+        },
+        {
+          "id": "Hexalith.EventStore.Testing.Integration",
+          "version": "3.96.1",
+          "content_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.testing.integration/3.96.1/hexalith.eventstore.testing.integration.3.96.1.nupkg",
+          "file": "quarantine/run-32358676358-attempt-1/3.96.1/packages/Hexalith.EventStore.Testing.Integration.3.96.1.nupkg",
+          "size": 77034,
+          "sha256": "e69ae43a078c099207275558261f869179cccae65eac317be7ffcd573847a3e8"
+        },
+        {
+          "id": "Hexalith.EventStore.Aspire",
+          "version": "3.96.1",
+          "content_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.aspire/3.96.1/hexalith.eventstore.aspire.3.96.1.nupkg",
+          "file": "quarantine/run-32358676358-attempt-1/3.96.1/packages/Hexalith.EventStore.Aspire.3.96.1.nupkg",
+          "size": 41014,
+          "sha256": "310be31a6ff7163718bd607f3a911cd6fd33d9c035009db755c3d91c9807c610"
+        },
+        {
+          "id": "Hexalith.EventStore.ServiceDefaults",
+          "version": "3.96.1",
+          "content_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.servicedefaults/3.96.1/hexalith.eventstore.servicedefaults.3.96.1.nupkg",
+          "file": "quarantine/run-32358676358-attempt-1/3.96.1/packages/Hexalith.EventStore.ServiceDefaults.3.96.1.nupkg",
+          "size": 29295,
+          "sha256": "95643b440d2b17e309031400dc46bc6423cb45fd1f917b077be9699d7f271c27"
+        },
+        {
+          "id": "Hexalith.EventStore.DomainService",
+          "version": "3.96.1",
+          "content_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.domainservice/3.96.1/hexalith.eventstore.domainservice.3.96.1.nupkg",
+          "file": "quarantine/run-32358676358-attempt-1/3.96.1/packages/Hexalith.EventStore.DomainService.3.96.1.nupkg",
+          "size": 83308,
+          "sha256": "258bac769835706c5ea09718abc8b29cb7fba6ebaa3c165e4d92550f5ee7e4b5"
+        },
+        {
+          "id": "Hexalith.EventStore.RestApi.Generators",
+          "version": "3.96.1",
+          "content_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.restapi.generators/3.96.1/hexalith.eventstore.restapi.generators.3.96.1.nupkg",
+          "file": "quarantine/run-32358676358-attempt-1/3.96.1/packages/Hexalith.EventStore.RestApi.Generators.3.96.1.nupkg",
+          "size": 50080,
+          "sha256": "1b0f4022ae53c02308ddd0d0487956b005e216a9bee9433db160797b0536d0b0"
+        },
+        {
+          "id": "Hexalith.EventStore.Gateway",
+          "version": "3.96.1",
+          "content_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.gateway/3.96.1/hexalith.eventstore.gateway.3.96.1.nupkg",
+          "file": "quarantine/run-32358676358-attempt-1/3.96.1/packages/Hexalith.EventStore.Gateway.3.96.1.nupkg",
+          "size": 247789,
+          "sha256": "d2a061b837d47cba702162499e099914c109cd970110fcae1137876d1c5996a5"
+        },
+        {
+          "id": "Hexalith.EventStore.Admin.Abstractions",
+          "version": "3.96.1",
+          "content_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.admin.abstractions/3.96.1/hexalith.eventstore.admin.abstractions.3.96.1.nupkg",
+          "file": "quarantine/run-32358676358-attempt-1/3.96.1/packages/Hexalith.EventStore.Admin.Abstractions.3.96.1.nupkg",
+          "size": 124841,
+          "sha256": "52971af5623f3bcbe8b637ba9fe51c3ed63d3ce7c7e2a9aa2bbc6416ed3311dd"
+        },
+        {
+          "id": "Hexalith.EventStore.Admin.Cli",
+          "version": "3.96.1",
+          "content_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.admin.cli/3.96.1/hexalith.eventstore.admin.cli.3.96.1.nupkg",
+          "file": "quarantine/run-32358676358-attempt-1/3.96.1/packages/Hexalith.EventStore.Admin.Cli.3.96.1.nupkg",
+          "size": 669315,
+          "sha256": "bb7e78d0c88fb9738410c47fca18102fe9a3054503323830c80dacabffd1b1b2"
+        },
+        {
+          "id": "Hexalith.EventStore.Admin.Server",
+          "version": "3.96.1",
+          "content_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.admin.server/3.96.1/hexalith.eventstore.admin.server.3.96.1.nupkg",
+          "file": "quarantine/run-32358676358-attempt-1/3.96.1/packages/Hexalith.EventStore.Admin.Server.3.96.1.nupkg",
+          "size": 186515,
+          "sha256": "424e24519ac8a724f17a06f95d97c73866e589814e303cc64cf4dfdeaaaf7a2f"
+        }
+      ]
     }
   ],
   "handoff": {

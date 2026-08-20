@@ -256,13 +256,18 @@ Build container images using the .NET SDK container publishing feature (no Docke
 az acr login --name hexalithacr
 
 # Build container images
-dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalithacr.azurecr.io/hexalith-eventstore -p:ContainerImageTag=latest
-dotnet publish samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalithacr.azurecr.io/hexalith-sample -p:ContainerImageTag=latest
+SOURCE_SHA="$(git rev-parse HEAD)"
+RELEASE_VERSION=local
+dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalithacr.azurecr.io/hexalith-eventstore -p:ContainerImageTag="$RELEASE_VERSION" -p:ContainerProvenanceSourceSha="$SOURCE_SHA" -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION"
+dotnet publish samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalithacr.azurecr.io/hexalith-sample -p:ContainerImageTag="$RELEASE_VERSION" -p:ContainerProvenanceSourceSha="$SOURCE_SHA" -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION"
 
 # Push to ACR
-docker push hexalithacr.azurecr.io/hexalith-eventstore:latest
-docker push hexalithacr.azurecr.io/hexalith-sample:latest
+docker push "hexalithacr.azurecr.io/hexalith-eventstore:$RELEASE_VERSION"
+docker push "hexalithacr.azurecr.io/hexalith-sample:$RELEASE_VERSION"
 ```
+
+The two provenance properties are mandatory and bind the published labels to
+the exact source commit and release version.
 
 > **Note:** When using the Aspire-generated Bicep with approach A, the deployment automatically creates an ACR and can be configured to build and push images as part of the deployment. Check the generated Bicep parameters for image configuration options.
 

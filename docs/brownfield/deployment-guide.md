@@ -11,6 +11,10 @@ Built via **.NET SDK container support** — **no Dockerfiles**. Defaults centra
 
 Defaults: base `mcr.microsoft.com/dotnet/aspnet:10.0-alpine`, registry `registry.hexalith.com`,
 non-root user `app`, port `8080`, OCI labels (source/licenses/vendor), tag `staging-latest`.
+Every `PublishContainer` invocation must pass the exact source commit and release
+version through `ContainerProvenanceSourceSha` and
+`ContainerProvenanceReleaseVersion`; publication fails closed when either is
+missing.
 
 | Project | Image |
 |---------|-------|
@@ -23,14 +27,21 @@ non-root user `app`, port `8080`, OCI labels (source/licenses/vendor), tag `stag
 
 ```bash
 # Publish one image to a local tar (no registry push)
+SOURCE_SHA="$(git rev-parse HEAD)"
+RELEASE_VERSION="staging-$SOURCE_SHA"
 dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj \
   --configuration Release -t:PublishContainer \
-  -p:ContainerArchiveOutputPath=/tmp/eventstore.tar.gz
+  -p:ContainerArchiveOutputPath=/tmp/eventstore.tar.gz \
+  -p:ContainerImageTag="$RELEASE_VERSION" \
+  -p:ContainerProvenanceSourceSha="$SOURCE_SHA" \
+  -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION"
 
 # Push to registry (needs SDK_CONTAINER_REGISTRY_UNAME / _PWORD)
 dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj \
   --configuration Release -t:PublishContainer \
-  -p:ContainerImageTags="staging-latest;staging-$(git rev-parse HEAD)"
+  -p:ContainerImageTag="$RELEASE_VERSION" \
+  -p:ContainerProvenanceSourceSha="$SOURCE_SHA" \
+  -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION"
 ```
 
 The Admin.Cli is a **NuGet tool** (`PackAsTool`, `ToolCommandName=eventstore-admin`); the Admin.Mcp is

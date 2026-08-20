@@ -332,9 +332,13 @@ AUTH_AUTHORITY=http://security:8080/realms/hexalith
 > **Tip:** Build the container images from source using the .NET SDK container publishing feature (no Dockerfile required):
 >
 > ```bash
-> $ dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalith-eventstore -p:ContainerImageTag=latest
-> $ dotnet publish samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalith-sample -p:ContainerImageTag=latest
+> $ SOURCE_SHA="$(git rev-parse HEAD)"; RELEASE_VERSION=local
+> $ dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalith-eventstore -p:ContainerImageTag="$RELEASE_VERSION" -p:ContainerProvenanceSourceSha="$SOURCE_SHA" -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION"
+> $ dotnet publish samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalith-sample -p:ContainerImageTag="$RELEASE_VERSION" -p:ContainerProvenanceSourceSha="$SOURCE_SHA" -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION"
 > ```
+>
+> Both provenance properties are mandatory and become the image's exact source,
+> revision, documentation, release URL, and version labels.
 
 ### Step 4: Start the Application
 

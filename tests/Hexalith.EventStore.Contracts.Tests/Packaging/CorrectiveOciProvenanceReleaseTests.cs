@@ -138,6 +138,8 @@ public sealed class CorrectiveOciProvenanceReleaseTests
         foreach ((string field, string? value) in new[]
         {
             ("org.opencontainers.image.source", "https"),
+            ("org.opencontainers.image.url", "https"),
+            ("org.opencontainers.image.documentation", "https"),
             ("org.opencontainers.image.revision", (string?)null),
             ("org.opencontainers.image.version", "9.9.9"),
         })
@@ -155,6 +157,15 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             using JsonDocument document = JsonDocument.Parse(labels.ToJsonString());
             Should.Throw<InvalidDataException>(() => ValidateLabels(document.RootElement, expected));
         }
+
+        JsonObject withSdkLabels = new(
+            expected.Select(pair => KeyValuePair.Create<string, JsonNode?>(pair.Key, pair.Value)))
+        {
+            ["net.dot.sdk.version"] = "10.0.303",
+            ["org.opencontainers.image.base.digest"] = $"sha256:{new string('a', 64)}",
+        };
+        using JsonDocument extraLabels = JsonDocument.Parse(withSdkLabels.ToJsonString());
+        Should.NotThrow(() => ValidateLabels(extraLabels.RootElement, expected));
     }
 
     /// <summary>
@@ -169,6 +180,15 @@ public sealed class CorrectiveOciProvenanceReleaseTests
         ProcessResult result = RunProcess(FindRepositoryRoot(), "python3", "-c", script);
         result.ExitCode.ShouldBe(0, result.Error);
         result.Output.Trim().ShouldBe("3.96.2");
+
+        ProcessResult occupiedHigher = RunProcess(
+            FindRepositoryRoot(),
+            "python3",
+            "-c",
+            "from tools.release_evidence_codec import select_absent_version;" +
+            "print(select_absent_version(['3.95.0'], {'4.0.0'}))");
+        occupiedHigher.ExitCode.ShouldBe(0, occupiedHigher.Error);
+        occupiedHigher.Output.Trim().ShouldBe("4.0.1");
     }
 
     /// <summary>
@@ -187,6 +207,38 @@ public sealed class CorrectiveOciProvenanceReleaseTests
         disposition.RootElement.GetProperty("immutable_non_authorizing").GetBoolean().ShouldBeTrue();
         disposition.RootElement.GetProperty("retry_requires_new_version").GetBoolean().ShouldBeTrue();
         disposition.RootElement.GetProperty("retry_requires_new_authority").GetBoolean().ShouldBeTrue();
+
+        ProcessResult nonBoolean = RunProcess(
+            FindRepositoryRoot(),
+            "python3",
+            "-c",
+            "from tools.release_evidence_codec import publication_disposition as d;d('3.96.1',[],1)");
+        nonBoolean.ExitCode.ShouldNotBe(0);
+        nonBoolean.Error.ShouldContain("publication completion must be a boolean");
+    }
+
+    /// <summary>
+    /// Verifies the package manifest has one exact 14-entry ordered, case-insensitively unique schema.
+    /// </summary>
+    [Fact]
+    public void ReleasePackageManifestRejectsSchemaCountAndCaseInsensitiveIdentityDrift()
+    {
+        string script =
+            "import copy,json;from pathlib import Path;" +
+            "from tools.release_evidence_codec import EvidenceError,validate_release_manifest as v;" +
+            "m=json.loads(Path('tools/release-packages.json').read_text());v(m);" +
+            "cases=[];" +
+            "x=copy.deepcopy(m);x['extra']=1;cases.append(x);" +
+            "x=copy.deepcopy(m);x['packages'].pop();cases.append(x);" +
+            "x=copy.deepcopy(m);x['packages'][1]['id']=x['packages'][0]['id'].upper();cases.append(x);" +
+            "x=copy.deepcopy(m);x['packages'][0]['extra']=1;cases.append(x);" +
+            "\nfor c in cases:\n" +
+            " try:v(c);raise AssertionError('accepted invalid manifest')\n" +
+            " except EvidenceError:pass\n" +
+            "print('pass')";
+        ProcessResult result = RunProcess(FindRepositoryRoot(), "python3", "-c", script);
+        result.ExitCode.ShouldBe(0, result.Error);
+        result.Output.Trim().ShouldBe("pass");
     }
 
     /// <summary>
@@ -196,63 +248,262 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     public void CanonicalReleaseIdentityBindsRetainedBytesAndRejectsMutations()
     {
         string root = FindRepositoryRoot();
+        string checkedInPacket = Path.Combine(
+            root,
+            "_bmad-output",
+            "implementation-artifacts",
+            "evidence",
+            "story-3-14",
+            "f343bb0153e9cdcb8b12ec10153813072f5ad38d");
+        ProcessResult checkedIn = RunEvidenceValidator(
+            root,
+            Path.Combine(checkedInPacket, "release-identity.json"),
+            checkedInPacket);
+        checkedIn.ExitCode.ShouldBe(0, checkedIn.Error);
+        checkedIn.Output.Trim().ShouldBe(
+            "[corrective-release-evidence] pass: " +
+            "sha256:92b7479bfac6f61c755a0cb3023ea2db08f4115eb8119ca08ba84765630fdb7b");
+
         string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-release-evidence-{Guid.NewGuid():N}");
         Directory.CreateDirectory(temporary);
         try
         {
-            EvidenceFixture fixture = BuildCompleteEvidencePacket(root, temporary);
-            ProcessResult success = RunEvidenceValidator(root, fixture.IdentityPath, temporary);
-            success.ExitCode.ShouldBe(0, success.Error);
-            success.Output.ShouldContain("[corrective-release-evidence] pass: sha256:");
+            string workflowPacket = CopyPacket(checkedInPacket, Path.Combine(temporary, "workflow"));
+            JsonObject workflowIdentity = LoadIdentity(workflowPacket);
+            workflowIdentity["workflow"]!["workflow_sha"] = new string('e', 40);
+            WriteSelectedCanonicalJson(root, Path.Combine(workflowPacket, "release-identity.json"), workflowIdentity);
+            ProcessResult workflowMutation = RunEvidenceValidator(
+                root,
+                Path.Combine(workflowPacket, "release-identity.json"),
+                workflowPacket);
+            workflowMutation.ExitCode.ShouldNotBe(0);
+            workflowMutation.Error.ShouldContain("workflow identity mismatch");
 
-            JsonNode revision = fixture.Identity["oci"]!["children"]![0]!["labels"]![
-                "org.opencontainers.image.revision"]!.DeepClone();
-            fixture.Identity["oci"]!["children"]![0]!["labels"]![
-                "org.opencontainers.image.revision"] = new string('e', 40);
-            WriteSelectedCanonicalJson(root, fixture.IdentityPath, fixture.Identity);
-            ProcessResult labelMutation = RunEvidenceValidator(root, fixture.IdentityPath, temporary);
-            labelMutation.ExitCode.ShouldNotBe(0);
-            labelMutation.Error.ShouldContain("OCI child platform or provenance labels mismatch");
-            fixture.Identity["oci"]!["children"]![0]!["labels"]![
-                "org.opencontainers.image.revision"] = revision;
-            WriteSelectedCanonicalJson(root, fixture.IdentityPath, fixture.Identity);
+            string orderPacket = CopyPacket(checkedInPacket, Path.Combine(temporary, "package-order"));
+            JsonObject orderIdentity = LoadIdentity(orderPacket);
+            JsonArray orderedPackages = orderIdentity["packages"]!.AsArray();
+            JsonNode firstPackage = orderedPackages[0]!.DeepClone();
+            orderedPackages[0] = orderedPackages[1]!.DeepClone();
+            orderedPackages[1] = firstPackage;
+            WriteSelectedCanonicalJson(root, Path.Combine(orderPacket, "release-identity.json"), orderIdentity);
+            ProcessResult orderMutation = RunEvidenceValidator(
+                root,
+                Path.Combine(orderPacket, "release-identity.json"),
+                orderPacket);
+            orderMutation.ExitCode.ShouldNotBe(0);
+            orderMutation.Error.ShouldContain("release package identity or order mismatch");
 
-            File.WriteAllBytes(fixture.ConfigPath, [.. fixture.ConfigBytes, (byte)'\n']);
-            ProcessResult configMutation = RunEvidenceValidator(root, fixture.IdentityPath, temporary);
-            configMutation.ExitCode.ShouldNotBe(0);
-            configMutation.Error.ShouldContain("retained evidence bytes do not match their binding");
-            File.WriteAllBytes(fixture.ConfigPath, fixture.ConfigBytes);
+            string packagePacket = CopyPacket(checkedInPacket, Path.Combine(temporary, "package-origin"));
+            JsonObject packageIdentity = LoadIdentity(packagePacket);
+            JsonNode package = packageIdentity["packages"]![0].ShouldNotBeNull();
+            string packageFile = package["file"]!.GetValue<string>();
+            string packagePath = Path.Combine(packagePacket, packageFile);
+            MutateNuspecRepositoryUrl(packagePath);
+            byte[] packageBytes = File.ReadAllBytes(packagePath);
+            package["size"] = packageBytes.Length;
+            package["sha256"] = Sha256(packageBytes);
+            RefreshPacketManifest(root, packagePacket, packageIdentity);
+            ProcessResult packageMutation = RunEvidenceValidator(
+                root,
+                Path.Combine(packagePacket, "release-identity.json"),
+                packagePacket);
+            packageMutation.ExitCode.ShouldNotBe(0);
+            packageMutation.Error.ShouldContain("package nuspec repository identity does not match");
 
-            JsonObject index = JsonNode.Parse(fixture.IndexBytes)!.AsObject();
-            index["mediaType"] = "application/vnd.docker.distribution.manifest.list.v2+json";
-            byte[] mutatedIndex = CanonicalJsonBytes(index);
-            File.WriteAllBytes(fixture.IndexPath, mutatedIndex);
-            UpdateBinding(fixture.Identity["oci"]!["index"].ShouldNotBeNull(), mutatedIndex);
-            WriteSelectedCanonicalJson(root, fixture.IdentityPath, fixture.Identity);
-            ProcessResult indexMutation = RunEvidenceValidator(root, fixture.IdentityPath, temporary);
-            indexMutation.ExitCode.ShouldNotBe(0);
-            indexMutation.Error.ShouldContain("retained OCI index does not contain exactly two direct children");
-            File.WriteAllBytes(fixture.IndexPath, fixture.IndexBytes);
-            UpdateBinding(fixture.Identity["oci"]!["index"].ShouldNotBeNull(), fixture.IndexBytes);
+            string configPacket = CopyPacket(checkedInPacket, Path.Combine(temporary, "raw-config"));
+            JsonObject configIdentity = LoadIdentity(configPacket);
+            JsonNode oci = configIdentity["oci"].ShouldNotBeNull();
+            JsonNode child = oci["children"]![0].ShouldNotBeNull();
+            JsonNode configBinding = child["config"].ShouldNotBeNull();
+            string configFile = configBinding["file"]!.GetValue<string>();
+            string configPath = Path.Combine(configPacket, configFile);
+            JsonObject rawConfig = JsonNode.Parse(File.ReadAllText(configPath))!.AsObject();
+            rawConfig["config"]!["Labels"]!["org.opencontainers.image.source"] = "https";
+            byte[] configBytes = CanonicalJsonBytes(rawConfig);
+            File.WriteAllBytes(configPath, configBytes);
+            UpdateBinding(configBinding, configBytes);
 
-            JsonObject smokeSummary = JsonNode.Parse(File.ReadAllText(fixture.SmokePath))!.AsObject();
-            smokeSummary["platforms"]![0]!["cleanup"] = "failure";
-            byte[] mutatedSmoke = CanonicalJsonBytes(smokeSummary);
-            File.WriteAllBytes(fixture.SmokePath, mutatedSmoke);
-            string mutatedSmokeHash = Sha256(mutatedSmoke);
-            foreach (JsonNode? smoke in fixture.Identity["smokes"]!.AsArray())
+            JsonNode manifestBinding = child["manifest"].ShouldNotBeNull();
+            string originalChildDigest = manifestBinding["digest"]!.GetValue<string>();
+            string manifestFile = manifestBinding["file"]!.GetValue<string>();
+            string manifestPath = Path.Combine(configPacket, manifestFile);
+            JsonObject rawManifest = JsonNode.Parse(File.ReadAllText(manifestPath))!.AsObject();
+            rawManifest["config"]!["digest"] = configBinding["digest"]!.GetValue<string>();
+            rawManifest["config"]!["size"] = configBinding["size"]!.GetValue<int>();
+            byte[] manifestBytes = CanonicalJsonBytes(rawManifest);
+            File.WriteAllBytes(manifestPath, manifestBytes);
+            UpdateBinding(manifestBinding, manifestBytes);
+
+            JsonNode indexBinding = oci["index"].ShouldNotBeNull();
+            string indexFile = indexBinding["file"]!.GetValue<string>();
+            string indexPath = Path.Combine(configPacket, indexFile);
+            JsonObject rawIndex = JsonNode.Parse(File.ReadAllText(indexPath))!.AsObject();
+            rawIndex["manifests"]![0]!["digest"] = manifestBinding["digest"]!.GetValue<string>();
+            rawIndex["manifests"]![0]!["size"] = manifestBinding["size"]!.GetValue<int>();
+            byte[] indexBytes = CanonicalJsonBytes(rawIndex);
+            File.WriteAllBytes(indexPath, indexBytes);
+            UpdateBinding(indexBinding, indexBytes);
+
+            JsonNode firstSmoke = configIdentity["smokes"]![0].ShouldNotBeNull();
+            string childDigest = manifestBinding["digest"]!.GetValue<string>();
+            firstSmoke["child_digest"] = childDigest;
+            firstSmoke["immutable_image"] = $"registry.hexalith.com/eventstore@{childDigest}";
+            string smokeSummaryFile = firstSmoke["evidence_file"]!.GetValue<string>();
+            string smokeSummaryPath = Path.Combine(configPacket, smokeSummaryFile);
+            JsonObject smokeSummary = JsonNode.Parse(File.ReadAllText(smokeSummaryPath))!.AsObject();
+            smokeSummary["platforms"]![0]!["digest"] = childDigest;
+            byte[] smokeSummaryBytes = CanonicalJsonBytes(smokeSummary);
+            File.WriteAllBytes(smokeSummaryPath, smokeSummaryBytes);
+            foreach (JsonNode? smokeNode in configIdentity["smokes"]!.AsArray())
             {
-                smoke!["evidence_sha256"] = mutatedSmokeHash;
+                smokeNode!["evidence_sha256"] = Sha256(smokeSummaryBytes);
             }
 
-            WriteSelectedCanonicalJson(root, fixture.IdentityPath, fixture.Identity);
-            ProcessResult smokeMutation = RunEvidenceValidator(root, fixture.IdentityPath, temporary);
+            JsonNode smokeLogBinding = firstSmoke["log"].ShouldNotBeNull();
+            string smokeLogFile = smokeLogBinding["file"]!.GetValue<string>();
+            string configSmokeLogPath = Path.Combine(configPacket, smokeLogFile);
+            byte[] configSmokeLogBytes = Encoding.UTF8.GetBytes(
+                File.ReadAllText(configSmokeLogPath).Replace(
+                    $"registry.hexalith.com/eventstore@{originalChildDigest}",
+                    $"registry.hexalith.com/eventstore@{childDigest}",
+                    StringComparison.Ordinal));
+            File.WriteAllBytes(configSmokeLogPath, configSmokeLogBytes);
+            UpdateFileBinding(smokeLogBinding, configSmokeLogBytes);
+            RefreshPacketManifest(root, configPacket, configIdentity);
+            ProcessResult configMutation = RunEvidenceValidator(
+                root,
+                Path.Combine(configPacket, "release-identity.json"),
+                configPacket);
+            configMutation.ExitCode.ShouldNotBe(0);
+            configMutation.Error.ShouldContain("retained OCI config platform or labels mismatch");
+
+            string checksumPacket = CopyPacket(checkedInPacket, Path.Combine(temporary, "checksum"));
+            File.AppendAllText(Path.Combine(checksumPacket, "observations.json"), " \n");
+            ProcessResult checksumMutation = RunEvidenceValidator(
+                root,
+                Path.Combine(checksumPacket, "release-identity.json"),
+                checksumPacket);
+            checksumMutation.ExitCode.ShouldNotBe(0);
+            checksumMutation.Error.ShouldContain("packet checksum manifest digest mismatch");
+
+            string smokePacket = CopyPacket(checkedInPacket, Path.Combine(temporary, "smoke"));
+            JsonObject smokeIdentity = LoadIdentity(smokePacket);
+            JsonNode smoke = smokeIdentity["smokes"]![0].ShouldNotBeNull();
+            string smokeLog = smoke["log"]!["file"]!.GetValue<string>();
+            string smokeLogPath = Path.Combine(smokePacket, smokeLog);
+            byte[] smokeBytes = Encoding.UTF8.GetBytes(
+                File.ReadAllText(smokeLogPath).Replace("cleanup=pass", "cleanup=failure", StringComparison.Ordinal));
+            File.WriteAllBytes(smokeLogPath, smokeBytes);
+            UpdateFileBinding(smoke["log"].ShouldNotBeNull(), smokeBytes);
+            RefreshPacketManifest(root, smokePacket, smokeIdentity);
+            ProcessResult smokeMutation = RunEvidenceValidator(
+                root,
+                Path.Combine(smokePacket, "release-identity.json"),
+                smokePacket);
             smokeMutation.ExitCode.ShouldNotBe(0);
-            smokeMutation.Error.ShouldContain("retained bounded Development smoke result mismatch");
+            smokeMutation.Error.ShouldContain("retained raw smoke log identity or outcome mismatch");
+
+            string authorityPacket = CopyPacket(checkedInPacket, Path.Combine(temporary, "authority"));
+            JsonObject authorityIdentity = LoadIdentity(authorityPacket);
+            JsonNode authority = authorityIdentity["authority"].ShouldNotBeNull();
+            string authorityFile = authority["authority_record_file"]!.GetValue<string>();
+            JsonObject authorityRecord = JsonNode.Parse(File.ReadAllText(Path.Combine(authorityPacket, authorityFile)))!
+                .AsObject();
+            authorityRecord["updated_at"] = "2026-08-20T11:06:07Z";
+            byte[] authorityBytes = CanonicalJsonBytes(authorityRecord);
+            File.WriteAllBytes(Path.Combine(authorityPacket, authorityFile), authorityBytes);
+            authority["authority_record_sha256"] = Sha256(authorityBytes);
+            RefreshPacketManifest(root, authorityPacket, authorityIdentity);
+            ProcessResult authorityMutation = RunEvidenceValidator(
+                root,
+                Path.Combine(authorityPacket, "release-identity.json"),
+                authorityPacket);
+            authorityMutation.ExitCode.ShouldNotBe(0);
+            authorityMutation.Error.ShouldContain("timestamps or validity window are invalid");
+
+            string receiptPacket = CopyPacket(checkedInPacket, Path.Combine(temporary, "receipt"));
+            JsonObject receiptIdentity = LoadIdentity(receiptPacket);
+            JsonNode receiptAuthority = receiptIdentity["authority"].ShouldNotBeNull();
+            string receiptFile = receiptAuthority["consumption_evidence_file"]!.GetValue<string>();
+            JsonObject receipt = JsonNode.Parse(File.ReadAllText(Path.Combine(receiptPacket, receiptFile)))!.AsObject();
+            JsonObject receiptBody = JsonNode.Parse(receipt["body"]!.GetValue<string>())!.AsObject();
+            receiptBody["schema"] = "mutated";
+            receipt["body"] = Encoding.UTF8.GetString(CanonicalJsonBytes(receiptBody)).TrimEnd('\n');
+            byte[] receiptBytes = CanonicalJsonBytes(receipt);
+            File.WriteAllBytes(Path.Combine(receiptPacket, receiptFile), receiptBytes);
+            receiptAuthority["consumption_evidence_sha256"] = Sha256(receiptBytes);
+            RefreshPacketManifest(root, receiptPacket, receiptIdentity);
+            ProcessResult receiptMutation = RunEvidenceValidator(
+                root,
+                Path.Combine(receiptPacket, "release-identity.json"),
+                receiptPacket);
+            receiptMutation.ExitCode.ShouldNotBe(0);
+            receiptMutation.Error.ShouldContain("consumption does not bind the selected identity");
         }
         finally
         {
             Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies retained authority cannot expire before creation, exceed 24 hours, or be edited.
+    /// </summary>
+    /// <param name="expiresAt">Optional replacement expiry.</param>
+    /// <param name="updatedAt">Optional replacement update timestamp.</param>
+    [Theory]
+    [InlineData("2026-08-20T11:05:00Z", null)]
+    [InlineData("2026-08-21T11:06:07Z", null)]
+    [InlineData(null, "2026-08-20T11:06:07Z")]
+    public void RetainedAuthorityRejectsInvalidWindowAndEditedRecord(string? expiresAt, string? updatedAt)
+    {
+        string root = FindRepositoryRoot();
+        string source = Path.Combine(
+            root,
+            "_bmad-output",
+            "implementation-artifacts",
+            "evidence",
+            "story-3-14",
+            "f343bb0153e9cdcb8b12ec10153813072f5ad38d");
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-authority-{Guid.NewGuid():N}");
+        try
+        {
+            string packetRoot = CopyPacket(source, temporary);
+            JsonObject identity = LoadIdentity(packetRoot);
+            JsonNode authority = identity["authority"].ShouldNotBeNull();
+            string authorityFile = authority["authority_record_file"]!.GetValue<string>();
+            string authorityPath = Path.Combine(packetRoot, authorityFile);
+            JsonObject record = JsonNode.Parse(File.ReadAllText(authorityPath))!.AsObject();
+            JsonObject body = JsonNode.Parse(record["body"]!.GetValue<string>())!.AsObject();
+            if (expiresAt is not null)
+            {
+                body["expires_at"] = expiresAt;
+                record["body"] = Encoding.UTF8.GetString(CanonicalJsonBytes(body)).TrimEnd('\n');
+            }
+
+            if (updatedAt is not null)
+            {
+                record["updated_at"] = updatedAt;
+            }
+
+            byte[] recordBytes = CanonicalJsonBytes(record);
+            File.WriteAllBytes(authorityPath, recordBytes);
+            authority["authority_record_sha256"] = Sha256(recordBytes);
+            RefreshPacketManifest(root, packetRoot, identity);
+
+            ProcessResult result = RunEvidenceValidator(
+                root,
+                Path.Combine(packetRoot, "release-identity.json"),
+                packetRoot);
+            result.ExitCode.ShouldNotBe(0);
+            result.Error.ShouldContain("timestamps or validity window are invalid");
+        }
+        finally
+        {
+            if (Directory.Exists(temporary))
+            {
+                Directory.Delete(temporary, recursive: true);
+            }
         }
     }
 
@@ -658,6 +909,69 @@ public sealed class CorrectiveOciProvenanceReleaseTests
         binding["size"] = bytes.Length;
         binding["sha256"] = hash;
         binding["digest"] = $"sha256:{hash}";
+    }
+
+    private static string CopyPacket(string source, string destination)
+    {
+        Directory.CreateDirectory(destination);
+        foreach (string directory in Directory.EnumerateDirectories(source, "*", SearchOption.AllDirectories))
+        {
+            Directory.CreateDirectory(Path.Combine(destination, Path.GetRelativePath(source, directory)));
+        }
+
+        foreach (string file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+        {
+            File.Copy(file, Path.Combine(destination, Path.GetRelativePath(source, file)));
+        }
+
+        return destination;
+    }
+
+    private static JsonObject LoadIdentity(string packetRoot) =>
+        JsonNode.Parse(File.ReadAllText(Path.Combine(packetRoot, "release-identity.json")))!.AsObject();
+
+    private static void MutateNuspecRepositoryUrl(string packagePath)
+    {
+        using FileStream stream = new(packagePath, FileMode.Open, FileAccess.ReadWrite);
+        using ZipArchive archive = new(stream, ZipArchiveMode.Update);
+        ZipArchiveEntry entry = archive.Entries.Single(item => item.FullName.EndsWith(".nuspec", StringComparison.Ordinal));
+        string name = entry.FullName;
+        string text;
+        using (StreamReader reader = new(entry.Open(), Encoding.UTF8))
+        {
+            text = reader.ReadToEnd();
+        }
+
+        entry.Delete();
+        ZipArchiveEntry replacement = archive.CreateEntry(name);
+        using StreamWriter writer = new(replacement.Open(), new UTF8Encoding(false));
+        writer.Write(
+            text.Replace(
+                "https://github.com/Hexalith/Hexalith.EventStore",
+                "https://example.invalid/Hexalith.EventStore",
+                StringComparison.Ordinal));
+    }
+
+    private static void RefreshPacketManifest(string root, string packetRoot, JsonObject identity)
+    {
+        string[] excluded = ["packet-sha256.txt", "release-identity.json"];
+        string[] files = Directory.EnumerateFiles(packetRoot, "*", SearchOption.AllDirectories)
+            .Select(path => Path.GetRelativePath(packetRoot, path).Replace('\\', '/'))
+            .Where(path => !excluded.Contains(path, StringComparer.Ordinal))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        string manifest = string.Concat(
+            files.Select(path => $"{Sha256(File.ReadAllBytes(Path.Combine(packetRoot, path)))}  {path}\n"));
+        byte[] manifestBytes = Encoding.UTF8.GetBytes(manifest);
+        File.WriteAllBytes(Path.Combine(packetRoot, "packet-sha256.txt"), manifestBytes);
+        UpdateFileBinding(identity["packet_manifest"].ShouldNotBeNull(), manifestBytes);
+        WriteSelectedCanonicalJson(root, Path.Combine(packetRoot, "release-identity.json"), identity);
+    }
+
+    private static void UpdateFileBinding(JsonNode binding, byte[] bytes)
+    {
+        binding["size"] = bytes.Length;
+        binding["sha256"] = Sha256(bytes);
     }
 
     private static ProcessResult RunEvidenceValidator(string root, string identityPath, string packetRoot) =>
