@@ -10,7 +10,7 @@ namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 /// </summary>
 public sealed class ContainerPublishingGovernanceTests
 {
-    private const string ApprovedBuildsReleaseSha = "84f039ba706e1841a73b1f9f6dba5d1f0b0696b5";
+    private const string ApprovedBuildsReleaseSha = "f271c8aa373307aac21d4f68857aba25442a49a2";
     private const int ExpectedPackageCount = 14;
     private static readonly TimeSpan PublicationPreflightTimeout = TimeSpan.FromSeconds(10);
 
