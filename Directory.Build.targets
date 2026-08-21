@@ -17,17 +17,25 @@
     <ContainerImageTag Condition="'$(ContainerImageTags)' == '' and '$(ContainerImageTag)' == ''">staging-latest</ContainerImageTag>
     <ContainerUser>app</ContainerUser>
     <!--
-      The .NET SDK 10.0.302 multi-RID target serializes labels as key:value and
-      reconstructs them with String.Split(':')[1]. URL values therefore become
-      only "https" in the child configs. These publisher-owned inputs are
-      rebound after the SDK parse target below so both child configs retain the
-      exact release identity.
+      The .NET SDK 10.0.x multi-RID target serializes labels as key:value and
+      reconstructs them with String.Split(':')[1] (observed on 10.0.302 and
+      10.0.303). Every value containing a colon is truncated at the first one:
+      URLs collapse to "https" and RFC 3339 timestamps to their date-and-hour
+      prefix. These publisher-owned inputs are rebound after the SDK parse
+      target below so both child configs retain the exact release identity.
     -->
     <ContainerGenerateLabelsImageSource>false</ContainerGenerateLabelsImageSource>
     <ContainerGenerateLabelsImageUrl>false</ContainerGenerateLabelsImageUrl>
     <ContainerGenerateLabelsImageDocumentation>false</ContainerGenerateLabelsImageDocumentation>
     <ContainerGenerateLabelsImageRevision>false</ContainerGenerateLabelsImageRevision>
     <ContainerGenerateLabelsImageVersion>false</ContainerGenerateLabelsImageVersion>
+    <ContainerGenerateLabelsImageCreated>false</ContainerGenerateLabelsImageCreated>
+    <!--
+      The publisher supplies one exact RFC 3339 instant so both child configs
+      agree. Local publishes fall back to build time, which is still a valid
+      timestamp rather than the SDK's colon-truncated prefix.
+    -->
+    <ContainerProvenanceCreated Condition="'$(ContainerProvenanceCreated)' == ''">$([System.DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ'))</ContainerProvenanceCreated>
     <ContainerProvenanceRepositoryUrl>https://github.com/Hexalith/Hexalith.EventStore</ContainerProvenanceRepositoryUrl>
     <ContainerProvenanceReleaseUrl>$(ContainerProvenanceRepositoryUrl)/releases/tag/v$(ContainerProvenanceReleaseVersion)</ContainerProvenanceReleaseUrl>
     <ContainerProvenanceDocumentationUrl>$(ContainerProvenanceRepositoryUrl)/blob/$(ContainerProvenanceSourceSha)/README.md</ContainerProvenanceDocumentationUrl>
@@ -40,6 +48,8 @@
     <ContainerLabel Include="org.opencontainers.image.documentation" Value="$(ContainerProvenanceDocumentationUrl)" />
     <ContainerLabel Include="org.opencontainers.image.revision" Value="$(ContainerProvenanceSourceSha)" />
     <ContainerLabel Include="org.opencontainers.image.version" Value="$(ContainerProvenanceReleaseVersion)" />
+    <ContainerLabel Include="org.opencontainers.image.created" Value="$(ContainerProvenanceCreated)" />
+    <ContainerLabel Include="org.opencontainers.artifact.created" Value="$(ContainerProvenanceCreated)" />
     <ContainerLabel Include="org.opencontainers.image.licenses" Value="MIT" />
     <ContainerLabel Include="org.opencontainers.image.vendor" Value="Hexalith" />
   </ItemGroup>
@@ -58,12 +68,14 @@
           AfterTargets="_ParseItemsForPublishingSingleContainer"
           Condition="'$(EnableContainer)' == 'true' and '$(_IsSingleRIDBuild)' == 'true'">
     <ItemGroup>
-      <ContainerLabel Remove="org.opencontainers.image.source;org.opencontainers.image.url;org.opencontainers.image.documentation;org.opencontainers.image.revision;org.opencontainers.image.version" />
+      <ContainerLabel Remove="org.opencontainers.image.source;org.opencontainers.image.url;org.opencontainers.image.documentation;org.opencontainers.image.revision;org.opencontainers.image.version;org.opencontainers.image.created;org.opencontainers.artifact.created" />
       <ContainerLabel Include="org.opencontainers.image.source" Value="$(ContainerProvenanceRepositoryUrl)" />
       <ContainerLabel Include="org.opencontainers.image.url" Value="$(ContainerProvenanceReleaseUrl)" />
       <ContainerLabel Include="org.opencontainers.image.documentation" Value="$(ContainerProvenanceDocumentationUrl)" />
       <ContainerLabel Include="org.opencontainers.image.revision" Value="$(ContainerProvenanceSourceSha)" />
       <ContainerLabel Include="org.opencontainers.image.version" Value="$(ContainerProvenanceReleaseVersion)" />
+      <ContainerLabel Include="org.opencontainers.image.created" Value="$(ContainerProvenanceCreated)" />
+      <ContainerLabel Include="org.opencontainers.artifact.created" Value="$(ContainerProvenanceCreated)" />
     </ItemGroup>
   </Target>
 

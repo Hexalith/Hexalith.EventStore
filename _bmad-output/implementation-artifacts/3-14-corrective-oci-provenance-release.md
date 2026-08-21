@@ -14,11 +14,21 @@ passed. The stable GitHub Release contains exactly the 14 packages declared by
 smoke under the helper's declared `Development` environment.
 
 The canonical [release identity](evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d/release-identity.json)
-has SHA-256 `92b7479bfac6f61c755a0cb3023ea2db08f4115eb8119ca08ba84765630fdb7b`.
+has SHA-256 `4d1a0c336397e971bf10001095d5e427dd03c499ee428a3121a913926da8c4a9`.
 It binds the repository, `v3.96.2`, source, workflow run/attempt, exact Builds execution and helper
 bytes, one-use authority and receipt, all package archives, raw OCI graph/config bytes and labels,
 both raw smoke logs and results, and the cycle-free packet inventory. Validation re-derived every
 bound claim from retained bytes.
+
+The identity document has been regenerated twice since publication; the published release itself —
+tag, packages, OCI bytes and smokes — is unchanged by either regeneration, and neither affects the
+one-use authority, which binds the separate publication identity `fa275117…`. The digest history is:
+
+| Canonical digest | Commit | Change |
+| --- | --- | --- |
+| `926ccfdf9bf3f095211fb37fcdbb8c4f608ad5359cb3636774239992a7751af4` | `a55b5bef` | Codec version 1, as first retained. |
+| `92b7479bfac6f61c755a0cb3023ea2db08f4115eb8119ca08ba84765630fdb7b` | `1e5abd26` | Codec version 2: helper file bindings, `packet_manifest`, authority record/snapshot/role bindings, smoke logs. |
+| `4d1a0c336397e971bf10001095d5e427dd03c499ee428a3121a913926da8c4a9` | code review 2026-08-21 | Codec version 3: the codec and verifier are now retained inside the packet under `successful/tools/` and validation binds those retained bytes instead of the live `tools/` files, so a later fix to the codec can no longer invalidate this packet. The same pass removed the two uncalled helpers `select_absent_version` and `publication_disposition` from the codec, and amended the two matrix rows they were the only implementation of. |
 
 This record and packet select no deployed identity and grant no mutation authority. Story 3.15
 must independently decide whether this release can satisfy corrected deployed-runtime parity.
@@ -27,7 +37,14 @@ Post-release review hardening produced Builds commit
 `63409393541f1437e23006b7a4e05174f8b50da7` and rotates the current EventStore release caller to
 that immutable revision. This does not rewrite the historical release execution: the packet
 correctly remains bound to executed Builds SHA `eadddc7b5d8e9392e5931758ffb608b57b5fdc6c`, while the
-ordinary development gitlink remains independently pinned at `145ab857a50dc6cf22220723604badb28d78cdbc`.
+ordinary development gitlink is pinned independently of the release caller. The gitlink has moved
+several times since this record was first written (`145ab857` at `4038cf33`, `eadddc7b` at
+`a55b5bef`, back to `145ab857` at `1e5abd26`, and `eadddc7b` again at `c8902353`); read it from
+`git ls-tree HEAD references/Hexalith.Builds` rather than from this paragraph.
+
+Note that `63409393541f1437e23006b7a4e05174f8b50da7` is not yet published to the Hexalith.Builds
+remote — it exists only on the local branch `fix/story-3-14-release-hardening`. Until it is pushed,
+a Release dispatch cannot resolve the reusable workflow this caller pins.
 
 ## Canonical Identity
 
@@ -61,9 +78,9 @@ comment, full relevant issue-comment snapshot, and repository role proof. Supple
 observations and the partial-attempt ledger are in
 [`observations.json`](evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d/observations.json).
 The generated [packet checksum manifest](evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d/packet-sha256.txt)
-binds all 62 retained files other than the canonical identity and itself. The identity binds the
+binds all 64 retained files other than the canonical identity and itself. The identity binds the
 manifest's exact bytes, size, and SHA-256
-`df65325b32bb15b0245f31ca43f3ad32c0e09c80ef7f2d317b90eb35ded9accd`, avoiding a checksum cycle.
+`0736d3ac05c21b560d9e9c204603e39c5750fa8a28271f1d0411e3e9a051b730`, avoiding a checksum cycle.
 
 The retained raw authority comment is the exact Actions-token `CONTRIBUTOR` representation whose
 publisher-canonical bytes reproduce the original `d97629bb…` record digest. The full issue snapshot
@@ -82,7 +99,19 @@ Both raw configs retain the exact required values:
 
 The evidence codec binds the complete raw config label maps while independently requiring those
 five values. This permits normal SDK/base-image labels without weakening or replacing the required
-provenance fields. A required-label mutation fails the focused evidence suite.
+provenance fields.
+
+**Known defect in this release.** The five values above are exact, but v3.96.2 shipped with
+`org.opencontainers.image.created` and `org.opencontainers.artifact.created` truncated to
+`2026-08-20T11` by the same SDK `String.Split(':')[1]` reconstruction — those two labels were not
+among the five rebound by `Directory.Build.targets`, and neither the codec nor the archive test
+inspected any label outside the five. The published image is otherwise correct and its identity,
+source, revision and version labels are unaffected; the malformed values are timestamps only.
+The 2026-08-21 code review corrected the build so the publisher supplies one exact RFC 3339 instant
+for both labels in both child configs, and the archive test now asserts the complete label surface
+rather than a five-key allowlist. Reissuing v3.96.2 was deliberately not attempted: the labels are
+not contract-bound by the Story 3.14 matrix, and a re-release would consume a further version and a
+further one-use authority.
 
 ## Quarantined Attempts
 
@@ -103,7 +132,7 @@ quarantined version nor any earlier authority record. The packet retains the exa
 ## Verification
 
 - `python3 tools/validate-corrective-release-evidence.py <release-identity> --manifest tools/release-packages.json --packet-root <packet>` — pass; canonical SHA-256
-  `92b7479bfac6f61c755a0cb3023ea2db08f4115eb8119ca08ba84765630fdb7b`.
+  `4d1a0c336397e971bf10001095d5e427dd03c499ee428a3121a913926da8c4a9`.
 - Contracts Release/package-mode build — pass, zero warnings and zero errors.
 - Focused corrective-release and container-governance suite — 31 passed, zero failed, zero skipped;
   includes the checked-in packet's exact final digest and manifest, package-origin, workflow,

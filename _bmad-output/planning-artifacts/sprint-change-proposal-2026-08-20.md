@@ -5,7 +5,7 @@ Project: eventstore
 Planning mode: Batch
 Scope classification: Moderate
 Recommended path: Direct Adjustment
-Approval: Pending Administrator review
+Approval: Approved by Administrator on 2026-08-20
 
 ## 1. Issue Summary
 
@@ -279,7 +279,7 @@ All upstream identities must be resolved again immediately before implementation
 | 5.5 Handoff | [x] | Owners, sequence, and success criteria supplied below. |
 | 6.1 Proposal coherence | [x] | Preserves completed evidence and central authority. |
 | 6.2 Proposal accuracy | [x] | Bound to 2026-08-20 source and upstream observations; requires execution-time refresh. |
-| 6.3 Approval | [!] | Pending Administrator Continue/Edit review and explicit implementation approval. |
+| 6.3 Approval | [x] | Administrator continued review and explicitly approved implementation on 2026-08-20. |
 | 6.4 Sprint status | [!] | Proposed only; no sprint-status mutation performed. |
 | 6.5 Handoff | [x] | Moderate change routed to Product Owner, Builds maintainer, EventStore Developer, and root maintainer. |
 
@@ -313,3 +313,13 @@ Success criteria:
 - All seven parent gitlinks equal their execution-time validated targets, with no nested or unrelated submodule mutation.
 - Existing Story 1.21 work and frozen Story 3.11/3.13-3.15 evidence remain byte-for-byte outside the explicitly approved edits.
 - No package publication, deployment, commit, push, merge, or nested-submodule update occurs without its separate authority.
+
+## 7. Workflow Execution Log
+
+- 2026-08-20: Administrator requested a course correction for current NuGet packages and latest root-declared submodules.
+- 2026-08-20: Batch review mode selected.
+- 2026-08-20: PRD, epics, architecture, UX, project context, repository guidance, live NuGet evidence, and root-submodule upstream identities reviewed.
+- 2026-08-20: Moderate Direct Adjustment proposal generated and presented.
+- 2026-08-20: Administrator selected Continue and explicitly approved the complete proposal for implementation.
+- 2026-08-20: Approved proposal routed to Product Owner and Developer, with Hexalith.Builds and root-repository maintainer responsibilities identified.
+- Implementation status: not started by this workflow; proposed artifact, catalog, source, audit, and gitlink changes remain handoff deliverables.

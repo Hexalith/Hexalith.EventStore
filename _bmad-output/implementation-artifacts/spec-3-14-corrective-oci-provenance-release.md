@@ -31,9 +31,9 @@ context:
 | Scenario | Input / State | Expected Output / Behavior | Error Handling |
 |----------|--------------|---------------------------|----------------|
 | Real multi-RID archive | Source SHA and version | Both configs contain identical exact source, release, SHA-pinned docs, revision, and version labels | Any invalid/divergent label fails |
-| Candidate selection | Live release/package/registry destinations | Resolve an absent version newer than all | Ambiguity, stale read, or collision blocks |
+| Candidate selection | Dispatch-reserved stable version plus live release/package/registry destinations | The shared Builds preflight resolves the version floor from every live destination and admits only a reserved version that is absent and newer than all of them, and Semantic Release must independently resolve the identical value | Ambiguity, stale read, or collision blocks |
 | Authorized publication | Unexpired one-use GitHub authority for run/attempt and scope | All writes match one reservation, consumed once | Missing, expired, replayed, wrong-role, or mismatch blocks |
-| Partial publication | Any write succeeds before a later failure | Preserve the partial version as immutable non-authorizing evidence | Retry requires a new version and new authority |
+| Partial publication | Any write succeeds before a later failure | Preserve the partial version as immutable non-authorizing evidence; tag immutability and one-use authority consumption are what force a retry onto a fresh version and a fresh authority | Retry requires a new version and new authority |
 | Complete publication | Packages, OCI bytes, and both smokes pass | Emit canonical evidence for 3.15 without selecting a deployed identity | Environment/product failures remain distinct and blocking |
 
 </frozen-after-approval>
@@ -62,7 +62,55 @@ context:
 - Given an authorized release, when evidence is reverified, then one canonical identity binds repository, version/tag, source, workflow, corrected Builds/helpers, authority, all packages, OCI bytes/labels, and both smokes.
 - Given the 3.14 packet, when handed to 3.15, then it selects no deployed identity or mutation authority.
 
+### Review Findings
+
+Code review 2026-08-21 (chunk A+B: release mechanics + governance tests, baseline `c21bd749`..`c8902353`).
+Four layers: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor. No layer failed.
+
+- [ ] [Review][Decision] Release caller is pinned to a Hexalith.Builds commit that does not exist on the remote — `.github/workflows/release.yml:103,110` pin `63409393541f1437e23006b7a4e05174f8b50da7` for both `uses:` and `builds-execution-sha`. `gh api repos/Hexalith/Hexalith.Builds/commits/63409393…` returns 422 and the git-database endpoint returns 404; Builds `main` is `eadddc7b…`. This pin is live on `origin/main`, so the next Release dispatch cannot resolve the reusable workflow — the same startup-failure class as quarantined run `32347773728`. Options: push `63409393` to Hexalith.Builds, or re-pin to a reachable reviewed SHA.
+- [ ] [Review][Decision] The corrective release still ships the SDK colon-truncation defect in two labels — both retained v3.96.2 child configs carry `org.opencontainers.image.created` and `org.opencontainers.artifact.created` = `2026-08-20T11`, the same `String.Split(':')[1]` shape as rejected v3.94.1 (`2026-08-14T08`). `Directory.Build.targets` rebinds only five labels, `release_evidence_codec._expected_labels` requires only those five, and `ProvenanceLabelMutationsFailClosed` explicitly asserts extra labels are accepted, so the gate can never fail on it. Decide: re-release with `created` rebound, accept and document, or re-scope.
+- [ ] [Review][Decision] The canonical identity binds live repo bytes and was already regenerated once, undisclosed — `validate-corrective-release-evidence.py::_codec_identity()` hashes the on-disk `tools/release_evidence_codec.py` and verifier, so any codec fix invalidates re-verification of the frozen packet. `1e5abd26` bumped `CODEC_VERSION` 1→2 and rewrote `release-identity.json`, moving the digest from `926ccfdf…` (`a55b5bef`) to the published `92b7479b…`; the story presents the latter as the canonical digest without disclosing the regeneration. A re-freeze policy is needed before any codec patch lands.
+- [ ] [Review][Decision] Two I/O-matrix rows are covered only by helpers no production path calls — `select_absent_version`, `publication_disposition` and `canonical_sha256` (`tools/release_evidence_codec.py:81,98`) are referenced only from `python3 -c` invocations in the tests. The real candidate version is a free-text `release-version` dispatch input checked by a semver regex plus equality with semantic-release. `select_absent_version` also always bumps patch, which contradicts the reservation gate on any `feat:` release. Decide: wire them into the release path or re-scope the Candidate-selection and Partial-publication rows.
+- [ ] [Review][Decision] The protected release job now holds `attestations: write` and `id-token: write` — added to satisfy GitHub's static permission validation of the skipped `governed-release` job. Spec Never excludes "signing, SBOM, or attestation" and epic-3-context.md states deferred attestation gains no implementation authority from this epic. Decide: ratify the widened token scope, or ask Builds to restructure so the legacy path does not require the grants.
+
+- [ ] [Review][Patch] Pin the story-3-14 evidence packet to LF like story-1-21 [.gitattributes:12]
+- [ ] [Review][Patch] Anchor the Builds fixture run and the recorded 123/54 counts to the pinned release SHA [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectiveOciProvenanceReleaseTests.cs:514]
+- [ ] [Review][Patch] Add a required-provenance-label mutation case that runs through the real codec [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectiveOciProvenanceReleaseTests.cs:135]
+- [ ] [Review][Patch] Read HEXALITH_RELEASE_AUTHORITY_OWNER instead of hardcoding it, and assert both forwarded values [scripts/validate-publication-preflight.sh:18]
+- [ ] [Review][Patch] Derive the authority issue number from issue_url instead of hardcoding 346 [tools/release_evidence_codec.py:756]
+- [ ] [Review][Patch] Validate provenance input shape, not just non-emptiness, and add a negative publish test [Directory.Build.targets:47]
+- [ ] [Review][Patch] Delete or wire up the ~335-line dead evidence-packet fixture [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectiveOciProvenanceReleaseTests.cs:529]
+- [ ] [Review][Patch] Add executing negative cases for the two new dispatch-input gates [.github/workflows/release.yml:52]
+- [ ] [Review][Patch] Correct the story record's development-gitlink claim [_bmad-output/implementation-artifacts/3-14-corrective-oci-provenance-release.md:29]
+- [ ] [Review][Patch] Scope the repository-role proof to this repository [tools/release_evidence_codec.py:705]
+- [ ] [Review][Patch] Restore the two deleted ShouldNotContain negative guards [tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs:153]
+- [ ] [Review][Patch] Scope the release-job regex and fix pipe-drain/timeout in the new process tests [tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs:377]
+- [ ] [Review][Patch] Replace the fabricated staging release URL and document the two new dispatch inputs [docs/brownfield/deployment-guide.md:30]
+- [ ] [Review][Patch] Correct the SDK version named in the provenance comment [Directory.Build.targets:19]
+
+- [x] [Review][Defer] Five pre-existing Windows early-return vacuous passes [tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs:207] — deferred, pre-existing
+- [x] [Review][Defer] Codec hygiene cluster: misleading `_nuspec_identity` parameter, `_parse_timestamp` replace-all, children[0]-only index distinctness, fourth copy of the package count, duplicate helper re-hash [tools/release_evidence_codec.py:441] — deferred, pre-existing
+- [x] [Review][Defer] `observations.json` is checksummed but never semantically validated [tools/release_evidence_codec.py:865] — deferred, pre-existing
+- [x] [Review][Defer] The OCI image index carries no provenance annotations [Directory.Build.targets:57] — deferred, pre-existing
+- [x] [Review][Defer] Three divergent JSON canonicalisers are never cross-checked [tools/release_evidence_codec.py:69] — deferred, pre-existing
+- [x] [Review][Defer] nuspec parsing has no size or entity-expansion bound [tools/release_evidence_codec.py:466] — deferred, pre-existing
+- [x] [Review][Defer] Issue-comment snapshot completeness is unproven under pagination [tools/release_evidence_codec.py:770] — deferred, pre-existing
+- [x] [Review][Defer] Authority-window theory is coupled to the frozen timestamps by one second, and seven mutations share one `[Fact]` [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectiveOciProvenanceReleaseTests.cs:248] — deferred, pre-existing
+
+Dismissed as noise (4): `record_sha256` re-serialisation (by design; `authority_record_sha256` binds raw bytes); "reservation leaves no evidence trace" (refuted — the authority binds `identity_sha256`, which binds `version`); duplicate `licenses`/`vendor` labels (verified identical values, retained configs correct); split codec import styles (both forms work in their own execution contexts).
+
 ## Spec Change Log
+
+- 2026-08-21 -- Owner-ratified amendment of two `I/O & Edge-Case Matrix` rows during code review.
+  The `Candidate selection` and `Partial publication` rows described behavior that existed only in
+  `tools/release_evidence_codec.py::select_absent_version` and `::publication_disposition`, which no
+  production path ever called; the tests covering those rows therefore proved decision rules nothing
+  consulted. The rows now describe the mechanism that actually runs -- the shared Builds preflight
+  version floor checked against the dispatch reservation and Semantic Release, and tag immutability
+  plus one-use authority consumption -- and the two uncalled helpers and their tests were removed.
+  `select_absent_version` was additionally wrong for any non-patch release: it returned
+  `max(observed).patch + 1` unconditionally, and it rejected the whole candidate floor if any
+  observed tag was not stable semver, which the repository's own `staging-latest` container tag is.
 
 ## Design Notes
 

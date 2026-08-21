@@ -91,8 +91,14 @@ jobs:
   release:
     needs: verify-source
     # GitHub validates the maximum permissions of every job in a called workflow,
-    # including the skipped governed-release job. The explicit false input keeps
-    # EventStore on the legacy job, whose callee-level permissions omit both grants.
+    # including the skipped governed-release job, so attestations/id-token must be
+    # granted here even though `governed-release: false` keeps EventStore on the
+    # legacy job. The legacy job declares no permissions of its own and therefore
+    # INHERITS this set: it runs holding both write scopes without using them.
+    # Nothing is signed or attested, but this is a real widening of the production
+    # job's token, not a paper one. Narrowing it belongs to Hexalith.Builds -- see
+    # deferred-work.md, "reusable release workflow split". Do not add attestation
+    # or signing steps here: Epic 3 withholds that authority.
     permissions:
       actions: read
       attestations: write

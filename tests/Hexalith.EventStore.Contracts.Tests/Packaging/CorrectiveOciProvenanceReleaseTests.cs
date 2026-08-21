@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Formats.Tar;
+using System.Globalization;
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
@@ -16,6 +17,7 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     private const string SourceSha = "dddddddddddddddddddddddddddddddddddddddd";
     private const string Version = "0.0.0-ci-test";
     private const string EvidenceVersion = "3.96.0";
+    private const string Created = "2026-08-21T09:15:00Z";
 
     /// <summary>
     /// Verifies the retained v3.94.1 raw configs reproduce the original SDK truncation defect.
@@ -83,6 +85,7 @@ public sealed class CorrectiveOciProvenanceReleaseTests
                 $"-p:Version={Version}",
                 $"-p:ContainerProvenanceSourceSha={SourceSha}",
                 $"-p:ContainerProvenanceReleaseVersion={Version}",
+                $"-p:ContainerProvenanceCreated={Created}",
             })
             {
                 start.ArgumentList.Add(argument);
@@ -111,6 +114,7 @@ public sealed class CorrectiveOciProvenanceReleaseTests
                 .Order(StringComparer.Ordinal)
                 .ToArray()!;
             platforms.ShouldBe(["linux/amd64", "linux/arm64"]);
+            List<Dictionary<string, string>> childLabels = [];
             foreach (JsonElement descriptor in manifests)
             {
                 string manifestDigest = descriptor.GetProperty("digest").GetString().ShouldNotBeNull();
@@ -120,7 +124,13 @@ public sealed class CorrectiveOciProvenanceReleaseTests
                 using JsonDocument config = JsonDocument.Parse(entries[BlobPath(configDigest)]);
                 JsonElement labels = config.RootElement.GetProperty("config").GetProperty("Labels");
                 ValidateLabels(labels, expected);
+                childLabels.Add(labels.EnumerateObject().ToDictionary(
+                    property => property.Name,
+                    property => property.Value.GetString() ?? string.Empty,
+                    StringComparer.Ordinal));
             }
+
+            AssertNoLabelWasTruncatedAtItsFirstColon(childLabels);
         }
         finally
         {
@@ -169,55 +179,6 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     }
 
     /// <summary>
-    /// Verifies release selection uses the first absent version above every observed destination floor.
-    /// </summary>
-    [Fact]
-    public void CandidateSelectionUsesANewerAbsentVersionWithoutHardCodingProjection()
-    {
-        string script =
-            "from tools.release_evidence_codec import select_absent_version;" +
-            "print(select_absent_version(['3.94.1','3.95.0','3.96.0'], {'3.96.1'}))";
-        ProcessResult result = RunProcess(FindRepositoryRoot(), "python3", "-c", script);
-        result.ExitCode.ShouldBe(0, result.Error);
-        result.Output.Trim().ShouldBe("3.96.2");
-
-        ProcessResult occupiedHigher = RunProcess(
-            FindRepositoryRoot(),
-            "python3",
-            "-c",
-            "from tools.release_evidence_codec import select_absent_version;" +
-            "print(select_absent_version(['3.95.0'], {'4.0.0'}))");
-        occupiedHigher.ExitCode.ShouldBe(0, occupiedHigher.Error);
-        occupiedHigher.Output.Trim().ShouldBe("4.0.1");
-    }
-
-    /// <summary>
-    /// Verifies a partial write is immutable non-authorizing evidence and requires a new version and authority.
-    /// </summary>
-    [Fact]
-    public void PartialPublicationIsQuarantinedAndCannotBeRetriedInPlace()
-    {
-        string script =
-            "from tools.release_evidence_codec import publication_disposition as d;" +
-            "import json;print(json.dumps(d('3.96.1',['nuget:Contracts'],False),sort_keys=True))";
-        ProcessResult result = RunProcess(FindRepositoryRoot(), "python3", "-c", script);
-        result.ExitCode.ShouldBe(0, result.Error);
-        using JsonDocument disposition = JsonDocument.Parse(result.Output);
-        disposition.RootElement.GetProperty("result").GetString().ShouldBe("partial");
-        disposition.RootElement.GetProperty("immutable_non_authorizing").GetBoolean().ShouldBeTrue();
-        disposition.RootElement.GetProperty("retry_requires_new_version").GetBoolean().ShouldBeTrue();
-        disposition.RootElement.GetProperty("retry_requires_new_authority").GetBoolean().ShouldBeTrue();
-
-        ProcessResult nonBoolean = RunProcess(
-            FindRepositoryRoot(),
-            "python3",
-            "-c",
-            "from tools.release_evidence_codec import publication_disposition as d;d('3.96.1',[],1)");
-        nonBoolean.ExitCode.ShouldNotBe(0);
-        nonBoolean.Error.ShouldContain("publication completion must be a boolean");
-    }
-
-    /// <summary>
     /// Verifies the package manifest has one exact 14-entry ordered, case-insensitively unique schema.
     /// </summary>
     [Fact]
@@ -262,7 +223,7 @@ public sealed class CorrectiveOciProvenanceReleaseTests
         checkedIn.ExitCode.ShouldBe(0, checkedIn.Error);
         checkedIn.Output.Trim().ShouldBe(
             "[corrective-release-evidence] pass: " +
-            "sha256:92b7479bfac6f61c755a0cb3023ea2db08f4115eb8119ca08ba84765630fdb7b");
+            "sha256:4d1a0c336397e971bf10001095d5e427dd03c499ee428a3121a913926da8c4a9");
 
         string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-release-evidence-{Guid.NewGuid():N}");
         Directory.CreateDirectory(temporary);
@@ -1059,7 +1020,53 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             $"https://github.com/Hexalith/Hexalith.EventStore/blob/{SourceSha}/README.md",
         ["org.opencontainers.image.revision"] = SourceSha,
         ["org.opencontainers.image.version"] = Version,
+        ["org.opencontainers.image.created"] = Created,
+        ["org.opencontainers.artifact.created"] = Created,
     };
+
+    /// <summary>
+    /// Asserts the SDK multi-RID key:value round-trip did not truncate any label, not merely the
+    /// five the evidence codec pins. The v3.96.2 release shipped with
+    /// <c>org.opencontainers.image.created</c> cut to <c>2026-08-20T11</c> because the earlier
+    /// assertion only ever read a five-key allowlist.
+    /// </summary>
+    private static void AssertNoLabelWasTruncatedAtItsFirstColon(
+        IReadOnlyList<Dictionary<string, string>> childLabels)
+    {
+        childLabels.Count.ShouldBe(2);
+        foreach (Dictionary<string, string> labels in childLabels)
+        {
+            // A truncated URL collapses to exactly its scheme.
+            labels.Values.ShouldNotContain("https", "A label value collapsed to its URI scheme.");
+
+            foreach (string name in new[]
+            {
+                "org.opencontainers.image.created",
+                "org.opencontainers.artifact.created",
+            })
+            {
+                labels.TryGetValue(name, out string? value).ShouldBeTrue($"{name} is missing.");
+                DateTimeOffset.TryParseExact(
+                    value,
+                    "yyyy-MM-ddTHH:mm:ssZ",
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                    out _)
+                    .ShouldBeTrue($"{name} is not an RFC 3339 instant: '{value}'.");
+            }
+        }
+
+        // Both children describe one build, so every label except the per-platform base image
+        // digest must be byte-identical. A per-child truncation shows up here too.
+        const string BaseDigest = "org.opencontainers.image.base.digest";
+        Dictionary<string, string> first = new(childLabels[0], StringComparer.Ordinal);
+        Dictionary<string, string> second = new(childLabels[1], StringComparer.Ordinal);
+        first.Remove(BaseDigest);
+        second.Remove(BaseDigest);
+        second.ShouldBe(first, ignoreOrder: true);
+        childLabels[0].ShouldContainKey(BaseDigest);
+        childLabels[1].ShouldContainKey(BaseDigest);
+    }
 
     private static void ValidateLabels(JsonElement labels, IReadOnlyDictionary<string, string> expected)
     {

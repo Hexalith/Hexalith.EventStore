@@ -461,6 +461,9 @@ public sealed class CommitMessagePolicyTests
         hookBytes.ShouldNotContain((byte)'\r', "Husky hooks must remain LF-only so /bin/sh can execute the shebang.");
         commitlintConfig.ShouldContain("extends: ['@commitlint/config-conventional']");
         commitlintConfig.ShouldContain("'type-enum'");
+        commitlintConfig.ShouldContain("'header-max-length': [2, 'always', 200]");
+        commitlintConfig.ShouldContain("'body-max-line-length': [2, 'always', 200]");
+        commitlintConfig.ShouldContain("'footer-max-line-length': [2, 'always', 200]");
         commitlintConfig.ShouldNotContain("'chore'");
 
         if (!OperatingSystem.IsWindows())

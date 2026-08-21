@@ -1306,3 +1306,46 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
   summary: Share one `archive_root` separator normalizer between the package validators.
   evidence: `ValidatePackageBytes` (`DeployedRuntimeParityClosureTests.cs:2771`) and `ExpectedCoreFilesFor` normalize `archive_root` independently, so repeated or platform-alternate trailing separators can make the two validators disagree on the same recovered 14-archive set.
+
+## Deferred from: code review of spec-3-14-corrective-oci-provenance-release (2026-08-21)
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md`
+  summary: Replace the five Windows early-return vacuous passes in the container-publishing governance suite with real skips.
+  evidence: `ContainerPublishingGovernanceTests.cs` returns early at lines 207, 239, 266, 287, 443 and 485 under `OperatingSystem.IsWindows()`. An early return is an xUnit pass, so AC1's "zero-skipped coverage" is satisfied by construction on Windows. Only line 287 is new in this chunk; the other five predate it.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md`
+  summary: Clean up the release-evidence codec hygiene cluster.
+  evidence: `_nuspec_identity(package_bytes)` is called with a `Path` and immediately does `zipfile.ZipFile(Path(package_bytes))`; `_parse_timestamp` uses `value.replace("Z", "+00:00")`, replacing every `Z` rather than a trailing designator; `validate_identity:441` compares the index digest to `children[0]` only, never to `children[1]` nor the two children to each other; `EXPECTED_PACKAGE_COUNT = 14` is a fourth uncross-checked copy of the package count; and `validate_packet_files` re-hashes each Builds helper immediately after `_verify_bound_file` performed the identical check. All are gated by the codec re-freeze decision.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md`
+  summary: Give `observations.json` semantic validation instead of checksum-only coverage.
+  evidence: The codec never opens `observations.json`; it is bound only through `packet-sha256.txt`, which is regenerated whenever the packet is rebuilt. The GitHub Release asset list and the "all 14 visible on NuGet.org" claim therefore rest on an unvalidated file. Cross-checked by hand during this review: all 14 `github_release.assets` digests and sizes do match `packages[].sha256`/`size`, so the claim is factually true today.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md`
+  summary: Decide whether the OCI image index should carry provenance annotations.
+  evidence: `_PublishMultiArchContainers` passes no labels to `CreateImageIndex`, and `validate_packet_files` checks the index only for `schemaVersion`, `mediaType` and two descriptors. The multi-arch tag — the artifact a registry UI surfaces — has no `org.opencontainers.image.*` metadata, and no test asserts either way. The spec requires labels on the child configs only, so this is out of the current contract.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md`
+  summary: Cross-check the three JSON canonicalisers against one shared fixture.
+  evidence: `canonical_bytes` (`release_evidence_codec.py:69`, compact, `ensure_ascii=False`), `_publisher_canonical_bytes` (`:489`, `indent=2`, default `ensure_ascii=True`) and the C# `CanonicalJsonBytes` (`CorrectiveOciProvenanceReleaseTests.cs:1011`, `Utf8JsonWriter` default `JavaScriptEncoder`) can diverge on non-ASCII and HTML-sensitive characters. The tests work around this by re-canonicalising `release-identity.json` through Python only; no test asserts the three encoders agree byte-for-byte.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md`
+  summary: Bound nuspec parsing against oversized archives and entity expansion.
+  evidence: `_nuspec_identity` (`release_evidence_codec.py:466`) calls `element_tree.fromstring` on a nuspec read straight out of a retained `.nupkg` with no size cap and no entity-expansion defence. The packet bytes are repository-controlled today, so this is hardening rather than a live exposure.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md`
+  summary: Prove the issue-comment snapshot is complete before asserting "exactly one authority and one receipt".
+  evidence: `release_evidence_codec.py:770-790` validates ordering, uniqueness and issue affinity of the retained snapshot but has no total-count or last-page marker, so a truncated or paginated snapshot can satisfy the exactly-one authority and exactly-one receipt claims on incomplete data.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md`
+  summary: Decouple the authority-window theory from the frozen timestamps and split the seven-scenario mutation Fact.
+  evidence: `RetainedAuthorityRejectsInvalidWindowAndEditedRecord` InlineData sits exactly one second off the frozen `created_at` (`2026-08-20T11:06:06Z`); if the window check ever passes, the assertion falls through to an opaque summary-mismatch error instead of the intended message. Separately, `CanonicalReleaseIdentityBindsRetainedBytesAndRejectsMutations` packs seven independent mutation scenarios into one ~180-line `[Fact]`, so the first failure hides the other six.
+
+## Deferred from: code review of spec-3-14-corrective-oci-provenance-release (2026-08-21, D5 disposition)
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md`
+  owner_repo: `Hexalith.Builds` — reusable `.github/workflows/domain-release.yml`. NOT owned by `Hexalith.EventStore`; the EventStore `release.yml` only calls the reusable workflow, so this fix cannot land here.
+  summary: Split the governed release path into its own reusable workflow file so legacy callers stop having to grant `attestations: write` and `id-token: write`.
+  evidence: GitHub validates the maximum permissions across every job in a called workflow, including jobs that never run. Because `governed-release` (`domain-release.yml:478`) declares both scopes, every caller must grant them — EventStore's `release.yml` now does. The legacy `release` job (`:240`) declares no `permissions:` block, so it inherits the caller's set and executes in the protected `production` environment holding both write scopes unused. The obvious narrow fix — an explicit `permissions:` block on the legacy job — is blocked by an existing Builds contract test, `test_governed_release_workflow.GovernedOffParityTests.test_only_the_governed_job_requests_attestation_permissions`, which asserts `assertNotIn("permissions:", job_slice(workflow, "release"))`; that shape was tried during this review and reverted. Splitting the two paths into separate reusable workflow files removes the coupling without contradicting that contract. Epic 3 explicitly withholds signing/SBOM/attestation authority, so the grant should not persist longer than necessary.
+  severity: medium
+  status: accepted — ratified for now (Story 3.14 D5 option A); nothing is signed or attested because `governed-release: false` keeps the governed job skipped, and `ContainerPublishingGovernanceTests` pins that input.
