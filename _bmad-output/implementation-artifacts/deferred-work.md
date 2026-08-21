@@ -1349,3 +1349,13 @@ status: open
   evidence: GitHub validates the maximum permissions across every job in a called workflow, including jobs that never run. Because `governed-release` (`domain-release.yml:478`) declares both scopes, every caller must grant them — EventStore's `release.yml` now does. The legacy `release` job (`:240`) declares no `permissions:` block, so it inherits the caller's set and executes in the protected `production` environment holding both write scopes unused. The obvious narrow fix — an explicit `permissions:` block on the legacy job — is blocked by an existing Builds contract test, `test_governed_release_workflow.GovernedOffParityTests.test_only_the_governed_job_requests_attestation_permissions`, which asserts `assertNotIn("permissions:", job_slice(workflow, "release"))`; that shape was tried during this review and reverted. Splitting the two paths into separate reusable workflow files removes the coupling without contradicting that contract. Epic 3 explicitly withholds signing/SBOM/attestation authority, so the grant should not persist longer than necessary.
   severity: medium
   status: accepted — ratified for now (Story 3.14 D5 option A); nothing is signed or attested because `governed-release: false` keeps the governed job skipped, and `ContainerPublishingGovernanceTests` pins that input.
+
+## Deferred from: CI/CD xUnit v3 restore failure fix (2026-08-21)
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-gh-32485211318-fix-ci-cd.md`
+  summary: Unify Roslynator package families under a single `roslynator` family in Hexalith.Builds central package audit.
+  evidence: `Roslynator.Analyzers` and `Roslynator.Formatting.Analyzers` are declared under separate single-package families (`package:roslynator.analyzers` and `package:roslynator.formatting.analyzers`) rather than a coordinated suite in `Get-PackageFamily` (`audit-central-package-versions.ps1`).
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-gh-32485211318-fix-ci-cd.md`
+  summary: Link `FsCheck.Xunit.v3` to the `xunit` rollback group in Hexalith.Builds package audit.
+  evidence: `FsCheck.Xunit.v3` is tracked in a separate family (`package:fscheck.xunit.v3`) rather than being linked to the `xunit` family or rollback group, which risks partial upgrades across dependent testing packages.
