@@ -28,20 +28,23 @@ missing.
 ```bash
 # Publish one image to a local tar (no registry push)
 SOURCE_SHA="$(git rev-parse HEAD)"
-RELEASE_VERSION="staging-$SOURCE_SHA"
+RELEASE_VERSION="0.0.0-staging.${SOURCE_SHA:0:12}"
+SOURCE_URL="https://github.com/Hexalith/Hexalith.EventStore/commit/$SOURCE_SHA"
 dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj \
   --configuration Release -t:PublishContainer \
   -p:ContainerArchiveOutputPath=/tmp/eventstore.tar.gz \
   -p:ContainerImageTag="$RELEASE_VERSION" \
   -p:ContainerProvenanceSourceSha="$SOURCE_SHA" \
-  -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION"
+  -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION" \
+  -p:ContainerProvenanceReleaseUrl="$SOURCE_URL"
 
 # Push to registry (needs SDK_CONTAINER_REGISTRY_UNAME / _PWORD)
 dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj \
   --configuration Release -t:PublishContainer \
   -p:ContainerImageTag="$RELEASE_VERSION" \
   -p:ContainerProvenanceSourceSha="$SOURCE_SHA" \
-  -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION"
+  -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION" \
+  -p:ContainerProvenanceReleaseUrl="$SOURCE_URL"
 ```
 
 The Admin.Cli is a **NuGet tool** (`PackAsTool`, `ToolCommandName=eventstore-admin`); the Admin.Mcp is

@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 
 namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 
@@ -18,6 +19,8 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     private const string Version = "0.0.0-ci-test";
     private const string EvidenceVersion = "3.96.0";
     private const string Created = "2026-08-21T09:15:00Z";
+    private static readonly TimeSpan HelperTimeout = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan PublishTimeout = TimeSpan.FromMinutes(8);
 
     /// <summary>
     /// Verifies the retained v3.94.1 raw configs reproduce the original SDK truncation defect.
@@ -58,14 +61,11 @@ public sealed class CorrectiveOciProvenanceReleaseTests
         try
         {
             string archive = Path.Combine(temporary, "eventstore.tar");
-            ProcessStartInfo start = new("dotnet")
-            {
-                WorkingDirectory = root,
-                RedirectStandardError = true,
-                RedirectStandardOutput = true,
-                UseShellExecute = false,
-            };
-            foreach (string argument in new[]
+            ProcessResult publish = await RunProcessAsync(
+                root,
+                "dotnet",
+                PublishTimeout,
+                new[]
             {
                 "publish",
                 "src/Hexalith.EventStore/Hexalith.EventStore.csproj",
@@ -86,17 +86,8 @@ public sealed class CorrectiveOciProvenanceReleaseTests
                 $"-p:ContainerProvenanceSourceSha={SourceSha}",
                 $"-p:ContainerProvenanceReleaseVersion={Version}",
                 $"-p:ContainerProvenanceCreated={Created}",
-            })
-            {
-                start.ArgumentList.Add(argument);
-            }
-
-            using Process process = Process.Start(start).ShouldNotBeNull();
-            Task<string> output = process.StandardOutput.ReadToEndAsync();
-            Task<string> error = process.StandardError.ReadToEndAsync();
-            await process.WaitForExitAsync();
-            string[] diagnostics = await Task.WhenAll(output, error);
-            process.ExitCode.ShouldBe(0, diagnostics[0] + diagnostics[1]);
+            });
+            publish.ExitCode.ShouldBe(0, publish.Output + publish.Error);
 
             Dictionary<string, byte[]> entries = ReadTarEntries(archive);
             using JsonDocument rootIndex = JsonDocument.Parse(entries["index.json"]);
@@ -136,6 +127,108 @@ public sealed class CorrectiveOciProvenanceReleaseTests
         {
             Directory.Delete(temporary, recursive: true);
         }
+    }
+
+    /// <summary>
+    /// Verifies a real publish cannot bypass either mandatory provenance identity input.
+    /// </summary>
+    /// <param name="missingProperty">The provenance property deliberately omitted.</param>
+    [Theory]
+    [InlineData("source")]
+    [InlineData("version")]
+    public async Task ContainerPublicationRejectsMissingProvenanceInputs(string missingProperty)
+    {
+        string root = FindRepositoryRoot();
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-oci-negative-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(temporary);
+        try
+        {
+            List<string> arguments =
+            [
+                "publish",
+                "src/Hexalith.EventStore/Hexalith.EventStore.csproj",
+                "--configuration", "Release",
+                "--os", "linux",
+                "--arch", "x64",
+                "-t:PublishContainer",
+                "-m:1",
+                "-p:UseHexalithProjectReferences=false",
+                "-p:NuGetAudit=false",
+                "-p:MinVerVersionOverride=1.0.0",
+                "-p:ContainerImageFormat=OCI",
+                $"-p:ContainerArchiveOutputPath={Path.Combine(temporary, "eventstore.tar")}",
+                "-p:ContainerRegistry=registry.example.test",
+                "-p:ContainerRepository=eventstore",
+                $"-p:ContainerImageTag={Version}",
+                $"-p:Version={Version}",
+                $"-p:ContainerProvenanceCreated={Created}",
+            ];
+            if (missingProperty != "source")
+            {
+                arguments.Add($"-p:ContainerProvenanceSourceSha={SourceSha}");
+            }
+
+            if (missingProperty != "version")
+            {
+                arguments.Add($"-p:ContainerProvenanceReleaseVersion={Version}");
+            }
+
+            ProcessResult result = await RunProcessAsync(
+                root,
+                "dotnet",
+                PublishTimeout,
+                arguments);
+            result.ExitCode.ShouldNotBe(0);
+            (result.Output + result.Error).ShouldContain(
+                missingProperty == "source"
+                    ? "ContainerProvenanceSourceSha must be an exact lowercase 40-character commit SHA."
+                    : "ContainerProvenanceReleaseVersion must be SemVer");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies malformed provenance identity fields are rejected by the build target itself.
+    /// </summary>
+    /// <param name="property">The property to mutate.</param>
+    /// <param name="value">The malformed value.</param>
+    /// <param name="expectedError">The expected fail-closed diagnostic.</param>
+    [Theory]
+    [InlineData("ContainerProvenanceSourceSha", "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD", "exact lowercase")]
+    [InlineData("ContainerProvenanceReleaseVersion", "01.2.3", "must be SemVer")]
+    [InlineData("ContainerImageTag", "0.0.0-other", "must equal ContainerProvenanceReleaseVersion")]
+    [InlineData("ContainerProvenanceCreated", "2026-08-21T09:15Z", "exact UTC RFC 3339 second")]
+    public void ContainerPublicationRejectsMalformedProvenanceInputs(
+        string property,
+        string value,
+        string expectedError)
+    {
+        Dictionary<string, string> properties = new(StringComparer.Ordinal)
+        {
+            ["ContainerProvenanceSourceSha"] = SourceSha,
+            ["ContainerProvenanceReleaseVersion"] = Version,
+            ["ContainerImageTag"] = Version,
+            ["ContainerProvenanceCreated"] = Created,
+        };
+        properties[property] = value;
+        List<string> arguments =
+        [
+            "msbuild",
+            "src/Hexalith.EventStore/Hexalith.EventStore.csproj",
+            "-t:ValidateContainerProvenanceInputs",
+            "-p:EnableContainer=true",
+            "-p:UseHexalithProjectReferences=false",
+            "-p:NuGetAudit=false",
+            "-p:MinVerVersionOverride=1.0.0",
+        ];
+        arguments.AddRange(properties.Select(item => $"-p:{item.Key}={item.Value}"));
+
+        ProcessResult result = RunProcess(FindRepositoryRoot(), "dotnet", arguments.ToArray());
+        result.ExitCode.ShouldNotBe(0);
+        (result.Output + result.Error).ShouldContain(expectedError);
     }
 
     /// <summary>
@@ -198,6 +291,21 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             " except EvidenceError:pass\n" +
             "print('pass')";
         ProcessResult result = RunProcess(FindRepositoryRoot(), "python3", "-c", script);
+        result.ExitCode.ShouldBe(0, result.Error);
+        result.Output.Trim().ShouldBe("pass");
+    }
+
+    /// <summary>
+    /// Verifies authority HTML links are derived from the accepted issue rather than a frozen issue number.
+    /// </summary>
+    [Fact]
+    public void AuthorityHtmlUrlFollowsTheAcceptedIssueUrl()
+    {
+        const string Script =
+            "from tools.release_evidence_codec import repository_issue_html_url as u;" +
+            "assert u('https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/42')==" +
+            "'https://github.com/Hexalith/Hexalith.EventStore/issues/42';print('pass')";
+        ProcessResult result = RunProcess(FindRepositoryRoot(), "python3", "-c", Script);
         result.ExitCode.ShouldBe(0, result.Error);
         result.Output.Trim().ShouldBe("pass");
     }
@@ -400,6 +508,98 @@ public sealed class CorrectiveOciProvenanceReleaseTests
                 receiptPacket);
             receiptMutation.ExitCode.ShouldNotBe(0);
             receiptMutation.Error.ShouldContain("consumption does not bind the selected identity");
+
+            foreach (string field in new[] { "selects_deployed_identity", "grants_mutation_authority" })
+            {
+                string authorityHandoffPacket = CopyPacket(
+                    checkedInPacket,
+                    Path.Combine(temporary, field));
+                JsonObject authorityHandoffIdentity = LoadIdentity(authorityHandoffPacket);
+                authorityHandoffIdentity[field] = true;
+                WriteSelectedCanonicalJson(
+                    root,
+                    Path.Combine(authorityHandoffPacket, "release-identity.json"),
+                    authorityHandoffIdentity);
+                ProcessResult authorityHandoffMutation = RunEvidenceValidator(
+                    root,
+                    Path.Combine(authorityHandoffPacket, "release-identity.json"),
+                    authorityHandoffPacket);
+                authorityHandoffMutation.ExitCode.ShouldNotBe(0);
+                authorityHandoffMutation.Error.ShouldContain(
+                    "must not select deployment or grant mutation authority");
+            }
+
+            foreach ((string field, JsonNode value) in new[]
+            {
+                ("version", JsonValue.Create(4)),
+                ("sha256", JsonValue.Create(new string('0', 64))),
+            })
+            {
+                string dispatchPacket = CopyPacket(
+                    checkedInPacket,
+                    Path.Combine(temporary, $"handler-{field}"));
+                JsonObject dispatchIdentity = LoadIdentity(dispatchPacket);
+                if (field == "version")
+                {
+                    dispatchIdentity["codec"]![field] = value;
+                }
+                else
+                {
+                    dispatchIdentity["codec"]!["codec"]![field] = value;
+                }
+
+                WriteSelectedCanonicalJson(
+                    root,
+                    Path.Combine(dispatchPacket, "release-identity.json"),
+                    dispatchIdentity);
+                ProcessResult dispatchMutation = RunEvidenceValidator(
+                    root,
+                    Path.Combine(dispatchPacket, "release-identity.json"),
+                    dispatchPacket);
+                dispatchMutation.ExitCode.ShouldNotBe(0);
+                dispatchMutation.Error.ShouldContain("does not select a trusted live handler");
+            }
+
+            string conflictingSmokePacket = CopyPacket(
+                checkedInPacket,
+                Path.Combine(temporary, "conflicting-smoke"));
+            JsonObject conflictingSmokeIdentity = LoadIdentity(conflictingSmokePacket);
+            JsonNode conflictingSmoke = conflictingSmokeIdentity["smokes"]![0].ShouldNotBeNull();
+            JsonNode conflictingLogBinding = conflictingSmoke["log"].ShouldNotBeNull();
+            string conflictingLogPath = Path.Combine(
+                conflictingSmokePacket,
+                conflictingLogBinding["file"]!.GetValue<string>());
+            byte[] conflictingLogBytes = Encoding.UTF8.GetBytes(
+                File.ReadAllText(conflictingLogPath) + "outcome=failure\n");
+            File.WriteAllBytes(conflictingLogPath, conflictingLogBytes);
+            UpdateFileBinding(conflictingLogBinding, conflictingLogBytes);
+            RefreshPacketManifest(root, conflictingSmokePacket, conflictingSmokeIdentity);
+            ProcessResult conflictingSmokeMutation = RunEvidenceValidator(
+                root,
+                Path.Combine(conflictingSmokePacket, "release-identity.json"),
+                conflictingSmokePacket);
+            conflictingSmokeMutation.ExitCode.ShouldNotBe(0);
+            conflictingSmokeMutation.Error.ShouldContain("raw smoke log identity or outcome mismatch");
+
+            string splitSummaryPacket = CopyPacket(
+                checkedInPacket,
+                Path.Combine(temporary, "split-smoke-summary"));
+            JsonObject splitSummaryIdentity = LoadIdentity(splitSummaryPacket);
+            JsonNode secondSmoke = splitSummaryIdentity["smokes"]![1].ShouldNotBeNull();
+            string originalSummary = secondSmoke["evidence_file"]!.GetValue<string>();
+            string splitSummary = Path.Combine(Path.GetDirectoryName(originalSummary)!, "smoke-results-arm64.json")
+                .Replace('\\', '/');
+            File.Copy(
+                Path.Combine(splitSummaryPacket, originalSummary),
+                Path.Combine(splitSummaryPacket, splitSummary));
+            secondSmoke["evidence_file"] = splitSummary;
+            RefreshPacketManifest(root, splitSummaryPacket, splitSummaryIdentity);
+            ProcessResult splitSummaryMutation = RunEvidenceValidator(
+                root,
+                Path.Combine(splitSummaryPacket, "release-identity.json"),
+                splitSummaryPacket);
+            splitSummaryMutation.ExitCode.ShouldNotBe(0);
+            splitSummaryMutation.Error.ShouldContain("one shared two-platform summary");
         }
         finally
         {
@@ -469,25 +669,74 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     }
 
     /// <summary>
+    /// Verifies the former synthetic v1 fixture cannot bypass the trusted live-handler dispatch table.
+    /// </summary>
+    [Fact]
+    public void UnsupportedSyntheticPacketCannotSelectTrustedLiveHandler()
+    {
+        string root = FindRepositoryRoot();
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-legacy-evidence-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(temporary);
+        try
+        {
+            EvidenceFixture fixture = BuildUnsupportedSyntheticEvidencePacket(root, temporary);
+            ProcessResult result = RunEvidenceValidator(root, fixture.IdentityPath, temporary);
+            result.ExitCode.ShouldNotBe(0);
+            result.Error.ShouldContain("dispatch metadata is invalid");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
     /// Verifies the shared authority fixtures execute replay, mismatch, expiry, and wrong-role cases.
     /// </summary>
     [Fact]
     public void PublicationAuthorityFixturesPassWithoutSkippedCases()
     {
-        string builds = Path.Combine(FindRepositoryRoot(), "references", "Hexalith.Builds");
-        ProcessResult result = RunProcess(
-            builds,
-            "python3",
-            "-m", "unittest", "-v",
-            "Github.publish-containers.tests.test_publication_preflight.PublicationPreflightTests.test_github_authority_binds_identity_owner_expiry_and_one_use_consumption",
-            "Github.publish-containers.tests.test_publication_preflight.PublicationPreflightTests.test_github_authority_rejects_expired_wrong_owner_and_identity_mismatch");
-        result.ExitCode.ShouldBe(0, result.Output + result.Error);
-        result.Error.ShouldContain("Ran 2 tests");
-        result.Error.ShouldContain("OK");
-        result.Error.ShouldNotContain("skipped");
+        string root = FindRepositoryRoot();
+        string builds = Path.Combine(root, "references", "Hexalith.Builds");
+        string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
+        Match releasePin = Regex.Match(
+            workflow,
+            @"uses: Hexalith/Hexalith\.Builds/\.github/workflows/domain-release\.yml@(?<sha>[0-9a-f]{40})");
+        releasePin.Success.ShouldBeTrue();
+
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-builds-fixtures-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(temporary);
+        try
+        {
+            string archive = Path.Combine(temporary, "builds.tar");
+            ProcessResult snapshot = RunProcess(
+                builds,
+                "git",
+                "archive",
+                $"--output={archive}",
+                releasePin.Groups["sha"].Value,
+                "Github/publish-containers");
+            snapshot.ExitCode.ShouldBe(0, snapshot.Error);
+            TarFile.ExtractToDirectory(archive, temporary, overwriteFiles: true);
+
+            ProcessResult result = RunProcess(
+                temporary,
+                "python3",
+                "-m", "unittest", "-v",
+                "Github.publish-containers.tests.test_publication_preflight.PublicationPreflightTests.test_github_authority_binds_identity_owner_expiry_and_one_use_consumption",
+                "Github.publish-containers.tests.test_publication_preflight.PublicationPreflightTests.test_github_authority_rejects_expired_wrong_owner_and_identity_mismatch");
+            result.ExitCode.ShouldBe(0, result.Output + result.Error);
+            result.Error.ShouldContain("Ran 2 tests");
+            result.Error.ShouldContain("OK");
+            result.Error.ShouldNotContain("skipped");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
     }
 
-    private static EvidenceFixture BuildCompleteEvidencePacket(string root, string packetRoot)
+    private static EvidenceFixture BuildUnsupportedSyntheticEvidencePacket(string root, string packetRoot)
     {
         string manifestPath = Path.Combine(root, "tools", "release-packages.json");
         byte[] manifestBytes = File.ReadAllBytes(manifestPath);
@@ -1105,6 +1354,53 @@ public sealed class CorrectiveOciProvenanceReleaseTests
 
     private static ProcessResult RunProcess(string workingDirectory, string fileName, params string[] arguments)
     {
+        ProcessStartInfo start = CreateProcessStartInfo(workingDirectory, fileName, arguments);
+        using Process process = Process.Start(start).ShouldNotBeNull();
+        Task<string> output = process.StandardOutput.ReadToEndAsync();
+        Task<string> error = process.StandardError.ReadToEndAsync();
+        if (!process.WaitForExit((int)HelperTimeout.TotalMilliseconds))
+        {
+            process.Kill(entireProcessTree: true);
+            process.WaitForExit();
+            throw new TimeoutException(
+                $"Process '{fileName}' exceeded the {HelperTimeout.TotalSeconds}-second test timeout.");
+        }
+
+        return new(process.ExitCode, output.GetAwaiter().GetResult(), error.GetAwaiter().GetResult());
+    }
+
+    private static async Task<ProcessResult> RunProcessAsync(
+        string workingDirectory,
+        string fileName,
+        TimeSpan timeout,
+        IEnumerable<string> arguments)
+    {
+        ProcessStartInfo start = CreateProcessStartInfo(workingDirectory, fileName, arguments);
+        using Process process = Process.Start(start).ShouldNotBeNull();
+        Task<string> output = process.StandardOutput.ReadToEndAsync();
+        Task<string> error = process.StandardError.ReadToEndAsync();
+        using CancellationTokenSource timeoutSource = new(timeout);
+        try
+        {
+            await process.WaitForExitAsync(timeoutSource.Token);
+        }
+        catch (OperationCanceledException) when (timeoutSource.IsCancellationRequested)
+        {
+            process.Kill(entireProcessTree: true);
+            await process.WaitForExitAsync();
+            throw new TimeoutException(
+                $"Process '{fileName}' exceeded the {timeout.TotalSeconds}-second test timeout.");
+        }
+
+        string[] diagnostics = await Task.WhenAll(output, error);
+        return new(process.ExitCode, diagnostics[0], diagnostics[1]);
+    }
+
+    private static ProcessStartInfo CreateProcessStartInfo(
+        string workingDirectory,
+        string fileName,
+        IEnumerable<string> arguments)
+    {
         ProcessStartInfo start = new(fileName)
         {
             WorkingDirectory = workingDirectory,
@@ -1117,11 +1413,7 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             start.ArgumentList.Add(argument);
         }
 
-        using Process process = Process.Start(start).ShouldNotBeNull();
-        Task<string> output = process.StandardOutput.ReadToEndAsync();
-        Task<string> error = process.StandardError.ReadToEndAsync();
-        process.WaitForExit();
-        return new(process.ExitCode, output.GetAwaiter().GetResult(), error.GetAwaiter().GetResult());
+        return start;
     }
 
     private static string FindRepositoryRoot()

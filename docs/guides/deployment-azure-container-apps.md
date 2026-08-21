@@ -257,9 +257,10 @@ az acr login --name hexalithacr
 
 # Build container images
 SOURCE_SHA="$(git rev-parse HEAD)"
-RELEASE_VERSION=local
-dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalithacr.azurecr.io/hexalith-eventstore -p:ContainerImageTag="$RELEASE_VERSION" -p:ContainerProvenanceSourceSha="$SOURCE_SHA" -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION"
-dotnet publish samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalithacr.azurecr.io/hexalith-sample -p:ContainerImageTag="$RELEASE_VERSION" -p:ContainerProvenanceSourceSha="$SOURCE_SHA" -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION"
+RELEASE_VERSION=0.0.0-local.1
+SOURCE_URL="https://github.com/Hexalith/Hexalith.EventStore/commit/$SOURCE_SHA"
+dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRegistry=hexalithacr.azurecr.io -p:ContainerRepository=hexalith-eventstore -p:ContainerImageTag="$RELEASE_VERSION" -p:ContainerProvenanceSourceSha="$SOURCE_SHA" -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION" -p:ContainerProvenanceReleaseUrl="$SOURCE_URL"
+dotnet publish samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRegistry=hexalithacr.azurecr.io -p:ContainerRepository=hexalith-sample -p:ContainerImageTag="$RELEASE_VERSION" -p:ContainerProvenanceSourceSha="$SOURCE_SHA" -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION" -p:ContainerProvenanceReleaseUrl="$SOURCE_URL"
 
 # Push to ACR
 docker push "hexalithacr.azurecr.io/hexalith-eventstore:$RELEASE_VERSION"

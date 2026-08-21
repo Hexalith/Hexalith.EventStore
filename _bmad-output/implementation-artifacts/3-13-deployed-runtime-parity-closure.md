@@ -33,29 +33,42 @@ source_files:
   - references/Hexalith.Builds/Github/publish-containers/smoke_container_platforms.py
 ---
 
-# Story 3.13: Deployed Runtime Parity Closure
+# Story 3.13: v3.94.1 Deployed Runtime Evidence Disposition
 
-Status: in-progress
+Status: review
 
 <!-- Ultimate context engine analysis completed - comprehensive developer guide created. -->
 
-> Authority gate: this is an evidence-only closure story. It grants no authority to publish or
-> replace packages, tags, manifests, images, or registry objects; deploy an image; change a
-> consumer; modify Stories 1.20 or 3.12; edit a submodule; approve G5; or infer human approval.
-> Registry reads, artifact downloads, digest verification, bounded ephemeral smoke, and creation
-> of this story's support-safe evidence are in scope. Any external mutation requires a separate,
-> explicit authority record and a separately approved story.
+> Authority gate: this is an evidence-disposition story. It grants no authority to publish or
+> replace packages, tags, manifests, images, or registry objects; deploy an image; select a deployed
+> identity; change a consumer; modify Stories 1.20, 3.12, 3.14, or 3.15; edit a submodule; approve
+> G5; or infer human approval. Assembling the content-bound disposition envelope over the retained
+> `v3.94.1` packet and re-verifying its retained bytes are in scope. Per the approved 2026-08-16
+> correct-course decision, no registry readback, package download, runtime smoke, or review-subject
+> regeneration is required unless an independent verifier proves a retained checksum mismatch. Any
+> external mutation requires a separate, explicit authority record and a separately approved story.
 
 ## Story
 
 As an **EventStore release owner**,
-I want **deployed runtime identity mapped back to one owner-approved exact EventStore
-source/package/release lineage. After the Story 1.20 proof archives were declared
-nonexistent, that exact lineage is `80d12ef5` / `v3.94.1` / package version `3.94.1`.
-Stories 1.20 and 3.12 remain unmodified historical predecessors**,
-so that **operators can select a conforming image without creating a forward dependency in Epic 1**.
+I want **the immutable v3.94.1 candidate reviewed and disposed through one content-bound evidence
+envelope**,
+so that **its proven provenance defect is retained as rejected and non-authorizing while positive
+deployed-runtime parity remains owned by a successor story**.
 
-## Story Context
+The retained lineage is source `80d12ef5eee71a9fe3ea7be51171da4a71b69a28`, release `v3.94.1`, and
+all 14 manifest packages at version `3.94.1`; its immutable review-subject digest is
+`6cee8dad34c1233c6184404b409fb65d1a4dd0bccdd0d0ee54e8869120970a97`. Completed Stories 1.20 and 3.12
+are immutable historical inputs only. Story 3.13 completes independently of and in parallel with
+Story 3.14 and has no dependency on the corrective release.
+
+> **2026-08-16 re-scope.** The approved Sprint Change Proposal
+> `_bmad-output/planning-artifacts/sprint-change-proposal-2026-08-16.md` replaced this story's
+> positive deployed-runtime parity outcome with a negative evidence disposition. The stale
+> positive-`v3.94.1` title and outcome are superseded. The remainder of this section is preserved
+> discovery history: it records how the candidate was investigated and why it fails closed, and it
+> is not a closure result. The pre-re-scope spec is archived verbatim in
+> `spec-3-13-deployed-runtime-parity-closure-superseded-2026-08-16.md`.
 
 The August readiness correction deliberately separates two closure modes. Story 1.20 remains
 complete for source/package parity inside Epic 1. Story 3.12 remains complete for correcting the
@@ -115,188 +128,170 @@ passing verification result.
 
 ## Acceptance Criteria
 
-### AC1 - Freeze completed predecessor evidence without rewriting history
+### AC1 - Retained v3.94.1 evidence is the unchanged disposition input
 
-**Given** Stories 1.20 and 3.12 are complete
-**When** deployed-runtime closure begins
-**Then** their exact evidence packets, committed evidence files, decisions, and immutable identities
-are referenced and hash-checked without modification
-**And** no missing field is inferred from a tag, branch, consumer SHA, current `main`, compatible
-version, or mutable registry reference.
+**Given** the existing v3.94.1 evidence tree is the disposition input
+**When** the envelope is assembled
+**Then** every retained evidence byte, checksum, package identity, workflow fact, raw OCI
+index/child/config object, and Production runtime observation remains unchanged and content-bound to
+the existing review subject
+**And** no registry readback, package download, runtime smoke, or subject regeneration is required
+unless independent verification finds a retained checksum mismatch.
 
-### AC2 - Prove one exact source/package/release/deployed identity chain
+### AC2 - Exact failed provenance and authority state are preserved verbatim
 
-**Given** an EventStore OCI index is proposed as deployed parity evidence
-**When** the identity crosswalk is assembled
-**Then** source `80d12ef5eee71a9fe3ea7be51171da4a71b69a28`, release `v3.94.1`, and the 14
-manifest package IDs at version `3.94.1` map through one workflow run and durable release-owner
-authority to the exact OCI index digest and both required child-manifest/config identities
-**And** every raw digest, byte length, media type, platform relation, provenance field, and runtime
-result is independently revalidated rather than copied as a pass from either predecessor.
+**Given** the v3.94.1 lineage is evaluated
+**When** its exact config provenance and authority state are recorded
+**Then** the literal malformed value `https` remains recorded for `org.opencontainers.image.source`,
+`.url`, and `.documentation`, the revision label remains absent, and `deployment_authorized` remains
+`false`
+**And** none of those failed facts may be omitted, normalized, reinterpreted, or reported as passing.
 
-### AC3 - Fail closed on every missing or inconsistent identity
+### AC3 - The machine-readable disposition carries the exact rejected shape
 
-**Given** any source, package byte, index, child manifest, config, authority, approval, provenance,
-or runtime result is missing, unavailable, mutable-only, expired, or inconsistent
-**When** closure is evaluated
-**Then** the crosswalk records the exact failing field and Story 3.13 remains non-`done`
-**And** Story 1.20, Story 3.12, Epic 1, consumer dependencies, package publications, registry objects,
-and deployments remain unchanged.
+**Given** the machine-readable disposition is emitted
+**When** its story-completion shape is validated
+**Then** it contains `candidate: v3.94.1`, `candidate_disposition: rejected-non-authorizing`,
+`deployed_runtime_parity: unavailable-for-v3.94.1`, `selected_deployed_identity: null`, and
+`deployment_authorized: false`
+**And** any pass outcome, non-null selected identity, authorized deployment, omitted defect, or
+mixed lineage fails closed.
 
-### AC4 - Require named acceptance of the exact final packet
+### AC4 - Missing, inconsistent, or foreign facts reject the envelope
 
-**Given** the complete, internally consistent packet has passed independent revalidation
-**When** the EventStore owner, Release owner, and Test Architect accept the same content-bound
-identity crosswalk in durable sources
-**Then** Story 3.13 may become `done` with the exact deployed OCI index identity recorded
-**And** the decision authorizes no consumer migration, package publication, registry mutation,
-deployment mutation, Story 1.20/3.12 status change, or G5 classification.
+**Given** a retained fact is missing, inconsistent, mutable-only, checksum-invalid, or drawn from
+another release
+**When** the disposition verifier recomputes the evidence relationship
+**Then** the envelope is rejected with a support-safe diagnostic and a concrete remediation or
+revalidation trigger
+**And** a complete negative disposition never substitutes for Story 3.15 or closes positive FR36
+deployed-runtime parity.
+
+### AC5 - Three role-bound receipts accept the unchanged envelope and subject
+
+**Given** the disposition envelope and canonical subject are unchanged
+**When** human acceptance is collected
+**Then** exactly the authenticated EventStore owner, Release owner, and Test Architect each provide a
+verifiable receipt binding identity, role, the recomputed subject digest, explicit
+`rejected-non-authorizing` outcome, successor-work boundary, and valid timestamp
+**And** the platform-owned verifier checks each receipt against the packet-bound owner-role registry;
+self-declared roles, free-form approval, stale receipts, release authority, story approval, and this
+planning approval are not receipts.
+
+### AC6 - Completion selects no image and leaves FR36 open for Story 3.15
+
+**Given** all envelope checks and all three receipts pass
+**When** Story 3.13 is marked done
+**Then** the retained result still selects no image, authorizes no deployment or consumer migration,
+and leaves positive deployed-runtime parity open for Story 3.15
+**And** it does not reopen Stories 1.20 or 3.12, authorize Parties 8.6 or G5, mutate v3.94.1, or
+create a dependency between Stories 3.13 and 3.14.
 
 ## Tasks / Subtasks
 
-- [x] **Task 1 - Reconfirm baseline, predecessors, scope, and authority (AC1-AC4).**
-  - [x] Re-read root guidance, project context, relevant architecture, `.editorconfig`,
-    `.gitattributes`, current branch/worktree/remotes, and recent history before writing evidence.
-  - [x] Verify sprint tracking still has Epic 3 `in-progress`, Story 1.20 `done`, Story 3.12 `done`,
-    and this story no farther than `in-review`/`review` while AC2/AC4 remain open; never change either
-    predecessor or Epic 1.
-  - [x] Record exact current EventStore and root-declared Builds gitlink/check-out SHAs. Do not
-    initialize nested submodules, update dependencies, or edit submodule content.
-  - [x] Separate read-only registry/artifact inspection and ephemeral smoke authority from commit,
-    push, publication, registry, deployment, consumer, and approval authority.
+> Task numbering is preserved from the pre-re-scope contract so historical review findings stay
+> traceable. Tasks 4-7 are resolved as satisfied-by-retained-evidence under approved proposal
+> section 4.4: registry readback, package download, runtime smoke, and review-subject regeneration
+> are no longer required for this story.
 
-- [x] **Task 2 - Freeze the two predecessor packets as immutable inputs (AC1, AC3).**
-  - [x] Record Git blob hashes and SHA-256 values for the Story 1.20 story/packet, its selected
-    `fa2d1c...` committed evidence directory, and the Story 3.12 story record before analysis.
-  - [x] Run `sha256sum -c` against Story 1.20's committed `critical-evidence-sha256.txt` from the
-    correct evidence directory; record missing, renamed, or mismatched files as failure.
-  - [x] Extract source, package, release, workflow, Builds, authority, index, child, config, smoke,
-    owner, and evidence-retention identities into separate candidate rows. Preserve `v3.75.0` and
-    `v3.77.1` as failed/quarantined history and never select them.
-  - [x] Do not edit, normalize, regenerate, or “correct” either predecessor packet. Later planning
-    supersedes old ownership wording, but historical bytes remain evidence.
+- [x] **Task 1 - Re-scope the Story 3.13 lifecycle surfaces to the approved decision (AC1-AC6).**
+  - [x] Re-read root guidance, project context, the approved 2026-08-16 proposal, and the re-scoped
+    `epics.md` story before changing any surface.
+  - [x] Replace the title, Story, and acceptance contract with the re-scoped negative disposition and
+    mark the superseded positive contract as history.
+  - [x] Keep Epic 3 `in-progress`, Story 1.20 `done`, Story 3.12 `done`, and this story no farther
+    than `review` while acceptance is below 3 of 3.
+  - [x] Record why the story key stays tracker-level: both proof-packet filenames are hash-pinned by
+    the frozen review subjects and the focused verifier, so proposal section 4.9's atomic-rename
+    condition cannot be met. Only the display title changed.
 
-- [x] **Task 3 - Create a field-complete, content-bound crosswalk (AC1-AC3).**
+- [x] **Task 2 - Freeze and re-verify both retained evidence trees without changing a byte (AC1).**
+  - [x] Re-verify all 151 retained checksum entries. The selected tree carries four manifests
+    totalling 91 entries (`evidence-sha256.txt` 3, `evidence-core-sha256.txt` 34,
+    `nuget-sha256.txt` 14, `predecessor-tree-sha256.txt` 40); the historical tree carries three
+    totalling 60 (3 + 17 + 40) and has no `nuget-sha256.txt`. Each manifest needs its own base
+    directory; grep for `: FAILED$` separately because a wrong working directory only produces
+    "No such file" noise.
+  - [x] Recompute `review-subject.json` and require
+    `6cee8dad34c1233c6184404b409fb65d1a4dd0bccdd0d0ee54e8869120970a97`.
+  - [x] Confirm `git diff` reports no byte changed under either content-addressed evidence directory.
+  - [x] Never re-capture, normalize, or regenerate a retained artifact to make a manifest match.
+
+- [x] **Task 3 - Assemble one content-bound disposition envelope outside both frozen trees (AC1-AC3).**
   - [x] Create
-    `_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure-proof-packet.md`
-    as the human-readable decision packet and add one support-safe evidence directory at
-    `_bmad-output/implementation-artifacts/evidence/story-3-13/<approved-source-sha>/<validated-index-sha256>/`;
-    do not add Story 3.13 output beneath Story 1.20's evidence tree.
-  - [x] Create `identity-crosswalk.json` with an explicit schema/version and fields for source SHA,
-    package manifest path/hash, all 14 package rows, release/version/tag, workflow run/attempt,
-    Builds execution SHA, release authority URL/hash/scope, registry/repository, index media type/
-    digest/size/raw hash, two child descriptors, two config descriptors/platforms, smoke results,
-    predecessor input hashes, limitations, and final `pass` or `fail-closed` verdict.
-  - [x] Give every field a source citation and independent verification result. A copied value with
-    no verification method/result is `unverified`, not `pass`.
-  - [x] Require all selected fields to belong to one candidate row. Reject union, fallback, or
-    “latest available value” logic across Story 1.20, v3.77.2, later tags, or current `main`.
+    `_bmad-output/implementation-artifacts/evidence/story-3-13/disposition/6cee8dad.../disposition-envelope.json`
+    outside both evidence trees. Both are closed inventories and the frozen crosswalk pins
+    `receipt_count` to `0`, so an artifact placed inside would either fail the inventory check or
+    force a crosswalk edit that invalidates the very subject the envelope cites.
+  - [x] Serialize the envelope with the platform-owned `release_evidence_codec.canonical_bytes`
+    form (`sort_keys`, `(",", ":")` separators, trailing newline). Do not use
+    `_publisher_canonical_bytes`, which is a different, indented canonicalization.
+  - [x] Reference the review subject, identity crosswalk, evidence-core manifest, reviewer roster,
+    the `v3.94.1` proof packet, and the governing approved proposal by `{file, size, sha256}`.
+  - [x] Carry the five verbatim disposition fields, the three retained blockers, the malformed-label
+    and absent-revision facts, the retained checksum-manifest inventory, a revalidation trigger, the
+    successor boundary, the retained limitations, the acceptance contract, and a verification record.
+  - [x] Add `disposition-sha256.txt` closing recursively over the disposition directory.
 
-- [ ] **Task 4 - Revalidate exact source and package identities (AC2, AC3).**
-  - [x] Require the selected release provenance source to equal the owner-approved replacement
-    SHA `80d12ef5eee71a9fe3ea7be51171da4a71b69a28` / `v3.94.1` after the 2026-08-14 proposal.
-    The Story 1.20 SHA remains a historical predecessor only.
-  - [x] Parse `tools/release-packages.json` structurally and require exactly its current 14 IDs,
-    no duplicate IDs/projects, one selected version, and no package outside the manifest.
-  - [x] Independently obtain and hash the exact selected package bytes. All 14 `3.94.1` archives
-    were downloaded from NuGet.org and SHA-256 hashed into the new evidence tree.
-  - [x] Treat the recorded unrecoverability of the `999.1.20-proof.fa2d1c9910f8` package bytes as a
-    known blocker unless the exact original bytes are recovered from a content-addressed source and
-    rehashed. Rebuilding similar packages or trusting the recorded hash list is not independent
-    byte verification.
-  - [x] Do not apply the Story 2.12 Tenants-only AD-22 exception: it explicitly grants no deployed-
-    mode or other-consumer relief.
+- [x] **Task 4 - Exact source and package identities (AC2) - resolved by retained evidence.**
+  - [x] Retained: all 14 `3.94.1` archives were downloaded from NuGet.org and independently
+    SHA-256 hashed into the selected packet, and `nuget-sha256.txt` still verifies 14 of 14.
+  - [x] Approved proposal section 4.4 removes the package-download requirement; the envelope binds
+    the retained hashes instead of re-downloading bytes.
 
-- [ ] **Task 5 - Revalidate the immutable OCI graph from registry bytes (AC2, AC3).**
-  - [x] Resolve the proposed tag only as discovery input; immediately bind all evidence to the
-    immutable index digest. Re-fetch the index by digest with an OCI-index `Accept` header and
-    require the tag and digest responses to be byte-identical when a tag is part of the candidate.
-  - [x] Verify `Docker-Content-Digest`, exact raw bytes/hash/length, `schemaVersion: 2`, and media
-    type `application/vnd.oci.image.index.v1+json`.
-  - [x] Require exactly two direct image descriptors: one `linux/amd64` and one `linux/arm64`, with
-    no duplicate, extra, nested index, `unknown`, or non-empty variant entry.
-  - [x] Resolve every child manifest by digest; verify raw digest, size, descriptor/response media
-    type, config descriptor digest/size, raw config digest/size, and config `os`/`architecture`
-    equality with the parent descriptor. Child/config response metadata is retained for `v3.94.1`.
-  - [x] Retain support-safe raw index, child-manifest, and config bytes plus a sorted checksum
-    manifest. Never retain registry credentials or authorization headers.
-  - [x] Reuse the SHA-pinned Hexalith.Builds validation contract for a semantic release candidate.
-    The current validator accepts a SemVer tag for initial resolution; it cannot directly accept
-    the non-SemVer `quarantine-proof-*` tag. Do not weaken or fork it in this story. Use an already
-    approved immutable-digest verification path or record the tool/candidate incompatibility as a
-    fail-closed result.
+- [x] **Task 5 - Immutable OCI graph (AC2) - resolved by retained evidence.**
+  - [x] Retained: raw index, both child manifests, and both configs plus their response metadata are
+    frozen in the selected packet and still verify against `evidence-core-sha256.txt`.
+  - [x] Approved proposal section 4.4 removes the registry-readback requirement. The envelope
+    re-derives the malformed labels and the absent revision label from those raw config bytes.
 
-- [ ] **Task 6 - Re-run equivalent, digest-pinned runtime evidence (AC2, AC3).**
-  - [x] Run the same bounded support-safe `/alive` smoke against each immutable child digest, with
-    the same minimal configuration, timeout, polling, 2xx-without-redirect expectation, cleanup,
-    and log-redaction contract for both platforms. Production `/alive` returned HTTP 200 on both
-    `v3.94.1` children.
-  - [x] Run arm64 emulation/runtime readiness before arm64 product smoke. Classify environment/
-    emulation setup failure separately from image pull/start failure and liveness failure; every
-    non-pass blocks closure.
-  - [x] Record child digest, observed runtime platform, command contract, start/end time, exit code,
-    bounded log hash, readiness result, and cleanup result. Do not treat workflow success, image
-    pull, process start, or the parent index alone as runtime proof.
-  - [x] If an actual deployed instance is inspected, observe its image identity and map an observed
-    index, child, or config digest only through the frozen selected chain. An identity absent from
-    the chain fails closed; never derive it from a mutable deployment tag.
+- [x] **Task 6 - Digest-pinned runtime evidence (AC2) - resolved by retained evidence.**
+  - [x] Retained: Production `/alive` returned HTTP 200 with zero redirects on both `v3.94.1`
+    children, with structured logs and `runtime-verification.json` frozen in the packet.
+  - [x] Approved proposal section 4.4 removes the runtime-smoke requirement for this story.
 
-- [ ] **Task 7 - Verify release provenance and durable authority (AC2, AC3).**
-  - [x] Bind one release version/tag, workflow run and attempt, source/tag commit relationship,
-    Builds execution SHA, publisher/validator identity, package inventory, and container index to
-    the same release event. `v3.94.1` binds run `31781920404` attempt 1 and Builds `f75daebd`.
-  - [x] Hash and validate the durable release-owner authority record. Require repository, exact
-    source SHA, version/tag, container repository, platform scope, owner, date, rationale, and
-    validity at the original action time; an expired record may prove historical authorization but
-    cannot authorize a new mutation.
-  - [x] Require the selected candidate's retained evidence to be durable and content-bound.
-    Expired GitHub Actions artifacts, inaccessible package bytes, mutable issue text without a
-    frozen hash, or registry tags without digest read-back are missing evidence.
-  - [x] Keep signing, SBOM, attestations, trusted publishing, and credential modernization out of
-    scope. Their absence does not weaken this story's required provenance fields and this story
-    does not claim to implement them.
+- [x] **Task 7 - Release provenance and durable authority (AC2) - resolved by retained evidence.**
+  - [x] Retained: release `v3.94.1` binds workflow run `31781920404` attempt 1 and Builds
+    `f75daebd4c522c081a6f62e274cf25e07971de69` to source `80d12ef5`.
+  - [x] Retained: `deployment-authority.json` and the crosswalk both record
+    `deployment_authorized: false`, and the envelope carries that state verbatim as a failure.
+  - [x] Approved proposal section 4.4 removes review-subject regeneration; the envelope binds the
+    existing subject by hash.
 
-- [x] **Task 8 - Produce the fail-closed verdict before requesting review (AC2, AC3).**
-  - [x] Run a structural verifier over `identity-crosswalk.json` and the checksum manifest. Require
-    exact field presence, one candidate identity, exact package/platform sets, and a reproducible
-    fail-closed verdict while AC2/AC4 independent checks remain incomplete.
-  - [x] Add focused regression coverage in
-    `tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs`
-    for the crosswalk schema, exact 14-package/two-platform sets, selected hashes/verdict, and
-    approval-subject binding. Use existing test dependencies; do not change a project file.
-  - [x] Explicitly test the known prohibited splice: Story 1.20 source/packages plus v3.77.2
-    release/index must fail. Also reject v3.77.2 source/packages plus the Story 1.20 proof index.
-  - [x] If no single candidate passes, record `fail-closed`, the exact blockers and evidence
-    attempted, and the separately owned corrective action needed. Do not invent a release, request
-    publication under this story, or change any completed status.
-  - [x] This story may enter `review` only after the focused crosswalk exists and its verdict is
-    reproducible. It may become `done` only for a complete `pass` packet under AC4.
+- [x] **Task 8 - Narrow the focused verifier to the rejected shape only (AC3, AC4).**
+  - [x] Add a disposition gate to
+    `tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs` that
+    accepts exactly the rejected/non-authorizing envelope bound to `6cee8dad...` plus its three
+    role-bound receipts, and nothing else.
+  - [x] Leave `EvaluateClosure` and its existing positive/negative tests unchanged so a `pass`
+    outcome provably stays rejected.
+  - [x] Cover every I/O matrix row: pass-shaped disposition, omitted or normalized defect,
+    frozen-chain drift, incomplete acceptance, and cross-lineage splice.
+  - [x] Route every mutation test through a fresh copy plus a full re-evaluation, and assert the
+    positive control on each prepared copy first, so no guard is green by construction.
 
-- [ ] **Task 9 - Obtain content-bound owner and Test Architect acceptance (AC4).**
-  - [x] Freeze a review subject containing the final crosswalk hash, evidence-manifest hash,
-    source/package/release/index identities, limitations, and proposed decision.
-  - [x] Hash-bind the repository-owned reviewer roster and load future receipts only from the
-    subject-hash-addressed evidence path, with exact authorized identities and receipt fields.
+- [ ] **Task 9 - Obtain three content-bound role-bound receipts (AC5).**
+  - [x] Publish the acceptance contract in the envelope: three roles, the frozen nine receipt
+    fields, `acceptances/{envelope_sha256}` outside hashed evidence, and the hash-bound reviewer
+    roster.
   - [ ] Obtain distinct durable acceptance from the EventStore owner and Release owner plus Murat's
-    Test Architect review. Verify reviewer roles, exact subject hash, accepted scope, limitations,
-    decision, date, and durable source; do not infer approval from story creation or prior approval.
-  - [ ] Rehash the packet after approvals. Any evidence/content change invalidates the approvals
-    until all three reviewers accept the replacement subject.
-  - [ ] For a passing packet, record only the deployed identity decision. Preserve the explicit
-    prohibition on consumer migration, deployment, publication, registry mutation, and G5.
+    Test Architect review of the unchanged envelope and its referenced `6cee8dad...` subject.
+  - [ ] Never infer a receipt from the 2026-08-16 planning approval, story creation, a self-declared
+    role, or a prior comment on subject `394292a2...`.
+  - [ ] Any later byte change to the envelope moves the receipt directory and invalidates all
+    receipts until all three reviewers accept the replacement.
 
-- [x] **Task 10 - Validate and hand off without scope leakage (AC1-AC4).**
-  - [x] Validate JSON structure, all checksum manifests, predecessor immutability, support-safe
-    output, exact package/platform sets, Git diff hygiene, and the story/sprint status transition.
-  - [x] Confirm no runtime source, workflow, release configuration, manifest, submodule, Story 1.20,
-    Story 3.12, consumer, deployment, or registry object changed under Story 3.13.
-  - [x] Record exact commands/results and environmental blockers in the Dev Agent Record. Do not
-    report a blocked or unavailable check as passed.
-  - [x] Update only the stale Story 3.12-to-Story 1.20 ownership paragraph in `docs/ci.md` to name
-    Story 3.13 as the deployed-runtime closure owner. Preserve the documented release mechanics,
-    all historical records, and Story 1.20's source/package-only authority.
-  - [x] If AC4 passes, move this story through review to `done`; otherwise leave it non-`done` with
-    the focused blocker record. Never change Story 1.20, Story 3.12, or Epic 1.
+- [x] **Task 10 - Validate and hand off without scope leakage (AC1-AC6).**
+  - [x] Validate envelope canonical bytes, the recursive disposition manifest, every referenced
+    binding, all 151 retained checksum entries, exact package/platform sets, Git diff hygiene, and
+    the story/sprint status transition.
+  - [x] Confirm no runtime source, workflow, release configuration, package manifest, submodule,
+    Story 1.20, Story 3.12, Story 3.14, consumer, deployment, or registry object changed.
+  - [x] Update `docs/ci.md` and `sprint-status.yaml` to state that Story 3.13 owns the `v3.94.1`
+    rejection only, that Story 3.14 owns the corrective release and Story 3.15 positive parity, and
+    why the story-key rename stays tracker-level.
+  - [x] Move this story to `review`; it may become `done` only after the envelope and all three
+    receipts verify, and even then it selects no image.
 
 ### Review Findings
 
@@ -769,11 +764,30 @@ OpenAI Codex (GPT-5)
   honesty; rebound the packet; and passed 186/186 focused plus 1423/1423 complete Contracts tests.
   The required durable external reviewer-roster authority URL remains an explicit open action, so
   the external restart gate, AC2/AC4, Tasks 4–7/9, and 0/3 acceptance state remain unchanged.
+- 2026-08-21 re-scope implementation: applied the approved 2026-08-16 correct-course decision.
+  Assembled the canonical disposition envelope and its recursive checksum manifest at
+  `evidence/story-3-13/disposition/6cee8dad34c1233c6184404b409fb65d1a4dd0bccdd0d0ee54e8869120970a97/`
+  (envelope SHA-256 `7ff7e1501d1cdb49307f820dcdd0d8abc15bf2eee01c9e7450fc54255d8dfba4`, serialized
+  with `tools/release_evidence_codec.py` `canonical_bytes`). Added a focused disposition gate that
+  re-derives the malformed and absent provenance labels from the retained raw config bytes,
+  re-verifies all four retained checksum manifests of the selected packet, requires canonical
+  envelope bytes and a closed recursive directory inventory, and counts only role-bound receipts
+  validated against the packet-bound roster. `EvaluateClosure` and every pre-existing test are
+  unchanged. Focused verifier 240/240 (baseline 190); complete Contracts 1494/1494; Release build
+  zero warnings and zero errors. All 151 retained checksum entries still pass and
+  `git status --porcelain` is empty for both content-addressed evidence directories. Every new guard
+  was proved decisive by mutation: removing it turns its matching negative case red, and the two
+  intentionally redundant subject-digest checks were verified to fail the case only when both are
+  removed. Acceptance is still exactly 0 of 3.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure-proof-packet.md`
+- `_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure-v3.94.1-proof-packet.md`
 - `_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure.md`
+- `_bmad-output/implementation-artifacts/evidence/story-3-13/disposition/6cee8dad34c1233c6184404b409fb65d1a4dd0bccdd0d0ee54e8869120970a97/disposition-envelope.json`
+- `_bmad-output/implementation-artifacts/evidence/story-3-13/disposition/6cee8dad34c1233c6184404b409fb65d1a4dd0bccdd0d0ee54e8869120970a97/disposition-sha256.txt`
+- `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure-superseded-2026-08-16.md`
 - `_bmad-output/implementation-artifacts/deferred-work.md`
 - `_bmad-output/implementation-artifacts/epic-3-context.md`
 - `_bmad-output/implementation-artifacts/evidence/story-3-13/fa2d1c9910f8976553adb33dcdb1c9ff2ea75594/523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87/`
@@ -781,31 +795,50 @@ OpenAI Codex (GPT-5)
 - `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
 - `_bmad-output/planning-artifacts/sprint-change-proposal-2026-08-12-story-3-13-step-3-gate.md`
+- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-08-16.md`
 - `docs/ci.md`
 - `tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs`
 
 ## Story Completion Status
 
-- Status remains `in-progress` after the 2026-08-14 identity replacement. The selected packet is
-  `80d12ef5` / `v3.94.1` / `3.94.1` at index
-  `sha256:ab8784c8c9c67229ee178e9d6dd809df9554b3cdafb43ffb7bfd38c792e2afcd`. The `fa2d1c99`
-  packet is historical fail-closed evidence only. AC2/AC4 remain open with 0/3 acceptances of the
-  new subject `6cee8dad…`. Prior comments on subject `394292a2…` are void.
-- AC1 and AC3 pass. The new packet independently hashed all 14 `3.94.1` archives, bound release
-  run `31781920404` attempt 1 / Builds `f75daebd`, retained child/config response metadata, and
-  recorded Production `/alive` HTTP 200 on both platforms. AC2 still fails closed on malformed OCI
-  provenance labels, missing deployment authority, and missing AC4 receipts.
-- AC4 does not pass: the new packet is not a complete passing lineage and has zero of three required
-  content-bound acceptances.
-- Current acceptance status is exactly 0/3; no receipt, approval, publication, registry,
-  deployment, or consumer state was created or changed by this hardening. Historical Story 3.13
-  commits did advance root-declared submodule gitlinks. Two predecessor
-  files were written at `3d6dea69` solely to restore approved bytes drifted by the unrelated
-  commit `089369bb`; net predecessor state at HEAD is byte-identical to the approved identity.
-- Story 3.13 must remain non-`done` until every blocker is resolved and all three reviewers accept
-  one unchanged replacement review subject.
+- Status is `review` after the approved 2026-08-16 correct-course re-scope. Story 3.13 now owns one
+  content-bound disposition of the immutable `v3.94.1` candidate and nothing else. The retained
+  lineage is `80d12ef5` / `v3.94.1` / `3.94.1` at index
+  `sha256:ab8784c8c9c67229ee178e9d6dd809df9554b3cdafb43ffb7bfd38c792e2afcd`, and the `fa2d1c99`
+  packet remains historical fail-closed evidence only.
+- The disposition envelope at
+  `_bmad-output/implementation-artifacts/evidence/story-3-13/disposition/6cee8dad34c1233c6184404b409fb65d1a4dd0bccdd0d0ee54e8869120970a97/`
+  records `candidate: v3.94.1`, `candidate_disposition: rejected-non-authorizing`,
+  `deployed_runtime_parity: unavailable-for-v3.94.1`, `selected_deployed_identity: null`, and
+  `deployment_authorized: false`. It lives outside both content-addressed evidence trees and changed
+  no retained byte.
+- AC1, AC2, AC3, and AC4 pass. Every retained fact is preserved verbatim: the malformed `https`
+  values for `org.opencontainers.image.source`, `.url`, and `.documentation`, the absent
+  `org.opencontainers.image.revision` label, the three retained blockers, and the withheld deployment
+  authority. The focused verifier re-derives the label facts from the raw config bytes rather than
+  trusting the envelope's declaration.
+- AC5 does not pass. Current acceptance status is exactly 0 of 3: no receipt, approval, publication,
+  registry, deployment, or consumer state was created, requested, or inferred. The 2026-08-16
+  planning approval is not a receipt.
+- AC6 is a completion constraint, not a claim. Even after three receipts, Story 3.13 selects no
+  image, authorizes no deployment or consumer migration, leaves positive FR36 deployed-runtime parity
+  open for Story 3.15, does not reopen Stories 1.20 or 3.12, and creates no dependency on Story 3.14.
+- Story 3.13 must remain non-`done` until the EventStore owner, Release owner, and Test Architect
+  each accept one unchanged disposition envelope and its referenced `6cee8dad...` subject.
 
-### Post-Handoff Evidence Disposition — `bmad-build` Step 3 Gate (2026-08-12)
+### Post-Handoff Evidence Disposition — `bmad-build` Step 3 Gate (2026-08-12) — SUPERSEDED
+
+> **Superseded on 2026-08-16.** The gate below reserved terminal re-scoping for another explicit
+> Correct Course decision. The approved 2026-08-16 Sprint Change Proposal
+> (`_bmad-output/planning-artifacts/sprint-change-proposal-2026-08-16.md`, approved by
+> Administrator) is that decision: it re-scopes Story 3.13 from positive deployed-runtime parity to
+> a `v3.94.1` rejected/non-authorizing evidence disposition, authorizes the disposition envelope and
+> the narrowed verifier, and removes the registry-readback, package-download, runtime-smoke, and
+> subject-regeneration requirements. The restart conditions of the on-hold 2026-08-12 proposal
+> therefore no longer gate this story. No evidence byte was changed by that re-scope, and Task 9
+> content-bound acceptance remains genuinely open at 0 of 3.
+
+The original 2026-08-12 record is preserved below as history.
 
 - The `bmad-build` handoff halted correctly at Step 3. Repository-owned Story 3.13 hardening is
   complete and locally verified; the remaining Tasks 4–7 and 9 require external evidence or

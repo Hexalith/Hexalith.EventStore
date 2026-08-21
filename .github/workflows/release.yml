@@ -5,15 +5,6 @@ name: Release
 # a successful push CI run before the protected release environment is entered.
 on:
   workflow_dispatch:
-    inputs:
-      release-version:
-        description: 'Exact stable semantic version reserved for this run; semantic-release must resolve the same value.'
-        required: true
-        type: string
-      release-authority-issue-url:
-        description: 'Stable EventStore issue API URL where the run-bound authority and consumption receipt are retained.'
-        required: true
-        type: string
 
 concurrency:
   group: release-production
@@ -37,8 +28,6 @@ jobs:
           REPOSITORY: ${{ github.repository }}
           DISPATCH_REF: ${{ github.ref }}
           DISPATCH_SHA: ${{ github.sha }}
-          RELEASE_VERSION: ${{ inputs.release-version }}
-          RELEASE_AUTHORITY_ISSUE_URL: ${{ inputs.release-authority-issue-url }}
         run: |
           set -euo pipefail
           if [ "$DISPATCH_REF" != "refs/heads/main" ]; then
@@ -47,14 +36,6 @@ jobs:
           fi
           if [[ ! "$DISPATCH_SHA" =~ ^[0-9a-f]{40}$ ]]; then
             echo "The dispatch source must be an exact lowercase commit SHA." >&2
-            exit 1
-          fi
-          if [[ ! "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Release version must be a stable semantic version." >&2
-            exit 1
-          fi
-          if [[ ! "$RELEASE_AUTHORITY_ISSUE_URL" =~ ^https://api\.github\.com/repos/Hexalith/Hexalith\.EventStore/issues/[1-9][0-9]*$ ]]; then
-            echo "Release authority must use an EventStore GitHub issue API URL." >&2
             exit 1
           fi
 
@@ -106,23 +87,26 @@ jobs:
       id-token: write
       issues: write
       pull-requests: write
-    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@63409393541f1437e23006b7a4e05174f8b50da7
+    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@a07078ad74d3727bc5a6b6d85d47d56a6e5c9fec
     with:
       solution: Hexalith.EventStore.slnx
       timeout-minutes: 60
       environment-name: production
       governed-release: false
       publish-containers: true
-      builds-execution-sha: 63409393541f1437e23006b7a4e05174f8b50da7
+      builds-execution-sha: a07078ad74d3727bc5a6b6d85d47d56a6e5c9fec
       source-branch: main
       source-ci-workflow: ci.yml
       package-manifest: tools/release-packages.json
       # Caller-declared so an accidental change to the manifest fails closed
       # instead of redefining the gate it is checked against.
       expected-package-count: 14
-      reserved-version: ${{ inputs.release-version }}
-      release-authority-issue-url: ${{ inputs.release-authority-issue-url }}
-      release-authority-owner: github:jpiquot
+      # Publication is gated by the protected `production` environment approval on the
+      # release job. The dispatch-reserved version and one-use GitHub issue-comment
+      # authority were a Story 3.14 corrective-release gate, not a release precondition;
+      # declaring the opt-out here keeps that machinery available and unused. Turning it
+      # back on means setting this true and supplying all three reservation inputs.
+      require-publication-authority: false
       container-projects: |
         src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore
     secrets:

@@ -99,6 +99,38 @@ Four layers: blind-hunter, edge-case-hunter, verification-gap, acceptance-audito
 
 Dismissed as noise (4): `record_sha256` re-serialisation (by design; `authority_record_sha256` binds raw bytes); "reservation leaves no evidence trace" (refuted — the authority binds `identity_sha256`, which binds `version`); duplicate `licenses`/`vendor` labels (verified identical values, retained configs correct); split codec import styles (both forms work in their own execution contexts).
 
+### Review Findings
+
+Chunk 1A follow-up code review 2026-08-21 (`c21bd749`..`f8b514f3`, EventStore
+release implementation surface). Four layers: blind-hunter, edge-case-hunter,
+verification-gap, acceptance-auditor. No layer failed.
+
+- [ ] [Review][Patch] [HIGH] Implement the owner-selected trusted, versioned live-verifier model: dispatch minimally parsed schema/version metadata to immutable backward-compatible handlers, keep retained packet code as non-executable evidence, and pin the v3 handler with the frozen packet's expected digest. Selected 2026-08-21; packet-supplied code must never execute. [tools/validate-corrective-release-evidence.py:10]
+- [ ] [Review][Patch] [MEDIUM] Make repository scoping explicit in future role evidence by binding the collaborator-permission request URL or repository alongside the response and validating it. Preserve v3 compatibility: its frozen packet is indirectly scoped because the hash-bound executed preflight helper derives that endpoint from the publication identity already fixed to `Hexalith/Hexalith.EventStore`. [tools/release_evidence_codec.py:651]
+
+- [ ] [Review][Patch] [HIGH] Derive authority and receipt HTML URLs from the accepted `authority.issue_url`; the codec currently hard-codes issue 346 and rejects a valid future authority on any other EventStore issue [tools/release_evidence_codec.py:591]
+- [ ] [Review][Patch] [HIGH] Generate one publisher-owned `ContainerProvenanceCreated` value and pass it to every RID, then exercise the production-shaped fallback; the pinned publisher omits the property, inner builds can evaluate different instants, and the only archive test overrides the fallback [Directory.Build.targets:38]
+- [ ] [Review][Patch] [HIGH] Validate provenance source SHA, release-version/tag, and created-timestamp shape before container publication instead of checking only for empty strings [Directory.Build.targets:57]
+- [ ] [Review][Patch] [HIGH] Reject conflicting smoke-log outcomes and cleanup values instead of accepting one expected pass line alongside additional failure lines [tools/release_evidence_codec.py:801]
+- [ ] [Review][Patch] [HIGH] Run shared Builds authority fixtures from the immutable release-workflow SHA rather than the independently moving development gitlink [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectiveOciProvenanceReleaseTests.cs:475]
+- [ ] [Review][Patch] [MEDIUM] Enforce stable SemVer without leading-zero numeric identifiers consistently in the dispatch gate, wrapper, shared preflight, and evidence codec [.github/workflows/release.yml:52]
+- [ ] [Review][Patch] [MEDIUM] Repair the deployment examples so locally produced tags match Compose/Kubernetes/ACR consumers, ACR uses `ContainerRegistry`, and local builds do not claim nonexistent GitHub release URLs [docs/guides/deployment-docker-compose.md:315; docs/guides/deployment-kubernetes.md:263; docs/guides/deployment-azure-container-apps.md:261]
+- [ ] [Review][Patch] [MEDIUM] Correct the release-permission documentation: the legacy reusable job inherits the caller's `attestations: write` and `id-token: write` grants; it does not narrow them [docs/ci.md:247]
+- [ ] [Review][Patch] [MEDIUM] Delete or execute the uncalled, stale synthetic evidence-packet builder and its orphaned record [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectiveOciProvenanceReleaseTests.cs:490]
+- [ ] [Review][Patch] [MEDIUM] Require both platform smoke entries to bind the same two-platform summary file and digest, preventing two individually self-consistent but mutually divergent summaries [tools/release_evidence_codec.py:902]
+- [ ] [Review][Patch] [MEDIUM] Bound the real multi-RID publish and helper subprocesses with timeouts and process-tree cleanup so the focused suite cannot hang indefinitely [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectiveOciProvenanceReleaseTests.cs:53]
+- [ ] [Review][Patch] [MEDIUM] Add executing negative publishes for missing source SHA and release version so removal or detachment of `ValidateContainerProvenanceInputs` is mutation-detectable [Directory.Build.targets:57]
+- [ ] [Review][Patch] [MEDIUM] Add canonical packet mutations that independently set `selects_deployed_identity` and `grants_mutation_authority` to true [tools/release_evidence_codec.py:396]
+- [ ] [Review][Patch] [MEDIUM] Execute negative cases for invalid `release-version` and `release-authority-issue-url` dispatch inputs instead of testing only valid values and later source/reservation failures [.github/workflows/release.yml:52]
+
+Dismissed as noise or already dispositioned (12): the release pin is now reachable on the
+Hexalith.Builds remote branch; widened token scopes were owner-ratified and are already tracked;
+v3.96.2's malformed created timestamps were explicitly accepted and disclosed; live-observation
+semantics and issue-comment pagination are already in the deferred ledger; malformed-input
+traceback, non-finite JSON, alternate timestamp syntax, CRLF manifest, OCI-layer, duplicate-tar,
+and archive-memory suggestions either remain fail-closed or fall outside the accepted Story 3.14
+contract without a demonstrated consumer failure.
+
 ## Spec Change Log
 
 - 2026-08-21 -- Owner-ratified amendment of two `I/O & Edge-Case Matrix` rows during code review.

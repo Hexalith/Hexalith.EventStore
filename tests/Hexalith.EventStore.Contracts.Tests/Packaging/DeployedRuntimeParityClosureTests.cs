@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -53,6 +54,165 @@ public sealed class DeployedRuntimeParityClosureTests
     private const string ExpectedOciValidatorSha256 =
         "e1547e31fbdb8a678c99a245510e718c1cb35f6b9ec51264aa7bc1cdae419509";
     private const string ReceiptDirectoryTemplate = "acceptances/{subject_sha256}";
+
+    private const string SelectedReviewSubjectSha256 =
+        "6cee8dad34c1233c6184404b409fb65d1a4dd0bccdd0d0ee54e8869120970a97";
+    private const string DispositionRelativePath =
+        "_bmad-output/implementation-artifacts/evidence/story-3-13/disposition/" +
+        SelectedReviewSubjectSha256;
+    private const string DispositionEnvelopeFile = "disposition-envelope.json";
+    private const string DispositionManifestFile = "disposition-sha256.txt";
+    private const string DispositionSchema =
+        "hexalith.eventstore.story-3-13-disposition-envelope/v1";
+    private const string RejectedDisposition = "rejected-non-authorizing";
+    private const string UnavailableDeployedParity = "unavailable-for-v3.94.1";
+    private const string SelectedReleaseTag = "v3.94.1";
+    private const string DispositionReceiptTemplate = "acceptances/{envelope_sha256}";
+    private const string DispositionReceiptSchema =
+        "hexalith.eventstore.story-3-13-acceptance-receipt/v1";
+    private const string DispositionSourceSchema =
+        "hexalith.eventstore.story-3-13-acceptance-source/v1";
+    private const string SelectedProofRelativePath =
+        "_bmad-output/implementation-artifacts/" +
+        "3-13-deployed-runtime-parity-closure-v3.94.1-proof-packet.md";
+    private const string DispositionAuthorityRelativePath =
+        "_bmad-output/planning-artifacts/sprint-change-proposal-2026-08-16.md";
+    private const string Story120EvidenceRelativePath =
+        "_bmad-output/implementation-artifacts/evidence/story-1-20/" + ApprovedSourceSha;
+    private const string StoryRecordRelativePath =
+        "_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure.md";
+    private const string SprintStatusRelativePath =
+        "_bmad-output/implementation-artifacts/sprint-status.yaml";
+    private const string DispositionVerifierPath =
+        "tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs";
+    private const string RevisionLabel = "org.opencontainers.image.revision";
+    private const string MalformedLabelValue = "https";
+
+    private static readonly JsonSerializerOptions CanonicalDispositionJsonOptions =
+        new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+
+    private static readonly string[] DispositionEnvelopeFields =
+    [
+        "acceptance_contract",
+        "assembled_at",
+        "candidate",
+        "candidate_disposition",
+        "deployed_runtime_parity",
+        "deployment_authorized",
+        "governing_authority",
+        "limitations",
+        "referenced_evidence",
+        "retained_blockers",
+        "retained_checksum_manifests",
+        "retained_identity",
+        "retained_provenance_defects",
+        "revalidation_trigger",
+        "review_subject",
+        "schema",
+        "selected_deployed_identity",
+        "story_id",
+        "successor_boundary",
+        "verification",
+    ];
+
+    private static readonly string[] MalformedProvenanceLabels =
+    [
+        "org.opencontainers.image.documentation",
+        "org.opencontainers.image.source",
+        "org.opencontainers.image.url",
+    ];
+
+    private static readonly string[] RetainedBlockerIds =
+    [
+        "deployment-authority-missing",
+        "malformed-oci-provenance-labels",
+        "story-3-13-acceptances-missing",
+    ];
+
+    // Concrete identity material owned by another lineage. Ancestry, tags, and labels are
+    // insufficient evidence, so the disposition's identity-bearing sections may never carry any of
+    // these Story 1.20, v3.75.0/v3.77.1/v3.77.2, or Story 3.14 values.
+    private static readonly string[] ForeignLineageTokens =
+    [
+        "3.75.0",
+        "3.77.1",
+        "3.77.2",
+        "3.96.2",
+        "4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3",
+        "523f01dfe2bc5b1192e58a98daf43b34778b6604b4dfe58fcbf7847156ec4a87",
+        "77a9a442c0e6d0408957888e10c3a9accd634c99",
+        "999.1.20-proof",
+        "db3ab41e187efc0de397fd1205660a0f685e2c94ecd8f4a8f1843ac567056bf6",
+        "f343bb0153e9cdcb8b12ec10153813072f5ad38d",
+        ApprovedSourceSha,
+    ];
+
+    private const string DispositionRevalidationTrigger =
+        "re-verify every retained checksum manifest and the frozen review subject before any " +
+        "re-declaration; never re-capture v3.94.1 evidence to make a manifest match";
+
+    // The identity scalars the frozen 6cee8dad review subject records for itself. The envelope is
+    // compared against these, and the subject is separately pinned to the crosswalk and constants, so
+    // a drifted declaration cannot be self-consistent.
+    // The complete frozen identity field set of the retained 6cee8dad review subject.
+    private static readonly string[] SubjectFrozenIdentityFields =
+    [
+        "authority_record_sha256",
+        "canonical_lineage_id",
+        "index_digest",
+        "package_hash_manifest_sha256",
+        "package_version",
+        "release_version",
+        "source_sha",
+        "workflow_run",
+    ];
+
+    private static readonly string[] SubjectBoundIdentityFields =
+    [
+        "authority_record_sha256",
+        "index_digest",
+        "package_version",
+        "release_version",
+        "source_sha",
+        "workflow_run",
+    ];
+
+    private static readonly string[] RetainedManifestFiles =
+    [
+        "evidence-core-sha256.txt",
+        "evidence-sha256.txt",
+        "nuget-sha256.txt",
+        "predecessor-tree-sha256.txt",
+    ];
+
+    private static readonly int[] RetainedManifestEntryCounts = [34, 3, 14, 40];
+
+    private static readonly string[] RetainedManifestBases =
+    [
+        "evidence-root",
+        "evidence-root",
+        "evidence-root/packages",
+        "repository-root",
+    ];
+
+    private static readonly string[] DispositionIdentitySections =
+    [
+        "governing_authority",
+        "referenced_evidence",
+        "retained_checksum_manifests",
+        "retained_identity",
+        "retained_provenance_defects",
+        "review_subject",
+    ];
+
+    private static readonly string[] DispositionSupportingFiles =
+    [
+        SelectedProofRelativePath,
+        DispositionAuthorityRelativePath,
+    ];
+
+    private static readonly JsonSerializerOptions IndentedDispositionJsonOptions =
+        new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping, WriteIndented = true };
 
     private static readonly string[] ExpectedChecks =
     [
@@ -2792,6 +2952,2360 @@ public sealed class DeployedRuntimeParityClosureTests
     public void SupportSafeRecordsRejectSensitiveValues(string value) =>
         LogIsSupportSafe(JsonSerializer.SerializeToUtf8Bytes(new JsonObject { ["message"] = value }))
             .ShouldBeFalse();
+
+    /// <summary>
+    /// Verifies the retained v3.94.1 disposition envelope verifies while acceptance reports 0 of 3.
+    /// </summary>
+    [Fact]
+    public void DispositionEnvelopeVerifiesAndReportsZeroOfThreeAcceptances()
+    {
+        string root = FindRepositoryRoot();
+        string disposition = Path.Combine(root, DispositionRelativePath);
+        string evidence = Path.Combine(root, SelectedEvidenceRelativePath);
+
+        Directory.Exists(disposition).ShouldBeTrue();
+        Path.GetFullPath(disposition).StartsWith(
+            Path.GetFullPath(evidence) + Path.DirectorySeparatorChar,
+            StringComparison.Ordinal).ShouldBeFalse();
+        Path.GetFullPath(disposition).StartsWith(
+            Path.GetFullPath(Path.Combine(root, EvidenceRelativePath)) + Path.DirectorySeparatorChar,
+            StringComparison.Ordinal).ShouldBeFalse();
+
+        (bool verified, string rejection, int receipts, string acceptanceRejection) =
+            EvaluateDisposition(root, disposition, evidence);
+        verified.ShouldBeTrue(rejection);
+        rejection.ShouldBeEmpty();
+        receipts.ShouldBe(0);
+        DispositionReasonCode(acceptanceRejection).ShouldBe("acceptance.receipt_directory");
+        DispositionStoryMayBeDone(root, disposition, evidence).ShouldBeFalse();
+
+        JsonObject envelope = LoadDispositionEnvelope(disposition);
+        envelope["candidate"]!.GetValue<string>().ShouldBe(SelectedReleaseTag);
+        envelope["candidate_disposition"]!.GetValue<string>().ShouldBe(RejectedDisposition);
+        envelope["deployed_runtime_parity"]!.GetValue<string>().ShouldBe(UnavailableDeployedParity);
+        envelope["selected_deployed_identity"].ShouldBeNull();
+        envelope["deployment_authorized"]!.GetValue<bool>().ShouldBeFalse();
+        envelope["review_subject"]!["sha256"]!.GetValue<string>().ShouldBe(SelectedReviewSubjectSha256);
+        envelope["retained_blockers"]!.AsArray()
+            .Select(item => item!["id"]!.GetValue<string>())
+            .Order(StringComparer.Ordinal)
+            .ShouldBe(RetainedBlockerIds);
+    }
+
+    /// <summary>
+    /// Verifies the envelope repeats exactly the hashes and identity scalars the frozen subject records.
+    /// </summary>
+    [Fact]
+    public void DispositionEnvelopeRepeatsTheFrozenSubjectRecordedHashesAndScalars()
+    {
+        string root = FindRepositoryRoot();
+        string evidence = Path.Combine(root, SelectedEvidenceRelativePath);
+        JsonObject envelope = LoadDispositionEnvelope(Path.Combine(root, DispositionRelativePath));
+        JsonObject subject = JsonNode.Parse(ReadEvidenceFile(evidence, "review-subject.json"))!.AsObject();
+        JsonObject referenced = envelope["referenced_evidence"]!.AsObject();
+        JsonObject identity = envelope["retained_identity"]!.AsObject();
+
+        // The three digests the frozen 6cee8dad... subject itself records. Asserting them here is what
+        // makes that pin enforceable: a re-declared envelope over edited retained bytes cannot pass.
+        subject["identity_crosswalk"]!["sha256"]!.GetValue<string>()
+            .ShouldBe("ba4e909ea4fd93d0357ccdab1af579e04d4dfd134260cdd6d2db1eea9f28efcc");
+        subject["evidence_core_manifest"]!["sha256"]!.GetValue<string>()
+            .ShouldBe("00136b5336836bb782673c944e7cd98c274f104ff7fec9919d5b27946f538fd5");
+        subject["proof_packet"]!["sha256"]!.GetValue<string>()
+            .ShouldBe("684e5ced0ff0f7dcaa7b942467e035f79219cf804a35a842d800cb4c6dce0e1d");
+
+        referenced["identity_crosswalk"]!["sha256"]!.GetValue<string>()
+            .ShouldBe(subject["identity_crosswalk"]!["sha256"]!.GetValue<string>());
+        referenced["evidence_core_manifest"]!["sha256"]!.GetValue<string>()
+            .ShouldBe(subject["evidence_core_manifest"]!["sha256"]!.GetValue<string>());
+        referenced["proof_packet"]!["sha256"]!.GetValue<string>()
+            .ShouldBe(subject["proof_packet"]!["sha256"]!.GetValue<string>());
+        referenced["proof_packet"]!["file"]!.GetValue<string>()
+            .ShouldBe(subject["proof_packet"]!["path"]!.GetValue<string>());
+
+        subject["identity"]!.AsObject().Select(property => property.Key)
+            .Order(StringComparer.Ordinal)
+            .ShouldBe(SubjectFrozenIdentityFields);
+        foreach (string field in SubjectBoundIdentityFields)
+        {
+            identity[field]!.ToJsonString().ShouldBe(
+                subject["identity"]![field]!.ToJsonString(),
+                field);
+        }
+
+        ComputeSha256(Path.Combine(root, SelectedProofRelativePath))
+            .ShouldBe(subject["proof_packet"]!["sha256"]!.GetValue<string>());
+    }
+
+    /// <summary>
+    /// Verifies the selected v3.94.1 tree is a closed inventory that admits no planted artifact.
+    /// </summary>
+    [Fact]
+    public void SelectedEvidenceTreeInventoryIsClosed()
+    {
+        string root = FindRepositoryRoot();
+        string evidence = Path.Combine(root, SelectedEvidenceRelativePath);
+
+        // Positive control. EvidenceDirectoryHasNoUnlistedFiles is reachable only through
+        // EvaluateClosure, which short-circuits on ApprovedSourceSha, so the selected tree would
+        // otherwise never be inventory-checked at all.
+        RejectSelectedEvidenceInventory(evidence).ShouldBeNull();
+
+        string[] actual = Directory.GetFiles(evidence, "*", SearchOption.AllDirectories)
+            .Select(path => Path.GetRelativePath(evidence, path).Replace('\\', '/'))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        actual.Length.ShouldBe(38);
+        actual.Count(name => name.StartsWith("packages/", StringComparison.Ordinal)).ShouldBe(14);
+        Directory.GetDirectories(evidence, "*", SearchOption.AllDirectories)
+            .Select(path => Path.GetRelativePath(evidence, path).Replace('\\', '/'))
+            .ShouldBe(["packages"]);
+    }
+
+    /// <summary>
+    /// Verifies any file planted inside the frozen selected tree fails the closed inventory.
+    /// </summary>
+    /// <param name="mutation">The planted-artifact identifier.</param>
+    [Theory]
+    [InlineData("stray-root-file")]
+    [InlineData("forged-receipt")]
+    [InlineData("stray-package")]
+    [InlineData("stray-subdirectory")]
+    [InlineData("empty-subdirectory")]
+    public void PlantedFileInsideSelectedEvidenceTreeFailsClosed(string mutation)
+    {
+        string root = FindRepositoryRoot();
+        (string cleanupRoot, string copiedRoot, string disposition, string evidence) =
+            CopyDispositionWithEvidence(root);
+        try
+        {
+            RejectSelectedEvidenceInventory(evidence).ShouldBeNull();
+            EvaluateDisposition(copiedRoot, disposition, evidence).Verified.ShouldBeTrue();
+            switch (mutation)
+            {
+                case "stray-root-file":
+                    File.WriteAllText(Path.Combine(evidence, "extra-note.txt"), "planted\n");
+                    break;
+                case "forged-receipt":
+                    {
+                        string forged = Path.Combine(
+                            evidence,
+                            "acceptances",
+                            SelectedReviewSubjectSha256);
+                        Directory.CreateDirectory(forged);
+                        File.WriteAllText(Path.Combine(forged, "eventstore-owner.json"), "{}");
+                    }
+
+                    break;
+                case "stray-package":
+                    File.WriteAllText(
+                        Path.Combine(evidence, "packages", "Hexalith.EventStore.Extra.3.94.1.nupkg"),
+                        "planted\n");
+                    break;
+                case "stray-subdirectory":
+                    Directory.CreateDirectory(Path.Combine(evidence, "raw"));
+                    File.WriteAllText(Path.Combine(evidence, "raw", "index.raw"), "planted\n");
+                    break;
+                default:
+                    // A planted directory that holds no file is visible only to the directory clause.
+                    Directory.CreateDirectory(Path.Combine(evidence, "acceptances"));
+                    break;
+            }
+
+            // All 91 retained checksum entries still verify; only the closed inventory can see this.
+            RetainedManifestStillVerifies(evidence, "evidence-sha256.txt", evidence, 3).ShouldBeTrue();
+            RetainedManifestStillVerifies(evidence, "evidence-core-sha256.txt", evidence, 34).ShouldBeTrue();
+            RejectSelectedEvidenceInventory(evidence).ShouldNotBeNull();
+            (bool verified, string rejection, _, _) =
+                EvaluateDisposition(copiedRoot, disposition, evidence);
+            verified.ShouldBeFalse();
+            ShouldRejectWith(rejection, "selected_evidence.inventory");
+        }
+        finally
+        {
+            Directory.Delete(cleanupRoot, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies every retained checksum entry of both content-addressed Story 3.13 trees still passes.
+    /// </summary>
+    [Fact]
+    public void RetainedDispositionEvidenceTreesStillVerifyEveryChecksumEntry()
+    {
+        string root = FindRepositoryRoot();
+        string selected = Path.Combine(root, SelectedEvidenceRelativePath);
+        string historical = Path.Combine(root, EvidenceRelativePath);
+        string packages = Path.Combine(selected, "packages");
+
+        // The selected tree carries four manifests totalling 91 entries; the historical tree carries
+        // three (it has no nuget-sha256.txt) totalling 60. 151 is the both-trees figure.
+        RetainedManifestStillVerifies(selected, "evidence-sha256.txt", selected, 3).ShouldBeTrue();
+        RetainedManifestStillVerifies(selected, "evidence-core-sha256.txt", selected, 34).ShouldBeTrue();
+        RetainedManifestStillVerifies(selected, "nuget-sha256.txt", packages, 14).ShouldBeTrue();
+        RetainedManifestStillVerifies(selected, "predecessor-tree-sha256.txt", root, 40).ShouldBeTrue();
+        RetainedManifestStillVerifies(historical, "evidence-sha256.txt", historical, 3).ShouldBeTrue();
+        RetainedManifestStillVerifies(historical, "evidence-core-sha256.txt", historical, 17).ShouldBeTrue();
+        RetainedManifestStillVerifies(historical, "predecessor-tree-sha256.txt", root, 40).ShouldBeTrue();
+        File.Exists(Path.Combine(historical, "nuget-sha256.txt")).ShouldBeFalse();
+        ComputeSha256(Path.Combine(selected, "review-subject.json")).ShouldBe(SelectedReviewSubjectSha256);
+    }
+
+    /// <summary>
+    /// Verifies the complete rejected disposition plus three role-bound receipts becomes story-completable.
+    /// </summary>
+    [Fact]
+    public void CompleteDispositionWithThreeRoleBoundReceiptsIsStoryCompletable()
+    {
+        string root = FindRepositoryRoot();
+        string evidence = Path.Combine(root, SelectedEvidenceRelativePath);
+        (string cleanupRoot, string disposition) = CopyDisposition(root);
+        try
+        {
+            DispositionStoryMayBeDone(root, disposition, evidence).ShouldBeFalse();
+            CreateDispositionReceipts(disposition);
+            (bool verified, string rejection, int receipts, string acceptanceRejection) =
+                EvaluateDisposition(root, disposition, evidence);
+            verified.ShouldBeTrue(rejection);
+            receipts.ShouldBe(3);
+            acceptanceRejection.ShouldBeEmpty();
+            DispositionStoryMayBeDone(root, disposition, evidence).ShouldBeTrue();
+
+            JsonObject envelope = LoadDispositionEnvelope(disposition);
+            envelope["selected_deployed_identity"].ShouldBeNull();
+            envelope["successor_boundary"]!["closes_fr36_deployed_parity"]!.GetValue<bool>().ShouldBeFalse();
+            envelope["successor_boundary"]!["depends_on_corrective_release"]!.GetValue<bool>().ShouldBeFalse();
+            envelope["successor_boundary"]!["positive_deployed_runtime_parity_owner"]!
+                .GetValue<string>().ShouldBe("3.15");
+        }
+        finally
+        {
+            Directory.Delete(cleanupRoot, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies any pass-shaped or authorizing disposition claim is rejected with its exact diagnostic.
+    /// </summary>
+    /// <param name="mutation">The pass-shaped mutation identifier.</param>
+    /// <param name="expectedReason">The exact rejection reason code the gate must emit.</param>
+    [Theory]
+    [InlineData("candidate-disposition-pass", "envelope.candidate_disposition")]
+    [InlineData("parity-pass", "envelope.deployed_runtime_parity")]
+    [InlineData("selected-identity", "envelope.selected_deployed_identity")]
+    [InlineData("deployment-authorized", "envelope.deployment_authorized")]
+    [InlineData("verification-pass", "envelope.verification.result")]
+    [InlineData("closes-fr36", "envelope.successor_boundary.closes_fr36_deployed_parity")]
+    [InlineData("authorizes-deployment", "envelope.successor_boundary.authorizes_deployment")]
+    public void PassShapedDispositionFailsClosed(string mutation, string expectedReason)
+    {
+        string root = FindRepositoryRoot();
+        string evidence = Path.Combine(root, SelectedEvidenceRelativePath);
+        (string cleanupRoot, string disposition) = CopyDisposition(root);
+        try
+        {
+            EvaluateDisposition(root, disposition, evidence).Verified.ShouldBeTrue();
+            JsonObject envelope = LoadDispositionEnvelope(disposition);
+            switch (mutation)
+            {
+                case "candidate-disposition-pass":
+                    envelope["candidate_disposition"] = "pass";
+                    break;
+                case "parity-pass":
+                    envelope["deployed_runtime_parity"] = "pass";
+                    break;
+                case "selected-identity":
+                    envelope["selected_deployed_identity"] = SelectedIndexDigest;
+                    break;
+                case "deployment-authorized":
+                    envelope["deployment_authorized"] = true;
+                    break;
+                case "verification-pass":
+                    envelope["verification"]!["result"] = "pass";
+                    break;
+                case "closes-fr36":
+                    envelope["successor_boundary"]!["closes_fr36_deployed_parity"] = true;
+                    break;
+                default:
+                    envelope["successor_boundary"]!["authorizes_deployment"] = true;
+                    break;
+            }
+
+            WriteDispositionEnvelope(disposition, envelope);
+            (bool verified, string rejection, _, _) = EvaluateDisposition(root, disposition, evidence);
+            verified.ShouldBeFalse();
+            ShouldRejectWith(rejection, expectedReason);
+        }
+        finally
+        {
+            Directory.Delete(cleanupRoot, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies an omitted, normalized, or synthesized v3.94.1 fact is rejected with its exact diagnostic.
+    /// </summary>
+    /// <param name="mutation">The omission or normalization identifier.</param>
+    /// <param name="expectedReason">The exact rejection reason code the gate must emit.</param>
+    [Theory]
+    [InlineData("normalized-source-label", "envelope.retained_provenance_defects.malformed_labels")]
+    [InlineData("dropped-malformed-label", "envelope.retained_provenance_defects.malformed_labels")]
+    [InlineData("extra-malformed-label", "envelope.retained_provenance_defects.malformed_labels")]
+    [InlineData("extra-absent-label", "envelope.retained_provenance_defects.absent_labels")]
+    [InlineData("synthesized-revision-label", "envelope.retained_provenance_defects.observed_config_revision")]
+    [InlineData("dropped-absent-label", "envelope.retained_provenance_defects.absent_labels")]
+    [InlineData("dropped-blocker", "envelope.retained_blockers")]
+    [InlineData("reworded-blocker", "envelope.retained_blockers")]
+    [InlineData("dropped-retained-limitation", "envelope.limitations")]
+    [InlineData("reworded-retained-limitation", "envelope.limitations")]
+    public void OmittedOrNormalizedDispositionFactFailsClosed(string mutation, string expectedReason)
+    {
+        string root = FindRepositoryRoot();
+        string evidence = Path.Combine(root, SelectedEvidenceRelativePath);
+        (string cleanupRoot, string disposition) = CopyDisposition(root);
+        try
+        {
+            EvaluateDisposition(root, disposition, evidence).Verified.ShouldBeTrue();
+            JsonObject envelope = LoadDispositionEnvelope(disposition);
+            JsonObject defects = envelope["retained_provenance_defects"]!.AsObject();
+            switch (mutation)
+            {
+                case "normalized-source-label":
+                    defects["malformed_labels"]!.AsArray()
+                        .First(item => item!["label"]!.GetValue<string>() ==
+                            "org.opencontainers.image.source")!
+                        ["retained_value"] = "https://github.com/" + ExpectedRepository;
+                    break;
+                case "dropped-malformed-label":
+                    defects["malformed_labels"]!.AsArray().RemoveAt(0);
+                    break;
+                case "extra-malformed-label":
+                    // Only the exact-cardinality guard can reject a fabricated extra defect row.
+                    defects["malformed_labels"]!.AsArray().Add(new JsonObject
+                    {
+                        ["platform"] = "linux/amd64",
+                        ["config_file"] = "child-linux-amd64.config.raw",
+                        ["label"] = "org.opencontainers.image.vendor",
+                        ["retained_value"] = MalformedLabelValue,
+                    });
+                    break;
+                case "extra-absent-label":
+                    defects["absent_labels"]!.AsArray().Add(new JsonObject
+                    {
+                        ["platform"] = "linux/riscv64",
+                        ["config_file"] = "child-linux-riscv64.config.raw",
+                        ["label"] = RevisionLabel,
+                    });
+                    break;
+                case "synthesized-revision-label":
+                    defects["observed_config_revision"] = SelectedSourceSha;
+                    break;
+                case "dropped-absent-label":
+                    defects["absent_labels"]!.AsArray().RemoveAt(0);
+                    break;
+                case "dropped-blocker":
+                    envelope["retained_blockers"]!.AsArray().RemoveAt(0);
+                    break;
+                case "reworded-blocker":
+                    envelope["retained_blockers"]!.AsArray()[0]!["consequence"] =
+                        "The provenance labels are acceptable for this candidate.";
+                    break;
+                case "dropped-retained-limitation":
+                    envelope["limitations"]!.AsArray().RemoveAt(2);
+                    break;
+                default:
+                    envelope["limitations"]!.AsArray()[2] =
+                        "OCI provenance labels are valid absolute URLs for this candidate.";
+                    break;
+            }
+
+            WriteDispositionEnvelope(disposition, envelope);
+            (bool verified, string rejection, _, _) = EvaluateDisposition(root, disposition, evidence);
+            verified.ShouldBeFalse();
+            ShouldRejectWith(rejection, expectedReason);
+        }
+        finally
+        {
+            Directory.Delete(cleanupRoot, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies any retained checksum drift rejects the envelope and records a revalidation trigger.
+    /// </summary>
+    /// <param name="mutation">The drifting retained artifact identifier.</param>
+    /// <param name="expectedReason">The exact rejection reason code the gate must emit.</param>
+    [Theory]
+    [InlineData("core-evidence-file", "retained_checksum_manifest.evidence-core-sha256.txt")]
+    [InlineData("package-archive", "retained_checksum_manifest.evidence-core-sha256.txt")]
+    [InlineData("predecessor-file", "retained_checksum_manifest.predecessor-tree-sha256.txt")]
+    [InlineData("recaptured-core-manifest", "envelope.referenced_evidence.evidence_core_manifest")]
+    [InlineData("recaptured-crosswalk", "envelope.referenced_evidence.identity_crosswalk")]
+    public void FrozenChainDriftFailsClosed(string mutation, string expectedReason)
+    {
+        string root = FindRepositoryRoot();
+        (string cleanupRoot, string copiedRoot, string disposition, string evidence) =
+            CopyDispositionWithEvidence(root);
+        try
+        {
+            EvaluateDisposition(copiedRoot, disposition, evidence).Verified.ShouldBeTrue();
+            switch (mutation)
+            {
+                case "core-evidence-file":
+                    File.AppendAllText(Path.Combine(evidence, "smoke-linux-amd64.log"), "drift\n");
+                    break;
+                case "package-archive":
+                    File.AppendAllBytes(
+                        Directory.GetFiles(Path.Combine(evidence, "packages"), "*.nupkg")
+                            .Order(StringComparer.Ordinal).First(),
+                        [0x00]);
+                    break;
+                case "predecessor-file":
+                    File.AppendAllText(
+                        Path.Combine(copiedRoot, Story120EvidenceRelativePath, "environment.txt"),
+                        "drift\n");
+                    break;
+                case "recaptured-core-manifest":
+                    File.AppendAllText(Path.Combine(evidence, "smoke-linux-arm64.log"), "drift\n");
+                    RewriteRetainedCoreManifest(evidence);
+                    break;
+                default:
+                    RewriteRetainedCrosswalkVerdict(evidence);
+                    break;
+            }
+
+            (bool verified, string rejection, _, _) =
+                EvaluateDisposition(copiedRoot, disposition, evidence);
+            verified.ShouldBeFalse();
+            ShouldRejectWith(rejection, expectedReason);
+            rejection.ShouldContain("revalidation:");
+            LoadDispositionEnvelope(disposition)["revalidation_trigger"]!.GetValue<string>()
+                .ShouldContain("Never re-capture");
+        }
+        finally
+        {
+            Directory.Delete(cleanupRoot, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies re-declaring the envelope over drifted retained bytes still fails the frozen subject pin.
+    /// </summary>
+    /// <param name="mutation">The drift-and-re-declare identifier.</param>
+    /// <param name="expectedReason">The exact rejection reason code the gate must emit.</param>
+    [Theory]
+    [InlineData("proof-packet-drift-redeclared", "subject.proof_packet.sha256")]
+    [InlineData("core-manifest-drift-redeclared", "subject.evidence_core_manifest.sha256")]
+    [InlineData("crosswalk-drift-redeclared", "subject.identity_crosswalk.sha256")]
+    [InlineData("identity-scalar-only", "subject.retained_identity.workflow_run")]
+    [InlineData("package-version-scalar-only", "subject.retained_identity.package_version")]
+    public void EnvelopeReDeclaredOverDriftedRetainedBytesFailsClosed(string mutation, string expectedReason)
+    {
+        string root = FindRepositoryRoot();
+        (string cleanupRoot, string copiedRoot, string disposition, string evidence) =
+            CopyDispositionWithEvidence(root);
+        try
+        {
+            EvaluateDisposition(copiedRoot, disposition, evidence).Verified.ShouldBeTrue();
+            JsonObject envelope = LoadDispositionEnvelope(disposition);
+            switch (mutation)
+            {
+                case "proof-packet-drift-redeclared":
+                    {
+                        // The proof packet belongs to no checksum manifest, so only the subject's
+                        // recorded 684e5ced... digest can reject this.
+                        string packet = Path.Combine(copiedRoot, SelectedProofRelativePath);
+                        File.AppendAllText(packet, "\nre-declared\n");
+                        ReDeclareBinding(envelope["referenced_evidence"]!["proof_packet"]!.AsObject(), packet);
+                    }
+
+                    break;
+                case "core-manifest-drift-redeclared":
+                    {
+                        File.AppendAllText(Path.Combine(evidence, "smoke-preflight.log"), "drift\n");
+                        RewriteRetainedCoreManifest(evidence);
+                        RewriteRetainedOuterManifest(evidence);
+                        ReDeclareBinding(
+                            envelope["referenced_evidence"]!["evidence_core_manifest"]!.AsObject(),
+                            Path.Combine(evidence, "evidence-core-sha256.txt"));
+                    }
+
+                    break;
+                case "crosswalk-drift-redeclared":
+                    {
+                        RewriteRetainedCrosswalkVerdict(evidence);
+                        RewriteRetainedOuterManifest(evidence);
+                        ReDeclareBinding(
+                            envelope["referenced_evidence"]!["identity_crosswalk"]!.AsObject(),
+                            Path.Combine(evidence, "identity-crosswalk.json"));
+                        envelope["retained_blockers"]!.AsArray().RemoveAt(0);
+                    }
+
+                    break;
+                case "identity-scalar-only":
+                    envelope["retained_identity"]!["workflow_run"] = 31781920405L;
+                    break;
+                default:
+                    envelope["retained_identity"]!["package_version"] = "3.94.2";
+                    break;
+            }
+
+            WriteDispositionEnvelope(disposition, envelope);
+            (bool verified, string rejection, _, _) =
+                EvaluateDisposition(copiedRoot, disposition, evidence);
+            verified.ShouldBeFalse();
+            ShouldRejectWith(rejection, expectedReason);
+        }
+        finally
+        {
+            Directory.Delete(cleanupRoot, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies an incomplete or unauthorized acceptance set leaves Story 3.13 non-done.
+    /// </summary>
+    /// <param name="mutation">The acceptance defect identifier.</param>
+    /// <param name="expectedCount">The exact number of receipts that must still validate.</param>
+    /// <param name="expectedReason">The exact acceptance rejection reason code.</param>
+    [Theory]
+    [InlineData("two-receipts", 0, "acceptance.receipt_set")]
+    [InlineData("role-filename-mismatch", 0, "acceptance.receipt_set")]
+    [InlineData("undeclared-sidecar", 0, "acceptance.receipt_set")]
+    [InlineData("stale-envelope-directory", 0, "acceptance.receipt_directory")]
+    [InlineData("stale-subject-digest", 2, "acceptance.receipt.subject_sha256")]
+    [InlineData("self-declared-role", 2, "acceptance.roster.reviewer_identity")]
+    [InlineData("unauthorized-reviewer-identity", 2, "acceptance.roster.reviewer_identity")]
+    [InlineData("source-identity-mismatch", 2, "acceptance.source.reviewer_identity")]
+    [InlineData("planning-approval-as-receipt", 2, "acceptance.receipt.durable_source")]
+    [InlineData("planning-artifact-source-kind", 2, "acceptance.receipt.durable_source")]
+    [InlineData("duplicate-role", 2, "acceptance.receipt.role_filename")]
+    [InlineData("rejected-decision", 2, "acceptance.receipt.decision")]
+    [InlineData("wrong-accepted-scope", 2, "acceptance.receipt.accepted_scope")]
+    public void IncompleteDispositionAcceptanceKeepsStoryNonDone(
+        string mutation,
+        int expectedCount,
+        string expectedReason)
+    {
+        string root = FindRepositoryRoot();
+        string evidence = Path.Combine(root, SelectedEvidenceRelativePath);
+        (string cleanupRoot, string disposition) = CopyDisposition(root);
+        try
+        {
+            CreateDispositionReceipts(disposition);
+            DispositionStoryMayBeDone(root, disposition, evidence).ShouldBeTrue();
+
+            byte[] envelopeBytes = ReadEvidenceFile(disposition, DispositionEnvelopeFile);
+            string receiptDirectory = Path.Combine(
+                disposition,
+                "acceptances",
+                ComputeSha256(envelopeBytes));
+            switch (mutation)
+            {
+                case "two-receipts":
+                    File.Delete(Path.Combine(receiptDirectory, "release-owner.json"));
+                    break;
+                case "role-filename-mismatch":
+                    File.Move(
+                        Path.Combine(receiptDirectory, "release-owner.json"),
+                        Path.Combine(receiptDirectory, "release-owner-2.json"));
+                    break;
+                case "undeclared-sidecar":
+                    File.WriteAllText(Path.Combine(receiptDirectory, "extra-approval.json"), "{}");
+                    break;
+                case "stale-envelope-directory":
+                    Directory.Move(
+                        receiptDirectory,
+                        Path.Combine(disposition, "acceptances", new string('2', 64)));
+                    break;
+                case "stale-subject-digest":
+                    // A realistic hex digest, not a degenerate constant: an all-zero value is
+                    // rejected by the support-safety scan and would pass for the wrong reason.
+                    MutateDispositionReceiptAndSourceField(
+                        receiptDirectory,
+                        "eventstore-owner",
+                        "subject_sha256",
+                        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
+                    break;
+                case "self-declared-role":
+                    MutateDispositionReceipt(receiptDirectory, "test-architect", receipt =>
+                        receipt["reviewer_identity"] = "bmad:self-declared");
+                    break;
+                case "unauthorized-reviewer-identity":
+                    // Receipt and durable source agree on an identity the packet-bound roster does
+                    // not authorize, so only the roster check can reject it.
+                    MutateDispositionReceiptAndSource(
+                        receiptDirectory,
+                        "test-architect",
+                        "bmad:not-the-test-architect");
+                    break;
+                case "source-identity-mismatch":
+                    // The receipt names a rostered identity; its durable source names a different
+                    // rostered identity, so only the receipt-to-source cross-check can reject it.
+                    MutateDispositionSourceRecord(receiptDirectory, "eventstore-owner", source =>
+                        source["reviewer_identity"] = "bmad:murat");
+                    break;
+                case "planning-approval-as-receipt":
+                    MutateDispositionReceipt(receiptDirectory, "release-owner", receipt =>
+                        receipt["durable_source"] = new JsonObject
+                        {
+                            ["kind"] = "planning-artifact",
+                            ["path"] = DispositionAuthorityRelativePath,
+                            ["sha256"] = new string('1', 64),
+                        });
+                    break;
+                case "planning-artifact-source-kind":
+                    // Path and digest stay correct, so only the durable-source kind clause can
+                    // reject a receipt that reclassifies its source as a planning artifact.
+                    MutateDispositionReceipt(receiptDirectory, "release-owner", receipt =>
+                        receipt["durable_source"]!["kind"] = "planning-artifact");
+                    break;
+                case "duplicate-role":
+                    MutateDispositionReceipt(receiptDirectory, "release-owner", receipt =>
+                        receipt["role"] = "eventstore-owner");
+                    break;
+                case "rejected-decision":
+                    MutateDispositionReceipt(receiptDirectory, "eventstore-owner", receipt =>
+                        receipt["decision"] = "rejected");
+                    break;
+                default:
+                    MutateDispositionReceipt(receiptDirectory, "test-architect", receipt =>
+                        receipt["accepted_scope"] = "Story 3.13 deployed-runtime parity closure");
+                    break;
+            }
+
+            RebindDispositionManifest(disposition);
+            (bool verified, string rejection, int receipts, string acceptanceRejection) =
+                EvaluateDisposition(root, disposition, evidence);
+            verified.ShouldBeTrue(rejection);
+            receipts.ShouldBe(expectedCount);
+            ShouldRejectWith(acceptanceRejection, expectedReason);
+            DispositionStoryMayBeDone(root, disposition, evidence).ShouldBeFalse();
+        }
+        finally
+        {
+            Directory.Delete(cleanupRoot, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies mixing Story 1.20, v3.77.2, or Story 3.14 identity material fails closed.
+    /// </summary>
+    /// <param name="mutation">The spliced lineage identifier.</param>
+    [Theory]
+    [InlineData("story-1-20-source")]
+    [InlineData("story-1-20-index")]
+    [InlineData("story-1-20-crosswalk")]
+    [InlineData("v3-77-2-release-tag")]
+    [InlineData("story-3-14-source")]
+    [InlineData("story-3-14-index")]
+    [InlineData("foreign-material-in-authority-section")]
+    [InlineData("foreign-material-in-defect-method")]
+    public void CrossLineageSpliceFailsClosed(string mutation)
+    {
+        string root = FindRepositoryRoot();
+        string evidence = Path.Combine(root, SelectedEvidenceRelativePath);
+        (string cleanupRoot, string disposition) = CopyDisposition(root);
+        try
+        {
+            EvaluateDisposition(root, disposition, evidence).Verified.ShouldBeTrue();
+            JsonObject envelope = LoadDispositionEnvelope(disposition);
+            JsonObject identity = envelope["retained_identity"]!.AsObject();
+            switch (mutation)
+            {
+                case "story-1-20-source":
+                    identity["source_sha"] = ApprovedSourceSha;
+                    break;
+                case "story-1-20-index":
+                    identity["index_digest"] = ExpectedIndexDigest;
+                    break;
+                case "story-1-20-crosswalk":
+                    {
+                        byte[] historical = ReadEvidenceFile(
+                            root,
+                            EvidenceRelativePath + "/identity-crosswalk.json");
+                        envelope["referenced_evidence"]!["identity_crosswalk"] = new JsonObject
+                        {
+                            ["file"] = EvidenceRelativePath + "/identity-crosswalk.json",
+                            ["size"] = historical.Length,
+                            ["sha256"] = ComputeSha256(historical),
+                        };
+                    }
+
+                    break;
+                case "v3-77-2-release-tag":
+                    identity["release_tag"] = "v3.77.2";
+                    identity["release_version"] = "3.77.2";
+                    break;
+                case "story-3-14-source":
+                    identity["source_sha"] = "f343bb0153e9cdcb8b12ec10153813072f5ad38d";
+                    break;
+                case "story-3-14-index":
+                    identity["index_digest"] =
+                        "sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3";
+                    break;
+                case "foreign-material-in-authority-section":
+                    // Free text inside an identity-bearing section is checked only by the foreign
+                    // lineage token scan, so this case makes that scan the deciding guard.
+                    envelope["governing_authority"]!["section"] =
+                        "4.4 Story 3.13 implementation boundary, carried over from release 3.77.2";
+                    break;
+                default:
+                    envelope["retained_provenance_defects"]!["verification"]!["method"] =
+                        "re-parse both retained raw config objects and compare them with release 3.96.2";
+                    break;
+            }
+
+            WriteDispositionEnvelope(disposition, envelope);
+            (bool verified, string rejection, _, _) = EvaluateDisposition(root, disposition, evidence);
+            verified.ShouldBeFalse();
+            ShouldRejectWith(rejection, "envelope.foreign_lineage");
+        }
+        finally
+        {
+            Directory.Delete(cleanupRoot, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies the disposition directory stays a closed, canonical, hash-bound inventory.
+    /// </summary>
+    /// <param name="mutation">The closure defect identifier.</param>
+    /// <param name="expectedReason">The exact rejection reason code the gate must emit.</param>
+    [Theory]
+    [InlineData("stray-file", "disposition.manifest")]
+    [InlineData("missing-entry", "disposition.manifest")]
+    [InlineData("mismatched-hash", "disposition.manifest")]
+    [InlineData("non-canonical-envelope", "disposition.canonical_bytes")]
+    [InlineData("indented-envelope", "disposition.canonical_bytes")]
+    public void DispositionDirectoryClosureFailsClosed(string mutation, string expectedReason)
+    {
+        string root = FindRepositoryRoot();
+        string evidence = Path.Combine(root, SelectedEvidenceRelativePath);
+        (string cleanupRoot, string disposition) = CopyDisposition(root);
+        try
+        {
+            EvaluateDisposition(root, disposition, evidence).Verified.ShouldBeTrue();
+            string manifestPath = Path.Combine(disposition, DispositionManifestFile);
+            switch (mutation)
+            {
+                case "stray-file":
+                    File.WriteAllText(Path.Combine(disposition, "notes.txt"), "unlisted\n");
+                    break;
+                case "missing-entry":
+                    File.WriteAllText(manifestPath, string.Empty);
+                    break;
+                case "mismatched-hash":
+                    File.WriteAllText(
+                        manifestPath,
+                        new string('0', 64) + "  " + DispositionEnvelopeFile + "\n");
+                    break;
+                case "non-canonical-envelope":
+                    File.WriteAllBytes(
+                        Path.Combine(disposition, DispositionEnvelopeFile),
+                        JsonSerializer.SerializeToUtf8Bytes(LoadDispositionEnvelope(disposition)));
+                    RebindDispositionManifest(disposition);
+                    break;
+                default:
+                    File.WriteAllBytes(
+                        Path.Combine(disposition, DispositionEnvelopeFile),
+                        JsonSerializer.SerializeToUtf8Bytes(
+                            CanonicalizeJson(LoadDispositionEnvelope(disposition)),
+                            IndentedDispositionJsonOptions));
+                    RebindDispositionManifest(disposition);
+                    break;
+            }
+
+            (bool verified, string rejection, _, _) = EvaluateDisposition(root, disposition, evidence);
+            verified.ShouldBeFalse();
+            ShouldRejectWith(rejection, expectedReason);
+        }
+        finally
+        {
+            Directory.Delete(cleanupRoot, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies a fixture fault surfaces as its own diagnostic instead of masquerading as a rejection.
+    /// </summary>
+    [Fact]
+    public void DispositionFixtureFaultReportsAnInternalDiagnostic()
+    {
+        string root = FindRepositoryRoot();
+        string evidence = Path.Combine(root, SelectedEvidenceRelativePath);
+        (string cleanupRoot, string disposition) = CopyDisposition(root);
+        try
+        {
+            EvaluateDisposition(root, disposition, evidence).Verified.ShouldBeTrue();
+            File.WriteAllText(Path.Combine(disposition, DispositionEnvelopeFile), "{ not json");
+            RebindDispositionManifest(disposition);
+            (bool verified, string rejection, _, _) = EvaluateDisposition(root, disposition, evidence);
+            verified.ShouldBeFalse();
+            DispositionReasonCode(rejection).ShouldBe("internal.exception");
+            ValueIsSupportSafe(rejection).ShouldBeTrue(rejection);
+        }
+        finally
+        {
+            Directory.Delete(cleanupRoot, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies the Story 3.13 lifecycle surfaces record the rejected, non-authorizing disposition.
+    /// </summary>
+    [Fact]
+    public void Story313LifecycleSurfacesRecordTheRejectedDisposition()
+    {
+        string root = FindRepositoryRoot();
+        string sprint = ReadNormalizedText(root, SprintStatusRelativePath);
+        sprint.ShouldContain("3-13-v3-94-1-deployed-runtime-evidence-disposition: review");
+        sprint.ShouldNotContain("3-13-v3-94-1-deployed-runtime-evidence-disposition: done");
+        sprint.ShouldNotContain("3-15-corrected-deployed-runtime-parity-closure: done");
+        sprint.ShouldNotContain("Story 3.13 remains in-progress");
+
+        string story = ReadNormalizedText(root, StoryRecordRelativePath);
+        story.ShouldContain("# Story 3.13: v3.94.1 Deployed Runtime Evidence Disposition");
+        story.ShouldContain("Status: review");
+        story.ShouldContain(RejectedDisposition);
+        story.ShouldNotContain("Status: done");
+
+        string ci = ReadNormalizedText(root, "docs/ci.md");
+        ci.ShouldContain(RejectedDisposition);
+        ci.ShouldContain("Story 3.15 owns positive deployed-runtime parity");
+        ci.ShouldContain("Story 3.14 owns the corrective release");
+        // The operator-facing surface must carry a verifiable digest, not an elided one.
+        ci.ShouldContain(SelectedReviewSubjectSha256);
+        ci.ShouldNotContain("6cee8dad…");
+    }
+
+    private static string ReadNormalizedText(string root, string relativePath) =>
+        Encoding.UTF8.GetString(ReadEvidenceFile(root, relativePath))
+            .Replace("\r\n", "\n", StringComparison.Ordinal);
+
+    private static void ShouldRejectWith(string actualReason, string expectedCode)
+    {
+        // Comparing the exact code makes an unexpected rejection -- including a fixture fault that
+        // reached the catch as internal.exception -- fail the case instead of passing it.
+        DispositionReasonCode(actualReason).ShouldBe(expectedCode, actualReason);
+        ValueIsSupportSafe(actualReason).ShouldBeTrue(actualReason);
+        (actualReason.Contains("; remediation: ", StringComparison.Ordinal)
+            || actualReason.Contains("; revalidation: ", StringComparison.Ordinal))
+            .ShouldBeTrue(actualReason);
+    }
+
+    // The disposition envelope lives outside both content-addressed evidence trees because the frozen
+    // crosswalk pins receipt_count to 0, so adding files inside would force a crosswalk edit that
+    // invalidates the very subject the envelope cites. Every rejection returns a support-safe reason
+    // naming the offending field plus a remediation or revalidation trigger, so a negative test can
+    // assert the exact cause instead of a bare false.
+    private static (bool Verified, string Rejection, int AcceptedReceipts, string AcceptanceRejection)
+        EvaluateDisposition(
+            string repositoryRoot,
+            string dispositionRoot,
+            string selectedEvidenceRoot)
+    {
+        try
+        {
+            if (Path.GetFileName(dispositionRoot.TrimEnd(Path.DirectorySeparatorChar)) !=
+                SelectedReviewSubjectSha256)
+            {
+                return (false, DispositionReason(
+                    "disposition.directory",
+                    "the disposition directory is not addressed by the frozen review subject digest",
+                    "place the envelope under evidence/story-3-13/disposition/<review-subject-sha256>"), 0, string.Empty);
+            }
+
+            byte[] envelopeBytes = ReadEvidenceFile(dispositionRoot, DispositionEnvelopeFile);
+            if (JsonNode.Parse(envelopeBytes) is not JsonObject envelope)
+            {
+                return (false, DispositionReason(
+                    "disposition.canonical_bytes",
+                    "the disposition envelope is not a JSON object",
+                    "re-emit the envelope with the platform codec canonical_bytes form"), 0, string.Empty);
+            }
+
+            if (!envelopeBytes.SequenceEqual(CanonicalDispositionBytes(envelope)))
+            {
+                return (false, DispositionReason(
+                    "disposition.canonical_bytes",
+                    "the envelope bytes are not the canonical sorted-key compact form with a trailing newline",
+                    "re-emit the envelope with the platform codec canonical_bytes form"), 0, string.Empty);
+            }
+
+            string? manifestRejection = RejectDispositionManifest(dispositionRoot);
+            if (manifestRejection is not null)
+            {
+                return (false, manifestRejection, 0, string.Empty);
+            }
+
+            string? envelopeRejection = RejectDispositionEnvelope(
+                envelope,
+                repositoryRoot,
+                selectedEvidenceRoot);
+            if (envelopeRejection is not null)
+            {
+                return (false, envelopeRejection, 0, string.Empty);
+            }
+
+            (int accepted, string acceptanceRejection) = CountDispositionReceipts(
+                envelope,
+                envelopeBytes,
+                repositoryRoot,
+                dispositionRoot,
+                selectedEvidenceRoot);
+            return (true, string.Empty, accepted, acceptanceRejection);
+        }
+        catch (Exception exception) when (
+            exception is InvalidOperationException
+            or NullReferenceException
+            or ArgumentException
+            or OverflowException
+            or FormatException
+            or InvalidDataException
+            or JsonException
+            or IOException
+            or NotSupportedException
+            or UnauthorizedAccessException)
+        {
+            return (false, DispositionReason(
+                "internal.exception",
+                "the disposition gate could not complete: " + exception.GetType().Name,
+                "repair the evidence fixture and re-run the disposition gate"), 0, string.Empty);
+        }
+    }
+
+    private static bool DispositionStoryMayBeDone(
+        string repositoryRoot,
+        string dispositionRoot,
+        string selectedEvidenceRoot)
+    {
+        (bool verified, _, int receipts, _) =
+            EvaluateDisposition(repositoryRoot, dispositionRoot, selectedEvidenceRoot);
+        return verified && receipts == 3;
+    }
+
+    private static string DispositionReason(string code, string detail, string remediation) =>
+        code + ": " + detail + "; remediation: " + remediation;
+
+    private static string DispositionDriftReason(string code, string detail) =>
+        code + ": " + detail + "; revalidation: " + DispositionRevalidationTrigger;
+
+    private static string DispositionReasonCode(string reason)
+    {
+        int separator = reason.IndexOf(':', StringComparison.Ordinal);
+        return separator < 0 ? reason : reason[..separator];
+    }
+
+    private static string? RejectDispositionEnvelope(
+        JsonObject envelope,
+        string repositoryRoot,
+        string selectedEvidenceRoot)
+    {
+        if (!HasExactProperties(envelope, DispositionEnvelopeFields))
+        {
+            return DispositionReason(
+                "envelope.schema",
+                "the envelope does not carry exactly the required top-level fields",
+                "emit every required field and no additional field");
+        }
+
+        if (!DocumentIsSupportSafe(envelope))
+        {
+            return DispositionReason(
+                "envelope.support_safety",
+                "the envelope carries a field name or value that is not support-safe",
+                "remove the sensitive field name or value before re-emitting the envelope");
+        }
+
+        string?[] shapeChecks =
+        [
+            RejectUnless(
+                envelope["schema"]!.GetValue<string>() == DispositionSchema,
+                "envelope.schema",
+                "the envelope schema identifier is not the Story 3.13 disposition schema",
+                "restore the disposition envelope schema identifier"),
+            RejectUnless(
+                envelope["story_id"]!.GetValue<string>() == "3.13",
+                "envelope.story_id",
+                "the envelope does not identify Story 3.13",
+                "restore story_id to 3.13"),
+            RejectUnless(
+                envelope["candidate"]!.GetValue<string>() == SelectedReleaseTag,
+                "envelope.candidate",
+                "the disposed candidate is not the retained v3.94.1 release",
+                "restore the retained v3.94.1 candidate"),
+            RejectUnless(
+                envelope["candidate_disposition"]!.GetValue<string>() == RejectedDisposition,
+                "envelope.candidate_disposition",
+                "the candidate disposition is not the retained rejected-non-authorizing value",
+                "restore candidate_disposition to rejected-non-authorizing; a pass outcome is never valid for v3.94.1"),
+            RejectUnless(
+                envelope["deployed_runtime_parity"]!.GetValue<string>() == UnavailableDeployedParity,
+                "envelope.deployed_runtime_parity",
+                "deployed runtime parity is not recorded as unavailable for v3.94.1",
+                "restore deployed_runtime_parity to unavailable-for-v3.94.1; Story 3.15 owns positive parity"),
+            RejectUnless(
+                envelope["selected_deployed_identity"] is null,
+                "envelope.selected_deployed_identity",
+                "the envelope selects a deployed identity, which a rejected candidate may never do",
+                "restore selected_deployed_identity to null"),
+            RejectUnless(
+                !envelope["deployment_authorized"]!.GetValue<bool>(),
+                "envelope.deployment_authorized",
+                "the envelope authorizes deployment, which the retained authority record forbids",
+                "restore deployment_authorized to false"),
+            RejectUnless(
+                !string.IsNullOrWhiteSpace(envelope["revalidation_trigger"]!.GetValue<string>()),
+                "envelope.revalidation_trigger",
+                "the envelope records no revalidation trigger",
+                "record the revalidation trigger for retained checksum drift"),
+        ];
+        string? shapeRejection = shapeChecks.FirstOrDefault(reason => reason is not null);
+        if (shapeRejection is not null)
+        {
+            return shapeRejection;
+        }
+
+        string? foreignRejection = RejectForeignLineage(envelope);
+        if (foreignRejection is not null)
+        {
+            return foreignRejection;
+        }
+
+        string? bindingRejection = RejectDispositionBindings(envelope, repositoryRoot);
+        if (bindingRejection is not null)
+        {
+            return bindingRejection;
+        }
+
+        JsonObject referenced = envelope["referenced_evidence"]!.AsObject();
+        byte[] crosswalkBytes = ReadEvidenceFile(
+            repositoryRoot,
+            referenced["identity_crosswalk"]!["file"]!.GetValue<string>());
+        byte[] subjectBytes = ReadEvidenceFile(
+            repositoryRoot,
+            envelope["review_subject"]!["file"]!.GetValue<string>());
+        JsonObject crosswalk = JsonNode.Parse(crosswalkBytes)!.AsObject();
+        JsonObject subject = JsonNode.Parse(subjectBytes)!.AsObject();
+
+        return RejectSubjectBinding(envelope, subject, crosswalk)
+            ?? RejectDispositionIdentity(envelope, crosswalk, selectedEvidenceRoot)
+            ?? RejectDispositionDefects(envelope, selectedEvidenceRoot, crosswalk)
+            ?? RejectDispositionRetainedRecords(
+                envelope,
+                crosswalk,
+                subject,
+                selectedEvidenceRoot,
+                repositoryRoot)
+            ?? RejectSelectedEvidenceInventory(selectedEvidenceRoot)
+            ?? RejectDispositionContracts(envelope, crosswalk, repositoryRoot)
+            ?? RejectDispositionChronology(envelope, subject);
+    }
+
+    private static string? RejectUnless(bool condition, string code, string detail, string remediation) =>
+        condition ? null : DispositionReason(code, detail, remediation);
+
+    private static string? RejectDispositionBindings(JsonObject envelope, string repositoryRoot)
+    {
+        JsonObject referenced = envelope["referenced_evidence"]!.AsObject();
+        if (!ExactFileBindingMatches(
+                envelope["review_subject"],
+                repositoryRoot,
+                SelectedEvidenceRelativePath + "/review-subject.json")
+            || envelope["review_subject"]!["sha256"]!.GetValue<string>() != SelectedReviewSubjectSha256)
+        {
+            return DispositionDriftReason(
+                "envelope.review_subject",
+                "the declared review-subject binding does not reproduce the retained 6cee8dad subject bytes");
+        }
+
+        if (!HasExactProperties(
+                referenced,
+                ["evidence_core_manifest", "identity_crosswalk", "proof_packet", "reviewer_roster"]))
+        {
+            return DispositionReason(
+                "envelope.referenced_evidence",
+                "the envelope does not reference exactly the four required retained artifacts",
+                "reference the crosswalk, evidence-core manifest, reviewer roster, and v3.94.1 proof packet");
+        }
+
+        string[] names = ["identity_crosswalk", "evidence_core_manifest", "reviewer_roster", "proof_packet"];
+        string[] paths =
+        [
+            SelectedEvidenceRelativePath + "/identity-crosswalk.json",
+            SelectedEvidenceRelativePath + "/evidence-core-sha256.txt",
+            SelectedEvidenceRelativePath + "/reviewer-roster.json",
+            SelectedProofRelativePath,
+        ];
+        for (int index = 0; index < names.Length; index++)
+        {
+            if (!ExactFileBindingMatches(referenced[names[index]], repositoryRoot, paths[index]))
+            {
+                return DispositionDriftReason(
+                    "envelope.referenced_evidence." + names[index],
+                    "the declared binding does not reproduce the retained bytes on disk");
+            }
+        }
+
+        JsonObject authority = envelope["governing_authority"]!.AsObject();
+        if (!HasExactProperties(
+                authority,
+                ["approved_by", "approved_on", "file", "kind", "section", "sha256", "size"])
+            || authority["kind"]!.GetValue<string>() != "approved-sprint-change-proposal"
+            || authority["approved_on"]!.GetValue<string>() != "2026-08-16"
+            || string.IsNullOrWhiteSpace(authority["approved_by"]!.GetValue<string>())
+            || string.IsNullOrWhiteSpace(authority["section"]!.GetValue<string>())
+            || !FileContentBindingMatches(authority, repositoryRoot, DispositionAuthorityRelativePath))
+        {
+            return DispositionReason(
+                "envelope.governing_authority",
+                "the governing authority binding is incomplete or does not reproduce the approved 2026-08-16 proposal",
+                "bind the approved correct-course proposal by file, size, and sha256; planning approval is never a receipt");
+        }
+
+        return null;
+    }
+
+    // The frozen 6cee8dad subject records its own digests and identity scalars. Comparing the envelope
+    // against those recorded values -- not only against files on disk -- is what makes the subject pin
+    // enforceable, because a re-declared envelope over edited retained bytes still contradicts them.
+    private static string? RejectSubjectBinding(
+        JsonObject envelope,
+        JsonObject subject,
+        JsonObject crosswalk)
+    {
+        JsonObject referenced = envelope["referenced_evidence"]!.AsObject();
+        JsonObject identity = envelope["retained_identity"]!.AsObject();
+        // The subject's own field set is not re-checked here: the envelope's review_subject binding
+        // already pins the subject bytes exactly, so any shape change is rejected before this point.
+        // SubjectFrozenIdentityFields is asserted by the focused test instead of by a dead guard.
+        JsonObject subjectIdentity = subject["identity"]!.AsObject();
+        string[] names = ["identity_crosswalk", "evidence_core_manifest", "proof_packet"];
+        string[] envelopePaths =
+        [
+            SelectedEvidenceRelativePath + "/identity-crosswalk.json",
+            SelectedEvidenceRelativePath + "/evidence-core-sha256.txt",
+            SelectedProofRelativePath,
+        ];
+        for (int index = 0; index < names.Length; index++)
+        {
+            string name = names[index];
+            if (subject[name] is not JsonObject recorded
+                || recorded["sha256"]!.GetValue<string>() !=
+                    referenced[name]!["sha256"]!.GetValue<string>())
+            {
+                return DispositionDriftReason(
+                    "subject." + name + ".sha256",
+                    "the envelope declares a digest the frozen review subject does not record for this artifact");
+            }
+
+            if (referenced[name]!["file"]!.GetValue<string>() != envelopePaths[index])
+            {
+                return DispositionDriftReason(
+                    "subject." + name + ".path",
+                    "the envelope references a different file than the frozen review subject pins");
+            }
+        }
+
+        if (subject["proof_packet"]!["path"]!.GetValue<string>() != SelectedProofRelativePath)
+        {
+            return DispositionDriftReason(
+                "subject.proof_packet.path",
+                "the frozen review subject pins a different v3.94.1 proof-packet path");
+        }
+
+        foreach (string field in SubjectBoundIdentityFields)
+        {
+            if (!JsonNode.DeepEquals(identity[field], subjectIdentity[field]))
+            {
+                return DispositionDriftReason(
+                    "subject.retained_identity." + field,
+                    "the envelope declares an identity value the frozen review subject does not record");
+            }
+        }
+
+        // The subject is the authority; these pin the subject itself so the comparison above is not
+        // merely self-consistent.
+        JsonObject release = crosswalk["selected_candidates"]![0]!["release"]!.AsObject();
+        string?[] coherence =
+        [
+            RejectUnless(
+                subjectIdentity["source_sha"]!.GetValue<string>() == SelectedSourceSha,
+                "subject.crosswalk_coherence.source_sha",
+                "the retained review subject does not record the selected v3.94.1 source",
+                "revalidate the retained review subject before re-declaring the envelope"),
+            RejectUnless(
+                subjectIdentity["index_digest"]!.GetValue<string>() == SelectedIndexDigest,
+                "subject.crosswalk_coherence.index_digest",
+                "the retained review subject does not record the selected immutable index digest",
+                "revalidate the retained review subject before re-declaring the envelope"),
+            RejectUnless(
+                subjectIdentity["package_version"]!.GetValue<string>() == SelectedPackageVersion,
+                "subject.crosswalk_coherence.package_version",
+                "the retained review subject does not record the selected package version",
+                "revalidate the retained review subject before re-declaring the envelope"),
+            RejectUnless(
+                subjectIdentity["release_version"]!.GetValue<string>() ==
+                    release["semantic_version"]!.GetValue<string>(),
+                "subject.crosswalk_coherence.release_version",
+                "the retained review subject and identity crosswalk disagree on the release version",
+                "revalidate the retained review subject before re-declaring the envelope"),
+            RejectUnless(
+                subjectIdentity["workflow_run"]!.GetValue<long>() ==
+                    release["workflow_run"]!.GetValue<long>(),
+                "subject.crosswalk_coherence.workflow_run",
+                "the retained review subject and identity crosswalk disagree on the release workflow run",
+                "revalidate the retained review subject before re-declaring the envelope"),
+            RejectUnless(
+                subjectIdentity["authority_record_sha256"]!.GetValue<string>() ==
+                    crosswalk["selected_candidates"]![0]!["release_authority"]!["record_sha256"]!
+                        .GetValue<string>(),
+                "subject.crosswalk_coherence.authority_record_sha256",
+                "the retained review subject and identity crosswalk disagree on the release authority record",
+                "revalidate the retained review subject before re-declaring the envelope"),
+            RejectUnless(
+                subjectIdentity["package_hash_manifest_sha256"]!.GetValue<string>() ==
+                    crosswalk["approved_identity"]!["package_hash_manifest_sha256"]!.GetValue<string>(),
+                "subject.crosswalk_coherence.package_hash_manifest_sha256",
+                "the retained review subject and identity crosswalk disagree on the package hash manifest",
+                "revalidate the retained review subject before re-declaring the envelope"),
+            RejectUnless(
+                subjectIdentity["canonical_lineage_id"] is null,
+                "subject.crosswalk_coherence.canonical_lineage_id",
+                "the retained review subject asserts a canonical lineage the rejected candidate cannot have",
+                "revalidate the retained review subject before re-declaring the envelope"),
+        ];
+        return coherence.FirstOrDefault(reason => reason is not null);
+    }
+
+    private static string? RejectDispositionIdentity(
+        JsonObject envelope,
+        JsonObject crosswalk,
+        string selectedEvidenceRoot)
+    {
+        JsonObject candidate = crosswalk["selected_candidates"]![0]!.AsObject();
+        JsonObject release = candidate["release"]!.AsObject();
+        JsonObject identity = envelope["retained_identity"]!.AsObject();
+        if (!HasExactProperties(
+            identity,
+            [
+                "authority_record_sha256",
+                "builds_execution_sha",
+                "container_repository",
+                "evidence_root",
+                "index_digest",
+                "package_version",
+                "registry",
+                "release_tag",
+                "release_version",
+                "source_sha",
+                "workflow_attempt",
+                "workflow_run",
+            ]))
+        {
+            return DispositionReason(
+                "envelope.retained_identity",
+                "the retained identity does not carry exactly the required scalars",
+                "declare every retained identity scalar and no additional scalar");
+        }
+
+        JsonObject deploymentAuthority = JsonNode.Parse(
+            ReadEvidenceFile(selectedEvidenceRoot, "deployment-authority.json"))!.AsObject();
+        string?[] checks =
+        [
+            RejectUnless(
+                identity["evidence_root"]!.GetValue<string>() == SelectedEvidenceRelativePath,
+                "envelope.retained_identity.evidence_root",
+                "the retained evidence root is not the selected v3.94.1 content-addressed tree",
+                "restore the selected evidence root path"),
+            RejectUnless(
+                candidate["source"]!["sha"]!.GetValue<string>() == SelectedSourceSha,
+                "envelope.retained_identity.source_sha",
+                "the identity crosswalk does not describe the selected v3.94.1 source",
+                "bind the envelope to the selected v3.94.1 crosswalk"),
+            RejectUnless(
+                identity["release_tag"]!.GetValue<string>() == SelectedReleaseTag
+                && identity["release_tag"]!.GetValue<string>() ==
+                    release["semantic_tag"]!.GetValue<string>(),
+                "envelope.retained_identity.release_tag",
+                "the declared release tag is not the retained v3.94.1 tag",
+                "restore the retained v3.94.1 release tag"),
+            RejectUnless(
+                identity["workflow_attempt"]!.GetValue<int>() ==
+                    release["workflow_attempt"]!.GetValue<int>(),
+                "envelope.retained_identity.workflow_attempt",
+                "the declared workflow attempt does not match the retained release provenance",
+                "restore the retained workflow attempt"),
+            RejectUnless(
+                identity["builds_execution_sha"]!.GetValue<string>() ==
+                    release["builds_execution_sha"]!.GetValue<string>(),
+                "envelope.retained_identity.builds_execution_sha",
+                "the declared Builds execution identity does not match the retained release provenance",
+                "restore the retained Builds execution identity"),
+            RejectUnless(
+                identity["registry"]!.GetValue<string>() == ExpectedRegistry,
+                "envelope.retained_identity.registry",
+                "the declared registry is not the EventStore release registry",
+                "restore the retained registry"),
+            RejectUnless(
+                identity["container_repository"]!.GetValue<string>() == ExpectedContainerRepository,
+                "envelope.retained_identity.container_repository",
+                "the declared container repository is not the EventStore image repository",
+                "restore the retained container repository"),
+            RejectUnless(
+                identity["index_digest"]!.GetValue<string>() ==
+                    candidate["oci"]!["index_digest"]!.GetValue<string>(),
+                "envelope.retained_identity.index_digest",
+                "the declared index digest does not match the retained OCI graph",
+                "restore the retained immutable index digest"),
+            RejectUnless(
+                !candidate["release_authority"]!["deployment_authorized"]!.GetValue<bool>(),
+                "envelope.deployment_authority",
+                "the retained crosswalk authority no longer withholds deployment authorization",
+                "restore the retained deployment_authorized false state"),
+            RejectUnless(
+                !deploymentAuthority["deployment_authorized"]!.GetValue<bool>(),
+                "envelope.deployment_authority",
+                "the retained deployment authority record no longer withholds deployment authorization",
+                "restore the retained deployment_authorized false state"),
+        ];
+        return checks.FirstOrDefault(reason => reason is not null);
+    }
+
+    // The malformed labels and the absent revision label are re-derived from the retained raw config
+    // objects, so an omitted, normalized, or synthesized provenance fact cannot pass declaratively.
+    private static string? RejectDispositionDefects(
+        JsonObject envelope,
+        string selectedEvidenceRoot,
+        JsonObject crosswalk)
+    {
+        JsonObject release = crosswalk["selected_candidates"]![0]!["release"]!.AsObject();
+        JsonObject defects = envelope["retained_provenance_defects"]!.AsObject();
+        if (!HasExactProperties(
+                defects,
+                ["absent_labels", "malformed_labels", "observed_config_revision", "verification"]))
+        {
+            return DispositionReason(
+                "envelope.retained_provenance_defects",
+                "the retained provenance defect record does not carry exactly its required fields",
+                "record the malformed labels, the absent revision label, and the verification method");
+        }
+
+        if (defects["observed_config_revision"] is not null || release["observed_config_revision"] is not null)
+        {
+            return DispositionReason(
+                "envelope.retained_provenance_defects.observed_config_revision",
+                "a revision label was synthesized for a candidate whose configs carry none",
+                "restore observed_config_revision to null; the absent revision label is a retained failure");
+        }
+
+        if (!HasExactProperties(defects["verification"]!.AsObject(), ["method", "result"])
+            || defects["verification"]!["result"]!.GetValue<string>() != "reproduced"
+            || string.IsNullOrWhiteSpace(defects["verification"]!["method"]!.GetValue<string>()))
+        {
+            return DispositionReason(
+                "envelope.retained_provenance_defects.verification",
+                "the defect verification record does not state a reproduced re-derivation method",
+                "re-derive both raw config label sets and record the method and reproduced result");
+        }
+
+        JsonObject[] malformed = defects["malformed_labels"]!.AsArray()
+            .Select(item => item!.AsObject()).ToArray();
+        JsonObject[] absent = defects["absent_labels"]!.AsArray()
+            .Select(item => item!.AsObject()).ToArray();
+        string[] platforms = ["linux/amd64", "linux/arm64"];
+        string[] configFiles = ["child-linux-amd64.config.raw", "child-linux-arm64.config.raw"];
+        if (malformed.Length != platforms.Length * MalformedProvenanceLabels.Length)
+        {
+            return DispositionReason(
+                "envelope.retained_provenance_defects.malformed_labels",
+                "the malformed-label record does not carry exactly one row per platform and required label",
+                "record all six retained malformed label values verbatim and no fabricated row");
+        }
+
+        if (absent.Length != platforms.Length)
+        {
+            return DispositionReason(
+                "envelope.retained_provenance_defects.absent_labels",
+                "the absent-label record does not carry exactly one row per platform",
+                "record the absent revision label for both retained platform configs and no fabricated row");
+        }
+
+        for (int index = 0; index < platforms.Length; index++)
+        {
+            string platform = platforms[index];
+            string configFile = configFiles[index];
+            JsonObject labels = JsonNode.Parse(ReadEvidenceFile(selectedEvidenceRoot, configFile))!
+                .AsObject()["config"]!["Labels"]!.AsObject();
+            JsonObject? absentEntry = absent.SingleOrDefault(item =>
+                item["platform"]!.GetValue<string>() == platform);
+            if (labels.ContainsKey(RevisionLabel)
+                || absentEntry is null
+                || !HasExactProperties(absentEntry, ["config_file", "label", "platform"])
+                || absentEntry["config_file"]!.GetValue<string>() != configFile
+                || absentEntry["label"]!.GetValue<string>() != RevisionLabel)
+            {
+                return DispositionReason(
+                    "envelope.retained_provenance_defects.absent_labels",
+                    "the absent revision label for a retained platform config is missing or misdescribed",
+                    "record the absent revision label re-derived from the retained raw config object");
+            }
+
+            foreach (string label in MalformedProvenanceLabels)
+            {
+                JsonObject? entry = malformed.SingleOrDefault(item =>
+                    item["platform"]!.GetValue<string>() == platform
+                    && item["label"]!.GetValue<string>() == label);
+                if (entry is null
+                    || !HasExactProperties(entry, ["config_file", "label", "platform", "retained_value"])
+                    || entry["config_file"]!.GetValue<string>() != configFile
+                    || labels[label] is not JsonValue retained
+                    || retained.GetValue<string>() != MalformedLabelValue
+                    || entry["retained_value"]!.GetValue<string>() != retained.GetValue<string>())
+                {
+                    return DispositionReason(
+                        "envelope.retained_provenance_defects.malformed_labels",
+                        "a retained malformed label value was omitted, normalized, or does not match its raw config object",
+                        "record each malformed label exactly as the retained raw config object holds it");
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static string? RejectDispositionRetainedRecords(
+        JsonObject envelope,
+        JsonObject crosswalk,
+        JsonObject subject,
+        string selectedEvidenceRoot,
+        string repositoryRoot)
+    {
+        JsonObject verdict = crosswalk["verdict"]!.AsObject();
+        string[] blockerIds = envelope["retained_blockers"]!.AsArray()
+            .Select(item => item!["id"]!.GetValue<string>()).Order(StringComparer.Ordinal).ToArray();
+        if (!JsonNode.DeepEquals(envelope["retained_blockers"], verdict["blockers"])
+            || !blockerIds.SequenceEqual(RetainedBlockerIds, StringComparer.Ordinal))
+        {
+            return DispositionReason(
+                "envelope.retained_blockers",
+                "the retained blockers were dropped, reworded, or no longer match the frozen crosswalk verdict",
+                "carry all three retained blockers verbatim from the frozen crosswalk verdict");
+        }
+
+        if (verdict["decision"]!.GetValue<string>() != "fail-closed"
+            || verdict["story_may_be_done"]!.GetValue<bool>()
+            || subject["proposed_decision"]!.GetValue<string>() != "fail-closed"
+            || subject["required_acceptances"]!.AsArray().Count != 3
+            || subject["required_acceptances"]!.AsArray().Any(item =>
+                item!["status"]!.GetValue<string>() != "missing"))
+        {
+            return DispositionDriftReason(
+                "envelope.retained_verdict",
+                "the retained crosswalk verdict or review subject no longer records the fail-closed decision");
+        }
+
+        string[] subjectLimitations = subject["limitations"]!.AsArray()
+            .Select(item => item!.GetValue<string>()).ToArray();
+        string[] limitations = envelope["limitations"]!.AsArray()
+            .Select(item => item!.GetValue<string>()).ToArray();
+        if (limitations.Length <= subjectLimitations.Length
+            || !limitations.Take(subjectLimitations.Length)
+                .SequenceEqual(subjectLimitations, StringComparer.Ordinal)
+            || !LimitationsContainMutationProhibitions(limitations))
+        {
+            return DispositionReason(
+                "envelope.limitations",
+                "the retained review-subject limitations were dropped, reworded, or reordered",
+                "carry every retained limitation verbatim ahead of the disposition-specific limitations");
+        }
+
+        JsonObject[] declaredManifests = envelope["retained_checksum_manifests"]!.AsArray()
+            .Select(item => item!.AsObject()).ToArray();
+        if (declaredManifests.Length != RetainedManifestFiles.Length)
+        {
+            return DispositionReason(
+                "envelope.retained_checksum_manifests",
+                "the envelope does not declare exactly the four retained checksum manifests",
+                "declare the outer, core, package, and predecessor checksum manifests");
+        }
+
+        for (int index = 0; index < RetainedManifestFiles.Length; index++)
+        {
+            string manifestFile = RetainedManifestFiles[index];
+            string manifestBase = RetainedManifestBases[index];
+            JsonObject? declared = declaredManifests.SingleOrDefault(item =>
+                item["file"]!.GetValue<string>() == manifestFile);
+            string basePath = manifestBase switch
+            {
+                "evidence-root" => selectedEvidenceRoot,
+                "evidence-root/packages" => ResolveWithin(selectedEvidenceRoot, "packages"),
+                _ => repositoryRoot,
+            };
+            if (declared is null
+                || !HasExactProperties(declared, ["base", "entries", "file"])
+                || declared["base"]!.GetValue<string>() != manifestBase
+                || declared["entries"]!.GetValue<int>() != RetainedManifestEntryCounts[index])
+            {
+                return DispositionReason(
+                    "retained_checksum_manifest." + manifestFile,
+                    "the declared checksum manifest inventory does not match the retained manifest",
+                    "declare the retained manifest file, base directory, and entry count");
+            }
+
+            if (!RetainedManifestStillVerifies(
+                selectedEvidenceRoot,
+                manifestFile,
+                basePath,
+                RetainedManifestEntryCounts[index]))
+            {
+                return DispositionDriftReason(
+                    "retained_checksum_manifest." + manifestFile,
+                    "a retained checksum entry no longer matches its file");
+            }
+        }
+
+        return null;
+    }
+
+    // EvidenceDirectoryHasNoUnlistedFiles is reachable only through EvaluateClosure, which
+    // short-circuits on ApprovedSourceSha, so the selected 80d12ef5 tree is never inventory-checked
+    // there. Without this, a planted file -- including a forged receipt -- survives with every
+    // retained checksum entry still verifying.
+    private static string? RejectSelectedEvidenceInventory(string selectedEvidenceRoot)
+    {
+        HashSet<string> listed = new(StringComparer.Ordinal) { "evidence-sha256.txt" };
+        foreach (string manifest in new[] { "evidence-sha256.txt", "evidence-core-sha256.txt" })
+        {
+            foreach (string entry in ParseChecksumManifest(
+                ReadEvidenceFile(selectedEvidenceRoot, manifest)).Keys)
+            {
+                listed.Add(entry.Replace('\\', '/'));
+            }
+        }
+
+        string[] actualFiles = Directory.GetFiles(selectedEvidenceRoot, "*", SearchOption.AllDirectories)
+            .Select(path => Path.GetRelativePath(selectedEvidenceRoot, path).Replace('\\', '/'))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        string[] actualDirectories = Directory
+            .GetDirectories(selectedEvidenceRoot, "*", SearchOption.AllDirectories)
+            .Select(path => Path.GetRelativePath(selectedEvidenceRoot, path).Replace('\\', '/'))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        if (!actualDirectories.SequenceEqual(["packages"], StringComparer.Ordinal))
+        {
+            return DispositionReason(
+                "selected_evidence.inventory",
+                "the selected evidence tree contains a directory outside its closed inventory",
+                "remove the planted directory; the retained packet admits only the packages directory");
+        }
+
+        if (!actualFiles.All(listed.Contains) || actualFiles.Length != listed.Count)
+        {
+            return DispositionReason(
+                "selected_evidence.inventory",
+                "the selected evidence tree contains a file that no retained checksum manifest lists",
+                "remove the planted file; receipts and new artifacts belong outside the hashed evidence tree");
+        }
+
+        return null;
+    }
+
+    private static string? RejectDispositionContracts(
+        JsonObject envelope,
+        JsonObject crosswalk,
+        string repositoryRoot)
+    {
+        JsonObject boundary = envelope["successor_boundary"]!.AsObject();
+        JsonObject acceptance = envelope["acceptance_contract"]!.AsObject();
+        JsonObject verification = envelope["verification"]!.AsObject();
+        if (!HasExactProperties(
+            boundary,
+            [
+                "authorizes_consumer_migration",
+                "authorizes_deployment",
+                "authorizes_parties_8_6_or_g5",
+                "closes_fr36_deployed_parity",
+                "corrective_release_owner",
+                "depends_on_corrective_release",
+                "positive_deployed_runtime_parity_owner",
+                "reopens_story_1_20_or_3_12",
+            ]))
+        {
+            return DispositionReason(
+                "envelope.successor_boundary",
+                "the successor boundary does not carry exactly its required fields",
+                "declare the successor owners and every authorization boundary flag");
+        }
+
+        string[] boundaryFlags =
+        [
+            "authorizes_consumer_migration",
+            "authorizes_deployment",
+            "authorizes_parties_8_6_or_g5",
+            "closes_fr36_deployed_parity",
+            "depends_on_corrective_release",
+            "reopens_story_1_20_or_3_12",
+        ];
+        foreach (string flag in boundaryFlags)
+        {
+            if (boundary[flag]!.GetValue<bool>())
+            {
+                return DispositionReason(
+                    "envelope.successor_boundary." + flag,
+                    "the disposition claims an authorization or closure a rejected candidate cannot grant",
+                    "restore the boundary flag to false; Story 3.15 owns positive parity and deployment stays unauthorized");
+            }
+        }
+
+        byte[] rosterBytes = ReadEvidenceFile(
+            repositoryRoot,
+            envelope["referenced_evidence"]!["reviewer_roster"]!["file"]!.GetValue<string>());
+        string[] contractRoles = acceptance["required_roles"]!.AsArray()
+            .Select(item => item!.GetValue<string>()).Order(StringComparer.Ordinal).ToArray();
+        string[] contractFields = acceptance["required_receipt_fields"]!.AsArray()
+            .Select(item => item!.GetValue<string>()).Order(StringComparer.Ordinal).ToArray();
+        string?[] checks =
+        [
+            RejectUnless(
+                boundary["positive_deployed_runtime_parity_owner"]!.GetValue<string>() == "3.15",
+                "envelope.successor_boundary.positive_deployed_runtime_parity_owner",
+                "positive deployed-runtime parity is not assigned to Story 3.15",
+                "assign positive deployed-runtime parity to Story 3.15"),
+            RejectUnless(
+                boundary["corrective_release_owner"]!.GetValue<string>() == "3.14",
+                "envelope.successor_boundary.corrective_release_owner",
+                "the corrective release is not assigned to Story 3.14",
+                "assign the corrective release to Story 3.14"),
+            RejectUnless(
+                HasExactProperties(
+                    acceptance,
+                    [
+                        "outside_hashed_evidence",
+                        "planning_approval_is_a_receipt",
+                        "receipt_location",
+                        "receipt_schema",
+                        "required_receipt_fields",
+                        "required_roles",
+                        "reviewer_roster_sha256",
+                        "self_declared_role_is_a_receipt",
+                        "source_schema",
+                    ])
+                && contractRoles.SequenceEqual(RequiredRoles, StringComparer.Ordinal)
+                && contractFields.SequenceEqual(RequiredReceiptFields, StringComparer.Ordinal)
+                && acceptance["receipt_location"]!.GetValue<string>() == DispositionReceiptTemplate
+                && acceptance["outside_hashed_evidence"]!.GetValue<bool>()
+                && acceptance["receipt_schema"]!.GetValue<string>() == DispositionReceiptSchema
+                && acceptance["source_schema"]!.GetValue<string>() == DispositionSourceSchema,
+                "envelope.acceptance_contract",
+                "the acceptance contract does not require three role-bound receipts outside the hashed evidence",
+                "declare the three roles, the frozen receipt fields, and the envelope-addressed receipt location"),
+            RejectUnless(
+                acceptance["reviewer_roster_sha256"]!.GetValue<string>() == ComputeSha256(rosterBytes)
+                && acceptance["reviewer_roster_sha256"]!.GetValue<string>() ==
+                    crosswalk["approval_contract"]!["reviewer_roster_sha256"]!.GetValue<string>(),
+                "envelope.acceptance_contract.reviewer_roster_sha256",
+                "the declared reviewer roster digest does not match the retained roster",
+                "bind the packet-owned reviewer roster by its retained digest"),
+            RejectUnless(
+                !acceptance["planning_approval_is_a_receipt"]!.GetValue<bool>()
+                && !acceptance["self_declared_role_is_a_receipt"]!.GetValue<bool>(),
+                "envelope.acceptance_contract.receipt_authority",
+                "the acceptance contract admits planning approval or a self-declared role as a receipt",
+                "declare that planning approval and self-declared roles are never receipts"),
+            RejectUnless(
+                HasExactProperties(
+                    verification,
+                    [
+                        "external_state_changed",
+                        "method",
+                        "result",
+                        "retained_evidence_changed",
+                        "verifier",
+                    ])
+                && verification["verifier"]!.GetValue<string>() == DispositionVerifierPath
+                && !string.IsNullOrWhiteSpace(verification["method"]!.GetValue<string>()),
+                "envelope.verification",
+                "the verification record does not name its method and platform-owned verifier",
+                "record the re-derivation method and the focused verifier that enforces it"),
+            RejectUnless(
+                verification["result"]!.GetValue<string>() == "verified",
+                "envelope.verification.result",
+                "the verification result is not the disposition verified state",
+                "restore the verification result to verified; a pass verdict is never valid for v3.94.1"),
+            RejectUnless(
+                !verification["external_state_changed"]!.GetValue<bool>()
+                && !verification["retained_evidence_changed"]!.GetValue<bool>(),
+                "envelope.verification.mutation",
+                "the verification record admits an external or retained-evidence mutation",
+                "restore both mutation flags to false; the disposition changes no retained byte"),
+        ];
+        return checks.FirstOrDefault(reason => reason is not null);
+    }
+
+    private static string? RejectDispositionChronology(JsonObject envelope, JsonObject subject)
+    {
+        if (!TryParseExplicitOffset(
+                envelope["assembled_at"]!.GetValue<string>(),
+                out DateTimeOffset assembledAt)
+            || !TryParseExplicitOffset(
+                subject["created_at"]!.GetValue<string>(),
+                out DateTimeOffset subjectCreated)
+            || assembledAt < subjectCreated
+            || assembledAt > DateTimeOffset.UtcNow.AddMinutes(5))
+        {
+            return DispositionReason(
+                "envelope.assembled_at",
+                "the envelope assembly time is malformed, precedes the frozen review subject, or lies in the future",
+                "record an explicit-offset assembly time at or after the frozen review subject creation time");
+        }
+
+        return null;
+    }
+
+    private static string? RejectForeignLineage(JsonObject envelope)
+    {
+        List<string> values =
+        [
+            envelope["candidate"]!.GetValue<string>(),
+            envelope["candidate_disposition"]!.GetValue<string>(),
+            envelope["deployed_runtime_parity"]!.GetValue<string>(),
+        ];
+        foreach (string section in DispositionIdentitySections)
+        {
+            CollectDispositionStrings(envelope[section]!, values);
+        }
+
+        return values.Any(value => ForeignLineageTokens.Any(token =>
+            value.Contains(token, StringComparison.OrdinalIgnoreCase)))
+            ? DispositionReason(
+                "envelope.foreign_lineage",
+                "an identity-bearing section carries concrete identity material owned by another release lineage",
+                "remove the Story 1.20, v3.77.x, or Story 3.14 material; ancestry, tags, and labels are insufficient evidence")
+            : null;
+    }
+
+    private static void CollectDispositionStrings(JsonNode node, List<string> values)
+    {
+        switch (node)
+        {
+            case JsonObject value:
+                foreach (KeyValuePair<string, JsonNode?> property in value)
+                {
+                    if (property.Value is not null)
+                    {
+                        CollectDispositionStrings(property.Value, values);
+                    }
+                }
+
+                break;
+            case JsonArray value:
+                foreach (JsonNode? item in value)
+                {
+                    if (item is not null)
+                    {
+                        CollectDispositionStrings(item, values);
+                    }
+                }
+
+                break;
+            case JsonValue value when value.TryGetValue<string>(out string? text):
+                values.Add(text);
+                break;
+            default:
+                break;
+        }
+    }
+
+    private static (int Count, string Rejection) CountDispositionReceipts(
+        JsonObject envelope,
+        byte[] envelopeBytes,
+        string repositoryRoot,
+        string dispositionRoot,
+        string selectedEvidenceRoot)
+    {
+        string acceptancesRoot = Path.Combine(dispositionRoot, "acceptances");
+        string envelopeHash = ComputeSha256(envelopeBytes);
+        string missingDirectory = DispositionReason(
+            "acceptance.receipt_directory",
+            "no receipt directory addressed by the current envelope digest exists",
+            "collect three role-bound receipts under acceptances/<envelope-sha256>; any envelope byte change invalidates them");
+        if (!Directory.Exists(acceptancesRoot))
+        {
+            return (0, missingDirectory);
+        }
+
+        string[] acceptanceEntries = Directory.EnumerateFileSystemEntries(acceptancesRoot)
+            .Select(Path.GetFileName).Where(name => name is not null).Cast<string>()
+            .Order(StringComparer.Ordinal).ToArray();
+        if (acceptanceEntries.Length != 1 || acceptanceEntries[0] != envelopeHash)
+        {
+            return (0, missingDirectory);
+        }
+
+        string receiptDirectory = ResolveWithin(
+            dispositionRoot,
+            envelope["acceptance_contract"]!["receipt_location"]!.GetValue<string>()
+                .Replace("{envelope_sha256}", envelopeHash, StringComparison.Ordinal));
+        string sourcesDirectory = ResolveWithin(receiptDirectory, "sources");
+        string[] expectedNames = RequiredRoles.Select(role => role + ".json")
+            .Order(StringComparer.Ordinal).ToArray();
+        string[] expectedTopLevel = expectedNames.Append("sources").Order(StringComparer.Ordinal).ToArray();
+        if (!Directory.EnumerateFileSystemEntries(receiptDirectory)
+                .Select(Path.GetFileName).Where(name => name is not null).Cast<string>()
+                .Order(StringComparer.Ordinal)
+                .SequenceEqual(expectedTopLevel, StringComparer.Ordinal)
+            || !Directory.Exists(sourcesDirectory)
+            || Directory.EnumerateDirectories(sourcesDirectory).Any()
+            || !Directory.GetFiles(sourcesDirectory, "*", SearchOption.TopDirectoryOnly)
+                .Select(Path.GetFileName).Where(name => name is not null).Cast<string>()
+                .Order(StringComparer.Ordinal)
+                .SequenceEqual(expectedNames, StringComparer.Ordinal))
+        {
+            return (0, DispositionReason(
+                "acceptance.receipt_set",
+                "the receipt directory does not contain exactly one receipt and one durable source per required role",
+                "provide exactly three role-named receipts and their three durable sources, with no additional entry"));
+        }
+
+        byte[] crosswalkBytes = ReadEvidenceFile(
+            repositoryRoot,
+            envelope["referenced_evidence"]!["identity_crosswalk"]!["file"]!.GetValue<string>());
+        JsonObject crosswalk = JsonNode.Parse(crosswalkBytes)!.AsObject();
+        JsonObject subject = JsonNode.Parse(ReadEvidenceFile(
+            repositoryRoot,
+            envelope["review_subject"]!["file"]!.GetValue<string>()))!.AsObject();
+        if (!TryParseExplicitOffset(subject["created_at"]!.GetValue<string>(), out DateTimeOffset subjectCreated)
+            || !TryParseExplicitOffset(
+                envelope["assembled_at"]!.GetValue<string>(),
+                out DateTimeOffset assembledAt))
+        {
+            return (0, DispositionReason(
+                "acceptance.chronology",
+                "the frozen review subject or envelope assembly time is not an explicit-offset timestamp",
+                "record explicit-offset timestamps before collecting receipts"));
+        }
+
+        JsonObject roster = LoadReviewerRoster(crosswalk, selectedEvidenceRoot, subjectCreated);
+        string[] envelopeLimitations = envelope["limitations"]!.AsArray()
+            .Select(item => item!.GetValue<string>()).ToArray();
+        string expectedScope =
+            "Story 3.13 v3.94.1 rejected-non-authorizing evidence disposition for " + envelopeHash;
+        List<string> acceptedRoles = [];
+        string firstRejection = string.Empty;
+        foreach (string name in expectedNames)
+        {
+            string? rejection = RejectDispositionReceipt(
+                name,
+                receiptDirectory,
+                roster,
+                envelopeLimitations,
+                expectedScope,
+                envelopeHash,
+                assembledAt);
+            if (rejection is null)
+            {
+                acceptedRoles.Add(name);
+            }
+            else if (firstRejection.Length == 0)
+            {
+                firstRejection = rejection;
+            }
+        }
+
+        return (acceptedRoles.Count, firstRejection);
+    }
+
+    private static string? RejectDispositionReceipt(
+        string name,
+        string receiptDirectory,
+        JsonObject roster,
+        string[] envelopeLimitations,
+        string expectedScope,
+        string envelopeHash,
+        DateTimeOffset assembledAt)
+    {
+        JsonObject receipt = JsonNode.Parse(ReadEvidenceFile(receiptDirectory, name))!.AsObject();
+        if (!HasExactProperties(receipt, RequiredReceiptFields)
+            || !DocumentIsSupportSafe(receipt)
+            || receipt["schema"]!.GetValue<string>() != DispositionReceiptSchema
+            || RequiredReceiptFields.Where(field => field != "durable_source")
+                .Any(field => !HasReceiptValue(receipt[field])))
+        {
+            return DispositionReason(
+                "acceptance.receipt.schema",
+                "a receipt does not carry exactly the frozen receipt fields with support-safe values",
+                "re-issue the receipt against the frozen Story 3.13 acceptance-receipt schema");
+        }
+
+        string role = receipt["role"]!.GetValue<string>();
+        string reviewer = receipt["reviewer_identity"]!.GetValue<string>();
+        if (name != role + ".json" || !RequiredRoles.Contains(role, StringComparer.Ordinal))
+        {
+            return DispositionReason(
+                "acceptance.receipt.role_filename",
+                "a receipt filename does not bind the role it declares",
+                "name each receipt after the required role it carries");
+        }
+
+        if (roster["roles"]![role] is not JsonArray authorized
+            || !authorized.Select(item => item!.GetValue<string>())
+                .Contains(reviewer, StringComparer.Ordinal))
+        {
+            return DispositionReason(
+                "acceptance.roster.reviewer_identity",
+                "a receipt names a reviewer the packet-bound owner-role registry does not authorize",
+                "collect the receipt from the rostered owner; a self-declared role is never a receipt");
+        }
+
+        if (receipt["decision"]!.GetValue<string>() != "accepted")
+        {
+            return DispositionReason(
+                "acceptance.receipt.decision",
+                "a receipt does not record an accepted decision",
+                "collect an explicit acceptance of the rejected-non-authorizing disposition");
+        }
+
+        if (receipt["subject_sha256"]!.GetValue<string>() != SelectedReviewSubjectSha256)
+        {
+            return DispositionDriftReason(
+                "acceptance.receipt.subject_sha256",
+                "a receipt binds a review-subject digest other than the retained frozen subject");
+        }
+
+        if (receipt["accepted_scope"]!.GetValue<string>() != expectedScope)
+        {
+            return DispositionReason(
+                "acceptance.receipt.accepted_scope",
+                "a receipt does not accept the rejected-non-authorizing disposition for the current envelope",
+                "accept the exact disposition scope bound to the current envelope digest");
+        }
+
+        if (!receipt["accepted_limitations"]!.AsArray()
+                .Select(item => item!.GetValue<string>())
+                .SequenceEqual(envelopeLimitations, StringComparer.Ordinal)
+            || !LimitationsContainMutationProhibitions(envelopeLimitations))
+        {
+            return DispositionReason(
+                "acceptance.receipt.accepted_limitations",
+                "a receipt does not accept the exact retained limitations the envelope carries",
+                "accept every retained limitation verbatim");
+        }
+
+        JsonObject durableSource = receipt["durable_source"]!.AsObject();
+        if (!HasExactProperties(durableSource, ["kind", "path", "sha256"])
+            || durableSource["kind"]!.GetValue<string>() != "retained-immutable-external-record"
+            || durableSource["path"]!.GetValue<string>() != "sources/" + role + ".json")
+        {
+            return DispositionReason(
+                "acceptance.receipt.durable_source",
+                "a receipt cites something other than its retained immutable durable source record",
+                "cite the retained durable source; a planning artifact is never a receipt source");
+        }
+
+        byte[] sourceBytes = ReadEvidenceFile(receiptDirectory, durableSource["path"]!.GetValue<string>());
+        JsonObject sourceRecord = JsonNode.Parse(sourceBytes)!.AsObject();
+        string expectedSourceUrl = "https://github.com/" + ExpectedRepository + "/commit/" +
+            SelectedSourceSha + "#story-3-13-disposition-" + envelopeHash + "-" + role;
+        if (durableSource["sha256"]!.GetValue<string>() != ComputeSha256(sourceBytes)
+            || !HasExactProperties(
+                sourceRecord,
+                [
+                    "accepted_limitations",
+                    "accepted_scope",
+                    "captured_at",
+                    "decision",
+                    "repository",
+                    "reviewer_identity",
+                    "role",
+                    "schema",
+                    "source_url",
+                    "subject_sha256",
+                ])
+            || !DocumentIsSupportSafe(sourceRecord)
+            || sourceRecord["schema"]!.GetValue<string>() != DispositionSourceSchema
+            || sourceRecord["repository"]!.GetValue<string>() != ExpectedRepository
+            || sourceRecord["source_url"]!.GetValue<string>() != expectedSourceUrl
+            || sourceRecord["role"]!.GetValue<string>() != role)
+        {
+            return DispositionReason(
+                "acceptance.source.record",
+                "a durable source record does not reproduce its receipt binding",
+                "re-issue the durable source record bound to the same role, envelope, and repository");
+        }
+
+        if (sourceRecord["reviewer_identity"]!.GetValue<string>() != reviewer)
+        {
+            return DispositionReason(
+                "acceptance.source.reviewer_identity",
+                "a receipt and its durable source record name different reviewers",
+                "issue the durable source record for the same rostered reviewer the receipt names");
+        }
+
+        if (sourceRecord["subject_sha256"]!.GetValue<string>() != SelectedReviewSubjectSha256)
+        {
+            return DispositionDriftReason(
+                "acceptance.source.subject_sha256",
+                "a durable source record binds a review-subject digest other than the retained frozen subject");
+        }
+
+        if (sourceRecord["decision"]!.GetValue<string>() != "accepted"
+            || sourceRecord["accepted_scope"]!.GetValue<string>() != expectedScope
+            || !JsonNode.DeepEquals(sourceRecord["accepted_limitations"], receipt["accepted_limitations"])
+            || sourceRecord["captured_at"]!.GetValue<string>() !=
+                receipt["accepted_at"]!.GetValue<string>())
+        {
+            return DispositionReason(
+                "acceptance.source.decision",
+                "a durable source record does not reproduce the receipt decision, scope, limitations, or timestamp",
+                "re-issue the durable source record from the same acceptance event");
+        }
+
+        if (!TryParseExplicitOffset(
+                receipt["accepted_at"]!.GetValue<string>(),
+                out DateTimeOffset acceptedAt)
+            || acceptedAt < assembledAt
+            || acceptedAt > DateTimeOffset.UtcNow.AddMinutes(5))
+        {
+            return DispositionReason(
+                "acceptance.receipt.accepted_at",
+                "a receipt timestamp precedes the envelope it accepts or lies in the future",
+                "record an explicit-offset acceptance time at or after the envelope assembly time");
+        }
+
+        return null;
+    }
+
+    private static string? RejectDispositionManifest(string dispositionRoot)
+    {
+        string manifestRejection = DispositionReason(
+            "disposition.manifest",
+            "the disposition checksum manifest does not close recursively over the directory",
+            "regenerate disposition-sha256.txt over every file in the disposition directory");
+
+        // An empty or malformed manifest is a manifest defect, not an internal fault, so it must
+        // surface under its own diagnostic rather than as internal.exception.
+        Dictionary<string, string> entries;
+        try
+        {
+            entries = ParseChecksumManifest(ReadEvidenceFile(dispositionRoot, DispositionManifestFile));
+        }
+        catch (InvalidDataException)
+        {
+            return manifestRejection;
+        }
+
+        string[] actual = DispositionFilesUnder(dispositionRoot);
+        return actual.SequenceEqual(entries.Keys.Order(StringComparer.Ordinal), StringComparer.Ordinal)
+            && entries.All(entry => ComputeSha256(ResolveWithin(dispositionRoot, entry.Key)) == entry.Value)
+            ? null
+            : manifestRejection;
+    }
+
+    private static string[] DispositionFilesUnder(string dispositionRoot) =>
+        Directory.GetFiles(dispositionRoot, "*", SearchOption.AllDirectories)
+            .Select(path => Path.GetRelativePath(dispositionRoot, path).Replace('\\', '/'))
+            .Where(relative => relative != DispositionManifestFile)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+    private static bool RetainedManifestStillVerifies(
+        string evidenceRoot,
+        string manifestFile,
+        string basePath,
+        int expectedEntries)
+    {
+        try
+        {
+            Dictionary<string, string> entries = ParseChecksumManifest(
+                ReadEvidenceFile(evidenceRoot, manifestFile));
+            return entries.Count == expectedEntries
+                && entries.All(entry => ComputeSha256(ResolveWithin(basePath, entry.Key)) == entry.Value);
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException
+            or InvalidDataException
+            or IOException
+            or NotSupportedException
+            or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
+    private static byte[] CanonicalDispositionBytes(JsonNode node)
+    {
+        byte[] json = JsonSerializer.SerializeToUtf8Bytes(
+            CanonicalizeJson(node),
+            CanonicalDispositionJsonOptions);
+        byte[] canonical = new byte[json.Length + 1];
+        json.CopyTo(canonical, 0);
+        canonical[^1] = (byte)'\n';
+        return canonical;
+    }
+
+    private static bool FileContentBindingMatches(
+        JsonObject binding,
+        string repositoryRoot,
+        string expectedRelativePath)
+    {
+        if (binding["file"]!.GetValue<string>() != expectedRelativePath)
+        {
+            return false;
+        }
+
+        byte[] bytes = ReadEvidenceFile(repositoryRoot, expectedRelativePath);
+        return binding["size"]!.GetValue<int>() == bytes.Length
+            && binding["sha256"]!.GetValue<string>() == ComputeSha256(bytes);
+    }
+
+    private static bool ExactFileBindingMatches(
+        JsonNode? node,
+        string repositoryRoot,
+        string expectedRelativePath) =>
+        node is JsonObject binding
+        && HasExactProperties(binding, ["file", "sha256", "size"])
+        && FileContentBindingMatches(binding, repositoryRoot, expectedRelativePath);
+
+    private static JsonObject LoadDispositionEnvelope(string dispositionRoot) =>
+        JsonNode.Parse(ReadEvidenceFile(dispositionRoot, DispositionEnvelopeFile))!.AsObject();
+
+    private static (string CleanupRoot, string Disposition) CopyDisposition(string repositoryRoot)
+    {
+        string cleanupRoot = Path.Combine(
+            Path.GetTempPath(),
+            "story-3-13-disposition-" + Guid.NewGuid().ToString("N"));
+        string disposition = Path.Combine(cleanupRoot, SelectedReviewSubjectSha256);
+        CopyDirectory(Path.Combine(repositoryRoot, DispositionRelativePath), disposition);
+        return (cleanupRoot, disposition);
+    }
+
+    private static (string CleanupRoot, string Root, string Disposition, string Evidence)
+        CopyDispositionWithEvidence(string repositoryRoot)
+    {
+        string cleanupRoot = Path.Combine(
+            Path.GetTempPath(),
+            "story-3-13-frozen-" + Guid.NewGuid().ToString("N"));
+        string copiedRoot = Path.Combine(cleanupRoot, "repository");
+        CopyDirectory(
+            Path.Combine(repositoryRoot, DispositionRelativePath),
+            Path.Combine(copiedRoot, DispositionRelativePath));
+        CopyDirectory(
+            Path.Combine(repositoryRoot, SelectedEvidenceRelativePath),
+            Path.Combine(copiedRoot, SelectedEvidenceRelativePath));
+        CopyDirectory(
+            Path.Combine(repositoryRoot, Story120EvidenceRelativePath),
+            Path.Combine(copiedRoot, Story120EvidenceRelativePath));
+        foreach (string relative in DispositionSupportingFiles)
+        {
+            string destination = Path.Combine(copiedRoot, relative);
+            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            File.Copy(Path.Combine(repositoryRoot, relative), destination, overwrite: true);
+        }
+
+        return (
+            cleanupRoot,
+            copiedRoot,
+            Path.Combine(copiedRoot, DispositionRelativePath),
+            Path.Combine(copiedRoot, SelectedEvidenceRelativePath));
+    }
+
+    private static void WriteDispositionEnvelope(string dispositionRoot, JsonObject envelope)
+    {
+        File.WriteAllBytes(
+            Path.Combine(dispositionRoot, DispositionEnvelopeFile),
+            CanonicalDispositionBytes(envelope));
+        RebindDispositionManifest(dispositionRoot);
+    }
+
+    private static void RebindDispositionManifest(string dispositionRoot)
+    {
+        StringBuilder builder = new();
+        foreach (string relative in DispositionFilesUnder(dispositionRoot))
+        {
+            builder.Append(ComputeSha256(Path.Combine(
+                    dispositionRoot,
+                    relative.Replace('/', Path.DirectorySeparatorChar))))
+                .Append("  ")
+                .Append(relative)
+                .Append('\n');
+        }
+
+        File.WriteAllText(Path.Combine(dispositionRoot, DispositionManifestFile), builder.ToString());
+    }
+
+    private static void ReDeclareBinding(JsonObject binding, string absolutePath)
+    {
+        byte[] bytes = File.ReadAllBytes(absolutePath);
+        binding["size"] = bytes.Length;
+        binding["sha256"] = ComputeSha256(bytes);
+    }
+
+    private static void CreateDispositionReceipts(string dispositionRoot)
+    {
+        byte[] envelopeBytes = ReadEvidenceFile(dispositionRoot, DispositionEnvelopeFile);
+        JsonObject envelope = JsonNode.Parse(envelopeBytes)!.AsObject();
+        string envelopeHash = ComputeSha256(envelopeBytes);
+        string acceptancesRoot = Path.Combine(dispositionRoot, "acceptances");
+        if (Directory.Exists(acceptancesRoot))
+        {
+            Directory.Delete(acceptancesRoot, recursive: true);
+        }
+
+        string receiptDirectory = Path.Combine(acceptancesRoot, envelopeHash);
+        string sourcesDirectory = Path.Combine(receiptDirectory, "sources");
+        Directory.CreateDirectory(sourcesDirectory);
+        DateTimeOffset acceptedAt = DateTimeOffset.Parse(
+            envelope["assembled_at"]!.GetValue<string>(),
+            CultureInfo.InvariantCulture).AddMinutes(1);
+        string acceptedScope =
+            "Story 3.13 v3.94.1 rejected-non-authorizing evidence disposition for " + envelopeHash;
+        foreach (string role in RequiredRoles)
+        {
+            string reviewer = role == "test-architect" ? "bmad:murat" : "github:jpiquot";
+            JsonObject source = new()
+            {
+                ["schema"] = DispositionSourceSchema,
+                ["repository"] = ExpectedRepository,
+                ["source_url"] = "https://github.com/" + ExpectedRepository + "/commit/" +
+                    SelectedSourceSha + "#story-3-13-disposition-" + envelopeHash + "-" + role,
+                ["captured_at"] = acceptedAt.ToString("O"),
+                ["role"] = role,
+                ["reviewer_identity"] = reviewer,
+                ["subject_sha256"] = SelectedReviewSubjectSha256,
+                ["decision"] = "accepted",
+                ["accepted_scope"] = acceptedScope,
+                ["accepted_limitations"] = envelope["limitations"]!.DeepClone(),
+            };
+            byte[] sourceBytes = JsonSerializer.SerializeToUtf8Bytes(source);
+            File.WriteAllBytes(Path.Combine(sourcesDirectory, role + ".json"), sourceBytes);
+            JsonObject receipt = new()
+            {
+                ["schema"] = DispositionReceiptSchema,
+                ["role"] = role,
+                ["reviewer_identity"] = reviewer,
+                ["accepted_at"] = acceptedAt.ToString("O"),
+                ["durable_source"] = new JsonObject
+                {
+                    ["kind"] = "retained-immutable-external-record",
+                    ["path"] = "sources/" + role + ".json",
+                    ["sha256"] = ComputeSha256(sourceBytes),
+                },
+                ["accepted_scope"] = acceptedScope,
+                ["accepted_limitations"] = envelope["limitations"]!.DeepClone(),
+                ["decision"] = "accepted",
+                ["subject_sha256"] = SelectedReviewSubjectSha256,
+            };
+            File.WriteAllBytes(
+                Path.Combine(receiptDirectory, role + ".json"),
+                JsonSerializer.SerializeToUtf8Bytes(receipt));
+        }
+
+        RebindDispositionManifest(dispositionRoot);
+    }
+
+    private static void MutateDispositionReceiptAndSourceField(
+        string receiptDirectory,
+        string role,
+        string field,
+        string value)
+    {
+        byte[] sourceBytes = WriteDispositionSourceRecord(receiptDirectory, role, source =>
+            source[field] = value);
+        MutateDispositionReceipt(receiptDirectory, role, receipt =>
+        {
+            receipt[field] = value;
+            receipt["durable_source"]!["sha256"] = ComputeSha256(sourceBytes);
+        });
+    }
+
+    private static void MutateDispositionReceiptAndSource(
+        string receiptDirectory,
+        string role,
+        string reviewerIdentity)
+    {
+        byte[] sourceBytes = WriteDispositionSourceRecord(receiptDirectory, role, source =>
+            source["reviewer_identity"] = reviewerIdentity);
+        MutateDispositionReceipt(receiptDirectory, role, receipt =>
+        {
+            receipt["reviewer_identity"] = reviewerIdentity;
+            receipt["durable_source"]!["sha256"] = ComputeSha256(sourceBytes);
+        });
+    }
+
+    private static void MutateDispositionSourceRecord(
+        string receiptDirectory,
+        string role,
+        Action<JsonObject> mutate)
+    {
+        byte[] sourceBytes = WriteDispositionSourceRecord(receiptDirectory, role, mutate);
+        MutateDispositionReceipt(receiptDirectory, role, receipt =>
+            receipt["durable_source"]!["sha256"] = ComputeSha256(sourceBytes));
+    }
+
+    private static byte[] WriteDispositionSourceRecord(
+        string receiptDirectory,
+        string role,
+        Action<JsonObject> mutate)
+    {
+        string sourcePath = Path.Combine(receiptDirectory, "sources", role + ".json");
+        JsonObject source = JsonNode.Parse(File.ReadAllBytes(sourcePath))!.AsObject();
+        mutate(source);
+        byte[] sourceBytes = JsonSerializer.SerializeToUtf8Bytes(source);
+        File.WriteAllBytes(sourcePath, sourceBytes);
+        return sourceBytes;
+    }
+
+    private static void MutateDispositionReceipt(
+        string receiptDirectory,
+        string role,
+        Action<JsonObject> mutate)
+    {
+        string path = Path.Combine(receiptDirectory, role + ".json");
+        JsonObject receipt = JsonNode.Parse(File.ReadAllBytes(path))!.AsObject();
+        mutate(receipt);
+        File.WriteAllBytes(path, JsonSerializer.SerializeToUtf8Bytes(receipt));
+    }
+
+    // Re-capturing a retained manifest so a drifted file matches must still fail, because the
+    // envelope and the frozen review subject both bind the manifest bytes themselves.
+    private static void RewriteRetainedCoreManifest(string evidenceRoot)
+    {
+        RewriteRetainedManifest(evidenceRoot, "evidence-core-sha256.txt");
+    }
+
+    private static void RewriteRetainedOuterManifest(string evidenceRoot)
+    {
+        RewriteRetainedManifest(evidenceRoot, "evidence-sha256.txt");
+    }
+
+    private static void RewriteRetainedManifest(string evidenceRoot, string manifestFile)
+    {
+        Dictionary<string, string> entries = ParseChecksumManifest(
+            ReadEvidenceFile(evidenceRoot, manifestFile));
+        StringBuilder builder = new();
+        foreach (string relative in entries.Keys.Order(StringComparer.Ordinal))
+        {
+            builder.Append(ComputeSha256(ResolveWithin(evidenceRoot, relative)))
+                .Append("  ")
+                .Append(relative)
+                .Append('\n');
+        }
+
+        File.WriteAllText(Path.Combine(evidenceRoot, manifestFile), builder.ToString());
+    }
+
+    private static void RewriteRetainedCrosswalkVerdict(string evidenceRoot)
+    {
+        JsonObject crosswalk = JsonNode.Parse(
+            ReadEvidenceFile(evidenceRoot, "identity-crosswalk.json"))!.AsObject();
+        crosswalk["verdict"]!["blockers"]!.AsArray().RemoveAt(0);
+        File.WriteAllBytes(
+            Path.Combine(evidenceRoot, "identity-crosswalk.json"),
+            JsonSerializer.SerializeToUtf8Bytes(crosswalk));
+    }
 
     /// <summary>
     /// Gets receipt field names for negative tests.

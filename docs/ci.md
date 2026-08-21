@@ -145,7 +145,9 @@ never accepted as package dependency evidence, anywhere in the nuspec.
 ## Release Flow
 
 Release is an intentional operator action. Ordinary pushes and pull requests
-run CI but never start Release. Before requesting environment approval, the
+run CI but never start Release. The dispatch itself takes no inputs: the
+operator selects `main` and runs the workflow, and semantic-release derives the
+version from the commit history. Before requesting environment approval, the
 manual workflow fails closed unless all of these are true:
 
 - the dispatch ref is exactly `refs/heads/main`;
@@ -210,36 +212,49 @@ container, smoke, and GitHub publication failures remain blocking.
 
 The reusable-workflow reference and `builds-execution-sha` input contain the
 same reviewed 40-character Builds commit, currently
-`63409393541f1437e23006b7a4e05174f8b50da7`. The reusable workflow verifies its
+`a07078ad74d3727bc5a6b6d85d47d56a6e5c9fec`. The reusable workflow verifies its
 resolved SHA, checks out the nested action at that exact commit, and invokes it
 locally; the action then verifies its own action and helper bytes against the
 same commit before semantic-release can run. This immutable release-tool pin is
 independent of the development `references/Hexalith.Builds` gitlink, so routine
 submodule updates do not rotate publication authority and publication upgrades
-do not create pointer churn in development dependencies. Environment approval
-is necessary but not sufficient for a corrective publication. Story 3.14 also
-requires a dispatch-reserved stable version and an unexpired, one-use GitHub
-issue-comment authority from the pinned `github:jpiquot` release-owner identity.
-The dispatch names a stable EventStore authority issue, not a comment that would
-have to predict the future run ID. After the run/attempt exists, the release owner
-posts one immutable comment to that issue while the protected release job awaits
-approval. Its canonical identity digest binds the repository, reserved version,
-exact green source, workflow run/attempt, package and container destinations,
-platform set, protected environment, Builds revision, and all installed helper
-hashes. The `publish` preflight consumes that authority once through an
-authenticated GitHub Actions receipt before the first NuGet write; pagination,
-replay, expiry, excessive validity, wrong-role, changed scope, or mismatched
-helper bytes fail closed.
-The durable consumption evidence retains the authenticated comment-list reread
-rather than GitHub's distinct POST response shape, so the container phase
-rechecks the same record bytes that the publish phase froze.
+do not create pointer churn in development dependencies. Environment approval is what authorizes an ordinary publication, and the caller
+declares `require-publication-authority: false` to say so.
 
-The reserved version must equal Semantic Release's `nextRelease.version`, must
-be stable, and must be strictly newer than every stable GitHub release/tag, every
-version observed for all 14 NuGet IDs, and every stable registry tag. The exact
-candidate must also be absent at all package and container destinations before
-publication. A changed projection therefore requires a new run and authority;
-`3.96.0` is never embedded as release policy.
+Story 3.14 built a second, stronger gate for a corrective release that has to be
+individually authorized rather than merely approved: a dispatch-reserved stable
+version plus an unexpired, one-use GitHub issue-comment authority from the pinned
+`github:jpiquot` release-owner identity. That gate remains implemented and tested
+in `Hexalith.Builds`, and is off by default here, because it costs the operator a
+hand-computed version and an out-of-band authority comment per run. Re-enabling it
+means setting `require-publication-authority: true` and supplying
+`reserved-version`, `release-authority-issue-url` and `release-authority-owner`.
+The posture is declared, never inferred: with the gate off any supplied
+reservation value fails closed rather than being silently ignored, a half-declared
+authority is rejected instead of read as absence, and a declaration that is
+neither `true` nor `false` fails closed.
+
+When the gate is on, the dispatch names a stable EventStore authority issue, not a
+comment that would have to predict the future run ID. After the run/attempt exists,
+the release owner posts one immutable comment to that issue while the protected
+release job awaits approval. Its canonical identity digest binds the repository,
+reserved version, exact green source, workflow run/attempt, package and container
+destinations, platform set, protected environment, Builds revision, and all
+installed helper hashes. The `publish` preflight consumes that authority once
+through an authenticated GitHub Actions receipt before the first NuGet write;
+pagination, replay, expiry, excessive validity, wrong-role, changed scope, or
+mismatched helper bytes fail closed. The durable consumption evidence retains the
+authenticated comment-list reread rather than GitHub's distinct POST response
+shape, so the container phase rechecks the same record bytes that the publish
+phase froze. A reserved version must equal Semantic Release's
+`nextRelease.version`, must be stable, and must be strictly newer than every stable
+GitHub release/tag, every version observed for all 14 NuGet IDs, and every stable
+registry tag.
+
+Both postures are identical in every other respect. The exact candidate version
+must be absent at all package and container destinations before publication, and
+source proof, frozen identity, and version-floor checks run either way. No
+projected version such as `3.96.0` is ever embedded as release policy.
 
 The `publishCmd` calls the helper installed by the shared `publish-containers`
 action only after the authority gate and NuGet publication:
@@ -248,9 +263,10 @@ GitHub validates reusable-workflow permissions against every nested job before
 it starts the caller, including skipped jobs. The EventStore caller therefore
 allows `attestations: write` and `id-token: write` so the shared workflow can be
 resolved, while explicitly passing `governed-release: false`. The selected
-legacy release job narrows its callee-level permissions and neither receives nor
-uses those capabilities. This compatibility allowance does not enable signing,
-SBOM generation, or attestation for EventStore.
+legacy release job declares no narrower job-level permission block, so it
+inherits both write scopes even though it does not use them. This is a real token
+widening, tracked for removal in the shared reusable-workflow split; it does not
+by itself enable signing, SBOM generation, or attestation for EventStore.
 
 ```text
 src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore
@@ -331,17 +347,38 @@ and the 14 manifest packages at version `3.94.1`. Those 14 `v3.94.1` archives un
 the selected packet `packages/` are tracked evidence, not restore output, because
 `ValidatePackageBytes` rehashes them when `byte_verification.result` is `pass`. The
 `fa2d1c99` packet remains historical fail-closed evidence and is not the selected
-candidate. Story 1.20 remains
-complete and authoritative for source/package parity only; Story 3.13 cannot
-rewrite either predecessor, infer identity across lineages, or authorize a
-consumer migration, deployment, publication, or registry mutation. Story 1.20
-retains sole authority over its approval fields and consumer-migration decision.
-The checked-in GitHub approval-role allowlist remains historical proof-packet
-evidence; the release workflow does not consume it.
+candidate. Story 1.20 remains complete and authoritative for source/package parity
+only; Story 3.13 cannot rewrite either predecessor, infer identity across lineages,
+or authorize a consumer migration, deployment, publication, or registry mutation.
+Story 1.20 retains sole authority over its approval fields and consumer-migration
+decision. The checked-in GitHub approval-role allowlist remains historical
+proof-packet evidence; the release workflow does not consume it.
 
-Story 3.13 remains `in-progress` until the `v3.94.1` packet independently satisfies
-AC1–AC4, including three content-bound acceptances of the new review subject. It
-authorizes no release, registry, deployment, consumer, or predecessor mutation.
+Story 3.13 owns the `v3.94.1` rejection only. Its content-bound disposition envelope
+lives under `_bmad-output/implementation-artifacts/evidence/story-3-13/disposition/`
+and is addressed by the immutable review-subject digest recorded in the selected packet
+`6cee8dad34c1233c6184404b409fb65d1a4dd0bccdd0d0ee54e8869120970a97`, which an operator
+reproduces with `sha256sum review-subject.json`. The envelope records
+`candidate_disposition: rejected-non-authorizing`, `deployed_runtime_parity:
+unavailable-for-v3.94.1`, `selected_deployed_identity: null`, and
+`deployment_authorized: false`. It lives outside both content-addressed evidence trees
+because the frozen crosswalk pins `receipt_count` to `0`. The malformed `https` values
+for `org.opencontainers.image.source`, `.url`, and `.documentation`, the absent
+`.revision` label, and the withheld deployment authority are retained verbatim and are
+never reinterpreted as passing. Story 3.13 stays at `review` until the EventStore owner,
+Release owner, and Test Architect each accept the unchanged envelope; the approved
+2026-08-16 correct-course decision is planning authority, not a receipt.
+
+Story 3.14 owns the corrective release; Story 3.15 owns positive deployed-runtime parity
+for it. A complete Story 3.13 disposition therefore still selects no image and authorizes
+no release, registry, deployment, consumer, or predecessor mutation, and it creates no
+dependency on Story 3.14.
+
+The Story 3.13 tracker key stays `3-13-v3-94-1-deployed-runtime-evidence-disposition`
+and only its display title changed. Proposal §4.9 allows the rename only when the story
+filename, spec key, and every repository reference move atomically; both Story 3.13
+proof-packet filenames are pinned by SHA-256 inside the frozen review subjects and the
+focused verifier, so they cannot be renamed and that condition cannot be met.
 
 ## Submodules
 

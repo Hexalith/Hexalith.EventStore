@@ -10,7 +10,7 @@ namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 /// </summary>
 public sealed class ContainerPublishingGovernanceTests
 {
-    private const string ApprovedBuildsReleaseSha = "63409393541f1437e23006b7a4e05174f8b50da7";
+    private const string ApprovedBuildsReleaseSha = "a07078ad74d3727bc5a6b6d85d47d56a6e5c9fec";
     private const int ExpectedPackageCount = 14;
     private static readonly TimeSpan PublicationPreflightTimeout = TimeSpan.FromSeconds(10);
 
@@ -161,6 +161,145 @@ public sealed class ContainerPublishingGovernanceTests
         script.ShouldContain("${HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT-}");
         script.ShouldContain("--expected-package-count \"$expected_package_count\"");
         script.ShouldContain("registry.hexalith.com/eventstore");
+    }
+
+    /// <summary>
+    /// Verifies the disabled posture forwards no authority arguments while still preflighting.
+    /// </summary>
+    [Theory]
+    [InlineData("verify")]
+    [InlineData("publish")]
+    public void PublicationPreflightWrapperOmitsAuthorityArgumentsWhenTheGateIsDisabled(string phase)
+    {
+        (int exitCode, _, string error, bool invoked, string[] arguments) =
+            RunWrapperWithPosture(FindRepositoryRoot(), phase, new Dictionary<string, string?>
+            {
+                ["HEXALITH_RELEASE_REQUIRE_AUTHORITY"] = "false",
+            });
+
+        exitCode.ShouldBe(0, error);
+        invoked.ShouldBeTrue();
+        arguments.ShouldNotContain("--authority-issue-url");
+        arguments.ShouldNotContain("--authority-owner");
+
+        // Opting out of the authority gate must not opt out of the destination proof.
+        arguments.ShouldContain("--phase");
+        arguments.ShouldContain(phase);
+        arguments.ShouldContain("--package-manifest");
+        arguments.ShouldContain("--expected-package-count");
+    }
+
+    /// <summary>
+    /// Verifies the enabled posture still reaches the shared preflight with both authority values.
+    /// </summary>
+    [Fact]
+    public void PublicationPreflightWrapperForwardsAuthorityArgumentsWhenTheGateIsEnabled()
+    {
+        (int exitCode, _, string error, bool invoked, string[] arguments) =
+            RunWrapperWithPosture(FindRepositoryRoot(), "verify", new Dictionary<string, string?>
+            {
+                ["HEXALITH_RELEASE_REQUIRE_AUTHORITY"] = "true",
+                ["HEXALITH_RELEASE_RESERVED_VERSION"] = "99.0.0",
+                ["HEXALITH_RELEASE_AUTHORITY_ISSUE_URL"] =
+                    "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/123",
+                ["HEXALITH_RELEASE_AUTHORITY_OWNER"] = "github:jpiquot",
+            });
+
+        exitCode.ShouldBe(0, error);
+        invoked.ShouldBeTrue();
+        arguments.ShouldContain("--authority-issue-url");
+        arguments[Array.IndexOf(arguments, "--authority-issue-url") + 1]
+            .ShouldBe("https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/123");
+        arguments.ShouldContain("--authority-owner");
+        arguments[Array.IndexOf(arguments, "--authority-owner") + 1].ShouldBe("github:jpiquot");
+    }
+
+    /// <summary>
+    /// Verifies malformed corrective-release inputs fail before the shared preflight runs.
+    /// </summary>
+    /// <param name="version">The reserved release version.</param>
+    /// <param name="issueUrl">The authority issue API URL.</param>
+    /// <param name="expectedError">The expected fail-closed diagnostic.</param>
+    [Theory]
+    [InlineData(
+        "01.2.3",
+        "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/123",
+        "must be a stable semantic version")]
+    [InlineData(
+        "1.02.3",
+        "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/123",
+        "must be a stable semantic version")]
+    [InlineData(
+        "1.2.03",
+        "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/123",
+        "must be a stable semantic version")]
+    [InlineData(
+        "99.0.0",
+        "https://api.github.com/repos/Hexalith/Another.Repository/issues/123",
+        "must identify an EventStore GitHub issue")]
+    public void PublicationPreflightWrapperRejectsInvalidCorrectiveInputs(
+        string version,
+        string issueUrl,
+        string expectedError)
+    {
+        (int exitCode, _, string error, bool invoked, _) =
+            RunWrapperWithPosture(FindRepositoryRoot(), "verify", new Dictionary<string, string?>
+            {
+                ["HEXALITH_RELEASE_REQUIRE_AUTHORITY"] = "true",
+                ["HEXALITH_RELEASE_RESERVED_VERSION"] = version,
+                ["HEXALITH_RELEASE_AUTHORITY_ISSUE_URL"] = issueUrl,
+                ["HEXALITH_RELEASE_AUTHORITY_OWNER"] = "github:jpiquot",
+            });
+
+        exitCode.ShouldNotBe(0);
+        error.ShouldContain(expectedError);
+        invoked.ShouldBeFalse();
+    }
+
+    /// <summary>
+    /// Verifies a value the disabled posture would ignore fails closed instead of passing unnoticed.
+    /// </summary>
+    [Theory]
+    [InlineData("HEXALITH_RELEASE_RESERVED_VERSION", "99.0.0")]
+    [InlineData("HEXALITH_RELEASE_AUTHORITY_ISSUE_URL", "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/123")]
+    [InlineData("HEXALITH_RELEASE_AUTHORITY_OWNER", "github:jpiquot")]
+    public void PublicationPreflightWrapperRejectsIgnoredReservationInputs(string name, string value)
+    {
+        (int exitCode, _, string error, bool invoked, _) =
+            RunWrapperWithPosture(FindRepositoryRoot(), "verify", new Dictionary<string, string?>
+            {
+                ["HEXALITH_RELEASE_REQUIRE_AUTHORITY"] = "false",
+                [name] = value,
+            });
+
+        exitCode.ShouldNotBe(0);
+        error.ShouldContain(name);
+        error.ShouldContain("authority gate is disabled");
+        invoked.ShouldBeFalse();
+    }
+
+    /// <summary>
+    /// Verifies an unset posture stays guarded and a malformed one fails closed.
+    /// </summary>
+    [Theory]
+    [InlineData(null, "HEXALITH_RELEASE_RESERVED_VERSION must be a stable semantic version")]
+    [InlineData("", "must be exactly true or false")]
+    [InlineData("True", "must be exactly true or false")]
+    [InlineData("yes", "must be exactly true or false")]
+    [InlineData("0", "must be exactly true or false")]
+    public void PublicationPreflightWrapperRejectsAnUndeclaredOrMalformedPosture(
+        string? declared,
+        string expectedError)
+    {
+        (int exitCode, _, string error, bool invoked, _) =
+            RunWrapperWithPosture(FindRepositoryRoot(), "verify", new Dictionary<string, string?>
+            {
+                ["HEXALITH_RELEASE_REQUIRE_AUTHORITY"] = declared,
+            });
+
+        exitCode.ShouldNotBe(0);
+        error.ShouldContain(expectedError);
+        invoked.ShouldBeFalse();
     }
 
     /// <summary>
@@ -320,9 +459,11 @@ public sealed class ContainerPublishingGovernanceTests
             start.Environment["HEXALITH_RELEASE_PACKAGE_MANIFEST"] = "tools/release-packages.json";
             start.Environment["HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT"] =
                 ExpectedPackageCount.ToString(CultureInfo.InvariantCulture);
+            start.Environment["HEXALITH_RELEASE_REQUIRE_AUTHORITY"] = "true";
             start.Environment["HEXALITH_RELEASE_RESERVED_VERSION"] = "99.0.0";
             start.Environment["HEXALITH_RELEASE_AUTHORITY_ISSUE_URL"] =
                 "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/123";
+            start.Environment["HEXALITH_RELEASE_AUTHORITY_OWNER"] = "github:jpiquot";
             start.Environment["GITHUB_SHA"] = new string('b', 40);
             start.Environment["HEXALITH_PUBLICATION_PREFLIGHT"] = preflight;
             start.Environment["HEXALITH_ZOT_REGISTRY"] = "registry.hexalith.com";
@@ -366,10 +507,16 @@ public sealed class ContainerPublishingGovernanceTests
         workflow.ShouldContain("source-branch: main");
         workflow.ShouldContain("source-ci-workflow: ci.yml");
         workflow.ShouldContain("package-manifest: tools/release-packages.json");
-        workflow.ShouldContain("release-version:");
-        workflow.ShouldContain("reserved-version: ${{ inputs.release-version }}");
-        workflow.ShouldContain("release-authority-issue-url:");
-        workflow.ShouldContain("release-authority-owner: github:jpiquot");
+        // Dispatching a release must not require the operator to answer anything. The
+        // reservation inputs were a Story 3.14 corrective-release gate; the caller now
+        // declares the opt-out explicitly so a dropped input can never be read as one.
+        workflow.ShouldContain("require-publication-authority: false");
+        workflow.ShouldNotContain("release-version:");
+        workflow.ShouldNotContain("reserved-version:");
+        workflow.ShouldNotContain("release-authority-issue-url:");
+        workflow.ShouldNotContain("release-authority-owner:");
+        workflow.ShouldNotContain("${{ inputs.");
+        Regex.Match(workflow, @"(?m)^  workflow_dispatch:\s*$").Success.ShouldBeTrue();
         workflow.ShouldNotContain("release-owner-allowlist:");
         workflow.ShouldNotContain("references/Hexalith.Builds");
         workflow.ShouldNotContain("secrets: inherit");
@@ -525,9 +672,7 @@ public sealed class ContainerPublishingGovernanceTests
             start.Environment["HEXALITH_RELEASE_PACKAGE_MANIFEST"] = "tools/release-packages.json";
             start.Environment["HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT"] =
                 ExpectedPackageCount.ToString(CultureInfo.InvariantCulture);
-            start.Environment["HEXALITH_RELEASE_RESERVED_VERSION"] = "99.0.0";
-            start.Environment["HEXALITH_RELEASE_AUTHORITY_ISSUE_URL"] =
-                "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/123";
+            start.Environment["HEXALITH_RELEASE_REQUIRE_AUTHORITY"] = "false";
             start.Environment["GITHUB_SHA"] = new string('b', 40);
             start.Environment["HEXALITH_PUBLICATION_PREFLIGHT"] = rejectingValidator;
             start.Environment["HEXALITH_ZOT_REGISTRY"] = "registry.hexalith.com";
@@ -568,6 +713,10 @@ public sealed class ContainerPublishingGovernanceTests
         secrets.ShouldContain("HEXALITH_ZOT_USERNAME");
         secrets.ShouldContain("HEXALITH_ZOT_API_KEY");
         secrets.ShouldContain("Total user-managed secrets: 8");
+
+        // The checklist states the publication pin in prose, so nothing kept it honest
+        // and it drifted two rotations behind. Bind it to the workflow it describes.
+        secrets.ShouldContain(ApprovedBuildsReleaseSha);
         targets.ShouldContain("mcr.microsoft.com/dotnet/aspnet:10.0-alpine");
         targets.ShouldContain("<ContainerUser>app</ContainerUser>");
         targets.ShouldContain("<ContainerPort Include=\"8080\"");
@@ -666,15 +815,103 @@ public sealed class ContainerPublishingGovernanceTests
             start.Environment["REPOSITORY"] = "Hexalith/Hexalith.EventStore";
             start.Environment["DISPATCH_REF"] = dispatchRef;
             start.Environment["DISPATCH_SHA"] = dispatchSha;
-            start.Environment["RELEASE_VERSION"] = "99.0.0";
-            start.Environment["RELEASE_AUTHORITY_ISSUE_URL"] =
-                "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/123";
             start.Environment["FAKE_LIVE_MAIN_SHA"] = liveMainSha;
             start.Environment["FAKE_CI_RUNS"] = JsonSerializer.Serialize(new { workflow_runs = workflowRuns });
 
             using Process process = Process.Start(start).ShouldNotBeNull();
             process.WaitForExit();
             return process.ExitCode;
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    private static (int ExitCode, string Output, string Error, bool PreflightInvoked, string[] Arguments)
+        RunWrapperWithPosture(string root, string phase, Dictionary<string, string?> posture)
+    {
+        string temporary = Path.Combine(Path.GetTempPath(), $"hexalith-posture-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(temporary);
+        try
+        {
+            string invocationMarker = Path.Combine(temporary, "preflight-invoked");
+            string argumentsPath = Path.Combine(temporary, "preflight-arguments");
+            string recordingPreflight = Path.Combine(temporary, "record-preflight.sh");
+            File.WriteAllText(
+                recordingPreflight,
+                "#!/usr/bin/env bash\n" +
+                "set -euo pipefail\n" +
+                ": > \"$PREFLIGHT_INVOCATION_MARKER\"\n" +
+                "printf '%s\\n' \"$@\" > \"$PREFLIGHT_ARGUMENTS\"\n");
+            if (!OperatingSystem.IsWindows())
+            {
+                File.SetUnixFileMode(
+                    recordingPreflight,
+                    UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            }
+
+            ProcessStartInfo start = new("bash")
+            {
+                WorkingDirectory = root,
+                RedirectStandardError = true,
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+            };
+            start.ArgumentList.Add(Path.Combine(root, "scripts", "validate-publication-preflight.sh"));
+            start.ArgumentList.Add("99.0.0");
+            start.ArgumentList.Add(phase);
+            start.Environment["HEXALITH_BUILDS_EXECUTION_SHA"] = new string('a', 40);
+            start.Environment["HEXALITH_RELEASE_ENVIRONMENT"] = "production";
+            start.Environment["HEXALITH_RELEASE_SOURCE_BRANCH"] = "main";
+            start.Environment["HEXALITH_RELEASE_SOURCE_CI_WORKFLOW"] = "ci.yml";
+            start.Environment["HEXALITH_RELEASE_PACKAGE_MANIFEST"] = "tools/release-packages.json";
+            start.Environment["HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT"] =
+                ExpectedPackageCount.ToString(CultureInfo.InvariantCulture);
+            start.Environment["GITHUB_SHA"] = new string('b', 40);
+            start.Environment["HEXALITH_PUBLICATION_PREFLIGHT"] = recordingPreflight;
+            start.Environment["HEXALITH_ZOT_REGISTRY"] = "registry.hexalith.com";
+            start.Environment["PREFLIGHT_INVOCATION_MARKER"] = invocationMarker;
+            start.Environment["PREFLIGHT_ARGUMENTS"] = argumentsPath;
+
+            // A null value removes the variable, so an unset posture is distinguishable
+            // from a set-but-empty one instead of collapsing into the same case.
+            foreach ((string name, string? value) in posture)
+            {
+                if (value is null)
+                {
+                    start.Environment.Remove(name);
+                }
+                else
+                {
+                    start.Environment[name] = value;
+                }
+            }
+
+            using Process process = new() { StartInfo = start };
+            process.Start().ShouldBeTrue("Could not start the publication preflight wrapper.");
+            Task<string> outputTask = process.StandardOutput.ReadToEndAsync();
+            Task<string> errorTask = process.StandardError.ReadToEndAsync();
+            bool exited = process.WaitForExit((int)PublicationPreflightTimeout.TotalMilliseconds);
+            if (!exited)
+            {
+                process.Kill(entireProcessTree: true);
+                process.WaitForExit();
+            }
+
+            string output = outputTask.GetAwaiter().GetResult();
+            string error = errorTask.GetAwaiter().GetResult();
+            if (!exited)
+            {
+                throw new TimeoutException(
+                    $"Publication preflight wrapper timed out after {PublicationPreflightTimeout}. " +
+                    $"Output: {output} Error: {error}");
+            }
+
+            string[] arguments = File.Exists(argumentsPath)
+                ? File.ReadAllLines(argumentsPath)
+                : [];
+            return (process.ExitCode, output, error, File.Exists(invocationMarker), arguments);
         }
         finally
         {
@@ -725,9 +962,7 @@ public sealed class ContainerPublishingGovernanceTests
             start.Environment["HEXALITH_ZOT_REGISTRY"] = "registry.hexalith.com";
             start.Environment["PREFLIGHT_INVOCATION_MARKER"] = invocationMarker;
             start.Environment["PREFLIGHT_ARGUMENTS"] = argumentsPath;
-            start.Environment["HEXALITH_RELEASE_RESERVED_VERSION"] = "99.0.0";
-            start.Environment["HEXALITH_RELEASE_AUTHORITY_ISSUE_URL"] =
-                "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/123";
+            start.Environment["HEXALITH_RELEASE_REQUIRE_AUTHORITY"] = "false";
             start.Environment.Remove("HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT");
             if (workflowPackageCount is not null)
             {

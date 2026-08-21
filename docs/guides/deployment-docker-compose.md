@@ -312,8 +312,8 @@ Edit the `.env` file in `publish-output/docker/` to set required values:
 
 ```bash
 # Container images (replace with your registry paths or use local builds)
-COMMANDAPI_IMAGE=hexalith-eventstore:latest
-SAMPLE_IMAGE=hexalith-sample:latest
+COMMANDAPI_IMAGE=hexalith-eventstore:0.0.0-local.1
+SAMPLE_IMAGE=hexalith-sample:0.0.0-local.1
 
 # Redis (matches DAPR component default)
 REDIS_HOST=redis:6379
@@ -332,9 +332,10 @@ AUTH_AUTHORITY=http://security:8080/realms/hexalith
 > **Tip:** Build the container images from source using the .NET SDK container publishing feature (no Dockerfile required):
 >
 > ```bash
-> $ SOURCE_SHA="$(git rev-parse HEAD)"; RELEASE_VERSION=local
-> $ dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalith-eventstore -p:ContainerImageTag="$RELEASE_VERSION" -p:ContainerProvenanceSourceSha="$SOURCE_SHA" -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION"
-> $ dotnet publish samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalith-sample -p:ContainerImageTag="$RELEASE_VERSION" -p:ContainerProvenanceSourceSha="$SOURCE_SHA" -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION"
+> $ SOURCE_SHA="$(git rev-parse HEAD)"; RELEASE_VERSION=0.0.0-local.1
+> $ SOURCE_URL="https://github.com/Hexalith/Hexalith.EventStore/commit/$SOURCE_SHA"
+> $ dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalith-eventstore -p:ContainerImageTag="$RELEASE_VERSION" -p:ContainerProvenanceSourceSha="$SOURCE_SHA" -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION" -p:ContainerProvenanceReleaseUrl="$SOURCE_URL"
+> $ dotnet publish samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalith-sample -p:ContainerImageTag="$RELEASE_VERSION" -p:ContainerProvenanceSourceSha="$SOURCE_SHA" -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION" -p:ContainerProvenanceReleaseUrl="$SOURCE_URL"
 > ```
 >
 > Both provenance properties are mandatory and become the image's exact source,

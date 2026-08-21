@@ -261,9 +261,10 @@ Use the .NET SDK container publishing feature (no Dockerfile required):
 
 ```bash
 SOURCE_SHA="$(git rev-parse HEAD)"
-RELEASE_VERSION=local
-dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalith-eventstore -p:ContainerImageTag="$RELEASE_VERSION" -p:ContainerProvenanceSourceSha="$SOURCE_SHA" -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION"
-dotnet publish samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalith-sample -p:ContainerImageTag="$RELEASE_VERSION" -p:ContainerProvenanceSourceSha="$SOURCE_SHA" -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION"
+RELEASE_VERSION=0.0.0-local.1
+SOURCE_URL="https://github.com/Hexalith/Hexalith.EventStore/commit/$SOURCE_SHA"
+dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalith-eventstore -p:ContainerImageTag="$RELEASE_VERSION" -p:ContainerProvenanceSourceSha="$SOURCE_SHA" -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION" -p:ContainerProvenanceReleaseUrl="$SOURCE_URL"
+dotnet publish samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalith-sample -p:ContainerImageTag="$RELEASE_VERSION" -p:ContainerProvenanceSourceSha="$SOURCE_SHA" -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION" -p:ContainerProvenanceReleaseUrl="$SOURCE_URL"
 ```
 
 `ContainerProvenanceSourceSha` and `ContainerProvenanceReleaseVersion` are
@@ -274,11 +275,11 @@ mandatory; they bind the image labels to the exact source and published tag.
 Tag and push to your registry:
 
 ```bash
-docker tag hexalith-eventstore:latest myregistry.azurecr.io/hexalith-eventstore:latest
-docker push myregistry.azurecr.io/hexalith-eventstore:latest
+docker tag "hexalith-eventstore:$RELEASE_VERSION" "myregistry.azurecr.io/hexalith-eventstore:$RELEASE_VERSION"
+docker push "myregistry.azurecr.io/hexalith-eventstore:$RELEASE_VERSION"
 
-docker tag hexalith-sample:latest myregistry.azurecr.io/hexalith-sample:latest
-docker push myregistry.azurecr.io/hexalith-sample:latest
+docker tag "hexalith-sample:$RELEASE_VERSION" "myregistry.azurecr.io/hexalith-sample:$RELEASE_VERSION"
+docker push "myregistry.azurecr.io/hexalith-sample:$RELEASE_VERSION"
 ```
 
 ### Local Cluster Alternatives
@@ -287,12 +288,12 @@ For local development clusters that don't pull from external registries:
 
 ```bash
 # minikube
-minikube image load hexalith-eventstore:latest
-minikube image load hexalith-sample:latest
+minikube image load "hexalith-eventstore:$RELEASE_VERSION"
+minikube image load "hexalith-sample:$RELEASE_VERSION"
 
 # kind
-kind load docker-image hexalith-eventstore:latest
-kind load docker-image hexalith-sample:latest
+kind load docker-image "hexalith-eventstore:$RELEASE_VERSION"
+kind load docker-image "hexalith-sample:$RELEASE_VERSION"
 ```
 
 Update `values.yaml` with the correct image repository and tag to match the pushed images.

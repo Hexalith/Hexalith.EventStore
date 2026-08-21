@@ -51,7 +51,7 @@ URLs:
 - The `production` environment permits only `main` and has administrator bypass
   disabled.
 - The release workflow embeds the same immutable Builds commit for its reusable
-  workflow and execution input: `cf04c419378dfe1bd3c41a9244b5e3283092056e`.
+  workflow and execution input: `a07078ad74d3727bc5a6b6d85d47d56a6e5c9fec`.
   This publication pin is deliberately independent of the development Builds
   gitlink. No issue-comment authority variable is used.
 

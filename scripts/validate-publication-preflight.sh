@@ -15,7 +15,11 @@ contract_directory="${HEXALITH_RELEASE_CONTRACT_DIRECTORY:-$PWD/.hexalith/releas
 publication_preflight="${HEXALITH_PUBLICATION_PREFLIGHT:-./.hexalith/release/publication_preflight.py}"
 evidence_directory="${HEXALITH_RELEASE_EVIDENCE_DIRECTORY:-$PWD/.hexalith/release-evidence/$version/preflight}"
 authority_issue_url="${HEXALITH_RELEASE_AUTHORITY_ISSUE_URL:-}"
-readonly authority_owner="github:jpiquot"
+authority_owner="${HEXALITH_RELEASE_AUTHORITY_OWNER:-}"
+# Mirrors the shared publisher exactly. ${VAR-default} rather than ${VAR:-default}:
+# an unset declaration keeps the guarded posture, while a set-but-empty value is a
+# malformed declaration and must fail closed instead of picking a posture.
+require_authority="${HEXALITH_RELEASE_REQUIRE_AUTHORITY-true}"
 
 # Hexalith.EventStore publishes exactly these 14 NuGet packages. The count is declared
 # here rather than counted from the manifest so that adding or dropping a package fails
@@ -53,26 +57,54 @@ fail() {
   fail "The shared publication preflight is unavailable."
 [[ -f "$package_manifest" ]] ||
   fail "The authoritative release package manifest is unavailable."
-[[ "$reserved_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
-  fail "HEXALITH_RELEASE_RESERVED_VERSION must be a stable semantic version."
-[[ "$version" == "$reserved_version" ]] ||
-  fail "Semantic Release selected a version different from the authorized reservation."
-[[ "$authority_issue_url" =~ ^https://api\.github\.com/repos/Hexalith/Hexalith\.EventStore/issues/[1-9][0-9]*$ ]] ||
-  fail "HEXALITH_RELEASE_AUTHORITY_ISSUE_URL must identify an EventStore GitHub issue."
+# The reserved version and one-use publication authority are an opt-in corrective-release
+# gate declared by the release caller, not a precondition of publishing. Enabled, every
+# input is mandatory; disabled, every input must be absent so a value that this posture
+# would ignore fails closed rather than passing unnoticed.
+case "$require_authority" in
+  true)
+    [[ "$reserved_version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] ||
+      fail "HEXALITH_RELEASE_RESERVED_VERSION must be a stable semantic version."
+    [[ "$version" == "$reserved_version" ]] ||
+      fail "Semantic Release selected a version different from the authorized reservation."
+    [[ "$authority_issue_url" =~ ^https://api\.github\.com/repos/Hexalith/Hexalith\.EventStore/issues/[1-9][0-9]*$ ]] ||
+      fail "HEXALITH_RELEASE_AUTHORITY_ISSUE_URL must identify an EventStore GitHub issue."
+    [[ "$authority_owner" =~ ^github:[A-Za-z0-9][A-Za-z0-9-]{0,38}$ ]] ||
+      fail "HEXALITH_RELEASE_AUTHORITY_OWNER must identify the expected GitHub release owner."
+    ;;
+  false)
+    [[ -z "${reserved_version//[[:space:]]/}" ]] ||
+      fail "HEXALITH_RELEASE_RESERVED_VERSION is set while the publication authority gate is disabled."
+    [[ -z "${authority_issue_url//[[:space:]]/}" ]] ||
+      fail "HEXALITH_RELEASE_AUTHORITY_ISSUE_URL is set while the publication authority gate is disabled."
+    [[ -z "${authority_owner//[[:space:]]/}" ]] ||
+      fail "HEXALITH_RELEASE_AUTHORITY_OWNER is set while the publication authority gate is disabled."
+    ;;
+  *)
+    fail "HEXALITH_RELEASE_REQUIRE_AUTHORITY must be exactly true or false."
+    ;;
+esac
 
-exec "$publication_preflight" \
-  --repository "Hexalith/Hexalith.EventStore" \
-  --version "$version" \
-  --source-sha "$source_sha" \
-  --source-branch "$source_branch" \
-  --source-ci-workflow "$source_ci_workflow" \
-  --container-repository "registry.hexalith.com/eventstore" \
-  --builds-execution-sha "$builds_execution_sha" \
-  --environment-name "$release_environment" \
-  --authority-issue-url "$authority_issue_url" \
-  --authority-owner "$authority_owner" \
-  --package-manifest "$package_manifest" \
-  --expected-package-count "$expected_package_count" \
-  --contract-directory "$contract_directory" \
-  --evidence-directory "$evidence_directory" \
+preflight_arguments=(
+  --repository "Hexalith/Hexalith.EventStore"
+  --version "$version"
+  --source-sha "$source_sha"
+  --source-branch "$source_branch"
+  --source-ci-workflow "$source_ci_workflow"
+  --container-repository "registry.hexalith.com/eventstore"
+  --builds-execution-sha "$builds_execution_sha"
+  --environment-name "$release_environment"
+  --package-manifest "$package_manifest"
+  --expected-package-count "$expected_package_count"
+  --contract-directory "$contract_directory"
+  --evidence-directory "$evidence_directory"
   --phase "$phase"
+)
+if [[ "$require_authority" = "true" ]]; then
+  preflight_arguments+=(
+    --authority-issue-url "$authority_issue_url"
+    --authority-owner "$authority_owner"
+  )
+fi
+
+exec "$publication_preflight" "${preflight_arguments[@]}"
