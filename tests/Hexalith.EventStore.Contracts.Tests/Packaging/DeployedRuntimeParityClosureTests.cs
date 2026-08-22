@@ -83,6 +83,7 @@ public sealed class DeployedRuntimeParityClosureTests
         "_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure.md";
     private const string SprintStatusRelativePath =
         "_bmad-output/implementation-artifacts/sprint-status.yaml";
+    private const string CiDocumentationRelativePath = "docs/ci.md";
     private const string DispositionVerifierPath =
         "tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs";
     private const string RevisionLabel = "org.opencontainers.image.revision";
@@ -130,8 +131,8 @@ public sealed class DeployedRuntimeParityClosureTests
     ];
 
     // Concrete identity material owned by another lineage. Ancestry, tags, and labels are
-    // insufficient evidence, so the disposition's identity-bearing sections may never carry any of
-    // these Story 1.20, v3.75.0/v3.77.1/v3.77.2, or Story 3.14 values.
+    // insufficient evidence, so the disposition may never carry any of these Story 1.20,
+    // v3.75.0/v3.77.1/v3.77.2, or Story 3.14 values.
     private static readonly string[] ForeignLineageTokens =
     [
         "3.75.0",
@@ -151,9 +152,6 @@ public sealed class DeployedRuntimeParityClosureTests
         "re-verify every retained checksum manifest and the frozen review subject before any " +
         "re-declaration; never re-capture v3.94.1 evidence to make a manifest match";
 
-    // The identity scalars the frozen 6cee8dad review subject records for itself. The envelope is
-    // compared against these, and the subject is separately pinned to the crosswalk and constants, so
-    // a drifted declaration cannot be self-consistent.
     // The complete frozen identity field set of the retained 6cee8dad review subject.
     private static readonly string[] SubjectFrozenIdentityFields =
     [
@@ -177,32 +175,22 @@ public sealed class DeployedRuntimeParityClosureTests
         "workflow_run",
     ];
 
-    private static readonly string[] RetainedManifestFiles =
+    private static readonly (string File, int EntryCount, string Base)[] RetainedManifestDefinitions =
     [
-        "evidence-core-sha256.txt",
-        "evidence-sha256.txt",
-        "nuget-sha256.txt",
-        "predecessor-tree-sha256.txt",
+        ("evidence-core-sha256.txt", 34, "evidence-root"),
+        ("evidence-sha256.txt", 3, "evidence-root"),
+        ("nuget-sha256.txt", 14, "evidence-root/packages"),
+        ("predecessor-tree-sha256.txt", 40, "repository-root"),
     ];
 
-    private static readonly int[] RetainedManifestEntryCounts = [34, 3, 14, 40];
-
-    private static readonly string[] RetainedManifestBases =
+    private static readonly string[] DispositionSpecificLimitations =
     [
-        "evidence-root",
-        "evidence-root",
-        "evidence-root/packages",
-        "repository-root",
-    ];
-
-    private static readonly string[] DispositionIdentitySections =
-    [
-        "governing_authority",
-        "referenced_evidence",
-        "retained_checksum_manifests",
-        "retained_identity",
-        "retained_provenance_defects",
-        "review_subject",
+        "This envelope disposes the immutable v3.94.1 candidate as rejected and non-authorizing; " +
+            "it selects no deployed image and grants no deployment or consumer-migration authority.",
+        "Positive FR36 deployed-runtime parity stays open and is owned by Story 3.15 after the " +
+            "separately authorized Story 3.14 corrective release.",
+        "The approved 2026-08-16 correct-course decision is planning authority only and is never " +
+            "an acceptance receipt.",
     ];
 
     private static readonly string[] DispositionSupportingFiles =
@@ -807,7 +795,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -974,7 +962,7 @@ public sealed class DeployedRuntimeParityClosureTests
         {
             if (Directory.Exists(cleanupRoot))
             {
-                Directory.Delete(cleanupRoot, recursive: true);
+                DeleteTemporaryDirectory(cleanupRoot);
             }
         }
     }
@@ -1093,7 +1081,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -1124,7 +1112,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -1154,7 +1142,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -1198,7 +1186,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -1247,7 +1235,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -1281,7 +1269,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -1326,7 +1314,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -1415,7 +1403,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -1467,7 +1455,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -1503,7 +1491,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -1561,7 +1549,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -1593,7 +1581,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -1623,7 +1611,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -1643,7 +1631,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -1674,7 +1662,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -1724,7 +1712,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -1783,7 +1771,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -1811,7 +1799,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -1868,7 +1856,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -1964,7 +1952,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -2009,7 +1997,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -2060,7 +2048,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -2117,7 +2105,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -2180,7 +2168,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -2276,7 +2264,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -2328,7 +2316,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -2362,7 +2350,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -2392,7 +2380,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -2420,7 +2408,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -2722,7 +2710,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -2780,7 +2768,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -2818,7 +2806,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -2891,7 +2879,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -2935,7 +2923,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -3038,6 +3026,32 @@ public sealed class DeployedRuntimeParityClosureTests
     }
 
     /// <summary>
+    /// Verifies a disposition copied into the selected frozen evidence tree fails closed.
+    /// </summary>
+    [Fact]
+    public void DispositionInsideFrozenEvidenceTreeFailsClosed()
+    {
+        string root = FindRepositoryRoot();
+        (string cleanupRoot, string copiedRoot, string disposition, string evidence) =
+            CopyDispositionWithEvidence(root);
+        try
+        {
+            string nestedDisposition = Path.Combine(evidence, "nested", SelectedReviewSubjectSha256);
+            CopyDirectory(disposition, nestedDisposition);
+            (bool verified, string rejection, _, _) = EvaluateDisposition(
+                copiedRoot,
+                nestedDisposition,
+                evidence);
+            verified.ShouldBeFalse();
+            ShouldRejectWith(rejection, "disposition.location");
+        }
+        finally
+        {
+            DeleteTemporaryDirectory(cleanupRoot);
+        }
+    }
+
+    /// <summary>
     /// Verifies the selected v3.94.1 tree is a closed inventory that admits no planted artifact.
     /// </summary>
     [Fact]
@@ -3067,12 +3081,14 @@ public sealed class DeployedRuntimeParityClosureTests
     /// </summary>
     /// <param name="mutation">The planted-artifact identifier.</param>
     [Theory]
-    [InlineData("stray-root-file")]
-    [InlineData("forged-receipt")]
-    [InlineData("stray-package")]
-    [InlineData("stray-subdirectory")]
-    [InlineData("empty-subdirectory")]
-    public void PlantedFileInsideSelectedEvidenceTreeFailsClosed(string mutation)
+    [InlineData("stray-root-file", "selected_evidence.file_inventory")]
+    [InlineData("forged-receipt", "selected_evidence.directory_inventory")]
+    [InlineData("stray-package", "selected_evidence.file_inventory")]
+    [InlineData("stray-subdirectory", "selected_evidence.directory_inventory")]
+    [InlineData("empty-subdirectory", "selected_evidence.directory_inventory")]
+    public void PlantedFileInsideSelectedEvidenceTreeFailsClosed(
+        string mutation,
+        string expectedReason)
     {
         string root = FindRepositoryRoot();
         (string cleanupRoot, string copiedRoot, string disposition, string evidence) =
@@ -3106,24 +3122,26 @@ public sealed class DeployedRuntimeParityClosureTests
                     Directory.CreateDirectory(Path.Combine(evidence, "raw"));
                     File.WriteAllText(Path.Combine(evidence, "raw", "index.raw"), "planted\n");
                     break;
-                default:
+                case "empty-subdirectory":
                     // A planted directory that holds no file is visible only to the directory clause.
                     Directory.CreateDirectory(Path.Combine(evidence, "acceptances"));
                     break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(mutation), mutation, "Unknown mutation.");
             }
 
-            // All 91 retained checksum entries still verify; only the closed inventory can see this.
+            // Both manifests exercised below still verify; only the closed inventory can see this.
             RetainedManifestStillVerifies(evidence, "evidence-sha256.txt", evidence, 3).ShouldBeTrue();
             RetainedManifestStillVerifies(evidence, "evidence-core-sha256.txt", evidence, 34).ShouldBeTrue();
             RejectSelectedEvidenceInventory(evidence).ShouldNotBeNull();
             (bool verified, string rejection, _, _) =
                 EvaluateDisposition(copiedRoot, disposition, evidence);
             verified.ShouldBeFalse();
-            ShouldRejectWith(rejection, "selected_evidence.inventory");
+            ShouldRejectWith(rejection, expectedReason);
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -3180,7 +3198,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -3197,6 +3215,7 @@ public sealed class DeployedRuntimeParityClosureTests
     [InlineData("verification-pass", "envelope.verification.result")]
     [InlineData("closes-fr36", "envelope.successor_boundary.closes_fr36_deployed_parity")]
     [InlineData("authorizes-deployment", "envelope.successor_boundary.authorizes_deployment")]
+    [InlineData("depends-on-corrective-release", "envelope.successor_boundary.depends_on_corrective_release")]
     public void PassShapedDispositionFailsClosed(string mutation, string expectedReason)
     {
         string root = FindRepositoryRoot();
@@ -3226,9 +3245,14 @@ public sealed class DeployedRuntimeParityClosureTests
                 case "closes-fr36":
                     envelope["successor_boundary"]!["closes_fr36_deployed_parity"] = true;
                     break;
-                default:
+                case "authorizes-deployment":
                     envelope["successor_boundary"]!["authorizes_deployment"] = true;
                     break;
+                case "depends-on-corrective-release":
+                    envelope["successor_boundary"]!["depends_on_corrective_release"] = true;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(mutation), mutation, "Unknown mutation.");
             }
 
             WriteDispositionEnvelope(disposition, envelope);
@@ -3238,7 +3262,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -3250,14 +3274,17 @@ public sealed class DeployedRuntimeParityClosureTests
     [Theory]
     [InlineData("normalized-source-label", "envelope.retained_provenance_defects.malformed_labels")]
     [InlineData("dropped-malformed-label", "envelope.retained_provenance_defects.malformed_labels")]
+    [InlineData("duplicate-malformed-label", "envelope.retained_provenance_defects.malformed_labels")]
     [InlineData("extra-malformed-label", "envelope.retained_provenance_defects.malformed_labels")]
     [InlineData("extra-absent-label", "envelope.retained_provenance_defects.absent_labels")]
     [InlineData("synthesized-revision-label", "envelope.retained_provenance_defects.observed_config_revision")]
     [InlineData("dropped-absent-label", "envelope.retained_provenance_defects.absent_labels")]
+    [InlineData("duplicate-absent-label", "envelope.retained_provenance_defects.absent_labels")]
     [InlineData("dropped-blocker", "envelope.retained_blockers")]
     [InlineData("reworded-blocker", "envelope.retained_blockers")]
     [InlineData("dropped-retained-limitation", "envelope.limitations")]
     [InlineData("reworded-retained-limitation", "envelope.limitations")]
+    [InlineData("extra-retained-limitation", "envelope.limitations")]
     public void OmittedOrNormalizedDispositionFactFailsClosed(string mutation, string expectedReason)
     {
         string root = FindRepositoryRoot();
@@ -3278,6 +3305,13 @@ public sealed class DeployedRuntimeParityClosureTests
                     break;
                 case "dropped-malformed-label":
                     defects["malformed_labels"]!.AsArray().RemoveAt(0);
+                    break;
+                case "duplicate-malformed-label":
+                    {
+                        JsonArray malformedLabels = defects["malformed_labels"]!.AsArray();
+                        malformedLabels[malformedLabels.Count - 1] = malformedLabels[0]!.DeepClone();
+                    }
+
                     break;
                 case "extra-malformed-label":
                     // Only the exact-cardinality guard can reject a fabricated extra defect row.
@@ -3303,6 +3337,13 @@ public sealed class DeployedRuntimeParityClosureTests
                 case "dropped-absent-label":
                     defects["absent_labels"]!.AsArray().RemoveAt(0);
                     break;
+                case "duplicate-absent-label":
+                    {
+                        JsonArray absentLabels = defects["absent_labels"]!.AsArray();
+                        absentLabels[absentLabels.Count - 1] = absentLabels[0]!.DeepClone();
+                    }
+
+                    break;
                 case "dropped-blocker":
                     envelope["retained_blockers"]!.AsArray().RemoveAt(0);
                     break;
@@ -3313,10 +3354,15 @@ public sealed class DeployedRuntimeParityClosureTests
                 case "dropped-retained-limitation":
                     envelope["limitations"]!.AsArray().RemoveAt(2);
                     break;
-                default:
+                case "reworded-retained-limitation":
                     envelope["limitations"]!.AsArray()[2] =
                         "OCI provenance labels are valid absolute URLs for this candidate.";
                     break;
+                case "extra-retained-limitation":
+                    envelope["limitations"]!.AsArray().Add("A fabricated limitation was appended.");
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(mutation), mutation, "Unknown mutation.");
             }
 
             WriteDispositionEnvelope(disposition, envelope);
@@ -3326,7 +3372,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -3369,9 +3415,11 @@ public sealed class DeployedRuntimeParityClosureTests
                     File.AppendAllText(Path.Combine(evidence, "smoke-linux-arm64.log"), "drift\n");
                     RewriteRetainedCoreManifest(evidence);
                     break;
-                default:
+                case "recaptured-crosswalk":
                     RewriteRetainedCrosswalkVerdict(evidence);
                     break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(mutation), mutation, "Unknown mutation.");
             }
 
             (bool verified, string rejection, _, _) =
@@ -3384,7 +3432,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -3445,9 +3493,11 @@ public sealed class DeployedRuntimeParityClosureTests
                 case "identity-scalar-only":
                     envelope["retained_identity"]!["workflow_run"] = 31781920405L;
                     break;
-                default:
+                case "package-version-scalar-only":
                     envelope["retained_identity"]!["package_version"] = "3.94.2";
                     break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(mutation), mutation, "Unknown mutation.");
             }
 
             WriteDispositionEnvelope(disposition, envelope);
@@ -3458,7 +3508,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -3470,18 +3520,24 @@ public sealed class DeployedRuntimeParityClosureTests
     /// <param name="expectedReason">The exact acceptance rejection reason code.</param>
     [Theory]
     [InlineData("two-receipts", 0, "acceptance.receipt_set")]
-    [InlineData("role-filename-mismatch", 0, "acceptance.receipt_set")]
-    [InlineData("undeclared-sidecar", 0, "acceptance.receipt_set")]
-    [InlineData("stale-envelope-directory", 0, "acceptance.receipt_directory")]
     [InlineData("stale-subject-digest", 2, "acceptance.receipt.subject_sha256")]
     [InlineData("self-declared-role", 2, "acceptance.roster.reviewer_identity")]
     [InlineData("unauthorized-reviewer-identity", 2, "acceptance.roster.reviewer_identity")]
     [InlineData("source-identity-mismatch", 2, "acceptance.source.reviewer_identity")]
     [InlineData("planning-approval-as-receipt", 2, "acceptance.receipt.durable_source")]
     [InlineData("planning-artifact-source-kind", 2, "acceptance.receipt.durable_source")]
-    [InlineData("duplicate-role", 2, "acceptance.receipt.role_filename")]
+    [InlineData("role-field-mismatch", 2, "acceptance.receipt.role_filename")]
     [InlineData("rejected-decision", 2, "acceptance.receipt.decision")]
     [InlineData("wrong-accepted-scope", 2, "acceptance.receipt.accepted_scope")]
+    [InlineData("receipt-schema-mismatch", 2, "acceptance.receipt.schema")]
+    [InlineData("backdated-receipt", 2, "acceptance.receipt.accepted_at")]
+    [InlineData("future-receipt", 2, "acceptance.receipt.accepted_at")]
+    [InlineData("accepted-limitations-mismatch", 2, "acceptance.receipt.accepted_limitations")]
+    [InlineData("source-schema-mismatch", 2, "acceptance.source.record")]
+    [InlineData("source-subject-digest", 2, "acceptance.source.subject_sha256")]
+    [InlineData("source-decision-mismatch", 2, "acceptance.source.decision")]
+    [InlineData("malformed-receipt-json", 2, "acceptance.receipt.schema")]
+    [InlineData("malformed-source-json", 2, "acceptance.source.record")]
     public void IncompleteDispositionAcceptanceKeepsStoryNonDone(
         string mutation,
         int expectedCount,
@@ -3496,6 +3552,8 @@ public sealed class DeployedRuntimeParityClosureTests
             DispositionStoryMayBeDone(root, disposition, evidence).ShouldBeTrue();
 
             byte[] envelopeBytes = ReadEvidenceFile(disposition, DispositionEnvelopeFile);
+            DateTimeOffset validationTime = ParseVerifiedExplicitOffset(
+                JsonNode.Parse(envelopeBytes)!["assembled_at"]!.GetValue<string>()).AddMinutes(2);
             string receiptDirectory = Path.Combine(
                 disposition,
                 "acceptances",
@@ -3504,19 +3562,6 @@ public sealed class DeployedRuntimeParityClosureTests
             {
                 case "two-receipts":
                     File.Delete(Path.Combine(receiptDirectory, "release-owner.json"));
-                    break;
-                case "role-filename-mismatch":
-                    File.Move(
-                        Path.Combine(receiptDirectory, "release-owner.json"),
-                        Path.Combine(receiptDirectory, "release-owner-2.json"));
-                    break;
-                case "undeclared-sidecar":
-                    File.WriteAllText(Path.Combine(receiptDirectory, "extra-approval.json"), "{}");
-                    break;
-                case "stale-envelope-directory":
-                    Directory.Move(
-                        receiptDirectory,
-                        Path.Combine(disposition, "acceptances", new string('2', 64)));
                     break;
                 case "stale-subject-digest":
                     // A realistic hex digest, not a degenerate constant: an all-zero value is
@@ -3560,7 +3605,7 @@ public sealed class DeployedRuntimeParityClosureTests
                     MutateDispositionReceipt(receiptDirectory, "release-owner", receipt =>
                         receipt["durable_source"]!["kind"] = "planning-artifact");
                     break;
-                case "duplicate-role":
+                case "role-field-mismatch":
                     MutateDispositionReceipt(receiptDirectory, "release-owner", receipt =>
                         receipt["role"] = "eventstore-owner");
                     break;
@@ -3568,15 +3613,65 @@ public sealed class DeployedRuntimeParityClosureTests
                     MutateDispositionReceipt(receiptDirectory, "eventstore-owner", receipt =>
                         receipt["decision"] = "rejected");
                     break;
-                default:
+                case "wrong-accepted-scope":
                     MutateDispositionReceipt(receiptDirectory, "test-architect", receipt =>
                         receipt["accepted_scope"] = "Story 3.13 deployed-runtime parity closure");
                     break;
+                case "receipt-schema-mismatch":
+                    MutateDispositionReceipt(receiptDirectory, "eventstore-owner", receipt =>
+                        receipt["schema"] = "wrong-schema");
+                    break;
+                case "backdated-receipt":
+                    MutateDispositionReceiptAndSourceTimestamps(
+                        receiptDirectory,
+                        "eventstore-owner",
+                        "2026-01-01T00:00:00+00:00");
+                    break;
+                case "future-receipt":
+                    MutateDispositionReceiptAndSourceTimestamps(
+                        receiptDirectory,
+                        "eventstore-owner",
+                        validationTime.AddDays(1).ToString("O", CultureInfo.InvariantCulture));
+                    break;
+                case "accepted-limitations-mismatch":
+                    MutateDispositionReceipt(receiptDirectory, "eventstore-owner", receipt =>
+                        receipt["accepted_limitations"]!.AsArray().RemoveAt(0));
+                    break;
+                case "source-schema-mismatch":
+                    MutateDispositionSourceRecord(receiptDirectory, "eventstore-owner", source =>
+                        source["schema"] = "wrong-schema");
+                    break;
+                case "source-subject-digest":
+                    MutateDispositionSourceRecord(receiptDirectory, "eventstore-owner", source =>
+                        source["subject_sha256"] = new string('3', 64));
+                    break;
+                case "source-decision-mismatch":
+                    MutateDispositionSourceRecord(receiptDirectory, "eventstore-owner", source =>
+                        source["decision"] = "rejected");
+                    break;
+                case "malformed-receipt-json":
+                    File.WriteAllText(
+                        Path.Combine(receiptDirectory, "eventstore-owner.json"),
+                        "{ not json");
+                    break;
+                case "malformed-source-json":
+                    {
+                        byte[] malformedSource = Encoding.UTF8.GetBytes("{ not json");
+                        File.WriteAllBytes(
+                            Path.Combine(receiptDirectory, "sources", "eventstore-owner.json"),
+                            malformedSource);
+                        MutateDispositionReceipt(receiptDirectory, "eventstore-owner", receipt =>
+                            receipt["durable_source"]!["sha256"] = ComputeSha256(malformedSource));
+                    }
+
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(mutation), mutation, "Unknown mutation.");
             }
 
             RebindDispositionManifest(disposition);
             (bool verified, string rejection, int receipts, string acceptanceRejection) =
-                EvaluateDisposition(root, disposition, evidence);
+                EvaluateDisposition(root, disposition, evidence, validationTime);
             verified.ShouldBeTrue(rejection);
             receipts.ShouldBe(expectedCount);
             ShouldRejectWith(acceptanceRejection, expectedReason);
@@ -3584,7 +3679,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -3601,6 +3696,12 @@ public sealed class DeployedRuntimeParityClosureTests
     [InlineData("story-3-14-index")]
     [InlineData("foreign-material-in-authority-section")]
     [InlineData("foreign-material-in-defect-method")]
+    [InlineData("foreign-material-in-limitations")]
+    [InlineData("foreign-material-in-verification")]
+    [InlineData("foreign-material-in-successor-boundary")]
+    [InlineData("foreign-material-in-acceptance-contract")]
+    [InlineData("foreign-material-in-retained-blockers")]
+    [InlineData("foreign-material-in-revalidation-trigger")]
     public void CrossLineageSpliceFailsClosed(string mutation)
     {
         string root = FindRepositoryRoot();
@@ -3650,10 +3751,33 @@ public sealed class DeployedRuntimeParityClosureTests
                     envelope["governing_authority"]!["section"] =
                         "4.4 Story 3.13 implementation boundary, carried over from release 3.77.2";
                     break;
-                default:
+                case "foreign-material-in-defect-method":
                     envelope["retained_provenance_defects"]!["verification"]!["method"] =
                         "re-parse both retained raw config objects and compare them with release 3.96.2";
                     break;
+                case "foreign-material-in-limitations":
+                    envelope["limitations"]!.AsArray().Add("splice retained evidence from v3.77.2");
+                    break;
+                case "foreign-material-in-verification":
+                    envelope["verification"]!["method"] = "compare against release 3.96.2";
+                    break;
+                case "foreign-material-in-successor-boundary":
+                    envelope["successor_boundary"]!["positive_deployed_runtime_parity_owner"] =
+                        "Story 3.15 using release 3.96.2";
+                    break;
+                case "foreign-material-in-acceptance-contract":
+                    envelope["acceptance_contract"]!["receipt_schema"] =
+                        DispositionReceiptSchema + "/3.96.2";
+                    break;
+                case "foreign-material-in-retained-blockers":
+                    envelope["retained_blockers"]!.AsArray()[0]!["consequence"] =
+                        "deployment stays blocked until v3.77.2 is selected";
+                    break;
+                case "foreign-material-in-revalidation-trigger":
+                    envelope["revalidation_trigger"] = "revalidate against 3.96.2";
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(mutation), mutation, "Unknown mutation.");
             }
 
             WriteDispositionEnvelope(disposition, envelope);
@@ -3663,7 +3787,7 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -3673,7 +3797,11 @@ public sealed class DeployedRuntimeParityClosureTests
     /// <param name="mutation">The closure defect identifier.</param>
     /// <param name="expectedReason">The exact rejection reason code the gate must emit.</param>
     [Theory]
-    [InlineData("stray-file", "disposition.manifest")]
+    [InlineData("resealed-stray-file", "disposition.manifest")]
+    [InlineData("resealed-stray-acceptance-file", "disposition.manifest")]
+    [InlineData("role-filename-mismatch", "disposition.manifest")]
+    [InlineData("undeclared-sidecar", "disposition.manifest")]
+    [InlineData("stale-envelope-directory", "disposition.manifest")]
     [InlineData("missing-entry", "disposition.manifest")]
     [InlineData("mismatched-hash", "disposition.manifest")]
     [InlineData("non-canonical-envelope", "disposition.canonical_bytes")]
@@ -3689,8 +3817,74 @@ public sealed class DeployedRuntimeParityClosureTests
             string manifestPath = Path.Combine(disposition, DispositionManifestFile);
             switch (mutation)
             {
-                case "stray-file":
+                case "resealed-stray-file":
                     File.WriteAllText(Path.Combine(disposition, "notes.txt"), "unlisted\n");
+                    RebindDispositionManifest(disposition);
+                    break;
+                case "resealed-stray-acceptance-file":
+                    {
+                        CreateDispositionReceipts(disposition);
+                        string envelopeHash = ComputeSha256(ReadEvidenceFile(
+                            disposition,
+                            DispositionEnvelopeFile));
+                        File.WriteAllText(
+                            Path.Combine(
+                                disposition,
+                                "acceptances",
+                                envelopeHash,
+                                "sources",
+                                "notes.txt"),
+                            "unlisted\n");
+                        RebindDispositionManifest(disposition);
+                    }
+
+                    break;
+                case "role-filename-mismatch":
+                    {
+                        CreateDispositionReceipts(disposition);
+                        string envelopeHash = ComputeSha256(ReadEvidenceFile(
+                            disposition,
+                            DispositionEnvelopeFile));
+                        string receiptDirectory = Path.Combine(
+                            disposition,
+                            "acceptances",
+                            envelopeHash);
+                        File.Move(
+                            Path.Combine(receiptDirectory, "release-owner.json"),
+                            Path.Combine(receiptDirectory, "release-owner-2.json"));
+                        RebindDispositionManifest(disposition);
+                    }
+
+                    break;
+                case "undeclared-sidecar":
+                    {
+                        CreateDispositionReceipts(disposition);
+                        string envelopeHash = ComputeSha256(ReadEvidenceFile(
+                            disposition,
+                            DispositionEnvelopeFile));
+                        File.WriteAllText(
+                            Path.Combine(
+                                disposition,
+                                "acceptances",
+                                envelopeHash,
+                                "extra-approval.json"),
+                            "{}");
+                        RebindDispositionManifest(disposition);
+                    }
+
+                    break;
+                case "stale-envelope-directory":
+                    {
+                        CreateDispositionReceipts(disposition);
+                        string envelopeHash = ComputeSha256(ReadEvidenceFile(
+                            disposition,
+                            DispositionEnvelopeFile));
+                        Directory.Move(
+                            Path.Combine(disposition, "acceptances", envelopeHash),
+                            Path.Combine(disposition, "acceptances", new string('2', 64)));
+                        RebindDispositionManifest(disposition);
+                    }
+
                     break;
                 case "missing-entry":
                     File.WriteAllText(manifestPath, string.Empty);
@@ -3706,7 +3900,7 @@ public sealed class DeployedRuntimeParityClosureTests
                         JsonSerializer.SerializeToUtf8Bytes(LoadDispositionEnvelope(disposition)));
                     RebindDispositionManifest(disposition);
                     break;
-                default:
+                case "indented-envelope":
                     File.WriteAllBytes(
                         Path.Combine(disposition, DispositionEnvelopeFile),
                         JsonSerializer.SerializeToUtf8Bytes(
@@ -3714,6 +3908,8 @@ public sealed class DeployedRuntimeParityClosureTests
                             IndentedDispositionJsonOptions));
                     RebindDispositionManifest(disposition);
                     break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(mutation), mutation, "Unknown mutation.");
             }
 
             (bool verified, string rejection, _, _) = EvaluateDisposition(root, disposition, evidence);
@@ -3722,15 +3918,18 @@ public sealed class DeployedRuntimeParityClosureTests
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
     /// <summary>
-    /// Verifies a fixture fault surfaces as its own diagnostic instead of masquerading as a rejection.
+    /// Verifies malformed or non-object envelopes surface as canonical-envelope defects.
     /// </summary>
-    [Fact]
-    public void DispositionFixtureFaultReportsAnInternalDiagnostic()
+    /// <param name="content">The invalid envelope content.</param>
+    [Theory]
+    [InlineData("{ not json")]
+    [InlineData("[]")]
+    public void InvalidDispositionEnvelopeReportsCanonicalBytesDiagnostic(string content)
     {
         string root = FindRepositoryRoot();
         string evidence = Path.Combine(root, SelectedEvidenceRelativePath);
@@ -3738,16 +3937,15 @@ public sealed class DeployedRuntimeParityClosureTests
         try
         {
             EvaluateDisposition(root, disposition, evidence).Verified.ShouldBeTrue();
-            File.WriteAllText(Path.Combine(disposition, DispositionEnvelopeFile), "{ not json");
+            File.WriteAllText(Path.Combine(disposition, DispositionEnvelopeFile), content);
             RebindDispositionManifest(disposition);
             (bool verified, string rejection, _, _) = EvaluateDisposition(root, disposition, evidence);
             verified.ShouldBeFalse();
-            DispositionReasonCode(rejection).ShouldBe("internal.exception");
-            ValueIsSupportSafe(rejection).ShouldBeTrue(rejection);
+            ShouldRejectWith(rejection, "disposition.canonical_bytes");
         }
         finally
         {
-            Directory.Delete(cleanupRoot, recursive: true);
+            DeleteTemporaryDirectory(cleanupRoot);
         }
     }
 
@@ -3761,8 +3959,6 @@ public sealed class DeployedRuntimeParityClosureTests
         string sprint = ReadNormalizedText(root, SprintStatusRelativePath);
         sprint.ShouldContain("3-13-v3-94-1-deployed-runtime-evidence-disposition: review");
         sprint.ShouldNotContain("3-13-v3-94-1-deployed-runtime-evidence-disposition: done");
-        sprint.ShouldNotContain("3-15-corrected-deployed-runtime-parity-closure: done");
-        sprint.ShouldNotContain("Story 3.13 remains in-progress");
 
         string story = ReadNormalizedText(root, StoryRecordRelativePath);
         story.ShouldContain("# Story 3.13: v3.94.1 Deployed Runtime Evidence Disposition");
@@ -3770,13 +3966,12 @@ public sealed class DeployedRuntimeParityClosureTests
         story.ShouldContain(RejectedDisposition);
         story.ShouldNotContain("Status: done");
 
-        string ci = ReadNormalizedText(root, "docs/ci.md");
+        string ci = ReadNormalizedText(root, CiDocumentationRelativePath);
         ci.ShouldContain(RejectedDisposition);
         ci.ShouldContain("Story 3.15 owns positive deployed-runtime parity");
         ci.ShouldContain("Story 3.14 owns the corrective release");
         // The operator-facing surface must carry a verifiable digest, not an elided one.
         ci.ShouldContain(SelectedReviewSubjectSha256);
-        ci.ShouldNotContain("6cee8dad…");
     }
 
     private static string ReadNormalizedText(string root, string relativePath) =>
@@ -3789,9 +3984,6 @@ public sealed class DeployedRuntimeParityClosureTests
         // reached the catch as internal.exception -- fail the case instead of passing it.
         DispositionReasonCode(actualReason).ShouldBe(expectedCode, actualReason);
         ValueIsSupportSafe(actualReason).ShouldBeTrue(actualReason);
-        (actualReason.Contains("; remediation: ", StringComparison.Ordinal)
-            || actualReason.Contains("; revalidation: ", StringComparison.Ordinal))
-            .ShouldBeTrue(actualReason);
     }
 
     // The disposition envelope lives outside both content-addressed evidence trees because the frozen
@@ -3803,10 +3995,12 @@ public sealed class DeployedRuntimeParityClosureTests
         EvaluateDisposition(
             string repositoryRoot,
             string dispositionRoot,
-            string selectedEvidenceRoot)
+            string selectedEvidenceRoot,
+            DateTimeOffset? validationTime = null)
     {
         try
         {
+            DateTimeOffset observedAt = validationTime ?? DateTimeOffset.UtcNow;
             if (Path.GetFileName(dispositionRoot.TrimEnd(Path.DirectorySeparatorChar)) !=
                 SelectedReviewSubjectSha256)
             {
@@ -3816,8 +4010,27 @@ public sealed class DeployedRuntimeParityClosureTests
                     "place the envelope under evidence/story-3-13/disposition/<review-subject-sha256>"), 0, string.Empty);
             }
 
+            if (PathIsWithin(dispositionRoot, selectedEvidenceRoot)
+                || PathIsWithin(dispositionRoot, Path.Combine(repositoryRoot, EvidenceRelativePath)))
+            {
+                return (false, DispositionReason(
+                    "disposition.location",
+                    "the disposition is inside a frozen content-addressed evidence tree",
+                    "place the disposition outside both frozen evidence trees"), 0, string.Empty);
+            }
+
             byte[] envelopeBytes = ReadEvidenceFile(dispositionRoot, DispositionEnvelopeFile);
-            if (JsonNode.Parse(envelopeBytes) is not JsonObject envelope)
+            JsonObject? envelope;
+            try
+            {
+                envelope = JsonNode.Parse(envelopeBytes) as JsonObject;
+            }
+            catch (JsonException)
+            {
+                envelope = null;
+            }
+
+            if (envelope is null)
             {
                 return (false, DispositionReason(
                     "disposition.canonical_bytes",
@@ -3833,7 +4046,9 @@ public sealed class DeployedRuntimeParityClosureTests
                     "re-emit the envelope with the platform codec canonical_bytes form"), 0, string.Empty);
             }
 
-            string? manifestRejection = RejectDispositionManifest(dispositionRoot);
+            string? manifestRejection = RejectDispositionManifest(
+                dispositionRoot,
+                ComputeSha256(envelopeBytes));
             if (manifestRejection is not null)
             {
                 return (false, manifestRejection, 0, string.Empty);
@@ -3842,7 +4057,8 @@ public sealed class DeployedRuntimeParityClosureTests
             string? envelopeRejection = RejectDispositionEnvelope(
                 envelope,
                 repositoryRoot,
-                selectedEvidenceRoot);
+                selectedEvidenceRoot,
+                observedAt);
             if (envelopeRejection is not null)
             {
                 return (false, envelopeRejection, 0, string.Empty);
@@ -3853,7 +4069,8 @@ public sealed class DeployedRuntimeParityClosureTests
                 envelopeBytes,
                 repositoryRoot,
                 dispositionRoot,
-                selectedEvidenceRoot);
+                selectedEvidenceRoot,
+                observedAt);
             return (true, string.Empty, accepted, acceptanceRejection);
         }
         catch (Exception exception) when (
@@ -3900,7 +4117,8 @@ public sealed class DeployedRuntimeParityClosureTests
     private static string? RejectDispositionEnvelope(
         JsonObject envelope,
         string repositoryRoot,
-        string selectedEvidenceRoot)
+        string selectedEvidenceRoot,
+        DateTimeOffset validationTime)
     {
         if (!HasExactProperties(envelope, DispositionEnvelopeFields))
         {
@@ -3991,7 +4209,7 @@ public sealed class DeployedRuntimeParityClosureTests
 
         return RejectSubjectBinding(envelope, subject, crosswalk)
             ?? RejectDispositionIdentity(envelope, crosswalk, selectedEvidenceRoot)
-            ?? RejectDispositionDefects(envelope, selectedEvidenceRoot, crosswalk)
+            ?? RejectDispositionDefects(envelope, selectedEvidenceRoot)
             ?? RejectDispositionRetainedRecords(
                 envelope,
                 crosswalk,
@@ -4000,7 +4218,7 @@ public sealed class DeployedRuntimeParityClosureTests
                 repositoryRoot)
             ?? RejectSelectedEvidenceInventory(selectedEvidenceRoot)
             ?? RejectDispositionContracts(envelope, crosswalk, repositoryRoot)
-            ?? RejectDispositionChronology(envelope, subject);
+            ?? RejectDispositionChronology(envelope, subject, validationTime);
     }
 
     private static string? RejectUnless(bool condition, string code, string detail, string remediation) =>
@@ -4277,10 +4495,8 @@ public sealed class DeployedRuntimeParityClosureTests
     // objects, so an omitted, normalized, or synthesized provenance fact cannot pass declaratively.
     private static string? RejectDispositionDefects(
         JsonObject envelope,
-        string selectedEvidenceRoot,
-        JsonObject crosswalk)
+        string selectedEvidenceRoot)
     {
-        JsonObject release = crosswalk["selected_candidates"]![0]!["release"]!.AsObject();
         JsonObject defects = envelope["retained_provenance_defects"]!.AsObject();
         if (!HasExactProperties(
                 defects,
@@ -4292,7 +4508,7 @@ public sealed class DeployedRuntimeParityClosureTests
                 "record the malformed labels, the absent revision label, and the verification method");
         }
 
-        if (defects["observed_config_revision"] is not null || release["observed_config_revision"] is not null)
+        if (defects["observed_config_revision"] is not null)
         {
             return DispositionReason(
                 "envelope.retained_provenance_defects.observed_config_revision",
@@ -4314,9 +4530,25 @@ public sealed class DeployedRuntimeParityClosureTests
             .Select(item => item!.AsObject()).ToArray();
         JsonObject[] absent = defects["absent_labels"]!.AsArray()
             .Select(item => item!.AsObject()).ToArray();
-        string[] platforms = ["linux/amd64", "linux/arm64"];
-        string[] configFiles = ["child-linux-amd64.config.raw", "child-linux-arm64.config.raw"];
-        if (malformed.Length != platforms.Length * MalformedProvenanceLabels.Length)
+        (string Platform, string ConfigFile)[] platformDefinitions = JsonNode.Parse(
+                ReadEvidenceFile(selectedEvidenceRoot, "index.raw"))!["manifests"]!.AsArray()
+            .Select(item => item!["platform"]!.AsObject())
+            .Select(platform =>
+            {
+                string operatingSystem = platform["os"]!.GetValue<string>();
+                string architecture = platform["architecture"]!.GetValue<string>();
+                return (
+                    operatingSystem + "/" + architecture,
+                    "child-" + operatingSystem + "-" + architecture + ".config.raw");
+            })
+            .OrderBy(item => item.Item1, StringComparer.Ordinal)
+            .ToArray();
+        if (malformed.Length != platformDefinitions.Length * MalformedProvenanceLabels.Length
+            || malformed.GroupBy(
+                    item => item["platform"]!.GetValue<string>() + "\n" +
+                        item["label"]!.GetValue<string>(),
+                    StringComparer.Ordinal)
+                .Any(group => group.Count() != 1))
         {
             return DispositionReason(
                 "envelope.retained_provenance_defects.malformed_labels",
@@ -4324,7 +4556,11 @@ public sealed class DeployedRuntimeParityClosureTests
                 "record all six retained malformed label values verbatim and no fabricated row");
         }
 
-        if (absent.Length != platforms.Length)
+        if (absent.Length != platformDefinitions.Length
+            || absent.GroupBy(
+                    item => item["platform"]!.GetValue<string>(),
+                    StringComparer.Ordinal)
+                .Any(group => group.Count() != 1))
         {
             return DispositionReason(
                 "envelope.retained_provenance_defects.absent_labels",
@@ -4332,10 +4568,8 @@ public sealed class DeployedRuntimeParityClosureTests
                 "record the absent revision label for both retained platform configs and no fabricated row");
         }
 
-        for (int index = 0; index < platforms.Length; index++)
+        foreach ((string platform, string configFile) in platformDefinitions)
         {
-            string platform = platforms[index];
-            string configFile = configFiles[index];
             JsonObject labels = JsonNode.Parse(ReadEvidenceFile(selectedEvidenceRoot, configFile))!
                 .AsObject()["config"]!["Labels"]!.AsObject();
             JsonObject? absentEntry = absent.SingleOrDefault(item =>
@@ -4410,31 +4644,32 @@ public sealed class DeployedRuntimeParityClosureTests
             .Select(item => item!.GetValue<string>()).ToArray();
         string[] limitations = envelope["limitations"]!.AsArray()
             .Select(item => item!.GetValue<string>()).ToArray();
-        if (limitations.Length <= subjectLimitations.Length
-            || !limitations.Take(subjectLimitations.Length)
-                .SequenceEqual(subjectLimitations, StringComparer.Ordinal)
-            || !LimitationsContainMutationProhibitions(limitations))
+        string[] expectedLimitations = subjectLimitations
+            .Concat(DispositionSpecificLimitations)
+            .ToArray();
+        if (!limitations.SequenceEqual(expectedLimitations, StringComparer.Ordinal))
         {
             return DispositionReason(
                 "envelope.limitations",
-                "the retained review-subject limitations were dropped, reworded, or reordered",
-                "carry every retained limitation verbatim ahead of the disposition-specific limitations");
+                "the retained or disposition-specific limitations were dropped, changed, reordered, or extended",
+                "carry exactly the retained limitations followed by the three approved disposition limitations");
         }
 
         JsonObject[] declaredManifests = envelope["retained_checksum_manifests"]!.AsArray()
             .Select(item => item!.AsObject()).ToArray();
-        if (declaredManifests.Length != RetainedManifestFiles.Length)
+        if (declaredManifests.Length != RetainedManifestDefinitions.Length
+            || declaredManifests
+                .GroupBy(item => item["file"]?.GetValue<string>() ?? string.Empty, StringComparer.Ordinal)
+                .Any(group => group.Key.Length == 0 || group.Count() != 1))
         {
             return DispositionReason(
                 "envelope.retained_checksum_manifests",
-                "the envelope does not declare exactly the four retained checksum manifests",
+                "the envelope does not declare exactly one row for each retained checksum manifest",
                 "declare the outer, core, package, and predecessor checksum manifests");
         }
 
-        for (int index = 0; index < RetainedManifestFiles.Length; index++)
+        foreach ((string manifestFile, int entryCount, string manifestBase) in RetainedManifestDefinitions)
         {
-            string manifestFile = RetainedManifestFiles[index];
-            string manifestBase = RetainedManifestBases[index];
             JsonObject? declared = declaredManifests.SingleOrDefault(item =>
                 item["file"]!.GetValue<string>() == manifestFile);
             string basePath = manifestBase switch
@@ -4446,7 +4681,7 @@ public sealed class DeployedRuntimeParityClosureTests
             if (declared is null
                 || !HasExactProperties(declared, ["base", "entries", "file"])
                 || declared["base"]!.GetValue<string>() != manifestBase
-                || declared["entries"]!.GetValue<int>() != RetainedManifestEntryCounts[index])
+                || declared["entries"]!.GetValue<int>() != entryCount)
             {
                 return DispositionReason(
                     "retained_checksum_manifest." + manifestFile,
@@ -4458,7 +4693,7 @@ public sealed class DeployedRuntimeParityClosureTests
                 selectedEvidenceRoot,
                 manifestFile,
                 basePath,
-                RetainedManifestEntryCounts[index]))
+                entryCount))
             {
                 return DispositionDriftReason(
                     "retained_checksum_manifest." + manifestFile,
@@ -4497,7 +4732,7 @@ public sealed class DeployedRuntimeParityClosureTests
         if (!actualDirectories.SequenceEqual(["packages"], StringComparer.Ordinal))
         {
             return DispositionReason(
-                "selected_evidence.inventory",
+                "selected_evidence.directory_inventory",
                 "the selected evidence tree contains a directory outside its closed inventory",
                 "remove the planted directory; the retained packet admits only the packages directory");
         }
@@ -4505,7 +4740,7 @@ public sealed class DeployedRuntimeParityClosureTests
         if (!actualFiles.All(listed.Contains) || actualFiles.Length != listed.Count)
         {
             return DispositionReason(
-                "selected_evidence.inventory",
+                "selected_evidence.file_inventory",
                 "the selected evidence tree contains a file that no retained checksum manifest lists",
                 "remove the planted file; receipts and new artifacts belong outside the hashed evidence tree");
         }
@@ -4546,7 +4781,6 @@ public sealed class DeployedRuntimeParityClosureTests
             "authorizes_deployment",
             "authorizes_parties_8_6_or_g5",
             "closes_fr36_deployed_parity",
-            "depends_on_corrective_release",
             "reopens_story_1_20_or_3_12",
         ];
         foreach (string flag in boundaryFlags)
@@ -4569,6 +4803,11 @@ public sealed class DeployedRuntimeParityClosureTests
             .Select(item => item!.GetValue<string>()).Order(StringComparer.Ordinal).ToArray();
         string?[] checks =
         [
+            RejectUnless(
+                !boundary["depends_on_corrective_release"]!.GetValue<bool>(),
+                "envelope.successor_boundary.depends_on_corrective_release",
+                "the rejected candidate claims the corrective release is still a dependency",
+                "restore depends_on_corrective_release to false; Story 3.14 already owns the corrective release"),
             RejectUnless(
                 boundary["positive_deployed_runtime_parity_owner"]!.GetValue<string>() == "3.15",
                 "envelope.successor_boundary.positive_deployed_runtime_parity_owner",
@@ -4645,7 +4884,10 @@ public sealed class DeployedRuntimeParityClosureTests
         return checks.FirstOrDefault(reason => reason is not null);
     }
 
-    private static string? RejectDispositionChronology(JsonObject envelope, JsonObject subject)
+    private static string? RejectDispositionChronology(
+        JsonObject envelope,
+        JsonObject subject,
+        DateTimeOffset validationTime)
     {
         if (!TryParseExplicitOffset(
                 envelope["assembled_at"]!.GetValue<string>(),
@@ -4654,7 +4896,7 @@ public sealed class DeployedRuntimeParityClosureTests
                 subject["created_at"]!.GetValue<string>(),
                 out DateTimeOffset subjectCreated)
             || assembledAt < subjectCreated
-            || assembledAt > DateTimeOffset.UtcNow.AddMinutes(5))
+            || assembledAt > validationTime.AddMinutes(5))
         {
             return DispositionReason(
                 "envelope.assembled_at",
@@ -4667,16 +4909,8 @@ public sealed class DeployedRuntimeParityClosureTests
 
     private static string? RejectForeignLineage(JsonObject envelope)
     {
-        List<string> values =
-        [
-            envelope["candidate"]!.GetValue<string>(),
-            envelope["candidate_disposition"]!.GetValue<string>(),
-            envelope["deployed_runtime_parity"]!.GetValue<string>(),
-        ];
-        foreach (string section in DispositionIdentitySections)
-        {
-            CollectDispositionStrings(envelope[section]!, values);
-        }
+        List<string> values = [];
+        CollectDispositionStrings(envelope, values);
 
         return values.Any(value => ForeignLineageTokens.Any(token =>
             value.Contains(token, StringComparison.OrdinalIgnoreCase)))
@@ -4724,7 +4958,8 @@ public sealed class DeployedRuntimeParityClosureTests
         byte[] envelopeBytes,
         string repositoryRoot,
         string dispositionRoot,
-        string selectedEvidenceRoot)
+        string selectedEvidenceRoot,
+        DateTimeOffset validationTime)
     {
         string acceptancesRoot = Path.Combine(dispositionRoot, "acceptances");
         string envelopeHash = ComputeSha256(envelopeBytes);
@@ -4777,16 +5012,10 @@ public sealed class DeployedRuntimeParityClosureTests
         JsonObject subject = JsonNode.Parse(ReadEvidenceFile(
             repositoryRoot,
             envelope["review_subject"]!["file"]!.GetValue<string>()))!.AsObject();
-        if (!TryParseExplicitOffset(subject["created_at"]!.GetValue<string>(), out DateTimeOffset subjectCreated)
-            || !TryParseExplicitOffset(
-                envelope["assembled_at"]!.GetValue<string>(),
-                out DateTimeOffset assembledAt))
-        {
-            return (0, DispositionReason(
-                "acceptance.chronology",
-                "the frozen review subject or envelope assembly time is not an explicit-offset timestamp",
-                "record explicit-offset timestamps before collecting receipts"));
-        }
+        DateTimeOffset subjectCreated = ParseVerifiedExplicitOffset(
+            subject["created_at"]!.GetValue<string>());
+        DateTimeOffset assembledAt = ParseVerifiedExplicitOffset(
+            envelope["assembled_at"]!.GetValue<string>());
 
         JsonObject roster = LoadReviewerRoster(crosswalk, selectedEvidenceRoot, subjectCreated);
         string[] envelopeLimitations = envelope["limitations"]!.AsArray()
@@ -4804,7 +5033,8 @@ public sealed class DeployedRuntimeParityClosureTests
                 envelopeLimitations,
                 expectedScope,
                 envelopeHash,
-                assembledAt);
+                assembledAt,
+                validationTime);
             if (rejection is null)
             {
                 acceptedRoles.Add(name);
@@ -4825,9 +5055,27 @@ public sealed class DeployedRuntimeParityClosureTests
         string[] envelopeLimitations,
         string expectedScope,
         string envelopeHash,
-        DateTimeOffset assembledAt)
+        DateTimeOffset assembledAt,
+        DateTimeOffset validationTime)
     {
-        JsonObject receipt = JsonNode.Parse(ReadEvidenceFile(receiptDirectory, name))!.AsObject();
+        JsonObject? receipt;
+        try
+        {
+            receipt = JsonNode.Parse(ReadEvidenceFile(receiptDirectory, name)) as JsonObject;
+        }
+        catch (JsonException)
+        {
+            receipt = null;
+        }
+
+        if (receipt is null)
+        {
+            return DispositionReason(
+                "acceptance.receipt.schema",
+                "a receipt is not a JSON object in the frozen receipt schema",
+                "re-issue the receipt against the frozen Story 3.13 acceptance-receipt schema");
+        }
+
         if (!HasExactProperties(receipt, RequiredReceiptFields)
             || !DocumentIsSupportSafe(receipt)
             || receipt["schema"]!.GetValue<string>() != DispositionReceiptSchema
@@ -4885,8 +5133,7 @@ public sealed class DeployedRuntimeParityClosureTests
 
         if (!receipt["accepted_limitations"]!.AsArray()
                 .Select(item => item!.GetValue<string>())
-                .SequenceEqual(envelopeLimitations, StringComparer.Ordinal)
-            || !LimitationsContainMutationProhibitions(envelopeLimitations))
+                .SequenceEqual(envelopeLimitations, StringComparer.Ordinal))
         {
             return DispositionReason(
                 "acceptance.receipt.accepted_limitations",
@@ -4906,7 +5153,24 @@ public sealed class DeployedRuntimeParityClosureTests
         }
 
         byte[] sourceBytes = ReadEvidenceFile(receiptDirectory, durableSource["path"]!.GetValue<string>());
-        JsonObject sourceRecord = JsonNode.Parse(sourceBytes)!.AsObject();
+        JsonObject? sourceRecord;
+        try
+        {
+            sourceRecord = JsonNode.Parse(sourceBytes) as JsonObject;
+        }
+        catch (JsonException)
+        {
+            sourceRecord = null;
+        }
+
+        if (sourceRecord is null)
+        {
+            return DispositionReason(
+                "acceptance.source.record",
+                "a durable source record is not a JSON object in the frozen source schema",
+                "re-issue the durable source record bound to the same role, envelope, and repository");
+        }
+
         string expectedSourceUrl = "https://github.com/" + ExpectedRepository + "/commit/" +
             SelectedSourceSha + "#story-3-13-disposition-" + envelopeHash + "-" + role;
         if (durableSource["sha256"]!.GetValue<string>() != ComputeSha256(sourceBytes)
@@ -4967,7 +5231,7 @@ public sealed class DeployedRuntimeParityClosureTests
                 receipt["accepted_at"]!.GetValue<string>(),
                 out DateTimeOffset acceptedAt)
             || acceptedAt < assembledAt
-            || acceptedAt > DateTimeOffset.UtcNow.AddMinutes(5))
+            || acceptedAt > validationTime.AddMinutes(5))
         {
             return DispositionReason(
                 "acceptance.receipt.accepted_at",
@@ -4978,7 +5242,7 @@ public sealed class DeployedRuntimeParityClosureTests
         return null;
     }
 
-    private static string? RejectDispositionManifest(string dispositionRoot)
+    private static string? RejectDispositionManifest(string dispositionRoot, string envelopeHash)
     {
         string manifestRejection = DispositionReason(
             "disposition.manifest",
@@ -4997,8 +5261,30 @@ public sealed class DeployedRuntimeParityClosureTests
             return manifestRejection;
         }
 
+        HashSet<string> allowedFiles = new(StringComparer.Ordinal) { DispositionEnvelopeFile };
+        foreach (string role in RequiredRoles)
+        {
+            allowedFiles.Add("acceptances/" + envelopeHash + "/" + role + ".json");
+            allowedFiles.Add("acceptances/" + envelopeHash + "/sources/" + role + ".json");
+        }
+
+        HashSet<string> allowedDirectories = new(StringComparer.Ordinal)
+        {
+            "acceptances",
+            "acceptances/" + envelopeHash,
+            "acceptances/" + envelopeHash + "/sources",
+        };
         string[] actual = DispositionFilesUnder(dispositionRoot);
-        return actual.SequenceEqual(entries.Keys.Order(StringComparer.Ordinal), StringComparer.Ordinal)
+        string[] actualDirectories = Directory.GetDirectories(
+                dispositionRoot,
+                "*",
+                SearchOption.AllDirectories)
+            .Select(path => Path.GetRelativePath(dispositionRoot, path).Replace('\\', '/'))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        return actual.All(allowedFiles.Contains)
+            && actualDirectories.All(allowedDirectories.Contains)
+            && actual.SequenceEqual(entries.Keys.Order(StringComparer.Ordinal), StringComparer.Ordinal)
             && entries.All(entry => ComputeSha256(ResolveWithin(dispositionRoot, entry.Key)) == entry.Value)
             ? null
             : manifestRejection;
@@ -5078,8 +5364,16 @@ public sealed class DeployedRuntimeParityClosureTests
             Path.GetTempPath(),
             "story-3-13-disposition-" + Guid.NewGuid().ToString("N"));
         string disposition = Path.Combine(cleanupRoot, SelectedReviewSubjectSha256);
-        CopyDirectory(Path.Combine(repositoryRoot, DispositionRelativePath), disposition);
-        return (cleanupRoot, disposition);
+        try
+        {
+            CopyDirectory(Path.Combine(repositoryRoot, DispositionRelativePath), disposition);
+            return (cleanupRoot, disposition);
+        }
+        catch
+        {
+            DeleteTemporaryDirectory(cleanupRoot);
+            throw;
+        }
     }
 
     private static (string CleanupRoot, string Root, string Disposition, string Evidence)
@@ -5089,27 +5383,35 @@ public sealed class DeployedRuntimeParityClosureTests
             Path.GetTempPath(),
             "story-3-13-frozen-" + Guid.NewGuid().ToString("N"));
         string copiedRoot = Path.Combine(cleanupRoot, "repository");
-        CopyDirectory(
-            Path.Combine(repositoryRoot, DispositionRelativePath),
-            Path.Combine(copiedRoot, DispositionRelativePath));
-        CopyDirectory(
-            Path.Combine(repositoryRoot, SelectedEvidenceRelativePath),
-            Path.Combine(copiedRoot, SelectedEvidenceRelativePath));
-        CopyDirectory(
-            Path.Combine(repositoryRoot, Story120EvidenceRelativePath),
-            Path.Combine(copiedRoot, Story120EvidenceRelativePath));
-        foreach (string relative in DispositionSupportingFiles)
+        try
         {
-            string destination = Path.Combine(copiedRoot, relative);
-            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-            File.Copy(Path.Combine(repositoryRoot, relative), destination, overwrite: true);
-        }
+            CopyDirectory(
+                Path.Combine(repositoryRoot, DispositionRelativePath),
+                Path.Combine(copiedRoot, DispositionRelativePath));
+            CopyDirectory(
+                Path.Combine(repositoryRoot, SelectedEvidenceRelativePath),
+                Path.Combine(copiedRoot, SelectedEvidenceRelativePath));
+            CopyDirectory(
+                Path.Combine(repositoryRoot, Story120EvidenceRelativePath),
+                Path.Combine(copiedRoot, Story120EvidenceRelativePath));
+            foreach (string relative in DispositionSupportingFiles)
+            {
+                string destination = Path.Combine(copiedRoot, relative);
+                Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+                File.Copy(Path.Combine(repositoryRoot, relative), destination, overwrite: true);
+            }
 
-        return (
-            cleanupRoot,
-            copiedRoot,
-            Path.Combine(copiedRoot, DispositionRelativePath),
-            Path.Combine(copiedRoot, SelectedEvidenceRelativePath));
+            return (
+                cleanupRoot,
+                copiedRoot,
+                Path.Combine(copiedRoot, DispositionRelativePath),
+                Path.Combine(copiedRoot, SelectedEvidenceRelativePath));
+        }
+        catch
+        {
+            DeleteTemporaryDirectory(cleanupRoot);
+            throw;
+        }
     }
 
     private static void WriteDispositionEnvelope(string dispositionRoot, JsonObject envelope)
@@ -5157,9 +5459,10 @@ public sealed class DeployedRuntimeParityClosureTests
         string receiptDirectory = Path.Combine(acceptancesRoot, envelopeHash);
         string sourcesDirectory = Path.Combine(receiptDirectory, "sources");
         Directory.CreateDirectory(sourcesDirectory);
-        DateTimeOffset acceptedAt = DateTimeOffset.Parse(
-            envelope["assembled_at"]!.GetValue<string>(),
-            CultureInfo.InvariantCulture).AddMinutes(1);
+        DateTimeOffset acceptedAt = ParseVerifiedExplicitOffset(
+                envelope["assembled_at"]!.GetValue<string>())
+            .AddMinutes(1)
+            .ToUniversalTime();
         string acceptedScope =
             "Story 3.13 v3.94.1 rejected-non-authorizing evidence disposition for " + envelopeHash;
         foreach (string role in RequiredRoles)
@@ -5171,7 +5474,7 @@ public sealed class DeployedRuntimeParityClosureTests
                 ["repository"] = ExpectedRepository,
                 ["source_url"] = "https://github.com/" + ExpectedRepository + "/commit/" +
                     SelectedSourceSha + "#story-3-13-disposition-" + envelopeHash + "-" + role,
-                ["captured_at"] = acceptedAt.ToString("O"),
+                ["captured_at"] = acceptedAt.ToString("O", CultureInfo.InvariantCulture),
                 ["role"] = role,
                 ["reviewer_identity"] = reviewer,
                 ["subject_sha256"] = SelectedReviewSubjectSha256,
@@ -5186,7 +5489,7 @@ public sealed class DeployedRuntimeParityClosureTests
                 ["schema"] = DispositionReceiptSchema,
                 ["role"] = role,
                 ["reviewer_identity"] = reviewer,
-                ["accepted_at"] = acceptedAt.ToString("O"),
+                ["accepted_at"] = acceptedAt.ToString("O", CultureInfo.InvariantCulture),
                 ["durable_source"] = new JsonObject
                 {
                     ["kind"] = "retained-immutable-external-record",
@@ -5231,6 +5534,20 @@ public sealed class DeployedRuntimeParityClosureTests
         MutateDispositionReceipt(receiptDirectory, role, receipt =>
         {
             receipt["reviewer_identity"] = reviewerIdentity;
+            receipt["durable_source"]!["sha256"] = ComputeSha256(sourceBytes);
+        });
+    }
+
+    private static void MutateDispositionReceiptAndSourceTimestamps(
+        string receiptDirectory,
+        string role,
+        string timestamp)
+    {
+        byte[] sourceBytes = WriteDispositionSourceRecord(receiptDirectory, role, source =>
+            source["captured_at"] = timestamp);
+        MutateDispositionReceipt(receiptDirectory, role, receipt =>
+        {
+            receipt["accepted_at"] = timestamp;
             receipt["durable_source"]!["sha256"] = ComputeSha256(sourceBytes);
         });
     }
@@ -7862,6 +8179,20 @@ public sealed class DeployedRuntimeParityClosureTests
             out result);
     }
 
+    private static DateTimeOffset ParseVerifiedExplicitOffset(string value) =>
+        TryParseExplicitOffset(value, out DateTimeOffset result)
+            ? result
+            : throw new InvalidDataException("A previously verified explicit-offset timestamp became invalid.");
+
+    private static bool PathIsWithin(string path, string parentPath)
+    {
+        string canonicalPath = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar) +
+            Path.DirectorySeparatorChar;
+        string canonicalParent = Path.GetFullPath(parentPath).TrimEnd(Path.DirectorySeparatorChar) +
+            Path.DirectorySeparatorChar;
+        return canonicalPath.StartsWith(canonicalParent, StringComparison.Ordinal);
+    }
+
     private static bool LimitationsContainMutationProhibitions(IEnumerable<string> limitations)
     {
         string text = string.Join('\n', limitations).ToLowerInvariant();
@@ -9106,6 +9437,25 @@ public sealed class DeployedRuntimeParityClosureTests
                     File.Copy(entry, target, overwrite: true);
                 }
             }
+        }
+    }
+
+    private static void DeleteTemporaryDirectory(string path)
+    {
+        try
+        {
+            if (Directory.Exists(path))
+            {
+                Directory.Delete(path, recursive: true);
+            }
+        }
+        catch (IOException)
+        {
+            // Cleanup must not mask the contract-test assertion that owns the temporary tree.
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Cleanup is best effort on platforms that briefly retain handles after process exit.
         }
     }
 
