@@ -374,6 +374,29 @@ for it. A complete Story 3.13 disposition therefore still selects no image and a
 no release, registry, deployment, consumer, or predecessor mutation, and it creates no
 dependency on Story 3.14.
 
+### Story 3.15 corrected deployed-runtime parity
+
+Story 3.15 independently revalidates the canonical Story 3.14 identity digest
+`4d1a0c336397e971bf10001095d5e427dd03c499ee428a3121a913926da8c4a9`, downloads and rehashes all
+14 NuGet.org repository-signed packages, and maps those public bytes to the distinct GitHub
+release-asset bytes retained by Story 3.14. It also rereads the raw immutable OCI index, both child
+manifests, and both configs, then runs bounded digest-pinned `/alive` smokes under the Production
+hosting environment for `linux/amd64` and `linux/arm64`.
+
+`tools/validate-corrected-deployed-runtime-parity.py` dispatches only to the exact allowlisted v1
+handler. The handler never executes packet-supplied code: it parses and rehashes retained bytes,
+revalidates the frozen predecessor with its trusted live handler, checks the closed technical
+inventory, recomputes the canonical subject, and validates exactly three subject-addressed
+receipts. The current acceptance-ready subject is
+`bb58d691ee404cc958433e996204e3382721de3931ac64cf8f7a61de97c30709`. Until the rostered
+EventStore owner, Release owner, and Test Architect provide real authenticated receipts for those
+exact bytes, validation fails closed and selects no identity.
+
+After all three unchanged-subject receipts pass, the only selectable identity is
+`registry.hexalith.com/eventstore@sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`.
+That positive verdict is evidence, not operational authority: deployment, package publication,
+registry mutation, consumer removal, and predecessor mutation remain separately prohibited.
+
 The Story 3.13 tracker key stays `3-13-v3-94-1-deployed-runtime-evidence-disposition`
 and only its display title changed. Proposal §4.9 allows the rename only when the story
 filename, spec key, and every repository reference move atomically; both Story 3.13

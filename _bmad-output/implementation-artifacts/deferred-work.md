@@ -1359,3 +1359,53 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-gh-32485211318-fix-ci-cd.md`
   summary: Link `FsCheck.Xunit.v3` to the `xunit` rollback group in Hexalith.Builds package audit.
   evidence: `FsCheck.Xunit.v3` is tracked in a separate family (`package:fscheck.xunit.v3`) rather than being linked to the `xunit` family or rollback group, which risks partial upgrades across dependent testing packages.
+
+## Deferred from: code review of spec-3-13-deployed-runtime-parity-closure (2026-08-21, chunk 1)
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Commit `56aa0fec` does not describe the change it carries; the Story 3.13 disposition verifier landed under an unrelated `release_evidence_handlers` subject.
+  evidence: `56aa0fec` is titled `feat(release_evidence_handlers): add v3 codec for corrective release packet and initial handler setup`, yet it carries the 2,514-line Story 3.13 disposition verifier in `tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs`, the disposition envelope and its sidecar, the story record, both spec files, `docs/ci.md`, and `sprint-status.yaml` — 8 of its 23 files are Story 3.13 scope. Conventional Commits is a tracked project rule and semantic-release consumes these subjects. Already merged to `main`, so not fixable without history rewrite.
+  severity: medium
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: `ForeignLineageTokens` is hand-maintained with no completeness guard.
+  evidence: `DeployedRuntimeParityClosureTests.cs:113-127` omits the two explicitly voided subject digests `394292a2…` and `93d70d51…` and the historical proof-packet digest `349e0998…`. Compounding this, the retained subject's own `limitations[4]` names `394292a2` and `fa2d1c99` as void facts, and `limitations` is not among the six sections `RejectForeignLineage` scans (`DispositionIdentitySections:198-206`), so those tokens would not be caught there either. Already recorded on the spec Defer list.
+  severity: medium
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Malformed provenance labels beyond the declared three can neither pass nor be declared.
+  evidence: `DeployedRuntimeParityClosureTests.cs:4313-4360` rejects any retained config label whose value equals `MalformedLabelValue` but is absent from `MalformedProvenanceLabels`, while the cardinality check `malformed.Length != platforms.Length * MalformedProvenanceLabels.Length` simultaneously forbids declaring the extra rows. Not live for the frozen `v3.94.1` configs (exactly 3 labels × 2 platforms, verified on disk); a robustness gap only for a successor candidate whose configs differ.
+  severity: low
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Two canonicalizers define one authority with no equivalence test.
+  evidence: Python `canonical_bytes` (`tools/release_evidence_handlers/v3.py:76`, reached via the 11-line `tools/release_evidence_codec.py` facade) authors the envelope bytes, while C# `CanonicalDispositionBytes` verifies them; nothing tests that the two agree for non-ASCII input or line separators. Already recorded on the spec Defer list, but the Code Map still points at the pre-facade `release_evidence_codec.py:74`.
+  severity: medium
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Receipt `source_url` requires a GitHub commit anchor that cannot exist; the existing deferral's "pre-existing pattern inherited" rationale is false and is corrected here.
+  evidence: `DeployedRuntimeParityClosureTests.cs:4910-4912` requires `…/commit/<SelectedSourceSha>#story-3-13-disposition-<envelopeHash>-<role>`. GitHub mints `#commitcomment-<id>`, so the 3/3 story-completable path is reachable only from `CreateDispositionReceipts` fixtures. The spec Defer list attributes this to a pattern "inherited from `ValidateAcceptances`", but that helper uses a different, subject-keyed anchor `#story-3-13-<subjectHash>-<role>` (`:6613`) — the disposition anchor format is newly authored by commit `56aa0fec`. The durable source record lives in `sources/` inside the same directory as the receipt, so anyone who can author the receipt can author its source: the cross-check proves consistency, not independence. Contrast `LoadReviewerRoster:7010-7024`, which constrains `authority_source` to an https github.com issue-comment URL. Owner decision 2026-08-21: keep the deferral, correct the rationale; non-blocking while 3/3 receipts remain uncollected.
+  severity: medium
+
+## Deferred from: code review of spec-3-14-corrective-oci-provenance-release (2026-08-21, chunk 2)
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md`
+  summary: Mark or re-tier the heavyweight container-publish theories so the CI-gating Contracts lane is not paying for real `dotnet publish` cycles.
+  evidence: `ContainerPublicationRejectsMissingProvenanceInputs` runs two full `dotnet publish -t:PublishContainer` cycles at an 8-minute budget each and `ContainerPublicationRejectsMalformedProvenanceInputs` runs four `dotnet msbuild -t:ValidateContainerProvenanceInputs` invocations, all inside `Hexalith.EventStore.Contracts.Tests`, which `.github/workflows/ci.yml` runs as a blocking deterministic gate. Nothing marks them excludable from a fast lane, and the two theories use inconsistent proof strategies (real publish versus direct private-target invocation) for the same guard. Pre-existing: the real-publish pattern arrived in an earlier Story 3.14 round.
+  severity: low
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md`
+  summary: Document how a second corrective release adds a `v4` evidence handler; the v3 handler is a deliberate single-packet allowlist with no successor and no procedure.
+  evidence: `tools/release_evidence_handlers/v3.py:15` pins `EXPECTED_PACKET_CODEC_SHA256 = 814502bd…` and `:211` additionally rejects `codec["version"] != CODEC_VERSION`, so v3 accepts exactly the one retained codec digest of the frozen v3.96.2 packet. `tools/validate-corrective-release-evidence.py:14` has a single `HANDLERS` entry. Separately, `V3_PUBLICATION_PREFLIGHT_SHA256 = 830af8af…` is the *executed* `eadddc7b` shared preflight; the currently pinned `a07078ad` (and the development gitlink `307a043`) hash to `fe5ffc3f…`, so the legacy role-evidence branch is already closed to anything produced by today's pin. That is correct fail-closed behaviour for the frozen packet but leaves the next corrective release with no documented path, and no `docs/` page describes the `release_evidence_handlers` package or the dispatch table at all.
+  severity: medium
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md`
+  summary: The deferred-work ledger itself records a stale publication pin.
+  evidence: `deferred-work.md:14` describes the release-skip race entry's owner_repo as "currently pinned in this repo as `builds-execution-sha: cf04c419378dfe1bd3c41a9244b5e3283092056e`"; the caller has since rotated through `63409393…` to `a07078ad…`. The ledger is append-only legacy-advisory format, so this is recorded rather than edited in place.
+  severity: low
+
+## Deferred from: bmad-build review closure of Story 3.13 (2026-08-22)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Replace the fixture-only Story 3.13 durable-source URL anchor with a GitHub-minted immutable acceptance reference before collecting the three production receipts.
+  evidence: `RejectDispositionReceipt` requires `#story-3-13-disposition-<envelope-sha256>-<role>` on a commit URL, but GitHub commit-comment anchors use `#commitcomment-<id>`. The retained source record currently proves consistency with its receipt, not independent external existence. The owner accepted deferral while the disposition remains at 0/3 receipts; this does not authorize Story 3.13 completion.
