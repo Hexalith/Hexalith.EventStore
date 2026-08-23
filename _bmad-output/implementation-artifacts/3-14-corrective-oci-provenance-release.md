@@ -33,18 +33,18 @@ one-use authority, which binds the separate publication identity `fa275117…`. 
 This record and packet select no deployed identity and grant no mutation authority. Story 3.15
 must independently decide whether this release can satisfy corrected deployed-runtime parity.
 
-Post-release review hardening produced Builds commit
-`63409393541f1437e23006b7a4e05174f8b50da7` and rotates the current EventStore release caller to
-that immutable revision. This does not rewrite the historical release execution: the packet
-correctly remains bound to executed Builds SHA `eadddc7b5d8e9392e5931758ffb608b57b5fdc6c`, while the
-ordinary development gitlink is pinned independently of the release caller. The gitlink has moved
-several times since this record was first written (`145ab857` at `4038cf33`, `eadddc7b` at
+Post-release review hardening initially rotated the EventStore release caller to Builds commit
+`63409393541f1437e23006b7a4e05174f8b50da7`, but that revision was never published to the
+Hexalith.Builds remote (it existed only on the local branch `fix/story-3-14-release-hardening`), so
+a Release dispatch could not have resolved the reusable workflow it pinned. The caller now pins
+`a07078ad74d3727bc5a6b6d85d47d56a6e5c9fec`, which superseded `63409393…`, is reachable on
+Hexalith.Builds `main`, and is asserted by `ApprovedBuildsReleaseSha` in
+`ContainerPublishingGovernanceTests.cs`. This does not rewrite the historical release execution:
+the packet correctly remains bound to executed Builds SHA `eadddc7b5d8e9392e5931758ffb608b57b5fdc6c`,
+while the ordinary development gitlink is pinned independently of the release caller. The gitlink has
+moved several times since this record was first written (`145ab857` at `4038cf33`, `eadddc7b` at
 `a55b5bef`, back to `145ab857` at `1e5abd26`, and `eadddc7b` again at `c8902353`); read it from
 `git ls-tree HEAD references/Hexalith.Builds` rather than from this paragraph.
-
-Note that `63409393541f1437e23006b7a4e05174f8b50da7` is not yet published to the Hexalith.Builds
-remote — it exists only on the local branch `fix/story-3-14-release-hardening`. Until it is pushed,
-a Release dispatch cannot resolve the reusable workflow this caller pins.
 
 ## Canonical Identity
 

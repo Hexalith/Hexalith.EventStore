@@ -37,20 +37,22 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     ];
 
     /// <summary>
-    /// Verifies the retained technical packet fails closed until real subject-bound receipts exist.
+    /// Verifies the retained packet closes parity only after all three real subject-bound receipts exist.
     /// </summary>
     [Fact]
-    public void CheckedInTechnicalPacketFailsClosedUntilThreeReceiptsExist()
+    public void CheckedInPacketSelectsOnlyTheCorrectedIdentityAfterThreeReceiptsExist()
     {
         string root = FindRepositoryRoot();
         string packet = Path.Combine(root, EvidenceRelativePath);
 
-        (int exitCode, _, string error) = RunValidator(root, packet);
+        (int exitCode, string output, string error) = RunValidator(root, packet);
 
-        exitCode.ShouldNotBe(0);
-        error.ShouldContain("exactly three packet-bound receipts are required");
+        exitCode.ShouldBe(0, error);
+        output.ShouldContain("selected=" + IndexDigest);
         JsonObject closure = LoadJson(Path.Combine(packet, "closure.json"));
-        closure["acceptances"]!["receipts"]!.AsArray().Count.ShouldBe(0);
+        closure["acceptances"]!["receipts"]!.AsArray().Count.ShouldBe(3);
+        closure["deployed_runtime_parity"]!.GetValue<string>().ShouldBe("available");
+        closure["selected_deployed_identity"]!.GetValue<string>().ShouldBe(IndexDigest);
         closure["deployment_authorized"]!.GetValue<bool>().ShouldBeFalse();
         closure["consumer_removal_authorized"]!.GetValue<bool>().ShouldBeFalse();
         closure["publication_authorized"]!.GetValue<bool>().ShouldBeFalse();

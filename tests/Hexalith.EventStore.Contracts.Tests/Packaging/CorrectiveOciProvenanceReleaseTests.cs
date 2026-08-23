@@ -201,6 +201,9 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     [InlineData("ContainerProvenanceReleaseVersion", "01.2.3", "must be SemVer")]
     [InlineData("ContainerImageTag", "0.0.0-other", "must equal ContainerProvenanceReleaseVersion")]
     [InlineData("ContainerProvenanceCreated", "2026-08-21T09:15Z", "exact UTC RFC 3339 second")]
+    [InlineData("ContainerProvenanceRepositoryUrl", "https", "must be a well-formed https URL")]
+    [InlineData("ContainerProvenanceReleaseUrl", "https", "must be a well-formed https URL")]
+    [InlineData("ContainerProvenanceDocumentationUrl", "https", "must be a well-formed https URL")]
     public void ContainerPublicationRejectsMalformedProvenanceInputs(
         string property,
         string value,
@@ -688,6 +691,37 @@ public sealed class CorrectiveOciProvenanceReleaseTests
         {
             Directory.Delete(temporary, recursive: true);
         }
+    }
+
+    /// <summary>
+    /// Verifies an unreviewed edit to the executing live handler fails closed even when the retained
+    /// packet's declared codec digest, schema, and version are all untouched and still dispatch to it.
+    /// </summary>
+    [Fact]
+    public void TamperedLiveHandlerBytesCannotExecuteEvenWithAValidPacket()
+    {
+        string root = FindRepositoryRoot();
+        string checkedInPacket = Path.Combine(
+            root, "_bmad-output", "implementation-artifacts", "evidence", "story-3-14",
+            "f343bb0153e9cdcb8b12ec10153813072f5ad38d");
+        string handlerPath = Path.Combine(root, "tools", "release_evidence_handlers", "v3.py");
+        byte[] original = File.ReadAllBytes(handlerPath);
+        try
+        {
+            File.AppendAllText(handlerPath, "\n# mutation-only marker, never committed\n");
+            ProcessResult tampered = RunEvidenceValidator(
+                root, Path.Combine(checkedInPacket, "release-identity.json"), checkedInPacket);
+            tampered.ExitCode.ShouldNotBe(0);
+            tampered.Error.ShouldContain("does not select a trusted live handler");
+        }
+        finally
+        {
+            File.WriteAllBytes(handlerPath, original);
+        }
+
+        ProcessResult restored = RunEvidenceValidator(
+            root, Path.Combine(checkedInPacket, "release-identity.json"), checkedInPacket);
+        restored.ExitCode.ShouldBe(0, restored.Error);
     }
 
     /// <summary>

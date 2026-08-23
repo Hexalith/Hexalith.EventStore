@@ -1409,3 +1409,42 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
   summary: Replace the fixture-only Story 3.13 durable-source URL anchor with a GitHub-minted immutable acceptance reference before collecting the three production receipts.
   evidence: `RejectDispositionReceipt` requires `#story-3-13-disposition-<envelope-sha256>-<role>` on a commit URL, but GitHub commit-comment anchors use `#commitcomment-<id>`. The retained source record currently proves consistency with its receipt, not independent external existence. The owner accepted deferral while the disposition remains at 0/3 receipts; this does not authorize Story 3.13 completion.
+
+## Deferred from: code review of spec-3-13-deployed-runtime-parity-closure (2026-08-22, loop 2)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: `PathIsWithin` (backing the new `disposition.location`/`disposition.directory` guards) has no reparse-point resolution.
+  evidence: `tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:8187-8194` compares `Path.GetFullPath(...)` results with an ordinal `StartsWith`, unlike `ResolveWithin` elsewhere in the file, which is reparse-point safe. This reproduces this story's own already-deferred `ResolveWithin` ordinal-`StartsWith`/TOCTOU weakness class in a brand-new guard rather than reusing the hardened helper. Not live risk for the current developer-authored evidence tree; a robustness gap if the disposition directory is ever attacker-influenced.
+  severity: low
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: `review_loop_iteration` frontmatter metadata does not track the number of review passes the spec itself narrates.
+  evidence: `spec-3-13-deployed-runtime-parity-closure.md:7` stays `1` although the 2026-08-22 diff alone narrates three distinct passes (the 2026-08-21 loop, its loop-1 historical ledger, and the 2026-08-22 closure). Cosmetic; the same field was previously corrected from `7` to `13` in an earlier chunk of this story.
+  severity: low
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: "Review Closure" sections collapse many granular historical findings into a few broad bullets, discarding per-finding traceability.
+  evidence: The "Review Closure (2026-08-22)" section (`spec-3-13-deployed-runtime-parity-closure.md:210-218`) resolves roughly twenty individually-numbered findings from the preceding historical ledger via 5 broad bullets, one of which alone bundles eight unrelated changes, while explicitly leaving every underlying checkbox unchecked ("authoritative over the unchecked historical rows above"). A future auditor cannot trace a specific historical finding to its specific resolution. Same documentation-completeness gap already noted once before in this story's chunk-2 review ("eighteen of the twenty-five chunk-2 patch bullets are checked with no disposition text").
+  severity: low
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: The `depends_on_corrective_release` / `corrective_release_owner: "3.14"` intentional-pairing claim in `docs/ci.md` is untested.
+  evidence: `tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:4549-4558` correctly gives `depends_on_corrective_release` its own diagnostic separate from the authorization-flag group, but `docs/ci.md:375`'s claim that a `true` value paired with `corrective_release_owner: "3.14"` is an intentional, non-authorizing scheduling reference (not a dependency) is asserted by no test.
+  severity: low
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: `MalformedProvenanceLabels` (a cached static field) and its new platform/config-file counterpart (a recomputed local) are inconsistent, and the local re-reads/re-parses `index.raw` from disk on every call.
+  evidence: `tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:4317-4318` derives `platforms`/`configFiles` locally from the retained index children on each invocation of `RejectDispositionDefects`, instead of caching once like the sibling `MalformedProvenanceLabels` field. Minor repeated I/O, not a correctness defect for the current two-platform fixture.
+  severity: low
+
+## Deferred from: code review of spec-3-13-deployed-runtime-parity-closure (2026-08-22, loop 3)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: The Story 3.15 Test Architect receipt (`bmad:murat`) has no externally-checkable anchor comparable to the two GitHub-issue-comment-backed owner receipts.
+  evidence: `evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/acceptances/bb58d691.../test-architect.json` is sourced from a `bmad-test-architect-record` (self-attested by the assembling tooling), unlike the `eventstore-owner`/`release-owner` receipts, which are independently verifiable via `gh api repos/Hexalith/Hexalith.EventStore/issues/comments/<id>`. Reproduces the same durable-receipt-anchor gap already tracked above for Story 3.13's disposition receipts, now recurring for Story 3.15; this is the project's established pattern for `bmad:`-role receipts generally, not a defect unique to this diff.
+  severity: low
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: `closure.json` declares `deployed_runtime_parity: "available"` and a non-null `selected_deployed_identity` even when `acceptances.receipts` is empty.
+  evidence: Confirmed unchanged from `HEAD` (pre-existing, not introduced by the 2026-08-22 loop-3 diff) via `git show HEAD:.../closure.json`. The real gate is `_exact_list(receipts, 3, ...)` in `tools/deployed_runtime_parity_handlers/v1.py:360`, which fails closed regardless of those two fields' declared values, so there is no functional hole — but a consumer reading the JSON file directly instead of running `validate-corrected-deployed-runtime-parity.py` would misread pre-acceptance state as already authorized.
+  severity: low

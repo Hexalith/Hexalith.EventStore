@@ -81,6 +81,8 @@ public sealed class DeployedRuntimeParityClosureTests
         "_bmad-output/implementation-artifacts/evidence/story-1-20/" + ApprovedSourceSha;
     private const string StoryRecordRelativePath =
         "_bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure.md";
+    private const string SpecRelativePath =
+        "_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md";
     private const string SprintStatusRelativePath =
         "_bmad-output/implementation-artifacts/sprint-status.yaml";
     private const string CiDocumentationRelativePath = "docs/ci.md";
@@ -3026,6 +3028,31 @@ public sealed class DeployedRuntimeParityClosureTests
     }
 
     /// <summary>
+    /// Verifies a disposition directory not named after the frozen review-subject digest fails closed.
+    /// </summary>
+    [Fact]
+    public void MisnamedDispositionDirectoryFailsClosed()
+    {
+        string root = FindRepositoryRoot();
+        (string cleanupRoot, string disposition) = CopyDisposition(root);
+        try
+        {
+            string misnamedDisposition = Path.Combine(cleanupRoot, "not-" + SelectedReviewSubjectSha256);
+            CopyDirectory(disposition, misnamedDisposition);
+            (bool verified, string rejection, _, _) = EvaluateDisposition(
+                root,
+                misnamedDisposition,
+                Path.Combine(root, SelectedEvidenceRelativePath));
+            verified.ShouldBeFalse();
+            ShouldRejectWith(rejection, "disposition.directory");
+        }
+        finally
+        {
+            DeleteTemporaryDirectory(cleanupRoot);
+        }
+    }
+
+    /// <summary>
     /// Verifies a disposition copied into the selected frozen evidence tree fails closed.
     /// </summary>
     [Fact]
@@ -3042,6 +3069,37 @@ public sealed class DeployedRuntimeParityClosureTests
                 copiedRoot,
                 nestedDisposition,
                 evidence);
+            verified.ShouldBeFalse();
+            ShouldRejectWith(rejection, "disposition.location");
+        }
+        finally
+        {
+            DeleteTemporaryDirectory(cleanupRoot);
+        }
+    }
+
+    /// <summary>
+    /// Verifies a disposition copied into the historical (non-selected) frozen evidence tree fails
+    /// closed. The location guard has two disjuncts -- selected tree and historical tree -- and this
+    /// covers the second, which <see cref="DispositionInsideFrozenEvidenceTreeFailsClosed"/> does not.
+    /// </summary>
+    [Fact]
+    public void DispositionInsideHistoricalEvidenceTreeFailsClosed()
+    {
+        string root = FindRepositoryRoot();
+        (string cleanupRoot, string disposition) = CopyDisposition(root);
+        try
+        {
+            string historicalEvidenceRoot = Path.Combine(cleanupRoot, EvidenceRelativePath);
+            string nestedDisposition = Path.Combine(
+                historicalEvidenceRoot,
+                "nested",
+                SelectedReviewSubjectSha256);
+            CopyDirectory(disposition, nestedDisposition);
+            (bool verified, string rejection, _, _) = EvaluateDisposition(
+                cleanupRoot,
+                nestedDisposition,
+                Path.Combine(root, SelectedEvidenceRelativePath));
             verified.ShouldBeFalse();
             ShouldRejectWith(rejection, "disposition.location");
         }
@@ -3377,6 +3435,51 @@ public sealed class DeployedRuntimeParityClosureTests
     }
 
     /// <summary>
+    /// Verifies a duplicated or empty declared checksum-manifest row rejects the envelope. Without
+    /// this guard a duplicate "file" value falls through to <c>SingleOrDefault</c> in the per-row
+    /// loop, which throws <see cref="InvalidOperationException"/> and is swallowed as
+    /// <c>internal.exception</c> instead of this field-specific diagnostic.
+    /// </summary>
+    /// <param name="mutation">The manifest-declaration defect identifier.</param>
+    [Theory]
+    [InlineData("duplicate-manifest-file")]
+    [InlineData("empty-manifest-file")]
+    public void DuplicateOrEmptyChecksumManifestDeclarationFailsClosed(string mutation)
+    {
+        string root = FindRepositoryRoot();
+        string evidence = Path.Combine(root, SelectedEvidenceRelativePath);
+        (string cleanupRoot, string disposition) = CopyDisposition(root);
+        try
+        {
+            EvaluateDisposition(root, disposition, evidence).Verified.ShouldBeTrue();
+            JsonObject envelope = LoadDispositionEnvelope(disposition);
+            JsonArray manifests = envelope["retained_checksum_manifests"]!.AsArray();
+            switch (mutation)
+            {
+                case "duplicate-manifest-file":
+                    // Collapse the last row's "file" onto the first row's, keeping the array length
+                    // unchanged but leaving two distinct declared manifests sharing one file name.
+                    manifests[^1]!["file"] = manifests[0]!["file"]!.GetValue<string>();
+                    break;
+                case "empty-manifest-file":
+                    manifests[0]!["file"] = string.Empty;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(mutation), mutation, "Unknown mutation.");
+            }
+
+            WriteDispositionEnvelope(disposition, envelope);
+            (bool verified, string rejection, _, _) = EvaluateDisposition(root, disposition, evidence);
+            verified.ShouldBeFalse();
+            ShouldRejectWith(rejection, "envelope.retained_checksum_manifests");
+        }
+        finally
+        {
+            DeleteTemporaryDirectory(cleanupRoot);
+        }
+    }
+
+    /// <summary>
     /// Verifies any retained checksum drift rejects the envelope and records a revalidation trigger.
     /// </summary>
     /// <param name="mutation">The drifting retained artifact identifier.</param>
@@ -3675,7 +3778,7 @@ public sealed class DeployedRuntimeParityClosureTests
             verified.ShouldBeTrue(rejection);
             receipts.ShouldBe(expectedCount);
             ShouldRejectWith(acceptanceRejection, expectedReason);
-            DispositionStoryMayBeDone(root, disposition, evidence).ShouldBeFalse();
+            DispositionStoryMayBeDone(root, disposition, evidence, validationTime).ShouldBeFalse();
         }
         finally
         {
@@ -3972,6 +4075,12 @@ public sealed class DeployedRuntimeParityClosureTests
         ci.ShouldContain("Story 3.14 owns the corrective release");
         // The operator-facing surface must carry a verifiable digest, not an elided one.
         ci.ShouldContain(SelectedReviewSubjectSha256);
+
+        // The spec frontmatter is a fourth lifecycle surface distinct from the story record; it must
+        // not silently drift to 'done' while acceptance sits at 0/3 receipts.
+        string spec = ReadNormalizedText(root, SpecRelativePath);
+        spec.ShouldContain("status: 'in-review'");
+        spec.ShouldNotContain("status: 'done'");
     }
 
     private static string ReadNormalizedText(string root, string relativePath) =>
@@ -4095,10 +4204,11 @@ public sealed class DeployedRuntimeParityClosureTests
     private static bool DispositionStoryMayBeDone(
         string repositoryRoot,
         string dispositionRoot,
-        string selectedEvidenceRoot)
+        string selectedEvidenceRoot,
+        DateTimeOffset? validationTime = null)
     {
         (bool verified, _, int receipts, _) =
-            EvaluateDisposition(repositoryRoot, dispositionRoot, selectedEvidenceRoot);
+            EvaluateDisposition(repositoryRoot, dispositionRoot, selectedEvidenceRoot, validationTime);
         return verified && receipts == 3;
     }
 

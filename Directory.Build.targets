@@ -65,6 +65,19 @@
            Text="ContainerImageTag must equal ContainerProvenanceReleaseVersion." />
     <Error Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(ContainerProvenanceCreated)', '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]Z$')) != 'true'"
            Text="ContainerProvenanceCreated must be an exact UTC RFC 3339 second." />
+    <!--
+      Each URL property's Condition="'$(X)' == ''" default only fires when the property is
+      genuinely unset. An environment variable of the same name is already an MSBuild property
+      before this file evaluates, so it silently wins over the default with no shape check,
+      including a colon-truncated value like "https", the exact defect class this story exists
+      to reject. Validate shape here regardless of which source supplied the value.
+    -->
+    <Error Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(ContainerProvenanceRepositoryUrl)', '^https://\S+$')) != 'true'"
+           Text="ContainerProvenanceRepositoryUrl must be a well-formed https URL." />
+    <Error Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(ContainerProvenanceReleaseUrl)', '^https://\S+$')) != 'true'"
+           Text="ContainerProvenanceReleaseUrl must be a well-formed https URL." />
+    <Error Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(ContainerProvenanceDocumentationUrl)', '^https://\S+$')) != 'true'"
+           Text="ContainerProvenanceDocumentationUrl must be a well-formed https URL." />
   </Target>
 
   <!-- Correct the SDK multi-RID key:value reconstruction before the child image is created. -->

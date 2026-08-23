@@ -2,14 +2,13 @@
 
 ## Decision
 
-The technical evidence is acceptance-ready, but deployed-runtime parity remains unavailable until
-three real content-bound receipts exist. The retained production verifier fails closed with no
-selected identity while the receipt list is empty.
+The technical evidence and all three real content-bound receipts pass. Deployed-runtime parity is
+available, and the retained production verifier selects exactly the corrected OCI index identity.
 
 Canonical subject:
 `sha256:bb58d691ee404cc958433e996204e3382721de3931ac64cf8f7a61de97c30709`.
 
-Positive identity after all three receipts pass:
+Selected positive identity:
 `registry.hexalith.com/eventstore@sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`.
 
 ## Bound evidence
@@ -35,9 +34,9 @@ The subject and receipt directories sit outside the technical inventory to avoid
 The subject binds the inventory and every decision input; `closure.json` binds the subject and the
 three subject-addressed receipt files.
 
-## Missing acceptances
+## Bound acceptances
 
-The required receipt paths are:
+The retained receipt paths are:
 
 ```text
 acceptances/bb58d691ee404cc958433e996204e3382721de3931ac64cf8f7a61de97c30709/eventstore-owner.json
@@ -45,9 +44,12 @@ acceptances/bb58d691ee404cc958433e996204e3382721de3931ac64cf8f7a61de97c30709/rel
 acceptances/bb58d691ee404cc958433e996204e3382721de3931ac64cf8f7a61de97c30709/test-architect.json
 ```
 
-Each receipt also requires its authenticated retained source beneath the sibling `sources/`
-directory. These files have not been created or inferred. After authorized collection, rerun the
-assembler, the production verifier, the focused suite, and `git diff --check`.
+Each receipt binds its authenticated retained source beneath the sibling `sources/` directory. The
+EventStore-owner and Release-owner sources retain GitHub issue comments
+[5381125968](https://github.com/Hexalith/Hexalith.EventStore/issues/346#issuecomment-5381125968)
+and [5381126900](https://github.com/Hexalith/Hexalith.EventStore/issues/346#issuecomment-5381126900),
+respectively. The Test Architect source retains the exact `bmad:murat` acceptance. The assembled
+closure binds all three receipt hashes, and the production verifier passes for the unchanged subject.
 
 ## Authority boundary
 

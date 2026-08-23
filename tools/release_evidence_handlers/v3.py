@@ -17,6 +17,10 @@ V3_PUBLICATION_PREFLIGHT_SHA256 = "830af8afb3d2a611d5029133352ecf708511c4e2f4d74
 # The packet retains the exact codec and verifier that produced it, the same way it retains the
 # executed Builds helpers. Validation binds those retained bytes rather than whatever happens to
 # sit in tools/ today, so a later fix to this file cannot invalidate an already-frozen packet.
+# That binding covers the packet's retained copies only -- it says nothing about the bytes of
+# this file itself. The dispatcher in validate-corrective-release-evidence.py is what pins this
+# module's own SHA-256 (EXPECTED_V3_HANDLER_SHA256) before importing it, so an edit here that is
+# not accompanied by updating that constant fails closed rather than silently executing.
 RETAINED_CODEC_FILE = "successful/tools/release_evidence_codec.py"
 RETAINED_VERIFIER_FILE = "successful/tools/validate-corrective-release-evidence.py"
 SHA40 = re.compile(r"^[0-9a-f]{40}$", re.ASCII)

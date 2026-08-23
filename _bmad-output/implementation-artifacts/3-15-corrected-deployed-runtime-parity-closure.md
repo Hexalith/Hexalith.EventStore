@@ -2,17 +2,15 @@
 
 ## Current verdict
 
-**Fail closed pending three real acceptances.** The complete technical lineage passes, but the
-EventStore owner, Release owner, and Test Architect have not yet accepted the unchanged canonical
-subject. The production verifier therefore selects no deployment-grade identity today and reports
-`exactly three packet-bound receipts are required`.
+**Deployed-runtime parity is available.** The complete technical lineage and all three authenticated,
+content-bound acceptances pass for the unchanged canonical subject. The production verifier selects
+exactly `sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`.
 
-The acceptance-ready subject is
+The accepted subject is
 `sha256:bb58d691ee404cc958433e996204e3382721de3931ac64cf8f7a61de97c30709`.
-If all three valid receipts are retained beneath
+All three valid receipts are retained beneath
 `acceptances/bb58d691ee404cc958433e996204e3382721de3931ac64cf8f7a61de97c30709/`
-without changing any subject input, the verified positive identity is exactly
-`sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`.
+without changing any subject input.
 
 This record supplies evidence only. It never authorizes deployment, publication, registry mutation,
 consumer removal, or predecessor changes.
@@ -70,6 +68,13 @@ The role registry retains the owner-ratified mappings:
 - `release-owner` → `github:jpiquot`
 - `test-architect` → `bmad:murat`
 
+The EventStore owner accepted the subject at `2026-08-22T15:19:54Z` in
+[issue comment 5381125968](https://github.com/Hexalith/Hexalith.EventStore/issues/346#issuecomment-5381125968),
+the Release owner accepted it at `2026-08-22T15:20:08Z` in
+[issue comment 5381126900](https://github.com/Hexalith/Hexalith.EventStore/issues/346#issuecomment-5381126900),
+and the Test Architect accepted it at `2026-08-22T15:20:29Z` in the retained
+`bmad:murat` source record. Each receipt is bound to its exact retained source bytes.
+
 No planning approval, release authority, prior receipt, label, tag, self-declared role, or synthetic
 test fixture is treated as a Story 3.15 acceptance. The two owner receipts require retained GitHub
 issue-comment sources whose exact JSON bodies accept this subject. The Test Architect receipt
@@ -84,7 +89,7 @@ invalidates all of them.
 - Focused Story 3.15 suite: 48 passed, zero failed, zero skipped. Its positive case uses explicit
   synthetic test fixtures only to mutation-prove the receipt contract; those fixtures are never
   copied into the retained packet.
-- Checked-in Story 3.15 verifier: expected fail-closed result, three receipts missing.
+- Checked-in Story 3.15 verifier: pass; subject `bb58d69…`, selected index `4b141085…`.
 - `git diff --check`: recorded at final handoff.
 
 ## Rerun trigger

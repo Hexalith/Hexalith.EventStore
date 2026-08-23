@@ -516,7 +516,12 @@ public sealed class ContainerPublishingGovernanceTests
         workflow.ShouldNotContain("release-authority-issue-url:");
         workflow.ShouldNotContain("release-authority-owner:");
         workflow.ShouldNotContain("${{ inputs.");
-        Regex.Match(workflow, @"(?m)^  workflow_dispatch:\s*$").Success.ShouldBeTrue();
+        // A bare `\s*$` assertion is vacuous here: in multiline mode `$` matches before the
+        // immediately following newline regardless of what an indented `inputs:` child below it
+        // contains, so it accepts the old input-carrying form too. Extract the block instead.
+        workflow.ShouldContain("  workflow_dispatch:");
+        string dispatchBlock = ExtractYamlBlock(workflow, "  workflow_dispatch:");
+        dispatchBlock.ShouldNotContain("inputs:");
         workflow.ShouldNotContain("release-owner-allowlist:");
         workflow.ShouldNotContain("references/Hexalith.Builds");
         workflow.ShouldNotContain("secrets: inherit");
@@ -552,6 +557,31 @@ public sealed class ContainerPublishingGovernanceTests
             .ToArray();
         secretNames.ShouldBe(
             ["HEXALITH_ZOT_API_KEY", "HEXALITH_ZOT_USERNAME", "NUGET_API_KEY"]);
+    }
+
+    /// <summary>
+    /// Verifies the caller never re-enables the corrective-release authority gate without also
+    /// re-pinning who may hold it. The live preflight only shape-checks the owner it is given
+    /// (any well-formed <c>github:&lt;login&gt;</c> passes), while the post-hoc evidence verifier
+    /// still hardcodes <c>jpiquot</c>; without this guard a future edit could re-enable the gate
+    /// for a different owner that the live preflight would accept but evidence could never verify.
+    /// </summary>
+    [Fact]
+    public void ReleaseAuthorityOwnerIsPinnedWheneverTheAuthorityGateIsEnabled()
+    {
+        string root = FindRepositoryRoot();
+        string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
+        string withBlock = ExtractYamlBlock(workflow, "    with:");
+
+        if (Regex.IsMatch(withBlock, @"(?m)^\s*require-publication-authority:\s*true\s*$"))
+        {
+            withBlock.ShouldContain("release-authority-owner: github:jpiquot");
+        }
+        else
+        {
+            withBlock.ShouldContain("require-publication-authority: false");
+            withBlock.ShouldNotContain("release-authority-owner:");
+        }
     }
 
     /// <summary>

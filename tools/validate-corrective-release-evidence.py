@@ -14,6 +14,13 @@ V3_PACKET_CODEC_SHA256 = "814502bd962e00dfbac243e2443c3709b46bdbb69e197691443a08
 HANDLERS = {
     (SCHEMA, 3, V3_PACKET_CODEC_SHA256): "release_evidence_handlers.v3",
 }
+# EXPECTED_PACKET_CODEC_SHA256 (above, keyed into HANDLERS) pins the codec/verifier bytes the
+# packet retains as evidence -- it says nothing about the executing module. This pins the actual
+# on-disk bytes of the imported handler file itself, so an edit to release_evidence_handlers/v3.py
+# that is not accompanied by updating this constant fails closed instead of executing unreviewed.
+HANDLER_FILE_SHA256 = {
+    "release_evidence_handlers.v3": "c768b1efbe1314b2c8d90e523536648b5fd912208ff6d65a81838b3c61857ff0",
+}
 
 
 class DispatchError(ValueError):
@@ -43,7 +50,11 @@ def _load_dispatch_metadata(evidence_bytes):
 
 
 def _load_handler(module_name):
-    return importlib.import_module(module_name)
+    module = importlib.import_module(module_name)
+    expected = HANDLER_FILE_SHA256.get(module_name)
+    if expected is None or hashlib.sha256(Path(module.__file__).read_bytes()).hexdigest() != expected:
+        raise DispatchError("release identity does not select a trusted live handler")
+    return module
 
 
 def _read_manifest(path, handler):

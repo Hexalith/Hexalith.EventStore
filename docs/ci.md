@@ -223,12 +223,15 @@ declares `require-publication-authority: false` to say so.
 
 Story 3.14 built a second, stronger gate for a corrective release that has to be
 individually authorized rather than merely approved: a dispatch-reserved stable
-version plus an unexpired, one-use GitHub issue-comment authority from the pinned
+version plus an unexpired, one-use GitHub issue-comment authority from the
 `github:jpiquot` release-owner identity. That gate remains implemented and tested
 in `Hexalith.Builds`, and is off by default here, because it costs the operator a
-hand-computed version and an out-of-band authority comment per run. Re-enabling it
-means setting `require-publication-authority: true` and supplying
-`reserved-version`, `release-authority-issue-url` and `release-authority-owner`.
+hand-computed version and an out-of-band authority comment per run. The live
+preflight only shape-checks whatever owner value it is given; the caller is what
+pins the identity, and the container-publishing governance suite fails closed if
+`require-publication-authority: true` is ever set without also setting
+`release-authority-owner: github:jpiquot` alongside `reserved-version` and
+`release-authority-issue-url`.
 The posture is declared, never inferred: with the gate off any supplied
 reservation value fails closed rather than being silently ignored, a half-declared
 authority is rejected instead of read as absence, and a declaration that is
@@ -387,12 +390,12 @@ hosting environment for `linux/amd64` and `linux/arm64`.
 handler. The handler never executes packet-supplied code: it parses and rehashes retained bytes,
 revalidates the frozen predecessor with its trusted live handler, checks the closed technical
 inventory, recomputes the canonical subject, and validates exactly three subject-addressed
-receipts. The current acceptance-ready subject is
-`bb58d691ee404cc958433e996204e3382721de3931ac64cf8f7a61de97c30709`. Until the rostered
-EventStore owner, Release owner, and Test Architect provide real authenticated receipts for those
-exact bytes, validation fails closed and selects no identity.
+receipts. The accepted subject is
+`bb58d691ee404cc958433e996204e3382721de3931ac64cf8f7a61de97c30709`. The rostered
+EventStore owner, Release owner, and Test Architect have provided real authenticated receipts for
+those exact bytes, and the checked-in validation now passes.
 
-After all three unchanged-subject receipts pass, the only selectable identity is
+The only selected identity is
 `registry.hexalith.com/eventstore@sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`.
 That positive verdict is evidence, not operational authority: deployment, package publication,
 registry mutation, consumer removal, and predecessor mutation remain separately prohibited.
