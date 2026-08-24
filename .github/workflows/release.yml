@@ -78,7 +78,8 @@ jobs:
     # INHERITS this set: it runs holding both write scopes without using them.
     # Nothing is signed or attested, but this is a real widening of the production
     # job's token, not a paper one. Narrowing it belongs to Hexalith.Builds -- see
-    # deferred-work.md, "reusable release workflow split". Do not add attestation
+    # deferred-work.md, "Split the governed release path into its own reusable workflow file".
+    # Do not add attestation
     # or signing steps here: Epic 3 withholds that authority.
     permissions:
       actions: read

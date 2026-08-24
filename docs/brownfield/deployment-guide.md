@@ -10,7 +10,8 @@ Built via **.NET SDK container support** — **no Dockerfiles**. Defaults centra
 `<ContainerRepository>image-name</ContainerRepository>`.
 
 Defaults: base `mcr.microsoft.com/dotnet/aspnet:10.0-alpine`, registry `registry.hexalith.com`,
-non-root user `app`, port `8080`, OCI labels (source/licenses/vendor), tag `staging-latest`.
+non-root user `app`, port `8080`, and OCI labels (source/licenses/vendor). When no explicit tag
+is supplied, the tag defaults to the mandatory provenance release version.
 Every `PublishContainer` invocation must pass the exact source commit and release
 version through `ContainerProvenanceSourceSha` and
 `ContainerProvenanceReleaseVersion`; publication fails closed when either is
@@ -28,7 +29,8 @@ missing.
 ```bash
 # Publish one image to a local tar (no registry push)
 SOURCE_SHA="$(git rev-parse HEAD)"
-RELEASE_VERSION="0.0.0-staging.${SOURCE_SHA:0:12}"
+RELEASE_VERSION="0.0.0-staging.sha${SOURCE_SHA:0:12}"
+CREATED="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 SOURCE_URL="https://github.com/Hexalith/Hexalith.EventStore/commit/$SOURCE_SHA"
 dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj \
   --configuration Release -t:PublishContainer \
@@ -36,6 +38,7 @@ dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj \
   -p:ContainerImageTag="$RELEASE_VERSION" \
   -p:ContainerProvenanceSourceSha="$SOURCE_SHA" \
   -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION" \
+  -p:ContainerProvenanceCreated="$CREATED" \
   -p:ContainerProvenanceReleaseUrl="$SOURCE_URL"
 
 # Push to registry (needs SDK_CONTAINER_REGISTRY_UNAME / _PWORD)
@@ -44,6 +47,7 @@ dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj \
   -p:ContainerImageTag="$RELEASE_VERSION" \
   -p:ContainerProvenanceSourceSha="$SOURCE_SHA" \
   -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION" \
+  -p:ContainerProvenanceCreated="$CREATED" \
   -p:ContainerProvenanceReleaseUrl="$SOURCE_URL"
 ```
 

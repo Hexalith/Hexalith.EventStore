@@ -258,17 +258,14 @@ az acr login --name hexalithacr
 # Build container images
 SOURCE_SHA="$(git rev-parse HEAD)"
 RELEASE_VERSION=0.0.0-local.1
+CREATED="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 SOURCE_URL="https://github.com/Hexalith/Hexalith.EventStore/commit/$SOURCE_SHA"
-dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRegistry=hexalithacr.azurecr.io -p:ContainerRepository=hexalith-eventstore -p:ContainerImageTag="$RELEASE_VERSION" -p:ContainerProvenanceSourceSha="$SOURCE_SHA" -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION" -p:ContainerProvenanceReleaseUrl="$SOURCE_URL"
-dotnet publish samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRegistry=hexalithacr.azurecr.io -p:ContainerRepository=hexalith-sample -p:ContainerImageTag="$RELEASE_VERSION" -p:ContainerProvenanceSourceSha="$SOURCE_SHA" -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION" -p:ContainerProvenanceReleaseUrl="$SOURCE_URL"
-
-# Push to ACR
-docker push "hexalithacr.azurecr.io/hexalith-eventstore:$RELEASE_VERSION"
-docker push "hexalithacr.azurecr.io/hexalith-sample:$RELEASE_VERSION"
+dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRegistry=hexalithacr.azurecr.io -p:ContainerRepository=hexalith-eventstore -p:ContainerImageTag="$RELEASE_VERSION" -p:ContainerProvenanceSourceSha="$SOURCE_SHA" -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION" -p:ContainerProvenanceCreated="$CREATED" -p:ContainerProvenanceReleaseUrl="$SOURCE_URL"
+dotnet publish samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRegistry=hexalithacr.azurecr.io -p:ContainerRepository=hexalith-sample -p:ContainerImageTag="$RELEASE_VERSION" -p:ContainerProvenanceSourceSha="$SOURCE_SHA" -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION" -p:ContainerProvenanceCreated="$CREATED" -p:ContainerProvenanceReleaseUrl="$SOURCE_URL"
 ```
 
-The two provenance properties are mandatory and bind the published labels to
-the exact source commit and release version.
+The three provenance properties are mandatory and bind the published labels to
+the exact source commit, release version, and one shared creation instant.
 
 > **Note:** When using the Aspire-generated Bicep with approach A, the deployment automatically creates an ACR and can be configured to build and push images as part of the deployment. Check the generated Bicep parameters for image configuration options.
 

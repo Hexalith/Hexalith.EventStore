@@ -17,7 +17,6 @@ public sealed class CorrectiveOciProvenanceReleaseTests
 {
     private const string SourceSha = "dddddddddddddddddddddddddddddddddddddddd";
     private const string Version = "0.0.0-ci-test";
-    private const string EvidenceVersion = "3.96.0";
     private const string Created = "2026-08-21T09:15:00Z";
     private static readonly TimeSpan HelperTimeout = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan PublishTimeout = TimeSpan.FromMinutes(8);
@@ -86,7 +85,7 @@ public sealed class CorrectiveOciProvenanceReleaseTests
                 $"-p:ContainerProvenanceSourceSha={SourceSha}",
                 $"-p:ContainerProvenanceReleaseVersion={Version}",
                 $"-p:ContainerProvenanceCreated={Created}",
-            });
+            }).ConfigureAwait(true);
             publish.ExitCode.ShouldBe(0, publish.Output + publish.Error);
 
             Dictionary<string, byte[]> entries = ReadTarEntries(archive);
@@ -97,7 +96,7 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             JsonElement[] manifests = index.RootElement.GetProperty("manifests").EnumerateArray().ToArray();
             manifests.Length.ShouldBe(2);
 
-            Dictionary<string, string> expected = ExpectedLabels();
+            Dictionary<string, string>? expected = null;
             string[] platforms = manifests
                 .Select(manifest => manifest.GetProperty("platform").GetProperty("architecture").GetString())
                 .Where(architecture => architecture is not null)
@@ -114,6 +113,9 @@ public sealed class CorrectiveOciProvenanceReleaseTests
                     .GetString().ShouldNotBeNull();
                 using JsonDocument config = JsonDocument.Parse(entries[BlobPath(configDigest)]);
                 JsonElement labels = config.RootElement.GetProperty("config").GetProperty("Labels");
+                string observedCreated = labels.GetProperty("org.opencontainers.image.created")
+                    .GetString().ShouldNotBeNull();
+                expected ??= ExpectedLabels(observedCreated);
                 ValidateLabels(labels, expected);
                 childLabels.Add(labels.EnumerateObject().ToDictionary(
                     property => property.Name,
@@ -136,6 +138,7 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     [Theory]
     [InlineData("source")]
     [InlineData("version")]
+    [InlineData("created")]
     public async Task ContainerPublicationRejectsMissingProvenanceInputs(string missingProperty)
     {
         string root = FindRepositoryRoot();
@@ -161,7 +164,6 @@ public sealed class CorrectiveOciProvenanceReleaseTests
                 "-p:ContainerRepository=eventstore",
                 $"-p:ContainerImageTag={Version}",
                 $"-p:Version={Version}",
-                $"-p:ContainerProvenanceCreated={Created}",
             ];
             if (missingProperty != "source")
             {
@@ -173,16 +175,24 @@ public sealed class CorrectiveOciProvenanceReleaseTests
                 arguments.Add($"-p:ContainerProvenanceReleaseVersion={Version}");
             }
 
+            if (missingProperty != "created")
+            {
+                arguments.Add($"-p:ContainerProvenanceCreated={Created}");
+            }
+
             ProcessResult result = await RunProcessAsync(
                 root,
                 "dotnet",
                 PublishTimeout,
-                arguments);
+                arguments).ConfigureAwait(true);
             result.ExitCode.ShouldNotBe(0);
             (result.Output + result.Error).ShouldContain(
-                missingProperty == "source"
-                    ? "ContainerProvenanceSourceSha must be an exact lowercase 40-character commit SHA."
-                    : "ContainerProvenanceReleaseVersion must be SemVer");
+                missingProperty switch
+                {
+                    "source" => "ContainerProvenanceSourceSha must be an exact lowercase 40-character commit SHA.",
+                    "version" => "ContainerProvenanceReleaseVersion must be SemVer",
+                    _ => "ContainerProvenanceCreated must be an exact UTC RFC 3339 second.",
+                });
         }
         finally
         {
@@ -197,17 +207,25 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     /// <param name="value">The malformed value.</param>
     /// <param name="expectedError">The expected fail-closed diagnostic.</param>
     [Theory]
-    [InlineData("ContainerProvenanceSourceSha", "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD", "exact lowercase")]
-    [InlineData("ContainerProvenanceReleaseVersion", "01.2.3", "must be SemVer")]
-    [InlineData("ContainerImageTag", "0.0.0-other", "must equal ContainerProvenanceReleaseVersion")]
-    [InlineData("ContainerProvenanceCreated", "2026-08-21T09:15Z", "exact UTC RFC 3339 second")]
-    [InlineData("ContainerProvenanceRepositoryUrl", "https", "must be a well-formed https URL")]
-    [InlineData("ContainerProvenanceReleaseUrl", "https", "must be a well-formed https URL")]
-    [InlineData("ContainerProvenanceDocumentationUrl", "https", "must be a well-formed https URL")]
+    [InlineData("ContainerProvenanceSourceSha", "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD", "ContainerProvenanceSourceSha must be an exact lowercase 40-character commit SHA.", false)]
+    [InlineData("ContainerProvenanceReleaseVersion", "01.2.3", "ContainerProvenanceReleaseVersion must be SemVer without build metadata or leading-zero numeric identifiers.", false)]
+    [InlineData("ContainerImageTag", "0.0.0-other", "ContainerImageTag must equal ContainerProvenanceReleaseVersion.", false)]
+    [InlineData("ContainerImageTags", "latest", "ContainerImageTags must contain only ContainerProvenanceReleaseVersion.", false)]
+    [InlineData("ContainerProvenanceCreated", "2026-08-21T09:15Z", "ContainerProvenanceCreated must be an exact UTC RFC 3339 second.", false)]
+    [InlineData("ContainerProvenanceRepositoryUrl", "https", "ContainerProvenanceRepositoryUrl must be a well-formed https URL.", false)]
+    [InlineData("ContainerProvenanceReleaseUrl", "https", "ContainerProvenanceReleaseUrl must be a well-formed https URL.", false)]
+    [InlineData("ContainerProvenanceDocumentationUrl", "https", "ContainerProvenanceDocumentationUrl must be a well-formed https URL.", false)]
+    [InlineData("ContainerProvenanceRepositoryUrl", "http://github.com/Hexalith/Hexalith.EventStore", "ContainerProvenanceRepositoryUrl must be a well-formed https URL.", false)]
+    [InlineData("ContainerProvenanceRepositoryUrl", "https://.", "ContainerProvenanceRepositoryUrl must be a well-formed https URL.", false)]
+    [InlineData("ContainerProvenanceRepositoryUrl", "https://github.com/Hexalith/Hexalith.EventStore\n", "ContainerProvenanceRepositoryUrl must be a well-formed https URL.", false)]
+    [InlineData("ContainerProvenanceRepositoryUrl", "https", "ContainerProvenanceRepositoryUrl must be a well-formed https URL.", true)]
+    [InlineData("ContainerProvenanceReleaseUrl", "https", "ContainerProvenanceReleaseUrl must be a well-formed https URL.", true)]
+    [InlineData("ContainerProvenanceDocumentationUrl", "https", "ContainerProvenanceDocumentationUrl must be a well-formed https URL.", true)]
     public void ContainerPublicationRejectsMalformedProvenanceInputs(
         string property,
         string value,
-        string expectedError)
+        string expectedError,
+        bool useEnvironment)
     {
         Dictionary<string, string> properties = new(StringComparer.Ordinal)
         {
@@ -216,7 +234,10 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             ["ContainerImageTag"] = Version,
             ["ContainerProvenanceCreated"] = Created,
         };
-        properties[property] = value;
+        if (!useEnvironment)
+        {
+            properties[property] = value;
+        }
         List<string> arguments =
         [
             "msbuild",
@@ -229,9 +250,39 @@ public sealed class CorrectiveOciProvenanceReleaseTests
         ];
         arguments.AddRange(properties.Select(item => $"-p:{item.Key}={item.Value}"));
 
-        ProcessResult result = RunProcess(FindRepositoryRoot(), "dotnet", arguments.ToArray());
+        ProcessResult result = useEnvironment
+            ? RunProcess(
+                FindRepositoryRoot(),
+                "dotnet",
+                new Dictionary<string, string> { [property] = value },
+                arguments.ToArray())
+            : RunProcess(FindRepositoryRoot(), "dotnet", arguments.ToArray());
         result.ExitCode.ShouldNotBe(0);
         (result.Output + result.Error).ShouldContain(expectedError);
+    }
+
+    /// <summary>
+    /// Verifies an omitted image tag defaults to the exact provenance version rather than a
+    /// non-SemVer staging alias.
+    /// </summary>
+    [Fact]
+    public void ContainerPublicationDefaultsTagToProvenanceVersion()
+    {
+        ProcessResult result = RunProcess(
+            FindRepositoryRoot(),
+            "dotnet",
+            "msbuild",
+            "src/Hexalith.EventStore/Hexalith.EventStore.csproj",
+            "-t:ValidateContainerProvenanceInputs",
+            "-p:EnableContainer=true",
+            "-p:UseHexalithProjectReferences=false",
+            "-p:NuGetAudit=false",
+            "-p:MinVerVersionOverride=1.0.0",
+            $"-p:ContainerProvenanceSourceSha={SourceSha}",
+            $"-p:ContainerProvenanceReleaseVersion={Version}",
+            $"-p:ContainerProvenanceCreated={Created}");
+
+        result.ExitCode.ShouldBe(0, result.Output + result.Error);
     }
 
     /// <summary>
@@ -305,9 +356,15 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     public void AuthorityHtmlUrlFollowsTheAcceptedIssueUrl()
     {
         const string Script =
-            "from tools.release_evidence_codec import repository_issue_html_url as u;" +
+            "from tools.release_evidence_codec import EvidenceError,repository_issue_html_url as u;" +
             "assert u('https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/42')==" +
-            "'https://github.com/Hexalith/Hexalith.EventStore/issues/42';print('pass')";
+            "'https://github.com/Hexalith/Hexalith.EventStore/issues/42';" +
+            "invalid=['007','٣','²'];" +
+            "\nfor value in invalid:\n" +
+            " try:u('https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/'+value);" +
+            "raise AssertionError('accepted invalid issue number')\n" +
+            " except EvidenceError:pass\n" +
+            "print('pass')";
         ProcessResult result = RunProcess(FindRepositoryRoot(), "python3", "-c", Script);
         result.ExitCode.ShouldBe(0, result.Error);
         result.Output.Trim().ShouldBe("pass");
@@ -512,6 +569,45 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             receiptMutation.ExitCode.ShouldNotBe(0);
             receiptMutation.Error.ShouldContain("consumption does not bind the selected identity");
 
+            string scopedRolePacket = CopyPacket(
+                checkedInPacket,
+                Path.Combine(temporary, "repository-scoped-role"));
+            JsonObject scopedRoleIdentity = LoadIdentity(scopedRolePacket);
+            JsonNode scopedRoleAuthority = scopedRoleIdentity["authority"].ShouldNotBeNull();
+            string scopedRoleFile = scopedRoleAuthority["role_evidence_file"]!.GetValue<string>();
+            string scopedRolePath = Path.Combine(scopedRolePacket, scopedRoleFile);
+            JsonNode legacyRoleResponse = JsonNode.Parse(File.ReadAllText(scopedRolePath)).ShouldNotBeNull();
+            JsonObject scopedRoleEnvelope = new()
+            {
+                ["schema"] = "hexalith.github-repository-permission-evidence.v1",
+                ["repository"] = "Hexalith/Hexalith.EventStore",
+                ["request_url"] =
+                    "https://api.github.com/repos/Hexalith/Hexalith.EventStore/collaborators/jpiquot/permission",
+                ["response"] = legacyRoleResponse,
+            };
+            byte[] scopedRoleBytes = CanonicalJsonBytes(scopedRoleEnvelope);
+            File.WriteAllBytes(scopedRolePath, scopedRoleBytes);
+            scopedRoleAuthority["role_evidence_sha256"] = Sha256(scopedRoleBytes);
+            RefreshPacketManifest(root, scopedRolePacket, scopedRoleIdentity);
+            ProcessResult scopedRole = RunEvidenceValidator(
+                root,
+                Path.Combine(scopedRolePacket, "release-identity.json"),
+                scopedRolePacket);
+            scopedRole.ExitCode.ShouldBe(0, scopedRole.Output + scopedRole.Error);
+
+            scopedRoleEnvelope["request_url"] =
+                "https://api.github.com/repos/Hexalith/Other/collaborators/jpiquot/permission";
+            byte[] wrongRepositoryRoleBytes = CanonicalJsonBytes(scopedRoleEnvelope);
+            File.WriteAllBytes(scopedRolePath, wrongRepositoryRoleBytes);
+            scopedRoleAuthority["role_evidence_sha256"] = Sha256(wrongRepositoryRoleBytes);
+            RefreshPacketManifest(root, scopedRolePacket, scopedRoleIdentity);
+            ProcessResult wrongRepositoryRole = RunEvidenceValidator(
+                root,
+                Path.Combine(scopedRolePacket, "release-identity.json"),
+                scopedRolePacket);
+            wrongRepositoryRole.ExitCode.ShouldNotBe(0);
+            wrongRepositoryRole.Error.ShouldContain("repository role proof is invalid");
+
             foreach (string field in new[] { "selects_deployed_identity", "grants_mutation_authority" })
             {
                 string authorityHandoffPacket = CopyPacket(
@@ -562,6 +658,23 @@ public sealed class CorrectiveOciProvenanceReleaseTests
                 dispatchMutation.ExitCode.ShouldNotBe(0);
                 dispatchMutation.Error.ShouldContain("does not select a trusted live handler");
             }
+
+            string unhashableDispatchPacket = CopyPacket(
+                checkedInPacket,
+                Path.Combine(temporary, "handler-unhashable-version"));
+            JsonObject unhashableDispatchIdentity = LoadIdentity(unhashableDispatchPacket);
+            unhashableDispatchIdentity["codec"]!["version"] = new JsonArray(1);
+            File.WriteAllBytes(
+                Path.Combine(unhashableDispatchPacket, "release-identity.json"),
+                CanonicalJsonBytes(unhashableDispatchIdentity));
+            ProcessResult unhashableDispatchMutation = RunEvidenceValidator(
+                root,
+                Path.Combine(unhashableDispatchPacket, "release-identity.json"),
+                unhashableDispatchPacket);
+            unhashableDispatchMutation.ExitCode.ShouldNotBe(0);
+            unhashableDispatchMutation.Error.ShouldContain(
+                "[corrective-release-evidence] fail: release identity dispatch metadata is invalid");
+            unhashableDispatchMutation.Error.ShouldNotContain("Traceback");
 
             string conflictingSmokePacket = CopyPacket(
                 checkedInPacket,
@@ -672,24 +785,39 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     }
 
     /// <summary>
-    /// Verifies the former synthetic v1 fixture cannot bypass the trusted live-handler dispatch table.
+    /// Verifies an otherwise well-formed packet with an unsupported codec version cannot select a
+    /// trusted live handler.
     /// </summary>
     [Fact]
-    public void UnsupportedSyntheticPacketCannotSelectTrustedLiveHandler()
+    public void UnsupportedPacketVersionCannotSelectTrustedLiveHandler()
     {
         string root = FindRepositoryRoot();
-        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-legacy-evidence-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(temporary);
+        string checkedInPacket = Path.Combine(
+            root, "_bmad-output", "implementation-artifacts", "evidence", "story-3-14",
+            "f343bb0153e9cdcb8b12ec10153813072f5ad38d");
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-unsupported-evidence-{Guid.NewGuid():N}");
         try
         {
-            EvidenceFixture fixture = BuildUnsupportedSyntheticEvidencePacket(root, temporary);
-            ProcessResult result = RunEvidenceValidator(root, fixture.IdentityPath, temporary);
+            string packetRoot = CopyPacket(checkedInPacket, temporary);
+            JsonObject identity = LoadIdentity(packetRoot);
+            identity["codec"]!["version"] = 4;
+            File.WriteAllBytes(
+                Path.Combine(packetRoot, "release-identity.json"),
+                CanonicalJsonBytes(identity));
+
+            ProcessResult result = RunEvidenceValidator(
+                root,
+                Path.Combine(packetRoot, "release-identity.json"),
+                packetRoot);
             result.ExitCode.ShouldNotBe(0);
-            result.Error.ShouldContain("dispatch metadata is invalid");
+            result.Error.ShouldContain("does not select a trusted live handler");
         }
         finally
         {
-            Directory.Delete(temporary, recursive: true);
+            if (Directory.Exists(temporary))
+            {
+                Directory.Delete(temporary, recursive: true);
+            }
         }
     }
 
@@ -704,19 +832,41 @@ public sealed class CorrectiveOciProvenanceReleaseTests
         string checkedInPacket = Path.Combine(
             root, "_bmad-output", "implementation-artifacts", "evidence", "story-3-14",
             "f343bb0153e9cdcb8b12ec10153813072f5ad38d");
-        string handlerPath = Path.Combine(root, "tools", "release_evidence_handlers", "v3.py");
-        byte[] original = File.ReadAllBytes(handlerPath);
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-handler-tamper-{Guid.NewGuid():N}");
         try
         {
-            File.AppendAllText(handlerPath, "\n# mutation-only marker, never committed\n");
-            ProcessResult tampered = RunEvidenceValidator(
-                root, Path.Combine(checkedInPacket, "release-identity.json"), checkedInPacket);
+            string tools = Path.Combine(temporary, "tools");
+            string handlers = Path.Combine(tools, "release_evidence_handlers");
+            Directory.CreateDirectory(handlers);
+            File.Copy(
+                Path.Combine(root, "tools", "validate-corrective-release-evidence.py"),
+                Path.Combine(tools, "validate-corrective-release-evidence.py"));
+            File.Copy(
+                Path.Combine(root, "tools", "release_evidence_handlers", "__init__.py"),
+                Path.Combine(handlers, "__init__.py"));
+            string handlerPath = Path.Combine(handlers, "v3.py");
+            File.Copy(Path.Combine(root, "tools", "release_evidence_handlers", "v3.py"), handlerPath);
+            File.AppendAllText(handlerPath, "\nprint('untrusted-handler-executed')\n");
+
+            ProcessResult tampered = RunProcess(
+                temporary,
+                "python3",
+                "tools/validate-corrective-release-evidence.py",
+                Path.Combine(checkedInPacket, "release-identity.json"),
+                "--manifest",
+                Path.Combine(root, "tools", "release-packages.json"),
+                "--packet-root",
+                checkedInPacket);
             tampered.ExitCode.ShouldNotBe(0);
-            tampered.Error.ShouldContain("does not select a trusted live handler");
+            tampered.Error.ShouldContain("trusted live handler source does not match its pinned SHA-256");
+            tampered.Output.ShouldNotContain("untrusted-handler-executed");
         }
         finally
         {
-            File.WriteAllBytes(handlerPath, original);
+            if (Directory.Exists(temporary))
+            {
+                Directory.Delete(temporary, recursive: true);
+            }
         }
 
         ProcessResult restored = RunEvidenceValidator(
@@ -737,6 +887,13 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             workflow,
             @"uses: Hexalith/Hexalith\.Builds/\.github/workflows/domain-release\.yml@(?<sha>[0-9a-f]{40})");
         releasePin.Success.ShouldBeTrue();
+        string releaseSha = releasePin.Groups["sha"].Value;
+
+        ProcessResult pinAvailability = RunProcess(builds, "git", "cat-file", "-e", $"{releaseSha}^{{commit}}");
+        pinAvailability.ExitCode.ShouldBe(
+            0,
+            $"Pinned Builds release SHA {releaseSha} is unavailable in references/Hexalith.Builds. " +
+            "Fetch that exact pin before running the immutable fixture. " + pinAvailability.Error);
 
         string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-builds-fixtures-{Guid.NewGuid():N}");
         Directory.CreateDirectory(temporary);
@@ -748,7 +905,7 @@ public sealed class CorrectiveOciProvenanceReleaseTests
                 "git",
                 "archive",
                 $"--output={archive}",
-                releasePin.Groups["sha"].Value,
+                releaseSha,
                 "Github/publish-containers");
             snapshot.ExitCode.ShouldBe(0, snapshot.Error);
             TarFile.ExtractToDirectory(archive, temporary, overwriteFiles: true);
@@ -768,383 +925,6 @@ public sealed class CorrectiveOciProvenanceReleaseTests
         {
             Directory.Delete(temporary, recursive: true);
         }
-    }
-
-    private static EvidenceFixture BuildUnsupportedSyntheticEvidencePacket(string root, string packetRoot)
-    {
-        string manifestPath = Path.Combine(root, "tools", "release-packages.json");
-        byte[] manifestBytes = File.ReadAllBytes(manifestPath);
-        using JsonDocument manifest = JsonDocument.Parse(manifestBytes);
-        string[] packageIds = manifest.RootElement.GetProperty("packages")
-            .EnumerateArray()
-            .Select(item => item.GetProperty("id").GetString().ShouldNotBeNull())
-            .ToArray();
-
-        JsonArray packages = [];
-        string packagesDirectory = Path.Combine(packetRoot, "packages");
-        Directory.CreateDirectory(packagesDirectory);
-        foreach (string packageId in packageIds)
-        {
-            string relative = $"packages/{packageId}.{EvidenceVersion}.nupkg";
-            string path = Path.Combine(packetRoot, relative);
-            using (FileStream stream = File.Create(path))
-            using (ZipArchive archive = new(stream, ZipArchiveMode.Create))
-            {
-                ZipArchiveEntry nuspec = archive.CreateEntry($"{packageId}.nuspec");
-                using StreamWriter writer = new(nuspec.Open(), new UTF8Encoding(false));
-                writer.Write(
-                    $"<package xmlns=\"http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd\">" +
-                    $"<metadata><id>{packageId}</id><version>{EvidenceVersion}</version>" +
-                    $"<repository type=\"git\" commit=\"{SourceSha}\" /></metadata></package>");
-            }
-
-            byte[] bytes = File.ReadAllBytes(path);
-            packages.Add(new JsonObject
-            {
-                ["id"] = packageId,
-                ["version"] = EvidenceVersion,
-                ["file"] = relative,
-                ["size"] = bytes.Length,
-                ["sha256"] = Sha256(bytes),
-                ["repository_commit"] = SourceSha,
-            });
-        }
-
-        JsonArray children = [];
-        JsonArray descriptors = [];
-        string? firstConfigPath = null;
-        byte[]? firstConfigBytes = null;
-        foreach (string platform in new[] { "linux/amd64", "linux/arm64" })
-        {
-            string architecture = platform.Split('/')[1];
-            JsonObject labels = ExpectedEvidenceLabels();
-            labels["org.opencontainers.image.vendor"] = "Hexalith";
-            labels["org.opencontainers.image.base.digest"] = $"sha256:{new string(architecture[0], 64)}";
-            JsonObject config = new()
-            {
-                ["architecture"] = architecture,
-                ["os"] = "linux",
-                ["config"] = new JsonObject { ["Labels"] = labels.DeepClone() },
-            };
-            byte[] configBytes = CanonicalJsonBytes(config);
-            string configRelative = $"oci/child-linux-{architecture}.config.raw";
-            string configPath = Path.Combine(packetRoot, configRelative);
-            Directory.CreateDirectory(Path.GetDirectoryName(configPath).ShouldNotBeNull());
-            File.WriteAllBytes(configPath, configBytes);
-            JsonObject configBinding = OciBinding(
-                configRelative,
-                configBytes,
-                "application/vnd.oci.image.config.v1+json");
-
-            JsonObject childManifest = new()
-            {
-                ["schemaVersion"] = 2,
-                ["mediaType"] = "application/vnd.oci.image.manifest.v1+json",
-                ["config"] = new JsonObject
-                {
-                    ["mediaType"] = configBinding["media_type"]!.GetValue<string>(),
-                    ["digest"] = configBinding["digest"]!.GetValue<string>(),
-                    ["size"] = configBinding["size"]!.GetValue<int>(),
-                },
-                ["layers"] = new JsonArray(),
-            };
-            byte[] childManifestBytes = CanonicalJsonBytes(childManifest);
-            string manifestRelative = $"oci/child-linux-{architecture}.manifest.raw";
-            File.WriteAllBytes(Path.Combine(packetRoot, manifestRelative), childManifestBytes);
-            JsonObject manifestBinding = OciBinding(
-                manifestRelative,
-                childManifestBytes,
-                "application/vnd.oci.image.manifest.v1+json");
-            descriptors.Add(new JsonObject
-            {
-                ["mediaType"] = manifestBinding["media_type"]!.GetValue<string>(),
-                ["digest"] = manifestBinding["digest"]!.GetValue<string>(),
-                ["size"] = manifestBinding["size"]!.GetValue<int>(),
-                ["platform"] = new JsonObject { ["os"] = "linux", ["architecture"] = architecture },
-            });
-            children.Add(new JsonObject
-            {
-                ["platform"] = platform,
-                ["manifest"] = manifestBinding,
-                ["config"] = configBinding,
-                ["labels"] = labels,
-            });
-            firstConfigPath ??= configPath;
-            firstConfigBytes ??= configBytes;
-        }
-
-        JsonObject index = new()
-        {
-            ["schemaVersion"] = 2,
-            ["mediaType"] = "application/vnd.oci.image.index.v1+json",
-            ["manifests"] = descriptors,
-        };
-        byte[] indexBytes = CanonicalJsonBytes(index);
-        string indexRelative = "oci/index.raw";
-        string indexPath = Path.Combine(packetRoot, indexRelative);
-        File.WriteAllBytes(indexPath, indexBytes);
-        JsonObject indexBinding = OciBinding(
-            indexRelative,
-            indexBytes,
-            "application/vnd.oci.image.index.v1+json");
-
-        JsonArray smokePlatforms = [];
-        foreach (JsonNode? childNode in children)
-        {
-            JsonObject child = childNode!.AsObject();
-            smokePlatforms.Add(new JsonObject
-            {
-                ["platform"] = child["platform"]!.GetValue<string>(),
-                ["digest"] = child["manifest"]!["digest"]!.GetValue<string>(),
-                ["outcome"] = "pass",
-                ["cleanup"] = "pass",
-            });
-        }
-
-        JsonObject smokeSummary = new()
-        {
-            ["result"] = "pass",
-            ["image_repository"] = "registry.hexalith.com/eventstore",
-            ["environment"] = "Development",
-            ["endpoint"] = "/alive",
-            ["timeout_seconds"] = 180,
-            ["platforms"] = smokePlatforms,
-        };
-        byte[] smokeBytes = CanonicalJsonBytes(smokeSummary);
-        string smokeRelative = "oci/smoke-results.json";
-        string smokePath = Path.Combine(packetRoot, smokeRelative);
-        File.WriteAllBytes(smokePath, smokeBytes);
-
-        const long runId = 123456789;
-        const int runAttempt = 1;
-        string buildsSha = new('b', 40);
-        JsonObject publicationIdentity = new()
-        {
-            ["schema"] = "hexalith.release-publication-preflight.v4",
-            ["repository"] = "Hexalith/Hexalith.EventStore",
-            ["version"] = EvidenceVersion,
-            ["source_sha"] = SourceSha,
-            ["source"] = new JsonObject
-            {
-                ["branch"] = "main",
-                ["ref"] = "refs/heads/main",
-                ["live_sha"] = SourceSha,
-                ["ci_workflow"] = "ci.yml",
-                ["ci_run"] = new JsonObject
-                {
-                    ["id"] = 987654321,
-                    ["head_sha"] = SourceSha,
-                    ["head_branch"] = "main",
-                    ["event"] = "push",
-                    ["status"] = "completed",
-                    ["conclusion"] = "success",
-                },
-            },
-            ["container_repository"] = "registry.hexalith.com/eventstore",
-            ["container_repositories"] = new JsonArray("registry.hexalith.com/eventstore"),
-            ["platforms"] = new JsonArray("linux/amd64", "linux/arm64"),
-            ["environment"] = "production",
-            ["run"] = new JsonObject
-            {
-                ["id"] = runId.ToString(),
-                ["attempt"] = runAttempt.ToString(),
-                ["workflow_sha"] = SourceSha,
-                ["ref"] = "refs/heads/main",
-            },
-            ["builds"] = new JsonObject
-            {
-                ["workflow_sha"] = buildsSha,
-                ["action_sha"] = buildsSha,
-                ["files"] = BuildHelperHashes(),
-            },
-            ["packages"] = new JsonObject
-            {
-                ["ids"] = new JsonArray(packageIds.Select(id => JsonValue.Create(id)).ToArray()),
-                ["manifest_sha256"] = Sha256(manifestBytes),
-            },
-        };
-        byte[] publicationIdentityBytes = CanonicalJsonBytes(publicationIdentity);
-        string publicationIdentityRelative = "preflight/publication-identity.json";
-        Directory.CreateDirectory(Path.Combine(packetRoot, "preflight"));
-        File.WriteAllBytes(Path.Combine(packetRoot, publicationIdentityRelative), publicationIdentityBytes);
-        string publicationIdentityHash = Sha256(publicationIdentityBytes);
-
-        string authorityUrl =
-            "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/comments/123456";
-        string issueUrl = "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/42";
-        string authorityRecordHash = new('e', 64);
-        string nonce = "story-3-14-authority-0001";
-        JsonObject authorityEvidence = new()
-        {
-            ["url"] = authorityUrl,
-            ["comment_id"] = 123456,
-            ["issue_url"] = issueUrl,
-            ["owner"] = "github:jpiquot",
-            ["created_at"] = "2026-08-20T10:00:00Z",
-            ["authorized_at"] = "2026-08-20T10:00:00Z",
-            ["expires_at"] = "2026-08-20T18:00:00Z",
-            ["rationale"] = "Publish the separately authorized Story 3.14 corrective release.",
-            ["identity_sha256"] = publicationIdentityHash,
-            ["record_sha256"] = authorityRecordHash,
-            ["nonce"] = nonce,
-        };
-        byte[] authorityBytes = CanonicalJsonBytes(authorityEvidence);
-        string authorityRelative = "preflight/publication-authority.json";
-        File.WriteAllBytes(Path.Combine(packetRoot, authorityRelative), authorityBytes);
-
-        JsonObject consumptionBody = new()
-        {
-            ["schema"] = "hexalith.release-publication-authority-consumption.v1",
-            ["authority_comment_id"] = 123456,
-            ["authority_record_sha256"] = authorityRecordHash,
-            ["identity_sha256"] = publicationIdentityHash,
-            ["run_id"] = runId.ToString(),
-            ["run_attempt"] = runAttempt.ToString(),
-            ["nonce"] = nonce,
-        };
-        JsonObject consumptionEvidence = new()
-        {
-            ["id"] = 654321,
-            ["url"] = "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/comments/654321",
-            ["issue_url"] = issueUrl,
-            ["user"] = new JsonObject { ["login"] = "github-actions[bot]" },
-            ["body"] = Encoding.UTF8.GetString(CanonicalJsonBytes(consumptionBody)).TrimEnd('\n'),
-        };
-        byte[] consumptionBytes = CanonicalJsonBytes(consumptionEvidence);
-        string consumptionRelative = "preflight/publication-authority-consumption.json";
-        File.WriteAllBytes(Path.Combine(packetRoot, consumptionRelative), consumptionBytes);
-
-        JsonArray smokes = [];
-        foreach (JsonNode? childNode in children)
-        {
-            JsonObject child = childNode!.AsObject();
-            string platform = child["platform"]!.GetValue<string>();
-            string childDigest = child["manifest"]!["digest"]!.GetValue<string>();
-            smokes.Add(new JsonObject
-            {
-                ["platform"] = platform,
-                ["child_digest"] = childDigest,
-                ["immutable_image"] = $"registry.hexalith.com/eventstore@{childDigest}",
-                ["environment"] = "Development",
-                ["endpoint"] = "/alive",
-                ["timeout_seconds"] = 180,
-                ["result"] = "pass",
-                ["evidence_file"] = smokeRelative,
-                ["evidence_sha256"] = Sha256(smokeBytes),
-            });
-        }
-
-        JsonObject helpers = BuildHelperHashes();
-
-        JsonObject identity = new()
-        {
-            ["schema"] = "hexalith.eventstore.corrective-release-identity.v1",
-            ["codec"] = new JsonObject
-            {
-                ["schema"] = "hexalith.eventstore.corrective-release-identity.v1",
-                ["version"] = 1,
-                ["codec_file"] = "tools/release_evidence_codec.py",
-                ["codec_sha256"] = Sha256(File.ReadAllBytes(Path.Combine(root, "tools", "release_evidence_codec.py"))),
-                ["verifier_file"] = "tools/validate-corrective-release-evidence.py",
-                ["verifier_sha256"] = Sha256(
-                    File.ReadAllBytes(Path.Combine(root, "tools", "validate-corrective-release-evidence.py"))),
-            },
-            ["repository"] = "Hexalith/Hexalith.EventStore",
-            ["version"] = EvidenceVersion,
-            ["tag"] = $"v{EvidenceVersion}",
-            ["source_sha"] = SourceSha,
-            ["manifest"] = new JsonObject
-            {
-                ["file"] = "tools/release-packages.json",
-                ["sha256"] = Sha256(manifestBytes),
-                ["package_count"] = packageIds.Length,
-            },
-            ["workflow"] = new JsonObject
-            {
-                ["repository"] = "Hexalith/Hexalith.EventStore",
-                ["workflow_file"] = ".github/workflows/release.yml",
-                ["workflow_sha"] = SourceSha,
-                ["run_id"] = runId,
-                ["run_attempt"] = runAttempt,
-                ["source_sha"] = SourceSha,
-            },
-            ["builds"] = new JsonObject { ["execution_sha"] = buildsSha, ["helpers"] = helpers },
-            ["authority"] = new JsonObject
-            {
-                ["owner"] = "github:jpiquot",
-                ["authority_url"] = authorityUrl,
-                ["issue_url"] = issueUrl,
-                ["publication_identity_file"] = publicationIdentityRelative,
-                ["publication_identity_sha256"] = publicationIdentityHash,
-                ["authority_evidence_file"] = authorityRelative,
-                ["authority_evidence_sha256"] = Sha256(authorityBytes),
-                ["consumption_evidence_file"] = consumptionRelative,
-                ["consumption_evidence_sha256"] = Sha256(consumptionBytes),
-                ["consumed_once"] = true,
-            },
-            ["packages"] = packages,
-            ["oci"] = new JsonObject
-            {
-                ["image"] = $"registry.hexalith.com/eventstore:{EvidenceVersion}",
-                ["index"] = indexBinding,
-                ["children"] = children,
-            },
-            ["smokes"] = smokes,
-            ["selects_deployed_identity"] = false,
-            ["grants_mutation_authority"] = false,
-        };
-        string identityPath = Path.Combine(packetRoot, "release-identity.json");
-        WriteSelectedCanonicalJson(root, identityPath, identity);
-        return new(
-            identityPath,
-            identity,
-            firstConfigPath.ShouldNotBeNull(),
-            firstConfigBytes.ShouldNotBeNull(),
-            indexPath,
-            indexBytes,
-            smokePath);
-    }
-
-    private static JsonObject ExpectedEvidenceLabels() => new()
-    {
-        ["org.opencontainers.image.source"] = "https://github.com/Hexalith/Hexalith.EventStore",
-        ["org.opencontainers.image.url"] =
-            $"https://github.com/Hexalith/Hexalith.EventStore/releases/tag/v{EvidenceVersion}",
-        ["org.opencontainers.image.documentation"] =
-            $"https://github.com/Hexalith/Hexalith.EventStore/blob/{SourceSha}/README.md",
-        ["org.opencontainers.image.revision"] = SourceSha,
-        ["org.opencontainers.image.version"] = EvidenceVersion,
-    };
-
-    private static JsonObject BuildHelperHashes()
-    {
-        JsonObject helpers = new();
-        foreach (string helper in new[]
-        {
-            "publish-containers.sh",
-            "oci_registry_validator.py",
-            "publication_preflight.py",
-            "smoke-container-platforms.sh",
-            "smoke_container_platforms.py",
-        })
-        {
-            helpers[helper] = new string('f', 64);
-        }
-
-        return helpers;
-    }
-
-    private static JsonObject OciBinding(string relative, byte[] bytes, string mediaType)
-    {
-        string hash = Sha256(bytes);
-        return new()
-        {
-            ["file"] = relative,
-            ["size"] = bytes.Length,
-            ["sha256"] = hash,
-            ["digest"] = $"sha256:{hash}",
-            ["media_type"] = mediaType,
-        };
     }
 
     private static void UpdateBinding(JsonNode binding, byte[] bytes)
@@ -1294,7 +1074,7 @@ public sealed class CorrectiveOciProvenanceReleaseTests
         }
     }
 
-    private static Dictionary<string, string> ExpectedLabels() => new(StringComparer.Ordinal)
+    private static Dictionary<string, string> ExpectedLabels(string created = Created) => new(StringComparer.Ordinal)
     {
         ["org.opencontainers.image.source"] = "https://github.com/Hexalith/Hexalith.EventStore",
         ["org.opencontainers.image.url"] =
@@ -1303,8 +1083,8 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             $"https://github.com/Hexalith/Hexalith.EventStore/blob/{SourceSha}/README.md",
         ["org.opencontainers.image.revision"] = SourceSha,
         ["org.opencontainers.image.version"] = Version,
-        ["org.opencontainers.image.created"] = Created,
-        ["org.opencontainers.artifact.created"] = Created,
+        ["org.opencontainers.image.created"] = created,
+        ["org.opencontainers.artifact.created"] = created,
     };
 
     /// <summary>
@@ -1387,8 +1167,23 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     private static string BlobPath(string digest) => "blobs/sha256/" + digest["sha256:".Length..];
 
     private static ProcessResult RunProcess(string workingDirectory, string fileName, params string[] arguments)
+        => RunProcess(workingDirectory, fileName, null, arguments);
+
+    private static ProcessResult RunProcess(
+        string workingDirectory,
+        string fileName,
+        IReadOnlyDictionary<string, string>? environment,
+        params string[] arguments)
     {
         ProcessStartInfo start = CreateProcessStartInfo(workingDirectory, fileName, arguments);
+        if (environment is not null)
+        {
+            foreach ((string name, string value) in environment)
+            {
+                start.Environment[name] = value;
+            }
+        }
+
         using Process process = Process.Start(start).ShouldNotBeNull();
         Task<string> output = process.StandardOutput.ReadToEndAsync();
         Task<string> error = process.StandardError.ReadToEndAsync();
@@ -1396,8 +1191,11 @@ public sealed class CorrectiveOciProvenanceReleaseTests
         {
             process.Kill(entireProcessTree: true);
             process.WaitForExit();
+            string capturedOutput = output.GetAwaiter().GetResult();
+            string capturedError = error.GetAwaiter().GetResult();
             throw new TimeoutException(
-                $"Process '{fileName}' exceeded the {HelperTimeout.TotalSeconds}-second test timeout.");
+                $"Process '{fileName}' exceeded the {HelperTimeout.TotalSeconds}-second test timeout. " +
+                $"Output: {capturedOutput} Error: {capturedError}");
         }
 
         return new(process.ExitCode, output.GetAwaiter().GetResult(), error.GetAwaiter().GetResult());
@@ -1416,17 +1214,19 @@ public sealed class CorrectiveOciProvenanceReleaseTests
         using CancellationTokenSource timeoutSource = new(timeout);
         try
         {
-            await process.WaitForExitAsync(timeoutSource.Token);
+            await process.WaitForExitAsync(timeoutSource.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (timeoutSource.IsCancellationRequested)
         {
             process.Kill(entireProcessTree: true);
-            await process.WaitForExitAsync();
+            await process.WaitForExitAsync().ConfigureAwait(false);
+            string[] timeoutDiagnostics = await Task.WhenAll(output, error).ConfigureAwait(false);
             throw new TimeoutException(
-                $"Process '{fileName}' exceeded the {timeout.TotalSeconds}-second test timeout.");
+                $"Process '{fileName}' exceeded the {timeout.TotalSeconds}-second test timeout. " +
+                $"Output: {timeoutDiagnostics[0]} Error: {timeoutDiagnostics[1]}");
         }
 
-        string[] diagnostics = await Task.WhenAll(output, error);
+        string[] diagnostics = await Task.WhenAll(output, error).ConfigureAwait(false);
         return new(process.ExitCode, diagnostics[0], diagnostics[1]);
     }
 
@@ -1465,15 +1265,6 @@ public sealed class CorrectiveOciProvenanceReleaseTests
 
         throw new DirectoryNotFoundException("Could not locate the EventStore repository root.");
     }
-
-    private sealed record EvidenceFixture(
-        string IdentityPath,
-        JsonObject Identity,
-        string ConfigPath,
-        byte[] ConfigBytes,
-        string IndexPath,
-        byte[] IndexBytes,
-        string SmokePath);
 
     private sealed record ProcessResult(int ExitCode, string Output, string Error);
 }

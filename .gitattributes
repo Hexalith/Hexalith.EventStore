@@ -16,7 +16,9 @@ _bmad-output/implementation-artifacts/evidence/story-1-21/*.txt text eol=lf
 # A core.autocrlf checkout would rewrite these and break every binding at once.
 _bmad-output/implementation-artifacts/evidence/story-3-14/** text eol=lf
 _bmad-output/implementation-artifacts/evidence/story-3-14/**/*.nupkg binary
+_bmad-output/implementation-artifacts/evidence/story-3-14/**/*.raw binary
 # Story 3.15 independently hashes public packages, raw OCI objects, Production smokes,
 # the owner registry, canonical subject, receipts, and the closed technical inventory.
 _bmad-output/implementation-artifacts/evidence/story-3-15/** text eol=lf
 _bmad-output/implementation-artifacts/evidence/story-3-15/**/*.nupkg binary
+_bmad-output/implementation-artifacts/evidence/story-3-15/**/*.raw binary

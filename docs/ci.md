@@ -186,8 +186,8 @@ Existing versions are collisions: the release path does not use
 registry object.
 
 Semantic Release creates its Git tag before invoking the publish hook. The
-verify preflight therefore requires the reserved tag to be absent, while the
-publish preflight permits exactly one `v<reserved-version>` self-tag only when
+verify preflight therefore requires the candidate tag to be absent, while the
+publish preflight permits exactly one `v<candidate-version>` self-tag only when
 it targets the approved source SHA. The proof is retained in version-floor
 evidence; a missing, duplicate, unprefixed, or wrong-source tag fails closed.
 
@@ -223,20 +223,24 @@ declares `require-publication-authority: false` to say so.
 
 Story 3.14 built a second, stronger gate for a corrective release that has to be
 individually authorized rather than merely approved: a dispatch-reserved stable
-version plus an unexpired, one-use GitHub issue-comment authority from the
-`github:jpiquot` release-owner identity. That gate remains implemented and tested
+version plus an unexpired, one-use GitHub issue-comment authority. When enabled for
+EventStore, the caller pins that authority to the `github:jpiquot` release-owner identity.
+That gate remains implemented and tested
 in `Hexalith.Builds`, and is off by default here, because it costs the operator a
 hand-computed version and an out-of-band authority comment per run. Re-enabling it
-means setting `require-publication-authority: true` and supplying `reserved-version`,
-`release-authority-issue-url` and `release-authority-owner`. The live preflight only
+means restoring the two operator-supplied `workflow_dispatch` inputs (`release-version` and
+`release-authority-issue-url`), setting `require-publication-authority: true`, mapping those values
+to `reserved-version` and `release-authority-issue-url`, supplying the caller-pinned
+`release-authority-owner`, and updating the governance
+assertions that deliberately require those inputs to be absent while the gate is off. The live preflight only
 shape-checks whatever owner value it is given; the caller is what pins the identity.
 Two separate governance tests hold that line, and it is worth knowing which does what:
 `ReleaseAuthorityOwnerIsPinnedWheneverTheAuthorityGateIsEnabled` checks the owner value
 alone -- if the gate is ever turned on, the owner must be `github:jpiquot` -- while
-`ReleaseCallerPinsSharedExecutionAndOneMappingWithGitHubAuthority` asserts the caller
+`ReleaseCallerPinsSharedExecutionAndOneMappingWithoutPublicationAuthorityInputs` asserts the caller
 currently carries none of the three reservation inputs. So while the gate stays off, any
 attempt to re-enable it fails the suite until both tests are updated together; neither
-test validates `reserved-version` or `release-authority-issue-url` themselves.
+test validates the values of `reserved-version` or `release-authority-issue-url`.
 The posture is declared, never inferred: with the gate off any supplied
 reservation value fails closed rather than being silently ignored, a half-declared
 authority is rejected instead of read as absence, and a declaration that is
@@ -265,7 +269,7 @@ source proof, frozen identity, and version-floor checks run either way. No
 projected version such as `3.96.0` is ever embedded as release policy.
 
 The `publishCmd` calls the helper installed by the shared `publish-containers`
-action only after the authority gate and NuGet publication:
+action only after the applicable preflight gates and NuGet publication:
 
 GitHub validates reusable-workflow permissions against every nested job before
 it starts the caller, including skipped jobs. The EventStore caller therefore
@@ -300,10 +304,11 @@ all descriptor byte sizes and raw hashes, config descriptor media types, and
 config `os`/`architecture` must all agree. Exact raw child-manifest and config
 bytes are retained beside the raw parent index with independent hashes.
 Both configs must also contain identical exact
-`org.opencontainers.image.source`, `.url`, `.documentation`, `.revision`, and
-`.version` labels. EventStore rebinds those five labels after the .NET SDK
+`org.opencontainers.image.source`, `.url`, `.documentation`, `.revision`, `.version`,
+`.created`, and `org.opencontainers.artifact.created` labels. EventStore rebinds those labels after the .NET SDK
 multi-RID inner-build parser so URL colons cannot be truncated to `https` and
-passes source revision and release version as explicit publisher inputs.
+passes source revision, release version, and one publisher-owned RFC 3339 creation instant as
+explicit publisher inputs.
 
 Both immutable child references (`repository@sha256:...`) are explicitly pulled
 with bounded timeouts and run the same bounded
@@ -404,12 +409,15 @@ hosting environment for `linux/amd64` and `linux/arm64`.
 
 `tools/validate-corrected-deployed-runtime-parity.py` dispatches only to the exact allowlisted v1
 handler. The handler never executes packet-supplied code: it parses and rehashes retained bytes,
-revalidates the frozen predecessor with its trusted live handler, checks the closed technical
-inventory, recomputes the canonical subject, and validates exactly three subject-addressed
-receipts. The accepted subject is
+checks the closed technical inventory, recomputes the canonical subject, and validates exactly three
+subject-addressed receipts. The Story 3.14 CLI independently pins the live v3 predecessor handler;
+the Story 3.15 path currently imports that predecessor handler transitively and must bind those bytes
+when its in-review packet is re-frozen. The packet's current subject is
 `bb58d691ee404cc958433e996204e3382721de3931ac64cf8f7a61de97c30709`. The rostered
-EventStore owner, Release owner, and Test Architect have provided real authenticated receipts for
-those exact bytes, and the checked-in validation now passes.
+EventStore owner, Release owner, and Test Architect receipts currently validate for those exact
+bytes, subject to Story 3.15 completion review. Because the roster maps both owner roles to
+`github:jpiquot`, those two acceptances are a self-attestation rather than independent three-party
+review.
 
 The only selected identity is
 `registry.hexalith.com/eventstore@sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`.

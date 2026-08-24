@@ -4,6 +4,7 @@
 import argparse
 import hashlib
 import importlib
+import importlib.util
 import json
 import sys
 from pathlib import Path
@@ -14,12 +15,12 @@ V3_PACKET_CODEC_SHA256 = "814502bd962e00dfbac243e2443c3709b46bdbb69e197691443a08
 HANDLERS = {
     (SCHEMA, 3, V3_PACKET_CODEC_SHA256): "release_evidence_handlers.v3",
 }
-# EXPECTED_PACKET_CODEC_SHA256 (above, keyed into HANDLERS) pins the codec/verifier bytes the
-# packet retains as evidence -- it says nothing about the executing module. This pins the actual
-# on-disk bytes of the imported handler file itself, so an edit to release_evidence_handlers/v3.py
-# that is not accompanied by updating this constant fails closed instead of executing unreviewed.
+# V3_PACKET_CODEC_SHA256 (above, keyed into HANDLERS) pins the codec/verifier bytes the packet
+# retains as evidence -- it says nothing about the executing module. This table pins the actual
+# on-disk handler source before import, so an unreviewed edit never executes. Recompute with:
+# sha256sum tools/release_evidence_handlers/v3.py
 HANDLER_FILE_SHA256 = {
-    "release_evidence_handlers.v3": "c768b1efbe1314b2c8d90e523536648b5fd912208ff6d65a81838b3c61857ff0",
+    "release_evidence_handlers.v3": "3f366eee1509f5350806b9277eb514d20987790fff5b248f81155dbb5857d490",
 }
 
 
@@ -42,18 +43,32 @@ def _load_dispatch_metadata(evidence_bytes):
         codec = document["codec"]
         binding = codec["codec"]
         key = (document["schema"], codec["version"], binding["sha256"])
+        if key not in HANDLERS:
+            raise DispatchError("release identity does not select a trusted live handler")
     except (KeyError, TypeError, json.JSONDecodeError) as error:
         raise DispatchError("release identity dispatch metadata is invalid") from error
-    if key not in HANDLERS:
-        raise DispatchError("release identity does not select a trusted live handler")
     return document, HANDLERS[key]
 
 
 def _load_handler(module_name):
-    module = importlib.import_module(module_name)
+    if set(HANDLERS.values()) != set(HANDLER_FILE_SHA256):
+        raise DispatchError("trusted live handler configuration is inconsistent")
     expected = HANDLER_FILE_SHA256.get(module_name)
-    if expected is None or hashlib.sha256(Path(module.__file__).read_bytes()).hexdigest() != expected:
-        raise DispatchError("release identity does not select a trusted live handler")
+    try:
+        spec = importlib.util.find_spec(module_name)
+    except (ImportError, ModuleNotFoundError, AttributeError) as error:
+        raise DispatchError("trusted live handler source is unavailable") from error
+    if spec is None or spec.origin is None or expected is None:
+        raise DispatchError("trusted live handler source is unavailable")
+    try:
+        source = Path(spec.origin).read_bytes()
+    except OSError as error:
+        raise DispatchError("trusted live handler source is unavailable") from error
+    if hashlib.sha256(source).hexdigest() != expected:
+        raise DispatchError("trusted live handler source does not match its pinned SHA-256")
+    module = importlib.import_module(module_name)
+    if module.EXPECTED_PACKET_CODEC_SHA256 != V3_PACKET_CODEC_SHA256:
+        raise DispatchError("trusted live handler codec pin is inconsistent")
     return module
 
 

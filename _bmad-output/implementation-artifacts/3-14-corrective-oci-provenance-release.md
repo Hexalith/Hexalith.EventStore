@@ -34,9 +34,9 @@ This record and packet select no deployed identity and grant no mutation authori
 must independently decide whether this release can satisfy corrected deployed-runtime parity.
 
 Post-release review hardening initially rotated the EventStore release caller to Builds commit
-`63409393541f1437e23006b7a4e05174f8b50da7`, but that revision was never published to the
-Hexalith.Builds remote (it existed only on the local branch `fix/story-3-14-release-hardening`), so
-a Release dispatch could not have resolved the reusable workflow it pinned. The caller now pins
+`63409393541f1437e23006b7a4e05174f8b50da7`, but that revision was not yet published to the
+Hexalith.Builds remote when the pin was set, so a Release dispatch could not then have resolved the
+reusable workflow. The revision later reached remote `main`; the caller now pins
 `a07078ad74d3727bc5a6b6d85d47d56a6e5c9fec`, which superseded `63409393…`, is reachable on
 Hexalith.Builds `main`, and is asserted by `ApprovedBuildsReleaseSha` in
 `ContainerPublishingGovernanceTests.cs`. This does not rewrite the historical release execution:
@@ -107,9 +107,12 @@ provenance fields.
 among the five rebound by `Directory.Build.targets`, and neither the codec nor the archive test
 inspected any label outside the five. The published image is otherwise correct and its identity,
 source, revision and version labels are unaffected; the malformed values are timestamps only.
-The 2026-08-21 code review corrected the build so the publisher supplies one exact RFC 3339 instant
-for both labels in both child configs, and the archive test now asserts the complete label surface
-rather than a five-key allowlist. Reissuing v3.96.2 was deliberately not attempted: the labels are
+Post-release hardening now rebinds both created labels and makes a direct multi-RID archive test
+pass one explicit publisher-shaped instant while asserting the complete label surface rather than a
+five-key allowlist. The current Hexalith.Builds development source generates one publisher-owned RFC
+3339 instant and forwards it to every container publish. EventStore's immutable `a07078ad…` release
+pin predates that publisher change and must be rotated only after the Builds change receives its own
+reviewed commit. Reissuing v3.96.2 was deliberately not attempted: the labels are
 not contract-bound by the Story 3.14 matrix, and a re-release would consume a further version and a
 further one-use authority.
 
@@ -134,12 +137,14 @@ quarantined version nor any earlier authority record. The packet retains the exa
 - `python3 tools/validate-corrective-release-evidence.py <release-identity> --manifest tools/release-packages.json --packet-root <packet>` — pass; canonical SHA-256
   `4d1a0c336397e971bf10001095d5e427dd03c499ee428a3121a913926da8c4a9`.
 - Contracts Release/package-mode build — pass, zero warnings and zero errors.
-- Focused corrective-release and container-governance suite — 31 passed, zero failed, zero skipped;
+- Focused corrective-release and container-governance suite — 70 passed, zero failed, zero skipped
+  (30 corrective-release cases and 40 container-governance cases);
   includes the checked-in packet's exact final digest and manifest, package-origin, workflow,
   checksum, raw-smoke, authority-window/edit, receipt-schema, reservation, and provenance mutations.
-- Shared Builds publication preflight and publisher-contract suite — 54 passed, zero skipped,
-  including registry tag pagination and reservation mismatch before preflight/login/publication.
-- Full shared Builds publisher harness — 123 passed, zero failed, zero skipped.
+- Shared Builds publication preflight and publisher-contract counts recorded for the release execution
+  SHA `eadddc7b…` were 54 passed and 123 passed for the full harness, both with zero skipped. The
+  independently pinned `a07078ad…` fixture runs two named authority cases directly from that exact
+  archived commit and requires both to pass without skips.
 - Complete Contracts regression suite — 1439 passed, zero failed, zero skipped.
 - Manifest pack/validation — exactly 14 valid packages.
 - Shell syntax, action lint, and `git diff --check` — pass in both owning repositories.

@@ -14,7 +14,7 @@
     <ContainerBaseImage>mcr.microsoft.com/dotnet/aspnet:10.0-alpine</ContainerBaseImage>
     <ContainerFamily>alpine</ContainerFamily>
     <ContainerRegistry Condition="'$(ContainerRegistry)' == ''">registry.hexalith.com</ContainerRegistry>
-    <ContainerImageTag Condition="'$(ContainerImageTags)' == '' and '$(ContainerImageTag)' == ''">staging-latest</ContainerImageTag>
+    <ContainerImageTag Condition="'$(ContainerImageTags)' == '' and '$(ContainerImageTag)' == ''">$(ContainerProvenanceReleaseVersion)</ContainerImageTag>
     <ContainerUser>app</ContainerUser>
     <!--
       The .NET SDK 10.0.x multi-RID target serializes labels as key:value and
@@ -32,10 +32,9 @@
     <ContainerGenerateLabelsImageCreated>false</ContainerGenerateLabelsImageCreated>
     <!--
       The publisher supplies one exact RFC 3339 instant so both child configs
-      agree. Local publishes fall back to build time, which is still a valid
-      timestamp rather than the SDK's colon-truncated prefix.
+      agree. This must be an explicit global property: an MSBuild-local fallback
+      is re-evaluated independently by the SDK's inner RID builds.
     -->
-    <ContainerProvenanceCreated Condition="'$(ContainerProvenanceCreated)' == ''">$([System.DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ'))</ContainerProvenanceCreated>
     <ContainerProvenanceRepositoryUrl Condition="'$(ContainerProvenanceRepositoryUrl)' == ''">https://github.com/Hexalith/Hexalith.EventStore</ContainerProvenanceRepositoryUrl>
     <ContainerProvenanceReleaseUrl Condition="'$(ContainerProvenanceReleaseUrl)' == ''">$(ContainerProvenanceRepositoryUrl)/releases/tag/v$(ContainerProvenanceReleaseVersion)</ContainerProvenanceReleaseUrl>
     <ContainerProvenanceDocumentationUrl Condition="'$(ContainerProvenanceDocumentationUrl)' == ''">$(ContainerProvenanceRepositoryUrl)/blob/$(ContainerProvenanceSourceSha)/README.md</ContainerProvenanceDocumentationUrl>
@@ -63,6 +62,8 @@
            Text="ContainerProvenanceReleaseVersion must be SemVer without build metadata or leading-zero numeric identifiers." />
     <Error Condition="'$(ContainerImageTag)' != '' and '$(ContainerImageTag)' != '$(ContainerProvenanceReleaseVersion)'"
            Text="ContainerImageTag must equal ContainerProvenanceReleaseVersion." />
+    <Error Condition="'$(ContainerImageTags)' != '' and '$(ContainerImageTags)' != '$(ContainerProvenanceReleaseVersion)'"
+           Text="ContainerImageTags must contain only ContainerProvenanceReleaseVersion." />
     <Error Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(ContainerProvenanceCreated)', '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]Z$')) != 'true'"
            Text="ContainerProvenanceCreated must be an exact UTC RFC 3339 second." />
     <!--
@@ -72,11 +73,11 @@
       including a colon-truncated value like "https", the exact defect class this story exists
       to reject. Validate shape here regardless of which source supplied the value.
     -->
-    <Error Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(ContainerProvenanceRepositoryUrl)', '^https://\S+$')) != 'true'"
+    <Error Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(ContainerProvenanceRepositoryUrl)', '\Ahttps://[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?(?::[0-9]{1,5})?(?:/[^\s]*)?\z')) != 'true'"
            Text="ContainerProvenanceRepositoryUrl must be a well-formed https URL." />
-    <Error Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(ContainerProvenanceReleaseUrl)', '^https://\S+$')) != 'true'"
+    <Error Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(ContainerProvenanceReleaseUrl)', '\Ahttps://[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?(?::[0-9]{1,5})?(?:/[^\s]*)?\z')) != 'true'"
            Text="ContainerProvenanceReleaseUrl must be a well-formed https URL." />
-    <Error Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(ContainerProvenanceDocumentationUrl)', '^https://\S+$')) != 'true'"
+    <Error Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(ContainerProvenanceDocumentationUrl)', '\Ahttps://[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?(?::[0-9]{1,5})?(?:/[^\s]*)?\z')) != 'true'"
            Text="ContainerProvenanceDocumentationUrl must be a well-formed https URL." />
   </Target>
 

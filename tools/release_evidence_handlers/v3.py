@@ -18,9 +18,9 @@ V3_PUBLICATION_PREFLIGHT_SHA256 = "830af8afb3d2a611d5029133352ecf708511c4e2f4d74
 # executed Builds helpers. Validation binds those retained bytes rather than whatever happens to
 # sit in tools/ today, so a later fix to this file cannot invalidate an already-frozen packet.
 # That binding covers the packet's retained copies only -- it says nothing about the bytes of
-# this file itself. The dispatcher in validate-corrective-release-evidence.py is what pins this
-# module's own SHA-256 (EXPECTED_V3_HANDLER_SHA256) before importing it, so an edit here that is
-# not accompanied by updating that constant fails closed rather than silently executing.
+# this file itself. HANDLER_FILE_SHA256 in validate-corrective-release-evidence.py pins this
+# module's own SHA-256 before importing it, so an edit here that is not accompanied by updating
+# that dispatch-table pin fails closed rather than silently executing.
 RETAINED_CODEC_FILE = "successful/tools/release_evidence_codec.py"
 RETAINED_VERIFIER_FILE = "successful/tools/validate-corrective-release-evidence.py"
 SHA40 = re.compile(r"^[0-9a-f]{40}$", re.ASCII)
@@ -478,7 +478,7 @@ def repository_issue_html_url(issue_url):
     if not isinstance(issue_url, str) or not issue_url.startswith(prefix):
         raise EvidenceError("publication authority issue URL is invalid")
     issue_number = issue_url.removeprefix(prefix)
-    if not issue_number.isdigit() or int(issue_number) <= 0:
+    if re.fullmatch(r"[1-9][0-9]*", issue_number, re.ASCII) is None:
         raise EvidenceError("publication authority issue URL is invalid")
     return f"https://github.com/{REPOSITORY}/issues/{issue_number}"
 
@@ -944,12 +944,6 @@ def validate_packet_files(document, packet_root):
             raise EvidenceError("retained OCI config platform or labels mismatch")
 
     summaries = {}
-    summary_bindings = {
-        (smoke["evidence_file"], smoke["evidence_sha256"])
-        for smoke in document["smokes"]
-    }
-    if len(summary_bindings) != 1:
-        raise EvidenceError("retained smokes do not share one two-platform summary")
     for smoke in document["smokes"]:
         path = _safe_packet_file(packet_root, smoke["evidence_file"])
         content = path.read_bytes()

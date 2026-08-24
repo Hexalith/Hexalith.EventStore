@@ -487,7 +487,7 @@ public sealed class ContainerPublishingGovernanceTests
     /// Verifies that the caller uses one immutable release pin independently of the development gitlink.
     /// </summary>
     [Fact]
-    public void ReleaseCallerPinsSharedExecutionAndOneMappingWithGitHubAuthority()
+    public void ReleaseCallerPinsSharedExecutionAndOneMappingWithoutPublicationAuthorityInputs()
     {
         string root = FindRepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
@@ -511,17 +511,14 @@ public sealed class ContainerPublishingGovernanceTests
         // reservation inputs were a Story 3.14 corrective-release gate; the caller now
         // declares the opt-out explicitly so a dropped input can never be read as one.
         workflow.ShouldContain("require-publication-authority: false");
-        workflow.ShouldNotContain("release-version:");
-        workflow.ShouldNotContain("reserved-version:");
-        workflow.ShouldNotContain("release-authority-issue-url:");
-        workflow.ShouldNotContain("release-authority-owner:");
         workflow.ShouldNotContain("${{ inputs.");
+        workflow.ShouldNotContain("github.event.inputs.");
         // A bare `\s*$` assertion is vacuous here: in multiline mode `$` matches before the
         // immediately following newline regardless of what an indented `inputs:` child below it
         // contains, so it accepts the old input-carrying form too. Extract the block instead.
         workflow.ShouldContain("  workflow_dispatch:");
         string dispatchBlock = ExtractYamlBlock(workflow, "  workflow_dispatch:");
-        dispatchBlock.ShouldNotContain("inputs:");
+        Regex.IsMatch(dispatchBlock, "(?m)^\\s*(?:inputs|[\"']inputs[\"']):").ShouldBeFalse();
         workflow.ShouldNotContain("release-owner-allowlist:");
         workflow.ShouldNotContain("references/Hexalith.Builds");
         workflow.ShouldNotContain("secrets: inherit");
@@ -538,7 +535,15 @@ public sealed class ContainerPublishingGovernanceTests
         gitlinkEntry.Success.ShouldBeTrue();
         gitlinkEntry.Groups["sha"].Value.ShouldNotBe(ApprovedBuildsReleaseSha);
 
+        workflow.Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Split('\n')
+            .Count(line => line.Equals("    with:", StringComparison.Ordinal))
+            .ShouldBe(1);
         string inputsBlock = ExtractYamlBlock(workflow, "    with:");
+        inputsBlock.ShouldNotContain("release-version:");
+        inputsBlock.ShouldNotContain("reserved-version:");
+        inputsBlock.ShouldNotContain("release-authority-issue-url:");
+        inputsBlock.ShouldNotContain("release-authority-owner:");
         MatchCollection timeoutInputs = Regex.Matches(
             inputsBlock,
             @"(?m)^\s{6}timeout-minutes:\s*(?<minutes>\d+)\s*$");
@@ -571,17 +576,27 @@ public sealed class ContainerPublishingGovernanceTests
     {
         string root = FindRepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
-        string withBlock = ExtractYamlBlock(workflow, "    with:");
+        AssertAuthorityOwnerPin(workflow);
+    }
 
-        if (Regex.IsMatch(withBlock, @"(?m)^\s*require-publication-authority:\s*true\s*$"))
-        {
-            withBlock.ShouldContain("release-authority-owner: github:jpiquot");
-        }
-        else
-        {
-            withBlock.ShouldContain("require-publication-authority: false");
-            withBlock.ShouldNotContain("release-authority-owner:");
-        }
+    /// <summary>
+    /// Verifies the enabled authority-posture branch requires every reservation input and an exact,
+    /// anchored owner identity.
+    /// </summary>
+    [Fact]
+    public void EnabledReleaseAuthorityFixturePinsAllReservationInputsAndExactOwner()
+    {
+        const string EnabledWorkflow = """
+            jobs:
+              release:
+                with:
+                  require-publication-authority: true
+                  reserved-version: ${{ inputs.release-version }}
+                  release-authority-issue-url: ${{ inputs.release-authority-issue-url }}
+                  release-authority-owner: github:jpiquot
+            """;
+
+        AssertAuthorityOwnerPin(EnabledWorkflow);
     }
 
     /// <summary>
@@ -747,10 +762,62 @@ public sealed class ContainerPublishingGovernanceTests
         // The checklist states the publication pin in prose, so nothing kept it honest
         // and it drifted two rotations behind. Bind it to the workflow it describes.
         secrets.ShouldContain(ApprovedBuildsReleaseSha);
+        ci.ShouldContain(ApprovedBuildsReleaseSha);
         targets.ShouldContain("mcr.microsoft.com/dotnet/aspnet:10.0-alpine");
         targets.ShouldContain("<ContainerUser>app</ContainerUser>");
         targets.ShouldContain("<ContainerPort Include=\"8080\"");
         project.ShouldContain("<ContainerRepository>eventstore</ContainerRepository>");
+    }
+
+    /// <summary>
+    /// Verifies digest-bearing raw OCI objects cannot be rewritten by text normalization.
+    /// </summary>
+    [Theory]
+    [InlineData("_bmad-output/implementation-artifacts/evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d/successful/run-artifact/3.96.2/eventstore/index.raw")]
+    [InlineData("_bmad-output/implementation-artifacts/evidence/story-3-15/oci/index.raw")]
+    public void DigestBearingRawOciEvidenceIsBinary(string path)
+    {
+        string attributes = RunGit(FindRepositoryRoot(), "check-attr", "text", "--", path);
+        attributes.ShouldBe($"{path}: text: unset");
+    }
+
+    /// <summary>
+    /// Verifies YAML block extraction captures indented children and stops at the next peer key.
+    /// </summary>
+    [Fact]
+    public void ExtractYamlBlockCapturesIndentedChildrenFromLiteralFixture()
+    {
+        const string Fixture = """
+            on:
+              workflow_dispatch:
+                "inputs":
+                  release-version:
+                    required: true
+              push:
+            """;
+
+        string block = ExtractYamlBlock(Fixture, "  workflow_dispatch:");
+        block.ShouldContain("    \"inputs\":");
+        block.ShouldContain("      release-version:");
+        block.ShouldNotContain("  push:");
+    }
+
+    private static void AssertAuthorityOwnerPin(string workflow)
+    {
+        string withBlock = ExtractYamlBlock(workflow, "    with:");
+        if (Regex.IsMatch(withBlock, @"(?m)^\s*require-publication-authority:\s*true\s*$"))
+        {
+            Regex.IsMatch(withBlock, @"(?m)^\s*reserved-version:\s*\S[^\r\n]*$").ShouldBeTrue();
+            Regex.IsMatch(withBlock, @"(?m)^\s*release-authority-issue-url:\s*\S[^\r\n]*$").ShouldBeTrue();
+            Regex.IsMatch(
+                withBlock,
+                @"(?m)^\s*release-authority-owner:\s*github:jpiquot\s*$").ShouldBeTrue();
+        }
+        else
+        {
+            Regex.IsMatch(withBlock, @"(?m)^\s*require-publication-authority:\s*false\s*$").ShouldBeTrue();
+            Regex.IsMatch(withBlock, @"(?m)^\s*release-authority-owner:").ShouldBeFalse();
+        }
     }
 
     private static string ExtractYamlBlock(string source, string marker)
@@ -903,6 +970,19 @@ public sealed class ContainerPublishingGovernanceTests
             start.Environment["HEXALITH_ZOT_REGISTRY"] = "registry.hexalith.com";
             start.Environment["PREFLIGHT_INVOCATION_MARKER"] = invocationMarker;
             start.Environment["PREFLIGHT_ARGUMENTS"] = argumentsPath;
+
+            // Do not inherit a developer machine's corrective-release posture. Each fixture
+            // declares every authority input it intends to exercise below.
+            foreach (string name in new[]
+            {
+                "HEXALITH_RELEASE_REQUIRE_AUTHORITY",
+                "HEXALITH_RELEASE_RESERVED_VERSION",
+                "HEXALITH_RELEASE_AUTHORITY_ISSUE_URL",
+                "HEXALITH_RELEASE_AUTHORITY_OWNER",
+            })
+            {
+                start.Environment.Remove(name);
+            }
 
             // A null value removes the variable, so an unset posture is distinguishable
             // from a set-but-empty one instead of collapsing into the same case.

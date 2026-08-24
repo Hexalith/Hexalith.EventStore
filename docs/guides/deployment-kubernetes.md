@@ -262,19 +262,22 @@ Use the .NET SDK container publishing feature (no Dockerfile required):
 ```bash
 SOURCE_SHA="$(git rev-parse HEAD)"
 RELEASE_VERSION=0.0.0-local.1
+CREATED="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 SOURCE_URL="https://github.com/Hexalith/Hexalith.EventStore/commit/$SOURCE_SHA"
-dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalith-eventstore -p:ContainerImageTag="$RELEASE_VERSION" -p:ContainerProvenanceSourceSha="$SOURCE_SHA" -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION" -p:ContainerProvenanceReleaseUrl="$SOURCE_URL"
-dotnet publish samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalith-sample -p:ContainerImageTag="$RELEASE_VERSION" -p:ContainerProvenanceSourceSha="$SOURCE_SHA" -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION" -p:ContainerProvenanceReleaseUrl="$SOURCE_URL"
+dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRegistry= -p:ContainerRepository=hexalith-eventstore -p:ContainerImageTag="$RELEASE_VERSION" -p:ContainerProvenanceSourceSha="$SOURCE_SHA" -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION" -p:ContainerProvenanceCreated="$CREATED" -p:ContainerProvenanceReleaseUrl="$SOURCE_URL"
+dotnet publish samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRegistry= -p:ContainerRepository=hexalith-sample -p:ContainerImageTag="$RELEASE_VERSION" -p:ContainerProvenanceSourceSha="$SOURCE_SHA" -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION" -p:ContainerProvenanceCreated="$CREATED" -p:ContainerProvenanceReleaseUrl="$SOURCE_URL"
 ```
 
-`ContainerProvenanceSourceSha` and `ContainerProvenanceReleaseVersion` are
-mandatory; they bind the image labels to the exact source and published tag.
+`ContainerProvenanceSourceSha`, `ContainerProvenanceReleaseVersion`, and
+`ContainerProvenanceCreated` are mandatory; they bind the image labels to the exact source,
+published tag, and one shared creation instant.
 
 ### Push to a Container Registry
 
 Tag and push to your registry:
 
 ```bash
+RELEASE_VERSION=0.0.0-local.1
 docker tag "hexalith-eventstore:$RELEASE_VERSION" "myregistry.azurecr.io/hexalith-eventstore:$RELEASE_VERSION"
 docker push "myregistry.azurecr.io/hexalith-eventstore:$RELEASE_VERSION"
 
@@ -287,6 +290,7 @@ docker push "myregistry.azurecr.io/hexalith-sample:$RELEASE_VERSION"
 For local development clusters that don't pull from external registries:
 
 ```bash
+RELEASE_VERSION=0.0.0-local.1
 # minikube
 minikube image load "hexalith-eventstore:$RELEASE_VERSION"
 minikube image load "hexalith-sample:$RELEASE_VERSION"

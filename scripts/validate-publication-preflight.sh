@@ -25,14 +25,31 @@ require_authority="${HEXALITH_RELEASE_REQUIRE_AUTHORITY-true}"
 # here rather than counted from the manifest so that adding or dropping a package fails
 # closed until the change is reviewed alongside tools/release-packages.json.
 readonly expected_package_count=14
+semver_pattern='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-([0-9A-Za-z-]+)(\.[0-9A-Za-z-]+)*)?$'
 
 fail() {
   echo "[publication-preflight] $1" >&2
   exit 1
 }
 
-[[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] ||
-  fail "A plain semantic release version is required."
+is_semver_without_numeric_padding() {
+  local candidate="$1"
+  local prerelease=""
+  local identifier=""
+  local -a identifiers=()
+  [[ "$candidate" =~ $semver_pattern ]] || return 1
+  [[ "$candidate" == *-* ]] || return 0
+  prerelease="${candidate#*-}"
+  IFS='.' read -r -a identifiers <<< "$prerelease"
+  for identifier in "${identifiers[@]}"; do
+    if [[ "$identifier" =~ ^[0-9]+$ && "$identifier" != "0" && "$identifier" == 0* ]]; then
+      return 1
+    fi
+  done
+}
+
+is_semver_without_numeric_padding "$version" ||
+  fail "A semantic release version without build metadata or leading-zero numeric identifiers is required."
 [[ "$phase" =~ ^(verify|publish)$ ]] ||
   fail "Publication phase must be verify or publish."
 [[ "$builds_execution_sha" =~ ^[0-9a-f]{40}$ ]] ||

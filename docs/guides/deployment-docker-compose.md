@@ -332,14 +332,14 @@ AUTH_AUTHORITY=http://security:8080/realms/hexalith
 > **Tip:** Build the container images from source using the .NET SDK container publishing feature (no Dockerfile required):
 >
 > ```bash
-> $ SOURCE_SHA="$(git rev-parse HEAD)"; RELEASE_VERSION=0.0.0-local.1
+> $ SOURCE_SHA="$(git rev-parse HEAD)"; RELEASE_VERSION=0.0.0-local.1; CREATED="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 > $ SOURCE_URL="https://github.com/Hexalith/Hexalith.EventStore/commit/$SOURCE_SHA"
-> $ dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalith-eventstore -p:ContainerImageTag="$RELEASE_VERSION" -p:ContainerProvenanceSourceSha="$SOURCE_SHA" -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION" -p:ContainerProvenanceReleaseUrl="$SOURCE_URL"
-> $ dotnet publish samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRepository=hexalith-sample -p:ContainerImageTag="$RELEASE_VERSION" -p:ContainerProvenanceSourceSha="$SOURCE_SHA" -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION" -p:ContainerProvenanceReleaseUrl="$SOURCE_URL"
+> $ dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRegistry= -p:ContainerRepository=hexalith-eventstore -p:ContainerImageTag="$RELEASE_VERSION" -p:ContainerProvenanceSourceSha="$SOURCE_SHA" -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION" -p:ContainerProvenanceCreated="$CREATED" -p:ContainerProvenanceReleaseUrl="$SOURCE_URL"
+> $ dotnet publish samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj --os linux --arch x64 -t:PublishContainer -p:ContainerRegistry= -p:ContainerRepository=hexalith-sample -p:ContainerImageTag="$RELEASE_VERSION" -p:ContainerProvenanceSourceSha="$SOURCE_SHA" -p:ContainerProvenanceReleaseVersion="$RELEASE_VERSION" -p:ContainerProvenanceCreated="$CREATED" -p:ContainerProvenanceReleaseUrl="$SOURCE_URL"
 > ```
 >
-> Both provenance properties are mandatory and become the image's exact source,
-> revision, documentation, release URL, and version labels.
+> All three provenance properties are mandatory and become the image's exact source,
+> revision, documentation, release URL, version, and creation-time labels.
 
 ### Step 4: Start the Application
 
