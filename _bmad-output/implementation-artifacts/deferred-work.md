@@ -1473,5 +1473,49 @@ status: open
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
   summary: The "Suggested Review Order" section's absolute line-number anchors into four sibling files have no re-derivation task tied to them.
-  evidence: Anchors into `3-13-deployed-runtime-parity-closure.md:802`, `docs/ci.md:357`, `sprint-status.yaml:225`, and `deferred-work.md:1410` (this file) will rot on the next edit to any of those files, the same anchor-rot bug class this spec elsewhere treats as requiring an explicit "re-derive Code Map anchors" checklist item. `spec-3-13-deployed-runtime-parity-closure.md:331-354`.
+  evidence: Anchors into `3-13-deployed-runtime-parity-closure.md:802`, `docs/ci.md:357`, `sprint-status.yaml:225`, and `deferred-work.md:1410` (this file) will rot on the next edit to any of those files, the same anchor-rot bug class this spec elsewhere treats as requiring an explicit "re-derive Code Map anchors" checklist item. `spec-3-13-deployed-runtime-parity-closure.md#suggested-review-order` (cited by heading, not by line: the original `:331-354` citation had already rotted at authoring time, and the section moved again during loop 5).
   severity: low
+
+## Deferred from: code review of spec-3-13-deployed-runtime-parity-closure (2026-08-24, loop 5)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Story 3.15's lifecycle surfaces disagree as committed and no test cross-checks them.
+  evidence: `sprint-status.yaml:227` moved `backlog` -> `in-progress` while `spec-3-15-corrected-deployed-runtime-parity-closure.md:5` carries the in-review token and `docs/ci.md` declares 3.15 validation passing with a selected identity. No Story 3.15 story record carries a `Status:` line, and `CorrectedDeployedRuntimeParityClosureTests.cs` contains no sprint/spec cross-check. Already tracked as loop 3's open patch at `spec-3-13-deployed-runtime-parity-closure.md:249`; owned by Story 3.15.
+  severity: medium
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: One of the three Story 3.15 digests published in `docs/ci.md` is bound by no test.
+  evidence: `CiDocDescribesTheCurrentSubjectAndSelectedIdentityDigests` asserts the subject `bb58d691...` and selected identity `4b141085...`, but the predecessor digest `4d1a0c33...` at `docs/ci.md:382-383` is asserted nowhere against ci.md — it appears only as a test constant, in validator stdout assertions, and as `PREDECESSOR_SHA256` in `tools/deployed_runtime_parity_handlers/v1.py:27`. A stale copy leaves the suite green while naming a predecessor the verifier would reject.
+  severity: low
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: The date-rollover fix uses an optional `validationTime` parameter, preserving the silence that caused the original defect.
+  evidence: `DispositionStoryMayBeDone(..., DateTimeOffset? validationTime = null)` at `DeployedRuntimeParityClosureTests.cs:4204-4212` defaults to real `DateTimeOffset.UtcNow`. Four of five call sites (`:2970`, `:3241`, `:3248`, `:3655`) still take that default; only `:3781` threads the fixture time. Correct for those fixtures today; the recurrence trap is that a future fixture-time test can forget to thread it and silently stop firing.
+  severity: low
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Ledger hygiene across the six appended blocks, with nothing validating any of it.
+  evidence: `source_spec` switches from absolute to repo-relative paths mid-file; the "bmad-build review closure of Story 3.13 (2026-08-22)" entry near `deferred-work.md:1409` is the only new entry with no `severity:` key; two entries filed under a Story 3.13 heading declare a Story 3.15 `source_spec`, so heading-grouped and `source_spec`-grouped sweeps disagree; and the reparse-point weakness is deferred twice with no shared id. The DW6 governance suite is 19/19 skipped (`[Fact(Skip = "ATDD red phase -- DW6 deferred-work governance checker and story artifacts are not implemented.")]`), and the executable AWK gate in `ProofPacketValidatorIntegrityTests.cs:864-870` is scoped to three Story 1.20 headings only.
+  severity: low
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: The historical-tree location guard is proven against a fabricated repository layout.
+  evidence: `DispositionInsideHistoricalEvidenceTreeFailsClosed` (`DeployedRuntimeParityClosureTests.cs:3088,3101`) passes `cleanupRoot`, a temp directory, as `repositoryRoot`, unlike its sibling `MisnamedDispositionDirectoryFailsClosed` which passes the real root. The disjunct is exercised against a synthesized `nested/<sha>` path rather than the real frozen `fa2d1c99...` tree, and passes only because `disposition.location` is diagnosed before any missing-repository-file check.
+  severity: low
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: The new checksum-manifest mutation theory omits non-string and whitespace-only `file` values.
+  evidence: `DuplicateOrEmptyChecksumManifestDeclarationFailsClosed` (`DeployedRuntimeParityClosureTests.cs:3456-3474`) covers duplicate and empty `file` values only. A non-string JSON value (e.g. `42`) or a whitespace-only value would route to `internal.exception` or to a different diagnostic rather than the `envelope.retained_checksum_manifests` code the theory asserts.
+  severity: low
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: `docs/ci.md` flattens the known receipt-authenticity asymmetry for Story 3.15.
+  evidence: `docs/ci.md:397-399` states the EventStore owner, Release owner and Test Architect "have provided real authenticated receipts". The two owner receipts are GitHub-issue-comment backed and independently checkable via `gh api`; the `bmad:murat` Test Architect receipt is sourced from a `bmad-test-architect-record`, i.e. self-attested by the same tooling that assembled the packet — an asymmetry this same ledger already records for Story 3.13's disposition receipts.
+  severity: low
+
+## Deferred from: Story 3.13 acceptance collection (2026-08-24)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: Story 3.13's three role-bound acceptances are a self-attestation, not independent three-party review.
+  evidence: The packet-bound roster maps `eventstore-owner` and `release-owner` to the same account (`github:jpiquot`), and `test-architect` to `bmad:murat`, a tooling-attested record with no external anchor. The 3/3 gate at `evidence/story-3-13/disposition/6cee8dad.../acceptances/a7ecd455.../` is therefore satisfied by one human plus a bmad record. The two owner receipts are genuinely GitHub-minted and independently re-fetchable (comments 5395155800 / 5395155988 on issue 351), so the evidence is authentic; what is absent is reviewer independence. Same pattern already tracked for Story 3.15's `bmad:murat` receipt.
+  severity: medium

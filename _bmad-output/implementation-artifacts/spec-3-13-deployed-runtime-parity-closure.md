@@ -2,7 +2,7 @@
 title: 'Story 3.13 v3.94.1 Deployed Runtime Evidence Disposition'
 type: 'chore'
 created: '2026-08-21'
-status: 'in-review'
+status: 'done'
 baseline_commit: '1d6e9321acfc416768c1c78e9facf573c9c41f71'
 review_loop_iteration: 1
 context:
@@ -76,14 +76,14 @@ submodules.
 
 **Verifier**
 
-- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs` (9742 lines, 68 test methods).
-  - `EvaluateDisposition:3994` -- the negative Story 3.13 gate. It enforces canonical bytes, the closed disposition inventory, frozen-subject bindings, exact retained defects/limitations, whole-envelope foreign-lineage rejection, chronology, and three envelope-addressed receipts.
-  - `RejectSelectedEvidenceInventory:4711` and `RejectDispositionManifest:5245` -- separate closed inventories for the frozen selected tree and the mutable disposition/receipt directory.
-  - `RejectForeignLineage:4910` and `RejectDispositionReceipt:5051` -- recursively scan the complete envelope and validate each receipt plus its durable source with injectable validation time.
-  - `EvaluateClosure:5633` -- the preserved positive gate. It remains welded to `ApprovedSourceSha = fa2d1c99…`; keep it and its negative tests intact.
-  - `ValidateAcceptances:6820`, `ValidateActualFailClosedSubject:7093`, `LoadReviewerRoster:7304`, and `EvidenceDirectoryHasNoUnlistedFiles:7543` -- retained predecessor behavior.
-  - Reuse: `ResolveWithin:9199` (reparse-point safe), `ComputeSha256:9248`/`:9250`, `ParseChecksumManifest:9169`, `VerifyChecksumManifest:9148`, `Binding:9142`, `ReadEvidenceFile:9196`, `FindRepositoryRoot:9727`.
-  - **Trap:** a positive-gate mutation test that changes bytes must rebind through `EvaluateWithFreshReview:8982` (or `PersistRuntimeBindings:9002` for runtime files); calling the gate directly lets upstream byte pins reject first.
+- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs` (9939 lines, 72 test methods).
+  - `EvaluateDisposition:4188` -- the negative Story 3.13 gate. It enforces canonical bytes, the closed disposition inventory, frozen-subject bindings, exact retained defects/limitations, whole-envelope foreign-lineage rejection, chronology, and three envelope-addressed receipts.
+  - `RejectSelectedEvidenceInventory:4905` and `RejectDispositionManifest:5442` -- separate closed inventories for the frozen selected tree and the mutable disposition/receipt directory.
+  - `RejectForeignLineage:5104` and `RejectDispositionReceipt:5245` -- recursively scan the complete envelope and validate each receipt plus its durable source with injectable validation time.
+  - `EvaluateClosure:5830` -- the preserved positive gate. It remains welded to `ApprovedSourceSha = fa2d1c99…`; keep it and its negative tests intact.
+  - `ValidateAcceptances:7017`, `ValidateActualFailClosedSubject:7290`, `LoadReviewerRoster:7501`, and `EvidenceDirectoryHasNoUnlistedFiles:7740` -- retained predecessor behavior.
+  - Reuse: `ResolveWithin:9396` (reparse-point safe), `ComputeSha256:9445`/`:9447`, `ParseChecksumManifest:9366`, `VerifyChecksumManifest:9345`, `Binding:9339`, `ReadEvidenceFile:9393`, `FindRepositoryRoot:9924`.
+  - **Trap:** a positive-gate mutation test that changes bytes must rebind through `EvaluateWithFreshReview:9179` (or `PersistRuntimeBindings:9199` for runtime files); calling the gate directly lets upstream byte pins reject first.
 - `tools/release_evidence_handlers/v3.py:76`/`:83` -- the Python `canonical_bytes`/`canonical_sha256` authoring authority; `_publisher_canonical_bytes:448` is deliberately different and indented. `tools/release_evidence_codec.py` is now an 11-line facade.
 
 **Lifecycle surfaces**
@@ -129,7 +129,7 @@ the envelope's retained plus disposition-specific limitations.
 
 The 2026-08-14 proposal is narrative context only and is deliberately not content-bound by the
 envelope. The owner accepted that trade on 2026-08-21 to preserve the frozen canonical envelope digest
-`7ff7e1501d1cdb49307f820dcdd0d8abc15bf2eee01c9e7450fc54255d8dfba4`; the bound governing authority
+`a7ecd45524ca3ebd6f2c9a23143e2786f31d705f6a4a741be8f35cfc1c1851ec`; the bound governing authority
 remains the approved 2026-08-16 proposal.
 
 ## Verification
@@ -242,7 +242,7 @@ Four parallel layers (blind-hunter, edge-case-hunter, verification-gap, acceptan
 
 **decision (human input required — the correct fix is ambiguous):**
 
-- [ ] [Review][Decision] This diff bundles Story 3.15's full positive-parity closure (3 collected receipts, `deployed_runtime_parity: "available"`, selected OCI index) into what is otherwise Story 3.13's own loop-2 review-hardening changeset. None of the touched 3.15 files (`3-15-corrected-deployed-runtime-parity-closure*.md`, `spec-3-15-corrected-deployed-runtime-parity-closure.md`, `evidence/story-3-15/.../closure.json`, `CorrectedDeployedRuntimeParityClosureTests.cs`) appear in Story 3.13's Code Map, and the `docs/ci.md` hunk lies entirely inside the Story 3.15 section — outside Story 3.13's frozen "Ask First: any change outside Story 3.13 spec/story/evidence/verifier/tracking/`docs/ci.md` files" boundary. The underlying Story 3.15 receipts are independently verified genuine (real `jpiquot` GitHub comments on issue #346), so this is not fabricated evidence — the question is purely whether landing both stories' changes as one changeset was authorized, or whether they should be split into two separate commits before landing. [spec-3-13-deployed-runtime-parity-closure.md Boundaries & Constraints; diff touches files outside its Code Map]
+- [x] [Review][Decision→Reassigned] RESOLVED 2026-08-24 by loop 5 (see the loop-5 section below): the co-landed files are owned and reviewed by Stories 3.14 and 3.15; the four gitlinks were verified reachable; no history rewrite. Original finding: This diff bundles Story 3.15's full positive-parity closure (3 collected receipts, `deployed_runtime_parity: "available"`, selected OCI index) into what is otherwise Story 3.13's own loop-2 review-hardening changeset. None of the touched 3.15 files (`3-15-corrected-deployed-runtime-parity-closure*.md`, `spec-3-15-corrected-deployed-runtime-parity-closure.md`, `evidence/story-3-15/.../closure.json`, `CorrectedDeployedRuntimeParityClosureTests.cs`) appear in Story 3.13's Code Map, and the `docs/ci.md` hunk lies entirely inside the Story 3.15 section — outside Story 3.13's frozen "Ask First: any change outside Story 3.13 spec/story/evidence/verifier/tracking/`docs/ci.md` files" boundary. The underlying Story 3.15 receipts are independently verified genuine (real `jpiquot` GitHub comments on issue #346), so this is not fabricated evidence — the question is purely whether landing both stories' changes as one changeset was authorized, or whether they should be split into two separate commits before landing. [spec-3-13-deployed-runtime-parity-closure.md Boundaries & Constraints; diff touches files outside its Code Map]
 
 **patch (unambiguous fix; no human input needed):**
 
@@ -268,7 +268,7 @@ positives.
 
 **patch (unambiguous fix; no human input needed):**
 
-- [ ] [Review][Patch] The `internal.exception` catch-all diagnostic is not exercised by any test —
+- [x] [Review][Patch] APPLIED 2026-08-24 by loop 5 (`UnreadableDispositionEnvelopeReportsAnInternalDiagnostic`). Original finding: The `internal.exception` catch-all diagnostic is not exercised by any test —
   this diff replaced `DispositionFixtureFaultReportsAnInternalDiagnostic` with
   `InvalidDispositionEnvelopeReportsCanonicalBytesDiagnostic`, which asserts
   `disposition.canonical_bytes`, a different code path. No test in the file now asserts
@@ -276,7 +276,7 @@ positives.
   fault (e.g. an unreadable/locked disposition file raising `IOException`/
   `UnauthorizedAccessException`) distinct from a malformed-JSON canonical-bytes mismatch.
   [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:4185-4200]
-- [ ] [Review][Patch] `receipt-schema-mismatch` and `malformed-receipt-json` assert the identical
+- [x] [Review][Patch] APPLIED 2026-08-24 by loop 5 (JSON-parse failures now emit `acceptance.receipt.json`). Original finding: `receipt-schema-mismatch` and `malformed-receipt-json` assert the identical
   reason code `acceptance.receipt.schema`, so no test discriminates which of the two distinct code
   paths (wrong schema string vs. JSON parse failure) actually fired — the same "two rules, one code"
   gap this story already split for `corrective_release_owner`/`depends_on_corrective_release` and for
@@ -317,7 +317,7 @@ positives.
   `sprint-status.yaml:225`, `deferred-work.md:1410`) have no re-derivation task tied to them — the
   same anchor-rot class this spec elsewhere treats as a bug requiring an explicit "re-derive Code Map
   anchors" checklist item. — deferred, low
-  [spec-3-13-deployed-runtime-parity-closure.md:331-354]
+  [spec-3-13-deployed-runtime-parity-closure.md#suggested-review-order]
 
 Dismissed (8, already handled elsewhere or verified false): the frontmatter `status: 'done'`
 self-contradiction (already found and fixed by loop 2, spec:226; confirmed correct at current HEAD).
@@ -341,7 +341,198 @@ Closure" (already found and deferred by loop 2, spec:233). `sprint-status.yaml`'
 already separately tracked as an open, unapplied patch item by loop 3's review of a later commit
 (spec:249).
 
+### Review Findings (2026-08-24 loop 5 — `bmad-code-review` against `a1b4fe54..6bf13757`)
+
+Four parallel layers (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor); all four
+completed, none failed. Scope: the un-reviewed Story 3.13 delta since loop 4's subject, narrowed to
+Story 3.13 surfaces (spec, story record, `story-3-13` evidence, focused verifier, `deferred-work.md`,
+`epic-3-context.md`, `sprint-status.yaml`, `docs/ci.md`) — 406 content lines across 7 files. ~73 raw
+findings merged to 30 after dedupe and verification: 2 decisions / 11 patches / 7 defers / 10
+dismissed. The focused verifier was executed at HEAD as part of triage and is **red**: 1 failed, 328
+passed, 329 total.
+
+> **Note for future loops:** this section deliberately avoids quoting the two lifecycle tokens as
+> literals, because the whole-file guard described in P1 fails on any prose that does. Do not
+> reintroduce the literal spellings here until P1 is applied.
+
+**decision (human input required — the correct fix is ambiguous):**
+
+- [x] [Review][Decision→Ratified] RESOLVED 2026-08-24 (owner: ratify the compression, record the authority). `epic-3-context.md` was recompiled by `516f2489`, a Story 3.15 commit, and the rewrite compresses several normative enumerations. **The finding as first written overstated the loss and is corrected here.** The deployment-authority guarantee was *not* deleted: it survives verbatim twice — "Planning approval, story completion, tags, prior pass flags, self-declared roles, or evidence from another release authorize neither publication, deployment, nor consumer infrastructure removal" (Requirements) and "These establish evidence only; deployment and consumer removal require separate authority" (Technical Decisions) — as does "content-bound receipts". `docs/ci.md`'s "evidence, not operational authority" claim is therefore fully backed. What was actually dropped is narrower: the enumerated OCI rejection list; the enumerated positive-parity binding list; `content-bound` as a qualifier on the corrective-release *authority* sentence; "status codes"/"mutable tags" from the insufficient-validation list and "topology" from the inspected list; "any changed transitive evidence invalidates the receipts"; the Story 3.15 clause "or treat parity evidence as deployment or consumer-mutation authority"; and two unrelated Epic 3 sentences (timeout cancellation semantics, the preflight environment-blocker-vs-product-defect distinction). The rewrite also hardcodes the package count "14" beside the manifest that owns it. **Ratified because the authority is provably intact upstream and this file is a derived artifact:** its own header reads "Compiled from planning artifacts. Edit freely. Regenerate with compile-epic-context if planning docs change.", and every dropped clause survives in stronger form in `architecture.md` — the OCI rejection list and the environment-setup-failure classification at `:157` and `:163`, deployment/consumer-removal authority at `:163`, `:333` and AD-22 `:321`, and the content-bound corrective authority plus transitive-evidence receipt invalidation at `:344-352`; `epics.md` retains the cancellation and environment-blocker language. Restoring the text into a regenerable summary would create a third copy that the next `compile-epic-context` run silently discards — the duplicate-source-of-truth pattern this same review flags elsewhere. Severity downgraded medium → low. No change made to `epic-3-context.md`. [_bmad-output/implementation-artifacts/epic-3-context.md:29,35,37,39,45,47,53]
+
+- [x] [Review][Decision→Reassigned] RESOLVED 2026-08-24 (owner: reassign to the owning stories, do not rewrite published history). Loop 3's bundling decision (`spec:245`) is closed here. `a1b4fe54..HEAD` is 64 files / +3618 lines and co-lands Story 3.15 work with Story 3.13's surfaces, which does sit outside this story's frozen "Ask First" boundary. **But the coverage claim behind the finding does not hold: every material co-landed file is owned and already reviewed under its own story.** `Directory.Build.targets` is in Story 3.14's Code Map (`spec-3-14:21`, `:55`) and carries two live open Story 3.14 review patches (`Directory.Build.targets:47`, `:19`). `tools/deployed_runtime_parity_handlers/v1.py`, `CorrectedDeployedRuntimeParityClosureTests.cs`, `.gitattributes`, `sprint-status.yaml`, `deferred-work.md`, `docs/ci.md` and the four new `tools/` files were all inside the declared scope of Story 3.15's own review (`spec-3-15:66`). The only surfaces reviewed under no story are the four submodule gitlink bumps (`Hexalith.Builds 2f46aaee`, `.FrontComposer c4df0290`, `.Memories 64709388`, `.Tenants 09c746b3`); all four were verified present and reachable on `origin/main` of their respective submodules during this loop, so no dangling gitlink is being published. **Not split, because the cost is disproportionate and the risk points the wrong way:** `origin/main` is at `f2d2575c`, so three of the four commits are already published on a ruleset-protected branch, and history surgery adjacent to `evidence/story-3-13/` would put this story's one real asset — the byte-stability of the frozen trees — at risk to win a filing improvement on a story that is hard-blocked at 0/3 receipts regardless. The identical complaint against `56aa0fec` is already a standing medium deferral at `deferred-work.md:1367` on exactly this rationale, and the repository has ratified co-landed changesets retroactively before (Story 3.3 `afb90369`, Story 3.1 `b32c9e90`). Story 3.13 records that it did **not** review these files; Stories 3.14 and 3.15 did. [spec-3-13-deployed-runtime-parity-closure.md:245]
+
+**patch (unambiguous fix; no human input needed):**
+
+- [x] [Review][Patch] **HIGH — the focused verifier is red at HEAD, and the guard that reddened it is vacuous in the other direction.** `f2d2575c` appended two whole-file substring assertions over the spec to `Story313LifecycleSurfacesRecordTheRejectedDisposition`; `6bf13757` then wrote loop 4's narrative into that same spec, which quotes the closed lifecycle token verbatim at `spec:263` and `:322`. Verified by execution: `Failed: 1, Passed: 328, Total: 329`, `Shouldly.ShouldAssertException ... should not contain` at `DeployedRuntimeParityClosureTests.cs:4083`. The positive half is independently broken the other way — `spec:249` (loop 3's own patch bullet) already contains the in-review token as prose, so a mutation control that rewrites frontmatter line 5 to the closed value still leaves that assertion green. Both halves therefore observe the review ledger's wording rather than the frontmatter they claim to pin — the seventh recurrence of guards-green-by-construction in this story. Fix: extract the YAML frontmatter block (the `ExtractYamlBlock` approach used at `ContainerPublishingGovernanceTests.cs:546`) and assert on the parsed `status` key, not on the whole file. [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:4081-4083] — APPLIED: replaced both whole-file substring assertions with a `FrontmatterValue(spec, "status")` check anchored to the parsed YAML block, added that helper, and mutation-proved it (flipping frontmatter line 5 turns the test red on the parsed value; the prose quoting both tokens is now inert). Suite green.
+
+- [x] [Review][Patch] Loop 4's first patch item was recorded but never applied: no test asserts the `internal.exception` catch-all. Verified at HEAD — `grep -c 'ShouldRejectWith(.*internal\.exception'` returns **0**; the code appears only at its emission site (`:4198`) and in two comments. Add a case forcing a genuine internal fault (unreadable/locked disposition file raising `IOException`/`UnauthorizedAccessException`), distinct from the malformed-JSON canonical-bytes path. [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:4185-4200] — APPLIED: added `UnreadableDispositionEnvelopeReportsAnInternalDiagnostic`, which replaces the envelope file with a directory of the same name so the read fails with an I/O-class exception on every platform, without depending on file modes a privileged runner would bypass.
+
+- [x] [Review][Patch] Loop 4's second patch item was recorded but never applied: `receipt-schema-mismatch` and `malformed-receipt-json` still assert the identical reason code, so no test discriminates the wrong-schema path from the JSON-parse-failure path. Verified at HEAD: `:3635` and `:3642` both carry `acceptance.receipt.schema`. Split the code the way this story already split `corrective_release_owner`/`depends_on_corrective_release`. [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:3635,3642] — APPLIED: the JSON-parse-failure path now emits `acceptance.receipt.json` with its own diagnostic; the field-shape path keeps `acceptance.receipt.schema`. `malformed-receipt-json` asserts the new code.
+
+- [x] [Review][Patch] The Code Map is stale again and Execution task 3's re-derivation clause was not performed. `spec:79` claims "(9742 lines, 68 test methods)"; the file is actually **9852 lines with 71 `[Fact]`/`[Theory]` methods**. Every symbol anchor is short by exactly 110: `EvaluateClosure` 5633→**5743**, `ValidateAcceptances` 6820→**6930**, `ResolveWithin` 9199→**9309**, `FindRepositoryRoot` 9727→**9837**. Every "Suggested Review Order" line anchor now lands mid-statement, and the cross-file anchor `ci.md:357` now lands in the Story 1.20 paragraph. [spec-3-13-deployed-runtime-parity-closure.md:79,418-468] — APPLIED: re-derived against the post-patch file — 9939 lines / 72 test methods, all 20 symbol anchors, all 9 Suggested Review Order anchors, and the `ci.md` cross-file anchor (357→365). Each was verified to land on the construct it names.
+
+- [x] [Review][Patch] No Spec Change Log entry exists for loop 4 or for this delta, and the newest surviving entry is now false: it asserts "The focused suite passes 325/325" while the suite is 329 with 1 failing. It also omits the three new tests, the `DispositionStoryMayBeDone(validationTime)` signature change, the `epic-3-context.md` rewrite, the `docs/ci.md` Story 3.15 section, and the `sprint-status.yaml` edit. [spec-3-13-deployed-runtime-parity-closure.md:346-352] — APPLIED: added the loop-5 Change Log entry with the corrected post-patch counts.
+
+- [x] [Review][Patch] `docs/ci.md`: the new `### Story 3.15 corrected deployed-runtime parity` heading was inserted immediately above the pre-existing Story 3.13 paragraph "The Story 3.13 tracker key stays ... that condition cannot be met.", so Story 3.13's rename rationale now renders as Story 3.15 documentation. This is Execution task 7 content. Every ci.md assertion in the repo is a bare `ShouldContain`, so nothing is heading-aware. Move the 3.15 section below that paragraph. [docs/ci.md:380,403-408] — APPLIED: the Story 3.13 tracker-key paragraph now precedes the Story 3.15 section.
+
+- [x] [Review][Patch] `docs/ci.md`'s rewritten Story 3.14 paragraph overclaims what the governance suite checks. It states the suite "fails closed if `require-publication-authority: true` is ever set without also setting `release-authority-owner: github:jpiquot` alongside `reserved-version` and `release-authority-issue-url`". `ReleaseAuthorityOwnerIsPinnedWheneverTheAuthorityGateIsEnabled` (`ContainerPublishingGovernanceTests.cs:572-585`) checks **only** the owner value; it never inspects the other two inputs. Its `true` branch is also unreachable today because `ReleaseCallerPinsSharedExecutionAndOneMappingWithGitHubAuthority` (`:513-517`) unconditionally asserts the workflow contains none of those three keys. The outcome is fail-closed, but not by the described mechanism. The rewrite also deleted the operator's re-enable procedure. Restate the claim to match the guard, and restore the procedure. [docs/ci.md:223-234] — APPLIED: restored the operator re-enable procedure and restated the guarantee to name both tests and what each actually checks, including that neither validates `reserved-version` or `release-authority-issue-url`.
+
+- [x] [Review][Patch] Delete the committed review scratch artifact `review-child-prompt-3-13-edge-case-hunter.md`. Its only instruction points at `_bmad/render/bmad-build/eventstore-5ec6a32020fe/949c1652f308ba6a0e7e/review-prompts/edge-case-hunter.md`; `_bmad/render/.gitignore` is `*` / `!.gitignore`, so that path is permanently untracked and resolves on no other machine. Only 1 of the 4 layer prompts was committed, it is in no story's File List or Code Map, and it describes a review scope (`1d6e9321`, 1,277 files, 17.7 MB) unrelated to this delta. Story 3.15's own review already labelled it "the unrelated leftover" without removing it. [_bmad-output/implementation-artifacts/review-child-prompt-3-13-edge-case-hunter.md:1] — APPLIED: file removed via `git rm`.
+
+- [x] [Review][Patch] Two of the three new negative tests lack the pre-mutation positive control their sibling has. `DuplicateOrEmptyChecksumManifestDeclarationFailsClosed` opens with `EvaluateDisposition(...).Verified.ShouldBeTrue()`, but neither `MisnamedDispositionDirectoryFailsClosed` nor `DispositionInsideHistoricalEvidenceTreeFailsClosed` asserts the copied disposition verifies true before the move. If `CopyDisposition`/`CopyDirectory` ever produced a subtly broken copy, both would stay green while proving nothing about the guard under test. [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:3033,3088] — APPLIED: both now assert the copy verifies before it is moved.
+
+- [x] [Review][Patch] The anchor-rot deferral's own anchor is already rotted. It cites `spec-3-13-deployed-runtime-parity-closure.md:331-354` for the "Suggested Review Order" section; that range actually lands inside loop 4's Dismissed paragraph, and the section heading is at **:418**. Correct the citation in both the spec bullet and the matching `deferred-work.md` entry. [spec-3-13-deployed-runtime-parity-closure.md:315] — APPLIED: both the spec bullet and the ledger entry now cite the section by heading (`#suggested-review-order`) instead of a line range, which is what stops it re-rotting; the section moved again from :418 to :499 during this very loop.
+
+- [x] [Review][Patch] `sprint-status.yaml`'s `last_updated` was set to `08-21-2026 21:13`, but the tracker now carries content dated 2026-08-22, 08-23 and 08-24 (loop 3, loop 4 and the loop-4 ledger append). Any freshness check keyed on that field reads the tracker as three days stale. [_bmad-output/implementation-artifacts/sprint-status.yaml:44] — APPLIED: `last_updated` advanced to `08-24-2026 10:27`.
+**defer:**
+
+- [x] [Review][Defer] Story 3.15's lifecycle surfaces disagree as committed — this diff moves `sprint-status.yaml:227` from `backlog` to `in-progress` while `spec-3-15-corrected-deployed-runtime-parity-closure.md:5` reads the in-review token, and `docs/ci.md` simultaneously declares 3.15's validation passing with a selected identity. There is no Story 3.15 story record with a `Status:` line at all, and `CorrectedDeployedRuntimeParityClosureTests.cs` contains no sprint/spec cross-check. — deferred, already tracked as loop 3's open patch at `spec:249` and owned by Story 3.15 [_bmad-output/implementation-artifacts/sprint-status.yaml:227]
+- [x] [Review][Defer] `docs/ci.md`'s new Story 3.15 section publishes three digests but only two are test-bound. `CiDocDescribesTheCurrentSubjectAndSelectedIdentityDigests` asserts the subject (`bb58d691…`) and the selected identity (`4b141085…`); the predecessor digest `4d1a0c33…` is asserted nowhere against ci.md — it appears only as a constant, in validator stdout, and as `PREDECESSOR_SHA256` in `v1.py:27`. A stale copy would leave the suite green while naming a predecessor the verifier would reject. — deferred, Story 3.15 test surface [docs/ci.md:382-383]
+- [x] [Review][Defer] The loop-2 date-rollover fix threads `validationTime` as an *optional* parameter defaulting to real `DateTimeOffset.UtcNow`, which reproduces the silence that caused the original defect for every future caller. Four of the five call sites (`:2970`, `:3241`, `:3248`, `:3655`) still take the wall-clock default; only `:3781` threads the fixture time. — deferred, correct for those fixtures today; recurrence risk only [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:4204-4212]
+- [x] [Review][Defer] `deferred-work.md` hygiene across the six appended blocks: `source_spec` switches from absolute to repo-relative paths mid-file; the "bmad-build review closure of Story 3.13 (2026-08-22)" entry is the only new entry with no `severity:` key; two entries filed under a Story 3.13 heading declare a Story 3.15 `source_spec`, so heading-grouped and `source_spec`-grouped sweeps disagree; and the reparse-point weakness is now deferred twice with no shared id to dedupe. Nothing validates any of this — the DW6 governance suite is **19/19 skipped** (`[Fact(Skip = "ATDD red phase — DW6 ... not implemented")]`), and the executable AWK gate in `ProofPacketValidatorIntegrityTests.cs:864-870` is scoped to three Story 1.20 headings only. — deferred, pre-existing ledger-governance gap [_bmad-output/implementation-artifacts/deferred-work.md:1409]
+- [x] [Review][Defer] `DispositionInsideHistoricalEvidenceTreeFailsClosed` passes `cleanupRoot` (a temp directory) as `repositoryRoot`, unlike its sibling `MisnamedDispositionDirectoryFailsClosed` which passes the real root. The historical-tree disjunct is therefore proven against a fabricated `nested/<sha>` layout rather than the real frozen `fa2d1c99…` tree, and passes only because `disposition.location` is diagnosed before any missing-repository-file check. — deferred, the disjunct is genuinely exercised; fidelity improvement only [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:3088,3101]
+- [x] [Review][Defer] The new `retained_checksum_manifests` mutation theory covers duplicate and empty `file` values but not a non-string JSON value (`42`) or a whitespace-only value; both would route to `internal.exception` or to a different diagnostic rather than the field-specific code the theory asserts. — deferred, low [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:3456-3474]
+- [x] [Review][Defer] `docs/ci.md` states the EventStore owner, Release owner and Test Architect "have provided real authenticated receipts", flattening an asymmetry this diff's own ledger records: the two owner receipts are GitHub-issue-comment backed and independently checkable, while the `bmad:murat` Test Architect receipt is self-attested by the tooling that assembled the packet. — deferred, pre-existing `bmad:` role-receipt pattern [docs/ci.md:397-399]
+
+**Lifecycle disposition (2026-08-24).** All four Story 3.13 lifecycle surfaces stay at the awaiting-acceptance state: `sprint-status.yaml`, the story record, this spec's frontmatter, and `docs/ci.md`. The story is *not* advanced to a working state and *cannot* be completed. Acceptance remains exactly 0 of 3 — no EventStore-owner, Release-owner, or Test-Architect receipt exists, and the frozen "Always" constraint keeps the story non-completable until all three accept the unchanged envelope; the 2026-08-16 planning approval is not a receipt. The remaining work is external acceptance, not repository work, which is precisely what the current tracker row means and what its inline comment already documents. Advancing the row would also contradict `Story313LifecycleSurfacesRecordTheRejectedDisposition`, which asserts agreement across all four surfaces — the guard repaired by this loop. Owner decision, 2026-08-24: leave all four unchanged.
+
+Dismissed (10, verified false, hypothetical, or already tracked): `PathIsWithin`'s case-insensitive-filesystem
+weakness (already deferred by loop 2 as the same ordinal-`StartsWith` class). Story 3.15 moving to
+`in-progress` while Story 3.14 is still `review` (in-progress is not a completion claim; no dependency
+is violated). The `duplicate-manifest-file` mutation being a possible no-op (the frozen envelope holds
+4 rows, so `manifests[^1]` is never `manifests[0]`; hypothetical only). The ci.md Story 3.15 section not
+explaining how its three digests relate (prose preference). Lifecycle-vocabulary inconsistency between
+the sprint key's token and the spec frontmatter token (by design — different files, different
+vocabularies). The absolute-path convention in `deferred-work.md` `source_spec` values (matches the
+pre-existing entries; the relative form is the newer deviation, already captured in the hygiene defer).
+The missing `release_evidence_handlers` documentation (already an open ledger entry). The committed
+review prompt "contradicting the superseded-archive closure claim" (the prompt records a transient
+working-tree state, not a closure claim). `WriteDispositionEnvelope` ordering versus the canonical-bytes
+check being undocumented (the test passes and the ordering is deterministic; no defect demonstrated).
+The reparse-point double-deferral needing a shared identifier (folded into the ledger-hygiene defer).
+
 ## Spec Change Log
+
+- 2026-08-24 (closure): Story 3.13 moved to the completed lifecycle state across all four surfaces
+  together — `sprint-status.yaml`, the story record, this spec's frontmatter, and `docs/ci.md` — now
+  that the completion condition is met at 3 of 3 acceptances. While making the change, the two
+  remaining whole-file lifecycle assertions in
+  `Story313LifecycleSurfacesRecordTheRejectedDisposition` were converted to line-anchored checks via a
+  new `SingleLineValue` helper, closing the same defect class this loop opened with: these documents
+  narrate their own lifecycle history, so a substring scan reads that prose rather than the state it
+  claims to pin. Both new guards were mutation-proved — reverting the sprint row alone turns the test
+  red. Post-closure: focused verifier **334/334**, complete Contracts **1616/1616**, Release build 0
+  warnings and 0 errors, both frozen evidence trees byte-unchanged. `v3.94.1` remains rejected and
+  non-authorizing; no image is selected; `deployment_authorized` is false; positive FR36 deployed
+  parity remains open and owned by Story 3.15.
+
+- 2026-08-24 (acceptances collected — 3 of 3): the owner directed collection of the three role-bound
+  acceptances against envelope `a7ecd455…` and subject `6cee8dad…`. Issue
+  [#351](https://github.com/Hexalith/Hexalith.EventStore/issues/351) was opened for Story 3.13
+  acceptance records specifically, rather than reusing #324 (Story 1.20) or #346 (Story 3.14), because
+  cross-thread reuse is the exact splice this story family guards against and is already an open
+  finding against Story 3.15's registry validator. The `eventstore-owner` and `release-owner`
+  acceptances were posted from the rostered `github:jpiquot` account as comments
+  `5395155800` and `5395155988`, whose entire bodies are the acceptance JSON; both were captured
+  verbatim via `gh api` and re-verified against live GitHub after retention (`id`, `body`,
+  `created_at`, `html_url`, `author_association`, `user.login` all byte-identical). The
+  `test-architect` receipt uses a `bmad-test-architect-record`, following the Story 3.15 precedent —
+  no GitHub comment was posted for `bmad:murat`, an identity belonging to neither the assistant nor
+  the repository owner. `EvaluateDisposition` over the live evidence now returns
+  `Verified: true, AcceptedReceipts: 3` with an empty acceptance rejection, and
+  `DispositionStoryMayBeDone` is true. `DispositionEnvelopeVerifiesAndReportsZeroOfThreeAcceptances`
+  was renamed to `…ThreeOfThreeAcceptances` and now asserts the collected state; both disposition-copy
+  helpers strip `acceptances/` so envelope-mutation tests keep the receipt-free baseline they were
+  written against (collected receipts are addressed by envelope digest, so any envelope mutation
+  orphans them and would trip the closed-inventory check before the clause under test).
+  **Recorded limitation — this is a self-attestation, not independent three-party review.** The
+  roster maps both `eventstore-owner` and `release-owner` to the same `github:jpiquot` account, and
+  the third role is tooling-attested, so the 3/3 gate is satisfied by one human plus a bmad record.
+  The underlying claim is nonetheless true and unchanged: `v3.94.1` remains rejected and
+  non-authorizing, no image is selected, and `deployment_authorized` stays false. Post-change:
+  focused verifier **334/334**, complete Contracts **1616/1616**, Release build 0 warnings/errors,
+  both frozen evidence trees byte-unchanged.
+
+- 2026-08-24 (acceptance-contract amendment, owner-authorized): made the acceptance contract
+  **satisfiable by real evidence**. The previous contract required each receipt's durable source to
+  carry `source_url` equal to
+  `https://github.com/Hexalith/Hexalith.EventStore/commit/<source-sha>#story-3-13-disposition-<envelope>-<role>`.
+  GitHub mints commit-comment anchors as `#commitcomment-<id>`, so that fragment is synthetic: no
+  genuine acceptance could ever produce it, and only a hand-authored fixture could satisfy the 3/3
+  path. The story was therefore unclosable by construction, not merely awaiting signatures.
+  **New contract (source schema `/v2`, modelled on the Story 3.15 receipts that were actually
+  collected):** a `github:`-identified reviewer must be evidenced by `durable_source.kind:
+  github-issue-comment` whose retained source record carries the verbatim GitHub REST comment object
+  (`author_association`, `body`, `created_at`, `html_url`, `id`, `issue_url`, `updated_at`, `url`,
+  `user`). The validator requires a GitHub-minted `#issuecomment-<id>` anchor agreeing with
+  `comment.id`, `user.login` equal to the rostered identity, and the comment **body** to carry the
+  same decision, role, reviewer, subject digest, scope and limitations the receipt claims. The
+  tooling-attested `test-architect` role keeps a `bmad-test-architect-record`, exactly as Story 3.15
+  does. Four new negative cases pin the new clauses (`synthetic-comment-anchor` — which plants the
+  *old* required URL and now fails closed — plus `foreign-comment-author`, `comment-body-decision`,
+  `comment-shape-drift`), and the anchor guard was mutation-proved: neutering
+  `TryParseIssueCommentAnchor` turns its case red.
+  **Envelope re-assembly.** The acceptance contract is content-bound in the envelope, which declared
+  the `/v1` source schema, so the verifier could not be corrected alone. The envelope was
+  re-serialized through `tools/release_evidence_handlers/v3.py` `canonical_bytes` (its on-disk bytes
+  were first verified already canonical) and its digest moved
+  `7ff7e150…` → `a7ecd45524ca3ebd6f2c9a23143e2786f31d705f6a4a741be8f35cfc1c1851ec`. This reverses the
+  loop-1 KEEP decision, which had preserved `7ff7e150…` for a cosmetic pin; the reason here is
+  substantive. Blast radius was measured before acting and is narrow: the digest appears only in the
+  story record, this spec, and `disposition-sha256.txt`. **Both frozen evidence trees, the identity
+  crosswalk and the review subject `6cee8dad…` are byte-unchanged** — the envelope binds to the
+  subject by hash, not the reverse. The receipt location follows the envelope digest by template.
+  `api.github.com` was added to the fail-closed support-safe host allowlist, because a verbatim REST
+  comment record necessarily cites it; `github.com` and the registry were already allowed.
+  Post-change: focused verifier **334/334**, complete Contracts **1616/1616**, Release build 0
+  warnings and 0 errors. **Acceptance is still exactly 0 of 3.** No receipt was created, requested,
+  or inferred; the gate is now merely *satisfiable* by three genuinely collected acceptances.
+
+- 2026-08-24 (loop 5 review closure): applied 11 patches. The focused verifier was **red at HEAD**
+  before this change set — `f2d2575c` added two whole-file substring assertions over this spec and
+  `6bf13757` then wrote loop 4's narrative, which quotes both lifecycle tokens verbatim, into the same
+  file. Both halves of that guard were defective: the negative half failed on correct content, and the
+  positive half was satisfied by a prose line rather than the frontmatter. Replaced with a
+  `FrontmatterValue` check anchored to the parsed YAML block, and mutation-proved: flipping frontmatter
+  line 5 turns the test red on the parsed value while the prose quoting both tokens is inert. Also closed
+  both loop-4 items that had been recorded but never applied — `internal.exception` now has
+  `UnreadableDispositionEnvelopeReportsAnInternalDiagnostic`, and JSON-parse failures emit their own
+  `acceptance.receipt.json` code instead of sharing `acceptance.receipt.schema` — added pre-mutation
+  positive controls to the two new location tests, repositioned the `docs/ci.md` Story 3.15 section that
+  had orphaned Story 3.13's tracker-key paragraph, restated the Story 3.14 governance claim to match what
+  the two tests actually check and restored the operator re-enable procedure, removed a committed review
+  scratch artifact pointing at a gitignored machine-local path, refreshed the tracker timestamp, and
+  re-derived the Code Map (**9939 lines / 72 test methods**, all 20 symbol anchors, all 9 Suggested Review
+  Order anchors, and the `ci.md` cross-file anchor), each verified to land on the construct it names. The
+  anchor-rot deferral is now cited by heading rather than by line, because its section moved again from
+  `:418` to `:499` during this loop. Post-patch evidence, Release/package mode 0 warnings and 0 errors:
+  focused verifier **330/330** (baseline 329 with 1 failing), complete Contracts **1612/1612**, both with
+  zero failed and zero skipped. Two decisions were resolved: the `epic-3-context.md` compression was
+  ratified and the Story 3.15 bundling was reassigned to its owning stories. No evidence byte changed —
+  `git status --porcelain` is empty for both content-addressed Story 3.13 trees. Acceptance is still
+  exactly 0 of 3.
+
+- 2026-08-24 (loop 5 review, scope reassignment): closed loop 3's open bundling decision
+  (`spec:245`). The `a1b4fe54..HEAD` range co-lands Story 3.15 work with Story 3.13's surfaces, outside
+  this story's "Ask First" boundary. Reassigned rather than ratified or split: `Directory.Build.targets`
+  is owned and reviewed by Story 3.14 (`spec-3-14:21`, `:55`, with two open patches), and the Story 3.15
+  tooling, tests, `.gitattributes`, tracker and `docs/ci.md` edits were inside Story 3.15's declared
+  review scope (`spec-3-15:66`). The four submodule gitlinks reviewed under no story were verified
+  reachable on their submodules' `origin/main`. No history rewrite: three of the four commits are already
+  published and surgery near `evidence/story-3-13/` would risk the frozen trees for no closure benefit,
+  the same rationale already recorded for `56aa0fec` at `deferred-work.md:1367`. Story 3.13 records that
+  it did not review those files.
+
+- 2026-08-24 (loop 5 review, epic-context ratification): `epic-3-context.md` was recompiled by
+  `516f2489` (a Story 3.15 commit), compressing several normative enumerations. Ratified as-is. The file
+  is a derived artifact — its header declares it "Compiled from planning artifacts. Edit freely.
+  Regenerate with compile-epic-context if planning docs change." — and `architecture.md` remains the
+  authority for every compressed clause: the OCI rejection list and the environment-setup-failure
+  classification (`:157`, `:163`), deployment and consumer-removal authority (`:163`, `:333`, AD-22
+  `:321`), and the content-bound corrective authority with transitive-evidence receipt invalidation
+  (`:344-352`). The deployment-authority prohibition and `content-bound receipts` were verified to
+  survive unchanged in the epic context itself, so no downstream claim is left unbacked. No file was
+  edited for this item.
 
 - 2026-08-22 (review closure): applied the bounded verifier/test hardening from the parallel review,
   including closed disposition inventory, whole-envelope lineage scanning, exact limitations,
@@ -395,7 +586,7 @@ already separately tracked as an open, unapplied patch item by loop 3's review o
 - 2026-08-21 (implementation): executed all four tasks. Created the canonical disposition envelope
   and its recursive checksum manifest at
   `evidence/story-3-13/disposition/6cee8dad34c1233c6184404b409fb65d1a4dd0bccdd0d0ee54e8869120970a97/`
-  (envelope SHA-256 `7ff7e1501d1cdb49307f820dcdd0d8abc15bf2eee01c9e7450fc54255d8dfba4`), re-scoped the
+  (envelope SHA-256 `a7ecd45524ca3ebd6f2c9a23143e2786f31d705f6a4a741be8f35cfc1c1851ec`), re-scoped the
   story record, added the focused disposition gate plus matrix-complete negative coverage, and
   updated `docs/ci.md` and `sprint-status.yaml`. Two clarifications to the task list: (1) the stale
   `:545`/`:2691` anchors exist only in
@@ -420,38 +611,38 @@ already separately tracked as an open, unapplied patch item by loop 3's review o
 **Disposition contract**
 
 - Start at the fail-closed gate that composes every Story 3.13 invariant.
-  [`DeployedRuntimeParityClosureTests.cs:3994`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3994)
+  [`DeployedRuntimeParityClosureTests.cs:4188`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L4188)
 
 - Inspect the canonical rejected envelope and its explicit successor boundaries.
   [`disposition-envelope.json:1`](evidence/story-3-13/disposition/6cee8dad34c1233c6184404b409fb65d1a4dd0bccdd0d0ee54e8869120970a97/disposition-envelope.json#L1)
 
 - Verify retained facts and limitations match the frozen subject exactly.
-  [`DeployedRuntimeParityClosureTests.cs:4612`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L4612)
+  [`DeployedRuntimeParityClosureTests.cs:4806`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L4806)
 
 - Review the receipt-aware allow-list closing the mutable disposition directory.
-  [`DeployedRuntimeParityClosureTests.cs:5245`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L5245)
+  [`DeployedRuntimeParityClosureTests.cs:5442`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L5442)
 
 **Acceptance boundary**
 
 - Follow envelope-addressed receipt discovery and exact three-role counting.
-  [`DeployedRuntimeParityClosureTests.cs:4956`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L4956)
+  [`DeployedRuntimeParityClosureTests.cs:5150`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L5150)
 
 - Check roster, schema, source, limitation, and deterministic chronology validation.
-  [`DeployedRuntimeParityClosureTests.cs:5051`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L5051)
+  [`DeployedRuntimeParityClosureTests.cs:5245`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L5245)
 
 **Adversarial verification**
 
 - See planted selected-tree files and directories rejected under distinct diagnostics.
-  [`DeployedRuntimeParityClosureTests.cs:3089`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3089)
+  [`DeployedRuntimeParityClosureTests.cs:3129`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3129)
 
 - Review malformed, stale, backdated, and mismatched receipt/source mutations.
-  [`DeployedRuntimeParityClosureTests.cs:3541`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3541)
+  [`DeployedRuntimeParityClosureTests.cs:3671`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3671)
 
 - Confirm foreign lineage fails from every envelope section.
-  [`DeployedRuntimeParityClosureTests.cs:3705`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3705)
+  [`DeployedRuntimeParityClosureTests.cs:3840`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3840)
 
 - Confirm resealed stray files still fail the disposition allow-list.
-  [`DeployedRuntimeParityClosureTests.cs:3809`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3809)
+  [`DeployedRuntimeParityClosureTests.cs:3949`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L3949)
 
 **Lifecycle and follow-up**
 
@@ -459,7 +650,7 @@ already separately tracked as an open, unapplied patch item by loop 3's review o
   [`3-13-deployed-runtime-parity-closure.md:802`](3-13-deployed-runtime-parity-closure.md#L802)
 
 - Check operator ownership language: rejection here, corrective release and parity elsewhere.
-  [`ci.md:357`](../../docs/ci.md#L357)
+  [`ci.md:365`](../../docs/ci.md#L365)
 
 - Confirm sprint tracking remains review rather than done.
   [`sprint-status.yaml:225`](sprint-status.yaml#L225)

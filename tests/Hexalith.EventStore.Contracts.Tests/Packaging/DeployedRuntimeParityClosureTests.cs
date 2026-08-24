@@ -71,7 +71,7 @@ public sealed class DeployedRuntimeParityClosureTests
     private const string DispositionReceiptSchema =
         "hexalith.eventstore.story-3-13-acceptance-receipt/v1";
     private const string DispositionSourceSchema =
-        "hexalith.eventstore.story-3-13-acceptance-source/v1";
+        "hexalith.eventstore.story-3-13-acceptance-source/v2";
     private const string SelectedProofRelativePath =
         "_bmad-output/implementation-artifacts/" +
         "3-13-deployed-runtime-parity-closure-v3.94.1-proof-packet.md";
@@ -281,6 +281,11 @@ public sealed class DeployedRuntimeParityClosureTests
     private static readonly string[] ExpectedSupportSafeUriHosts =
     [
         "github.com",
+
+        // A retained acceptance comment is the verbatim GitHub REST response, whose `url` and
+        // `issue_url` are necessarily api.github.com. The allowlist stays fail-closed; this is the
+        // one additional public host the acceptance contract can now legitimately cite.
+        "api.github.com",
         ExpectedRegistry,
     ];
 
@@ -2947,7 +2952,7 @@ public sealed class DeployedRuntimeParityClosureTests
     /// Verifies the retained v3.94.1 disposition envelope verifies while acceptance reports 0 of 3.
     /// </summary>
     [Fact]
-    public void DispositionEnvelopeVerifiesAndReportsZeroOfThreeAcceptances()
+    public void DispositionEnvelopeVerifiesAndReportsThreeOfThreeAcceptances()
     {
         string root = FindRepositoryRoot();
         string disposition = Path.Combine(root, DispositionRelativePath);
@@ -2965,9 +2970,12 @@ public sealed class DeployedRuntimeParityClosureTests
             EvaluateDisposition(root, disposition, evidence);
         verified.ShouldBeTrue(rejection);
         rejection.ShouldBeEmpty();
-        receipts.ShouldBe(0);
-        DispositionReasonCode(acceptanceRejection).ShouldBe("acceptance.receipt_directory");
-        DispositionStoryMayBeDone(root, disposition, evidence).ShouldBeFalse();
+        // Three role-bound acceptances were collected on 2026-08-24 against this envelope: the
+        // eventstore-owner and release-owner receipts are backed by GitHub-minted issue comments
+        // 5395155800 and 5395155988 on issue 351, and the test-architect receipt by a bmad record.
+        receipts.ShouldBe(3, acceptanceRejection);
+        acceptanceRejection.ShouldBeEmpty();
+        DispositionStoryMayBeDone(root, disposition, evidence).ShouldBeTrue();
 
         JsonObject envelope = LoadDispositionEnvelope(disposition);
         envelope["candidate"]!.GetValue<string>().ShouldBe(SelectedReleaseTag);
@@ -3037,6 +3045,13 @@ public sealed class DeployedRuntimeParityClosureTests
         (string cleanupRoot, string disposition) = CopyDisposition(root);
         try
         {
+            // Positive control: prove the copy verifies before it is moved, so a subtly broken
+            // CopyDisposition/CopyDirectory cannot leave this test green while proving nothing.
+            EvaluateDisposition(
+                root,
+                disposition,
+                Path.Combine(root, SelectedEvidenceRelativePath)).Verified.ShouldBeTrue();
+
             string misnamedDisposition = Path.Combine(cleanupRoot, "not-" + SelectedReviewSubjectSha256);
             CopyDirectory(disposition, misnamedDisposition);
             (bool verified, string rejection, _, _) = EvaluateDisposition(
@@ -3090,6 +3105,13 @@ public sealed class DeployedRuntimeParityClosureTests
         (string cleanupRoot, string disposition) = CopyDisposition(root);
         try
         {
+            // Positive control: the copy must verify at its original location before being nested
+            // inside the historical tree, otherwise the rejection below proves nothing.
+            EvaluateDisposition(
+                root,
+                disposition,
+                Path.Combine(root, SelectedEvidenceRelativePath)).Verified.ShouldBeTrue();
+
             string historicalEvidenceRoot = Path.Combine(cleanupRoot, EvidenceRelativePath);
             string nestedDisposition = Path.Combine(
                 historicalEvidenceRoot,
@@ -3243,7 +3265,7 @@ public sealed class DeployedRuntimeParityClosureTests
             (bool verified, string rejection, int receipts, string acceptanceRejection) =
                 EvaluateDisposition(root, disposition, evidence);
             verified.ShouldBeTrue(rejection);
-            receipts.ShouldBe(3);
+            receipts.ShouldBe(3, acceptanceRejection);
             acceptanceRejection.ShouldBeEmpty();
             DispositionStoryMayBeDone(root, disposition, evidence).ShouldBeTrue();
 
@@ -3427,6 +3449,39 @@ public sealed class DeployedRuntimeParityClosureTests
             (bool verified, string rejection, _, _) = EvaluateDisposition(root, disposition, evidence);
             verified.ShouldBeFalse();
             ShouldRejectWith(rejection, expectedReason);
+        }
+        finally
+        {
+            DeleteTemporaryDirectory(cleanupRoot);
+        }
+    }
+
+    /// <summary>
+    /// Verifies a genuine internal fault reaches the catch-all diagnostic. This is deliberately a
+    /// read failure rather than malformed content: a malformed envelope is diagnosed as
+    /// <c>disposition.canonical_bytes</c>, so without this case no test exercises
+    /// <c>internal.exception</c> and the whole catch-all could be deleted with the suite green.
+    /// </summary>
+    [Fact]
+    public void UnreadableDispositionEnvelopeReportsAnInternalDiagnostic()
+    {
+        string root = FindRepositoryRoot();
+        string evidence = Path.Combine(root, SelectedEvidenceRelativePath);
+        (string cleanupRoot, string disposition) = CopyDisposition(root);
+        try
+        {
+            EvaluateDisposition(root, disposition, evidence).Verified.ShouldBeTrue();
+
+            // Replacing the envelope file with a directory of the same name makes the read fail with
+            // an I/O-class exception on every supported platform, without depending on file-mode
+            // enforcement that a privileged test runner would bypass.
+            string envelopePath = Path.Combine(disposition, DispositionEnvelopeFile);
+            File.Delete(envelopePath);
+            Directory.CreateDirectory(envelopePath);
+
+            (bool verified, string rejection, _, _) = EvaluateDisposition(root, disposition, evidence);
+            verified.ShouldBeFalse();
+            ShouldRejectWith(rejection, "internal.exception");
         }
         finally
         {
@@ -3639,8 +3694,12 @@ public sealed class DeployedRuntimeParityClosureTests
     [InlineData("source-schema-mismatch", 2, "acceptance.source.record")]
     [InlineData("source-subject-digest", 2, "acceptance.source.subject_sha256")]
     [InlineData("source-decision-mismatch", 2, "acceptance.source.decision")]
-    [InlineData("malformed-receipt-json", 2, "acceptance.receipt.schema")]
+    [InlineData("malformed-receipt-json", 2, "acceptance.receipt.json")]
     [InlineData("malformed-source-json", 2, "acceptance.source.record")]
+    [InlineData("synthetic-comment-anchor", 2, "acceptance.source.comment_anchor")]
+    [InlineData("foreign-comment-author", 2, "acceptance.source.comment_author")]
+    [InlineData("comment-body-decision", 2, "acceptance.source.comment_body")]
+    [InlineData("comment-shape-drift", 2, "acceptance.source.comment")]
     public void IncompleteDispositionAcceptanceKeepsStoryNonDone(
         string mutation,
         int expectedCount,
@@ -3748,6 +3807,35 @@ public sealed class DeployedRuntimeParityClosureTests
                     MutateDispositionSourceRecord(receiptDirectory, "eventstore-owner", source =>
                         source["subject_sha256"] = new string('3', 64));
                     break;
+                case "synthetic-comment-anchor":
+                    // The exact URL shape the previous contract demanded. GitHub never mints it, so
+                    // it must now fail closed rather than be the only accepted form.
+                    MutateDispositionSourceRecord(receiptDirectory, "eventstore-owner", source =>
+                        source["comment"]!["html_url"] =
+                            "https://github.com/" + ExpectedRepository + "/commit/" +
+                            SelectedSourceSha + "#story-3-13-disposition-anchor-eventstore-owner");
+                    break;
+
+                case "foreign-comment-author":
+                    MutateDispositionSourceRecord(receiptDirectory, "eventstore-owner", source =>
+                        source["comment"]!["user"]!["login"] = "not-the-owner");
+                    break;
+
+                case "comment-body-decision":
+                    MutateDispositionSourceRecord(receiptDirectory, "eventstore-owner", source =>
+                    {
+                        JsonObject body = JsonNode.Parse(
+                            source["comment"]!["body"]!.GetValue<string>())!.AsObject();
+                        body["decision"] = "rejected";
+                        source["comment"]!["body"] = body.ToJsonString();
+                    });
+                    break;
+
+                case "comment-shape-drift":
+                    MutateDispositionSourceRecord(receiptDirectory, "eventstore-owner", source =>
+                        source["comment"]!.AsObject().Remove("author_association"));
+                    break;
+
                 case "source-decision-mismatch":
                     MutateDispositionSourceRecord(receiptDirectory, "eventstore-owner", source =>
                         source["decision"] = "rejected");
@@ -4059,15 +4147,18 @@ public sealed class DeployedRuntimeParityClosureTests
     public void Story313LifecycleSurfacesRecordTheRejectedDisposition()
     {
         string root = FindRepositoryRoot();
+
+        // Every lifecycle assertion below is anchored to the line that owns the value, never to a
+        // whole-file substring: these documents also narrate their own lifecycle history, and a
+        // substring scan reads that prose instead of the state it claims to pin.
         string sprint = ReadNormalizedText(root, SprintStatusRelativePath);
-        sprint.ShouldContain("3-13-v3-94-1-deployed-runtime-evidence-disposition: review");
-        sprint.ShouldNotContain("3-13-v3-94-1-deployed-runtime-evidence-disposition: done");
+        SingleLineValue(sprint, "  3-13-v3-94-1-deployed-runtime-evidence-disposition:")
+            .ShouldBe("done");
 
         string story = ReadNormalizedText(root, StoryRecordRelativePath);
         story.ShouldContain("# Story 3.13: v3.94.1 Deployed Runtime Evidence Disposition");
-        story.ShouldContain("Status: review");
         story.ShouldContain(RejectedDisposition);
-        story.ShouldNotContain("Status: done");
+        SingleLineValue(story, "Status:").ShouldBe("done");
 
         string ci = ReadNormalizedText(root, CiDocumentationRelativePath);
         ci.ShouldContain(RejectedDisposition);
@@ -4077,10 +4168,62 @@ public sealed class DeployedRuntimeParityClosureTests
         ci.ShouldContain(SelectedReviewSubjectSha256);
 
         // The spec frontmatter is a fourth lifecycle surface distinct from the story record; it must
-        // not silently drift to 'done' while acceptance sits at 0/3 receipts.
+        // not silently drift to the closed lifecycle token while acceptance sits at 0/3 receipts.
+        // Anchored to the parsed YAML frontmatter block on purpose: a whole-file substring scan reads
+        // the review ledger's own prose, which quotes both lifecycle tokens verbatim when recording
+        // findings about them. That made the negative half fail on correct content and the positive
+        // half pass off a prose line, so neither observed the frontmatter it claimed to pin.
         string spec = ReadNormalizedText(root, SpecRelativePath);
-        spec.ShouldContain("status: 'in-review'");
-        spec.ShouldNotContain("status: 'done'");
+        FrontmatterValue(spec, "status").ShouldBe("'done'");
+    }
+
+    /// <summary>
+    /// Reads the value of the one line that starts with a prefix, failing when it is not unique.
+    /// </summary>
+    /// <param name="text">The normalized document text.</param>
+    /// <param name="prefix">The line prefix that owns the value.</param>
+    /// <returns>The trimmed remainder of that line.</returns>
+    private static string SingleLineValue(string text, string prefix)
+    {
+        string[] matches = text.Split('\n')
+            .Where(line => line.StartsWith(prefix, StringComparison.Ordinal))
+            .ToArray();
+        matches.Length.ShouldBe(1, "expected exactly one line starting with " + prefix);
+        return matches[0][prefix.Length..].Trim();
+    }
+
+    /// <summary>
+    /// Reads one key from a document's leading YAML frontmatter block.
+    /// </summary>
+    /// <param name="text">The normalized document text.</param>
+    /// <param name="key">The frontmatter key to read.</param>
+    /// <returns>The trimmed value, or an empty string when the block or key is absent.</returns>
+    private static string FrontmatterValue(string text, string key)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+
+        if (!text.StartsWith("---\n", StringComparison.Ordinal))
+        {
+            return string.Empty;
+        }
+
+        int end = text.IndexOf("\n---", 3, StringComparison.Ordinal);
+        if (end < 0)
+        {
+            return string.Empty;
+        }
+
+        string prefix = key + ":";
+        foreach (string line in text[4..end].Split('\n'))
+        {
+            if (line.StartsWith(prefix, StringComparison.Ordinal))
+            {
+                return line[prefix.Length..].Trim();
+            }
+        }
+
+        return string.Empty;
     }
 
     private static string ReadNormalizedText(string root, string relativePath) =>
@@ -5180,10 +5323,13 @@ public sealed class DeployedRuntimeParityClosureTests
 
         if (receipt is null)
         {
+            // Distinct from the field-shape failure below: this path is reached only when the receipt
+            // bytes do not parse as a JSON object at all. Sharing one code with the schema check left
+            // no test able to discriminate the two rules.
             return DispositionReason(
-                "acceptance.receipt.schema",
-                "a receipt is not a JSON object in the frozen receipt schema",
-                "re-issue the receipt against the frozen Story 3.13 acceptance-receipt schema");
+                "acceptance.receipt.json",
+                "a receipt is not parseable as a JSON object",
+                "re-issue the receipt as well-formed JSON in the frozen Story 3.13 receipt schema");
         }
 
         if (!HasExactProperties(receipt, RequiredReceiptFields)
@@ -5252,13 +5398,21 @@ public sealed class DeployedRuntimeParityClosureTests
         }
 
         JsonObject durableSource = receipt["durable_source"]!.AsObject();
+
+        // A GitHub-identified reviewer must be evidenced by a GitHub-minted comment; only the
+        // tooling-attested test-architect role may rest on a bmad record. The previous contract
+        // accepted a generic "retained-immutable-external-record" for every role, which no real
+        // GitHub artifact could ever satisfy and which therefore only a fixture could produce.
+        string expectedSourceKind = reviewer.StartsWith("github:", StringComparison.Ordinal)
+            ? "github-issue-comment"
+            : "bmad-test-architect-record";
         if (!HasExactProperties(durableSource, ["kind", "path", "sha256"])
-            || durableSource["kind"]!.GetValue<string>() != "retained-immutable-external-record"
+            || durableSource["kind"]!.GetValue<string>() != expectedSourceKind
             || durableSource["path"]!.GetValue<string>() != "sources/" + role + ".json")
         {
             return DispositionReason(
                 "acceptance.receipt.durable_source",
-                "a receipt cites something other than its retained immutable durable source record",
+                "a receipt cites a durable source of the wrong kind for its rostered reviewer identity",
                 "cite the retained durable source; a planning artifact is never a receipt source");
         }
 
@@ -5281,27 +5435,37 @@ public sealed class DeployedRuntimeParityClosureTests
                 "re-issue the durable source record bound to the same role, envelope, and repository");
         }
 
-        string expectedSourceUrl = "https://github.com/" + ExpectedRepository + "/commit/" +
-            SelectedSourceSha + "#story-3-13-disposition-" + envelopeHash + "-" + role;
+        string[] expectedSourceProperties = expectedSourceKind == "github-issue-comment"
+            ?
+            [
+                "accepted_limitations",
+                "accepted_scope",
+                "captured_at",
+                "comment",
+                "decision",
+                "repository",
+                "reviewer_identity",
+                "role",
+                "schema",
+                "subject_sha256",
+            ]
+            :
+            [
+                "accepted_limitations",
+                "accepted_scope",
+                "captured_at",
+                "decision",
+                "repository",
+                "reviewer_identity",
+                "role",
+                "schema",
+                "subject_sha256",
+            ];
         if (durableSource["sha256"]!.GetValue<string>() != ComputeSha256(sourceBytes)
-            || !HasExactProperties(
-                sourceRecord,
-                [
-                    "accepted_limitations",
-                    "accepted_scope",
-                    "captured_at",
-                    "decision",
-                    "repository",
-                    "reviewer_identity",
-                    "role",
-                    "schema",
-                    "source_url",
-                    "subject_sha256",
-                ])
+            || !HasExactProperties(sourceRecord, expectedSourceProperties)
             || !DocumentIsSupportSafe(sourceRecord)
             || sourceRecord["schema"]!.GetValue<string>() != DispositionSourceSchema
             || sourceRecord["repository"]!.GetValue<string>() != ExpectedRepository
-            || sourceRecord["source_url"]!.GetValue<string>() != expectedSourceUrl
             || sourceRecord["role"]!.GetValue<string>() != role)
         {
             return DispositionReason(
@@ -5337,6 +5501,83 @@ public sealed class DeployedRuntimeParityClosureTests
                 "re-issue the durable source record from the same acceptance event");
         }
 
+        if (expectedSourceKind == "github-issue-comment")
+        {
+            JsonObject comment = sourceRecord["comment"]!.AsObject();
+            if (!HasExactProperties(
+                    comment,
+                    [
+                        "author_association",
+                        "body",
+                        "created_at",
+                        "html_url",
+                        "id",
+                        "issue_url",
+                        "updated_at",
+                        "url",
+                        "user",
+                    ]))
+            {
+                return DispositionReason(
+                    "acceptance.source.comment",
+                    "a retained acceptance comment is not the verbatim GitHub issue-comment record",
+                    "retain the unmodified GitHub API comment object for the acceptance");
+            }
+
+            // The anchor must be one GitHub actually minted. A hand-authored fragment resolves to a
+            // page but proves nothing about authorship, which is exactly what the previous contract
+            // required and why no genuine acceptance could satisfy it.
+            if (!TryParseIssueCommentAnchor(
+                    comment["html_url"]!.GetValue<string>(),
+                    out long anchoredCommentId)
+                || anchoredCommentId != comment["id"]!.GetValue<long>())
+            {
+                return DispositionReason(
+                    "acceptance.source.comment_anchor",
+                    "a retained acceptance comment does not carry a GitHub-minted issue-comment anchor",
+                    "cite the #issuecomment-<id> URL GitHub minted for the acceptance comment");
+            }
+
+            if (comment["user"]!["login"]!.GetValue<string>() != reviewer["github:".Length..])
+            {
+                return DispositionReason(
+                    "acceptance.source.comment_author",
+                    "a retained acceptance comment was not authored by the rostered reviewer",
+                    "collect the acceptance comment from the rostered reviewer's own account");
+            }
+
+            JsonObject? commentAcceptance;
+            try
+            {
+                commentAcceptance = JsonNode.Parse(comment["body"]!.GetValue<string>()) as JsonObject;
+            }
+            catch (JsonException)
+            {
+                commentAcceptance = null;
+            }
+
+            // The acceptance the reviewer actually published must be the acceptance the receipt
+            // claims -- otherwise the retained comment is decoration around an unrelated assertion.
+            if (commentAcceptance is null
+                || !HasReceiptValue(commentAcceptance["decision"])
+                || commentAcceptance["decision"]!.GetValue<string>() != "accepted"
+                || commentAcceptance["role"]!.GetValue<string>() != role
+                || commentAcceptance["reviewer_identity"]!.GetValue<string>() != reviewer
+                || commentAcceptance["subject_sha256"]!.GetValue<string>() != SelectedReviewSubjectSha256
+                || commentAcceptance["accepted_scope"]!.GetValue<string>() != expectedScope
+                || !JsonNode.DeepEquals(
+                    commentAcceptance["accepted_limitations"],
+                    receipt["accepted_limitations"])
+                || comment["created_at"]!.GetValue<string>()
+                    != sourceRecord["captured_at"]!.GetValue<string>())
+            {
+                return DispositionReason(
+                    "acceptance.source.comment_body",
+                    "a retained acceptance comment body does not carry the acceptance the receipt claims",
+                    "post the acceptance JSON as the comment body and retain the comment verbatim");
+            }
+        }
+
         if (!TryParseExplicitOffset(
                 receipt["accepted_at"]!.GetValue<string>(),
                 out DateTimeOffset acceptedAt)
@@ -5350,6 +5591,36 @@ public sealed class DeployedRuntimeParityClosureTests
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Parses the comment id out of a GitHub-minted issue-comment anchor for this repository.
+    /// </summary>
+    /// <param name="url">The candidate <c>html_url</c> value.</param>
+    /// <param name="commentId">The anchored comment id when parsing succeeds.</param>
+    /// <returns><see langword="true"/> when the URL is a GitHub-minted issue-comment anchor.</returns>
+    private static bool TryParseIssueCommentAnchor(string url, out long commentId)
+    {
+        commentId = 0;
+        string prefix = "https://github.com/" + ExpectedRepository + "/issues/";
+        const string fragment = "#issuecomment-";
+        if (!url.StartsWith(prefix, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        int fragmentIndex = url.IndexOf(fragment, StringComparison.Ordinal);
+        if (fragmentIndex <= prefix.Length)
+        {
+            return false;
+        }
+
+        string issueNumber = url[prefix.Length..fragmentIndex];
+        string id = url[(fragmentIndex + fragment.Length)..];
+        return issueNumber.All(char.IsAsciiDigit)
+            && id.Length > 0
+            && id.All(char.IsAsciiDigit)
+            && long.TryParse(id, NumberStyles.None, CultureInfo.InvariantCulture, out commentId);
     }
 
     private static string? RejectDispositionManifest(string dispositionRoot, string envelopeHash)
@@ -5477,6 +5748,17 @@ public sealed class DeployedRuntimeParityClosureTests
         try
         {
             CopyDirectory(Path.Combine(repositoryRoot, DispositionRelativePath), disposition);
+
+            // Collected receipts are addressed by envelope digest, so any test that mutates the
+            // envelope would orphan them and trip the closed-inventory check before the clause it
+            // means to prove. Copies start receipt-free; CreateDispositionReceipts adds them back.
+            string acceptances = Path.Combine(disposition, "acceptances");
+            if (Directory.Exists(acceptances))
+            {
+                Directory.Delete(acceptances, recursive: true);
+                RebindDispositionManifest(disposition);
+            }
+
             return (cleanupRoot, disposition);
         }
         catch
@@ -5504,6 +5786,14 @@ public sealed class DeployedRuntimeParityClosureTests
             CopyDirectory(
                 Path.Combine(repositoryRoot, Story120EvidenceRelativePath),
                 Path.Combine(copiedRoot, Story120EvidenceRelativePath));
+            string copiedDisposition = Path.Combine(copiedRoot, DispositionRelativePath);
+            string copiedAcceptances = Path.Combine(copiedDisposition, "acceptances");
+            if (Directory.Exists(copiedAcceptances))
+            {
+                Directory.Delete(copiedAcceptances, recursive: true);
+                RebindDispositionManifest(copiedDisposition);
+            }
+
             foreach (string relative in DispositionSupportingFiles)
             {
                 string destination = Path.Combine(copiedRoot, relative);
@@ -5578,13 +5868,13 @@ public sealed class DeployedRuntimeParityClosureTests
         foreach (string role in RequiredRoles)
         {
             string reviewer = role == "test-architect" ? "bmad:murat" : "github:jpiquot";
+            bool githubSourced = reviewer.StartsWith("github:", StringComparison.Ordinal);
+            string capturedAt = acceptedAt.ToString("O", CultureInfo.InvariantCulture);
             JsonObject source = new()
             {
                 ["schema"] = DispositionSourceSchema,
                 ["repository"] = ExpectedRepository,
-                ["source_url"] = "https://github.com/" + ExpectedRepository + "/commit/" +
-                    SelectedSourceSha + "#story-3-13-disposition-" + envelopeHash + "-" + role,
-                ["captured_at"] = acceptedAt.ToString("O", CultureInfo.InvariantCulture),
+                ["captured_at"] = capturedAt,
                 ["role"] = role,
                 ["reviewer_identity"] = reviewer,
                 ["subject_sha256"] = SelectedReviewSubjectSha256,
@@ -5592,6 +5882,41 @@ public sealed class DeployedRuntimeParityClosureTests
                 ["accepted_scope"] = acceptedScope,
                 ["accepted_limitations"] = envelope["limitations"]!.DeepClone(),
             };
+
+            if (githubSourced)
+            {
+                // Shaped exactly like a `gh api .../issues/comments/<id>` response so the fixture
+                // exercises the same parse path a genuinely collected acceptance would.
+                long commentId = role == "eventstore-owner" ? 5290564373L : 5290564374L;
+                string login = reviewer["github:".Length..];
+                JsonObject body = new()
+                {
+                    ["accepted_limitations"] = envelope["limitations"]!.DeepClone(),
+                    ["accepted_scope"] = acceptedScope,
+                    ["decision"] = "accepted",
+                    ["reviewer_identity"] = reviewer,
+                    ["role"] = role,
+                    ["schema"] = DispositionReceiptSchema,
+                    ["subject_sha256"] = SelectedReviewSubjectSha256,
+                };
+                string id = commentId.ToString(CultureInfo.InvariantCulture);
+                source["comment"] = new JsonObject
+                {
+                    ["author_association"] = "MEMBER",
+                    ["body"] = body.ToJsonString(),
+                    ["created_at"] = capturedAt,
+                    ["html_url"] = "https://github.com/" + ExpectedRepository +
+                        "/issues/324#issuecomment-" + id,
+                    ["id"] = commentId,
+                    ["issue_url"] = "https://api.github.com/repos/" + ExpectedRepository +
+                        "/issues/324",
+                    ["updated_at"] = capturedAt,
+                    ["url"] = "https://api.github.com/repos/" + ExpectedRepository +
+                        "/issues/comments/" + id,
+                    ["user"] = new JsonObject { ["login"] = login },
+                };
+            }
+
             byte[] sourceBytes = JsonSerializer.SerializeToUtf8Bytes(source);
             File.WriteAllBytes(Path.Combine(sourcesDirectory, role + ".json"), sourceBytes);
             JsonObject receipt = new()
@@ -5599,10 +5924,12 @@ public sealed class DeployedRuntimeParityClosureTests
                 ["schema"] = DispositionReceiptSchema,
                 ["role"] = role,
                 ["reviewer_identity"] = reviewer,
-                ["accepted_at"] = acceptedAt.ToString("O", CultureInfo.InvariantCulture),
+                ["accepted_at"] = capturedAt,
                 ["durable_source"] = new JsonObject
                 {
-                    ["kind"] = "retained-immutable-external-record",
+                    ["kind"] = githubSourced
+                        ? "github-issue-comment"
+                        : "bmad-test-architect-record",
                     ["path"] = "sources/" + role + ".json",
                     ["sha256"] = ComputeSha256(sourceBytes),
                 },
@@ -5654,7 +5981,17 @@ public sealed class DeployedRuntimeParityClosureTests
         string timestamp)
     {
         byte[] sourceBytes = WriteDispositionSourceRecord(receiptDirectory, role, source =>
-            source["captured_at"] = timestamp);
+        {
+            source["captured_at"] = timestamp;
+
+            // The retained comment carries the same acceptance instant, so a timestamp mutation must
+            // move it too. Leaving it behind would make these cases fail on the comment-body
+            // cross-check instead of the accepted_at range they exist to prove.
+            if (source["comment"] is JsonObject comment)
+            {
+                comment["created_at"] = timestamp;
+            }
+        });
         MutateDispositionReceipt(receiptDirectory, role, receipt =>
         {
             receipt["accepted_at"] = timestamp;

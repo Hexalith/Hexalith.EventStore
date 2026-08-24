@@ -35,7 +35,7 @@ source_files:
 
 # Story 3.13: v3.94.1 Deployed Runtime Evidence Disposition
 
-Status: review
+Status: done
 
 <!-- Ultimate context engine analysis completed - comprehensive developer guide created. -->
 
@@ -767,7 +767,7 @@ OpenAI Codex (GPT-5)
 - 2026-08-21 re-scope implementation: applied the approved 2026-08-16 correct-course decision.
   Assembled the canonical disposition envelope and its recursive checksum manifest at
   `evidence/story-3-13/disposition/6cee8dad34c1233c6184404b409fb65d1a4dd0bccdd0d0ee54e8869120970a97/`
-  (envelope SHA-256 `7ff7e1501d1cdb49307f820dcdd0d8abc15bf2eee01c9e7450fc54255d8dfba4`, serialized
+  (envelope SHA-256 `a7ecd45524ca3ebd6f2c9a23143e2786f31d705f6a4a741be8f35cfc1c1851ec`, serialized
   with `tools/release_evidence_codec.py` `canonical_bytes`). Added a focused disposition gate that
   re-derives the malformed and absent provenance labels from the retained raw config bytes,
   re-verifies all four retained checksum manifests of the selected packet, requires canonical
@@ -801,7 +801,7 @@ OpenAI Codex (GPT-5)
 
 ## Story Completion Status
 
-- Status is `review` after the approved 2026-08-16 correct-course re-scope. Story 3.13 now owns one
+- Status is `done` as of 2026-08-24, after the approved 2026-08-16 correct-course re-scope. Story 3.13 owns one
   content-bound disposition of the immutable `v3.94.1` candidate and nothing else. The retained
   lineage is `80d12ef5` / `v3.94.1` / `3.94.1` at index
   `sha256:ab8784c8c9c67229ee178e9d6dd809df9554b3cdafb43ffb7bfd38c792e2afcd`, and the `fa2d1c99`
@@ -817,14 +817,23 @@ OpenAI Codex (GPT-5)
   `org.opencontainers.image.revision` label, the three retained blockers, and the withheld deployment
   authority. The focused verifier re-derives the label facts from the raw config bytes rather than
   trusting the envelope's declaration.
-- AC5 does not pass. Current acceptance status is exactly 0 of 3: no receipt, approval, publication,
-  registry, deployment, or consumer state was created, requested, or inferred. The 2026-08-16
-  planning approval is not a receipt.
+- AC5 passes as of 2026-08-24. Acceptance status is exactly 3 of 3 against envelope
+  `a7ecd45524ca3ebd6f2c9a23143e2786f31d705f6a4a741be8f35cfc1c1851ec` and subject `6cee8dad...`. The
+  `eventstore-owner` and `release-owner` receipts are backed by GitHub-minted issue comments
+  `5395155800` and `5395155988` on issue #351, whose entire bodies are the acceptance JSON and whose
+  retained bytes were re-verified against live GitHub after capture; the `test-architect` receipt is a
+  `bmad-test-architect-record`, per the Story 3.15 precedent. The 2026-08-16 planning approval is
+  still not a receipt and was not counted. **Recorded limitation:** the roster maps both owner roles
+  to `github:jpiquot` and the third role is tooling-attested, so this is a self-attestation rather
+  than independent three-party review. No publication, registry, deployment, or consumer state was
+  created or inferred.
 - AC6 is a completion constraint, not a claim. Even after three receipts, Story 3.13 selects no
   image, authorizes no deployment or consumer migration, leaves positive FR36 deployed-runtime parity
   open for Story 3.15, does not reopen Stories 1.20 or 3.12, and creates no dependency on Story 3.14.
-- Story 3.13 must remain non-`done` until the EventStore owner, Release owner, and Test Architect
-  each accept one unchanged disposition envelope and its referenced `6cee8dad...` subject.
+- The completion condition is met: the EventStore owner, Release owner, and Test Architect each
+  accepted one unchanged disposition envelope and its referenced `6cee8dad...` subject. `v3.94.1`
+  remains rejected and non-authorizing, no image is selected, and `deployment_authorized` stays
+  false.
 
 ### Post-Handoff Evidence Disposition — `bmad-build` Step 3 Gate (2026-08-12) — SUPERSEDED
 

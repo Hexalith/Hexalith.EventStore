@@ -226,12 +226,17 @@ individually authorized rather than merely approved: a dispatch-reserved stable
 version plus an unexpired, one-use GitHub issue-comment authority from the
 `github:jpiquot` release-owner identity. That gate remains implemented and tested
 in `Hexalith.Builds`, and is off by default here, because it costs the operator a
-hand-computed version and an out-of-band authority comment per run. The live
-preflight only shape-checks whatever owner value it is given; the caller is what
-pins the identity, and the container-publishing governance suite fails closed if
-`require-publication-authority: true` is ever set without also setting
-`release-authority-owner: github:jpiquot` alongside `reserved-version` and
-`release-authority-issue-url`.
+hand-computed version and an out-of-band authority comment per run. Re-enabling it
+means setting `require-publication-authority: true` and supplying `reserved-version`,
+`release-authority-issue-url` and `release-authority-owner`. The live preflight only
+shape-checks whatever owner value it is given; the caller is what pins the identity.
+Two separate governance tests hold that line, and it is worth knowing which does what:
+`ReleaseAuthorityOwnerIsPinnedWheneverTheAuthorityGateIsEnabled` checks the owner value
+alone -- if the gate is ever turned on, the owner must be `github:jpiquot` -- while
+`ReleaseCallerPinsSharedExecutionAndOneMappingWithGitHubAuthority` asserts the caller
+currently carries none of the three reservation inputs. So while the gate stays off, any
+attempt to re-enable it fails the suite until both tests are updated together; neither
+test validates `reserved-version` or `release-authority-issue-url` themselves.
 The posture is declared, never inferred: with the gate off any supplied
 reservation value fails closed rather than being silently ignored, a half-declared
 authority is rejected instead of read as absence, and a declaration that is
@@ -368,14 +373,25 @@ unavailable-for-v3.94.1`, `selected_deployed_identity: null`, and
 because the frozen crosswalk pins `receipt_count` to `0`. The malformed `https` values
 for `org.opencontainers.image.source`, `.url`, and `.documentation`, the absent
 `.revision` label, and the withheld deployment authority are retained verbatim and are
-never reinterpreted as passing. Story 3.13 stays at `review` until the EventStore owner,
-Release owner, and Test Architect each accept the unchanged envelope; the approved
-2026-08-16 correct-course decision is planning authority, not a receipt.
+never reinterpreted as passing. Story 3.13 reached `done` on 2026-08-24, when the EventStore owner, Release owner and
+Test Architect each accepted the unchanged envelope
+`a7ecd45524ca3ebd6f2c9a23143e2786f31d705f6a4a741be8f35cfc1c1851ec`; the approved
+2026-08-16 correct-course decision was planning authority, not a receipt, and was not
+counted. Both owner receipts are GitHub-minted issue comments on #351 whose bodies are
+the acceptance JSON; the Test Architect receipt is a bmad record. Because the roster maps
+both owner roles to one account, that acceptance is a self-attestation rather than
+independent three-party review.
 
 Story 3.14 owns the corrective release; Story 3.15 owns positive deployed-runtime parity
 for it. A complete Story 3.13 disposition therefore still selects no image and authorizes
 no release, registry, deployment, consumer, or predecessor mutation, and it creates no
 dependency on Story 3.14.
+
+The Story 3.13 tracker key stays `3-13-v3-94-1-deployed-runtime-evidence-disposition`
+and only its display title changed. Proposal §4.9 allows the rename only when the story
+filename, spec key, and every repository reference move atomically; both Story 3.13
+proof-packet filenames are pinned by SHA-256 inside the frozen review subjects and the
+focused verifier, so they cannot be renamed and that condition cannot be met.
 
 ### Story 3.15 corrected deployed-runtime parity
 
@@ -399,12 +415,6 @@ The only selected identity is
 `registry.hexalith.com/eventstore@sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`.
 That positive verdict is evidence, not operational authority: deployment, package publication,
 registry mutation, consumer removal, and predecessor mutation remain separately prohibited.
-
-The Story 3.13 tracker key stays `3-13-v3-94-1-deployed-runtime-evidence-disposition`
-and only its display title changed. Proposal §4.9 allows the rename only when the story
-filename, spec key, and every repository reference move atomically; both Story 3.13
-proof-packet filenames are pinned by SHA-256 inside the frozen review subjects and the
-focused verifier, so they cannot be renamed and that condition cannot be met.
 
 ## Submodules
 
