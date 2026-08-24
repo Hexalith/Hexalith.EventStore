@@ -1519,3 +1519,15 @@ status: open
   summary: Story 3.13's three role-bound acceptances are a self-attestation, not independent three-party review.
   evidence: The packet-bound roster maps `eventstore-owner` and `release-owner` to the same account (`github:jpiquot`), and `test-architect` to `bmad:murat`, a tooling-attested record with no external anchor. The 3/3 gate at `evidence/story-3-13/disposition/6cee8dad.../acceptances/a7ecd455.../` is therefore satisfied by one human plus a bmad record. The two owner receipts are genuinely GitHub-minted and independently re-fetchable (comments 5395155800 / 5395155988 on issue 351), so the evidence is authentic; what is absent is reviewer independence. Same pattern already tracked for Story 3.15's `bmad:murat` receipt.
   severity: medium
+
+## Deferred from: code review of spec-3-14-corrective-oci-provenance-release.md (2026-08-24)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md`
+  summary: The development-gitlink guard encodes "deliberately independent of the release pin" as a permanent inequality, so a legitimate submodule bump onto the release pin fails a test with no failure meaning.
+  evidence: `ContainerPublishingGovernanceTests.cs:539` asserts `gitlinkEntry.Groups["sha"].Value.ShouldNotBe(ApprovedBuildsReleaseSha)`. The documented property is that the `uses:` ref and `builds-execution-sha` agree with each other and that the gitlink is read independently (`git ls-tree`), not that the gitlink may never equal `a07078ad…`. The current gitlink is `2f46aaee…`, so the assertion cannot fire today; it becomes a false red the first time an ordinary `build(deps)` bump happens to land on the pinned revision. Pre-existing — introduced before the chunk-3 range (`94591f35`..`da52e2c8`) and untouched by it.
+  severity: low
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md`
+  summary: No executable guard asserts that the release caller's pinned reusable-workflow SHA is reachable on the Hexalith.Builds remote rather than only in a local object store.
+  evidence: `.github/workflows/release.yml:103,110` pin `builds-execution-sha`, and the story record's warning that a rotation target must exist on the remote was deleted in `f2d2575c` with nothing replacing it. This is the defect that produced the chunk-A+B blocking Decision, when `63409393…` was pinned while it existed only on an unpushed branch (it has since been merged to Builds `main` and superseded by `a07078ad…`). Deferred 2026-08-24 by owner decision: an unresolvable `uses:` SHA already fails the Release dispatch at startup — the quarantined run `32347773728` failure mode — so nothing publishes silently, and every candidate guard costs either network plus auth inside the Tier-1 CI-gating Contracts lane or a `origin/main` remote-tracking ref that a CI submodule checkout may not populate (and which reds on force-pushes it should not judge). The recurring drift class is closed separately by binding the `docs/ci.md` pin prose to `ApprovedBuildsReleaseSha`.
+  severity: low
