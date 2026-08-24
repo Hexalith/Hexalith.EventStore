@@ -254,6 +254,93 @@ Four parallel layers (blind-hunter, edge-case-hunter, verification-gap, acceptan
 - [x] [Review][Defer] The Story 3.15 Test Architect receipt (`bmad:murat`) has no externally-checkable anchor comparable to the two GitHub-issue-comment-backed owner receipts — it is sourced from a `bmad-test-architect-record`, i.e. self-attested by the same tooling that assembled the packet. This reproduces, in a new story, the exact durable-receipt-anchor gap `deferred-work.md` already tracks for Story 3.13's disposition receipts (and is the project's established pattern for `bmad:`-role receipts generally, not a defect unique to this diff). — deferred, pre-existing pattern [evidence/story-3-15/.../acceptances/.../test-architect.json]
 - [x] [Review][Defer] `closure.json` declares `deployed_runtime_parity: "available"` and a non-null `selected_deployed_identity` even in states where `acceptances.receipts` is empty (confirmed unchanged from `HEAD`, i.e. pre-existing, not introduced by this diff) — the real gate is `_exact_list(receipts, 3, ...)` in `tools/deployed_runtime_parity_handlers/v1.py:360`, which fails closed regardless of those two fields' values, so there is no functional hole. But a consumer reading the JSON file directly instead of running the Python verifier would misread pre-acceptance state as already authorized. — deferred, pre-existing, cosmetic/documentation risk only [tools/deployed_runtime_parity_handlers/v1.py:203-207]
 
+### Review Findings (2026-08-23 loop 4 — `bmad-code-review` against `a1b4fe54`)
+
+Four parallel layers (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor); all four
+completed. Scope requested by the owner: commit `a1b4fe54` alone (`test(packaging): harden Story 3.13
+disposition gate`). 15 findings after merge/verification: 0 decisions / 2 patches / 5 defers / 8
+dismissed. Verification against HEAD (`f2d2575c`) showed most of what the four layers independently
+rediscovered — the frontmatter `status: 'done'` self-contradiction, the untested
+`disposition.location` historical-tree disjunct, `review_loop_iteration` staleness, and the collapsed
+Review Closure checkboxes — had already been found and either fixed or deferred by loop 2/loop 3
+above, reviewing the same or a later diff; those are dismissed here as already handled, not as false
+positives.
+
+**patch (unambiguous fix; no human input needed):**
+
+- [ ] [Review][Patch] The `internal.exception` catch-all diagnostic is not exercised by any test —
+  this diff replaced `DispositionFixtureFaultReportsAnInternalDiagnostic` with
+  `InvalidDispositionEnvelopeReportsCanonicalBytesDiagnostic`, which asserts
+  `disposition.canonical_bytes`, a different code path. No test in the file now asserts
+  `ShouldRejectWith(rejection, "internal.exception")`. Add a case that forces a genuine internal
+  fault (e.g. an unreadable/locked disposition file raising `IOException`/
+  `UnauthorizedAccessException`) distinct from a malformed-JSON canonical-bytes mismatch.
+  [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:4185-4200]
+- [ ] [Review][Patch] `receipt-schema-mismatch` and `malformed-receipt-json` assert the identical
+  reason code `acceptance.receipt.schema`, so no test discriminates which of the two distinct code
+  paths (wrong schema string vs. JSON parse failure) actually fired — the same "two rules, one code"
+  gap this story already split for `corrective_release_owner`/`depends_on_corrective_release` and for
+  `disposition.manifest`'s file/directory clauses elsewhere in this same diff, left unfixed here.
+  [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:3635,
+  3642, 3723, 3755]
+
+**defer:**
+
+- [x] [Review][Defer] `RejectDispositionManifest`'s new `allowedDirectories` allow-list branch has no
+  negative test planting an unlisted stray directory (e.g. `acceptances/<hash>/junk/`) — every
+  existing negative case plants a file, not a directory, leaving that branch unproven. — deferred,
+  low value given the file-level allow-list is already well covered
+  [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:5381-5394]
+- [x] [Review][Defer] `RejectDispositionManifest`'s directory enumeration
+  (`Directory.GetDirectories(dispositionRoot, "*", SearchOption.AllDirectories)`) and
+  `DispositionFilesUnder`'s file enumeration are not reparse-point-safe, the same weakness class
+  already deferred above for `PathIsWithin` (loop 2) — a symlink planted in the disposition directory
+  could evade both the location guard and the closed-inventory check. — deferred, pre-existing pattern
+  class, requires repo write access to exploit
+  [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:5386-5392,
+  5401-5405]
+- [x] [Review][Defer] `DispositionSpecificLimitations` hardcodes three full sentences of frozen
+  evidence prose as C# string literals with no automated cross-check against the frozen JSON file —
+  a third, positionally-coupled source of truth, the same pattern this diff fixed for the retained
+  manifest arrays (`RetainedManifestFiles`/`-EntryCounts`/`-Bases`) but left unfixed here. — deferred,
+  low, evidence is frozen so live drift risk is theoretical
+  [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:188-206]
+- [x] [Review][Defer] `role-filename-mismatch`, `undeclared-sidecar`, and `stale-envelope-directory`
+  moved from a soft acceptance-layer diagnostic (`Verified: true`, only `story_may_be_done` blocked,
+  reason `acceptance.receipt_set`/`acceptance.receipt_directory`) to a hard whole-envelope
+  `Verified: false` failure under `disposition.manifest` — a real contract change to what `Verified`
+  means, not called out in Design Notes. Appears to be a strengthening, not a regression. — deferred,
+  documentation-completeness only
+  [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:857-927]
+- [x] [Review][Defer] The "Suggested Review Order" section's absolute line-number anchors into four
+  sibling files (`3-13-deployed-runtime-parity-closure.md:802`, `docs/ci.md:357`,
+  `sprint-status.yaml:225`, `deferred-work.md:1410`) have no re-derivation task tied to them — the
+  same anchor-rot class this spec elsewhere treats as a bug requiring an explicit "re-derive Code Map
+  anchors" checklist item. — deferred, low
+  [spec-3-13-deployed-runtime-parity-closure.md:331-354]
+
+Dismissed (8, already handled elsewhere or verified false): the frontmatter `status: 'done'`
+self-contradiction (already found and fixed by loop 2, spec:226; confirmed correct at current HEAD).
+The `disposition.location` historical-tree disjunct being untested (already found and fixed by loop 2,
+spec:229; `DispositionInsideHistoricalEvidenceTreeFailsClosed` confirmed present at HEAD). A possible
+`NullReferenceException` reading `platform["os"]`/`["architecture"]` from `index.raw` — mitigated by
+the outer `EvaluateDisposition` catch (`NullReferenceException` degrades to `internal.exception`) and
+by the input being frozen, checksum-verified evidence already validated before this code runs; same
+accepted-defense-in-depth precedent loop 2 established for an equivalent `CountDispositionReceipts`
+re-parse concern. `ParseVerifiedExplicitOffset`'s re-parse-and-throw path being uncovered — same
+precedent: loop 2 explicitly examined and refuted an equivalent claim on the grounds the outer catch
+makes any escape safe. `RejectDispositionDefects` dropping its `crosswalk` parameter without a new
+test proving the narrowed check still fails closed — verified false: the removed crosswalk-side
+disjunct was provably always-false dead code (the frozen crosswalk's `release` object carries no
+`observed_config_revision` key, per loop 1's own investigation), and the surviving envelope-side check
+is already covered by the pre-existing `synthesized-revision-label` test case
+(DeployedRuntimeParityClosureTests.cs:3338). `review_loop_iteration` staying `1` (already found and
+deferred by loop 2, spec:232). The ~20 stale unchecked historical-ledger checkboxes under "Review
+Closure" (already found and deferred by loop 2, spec:233). `sprint-status.yaml`'s stale Story 3.15 row
+— not present in the reviewed commit `a1b4fe54` (which touches only this spec file and the test file);
+already separately tracked as an open, unapplied patch item by loop 3's review of a later commit
+(spec:249).
+
 ## Spec Change Log
 
 - 2026-08-22 (review closure): applied the bounded verifier/test hardening from the parallel review,

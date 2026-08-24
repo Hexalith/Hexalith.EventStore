@@ -1448,3 +1448,30 @@ status: open
   summary: `closure.json` declares `deployed_runtime_parity: "available"` and a non-null `selected_deployed_identity` even when `acceptances.receipts` is empty.
   evidence: Confirmed unchanged from `HEAD` (pre-existing, not introduced by the 2026-08-22 loop-3 diff) via `git show HEAD:.../closure.json`. The real gate is `_exact_list(receipts, 3, ...)` in `tools/deployed_runtime_parity_handlers/v1.py:360`, which fails closed regardless of those two fields' declared values, so there is no functional hole — but a consumer reading the JSON file directly instead of running `validate-corrected-deployed-runtime-parity.py` would misread pre-acceptance state as already authorized.
   severity: low
+
+## Deferred from: code review of spec-3-13-deployed-runtime-parity-closure (2026-08-23, loop 4)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: `RejectDispositionManifest`'s new directory allow-list branch (`actualDirectories.All(allowedDirectories.Contains)`) has no negative test planting an unlisted stray directory.
+  evidence: Every existing negative case for the disposition-manifest closed inventory (`resealed-stray-file`, `resealed-stray-acceptance-file`, `role-filename-mismatch`, `undeclared-sidecar`, `stale-envelope-directory`) plants a file, never an unlisted directory (e.g. `acceptances/<envelope-hash>/junk/`), so the directory-allow-list branch added in this diff is unproven. `tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:5381-5394`.
+  severity: low
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: `RejectDispositionManifest`'s directory/file enumeration is not reparse-point-safe, the same weakness class already deferred above for `PathIsWithin` (loop 2), now present at a second call site.
+  evidence: `Directory.GetDirectories(dispositionRoot, "*", SearchOption.AllDirectories)` and `DispositionFilesUnder`'s `Directory.GetFiles(...)` call, unlike `ResolveWithin` elsewhere in the file, follow reparse points without exclusion. A symlink planted inside the disposition directory could evade the closed-inventory check the same way it could evade `PathIsWithin`. Requires repo write access to exploit. `tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:5386-5392, 5401-5405`.
+  severity: low
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: `DispositionSpecificLimitations` hardcodes three full sentences of frozen evidence prose as C# string literals with no automated cross-check against the frozen JSON file.
+  evidence: A third, positionally-coupled source of truth for text that also lives in the frozen `review-subject.json`/envelope evidence — the same duplicate-source-of-truth pattern this diff fixed for the retained manifest arrays (`RetainedManifestFiles`/`-EntryCounts`/`-Bases`, tupled together) but left unfixed here. Evidence is frozen, so live drift risk is theoretical unless a future revalidation trigger amends it. `tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:188-206`.
+  severity: low
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: `role-filename-mismatch`, `undeclared-sidecar`, and `stale-envelope-directory` silently moved from a soft acceptance-layer diagnostic to a hard whole-envelope failure, undocumented in Design Notes.
+  evidence: Previously these three mutations left `Verified: true` and only blocked `story_may_be_done`, under reason codes `acceptance.receipt_set`/`acceptance.receipt_directory`. This diff moves them to the disposition-manifest layer, where they now set `Verified: false` under `disposition.manifest`. A real contract change to what `Verified` means for any caller, and it appears to be a strengthening rather than a regression, but the spec's Design Notes do not call out the shift. `tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:857-927`.
+  severity: low
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md`
+  summary: The "Suggested Review Order" section's absolute line-number anchors into four sibling files have no re-derivation task tied to them.
+  evidence: Anchors into `3-13-deployed-runtime-parity-closure.md:802`, `docs/ci.md:357`, `sprint-status.yaml:225`, and `deferred-work.md:1410` (this file) will rot on the next edit to any of those files, the same anchor-rot bug class this spec elsewhere treats as requiring an explicit "re-derive Code Map anchors" checklist item. `spec-3-13-deployed-runtime-parity-closure.md:331-354`.
+  severity: low
