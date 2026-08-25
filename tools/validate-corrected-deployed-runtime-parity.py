@@ -3,14 +3,20 @@
 
 import argparse
 import hashlib
-import importlib
+import importlib.machinery
 import json
 import sys
+import types
 from pathlib import Path
 
 
 SCHEMA = "hexalith.eventstore.corrected-deployed-runtime-parity.v1"
-V1_HANDLER_SHA256 = "4f1b62ef5b3f350b4a92da5cd3e7992d52474f7caa705d7993e4cebfedabc12d"
+V3_PACKET_CODEC_SHA256 = "814502bd962e00dfbac243e2443c3709b46bdbb69e197691443a083e283d32a9"
+RERUN_TRIGGER = (
+    "Rebuild the complete subject and reject all prior receipts after any predecessor, package, OCI, "
+    "Production-smoke, inventory, registry, verifier, decision, or receipt-source change."
+)
+V1_HANDLER_SHA256 = "e8b6538b11d626bb248fa9a0a61b22a2b2d4c39b5e6561f4e334a50a731f6b3d"
 HANDLERS = {
     (SCHEMA, 1, V1_HANDLER_SHA256): "deployed_runtime_parity_handlers.v1",
 }
@@ -26,14 +32,19 @@ IMPORT_PATH_FILE_SHA256 = {
     "release_evidence_handlers/__init__.py":
         "a33b53f823fa36b822395aee2d01597091b37c26248995c2629b0a9e30c70625",
     "release_evidence_handlers/v3.py":
-        "3f366eee1509f5350806b9277eb514d20987790fff5b248f81155dbb5857d490",
+        "5cb007497466090956eb35a7d5340cfe4c9e07920a1b55dd1801d422509e0f1b",
+}
+EXPECTED_IMPORT_PATH_FILES = {
+    "deployed_runtime_parity_handlers/__init__.py",
+    "deployed_runtime_parity_handlers/v1.py",
+    "release_evidence_handlers/__init__.py",
+    "release_evidence_handlers/v3.py",
 }
 
 
-# Verifying the .py bytes does not by itself guarantee those bytes execute: CPython will load a
-# cached __pycache__/*.pyc whenever the recorded source mtime and size still match, so bytecode
-# compiled from different text can run while the pinned hash still passes. Disable bytecode use for
-# this process before any handler import.
+# The source-only loader below never asks importlib for code, so a timestamp-valid stale .pyc cannot
+# stand in for the bytes whose SHA-256 was checked. Keep bytecode writes disabled too: verifier runs
+# must not create a second executable representation beside the reviewed sources.
 sys.dont_write_bytecode = True
 
 
@@ -48,7 +59,10 @@ def _verify_dispatch_table():
     module unpinned -- the sibling dispatcher gained the equivalent guard for the same reason.
     """
     registered = {module.replace(".", "/") + ".py" for module in HANDLERS.values()}
-    if not registered.issubset(IMPORT_PATH_FILE_SHA256):
+    if (
+        not registered.issubset(EXPECTED_IMPORT_PATH_FILES)
+        or set(IMPORT_PATH_FILE_SHA256) != EXPECTED_IMPORT_PATH_FILES
+    ):
         raise DispatchError("trusted live handler configuration is inconsistent")
 
 
@@ -66,10 +80,10 @@ def _load_dispatch_metadata(evidence_bytes):
         document = json.loads(evidence_bytes, object_pairs_hook=_unique_object)
         dispatch = document["dispatch"]
         key = (dispatch["schema"], dispatch["version"], dispatch["handler"]["sha256"])
+        if key not in HANDLERS:
+            raise DispatchError("closure does not select a trusted live handler")
     except (KeyError, TypeError, json.JSONDecodeError) as error:
         raise DispatchError("closure dispatch metadata is invalid") from error
-    if key not in HANDLERS:
-        raise DispatchError("closure does not select a trusted live handler")
     return document, HANDLERS[key]
 
 
@@ -79,6 +93,7 @@ def _repository_root():
 
 def _verify_import_path():
     tools_root = Path(__file__).resolve().parent
+    sources = {}
     for relative, expected in sorted(IMPORT_PATH_FILE_SHA256.items()):
         try:
             source = (tools_root / relative).read_bytes()
@@ -88,6 +103,61 @@ def _verify_import_path():
             raise DispatchError(
                 f"trusted live handler source does not match its pinned SHA-256: {relative}"
             )
+        sources[relative] = source
+    return sources
+
+
+def _load_verified_module(module_name, relative, source, *, is_package=False):
+    """Compile and execute exactly the verified source bytes, never cached bytecode."""
+    path = (Path(__file__).resolve().parent / relative).resolve()
+    module = types.ModuleType(module_name)
+    module.__file__ = str(path)
+    module.__package__ = module_name if is_package else module_name.rpartition(".")[0]
+    module.__loader__ = None
+    module.__spec__ = importlib.machinery.ModuleSpec(module_name, loader=None, is_package=is_package)
+    if is_package:
+        module.__path__ = [str(path.parent)]
+        module.__spec__.submodule_search_locations = module.__path__
+    sys.modules[module_name] = module
+    try:
+        exec(compile(source, str(path), "exec", dont_inherit=True), module.__dict__)
+    except Exception as error:
+        sys.modules.pop(module_name, None)
+        raise DispatchError("trusted live handler could not be loaded") from error
+    return module
+
+
+def _load_handler(module_name, sources):
+    """Load the complete four-file trust path from its already verified source bytes."""
+    predecessor_package = _load_verified_module(
+        "release_evidence_handlers",
+        "release_evidence_handlers/__init__.py",
+        sources["release_evidence_handlers/__init__.py"],
+        is_package=True,
+    )
+    predecessor_handler = _load_verified_module(
+        "release_evidence_handlers.v3",
+        "release_evidence_handlers/v3.py",
+        sources["release_evidence_handlers/v3.py"],
+    )
+    predecessor_package.v3 = predecessor_handler
+    handler_package = _load_verified_module(
+        "deployed_runtime_parity_handlers",
+        "deployed_runtime_parity_handlers/__init__.py",
+        sources["deployed_runtime_parity_handlers/__init__.py"],
+        is_package=True,
+    )
+    handler = _load_verified_module(
+        module_name,
+        module_name.replace(".", "/") + ".py",
+        sources[module_name.replace(".", "/") + ".py"],
+    )
+    handler_package.v1 = handler
+    if predecessor_handler.EXPECTED_PACKET_CODEC_SHA256 != V3_PACKET_CODEC_SHA256:
+        raise DispatchError("trusted predecessor handler codec pin is inconsistent")
+    if handler.RERUN_TRIGGER != RERUN_TRIGGER:
+        raise DispatchError("trusted live handler rerun trigger is inconsistent")
+    return handler, predecessor_handler, handler_package, predecessor_package
 
 
 def _verify_imported_file(module, relative):
@@ -102,16 +172,20 @@ def _verify_imported_file(module, relative):
         raise DispatchError("trusted live handler was not imported from its verified path")
 
 
-def validate(evidence_path, packet_root=None):
+def validate(evidence_path, manifest_path=None, packet_root=None):
     """Return the canonical subject digest after validating one closure packet."""
     repository_root = _repository_root()
-    manifest_path = repository_root / "tools/release-packages.json"
     evidence_bytes = evidence_path.read_bytes()
     document, module_name = _load_dispatch_metadata(evidence_bytes)
     _verify_dispatch_table()
-    _verify_import_path()
-    handler = importlib.import_module(module_name)
+    sources = _verify_import_path()
+    handler, predecessor_handler, handler_package, predecessor_package = _load_handler(
+        module_name, sources)
     _verify_imported_file(handler, module_name.replace(".", "/") + ".py")
+    _verify_imported_file(predecessor_handler, "release_evidence_handlers/v3.py")
+    _verify_imported_file(handler_package, "deployed_runtime_parity_handlers/__init__.py")
+    _verify_imported_file(predecessor_package, "release_evidence_handlers/__init__.py")
+    manifest_path = manifest_path or repository_root / handler.MANIFEST_FILE
     manifest_bytes = manifest_path.read_bytes()
     expected_package_ids = handler.validate_release_manifest(handler.load_json_bytes(manifest_bytes))
     manifest_sha256 = hashlib.sha256(manifest_bytes).hexdigest()
@@ -137,15 +211,24 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("evidence", type=Path)
     parser.add_argument(
+        "--manifest",
+        type=Path,
+        help="Release package manifest; defaults to the trusted handler's repository-relative path.",
+    )
+    parser.add_argument(
         "--packet-root",
         type=Path,
         help="Root used to resolve retained package, OCI, smoke, registry, subject, and receipt paths.",
     )
     arguments = parser.parse_args()
     try:
-        subject_sha256, selected_identity = validate(arguments.evidence, arguments.packet_root)
+        subject_sha256, selected_identity = validate(
+            arguments.evidence, arguments.manifest, arguments.packet_root)
     except (OSError, DispatchError, ValueError, json.JSONDecodeError) as error:
-        print(f"[corrected-deployed-runtime-parity] fail: {error}", file=sys.stderr)
+        print(
+            f"[corrected-deployed-runtime-parity] fail: {error}; rerun: {RERUN_TRIGGER}",
+            file=sys.stderr,
+        )
         return 1
     print(
         "[corrected-deployed-runtime-parity] pass: "

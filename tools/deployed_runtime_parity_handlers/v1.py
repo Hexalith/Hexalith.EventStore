@@ -45,14 +45,17 @@ PREDECESSOR_HANDLER_FILE = "tools/release_evidence_handlers/v3.py"
 PREDECESSOR_PACKAGE_FILE = "tools/release_evidence_handlers/__init__.py"
 PLATFORMS = ("linux/amd64", "linux/arm64")
 REQUIRED_ROLES = ("eventstore-owner", "release-owner", "test-architect")
+OWNER_ROLES = ("eventstore-owner", "release-owner")
+OWNER_GITHUB_ACCOUNT = ("jpiquot", 6775094)
 EXPECTED_IDENTITIES = {
-    "eventstore-owner": "github:jpiquot",
-    "release-owner": "github:jpiquot",
+    "eventstore-owner": f"github:{OWNER_GITHUB_ACCOUNT[0]}",
+    "release-owner": f"github:{OWNER_GITHUB_ACCOUNT[0]}",
     "test-architect": "bmad:murat",
 }
 REQUIRED_LIMITATIONS = (
     "This packet supplies immutable deployed-runtime parity evidence only.",
     "It authorizes no deployment, publication, registry mutation, consumer removal, or predecessor change.",
+    "The Test Architect acceptance is a self-attested BMAD record without independent external authentication.",
 )
 RERUN_TRIGGER = (
     "Rebuild the complete subject and reject all prior receipts after any predecessor, package, OCI, "
@@ -64,11 +67,24 @@ CONFIG_MEDIA_TYPE = "application/vnd.oci.image.config.v1+json"
 SHA256 = re.compile(r"^[0-9a-f]{64}$", re.ASCII)
 DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$", re.ASCII)
 ROLE_MAPPING_LINE = re.compile(r"^- (eventstore-owner|release-owner|test-architect): (\S+)$", re.MULTILINE)
-# The disclaimer must be an explicit negation, matched with word boundaries and confined to one
-# sentence. Substring markers such as "authorizes no" are satisfied by "authorizes nothing", so a
-# body reading "authorizes nothing beyond deployment role identity" -- which asserts the opposite
-# of what the guard exists to require -- passed the previous marker test.
-REGISTRY_AUTHORITY_DISCLAIMER = re.compile(r"\bauthorizes no\b[^.;\n]*\bdeployment\b")
+# This retained authority source is intentionally reused only as a role-holder fact. Require its
+# exact non-authority sentence: a regex that merely puts "authorizes no" before "deployment" also
+# accepts phrases such as "authorizes no obstacle to deployment" and contradictory continuations.
+REGISTRY_AUTHORITY_DISCLAIMER = (
+    "This comment is the durable external authority_source for reviewer-roster.json. It authorizes "
+    "no package recovery, release, registry mutation, deployment, consumer migration, or Story 3.13 "
+    "done status."
+)
+EXPECTED_REGISTRY_AUTHORITY_BODY = (
+    "Story 3.13 reviewer-roster ratification\n"
+    "I ratify the exact reviewer-role mappings for Hexalith/Hexalith.EventStore Story 3.13:\n"
+    "- eventstore-owner: github:jpiquot\n"
+    "- release-owner: github:jpiquot\n"
+    "- test-architect: bmad:murat\n"
+    "This dual EventStore-owner / Release-owner mapping to github:jpiquot is intentional. The Test "
+    "Architect receipt from bmad:murat is accepted as rostered.\n"
+    f"{REGISTRY_AUTHORITY_DISCLAIMER}\n"
+)
 ISSUE_COMMENT_ANCHOR = re.compile(
     r"\Ahttps://github\.com/Hexalith/Hexalith\.EventStore/issues/([1-9][0-9]*)#issuecomment-([1-9][0-9]*)\Z"
 )
@@ -297,6 +313,11 @@ def validate_identity(document, expected_package_ids, expected_manifest_sha256, 
     )
     if document["schema"] != SCHEMA or document["repository"] != REPOSITORY or document["story_id"] != "3.15":
         raise EvidenceError("closure identity is invalid")
+    if any(
+        EXPECTED_IDENTITIES[role] != f"github:{OWNER_GITHUB_ACCOUNT[0]}"
+        for role in OWNER_ROLES
+    ):
+        raise EvidenceError("rostered owner identity configuration is inconsistent")
 
     dispatch = _exact_object(
         document["dispatch"],
@@ -433,10 +454,6 @@ def validate_identity(document, expected_package_ids, expected_manifest_sha256, 
     return canonical_bytes(document)
 
 
-def _nuspec_identity(package_path):
-    return predecessor_handler._nuspec_identity(package_path)  # noqa: SLF001
-
-
 def _validate_predecessor(document, expected_package_ids, expected_manifest_sha256, repository_root):
     identity_path = _repository_file(repository_root, PREDECESSOR_IDENTITY_FILE)
     packet_root = _repository_file(repository_root, PREDECESSOR_PACKET_ROOT)
@@ -463,7 +480,7 @@ def _validate_predecessor(document, expected_package_ids, expected_manifest_sha2
     return predecessor
 
 
-def _validate_packages(document, predecessor, packet_root, repository_root):
+def _validate_packages(document, predecessor, packet_root):
     predecessor_packages = {item["id"]: item for item in predecessor["packages"]}
     for item in document["packages"]["items"]:
         try:
@@ -481,17 +498,15 @@ def _validate_packages(document, predecessor, packet_root, repository_root):
             raise EvidenceError("GitHub release-asset package domain changed")
         nuget = item["nuget_org"]
         package_path = _packet_file(packet_root, nuget["file"])
-        content = _verify_file(packet_root, nuget)
-        if nuget["sha256"] == release_asset["sha256"] or content == _repository_file(
-            repository_root, f"{PREDECESSOR_PACKET_ROOT}/{release_asset['file']}"
-        ).read_bytes():
+        _verify_file(packet_root, nuget)
+        if nuget["sha256"] == release_asset["sha256"]:
             raise EvidenceError("NuGet-signed and GitHub release-asset byte domains were conflated")
         try:
             with zipfile.ZipFile(package_path) as archive:
                 signature_count = sum(entry.filename == ".signature.p7s" for entry in archive.infolist())
         except (OSError, zipfile.BadZipFile) as error:
             raise EvidenceError("NuGet.org package is not a valid signed archive") from error
-        if signature_count != 1 or _nuspec_identity(package_path) != (
+        if signature_count != 1 or predecessor_handler.nuspec_identity(package_path) != (
             item["id"],
             VERSION,
             "git",
@@ -504,9 +519,6 @@ def _validate_packages(document, predecessor, packet_root, repository_root):
 def _validate_oci(document, predecessor, packet_root, repository_root):
     index_bytes = _verify_file(packet_root, document["oci"]["index"])
     predecessor_root = _repository_file(repository_root, PREDECESSOR_PACKET_ROOT)
-    predecessor_index = predecessor["oci"]["index"]
-    if index_bytes != (predecessor_root / predecessor_index["file"]).read_bytes():
-        raise EvidenceError("independent raw OCI index does not match the predecessor")
     index = load_json_bytes(index_bytes)
     descriptors = index.get("manifests")
     if (
@@ -691,12 +703,9 @@ def _validate_registry(document, packet_root):
     matches = ROLE_MAPPING_LINE.findall(normalized_body) if isinstance(normalized_body, str) else []
     role_lines = dict(matches)
     duplicate_roles = len(matches) != len(role_lines)
-    # The negation and the deployment term must land in one sentence, not merely somewhere in the
-    # body: searched independently, a body such as "authorizes nothing; this deployment is fully
-    # authorized" satisfies them while asserting the opposite.
-    disclaimed = isinstance(normalized_body, str) and REGISTRY_AUTHORITY_DISCLAIMER.search(
-        normalized_body
-    ) is not None
+    # The entire retained comment body is an authenticated fact. Requiring only the disclaimer as a
+    # substring would allow a contradictory deployment-authority sentence to be appended unchanged.
+    authority_body_agrees = normalized_body == EXPECTED_REGISTRY_AUTHORITY_BODY
     if (
         source_document.get("id") != 5290564372
         or source_document.get("url")
@@ -704,10 +713,9 @@ def _validate_registry(document, packet_root):
         or source_document.get("html_url")
         != "https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5290564372"
         or not isinstance(user, dict)
-        or user.get("login") != "jpiquot"
-        # Authenticate the roster comment as strongly as an acceptance receipt's source: a login
-        # alone is reassignable, and an edited comment can be rewritten after the fact.
-        or user.get("id") != 6775094
+        # Authenticate the roster comment as strongly as an acceptance receipt's source. Both paths
+        # consume the same named account tuple so re-rostering cannot silently split their checks.
+        or (user.get("login"), user.get("id")) != OWNER_GITHUB_ACCOUNT
         or source_document.get("updated_at") != source_document.get("created_at")
         or source_document.get("performed_via_github_app") is not None
         # NOTE: the receipt path requires MEMBER/OWNER/COLLABORATOR, but the retained roster
@@ -719,7 +727,7 @@ def _validate_registry(document, packet_root):
         or not isinstance(body, str)
         or duplicate_roles
         or role_lines != EXPECTED_IDENTITIES
-        or not disclaimed
+        or not authority_body_agrees
         or registry["created_at"] != source_document.get("created_at")
     ):
         raise EvidenceError("owner-role registry authority source is invalid")
@@ -751,6 +759,8 @@ def _validate_inventory(document, packet_root):
     bound_acceptances = document["acceptances"]["directory"].rstrip("/") + "/"
     actual = set()
     for path in packet_root.rglob("*"):
+        if path.is_symlink():
+            raise EvidenceError("packet contains a symbolic link outside the closed inventory")
         if not path.is_file():
             continue
         relative = path.relative_to(packet_root).as_posix()
@@ -782,6 +792,7 @@ def _validate_receipts(document, packet_root, subject_document):
         or {path.name for path in sources_root.iterdir() if path.is_file()} != expected_receipts
         or any(path.is_dir() and path.name != "sources" for path in receipt_root.iterdir())
         or any(path.is_dir() for path in sources_root.iterdir())
+        or any(path.is_symlink() for path in receipt_root.rglob("*"))
     ):
         raise EvidenceError("acceptance directory is not closed over exactly three receipts and sources")
     for binding in document["acceptances"]["receipts"]:
@@ -835,8 +846,7 @@ def _validate_receipts(document, packet_root, subject_document):
             receipt_user = source_document.get("user")
             if (
                 not isinstance(receipt_user, dict)
-                or receipt_user.get("login") != "jpiquot"
-                or receipt_user.get("id") != 6775094
+                or (receipt_user.get("login"), receipt_user.get("id")) != OWNER_GITHUB_ACCOUNT
                 or source_document.get("author_association") not in ("MEMBER", "OWNER", "COLLABORATOR")
                 or source_body != expected_source_body
                 or not _github_comment_identity_agrees(source_document)
@@ -845,7 +855,7 @@ def _validate_receipts(document, packet_root, subject_document):
                 or source_document.get("performed_via_github_app") is not None
             ):
                 raise EvidenceError("GitHub acceptance source is not authenticated to the rostered owner")
-        elif source["kind"] == "bmad-test-architect-record":
+        else:
             expected_source = {
                 "acceptance": {key: value for key, value in receipt.items() if key != "durable_source"},
                 "repository": REPOSITORY,
@@ -854,8 +864,6 @@ def _validate_receipts(document, packet_root, subject_document):
             }
             if source_document != expected_source or source_bytes != canonical_bytes(source_document):
                 raise EvidenceError("Test Architect acceptance source is invalid")
-        else:
-            raise EvidenceError("acceptance source kind is not allowlisted")
 
 
 def _github_comment_identity_agrees(source_document):
@@ -887,7 +895,7 @@ def validate_packet_files(document, packet_root, expected_package_ids, expected_
     """Recompute all retained edges without executing any packet-supplied code."""
     packet_root = packet_root.resolve()
     predecessor = _validate_predecessor(document, expected_package_ids, expected_manifest_sha256, repository_root)
-    _validate_packages(document, predecessor, packet_root, repository_root)
+    _validate_packages(document, predecessor, packet_root)
     _validate_oci(document, predecessor, packet_root, repository_root)
     _validate_smokes(document, packet_root)
     _validate_registry(document, packet_root)

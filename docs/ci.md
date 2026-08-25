@@ -402,17 +402,19 @@ focused verifier, so they cannot be renamed and that condition cannot be met.
 
 Story 3.15 independently revalidates the canonical Story 3.14 identity digest
 `4d1a0c336397e971bf10001095d5e427dd03c499ee428a3121a913926da8c4a9`, downloads and rehashes all
-14 NuGet.org repository-signed packages, and maps those public bytes to the distinct GitHub
+14 NuGet.org packages containing one `.signature.p7s` entry, and maps those public bytes to the distinct GitHub
 release-asset bytes retained by Story 3.14. It also rereads the raw immutable OCI index, both child
 manifests, and both configs, then runs bounded digest-pinned `/alive` smokes under the Production
 hosting environment for `linux/amd64` and `linux/arm64`.
 
 `tools/validate-corrected-deployed-runtime-parity.py` dispatches only to the exact allowlisted v1
 handler. Every file on the import path — the v1 handler, its package initializer, the v3 predecessor
-handler, and *its* package initializer — is pinned and verified before the first import, so an
-unreviewed edit never executes. The handler never executes packet-supplied code: it parses and
-rehashes retained bytes, checks the closed technical inventory, recomputes the canonical subject,
-and validates exactly three subject-addressed receipts.
+handler, and *its* package initializer — is pinned before execution. The source-only loader compiles
+those verified bytes directly, so stale timestamp-valid bytecode cannot stand in for reviewed
+source, and the imported provenance of all four modules must match the verified paths. The handler
+never executes packet-supplied code: it parses and rehashes retained bytes, rejects symlinks and
+nuspec DTD/entity declarations, checks the closed technical inventory, recomputes the canonical
+subject, and validates exactly three subject-addressed receipts.
 
 The closure's `dispatch` block binds the v1 handler, the v3 predecessor handler, and the v3
 package initializer directly; the v1 package initializer is pinned in the dispatcher's
@@ -439,11 +441,18 @@ assembler run the pinned verifier over its own output rather than always exiting
 superseded `bb58d691` receipts were themselves anchored on issue `#346`, so they are now rejected
 on lineage as well as on subject.
 
+A third 2026-08-25 review loop bound the Test Architect source's lack of independent external
+authentication as an exact limitation every receipt must repeat, made the owner GitHub account one
+shared named identity, replaced the disclaimer regex with the retained exact non-authority sentence,
+made every recomputed semantic check mutation-reachable, and added an explicit manifest override and
+rerun trigger to failure output. Those verifier changes re-minted the subject once more.
+
 The packet's current subject is
-`5acb81765201a22d6493d815a56f4b8d9c1ba141280779716013962eca3fa5f5`, and the packet **fails closed**
+`93559e6134c16d15e295b7c3fbf83d959e86da75d2dfe4201ffdde4d42ac39a0`, and the packet **fails closed**
 at zero of three receipts until the rostered EventStore owner, Release owner, and Test Architect
 each accept those exact new bytes. Because the roster maps both owner roles to `github:jpiquot`,
-two of those three acceptances are a self-attestation rather than independent three-party review.
+the Test Architect record remains self-attested without external authentication, and the three
+roles therefore do not represent independent three-party review.
 
 The only identity the closure may ever select is
 `registry.hexalith.com/eventstore@sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`,

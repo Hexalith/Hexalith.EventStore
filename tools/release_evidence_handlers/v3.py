@@ -426,13 +426,17 @@ def _verify_bound_file(root, binding):
     return content
 
 
-def _nuspec_identity(package_bytes):
+def nuspec_identity(package_path):
+    """Return repository identity fields from one package without expanding XML entities."""
     try:
-        with zipfile.ZipFile(Path(package_bytes)) as archive:
+        with zipfile.ZipFile(Path(package_path)) as archive:
             nuspecs = [name for name in archive.namelist() if name.endswith(".nuspec")]
             if len(nuspecs) != 1:
                 raise EvidenceError("package does not contain exactly one nuspec")
-            root = element_tree.fromstring(archive.read(nuspecs[0]))
+            nuspec_bytes = archive.read(nuspecs[0])
+            if b"<!DOCTYPE" in nuspec_bytes.upper() or b"<!ENTITY" in nuspec_bytes.upper():
+                raise EvidenceError("package nuspec contains forbidden DTD or entity declarations")
+            root = element_tree.fromstring(nuspec_bytes)
     except (OSError, zipfile.BadZipFile, element_tree.ParseError) as error:
         raise EvidenceError("package archive could not be independently inspected") from error
     namespace = {"n": root.tag.partition("}")[0].removeprefix("{")} if root.tag.startswith("{") else {}
@@ -885,7 +889,7 @@ def validate_packet_files(document, packet_root):
         content = path.read_bytes()
         if len(content) != package["size"] or hashlib.sha256(content).hexdigest() != package["sha256"]:
             raise EvidenceError("retained package bytes do not match their binding")
-        if _nuspec_identity(path) != (
+        if nuspec_identity(path) != (
             package["id"],
             package["version"],
             "git",

@@ -1598,3 +1598,40 @@ status: open
   severity: low
   summary: The `_bmad-output/test-artifacts/` gate PASS was withdrawn this loop but not regenerated.
   evidence: `gate-decision.json`, `e2e-trace-summary.json`, and `traceability-matrix.md` were scored at `source_sha` 516f2489 against subject `bb58d691` and reported `PASS` with a vacuous `p1_status: MET` over an empty P1 set. They are now explicitly marked SUPERSEDED with a banner rather than regenerated, because the trace workflow owns their production.
+
+## Deferred from: code review of spec-3-15-corrected-deployed-runtime-parity-closure (2026-08-25, loop 4 chunk 1)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: medium
+  summary: v3's timestamp parser is looser than v1's, so the frozen predecessor's timestamps are validated by the weaker rule.
+  evidence: `v1._parse_time` requires a strict `YYYY-MM-DDThh:mm:ss[.ffffff]Z` shape and rejects naive datetimes. The v3 code that `v1` delegates predecessor validation to still uses `value.replace("Z", "+00:00")` (`tools/release_evidence_handlers/v3.py:456-465`), which replaces every `Z` in the string, accepts a space separator, and accepts arbitrary non-UTC offsets. The hardening stops at the module boundary. Deferred because `v3.py` is the frozen Story 3.14 verifier and any edit re-mints the Story 3.15 subject.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: low
+  summary: Retained-file `size` has no upper bound and every retained and discovered file is read whole into memory.
+  evidence: `_binding` requires `size` to be a positive integer with no cap, and `_verify_file` / `_validate_inventory` `read_bytes()` each retained file plus every file the inventory `rglob` walk discovers. A packet declaring or containing multi-gigabyte files exhausts memory before any verdict is reached. Bounded in practice by the packet being local and produced by the assembler.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: low
+  summary: The dispatch-table consistency guards cannot fire with the current single-entry constant tables.
+  evidence: `_verify_dispatch_table` (`tools/validate-corrected-deployed-runtime-parity.py:44-52`) and the two set-comparison checks in `_load_handler` (`tools/validate-corrective-release-evidence.py:66,72`) guard against a future misconfiguration -- registering a handler without pinning it -- that no current table can express, and no test constructs the inconsistent state. Accepted as future-proofing rather than removed.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: low
+  summary: The Production smoke results file is never checked for canonical byte form.
+  evidence: `_validate_smokes` binds the results file by digest and validates its fields, but unlike the receipt, subject, and registry paths it never asserts `results_bytes == canonical_bytes(results)`. Non-canonical whitespace simply yields a different subject digest rather than a forgery vector, so this is a consistency gap rather than a hole.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: low
+  summary: All verifier failures collapse to exit code 1, so "the verifier itself was modified" is indistinguishable from "the evidence did not validate".
+  evidence: `main()` catches `(OSError, DispatchError, ValueError, json.JSONDecodeError)` and returns 1 for all of them. For a supply-chain gate, `DispatchError` (tampered or unpinned handler) deserves a distinct exit status from `EvidenceError`. Deferred because `docs/ci.md` and the test suite assert the current exit contract.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: low
+  summary: `"closure.json"` is hardcoded into the closed technical inventory while the CLI accepts an arbitrary evidence path and an independent `--packet-root`.
+  evidence: `tools/deployed_runtime_parity_handlers/v1.py:746` excludes the literal `closure.json` from the stray-file sweep. A closure file under a different name at the packet root fails with a misleading "files outside the closed technical inventory"; a `--packet-root` pointing elsewhere leaves the closure file uncovered by the inventory entirely. Neither the argparse help nor the docstring records the constraint.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: low
+  summary: The `summary_bindings` deletion reduces `validate_packet_files`' standalone behavior inside a line range the Code Map freezes, leaving a vestigial `summaries` dict.
+  evidence: The diff removes the one-shared-two-platform-summary check from `v3.validate_packet_files`, a public entry point, inside the Code Map's frozen `v3.py:863-974` "preserve v3 behavior" range. It is redundant today only because every present caller invokes `validate_identity` first (`v1.py:445-452`, `validate-corrective-release-evidence.py:108/115`), where the identical constraint is enforced at `v3.py:397`. Confirmed independently by three review layers as not-lost-verification; carried here as a frozen-range and dead-code note. The now-purposeless `summaries` cache at `v3.py:944-952` invites the reader to assume a guard is still present.

@@ -45,7 +45,12 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     [
         "This packet supplies immutable deployed-runtime parity evidence only.",
         "It authorizes no deployment, publication, registry mutation, consumer removal, or predecessor change.",
+        "The Test Architect acceptance is a self-attested BMAD record without independent external authentication.",
     ];
+
+    private const string RerunTrigger =
+        "Rebuild the complete subject and reject all prior receipts after any predecessor, package, OCI, " +
+        "Production-smoke, inventory, registry, verifier, decision, or receipt-source change.";
 
     /// <summary>
     /// Exact SHA-256 of every retained superseded artefact, keyed by its path under
@@ -193,6 +198,44 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     }
 
     /// <summary>
+    /// Verifies replacing independently downloaded NuGet bytes with the predecessor's GitHub
+    /// release-asset bytes reaches the explicit byte-domain conflation guard after rebinding.
+    /// </summary>
+    [Fact]
+    public void ReboundGitHubReleaseAssetBytesCannotMasqueradeAsNuGetBytes()
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        try
+        {
+            string closurePath = Path.Combine(temporary, "closure.json");
+            JsonObject closure = LoadJson(closurePath);
+            JsonObject item = closure["packages"]!["items"]![0]!.AsObject();
+            JsonObject nuget = item["nuget_org"]!.AsObject();
+            string destination = Path.Combine(temporary, nuget["file"]!.GetValue<string>());
+            string predecessor = Path.Combine(
+                root,
+                "_bmad-output",
+                "implementation-artifacts",
+                "evidence",
+                "story-3-14",
+                SourceSha,
+                item["github_release_asset"]!["file"]!.GetValue<string>());
+            File.Copy(predecessor, destination, overwrite: true);
+            UpdateFileBinding(nuget, destination, updateDigest: false);
+            WriteCanonical(closurePath, closure);
+
+            ShouldFailClosed(
+                RunValidator(root, temporary),
+                "NuGet-signed and GitHub release-asset byte domains were conflated");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
     /// Verifies raw OCI graph bytes and both bounded Production smoke records form one immutable lineage.
     /// </summary>
     [Fact]
@@ -260,6 +303,126 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     }
 
     /// <summary>
+    /// Verifies independently retained OCI bytes still have to reproduce the frozen predecessor
+    /// after their local SHA-256, size, and OCI digest binding have all been corrected.
+    /// </summary>
+    /// <param name="relativePath">Raw OCI object to mutate and rebind.</param>
+    /// <param name="expectedError">Expected semantic mismatch after the binding passes.</param>
+    [Theory]
+    [InlineData("oci/child-linux-amd64.manifest.raw", "independent raw OCI manifest does not match the predecessor")]
+    [InlineData("oci/child-linux-arm64.config.raw", "independent raw OCI config does not match the predecessor")]
+    public void ReboundOciBytesStillHaveToReproduceThePredecessor(
+        string relativePath,
+        string expectedError)
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        try
+        {
+            string closurePath = Path.Combine(temporary, "closure.json");
+            JsonObject closure = LoadJson(closurePath);
+            string path = Path.Combine(temporary, relativePath);
+            File.WriteAllBytes(path, [.. File.ReadAllBytes(path), (byte)' ']);
+            UpdateFileBinding(
+                FindFileBinding(closure, relativePath),
+                path,
+                updateDigest: true);
+            WriteCanonical(closurePath, closure);
+
+            ShouldFailClosed(RunValidator(root, temporary), expectedError);
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies a rebound smoke summary cannot declare a failing run while the closure still claims
+    /// positive parity.
+    /// </summary>
+    [Fact]
+    public void ReboundFailingSmokeSummaryCannotAuthorizeParity()
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        try
+        {
+            string closurePath = Path.Combine(temporary, "closure.json");
+            JsonObject closure = LoadJson(closurePath);
+            JsonObject binding = closure["production_smokes"]!["results"]!.AsObject();
+            string resultsPath = Path.Combine(temporary, binding["file"]!.GetValue<string>());
+            JsonObject results = LoadJson(resultsPath);
+            results["result"] = "fail";
+            WriteCanonical(resultsPath, results);
+            UpdateFileBinding(binding, resultsPath, updateDigest: false);
+            WriteCanonical(closurePath, closure);
+
+            ShouldFailClosed(RunValidator(root, temporary), "bounded Production smoke outcome is invalid");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies a rebound registry still has to reproduce the exact configured role roster.
+    /// </summary>
+    [Fact]
+    public void ReboundRegistryWithChangedRoleIdentityFailsClosed()
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        try
+        {
+            string closurePath = Path.Combine(temporary, "closure.json");
+            JsonObject closure = LoadJson(closurePath);
+            JsonObject binding = closure["owner_role_registry"]!.AsObject();
+            string registryPath = Path.Combine(temporary, binding["file"]!.GetValue<string>());
+            JsonObject registry = LoadJson(registryPath);
+            registry["roles"]!["eventstore-owner"] = new JsonArray((JsonNode)"github:mallory");
+            WriteCanonical(registryPath, registry);
+            UpdateFileBinding(binding, registryPath, updateDigest: false);
+            WriteCanonical(closurePath, closure);
+
+            ShouldFailClosed(RunValidator(root, temporary), "owner-role registry is invalid");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies a rebound checksum inventory still has to be derived from every exact retained file.
+    /// </summary>
+    [Fact]
+    public void ReboundHandWrittenInventoryCannotReplaceTheDerivedInventory()
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        try
+        {
+            string closurePath = Path.Combine(temporary, "closure.json");
+            JsonObject closure = LoadJson(closurePath);
+            JsonObject binding = closure["technical_inventory"]!.AsObject();
+            string inventoryPath = Path.Combine(temporary, binding["file"]!.GetValue<string>());
+            File.AppendAllText(inventoryPath, $"{new string('0', 64)}  packages/not-retained.bin\n");
+            UpdateFileBinding(binding, inventoryPath, updateDigest: false);
+            WriteCanonical(closurePath, closure);
+
+            ShouldFailClosed(
+                RunValidator(root, temporary),
+                "technical inventory is not closed over the exact retained files");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
     /// Verifies noncanonical identity bytes and a declared package-domain splice fail closed.
     /// </summary>
     /// <param name="mutation">Identity mutation case.</param>
@@ -290,6 +453,99 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             }
 
             ShouldFailClosed(RunValidator(root, temporary), expectedError);
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies every transitive live-file binding in dispatch is load-bearing, not only the handler
+    /// digest the outer dispatcher uses as its route key.
+    /// </summary>
+    /// <param name="bindingName">Non-route dispatch binding to invalidate.</param>
+    [Theory]
+    [InlineData("verifier")]
+    [InlineData("predecessor_handler")]
+    [InlineData("predecessor_package")]
+    public void EveryDispatchLiveFileBindingMustSelectTrustedBytes(string bindingName)
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        try
+        {
+            string closurePath = Path.Combine(temporary, "closure.json");
+            JsonObject closure = LoadJson(closurePath);
+            closure["dispatch"]![bindingName]!["sha256"] = new string('0', 64);
+            WriteCanonical(closurePath, closure);
+
+            ShouldFailClosed(
+                RunValidator(root, temporary),
+                "dispatch identity does not select the trusted live verifier");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies the complete expected-subject equality is load-bearing after the changed subject is
+    /// rebound and receives a fresh, structurally valid receipt set.
+    /// </summary>
+    [Fact]
+    public void ReboundSubjectWithChangedDecisionInputFailsClosed()
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CopyPacket(root);
+        try
+        {
+            string closurePath = Path.Combine(temporary, "closure.json");
+            JsonObject closure = LoadJson(closurePath);
+            string subjectPath = Path.Combine(temporary, "subject.json");
+            JsonObject subject = LoadJson(subjectPath);
+            subject["decision"]!["deployment_authorized"] = true;
+            WriteCanonical(subjectPath, subject);
+            UpdateFileBinding(closure["subject"]!.AsObject(), subjectPath, updateDigest: false);
+            string subjectHash = closure["subject"]!["sha256"]!.GetValue<string>();
+            closure["acceptances"]!["directory"] = "acceptances/" + subjectHash;
+            WriteCanonical(closurePath, closure);
+            AttachThreeAcceptedReceipts(temporary);
+
+            ShouldFailClosed(
+                RunValidator(root, temporary),
+                "canonical subject does not bind every decision input");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies an unhashable handler digest is classified as invalid dispatch metadata without a
+    /// traceback or handler import.
+    /// </summary>
+    [Fact]
+    public void UnhashableDispatchDigestFailsClosedWithSupportSafeReason()
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CopyPacket(root);
+        try
+        {
+            string closurePath = Path.Combine(temporary, "closure.json");
+            JsonObject closure = LoadJson(closurePath);
+            closure["dispatch"]!["handler"]!["sha256"] = new JsonArray();
+            WriteCanonical(closurePath, closure);
+
+            (int exitCode, string output, string error) = RunValidator(root, temporary);
+
+            exitCode.ShouldBe(1, error);
+            output.ShouldNotContain("pass:");
+            error.ShouldContain("closure dispatch metadata is invalid");
+            error.ShouldContain("rerun: " + RerunTrigger);
+            error.ShouldNotContain("Traceback");
         }
         finally
         {
@@ -502,6 +758,38 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     }
 
     /// <summary>
+    /// Verifies the corrected closure validator exposes the same explicit manifest override as its
+    /// predecessor validator and actually validates the supplied bytes.
+    /// </summary>
+    [Fact]
+    public void ManifestOverrideIsLoadBearing()
+    {
+        string root = FindRepositoryRoot();
+        string packet = Path.Combine(root, EvidenceRelativePath);
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-story315-manifest-{Guid.NewGuid():N}.json");
+        try
+        {
+            File.WriteAllText(temporary, "{\"packages\":[]}\n");
+
+            ShouldFailClosed(
+                RunProcess(
+                    root,
+                    "python3",
+                    "tools/validate-corrected-deployed-runtime-parity.py",
+                    Path.Combine(packet, "closure.json"),
+                    "--manifest",
+                    temporary,
+                    "--packet-root",
+                    packet),
+                "release package manifest must contain exactly 14 packages");
+        }
+        finally
+        {
+            File.Delete(temporary);
+        }
+    }
+
+    /// <summary>
     /// Verifies every entry in the dispatcher's import-path pin table matches the live file it
     /// names, so a drifted literal fails closed instead of silently accepting a stale or wrong
     /// module. Checking only the v1 handler would leave the package initializers and the v3
@@ -548,6 +836,33 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             File.Exists(live).ShouldBeTrue(relative);
             pinned.ShouldBe(ComputeSha256(live), relative);
         }
+    }
+
+    /// <summary>
+    /// Verifies provenance checks name every executing module on the source-only import path,
+    /// including both package initializers and the transitive predecessor handler.
+    /// </summary>
+    [Fact]
+    public void ImportedModuleProvenanceCoversTheCompleteVerifiedPath()
+    {
+        string root = FindRepositoryRoot();
+        string dispatcher = File.ReadAllText(
+            Path.Combine(root, "tools", "validate-corrected-deployed-runtime-parity.py"));
+
+        string[] expected =
+        [
+            "deployed_runtime_parity_handlers/__init__.py",
+            "deployed_runtime_parity_handlers/v1.py",
+            "release_evidence_handlers/__init__.py",
+            "release_evidence_handlers/v3.py",
+        ];
+        foreach (string relative in expected)
+        {
+            dispatcher.ShouldContain($"_verify_imported_file(");
+            dispatcher.ShouldContain($"\"{relative}\"");
+        }
+
+        Regex.Matches(dispatcher, "_verify_imported_file\\(").Count.ShouldBe(5);
     }
 
     /// <summary>
@@ -604,6 +919,52 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             ShouldFailClosed(
                 RunValidator(root, temporary),
                 "packet contains files outside the closed technical inventory");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies file, directory, and dangling symbolic links cannot evade the packet inventory walk
+    /// or the separately close-listed acceptance tree.
+    /// </summary>
+    /// <param name="shape">Symbolic-link shape to plant.</param>
+    [Theory]
+    [InlineData("file")]
+    [InlineData("directory")]
+    [InlineData("dangling-acceptance")]
+    public void SymbolicLinksCannotEvadeClosedInventory(string shape)
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        try
+        {
+            JsonObject closure = LoadJson(Path.Combine(temporary, "closure.json"));
+            if (shape == "file")
+            {
+                File.CreateSymbolicLink(
+                    Path.Combine(temporary, "stray-link"),
+                    Path.Combine(temporary, "subject.json"));
+            }
+            else if (shape == "directory")
+            {
+                Directory.CreateSymbolicLink(
+                    Path.Combine(temporary, "linked-packages"),
+                    Path.Combine(temporary, "packages"));
+            }
+            else
+            {
+                string acceptanceDirectory = closure["acceptances"]!["directory"]!.GetValue<string>();
+                File.CreateSymbolicLink(
+                    Path.Combine(temporary, acceptanceDirectory, "dangling.json"),
+                    Path.Combine(temporary, "does-not-exist"));
+            }
+
+            ShouldFailClosed(
+                RunValidator(root, temporary),
+                "packet contains a symbolic link outside the closed inventory");
         }
         finally
         {
@@ -693,6 +1054,40 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             ShouldFailClosed(
                 RunValidator(root, temporary),
                 "NuGet.org package signature or nuspec identity is invalid");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies packet-supplied nuspec XML cannot declare or expand internal entities, even after
+    /// the mutated package's retained binding is corrected.
+    /// </summary>
+    [Fact]
+    public void PackageNuspecWithEntityDeclarationFailsClosedBeforeExpansion()
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        try
+        {
+            string closurePath = Path.Combine(temporary, "closure.json");
+            JsonObject closure = LoadJson(closurePath);
+            JsonObject nuget = closure["packages"]!["items"]![0]!["nuget_org"]!.AsObject();
+            string packagePath = Path.Combine(temporary, nuget["file"]!.GetValue<string>());
+            ReplaceNuspec(
+                packagePath,
+                "<!DOCTYPE package [<!ENTITY packageId \"Hexalith.EventStore.Contracts\">]>" +
+                "<package><metadata><id>&packageId;</id><version>3.96.2</version>" +
+                "<repository type=\"git\" url=\"https://github.com/Hexalith/Hexalith.EventStore\" " +
+                $"commit=\"{SourceSha}\" /></metadata></package>");
+            UpdateFileBinding(nuget, packagePath, updateDigest: false);
+            WriteCanonical(closurePath, closure);
+
+            ShouldFailClosed(
+                RunValidator(root, temporary),
+                "package nuspec contains forbidden DTD or entity declarations");
         }
         finally
         {
@@ -878,11 +1273,8 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     }
 
     /// <summary>
-    /// Verifies a source kind outside the two allowlisted values never reaches source validation.
-    /// The verifier's explicit "not allowlisted" branch is currently unreachable, because the
-    /// role-to-kind roster already constrains every rostered role to one of the two allowlisted
-    /// kinds; that roster check is therefore the guard this case pins. Both must be present: with
-    /// neither, an unknown kind would skip source validation altogether.
+    /// Verifies a source kind outside the two rostered values fails at the single load-bearing
+    /// role-to-kind allowlist instead of relying on an unreachable downstream branch.
     /// </summary>
     /// <param name="kind">Non-allowlisted source kind to declare.</param>
     [Theory]
@@ -897,11 +1289,9 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         {
             RewriteReceipt(temporary, 0, receipt => receipt["durable_source"]!["kind"] = kind);
 
-            (int exitCode, string output, string error) = RunValidator(root, temporary);
-
-            exitCode.ShouldBe(1, error);
-            output.ShouldNotContain("pass:");
-            error.ShouldContain("acceptance source kind");
+            ShouldFailClosed(
+                RunValidator(root, temporary),
+                "acceptance source kind does not match the rostered role");
         }
         finally
         {
@@ -979,6 +1369,40 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
                 int disclaimer = body.IndexOf("It authorizes no", StringComparison.Ordinal);
                 disclaimer.ShouldBeGreaterThan(-1);
                 return body[..disclaimer];
+            });
+
+            ShouldFailClosed(
+                RunValidator(root, temporary),
+                "owner-role registry authority source is invalid");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies disclaimer-like sentences that actually authorize deployment cannot satisfy the
+    /// exact retained non-authority statement.
+    /// </summary>
+    /// <param name="replacement">Contradictory sentence replacing the genuine disclaimer.</param>
+    [Theory]
+    [InlineData("It authorizes no obstacle to deployment.")]
+    [InlineData("It authorizes no changes, and authorizes deployment of any image.")]
+    public void RegistryAuthoritySourceWithContradictoryDisclaimerFailsClosed(string replacement)
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        try
+        {
+            MutateRegistrySourceBody(temporary, body =>
+            {
+                const string GenuineDisclaimer =
+                    "This comment is the durable external authority_source for reviewer-roster.json. " +
+                    "It authorizes no package recovery, release, registry mutation, deployment, consumer " +
+                    "migration, or Story 3.13 done status.";
+                body.ShouldContain(GenuineDisclaimer);
+                return body.Replace(GenuineDisclaimer, replacement, StringComparison.Ordinal);
             });
 
             ShouldFailClosed(
@@ -1134,6 +1558,74 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     }
 
     /// <summary>
+    /// Verifies timestamp-valid stale bytecode cannot execute in place of the pinned source bytes.
+    /// The cached module prints a marker, then the trusted source is restored with the same length
+    /// and timestamp so ordinary importlib considers the malicious pyc valid.
+    /// </summary>
+    [Fact]
+    public void StaleBytecodeCannotStandInForVerifiedSource()
+    {
+        string root = FindRepositoryRoot();
+        string packet = Path.Combine(root, EvidenceRelativePath);
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-story315-pyc-{Guid.NewGuid():N}");
+        try
+        {
+            CopyDirectory(Path.Combine(root, "tools"), Path.Combine(temporary, "tools"));
+            string handlerPath = Path.Combine(
+                temporary,
+                "tools",
+                "deployed_runtime_parity_handlers",
+                "v1.py");
+            byte[] trusted = File.ReadAllBytes(handlerPath);
+            string trustedText = Encoding.UTF8.GetString(trusted);
+            const string ReplaceableLine =
+                "# subject must bind them too, or a v3 change would leave the subject and every receipt valid while";
+            int lineStart = trustedText.IndexOf(ReplaceableLine, StringComparison.Ordinal);
+            lineStart.ShouldBeGreaterThan(0);
+            string maliciousLine = "print('untrusted-bytecode-executed')".PadRight(ReplaceableLine.Length);
+            maliciousLine.Length.ShouldBe(ReplaceableLine.Length);
+            byte[] malicious = [.. trusted];
+            Encoding.ASCII.GetBytes(maliciousLine).CopyTo(malicious, lineStart);
+            DateTime timestampCandidate = DateTime.UtcNow.AddMinutes(-1);
+            DateTime cacheTimestamp = new(
+                timestampCandidate.Ticks - (timestampCandidate.Ticks % TimeSpan.TicksPerSecond),
+                DateTimeKind.Utc);
+            File.WriteAllBytes(handlerPath, malicious);
+            File.SetLastWriteTimeUtc(handlerPath, cacheTimestamp);
+            (int compileExit, _, string compileError) = RunProcess(
+                temporary,
+                "python3",
+                "-m",
+                "py_compile",
+                handlerPath);
+            compileExit.ShouldBe(0, compileError);
+            File.WriteAllBytes(handlerPath, trusted);
+            File.SetLastWriteTimeUtc(handlerPath, cacheTimestamp);
+
+            (int exitCode, string output, string error) = RunProcess(
+                temporary,
+                "python3",
+                "tools/validate-corrected-deployed-runtime-parity.py",
+                Path.Combine(packet, "closure.json"),
+                "--packet-root",
+                packet);
+
+            exitCode.ShouldBe(1, error);
+            error.ShouldContain("exactly three packet-bound receipts are required");
+            error.ShouldContain("rerun: " + RerunTrigger);
+            output.ShouldNotContain("untrusted-bytecode-executed");
+            output.ShouldNotContain("pass:");
+        }
+        finally
+        {
+            if (Directory.Exists(temporary))
+            {
+                Directory.Delete(temporary, recursive: true);
+            }
+        }
+    }
+
+    /// <summary>
     /// Asserts one validator run failed closed: exit code exactly 1, the expected reason on stderr,
     /// and no pass line on stdout. A fail-open -- exit 0 with a printed pass line while a guard
     /// silently skipped -- is the specific regression this lane suffered, so a nonzero-exit
@@ -1147,6 +1639,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     {
         result.ExitCode.ShouldBe(1, result.Error);
         result.Error.ShouldContain(expectedError);
+        result.Error.ShouldContain("rerun: " + RerunTrigger);
         result.Output.ShouldNotContain("pass:");
     }
 
@@ -1161,6 +1654,66 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         using Stream duplicateStream = duplicate.Open();
         buffer.Position = 0;
         buffer.CopyTo(duplicateStream);
+    }
+
+    private static void ReplaceNuspec(string zipPath, string content)
+    {
+        using ZipArchive archive = ZipFile.Open(zipPath, ZipArchiveMode.Update);
+        ZipArchiveEntry[] nuspecs = archive.Entries
+            .Where(entry => entry.FullName.EndsWith(".nuspec", StringComparison.Ordinal))
+            .ToArray();
+        nuspecs.Length.ShouldBe(1);
+        string name = nuspecs[0].FullName;
+        nuspecs[0].Delete();
+        ZipArchiveEntry replacement = archive.CreateEntry(name);
+        using Stream stream = replacement.Open();
+        stream.Write(Encoding.UTF8.GetBytes(content));
+    }
+
+    private static JsonObject FindFileBinding(JsonNode node, string relativePath)
+    {
+        if (node is JsonObject candidate
+            && candidate["file"]?.GetValue<string>() == relativePath
+            && candidate.ContainsKey("sha256")
+            && candidate.ContainsKey("size"))
+        {
+            return candidate;
+        }
+
+        IEnumerable<JsonNode?> children = node switch
+        {
+            JsonObject item => item.Select(property => property.Value),
+            JsonArray items => items,
+            _ => [],
+        };
+        foreach (JsonNode? child in children)
+        {
+            if (child is null)
+            {
+                continue;
+            }
+
+            try
+            {
+                return FindFileBinding(child, relativePath);
+            }
+            catch (InvalidOperationException)
+            {
+            }
+        }
+
+        throw new InvalidOperationException($"File binding '{relativePath}' was not found.");
+    }
+
+    private static void UpdateFileBinding(JsonObject binding, string path, bool updateDigest)
+    {
+        string sha256 = ComputeSha256(path);
+        binding["sha256"] = sha256;
+        binding["size"] = new FileInfo(path).Length;
+        if (updateDigest)
+        {
+            binding["digest"] = "sha256:" + sha256;
+        }
     }
 
     private static string CopyPacket(string root)
